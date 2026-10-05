@@ -26,12 +26,8 @@ import { appearanceClassName } from "@some-ui/styles/theme"
 import { cn, useIsMobile } from "some-ui-utils"
 
 /**
- * Which probe the player gets.
- *
- * `"auto"` — the default, and what every host should pass — reads the
- * viewport. The two explicit values exist for a story, a test, or a deep link
- * that means one surface specifically; they are not a user-facing setting and
- * nothing in `apps/www` sets one.
+ * Which probe the player gets. `"auto"` (default, what hosts pass) reads the
+ * viewport; the explicit values are for stories, tests and deep links.
  */
 export type LeetypeSurface = "auto" | "reading" | "typing"
 
@@ -40,13 +36,9 @@ const DEFAULT_SESSION_DURATION_MS = 10 * 60_000
 
 type LeetypeProps = {
   /**
-   * A fixed exercise for a preview or deep link. Normal sessions omit this
-   * prop: the learner chooses one from `ExercisePicker` instead, and the
-   * choice — not a schedule — decides what plays.
-   *
-   * This prop is the seam a future generator plugs into — see
-   * `lib/leetype/exercises`. Everything above it is indifferent to where the
-   * value came from, on either surface.
+   * A fixed exercise for a preview or deep link. Normal sessions omit it and
+   * the learner picks from `ExercisePicker`. The seam a generator plugs into
+   * (see `lib/leetype/exercises`).
    */
   exercise?: Exercise
   /** Session term supplied by the composer/scene, in milliseconds. */
@@ -56,13 +48,9 @@ type LeetypeProps = {
   /** Cosmetic, and typing-only: the reading surface paints no gradient over code. */
   textGradient?: TextGradient
   /**
-   * Called once the whole sequence is finished.
-   *
-   * `stats` is present only on the typing surface. The reading surface
-   * produces no WPM, no accuracy and no assistance share — those are facts
-   * about production measured through keystroke timing, and it has no
-   * keystrokes — so it reports completion with nothing attached rather than
-   * with zeroes a caller would be entitled to read as measurements.
+   * Called once the whole sequence is finished. `stats` comes only from the
+   * typing surface; the reading surface has no keystrokes to measure, so it
+   * reports completion with nothing rather than misleading zeroes.
    */
   onSessionComplete?: (stats?: CompletedSessionStats) => void
   /** Art direction. See `TypingSession` for the full note; `inherit` is the default. */
@@ -70,21 +58,15 @@ type LeetypeProps = {
   /** Escape hatch for stories, tests and deep links. Defaults to `"auto"`. */
   surface?: LeetypeSurface
   /**
-   * Per-exercise usage signal for `ExercisePicker`'s tiles — how starved or
-   * popular each one is, in whatever units the host's own session history
-   * counts in. Optional and computed by nobody here: this package's static
-   * seed corpus has no notion of "across every player, over time," so a host
-   * that tracks that (`apps/www`) supplies it; a host that doesn't gets a
-   * plain, badge-free picker.
+   * Per-exercise usage signal for `ExercisePicker`'s tiles, in the host's own
+   * units. Supplied by a host that tracks usage (`apps/www`); absent, the
+   * picker shows no badges.
    */
   exerciseBadges?: Readonly<Record<string, ExercisePickerBadge>>
   /**
    * Where the phone's rounds come from: the served corpus, fetched by the
-   * host (`apps/www`'s `loadLeetypeRounds`, which knows `DATA_MODE`). Absent,
-   * or when it rejects, the bundled corpus (`AUTHORED_ROUNDS`) plays: the
-   * rounds are the practice surface, so an unreachable server degrades to
-   * the reviewed seed rather than to an empty screen (H1, #1231). Called
-   * only on the phone surface; the typing surface never reads a round.
+   * host (`apps/www`'s `loadLeetypeRounds`). Absent or rejecting, the bundled
+   * `AUTHORED_ROUNDS` plays rather than an empty screen. Phone surface only.
    */
   loadRounds?: () => Promise<ReadonlyArray<unknown>>
   /**
@@ -96,13 +78,11 @@ type LeetypeProps = {
    */
   shelf?: ShelfPort
   /**
-   * A round's recorded runs (X2, #1223): `apps/www` fetches
-   * `GET /leetype/rounds/:id/runs` in `server` mode and resolves `null`,
-   * with no request, in `static` mode. A plain function for the same reason
-   * as `loadRounds`; the package parses and checks what it returns
-   * (`lib/leetype/round-runs`). Absent or failing, the bundled transcript
-   * (`corpus/runs/`) is shown when it matches the round's bytes, and a round
-   * with neither plays exactly as before. Read only on the phone surface.
+   * A round's recorded runs: `apps/www` fetches `GET /leetype/rounds/:id/runs`
+   * in `server` mode and resolves `null` in `static` mode. The package checks
+   * the result (`lib/leetype/round-runs`). Absent or failing, the bundled
+   * transcript (`corpus/runs/`) is shown if it matches the round's bytes.
+   * Phone surface only.
    */
   loadRuns?: RoundRunsLoader
   /**
@@ -125,69 +105,36 @@ type LeetypeProps = {
  * └── TypingSession   ≥ 768px      its optional production probe, standing in for it where there is room
  * ```
  *
- * # Why a branch here rather than responsive CSS one level down
+ * # Why a branch here rather than responsive CSS
  *
- * Because discrimination and production are not the same interaction at two
- * widths — Prop. 9.2's own inversion, kept live here rather than only in the
- * canon: the small-screen surface is not a shrunken production probe, it is
- * the complete design, and the wide surface is the one that has to justify
- * what it replaces that design with (Rem. 9.3 retires the older framing this
- * section used to carry — see `docs/leetype/README.md`'s own "Amended" note
- * under LTY-MOBILE). What the production probe offers in its place is real:
- * `TypingSession`'s reveal loop, gate, baseline sampling and WPM figures are
- * all facts about a player producing code under time pressure, measured
- * through keystrokes a phone has no channel for — but that is an argument
- * for substituting it in where there is room, not for treating the surface
- * it replaces as the lesser one. Reflowing that surface into a narrow column
- * would yield a screen that *looks* playable and reports numbers that mean
- * nothing, which is worse than leaving it alone.
+ * Discrimination and production are different interactions, not one at two
+ * widths (Prop. 9.2): the small-screen surface is the complete design, and
+ * the wide one substitutes a production probe where there is room. Reflowing
+ * `TypingSession` into a narrow column would report numbers that mean
+ * nothing. A component branch (not a media query) also lets the phone path
+ * mount none of the engine: `useTypingGame` cannot be called conditionally,
+ * so a phone never fetches `@some-ui/leetype-wasm`. `ExercisePicker` makes
+ * its own mobile/desktop choice for the same reason.
  *
- * So the breakpoint is not `desktop diff → smaller desktop diff`. It is
- * `discriminate the claim → produce the witness instead`, and expressing it
- * as a component branch rather than a media query is what lets the
- * small-screen path mount none of the engine: `TypingSession` is where
- * `useTypingGame` lives, and a hook cannot be called conditionally. The
- * session on a phone therefore never fetches `@some-ui/leetype-wasm` at
- * all — not because it is missing something, but because the probe that
- * would replace it on a wider screen is never mounted here. `ExercisePicker`
- * makes its own, independent mobile/desktop choice for the same reason
- * applied to itself: a picker built for a pointer and one built for a thumb
- * are different layouts.
+ * # The breakpoint is `useIsMobile`'s
  *
- * # The breakpoint is `useIsMobile`'s, not a new one
+ * 768px, from `some-ui-utils`, so the workspace has one answer to "is this a
+ * phone". It reads the media query via `useSyncExternalStore`, so the first
+ * render already picks the right surface instead of starting a wasm load
+ * for what turns out to be a reading session.
  *
- * 768px, from `some-ui-utils`. Reused rather than re-picked: the workspace
- * already has exactly one answer to "is this a phone," and a second constant
- * here would be a second answer that drifts. It reads the media query through
- * `useSyncExternalStore`, so the first render already has the right surface
- * instead of painting the wrong one and correcting a frame later — which on
- * this component would mean starting a wasm load for a session that turns out
- * to be a reading one.
+ * # The learner chooses the exercise
  *
- * # Choosing an exercise replaced choosing one at random
- *
- * There used to be a seeded schedule here (`lib/leetype/exercises
- * /scheduling.ts`) that traversed the eligible corpus in a shuffled cycle
- * whenever no `exercise` prop was supplied. It is gone, not superseded: a
- * learner picking their own target is a stronger reason to come back than a
- * well-shuffled bag, and it is the only way to go straight at a concept
- * known to be weak. `picked` below is this component's whole memory of that
- * choice — cleared back to "no exercise yet" once a picker-sourced session
- * finishes, so the next round asks again rather than silently looping to
- * another random one. An explicit `exercise` prop (deep link, preview,
- * test) always wins and never sees the picker at all.
- *
- * `picked` also carries the session's remaining time budget, snapshotted at
- * the moment of selection — see `mountedAt` below for why time spent
- * browsing the picker has to come out of that budget rather than being
- * free.
+ * `picked` is this component's whole memory of the choice, cleared once a
+ * picker-sourced session finishes so the next one asks again. It also
+ * snapshots the remaining time budget at selection (see `mountedAt`). An
+ * explicit `exercise` prop always wins and never shows the picker.
  *
  * # The registry contract
  *
- * Mounts with no props and no ambient context, exactly as before
- * (`@some-ui/content-registry`'s own rule). A host binds `leetype` and gets
- * whichever surface the device can actually carry, without knowing there are
- * two — and, with no `exercise` forced, the learner sees the picker first.
+ * Mounts with no props and no ambient context (`@some-ui/content-registry`'s
+ * rule): a host binds `leetype` and gets whichever surface the device can
+ * carry, with the picker first.
  */
 export const Leetype: FC<LeetypeProps> = ({
   exercise,
@@ -208,14 +155,10 @@ export const Leetype: FC<LeetypeProps> = ({
     surface === "auto" ? (isMobile ? "reading" : "typing") : surface
 
   /**
-   * The orchestrator removes this whole component at its own mount time
-   * plus `sessionDurationMs` (see `TypingSession`'s own clock-anchoring
-   * comment) — a deadline fixed the instant `Leetype` itself mounts, before
-   * the learner has picked anything. Time spent browsing the picker
-   * therefore has to come out of the session's own budget: without this,
-   * a session picked late could be unmounted by the orchestrator before its
-   * own completion effect ever runs, and `onSessionComplete` would silently
-   * never fire (review finding on some-ui#1182).
+   * The orchestrator removes this component at mount time plus
+   * `sessionDurationMs`, fixed before the learner picks anything. Time spent
+   * browsing comes out of the session's budget, or a late pick could be
+   * unmounted before `onSessionComplete` fires.
    */
   const [mountedAt] = useState(() => performance.now())
 
@@ -239,10 +182,8 @@ export const Leetype: FC<LeetypeProps> = ({
       if (!live) return
       // Parsed here, not by the host: the host's loader stays free of this
       // package so its chunk stays lazy.
-      // A served round that parses but fails the authored-round checks is
-      // not playable, so it cannot stand in for the bundled corpus either
-      // (review finding on #1598: all-unplayable served rounds used to
-      // bypass the fallback and leave the learner with no rounds).
+      // A served round that fails the authored-round checks is not
+      // playable, so it cannot stand in for the bundled corpus either.
       const rounds = bodies.flatMap((body) => {
         if (lintAuthoredRounds([body]).length > 0) return []
         const parsed = RoundSchema.safeParse(body)
@@ -262,10 +203,8 @@ export const Leetype: FC<LeetypeProps> = ({
     }
   }, [playsRounds, loadRounds, sessionDurationMs, mountedAt])
 
-  // Both the id and the remaining budget are snapshotted once, at the
-  // moment of selection — not recomputed on every render, which would keep
-  // shrinking the child session's `sessionDurationMs` prop on every
-  // unrelated re-render and re-anchor its clock forever.
+  // Snapshotted once at selection: recomputing per render would keep
+  // shrinking the child's `sessionDurationMs` and re-anchor its clock.
   const [picked, setPicked] = useState<
     { id: string; remainingMs: number } | undefined
   >(undefined)
@@ -280,14 +219,11 @@ export const Leetype: FC<LeetypeProps> = ({
 
   const active: Exercise | undefined =
     exercise ?? (picked ? nextExercise({ preferId: picked.id }) : undefined)
-  // An explicit `exercise` prop is the caller's own fixed seam (a preview, a
-  // deep link, a test): the scene became active exactly when this mounted,
-  // so no picker-time gap exists and the raw duration is already correct.
+  // An explicit `exercise` has no picker-time gap: the raw duration is right.
   const activeDurationMs =
     exercise !== undefined ? sessionDurationMs : (picked?.remainingMs ?? 0)
 
-  // Only a picker-sourced choice returns to the picker on completion — an
-  // explicit `exercise` prop keeps behaving exactly as it always has.
+  // Only a picker-sourced choice returns to the picker on completion.
   const handleComplete = useCallback(
     (stats?: CompletedSessionStats): void => {
       onSessionComplete?.(stats)
@@ -296,10 +232,8 @@ export const Leetype: FC<LeetypeProps> = ({
     [onSessionComplete, exercise]
   )
 
-  // The Leetype cutover (#1440): on a phone with no exercise forced, the
-  // session is rounds (Def. 1.7), not the step corpus's picker. An explicit
-  // `exercise` (a deep link, a preview, a test) still plays the reading
-  // session it names, and the wide surface is unchanged.
+  // On a phone with no exercise forced, the session is rounds (Def. 1.7). An
+  // explicit `exercise` still plays the reading session it names.
   if (playsRounds) {
     return (
       <div className={cn(appearanceClassName(appearance), "absolute inset-0")}>

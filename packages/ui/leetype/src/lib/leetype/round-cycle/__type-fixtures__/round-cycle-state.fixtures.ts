@@ -1,5 +1,5 @@
 /**
- * TSC-STATIC1 (#1365): Thm. 8.1's "the transition function is total", held
+ * TSC-STATIC1: Thm. 8.1's "the transition function is total", held
  * by the compiler rather than restated at runtime.
  *
  * `RoundCycleState` has four phases, one per named successor in Thm. 8.1's
@@ -11,11 +11,8 @@
  *   - a phase removed from the union fails at its now-impossible `case`
  *     label.
  *
- * `round-cycle/index.test.ts` used to carry this same switch inside an
- * `it()` that ran it over four constructed states and asserted it did not
- * throw — a runtime restatement of a guarantee that only exists at compile
- * time. The runtime half of Thm. 8.1 (every branch is reachable and has a
- * defined, distinct successor) stays in that file.
+ * The runtime half of Thm. 8.1 (every branch reachable, with a defined,
+ * distinct successor) is `round-cycle/index.test.ts`.
  *
  * Not a `*.test.ts`: Vitest never discovers it, and `tsc --noEmit` picks it
  * up through tsconfig.json's `src` include. See

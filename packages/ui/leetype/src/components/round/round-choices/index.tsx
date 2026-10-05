@@ -15,56 +15,34 @@ type RoundChoicesProps = {
   /** The forcing question. Read at full size — never a caption. */
   prompt: string
   options: ReadonlyArray<PropositionOption>
-  /** μ(d) for the diff this card was posed for (Thm. 6.1) — never read for rendering until a commitment lands (see this component's own doc comment). */
+  /** μ(d) for the diff this card was posed for (Thm. 6.1); never painted before a commitment. */
   answerId: PropositionId
   /**
-   * Fires exactly once, synchronously, the instant a row is tapped —
-   * before this component's own re-render paints the verdict. Same
-   * ordering guarantee `CommitmentControl`'s own `onCommit` makes, and for
-   * the same reason (Ax. 9.2): once the verdict is visible no later
-   * response carries information about the learner's prior state.
+   * Fires once, synchronously, on tap, before the verdict paints (as
+   * `CommitmentControl`'s, Ax. 9.2).
    */
   onCommit: (commitment: Commitment) => void
   className?: string
 }
 
 /**
- * The round-shaped counterpart to `components/reading-game`'s
- * `ClaimChoices` (B3, #1220) — additive, new component, not a rewrite of
- * it, the same posture `lib/leetype/round-probe` already took on
- * `lib/leetype/reading-probe` (B2, #1219). `ClaimChoices` is select-then-
- * resolve: picking a row records a choice a *separate* submission
- * elsewhere later resolves. A round has no such second step — Def. 9.1
- * calls a commitment "a single, cheap, mandatory-before-reveal action,"
- * and Ax. 9.1 requires the closed set always include an explicit
- * abstention — so each row here is a plain button that commits and
- * reveals on tap, the same interaction `CommitmentControl` (C3, #1215)
- * already established, applied to option rows instead of a button grid so
- * the verdict can land "on the option rows, as a glyph plus a word, next
- * to the option actually chosen" (#1220's own restraint, inherited from
- * LTY-MOBILE).
+ * The round-shaped counterpart to `ClaimChoices`. Where `ClaimChoices`
+ * records a choice a later submission resolves, a round has no second step
+ * (Def. 9.1: "a single, cheap, mandatory-before-reveal action"), so each row
+ * is a button that commits and reveals on tap, like `CommitmentControl`,
+ * with the verdict landing on the rows as a glyph plus a word.
  *
- * # No option is ever colored before a commitment is recorded
+ * # No option is colored before a commitment
  *
- * `answerId` is a required prop — this component, unlike `ClaimChoices`,
- * owns the commit gesture itself, so it must know the real answer from
- * mount to render correctly the instant a tap resolves. The discipline
- * `ClaimChoices`'s own `answerId: string | null` prop enforces from the
- * *outside* is enforced here from the *inside* instead: every render
- * derives `revealedAnswerId` from `committed`, never reads the `answerId`
- * prop directly for paint, and `committed` starts `null` — so there is
- * still no render in which the verdict is held and merely not painted.
+ * This component owns the commit gesture, so it holds `answerId` from mount,
+ * but paint reads `revealedAnswerId`, derived from `committed` (initially
+ * `null`). No render holds the verdict and merely hides it.
  *
- * # Abstention is a real row, not a lesser one
+ * # Abstention is a real row
  *
- * Appended to the same row list, same size and weight as every real
- * option (Def. 9.1: "never a lesser option," the same rule
- * `CommitmentControl` already holds for its own button grid). Tapping it
- * commits `{ kind: "abstain" }` and reveals exactly what tapping a real
- * option would: the *answer's* row still marks itself correct, because
- * "a learner who abstained sees exactly what a learner who answered sees"
- * (#1220's own acceptance criterion) — abstention withholds a claim, it
- * does not withhold the reveal.
+ * Same size and weight as every option (Def. 9.1: "never a lesser option").
+ * It commits `{ kind: "abstain" }` and reveals exactly what an answer would:
+ * abstention withholds a claim, not the reveal.
  */
 export const RoundChoices: FC<RoundChoicesProps> = ({
   prompt,
@@ -76,17 +54,13 @@ export const RoundChoices: FC<RoundChoicesProps> = ({
   const [committed, setCommitted] = useState<Commitment | null>(null)
 
   const commit = (commitment: Commitment): void => {
-    // A closed, one-shot action (Def. 9.1) — a second tap after the first
-    // is not a correction, it is a control that should already be gone
-    // (every button below is `disabled` once committed).
+    // One-shot (Def. 9.1): every button is disabled once committed.
     if (committed !== null) return
     onCommit(commitment)
     setCommitted(commitment)
   }
 
-  // Derived, never the raw prop: this is what keeps the answer unpainted
-  // until a commitment actually lands, the same way `answerId: null` keeps
-  // `ClaimChoices` from painting one before the caller reveals it.
+  // Derived, never the raw prop: unpainted until a commitment lands.
   const revealedAnswerId = committed !== null ? answerId : null
   const pickedId = committed?.kind === "choice" ? committed.id : null
   const abstained = committed?.kind === "abstain"
@@ -101,11 +75,8 @@ export const RoundChoices: FC<RoundChoicesProps> = ({
         {options.map((option, index) => {
           const isAnswer = option.id === revealedAnswerId
           const isPicked = option.id === pickedId
-          // Before a commitment nothing is resolved; after it, the answer
-          // and the player's own pick are the only two rows that say
-          // anything — identical to `ClaimChoices`'s own resolution
-          // states, since tap-to-commit changes *when* the verdict is
-          // decided, not what it looks like once it is.
+          // After a commitment only the answer and the pick say anything,
+          // matching `ClaimChoices`' resolution states.
           const resolution =
             revealedAnswerId === null
               ? "open"

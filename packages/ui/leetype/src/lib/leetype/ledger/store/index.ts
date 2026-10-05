@@ -1,5 +1,5 @@
 /**
- * Where the ledger (`lib/leetype/ledger`, L1 #1227) is kept: one
+ * Where the ledger (`lib/leetype/ledger`) is kept: one
  * `localStorage` key, the same try/catch posture as `lib/leetype/
  * pasted-round`, and `adaptive-learning-canon.typ` §7 as the reason.
  *

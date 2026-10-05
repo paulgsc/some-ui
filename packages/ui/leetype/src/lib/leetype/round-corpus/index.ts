@@ -3,12 +3,12 @@ import type { ConstraintSet } from "@leetype/types/constraint"
 import type { DiffSet } from "@leetype/types/round"
 
 /**
- * The fixture round corpus R5 (#1208) checks live against — the "real
- * corpus" `checkCitations`/`checkRegisterCoverage` (B1, #1218) were built
+ * The fixture round corpus R5 checks live against — the "real
+ * corpus" `checkCitations`/`checkRegisterCoverage` (B1) were built
  * for but had no data to run against until now (see those functions' own
  * doc comments in `proposition-register/citation-check.ts`). Its hunks
  * are sketches, not patches to a real program; the real rounds are
- * `lib/leetype/authored-rounds` (LTY-AUTHOR, #1540), which will replace
+ * `lib/leetype/authored-rounds` (LTY-AUTHOR), which will replace
  * this corpus once they cover the register. Until then it is held to
  * the same "shim standard" `lib/leetype/exercises/index.ts` already states
  * for the step corpus: it fails loudly here if malformed, not three

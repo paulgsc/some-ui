@@ -4,11 +4,8 @@ import type { ReadingHunk } from "@leetype/lib/leetype/reading-probe"
 import Prism from "prismjs"
 import { cn, useResizeObserver } from "some-ui-utils"
 
-// The same theme `CodeDisplay` imports. Imported here as well rather than
-// relied on transitively: this surface never mounts that component (see the
-// doc comment below), so on a phone nothing else would ever pull the
-// stylesheet in and every `.token.*` class would render unstyled. Bundlers
-// dedupe the second import; a missing one is a silent regression.
+// Imported here too: this surface never mounts `CodeDisplay`, so on a phone
+// nothing else would load the theme and `.token.*` would render unstyled.
 import "prismjs/themes/prism-tomorrow.css"
 import "prismjs/components/prism-typescript"
 import "prismjs/components/prism-c"
@@ -16,12 +13,8 @@ import "prismjs/components/prism-cpp"
 import "prismjs/components/prism-rust"
 
 /**
- * Prism's grammar ids, keyed by the four languages `TypingBlockSchema`
- * admits. Duplicated from `CodeDisplay`'s map rather than shared: that map is
- * a private detail of a renderer whose invariant is that nothing about
- * exercises reaches it, and exporting it to be reused here would be the first
- * thread out of that file. Four entries, and adding a fifth language is a
- * schema change that would touch both anyway.
+ * Prism's grammar ids for the four languages `TypingBlockSchema` admits.
+ * Duplicated from `CodeDisplay`'s private map rather than exported from it.
  */
 const LANGUAGE_MAP: Record<string, string> = {
   typescript: "typescript",
@@ -39,21 +32,15 @@ const LANGUAGE_LABEL: Record<string, string> = {
 }
 
 /**
- * Per-kind paint. A left rail plus a restrained tint, rather than the
- * full-width saturated slab a desktop diff viewer uses: on a phone the hunk
- * is the whole screen's focal object, and a slab that loud makes the two
- * changed rows read as an alert instead of as code.
- *
- * The sign column carries the same information redundantly, so nothing here
- * is communicated by colour alone.
+ * Per-kind paint: a left rail plus a restrained tint, since a saturated slab
+ * on a phone reads as an alert. The sign column repeats the information, so
+ * nothing relies on colour alone.
  */
 const ROW_PAINT: Record<
   ReadingHunk["rows"][number]["kind"],
   { row: string; sign: string; code?: string }
 > = {
-  // Context is legible but recessive. The changed rows are the focal region
-  // and the surrounding lines are there to support interpretation, so the
-  // eye lands on the delta without anything being made unreadable.
+  // Context is legible but recessive, so the eye lands on the delta.
   context: {
     row: "border-l-transparent",
     sign: "text-muted-foreground/40",
@@ -66,9 +53,7 @@ const ROW_PAINT: Record<
   del: {
     row: "border-l-rose-500/60 bg-rose-500/[0.06]",
     sign: "text-rose-400",
-    // Struck through, matching the vocabulary `CodeDisplay` already paints a
-    // deletion in: someone who plays this on both a laptop and a phone should
-    // not have to learn the grammar twice.
+    // Struck through, as `CodeDisplay` paints a deletion.
     code: "line-through decoration-rose-400/40 opacity-70",
   },
 }
@@ -79,8 +64,7 @@ type DiffCardProps = {
 }
 
 /**
- * The mobile hunk card (LTY-MOBILE) — the primary object on a reading screen,
- * and the component every other one on that screen is subordinate to.
+ * The mobile hunk card (LTY-MOBILE): the primary object on a reading screen.
  *
  * ```text
  * ╭────────────────────────────────────────╮
@@ -93,36 +77,15 @@ type DiffCardProps = {
  * ╰────────────────────────────────────────╯
  * ```
  *
- * # Why this is not `CodeDisplay`
+ * Not `CodeDisplay`: that renders typing-engine projections, and mounting an
+ * engine here would fetch the wasm binary for a caret never drawn. This takes
+ * authored `ReadingHunk` data only, keeping `@some-ui/leetype-wasm` out of
+ * the mobile chunk. Both renderers derive rows from the same `diff.segments`
+ * via `renderedDiffLineKinds`, so they agree without sharing code.
  *
- * `CodeDisplay` renders *engine projections*: `roles`, `slotOfDisplay`,
- * `slotStatus`, `visibility`, `cursorDisplay`. Every one of those is a fact
- * about a step in flight under the typing engine, and there is no typing
- * engine on this surface — mounting one to render a card nobody types into
- * would fetch the wasm binary to compute a caret that is never drawn. So this
- * renderer takes authored data (`ReadingHunk`, derived by `readingHunkOf`)
- * and nothing else, which is what keeps `@some-ui/leetype-wasm` out of the
- * mobile chunk entirely.
- *
- * The two renderers agree about what a hunk *is* without sharing code,
- * because both derive their rows from the same `diff.segments` through
- * `renderedDiffLineKinds`. That is the invariant worth having; a shared
- * component parameterised over "does this have an engine attached" would be
- * the mode flag `docs/leetype/README.md` spends four decisions keeping out.
- *
- * # One horizontal scroller, and it is not the page
- *
- * Code never wraps. Wrapping destroys indentation, disconnects a continuation
- * from its sign, and makes an `add` row impossible to line up against the
- * `del` row above it — which is the entire comparison the card exists to
- * support. So the row body scrolls horizontally inside the card while the
- * card itself stays viewport-width, and the gutter is pinned with
- * `position: sticky` so a line number stays readable at any scroll offset.
- *
- * `data-scroll-intent` is declared for the same reason `TypingViewport`
- * declares it: the ui-fit sweep (`docs/ui-fit`) distinguishes a box that
- * scrolls because scrolling *is* the interaction from one that scrolls
- * because it was handed too much, and this is the former.
+ * Code never wraps: wrapping destroys indentation and add/del alignment. The
+ * row body scrolls horizontally inside the card, with the gutter sticky.
+ * `data-scroll-intent` tells the ui-fit sweep this scroll is the interaction.
  */
 export const DiffCard: FC<DiffCardProps> = ({ hunk, className }) => {
   const grammarId = LANGUAGE_MAP[hunk.language] ?? "javascript"
@@ -130,24 +93,16 @@ export const DiffCard: FC<DiffCardProps> = ({ hunk, className }) => {
   const label = LANGUAGE_LABEL[hunk.language] ?? hunk.language
 
   /**
-   * Whether any line runs past the card, and whether the reader has already
-   * scrolled to the end of it.
-   *
-   * Measured rather than assumed, because the affordance is not decoration.
-   * A line clipped with no sign that it continues reads as the whole line,
-   * and on a surface whose entire task is *say what this change does* a
-   * reader who never learns there is more text answers a question about code
-   * they did not see. That is a correctness problem, not a polish one — which
-   * is why it is worth a `ResizeObserver` rather than a permanent edge fade
-   * that would also shade the end of a short line.
+   * Whether any line runs past the card and the reader has not scrolled to
+   * its end. Measured, because a clipped line with no hint reads as the whole
+   * line, and the reader would answer about code they never saw.
    */
   const scrollerRef = useRef<HTMLDivElement>(null)
   const [clipped, setClipped] = useState(false)
   const measure = useCallback((): void => {
     const scroller = scrollerRef.current
     if (!scroller) return
-    // A pixel of slack: sub-pixel layout rounding otherwise reports a
-    // permanent one-pixel overflow on a card that fits exactly.
+    // A pixel of slack for sub-pixel rounding.
     setClipped(
       scroller.scrollWidth - scroller.clientWidth - scroller.scrollLeft > 1
     )
@@ -155,26 +110,13 @@ export const DiffCard: FC<DiffCardProps> = ({ hunk, className }) => {
   useResizeObserver({ ref: scrollerRef, onResize: measure })
 
   /**
-   * Back to the start of the line whenever the card is handed a different
-   * hunk.
+   * Back to the start of the line whenever the card gets a different hunk.
+   * `ReadingSession` swaps the prop without remounting, so the scroller keeps
+   * its `scrollLeft`, and `ResizeObserver` does not fire (the box is the same).
    *
-   * Nothing remounts this component between steps — `ReadingSession` renders
-   * one `DiffCard` and swaps its prop — so the scroll box is the *same* DOM
-   * element from one step to the next and keeps whatever `scrollLeft` the
-   * reader left it at. `ResizeObserver` does not cover the gap either: it
-   * fires on the scroller's own box changing, and the box is identical
-   * between steps; only the content inside it changed. The result was a new
-   * hunk opening halfway across its first line, under a "swipe" affordance
-   * left over from the previous one.
-   *
-   * Keyed on a signature of the rows rather than on the `hunk` object,
-   * because a caller may legitimately rebuild that object on every render —
-   * this file's own stories do — and resetting on identity would snap the
-   * scroll back mid-swipe. The signature is a few hundred characters for a
-   * four-to-ten-line hunk, which is what a hunk is.
-   *
-   * A layout effect, not an effect: it runs after the new rows are in the DOM
-   * and before paint, so no frame is ever shown at the stale offset.
+   * Keyed on a signature of the rows, not the `hunk` object, which callers
+   * may rebuild every render. A layout effect, so no frame paints at the
+   * stale offset.
    */
   const signature = `${hunk.path ?? ""}\u0000${hunk.language}\u0000${hunk.rows
     .map((row) => row.text)
@@ -188,11 +130,8 @@ export const DiffCard: FC<DiffCardProps> = ({ hunk, className }) => {
 
   const highlight = (text: string): ReactNode => {
     if (!grammar || text.length === 0) return text
-    // Tokenised per line, the same trade `CodeDisplay`'s hunk path makes: a
-    // construct spanning a line boundary (an unterminated block comment, a
-    // multi-line string) colours as two locally-wrong fragments. Colour is
-    // the only thing at stake — no character is added, dropped or reordered
-    // — and a hunk is four to ten lines, authored.
+    // Tokenised per line, as `CodeDisplay`'s hunk path: a multi-line
+    // construct may colour wrongly, but no character changes.
     return Prism.tokenize(text, grammar).map((token, index) =>
       renderToken(token, index)
     )
@@ -201,19 +140,15 @@ export const DiffCard: FC<DiffCardProps> = ({ hunk, className }) => {
   return (
     <div
       className={cn(
-        // The one object on the screen that reads as an object: a defined
-        // border and its own surface, so the hunk is what the learner is
-        // inspecting rather than one panel among several of equal weight.
+        // Its own border and surface: the one object on the screen.
         "overflow-hidden rounded-xl border border-border/80 bg-secondary shadow-sm",
         className
       )}
     >
       {hunk.path !== undefined && (
         <div className="flex items-baseline gap-3 border-b border-border/70 px-3 py-2">
-          {/* `dir="rtl"` with a left-to-right override keeps the *end* of a
-              long path visible when it ellipsizes — a phone truncating
-              `src/…/session.rs` down to `src/lib/inte…` names nothing the
-              reader can use. */}
+          {/* `dir="rtl"` keeps the *end* of a long path visible when it
+              ellipsizes. */}
           <span
             dir="rtl"
             className="min-w-0 flex-1 truncate text-left font-mono text-xs text-muted-foreground"
@@ -248,9 +183,7 @@ export const DiffCard: FC<DiffCardProps> = ({ hunk, className }) => {
                 data-line-kind={row.kind}
                 className={cn("flex border-l-2", paint.row)}
               >
-                {/* Sticky so the number and sign survive a horizontal scroll.
-                    Opaque backgrounds, or the code would slide visibly
-                    underneath them. */}
+                {/* Sticky, with opaque backgrounds so code slides underneath. */}
                 <span
                   className={cn(
                     "sticky left-0 z-10 w-9 shrink-0 select-none bg-secondary px-1 text-right tabular-nums text-muted-foreground/40",
@@ -271,9 +204,7 @@ export const DiffCard: FC<DiffCardProps> = ({ hunk, className }) => {
                 >
                   {sign}
                 </span>
-                {/* The screen-reader half of the same signal: `+`/`−` is
-                    decorative punctuation to a screen reader, so the row's
-                    role is said in words instead. Never colour alone. */}
+                {/* Screen readers get the row's role in words, not `+`/`−`. */}
                 {row.kind !== "context" && (
                   <span className="sr-only">
                     {row.kind === "add" ? "added line: " : "removed line: "}
@@ -281,11 +212,8 @@ export const DiffCard: FC<DiffCardProps> = ({ hunk, className }) => {
                 )}
                 <pre
                   className={cn(
-                    // Content-width rather than `flex-1`: the row's own tint
-                    // already spans the full scroll width (the row is a block
-                    // inside `min-w-max`), and a flexible child here would
-                    // either be unable to shrink below its content or, with
-                    // `min-w-0`, clip a long line the card means to scroll.
+                    // Content-width, not `flex-1`: the row's tint already spans
+                    // the scroll width, and `min-w-0` would clip a long line.
                     "m-0 whitespace-pre pr-3 text-foreground/90",
                     paint.code
                   )}

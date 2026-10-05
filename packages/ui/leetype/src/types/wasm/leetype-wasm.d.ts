@@ -3,13 +3,10 @@
 // point at without instantiating the binary. Only the members imported in
 // this workspace are declared.
 //
-// Every member is *derived* from the published declarations (reached by
-// subpath, since the bare specifier maps back to this file) rather than
-// spelled out again. That matters: this file used to type `TypingGame` as
-// `WasmModule["TypingGame"]`, i.e. from the hand-written surface in
-// types/leetype.ts, which made the check circular — the stub agreed with
-// the wrapper because it was built out of the wrapper, and the crate had
-// no say. See ./bindings-contract.ts.
+// Every member is *derived* from the published declarations (by subpath,
+// since the bare specifier maps back here), never from the hand-written
+// surface in types/leetype.ts, which would make the check circular. See
+// ./bindings-contract.ts.
 //
 // `import type` is erased entirely, so this file still emits nothing at
 // runtime and Vitest still sees an empty module to `vi.mock` over.

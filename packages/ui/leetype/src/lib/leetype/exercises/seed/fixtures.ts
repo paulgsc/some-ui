@@ -4,7 +4,7 @@ import type { Exercise, Step } from "@leetype/types/exercise"
 /**
  * The awkward one. Not a lesson — a fixture.
  *
- * `PromptPanel` (#872) and the ui-fit sweep (#876) both need a step whose
+ * `PromptPanel` and the ui-fit sweep both need a step whose
  * prompt is hostile, a step whose proof is two characters, and a step with
  * no prompt at all. Those cases have to exist somewhere, and inventing them
  * separately in every story and test is how three slightly different

@@ -1,6 +1,5 @@
 /**
- * Admissibility (LTY-COST, G3, #1211) — `docs/canon/complexity-witness-canon.typ`
- * Def. 3.1, Prop. 2.1, Ax. 3.1.
+ * Admissibility (LTY-COST G3): canon Def. 3.1, Prop. 2.1, Ax. 3.1.
  *
  * `evaluate` is `T` evaluated at a constraint set's own bounds (Def. 3.1's
  * "evaluated at the bounds of C") — an exact operation count, not a reduced
@@ -94,15 +93,10 @@ export function isAdmissible(
 }
 
 /**
- * R4 (#1207, LTY-ROUND) has landed `types/round.ts`'s `DiffSetMember` —
- * `hunk`, `propositionId` (μ) and an authored `admissible` boolean — but
- * that type carries no cost graph, since R4's own acceptance criteria never
- * asked for one. This type remains the stand-in `checkAdmissibleClaimsAgreeWithDerivation`
- * (below) is tested against: a label, a member's own cost graph, and the
- * authored boolean. LTY-AUTHOR (#1540) supplies the missing half: an
- * authored round's diff option carries its own `G_{A+d}`
- * (`types/authored-round.ts`), and `lib/leetype/round-assembly` maps each
- * option onto this shape unchanged.
+ * What `checkAdmissibleClaimsAgreeWithDerivation` checks: a label, a
+ * member's cost graph and its authored `admissible` boolean.
+ * `DiffSetMember` carries no graph; `round-assembly` maps each authored diff
+ * option (which carries `G_{A+d}`) onto this shape.
  */
 export type AdmissibleClaim = {
   readonly label: string
@@ -111,12 +105,10 @@ export type AdmissibleClaim = {
 }
 
 /**
- * G3's own acceptance criterion for R4: "R4's authored 'this member is the
- * admissible one' is checked against `isAdmissible`, and a disagreement
- * fails the corpus lint with both values printed." Runs in `lint:corpus`
- * over the authored rounds, through `lib/leetype/round-assembly`'s
- * `lintAuthoredRounds` (LTY-AUTHOR, #1540). The fixture rounds
- * `lintRoundCorpus` scans carry no cost graphs, so they are not checked.
+ * Each authored "this member is admissible" claim, checked against
+ * `isAdmissible`; a disagreement is a violation printing both values. Runs
+ * in `lint:corpus` via `lintAuthoredRounds`; the fixture rounds carry no
+ * cost graphs.
  */
 export function checkAdmissibleClaimsAgreeWithDerivation(
   claims: ReadonlyArray<AdmissibleClaim>,

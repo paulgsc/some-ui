@@ -59,10 +59,8 @@ describe("isAdmissibilityRestoring — Def. 5.1's own relation", () => {
   })
 })
 
-// Def. 5.2's own worked examples — CW-P5 and CW-P7, cited by G4's own
-// acceptance criteria. Both restructure a nested Loop into a Seq of two
-// Loops, so none of the before graph's edges survive at their old
-// position — every one of them counts toward the distance.
+// Def. 5.2's worked examples, CW-P5 and CW-P7: a nested Loop becomes a Seq
+// of two Loops, so every before-edge counts.
 describe("semanticDistance — Def. 5.2's own worked examples", () => {
   it("CW-P5 · nm → n + m: preprocessing substitutes space for repeated search", () => {
     // Before: a linear search of m items, once per n outer iterations.
@@ -93,22 +91,16 @@ describe("semanticDistance — Def. 5.2's own worked examples", () => {
   })
 
   it("counts only the one edge whose repetition changed, position held fixed", () => {
-    // Prop. 5.1(b)'s own counterexample graph — see the describe block
-    // below. A single-edge rewrite is a small semantic distance regardless
-    // of the (large, upward) effect it has on the class — Rem. 5.1's point
-    // that minimality is not about how much the class moves.
+    // Prop. 5.1(b)'s counterexample: one edge, however far the class moves
+    // (Rem. 5.1).
     const before = Seq(Loop(dim("n", 2), W(1)), Loop(dim("n"), W(1)))
     const after = Seq(Loop(dim("n", 2), W(1)), Loop(dim("n", 3), W(1)))
     expect(semanticDistance(before, after)).toBe(1)
   })
 })
 
-// Review finding on this PR (chatgpt-codex-connector): the same (before,
-// after) graph pair can arise from two different rewrites — adding an
-// inner loop (the outer edge untouched) or adding an outer loop and
-// pushing the original into its body (the original edge moved) — and no
-// function of the two graphs alone can distinguish them. `identify` is the
-// escape hatch: `EdgeIdentity`'s own doc comment explains why.
+// One graph pair, two possible rewrites; only `identify` can tell them
+// apart (see `EdgeIdentity`).
 describe("semanticDistance — edge correspondence across a rewrite (EdgeIdentity)", () => {
   it("the default, position-keyed identity cannot see either interpretation as a move — documents the limitation, does not hide it", () => {
     const addInnerLoop = Loop(dim("n"), Loop(dim("n"), W(1)))
@@ -143,9 +135,7 @@ describe("semanticDistance — edge correspondence across a rewrite (EdgeIdentit
   })
 })
 
-// Prop. 5.1, in its corrected form (Rem. 5.2) — two tests, not one, so
-// nobody re-derives the false two-directional form from the code the way
-// the canon's own first draft did.
+// Prop. 5.1 as corrected (Rem. 5.2): two one-directional tests.
 describe("Prop. 5.1 — an off-dominant-path rewrite cannot reduce Θ(T), but may raise it", () => {
   it("(a) CW-P11: confined to a non-dominant path, the class does not reduce however much code it touches", () => {
     // Θ(n²) dominates; the Θ(n) branch is not dominant. Multiplying that
@@ -159,11 +149,8 @@ describe("Prop. 5.1 — an off-dominant-path rewrite cannot reduce Θ(T), but ma
   })
 
   it("(b) the negative case: Seq(n², n) → Seq(n², n³) raises the class", () => {
-    // The canon's own corrected counterexample (Prop. 5.1's proof): a
-    // rewrite off the dominant path can enlarge a dominated path until it
-    // dominates, changing Θ(T) upward — the original one-directional claim
-    // ("cannot change the class") was wrong, and this is the case that
-    // forced the correction.
+    // Prop. 5.1's counterexample: enlarging a dominated path until it
+    // dominates changes Θ(T) upward.
     const before = Seq(Loop(dim("n", 2), W(1)), Loop(dim("n"), W(1)))
     const after = Seq(Loop(dim("n", 2), W(1)), Loop(dim("n", 3), W(1)))
     expect(printClass(costOf(before))).toBe("Θ(n^2)")
@@ -171,10 +158,8 @@ describe("Prop. 5.1 — an off-dominant-path rewrite cannot reduce Θ(T), but ma
   })
 })
 
-// knip flags an exported type alias nobody imports by name even when a
-// value inferring the same shape is already used (the R4/#1261 handoff's
-// own documented trap) — these two annotated consts are that workaround,
-// mirroring admissibility/index.test.ts's own pattern for `AdmissibleClaim`.
+// knip flags an exported type alias nobody imports by name; these annotated
+// consts reference them (as admissibility's test does for `AdmissibleClaim`).
 describe("exported types stay referenced by name", () => {
   it("Rewrite and RewriteWitness both type-check as annotated values", () => {
     const rewrite: Rewrite = rewriteOf(W(1), W(1))

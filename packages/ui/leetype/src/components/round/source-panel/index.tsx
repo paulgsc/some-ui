@@ -10,11 +10,8 @@ import {
 import Prism from "prismjs"
 import { cn } from "some-ui-utils"
 
-// The same theme `CodeDisplay` and `DiffCard` import. Imported here as well
-// rather than relied on transitively, for the same reason `DiffCard`'s own
-// copy gives: this component may mount on a surface neither of those ever
-// does, and a missing import would be a silent regression rather than a
-// loud one.
+// Imported here too: this may mount where neither `CodeDisplay` nor
+// `DiffCard` does (see `DiffCard`).
 import "prismjs/themes/prism-tomorrow.css"
 import "prismjs/components/prism-typescript"
 import "prismjs/components/prism-c"
@@ -22,12 +19,8 @@ import "prismjs/components/prism-cpp"
 import "prismjs/components/prism-rust"
 
 /**
- * Prism's grammar ids, keyed by the four languages `AlgorithmSchema` admits.
- * Duplicated from `CodeDisplay`'s and `DiffCard`'s own copies rather than
- * shared: each is a private detail of a renderer, per `DiffCard`'s own
- * comment on the same duplication, and this file's invariant — that nothing
- * about the typing engine or a diff hunk reaches it — is exactly the kind of
- * thing importing another renderer's map would start eroding.
+ * Prism's grammar ids for the four languages `AlgorithmSchema` admits.
+ * Duplicated, like `DiffCard`'s, so no other renderer's code reaches here.
  */
 const LANGUAGE_MAP: Record<string, string> = {
   typescript: "typescript",
@@ -64,7 +57,7 @@ function renderToken(
   )
 }
 
-/** The one accordion item this component ever renders. Fixed, not derived — there is exactly one panel per instance, so nothing needs to disambiguate it from a sibling. */
+/** The one accordion item this component renders. */
 const ITEM_VALUE = "source"
 
 type SourcePanelProps = {
@@ -73,42 +66,26 @@ type SourcePanelProps = {
 }
 
 /**
- * The round's whole-program reveal (R1, #1204, Def. 1.1 / Prop. 1.1):
- * `algorithm.source` closed by default, opening on a single tap.
+ * The round's whole-program reveal (Def. 1.1 / Prop. 1.1):
+ * `algorithm.source`, closed by default, opening on a single tap.
  *
- * **No precondition anywhere in its call path.** This component takes an
- * `Algorithm` and nothing else — no ledger, no ordinal, no prior-answer
- * flag, no timer. There is no prop this file could gate the toggle on even
- * if it wanted to, which is what makes Prop. 1.1 ("revelation may never be
- * conditioned on any learner state") true by construction rather than by
- * a check somewhere that could drift. A fresh mount opens exactly the same
- * way whether it is the first thing a round renders or the hundredth.
+ * **No precondition in its call path.** It takes an `Algorithm` and nothing
+ * else (no ledger, ordinal, prior answer or timer), so Prop. 1.1
+ * ("revelation may never be conditioned on any learner state") holds by
+ * construction.
  *
- * **Nothing reads whether the panel was opened.** `open` lives in this
- * component's own `useState` and goes nowhere else — no `onOpenChange`
- * prop, nothing lifted to a caller, nothing persisted. `A` is explicitly
- * not the assessed artifact (Cor. 6.1); a reveal a caller could observe
- * would smuggle it back in as a signal.
+ * **Nothing reads whether it was opened.** `open` stays in local state, with
+ * no callback or persistence: `A` is not the assessed artifact (Cor. 6.1),
+ * and an observable reveal would make it a signal.
  *
- * **Closes again when the algorithm changes.** A caller may legitimately
- * swap `algorithm` on an already-mounted instance rather than remounting it
- * (`ReadingSession` does exactly this with `DiffCard`'s `hunk` prop) — React
- * does not reset local state on a prop change by itself, so without this a
- * round left open would carry its `open = true` straight into the next
- * round's source, revealing it before anyone tapped anything. Compared
- * during render against `algorithm.source` (Def. 1.1's actual identity for
- * `A`) rather than in an effect, so the stale content is never painted open
- * for a frame before snapping shut.
+ * **Closes when the algorithm changes.** Callers may swap `algorithm` on a
+ * mounted instance, so `open` resets during render when `algorithm.source`
+ * (Def. 1.1's identity for `A`) changes, never painting the next source
+ * open for a frame.
  *
- * **Renders through Prism directly** — the library, not `CodeDisplay` or
- * `DiffCard` — because `A` carries none of what either of those needs:
- * no engine projection (`roles` / `slotOfDisplay` / `slotStatus` /
- * `visibility` / `cursorDisplay`), no hunk-shaped `lineKinds`. `A`'s
- * source is a complete, static program, tokenized once — not typed into,
- * not diffed. This is a new panel, not a new renderer: the one existing
- * invariant this story has to keep is that `DiffCard` still draws a hunk
- * and never becomes a window onto `A`, which holds trivially — this file
- * does not import or modify `DiffCard`.
+ * **Renders through Prism directly**, not `CodeDisplay` or `DiffCard`: `A`
+ * is a static program, neither typed into nor diffed. This file does not
+ * import `DiffCard`, so `DiffCard` never becomes a window onto `A`.
  */
 export const SourcePanel: FC<SourcePanelProps> = ({ algorithm, className }) => {
   const [open, setOpen] = useState(false)
@@ -150,14 +127,8 @@ export const SourcePanel: FC<SourcePanelProps> = ({ algorithm, className }) => {
         </AccordionTrigger>
         <AccordionContent className="px-3 pb-3 pt-0">
           {/*
-            One line each, wrapping rather than clipped: `inputAlphabet` is
-            unbounded free text (a review finding on #1248 caught the prior
-            single `truncate`d line silently dropping it on a narrow phone,
-            with no way to recover the omitted text). Both are part of what
-            the learner needs to interpret the program, so losing either
-            silently is a correctness problem on this surface, not a
-            polish one — the same posture `DiffCard`'s own clipped-line
-            affordance is built on.
+            Wrapping, not truncated: `inputAlphabet` is unbounded free text
+            the learner needs to interpret the program.
           */}
           <div className="mb-2 space-y-0.5 font-mono text-[11px] text-muted-foreground/70">
             <p className="break-words">
@@ -172,15 +143,9 @@ export const SourcePanel: FC<SourcePanelProps> = ({ algorithm, className }) => {
             </p>
           </div>
           {/*
-            data-scroll-intent, the same marker `DiffCard`/`TypingViewport`
-            declare on their own horizontally-scrolling code region: the
-            ui-fit sweep needs to tell "this box scrolls because scrolling
-            is the interaction" apart from a box that was handed too much.
-            Dragging a long line here reads past its edge rather than
-            switching artifacts because this is a native scroller nested in
-            `ArtifactSwitcher`'s native pager: the browser gives the gesture
-            to the innermost one that can still move (review finding,
-            #1430, chatgpt-codex-connector).
+            data-scroll-intent: this scroll is the interaction (ui-fit). As a
+            native scroller inside `ArtifactSwitcher`'s pager, it takes a
+            drag before the pager does.
           */}
           <pre
             data-scroll-intent="code-display"

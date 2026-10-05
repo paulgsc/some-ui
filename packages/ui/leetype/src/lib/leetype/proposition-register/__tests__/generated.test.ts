@@ -7,23 +7,14 @@ import { PROPOSITION_REGISTER } from "@leetype/lib/leetype/proposition-register/
 import { parsePropositionRegister } from "@leetype/lib/leetype/proposition-register/parse-canon"
 import { describe, expect, it } from "vitest"
 
-// Names `PropositionId` explicitly: a type alias only ever consumed
-// structurally through another exported type is invisible to knip's
-// unused-export check (see this relay's #1240 handoff) even though real
-// code — a future round's `μ` mapping field, e.g. — will use it by name.
+// Names `PropositionId` so knip's unused-export check sees it referenced.
 const exampleId: PropositionId = "CW-P1"
 
 describe("generated proposition register", () => {
   it("is fresh — matches what generating from the real canon produces right now", () => {
-    // Same fs-reading shape as parse-canon.test.ts's own real-canon case,
-    // deliberately not importing scripts/generate-proposition-register.ts
-    // here — this package's eslint config forbids parent-relative imports
-    // out of `src`, and a src-level test reaching into `scripts/` would be
-    // exactly that. `scripts/check-proposition-citations.ts` is what CI
-    // actually runs for the byte-for-byte freshness check; this test is a
-    // second, independent proof that the same two pure functions
-    // (`parsePropositionRegister`, `formatGeneratedModule`) that produce
-    // `generated.ts` still agree with the committed file.
+    // Not importing scripts/ (parent-relative imports out of src are banned).
+    // CI's byte-for-byte check is check-proposition-citations.ts; this is an
+    // independent check of the two pure functions behind generated.ts.
     const root = execFileSync("git", ["rev-parse", "--show-toplevel"], {
       encoding: "utf8",
     }).trim()

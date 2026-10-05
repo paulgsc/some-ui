@@ -42,10 +42,7 @@ describe("costOf — the canon's own worked instances (Def. 2.1, Def. 2.2)", () 
     ])
   })
 
-  // Loop(n, Seq(Loop(n, W(1)), Loop(n², W(1)))) — the epic's (#1198) and the
-  // story's (#1209) own worked instance: n(n + n²) = n² + n³, dominant term
-  // Θ(n³). Reducing the sum to its dominant term is G2's job (Cor. 2.1); what
-  // G1 owes is the un-reduced symbolic sum this asserts.
+  // n(n + n²) = n² + n³, un-reduced (reduction is Cor. 2.1's job).
   it("Loop(n, Seq(Loop(n, W(1)), Loop(n^2, W(1)))) = n^2 + n^3", () => {
     const graph = Loop(
       dim("n"),
@@ -57,9 +54,7 @@ describe("costOf — the canon's own worked instances (Def. 2.1, Def. 2.2)", () 
     ])
   })
 
-  // Remark 2.1's own counterexample to the naive "depth k implies O(n^k)"
-  // reading: two siblings, n and n³, inside an outer n-loop give
-  // n(n + n³) = n² + n⁴ — not n·n·n³ = n⁵.
+  // Rem. 2.1: n(n + n³) = n² + n⁴, not the "depth implies power" n⁵.
   it("Loop(n, Seq(Loop(n, W(1)), Loop(n^3, W(1)))) = n^2 + n^4, not n^5 (Rem. 2.1)", () => {
     const graph = Loop(
       dim("n"),
@@ -83,8 +78,7 @@ describe("Monomial — print and parse round-trip", () => {
     ["log n", logDim("n")],
     ["m", dim("m")],
     ["(log n)^2", logDim("n", 2)],
-    // Factors print in the monomial's normalized (sorted) order, regardless
-    // of the order they were multiplied in — "m" sorts before "n^2".
+    // Factors print in sorted order, whatever the multiplication order.
     ["m * n^2", multiplyMonomials(dim("n", 2), dim("m"))],
   ]
 
@@ -99,21 +93,14 @@ describe("Monomial — print and parse round-trip", () => {
     expect(parseMonomial(text)).toEqual(monomial)
   })
 
-  // A dimension name `parseMonomial` cannot read back would silently break
-  // the round-trip this module documents: `printMonomial` would still emit
-  // it, but `parseMonomial` would throw on the result. Rejected at
-  // construction instead, so every monomial `dim`/`logDim` can build is one
-  // `parseMonomial` can read.
+  // Rejected at construction so every buildable monomial parses back.
   it("rejects a dimension name the parser could not read back", () => {
     expect(() => dim("input-size")).toThrow(/not a valid dimension name/)
     expect(() => logDim("input size")).toThrow(/not a valid dimension name/)
   })
 })
 
-// Generated terms for the two property tests below: every combination of two
-// dimensions and three exponents, as a small grid rather than one-off
-// literals — the same "generated, not hand-picked" bar
-// `crates/leetype_wasm/tests/invariants.rs` holds for its own invariants.
+// A small generated grid for the two property tests below, not hand-picked literals.
 const GENERATED_DIMENSIONS: ReadonlyArray<Dimension> = ["n", "m"]
 const GENERATED_EXPONENTS: ReadonlyArray<number> = [1, 2, 3]
 
@@ -125,12 +112,7 @@ function costsEqual(a: CostExpr, b: CostExpr): boolean {
   return JSON.stringify(a) === JSON.stringify(b)
 }
 
-/**
- * A plausible bug: `Seq` returns only its first child's cost, as if
- * "and then" meant "just run the first thing." Siblings should add
- * (Def. 2.2) — this never does, so it must disagree with `costOf` on every
- * generated case below where a later sibling contributes.
- */
+/** A plausible bug for the negative control: `Seq` keeps only its first child's cost. */
 function costOfWithBrokenSeq(graph: CostGraph): CostExpr {
   switch (graph.kind) {
     case "work": {
@@ -163,9 +145,7 @@ describe("costOf — sibling composition adds (Def. 2.2, Seq), negative control"
               sumCost(costOf(leaf(d1, e1)), costOf(leaf(d2, e2)))
             )
 
-            // The negative control: a Seq that forgets its second sibling
-            // must produce a different (wrong) answer, proving the assertion
-            // above actually depends on summing rather than passing anyway.
+            // Negative control: proves the assertion depends on summing.
             expect(costsEqual(costOfWithBrokenSeq(graph), real)).toBe(false)
           })
         }
@@ -174,12 +154,7 @@ describe("costOf — sibling composition adds (Def. 2.2, Seq), negative control"
   }
 })
 
-/**
- * Another plausible bug: `Loop` returns its body's cost unchanged, as if
- * repetition never happened. Nesting should multiply (Def. 2.2) — this
- * never does, so it must disagree with `costOf` on every generated case
- * below (every generated exponent is positive).
- */
+/** A plausible bug for the negative control: `Loop` ignores its repetition. */
 function costOfWithBrokenLoop(graph: CostGraph): CostExpr {
   switch (graph.kind) {
     case "work": {
@@ -205,10 +180,7 @@ describe("costOf — nesting multiplies (Def. 2.2, Loop), negative control", () 
           const graph = Loop(dim(d, e1), Loop(dim(d, e2), W(1)))
           const real = costOf(graph)
 
-          // Nested Loops combine into one, exponents added — a property of
-          // the algebra independent of how any single Loop node is scored,
-          // since the left side nests two Loop nodes and the right side
-          // authors one.
+          // Two nested Loop nodes equal one with exponents added.
           expect(real).toEqual(costOf(Loop(dim(d, e1 + e2), W(1))))
 
           expect(costsEqual(costOfWithBrokenLoop(graph), real)).toBe(false)
@@ -218,39 +190,33 @@ describe("costOf — nesting multiplies (Def. 2.2, Loop), negative control", () 
   }
 })
 
-describe("dimensionsOfMonomial / dimensionsOfGraph — the identifiers R2 (#1205) checks a constraint's own dimension against", () => {
-  it("a bare monomial names its own dimension", () => {
-    expect(dimensionsOfMonomial(dim("n", 2))).toEqual(new Set(["n"]))
+describe("dimensionsOfMonomial / dimensionsOfGraph — what a constraint's dimension is checked against", () => {
+  it.each<[string, Monomial, Array<Dimension>]>([
+    ["a bare monomial names its own dimension", dim("n", 2), ["n"]],
+    ["the constant monomial ONE names no dimension", ONE, []],
+    [
+      "a product monomial names every distinct factor's dimension once",
+      multiplyMonomials(dim("n"), dim("m", 2)),
+      ["n", "m"],
+    ],
+  ])("%s", (_name, monomial, dimensions) => {
+    expect(dimensionsOfMonomial(monomial)).toEqual(new Set(dimensions))
   })
 
-  it("the constant monomial ONE names no dimension", () => {
-    expect(dimensionsOfMonomial(ONE)).toEqual(new Set())
-  })
-
-  it("a product monomial names every distinct factor's dimension once", () => {
-    expect(
-      dimensionsOfMonomial(multiplyMonomials(dim("n"), dim("m", 2)))
-    ).toEqual(new Set(["n", "m"]))
-  })
-
-  it("W alone names no dimension — only a Loop's repetition does", () => {
-    expect(dimensionsOfGraph(W(5))).toEqual(new Set())
-  })
-
-  it("collects a Loop's own dimension", () => {
-    expect(dimensionsOfGraph(Loop(dim("n"), W(1)))).toEqual(new Set(["n"]))
-  })
-
-  it("collects every dimension across nested Seq/Loop, deduplicated", () => {
-    const graph = Loop(
-      dim("n"),
-      Seq(Loop(dim("n"), W(1)), Loop(dim("m", 2), W(1)))
-    )
-    expect(dimensionsOfGraph(graph)).toEqual(new Set(["n", "m"]))
+  it.each<[string, CostGraph, Array<Dimension>]>([
+    ["W alone names no dimension — only a Loop's repetition does", W(5), []],
+    ["collects a Loop's own dimension", Loop(dim("n"), W(1)), ["n"]],
+    [
+      "collects every dimension across nested Seq/Loop, deduplicated",
+      Loop(dim("n"), Seq(Loop(dim("n"), W(1)), Loop(dim("m", 2), W(1)))),
+      ["n", "m"],
+    ],
+  ])("%s", (_name, graph, dimensions) => {
+    expect(dimensionsOfGraph(graph)).toEqual(new Set(dimensions))
   })
 })
 
-describe("paths — every root-to-leaf path (G2, #1210, Thm. 2.1)", () => {
+describe("paths — every root-to-leaf path (Thm. 2.1)", () => {
   it("a bare W is one path with no loops", () => {
     const leaf = W(5)
     const [path] = paths(leaf)
@@ -288,10 +254,7 @@ describe("paths — every root-to-leaf path (G2, #1210, Thm. 2.1)", () => {
 })
 
 describe("costOfPath — Thm. 2.1's own identity: summing every path's contribution reconstructs costOf(G)", () => {
-  // Two independent computations of the same quantity, over graphs varying
-  // in shape (bare leaf, Seq, Loop, nested) and in leaf coefficient (not
-  // just W(1)) — costOf recurses the tree directly; this sums each path's
-  // own leaf-times-monomial contribution instead.
+  // Two independent computations, over varied shapes and leaf coefficients.
   const GRAPHS: ReadonlyArray<CostGraph> = [
     W(5),
     Seq(W(2), W(3)),
@@ -321,7 +284,6 @@ describe("dominantPaths — Def. 2.3 / Cor. 2.1, Rem. 2.1's own instance", () =>
     const dominant: ReadonlyArray<CostPath> = dominantPaths(graph)
     expect(dominant).toHaveLength(1)
     expect(monomialOfPath(dominant[0]!)).toEqual(dim("n", 4))
-    // The depth-3-implies-n^5 misreading Rem. 2.1 exists specifically to punish.
     expect(monomialOfPath(dominant[0]!)).not.toEqual(dim("n", 5))
   })
 
@@ -337,12 +299,7 @@ describe("dominantPaths — Def. 2.3 / Cor. 2.1, Rem. 2.1's own instance", () =>
     expect(dominant[0]!.leaf).toBe(graph)
   })
 
-  // Review finding on #1252: comparing only pow-exponents called `n` and
-  // `n * log n` tied (both degree 1), even though `n * log n` strictly
-  // dominates `n` — `log n` grows slower than any positive power, but
-  // strictly faster than nothing. `n * log n` is a real, constructible
-  // `Loop` repetition (a `Monomial` product), not a hypothetical.
-  it("n * log n strictly dominates n — a log factor tie-breaks a pow-degree tie, never ties it (review finding)", () => {
+  it("n * log n strictly dominates n — a log factor tie-breaks a pow-degree tie, never ties it", () => {
     const graph = Seq(
       Loop(dim("n"), W(1)),
       Loop(multiplyMonomials(dim("n"), logDim("n")), W(1))
@@ -354,11 +311,7 @@ describe("dominantPaths — Def. 2.3 / Cor. 2.1, Rem. 2.1's own instance", () =>
     )
   })
 
-  // Review finding on #1252: a higher-degree path whose leaf costs 0
-  // contributes nothing to T(G) — normalizeCostExpr drops a zero-coefficient
-  // term, so costOf(this graph) is n alone, with no n^2 term at all. A
-  // "dominant" path that isn't even present in costOf(G) contradicts the
-  // decomposition Thm. 2.1 is supposed to reconstruct.
+  // A zero-cost path is absent from costOf(G), so it cannot dominate.
   it("excludes a zero-cost path from dominance even when its degree is higher", () => {
     const zeroPath = Loop(dim("n", 2), W(0))
     const graph = Seq(zeroPath, Loop(dim("n"), W(1)))
@@ -411,21 +364,12 @@ describe("dominantTerms / printClass — G3's own derivation (Prop. 2.1)", () =>
       )
     )
     expect(dominantTerms(cost)).toHaveLength(2)
-    // normalizeCostExpr orders terms by monomial key ("pow:m:1,pow:n:1" sorts
-    // before "pow:n:2"), and printMonomial's own factor order within the n*m
-    // monomial is alphabetical too — hence "m * n" before "n^2", not the
-    // authoring order.
+    // Terms and factors print in sorted key order, not authoring order.
     expect(printClass(cost)).toBe("Θ(m * n + n^2)")
   })
 
-  // Review finding (Codex, #1256): summing exponents across dimensions
-  // wrongly ranked n^3 above m^2, even though m grows independently of n
-  // and could exceed it for a valid input — R2's own "relating two
-  // dimensions to each other" is out of scope, so neither term may be
-  // dropped. Degree is only compared within terms sharing the same
-  // dimension set; a different dimension set never eliminates a term,
-  // however much smaller its summed degree looks.
-  it("retains both terms of an unequal-degree cross-dimension sum rather than ranking by summed exponent (review finding)", () => {
+  // m grows independently of n, so neither term may be dropped.
+  it("retains both terms of an unequal-degree cross-dimension sum rather than ranking by summed exponent", () => {
     const cost = costOf(Seq(Loop(dim("m", 2), W(1)), Loop(dim("n", 3), W(1))))
     expect(dominantTerms(cost)).toHaveLength(2)
     expect(printClass(cost)).toBe("Θ(m^2 + n^3)")
@@ -450,7 +394,7 @@ describe("dominantTerms / printClass — G3's own derivation (Prop. 2.1)", () =>
     expect(printClass(cost)).toBe("Θ(0)")
   })
 
-  it("a log factor's degree still tie-breaks a pow-degree tie, same as dominantPaths (review finding on #1252)", () => {
+  it("a log factor's degree still tie-breaks a pow-degree tie, same as dominantPaths", () => {
     const cost = costOf(
       Seq(
         Loop(dim("n"), W(1)),

@@ -23,14 +23,9 @@ export default meta
 type Story = StoryObj<typeof CodeDisplay>
 
 /**
- * Every story mounts against the exercise shim rather than an ad-hoc prop
- * bag — one fixture set, the same one a player would be handed, so a story
- * cannot quietly drift into showing a state the corpus cannot produce.
- *
- * The engine is driven for real (`usePreviewGame`) rather than hand-rolled:
- * reconstructing a mid-step state by hand would mean reimplementing the
- * indentation rule and the reveal loop in TypeScript, which is the exact
- * drift the engine exists to prevent.
+ * Stories mount against the exercise shim, so they cannot show a state the
+ * corpus cannot produce, and drive the real engine (`usePreviewGame`) rather
+ * than reimplementing the reveal loop by hand.
  */
 const StoryFromStep = ({
   stepIndex,
@@ -104,13 +99,9 @@ export const ShorterThanItsContent: Story = {
 
 // ── A context-bearing step, one story per TextGradient value ─────────────
 //
-// Several seed steps carry context spans now (LTY-FAMILIES A2-A4's
-// commitments and diagnostic instances), but none of them isolates the
-// frame-then-body shape as cleanly as a minimal, purpose-built fixture
-// does, and none needs to vary by `textGradient`. These mount
-// `usePreviewGame` directly against a raw source string instead of going
-// through the corpus, the same shim-bypass pattern the panel's
-// hostile-prompt stories already use.
+// A minimal fixture isolates the frame-then-body shape better than any seed
+// step, so these bypass the corpus and mount `usePreviewGame` on a raw
+// source.
 
 /**
  * `‹…›` wraps a context frame — the same fixture shape
@@ -205,15 +196,10 @@ export const ContextFrameMutedGradient: Story = {
   ),
 }
 
-// ── A hunk overlay (LTY-PATCH P3, #1078; the full set, P6, #1081) ────
+// ── A hunk overlay (LTY-PATCH) ───────────────────────────────────────────
 //
-// `HunkOverlay` below is the one story P3 owed on its own: proof the
-// gutter, the tint and the caret actually render against a real seed
-// instance, not a synthetic prop bag. The comprehensive set — a
-// diagnostic patch, a construction patch, a hunk whose `-` side dwarfs
-// its `+` side, a step with no patch at all — is P6's, the same way
-// `prompt-panel`'s own pagination stories waited for the story that
-// actually needed them.
+// Gutter, tint and caret against real seed instances: a diagnostic patch, a
+// construction patch, a dominant `-` side, and a step with no patch.
 
 const StoryFromPatchStep = ({
   exerciseId,
@@ -258,11 +244,9 @@ const StoryFromPatchStep = ({
 }
 
 /**
- * A real seed instance (`diagnostic-division-guard-01`, LTY-PATCH P4,
- * #1079): three added lines as one contiguous run, sitting between
- * context above and below — the sign column, both line-number columns and
- * the add tint, all against a hunk the repair-budget story already proved
- * validates.
+ * `diagnostic-division-guard-01`: three added lines as one contiguous run
+ * between context, showing the sign column, both line-number columns and
+ * the add tint.
  */
 export const HunkOverlay: Story = {
   render: () => (
@@ -275,10 +259,8 @@ export const HunkOverlay: Story = {
 }
 
 /**
- * A real seed instance (`construction-lazy-default-01`, LTY-PATCH P5,
- * #1080): the only construction-family step whose `patch` carries a `del`
- * line, so this is the one story that proves the deletion strikethrough
- * renders against a construction step and not only a diagnostic one.
+ * `construction-lazy-default-01`: the only construction step with a `del`
+ * line, so the deletion strikethrough shows on a construction step too.
  */
 export const HunkOverlayConstruction: Story = {
   render: () => (
@@ -292,15 +274,8 @@ export const HunkOverlayConstruction: Story = {
 
 // ── A `-` side that dwarfs its `+` side ───────────────────────────────
 //
-// No seed instance has this shape — the corpus's own `del` lines (P5's
-// `construction-lazy-default-01`) are deliberately one-for-one with their
-// `add` line, per that exercise's own doc comment. This is the same
-// shim-bypass `StoryFromSource` already uses for `ContextFrame`: a
-// minimal, purpose-built fixture where the corpus has none. The source and
-// its 11-del/3-add split are the identical fixture
-// `check-deletions-are-free.ts`'s `WITH_LARGE_DELETION` already proved
-// renders and plays correctly against the real compiled engine — this
-// story is that same shape, just watched instead of played.
+// No seed instance has this shape, so this bypasses the corpus. The 11-del /
+// 3-add source is `check-deletions-are-free.ts`'s `WITH_LARGE_DELETION`.
 
 const LARGE_DELETION_SOURCE =
   "‹fn slow_path(items: &[i32]) -> i32 {\n" +
@@ -351,13 +326,9 @@ export const HunkOverlayLargeDeletion: Story = {
 }
 
 /**
- * A step with no `patch` at all (`entry-01-import`, `entryApi`'s first
- * step — never touched by LTY-PATCH). `hunk` is simply omitted — proof
- * the omission path (still every other story above `HunkOverlay`) keeps
- * rendering byte-identically to how it did before the epic, exercised
- * here through the same `StoryFromPatchStep` helper the hunk stories use
- * rather than a separate one, so this is a true apples-to-apples check of
- * the branch in `CodeDisplay` that hunk presence switches on.
+ * A step with no patch (`entry-01-import`): `hunk` omitted, through the same
+ * `StoryFromPatchStep` helper as the hunk stories, for a like-for-like view
+ * of the no-hunk branch.
  */
 export const NoHunkOverlay: Story = {
   render: () => (

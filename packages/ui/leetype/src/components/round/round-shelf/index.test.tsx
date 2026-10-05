@@ -161,8 +161,7 @@ describe("the learner shelf in a round session (canon Rem. 7.3)", () => {
   })
 
   it("asks again for a different own round that shares the kept one's id", async () => {
-    // Review, #1600: the Keep control kept saying "Kept" for a second own
-    // round with the first one's id, and that round was never kept.
+    // A second own round sharing the kept one's id is not itself kept.
     const shelf = fakeShelf()
     const other: Round = { ...AUTHORED_ROUNDS[2]!, id: "my-own-round" }
     shelf.bodies.set("elsewhere", serializeRound(other))

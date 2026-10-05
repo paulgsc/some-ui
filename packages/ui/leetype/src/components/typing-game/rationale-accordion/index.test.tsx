@@ -105,15 +105,9 @@ describe("RationaleAccordion", () => {
   })
 
   it("leaves Tab and Shift+Tab alone — a keyboard user can reach the trigger and the Clear button", async () => {
-    // Regression: reusing hooks/leetype/use-keystroke-capture here always
-    // called preventDefault() on Tab (sound for ExerciseCard, which
-    // repurposes it as the manual-reveal toggle and is the only focusable
-    // surface on its card) and trapped a keyboard user inside this
-    // widget's hidden input. Review finding on #1122. jsdom doesn't
-    // simulate real tab-order focus movement from a keydown, so the
-    // meaningful, portable assertion is that the event is left
-    // uncancelled: dispatchEvent returns false only when preventDefault()
-    // was called on a cancelable event.
+    // use-keystroke-capture cancels Tab (ExerciseCard's reveal toggle),
+    // which would trap focus here. jsdom does not move focus on Tab, so
+    // assert the event stays uncancelled.
     render(<RationaleAccordion candidates={candidates} />)
     const input = await open()
     typeInto(input, "the iterator")

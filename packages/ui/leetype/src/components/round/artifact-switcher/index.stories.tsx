@@ -97,12 +97,9 @@ export const Interactive: Story = {
 }
 
 /**
- * Before an execution has run, `runResult` is absent — not a fifth,
- * greyed-out tab or chevron stop hinting a result is coming, just three reachable
- * positions. Compare with `AfterARun`, below: the only difference is
- * whether the caller included the fourth artifact in the array, exactly
- * the acceptance criterion ("unavailability is absence, never a disabled
- * control").
+ * Before a run, `runResult` is absent: three positions, no greyed-out stop.
+ * The only difference from `AfterARun` is whether the caller included it
+ * ("unavailability is absence, never a disabled control").
  */
 export const BeforeARun: Story = {
   render: () => (
@@ -187,16 +184,9 @@ const OPTIONS: ReadonlyArray<PropositionOption> = [
 const ANSWER_ID: PropositionId = "CW-P6"
 
 /**
- * The same four positions, but each `content` is the real sibling
- * component R1-R4/B2-B3 already built — `SourcePanel`, `ConstraintDiff`,
- * `BudgetDisplay`, `RoundChoices` — composed through this switcher rather
- * than a placeholder. This is the story that actually exercises "what each
- * artifact looks like inside is reused, not reinvented," proving the
- * switcher's generic `content: ReactNode` slot really does host unmodified
- * existing renderers, including `SourcePanel`'s own internal toggle state
- * and `RoundChoices`'s own internal commit state — both keep working
- * exactly as they do standalone, since this component never reaches into
- * them.
+ * The same four positions with real content (`SourcePanel`,
+ * `ConstraintDiff`, `BudgetDisplay`, `RoundChoices`), unmodified, including
+ * their internal toggle and commit state.
  */
 export const ComposedFromRealArtifacts: Story = {
   render: () => (

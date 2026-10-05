@@ -4,27 +4,18 @@ import { cleanup } from "@testing-library/react"
 import { afterEach, vi } from "vitest"
 
 /**
- * Guarantee a working `localStorage` / `sessionStorage` for the whole
- * package's tests.
+ * Guarantee a working `localStorage` / `sessionStorage` for the package's
+ * tests.
  *
- * Node ships Web Storage globals of its own from v22.4 onward, and they are
- * inert unless the process was started with `--localstorage-file`. Vitest's
- * jsdom environment copies jsdom's `window` onto `globalThis` (there is no
- * separate `window` afterwards — `window === globalThis`), and a binding
- * Node installed first survives that copy. The result is a `localStorage`
- * that exists but has none of the `Storage` methods, so the first
- * `localStorage.clear()` in a `beforeEach` dies with "clear is not a
- * function" and takes every test in the file with it.
+ * Node 22.4+ ships inert Web Storage globals (without `--localstorage-file`),
+ * and they survive Vitest copying jsdom's `window` onto `globalThis`, leaving
+ * a `localStorage` with no `Storage` methods ("clear is not a function"). It
+ * bites only on newer Node (CI's nix shell), and `window` is already gone by
+ * now, so the repair installs a real store on `globalThis`, which tests and
+ * code both read.
  *
- * It only bites in CI: the nix devshell pins `nodejs_latest`, which has
- * crossed that boundary, while local Node 22 defines no such global and
- * jsdom's storage wins uncontested. Since `window` is already gone by the
- * time this runs, there is nothing to re-point at — the repair is to
- * install a real store. Tests and the code under test both read
- * `globalThis`, so they share it, which is the part that actually matters.
- *
- * Exported for `vitest.setup.test.ts`, which pins the repair behavior on
- * every Node version rather than only the one CI happens to run.
+ * Exported for `vitest.setup.test.ts`, which pins the repair on every Node
+ * version.
  */
 export function ensureUsableWebStorage(target: typeof globalThis): void {
   for (const key of ["localStorage", "sessionStorage"] as const) {
@@ -78,17 +69,9 @@ function createMemoryStorage(): Storage {
 }
 
 /**
- * jsdom implements no scrolling at all, so `Element.prototype.scrollIntoView`
- * is simply absent — calling it throws rather than being a no-op.
- *
- * `TypingViewport`'s caret-following calls it unconditionally, and it should:
- * guarding the call in the component would be dead weight in the only
- * environment that matters, added to satisfy a test environment's gap. The
- * repair belongs here instead.
- *
- * Asked through `getOwnPropertyDescriptor` rather than a truthiness check
- * because the DOM lib types the method as always present — which is true of a
- * browser and false of jsdom, and only the descriptor can tell them apart.
+ * jsdom has no `Element.prototype.scrollIntoView`, which `TypingViewport`
+ * calls unconditionally (rightly; the gap is the test environment's). The
+ * descriptor check is needed because the DOM types claim it always exists.
  */
 if (
   Object.getOwnPropertyDescriptor(Element.prototype, "scrollIntoView") ===
@@ -106,9 +89,7 @@ if (
 ensureUsableWebStorage(globalThis)
 
 afterEach(() => {
-  // Cleans up the DOM (rendered hooks)
   cleanup()
-  // Clears all mock call history and resets timers
   vi.clearAllMocks()
   vi.useRealTimers()
 })

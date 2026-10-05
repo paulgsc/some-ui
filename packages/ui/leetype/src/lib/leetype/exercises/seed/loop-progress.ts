@@ -5,11 +5,8 @@ import { typingBlockFromDiff } from "@leetype/types/exercise"
 /**
  * Failure class 1: a loop that never advances toward its own exit.
  *
- * The corpus's first hand-authored patch instance (LTY-PATCH P2, #1077):
- * this step's frame was always a one-line hunk with three lines of context
- * around it (cited by #1076's decision record as the existing evidence for
- * "the engine does not change") — `patch` paints it as the diff it already
- * was. Rendered lines, after `‹…›` stripping: `while cursor < input.len()
+ * A hand-authored patch instance (LTY-PATCH): a one-line hunk with three
+ * lines of context. Rendered lines, after `‹…›` stripping: `while cursor < input.len()
  * {` and `    parse(input[cursor]);` stay pure context; `    cursor += 1;`
  * mixes inherited indentation with the one typed statement, so the whole
  * line reads `add` per the mixed-line rule (docs/leetype/README.md); `}`

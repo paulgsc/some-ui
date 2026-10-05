@@ -52,18 +52,11 @@ function memberOf(
 }
 
 /**
- * A diff option whose cost graph evaluates to `cost` at `CONSTRAINTS`'s own
- * bound (`n = 1000`) — `Loop(dim("n"), W(cost / 1000))` costs exactly
- * `cost` there, and (unlike a bare `W(cost)`) still *responds* to a tighter
- * `n` bound, so callers can build a diff that a rescuing constraint can
- * plausibly fix. Pass `graph` directly to override this — the unrescuable
- * tests below need a cost genuinely independent of every bounded dimension
- * (`CW-P16`'s own shape, Def. 8.2 case 2), which a bare `W(cost)` gives and
- * no tightening of `n` can ever change.
- *
- * `admissible` is the diff's own authored claim (Cor. 5.1/Prop. 2.1),
- * independently settable from the derived outcome — several tests below
- * rely on being able to disagree with it on purpose (Rem. 8.0).
+ * A diff option costing `cost` at `n = 1000` as `Loop(dim("n"), W(cost /
+ * 1000))`, so a tighter `n` bound can rescue it. Pass `graph` for a cost
+ * independent of every bounded dimension (`W(cost)`, CW-P16's shape).
+ * `authoredAdmissible` is settable independently of the derived outcome
+ * (Rem. 8.0).
  */
 function diffOptionOf(args: {
   propositionId: PropositionId
@@ -86,11 +79,9 @@ function diffOptionOf(args: {
 }
 
 /**
- * A `posingDiffSelection` round over an inadmissible `A` (costs 2000 at
- * `CONSTRAINTS`'s own bound, budget 1000), presenting exactly `diffOptions`
- * — `nextRoundCycleState` requires `response.diff` to be one of these by
- * reference, so every test drives this from a round that actually offers
- * the diff it selects.
+ * A `posingDiffSelection` round over an inadmissible `A` (2000 against a
+ * budget of 1000) presenting exactly `diffOptions`, which `response.diff`
+ * must be one of by reference.
  */
 function posingRoundWith(
   diffOptions: ReadonlyArray<RoundDiffOption>
@@ -108,6 +99,27 @@ function posingRoundWith(
 }
 
 const ABSTAIN: Commitment = { kind: "abstain" }
+
+/** A candidate `C″` bounding `n` (C's only dimension) at `bound`. */
+function rescueAt(
+  bound: number,
+  dimension = "n",
+  operator: "<=" | ">=" = "<="
+): RescueCandidate {
+  return {
+    constraints: [{ dimension, operator, bound }],
+    propositionId: "CW-P4",
+  }
+}
+
+/** Selects `diff` in `round` (by default, a round offering only it). */
+function select(
+  diff: RoundDiffOption,
+  commitment: Commitment = ABSTAIN,
+  round: RoundCyclePosingDiffSelection = posingRoundWith([diff])
+): ReturnType<typeof nextRoundCycleState> {
+  return nextRoundCycleState(round, { kind: "selectDiff", diff, commitment })
+}
 
 describe("initialRoundCycleState — Def. 8.1's entry point", () => {
   it("case 1: an admissible A advances directly, with no diffs presented", () => {
@@ -139,11 +151,7 @@ describe("initialRoundCycleState — Def. 8.1's entry point", () => {
 describe("nextRoundCycleState — Def. 8.1 cases 3/4 and Def. 8.2", () => {
   it("case 3: a diff that restores admissibility advances", () => {
     const diff = diffOptionOf({ propositionId: "CW-P1", cost: 500 })
-    const next = nextRoundCycleState(posingRoundWith([diff]), {
-      kind: "selectDiff",
-      diff,
-      commitment: { kind: "choice", id: "CW-P1" },
-    })
+    const next = select(diff, { kind: "choice", id: "CW-P1" })
     expect(next.phase).toBe("admissibleAdvance")
   })
 
@@ -151,25 +159,11 @@ describe("nextRoundCycleState — Def. 8.1 cases 3/4 and Def. 8.2", () => {
     const diff = diffOptionOf({
       propositionId: "CW-P2",
       cost: 2000, // still over budget after the diff
-      rescueCandidates: [
-        // A distractor candidate that does not actually rescue.
-        {
-          constraints: [{ dimension: "n", operator: "<=", bound: 1500 }],
-          propositionId: "CW-P4",
-        },
-        // The real rescuing candidate: a tighter bound brings cost within budget.
-        {
-          constraints: [{ dimension: "n", operator: "<=", bound: 400 }],
-          propositionId: "CW-P4",
-        },
-      ],
+      // A distractor (1500 does not rescue), then the real rescue (400).
+      rescueCandidates: [rescueAt(1500), rescueAt(400)],
     })
     const commitment: Commitment = { kind: "choice", id: "CW-P2" }
-    const next = nextRoundCycleState(posingRoundWith([diff]), {
-      kind: "selectDiff",
-      diff,
-      commitment,
-    })
+    const next = select(diff, commitment)
     expect(next.phase).toBe("posingRescueSelection")
     if (next.phase !== "posingRescueSelection") throw new Error("unreachable")
     expect(next.pinnedDiff).toBe(diff)
@@ -181,26 +175,13 @@ describe("nextRoundCycleState — Def. 8.1 cases 3/4 and Def. 8.2", () => {
     const diff = diffOptionOf({
       propositionId: "CW-P16",
       cost: 5000,
-      // A bare W(5000): CW-P16's own shape — a cost with a term
-      // independent of every bounded dimension. Unlike a Loop(dim("n"), …)
-      // graph, no tightening of n's bound can ever bring this within
-      // budget, however tight the candidate — this candidate is a
-      // deliberate distractor, not a rescue.
+      // W(5000) ignores n, so no candidate bound can rescue it.
       graph: W(5000),
-      rescueCandidates: [
-        {
-          constraints: [{ dimension: "n", operator: "<=", bound: 1 }],
-          propositionId: "CW-P4",
-        },
-      ],
+      rescueCandidates: [rescueAt(1)],
       explanationPropositionId: "CW-P16",
     })
     const commitment: Commitment = { kind: "choice", id: "CW-P9" }
-    const next = nextRoundCycleState(posingRoundWith([diff]), {
-      kind: "selectDiff",
-      diff,
-      commitment,
-    })
+    const next = select(diff, commitment)
     expect(next.phase).toBe("posingUnrescuableExplanation")
     if (next.phase !== "posingUnrescuableExplanation") {
       throw new Error("unreachable")
@@ -214,128 +195,44 @@ describe("nextRoundCycleState — Def. 8.1 cases 3/4 and Def. 8.2", () => {
     const diff = diffOptionOf({
       propositionId: "CW-P2",
       cost: 2000,
-      rescueCandidates: [
-        {
-          constraints: [{ dimension: "n", operator: "<=", bound: 1500 }],
-          propositionId: "CW-P4",
-        },
-        {
-          constraints: [{ dimension: "n", operator: "<=", bound: 1200 }],
-          propositionId: "CW-P4",
-        },
-        // The one rescuing candidate is last, not first.
-        {
-          constraints: [{ dimension: "n", operator: "<=", bound: 400 }],
-          propositionId: "CW-P4",
-        },
-      ],
+      // The one rescuing candidate is last, not first.
+      rescueCandidates: [rescueAt(1500), rescueAt(1200), rescueAt(400)],
     })
-    const next = nextRoundCycleState(posingRoundWith([diff]), {
-      kind: "selectDiff",
-      diff,
-      commitment: ABSTAIN,
-    })
-    expect(next.phase).toBe("posingRescueSelection")
+    expect(select(diff).phase).toBe("posingRescueSelection")
   })
 
-  // Every rescue candidate is held to Def. 3.2/8.2's own validity rules
-  // before it is ever evaluated. An earlier draft on this PR tried to
-  // derive Def. 8.2's whole case split directly from diff.graph's own
-  // algebraic structure (an "independent of every bounded dimension" cost
-  // floor), but two independent review findings each produced a real graph
-  // that broke it — see nextRoundCycleState's own doc comment for both
-  // counterexamples and why this cost algebra (which permits a term to go
-  // negative below bound 1) rules out any bound-independent argument over
-  // it in general. The case split is decided by testing authored
-  // candidates against isAdmissible instead.
+  // Candidates are validated before any is tested, and the case split comes
+  // from testing them against isAdmissible, never from the graph's algebra
+  // (see nextRoundCycleState's doc comment for the counterexamples).
   describe("Def. 8.2's rescue candidates are validated before being tested", () => {
-    it("throws when a rescue candidate bounds a different dimension set than C", () => {
+    it.each([
+      {
+        name: "bounds a different dimension set than C",
+        rescueCandidates: [rescueAt(1, "m")],
+      },
+      {
+        // evaluate reads only the number, but ConstraintDiffSchema rejects it.
+        name: "changes a dimension's comparison operator",
+        rescueCandidates: [rescueAt(400, "n", ">=")],
+      },
+      {
+        // A valid rescue first must not short-circuit validating the rest.
+        name: "is malformed even when a valid rescuing one appears first",
+        rescueCandidates: [rescueAt(400), rescueAt(1, "m")],
+      },
+    ])("throws when a rescue candidate $name", ({ rescueCandidates }) => {
       const diff = diffOptionOf({
         propositionId: "CW-P2",
         cost: 2000,
         graph: Loop(dim("n"), W(2)),
-        rescueCandidates: [
-          {
-            // C bounds "n"; this candidate bounds an unrelated dimension.
-            constraints: [{ dimension: "m", operator: "<=", bound: 1 }],
-            propositionId: "CW-P4",
-          },
-        ],
+        rescueCandidates,
       })
-      expect(() =>
-        nextRoundCycleState(posingRoundWith([diff]), {
-          kind: "selectDiff",
-          diff,
-          commitment: ABSTAIN,
-        })
-      ).toThrow(/not a valid Def\. 3\.2 constraint diff/)
+      expect(() => select(diff)).toThrow(
+        /not a valid Def\. 3\.2 constraint diff/
+      )
     })
 
-    // Review finding on this PR (chatgpt-codex-connector): a candidate that
-    // keeps C's own dimension names but flips a comparison operator
-    // (n <= 1000 -> n >= 400) is type-correct and even isAdmissible-passable
-    // (evaluate reads only the numeric bound), but ConstraintDiffSchema
-    // itself rejects an operator change — the successor's own "present
-    // C -> C''" promise could never actually render such a candidate.
-    it("throws when a rescue candidate changes a dimension's comparison operator", () => {
-      const diff = diffOptionOf({
-        propositionId: "CW-P2",
-        cost: 2000,
-        graph: Loop(dim("n"), W(2)),
-        rescueCandidates: [
-          {
-            constraints: [{ dimension: "n", operator: ">=", bound: 400 }],
-            propositionId: "CW-P4",
-          },
-        ],
-      })
-      expect(() =>
-        nextRoundCycleState(posingRoundWith([diff]), {
-          kind: "selectDiff",
-          diff,
-          commitment: ABSTAIN,
-        })
-      ).toThrow(/not a valid Def\. 3\.2 constraint diff/)
-    })
-
-    // Review finding on this PR (chatgpt-codex-connector): an earlier draft
-    // validated candidates lazily inside `.find`, so a valid rescuing
-    // candidate appearing *before* a malformed one in the array short-
-    // circuited the search and let the malformed candidate through
-    // unvalidated into the successor's own (unfiltered) rescueCandidates.
-    it("validates every rescue candidate even when a valid one appears first", () => {
-      const diff = diffOptionOf({
-        propositionId: "CW-P2",
-        cost: 2000,
-        graph: Loop(dim("n"), W(2)),
-        rescueCandidates: [
-          {
-            // Valid and genuinely rescuing — would satisfy .find() first.
-            constraints: [{ dimension: "n", operator: "<=", bound: 400 }],
-            propositionId: "CW-P4",
-          },
-          {
-            // Malformed: a different dimension than C.
-            constraints: [{ dimension: "m", operator: "<=", bound: 1 }],
-            propositionId: "CW-P4",
-          },
-        ],
-      })
-      expect(() =>
-        nextRoundCycleState(posingRoundWith([diff]), {
-          kind: "selectDiff",
-          diff,
-          commitment: ABSTAIN,
-        })
-      ).toThrow(/not a valid Def\. 3\.2 constraint diff/)
-    })
-
-    // The two graphs that broke the abandoned graph-derivation approach
-    // (see the describe block's own comment) — both now resolve correctly
-    // because the classification never reasons about the graph's algebra
-    // at all, only about whether some authored candidate actually is
-    // admissible.
-    describe("regression: graphs that defeated the abandoned graph-derivation approach", () => {
+    describe("graphs whose algebra alone would misclassify them", () => {
       it("n² + (log₂ n)² with no candidate resolves to case 2 (real minimum ~0.9 exceeds a 0.5 budget, but this module never computes that)", () => {
         const graph = Seq(Loop(dim("n", 2), W(1)), Loop(logDim("n", 2), W(1)))
         const diff = diffOptionOf({
@@ -348,45 +245,27 @@ describe("nextRoundCycleState — Def. 8.1 cases 3/4 and Def. 8.2", () => {
           ...posingRoundWith([diff]),
           budget: { operations: 0.5 },
         }
-        const next = nextRoundCycleState(round, {
-          kind: "selectDiff",
-          diff,
-          commitment: ABSTAIN,
-        })
-        expect(next.phase).toBe("posingUnrescuableExplanation")
+        expect(select(diff, ABSTAIN, round).phase).toBe(
+          "posingUnrescuableExplanation"
+        )
       })
 
       it("a bare log factor with a sub-1 candidate rescues, even though the log term is negative there", () => {
-        // log2(0.5) = -1: the candidate's own term value is negative, which
-        // an "independent cost is a lower bound" argument would have missed
-        // entirely — isAdmissible only ever evaluates the real number.
+        // log2(0.5) = -1: the term is negative at the candidate.
         const graph = Seq(W(2), Loop(logDim("n"), W(2)))
         const diff = diffOptionOf({
           propositionId: "CW-P2",
           cost: 2000,
           graph,
-          rescueCandidates: [
-            {
-              constraints: [{ dimension: "n", operator: "<=", bound: 0.5 }],
-              propositionId: "CW-P4",
-            },
-          ],
+          rescueCandidates: [rescueAt(0.5)],
         })
         const round = { ...posingRoundWith([diff]), budget: { operations: 1 } }
-        const next = nextRoundCycleState(round, {
-          kind: "selectDiff",
-          diff,
-          commitment: ABSTAIN,
-        })
-        expect(next.phase).toBe("posingRescueSelection")
+        expect(select(diff, ABSTAIN, round).phase).toBe("posingRescueSelection")
       })
 
       it("a bare log factor with no candidate resolves to case 2, even though bound 1 would trivially rescue it", () => {
-        // A rescue is trivially possible here (bound 1 costs 0), but with
-        // no authored candidate this module has no way to find it — a
-        // disclosed limitation (nextRoundCycleState's own doc comment),
-        // not a bug: the alternative (deriving it from the graph) is what
-        // the two tests above prove unsound in general.
+        // Bound 1 would rescue it, but with no authored candidate this
+        // module cannot find it: a disclosed limitation.
         const graph = Loop(logDim("n"), W(1))
         const diff = diffOptionOf({
           propositionId: "CW-P2",
@@ -397,82 +276,44 @@ describe("nextRoundCycleState — Def. 8.1 cases 3/4 and Def. 8.2", () => {
           ...posingRoundWith([diff]),
           budget: { operations: 0.5 },
         }
-        const next = nextRoundCycleState(round, {
-          kind: "selectDiff",
-          diff,
-          commitment: ABSTAIN,
-        })
-        expect(next.phase).toBe("posingUnrescuableExplanation")
+        expect(select(diff, ABSTAIN, round).phase).toBe(
+          "posingUnrescuableExplanation"
+        )
       })
     })
   })
 
-  // Review finding on this PR (chatgpt-codex-connector): a diff whose graph
-  // repeats over a dimension C does not bound is Def. 8.2's own second
-  // disjunct ("grows in a dimension C does not bound"), not malformed data
-  // — lib/leetype/constraint's own checkConstraintDimensions already
-  // documents this as a legitimate modelling choice. isAdmissible would
-  // throw on such a graph, so this must be caught before ever reaching it.
+  // Def. 8.2's second disjunct ("grows in a dimension C does not bound"),
+  // caught before isAdmissible, which would throw on it.
   it("routes a diff whose graph repeats over an unbounded dimension straight to Def. 8.2 case 2", () => {
     const diff = diffOptionOf({
       propositionId: "CW-P14",
       cost: 2000,
-      graph: Loop(dim("m"), W(2)), // C (below) bounds "n", not "m"
+      graph: Loop(dim("m"), W(2)), // C bounds "n", not "m"
     })
-    const next = nextRoundCycleState(posingRoundWith([diff]), {
-      kind: "selectDiff",
-      diff,
-      commitment: ABSTAIN,
-    })
-    expect(next.phase).toBe("posingUnrescuableExplanation")
+    expect(select(diff).phase).toBe("posingUnrescuableExplanation")
   })
 
-  // Review finding on this PR (chatgpt-codex-connector): the check above
-  // must look at costOf(diff.graph)'s own surviving terms, not diff.graph's
-  // raw structure — Loop(dim("m"), W(0)) repeats over "m" structurally, but
-  // a zero-cost body normalizes away entirely (costOf's own doc comment:
-  // "zero-coefficient terms dropped"), so the diff's actual cost never
-  // depends on "m" and isAdmissible would happily evaluate it without ever
-  // needing "m" bounded. Walking the raw graph would misroute this
-  // admissible-once-rescued diff to case 2 regardless.
+  // Loop(dim("m"), W(0)) normalizes away in costOf, so "m" is never needed.
   it("does not misroute a diff whose graph structurally repeats over an unbounded dimension when that repetition's own cost normalizes to zero", () => {
     const diff = diffOptionOf({
       propositionId: "CW-P14",
       cost: 2000,
       graph: Seq(Loop(dim("n"), W(2)), Loop(dim("m"), W(0))), // C bounds only "n"
-      rescueCandidates: [
-        {
-          constraints: [{ dimension: "n", operator: "<=", bound: 400 }],
-          propositionId: "CW-P4",
-        },
-      ],
+      rescueCandidates: [rescueAt(400)],
     })
-    const next = nextRoundCycleState(posingRoundWith([diff]), {
-      kind: "selectDiff",
-      diff,
-      commitment: ABSTAIN,
-    })
-    expect(next.phase).toBe("posingRescueSelection")
+    expect(select(diff).phase).toBe("posingRescueSelection")
   })
 
-  // Review finding on this PR (chatgpt-codex-connector): an earlier draft
-  // trusted any structurally valid RoundDiffOption in the response, never
-  // checking it was actually one of the round's own diffOptions.
   it("throws when response.diff is not one of this round's own diffOptions", () => {
     const offered = diffOptionOf({ propositionId: "CW-P1", cost: 500 })
     const stale = diffOptionOf({ propositionId: "CW-P9", cost: 500 })
-    expect(() =>
-      nextRoundCycleState(posingRoundWith([offered]), {
-        kind: "selectDiff",
-        diff: stale,
-        commitment: ABSTAIN,
-      })
-    ).toThrow(/not one of this round's own diffOptions/)
+    expect(() => select(stale, ABSTAIN, posingRoundWith([offered]))).toThrow(
+      /not one of this round's own diffOptions/
+    )
   })
 
-  // Rem. 8.0's own lesson, restated one level up from "branching on r":
-  // the derived relation wins regardless of what the diff's author
-  // claimed about it.
+  // Rem. 8.0: the derived relation wins over the author's claim.
   describe("Rem. 8.0 — the branch never reads an authored claim", () => {
     it("a diff authored as admissible, but not derived-admissible, still routes to Def. 8.2", () => {
       const diff = diffOptionOf({
@@ -481,12 +322,7 @@ describe("nextRoundCycleState — Def. 8.1 cases 3/4 and Def. 8.2", () => {
         graph: W(5000),
         authoredAdmissible: true, // authored: claims otherwise
       })
-      const next = nextRoundCycleState(posingRoundWith([diff]), {
-        kind: "selectDiff",
-        diff,
-        commitment: ABSTAIN,
-      })
-      expect(next.phase).not.toBe("admissibleAdvance")
+      expect(select(diff).phase).not.toBe("admissibleAdvance")
     })
 
     it("a diff authored as not admissible, but derived-admissible, still advances", () => {
@@ -495,70 +331,46 @@ describe("nextRoundCycleState — Def. 8.1 cases 3/4 and Def. 8.2", () => {
         cost: 500, // derived: admissible
         authoredAdmissible: false, // authored: claims otherwise
       })
-      const next = nextRoundCycleState(posingRoundWith([diff]), {
-        kind: "selectDiff",
-        diff,
-        commitment: ABSTAIN,
-      })
-      expect(next.phase).toBe("admissibleAdvance")
+      expect(select(diff).phase).toBe("admissibleAdvance")
     })
   })
 
-  // Rem. 8.0's lesson, restated a second way: the branch never reads the
-  // learner's own proposition guess either — only which diff was picked.
-  // (admissibleAdvance itself carries no pinned commitment at all — see
-  // that type's own doc comment — so the two calls' results are expected
-  // to be fully identical, not merely agree on phase.)
+  // Nor does it read the learner's guess. admissibleAdvance pins no
+  // commitment, so the results are fully identical.
   it("the outcome is identical regardless of the learner's proposition guess, including abstention", () => {
     const diff = diffOptionOf({ propositionId: "CW-P1", cost: 500 })
     const round = posingRoundWith([diff])
-    const withChoice = nextRoundCycleState(round, {
-      kind: "selectDiff",
-      diff,
-      commitment: { kind: "choice", id: "CW-P9" }, // an arbitrary, even wrong, guess
-    })
-    const withAbstain = nextRoundCycleState(round, {
-      kind: "selectDiff",
-      diff,
-      commitment: ABSTAIN,
-    })
+    const withChoice = select(diff, { kind: "choice", id: "CW-P9" }, round)
+    const withAbstain = select(diff, ABSTAIN, round)
     expect(withChoice).toEqual(withAbstain)
   })
 })
 
+/** One diff per Def. 8.1/8.2 branch, all offered by `posingRound`. */
+const restoringDiff = diffOptionOf({ propositionId: "CW-P1", cost: 500 })
+const rescuableDiff = diffOptionOf({
+  propositionId: "CW-P2",
+  cost: 2000,
+  rescueCandidates: [rescueAt(400)],
+})
+const unrescuableDiff = diffOptionOf({
+  propositionId: "CW-P16",
+  cost: 5000,
+  graph: W(5000), // CW-P16's shape: independent of every bounded dimension
+})
+const posingRound = posingRoundWith([
+  restoringDiff,
+  rescuableDiff,
+  unrescuableDiff,
+])
+const admissibleFromStart = initialRoundCycleState(
+  Loop(dim("n"), W(1)),
+  CONSTRAINTS,
+  BUDGET,
+  []
+)
+
 describe("Thm. 8.1 — the cycle has no absorbing failure state", () => {
-  // Every named branch in Def. 8.1 (cases 1-4) and Def. 8.2 (its own two
-  // cases), driven from a fresh classification through to its successor.
-  const admissibleFromStart = initialRoundCycleState(
-    Loop(dim("n"), W(1)),
-    CONSTRAINTS,
-    BUDGET,
-    []
-  )
-
-  const restoringDiff = diffOptionOf({ propositionId: "CW-P1", cost: 500 })
-  const rescuableDiff = diffOptionOf({
-    propositionId: "CW-P2",
-    cost: 2000,
-    rescueCandidates: [
-      {
-        constraints: [{ dimension: "n", operator: "<=", bound: 400 }],
-        propositionId: "CW-P4",
-      },
-    ],
-  })
-  const unrescuableDiff = diffOptionOf({
-    propositionId: "CW-P16",
-    cost: 5000,
-    graph: W(5000), // independent of every bounded dimension — CW-P16's own shape
-  })
-
-  const posingRound = posingRoundWith([
-    restoringDiff,
-    rescuableDiff,
-    unrescuableDiff,
-  ])
-
   const branches: ReadonlyArray<{
     readonly name: string
     readonly result: RoundCycleState
@@ -566,27 +378,15 @@ describe("Thm. 8.1 — the cycle has no absorbing failure state", () => {
     { name: "case 1 (admissible from the start)", result: admissibleFromStart },
     {
       name: "case 3 (selection restores admissibility)",
-      result: nextRoundCycleState(posingRound, {
-        kind: "selectDiff",
-        diff: restoringDiff,
-        commitment: ABSTAIN,
-      }),
+      result: select(restoringDiff, ABSTAIN, posingRound),
     },
     {
       name: "case 4 -> Def. 8.2 case 1 (a rescuing constraint exists)",
-      result: nextRoundCycleState(posingRound, {
-        kind: "selectDiff",
-        diff: rescuableDiff,
-        commitment: ABSTAIN,
-      }),
+      result: select(rescuableDiff, ABSTAIN, posingRound),
     },
     {
       name: "case 4 -> Def. 8.2 case 2 (no rescuing constraint exists)",
-      result: nextRoundCycleState(posingRound, {
-        kind: "selectDiff",
-        diff: unrescuableDiff,
-        commitment: ABSTAIN,
-      }),
+      result: select(unrescuableDiff, ABSTAIN, posingRound),
     },
   ]
 
@@ -611,10 +411,8 @@ describe("Thm. 8.1 — the cycle has no absorbing failure state", () => {
     expect(phases.size).toBe(4)
   })
 
-  // Compile-time totality — a fifth RoundCycleState phase added without a
-  // case — is held by `tsc --noEmit` in
-  // `__type-fixtures__/round-cycle-state.fixtures.ts`, not restated here as
-  // a runtime `it()` (TSC-STATIC1, #1365).
+  // Compile-time totality is `__type-fixtures__/round-cycle-state.fixtures.ts`
+  // (TSC-STATIC1).
 })
 
 describe("Prop. 8.1 — the cycle terminates only by the learner leaving", () => {
@@ -631,58 +429,13 @@ describe("Prop. 8.1 — the cycle terminates only by the learner leaving", () =>
     "corpusExhausted",
   ]
 
-  const restoringDiff = diffOptionOf({ propositionId: "CW-P1", cost: 500 })
-  const rescuableDiff = diffOptionOf({
-    propositionId: "CW-P2",
-    cost: 2000,
-    rescueCandidates: [
-      {
-        constraints: [{ dimension: "n", operator: "<=", bound: 400 }],
-        propositionId: "CW-P4",
-      },
-    ],
-  })
-  const unrescuableDiff = diffOptionOf({
-    propositionId: "CW-P16",
-    cost: 5000,
-    graph: W(5000),
-  })
-
-  const posingRound = posingRoundWith([
-    restoringDiff,
-    rescuableDiff,
-    unrescuableDiff,
-  ])
-
   it("no returned state carries a win, completion, or corpus-exhaustion field", () => {
-    const admissible = initialRoundCycleState(
-      Loop(dim("n"), W(1)),
-      CONSTRAINTS,
-      BUDGET,
-      []
-    )
-    const restoring = nextRoundCycleState(posingRound, {
-      kind: "selectDiff",
-      diff: restoringDiff,
-      commitment: ABSTAIN,
-    })
-    const rescuable = nextRoundCycleState(posingRound, {
-      kind: "selectDiff",
-      diff: rescuableDiff,
-      commitment: ABSTAIN,
-    })
-    const unrescuable = nextRoundCycleState(posingRound, {
-      kind: "selectDiff",
-      diff: unrescuableDiff,
-      commitment: ABSTAIN,
-    })
-
     for (const state of [
       posingRound,
-      admissible,
-      restoring,
-      rescuable,
-      unrescuable,
+      admissibleFromStart,
+      select(restoringDiff, ABSTAIN, posingRound),
+      select(rescuableDiff, ABSTAIN, posingRound),
+      select(unrescuableDiff, ABSTAIN, posingRound),
     ]) {
       const keys = Object.keys(state)
       for (const forbidden of FORBIDDEN_KEYS) {
@@ -692,23 +445,12 @@ describe("Prop. 8.1 — the cycle terminates only by the learner leaving", () =>
   })
 
   it("driving the cycle indefinitely never yields a terminal or undefined state", () => {
-    // A learner who keeps failing to restore admissibility with a diff
-    // whose cost is independent of the bound (CW-P16's own shape): the
-    // cycle keeps naming a successor every time, never stalling or
-    // returning something the caller must special-case as "done."
+    // Repeatedly picking the unrescuable diff always names a successor.
     let state: RoundCycleState = posingRound
     for (let round = 0; round < 25; round += 1) {
       expect(state).toBeDefined()
-      if (state.phase !== "posingDiffSelection") {
-        // Reached a genuine successor phase — Thm. 8.1's own claim, not a
-        // dead end this loop needs to recover from.
-        break
-      }
-      state = nextRoundCycleState(state, {
-        kind: "selectDiff",
-        diff: unrescuableDiff,
-        commitment: ABSTAIN,
-      })
+      if (state.phase !== "posingDiffSelection") break // a successor (Thm. 8.1)
+      state = select(unrescuableDiff, ABSTAIN, state)
     }
     expect(state.phase).not.toBe("posingDiffSelection")
   })
@@ -738,19 +480,13 @@ describe("checkUnrescuableExplanationsResolve", () => {
   })
 
   it("flags a dangling explanationPropositionId — not in the register at all", () => {
-    // Deliberately not "CW-Pn"-shaped: scripts/check-proposition-citations.ts
-    // scans every tracked file for that literal pattern, and this file is
-    // not one of the proposition-register module's own tests.
+    // Not "CW-Pn"-shaped, so check-proposition-citations.ts ignores it.
     // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- deliberately injecting a value PropositionId's own type rules out, to prove checkUnrescuableExplanationsResolve's runtime dangling-id check fires even though RoundDiffOption's compile-time type would normally prevent this.
     const badId = "not-a-real-proposition-id" as PropositionId
     const options = [
       diffOptionOf({
         propositionId: "CW-P2",
         cost: 5000,
-        // Deliberately malformed test data: a real corpus author's typo
-        // would not type-check as PropositionId, but the register lookup
-        // itself must still be defensive — the same posture checkCitations
-        // takes toward a dangling `Citation.id`.
         explanationPropositionId: badId,
       }),
     ]

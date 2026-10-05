@@ -24,7 +24,7 @@ import { ConstraintDiffSchema } from "@leetype/types/constraint"
 import type { DiffHunk } from "@leetype/types/exercise"
 
 /**
- * LTY-AUTHOR (#1540): turns an authored `Round` (`types/authored-round.ts`)
+ * LTY-AUTHOR: turns an authored `Round` (`types/authored-round.ts`)
  * into what the round surface and `lib/leetype/round-cycle` consume, and
  * holds the authored corpus to the checks that make its data real rather
  * than illustrative — every hunk applies to its round's `A`, every authored
@@ -33,7 +33,7 @@ import type { DiffHunk } from "@leetype/types/exercise"
  *
  * Engine-free, in the register of `lib/leetype/round-cycle`: nothing here
  * imports the wasm loader, a hook, or a component. Wiring the result into
- * `WideRoundSurface`/`ArtifactSwitcher` is the Leetype cutover's job (#1440).
+ * `WideRoundSurface`/`ArtifactSwitcher` is the Leetype cutover's job.
  */
 
 /** The outcome of applying one hunk to a source: the patched source, or why it does not apply. */
@@ -300,7 +300,7 @@ function checkAuthoredRound(round: Round): Array<string> {
  * are skipped if that fails. `lintRoundEntries` then applies R5's
  * per-round rules to each round's `(C′, D)` slice. The register-wide
  * coverage checks in `lintRoundCorpus` are not run: the authored corpus
- * does not cover the register yet (#1540).
+ * does not cover the register yet.
  */
 export function lintAuthoredRounds(
   rounds: ReadonlyArray<unknown>

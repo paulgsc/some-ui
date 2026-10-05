@@ -14,19 +14,16 @@ import {
 import { z } from "zod"
 
 /**
- * LTY-AUTHOR (#1540) — Def. 1.7's round, assembled: the one schema a real,
- * authored round is held to, composing the per-Def schemas this workspace
- * already has (`AlgorithmSchema`, `ConstraintDiffSchema`, `BudgetSchema`,
- * `DiffSetMemberSchema`) with the cost graphs `lib/leetype/round-cycle`
- * branches on. Replaces nothing yet: `lib/leetype/round-corpus`'s fixture
- * rounds (`RoundCorpusEntry`, the R1–R4 slice) stay what R5's lint runs
- * over until the authored corpus covers the register.
+ * Def. 1.7's round, assembled (LTY-AUTHOR): the schema an authored round is
+ * held to, composing the per-Def schemas with the cost graphs
+ * `lib/leetype/round-cycle` branches on. `lib/leetype/round-corpus`'s fixture
+ * rounds remain what the round-corpus lint runs over until the authored
+ * corpus covers the register.
  *
- * `r` (Def. 4.1) is absent by design. A round is complete without a run:
- * Def. 8.1 branches on the derived relation `T_A(C) <= B`, never on `r`
- * (Rem. 8.0), and #1201 requires a cycle to stay playable with every
- * execution failing. Execution results come from `paulgsc/server#381`, and
- * recorded transcripts from `paulgsc/server#328`, keyed by this round's `id`.
+ * `r` (Def. 4.1) is absent by design: Def. 8.1 branches on `T_A(C) <= B`,
+ * never on `r` (Rem. 8.0), and a cycle must stay playable with every
+ * execution failing. Runs and recorded transcripts come from the server,
+ * keyed by `id`.
  */
 
 /** One factor of a repetition monomial, as `lib/leetype/cost` normalizes it. */
@@ -88,11 +85,9 @@ export const CostGraphSchema: z.ZodType<CostGraph> = z.lazy(() =>
 )
 
 /**
- * Every round's `A` is Rust (decided 2026-09-26, #1540). The language is
- * mechanical: the propositions are about cost graphs and never about syntax
- * (Thm. 5.1), so one fixed language keeps the corpus uniform and lets
- * `paulgsc/server#381` run a single toolchain. `AlgorithmSchema` itself
- * still admits four languages for the renderers that predate this decision.
+ * Every round's `A` is Rust: the propositions are about cost graphs, not
+ * syntax (Thm. 5.1), so one language keeps the corpus uniform and the runner
+ * on one toolchain. `AlgorithmSchema` itself still admits four.
  */
 const RoundAlgorithmSchema = AlgorithmSchema.extend({
   language: z.literal("rust"),
@@ -118,7 +113,7 @@ const RoundDiffOptionSchema = z.object({
 })
 
 /**
- * How a round is run (X5, `paulgsc/server#381`): Rust source appended after
+ * How a round is run on the server: Rust source appended after
  * `A` (or `A + d`) to make a binary. Its `main` reads one `<dimension>=<n>`
  * argument per constrained dimension, builds a worst-case input of those
  * sizes, calls the entry point and prints one short line of output. The

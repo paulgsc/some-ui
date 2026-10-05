@@ -3,7 +3,7 @@ import type { DiagnosticStep, Exercise } from "@leetype/types/exercise"
 import { typingBlockFromDiff } from "@leetype/types/exercise"
 
 /**
- * LTY-PATCH P4's own instance (#1079): the corpus's first multi-line patch
+ * LTY-PATCH P4's own instance: the corpus's first multi-line patch
  * repair, demonstrating that a hunk decouples "one line" from "one locus."
  * The repair is a three-line guard clause — one contiguous `add` run — well
  * inside `DIAGNOSTIC_REPAIR_MAX_CHARS` even spanning three lines, which the

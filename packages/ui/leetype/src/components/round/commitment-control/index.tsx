@@ -5,77 +5,41 @@ import { CircleHelp } from "lucide-react"
 import { cn } from "some-ui-utils"
 
 /**
- * Not part of a caller's closed set (#1200 owns those) — this is the one
- * abstention Def. 9.1 requires *every* commitment control to offer, added
- * here rather than trusted to each call site so "always includes an
- * explicit abstention" holds by construction, the same posture
- * `SourcePanel` takes on "no precondition anywhere in its call path."
+ * The abstention Def. 9.1 requires of *every* commitment control, added here
+ * rather than by callers so it always holds.
  */
 const ABSTAIN_LABEL = "Not sure"
 
 type CommitmentControlProps = {
-  /** The closed set's real choices. What they are is #1200's call, not this one's. */
+  /** The closed set's real choices, supplied by the caller. */
   options: ReadonlyArray<CommitmentOption>
   /**
-   * Fires exactly once, synchronously, the instant a tap resolves — before
-   * this component's own re-render paints `reveal`. That ordering is
-   * Ax. 9.2's whole point: once the answer is visible no later response
-   * carries information about the learner's prior state, so the commitment
-   * has to exist in the caller's hands before anything the answer could
-   * contaminate gets painted.
+   * Fires once, synchronously, before `reveal` paints (Ax. 9.2: once the
+   * answer is visible, no later response tells anything about prior state).
    */
   onCommit: (commitment: Commitment) => void
   /**
-   * What appears the instant a commitment lands — an artifact's answer, a
-   * verdict, whatever the caller's round means by "the reveal." Absent
-   * before any tap; rendered unconditionally on the very next render once
-   * one lands, no matter which option (abstention included) was tapped.
-   * `undefined` is a caller with nothing to reveal here, not a missing
-   * reveal — it still satisfies "no confirmation, no delay."
+   * What appears once a commitment lands, whichever option (abstention
+   * included) was tapped. `undefined` means nothing to reveal here.
    */
   reveal?: ReactNode
   className?: string
-  /**
-   * The button group's accessible name — what a screen reader announces
-   * before reading the options, since `role="group"` has none of its own.
-   * #1200 owns the actual question a round shows sighted users; this exists
-   * so the group is never nameless in the meantime, and a caller who does
-   * have a real prompt can pass it straight through.
-   */
+  /** The button group's accessible name (`role="group"` has none of its own). */
   groupLabel?: string
 }
 
 /**
- * The one blocking gesture in the whole design (C3, #1215): a single tap,
- * from a closed set that always includes an explicit "not sure," recorded
- * before the reveal it immediately and unconditionally unlocks.
+ * The one blocking gesture in the design: a single tap from a closed set
+ * that always includes "not sure," recorded before the reveal it unlocks.
  *
- * # Why a button group and not a radio group
+ * Buttons, not radios: the tap itself is the observation (Prop. 9.1), not a
+ * selection a learner could arrow through before meaning to answer.
  *
- * `ClaimChoices` is select-then-resolve: picking a row records a choice
- * that a *separate* submission elsewhere later resolves against an answer.
- * A commitment has no such second step — Def. 9.1 calls it "a single,
- * cheap, mandatory-before-reveal action," and Prop. 9.1's whole argument
- * depends on the tap itself being the observation, not a preview of one a
- * learner could still change their mind about. So each option is a plain
- * button that commits on tap, not an `<input type="radio">` whose checked
- * state a learner could arrow through before ever meaning to answer.
+ * Abstention uses the same classes, size and grid as every choice; only a
+ * glyph marks it.
  *
- * # Never a lesser option
- *
- * Abstention renders through the exact same button classes, at the exact
- * same size, in the exact same grid, as every real choice — no `text-xs`,
- * no reduced hit target, no visually-recessive treatment. The only thing
- * that marks it apart is a glyph, which is additive rather than a demotion
- * of anything else on the row.
- *
- * # Standalone by design
- *
- * Not wired to the artifact switcher (C1, Step 6) — this component takes
- * `options` and two callbacks and nothing else, so nothing here could gate
- * or block anything else a round renders. A learner may look at every
- * artifact before tapping; this control has no way to know or care whether
- * they did.
+ * Standalone: it takes `options` and callbacks only, so it cannot gate
+ * anything else a round renders.
  */
 export const CommitmentControl: FC<CommitmentControlProps> = ({
   options,
@@ -87,9 +51,7 @@ export const CommitmentControl: FC<CommitmentControlProps> = ({
   const [committed, setCommitted] = useState<Commitment | null>(null)
 
   const commit = (commitment: Commitment): void => {
-    // A closed, one-shot action (Def. 9.1: "a single... action") — a second
-    // tap after the first is not a correction, it is a control that should
-    // already be gone (every button below is `disabled` once committed).
+    // One-shot (Def. 9.1): every button is disabled once committed.
     if (committed !== null) return
     onCommit(commitment)
     setCommitted(commitment)

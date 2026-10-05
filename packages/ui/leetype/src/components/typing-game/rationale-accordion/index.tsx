@@ -12,7 +12,7 @@ import { cn } from "some-ui-utils"
 
 type RationaleAccordionProps = {
   /**
-   * The step's authored candidates (LTY-WHY W2, #1102). Callers mount this
+   * The step's authored candidates (LTY-WHY W2). Callers mount this
    * component only once a step's hunk is complete and `rationaleChoices`
    * is present — there is no "no candidates" render path here, by design.
    */
@@ -21,7 +21,7 @@ type RationaleAccordionProps = {
 }
 
 /**
- * The reason-reaffirmation shim's widget (LTY-WHY W4, #1104): an accordion
+ * The reason-reaffirmation shim's widget (LTY-WHY W4): an accordion
  * under a completed step's hunk posing "why is this the right fix" as a
  * short leetyped answer rather than a click. See `docs/leetype/README.md`'s
  * LTY-WHY section for the posture this component is held to — recapped
@@ -41,7 +41,7 @@ type RationaleAccordionProps = {
  * the capture element is the only focusable surface on the card. Reusing
  * it here trapped keyboard users inside this widget's
  * hidden input with no way to Tab to the trigger or the dead-end's "Clear
- * and try again" button (review finding on #1122). This listener forwards
+ * and try again" button. This listener forwards
  * only printable characters and Backspace; Tab, Shift+Tab, Enter and
  * everything else are left alone so native focus movement keeps working.
  *

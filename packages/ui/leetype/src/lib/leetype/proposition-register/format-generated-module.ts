@@ -11,7 +11,7 @@ const HEADER = `// GENERATED FILE — do not hand-edit.
 
 /**
  * Renders the parsed register as the committed `generated.ts` source
- * (LTY-PROBE B1, #1218). A pure string builder — `scripts/generate-
+ * (LTY-PROBE B1). A pure string builder — `scripts/generate-
  * proposition-register.ts` is the only caller that touches the filesystem,
  * so this function is exercised directly in tests without stubbing `fs`.
  */

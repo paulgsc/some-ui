@@ -7,17 +7,13 @@ import {
 import { act, fireEvent, render, screen } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
-// The wasm binary is a workspace crate with no dist/ in a test run, and the
-// point of this file is which surface mounts — not what either one does once
-// mounted. Mocking the loader is what lets the typing branch render at all,
-// and counting its calls is what proves the reading branch never touches it.
+// This file tests which surface mounts. Mocking the loader lets the typing
+// branch render, and counting calls proves the reading branch never loads it.
 const loadWasm = vi.fn()
 vi.mock("@leetype/lib/leetype/leetype-wasm-loader", () => ({
   loadWasm: (): Promise<never> => {
     loadWasm()
-    // The typing surface handles a failed load with its own error state,
-    // which is enough for "did this branch even try" without standing up a
-    // whole fake engine.
+    // A failed load is enough to show the branch tried.
     return Promise.reject(new Error("engine unavailable in this test"))
   },
   resetWasm: (): void => {},
@@ -25,12 +21,7 @@ vi.mock("@leetype/lib/leetype/leetype-wasm-loader", () => ({
 
 const EXERCISE = nextExercise({ preferId: FIXTURE_EXERCISE_ID })
 
-/**
- * `useIsMobile` reads `window.matchMedia` through `useSyncExternalStore`.
- * jsdom implements the API but never evaluates the query, so every call comes
- * back `matches: false`; this replaces it with one that answers a fixed
- * verdict, which is the only thing the chooser reads.
- */
+/** jsdom never evaluates media queries; this answers `useIsMobile` with a fixed verdict. */
 function setViewport(mobile: boolean): void {
   const matchMedia = (query: string): MediaQueryList => ({
     matches: mobile,
@@ -73,10 +64,7 @@ describe("Leetype", () => {
     expect(screen.queryByRole("radio")).not.toBeInTheDocument()
   })
 
-  // The load-bearing claim of the whole split: a phone never fetches the
-  // engine. `useTypingGame` lives inside `TypingSession`, and a hook cannot
-  // be called conditionally — so this is true by construction rather than by
-  // a guard, and this test is what stops the construction being undone.
+  // A phone never fetches the engine: true by construction, pinned here.
   it("never reaches for the typing engine on a narrow viewport", () => {
     setViewport(true)
     render(<Leetype exercise={EXERCISE} sessionSeed={7} />)
@@ -103,10 +91,8 @@ describe("Leetype", () => {
     expect(screen.getByLabelText("Typing input")).toBeInTheDocument()
   })
 
-  // The registry contract: an entry must render with no props and no ambient
-  // React context (@some-ui/content-registry's own rule). With no `exercise`
-  // forced, a phone lands on rounds (the Leetype cutover, #1440) and a wide
-  // screen on the picker.
+  // The registry contract: renders with no props or context. A phone lands
+  // on rounds, a wide screen on the picker.
   it("mounts with no props at all: rounds on a phone, the picker on a wide screen", () => {
     setViewport(true)
     const { unmount } = render(<Leetype sessionSeed={7} />)
@@ -121,9 +107,7 @@ describe("Leetype", () => {
     render(<Leetype />)
     expect(screen.getByText("Choose what to practice")).toBeInTheDocument()
     expect(screen.queryByLabelText("Typing input")).not.toBeInTheDocument()
-    // The wide viewport alone does not attach the production probe — an
-    // active exercise does (C2, #1214): merely mounting `Leetype` on a wide
-    // screen with nothing picked yet must not reach for the engine either.
+    // A wide viewport alone does not load the engine; an active exercise does.
     expect(loadWasm).not.toHaveBeenCalled()
   })
 
@@ -202,13 +186,8 @@ describe("Leetype", () => {
     expect(screen.getByLabelText("Typing input")).toBeInTheDocument()
   })
 
-  // The strengthened half of the negative control above: on a wide
-  // viewport, the engine is fetched only once the production probe is
-  // actually attached — the learner picking an exercise — never merely by
-  // `Leetype` itself mounting. Read together, the two tests pin exactly what
-  // "loads the engine only when the probe is opened, not on mount" means:
-  // "mount" is `Leetype`'s own, before any exercise is active; "opened" is
-  // an active exercise resolving to `TypingSession`.
+  // With the test above: the engine loads when an exercise is picked, not
+  // when `Leetype` mounts.
   it("attaches the production probe, and its engine fetch, only once an exercise is picked — never merely from mounting wide", () => {
     setViewport(false)
     render(<Leetype />)
@@ -234,11 +213,8 @@ describe("Leetype", () => {
   })
 
   it("subtracts time spent loading rounds from the session's own budget", async () => {
-    // The orchestrator removes the whole component at its own mount time
-    // plus sessionDurationMs, fixed the instant Leetype mounts. Time spent
-    // waiting for the served rounds has to come out of the session's own
-    // term, for the reason picker time did (review finding on
-    // some-ui#1182).
+    // The orchestrator's deadline is fixed at mount, so time waiting for
+    // served rounds comes out of the session's term.
     setViewport(true)
     vi.useFakeTimers({
       toFake: [

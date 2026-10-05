@@ -24,95 +24,28 @@ import { assertNever } from "some-ui-utils"
 
 /**
  * The corpus lint (LTY-FAMILIES A5): "no judgment is allowed unless it can
- * produce its own justification," turned into a CI failure rather than a
- * sentence in a doc comment (`docs/leetype/README.md`,
- * `lib/leetype/exercises/index.ts`).
+ * produce its own justification," as a CI failure.
  *
- * `rationale` and `obligation` are optional on the generic `StepSchema`
- * (see `types/exercise.ts`'s own doc comments on those fields) so that a
- * diagnostic or construction step survives the *generic*
- * `ExerciseCorpusSchema.parse` the shim runs at module load — which means
- * that parse alone never re-checks a diagnostic step against
- * `DiagnosticStepSchema` or a construction step against
- * `ConstructionStepSchema`. This module is what actually re-checks them,
- * plus the checks in the issue's own list that no schema — strict or
- * generic — can express at all: whether `rationale`'s two fields argue
- * different things, whether `obligation` is a restatement of its witness,
- * and the `concepts`-non-empty tightening.
+ * `rationale` and `obligation` are optional on the generic `StepSchema` so
+ * they survive the generic `ExerciseCorpusSchema.parse`, which therefore
+ * never re-checks a step against `DiagnosticStepSchema` or
+ * `ConstructionStepSchema`. This module does, plus checks no schema can
+ * express: whether `rationale`'s two fields argue different things, whether
+ * `obligation` restates its witness, and non-empty `concepts`.
  *
- * A diff overlay's rendered line kinds are *not* one of those checks
- * (LTY-PATCH, canonicalized): they used to be a separately-authored
- * `lineKinds` array this file re-verified against the engine's real
- * rendered source, because nothing else kept the two in agreement. Now
- * that a step's typing block derives both its `source` and its rendered
- * line kinds from the same authored `diff.segments`
- * (`typingSourceOfDiffSegments`/`renderedDiffLineKinds`, `types/exercise.ts`),
- * there is no second, independently-authored structure left for a lint to
- * catch drifting — `TypingBlockSchema`'s own step-level refine
- * (`diffSourceMatchesSegments`) already rejects a hand-edited `source` that
- * disagrees with its segments at parse time, before this file ever runs.
+ * Mechanical only: it does not judge whether a rationale or obligation is
+ * *good*. It runs over `ALL_FIXTURE_EXERCISES` as data, with no renderer
+ * import and no Rust toolchain, as cheap as the sibling guardrail scripts.
  *
- * Mechanical, and only mechanical, per the issue's own framing: this does
- * not evaluate whether a rationale or an obligation is *good*, only
- * whether the shape and the most literal form of restatement are absent.
- * It runs over `ALL_FIXTURE_EXERCISES` as data — no `PromptPanel`,
- * `CodeDisplay` or any other renderer import — so it stays exactly as
- * cheap as the other CI guardrail scripts it joins
- * (`scripts/check-wasm-bindgen-boundary.sh`,
- * `scripts/check-mutation-boundary.sh`, `docs/canon/scripts/check-citations.sh`).
+ * Deliberately left to review (not mechanizable without false positives or
+ * a toolchain):
  *
- * # LTY-SEED G5 (#1110): what the generator's first worked run did *not*
- * add here, and why
- *
- * G4 (#1109, `docs/leetype/leetype-exercise-generator-log.md`) ran the
- * generator prompt against two concepts and found no self-check item that
- * was both mechanizable and not already covered — every schema-checkable
- * shape (patch alignment, repair budget and contiguity, trace presence,
- * evidence-row budget, `transferFrom`'s referential and concept-overlap
- * check) is already enforced above or in `DiagnosticStepSchema`/
- * `ConstructionStepSchema`, and both real findings that run produced were
- * *prose* imprecision (an `obligation` overclaiming general equivalence; a
- * `trace` observation naming the wrong quantity) — fixed as wording
- * changes to the prompt itself, not as anything a data-only lint over
- * `ALL_FIXTURE_EXERCISES` could have caught. Adding no new check function
- * is this story's honest outcome, not a skipped step — mirroring G4's own
- * "rejecting everything is a successful outcome."
- *
- * Three items considered and deliberately left as review-only, so the
- * boundary is recorded rather than silently forgotten:
- *
- * - **Concept-id near-duplication between two different, both-registered
- *   `CONCEPT_IDS` entries** (e.g. `loop-progress` vs. a hypothetical
- *   `loop-progress-check`). `concepts.test.ts` already catches an
- *   unregistered string (a typo, or a coined id nobody added to
- *   `CONCEPT_IDS`); what nothing catches is two *legitimately registered*
- *   ids that mean the same thing. Left out because a fuzzy string-match
- *   check needs a threshold that is easy to write just outside of, and
- *   would false-positive on real, deliberately-similar-sounding concepts
- *   already in this corpus (`loopProgress`/`windowShrinking` are both "a
- *   measure must move toward termination," phrased differently because
- *   they probe different code shapes) — exactly the kind of judgment
- *   #1009's own framing says this file must not pretend it can make.
- * - **Whether a `trace` observation's number names the exact quantity it
- *   claims to**, rather than a different, related quantity that happens to
- *   also be correctly computed — the real failure G4's run landed (a
- *   correct count of distinct subproblems, mislabeled as a call count).
- *   Left out because verifying it means executing or hand-tracing
- *   arbitrary Rust for the specific quantity a free-text `label` names —
- *   a natural-language claim against a number, which is exactly the kind
- *   of open-ended judgment this file's own "mechanical, and only
- *   mechanical" framing (above) draws the line against, not a shape a
- *   parser over `ALL_FIXTURE_EXERCISES` could check.
- * - **Whether a diagnostic step's `-` side actually compiles.** The
- *   strongest possible check on "valid prior attempt," and the one this
- *   file's own character forbids: every check above runs with no Rust
- *   toolchain, `cargo`, or wasm build required, the same way
- *   `scripts/check-wasm-bindgen-boundary.sh` and
- *   `scripts/check-mutation-boundary.sh` do. Requiring `cargo` here would
- *   be a different, much heavier CI shape than every sibling guardrail
- *   script — a decision for its own PR if a future run's log shows this
- *   check would actually have caught something, not one this file backs
- *   into by accretion.
+ * - Near-duplicate *registered* concept ids (`concepts.test.ts` catches only
+ *   unregistered ones); a fuzzy threshold would flag deliberately similar
+ *   concepts such as `loopProgress`/`windowShrinking`.
+ * - Whether a `trace` observation's number names the exact quantity its
+ *   label claims; that needs executing or hand-tracing the code.
+ * - Whether a diagnostic step's `-` side compiles; that needs `cargo` in CI.
  */
 
 function locate(exercise: Exercise, step: Step): string {
@@ -133,13 +66,10 @@ function indexStepsById(
 }
 
 /**
- * No two steps in the corpus share an id — a precondition `indexStepsById`
- * depends on and does not itself check: a `Map` silently lets a later step
- * shadow an earlier one with the same id, which would check a `transferFrom`
- * reference against the wrong step instead of catching the real mismatch
- * (review finding on #1073). `ExerciseCorpusSchema` only enforces uniqueness
- * *within* one exercise's `steps` array, never across the whole corpus, so
- * this is the one thing schema-level validation cannot catch.
+ * No two steps in the corpus share an id: `indexStepsById`'s `Map` would
+ * otherwise let a later step shadow an earlier one and check `transferFrom`
+ * against the wrong step. The schema checks uniqueness only within one
+ * exercise.
  */
 function checkNoDuplicateStepIds(
   exercises: ReadonlyArray<Exercise>
@@ -162,13 +92,9 @@ function checkNoDuplicateStepIds(
 }
 
 /**
- * `transferFrom`'s two mechanical checks (LTY-SEAM S3, #1017): the
- * referenced step exists in this corpus, and the two steps share at least
- * one concept id — a declared transfer pair has to be probing the same
- * abstraction, or the pairing is a typo rather than a judgement. Whether
- * the transfer itself is a *good* one stays judgement, argued in the
- * steps' own `goal`s, not checkable here — same posture as `rationale`
- * and `obligation` below.
+ * `transferFrom`'s mechanical checks (LTY-SEAM S3): the referenced step
+ * exists, and the two steps share at least one concept id (otherwise the
+ * pairing is a typo, not a judgement).
  */
 function checkTransferFrom(
   exercise: Exercise,
@@ -209,18 +135,11 @@ function typedPortionOf(source: string): string {
 }
 
 /**
- * No two candidates in `rationaleChoices` may share a full prefix
- * (LTY-WHY W2, #1102): if one candidate's text is a prefix of another's,
- * W3's `narrow()` can never disambiguate the shorter one from the longer
- * one before the shorter one is already "complete" — a real bug in the
- * matcher's own contract, not a cosmetic authoring nit. Pairwise, every
- * pair — not just adjacent ones or the first match, the shape most likely
- * to slip past a check that only compares neighbors in authoring order —
- * which is free: `O(n²)` over a set capped at `RATIONALE_CHOICES_MAX`.
- *
- * Equal candidates are caught by the same check: either string trivially
- * starts with the other, which is correct — two identical candidates are
- * exactly the degenerate case of "one is a prefix of the other."
+ * No candidate in `rationaleChoices` may be a prefix of another (LTY-WHY
+ * W2): `narrow()` could never tell the shorter one apart before it is
+ * already "complete". Every pair is compared, not just neighbours; `O(n²)`
+ * over at most `RATIONALE_CHOICES_MAX`. Equal candidates are the degenerate
+ * case and are caught too.
  */
 function checkRationaleChoicesNoSharedPrefix(
   exercise: Exercise,
@@ -271,11 +190,7 @@ function normalizeForRestatementCheck(text: string): string {
 
 /**
  * True if `obligation` literally contains the witness's typed code (token
- * for token, punctuation aside) — "an obligation that is the witness in
- * prose," per the issue's own phrasing. Mechanical on purpose: it catches
- * the witness quoted back verbatim, not a paraphrase that says the same
- * thing in different words — judging *that* is exactly the "for quality"
- * evaluation this lint does not attempt.
+ * for token, punctuation aside). Catches a verbatim quote, not a paraphrase.
  */
 function isRestatementOfWitness(
   obligation: string,
@@ -289,22 +204,17 @@ function isRestatementOfWitness(
 }
 
 const MEASUREMENT_TERM = /\b(timed out|timeout|slow|fast|took)\b|\b\d+\s?ms\b/i
-// Two patterns, not one, because "O(" only means Big-O as a standalone,
-// capitalized token: a case-insensitive `O\(` with no boundary also matches
-// the tail of an ordinary call like `foo(` (review finding on #1240,
-// chatgpt-codex-connector) — a false positive `quadratic`/`linear`/
-// `logarithmic` can't produce, so only the symbol needs the extra care.
+// Two patterns: "O(" is Big-O only as a standalone, case-sensitive token;
+// a case-insensitive `O\(` would also match the tail of a call like `foo(`.
 const CLASS_TERM_WORD = /\b(quadratic|linear|logarithmic)\b/i
 const CLASS_TERM_SYMBOL = /Θ|\bO\(/
 const SENTENCE_SPLIT = /(?<=[.!?])\s+/
 
 /**
  * Reviewed escape for `checkNoMeasurementEntailmentClaim` (LTY-EXEC X4,
- * Cor. 4.1): a sentence the heuristic below flags that a human has
- * confirmed does not actually infer a class from a measurement (the
- * corpus lint's own acceptance criteria's own example: "it timed out; the
- * cost graph is what says why"). Add an entry only when that is true of
- * the specific sentence — this list is not a way to silence a real one.
+ * Cor. 4.1): a flagged sentence a human confirmed does not infer a class
+ * from a measurement (e.g. "it timed out; the cost graph is what says why").
+ * Not a way to silence a real one.
  */
 const MEASUREMENT_CLAIM_EXEMPTIONS: ReadonlyArray<{
   readonly sentence: string
@@ -328,18 +238,13 @@ function isExemptSentence(
 /**
  * Cor. 4.1's two forbidden inferences ("it timed out, therefore it is
  * Θ(n²)"; "it ran in 4ms, therefore it is Θ(n)"), as a **heuristic** over
- * authored prose (LTY-EXEC X4). The type-level half is X1's `RunResult`
- * (`lib/leetype/run-result`), which no function computing a cost, a class,
- * a proposition or a ledger transition accepts as a parameter; this is the
- * half that catches the same inference made in words, in a corpus sentence
- * that reaches a learner directly and that no type system checks.
+ * authored prose (LTY-EXEC X4). The type-level half is `RunResult`
+ * (`lib/leetype/run-result`), which no cost/class/proposition/ledger
+ * function accepts; this catches the same inference made in words.
  *
- * A sentence flagging both a measurement term and a class term is not
- * thereby *proven* to commit either forbidden inference — only worth a
- * human's attention, which is the honest character a keyword
- * co-occurrence check can have. `exemptions` (the module's own
- * `MEASUREMENT_CLAIM_EXEMPTIONS` by default) is the reviewed escape for a
- * confirmed false positive.
+ * A sentence with both a measurement term and a class term is only worth a
+ * human's attention, not proven guilty. `exemptions` (default
+ * `MEASUREMENT_CLAIM_EXEMPTIONS`) is the reviewed escape.
  */
 export function checkNoMeasurementEntailmentClaim(
   text: string,
@@ -367,21 +272,15 @@ export function checkNoMeasurementEntailmentClaim(
   return violations
 }
 
-// `Θ(`/`Ω(` need no boundary — neither ever appears as the tail of an
-// ordinary identifier the way `foo(` can end in a bare `o`. `O(` reuses
-// `CLASS_TERM_SYMBOL`'s own `\bO\(` care (review finding on #1240) for the
-// identical reason.
+// `Θ(`/`Ω(` never end an ordinary identifier; `O(` needs `\b` (see
+// `CLASS_TERM_SYMBOL`).
 const ASSERTED_CLASS_LITERAL = /Θ\(|Ω\(|\bO\(/
 
 /**
- * Reviewed escape for `checkNoAssertedComplexityClassLiteral` (G3, Prop.
- * 2.1): a sentence quoting a `CW-P` register proposition's own canonical
- * wording, which legitimately uses `Θ(...)`/`O(...)`/`Ω(...)` as established
- * notation for the proposition itself (e.g. `CW-P11`'s own "cannot change
- * Θ(T)") rather than a corpus author's claim about one specific round's own
- * algorithm. Add an entry only when the sentence is directly quoting
- * register text — this list is not a way to let an author's own claim
- * through.
+ * Reviewed escape for `checkNoAssertedComplexityClassLiteral` (Prop. 2.1):
+ * a sentence directly quoting a `CW-P` proposition's canonical wording,
+ * which uses `Θ(...)` as notation (e.g. `CW-P11`'s "cannot change Θ(T)").
+ * Never for an author's own claim about a round.
  */
 const ASSERTED_CLASS_LITERAL_EXEMPTIONS: ReadonlyArray<{
   readonly sentence: string
@@ -390,15 +289,10 @@ const ASSERTED_CLASS_LITERAL_EXEMPTIONS: ReadonlyArray<{
 
 /**
  * Prop. 2.1 ("a round ... never authors the `Θ`-class directly"), made
- * mechanical (G3, #1211): a bare `Θ(`, `O(`, or `Ω(` literal anywhere in a
- * step's authored prose is exactly the "hand-written judgement with no
- * justification attached" the cost algebra (`lib/leetype/cost`) and
- * admissibility (`lib/leetype/admissibility`) modules exist to replace —
- * `printClass` is the only function in this workspace allowed to produce
- * one. Same character as `checkNoMeasurementEntailmentClaim` right above:
- * mechanical pattern match, not a judgement of whether the sentence is
- * *good*, with a reviewed, named, per-sentence escape for a confirmed false
- * positive (register text quoting a `CW-P` proposition's own wording).
+ * mechanical: a bare `Θ(`, `O(` or `Ω(` in authored prose is an unjustified
+ * judgement. Classes come from the cost graph (`lib/leetype/cost`,
+ * `lib/leetype/admissibility`); `printClass` is the only producer. Pattern
+ * match with a reviewed per-sentence escape, like the check above.
  */
 export function checkNoAssertedComplexityClassLiteral(
   text: string,
@@ -598,9 +492,8 @@ function lintStep(
 }
 
 /**
- * Every violation across the whole corpus. Empty means the corpus is
- * clean. Deterministic order (exercise order, then step order) so a CI
- * failure's diff is stable rather than shuffled between runs.
+ * Every violation across the whole corpus. Empty means clean. Deterministic
+ * order (exercise, then step) so a CI failure's diff is stable.
  */
 export function lintCorpus(exercises: ReadonlyArray<Exercise>): Array<string> {
   const stepsById = indexStepsById(exercises)
@@ -614,20 +507,13 @@ export function lintCorpus(exercises: ReadonlyArray<Exercise>): Array<string> {
 }
 
 /**
- * R5 (LTY-ROUND, #1208) — `docs/canon/complexity-witness-canon.typ` Ax. 1.1,
- * Rem. 1.1, Rem. 7.1, Rem. 10.2, Prop. 6.1. This extends the corpus lint
- * above with a round-shaped counterpart: same discipline ("a malformed
- * round fails at the seam with a message naming the invariant"), a
- * different object.
+ * The round-corpus counterpart of the lint above (R5): a malformed round
+ * fails with a message naming the invariant (canon Ax. 1.1, Rem. 1.1,
+ * Rem. 7.1, Rem. 10.2, Prop. 6.1).
  *
- * `RoundCorpusEntry` is deliberately the R1-R4 slice of Def. 1.7's full
- * round tuple `(A, C, B, D, mu, r)` — `C` and `D` (`mu` is folded into each
- * `D` member as `propositionId`, R4/#1207) — because that is all seven of
- * this story's own checks ever touch. Assembling `A`, `B` and `r` into one
- * `Round` type is explicitly not this story's job any more than it was
- * R4's own (see `types/round.ts`'s own doc comment); nothing below needs a
- * cost graph or a budget, which is why R5 depends on R1-R4 and not on any
- * G-family story.
+ * The slice of Def. 1.7's round tuple `(A, C, B, D, mu, r)` these checks
+ * touch: `C` and `D`, with `mu` folded into each `D` member as
+ * `propositionId`. No check needs a cost graph or a budget.
  */
 export type RoundCorpusEntry = {
   readonly id: string
@@ -636,21 +522,11 @@ export type RoundCorpusEntry = {
 }
 
 /**
- * The corpus-wide bound on presentable alternatives — the same "the option
- * counts this design admits" ceiling Theorem 10.1 cites, `k <= 5`
- * (inclusive: five is a valid, maximal round, not one past the limit).
- * Named as its own constant rather than importing `types/exercise.ts`'s
- * `RATIONALE_CHOICES_MAX`: that constant bounds LTY-WHY's rationale
- * accordion, a different family (the old step corpus) that happens to share
- * a UI-legibility number with this one, not the same obligation.
- *
- * Ax. 1.1's own inequality, `|D| < N`, is a *strict* upper bound on a
- * variable `N` it does not otherwise pin a value to — this constant is
- * Thm. 10.1's own inclusive `k <= 5` ceiling, not that `N` directly, so
- * `checkCardinality` below compares against it with `<=`, not `<` (review
- * finding on #1283, chatgpt-codex-connector: comparing this value with `<`
- * silently capped every round at four alternatives, one short of what the
- * design's own k <= 5 permits).
+ * The corpus-wide bound on presentable alternatives: Thm. 10.1's inclusive
+ * `k <= 5` (five is a valid, maximal round). Separate from
+ * `RATIONALE_CHOICES_MAX`, which bounds a different UI that happens to share
+ * the number. `checkCardinality` compares with `<=`, not Ax. 1.1's strict
+ * `< N`, because this is Thm. 10.1's ceiling, not that `N`.
  */
 export const MAX_PRESENTABLE_DIFFS = 5
 
@@ -659,14 +535,9 @@ function locateRound(round: RoundCorpusEntry): string {
 }
 
 /**
- * Ax. 1.1 / Rem. 1.1's own three-part inequality, `0 < |C| <= |D| < N`, over
- * one round — `N` instantiated to `MAX_PRESENTABLE_DIFFS`'s own inclusive
- * `k <= 5` ceiling (Thm. 10.1; see that constant's own doc comment for why
- * the comparison below is `<=`, not `<`). Not expressible as a refinement
- * on either `ConstraintSetSchema` or `DiffSetSchema` alone (R2/#1205,
- * R4/#1207) because it compares the two against each other — this is the
- * one check in this story that is genuinely new arithmetic, not a
- * re-validation of an existing schema.
+ * Ax. 1.1 / Rem. 1.1's inequality `0 < |C| <= |D| < N` over one round, with
+ * `N` as `MAX_PRESENTABLE_DIFFS` (compared with `<=`; see there). Not a
+ * schema refinement because it compares `C` against `D`.
  */
 function checkCardinality(round: RoundCorpusEntry): Array<string> {
   const violations: Array<string> = []
@@ -693,14 +564,9 @@ function checkCardinality(round: RoundCorpusEntry): Array<string> {
 }
 
 /**
- * Re-validates a round's `C` and `D` through their own strict schemas
- * (`ConstraintSetSchema`, `DiffSetSchema`) — the same "held to the same
- * standard as a host-supplied corpus" posture `lintStep` already takes
- * toward `DiagnosticStepSchema`/`ConstructionStepSchema` above. This is
- * where row 6 of R5's own acceptance table ("exactly one member of D is
- * admissible", Ax. 1.1/R4) is actually enforced: `DiffSetSchema`'s own
- * refine already rejects zero or two authored-admissible members, so a
- * round-level re-check would only ever repeat that message, not add one.
+ * Re-validates a round's `C` and `D` through their strict schemas, as
+ * `lintStep` does for steps. "Exactly one member of D is admissible"
+ * (Ax. 1.1) is enforced here, by `DiffSetSchema`'s own refine.
  */
 function checkRoundSchemas(round: RoundCorpusEntry): Array<string> {
   const violations: Array<string> = []
@@ -724,36 +590,13 @@ function checkRoundSchemas(round: RoundCorpusEntry): Array<string> {
 }
 
 /**
- * Prop. 6.1 ("injectivity is not required; discriminability is") — deferred,
- * deliberately unchecked. Two straight review rounds on #1283
- * (chatgpt-codex-connector) each showed a different attempt at this check
- * unsound:
- *
- * 1. Flagging *any* pair of `D` members sharing a `propositionId` rejects
- *    data Def. 1.6 explicitly permits ("mu need not be injective").
- * 2. Narrowing that to "a non-admissible member sharing the *admissible*
- *    member's own propositionId" is *also* wrong: Def. 8.1 branches on the
- *    derived relation `T_(A+d)(C) <= B` — a structural fact about whether
- *    applying `d` restores admissibility, computed independently of any
- *    other diff — while Theorem 6.1's verdict `p = mu(d)` judges the
- *    proposition paired with *whichever* diff a learner selects. These are
- *    orthogonal: two different rewrites can legitimately witness the same
- *    proposition while only one happens to restore this round's own
- *    budget, and that is not a discriminability defect.
- *
- * What Prop. 6.1 actually requires — "no two options in the presented
- * option set are both true of the selected diff" — needs a presented
- * option set of *propositions*, drawn from `P` and distinct from `D`
- * itself (Thm. 6.1's own setup), with its own truth relation to whichever
- * diff gets selected. `RoundCorpusEntry` (R1-R4 only) carries no such
- * structure — round.ts's own doc comment already defers assembling a full
- * `Round` type, and building a presented-option-set model is further,
- * newer infrastructure than that, not something this story's own "extends
- * the lint, does not build new lint infrastructure" scope covers. Tracked
- * as a follow-up (linked from #1208) for whichever future story gives a
- * round's presented options real data — not C1 (#1213), which landed as
- * a data-in switcher with no round data of its own, but the real
- * round-assembly path the Leetype cutover waits on (#1440).
+ * Prop. 6.1 ("injectivity is not required; discriminability is") is
+ * deliberately unchecked. Flagging `D` members that share a `propositionId`
+ * rejects data Def. 1.6 permits ("mu need not be injective"), and so does
+ * restricting that to members sharing the admissible member's id: Def. 8.1's
+ * admissibility and Thm. 6.1's verdict `p = mu(d)` are orthogonal. The real
+ * check needs a presented option set of *propositions* (Thm. 6.1), which
+ * `RoundCorpusEntry` does not carry; follow-up tracked from #1208.
  */
 
 /** Every `CW-P` id a round cites, as a `Citation` locating it within that round's own D. */
@@ -766,28 +609,15 @@ function citationsOfRound(round: RoundCorpusEntry): Array<Citation> {
 }
 
 /**
- * Prop. 10.1's own practical statement ("the corpus owes each instantiable
- * proposition at least one round where it appears as a distractor for a
- * nearby true witness") — distinct from `checkRegisterCoverage`'s (Rem.
- * 7.1, row 3: "has a corpus instance at all", satisfied by appearing as
- * *any* D member anywhere). "Distractor" is this workspace's own
- * already-established term (Cor. 5.1, `types/round.ts`): a non-admissible
- * `DiffSetMember`. Positive transfer alone is not identifying (Thm. 10.1)
- * — the corpus additionally owes each active proposition at least one
- * round where it is some non-admissible member's own `propositionId`.
- * Reports every uncovered entry in one run, not the first, the same
- * discipline `checkRegisterCoverage` already uses.
+ * Prop. 10.1: the corpus owes each active proposition at least one round
+ * where it is a distractor, i.e. some non-admissible member's
+ * `propositionId` (Cor. 5.1). Positive transfer alone is not identifying
+ * (Thm. 10.1). Distinct from `checkRegisterCoverage` (Rem. 7.1: any
+ * appearance at all). Reports every uncovered entry.
  *
- * Review finding on #1283 (chatgpt-codex-connector): Rem. 10.2's own fuller
- * elaboration additionally requires the proposition to sit in "the
- * presented option set" for a round whose *own* admissible member differs
- * — a structure distinct from `D` (see the doc comment above
- * `citationsOfRound`, where Prop. 6.1's own discriminability check was
- * removed for the identical reason) that `RoundCorpusEntry` does not
- * carry. This check implements Prop. 10.1's plainer, already-workspace-
- * compatible statement, not Rem. 10.2's fuller one; the same follow-up
- * tracked from #1208 covers closing that gap once a presented option set
- * has real data.
+ * Rem. 10.2's fuller form (the proposition in a presented option set of a
+ * round whose admissible member differs) needs data `RoundCorpusEntry` does
+ * not carry; same follow-up as Prop. 6.1 above.
  */
 function checkDistractorCoverage(
   rounds: ReadonlyArray<RoundCorpusEntry>,
@@ -817,25 +647,16 @@ function checkDistractorCoverage(
 }
 
 /**
- * Prop. 2.1's own no-authored-`Θ`-string rule (row 7): "no round anywhere
- * holds a Θ string" is unconditional, not scoped to one field — so this
- * scans both a round's one authored prose field (`distractorStatement`,
- * Cor. 5.1) *and* every diff-set member's own hunk segment text. A segment
- * is ordinarily code, not prose, but its `text` can carry a comment (e.g.
- * `// this repair is Θ(n log n)`), and a comment is exactly the kind of
- * authored aside Prop. 2.1 forbids asserting a class in — review finding
- * on #1283, chatgpt-codex-connector: scoping this to `distractorStatement`
- * alone let a round pass the lint with an asserted class literal sitting
- * in its own displayed source.
+ * Prop. 2.1's "no round anywhere holds a Θ string" is unconditional, so this
+ * scans every authored prose field on each member *and* every hunk segment:
+ * a segment is code, but can carry a comment like `// this repair is
+ * Θ(n log n)`.
  */
 function checkRoundProseForClassLiterals(
   round: RoundCorpusEntry
 ): Array<string> {
   const violations: Array<string> = []
   round.diffSet.forEach((member, index) => {
-    // Every authored prose field on a member (review finding on #1543:
-    // `propositionGloss`, the round-specific half of a verdict, went
-    // unscanned while `distractorStatement` was checked).
     for (const [field, text] of [
       ["distractorStatement", member.distractorStatement],
       ["propositionGloss", member.propositionGloss],
@@ -862,11 +683,10 @@ function checkRoundProseForClassLiterals(
 }
 
 /**
- * The per-round half of `lintRoundCorpus` (below): schemas, cardinality,
- * no asserted class literal, and citation resolution, without the two
- * register-wide coverage checks. Split out for LTY-AUTHOR (#1540), whose
- * authored rounds (`lib/leetype/round-assembly`'s `lintAuthoredRounds`) are
- * held to every per-round rule now but do not yet cover the register.
+ * The per-round half of `lintRoundCorpus`: schemas, cardinality, no asserted
+ * class literal, and citation resolution, without the register-wide coverage
+ * checks. Used alone for authored rounds (`round-assembly`'s
+ * `lintAuthoredRounds`), which do not yet cover the register.
  */
 export function lintRoundEntries(
   rounds: ReadonlyArray<RoundCorpusEntry>
@@ -886,29 +706,21 @@ export function lintRoundEntries(
 }
 
 /**
- * Every violation across the whole round corpus (R5, #1208). Empty means
- * the corpus is clean. Deterministic order (per-round checks in round
- * order, then the two corpus-wide coverage checks) for the same "a CI
- * failure's diff is stable" reason `lintCorpus` above already gives.
- *
- * Six of R5's own seven listed checks; Prop. 6.1 (discriminability) is
- * deliberately not wired in — see the doc comment above `citationsOfRound`
- * for why, and the follow-up issue tracked from #1208.
+ * Every violation across the whole round corpus (R5). Empty means clean.
+ * Deterministic order: per-round checks in round order, then the two
+ * corpus-wide coverage checks. Prop. 6.1 is not wired in (see above
+ * `citationsOfRound`).
  */
 export function lintRoundCorpus(
   rounds: ReadonlyArray<RoundCorpusEntry>
 ): Array<string> {
   const violations = lintRoundEntries(rounds)
 
-  // Row 3 counts μ on *any* member of D, admissible or not (decided on
-  // #1540, reversing the #1283 review finding that restricted it to
-  // admissible members). Rem. 10.2 states the obligation as "at least one
-  // round with it as μ(d)", with no condition on d, and Thm. 6.1 scores the
-  // pair p = μ(d) for whichever d is selected, so a correct pair on a
-  // distractor is a correct selection. The admissible-only reading also
-  // made the register uninstantiable by real rounds: CW-P4, P8, P9, P11
-  // and P16 each say a rewrite *cannot* restore admissibility, so an
-  // admissible member witnessing one contradicts its own statement.
+  // Coverage counts μ on *any* member of D, admissible or not: Rem. 10.2
+  // asks for "at least one round with it as μ(d)" with no condition on d,
+  // and Thm. 6.1 scores p = μ(d) for whichever d is selected. An
+  // admissible-only reading would make CW-P4, P8, P9, P11 and P16 (each "a
+  // rewrite *cannot* restore admissibility") uninstantiable.
   const citedIds = new Set(
     rounds.flatMap((round) =>
       round.diffSet.map((member) => member.propositionId)

@@ -12,12 +12,8 @@ import { diagnosticMemoization } from "./memoization"
 import { diagnosticShrinkingInterval } from "./shrinking-interval"
 
 /**
- * Hand-authored exercises. The whole corpus, for now — per-concept modules
- * composed into one array, in place of the 550-line monolith this directory
- * used to be (LTY-SEED G2, #1107). Every exported name below is unchanged
- * in shape and value from that monolith: this is a file-organization
- * change, not an API change, and nothing outside this directory learns the
- * layout moved.
+ * Hand-authored exercises: the whole corpus, for now, as per-concept modules
+ * composed into one array. Nothing outside this directory sees the layout.
  *
  * The interesting research problem — infer the minimal competencies
  * required to have written a piece of software, then synthesize the
@@ -72,7 +68,7 @@ export const ADVERSARIAL_EXERCISE_ID = adversarial.id
  * them into `entryApi`'s tail (see `entry-09-diagnostic-double-lookup` and
  * `entry-10-diagnostic-eager-lazy-default` in `./entry-api.ts`).
  *
- * `diagnosticDivisionGuard` (LTY-PATCH P4, #1079) is deliberately not
+ * `diagnosticDivisionGuard` (LTY-PATCH P4) is deliberately not
  * listed here: `../index.test.ts` pins this list at exactly the three
  * original A3 failure classes, single-line repairs included — a pin worth
  * keeping literally true rather than widened to fit a newer instance that

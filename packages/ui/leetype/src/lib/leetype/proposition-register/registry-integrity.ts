@@ -27,7 +27,7 @@ export function idsInGeneratedFile(
  * doing by mistake — produces a *shorter* but still contiguous
  * `CW-P1..CW-Pmax` sequence, which `parsePropositionRegister`'s own
  * contiguity check cannot distinguish from a register that never had the
- * missing id at all (review finding on #1241, chatgpt-codex-connector).
+ * missing id at all.
  * Comparing against the previously-committed ids is the only way to catch
  * a *removal* specifically, as opposed to a gap.
  *

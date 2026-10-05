@@ -1,5 +1,5 @@
 /**
- * L1's read side (LTY-LEDGER, #1227) — `docs/canon/complexity-witness-canon.typ`
+ * L1's read side (LTY-LEDGER) — `docs/canon/complexity-witness-canon.typ`
  * Def. 10.1, Cor. 10.1; `adaptive-learning-canon.typ` Thm. 5.3, Def. 5.5.
  *
  * The four states are derived here, at read time, from the persisted ledger
@@ -21,8 +21,8 @@ import type { PropositionId } from "@leetype/lib/leetype/proposition-register/ge
 
 /**
  * Def. 10.1, all of it: four states, in order, and no fifth. There is no
- * "mastered", no "needs review", no numeric level and no percentage (#1227,
- * Cor. 10.1); a lapsed demonstration reads as `recognized`, not as a fifth
+ * "mastered", no "needs review", no numeric level and no percentage
+ * (Cor. 10.1); a lapsed demonstration reads as `recognized`, not as a fifth
  * state.
  */
 export const LEDGER_STATES = [
@@ -57,7 +57,7 @@ const OPEN_CONJUNCT_COPY = {
 
 /**
  * Which of Def. 10.2's conjuncts are still open, in the canon's order: a
- * projection of `demonstrated`'s separate report (#1229), never a count or
+ * projection of `demonstrated`'s separate report, never a count or
  * a fraction. A lapsed demonstration's evidence still meets all three, so
  * what re-establishes it is a later session.
  */

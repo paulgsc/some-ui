@@ -19,13 +19,9 @@ import { cn } from "some-ui-utils"
 const CARET_MARGIN_PX = 100
 
 /**
- * A diff hunk's identity (LTY-PATCH P3, #1078) — `path`/`oldStart`/
- * `newStart` render in this viewport's own header, per P2 (#1077)'s
- * decision that a hunk's file identity belongs here and not in
- * `ExerciseHeader` or `provenance`. `lineKinds` and the two starts are
- * forwarded to `CodeDisplay` as its own `Hunk` (which carries no `path` —
- * that renderer draws lines, not file identity); this type is the one
- * place both halves of a hunk's data are held together.
+ * A diff hunk (LTY-PATCH): `path`/`oldStart`/`newStart` render in this
+ * viewport's header (not `ExerciseHeader` or `provenance`); `lineKinds` and
+ * the starts go on to `CodeDisplay` as its path-free `Hunk`.
  */
 type Hunk = {
   path: string
@@ -44,22 +40,15 @@ type TypingViewportProps = {
   cursorDisplay: number
   textGradient?: TextGradient
   className?: string
-  /** A step's patch overlay, when it has one — absent, this renders exactly as it always has. */
+  /** A step's patch overlay, when it has one. */
   hunk?: Hunk
 }
 
 /**
- * The one thing in the card that scrolls.
- *
- * The split from `CodeDisplay` is what makes the sticky-prompt layout
- * expressible at all. `CodeDisplay` used to size itself (`h-[500px]`)
- * because it owned its own scroll; this component takes its height from the
- * layout (`min-h-0 flex-1`) and hands the renderer whatever is left.
- *
- * It owns three things the renderer no longer does: the scroll box, the
- * declared scroll intent, and caret-following. It reaches the caret through
- * a ref the display forwards, so the display never has to know why anyone
- * wants its caret node.
+ * The one thing in the card that scrolls. It takes its height from the
+ * layout (`min-h-0 flex-1`), which makes the sticky-prompt layout possible,
+ * and owns the scroll box, the declared scroll intent and caret-following
+ * (via a ref `CodeDisplay` forwards).
  */
 export const TypingViewport: FC<TypingViewportProps> = ({
   displayCode,

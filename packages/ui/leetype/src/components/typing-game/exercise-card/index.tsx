@@ -33,11 +33,8 @@ type ExerciseCardProps = {
   attempt: number
   // ── Engine projections for this step's typing block ──────────────────
   /**
-   * The engine's rendered text for this step — `Layout.displaySource`, not
-   * `typingBlockOf(step)?.source`. The two differ once the source carries a
-   * context span (its `‹…›` delimiters are stripped before this is built),
-   * and `roles`/`slotOfDisplay`/`slotStatus`/`visibility` below are indexed
-   * against the rendered form, not the raw authored one.
+   * The engine's rendered text (`Layout.displaySource`), not the authored
+   * source: `‹…›` delimiters are stripped, and the maps below index this.
    */
   displaySource: string
   roles: Uint8Array
@@ -46,10 +43,8 @@ type ExerciseCardProps = {
   visibility: Uint8Array
   cursorDisplay: number
   /**
-   * Whether a manual-reveal toggle currently has the auto-hide loop frozen
-   * open, and how much of that freeze is left (`1` just after toggling,
-   * decaying to `0`). Drives the toggle's visual ergonomic effect below —
-   * never `CodeDisplay`, which owns no masking-state affordance of its own.
+   * Whether manual reveal has the auto-hide loop frozen open, and how much of
+   * the freeze is left (`1` → `0`). Drives the pill below, not `CodeDisplay`.
    */
   manualRevealActive: boolean
   manualRevealFraction: number
@@ -78,23 +73,14 @@ type ExerciseCardProps = {
  *         ●●●●○○○○○○○○
  * ```
  *
- * This component composes and does nothing else. It does not know what a
- * caret is and it does not know what a competency is — the projections
- * arrive as props and are handed on, and the step arrives as data.
+ * Composition only: it knows neither carets nor competencies.
  *
- * The 20/80 split is not cosmetic: it is the cognitive-load allocation
- * stated as layout, and it holds at every viewport because it is expressed
- * as flex basis on a fixed child plus `min-h-0 flex-1` on the flexible one,
- * rather than as a percentage that collapses on short windows.
+ * The 20/80 split is the cognitive-load allocation as layout, expressed as a
+ * fixed child plus `min-h-0 flex-1` so it holds on short windows.
  *
- * # Why the textarea lives here and not one level down
- *
- * It is the keystroke-capture element, and it must survive a step advance
- * with focus intact — the player's hands do not leave the keys, so a step
- * boundary that dropped focus would silently stop accepting input. Mounting
- * it above everything that changes per step (and never keying it by step) is
- * what makes that true by construction rather than by a refocus effect
- * racing the render.
+ * The keystroke-capture textarea lives here, above everything that changes
+ * per step and never keyed by step, so focus survives a step advance by
+ * construction.
  */
 export const ExerciseCard: FC<ExerciseCardProps> = ({
   step,
@@ -122,27 +108,14 @@ export const ExerciseCard: FC<ExerciseCardProps> = ({
   const canType = gameState === "playing"
   const hint = rejection ? REJECTION_HINT[rejection] : undefined
   const diff = typingBlockOf(step)?.diff
-  // Memoized on `step`, not recomputed every render: `promptBlocksOf` filters
-  // a fresh array on every call regardless of whether `step` changed, and the
-  // session clock re-renders this card every 250ms independent of the step.
-  // PromptPanel memoizes its own derived rows on this `blocks` reference
-  // specifically so useFittedPage can tell "the prompt changed" from "a tick
-  // happened" - an unmemoized call here would hand it a new reference every
-  // tick regardless, defeating that distinction before it ever sees it.
+  // Memoized on `step`: the session clock re-renders every 250ms, and
+  // PromptPanel keys its derived rows on this reference to tell "the prompt
+  // changed" from "a tick happened".
   //
-  // This repo does not run the React Compiler at build time (no
-  // babel-plugin-react-compiler anywhere in the toolchain); eslint-plugin-
-  // react-hooks bundles the compiler purely as a static lint healthcheck,
-  // and it bails on compiling *this component* for a reason unrelated to
-  // this memo: with `blocks` typed as `ReadonlyArray<ReadBlock>` on
-  // PromptPanel's prop (a large discriminated union), the compiler cannot
-  // get through the `hunk` conditional-object below (`diff && { ...,
-  // lineKinds: ... }`) a few lines down. Verified by bisection - swapping
-  // `ReadBlock` for a plain object type, or dropping the `hunk` expression,
-  // each independently clears the diagnostic with this `useMemo` unchanged.
-  // Since the compiler isn't actually transforming this component, the bail
-  // has no runtime effect; the memoization here is real and hand-written
-  // either way.
+  // The React Compiler only runs as a lint healthcheck here (no build
+  // plugin). It bails on this component because of the `hunk` conditional
+  // object over the `ReadBlock` union below, unrelated to this memo, so the
+  // bail has no runtime effect.
   // eslint-disable-next-line react-hooks/preserve-manual-memoization
   const blocks = useMemo(() => promptBlocksOf(step), [step])
   const hunk = diff && {
@@ -160,10 +133,7 @@ export const ExerciseCard: FC<ExerciseCardProps> = ({
   })
 
   return (
-    // A <label> associated with the hidden textarea below: clicking anywhere
-    // on the card natively focuses the input (and is a no-op while the
-    // textarea is disabled), so the whole card acts as the typing target
-    // without a manual click handler.
+    // A <label> for the hidden textarea: clicking anywhere focuses it.
     <label
       htmlFor={inputId}
       className={cn("flex h-full min-h-0 flex-col gap-3", className)}
@@ -214,12 +184,8 @@ export const ExerciseCard: FC<ExerciseCardProps> = ({
         )}
 
         {canType && manualRevealActive && (
-          // The manual-reveal toggle's whole visual footprint: a small,
-          // out-of-the-way pill, not a banner. It fades as the freeze runs
-          // down (`manualRevealFraction`) instead of showing a countdown
-          // number — informative without being another thing to read, which
-          // is the same "non-mentally-load-bearing" bar the reveal loop
-          // itself is held to.
+          // A small pill that fades as the freeze runs down, rather than a
+          // countdown to read.
           <div
             role="status"
             aria-live="polite"

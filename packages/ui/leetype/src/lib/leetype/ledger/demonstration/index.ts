@@ -1,12 +1,10 @@
 /**
- * L3 (LTY-LEDGER, #1229) — `docs/canon/complexity-witness-canon.typ` Def.
- * 10.2, Thm. 10.1, Cor. 10.1, Prop. 10.1; lapse from
- * `adaptive-learning-canon.typ` Def. 5.4, Thm. 5.3.
+ * Demonstration (LTY-LEDGER L3): canon Def. 10.2, Thm. 10.1, Cor. 10.1,
+ * Prop. 10.1; lapse from `adaptive-learning-canon.typ` Def. 5.4, Thm. 5.3.
  *
  * `demonstrated(p, ledger, now)` evaluates Def. 10.2's conjunction over
- * whatever the ledger reads back (#1229: "this story computes the condition
- * over whatever the ledger reads back"), and reports each conjunct on its
- * own, so a "what's left" view is a projection and never an opaque boolean.
+ * whatever the ledger reads back and reports each conjunct on its own, so a
+ * "what's left" view is a projection, never an opaque boolean.
  *
  * # The three conjuncts, concretely
  *
@@ -16,8 +14,8 @@
  * 1. *Positive transfer*: `witness` observations with outcome `correct`
  *    (the learner named μ(d) for the diff they chose) on at least
  *    `TRANSFER_REWRITES` distinct `rewriteKey`s, each from a different
- *    round. The key is `rewriteKeyOf` over `(G_A, G_{A+d})` (#1212 G4,
- *    `lib/leetype/rewrite`), so three rounds carrying one rewrite are one
+ *    round. The key is `rewriteKeyOf` over `(G_A, G_{A+d})`
+ *    (`lib/leetype/rewrite`), so three rounds carrying one rewrite are one
  *    piece of evidence whatever their ids, programs or dimension names; and
  *    one round offering three rewrites of `p` is one round. The count is a
  *    maximum matching of rounds to keys (`roundsPairedWithRewrites`).
@@ -28,14 +26,10 @@
  *    time ("in the presented option set where μ(d) is something else"), and
  *    it is exactly the observation Prop. 10.1's always-select-`p` learner
  *    can never produce: offered `p` where `p` is wrong, they take it.
- *    A diff-level reading (the learner passed over `p`'s rewrite in `D`)
- *    was considered and not used: choosing a rewrite answers "which fits
- *    the budget", which can be settled from the cost alone without telling
- *    `p` apart from anything. "Nearby": the card's distractors are the
- *    propositions this surface puts beside the true witness; they are a
- *    seeded sample of the register until Rem. 6.2's nearness preferences
- *    land (#1331, #1332), and when they do they narrow the card, not this
- *    definition.
+ *    Passing over `p`'s rewrite in `D` does not count: choosing a rewrite
+ *    can be settled from cost alone. "Nearby" is whatever the card puts
+ *    beside the true witness (a seeded register sample until Rem. 6.2's
+ *    preferences land, #1331, #1332).
  * 3. *Retention*: the qualifying observations of (1) and (2) fall into at
  *    least two *spaced sessions*. A session boundary separates two
  *    observations when their `sessionId`s differ **and** they are at least
@@ -67,7 +61,7 @@ import type { Observation } from "@leetype/lib/leetype/ledger/observation"
 import type { PropositionId } from "@leetype/lib/leetype/proposition-register/generated"
 
 /**
- * Distinct rewrites Def. 10.2 (1) asks for — derived, not felt (#1229).
+ * Distinct rewrites Def. 10.2 (1) asks for, derived rather than picked.
  *
  * Thm. 10.1: under the null of a uniform guess over a card's `k` options a
  * correct selection has probability `1/k`, and at most 1 under competence,
@@ -168,7 +162,7 @@ export type Demonstration = {
  * and a rewrite key no other counted transfer uses: the size of a maximum
  * matching between the rounds and the rewrite keys the correct witness
  * observations connect. One round whose `D` holds three differently shaped
- * rewrites of `p` is one round, not three (Codex, #1599); three rounds
+ * rewrites of `p` is one round, not three; three rounds
  * sharing one rewrite are one rewrite. Kuhn's augmenting paths; the ring
  * holds at most `RING_CAPACITY` observations, so this is a few hundred steps.
  */

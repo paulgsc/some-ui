@@ -4,13 +4,9 @@ import type { GateFigures, PlayableGame } from "./deletions-are-free"
 import { compareGateFigures, playToCompletion } from "./deletions-are-free"
 
 /**
- * Unit coverage for this file's pure logic — `compareGateFigures` and the
- * keystroke-skipping loop `playToCompletion` runs. The real proof (LTY-PATCH
- * P6, #1081's "not a comment" bar) is `check-deletions-are-free.ts` driving
- * the actual compiled engine, which no `*.test.ts` file can do (see
- * `load-real-wasm.ts`'s own doc comment). What belongs here instead: proof
- * that the *comparison* itself would actually catch a real divergence,
- * rather than being a check that always passes regardless of its inputs.
+ * Unit coverage for `compareGateFigures` and `playToCompletion`'s skipping
+ * loop: proof the comparison catches a real divergence. The engine-level
+ * proof is `check-deletions-are-free.ts`.
  */
 
 const FIGURES: GateFigures = {

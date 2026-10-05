@@ -75,9 +75,7 @@ describe("ConstraintSetSchema", () => {
     ])
   })
 
-  // Review finding on #1251: Def. 1.2 defines C as "a finite set of
-  // constraints over distinct dimensions" — two bounds on the same
-  // dimension is an ambiguous constraint, not two independent ones.
+  // Two bounds on one dimension are ambiguous, not independent.
   it('rejects two constraints on the same dimension — Def. 1.2\'s own "distinct dimensions"', () => {
     const duplicate = { ...VALID_CONSTRAINT, operator: ">=", bound: 1 }
     expect(() =>

@@ -20,16 +20,12 @@ const Phone = ({ children }: { children: ReactNode }) => (
   <div className="mx-auto w-full max-w-[390px] p-3">{children}</div>
 )
 
-// Sourced from the real, generated register rather than hand-typed example
-// text — review finding on this PR (chatgpt-codex-connector): a hand-
-// cleaned example can look right in Storybook while the real pipeline
-// still renders raw typst markup verbatim, concealing exactly the gap that
-// finding caught. Using `PROPOSITION_REGISTER` directly means these
-// stories fail the moment `justification` stops being real display text.
+// From the real generated register, not hand-typed text, so these stories
+// show it if `justification` ever regresses to raw typst markup.
 const SEQ_STATEMENT = PROPOSITION_REGISTER["CW-P1"].statement
 const PREPROCESSING_STATEMENT = PROPOSITION_REGISTER["CW-P5"].statement
 
-/** The register's own statement alone — every active proposition has one by construction (`#1330`). */
+/** The register's statement alone. */
 export const StatementOnly: Story = {
   render: () => (
     <Phone>
@@ -39,10 +35,8 @@ export const StatementOnly: Story = {
 }
 
 /**
- * The general claim, plus the round-specific gloss beneath it — never
- * instead of it (#1220's own acceptance criterion). `gloss` is authored
- * per-round prose (`DiffSetMember.propositionGloss`), not canon markup, so
- * this one stays hand-typed.
+ * The general claim with the round-specific gloss beneath it, never instead.
+ * `gloss` is authored prose, so it stays hand-typed.
  */
 export const WithRoundSpecificGloss: Story = {
   render: () => (

@@ -13,17 +13,9 @@ import type { ExercisePickerProps } from "./types"
 export type { ExercisePickerBadge, ExercisePickerProps } from "./types"
 
 /**
- * Choose what to practice, instead of a Fisher–Yates bag choosing for you.
- *
- * # Why this replaced the seeded schedule
- *
- * `lib/leetype/exercises/scheduling.ts` used to pick the next exercise on
- * every session, cyclically and at random. That optimized for corpus
- * coverage, not for the thing that actually keeps a learner coming back:
- * choosing your own target is a stronger retention lever than a well-shuffled
- * bag, and it is also the only way a player can ever go straight at a concept
- * they know is weak. The random picker is gone, not merely superseded — see
- * `git log` on `scheduling.ts` for what it used to do.
+ * Choose what to practice, instead of a shuffled bag choosing for you:
+ * choosing your own target keeps a learner coming back better than corpus
+ * coverage does, and is the only way to go straight at a weak concept.
  *
  * # Where the "starved/popular" badge comes from, and where it doesn't
  *

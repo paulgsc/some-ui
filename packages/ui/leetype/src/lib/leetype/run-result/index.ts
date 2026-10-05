@@ -88,7 +88,7 @@ export type RunResult =
  * "exceeded" here says nothing about admissibility, only about the clock.
  *
  * Takes a raw number rather than a `Budget` object because `Budget` (Def.
- * 1.3) has not landed yet (#1205, Step 2) — update this signature to take
+ * 1.3) has not landed yet (Step 2) — update this signature to take
  * `Budget`'s wall-clock annotation once it does, rather than adding a
  * second comparison path beside it.
  */

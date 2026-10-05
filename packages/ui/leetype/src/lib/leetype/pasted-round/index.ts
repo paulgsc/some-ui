@@ -56,7 +56,7 @@ export function createPastedRoundStore(
       // Quota or privacy mode: the round plays from memory for this visit.
       // Whatever the slot held before is removed rather than left standing,
       // or a reload would bring back the round this one replaced (the same
-      // finding TOPIK's store records, #1555).
+      // finding TOPIK's store records).
       try {
         if (storage?.removeItem) storage.removeItem(PASTED_ROUND_KEY)
         else storage?.setItem(PASTED_ROUND_KEY, "")

@@ -24,11 +24,8 @@ describe("SourcePanel", () => {
     expect(container.textContent).not.toContain("return n * 2")
   })
 
-  // Stands in for "opens on a fresh round with an empty ledger" (R1's
-  // acceptance criterion): this component takes no ledger, no ordinal and no
-  // prior-answer prop at all, so a bare mount with nothing but `algorithm`
-  // *is* the fresh-round, empty-ledger case, and the toggle works the same
-  // way regardless.
+  // No ledger, ordinal or prior-answer prop exists, so a bare mount is the
+  // fresh-round case.
   it("opens immediately on a fresh mount — no ledger or prior state required", async () => {
     const { container } = render(<SourcePanel algorithm={ALGORITHM} />)
     await open()
@@ -47,9 +44,7 @@ describe("SourcePanel", () => {
     expect(captions).toHaveLength(2)
     expect(captions[0]?.textContent).toContain(ALGORITHM.entryPoint)
     expect(captions[1]?.textContent).toContain(ALGORITHM.inputAlphabet)
-    // Regression for a review finding on #1248: a single `truncate`d line
-    // silently clipped an unbounded `inputAlphabet` with no way to recover
-    // the omitted text. Neither caption may clip again.
+    // Neither caption may clip the unbounded `inputAlphabet`.
     for (const caption of captions) {
       expect(caption.className).not.toMatch(/\btruncate\b/)
     }
@@ -68,10 +63,7 @@ describe("SourcePanel", () => {
       entryPoint: "main",
       inputAlphabet: "none",
     }
-    // Same instance, not remounted — a caller may legitimately swap
-    // `algorithm` this way (a review finding on #1248: without resetting,
-    // a round left open would carry `open = true` straight into the next
-    // round's source).
+    // Same instance, not remounted: an open round must not stay open.
     rerender(<SourcePanel algorithm={NEXT_ALGORITHM} />)
 
     expect(screen.getByText("Show source")).toBeInTheDocument()
@@ -93,9 +85,7 @@ describe("SourcePanel", () => {
     expect(screen.getByText("Rust")).toBeInTheDocument()
   })
 
-  // Review finding on #1430 (chatgpt-codex-connector): the code region here
-  // scrolls horizontally on its own, the same as `DiffCard`'s, and the ui-fit
-  // sweep needs a way to tell that deliberate scroller from an overflow.
+  // The code region scrolls horizontally by design; ui-fit needs the marker.
   it("marks its own horizontal scroller, the same as DiffCard's", async () => {
     const { container } = render(<SourcePanel algorithm={ALGORITHM} />)
     await open()

@@ -66,14 +66,8 @@ describe("ConstraintDiff", () => {
     expect(container.textContent).not.toContain("new bound:")
   })
 
-  // Review finding on #1253: `ConstraintSchema.dimension` carries no length
-  // cap, and this card's outer wrapper is `overflow-hidden` — a long,
-  // unbroken dimension name with nowhere to wrap would overflow past the
-  // card and be silently clipped, potentially losing part of a bound's own
-  // digits. jsdom does not lay out real overflow, so this pins the class
-  // contract that prevents it (`min-w-0` lets the row text shrink instead of
-  // forcing the row wider than the card; `break-words` lets an unbroken
-  // dimension name wrap onto a second line) rather than measuring pixels.
+  // jsdom has no layout, so pin the classes that let a long dimension name
+  // wrap instead of being clipped (`min-w-0`, `break-words`).
   it("lets a long, unbroken dimension name wrap instead of overflow", () => {
     const longDimension =
       "numberOfElementsRemainingInTheHashMapAfterEveryInsertionAndRemoval"

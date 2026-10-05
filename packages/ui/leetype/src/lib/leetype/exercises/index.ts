@@ -11,66 +11,35 @@ import {
 } from "./seed"
 
 /**
- * Where exercises come from — a deliberately dumb shim.
- *
- * # What this is standing in for
+ * Where exercises come from: a deliberately dumb shim.
  *
  * ```text
  * source → AST → concept extraction → evidence graph → difficulty estimation
  *        → minimal competency decomposition → forcing-question wording → steps
  * ```
  *
- * Every arrow left of the last one is deferred out of M20. This module
- * occupies the last arrow only: it hands back steps. The steps happen to
- * have been written by a person rather than derived, and that is the entire
- * difference between this file and the eventual pipeline.
+ * This module occupies the last arrow only: it hands back steps, written by
+ * a person rather than derived. **The acceptance test for a real pipeline is
+ * that it emits what this emits**: the same `Exercise` shape, validated by
+ * the same schema, through this function. A different shape is a change to
+ * `types/exercise.ts` argued on its merits.
  *
- * **The acceptance test for the real pipeline is therefore narrow: it emits
- * what this emits.** Not "a superset", not "something similar" — the same
- * `Exercise` value shape, validated by the same schema, through this same
- * function. If the pipeline wants a different shape, that is a change to
- * `types/exercise.ts` argued on its own merits, not something the generator
- * gets to decide on its way past.
+ * The rule the pipeline inherits: **no judgment is allowed unless it can
+ * produce its own justification** ("depends on borrowing" → show the edge).
+ * `provenance` and `concepts` are where justification will attach.
  *
- * The rule the pipeline inherits, and the reason the *shape* matters more
- * than the contents: **no judgment is allowed unless it can produce its own
- * justification.** "This module demonstrates ownership" → show the spans.
- * "This concept depends on borrowing" → show the edge. A decision that
- * cannot explain itself is a bug or an open research problem, not acceptable
- * model behaviour. `provenance` and `concepts` are where that justification
- * will attach; they are optional and inert today because inventing structure
- * for a judgment nobody has made yet is worse than leaving room for it.
- *
- * # Why exactly one export
- *
- * The shim is allowed to be a hard-coded array. What it is not allowed to be
- * is *diffuse*: if three call sites reach into the seed set directly,
- * replacing it later means touching three places and re-arguing the format
- * at each. So the seed data is private to this directory and nothing but
- * this module imports it.
+ * The seed data is private to this directory and only this module imports
+ * it, so replacing it is a change in one place.
  */
 
 /**
- * Everything the future selector will need and this one ignores, plus the
- * one field it does read.
+ * Everything a future selector will need, plus the one field this shim reads
+ * (`preferId`). `completed` is accepted and ignored so replacing the body
+ * needs no signature change; ignoring it is the implementation, not the
+ * contract.
  *
- * The eventual pipeline picks the next probe by expected information gain
- * over a learner model. This shim reads only `preferId`. `completed` is
- * taken *now* — and ignored — so that the replacement is a body swap;
- * omitting it would make the replacement a signature change through every
- * caller.
- *
- * **Ignoring `completed` is the current implementation, not the contract.**
- *
- * `preferId` is required rather than optional: an implicit "no preference"
- * default used to silently resolve to the first corpus exercise
- * (`entryApi`), which is exactly the deterministic-first-item behavior this
- * shim's own callers exist to replace. A caller that wants a specific
- * fixture — a story, a test, a deep link — names it; a caller that wants
- * "whatever the learner chooses" asks `ExercisePicker`
- * (`components/exercise-picker`), not this shim. (LTY-PICKER,
- * `docs/leetype/README.md`: the seeded schedule this comment used to point
- * to instead is gone, not replaced in kind.)
+ * `preferId` is required: a caller wanting a specific fixture names it, and
+ * one wanting the learner's choice asks `ExercisePicker`.
  */
 export type SelectionState = {
   /** Exercises the player has already finished, most recent last. */
@@ -80,31 +49,16 @@ export type SelectionState = {
 }
 
 /**
- * The seed set, validated at module load.
- *
- * The shim is held to the same standard as a host-supplied corpus because
- * that is what it is pretending to be: if a hand-authored step drifts out of
- * the schema, it should fail here, loudly, at the seam, and not three
- * components later as an undefined typing block.
+ * The seed set, validated at module load like a host-supplied corpus, so a
+ * drifting step fails here rather than later as an undefined typing block.
  */
 const CORPUS: ReadonlyArray<Exercise> =
   ExerciseCorpusSchema.parse(SEED_EXERCISES)
 
 /**
- * The exercise `preferId` names.
- *
- * Synchronous and boring on purpose: no network, no cache, no promise. The
- * whole point of the quarantine is that the interesting part is somewhere
- * else, and a shim that had to be awaited would have already started
- * pretending otherwise.
- *
- * Throws on an id nothing in the corpus matches, rather than silently
- * substituting a default exercise: the corpus already fails loudly at
- * module load if it does not validate (see `CORPUS` above), and a selection
- * seam that quietly served the wrong exercise for a stale deep link or a
- * typo'd fixture id would be the same "fail here, not three components
- * later" argument going unapplied at the one seam that actually takes a
- * caller-supplied id.
+ * The exercise `preferId` names. Synchronous on purpose: no network, cache
+ * or promise. Throws on an unknown id rather than substituting a default, so
+ * a stale deep link or typo fails at the seam.
  */
 export function nextExercise(state: SelectionState): Exercise {
   const exercise = CORPUS.find((candidate) => candidate.id === state.preferId)
@@ -128,10 +82,8 @@ export const FIXTURE_ADVERSARIAL_EXERCISE_ID = ADVERSARIAL_EXERCISE_ID
 export const FIXTURE_DIAGNOSTIC_EXERCISE_IDS = DIAGNOSTIC_EXERCISE_IDS
 
 /**
- * A step over `PromptBlockSchema`'s prose budget, for stories and tests
- * that need to prove the panel's pagination path still works as a
- * defensive floor. Never handed out by `nextExercise` and never validated
- * against `StepSchema` — see `./seed.ts` for why.
+ * A step over the prose budget, for proving the panel's pagination fallback.
+ * Never served by `nextExercise` or validated (see `./seed.ts`).
  */
 export const FIXTURE_HOSTILE_PROMPT_STEP: Step = HOSTILE_PROMPT_STEP
 
@@ -139,46 +91,25 @@ export const FIXTURE_HOSTILE_PROMPT_STEP: Step = HOSTILE_PROMPT_STEP
 export const FIXTURE_LEETCODE_3302_EXERCISE_ID = LEETCODE_3302_EXERCISE_ID
 
 /**
- * Every exercise in the validated corpus — for lints that need to check a
- * property across *all* of it, which `nextExercise` cannot express: it only
- * ever returns the one exercise its `preferId` names, so a
- * lint built out of individual `nextExercise` calls silently stops covering
- * the corpus the moment a new exercise is added and nothing calls for it by
- * id. Not a runtime selection API — a host asking what the player should
- * see next always goes through `nextExercise`, this export included.
+ * Every exercise in the validated corpus, for lints over *all* of it (a lint
+ * built from `nextExercise` calls would miss new exercises). Not a runtime
+ * selection API.
  */
 export const ALL_FIXTURE_EXERCISES: ReadonlyArray<Exercise> = CORPUS
 
 /**
- * The validated exercises eligible for a normal, user-facing session —
- * every seed exercise except the adversarial fixture, including the
- * LeetCode 3302 curriculum (`LEETCODE_3302_EXERCISE_ID`) alongside the rest.
- *
- * `ExercisePicker` renders this list as the learner's tile choices (LTY-
- * PICKER, `docs/leetype/README.md`); this pool used to feed a random
- * schedule instead of a picker.
+ * The exercises eligible for a user-facing session: every seed exercise but
+ * the adversarial fixture. `ExercisePicker` renders them as tiles.
  */
 export const SESSION_EXERCISE_IDS: ReadonlyArray<string> = CORPUS.filter(
   (exercise) => exercise.id !== ADVERSARIAL_EXERCISE_ID
 ).map((exercise) => exercise.id)
 
 /**
- * Every step of every session-eligible exercise, flattened.
- *
- * The reading surface's distractor pool (LTY-MOBILE,
- * `lib/leetype/reading-probe`): a mobile card asks the player to pick the
- * claim this step makes out of claims the corpus makes about *other* steps,
- * so it needs the corpus as a whole rather than the one exercise in flight.
- *
- * Exported from the shim rather than reached for in `./seed` directly, for
- * the reason this module's own doc comment gives: the seed data stays private
- * so replacing it later is a body swap in one place. It is derived from the
- * same `SESSION_EXERCISE_IDS` filter, so the adversarial fixture's
- * deliberately hostile prose can never turn up as a distractor on a real
- * card.
- *
- * Not a selection API: a host asking what the player should see next still
- * goes through `nextExercise`.
+ * Every step of every session-eligible exercise, flattened: the reading
+ * surface's distractor pool (`lib/leetype/reading-probe`). Filtered like
+ * `SESSION_EXERCISE_IDS`, so the adversarial fixture's prose never becomes a
+ * distractor. Not a selection API.
  */
 export const SESSION_STEPS: ReadonlyArray<Step> = CORPUS.filter((exercise) =>
   SESSION_EXERCISE_IDS.includes(exercise.id)

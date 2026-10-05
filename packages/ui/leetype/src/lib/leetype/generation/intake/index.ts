@@ -46,7 +46,7 @@ const isInlineSpace = (char: string | undefined): boolean =>
  * The body of every ``` or ```json fence in `text`, in order. A linear scan
  * rather than a regular expression, for the reason TOPIK's intake gives
  * (`@some-ui/topik`, `lib/topik/generation/intake`): the obvious pattern
- * backtracks polynomially on whatever was pasted (CodeQL, #1564).
+ * backtracks polynomially on whatever was pasted (CodeQL).
  */
 export function fencedBodies(text: string): Array<string> {
   const bodies: Array<string> = []

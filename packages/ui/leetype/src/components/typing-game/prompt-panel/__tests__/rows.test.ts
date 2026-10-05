@@ -100,7 +100,7 @@ const KNOWN_ROW_KINDS: ReadonlySet<EvidenceRow["kind"]> = new Set([
   "region",
 ])
 
-describe("PromptPanel's inputs stay blind to patch overlays (LTY-PATCH P6, #1081)", () => {
+describe("PromptPanel's inputs stay blind to patch overlays (LTY-PATCH)", () => {
   // The epic's own claim: "the prompt side does not move." evidenceRowsOf
   // operates on ReadBlock[] — promptBlocksOf's output, which filters the
   // typing block (and therefore `patch`) out before evidenceRowsOf ever

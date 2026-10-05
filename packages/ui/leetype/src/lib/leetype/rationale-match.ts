@@ -13,8 +13,8 @@ export type MatchState = {
 }
 
 /**
- * The reason-reaffirmation shim's one piece of new logic (LTY-WHY W3,
- * #1103): given a fixed list of candidate strings and everything typed so
+ * The reason-reaffirmation shim's one piece of new logic (LTY-WHY W3):
+ * given a fixed list of candidate strings and everything typed so
  * far, says which candidates are still possible and whether one is done.
  * See `docs/leetype/README.md`'s LTY-WHY section for the shim this
  * function is the entire judgment budget of.

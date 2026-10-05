@@ -1,7 +1,6 @@
 /**
- * L2 (LTY-LEDGER, #1228) — `docs/canon/complexity-witness-canon.typ`
- * Prop. 9.1, Rem. 9.1, Ax. 9.2; `adaptive-learning-canon.typ` Ax. 3.1,
- * Ax. 5.1.
+ * Observations (LTY-LEDGER L2): canon Prop. 9.1, Rem. 9.1, Ax. 9.2;
+ * `adaptive-learning-canon.typ` Ax. 3.1, Ax. 5.1.
  *
  * What one commitment on a round's proposition card is evidence of, recorded
  * as one of three outcomes and never as a boolean (Prop. 9.1). Rem. 9.1 is
@@ -31,10 +30,10 @@ import { z } from "zod"
 /**
  * Prop. 9.1's three observations. `incorrect` carries the proposition the
  * learner chose: *which* wrong proposition is the content of the
- * misconception (#1228), and it is what a discriminating counter-instance is
+ * misconception, and it is what a discriminating counter-instance is
  * built from.
  *
- * Shaped for X3's predictions (#1224) as well: a prediction is a commitment
+ * Shaped for X3's predictions as well: a prediction is a commitment
  * from a closed set with an abstention, over options that are register
  * entries, so it lands in these same three cases with `chosen` the entry its
  * chosen option asserts. It will add a `source`, not an outcome.

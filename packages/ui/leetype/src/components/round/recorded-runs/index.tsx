@@ -57,7 +57,7 @@ const RunList: FC<{ title: string; lines: ReadonlyArray<RunLine> }> = ({
 )
 
 /**
- * `r` (Def. 4.1), as the round shows it (X2, #1223): what the original
+ * `r` (Def. 4.1), as the round shows it (X2): what the original
  * program and the learner's chosen rewrite did when they were run at the
  * old bounds (`C`) and the new ones (`C′`).
  *

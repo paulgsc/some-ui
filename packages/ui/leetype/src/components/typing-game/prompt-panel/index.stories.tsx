@@ -37,12 +37,7 @@ const hostile: Exercise = wrap(
   FIXTURE_HOSTILE_PROMPT_STEP
 )
 
-/**
- * One line of ordinary prose — the ordinary case. Not pulled from `seed`:
- * LTY-FAMILIES A4 rewrote every step in `entryApi` to carry its claims as
- * evidence or as an unrendered `obligation` rather than as a `PromptBlock`,
- * so no step in the validated corpus has plain prose left to show here.
- */
+/** One line of ordinary prose. Hand-written: no corpus step still carries plain prose. */
 const oneLinePromptExercise = wrap(
   "fixture-one-line-prompt",
   "One-line prompt fixture",
@@ -64,11 +59,7 @@ const oneLinePromptExercise = wrap(
   }
 )
 
-/**
- * Two lines, the longest a well-authored prompt block should carry
- * (`PROMPT_MAX_LINES`, `types/exercise.ts`) — same reason this isn't
- * pulled from `seed` as the one-line fixture just above.
- */
+/** Two lines (`PROMPT_MAX_LINES`), hand-written like the one above. */
 const twoLinePromptExercise = wrap(
   "fixture-two-line-prompt",
   "Two-line prompt fixture",
@@ -93,12 +84,7 @@ const twoLinePromptExercise = wrap(
   }
 )
 
-// ── One fixture step per evidence kind ────────────────────────────────────
-//
-// None of these live in the seed corpus: the shim's hand-authored exercises
-// predate the evidence kinds, and rewriting them to use one is an authoring
-// decision for its own story, not a side effect of proving the panel can
-// render what it is handed.
+// ── One fixture step per evidence kind (not in the seed corpus) ───────────
 
 const transitionExercise = wrap("fixture-transition", "Transition fixture", {
   id: "story-transition",
@@ -266,7 +252,7 @@ export const GoalOnly: Story = {
   ),
 }
 
-// ── One story per evidence kind (LTY-EVIDENCE E2/E3) ──────────────────────
+// ── One story per evidence kind ───────────────────────────────────────────
 
 /** The `transition` kind: a before/after pair. */
 export const Transition: Story = {

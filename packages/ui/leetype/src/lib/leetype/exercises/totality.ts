@@ -9,97 +9,47 @@ import type { ObligationGraph } from "./obligation-graph"
 import { fallbackRoute } from "./worked-route"
 
 /**
- * Compile-time totality (LTY-ROUTE R4) — "the one that is easy to get
- * wrong," per the issue's own warning, because the tempting proof is to
- * enumerate paths and the correct one is structural: acyclicity plus a
- * well-founded, strictly-decreasing measure.
+ * Compile-time totality (LTY-ROUTE R4). The proof is structural, not path
+ * enumeration: acyclicity plus a well-founded, strictly decreasing measure.
  *
- * # The measure, stated plainly
+ * The measure is the count of obligations remaining from the current node
+ * to the end of the route, `fallbackRoute(graph, from).steps.length`. It
+ * drops by one per step (`requires` gives a strict acyclic order), is
+ * bounded below by 1, and the domain is finite (Axiom 1.1). So
+ * `checkFallbackReachesTerminal` calls `fallbackRoute` once per node: the
+ * returned value is the witness.
  *
- * For a graph that passes every check below, the measure is *the count
- * of not-yet-linearized obligations remaining from the current node to
- * the end of the route*. `fallbackRoute(graph, from).steps.length` is
- * exactly that count. It strictly decreases by one at every step (the
- * suffix from a node's successor is always one shorter than the suffix
- * from the node itself — `worked-route.test.ts`'s "recovers dependency
- * order" fixtures already establish `requires` gives a strict, acyclic
- * order), it is bounded below by 1 (the terminal's own suffix), and the
- * domain is finite (Axiom 1.1). A measure with those three properties is
- * a proof of termination by construction — no path needs to be walked to
- * know this, which is why `checkFallbackReachesTerminal` below calls
- * `fallbackRoute` once per node rather than simulating a multi-attempt
- * playthrough: the *value* it returns each time is the witness, not the
- * act of walking it.
+ * The graph stores no separate advance or escape edges: `linearize()`'s
+ * order is the advance edge and `fallbackRoute` the escape edge. Hence:
  *
- * # What each acceptance-list item below actually checks, honestly
- *
- * A few items in R4's issue presuppose graph features this workspace's
- * `Obligation`/`ObligationGraph` (R2, R3) does not model as separate
- * stored edges — there is no independent "advance edge" or "escape edge"
- * field, because `linearize()`'s topological order already *is* the
- * advance edge (implicitly: whatever comes next) and `fallbackRoute`
- * already *is* the escape edge (computed, not stored). Redefining the
- * graph shape to store two more edge kinds that would always agree with
- * what `requires` already implies would be state with no consumer of its
- * own — exactly what `Challenge.dependsOn`'s deletion (`types/exercise.ts`)
- * already argued against once. So:
- *
- * - *"every node has an advance edge and an escape edge"* is checked as
- *   `checkSingleRoot` + `checkSingleTerminal`: together they prove every
- *   node but the terminal is required by something (an advance edge
- *   exists) and every node's fallback reaches the terminal
- *   (`checkFallbackReachesTerminal`, an escape edge exists).
- * - *"every declared sink maps to an existing bridge"* is checked as
- *   `checkSinkBridgesPresent`: this workspace has no bridge registry to
- *   check membership against yet (that is further-out work than this
- *   epic), so "existing" is checked as "present and non-empty" — the
- *   only claim about a bridge's existence this graph shape can make.
- * - *"no sink can lock progression"* is not a runtime check here — it is
- *   true by construction, because `fallbackRoute` (`worked-route.ts`)
- *   reads only `requires`. It never reads `sinkRoutes` or the value of
- *   `fallbackBridge`, so no sink data, however malformed, can be *read*
- *   by the one function that decides whether progression continues.
- *   `totality.test.ts` proves this empirically: mutating a graph's sink
- *   data arbitrarily and confirming the route is byte-identical.
+ * - "every node has an advance and an escape edge" is `checkSingleRoot` +
+ *   `checkSingleTerminal` + `checkFallbackReachesTerminal`.
+ * - "every declared sink maps to an existing bridge" is
+ *   `checkSinkBridgesPresent` (present and non-empty; there is no bridge
+ *   registry).
+ * - "no sink can lock progression" holds by construction: `fallbackRoute`
+ *   reads only `requires`, never sink data. `totality.test.ts` mutates sink
+ *   data and checks the route is unchanged.
  */
 
 /**
- * The longest an obligation graph's node count may be. Matches
- * `index.test.ts`'s own established ceiling for a *whole* exercise
- * ("carries one full curriculum, not a token two steps" — 8 to 12 steps)
- * rather than a number picked in the abstract: an obligation graph is a
- * subset of one exercise's steps (the construction/diagnostic-bearing
- * portion, excluding plain setup steps), so it can never legitimately
- * need to exceed what a whole exercise is already bounded to.
+ * The most nodes an obligation graph may have: the same ceiling as a whole
+ * exercise (8 to 12 steps, `index.test.ts`), since a graph is a subset of one
+ * exercise's steps.
  */
 export const MAX_OBLIGATIONS_PER_ROUTE = 12
 
 /**
- * Mirrors the engine's real `MAX_STEP_ATTEMPTS` (`crates/leetype_wasm`,
- * documented in `docs/leetype/README.md`'s "gate's miss is a repeat"
- * note: the third failed attempt advances regardless). Not redefined
- * authoritatively here — this epic's lane is `packages/ui/leetype` only,
- * no crate change — so this is a mirror for computing a static bound in
- * TypeScript, not the source of truth. If the engine's cap ever changes,
- * this must change with it; there is no binding that would fail loudly
- * if it didn't, which is the honest cost of not having a crate dependency
- * in this epic. Not exported: nothing outside `checkGraphSizeWithinBound`
- * below needs it by name, only the total it contributes to.
+ * Mirrors the engine's `MAX_STEP_ATTEMPTS` (`crates/leetype_wasm`; the third
+ * failed attempt advances regardless). Not the source of truth: if the
+ * engine's cap changes this must follow, and nothing will fail if it doesn't.
  */
 const ASSUMED_MAX_ATTEMPTS_PER_NODE = 3
 
 /**
- * The static bound R4's issue asks for, in the units its "Done when"
- * bullet actually uses: the worst-case total step count across a whole
- * route if every single obligation were escaped at the attempt cap
- * before advancing — `MAX_OBLIGATIONS_PER_ROUTE` nodes, each consuming up
- * to `ASSUMED_MAX_ATTEMPTS_PER_NODE` attempts before the engine's own cap
- * forces an advance. Reported in `checkGraphSizeWithinBound`'s violation
- * message rather than checked independently: for a fixed
- * `ASSUMED_MAX_ATTEMPTS_PER_NODE`, a graph within `MAX_OBLIGATIONS_PER_ROUTE`
- * nodes is definitionally within this bound too, so a second check
- * against the same underlying quantity would only restate the first in
- * different units, not test anything new.
+ * The worst-case total step count of a route if every obligation hit the
+ * attempt cap. Only reported in `checkGraphSizeWithinBound`'s message: the
+ * node bound already implies it.
  */
 const STATIC_ROUTE_STEP_BOUND =
   MAX_OBLIGATIONS_PER_ROUTE * ASSUMED_MAX_ATTEMPTS_PER_NODE
@@ -134,11 +84,8 @@ function checkEdgesTargetExistingNodes(
 }
 
 /**
- * No obligation (transitively) requires itself. Independent of
- * `linearize()`'s own cycle guard on purpose — a pure, non-throwing check
- * this module can run and report on without catching an exception from a
- * different module, and the thing `totality.test.ts` asserts "the
- * validator itself rejects a cyclic bridge" against.
+ * No obligation (transitively) requires itself. A pure, non-throwing check
+ * independent of `linearize()`'s own cycle guard.
  */
 function checkAcyclic(graph: ObligationGraph): Array<Violation> {
   const settled = new Set<string>()
@@ -196,10 +143,8 @@ function checkSingleRoot(graph: ObligationGraph): Array<Violation> {
 }
 
 /**
- * Exactly one node is required by nothing — the route's one terminal.
- * Together with `checkSingleRoot`, this is what "every node has an
- * advance edge" means here: every node but this one is a prerequisite of
- * something, so something comes after it.
+ * Exactly one node is required by nothing: the route's one terminal. With
+ * `checkSingleRoot`, every other node has something after it.
  */
 function checkSingleTerminal(graph: ObligationGraph): Array<Violation> {
   const requiredIds = new Set<string>()
@@ -210,8 +155,7 @@ function checkSingleTerminal(graph: ObligationGraph): Array<Violation> {
     .filter((id) => !requiredIds.has(id))
     .sort()
   if (terminals.length === 0) {
-    // Only reachable on a cyclic graph with no root either; checkAcyclic
-    // and checkSingleRoot already report the underlying cause.
+    // Only on a cyclic graph; checkAcyclic and checkSingleRoot report it.
     return []
   }
   if (terminals.length > 1) {
@@ -225,10 +169,8 @@ function checkSingleTerminal(graph: ObligationGraph): Array<Violation> {
 }
 
 /**
- * The escape edge, proven rather than assumed: `fallbackRoute` succeeds
- * from every node and always ends at the graph's terminal — "the fallback
- * route requires no inference to enter" made concrete, since it is
- * unconditionally available from anywhere `linearize()` itself succeeds.
+ * The escape edge, proven: `fallbackRoute` succeeds from every node and ends
+ * at the graph's terminal.
  */
 function checkFallbackReachesTerminal(
   graph: ObligationGraph
@@ -237,9 +179,7 @@ function checkFallbackReachesTerminal(
   try {
     linearized = linearize(graph)
   } catch {
-    // linearize()'s own errors (cycle, multi-root, dangling edge) are
-    // already reported by the checks above with a clearer, graph-specific
-    // message; nothing new to add by re-throwing or re-deriving one here.
+    // Already reported, more clearly, by the checks above.
     return []
   }
   const terminalId = linearized.steps.at(-1)?.id
@@ -268,9 +208,7 @@ function checkFallbackReachesTerminal(
 
 /**
  * Every value in `sinkRoutes`, and every `fallbackBridge`, is present and
- * non-empty. This workspace has no bridge registry to check membership
- * against (see this module's own doc comment on why) — this is the only
- * claim about a bridge's *existence* the current graph shape can make.
+ * non-empty: the only existence claim possible without a bridge registry.
  */
 function checkSinkBridgesPresent(graph: ObligationGraph): Array<Violation> {
   const violations: Array<Violation> = []
@@ -291,14 +229,9 @@ function checkSinkBridgesPresent(graph: ObligationGraph): Array<Violation> {
 }
 
 /**
- * Re-validates every node's `content` against the real family schemas
- * `types/exercise.ts` ships — same posture as the corpus lint
- * (LTY-FAMILIES A5): a generic parse already ran once, this re-checks the
- * strict, family-specific shape one level up. Discharges three list items
- * at once: a construction node has exactly one witness and at least one
- * other evidence block (`ConstructionStepSchema`'s own refinements), and
- * a diagnostic node has a concrete observation (`DiagnosticStepSchema`
- * requires a `trace` block).
+ * Re-validates every node's `content` against its strict family schema, as
+ * the corpus lint does: a construction node has one witness plus evidence,
+ * a diagnostic node has a `trace`.
  */
 function checkContentSatisfiesItsFamily(
   graph: ObligationGraph
@@ -330,27 +263,12 @@ function typingSourceOf(
 }
 
 /**
- * The typed portion of a witness source, matching the engine's real
- * context-span semantics (`crates/leetype_wasm/src/leetype/program.rs`)
- * rather than `types/exercise.ts`'s `typedPortionOf` approximation.
- *
- * That approximation is a plain `source.replace(/‹[^›]*›/g, "")` and its
- * own doc comment says why it's acceptable there: it does not special-case
- * an unterminated `‹` with no matching `›`, because the regex only matches
- * a *closed* span, so a dangling opener is left counted as typed — the
- * opposite of the engine, which treats a dangling opener as context
- * running to the end of the source (`program.rs`'s
- * `an_unterminated_context_span_runs_to_the_end_of_the_source` test:
- * `typed_stream("let x = ‹abc")` types only `"let x ="`). That gap is
- * harmless where it's used today (a length *budget*, where an author
- * would notice the drift from other failures first) and is exactly wrong
- * for this check, whose entire question is emptiness: a witness like
- * `‹answer` — nothing before the dangling opener at all — would pass the
- * approximation as "has typed content" while the engine gives the learner
- * nothing to reveal. This walks the source once, stopping at the first
- * unmatched `‹` rather than leaving it in, which is enough to answer "is
- * there anything typed" correctly without porting the engine's full role
- * classification (whitespace, runs) into this schema-adjacent file.
+ * The typed portion of a witness source, matching the engine's context-span
+ * semantics (`program.rs`) rather than `types/exercise.ts`'s `typedPortionOf`.
+ * The difference is a dangling `‹`: the engine treats it as context to the
+ * end (`typed_stream("let x = ‹abc")` types only `"let x ="`), while the
+ * approximation counts it as typed. Harmless for a length budget, wrong for
+ * this emptiness check (`‹answer` would look typeable).
  */
 function typedPortionMatchingEngine(source: string): string {
   let typed = ""
@@ -369,12 +287,9 @@ function typedPortionMatchingEngine(source: string): string {
 }
 
 /**
- * A witness must have something to actually type: source outside any
- * `‹context›` span (LTY-FRAME). A witness entirely wrapped in context has
- * nothing revealable in it — structurally the frame with no obligation
- * inside it — which no existing schema catches, because a
- * fully-context-wrapped or dangling-opener source is still a non-empty
- * string.
+ * A witness must have something to type outside any `‹context›` span
+ * (LTY-FRAME). No schema catches this: an all-context source is still a
+ * non-empty string.
  */
 function checkWitnessIsRevealable(graph: ObligationGraph): Array<Violation> {
   const violations: Array<Violation> = []
@@ -411,14 +326,9 @@ function checkGraphSizeWithinBound(graph: ObligationGraph): Array<Violation> {
 }
 
 /**
- * Every check, in the order a reader would want the story told: shape
- * first (edges, cycles, one entry, one terminal), then reachability
- * (fallback), then content, then size. Later checks that depend on an
- * earlier one holding (`checkFallbackReachesTerminal` needs `linearize`
- * to succeed) degrade to reporting nothing new rather than throwing or
- * duplicating what an earlier check already said — the same posture
- * `regionsFitTypingSource` takes in `types/exercise.ts` when a step has
- * already failed a different refinement.
+ * Every check: shape (edges, cycles, one entry, one terminal), then
+ * reachability, content and size. A check that depends on an earlier one
+ * holding reports nothing new rather than throwing or duplicating.
  */
 function allChecks(graph: ObligationGraph): Array<Violation> {
   return [
@@ -434,21 +344,14 @@ function allChecks(graph: ObligationGraph): Array<Violation> {
   ]
 }
 
-/**
- * Every violation in a graph, empty when the graph is total. The
- * `lintCorpus`-shaped half of this module (LTY-FAMILIES A5's reusable
- * architecture, ported one level up): pure, returns rather than throws,
- * safe to call from a test per malformed fixture.
- */
+/** Every violation in a graph, empty when the graph is total. Pure; never throws. */
 export function validateTotality(graph: ObligationGraph): Array<string> {
   return violationsToMessages(allChecks(graph))
 }
 
 /**
- * The `ExerciseCorpusSchema.parse`-shaped half: throws, naming the
- * offending node, for a caller that wants to validate a graph the way
- * the shim validates its corpus at module load — loudly, at the seam,
- * rather than three components later as a route with no terminal.
+ * Throws, naming the offending nodes, for a caller that wants to fail loudly
+ * at the seam rather than later as a route with no terminal.
  */
 export function assertGraphIsTotal(graph: ObligationGraph): void {
   const violations = validateTotality(graph)

@@ -2,9 +2,8 @@ import { ROLE_TYPEABLE } from "@leetype/types/leetype"
 
 /**
  * The gate figures a patch step's `-` side must contribute nothing to
- * (LTY-PATCH, epic #1075's own "done when"): `assisted`/`correct` feed
- * `weightedWpm`, which `gateThreshold` is read against to decide whether a
- * step advances.
+ * (LTY-PATCH): `assisted`/`correct` feed `weightedWpm`, compared against
+ * `gateThreshold` to decide whether a step advances.
  */
 export type GateFigures = {
   assisted: number

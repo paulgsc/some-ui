@@ -17,7 +17,7 @@ const TONE_LABEL: Record<ExercisePickerBadge["tone"], string> = {
  * The icon is decorative (`aria-hidden`) and conveys tone by shape alone, so
  * `aria-label` names the tone in words too — otherwise a screen reader reads
  * only the bare count, and a "starved" 0 is indistinguishable from a
- * "popular" 0 (review finding on some-ui#1182).
+ * "popular" 0.
  */
 export const ExercisePickerBadgeChip: FC<{ badge: ExercisePickerBadge }> = ({
   badge,

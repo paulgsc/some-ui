@@ -52,14 +52,8 @@ export function checkCitations(
  * Failure mode 2 of Rem. 7.1: a register entry marked instantiable (i.e.
  * active — a retired entry, Rem. 7.3, is exempt) with no corpus instance.
  *
- * Not yet wired against real data in CI: R4 (#1207, `types/round.ts`) has
- * landed a `μ` mapping as code (`DiffSetMember.propositionId`), but no live
- * corpus data holds one yet — nothing outside R4's own tests constructs a
- * `DiffSet` today — so there is still no real source for `instantiatedIds`.
- * Proven here by test fixture per B1's own acceptance criteria
- * (`citation-check.test.ts`); #1208 R5 — explicitly out of scope for B1 —
- * is where this becomes load-bearing against the real corpus, reading the
- * register this function already exposes.
+ * Run against the round corpus by `lintRoundCorpus`; tested on fixtures in
+ * `citation-check.test.ts`.
  */
 export function checkRegisterCoverage(
   instantiatedIds: ReadonlySet<string>,

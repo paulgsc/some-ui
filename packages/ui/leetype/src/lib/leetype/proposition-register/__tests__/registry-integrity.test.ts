@@ -41,11 +41,8 @@ export const PROPOSITION_REGISTER = {
   })
 })
 
-// Review finding on #1241 (chatgpt-codex-connector): removing a canon
-// entry outright shrinks the register to a still-contiguous CW-P1..CW-Pmax
-// sequence, which parsePropositionRegister's own gap check cannot tell
-// apart from a register that never had the missing id. Only comparing
-// against what was previously committed catches a real removal.
+// Removing the last entry leaves a contiguous register the gap check
+// accepts; only comparing against the committed one catches it.
 describe("assertNoRegisteredIdWasRemoved", () => {
   it("does not throw when nothing was removed", () => {
     expect(() =>

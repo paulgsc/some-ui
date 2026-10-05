@@ -1,7 +1,7 @@
 import type { Exercise } from "@leetype/types/exercise"
 
 /**
- * Which step probes a given concept id (LTY-SEED G2, #1107) — derived from
+ * Which step probes a given concept id (LTY-SEED G2) — derived from
  * `Step.concepts` across the corpus, not hand-maintained. A hand-maintained
  * map drifts the moment a step's `concepts` array changes and nobody
  * remembers to update the map beside it (the same failure mode

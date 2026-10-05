@@ -278,7 +278,7 @@ function playable(rounds: ReadonlyArray<Round>): Array<Round> {
 }
 
 /**
- * The phone's round surface (#1440, the Leetype cutover): one round at a
+ * The phone's round surface: one round at a
  * time, one artifact at a time (`ArtifactSwitcher`, Def. 9.2 / Rem. 9.2),
  * driven by `lib/leetype/round-cycle`.
  *
@@ -296,7 +296,7 @@ function playable(rounds: ReadonlyArray<Round>): Array<Round> {
  * ends it. Progress is unconditional (Ax. 9.1): "Next round" is available
  * the moment `(d, p)` is committed, right or wrong.
  *
- * # Recorded runs (X2, #1223)
+ * # Recorded runs
  *
  * Once `(d, p)` is committed, a "Runs" artifact shows what `A` and the
  * chosen `A + d` did at `C` and at `C′` (`RecordedRuns`), when the round has
@@ -306,7 +306,7 @@ function playable(rounds: ReadonlyArray<Round>): Array<Round> {
  * never as the grade: the cycle's state comes from the cost graphs alone,
  * and a round with no transcript is complete without one (Rem. 8.0).
  *
- * # Which round comes next (L4, #1230)
+ * # Which round comes next
  *
  * `nextRound` (`lib/leetype/round-sampler`) draws each corpus round from
  * the ledger, the corpus and the session seed, at the moment the previous
@@ -319,7 +319,7 @@ function playable(rounds: ReadonlyArray<Round>): Array<Round> {
  * presentation order is shuffled by the round's own seed, so position
  * never says which diff is admissible (the corpus authors it first).
  *
- * # The ledger (L1–L3, #1227–#1229)
+ * # The ledger
  *
  * Each `(d, p)` commitment is filed into the ledger
  * (`observationsOfCommitment`, `recordObservations`) under this session's
@@ -545,7 +545,7 @@ export const RoundSession: FC<RoundSessionProps> = ({
       // Ax. 9.2: the learner's own round was answered with its key in hand.
       if (play.own) return
       // Another tab may have stored evidence since this one last read; fold
-      // it in first, or this whole-value write would erase it (Codex, #1599).
+      // it in first, or this whole-value write would erase it.
       const next = recordObservations(
         mergeLedgers(ledger, ledgers.get()),
         observationsOfCommitment({
@@ -588,12 +588,9 @@ export const RoundSession: FC<RoundSessionProps> = ({
     [store, composer]
   )
 
-  // A fresh session, as `ReadingSession`'s restart is: the counters, the
-  // draw and the recent-rounds history all start over (review finding on
-  // #1598), under a new session id. The ledger carries over; it is the
-  // learner's, not the session's. The learner's own round stays held; it
-  // is the session store's, and plays first again the way it does after a
-  // reload.
+  // A fresh session: counters, draw and recent-rounds history start over
+  // under a new session id. The ledger (the learner's) and the learner's own
+  // round (the session store's) carry over.
   const handleRestart = useCallback((): void => {
     composer.dispatch({ type: "roundLeft" })
     setFinishedAt(null)
@@ -798,10 +795,8 @@ export const RoundSession: FC<RoundSessionProps> = ({
           )}
         </>
       )}
-      {/* Hidden, not unmounted, while the generator is open: a committed
-          `RoundChoices` holds its one-shot state itself, and remounting it
-          would re-enable a commitment already made (review finding on
-          #1598). */}
+      {/* Hidden, not unmounted, while the generator is open: remounting a
+          committed `RoundChoices` would re-enable its commitment. */}
       <div hidden={generating} className="flex min-w-0 flex-1 flex-col gap-2">
         <div className="flex shrink-0 items-center justify-between gap-3 px-1">
           <span className="text-sm font-medium text-foreground">
@@ -843,7 +838,7 @@ export const RoundSession: FC<RoundSessionProps> = ({
           <KeepOnShelf
             // Each own round is its own question: back to "Keep". Keyed on
             // its bytes, not only `roundKey`: a second own round can share
-            // the first's id and `played` (review, #1600).
+            // the first's id and `played`.
             key={`${roundKey}:${ownBody}`}
             shelf={shelf}
             words={ROUND_SHELF_WORDS}

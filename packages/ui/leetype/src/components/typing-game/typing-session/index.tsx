@@ -30,13 +30,10 @@ import { appearanceClassName } from "@some-ui/styles/theme"
 import { cn } from "some-ui-utils"
 
 /**
- * A baseline sample from one finished step.
- *
- * The step's mean inter-keystroke interval, repeated once per resolved slot:
- * the store's trimmed mean wants a distribution, and a completed step only
- * reports a total. That makes this a *weaker* sample than a real calibration
- * run — which is exactly right, since the blend is deliberately slow. A step
- * too short to say anything returns `null` rather than a loud guess.
+ * A baseline sample from one finished step: its mean inter-keystroke
+ * interval repeated once per resolved slot, since a step reports only a
+ * total. Weaker than a calibration run, which suits the slow blend. A step
+ * too short to say anything returns `null`.
  */
 function sampleFromStep(
   elapsedSeconds: number,
@@ -51,14 +48,9 @@ function sampleFromStep(
 
 type TypingSessionProps = {
   /**
-   * Which exercise this session plays. `Leetype` resolves this before
-   * mounting `TypingSession` at all — either the caller's own fixed
-   * `exercise` prop (a preview or deep link), or whatever the learner chose
-   * from `ExercisePicker` — so this component never has to pick one itself.
-   *
-   * This prop is the seam a future generator plugs into — see
-   * `lib/leetype/exercises`. Everything below it (the runner, the card, the
-   * engine) is indifferent to where the value came from.
+   * Which exercise this session plays, resolved by `Leetype` (a fixed prop or
+   * the `ExercisePicker` choice). The seam a generator plugs into (see
+   * `lib/leetype/exercises`); nothing below cares where it came from.
    */
   exercise: Exercise
   /** Session term supplied by the composer/scene, in milliseconds. */
@@ -68,52 +60,30 @@ type TypingSessionProps = {
   /** Called once the whole sequence is finished. */
   onSessionComplete?: (stats: CompletedSessionStats) => void
   /**
-   * Art direction. `inherit` — the default — renders in whatever theme the
-   * host established, so the user's session theme reaches this surface like
-   * any other component.
-   *
-   * This used to be hardcoded as `dark code`, which is why picking a light
-   * palette left the typing game dark: `.code` reassigns `--background` /
-   * `--foreground` for its subtree, and the bundled `dark` kept every
-   * `dark:*` utility inside it active regardless of the user's choice. A host
-   * that genuinely wants the vim-night editor surface — a full-bleed practice
-   * route, say — passes `appearance="code"` and gets exactly the old look.
+   * Art direction. `inherit` (default) renders in the host's theme. A host
+   * wanting the vim-night editor surface passes `appearance="code"`, which
+   * reassigns `--background`/`--foreground` for the subtree.
    */
   appearance?: Appearance
 }
 
 /**
- * The optional production probe (Prop. 9.2, C2/#1214): a competency probe
- * whose input modality is typing, standing in for the session on a wide
- * enough viewport to actually carry a keyboard interaction. `ReadingSession`
- * is the session itself — always available, since discrimination needs no
- * modality — and this is what a wide viewport renders *instead of* it, not
- * the default the small-screen surface is a substitute for. `Leetype` mounts
- * exactly one of the two, never both.
- *
- * Its own behaviour is unchanged from what `Leetype` used to be outright,
- * before LTY-MOBILE split a narrow-viewport session off; it moved here so
- * that `components/leetype` can pick which of the two mounts without either
- * one mounting the other's hooks.
+ * The optional production probe (Prop. 9.2): a competency probe whose input
+ * is typing, rendered on viewports wide enough for a keyboard *instead of*
+ * `ReadingSession`, which is the session itself. `Leetype` mounts exactly
+ * one of the two, so neither mounts the other's hooks.
  *
  * The loop is *read one sentence → type → observe → repeat*, with no menu
- * inside it: which exercise, `Leetype` (`ExercisePicker`) decides above
- * this component; within one exercise, every step is left behind once it is
- * typed. There is no XP.
+ * inside it and no XP. This component composes three collaborators, each
+ * ignorant of the others:
  *
- * This component is composition, not orchestration. Three collaborators,
- * each ignorant of the others:
- *
- * - `useExerciseRunner` — which step, and when to leave it. No typing state.
- * - `useTypingGame` — slots, caret, reveal, the two WPM figures. No idea
+ * - `useExerciseRunner`: which step, and when to leave it. No typing state.
+ * - `useTypingGame`: slots, caret, reveal, the two WPM figures. No idea
  *   what a step is.
- * - `ExerciseCard` — draws one step against those projections.
+ * - `ExerciseCard`: draws one step against those projections.
  *
- * The seam between the first two is the `advance` call below — one call
- * site regardless of how a step finished. It is still asked-for rather than
- * assumed, but per Ax. 9.1 (revelation is unconditional) what it is asked is
- * no longer the engine's competency verdict on the finished step:
- * `readProgression` always answers `"advance"`.
+ * Their seam is the single `advance` call below. Per Ax. 9.1 (revelation is
+ * unconditional) `readProgression` always answers `"advance"`.
  */
 export const TypingSession: FC<TypingSessionProps> = ({
   exercise,
@@ -126,26 +96,14 @@ export const TypingSession: FC<TypingSessionProps> = ({
 
   const [gameState, setGameState] = useState<GameState>("idle")
   /**
-   * A player with no stored baseline warms up first.
-   *
-   * Mechanically the same typing surface with the new features switched off:
-   * nothing masked, nothing gated, one line of prompt. It is not part of the
-   * exercise and the runner never sees it — sequencing a warm-up would mean
-   * teaching the runner what a warm-up is, and it proves no competency.
-   *
-   * Skipping it is not an option offered, but skipping it is also not
-   * necessary: a player who somehow arrives without one still plays, on the
-   * engine's cold-start stand-in.
+   * A player with no stored baseline warms up first: the same surface with
+   * nothing masked or gated. The runner never sees it; it proves no
+   * competency. A player without one still plays on the cold-start stand-in.
    */
   const [phase, setPhase] = useState<"calibrating" | "exercise">(() =>
     loadBaseline() === null ? "calibrating" : "exercise"
   )
-  /**
-   * Set once, when the sequence ends. Everything the results surface shows
-   * is a fact about a run that is over, so holding it as state — rather than
-   * recomputing it every frame of a run that is still going — is both
-   * cheaper and more honest.
-   */
+  /** Set once, when the sequence ends: a frozen record of a finished run. */
   const [finished, setFinished] = useState<CompletedSessionStats | null>(null)
   const [sessionClockMs, setSessionClockMs] = useState(0)
   /** Bumped by `handleAgain` to re-anchor the session clock at a fresh mount-like start. */
@@ -155,24 +113,14 @@ export const TypingSession: FC<TypingSessionProps> = ({
   const exerciseCompletionHandledRef = useRef(false)
 
   /**
-   * The most recently completed step's `rationaleChoices` (LTY-WHY W4,
-   * #1104), decoupled from `runner`/`step` on purpose: the effect below
-   * that credits a finished step and calls `runner.advance()` moves the
-   * runner in the very same commit `isComplete` turns true, so a widget
-   * keyed off `runner.step` directly would never get a render where the
-   * step reads as both complete and current — a frozen copy captured here
-   * is what lets the accordion actually be visible.
+   * The most recently completed step's `rationaleChoices` (LTY-WHY W4), as a
+   * frozen copy: the completion effect advances the runner in the same
+   * commit `isComplete` turns true, so nothing keyed off `runner.step` ever
+   * renders as both complete and current.
    *
-   * Cleared from `recordKeystroke` below, on the player's *next* real
-   * keystroke, rather than from an effect keyed on `stepKey`. That effect
-   * shape was tried and breaks: `stepKey` changes in the same render pass
-   * `runner.advance()` produces, so a `useEffect(() => set(null),
-   * [stepKey])` would fire in the same `act()`-flushed cascade that just
-   * set this value, clearing it before it is ever painted — no bug for a
-   * human eye to notice, but caught the moment a test tried to observe the
-   * intermediate state. Tying the clear to an actual DOM event instead of
-   * a reactive effect sidesteps the whole class of "cascade undid the
-   * state before it rendered" bug by construction.
+   * Cleared on the player's *next* keystroke (`recordKeystroke`), not by an
+   * effect on `stepKey`: `stepKey` changes in the same cascade that sets
+   * this, so such an effect would clear it before it ever painted.
    */
   const [completedRationale, setCompletedRationale] = useState<{
     key: string
@@ -186,31 +134,23 @@ export const TypingSession: FC<TypingSessionProps> = ({
   }, [onSessionComplete])
 
   /**
-   * The player's sampled speed, as it stood when this mount began. Read once
-   * so the engine can be constructed with it; every later sample reaches the
-   * engine through `calibrate` rather than through a re-render.
+   * The player's sampled speed at mount, read once to construct the engine;
+   * later samples reach it through `calibrate`, not a re-render.
    */
   const [initialBaseline] = useState<Baseline | null>(() => loadBaseline())
   const baselineRef = useRef<Baseline | null>(initialBaseline)
   /** Per-step assistance, banked as each step is left behind. */
   const assistanceRef = useRef<Array<number>>([])
   /**
-   * Every interval of the warm-up, so the store gets a real distribution to
-   * take a trimmed mean and an IQR from. A run's mean repeated has a
-   * dispersion of zero, which would tell the deadband every player is a
-   * metronome.
+   * Every warm-up interval, so the store gets a real distribution for its
+   * trimmed mean and IQR (a repeated mean has zero dispersion).
    */
   const warmUpIntervals = useKeystrokeIntervals()
 
   const calibrating = phase === "calibrating"
   const step = calibrating ? CALIBRATION_STEP : runner.step
   const source = typingBlockOf(step)?.source ?? ""
-  /**
-   * Which step this is, independent of what it says.
-   *
-   * Two different steps may carry the same source — a corpus is allowed to
-   * repeat a proof — so identity has to be the step's own, not its text.
-   */
+  /** Which step this is, independent of its text (two steps may share a source). */
   const stepKey = calibrating
     ? "warm-up"
     : `${exercise.id}:${runner.index}:${runner.step.id}`
@@ -244,12 +184,8 @@ export const TypingSession: FC<TypingSessionProps> = ({
   })
 
   /**
-   * The warm-up's off switch, and the whole of it.
-   *
-   * `CodeDisplay` draws the visibility map it is handed and owns no masking
-   * policy, so handing it an all-revealed map is how the reveal loop is
-   * switched off for one step. No mode flag reached the engine, and the
-   * renderer did not learn what calibration is.
+   * The warm-up's whole off switch: `CodeDisplay` owns no masking policy, so
+   * an all-revealed map turns the reveal loop off with no mode flag.
    */
   const shownVisibility = calibrating
     ? new Uint8Array(visibility.length).fill(VISIBILITY_REVEALED)
@@ -258,8 +194,7 @@ export const TypingSession: FC<TypingSessionProps> = ({
   const recordKeystroke = useCallback(
     (key: string): void => {
       if (calibrating) warmUpIntervals.record()
-      // A no-op once it is already null (see completedRationale's own doc
-      // comment for why this, not an effect, is what retires it).
+      // Retires the accordion (see completedRationale).
       setCompletedRationale(null)
       press(key)
     },
@@ -283,43 +218,26 @@ export const TypingSession: FC<TypingSessionProps> = ({
   } = snapshot
 
   /**
-   * The warm-up already shows everything (`shownVisibility` above), so the
-   * toggle's own affordance would be reporting a freeze that changes
-   * nothing the player can see. Suppressed here rather than in
-   * `ExerciseCard`, which has no idea a warm-up phase exists.
+   * The warm-up already shows everything, so the reveal toggle's state is
+   * suppressed here (`ExerciseCard` knows nothing of warm-ups).
    */
   const shownManualRevealActive = calibrating ? false : manualRevealActive
   const shownManualRevealFraction = calibrating ? 0 : manualRevealFraction
 
   /**
-   * The step is typed. Bank the assistance, feed the run back into the
-   * baseline, and let the runner move — `readProgression()` always answers
-   * `"advance"` (Ax. 9.1), so this is never a verdict on the step just
-   * typed.
-   *
-   * Every part of that is unconditional and click-free: a miss never asks
-   * the player to acknowledge anything.
+   * The step is typed: bank the assistance, feed the run into the baseline,
+   * and advance (never a verdict, Ax. 9.1). Unconditional and click-free.
    */
   useEffect(() => {
     if (gameState !== "playing" || !isComplete) return
-    // The guard that keeps a finished step from being resolved twice.
-    //
-    // This effect depends on the runner, so moving the runner re-runs it —
-    // and on that pass `snapshot` still describes the step just finished,
-    // because the engine has been *told* to swap but React has not yet
-    // committed the result. Acting on that stale snapshot advances a second
-    // time, and the player skips every other step. Asking the engine which
-    // step it is actually holding is the whole fix; `index.test.tsx` is the
-    // test that catches it going back.
+    // Keeps a finished step from resolving twice: moving the runner re-runs
+    // this effect while `snapshot` still describes the finished step, which
+    // would skip every other step. Ask the engine which step it holds.
     if (activeStep !== `${stepKey}#${attempt}`) return
 
-    // The accordion's own trigger (LTY-WHY W4): captured independently of
-    // the runner.advance() call below, so it survives the runner moving on
-    // in this same tick. Cleared by recordKeystroke on the player's next
-    // real keystroke (completedRationale's own doc comment), never here.
-    // The step finishing is an engine fact arriving from outside React, the
-    // same shape as the warm-up-ending and sequence-ending state changes
-    // this effect already makes below.
+    // Captured before runner.advance() so it survives the move (see
+    // completedRationale). The step finishing is an engine fact arriving
+    // from outside React.
     if (!calibrating && step.rationaleChoices !== undefined) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setCompletedRationale({
@@ -328,9 +246,8 @@ export const TypingSession: FC<TypingSessionProps> = ({
       })
     }
 
-    // The warm-up ends the same way any step does, and then hands over. Its
-    // sample is taken outright rather than blended: the cold start it
-    // replaces was a stand-in, not evidence.
+    // The warm-up's sample is taken outright, not blended: the cold start
+    // it replaces was a stand-in, not evidence.
     if (calibrating) {
       const sample = sampleFromIntervals(warmUpIntervals.read())
       if (sample) {
@@ -339,22 +256,14 @@ export const TypingSession: FC<TypingSessionProps> = ({
         calibrate(sample)
       }
       warmUpIntervals.reset()
-      // The warm-up finishing is an engine fact arriving from outside React —
-      // the same shape as the sequence ending below, and for the same reason:
-      // "which phase is this" is genuinely new state, not something derivable
-      // during render from the engine's snapshot.
-
       setPhase("exercise")
       return
     }
 
     assistanceRef.current.push(correct > 0 ? assisted / correct : 0)
 
-    // The run contributes to the sample, so the cold-start stand-in is
-    // transient: a player who never calibrates still converges on their own
-    // speed after a few steps. `calibrate` is a command to the engine, not a
-    // React state change — the engine is the external system this effect
-    // exists to synchronise with.
+    // Every run feeds the sample, so a player who never calibrates still
+    // converges on their own speed.
     const sample = sampleFromStep(elapsedTime, correct)
     if (sample) {
       const next = blendBaseline(baselineRef.current, sample)
@@ -382,15 +291,10 @@ export const TypingSession: FC<TypingSessionProps> = ({
   ])
 
   useEffect(() => {
-    // Anchored at mount (and again each `sessionGeneration` bump from
-    // `handleAgain`), not at the player's own "Begin" click: the
-    // orchestrator removes this scene at its own `start_time + duration`
-    // (`buildActiveLifetimes`), measured from when the scene became active,
-    // not from when the player got around to clicking through. A clock that
-    // only started ticking on click ran later than the scene's real
-    // deadline for any player who paused first, so the completion state
-    // could arrive after the orchestrator had already unmounted this
-    // component — review finding on this PR (#1130).
+    // Anchored at mount (and each `handleAgain`), not at "Begin": the
+    // orchestrator removes this scene at `start_time + duration` from when
+    // it became active (`buildActiveLifetimes`), so a click-anchored clock
+    // could complete after the scene was already unmounted.
     const startedAt = performance.now()
     const update = (): void => {
       setSessionClockMs(
@@ -451,10 +355,7 @@ export const TypingSession: FC<TypingSessionProps> = ({
           : shares.reduce((total, share) => total + share, 0) / shares.length,
     }
 
-    // The sequence ending is an engine fact arriving from outside React, and
-    // "the run is over" is genuinely new state rather than something
-    // derivable during render — the figures are a frozen record of a run
-    // that has stopped moving.
+    // The run ending is an engine fact arriving from outside React.
     setFinished(stats)
     setGameState("finished")
     onSessionCompleteRef.current?.(stats)
@@ -577,16 +478,9 @@ export const TypingSession: FC<TypingSessionProps> = ({
       )}
 
       {completedRationale && (
-        // LTY-WHY W4 (#1104): strictly-after, never gating. Rendered
-        // outside the finished/in-progress split on purpose: the last
-        // step of a sequence can carry rationaleChoices too, and its
-        // completion effect fires in the same tick runner.advance() marks
-        // the whole run finished — swapping ExerciseCard for ResultsCard
-        // the instant it did (review finding on this PR) would make that
-        // one accordion permanently unreachable. Anchored to the bottom
-        // of the outer card either way, so it reads as one lingering
-        // affordance about the step just finished, not a modal over
-        // whichever surface happens to be showing.
+        // LTY-WHY W4: strictly after, never gating. Outside the
+        // finished/in-progress split so the last step's accordion survives
+        // the swap to ResultsCard; anchored to the bottom, not a modal.
         <div className="pointer-events-none absolute inset-x-4 bottom-4 z-10">
           <div className="pointer-events-auto">
             <RationaleAccordion

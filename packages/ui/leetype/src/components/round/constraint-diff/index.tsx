@@ -56,7 +56,7 @@ type ConstraintDiffProps = {
 }
 
 /**
- * `(C, C′)`, rendered (R3, #1206, Def. 3.2 / Thm. 3.1 / Cor. 3.1) — the
+ * `(C, C′)`, rendered (Def. 3.2 / Thm. 3.1 / Cor. 3.1): the
  * perturbation as a first-class artifact, in the same visual register as a
  * code diff: a sign column, a removed row, an added row. Every row comes
  * from `constraintDiffRows` (`lib/leetype/constraint`), which reuses
@@ -127,15 +127,9 @@ export const ConstraintDiff: FC<ConstraintDiffProps> = ({
                   {row.kind === "add" ? "new bound: " : "old bound: "}
                 </span>
               )}
-              {/* `min-w-0` so this item can actually shrink inside the flex
-                  row instead of forcing it wider than the card, and
-                  `break-words` so a dimension name with no natural break
-                  point (`ConstraintSchema.dimension` carries no length cap)
-                  wraps onto a second line rather than overflowing past the
-                  card's `overflow-hidden` and being silently clipped —
-                  losing part of a bound's digits that way could be misread
-                  as the real value, which is worse than the row simply
-                  growing taller (review finding on #1253). */}
+              {/* `min-w-0` + `break-words`: an unbroken dimension name
+                  wraps instead of being clipped, which could hide digits
+                  of the bound. */}
               <span
                 className={cn(
                   "min-w-0 break-words text-foreground/90",

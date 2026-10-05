@@ -62,12 +62,7 @@ describe("DiffSetMemberSchema — Def. 1.4's diff plus Def. 1.6's μ", () => {
   })
 
   it("rejects a propositionId that does not resolve against the register", () => {
-    // Deliberately not shaped like "CW-Pn": `scripts/check-proposition-
-    // citations.ts` scans every tracked file for that literal pattern, and
-    // this fixture is not one of the proposition-register module's own
-    // tests (the one place that scan excludes), so a "CW-Pn"-shaped id
-    // here — even an out-of-range one — would be flagged as a real
-    // dangling citation rather than exercising this schema's own check.
+    // Not "CW-Pn"-shaped, or check-proposition-citations.ts would flag it.
     const result = DiffSetMemberSchema.safeParse({
       hunk: ADMISSIBLE_HUNK,
       propositionId: "not-a-real-proposition-id",
@@ -77,9 +72,7 @@ describe("DiffSetMemberSchema — Def. 1.4's diff plus Def. 1.6's μ", () => {
     expect(result.success ? "" : result.error.message).toContain("register")
   })
 
-  // Review finding (#1261, chatgpt-codex-connector): `in` walks the
-  // prototype chain, so an inherited Object.prototype name would have
-  // resolved here even though it is not a real register key.
+  // `in` would resolve inherited Object.prototype names.
   it("rejects an inherited Object.prototype name as a propositionId", () => {
     for (const value of ["constructor", "toString", "hasOwnProperty"]) {
       const result = DiffSetMemberSchema.safeParse({
@@ -102,10 +95,7 @@ describe("DiffSetMemberSchema — Def. 1.4's diff plus Def. 1.6's μ", () => {
     expect(DiffSetMemberSchema.parse(member)).toEqual(member)
   })
 
-  // B3 (#1220): propositionGloss is the round-specific half of a verdict's
-  // justification, and always optional — a missing gloss is a real,
-  // disclosed thinness (#1220's own acceptance criteria), not a validation
-  // failure.
+  // propositionGloss is optional: a missing gloss is thin, not invalid.
   it("accepts a member with an authored propositionGloss", () => {
     const member = {
       hunk: ADMISSIBLE_HUNK,
@@ -196,10 +186,7 @@ describe("DiffSetSchema — Ax. 1.1's floor and Prop. 2.1's exactly-one-admissib
     )
   })
 
-  // Review finding (#1261, chatgpt-codex-connector): D is Def. 1.4's own
-  // *set* of diffs — the same hunk appearing under two members is one hunk
-  // with an ambiguous μ, not two alternatives, even when exactly one of
-  // the two is marked admissible.
+  // D is a *set* (Def. 1.4): a repeated hunk has an ambiguous μ.
   it("rejects a diff set carrying the same hunk under two members", () => {
     const duplicate: DiffSetMember = {
       hunk: distractorMember.hunk,

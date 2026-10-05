@@ -5,7 +5,7 @@ import {
 } from "@leetype/lib/leetype/round-assembly"
 import { describe, expect, it } from "vitest"
 
-describe("AUTHORED_ROUNDS — the LTY-AUTHOR (#1540) round corpus", () => {
+describe("AUTHORED_ROUNDS — the LTY-AUTHOR round corpus", () => {
   it("is clean under lintAuthoredRounds", () => {
     expect(lintAuthoredRounds(AUTHORED_ROUNDS)).toEqual([])
   })

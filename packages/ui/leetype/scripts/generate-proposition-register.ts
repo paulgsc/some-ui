@@ -2,7 +2,7 @@
  * Generates `src/lib/leetype/proposition-register/generated.ts` from
  * `docs/canon/complexity-witness-canon.typ` §7 — the `PropositionId`
  * closed union and its register text, read from the canon rather than
- * transcribed (LTY-PROBE B1, #1218, Rem. 7.1, Rem. 7.2), the same
+ * transcribed (LTY-PROBE B1, Rem. 7.1, Rem. 7.2), the same
  * discipline `dump-routes` enforces for `packages/server-routes/src/
  * generated/routes.ts` in the paired `paulgsc/server` repo.
  *
@@ -46,7 +46,7 @@ async function formatForOutput(
 /**
  * Parses the real canon, checks it against whatever `generated.ts` is
  * currently committed (refusing to silently drop a previously-registered
- * id — review finding on #1241), and formats the result through this
+ * id), and formats the result through this
  * repo's own Prettier config. Shared by `regenerate` below and `main`, so
  * both the freshness check (`check-proposition-citations.ts`) and an
  * actual write go through the same integrity guard.
