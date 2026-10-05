@@ -22,6 +22,35 @@ import fs from "node:fs"
 import { dirname } from "node:path"
 import type { Plugin } from "vite"
 
+/**
+ * What `vite dev` and `vite preview` refuse to forward to `file_host`, the
+ * counterpart of `location ^~ /api/file-host/api/v1/tabs { return 404; }` in
+ * nginx.https.conf. `file_host`'s tabs captures are unauthenticated and the
+ * learning app does not use them, and a proxy with no path allowlist forwards
+ * them to anyone who can reach the dev server (it listens on 0.0.0.0). A
+ * stop-gap; the permanent fix is a separate decision.
+ *
+ * Judged the way nginx judges a location: on the path alone, dot segments
+ * resolved, percent-escapes decoded and repeated slashes merged, so
+ * `/api/file-host//api/v1/%74abs` is the tabs route and not something else. A
+ * path that cannot be decoded is refused rather than guessed at.
+ */
+const BLOCKED_PROXY_PREFIXES: ReadonlyArray<string> = [
+  "/api/file-host/api/v1/tabs",
+]
+
+export function isBlockedProxyPath(url: string | undefined): boolean {
+  if (url === undefined) return false
+  let path: string
+  try {
+    path = decodeURIComponent(new URL(url, "http://localhost").pathname)
+  } catch {
+    return true
+  }
+  path = path.replace(/\/{2,}/g, "/")
+  return BLOCKED_PROXY_PREFIXES.some((prefix) => path.startsWith(prefix))
+}
+
 export const CONTAINER_TARGET = "http://127.0.0.1:3000"
 
 export type FileHostTarget = {

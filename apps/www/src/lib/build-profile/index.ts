@@ -8,7 +8,7 @@ import { notFound } from "@tanstack/react-router"
 //   A3  public UI links to a gated route only behind `hasAudience(...)`
 //       (packages/some-vite-config/AUDIENCES.md)
 // eslint-disable-next-line import/no-unresolved -- vite virtual module, see above
-import { hasAudience } from "virtual:build-profile"
+import { hasAudience, profile } from "virtual:build-profile"
 
 /**
  * A `beforeLoad` for the pathless layout that gates one audience's routes
@@ -24,3 +24,20 @@ export function requireAudience(audience: Audience): () => void {
     if (!hasAudience(audience)) throw notFound()
   }
 }
+
+/**
+ * True in the Android app's build: the `mobile` profile in build.profiles.ts,
+ * which apps/mobile's `build:web` selects. That app carries sessions and
+ * nothing else; `lib/app-surface` is what narrows it.
+ *
+ * The profile's name is repeated here because build.profiles.ts is Node-side
+ * config the bundle cannot import. `routes/__tests__/mobile-surface.test.ts`
+ * takes the name from there, so the two cannot drift apart unnoticed.
+ */
+export const MOBILE_APP = profile === "mobile"
+
+/**
+ * Whether this build carries `audience`'s workspaces. What a link to a gated
+ * route sits behind (A3, packages/some-vite-config/AUDIENCES.md).
+ */
+export { hasAudience }

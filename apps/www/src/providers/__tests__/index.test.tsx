@@ -3,15 +3,15 @@
  *
  * `StudyNudgeWatcher`'s whole body - registering a service worker,
  * reconciling a push subscription, polling every five minutes, plus the
- * sessions/settings queries `hooks.test.tsx` covers separately - is work
- * with nothing to do until there is a tenant workspace. `AppProviders`
- * mounts this tree above the router, so it renders on the public landing
- * page and the passkey screen too; this asserts it doesn't mount
- * `StudyNudgeWatcher` at all until a session exists, rather than mounting
- * it and hoping its internals no-op.
+ * sessions/settings queries `hooks.test.tsx` covers separately - is a
+ * reminder machinery: on the account the server delivers, on the device the
+ * client's own policy does. `AppProviders` mounts this tree above the router,
+ * so this asserts it doesn't mount `StudyNudgeWatcher` at all until the
+ * learner's data authority is decided (a returning account user's is not, for
+ * a moment), rather than mounting it and hoping its internals no-op.
  */
 
-import type { ReactNode } from "react"
+import type { JSX, ReactNode } from "react"
 import { render } from "@testing-library/react"
 import { describe, expect, it, vi } from "vitest"
 
@@ -34,32 +34,43 @@ vi.mock("@/providers/tts", () => ({
   TTSProvider: ({ children }: { children?: ReactNode }): ReactNode => children,
 }))
 
-let hasSession = false
+let kind: "pending" | "local" | "account" = "local"
+vi.mock("@/lib/authority", () => ({
+  useAuthority: (): { kind: typeof kind; epoch: number } => ({
+    kind,
+    epoch: 0,
+  }),
+}))
+
 vi.mock("@/lib/auth", () => ({
-  useHasSession: (): boolean => hasSession,
   onAccountChange: (): (() => void) => () => undefined,
 }))
 
-describe("AppProviders: does not mount StudyNudgeWatcher before there is a session", () => {
-  it("skips it while signed out and mounts it once signed in", async () => {
-    hasSession = false
-    const { AppProviders } = await import("@/providers/index")
+describe("AppProviders: StudyNudgeWatcher waits for the authority to be decided", () => {
+  // A fresh element each time: re-rendering the same object is a no-op.
+  const tree = (): JSX.Element => (
+    <AppProvidersUnderTest>
+      <div>routed content</div>
+    </AppProvidersUnderTest>
+  )
+  let AppProvidersUnderTest: (props: { children: ReactNode }) => JSX.Element
 
-    const { rerender } = render(
-      <AppProviders>
-        <div>routed content</div>
-      </AppProviders>
-    )
+  it("is skipped while undecided, and runs for the device and for the account", async () => {
+    ;({ AppProviders: AppProvidersUnderTest } = await import(
+      "@/providers/index"
+    ))
 
+    kind = "pending"
+    const { rerender } = render(tree())
     expect(studyNudgeWatcherSpy).not.toHaveBeenCalled()
 
-    hasSession = true
-    rerender(
-      <AppProviders>
-        <div>routed content</div>
-      </AppProviders>
-    )
+    kind = "local"
+    rerender(tree())
+    expect(studyNudgeWatcherSpy).toHaveBeenCalled()
 
+    studyNudgeWatcherSpy.mockClear()
+    kind = "account"
+    rerender(tree())
     expect(studyNudgeWatcherSpy).toHaveBeenCalled()
   })
 })

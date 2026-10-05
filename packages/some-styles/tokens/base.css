@@ -48,6 +48,12 @@
      every one of them rendered it as no colour at all. */
   --success: oklch(52% 0.14 150deg);
   --success-foreground: oklch(98.5% 0 0deg);
+
+  /* "Needs a look": between success and destructive, for a state that waits
+     on the person rather than one that went wrong (aph's unreconciled
+     figures). Amber, dark enough to read as text on --background. */
+  --warning: oklch(52% 0.13 65deg);
+  --warning-foreground: oklch(98.5% 0 0deg);
   --border: oklch(92.2% 0 0deg);
   --input: oklch(92.2% 0 0deg);
   --ring: oklch(70.8% 0 0deg);
@@ -196,6 +202,8 @@
   --destructive-foreground: oklch(98.5% 0 0deg);
   --success: oklch(72% 0.13 150deg);
   --success-foreground: oklch(15% 0.02 150deg);
+  --warning: oklch(80% 0.14 75deg);
+  --warning-foreground: oklch(18% 0.03 75deg);
   --border: oklch(100% 0 0deg / 10%);
   --input: oklch(100% 0 0deg / 15%);
   --ring: oklch(55.6% 0 0deg);

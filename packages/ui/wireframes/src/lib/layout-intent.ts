@@ -490,22 +490,3 @@ export function extractLeafIds<R>(tree: LayoutNode<R> | null): Set<R> {
 
   return ids
 }
-
-export function getAllSplitIds<R>(tree: LayoutNode<R> | null): Array<string> {
-  const splitIds: Array<string> = []
-  if (tree === null) return splitIds
-
-  const stack: Array<{ node: LayoutNode<R>; weight: number }> = [
-    { node: tree, weight: 1 },
-  ]
-
-  while (stack.length) {
-    const { node } = stack.pop()!
-    if (node.type === "split") {
-      splitIds.push(node.splitId)
-      stack.push(...node.children)
-    }
-  }
-
-  return splitIds
-}

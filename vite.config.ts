@@ -22,17 +22,8 @@ export default defineConfig({
         "./packages/ui/attributions/src"
       ),
       "@chat": path.resolve(import.meta.dirname, "./packages/ui/chat/src"),
-      "@input": path.resolve(import.meta.dirname, "./packages/ui/input/src"),
-      "@searchbar": path.resolve(
-        import.meta.dirname,
-        "./packages/ui/searchbar/src"
-      ),
       "@nfl": path.resolve(import.meta.dirname, "./packages/ui/nfl/src"),
       "@charts": path.resolve(import.meta.dirname, "./packages/charts/d3/src"),
-      "@slideshow": path.resolve(
-        import.meta.dirname,
-        "./packages/ui/slideshow/src"
-      ),
       "@dice-card": path.resolve(
         import.meta.dirname,
         "./packages/ui/dice-card/src"
@@ -48,50 +39,13 @@ export default defineConfig({
         "./packages/ui/leetype/corpus"
       ),
       "@topik": path.resolve(import.meta.dirname, "./packages/ui/topik/src"),
-      "@interview": path.resolve(
-        import.meta.dirname,
-        "./packages/ui/interview/src"
-      ),
-      "@emoji": path.resolve(
-        import.meta.dirname,
-        "./packages/ui/emoji-animations/src"
-      ),
       "@wireframes": path.resolve(
         import.meta.dirname,
         "./packages/ui/wireframes/src"
       ),
-      "@portfolio": path.resolve(
-        import.meta.dirname,
-        "./packages/ui/portfolio-chart/src"
-      ),
-      "@makjang": path.resolve(
-        import.meta.dirname,
-        "./packages/ui/makjang/src"
-      ),
-      "@milestones": path.resolve(
-        import.meta.dirname,
-        "./packages/ui/milestones/src"
-      ),
-      "@umag": path.resolve(import.meta.dirname, "./packages/ui/umag/src"),
-      "@stepper": path.resolve(
-        import.meta.dirname,
-        "./packages/ui/stepper/src"
-      ),
       "@honeycomb": path.resolve(
         import.meta.dirname,
         "./packages/ui/honeycomb/src"
-      ),
-      "@calendar": path.resolve(
-        import.meta.dirname,
-        "./packages/ui/calendar/src"
-      ),
-      "@assessment": path.resolve(
-        import.meta.dirname,
-        "./packages/ui/assessment/src"
-      ),
-      "@neon-sign": path.resolve(
-        import.meta.dirname,
-        "./packages/ui/neon-sign/src"
       ),
       "@content": path.resolve(
         import.meta.dirname,

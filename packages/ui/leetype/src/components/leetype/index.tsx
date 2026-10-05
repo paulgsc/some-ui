@@ -10,9 +10,9 @@ import {
   nextExercise,
   SESSION_EXERCISE_IDS,
 } from "@leetype/lib/leetype/exercises"
+import type { Dictation } from "@leetype/lib/leetype/notes/dictation"
 import { lintAuthoredRounds } from "@leetype/lib/leetype/round-assembly"
 import type { RoundRunsLoader } from "@leetype/lib/leetype/round-runs"
-import type { ShelfPort } from "@leetype/lib/leetype/shelf"
 import type { Round } from "@leetype/types/authored-round"
 import { RoundSchema } from "@leetype/types/authored-round"
 import type { Exercise } from "@leetype/types/exercise"
@@ -20,6 +20,7 @@ import type {
   CompletedSessionStats,
   TextGradient,
 } from "@leetype/types/leetype"
+import type { ShelfPort } from "@some-ui/shared"
 import type { Appearance } from "@some-ui/styles/theme"
 import { appearanceClassName } from "@some-ui/styles/theme"
 import { cn, useIsMobile } from "some-ui-utils"
@@ -104,6 +105,14 @@ type LeetypeProps = {
    * with neither plays exactly as before. Read only on the phone surface.
    */
   loadRuns?: RoundRunsLoader
+  /**
+   * What turns a spoken margin note into text (canon Rem. 3.7;
+   * `lib/leetype/notes/dictation`). Absent, the browser's own recognizer
+   * where it has one; `apps/www`'s Android build passes the phone's, since
+   * a WebView has none. `null` offers typing only. Read only on the phone
+   * surface.
+   */
+  dictation?: Dictation | null
 }
 
 /**
@@ -192,6 +201,7 @@ export const Leetype: FC<LeetypeProps> = ({
   loadRounds,
   shelf,
   loadRuns,
+  dictation,
 }) => {
   const isMobile = useIsMobile()
   const resolved =
@@ -307,6 +317,7 @@ export const Leetype: FC<LeetypeProps> = ({
             {...(sessionSeed === undefined ? {} : { sessionSeed })}
             {...(shelf === undefined ? {} : { shelf })}
             {...(loadRuns === undefined ? {} : { loadRuns })}
+            {...(dictation === undefined ? {} : { dictation })}
             onSessionComplete={(): void => onSessionComplete?.()}
           />
         )}

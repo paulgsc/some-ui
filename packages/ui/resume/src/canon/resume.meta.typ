@@ -330,7 +330,7 @@ backs should be cut, not kept and re-justified.
 
 == Counts
 
-*58 workspace packages, 6 browser extensions* --- counted 2026-09-27 by
+*46 workspace packages, 6 browser extensions* --- counted 2026-10-03 by
 `scripts/check-claims.mjs`, which walks the globs in `pnpm-workspace.yaml`
 (`packages/ui/*`, `apps/*`, `docs/canon`, `extensions/**`, `packages/*`,
 `crates/*`) for a `package.json`, the same method `pnpm -r list --depth -1`
@@ -342,9 +342,30 @@ catches build scripts): `some-censor`, `some-conveyor`, `some-drama`,
 `filter-classifier`, `docs`, and `scripts` are excluded — shared code and a
 test corpus, not shipped extensions.
 
-The package count is 57 -> 58 on 2026-09-27: `packages/ui/lesson-crm`, the
-operator's lesson CRM and the first `lan`-audience workspace. Before that it
-was 52 -> 57 at the 2026-08-29 recount: new additions include
+The package count is 46 -> 45 on 2026-10-03: `packages/ui/interview` was
+deleted; the catalogue retired its mock-interview activity, which had never
+worked end to end. Before that it was 51 -> 46 on 2026-10-02: `packages/ui/slideshow`,
+`packages/ui/makjang`, `packages/ui/umag`, `packages/ui/neon-sign` and
+`packages/ui/assessment` were deleted. www now registers only its four
+activities' panels; the composer's scene editor moved from slideshow into
+`apps/www`. Before that it was 55 -> 51 the same day: `packages/ui/input`,
+`packages/ui/stepper` and the two wasm crates only `input` loaded,
+`crates/some-crossword` and `crates/viewport-rotation`, were deleted. Nothing
+deployable rendered any of them. Before that it was 59 -> 55 the same day:
+`packages/ui/calendar`, `packages/ui/milestones`,
+`packages/ui/emoji-animations` and `packages/ui/portfolio-chart` were deleted.
+None was imported by any other workspace or by a deployable. Before that it
+was 58 -> 59 on 2026-10-01:
+`packages/ui/soundbites`, the
+Android app's "say why" recorder and the first `apk`-audience workspace.
+Before that it was 59 -> 58 the same day: `packages/ui/searchbar`, a
+placeholder whose `src/index.ts` had been gutted to `export {}` and which no
+deployable imported, was deleted. Before that it was 58 -> 59 on 2026-09-29:
+`apps/mobile`, a Capacitor shell that packages the backendless `www` build as a
+sideloadable Android APK. Before that it was 57 -> 58 on 2026-09-27:
+`packages/ui/lesson-crm`, the operator's lesson CRM and the first
+`lan`-audience workspace. Before that it was 52 -> 57 at the 2026-08-29
+recount: new additions include
 `packages/activity-catalog`, `packages/contract-harness`,
 `packages/server-routes`, `packages/intent-kit`, `packages/fetch-kit`,
 `packages/job-tracker` (this revision's own addition — see the job-tracker

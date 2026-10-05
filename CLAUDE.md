@@ -105,9 +105,9 @@ the shortest life that works, and nothing recreated leaves its old copy behind.
   path is one we want taken. A step with no `retention-days` fails either way: the repo
   default (90 days) is not a period anyone chose. So does a value that is not a literal
   number of days (`0`, empty, a `${{ }}` expression), since each can resolve to that
-  default. Every artifact here keeps one day
-  today, so none carries a `Retention:` line. Artifacts cannot be overwritten across
-  runs, so a short `retention-days` is how a recreated one leaves no tail.
+  default. Two artifacts keep longer today, both in `mobile-apk.yml`: the phone's APK
+  (30 days, pruned to one) and the Play review's inputs (3 days). Artifacts cannot be
+  overwritten across runs, so a short `retention-days` is how a recreated one leaves no tail.
 - **Enforced by `pnpm check:workflows`** (`scripts/check-workflows.ts`, rules in
   `packages/eslint/src/workflow-guards.ts`), in root `pnpm lint` and as its own `pr.yml`
   job that CI Gate requires. The same script carries RS1's fingerprint and RS2's grep
@@ -137,6 +137,36 @@ the shortest life that works, and nothing recreated leaves its old copy behind.
   retention" sets the default for any upload without `retention-days` and caps any
   explicit value above it. It also sets how long run logs are kept.
 
+## Vestiges
+
+A workspace earns its place only while something live points to it: an app, a shipped
+extension, a document build, or an activity in `@some-ui/activity-catalog`. A skeleton
+kept for a story "we'll come back to" does not. New code is cheap here and the
+conventions keep moving, so a skeleton goes stale anyway (no current lint config, no
+knip, thin tests), and the chance of returning to it falls with every day its own code
+goes untouched. Git history keeps what is deleted.
+
+`pnpm report:vestiges` (`scripts/report-vestiges.ts`, rule and tests in
+`packages/eslint/src/vestiges.ts`) ranks the candidates. Run it near the start of any
+session that plans cleanup, or before adding to a workspace whose last activity you don't
+know. It needs full history (`git fetch --unshallow`); in a shallow clone it warns, and every
+date is clipped. A workspace is a candidate when it is:
+
+- **unreached:** no deployable depends on it, directly or through another workspace; or
+- **stale and drifting:** its own source has not changed in 60 days, it is missing a script
+  live workspaces carry (`lint`, `typecheck`, `test`, `knip`) or has no tests, and it is not a
+  shared library (more than two dependents).
+
+"Own change" ignores tests, manifests and config, file deletions (cleanup is not work on the
+story), and sweeps across more than eight workspaces (version bumps, renames, rollouts).
+
+It is a report, never a gate: whether a story is dead is the owner's call, so put the
+candidates to them instead of deleting on the score alone. Known false positives come from
+what `package.json` cannot show. `packages/some-content` is consumed by file path (its
+`public/` assets), not by package name. A registry key reaches a package only if something
+can still bind it, so check `componentRegistry` and the activity catalog before calling a
+reached package live.
+
 ## Test layout
 
 A source directory keeps **at most one** `*.test.*` file. A second one means all of that
@@ -153,6 +183,49 @@ re-uses a file's result until the file itself changes, so a sibling-dependent ve
 goes stale. When moving tests, prefer the package's path alias over `../`, which most
 workspaces ban. Watch any test that derives a directory from `import.meta.url` to scan it:
 it now sits one level deeper and can pass having scanned nothing.
+
+## Deleting is in scope
+
+Removing code, tests and docs that your change made unreachable or redundant is part of the
+change, not widening it, whatever generic "keep the diff minimal" guidance says. Before
+adding a module, component, hook or helper, search `packages/ui/shared`, `packages/utils`
+and the sibling workspaces for one that already does the job, then reuse or generalize it.
+When yours replaces something, remove the old one and its tests in the same PR. When a
+behavior changes, edit its existing test rather than adding another beside it.
+
+Every PR opened from the template (`.github/pull_request_template.md`), by a person or an
+agent, has a **Superseded** section. It says what the change made obsolete and removed, or
+"None" and why. A second implementation without that is a blocking review finding
+(`REVIEW.md`, "Second implementations and code left behind"). PRs a workflow opens with a
+fixed body (Changesets, the Pages and Docker release PRs, extension releases, the route
+snapshot) are exempt: they carry generated content, not new implementations.
+
+## React is not the coordinator
+
+When a feature holds anything external with an async lifetime (a microphone, an `Audio`, a
+socket, IndexedDB, a request whose late result can land over a newer one), write its state
+union and pure `step` in `lib/` first, then a runtime over ports that owns the handles and
+decides which result is stale, and only then the component, which reads a snapshot and
+dispatches events. `docs/monorepo-boundaries.md` → "Inside a React package: the component
+is not the coordinator" has the shape, the model to copy (topik's `core/`) and invariant R1.
+`packages/ui/lesson-crm`'s turn counters in refs are grandfathered debt, not precedent: do
+not match that surrounding code.
+
+Enforced as a count, not a verdict: `pnpm check:react-coordination` (root `pnpm lint`, and a
+pr.yml job CI Gate requires) fails when a React module, component or hook, has more or fewer
+`await`/`.then`/`.catch`/`.finally` sites than `scripts/react-coordination.allowlist` says. An
+entry is allowed when the reason is real: put it in its own group under
+`# Coordination: <the external work, and why it cannot live outside React>`, never in the
+grandfathered group. If the only honest reason is "it needs an await", the code belongs in the
+runtime instead.
+
+A component or hook that seeds `useState`/`useReducer` from its own prop or from the clock keeps
+a copy frozen at mount while the owner moves on; #1659's review found that five times, one per
+round. `owner-guard/no-mount-snapshot` (eslint-kit's opt-in `ownerGuardConfig`, on in aph,
+soundbites and www) reports it. Derive the value where it is used, name a read-once prop
+`initial*`, or disable the line with the reason (an edit buffer keyed by what it edits, a runtime
+made once per mount). The aph store also refuses a write that rewrites what was already logged
+(`breaches` in its model), since a stale reference leaves a valid state that no lint can see.
 
 ## Gray-area invariants: declare them falsifiable
 
@@ -376,6 +449,6 @@ If you're leaving unfinished multi-session work: write the next handoff from
 `SendUserFile`) rather than committing it.
 
 See `.claude/skills/steward/SKILL.md` for how to drive an already-open PR (auto-merge
-mechanics, bot-review handling, the re-review-request idiom) and
+mechanics, bot-review handling, review coverage on every head) and
 `.claude/skills/babysit/SKILL.md` for the separate polling-cadence policy — both are
 consulted automatically when acting on CI or review events, not just on request.

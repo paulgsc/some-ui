@@ -125,7 +125,6 @@ describe("layoutTreeFor", () => {
     const expected: Record<ActivityId, string> = {
       honeycomb: "study",
       topik: "topik",
-      interview: "topik",
       leetype: "study",
     }
     for (const id of ACTIVITY_IDS) {

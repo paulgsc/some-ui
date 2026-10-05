@@ -5,12 +5,108 @@
     "apps/www/public/sw.js",
     "packages/speech/src/lib/testing/**",
     "**/__type-fixtures__/**",
-    "apps/www/tests/layout-invariants/stress-content.ts"
+    "apps/www/tests/layout-invariants/stress-content.ts",
+    "packages/eslint/tests/lint-fixtures/**",
+    "packages/some-styles/styles-build/*.d.mts",
+    "packages/some-styles/styles-build/examples/**"
   ],
-  "ignoreBinaries": ["typst", "rustc"],
+  "ignoreBinaries": ["typst", "rustc", "wasm-pack"],
+  "ignoreIssues": {
+    "extensions/some-censor/src/lib/content/debug.ts": ["exports"],
+    "packages/eslint/src/index.ts": ["duplicates"]
+  },
   "workspaces": {
+    ".": {
+      "entry": [
+        ".storybook/uno.config.ts",
+        "scripts/audit-node-licenses.mjs",
+        "scripts/fix-gen.ts",
+        "extensions/scripts/*.mjs"
+      ],
+      "ignoreDependencies": [
+        "@changesets/cli",
+        "typescript-language-server",
+        "typescript-transform-paths"
+      ]
+    },
+    "apps/mobile": {
+      "ignoreDependencies": [
+        "@capacitor-community/speech-recognition",
+        "@capacitor-community/sqlite",
+        "@capacitor-community/text-to-speech",
+        "@capacitor/local-notifications"
+      ]
+    },
+    "extensions/common": {
+      "ignoreDependencies": ["@types/firefox-webext-browser"]
+    },
+    "extensions/some-censor": {
+      "entry": [
+        "src/background/background.ts",
+        "src/content/content.ts",
+        "src/popup/popup.ts",
+        "src/lib/platform/**/api.*.ts",
+        "src/lib/content/actuator/index.ts",
+        "scripts/setup-test-profile.mjs"
+      ],
+      "ignoreDependencies": ["@unocss/cli"]
+    },
+    "extensions/some-conveyor": {
+      "entry": [
+        "src/background/background.ts",
+        "src/content/content.ts",
+        "src/lib/platform/**/api.*.ts"
+      ],
+      "ignoreDependencies": ["@some-ui/polyhedron", "@unocss/cli"]
+    },
+    "extensions/some-drama": {
+      "entry": [
+        "src/background/background.ts",
+        "src/content/content.ts",
+        "src/popup/popup.ts",
+        "uno.config.popup.ts"
+      ],
+      "ignoreDependencies": ["@unocss/cli"]
+    },
+    "extensions/some-filter": {
+      "entry": ["public/prepaint-start.js"]
+    },
+    "extensions/some-mujik": {
+      "entry": [
+        "src/background/background.ts",
+        "src/content/content.ts",
+        "src/popup/popup.ts"
+      ]
+    },
+    "extensions/suspender-ledger": {
+      "entry": [
+        "src/worker/worker.ts",
+        "src/content/watch.ts",
+        "src/content/resume-veil.ts",
+        "src/popup/index.ts",
+        "src/debug/index.ts",
+        "src/lib/platform/firefox.ts"
+      ]
+    },
+    "extensions/transport": {
+      "entry": ["tests/e2e/harness/entry.ts"]
+    },
+    "extensions/filter-classifier": {
+      "entry": ["tests/e2e/harness/entry.ts"]
+    },
+    "packages/speech": {
+      "entry": [
+        "src/index.ts",
+        "src/http.ts",
+        "src/web-speech.ts",
+        "src/native.ts"
+      ]
+    },
     "packages/ui/resume": {
       "ignoreDependencies": ["@some-ui/contract-harness"]
+    },
+    "packages/ui/shared": {
+      "ignoreDependencies": ["clsx", "tailwind-merge"]
     }
   }
 }

@@ -5,38 +5,36 @@
  *
  * This mirrors `createDataSource` in `@some-ui/fetch-kit`: one entry per
  * `RuntimeMode`, resolved once, and the caller never branches on - or is
- * told - which entry answered. The mapping it defaults to is the
- * deployment reality of this repo:
+ * told - which entry answered. The deployment reality of this repo:
  *
  * - **`"server"`** - `vite dev`, `vite preview` and the Docker/nginx image
  *   all have `infra/compose/tts.yml`'s `openai-edge-tts` reachable, so they
- *   get the HTTP adapter pointed at it.
- * - **`"static"`** - the GitHub Pages build ships no services, so it gets
- *   the browser's `speechSynthesis`.
+ *   pass `httpSpeech` pointed at it.
+ * - **`"static"`** - the GitHub Pages build ships no services, so it passes
+ *   the device's own voice: the browser's `speechSynthesis`
+ *   (`webSpeech`), or the phone's text-to-speech (`nativeSpeech`, the
+ *   Android app).
  *
- * Both halves are overridable. `adapters` swaps a factory per mode (a test
- * fake, a future backend), `mode` pins the choice outright, and every knob
- * the default factories read - endpoint, credentials, provider, voice - is
- * a config field. There is no hardcoded host or key anywhere in this
- * package's runtime path; `DEFAULT_OPENAI_EDGE_ENDPOINT` is a documented
- * default that any consumer can replace.
+ * There are no defaults. Each backend is its own package entry
+ * (`@some-ui/speech/http`, `/web-speech`, `/native`) and the app passes the
+ * ones it runs in `adapters`, so a build carries no backend it never uses
+ * (`./backend`). Every knob a backend reads - endpoint, credentials,
+ * provider, voice - is a config field. There is no hardcoded host or key
+ * anywhere in this package's runtime path; `DEFAULT_OPENAI_EDGE_ENDPOINT` is
+ * a documented default that any consumer can replace.
  */
 
 import type { RuntimeMode, RuntimeModeOptions } from "@some-ui/fetch-kit"
 import { resolveRuntimeMode } from "@some-ui/fetch-kit"
 import type { FetchImpl } from "@speech/lib/engine/tts-client"
-import { DEFAULT_OPENAI_EDGE_ENDPOINT } from "@speech/lib/engine/tts-client"
-import type {
-  AudioFormat,
-  TTSProvider,
-  TTSServiceConfig,
-  VoiceConfig,
-} from "@speech/lib/types/tts-types"
-import { BUILTIN_VOICES } from "@speech/lib/types/tts-types"
+import type { SpokenLanguage } from "@speech/lib/language"
+import type { AudioFormat } from "@speech/lib/types/tts-types"
+import type { HostedVoiceChoice } from "@speech/lib/voices"
 
-import { createHttpSpeechAdapter } from "./http"
+import type { SpeechBackend } from "./backend"
+import { factoryOf } from "./backend"
+import type { NativeSpeechEngine } from "./native"
 import type { SpeechAdapter } from "./types"
-import { createWebSpeechAdapter } from "./web-speech"
 
 export type SpeechConfig = RuntimeModeOptions & {
   /**
@@ -46,16 +44,31 @@ export type SpeechConfig = RuntimeModeOptions & {
    */
   endpoint?: string
   apiKey?: string
-  /** Request shape for the HTTP adapter. `openai` is edge-tts-compatible. */
-  provider?: TTSProvider
+  /**
+   * The hosted voice: the provider (the HTTP adapter's request shape;
+   * `openai` is edge-tts-compatible) and the voice the person chose from it,
+   * typed so a voice of another provider does not compile. Defaults to
+   * `openai` with nothing chosen. The device's own voice ignores it: it
+   * takes a language, never one of our voices (`lib/voices`).
+   */
+  hosted?: HostedVoiceChoice
   format?: AudioFormat
   timeoutMs?: number
-  /** Preferred voice id, matched against the resolved adapter's voices. */
-  voiceId?: string
-  /** BCP-47 tag handed to the browser adapter when a voice names none. */
-  lang?: string
-  /** Per-mode factory overrides. Anything omitted keeps the default. */
-  adapters?: Partial<SpeechAdapterRegistry>
+  /** The language of lines that don't say their own. */
+  language?: SpokenLanguage
+  /**
+   * The phone's own text-to-speech, for an app that has one (the Android
+   * app, whose WebView has no working `speechSynthesis`). What
+   * `nativeSpeech` speaks through; nothing else reads it.
+   */
+  native?: NativeSpeechBackend
+  /**
+   * What speaks in each mode: a backend from one of this package's entries,
+   * or a factory of the caller's own (a test fake, a future backend). A
+   * mode left out has nothing to speak with, and falls through to the other
+   * mode's entry as an unsupported one would.
+   */
+  adapters: SpeechAdapterRegistry
   /** Injected in tests. */
   fetchImpl?: FetchImpl
   /**
@@ -68,11 +81,22 @@ export type SpeechConfig = RuntimeModeOptions & {
   fallbackWhenUnsupported?: boolean
 }
 
-/** Everything a factory needs, with the defaults already applied. */
-export type ResolvedSpeechConfig = SpeechConfig & {
+export type NativeSpeechBackend = {
+  /** A stable object, like `adapters`: not part of the session's identity. */
+  readonly engine: NativeSpeechEngine
+  /**
+   * The voice the person picked from the phone's own list (an opaque id from
+   * `engine.getVoices`). The phone's voices are the platform's, not ours, so
+   * this is a string from that list rather than a catalogue type.
+   */
+  readonly voiceId?: string
+  /** Called when a line is refused for want of voice data. */
+  readonly onMissingVoice?: (language: SpokenLanguage) => void
+}
+
+/** Everything a factory needs: the config, with the mode decided. */
+type ResolvedSpeechConfig = SpeechConfig & {
   mode: RuntimeMode
-  service: TTSServiceConfig
-  voice: VoiceConfig | null
 }
 
 export type SpeechAdapterFactory = (
@@ -80,53 +104,22 @@ export type SpeechAdapterFactory = (
 ) => SpeechAdapter
 
 export type SpeechAdapterRegistry = Readonly<
-  Record<RuntimeMode, SpeechAdapterFactory>
+  Partial<Record<RuntimeMode, SpeechBackend | SpeechAdapterFactory>>
 >
-
-export const DEFAULT_SPEECH_ADAPTERS: SpeechAdapterRegistry = {
-  server: (config) =>
-    createHttpSpeechAdapter({
-      service: config.service,
-      defaultVoice: config.voice,
-      fetchImpl: config.fetchImpl,
-    }),
-  static: (config) =>
-    createWebSpeechAdapter({
-      lang: config.lang ?? config.voice?.language,
-    }),
-}
 
 const OTHER_MODE: Readonly<Record<RuntimeMode, RuntimeMode>> = {
   server: "static",
   static: "server",
 }
 
-export function resolveSpeechConfig(
-  config: SpeechConfig = {}
-): ResolvedSpeechConfig {
-  const provider = config.provider ?? "openai"
-  const service: TTSServiceConfig = {
-    provider,
-    apiUrl: config.endpoint ?? DEFAULT_OPENAI_EDGE_ENDPOINT,
-    apiKey: config.apiKey,
-    format: config.format ?? "mp3",
-    timeout: config.timeoutMs,
-  }
-
-  const catalogue = BUILTIN_VOICES[provider]
-  const voice =
-    (config.voiceId
-      ? catalogue.find((candidate) => candidate.id === config.voiceId)
-      : undefined) ??
-    catalogue.at(0) ??
-    null
-
-  return {
-    ...config,
-    mode: resolveRuntimeMode(config),
-    service,
-    voice,
-  }
+function buildAdapter(
+  config: ResolvedSpeechConfig,
+  mode: RuntimeMode
+): SpeechAdapter | null {
+  const entry = config.adapters[mode]
+  if (!entry) return null
+  const factory = typeof entry === "function" ? entry : factoryOf(entry)
+  return factory({ ...config, mode })
 }
 
 /**
@@ -134,27 +127,35 @@ export function resolveSpeechConfig(
  * speaks - or, in a runtime where nothing can, something whose `supported`
  * is false and whose `speak()` rejects honestly.
  */
-export function createSpeechAdapter(config: SpeechConfig = {}): SpeechAdapter {
-  const resolved = resolveSpeechConfig(config)
-  const registry: SpeechAdapterRegistry = {
-    ...DEFAULT_SPEECH_ADAPTERS,
-    ...config.adapters,
+export function createSpeechAdapter(config: SpeechConfig): SpeechAdapter {
+  const resolved: ResolvedSpeechConfig = {
+    ...config,
+    mode: resolveRuntimeMode(config),
   }
-
-  const primary = registry[resolved.mode](resolved)
-  if (primary.supported || config.fallbackWhenUnsupported === false) {
-    return primary
-  }
-
   const fallbackMode = OTHER_MODE[resolved.mode]
-  const fallback = registry[fallbackMode]({ ...resolved, mode: fallbackMode })
-  if (!fallback.supported) {
+
+  const primary = buildAdapter(resolved, resolved.mode)
+  if (primary?.supported || config.fallbackWhenUnsupported === false) {
+    if (primary) return primary
+    throw new Error(
+      `No speech backend for "${resolved.mode}" mode: pass one in SpeechConfig.adapters.`
+    )
+  }
+
+  const fallback = buildAdapter(resolved, fallbackMode)
+  if (!fallback) {
+    if (primary) return primary
+    throw new Error(
+      `No speech backend for "${resolved.mode}" or "${fallbackMode}" mode: pass one in SpeechConfig.adapters.`
+    )
+  }
+  if (primary && !fallback.supported) {
     // Neither can speak. Keep the mode's own adapter so diagnostics still
     // report the deployment's intent rather than the fallback's.
     fallback.dispose()
     return primary
   }
 
-  primary.dispose()
+  primary?.dispose()
   return fallback
 }

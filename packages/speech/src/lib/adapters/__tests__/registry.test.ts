@@ -1,7 +1,8 @@
 import type { SpeechAdapter, SpeechAdapterRegistry } from "@speech/lib/adapters"
-import { createSpeechAdapter, resolveSpeechConfig } from "@speech/lib/adapters"
+import { createSpeechAdapter } from "@speech/lib/adapters"
+import { httpSpeech } from "@speech/lib/adapters/http"
+import { webSpeech } from "@speech/lib/adapters/web-speech"
 import { createControllableAdapter } from "@speech/lib/testing"
-import type { VoiceConfig } from "@speech/lib/types/tts-types"
 import fc from "fast-check"
 import { describe, expect, it } from "vitest"
 
@@ -23,40 +24,6 @@ function supported(id: SpeechAdapter["id"]): SpeechAdapter {
   return { ...adapter, id }
 }
 
-describe("resolveSpeechConfig", () => {
-  it("defaults to the openai-edge endpoint the compose file publishes", () => {
-    const resolved = resolveSpeechConfig({ mode: "server" })
-
-    expect(resolved.service.provider).toBe("openai")
-    expect(resolved.service.apiUrl).toBe(
-      "http://localhost:5050/v1/audio/speech"
-    )
-  })
-
-  it("takes the endpoint, key, format and timeout from config", () => {
-    const resolved = resolveSpeechConfig({
-      mode: "server",
-      endpoint: "https://tts.internal/v1/audio/speech",
-      apiKey: "from-config",
-      format: "wav",
-      timeoutMs: 5_000,
-    })
-
-    expect(resolved.service.apiUrl).toBe("https://tts.internal/v1/audio/speech")
-    expect(resolved.service.apiKey).toBe("from-config")
-    expect(resolved.service.format).toBe("wav")
-    expect(resolved.service.timeout).toBe(5_000)
-  })
-
-  it("resolves voiceId against the provider's catalogue, falling back to its first", () => {
-    const korean = resolveSpeechConfig({ voiceId: "ko-KR-SunHiNeural" })
-    expect(korean.voice?.id).toBe("ko-KR-SunHiNeural")
-
-    const unknown = resolveSpeechConfig({ voiceId: "not-a-voice" })
-    expect(unknown.voice?.id).toBe("onyx")
-  })
-})
-
 describe("createSpeechAdapter - mode-driven selection", () => {
   it("uses the server factory in server mode and the static one in static mode", () => {
     const registry: SpeechAdapterRegistry = {
@@ -72,20 +39,54 @@ describe("createSpeechAdapter - mode-driven selection", () => {
     )
   })
 
-  it("hands the resolved service config to the factory it picks", () => {
-    let seen: string | undefined
+  it("hands the config, with the mode it picked, to the factory", () => {
+    let seen: [string | undefined, string] | undefined
     createSpeechAdapter({
       mode: "server",
       endpoint: "https://tts.internal/v1/audio/speech",
       adapters: {
         server: (config) => {
-          seen = config.service.apiUrl
+          seen = [config.endpoint, config.mode]
           return supported("http")
         },
       },
     })
 
-    expect(seen).toBe("https://tts.internal/v1/audio/speech")
+    expect(seen).toEqual(["https://tts.internal/v1/audio/speech", "server"])
+  })
+
+  it("takes a backend token from an entry as readily as a factory", () => {
+    const adapter = createSpeechAdapter({
+      mode: "static",
+      adapters: { static: webSpeech },
+    })
+
+    expect(adapter.id).toBe("web-speech")
+    adapter.dispose()
+  })
+
+  it("falls through to the other mode when the chosen one has no backend", () => {
+    // The Android app passes only the phone's voice, and pins its mode, but
+    // a host that left the mode to the hostname heuristic still speaks.
+    const adapter = createSpeechAdapter({
+      mode: "server",
+      adapters: { static: () => supported("native") },
+    })
+
+    expect(adapter.id).toBe("native")
+  })
+
+  it("refuses to start a session with no backend to speak with", () => {
+    expect(() => createSpeechAdapter({ mode: "server", adapters: {} })).toThrow(
+      'No speech backend for "server" or "static" mode'
+    )
+    expect(() =>
+      createSpeechAdapter({
+        mode: "server",
+        fallbackWhenUnsupported: false,
+        adapters: { static: () => supported("web-speech") },
+      })
+    ).toThrow('No speech backend for "server" mode')
   })
 
   it("falls through to the other mode's adapter when the chosen one can't speak", () => {
@@ -195,6 +196,7 @@ describe("createSpeechAdapter - property: configuration decides, nothing else", 
             mode: "server",
             endpoint,
             apiKey,
+            adapters: { server: httpSpeech },
           })
 
           // A consumer holds a `SpeechAdapter` and nothing else: the
@@ -210,27 +212,5 @@ describe("createSpeechAdapter - property: configuration decides, nothing else", 
       ),
       { numRuns: 50 }
     )
-  })
-})
-
-describe("createSpeechAdapter - default registry", () => {
-  it("reaches for the browser in static mode, where no backend exists", () => {
-    const adapter = createSpeechAdapter({ mode: "static" })
-    expect(adapter.id).toBe("web-speech")
-  })
-
-  it("reaches for the HTTP backend in server mode", () => {
-    // jsdom has no speechSynthesis, so the fallback can't fire and the
-    // server choice stands on its own.
-    const adapter = createSpeechAdapter({ mode: "server" })
-    expect(adapter.id).toBe("http")
-    adapter.dispose()
-  })
-
-  it("passes the configured voice through as the adapter's default", () => {
-    const voices: ReadonlyArray<VoiceConfig> = createSpeechAdapter({
-      mode: "server",
-    }).voices
-    expect(voices.some((voice) => voice.id === "onyx")).toBe(true)
   })
 })

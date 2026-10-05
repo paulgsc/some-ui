@@ -3,7 +3,7 @@ import type {
   SessionActivity,
   TopikLevel,
 } from "@some-ui/activity-catalog"
-import type { TTSProvider } from "@some-ui/speech"
+import type { HostedVoiceChoice } from "@some-ui/speech"
 import type { SceneConfig, SlotId } from "@some-ui/types"
 import type { LayoutNode } from "wireframes"
 
@@ -26,9 +26,20 @@ export type UserProfile = {
 }
 
 export type UserSettings = {
-  ttsProvider: TTSProvider
-  /** Empty string means "use the provider's default voice". */
-  ttsVoiceId: string
+  /**
+   * The hosted voice: a provider and the voice chosen from it, or `null`
+   * for the provider's default in each language. Typed so a voice of
+   * another provider cannot be held; storage is read into it once, in the
+   * settings repository.
+   */
+  ttsVoice: HostedVoiceChoice
+  /**
+   * The Android app's voice, as the phone's own engine names it
+   * (`ko-kr-x-ism-local`). Separate from `ttsVoiceId` because the two name
+   * voices from different catalogues: a hosted voice id means nothing to
+   * the phone. Empty string means "the phone's default Korean voice".
+   */
+  deviceVoiceId: string
   /**
    * What this app may play, per channel. Lives with the rest of the tenant
    * settings rather than in its own store so that a person's audio choices
@@ -53,12 +64,22 @@ export type SessionStatus =
   | "paused"
   | "completed"
 
+/**
+ * One activity as a stored session holds it. The id is a `string`, not an
+ * `ActivityId`: the record outlives the catalogue it was composed from, so a
+ * session can name an activity that has since been retired. Narrow it with
+ * `findActivity` / `isActivityId` before treating it as a live one.
+ */
+export type StoredSessionActivity = Omit<SessionActivity, "activityId"> & {
+  activityId: string
+}
+
 export type SessionRecord = {
   id: string
   name: string
   status: SessionStatus
   /** Friendly source config - lets a draft/scheduled session round-trip back into the composer. */
-  activities: Array<SessionActivity>
+  activities: Array<StoredSessionActivity>
   /** Finalized, playable scenes - the source of truth once Advanced editing may have touched them. */
   scenes: Array<SceneConfig>
   layoutMode: "basic" | "advanced"

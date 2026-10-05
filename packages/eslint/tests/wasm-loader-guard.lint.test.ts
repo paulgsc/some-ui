@@ -52,16 +52,13 @@ export async function loadWasm() {
     expectMessageForRule(msgs, RULE_ID, "bare polyhedron singleton import")
   })
 
-  it("fires for each of the 8 known wasm-bindgen crate names", async () => {
+  it("fires for each of the 5 known wasm-bindgen crate names", async () => {
     const crates = [
       "@some-ui/hangul-game-core",
       "@some-ui/leetype-wasm",
       "@some-ui/polyhedron",
-      "some-bricks",
       "some-charts",
-      "@some-ui/some-crossword",
       "@some-ui/some-hexagon",
-      "@some-ui/viewport-rotation",
     ]
 
     for (const crate of crates) {
@@ -123,8 +120,8 @@ export async function legacyLoad() {
 
   it("does not fire on a static import of a wasm crate (a different, untracked anti-pattern shape)", async () => {
     const code = `
-import init, { CrosswordGenerator } from "@some-ui/some-crossword"
-export const generator = new CrosswordGenerator([], 1)
+import init, { HexGrid } from "@some-ui/some-hexagon"
+export const grid = new HexGrid(1)
 void init
 `
     const msgs = await lintSnippet(makeConfig(), code, TS_FILE)

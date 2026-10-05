@@ -17,8 +17,6 @@ import {
   SelectValue,
   Skeleton,
 } from "@some-ui/shared"
-import { BUILTIN_VOICES } from "@some-ui/speech"
-import type { TTSProvider } from "@some-ui/speech"
 import {
   isThemePreference,
   SESSION_THEMES,
@@ -32,19 +30,11 @@ import { IntentButton, IntentFailure } from "@/lib/intent/render"
 import { matchQueryOutcome, queryOutcome } from "@/lib/query-outcome"
 import type { UserSettings } from "@/lib/tenant"
 import { settingsQuery, useSettings, useUpdateSettings } from "@/lib/tenant"
-import { AccountSection } from "@/components/settings/account-section"
+import { DataHomeSection } from "@/components/settings/data-home-section"
+import { DeviceSection } from "@/components/settings/device-section"
+import { DeviceVoiceField } from "@/components/settings/device-voice-field"
+import { HostedVoiceFields } from "@/components/settings/hosted-voice-fields"
 import { StudyNudgeSection } from "@/components/settings/study-nudge-section"
-
-const TTS_PROVIDER_OPTIONS: ReadonlyArray<{
-  value: TTSProvider
-  label: string
-}> = [
-  { value: "openai", label: "OpenAI" },
-  { value: "elevenlabs", label: "ElevenLabs" },
-  { value: "google", label: "Google" },
-  { value: "azure", label: "Azure" },
-  { value: "custom", label: "Custom" },
-]
 
 const LAYOUT_TREE_OPTIONS: ReadonlyArray<{
   value: LayoutTreeId
@@ -62,17 +52,13 @@ const THEME_OPTIONS: ReadonlyArray<{ value: string; label: string }> = [
   ...SESSION_THEMES.map((theme) => ({ value: theme.id, label: theme.label })),
 ]
 
-function isTTSProvider(value: string): value is TTSProvider {
-  return TTS_PROVIDER_OPTIONS.some((option) => option.value === value)
-}
-
 function isLayoutTreeId(value: string): value is LayoutTreeId {
   return LAYOUT_TREE_OPTIONS.some((option) => option.value === value)
 }
 
 const SettingsSkeleton = (): JSX.Element => (
   <Card className="max-w-xl">
-    <CardContent className="space-y-4 pt-6">
+    <CardContent className="space-y-4 pt-[var(--card-p,1.5rem)]">
       <Skeleton className="h-10 w-full" />
       <Skeleton className="h-10 w-full" />
       <Skeleton className="h-10 w-full" />
@@ -85,6 +71,7 @@ const SettingsForm = ({
 }: {
   settings: UserSettings
 }): JSX.Element => {
+  // eslint-disable-next-line owner-guard/no-mount-snapshot -- an edit buffer: a refetch must not overwrite unsaved choices, and isDirty compares it against the live settings
   const [draft, setDraft] = useState<UserSettings>(settings)
   const saveIntent = useIntent(useUpdateSettings(), {
     presentation: "interactive",
@@ -92,7 +79,6 @@ const SettingsForm = ({
   const { preference, setPreference } = useTheme()
 
   const isDirty = JSON.stringify(settings) !== JSON.stringify(draft)
-  const voicesForProvider = BUILTIN_VOICES[draft.ttsProvider]
 
   // Lifted verbatim from the pre-migration `onSuccess`. No navigation, so
   // no `disabled` check is needed here the way session-composer's chain
@@ -100,11 +86,6 @@ const SettingsForm = ({
   useIntentEffect(saveIntent.state, () => {
     toast("Settings saved")
   })
-
-  const handleProviderChange = (provider: TTSProvider): void => {
-    // A voice id from the old provider won't exist on the new one.
-    setDraft({ ...draft, ttsProvider: provider, ttsVoiceId: "" })
-  }
 
   const handleSave = (): void => {
     saveIntent.start(draft)
@@ -119,54 +100,19 @@ const SettingsForm = ({
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
-        <div className="space-y-2">
-          <Label>Text-to-speech provider</Label>
-          <Select
-            value={draft.ttsProvider}
-            onValueChange={(value: string) => {
-              if (isTTSProvider(value)) handleProviderChange(value)
-            }}
-          >
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {TTS_PROVIDER_OPTIONS.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
-                  {option.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="space-y-2">
-          <Label>Voice</Label>
-          {voicesForProvider.length === 0 ? (
-            <p className="text-muted-foreground text-sm">
-              No preset voices for this provider. Uses the endpoint default
-              voice.
-            </p>
-          ) : (
-            <Select
-              value={draft.ttsVoiceId || voicesForProvider[0]?.id}
-              onValueChange={(value: string) =>
-                setDraft({ ...draft, ttsVoiceId: value })
-              }
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {voicesForProvider.map((voice) => (
-                  <SelectItem key={voice.id} value={voice.id}>
-                    {voice.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
-        </div>
+        {/* The phone speaks with its own engine, so a hosted provider and
+            voice mean nothing there (#1628): it gets its own voices. */}
+        {import.meta.env.VITE_DEVICE_BACKEND === "true" ? (
+          <DeviceVoiceField
+            value={draft.deviceVoiceId}
+            onChange={(deviceVoiceId) => setDraft({ ...draft, deviceVoiceId })}
+          />
+        ) : (
+          <HostedVoiceFields
+            value={draft.ttsVoice}
+            onChange={(ttsVoice) => setDraft({ ...draft, ttsVoice })}
+          />
+        )}
 
         <div className="space-y-2">
           <Label htmlFor="default-duration">
@@ -250,11 +196,19 @@ const SettingsForm = ({
   )
 }
 
-/** Outside the settings outcome: signing out must work when settings don't load. */
+/**
+ * Outside the settings outcome: signing out must work when settings don't
+ * load. On the Android app there is no account to sign out of; the card
+ * holds the phone's own controls instead (the sync from home).
+ */
 const AccountCard = (): JSX.Element => (
   <Card className="max-w-xl">
-    <CardContent className="pt-6">
-      <AccountSection />
+    <CardContent className="pt-[var(--card-p,1.5rem)]">
+      {import.meta.env.VITE_DEVICE_BACKEND === "true" ? (
+        <DeviceSection />
+      ) : (
+        <DataHomeSection />
+      )}
     </CardContent>
   </Card>
 )

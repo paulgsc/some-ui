@@ -1,10 +1,10 @@
 import { createContext, useContext } from "react"
-import type { SpeechAdapter } from "@some-ui/speech"
+import type { ShelfPort } from "@some-ui/shared"
+import type { Speaker } from "@some-ui/speech"
 import type {
   ITopikMetadataRepository,
   ITopikRepository,
 } from "@topik/lib/topik"
-import type { ShelfPort } from "@topik/lib/topik/adapter/shelf"
 
 export type SessionConfig = {
   topikRepository: ITopikRepository
@@ -14,7 +14,7 @@ export type SessionConfig = {
    * without spoken prompts rather than refusing to run - a Korean lesson
    * with no pronunciation is degraded, and one that throws is not a lesson.
    */
-  speechAdapter: SpeechAdapter | null
+  speaker: Speaker | null
   /**
    * The learner shelf, where the host has one and a session to key it by
    * (`adapter/shelf`). Absent, nothing offers to keep a lesson, and the

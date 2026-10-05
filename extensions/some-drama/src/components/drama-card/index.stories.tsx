@@ -408,12 +408,6 @@ export const MoodJoy: Story = {
   },
 }
 
-/** Love — rose hue (default palette, baseline comparison). */
-export const MoodLove: Story = {
-  name: "Mood / Love",
-  args: { ...COMPACT_BASE, activeMood: "love" },
-}
-
 /** Sadness — cool blue hue shift. */
 export const MoodSadness: Story = {
   name: "Mood / Sadness",

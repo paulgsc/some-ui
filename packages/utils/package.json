@@ -4,6 +4,7 @@
   "version": "1.1.4",
   "type": "module",
   "scripts": {
+    "knip": "knip --directory \"$(git rev-parse --show-toplevel)\" --workspace \"$(git rev-parse --show-prefix | sed 's:/*$::')\"",
     "watch:lint": "eslint --watch --cache --fix \"**/*.{js,mjs,ts,tsx}\"",
     "clean": "rimraf .turbo && rimraf node_modules && rimraf .eslintcache && pnpm clean:build",
     "clean:build": "rimraf ./dist ./.rollup.cache ./tsconfig.tsbuildinfo",
@@ -14,32 +15,22 @@
     "test": "vitest"
   },
   "peerDependencies": {
-    "@tanstack/react-query": "^5.66.11",
-    "clsx": "^2.1.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "tailwind-merge": "^3.6.0",
     "usehooks-ts": "3.1.1",
     "zod": "catalog:"
   },
   "dependencies": {
     "@some-ui/core-utils": "workspace:*",
-    "@some-ui/fetch-kit": "workspace:*",
-    "@some-ui/polyhedron": "0.0.4",
-    "@some-ui/speech": "workspace:*",
     "@some-ui/types": "workspace:*",
-    "@some-ui/wasm-loader": "workspace:*",
     "@some-ui/ws": "workspace:*",
-    "clsx": "^2.1.1",
-    "tailwind-merge": "^3.6.0",
     "usehooks-ts": "3.1.1",
     "zustand": "^5.0.9"
   },
   "devDependencies": {
     "@some-ui/tsconfig": "workspace:*",
-    "@tanstack/react-query": "^5.66.11",
     "@testing-library/react": "^16.3.0",
-    "fast-check": "^3.23.1",
+    "fast-check": "^4.10.2",
     "jsdom": "26.0.0"
   },
   "repository": {

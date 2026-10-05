@@ -1,10 +1,13 @@
 # Build audiences: one app, a bundle per deploy
 
-`apps/www` is one TanStack app that deploys three ways: the Docker image on the home
-network, the GitHub Pages site, and (later) a VPS. Some of what it will carry only means
-anything on the home network (the OBS control workspace is the first). **Build audiences**
-keep that code out of every build that never runs there, without a second app, a second
-route tree or a weaker type system.
+`apps/www` is one TanStack app that deploys four ways: the Docker image on the home
+network, the GitHub Pages site, the Android app (`apps/mobile`), and (later) a VPS. Some of
+what it will carry only means anything on the home network (the OBS control workspace is
+the first), and some only inside the Android app (`@some-ui/soundbites`, which records
+from the phone's microphone). **Build audiences**
+keep that code out of every build that never runs there, without a second app or a weaker
+type system. (One route tree for every profile was part of that design; it is now recorded as
+debt, below in "Paths".)
 
 This is about bundle size, not access. Nothing here hides or protects anything; a service
 a LAN-only page talks to is the server's to guard.
@@ -12,18 +15,19 @@ a LAN-only page talks to is the server's to guard.
 ## How it works
 
 - **Each `packages/ui/*` workspace declares an audience** in `package.json`:
-  `"someUi": { "audience": "public" | "lan" }` (schema: `src/audience/schema.ts`). The field
+  `"someUi": { "audience": "public" | "lan" | "apk" }` (schema: `src/audience/schema.ts`). The field
   is required. Every profile, manifest and gate is typed against `AUDIENCES`.
 - **Each build selects a profile.** `apps/www/build.profiles.ts` lists them (`lan`, the default,
-  carries everything; `pages` carries `public`), chosen by `SOME_UI_PROFILE`.
+  carries `public` and `lan`; `pages` carries `public`; `mobile`, the Android app's, carries
+  `public` and `apk`), chosen by `SOME_UI_PROFILE`.
 - **`audiencePlugin` stubs what the profile leaves out.** An import of an excluded workspace
   resolves to a module exporting the same names, each a function that throws when called.
   `tsc` still resolves the real package, so the route tree, typed links, search schemas and
   loaders are identical in every profile; only the bundle differs. The workspace's
   `/contract` subpath is never stubbed.
 - **Gated routes live under a gate directory** (`gates` in `build.profiles.ts`; for `lan`,
-  `apps/www/src/routes/_dashboard/_lan/`). Its layout (`_lan.tsx`) calls
-  `requireAudience("lan")` in `beforeLoad`, which turns a visit into the app's ordinary
+  `apps/www/src/routes/_dashboard/_lan/`, for `apk`, `_dashboard/_apk/`). Its layout
+  (`_lan.tsx`, `_apk.tsx`) calls `requireAudience("lan")` (or `"apk"`) in `beforeLoad`, which turns a visit into the app's ordinary
   not-found in a build without the audience, before a loader or component can reach a stub.
 
 ## What is enforced, and what is not
@@ -86,7 +90,8 @@ is a regression, not debt. Each falsifier covers deletions and moves as well as 
   module does not meet it.
 - _Scope:_ `packages/ui/*` workspaces with a non-`public` audience. Held when written, with
   none in the repo yet. The first, `@some-ui/lesson-crm`, exports no `./contract` at all, so
-  it holds vacuously there; the OBS workspace is expected to be the first with one.
+  it holds vacuously there, as it does for the first `apk` workspace, `@some-ui/soundbites`;
+  the OBS workspace is expected to be the first with one.
 - _Why not enforced:_ mechanical; not yet a test. The plugin never stubs `/contract`, so
   whatever a contract module imports ships in every profile: a size regression, not a
   broken build, so neither the build nor an existing test notices. A lint rule would see one
@@ -120,10 +125,78 @@ checked against every existing link. What is left is inside such a file.
   the same in every profile), and a lint rule would need the route tree, another file (the
   `eslint --cache` problem again).
 
+## Paths: what each build ships
+
+Audiences decide which `packages/ui/*` workspaces a profile carries. The rule they serve is
+wider, and it is the one this repository holds every build to: **a profile ships only the code
+on its own path.** Code no visit to that deployable can run does not belong in its output, at
+startup or in a lazy chunk, and when keeping it out takes structure (a split workspace, a
+separate entry, a route tree per deployable) the repository pays for that, not the bundle.
+
+`pnpm --filter www check:bundle-paths` (`apps/www/check-bundle-paths.ts`, rules in
+`apps/www/build.paths.ts`, reader and checks in `src/bundle-paths/`) holds www to it. It
+builds every profile the way its deployable does (`profileBuildEnv`), plus `--manifest` and
+hidden sourcemaps, so the code checked is byte-for-byte what ships. It runs in root `pnpm lint`,
+and in `pr.yml`'s Node job, which runs for any change that is not Markdown
+(`_detect-changes.yml`: its lone `'!**/*.md'` pattern matches every other file), whenever
+turbo's `...[HEAD^1]` selects www: a file under it or a workspace it builds from changed, or
+the lockfile changed what one of them resolves (a bundler bump included). It fails on:
+
+- **an orphan chunk**: emitted, and no HTML entry loads it through any chain of chunks;
+- **an off-path module**: one `exclusive` gives to other profiles only, or one under an
+  `allowlists` entry's `within` that its `allow` does not name. When the module is an
+  `import()` target, its chunk and every chunk only it loads are charged to it, so a page
+  off the path is reported with what it brings, not just its route file;
+- **a missing module**: one `required` says the deployable cannot work without;
+- **an undeclared exclusive**: a module some profiles ship and others do not, that no
+  `exclusive` entry (or `decidedElsewhere`, for workspaces and npm packages) accounts for.
+  This keeps `exclusive` complete: a new phone-only module fails the first time it builds;
+- **stale debt**: a `debt` entry that matches nothing any more, so the list only shrinks;
+- **an unmapped chunk** over 2 KiB: one whose contents cannot be attributed.
+
+**Read a build flag where it guards an `import()`, or code that should not ship.** The audit that led here (October 2026) found
+~118 KiB of native code in the web builds behind `VITE_DEVICE_BACKEND`, though Rolldown
+does fold a constant across modules: it lays out chunks first and folds afterwards. A branch
+on a flag imported from another module loses its code, but the chunk its `import()` named is
+still written, and a module-level statement of an included module survives without the code
+that used it. Written as `import.meta.env.VITE_X === "true"` at the branch, the value is a
+literal before chunking and nothing is emitted. `src/bundle-paths/__tests__` pins the
+first behaviour and its fix on a real build (the second is the same ordering, seen in www);
+`apps/www/src/vite-env.d.ts` says it where the flag is declared. Flags still exported as
+constants (`DATA_MODE`, `FETCHES_CONTENT`, `MOBILE_APP`) guard no `import()` today; one that
+starts to leaves an orphan chunk, which fails.
+
+**Why it reads the written output.** Rolldown's `OutputChunk.modules` lists modules whose code
+was dropped after chunking (with a rendered length), and chunk names seen in `generateBundle`
+are not always the ones written. So the reader starts from the HTML, follows the chunk names
+each loaded chunk spells, and attributes code by sourcemap segments, counting a source only
+where a segment maps something other than a keyword or punctuation to it (a dropped
+declaration leaves a stray `var ` mapped to its first line).
+
+What it cannot see, by construction:
+
+- **Inside a prebuilt workspace.** A `packages/*` dist has no sourcemap for www's build to
+  chain, so each file of it is one module. A workspace with code only some profiles run splits
+  it into subpath entries (`BUILD.md`), and each entry file can then be named in a rule:
+  `@some-ui/speech` exports its HTTP, browser and native voices this way, and `build.paths.ts`
+  keeps each in the profiles that run it.
+- **Code with no mapping** (a JSON module, a virtual module) belongs to its chunk only.
+- **Files copied from `public/`**, which are not chunks: the APK carries the web-push
+  service worker `sw.js`, which it never registers.
+- **A module every profile ships**, but one of them never runs: the comparison has nothing to
+  compare. It is caught only once `exclusive` names it.
+
+**Debt today** (`build.paths.ts`, `debt`): every profile builds the one route tree, so the
+routes off a profile's path ship there as stubs in the startup chunk and as page chunks
+(about 67 KiB in the APK; the `apk` gate's pages in `lan` and `pages`, and the `lan` gate's
+in `pages`). The gates and `keepToMobileSurface` keep them from rendering; the bytes are still
+paid. Each entry goes with the change that gives that deployable its own route tree.
+
 ## Known gaps
 
 - **Tailwind still scans gated workspaces in every profile** (#1538). `style.context.ts`
   lists every UI package `www` depends on, as its test requires, so utilities used only by a
   LAN workspace are generated into the public stylesheet too. Bytes of CSS, no code. The
   first LAN workspace, `@some-ui/lesson-crm`, landed without fixing it: it is built from
-  `@some-ui/shared` components and adds few utilities of its own.
+  `@some-ui/shared` components and adds few utilities of its own. So did the first `apk`
+  one, `@some-ui/soundbites`, for the same reason.

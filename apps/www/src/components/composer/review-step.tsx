@@ -1,4 +1,4 @@
-import type { JSX } from "react"
+import type { JSX, ReactNode } from "react"
 import { useMemo } from "react"
 import {
   ACTIVITY_CATALOG,
@@ -40,6 +40,13 @@ type ReviewStepProps = {
   sessionName: string
   onSessionNameChange: (name: string) => void
   defaultName: string
+  /**
+   * The save controls, when this pane is where a session is finished. On a
+   * phone the tab bar is the navigation, so there is no Back / Continue
+   * footer to carry them and they belong to the last pane - the lesson CRM's
+   * Check pane holds its Save the same way.
+   */
+  actions?: ReactNode
 }
 
 export const ReviewStep = ({
@@ -49,6 +56,7 @@ export const ReviewStep = ({
   sessionName,
   onSessionNameChange,
   defaultName,
+  actions,
 }: ReviewStepProps): JSX.Element => {
   const totalDurationMs = totalDurationOfScenes(scenes)
 
@@ -114,7 +122,10 @@ export const ReviewStep = ({
               // is honest about not being able to remove. Clipping it instead
               // is worse than it sounds: a card whose centre falls outside the
               // box stops being clickable at all.
-              "min-h-0 flex-1 overflow-y-auto"
+              // On a handheld the bar is hidden (`handheld:no-scrollbar`): a phone
+              // scrolls by finger, so a bar there is only noise - and on a
+              // browser that lays bars out it took its width out of the box.
+              "min-h-0 flex-1 overflow-y-auto handheld:no-scrollbar"
             }
           >
             <div ref={contentRef} className="space-y-3">
@@ -159,7 +170,7 @@ export const ReviewStep = ({
           that is most of what the activity list has left, so the short form
           keeps the facts and drops the box. */}
       <Card className={cn("shrink-0", TALL_WINDOW_ONLY)}>
-        <CardContent className="flex items-center justify-between py-6">
+        <CardContent className="flex items-center justify-between py-[var(--card-p,1.5rem)]">
           <div className="min-w-0">
             <p className="text-muted-foreground text-sm">Total duration</p>
             <p className="font-semibold">{formatDurationMs(totalDurationMs)}</p>
@@ -183,6 +194,12 @@ export const ReviewStep = ({
           {arrangementLabel}
         </Badge>
       </div>
+
+      {actions && (
+        <div className="flex shrink-0 flex-wrap items-center justify-end gap-2 border-t pt-2">
+          {actions}
+        </div>
+      )}
     </div>
   )
 }

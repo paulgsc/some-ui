@@ -1,40 +1,39 @@
-// `Speech` stimuli (ADR 0001 §2(a), #762's Prompt/Concept Station), spoken through
-// `@some-ui/speech`'s browser adapter. TTS-generated at runtime carries no bundling/licensing
-// obligation (ADR 0001 §5), unlike a prerecorded asset - this is the whole reason the seed word
-// list (`@honeycomb/data`) ships `ttsText` instead of an audio file per word.
+// `Speech` stimuli (ADR 0001 §2(a), #762's Prompt/Concept Station), said by the page's speech
+// session (`useSpeaker()` from `@some-ui/speech`): in the voice the person chose, and not at all
+// while they have muted it. TTS-generated at runtime carries no bundling/licensing obligation
+// (ADR 0001 §5), unlike a prerecorded asset - this is the whole reason the seed word list
+// (`@honeycomb/data`) ships `ttsText` instead of an audio file per word.
 //
-// The `speechSynthesis` calls this file used to make by hand now live in one place for the whole
-// repo, which is the point: three workspaces were each re-deriving the same cancel/settle
-// handling, and getting it wrong differently. The exported shape is unchanged - no-ops (never
-// throws) when speech isn't available, so callers don't need their own feature-detection branch,
-// and #762's UI shows the word's Hangul spelling either way.
+// This file used to build its own browser voice at module level, outside any session, so a word
+// prompt ignored the chosen voice, ignored mute, and failed without a notice. Honeycomb has no
+// voice of its own now: it names the word's language and the session does the rest.
 
-import type { SpeechAdapter } from "@some-ui/speech"
-import { createWebSpeechAdapter } from "@some-ui/speech"
+import type { Speaker, SpokenLanguage, Urgency } from "@some-ui/speech"
 
-const DEFAULT_LANG = "ko-KR"
+const WORD_LANGUAGE: SpokenLanguage = "korean"
 
-// One adapter for the page, built on first use: constructing it reads `window`, and this module
-// gets imported by code that runs before there is one.
-let adapter: SpeechAdapter | null = null
-
-function getAdapter(): SpeechAdapter {
-  adapter ??= createWebSpeechAdapter({ lang: DEFAULT_LANG })
-  return adapter
-}
-
-export function speak(text: string, lang = DEFAULT_LANG): void {
-  if (text.length === 0) return
-  const speech = getAdapter()
-  if (!speech.supported) return
+/**
+ * Says `text` through the page's speaker. A no-op (never throws) without one - a story, a test,
+ * a host with no speech session - so callers need no feature-detection branch, and #762's UI
+ * shows the word's Hangul spelling either way.
+ *
+ * `urgency` says who asked: `"now"` for the learner's tap, which interrupts whatever else is
+ * speaking on the page (a lesson line there is said again after it); `"next"` for a prompt the
+ * page plays on its own (a hint tier escalating on a timer), which waits its turn.
+ *
+ * A word replaces this speaker's own earlier one, playing or waiting: a "next" hint a tap cut
+ * off would otherwise be said again after the tap, as the session does for an interrupted
+ * "next" line.
+ */
+export function sayWord(
+  speaker: Speaker | null,
+  text: string,
+  urgency: Urgency
+): void {
+  if (!speaker || text.length === 0) return
 
   // Fire and forget, by design: a challenge advances on the learner's answer, not on the audio
-  // finishing. The rejection still has to be consumed - the adapter rejects a superseded or
-  // cancelled utterance now instead of pretending it was spoken, and an unhandled rejection is a
-  // poor way to find that out.
-  void speech
-    .speak(text, {
-      voice: { id: lang, name: lang, provider: "custom", language: lang },
-    })
-    .catch(() => undefined)
+  // finishing, so the line's outcome is not needed.
+  speaker.stop()
+  void speaker.say(text, { language: WORD_LANGUAGE, urgency })
 }

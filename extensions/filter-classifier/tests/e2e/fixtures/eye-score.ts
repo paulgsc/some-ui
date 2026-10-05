@@ -47,7 +47,7 @@ export function computeOverall(subScores: EyeSubScores): number {
   return Math.round(sum / SUB_SCORE_KEYS.length)
 }
 
-export function isValidScore(value: number): boolean {
+function isValidScore(value: number): boolean {
   return Number.isFinite(value) && value >= SCORE_MIN && value <= SCORE_MAX
 }
 

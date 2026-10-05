@@ -78,6 +78,7 @@ export function useLiveLayoutEditor(
   // editor (or a previous tab) left behind - see `durable-failure.ts`. The
   // effect below is what keeps it in sync with this mount's own attempts.
   const [restoredFailure, setRestoredFailure] = useState(() =>
+    // eslint-disable-next-line owner-guard/no-mount-snapshot -- seeded once by design (comment above); the effect below keeps it in step
     readDurableFailure(session.id)
   )
   const lastHandledStatusRef = useRef<

@@ -58,50 +58,33 @@ jobs:
   # ── Node CI (dep-aware, turbo-filtered) ────────────────────────────────
   # Only runs if Node/TS/CSS files or CI config changed.
   # turbo --filter=...[HEAD^1] scopes work to changed packages + dependents.
-  node:
-    name: Node CI (filtered)
+  #
+  # Four jobs that run in parallel, not one. As a single job every step ran
+  # in series (about 11.5 min on #1673), though none needs another's result.
+  # Each job repeats the setup and the affected build below (~2.5 min: there
+  # is no remote turbo cache to share it), so the wall time is the slowest
+  # job instead of the sum. That setup and build is one composite action,
+  # .github/actions/node-ci-setup, so the four cannot drift onto different
+  # builds. CI Gate requires all four. Each reads the repo and nothing else,
+  # so its token is read-only (mobile-apk.yml runs the same setup and build
+  # on `contents: read`).
+  node-checks:
+    name: Node CI / typecheck & repo checks
     needs: changes
     if: needs.changes.outputs.node == 'true' || needs.changes.outputs.ci == 'true'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v7
         with:
           # turbo --filter=[HEAD^1] needs the parent commit to diff against.
           fetch-depth: 2
 
-      - uses: ./.github/actions/nix-setup
-      - uses: ./.github/actions/pnpm-cache
+      # Nix, the install and the affected build, shared by all four jobs.
+      - uses: ./.github/actions/node-ci-setup
 
-      - name: Install dependencies
-        run: nix develop .#ci --command pnpm install --frozen-lockfile --prefer-offline
-        env:
-          HUSKY: 0
-
-      - uses: ./.github/actions/resume-assets-cache
-
-      # Build only the packages that changed or whose dependents changed.
-      # The ...[HEAD^1] syntax means: this package and everything that
-      # depends on it, filtered to what changed since the last commit.
-      #
-      # crates/* are excluded explicitly (this step calls turbo directly, so
-      # it does not pick up the root `pnpm build` script's filter). A PR that
-      # touches a .rs file makes ...[HEAD^1] select that crate, whose `build`
-      # script is `wasm-pack build --release` - a ~45s compile per crate, and
-      # this job has no cargo-cache to make it cheaper. Nothing in the PR
-      # needs the output: packages consume the wasm packages from the npm
-      # registry at a pinned version, so no dependent is waiting on that dist.
-      # The `rust` job in this same workflow already compiles, clippies and
-      # tests the crate, and wasm-release.yml is the only flow that has to
-      # turn a crate diff into an actual artifact.
-      - name: Build (affected packages)
-        run: |
-          nix develop .#ci --command pnpm turbo run build \
-            --filter=...[HEAD^1] \
-            --filter='!./extensions/**' \
-            --filter='!./crates/*' \
-            --concurrency=100%
-
-      # Same filter set as Build above, so the `^build` these tasks now
+      # Same filter set as node-ci-setup's build, so the `^build` these tasks now
       # declare in turbo.json (#1454) selects only builds that step already
       # ran: cache hits, not extra work. `!./crates/*` changes nothing today
       # (crates have no typecheck or lint:js script, and no package depends on
@@ -115,13 +98,18 @@ jobs:
             --filter='!./crates/*' \
             --concurrency=100%
 
-      - name: Lint (affected packages)
+      # What each deployable's build ships (apps/www/build.paths.ts;
+      # packages/some-vite-config/AUDIENCES.md, "Paths"): builds every profile
+      # the way its deployable does and fails on code off that profile's path,
+      # which no other check reads the output to see. Same filters as the
+      # steps above, so it runs exactly when www or something www builds from
+      # changed, and its `^build` is cache hits from node-ci-setup's build.
+      - name: Bundle paths (www)
         run: |
-          nix develop .#ci --command pnpm turbo run lint:js \
+          nix develop .#ci --command pnpm turbo run check:bundle-paths \
             --filter=...[HEAD^1] \
             --filter='!./extensions/**' \
-            --filter='!./crates/*' \
-            --concurrency=100%
+            --filter='!./crates/*'
 
       # Repo-wide invariant, so not turbo-filtered: a manifest that opts out
       # of the catalog is drift regardless of which package changed. Runs
@@ -167,6 +155,29 @@ jobs:
             --filter='!./extensions/**' \
             --concurrency=100%
 
+  node-lint:
+    name: Node CI / lint & format
+    needs: changes
+    if: needs.changes.outputs.node == 'true' || needs.changes.outputs.ci == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # turbo --filter=[HEAD^1] needs the parent commit to diff against.
+          fetch-depth: 2
+      # Nix, the install and the affected build, shared by all four jobs.
+      - uses: ./.github/actions/node-ci-setup
+
+      - name: Lint (affected packages)
+        run: |
+          nix develop .#ci --command pnpm turbo run lint:js \
+            --filter=...[HEAD^1] \
+            --filter='!./extensions/**' \
+            --filter='!./crates/*' \
+            --concurrency=100%
+
       # Scoped to CSS files actually touched by this PR, not a full-repo
       # sweep — the repo carries pre-existing stylelint debt outside this
       # diff, and a blanket scan would fail PRs on files they never touched.
@@ -187,6 +198,21 @@ jobs:
             --filter=...[HEAD^1] \
             --filter='!./extensions/**' \
             --concurrency=100%
+
+  node-test:
+    name: Node CI / unit tests
+    needs: changes
+    if: needs.changes.outputs.node == 'true' || needs.changes.outputs.ci == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # turbo --filter=[HEAD^1] needs the parent commit to diff against.
+          fetch-depth: 2
+      # Nix, the install and the affected build, shared by all four jobs.
+      - uses: ./.github/actions/node-ci-setup
 
       - name: Test (affected packages)
         run: |
@@ -221,6 +247,21 @@ jobs:
             --filter=...[HEAD^1] \
             --filter='!./extensions/**' \
             --concurrency=100%
+
+  node-e2e:
+    name: Node CI / e2e
+    needs: changes
+    if: needs.changes.outputs.node == 'true' || needs.changes.outputs.ci == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # turbo --filter=[HEAD^1] needs the parent commit to diff against.
+          fetch-depth: 2
+      # Nix, the install and the affected build, shared by all four jobs.
+      - uses: ./.github/actions/node-ci-setup
 
       # public/sw.js is the one file in apps/www that nothing else checks: a
       # plain public/ asset, never bundled, never imported, never type-checked,
@@ -272,9 +313,8 @@ jobs:
             # this is NOT turbo-filtered the way the steps above are.
             #
             # STORYBOOK_SCOPE=packages compiles every story under packages/**,
-            # and a story reaching a sibling workspace by package name
-            # (packages/ui/input's demo-dice -> @some-ui/dice-card) resolves it
-            # through node_modules to that package's dist/. "Build (affected
+            # and a story reaching a sibling workspace by package name resolves
+            # it through node_modules to that package's dist/. "Build (affected
             # packages)" only covers the changed package and its dependents, so
             # any workspace outside that closure has no dist and the build dies
             # on "Rolldown failed to resolve", pointing at a file the PR never
@@ -326,6 +366,41 @@ jobs:
               tests/csp/csp.spec.ts
           else
             echo "No CSP-relevant www files changed."
+          fi
+
+      # What the BUILT app sends when a learner has chosen the device (LA1/LA4,
+      # docs/learner-data-authority.md). The unit tests prove each module asks
+      # the authority first; only a browser running the output can show that
+      # nothing else in the bundle sends. Two builds, because the two claims
+      # are about different ones: the lan build with a stand-in file_host
+      # (corpus reads only, no cookie, sessions survive a reload with it down),
+      # and the Pages build (its connect-src policy is present and enforced).
+      #
+      # The spec fails, not skips, when a build is missing under CI, so a
+      # broken build step cannot turn this into a green run that measured
+      # nothing. Scoped to the source that can change what leaves the page.
+      - name: E2E — local mode sends nothing operator-bound (www)
+        run: |
+          files=$(git diff --name-only --diff-filter=ACMR HEAD^1 -- \
+            'apps/www/src/**' \
+            'apps/www/tests/local-mode/**' \
+            'apps/www/vite.config.ts' \
+            'apps/www/index.html' \
+            'apps/www/resume/index.html' \
+            'apps/www/build.profiles.ts' \
+            'apps/www/playwright.config.ts' \
+            'packages/fetch-kit/**' \
+            'packages/server-routes/**' || true)
+          if [ -n "$files" ]; then
+            nix develop .#ci --command pnpm turbo build --filter=www... --concurrency=100%
+            nix develop .#ci --command env \
+              SOME_UI_PROFILE=pages VITE_STATIC_DATA=true VITE_BASE_PATH=/some-ui/ \
+              pnpm --filter www exec vite build --outDir dist-pages --emptyOutDir
+            nix develop .#ci-playwright --command env \
+              WWW_DIST_LAN=apps/www/dist WWW_DIST_PAGES=apps/www/dist-pages \
+              pnpm --filter www test:e2e tests/local-mode/no-egress.spec.ts
+          else
+            echo "No files that decide what the built app sends changed."
           fi
 
       # #1193's own review flagged that this directory - both the sessions
@@ -420,6 +495,26 @@ jobs:
       - name: Check test layout
         run: nix develop .#ci --command node --no-warnings scripts/check-test-layout.ts
 
+  # ── React coordination (repo-wide) ─────────────────────────────────────
+  # R1 (docs/monorepo-boundaries.md, "Inside a React package"): every React
+  # module that awaits or chains a promise is listed in
+  # scripts/react-coordination.allowlist with its exact count. No `changes`
+  # gate, for test-layout's reason: a React module can land in an
+  # extensions-only PR, and the allowlist sits under scripts/, which no path
+  # filter covers. Unlike test-layout it needs the TypeScript parser, so it
+  # installs the one workspace that declares it (seconds), not the repo.
+  react-coordination:
+    name: React coordination guardrail
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/nix-setup
+      - uses: ./.github/actions/pnpm-cache
+      - name: Install the eslint kit
+        run: nix develop .#ci --command pnpm install --frozen-lockfile --prefer-offline --filter @some-ui/eslint-kit
+      - name: Check React coordination
+        run: nix develop .#ci --command node --no-warnings scripts/check-react-coordination.ts
+
   # ── Workflow guards (repo-wide) ────────────────────────────────────────
   # Artifact retention (CLAUDE.md "Workflow storage") and the RS1 fingerprint
   # and RS2 branch-name checks (CLAUDE.md "Cross-repo coupling"). No `changes`
@@ -437,7 +532,19 @@ jobs:
   ci-gate:
     name: CI Gate
     runs-on: ubuntu-latest
-    needs: [changes, rust, node, deny, test-layout, workflows]
+    needs:
+      [
+        changes,
+        rust,
+        node-checks,
+        node-lint,
+        node-test,
+        node-e2e,
+        deny,
+        test-layout,
+        react-coordination,
+        workflows,
+      ]
     if: always()
     steps:
       - name: Evaluate results
@@ -454,13 +561,20 @@ jobs:
           fi
 
           NODE_REQUIRED="${{ needs.changes.outputs.node == 'true' || needs.changes.outputs.ci == 'true' }}"
-          NODE_RESULT="${{ needs.node.result }}"
-          if [ "$NODE_REQUIRED" = "true" ] && [ "$NODE_RESULT" != "success" ]; then
-            echo "❌ node: $NODE_RESULT (required)"
-            FAILED=true
-          else
-            echo "✅ node: $NODE_RESULT (required: $NODE_REQUIRED)"
-          fi
+          for pair in \
+            "node-checks:${{ needs.node-checks.result }}" \
+            "node-lint:${{ needs.node-lint.result }}" \
+            "node-test:${{ needs.node-test.result }}" \
+            "node-e2e:${{ needs.node-e2e.result }}"; do
+            job="${pair%%:*}"
+            result="${pair#*:}"
+            if [ "$NODE_REQUIRED" = "true" ] && [ "$result" != "success" ]; then
+              echo "❌ $job: $result (required)"
+              FAILED=true
+            else
+              echo "✅ $job: $result (required: $NODE_REQUIRED)"
+            fi
+          done
 
           LAYOUT_RESULT="${{ needs.test-layout.result }}"
           if [ "$LAYOUT_RESULT" != "success" ]; then
@@ -468,6 +582,14 @@ jobs:
             FAILED=true
           else
             echo "✅ test-layout: $LAYOUT_RESULT"
+          fi
+
+          COORDINATION_RESULT="${{ needs.react-coordination.result }}"
+          if [ "$COORDINATION_RESULT" != "success" ]; then
+            echo "❌ react-coordination: $COORDINATION_RESULT (always required)"
+            FAILED=true
+          else
+            echo "✅ react-coordination: $COORDINATION_RESULT"
           fi
 
           WORKFLOWS_RESULT="${{ needs.workflows.result }}"

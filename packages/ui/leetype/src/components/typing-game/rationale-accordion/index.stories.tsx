@@ -24,12 +24,3 @@ const candidates: ReadonlyArray<RationaleChoice> = [
 export const Collapsed: Story = {
   args: { candidates },
 }
-
-/**
- * Two candidates deliberately close in shape, so the story doubles as a
- * visual check that "muted, not red" reads correctly for an eliminated
- * candidate once one opens it and types.
- */
-export const ThreeCandidates: Story = {
-  args: { candidates },
-}

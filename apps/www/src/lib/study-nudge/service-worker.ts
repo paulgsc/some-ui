@@ -52,6 +52,9 @@ const LAST_NUDGE_KEY = "some-ui.study-nudge.last-shown.v1"
  * that has to remember to check two things will eventually check one.
  */
 export function nudgesSupported(): boolean {
+  // The Android app has neither API, and native local notifications instead
+  // (`./native`).
+  if (import.meta.env.VITE_DEVICE_BACKEND === "true") return true
   return (
     typeof window !== "undefined" &&
     "serviceWorker" in navigator &&
@@ -60,7 +63,21 @@ export function nudgesSupported(): boolean {
   )
 }
 
+/**
+ * The Android app's notification permission, as last read from the OS.
+ * Android's answer is asynchronous and this module's is not, so `./native`
+ * writes it here whenever it asks, and `useStudyNudge` asks on mount.
+ */
+let nativePermission: NotificationPermission = "default"
+
+export function setNativeNudgePermission(
+  permission: NotificationPermission
+): void {
+  nativePermission = permission
+}
+
 export function nudgePermission(): NotificationPermission {
+  if (import.meta.env.VITE_DEVICE_BACKEND === "true") return nativePermission
   if (!nudgesSupported()) return "denied"
   return Notification.permission
 }
@@ -71,6 +88,12 @@ export function nudgePermission(): NotificationPermission {
  * the settings toggle is the only caller and should stay that way.
  */
 export async function requestNudgePermission(): Promise<NotificationPermission> {
+  if (import.meta.env.VITE_DEVICE_BACKEND === "true") {
+    const { requestNativePermission } = await import("./native")
+    return requestNativePermission().catch(
+      (): NotificationPermission => "denied"
+    )
+  }
   if (!nudgesSupported()) return "denied"
   try {
     return await Notification.requestPermission()
@@ -93,7 +116,9 @@ let registration: Promise<ServiceWorkerRegistration | null> | null = null
  * scope on the root deployment instead of inheriting it.
  */
 export async function registerNudgeWorker(): Promise<ServiceWorkerRegistration | null> {
-  if (!nudgesSupported()) return null
+  // Nothing on the device needs a worker: no push, and the OS schedules.
+  if (import.meta.env.VITE_DEVICE_BACKEND === "true" || !nudgesSupported())
+    return null
   registration ??= navigator.serviceWorker
     .register(`${import.meta.env.BASE_URL}sw.js`, {
       scope: import.meta.env.BASE_URL,
@@ -129,6 +154,20 @@ export async function showNudge(
   } catch {
     return false
   }
+}
+
+/**
+ * The settings page's "Send a test": `showNudge`, except on the device,
+ * whose notifications are native (`./native`) and where `showNudge` has no
+ * worker to show through. The poll tick keeps `showNudge`, so on the device
+ * it shows nothing: the OS delivers the one scheduled nudge instead.
+ */
+export async function showTestNudge(
+  decision: Extract<NudgeDecision, { kind: "nudge" }>
+): Promise<boolean> {
+  if (import.meta.env.VITE_DEVICE_BACKEND !== "true") return showNudge(decision)
+  const { showNativeTestNudge } = await import("./native")
+  return showNativeTestNudge(decision).catch(() => false)
 }
 
 export function readLastNudgeAt(): string | null {
@@ -290,7 +329,7 @@ const VAPID_KEY_BYTES = 65
 
 function defaultTransport(deps: PushDeps): FileHostTransport | null {
   return deps.transport === undefined
-    ? createFileHostTransport()
+    ? createFileHostTransport("reporting")
     : deps.transport
 }
 
@@ -525,5 +564,29 @@ export async function reconcilePushSubscription(
     return "subscribed"
   } catch (error) {
     return outcomeOf(error)
+  }
+}
+
+/**
+ * Release this browser's push subscription **without sending anything**.
+ *
+ * For the moment the learner's data stops being the account's (they left it,
+ * or its session ended). `unsubscribeFromPush` also tells the server, which
+ * needs a transport the account no longer lets out, and registers the worker
+ * first if there is none. This asks the browser alone: no request is made and
+ * nothing is registered. The server's row for the endpoint is not deleted
+ * here; it prunes it itself on the push service's next `410`, and until then
+ * the service worker has no subscription left to re-subscribe or retire, so it
+ * has nothing to send either.
+ */
+export async function dropLocalPushSubscription(): Promise<void> {
+  if (import.meta.env.VITE_DEVICE_BACKEND === "true" || !nudgesSupported())
+    return
+  try {
+    const registration = await navigator.serviceWorker.getRegistration()
+    const subscription = await registration?.pushManager.getSubscription()
+    await subscription?.unsubscribe()
+  } catch {
+    // Nothing to drop, or the browser refused. Either way no request leaves.
   }
 }

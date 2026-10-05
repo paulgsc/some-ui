@@ -16,34 +16,128 @@ one (`packages/ui/interview`, `packages/ui/honeycomb`).
 
 ```tsx
 // The app: one session, configured by deployment, at the root.
-<SpeechProvider config={{ mode: DATA_MODE, endpoint: resolveTTSEndpoint() }}>
+<SpeechProvider
+  config={{
+    mode: DATA_MODE,
+    endpoint: resolveTTSEndpoint(),
+    adapters: { server: httpSpeech, static: webSpeech },
+  }}
+>
   <App />
 </SpeechProvider>
 ```
 
 ```tsx
-// A component, anywhere below it.
-const { speak } = useSpeechQueue("chat")
-speak("안녕하세요", { volume: 1 }, /* priority */ 2)
+// An applet, anywhere below it: a line in a language, never a voice.
+const speaker = useSpeaker() // this component's handle; null without a provider
+const outcome = await speaker?.say("안녕하세요", { language: "korean" })
+// { kind: "heard" | "muted" | "preempted" | "cancelled" | "failed" | "ended" }
 ```
+
+### One writer
+
+The session is the only thing that writes to the page's voice. An adapter
+plays one line at a time and a new line cancels the one playing, so applets
+writing to it directly could never tell why their line stopped, and had to
+guess from shared state read afterwards. Instead each component gets its
+own `Speaker` handle (`lib/speaker`), and every line, from every applet and
+from the queue (`useSpeechQueue`), goes through the session's one queue:
+
+- A line says its **urgency**. `"now"` (a tapped word, a replay button)
+  interrupts what is playing; `"next"` (a lesson's next line) waits its
+  turn, and if a `"now"` line interrupts it the session says it again
+  afterwards.
+- `say` resolves with the line's **outcome** and never rejects, so an applet
+  switches on what happened instead of inferring it from an `AbortError`.
+- A handle's `stop` cancels **its own lines only**.
+
+What is shared is only read: whether the person muted, and who would speak a
+language (`describe`, with `subscribe` to hear when either changes).
+
+A handle cannot name a voice or reach the adapter either, because the
+session owns what a person decides about speech: **which voice** (their
+choice in Settings speaks every line in its language) and **whether it is
+muted**. TOPIK once held the adapter, named "the first Korean voice" on
+every line and called the adapter directly, so a chosen voice never spoke a
+lesson and mute stopped only the line already playing.
+
+The one line that names a voice is Settings' sample of a voice a person is
+choosing between (`useVoicePreview`). It is a request to the session too
+(`SpeechQueueManager.preview`): a `"now"` line through the same queue, so it
+interrupts what plays, honors mute, and leaves the lesson it cut off to be
+said again, instead of writing to the engine behind the session's back.
+
+### Our languages, their tags
+
+A line's language is a `SpokenLanguage` (`lib/language`): a closed union of
+the languages this site speaks, not a tag. Platforms name languages with tags
+whose shapes are theirs (`ko-KR`, `ko_KR`, `kor`), and only an adapter, or
+the app's transport behind one (the phone's, in `apps/www`'s
+`lib/device-speech/native.ts`), ever reads one, through `spokenLanguageOf`,
+which answers with one of ours or `null`, and writes one, from
+`LANGUAGE_TAG`. Likewise `describe` reports `availability` as one of four states
+(`available`, `missing`, `checking`, `unverifiable`) rather than a boolean, so
+"the browser has not loaded its voices yet" is not shown as "no Korean
+voice".
 
 Nothing there names a backend, a host, a port, or an API key. The
 `mode` — the same `"static" | "server"` bit `@some-ui/fetch-kit` uses for
-data — selects one:
+data — selects one of the backends the app passed:
 
-| mode       | where it comes from                | backend                                               |
-| ---------- | ---------------------------------- | ----------------------------------------------------- |
-| `"server"` | `vite dev`, `vite preview`, Docker | `openai-edge-tts` over HTTP (`infra/compose/tts.yml`) |
-| `"static"` | the GitHub Pages build             | the browser's own `speechSynthesis`                   |
+| mode       | where it comes from                | backend                                                             |
+| ---------- | ---------------------------------- | ------------------------------------------------------------------- |
+| `"server"` | `vite dev`, `vite preview`, Docker | `httpSpeech`: `openai-edge-tts` over HTTP (`infra/compose/tts.yml`) |
+| `"static"` | the GitHub Pages build, the APK    | `webSpeech` or `nativeSpeech`: the device's own voice (below)       |
 
-That mapping is `DEFAULT_SPEECH_ADAPTERS` in `lib/adapters/registry.ts`, and
-it is a default, not a rule: `config.adapters` replaces either entry,
-`config.mode` pins the choice, and every knob the built-in factories read —
-endpoint, key, provider, format, timeout, voice — is a config field. If the
-resolved adapter reports `supported === false` (a browser with no Web Audio,
-say), the other one is used instead, because that is a fact about the
-browser rather than about the deployment and the caller has no business
-handling it.
+Each backend is its own package entry, and the app names the ones it runs:
+
+```tsx
+import { httpSpeech } from "@some-ui/speech/http"
+import { webSpeech } from "@some-ui/speech/web-speech"
+
+<SpeechProvider config={{ mode, adapters: { server: httpSpeech, static: webSpeech } }}>
+```
+
+There are no defaults, because a default is an import, and an import ships
+in every build whether it runs there or not: the Android app passes only
+`nativeSpeech`, and its build carries neither the HTTP client nor the
+browser's synthesizer (`apps/www/build.paths.ts` checks it).
+`src/entries.test.ts` fails if the main entry, or one backend's entry,
+reaches another backend's code at runtime, which would move that code into a
+chunk every build loads. The backend each entry exports is an inert token
+only the session can turn into an adapter (`lib/adapters/backend.ts`), so an
+applet holding one still cannot build an adapter. The HTTP entry also carries
+the HTTP engine's own primitives (`createTTSClient`, `createAudioPlayer`),
+which play audio directly; they are there for the HTTP backend, not for
+applets, as they were when the main entry exported them. `config.adapters`
+also takes a factory of the caller's own (a test fake, a future backend),
+`config.mode` pins the choice, and every knob a backend reads — endpoint,
+key, hosted voice, format, timeout — is a config field. If the resolved
+adapter reports `supported === false` (a browser with no Web Audio, say), or
+the app passed nothing for that mode, the other mode's is used instead,
+because that is a fact about the browser rather than about the deployment and
+the caller has no business handling it. With nothing for either mode, the
+session refuses to start.
+
+### Two kinds of voice, never mixed
+
+- **Hosted voices are ours, and closed.** Every one is in `BUILTIN_VOICES`,
+  so `HostedVoiceOf<P>` (`lib/voices`) is a compile-time union and
+  `config.hosted` pairs a provider with one of its own voices or with
+  nothing chosen. `hostedVoiceFor` decides each line: the chosen voice when
+  it speaks the line's language, else that language's declared default
+  (`DEFAULT_HOSTED_VOICE`), else no voice and an honest failure. Nothing
+  falls back to "the first voice in the list". A stored string becomes a
+  choice in one place, `parseHostedVoiceChoice`.
+- **The device's voices are not ours.** The browser's `speechSynthesis`,
+  and the phone's text-to-speech that the Android app passes as
+  `config.native` (its WebView has no working `speechSynthesis`), are
+  someone else's API with someone else's voices, different on every device.
+  They are handed a language and speak it in whatever voice they have, or
+  in the one the person picked from the phone's own list; none of their
+  voices ever becomes a `VoiceConfig`. A phone without voice data for the
+  language refuses the line (`VoiceMissingError`) and the app hears about
+  it through `native.onMissingVoice`, instead of the lesson staying silent.
 
 ## Telling the person
 

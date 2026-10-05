@@ -22,7 +22,7 @@ import { attachKeyBindings as attachCommonKeyBindings } from "@some-extension/co
 import type { VideoManager } from "./video-manager"
 
 /** Command ids owned by some-censor. */
-export type CensorCommandId = "advance-all-to-title"
+type CensorCommandId = "advance-all-to-title"
 
 /**
  * Single source of truth for censor's keyboard shortcuts.

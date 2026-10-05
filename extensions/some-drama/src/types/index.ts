@@ -58,7 +58,7 @@ export type CardEvents = {
 }
 
 // ─── Structural: factual / scrapable metadata ─────────────────────────────────
-export type DramaEntryStructural = {
+type DramaEntryStructural = {
   title: string
   episode: string
   network: string

@@ -51,6 +51,8 @@ import { matchIntent } from "@some-ui/intent-kit"
 import { Input, Label, Separator, Switch } from "@some-ui/shared"
 import { toast } from "sonner"
 
+import { useAuthoritySnapshot } from "@/lib/authority"
+import { DATA_MODE } from "@/lib/data-mode"
 import { useAsyncIntent } from "@/lib/intent"
 import { IntentButton, IntentFailure } from "@/lib/intent/render"
 import type { NudgePreferences } from "@/lib/study-nudge"
@@ -62,12 +64,14 @@ import {
   nudgesSupported,
   registerNudgeWorker,
   requestNudgePermission,
-  showNudge,
+  showTestNudge,
   subscribeToPush,
   unsubscribeFromPush,
 } from "@/lib/study-nudge/service-worker"
 import { clientOwnsNudgeDelivery } from "@/lib/study-nudge/use-study-nudge"
 import { useSessions } from "@/lib/tenant"
+
+import { ReportingControl } from "./reporting-control"
 
 /**
  * Words for the server's topic names. A topic this build has no label for
@@ -150,7 +154,12 @@ export const StudyNudgeSection = ({
 }): JSX.Element => {
   const supported = nudgesSupported()
   const permission = nudgePermission()
-  const serverDelivers = !clientOwnsNudgeDelivery()
+  const { reportingAllowed, backend } = useAuthoritySnapshot()
+  const serverDelivers = !clientOwnsNudgeDelivery(
+    DATA_MODE,
+    import.meta.env.VITE_DEVICE_BACKEND === "true",
+    reportingAllowed
+  )
 
   /**
    * What the browser actually holds, not what settings claim.
@@ -241,7 +250,7 @@ export const StudyNudgeSection = ({
   })
 
   const runTest = async (_trigger: undefined): Promise<void> => {
-    const shown = await showNudge({
+    const shown = await showTestNudge({
       kind: "nudge",
       sessionId: "test",
       title: "Reminders are working",
@@ -255,6 +264,7 @@ export const StudyNudgeSection = ({
   if (!supported) {
     return (
       <div className="space-y-2">
+        <ReportingControl preferences={preferences} />
         <Label>Study reminders</Label>
         <p className="text-muted-foreground text-sm">
           {/* The overwhelmingly likely cause on this app's own LAN setup, so
@@ -271,6 +281,8 @@ export const StudyNudgeSection = ({
   return (
     <div className="space-y-4">
       <Separator />
+
+      <ReportingControl preferences={preferences} />
 
       <div className="flex items-start justify-between gap-4">
         <div className="space-y-1">
@@ -408,7 +420,11 @@ export const StudyNudgeSection = ({
               ? subscribed === false
                 ? "This browser isn't registered for push yet, so reminders will only arrive while a tab is open. Toggle reminders off and on to retry."
                 : "Reminders arrive even with the browser closed - this browser is registered with file_host."
-              : "Reminders only fire while this app is open in a tab (it can be in the background). This build has no backend to notify you with no tab open - see docs/study-nudge.md."}
+              : import.meta.env.VITE_DEVICE_BACKEND === "true"
+                ? "Reminders come from this phone as notifications, even with the app closed. Android may deliver one a few minutes late."
+                : backend === "remote"
+                  ? "Reminders only fire while this app is open in a tab (it can be in the background), and are worked out on this device from your sessions. To get them with the browser closed, keep an account and turn on Reminders and progress sync."
+                  : "Reminders only fire while this app is open in a tab (it can be in the background). This build has no backend to notify you with no tab open - see docs/study-nudge.md."}
           </p>
         </>
       ) : null}

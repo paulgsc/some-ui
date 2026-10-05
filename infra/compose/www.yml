@@ -1,6 +1,7 @@
 # Serves the built apps/www static bundle over HTTPS for LAN/mDNS use
-# (e.g. https://nixos.local:8443), so getUserMedia (mic access, used by the
-# interview app) sees a secure context. HTTP stays available on 8080 for
+# (e.g. https://nixos.local:8443), so the service worker and notifications
+# behind study nudges see a secure context (docs/study-nudge.md, "Secure
+# context"). HTTP stays available on 8080 for
 # plain local checks.
 #
 # That HTTPS listener is also why nginx.tts-proxy.conf is mounted below. The
@@ -129,3 +130,13 @@ services:
       start_period: 5s
       retries: 3
     restart: unless-stopped
+    # The image turns the access log off (see the Dockerfile), but whatever the
+    # container still writes - nginx's own error log, which carries a client
+    # address and request line when an upstream fails - goes to Docker's
+    # json-file store, and Docker's default keeps it with no size limit. Bound
+    # how long it lives: rotate at 10 MB and keep three files.
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

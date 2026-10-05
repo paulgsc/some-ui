@@ -7,7 +7,7 @@
     "@some-ui/tsconfig": "workspace:*",
     "@some-ui/types": "workspace:*",
     "@some-ui/vite-config": "workspace:*",
-    "fast-check": "^3.23.1"
+    "fast-check": "^4.10.2"
   },
   "exports": {
     ".": {
@@ -39,6 +39,7 @@
     "build:tsc-alias": "tsc-alias -p tsconfig.json",
     "clean": "rimraf .turbo && rimraf node_modules && rimraf .eslintcache && pnpm clean:build",
     "clean:build": "rimraf ./dist ./tsconfig.build.tsbuildinfo ./tsconfig.tsbuildinfo",
+    "knip": "knip --directory \"$(git rev-parse --show-toplevel)\" --workspace \"$(git rev-parse --show-prefix | sed 's:/*$::')\"",
     "lint": "pnpm lint:js && pnpm prettier && pnpm typecheck",
     "lint:js": "eslint \"**/*.{js,mjs,ts,tsx}\" --cache",
     "prettier": "prettier . --ignore-path $(git rev-parse --show-toplevel)/.prettierignore --check --cache",

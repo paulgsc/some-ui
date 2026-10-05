@@ -42,7 +42,7 @@ const roundPath = (id: string): string =>
  * whose every call rejects, saying so.
  */
 export function createRoundCrmClient(
-  transport: FileHostTransport | null = createFileHostTransport()
+  transport: FileHostTransport | null = createFileHostTransport("account")
 ): {
   list: () => Promise<Array<OperatorRound>>
   read: (id: string) => Promise<string>

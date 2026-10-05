@@ -16,6 +16,7 @@ export {
 } from "./queries"
 export {
   settingsKey,
+  useCopyDeviceSessions,
   useCreateSession,
   useDeleteManySessions,
   useDeleteSession,
@@ -24,8 +25,11 @@ export {
   useSession,
   useSessions,
   useSettings,
+  useTransferPreview,
   useUpdateProfile,
   useUpdateSession,
   useUpdateSettings,
   useUpdateStatusManySessions,
 } from "./hooks"
+export type { TransferPreview } from "./sessions-transfer"
+export { resumableSession } from "./resumable"

@@ -17,6 +17,7 @@
 import { act, renderHook } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
+import { authority } from "@/lib/authority"
 import type { FileHostTransport } from "@/lib/file-host-config/client"
 
 type Call = { route: string; init?: RequestInit }
@@ -65,6 +66,7 @@ function bodyOf(call: Call | undefined): unknown {
 const auth = await import("@/lib/auth")
 
 beforeEach(() => {
+  window.localStorage.clear()
   server.calls.length = 0
   server.answer = (): Response => json({})
   auth.resetSessionForTests()
@@ -108,11 +110,105 @@ describe("resolveSession", () => {
     expect(server.calls).toHaveLength(1)
   })
 
-  it("reads an unreachable server as signed out rather than hanging the guard", async () => {
+  it("does not read an unreachable server as a lost session, or hang the guard", async () => {
     server.answer = (): Response => {
       throw new TypeError("Failed to fetch")
     }
     await expect(auth.resolveSession()).resolves.toBe(false)
+    expect(auth.getSessionStatus()).toBe("unreachable")
+  })
+
+  it("reads any answer that is not a 401 as saying nothing about the session", async () => {
+    server.answer = (): Response =>
+      new Response("{}", {
+        status: 502,
+        headers: { "content-type": "application/json" },
+      })
+    await expect(auth.resolveSession()).resolves.toBe(false)
+    expect(auth.getSessionStatus()).toBe("unreachable")
+  })
+
+  it("asks again after an outage, and believes the answer when it comes", async () => {
+    let up = false
+    server.answer = (): Response => {
+      if (!up) throw new TypeError("Failed to fetch")
+      return json({ expiresAt: 1 })
+    }
+    await auth.resolveSession()
+    up = true
+    await expect(auth.resolveSession()).resolves.toBe(true)
+    expect(auth.getSessionStatus()).toBe("signed-in")
+    expect(server.calls).toHaveLength(2)
+  })
+
+  it("keeps a returning account user on the account through an outage", async () => {
+    window.localStorage.setItem(
+      "some-ui.authority.v1",
+      JSON.stringify({ choice: "account" })
+    )
+    auth.resetSessionForTests()
+    server.answer = (): Response => {
+      throw new TypeError("Failed to fetch")
+    }
+    await auth.resolveSessionIfChosen()
+    // Not the device: new work would otherwise land in a store the person did
+    // not choose, and never be probed for again.
+    expect(authority.getAuthority().kind).toBe("account")
+    expect(authority.getSnapshot().accountUnavailable).toBe(false)
+  })
+})
+
+describe("resolveSessionIfChosen", () => {
+  it("sends nothing for someone who never chose their account", async () => {
+    server.answer = (): Response => json({ expiresAt: 1 })
+    await expect(auth.resolveSessionIfChosen()).resolves.toBe(false)
+    expect(server.calls).toEqual([])
+    expect(auth.getSessionStatus()).toBe("unknown")
+  })
+
+  it("asks once for someone who did, and believes the answer", async () => {
+    window.localStorage.setItem(
+      "some-ui.authority.v1",
+      JSON.stringify({ choice: "account" })
+    )
+    auth.resetSessionForTests()
+    server.answer = (): Response => json({ expiresAt: 1 })
+
+    await expect(auth.resolveSessionIfChosen()).resolves.toBe(true)
+    await auth.resolveSessionIfChosen()
+    expect(server.calls.map((call) => call.route)).toEqual(["/auth/session"])
+  })
+})
+
+describe("what signing in and out do to where the data lives", () => {
+  it("adopting the account on a ceremony, and forgetting it only when the person leaves", async () => {
+    const { authority } = await import("@/lib/authority")
+    expect(authority.getSnapshot().choice).toBe("local")
+
+    await auth.signIn()
+    expect(authority.getSnapshot().authority.kind).toBe("account")
+    expect(authority.getSnapshot().choice).toBe("account")
+
+    await auth.signOut()
+    expect(authority.getSnapshot().authority.kind).toBe("local")
+    expect(authority.getSnapshot().choice).toBe("local")
+  })
+
+  it("keeps the account as the person's choice when a request meets a 401", async () => {
+    const { authority } = await import("@/lib/authority")
+    const { createFileHostTransport, requestJSON } = await import(
+      "@/lib/file-host-config/client"
+    )
+    await auth.signIn()
+    server.answer = unauthorized
+    const transport = createFileHostTransport("ceremony")
+    if (!transport) throw new Error("the mocked transport is always present")
+
+    await expect(requestJSON(transport, "/sessions")).rejects.toThrow()
+
+    expect(authority.getSnapshot().authority.kind).toBe("local")
+    expect(authority.getSnapshot().choice).toBe("account")
+    expect(authority.getSnapshot().accountUnavailable).toBe(true)
   })
 })
 
@@ -169,7 +265,7 @@ describe("a 401 from any file_host request", () => {
     )
     auth.markSignedIn()
     server.answer = unauthorized
-    const transport = createFileHostTransport()
+    const transport = createFileHostTransport("ceremony")
     if (!transport) throw new Error("the mocked transport is always present")
 
     await expect(requestJSON(transport, "/sessions")).rejects.toThrow()

@@ -25,14 +25,15 @@ export const speechReducer: Reducer<SpeechQueueState, SpeechAction> = (
 ) => {
   switch (action.type) {
     case "SPEAK": {
-      const { componentId, text, options, maxRetries } = action.payload
+      const { componentId, text, options, maxRetries, id } = action.payload
       const priority = action.priority ?? 0
       const newItem = createSpeechItem(
         componentId,
         text,
         options,
         maxRetries,
-        priority
+        priority,
+        id
       )
 
       // Insert into queue in priority order
@@ -42,6 +43,18 @@ export const speechReducer: Reducer<SpeechQueueState, SpeechAction> = (
       else newItems.splice(idx, 0, newItem)
 
       return { ...state, items: newItems }
+    }
+
+    case "REQUEUE": {
+      const item = {
+        ...action.payload.item,
+        controller: new AbortController(),
+      }
+      const items = [...state.items]
+      const idx = items.findIndex((i) => i.priority <= item.priority)
+      if (idx === -1) items.push(item)
+      else items.splice(idx, 0, item)
+      return { ...state, items }
     }
 
     case "CANCEL": {

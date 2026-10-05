@@ -1,0 +1,176 @@
+/**
+ * Android's own text-to-speech, over `@capacitor-community/text-to-speech`.
+ *
+ * Only ever imported dynamically, by `./index`, and only loaded in the
+ * device build: the plugin is native, and the web builds have no business
+ * loading it.
+ *
+ * Never return or resolve `TextToSpeech` itself from a promise. A Capacitor
+ * plugin is a proxy that answers every property with a native method, `then`
+ * included, so awaiting it calls a plugin method named `then` that does not
+ * exist. Hand out this module instead and call through it.
+ *
+ * This is the transport between the plugin and the speech session: the
+ * plugin's language tags are read into our `SpokenLanguage` here, on the
+ * way in (`spokenLanguageOf`), and written from it here, on the way out
+ * (`LANGUAGE_TAG`). Nothing past this module sees one.
+ */
+import type { SpeechSynthesisVoice as PluginVoice } from "@capacitor-community/text-to-speech"
+import {
+  QueueStrategy,
+  TextToSpeech,
+} from "@capacitor-community/text-to-speech"
+import { registerPlugin } from "@capacitor/core"
+import type {
+  NativeSpeechEngine,
+  NativeSpeechRequest,
+  NativeVoice,
+  SpokenLanguage,
+} from "@some-ui/speech"
+import { LANGUAGE_TAG, spokenLanguageOf } from "@some-ui/speech"
+
+/**
+ * A name a person can tell voices apart by. The plugin's `name` is the
+ * voice's language and country, the same for every voice in a language;
+ * Android's own name (`ko-kr-x-kob-local`) carries the variant.
+ */
+function nameOf(voice: PluginVoice): string {
+  const variant = /-x-([a-z0-9]+)/i.exec(voice.voiceURI)?.[1]
+  return variant ? `Voice ${variant.toUpperCase()}` : voice.voiceURI
+}
+
+function toNativeVoice(voice: PluginVoice): NativeVoice {
+  return {
+    // Android's `Voice.getName()`, which is unique and stable.
+    id: voice.voiceURI,
+    name: nameOf(voice),
+    language: spokenLanguageOf(voice.lang),
+    local: voice.localService,
+  }
+}
+
+/**
+ * Android binds its text-to-speech service asynchronously, after the plugin
+ * loads, and until it has, the plugin answers wrongly rather than waiting:
+ * `speak` refuses as unavailable, `isLanguageSupported` says false (which
+ * would read as "no Korean voice") and `getSupportedVoices` throws. The
+ * plugin exposes no readiness call, so a voice list that comes back is the
+ * signal, and every call below waits for it. A phone with no engine at all
+ * never answers: after `READY_TIMEOUT_MS` the calls fail, and keep failing
+ * until a later call finds the engine.
+ */
+const READY_TIMEOUT_MS = 10_000
+const READY_FIRST_RETRY_MS = 100
+const READY_MAX_RETRY_MS = 1_000
+
+let ready: Promise<void> | null = null
+
+function whenReady(): Promise<void> {
+  ready ??= waitForEngine().catch((error: unknown) => {
+    ready = null
+    throw error
+  })
+  return ready
+}
+
+async function waitForEngine(): Promise<void> {
+  const deadline = Date.now() + READY_TIMEOUT_MS
+  let retryIn = READY_FIRST_RETRY_MS
+  for (;;) {
+    try {
+      await TextToSpeech.getSupportedVoices()
+      return
+    } catch (error) {
+      if (Date.now() + retryIn > deadline) throw error
+    }
+    await new Promise((resolve) => setTimeout(resolve, retryIn))
+    retryIn = Math.min(retryIn * 2, READY_MAX_RETRY_MS)
+  }
+}
+
+async function getVoices(): Promise<ReadonlyArray<NativeVoice>> {
+  await whenReady()
+  const { voices } = await TextToSpeech.getSupportedVoices()
+  return voices.map(toNativeVoice)
+}
+
+/**
+ * The plugin names a voice by its index in the list `getSupportedVoices`
+ * returned, so the index is looked up just before each utterance: one
+ * cached from earlier points at another voice once a voice is installed.
+ */
+async function voiceIndexOf(voiceId: string): Promise<number | undefined> {
+  const index = (await getVoices()).findIndex((voice) => voice.id === voiceId)
+  return index === -1 ? undefined : index
+}
+
+/**
+ * Bumped by every `speak` and `stop`. `speak` looks the voice up over the
+ * bridge before it reaches the plugin, and a `stop` (or a newer `speak`)
+ * that lands during that round trip must win: without this, the stopped
+ * utterance would start talking after the stop.
+ */
+let generation = 0
+
+async function speak(request: NativeSpeechRequest): Promise<void> {
+  generation += 1
+  const mine = generation
+  await whenReady()
+  const voice =
+    request.voiceId === undefined
+      ? undefined
+      : await voiceIndexOf(request.voiceId)
+  if (mine !== generation) {
+    // Replaced before it started (while the engine came up, or during the
+    // voice lookup). The engine contract lets a replaced
+    // utterance never settle, and the adapter has already settled it.
+    return new Promise<void>(() => undefined)
+  }
+  await TextToSpeech.speak({
+    text: request.text,
+    lang: request.language ? LANGUAGE_TAG[request.language] : undefined,
+    voice,
+    rate: request.rate,
+    pitch: request.pitch,
+    volume: request.volume,
+    queueStrategy: QueueStrategy.Flush,
+  })
+}
+
+async function stop(): Promise<void> {
+  generation += 1
+  await TextToSpeech.stop()
+}
+
+async function isLanguageSupported(language: SpokenLanguage): Promise<boolean> {
+  await whenReady()
+  const { supported } = await TextToSpeech.isLanguageSupported({
+    lang: LANGUAGE_TAG[language],
+  })
+  return supported
+}
+
+export const engine: NativeSpeechEngine = {
+  speak,
+  stop,
+  getVoices,
+  isLanguageSupported,
+}
+
+/**
+ * The app's own plugin (`apps/mobile`'s `VoiceDataPlugin.java`). The
+ * text-to-speech plugin's `openInstall` launches Android's voice-data
+ * *check*, which can return without offering a download; this one launches
+ * the engine's installer, or the system's text-to-speech settings.
+ */
+const VoiceData = registerPlugin<{ openInstall: () => Promise<void> }>(
+  "VoiceData"
+)
+
+/**
+ * Opens the engine's own screen for installing voice data, where Korean is
+ * one download away.
+ */
+export async function openVoiceInstall(): Promise<void> {
+  await VoiceData.openInstall()
+}

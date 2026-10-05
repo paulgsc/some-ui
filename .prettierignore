@@ -171,3 +171,14 @@ api/
 # and paulgsc/server stores each file's bytes verbatim, so a reformat would
 # change what learners fetch and fail `export-round-corpus.ts --check`.
 packages/ui/leetype/corpus/
+
+# Capacitor (apps/mobile) native scaffold and synced web assets.
+# `cap sync` copies apps/www/dist into the Android project, so the repo's
+# root `stylelint "**/*.css"` (which reads this file as its --ignore-path)
+# would otherwise lint minified build output and fail on it. The Gradle
+# project itself is checked in but is not ours to format.
+apps/mobile/android/
+
+# The lines-of-code snapshot a build overwrites (scripts/loc-snapshot.ts): its
+# formatting is the script's, not prettier's.
+apps/www/src/generated/loc-snapshot.json

@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- Permissions -->
+
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <!-- The soundbites page (www routes/_dashboard/_apk/soundbites.tsx,
+         @some-ui/soundbites): saying out loud why a session did not happen.
+         The page asks the WebView for the microphone (getUserMedia), and
+         Capacitor's BridgeWebChromeClient turns that into a request for both
+         of these, which Android grants only if the manifest declares them.
+         RECORD_AUDIO is the runtime prompt the person sees, the first time
+         they tap to talk; MODIFY_AUDIO_SETTINGS (install-time, no prompt) is
+         what the WebView's audio capture needs to route the microphone.
+         RECORD_AUDIO is also what LeetType's spoken margin notes need:
+         @capacitor-community/speech-recognition hands the phone's
+         SpeechRecognizer the microphone (www src/lib/dictation), and its own
+         manifest declares the permission and a <queries> entry for
+         android.speech.RecognitionService. -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+
+    <!-- androidx.biometric (a dependency of @capacitor-community/sqlite)
+         declares these two, but the plugin reaches its biometric code only
+         when capacitor.config sets both plugins.CapacitorSQLite
+         androidIsEncryption and androidBiometric.biometricAuth, and this app
+         sets neither: the database is not encrypted and nothing prompts for a
+         fingerprint. So the app asks for neither. Setting biometricAuth later
+         means deleting these two lines and listing both in
+         review/policy.json. -->
+    <uses-permission android:name="android.permission.USE_BIOMETRIC" tools:node="remove" />
+    <uses-permission android:name="android.permission.USE_FINGERPRINT" tools:node="remove" />
+
+    <!-- @capacitor/local-notifications (8.x) declares this, but study nudges
+         are inexact alarms: www's lib/study-nudge/native.ts schedules them
+         with isExactNotification: false, so the plugin never asks for exact
+         ones. Play restricts it to alarm-clock and calendar apps, and Android
+         14 denies it by default to everything else. -->
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" tools:node="remove" />
+
+    <application
+        android:allowBackup="true"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@style/AppTheme"
+        android:usesCleartextTraffic="true">
+        <!-- Cleartext is for the sync from home only: the home file_host is a
+             plain-http LAN address (http://<lan-ip>:3000), which Android refuses
+             to reach from targetSdk 28 on unless allowed here. A network
+             security config cannot scope this to "private addresses"; it takes
+             named hosts, and the LAN address is whatever the person types.
+             Everything else the app loads is its own bundle, over https. -->
+
+        <activity
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|smallestScreenSize|screenLayout|uiMode|navigation|density"
+            android:name=".MainActivity"
+            android:label="@string/title_activity_main"
+            android:theme="@style/AppTheme.NoActionBarLaunch"
+            android:launchMode="singleTask"
+            android:exported="true">
+
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+
+        </activity>
+
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths"></meta-data>
+        </provider>
+    </application>
+
+</manifest>

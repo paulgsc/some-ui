@@ -8,8 +8,8 @@
  * hardcoded endpoint and API key, call `initializeSpeechQueue` from an
  * effect, swallow the "already initialized" error, and never tear any of it
  * down - happens here instead, once, correctly. The app supplies
- * configuration; which backend that configuration resolves to is this
- * package's business (see `adapters/registry`).
+ * configuration, and the backends it runs (see `adapters/registry`); which
+ * of them answers is this package's business.
  *
  * Changing the configuration ends the old session before the new one
  * starts: the old adapter is disposed, which flushes every promise it still
@@ -18,12 +18,30 @@
  */
 
 import type { JSX, ReactNode } from "react"
-import { createContext, useContext, useEffect, useState } from "react"
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useId,
+  useMemo,
+  useReducer,
+  useState,
+} from "react"
 import { SpeechStatusAnnouncer } from "@speech/components/speech-status"
-import type { SpeechAdapter, SpeechConfig } from "@speech/lib/adapters"
-import { createSpeechAdapter, resolveSpeechConfig } from "@speech/lib/adapters"
+import type {
+  SpeechAdapter,
+  SpeechConfig,
+  VoiceReport,
+} from "@speech/lib/adapters"
+import { createSpeechAdapter } from "@speech/lib/adapters"
+import type { SpokenLanguage } from "@speech/lib/language"
 import type { SpeechQueueManager } from "@speech/lib/queue"
 import { initializeSpeechQueue, releaseSpeechQueue } from "@speech/lib/queue"
+import type {
+  PreviewOptions,
+  Speaker,
+  SpeechOutcome,
+} from "@speech/lib/speaker"
 import type { SpeechNotifier } from "@speech/lib/status"
 
 export type SpeechSession = {
@@ -35,7 +53,7 @@ const SpeechSessionContext = createContext<SpeechSession | null>(null)
 
 export type SpeechProviderProps = {
   children: ReactNode
-  config?: SpeechConfig
+  config: SpeechConfig
   /** Rendered while the session is being established (one commit). */
   fallback?: ReactNode
   /**
@@ -68,20 +86,24 @@ export type SpeechProviderProps = {
  * keying the session on the *values* keeps that from tearing the session
  * down and rebuilding it on each one.
  *
- * `adapters` and `fetchImpl` are deliberately excluded - they are function
- * references, they cannot be serialized, and the callers that pass them
- * (tests, future backends) pass stable ones.
+ * `adapters`, `fetchImpl` and the native engine are deliberately excluded -
+ * they are tokens and function references, they cannot be serialized, and
+ * the callers that pass them (the app's build-time backends, tests, the
+ * Android app's engine) pass stable ones. Whether there is
+ * a native engine, and the phone voice chosen for it, are part of the key.
  */
 function configKeyOf(config: SpeechConfig): string {
   return JSON.stringify([
     config.mode ?? null,
     config.endpoint ?? null,
     config.apiKey ?? null,
-    config.provider ?? null,
+    config.hosted?.provider ?? null,
+    config.hosted?.voiceId ?? null,
     config.format ?? null,
     config.timeoutMs ?? null,
-    config.voiceId ?? null,
-    config.lang ?? null,
+    config.language ?? null,
+    config.native ? "native" : null,
+    config.native?.voiceId ?? null,
     config.fallbackWhenUnsupported ?? null,
     config.serverHostnames ?? null,
   ])
@@ -89,7 +111,7 @@ function configKeyOf(config: SpeechConfig): string {
 
 export const SpeechProvider = ({
   children,
-  config = {},
+  config,
   fallback = null,
   muted = false,
   notify,
@@ -98,11 +120,14 @@ export const SpeechProvider = ({
   const configKey = configKeyOf(config)
 
   useEffect(() => {
-    const resolved = resolveSpeechConfig(config)
     const adapter = createSpeechAdapter(config)
-    const manager = initializeSpeechQueue(adapter, {
-      defaultVoice: resolved.voice,
-    })
+    const manager = initializeSpeechQueue(adapter)
+    // Muted from its first moment, not one effect later: React runs a
+    // child's effects before its parent's, so an applet that speaks on
+    // mount (a prompt that auto-plays) would otherwise reach the speaker
+    // before the effect below had muted it, and a page opened muted would
+    // say its first line anyway.
+    manager.setMuted(muted)
     /*
      * The session *is* the external system this effect synchronizes with,
      * and its handle has to reach the tree. Creating it during render
@@ -120,7 +145,9 @@ export const SpeechProvider = ({
     }
     // `config` is intentionally absent: `configKey` is its value-identity,
     // and depending on the object itself would rebuild the session on every
-    // render for any caller passing an inline literal.
+    // render for any caller passing an inline literal. So is `muted`: it is
+    // only the new session's starting state here, and flipping it must not
+    // rebuild the session - the effect below applies every later change.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [configKey])
 
@@ -147,30 +174,73 @@ export function useSpeechSession(): SpeechSession {
 }
 
 /**
- * The session if there is one, `null` if there isn't.
+ * This component's handle on the page's speech, or `null` when no
+ * `<SpeechProvider>` is mounted.
  *
- * For code that can work without a voice and must not crash when there is
- * none - a lazily-loaded applet that a host may mount anywhere, a Storybook
- * story, a test. Speech is genuinely ambient (there is one pair of speakers
- * per page), so reading it from context is right; requiring it to exist is
- * not, and a consumer should not have to know how to check.
- *
- * `useSpeechSession` stays throwing for code that has no meaning without a
- * voice - being explicit about which of the two you are is the point.
+ * The one way an applet speaks (`lib/speaker`): its lines go through the
+ * session, which decides what plays, and its `stop` reaches only its own
+ * lines. Each component gets its own handle, so one applet stopping cannot
+ * silence another. Null rather than throwing, because speech is ambient and
+ * optional: a lazily-loaded applet a host may mount anywhere, a story or a
+ * test runs without a voice, and silence is a degraded lesson rather than a
+ * broken one. There is deliberately no way to reach the adapter from here:
+ * the session decides the voice and honors mute, and an applet holding the
+ * adapter could do neither.
  */
-export function useOptionalSpeechSession(): SpeechSession | null {
-  return useContext(SpeechSessionContext)
-}
-
-export function useOptionalSpeechAdapter(): SpeechAdapter | null {
-  return useOptionalSpeechSession()?.adapter ?? null
+export function useSpeaker(): Speaker | null {
+  const manager = useContext(SpeechSessionContext)?.manager ?? null
+  const owner = useId()
+  return useMemo(() => manager?.speakerFor(owner) ?? null, [manager, owner])
 }
 
 /**
- * The session's adapter, for call sites that speak directly rather than
- * through the queue (a one-shot prompt, a question read aloud). Queued,
- * priority-ordered speech should use `useSpeechQueue` instead.
+ * Re-renders the caller when `speaker` says its voices or mute changed,
+ * which a browser's or a phone's voices do some time after the page loads.
  */
-export function useSpeechAdapter(): SpeechAdapter {
-  return useSpeechSession().adapter
+function useSpeakerUpdates(speaker: Speaker | null): void {
+  const [, refresh] = useReducer((count: number) => count + 1, 0)
+  useEffect(() => {
+    if (!speaker) return undefined
+    const unsubscribe = speaker.subscribe(refresh)
+    // A change announced between this render's read and the subscription
+    // just made had no listener to tell: Chrome's voices load in response
+    // to the very `getVoices()` call that read them. Read once more.
+    refresh()
+    return unsubscribe
+  }, [speaker])
+}
+
+/**
+ * Who would read a line in `language` on this page, kept current. `null`
+ * without a `<SpeechProvider>`.
+ */
+export function useVoiceReport(language: SpokenLanguage): VoiceReport | null {
+  const speaker = useSpeaker()
+  useSpeakerUpdates(speaker)
+  return speaker ? speaker.describe(language) : null
+}
+
+export type VoicePreview = {
+  /** Says a sample line through the session; see `SpeechQueueManager.preview`. */
+  readonly play: (
+    text: string,
+    options: PreviewOptions
+  ) => Promise<SpeechOutcome>
+  /** Whether the person has muted voice output, so a sample is refused. */
+  readonly muted: boolean
+}
+
+/**
+ * Settings' sample of a voice a person is choosing between, kept current
+ * with mute. `null` without a `<SpeechProvider>`.
+ */
+export function useVoicePreview(): VoicePreview | null {
+  const manager = useContext(SpeechSessionContext)?.manager ?? null
+  const speaker = useSpeaker()
+  useSpeakerUpdates(speaker)
+  if (!manager || !speaker) return null
+  return {
+    play: (text, options) => manager.preview(text, options),
+    muted: speaker.muted,
+  }
 }

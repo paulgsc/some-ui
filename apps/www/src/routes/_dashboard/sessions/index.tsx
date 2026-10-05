@@ -1,6 +1,6 @@
 import type { JSX } from "react"
 import { useState } from "react"
-import { getActivity, summarizeConfig } from "@some-ui/activity-catalog"
+import { findActivity, summarizeConfig } from "@some-ui/activity-catalog"
 import type { Intent, IntentError } from "@some-ui/intent-kit"
 import { matchIntent } from "@some-ui/intent-kit"
 import {
@@ -19,6 +19,7 @@ import { createFileRoute, Link } from "@tanstack/react-router"
 import { Copy, Pencil, Play, Sparkles, Trash2, X } from "lucide-react"
 import { cn, formatRelativeTime } from "some-ui-utils"
 
+import { MOBILE_APP } from "@/lib/build-profile"
 import { useIntent, useIntentEffect } from "@/lib/intent"
 import { IntentButton, IntentFailure } from "@/lib/intent/render"
 import { matchQueryOutcome, queryOutcome } from "@/lib/query-outcome"
@@ -135,7 +136,9 @@ const SessionCard = ({
                 Endless, don't otherwise look identical in this list. */}
             <div className="mt-1 flex flex-wrap items-center gap-1.5">
               {session.activities.map((sessionActivity, index) => {
-                const activity = getActivity(sessionActivity.activityId)
+                const activity = findActivity(sessionActivity.activityId)
+                // A retired activity has nothing left to summarize.
+                if (!activity) return null
                 return (
                   <Badge
                     // eslint-disable-next-line react/no-array-index-key -- position within one session's fixed activity list is a stable identity here; the same activityId can repeat within a session
@@ -149,12 +152,19 @@ const SessionCard = ({
                 )
               })}
             </div>
-            <p className="text-muted-foreground mt-1 text-xs">
+            <p className="text-muted-foreground mt-1 hidden text-xs sm:block">
               Updated {formatRelativeTime(session.updatedAt)}
             </p>
           </div>
         </div>
-        <div className="flex shrink-0 items-center gap-2 self-end sm:self-auto">
+        {/* On a phone the actions drop below the details, and the "Updated"
+            line rides in their row rather than taking one of its own above
+            it: a row that held three buttons pushed to its right edge was a
+            band of nothing across the card. */}
+        <div className="flex shrink-0 items-center gap-2 sm:self-auto">
+          <p className="text-muted-foreground mr-auto min-w-0 truncate pl-7 text-xs sm:hidden">
+            Updated {formatRelativeTime(session.updatedAt)}
+          </p>
           {primaryAction}
           <IntentButton
             state={duplicateIntent.state}
@@ -400,7 +410,11 @@ const SessionsList = ({
             <Sparkles className="size-6" />
             <p>No sessions yet.</p>
             <Button asChild size="sm" className="mt-2">
-              <Link to="/app">Start something new</Link>
+              {/* Home's launcher is the web app's; the phone goes straight
+                  to the composer, whose picker has the whole catalogue. */}
+              <Link to={MOBILE_APP ? "/sessions/new" : "/app"}>
+                Start something new
+              </Link>
             </Button>
           </CardContent>
         </Card>
@@ -457,7 +471,7 @@ const SessionsList = ({
   )
 }
 
-const SessionsRoute = (): JSX.Element => {
+const SessionsOutcome = (): JSX.Element => {
   const outcome = queryOutcome(useSessions())
 
   return matchQueryOutcome(outcome, {
@@ -468,6 +482,8 @@ const SessionsRoute = (): JSX.Element => {
     ),
   })
 }
+
+const SessionsRoute = (): JSX.Element => <SessionsOutcome />
 
 export const Route = createFileRoute("/_dashboard/sessions/")({
   // See `$sessionId.tsx`'s loader for why this is a non-awaited prefetch and

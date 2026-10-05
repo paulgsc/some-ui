@@ -57,6 +57,11 @@
     "test:deletions-are-free": {
       "cache": false
     },
+    "check:bundle-paths": {
+      "dependsOn": ["^build"],
+      "cache": false,
+      "outputs": []
+    },
     "lint:fix": {
       "cache": false,
       "outputs": []

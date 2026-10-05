@@ -51,7 +51,7 @@ import { ApiError, createDataSource } from "@some-ui/fetch-kit"
 import { z } from "zod"
 
 import { DATA_MODE, FETCHES_CONTENT } from "@/lib/data-mode"
-import { fileHostRouteUrl } from "@/lib/file-host-config"
+import { fileHostRouteUrl, PUBLIC_READ } from "@/lib/file-host-config"
 
 /**
  * A well-formed manifest with nothing in it.
@@ -96,12 +96,12 @@ export function locateTopikFileUrl(key: string): URL {
 // request below - but `createDataSource` wants one per mode.
 const manifestSource = createDataSource<void, unknown>(
   { static: locateTopikManifestUrl, server: locateTopikManifestUrl },
-  { mode: DATA_MODE }
+  { mode: DATA_MODE, fetchOptions: PUBLIC_READ }
 )
 
 const topikSource = createDataSource<string, unknown>(
   { static: locateTopikFileUrl, server: locateTopikFileUrl },
-  { mode: DATA_MODE }
+  { mode: DATA_MODE, fetchOptions: PUBLIC_READ }
 )
 
 /**

@@ -84,6 +84,8 @@
  * consequence of this module existing.
  */
 
+import { median, quantile } from "@some-ui/core-utils"
+
 /** How many typeable characters make up one word, for the WPM conversion — the same convention `reveal.rs` and `stats.rs` use. */
 const CHARS_PER_WORD = 5
 
@@ -173,23 +175,6 @@ export type InstanceAggregate = {
   censoredCount: number
 }
 
-/** Linear-interpolated quantile of an already-sorted array — mirrors `baseline-store/calibration.ts`'s own, over a different quantity. */
-function quantile(sorted: ReadonlyArray<number>, fraction: number): number {
-  if (sorted.length === 0) return 0
-  const position = (sorted.length - 1) * fraction
-  const lower = Math.floor(position)
-  const upper = Math.ceil(position)
-  const low = sorted[lower] ?? 0
-  const high = sorted[upper] ?? low
-  return low + (high - low) * (position - lower)
-}
-
-function median(values: ReadonlyArray<number>): number {
-  if (values.length === 0) return 0
-  const sorted = [...values].sort((a, b) => a - b)
-  return quantile(sorted, 0.5)
-}
-
 /**
  * Every observation, folded per `stepId` — the unit of analysis Axiom 3.1
  * requires. Deterministic order (`stepId`, ascending) so a report's diff is
@@ -218,7 +203,7 @@ export function aggregateByInstance(
   return Array.from(byStep.entries())
     .map(([stepId, bucket]) => ({
       stepId,
-      medianStandardized: median(bucket.standardized),
+      medianStandardized: median(bucket.standardized) ?? 0,
       sampleCount: bucket.standardized.length,
       censoredCount: bucket.censoredCount,
     }))
@@ -259,8 +244,8 @@ export function flagOutliers(
   const sortedMedians = withSamples
     .map((a) => a.medianStandardized)
     .sort((a, b) => a - b)
-  const q1 = quantile(sortedMedians, 0.25)
-  const q3 = quantile(sortedMedians, 0.75)
+  const q1 = quantile(sortedMedians, 0.25) ?? 0
+  const q3 = quantile(sortedMedians, 0.75) ?? 0
   const fence = q3 + OUTLIER_IQR_MULTIPLIER * (q3 - q1)
 
   return withSamples

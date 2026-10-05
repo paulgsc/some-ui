@@ -1,5 +1,6 @@
-import { createFileRoute, Outlet } from "@tanstack/react-router"
+import { createFileRoute, Outlet, redirect } from "@tanstack/react-router"
 
+import { authority } from "@/lib/authority"
 import { requireAudience } from "@/lib/build-profile"
 
 /**
@@ -18,7 +19,21 @@ import { requireAudience } from "@/lib/build-profile"
  *       take what they need from the workspace's `/contract`
  *   A3  a link to a route here from outside it sits behind `hasAudience`
  */
+const requireLan = requireAudience("lan")
+
+/**
+ * These pages are also the account's own: the tools act as an operator, which
+ * only a signed-in account can be. Everything else in the app works on the
+ * device without one. By the time this runs the parent layout has waited for a
+ * returning account user's session to be checked (`authority.settled()`), so a
+ * synchronous look at the authority is the whole answer.
+ */
 export const Route = createFileRoute("/_dashboard/_lan")({
-  beforeLoad: requireAudience("lan"),
+  beforeLoad: ({ location }) => {
+    requireLan()
+    if (!authority.is("account")) {
+      throw redirect({ to: "/auth", search: { redirect: location.href } })
+    }
+  },
   component: Outlet,
 })

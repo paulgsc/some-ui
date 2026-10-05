@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto"
 import type { JSX } from "react"
+import type { ShelfItem, ShelfPort } from "@some-ui/shared"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import {
   cleanup,
@@ -23,7 +24,6 @@ import {
 } from "@topik/lib/topik/adapter/pasted-lesson"
 import type { StorageLike } from "@topik/lib/topik/adapter/resume-point"
 import { createResumeStore } from "@topik/lib/topik/adapter/resume-point"
-import type { ShelfItem, ShelfPort } from "@topik/lib/topik/adapter/shelf"
 import { createSurveyStore } from "@topik/lib/topik/adapter/survey-store"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
@@ -109,7 +109,7 @@ function renderLesson(
         value={{
           topikRepository: fixtureTopikRepository,
           metadataRepository: fixtureMetadataRepository,
-          speechAdapter: null,
+          speaker: null,
           ...(shelf ? { shelf } : {}),
         }}
       >

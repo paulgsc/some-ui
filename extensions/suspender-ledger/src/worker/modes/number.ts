@@ -1023,4 +1023,4 @@ chrome.idle.onStateChanged.addListener((state) => {
   })
 }
 
-export { number, pluginFilters }
+export { number }

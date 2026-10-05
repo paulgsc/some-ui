@@ -27,11 +27,12 @@
     "@some-ui/tsconfig": "workspace:*",
     "esbuild": "^0.25.0",
     "eslint": "^10.11.0",
-    "fast-check": "^3.23.1"
+    "fast-check": "^4.10.2"
   },
   "scripts": {
     "clean": "rimraf .turbo && rimraf node_modules && rimraf .eslintcache && pnpm clean:build",
     "clean:build": "rimraf ./dist ./tsconfig.tsbuildinfo",
+    "knip": "knip --directory \"$(git rev-parse --show-toplevel)\" --workspace \"$(git rev-parse --show-prefix | sed 's:/*$::')\"",
     "lint": "pnpm lint:js && pnpm prettier && pnpm typecheck",
     "lint:js": "eslint \"**/*.{js,mjs,ts,tsx}\" --cache",
     "prettier": "prettier \"**/*.{js,mjs,ts,tsx,md,mdx,json,yml,css}\" --ignore-path $(git rev-parse --show-toplevel)/.prettierignore --check --cache",

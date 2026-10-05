@@ -9,6 +9,8 @@
  */
 
 import type { JSX, ReactNode } from "react"
+import { signInForTests } from "@/test-support/sign-in"
+import { getActivity } from "@some-ui/activity-catalog"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import type * as ReactRouterModule from "@tanstack/react-router"
 import {
@@ -23,6 +25,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import type * as TenantModule from "@/lib/tenant"
 import type { SessionRecord } from "@/lib/tenant"
+
+// These suites are about the account's store failing: start from an account.
+beforeEach(() => {
+  signInForTests()
+})
 
 function fixtureSession(id: string, name: string): SessionRecord {
   return {
@@ -40,7 +47,15 @@ function fixtureSession(id: string, name: string): SessionRecord {
 
 const FIXTURE_SESSIONS: Array<SessionRecord> = [
   fixtureSession("session-1", "Vocabulary warm-up"),
-  fixtureSession("session-2", "Grammar review"),
+  {
+    ...fixtureSession("session-2", "Grammar review"),
+    // Composed while "interview" was still offered; it has since been
+    // retired, and the stored record still names it.
+    activities: [
+      { activityId: "interview", config: {} },
+      { activityId: "topik", config: getActivity("topik").defaultConfig },
+    ],
+  },
 ]
 
 vi.mock(
@@ -109,6 +124,19 @@ afterEach(() => {
   cleanup()
   vi.unstubAllGlobals()
   vi.restoreAllMocks()
+})
+
+describe("sessions list: a stored session that names a retired activity", () => {
+  it("still lists the session, with a badge only for what it can still play", () => {
+    vi.stubGlobal("fetch", () =>
+      Promise.reject(new TypeError("Failed to fetch"))
+    )
+
+    render(withQueryClient(<SessionsRoute />))
+
+    expect(screen.getByText("Grammar review")).toBeDefined()
+    expect(screen.getByText(/^TOPIK Study:/)).toBeDefined()
+  })
 })
 
 describe("sessions list: thundering-herd guard on a row's own actions", () => {

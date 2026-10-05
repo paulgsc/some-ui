@@ -10,10 +10,17 @@ export type SpeechAction =
         text: string
         options?: TTSOptions
         maxRetries?: number
+        /** Given when the caller tracks the item (a speaker's line). */
+        id?: string
       }
       priority?: number
       key?: string
     }
+  /**
+   * An interrupted item goes back to the front of its priority band, to be
+   * said again from the start once the interruption has played.
+   */
+  | { type: "REQUEUE"; payload: { item: SpeechItem } }
   | { type: "CANCEL"; payload: { componentId?: string; itemId?: string } }
   | { type: "PAUSE" }
   | { type: "RESUME" }
@@ -34,9 +41,10 @@ export const createSpeechItem = (
   text: string,
   options?: TTSOptions,
   maxRetries = 2,
-  priority = 0
+  priority = 0,
+  id: string = generateId()
 ): SpeechItem => ({
-  id: generateId(),
+  id,
   componentId,
   text,
   options,

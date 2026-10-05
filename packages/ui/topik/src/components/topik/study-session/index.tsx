@@ -19,8 +19,8 @@
  *
  * So the applet provides its own context and takes overrides as props,
  * which is what every other applet in this repo already does: honeycomb
- * defaults `words` to its bundled seed, `InterviewApp` takes an optional
- * `sessionConfig`. `<KoreanStudyPage />` with no props is a working applet;
+ * defaults `words` to its bundled seed. `<KoreanStudyPage />` with no props
+ * is a working applet;
  * a host that wants to inject repositories passes them.
  *
  * `useSessionConfig` still throws without a provider, and should: it is now
@@ -30,7 +30,8 @@
 
 import type { JSX } from "react"
 import { useMemo, useRef } from "react"
-import { useOptionalSpeechAdapter } from "@some-ui/speech"
+import type { ShelfPort } from "@some-ui/shared"
+import { useSpeaker } from "@some-ui/speech"
 import type { Appearance } from "@some-ui/styles/theme"
 import { appearanceClassName } from "@some-ui/styles/theme"
 import { ChatPanel } from "@topik/components/topik/chat-panel"
@@ -53,11 +54,10 @@ import {
   isShort,
   useElementBox,
 } from "@topik/lib/topik/adapter/hooks/use-surface"
-import type { ShelfPort } from "@topik/lib/topik/adapter/shelf"
 import { cn } from "some-ui-utils"
 
 /** Where the manifest lives when a host doesn't say otherwise. */
-export const DEFAULT_TOPIK_MANIFEST_URL = "/topiks/manifest.json"
+const DEFAULT_TOPIK_MANIFEST_URL = "/topiks/manifest.json"
 
 export type KoreanStudyPageProps = {
   /** Overrides the default HTTP-backed repository outright. */
@@ -148,14 +148,10 @@ const DesktopSession = (): JSX.Element => {
 }
 
 /**
- * The applet proper. Assumes its context.
- *
- * Exported for the callers that legitimately own the whole config - a story
- * pinning fixtures, a test injecting fakes - which render it inside their
- * own `SessionConfigProvider`. Ordinary hosts render `KoreanStudyPage` and
- * pass the overrides they care about.
+ * The applet proper. Assumes its context: `KoreanStudyPage` provides it,
+ * and hosts render that with the overrides they care about.
  */
-export const KoreanStudySession = ({
+const KoreanStudySession = ({
   appearance = "inherit",
   surface: preference = "auto",
 }: {
@@ -207,12 +203,12 @@ export const KoreanStudyPage = ({
   /*
    * The one thing that is legitimately ambient. There is one pair of
    * speakers per page, so a page-wide speech session is the right shape -
-   * but this applet must not require one. `useOptionalSpeechAdapter`
+   * but this applet must not require one. `useSpeaker`
    * returns null where no `<SpeechProvider>` is mounted, and the session
    * below simply runs without spoken prompts. Silence is a degraded
    * lesson; a crash is not a lesson at all.
    */
-  const speechAdapter = useOptionalSpeechAdapter()
+  const speaker = useSpeaker()
 
   const value = useMemo(
     () => ({
@@ -226,7 +222,7 @@ export const KoreanStudyPage = ({
       metadataRepository:
         metadataRepository ??
         createTopikMetadataRepository(loadManifest ?? manifestUrl),
-      speechAdapter,
+      speaker,
       ...(shelf ? { shelf } : {}),
     }),
     [
@@ -235,7 +231,7 @@ export const KoreanStudyPage = ({
       manifestUrl,
       loadManifest,
       loadTopik,
-      speechAdapter,
+      speaker,
       shelf,
     ]
   )

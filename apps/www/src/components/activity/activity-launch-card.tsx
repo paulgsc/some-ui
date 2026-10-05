@@ -33,7 +33,7 @@ export const ActivityLaunchCard = ({
       className="block"
     >
       <Card className="hover:border-primary/50 h-full transition-colors">
-        <CardContent className="flex flex-col gap-2 pt-6">
+        <CardContent className="flex flex-col gap-2 pt-[var(--card-p,1.5rem)]">
           <div className="flex items-start justify-between gap-2">
             <ActivityIcon
               icon={activity.icon}

@@ -12,9 +12,9 @@
  * plus a `queued` variant for faces staged for a future rotation.
  */
 
-export type CellStatus = "live" | "warn" | "down" | "idle"
-export type MetaTone = "default" | "pos" | "neg" | "num"
-export type CellMetaPart = { text: string; tone?: MetaTone }
+type CellStatus = "live" | "warn" | "down" | "idle"
+type MetaTone = "default" | "pos" | "neg" | "num"
+type CellMetaPart = { text: string; tone?: MetaTone }
 
 export type ProjectionCellProps = {
   /** Short instrumentation label, e.g. "CI", "STREAK", "NVDA". */
@@ -62,7 +62,7 @@ export function cellNode(tag: string, cls = ""): HTMLElement {
 }
 
 /** Status indicator dot. The live state gets a soft phosphor-free glow. */
-export function statusDot(status: CellStatus = "idle"): HTMLElement {
+function statusDot(status: CellStatus = "idle"): HTMLElement {
   const dot = el(
     "span",
     `inline-block size-[6px] shrink-0 rounded-full ${STATUS_DOT_BG[status]}`
@@ -74,7 +74,7 @@ export function statusDot(status: CellStatus = "idle"): HTMLElement {
 }
 
 /** Tag row: label on the left, status dot on the right. */
-export function cellTag(
+function cellTag(
   text: string,
   status: CellStatus = "idle",
   muted = false
@@ -93,9 +93,7 @@ export function cellTag(
 }
 
 /** Mono meta line built from toned parts joined by middots. */
-export function cellMeta(
-  meta: string | ReadonlyArray<CellMetaPart>
-): HTMLElement {
+function cellMeta(meta: string | ReadonlyArray<CellMetaPart>): HTMLElement {
   const row = el(
     "div",
     "flex flex-wrap items-center gap-[6px] font-mono text-[10.5px] text-[var(--cv-ink-2)]"

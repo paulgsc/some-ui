@@ -1,12 +1,14 @@
 /**
  * @vitest-environment jsdom
  *
- * `"/"` is two pages chosen by session: the extensions comb for a visitor
- * with none (on the public site, everyone), and the destinations landing for
- * a signed-in one. The choice is made in the component, not by a redirect,
- * so it is asserted by rendering the route's component under each state -
- * and a session appearing has to swap the page in place, which is what the
- * subscribing `useHasSession` read is for.
+ * `"/"` is two pages. Where a person can learn on the device (every build with
+ * a `file_host`) the destinations landing is the front door for everyone, with
+ * no session. On the public site, which has no server, the extensions comb is
+ * the front door for a visitor with no (demo) session, and the landing for one
+ * who opened the demo. The choice is made in the component, not by a redirect,
+ * so it is asserted by rendering the route's component under each state - and
+ * a change has to swap the page in place, which is what the subscribing
+ * `useAuthoritySnapshot` read is for.
  */
 
 import type { JSX, ReactNode } from "react"
@@ -14,20 +16,33 @@ import type * as ReactRouterModule from "@tanstack/react-router"
 import { act, cleanup, render, screen } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
-let session = false
+type Backend = "none" | "remote" | "in-process"
+const state: { backend: Backend; session: string } = {
+  backend: "none",
+  session: "signed-out",
+}
 const listeners = new Set<() => void>()
 
-vi.mock("@/lib/auth", async () => {
+vi.mock("@/lib/authority", async () => {
   const { useSyncExternalStore } = await import("react")
+  let snapshot = { ...state }
+  const read = (): typeof snapshot => {
+    if (
+      snapshot.backend !== state.backend ||
+      snapshot.session !== state.session
+    )
+      snapshot = { ...state }
+    return snapshot
+  }
   return {
-    useHasSession: (): boolean =>
+    useAuthoritySnapshot: (): typeof snapshot =>
       useSyncExternalStore(
         (listener) => {
           listeners.add(listener)
           return () => listeners.delete(listener)
         },
-        () => session,
-        () => session
+        read,
+        read
       ),
   }
 })
@@ -69,19 +84,20 @@ function renderRoot(): void {
 
 afterEach(() => {
   cleanup()
-  session = false
+  state.backend = "none"
+  state.session = "signed-out"
 })
 
 describe('"/"', () => {
-  it("is the extensions comb, as the front door, without a session", () => {
+  it("is the extensions comb, as the front door, on the public site without a session", () => {
     renderRoot()
     const page = screen.getByTestId("extensions-page")
     expect(page.dataset.chrome).toBe("front")
     expect(screen.queryByRole("heading", { level: 1 })).toBeNull()
   })
 
-  it("is the destinations landing with a session", () => {
-    session = true
+  it("is the destinations landing on the public site once the demo is open", () => {
+    state.session = "signed-in"
     renderRoot()
     expect(screen.queryByTestId("extensions-page")).toBeNull()
     expect(
@@ -89,12 +105,19 @@ describe('"/"', () => {
     ).toBeTruthy()
   })
 
-  it("swaps to the landing in place when a session appears", () => {
+  it("is the destinations landing wherever there is a server to learn against, with no session", () => {
+    state.backend = "remote"
+    renderRoot()
+    expect(screen.queryByTestId("extensions-page")).toBeNull()
+    expect(screen.getByRole("heading", { level: 1 })).toBeTruthy()
+  })
+
+  it("swaps to the landing in place when the demo opens", () => {
     renderRoot()
     expect(screen.getByTestId("extensions-page")).toBeTruthy()
 
     act(() => {
-      session = true
+      state.session = "signed-in"
       for (const listener of listeners) listener()
     })
 

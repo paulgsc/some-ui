@@ -22,11 +22,14 @@ import {
 import { Briefcase, FileText, ListVideo, Settings, User } from "lucide-react"
 import { cn, useIsMobile, useIsTerminal } from "some-ui-utils"
 
-import { AmbientIntentStatus } from "@/lib/intent/render"
+import { authority } from "@/lib/authority"
+import { MOBILE_APP } from "@/lib/build-profile"
 import { useIsDeclaredBounded } from "@/lib/route-bounds"
-import { useMigrationSignal } from "@/lib/tenant/migration-signal"
 import { AudioIndicator } from "@/components/audio/audio-indicator"
+import { AccountUnavailableBanner } from "@/components/auth/account-unavailable-banner"
 import { HexCombMark } from "@/components/brand/hex-comb-mark"
+import { LocIndicator } from "@/components/loc/loc-indicator"
+import { MobileNav } from "@/components/mobile-shell"
 import { ThemeSwitcher } from "@/components/theme-switcher"
 
 /**
@@ -64,6 +67,7 @@ function isComposerPath(pathname: string): boolean {
   return COMPOSER_PATH.test(pathname)
 }
 
+/** The web app's sidebar. The Android app has its own bar (`MobileNav`). */
 type NavItem = {
   to: "/app" | "/sessions" | "/resume" | "/jobs" | "/profile" | "/settings"
   label: string
@@ -152,7 +156,6 @@ const DashboardLayout = (): JSX.Element => {
   const isViewportRoute = isViewportPath(pathname)
   const isMobile = useIsMobile()
   const isTerminal = useIsTerminal()
-  const migrationSignal = useMigrationSignal()
 
   /**
    * `V` (the fixed, bounded, non-scrolling viewport) only exists while
@@ -198,23 +201,35 @@ const DashboardLayout = (): JSX.Element => {
 
   return (
     <SidebarProvider className={cn(isBoundedRoute && "h-dvh overflow-hidden")}>
-      <DashboardSidebarContent pathname={pathname} />
+      {/* The phone navigates by the bar along the bottom instead. */}
+      {!MOBILE_APP && <DashboardSidebarContent pathname={pathname} />}
       <SidebarInset>
         {!bareViewport && (
           <header className="flex h-14 shrink-0 items-center gap-2 border-b px-4">
-            <SidebarTrigger />
+            {!MOBILE_APP && <SidebarTrigger />}
             <ThemeSwitcher />
             {/* Layer 1 of audio disclosure: a standing indicator of what this
                 app may play, always visible and never interrupting. It is the
                 canonical place a person learns this app has audio, and the
                 place the first-use notices point back to. */}
             <AudioIndicator />
-            {/* #947: sessions-backend.ts's partial-migration outcome, ambient
-                per #940 - quiet unless there's something to say, and never
-                silent when there is. */}
-            <AmbientIntentStatus state={migrationSignal} className="ml-2" />
+            {/* Lines written lately, from a snapshot taken when this build was
+                made (`lib/loc-report`). Renders nothing in a build without
+                one. Before the phone's Settings link, which `ml-auto` pins to
+                the far side. */}
+            <LocIndicator />
+            {MOBILE_APP && (
+              <Link
+                to="/settings"
+                aria-label="Settings"
+                className="hover:bg-accent ml-auto flex size-10 items-center justify-center rounded-md"
+              >
+                <Settings className="size-5" />
+              </Link>
+            )}
           </header>
         )}
+        {!bareViewport && <AccountUnavailableBanner />}
         <div
           className={cn(
             "flex-1",
@@ -232,11 +247,20 @@ const DashboardLayout = (): JSX.Element => {
         >
           <Outlet />
         </div>
+        {/* A persistent bar may not paint over a bounded surface
+            (docs/session-viewport/05-the-mobile-shell.md §4), so the
+            player and the composer go without it: they have their own
+            way back. */}
+        {MOBILE_APP && !isBoundedRoute && <MobileNav pathname={pathname} />}
       </SidebarInset>
     </SidebarProvider>
   )
 }
 
 export const Route = createFileRoute("/_dashboard")({
+  // No page here renders against the wrong store: a returning account user
+  // waits (once, with the probe's own deadline) for their session to be
+  // checked, and anyone learning on the device does not wait at all.
+  beforeLoad: () => authority.settled(),
   component: DashboardLayout,
 })

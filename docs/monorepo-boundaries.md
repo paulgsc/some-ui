@@ -103,6 +103,107 @@ Three edges moved with it, each one an instance of a rule above:
   lines of `useState` plus a window listener is a hook, not a concern, and
   test 3 says so.
 
+## Inside a React package: the component is not the coordinator
+
+The same line runs through a `packages/ui/*` workspace, which is React by
+definition. Its purity test above runs in `jsdom` and so cannot fail, and that
+is how the line got crossed without anything noticing.
+
+**React projects state and turns gestures into intents. It does not
+coordinate the application.** Owning an external resource (a microphone, an
+`Audio`, a socket, a database handle), sequencing I/O, and deciding which of
+two racing results wins all belong to a module that would survive deleting
+React. If proving the feature correct needs reasoning about renders,
+dependency arrays, refs or unmount, React has become the coordination
+substrate. The litmus: delete the component, and the orchestration should
+still be there.
+
+The shape, for a feature that holds anything external with an async
+lifetime:
+
+- **One state union** in `lib/`, with a pure `step(state, event)` returning
+  the next state and the effects to run. Tested in `node`. States that must
+  not coexist (recording and playing, say) are arms of one union, so the
+  combination cannot be written down.
+- **A runtime** beside it, plain TypeScript over ports (the store, the
+  recorder, the clock). It owns the handles, runs the effects, decides which
+  late result is stale, and has a `dispose()`.
+- **A port translates.** What crosses it is ours: an adapter turns the
+  platform's values (its tags, ids, booleans, errors) into this package's
+  closed types, and nothing past it branches on a raw platform string or a
+  collapsed flag. A translation that collapses states (to a boolean, to
+  `null`) says so where it happens. `@some-ui/speech` is the example: a
+  line's language is `"korean" | "english"`, a platform's tag is read only by
+  `spokenLanguageOf` in an adapter or its transport, and voice availability
+  is four states, not a boolean, so "still loading" never reads as "missing".
+- **The component** reads a snapshot (`useSyncExternalStore`) and dispatches
+  events. A hook that subscribes, or an effect that forwards
+  `visibilitychange` as an event, is wiring. What the event _means_ is the
+  machine's.
+
+Topik is the model: `core/session-machine` and `core/effect-executor`, with
+`adapter/hooks/use-session` as the wiring. The symptoms of the other shape
+are recognisable: a request or turn counter in a `useRef`, a resource handle
+in a `useRef`, a `mountedRef`, several `useState`s that only make sense
+together, and a comment explaining which continuation still owns what.
+`packages/ui/lesson-crm` has them, and so did the soundbites page in #1636,
+where 8 of 11 review findings across 7 rounds were races in exactly that
+coordination, each fixed by one more local guard.
+
+> **R1: A React module that coordinates async work says why, in the
+> allowlist.**
+>
+> - _Claim:_ every entry in `scripts/react-coordination.allowlist` outside
+>   its `Grandfathered:` group sits under a `Coordination:` line that names
+>   the external work the module awaits and why that sequencing cannot live in
+>   a runtime outside React; and no count in the `Grandfathered:` group is
+>   higher than on `main`.
+> - _Falsified by_ an allowlist hunk that adds an entry, or raises a count,
+>   inside the `Grandfathered:` group; that adds an entry or raises a count
+>   under a `Coordination:` line naming no external work or no reason it stays
+>   in React ("needs await" and "async handler" are not reasons); or that
+>   deletes or rewords a `Coordination:` line, or splits a group, so an entry
+>   loses its reason. Also by a hunk to
+>   `packages/eslint/src/react-coordination.ts`,
+>   `scripts/check-react-coordination.ts`, the root `lint` script or pr.yml's
+>   `react-coordination` job (and its line in CI Gate) that narrows what is
+>   counted or stops it running: a path excluded, a kind of site dropped, a
+>   step removed, a file deleted or renamed.
+> - _Scope:_ `scripts/react-coordination.allowlist` and the files named
+>   above.
+> - _Why not enforced:_ the count is. `pnpm check:react-coordination` fails
+>   any React module whose `await`, `for await`, `.then`, `.catch` and
+>   `.finally` sites are not listed at exactly that number, in either
+>   direction. A React module is a `.jsx`/`.tsx` file, a module whose ES
+>   `import` or `export … from` names a React library (`react`, `react-dom`,
+>   or a binding such as `@tanstack/react-query`), or one that declares or
+>   calls a hook by the `use` + capital convention (`function useX`, a
+>   variable declared `useX` with `const`, `let` or `var`, `useX()`,
+>   `Namespace.useX()`), so a custom hook counts too. That syntax is the whole
+>   classification. A hook renamed away from the convention, or called through
+>   a lowercase object, is not counted, and is a rules-of-hooks naming problem
+>   for review, not a gap in R1. Nor is CommonJS `require("react")`, which
+>   nothing in scope uses. Whether those sites make the component the
+>   coordinator is not decidable. Lint sees one awaited submit and nine
+>   interleaved awaits over a microphone, a store and an `Audio` as the same
+>   construct. Types do not help, because the problem is how hooks compose,
+>   not any one signature. Tests pass either way, because behaviour is the
+>   same and only the race surface differs. So the check never judges. It
+>   turns every change in how much a React module coordinates into a line in
+>   the diff, and that line is where this falsifier is applied, as with RS1's
+>   fingerprint and the Rust side's `scripts/check-mutation-boundary.sh`.
+>   "Grandfathered counts never rise" is mechanical; not yet a rule (it needs
+>   the base branch's allowlist to compare against).
+>
+> True when declared: all 56 entries are in the `Grandfathered:` group, and
+> the check passes on the tree that declares R1.
+
+What the count does not see, so a reviewer should not expect it to: a
+fire-and-forget call (`void save()`), which looks the same as a `void
+navigate(...)`, and state that is coordination without awaiting anything,
+such as a ref that holds a handle. Those surface as review findings instead,
+and `.claude/skills/steward/SKILL.md` says what a cluster of them means.
+
 ## How this is enforced
 
 Partly. Be honest about which parts.
@@ -111,6 +212,9 @@ Partly. Be honest about which parts.
   `node` environment. A React import fails the tests rather than the review.
 - **Deep path-alias imports** of a hoisted module are gone by construction -
   the directory no longer exists.
+- **Coordination in React** is counted, not judged: R1 above, by
+  `pnpm check:react-coordination` (in root `pnpm lint` and its own pr.yml job
+  that CI Gate requires).
 - **The sibling-internals rule is not mechanized yet.** It is a review rule
   today. If it recurs, the place to put it is an `import/no-restricted-paths`
   zone in `packages/eslint`, and this paragraph is the note to that effect.

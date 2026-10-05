@@ -3,6 +3,7 @@ import { ApiError, createDataSource } from "@some-ui/fetch-kit"
 import type { WordEntry } from "@some-ui/honeycomb"
 
 import { DATA_MODE, FETCHES_CONTENT } from "@/lib/data-mode"
+import { PUBLIC_READ } from "@/lib/file-host-config"
 
 import { HangulVocabFileSchema } from "./schema"
 
@@ -26,7 +27,7 @@ function locateVocabFile({ topic }: HangulVocabParams): URL {
 const hangulVocabSource = createDataSource<HangulVocabParams, Array<WordEntry>>(
   { static: locateVocabFile, server: locateVocabFile },
   // One build-time bit, not a runtime hostname guess - see src/lib/data-mode.
-  { mode: DATA_MODE }
+  { mode: DATA_MODE, fetchOptions: PUBLIC_READ }
 )
 
 /**

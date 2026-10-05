@@ -61,7 +61,7 @@ export type ProbeOptions = {
   sessionCookie?: string
 }
 
-export const SESSION_COOKIE = "__Host-session"
+const SESSION_COOKIE = "__Host-session"
 
 const DEFAULT_TIMEOUT_MS = 10_000
 

@@ -15,6 +15,35 @@ interface ImportMetaEnv {
   readonly VITE_STATIC_DATA?: string
 
   /**
+   * `"true"` only for the Android app's build (`apps/mobile` `build:web`).
+   * The app then answers its own `file_host` requests in-process, from an
+   * on-device SQLite database, instead of over the network - so it runs
+   * every server-mode code path with no server. Mutually exclusive with
+   * `VITE_STATIC_DATA`. See src/lib/device-backend.
+   *
+   * `DATA_MODE` (src/lib/data-mode) stays `"server"` there, and that is the
+   * point: the device has a backend, it just lives in the same process. This
+   * flag is only for the few places where "a backend" and "a network" part
+   * ways: what the device has no service for (a TTS server) and what it
+   * delivers differently (a nudge is a native local notification, not a web
+   * push). Keep that list short; each is a place the device build diverges.
+   *
+   * **Read it where you branch on it**, as
+   * `import.meta.env.VITE_DEVICE_BACKEND === "true"`, never through a
+   * constant exported from another module. Vite writes the value into each
+   * module that reads it, so the bundler drops the dead branch, and the
+   * `import()` and modules behind it, before it lays out chunks. Through an
+   * imported constant it folds the branch only after: the code goes, but the
+   * chunks it reached are still emitted, and the web builds carried ~118 KiB
+   * of native code that way. `pnpm --filter www check:bundle-paths` fails on
+   * it (packages/some-vite-config/AUDIENCES.md, "Paths").
+   *
+   * Typed as the one value it is ever set to, so a misspelled comparison is a
+   * type error rather than a branch that is silently always false.
+   */
+  readonly VITE_DEVICE_BACKEND?: "true"
+
+  /**
    * Overrides where the app looks for its speech backend (the
    * `openai-edge-tts` service in `infra/compose/tts.yml`). Left unset, the
    * app follows the page it is served from: `http://<current

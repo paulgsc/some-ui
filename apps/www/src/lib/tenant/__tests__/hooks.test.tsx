@@ -48,10 +48,12 @@ vi.mock("@/lib/tenant/queries", async (importOriginal) => {
   }
 })
 
-let hasSession = false
-vi.mock("@/lib/auth", () => ({
-  useHasSession: (): boolean => hasSession,
-  resolveSession: (): Promise<boolean> => Promise.resolve(hasSession),
+let kind: "pending" | "local" | "account" = "pending"
+vi.mock("@/lib/authority", () => ({
+  useAuthority: (): { kind: typeof kind; epoch: number } => ({
+    kind,
+    epoch: 0,
+  }),
 }))
 
 function wrapper(
@@ -65,11 +67,12 @@ function wrapper(
 
 afterEach(() => {
   vi.resetModules()
-  hasSession = false
+  vi.clearAllMocks()
+  kind = "pending"
 })
 
-describe("tenant read hooks: no request before there is a session", () => {
-  it("useProfile/useSettings/useSessions stay idle while signed out, and fire once signed in", async () => {
+describe("tenant read hooks: no read before the authority is decided", () => {
+  it("useProfile/useSettings/useSessions stay idle while it is undecided, and fire once it is", async () => {
     const { useProfile, useSettings, useSessions } = await import(
       "@/lib/tenant/hooks"
     )
@@ -89,8 +92,29 @@ describe("tenant read hooks: no request before there is a session", () => {
     expect(settingsQueryFn).not.toHaveBeenCalled()
     expect(sessionsQueryFn).not.toHaveBeenCalled()
 
-    hasSession = true
+    kind = "account"
     rerender()
+
+    await waitFor(() => {
+      expect(profileQueryFn).toHaveBeenCalled()
+      expect(settingsQueryFn).toHaveBeenCalled()
+      expect(sessionsQueryFn).toHaveBeenCalled()
+    })
+  })
+
+  it("reads at once on the device, where there is no session to wait for", async () => {
+    kind = "local"
+    const { useProfile, useSettings, useSessions } = await import(
+      "@/lib/tenant/hooks"
+    )
+    renderHook(
+      () => {
+        useProfile()
+        useSettings()
+        useSessions()
+      },
+      { wrapper: wrapper(new QueryClient()) }
+    )
 
     await waitFor(() => {
       expect(profileQueryFn).toHaveBeenCalled()

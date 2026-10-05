@@ -3,13 +3,14 @@ import { resolve } from "node:path"
 import { createStylePlugins } from "@some-ui/styles/styles-build/dev-config"
 import { TanStackRouterVite } from "@tanstack/router-plugin/vite"
 import viteReact from "@vitejs/plugin-react"
-import type { Plugin, UserConfig } from "vite"
+import type { HtmlTagDescriptor, Plugin, UserConfig } from "vite"
 import { defineConfig, loadEnv } from "vite"
 
-import { buildAudiencePlugin } from "./build.profiles.ts"
+import { buildAudiencePlugin, MOBILE_PROFILE } from "./build.profiles.ts"
 import {
   describeTarget,
   fileHostDevPlugin,
+  isBlockedProxyPath,
   resolveFileHostTarget,
 } from "./file-host.dev.ts"
 import styleContext from "./style.context.ts"
@@ -20,6 +21,15 @@ const keyPath = resolve(
   "../../certs/nixos.local+3-key.pem"
 )
 const hasLocalCerts = fs.existsSync(certPath) && fs.existsSync(keyPath)
+
+// `SOME_UI_DEV_HTTP=1` serves plain HTTP even where the certs above exist. The
+// Android app's dev loop (apps/mobile, `pnpm dev:web`) needs it: the WebView
+// loads this server as `http://localhost` over `adb reverse`, and Capacitor
+// does nothing with a certificate error, so a mkcert certificate (which the
+// WebView does not trust) is a blank screen. `localhost` is a secure context
+// over plain HTTP too, which is what the device backend's `crypto.subtle`
+// needs; a LAN address or `nixos.local` is not.
+const devHttp = process.env.SOME_UI_DEV_HTTP === "1"
 
 // The dev/preview counterpart of apps/www/nginx.tts-proxy.conf: the same
 // same-origin /api/tts/ route, pointed at the port infra/compose/tts.yml
@@ -92,6 +102,72 @@ function warnMissingContentAssets(): Plugin {
   }
 }
 
+// The Android app carries sessions and nothing else (src/lib/app-surface), so
+// its build leaves out what exists only for /resume: the document entry below,
+// and the PDFs scripts/sync-resume.mjs copies into public/ - about as much as
+// every other file the app ships from public/ together. Vite copies public/
+// wholesale, with no filter of its own, and before the bundle is written, so
+// they come out once the build is done.
+const isMobileBuild = process.env.SOME_UI_PROFILE === MOBILE_PROFILE
+
+function omitResumePdfs(): Plugin {
+  let outDir = ""
+  return {
+    name: "omit-resume-pdfs",
+    apply: "build",
+    configResolved(config): void {
+      outDir = resolve(config.root, config.build.outDir)
+    },
+    closeBundle(): void {
+      for (const name of fs.readdirSync(outDir)) {
+        if (/^resume.*\.pdf$/.test(name)) fs.rmSync(resolve(outDir, name))
+      }
+    },
+  }
+}
+
+// The GitHub Pages build has no backend and no operator-bound traffic by
+// design (`VITE_STATIC_DATA`, `lib/data-mode`), and a static host cannot set
+// response headers. A <meta> policy is the one place this build can say so in a
+// form the browser enforces: with `connect-src 'self'`, a `fetch`, `WebSocket`
+// or beacon to any other origin is blocked, so a later change that adds one
+// fails loudly on the demo instead of quietly sending something somewhere.
+//
+// `connect-src` only: the Pages build already runs without any other policy,
+// and widening this to `default-src` would take on the font, image and
+// service-worker questions this change does not need to answer. The lan and
+// Docker builds are not covered, on purpose: they reach `file_host` on another
+// port of the same host (`lib/file-host-config`), a speech provider the person
+// chose and a music-overlay socket, none of which `connect-src` can name
+// without also blocking a learner's own choices. Those are checked by
+// tests/local-mode/no-egress.spec.ts instead.
+//
+// LA5 (docs/learner-data-authority.md): this tag is the invariant; widening the
+// policy, dropping the plugin or moving the tag out of `head-prepend` breaks it.
+//
+// Prepended, because a meta policy only governs what loads after it.
+const PAGES_CONNECT_POLICY = "connect-src 'self'"
+
+function pagesConnectPolicy(): Plugin {
+  return {
+    name: "pages-connect-policy",
+    apply: "build",
+    transformIndexHtml(): Array<HtmlTagDescriptor> {
+      if (process.env.SOME_UI_PROFILE !== "pages") return []
+      return [
+        {
+          tag: "meta",
+          attrs: {
+            "http-equiv": "Content-Security-Policy",
+            content: PAGES_CONNECT_POLICY,
+          },
+          injectTo: "head-prepend",
+        },
+      ]
+    },
+  }
+}
+
 // https://vitejs.dev/config/
 export default defineConfig(
   ({ command, mode }): UserConfig => ({
@@ -134,6 +210,10 @@ export default defineConfig(
         [FILE_HOST_PROXY_PATH]: {
           target: fileHostProxyTarget,
           changeOrigin: true,
+          // `false` answers 404 (and refuses a WebSocket upgrade the same
+          // way). See `isBlockedProxyPath`.
+          bypass: (req): false | undefined =>
+            isBlockedProxyPath(req.url) ? false : undefined,
           rewrite: (path): string =>
             path.replace(new RegExp(`^${FILE_HOST_PROXY_PATH}`), ""),
           // Name the backend, the same way the TTS proxy names its
@@ -159,7 +239,7 @@ export default defineConfig(
       // `vite dev`/`vite preview` - `vite build` never starts a server, and
       // CI/Docker builds don't have these certs, so only wire this up when
       // both apply.
-      ...(command === "serve" && hasLocalCerts
+      ...(command === "serve" && hasLocalCerts && !devHttp
         ? {
             https: {
               cert: fs.readFileSync(certPath),
@@ -196,6 +276,8 @@ export default defineConfig(
       ...(command === "serve"
         ? [warnMissingContentAssets(), fileHostDevPlugin(fileHost)]
         : []),
+      ...(isMobileBuild ? [omitResumePdfs()] : []),
+      pagesConnectPolicy(),
     ],
     // An http:// page skips the proxy and asks :3000 directly
     // (src/lib/file-host-config) - the container. While the proxy points
@@ -232,7 +314,9 @@ export default defineConfig(
         // 404.html fallback every other unmatched path relies on.
         input: {
           main: resolve(import.meta.dirname, "index.html"),
-          resume: resolve(import.meta.dirname, "resume/index.html"),
+          ...(isMobileBuild
+            ? {}
+            : { resume: resolve(import.meta.dirname, "resume/index.html") }),
         },
         // No `output.manualChunks`. The hand-rolled version here matched with
         // `id.includes(pkg)` — a substring test against the full module path —

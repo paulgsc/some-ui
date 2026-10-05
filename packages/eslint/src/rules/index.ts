@@ -16,8 +16,5 @@ export { noUnboundedIntent } from "./no-unbounded-intent.js"
 export { noLoadingElidedDefault } from "./no-loading-elided-default.js"
 export { requireNamedLifetime } from "./require-named-lifetime.js"
 export { requireScopedLifetime } from "./require-scoped-lifetime.js"
-export {
-  noStructuralPaletteColor,
-  noThemeBoundary,
-  THEME_BOUNDARY_OVERRIDE_CLASSES,
-} from "./theme-protocol.js"
+export { noMountSnapshot } from "./no-mount-snapshot.js"
+export { noStructuralPaletteColor, noThemeBoundary } from "./theme-protocol.js"

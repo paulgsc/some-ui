@@ -16,6 +16,22 @@
 @custom-variant dark (&:is(.dark *));
 @custom-variant fixed (&:is(.layout-fixed *));
 
+/*
+ * A handheld window: narrower than `md` or shorter than 480px, so a phone is
+ * handheld in both orientations. The same rule as `HANDHELD_QUERY` in
+ * some-ui-utils (`useIsMobile`), which is the JS half of it; the two must say
+ * the same thing, or a landscape phone gets a phone's tree with a desktop's
+ * styles. `max-md:` is width alone and calls that phone a desktop.
+ *
+ * The block form, not the one-line `(@media ...)`: the one-line form reads a
+ * comma as a list of variants and mangles the `max-height` half.
+ */
+@custom-variant handheld {
+  @media (max-width: 767px), (max-height: 479px) {
+    @slot;
+  }
+}
+
 @theme inline {
   --breakpoint-3xl: 1600px;
   --breakpoint-4xl: 2000px;
@@ -43,6 +59,8 @@
   --color-destructive: var(--destructive);
   --color-success: var(--success);
   --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);

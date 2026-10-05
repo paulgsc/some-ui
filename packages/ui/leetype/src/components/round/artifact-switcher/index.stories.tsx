@@ -78,11 +78,12 @@ const PLACEHOLDER_ARTIFACTS: ReadonlyArray<SwitchableArtifact> = [
 ]
 
 /**
- * Press either chevron, or swipe left/right anywhere on the panel below the
- * dots — both reach every position, and dragging left goes forward the same
- * way tapping "Next" does. Four artifacts, all available from the start, so
- * this story is the plain press-and-swipe demonstration with nothing about
- * phase in the way.
+ * At phone width, press a tab or swipe left/right anywhere on the pager
+ * below the tabs; from `md` up the header is chevrons and dots instead.
+ * Every route reaches every position, and dragging left goes forward the
+ * same way pressing "Next" does. Four artifacts, all available from the
+ * start, so this story is the plain press-and-swipe demonstration with
+ * nothing about phase in the way.
  */
 export const Interactive: Story = {
   render: () => (
@@ -97,7 +98,7 @@ export const Interactive: Story = {
 
 /**
  * Before an execution has run, `runResult` is absent — not a fifth,
- * grey-out chevron stop hinting a result is coming, just three reachable
+ * greyed-out tab or chevron stop hinting a result is coming, just three reachable
  * positions. Compare with `AfterARun`, below: the only difference is
  * whether the caller included the fourth artifact in the array, exactly
  * the acceptance criterion ("unavailability is absence, never a disabled
@@ -138,7 +139,7 @@ export const AfterARun: Story = {
   ),
 }
 
-/** A single artifact: both chevrons disabled, no dots (nothing to indicate a position among one). */
+/** A single artifact: no tabs, both chevrons disabled, no dots (nothing to indicate a position among one). */
 export const SinglePosition: Story = {
   render: () => (
     <Phone>

@@ -43,7 +43,7 @@ import { createDataSource } from "@some-ui/fetch-kit"
 import { z } from "zod"
 
 import { DATA_MODE, FETCHES_CONTENT } from "@/lib/data-mode"
-import { fileHostRouteUrl } from "@/lib/file-host-config"
+import { fileHostRouteUrl, PUBLIC_READ } from "@/lib/file-host-config"
 
 /** How many round bodies one session fetches, at most. */
 export const MAX_FETCHED_ROUNDS = 24
@@ -76,11 +76,14 @@ const RoundManifestSchema = z.object({
 const manifestSource = createDataSource<
   void,
   z.infer<typeof RoundManifestSchema>
->({ static: locateManifestUrl, server: locateManifestUrl }, { mode: DATA_MODE })
+>(
+  { static: locateManifestUrl, server: locateManifestUrl },
+  { mode: DATA_MODE, fetchOptions: PUBLIC_READ }
+)
 
 const roundSource = createDataSource<string, unknown>(
   { static: locateRoundUrl, server: locateRoundUrl },
-  { mode: DATA_MODE }
+  { mode: DATA_MODE, fetchOptions: PUBLIC_READ }
 )
 
 const locateRunsUrl = (id: string): URL =>
@@ -98,6 +101,7 @@ const runsSource = createDataSource<string, unknown>(
   {
     mode: DATA_MODE,
     fetchOptions: {
+      ...PUBLIC_READ,
       timeout: RUNS_TIMEOUT_MS,
       retry: { count: 0, delay: 0 },
     },

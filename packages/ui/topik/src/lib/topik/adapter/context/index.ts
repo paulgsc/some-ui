@@ -1,4 +1,1 @@
-export {
-  SessionConfigProvider,
-  useSessionConfig,
-} from "./session-config-context"
+export { useSessionConfig } from "./session-config-context"

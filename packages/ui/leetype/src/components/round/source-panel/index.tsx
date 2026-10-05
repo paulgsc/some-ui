@@ -174,12 +174,13 @@ export const SourcePanel: FC<SourcePanelProps> = ({ algorithm, className }) => {
           {/*
             data-scroll-intent, the same marker `DiffCard`/`TypingViewport`
             declare on their own horizontally-scrolling code region: the
-            ui-fit sweep, and now `ArtifactSwitcher`'s own swipe-to-switch
-            gesture (C1, #1213), both need to tell "this box scrolls because
-            scrolling is the interaction" apart from a box that was handed
-            too much. Without it, dragging a long line here to read past its
-            edge on a phone was indistinguishable from a swipe meant to
-            switch artifacts (review finding, #1430, chatgpt-codex-connector).
+            ui-fit sweep needs to tell "this box scrolls because scrolling
+            is the interaction" apart from a box that was handed too much.
+            Dragging a long line here reads past its edge rather than
+            switching artifacts because this is a native scroller nested in
+            `ArtifactSwitcher`'s native pager: the browser gives the gesture
+            to the innermost one that can still move (review finding,
+            #1430, chatgpt-codex-connector).
           */}
           <pre
             data-scroll-intent="code-display"

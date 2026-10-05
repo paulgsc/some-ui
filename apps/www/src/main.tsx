@@ -4,6 +4,8 @@ import { queryClient } from "@/providers/tanstack-query"
 import { createRouter, RouterProvider } from "@tanstack/react-router"
 import ReactDOM from "react-dom/client"
 
+import { bootDeviceBackend } from "@/lib/device-backend/boot"
+import { releasePushWhenLeavingTheAccount } from "@/lib/study-nudge/leave-account"
 import { ErrorState, NotFound, RoutePending } from "@/components/housekeeping"
 
 // Import the generated route tree
@@ -27,6 +29,14 @@ import.meta.glob(
   ],
   { eager: true }
 )
+
+// The device build answers `file_host` in-process; that has to be in place
+// before the app renders and anything issues a request. A no-op elsewhere.
+bootDeviceBackend()
+
+// A browser subscribed to push while signed in must not stay subscribed once
+// the learner's data is no longer the account's. No request is made to do it.
+releasePushWhenLeavingTheAccount()
 
 // Create a new router instance
 const router = createRouter({

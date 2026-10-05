@@ -49,7 +49,7 @@ function isTopikLevel(value: string): value is TopikLevel {
 
 const ProfileSkeleton = (): JSX.Element => (
   <Card className="max-w-xl">
-    <CardContent className="space-y-4 pt-6">
+    <CardContent className="space-y-4 pt-[var(--card-p,1.5rem)]">
       <Skeleton className="size-12 rounded-full" />
       <Skeleton className="h-10 w-full" />
       <Skeleton className="h-10 w-full" />
@@ -58,6 +58,7 @@ const ProfileSkeleton = (): JSX.Element => (
 )
 
 const ProfileForm = ({ profile }: { profile: UserProfile }): JSX.Element => {
+  // eslint-disable-next-line owner-guard/no-mount-snapshot -- an edit buffer: a refetch must not overwrite what I'm typing, and isDirty compares it against the live profile
   const [draft, setDraft] = useState<UserProfile>(profile)
   const saveIntent = useIntent(useUpdateProfile(), {
     presentation: "interactive",

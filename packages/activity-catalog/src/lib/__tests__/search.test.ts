@@ -14,7 +14,7 @@ describe("searchActivities", () => {
   })
 
   it("finds an activity by its description when the name gives nothing", () => {
-    expect(searchActivities(REAL, "mock interview")[0]!.id).toBe("interview")
+    expect(searchActivities(REAL, "hive")[0]!.id).toBe("honeycomb")
   })
 
   it("finds an activity by its audio blurb", () => {

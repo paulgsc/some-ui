@@ -1,16 +1,21 @@
-export type { SpeakOptions, SpeechAdapter, SpeechAdapterId } from "./types"
+export type { SpeechBackend } from "./backend"
 export type {
-  ResolvedSpeechConfig,
+  DeviceVoiceChoice,
+  SpeakOptions,
+  SpeechAdapter,
+  SpeechAdapterId,
+  VoiceAvailability,
+  VoiceReport,
+} from "./types"
+export type {
+  NativeSpeechBackend,
   SpeechAdapterFactory,
   SpeechAdapterRegistry,
   SpeechConfig,
 } from "./registry"
-export {
-  createSpeechAdapter,
-  DEFAULT_SPEECH_ADAPTERS,
-  resolveSpeechConfig,
-} from "./registry"
-export type { HttpSpeechAdapterOptions } from "./http"
-export { createHttpSpeechAdapter } from "./http"
-export type { WebSpeechAdapterOptions } from "./web-speech"
-export { createWebSpeechAdapter } from "./web-speech"
+export { createSpeechAdapter } from "./registry"
+export type {
+  NativeSpeechEngine,
+  NativeSpeechRequest,
+  NativeVoice,
+} from "./native"

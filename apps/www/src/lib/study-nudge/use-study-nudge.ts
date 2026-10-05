@@ -51,6 +51,7 @@
 import { useEffect, useRef } from "react"
 import type { RuntimeMode } from "@some-ui/fetch-kit"
 
+import { useAuthoritySnapshot } from "@/lib/authority"
 import { DATA_MODE } from "@/lib/data-mode"
 import { useSessions, useSettings } from "@/lib/tenant"
 
@@ -69,16 +70,30 @@ import {
 const POLL_INTERVAL_MS = 5 * 60_000
 
 /**
- * Whether this build's client is the one that raises notifications.
+ * Whether this client is the one that raises notifications.
  *
- * The same bit `sessions-backend.ts` uses to pick a store picks the
- * trigger, and for the same underlying reason: it is the answer to "is
- * there a backend here".
+ * It is when there is no backend to do it (`mode === "static"`), and when the
+ * server is not hearing from this learner (`serverHears` false): on the device
+ * a server holding no sessions has nothing to base a reminder on, and on an
+ * account whose person has not turned on reporting (`lib/authority`,
+ * "Reporting") it has been told nothing about when they study and has no
+ * subscription to send to. In both the client's own policy reads the sessions
+ * it has and raises one while a tab is open: the same trigger the static build
+ * has always had, which is the point.
+ *
+ * The Android app is the exception that answers "yes" with a backend: its
+ * backend is in-process and has no push to send, so there too the client's
+ * own policy decides, and the OS delivers (`./native`).
+ *
+ * `serverHears` defaults to true, which is what every caller before the device
+ * became a place to learn assumed.
  */
 export function clientOwnsNudgeDelivery(
-  mode: RuntimeMode = DATA_MODE
+  mode: RuntimeMode = DATA_MODE,
+  device: boolean = import.meta.env.VITE_DEVICE_BACKEND === "true",
+  serverHears = true
 ): boolean {
-  return mode === "static"
+  return mode === "static" || device || !serverHears
 }
 
 export type NudgeTickDeps = {
@@ -128,7 +143,12 @@ export function useStudyNudge(): void {
   const preferences: NudgePreferences =
     settings?.notifications ?? DEFAULT_NUDGE_PREFERENCES
 
-  const deliver = clientOwnsNudgeDelivery()
+  const { reportingAllowed } = useAuthoritySnapshot()
+  const deliver = clientOwnsNudgeDelivery(
+    DATA_MODE,
+    import.meta.env.VITE_DEVICE_BACKEND === "true",
+    reportingAllowed
+  )
 
   // The interval callback reads the latest sessions and preferences through
   // refs rather than closing over them, so it is installed once instead of
@@ -193,4 +213,56 @@ export function useStudyNudge(): void {
     const id = window.setInterval(() => void tick(), POLL_INTERVAL_MS)
     return (): void => window.clearInterval(id)
   }, [deliver])
+
+  useNativeNudgeSchedule(sessionsRef, preferencesRef)
+}
+
+/**
+ * The Android app's half: a timer cannot run with the app off screen, so
+ * the next nudge is handed to the OS on the way out and taken back on the
+ * way in (`./native`, `./schedule`). A no-op in every other build.
+ */
+function useNativeNudgeSchedule(
+  sessionsRef: {
+    readonly current: Parameters<typeof decideNudge>[0]["sessions"] | undefined
+  },
+  preferencesRef: { readonly current: NudgePreferences }
+): void {
+  useEffect(() => {
+    if (import.meta.env.VITE_DEVICE_BACKEND !== "true") return undefined
+    let cancelled = false
+
+    const onVisibility = async (): Promise<void> => {
+      const native = await import("./native")
+      if (cancelled) return
+      if (document.visibilityState === "visible") {
+        await native.reconcileNativeNudge(new Date())
+        return
+      }
+      const { nextNudge } = await import("./schedule")
+      await native.scheduleNativeNudge(
+        nextNudge(
+          {
+            sessions: sessionsRef.current ?? [],
+            preferences: preferencesRef.current,
+            lastNudgeAt: readLastNudgeAt(),
+          },
+          new Date()
+        )
+      )
+    }
+
+    void import("./native").then(async (native) => {
+      if (cancelled) return
+      native.listenForNudgeTaps()
+      await native.refreshNativePermission()
+      await native.reconcileNativeNudge(new Date())
+    })
+    const listener = (): void => void onVisibility()
+    document.addEventListener("visibilitychange", listener)
+    return (): void => {
+      cancelled = true
+      document.removeEventListener("visibilitychange", listener)
+    }
+  }, [sessionsRef, preferencesRef])
 }

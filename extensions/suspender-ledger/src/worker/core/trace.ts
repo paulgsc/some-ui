@@ -43,7 +43,7 @@ export function trace(
  * through `JSON.stringify`'s own view of them, and anything cyclic or exotic
  * degrades to a label rather than throwing inside the logging path.
  */
-export function toJson(value: unknown): JsonValue {
+function toJson(value: unknown): JsonValue {
   if (value === null) {
     return null
   }

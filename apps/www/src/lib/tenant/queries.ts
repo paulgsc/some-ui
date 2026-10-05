@@ -18,7 +18,7 @@
  *
  * The repository singletons live here too rather than in `hooks.ts`: they are
  * what the queryFns close over, and one module-scope instantiation is the
- * point (`sessions-backend.ts` runs a one-time migration on construction).
+ * point.
  */
 
 import { queryOptions } from "@tanstack/react-query"
@@ -26,6 +26,8 @@ import { queryOptions } from "@tanstack/react-query"
 import { createProfileRepository } from "./profile-repository"
 import { createSessionsBackend } from "./sessions-backend"
 import type { SessionsStore } from "./sessions-repository"
+import type { TransferPreview } from "./sessions-transfer"
+import { previewDeviceTransfer } from "./sessions-transfer"
 import { createSettingsRepository } from "./settings-repository"
 import type { SessionRecord, UserProfile, UserSettings } from "./types"
 
@@ -102,3 +104,30 @@ export const sessionQuery = (id: string): SessionQueryOptions =>
     enabled: id.length > 0,
     refetchOnMount: true,
   })
+
+export const transferPreviewKey = ["tenant", "transfer-preview"] as const
+
+type TransferPreviewQueryOptions = ReturnType<
+  typeof queryOptions<
+    TransferPreview | null,
+    Error,
+    TransferPreview | null,
+    readonly ["tenant", "transfer-preview", number]
+  >
+>
+
+/**
+ * What a press of "copy to my account" would send, for the screen that asks.
+ * Keyed by the authority's epoch, so another account's answer is never shown
+ * under this one's, and never kept: it is a question about now.
+ */
+export function transferPreviewQuery(
+  epoch: number
+): TransferPreviewQueryOptions {
+  return queryOptions({
+    queryKey: [...transferPreviewKey, epoch] as const,
+    queryFn: (): Promise<TransferPreview | null> => previewDeviceTransfer(),
+    staleTime: 0,
+    gcTime: 0,
+  })
+}

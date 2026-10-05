@@ -54,7 +54,7 @@ const lessonPath = (key: string): string =>
  * `file_host` at all gets a client whose every call rejects, saying so.
  */
 export function createLessonCrmClient(
-  transport: FileHostTransport | null = createFileHostTransport()
+  transport: FileHostTransport | null = createFileHostTransport("account")
 ): {
   list: () => Promise<Array<OperatorLesson>>
   read: (key: string) => Promise<string>

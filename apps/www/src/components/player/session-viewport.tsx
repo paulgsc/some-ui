@@ -13,7 +13,8 @@ import {
 import { LiveEditOverlay, OrchestratedYouTubeViewport } from "wireframes"
 
 import { useAudioPreferences } from "@/lib/audio-preferences/use-audio-preferences"
-import { useHasSession } from "@/lib/auth"
+import { useAuthority } from "@/lib/authority"
+import { phoneDictation, runsNatively } from "@/lib/dictation"
 import { useHangulVocab } from "@/lib/hangul-vocab"
 import { AmbientIntentStatus } from "@/lib/intent/render"
 import { loadLeetypeRoundRuns, loadLeetypeRounds } from "@/lib/leetype-content"
@@ -23,6 +24,19 @@ import { loadTopikFile, loadTopikManifest } from "@/lib/topik-content"
 
 import { defineSceneProps, withSceneProps } from "./scene-props"
 import { useLiveLayoutEditor } from "./use-live-layout-editor"
+
+/**
+ * LeetType's margin-note recognizer: the phone's own inside the Android app
+ * (src/lib/dictation), absent elsewhere so the package uses the browser's.
+ * Native, not merely the device build: the same build opened in a desktop
+ * browser (`SOME_UI_PROFILE=mobile pnpm dev`) has only the plugin's web
+ * stub, while that browser's own recognizer works. One per app: it holds
+ * nothing until a learner taps Speak.
+ */
+const PHONE_DICTATION =
+  import.meta.env.VITE_DEVICE_BACKEND === "true" && runsNatively()
+    ? phoneDictation()
+    : undefined
 
 const BIND_OPTIONS = Object.keys(componentRegistry).map((key) => ({
   value: key,
@@ -85,13 +99,14 @@ export const SessionViewport = ({
   // whether they play, and this is the seam between the two - without it,
   // the "Game sounds" toggle in the audio indicator would control nothing.
   const { preferences: audioPreferences } = useAudioPreferences()
-  // The learner shelf (paulgsc/server#387): offered only while the client
-  // believes there is a passkey session, since every shelf route is per
-  // person and answers 401 without one, and never on a build with no
-  // file_host (`createShelfClient` is then undefined). A session ending
-  // mid-lesson takes the shelf away with it; the lesson plays on, because
-  // nothing in either activity depends on a shelf being there.
-  const signedIn = useHasSession()
+  // The learner shelf (paulgsc/server#387): offered only while the learner's
+  // data is the account's, since every shelf route is per person and answers
+  // 401 without a session, and never on a build with no file_host
+  // (`createShelfClient` is then undefined). Learning on the device keeps no
+  // shelf: it would be a server store for someone who has not asked for one. A
+  // session ending mid-lesson takes the shelf away with it; the lesson plays
+  // on, because nothing in either activity depends on a shelf being there.
+  const signedIn = useAuthority().kind === "account"
   const shelves = useMemo(
     () =>
       signedIn
@@ -151,6 +166,10 @@ export const SessionViewport = ({
           // mode, nothing in `static` mode (the package bundles them).
           loadRuns: loadLeetypeRoundRuns,
           shelf: shelves?.leetype,
+          // A spoken margin note's recognizer: the phone's on the Android
+          // app, whose WebView has none of its own. Elsewhere the package
+          // uses the browser's (src/lib/dictation).
+          dictation: PHONE_DICTATION,
         },
       }),
     [sessionKey, suspended, hangulWords, audioPreferences.effects, shelves]

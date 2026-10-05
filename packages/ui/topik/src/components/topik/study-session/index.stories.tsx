@@ -1,5 +1,6 @@
 import type { JSX, ReactNode } from "react"
 import { SpeechProvider } from "@some-ui/speech"
+import { webSpeech } from "@some-ui/speech/web-speech"
 import type { Meta as MetaObj, StoryObj } from "@storybook/react-vite"
 
 import { KoreanStudyPage } from "."
@@ -19,7 +20,13 @@ import { KoreanStudyPage } from "."
  * but a Korean lesson is worth hearing.
  */
 const WithSpeech = ({ children }: { children: ReactNode }): JSX.Element => (
-  <SpeechProvider config={{ mode: "static", lang: "ko-KR" }}>
+  <SpeechProvider
+    config={{
+      mode: "static",
+      language: "korean",
+      adapters: { static: webSpeech },
+    }}
+  >
     {children}
   </SpeechProvider>
 )
@@ -41,11 +48,3 @@ const meta: Meta = {
 export default meta
 
 export const Default: Story = {}
-
-/**
- * What the content registry mounts: no props, no providers, no host
- * knowledge of what this applet needs.
- */
-export const AsMountedByTheRegistry: Story = {
-  decorators: [(Story) => <Story />],
-}

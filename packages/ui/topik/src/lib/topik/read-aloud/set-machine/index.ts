@@ -34,6 +34,7 @@
  *   page, once the thirty minutes have passed.
  */
 
+import type { Urgency } from "@some-ui/speech"
 import type { ReadAloudLevel } from "@topik/lib/topik/read-aloud/content"
 import type { PaceBook, PaceEntry } from "@topik/lib/topik/read-aloud/records"
 import type { SetItem } from "@topik/lib/topik/read-aloud/set-builder"
@@ -82,7 +83,7 @@ export type SetProgress = {
 export type RepStep = "glyphs" | "turn" | "audio" | "echo" | "gloss"
 export type IntroductionStep = "intro-audio" | "intro-hold"
 
-export type SetPhase =
+type SetPhase =
   /** No set: the host is asked for one with `request-set`. */
   | { name: "idle" }
   /** A step of the entry at `cursor`. */
@@ -125,7 +126,18 @@ export type SetEffect =
    * starts, replace this step's wait with one of `playingMs`, but never one
    * that ends after the step's first wait would have.
    */
-  | { type: "speak"; seq: number; text: string; playingMs: number }
+  | {
+      type: "speak"
+      seq: number
+      text: string
+      playingMs: number
+      /**
+       * `"now"` when the learner asked to hear it (a stuck report): it cuts
+       * in ahead of anything else on the page. `"next"` when the set's own
+       * clock reached it: it waits its turn.
+       */
+      urgency: Urgency
+    }
   | { type: "stop-speech" }
   /** Add one rep and its nominal practice to the record (Def. 6.6). */
   | { type: "count-rep"; creditMs: number }
@@ -162,8 +174,8 @@ export type SetTransition = {
 /** Cor. 4.6: an item reported stuck returns at most twice in a set. */
 export const MAX_RETURNS = 2
 /** How far after a report its return, or introduction, is placed. */
-export const RETURN_GAP = 3
-export const INTRODUCTION_GAP = 2
+const RETURN_GAP = 3
+const INTRODUCTION_GAP = 2
 
 // ═══════════════════════════════════════════════════════════════════════════
 // HELPERS
@@ -298,10 +310,20 @@ function endSitting(state: SetMachineState): SetTransition {
  * never past the first wait's deadline, so the step never outlasts
  * `audioWaitMs` and Rem. 4.10's bound holds.
  */
-function speakEffects(seq: number, entry: QueueEntry): Array<SetEffect> {
+function speakEffects(
+  seq: number,
+  entry: QueueEntry,
+  urgency: Urgency
+): Array<SetEffect> {
   const { syllables, text } = entry.item
   return [
-    { type: "speak", seq, text, playingMs: speechFallbackMs(syllables) },
+    {
+      type: "speak",
+      seq,
+      text,
+      playingMs: speechFallbackMs(syllables),
+      urgency,
+    },
     { type: "wait", seq, ms: audioWaitMs(syllables) },
   ]
 }
@@ -318,7 +340,7 @@ function startEntry(state: SetMachineState, at: number): SetTransition {
     const next = enter(state, { name: "intro-audio" })
     return {
       state: next,
-      effects: speakEffects(next.seq, entry),
+      effects: speakEffects(next.seq, entry, "next"),
     }
   }
   const next = enter(state, { name: "glyphs" })
@@ -361,11 +383,15 @@ function startTurn(state: SetMachineState, entry: QueueEntry): SetTransition {
   return { state: next, effects: [{ type: "wait", seq: next.seq, ms }] }
 }
 
-function startAudio(state: SetMachineState, entry: QueueEntry): SetTransition {
+function startAudio(
+  state: SetMachineState,
+  entry: QueueEntry,
+  urgency: Urgency
+): SetTransition {
   const next = enter(state, { name: "audio" })
   return {
     state: next,
-    effects: speakEffects(next.seq, entry),
+    effects: speakEffects(next.seq, entry, urgency),
   }
 }
 
@@ -482,7 +508,7 @@ function onElapsed(state: SetMachineState, at: number): SetTransition {
       return entry ? startTurn(state, entry) : { state, effects: [] }
     }
     case "turn": {
-      return entry ? startAudio(state, entry) : { state, effects: [] }
+      return entry ? startAudio(state, entry, "next") : { state, effects: [] }
     }
     case "audio": {
       if (!entry) return { state, effects: [] }
@@ -629,7 +655,7 @@ export function setMachineReducer(
       const reported = { ...state, reported: true }
       // Before the audio, the report ends the turn: hearing it is the help.
       if (phase.name === "glyphs" || phase.name === "turn") {
-        return startAudio(reported, entry)
+        return startAudio(reported, entry, "now")
       }
       return { state: reported, effects: [] }
     }

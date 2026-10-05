@@ -1,5 +1,5 @@
 import type { JSX } from "react"
-import { ACTIVITY_IDS } from "@some-ui/activity-catalog"
+import { isActivityId } from "@some-ui/activity-catalog"
 import type { ActivityId } from "@some-ui/activity-catalog"
 import type { IntentError } from "@some-ui/intent-kit"
 import {
@@ -21,13 +21,9 @@ type NewSessionSearch = {
   edit?: string
 }
 
-function isActivityId(value: unknown): value is ActivityId {
-  return typeof value === "string" && ACTIVITY_IDS.some((id) => id === value)
-}
-
 const ComposerSkeleton = (): JSX.Element => (
   <Card className="max-w-3xl">
-    <CardContent className="space-y-4 pt-6">
+    <CardContent className="space-y-4 pt-[var(--card-p,1.5rem)]">
       <Skeleton className="h-8 w-full" />
       <Skeleton className="h-32 w-full" />
       <Skeleton className="h-10 w-40" />
@@ -57,7 +53,7 @@ const EditSessionFailure = ({
   onRetry: () => void
 }): JSX.Element => (
   <Card className="max-w-3xl">
-    <CardContent className="pt-6">
+    <CardContent className="pt-[var(--card-p,1.5rem)]">
       <IntentFailure error={error} onRetry={onRetry} />
     </CardContent>
   </Card>

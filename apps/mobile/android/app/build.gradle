@@ -1,0 +1,126 @@
+apply plugin: 'com.android.application'
+
+// The one key every build of this app is signed with, from the environment
+// CI sets out of repository secrets (.github/workflows/mobile-apk.yml).
+//
+// Android only installs an update over an existing app when both carry the
+// same signature. Left to its default, the debug build is signed with
+// ~/.android/debug.keystore, which a fresh CI runner generates anew on every
+// run: each APK then has a different key, the next one refuses to install
+// over the last ("App not installed"), and the only way forward is to
+// uninstall - which deletes the app's SQLite database, the thing this app
+// exists to keep. Unset (a local build), the default debug key is used.
+//
+// It is also the release key, and so the future Play *upload key* (Play App
+// Signing re-signs what Play delivers with a key of its own). The review pins
+// its certificate (apps/mobile/review/policy.json), so a rotated key fails CI
+// rather than stranding the installed app.
+def someUiKeystore = System.getenv("SOME_UI_KEYSTORE")
+
+// CI must say which build this is. Falling back to 1 there would give a
+// green build that no phone accepts as an update, and that Play refuses as a
+// reused versionCode.
+def someUiVersionCode = System.getenv("SOME_UI_VERSION_CODE")
+if (System.getenv("CI") && !someUiVersionCode) {
+    throw new GradleException("SOME_UI_VERSION_CODE is not set - see .github/workflows/mobile-apk.yml")
+}
+
+android {
+    namespace = "dev.paulgsc.someui"
+    compileSdk = rootProject.ext.compileSdkVersion
+    defaultConfig {
+        applicationId "dev.paulgsc.someui"
+        minSdkVersion rootProject.ext.minSdkVersion
+        targetSdkVersion rootProject.ext.targetSdkVersion
+        // CI passes its run number, so each build installs as an update of the
+        // one before it and Settings > Apps shows which build is on the phone.
+        versionCode Integer.parseInt(someUiVersionCode ?: "1")
+        versionName System.getenv("SOME_UI_VERSION_NAME") ?: "0.1.0-local"
+        // arm64 only. @capacitor-community/sqlite brings SQLCipher's native
+        // library for four ABIs (~19 MB uncompressed, measured from
+        // sqlcipher-android 4.10.0's aar); a phone uses one of them. This drops
+        // armeabi-v7a (32-bit phones) and the two x86 emulator builds - add
+        // "x86_64" here to run the APK in an emulator.
+        ndk {
+            abiFilters "arm64-v8a"
+            // CI's launch test only: its emulator is x86_64. The same build
+            // otherwise (R8's output does not depend on the ABIs), so it
+            // tests what the phone installs.
+            def extraAbi = System.getenv("SOME_UI_EXTRA_ABI")
+            if (extraAbi) {
+                abiFilters extraAbi
+            }
+        }
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        aaptOptions {
+             // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
+             // Default: https://android.googlesource.com/platform/frameworks/base/+/282e181b58cf72b6ca770dc7ca5f91f135444502/tools/aapt/AaptAssets.cpp#61
+            ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
+        }
+    }
+    signingConfigs {
+        if (someUiKeystore) {
+            someUi {
+                storeFile file(someUiKeystore)
+                storePassword System.getenv("SOME_UI_KEYSTORE_PASSWORD")
+                keyAlias System.getenv("SOME_UI_KEY_ALIAS") ?: "some-ui"
+                keyPassword System.getenv("SOME_UI_KEYSTORE_PASSWORD")
+            }
+        }
+    }
+    buildTypes {
+        debug {
+            if (someUiKeystore) {
+                signingConfig signingConfigs.someUi
+            }
+        }
+        // What Play would take (as an app bundle): shrunk and optimized by R8,
+        // not debuggable. CI builds it on every run beside the debug APK the
+        // phone installs, so release-only breakage cannot pile up unseen.
+        release {
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            if (someUiKeystore) {
+                signingConfig signingConfigs.someUi
+            }
+        }
+    }
+    // Machine-readable, for the review (apps/mobile/review). Lint runs as its
+    // own report-only CI step, so its findings do not stop the APK.
+    lint {
+        xmlReport = true
+        xmlOutput = file("build/reports/lint-results.xml")
+        htmlReport = true
+        htmlOutput = file("build/reports/lint-results.html")
+    }
+}
+
+repositories {
+    flatDir{
+        dirs '../capacitor-cordova-android-plugins/src/main/libs', 'libs'
+    }
+}
+
+dependencies {
+    implementation fileTree(include: ['*.jar'], dir: 'libs')
+    implementation "androidx.appcompat:appcompat:$androidxAppCompatVersion"
+    implementation "androidx.coordinatorlayout:coordinatorlayout:$androidxCoordinatorLayoutVersion"
+    implementation "androidx.core:core-splashscreen:$coreSplashScreenVersion"
+    implementation project(':capacitor-android')
+    testImplementation "junit:junit:$junitVersion"
+    androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
+    androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
+    implementation project(':capacitor-cordova-android-plugins')
+}
+
+apply from: 'capacitor.build.gradle'
+
+try {
+    def servicesJSON = file('google-services.json')
+    if (servicesJSON.text) {
+        apply plugin: 'com.google.gms.google-services'
+    }
+} catch(Exception e) {
+    logger.info("google-services.json not found, google-services plugin not applied. Push Notifications won't work")
+}

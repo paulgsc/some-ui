@@ -35,7 +35,7 @@ function renderApplet(node: JSX.Element): void {
  * The speech package's own fakes are internal to it, and reaching for them
  * would make this test depend on that package's test kit rather than on its
  * contract. The contract is a small enough object to satisfy by hand, which
- * is itself the point - a consumer can substitute a voice without knowing
+ * is itself the point - a host can substitute a backend without knowing
  * anything about how the real ones work.
  */
 function createSilentAdapter(): SpeechAdapter & { spoken: Array<string> } {
@@ -43,7 +43,6 @@ function createSilentAdapter(): SpeechAdapter & { spoken: Array<string> } {
   return {
     id: "web-speech",
     supported: true,
-    voices: [],
     pending: 0,
     spoken,
     speak: (text: string): Promise<void> => {
@@ -51,6 +50,12 @@ function createSilentAdapter(): SpeechAdapter & { spoken: Array<string> } {
       return Promise.resolve()
     },
     stop: () => undefined,
+    subscribe: () => () => undefined,
+    describe: () => ({
+      platform: "browser",
+      voice: null,
+      availability: "available",
+    }),
     pause: () => undefined,
     resume: () => undefined,
     setVolume: () => undefined,
