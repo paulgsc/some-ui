@@ -94,6 +94,14 @@
     "extensions/filter-classifier": {
       "entry": ["tests/e2e/harness/entry.ts"]
     },
+    "packages/speech": {
+      "entry": [
+        "src/index.ts",
+        "src/http.ts",
+        "src/web-speech.ts",
+        "src/native.ts"
+      ]
+    },
     "packages/ui/resume": {
       "ignoreDependencies": ["@some-ui/contract-harness"]
     },

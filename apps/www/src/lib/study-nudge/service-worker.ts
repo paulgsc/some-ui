@@ -21,7 +21,6 @@
  * will use, and only the *trigger* changes.
  */
 
-import { DEVICE_BACKEND } from "@/lib/data-mode"
 import type { FileHostTransport } from "@/lib/file-host-config/client"
 import {
   createFileHostTransport,
@@ -55,7 +54,7 @@ const LAST_NUDGE_KEY = "some-ui.study-nudge.last-shown.v1"
 export function nudgesSupported(): boolean {
   // The Android app has neither API, and native local notifications instead
   // (`./native`).
-  if (DEVICE_BACKEND) return true
+  if (import.meta.env.VITE_DEVICE_BACKEND === "true") return true
   return (
     typeof window !== "undefined" &&
     "serviceWorker" in navigator &&
@@ -78,7 +77,7 @@ export function setNativeNudgePermission(
 }
 
 export function nudgePermission(): NotificationPermission {
-  if (DEVICE_BACKEND) return nativePermission
+  if (import.meta.env.VITE_DEVICE_BACKEND === "true") return nativePermission
   if (!nudgesSupported()) return "denied"
   return Notification.permission
 }
@@ -89,7 +88,7 @@ export function nudgePermission(): NotificationPermission {
  * the settings toggle is the only caller and should stay that way.
  */
 export async function requestNudgePermission(): Promise<NotificationPermission> {
-  if (DEVICE_BACKEND) {
+  if (import.meta.env.VITE_DEVICE_BACKEND === "true") {
     const { requestNativePermission } = await import("./native")
     return requestNativePermission().catch(
       (): NotificationPermission => "denied"
@@ -118,7 +117,8 @@ let registration: Promise<ServiceWorkerRegistration | null> | null = null
  */
 export async function registerNudgeWorker(): Promise<ServiceWorkerRegistration | null> {
   // Nothing on the device needs a worker: no push, and the OS schedules.
-  if (DEVICE_BACKEND || !nudgesSupported()) return null
+  if (import.meta.env.VITE_DEVICE_BACKEND === "true" || !nudgesSupported())
+    return null
   registration ??= navigator.serviceWorker
     .register(`${import.meta.env.BASE_URL}sw.js`, {
       scope: import.meta.env.BASE_URL,
@@ -165,7 +165,7 @@ export async function showNudge(
 export async function showTestNudge(
   decision: Extract<NudgeDecision, { kind: "nudge" }>
 ): Promise<boolean> {
-  if (!DEVICE_BACKEND) return showNudge(decision)
+  if (import.meta.env.VITE_DEVICE_BACKEND !== "true") return showNudge(decision)
   const { showNativeTestNudge } = await import("./native")
   return showNativeTestNudge(decision).catch(() => false)
 }
@@ -580,7 +580,8 @@ export async function reconcilePushSubscription(
  * has nothing to send either.
  */
 export async function dropLocalPushSubscription(): Promise<void> {
-  if (DEVICE_BACKEND || !nudgesSupported()) return
+  if (import.meta.env.VITE_DEVICE_BACKEND === "true" || !nudgesSupported())
+    return
   try {
     const registration = await navigator.serviceWorker.getRegistration()
     const subscription = await registration?.pushManager.getSubscription()

@@ -52,7 +52,7 @@ import { useEffect, useRef } from "react"
 import type { RuntimeMode } from "@some-ui/fetch-kit"
 
 import { useAuthoritySnapshot } from "@/lib/authority"
-import { DATA_MODE, DEVICE_BACKEND } from "@/lib/data-mode"
+import { DATA_MODE } from "@/lib/data-mode"
 import { useSessions, useSettings } from "@/lib/tenant"
 
 import type { NudgeDecision, NudgePreferences } from "./index"
@@ -90,7 +90,7 @@ const POLL_INTERVAL_MS = 5 * 60_000
  */
 export function clientOwnsNudgeDelivery(
   mode: RuntimeMode = DATA_MODE,
-  device: boolean = DEVICE_BACKEND,
+  device: boolean = import.meta.env.VITE_DEVICE_BACKEND === "true",
   serverHears = true
 ): boolean {
   return mode === "static" || device || !serverHears
@@ -146,7 +146,7 @@ export function useStudyNudge(): void {
   const { reportingAllowed } = useAuthoritySnapshot()
   const deliver = clientOwnsNudgeDelivery(
     DATA_MODE,
-    DEVICE_BACKEND,
+    import.meta.env.VITE_DEVICE_BACKEND === "true",
     reportingAllowed
   )
 
@@ -229,7 +229,7 @@ function useNativeNudgeSchedule(
   preferencesRef: { readonly current: NudgePreferences }
 ): void {
   useEffect(() => {
-    if (!DEVICE_BACKEND) return undefined
+    if (import.meta.env.VITE_DEVICE_BACKEND !== "true") return undefined
     let cancelled = false
 
     const onVisibility = async (): Promise<void> => {

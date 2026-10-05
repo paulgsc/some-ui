@@ -20,6 +20,7 @@ import {
   useVoicePreview,
   useVoiceReport,
 } from "@some-ui/speech"
+import { nativeSpeech } from "@some-ui/speech/native"
 import { act, cleanup, render, screen } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
@@ -121,6 +122,7 @@ function renderSession(voiceId: string, lines: ReadonlyArray<string>): void {
         mode: "static",
         language: "korean",
         native: deviceSpeechBackend(voiceId),
+        adapters: { static: nativeSpeech },
       }}
     >
       <Lines lines={lines} />
@@ -191,6 +193,7 @@ describe("the phone's voice on return to the app", () => {
           mode: "static",
           language: "korean",
           native: deviceSpeechBackend(""),
+          adapters: { static: nativeSpeech },
         }}
       >
         <Report />
@@ -254,6 +257,7 @@ describe("a voice sample in Settings", () => {
           mode: "static",
           language: "korean",
           native: deviceSpeechBackend(""),
+          adapters: { static: nativeSpeech },
         }}
       >
         <Sample />

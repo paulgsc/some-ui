@@ -8,8 +8,8 @@
  * hardcoded endpoint and API key, call `initializeSpeechQueue` from an
  * effect, swallow the "already initialized" error, and never tear any of it
  * down - happens here instead, once, correctly. The app supplies
- * configuration; which backend that configuration resolves to is this
- * package's business (see `adapters/registry`).
+ * configuration, and the backends it runs (see `adapters/registry`); which
+ * of them answers is this package's business.
  *
  * Changing the configuration ends the old session before the new one
  * starts: the old adapter is disposed, which flushes every promise it still
@@ -53,7 +53,7 @@ const SpeechSessionContext = createContext<SpeechSession | null>(null)
 
 export type SpeechProviderProps = {
   children: ReactNode
-  config?: SpeechConfig
+  config: SpeechConfig
   /** Rendered while the session is being established (one commit). */
   fallback?: ReactNode
   /**
@@ -87,8 +87,9 @@ export type SpeechProviderProps = {
  * down and rebuilding it on each one.
  *
  * `adapters`, `fetchImpl` and the native engine are deliberately excluded -
- * they are function references, they cannot be serialized, and the callers
- * that pass them (tests, the Android app) pass stable ones. Whether there is
+ * they are tokens and function references, they cannot be serialized, and
+ * the callers that pass them (the app's build-time backends, tests, the
+ * Android app's engine) pass stable ones. Whether there is
  * a native engine, and the phone voice chosen for it, are part of the key.
  */
 function configKeyOf(config: SpeechConfig): string {
@@ -110,7 +111,7 @@ function configKeyOf(config: SpeechConfig): string {
 
 export const SpeechProvider = ({
   children,
-  config = {},
+  config,
   fallback = null,
   muted = false,
   notify,

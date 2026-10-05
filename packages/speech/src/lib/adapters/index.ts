@@ -1,3 +1,4 @@
+export type { SpeechBackend } from "./backend"
 export type {
   DeviceVoiceChoice,
   SpeakOptions,
@@ -12,10 +13,9 @@ export type {
   SpeechAdapterRegistry,
   SpeechConfig,
 } from "./registry"
-export { createSpeechAdapter, resolveSpeechConfig } from "./registry"
+export { createSpeechAdapter } from "./registry"
 export type {
   NativeSpeechEngine,
   NativeSpeechRequest,
   NativeVoice,
 } from "./native"
-export { VOICE_MISSING_ERROR_NAME } from "./native"

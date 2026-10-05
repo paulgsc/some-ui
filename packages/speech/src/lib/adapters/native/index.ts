@@ -13,9 +13,10 @@
  *
  * The engine is injected, so this package never imports a bridge. The app
  * that has one (`apps/www`'s device build, over
- * `@capacitor-community/text-to-speech`) implements `NativeSpeechEngine` and
- * hands it to the session as `SpeechConfig.native`, which makes it the
- * session's device voice in place of the browser's. Everything here is the
+ * `@capacitor-community/text-to-speech`) implements `NativeSpeechEngine`,
+ * hands it to the session as `SpeechConfig.native`, and passes `nativeSpeech`
+ * (the `@some-ui/speech/native` entry) as the session's device voice in place
+ * of the browser's. Everything here is the
  * part every such engine needs and none should re-derive: the settlement
  * laws from `../types`, which an engine's own promises do not keep.
  *
@@ -39,6 +40,8 @@
  *   learns why nothing was said.
  */
 
+import type { SpeechBackend } from "@speech/lib/adapters/backend"
+import { defineSpeechBackend } from "@speech/lib/adapters/backend"
 import type {
   DeviceVoiceChoice,
   SpeakOptions,
@@ -119,6 +122,10 @@ export type NativeSpeechAdapterOptions = {
   onMissingVoice?: (language: SpokenLanguage) => void
 }
 
+/**
+ * The `name` of the error a line is refused with when the phone has no voice
+ * data for its language.
+ */
 export const VOICE_MISSING_ERROR_NAME = "VoiceMissingError"
 
 function createVoiceMissingError(language: SpokenLanguage): Error {
@@ -419,3 +426,22 @@ export function createNativeSpeechAdapter(
 function assertNever(value: never): never {
   throw new Error(`Unexpected device voice choice: ${JSON.stringify(value)}`)
 }
+
+/**
+ * The phone's own text-to-speech, through the engine the app passes as
+ * `SpeechConfig.native`. Without one there is nothing to speak through, and
+ * the session fails to start rather than going quiet.
+ */
+export const nativeSpeech: SpeechBackend = defineSpeechBackend((config) => {
+  if (!config.native) {
+    throw new Error(
+      "nativeSpeech speaks through SpeechConfig.native: pass the app's engine there."
+    )
+  }
+  return createNativeSpeechAdapter({
+    engine: config.native.engine,
+    language: config.language,
+    voiceId: config.native.voiceId,
+    onMissingVoice: config.native.onMissingVoice,
+  })
+})

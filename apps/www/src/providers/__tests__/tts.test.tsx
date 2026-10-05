@@ -10,7 +10,7 @@
  *   learner reads aloud never reaches the operator's TTS service;
  * - on the account, the server's speech service;
  * - in the Android app, the phone's own engine (`mode: "static"` with a
- *   `native` backend), in Korean;
+ *   `native` backend), in Korean, and no other backend;
  * - while a returning account user's authority is undecided, nothing is built
  *   at all.
  *
@@ -20,8 +20,6 @@
 import type { ReactNode } from "react"
 import { cleanup, render, screen } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest"
-
-import type * as DataModeModule from "@/lib/data-mode"
 
 const speechProviderSpy = vi.fn()
 const speechConfigSpy = vi.fn()
@@ -40,13 +38,10 @@ vi.mock("@some-ui/speech", () => ({
   },
 }))
 
-let deviceBackend = false
-vi.mock("@/lib/data-mode", async (importOriginal) => ({
-  ...(await importOriginal<typeof DataModeModule>()),
-  get DEVICE_BACKEND(): boolean {
-    return deviceBackend
-  },
-}))
+// Each backend is its own entry; which ones a build passes is the point.
+vi.mock("@some-ui/speech/http", () => ({ httpSpeech: "http backend" }))
+vi.mock("@some-ui/speech/web-speech", () => ({ webSpeech: "web backend" }))
+vi.mock("@some-ui/speech/native", () => ({ nativeSpeech: "native backend" }))
 
 vi.mock("@/lib/tenant", () => ({
   useSettings: (): { data: undefined } => ({ data: undefined }),
@@ -80,7 +75,7 @@ afterEach(() => {
   cleanup()
   speechProviderSpy.mockClear()
   speechConfigSpy.mockClear()
-  deviceBackend = false
+  vi.unstubAllEnvs()
 })
 
 describe("TTSProvider: where the speech is made follows whose data this is", () => {
@@ -102,6 +97,11 @@ describe("TTSProvider: where the speech is made follows whose data this is", () 
 
     screen.getByText("routed content")
     expect(speechProviderSpy).toHaveBeenCalledWith("static")
+    expect(speechConfigSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        adapters: { server: "http backend", static: "web backend" },
+      })
+    )
   })
 
   it("uses the server's speech service on the account", async () => {
@@ -116,7 +116,8 @@ describe("TTSProvider: where the speech is made follows whose data this is", () 
 
   it("speaks Korean with the phone's own engine in the Android app, whatever the account", async () => {
     kind = "account"
-    deviceBackend = true
+    // Read where it is branched on (src/vite-env.d.ts), at render.
+    vi.stubEnv("VITE_DEVICE_BACKEND", "true")
     const { TTSProvider } = await import("@/providers/tts")
     render(<TTSProvider>{children}</TTSProvider>)
 
@@ -127,6 +128,7 @@ describe("TTSProvider: where the speech is made follows whose data this is", () 
         engine: expect.any(Object),
         voiceId: undefined,
       }),
+      adapters: { static: "native backend" },
     })
   })
 })

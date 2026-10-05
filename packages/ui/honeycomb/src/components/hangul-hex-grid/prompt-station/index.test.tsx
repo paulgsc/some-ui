@@ -8,6 +8,7 @@ import type { ReactNode } from "react"
 import { HANGUL_WORDS } from "@honeycomb/data"
 import type { SpeechAdapter } from "@some-ui/speech"
 import { SpeechProvider } from "@some-ui/speech"
+import { httpSpeech } from "@some-ui/speech/http"
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { describe, expect, it } from "vitest"
 
@@ -38,6 +39,7 @@ function hostedSession(
         // jsdom has no Web Audio; without this the hosted voice would fall
         // back to the device's.
         fallbackWhenUnsupported: false,
+        adapters: { server: httpSpeech },
       }}
       muted={muted}
     >

@@ -13,6 +13,14 @@ One TypeScript program, then one bundle:
 | `tsc -p tsconfig.build.json` | Type-checks the library and writes its `.d.ts` files to `dist/types`                                  | any type error                   |
 | `vite build`                 | Bundles `src/index.ts` to `dist/<packageName>.es.js`, then publishes `tsc`'s declarations (see below) | a broken assumption, named below |
 
+A library with code only some consumers run can split it into subpath
+entries: `entries: { http: "src/http.ts" }` also bundles
+`dist/<packageName>/http.es.js`, writes its `.d.ts` beside it, and exports it as
+`<package>/http`. Modules two entries share go to a chunk both import, and
+from there into every consumer that imports either. `@some-ui/speech` is the
+one that does this today, and its `src/entries.test.ts` keeps each backend
+out of every other entry.
+
 `tsconfig.build.json`'s `include`/`exclude` is the single source of truth for
 what gets checked and what gets declared. They are one program, so there is
 no second exclude list to keep in sync.
@@ -48,7 +56,8 @@ A1-A7, each checked at build time). In short:
    plugin rewrites each alias TypeScript actually used into a relative `.js`
    specifier to the emitted declaration.
 3. It writes `dist/<packageName>.d.ts`, the file every `package.json` `types`
-   field points at, re-exporting the entry's declaration.
+   field points at, re-exporting the entry's declaration, and
+   `dist/<packageName>/<name>.d.ts` for each subpath entry.
 
 ## What every `tsconfig.build.json` sets
 

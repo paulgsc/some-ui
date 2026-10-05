@@ -12,7 +12,8 @@ import ts from "typescript"
 import type { Plugin } from "vite"
 
 import type { ViteConfigOptions } from "@/types/index.js"
-import { resolveEntryPath } from "@/lib/build-config.js"
+import type { LibraryEntry } from "@/lib/build-config.js"
+import { libraryEntries } from "@/lib/build-config.js"
 
 /**
  * Where a library's `tsc -p tsconfig.build.json` writes its declarations,
@@ -49,7 +50,8 @@ const DECLARATION_DIR = "dist/types"
  * 3. `closeBundle` writes `dist/<packageName>.d.ts`, the file every
  *    package.json `types` field and `exports["."].types` points at. It
  *    re-exports the entry's declaration, as vite-plugin-dts's
- *    `insertTypesEntry` did, so no package.json has to change.
+ *    `insertTypesEntry` did, so no package.json has to change. Each subpath
+ *    entry (`entries`) gets the same beside it, `dist/<packageName>/<name>.d.ts`.
  *
  * ASSUMPTIONS (each is checked; a violation fails the build and names it)
  *
@@ -78,7 +80,7 @@ const DECLARATION_DIR = "dist/types"
  *     target that is itself a `.d.ts` input, or outside `rootDir`, or
  *     excluded, has no emitted declaration to point at, and fails the build
  *     rather than being rewritten into a path that does not exist.
- * A6. The entry re-exports its public surface with `export *` and, when it
+ * A6. Each entry re-exports its public surface with `export *` and, when it
  *     has one, `export { default }`. A default export is detected by text
  *     (`export default`, `as default`) in the entry's declaration.
  * A7. `tsc`'s incremental state lives inside `dist/types`
@@ -132,11 +134,13 @@ export function createDeclarationsPlugin(
             `declarations have no emitted declaration to point at (A5):\n${listed}`
         )
       }
-      writeTypesEntry(
-        options,
-        outDir,
-        entryDeclaration(options, packageRoot, layout)
-      )
+      for (const entry of libraryEntries(options)) {
+        writeTypesEntry(
+          outDir,
+          entry,
+          entryDeclaration(resolve(packageRoot, entry.source), layout)
+        )
+      }
     },
   }
 }
@@ -440,13 +444,8 @@ function rewriteAliases(layout: DeclarationLayout): Array<string> {
   return problems
 }
 
-/** A1 and A3: the entry's declaration, which must exist. */
-function entryDeclaration(
-  options: ViteConfigOptions,
-  packageRoot: string,
-  layout: DeclarationLayout
-): string {
-  const entry = resolveEntryPath(options, packageRoot)
+/** A1 and A3: an entry's declaration, which must exist. */
+function entryDeclaration(entry: string, layout: DeclarationLayout): string {
   const path = join(
     layout.declarationDir,
     relative(layout.rootDir, entry).replace(/\.[mc]?tsx?$/, ".d.ts")
@@ -476,12 +475,13 @@ export function typesEntrySource(
 }
 
 function writeTypesEntry(
-  options: ViteConfigOptions,
   outDir: string,
+  entry: LibraryEntry,
   declaration: string
 ): void {
-  // `packageName` may be scoped ("@some-ui/topik"), which nests the entry.
-  const typesEntry = join(outDir, `${options.packageName}.d.ts`)
+  // `outputName` may be scoped ("@some-ui/topik") or a subpath
+  // ("@some-ui/speech/http"), which nests the entry.
+  const typesEntry = join(outDir, `${entry.outputName}.d.ts`)
   mkdirSync(dirname(typesEntry), { recursive: true })
   writeFileSync(
     typesEntry,

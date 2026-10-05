@@ -50,7 +50,9 @@ export function isOnMobileSurface(pathname: string): boolean {
  * A redirect rather than not-found: nothing the person did on the phone is
  * wrong when they reach one of these, so it should land them somewhere useful.
  * The pages themselves are still in the bundle (the route tree is the same in
- * every build); this only makes them unreachable.
+ * every build); this only makes them unreachable. That is debt, not design:
+ * `build.paths.ts` lists each such route against the APK, and
+ * `check:bundle-paths` fails on any other route file that reaches it.
  */
 export function keepToMobileSurface(pathname: string): void {
   if (MOBILE_APP && !isOnMobileSurface(pathname)) {
