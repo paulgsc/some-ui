@@ -245,7 +245,7 @@ describe("lint: charter — no-zindex-escalation and no-raw-storage", () => {
       true,
     ],
     [
-      "does NOT fire when zIndex is below the threshold (conveyor policy)",
+      "does NOT fire when zIndex is below the threshold (headroom policy)",
       `const s = { zIndex: 2147483640 }`,
       ZINDEX,
       false,

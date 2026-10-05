@@ -104,12 +104,12 @@ table type, the platform-normalized matcher, the input-context guard) defined
 
 A good citizen assumes every namespace is **already occupied.**
 
-| Concern | Good                         | Bad               |
-| ------- | ---------------------------- | ----------------- |
-| CSS     | `.ph-root`, `.ph-card`       | `.card`           |
-| DOM     | `<div data-polyhedron-root>` | `<div id="root">` |
-| Storage | `polyhedron.boyo.*`          | `settings`        |
-| Events  | `polyhedron:toggle`          | `toggle`          |
+| Concern | Good                       | Bad               |
+| ------- | -------------------------- | ----------------- |
+| CSS     | `.boyo-root`, `.boyo-veil` | `.card`           |
+| DOM     | `<div data-boyo-root>`     | `<div id="root">` |
+| Storage | `boyo.settings.*`          | `settings`        |
+| Events  | `boyo:toggle`              | `toggle`          |
 
 Each workspace owns **one** prefix and uses it for CSS classes, `data-*`
 attributes, storage keys, and custom event names. The prefix is the workspace's
@@ -127,8 +127,9 @@ Not because it is fashionable — because vendor CSS and extension CSS must be
 independent. Without isolation, a vendor update breaks your UI, or your CSS
 breaks the vendor page. Both are failures.
 
-> **Reference implementation:** `some-conveyor`'s `ShadowHost` (closed shadow
-> root, `contain: layout style paint`). Slated to hoist into the commons.
+> **Reference implementation:** none yet. The shape to build is a closed shadow
+> root with `contain: layout style paint`, hoisted into the commons once a
+> second workspace needs it.
 
 ---
 
@@ -139,8 +140,8 @@ Bad citizenship is an escalation ladder: `99999999` → `999999999` →
 
 - use isolated roots (shadow DOM / top-layer APIs when available);
 - reserve headroom below max so vendor emergency UI (payment, security
-  warnings) can still render above you — `some-conveyor` deliberately sits at
-  `2147483640`, **not** `2147483647`;
+  warnings) can still render above you — sit at, say, `2147483640`, **not**
+  `2147483647`;
 - suspend during fullscreen; never cover critical vendor UI.
 
 > **Enforced by:** a lint rule banning raw escalating `z-index` literals;
@@ -154,8 +155,9 @@ When a video enters fullscreen the user has explicitly chosen immersion. The
 extension UI **disappears** — it does not fight for visibility. Suspend
 animations, observers, overlays, and update loops; resume afterward.
 
-> **Reference implementation:** `some-conveyor`'s `PageMonitor` treats
-> fullscreen (and a hidden tab, and a focused window) as `Suspended`.
+> **Reference implementation:** `isPageShowing` / `watchPageShowing` in
+> `@some-extension/common` treat fullscreen (and a hidden tab) as not showing;
+> `some-drama`'s overlay card builds nothing while the page is not showing.
 
 ---
 
@@ -167,8 +169,7 @@ The extension shares a process with the page. Prefer shared infrastructure:
 DOM node) must be registered for deterministic teardown.
 
 > **Shared primitives:** `Disposables` and `ActiveScope` in
-> `@some-extension/common` (hoisted from `some-conveyor`'s
-> `DisposableRegistry`). **Enforced by:** `require-named-lifetime` and
+> `@some-extension/common`. **Enforced by:** `require-named-lifetime` and
 > `require-scoped-lifetime`, plus a workspace lifetime suite built on
 > `@some-extension/common/testing` — see
 > [Resource lifetimes: what is enforced, and what is not](#resource-lifetimes-what-is-enforced-and-what-is-not).

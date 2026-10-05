@@ -17,10 +17,10 @@ export type PackageJsonFields = {
 
 /**
  * Vite's JS/d.ts bundling nests output under the `packageName` option
- * verbatim, e.g. dist/@some-ui/chat.es.js. Its CSS extraction doesn't - it
+ * verbatim, e.g. dist/@some-ui/topik.es.js. Its CSS extraction doesn't - it
  * names the bundle from package.json's actual (possibly scoped) `name`
  * field and always flattens that to the last path segment, e.g.
- * dist/chat.css, *regardless* of what `packageName` option a given
+ * dist/topik.css, *regardless* of what `packageName` option a given
  * package's vite.config.ts happens to pass (several packages pass an
  * unscoped alias here, e.g. packageName: "some-ui-honeycomb" for a
  * package.json named "@some-ui/honeycomb"). Always derive this from the

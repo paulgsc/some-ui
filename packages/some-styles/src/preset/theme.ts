@@ -82,8 +82,8 @@ export const radius = {
 /**
  * Font families wired to the single `--font-*` tokens (tokens/base.css),
  * so `font-sans` / `font-mono` / `font-display` resolve through the same
- * indirection as colors. A theme overriding a token (e.g. `.conveyor`
- * pointing `--font-mono` at IBM Plex Mono) restyles the utility with no
+ * indirection as colors. A theme overriding a token (e.g. pointing
+ * `--font-mono` at a brand monospace) restyles the utility with no
  * duplicated output. `display` is the additive brand/heading family.
  *
  * presetWind4 keys font families under `theme.font` (each `font-<key>`

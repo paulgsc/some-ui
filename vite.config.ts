@@ -21,7 +21,6 @@ export default defineConfig({
         import.meta.dirname,
         "./packages/ui/attributions/src"
       ),
-      "@chat": path.resolve(import.meta.dirname, "./packages/ui/chat/src"),
       "@nfl": path.resolve(import.meta.dirname, "./packages/ui/nfl/src"),
       "@charts": path.resolve(import.meta.dirname, "./packages/charts/d3/src"),
       "@leetype": path.resolve(
@@ -72,10 +71,6 @@ export default defineConfig({
       "@filter": path.resolve(
         import.meta.dirname,
         "./extensions/some-filter/src"
-      ),
-      "@conveyor": path.resolve(
-        import.meta.dirname,
-        "./extensions/some-conveyor/src"
       ),
       "@suspender": path.resolve(
         import.meta.dirname,

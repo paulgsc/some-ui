@@ -3,8 +3,8 @@
 > **Superseded counts (2026-10-02).** This is a dated snapshot. Workspaces it
 > counts as consumers have since been deleted: `nfl`, `attributions` and
 > `overlays` earlier, `emoji-animations` in #1640, `input` and `stepper` in
-> #1644, and `slideshow`, `makjang`, `neon-sign`, `umag` and `assessment` in
-> #1645. Do not score a hoist or de-hoist from these rows without recounting.
+> #1644, `slideshow`, `makjang`, `neon-sign`, `umag` and `assessment` in
+> #1645, and `chat` later. Do not score a hoist or de-hoist from these rows without recounting.
 > Known consequences of #1644 alone:
 > `createSequentialCycler` is dead (its one consumer was `stepper`), and
 > `getRandomSubarray`, `useObsStatusWebSocket` and `createEventBus` are down

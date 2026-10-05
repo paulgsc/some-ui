@@ -51,14 +51,6 @@
       ],
       "ignoreDependencies": ["@unocss/cli"]
     },
-    "extensions/some-conveyor": {
-      "entry": [
-        "src/background/background.ts",
-        "src/content/content.ts",
-        "src/lib/platform/**/api.*.ts"
-      ],
-      "ignoreDependencies": ["@some-ui/polyhedron", "@unocss/cli"]
-    },
     "extensions/some-drama": {
       "entry": [
         "src/background/background.ts",

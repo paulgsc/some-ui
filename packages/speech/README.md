@@ -5,8 +5,8 @@ backend that can actually say something.
 
 Extracted from `some-ui-utils` per [#533][issue] and
 [`packages/SHARED_WORKSPACE_DOCTRINE.md`][doctrine] — the concern cleared
-the defense test with four genuine consumers (`apps/www`, `packages/ui/chat`,
-`packages/ui/stepper`, `packages/ui/umag`), and two more that had each
+the defense test with four genuine consumers (`apps/www` and three UI
+workspaces since deleted), and two more that had each
 re-derived their own browser-TTS plumbing rather than reach for the shared
 one (`packages/ui/interview`, `packages/ui/honeycomb`).
 

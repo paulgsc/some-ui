@@ -14,7 +14,6 @@
 | [suspender-ledger](#suspender-ledger) | 3   | `*://*/*`             | `idle` `storage` `contextMenus` `notifications` `alarms` `scripting` `tabs` | `none`            |
 | [some-censor](#some-censor)           | 3   | `*://*.youtube.com/*` | `storage`                                                                   | `none`            |
 | [some-mujik](#some-mujik)             | 3   | `<all_urls>`          | `activeTab` `storage` `tabs`                                                | `none`            |
-| [some-conveyor](#some-conveyor)       | 3   | `<all_urls>`          | `storage` `tabs` `activeTab` `scripting`                                    | `none`            |
 
 ---
 
@@ -96,22 +95,3 @@ viewing, so the matches cannot be restricted to a fixed list of origins.
 No tab URLs, browsing history, or page content are exfiltrated.
 
 → [Host-permission justification](../some-mujik/amo-notes.md)
-
----
-
-## some-conveyor
-
-**What it does:** Injects a rotating polyhedron widget (backed by a WASM state
-machine) into any page the user visits as a general-purpose overlay tool.
-
-**Why `<all_urls>`:** The widget is designed to be available on any page. The user
-activates it via the popup; restricting it to specific origins would break the
-intended general-purpose behaviour.
-
-**Why `scripting`:** Used to programmatically inject scripts in response to popup
-commands, in addition to the always-on content script.
-
-**Data collected:** None. The WASM module runs entirely within the extension
-sandbox. No network requests are made.
-
-→ [Host-permission justification](../some-conveyor/amo-notes.md)

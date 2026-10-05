@@ -19,8 +19,8 @@
   /* Typography — family tokens (single source of truth for the font
      utilities). The global defaults reproduce the prior implicit Tailwind
      stacks, so existing surfaces are visually unchanged; themes override
-     --font-sans / --font-mono / --font-display to opt into brand families
-     (see themes/conveyor.css). --font-display is additive (new utility). */
+     --font-sans / --font-mono / --font-display to opt into brand families.
+     --font-display is additive (new utility). */
   --font-sans: ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji",
     "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
   --font-mono: ui-monospace, "SFMono-Regular", "Menlo", "Consolas", monospace;

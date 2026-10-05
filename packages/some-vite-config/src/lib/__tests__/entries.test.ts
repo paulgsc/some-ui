@@ -14,8 +14,8 @@ const ROOT = "/repo/packages/speech"
 
 describe("libraryEntries", () => {
   it("is the main entry alone without subpaths", () => {
-    expect(libraryEntries({ packageName: "@some-ui/chat" })).toEqual([
-      { subpath: ".", outputName: "@some-ui/chat", source: "src/index.ts" },
+    expect(libraryEntries({ packageName: "@some-ui/topik" })).toEqual([
+      { subpath: ".", outputName: "@some-ui/topik", source: "src/index.ts" },
     ])
   })
 
@@ -62,10 +62,10 @@ describe("libraryEntries", () => {
 
 describe("createBuildConfig", () => {
   it("keeps a single entry a string, named as it always was", () => {
-    const { lib } = createBuildConfig({ packageName: "@some-ui/chat" }, ROOT)
+    const { lib } = createBuildConfig({ packageName: "@some-ui/topik" }, ROOT)
 
     expect(lib.entry).toBe(resolve(ROOT, "src/index.ts"))
-    expect(lib.fileName("es", "index")).toBe("@some-ui/chat.es.js")
+    expect(lib.fileName("es", "index")).toBe("@some-ui/topik.es.js")
   })
 
   it("names each entry's file by its output name", () => {

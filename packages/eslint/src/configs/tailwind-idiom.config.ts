@@ -6,7 +6,8 @@ import { defineConfig } from "eslint/config"
  * content scan depends on: every class name that can appear in the DOM must
  * exist as a complete literal string in source. Dynamic *values* belong in a
  * CSS custom property consumed by a static arbitrary-value utility (see
- * packages/ui/chat's chat-header), not fused into the class-name token itself —
+ * SidebarMenuSkeleton in packages/ui/shared's sidebar), not fused into the
+ * class-name token itself —
  * fusing them (`bg-${color}-500`, `"bg-" + color`) works fine against a
  * per-file dev-server scan but silently loses the class in any build that
  * scans source once ahead of time instead of executing the app.

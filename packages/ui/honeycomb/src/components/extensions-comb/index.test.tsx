@@ -94,7 +94,7 @@ describe("ExtensionsComb", () => {
     fireEvent.click(screen.getByRole("button", { name: "Back" }))
     expect(caption()).toBe(ext.line)
 
-    fireEvent.click(screen.getByRole("button", { name: "Back to all six" }))
+    fireEvent.click(screen.getByRole("button", { name: "Back to all five" }))
     expect(caption()).toBe("")
   })
 
@@ -135,7 +135,7 @@ describe("ExtensionsComb", () => {
     press("Back")
     expect(focused()).toBe("What it sends")
 
-    press("Back to all six")
+    press("Back to all five")
     expect(focused()).toBe(ext.name)
   })
 

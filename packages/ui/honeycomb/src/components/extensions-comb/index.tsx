@@ -6,7 +6,6 @@ import { assertNever } from "@honeycomb/utils/error"
 import type { LucideIcon } from "lucide-react"
 import {
   ArrowLeft,
-  Boxes,
   CodeXml,
   Contrast,
   EyeOff,
@@ -45,7 +44,7 @@ import { HEX, INSET, VIEWBOX_FACTOR } from "./geometry"
 import "./index.css"
 
 /**
- * The /extensions comb: six browser extensions, told visually.
+ * The /extensions comb: five browser extensions, told visually.
  *
  * ## The design law
  *
@@ -66,7 +65,7 @@ import "./index.css"
  * hold changes, which is what makes the model recursive: an L3 would be the
  * same move again.
  *
- *   L0 · index    ring = the six extensions      core = brand mark + rest cue
+ *   L0 · index    ring = the five extensions     core = brand mark + rest cue
  *   L1 · subject  ring = facets of one extension core = its emblem + name
  *   L2 · facet    ring = that facet's atoms      core = the facet's name
  *
@@ -319,7 +318,6 @@ const EMBLEM_ICON = {
   memory: HardDrive,
   contrast: Contrast,
   covered: EyeOff,
-  belt: Boxes,
   music: Music,
   beat: HeartPulse,
 } as const satisfies Record<Emblem, LucideIcon>
@@ -590,32 +588,6 @@ const Mini = ({ kind }: { kind: Mechanism }): JSX.Element => {
         </g>
       )
     }
-    case "cubes": {
-      return (
-        <g aria-hidden>
-          <defs>
-            <clipPath id="xcomb-belt">
-              <rect x={-70} y={-30} width={140} height={60} />
-            </clipPath>
-          </defs>
-          <line x1={-70} x2={70} y1={26} y2={26} className="xcomb-mini-rail" />
-          <g clipPath="url(#xcomb-belt)">
-            {[0, 1, 2].map((k) => (
-              <rect
-                key={k}
-                x={72}
-                y={-14}
-                width={30}
-                height={30}
-                rx={4}
-                className="xcomb-mini-cube"
-                style={{ animationDelay: `${k * 1.1}s` }}
-              />
-            ))}
-          </g>
-        </g>
-      )
-    }
     case "follow": {
       return (
         <g aria-hidden>
@@ -848,6 +820,10 @@ export const ExtensionsComb = (): JSX.Element => {
  * screen cannot hover, so there the name also rides in the cell itself; that
  * is keyed on the pointer's capability in `index.css`, not on width, because
  * a narrow desktop window still hovers.
+ *
+ * Slots past the last extension stay ghost cells, as unused slots do at L2:
+ * the comb never loses a cell. With five extensions that is slot 5, the
+ * upper-left cell that is the way up at every deeper level.
  */
 function indexLevel(
   peek: number | null,
@@ -856,7 +832,7 @@ function indexLevel(
 ): Level {
   const peeked = peek === null ? null : (EXTENSIONS[peek] ?? null)
 
-  const ring = EXTENSIONS.map(
+  const tools = EXTENSIONS.map(
     (ext, i): CellSpec => ({
       key: `index-${ext.id}`,
       honey: ext.level,
@@ -875,6 +851,10 @@ function indexLevel(
         </>
       ),
     })
+  )
+  const ring = [0, 1, 2, 3, 4, 5].map(
+    (slot): CellSpec =>
+      tools[slot] ?? { key: `index-ghost-${slot}`, ghost: true }
   )
 
   const core: CellSpec = {
@@ -982,7 +962,7 @@ function subjectLevel(
         </>
       ),
     },
-    backCell(`subject-up-${subject.id}`, "Back to all six", LABEL.up, onUp),
+    backCell(`subject-up-${subject.id}`, "Back to all five", LABEL.up, onUp),
   ]
 
   const core: CellSpec = {
@@ -1042,7 +1022,7 @@ function facetLevel(
           })
         )
       : [
-          // First, this tool's own network answer; then what all six share.
+          // First, this tool's own network answer; then what all five share.
           {
             id: `network-${subject.network}`,
             label: NETWORK_LABEL[subject.network],

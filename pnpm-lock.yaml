@@ -446,8 +446,6 @@ importers:
 
   crates/leetype_wasm: {}
 
-  crates/polyhedron: {}
-
   crates/some-hexagon: {}
 
   docs/canon: {}
@@ -538,40 +536,6 @@ importers:
       web-ext:
         specifier: 10.7.0
         version: 10.7.0(jiti@2.7.0)(supports-color@10.2.2)
-
-  extensions/some-conveyor:
-    dependencies:
-      '@some-extension/common':
-        specifier: workspace:*
-        version: link:../common
-      '@some-ui/polyhedron':
-        specifier: 0.0.4
-        version: 0.0.4
-    devDependencies:
-      '@some-ui/eslint-kit':
-        specifier: workspace:*
-        version: link:../../packages/eslint
-      '@some-ui/styles':
-        specifier: workspace:*
-        version: link:../../packages/some-styles
-      '@some-ui/tsconfig':
-        specifier: workspace:*
-        version: link:../../packages/tsconfig
-      '@types/firefox-webext-browser':
-        specifier: ^120.0.4
-        version: 120.0.5
-      '@unocss/cli':
-        specifier: ^66.8.1
-        version: 66.8.1
-      eslint:
-        specifier: ^10.11.0
-        version: 10.11.0(jiti@2.7.0)(supports-color@10.2.2)
-      unocss:
-        specifier: ^66.0.0
-        version: 66.7.3(vite@8.3.1(@types/node@26.0.1)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0))
-      vite:
-        specifier: ^8.3.1
-        version: 8.3.1(@types/node@26.0.1)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0)
 
   extensions/some-drama:
     dependencies:
@@ -1096,37 +1060,6 @@ importers:
       eslint-import-resolver-typescript:
         specifier: 4.4.5
         version: 4.4.5(eslint-plugin-import-x@4.17.1(@typescript-eslint/utils@8.70.1(eslint@10.11.0(jiti@2.7.0)(supports-color@10.2.2))(supports-color@10.2.2)(typescript@5.9.3))(eslint-import-resolver-node@0.3.10(supports-color@10.2.2))(eslint@10.11.0(jiti@2.7.0)(supports-color@10.2.2))(supports-color@10.2.2))(eslint-plugin-import@2.32.0)(eslint@10.11.0(jiti@2.7.0)(supports-color@10.2.2))(supports-color@10.2.2)
-
-  packages/ui/chat:
-    dependencies:
-      '@some-ui/eslint-kit':
-        specifier: workspace:*
-        version: link:../../eslint
-      '@some-ui/shared':
-        specifier: workspace:*
-        version: link:../shared
-      '@some-ui/speech':
-        specifier: workspace:*
-        version: link:../../speech
-      react:
-        specifier: ^19.0.0
-        version: 19.0.0
-      react-dom:
-        specifier: ^19.0.0
-        version: 19.0.0(react@19.0.0)
-      some-ui-utils:
-        specifier: workspace:*
-        version: link:../../utils
-    devDependencies:
-      '@some-ui/tsconfig':
-        specifier: workspace:*
-        version: link:../../tsconfig
-      '@some-ui/vite-config':
-        specifier: workspace:*
-        version: link:../../some-vite-config
-      '@types/react':
-        specifier: ^19.0.4
-        version: 19.2.17
 
   packages/ui/honeycomb:
     dependencies:
@@ -4306,9 +4239,6 @@ packages:
 
   '@some-ui/leetype-wasm@0.0.14':
     resolution: {integrity: sha512-ZLqgYhUjQFmSnAQ/WIxUH7sb9FAqBtpNFevJ0X/I4Bvei+pOXpNpE2lvg1tSU7exIBqfSNtkL7UeOfMDCyh+oQ==}
-
-  '@some-ui/polyhedron@0.0.4':
-    resolution: {integrity: sha512-6KgJ6rRUCoKiFjSbwTh1Mvj5f7DctDcBEIpM65aoujv9daLTU6zJhwnRqn8fz4jYHQf51fWtt68wbvWChEIr+g==}
 
   '@some-ui/some-hexagon@0.0.5':
     resolution: {integrity: sha512-S00SDGTSlR80KL9zOy7pT20e+vFhZ/x/E8AfFP7Or7Yk1IWqYbMZt1hSzhyDDFthCTeGhNNqaGkBJFj9J/FUHA==}
@@ -12008,8 +11938,6 @@ snapshots:
   '@some-ui/hangul-game-core@0.0.5': {}
 
   '@some-ui/leetype-wasm@0.0.14': {}
-
-  '@some-ui/polyhedron@0.0.4': {}
 
   '@some-ui/some-hexagon@0.0.5': {}
 

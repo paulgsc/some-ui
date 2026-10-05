@@ -88,7 +88,7 @@ const C = () => <span className={\`font-mono \${colorClass}\`} />
       false,
     ],
     [
-      "does NOT fire for the CSS-custom-property + static arbitrary-value pattern (chat-header idiom)",
+      "does NOT fire for the CSS-custom-property + static arbitrary-value pattern (sidebar skeleton idiom)",
       `
 const C = ({ rotation }) => (
   <div

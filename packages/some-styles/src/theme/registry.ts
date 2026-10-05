@@ -5,7 +5,6 @@
  *
  * The shapes are genuinely different, so they are named rather than merged,
  * and {@link ThemeScope} is the distinction that matters to a component author:
-
  *
  * - `session` — a full palette applied to the *document root* by the host
  *   adapter, chosen and persisted by the user. Reusable components must never
@@ -186,14 +185,6 @@ export const FEATURE_APPEARANCES = [
     mode: "light",
     scope: "feature",
     boundary: { classNames: ["topik"], dataTheme: "topik" },
-    selectable: false,
-  },
-  {
-    id: "conveyor",
-    label: "Conveyor",
-    mode: "dark",
-    scope: "feature",
-    boundary: { classNames: ["conveyor"], dataTheme: "conveyor" },
     selectable: false,
   },
 ] as const satisfies ReadonlyArray<ThemeDefinition>

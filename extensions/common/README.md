@@ -1,8 +1,8 @@
 # `@some-extension/common`
 
 Shared commons for the browser-extension workspaces in this monorepo
-(`some-filter`, `some-censor`, `some-drama`, `some-conveyor`, `some-mujik`, and
-growing).
+(`some-filter`, `some-censor`, `some-drama`, `some-mujik`, `suspender-ledger`,
+and growing).
 
 ## The two mandates
 

@@ -7,7 +7,7 @@ import { HexCombMark } from "@/components/brand/hex-comb-mark"
 import { ThemeSwitcher } from "@/components/theme-switcher"
 
 /**
- * The six browser extensions in `extensions/`, for a non-technical visitor:
+ * The five browser extensions in `extensions/`, for a non-technical visitor:
  * no versions, manifests or workflows; progress as a quantity.
  *
  * Mounted in two places: `"/"` for a visitor with no session (the front door,

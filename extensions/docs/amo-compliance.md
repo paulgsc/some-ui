@@ -159,7 +159,7 @@ workflow's extension allowlist.
 these closely and may request narrowing or a written justification.
 
 **Affected (MV2 `<all_urls>`):** `some-drama`
-**Affected (MV3 `*://*/*` host_permissions):** `suspender-ledger`, `some-conveyor`
+**Affected (MV3 `*://*/*` host_permissions):** `suspender-ledger`
 
 For tab suspenders and content scripts that genuinely need all-URL access, a written justification
 in "Notes to Reviewers" at sign time is required. For extensions that only need access to
@@ -176,9 +176,8 @@ the declared patterns. Exposing `./*` (all assets) turns the extension's entire 
 into a fingerprinting surface and may raise a policy flag.
 
 **Affected:** none. The only offender was `some-cycle` (`["./*", "icons/*"]`), removed along
-with the rest of the graveyard workspaces. `some-conveyor` is the closest remaining case and
-already enumerates concrete resources (`*.wasm`, `assets/*`, `styles/*`, `polyhedron/*`), so
-this entry is retained as a rule to check new extensions against, not an open finding.
+with the rest of the graveyard workspaces, so this entry is retained as a rule to check new
+extensions against, not an open finding.
 
 **Fix:** List only the specific files actually embedded in page content (e.g. the suspend page,
 a specific injected CSS), with narrowed `matches` arrays.
@@ -221,7 +220,7 @@ intentional security design.
 }
 ```
 
-If WebAssembly is needed (e.g. `some-conveyor`), add `'wasm-unsafe-eval'` and document the
+If WebAssembly is needed, add `'wasm-unsafe-eval'` and document the
 justification in "Notes to Reviewers".
 
 **Affected:** All extensions with HTML surfaces that lack explicit CSP declarations.
@@ -242,10 +241,12 @@ but this is not enforced in local development.
 
 ### B6 · wasm-unsafe-eval Without Documented Justification _(weight: 2)_
 
-`some-conveyor` uses `script-src 'self' 'wasm-unsafe-eval'` in its CSP, required for
-WebAssembly. This keyword is an automatic red flag for AMO automated scanners. It is
-_permitted_ for legitimate WASM use, but must be accompanied by a reviewer note explaining
-the necessity.
+An extension that loads WebAssembly needs `script-src 'self' 'wasm-unsafe-eval'` in its CSP.
+This keyword is an automatic red flag for AMO automated scanners. It is _permitted_ for
+legitimate WASM use, but must be accompanied by a reviewer note explaining the necessity.
+
+**Affected:** none. No extension loads WebAssembly today, so this entry is retained as a rule
+to check new extensions against, not an open finding.
 
 **Fix:** Add a `README.reviewer.md` or populate "Notes to Reviewers" in the AMO developer hub
 explaining which WASM module is loaded and why it cannot use a pre-compiled binary.
@@ -470,7 +471,7 @@ Do not use:
 - `'unsafe-eval'` — allows `eval()` (code injection; immediate AMO block)
 - External origins (e.g. `https://cdn.example.com`) — remote code; immediate AMO block
 
-### WebAssembly (some-conveyor only)
+### WebAssembly (no extension today)
 
 ```
 script-src 'self' 'wasm-unsafe-eval'; object-src 'self'
