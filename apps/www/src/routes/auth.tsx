@@ -15,6 +15,7 @@ import { ACCOUNT_KEEPS } from "@/lib/auth/account-keeps"
 import { authority, useAuthoritySnapshot } from "@/lib/authority"
 import { DATA_MODE } from "@/lib/data-mode"
 import { passkeysSupported } from "@/lib/passkey"
+import { DeviceSessionLost } from "@/components/auth/device-session-lost"
 
 type AuthSearch = { redirect?: string }
 
@@ -31,7 +32,7 @@ function validateSearch(search: Record<string, unknown>): AuthSearch {
 
 const noop = (): void => undefined
 
-const AuthPage = (): JSX.Element => {
+const PasskeyScreen = (): JSX.Element => {
   const { redirect = "/app" } = Route.useSearch()
   const navigate = useNavigate()
   const [step, setStep] = useState<AuthFlowStep>("sign-in")
@@ -148,6 +149,21 @@ const AuthPage = (): JSX.Element => {
                 }
       }
     />
+  )
+}
+
+/**
+ * The Android app has no sign-in (src/components/auth/device-session-lost).
+ * The flag is read here, not through a module's constant, so the passkey
+ * screen and everything only it imports never reach that build
+ * (packages/some-vite-config/AUDIENCES.md, "Paths").
+ */
+const AuthPage = (): JSX.Element => {
+  const search = Route.useSearch()
+  return import.meta.env.VITE_DEVICE_BACKEND === "true" ? (
+    <DeviceSessionLost {...search} />
+  ) : (
+    <PasskeyScreen />
   )
 }
 

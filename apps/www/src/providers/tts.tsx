@@ -33,9 +33,10 @@ import { describeTTSEndpoint, resolveTTSEndpoint } from "@/lib/tts-config"
  *
  * Which backends exist at all is this build's to say, and it says it in
  * place: each is its own `@some-ui/speech` entry, and the
- * `VITE_DEVICE_BACKEND` test below folds while the module is compiled, so
- * the APK carries only the phone's voice and the web builds never carry it
- * (build.paths.ts checks both).
+ * `VITE_DEVICE_BACKEND` and `VITE_STATIC_DATA` tests below fold while the
+ * module is compiled, so the APK carries only the phone's voice, Pages only
+ * the browser's, and only the home server's build the hosted one
+ * (build.paths.ts checks all three).
  */
 
 /**
@@ -143,12 +144,21 @@ export const TTSProvider = ({
               native: deviceSpeechBackend(settings?.deviceVoiceId),
               adapters: { static: nativeSpeech },
             }
-          : {
-              mode: kind === "account" ? DATA_MODE : "static",
-              adapters: { server: httpSpeech, static: webSpeech },
-              hosted: settings?.ttsVoice,
-              endpoint: resolveTTSEndpoint(),
-            }
+          : import.meta.env.VITE_STATIC_DATA === "true"
+            ? {
+                // GitHub Pages has no TTS service, so the browser's voice is
+                // all it has: where `speechSynthesis` is missing it is
+                // silent, and says so, rather than asking a service that
+                // isn't there.
+                mode: "static",
+                adapters: { static: webSpeech },
+              }
+            : {
+                mode: kind === "account" ? DATA_MODE : "static",
+                adapters: { server: httpSpeech, static: webSpeech },
+                hosted: settings?.ttsVoice,
+                endpoint: resolveTTSEndpoint(),
+              }
       }
       fallback={<InitializingSpeech />}
       // The speech channel of the app's audio preferences, live. Muting

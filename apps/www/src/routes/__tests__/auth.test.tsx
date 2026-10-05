@@ -3,6 +3,7 @@
  *
  * Where a server is optional, the passkey screen is a choice and not a gate: it
  * offers the device as plainly as the account, and picking it is remembered.
+ * The Android app, which has no sign-in, shows a reload instead.
  */
 
 import { cleanup, fireEvent, render, screen } from "@testing-library/react"
@@ -33,6 +34,12 @@ vi.mock("@/lib/passkey", async (importOriginal) => ({
   passkeysSupported: (): boolean => true,
 }))
 
+const entered = vi.hoisted((): Array<unknown> => [])
+vi.mock("@/lib/auth/enter", () => ({
+  enterAccount: (href: string, _navigate: unknown, mode: string): void =>
+    void entered.push({ href, mode }),
+}))
+
 const { Route } = await import("@/routes/auth")
 
 beforeEach(() => {
@@ -41,10 +48,12 @@ beforeEach(() => {
   authority.resetForTests()
   search = {}
   navigated.length = 0
+  entered.length = 0
 })
 
 afterEach(() => {
   cleanup()
+  vi.unstubAllEnvs()
 })
 
 function renderAuth(): void {
@@ -83,5 +92,32 @@ describe("the passkey screen", () => {
   it("lists what an account keeps, in full", () => {
     renderAuth()
     expect(screen.getByText(/items you save to shelves/i)).toBeTruthy()
+  })
+})
+
+describe("/auth in the Android app, which has no sign-in", () => {
+  beforeEach(() => {
+    // Read where it is branched on (src/vite-env.d.ts), at render.
+    vi.stubEnv("VITE_DEVICE_BACKEND", "true")
+  })
+
+  it("offers a reload, and no passkey", () => {
+    renderAuth()
+    expect(screen.getByRole("button", { name: "Reload" })).toBeTruthy()
+    expect(screen.queryByText(/passkey/i)).toBeNull()
+  })
+
+  it("reloads into where the person was, or the phone's Home", () => {
+    search = { redirect: "/sessions" }
+    renderAuth()
+    fireEvent.click(screen.getByRole("button", { name: "Reload" }))
+    cleanup()
+    search = {}
+    renderAuth()
+    fireEvent.click(screen.getByRole("button", { name: "Reload" }))
+    expect(entered).toEqual([
+      { href: "/sessions", mode: "server" },
+      { href: "/today", mode: "server" },
+    ])
   })
 })

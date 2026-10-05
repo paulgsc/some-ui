@@ -50,6 +50,35 @@ export const profileBuildEnv: Readonly<
 }
 
 /**
+ * Files Vite copies from public/ that a profile never loads, by name at the
+ * top of its output. They are not chunks, so the module rules below cannot
+ * see them: vite.config.ts deletes them from that profile's output, and
+ * check-bundle-paths.ts fails when one is still there, or when one names no
+ * file in public/ (renamed, it would ship again unnoticed).
+ */
+const OFF_PATH_PUBLIC_FILES: Readonly<Record<Profile, ReadonlyArray<RegExp>>> =
+  {
+    lan: [],
+    pages: [],
+    [MOBILE_PROFILE]: [
+      // What scripts/sync-resume.mjs copies in for /resume, which is not on
+      // the Android app's surface (src/lib/app-surface).
+      /^resume.*\.pdf$/,
+      // The web-push service worker: src/lib/study-nudge/service-worker.ts
+      // never registers it in this build, which nudges natively.
+      /^sw\.js$/,
+    ],
+  }
+
+/** `OFF_PATH_PUBLIC_FILES` for a `SOME_UI_PROFILE` value (unset is `lan`). */
+export function offPathPublicFiles(
+  profile: string | undefined
+): ReadonlyArray<RegExp> {
+  const name = profile ?? "lan"
+  return isProfile(name) ? OFF_PATH_PUBLIC_FILES[name] : []
+}
+
+/**
  * The route files on the Android app's path: the root and the layouts above
  * `MOBILE_SURFACE`'s routes (src/lib/app-surface), and those routes. The
  * mobile-surface test derives this list from the real route tree and fails
@@ -79,6 +108,7 @@ const DEVICE_MODULES = [
   "apps/www/src/lib/dictation/**",
   "apps/www/src/lib/study-nudge/native.ts",
   "apps/www/src/lib/study-nudge/schedule.ts",
+  "apps/www/src/components/auth/device-*.tsx",
   "apps/www/src/components/settings/device-*.tsx",
   "node_modules/@capacitor/**",
   "node_modules/@capacitor-community/**",
@@ -112,7 +142,6 @@ export const paths: PathRules<Profile> = definePaths<Profile>({
       modules: [
         "apps/www/src/lib/tenant/sessions-transfer/**",
         "apps/www/src/lib/tenant/transfer-lock/**",
-        "apps/www/src/lib/tts-config/**",
         "apps/www/src/components/settings/account-section.tsx",
         "apps/www/src/components/settings/data-home-section.tsx",
         "apps/www/src/components/settings/hosted-voice-fields.tsx",
@@ -122,11 +151,22 @@ export const paths: PathRules<Profile> = definePaths<Profile>({
     },
     {
       modules: [
-        `${SPEECH_ENTRY}/http.es.js`,
-        `${SPEECH_ENTRY}/web-speech.es.js`,
+        "apps/www/src/lib/passkey/**",
+        "apps/www/src/lib/auth/account-keeps.ts",
+        "apps/www/src/lib/auth/errors.ts",
       ],
       profiles: ["lan", "pages"],
-      why: "the web builds' voices, the hosted service and the browser's own synthesizer: the Android app speaks only with the phone's engine (src/providers/tts.tsx)",
+      why: "the passkey screen and what only it says: the Android app has no sign-in, and its /auth offers a reload instead (src/components/auth/device-session-lost)",
+    },
+    {
+      modules: [`${SPEECH_ENTRY}/web-speech.es.js`],
+      profiles: ["lan", "pages"],
+      why: "the web builds' voice, the browser's own synthesizer: the Android app speaks only with the phone's engine (src/providers/tts.tsx)",
+    },
+    {
+      modules: [`${SPEECH_ENTRY}/http.es.js`, "apps/www/src/lib/tts-config/**"],
+      profiles: ["lan"],
+      why: "the hosted voice, which needs the TTS service only the home server runs: Pages has none, and the Android app speaks with the phone's engine (src/providers/tts.tsx)",
     },
     {
       modules: DEVICE_MODULES,
@@ -166,16 +206,31 @@ export const paths: PathRules<Profile> = definePaths<Profile>({
       ],
       why: "the Android app answers file_host, speaks, nudges and takes dictation through these; a build without one is an APK that installs and then fails",
     },
-    // Also what keeps the web-voices rule in `exclusive` from passing by
-    // matching nothing, should the speech dist layout move.
-    ...(["lan", "pages"] as const).map((profile) => ({
-      profile,
+    {
+      profile: MOBILE_PROFILE,
+      modules: ["apps/www/src/components/auth/device-session-lost.tsx"],
+      why: "the Android app's /auth: without it the route renders the web's passkey screen, which this build cannot use",
+    },
+    // Also what keeps the voice and passkey rules in `exclusive` from passing
+    // by matching nothing, should the speech dist layout or lib/ move.
+    {
+      profile: "lan",
       modules: [
         `${SPEECH_ENTRY}/http.es.js`,
         `${SPEECH_ENTRY}/web-speech.es.js`,
       ],
-      why: "the web builds speak through these (src/providers/tts.tsx); a build without them is silent",
-    })),
+      why: "the home server speaks through these (src/providers/tts.tsx); a build without them is silent",
+    },
+    {
+      profile: "lan",
+      modules: ["apps/www/src/lib/passkey/index.ts"],
+      why: "a passkey is the only way into an account on the home server (src/lib/auth/session.ts)",
+    },
+    {
+      profile: "pages",
+      modules: [`${SPEECH_ENTRY}/web-speech.es.js`],
+      why: "Pages speaks through this (src/providers/tts.tsx); a build without it is silent",
+    },
   ],
   // Every profile builds one route tree, shared by design until now
   // (AUDIENCES.md, "Build audiences"): a route off a profile's path ships
