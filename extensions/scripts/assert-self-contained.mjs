@@ -91,14 +91,21 @@ for (const entry of classicEntries) {
     )
     continue
   }
-  const specifiers = imports.map((i) => i.specifier).filter(Boolean) // named module specifiers only
+  // A template-literal `import(\`${base}x.js\`)` is a v3 glob (`*x.js`); 2.x
+  // reported no specifier for it, so it stays unflagged like any computed import.
+  const specifiers = imports
+    .filter((i) => !i.glob)
+    .map((i) => i.specifier)
+    .filter(Boolean) // named module specifiers only
   const selfContained = specifiers.length === 0 && exports.length === 0
   if (selfContained) {
     if (allowed.has(entry)) clearedFromBaseline.push(entry)
     continue
   }
   const detail = `imports [${specifiers.join(", ")}]${
-    exports.length ? ` exports [${exports.map((e) => e.name).join(", ")}]` : ""
+    exports.length
+      ? ` exports [${exports.map((e) => e.name ?? "*").join(", ")}]`
+      : ""
   }`
   if (allowed.has(entry)) continue // known, baselined debt — tolerated
   newViolations.push(`${entry}: not self-contained — ${detail}`)
