@@ -3,9 +3,9 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 /**
- * Property-based tests for the suspend FSM (issue #344).
+ * Property-based tests for the suspend FSM.
  *
- * Exhaustion (#345) checks single steps. These fold *sequences* of 1–50 random
+ * Exhaustion checks single steps. These fold *sequences* of 1–50 random
  * events through the reducer from every legal initial state and assert the
  * invariant holds at every intermediate and final state. This is the layer that
  * catches "weird timeline" bugs: a discard refused mid-suspend, a refocus
@@ -74,7 +74,7 @@ describe("suspend FSM — properties", () => {
     )
   })
 
-  // Negative property (#344 acceptance criterion): a prohibited transition is
+  // Negative property: a prohibited transition is
   // rejected. An audible tab must never end up suspended-and-marked — the
   // MEDIA_PLAYING signal has to divert it away from the mark→discard path.
   it("never marks a tab whose only suspend attempt was preceded by MEDIA_PLAYING", () => {

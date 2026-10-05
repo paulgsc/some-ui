@@ -1,11 +1,11 @@
 /**
- * The layout table's schema (BC1, #1434) — what the crawler writes and what
- * the Sensor (BC2, #1435) reads.
+ * The layout table's schema (BC1) — what the crawler writes and what the
+ * Sensor (BC2) reads.
  *
  * The table is a checked-in, generated artifact describing YouTube's card
  * DOM shape per surface: which catalogue tags appear, how they nest, and
  * which of the extension's own extraction selectors they satisfy. It is
- * *observed*, not derived — a heuristic with a shelf life (#1433), which is
+ * *observed*, not derived — a heuristic with a shelf life, which is
  * why it carries a schema version, a source, and a generation timestamp, and
  * why nothing here is allowed to be hand-edited.
  *
@@ -29,8 +29,8 @@ export type LayoutSource = "fixtures" | "live"
  * How a catalogue tag was seen to sit on a surface.
  *
  * `anchor` — a top-level card: no other catalogue tag encloses it.
- * `nested` — inside another catalogue tag (`outer`), which is the anchor. The
- *            #1426 case: `ytd-rich-item-renderer > yt-lockup-view-model`.
+ * `nested` — inside another catalogue tag (`outer`), which is the anchor, as
+ *            in `ytd-rich-item-renderer > yt-lockup-view-model`.
  */
 export type ShapeRole = "anchor" | "nested"
 

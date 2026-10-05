@@ -1,5 +1,5 @@
 /**
- * Gesture delegation (BC4, #1437) — `events.ts`, re-homed.
+ * Gesture delegation (BC4) — `events.ts`, re-homed.
  *
  * One capture-phase listener per event type on the document. A click that
  * lands on a veil walks up to the anchor the Actuator stamped

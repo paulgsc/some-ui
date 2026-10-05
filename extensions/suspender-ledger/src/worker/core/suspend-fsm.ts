@@ -31,8 +31,7 @@
  *
  * The illegal state this forbids is `ORPHANED`: a live tab still playing its
  * audio, wearing "💤", that the browser refused to discard and that nothing
- * ever cleans up. That is precisely https://github.com/paulgsc/some-ui/issues
- * bugs behind #344 / #345 — a marked, audible, non-discarded tab.
+ * ever cleans up (#344 / #345).
  */
 
 // ── States ──────────────────────────────────────────────────────────────────
@@ -150,14 +149,14 @@ const s = (kind: SuspendStateKind): SuspendState => ({ kind })
  * Pure reducer. Unmapped (state, event) pairs are self-loops: an event that
  * does not apply to the current state leaves it unchanged.
  *
- * The two edges that make the invariant hold — and that fix the reported bugs:
+ * The two edges that make the invariant hold:
  *
  *   - `MEDIA_PLAYING` diverts a tab to `BLOCKED` *before* any marker is applied,
- *     so an audible YouTube tab is never marked (#344 bug 1). The adapter must
+ *     so an audible YouTube tab is never marked. The adapter must
  *     emit this whenever `chrome.tabs.Tab.audible` (or a media probe) is set.
  *   - `SUSPENDING + DISCARD_FAILED` (and a refocus mid-suspend) routes to
  *     `ROLLING_BACK`, which carries the obligation to strip the marker, rather
- *     than stranding it in `ORPHANED` (#345 bug 2). `ORPHANED` is consequently
+ *     than stranding it in `ORPHANED`. `ORPHANED` is consequently
  *     unreachable — kept in the type as the named state the contract forbids.
  */
 

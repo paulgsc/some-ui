@@ -3,17 +3,10 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 /**
- * `trace()` — the low-ceremony recording call, kept at its original signature
- * so the ~30 existing call sites did not have to be rewritten in the same diff
- * that introduced observability.
- *
- * What changed is where the output goes. This used to be an always-on
- * `console.log` firehose, explicitly marked temporary, whose entire value
- * evaporated the moment the console was closed or the event page was recycled
- * — which is exactly when the intermittent bug it was chasing occurred. It now
- * writes into the flight recorder (`observability.ts`): bounded, persisted
- * across worker generations, and readable after the fact on `debug.html`.
- * Console output survives too, but gated on the user's `log` preference.
+ * `trace()` — the low-ceremony recording call. It writes into the flight
+ * recorder (`observability.ts`): bounded, persisted across worker
+ * generations, and readable after the fact on `debug.html`. Console output is
+ * gated on the user's `log` preference.
  *
  * Call sites that carry real diagnostic weight should graduate to a named
  * {@link SuspenderEventKind} with a counter behind it. `trace` is for the

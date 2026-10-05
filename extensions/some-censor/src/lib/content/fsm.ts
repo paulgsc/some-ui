@@ -162,8 +162,7 @@ export type VeilContent =
 /**
  * The hint pill's copy and accent.
  *
- * This used to live in the stylesheet as five `content:` strings on
- * `.boyo-veil::before`, keyed by `[data-boyo]`. Projecting it instead means the
+ * Projected rather than written as `content:` strings in the stylesheet, so the
  * copy for a state sits next to the state, the pill can be a real element that
  * a container query and a screen reader can both see, and adding a state makes
  * the exhaustive switch below fail to compile rather than silently rendering a

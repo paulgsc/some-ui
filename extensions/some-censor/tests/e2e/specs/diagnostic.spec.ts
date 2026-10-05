@@ -1,25 +1,9 @@
 /**
  * BOYO — environment + extension diagnostics
  *
- * Purpose
- * -------
- * These tests validate the *test harness itself* before running the more
- * expensive behavioral invariant suite.
- *
- * Why this file exists
- * --------------------
- * When extension loading, Firefox profile wiring, Playwright context setup,
- * or content-script injection breaks, the behavioral tests become noisy and
- * misleading. This suite isolates infrastructure failures from runtime logic
- * failures.
- *
- * Typical usage
- * -------------
- * Run this file first when debugging:
- *
- *   pnpm playwright test diagnostics.spec.ts
- *
- * Only run the full invariant suite after these diagnostics pass.
+ * Validates the *test harness itself* (extension loading, profile wiring,
+ * context setup, content-script injection), so infrastructure failures are
+ * not misread as runtime logic failures. Run it first when debugging.
  *
  * Guarantees checked here
  * -----------------------
@@ -48,8 +32,7 @@ test("D1: page is reachable and main world is writable", async ({
   const page = await fixture.goto("yt-home")
 
   /**
-   * Sanity check:
-   * confirms Playwright can communicate with the page.
+   * Confirms Playwright can communicate with the page.
    */
   const title = await page.title()
   console.log("Page title:", title)

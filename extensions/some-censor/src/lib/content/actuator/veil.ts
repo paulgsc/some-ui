@@ -1,5 +1,5 @@
 /**
- * The veil's subtree (BC4, #1437) — `DomHandle._render()` and its chip
+ * The veil's subtree (BC4) — `DomHandle._render()` and its chip
  * builders, as functions over a veil element the Actuator owns.
  *
  * Invariants carried over from `dom-handle.ts`:
@@ -13,7 +13,7 @@
  * nodes) and it is what makes rendering idempotent by construction: there is
  * no partial-update path that could leave a chip from a previous state
  * behind. Child order is the reading order — hint, then meta, then title —
- * so the flex column lays them out without absolute positioning (#973).
+ * so the flex column lays them out without absolute positioning.
  */
 
 import type { RenderModel, VeilContent } from "@censor/lib/content/fsm"

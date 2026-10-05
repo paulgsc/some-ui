@@ -1,5 +1,5 @@
 /**
- * The layout table (BC1, #1434): the checked-in artifact is what the crawl
+ * The layout table (BC1): the checked-in artifact is what the crawl
  * would produce today, the instrument is deterministic, and the lookups
  * answer the questions the Sensor asks.
  *
@@ -95,7 +95,7 @@ describe("the checked-in table", () => {
     expectInSync(CHECKED_IN)
   })
 
-  it("records the nesting #1426 is about", () => {
+  it("records a lockup nested in a grid cell", () => {
     const home = CHECKED_IN.surfaces.home
     expect(home).toBeDefined()
     expect(

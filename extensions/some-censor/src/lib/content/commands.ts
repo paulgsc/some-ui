@@ -4,8 +4,7 @@
  * Per Good-Citizen idiom #3 ("commands are more important than inputs"), the
  * keybinding/command *typestate* — `ModifierSet`, the code-based `KeyBinding`
  * table type, the platform-normalized matcher, and the input-context guard —
- * lives once in `@some-extension/common`. It was lifted from this workspace's
- * former `key-binding.ts` (see #276/#277), so censor is its first adopter.
+ * lives once in `@some-extension/common`.
  *
  * What stays local here is the *application*: censor's command ids and their
  * handlers. The adapter direction is preserved — this module knows about

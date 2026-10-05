@@ -127,7 +127,6 @@ export class PageMonitor implements Disposable {
     // eslint-disable-next-line extension-charter/require-named-lifetime -- lifetime stated above
     this.videoPollInterval = setInterval(() => this.pollVideoState(), 2_000)
 
-    // Snap initial state.
     this.isHidden = document.hidden
     this.isFullscreen = this.detectFullscreen()
     this.isWindowFocused = document.hasFocus()

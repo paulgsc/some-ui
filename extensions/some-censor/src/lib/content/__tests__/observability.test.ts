@@ -113,11 +113,12 @@ function kindsOf(recorder: {
 
 afterEach(() => {
   document.body.innerHTML = ""
+  Reflect.deleteProperty(ext, "storage")
 })
 
 // ── Surfaces ─────────────────────────────────────────────────────────────────
 
-describe("surfaceOf — the surfaces QC2's (#1384) corpus is bucketed by", () => {
+describe("surfaceOf — the surfaces QC2's corpus is bucketed by", () => {
   it("names each of Home, Search, watch, playlist and Shorts", () => {
     expect(surfaceOf("/")).toBe("home")
     expect(surfaceOf("/results")).toBe("search")
@@ -320,10 +321,8 @@ describe("OccludedCardResolves — the failure mode it exists for is reachable",
 // ── PromotionGuardClears ─────────────────────────────────────────────────────
 
 describe("OccluderReleases — the DOM-truth check the bookkeeping cannot make", () => {
-  // #1425. Every other invariant reads a queue, so the failures that leave an
-  // element in no queue at all — #1423's churn teardown, #1426's collision,
-  // the session race fixed in d024f8f — were invisible to all of them, and
-  // health reported 100/healthy on a page that was visibly broken.
+  // Every other invariant reads a queue, so a failure that leaves an element
+  // in no queue at all is invisible to them.
 
   it("says nothing about a card that has only just appeared", () => {
     const outcome = check(
@@ -374,9 +373,8 @@ describe("OccluderReleases — the DOM-truth check the bookkeeping cannot make",
         ],
       })
     )
-    // Which *kind* of element is stranded is the whole diagnostic: a non-video
-    // rich-item is #1422, a lockup is #1426. A tag name carries nothing about
-    // the card itself (#1382).
+    // Which *kind* of element is stranded is the whole diagnostic, and a tag
+    // name carries nothing about the card itself (#1382).
     expect(outcome).toEqual({
       ok: false,
       details: {
@@ -465,13 +463,10 @@ describe("mutationBatch — the observer's firehose, bounded", () => {
   })
 })
 
-describe("the health throttle is per session, not per content script (#1428)", () => {
+describe("the health throttle is per session, not per content script", () => {
   it("forgets the previous session's last-sample time on sessionStart", async () => {
-    // Bot-found on #1428's own review, round 2. This adapter is created once
-    // per content-script instance and deliberately outlives a session, so
-    // without the reset an SPA navigation inherits the old session's throttle —
-    // and the sample it swallows is the first one after the page changed
-    // underneath us, which is the one most likely to have something to say.
+    // The adapter outlives a session, so without the reset an SPA navigation
+    // would inherit the old throttle and swallow the new page's first sample.
     const obs = newObservability()
     await obs.sampleHealth(baseContext({ now: NOW }))
 
@@ -486,7 +481,7 @@ describe("the health throttle is per session, not per content script (#1428)", (
   })
 })
 
-describe("bulkAdvance — the coverage a keystroke actually had (#1424)", () => {
+describe("bulkAdvance — the coverage a keystroke actually had", () => {
   const clean = {
     advanced: 3,
     alreadyPast: 2,
@@ -573,7 +568,7 @@ describe("bulkAdvance — the coverage a keystroke actually had (#1424)", () => 
 
 // ── The date corpus ──────────────────────────────────────────────────────────
 
-describe("uploadDate — the corpus mechanism #1384 depends on", () => {
+describe("uploadDate — the corpus mechanism QC2 depends on", () => {
   it("banks a distinct raw form once, but counts every sighting", () => {
     const obs = newObservability()
     obs.uploadDate("3 days ago", "home", "ytd-rich-item-renderer")
@@ -672,7 +667,7 @@ describe("uploadDate — the corpus mechanism #1384 depends on", () => {
   })
 })
 
-describe("queue keys never carry a URL into the bundle (#1397's own review, round 3)", () => {
+describe("queue keys never carry a URL into the bundle", () => {
   it("replaces an href key's URL with a stable bounded label — elementKey() emits a complete absolute URL for exactly the elements mount.unresolved fires on", () => {
     const key = "h:https://www.youtube.com/feed/watch_later?list=PLabc&si=xyz"
     const redacted = redactQueueKey(key)
@@ -917,10 +912,6 @@ function installFakeStorage(
 }
 
 describe("the session index", () => {
-  afterEach(() => {
-    Reflect.deleteProperty(ext, "storage")
-  })
-
   it("publishes an entry as soon as a session starts, not only once a health sample runs", async () => {
     installFakeStorage()
     const obs = newObservability()
@@ -983,11 +974,7 @@ describe("the session index", () => {
   })
 })
 
-describe("the index cap does not orphan payloads (#1397's own review)", () => {
-  afterEach(() => {
-    Reflect.deleteProperty(ext, "storage")
-  })
-
+describe("the index cap does not orphan payloads", () => {
   /** An indexed recording: its index entry plus its persisted bundle. */
   async function record(store: Map<string, unknown>, i: number): Promise<void> {
     store.set(sessionStorageKey(`s${String(i)}`), { version: 1, events: [] })
@@ -1095,7 +1082,7 @@ describe("the index cap does not orphan payloads (#1397's own review)", () => {
   })
 })
 
-describe("the corpus snapshot survives the recorder's own clamp (#1397's own review, round 2)", () => {
+describe("the corpus snapshot survives the recorder's own clamp", () => {
   it("budgets for the worst case the caps allow, escaping included — Recorder.clamp() replaces an oversized value with a truncated string rather than trimming it", () => {
     const plain = Array.from({ length: MAX_DATE_FORMS_PER_SURFACE }, () =>
       "x".repeat(MAX_RAW_DATE_CHARS)
@@ -1132,11 +1119,7 @@ describe("the corpus snapshot survives the recorder's own clamp (#1397's own rev
   })
 })
 
-describe("concurrent index writes (#1397's own review)", () => {
-  afterEach(() => {
-    Reflect.deleteProperty(ext, "storage")
-  })
-
+describe("concurrent index writes", () => {
   it("re-applies its own entry when a competing tab's write dropped it", async () => {
     let store: Map<string, unknown> | undefined
     let clobbered = false

@@ -1,12 +1,8 @@
 /**
- * The overflow half of #973, asserted as properties of the class table.
- *
- * The reported symptom was metadata running out of a small upcoming-slider
- * card. The causes were structural rather than cosmetic — a `min-width` wider
- * than the card, an unclamped title, and a fixed type scale — and each has a
- * corresponding property here. These are cheap string assertions, not layout
- * tests; what they buy is that removing the guard is a visible red diff rather
- * than something that only shows up in a screenshot of a narrow shelf.
+ * Small-card overflow guards, asserted as properties of the class table: no
+ * `min-width` wider than a card, a clamped title, and a container-query type
+ * scale. Cheap string assertions, not layout tests, so removing a guard is a
+ * red diff rather than a screenshot of a narrow shelf.
  *
  * The complementary check that the utilities actually *exist* is the build: the
  * UnoCSS step scans this exact module, so a typo yields no rule at all.

@@ -27,19 +27,15 @@
  *        reset().  It is NEVER bumped mid-operation — doing so would silently
  *        cancel all concurrent async promotes.
  *
- *   M6 — Per-element staleness (#980).  The same technique as VideoEntry's
- *        Entry-2 (`_version`, checked after an await), applied one level up:
- *        `_session` catches a *lifecycle* boundary (SPA navigation) but not a
- *        single element being recycled to a new video mid-await, which is a
- *        per-card event, not a session event. `_elClaim`'s token is bumped
- *        every time an element is newly claimed for a different videoId;
+ *   M6 — Per-element staleness.  VideoEntry's Entry-2 (`_version`, checked
+ *        after an await), one level up: `_session` catches SPA navigation but
+ *        not one element recycled to a new video mid-await. `_elClaim`'s token
+ *        is bumped whenever an element is claimed for a different videoId;
  *        `_promote()` and `_backfill()` capture it before their whitelist-
- *        check await and discard the resolution if it no longer matches —
- *        the element has moved on to a different video since the operation
- *        started. An intermediate videoId recycled through *during* another
- *        element's in-flight await (never seen long enough to mount) is
- *        silently dropped; only the element's *current* claim is guaranteed
- *        to eventually mount, via the stale-bail retry in `_promote()`.
+ *        check await and discard the resolution if it no longer matches. An
+ *        intermediate videoId recycled through mid-await is silently dropped;
+ *        only the element's *current* claim is guaranteed to mount, via the
+ *        stale-bail retry in `_promote()`.
  */
 
 import { ext } from "@censor/platform/content"
@@ -71,30 +67,25 @@ type Phase = "idle" | "running"
 /**
  * How long an element gets to resolve before it is dropped.
  *
- * Both queues need a bound for the same reason (#973): the tags added for the
- * newer feeds are polymorphic. `yt-lockup-view-model` also renders channels and
+ * Both queues need a bound because the newer feed tags are polymorphic.
+ * `yt-lockup-view-model` also renders channels and
  * playlists, which have no videoId and would sit in `_unresolved` forever; a
  * shorts lockup has a videoId but frequently no channel link at all, so it
  * would sit in `_channelPending` forever. Either one alone is enough to keep a
  * 500ms interval — and the full-document `scan()` it drives — running for the
  * lifetime of the tab (Charter §8).
  *
- * The budget is wall-clock, not a pass count. `retryUnresolved()` is driven by
- * the observer on every mutation batch as well as by the 500ms interval, so a
- * pass count is really a count of *page activity*: instrumenting a fixture
- * showed 15 passes inside the first four seconds, almost all of them from the
- * mount burst. A 20-pass budget therefore expired in a fraction of the ~10s it
- * was documented as granting, and would expire faster still on a busy feed —
- * exactly when a slow card most needs the time.
+ * The budget is wall-clock, not a pass count. `retryUnresolved()` runs on every
+ * mutation batch as well as on the 500ms interval, so a pass count measures
+ * page activity and would expire fastest on a busy feed, exactly when a slow
+ * card most needs the time.
  */
 export const RESOLVE_BUDGET_MS = 10_000
 
 export class VideoManager {
-  // Primary lookup: videoId → entry
   private readonly _byVideo: Map<VideoId, VideoEntry> = new Map()
   // Element → videoId: detects scroll-virtualizer element reuse
   private readonly _elToVid: WeakMap<HTMLElement, VideoId> = new WeakMap()
-  // Failed-resolution queue
   private readonly _unresolved: Map<string, HTMLElement> = new Map()
   // When each queued key was first seen, keyed alongside _unresolved /
   // _channelPending. The budget is measured from here; see RESOLVE_BUDGET_MS.
@@ -104,10 +95,9 @@ export class VideoManager {
   // re-queued element starts a fresh budget — so the queue would empty and
   // immediately refill, forever.
   //
-  // Strong refs, unlike the WeakSet this started as, because `recheckRejected`
-  // has to iterate them. Bounded by the number of non-video lockups on one
-  // page, pruned as they disconnect, and cleared by reset() on every
-  // navigation.
+  // Strong refs because `recheckRejected` iterates them. Bounded by the
+  // non-video lockups on one page, pruned as they disconnect, cleared by
+  // reset() on every navigation.
   private readonly _rejected: Set<HTMLElement> = new Set()
   // Same, for channel backfill: videoIds we have stopped looking for a channel
   // for. Keyed by videoId (not element) because that is what _channelPending is
@@ -118,38 +108,26 @@ export class VideoManager {
   // separately from _unresolved (which is "not even maskable yet") so the retry
   // loop stays alive while either set is non-empty.
   private readonly _channelPending: Map<VideoId, HTMLElement> = new Map()
-  // Concurrent-promotion guard
   private readonly _promoting: WeakSet<HTMLElement> = new WeakSet()
-  // Observability-only mirror of _promoting: when each element entered the
-  // guard, so PromotionGuardClears (observability.ts) can see one that never
-  // left it. A WeakSet cannot be iterated, and the invariant's whole subject
-  // is the element still sitting in it — so this holds strong refs, the same
-  // trade _rejected already makes and for the same reason.
+  // Observability-only mirror of _promoting (strong refs, since a WeakSet
+  // cannot be iterated): when each element entered the guard, so
+  // PromotionGuardClears (observability.ts) can see one that never left it.
   //
-  // Deliberately exempt from reset()'s clear-everything sweep (M3), unlike
-  // every other map here — bot-found (#1397's own review): reset() cannot
-  // clear `_promoting` itself, because a WeakSet has no iteration and so no
-  // clear-by-content. Clearing only the mirror would let the two disagree
-  // exactly where it matters: an element still held by the real guard after
-  // an SPA navigation blocks every later _promote() for it, and a mirror that
-  // forgot it makes that permanently unreportable. Entries are therefore
-  // removed in one place only — _promote()'s finally, the same place the real
-  // guard is released — so the mirror can only ever retain what `_promoting`
-  // has also retained, and what it retains is precisely the leak.
+  // Deliberately exempt from reset()'s sweep (M3): reset() cannot clear the
+  // WeakSet, so clearing only the mirror would forget exactly the element still
+  // blocking later _promote() calls. Entries leave only in _promote()'s
+  // finally, where the real guard is released, so the mirror retains only
+  // what `_promoting` retains: precisely the leak.
   private readonly _promotingSince: Map<HTMLElement, PromotingCard> = new Map()
   // Observability-only, like _promotingSince: when each element was first seen
   // under the static occluder with no data-boyo. Strong refs for the same
   // reason, and bounded the same way — _occlusionCensus() prunes it against
   // the live DOM on every pass, so it holds at most what is on screen.
   private readonly _occludedSince: Map<HTMLElement, number> = new Map()
-  // Per-element staleness guard (#980, M6). Which videoId an element is
-  // currently claimed for, and a token bumped whenever that claim changes —
-  // set synchronously the instant _promote()/_promoteProvisional() start
-  // handling el, independent of _elToVid, which is only stamped *after* a
-  // promotion succeeds and so cannot see a recycle that happens during the
-  // very first in-flight promotion for that element. _promote()/_backfill()
-  // capture the token before their whitelist-check await and compare after,
-  // the same technique as VideoEntry's `_version`.
+  // Per-element staleness guard (M6). Set synchronously when
+  // _promote()/_promoteProvisional() start handling el, unlike _elToVid, which
+  // is stamped only after a promotion succeeds and so misses a recycle during
+  // the element's first in-flight promotion.
   private readonly _elClaim: WeakMap<
     HTMLElement,
     { videoId: VideoId; token: number }
@@ -170,12 +148,11 @@ export class VideoManager {
   private _occludedLastReading = false
 
   constructor() {
-    // Register with the debug layer so Playwright can observe state
     this._registerDebug()
   }
 
   private _registerDebug(): void {
-    // Use a closure that reads live state so snapshots are always fresh
+    // Live getters, so debug snapshots are always fresh.
     const mgr = this
     registerDebugSource({
       get phase(): Phase {
@@ -223,12 +200,9 @@ export class VideoManager {
     if (this._promotingSince.size > 0) this._armStallWatch()
     this._armOcclusionWatch()
     observability()?.sessionStart(this._session)
-    // Taken now, not promised. Round 3 seeded a flag so the *first tick* would
-    // report regardless of what it found; bot-found in round 4 that a flag is
-    // not a reading — navigation is debounced at 150 ms, so a second one
-    // inside OCCLUSION_GRACE_MS runs `_teardownRuntime()` -> `reset()`, which
-    // cancels the tick that was going to honour it. A verdict describing the
-    // page before the navigation would then stay the latest persisted one.
+    // Taken now, not left to the first tick: a second navigation inside
+    // OCCLUSION_GRACE_MS (debounced at 150 ms) runs `reset()`, which cancels
+    // that tick and would leave the pre-navigation verdict as the latest one.
     this._occlusionReading(Date.now(), /* force */ true)
     publish()
     return this._session
@@ -283,21 +257,16 @@ export class VideoManager {
     // element goes straight onto the (bounded) retry queue instead. If it later
     // hydrates into a video lockup, the retry loop picks it up there.
     //
-    // A container — a grid cell wrapping a lockup, a shelf wrapping a row of
-    // them — is not queued at all: it is not a card and never will be, the
-    // cards inside it are handled on their own, and the stylesheet does not
-    // occlude it (bot-found on #1504's own review). Skipping it here rather
-    // than queueing it keeps a feed of nested cells from holding the retry
+    // A container (a grid cell or shelf wrapping lockups) is not queued at
+    // all: it never becomes a card, its cards are handled on their own, and
+    // the stylesheet does not occlude it. Queueing it would hold the retry
     // loop open for a full budget per session.
     const kind = classifyCard(el)
     if (kind !== "card") {
-      // Whatever this element is now, it is not the card it may have been.
-      // Feed virtualization recycles a renderer freely — a cell that showed a
-      // video can be handed an ad slot, or be turned into a wrapper around a
-      // lockup — and an entry left behind would keep its `data-boyo` (lifting
-      // an occluder that no longer applies), let a repair or a bulk advance
-      // rebuild a veil over a non-card, and let a still-awaiting promotion
-      // mount one. Bot-found on #1504's own review.
+      // Feed virtualization recycles renderers freely (a video cell can become
+      // an ad slot or a wrapper). An entry left behind would keep `data-boyo`
+      // (lifting an occluder that no longer applies), let a repair rebuild a
+      // veil over a non-card, and let an awaiting promotion mount one.
       this._retireOwnership(el)
       if (kind === "shell") this._enqueueUnresolved(el)
       return
@@ -310,30 +279,27 @@ export class VideoManager {
 
       // Detect scroll-virtualizer element reuse: same HTMLElement, new videoId.
       // data-boyo-vid is set at mount time and cleared at destroy().
-      // When it differs from the just-extracted id, the element has *either*
-      // been recycled for a different video or had its subtree churned by the
-      // vendor — `representsVideo` is what tells those apart (#1423).  Do NOT
-      // bump _session either way: both are per-card events, not lifecycle
-      // boundaries.  Bumping _session would silently cancel all concurrent
-      // in-flight promotes for every other card on the page.
+      // When it differs from the just-extracted id, the element was either
+      // recycled or had its subtree churned by the vendor; `representsVideo`
+      // tells those apart. Do NOT bump _session either way (M5): that would
+      // cancel every other card's in-flight promote.
       const rawPreviousId = el.dataset["boyoVid"]
       const currentId = extracted.videoId
 
       let recycled = false
       if (rawPreviousId && rawPreviousId !== currentId) {
         const rawAsPrevId = asVideoId(rawPreviousId)
-        // Three conditions, none of them optional, and each one is a P1 this
-        // PR's review found by removing it (#1427, rounds 1-3):
+        // Three conditions, none optional:
         //
         //   - the entry is live in THIS session — otherwise the shortcut
         //     "preserves" something reset() already destroyed and returns
-        //     without mounting (round 2);
+        //     without mounting;
         //   - the entry belongs to THIS element — `_byVideo` is keyed by
         //     video, so an id lookup alone can hand back another renderer's
-        //     entry and repair that instead (round 3, #1426);
+        //     entry;
         //   - and the element still advertises the artifact, with an
         //     authoritative `data-video-id` outranking any stale descendant
-        //     link (round 1).
+        //     link.
         //
         // This is the only place the discrimination happens. `_promote()`
         // deliberately does not repeat it: its `_elToVid` claim survives
@@ -539,28 +505,21 @@ export class VideoManager {
         this._dequeueUnresolved(key)
         this._promoteProvisional(el, extracted.videoId)
       } else if (this._budgetSpent(key)) {
-        // Out of budget with nothing extractable. Give up on it for good, so
-        // the retry loop — and the full-document scan() it drives — can stop
-        // (Charter §8). `recheckRejected()` is what makes giving up safe: the
-        // element is re-examined on every later mutation batch and revived the
+        // Out of budget with nothing extractable. Give up for good, so the
+        // retry loop and its full-document scan() can stop (Charter §8).
+        // `recheckRejected()` makes giving up safe: it revives the element the
         // moment extraction would succeed.
         //
-        // Almost always this is an element that is not video-shaped: a channel
-        // or playlist lockup, or a non-video `ytd-rich-item-renderer` cell
-        // (#1422). The pre-mask rule's `:has()` guard means the stylesheet is
-        // not occluding those, so nothing is left blurred behind us.
+        // Almost always this is not video-shaped (a channel or playlist
+        // lockup, a non-video `ytd-rich-item-renderer` cell), which the
+        // pre-mask rule's `:has()` guard does not occlude.
         //
-        // An earlier revision exempted *video-shaped* elements from the budget
-        // on the reasoning that "being video-shaped means it has a watch or
-        // shorts href, which is the very thing extractVideoId reads" — so it
-        // could not spin. That was true only for tags whose `isVideoCard()`
-        // actually checks for a link; for a tag it accepted unconditionally the
-        // exemption was the entire mechanism of #1422, and the loop ran for the
-        // life of the tab. The budget therefore now binds every queued element.
-        // The residual case — a video-shaped element whose watch href carries
-        // no parseable id (`/watch?list=…` alone) — stays occluded after
-        // rejection, which is the fail-closed answer (QD1), and
-        // `OccluderReleases` reports it rather than the loop hiding it.
+        // The budget binds video-shaped elements too: `isVideoCard()` accepts
+        // some tags without checking for a link, and exempting them let the
+        // loop run for the life of the tab. A video-shaped element whose watch
+        // href carries no parseable id (`/watch?list=…`) stays occluded after
+        // rejection, the fail-closed answer (QD1), and `OccluderReleases`
+        // reports it.
         this._dequeueUnresolved(key)
         this._rejected.add(el)
         observability()?.rejected(key)
@@ -669,24 +628,14 @@ export class VideoManager {
   /**
    * Advance every masked or meta entry to TitleState in one operation.
    *
-   * Called by the key-binding adapter (KeyBindingAdapater) on the configured
-   * hotkey. Phase-gated and idempotent - safe to call repeatedly.
-   *
-   * ## What "all" means, and why it is now reported (#1424)
+   * Called by the key-binding adapter on the configured hotkey. Phase-gated
+   * and idempotent.
    *
    * It iterates `_byVideo`, which holds promoted entries only. A card still in
-   * `_unresolved`, or one orphaned under the static occluder with no registry
-   * slot at all (#1421), is outside this loop and always was — which is the
-   * live report that the hotkey "misses some k% of cards", stable across
-   * rebuilds because the causes are structural rather than racy.
-   *
-   * This does not widen the loop. Widening it is #1385's question, not this
-   * one, and pulls the opposite way: `[QC3]` exists to give the command an
-   * *admission predicate* so it stops advancing cards it should not. The two
-   * compose because this change adds no eligibility of its own — it counts
-   * what the loop did and what it never reached, so when `[QC3]` narrows the
-   * set the command names, the same census reports honestly about the narrower
-   * set with nothing to undo here.
+   * `_unresolved`, or orphaned under the static occluder with no registry slot,
+   * is outside this loop; the census reports what the loop did and what it
+   * never reached, and adds no eligibility of its own, so it stays honest when
+   * `[QC3]` narrows the set the command names (widening the loop: #1385).
    */
   advanceAllToTitle(): void {
     if (this._phase !== "running") return
@@ -731,7 +680,7 @@ export class VideoManager {
    *
    * Only the entry `el` itself carries is touched: `_byVideo` is keyed by
    * video, so a lookup by the id stamped on `el` can name another renderer's
-   * entry (#1426), and that one is not ours to destroy here.
+   * entry, and that one is not ours to destroy here.
    */
   private _retireOwnership(el: HTMLElement): void {
     const stamped = el.dataset["boyoVid"]
@@ -793,37 +742,22 @@ export class VideoManager {
       const prevVid = this._elToVid.get(el)
       const session = this._session
       if (prevVid !== undefined && prevVid !== videoId) {
-        // Deliberately NOT a churn/recycle decision — this destroys and
-        // continues to mount, as it did before #1423.
-        //
-        // An earlier revision of this PR discriminated here too, and it
-        // produced two separate P1s in consecutive review rounds (#1427,
-        // rounds 2 and 3). Both had the same root cause: `_elToVid` is a
-        // WeakMap `reset()` cannot clear and `_byVideo` is keyed by video
-        // rather than by element, so `prevVid` here is not evidence about
-        // *this* element at all — it can outlive a session, and the entry it
-        // names can belong to a different renderer entirely. A shortcut that
-        // returns without mounting on evidence that weak strands the element
-        // under the static occluder, which is the failure this PR exists to
-        // remove.
-        //
-        // The discrimination lives in upsert() alone, keyed on
-        // `data-boyo-vid` — a stamp on the element itself, so it cannot
-        // implicate another renderer. This path is only ever reached after
-        // upsert() has already decided, or from retryUnresolved() for an
-        // element that was never mounted, so nothing is lost by it being the
-        // plain teardown it always was.
+        // Deliberately NOT a churn/recycle decision: this destroys and mounts.
+        // `_elToVid` is a WeakMap `reset()` cannot clear and `_byVideo` is
+        // keyed by video, so `prevVid` is not evidence about *this* element; a
+        // shortcut that skipped the mount on it would strand the element under
+        // the static occluder. The discrimination lives in upsert() alone,
+        // keyed on the element's own `data-boyo-vid` stamp.
         this._byVideo.get(prevVid)?.destroy()
         this._byVideo.delete(prevVid)
       }
 
       // Same (el, videoId) in current session → veil repair only. The same
       // video on a *different* element that is still a card is left alone
-      // too (#1426's sequential case, unchanged here). But an entry whose
-      // element has stopped being a card — the cell this lockup replaced,
-      // for the same video (#1504's own review, round 4) — is a stale owner:
-      // repairing it would re-stamp the wrapper and leave this card
-      // stranded, so it is retired and the mount proceeds here.
+      // too. But an entry whose element has stopped being a card (the cell
+      // this lockup replaced, for the same video) is a stale owner: repairing
+      // it would re-stamp the wrapper and strand this card, so it is retired
+      // and the mount proceeds here.
       const existing = this._byVideo.get(videoId)
       if (existing?.record.session === this._session) {
         if (existing.owns(el) || existing.isCard()) {
@@ -844,21 +778,14 @@ export class VideoManager {
 
       // Post-await guards: bail if the manager was torn down, a full
       // reset()+startSession() cycle ran while we were awaiting (M5), or el
-      // has since been claimed for a different videoId (M6/#980) — the
-      // element was recycled one or more times during this round-trip and no
-      // longer means what it meant when the operation started.
+      // has since been claimed for a different videoId (M6).
       if (this._phase !== "running") return
       if (this._session !== session) {
-        // C2: a chip/feed navigation tore the runtime down and started a
-        // fresh session while this call awaited. _promoting is a WeakSet
-        // reset() cannot clear (see its own comment), so el stayed claimed by
-        // this call for the entire round-trip — including through the new
-        // session's own _scan(), whose upsert() for the very same el (chip
-        // navigations reuse renderer elements in place) had nothing to do but
-        // return at the guard above. That upsert has no other way to be
-        // retried once the guard clears: without requeuing here, el is
-        // silently orphaned — not promoting, never promoted, and still
-        // hidden under the static pre-mask rule with nothing left to lift it.
+        // C2: a navigation started a fresh session while this call awaited.
+        // _promoting (uncleared by reset()) kept el claimed, so the new
+        // session's upsert() for the same reused el returned at the guard
+        // above. Without the retry in finally, el would stay under the static
+        // pre-mask rule with nothing left to lift it.
         sessionEnded = true
         return
       }
@@ -881,14 +808,9 @@ export class VideoManager {
       this._promoting.delete(el)
       this._promotingSince.delete(el)
       if (stale) observability()?.staleDiscarded(videoId)
-      // A stale bail means el moved on while this call was in flight; a
-      // sessionEnded bail means a navigation reset the runtime while it was
-      // in flight. Either way, re-derive el's *current* truth from the live
-      // DOM now that the guard has cleared, rather than trying to carry a
-      // videoId or a session forward through an already-superseded call.
-      // Safe from looping: this only re-enters when el actually changed or a
-      // navigation actually happened since this call started, and each of
-      // those can trigger at most one such retry.
+      // After a stale or sessionEnded bail, re-derive el's current truth from
+      // the live DOM now that the guard has cleared. Cannot loop: each change
+      // or navigation triggers at most one retry.
       if ((stale || sessionEnded) && el.isConnected) this.upsert(el)
     }
   }
@@ -905,7 +827,7 @@ export class VideoManager {
    * we repair rather than replace.
    */
   private _promoteProvisional(el: HTMLElement, videoId: VideoId): void {
-    // Claim el for videoId (M6/#980) so any *other* in-flight _promote()/
+    // Claim el for videoId (M6) so any *other* in-flight _promote()/
     // _backfill() call for this element — still awaiting from an earlier,
     // now-superseded videoId — sees the mismatch once it resumes.
     this._claim(el, videoId)
@@ -947,8 +869,8 @@ export class VideoManager {
    * Backfill a concrete channelId onto a provisional entry, running the
    * whitelist check now that we have a channel to check.  Guarded against
    * lifecycle changes across the await (M5) and against `el` having been
-   * recycled to a different video while this call was in flight (M6/#980) —
-   * unlike _promote(), a stale bail here needs no retry of its own: whatever
+   * recycled to a different video while this call was in flight (M6).
+   * Unlike _promote(), a stale bail here needs no retry of its own: whatever
    * recycled `el` already routed it through a fresh _promote()/
    * _promoteProvisional() synchronously, so `entry` is simply no longer the
    * live entry for `el` and backfilling it would write into a corpse.
@@ -986,12 +908,10 @@ export class VideoManager {
    * Hand the live queue census to the observability layer, at that layer's
    * own cadence rather than this loop's.
    *
-   * Called from `retryUnresolved()` because that is the only periodic thing
-   * this class already runs — adding a second timer for diagnostics would be
-   * exactly the per-tab background cost Charter §8 (and `RESOLVE_BUDGET_MS`'s
-   * own rationale) is about. `shouldSampleHealth` is a single timestamp
-   * comparison, so the 500 ms passes that are not due cost nothing and the
-   * context below is not built at all.
+   * Called from `retryUnresolved()`, the only periodic thing this class runs:
+   * a second timer for diagnostics would be per-tab background cost (Charter
+   * §8). `shouldSampleHealth` is one timestamp comparison, so passes that are
+   * not due build nothing.
    */
   private _sampleHealth(): void {
     const obs = observability()
@@ -1004,7 +924,7 @@ export class VideoManager {
   /**
    * The live queue state, as plain data. Read-only with respect to every map
    * it touches: this reports what the manager already decided, it never gates
-   * or alters a decision (#1395's own non-goal).
+   * or alters a decision.
    */
   private _observabilityContext(now: number): BoyoContext {
     const unresolved: Array<QueuedCard> = []
@@ -1012,11 +932,8 @@ export class VideoManager {
       unresolved.push({
         key,
         firstSeenAt: this._firstSeen.get(key) ?? now,
-        // Re-read from the live DOM rather than trusting why the element was
-        // queued: a lockup hydrates from the inside out, so the answer at
-        // enqueue time and the answer now are different questions — and it is
-        // the answer *now* that decides whether the pre-mask rule is still
-        // occluding it.
+        // Re-read now: a lockup hydrates from the inside out, and only the
+        // current answer decides whether the pre-mask rule still occludes it.
         videoShaped: isVideoCard(el),
       })
     }
@@ -1047,21 +964,16 @@ export class VideoManager {
   /**
    * What the static occluder is hiding right now, and since when.
    *
-   * The one part of this context read from the DOM rather than from a map
-   * here. Every queue above can only describe an element this class is still
-   * tracking; the failures `OccluderReleases` exists for are the ones where an
-   * element fell out of all of them (#1421), so the census has to ask the page
-   * instead of asking us.
+   * Read from the DOM, not from a map: `OccluderReleases` exists for elements
+   * that fell out of every queue this class tracks, so only the page can name
+   * them.
    *
-   * `_occludedSince` is the only state it needs — first-seen timestamps so a
-   * card legitimately mid-adoption is not reported as stranded. It is pruned
-   * against the live answer on every pass, so it is bounded by what is on
-   * screen rather than by session length, and cleared by reset() with
-   * everything else.
+   * `_occludedSince` holds first-seen timestamps so a card mid-adoption is not
+   * reported as stranded. Pruned against the live answer each pass (bounded by
+   * what is on screen) and cleared by reset().
    *
    * Cost is one `querySelectorAll` per premask selector per *health sample*
-   * (10 s), not per mutation — the Charter §8 line the rest of this layer is
-   * built around.
+   * (10 s), not per mutation (Charter §8).
    */
   private _occlusionCensus(now: number): Array<OccludedCard> {
     const census: Array<OccludedCard> = []
@@ -1089,30 +1001,17 @@ export class VideoManager {
    *
    * ## Why this partitions the occluded set rather than the queues
    *
-   * Bot-found on #1429's own review, twice, and both findings were the same
-   * mistake: buckets derived from the bookkeeping do not mean what their
-   * labels say.
+   * Buckets derived from the bookkeeping do not mean what their labels say.
+   * `_unresolved` also holds non-cards (channel lockups, playlists, shells)
+   * that the premask `:has()` guard does not occlude, so the user sees them.
+   * And "occluded minus the queue" is not "orphaned": `_promote()` dequeues
+   * before awaiting `IS_WHITELISTED`, so a healthy card is briefly occluded
+   * and out of `_unresolved`.
    *
-   * `_unresolved.size` is not "cards the command missed". `upsert()` enqueues
-   * every element that fails `isVideoCard()` — a channel lockup, a playlist,
-   * an unhydrated shell — precisely so extraction does not rescan their
-   * subtrees each pass. Those are not cards, and the premask `:has()` guard
-   * deliberately does not occlude them, so the user sees them perfectly well.
-   * Counting them inflated `skipped` with ordinary tiles, worst on search
-   * pages where polymorphic lockups are most of the grid (P1).
-   *
-   * And "occluded minus the queue" is not "orphaned". `_promote()` dequeues
-   * before awaiting the `IS_WHITELISTED` round trip, so for the length of that
-   * trip a perfectly healthy card is occluded, out of `_unresolved`, and
-   * inside `_promoting` — landing in the bucket documented as structural
-   * orphans, which is the one bucket whose whole value is that it should trend
-   * to zero as #1421 lands (P2).
-   *
-   * So the census starts from what the user can actually see — the occluder's
-   * own condition — and asks of each hidden card *why*. Every bucket then
-   * means one thing: `unresolved` is mid-resolution, `promoting` is mid-mount,
-   * `untracked` is nothing coming for it. A tile that is not occluded is not
-   * in any of them, because it was never missed.
+   * So the census starts from what the user can see (the occluder's own
+   * condition) and asks of each hidden card *why*: `unresolved` is
+   * mid-resolution, `promoting` is mid-mount, `untracked` is nothing coming
+   * for it.
    *
    * Reads the DOM without touching `_occludedSince`. That map belongs to the
    * health cadence, and its timestamps are what `OccluderReleases` measures
@@ -1143,22 +1042,15 @@ export class VideoManager {
    * Keep a health cadence alive for as long as anything is inside the
    * promotion guard.
    *
-   * Bot-found (#1397's own review). `_sampleHealth()` rides `retryUnresolved()`,
-   * which runs only from the observer's mutation batches and from the retry
-   * interval — and that interval is started by the two *queueing* paths alone.
-   * A fully-extracted card never queues, so a page whose only work item is one
-   * such card leaves no periodic callback running at all. A never-settling
-   * `IS_WHITELISTED` promise could then cross `PROMOTION_STALL_MS` on a quiet
-   * page without `PromotionGuardClears` ever being evaluated — the invariant
-   * missing precisely the failure it was added for.
+   * `_sampleHealth()` rides `retryUnresolved()`, whose interval only the
+   * queueing paths start. A fully-extracted card never queues, so a
+   * never-settling `IS_WHITELISTED` on a quiet page would cross
+   * `PROMOTION_STALL_MS` without `PromotionGuardClears` ever being evaluated.
    *
-   * Deliberately not solved by keeping `_ensureRetryLoop()` alive instead:
-   * that loop drives a full-document `scan()` every 500 ms, which would make
-   * a diagnostic concern pay a masking-sized cost (Charter §8). This is one
-   * shared one-shot, re-armed only while something is actually held, that
-   * touches nothing but the recorder. Promotions normally settle in
-   * milliseconds, so on any healthy page it fires once, finds an empty map,
-   * and stops.
+   * Not solved by keeping `_ensureRetryLoop()` alive: its 500 ms full-document
+   * `scan()` is a masking-sized cost for a diagnostic (Charter §8). This is one
+   * shared one-shot, re-armed only while something is held, touching only the
+   * recorder; on a healthy page it fires once, finds an empty map, and stops.
    */
   private _armStallWatch(): void {
     if (this._stallWatch !== null) return
@@ -1187,33 +1079,16 @@ export class VideoManager {
    *
    * ## Why a standing cadence and not a conditional one
    *
-   * Bot-found twice on this PR's own review, and the second finding is what
-   * decided the shape. Both were the same defect: the place that scheduled the
-   * next look sat behind a gate the orphan population cannot pass.
-   *
-   * Round 1 — `_sampleHealth()` rides `retryUnresolved()`, whose interval is
-   * kept alive by `_unresolved` and `_channelPending` alone, and
-   * `_armStallWatch()` covers only `_promotingSince`. An element this class
-   * never adopted is in none of them, so it keeps nothing running: one sample
-   * stamps its `sinceAt`, `now - sinceAt` is zero, and `OccluderReleases`
-   * reports healthy forever.
-   *
-   * Round 2 — arming from inside `_occlusionCensus()` moved the gate rather
-   * than removing it. `_sampleHealth()` consults `shouldSampleHealth()` and
-   * returns *before* building a context, so a card stranded within
-   * `HEALTH_SAMPLE_INTERVAL_MS` of the previous sample produced no census and
-   * therefore no watch. Worse across an SPA navigation: `startObservability()`
-   * runs once per content-script instance and deliberately outlives a session
-   * (see observability.ts's header), so a new session inherited the old one's
-   * `_lastHealthAt` — the `sessionStart()` reset below closes that half.
-   *
-   * Making the cadence conditional means enumerating every path by which an
-   * element can end up occluded and unadopted. This epic exists because that
-   * enumeration is exactly what nobody can do reliably — `destroy()` dropping
-   * `data-boyo` is not even an observer signal (#1423), and #1426 is a card
-   * whose *second* tracked element no path accounts for. An invariant whose
-   * whole point is to read the DOM rather than trust the bookkeeping cannot
-   * have its schedule depend on the bookkeeping's call graph.
+   * Any gate on scheduling the next look is one the orphan population cannot
+   * pass. An element this class never adopted keeps none of the other
+   * cadences alive (the retry interval follows `_unresolved` and
+   * `_channelPending`, `_armStallWatch()` follows `_promotingSince`), and
+   * `_sampleHealth()`'s throttle returns before building a census. Making
+   * the cadence conditional means enumerating every path by which an element
+   * ends up occluded and unadopted, which nobody can do reliably (`destroy()`
+   * dropping `data-boyo` is not even an observer signal). An invariant that
+   * reads the DOM rather than trusting the bookkeeping cannot schedule on the
+   * bookkeeping's call graph.
    *
    * ## What it costs
    *
@@ -1223,11 +1098,10 @@ export class VideoManager {
    * per-element work beyond a tag read. That is strictly less than one
    * `scan()`, which queries and then calls `upsert()` on every match.
    *
-   * The expensive half of a health sample is not the query, it is evaluating
-   * every invariant and flushing a snapshot to `storage.local`. So the tick
-   * samples only when the census is non-empty: an idle page with nothing
-   * occluded queries, finds nothing, and writes nothing (Charter §8). A page
-   * that does have something occluded is a page with something to say.
+   * The expensive half of a health sample is evaluating every invariant and
+   * flushing a snapshot to `storage.local`, so the tick samples only when the
+   * census is non-empty (or just became empty): an idle page writes nothing
+   * (Charter §8).
    *
    * The period is also the threshold the invariant measures against.
    * `setTimeout` never fires early, so an element first seen by one tick's
@@ -1238,10 +1112,8 @@ export class VideoManager {
     if (this._occlusionWatch !== null) return
     this._occlusionWatch = setTimeout(() => {
       this._occlusionWatch = null
-      // Belt to reset()'s braces: either one alone stops the cadence after a
-      // teardown. The guard is what makes an already-scheduled tick correct,
-      // the disarm is what releases the handle promptly rather than up to
-      // OCCLUSION_GRACE_MS later.
+      // Belt to reset()'s disarm: the guard makes an already-scheduled tick
+      // correct, the disarm releases the handle promptly.
       if (this._phase !== "running") return
       this._armOcclusionWatch()
 
@@ -1267,18 +1139,13 @@ export class VideoManager {
     this._occludedLastReading = occluded
 
     // Clean now and clean last time: nothing to say, and saying it would cost
-    // a storage write every tick for as long as the tab is open.
-    //
-    // The `wasOccluded` half is not an optimization detail — it is the sample
-    // that reports a page *became* clean. Bot-found (round 3): skipping it
-    // leaves a healed violation on the diagnostics page forever and never
-    // emits `invariant.recovered`, which is this invariant's own stuck-report
-    // failure with the sign flipped.
+    // a storage write every tick. The `wasOccluded` half is the sample that
+    // reports a page *became* clean; skipping it would leave a healed
+    // violation stuck and never emit `invariant.recovered`.
     if (!force && !occluded && !wasOccluded) return
 
     const obs = observability()
-    // Bypasses _sampleHealth()'s throttle deliberately — round 2 above is what
-    // that throttle does to this invariant when it is in the way.
+    // Bypasses _sampleHealth()'s throttle deliberately (see _armOcclusionWatch).
     if (obs) void obs.sampleHealth(this._observabilityContext(now))
   }
 
@@ -1303,8 +1170,6 @@ export class VideoManager {
     this._retryInterval = setInterval(() => {
       try {
         this.retryUnresolved()
-
-        // lightweight reconciliation
         this.scan()
       } catch (err) {
         // eslint-disable-next-line no-console

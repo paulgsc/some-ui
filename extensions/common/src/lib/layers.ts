@@ -77,7 +77,6 @@ export function getPageLayer(): HTMLElement {
 
 /**
  * No-op. Kept for call-site compatibility during migration.
- * Previously performed DOM surgery; that surgery is now removed.
  */
 export function ensureLayers(): {
   pageLayer: HTMLElement

@@ -1,5 +1,5 @@
 /**
- * Everything Core is ever told (BC3, #1436).
+ * Everything Core is ever told (BC3).
  *
  * Two families, kept apart because the Boundary Contract's B5 is about the
  * first: the only *vendor* events Core sees are mutation (as the tokens the
@@ -106,9 +106,8 @@ export type Input =
    * The title-transform hook answered a `transform-title` action.
    * `translated` says whether `text` is the hook's output or the original
    * handed back untouched (the hook absent, throwing, or returning a
-   * non-string — `maybeTransformTitle`'s fallback). Bot-found (#1506's own
-   * review): without it every answer read as a translation, styled and
-   * labelled as one.
+   * non-string — `maybeTransformTitle`'s fallback). Without it every answer
+   * would read as a translation.
    */
   | {
       readonly kind: "title-transformed"

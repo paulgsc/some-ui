@@ -82,7 +82,7 @@ export class DomHandle {
    * `data-boyo` is re-asserted rather than assumed: it is the only thing
    * suppressing the static occluder in `styles/content.css`, and that occluder
    * takes no pointer events, so an element that loses the attribute to vendor
-   * churn goes inert rather than merely unstyled (#1421). Writing it here is
+   * churn goes inert rather than merely unstyled. Writing it here is
    * idempotent — this is a repair path, and the value comes from the same
    * projection `apply()` would have used.
    */
@@ -128,9 +128,8 @@ export class DomHandle {
    * partial-update path that could leave a chip from a previous state behind.
    *
    * Child order is the reading order — hint, then meta, then title — so the
-   * flex column lays them out without anyone needing absolute positioning. The
-   * previous design pinned the hint and the compact meta chip at fixed `top`
-   * offsets, which is precisely what could not survive a short card (#973).
+   * flex column lays them out without absolute positioning, which could not
+   * survive a short card.
    */
   private _render(model: RenderModel): void {
     const veil = this._veil

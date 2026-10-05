@@ -1,5 +1,5 @@
 /**
- * The crawl's measuring instrument (BC1, #1434): given a document and the
+ * The crawl's measuring instrument (BC1): given a document and the
  * catalogue, describe how the card tags sit on it.
  *
  * Deliberately self-contained. {@link fingerprintSurface} closes over
@@ -43,8 +43,8 @@ type Bucket = {
  * Measure one document.
  *
  * For every element matching a catalogue tag: which catalogue tag (if any)
- * is its nearest enclosing card — that decides `anchor` versus `nested` and
- * is the exact fact #1426 turns on — whether it carries a video link and an
+ * is its nearest enclosing card — that decides `anchor` versus `nested` —
+ * whether it carries a video link and an
  * authoritative id, and which extraction selectors find something inside
  * it. Occurrences with the same (tag, role, outer) are folded into one
  * shape; the output is sorted so two crawls of the same page produce
@@ -100,7 +100,7 @@ export function fingerprintSurface(
     if (el.querySelector(input.videoLink) !== null) bucket.withVideoLink += 1
     // The polymorphic fact `classifyCard()` turns on, recorded per shape so
     // the table says how often a top-level tag is a cell around another card
-    // rather than a card itself (#1426's `ytd-rich-item-renderer`).
+    // rather than a card itself (`ytd-rich-item-renderer`).
     if (el.querySelector(cardSelector) !== null) bucket.withChildCard += 1
     if (el.getAttribute("data-video-id")) bucket.withDataVideoId += 1
     for (const f of fieldNames) {

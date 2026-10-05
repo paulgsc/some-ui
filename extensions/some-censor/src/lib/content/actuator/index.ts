@@ -1,5 +1,5 @@
 /**
- * The Actuator (BC4, #1437): the only module that writes to VendorDOM or
+ * The Actuator (BC4): the only module that writes to VendorDOM or
  * calls `browser.*`. `realize(actions)` executes what Core named; answers
  * come back to Core as inputs through the inbox it was given.
  */

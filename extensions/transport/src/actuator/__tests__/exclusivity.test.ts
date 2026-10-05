@@ -3,6 +3,8 @@ import { dirname, join, relative } from "node:path"
 import { fileURLToPath } from "node:url"
 import { describe, expect, it } from "vitest"
 
+import { MUTATING_CALL_PATTERNS } from "./dom-mutation"
+
 /**
  * S9 acceptance criterion: "`actuator/` is the only directory in the
  * package containing a DOM-mutating call (grep-checkable, mirroring S4's
@@ -19,21 +21,6 @@ import { describe, expect, it } from "vitest"
 const ACTUATOR_DIR = join(dirname(fileURLToPath(import.meta.url)), "..")
 const SRC_DIR = join(ACTUATOR_DIR, "..")
 const EXEMPT_DIRS = new Set(["bootstrap"])
-
-const MUTATING_CALL_PATTERNS: ReadonlyArray<RegExp> = [
-  /\.setAttribute\s*\(/,
-  /\.removeAttribute\s*\(/,
-  /\.style\s*[.=]/,
-  /\.appendChild\s*\(/,
-  /\.insertBefore\s*\(/,
-  /\.replaceChild\s*\(/,
-  /\.removeChild\s*\(/,
-  /\.remove\s*\(\s*\)/,
-  /\.innerHTML\s*=/,
-  /\.outerHTML\s*=/,
-  /\.textContent\s*=/,
-  /\.classList\.(add|remove|toggle|replace)\s*\(/,
-]
 
 function allSourceFiles(dir: string): Array<string> {
   const files: Array<string> = []

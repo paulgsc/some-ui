@@ -10,12 +10,10 @@ const platformAlias = (
   "@censor": "src",
 })
 
-// The diagnostics page (OBS2, #1396) is its own standalone extension page,
-// reachable at its own moz-extension:// / chrome-extension:// URL, the way
-// suspender-ledger's and some-filter's are. #1396 deliberately left the
-// manifest's `default_popup` of "popup.html" unbuilt as a non-goal; "popup"
-// below fills only that (the "Diagnostics" entry point), not the
-// whitelist/enabled controls `@censor/types/messages` already models.
+// The diagnostics page (OBS2) is its own standalone extension page, reachable
+// at its own moz-extension:// / chrome-extension:// URL, as in
+// suspender-ledger and some-filter. "popup" is only the "Diagnostics" entry
+// point, not the whitelist/enabled controls `@censor/types/messages` models.
 const entries = [
   { name: "content", input: "src/content/content.ts" },
   { name: "background", input: "src/background/background.ts" },

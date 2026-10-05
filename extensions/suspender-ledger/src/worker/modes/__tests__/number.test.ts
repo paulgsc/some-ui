@@ -2,6 +2,7 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
+import { tab } from "@suspender/worker/core/__tests__/tab"
 import { discard, inprogress } from "@suspender/worker/core/discard"
 import { number } from "@suspender/worker/modes/number"
 import { beforeEach, describe, expect, it, vi } from "vitest"
@@ -12,23 +13,9 @@ type StorageCb = (items: Record<string, unknown>) => void
 const flush = (): Promise<void> =>
   new Promise((resolve) => setTimeout(resolve, 0))
 
-/** Build a minimal chrome.tabs.Tab with sensible defaults. */
-const makeTab = (over: Partial<chrome.tabs.Tab> = {}): chrome.tabs.Tab => ({
-  id: 1,
-  index: 0,
-  active: false,
-  discarded: false,
-  autoDiscardable: true,
-  pinned: false,
-  highlighted: false,
-  selected: false,
-  incognito: false,
-  windowId: 1,
-  groupId: -1,
-  status: "complete",
-  url: "https://example.com/",
-  ...over,
-})
+/** A loaded background tab on example.com. */
+const makeTab = (over: Partial<chrome.tabs.Tab> = {}): chrome.tabs.Tab =>
+  tab({ status: "complete", url: "https://example.com/", ...over })
 
 /** Stub collector result: a page that is ready and 20 minutes idle. */
 const readyResult = (
@@ -87,13 +74,7 @@ beforeEach(() => {
     (_keys: unknown, cb: StorageCb) => cb({ "whitelist.session": [] })
   )
 
-  // The chrome typings surface only the promise overload for tabs.query, so the
-  // callback-form implementation needs an assertion (same pattern as discard.test.ts).
-  // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-  vi.mocked(chrome.tabs.query).mockImplementation(((
-    _opts: unknown,
-    cb: QueryCb
-  ) => cb([])) as never)
+  withTabs()
 
   // scripting.executeScript injects the meta collector (func form); the Chrome
   // typings mark it as returning void but number.ts awaits the result, so the
@@ -103,9 +84,8 @@ beforeEach(() => {
     () => Promise.resolve(readyResult())
   )
 
-  // tabs.discard (the suspend action) resolves immediately. Called with only
-  // a tabId, no callback — see discard-adapter.ts's discardOnce docstring for
-  // why the callback overload is Firefox-incompatible despite the types.
+  // tabs.discard resolves immediately, promise form only (see
+  // discard-adapter.ts → discardOnce).
   // eslint-disable-next-line @typescript-eslint/no-misused-promises
   vi.mocked(chrome.tabs.discard).mockImplementation((id?: number) =>
     // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
@@ -113,13 +93,26 @@ beforeEach(() => {
   )
 })
 
+/** Make `tabs.query` answer with `tabs`. */
+function withTabs(...tabs: Array<chrome.tabs.Tab>): void {
+  // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+  vi.mocked(chrome.tabs.query).mockImplementation(((
+    _opts: unknown,
+    cb: QueryCb
+  ) => cb(tabs)) as never)
+}
+
+/** Make every collector probe answer {@link readyResult} with `over`. */
+function withMeta(over: Record<string, unknown>): void {
+  vi.mocked(chrome.scripting.executeScript).mockImplementation(
+    // eslint-disable-next-line @typescript-eslint/no-misused-promises
+    () => Promise.resolve(readyResult(over))
+  )
+}
+
 describe("number.check — auto-discard", () => {
   it("suspends an idle background tab that has exceeded the age threshold", async () => {
-    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-    vi.mocked(chrome.tabs.query).mockImplementation(((
-      _opts: unknown,
-      cb: QueryCb
-    ) => cb([makeTab({ id: 10 })])) as never)
+    withTabs(makeTab({ id: 10 }))
 
     // number: 0 so 1 candidate > 0 threshold → proceeds to suspend
     await number.check(undefined, { number: 0 })
@@ -130,19 +123,11 @@ describe("number.check — auto-discard", () => {
   })
 
   it("does not let a tab that never answers stall the rest of the sweep", async () => {
-    // A wedged content process is what this looks like from the worker:
-    // executeScript neither resolves nor rejects, because the injected function
-    // is queued behind a page main thread that is never going to run it.
-    // Awaited unguarded, it does not slow the sweep down — it ends it, and
-    // every tab after it in the list is never evaluated again.
+    // A wedged content process: executeScript neither resolves nor rejects.
+    // Awaited unguarded, it would end the sweep for every tab after it.
     vi.useFakeTimers()
     try {
-      const tabs = Array.from({ length: 8 }, (_, i) => makeTab({ id: 10 + i }))
-      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-      vi.mocked(chrome.tabs.query).mockImplementation(((
-        _opts: unknown,
-        cb: QueryCb
-      ) => cb(tabs)) as never)
+      withTabs(...Array.from({ length: 8 }, (_, i) => makeTab({ id: 10 + i })))
 
       vi.mocked(chrome.scripting.executeScript).mockImplementation(
         // eslint-disable-next-line @typescript-eslint/no-misused-promises
@@ -156,8 +141,8 @@ describe("number.check — auto-discard", () => {
       await vi.advanceTimersByTimeAsync(10_000)
       await sweep
 
-      // The sweep resolved at all — before the probe deadline it hung here
-      // forever — and every tab behind the wedged one was still judged.
+      // The sweep resolved at all, and every tab behind the wedged one was
+      // still judged.
       for (const id of [11, 12, 13, 14, 15, 16, 17]) {
         expect(chrome.tabs.discard).toHaveBeenCalledWith(id)
       }
@@ -169,50 +154,32 @@ describe("number.check — auto-discard", () => {
     }
   })
 
-  it("skips a tab whose meta.ready is false (collector not yet injected)", async () => {
-    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-    vi.mocked(chrome.tabs.query).mockImplementation(((
-      _opts: unknown,
-      cb: QueryCb
-    ) => cb([makeTab({ id: 11 })])) as never)
-    vi.mocked(chrome.scripting.executeScript).mockImplementation(
-      // eslint-disable-next-line @typescript-eslint/no-misused-promises
-      () => Promise.resolve(readyResult({ ready: false }))
-    )
-
-    await number.check(undefined, { number: 0 })
-    await flush()
-
-    expect(chrome.tabs.discard).not.toHaveBeenCalled()
-  })
-
-  it("skips a tab that is too young (within the period threshold)", async () => {
-    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-    vi.mocked(chrome.tabs.query).mockImplementation(((
-      _opts: unknown,
-      cb: QueryCb
-    ) => cb([makeTab({ id: 12 })])) as never)
-    vi.mocked(chrome.scripting.executeScript).mockImplementation(
-      // eslint-disable-next-line @typescript-eslint/no-misused-promises
-      () => Promise.resolve(readyResult({ time: Date.now() - 60 * 1000 }))
-    )
-
-    await number.check(undefined, { number: 0 })
-    await flush()
-
-    expect(chrome.tabs.discard).not.toHaveBeenCalled()
-  })
-
-  it("skips a tab with unsaved form input when form guard is on", async () => {
-    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-    vi.mocked(chrome.tabs.query).mockImplementation(((
-      _opts: unknown,
-      cb: QueryCb
-    ) => cb([makeTab({ id: 13 })])) as never)
-    vi.mocked(chrome.scripting.executeScript).mockImplementation(
-      // eslint-disable-next-line @typescript-eslint/no-misused-promises
-      () => Promise.resolve(readyResult({ forms: true }))
-    )
+  it.each([
+    [
+      "skips a tab whose meta.ready is false (collector not yet injected)",
+      { id: 11 },
+      { ready: false },
+    ],
+    [
+      "skips a tab that is too young (within the period threshold)",
+      { id: 12 },
+      { time: Date.now() - 60 * 1000 },
+    ],
+    [
+      "skips a tab with unsaved form input when form guard is on",
+      { id: 13 },
+      { forms: true },
+    ],
+    [
+      "skips a pre-existing tab that is too young by tab.lastAccessed",
+      { id: 51, lastAccessed: Date.now() - 60 * 1000 }, // 1 min ago — within period
+      { time: undefined },
+    ],
+  ] satisfies Array<
+    [string, Partial<chrome.tabs.Tab>, Record<string, unknown>]
+  >)("%s", async (_title, tabOver, meta) => {
+    withTabs(makeTab(tabOver))
+    withMeta(meta)
 
     await number.check(undefined, { number: 0 })
     await flush()
@@ -221,11 +188,7 @@ describe("number.check — auto-discard", () => {
   })
 
   it("does not suspend when tab count is at or below the threshold", async () => {
-    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-    vi.mocked(chrome.tabs.query).mockImplementation(((
-      _opts: unknown,
-      cb: QueryCb
-    ) => cb([])) as never)
+    withTabs()
 
     await number.check()
     await flush()
@@ -238,11 +201,7 @@ describe("number.check — auto-discard", () => {
     const newer = makeTab({ id: 21, url: "https://new.example.com/" })
     const now = Date.now()
 
-    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-    vi.mocked(chrome.tabs.query).mockImplementation(((
-      _opts: unknown,
-      cb: QueryCb
-    ) => cb([older, newer])) as never)
+    withTabs(older, newer)
     vi.mocked(chrome.scripting.executeScript).mockImplementation(
       // eslint-disable-next-line @typescript-eslint/no-misused-promises
       (opts: chrome.scripting.ScriptInjection<Array<unknown>, unknown>) => {
@@ -264,11 +223,7 @@ describe("number.check — auto-discard", () => {
   })
 
   it("never calls chrome.tabs.remove (never-close invariant)", async () => {
-    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-    vi.mocked(chrome.tabs.query).mockImplementation(((
-      _opts: unknown,
-      cb: QueryCb
-    ) => cb([makeTab({ id: 30 })])) as never)
+    withTabs(makeTab({ id: 30 }))
 
     await number.check(undefined, { number: 0 })
     await flush()
@@ -278,15 +233,8 @@ describe("number.check — auto-discard", () => {
 
   it("uses tab.lastAccessed as age fallback when meta.time is undefined (pre-existing tab)", async () => {
     const lastAccessed = Date.now() - 30 * 60 * 1000 // 30 min ago — older than period
-    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-    vi.mocked(chrome.tabs.query).mockImplementation(((
-      _opts: unknown,
-      cb: QueryCb
-    ) => cb([makeTab({ id: 50, lastAccessed })])) as never)
-    vi.mocked(chrome.scripting.executeScript).mockImplementation(
-      // eslint-disable-next-line @typescript-eslint/no-misused-promises
-      () => Promise.resolve(readyResult({ time: undefined }))
-    )
+    withTabs(makeTab({ id: 50, lastAccessed }))
+    withMeta({ time: undefined })
 
     // number: 0 so 1 candidate > 0 threshold; tab.lastAccessed is 30 min old
     await number.check(undefined, { number: 0 })
@@ -295,34 +243,9 @@ describe("number.check — auto-discard", () => {
     expect(chrome.tabs.discard).toHaveBeenCalledWith(50)
   })
 
-  it("skips a pre-existing tab that is too young by tab.lastAccessed", async () => {
-    const lastAccessed = Date.now() - 60 * 1000 // 1 min ago — within period
-    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-    vi.mocked(chrome.tabs.query).mockImplementation(((
-      _opts: unknown,
-      cb: QueryCb
-    ) => cb([makeTab({ id: 51, lastAccessed })])) as never)
-    vi.mocked(chrome.scripting.executeScript).mockImplementation(
-      // eslint-disable-next-line @typescript-eslint/no-misused-promises
-      () => Promise.resolve(readyResult({ time: undefined }))
-    )
-
-    await number.check(undefined, { number: 0 })
-    await flush()
-
-    expect(chrome.tabs.discard).not.toHaveBeenCalled()
-  })
-
   it("respects ignore.ready.state override — suspends even when meta.ready is false", async () => {
-    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-    vi.mocked(chrome.tabs.query).mockImplementation(((
-      _opts: unknown,
-      cb: QueryCb
-    ) => cb([makeTab({ id: 40 })])) as never)
-    vi.mocked(chrome.scripting.executeScript).mockImplementation(
-      // eslint-disable-next-line @typescript-eslint/no-misused-promises
-      () => Promise.resolve(readyResult({ ready: false }))
-    )
+    withTabs(makeTab({ id: 40 }))
+    withMeta({ ready: false })
 
     // number: 0 so 1 candidate > 0 threshold; ignore.ready.state bypasses guard
     await number.check(undefined, { "ignore.ready.state": true, number: 0 })

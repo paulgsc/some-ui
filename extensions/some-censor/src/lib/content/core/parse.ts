@@ -1,5 +1,5 @@
 /**
- * Pure parsing of the strings a card's markup carries (BC3, #1436).
+ * Pure parsing of the strings a card's markup carries (BC3).
  *
  * The extract layer reads a DOM subtree and is therefore the Sensor's
  * (Boundary Contract B3); what it *does* with each href is string logic

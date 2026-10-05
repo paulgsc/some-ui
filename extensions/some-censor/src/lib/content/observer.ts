@@ -13,17 +13,16 @@ export { SEL } from "./selectors"
  *   1. attributeFilter: ["data-video-id"]
  *      YouTube sets this attribute AFTER full hydration of the renderer's
  *      subtree (anchors, channel name, etc.). This is the most reliable
- *      "element is ready" signal and fixes the main timing bug of previous
- *      versions that tried to extract IDs at addedNodes time.
+ *      "element is ready" signal; extracting at addedNodes time is too early.
  *
  *   2. childList + subtree
  *      Catches newly inserted renderer elements that are already hydrated
- *      (e.g. initial page load, SPA navigation completing) — and, since
- *      #1504's own review, two things about the *shape* of an insertion:
+ *      (e.g. initial page load, SPA navigation completing), and two things
+ *      about the *shape* of an insertion:
  *
  *        - every catalogue element *inside* an added node, whether or not
  *          the added node is itself one. An infinite-scroll cell arrives
- *          atomically with its lockup already in it (#1426's nesting), and
+ *          atomically with its lockup already in it, and
  *          the cell is a container the manager will not adopt — so the card
  *          inside is the card, and it has to be handed over too;
  *        - the catalogue element whose *subtree* changed, found with one
@@ -45,8 +44,8 @@ export { SEL } from "./selectors"
  * Any DOM activity is a signal that YouTube may have finished hydrating
  * a previously unresolved element.
  *
- * Signal (1) covers the Polymer renderers only: the Lit-era lockups added in
- * #973 never set data-video-id. A lockup is added as a shell and filled in
+ * Signal (1) covers the Polymer renderers only: the Lit-era lockups never set
+ * data-video-id. A lockup is added as a shell and filled in
  * afterwards, so the mutation that makes it a *video* lockup is an insertion
  * deep inside a card the observer has already seen; that insertion's record
  * targets a node inside the lockup, and `closest()` from it re-upserts the
@@ -59,8 +58,7 @@ export function startObserver(mgr: VideoManager): MutationObserver {
     // Cards whose subtree changed, handed to the manager *before* anything
     // added inside them: a cell recycled into a lockup for the same video
     // must retire its own entry before the lockup asks for that video, or
-    // the lockup's upsert finds the cell's entry and repairs it instead
-    // (#1504's own review, round 4).
+    // the lockup's upsert finds the cell's entry and repairs it instead.
     const enclosing = new Set<HTMLElement>()
     let needsPrune = false
 
@@ -93,7 +91,7 @@ export function startObserver(mgr: VideoManager): MutationObserver {
           m.target instanceof Element ? m.target.closest(SEL) : null
         if (around instanceof HTMLElement) enclosing.add(around)
 
-        // Just flag that a removal happened; don't prune in the loop!
+        // Flag only; prune once after the loop.
         if (m.removedNodes.length > 0) {
           needsPrune = true
         }
@@ -106,7 +104,6 @@ export function startObserver(mgr: VideoManager): MutationObserver {
       if (!enclosing.has(el)) mgr.upsert(el)
     })
 
-    // Retry previously unresolved elements
     mgr.retryUnresolved()
 
     // …and reconsider the ones we already gave up on. A Lit lockup hydrates
@@ -116,12 +113,10 @@ export function startObserver(mgr: VideoManager): MutationObserver {
     // static occluder would leave it blurred forever (see recheckRejected).
     mgr.recheckRejected()
 
-    // Evict disconnected entries on any removal
     if (needsPrune) {
       mgr.prune()
     }
 
-    // Notify debug layer of mutation activity
     notifyMutation()
     observability()?.mutationBatch(candidates.size + enclosing.size)
   })
@@ -133,12 +128,9 @@ export function startObserver(mgr: VideoManager): MutationObserver {
     attributeFilter: ["data-video-id"],
   })
 
-  // NOTE: yt-navigate-finish handling moved to Controller (C2).  Chip/SPA
-  // navigation reuses renderer elements in place, so prune() (which only evicts
-  // disconnected elements) could not clear stale view state from a reused card.
-  // The controller now does a full teardown + restart on navigation, which
-  // bumps the session and forces every card back to masked.  The observer is
-  // disconnected during that teardown, so it must NOT hold a nav listener of
-  // its own — that would be a second, conflicting source of truth.
+  // yt-navigate-finish is the Controller's (C2): navigation reuses renderer
+  // elements in place, which prune() cannot clear, so the controller does a
+  // full teardown + restart. The observer is disconnected during it and must
+  // NOT hold a nav listener of its own (a second source of truth).
   return obs
 }

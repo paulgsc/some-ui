@@ -99,10 +99,9 @@ const MANIFEST_SEGMENTS = [
 function init(): void {
   if (runtime) return
 
-  // Build the runtime (shadow DOM, page monitor, disposable registry).
+  // The runtime owns the shadow DOM, page monitor and disposable registry.
   runtime = new CoexistenceRuntime(styleUrl)
 
-  // Build shared services.
   const wasmBridge = runtime.register(new WasmBridge())
   const themeEngine = new ThemeEngine()
   const effectBus = runtime.register(new EffectBus())
@@ -119,7 +118,6 @@ function init(): void {
   const zone = buildConveyorZone({ manifestSegments: MANIFEST_SEGMENTS })
   runtime.mountPoint.appendChild(zone.root)
 
-  // Build the conveyor and register it for lifecycle management.
   conveyor = runtime.register(
     new ConveyorEngine(
       zone.beltMount,

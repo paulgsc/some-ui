@@ -1,6 +1,6 @@
 // @vitest-environment node
 /**
- * The Core reducer (BC3, #1436), run under vitest's *node* environment on
+ * The Core reducer (BC3), run under vitest's *node* environment on
  * purpose: there is no `document`, no `window`, no `browser` here, so a Core
  * file that reached for any of them would fail to import — the kernel-
  * independence bar `@some-extension/transport` holds itself to (its README's
@@ -60,16 +60,109 @@ function fold(
   return { state, actions }
 }
 
+type ChannelId = ReturnType<typeof asChannelId>
+
 const K = cardKey(asVideoId("vid_a"))
 const K2 = cardKey(asVideoId("vid_b"))
+const CHAN = asChannelId("@chan")
+const CANONICAL = asChannelId("@canonical")
 
 const started: CoreEvent = { kind: "start", session: session(1), t: 0 }
-const seenA: CoreEvent = {
-  kind: "observed",
-  key: K,
-  observation: observation("vid_a"),
-  t: 1,
+
+/** `videoId`'s card observed at `t`, with `overrides` on the default observation. */
+function seen(
+  t: number,
+  overrides: Partial<Observation> = {},
+  videoId = "vid_a"
+): CoreEvent {
+  return {
+    kind: "observed",
+    key: cardKey(asVideoId(videoId)),
+    observation: observation(videoId, overrides),
+    t,
+  }
 }
+
+const seenA = seen(1)
+
+const click = (t: number, key = K): CoreEvent => ({
+  kind: "gesture",
+  key,
+  gesture: "click",
+  t,
+})
+const dblclick = (t: number, key = K): CoreEvent => ({
+  kind: "gesture",
+  key,
+  gesture: "dblclick",
+  t,
+})
+const nav = (n: number, t: number): CoreEvent => ({
+  kind: "nav",
+  session: session(n),
+  t,
+})
+const gone = (t: number): CoreEvent => ({ kind: "gone", key: K, t })
+const timer = (
+  version: number,
+  t: number,
+  generation = 0,
+  key = K
+): CoreEvent => ({ kind: "timer", key, generation, version, t })
+const unknownShape = (t: number): CoreEvent => ({
+  kind: "unknown-shape",
+  tag: "yt-lockup-view-model",
+  surface: "search",
+  reason: "tag-unseen",
+  t,
+})
+
+function answer(
+  whitelisted: boolean,
+  {
+    t = 2,
+    query = 1,
+    generation = 0,
+    channelId = CHAN,
+    key = K,
+  }: {
+    t?: number
+    query?: number
+    generation?: number
+    channelId?: ChannelId
+    key?: typeof K
+  } = {}
+): CoreEvent {
+  return {
+    kind: "whitelist-answer",
+    key,
+    generation,
+    query,
+    channelId,
+    whitelisted,
+    t,
+  }
+}
+
+function transformed(
+  version: number,
+  text: string,
+  t: number,
+  { translated = true, generation = 0 } = {}
+): CoreEvent {
+  return {
+    kind: "title-transformed",
+    key: K,
+    generation,
+    version,
+    text,
+    translated,
+    t,
+  }
+}
+
+/** Masked → meta → title on clicks at t = 2 and 3. */
+const toTitle: ReadonlyArray<CoreEvent> = [started, seenA, click(2), click(3)]
 
 function kinds(actions: ReadonlyArray<Action>): Array<string> {
   return actions.map((a) =>
@@ -80,6 +173,11 @@ function kinds(actions: ReadonlyArray<Action>): Array<string> {
 function viewOf(state: CoreState, key = K): string | undefined {
   return state.cards.get(key)?.view.kind
 }
+
+const dateFacts = (actions: ReadonlyArray<Action>): Array<string | null> =>
+  actions.flatMap((a) =>
+    a.kind === "record" && a.fact.kind === "date.observed" ? [a.fact.raw] : []
+  )
 
 describe("kernel independence", () => {
   it("runs with no DOM and no browser in scope", () => {
@@ -112,55 +210,20 @@ describe("replay determinism (B8)", () => {
   const log: ReadonlyArray<CoreEvent> = [
     started,
     seenA,
-    {
-      kind: "observed",
-      key: K2,
-      observation: observation("vid_b", { channelId: null, channelName: null }),
-      t: 2,
-    },
-    {
-      kind: "whitelist-answer",
-      key: K,
-      generation: 0,
-      query: 1,
-      channelId: asChannelId("@chan"),
-      whitelisted: false,
-      t: 3,
-    },
-    { kind: "gesture", key: K, gesture: "click", t: 4 },
-    { kind: "gesture", key: K, gesture: "click", t: 5 },
-    {
-      kind: "title-transformed",
-      key: K,
-      generation: 0,
-      version: 2,
-      text: "Translated",
-      translated: true,
-      t: 6,
-    },
-    { kind: "observed", key: K2, observation: observation("vid_b"), t: 7 },
-    {
-      kind: "whitelist-answer",
-      key: K2,
-      generation: 1,
-      query: 1,
-      channelId: asChannelId("@chan"),
-      whitelisted: true,
-      t: 8,
-    },
-    { kind: "timer", key: K2, generation: 1, version: 1, t: 9 },
-    {
-      kind: "unknown-shape",
-      tag: "yt-lockup-view-model",
-      surface: "search",
-      reason: "tag-unseen",
-      t: 10,
-    },
+    seen(2, { channelId: null, channelName: null }, "vid_b"),
+    answer(false, { t: 3 }),
+    click(4),
+    click(5),
+    transformed(2, "Translated", 6),
+    seen(7, {}, "vid_b"),
+    answer(true, { key: K2, generation: 1, t: 8 }),
+    timer(1, 9, 1, K2),
+    unknownShape(10),
     { kind: "command", command: "advance-all-to-title", t: 11 },
-    { kind: "nav", session: session(2), t: 12 },
+    nav(2, 12),
     seenA,
-    { kind: "gesture", key: K, gesture: "dblclick", t: 14 },
-    { kind: "gone", key: K, t: 15 },
+    dblclick(14),
+    gone(15),
     { kind: "stop", t: 16 },
   ]
 
@@ -183,10 +246,7 @@ describe("replay determinism (B8)", () => {
 
 describe("lifecycle (R1, R3)", () => {
   it("does nothing while idle, except start", () => {
-    const { state, actions } = fold([
-      seenA,
-      { kind: "gesture", key: K, gesture: "click", t: 1 },
-    ])
+    const { state, actions } = fold([seenA, click(1)])
     expect(state.cards.size).toBe(0)
     expect(actions).toEqual([])
   })
@@ -195,11 +255,7 @@ describe("lifecycle (R1, R3)", () => {
     const { state } = fold([started])
     expect(state.phase).toBe("running")
     expect(state.session).toBe(session(1))
-    const after = fold([
-      started,
-      seenA,
-      { kind: "nav", session: session(2), t: 5 },
-    ])
+    const after = fold([started, seenA, nav(2, 5)])
     expect(after.state.session).toBe(session(2))
     expect(after.state.cards.size, "nothing survives a navigation").toBe(0)
     expect(kinds(after.actions)).toContain("unmount")
@@ -242,15 +298,7 @@ describe("adoption (R2, R6)", () => {
   })
 
   it("mounts a channel-less card provisionally and asks nothing yet", () => {
-    const { state, actions } = fold([
-      started,
-      {
-        kind: "observed",
-        key: K,
-        observation: observation("vid_a", { channelId: null }),
-        t: 1,
-      },
-    ])
+    const { state, actions } = fold([started, seen(1, { channelId: null })])
     expect(state.cards.get(K)?.channel).toEqual({ kind: "unknown" })
     expect(kinds(actions)).toContain("record:mount.provisional")
     expect(kinds(actions)).not.toContain("query-whitelist")
@@ -259,12 +307,7 @@ describe("adoption (R2, R6)", () => {
   it("backfills the channel on a later observation, once", () => {
     const { state, actions } = fold([
       started,
-      {
-        kind: "observed",
-        key: K,
-        observation: observation("vid_a", { channelId: null }),
-        t: 1,
-      },
+      seen(1, { channelId: null }),
       seenA,
       seenA,
     ])
@@ -291,12 +334,7 @@ describe("adoption (R2, R6)", () => {
     const { state } = fold([
       started,
       seenA,
-      {
-        kind: "observed",
-        key: K,
-        observation: observation("vid_a", { title: null, duration: null }),
-        t: 2,
-      },
+      seen(2, { title: null, duration: null }),
     ])
     expect(state.cards.get(K)?.observation.title).toBe("Title of vid_a")
     expect(state.cards.get(K)?.observation.duration).toBe("1:23")
@@ -305,65 +343,32 @@ describe("adoption (R2, R6)", () => {
   it("treats an unknown shape as a card, and counts it (B4)", () => {
     const { state, actions } = fold([
       started,
-      {
-        kind: "observed",
-        key: K,
-        observation: observation("vid_a", { shape: "unknown" }),
-        t: 1,
-      },
-      {
-        kind: "unknown-shape",
-        tag: "yt-lockup-view-model",
-        surface: "search",
-        reason: "tag-unseen",
-        t: 2,
-      },
-      {
-        kind: "unknown-shape",
-        tag: "yt-lockup-view-model",
-        surface: "search",
-        reason: "tag-unseen",
-        t: 3,
-      },
+      seen(1, { shape: "unknown" }),
+      unknownShape(2),
+      unknownShape(3),
     ])
     expect(viewOf(state), "still masked, like every card").toBe("masked")
     expect(state.unknownShapes).toMatchObject({ degraded: 1, "tag-unseen": 2 })
     expect(
       kinds(actions).filter((k) => k === "record:shape.unknown")
     ).toHaveLength(3)
-    const nav = reduce(state, { kind: "nav", session: session(2), t: 4 })
-    expect(nav.state.unknownShapes.degraded, "per session").toBe(0)
+    const navigated = reduce(state, nav(2, 4))
+    expect(navigated.state.unknownShapes.degraded, "per session").toBe(0)
   })
 
   it("forgets a card that is gone", () => {
-    const { state, actions } = fold([
-      started,
-      seenA,
-      { kind: "gone", key: K, t: 2 },
-    ])
+    const { state, actions } = fold([started, seenA, gone(2)])
     expect(state.cards.size).toBe(0)
     expect(actions.at(-1)).toEqual({ kind: "unmount", key: K })
-    expect(
-      reduce(state, { kind: "gone", key: K, t: 3 }).actions,
-      "idempotent"
-    ).toEqual([])
+    expect(reduce(state, gone(3)).actions, "idempotent").toEqual([])
   })
 })
 
 describe("the disclosure ladder", () => {
   it("climbs masked → meta → title on single clicks, with the observed evidence", () => {
-    const one = fold([
-      started,
-      seenA,
-      { kind: "gesture", key: K, gesture: "click", t: 2 },
-    ])
+    const one = fold([started, seenA, click(2)])
     expect(viewOf(one.state)).toBe("meta")
-    const two = fold([
-      started,
-      seenA,
-      { kind: "gesture", key: K, gesture: "click", t: 2 },
-      { kind: "gesture", key: K, gesture: "click", t: 3 },
-    ])
+    const two = fold(toTitle)
     const card = two.state.cards.get(K)
     expect(card?.view.kind).toBe("title")
     if (card?.view.kind !== "title") throw new Error("unreachable")
@@ -375,32 +380,14 @@ describe("the disclosure ladder", () => {
       version: 2,
       text: "Title of vid_a",
     })
-    const three = reduce(two.state, {
-      kind: "gesture",
-      key: K,
-      gesture: "click",
-      t: 4,
-    })
+    const three = reduce(two.state, click(4))
     expect(three.actions, "a click at title is nothing").toEqual([])
   })
 
   it("reveals on a double click from any state (parity; #1385 narrows this)", () => {
     for (const prior of [0, 1, 2]) {
-      const clicks: Array<CoreEvent> = Array.from(
-        { length: prior },
-        (_, i) => ({
-          kind: "gesture",
-          key: K,
-          gesture: "click",
-          t: 2 + i,
-        })
-      )
-      const { state, actions } = fold([
-        started,
-        seenA,
-        ...clicks,
-        { kind: "gesture", key: K, gesture: "dblclick", t: 9 },
-      ])
+      const clicks = Array.from({ length: prior }, (_, i) => click(2 + i))
+      const { state, actions } = fold([started, seenA, ...clicks, dblclick(9)])
       expect(viewOf(state), `after ${prior} click(s)`).toBe("revealed")
       const last = actions.filter((a) => a.kind === "render").at(-1)
       expect(last?.kind === "render" && last.model.removeVeil).toBe(true)
@@ -408,70 +395,48 @@ describe("the disclosure ladder", () => {
   })
 
   it("applies a title transform only to the version that asked for it (R4)", () => {
-    const base = fold([
-      started,
-      seenA,
-      { kind: "gesture", key: K, gesture: "click", t: 2 },
-      { kind: "gesture", key: K, gesture: "click", t: 3 },
-    ])
-    const right = reduce(base.state, {
-      kind: "title-transformed",
-      key: K,
-      generation: 0,
-      version: 2,
-      text: "Übersetzt",
-      translated: true,
-      t: 4,
-    })
+    const base = fold(toTitle)
+    const right = reduce(base.state, transformed(2, "Übersetzt", 4))
     const card = right.state.cards.get(K)
     expect(card?.view.kind === "title" && card.view.title).toEqual({
       text: "Übersetzt",
       translated: true,
     })
 
-    const stale = reduce(base.state, {
-      kind: "title-transformed",
-      key: K,
-      generation: 0,
-      version: 1,
-      text: "old",
-      translated: true,
-      t: 4,
-    })
+    const stale = reduce(base.state, transformed(1, "old", 4))
     expect(stale.state).toBe(base.state)
     expect(kinds(stale.actions)).toEqual(["record:stale.discarded"])
 
-    const moved = fold([
-      started,
-      seenA,
-      { kind: "gesture", key: K, gesture: "click", t: 2 },
-      { kind: "gesture", key: K, gesture: "click", t: 3 },
-      { kind: "gesture", key: K, gesture: "dblclick", t: 4 },
-    ])
-    const late = reduce(moved.state, {
-      kind: "title-transformed",
-      key: K,
-      generation: 0,
-      version: 2,
-      text: "late",
-      translated: true,
-      t: 5,
-    })
+    const moved = fold([...toTitle, dblclick(4)])
+    const late = reduce(moved.state, transformed(2, "late", 5))
     expect(
       viewOf(late.state),
       "a revealed card is not dragged back to title"
     ).toBe("revealed")
   })
+
+  it("keeps the title untranslated when the hook handed the original back", () => {
+    const base = fold(toTitle)
+    const fallback = reduce(
+      base.state,
+      transformed(2, "Title of vid_a", 4, { translated: false })
+    )
+    const card = fallback.state.cards.get(K)
+    expect(card?.view.kind === "title" && card.view.title).toEqual({
+      text: "Title of vid_a",
+      translated: false,
+    })
+    // Rendered once, as an ordinary title — not styled or labelled as a
+    // translation.
+    expect(kinds(fallback.actions)).toEqual(["render"])
+    const render = fallback.actions[0]
+    const content = render?.kind === "render" ? render.model.veilContent : null
+    expect(content?.kind === "title" && content.title.translated).toBe(false)
+  })
 })
 
-describe("a channel that changes on re-observation (#1506's own review)", () => {
-  const canonical = asChannelId("@canonical")
-  const seenCanonical: CoreEvent = {
-    kind: "observed",
-    key: K,
-    observation: observation("vid_a", { channelId: canonical }),
-    t: 2,
-  }
+describe("a channel that changes on re-observation", () => {
+  const seenCanonical = seen(2, { channelId: CANONICAL })
 
   it("asks again under the new id, and lets the old id's answer go stale", () => {
     const { state, actions } = fold([started, seenA, seenCanonical])
@@ -489,27 +454,14 @@ describe("a channel that changes on re-observation (#1506's own review)", () => 
 
     // The lookup for the display-name id settles now, whitelisted — it must
     // not reveal a card whose channel is no longer that.
-    const old = reduce(state, {
-      kind: "whitelist-answer",
-      key: K,
-      generation: 0,
-      query: 1,
-      channelId: asChannelId("@chan"),
-      whitelisted: true,
-      t: 3,
-    })
+    const old = reduce(state, answer(true, { t: 3 }))
     expect(kinds(old.actions)).toEqual(["record:stale.discarded"])
     expect(viewOf(old.state)).toBe("masked")
 
-    const fresh = reduce(old.state, {
-      kind: "whitelist-answer",
-      key: K,
-      generation: 0,
-      query: 2,
-      channelId: canonical,
-      whitelisted: true,
-      t: 4,
-    })
+    const fresh = reduce(
+      old.state,
+      answer(true, { query: 2, channelId: CANONICAL, t: 4 })
+    )
     expect(fresh.state.cards.get(K)?.channel).toMatchObject({
       kind: "known",
       channelId: "@canonical",
@@ -522,17 +474,9 @@ describe("a channel that changes on re-observation (#1506's own review)", () => 
     const { state, actions } = fold([
       started,
       seenA,
-      {
-        kind: "whitelist-answer",
-        key: K,
-        generation: 0,
-        query: 1,
-        channelId: asChannelId("@chan"),
-        whitelisted: false,
-        t: 2,
-      },
-      { kind: "gesture", key: K, gesture: "click", t: 3 },
-      { ...seenCanonical, t: 4 },
+      answer(false),
+      click(3),
+      seen(4, { channelId: CANONICAL }),
     ])
     expect(state.cards.get(K)?.channel).toMatchObject({
       kind: "pending",
@@ -547,49 +491,19 @@ describe("a channel that changes on re-observation (#1506's own review)", () => 
       started,
       seenA,
       seenA,
-      {
-        kind: "observed",
-        key: K,
-        observation: observation("vid_a", { channelId: null }),
-        t: 3,
-      },
+      seen(3, { channelId: null }),
     ])
     expect(actions.filter((a) => a.kind === "query-whitelist")).toHaveLength(1)
   })
 })
 
-describe("re-opening a lookup (#1506's own review, round 4)", () => {
-  const canonical = asChannelId("@canonical")
-  const seenAs = (
-    channelId: ReturnType<typeof asChannelId>,
-    t: number
-  ): CoreEvent => ({
-    kind: "observed",
-    key: K,
-    observation: observation("vid_a", { channelId }),
-    t,
-  })
-  const answer = (
-    channelId: ReturnType<typeof asChannelId>,
-    query: number,
-    whitelisted: boolean,
-    t: number
-  ): CoreEvent => ({
-    kind: "whitelist-answer",
-    key: K,
-    generation: 0,
-    query,
-    channelId,
-    whitelisted,
-    t,
-  })
-
+describe("a channel change takes back only what the old channel's verdict exposed", () => {
   it("remasks a card whose whitelisted view was earned by the channel it no longer has, and retires that reveal timer", () => {
     const { state, actions } = fold([
       started,
       seenA,
-      answer(asChannelId("@chan"), 1, true, 2),
-      seenAs(canonical, 3),
+      answer(true),
+      seen(3, { channelId: CANONICAL }),
     ])
     expect(viewOf(state)).toBe("masked")
     expect(state.cards.get(K)).toMatchObject({
@@ -597,13 +511,7 @@ describe("re-opening a lookup (#1506's own review, round 4)", () => {
       channel: { kind: "pending", channelId: "@canonical", query: 2 },
     })
     // The timer scheduled under version 1 no longer matches.
-    const fired = reduce(state, {
-      kind: "timer",
-      key: K,
-      generation: 0,
-      version: 1,
-      t: 4,
-    })
+    const fired = reduce(state, timer(1, 4))
     expect(fired.actions).toEqual([])
     expect(viewOf(fired.state)).toBe("masked")
     // The last render is the masked one.
@@ -612,7 +520,10 @@ describe("re-opening a lookup (#1506's own review, round 4)", () => {
     expect(last?.kind === "render" && last.model.dataBoyo).toBe("0")
 
     // B's verdict is false: the card stays masked.
-    const denied = reduce(state, answer(canonical, 2, false, 5))
+    const denied = reduce(
+      state,
+      answer(false, { query: 2, channelId: CANONICAL, t: 5 })
+    )
     expect(viewOf(denied.state)).toBe("masked")
   })
 
@@ -620,8 +531,8 @@ describe("re-opening a lookup (#1506's own review, round 4)", () => {
     const { state } = fold([
       started,
       seenA,
-      { kind: "gesture", key: K, gesture: "click", t: 2 },
-      seenAs(canonical, 3),
+      click(2),
+      seen(3, { channelId: CANONICAL }),
     ])
     expect(viewOf(state)).toBe("meta")
   })
@@ -630,8 +541,8 @@ describe("re-opening a lookup (#1506's own review, round 4)", () => {
     const { state, actions } = fold([
       started,
       seenA,
-      seenAs(canonical, 2),
-      seenAs(asChannelId("@chan"), 3),
+      seen(2, { channelId: CANONICAL }),
+      seen(3, { channelId: CHAN }),
     ])
     expect(state.cards.get(K)?.channel).toMatchObject({
       kind: "pending",
@@ -644,69 +555,33 @@ describe("re-opening a lookup (#1506's own review, round 4)", () => {
 
     // The first lookup for A settles now, whitelisted — it answers an
     // earlier question, not the open one.
-    const first = reduce(state, answer(asChannelId("@chan"), 1, true, 4))
+    const first = reduce(state, answer(true, { t: 4 }))
     expect(kinds(first.actions)).toEqual(["record:stale.discarded"])
     expect(viewOf(first.state)).toBe("masked")
 
-    const current = reduce(
-      first.state,
-      answer(asChannelId("@chan"), 3, false, 5)
-    )
+    const current = reduce(first.state, answer(false, { query: 3, t: 5 }))
     expect(current.state.cards.get(K)?.channel).toEqual({
       kind: "known",
       channelId: "@chan",
       whitelisted: false,
     })
   })
-})
-
-describe("re-opening a lookup, round 5 (#1506's own review)", () => {
-  const canonical = asChannelId("@canonical")
-  const seenAs = (
-    channelId: ReturnType<typeof asChannelId>,
-    t: number,
-    uploadDate: string | null = "3 days ago"
-  ): CoreEvent => ({
-    kind: "observed",
-    key: K,
-    observation: observation("vid_a", { channelId, uploadDate }),
-    t,
-  })
-  const whitelistedA: CoreEvent = {
-    kind: "whitelist-answer",
-    key: K,
-    generation: 0,
-    query: 1,
-    channelId: asChannelId("@chan"),
-    whitelisted: true,
-    t: 2,
-  }
 
   it("remasks a card the whitelist's timer had already revealed, when the channel changes", () => {
-    const { state } = fold([
-      started,
-      seenA,
-      whitelistedA,
-      { kind: "timer", key: K, generation: 0, version: 1, t: 3 },
-    ])
+    const { state } = fold([started, seenA, answer(true), timer(1, 3)])
     expect(state.cards.get(K)).toMatchObject({
       view: { kind: "revealed" },
       autoRevealed: true,
     })
 
-    const changed = reduce(state, seenAs(canonical, 4))
+    const changed = reduce(state, seen(4, { channelId: CANONICAL }))
     expect(viewOf(changed.state)).toBe("masked")
     expect(changed.state.cards.get(K)?.autoRevealed).toBe(false)
 
-    const denied = reduce(changed.state, {
-      kind: "whitelist-answer",
-      key: K,
-      generation: 0,
-      query: 2,
-      channelId: canonical,
-      whitelisted: false,
-      t: 5,
-    })
+    const denied = reduce(
+      changed.state,
+      answer(false, { query: 2, channelId: CANONICAL, t: 5 })
+    )
     expect(viewOf(denied.state)).toBe("masked")
   })
 
@@ -714,8 +589,8 @@ describe("re-opening a lookup, round 5 (#1506's own review)", () => {
     const { state } = fold([
       started,
       seenA,
-      { kind: "gesture", key: K, gesture: "dblclick", t: 2 },
-      seenAs(canonical, 3),
+      dblclick(2),
+      seen(3, { channelId: CANONICAL }),
     ])
     expect(viewOf(state)).toBe("revealed")
     expect(state.cards.get(K)?.autoRevealed).toBe(false)
@@ -725,10 +600,10 @@ describe("re-opening a lookup, round 5 (#1506's own review)", () => {
     const { state } = fold([
       started,
       seenA,
-      whitelistedA,
-      { kind: "timer", key: K, generation: 0, version: 1, t: 3 },
-      { kind: "gesture", key: K, gesture: "dblclick", t: 4 },
-      seenAs(canonical, 5),
+      answer(true),
+      timer(1, 3),
+      dblclick(4),
+      seen(5, { channelId: CANONICAL }),
     ])
     // The double click is the user's own reveal of a card the whitelist had
     // exposed: from then on the exposure is theirs, and a channel change
@@ -740,14 +615,11 @@ describe("re-opening a lookup, round 5 (#1506's own review)", () => {
   it("records a late date even when the same observation remasks the card", () => {
     const { actions } = fold([
       started,
-      { ...seenA, observation: observation("vid_a", { uploadDate: null }) },
-      whitelistedA,
-      seenAs(canonical, 3, "2 weeks ago"),
+      seen(1, { uploadDate: null }),
+      answer(true),
+      seen(3, { channelId: CANONICAL, uploadDate: "2 weeks ago" }),
     ])
-    const dates = actions.flatMap((a) =>
-      a.kind === "record" && a.fact.kind === "date.observed" ? [a.fact.raw] : []
-    )
-    expect(dates).toEqual([null, "2 weeks ago"])
+    expect(dateFacts(actions)).toEqual([null, "2 weeks ago"])
     const last = actions.at(-1)
     expect(last?.kind === "record" && last.fact.kind).toBe("entry.state")
     expect(kinds(actions).slice(-3)).toEqual([
@@ -758,27 +630,15 @@ describe("re-opening a lookup, round 5 (#1506's own review)", () => {
   })
 })
 
-describe("a title transform in flight when the channel changes (#1506's own review, round 6)", () => {
-  const canonical = asChannelId("@canonical")
-
+describe("a title transform in flight when the channel changes", () => {
   it("retires the transform asked under the old channel and asks again under the new one", () => {
-    const base = fold([
-      started,
-      seenA,
-      { kind: "gesture", key: K, gesture: "click", t: 2 },
-      { kind: "gesture", key: K, gesture: "click", t: 3 },
-    ])
+    const base = fold(toTitle)
     expect(base.state.cards.get(K)).toMatchObject({
       version: 2,
       view: { kind: "title" },
     })
 
-    const changed = reduce(base.state, {
-      kind: "observed",
-      key: K,
-      observation: observation("vid_a", { channelId: canonical }),
-      t: 4,
-    })
+    const changed = reduce(base.state, seen(4, { channelId: CANONICAL }))
     expect(changed.state.cards.get(K)).toMatchObject({
       version: 3,
       view: {
@@ -796,61 +656,28 @@ describe("a title transform in flight when the channel changes (#1506's own revi
     })
 
     // The answer computed under the old channel arrives now.
-    const stale = reduce(changed.state, {
-      kind: "title-transformed",
-      key: K,
-      generation: 0,
-      version: 2,
-      text: "translated for @chan",
-      translated: true,
-      t: 5,
-    })
+    const stale = reduce(
+      changed.state,
+      transformed(2, "translated for @chan", 5)
+    )
     expect(kinds(stale.actions)).toEqual(["record:stale.discarded"])
 
-    const fresh = reduce(stale.state, {
-      kind: "title-transformed",
-      key: K,
-      generation: 0,
-      version: 3,
-      text: "translated for @canonical",
-      translated: true,
-      t: 6,
-    })
+    const fresh = reduce(
+      stale.state,
+      transformed(3, "translated for @canonical", 6)
+    )
     const card = fresh.state.cards.get(K)
     expect(card?.view.kind === "title" && card.view.title.text).toBe(
       "translated for @canonical"
     )
   })
-})
 
-describe("an empty transform result is as stale as any other (#1506's own review, round 7)", () => {
   it("re-issues the title step even when the old channel's hook answered with an empty string", () => {
-    const base = fold([
-      started,
-      seenA,
-      { kind: "gesture", key: K, gesture: "click", t: 2 },
-      { kind: "gesture", key: K, gesture: "click", t: 3 },
-      {
-        kind: "title-transformed",
-        key: K,
-        generation: 0,
-        version: 2,
-        text: "",
-        translated: true,
-        t: 4,
-      },
-    ])
+    const base = fold([...toTitle, transformed(2, "", 4)])
     const shown = base.state.cards.get(K)
     expect(shown?.view.kind === "title" && shown.view.title.text).toBe("")
 
-    const changed = reduce(base.state, {
-      kind: "observed",
-      key: K,
-      observation: observation("vid_a", {
-        channelId: asChannelId("@canonical"),
-      }),
-      t: 5,
-    })
+    const changed = reduce(base.state, seen(5, { channelId: CANONICAL }))
     expect(changed.state.cards.get(K)).toMatchObject({
       version: 3,
       view: {
@@ -864,50 +691,9 @@ describe("an empty transform result is as stale as any other (#1506's own review
   })
 })
 
-describe("a title transform's fallback (#1506's own review)", () => {
-  it("keeps the title untranslated when the hook handed the original back", () => {
-    const base = fold([
-      started,
-      seenA,
-      { kind: "gesture", key: K, gesture: "click", t: 2 },
-      { kind: "gesture", key: K, gesture: "click", t: 3 },
-    ])
-    const fallback = reduce(base.state, {
-      kind: "title-transformed",
-      key: K,
-      generation: 0,
-      version: 2,
-      text: "Title of vid_a",
-      translated: false,
-      t: 4,
-    })
-    const card = fallback.state.cards.get(K)
-    expect(card?.view.kind === "title" && card.view.title).toEqual({
-      text: "Title of vid_a",
-      translated: false,
-    })
-    // Rendered once, as an ordinary title — not styled or labelled as a
-    // translation.
-    expect(kinds(fallback.actions)).toEqual(["render"])
-    const render = fallback.actions[0]
-    const content = render?.kind === "render" ? render.model.veilContent : null
-    expect(content?.kind === "title" && content.title.translated).toBe(false)
-  })
-})
-
 describe("whitelisting", () => {
-  const answered = (whitelisted: boolean, generation = 0): CoreEvent => ({
-    kind: "whitelist-answer",
-    key: K,
-    generation,
-    query: 1,
-    channelId: asChannelId("@chan"),
-    whitelisted,
-    t: 2,
-  })
-
   it("tints a masked card whose channel turns out whitelisted, then reveals it on the timer", () => {
-    const { state, actions } = fold([started, seenA, answered(true)])
+    const { state, actions } = fold([started, seenA, answer(true)])
     expect(viewOf(state)).toBe("whitelisted")
     expect(state.cards.get(K)?.channel).toEqual({
       kind: "known",
@@ -922,18 +708,12 @@ describe("whitelisting", () => {
       delayMs: WHITELIST_REVEAL_DELAY_MS,
     })
 
-    const fired = reduce(state, {
-      kind: "timer",
-      key: K,
-      generation: 0,
-      version: 1,
-      t: 3,
-    })
+    const fired = reduce(state, timer(1, 3))
     expect(viewOf(fired.state)).toBe("revealed")
   })
 
   it("leaves a not-whitelisted card masked, and records the verdict", () => {
-    const { state, actions } = fold([started, seenA, answered(false)])
+    const { state, actions } = fold([started, seenA, answer(false)])
     expect(viewOf(state)).toBe("masked")
     expect(state.cards.get(K)?.channel).toEqual({
       kind: "known",
@@ -946,49 +726,28 @@ describe("whitelisting", () => {
   })
 
   it("does not yank a card the user has already progressed (Entry-4)", () => {
-    const { state } = fold([
-      started,
-      seenA,
-      { kind: "gesture", key: K, gesture: "click", t: 2 },
-      answered(true),
-    ])
+    const { state } = fold([started, seenA, click(2), answer(true)])
     expect(viewOf(state)).toBe("meta")
     expect(state.cards.get(K)?.channel).toMatchObject({ whitelisted: true })
   })
 
   it("discards an answer for a question no longer open (R4)", () => {
-    const base = fold([started, seenA, answered(false)])
-    const again = reduce(base.state, answered(true))
+    const base = fold([started, seenA, answer(false)])
+    const again = reduce(base.state, answer(true))
     expect(viewOf(again.state), "already answered").toBe("masked")
     expect(kinds(again.actions)).toEqual(["record:stale.discarded"])
 
-    const other = reduce(fold([started, seenA]).state, {
-      kind: "whitelist-answer",
-      key: K,
-      generation: 0,
-      query: 1,
-      channelId: asChannelId("@someone-else"),
-      whitelisted: true,
-      t: 2,
-    })
+    const other = reduce(
+      fold([started, seenA]).state,
+      answer(true, { channelId: asChannelId("@someone-else") })
+    )
     expect(viewOf(other.state), "a different channel's answer").toBe("masked")
   })
 
   it("ignores a timer whose version has moved on", () => {
-    const base = fold([started, seenA, answered(true)])
-    const clicked = reduce(base.state, {
-      kind: "gesture",
-      key: K,
-      gesture: "dblclick",
-      t: 3,
-    })
-    const fired = reduce(clicked.state, {
-      kind: "timer",
-      key: K,
-      generation: 0,
-      version: 1,
-      t: 4,
-    })
+    const base = fold([started, seenA, answer(true)])
+    const clicked = reduce(base.state, dblclick(3))
+    const fired = reduce(clicked.state, timer(1, 4))
     expect(fired.actions).toEqual([])
     expect(viewOf(fired.state)).toBe("revealed")
   })
@@ -997,7 +756,7 @@ describe("whitelisting", () => {
     const { state, actions } = fold([
       started,
       seenA,
-      { kind: "observed", key: K2, observation: observation("vid_b"), t: 2 },
+      seen(2, {}, "vid_b"),
       { kind: "whitelist-request", key: K, t: 3 },
     ])
     expect(actions.find((a) => a.kind === "persist-whitelist")).toEqual({
@@ -1012,12 +771,7 @@ describe("whitelisting", () => {
   it("does nothing for a request on a card with no channel", () => {
     const { state, actions } = fold([
       started,
-      {
-        kind: "observed",
-        key: K,
-        observation: observation("vid_a", { channelId: null }),
-        t: 1,
-      },
+      seen(1, { channelId: null }),
       { kind: "whitelist-request", key: K, t: 2 },
     ])
     expect(viewOf(state)).toBe("masked")
@@ -1028,7 +782,7 @@ describe("whitelisting", () => {
     const { state } = fold([
       started,
       seenA,
-      { kind: "whitelist-broadcast", channelId: asChannelId("@chan"), t: 2 },
+      { kind: "whitelist-broadcast", channelId: CHAN, t: 2 },
     ])
     expect(viewOf(state)).toBe("whitelisted")
   })
@@ -1036,23 +790,14 @@ describe("whitelisting", () => {
 
 describe("advance-all-to-title", () => {
   it("is pointwise the single legal transition, restricted to cards below title", () => {
+    const K3 = cardKey(asVideoId("vid_c"))
     const setup: Array<CoreEvent> = [
       started,
       seenA,
-      { kind: "observed", key: K2, observation: observation("vid_b"), t: 2 },
-      { kind: "gesture", key: K2, gesture: "click", t: 3 },
-      {
-        kind: "observed",
-        key: cardKey(asVideoId("vid_c")),
-        observation: observation("vid_c"),
-        t: 4,
-      },
-      {
-        kind: "gesture",
-        key: cardKey(asVideoId("vid_c")),
-        gesture: "dblclick",
-        t: 5,
-      },
+      seen(2, {}, "vid_b"),
+      click(3, K2),
+      seen(4, {}, "vid_c"),
+      dblclick(5, K3),
     ]
     const before = fold(setup)
     const bulk = reduce(before.state, {
@@ -1062,12 +807,7 @@ describe("advance-all-to-title", () => {
     })
 
     // The same cards, each advanced on its own by the singular path.
-    const singly = fold([
-      ...setup,
-      { kind: "gesture", key: K, gesture: "click", t: 7 },
-      { kind: "gesture", key: K, gesture: "click", t: 8 },
-      { kind: "gesture", key: K2, gesture: "click", t: 9 },
-    ])
+    const singly = fold([...setup, click(7), click(8), click(9, K2)])
     for (const key of before.state.cards.keys()) {
       expect(bulk.state.cards.get(key)?.view, key).toEqual(
         singly.state.cards.get(key)?.view
@@ -1083,18 +823,15 @@ describe("advance-all-to-title", () => {
   })
 })
 
-describe("async correlation across incarnations (R4, #1506's own review)", () => {
-  const goneA: CoreEvent = { kind: "gone", key: K, t: 2 }
-  const seenAgain: CoreEvent = { ...seenA, t: 3 }
-
+describe("async correlation across incarnations (R4)", () => {
   it("gives every adoption of a key its own generation, never reset by gone or nav", () => {
     const { state, actions } = fold([
       started,
       seenA,
-      goneA,
-      seenAgain,
-      { kind: "nav", session: session(2), t: 4 },
-      { ...seenA, t: 5 },
+      gone(2),
+      seen(3),
+      nav(2, 4),
+      seen(5),
     ])
     expect(state.cards.get(K)?.generation).toBe(2)
     expect(state.nextGeneration).toBe(3)
@@ -1110,33 +847,20 @@ describe("async correlation across incarnations (R4, #1506's own review)", () =>
     // lookups name the same key and channel. Only the generation tells them
     // apart — and the old answer may be wrong (a failed request, a changed
     // membership) for the card now on the page.
-    const base = fold([started, seenA, goneA, seenAgain])
+    const base = fold([started, seenA, gone(2), seen(3)])
     expect(base.state.cards.get(K)?.channel).toMatchObject({ kind: "pending" })
 
-    const oldAnswer = reduce(base.state, {
-      kind: "whitelist-answer",
-      key: K,
-      generation: 0,
-      query: 1,
-      channelId: asChannelId("@chan"),
-      whitelisted: true,
-      t: 4,
-    })
+    const oldAnswer = reduce(base.state, answer(true, { t: 4 }))
     expect(kinds(oldAnswer.actions)).toEqual(["record:stale.discarded"])
     expect(oldAnswer.state.cards.get(K)?.channel, "still open").toMatchObject({
       kind: "pending",
     })
     expect(viewOf(oldAnswer.state)).toBe("masked")
 
-    const newAnswer = reduce(oldAnswer.state, {
-      kind: "whitelist-answer",
-      key: K,
-      generation: 1,
-      query: 1,
-      channelId: asChannelId("@chan"),
-      whitelisted: false,
-      t: 5,
-    })
+    const newAnswer = reduce(
+      oldAnswer.state,
+      answer(false, { generation: 1, t: 5 })
+    )
     expect(newAnswer.state.cards.get(K)?.channel).toEqual({
       kind: "known",
       channelId: "@chan",
@@ -1146,42 +870,27 @@ describe("async correlation across incarnations (R4, #1506's own review)", () =>
   })
 
   it("discards a title transform from a previous incarnation even when the version matches", () => {
-    const climb = (t: number): Array<CoreEvent> => [
-      { kind: "gesture", key: K, gesture: "click", t },
-      { kind: "gesture", key: K, gesture: "click", t: t + 1 },
-    ]
     // Version 2 reached twice: once before the navigation, once after.
     const { state } = fold([
       started,
       seenA,
-      ...climb(2),
-      { kind: "nav", session: session(2), t: 4 },
-      { ...seenA, t: 5 },
-      ...climb(6),
+      click(2),
+      click(3),
+      nav(2, 4),
+      seen(5),
+      click(6),
+      click(7),
     ])
     expect(state.cards.get(K)).toMatchObject({ generation: 1, version: 2 })
 
-    const stale = reduce(state, {
-      kind: "title-transformed",
-      key: K,
-      generation: 0,
-      version: 2,
-      text: "from before the navigation",
-      translated: true,
-      t: 8,
-    })
+    const stale = reduce(state, transformed(2, "from before the navigation", 8))
     expect(stale.state).toBe(state)
     expect(kinds(stale.actions)).toEqual(["record:stale.discarded"])
 
-    const current = reduce(state, {
-      kind: "title-transformed",
-      key: K,
-      generation: 1,
-      version: 2,
-      text: "for this card",
-      translated: true,
-      t: 8,
-    })
+    const current = reduce(
+      state,
+      transformed(2, "for this card", 8, { generation: 1 })
+    )
     const card = current.state.cards.get(K)
     expect(card?.view.kind === "title" && card.view.title.text).toBe(
       "for this card"
@@ -1189,23 +898,14 @@ describe("async correlation across incarnations (R4, #1506's own review)", () =>
   })
 
   it("ignores a reveal timer from a previous incarnation even when the version matches", () => {
-    const answer = (generation: number, t: number): CoreEvent => ({
-      kind: "whitelist-answer",
-      key: K,
-      generation,
-      query: 1,
-      channelId: asChannelId("@chan"),
-      whitelisted: true,
-      t,
-    })
     // Whitelisted (version 1) twice: before and after the navigation.
     const { state } = fold([
       started,
       seenA,
-      answer(0, 2),
-      { kind: "nav", session: session(2), t: 3 },
-      { ...seenA, t: 4 },
-      answer(1, 5),
+      answer(true),
+      nav(2, 3),
+      seen(4),
+      answer(true, { generation: 1, t: 5 }),
     ])
     expect(state.cards.get(K)).toMatchObject({
       generation: 1,
@@ -1213,45 +913,22 @@ describe("async correlation across incarnations (R4, #1506's own review)", () =>
       view: { kind: "whitelisted" },
     })
 
-    const old = reduce(state, {
-      kind: "timer",
-      key: K,
-      generation: 0,
-      version: 1,
-      t: 6,
-    })
+    const old = reduce(state, timer(1, 6))
     expect(old.actions).toEqual([])
     expect(viewOf(old.state)).toBe("whitelisted")
 
-    const current = reduce(state, {
-      kind: "timer",
-      key: K,
-      generation: 1,
-      version: 1,
-      t: 6,
-    })
+    const current = reduce(state, timer(1, 6, 1))
     expect(viewOf(current.state)).toBe("revealed")
   })
 })
 
-describe("the date corpus (#1395, #1506's own review)", () => {
-  const dateFacts = (actions: ReadonlyArray<Action>): Array<string | null> =>
-    actions.flatMap((a) =>
-      a.kind === "record" && a.fact.kind === "date.observed" ? [a.fact.raw] : []
-    )
-
+describe("the date corpus", () => {
   it("records a date that arrives on a later observation — YouTube hydrates it after the card", () => {
-    const undated: CoreEvent = {
-      kind: "observed",
-      key: K,
-      observation: observation("vid_a", { uploadDate: null }),
-      t: 1,
-    }
     const { actions } = fold([
       started,
-      undated,
-      { ...seenA, t: 2 },
-      { ...seenA, t: 3 },
+      seen(1, { uploadDate: null }),
+      seen(2),
+      seen(3),
     ])
     // Once at adoption (nothing yet), once when the form appears, and not
     // again for a repeat of the same form.
@@ -1262,21 +939,11 @@ describe("the date corpus (#1395, #1506's own review)", () => {
     const { actions } = fold([
       started,
       seenA,
-      { ...seenA, t: 2 },
-      {
-        kind: "observed",
-        key: K,
-        observation: observation("vid_a", { uploadDate: "4 days ago" }),
-        t: 3,
-      },
+      seen(2),
+      seen(3, { uploadDate: "4 days ago" }),
       // A later observation that lost the field keeps the merged value and
       // records nothing new.
-      {
-        kind: "observed",
-        key: K,
-        observation: observation("vid_a", { uploadDate: null }),
-        t: 4,
-      },
+      seen(4, { uploadDate: null }),
     ])
     expect(dateFacts(actions)).toEqual(["3 days ago", "4 days ago"])
   })

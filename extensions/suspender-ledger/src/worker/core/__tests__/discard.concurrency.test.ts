@@ -15,6 +15,7 @@
  * about a model of it.
  */
 
+import { tab } from "@suspender/worker/core/__tests__/tab"
 import { discard, inprogress } from "@suspender/worker/core/discard"
 import { prefs } from "@suspender/worker/core/prefs"
 import fc from "fast-check"
@@ -24,21 +25,6 @@ type ExecuteScriptCall = {
   func: (...args: Array<unknown>) => unknown
   args?: Array<unknown>
 }
-
-const tab = (over: Partial<chrome.tabs.Tab>): chrome.tabs.Tab => ({
-  id: 1,
-  index: 0,
-  active: false,
-  discarded: false,
-  autoDiscardable: true,
-  pinned: false,
-  highlighted: false,
-  selected: false,
-  incognito: false,
-  windowId: 1,
-  groupId: -1,
-  ...over,
-})
 
 /** How many times the marker is stacked at the front of `title`. */
 const countLeadingPrefixes = (title: string, prefix: string): number => {

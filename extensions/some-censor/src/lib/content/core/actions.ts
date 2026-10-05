@@ -1,8 +1,8 @@
 /**
- * Everything Core ever asks for (BC3, #1436) — Boundary Contract B6: effects
- * are named values, not calls.
+ * Everything Core ever asks for (BC3) — Boundary Contract B6: effects are
+ * named values, not calls.
  *
- * An action says what should happen; the Actuator (#1437) is the only thing
+ * An action says what should happen; the Actuator is the only thing
  * that makes it happen, and the runtime binds the DOM targets a `key` names
  * before handing one over, so nothing here can name an element either.
  */
@@ -71,7 +71,7 @@ export type Action =
   | { readonly kind: "record"; readonly fact: CoreFact }
 
 /**
- * What Core knows happened, for the diagnostics layer (OBS1, #1395). One
+ * What Core knows happened, for the diagnostics layer (OBS1). One
  * variant per event that layer already records from this pipeline; the
  * runtime maps each onto the corresponding `BoyoObservability` call. Facts
  * about the DOM — churn versus recycle, queue depths, what the occluder is
@@ -105,10 +105,9 @@ export type CoreFact =
       readonly shape: ShapeConfidence
     }
   /**
-   * A raw date run observed for a card — the QC2 corpus (#1395). Emitted at
-   * adoption and again whenever a later observation supplies a date the card
-   * did not have (bot-found, #1506's own review: YouTube hydrates the date
-   * after the card, so the first observation alone would miss most forms).
+   * A raw date run observed for a card — the QC2 corpus. Emitted at adoption
+   * and whenever a later observation supplies a new date (YouTube hydrates the
+   * date after the card).
    */
   | {
       readonly kind: "date.observed"

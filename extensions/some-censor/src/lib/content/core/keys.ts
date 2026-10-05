@@ -1,13 +1,13 @@
 /**
- * Core's identity type (BC3, #1436) — Boundary Contract B2: content-derived,
+ * Core's identity type (BC3) — Boundary Contract B2: content-derived,
  * never node-derived.
  *
  * A card is keyed by the artifact it shows, not by the element showing it.
  * Two elements rendering the same video — the home feed's grid cell and the
- * lockup nested inside it (#1426), or the same video in a sidebar and a
+ * lockup nested inside it, or the same video in a sidebar and a
  * description — are one card here: disclosure is a property of the
- * artifact, custody of the elements is the Sensor's and Actuator's to keep
- * (#1426's own modelling statement). A `Map<HTMLElement, …>` cannot be
+ * artifact, custody of the elements is the Sensor's and Actuator's to keep.
+ * A `Map<HTMLElement, …>` cannot be
  * written against this type, because nothing here can name an element.
  */
 

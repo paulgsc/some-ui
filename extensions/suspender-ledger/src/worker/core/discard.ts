@@ -203,15 +203,12 @@ const perform = (tab: chrome.tabs.Tab): Promise<void> =>
       void requestDiscard(tabId).then(async (attempt) => {
         trace("perform:requestDiscard-result", tabId, attempt)
         if (attempt.ok) {
-          // A resolved `tabs.discard` is a claim, not a receipt. Firefox
-          // resolves it happily for tabs it then declines to discard (a
-          // beforeunload handler, a tab the browser considers too recently
-          // used) — a silent no-op that leaves the tab live and wearing the
-          // sleep marker, which is indistinguishable from success at this
-          // call site and was invisible in every log we had. Confirm against
-          // the browser's own view before believing it. `tabs.get` reads
-          // cached metadata, so unlike executeScript it can never
-          // materialize (reload) a tab that really did discard.
+          // A resolved `tabs.discard` is a claim, not a receipt: Firefox
+          // resolves it for tabs it then declines to discard (a beforeunload
+          // handler, a recently used tab), leaving the tab live and marked.
+          // Confirm against the browser's own view. `tabs.get` reads cached
+          // metadata, so unlike executeScript it can never materialize
+          // (reload) a tab that really did discard.
           const landed = await confirmDiscarded(tabId)
           if (landed !== false) {
             transition(tabId, state, { type: "DISCARD_SUCCEEDED" })
@@ -260,10 +257,9 @@ const perform = (tab: chrome.tabs.Tab): Promise<void> =>
         // the error alone and rolling back would run `executeScript`
         // (injectUnmark) against a tab the browser has already discarded —
         // which has no live renderer, so Firefox can only satisfy the
-        // injection by RELOADING the tab in the background: fresh document,
-        // marker gone, focus unchanged. That is the "suspended tab silently
-        // refreshes" bug. Verify ground truth first; `getTabSnapshot`
-        // (`tabs.get`) reads cached metadata and never materializes the tab.
+        // injection by silently RELOADING the tab in the background. Verify
+        // ground truth first; `getTabSnapshot` (`tabs.get`) reads cached
+        // metadata and never materializes the tab.
         const snapshot = await getTabSnapshot(tabId)
         trace(
           "perform:post-failure-snapshot",
@@ -509,13 +505,10 @@ chrome.tabs.onActivated.addListener(({ tabId }) => reconcileActivatedTab(tabId))
 /**
  * Ground truth from the browser about tabs we are mid-decision on.
  *
- * This listener used to record *every* `onUpdated` — every favicon, every
- * title change, every load-progress tick across every tab. That is a firehose
- * that would fill a 500-event ring in under a minute of normal browsing and
- * bury the handful of events worth reading. It is filtered to the two signals
- * that actually settle a question: a change in the `discarded` flag (did the
- * suspend land? did something silently un-suspend it?), and any update at all
- * on a tab we are currently acting on.
+ * Filtered, because every `onUpdated` would fill a 500-event ring in under a
+ * minute: only a change in the `discarded` flag (did the suspend land? did
+ * something silently un-suspend it?), and any update at all on a tab we are
+ * currently acting on.
  */
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   const tracked = tabStates.get(tabId)?.kind

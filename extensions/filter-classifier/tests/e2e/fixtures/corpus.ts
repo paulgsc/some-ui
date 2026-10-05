@@ -1,5 +1,5 @@
 /**
- * The classifier corpus (#721 Story 1, #722) — a small, representative
+ * The classifier corpus — a small, representative
  * sample of vendor-DOM render states spanning hostile → comfortable, each
  * carrying a human-verified ground truth rather than an assertion invented
  * to match whatever the code currently does. `corpus.spec.ts` is the
@@ -8,25 +8,17 @@
  *
  * Every numeric color below was checked against the *real* `comfortReport`/
  * `satisfiesComfort` math (relativeLuminance, contrast ratio, HSL
- * saturation) before being labeled — see this PR's description for the
- * verification, not hand-waved from the swatch registry's existing
- * examples. Adding a fixture found "in the wild" (a real site that reads
- * as hostile, or a false positive/negative) means doing the same: verify
- * the label against the actual predicate, then add an entry — this file
- * *is* the review record #721 Story 5 asks for, in-repo and diffable
- * instead of behind a live UI.
+ * saturation) before being labeled, not taken from the swatch registry's
+ * examples. Adding a fixture found "in the wild" means doing the same:
+ * verify the label against the actual predicate, then add an entry. This
+ * file is the in-repo review record.
  *
  * `<meta name="color-scheme" content="light dark">` on every fixture that
- * carries an explicit `background-color`/`color` (#735): without it,
- * Chromium's own forced/auto-dark rendering repaints those literal,
- * ground-truth colors toward a "smarter" dark-mode-appropriate palette on
- * any machine with system dark mode active — a paint-time transform
- * `getComputedStyle` (and so the classifier and Playwright) never sees, but
- * a Comfort Lab reviewer's eyes do. The tell: `transparent-ambiguous` below
- * has no explicit colors and was never affected — only fixtures with
- * authored colors were. Declaring `color-scheme` tells the browser this
- * page's colors are intentional, not the "unprepared light page" forced-dark
- * exists to correct.
+ * carries an explicit `background-color`/`color`: without it, Chromium's
+ * forced/auto-dark rendering repaints those ground-truth colors on a machine
+ * in system dark mode — a paint-time transform `getComputedStyle` (and so
+ * the classifier and Playwright) never sees, but a Comfort Lab reviewer
+ * does. Declaring `color-scheme` marks the colors as intentional.
  *
  * `default-swatch-rendered` is the one fixture in this file that reads
  * colors from `SWATCHES` instead of hardcoding them (#735): every other
