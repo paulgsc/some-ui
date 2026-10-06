@@ -768,6 +768,9 @@ importers:
       '@some-ui/vite-config':
         specifier: workspace:*
         version: link:../some-vite-config
+      fast-check:
+        specifier: ^4.10.2
+        version: 4.10.2
 
   packages/job-tracker:
     devDependencies:

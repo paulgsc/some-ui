@@ -1,0 +1,37 @@
+# F1 (docs/monorepo-boundaries.md, "A port translates: the foreign boundary").
+# Every source file that waits on an API this codebase does not own (a native
+# plugin, `navigator`, `Notification`) outside `callForeign` from
+# `@some-ui/intent-kit`, with exactly how many such waits it has (`await`,
+# `for await`, `.then`/`.catch`/`.finally`). `pnpm check:foreign-boundary`
+# fails on any file missing here, and on any count that no longer matches, in
+# either direction.
+#
+# One entry per line: `<sites> <path>`. A blank line ends a group, and each
+# group's `#` lines must include one starting `Unbounded:` (why this wait needs
+# no deadline, no classified failure and no report) or `Grandfathered:`. A new
+# entry, or a raised count, goes in its own group under `Unbounded:`; it never
+# joins or raises the grandfathered group. The usual answer is not an entry at
+# all: run the wait through `callForeign`, and the count goes away.
+#
+# This file is where F1 is reviewed. The check counts; it does not judge.
+
+# Grandfathered: these waited on a foreign API before F1 landed. Debt, not a
+# judgment that each is fine: apps/www/src/lib/dictation is the one #1671's
+# notes shipped broken on (a recognizer that cannot start reads as a frame of
+# "Listening…" and a notice that blames the speaker). A count here may only
+# fall (lower it in the same change), and an entry leaves when its file stops
+# waiting outside the boundary.
+11 apps/www/src/lib/device-backend/capacitor-sqlite/index.ts
+1 apps/www/src/lib/device-backend/native-http/index.ts
+1 apps/www/src/lib/device-backend/storage/index.ts
+6 apps/www/src/lib/device-speech/native.ts
+4 apps/www/src/lib/dictation/index.ts
+7 apps/www/src/lib/study-nudge/native.ts
+6 apps/www/src/lib/study-nudge/service-worker.ts
+1 packages/ui/leetype/src/components/round/generate-round/index.tsx
+1 packages/ui/lesson-crm/src/components/lesson-crm/index.tsx
+1 packages/ui/lesson-crm/src/components/prompt-card/index.tsx
+1 packages/ui/soundbites/src/lib/recorder.ts
+1 packages/ui/soundbites/src/lib/store.ts
+1 packages/ui/topik/src/components/topik/handheld/generate-lesson/index.tsx
+1 packages/ui/wireframes/src/components/youtube/layout-crm/index.tsx

@@ -496,6 +496,23 @@ jobs:
       - name: Check React coordination
         run: nix develop .#ci --command node --no-warnings scripts/check-react-coordination.ts
 
+  # F1 (docs/monorepo-boundaries.md, "A port translates: the foreign
+  # boundary"): every wait on a native plugin, `navigator` or `Notification`
+  # outside `callForeign` is listed in scripts/foreign-boundary.allowlist with
+  # its exact count. No `changes` gate, and the one-workspace install, for
+  # react-coordination's reasons above.
+  foreign-boundary:
+    name: Foreign boundary guardrail
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/nix-setup
+      - uses: ./.github/actions/pnpm-cache
+      - name: Install the eslint kit
+        run: nix develop .#ci --command pnpm install --frozen-lockfile --prefer-offline --filter @some-ui/eslint-kit
+      - name: Check the foreign boundary
+        run: nix develop .#ci --command node --no-warnings scripts/check-foreign-boundary.ts
+
   # ── Workflow guards (repo-wide) ────────────────────────────────────────
   # Artifact retention (CLAUDE.md "Workflow storage") and the RS1 fingerprint
   # and RS2 branch-name checks (CLAUDE.md "Cross-repo coupling"). No `changes`
@@ -524,6 +541,7 @@ jobs:
         deny,
         test-layout,
         react-coordination,
+        foreign-boundary,
         workflows,
       ]
     if: always()
@@ -571,6 +589,14 @@ jobs:
             FAILED=true
           else
             echo "✅ react-coordination: $COORDINATION_RESULT"
+          fi
+
+          BOUNDARY_RESULT="${{ needs.foreign-boundary.result }}"
+          if [ "$BOUNDARY_RESULT" != "success" ]; then
+            echo "❌ foreign-boundary: $BOUNDARY_RESULT (always required)"
+            FAILED=true
+          else
+            echo "✅ foreign-boundary: $BOUNDARY_RESULT"
           fi
 
           WORKFLOWS_RESULT="${{ needs.workflows.result }}"

@@ -219,6 +219,15 @@ entry is allowed when the reason is real: put it in its own group under
 grandfathered group. If the only honest reason is "it needs an await", the code belongs in the
 runtime instead.
 
+The port to anything we do not own (a native plugin, `navigator`, `Notification`) waits through
+`callForeign` from `@some-ui/intent-kit`, not a bare `await`: it takes a deadline, the port's
+`classify` into `IntentError` (`unavailable` means withdraw the control, not invite another tap)
+and a `report`, and it is the one place the "settles once, by a deadline, cause kept, told once"
+laws are tested, as a property over every way the foreign side can behave. Don't write a port
+its own failure union or its own timeout, and don't test it with a fake that only succeeds.
+`pnpm check:foreign-boundary` counts bare foreign waits against
+`scripts/foreign-boundary.allowlist` exactly as R1 counts (`docs/monorepo-boundaries.md`, F1).
+
 A component or hook that seeds `useState`/`useReducer` from its own prop or from the clock keeps
 a copy frozen at mount while the owner moves on; #1659's review found that five times, one per
 round. `owner-guard/no-mount-snapshot` (eslint-kit's opt-in `ownerGuardConfig`, on in aph,

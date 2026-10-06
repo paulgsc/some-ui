@@ -135,6 +135,8 @@ lifetime:
   line's language is `"korean" | "english"`, a platform's tag is read only by
   `spokenLanguageOf` in an adapter or its transport, and voice availability
   is four states, not a boolean, so "still loading" never reads as "missing".
+  A port whose platform answers asynchronously (a native plugin, a
+  permission prompt) waits through `callForeign`: see F1 below.
 - **The component** reads a snapshot (`useSyncExternalStore`) and dispatches
   events. A hook that subscribes, or an effect that forwards
   `visibilitychange` as an event, is wiring. What the event _means_ is the
@@ -203,6 +205,88 @@ navigate(...)`, and state that is coordination without awaiting anything,
 such as a ref that holds a handle. Those surface as review findings instead,
 and `.claude/skills/steward/SKILL.md` says what a cluster of them means.
 
+## A port translates: the foreign boundary
+
+A port to an API this codebase does not own has to answer four questions:
+what can go wrong, how long to wait, what the person is told, and where the
+real error goes. A port that answers them itself tends to skip one.
+LeetType's phone dictation (#1671) skipped all four: its own three-word
+failure union had no "this phone cannot", it kept no cause, and Stop had no
+deadline. So on a phone whose recognizer could not start, Speak flashed
+"Listening…" for one frame and printed the same small notice blaming the
+speaker on every tap, logged nothing, and could hold Stop at "Finishing…"
+indefinitely. About fifty unit tests passed, each against a fake recognizer
+someone wrote by hand.
+
+The answers are shared instead, in `@some-ui/intent-kit`:
+
+- **The vocabulary** is `IntentError`: `unreachable`, `rejected`,
+  `unavailable` (no retry can help, so the feature withdraws the affordance)
+  and `unknown`, each with a summary for the person and the foreign `cause`
+  for a developer.
+- **The rules** are `callForeign({ port, deadlineMs, start })`: the outcome
+  settles exactly once and never rejects; by a deadline every call must
+  name; as an `IntentError` whose cause is exactly what the foreign side
+  threw; reported once to the port's required `report`; and nothing the
+  foreign side does after that counts. `src/__tests__/foreign.test.ts`
+  checks the five laws as one property over every way a foreign side can
+  behave (answer or fail at any time, fail with anything, throw, never
+  answer), so a port does not re-test them with its own handful of cases.
+- **What stays per port** is `classify`: only the adapter knows that a
+  Capacitor `code: "UNAVAILABLE"` means `unavailable`, or that a Web Speech
+  `"not-allowed"` means the person said no. That mapping is finite and
+  documented by the platform, which is where a port's own tests belong.
+
+`@some-ui/speech` has its own settlement contract for speech output, which
+came first and stays: its four laws are the same idea inside one package.
+
+> **F1: A wait on a foreign API goes through `callForeign`, or says why
+> not, in the allowlist.**
+>
+> - _Claim:_ every entry in `scripts/foreign-boundary.allowlist` outside its
+>   `Grandfathered:` group sits under an `Unbounded:` line that says why that
+>   wait needs no deadline, no classified failure and no report; and no
+>   count in the `Grandfathered:` group is higher than on `main`.
+> - _Falsified by_ an allowlist hunk that adds an entry, or raises a count,
+>   inside the `Grandfathered:` group; that adds an entry or raises a count
+>   under an `Unbounded:` line giving no reason a person could check ("it is
+>   async" and "the plugin has no timeout" are not reasons; "best effort,
+>   nobody waits on the answer, and its failure changes nothing a person
+>   sees" is); or that deletes or rewords an `Unbounded:` line, or splits a
+>   group, so an entry loses its reason. Also by a hunk to
+>   `packages/eslint/src/foreign-boundary.ts`, `packages/eslint/src/site-count.ts`,
+>   `scripts/check-foreign-boundary.ts`, the root `lint` script or pr.yml's
+>   `foreign-boundary` job (and its line in CI Gate) that narrows what is
+>   counted or stops it running: a foreign module or global dropped, a kind
+>   of site dropped, a path excluded, a step removed, a file deleted or
+>   renamed. And by a hunk to `packages/intent-kit/src/foreign.ts` that
+>   weakens a law without changing `src/__tests__/foreign.test.ts` to match.
+> - _Scope:_ `scripts/foreign-boundary.allowlist` and the files named above.
+> - _Why not enforced:_ the count is. `pnpm check:foreign-boundary` fails any
+>   source file whose waits (`await`, `for await`, `.then`/`.catch`/
+>   `.finally`) on a value from a foreign API, outside the arguments of a
+>   `callForeign` imported from `@some-ui/intent-kit`, are not listed at
+>   exactly that number, in either direction. Foreign means imported from
+>   `@capacitor/*` or `@capacitor-community/*` (statically or by `import()`),
+>   the browser's `navigator` and `Notification`, and any variable
+>   initialized from one of those. `fetch` is out of scope: `file_host` has
+>   its own boundary (`apps/www/src/lib/intent/errors.ts` and the client's
+>   deadline). Whether a given wait can hang, or fail in words a person
+>   never hears, is not decidable from syntax. Types do not help, because
+>   `Promise<T>` says nothing about whether it settles. A test of one port
+>   covers the cases its author thought of, which is the gap F1 exists to
+>   close. So the check never judges: it makes every new unbounded wait a
+>   line in the diff, where this falsifier is applied. What it cannot see
+>   is in `foreign-boundary.ts`'s header: a callback API wrapped in a
+>   hand-made `new Promise` (Web Speech, IndexedDB), a fire-and-forget
+>   call, and a foreign value reached only through a function of ours or an
+>   assignment. Those are review findings. "Grandfathered counts never rise"
+>   is mechanical; not yet a rule, as for R1.
+>
+> True when declared: all 14 entries (41 waits) are in the `Grandfathered:`
+> group, nothing calls `callForeign` yet, and the check passes on the tree
+> that declares F1.
+
 ## How this is enforced
 
 Partly. Be honest about which parts.
@@ -214,6 +298,10 @@ Partly. Be honest about which parts.
 - **Coordination in React** is counted, not judged: R1 above, by
   `pnpm check:react-coordination` (in root `pnpm lint` and its own pr.yml job
   that CI Gate requires).
+- **Waits on foreign APIs** are counted, not judged: F1 above, by
+  `pnpm check:foreign-boundary` (in root `pnpm lint` and its own pr.yml job
+  that CI Gate requires). The laws of the boundary itself are a property
+  test in `@some-ui/intent-kit`.
 - **The sibling-internals rule is not mechanized yet.** It is a review rule
   today. If it recurs, the place to put it is an `import/no-restricted-paths`
   zone in `packages/eslint`, and this paragraph is the note to that effect.

@@ -12,3 +12,13 @@ export type { IntentError, IntentErrorKind } from "./intent-error"
 export { toIntentError } from "./intent-error"
 
 export type { IntentPresentation } from "./presentation"
+
+export type {
+  ForeignCall,
+  ForeignCallOptions,
+  ForeignFailure,
+  ForeignOutcome,
+  ForeignPort,
+  ForeignVerdict,
+} from "./foreign"
+export { callForeign, ForeignDeadlineError, reportToConsole } from "./foreign"
