@@ -1,0 +1,2074 @@
+{
+ "head": "f83a4119bb1f9eb112f8c3f4b7e8dca9927c79c5",
+ "k": 40,
+ "prs": [
+  {
+   "sha": "f83a4119bb1f9eb112f8c3f4b7e8dca9927c79c5",
+   "pr": 1690,
+   "ts": 1791257045,
+   "subject": "chore(storybook): keep only the stories a CI gate loads (#1690)",
+   "bot": false,
+   "agent": true,
+   "by_cat": {
+    "source": {
+     "add": 44,
+     "del": 835
+    },
+    "test": {
+     "add": 124,
+     "del": 345
+    },
+    "stories": {
+     "add": 2,
+     "del": 11279
+    },
+    "generated": {
+     "add": 0,
+     "del": 194
+    },
+    "docs": {
+     "add": 71,
+     "del": 176
+    },
+    "config": {
+     "add": 43,
+     "del": 160
+    },
+    "other": {
+     "add": 0,
+     "del": 1
+    }
+   },
+   "test": {
+    "cases": 4,
+    "each": 0,
+    "property": 0,
+    "mock": 0
+   },
+   "added_sig": 30,
+   "cloned_added": 0,
+   "cloned_added_test": 6,
+   "added_sig_test": 56,
+   "comment_added": 63,
+   "files_added": 0,
+   "provenance_added": 9,
+   "surviving_lines": 264
+  },
+  {
+   "sha": "efee68c7e70b7ad75e40dea0376d15b080620d1b",
+   "pr": 1689,
+   "ts": 1791252735,
+   "subject": "refactor: dissolve some-ui-utils (UTL split) and share vitest/eslint/tsconfig presets (#1689)",
+   "bot": false,
+   "agent": true,
+   "by_cat": {
+    "source": {
+     "add": 927,
+     "del": 2332
+    },
+    "test": {
+     "add": 155,
+     "del": 1084
+    },
+    "stories": {
+     "add": 5,
+     "del": 3
+    },
+    "generated": {
+     "add": 70,
+     "del": 179
+    },
+    "docs": {
+     "add": 54,
+     "del": 290
+    },
+    "config": {
+     "add": 137,
+     "del": 391
+    },
+    "other": {
+     "add": 12,
+     "del": 7
+    }
+   },
+   "test": {
+    "cases": 5,
+    "each": 0,
+    "property": 0,
+    "mock": 7
+   },
+   "added_sig": 416,
+   "cloned_added": 58,
+   "cloned_added_test": 2,
+   "added_sig_test": 96,
+   "comment_added": 171,
+   "files_added": 13,
+   "provenance_added": 0,
+   "surviving_lines": 1224
+  },
+  {
+   "sha": "c254fee5443219dc7b36512c6a2f6adb952982af",
+   "pr": 1685,
+   "ts": 1791246561,
+   "subject": "chore: cut ~40k lines: history comments, test boilerplate, unused code, and three retired workspaces (#1685)",
+   "bot": false,
+   "agent": true,
+   "by_cat": {
+    "source": {
+     "add": 6502,
+     "del": 33258
+    },
+    "test": {
+     "add": 8414,
+     "del": 17987
+    },
+    "stories": {
+     "add": 58,
+     "del": 1571
+    },
+    "generated": {
+     "add": 0,
+     "del": 486
+    },
+    "docs": {
+     "add": 55,
+     "del": 799
+    },
+    "config": {
+     "add": 18,
+     "del": 977
+    },
+    "other": {
+     "add": 11,
+     "del": 108
+    }
+   },
+   "test": {
+    "cases": 131,
+    "each": 75,
+    "property": 0,
+    "mock": 31
+   },
+   "added_sig": 201,
+   "cloned_added": 11,
+   "cloned_added_test": 863,
+   "added_sig_test": 4688,
+   "comment_added": 8439,
+   "files_added": 8,
+   "provenance_added": 137,
+   "surviving_lines": 13717
+  },
+  {
+   "sha": "f7f7ad4d738a3bfdf276f473ebe9253e758236a6",
+   "pr": 1684,
+   "ts": 1791225903,
+   "subject": "feat(www,vite-config): drop passkey from the APK, the hosted voice from Pages, sw.js from the APK (#1684)",
+   "bot": false,
+   "agent": true,
+   "by_cat": {
+    "source": {
+     "add": 209,
+     "del": 40
+    },
+    "test": {
+     "add": 87,
+     "del": 24
+    },
+    "stories": {
+     "add": 0,
+     "del": 0
+    },
+    "generated": {
+     "add": 0,
+     "del": 0
+    },
+    "docs": {
+     "add": 9,
+     "del": 5
+    },
+    "config": {
+     "add": 0,
+     "del": 0
+    },
+    "other": {
+     "add": 0,
+     "del": 0
+    }
+   },
+   "test": {
+    "cases": 6,
+    "each": 0,
+    "property": 0,
+    "mock": 1
+   },
+   "added_sig": 101,
+   "cloned_added": 10,
+   "cloned_added_test": 7,
+   "added_sig_test": 57,
+   "comment_added": 66,
+   "files_added": 1,
+   "provenance_added": 1,
+   "surviving_lines": 276
+  },
+  {
+   "sha": "1d3bd5129af678ad759b98e9d16fc221325cf049",
+   "pr": 1611,
+   "ts": 1791166701,
+   "subject": "chore(deps-dev): bump es-module-lexer from 2.3.2 to 3.0.2 (#1611)",
+   "bot": true,
+   "agent": false,
+   "by_cat": {
+    "source": {
+     "add": 20,
+     "del": 3
+    },
+    "test": {
+     "add": 0,
+     "del": 0
+    },
+    "stories": {
+     "add": 0,
+     "del": 0
+    },
+    "generated": {
+     "add": 7,
+     "del": 2
+    },
+    "docs": {
+     "add": 0,
+     "del": 0
+    },
+    "config": {
+     "add": 1,
+     "del": 1
+    },
+    "other": {
+     "add": 0,
+     "del": 0
+    }
+   },
+   "test": {
+    "cases": 0,
+    "each": 0,
+    "property": 0,
+    "mock": 0
+   },
+   "added_sig": 12,
+   "cloned_added": 0,
+   "cloned_added_test": 0,
+   "added_sig_test": 0,
+   "comment_added": 6,
+   "files_added": 0,
+   "provenance_added": 0,
+   "surviving_lines": 28
+  },
+  {
+   "sha": "1e0126be666380a6c3e09a75fe2d2640d320ef87",
+   "pr": 1612,
+   "ts": 1791166189,
+   "subject": "chore(deps): bump @radix-ui/react-dropdown-menu from 2.1.18 to 2.1.24 (#1612)",
+   "bot": true,
+   "agent": false,
+   "by_cat": {
+    "source": {
+     "add": 0,
+     "del": 0
+    },
+    "test": {
+     "add": 0,
+     "del": 0
+    },
+    "stories": {
+     "add": 0,
+     "del": 0
+    },
+    "generated": {
+     "add": 72,
+     "del": 315
+    },
+    "docs": {
+     "add": 0,
+     "del": 0
+    },
+    "config": {
+     "add": 3,
+     "del": 3
+    },
+    "other": {
+     "add": 0,
+     "del": 0
+    }
+   },
+   "test": {
+    "cases": 0,
+    "each": 0,
+    "property": 0,
+    "mock": 0
+   },
+   "added_sig": 0,
+   "cloned_added": 0,
+   "cloned_added_test": 0,
+   "added_sig_test": 0,
+   "comment_added": 0,
+   "files_added": 0,
+   "surviving_lines": 24
+  },
+  {
+   "sha": "460ec430f941987c9706a0f515e2a651658354c0",
+   "pr": 1614,
+   "ts": 1791164598,
+   "subject": "chore(release): deploy pages site (#1614)",
+   "bot": true,
+   "agent": false,
+   "by_cat": {
+    "source": {
+     "add": 0,
+     "del": 0
+    },
+    "test": {
+     "add": 0,
+     "del": 0
+    },
+    "stories": {
+     "add": 0,
+     "del": 0
+    },
+    "generated": {
+     "add": 0,
+     "del": 0
+    },
+    "docs": {
+     "add": 0,
+     "del": 0
+    },
+    "config": {
+     "add": 0,
+     "del": 0
+    },
+    "other": {
+     "add": 2,
+     "del": 2
+    }
+   },
+   "test": {
+    "cases": 0,
+    "each": 0,
+    "property": 0,
+    "mock": 0
+   },
+   "added_sig": 0,
+   "cloned_added": 0,
+   "cloned_added_test": 0,
+   "added_sig_test": 0,
+   "comment_added": 0,
+   "files_added": 0,
+   "surviving_lines": 2
+  },
+  {
+   "sha": "a4809e13172c86a53739c392af3bd5c13fc8631b",
+   "pr": 1664,
+   "ts": 1791164584,
+   "subject": "chore(release): publish www docker image (#1664)",
+   "bot": true,
+   "agent": false,
+   "by_cat": {
+    "source": {
+     "add": 0,
+     "del": 0
+    },
+    "test": {
+     "add": 0,
+     "del": 0
+    },
+    "stories": {
+     "add": 0,
+     "del": 0
+    },
+    "generated": {
+     "add": 11,
+     "del": 0
+    },
+    "docs": {
+     "add": 0,
+     "del": 0
+    },
+    "config": {
+     "add": 1,
+     "del": 1
+    },
+    "other": {
+     "add": 0,
+     "del": 0
+    }
+   },
+   "test": {
+    "cases": 0,
+    "each": 0,
+    "property": 0,
+    "mock": 0
+   },
+   "added_sig": 0,
+   "cloned_added": 0,
+   "cloned_added_test": 0,
+   "added_sig_test": 0,
+   "comment_added": 0,
+   "files_added": 0,
+   "surviving_lines": 2
+  },
+  {
+   "sha": "f83ceef42f695b5675a2af0f5d6f6c949dc39607",
+   "pr": 1674,
+   "ts": 1791162607,
+   "subject": "ci(pr): split Node CI into four parallel jobs (#1674)",
+   "bot": false,
+   "agent": true,
+   "by_cat": {
+    "source": {
+     "add": 0,
+     "del": 0
+    },
+    "test": {
+     "add": 0,
+     "del": 0
+    },
+    "stories": {
+     "add": 0,
+     "del": 0
+    },
+    "generated": {
+     "add": 0,
+     "del": 0
+    },
+    "docs": {
+     "add": 0,
+     "del": 0
+    },
+    "config": {
+     "add": 142,
+     "del": 51
+    },
+    "other": {
+     "add": 0,
+     "del": 0
+    }
+   },
+   "test": {
+    "cases": 0,
+    "each": 0,
+    "property": 0,
+    "mock": 0
+   },
+   "added_sig": 0,
+   "cloned_added": 0,
+   "cloned_added_test": 0,
+   "added_sig_test": 0,
+   "comment_added": 0,
+   "files_added": 1,
+   "surviving_lines": 106
+  },
+  {
+   "sha": "7a41e57276794b00959c575bdcb29829df253a1a",
+   "pr": 1673,
+   "ts": 1791156268,
+   "subject": "feat(speech,vite-config,www): each speech backend is its own entry, injected by the app (#1673)",
+   "bot": false,
+   "agent": true,
+   "by_cat": {
+    "source": {
+     "add": 372,
+     "del": 681
+    },
+    "test": {
+     "add": 499,
+     "del": 113
+    },
+    "stories": {
+     "add": 16,
+     "del": 2
+    },
+    "generated": {
+     "add": 3,
+     "del": 6
+    },
+    "docs": {
+     "add": 57,
+     "del": 19
+    },
+    "config": {
+     "add": 26,
+     "del": 6
+    },
+    "other": {
+     "add": 0,
+     "del": 1
+    }
+   },
+   "test": {
+    "cases": 22,
+    "each": 1,
+    "property": 0,
+    "mock": 3
+   },
+   "added_sig": 167,
+   "cloned_added": 12,
+   "cloned_added_test": 16,
+   "added_sig_test": 289,
+   "comment_added": 175,
+   "files_added": 7,
+   "provenance_added": 0,
+   "surviving_lines": 923
+  },
+  {
+   "sha": "c9612481513ed7a2275856b79fb6cdb9725fc35e",
+   "pr": 1672,
+   "ts": 1791140509,
+   "subject": "feat(www,vite-config): fail the build check when a profile ships code off its path (#1672)",
+   "bot": false,
+   "agent": true,
+   "by_cat": {
+    "source": {
+     "add": 974,
+     "del": 45
+    },
+    "test": {
+     "add": 420,
+     "del": 15
+    },
+    "stories": {
+     "add": 0,
+     "del": 0
+    },
+    "generated": {
+     "add": 0,
+     "del": 0
+    },
+    "docs": {
+     "add": 68,
+     "del": 2
+    },
+    "config": {
+     "add": 27,
+     "del": 1
+    },
+    "other": {
+     "add": 0,
+     "del": 0
+    }
+   },
+   "test": {
+    "cases": 19,
+    "each": 0,
+    "property": 0,
+    "mock": 0
+   },
+   "added_sig": 538,
+   "cloned_added": 44,
+   "cloned_added_test": 51,
+   "added_sig_test": 258,
+   "comment_added": 222,
+   "files_added": 8,
+   "provenance_added": 1,
+   "surviving_lines": 1457
+  },
+  {
+   "sha": "fc7472dcd1cc034d48a9f6fab9c12c7f59337ef5",
+   "pr": 1671,
+   "ts": 1791117467,
+   "subject": "feat(leetype,www,mobile): margin notes on every round artifact, typed or spoken (#1671)",
+   "bot": false,
+   "agent": true,
+   "by_cat": {
+    "source": {
+     "add": 1876,
+     "del": 87
+    },
+    "test": {
+     "add": 1202,
+     "del": 1
+    },
+    "stories": {
+     "add": 129,
+     "del": 0
+    },
+    "generated": {
+     "add": 36,
+     "del": 0
+    },
+    "docs": {
+     "add": 54,
+     "del": 3
+    },
+    "config": {
+     "add": 5,
+     "del": 1
+    },
+    "other": {
+     "add": 71,
+     "del": 1
+    }
+   },
+   "test": {
+    "cases": 53,
+    "each": 0,
+    "property": 0,
+    "mock": 10
+   },
+   "added_sig": 1165,
+   "cloned_added": 51,
+   "cloned_added_test": 139,
+   "added_sig_test": 860,
+   "comment_added": 437,
+   "files_added": 14,
+   "provenance_added": 1,
+   "surviving_lines": 3044
+  },
+  {
+   "sha": "dca01b3c42bcae484f8953fcfc1acc3e642b7fba",
+   "pr": 1663,
+   "ts": 1791086037,
+   "subject": "feat(mobile): the APK speaks Korean with the phone's TTS engine; a phone voice picker (#1663)",
+   "bot": false,
+   "agent": true,
+   "by_cat": {
+    "source": {
+     "add": 1221,
+     "del": 33
+    },
+    "test": {
+     "add": 1314,
+     "del": 1
+    },
+    "stories": {
+     "add": 0,
+     "del": 0
+    },
+    "generated": {
+     "add": 15,
+     "del": 0
+    },
+    "docs": {
+     "add": 63,
+     "del": 11
+    },
+    "config": {
+     "add": 15,
+     "del": 0
+    },
+    "other": {
+     "add": 62,
+     "del": 1
+    }
+   },
+   "test": {
+    "cases": 39,
+    "each": 0,
+    "property": 0,
+    "mock": 23
+   },
+   "added_sig": 626,
+   "cloned_added": 25,
+   "cloned_added_test": 186,
+   "added_sig_test": 872,
+   "comment_added": 384,
+   "files_added": 10,
+   "provenance_added": 4,
+   "surviving_lines": 2425
+  },
+  {
+   "sha": "3241cb15c8804b16788c33bbedbb794fae182980",
+   "pr": 1662,
+   "ts": 1791085349,
+   "subject": "fix(speech): the session owns the voice; the speaker icon names who reads lessons (#1662)",
+   "bot": false,
+   "agent": true,
+   "by_cat": {
+    "source": {
+     "add": 1892,
+     "del": 711
+    },
+    "test": {
+     "add": 2481,
+     "del": 515
+    },
+    "stories": {
+     "add": 21,
+     "del": 19
+    },
+    "generated": {
+     "add": 0,
+     "del": 6
+    },
+    "docs": {
+     "add": 66,
+     "del": 4
+    },
+    "config": {
+     "add": 0,
+     "del": 3
+    },
+    "other": {
+     "add": 2,
+     "del": 2
+    }
+   },
+   "test": {
+    "cases": 94,
+    "each": 5,
+    "property": 0,
+    "mock": 15
+   },
+   "added_sig": 1013,
+   "cloned_added": 69,
+   "cloned_added_test": 417,
+   "added_sig_test": 1707,
+   "comment_added": 694,
+   "files_added": 13,
+   "provenance_added": 10,
+   "surviving_lines": 4062
+  },
+  {
+   "sha": "50cc697c5666686d1050f3b585c1a105ca7ef757",
+   "pr": 1668,
+   "ts": 1791084536,
+   "subject": "docs(steward): review coverage on a head is not Codex-only (#1668)",
+   "bot": false,
+   "agent": true,
+   "by_cat": {
+    "source": {
+     "add": 0,
+     "del": 0
+    },
+    "test": {
+     "add": 0,
+     "del": 0
+    },
+    "stories": {
+     "add": 0,
+     "del": 0
+    },
+    "generated": {
+     "add": 0,
+     "del": 0
+    },
+    "docs": {
+     "add": 19,
+     "del": 19
+    },
+    "config": {
+     "add": 0,
+     "del": 0
+    },
+    "other": {
+     "add": 0,
+     "del": 0
+    }
+   },
+   "test": {
+    "cases": 0,
+    "each": 0,
+    "property": 0,
+    "mock": 0
+   },
+   "added_sig": 0,
+   "cloned_added": 0,
+   "cloned_added_test": 0,
+   "added_sig_test": 0,
+   "comment_added": 0,
+   "files_added": 0,
+   "surviving_lines": 19
+  },
+  {
+   "sha": "7ea2b1ef7c2ff3afd76d87f050b81a9e81bca666",
+   "pr": 1665,
+   "ts": 1791083471,
+   "subject": "fix: guard against screens acting on stale copies (owner-guard lint, aph transition check) (#1665)",
+   "bot": false,
+   "agent": true,
+   "by_cat": {
+    "source": {
+     "add": 405,
+     "del": 70
+    },
+    "test": {
+     "add": 199,
+     "del": 9
+    },
+    "stories": {
+     "add": 0,
+     "del": 0
+    },
+    "generated": {
+     "add": 0,
+     "del": 0
+    },
+    "docs": {
+     "add": 8,
+     "del": 0
+    },
+    "config": {
+     "add": 0,
+     "del": 0
+    },
+    "other": {
+     "add": 0,
+     "del": 0
+    }
+   },
+   "test": {
+    "cases": 11,
+    "each": 0,
+    "property": 0,
+    "mock": 0
+   },
+   "added_sig": 195,
+   "cloned_added": 7,
+   "cloned_added_test": 12,
+   "added_sig_test": 117,
+   "comment_added": 141,
+   "files_added": 3,
+   "provenance_added": 9,
+   "surviving_lines": 586
+  },
+  {
+   "sha": "66a53e20a886923aae6233517ae20da35d33ce0a",
+   "pr": 1659,
+   "ts": 1791069308,
+   "subject": "feat(mobile): a Home hub, a bottom tab bar, and aph as a reconciliation (APK only) (#1659)",
+   "bot": false,
+   "agent": true,
+   "by_cat": {
+    "source": {
+     "add": 3783,
+     "del": 152
+    },
+    "test": {
+     "add": 1282,
+     "del": 6
+    },
+    "stories": {
+     "add": 0,
+     "del": 0
+    },
+    "generated": {
+     "add": 171,
+     "del": 0
+    },
+    "docs": {
+     "add": 55,
+     "del": 15
+    },
+    "config": {
+     "add": 102,
+     "del": 0
+    },
+    "other": {
+     "add": 1,
+     "del": 1
+    }
+   },
+   "test": {
+    "cases": 76,
+    "each": 0,
+    "property": 0,
+    "mock": 9
+   },
+   "added_sig": 2417,
+   "cloned_added": 61,
+   "cloned_added_test": 58,
+   "added_sig_test": 805,
+   "comment_added": 559,
+   "files_added": 43,
+   "provenance_added": 1,
+   "surviving_lines": 5066
+  },
+  {
+   "sha": "4d7a9ed0adc557512aeb5f6c69066c81ce27cfe5",
+   "pr": 1605,
+   "ts": 1791047437,
+   "subject": "chore(release): publish www docker image (#1605)",
+   "bot": true,
+   "agent": false,
+   "by_cat": {
+    "source": {
+     "add": 0,
+     "del": 0
+    },
+    "test": {
+     "add": 0,
+     "del": 0
+    },
+    "stories": {
+     "add": 0,
+     "del": 0
+    },
+    "generated": {
+     "add": 11,
+     "del": 0
+    },
+    "docs": {
+     "add": 0,
+     "del": 0
+    },
+    "config": {
+     "add": 1,
+     "del": 1
+    },
+    "other": {
+     "add": 0,
+     "del": 0
+    }
+   },
+   "test": {
+    "cases": 0,
+    "each": 0,
+    "property": 0,
+    "mock": 0
+   },
+   "added_sig": 0,
+   "cloned_added": 0,
+   "cloned_added_test": 0,
+   "added_sig_test": 0,
+   "comment_added": 0,
+   "files_added": 0,
+   "surviving_lines": 1
+  },
+  {
+   "sha": "9b7918beac7f0a6e4cec866bd5e515edeebf44a8",
+   "pr": 1607,
+   "ts": 1791047420,
+   "subject": "chore(deps): bump wasm-bindgen-test from 0.3.78 to 0.3.79 (#1607)",
+   "bot": true,
+   "agent": false,
+   "by_cat": {
+    "source": {
+     "add": 0,
+     "del": 0
+    },
+    "test": {
+     "add": 0,
+     "del": 0
+    },
+    "stories": {
+     "add": 0,
+     "del": 0
+    },
+    "generated": {
+     "add": 28,
+     "del": 18
+    },
+    "docs": {
+     "add": 0,
+     "del": 0
+    },
+    "config": {
+     "add": 0,
+     "del": 0
+    },
+    "other": {
+     "add": 0,
+     "del": 0
+    }
+   },
+   "test": {
+    "cases": 0,
+    "each": 0,
+    "property": 0,
+    "mock": 0
+   },
+   "added_sig": 0,
+   "cloned_added": 0,
+   "cloned_added_test": 0,
+   "added_sig_test": 0,
+   "comment_added": 0,
+   "files_added": 0,
+   "surviving_lines": 27
+  },
+  {
+   "sha": "2a834bb4f4713af6826d0aa707cf3f49678e55fd",
+   "pr": 1608,
+   "ts": 1791047320,
+   "subject": "chore(deps-dev): bump fast-check from 3.23.2 to 4.10.2 (#1608)",
+   "bot": true,
+   "agent": false,
+   "by_cat": {
+    "source": {
+     "add": 0,
+     "del": 0
+    },
+    "test": {
+     "add": 0,
+     "del": 0
+    },
+    "stories": {
+     "add": 0,
+     "del": 0
+    },
+    "generated": {
+     "add": 22,
+     "del": 22
+    },
+    "docs": {
+     "add": 0,
+     "del": 0
+    },
+    "config": {
+     "add": 7,
+     "del": 7
+    },
+    "other": {
+     "add": 0,
+     "del": 0
+    }
+   },
+   "test": {
+    "cases": 0,
+    "each": 0,
+    "property": 0,
+    "mock": 0
+   },
+   "added_sig": 0,
+   "cloned_added": 0,
+   "cloned_added_test": 0,
+   "added_sig_test": 0,
+   "comment_added": 0,
+   "files_added": 0,
+   "surviving_lines": 25
+  },
+  {
+   "sha": "be101bf50c8e84ffdbe9391ebd20223f86f26be8",
+   "pr": 1609,
+   "ts": 1791047300,
+   "subject": "chore(deps-dev): bump web-ext from 8.3.0 to 10.7.0 (#1609)",
+   "bot": true,
+   "agent": false,
+   "by_cat": {
+    "source": {
+     "add": 0,
+     "del": 0
+    },
+    "test": {
+     "add": 0,
+     "del": 0
+    },
+    "stories": {
+     "add": 0,
+     "del": 0
+    },
+    "generated": {
+     "add": 503,
+     "del": 1159
+    },
+    "docs": {
+     "add": 0,
+     "del": 0
+    },
+    "config": {
+     "add": 2,
+     "del": 2
+    },
+    "other": {
+     "add": 0,
+     "del": 0
+    }
+   },
+   "test": {
+    "cases": 0,
+    "each": 0,
+    "property": 0,
+    "mock": 0
+   },
+   "added_sig": 0,
+   "cloned_added": 0,
+   "cloned_added_test": 0,
+   "added_sig_test": 0,
+   "comment_added": 0,
+   "files_added": 0,
+   "surviving_lines": 416
+  },
+  {
+   "sha": "8adf866ef151c2b8772c869ccefb035cc763f655",
+   "pr": 1610,
+   "ts": 1791047262,
+   "subject": "chore(deps): bump web-vitals from 4.2.4 to 6.2.2 (#1610)",
+   "bot": true,
+   "agent": false,
+   "by_cat": {
+    "source": {
+     "add": 0,
+     "del": 0
+    },
+    "test": {
+     "add": 0,
+     "del": 0
+    },
+    "stories": {
+     "add": 0,
+     "del": 0
+    },
+    "generated": {
+     "add": 5,
+     "del": 23
+    },
+    "docs": {
+     "add": 0,
+     "del": 0
+    },
+    "config": {
+     "add": 1,
+     "del": 1
+    },
+    "other": {
+     "add": 0,
+     "del": 0
+    }
+   },
+   "test": {
+    "cases": 0,
+    "each": 0,
+    "property": 0,
+    "mock": 0
+   },
+   "added_sig": 0,
+   "cloned_added": 0,
+   "cloned_added_test": 0,
+   "added_sig_test": 0,
+   "comment_added": 0,
+   "files_added": 0,
+   "surviving_lines": 6
+  },
+  {
+   "sha": "e5e3baa0f5b27cb0f3554cc3b297c657ba8f3bf3",
+   "pr": 1660,
+   "ts": 1791043827,
+   "subject": "chore: retire the Interview activity and @some-ui/interview (#1660)",
+   "bot": false,
+   "agent": true,
+   "by_cat": {
+    "source": {
+     "add": 69,
+     "del": 2764
+    },
+    "test": {
+     "add": 113,
+     "del": 1592
+    },
+    "stories": {
+     "add": 0,
+     "del": 406
+    },
+    "generated": {
+     "add": 0,
+     "del": 42
+    },
+    "docs": {
+     "add": 6,
+     "del": 27
+    },
+    "config": {
+     "add": 3,
+     "del": 104
+    },
+    "other": {
+     "add": 7,
+     "del": 32
+    }
+   },
+   "test": {
+    "cases": 5,
+    "each": 0,
+    "property": 0,
+    "mock": 0
+   },
+   "added_sig": 30,
+   "cloned_added": 0,
+   "cloned_added_test": 1,
+   "added_sig_test": 67,
+   "comment_added": 40,
+   "files_added": 1,
+   "provenance_added": 2,
+   "surviving_lines": 176
+  },
+  {
+   "sha": "34565137b1aef6366421b42abaf608eaabd20aa2",
+   "pr": 1645,
+   "ts": 1790962060,
+   "subject": "chore: keep only www's four activity panels; retire slideshow and four registry-only packages (#1645)",
+   "bot": false,
+   "agent": true,
+   "by_cat": {
+    "source": {
+     "add": 79,
+     "del": 13962
+    },
+    "test": {
+     "add": 39,
+     "del": 192
+    },
+    "stories": {
+     "add": 0,
+     "del": 3632
+    },
+    "generated": {
+     "add": 3,
+     "del": 586
+    },
+    "docs": {
+     "add": 4,
+     "del": 4
+    },
+    "config": {
+     "add": 2,
+     "del": 765
+    },
+    "other": {
+     "add": 6,
+     "del": 33
+    }
+   },
+   "test": {
+    "cases": 3,
+    "each": 0,
+    "property": 0,
+    "mock": 0
+   },
+   "added_sig": 48,
+   "cloned_added": 29,
+   "cloned_added_test": 0,
+   "added_sig_test": 21,
+   "comment_added": 7,
+   "files_added": 1,
+   "provenance_added": 2,
+   "surviving_lines": 67
+  },
+  {
+   "sha": "8b809cb59dda916a41ab0bfa0e1483417016f785",
+   "pr": 1648,
+   "ts": 1790962028,
+   "subject": "feat(scripts): report vestige candidates (pnpm report:vestiges) (#1648)",
+   "bot": false,
+   "agent": true,
+   "by_cat": {
+    "source": {
+     "add": 334,
+     "del": 0
+    },
+    "test": {
+     "add": 221,
+     "del": 0
+    },
+    "stories": {
+     "add": 0,
+     "del": 0
+    },
+    "generated": {
+     "add": 0,
+     "del": 0
+    },
+    "docs": {
+     "add": 30,
+     "del": 0
+    },
+    "config": {
+     "add": 1,
+     "del": 0
+    },
+    "other": {
+     "add": 0,
+     "del": 0
+    }
+   },
+   "test": {
+    "cases": 11,
+    "each": 0,
+    "property": 0,
+    "mock": 0
+   },
+   "added_sig": 187,
+   "cloned_added": 0,
+   "cloned_added_test": 18,
+   "added_sig_test": 139,
+   "comment_added": 90,
+   "files_added": 3,
+   "provenance_added": 2,
+   "surviving_lines": 583
+  },
+  {
+   "sha": "c9fe80c87de5d453b221fdc80a07e74b8e5c2462",
+   "pr": 1644,
+   "ts": 1790945902,
+   "subject": "chore: delete the dead some-ui-input + stepper chain and its two wasm crates (#1644)",
+   "bot": false,
+   "agent": true,
+   "by_cat": {
+    "source": {
+     "add": 12,
+     "del": 9344
+    },
+    "test": {
+     "add": 4,
+     "del": 975
+    },
+    "stories": {
+     "add": 0,
+     "del": 772
+    },
+    "generated": {
+     "add": 6,
+     "del": 599
+    },
+    "docs": {
+     "add": 11,
+     "del": 52
+    },
+    "config": {
+     "add": 6,
+     "del": 447
+    },
+    "other": {
+     "add": 11,
+     "del": 58
+    }
+   },
+   "test": {
+    "cases": 1,
+    "each": 0,
+    "property": 0,
+    "mock": 0
+   },
+   "added_sig": 2,
+   "cloned_added": 0,
+   "cloned_added_test": 0,
+   "added_sig_test": 2,
+   "comment_added": 11,
+   "files_added": 0,
+   "provenance_added": 1,
+   "surviving_lines": 32
+  },
+  {
+   "sha": "bd7f23c63d93ba4a5b7426950622fe668a4c66ff",
+   "pr": 1642,
+   "ts": 1790944828,
+   "subject": "docs(review): make a second implementation or code left behind a blocking finding (#1642)",
+   "bot": false,
+   "agent": true,
+   "by_cat": {
+    "source": {
+     "add": 0,
+     "del": 0
+    },
+    "test": {
+     "add": 0,
+     "del": 0
+    },
+    "stories": {
+     "add": 0,
+     "del": 0
+    },
+    "generated": {
+     "add": 0,
+     "del": 0
+    },
+    "docs": {
+     "add": 51,
+     "del": 0
+    },
+    "config": {
+     "add": 0,
+     "del": 0
+    },
+    "other": {
+     "add": 0,
+     "del": 0
+    }
+   },
+   "test": {
+    "cases": 0,
+    "each": 0,
+    "property": 0,
+    "mock": 0
+   },
+   "added_sig": 0,
+   "cloned_added": 0,
+   "cloned_added_test": 0,
+   "added_sig_test": 0,
+   "comment_added": 0,
+   "files_added": 0,
+   "surviving_lines": 45
+  },
+  {
+   "sha": "d937a9fb56b55dfdd7052376eff3c6eab4024333",
+   "pr": 1641,
+   "ts": 1790944825,
+   "subject": "refactor(shared): one learner shelf for LeetType and TOPIK (#1641)",
+   "bot": false,
+   "agent": true,
+   "by_cat": {
+    "source": {
+     "add": 861,
+     "del": 990
+    },
+    "test": {
+     "add": 429,
+     "del": 215
+    },
+    "stories": {
+     "add": 0,
+     "del": 0
+    },
+    "generated": {
+     "add": 0,
+     "del": 0
+    },
+    "docs": {
+     "add": 0,
+     "del": 0
+    },
+    "config": {
+     "add": 1,
+     "del": 0
+    },
+    "other": {
+     "add": 0,
+     "del": 2
+    }
+   },
+   "test": {
+    "cases": 24,
+    "each": 0,
+    "property": 0,
+    "mock": 14
+   },
+   "added_sig": 488,
+   "cloned_added": 0,
+   "cloned_added_test": 7,
+   "added_sig_test": 302,
+   "comment_added": 182,
+   "files_added": 6,
+   "provenance_added": 9,
+   "surviving_lines": 1249
+  },
+  {
+   "sha": "ab9689a9bda2f4983adf4cadcda27298801f0abf",
+   "pr": 1643,
+   "ts": 1790944148,
+   "subject": "chore(knip): opt every workspace in to knip and clear its findings (#1643)",
+   "bot": false,
+   "agent": true,
+   "by_cat": {
+    "source": {
+     "add": 232,
+     "del": 1776
+    },
+    "test": {
+     "add": 14,
+     "del": 16
+    },
+    "stories": {
+     "add": 0,
+     "del": 0
+    },
+    "generated": {
+     "add": 0,
+     "del": 817
+    },
+    "docs": {
+     "add": 1,
+     "del": 1
+    },
+    "config": {
+     "add": 86,
+     "del": 105
+    },
+    "other": {
+     "add": 0,
+     "del": 1
+    }
+   },
+   "test": {
+    "cases": 0,
+    "each": 0,
+    "property": 0,
+    "mock": 0
+   },
+   "added_sig": 202,
+   "cloned_added": 23,
+   "cloned_added_test": 0,
+   "added_sig_test": 13,
+   "comment_added": 12,
+   "files_added": 0,
+   "provenance_added": 0,
+   "surviving_lines": 234
+  },
+  {
+   "sha": "8695a06acb30b539833b158797a422a579d7b9a3",
+   "pr": 1640,
+   "ts": 1790943469,
+   "subject": "chore: remove unused calendar, milestones, emoji-animations and portfolio-chart packages (#1640)",
+   "bot": false,
+   "agent": true,
+   "by_cat": {
+    "source": {
+     "add": 1,
+     "del": 4228
+    },
+    "test": {
+     "add": 0,
+     "del": 353
+    },
+    "stories": {
+     "add": 0,
+     "del": 1343
+    },
+    "generated": {
+     "add": 0,
+     "del": 845
+    },
+    "docs": {
+     "add": 0,
+     "del": 113
+    },
+    "config": {
+     "add": 0,
+     "del": 403
+    },
+    "other": {
+     "add": 6,
+     "del": 50
+    }
+   },
+   "test": {
+    "cases": 0,
+    "each": 0,
+    "property": 0,
+    "mock": 0
+   },
+   "added_sig": 1,
+   "cloned_added": 0,
+   "cloned_added_test": 0,
+   "added_sig_test": 0,
+   "comment_added": 0,
+   "files_added": 0,
+   "provenance_added": 0,
+   "surviving_lines": 1
+  },
+  {
+   "sha": "9d4f60e012f135562e8f0353ac93ad128f4d2764",
+   "pr": 1639,
+   "ts": 1790917680,
+   "subject": "feat(www): learn on the device by default; an account is a choice, and reporting is a second one (#1639)",
+   "bot": false,
+   "agent": true,
+   "by_cat": {
+    "source": {
+     "add": 2321,
+     "del": 560
+    },
+    "test": {
+     "add": 4406,
+     "del": 436
+    },
+    "stories": {
+     "add": 0,
+     "del": 0
+    },
+    "generated": {
+     "add": 0,
+     "del": 0
+    },
+    "docs": {
+     "add": 269,
+     "del": 5
+    },
+    "config": {
+     "add": 45,
+     "del": 0
+    },
+    "other": {
+     "add": 155,
+     "del": 8
+    }
+   },
+   "test": {
+    "cases": 218,
+    "each": 2,
+    "property": 0,
+    "mock": 37
+   },
+   "added_sig": 1081,
+   "cloned_added": 21,
+   "cloned_added_test": 144,
+   "added_sig_test": 2751,
+   "comment_added": 1092,
+   "files_added": 33,
+   "provenance_added": 8,
+   "surviving_lines": 6658
+  },
+  {
+   "sha": "f40534e26df68ee39671c9eea61f9079bc0a7a4d",
+   "pr": 1636,
+   "ts": 1790911904,
+   "subject": "feat(mobile): say why a session didn't happen, as a capped soundbite (APK only) (#1636)",
+   "bot": false,
+   "agent": true,
+   "by_cat": {
+    "source": {
+     "add": 2168,
+     "del": 32
+    },
+    "test": {
+     "add": 1252,
+     "del": 11
+    },
+    "stories": {
+     "add": 0,
+     "del": 0
+    },
+    "generated": {
+     "add": 81,
+     "del": 0
+    },
+    "docs": {
+     "add": 90,
+     "del": 16
+    },
+    "config": {
+     "add": 107,
+     "del": 0
+    },
+    "other": {
+     "add": 15,
+     "del": 2
+    }
+   },
+   "test": {
+    "cases": 58,
+    "each": 0,
+    "property": 0,
+    "mock": 28
+   },
+   "added_sig": 1279,
+   "cloned_added": 36,
+   "cloned_added_test": 83,
+   "added_sig_test": 836,
+   "comment_added": 410,
+   "files_added": 26,
+   "provenance_added": 4,
+   "surviving_lines": 3465
+  },
+  {
+   "sha": "4e8f64d9e6f3a5d1a883bb0def25cd681dc4f4ba",
+   "pr": 1638,
+   "ts": 1790908134,
+   "subject": "feat(eslint): make React-module coordination visible in every diff (R1) (#1638)",
+   "bot": false,
+   "agent": true,
+   "by_cat": {
+    "source": {
+     "add": 379,
+     "del": 0
+    },
+    "test": {
+     "add": 266,
+     "del": 0
+    },
+    "stories": {
+     "add": 0,
+     "del": 0
+    },
+    "generated": {
+     "add": 4,
+     "del": 0
+    },
+    "docs": {
+     "add": 129,
+     "del": 1
+    },
+    "config": {
+     "add": 35,
+     "del": 2
+    },
+    "other": {
+     "add": 73,
+     "del": 0
+    }
+   },
+   "test": {
+    "cases": 22,
+    "each": 0,
+    "property": 0,
+    "mock": 0
+   },
+   "added_sig": 205,
+   "cloned_added": 23,
+   "cloned_added_test": 23,
+   "added_sig_test": 169,
+   "comment_added": 97,
+   "files_added": 4,
+   "provenance_added": 1,
+   "surviving_lines": 845
+  },
+  {
+   "sha": "6d82e9888750a6a9bcfdc326703b979c2e86ca0d",
+   "pr": 1635,
+   "ts": 1790904799,
+   "subject": "chore(storybook): prune stories that render nothing or repeat a sibling (#1635)",
+   "bot": false,
+   "agent": true,
+   "by_cat": {
+    "source": {
+     "add": 0,
+     "del": 0
+    },
+    "test": {
+     "add": 0,
+     "del": 0
+    },
+    "stories": {
+     "add": 2,
+     "del": 400
+    },
+    "generated": {
+     "add": 0,
+     "del": 0
+    },
+    "docs": {
+     "add": 0,
+     "del": 0
+    },
+    "config": {
+     "add": 0,
+     "del": 0
+    },
+    "other": {
+     "add": 0,
+     "del": 0
+    }
+   },
+   "test": {
+    "cases": 0,
+    "each": 0,
+    "property": 0,
+    "mock": 0
+   },
+   "added_sig": 2,
+   "cloned_added": 0,
+   "cloned_added_test": 0,
+   "added_sig_test": 0,
+   "comment_added": 0,
+   "files_added": 0,
+   "provenance_added": 0,
+   "surviving_lines": 0
+  },
+  {
+   "sha": "267d33f67e18cd577d263166be37ee63c7ff7f28",
+   "pr": 1634,
+   "ts": 1790864752,
+   "subject": "chore(knip): triage unused files, delete 29 dead and register the real entries (#1634)",
+   "bot": false,
+   "agent": true,
+   "by_cat": {
+    "source": {
+     "add": 0,
+     "del": 1457
+    },
+    "test": {
+     "add": 0,
+     "del": 0
+    },
+    "stories": {
+     "add": 0,
+     "del": 0
+    },
+    "generated": {
+     "add": 0,
+     "del": 17
+    },
+    "docs": {
+     "add": 6,
+     "del": 6
+    },
+    "config": {
+     "add": 64,
+     "del": 3
+    },
+    "other": {
+     "add": 0,
+     "del": 0
+    }
+   },
+   "test": {
+    "cases": 0,
+    "each": 0,
+    "property": 0,
+    "mock": 0
+   },
+   "added_sig": 0,
+   "cloned_added": 0,
+   "cloned_added_test": 0,
+   "added_sig_test": 0,
+   "comment_added": 0,
+   "files_added": 0,
+   "provenance_added": 0,
+   "surviving_lines": 56
+  },
+  {
+   "sha": "2b681c0c25092739aa8de329319f5b700fe730ca",
+   "pr": 1632,
+   "ts": 1790858791,
+   "subject": "chore(workspace): remove dead searchbar package and some-bricks crate (#1632)",
+   "bot": false,
+   "agent": true,
+   "by_cat": {
+    "source": {
+     "add": 6,
+     "del": 225
+    },
+    "test": {
+     "add": 1,
+     "del": 2
+    },
+    "stories": {
+     "add": 0,
+     "del": 0
+    },
+    "generated": {
+     "add": 0,
+     "del": 77
+    },
+    "docs": {
+     "add": 37,
+     "del": 122
+    },
+    "config": {
+     "add": 1,
+     "del": 119
+    },
+    "other": {
+     "add": 9,
+     "del": 30
+    }
+   },
+   "test": {
+    "cases": 1,
+    "each": 0,
+    "property": 0,
+    "mock": 0
+   },
+   "added_sig": 1,
+   "cloned_added": 0,
+   "cloned_added_test": 0,
+   "added_sig_test": 1,
+   "comment_added": 5,
+   "files_added": 0,
+   "provenance_added": 1,
+   "surviving_lines": 19
+  },
+  {
+   "sha": "7c3faee181ada3c2a91e144adde2990468c9bdb6",
+   "pr": 1631,
+   "ts": 1790833627,
+   "subject": "test(leetype): give the reach-every-round test an explicit timeout (#1631)",
+   "bot": false,
+   "agent": true,
+   "by_cat": {
+    "source": {
+     "add": 0,
+     "del": 0
+    },
+    "test": {
+     "add": 3,
+     "del": 1
+    },
+    "stories": {
+     "add": 0,
+     "del": 0
+    },
+    "generated": {
+     "add": 0,
+     "del": 0
+    },
+    "docs": {
+     "add": 0,
+     "del": 0
+    },
+    "config": {
+     "add": 0,
+     "del": 0
+    },
+    "other": {
+     "add": 0,
+     "del": 0
+    }
+   },
+   "test": {
+    "cases": 0,
+    "each": 0,
+    "property": 0,
+    "mock": 0
+   },
+   "added_sig": 0,
+   "cloned_added": 0,
+   "cloned_added_test": 0,
+   "added_sig_test": 1,
+   "comment_added": 2,
+   "files_added": 0,
+   "provenance_added": 0,
+   "surviving_lines": 3
+  },
+  {
+   "sha": "df5ce6b6ff297c32b9b7f337bd026595d3362399",
+   "pr": 1630,
+   "ts": 1790830574,
+   "subject": "feat(leetype,www): fit the phone surfaces to a phone: swipe pager, phone card density, composer phone layout (#1630)",
+   "bot": false,
+   "agent": true,
+   "by_cat": {
+    "source": {
+     "add": 1307,
+     "del": 548
+    },
+    "test": {
+     "add": 1348,
+     "del": 133
+    },
+    "stories": {
+     "add": 8,
+     "del": 7
+    },
+    "generated": {
+     "add": 0,
+     "del": 0
+    },
+    "docs": {
+     "add": 28,
+     "del": 1
+    },
+    "config": {
+     "add": 0,
+     "del": 0
+    },
+    "other": {
+     "add": 0,
+     "del": 0
+    }
+   },
+   "test": {
+    "cases": 46,
+    "each": 2,
+    "property": 0,
+    "mock": 18
+   },
+   "added_sig": 724,
+   "cloned_added": 47,
+   "cloned_added_test": 106,
+   "added_sig_test": 787,
+   "comment_added": 559,
+   "files_added": 10,
+   "provenance_added": 6,
+   "surviving_lines": 1703
+  },
+  {
+   "sha": "1ff10fa2404cbcf4be6744fbf28a0b01be664a69",
+   "pr": 1613,
+   "ts": 1790807966,
+   "subject": "feat(mobile): land the Capacitor Android app on main (#1613)",
+   "bot": false,
+   "agent": true,
+   "by_cat": {
+    "source": {
+     "add": 3921,
+     "del": 18
+    },
+    "test": {
+     "add": 1424,
+     "del": 8
+    },
+    "stories": {
+     "add": 0,
+     "del": 0
+    },
+    "generated": {
+     "add": 522,
+     "del": 0
+    },
+    "docs": {
+     "add": 411,
+     "del": 3
+    },
+    "config": {
+     "add": 489,
+     "del": 0
+    },
+    "other": {
+     "add": 1058,
+     "del": 2
+    }
+   },
+   "test": {
+    "cases": 55,
+    "each": 4,
+    "property": 0,
+    "mock": 8
+   },
+   "added_sig": 2196,
+   "cloned_added": 50,
+   "cloned_added_test": 37,
+   "added_sig_test": 893,
+   "comment_added": 870,
+   "files_added": 65,
+   "provenance_added": 3,
+   "surviving_lines": 7329
+  },
+  {
+   "sha": "a589ff1ec80efcd6acc21d92a4c8d89619b658ff",
+   "pr": 1566,
+   "ts": 1790747442,
+   "subject": "chore(release): deploy pages site (#1566)",
+   "bot": true,
+   "agent": false,
+   "by_cat": {
+    "source": {
+     "add": 0,
+     "del": 0
+    },
+    "test": {
+     "add": 0,
+     "del": 0
+    },
+    "stories": {
+     "add": 0,
+     "del": 0
+    },
+    "generated": {
+     "add": 0,
+     "del": 0
+    },
+    "docs": {
+     "add": 0,
+     "del": 0
+    },
+    "config": {
+     "add": 0,
+     "del": 0
+    },
+    "other": {
+     "add": 2,
+     "del": 2
+    }
+   },
+   "test": {
+    "cases": 0,
+    "each": 0,
+    "property": 0,
+    "mock": 0
+   },
+   "added_sig": 0,
+   "cloned_added": 0,
+   "cloned_added_test": 0,
+   "added_sig_test": 0,
+   "comment_added": 0,
+   "files_added": 0,
+   "surviving_lines": 0
+  }
+ ]
+}

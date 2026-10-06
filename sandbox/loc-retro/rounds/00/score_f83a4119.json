@@ -1,0 +1,401 @@
+{
+ "flags_head": "f83a4119bb1f9eb112f8c3f4b7e8dca9927c79c5",
+ "head": "f83a4119bb1f9eb112f8c3f4b7e8dca9927c79c5",
+ "prs": {
+  "1690": {
+   "added": {
+    "n": 164,
+    "dead": 22
+   },
+   "comment": {
+    "n": 63,
+    "dead": 0
+   },
+   "clone": {
+    "n": 6,
+    "dead": 0
+   }
+  },
+  "1689": {
+   "added": {
+    "n": 1019,
+    "dead": 75
+   },
+   "comment": {
+    "n": 171,
+    "dead": 20
+   },
+   "clone": {
+    "n": 60,
+    "dead": 12
+   }
+  },
+  "1685": {
+   "added": {
+    "n": 14713,
+    "dead": 953
+   },
+   "comment": {
+    "n": 8439,
+    "dead": 157
+   },
+   "clone": {
+    "n": 874,
+    "dead": 76
+   }
+  },
+  "1684": {
+   "added": {
+    "n": 280,
+    "dead": 28
+   },
+   "comment": {
+    "n": 66,
+    "dead": 4
+   },
+   "clone": {
+    "n": 17,
+    "dead": 8
+   }
+  },
+  "1611": {
+   "added": {
+    "n": 20,
+    "dead": 0
+   },
+   "comment": {
+    "n": 6,
+    "dead": 0
+   },
+   "clone": {
+    "n": 0,
+    "dead": 0
+   }
+  },
+  "1673": {
+   "added": {
+    "n": 820,
+    "dead": 48
+   },
+   "comment": {
+    "n": 175,
+    "dead": 10
+   },
+   "clone": {
+    "n": 28,
+    "dead": 8
+   }
+  },
+  "1672": {
+   "added": {
+    "n": 1320,
+    "dead": 29
+   },
+   "comment": {
+    "n": 222,
+    "dead": 25
+   },
+   "clone": {
+    "n": 95,
+    "dead": 0
+   }
+  },
+  "1671": {
+   "added": {
+    "n": 3037,
+    "dead": 312
+   },
+   "comment": {
+    "n": 437,
+    "dead": 30
+   },
+   "clone": {
+    "n": 190,
+    "dead": 54
+   }
+  },
+  "1663": {
+   "added": {
+    "n": 2305,
+    "dead": 257
+   },
+   "comment": {
+    "n": 384,
+    "dead": 81
+   },
+   "clone": {
+    "n": 211,
+    "dead": 53
+   }
+  },
+  "1662": {
+   "added": {
+    "n": 4084,
+    "dead": 396
+   },
+   "comment": {
+    "n": 694,
+    "dead": 85
+   },
+   "clone": {
+    "n": 486,
+    "dead": 67
+   }
+  },
+  "1665": {
+   "added": {
+    "n": 569,
+    "dead": 26
+   },
+   "comment": {
+    "n": 141,
+    "dead": 23
+   },
+   "clone": {
+    "n": 19,
+    "dead": 0
+   }
+  },
+  "1659": {
+   "added": {
+    "n": 4728,
+    "dead": 269
+   },
+   "comment": {
+    "n": 559,
+    "dead": 81
+   },
+   "clone": {
+    "n": 119,
+    "dead": 24
+   }
+  },
+  "1660": {
+   "added": {
+    "n": 170,
+    "dead": 15
+   },
+   "comment": {
+    "n": 40,
+    "dead": 4
+   },
+   "clone": {
+    "n": 1,
+    "dead": 0
+   }
+  },
+  "1645": {
+   "added": {
+    "n": 106,
+    "dead": 18
+   },
+   "comment": {
+    "n": 7,
+    "dead": 3
+   },
+   "clone": {
+    "n": 29,
+    "dead": 3
+   }
+  },
+  "1648": {
+   "added": {
+    "n": 517,
+    "dead": 3
+   },
+   "comment": {
+    "n": 90,
+    "dead": 2
+   },
+   "clone": {
+    "n": 18,
+    "dead": 0
+   }
+  },
+  "1644": {
+   "added": {
+    "n": 16,
+    "dead": 9
+   },
+   "comment": {
+    "n": 11,
+    "dead": 6
+   },
+   "clone": {
+    "n": 0,
+    "dead": 0
+   }
+  },
+  "1641": {
+   "added": {
+    "n": 1208,
+    "dead": 41
+   },
+   "comment": {
+    "n": 182,
+    "dead": 38
+   },
+   "clone": {
+    "n": 7,
+    "dead": 0
+   }
+  },
+  "1643": {
+   "added": {
+    "n": 246,
+    "dead": 72
+   },
+   "comment": {
+    "n": 12,
+    "dead": 9
+   },
+   "clone": {
+    "n": 23,
+    "dead": 0
+   }
+  },
+  "1640": {
+   "added": {
+    "n": 1,
+    "dead": 1
+   },
+   "comment": {
+    "n": 0,
+    "dead": 0
+   },
+   "clone": {
+    "n": 0,
+    "dead": 0
+   }
+  },
+  "1639": {
+   "added": {
+    "n": 6135,
+    "dead": 538
+   },
+   "comment": {
+    "n": 1092,
+    "dead": 443
+   },
+   "clone": {
+    "n": 165,
+    "dead": 9
+   }
+  },
+  "1636": {
+   "added": {
+    "n": 3129,
+    "dead": 193
+   },
+   "comment": {
+    "n": 410,
+    "dead": 58
+   },
+   "clone": {
+    "n": 119,
+    "dead": 42
+   }
+  },
+  "1638": {
+   "added": {
+    "n": 600,
+    "dead": 0
+   },
+   "comment": {
+    "n": 97,
+    "dead": 0
+   },
+   "clone": {
+    "n": 46,
+    "dead": 0
+   }
+  },
+  "1635": {
+   "added": {
+    "n": 2,
+    "dead": 2
+   },
+   "comment": {
+    "n": 0,
+    "dead": 0
+   },
+   "clone": {
+    "n": 0,
+    "dead": 0
+   }
+  },
+  "1632": {
+   "added": {
+    "n": 7,
+    "dead": 7
+   },
+   "comment": {
+    "n": 5,
+    "dead": 5
+   },
+   "clone": {
+    "n": 0,
+    "dead": 0
+   }
+  },
+  "1631": {
+   "added": {
+    "n": 3,
+    "dead": 0
+   },
+   "comment": {
+    "n": 2,
+    "dead": 0
+   },
+   "clone": {
+    "n": 0,
+    "dead": 0
+   }
+  },
+  "1630": {
+   "added": {
+    "n": 2459,
+    "dead": 680
+   },
+   "comment": {
+    "n": 559,
+    "dead": 312
+   },
+   "clone": {
+    "n": 153,
+    "dead": 66
+   }
+  },
+  "1613": {
+   "added": {
+    "n": 4971,
+    "dead": 437
+   },
+   "comment": {
+    "n": 870,
+    "dead": 364
+   },
+   "clone": {
+    "n": 87,
+    "dead": 0
+   }
+  }
+ },
+ "total": {
+  "added": {
+   "n": 52629,
+   "dead": 4431,
+   "death_rate": 0.0842
+  },
+  "comment": {
+   "n": 14734,
+   "dead": 1760,
+   "death_rate": 0.1195
+  },
+  "clone": {
+   "n": 2753,
+   "dead": 422,
+   "death_rate": 0.1533
+  }
+ }
+}

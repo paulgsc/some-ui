@@ -1,0 +1,122 @@
+## Per PR
+    PR kind    src+   src-   tst+   tst-  cmt+   T1%   T2%  tT2% cases each prop  subject
+  1690 agent     44    835    124    345    63   0.0   0.0  10.5     4    0    0  chore(storybook): keep only the stories a CI gate loads (#
+  1689 agent    927   2332    155   1084   171   1.9  13.8   2.0     5    0    0  refactor: dissolve some-ui-utils (UTL split) and share vit
+  1685 agent   6502  33258   8414  17987  8439   0.0   5.5  18.4   131   75    0  chore: cut ~40k lines: history comments, test boilerplate,
+  1684 agent    209     40     87     24    66   0.0   9.7  12.3     6    0    0  feat(www,vite-config): drop passkey from the APK, the host
+  1611 bot       20      3      0      0     6   0.0   0.0   0.0     0    0    0  chore(deps-dev): bump es-module-lexer from 2.3.2 to 3.0.2 
+  1612 bot        0      0      0      0     0   0.0   0.0   0.0     0    0    0  chore(deps): bump @radix-ui/react-dropdown-menu from 2.1.1
+  1614 bot        0      0      0      0     0   0.0   0.0   0.0     0    0    0  chore(release): deploy pages site (#1614)
+  1664 bot        0      0      0      0     0   0.0   0.0   0.0     0    0    0  chore(release): publish www docker image (#1664)
+  1674 agent      0      0      0      0     0   0.0   0.0   0.0     0    0    0  ci(pr): split Node CI into four parallel jobs (#1674)
+  1673 agent    372    681    499    113   175   5.8   7.0   5.5    22    1    0  feat(speech,vite-config,www): each speech backend is its o
+  1672 agent    974     45    420     15   222   0.0   8.1  19.0    19    0    0  feat(www,vite-config): fail the build check when a profile
+  1671 agent   1876     87   1202      1   437   2.4   4.4  16.1    53    0    0  feat(leetype,www,mobile): margin notes on every round arti
+  1663 agent   1221     33   1314      1   384   4.0   4.0  21.3    39    0    0  feat(mobile): the APK speaks Korean with the phone's TTS e
+  1662 agent   1892    711   2481    515   694   1.5   6.8  24.3    94    5    0  fix(speech): the session owns the voice; the speaker icon 
+  1668 agent      0      0      0      0     0   0.0   0.0   0.0     0    0    0  docs(steward): review coverage on a head is not Codex-only
+  1665 agent    405     70    199      9   141   0.0   3.6  10.3    11    0    0  fix: guard against screens acting on stale copies (owner-g
+  1659 agent   3783    152   1282      6   559   1.1   2.5   7.1    76    0    0  feat(mobile): a Home hub, a bottom tab bar, and aph as a r
+  1605 bot        0      0      0      0     0   0.0   0.0   0.0     0    0    0  chore(release): publish www docker image (#1605)
+  1607 bot        0      0      0      0     0   0.0   0.0   0.0     0    0    0  chore(deps): bump wasm-bindgen-test from 0.3.78 to 0.3.79 
+  1608 bot        0      0      0      0     0   0.0   0.0   0.0     0    0    0  chore(deps-dev): bump fast-check from 3.23.2 to 4.10.2 (#1
+  1609 bot        0      0      0      0     0   0.0   0.0   0.0     0    0    0  chore(deps-dev): bump web-ext from 8.3.0 to 10.7.0 (#1609)
+  1610 bot        0      0      0      0     0   0.0   0.0   0.0     0    0    0  chore(deps): bump web-vitals from 4.2.4 to 6.2.2 (#1610)
+  1660 agent     69   2764    113   1592    40   0.0   0.0   1.5     5    0    0  chore: retire the Interview activity and @some-ui/intervie
+  1645 agent     79  13962     39    192     7   0.0  60.4   0.0     3    0    0  chore: keep only www's four activity panels; retire slides
+  1648 agent    334      0    221      0    90   0.0   0.0  12.9    11    0    0  feat(scripts): report vestige candidates (pnpm report:vest
+  1644 agent     12   9344      4    975    11   0.0   0.0   0.0     1    0    0  chore: delete the dead some-ui-input + stepper chain and i
+  1642 agent      0      0      0      0     0   0.0   0.0   0.0     0    0    0  docs(review): make a second implementation or code left be
+  1641 agent    861    990    429    215   182   0.0   0.0   2.3    24    0    0  refactor(shared): one learner shelf for LeetType and TOPIK
+  1643 agent    232   1776     14     16    12   0.0  11.4   0.0     0    0    0  chore(knip): opt every workspace in to knip and clear its 
+  1640 agent      1   4228      0    353     0   0.0   0.0   0.0     0    0    0  chore: remove unused calendar, milestones, emoji-animation
+  1639 agent   2321    560   4406    436  1092   1.1   1.9   5.2   218    2    0  feat(www): learn on the device by default; an account is a
+  1636 agent   2168     32   1252     11   410   1.1   2.8   9.9    58    0    0  feat(mobile): say why a session didn't happen, as a capped
+  1638 agent    379      0    266      0    97   3.4  11.1  13.6    22    0    0  feat(eslint): make React-module coordination visible in ev
+  1635 agent      0      0      0      0     0   0.0   0.0   0.0     0    0    0  chore(storybook): prune stories that render nothing or rep
+  1634 agent      0   1457      0      0     0   0.0   0.0   0.0     0    0    0  chore(knip): triage unused files, delete 29 dead and regis
+  1632 agent      6    225      1      2     5   0.0   0.0   0.0     1    0    0  chore(workspace): remove dead searchbar package and some-b
+  1631 agent      0      0      3      1     2   0.0   0.0   0.0     0    0    0  test(leetype): give the reach-every-round test an explicit
+  1630 agent   1307    548   1348    133   559   4.1   6.4  13.3    46    2    0  feat(leetype,www): fit the phone surfaces to a phone: swip
+  1613 agent   3921     18   1424      8   870   1.1   2.3   4.1    55    4    0  feat(mobile): land the Capacitor Android app on main (#161
+  1566 bot        0      0      0      0     0   0.0   0.0   0.0     0    0    0  chore(release): deploy pages site (#1566)
+
+## Feature PRs (16)
+lines added: source 22023, test 16833, stories 174; test/source 0.76
+comment lines: 5980 (15.3% of code added); provenance-marked 60 (1.0% of comments)
+source clones: exact 1.5%, literal-normalized 3.7%
+test clones:   exact 5.8%, literal-normalized 11.9%
+test cases 754: table-driven 14 (1.9%), property 0, mocks 166
+
+## Lines deleted by cleanup PRs, traced to origin
+
+TRIM: 77061 lines
+   source/code           19189  24.9%
+   source/comment        18098  23.5%
+   test/code             12108  15.7%
+   stories/code          10569  13.7%
+   test/comment           6113   7.9%
+   source/blank           2371   3.1%
+   config/code            1505   2.0%
+   stories/blank          1503   2.0%
+   config    median age  107d  p25   78d  <7d 4.0%  7-30d 11.9%  30-90d 27.0%  >90d 57.2%  agent-authored 57.2%
+   docs      median age  107d  p25  100d  <7d 0.6%  7-30d 2.5%  30-90d 13.8%  >90d 83.1%  agent-authored 54.7%
+   generated median age  276d  p25   84d  <7d 4.5%  7-30d 11.8%  30-90d 20.7%  >90d 63.0%  agent-authored 14.8%
+   source    median age  107d  p25   49d  <7d 4.9%  7-30d 11.4%  30-90d 26.4%  >90d 57.3%  agent-authored 42.9%
+   stories   median age  103d  p25   52d  <7d 2.3%  7-30d 13.1%  30-90d 31.5%  >90d 53.1%  agent-authored 59.6%
+   test      median age   51d  p25   22d  <7d 5.2%  7-30d 27.5%  30-90d 43.6%  >90d 23.8%  agent-authored 77.4%
+
+RETIRE: 44298 lines
+   source/code           25079  56.6%
+   stories/code           5166  11.7%
+   source/blank           3028   6.8%
+   test/code              2479   5.6%
+   source/comment         2416   5.5%
+   config/code            1793   4.0%
+   generated/code         1427   3.2%
+   stories/blank           798   1.8%
+   config    median age  277d  p25   80d  <7d 9.3%  7-30d 0.7%  30-90d 22.6%  >90d 67.4%  agent-authored 27.0%
+   generated median age  278d  p25   87d  <7d 0.1%  7-30d 0.2%  30-90d 29.7%  >90d 70.0%  agent-authored 15.9%
+   source    median age  278d  p25  199d  <7d 0.1%  7-30d 0.0%  30-90d 12.3%  >90d 87.5%  agent-authored 15.3%
+   stories   median age  279d  p25  103d  <7d 0.0%  7-30d 0.0%  30-90d 9.1%  >90d 90.9%  agent-authored 22.4%
+   test      median age   89d  p25   86d  <7d 0.1%  7-30d 0.1%  30-90d 76.9%  >90d 22.9%  agent-authored 47.3%
+
+## Repo at head
+source 179318 lines, tests 113508 (test/source 0.63)
+source clones exact 4.0%, literal-normalized 12.0%; test clones exact 8.4%, literal-normalized 19.0%
+test cases 4815: table-driven 2.8%, property 1.7%, mocks 742
+workspace                           src   test   t/s  srcT2  tstT2   zip prop
+apps/www                          26106  22613  0.87   6.8%  11.3% 0.280    0
+packages/ui/leetype               21814  14729  0.68  22.3%  16.0% 0.289    0
+extensions/some-filter            16522  22083  1.34  12.6%  32.9% 0.309    0
+packages/ui/topik                 16238   9676  0.60  17.6%  12.7% 0.263    0
+extensions/some-drama             10654   1801  0.17   7.0%   8.5% 0.247    0
+extensions/some-censor            10234   9107  0.89  13.2%  13.2% 0.294    0
+packages/ui/honeycomb              7377   3327  0.45  15.4%  11.9% 0.285    0
+extensions/suspender-ledger        6680   2518  0.38  14.4%   8.3% 0.282   10
+packages/eslint                    5955   4553  0.76  14.5%  47.9% 0.277    0
+packages/speech                    5398   4502  0.83   5.1%  16.8% 0.281   38
+packages/ui/shared                 4303    408  0.09  14.3%   2.4% 0.232    0
+crates/leetype_wasm                3991   1369  0.34   1.4%   1.6% 0.267    1
+packages/some-styles               3385    641  0.19  10.0%   7.3% 0.275    0
+(root)                             3109      0  0.00  13.5%   0.0% 0.337    0
+packages/ui/wireframes             3109    801  0.26  13.2%  32.0% 0.240   22
+crates/hangul-game-core            2980      0  0.00   8.9%   0.0% 0.230    0
+packages/ui/aph                    2969   1008  0.34   2.0%   2.4% 0.260    0
+extensions/common                  2864   2147  0.75   1.5%  27.2% 0.323    0
+packages/contract-harness          2606    833  0.32  27.0%  39.7% 0.296    0
+packages/some-vite-config          2408   1101  0.46   0.9%  15.2% 0.307    0
+packages/ui/lesson-crm             2313   1135  0.49   9.8%  24.7% 0.277    0
+packages/ui/auth                   2195      0  0.00  13.6%   0.0% 0.265    0
+extensions/some-mujik              2102    239  0.11   7.8%  44.8% 0.254    0
+packages/ui/soundbites             1939   1206  0.62   1.1%   5.9% 0.292    0
+packages/ui/resume                 1859      0  0.00  13.8%   0.0% 0.322    0
+crates/some-hexagon                1713      0  0.00   7.2%   0.0% 0.206    0
+extensions/transport               1385   2841  2.05  11.4%  16.1% 0.317    6
+packages/activity-catalog          1214    616  0.51  19.8%   2.1% 0.345    2
+packages/react-hooks                682    908  1.33   3.9%   8.1% 0.345    4
+
+## score_f83a4119.json: flags from f83a4119 scored at f83a4119
+   added    n= 52629 dead= 4431 rate=8.4%  lift 1.00x
+   comment  n= 14734 dead= 1760 rate=11.9%  lift 1.42x
+   clone    n=  2753 dead=  422 rate=15.3%  lift 1.82x
