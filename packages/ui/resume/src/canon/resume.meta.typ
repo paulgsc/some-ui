@@ -305,7 +305,7 @@ backs should be cut, not kept and re-justified.
   (full-repo sweep) and `_rust-ci.yml` (clippy, cargo-deny).
 - *Release path* --- Changesets and `.changeset/` drive versioning and
   changelogs across the workspace; `release.yml`, `www-docker-release.yml`
-  (Docker/Docker Hub), `pages.yml` (GitHub Pages + Storybook), `wasm-release.yml`,
+  (Docker/Docker Hub), `pages.yml` (GitHub Pages), `wasm-release.yml`,
   and `extension-sign*.yml` / `_extension-verify.yml` cover the rest.
 - *Human-gated extension release pipeline* --- `extension-release.yml`
   drafts a changeset-versioned release PR and only builds+signs once a

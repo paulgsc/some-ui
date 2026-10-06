@@ -6,10 +6,5 @@
     "tsBuildInfoFile": "./tsconfig.build.tsbuildinfo"
   },
   "extends": "./tsconfig.json",
-  "exclude": [
-    "**/*.test.ts",
-    "**/*.stories.tsx",
-    "**/*.stories.ts",
-    "eslint.config.js"
-  ]
+  "exclude": ["**/*.test.ts", "eslint.config.js"]
 }

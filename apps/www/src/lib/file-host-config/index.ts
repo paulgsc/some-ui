@@ -13,8 +13,8 @@
  *
  * - **HTTPS page** -> the same-origin `FILE_HOST_PROXY_PATH`, proxied by
  *   nginx.https.conf and by `vite dev`/`vite preview` (vite.config.ts).
- * - **HTTP page** -> `http://<hostname>:3000` directly (Storybook, cert-less
- *   `vite dev`, the container's port-80 listener).
+ * - **HTTP page** -> `http://<hostname>:3000` directly (cert-less `vite dev`,
+ *   the container's port-80 listener).
  *
  * `VITE_FILE_HOST_ENDPOINT` overrides both, like `VITE_TTS_ENDPOINT`.
  */

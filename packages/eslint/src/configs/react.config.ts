@@ -119,7 +119,6 @@ export default defineConfig([
             "**/vitest.config.*",
             "**/playwright.config.*",
 
-            "**/*.stories.*",
             "**/*.spec.*",
             "**/*.test.*",
 

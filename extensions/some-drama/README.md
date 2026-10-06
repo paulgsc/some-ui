@@ -76,7 +76,7 @@ its cross-file dependencies carry their `Counted by` lines).
   into the scope from elsewhere counts: it appears as an added line.
 - _Scope:_ `extensions/some-drama/src/`, except `src/components/` (the card's
   own timers, held by L1 in `extensions/common/GOOD_CITIZEN.md` and the tests
-  above), `__tests__/` and `*.stories.*`.
+  above) and `__tests__/`.
 - _Why not enforced:_ lint — `require-named-lifetime` flags a bare
   `setInterval`, but `.interval(` on a `Disposables` is the sanctioned form
   the card itself uses, and whether a timer polls depends on what its
@@ -258,7 +258,7 @@ src/
 │   ├── messaging.ts  typed sendMsg, shared by popup and content
 │   ├── content/  el(), particles, playback (the source tab's video time)
 │   └── popup/    popup FSM, injected tab scraper
-├── components/   presentation (vanilla DOM) + Storybook stories
+├── components/   presentation (vanilla DOM)
 ├── types/        message contract, entry and beat shapes — single source
 └── styles/       raw CSS partials compiled with UnoCSS
 tests/            checks on build output (the content stylesheet)

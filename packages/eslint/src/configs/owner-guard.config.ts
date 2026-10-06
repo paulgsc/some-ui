@@ -25,7 +25,7 @@ export const ownerGuardPlugin = {
 export default defineConfig([
   {
     files: ["**/*.{ts,tsx,jsx}"],
-    ignores: ["**/*.test.*", "**/__tests__/**", "**/*.stories.*"],
+    ignores: ["**/*.test.*", "**/__tests__/**"],
     plugins: { "owner-guard": ownerGuardPlugin },
     rules: {
       "owner-guard/no-mount-snapshot": "error",

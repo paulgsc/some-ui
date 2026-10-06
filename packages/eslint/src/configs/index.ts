@@ -20,7 +20,6 @@ export { default as toolsOverrideConfig } from "./overrides-tools.config.js"
 export { default as rawSourceConfig } from "./raw-source.config.js"
 export { default as testsOverrideConfig } from "./overrides-tests.config.js"
 export { default as depsOverrideConfig } from "./overrides-deps.config.js"
-export { default as eslintPluginStorybook } from "./stories.config.js"
 export { default as extensionsSecurityConfig } from "./extensions-security.config.js"
 export {
   default as extensionsCharterConfig,

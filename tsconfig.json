@@ -39,7 +39,6 @@
     "next.config.mjs",
     "prettier.config.cjs",
     "tailwind.config.ts",
-    "vite.config.ts",
     "vitest.config.mts",
     "vitest.config.ts"
   ]

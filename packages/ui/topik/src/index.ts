@@ -62,3 +62,6 @@ export type {
 } from "./lib/topik/read-aloud/content"
 export { STARTER_DECK } from "./lib/topik/read-aloud/starter"
 export { BUNDLED_DECK } from "./lib/topik/read-aloud/bundled"
+
+/** The quiz pane by stage; apps/www's panel-fit page mounts each stage directly. */
+export { QuizPanel } from "./components/topik/quiz-panel"

@@ -115,32 +115,33 @@ The rule is still worth having; the lesson is where to compensate for it. A
 **layout primitive** that hands its children to a flex context defined
 elsewhere is exactly the shape the linter cannot check, so those want
 `min-w-0` / `min-h-0` by construction and a test that says so — the Playwright
-specs below are no backstop for it: they measure the panels a story mounts and
-two hand-mirrored fixtures, and a shell primitive rendered by a route is none
-of those.
+specs below are no backstop for it: they measure the panels the panel page
+mounts and two hand-mirrored fixtures, and a shell primitive rendered by a
+route is none of those.
 
 ### 2. `apps/www/tests/ui-fit` (Playwright, the actual gate)
 
 Three specs, all run in CI (section 3): `panel-fit` (2c) mounts real panels
-from a built Storybook, and `launcher-fit` (2b) and `exercise-shell-fit`
-measure static fixtures that mirror the shipped classes.
+on a page built with www's own config and CSS, and `launcher-fit` (2b) and
+`exercise-shell-fit` measure static fixtures that mirror the shipped classes.
 
 ```bash
-CI=1 pnpm build-storybook -o storybook-static
-STORYBOOK_STATIC=storybook-static pnpm --filter www test:e2e tests/ui-fit
+pnpm --filter www build:fit
+pnpm --filter www test:ui-fit
 ```
 
-There was a fourth, a sweep of every story in the monorepo in an unbounded
-canvas. No workflow ever ran it, and it went with the stories it swept
-(#1687): a gate that claims coverage nothing enforces is worse than none.
+There was a fourth, a sweep of every Storybook story in the monorepo in an
+unbounded canvas. No workflow ever ran it, and it went with the stories it
+swept (#1687): a gate that claims coverage nothing enforces is worse than
+none.
 
-Two properties of the Storybook harness are load-bearing and were both wrong
-on the first attempt:
+Two properties of the panel harness are load-bearing, and both were wrong on
+the first attempt:
 
 - **It serves over HTTP, not `file://`.** Chromium blocks cross-origin ES
-  module loads from a file origin, so every story rendered an empty root and
+  module loads from a file origin, so every panel rendered an empty root and
   the sweep passed having measured nothing.
-- **It asserts each story actually mounted.** A story that renders nothing
+- **It asserts each panel actually mounted.** A panel that renders nothing
   cannot be checked, and a harness that reports that as a pass is worse than
   no harness.
 
@@ -176,7 +177,8 @@ load-bearing:
 
 ### 2b. `apps/www/tests/ui-fit/launcher-fit.spec.ts` (Playwright, for `apps/www`)
 
-`panel-fit` only measures what a story mounts, so it never sees `apps/www` —
+`panel-fit` only measures the panels its page mounts, so it never sees
+`apps/www`'s own routes —
 and the failure epic #852 was about needs no `overflow-auto` at all to
 happen. A grid that renders N cards inside a page that happens to scroll
 passes the lint and pushes everything below it off
@@ -218,17 +220,19 @@ you did is meant to be automatic.
 
 ### 2c. `apps/www/tests/ui-fit/panel-fit.spec.ts` (Playwright, the #899 gate)
 
-Storybook renders a story in a canvas of **unbounded height**, and that is a
-hole exactly the shape of #899. A component whose box comes from its
-host has no host in a story: `h-full` resolves against `auto`, the content sets
-its own height, and "content fits its box" passes vacuously because there is no
-box. The TOPIK quiz summary sat at ~950px of content behind that pass for
-months, and painted the difference over the pane below it in a real session.
+A component rendered on its own sits in a canvas of **unbounded height**, and
+that is a hole exactly the shape of #899. A component whose box comes from its
+host has no host there: `h-full` resolves against `auto`, the content sets its
+own height, and "content fits its box" passes vacuously because there is no
+box. The TOPIK quiz summary sat at ~950px of content behind that pass in
+Storybook for months, and painted the difference over the pane below it in a
+real session.
 
-So this spec grants the box before measuring. `#storybook-root` is pinned to
-the viewport and `overflow: hidden`, the decorator chain is made definite down
-to the panel — the same shape `RenderSolved` gives a leaf — and two things are
-then asserted at the same three viewports:
+So this spec grants the box before measuring. The panel page
+(`tests/ui-fit/panel-page`) mounts one fixture per load inside the shape
+`RenderSolved` gives a leaf: an absolute rect that clips, and a full-size box
+inside it that the panel fills. Two things are then asserted at each of the
+four viewports, measured from that inner box:
 
 - **escape** — nothing paints outside the granted rect. A panel asking for more
   than it was given: `min-h-screen` on a panel root, a chip row that will not
@@ -241,22 +245,30 @@ then asserted at the same three viewports:
   does not clip it"_.
 
 What is swept is `Record<RegistryKey, …>`: **every registry key must say how it
-gets fitted**, so binding a new panel without a swept story is a type error
-rather than an omission nobody notices. Entries carrying `debt` are measured
+gets fitted**, so binding a new panel without a fixture is a type error rather
+than an omission nobody notices. Fixture ids are typed the same way, so a
+renamed fixture fails `tsc` rather than quietly dropping out of the sweep. Entries carrying `debt` are measured
 but not failed — and a second test asserts each one _still_ overflows, so the
 list cannot rot: fix a panel and the way to get green again is to delete its
 entry, which puts it back under the gate.
 
-`PANEL_STAGES` covers the states a top-level story never reaches. The summary
+`PANEL_STAGES` covers the states the applet alone never reaches. The summary
 only appears after ten answers; sweeping only the applet's initial state is how
 #899 shipped past a green sweep in the first place.
+
+**Why a page in `apps/www` rather than Storybook.** The panel page is built
+with www's Vite config, providers and stylesheets (`pnpm --filter www
+build:fit`, into `apps/www/out/ui-fit`), so its CSS is byte-identical to what
+www ships. Storybook compiled its own copy, and in #1685 that copy lost
+Tailwind while www was fine: a gate measuring a second pipeline can fail, or
+pass, for reasons the app does not have.
 
 ### 2d. `apps/www/tests/composer` (Playwright, and the only one that runs the app)
 
 Every layer above measures something that is not the running application.
 `launcher-fit` hand-mirrors the shipped
 classes in static HTML rather than mounting the component, `panel-fit` mounts
-panels inside a synthetic rect, and `tests/csp` fulfils routes without a
+panels one at a time inside a leaf-shaped rect, and `tests/csp` fulfils routes without a
 server. Each of those trades is defensible on its own. Together they left a
 gap with a precise shape: **no test in this repository had ever clicked a
 control.**
@@ -312,10 +324,11 @@ more that nothing else could see:
 The ui-fit specs ran nowhere until #899. `pnpm test:ui-fit` existed, this
 document called them "the actual gate", and no workflow invoked them — which
 is its own lesson about where guardrails actually live. `pr.yml` now builds
-Storybook and runs `panel-fit`, `launcher-fit` and `exercise-shell-fit`
+the panel page and runs `panel-fit`, `launcher-fit` and `exercise-shell-fit`
 whenever a PR touches `packages/ui/**`, `packages/some-content-registry/**`,
 `packages/some-styles/**`, `apps/www/src/**`, `apps/www/tests/ui-fit/**`,
-`.storybook/**`, the root `package.json` or `pnpm-lock.yaml`.
+www's build config (the list is in `pr.yml`), the root `package.json` or
+`pnpm-lock.yaml`.
 
 ### 4. Review
 

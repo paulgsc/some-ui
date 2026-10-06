@@ -26,7 +26,7 @@ The + in the middle of the bar is a shortcut into those same tools ("Talk
 now", aph's mine or theirs, a new session), never a place of its own.
 Nothing else www routes to is here: the landing page, the web's Home, the
 résumé, jobs, profile, the extensions tour and the LAN tools are the web
-app's; the Storybook is a separate site that was never in www's bundle.
+app's.
 **Settings** stays, behind the gear in the header, because on the phone it
 is the phone's own page: the sync from home, study reminders and the voice.
 

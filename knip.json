@@ -24,8 +24,6 @@
       ],
       "ignoreDependencies": [
         "@changesets/cli",
-        "tailwindcss",
-        "tailwindcss-animate",
         "typescript-language-server",
         "typescript-transform-paths"
       ]
@@ -37,6 +35,9 @@
         "@capacitor-community/text-to-speech",
         "@capacitor/local-notifications"
       ]
+    },
+    "apps/www": {
+      "entry": ["tests/ui-fit/panel-page/main.tsx"]
     },
     "extensions/common": {
       "ignoreDependencies": ["@types/firefox-webext-browser"]

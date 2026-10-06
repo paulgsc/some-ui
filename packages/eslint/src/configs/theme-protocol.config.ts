@@ -76,9 +76,9 @@ export const themeProtocolPlugin = {
 
 /**
  * Scoped to reusable UI, and applied by `uiRecommended` rather than by the
- * base preset. An app or a story is a *host*: choosing a feature appearance
- * for a surface it owns is exactly the opt-in this protocol asks for, so
- * `.storybook` wrappers and apps/www routes are deliberately out of scope.
+ * base preset. An app is a *host*: choosing a feature appearance for a
+ * surface it owns is exactly the opt-in this protocol asks for, so apps/www
+ * routes are deliberately out of scope.
  *
  * Globs are workspace-relative because every workspace runs ESLint from its
  * own directory.
@@ -86,11 +86,7 @@ export const themeProtocolPlugin = {
 export default defineConfig([
   {
     files: ["**/*.{ts,tsx}"],
-    ignores: [
-      "**/*.stories.{ts,tsx}",
-      "**/*.test.{ts,tsx}",
-      "**/*.spec.{ts,tsx}",
-    ],
+    ignores: ["**/*.test.{ts,tsx}", "**/*.spec.{ts,tsx}"],
     plugins: { "theme-protocol": themeProtocolPlugin },
     rules: {
       "theme-protocol/no-theme-boundary": "error",

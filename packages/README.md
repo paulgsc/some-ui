@@ -48,7 +48,7 @@ new package against these two rather than an arbitrary sibling.
 - `tsconfig.build.json` extends `./tsconfig.json` and then
   `@some-ui/tsconfig/build.json` (declarations only, into `dist/types`),
   adds `jsx: "react-jsx"` if the package has components/hooks, and excludes
-  `**/*.test.ts` and `**/*.stories.tsx`.
+  `**/*.test.ts`.
 
 ## 3. Build (`@some-ui/vite-config`)
 

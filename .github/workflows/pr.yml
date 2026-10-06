@@ -15,7 +15,7 @@ name: PR
 #   full workspace on any Rust touch is acceptable.
 #
 # What does NOT run on PR:
-#   - Artifact builds (Docker, Storybook deploy, AMO signing, WASM publish)
+#   - Artifact builds (Docker, Pages deploy, AMO signing, WASM publish)
 #   - Full trunk health sweep (that's trunk.yml)
 #   Extension CI has its own workflow (extension.yml) and is not gated here.
 #
@@ -287,12 +287,13 @@ jobs:
       # invoked, so a panel could paint outside its rect for months with every
       # check green. This runs all three of its specs.
       #
-      # Scoped to PRs that touch UI, because a Storybook build is minutes, not
-      # seconds. The registry is in the trigger set on purpose - binding a new
-      # key delegates size authority to a component the panel sweep has never
-      # measured. So are the root manifest and lockfile: a Storybook, addon or
-      # React bump changes nothing else here, and nothing else builds
-      # Storybook.
+      # Scoped to PRs that touch UI or what www builds it with. The registry
+      # is in the trigger set on purpose - binding a new key delegates size
+      # authority to a component the panel sweep has never measured. So are
+      # www's build config and the manifests and lockfile: the panel page
+      # (tests/ui-fit/panel-page) is built with www's own Vite config and
+      # stylesheets, so a Tailwind, Vite or React bump changes what it
+      # measures.
       - name: E2E — content fits its box (panels, launcher, exercise shell)
         run: |
           files=$(git diff --name-only --diff-filter=ACMR HEAD^1 -- \
@@ -301,32 +302,23 @@ jobs:
             'packages/some-styles/**' \
             'apps/www/src/**' \
             'apps/www/tests/ui-fit/**' \
-            '.storybook/**' \
+            'apps/www/vite.config.ts' \
+            'apps/www/style.context.ts' \
+            'apps/www/build.profiles.ts' \
+            'apps/www/index.html' \
+            'apps/www/package.json' \
+            'apps/www/playwright.config.ts' \
             'package.json' \
             'pnpm-lock.yaml' || true)
           if [ -n "$files" ]; then
-            # A repo-wide Storybook build needs a repo-wide package build, so
-            # this is NOT turbo-filtered the way the steps above are.
-            #
-            # Storybook compiles every story under packages/**, and a story
-            # reaching a sibling workspace by package name resolves it through
-            # node_modules to that package's dist/. "Build (affected packages)"
-            # only covers the changed package and its dependents, so any
-            # workspace outside that closure has no dist and the build dies on
-            # "Rolldown failed to resolve", pointing at a file the PR never
-            # touched.
-            #
-            # This stayed hidden for as long as every UI change dragged
-            # apps/www in as a dependent, whose own ^build happens to cover
-            # most of the graph. A new leaf package that nothing depends on yet
-            # selects a two-package closure and walks straight into it.
+            # www's dependencies only: the panel page is its own build
+            # (build:fit), not www's, so building www itself here is waste.
             nix develop .#ci --command pnpm turbo run build \
-              --filter='./packages/**' \
+              --filter='www^...' \
               --concurrency=100%
 
-            nix develop .#ci --command env CI=1 \
-              pnpm build-storybook -o storybook-static
-            nix develop .#ci-playwright --command env STORYBOOK_STATIC=storybook-static \
+            nix develop .#ci --command pnpm --filter www build:fit
+            nix develop .#ci-playwright --command \
               pnpm --filter www test:e2e \
                 tests/ui-fit/panel-fit.spec.ts \
                 tests/ui-fit/launcher-fit.spec.ts \
@@ -397,7 +389,7 @@ jobs:
       # spec that predates it - ran nowhere in CI: no workflow named either
       # spec, so both could fail indefinitely without blocking a PR. Same
       # shape as the CSP step above (a static-fixture Playwright spec, no
-      # Storybook build needed), scoped to the source these two specs mirror
+      # build needed), scoped to the source these two specs mirror
       # rather than turbo's dep graph, since neither is a per-package
       # build/test.
       - name: E2E — session-viewport regression (www)
@@ -428,7 +420,7 @@ jobs:
       # never named, so the pager/bounded-composer regressions it covers
       # could return with every required check still green. Unlike every
       # other step here, this spec drives the actual running app rather
-      # than a Storybook build or a static fixture - `tests/composer/
+      # than the panel page or a static fixture - `tests/composer/
       # harness.ts` spawns `vite` itself and waits for it, so no separate
       # server-start step is needed. Scoped to the composer, dashboard shell,
       # and fitted-page surfaces the spec actually exercises.

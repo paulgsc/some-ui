@@ -101,8 +101,8 @@ What the spec does **not** do is render the real components. It mirrors the
 shipped CSS chain, following the precedent set by
 `tests/session-viewport/no-overflow-scroll.spec.ts`, because `/app` needs a
 router, a query client and seeded tenant storage to mount. The mirror can
-drift. The check that cannot drift is the Storybook sweep next door — and it
-globs `packages/**` and `extensions/**` only, so it never sees `apps/www`.
-Widening those globs (which means giving `apps/www` components stories, which
-means a router decorator) is the honest follow-up to this story, and is not
-in it.
+drift. The check that cannot drift is the panel sweep next door
+(`panel-fit`), which mounts the real components with www's shipped CSS — and
+it mounts registry panels only, so it never sees `apps/www`'s own routes.
+Giving it a launcher fixture (which means a router and seeded tenant storage
+on the panel page) is the honest follow-up to this story, and is not in it.
