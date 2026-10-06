@@ -52,6 +52,17 @@ function isValidScore(value: number): boolean {
 }
 
 /**
+ * Exactly what `Date#toISOString` writes, which is what a score records. A
+ * round trip rather than a pattern: `Date.parse` quietly rolls an impossible
+ * date over (Feb 30 becomes Mar 2), and only the round trip refuses it.
+ */
+function isIsoTimestamp(value: unknown): boolean {
+  if (typeof value !== "string") return false
+  const time = Date.parse(value)
+  return !Number.isNaN(time) && new Date(time).toISOString() === value
+}
+
+/**
  * Thresholds #730's Playwright oracle regression enforces against. Defined
  * here, not there, so Story 2's own "notes required on disagreement" check
  * and Story 4's classifier-boundary check can never drift apart from using
@@ -106,6 +117,10 @@ export function validateEyeScore(
 
   if (score.reviewer.trim().length === 0) {
     issues.push("reviewer must not be empty")
+  }
+
+  if (!isIsoTimestamp(score.scoredAt)) {
+    issues.push("scoredAt must be an ISO 8601 timestamp (Date#toISOString)")
   }
 
   if (requiresExplanation(fixture, score) && score.notes.trim().length === 0) {

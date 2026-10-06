@@ -17,7 +17,7 @@
  * carries an explicit `background-color`/`color`: without it, Chromium's
  * forced/auto-dark rendering repaints those ground-truth colors on a machine
  * in system dark mode — a paint-time transform `getComputedStyle` (and so
- * the classifier and Playwright) never sees, but a Comfort Lab reviewer
+ * the classifier and Playwright) never sees, but a human scoring it
  * does. Declaring `color-scheme` marks the colors as intentional.
  *
  * `default-swatch-rendered` is the one fixture in this file that reads

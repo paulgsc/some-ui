@@ -98,7 +98,7 @@ describe('"/"', () => {
     renderRoot()
     expect(screen.queryByTestId("extensions-page")).toBeNull()
     expect(
-      screen.getByRole("heading", { level: 1, name: /four projects/i })
+      screen.getByRole("heading", { level: 1, name: /three projects/i })
     ).toBeTruthy()
   })
 

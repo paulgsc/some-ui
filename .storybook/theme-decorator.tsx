@@ -88,16 +88,6 @@ export const themeGlobalTypes = {
  * inherits its tokens across an arbitrary depth of DOM, which is the property
  * the protocol is built to guarantee. A wrapper-scoped class would pass even
  * for a component that only works when the theme is its immediate parent.
- *
- * `parameters.neutralCanvas` opts a story out of all of the above (#735):
- * the toolbar globals persist across Storybook sessions, so a story reviewed
- * after someone left the toolbar on "Dark" gets wrapped in a near-black canvas
- * it never asked for. Harmless for ordinary component stories, but Comfort
- * Lab's fixtures are explicit-background HTML a human is asked to eye-score in
- * isolation — a dark surround around a white fixture biases that judgment
- * (simultaneous contrast) regardless of what the fixture's own DOM says.
- * Render the story with no wrapper at all so the canvas stays neutral no
- * matter what the toolbar is set to.
  */
 /**
  * The decorator's stateful half.
@@ -146,17 +136,6 @@ const ThemedCanvas = ({
 }
 
 export const withTheme: Decorator = (Story, context) => {
-  if (context.parameters.neutralCanvas === true) {
-    // The session theme now lands on the document root rather than on this
-    // wrapper, so "render no wrapper" is no longer enough to neutralise the
-    // canvas — a previously-rendered story would have left `.dark` on <html>
-    // and it would show through. Pin the root to light for these.
-    if (typeof document !== "undefined") {
-      applyPreference(document.documentElement, "light")
-    }
-    return <Story />
-  }
-
   const sessionId = String(context.globals.session ?? SYSTEM_PREFERENCE)
   const appearanceId = String(context.globals.appearance ?? "inherit")
   const accentId = String(context.globals.accent ?? "none")

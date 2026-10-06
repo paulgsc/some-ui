@@ -18,7 +18,6 @@
   "workspaces": {
     ".": {
       "entry": [
-        ".storybook/uno.config.ts",
         "scripts/audit-node-licenses.mjs",
         "scripts/fix-gen.ts",
         "extensions/scripts/*.mjs"

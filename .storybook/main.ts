@@ -4,53 +4,15 @@ import { createRequire } from "node:module"
 import { fileURLToPath } from "node:url"
 import { dirname, join, resolve } from "path"
 import type { StorybookConfig } from "@storybook/react-vite"
-// eslint-disable-next-line import/no-extraneous-dependencies
-import UnoCSS from "unocss/vite"
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
 const require = createRequire(import.meta.url)
 
-const workspace = process.env.STORYBOOK_WORKSPACE
-const scope = process.env.STORYBOOK_SCOPE // e.g. "packages" | "extensions"
-const exclude = (process.env.STORYBOOK_EXCLUDE ?? "").split(",").filter(Boolean)
-
-// GitHub Pages base path (set your repo name here)
-const GITHUB_PAGES_BASE = process.env.STORYBOOK_BASE_PATH || ""
-
-function storyGlobs(): Array<string> {
-  let base: Array<string>
-
-  if (workspace) {
-    // Target a single workspace
-    base = [
-      `../packages/ui/${workspace}/**/*.stories.@(js|jsx|mjs|ts|tsx)`,
-      `../extensions/${workspace}/**/*.stories.@(js|jsx|mjs|ts|tsx)`,
-    ]
-  } else if (scope === "packages") {
-    base = ["../packages/**/*.stories.@(js|jsx|mjs|ts|tsx)"]
-  } else if (scope === "extensions") {
-    base = ["../extensions/**/*.stories.@(js|jsx|mjs|ts|tsx)"]
-  } else {
-    // Default: everything (current behavior)
-    base = [
-      "../packages/**/*.stories.@(js|jsx|mjs|ts|tsx)",
-      "../extensions/**/*.stories.@(js|jsx|mjs|ts|tsx)",
-      "../content/**/*.mdx",
-    ]
-  }
-
-  // Exclusion safety valve
-  const excluded = exclude.map(
-    (name) => `!../**/${name}.stories.@(js|jsx|mjs|ts|tsx)`
-  )
-
-  // Design-system catalog (@some-ui/styles) — always included regardless of
-  // scope so the preset reference is available in every Storybook run.
-  const catalog = "../.storybook/*.stories.@(js|jsx|mjs|ts|tsx)"
-
-  return [catalog, ...base, ...excluded]
-}
+// The only stories left are the ones a required CI job loads
+// (apps/www/tests/ui-fit/panel-fit.spec.ts, #1687), and all of them live under
+// packages/**.
+const STORIES = ["../packages/**/*.stories.@(js|jsx|mjs|ts|tsx)"]
 
 /**
  * This function is used to resolve the absolute path of a package.
@@ -60,16 +22,11 @@ function storyGlobs(): Array<string> {
 const someContentPublic = resolve(__dirname, "../packages/some-content/public")
 
 const config: StorybookConfig = {
-  stories: storyGlobs(),
+  stories: STORIES,
   logLevel: "error",
 
   staticDirs: [
     ...(existsSync(someContentPublic) ? [someContentPublic] : []),
-    // Serves the brand mark at /brand/ for the managerHead link below. Note
-    // this deliberately does *not* live under a package `public/` directory:
-    // .gitignore excludes `packages/**/public`, so an asset placed there is
-    // never committed and CI would build a Storybook with a broken favicon.
-    { from: resolve(__dirname, "../packages/some-styles/brand"), to: "/brand" },
   ],
 
   core: {
@@ -78,21 +35,7 @@ const config: StorybookConfig = {
     allowedHosts: ["nixos.local"],
   },
 
-  addons: [
-    getAbsolutePath("@storybook/addon-onboarding"),
-    getAbsolutePath("@storybook/addon-links"),
-    getAbsolutePath("@chromatic-com/storybook"),
-    getAbsolutePath("@storybook/addon-docs"),
-  ],
-
   framework: getAbsolutePath("@storybook/react-vite"),
-
-  // Storybook is a deployed surface of its own (GitHub Pages serves it at
-  // /storybook/), so it gets the brand mark rather than Storybook's default
-  // favicon. Relative, not root-absolute: the Pages build sets a base of
-  // /some-ui/storybook/, and a leading slash would point at the domain root.
-  managerHead: (head) =>
-    `${head ?? ""}\n<link rel="icon" type="image/svg+xml" href="brand/favicon.svg" />`,
 
   viteFinal: (config) => {
     config.define = {
@@ -100,11 +43,6 @@ const config: StorybookConfig = {
       "process.env": {
         STORYBOOK: JSON.stringify(process.env.STORYBOOK),
       },
-    }
-
-    // Set base path for GitHub Pages
-    if (GITHUB_PAGES_BASE) {
-      config.base = GITHUB_PAGES_BASE
     }
 
     config.resolve = {
@@ -174,21 +112,11 @@ const config: StorybookConfig = {
         )
     )
 
-    // UnoCSS preset utilities for the @some-ui/styles catalog. Scoped via
-    // .storybook/uno.config.ts to the .storybook/ files only, so it adds the
-    // catalog's utilities without altering how other stories render.
-    config.plugins = [
-      ...(config.plugins ?? []),
-      ...UnoCSS({ configFile: resolve(__dirname, "uno.config.ts") }),
-    ]
-
     return config
   },
 
-  docs: {},
-
   typescript: {
-    reactDocgen: "react-docgen-typescript",
+    reactDocgen: false,
   },
 }
 export default config

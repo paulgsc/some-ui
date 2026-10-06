@@ -1,12 +1,11 @@
 /**
- * The oracle regression (#730): for every fixture that has been scored via
- * Comfort Lab (#727) and merged into `eye-scores.json` (#729), the
+ * The oracle regression (#730): for every fixture that has been scored and
+ * merged into `eye-scores.json` (#729), the
  * classifier's real, live-rendered `sampleBodyComfort()` verdict must agree
  * with the human's — outside the declared borderline band
  * (`checkOracleAgreement`, #728's `eye-score.ts`).
  *
- * `eye-scores.json` starts empty (no human has used Comfort Lab yet) — this
- * suite is written and unit-tested against synthetic values
+ * `eye-scores.json` started empty — this suite is written and unit-tested against synthetic values
  * (`eye-score.spec.ts`'s `checkOracleAgreement` cases) so the mechanism is
  * proven correct before it has real data to enforce. It starts asserting
  * real fixtures the moment `eye-scores.json` gains entries, with zero code
@@ -35,7 +34,7 @@ test.describe("eye-score oracle regression (#730)", () => {
     test("no fixtures scored yet — eye-scores.json is empty (#729)", () => {
       test.skip(
         true,
-        "Score a fixture in Comfort Lab (#727) and run `pnpm eye-score:merge` (#729) to activate this suite."
+        'Score a fixture (README, "Comfort Lab") and run `pnpm eye-score:merge` (#729) to activate this suite.'
       )
     })
   }

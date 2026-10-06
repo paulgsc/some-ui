@@ -132,7 +132,7 @@ The fix splits it in two:
 
 ## Adding a fixture (#731 — the full loop)
 
-This file, `eye-scores.json`, and Comfort Lab together _are_ the
+This file and `eye-scores.json` together _are_ the
 human-verification record #721 Story 5 / #726 Story 5 ask for — kept in-repo
 and diffable rather than behind a live review UI. Found a real page (or a
 false positive/negative) worth adding? The full loop, in order:
@@ -155,20 +155,13 @@ false positive/negative) worth adding? The full loop, in order:
    test in `some-filter`.
 3. Write the `note` as the reasoning a reviewer would need to agree or
    disagree with the label — cite the actual numbers, not just "looks dark."
-4. Add its Comfort Lab story export to `src/comfort-lab/ComfortFixture.stories.tsx`
-   (`storyExportName` in `corpus.spec.ts`'s coverage check shows the exact
-   naming — `"my-new-fixture"` → `MyNewFixture`). Skipping this step is a
-   hard test failure, not a warning (see below) — it's a mechanical
-   omission, nothing about it needs a human.
-5. Score it yourself in Comfort Lab, blind, **before** looking at what you
-   wrote in step 2 — `STORYBOOK_WORKSPACE=filter-classifier pnpm storybook`,
-   find your new story, score it, then click "Reveal recorded label" and see
-   whether you agree with yourself.
-6. `pnpm eye-score:merge <downloaded-file>` to commit the score.
-7. Run `pnpm test:e2e`. A mismatch anywhere — the classifier's own verdict,
-   the story-coverage check, or the oracle regression — is a finding about
-   the classifier or your label, not license to change either side just to
-   force a pass.
+4. Score it yourself, blind, **before** looking at what you wrote in
+   step 2, and record it as a `<fixture-id>.eyescore.json` in the schema
+   below (see "Comfort Lab" for why there is no scoring UI right now).
+5. `pnpm eye-score:merge <file>` to commit the score.
+6. Run `pnpm test:e2e`. A mismatch anywhere — the classifier's own verdict
+   or the oracle regression — is a finding about the classifier or your
+   label, not license to change either side just to force a pass.
 
 **Worked example**, done for real during development for `plain-light-card`
 (then reverted before committing — see the oracle regression section below):
@@ -179,7 +172,7 @@ suite — it failed, because `satisfiesComfort` correctly rejects the pair's
 (reads as "comfortable") doesn't survive contact with that. The failure
 message named the fixture, the score, and the classifier's real verdict.
 That is Comfort Lab working as designed, not a bug in the fixture or the
-classifier — it's why step 5 says score _before_ checking step 2's numbers.
+classifier — it's why step 4 says score _before_ checking step 2's numbers.
 
 ## Non-goals (this PR)
 
@@ -194,51 +187,28 @@ needing to build or load an extension.
 
 `corpus.ts`'s `expectAlreadyDark`/`expectComfortable` fields are still,
 structurally, "a human typed a boolean into a TS file." **Comfort Lab** is a
-second, independent oracle: a Storybook review surface where a human looks
-at the _exact same rendered fixture_ Playwright renders and records a
-richer subjective score — not a replacement for `satisfiesComfort` or the
-corpus's own labels, a second check against them.
+second, independent oracle: a human looks at the _exact same rendered
+fixture_ Playwright renders and records a richer subjective score — not a
+replacement for `satisfiesComfort` or the corpus's own labels, a second
+check against them.
 
 ```
 DOM fixture → Playwright renders it → classifier regression test   (above)
-DOM fixture → Storybook renders it  → human eye-score              (this section, #726)
+DOM fixture → a human looks at it   → human eye-score              (this section, #726)
 ```
 
-### Running it
+### No scoring UI right now
 
-```sh
-STORYBOOK_WORKSPACE=filter-classifier pnpm storybook
-```
+The scoring UI (a blind-mode panel beside each fixture rendered in an
+`<iframe srcDoc>`) lived in Storybook, and was removed with this repo's
+stories (#1687). It belongs in some-filter itself, as a popover, if this
+story continues. Until then a score is written by hand in the schema below
+and merged with `pnpm eye-score:merge`. Score blind: render the fixture's
+`html()` and judge it before reading its `note` or expected labels.
 
-from the repo root (there is exactly one Storybook instance for the whole
-monorepo — `.storybook/main.ts` — scoped here via its `STORYBOOK_WORKSPACE`
-env var so only this package's stories load). Open **Extensions › Filter
-Classifier › Comfort Lab** — one story per `CORPUS` fixture
-(`src/comfort-lab/ComfortFixture.stories.tsx`).
+One thing about rendering a fixture to score it (#735):
 
-Each story renders the fixture in an isolated `<iframe srcDoc>` (not a
-bridged component — there's no component here, only a raw HTML string, and
-the iframe means the fixture's own explicit backgrounds render exactly as
-Playwright sees them, with no Storybook theme/CSS bleeding in) alongside
-`EyeScorePanel` (`src/comfort-lab/EyeScorePanel.tsx`): four sliders
-(luminance / contrast / color tone / eye strain, each 0–100), notes, and a
-reviewer field. **Blind mode**: the fixture's recorded label stays hidden
-until "Reveal recorded label" is clicked, so you score what you actually
-see, not what the corpus file already claims.
-
-Two independent sources of "a fixture doesn't look like its own literal
-colors" were found and fixed here (#735):
-
-- **The canvas around the iframe** is fixed regardless of Storybook's own
-  Mode/Theme toolbar globals (`parameters.neutralCanvas`, checked by
-  `.storybook/theme-decorator.tsx`'s `withTheme`) — those globals persist
-  across sessions, so leaving the toolbar on "Dark" after reviewing some
-  other story used to wrap every Comfort Lab fixture, including explicitly
-  white-background ones, in a near-black surround. No fixture's own colors
-  changed, but a dark frame around a light fixture biases a human's
-  brightness judgment (simultaneous contrast) before they've even looked at
-  it.
-- **The fixture's own colors**, inside the iframe, can be repainted by the
+- **The fixture's own colors** can be repainted by the
   _browser itself_: Chromium's forced/auto-dark rendering detects an
   "unprepared" page (one with authored `background-color`/`color` and no
   `color-scheme` declaration) and repaints it toward a dark-mode-appropriate
@@ -250,10 +220,9 @@ colors" were found and fixed here (#735):
   never affected, which is what pointed at this rather than an extension or
   a whole-page filter.
 
-Neither fix is visible in the fixture's own colors — both are about making
-sure the surrounding environment (Storybook chrome, browser rendering) never
-substitutes its own judgment for the literal, ground-truth pixels a Comfort
-Lab reviewer is supposed to be scoring.
+The fix is not visible in the fixture's own colors — it makes sure the
+browser never substitutes its own judgment for the literal, ground-truth
+pixels a reviewer is supposed to be scoring.
 
 ### The schema (`tests/e2e/fixtures/eye-score.ts`, #728)
 
@@ -294,26 +263,25 @@ exempt (it's the acknowledged gray zone, not a disagreement).
 
 ### Persistence (`tests/e2e/fixtures/eye-scores.json`, #729)
 
-"Download annotation" produces a standalone `<fixture-id>.eyescore.json` via
-a plain browser download (`Blob` + `URL.createObjectURL`) — no server, no
-change to the shared root `.storybook/main.ts`. Fold it into the committed
-map with:
+Fold a `<fixture-id>.eyescore.json` holding one `EyeScore` into the
+committed map with:
 
 ```sh
-pnpm eye-score:merge ~/Downloads/sun-glare-badges.eyescore.json
+pnpm eye-score:merge ~/sun-glare-badges.eyescore.json
 ```
 
 `scripts/merge-eye-score.mjs` overwrites just that one fixture's entry and
 re-sorts keys, so a re-score produces a one-entry diff, never a full-file
 rewrite or a duplicate/orphaned key. It's deliberately dependency-free
-(plain Node `fs`/`path`, no TypeScript import): validation already happened
-client-side (`EyeScorePanel` disables "Download annotation" until
-`validateEyeScore` reports zero issues), so the merge step has nothing left
-to check.
+(plain Node `fs`/`path`, no TypeScript import), so it does not validate.
+`corpus.spec.ts`'s "every committed eye score is valid for its fixture"
+does, over the whole committed map: a known fixture id, every score in
+0–100, `overall` equal to `computeOverall` of the four, a reviewer, an ISO
+`scoredAt`, and notes wherever `validateEyeScore` requires them.
 
-`eye-scores.json` starts **empty** (`{}`) — no fixture has actually been
-scored by a human yet. Populating it is the point of running Comfort Lab
-yourself, not something to fake to make the file look populated.
+`eye-scores.json` holds only real human scores. Populating it is the point
+of scoring fixtures yourself, not something to fake to make the file look
+populated.
 
 ### The oracle regression (`tests/e2e/specs/eye-score-oracle.spec.ts`, #730)
 
@@ -337,30 +305,9 @@ correctly caught and failed the suite, then the fixture was reverted to
 `{}` before committing, since fabricated scores must never be presented as
 real human judgment).
 
-### Why explicit story exports, not one generated from `CORPUS`
+### Unscored fixtures (#731)
 
-Storybook's CSF3 indexer enumerates stories via static analysis of this
-file's _named exports_ — every existing `*.stories.tsx` in this repo (e.g.
-`extensions/some-filter/src/popup/components/action-bar/index.stories.tsx`)
-uses explicit named exports for exactly this reason. A runtime-generated
-`export const stories = Object.fromEntries(...)` was tried and confirmed
-(via a real `storybook build`/`storybook dev` run) not to produce separate
-sidebar entries. The practical consequence: adding a fixture to `CORPUS`
-means adding its story export here too — not fully automatic. `corpus.spec.ts`'s
-`"every CORPUS fixture has a matching Comfort Lab story export"` test (#731)
-is the safety net: it imports `ComfortFixture.stories.tsx` directly and
-checks every fixture id resolves to an export, failing loudly (not silently
-drifting) with the exact missing export name if one is skipped — proven by
-temporarily renaming a real export during development and confirming the
-test caught it with a clear message, then reverting.
-
-### Two kinds of "missing," two different enforcement levels (#731)
-
-`corpus.spec.ts`'s `corpus coverage` block draws a real distinction:
-
-- **Missing story export** — a mechanical authoring omission with no
-  external dependency. **Hard failure.**
-- **Missing `eye-scores.json` entry** — requires an actual human to look at
+- **A missing `eye-scores.json` entry** — requires an actual human to look at
   the fixture (#726's whole point); it can't be forced or faked. **One
   `test.skip` per unscored fixture**, each naming exactly which fixture,
   so the gap stays visible in the report (matching #730's own empty-file

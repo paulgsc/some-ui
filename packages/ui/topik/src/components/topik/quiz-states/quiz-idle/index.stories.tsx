@@ -14,8 +14,3 @@ type Story = StoryObj<typeof QuizIdle>
 export const Playing: Story = {
   args: { chatPlayState: "running" },
 }
-
-/** Chat conversation is paused, waiting for the learner to hit Play. */
-export const Paused: Story = {
-  args: { chatPlayState: "paused" },
-}

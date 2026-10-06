@@ -1,11 +1,9 @@
 /**
- * Shared plumbing for the two Storybook-driven fit sweeps next door.
- *
- * Both need the same three things and neither should own them: a static
- * Storybook served over HTTP (never `file://` - Chromium blocks cross-origin
- * ES module loads from a file origin, and every story then renders an empty
- * root and the sweep passes having measured nothing), the story index, and one
- * agreed set of viewport sizes.
+ * Plumbing for the Storybook-driven fit sweep (panel-fit): the viewport sizes
+ * it sweeps, a static Storybook served over HTTP (never `file://` - Chromium
+ * blocks cross-origin ES module loads from a file origin, and every story then
+ * renders an empty root and the sweep passes having measured nothing), and the
+ * story index.
  */
 
 import { createReadStream, existsSync, readFileSync, statSync } from "node:fs"
@@ -60,44 +58,30 @@ export const VIEWPORTS = [
   { name: "desktop", width: 1680, height: 1050 },
 ] as const
 
-export type StoryEntry = {
-  id: string
-  title: string
-  name: string
-  type?: string
-}
-
-/** Every non-docs story in the built Storybook, or `[]` if none was built. */
-export function loadStoryIds(): Array<StoryEntry> {
+/** Every non-docs story id in the built Storybook, or none if none was built. */
+export function loadStoryIds(): Set<string> {
   const indexPath = resolve(STORYBOOK_STATIC, "index.json")
-  if (!existsSync(indexPath)) return []
+  if (!existsSync(indexPath)) return new Set()
 
   const parsed: unknown = JSON.parse(readFileSync(indexPath, "utf8"))
   if (typeof parsed !== "object" || parsed === null || !("entries" in parsed)) {
-    return []
+    return new Set()
   }
 
   const entries: unknown = parsed.entries
-  if (typeof entries !== "object" || entries === null) return []
+  if (typeof entries !== "object" || entries === null) return new Set()
 
   // Storybook's index is external JSON, so each row is narrowed rather than
   // asserted - a shape change should drop rows, not crash the sweep.
-  return Object.values(entries).flatMap((entry): Array<StoryEntry> => {
-    if (typeof entry !== "object" || entry === null) return []
-    const row: Record<string, unknown> = { ...entry }
-    const { id, title, name, type } = row
-    if (
-      typeof id !== "string" ||
-      typeof title !== "string" ||
-      typeof name !== "string"
-    ) {
-      return []
-    }
-    if (type === "docs") return []
-    return [
-      { id, title, name, type: typeof type === "string" ? type : undefined },
-    ]
-  })
+  return new Set(
+    Object.values(entries).flatMap((entry): Array<string> => {
+      if (typeof entry !== "object" || entry === null) return []
+      const row: Record<string, unknown> = { ...entry }
+      const { id, type } = row
+      if (typeof id !== "string" || type === "docs") return []
+      return [id]
+    })
+  )
 }
 
 const MIME: Record<string, string> = {

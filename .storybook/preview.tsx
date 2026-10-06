@@ -5,7 +5,6 @@ import "./index.css"
 import { withProviders } from "./storybook-decorator"
 import { themeGlobalTypes, withTheme } from "./theme-decorator"
 import { withToaster } from "./toast-decorator"
-import { withUnoCss } from "./unocss-decorator"
 
 // RIP eager globbing: turns out dumping every package CSS file directly into
 // the head after index.css obliterates the Tailwind cascade rules.
@@ -18,7 +17,7 @@ import { withUnoCss } from "./unocss-decorator"
 // })
 
 const preview: Preview = {
-  decorators: [withTheme, withProviders, withToaster, withUnoCss],
+  decorators: [withTheme, withProviders, withToaster],
 
   globalTypes: themeGlobalTypes,
 
@@ -27,17 +26,6 @@ const preview: Preview = {
     appearance: "inherit",
     accent: "none",
   },
-
-  parameters: {
-    controls: {
-      matchers: {
-        color: /(background|color)$/i,
-        date: /Date$/i,
-      },
-    },
-  },
-
-  tags: ["autodocs"],
 }
 
 export default preview

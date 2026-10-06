@@ -29,17 +29,14 @@
  *   - `syntheticCatalogue` - the same fixture the unit tests rank and search.
  *
  * If the mirror below stops resembling the app, this spec goes green while
- * `/app` breaks. The check that cannot drift is the Storybook sweep next
- * door; it covers `packages/**` and `extensions/**`, and `apps/www` has no
- * stories for it to see. Widening those globs is the follow-up, not this
- * story.
+ * `/app` breaks, and nothing else measures the shipped classes.
  */
 
 import { expect, test, type Page } from "@playwright/test"
 import { recommendedCount, syntheticCatalogue } from "@some-ui/activity-catalog"
 
 /**
- * The same three sizes the Storybook sweep uses, for the same reasons: the
+ * Three of the sizes panel-fit sweeps (`harness.ts`), for the same reasons: the
  * shortest viewport a laptop realistically presents, a narrow phone, and a
  * large desktop.
  */

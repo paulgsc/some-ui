@@ -1,7 +1,3 @@
-import { Meta } from "@storybook/addon-docs/blocks"
-
-<Meta title="Content/Introduction" />
-
 # Portfolio Cognition Engine — Product Specification
 
 **Document Version:** 0.1.0  
