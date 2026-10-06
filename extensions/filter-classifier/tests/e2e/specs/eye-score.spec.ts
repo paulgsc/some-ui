@@ -160,6 +160,9 @@ test.describe("requiresExplanation / validateEyeScore", () => {
       "yesterday",
       "2026-07-20",
       "2026-13-45T99:00:00Z",
+      // Date.parse accepts both; toISOString never writes either.
+      "2026-02-30T00:00:00.000Z",
+      "2026-07-20T01:03:58Z",
     ]) {
       const issues = validateEyeScore(notApplicableFixture, score({ scoredAt }))
       expect(

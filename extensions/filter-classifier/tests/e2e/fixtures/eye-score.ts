@@ -51,15 +51,15 @@ function isValidScore(value: number): boolean {
   return Number.isFinite(value) && value >= SCORE_MIN && value <= SCORE_MAX
 }
 
-/** `Date#toISOString`'s shape, which is what a score records. */
-const ISO_TIMESTAMP = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?Z$/
-
+/**
+ * Exactly what `Date#toISOString` writes, which is what a score records. A
+ * round trip rather than a pattern: `Date.parse` quietly rolls an impossible
+ * date over (Feb 30 becomes Mar 2), and only the round trip refuses it.
+ */
 function isIsoTimestamp(value: unknown): boolean {
-  return (
-    typeof value === "string" &&
-    ISO_TIMESTAMP.test(value) &&
-    !Number.isNaN(Date.parse(value))
-  )
+  if (typeof value !== "string") return false
+  const time = Date.parse(value)
+  return !Number.isNaN(time) && new Date(time).toISOString() === value
 }
 
 /**
