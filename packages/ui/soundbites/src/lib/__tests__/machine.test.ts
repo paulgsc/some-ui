@@ -130,9 +130,13 @@ describe("step", () => {
     expect(save.bite.context.source).toBe("reminder")
 
     // A failed save leaves it for the retry ...
-    const failed = step(start.state, { type: "saveFailed" }).state
+    const failed = step(start.state, { type: "saveFailed", full: false }).state
     expect(failed.source).toBe("reminder")
     expect(failed.notice).toBe(NOTICES.notKept)
+    // ... and says why when the cap, not the write, refused it.
+    expect(
+      step(start.state, { type: "saveFailed", full: true }).state.notice
+    ).toBe(NOTICES.full)
     // ... and a stored one ends it.
     const saved = step(start.state, { type: "saved", bite: save.bite }).state
     expect(saved.source).toBe("direct")
@@ -238,11 +242,13 @@ describe("step", () => {
     ).toEqual([{ type: "read", seq: 2 }])
 
     // Another page's save commits while ours fails: still re-read.
-    expect(step(noted.state, { type: "saveFailed" }).effects).toEqual([
-      { type: "read", seq: 2 },
-    ])
+    expect(
+      step(noted.state, { type: "saveFailed", full: false }).effects
+    ).toEqual([{ type: "read", seq: 2 }])
     // Ours fails and nothing else changed: nothing to read.
-    expect(step(taken.state, { type: "saveFailed" }).effects).toEqual([])
+    expect(
+      step(taken.state, { type: "saveFailed", full: false }).effects
+    ).toEqual([])
   })
 
   it("waits to auto-start until a page that arrived hidden is shown", () => {

@@ -128,7 +128,7 @@ type SoundbitesSignal =
     }
   | { readonly type: "takeFailed" }
   | { readonly type: "saved"; readonly bite: Soundbite }
-  | { readonly type: "saveFailed" }
+  | { readonly type: "saveFailed"; readonly full: boolean }
   | {
       readonly type: "listed"
       readonly seq: number
@@ -175,6 +175,7 @@ export type Step = {
 export const NOTICES = {
   tooShort: "Too short to keep. Tap, talk, then tap again.",
   notKept: "That one couldn't be kept. Try again?",
+  full: "No room for that one. Delete a soundbite, then record again.",
   thrownAway: "Thrown away. Nothing kept.",
   audioMissing: "That recording's audio is missing.",
   notPlayable: "That recording couldn't be played.",
@@ -429,7 +430,11 @@ export function step(state: SoundbitesState, event: SoundbitesEvent): Step {
     case "saveFailed": {
       if (activity.kind !== "saving") return stay(state)
       return writeLanded(
-        { ...state, activity: { kind: "idle" }, notice: NOTICES.notKept },
+        {
+          ...state,
+          activity: { kind: "idle" },
+          notice: event.full ? NOTICES.full : NOTICES.notKept,
+        },
         false
       )
     }

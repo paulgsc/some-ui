@@ -1,8 +1,10 @@
 import {
   byNewest,
   displacedBy,
+  fitsMaxBytes,
   nextReplaced,
   SOUNDBITE_LIMIT,
+  SOUNDBITES_MAX_BYTES,
 } from "@soundbites/lib/policy"
 import { describe, expect, it } from "vitest"
 
@@ -43,5 +45,13 @@ describe("the cap", () => {
     expect(
       byNewest([bite("old", 90), bite("new", 1)]).map((b) => b.id)
     ).toEqual(["new", "old"])
+  })
+})
+
+describe("the byte cap", () => {
+  it("takes a soundbite up to it, and none past it", () => {
+    const fifth = SOUNDBITES_MAX_BYTES / SOUNDBITE_LIMIT
+    expect(fitsMaxBytes(Array(5).fill(fifth), fifth)).toBe(true)
+    expect(fitsMaxBytes(Array(5).fill(fifth), fifth + 1)).toBe(false)
   })
 })

@@ -88,17 +88,16 @@ is a regression, not debt. Each falsifier covers deletions and moves as well as 
   or a hunk to that workspace's `package.json` that points `exports["./contract"]` at a
   module not meeting the claim, or makes the workspace non-`public` while its contract
   module does not meet it.
-- _Scope:_ `packages/ui/*` workspaces with a non-`public` audience. Held when written, with
-  none in the repo yet. `@some-ui/lesson-crm` exports no `./contract`, so it holds vacuously
-  there. `@some-ui/soundbites` has the first: `src/contract.ts` re-exports
-  `src/lib/policy.ts`, whose one import is `import type`.
+- _Scope:_ `packages/ui/*` workspaces with a non-`public` audience. Held: the one contract
+  in the repo, `@some-ui/soundbites`'s `src/contract.ts`, re-exports `src/lib/policy.ts`,
+  whose one import is `import type`; `@some-ui/lesson-crm` exports no `./contract`.
 - _Why not enforced:_ mechanical; not yet a test. The plugin never stubs `/contract`, so
   whatever a contract module imports ships in every profile: a size regression, not a
   broken build, so neither the build nor an existing test notices. A lint rule would see one
   file at a time, but the claim is about the contract's whole relative-import graph, rooted
   at `package.json#exports` in another file. A test can walk that graph (the way
-  `check:ui-manifests` walks manifests); with no gated workspace yet it would walk nothing,
-  so it lands with the first one.
+  `check:ui-manifests` walks manifests); with one contract of two files, reading it is
+  still cheaper than that test.
 
 **A3: Public UI offers a gated route only when the build carries it.**
 

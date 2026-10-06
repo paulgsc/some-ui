@@ -112,7 +112,9 @@ past which Android stops backing the app up without saying so, and that
 backup is the only other copy of the phone's history (`device-backend/storage`).
 There is no size per table. Only the database is checked, against the quota
 less what soundbites can hold at most (their own cap, from
-`@some-ui/soundbites/contract`), so WebView growth never refuses a session.
+`@some-ui/soundbites/contract`, which their store refuses to pass), so WebView
+growth never refuses a session. The WebView's other storage (preferences and
+small capped stores) is not counted.
 
 - **Nothing the person made is deleted without their yes.** A session save
   or shelf keep that would cross the budget is refused. The app then names

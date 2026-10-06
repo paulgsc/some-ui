@@ -13,11 +13,20 @@ export const SOUNDBITE_MAX_MS = 60_000
 export const SOUNDBITE_BITS_PER_SECOND = 32_000
 
 /**
- * The most the kept soundbites hold, near enough (the bitrate is the
- * recorder's target): what an app budgeting its storage keeps free for them.
+ * The most audio the kept soundbites may hold: six full minutes at the target
+ * bitrate. The store refuses a save past it (`fitsMaxBytes`), so an app
+ * budgeting its storage can keep exactly this free for them.
  */
 export const SOUNDBITES_MAX_BYTES =
   SOUNDBITE_LIMIT * (SOUNDBITE_MAX_MS / 1000) * (SOUNDBITE_BITS_PER_SECOND / 8)
+
+/** Whether `size` more bytes beside those `staying` keep within the cap. */
+export function fitsMaxBytes(
+  staying: ReadonlyArray<number>,
+  size: number
+): boolean {
+  return staying.reduce((sum, each) => sum + each, size) <= SOUNDBITES_MAX_BYTES
+}
 
 /** Shorter than this is a stray double-tap, not something said. */
 export const SOUNDBITE_MIN_MS = 1_000
