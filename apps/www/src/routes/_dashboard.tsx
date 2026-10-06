@@ -198,9 +198,6 @@ const DashboardLayout = (): JSX.Element => {
           </header>
         )}
         {!bareViewport && <AccountUnavailableBanner />}
-        {/* On every route, the player's and composer's included: a save
-            refused there is what it answers. Inline, so the web builds
-            drop this device-only import. */}
         {import.meta.env.VITE_DEVICE_BACKEND === "true" ? (
           <DeviceStoragePrompt />
         ) : null}

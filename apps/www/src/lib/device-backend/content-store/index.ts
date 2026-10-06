@@ -221,7 +221,7 @@ export async function upsertLesson(
   return db.transaction(async () => {
     const stored = await one(
       db,
-      `SELECT content_hash, version, retired_at, level, display_name, description,
+      `SELECT content_hash, version, level, display_name, description,
               batch_count, total_questions, total_messages, tags
        FROM curriculum WHERE key = ?`,
       [entry.key]
@@ -229,7 +229,6 @@ export async function upsertLesson(
     if (
       stored !== null &&
       text(stored, "content_hash") === contentHash &&
-      stored.retired_at === null &&
       stored.level === level &&
       stored.display_name === entry.displayName &&
       stored.description === entry.description &&
@@ -250,7 +249,7 @@ export async function upsertLesson(
          total_questions = excluded.total_questions, total_messages = excluded.total_messages,
          tags = excluded.tags, published_at = excluded.published_at,
          version = excluded.version, content_hash = excluded.content_hash,
-         body = excluded.body, retired_at = NULL`,
+         body = excluded.body`,
       [
         entry.key,
         level,
@@ -290,11 +289,7 @@ export async function removeLessonsExcept(
   )
 }
 
-/**
- * `DELETE FROM table WHERE where`, answering how many rows of `table` went.
- * Counted first: the Capacitor plugin's `changes` is a `total_changes()`
- * delta, which also counts the rows a cascade took with them.
- */
+/** Counted first: on the Capacitor bridge `changes` includes cascades (`sql`). */
 async function deleteCounted(
   db: SqlDriver,
   table: string,
@@ -324,8 +319,7 @@ async function deleteCounted(
 export async function removeRoundsExcept(
   db: SqlDriver,
   keep: ReadonlyArray<string>,
-  origin: RoundOrigin,
-  nowMs: number
+  origin: RoundOrigin
 ): Promise<number> {
   const kept = [JSON.stringify(keep)]
   const unlisted = "id NOT IN (SELECT value FROM json_each(?))"
@@ -348,8 +342,7 @@ export async function removeRoundsExcept(
       `${unlisted} AND id NOT IN (SELECT round_id FROM device_round_from_home)`,
       kept
     )
-    // Nobody asked for these, so they are noted in the same transaction.
-    await notePruned(db, removed, nowMs)
+    await notePruned(db, removed)
     return removed
   })
 }

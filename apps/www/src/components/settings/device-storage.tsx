@@ -5,12 +5,13 @@
  */
 import type { JSX } from "react"
 import { useEffect, useSyncExternalStore } from "react"
+import { formatSize } from "@some-ui/core-utils"
 import { Alert, AlertDescription, AlertTitle, Button } from "@some-ui/shared"
 import { HardDrive } from "lucide-react"
 
 import type { RemovableSession } from "@/lib/device-backend/handlers/sessions"
 import type { DeviceStorageView } from "@/lib/device-backend/storage-view"
-import { deviceStorage, megabytes } from "@/lib/device-backend/storage-view"
+import { deviceStorage } from "@/lib/device-backend/storage-view"
 import { useIntent, useIntentEffect } from "@/lib/intent"
 import { IntentButton } from "@/lib/intent/render"
 import { useDeleteSession } from "@/lib/tenant"
@@ -26,7 +27,6 @@ function useDeviceStorage(): DeviceStorageView | null {
   return view
 }
 
-/** For Settings → This phone: the use, against the budget, and the rule. */
 export const DeviceStorageSummary = (): JSX.Element | null => {
   const view = useDeviceStorage()
   if (view === null) return null
@@ -34,15 +34,14 @@ export const DeviceStorageSummary = (): JSX.Element | null => {
   return (
     <div className="space-y-1">
       <p className="text-sm">
-        Using about {megabytes(databaseBytes + webViewBytes)} of{" "}
-        {megabytes(quotaBytes)}, with {megabytes(reservedBytes)} kept free for
+        Using about {formatSize(databaseBytes + webViewBytes)} of{" "}
+        {formatSize(quotaBytes)}, with {formatSize(reservedBytes)} kept free for
         soundbites
       </p>
       <p className="text-muted-foreground text-xs">
         Android backs this app up only while it stays under{" "}
-        {megabytes(quotaBytes)}. When it&apos;s full, a new save waits until you
-        choose something to remove. Sessions aren&apos;t synced anywhere yet, so
-        a removed one is gone.
+        {formatSize(quotaBytes)}. When it&apos;s full, a new save waits until
+        you choose something to remove.
       </p>
     </div>
   )
@@ -91,10 +90,6 @@ const RemoveOffer = ({
   )
 }
 
-/**
- * For every page: after a refused save, which session could go and a yes or
- * no; and removals the person did not ask for, until they have seen them.
- */
 export const DeviceStoragePrompt = (): JSX.Element | null => {
   const view = useDeviceStorage()
   if (view === null) return null

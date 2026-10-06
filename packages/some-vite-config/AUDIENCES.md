@@ -91,7 +91,7 @@ is a regression, not debt. Each falsifier covers deletions and moves as well as 
 - _Scope:_ `packages/ui/*` workspaces with a non-`public` audience. Held when written, with
   none in the repo yet. `@some-ui/lesson-crm` exports no `./contract`, so it holds vacuously
   there. `@some-ui/soundbites` has the first: `src/contract.ts` re-exports
-  `src/lib/policy.ts`, whose one import is `import type` (checked when added, #1692).
+  `src/lib/policy.ts`, whose one import is `import type`.
 - _Why not enforced:_ mechanical; not yet a test. The plugin never stubs `/contract`, so
   whatever a contract module imports ships in every profile: a size regression, not a
   broken build, so neither the build nor an existing test notices. A lint rule would see one

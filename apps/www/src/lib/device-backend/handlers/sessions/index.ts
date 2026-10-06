@@ -15,15 +15,11 @@
  * - a duplicate is a fresh `draft` with `" (copy)"` appended, and carries
  *   `finalElapsedMs` over (the server's `..source` spread does).
  *
- * The phone's own: a save that would grow it past its budget
- * (`device-backend/storage`) is refused with `400 max_record_limit_exceeded`
- * and nothing is deleted; the app then offers to remove what
- * `oldestRemovable` names, and only on the person's yes.
+ * Saves are budgeted (`device-backend/storage`).
  */
 import { DEVICE_SUBJECT, isRecord, rfc3339 } from "@/lib/device-backend/common"
 import type { DeviceRoute } from "@/lib/device-backend/router"
 import {
-  errorResponse,
   json,
   notFound,
   readJson,
@@ -31,12 +27,8 @@ import {
 } from "@/lib/device-backend/router"
 import type { SqlDriver, SqlRow, SqlValue } from "@/lib/device-backend/sql"
 import { num, numOrNull, one, text, textOrNull } from "@/lib/device-backend/sql"
-import type { StorageBudget } from "@/lib/device-backend/storage"
-import {
-  budgeted,
-  OverBudgetError,
-  saveRefused,
-} from "@/lib/device-backend/storage"
+import { budgetedAnswer } from "@/lib/device-backend/storage"
+import { touchedToday } from "@/lib/study-nudge"
 
 const STATUSES = ["draft", "scheduled", "active", "paused", "completed"]
 const LAYOUT_MODES = ["basic", "advanced"]
@@ -184,44 +176,18 @@ function layoutField(body: Record<string, unknown>): string | null | undefined {
   return JSON.stringify(body.layout ?? null)
 }
 
-/**
- * `write`, or the refusal if it would grow the phone past `budget`. `spare`
- * is the existing session the save is about, never offered for removal.
- */
-async function saving(
-  db: SqlDriver,
-  budget: StorageBudget,
-  spare: string | null,
-  write: () => Promise<Response>
-): Promise<Response> {
-  try {
-    return await budgeted(db, budget, write)
-  } catch (error) {
-    if (!(error instanceof OverBudgetError)) throw error
-    saveRefused(spare)
-    return errorResponse(400, "max_record_limit_exceeded", {
-      message: error.message,
-    })
-  }
-}
-
 export type RemovableSession = { id: string; name: string; finishedAt: string }
 
 /**
  * The session the app offers to remove when the phone is full: the oldest
- * finished one, never one started or finished today (Home's study card and
- * the study nudge read those), never an unfinished one, and never `spare`.
- * `null` when there is none.
+ * finished one that is not `spare`, and never one the study card and nudge
+ * read as studied today.
  */
 export async function oldestRemovable(
   db: SqlDriver,
   nowMs: number,
   spare: string | null = null
 ): Promise<RemovableSession | null> {
-  const midnight = new Date(nowMs)
-  midnight.setHours(0, 0, 0, 0)
-  const today = (stamp: string | null): boolean =>
-    stamp !== null && Date.parse(stamp) >= midnight.getTime()
   const rows = await db.all(
     "SELECT id, name, started_at, completed_at, updated_at FROM sessions WHERE subject_id = ? AND status = 'completed'",
     [DEVICE_SUBJECT]
@@ -230,13 +196,11 @@ export async function oldestRemovable(
     .map((row) => ({
       id: text(row, "id"),
       name: text(row, "name"),
-      startedAt: textOrNull(row, "started_at"),
+      startedAt: textOrNull(row, "started_at") ?? undefined,
+      completedAt: textOrNull(row, "completed_at") ?? undefined,
       finishedAt: textOrNull(row, "completed_at") ?? text(row, "updated_at"),
     }))
-    .filter(
-      (row) =>
-        row.id !== spare && !today(row.startedAt) && !today(row.finishedAt)
-    )
+    .filter((row) => row.id !== spare && !touchedToday(row, new Date(nowMs)))
     .sort((a, b) => Date.parse(a.finishedAt) - Date.parse(b.finishedAt))
   const oldest = removable.at(0)
   return oldest === undefined
@@ -313,7 +277,7 @@ export const sessionRoutes: ReadonlyArray<DeviceRoute> = [
         scenes: JSON.stringify(scenes),
         layout: layout ?? null,
       }
-      return saving(db, budget, null, async () => {
+      return budgetedAnswer(db, budget, null, async () => {
         await write(db, session)
         return json(200, toWire(session))
       })
@@ -343,7 +307,7 @@ export const sessionRoutes: ReadonlyArray<DeviceRoute> = [
       ) {
         return shapeRejected("unknown `layoutMode`")
       }
-      return saving(db, budget, params.id ?? null, async () => {
+      return budgetedAnswer(db, budget, params.id ?? null, async () => {
         const current = await find(db, params.id ?? "")
         if (current === null) return notFound()
         const next: Stored = { ...current, updatedAt: rfc3339(now()) }
@@ -449,7 +413,7 @@ export const sessionRoutes: ReadonlyArray<DeviceRoute> = [
     method: "POST",
     path: "/sessions/:id/duplicate",
     handler: async ({ params }, { db, now, budget }): Promise<Response> =>
-      saving(db, budget, params.id ?? null, async () => {
+      budgetedAnswer(db, budget, params.id ?? null, async () => {
         const source = await find(db, params.id ?? "")
         if (source === null) return notFound()
         const stamp = rfc3339(now())

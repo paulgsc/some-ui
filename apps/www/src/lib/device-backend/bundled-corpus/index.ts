@@ -4,7 +4,7 @@
  * text, the same files the server's importer reads, so content hashes match
  * the runs. TOPIK lessons arrive only by sync (`device-backend/home-sync`).
  */
-import { isRecord } from "@/lib/device-backend/common"
+import { stringsAt } from "@/lib/device-backend/common"
 import {
   removeRoundsExcept,
   upsertRound,
@@ -27,11 +27,6 @@ const RUNS: Record<string, string> = import.meta.glob(
 
 export type SeedReport = { rounds: number; runs: number }
 
-function idOf(body: string): Array<string> {
-  const round: unknown = JSON.parse(body)
-  return isRecord(round) && typeof round.id === "string" ? [round.id] : []
-}
-
 /**
  * Idempotent: an unchanged round is a read, not a write. A round the home
  * sync wrote, or home retired, is left as it is. A bundled round an earlier
@@ -43,9 +38,11 @@ export async function seedBundledCorpus(
 ): Promise<SeedReport> {
   await removeRoundsExcept(
     db,
-    Object.values(ROUNDS).flatMap(idOf),
-    "bundled",
-    nowMs
+    stringsAt(
+      Object.values(ROUNDS).map((body): unknown => JSON.parse(body)),
+      "id"
+    ),
+    "bundled"
   )
   let rounds = 0
   for (const body of Object.values(ROUNDS)) {

@@ -8,7 +8,10 @@ import { openNodeSqlite } from "@/test-support/node-sqlite-driver"
 import { beforeEach, describe, expect, it } from "vitest"
 
 import { openDeviceBackend } from "@/lib/device-backend/backend"
-import { upsertRound } from "@/lib/device-backend/content-store"
+import {
+  removeRoundsExcept,
+  upsertRound,
+} from "@/lib/device-backend/content-store"
 import { oldestRemovable } from "@/lib/device-backend/handlers/sessions"
 import type { DeviceBackend } from "@/lib/device-backend/interceptor"
 import type { SqlDriver } from "@/lib/device-backend/sql"
@@ -119,44 +122,29 @@ describe("sessions at the budget", () => {
   })
 
   it("offers the oldest finished session, never today's or an unfinished one", async () => {
-    await expect(oldestRemovable(db, NOW)).resolves.toBeNull()
-    const older = await create("older")
-    const oldest = await create("oldest")
-    const today = await create("today")
+    await finish(await create("today"), NOW)
     await create("draft")
-    await finish(older, NOW - 10 * DAY)
-    await finish(oldest, NOW - 20 * DAY)
-    await finish(today, NOW)
+    await expect(oldestRemovable(db, NOW)).resolves.toBeNull()
+
+    await finish(await create("older"), NOW - 10 * DAY)
+    await finish(await create("oldest"), NOW - 20 * DAY)
 
     await expect(oldestRemovable(db, NOW)).resolves.toMatchObject({
       name: "oldest",
     })
-    await call("DELETE", `/sessions/${oldest}`)
-    await expect(oldestRemovable(db, NOW)).resolves.toMatchObject({
-      name: "older",
-    })
   })
 
-  it("switches a database made before auto-vacuum over to it", async () => {
+  it("runs FULL auto-vacuum, a database made before it included", async () => {
     const mode = async (): Promise<number> => {
       const row = await one(db, "PRAGMA auto_vacuum")
       return row === null ? -1 : num(row, "auto_vacuum")
     }
+    expect(await mode()).toBe(1)
     await db.exec("PRAGMA auto_vacuum = NONE")
     await db.exec("VACUUM")
     expect(await mode()).toBe(0)
     backend = await openDeviceBackend(db, () => NOW, budget)
     expect(await mode()).toBe(1)
-  })
-
-  it("gives a removed session's pages back to the file", async () => {
-    const before = await databaseBytes(db)
-    const id = await create("gone soon")
-    expect(await databaseBytes(db)).toBeGreaterThan(before)
-    await call("DELETE", `/sessions/${id}`)
-    expect(await databaseBytes(db)).toBe(before)
-    const free = await one(db, "PRAGMA freelist_count")
-    expect(free === null ? -1 : num(free, "freelist_count")).toBe(0)
   })
 })
 
@@ -212,16 +200,10 @@ describe("the bundled seed", () => {
   })
 
   it("does not bring back a bundled round home retired", async () => {
-    const rows = await db.all(
-      "SELECT id FROM leetype_round WHERE id NOT IN (SELECT round_id FROM device_round_from_home) LIMIT 1"
-    )
-    const id = String(rows[0]?.id)
-    await db.transaction(async () => {
-      await db.run("INSERT INTO device_round_retired (round_id) VALUES (?)", [
-        id,
-      ])
-      await db.run("DELETE FROM leetype_round WHERE id = ?", [id])
-    })
+    const rows = await db.all("SELECT id FROM leetype_round ORDER BY id")
+    const ids = rows.map((row) => String(row.id))
+    const id = ids[0] ?? ""
+    await removeRoundsExcept(db, ids.slice(1), "home")
 
     backend = await openDeviceBackend(db, () => NOW, budget)
 

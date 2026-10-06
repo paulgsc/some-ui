@@ -36,3 +36,14 @@ export async function sha256Hex(text: string): Promise<string> {
 export function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value)
 }
+
+/** Each value's string `field`, skipping a value without one. */
+export function stringsAt(
+  values: ReadonlyArray<unknown>,
+  field: string
+): Array<string> {
+  return values.flatMap((value) => {
+    const found = isRecord(value) ? value[field] : undefined
+    return typeof found === "string" ? [found] : []
+  })
+}

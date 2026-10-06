@@ -7,15 +7,12 @@
  * learner's own history would need a merge rule. Every route read here is
  * uncredentialed on the server, so no sign-in is needed.
  *
- * What home no longer lists is deleted; what would take the phone past its
- * budget (`device-backend/storage`) is skipped. The report counts both.
- *
  * `get` is injected: the app passes Capacitor's native HTTP (`native-http`),
  * which reaches a plain-`http:` LAN address from the WebView's `https:` page
  * (a `fetch` would be mixed content). Tests pass a second device backend
  * standing in for home, which passes the server's own contracts.
  */
-import { isRecord } from "@/lib/device-backend/common"
+import { isRecord, stringsAt } from "@/lib/device-backend/common"
 import type { LessonEntry } from "@/lib/device-backend/content-store"
 import {
   removeLessonsExcept,
@@ -135,8 +132,7 @@ export async function syncFromHome(
   // be said plainly). A manifest with no `topiks` array is not an empty one,
   // and removing against it would empty the catalogue.
   const manifest = await getJson(get, base, "/curriculum/manifest.json")
-  // Both listings before any write, so a failure here removes nothing that
-  // the report it aborts would have had to name.
+  // Both listings before any write: a failed fetch aborts with nothing removed.
   const rounds = await getJson(get, base, "/leetype/rounds")
   if (!isRecord(manifest) || !Array.isArray(manifest.topiks)) {
     throw new Error("home's curriculum manifest has no `topiks` array")
@@ -144,9 +140,7 @@ export async function syncFromHome(
   const listed: Array<unknown> = manifest.topiks
   // Every key home still lists, including an entry this phone cannot read:
   // that one fails, and is not removed.
-  const listedKeys = listed.flatMap((entry) =>
-    isRecord(entry) && typeof entry.key === "string" ? [entry.key] : []
-  )
+  const listedKeys = stringsAt(listed, "key")
   const entries = listed.filter(isLessonEntry)
   report.lessons.listed = listedKeys.length
   for (const key of listedKeys) {
@@ -170,7 +164,6 @@ export async function syncFromHome(
     }
   }
 
-  // Only a listing that is an array is one to remove against.
   const roundsListed: Array<unknown> | null =
     isRecord(rounds) && Array.isArray(rounds.rounds) ? rounds.rounds : null
   const listings = (roundsListed ?? []).filter(isRoundListing)
@@ -178,11 +171,8 @@ export async function syncFromHome(
   if (roundsListed !== null) {
     report.rounds.removed = await removeRoundsExcept(
       db,
-      roundsListed.flatMap((entry) =>
-        isRecord(entry) && typeof entry.id === "string" ? [entry.id] : []
-      ),
-      "home",
-      now()
+      stringsAt(roundsListed, "id"),
+      "home"
     )
   }
   for (const listing of listings) {

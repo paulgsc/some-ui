@@ -118,22 +118,19 @@ const MIGRATIONS: ReadonlyArray<string> = [
       round_id TEXT PRIMARY KEY REFERENCES leetype_round(id) ON DELETE CASCADE
   );
   `,
-  // 3 - device only: bundled rounds home retired (`content-store`), and
-  // removals not yet shown (`storage`'s `PruneNotice`). Both stay small: the
-  // seed trims the first to ids the bundle still ships; the second is one row.
+  // 3 - device only. Both stay small: the seed trims the first to ids the
+  // bundle still ships; the second is one row.
   `
   CREATE TABLE device_round_retired (
       round_id TEXT PRIMARY KEY
   );
   CREATE TABLE device_storage_notice (
       id     INTEGER PRIMARY KEY CHECK (id = 1),
-      rounds INTEGER NOT NULL,
-      since  TEXT    NOT NULL
+      rounds INTEGER NOT NULL
   );
   `,
 ]
 
-/** `PRAGMA auto_vacuum`'s value for `FULL`. */
 const AUTO_VACUUM_FULL = 1
 
 /** The schema version a fully migrated database reports. */
@@ -159,7 +156,7 @@ export async function migrate(db: SqlDriver): Promise<void> {
       try {
         await db.exec("VACUUM")
       } catch {
-        // The file keeps its old size until a later start's VACUUM succeeds.
+        // Best effort, as above.
       }
     }
   }

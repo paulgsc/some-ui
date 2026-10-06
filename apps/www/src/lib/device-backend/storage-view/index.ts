@@ -2,12 +2,6 @@
  * What the app shows about the phone's storage (`device-backend/storage`):
  * how much of the budget is in use, the removals not yet shown, and, after
  * a session save was refused, which session it could remove to make room.
- *
- * A snapshot store outside React (`docs/monorepo-boundaries.md`, R1): the
- * components read it and dispatch. Nothing here deletes a session; the
- * person's yes does, through the app's own sessions repository.
- *
- * Device build only: it opens the same database the backend answers from.
  */
 import { deviceBackend } from "@/lib/device-backend/boot"
 import type { RemovableSession } from "@/lib/device-backend/handlers/sessions"
@@ -23,7 +17,6 @@ import {
 export type DeviceStorageView = {
   use: StorageUse
   notice: PruneNotice | null
-  /** Set by a refused save until room is made or the person declines. */
   full: { removable: RemovableSession | null } | null
 }
 
@@ -84,8 +77,4 @@ export const deviceStorage = {
     }
     await read()
   },
-}
-
-export function megabytes(bytes: number): string {
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 }

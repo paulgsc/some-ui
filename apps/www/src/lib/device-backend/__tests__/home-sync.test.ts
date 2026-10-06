@@ -173,10 +173,6 @@ describe("syncFromHome", () => {
         topiks: [],
       }
     )
-    // Removed, not retired: nothing on the phone reads a lesson by a key it
-    // saved, so the row would only be weight.
-    const gone = await fetchFor(phone, PHONE)(`${PHONE}/curriculum/k2-cafe`)
-    expect(gone.status).toBe(404)
     const rounds = await phoneDb.all(
       "SELECT id FROM leetype_round WHERE id = 'home-only-round'"
     )

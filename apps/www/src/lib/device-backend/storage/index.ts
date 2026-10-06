@@ -1,33 +1,16 @@
 /**
- * The phone's one storage budget, and the rule that keeps it.
- *
- * The bound is Android's: Auto Backup (README departure PD3) is the only
- * copy of this phone's history anywhere else, and Android stops backing an
- * app up, telling nobody, once its database and WebView storage together
- * pass 25 MB (https://developer.android.com/identity/data/autobackup).
- *
- * The rule: a write that grows the database past the budget is refused and
- * rolled back. Nothing the person made is deleted to make room unless they
- * say so: the app names what it would remove and waits for their yes
- * (`components/settings/device-storage.tsx`). Published content is the
- * exception, since home or the app can hand it over again: a sync replaces
- * what home stopped listing and reports it, and the seed drops rounds the
- * app no longer ships, counted in `device_storage_notice` until shown.
+ * The phone's storage budget and the rule that keeps it (apps/mobile/README.md,
+ * "What the phone keeps").
  */
 import { SOUNDBITES_MAX_BYTES } from "@some-ui/soundbites/contract"
 
-import { rfc3339 } from "@/lib/device-backend/common"
+import { errorResponse } from "@/lib/device-backend/router"
 import type { SqlDriver } from "@/lib/device-backend/sql"
 import { num, one } from "@/lib/device-backend/sql"
 
 export type StorageBudget = {
-  /** What everything the app stores must stay within. */
   quotaBytes: number
-  /**
-   * Kept free for the WebView's storage. Only the database is checked, so
-   * WebView growth can never refuse (or cost) a session; the WebView's one
-   * large store, soundbites, is capped by its own policy at this.
-   */
+  /** Kept free for WebView storage (soundbites' cap); only the database is measured. */
   reservedBytes: number
 }
 
@@ -41,6 +24,7 @@ async function webViewBytes(): Promise<number> {
   }
 }
 
+/** Android Auto Backup's per-app quota (developer.android.com/identity/data/autobackup). */
 export const ANDROID_BACKUP_BUDGET: StorageBudget = {
   quotaBytes: 25 * 1024 * 1024,
   reservedBytes: SOUNDBITES_MAX_BYTES,
@@ -56,12 +40,9 @@ export async function databaseBytes(db: SqlDriver): Promise<number> {
   return row === null ? 0 : num(row, "bytes")
 }
 
-/** For showing: the WebView's figure is the browser's estimate. */
-export type StorageUse = {
+export type StorageUse = StorageBudget & {
   databaseBytes: number
   webViewBytes: number
-  reservedBytes: number
-  quotaBytes: number
 }
 
 export async function storageUse(
@@ -69,10 +50,9 @@ export async function storageUse(
   budget: StorageBudget
 ): Promise<StorageUse> {
   return {
+    ...budget,
     databaseBytes: await databaseBytes(db),
     webViewBytes: await webViewBytes(),
-    reservedBytes: budget.reservedBytes,
-    quotaBytes: budget.quotaBytes,
   }
 }
 
@@ -90,7 +70,7 @@ export class OverBudgetError extends Error {
  * the database past the budget less its reserve. A write that grew nothing
  * (a rename, a status change) always goes through: refusing it frees nothing.
  */
-export async function budgeted<T>(
+async function budgeted<T>(
   db: SqlDriver,
   budget: StorageBudget,
   write: () => Promise<T>
@@ -114,35 +94,45 @@ export function budgetedDriver(
   return { ...db, transaction: (write) => budgeted(db, budget, write) }
 }
 
+/**
+ * A route's `budgeted` answer, or `400 max_record_limit_exceeded` after
+ * telling the app, which then asks the person to make room.
+ */
+export async function budgetedAnswer(
+  db: SqlDriver,
+  budget: StorageBudget,
+  spare: string | null,
+  write: () => Promise<Response>
+): Promise<Response> {
+  try {
+    return await budgeted(db, budget, write)
+  } catch (error) {
+    if (!(error instanceof OverBudgetError)) throw error
+    for (const listener of refusals) listener(spare)
+    return errorResponse(400, "max_record_limit_exceeded", {
+      message: error.message,
+    })
+  }
+}
+
+/** `spare`: the session the refused save was about, never offered for removal. */
 type RefusalListener = (spare: string | null) => void
 const refusals = new Set<RefusalListener>()
 
-/**
- * Told when a save is refused, so the app can ask to make room. `spare` is
- * the session that save was about, which the app must not offer to remove.
- */
 export function onSaveRefused(listener: RefusalListener): () => void {
   refusals.add(listener)
   return () => refusals.delete(listener)
 }
 
-export function saveRefused(spare: string | null): void {
-  for (const listener of refusals) listener(spare)
-}
-
 /** Removals the person did not ask for and has not been shown. */
-export type PruneNotice = { rounds: number; since: string }
+export type PruneNotice = { rounds: number }
 
-export async function notePruned(
-  db: SqlDriver,
-  rounds: number,
-  nowMs: number
-): Promise<void> {
+export async function notePruned(db: SqlDriver, rounds: number): Promise<void> {
   if (rounds === 0) return
   await db.run(
-    `INSERT INTO device_storage_notice (id, rounds, since) VALUES (1, ?, ?)
+    `INSERT INTO device_storage_notice (id, rounds) VALUES (1, ?)
      ON CONFLICT(id) DO UPDATE SET rounds = device_storage_notice.rounds + excluded.rounds`,
-    [rounds, rfc3339(nowMs)]
+    [rounds]
   )
 }
 
@@ -151,11 +141,9 @@ export async function readPruneNotice(
 ): Promise<PruneNotice | null> {
   const row = await one(
     db,
-    "SELECT rounds, since FROM device_storage_notice WHERE id = 1"
+    "SELECT rounds FROM device_storage_notice WHERE id = 1"
   )
-  return row === null
-    ? null
-    : { rounds: num(row, "rounds"), since: String(row.since) }
+  return row === null ? null : { rounds: num(row, "rounds") }
 }
 
 /** Takes back what was shown; anything noted since stays for next time. */

@@ -111,7 +111,11 @@ function isSameLocalDay(a: Date, b: Date): boolean {
   )
 }
 
-function touchedToday(session: SessionRecord, now: Date): boolean {
+/** Started or finished on the viewer's calendar day: what "studied today" reads. */
+export function touchedToday(
+  session: Pick<SessionRecord, "startedAt" | "completedAt">,
+  now: Date
+): boolean {
   for (const stamp of [session.startedAt, session.completedAt]) {
     if (!stamp) continue
     const at = new Date(stamp)

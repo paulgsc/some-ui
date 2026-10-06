@@ -239,8 +239,6 @@ describe("content on the device", () => {
     await expect(
       (await fetchIn(`${BASE}/curriculum/manifest.json`)).json()
     ).resolves.toMatchObject({ topiks: [] })
-    // Gone, where the server would still answer for a retired key: nothing
-    // on the phone saves a lesson's key (README, "differs on purpose").
     expect((await fetchIn(`${BASE}/curriculum/k1-greetings`)).status).toBe(404)
   })
 

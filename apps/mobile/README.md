@@ -670,6 +670,5 @@ offline, in any language whose voice data is installed (#1625):
 
 - **Nothing syncs back.** A session recorded on the phone stays on the
   phone. Two histories of one person's sessions need a merge rule first.
-  Until then, a session removed to make room is gone for good.
 - **Nothing here has run on a phone yet.** CI proves the APK builds. Every
   test runs the backend's SQL in Node's SQLite, not through the native bridge.
