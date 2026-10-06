@@ -15,7 +15,7 @@ import { oldestRemovable } from "@/lib/device-backend/handlers/sessions"
 import type { PruneNotice, StorageUse } from "@/lib/device-backend/storage"
 import {
   dismissPruneNotice,
-  onSessionRefused,
+  onSaveRefused,
   readPruneNotice,
   storageUse,
 } from "@/lib/device-backend/storage"
@@ -45,11 +45,13 @@ async function read(): Promise<void> {
   for (const listener of listeners) listener()
 }
 
-onSessionRefused(() => {
+onSaveRefused((spare) => {
   void (async (): Promise<void> => {
     try {
       const { context } = await deviceBackend()
-      full = { removable: await oldestRemovable(context.db, context.now()) }
+      full = {
+        removable: await oldestRemovable(context.db, context.now(), spare),
+      }
     } catch {
       full = { removable: null }
     }

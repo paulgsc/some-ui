@@ -17,7 +17,7 @@ import type { StorageBudget } from "@/lib/device-backend/storage"
 import {
   databaseBytes,
   dismissPruneNotice,
-  onSessionRefused,
+  onSaveRefused,
   readPruneNotice,
 } from "@/lib/device-backend/storage"
 
@@ -33,7 +33,7 @@ const budget: StorageBudget = {
   get quotaBytes() {
     return quota
   },
-  elsewhereBytes: () => Promise.resolve(0),
+  reservedBytes: 0,
 }
 
 beforeEach(async () => {
@@ -86,8 +86,8 @@ describe("sessions at the budget", () => {
     const old = await create("old")
     await finish(old, NOW - 30 * DAY)
     quota = await databaseBytes(db)
-    let refused = 0
-    const stop = onSessionRefused(() => (refused += 1))
+    const spared: Array<string | null> = []
+    const stop = onSaveRefused((spare) => spared.push(spare))
 
     const created = await call("POST", "/sessions", { name: "new", ...bulky })
     const duplicated = await call("POST", `/sessions/${old}/duplicate`)
@@ -102,7 +102,9 @@ describe("sessions at the budget", () => {
         error: { code: "max_record_limit_exceeded" },
       })
     }
-    expect(refused).toBe(3)
+    // The refused save's own session is never the one offered for removal.
+    expect(spared).toEqual([null, old, old])
+    await expect(oldestRemovable(db, NOW, old)).resolves.toBeNull()
     expect(await names()).toEqual(["old"])
   })
 
@@ -159,11 +161,15 @@ describe("sessions at the budget", () => {
 })
 
 describe("the shelf at the budget", () => {
-  it("refuses a keep with the full-shelf answer", async () => {
+  it("refuses a keep as a full phone, and asks to make room", async () => {
     expect((await call("PUT", "/shelf/topik/first", { BULK })).status).toBe(200)
     quota = await databaseBytes(db)
+    let refused = 0
+    const stop = onSaveRefused(() => (refused += 1))
     const second = await call("PUT", "/shelf/topik/second", { BULK })
-    expect(second.status).toBe(409)
+    stop()
+    expect(second.status).toBe(400)
+    expect(refused).toBe(1)
     const kept = await db.all("SELECT key FROM learner_shelf")
     expect(kept.map((row) => row.key)).toEqual(["first"])
   })

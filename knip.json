@@ -101,6 +101,9 @@
     "packages/ui/resume": {
       "ignoreDependencies": ["@some-ui/contract-harness"]
     },
+    "packages/ui/soundbites": {
+      "entry": ["src/index.ts", "src/contract.ts"]
+    },
     "packages/ui/shared": {
       "ignoreDependencies": ["clsx", "tailwind-merge"]
     }

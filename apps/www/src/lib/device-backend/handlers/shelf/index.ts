@@ -7,7 +7,8 @@
  * refuses a replace; an identical body is `unchanged` and keeps `savedAt`;
  * problems are one `422` keyed by field; `DELETE` is `204` either way. The
  * phone's own: a keep that would grow it past its budget
- * (`device-backend/storage`) gets the `409` a full shelf gets.
+ * (`device-backend/storage`) is refused as a session save is (`400
+ * max_record_limit_exceeded`), and the app offers to make room.
  */
 import {
   DEVICE_SUBJECT,
@@ -25,7 +26,11 @@ import {
 } from "@/lib/device-backend/router"
 import type { SqlRow } from "@/lib/device-backend/sql"
 import { one, text } from "@/lib/device-backend/sql"
-import { budgeted, OverBudgetError } from "@/lib/device-backend/storage"
+import {
+  budgeted,
+  OverBudgetError,
+  saveRefused,
+} from "@/lib/device-backend/storage"
 
 const SHELF_CAP = 20
 const SHELF_BODY_CEILING = 262_144
@@ -165,7 +170,10 @@ export const shelfRoutes: ReadonlyArray<DeviceRoute> = [
         })
       }).catch((error: unknown) => {
         if (!(error instanceof OverBudgetError)) throw error
-        return errorResponse(409, "conflict", { message: error.message })
+        saveRefused(null)
+        return errorResponse(400, "max_record_limit_exceeded", {
+          message: error.message,
+        })
       })
     },
   },

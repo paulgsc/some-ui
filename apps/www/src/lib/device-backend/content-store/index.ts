@@ -11,8 +11,9 @@
  * by content hash) keep matching.
  */
 import { isRecord, rfc3339, sha256Hex } from "@/lib/device-backend/common"
-import type { SqlDriver } from "@/lib/device-backend/sql"
+import type { SqlDriver, SqlValue } from "@/lib/device-backend/sql"
 import { num, one, text } from "@/lib/device-backend/sql"
+import { notePruned } from "@/lib/device-backend/storage"
 
 export type UpsertOutcome = "inserted" | "updated" | "unchanged"
 
@@ -279,13 +280,34 @@ export async function removeLessonsExcept(
   db: SqlDriver,
   keep: ReadonlyArray<string>
 ): Promise<number> {
-  const { changes } = await db.transaction(() =>
-    db.run(
-      "DELETE FROM curriculum WHERE key NOT IN (SELECT value FROM json_each(?))",
+  return db.transaction(() =>
+    deleteCounted(
+      db,
+      "curriculum",
+      "key NOT IN (SELECT value FROM json_each(?))",
       [JSON.stringify(keep)]
     )
   )
-  return changes
+}
+
+/**
+ * `DELETE FROM table WHERE where`, answering how many rows of `table` went.
+ * Counted first: the Capacitor plugin's `changes` is a `total_changes()`
+ * delta, which also counts the rows a cascade took with them.
+ */
+async function deleteCounted(
+  db: SqlDriver,
+  table: string,
+  where: string,
+  params: ReadonlyArray<SqlValue>
+): Promise<number> {
+  const row = await one(
+    db,
+    `SELECT COUNT(*) AS n FROM ${table} WHERE ${where}`,
+    params
+  )
+  await db.run(`DELETE FROM ${table} WHERE ${where}`, params)
+  return row === null ? 0 : num(row, "n")
 }
 
 /**
@@ -295,38 +317,39 @@ export async function removeLessonsExcept(
  * `"home"`: home's listing is the word on every round, so one home stopped
  * listing goes whatever its origin, and is recorded as retired so the next
  * start's seed does not put a bundled copy back. `"bundled"`: the seed
- * dropping what this build no longer ships, never a round home wrote, and
- * forgetting retirements of rounds the bundle no longer has.
+ * dropping what this build no longer ships, never a round home wrote,
+ * noting it for the person, and forgetting retirements of rounds the bundle
+ * no longer has.
  */
 export async function removeRoundsExcept(
   db: SqlDriver,
   keep: ReadonlyArray<string>,
-  origin: RoundOrigin
+  origin: RoundOrigin,
+  nowMs: number
 ): Promise<number> {
-  const kept = JSON.stringify(keep)
+  const kept = [JSON.stringify(keep)]
+  const unlisted = "id NOT IN (SELECT value FROM json_each(?))"
   return db.transaction(async () => {
     if (origin === "home") {
       await db.run(
         `INSERT OR IGNORE INTO device_round_retired (round_id)
-         SELECT id FROM leetype_round WHERE id NOT IN (SELECT value FROM json_each(?))`,
-        [kept]
+         SELECT id FROM leetype_round WHERE ${unlisted}`,
+        kept
       )
-      const { changes } = await db.run(
-        "DELETE FROM leetype_round WHERE id NOT IN (SELECT value FROM json_each(?))",
-        [kept]
-      )
-      return changes
+      return deleteCounted(db, "leetype_round", unlisted, kept)
     }
     await db.run(
       "DELETE FROM device_round_retired WHERE round_id NOT IN (SELECT value FROM json_each(?))",
-      [kept]
+      kept
     )
-    const { changes } = await db.run(
-      `DELETE FROM leetype_round
-       WHERE id NOT IN (SELECT value FROM json_each(?))
-         AND id NOT IN (SELECT round_id FROM device_round_from_home)`,
-      [kept]
+    const removed = await deleteCounted(
+      db,
+      "leetype_round",
+      `${unlisted} AND id NOT IN (SELECT round_id FROM device_round_from_home)`,
+      kept
     )
-    return changes
+    // Nobody asked for these, so they are noted in the same transaction.
+    await notePruned(db, removed, nowMs)
+    return removed
   })
 }

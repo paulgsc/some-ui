@@ -87,9 +87,9 @@ request goes to the real network.
   - The server's engagement fold behind `/signals` is not ported.
 
   And in two that no contract exercises, both from the storage budget below:
-  a session save or shelf keep past it is refused (`400
-max_record_limit_exceeded`, and the full shelf's `409`); and a lesson home
-  stopped listing is deleted, so `GET /curriculum/:key` answers `404` for it
+  a session save or shelf keep past it is refused with
+  `400 max_record_limit_exceeded`; and a lesson home stopped listing is
+  deleted, so `GET /curriculum/:key` answers `404` for it
   where the server would still serve it. Nothing on the phone loads a lesson
   by a key it saved: a session stores a level.
 
@@ -110,7 +110,9 @@ The app's database and WebView storage together stay under Android's
 [25 MB backup quota](https://developer.android.com/identity/data/autobackup),
 past which Android stops backing the app up without saying so, and that
 backup is the only other copy of the phone's history (`device-backend/storage`).
-There is no size per table.
+There is no size per table. Only the database is checked, against the quota
+less what soundbites can hold at most (their own cap, from
+`@some-ui/soundbites/contract`), so WebView growth never refuses a session.
 
 - **Nothing the person made is deleted without their yes.** A session save
   or shelf keep that would cross the budget is refused. The app then names

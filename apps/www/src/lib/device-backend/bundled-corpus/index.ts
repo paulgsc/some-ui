@@ -25,8 +25,7 @@ const RUNS: Record<string, string> = import.meta.glob(
   { eager: true, query: "?raw", import: "default" }
 )
 
-/** `removed`: bundled rounds this build no longer ships, deleted. */
-export type SeedReport = { rounds: number; runs: number; removed: number }
+export type SeedReport = { rounds: number; runs: number }
 
 function idOf(body: string): Array<string> {
   const round: unknown = JSON.parse(body)
@@ -42,10 +41,11 @@ export async function seedBundledCorpus(
   db: SqlDriver,
   nowMs: number
 ): Promise<SeedReport> {
-  const removed = await removeRoundsExcept(
+  await removeRoundsExcept(
     db,
     Object.values(ROUNDS).flatMap(idOf),
-    "bundled"
+    "bundled",
+    nowMs
   )
   let rounds = 0
   for (const body of Object.values(ROUNDS)) {
@@ -56,7 +56,7 @@ export async function seedBundledCorpus(
   for (const body of Object.values(RUNS)) {
     runs += await upsertRuns(db, body, nowMs)
   }
-  return { rounds, runs, removed }
+  return { rounds, runs }
 }
 
 /** How many rounds the bundle carries; tests pin it against the corpus. */

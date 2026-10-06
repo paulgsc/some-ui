@@ -35,7 +35,7 @@ import type { StorageBudget } from "@/lib/device-backend/storage"
 import {
   budgeted,
   OverBudgetError,
-  sessionRefused,
+  saveRefused,
 } from "@/lib/device-backend/storage"
 
 const STATUSES = ["draft", "scheduled", "active", "paused", "completed"]
@@ -184,17 +184,21 @@ function layoutField(body: Record<string, unknown>): string | null | undefined {
   return JSON.stringify(body.layout ?? null)
 }
 
-/** `write`, or the refusal if it would grow the phone past `budget`. */
+/**
+ * `write`, or the refusal if it would grow the phone past `budget`. `spare`
+ * is the existing session the save is about, never offered for removal.
+ */
 async function saving(
   db: SqlDriver,
   budget: StorageBudget,
+  spare: string | null,
   write: () => Promise<Response>
 ): Promise<Response> {
   try {
     return await budgeted(db, budget, write)
   } catch (error) {
     if (!(error instanceof OverBudgetError)) throw error
-    sessionRefused()
+    saveRefused(spare)
     return errorResponse(400, "max_record_limit_exceeded", {
       message: error.message,
     })
@@ -206,12 +210,13 @@ export type RemovableSession = { id: string; name: string; finishedAt: string }
 /**
  * The session the app offers to remove when the phone is full: the oldest
  * finished one, never one started or finished today (Home's study card and
- * the study nudge read those) and never an unfinished one. `null` when
- * there is none.
+ * the study nudge read those), never an unfinished one, and never `spare`.
+ * `null` when there is none.
  */
 export async function oldestRemovable(
   db: SqlDriver,
-  nowMs: number
+  nowMs: number,
+  spare: string | null = null
 ): Promise<RemovableSession | null> {
   const midnight = new Date(nowMs)
   midnight.setHours(0, 0, 0, 0)
@@ -228,7 +233,10 @@ export async function oldestRemovable(
       startedAt: textOrNull(row, "started_at"),
       finishedAt: textOrNull(row, "completed_at") ?? text(row, "updated_at"),
     }))
-    .filter((row) => !today(row.startedAt) && !today(row.finishedAt))
+    .filter(
+      (row) =>
+        row.id !== spare && !today(row.startedAt) && !today(row.finishedAt)
+    )
     .sort((a, b) => Date.parse(a.finishedAt) - Date.parse(b.finishedAt))
   const oldest = removable.at(0)
   return oldest === undefined
@@ -305,7 +313,7 @@ export const sessionRoutes: ReadonlyArray<DeviceRoute> = [
         scenes: JSON.stringify(scenes),
         layout: layout ?? null,
       }
-      return saving(db, budget, async () => {
+      return saving(db, budget, null, async () => {
         await write(db, session)
         return json(200, toWire(session))
       })
@@ -335,7 +343,7 @@ export const sessionRoutes: ReadonlyArray<DeviceRoute> = [
       ) {
         return shapeRejected("unknown `layoutMode`")
       }
-      return saving(db, budget, async () => {
+      return saving(db, budget, params.id ?? null, async () => {
         const current = await find(db, params.id ?? "")
         if (current === null) return notFound()
         const next: Stored = { ...current, updatedAt: rfc3339(now()) }
@@ -441,7 +449,7 @@ export const sessionRoutes: ReadonlyArray<DeviceRoute> = [
     method: "POST",
     path: "/sessions/:id/duplicate",
     handler: async ({ params }, { db, now, budget }): Promise<Response> =>
-      saving(db, budget, async () => {
+      saving(db, budget, params.id ?? null, async () => {
         const source = await find(db, params.id ?? "")
         if (source === null) return notFound()
         const stamp = rfc3339(now())

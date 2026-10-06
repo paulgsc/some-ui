@@ -14,6 +14,8 @@
  * what home stopped listing and reports it, and the seed drops rounds the
  * app no longer ships, counted in `device_storage_notice` until shown.
  */
+import { SOUNDBITES_MAX_BYTES } from "@some-ui/soundbites/contract"
+
 import { rfc3339 } from "@/lib/device-backend/common"
 import type { SqlDriver } from "@/lib/device-backend/sql"
 import { num, one } from "@/lib/device-backend/sql"
@@ -21,8 +23,12 @@ import { num, one } from "@/lib/device-backend/sql"
 export type StorageBudget = {
   /** What everything the app stores must stay within. */
   quotaBytes: number
-  /** What the app stores outside this database (the WebView's storage). */
-  elsewhereBytes: () => Promise<number>
+  /**
+   * Kept free for the WebView's storage. Only the database is checked, so
+   * WebView growth can never refuse (or cost) a session; the WebView's one
+   * large store, soundbites, is capped by its own policy at this.
+   */
+  reservedBytes: number
 }
 
 /** An estimate (browsers round it); `0` where there is no `navigator.storage`. */
@@ -37,7 +43,7 @@ async function webViewBytes(): Promise<number> {
 
 export const ANDROID_BACKUP_BUDGET: StorageBudget = {
   quotaBytes: 25 * 1024 * 1024,
-  elsewhereBytes: webViewBytes,
+  reservedBytes: SOUNDBITES_MAX_BYTES,
 }
 
 /** The database's pages in use: its file size, with `auto_vacuum = FULL`. */
@@ -50,9 +56,11 @@ export async function databaseBytes(db: SqlDriver): Promise<number> {
   return row === null ? 0 : num(row, "bytes")
 }
 
+/** For showing: the WebView's figure is the browser's estimate. */
 export type StorageUse = {
   databaseBytes: number
-  elsewhereBytes: number
+  webViewBytes: number
+  reservedBytes: number
   quotaBytes: number
 }
 
@@ -62,7 +70,8 @@ export async function storageUse(
 ): Promise<StorageUse> {
   return {
     databaseBytes: await databaseBytes(db),
-    elsewhereBytes: await budget.elsewhereBytes(),
+    webViewBytes: await webViewBytes(),
+    reservedBytes: budget.reservedBytes,
     quotaBytes: budget.quotaBytes,
   }
 }
@@ -78,8 +87,8 @@ export class OverBudgetError extends Error {
 
 /**
  * `write` in one transaction, rolled back with `OverBudgetError` if it grew
- * the database and left the app over `budget`. A write that grew nothing (a
- * rename, a status change) always goes through: refusing it frees nothing.
+ * the database past the budget less its reserve. A write that grew nothing
+ * (a rename, a status change) always goes through: refusing it frees nothing.
  */
 export async function budgeted<T>(
   db: SqlDriver,
@@ -90,10 +99,7 @@ export async function budgeted<T>(
     const before = await databaseBytes(db)
     const value = await write()
     const after = await databaseBytes(db)
-    if (
-      after > before &&
-      after + (await budget.elsewhereBytes()) > budget.quotaBytes
-    ) {
+    if (after > before && after + budget.reservedBytes > budget.quotaBytes) {
       throw new OverBudgetError()
     }
     return value
@@ -108,16 +114,20 @@ export function budgetedDriver(
   return { ...db, transaction: (write) => budgeted(db, budget, write) }
 }
 
-const refusals = new Set<() => void>()
+type RefusalListener = (spare: string | null) => void
+const refusals = new Set<RefusalListener>()
 
-/** Called when a session save is refused, so the app can ask to make room. */
-export function onSessionRefused(listener: () => void): () => void {
+/**
+ * Told when a save is refused, so the app can ask to make room. `spare` is
+ * the session that save was about, which the app must not offer to remove.
+ */
+export function onSaveRefused(listener: RefusalListener): () => void {
   refusals.add(listener)
   return () => refusals.delete(listener)
 }
 
-export function sessionRefused(): void {
-  for (const listener of refusals) listener()
+export function saveRefused(spare: string | null): void {
+  for (const listener of refusals) listener(spare)
 }
 
 /** Removals the person did not ask for and has not been shown. */

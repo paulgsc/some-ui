@@ -181,7 +181,8 @@ export async function syncFromHome(
       roundsListed.flatMap((entry) =>
         isRecord(entry) && typeof entry.id === "string" ? [entry.id] : []
       ),
-      "home"
+      "home",
+      now()
     )
   }
   for (const listing of listings) {

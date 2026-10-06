@@ -59,7 +59,12 @@
       "import": "./dist/@some-ui/soundbites.es.js",
       "default": "./dist/@some-ui/soundbites.es.js"
     },
-    "./style.css": "./dist/soundbites.css"
+    "./style.css": "./dist/soundbites.css",
+    "./contract": {
+      "types": "./dist/@some-ui/soundbites/contract.d.ts",
+      "import": "./dist/@some-ui/soundbites/contract.es.js",
+      "default": "./dist/@some-ui/soundbites/contract.es.js"
+    }
   },
   "style": "./dist/soundbites.css"
 }

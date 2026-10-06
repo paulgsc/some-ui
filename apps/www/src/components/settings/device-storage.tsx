@@ -8,6 +8,7 @@ import { useEffect, useSyncExternalStore } from "react"
 import { Alert, AlertDescription, AlertTitle, Button } from "@some-ui/shared"
 import { HardDrive } from "lucide-react"
 
+import type { RemovableSession } from "@/lib/device-backend/handlers/sessions"
 import type { DeviceStorageView } from "@/lib/device-backend/storage-view"
 import { deviceStorage, megabytes } from "@/lib/device-backend/storage-view"
 import { useIntent, useIntentEffect } from "@/lib/intent"
@@ -29,12 +30,13 @@ function useDeviceStorage(): DeviceStorageView | null {
 export const DeviceStorageSummary = (): JSX.Element | null => {
   const view = useDeviceStorage()
   if (view === null) return null
-  const { databaseBytes, elsewhereBytes, quotaBytes } = view.use
+  const { databaseBytes, webViewBytes, reservedBytes, quotaBytes } = view.use
   return (
     <div className="space-y-1">
       <p className="text-sm">
-        Using about {megabytes(databaseBytes + elsewhereBytes)} of{" "}
-        {megabytes(quotaBytes)}
+        Using about {megabytes(databaseBytes + webViewBytes)} of{" "}
+        {megabytes(quotaBytes)}, with {megabytes(reservedBytes)} kept free for
+        soundbites
       </p>
       <p className="text-muted-foreground text-xs">
         Android backs this app up only while it stays under{" "}
@@ -50,13 +52,51 @@ const finishedOn = (stamp: string): string =>
   new Date(stamp).toLocaleDateString()
 
 /**
+ * One offer per refusal: keyed by the session it names, so each gets a fresh
+ * intent (a delete's success value is always `undefined`, which
+ * `useIntentEffect` would otherwise see only once).
+ */
+const RemoveOffer = ({
+  session,
+}: {
+  session: RemovableSession
+}): JSX.Element => {
+  const remove = useIntent(useDeleteSession(), { presentation: "interactive" })
+  useIntentEffect(remove.state, () => void deviceStorage.settle())
+  return (
+    <>
+      <p>
+        Remove your oldest finished session, “{session.name}” (finished{" "}
+        {finishedOn(session.finishedAt)}), then try again? Sessions aren&apos;t
+        synced anywhere yet, so it will be gone.
+      </p>
+      <div className="flex gap-2">
+        <IntentButton
+          state={remove.state}
+          onPress={() => remove.start(session.id)}
+          size="sm"
+          variant="destructive"
+          idleLabel="Remove it"
+          workingLabel="Removing..."
+        />
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => void deviceStorage.settle()}
+        >
+          Not now
+        </Button>
+      </div>
+    </>
+  )
+}
+
+/**
  * For every page: after a refused save, which session could go and a yes or
  * no; and removals the person did not ask for, until they have seen them.
  */
 export const DeviceStoragePrompt = (): JSX.Element | null => {
   const view = useDeviceStorage()
-  const remove = useIntent(useDeleteSession(), { presentation: "interactive" })
-  useIntentEffect(remove.state, () => void deviceStorage.settle())
   if (view === null) return null
   const { full, notice } = view
   if (full === null && notice === null) return null
@@ -68,39 +108,22 @@ export const DeviceStoragePrompt = (): JSX.Element | null => {
           <AlertTitle>This phone is full, so that wasn&apos;t saved</AlertTitle>
           <AlertDescription className="space-y-2">
             {full.removable === null ? (
-              <p>
-                Everything on it is from today or unfinished. Delete a session
-                you no longer need, then try again.
-              </p>
-            ) : (
-              <p>
-                Remove your oldest finished session, “{full.removable.name}”
-                (finished {finishedOn(full.removable.finishedAt)}), then try
-                again? Sessions aren&apos;t synced anywhere yet, so it will be
-                gone.
-              </p>
-            )}
-            <div className="flex gap-2">
-              {full.removable === null ? null : (
-                <IntentButton
-                  state={remove.state}
-                  onPress={() => {
-                    if (full.removable !== null) remove.start(full.removable.id)
-                  }}
+              <>
+                <p>
+                  Everything on it is from today or unfinished. Delete a session
+                  you no longer need, then try again.
+                </p>
+                <Button
                   size="sm"
-                  variant="destructive"
-                  idleLabel="Remove it"
-                  workingLabel="Removing..."
-                />
-              )}
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => void deviceStorage.settle()}
-              >
-                {full.removable === null ? "OK" : "Not now"}
-              </Button>
-            </div>
+                  variant="outline"
+                  onClick={() => void deviceStorage.settle()}
+                >
+                  OK
+                </Button>
+              </>
+            ) : (
+              <RemoveOffer key={full.removable.id} session={full.removable} />
+            )}
           </AlertDescription>
         </Alert>
       )}

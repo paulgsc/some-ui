@@ -194,7 +194,7 @@ describe("syncFromHome", () => {
     )
     const full: StorageBudget = {
       quotaBytes: await databaseBytes(phoneDb),
-      elsewhereBytes: () => Promise.resolve(0),
+      reservedBytes: 0,
     }
     const report = await syncFromHome(
       phoneDb,
