@@ -133,13 +133,14 @@ export const LivePlayer = ({ session }: LivePlayerProps): JSX.Element => {
           session={session}
           className={isMobile ? "shrink-0" : undefined}
         />
-        {/* Above the viewport, not over it (see `SessionChrome`). */}
+        {/* Above the viewport, not over it (see `SessionChrome`). Remounted
+            as a stop opens and closes, so its controls sheet starts shut. */}
         {isMobile && (
           <SessionChrome
+            key={stop.kind}
             scenes={session.scenes}
             onPlay={() => void start()}
             onGotToGo={stops.tap}
-            stopped={stop.kind === "open"}
           />
         )}
         <SessionViewport session={session} />

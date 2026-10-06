@@ -57,15 +57,12 @@ type SessionChromeProps = {
   onPlay: () => void
   /** Stops now and keeps the stop; the player shows what follows. */
   onGotToGo: () => void
-  /** A stop is open: its dialog replaces the controls sheet. */
-  stopped: boolean
 }
 
 export const SessionChrome = ({
   scenes,
   onPlay,
   onGotToGo,
-  stopped,
 }: SessionChromeProps): JSX.Element => {
   const [open, setOpen] = useState(false)
   const isRunning = useIsRunning()
@@ -132,7 +129,7 @@ export const SessionChrome = ({
         </Button>
       </div>
 
-      <Sheet open={open && !stopped} onOpenChange={setOpen}>
+      <Sheet open={open} onOpenChange={setOpen}>
         <SheetContent
           side="bottom"
           className="gap-0 pb-[max(1.5rem,env(safe-area-inset-bottom))]"
