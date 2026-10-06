@@ -88,6 +88,9 @@
     "extensions/filter-classifier": {
       "entry": ["tests/e2e/harness/entry.ts"]
     },
+    "packages/some-vite-config": {
+      "entry": ["src/vitest/index.ts", "src/vitest/vitest.setup.ts"]
+    },
     "packages/speech": {
       "entry": [
         "src/index.ts",

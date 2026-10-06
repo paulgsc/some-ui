@@ -1,18 +1,8 @@
-import { defineConfig } from "vitest/config"
+import { defineNodeTest } from "@some-ui/vite-config/vitest"
 
-export default defineConfig({
+// Each hook test opts into jsdom with a `@vitest-environment` pragma.
+export default defineNodeTest({
   // tsconfig.json's `@react-hooks/*` path, which the hooks use for each other
   // (a parent-relative `../` import is lint-banned).
-  resolve: {
-    alias: {
-      "@react-hooks": new URL("./src", import.meta.url).pathname,
-    },
-  },
-
-  test: {
-    // Each hook test opts into jsdom with a `@vitest-environment` pragma.
-    environment: "node",
-    globals: true,
-    include: ["**/*.test.{ts,tsx}"],
-  },
+  alias: { "@react-hooks": new URL("./src", import.meta.url).pathname },
 })

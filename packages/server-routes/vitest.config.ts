@@ -1,13 +1,4 @@
-import { defineConfig } from "vitest/config"
+import { defineNodeTest } from "@some-ui/vite-config/vitest"
 
-export default defineConfig({
-  test: {
-    // Reads two checked-in files off disk and regex-parses text - no DOM.
-    environment: "node",
-
-    // Allows 'describe', 'it', 'expect' without importing them in every file
-    globals: true,
-
-    include: ["**/*.test.{ts,tsx}"],
-  },
-})
+// Reads two checked-in files off disk and regex-parses text - no DOM.
+export default defineNodeTest()

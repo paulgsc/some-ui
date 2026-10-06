@@ -27,7 +27,7 @@ new package against these two rather than an arbitrary sibling.
   in `peerDependencies`. Anything the package fully owns and bundles goes in
   `dependencies`. Get this wrong and you get duplicate-React or
   duplicate-store bugs at the consumer, not at build time.
-- **Scripts** (names matter — see §4 on turbo): `build`, `build:tsc-alias`,
+- **Scripts** (names matter — see §4 on turbo): `build`,
   `watch:build`, `watch:lint`, `clean`, `clean:build`, `lint`, `lint:js`,
   `prettier`, `typecheck`. Add `test` if the package ships tests.
 - **`sideEffects`:** `["*.css"]` if the package ships a stylesheet, `false`
@@ -45,9 +45,10 @@ new package against these two rather than an arbitrary sibling.
   `declarationDir: "./"`, and declares the package's **own** internal path
   alias (e.g. `"@core-utils/*": ["./src/*"]`) for imports inside the package.
   `include: ["src"]`, `exclude: ["node_modules", "build", "dist"]`.
-- `tsconfig.build.json` extends `./tsconfig.json`, adds `jsx: "react-jsx"`
-  if the package has components/hooks, and excludes `**/*.test.ts` and
-  `**/*.stories.tsx`.
+- `tsconfig.build.json` extends `./tsconfig.json` and then
+  `@some-ui/tsconfig/build.json` (declarations only, into `dist/types`),
+  adds `jsx: "react-jsx"` if the package has components/hooks, and excludes
+  `**/*.test.ts` and `**/*.stories.tsx`.
 
 ## 3. Build (`@some-ui/vite-config`)
 

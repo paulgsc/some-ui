@@ -55,6 +55,15 @@
       "import": "./dist/esm/src/audience/index.js",
       "require": "./dist/esm/src/audience/index.js"
     },
+    "./vitest": {
+      "types": "./dist/esm/src/vitest/index.d.ts",
+      "import": "./dist/esm/src/vitest/index.js",
+      "require": "./dist/esm/src/vitest/index.js"
+    },
+    "./vitest/setup": {
+      "types": "./dist/esm/src/vitest/vitest.setup.d.ts",
+      "import": "./dist/esm/src/vitest/vitest.setup.js"
+    },
     "./bundle-paths": {
       "types": "./dist/esm/src/bundle-paths/index.d.ts",
       "import": "./dist/esm/src/bundle-paths/index.js",

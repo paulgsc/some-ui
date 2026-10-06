@@ -1,13 +1,5 @@
 {
-  "extends": "./tsconfig.json",
-  "compilerOptions": {
-    "noEmit": false,
-    "declaration": true,
-    "emitDeclarationOnly": true,
-    "declarationDir": "./dist/types",
-    "incremental": true,
-    "tsBuildInfoFile": "./dist/types/tsconfig.build.tsbuildinfo"
-  },
+  "extends": ["./tsconfig.json", "@some-ui/tsconfig/build.json"],
   "exclude": [
     "**/*.stories.tsx",
     "**/*.stories.ts",
