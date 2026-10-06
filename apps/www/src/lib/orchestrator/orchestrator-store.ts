@@ -174,94 +174,65 @@ export const useOrchestratorStore = create<OrchestratorStoreState>(
     _setCommandSender: (sender, streamId): void =>
       set({ _commandSender: sender, _streamId: streamId }),
 
-    configure: async (scenes): Promise<void> => {
-      const { _commandSender } = get()
-      if (!_commandSender) {
-        warn("configure")
-        return
-      }
-      await _commandSender({
+    configure: (scenes): Promise<void> =>
+      sendCommand(get()._commandSender, "configure", {
         Configure: {
           scenes,
           tick_interval_ms: 1000,
           loop_scenes: false,
         },
-      })
-    },
+      }),
 
-    start: async (): Promise<void> => {
-      const { _commandSender } = get()
-      if (!_commandSender) {
-        warn("start")
-        return
-      }
-      await _commandSender({ Start: null })
-    },
+    start: (): Promise<void> =>
+      sendCommand(get()._commandSender, "start", { Start: null }),
 
-    stop: async (): Promise<void> => {
-      const { _commandSender } = get()
-      if (!_commandSender) {
-        warn("stop")
-        return
-      }
-      await _commandSender({ Stop: null })
-    },
+    stop: (): Promise<void> =>
+      sendCommand(get()._commandSender, "stop", { Stop: null }),
 
-    reset: async (): Promise<void> => {
-      const { _commandSender } = get()
-      if (!_commandSender) {
-        warn("reset")
-        return
-      }
-      await _commandSender({ Reset: null })
-    },
+    reset: (): Promise<void> =>
+      sendCommand(get()._commandSender, "reset", { Reset: null }),
 
-    pause: async (): Promise<void> => {
-      const { _commandSender } = get()
-      if (!_commandSender) {
-        warn("pause")
-        return
-      }
-      await _commandSender({ Pause: null })
-    },
+    pause: (): Promise<void> =>
+      sendCommand(get()._commandSender, "pause", { Pause: null }),
 
-    resume: async (): Promise<void> => {
-      const { _commandSender } = get()
-      if (!_commandSender) {
-        warn("resume")
-        return
-      }
-      await _commandSender({ Resume: null })
-    },
+    resume: (): Promise<void> =>
+      sendCommand(get()._commandSender, "resume", { Resume: null }),
 
-    forceScene: async (scene): Promise<void> => {
-      const { _commandSender } = get()
-      if (!_commandSender) {
-        warn("forceScene")
-        return
-      }
-      await _commandSender({ ForceScene: scene })
-    },
+    forceScene: (scene): Promise<void> =>
+      sendCommand(get()._commandSender, "forceScene", { ForceScene: scene }),
 
-    skipCurrentScene: async (): Promise<void> => {
-      const { _commandSender } = get()
-      if (!_commandSender) {
-        warn("skipCurrentScene")
-        return
-      }
-      await _commandSender({ SkipCurrentScene: null })
-    },
+    skipCurrentScene: (): Promise<void> =>
+      sendCommand(get()._commandSender, "skipCurrentScene", {
+        SkipCurrentScene: null,
+      }),
 
-    updateStreamStatus: async (status): Promise<void> => {
-      const { _commandSender } = get()
-      if (!_commandSender) {
-        warn("updateStreamStatus")
-        return
-      }
-      await _commandSender({ UpdateStreamStatus: status })
-    },
+    updateStreamStatus: (status): Promise<void> =>
+      sendCommand(get()._commandSender, "updateStreamStatus", {
+        UpdateStreamStatus: status,
+      }),
   })
 )
+
+/**
+ * Hands one command to the connected orchestrator and returns the sender's own
+ * promise: nothing is sequenced after it. A sender that throws synchronously
+ * still yields a rejected promise, as the async actions this replaced did.
+ */
+function sendCommand(
+  sender: CommandSender | null,
+  action: string,
+  command: OrchestratorCommand
+): Promise<void> {
+  if (!sender) {
+    warn(action)
+    return Promise.resolve()
+  }
+  try {
+    return sender(command)
+  } catch (error) {
+    return Promise.reject(error)
+  }
+}
 
 function warn(action: string): void {
   // eslint-disable-next-line no-console

@@ -49,17 +49,3 @@
 # dynamically imported module's shape before React gets it. No component state
 # is sequenced here; preload() is the same loader, for callers that warm it.
 1 packages/some-content-registry/src/registry/lazy-with-preload.ts
-
-# Coordination: the orchestrator's command port. Each action awaits the
-# injected command sender exactly once and sequences nothing after it. The
-# state machine those commands drive lives outside React, in
-# lib/orchestrator/mock-orchestrator-engine.ts; the store only forwards.
-9 apps/www/src/lib/orchestrator/orchestrator-store.ts
-
-# Coordination: HTTP discovery and loading through @some-ui/fetch-kit's
-# FileDiscovery and ResourceLoader ports. It loads once per mount (config is
-# documented as stable) and publishes one batch after every file settles. Its
-# returned reload() could overlap a load, but nothing calls it today. Its only
-# caller is the composer's library tabs, which #1647 will either delete (this
-# goes with them) or give a real source (then this moves into a runtime).
-3 apps/www/src/hooks/use-recursive-library.ts
