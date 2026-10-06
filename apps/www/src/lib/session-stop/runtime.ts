@@ -4,7 +4,9 @@ import { latestStop, step, storeEffect } from "@/lib/session-stop"
 /** The playback a stop pauses and picks up, behind a port. */
 export type Playback = {
   /** Where it is, or null when nothing is playing or paused. */
-  position: () => Pick<Stop, "elapsedMs" | "plannedMs" | "scene"> | null
+  position: () =>
+    | (Pick<Stop, "elapsedMs" | "plannedMs" | "scene"> & { playing: boolean })
+    | null
   pause: () => void
   resume: () => void
   start: () => void
@@ -50,19 +52,21 @@ export function createStopRuntime(
     listeners.forEach((listener) => listener())
   }
 
-  const here = (): Stop | null => {
+  const here = (type: "tap" | "hidden"): StopEvent => {
     const position = playback.position()
-    if (position === null) return null
-    return {
+    if (position === null) return { type, stop: null, playing: false }
+    const { playing, ...at } = position
+    const stop: Stop = {
       sessionId,
       stoppedAt: now().toISOString(),
-      ...position,
+      ...at,
       via: "tap",
       reason: null,
       reasonFrom: null,
       outcome: "open",
       settledAt: null,
     }
+    return { type, stop, playing }
   }
 
   return {
@@ -73,14 +77,14 @@ export function createStopRuntime(
     },
     begin: () =>
       dispatch({ type: "begin", latest: latestStop(sessionId), now: now() }),
-    tap: () => dispatch({ type: "tap", stop: here() }),
+    tap: () => dispatch(here("tap")),
     pickUp: () => dispatch({ type: "pickUp", now: now() }),
     done: () => dispatch({ type: "done", now: now() }),
     connect: (watchVisibility) => {
       const onVisibility = (): void =>
         dispatch(
           document.visibilityState === "hidden"
-            ? { type: "hidden", stop: here() }
+            ? here("hidden")
             : { type: "visible", now: now() }
         )
       if (watchVisibility) {

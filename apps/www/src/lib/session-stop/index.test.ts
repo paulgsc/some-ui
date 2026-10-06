@@ -40,7 +40,7 @@ const open = (
   kind: "open",
   stop: stopRecord(agoMs),
   returning: true,
-  live: true,
+  playback: "playing",
   ...over,
 })
 const kinds = (event: StopEvent, state: StopState = NONE): Array<string> =>
@@ -52,13 +52,19 @@ beforeEach(() => {
 
 describe("a stop's machine", () => {
   it("keeps a stop on a tap or on leaving, never when nothing plays", () => {
-    const [tapped, effects] = step(NONE, { type: "tap", stop: stopRecord() })
+    const [tapped, effects] = step(NONE, {
+      type: "tap",
+      stop: stopRecord(),
+      playing: true,
+    })
     expect(tapped).toMatchObject({ kind: "open", returning: false })
     expect(effects.map((e) => e.kind)).toEqual(["pause", "save"])
-    expect(step(NONE, { type: "hidden", stop: stopRecord() })[0]).toMatchObject(
-      { kind: "open", returning: true, stop: { via: "left" } }
+    expect(
+      step(NONE, { type: "hidden", stop: stopRecord(), playing: true })[0]
+    ).toMatchObject({ kind: "open", returning: true, stop: { via: "left" } })
+    expect(step(NONE, { type: "tap", stop: null, playing: false })[0]).toBe(
+      NONE
     )
-    expect(step(NONE, { type: "tap", stop: null })[0]).toBe(NONE)
   })
 
   it("forgets a mis-tap and a glance, and resumes in place", () => {
@@ -71,13 +77,25 @@ describe("a stop's machine", () => {
     expect(kinds({ type: "visible", now }, open(GLANCE_MS + 1))).toEqual([])
   })
 
+  it("after a glance, leaves a paused session paused and restarts a remounted one", () => {
+    const glance = { type: "visible", now } as const
+    expect(kinds(glance, open(0, { playback: "paused" }))).toEqual(["forget"])
+    expect(kinds(glance, open(0, { playback: "remounted" }))).toEqual([
+      "forget",
+      "restart",
+    ])
+  })
+
   it("picks up in place, or at the scene once the activity remounted", () => {
     expect(step(open(5 * 60_000), { type: "pickUp", now })[1]).toEqual([
       expect.objectContaining({ kind: "settle", outcome: "resumed" }),
       { kind: "resume" },
     ])
     expect(
-      step(open(5 * 60_000, { live: false }), { type: "pickUp", now })[1][1]
+      step(open(5 * 60_000, { playback: "remounted" }), {
+        type: "pickUp",
+        now,
+      })[1][1]
     ).toEqual({ kind: "restart", scene: "reading" })
   })
 
@@ -100,7 +118,10 @@ describe("a stop's machine", () => {
         now,
       })[0]
 
-    expect(begin(5 * 60_000)).toMatchObject({ kind: "open", live: false })
+    expect(begin(5 * 60_000)).toMatchObject({
+      kind: "open",
+      playback: "remounted",
+    })
     expect(begin(PICK_UP_MS + 1)).toMatchObject({ kind: "closed" })
     expect(
       kinds({

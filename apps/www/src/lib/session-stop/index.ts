@@ -133,16 +133,18 @@ export function closedPatch(
 
 // The machine: one player mount's stop.
 
+/** What the stop left behind: playback paused by it, already paused, or gone. */
+type Playback = "playing" | "paused" | "remounted"
+
 export type StopState =
   | { kind: "none" }
-  /** `live`: playback is paused in place; otherwise it remounted. */
-  | { kind: "open"; stop: Stop; returning: boolean; live: boolean }
+  | { kind: "open"; stop: Stop; returning: boolean; playback: Playback }
   | { kind: "closed"; stop: Stop }
 
 export type StopEvent =
   | { type: "begin"; latest: Stop | null; now: Date }
   /** `stop`: what playback would stop at, null when nothing is playing. */
-  | { type: "tap" | "hidden"; stop: Stop | null }
+  | { type: "tap" | "hidden"; stop: Stop | null; playing: boolean }
   | { type: "visible" | "tick" | "pickUp" | "done"; now: Date }
 
 export type StopEffect =
@@ -152,6 +154,12 @@ export type StopEffect =
   | { kind: "restart"; scene: string | null }
 
 const NONE: StopState = { kind: "none" }
+
+/** Carry on as if the stop never happened: a paused session stays paused. */
+function carryOn(playback: Playback, stop: Stop): Array<StopEffect> {
+  if (playback === "remounted") return [{ kind: "restart", scene: stop.scene }]
+  return playback === "playing" ? [{ kind: "resume" }] : []
+}
 
 function close(
   stop: Stop,
@@ -179,7 +187,10 @@ export function step(
       if (msSinceStop(stop, event.now) > PICK_UP_MS) {
         return close(stop, "lapsed", event.now)
       }
-      return [{ kind: "open", stop, returning: true, live: false }, []]
+      return [
+        { kind: "open", stop, returning: true, playback: "remounted" },
+        [],
+      ]
     }
     case "tap":
     case "hidden": {
@@ -188,8 +199,9 @@ export function step(
       if (state.kind === "closed" || event.stop === null) return [state, []]
       const via: Stop["via"] = returning ? "left" : "tap"
       const stop: Stop = { ...event.stop, via }
+      const playback = event.playing ? "playing" : "paused"
       return [
-        { kind: "open", stop, returning, live: true },
+        { kind: "open", stop, returning, playback },
         [{ kind: "pause" }, { kind: "save", stop }],
       ]
     }
@@ -206,7 +218,10 @@ export function step(
       const glance =
         event.type === "visible" && stop.via === "left" && away < GLANCE_MS
       if (keepGoing || glance) {
-        return [NONE, [{ kind: "forget", stop }, { kind: "resume" }]]
+        return [
+          NONE,
+          [{ kind: "forget", stop }, ...carryOn(state.playback, stop)],
+        ]
       }
       if (event.type !== "pickUp") return [state, []]
       const at = event.now.toISOString()
@@ -214,9 +229,10 @@ export function step(
         NONE,
         [
           { kind: "settle", stop, outcome: "resumed", at },
-          state.live
-            ? { kind: "resume" }
-            : { kind: "restart", scene: stop.scene },
+          ...carryOn(
+            state.playback === "remounted" ? "remounted" : "playing",
+            stop
+          ),
         ],
       ]
     }

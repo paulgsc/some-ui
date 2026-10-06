@@ -16,6 +16,7 @@ const orchestrator: Playback = {
       plannedMs: o.clock.total_duration,
       scene:
         primaryOf(o.lifetimes.scene_lifetimes)?.kind.Scene.scene_name ?? null,
+      playing: o.mode.is_running,
     }
   },
   pause: () => void useOrchestratorStore.getState().pause(),
