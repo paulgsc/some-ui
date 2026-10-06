@@ -97,7 +97,7 @@ describe("a stop's machine", () => {
         type: "pickUp",
         now,
       })[1][1]
-    ).toEqual({ kind: "restart", scene: "reading" })
+    ).toEqual({ kind: "restart", scene: "reading", plannedMs: 1_200_000 })
   })
 
   it("calls it done where it stopped", () => {

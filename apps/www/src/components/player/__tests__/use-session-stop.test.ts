@@ -19,6 +19,7 @@ const commands = {
   pause: vi.fn(),
   resume: vi.fn(),
   forceScene: vi.fn(),
+  extend: vi.fn(),
 }
 let mode = { is_running: true, is_paused: false }
 
@@ -90,8 +91,8 @@ describe("useSessionStop", () => {
     expect(commands.resume).toHaveBeenCalledTimes(1)
   })
 
-  it("restarts at the stopped scene when picked up after reopening", () => {
-    seedStop(stopRecord(5 * 60_000, { sessionId: "s" }))
+  it("restarts at the stopped scene, its +5 min restored, after reopening", () => {
+    seedStop(stopRecord(5 * 60_000, { sessionId: "s", plannedMs: 1_500_000 }))
     mode = { is_running: false, is_paused: false }
     const { result } = renderHook(() => useSessionStop("s"))
 
@@ -100,6 +101,7 @@ describe("useSessionStop", () => {
 
     expect(commands.start).toHaveBeenCalledTimes(1)
     expect(commands.forceScene).toHaveBeenCalledWith("reading")
+    expect(commands.extend).toHaveBeenCalledWith(300_000)
   })
 
   it("ends the session when reopened past the window", () => {

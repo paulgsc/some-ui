@@ -151,13 +151,16 @@ export type StopEffect =
   | { kind: "save" | "forget"; stop: Stop }
   | { kind: "settle"; stop: Stop; outcome: Stop["outcome"]; at: string }
   | { kind: "pause" | "resume" | "start" | "end" }
-  | { kind: "restart"; scene: string | null }
+  /** `plannedMs`: the plan at the stop, any "+5 min" included. */
+  | { kind: "restart"; scene: string | null; plannedMs: number }
 
 const NONE: StopState = { kind: "none" }
 
 /** Carry on as if the stop never happened: a paused session stays paused. */
 function carryOn(playback: Playback, stop: Stop): Array<StopEffect> {
-  if (playback === "remounted") return [{ kind: "restart", scene: stop.scene }]
+  if (playback === "remounted") {
+    return [{ kind: "restart", scene: stop.scene, plannedMs: stop.plannedMs }]
+  }
   return playback === "playing" ? [{ kind: "resume" }] : []
 }
 

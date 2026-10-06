@@ -22,10 +22,12 @@ const orchestrator: Playback = {
   pause: () => void useOrchestratorStore.getState().pause(),
   resume: () => void useOrchestratorStore.getState().resume(),
   start: () => void useOrchestratorStore.getState().start(),
-  restart: (scene) => {
+  restart: (scene, plannedMs) => {
     const o = useOrchestratorStore.getState()
+    const lost = plannedMs - o.clock.total_duration
     void o.start()
     if (scene !== null) void o.forceScene(scene)
+    if (lost > 0) void o.extend(lost)
   },
   end: () => void useOrchestratorStore.getState().stop(),
 }
