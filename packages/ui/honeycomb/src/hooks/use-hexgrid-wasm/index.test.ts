@@ -27,12 +27,7 @@ const validCells = [
   },
 ]
 
-/**
- * `WasmHexGrid` is a wasm-bindgen class; a plain mock can only ever
- * implement the one method (`get_all_cells_render_data`) these tests call,
- * never its full generated surface. This is the single, documented cast
- * that lets such a mock stand in for it.
- */
+/** `WasmHexGrid` is a wasm-bindgen class; a partial mock needs this one cast. */
 function createMockHexGrid(cells: unknown): WasmHexGrid {
   const mock = { get_all_cells_render_data: (): unknown => cells }
   // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- see comment above
@@ -45,18 +40,14 @@ beforeEach(() => {
   vi.mocked(initializeWasm).mockResolvedValue(undefined)
   vi.mocked(getHexagonalGridRadiusForCellCount).mockReturnValue(2)
 
-  // Use a standard function (not an arrow function) so JavaScript can invoke
-  // it with `new` — arrow functions have no [[Construct]] internal method,
-  // so vitest's mock would throw "is not a constructor" on `new WasmHexGrid()`.
+  // A `function`, not an arrow: it is called with `new`, and an arrow has no
+  // [[Construct]].
   // eslint-disable-next-line prefer-arrow-callback -- see comment above
   vi.mocked(WasmHexGrid).mockImplementation(function () {
     return createMockHexGrid(validCells)
   })
 })
 
-// ============================================================================
-// 1. PURE COMPUTATION & VALIDATION (buildHexgrid)
-// ============================================================================
 describe("buildHexgrid", () => {
   it("initializes the wasm module", async () => {
     await buildHexgrid(2, 10)
@@ -93,9 +84,6 @@ describe("buildHexgrid", () => {
   })
 })
 
-// ============================================================================
-// 2. HOOK ORCHESTRATION & STATE LIFECYCLE (useHexgridWasm)
-// ============================================================================
 describe("useHexgridWasm", () => {
   it("loads cells on mount and reflects loading state updates", async () => {
     const { result } = renderHook(() =>

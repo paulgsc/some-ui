@@ -78,8 +78,8 @@ export function createPastedLessonStore(
     } catch {
       // Quota, privacy mode: the lesson plays from memory for this visit.
       // Whatever the slot held before is removed, not left standing: a
-      // reload would otherwise bring back the lesson this one replaced
-      // (Codex, #1555). Removing needs no room; storage that refuses
+      // reload would otherwise bring back the lesson this one replaced.
+      // Removing needs no room; storage that refuses
       // writes may still read, so the old value must go, not merely fail
       // to be overwritten.
       try {
@@ -119,8 +119,8 @@ export const RETIRED_LESSONS_KEY = "topik:local-lessons"
 /**
  * Deletes what the retired store left behind. Stopping writing to it was not
  * enough: whatever a learner saved there stayed on the device for good, which
- * is what holding lessons for the session is meant to rule out (Codex,
- * #1555). Idempotent and silent; the handheld runs it on mount.
+ * is what holding lessons for the session is meant to rule out. Idempotent
+ * and silent; the handheld runs it on mount.
  */
 export function purgeRetiredLessons(
   storage: Pick<Storage, "removeItem"> | null = localStorageOrNull()

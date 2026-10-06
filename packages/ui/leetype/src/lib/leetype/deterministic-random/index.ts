@@ -8,7 +8,7 @@
  * session seed for the same reason a session's old exercise order did: a run
  * reported in a bug, pinned in a test or mounted in a story must produce the
  * same screen twice. `unitIntervalBySeed` is the second shape it hands out,
- * for `lib/leetype/round-sampler`'s one weighted draw per round (L4, #1230).
+ * for `lib/leetype/round-sampler`'s one weighted draw per round (L4).
  *
  * Specified here rather than delegated to `Math.random` for that replay
  * property, and kept as one implementation rather than two because two
@@ -44,12 +44,6 @@ function randomValues(seed: number): () => number {
 
 /**
  * A Fisher–Yates shuffle driven by `randomValues`, returning a new array.
- *
- * Kept as a named export rather than folded back into its one remaining
- * caller: `exercises/scheduling.ts` used to want "this list, deterministically
- * permuted" too, and a shuffle inlined into `reading-probe` alone would have
- * to be un-inlined again the day a second caller needs the same guarantee —
- * exactly what happened once already.
  */
 export function shuffledBySeed<T>(
   items: ReadonlyArray<T>,

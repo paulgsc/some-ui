@@ -1,8 +1,8 @@
 /**
- * SF-CUT3 (#1489): the live-DOM side of `enforcement-handshake.ts`'s
- * dependencies, shared by the top frame (`content/content.ts`) and every
- * subframe (`frame/frame.ts`). Kept out of the handshake module itself so
- * that module stays testable with plain fakes.
+ * The live-DOM side of `enforcement-handshake.ts`'s dependencies, shared by
+ * the top frame (`content/content.ts`) and every subframe
+ * (`frame/frame.ts`). Kept out of the handshake so it stays testable with
+ * plain fakes.
  */
 
 import { ENFORCEMENT_SENTINEL_PROPERTY } from "@filter/adapter/enforcement-sheet"
@@ -14,9 +14,9 @@ import type {
 import { COMMIT_FALLBACK_MS, TRANSITION_FREEZE_CSS } from "./prepaint"
 
 /**
- * Resolves once the current style has painted at least once: two frames, with
- * the same occluded-tab timer fallback the custody's own atomic swap uses
- * (`prepaint.ts`, `COMMIT_FALLBACK_MS`) — rAF never fires in a background tab.
+ * Resolves once the current style has painted: two frames, with the
+ * occluded-tab `COMMIT_FALLBACK_MS` fallback, since rAF never fires in a
+ * background tab.
  */
 export function afterPaint(): Promise<void> {
   return new Promise((resolve) => {

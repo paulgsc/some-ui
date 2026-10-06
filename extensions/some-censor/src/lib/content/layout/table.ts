@@ -1,5 +1,5 @@
 /**
- * Assembling a layout table from per-page measurements (BC1, #1434) — the
+ * Assembling a layout table from per-page measurements (BC1) — the
  * step between `fingerprintSurface()` (one page) and the checked-in artifact
  * (every surface, plus the `"*"` union).
  *

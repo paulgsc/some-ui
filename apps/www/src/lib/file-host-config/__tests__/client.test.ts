@@ -1,17 +1,7 @@
 /**
- * The route-arrival handoff (r1)/#911: `requestJSON`'s bounded-wait
- * guarantee, unit-tested directly against a fake `FileHostTransport` rather
- * than through a whole route/component tree.
- *
- * The deadline lives in `requestJSON`, not in `createFileHostTransport`
- * (see `client.ts`'s header) - a bot review on this PR's own first head
- * caught the earlier version scoping it to just the transport's own
- * `fetch()` call, which left a response whose *body* stalled after headers
- * arrived with no protection at all. These tests exercise `requestJSON`
- * with hand-built transports for exactly that reason: a real `fetch`-backed
- * transport can't easily simulate "headers arrived, body never resolves"
- * without a real streaming body, but a fake transport can just say so
- * directly.
+ * `requestJSON`'s bounded wait, against hand-built `FileHostTransport`s: the
+ * deadline covers the whole request (`client.ts`'s header), and only a fake
+ * transport can easily say "headers arrived, body never resolves".
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"

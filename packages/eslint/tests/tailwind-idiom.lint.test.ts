@@ -16,9 +16,11 @@ import type { Linter } from "eslint"
 import { defineConfig } from "eslint/config"
 import { describe, expect, it } from "vitest"
 
+import type { SnippetCase } from "./helpers/eslint-resolver.js"
 import {
   expectMessageForRule,
   expectNoMessageForRule,
+  expectSnippet,
   lintSnippet,
 } from "./helpers/eslint-resolver.js"
 
@@ -45,85 +47,74 @@ function makeConfig(options?: Record<string, unknown>): Array<Linter.Config> {
 const RULE = "tailwind-idiom/no-interpolated-classname"
 
 describe("lint: tailwind-idiom/no-interpolated-classname", () => {
-  it("fires when a prefix is fused onto an interpolated expression in className", async () => {
-    const code = `const C = ({ color }) => <div className={\`bg-\${color}-500\`} />`
-    const msgs = await lintSnippet(makeConfig(), code, TSX_FILE)
-    expectMessageForRule(msgs, RULE, "bg-${color}-500 fused in className")
-  })
-
-  it("fires when a prefix is fused onto an interpolated expression inside cn(...)", async () => {
-    const code = `const C = ({ theme }) => <div className={cn("headline", \`headline--\${theme}\`)} />`
-    const msgs = await lintSnippet(makeConfig(), code, TSX_FILE)
-    expectMessageForRule(msgs, RULE, "headline--${theme} fused inside cn(...)")
-  })
-
-  it("fires on string concatenation building a class fragment", async () => {
-    const code = `const C = ({ color }) => <div className={"bg-" + color} />`
-    const msgs = await lintSnippet(makeConfig(), code, TSX_FILE)
-    expectMessageForRule(msgs, RULE, '"bg-" + color concatenation')
-  })
-
-  it("fires on a suffix fused onto an interpolated expression", async () => {
-    const code = `const C = ({ n }) => <div className={cn(\`\${n}-full\`)} />`
-    const msgs = await lintSnippet(makeConfig(), code, TSX_FILE)
-    expectMessageForRule(msgs, RULE, "${n}-full suffix fusion")
-  })
-
-  it("does NOT fire when a ternary selects between complete literal strings", async () => {
-    const code = `const C = ({ isActive }) => <div className={\`flex \${isActive ? "text-primary" : "text-muted"}\`} />`
-    const msgs = await lintSnippet(makeConfig(), code, TSX_FILE)
-    expectNoMessageForRule(msgs, RULE, "ternary of complete literal strings")
-  })
-
-  it("does NOT fire when a lookup table of complete literal strings is indexed", async () => {
-    const code = `
+  it.each<SnippetCase>([
+    [
+      "fires when a prefix is fused onto an interpolated expression in className",
+      `const C = ({ color }) => <div className={\`bg-\${color}-500\`} />`,
+      RULE,
+      true,
+    ],
+    [
+      "fires when a prefix is fused onto an interpolated expression inside cn(...)",
+      `const C = ({ theme }) => <div className={cn("headline", \`headline--\${theme}\`)} />`,
+      RULE,
+      true,
+    ],
+    [
+      "fires on string concatenation building a class fragment",
+      `const C = ({ color }) => <div className={"bg-" + color} />`,
+      RULE,
+      true,
+    ],
+    [
+      "fires on a suffix fused onto an interpolated expression",
+      `const C = ({ n }) => <div className={cn(\`\${n}-full\`)} />`,
+      RULE,
+      true,
+    ],
+    [
+      "does NOT fire when a ternary selects between complete literal strings",
+      `const C = ({ isActive }) => <div className={\`flex \${isActive ? "text-primary" : "text-muted"}\`} />`,
+      RULE,
+      false,
+    ],
+    [
+      "does NOT fire when a lookup table of complete literal strings is indexed",
+      `
 const colorClass = { green: "text-green-400", red: "text-red-400" }[color]
 const C = () => <span className={\`font-mono \${colorClass}\`} />
-`
-    const msgs = await lintSnippet(makeConfig(), code, TSX_FILE)
-    expectNoMessageForRule(
-      msgs,
+`,
       RULE,
-      "lookup-table-derived complete literal string"
-    )
-  })
-
-  it("does NOT fire for the CSS-custom-property + static arbitrary-value pattern (dice-card idiom)", async () => {
-    const code = `
+      false,
+    ],
+    [
+      "does NOT fire for the CSS-custom-property + static arbitrary-value pattern (sidebar skeleton idiom)",
+      `
 const C = ({ rotation }) => (
   <div
     style={{ "--cube-x-rotation": rotation }}
     className="[transform:rotateX(calc(var(--cube-x-rotation)*1deg))]"
   />
 )
-`
-    const msgs = await lintSnippet(makeConfig(), code, TSX_FILE)
-    expectNoMessageForRule(
-      msgs,
+`,
       RULE,
-      "dynamic value threaded through a CSS custom property, static class name"
-    )
-  })
-
-  it("does NOT fire on a fused interpolation outside className/cn(...) scope", async () => {
-    const code = `const url = \`https://\${host}/path\``
-    const msgs = await lintSnippet(makeConfig(), code, TSX_FILE)
-    expectNoMessageForRule(
-      msgs,
+      false,
+    ],
+    [
+      "does NOT fire on a fused interpolation outside className/cn(...) scope",
+      `const url = \`https://\${host}/path\``,
       RULE,
-      "fused interpolation unrelated to classnames"
-    )
-  })
-
-  it("does NOT fire on the default-ignored language-${language} syntax-highlighter class", async () => {
-    const code = `const C = ({ language }) => <code className={\`language-\${language}\`} />`
-    const msgs = await lintSnippet(makeConfig(), code, TSX_FILE)
-    expectNoMessageForRule(
-      msgs,
+      false,
+    ],
+    [
+      "does NOT fire on the default-ignored language-${language} syntax-highlighter class",
+      `const C = ({ language }) => <code className={\`language-\${language}\`} />`,
       RULE,
-      "language-${language} is in the default ignore list"
-    )
-  })
+      false,
+    ],
+  ])("%s", (title, code, rule, fires) =>
+    expectSnippet(makeConfig(), code, TSX_FILE, rule, fires, title)
+  )
 
   it("respects a custom ignore option", async () => {
     const code = `const C = ({ id }) => <div className={\`widget-\${id}\`} />`

@@ -15,7 +15,6 @@
     "**/*.test.tsx",
     "**/*.property.test.ts",
     "**/__tests__/**",
-    "../../../assets/**/*",
     "**/data/**",
     "**/demo/**",
     "../../some-content/src/**/*",

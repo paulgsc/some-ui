@@ -1,5 +1,5 @@
 /**
- * Reading the layout table (BC1, #1434): the questions a Sensor asks of it,
+ * Reading the layout table (BC1): the questions a Sensor asks of it,
  * answered from data alone.
  *
  * Pure. Nothing here touches a node; the Sensor (BC2) supplies what it
@@ -8,7 +8,7 @@
  * including the explicit "I do not know" the Boundary Contract's B4 requires
  * be a state rather than an exception.
  *
- * Two rules the arguments encode, both bot-found (#1505's own review):
+ * Two rules the arguments encode:
  *
  *   - The table describes *shape* (how catalogue tags sit on a surface), not
  *     card-ness. A top-level `ytd-rich-item-renderer` may be an ad slot, a

@@ -1,17 +1,11 @@
 /**
  * A flat, class-name-shaped **view** over the canonical registry in
- * `../theme/registry.ts`.
+ * `../theme/registry.ts`; everything here is derived.
  *
- * This file used to be a second registry: it independently listed every class
- * selector shipped in CSS, with its own `ThemeKind` schema and its own
- * membership. `strawberry-moon` and `peachy-blossom` appeared here *and* in the
- * session registry with different metadata, and nothing kept them in step.
- * Everything below is now derived — adding a theme in one place is the only way
- * to add one at all.
+ * `kind` is the distinction toolbars care about (restyle `--primary` on a
+ * `.theme-container`, or replace the whole palette on a root?), read off
+ * `scope`.
  *
- * The `kind` split is preserved because it is the distinction toolbars care
- * about (does this restyle `--primary` on a `.theme-container`, or replace the
- * whole palette on a root?), but it now reads straight off `scope`.
  */
 
 import {

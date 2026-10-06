@@ -1,21 +1,8 @@
 /**
- * Wet-floor signs for the activities that are still being built.
- *
- * This app ships applets at very different stages on purpose - they get
- * better by being used, and holding them back until they are perfect means
- * shipping nothing. The problem is not that they are unfinished; it is that
- * nothing said so, and a person picked "Mock Interview" expecting the same
- * finish as "Hangul Honeycomb".
- *
- * So the sign goes where the choice is made, not where the disappointment
- * lands: on the card, before the click. It says how finished the thing is
- * and nothing else - no error counts, no "known issues", no roadmap, no
- * apology. A person needs to calibrate their expectations, not diagnose the
- * build.
- *
- * A `"ready"` activity is unmarked, deliberately. A badge on everything is
- * a badge on nothing, and the absence of a sign is what makes a sign mean
- * something.
+ * Wet-floor signs for activities still being built: on the card, before the
+ * click, saying how finished it is and nothing else (no error counts, no
+ * roadmap). A `"ready"` activity is unmarked: a badge on everything means
+ * nothing.
  */
 
 import type { JSX } from "react"

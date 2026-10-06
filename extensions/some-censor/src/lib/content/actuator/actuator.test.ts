@@ -1,5 +1,5 @@
 /**
- * The Actuator (BC4, #1437), fed synthetic `BoundAction[]`: no Core, no
+ * The Actuator (BC4), fed synthetic `BoundAction[]`: no Core, no
  * Sensor, a stub background. What it must do is write exactly what it was
  * told, idempotently, and route every answer back through the inbox.
  */

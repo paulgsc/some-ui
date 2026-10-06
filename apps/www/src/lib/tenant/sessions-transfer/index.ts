@@ -1,71 +1,36 @@
 /**
  * Copy the sessions on this device into the account, when the person says so.
  *
- * ## What this replaced, and why
+ * Nothing moves unless a person pressed a button that named what would be
+ * sent and where (`components/settings`): invariant LA2
+ * (`docs/learner-data-authority.md`) says only `copyDeviceSessions` starts a
+ * transfer, and only that button's action calls it. A copy cannot be taken
+ * back (the server mints the ids and nothing here deletes remotely).
  *
- * Sessions used to move on their own: the first call after a sign-in uploaded
- * everything in `localStorage` to whichever account signed in first, with no
- * prompt. On a shared browser that put one person's history in another's
- * account, and there is no way to take it back (the server mints the ids and
- * nothing here deletes remotely). Nothing moves now unless a person pressed a
- * button that named what would be sent and where (`components/settings`), and
- * invariant LA2 (`docs/learner-data-authority.md`) says so: only
- * `copyDeviceSessions` starts a transfer, and only that button's action calls
- * it.
+ * **Per account.** The browser never learns an account's id, so the receipt
+ * records the ids minted for each device session's copies, and asks the
+ * account in use: `GET /sessions/:id` answers 404 for another account's
+ * session. A second press for one account copies nothing; a press under
+ * another account copies again.
  *
- * ## One person's choice, per account
+ * **Resumable.** There is no import endpoint: a copy is a create then a patch.
+ * The receipt is written after each (`complete: false`, then `true`), so a
+ * retry finishes an incomplete copy rather than creating another.
  *
- * The browser never learns an account's id (the session is an `HttpOnly`
- * cookie and `/auth/session` reports only an expiry), so "already copied to
- * *this* account" cannot be a flag. The receipt records, for each device
- * session, the ids the server minted for its copies. To decide whether a
- * session is already in the account being used *now*, it asks that account:
- * `GET /sessions/:id` answers 404 for a session another account holds, the same
- * as for one that does not exist. So a second press for the same account
- * copies nothing, and a press under another account copies again, which is
- * what that person asked for.
+ * **A create whose answer was lost.** The server has no idempotency key, so an
+ * *unconfirmed attempt* is recorded before `POST /sessions` and cleared on any
+ * answer. A retry that finds one adopts an unclaimed account session with the
+ * same name, layout, activities and scenes before creating. It may adopt an
+ * identical session the account already held: that costs a copy, never makes
+ * a duplicate.
  *
- * ## Resumable, and never duplicating
+ * **One transfer at a time** under `withTransferLock` (Web Locks, or a renewed
+ * storage lease on plain `http://`); a second tab is told it is busy.
  *
- * There is no import endpoint. A session is created and then patched back into
- * shape, so the server's copy exists in two steps and the second can fail. The
- * receipt is written after the first (`complete: false`) and again after the
- * second. A retry finishes an incomplete copy rather than creating another.
+ * **Under one authority.** It checks the authority before each call; a change
+ * ends it with progress recorded (`stale`).
  *
- * ## A create whose answer was lost
- *
- * `POST /sessions` can commit and its response never arrive (a timeout, a
- * dropped connection). The server has no idempotency key to ask, so the receipt
- * records an *unconfirmed attempt* before the request and clears it when the
- * server answers, either way (an answer with an error status means nothing was
- * created). A retry that finds an attempt nobody confirmed does not create
- * blindly: it reads the account's sessions and adopts one with the same name,
- * layout, activities and scenes that no receipt entry already claims, and
- * creates only when there is none. What this cannot do is tell the copy from an
- * identical session the account already held and nothing claims; that one is
- * adopted instead of a new one made, which costs a copy and never makes a
- * duplicate.
- *
- * ## One transfer at a time, across tabs
- *
- * Plan and run happen under `withTransferLock`: Web Locks where the browser
- * has them, a renewed storage lease where it does not (plain `http://`). A
- * second tab pressing meanwhile is told it is busy and sends nothing. The
- * receipt is read from storage for every write rather than held in memory, so a
- * lock that did fail could not write a stale snapshot over another tab's
- * entries.
- *
- * ## Under one authority
- *
- * The transfer runs under the authority it started in and checks it before each
- * call. A sign-out, a switch or another account signing in ends it with the
- * work done so far recorded (`stale`), and the account transport it uses
- * refuses to send after the change in any case.
- *
- * ## The device keeps its copies
- *
- * Nothing is deleted locally. If a copy was wrong in some way nobody noticed for
- * a week, the original is still there.
+ * Nothing is deleted locally.
  */
 
 import type { Authority } from "@/lib/authority"
@@ -275,10 +240,8 @@ export async function runTransfer(
   const total = plan.create.length + plan.finish.length
   let copied = 0
 
-  // Read from storage for every write, never held from the start: nothing else
-  // should be writing (`withTransferLock`), but a stale snapshot written back
-  // over another tab's entries is how a duplicate would survive a lock that
-  // failed.
+  // Re-read for every write, never held: a stale snapshot written over another
+  // tab's entries is how a duplicate would survive a failed lock.
   const write = (
     localId: string,
     next: (known: Array<Copy>) => Array<Copy>

@@ -1,6 +1,6 @@
 /**
- * A round's recorded runs (X2, #1223; the server half is X5, #1226 /
- * `paulgsc/server#381`): what `A` and each `A + d` did when the server's
+ * A round's recorded runs (X2; the server half is `paulgsc/server#381`):
+ * what `A` and each `A + d` did when the server's
  * runner built them with the round's `harness` and ran them at
  * `constraintDiff.before`'s bounds and at `after`'s.
  *
@@ -79,7 +79,7 @@ const RecordedRunSchema = z.object({
 /**
  * `GET /leetype/rounds/:id/runs`, hand-written against
  * `leetype_round_repo::RoundRuns` (`crates/db/leetype_round/src/runs.rs`
- * in `paulgsc/server`), per #1042. Unknown keys are stripped, not refused:
+ * in `paulgsc/server`). Unknown keys are stripped, not refused:
  * the server may add to it.
  */
 export const RoundRunsSchema = z.object({
@@ -140,7 +140,7 @@ function transcriptFor(
  *
  * Fails open to the bundled copy, unlike `sessions-backend`, which fails
  * loudly: this is a read of a recording the package already carries, the
- * read-versus-write reasoning #1043 gave for the activity catalogue, and a
+ * read-versus-write reasoning the activity catalogue uses, and a
  * round that shows its recorded runs is better than one that shows none.
  */
 export async function resolveRoundRuns(

@@ -1,9 +1,9 @@
 /**
  * The card catalogue, and the one thing that can silently break it.
  *
- * #973 was two bugs with one shape: the set of elements the *stylesheet*
- * occludes and the set the *content script* adopts were maintained by hand, in
- * two files, and drifted. A tag in the CSS but not in TypeScript is a card
+ * The set of elements the *stylesheet* occludes and the set the *content
+ * script* adopts live in two files and can drift. A tag in the CSS but not in
+ * TypeScript is a card
  * blurred forever with no veil coming; a tag in TypeScript but not in the CSS
  * is a card that flashes its thumbnail before the veil mounts. Neither shows up
  * in a type error and neither shows up in the e2e fixtures, which only contain
@@ -43,12 +43,12 @@ function normalize(selector: string): string {
  * declaration only those rules carry, so renaming or reordering the rest of
  * the stylesheet cannot make this test silently stop looking at anything.
  *
- * #1390/QC0 requires each selector to own its own `{ }` block rather than
+ * QC0 requires each selector to own its own `{ }` block rather than
  * share one comma-separated list, so this walks every occurrence of the
  * marker declaration instead of assuming there is exactly one.
  */
 /**
- * The `:has()`-free fallback block (#1504's own review): everything inside
+ * The `:has()`-free fallback block: everything inside
  * `@supports not selector(:has(a)) { … }` is a rule only an engine without
  * `:has()` ever applies, so it is parsed separately from the main list.
  */
@@ -122,9 +122,8 @@ describe("the stylesheet and the catalogue agree", () => {
 
   it("keeps a :has()-free fallback for exactly the tags that declare one", () => {
     // Firefox 112–120 cannot parse `:has()`, and a rule it cannot parse is
-    // dropped whole. The home feed's primary cell used to be occluded
-    // unconditionally; #1422 moved it behind the guard, so on those engines
-    // it needs the unconditional rule back (bot-found on #1504's own review).
+    // dropped whole. The home feed's primary cell sits behind the guard, so
+    // on those engines it needs an unconditional rule.
     expect(fallbackRulesFromCss().map(normalize)).toEqual(
       PREMASK_FALLBACK_SELECTORS.map(normalize)
     )
@@ -139,12 +138,9 @@ describe("the stylesheet and the catalogue agree", () => {
   })
 
   it("never shares one rule's declarations across more than one selector", () => {
-    // The regression #1390/QC0 fixes: CSS selector-list invalidation is
-    // all-or-nothing, so one unparseable selector sharing a rule with others
-    // (e.g. `:has()` on a Firefox version that predates 121) used to cost
-    // every other selector in that same rule its occluder too. This fails
-    // against the old single comma-list form, where all eleven selectors
-    // shared one rule.
+    // QC0: CSS selector-list invalidation is all-or-nothing, so one
+    // unparseable selector sharing a rule (e.g. `:has()` before Firefox 121)
+    // would cost every other selector in that rule its occluder.
     for (const rule of premaskRulesFromCss()) {
       expect(topLevelCommaCount(rule), rule).toBe(0)
     }
@@ -183,8 +179,8 @@ describe("the stylesheet and the catalogue agree", () => {
   })
 
   it("does not occlude a cell or shelf that merely contains cards", () => {
-    // Bot-found on #1504's own review: a wrapper necessarily contains its
-    // children's watch links, so a link check alone would occlude it — and
+    // A wrapper necessarily contains its children's watch links, so a link
+    // check alone would occlude it — and
     // adopt it as one card with one veil over everything inside. The inner
     // cards are the cards; the stylesheet and classifyCard() both exclude
     // the wrapper, so they agree about which element gets the veil.
@@ -223,7 +219,7 @@ describe("the stylesheet and the catalogue agree", () => {
   })
 
   it("counts what the fallback rule occludes on an engine without :has()", () => {
-    // Bot-found on #1504's own review: on Firefox 112–120 the guarded rules
+    // On Firefox 112–120 the guarded rules
     // are dropped and the fallback block occludes *every* unstamped
     // rich-item — shells and containers included. A census that only knew
     // the guarded condition would call such a page clean while an ad cell
@@ -269,7 +265,7 @@ describe("isVideoCard", () => {
     expect(isVideoCard(el)).toBe(true)
   })
 
-  it("rejects a rich-item cell that wraps something other than a video (#1422)", () => {
+  it("rejects a rich-item cell that wraps something other than a video", () => {
     // The home feed's grid cell is polymorphic in exactly the way a lockup is:
     // an ad slot, a Shorts shelf or a post renders under the same tag with no
     // watch href anywhere. Accepting it on the tag alone was the whole of
@@ -317,7 +313,7 @@ describe("isVideoCard", () => {
 })
 
 describe("the catalogue itself", () => {
-  it("covers the card types #973 reported as never masked", () => {
+  it("covers the newer lockup, shorts and playlist card types", () => {
     // Named explicitly so deleting one is a decision, not an omission.
     expect(VIDEO_SELECTORS).toEqual(
       expect.arrayContaining([

@@ -1,5 +1,5 @@
 /**
- * LTY-AUTHOR (#1540): every authored round's `A`, and `A + d` for each of
+ * LTY-AUTHOR: every authored round's `A`, and `A + d` for each of
  * its diffs, must compile. Def. 1.1 calls `A` "a complete, compilable
  * program", and a distractor is "a well-formed rewrite", not junk
  * (Cor. 5.1), so a patched program that fails to compile is an authoring
@@ -9,7 +9,7 @@
  * only, with warnings denied. `rustc` comes from the `.#ci` dev shell that
  * the PR workflow's corpus-lint step already runs under.
  *
- * X5 (`paulgsc/server#381`): every reviewed round also carries a harness,
+ * Every reviewed round also carries a harness,
  * and each program is compiled a second time as a binary with the harness
  * appended, exactly the program the server's runner builds. A round in
  * the reviewed corpus without a harness fails here: the runner would have

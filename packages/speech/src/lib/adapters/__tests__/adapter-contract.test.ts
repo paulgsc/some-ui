@@ -207,8 +207,8 @@ describe("web-speech adapter - browser specifics", () => {
     fake.controls.error("synthesis-failed")
     await flushAsync()
 
-    // The call site this replaces mapped `onerror` to `resolve()`, so a
-    // queue built on it counted failures as successes and never retried.
+    // Resolving on `onerror` would make a queue count failures as successes
+    // and never retry.
     expect(settlement.state).toBe("rejected")
     expect(isAbortError(settlement.error)).toBe(false)
     expect(settlement.error?.message).toContain("synthesis-failed")
@@ -241,8 +241,8 @@ describe("web-speech adapter - browser specifics", () => {
     const replacement = track(adapter.speak("second"))
     await flushAsync()
 
-    // `speechSynthesis.cancel()` used to silently drop the first utterance,
-    // whose promise then settled as though it had been spoken in full.
+    // `speechSynthesis.cancel()` drops the first utterance silently; its
+    // promise must not settle as though it had been spoken in full.
     expect(displaced.state).toBe("rejected")
     expect(isAbortError(displaced.error)).toBe(true)
     expect(replacement.state).toBe("pending")

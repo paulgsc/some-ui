@@ -33,7 +33,7 @@ const loader = createWasmLoader<WasmModule>({
     }
   },
   // Preserves this loader's original throw-on-error contract (unlike
-  // polyhedron/hangul's log-and-resolve-null posture).
+  // hangul's log-and-resolve-null posture).
   errorPolicy: "throw",
 })
 

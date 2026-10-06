@@ -1,5 +1,4 @@
 /**
- *
  * Wraps ESLint's real APIs so every test suite uses the actual flat-config
  * resolution engine rather than a hand-rolled simulator.
  *
@@ -19,16 +18,13 @@ import { fileURLToPath } from "node:url"
 import { ESLint } from "eslint"
 import type { Linter } from "eslint"
 
-// packages/eslint/ — the cwd for all ESLint instances.
-// import.meta.url = packages/eslint/tests/helpers/eslint-resolver.ts
-// three hops up: helpers/ → tests/ → packages/eslint/
+// packages/eslint/, the cwd for all ESLint instances (three hops up).
 export const PACKAGE_ROOT = path.resolve(
   fileURLToPath(import.meta.url),
   "../../.."
 )
 
-// Absolute path to on-disk fixture stubs required by calculateConfigForFile.
-// These live at packages/eslint/tests/lint-fixtures/ — outside any ignores glob.
+// On-disk stubs for calculateConfigForFile, outside any ignores glob.
 export const LINT_FIXTURES = path.join(PACKAGE_ROOT, "tests/lint-fixtures")
 
 // ── Path safety ───────────────────────────────────────────────────────────────
@@ -57,9 +53,6 @@ export type LintMessage = Linter.LintMessage
 type Severity = 0 | 1 | 2
 
 // ── calculateConfig ───────────────────────────────────────────────────────────
-//
-// File MUST exist on disk. Pass an absolute path from LINT_FIXTURES:
-//   calculateConfig(config, path.join(LINT_FIXTURES, "src/service.ts"))
 
 export async function calculateConfig(
   config: Linter.Config | Array<Linter.Config>,
@@ -96,16 +89,8 @@ export async function calculateConfig(
 
 // ── lintSnippet ───────────────────────────────────────────────────────────────
 //
-// File does NOT need to exist on disk.
-//
-// IMPORTANT: pass a SHORT RELATIVE path for filePath, e.g. "src/foo.ts".
-// ESLint resolves globs relative to cwd (PACKAGE_ROOT). An absolute path
-// that points deep inside the package tree can fail to match **\/*.ts globs
-// depending on how the glob engine handles absolute vs relative paths,
-// producing zero messages even when rules are active.
-//
-// Correct:   lintSnippet(config, code, "src/foo.ts")
-// Incorrect: lintSnippet(config, code, "/abs/path/to/src/foo.ts")
+// Pass a short relative filePath ("src/foo.ts"): globs resolve against cwd,
+// and an absolute path can fail to match them, linting with no rules at all.
 
 export async function lintSnippet(
   config: Linter.Config | Array<Linter.Config>,
@@ -126,8 +111,6 @@ export async function lintSnippet(
     overrideConfig: config,
   })
 
-  // Resolve to absolute for lintText (it needs an absolute path internally)
-  // but the glob matching uses cwd-relative evaluation, so this works correctly.
   const absPath = path.resolve(PACKAGE_ROOT, filePath)
 
   const [result] = await eslint.lintText(code, { filePath: absPath })
@@ -257,4 +240,21 @@ export function expectNoMessageForRule(
           .join("\n")}`
     )
   }
+}
+
+/** `[title, code, ruleId, fires]`: one snippet and whether `ruleId` fires on it. */
+export type SnippetCase = readonly [string, string, string, boolean]
+
+/** Lints `code` and asserts `ruleId` fires on it (or does not); `context` labels a failure. */
+export async function expectSnippet(
+  config: Linter.Config | Array<Linter.Config>,
+  code: string,
+  filePath: string,
+  ruleId: string,
+  fires: boolean,
+  context: string
+): Promise<void> {
+  const messages = await lintSnippet(config, code, filePath)
+  if (fires) expectMessageForRule(messages, ruleId, context)
+  else expectNoMessageForRule(messages, ruleId, context)
 }

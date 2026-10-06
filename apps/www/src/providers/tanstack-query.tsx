@@ -10,12 +10,8 @@ const createQueryClient = (): QueryClient =>
       queries: {
         staleTime: 15 * 60 * 1000,
         gcTime: 30 * 60 * 1000,
-        // A plain `3` retries a `file_host` deadline exactly as eagerly as a
-        // fast rejection, which turns one 10s timeout into roughly four
-        // (plus backoff) before a route's read settles - the opposite of
-        // the bounded wait `file-host-config/client.ts`'s deadline exists
-        // to give. A timeout gets zero further attempts; every other
-        // failure (connection refused, a 5xx) still gets the usual 3.
+        // A timeout gets no further attempts (retrying multiplies the
+        // `file-host-config/client.ts` deadline); other failures get 3.
         retry: (failureCount, error) =>
           failureCount < 3 && !isFileHostTimeout(error),
         refetchOnMount: false,
@@ -28,20 +24,14 @@ const createQueryClient = (): QueryClient =>
   })
 
 /**
- * Create a singleton instance to avoid recreating on re-renders.
- *
- * Exported because the router carries it in its context: route loaders
- * prefetch into this exact cache, and the components that later read it do so
- * through `QueryClientProvider` below. Two clients would mean a loader
- * warming a cache nobody reads.
+ * The singleton client, exported because the router carries it in context:
+ * route loaders prefetch into this exact cache.
  */
 export const queryClient = createQueryClient()
 
-// Per-person reads share keys across accounts (`["tenant", "sessions"]`), and
-// stay fresh for 15 minutes. So when a session ends, nothing cached is kept
-// for a signed-out page. Signing in to an account is a full page load
-// (`enterAccount`), which is what keeps a mutation still in flight for the
-// previous account from writing its result back after this clear.
+// Per-person reads share keys across accounts and stay fresh for 15 minutes,
+// so a session ending clears the cache. Signing in is a full page load
+// (`enterAccount`), so no in-flight mutation writes back after this clear.
 onAccountChange(() => queryClient.clear())
 
 export const QueryProvider = ({

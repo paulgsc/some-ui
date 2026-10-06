@@ -2,22 +2,13 @@ import { noLoadingElidedDefault } from "@eslint/rules/index.js"
 import { defineConfig } from "eslint/config"
 
 /**
- * #968/MS8: `no-loading-elided-default` is the lint half of the
- * route-arrival invariant's dashboard finding - a query hook's `data`
- * destructured with a default value, with no sibling `isLoading`/
- * `isPending`/`isError`/`error`/`status` read in the same statement, so a
- * pending or failed read is indistinguishable from a genuine empty result.
- * See that rule's own header for what it does and does not catch - notably
- * *not* the sibling `if (isLoading || !data)` skeleton-forever family (no
- * default value there to key off), which the route-arrival handoff's
- * `query-outcome` module and its call sites address instead.
+ * `no-loading-elided-default` (#968): a query hook's `data` destructured with
+ * a default and no sibling loading/error state, so a pending or failed read
+ * looks like an empty result. See the rule's header for what it does not
+ * catch (`query-outcome` covers that).
  *
- * Opt-in config, following intent-guard.config.ts's precedent - not folded
- * into a shared preset, since a query-hook-shaped destructure is an
- * `apps/www` convention, not something every workspace has. Shipped at
- * `warn` per #968's own instruction: this is a real, repo-wide pattern
- * (`app.tsx` had it pre-fix) and a first pass may still surface call sites
- * nobody has looked at yet.
+ * Opt-in, like intent-guard: the destructure shape is an `apps/www`
+ * convention. Shipped at `warn`: a first pass may surface unexamined sites.
  *
  *   import { queryGuardConfig } from "@some-ui/eslint-kit"
  *   export default defineConfig([...appsRecommended, ...queryGuardConfig])

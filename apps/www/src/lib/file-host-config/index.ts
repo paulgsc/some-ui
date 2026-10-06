@@ -1,81 +1,44 @@
 /**
- * Where this build's `file_host` backend lives, and nothing else about it.
+ * Where this build's `file_host` backend (paulgsc/server) lives: the base URL
+ * to prefix `/sessions` and `/push` with. A near-copy of `lib/tts-config`,
+ * the same problem on a different port.
  *
- * `file_host` (paulgsc/server) is where sessions and push subscriptions
- * live once this app has a backend at all. This module answers one
- * question - what base URL do I prefix `/sessions` and `/push` with - and
- * it is a near-copy of `lib/tts-config` on purpose, because it is the same
- * problem with a different port and this repository has already paid for
- * the lesson once:
- *
- * > **HTTPS page** -> the same-origin `TTS_PROXY_PATH`, because a
- * > cross-origin `http://host:5050` request from an HTTPS document is mixed
- * > content and the browser blocks it outright. That was the actual
- * > failure: the topik applet on https://nixos.local:5173 went silent with
- * > nothing in the UI to say why, while the identical build on plain HTTP
- * > spoke fine.
- *
- * The study origin is *necessarily* HTTPS - service workers,
- * `Notification` and `PushManager` are all gated on a secure context, and
- * `http://nixos.local` is not one - so for this module the HTTPS branch is
- * not the edge case, it is the whole feature. `file_host` serves plain HTTP
- * on port 3000, so every request from the study origin would be mixed
- * content, blocked before it reaches the network.
- *
- * That is the failure worth naming here rather than rediscovering, because
- * it does not look like itself: a blocked request surfaces as a console
- * warning and a rejected promise, indistinguishable from the server being
- * down or from CORS. The likely response is to go and change
- * `ALLOWED_ORIGINS` on a server that was configured correctly. **No
- * server-side CORS change can fix mixed content** - the request never
- * leaves the page.
+ * The study origin is necessarily HTTPS (service workers, `Notification` and
+ * `PushManager` need a secure context) and `file_host` serves plain HTTP on
+ * 3000, so a direct request is mixed content, blocked before it leaves the
+ * page. It looks like the server being down or CORS, but **no server-side
+ * CORS change can fix mixed content**.
  *
  * So, by scheme:
  *
- * - **HTTPS page** -> the same-origin `FILE_HOST_PROXY_PATH`. Both the www
- *   container (apps/www/nginx.https.conf) and `vite dev`/`vite preview`
- *   (apps/www/vite.config.ts) proxy that path to `file_host`.
- * - **HTTP page** -> `http://<hostname>:3000` directly, the port `file_host`
- *   listens on. Storybook, cert-less `vite dev` and the www container's own
- *   port-80 listener are all plain HTTP with no proxy of their own, and
- *   none of them has a mixed-content problem to solve.
+ * - **HTTPS page** -> the same-origin `FILE_HOST_PROXY_PATH`, proxied by
+ *   nginx.https.conf and by `vite dev`/`vite preview` (vite.config.ts).
+ * - **HTTP page** -> `http://<hostname>:3000` directly (Storybook, cert-less
+ *   `vite dev`, the container's port-80 listener).
  *
- * `VITE_FILE_HOST_ENDPOINT` overrides both, for a deployment that fronts
- * `file_host` somewhere else entirely - the same escape hatch
- * `VITE_TTS_ENDPOINT` is.
+ * `VITE_FILE_HOST_ENDPOINT` overrides both, like `VITE_TTS_ENDPOINT`.
  */
 import type { RouteParams, ServerRoute } from "@some-ui/fetch-kit"
 import { API_V1_PREFIX } from "@some-ui/fetch-kit"
 
-/** The port `file_host` listens on. */
 /**
  * How a read of *public corpus content* is made (lessons, rounds, the vocab
- * file): with no credentials at all.
- *
- * These routes answer everyone the same thing and hold nothing about whoever
- * asks, so there is no reason for a request to carry the account's session
- * cookie. With the default `same-origin`, it would, on the `/api/file-host`
- * proxy, and the operator would see a learner who chose to learn on the device
- * and an account holder as the same visitor. A person learning on the device
- * must be able to fetch a lesson without that. Spread this into a data source's
+ * file): with no credentials. Otherwise the `/api/file-host` proxy would send
+ * the session cookie, and the operator would see a device learner and an
+ * account holder as the same visitor. Spread into a data source's
  * `fetchOptions`.
  */
 export const PUBLIC_READ: { readonly credentials: RequestCredentials } = {
   credentials: "omit",
 }
-
+/** The port `file_host` listens on. */
 export const DEFAULT_FILE_HOST_PORT = 3000
 
 /**
  * Same-origin prefix that reverse-proxies to `file_host`. Kept in step by
- * hand with the `location` blocks in apps/www/nginx.https.conf and the
- * `server.proxy` entry in apps/www/vite.config.ts - changing it means
- * changing all three.
- *
- * There is a fourth reader that cannot import this constant:
- * `public/sw.js`, which is a plain public/ asset. It rebuilds this path
- * from `self.registration.scope` for the snooze POST; see the note beside
- * `NUDGE_TAG` there.
+ * hand with nginx.https.conf's `location` blocks, vite.config.ts's
+ * `server.proxy`, and `public/sw.js` (which rebuilds it from
+ * `self.registration.scope`; see the note beside `NUDGE_TAG` there).
  */
 export const FILE_HOST_PROXY_PATH = "/api/file-host"
 
@@ -87,12 +50,9 @@ function baseForCurrentHost(): string | undefined {
 }
 
 /**
- * Which of the rules above produced the base URL.
- *
- * Reported rather than inferred from the URL for the same reason
- * `describeTTSEndpoint` reports it: the one that goes wrong silently is
- * `override`, and a stale `VITE_FILE_HOST_ENDPOINT` beats every default
- * here by design, with a 404 on a path nobody serves as the only evidence.
+ * Which rule produced the base URL. Reported because `override` fails
+ * silently: a stale `VITE_FILE_HOST_ENDPOINT` beats every default, with a 404
+ * as the only evidence.
  */
 type FileHostSource =
   | "override"
@@ -124,11 +84,8 @@ export function resolveFileHostBase(): string | undefined {
 }
 
 /**
- * Join the base with a route, tolerating a trailing slash on either side.
- *
- * Trivial, and it exists anyway: an override supplied with a trailing
- * slash produces `//sessions`, which most servers route and `file_host`
- * does not, and that is a confusing 404 to debug for a stray character.
+ * Join the base with a route, tolerating a trailing slash on either side:
+ * `//sessions` is a confusing 404 on `file_host`.
  */
 export function fileHostUrl(route: string): string | undefined {
   const base = resolveFileHostBase()
@@ -139,13 +96,9 @@ export function fileHostUrl(route: string): string | undefined {
 /**
  * `fileHostUrl` for a route named exactly as the server names it.
  *
- * `apiUrl` (`@some-ui/fetch-kit`) is where `ServerRoute` turns a typo'd path
- * or a forgotten `:key` into a `tsc` error, but it resolves `/api/v1/...` as
- * an absolute path, which drops a base's own path - the same-origin
- * `FILE_HOST_PROXY_PATH` above is exactly such a base. This keeps the type
- * check and joins onto `resolveFileHostBase()` instead, which already ends in
- * the API prefix. Placeholders are bound here, URI-encoded, because unlike
- * `apiUrl`'s module-scope callers the values are known at the call.
+ * Keeps `apiUrl`'s `ServerRoute` type check (`@some-ui/fetch-kit`), but joins
+ * onto `resolveFileHostBase()`: `apiUrl` resolves `/api/v1/...` as absolute,
+ * dropping the proxy base's own path. Placeholders are bound URI-encoded.
  */
 export function fileHostRouteUrl<P extends ServerRoute>(
   route: P,
@@ -168,30 +121,18 @@ export function fileHostRouteUrl(
 }
 
 /**
- * What went wrong, in words that name `file_host`.
- *
- * A `fetch` rejection from any of the causes this module exists for -
- * mixed content, a dead proxy upstream, a backend that is not running -
- * arrives as the same opaque `TypeError: Failed to fetch`. Wrapping it
- * means the one message a person sees says which backend was being talked
- * to, which is the difference between checking `file_host` and rewriting
- * CORS rules on a server that was fine.
+ * A `fetch` rejection (mixed content, a dead proxy, a stopped backend) in
+ * words that name `file_host`, rather than an opaque `Failed to fetch`.
  */
 export class FileHostUnreachableError extends Error {
   constructor(
     route: string,
     cause?: unknown,
     /**
-     * `false` only for `requestJSON`'s own deadline firing on a
-     * non-idempotent write (a `POST` - `create`/`duplicate`, the only two
-     * `HttpSessionsRepository` methods that mint a new resource rather than
-     * converging on one). A connection-refused/genuinely-never-sent failure
-     * is safe to retry regardless of method - nothing reached the server. A
-     * *timeout* on an established request is not: `file_host` may have
-     * already processed it and only the response was slow, and a retryable
-     * `POST` is a duplicate-session button with a friendly label. See
-     * `requestJSON` and #911's own note against coupling mutation deadlines
-     * to read-specific retry policy.
+     * `false` only for `requestJSON`'s deadline firing on a non-idempotent
+     * write (`POST`: `create`/`duplicate`): `file_host` may already have
+     * processed it, so a retry could duplicate a session. A request that
+     * never reached the server is safe to retry regardless of method.
      */
     readonly retryable: boolean = true
   ) {

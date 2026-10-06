@@ -6,7 +6,7 @@
  * renders a state and turns taps into events (docs/monorepo-boundaries.md,
  * "Inside a React package: the component is not the coordinator").
  *
- * What used to be rules each async path had to remember is now structure:
+ * Rules that hold by structure, not by each async path remembering them:
  *
  * - **One activity at a time.** Playing, opening the microphone, recording
  *   and saving are arms of one union, so "playing while the microphone

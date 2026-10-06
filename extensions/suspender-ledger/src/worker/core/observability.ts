@@ -15,9 +15,6 @@
  *   - the invariants — what must always be true of a tab suspender;
  *   - the context collector that feeds them from the browser.
  *
- * Adapting a second extension means writing this file again, ~200 lines, and
- * nothing else. That is the seam.
- *
  * ## Scope discipline (AMO)
  *
  * Nothing recorded here leaves the machine: there is no network path in this
@@ -53,7 +50,7 @@ const STORAGE_KEY = "sl.observability.v1"
 export type SuspenderEventKind =
   // worker lifecycle
   | "worker.start"
-  // the scheduler — the subsystem the sporadic no-suspend bug lived in
+  // the scheduler
   | "alarm.installed"
   | "alarm.kept"
   | "alarm.cleared"
@@ -327,8 +324,7 @@ export const obs = new Recorder<
   capacity: 500,
   invariants: suspenderInvariants,
   persistence: extensionStoragePersistence({ key: STORAGE_KEY }),
-  // The console echo is opt-in behind the existing `log` preference — an
-  // always-on firehose is its own kind of bad citizenship, and the timeline is
+  // The console echo is opt-in behind the `log` preference; the timeline is
   // on the debug page regardless.
   echo: (event): void => {
     if (!prefs.log) {

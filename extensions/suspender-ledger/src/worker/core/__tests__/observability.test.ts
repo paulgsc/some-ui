@@ -11,9 +11,8 @@
  *   - this extension's adapter — the invariants, which are pure functions of a
  *     context object and so need no browser mock at all.
  *
- * The core's tests live here rather than in `extensions/common` because that
- * workspace's `test` script currently runs Playwright only; they should move
- * alongside the package the moment it gains a unit runner.
+ * The core's tests live here rather than in `extensions/common`, whose own
+ * unit suite does not run on PRs (GOOD_CITIZEN.md → L7).
  */
 
 import {
@@ -129,12 +128,10 @@ describe("Recorder", () => {
     first.record({ kind: "a", subject: "old" })
     await first.flush()
 
-    // The startup window: an MV3 worker registers its listeners at module
-    // evaluation and they fire immediately — an alarm that fired *and is what
-    // woke the page* records here, while hydrate's storage read is still in
-    // flight. Clearing the buffer on load deleted exactly that, which is how a
-    // sweep's `tab.skipped` events came to appear with no `check.start` before
-    // them, and how a real alarm fire came to look like a missed one.
+    // The startup window: an MV3 worker's listeners fire immediately at module
+    // evaluation (often the very alarm that woke the page), while hydrate's
+    // storage read is still in flight. Clearing the buffer on load would lose
+    // exactly those events.
     const second = makeRecorder(persistence)
     const loading = second.hydrate()
     second.record({ kind: "b", subject: "during-hydrate" })
@@ -159,8 +156,7 @@ describe("Recorder", () => {
     second.count("hits", 2)
     await loading
 
-    // 6, not 4 — overwriting would silently discard the live count, which is
-    // what made `alarm_fires` under-report every fire that woke the worker.
+    // 6, not 4 — overwriting would silently discard the live count.
     expect(second.metrics.counter("hits")).toBe(6)
   })
 

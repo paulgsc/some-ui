@@ -1,12 +1,9 @@
 /**
  * @vitest-environment jsdom
  *
- * Two route guards, one idea. The dashboard layout waits (once) until the
- * learner's data authority is decided, so no page renders against the wrong
- * store while a returning account user's session is checked; anyone learning
- * on the device does not wait at all. The LAN layout, which is the account's
- * own, then needs only a synchronous look: not on the account, to the passkey
- * screen with this address to come back to.
+ * The dashboard layout waits (once) until the data authority is decided; a
+ * device learner does not wait. The LAN layout then needs only a synchronous
+ * look: not on the account, to the passkey screen with a way back.
  */
 
 import { beforeEach, describe, expect, it } from "vitest"

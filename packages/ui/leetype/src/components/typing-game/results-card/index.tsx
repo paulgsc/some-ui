@@ -55,7 +55,7 @@ function formatTime(seconds: number): string {
  * repeat cap let the player past is not a step they cleared, and reporting
  * the two as the same number would make the gate decorative.
  *
- * # The line a future stat cell must not cross (LTY-SEAM S2, #1016)
+ * # The line a future stat cell must not cross (LTY-SEAM S2)
  *
  * Every figure here describes *this session's typing* — a rate, a
  * duration, a count, a fraction revealed. None of them describes *the

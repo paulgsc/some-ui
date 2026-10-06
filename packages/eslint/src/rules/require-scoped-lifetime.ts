@@ -17,18 +17,14 @@ const PAGE_LIFETIME_MEMBERS = new Set(["body", "documentElement"])
  * Good-Citizen Charter §8 — every acquired resource is bound to the lifetime
  * of whatever acquired it.
  *
- * `require-named-lifetime` covers the two standing *timers*. It said, of
- * everything else, that listeners are "covered by whatever governs listeners
- * generally" — and nothing did. This rule is that governance, for the two
- * shapes that got past it in some-drama:
+ * `require-named-lifetime` covers the two standing *timers*; this rule
+ * covers two more shapes:
  *
  * ## A listener on the page, added by something shorter-lived
  *
- * `document.addEventListener("pointermove", …)` in a drag controller that is
- * rebuilt on every state change: each instance added two more listeners to
- * the document and none were ever removed. A listener on `document` or
- * `window` outlives its owner by default, so the only question that matters
- * is whether it is tied to one — and at the call site that is visible: the
+ * A listener on `document` or `window` outlives its owner by default (a drag
+ * controller rebuilt per state change piles them up), so the question is
+ * whether it is tied to one, and that is visible at the call site: the
  * options carry a `signal` (from an AbortController, or a lifetime object
  * such as commons' `Disposables`), or `once: true`.
  *
@@ -39,10 +35,9 @@ const PAGE_LIFETIME_MEMBERS = new Set(["body", "documentElement"])
  * ## A frame loop
  *
  * `const track = () => { …; requestAnimationFrame(track) }` is a standing
- * resource exactly like `setInterval` — it runs until someone cancels it —
- * but it is spelled as a one-shot call, so the timer rule never saw it. A
- * one-shot `requestAnimationFrame(() => …)` is fine; a callback that
- * reschedules *itself* is the loop, and that is what is flagged.
+ * resource like `setInterval`, spelled as a one-shot call. A one-shot
+ * `requestAnimationFrame(() => …)` is fine; a callback that reschedules
+ * *itself* is the loop, and that is what is flagged.
  *
  * ## What it recognizes, and what it leaves to review
  *

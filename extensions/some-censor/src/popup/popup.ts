@@ -1,9 +1,6 @@
 /**
- * Popup (`popup.html`) — the entry point the manifest's `default_popup` has
- * promised since before any file existed at that path (see vite.config.ts's
- * note on #1396's non-goals). Content is a header (brand mark + name, the
- * same `assets/icon-*.png` the manifest itself uses — see #1418's follow-up
- * discussion on migrating this to the repo's honeycomb mark) and the
+ * Popup (`popup.html`) — the manifest's `default_popup`. Content is a header
+ * (brand mark + name, the manifest's own `assets/icon-*.png`) and the
  * "Diagnostics" entry point per Charter idiom #3:
  * `@some-extension/common`'s `diagnosticsLink` is the same link some-filter's
  * and suspender-ledger's popups already end with. The whitelist/enabled

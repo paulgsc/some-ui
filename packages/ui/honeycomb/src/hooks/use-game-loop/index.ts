@@ -26,22 +26,18 @@ type UseGameLoopProps = {
   playSound: (event: AudioEvent) => void
   onBoardFull?: () => void
   /**
-   * The currently in-progress multi-token challenge, if any - both read
-   * (to gate spawning: a word challenge is a queue of one, never several
-   * simultaneously in flight) and written (via `setWordProgress`, on each
-   * new word spawn) by this hook. Always `null` for single-jamo (n=1) play,
-   * which has no such concept and spawns exactly as it always has.
+   * The in-progress multi-token challenge, read to gate spawning (a word
+   * challenge is a queue of one) and written on each word spawn. Always
+   * `null` for single-jamo play.
    */
   wordProgress?: WordProgress | null
   setWordProgress?: React.Dispatch<React.SetStateAction<WordProgress | null>>
-  /** Misses observed since the tracked word spawned, for #762's hint escalation. */
+  /** Misses observed since the tracked word spawned, for hint escalation. */
   setMissCount?: React.Dispatch<React.SetStateAction<number>>
   /**
-   * The tracked word challenge ran out of time with jamo still unreached.
-   * Fired instead of quietly dropping the cells, so the host can reveal what
-   * was missed and debrief before the next word spawns. Not fired for a word
-   * the player completed (that resolves through `matchFound`), and never for
-   * single-jamo (n=1) play, which has no tracked word to begin with.
+   * The tracked word ran out of time with jamo unreached. The cells are kept
+   * so the host can debrief before the next spawn. Never fired for a
+   * completed word (`matchFound`) or single-jamo play.
    */
   onWordMissed?: (missed: MissedWord) => void
 }
@@ -62,10 +58,6 @@ export const useGameLoop = ({
 }: UseGameLoopProps): void => {
   const spawnTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const updateTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-
-  // ====================================================================
-  // Stable refs to callbacks (avoid recreating intervals)
-  // ====================================================================
 
   const gameBridgeRef = useRef(gameBridge)
   const isPausedRef = useRef(isPaused)
@@ -113,19 +105,13 @@ export const useGameLoop = ({
     onWordMissedRef.current = onWordMissed
   }, [onWordMissed])
 
-  // ====================================================================
-  // SPAWN CHARACTER
-  // ====================================================================
   const spawnCharacter = useCallback(() => {
     const bridge = gameBridgeRef.current
     if (!bridge) return
 
-    // A word challenge is a queue of one (never several simultaneously in
-    // flight): wait for the tracked word to resolve - matched or expired -
-    // before asking the engine to spawn the next one. Single-jamo play
-    // never populates wordProgress, so this is a no-op there and every
-    // existing completion/endless cell keeps spawning concurrently exactly
-    // as it always has.
+    // A word challenge is a queue of one: wait for the tracked word to
+    // resolve. Single-jamo play never sets wordProgress and spawns
+    // concurrently.
     if (wordProgressRef.current) return
 
     const events = bridge.spawnCharacter()
@@ -148,12 +134,8 @@ export const useGameLoop = ({
             return next
           })
 
-          // Track a newly spawned word challenge - both for the
-          // Prompt/Concept Station's progress display (#762) and as the
-          // queue-gate `spawnCharacter` checks above. A single-jamo (n=1)
-          // spawn is intentionally not tracked - there is never more than
-          // one jamo-shaped "challenge" worth gating on, since completion/
-          // endless play was always meant to spawn concurrently.
+          // Track a new word challenge, for the Prompt Station and the
+          // queue-gate above. Single-jamo spawns are not tracked.
           if (event.spawnResult.answerGlyphs.length > 1) {
             setWordProgressRef.current?.({
               cellIds: event.spawnResult.cellIds,
@@ -186,12 +168,8 @@ export const useGameLoop = ({
         case "streakMilestone":
         case "statsUpdated":
         case "charactersExpired": {
-          // These events are intentionally handled in:
-          // - input handling
-          // - updateCharacters loop
-          // - scoring / stats effects
-          //
-          // Spawn loop must remain side-effect minimal.
+          // Handled by input, updateCharacters and scoring; the spawn loop
+          // stays side-effect minimal.
           break
         }
 
@@ -202,10 +180,6 @@ export const useGameLoop = ({
       }
     })
   }, [])
-
-  // ====================================================================
-  // UPDATE CHARACTERS
-  // ====================================================================
 
   const updateCharacters = useCallback(() => {
     const bridge = gameBridgeRef.current
@@ -224,10 +198,8 @@ export const useGameLoop = ({
           const tracked = wordProgressRef.current
           const trackedExpired =
             tracked?.cellIds.some((id) => event.cellIds.includes(id)) ?? false
-          // A tracked word that ran out of time with jamo still unreached is
-          // the teachable case: hand it to the host to reveal and debrief
-          // rather than deleting the evidence. The host is responsible for
-          // clearing these cells when it's done with them.
+          // A tracked word that expired unfinished goes to the host to
+          // debrief; the host clears these cells when done.
           const missedWord: MissedWord | null =
             tracked &&
             trackedExpired &&
@@ -255,11 +227,8 @@ export const useGameLoop = ({
             return next
           })
 
-          // If the word the station is currently tracking just expired,
-          // clear it - this also releases the spawn queue-gate above, so
-          // the next spawn tick can start the next word. When there's a
-          // debrief to run first, the host re-gates spawning by pausing the
-          // loop for as long as the debrief is up.
+          // Clearing the tracked word releases the spawn queue-gate; a
+          // debrief re-gates by pausing the loop while it is up.
           if (trackedExpired) {
             setWordProgressRef.current?.(null)
           }
@@ -287,10 +256,7 @@ export const useGameLoop = ({
         case "ambiguousInput":
         case "answerProgress":
         case "streakMilestone": {
-          // These are handled in:
-          // - spawn loop
-          // - input handler
-          // - scoring / UI layers
+          // Handled by the spawn loop, input handler and scoring/UI layers.
           break
         }
         default: {
@@ -300,11 +266,10 @@ export const useGameLoop = ({
       }
     })
 
-    // Update timeRemaining for active characters. Solved characters are locked
-    // into their cell and no longer count down. The engine's budget is
-    // per-*token* (revealed_at_ms + answerKeys.length * currentWindow, canon
-    // Thm. 7.2/ADR 0003 §2(a)'s shared word countdown) - a single-jamo (n=1)
-    // cell's budget is unchanged since answerKeys.length is 1 there.
+    // Solved characters no longer count down. The budget is per token
+    // (revealed_at_ms + answerKeys.length * currentWindow; canon Thm. 7.2,
+    // ADR 0003 §2(a)).
+
     setActiveCharactersRef.current((prev) => {
       const next = new Map(prev)
       next.forEach((char, cellId) => {
@@ -324,10 +289,6 @@ export const useGameLoop = ({
     bridge.updateStatus()
   }, [])
 
-  // ====================================================================
-  // INTERVAL EFFECT
-  // ====================================================================
-
   useEffect(() => {
     if (!isInitialized || !gameBridge || isPaused) return
 
@@ -346,10 +307,6 @@ export const useGameLoop = ({
     }
   }, [isInitialized, gameBridge, spawnCharacter, updateCharacters, isPaused])
 }
-
-// ====================================================================
-// HELPERS
-// ====================================================================
 
 function calculateAccuracy(stats: GameStats): number {
   const total = stats.totalCorrect + stats.totalMissed

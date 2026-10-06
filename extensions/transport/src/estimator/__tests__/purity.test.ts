@@ -3,6 +3,8 @@ import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 import { describe, expect, it } from "vitest"
 
+import { MUTATING_CALL_PATTERNS } from "../../actuator/__tests__/dom-mutation"
+
 /**
  * S6 acceptance criterion: "Estimator performs no mutation of `G_t` (no DOM
  * writes anywhere in `estimator/`)." The Estimator only folds evidence into
@@ -11,21 +13,6 @@ import { describe, expect, it } from "vitest"
  */
 
 const ESTIMATOR_DIR = join(dirname(fileURLToPath(import.meta.url)), "..")
-
-const MUTATING_CALL_PATTERNS: ReadonlyArray<RegExp> = [
-  /\.setAttribute\s*\(/,
-  /\.removeAttribute\s*\(/,
-  /\.style\s*[.=]/,
-  /\.appendChild\s*\(/,
-  /\.insertBefore\s*\(/,
-  /\.replaceChild\s*\(/,
-  /\.removeChild\s*\(/,
-  /\.remove\s*\(\s*\)/,
-  /\.innerHTML\s*=/,
-  /\.outerHTML\s*=/,
-  /\.textContent\s*=/,
-  /\.classList\.(add|remove|toggle|replace)\s*\(/,
-]
 
 function sourceFiles(dir: string): Array<string> {
   return readdirSync(dir, { withFileTypes: true })

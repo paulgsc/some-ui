@@ -1,6 +1,5 @@
 /**
- * L1 (LTY-LEDGER, #1227) — `docs/canon/complexity-witness-canon.typ` Def.
- * 10.1, Rem. 10.1. The learner's ledger over the proposition register: what
+ * The ledger (LTY-LEDGER L1): canon Def. 10.1, Rem. 10.1. The learner's ledger over the proposition register: what
  * is persisted, and the fold that writes it.
  *
  * # Inherited, not re-derived (Rem. 10.1)
@@ -17,7 +16,7 @@
  *   evidence ring (Def. 5.5).
  * - Def. 5.3: the map is sparse. `unseen` is the *absence* of an entry,
  *   never a stored value, so a learner who has played one round stores
- *   four entries, not sixteen (#1227).
+ *   four entries, not sixteen.
  * - Thm. 5.3: nothing here decays anything. The persisted state holds
  *   timestamps; the four states are derived at read time from them and
  *   `now` (`lib/leetype/ledger/state`, `lib/leetype/ledger/demonstration`).
@@ -32,7 +31,7 @@
  * - Thm. 7.1: the footprint is at most `|register| × RING_CAPACITY`
  *   observations, whatever the number of rounds played.
  *
- * Keyed by `CW-P` id (#1218), never by round, exercise or concept string:
+ * Keyed by `CW-P` id, never by round, exercise or concept string:
  * keying by round would make Def. 10.2's transfer, which is evidence
  * *across* rounds, unrepresentable.
  *
@@ -195,8 +194,8 @@ export function recordObservations(
  * timestamp order with duplicates dropped (Ax. 5.1), and the earlier
  * `recognizedAt` of the two, kept to the newest `RING_CAPACITY` per
  * entry as every ring is. So a tab can fold what another tab stored into
- * its own copy before writing without a whole-value `set` erasing it
- * (Codex, #1599). Order-free up to ties: two observations with the same
+ * its own copy before writing without a whole-value `set` erasing it.
+ * Order-free up to ties: two observations with the same
  * `at` keep arrival order, so only commits in the same millisecond from two
  * tabs can sit in a different order. A ledger that failed to
  * read is `EMPTY_LEDGER`, which merges as a no-op, so this tab's in-memory

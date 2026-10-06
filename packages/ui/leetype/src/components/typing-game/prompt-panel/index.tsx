@@ -22,11 +22,9 @@ type PromptPanelProps = {
 }
 
 /**
- * One row's presentation. Descending prominence, per the doctrine this
- * panel replaced a description card with: a failure class or constraint
- * reads loudest, a discriminating observation reads as evidence (`font-mono`,
- * the same register `CodeDisplay` uses for real code), and plain prose stays
- * the quiet default it always was.
+ * One row's presentation, in descending prominence: a failure class or
+ * constraint loudest, an observation as evidence (`font-mono`, like real
+ * code), plain prose the quiet default.
  */
 function renderRow(row: EvidenceRow): ReactNode {
   switch (row.kind) {
@@ -98,54 +96,27 @@ function renderRow(row: EvidenceRow): ReactNode {
 
 /**
  * The forcing question, above the typing viewport and outside the scroll
- * model entirely.
+ * model entirely. Read in seconds, then held in peripheral vision; inside
+ * the scroller it would raise caret-height, auto-scroll and wrapping
+ * questions the renderer would need to understand prompts to answer.
  *
- * # Why "outside the scroll model" is the whole design
+ * # Overflow (`docs/ui-fit/README.md`)
  *
- * The prompt is read in about five seconds and then held in peripheral
- * vision for the sixty seconds of typing that follow. If it lived inside the
- * scrolling container, three questions would immediately become live —
- * *does the prompt consume caret height*, *should auto-scroll centre on
- * prompts*, *what happens when the prompt wraps* — and the renderer would
- * have to learn what a prompt is to answer them. None of those questions
- * gets asked here, because the prompt is not in the box that scrolls.
+ * 1. **Authoring constraint first.** The schema bounds a goal to one
+ *    sentence; a prompt needing a scrollbar is a step too broad.
+ * 2. **Then a measured page.** For hostile input that arrives anyway,
+ *    `useFittedPage` shows the lines that fit, with `PageControls` for the
+ *    rest. Nothing is cut off silently.
+ * 3. **Never a scrollbar.** No `overflow-*`, no `max-h-[Nvh]`, no
+ *    `scroll-intent:` opt-out in this file.
  *
- * # The overflow answer, recorded
+ * The box is fixed by the layout (`basis-1/5`, from `ExerciseCard`), so a
+ * long prompt never reflows the code under the player's hands.
  *
- * `docs/ui-fit/README.md` opens by naming the leetype nav modals as the
- * violation that produced the doctrine. A prompt panel that reached for
- * `overflow-y-auto` when a prompt ran long would be the same mistake in a
- * new place, and this is the surface where it would be worst.
- *
- * So, in the doctrine's own order:
- *
- * 1. **Authoring constraint first.** `types/exercise.ts` bounds a step's
- *    goal to one sentence, and the bound is enforced by the schema. A prompt
- *    that needs a scrollbar is a step that was too broad.
- * 2. **Then a measured page.** For the long one that arrives anyway — a
- *    corpus is host-supplied data, and hostile input is not hypothetical —
- *    `useFittedPage` measures the box and shows the lines that fit, with
- *    `PageControls` for the rest. Nothing is silently cut off, and the
- *    panel's height does not change with its contents.
- * 3. **Never a scrollbar.** There is no `overflow-*` and no `max-h-[Nvh]`
- *    in this file, and no `scroll-intent:` opt-out.
- *
- * The height being invariant across a typing run is not a nicety either: a
- * prompt that reflows mid-step moves the code under the player's hands,
- * which is a flow-state break on the one surface where that is unforgivable.
- * The panel's box is fixed by the layout (`basis-1/5`, from `ExerciseCard`),
- * so nothing it contains can resize it.
- *
- * # Evidence, not exposition
- *
- * `blocks` is prose (`prompt`) and evidence (`transition`/`trace`/`region`)
- * alike (LTY-EVIDENCE E2). `evidenceRowsOf` (`./rows`) flattens both into the
- * atomic rows `useFittedPage` pages over — a trace block's headline and each
- * of its observations are separate rows, the same granularity a multi-line
- * prompt block already had one row per line. `EVIDENCE_ROW_BUDGET` bounds
- * that count in the corpus (`./corpus-lint.test.ts`), so the pagination path
- * below stays what it always was: a defensive floor, not a feature a valid
- * corpus reaches.
+ * `blocks` is prose and evidence alike; `evidenceRowsOf` (`./rows`) flattens
+ * them into the rows `useFittedPage` pages over (a trace's headline and each
+ * observation are separate rows). `EVIDENCE_ROW_BUDGET` bounds that count in
+ * the corpus, so paging stays a defensive floor.
  *
  * It imports nothing from the typing engine. No caret, no slots, no WPM.
  */
@@ -156,13 +127,9 @@ export const PromptPanel: FC<PromptPanelProps> = ({
   total,
   className,
 }) => {
-  // Memoized on `blocks`, not recomputed every render: the typing engine
-  // re-renders this panel on its own tick independent of whether the prompt
-  // itself changed, and useFittedPage's own bypass for a genuine content
-  // change trusts `rows`' identity to mean exactly that - an unmemoized
-  // rebuild here would earn that bypass on every tick and re-open the
-  // grow/overflow/shrink cycle the hook exists to prevent, this time
-  // repeating on the tick interval instead of every animation frame.
+  // Memoized on `blocks`: useFittedPage treats a new `rows` identity as a
+  // content change, so rebuilding per engine tick would restart its
+  // grow/overflow/shrink cycle every tick.
   const rows = useMemo(() => evidenceRowsOf(blocks), [blocks])
   const {
     viewportRef,

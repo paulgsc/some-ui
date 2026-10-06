@@ -5,55 +5,34 @@ import type {
 } from "@leetype/types/exercise"
 
 /**
- * The obligation graph — one arrow to the left of the shim.
+ * The obligation graph, one arrow to the left of the shim.
  *
  * ```text
  * obligation graph → linearized route → Exercise
  * ```
  *
- * `docs/leetype/README.md`'s quarantine diagram ends "→ steps"; everything
- * left of that arrow is still deferred out of M20. This module does not
- * pull any of it forward. It adds the one thing the diagram's last arrow
- * cannot express on its own: that a step's position is a *consequence* of
- * what it requires, not an array index a person picked by hand. `requires`
- * is exactly the edge `types/exercise.ts` refused to ship on `Exercise`
- * itself — "order is the linearization, and an edge nothing branches on is
- * a claim without a consumer" — answered here, upstream, where linearize()
- * is the consumer.
+ * A step's position becomes a *consequence* of what it requires, not a
+ * hand-picked index. `requires` is the edge `types/exercise.ts` refused to
+ * put on `Exercise` ("an edge nothing branches on is a claim without a
+ * consumer"); here `linearize()` consumes it.
  *
- * # What this is not
+ * Not sink inference, routing policy or UI: `sinkRoutes` and
+ * `fallbackBridge` give LTY-ROUTE somewhere to attach bridges, and this
+ * module never reads them.
  *
- * Not sink inference, not a routing policy, not a UI. `sinkRoutes` and
- * `fallbackBridge` exist on `Obligation` because LTY-ROUTE R3/R4 need
- * somewhere to attach a bridge to a node — this module does not read
- * either field, does not validate a bridge, and does not decide when one
- * fires. Emitting `ObligationId`, `SinkId` and `BridgeId` values is this
- * module's whole contribution to that later work; consuming them is not.
- *
- * # The seam
- *
- * Nothing here is exported from `./index.ts`, and nothing in `./index.ts`
- * imports this file. `nextExercise` still returns a plain `Exercise`, and a
- * graph's `ObligationId`/`SinkId`/`BridgeId` values never reach it: this
- * module is exercised only by its own tests, not wired into the seed
- * corpus. Wiring it in — replacing a hand-authored `Exercise` literal with
- * `linearize()`'s output — is a decision for whoever authors the next
- * problem, made on its own merits, not a consequence of this file existing.
+ * Not exported from `./index.ts` or wired into the seed corpus; exercised by
+ * its own tests. Replacing a hand-authored `Exercise` with `linearize()`'s
+ * output is a decision for whoever authors the next problem.
  */
 
-// Not exported: nothing outside this module names these types yet. LTY-ROUTE
-// R3/R4/R5 will need to when they gain their own consumers of `sinkRoutes`,
-// `fallbackBridge` and `fallback` — export them then, not ahead of a reason
-// to.
+// Not exported until something outside this module names them.
 type ObligationId = string
 type SinkId = string
 type BridgeId = string
 
 /**
  * What kind of decision an obligation's witness commits the learner to.
- * Closed, per the epic's own list — a claim outside these seven is a
- * change to this union argued on its own merits, not a reason to reach
- * for the nearest existing one.
+ * Closed: an eighth is a change argued on its own merits.
  */
 type ObligationClaim =
   | "representation"
@@ -65,27 +44,14 @@ type ObligationClaim =
   | "transfer"
 
 /**
- * One node in the graph: everything `linearize()` needs to emit this
- * obligation as a step, plus the edges LTY-ROUTE reads and this module
- * does not.
- *
- * `content` is a `ConstructionStep` or a `DiagnosticStep`, minus `id`,
- * because the id is the node's own key in `ObligationGraph.nodes` — an
- * obligation graph has exactly one place that says what a node is called,
- * not two that have to agree. Both families are admitted (not just
- * construction) because R4's totality validator has to be able to state
- * "every diagnostic node has a concrete observation" about *some* node in
- * a graph, and a graph that can only ever contain construction content
- * has no such node to check.
+ * One node: everything `linearize()` needs to emit it as a step, plus edges
+ * LTY-ROUTE reads. `content` omits `id` because the node's key in
+ * `ObligationGraph.nodes` is its only name. Both step families are admitted
+ * so totality can check diagnostic nodes too.
  */
 export type Obligation = {
   claim: ObligationClaim
-  /**
-   * The obligations this one assumes are already discharged. The edge
-   * `Challenge.dependsOn` used to be and `ConstructionStep` refused to
-   * reintroduce, because until this module existed nothing read it.
-   * `linearize()` reads it.
-   */
+  /** The obligations this one assumes are already discharged. Read by `linearize()`. */
   requires: ReadonlyArray<ObligationId>
   /** Read by LTY-ROUTE R3/R4/R5, not by this module. */
   sinkRoutes: Partial<Record<SinkId, BridgeId>>
@@ -110,17 +76,12 @@ export type ObligationGraph = {
 }
 
 /**
- * Every obligation in `graph.nodes`, in an order that respects `requires`:
- * a node never precedes anything it requires. Deterministic — ties are
- * broken by `ObligationId` alone, never by object insertion order, which
- * is what makes the "requires is actually read" test below meaningful
- * rather than accidental.
+ * Every obligation in an order that respects `requires`. Deterministic: ties
+ * break by `ObligationId`, never insertion order, so the "requires is
+ * actually read" test is meaningful.
  *
- * A depth-first postorder over the dependency edges, the standard shape
- * for topologically sorting a DAG. The `stack` argument is the
- * in-progress recursion path, not the whole visited set — a node
- * reachable by two different paths is only an error if one of those paths
- * runs back through itself.
+ * Depth-first postorder. `stack` is the current recursion path, not the
+ * visited set: reaching a node by two paths is fine; a cycle is not.
  */
 function topologicalOrder(graph: ObligationGraph): ReadonlyArray<ObligationId> {
   const order: Array<ObligationId> = []
@@ -157,21 +118,13 @@ function topologicalOrder(graph: ObligationGraph): ReadonlyArray<ObligationId> {
 }
 
 /**
- * The obligation graph, linearized into the `Exercise` the shim would have
- * handed out if this problem had been authored as a flat array all along.
- *
- * The acceptance test for this function is the same one `./index.ts` sets
- * for the eventual pipeline, one level up: *it emits what the hand-authored
- * array emits.* See `obligation-graph.test.ts`.
+ * The graph, linearized into the `Exercise` the shim would serve had it been
+ * authored as a flat array. Acceptance test: *it emits what the
+ * hand-authored array emits* (`obligation-graph.test.ts`).
  */
 export function linearize(graph: ObligationGraph): Exercise {
-  // A node with no `requires` is a root — a route that could start there
-  // without inference. `entry` claims to be *the* route every player
-  // starts from, which only holds if it is the graph's only root: a second
-  // root would be a disconnected obligation that topologicalOrder still
-  // visits (it iterates every key, not just what's reachable from `entry`)
-  // and would ride along in the output whenever it happened to sort after
-  // `entry`, silently, with no requires edge tying it to anything.
+  // `entry` must be the only root: topologicalOrder visits every key, so a
+  // second, disconnected root would silently ride along in the output.
   const roots = Object.keys(graph.nodes)
     .filter((id) => graph.nodes[id]!.requires.length === 0)
     .sort()
@@ -197,16 +150,9 @@ export function linearize(graph: ObligationGraph): Exercise {
   }
 
   const steps = order.map((id) => {
-    // `topologicalOrder` already dereferenced every id in `order` via
-    // `graph.nodes`, so this lookup cannot fail — the non-null assertion
-    // states that rather than re-deriving it with an unreachable throw.
+    // Every id in `order` was already dereferenced by `topologicalOrder`.
     const node = graph.nodes[id]!
-    // `id` spread last: `content`'s declared type omits `id`, but nothing
-    // at runtime enforces that against untrusted or malformed input, and
-    // `{ id, ...node.content }` would let a stray `content.id` silently
-    // override the node's real key — corrupting the emitted step's
-    // identity without corrupting the graph. The node's own key in
-    // `graph.nodes` is authoritative; nothing in `content` may override it.
+    // `id` last, so a stray runtime `content.id` cannot override the key.
     return { ...node.content, id }
   })
 

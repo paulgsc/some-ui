@@ -11,28 +11,23 @@ import {
 import type { HangulGameCore } from "@some-ui/hangul-game-core"
 import { createWasmLoader } from "@some-ui/wasm-loader"
 
-// Set immediately before load()/preload() so the in-flight importModule()
-// call (if one starts) picks them up. Only ever consulted on the attempt
-// that actually constructs the core (see loadHangulWasm's own comment for
-// why a later mode change does not need these re-read).
+// Set immediately before load()/preload() so an importModule() that starts
+// picks them up. Read only when constructing the core; later mode changes go
+// through changeMode.
 let pendingConfig: Partial<GameConfig> | undefined
 let pendingMode: GameMode = "completion"
 let pendingWordPool: Array<ChallengeSeed> = []
 let coreInstance: HangulGameCore | null = null
 
-// What's actually baked into the currently-loaded HangulGameCore (set on
-// construction, and again by every changeMode call). loadHangulWasm() uses
-// these two - independently - to detect either a mode switch or a session
-// change on an already-loaded core. Neither is inferred from caller
-// lifecycle timing (e.g. "is this the caller's first render"); both are
-// explicit values the caller hands in, compared as data.
+// What the loaded core holds (set on construction and by changeMode).
+// loadHangulWasm() diffs each against the caller's explicit values to detect
+// a mode switch or a session change.
 let loadedMode: GameMode | null = null
 let loadedSessionKey: string | undefined
 
-// True once importModule has actually run and constructed a core - as
-// opposed to loadedMode's null-ness, which flips to non-null *during* that
-// same construction, before loadHangulWasm's own post-await check runs (see
-// loadHangulWasm's own comment for why this distinction matters).
+// True once importModule has constructed a core. Unlike loadedMode, which is
+// set during construction, it is captured before the await, so the call that
+// constructs the core does not also call changeMode.
 let hasConstructedCore = false
 
 const loader = createWasmLoader<WasmGameBridge>({
@@ -40,7 +35,6 @@ const loader = createWasmLoader<WasmGameBridge>({
     const module = await import("@some-ui/hangul-game-core")
     await module.default()
 
-    // Merge defaults + partial config, validate with Zod
     const finalConfig = GameConfigSchema.parse({
       ...DEFAULT_GAME_CONFIG,
       ...pendingConfig,
@@ -68,35 +62,16 @@ export function getCoreInstance(): HangulGameCore | null {
 }
 
 /**
- * Load Hangul WASM module and initialize core & bridge.
- * Lazy, singleton, race-safe: the WASM module and HangulGameCore are
- * constructed exactly once per page session, never rebuilt or re-imported -
- * `sessionKey` changes what state the existing engine is in, never whether
- * the WASM binary itself gets reloaded.
+ * Load the Hangul WASM module and initialize core & bridge. Lazy, singleton,
+ * race-safe: the module and HangulGameCore are constructed once per page.
  *
- * A request for a mode different from the one currently loaded is a runtime
- * state transition on the *existing* core (GameEngine::set_mode /
- * HangulGameCore.changeMode, ADR 0004 §2(f)), not a reason to tear down and
- * reconstruct the WASM object - mode/word_pool are session lifecycle state
- * a player can legitimately change mid-session, the same way reset()
- * already changes stats/board state on the existing core.
+ * A different mode is a state transition on the existing core
+ * (HangulGameCore.changeMode, ADR 0004 §2(f)), not a rebuild.
  *
- * `sessionKey` covers what mode-diffing alone cannot: this loader has no
- * concept of "session" on its own - it only ever sees whatever the caller
- * hands it. Two *different* sessions that happen to both play, say,
- * "completion" mode are indistinguishable by mode alone, so without a
- * session identity the second session would silently inherit the first
- * one's board/stats. `sessionKey` is that identity: an opaque token this
- * function never interprets, only diffs against what it last saw -
- * `useHangulGameWasm` forwards whatever its own `sessionKey` option was
- * (ultimately `session.id`, published to the shared session-context store by
- * apps/www's SessionViewport and merged into this component's props by
- * OrchestratedYouTubeViewport's `extraProps` - see some-ui-utils's
- * session-context-store). The caller that actually knows when a
- * session has changed (the host app) is the one asserting that fact here;
- * this loader only ever reads and compares it - never decides on its own
- * that a "new session" must have started based on unrelated signals like
- * when a component happened to mount.
+ * `sessionKey` covers what mode-diffing cannot: two sessions playing the same
+ * mode would otherwise share board/stats. It is an opaque token from the host
+ * (ultimately `session.id`, via some-ui-utils's session-context-store),
+ * only diffed, never inferred from when a component mounted.
  */
 export async function loadHangulWasm(
   config?: Partial<GameConfig>,
@@ -127,8 +102,9 @@ export async function loadHangulWasm(
 }
 
 /**
- * Reset runtime (HMR, test cleanup) - not part of the normal mode/session
- * switch flow anymore; see loadHangulWasm's own doc comment.
+ * Reset runtime (HMR, test cleanup); mode and session switches go through
+ * loadHangulWasm.
+ *
  */
 export function resetHangulWasm(): void {
   loader.reset()

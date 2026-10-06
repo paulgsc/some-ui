@@ -1,5 +1,5 @@
 /**
- * some-filter — smoke tests (non-headless, requires built extension).
+ * some-filter — smoke tests (requires the built extension).
  *
  * Minimal invariants: the content script loads and classifies page luminance
  * correctly, and the prepaint veil is removed after classification. If these
@@ -11,16 +11,9 @@
  *
  * Requires PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH (set by nix develop .#playwright).
  *
- * SF4 (#1360) classification: visual-claim, promoted. This file's own stated
- * purpose is whether real CSS injection actually lands in the page's
- * cascade — but every assertion below used to read only the extension's own
- * `document.*.dataset` bookkeeping, which is set by the same code path
- * regardless of whether the stylesheet actually painted. Added an
- * independent read of the real computed background so a broken injection
- * (the exact failure class this file exists to catch) cannot pass silently.
- * `buildDarkThemeCSS` sets it via plain `background-color`, not `filter`, so
- * `getComputedStyle` is sound here (no compositing gap, unlike legacy mode's
- * `filter: invert()`).
+ * Classification (#1360): visual claim, promoted — an independent read of
+ * the computed background, so a broken injection cannot pass on the
+ * extension's own dataset bookkeeping (`background-color`, not `filter`).
  */
 
 import { parseColor, relativeLuminance } from "@filter/lib/content/color"

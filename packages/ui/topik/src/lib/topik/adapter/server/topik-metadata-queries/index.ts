@@ -1,9 +1,6 @@
 /**
- * Topik Metadata Query Hooks
- *
- * TanStack Query integration for metadata listing.
- * These hooks are ONLY for React components that need reactive query state.
- * The FSM accesses data via QueryClient directly (see session-selectors.ts).
+ * TanStack Query hooks for the metadata listing, for React components that
+ * need reactive query state; the FSM does not use them.
  */
 
 import type { UseQueryOptions, UseQueryResult } from "@tanstack/react-query"
@@ -14,30 +11,16 @@ import type {
   TopikMetadata,
 } from "@topik/lib/topik"
 
-// ═══════════════════════════════════════════════════════════════════════════
 // QUERY KEYS
-// ═══════════════════════════════════════════════════════════════════════════
 
 export const metadataKeys = {
   all: ["topik-metadata"] as const,
   manifest: () => [...metadataKeys.all, "manifest"] as const,
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
 // HOOKS (React Components Only)
-// ═══════════════════════════════════════════════════════════════════════════
 
-/**
- * Load topik manifest with metadata for all available topiks
- *
- * NOTE: The FSM does NOT use this hook. It accesses cached data via
- * getAvailableTopiks(queryClient) in session-selectors.ts.
- *
- * Use this hook in React components that need:
- * - Loading states
- * - Error states
- * - Automatic refetching
- */
+/** The manifest, with loading and error states and automatic refetching. */
 export function useTopikManifest(
   repository: ITopikMetadataRepository,
   options?: Omit<UseQueryOptions<TopikManifest>, "queryKey" | "queryFn">
@@ -52,12 +35,7 @@ export function useTopikManifest(
   })
 }
 
-/**
- * Get sorted list of topik metadata items
- *
- * Convenience hook that transforms manifest into sorted array.
- * Useful for selection UI components.
- */
+/** The manifest's items, sorted, for selection UIs. */
 export function useTopikMetadataList(
   repository: ITopikMetadataRepository,
   options?: Omit<
@@ -79,12 +57,7 @@ export function useTopikMetadataList(
   })
 }
 
-/**
- * Get metadata for specific topik
- *
- * Useful for detail views or validation.
- * Returns undefined if topik not found in manifest.
- */
+/** One topik's metadata, or undefined when the manifest lacks it. */
 export function useTopikMetadata(
   repository: ITopikMetadataRepository,
   key: string,

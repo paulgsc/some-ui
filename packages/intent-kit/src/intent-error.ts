@@ -1,19 +1,13 @@
 /**
  * The user-facing projection of whatever actually failed.
  *
- * This is not a fourth parallel error taxonomy — `apps/www/src/lib/file-host-config/client.ts`'s
- * three `FileHost*Error` classes and `@some-ui/fetch-kit`'s `ApiError` stay
- * exactly as they are; this is what they get mapped *to* at the boundary
- * that actually knows what a person needs to hear. `intent-kit` itself
- * knows nothing about HTTP, `file_host`, or any other transport — the
- * mapping lives with whichever app or package owns the transport (see
- * `apps/www/src/lib/intent/errors.ts`).
+ * Not another error taxonomy: transport errors (`FileHost*Error`, fetch-kit's
+ * `ApiError`) are mapped *to* this at the boundary that knows what a person
+ * needs to hear, by whoever owns the transport (see
+ * `apps/www/src/lib/intent/errors.ts`). `intent-kit` knows no transport.
  *
- * `unauthorized` is deliberately absent from `kind`. Nothing in this
- * workspace has an auth layer that can produce one today, and an
- * unreachable arm in a union whose entire value is exhaustiveness teaches
- * every reader that arms are decorative. Add it back the day something
- * actually produces it.
+ * `unauthorized` is deliberately absent: nothing produces it, and a dead arm
+ * in a union whose value is exhaustiveness teaches that arms are decorative.
  */
 
 /**
@@ -27,9 +21,8 @@
  *   deployment and never will without reconfiguration. Not retryable: no
  *   number of retries changes an absent capability.
  * - `unknown` — anything this boundary didn't recognise. `toIntentError`
- *   always lands here rather than throwing; a normalizer that can fail is a
- *   new silent-failure family, which is exactly what this vocabulary exists
- *   to close off.
+ *   lands here rather than throwing: a normalizer that can fail would be a
+ *   new silent failure.
  */
 export type IntentErrorKind =
   | "unreachable"
@@ -39,33 +32,23 @@ export type IntentErrorKind =
 
 export type IntentError = {
   readonly kind: IntentErrorKind
-  /** Whether re-running the same intent could plausibly succeed. Derived
-   * from the error class by the boundary's own mapper, never hand-set per
-   * call site — see `apps/www/src/lib/intent/errors.ts`'s header for why. */
+  /** Whether re-running the same intent could plausibly succeed. Derived by
+   * the boundary's mapper, never hand-set (see `apps/www/src/lib/intent/errors.ts`). */
   readonly retryable: boolean
   /**
-   * Only meaningful when `retryable` is `false` — defaults to `false`
-   * (safe to resubmit) when omitted. Most non-retryable failures are still
-   * safe to resubmit through the *original* action: a validation rejection
-   * or an unconfigured feature will fail identically no matter how many
-   * times the same request is fired, but a *new* attempt (corrected input,
-   * or just trying again) is harmless because the boundary knows for
-   * certain the earlier one never took effect. Set this `true` only for
-   * the rarer case where even a new attempt is unsafe — the last attempt's
-   * outcome is genuinely unknown (e.g. a deadline fired on a non-idempotent
-   * write after it may have already reached the server), so firing another
-   * one risks duplicating it rather than just repeating a failure that
-   * didn't happen. See `apps/www/src/lib/intent/errors.ts`'s `fromUnreachable`
-   * for the one producer that sets this.
+   * Only meaningful when `retryable` is `false`; defaults to `false`. A new
+   * attempt is usually harmless because the earlier one certainly never took
+   * effect. Set `true` only when the last attempt's outcome is unknown (a
+   * deadline fired on a non-idempotent write that may have landed), so a new
+   * one could duplicate it. See `fromUnreachable` in
+   * `apps/www/src/lib/intent/errors.ts`, the one producer.
    */
   readonly blocksResubmission?: boolean
   /** For a person. Plain text, no markup, safe to render as-is. */
   readonly summary: string
   /**
-   * For a developer. Never rendered — required rather than optional so the
-   * diagnostic channel and the signal channel can't drift apart by one
-   * being forgotten. Log it, attach it to a report; do not put it in the
-   * DOM.
+   * For a developer: log it, never render it. Required, so the diagnostic
+   * channel cannot be forgotten.
    */
   readonly cause: unknown
 }
@@ -73,14 +56,10 @@ export type IntentError = {
 const GENERIC_SUMMARY = "Something didn't work. You can try again."
 
 /**
- * The fallback normalizer: total, and never throws. Anything this function
- * doesn't recognise still produces a valid `IntentError` — `kind: "unknown"`,
- * `retryable: true`, because the safer default for a failure this boundary
- * can't name is to let a person try again rather than to tell them not to.
+ * The fallback normalizer: total, never throws. An unrecognised failure is
+ * `unknown` and retryable, the safer default. Transport-aware boundaries
+ * normalize first and fall back to this (see `apps/www/src/lib/intent/errors.ts`).
  *
- * App/package boundaries that know about a specific transport (file_host,
- * a REST client, …) should normalize first and fall back to this only for
- * what they don't recognise — see `apps/www/src/lib/intent/errors.ts`.
  */
 export function toIntentError(error: unknown): IntentError {
   return {

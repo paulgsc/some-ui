@@ -2,85 +2,44 @@
  * The coverage watchdog — a Sensor dedicated to self-observation, separate
  * from `adapter/pipeline.ts`'s theming Sensor.
  *
- * Re-reads the live DOM artifacts `coverage-observability.ts`'s
- * `CoverageContext` needs (the veil, `data-sw-dark`, `data-sw-legacy`, the
- * legacy `<style>` tag's own text) on every mutation that could plausibly
- * have touched one of them, and evaluates the invariants against what is
- * actually there — never against what `content.ts` last believed it did.
- * See `coverage-observability.ts`'s header comment for why that distinction
- * is the whole point.
+ * Re-reads the live DOM artifacts `CoverageContext` needs (the veil,
+ * `data-sw-dark`, `data-sw-legacy`, the legacy `<style>`'s text) on every
+ * mutation that could have touched one, and evaluates the invariants against
+ * what is there — never against what `content.ts` last believed it did (see
+ * `coverage-observability.ts`'s header).
  *
  * ## Scope of observation, and why it stays cheap
  *
  * Three observers, none of them a `subtree: true` walk over `<html>`:
  *
- *   - one on `document.documentElement` (`childList` + a narrow
- *     `attributeFilter`) — catches `<head>`/`<body>` being swapped wholesale
- *     (they are `<html>`'s direct children) and `<html>`'s own attributes
- *     changing. The legacy `<style>` tag (`theme-apply.ts`'s
- *     `applyLegacyFilter`) is itself anchored directly on `<html>`, not
- *     `<head>` — the same head-swap vulnerability this watchdog exists to
- *     catch used to be able to carry that stylesheet off silently, so it no
- *     longer lives somewhere a whole-`<head>` replacement can take it with
- *     it. This observer's `childList` on `documentElement` is what notices
- *     it being individually added or removed now;
- *   - one on `document.head` (`childList` + `subtree` + `characterData`) —
- *     catches the dark `<style>` tag being individually added or removed
- *     without the rest of `<head>` going with it, *and* a vendor reconciler
- *     that retains the tag but clears or replaces its own `textContent` in
- *     place (a `childList` mutation on the `<style>` element itself, a
- *     descendant of `<head>`, not on `<head>` directly — invisible to a
- *     non-subtree observer here, and invisible to `pipeline.ts`'s own
- *     Sensor too, since that mutation's target carries `[data-my-ext]` and
- *     is filtered out as self-authored). `subtree` stays scoped to
- *     `<head>`, not `<html>`, so it does not become the `subtree: true`
- *     walk this module's intro explains the cost of avoiding — `<head>`'s
- *     children churn nowhere near as often as `<body>`'s;
- *   - one on the legacy `<style>` element itself (`childList` +
- *     `subtree` + `characterData`, one element, no descendants but its own
- *     text node) — the same in-place-wipe case as above for the one
- *     extension stylesheet that no longer lives under `<head>`. The
- *     `<html>` observer sees that element come and go (it is `<html>`'s
- *     direct child) but, being non-subtree by design, cannot see its text
- *     change; widening the `<html>` observer to `subtree` would be the
- *     whole-document walk this module exists to avoid, so the element gets
- *     its own narrow observer, re-attached whenever the `<html>` observer
- *     fires (which covers the element being re-created).
+ *   - `document.documentElement` (`childList` + a narrow `attributeFilter`):
+ *     catches `<head>`/`<body>` being swapped and `<html>`'s attributes
+ *     changing. The legacy `<style>` is anchored on `<html>` (so a `<head>`
+ *     swap cannot carry it off), and this observer sees it added or removed;
+ *   - `document.head` (`childList` + `subtree` + `characterData`): catches the
+ *     dark `<style>` being removed, *and* a vendor clearing its `textContent`
+ *     in place — a mutation on a `[data-my-ext]` descendant that
+ *     `pipeline.ts`'s Sensor filters out as self-authored. `<head>` churns far
+ *     less than `<body>`;
+ *   - the legacy `<style>` element itself (same options): the same in-place
+ *     wipe for the stylesheet outside `<head>`. Widening the `<html>` observer
+ *     to `subtree` would be the whole-document walk this avoids, so it gets
+ *     its own observer, re-attached whenever the `<html>` observer fires.
  *
- * `pipeline.ts`'s own Sensor already pays for a `subtree: true` walk in auto
- * mode, because it needs to find every vendor surface. This watchdog needs
- * none of that — every fact `CoverageContext` reads is reachable by id/
- * attribute lookup — so it deliberately does not reuse that observer or its
- * scope. A page as busy as a YouTube watch page can emit thousands of
- * subtree mutations a minute; a `childList`-only pair of observers is
- * unaffected by all of them and only fires for the handful that could matter
- * here, which is what makes running the check *un-throttled* affordable (the
- * whole reason to avoid debouncing it is in `coverage-observability.ts`'s
- * header — a coalesced check could straddle exactly the race it exists to
- * catch).
+ * Every fact `CoverageContext` reads is reachable by id/attribute lookup, so
+ * this does not reuse the pipeline's subtree observer. A busy page emits
+ * thousands of subtree mutations a minute; these observers ignore them,
+ * which is what makes running the check un-throttled affordable (a debounced
+ * check could straddle the race it exists to catch).
  *
- * The head observer is re-attached whenever the html observer sees `<head>`
- * itself get replaced (the `document.head` a listener captured at `observe()`
- * time is not the live one after that).
+ * The head observer is re-attached whenever `<head>` itself is replaced.
  *
  * ## Not purely observational
  *
- * One violation gets repaired here, not just recorded: `DarkSignalsAgree`
- * (`data-sw-dark` still declared true while `#__sw_dark_theme`'s actual CSS
- * is gone) re-arms the prepaint veil — see `repairDarkDesync()`. That is the
- * one gap this watchdog is positioned to close safely and unambiguously; the
- * legacy pair and the general "nothing at all is covering the page" case are
- * left to the existing recovery paths (nav-finish, the pipeline's own
- * reactive rescan) for reasons `repairDarkDesync()`'s own comment covers.
- *
- * That repair calls `enablePrepaint()` directly — a path SF-BS's (#1266)
- * document-scope registry does not own, same as `yt-navigate-start`'s own
- * direct call. `createCoverageWatchdog()`'s optional `onVeilRearmed`
- * callback exists so a caller tracking that registry's custody (content.ts,
- * via `documentScope.reengage()`) can reconcile exactly when this repair
- * fires, not just when navigation does — a plain cache-only reset is not
- * enough here either (see `document-scope.ts`'s own header for the race
- * that left open).
+ * One violation is repaired here: `DarkSignalsAgree` re-arms the veil (see
+ * `repairDarkDesync()`). That bypasses the document-scope registry, so the
+ * optional `onVeilRearmed` callback lets the caller reconcile custody
+ * (content.ts → `documentScope.reengage()`; see `document-scope.ts`'s header).
  */
 
 import { ENFORCEMENT_SENTINEL_PROPERTY } from "@filter/adapter/enforcement-sheet"
@@ -118,7 +77,7 @@ import {
 export type CoverageWatchdog = {
   /** Attach both observers. Idempotent. */
   observe(): void
-  /** Force an immediate check outside of the mutation-driven path — call right after a state transition or nav event so the timeline records the moment that happened, not just the next incidental mutation. */
+  /** Force an immediate check outside the mutation-driven path, so the timeline records a state transition or nav event when it happened. */
   check(reason: string): void
   /** Disconnect both observers. Safe to call when not observing. */
   teardown(): void
@@ -181,7 +140,7 @@ function collectContext(
   }
 }
 
-/** SF-CUT3 (#1489): see `CoverageContext.enforcedCanvas`. One style read, and only while enforcing. */
+/** See `CoverageContext.enforcedCanvas`. One style read, and only while enforcing. */
 function readEnforcedCanvas(
   html: HTMLElement,
   expectedSwatchId: string | null
@@ -196,35 +155,24 @@ function readEnforcedCanvas(
 
 /**
  * Repair the one coverage gap this watchdog can safely close on its own:
- * `data-sw-dark` (declared, `<html>`, survives a `<head>` swap) still says
- * the static dark-theme layer should be on, but `#__sw_dark_theme` (real,
- * inside `<head>`) is gone — a vendor document flush carried off the
- * stylesheet and left the attribute behind. content.ts still believes dark
- * is required; nothing is currently rendering it. Re-arming the veil closes
- * that window until the next pipeline round (nav-finish, or the Sensor's own
- * reactive rescan) settles a fresh verdict and lifts it again.
+ * `data-sw-dark` (on `<html>`, survives a `<head>` swap) still declares dark,
+ * but `#__sw_dark_theme` (inside `<head>`) is gone — a vendor flush carried
+ * off the stylesheet. Re-arming the veil covers the page until the next
+ * pipeline round settles a fresh verdict.
  *
- * Deliberately narrower than "any CoverageHeld violation": the same
- * invariant also fires, correctly, whenever `decide()` itself emits
- * `restore-native` (the page reads as already dark, so content.ts's onFire
- * routes an EXONERATED_NATIVE verdict through document-scope.ts's registry
- * custodian, releasing the veil on purpose — SF-BS, #1266) — there both
- * signals go false
- * *together*, `darkThemeActive === darkStyleActive` still holds, and
- * `DarkSignalsAgree` does not fire. Keying the repair off that invariant
- * instead of `CoverageHeld` is what keeps a correct "native already dark,
- * nothing to cover" verdict from being clobbered by a veil that would never
- * come back down.
+ * Keyed off `DarkSignalsAgree`, not `CoverageHeld`: `CoverageHeld` also fires,
+ * correctly, when `decide()` emits `restore-native` and the veil is released
+ * on purpose. There both signals go false together, so `DarkSignalsAgree`
+ * holds and the correct "already dark" verdict is not clobbered.
  *
- * The legacy pair gets no equivalent repair here: `VeilColorMatchesLegacyState`
- * documents why the veil's *color* under legacy is selected from the
- * `data-sw-legacy` attribute alone (prepaint.css's `html[data-sw-legacy]`
- * selector), so re-arming it while that attribute is stale but the filter
- * genuinely isn't running would paint a white veil with no invert() left to
- * composite it back to dark — trading one gap for a literal flash. The dark
- * veil's color has no such dependency, so no equivalent risk exists here.
+ * No equivalent legacy repair: the legacy veil's colour is selected from
+ * `data-sw-legacy` alone (see `VeilColorMatchesLegacyState`), so re-arming it
+ * while the attribute is stale and the filter gone would paint a white veil
+ * with no invert() — trading a gap for a flash.
+ *
+ * Returns whether it re-armed the veil, so the caller can reconcile the
+ * registry it bypassed.
  */
-/** Returns whether it actually re-armed the veil, so a caller whose custody bookkeeping lives outside this module (SF-BS, #1266's `documentScope.reengage()`) knows to reconcile — this call is exactly as much a bypass of the registry as `yt-navigate-start`'s own direct `enablePrepaint()` call, for the same reason. */
 function repairDarkDesync(ctx: CoverageContext): boolean {
   if (ctx.tabState !== "auto") return false
   if (!ctx.darkThemeActive || ctx.darkStyleActive) return false
@@ -235,28 +183,19 @@ function repairDarkDesync(ctx: CoverageContext): boolean {
 export function createCoverageWatchdog(
   recorder: CoverageRecorder,
   getTabState: () => TabState,
-  /**
-   * SF-RC5 (#1344): true for the single synchronous window between
-   * `content.ts`'s `applyState` publishing a new `tabState` and that
-   * state's actuation completing — see `CoverageContext.transitioning`'s
-   * own doc comment for why `CoverageHeld` needs this at all.
-   */
+  /** True between `applyState` publishing a new `tabState` and its actuation completing — see `CoverageContext.transitioning`. */
   getTransitioning: () => boolean,
   /**
-   * Called immediately after `repairDarkDesync()` actually re-arms the
-   * veil (never on a check that finds nothing to repair). content.ts wires
-   * this to `documentScope.reengage()` — a plain idempotency-cache reset is
-   * not enough here: it would not invalidate a `resolveCommitted()` call
-   * still in flight, which could otherwise complete afterward and tear the
-   * veil this repair just put back up right back down (see
-   * `document-scope.ts`'s own header), the same bug class
-   * `yt-navigate-start` needed the same fix for.
+   * Called right after `repairDarkDesync()` re-arms the veil. content.ts
+   * wires this to `documentScope.reengage()`, which also invalidates any
+   * in-flight `resolveCommitted()` that would otherwise tear the veil back
+   * down (`document-scope.ts`'s header).
    */
   onVeilRearmed?: () => void,
   /**
-   * SF-CUT3 (#1489): the swatch id the enforcement sheet's sentinel should
-   * carry while this tab is enforcing, or `null` when it is not (flag off,
-   * or not auto). See `CoverageContext.enforcedCanvas`.
+   * The swatch id the enforcement sheet's sentinel should carry while this
+   * tab is enforcing, or `null` when it is not. See
+   * `CoverageContext.enforcedCanvas`.
    */
   getEnforcedCanvas: () => string | null = () => null
 ): CoverageWatchdog {
@@ -274,11 +213,8 @@ export function createCoverageWatchdog(
     headObserver?.disconnect()
     observedHead = document.head
     headObserver = new MutationObserver(() => check("head-mutation"))
-    // subtree + characterData: a content-only wipe of an existing extension
-    // <style> tag (textContent = "", or a direct Text.data mutation) must be
-    // caught here — see this module's header comment for why neither a
-    // childList-only observer on <head> itself nor pipeline.ts's Sensor sees
-    // it.
+    // subtree + characterData: catches an in-place wipe of an extension
+    // <style> (see the header).
     headObserver.observe(document.head, {
       childList: true,
       subtree: true,
@@ -287,10 +223,8 @@ export function createCoverageWatchdog(
   }
 
   // The legacy <style> is anchored on <html>, outside the head observer's
-  // reach (see this module's header). Same in-place-wipe coverage, scoped to
-  // that one element; re-attached from the html observer's callback so a
-  // re-created element (applyLegacyFilter after a nav, or a vendor removing
-  // and re-adding it) is picked up on the same mutation that announces it.
+  // reach. Re-attached from the html observer's callback so a re-created
+  // element is picked up on the mutation that announces it.
   function attachLegacyStyleObserver(): void {
     const style = document.getElementById(LEGACY_FILTER_STYLE_ID)
     if (style === observedLegacyStyle) return
@@ -313,8 +247,8 @@ export function createCoverageWatchdog(
     recorder.count("coverage_checks")
     recorder.setSnapshot("coverage", { ...ctx, reason })
 
-    // Fire-and-forget: the check itself must stay synchronous (see this
-    // module's header) but recording the outcome need not block it.
+    // Fire-and-forget: the check itself must stay synchronous; recording the
+    // outcome need not block it.
     void runInvariants(coverageInvariants, ctx, ctx.now).then((results) => {
       for (const result of results) {
         if (
@@ -396,100 +330,58 @@ export function createCoverageWatchdog(
   }
 }
 
-// ── SF-OB (#1270): scope-quantified coverage ─────────────────────────────────
+// ── Scope-quantified coverage ─────────────────────────────────────────────────
 //
-// A second, independent watchdog, deliberately not folded into
-// `createCoverageWatchdog` above: that one's whole design (this file's own
-// header) is *purely reactive*, scoped to two cheap, narrow `<html>`/`<head>`
-// observers specifically because the document is the only scope it watches.
-// A live scope can be an arbitrarily-nested `ShadowRoot` anywhere in the
-// page, so there is no equivalently narrow DOM region to observe reactively
-// for "did some scope's own artifact change" — the same reachability
-// argument `shadow-scope-discovery.ts`'s own `DISCOVERY_POLL_MS` backstop
-// already makes for *discovering* a scope applies here to *auditing* one.
-// This watchdog therefore polls, at a cadence chosen for debug-page
-// freshness only (nothing safety-critical depends on this running fast —
-// per #1270's own "out of scope: any new custody logic," this instrument
-// never repairs anything it finds, only reports it).
+// A second, independent watchdog. The document watchdog above is purely
+// reactive because the document has a narrow region to observe; a live scope
+// can be a `ShadowRoot` anywhere, so there is no narrow region, and (the same
+// argument as `DISCOVERY_POLL_MS`) this polls. The cadence is for debug-page
+// freshness only: this instrument never repairs anything, only reports.
 //
-// Two halves, wired at different points in a caller's own construction
-// order (`content.ts`'s own module-init sequence, `registryObserver`/
-// `onDiscovered` passed into `createScopeRegistry()`/
-// `createShadowScopeDiscovery()` *before* either exists as a live object,
-// `observe()`/`check()` called *after*, once both do):
+// Two halves, wired at different points of content.ts's construction order
+// (`registryObserver`/`onDiscovered` passed into `createScopeRegistry()`/
+// `createShadowScopeDiscovery()`, then `observe()`/`check()` once they exist):
 //
-//   1. Event-driven cumulative counters (`registryObserver`, `onDiscovered`)
-//      — fired synchronously by `scope-registry.ts`'s own transition wrapper
-//      and `shadow-scope-discovery.ts`'s own registration call, so these
-//      need no polling at all: hold/release/rehold/commit/exoneration/
-//      failure/stale-discard counts, per-scope state-duration timings, and
-//      the census-vs-reactive discovery split are all exact, not sampled.
-//   2. The periodic per-scope snapshot and `ScopeCoverageHeld` check
-//      (`observe()`/`check()`) — this is the half that actually needs
-//      polling: whether a scope's own DOM artifact is still present can
-//      drift with no registry transition at all (a vendor stripping
-//      `data-sw-patched` off a `COMMITTED` scope's surface is explicitly
-//      *not* treated as vendor evidence by `shadow-scope-discovery.ts`'s own
-//      `isThemeTaggingMutation` filter — see that function's own doc
-//      comment — so nothing else in this codebase ever notices).
+//   1. Event-driven counters (`registryObserver`, `onDiscovered`), fired
+//      synchronously by the registry and discovery: exact, not sampled.
+//   2. The periodic per-scope snapshot and `ScopeCoverageHeld` check. A
+//      scope's DOM artifact can drift with no registry transition (a vendor
+//      stripping `data-sw-patched` is deliberately not vendor evidence to
+//      `isThemeTaggingMutation`), so nothing else notices.
 
-/** Diagnostics-freshness cadence only — see this section's own header for why this is a poll rather than a reactive observer, and why its exact value carries no safety weight the way `DISCOVERY_POLL_MS` (that constant's own doc comment) does. */
+/** Diagnostics-freshness cadence only; carries no safety weight, unlike `DISCOVERY_POLL_MS`. */
 export const SCOPE_COVERAGE_POLL_MS = 250
 
 /**
- * Hard cap on how many individual scope entries the "scopes" snapshot
- * itemizes, independent of `createCoverageRecorder`'s own (already-widened)
- * `maxDetailBytes` — bot-found (#1327's own review). A page extreme enough
- * to exceed even that budget must still produce a *renderable* snapshot
- * (`byState`/`totalScopes` accurate over every live scope, `scopes` capped
- * with `truncated: true`) rather than silently failing
- * `debug/index.ts`'s own `isScopeCoverageSnapshot()` type guard and losing
- * the per-scope breakdown entirely — the same failure mode the byte-budget
- * widening alone does not fully close for a sufficiently pathological page.
- * ~120 bytes/entry (a `shadow:NNN` id, a same-shaped parent id, kind,
- * boolean) keeps 100 entries comfortably under the 16 KB budget alongside
- * `byState`/`now`/`reason`'s own small fixed overhead.
+ * Hard cap on the scope entries the "scopes" snapshot itemizes, independent
+ * of the recorder's `maxDetailBytes`. An extreme page must still produce a
+ * snapshot that passes `debug/index.ts`'s `isScopeCoverageSnapshot()` guard
+ * (`byState`/`totalScopes` exact, `scopes` capped with `truncated: true`).
+ * ~120 bytes/entry keeps 100 entries well under the 16 KB budget.
  */
 export const MAX_SNAPSHOT_SCOPE_ENTRIES = 100
 
-/** SF-OB's own per-scope snapshot shape, published under `setSnapshot("scopes", ...)` — read by `debug/index.ts`'s per-scope breakdown table. */
+/** The per-scope snapshot published under `setSnapshot("scopes", ...)`, read by `debug/index.ts`'s per-scope table. */
 export type ScopeCoverageSnapshot = {
   readonly now: number
   readonly totalScopes: number
   /**
-   * Every `ScopeStateKind` (including `DISCOVERED_UNHELD`), zero-filled.
-   * `DISCOVERED_UNHELD`'s own count is asserted zero here by construction —
-   * `scope-registry.ts`'s own type system never lets this registry produce
-   * one as a resting value (`DiscoveredUnheldStateKind`'s own doc comment) —
-   * included so that guarantee is externally checkable in the diagnostics
-   * bundle a human reads, per #1270's own acceptance criterion, not merely
-   * true of code nobody re-verifies from the outside.
+   * Every `ScopeStateKind`, zero-filled. `DISCOVERED_UNHELD` is zero by
+   * construction (`DiscoveredUnheldStateKind`), included so that guarantee
+   * is checkable from the diagnostics bundle.
    */
   readonly byState: Readonly<Record<ScopeStateKind, number>>
-  /**
-   * Capped at `MAX_SNAPSHOT_SCOPE_ENTRIES` — `totalScopes`/`byState` above
-   * stay accurate over *every* live scope regardless; only this itemized
-   * list is bounded. See `MAX_SNAPSHOT_SCOPE_ENTRIES`'s own doc comment.
-   */
+  /** Capped at `MAX_SNAPSHOT_SCOPE_ENTRIES`; `totalScopes`/`byState` cover every live scope. */
   readonly scopes: ReadonlyArray<ScopeCoverageEntry>
-  /** True when `scopes` above was truncated — `totalScopes - scopes.length` more exist but aren't itemized in this snapshot. */
+  /** True when `scopes` was truncated. */
   readonly truncated?: boolean
 }
 
 /**
- * Selects which `MAX_SNAPSHOT_SCOPE_ENTRIES` scopes survive truncation —
- * bot-found (#1327's own closing review): a plain `slice(0, limit)` always
- * keeps the *oldest*-discovered entries, so on a page registering more
- * scopes than the cap, a violation on scope 101+ never appears in the
- * persisted "Live scopes" table at all — `checkArtifactCoverage` (which
- * runs against the full, untruncated `scopes` array) still fires the real
- * `scope.coverage_violated` event and increments `scope_coverage_violations`
- * correctly, but a human reading `debug.html` would see only healthy rows
- * and have no way to find the one that actually broke. Every scope with
- * `artifactPresent === false` is reserved a slot first (in their original
- * relative order); the remainder is filled with whatever's left, oldest
- * first — the same ordering `slice(0, limit)` alone produced when nothing
- * is violating.
+ * Selects which scopes survive truncation: every scope with
+ * `artifactPresent === false` first (in order), then the rest oldest-first.
+ * A plain `slice` would hide a violation on scope 101+ from the debug page's
+ * table even though the event still fires.
  */
 function prioritizeViolations(
   scopes: ReadonlyArray<ScopeCoverageEntry>,
@@ -507,7 +399,7 @@ export type ScopeCoverageWatchdog<Rho = unknown, Pi = unknown> = {
   onDiscovered(id: ScopeId, method: ShadowScopeDiscoveryMethod): void
   /** Starts the periodic per-scope check against `registry`. Idempotent. */
   observe(registry: ScopeRegistry<Rho, Pi>): void
-  /** Force an immediate check outside the poll cadence — call right after a state transition or nav event, mirroring `CoverageWatchdog.check()`'s own rationale. */
+  /** Force an immediate check outside the poll cadence, as `CoverageWatchdog.check()`. */
   check(registry: ScopeRegistry<Rho, Pi>, reason: string): void
   /** Stops the poll. Safe to call when not observing. */
   teardown(): void
@@ -517,23 +409,14 @@ export function createScopeCoverageWatchdog<Rho = unknown, Pi = unknown>(
   recorder: CoverageRecorder
 ): ScopeCoverageWatchdog<Rho, Pi> {
   const enteredAt = new Map<ScopeId, number>()
-  // Keyed by scope id, not one aggregate flag (ScopeCoverageHeld's own
-  // shape, coverage-observability.ts) — see checkArtifactCoverage()'s own
-  // header for why a single aggregate boolean under-counts real violations
-  // here.
+  // Per scope id, not one aggregate flag — see checkArtifactCoverage().
   const artifactOk = new Map<ScopeId, boolean>()
   const violatedSince = new Map<ScopeId, number>()
   let pollHandle: ReturnType<typeof setInterval> | null = null
-  // Content signature (id/kind/parent/artifactPresent per scope) of the
-  // last *written* "scopes" snapshot — bot-found (#1327's own review): the
-  // 250ms poll calling setSnapshot()/count() unconditionally on every tick
-  // keeps re-arming the recorder's own 1s flush debounce forever, writing
-  // the full diagnostics bundle to storage.local roughly once a second for
-  // the entire lifetime of every open auto-mode tab, changed or not. Only
-  // writing when this signature actually differs from the last check's
-  // makes an idle tab (the overwhelmingly common case) settle into zero
-  // ongoing storage churn, the same way the reactive document watchdog
-  // above already only records on an actual transition.
+  // Signature of the last *written* "scopes" snapshot. Writing on every
+  // 250ms tick would keep re-arming the recorder's 1s flush debounce and
+  // write storage.local about once a second for every open auto tab; gating
+  // on change lets an idle tab settle to zero storage churn.
   let lastSnapshotSignature: string | undefined
 
   function noteDuration(id: ScopeId, now: number): void {
@@ -548,10 +431,8 @@ export function createScopeCoverageWatchdog<Rho = unknown, Pi = unknown>(
     const now = Date.now()
     const scopes: Array<ScopeCoverageEntry> = registry.ids().map((id) => {
       const snap = registry.snapshot(id)
-      // registry.ids() and registry.snapshot() both read the same live
-      // Map — a snapshot is only ever undefined here if a concurrent
-      // caller purged the id between the two calls, which this
-      // synchronous function never does to itself.
+      // ids() and snapshot() read the same live Map; nothing purges
+      // between them in this synchronous function.
       if (snap === undefined) {
         throw new Error(`[scope-coverage] no snapshot for live id: ${id}`)
       }
@@ -570,14 +451,12 @@ export function createScopeCoverageWatchdog<Rho = unknown, Pi = unknown>(
       EXONERATED_NATIVE: 0,
       FAILED_HELD: 0,
       RETIRED: 0,
-      // Asserted zero by construction, never incremented — see
-      // ScopeCoverageSnapshot's own "byState" doc comment.
+      // Zero by construction, never incremented (see ScopeCoverageSnapshot).
       DISCOVERED_UNHELD: 0,
     }
     for (const s of scopes) byState[s.kind] += 1
 
-    // Excludes `now`/`reason`, which always differ — this signature is
-    // "did the actually-interesting content change," not "did time pass."
+    // Excludes `now`/`reason`, which always differ.
     const signature = JSON.stringify({ byState, scopes })
     if (signature !== lastSnapshotSignature) {
       lastSnapshotSignature = signature
@@ -594,29 +473,18 @@ export function createScopeCoverageWatchdog<Rho = unknown, Pi = unknown>(
       })
       recorder.count("scope_coverage_checks")
     }
-    // checkArtifactCoverage keeps its own per-scope-id bookkeeping and
-    // records violation/recovery events directly — it must run every check
-    // regardless of the write-gate above, not because it would otherwise
-    // miss a transition (any real one also changes `signature`), but
-    // because it *is* what maintains that per-id state in the first place.
+    // Runs every check regardless of the write gate: it maintains the
+    // per-id state itself.
     checkArtifactCoverage(scopes, now, reason)
   }
 
   /**
-   * Diffs each scope's own `artifactPresent` against *that scope's own*
-   * last-seen value — never a single aggregate "is anything violated right
-   * now" flag. `ScopeCoverageHeld` (coverage-observability.ts) computes
-   * exactly that aggregate, and is deliberately not used here: diffing the
-   * aggregate against one shared `lastStatus` under-counts real violations
-   * whenever one scope's violation resolves and a *different* scope's own
-   * violation begins before a poll ever observes the momentary all-clear in
-   * between — the aggregate reads "violated" both before and after, so nothing
-   * ever appears to change. Bot-found in this story's own e2e coverage: a
-   * document-scope bootstrap-timing violation (resolved within one poll tick)
-   * masked the very shadow-scope desync this story exists to detect, because
-   * both look identical to a single shared "violated" flag. Per-scope
-   * tracking makes each scope's own transition independently observable
-   * regardless of what any other scope is doing at the same time.
+   * Diffs each scope's `artifactPresent` against *that scope's* last-seen
+   * value. The aggregate `ScopeCoverageHeld` is deliberately not used:
+   * diffed against one shared status, it under-counts whenever one scope's
+   * violation resolves and another's begins between polls (it reads
+   * "violated" both times). Seen in e2e: a short document-scope bootstrap
+   * violation masked a shadow-scope desync.
    */
   function checkArtifactCoverage(
     scopes: ReadonlyArray<ScopeCoverageEntry>,
@@ -659,10 +527,9 @@ export function createScopeCoverageWatchdog<Rho = unknown, Pi = unknown>(
       }
     }
 
-    // A retired-and-purged (or artifact-inapplicable) scope stops being
-    // tracked — a later re-registration under the same id (Definition D.5's
-    // "fresh identity" rule) must not read as a spurious recovery against
-    // stale tracking.
+    // A purged (or artifact-inapplicable) scope stops being tracked, so a
+    // re-registration under the same id (Definition D.5's "fresh identity")
+    // is not read as a recovery.
     for (const id of artifactOk.keys()) {
       if (!liveIds.has(id)) {
         artifactOk.delete(id)
@@ -677,11 +544,9 @@ export function createScopeCoverageWatchdog<Rho = unknown, Pi = unknown>(
         noteDuration(id, Date.now())
         switch (event.kind) {
           case "register": {
-            // Discovery attribution (census vs. reactive) and the
-            // "scope.discovered" event itself are owned by onDiscovered
-            // below, called separately by shadow-scope-discovery.ts right
-            // after this same register() call — recording it here too would
-            // double the event for every real discovery.
+            // "scope.discovered" and its census/reactive attribution belong
+            // to onDiscovered, called right after this register(); recording
+            // here too would double it.
             recorder.count("scope_holds")
             return
           }
@@ -718,24 +583,16 @@ export function createScopeCoverageWatchdog<Rho = unknown, Pi = unknown>(
           case "retire": {
             recorder.count("scope_releases")
             recorder.record({ kind: "scope.retired", detail: { id } })
-            // noteDuration() above already folded the final
-            // scope_state_duration_ms for whatever state this scope was
-            // retiring out of; its own fresh enteredAt entry for `id` is
-            // now garbage — retire is always immediately followed by
-            // registry.purge(id) (shadow-scope-discovery.ts), which has no
-            // observer callback of its own to clean this map up. Bot-found
-            // (#1327's own review, round 4): left unset, this map grows one
-            // entry per ever-retired scope for the life of a long-lived
-            // auto-mode SPA session, and would misattribute a duration
-            // across two unrelated identities if a purged id were ever
-            // reused.
+            // noteDuration() already folded this scope's final interval.
+            // retire is always followed by registry.purge(id), which has no
+            // observer callback, so drop the fresh entry here or the map
+            // grows per retired scope and could misattribute a reused id.
             enteredAt.delete(id)
             return
           }
           case "start-resolving":
           case "retry": {
-            // No hold/release/rehold of its own — the scope stays held
-            // throughout HELD->RESOLVING and FAILED_HELD->RESOLVING alike.
+            // The scope stays held through HELD/FAILED_HELD -> RESOLVING.
             return
           }
           default: {
@@ -786,14 +643,10 @@ export function createScopeCoverageWatchdog<Rho = unknown, Pi = unknown>(
         clearInterval(pollHandle)
         pollHandle = null
       }
-      // Bot-found (#1327's own review, round 5): a scope commonly reaches
-      // teardown() still resting in whatever state it last settled into —
-      // the document scope especially, since neither a mode switch away
-      // from auto nor pagehide ever retires it — and clearing enteredAt
-      // unconditionally discarded that entire final interval (frequently
-      // the *longest* one, e.g. hours spent COMMITTED) without ever folding
-      // it into scope_state_duration_ms, systematically biasing the
-      // aggregate toward only the short early transitions.
+      // Fold each scope's final interval before clearing: scopes (the
+      // document especially) commonly reach teardown still resting in a
+      // state, often the longest one, and dropping it would bias the
+      // aggregate toward short transitions.
       const now = Date.now()
       for (const since of enteredAt.values()) {
         recorder.observe("scope_state_duration_ms", now - since)

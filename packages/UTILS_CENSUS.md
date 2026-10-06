@@ -3,13 +3,22 @@
 > **Superseded counts (2026-10-02).** This is a dated snapshot. Workspaces it
 > counts as consumers have since been deleted: `nfl`, `attributions` and
 > `overlays` earlier, `emoji-animations` in #1640, `input` and `stepper` in
-> #1644, and `slideshow`, `makjang`, `neon-sign`, `umag` and `assessment` in
-> #1645. Do not score a hoist or de-hoist from these rows without recounting.
+> #1644, `slideshow`, `makjang`, `neon-sign`, `umag` and `assessment` in
+> #1645, and `chat` later. Do not score a hoist or de-hoist from these rows without recounting.
 > Known consequences of #1644 alone:
 > `createSequentialCycler` is dead (its one consumer was `stepper`), and
 > `getRandomSubarray`, `useObsStatusWebSocket` and `createEventBus` are down
 > to one consumer at most. The recount, by knip with `includeEntryExports`
 > rather than by hand, is tracked in #1647.
+> Since deleted from `some-ui-utils` as unused (knip
+> `--include-entry-exports`): the whole OBS store and `useObsStatusWebSocket`
+> (§7), `useRegionRect`/`useRegionRectStore` (§11), `useFetch`,
+> `useInterval`, `useEventListener`, `useIsomorphicLayoutEffect` and
+> `useContainerRect` (§2), `hasErrors`/`formatLibraryError` (§9),
+> `preloadRegistryComponents`/`hasRegistryKey` (§10), and `useMode`,
+> `selectProgress`, `selectConnectionStatus` (§6a), plus `createEventBus` (§12,
+> its last consumer was `packages/ui/dice-card`). `useIsMounted` stays
+> internal to `useResizeObserver` only. Rows below that name them are history.
 
 > Evidence base for UTL-FOUND S2 (#521). Every hoist/keep/de-hoist decision
 > in this milestone is scored against this table via the

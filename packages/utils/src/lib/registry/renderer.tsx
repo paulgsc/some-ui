@@ -2,7 +2,6 @@ import type { ComponentType, ReactNode } from "react"
 import { Component, Suspense } from "react"
 import type { ComponentRegistry } from "@some-ui/types"
 
-// Error Boundary
 class ComponentErrorBoundary extends Component<
   { fallback?: ReactNode; children: ReactNode },
   { hasError: boolean; error?: Error }
@@ -46,26 +45,13 @@ function assertIsValidProps(
 }
 
 /**
- * Component enhancer - transforms a component into an enhanced version
- *
- * This is the key abstraction for dependency inversion:
- * - Renderer doesn't know about focus, analytics, theming, etc.
- * - Callers provide enhancers that inject whatever they need
- * - Composable and type-safe
+ * Wraps a component with whatever a caller needs (focus, analytics,
+ * theming), so the renderer itself knows none of those.
  */
 export type ComponentEnhancer<P extends object = Record<string, unknown>> = (
   Component: ComponentType<P>
 ) => ComponentType<P>
 
-/**
- * Registry render policy configuration
- *
- * Pure composition interface with no knowledge of:
- * - Focus system
- * - Region types
- * - Hooks
- * - Domain-specific concerns
- */
 export type RegistryRenderPolicy = {
   withErrorBoundary?: boolean
   withSuspense?: boolean
@@ -92,18 +78,9 @@ function getEnhanced<P extends object>(
 }
 
 /**
- * Core registry component renderer
- *
- * Resolves a component from the registry and wraps it with
- * configurable policies (Suspense, Error Boundary, Enhancement)
- *
- * This is the single source of truth for registry-based rendering.
- * It is completely generic and unaware of:
- * - Focus system
- * - YouTube regions
- * - Any domain-specific features
- *
- * All domain concerns are injected via the `enhanceComponent` policy.
+ * The single registry renderer: resolves `key` and wraps it in the policy's
+ * Suspense, error boundary and enhancer. Domain concerns arrive only through
+ * `enhanceComponent`.
  */
 export function renderRegistryComponent<K extends string>(
   registry: ComponentRegistry<K>,
@@ -111,9 +88,8 @@ export function renderRegistryComponent<K extends string>(
   props: unknown,
   policy: RegistryRenderPolicy = {}
 ): ReactNode {
-  // A saved session can still name a panel the registry no longer has
-  // (#1645 removed eleven keys). It renders as a failed panel would, through
-  // the fallback, rather than throwing before any error boundary exists.
+  // A saved session can name a panel the registry no longer has. It renders
+  // through the fallback rather than throwing before any boundary exists.
   if (!Object.hasOwn(registry, key)) {
     return policy.errorFallback ?? policy.fallback ?? null
   }
@@ -125,15 +101,12 @@ export function renderRegistryComponent<K extends string>(
 
   Component = getEnhanced(Component, policy.enhanceComponent)
 
-  // Build component tree from inside out
   let node: ReactNode = <Component {...props} />
 
-  // Wrap with Suspense if requested
   if (policy.withSuspense) {
     node = <Suspense fallback={policy.fallback ?? null}>{node}</Suspense>
   }
 
-  // Wrap with Error Boundary if requested
   if (policy.withErrorBoundary) {
     node = (
       <ComponentErrorBoundary
@@ -145,11 +118,4 @@ export function renderRegistryComponent<K extends string>(
   }
 
   return node
-}
-
-export function hasRegistryKey<K extends string>(
-  registry: ComponentRegistry<K>,
-  key: string
-): key is K {
-  return key in registry
 }

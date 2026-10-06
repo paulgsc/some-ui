@@ -1,36 +1,14 @@
-// honeycomb's sfx and (optionally) an LLM-generated hangul vocab file both
-// live in packages/some-content (see apps/www/.gitignore) and aren't checked
-// into this app's public/ dir. CI's Pages build (pages.yml) copies sfx into
-// public/ at build time - hangul is deliberately NOT part of that copy step,
-// since the static GitHub Pages build has no companion data at all (see
-// src/lib/hangul-vocab). For local
-// `vite dev` this symlinks both instead, so the dev server serves the
-// real files straight out of packages/some-content, live, with no rebuild
-// needed. Run manually via `pnpm run content:link` when you have the actual
-// asset files locally - deliberately NOT wired into a pre/postinstall or
-// pre<script> hook, since auto-executing Node on install/dev is a footgun
-// (surprise side effects, supply-chain scanner flags on the lifecycle script
-// itself). vite.config.ts warns at dev-server startup if sfx is missing,
-// pointing back at this command - hangul is excluded from that warning since
-// its absence is expected/harmless (HangulHexGrid's own bundled demo pool
-// covers it).
+// honeycomb's sfx and (optionally) an LLM-generated hangul vocab file live in
+// packages/some-content, not this app's public/. The Pages build copies sfx
+// at build time (pages.yml); for local `vite dev` this symlinks both, so the
+// dev server serves them live. Run by hand (`pnpm run content:link`), never
+// from an install or dev hook: auto-executing Node there is a footgun.
+// vite.config.ts warns at startup if sfx is missing.
 //
-// leetype used to be here too, for a fetched `challenges.json` corpus and a
-// tree of code samples. Both went in M20 (#887): an exercise carries its
-// source inline, so no code path fetches a file to start a step, and the
-// exercise shim is the one seam a future generator replaces.
+// Topik lessons are file_host rows now (`import-curriculum`), so a stale
+// `public/topiks` link from an earlier run is removed below.
 //
-// topiks went the same way in #1048: lessons are rows in file_host, served by
-// its curriculum routes and added with its `import-curriculum` command, so
-// nothing here links them. packages/some-content/public/topiks is still where
-// lesson files are authored - it is that command's input. A `public/topiks`
-// link an earlier run of this script left behind is removed below, so a
-// stale copy can't sit in public/ looking like it is still served.
-//
-// No-op for any subdir that doesn't exist locally: these assets are
-// curated/gitignored, not part of a fresh checkout, so a machine without
-// them just runs without honeycomb sound / custom hangul vocab rather than
-// failing.
+// A missing subdir is skipped: these assets are curated and gitignored.
 import {
   existsSync,
   lstatSync,
@@ -77,10 +55,8 @@ for (const name of ["sfx", "hangul"]) {
 
   if (destStat) {
     if (destStat.isSymbolicLink() && readlinkSync(dest) === src) continue
-    // A real (non-symlink) dir/file here is almost always a leftover from
-    // the CI copy step (pages.yml) run locally, or a stale symlink pointing
-    // somewhere else - replace it rather than erroring, since the whole
-    // point of this script is to make public/{name} always resolve to src.
+    // A real dir/file (the CI copy step run locally) or a symlink elsewhere:
+    // replace it, so public/{name} always resolves to src.
     rmSync(dest, { recursive: true, force: true })
   }
 

@@ -1,19 +1,13 @@
 /**
  * Whether this browser is signed in, and the passkey ceremonies that change
- * it.
+ * it (`paulgsc/server` `docs/identity.md`, "Passkey auth").
  *
- * A passkey is the only way in (`paulgsc/server` `docs/identity.md`,
- * "Passkey auth"). The session itself is an `HttpOnly` cookie `file_host`
- * sets and this code can never read: what lives here is only the client's
- * *belief* about it, learned from `GET /auth/session` and from the answers
- * to the ceremonies below. The server is the authority. A `401` from any
- * route ends the belief (`markSignedOut`), and the app sends the person back
- * to the passkey screen.
+ * The session is an `HttpOnly` cookie this code never reads: what lives here
+ * is the client's *belief*, learned from `GET /auth/session` and the
+ * ceremonies. A `401` from any route ends it (`markSignedOut`). Nothing here
+ * holds or sends a name, an email, or a device detail.
  *
- * Nothing here holds or sends a name, an email, or a device detail.
- *
- * On the GitHub Pages build there is no server and so no account: the
- * passkey screen is a preview, and "signing in" only opens the demo
+ * On the Pages build there is no server: "signing in" only opens the demo
  * (`DATA_MODE === "static"`).
  */
 import { useSyncExternalStore } from "react"
@@ -45,10 +39,9 @@ let pending: Promise<boolean> | null = null
 let generation = 0
 
 /**
- * Whether the client currently believes it holds a server session.
- * Synchronous. The belief itself lives in `lib/authority`, next to the
- * person's choice of where their data lives: a session says what the account
- * *could* do, the authority says what it is doing.
+ * Whether the client currently believes it holds a server session. The
+ * belief lives in `lib/authority`: a session says what the account *could*
+ * do, the authority what it is doing.
  */
 export function hasSession(): boolean {
   return authority.getSnapshot().session === "signed-in"
@@ -59,12 +52,10 @@ export function getSessionStatus(): SessionStatus {
 }
 
 /**
- * Call `listener` whenever the authority this tab acts for may have changed:
- * a session ended, a ceremony started one (possibly for another account), or
- * the person moved their data between the device and the account. The app
- * clears its query cache on it (`providers/tanstack-query`), so nothing one
- * authority fetched is shown under the next. Not called when a page load
- * learns of an existing session, which changes no account.
+ * Call `listener` whenever the authority this tab acts for may have changed
+ * (a session ended or started, or data moved between device and account).
+ * The app clears its query cache on it (`providers/tanstack-query`). Not
+ * called when a page load learns of an existing session.
  */
 export function onAccountChange(listener: () => void): () => void {
   return authority.onAuthorityChange(listener)
@@ -112,19 +103,13 @@ function isUnauthorized(error: unknown): boolean {
 
 /**
  * Ask the server, once, whether this browser has a session; later calls
- * return what was learned. Resolves to whether there is one.
+ * return what was learned.
  *
- * Only a caller that has reason to (the person chose their account, or is
- * on the passkey screen) asks. A visitor learning on the device never causes
- * this request: `lib/authority`'s `ensureSessionIfChosen` is the boot-time
- * caller, and it asks only when the account was chosen.
- *
- * An unreachable server is not read as a lost session: the person's choice of
- * the account stands, its calls fail where they can be seen, and the next
- * caller asks again. Only a 401 ends the belief.
+ * A visitor learning on the device never causes this request
+ * (`ensureSessionIfChosen` asks only when the account was chosen). Only a 401
+ * ends the belief; an unreachable server is asked again by the next caller.
  */
 export function resolveSession(): Promise<boolean> {
-  // Only an answer is final: an unreachable server is asked again.
   const known = getSessionStatus()
   if (known === "signed-in" || known === "signed-out") {
     return Promise.resolve(hasSession())
@@ -161,12 +146,9 @@ export function resolveSession(): Promise<boolean> {
 }
 
 /**
- * `resolveSession`, but only for someone who chose their account.
- *
- * This is what boot and a returning account user's first call use. A visitor
- * learning on the device has no reason to ask a server whether they hold a
- * session, so for them it asks nothing and sends nothing: the first request a
- * cookie rides on is one they started themselves, on the passkey screen.
+ * `resolveSession`, but only for someone who chose their account: for a
+ * device learner it sends nothing, so the first request a cookie rides on is
+ * one they started on the passkey screen.
  */
 export function resolveSessionIfChosen(): Promise<boolean> {
   if (authority.getSnapshot().choice !== "account") {
@@ -193,11 +175,10 @@ async function finish(
 
 /**
  * Create a new account with a new passkey, and sign in to it.
- *
  * `legacyClaim` is the operator's one-time `AUTH_LEGACY_CLAIM_TOKEN`
- * (`readLegacyClaim`). With it, the new account inherits what the server
- * kept before accounts existed. The server refuses a wrong token (403) or a
- * second claim (409). Without it, the account starts empty.
+ * (`readLegacyClaim`): the new account inherits what the server kept before
+ * accounts existed. The server refuses a wrong token (403) or a second claim
+ * (409).
  */
 export async function createAccount(legacyClaim?: string): Promise<void> {
   const transport = transportOrNull()
@@ -220,9 +201,8 @@ export async function createAccount(legacyClaim?: string): Promise<void> {
 }
 
 /**
- * The claim token in an `/auth#claim=<token>` link, if this page has one.
- * It rides in the fragment because a browser never sends a fragment to any
- * server, so no access log or proxy sees the token.
+ * The claim token in an `/auth#claim=<token>` link, if any. A fragment is
+ * never sent to a server, so no access log or proxy sees it.
  */
 export function readLegacyClaim(hash: string): string | undefined {
   const claim = new URLSearchParams(hash.replace(/^#/, "")).get("claim")
@@ -291,16 +271,10 @@ export const deleteAccount = (): Promise<void> =>
   leave("/auth/account", { method: "DELETE" })
 
 /**
- * Reactive `hasSession`. `beforeLoad` guards re-run on every navigation, so
- * the plain getter is enough there - but a component that skips a fetch, or
- * an expensive mount (a speech session's audio context, a service worker
- * registration), based on this needs to find out the moment a session
- * appears or ends, not just the next time the router re-evaluates a route.
- *
- * Read the name literally: this answers "does the client believe there is a
- * session", which is a statement about whether *account* work has anything to
- * do. It does not say where the person's data lives (`useAuthority`), and
- * learning on the device needs no session at all.
+ * Reactive `hasSession`, for a component that skips a fetch or an expensive
+ * mount based on it (`beforeLoad` guards can use the plain getter). It says
+ * whether account work has anything to do, not where the data lives
+ * (`useAuthority`).
  */
 export function useHasSession(): boolean {
   return useSyncExternalStore(authority.subscribe, hasSession, hasSession)

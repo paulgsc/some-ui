@@ -9,13 +9,8 @@ beforeEach(() => {
 })
 
 describe("useGameAudio", () => {
-  // Regression coverage: constructing the Audio elements inside useMemo (as
-  // opposed to an effect with its own paired cleanup) meant StrictMode's
-  // dev-only mount -> cleanup -> remount replay would run the *cleanup*
-  // effect's map.clear() a second time without anything ever rebuilding the
-  // map afterwards - useMemo's cached value survives that replay untouched,
-  // so every subsequent playSound() call found nothing, permanently, for
-  // the rest of the component's life.
+  // StrictMode's mount -> cleanup -> remount must leave the Audio map
+  // rebuilt, not cleared for good.
   it("still finds every event's audio after StrictMode's mount/cleanup/remount replay", () => {
     const logSpy = vi.spyOn(console, "log").mockImplementation(() => {})
 

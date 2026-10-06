@@ -23,26 +23,21 @@ import {
   voiceKindOf,
 } from "."
 
-const statusArbitrary: fc.Arbitrary<SpeechStatus> = fc.record({
-  voice: fc.constantFrom("device" as const, "hosted" as const),
-  health: fc.constantFrom(
-    "ready" as const,
-    "faulted" as const,
-    "unavailable" as const
-  ),
-  muted: fc.constant(false),
-})
+const statusWith = (muted: fc.Arbitrary<boolean>): fc.Arbitrary<SpeechStatus> =>
+  fc.record({
+    voice: fc.constantFrom("device" as const, "hosted" as const),
+    health: fc.constantFrom(
+      "ready" as const,
+      "faulted" as const,
+      "unavailable" as const
+    ),
+    muted,
+  })
+
+const statusArbitrary = statusWith(fc.constant(false))
 
 /** The same space, but with muting in play - used where that is the subject. */
-const mutableStatusArbitrary: fc.Arbitrary<SpeechStatus> = fc.record({
-  voice: fc.constantFrom("device" as const, "hosted" as const),
-  health: fc.constantFrom(
-    "ready" as const,
-    "faulted" as const,
-    "unavailable" as const
-  ),
-  muted: fc.boolean(),
-})
+const mutableStatusArbitrary = statusWith(fc.boolean())
 
 /** Runs a sequence through the machine and collects what a person would see. */
 function noticesFor(

@@ -19,8 +19,8 @@ function isTypingTarget(target: EventTarget | null): boolean {
  *
  * Nothing here is specific to the live layout editor or to `apps/www`: it is
  * a `useState` and a window listener over zero app imports, which is why it
- * lives alongside `use-event-listener` and `use-interval` rather than in the
- * one component that happens to call it today (#759).
+ * lives with the generic hooks here rather than in the one component that
+ * happens to call it today (#759).
  */
 export function useEditModeHotkey(active: boolean): [boolean, () => void] {
   const [rawEditMode, setRawEditMode] = useState(false)

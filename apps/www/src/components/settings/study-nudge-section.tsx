@@ -1,47 +1,19 @@
 /**
- * The settings control for study reminders.
+ * The settings control for study reminders: the switch, the quiet-hours
+ * window, how reminders can reach this person, and a status line naming why
+ * it is currently silent (`decideNudge`'s named reason).
  *
- * Four things share this section because they are one question a person is
- * actually asking - "will this thing interrupt me, and when": the switch,
- * the quiet-hours window, a line saying *how* it can reach them, and a
- * status line naming why it is currently silent. That last one is the
- * reason `decideNudge` returns a named reason rather than a bare boolean: a
- * reminder feature whose failure mode is "nothing happens" is untrustworthy,
- * and the fix is to always be able to say which rule is in force right now.
+ * The mode is stated: on the Pages build reminders arrive only while a tab is
+ * open; elsewhere `file_host` delivers with the browser closed.
  *
- * ## Two deployments, and the UI has to say which one this is
+ * Consent is asked for, not assumed: the topics are fetched from the
+ * deployment (`GET /push/vapid-key`) and turning the switch on grants what is
+ * ticked; the default tick is `lesson-ready`, the topic the switch describes.
  *
- * On the GitHub Pages build the client is the whole feature and reminders
- * arrive only while a tab is open. Everywhere else `file_host` owns
- * delivery and they arrive with the browser closed. Those are materially
- * different promises to make to someone, and "reminders are on" means a
- * different thing in each - so the mode is stated rather than left to be
- * discovered.
- *
- * ## Consent is asked for, not assumed
- *
- * A subscription carries the topics it is permitted to deliver, and the
- * server honours an empty list as "receives nothing" rather than reading it
- * as "receives everything". So the topics are a control here rather than a
- * constant: the list is fetched from the deployment (`GET /push/vapid-key`
- * returns it beside the key) so the checkboxes are what the sender will
- * actually honour, and turning the switch on grants what is ticked. The
- * default tick is `lesson-ready` and only that, because it is the topic the
- * switch's own words describe.
- *
- * ## Quiet hours are read-only in server mode, and say so
- *
- * The seam is genuinely awkward and the honest options were: disable the
- * controls with an explanation, or send the preferences to the server.
- * Disabled won, because sending them is not the small change it looks
- * like - `file_host` reads its window from `NUDGE_QUIET_HOURS_START`/`_END`
- * at startup, there is no endpoint to write them, and a per-browser
- * preference overriding a server-wide environment variable is a design
- * decision with more than one defensible answer. What is *not* defensible
- * is the third option: leaving an editable control that silently does
- * nothing, so that someone sets 23->7 and gets nudged at 22:30 anyway. The
- * endpoint is the follow-up; the disabled control with a reason is this
- * story's answer.
+ * Quiet hours are read-only in server mode, and say so: `file_host` reads its
+ * window from `NUDGE_QUIET_HOURS_START`/`_END` at startup with no endpoint to
+ * write them, and an editable control that silently does nothing is the one
+ * indefensible option.
  */
 
 import type { ChangeEvent, JSX } from "react"
@@ -74,9 +46,9 @@ import { useSessions } from "@/lib/tenant"
 import { ReportingControl } from "./reporting-control"
 
 /**
- * Words for the server's topic names. A topic this build has no label for
- * still renders - under its own identifier - rather than being hidden: a
- * checkbox missing from a consent list is a grant nobody can withdraw.
+ * Words for the server's topic names. An unlabelled topic still renders under
+ * its identifier: a checkbox missing from a consent list is a grant nobody
+ * can withdraw.
  */
 const TOPIC_LABEL: Record<string, string> = {
   "lesson-ready": "A session is prepared and waiting",
@@ -90,9 +62,7 @@ function clampHour(raw: string, fallback: number): number {
   return value
 }
 
-/** A named function, not an inline arrow embedded in `StudyNudgeSection`'s
- * own JSX - the latter trips `react/no-unstable-nested-components` (see
- * the identical pattern and comment in `routes/_dashboard/sessions/index.tsx`). */
+/** Named, not an inline arrow, for `react/no-unstable-nested-components`. */
 function toggleFailure(state: Intent<void>): JSX.Element | null {
   return matchIntent(state, {
     idle: () => null,
@@ -103,18 +73,13 @@ function toggleFailure(state: Intent<void>): JSX.Element | null {
 }
 
 /**
- * What the policy would decide *if the app weren't on screen*. The real
- * `pageVisible` is necessarily `true` while someone is reading this page,
- * so passing it through would make the status row permanently say "you're
- * looking at the app right now" - true, useless, and hiding the reason
- * they came here to check.
+ * What the policy would decide *if the app weren't on screen*: the real
+ * `pageVisible` is always `true` here, which would hide the reason they came
+ * to check.
  *
- * In server mode this is this browser's own reading of the same rules the
- * server runs, not the server's answer - it cannot see the server's
- * cooldown or its snooze. It is labelled that way rather than dressed up as
- * authoritative: asking the server for its current decision needs an
- * endpoint that does not exist, and the two agree on every case in the
- * shared fixture (see `fixtures.test.ts`), so a local reading is honest.
+ * In server mode it is this browser's reading of the server's rules (it
+ * cannot see the server's cooldown or snooze), labelled as such; the two
+ * agree on every case in the shared fixture (`fixtures.test.ts`).
  */
 const StatusLine = ({
   preferences,
@@ -162,21 +127,14 @@ export const StudyNudgeSection = ({
   )
 
   /**
-   * What the browser actually holds, not what settings claim.
-   *
-   * A subscription can be revoked in browser settings, or dropped by the
-   * browser under storage pressure, with nothing telling the app. Reading
-   * `preferences.enabled` alone would then leave this page insisting
-   * reminders are on for a browser that will never receive one - which is
-   * the failure this feature can least afford, because its healthy state
-   * also looks like nothing happening.
+   * What the browser actually holds, not what settings claim: a subscription
+   * can be revoked or dropped with nothing telling the app.
    */
   const [subscribed, setSubscribed] = useState<boolean | null>(null)
 
   /**
-   * What this deployment will actually honour. Fetched rather than listed
-   * here so the checkboxes cannot offer a consent the sender ignores; an
-   * empty result means there is no push backend to consent to at all.
+   * What this deployment will honour, fetched so the checkboxes cannot offer a
+   * consent the sender ignores; empty means no push backend at all.
    */
   const [offered, setOffered] = useState<Array<string>>([])
 
@@ -194,15 +152,9 @@ export const StudyNudgeSection = ({
     }
   }, [serverDelivers, supported, preferences.enabled])
 
-  // Enabling is the user gesture that earns the permission prompt, so the
-  // request happens here and nowhere else. A refusal leaves the switch off
-  // rather than storing an "on" that can never fire.
-  //
-  // Every branch below already resolves rather than throws (see
-  // service-worker.ts's own header) - `toggleIntent`'s `failed` arm is a
-  // backstop for whatever those wrappers didn't anticipate, not the
-  // expected outcome of a declined permission or a degraded subscribe,
-  // both of which stay exactly the inline `toast(...)` calls they were.
+  // Enabling is the user gesture that earns the permission prompt. A refusal
+  // leaves the switch off. Every branch resolves rather than throws
+  // (service-worker.ts), so `toggleIntent`'s `failed` arm is only a backstop.
   const runToggle = async (enabled: boolean): Promise<void> => {
     if (!enabled) {
       // Both ends, in server mode: dropping only the local subscription
@@ -231,8 +183,7 @@ export const StudyNudgeSection = ({
       setSubscribed(outcome === "subscribed")
       if (outcome !== "subscribed") {
         // Reminders still turn on: without a subscription this degrades to
-        // exactly #907's behaviour rather than to nothing, and saying so is
-        // the difference between a known limitation and a broken feature.
+        // the tab-open policy rather than to nothing, and says so.
         toast("Reminders are on, but only while a tab is open", {
           description:
             outcome === "not-configured"
@@ -267,10 +218,8 @@ export const StudyNudgeSection = ({
         <ReportingControl preferences={preferences} />
         <Label>Study reminders</Label>
         <p className="text-muted-foreground text-sm">
-          {/* The overwhelmingly likely cause on this app's own LAN setup, so
-              it is worth naming rather than shrugging: service workers and
-              notifications need a secure context, and http:// on a LAN
-              hostname or IP is not one (http://localhost is the exception). */}
+          {/* The likely cause on a LAN: notifications need a secure context,
+              and http:// on a LAN hostname or IP is not one. */}
           This browser can&apos;t show notifications here. They need a secure
           context - use https:// or http://localhost.
         </p>
@@ -385,9 +334,8 @@ export const StudyNudgeSection = ({
                     type="checkbox"
                     checked={preferences.pushTopics.includes(topic)}
                     onChange={(e: ChangeEvent<HTMLInputElement>) => {
-                      // Re-subscribing is how consent is *changed*: the
-                      // upsert is keyed on endpoint, so posting the new
-                      // list replaces the grant rather than adding a row.
+                      // Re-subscribing is how consent is changed: the upsert
+                      // is keyed on endpoint, replacing the grant.
                       const next = e.target.checked
                         ? [...preferences.pushTopics, topic]
                         : preferences.pushTopics.filter((t) => t !== topic)
@@ -400,9 +348,6 @@ export const StudyNudgeSection = ({
               ))}
               {preferences.pushTopics.length === 0 ? (
                 <p className="text-muted-foreground text-xs">
-                  {/* An empty list is a real answer and the server honours
-                      it as silence. Saying so beats a person concluding
-                      later that reminders are broken. */}
                   Nothing ticked, so nothing will be sent. Reminders stay on for
                   this browser while a tab is open.
                 </p>
@@ -413,9 +358,6 @@ export const StudyNudgeSection = ({
           <StatusLine preferences={preferences} local={serverDelivers} />
 
           <p className="text-muted-foreground text-xs">
-            {/* "Reminders are on" means two different things across the two
-                deployments, and the difference is the entire point of the
-                server half. Say which one this is. */}
             {serverDelivers
               ? subscribed === false
                 ? "This browser isn't registered for push yet, so reminders will only arrive while a tab is open. Toggle reminders off and on to retry."

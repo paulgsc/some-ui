@@ -1,24 +1,11 @@
 /**
- * SF-AD (#1268) follow-ups #1280 and #1281 — both found on PR #1279's own
- * closing review (round 5) and deliberately not fixed there per
- * `.claude/skills/steward/SKILL.md`'s capped-review rule (a substantive
- * finding on a capped PR's closing review gets filed, not folded in).
+ * Shadow-scope theming follow-ups #1280 and #1281, through the real built
+ * extension (the unit suites cover the logic in isolation).
  *
- * Both e2e cases below drive the real built extension (`dist/`, via
- * `@filter/playwright/fixture`'s `--load-extension`), not a synthetic unit
- * context — the unit suites (`shadow-scope-theming.test.ts`,
- * `shadow-actuator.test.ts`) already cover the underlying logic in
- * isolation; these prove the same fixes hold once wired through the real
- * pipeline end to end.
- *
- * SF4 (#1360) classification: visual-claim, already sound and exemplary.
- * The #1281 cases explicitly compensate for the exact getComputedStyle-vs-
- * `filter` compositing gap #1360 is about (computing the "as seen through
- * the page's own invert(1)" luminance by hand, with the compositing math
- * spelled out in-line) rather than trusting the declared value directly; the
- * #1280 case reads real `background-color` with no filter involved at all.
- * No promotion needed — if anything, this file is the model the promoted
- * specs elsewhere in this story followed.
+ * Classification (#1360): visual claims, sound. The #1281 cases compensate
+ * for the getComputedStyle-vs-`filter` gap by computing the "as seen through
+ * invert(1)" luminance by hand; the #1280 case reads `background-color` with
+ * no filter involved.
  */
 
 import { parseColor, relativeLuminance } from "@filter/lib/content/color"
@@ -66,11 +53,8 @@ test.describe("SF-AD follow-up #1281 — shadow :host tokens survive a vendor's 
       anchor.appendChild(host)
     })
 
-    // No data-sw-patched signal exists for a scope with zero evidenced
-    // surfaces (nothing gets tagged) — poll the host's own computed color
-    // directly instead; it starts as the browser's default (black,
-    // rgb(0, 0, 0)) and only changes once this scope's own :host token rule
-    // (buildHostTokenRule) actually commits.
+    // A scope with zero evidenced surfaces tags nothing, so poll the host's
+    // computed colour: default black until the :host token rule commits.
     await page.waitForFunction(
       () => {
         const host = document.getElementById("vendor-invert-shadow-host")
@@ -91,11 +75,8 @@ test.describe("SF-AD follow-up #1281 — shadow :host tokens survive a vendor's 
     expect(rgba, `unparseable computed color: ${declaredColor}`).not.toBeNull()
     if (rgba === null) throw new Error("unreachable")
 
-    // getComputedStyle never reflects `filter` compositing (#741) — it
-    // reports the literal declared value. invert(1) is an exact per-channel
-    // complement (CSS Filter Effects Level 1); replicate that here to get
-    // what a human actually sees once the page's own vendor filter composites
-    // this declared value.
+    // getComputedStyle reports the declared value; invert(1) is an exact
+    // per-channel complement (CSS Filter Effects Level 1), replicated here.
     const asSeen: [number, number, number] = [
       1 - rgba[0],
       1 - rgba[1],
@@ -103,12 +84,9 @@ test.describe("SF-AD follow-up #1281 — shadow :host tokens survive a vendor's 
     ]
     const asSeenLuminance = relativeLuminance(...asSeen)
 
-    // Without compensation the host's own :host{color} rule is built from
-    // the raw swatch's text0 (a light token, luminance ~0.31 per SF-AD's own
-    // round-5 e2e fixture) — composited through the page's own invert(1)
-    // that reads back dark, well under this bar. With compensation the
-    // *declared* value is text0's own counter-invert, which composites back
-    // to text0 itself once rendered.
+    // Uncompensated, the :host colour (light text0) composites dark through
+    // invert(1); compensated, it declares text0's counter-invert, which
+    // composites back to text0.
     expect(
       asSeenLuminance,
       `declared computed color ${declaredColor}, composited through the ` +
@@ -117,7 +95,7 @@ test.describe("SF-AD follow-up #1281 — shadow :host tokens survive a vendor's 
     ).toBeGreaterThan(0.15)
   })
 
-  test("a classified surface's own emit-surface-color background also survives the page's own invert(1), not just the :host tokens (bot-found, round 3)", async ({
+  test("a classified surface's own emit-surface-color background also survives the page's own invert(1), not just the :host tokens", async ({
     fixture,
   }) => {
     const page = await fixture.goto("shadow-surface-vendor-invert-page")
@@ -165,10 +143,8 @@ test.describe("SF-AD follow-up #1281 — shadow :host tokens survive a vendor's 
     expect(rgba, `unparseable computed background-color: ${bg}`).not.toBeNull()
     if (rgba === null) throw new Error("unreachable")
 
-    // Same "asSeen" methodology as the :host-tokens case above: without
-    // compensating the emit-surface-color action's own css, the declared
-    // dark background composites back to bright once the page's own
-    // invert(1) is accounted for.
+    // Same "asSeen" method: uncompensated, the dark background composites
+    // bright through invert(1).
     const asSeenLuminance = relativeLuminance(
       1 - rgba[0],
       1 - rgba[1],
@@ -226,10 +202,8 @@ test.describe("SF-AD follow-up #1280 — reconciles a committed shadow scope aft
       )
     ).toBeLessThan(0.3)
 
-    // The vendor's own reactive-stylesheet update (a real, documented
-    // pattern — Lit/FAST-style libraries reassign adoptedStyleSheets
-    // wholesale to apply their own changes) — a plain CSSOM property write,
-    // not a DOM mutation, so no MutationObserver anywhere reacts to it.
+    // A vendor's reactive-stylesheet update (Lit/FAST reassign
+    // adoptedStyleSheets wholesale): a CSSOM write no observer sees.
     await page.evaluate(() => {
       const host = document.getElementById("reassignment-host")
       const root = host?.shadowRoot
@@ -249,18 +223,16 @@ test.describe("SF-AD follow-up #1280 — reconciles a committed shadow scope aft
       )
     ).toBeGreaterThan(0.7)
 
-    // shadow-scope-theming.ts's own SHEET_INTEGRITY_POLL_MS (250ms) integrity
-    // poll notices the missing sheets on a later tick and repairs them —
-    // with no other mutation of any kind to react to.
+    // The 250ms integrity poll (SHEET_INTEGRITY_POLL_MS) repairs it with no
+    // other mutation to react to.
     await page.waitForFunction(
       () => {
         const host = document.getElementById("reassignment-host")
         const surface = host?.shadowRoot?.getElementById("reassignment-surface")
         if (surface === undefined || surface === null) return false
         const bg = getComputedStyle(surface).backgroundColor
-        // Anything other than the untouched native white counts as
-        // "repaired" for this poll — the luminance assertion right after
-        // this wait is the real, precise check.
+        // Anything but native white counts; the luminance check below is
+        // the precise one.
         return bg !== "rgb(255, 255, 255)"
       },
       undefined,

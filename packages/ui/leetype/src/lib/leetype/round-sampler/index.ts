@@ -1,7 +1,6 @@
 /**
- * L4 (LTY-LEDGER, #1230) — `docs/canon/complexity-witness-canon.typ` Thm.
- * 9.1, Ax. 9.1, Prop. 9.1; `adaptive-learning-canon.typ` Thm. 8.1,
- * Prop. 5.1.
+ * The round sampler (LTY-LEDGER L4): canon Thm. 9.1, Ax. 9.1, Prop. 9.1;
+ * `adaptive-learning-canon.typ` Thm. 8.1, Prop. 5.1.
  *
  * `nextRound(ledger, corpus, seed, now)` chooses the next round. It is the
  * one place a learner's responses act on anything, and what they act on is
@@ -20,7 +19,7 @@
  * # What moves a round's weight (Prop. 9.1)
  *
  * A round *instantiates* `p` when some member of its `D` has μ = `p`
- * (#1540's reading of Rem. 7.1). For each entry the ledger has seen, the
+ * (Rem. 7.1). For each entry the ledger has seen, the
  * newest observation with `p` as the card's answer asks for its own next
  * round:
  *
@@ -34,11 +33,11 @@
  * - `correct` — a nearby boundary case: a round instantiating `p` through a
  *   rewrite `p` has not yet been named on (`rewriteKeyOf`) gets
  *   `+BOUNDARY`. It is also what Def. 10.2's transfer needs, so debt and
- *   demonstration pull the same way, as #1230 observes.
+ *   demonstration pull the same way.
  *
  * Every round instantiating an entry that is not currently demonstrated
  * (lapsed ones included) gets `+DEBT` once, so unresolved understanding is
- * an input to sampling (#1202's "debt, not blockage"). A cold ledger gives
+ * an input to sampling ("debt, not blockage"). A cold ledger gives
  * every round exactly that, which is the uniform prior of `LEDGER_PROFILE`
  * (Prop. 5.1). Boosts sum and are capped at `BOOST_CAP`; the round played
  * last is damped so it rarely comes straight back.

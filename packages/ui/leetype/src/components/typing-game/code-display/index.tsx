@@ -11,7 +11,6 @@ import { ChevronDown } from "lucide-react"
 import Prism from "prismjs"
 import { cn } from "some-ui-utils"
 
-// Import Prism.js and its components
 import "prismjs/themes/prism-tomorrow.css"
 import "prismjs/components/prism-typescript"
 import "prismjs/components/prism-c"
@@ -19,13 +18,9 @@ import "prismjs/components/prism-cpp"
 import "prismjs/components/prism-rust"
 
 /**
- * One character wide, exactly like every glyph it stands in for.
- *
- * That is not a cosmetic choice: masked and unmasked renderings of a step
- * must have identical character counts per line, or unmasking reflows the
- * text under the player's eye mid-word.
- * `crates/leetype_wasm/tests/invariants.rs` asserts the width property; this
- * constant is the half of it that lives on this side.
+ * One character wide, like every glyph it stands in for: masked and unmasked
+ * lines must match in length or unmasking reflows text mid-word.
+ * `crates/leetype_wasm/tests/invariants.rs` asserts the engine's half.
  */
 const MASK_CHAR = "•"
 
@@ -41,25 +36,16 @@ const GUTTER_SIGN_WIDTH = "w-4"
 const GUTTER_NUMBER_WIDTH = "w-8"
 
 /**
- * A rendered line's role in a diff-hunk overlay.
- *
- * Deliberately not imported from `types/exercise`'s `renderedDiffLineKinds`
- * output, even though the two are structurally identical: this file's
- * invariant is that adding a new kind of prompt-side block — or any other
- * exercise concept — must never reach it, and importing a type derived
- * from the exercise schema would be exactly that kind of reach, however
- * narrow. Plain diff vocabulary (`docs/leetype/README.md`'s
- * "hunk"/"deletion"/"addition" entries) is what actually reaches this
- * component.
+ * A rendered line's role in a diff-hunk overlay. Structurally identical to
+ * `types/exercise`'s `RenderedDiffLineKind` but not imported: no exercise
+ * concept may reach this file, only plain diff vocabulary.
  */
 export type LineKind = "context" | "del" | "add"
 
 /**
- * The diff-hunk gutter data a step's `patch` overlay projects down to this
- * renderer (LTY-PATCH P3, #1078). `oldStart`/`newStart` seed the gutter's
- * running line-number counters. The hunk's file path is deliberately not
- * here — that renders in `TypingViewport`'s own header, never in this
- * file, which draws no more of a hunk than the lines it is asked to paint.
+ * The diff-hunk gutter data a step's overlay projects down to this renderer
+ * (LTY-PATCH). `oldStart`/`newStart` seed the line-number counters. The file
+ * path renders in `TypingViewport`'s header, not here.
  */
 export type Hunk = {
   lineKinds: ReadonlyArray<LineKind>
@@ -68,18 +54,12 @@ export type Hunk = {
 }
 
 /**
- * Maps each non-"none" `TextGradient` option to the swatch-driven gradient
- * custom property it paints (`--gradient-heading` / `--gradient-accent` /
- * `--gradient-muted`, tokens/base.css — the same ones the `text-gradient-*`
- * utilities in packages/some-styles/tailwind.css consume).
+ * Maps each non-"none" `TextGradient` to its gradient custom property
+ * (`--gradient-*`, tokens/base.css, as the `text-gradient-*` utilities use).
  *
- * Applied as an inline style rather than that utility class: PrismJS's
- * theme (`prismjs/themes/prism-tomorrow.css`, imported below) is a plain,
- * unlayered stylesheet, and its `code[class*="language-"] { color: #ccc }`
- * rule outranks *any* `@layer utilities` class — including this one —
- * regardless of specificity, per the CSS cascade-layers spec. An inline
- * style outranks both, so it's the only reliable way to override Prism's
- * base color from here.
+ * Inline rather than the utility class: Prism's theme is unlayered, so its
+ * `code[class*="language-"] { color: #ccc }` outranks any `@layer utilities`
+ * class regardless of specificity. Only an inline style beats it.
  */
 const TEXT_GRADIENT_STYLE: Record<
   Exclude<TextGradient, "none">,
@@ -101,80 +81,53 @@ type CodeDisplayProps = {
    */
   roles: Uint8Array
   /**
-   * Per-rendered-character slot ordinal, `-1` for layout characters. The
-   * indirection is the whole point of the model: a run of indentation has
-   * display indices but no slots, so it can be rendered in place while
-   * being completely absent from what the player has to type.
+   * Per-rendered-character slot ordinal, `-1` for layout characters: an
+   * indentation run is rendered in place but has no slot, so it is never
+   * typed.
    */
   slotOfDisplay: Int32Array
   /** Per-slot status: untouched / correct / wrong. */
   slotStatus: Uint8Array
   /**
-   * Per-slot reveal state, projected by the engine's control loop.
-   *
-   * This component decides *nothing* about masking. It has no threshold, no
-   * latch, no mode flag and no memory: it draws a bullet where the map says
-   * masked and the glyph where it says revealed. The policy — when `k`
-   * opens, how fast it closes, what the player has already been shown — is
-   * engine state, provable by `cargo test -p leetype_wasm` with no DOM in
-   * the picture.
+   * Per-slot reveal state, projected by the engine's control loop. This
+   * component decides *nothing* about masking (no threshold, latch, flag or
+   * memory); the policy is engine state, tested by `cargo test -p
+   * leetype_wasm` without a DOM.
    */
   visibility: Uint8Array
   /**
-   * Index, into `displayCode`'s characters, of the character the player is
-   * currently on. The engine guarantees this is always a typeable character
-   * (or one past the end when the step is done) — the caret never lands
-   * inside an indentation run, which is what makes the overlay read as
-   * "you are exactly here" instead of drifting through whitespace.
+   * Index into `displayCode` of the character the player is on. The engine
+   * guarantees a typeable character (or one past the end when done), never
+   * an indentation run.
    */
   cursorDisplay: number
-  /**
-   * Handed down so the scroll container can find the caret without this
-   * component having to know why anyone wants it. Caret-*following* is
-   * `TypingViewport`'s job; this component only says where the caret is.
-   */
+  /** Lets `TypingViewport` find the caret to follow it; this component only marks it. */
   caretRef?: RefObject<HTMLSpanElement | null>
   className?: string
   /**
-   * When set to anything but "none", not-yet-typed code renders in a
-   * swatch-driven gradient instead of Prism's syntax-highlight palette —
-   * already-typed feedback (correct/incorrect) and the cursor keep their
-   * own colors either way, since that signal stays functional regardless
-   * of the cosmetic mode.
+   * When not "none", not-yet-typed code renders in a gradient instead of
+   * Prism's palette. Typed feedback and the cursor keep their own colors.
    */
   textGradient?: TextGradient
   /**
-   * A diff-hunk overlay (LTY-PATCH P3, #1078): when present, the renderer
-   * gains a sign column and old/new line-number columns, and add/del rows
-   * gain a background tint. Absent, this component renders exactly as it
-   * always has — the two paths are independent render functions, not one
-   * path branching on a flag part-way through.
+   * A diff-hunk overlay (LTY-PATCH): adds a sign column, old/new line-number
+   * columns and add/del row tints. The two paths are independent render
+   * functions, not one path branching on a flag.
    */
   hunk?: Hunk
 }
 
 /**
  * A pure glyph renderer: a linear sequence of display characters plus caret
- * state, and nothing else — organized into rows when handed a `hunk`
- * overlay, which is layout, not policy (LTY-PATCH P3, #1078 amends decision
- * 1 in `docs/leetype/README.md` on exactly this point).
+ * state, organized into rows when handed a `hunk` (layout, not policy).
  *
- * It used to be three things — a renderer, a scroll container
- * (`h-[500px] overflow-auto`) and a caret-following controller. The fixed
- * height was the tell: a component that sizes itself owns its own scroll,
- * and a component that owns its own scroll cannot be composed into a card
- * that wants to give it the remaining 80% and no more. The scroll and the
- * caret-following moved to `TypingViewport`; what is left renders correctly
- * at whatever height its parent gives it.
+ * It renders at whatever height its parent gives it; scrolling and
+ * caret-following belong to `TypingViewport`.
  *
- * It knows nothing about exercises, prompts, steps or competencies. Its
- * props contain no vocabulary from any of them, and that is the invariant
- * worth protecting: adding a new kind of prompt-side block must never reach
- * this file. `hunk` is not an exception — `LineKind`/`Hunk` are plain diff
- * vocabulary, not exercise vocabulary, and this component still owns no
- * masking policy, no error accounting, no threshold, no latch and no
- * memory; it draws what it is handed, one row at a time instead of one
- * flat stream when a hunk says which rows are which.
+ * It knows nothing about exercises, prompts, steps or competencies, and that
+ * is the invariant worth protecting: a new prompt-side block kind must never
+ * reach this file. `LineKind`/`Hunk` are plain diff vocabulary. It owns no
+ * masking policy, error accounting, threshold, latch or memory.
  */
 export const CodeDisplay: FC<CodeDisplayProps> = ({
   displayCode,
@@ -233,25 +186,14 @@ export const CodeDisplay: FC<CodeDisplayProps> = ({
       )
     }
 
-    // Context: code the player reads but is never asked to type, and never
-    // masked — it carries no slot for VISIBILITY_MASKED to apply to. Muted
-    // so it reads as given rather than as a not-yet-typed real character,
-    // in gradient mode as much as out of it — the deliberate answer to "how
-    // does context interact with TextGradient" the story for this file asks
-    // for, matching the posture SLOT_CORRECT/SLOT_WRONG already take
-    // ("already-typed feedback... keep their own colors either way", see
-    // `TextGradient`'s doc comment). `-webkit-text-fill-color` is itself an
-    // inherited property, so without resetting it here a context span would
-    // silently pick up the gradient `<code>` ancestor's `transparent` in
-    // WebKit and vanish into the clipped gradient instead of staying muted.
+    // Context: read, never typed, never masked (it has no slot). Muted in
+    // gradient mode too, like typed feedback. `-webkit-text-fill-color` is
+    // inherited, so it is reset here or WebKit would paint the span with the
+    // gradient ancestor's `transparent`.
     //
-    // A `del` row's context is the one exception (LTY-PATCH P3, #1078):
-    // struck-through and muted red rather than italic-muted, so a removed
-    // line reads as removed rather than merely given — distinct paint, same
-    // reset, both unmasked either way. This has to live here rather than as
-    // a row-level style override: the color and italics below are set
-    // directly on this span, and a directly-set color always wins over
-    // whatever an ancestor row wrapper tries to inherit down to it.
+    // A `del` row's context is struck through in muted red instead, so it
+    // reads as removed. Set on the span itself, since a direct color beats
+    // anything a row wrapper could inherit down.
     if (isContext) {
       const isDeleted = lineKind === "del"
       return (
@@ -269,10 +211,7 @@ export const CodeDisplay: FC<CodeDisplayProps> = ({
       )
     }
 
-    // Layout the engine skips: rendered as-is so the code keeps its shape,
-    // never masked and never scored. This is the visual half of "you don't
-    // type indentation" — the player's eye follows the caret straight past
-    // it.
+    // Layout the engine skips: rendered as-is, never masked or scored.
     if (!isTypeable) {
       return <span key={displayIndex}>{char}</span>
     }
@@ -349,30 +288,16 @@ export const CodeDisplay: FC<CodeDisplayProps> = ({
   }
 
   /**
-   * The hunk-mode renderer (LTY-PATCH P3, #1078): one row per line of
-   * `displayCode`, each with its own gutter, instead of one flat inline
-   * stream. A wholly separate function from `renderHighlightedCode` above,
-   * not a shared path branching on `hunk` — the no-hunk path stays
-   * untouched code, not merely untouched output, which is what makes "a
-   * step with no patch renders byte-identically to today" true by
-   * construction rather than by careful branching.
+   * The hunk-mode renderer: one row per line, each with its own gutter. A
+   * separate function from `renderHighlightedCode`, so the no-hunk path is
+   * untouched code, not just untouched output.
    *
-   * Tokenizes **per line**, not once over the whole `displayCode` — the
-   * deliberate trade the story's own hazard section calls out. A construct
-   * that would tokenize as one Prism token across a line boundary (an
-   * unterminated block comment, a multi-line string) instead tokenizes as
-   * two independent, locally-wrong fragments; colors can be wrong for that
-   * one line pair, same as the story anticipates, but the character stream
-   * itself is never in question, because `renderChar` still runs once per
-   * source character regardless of what Prism made of it. Author a hunk
-   * that does not straddle a multi-line construct if this matters for a
-   * given instance.
+   * Tokenizes **per line**: a construct spanning lines (block comment,
+   * multi-line string) may be colored wrongly, but `renderChar` still runs
+   * once per character, so the stream is never in question.
    *
-   * `charIndex` is one running counter shared across every line, the same
-   * single source of truth `renderHighlightedCode` uses — it has to keep
-   * agreeing with `roles`/`slotOfDisplay`/`slotStatus` across a line break
-   * exactly as it does within one line, or the caret ends up on the wrong
-   * glyph the moment a hunk spans more than one row.
+   * `charIndex` runs across every line so it stays aligned with
+   * `roles`/`slotOfDisplay`/`slotStatus` past line breaks.
    */
   const renderHunkRows = (activeHunk: Hunk): ReactNode => {
     const selectedLang = LANGUAGE_MAP[language] ?? "javascript"
@@ -383,8 +308,7 @@ export const CodeDisplay: FC<CodeDisplayProps> = ({
     let newLine = activeHunk.newStart
 
     const rowData = lines.map((line, lineIndex) => {
-      // A lineKinds shorter than the rendered line count is legal (P2) —
-      // the tail renders as unmarked context, total rather than throwing.
+      // A short lineKinds renders its tail as context.
       const kind: LineKind = activeHunk.lineKinds[lineIndex] ?? "context"
 
       const renderRun = (text: string): Array<JSX.Element> =>
@@ -422,15 +346,11 @@ export const CodeDisplay: FC<CodeDisplayProps> = ({
             )
 
       if (lineIndex < lines.length - 1) {
-        // The '\n' between this line and the next: a real display index —
-        // `roles`/`slotOfDisplay` still carry an entry for it — but never a
-        // glyph of its own. The row boundary is the line break now; a
-        // rendered '\n' character would only add a stray one.
+        // The '\n' has a display index but no glyph: the row is the break.
         charIndex += 1
       }
 
-      // The ordinary two-column diff convention: add rows fill the new
-      // column only, del rows the old column only, context rows both.
+      // Two-column convention: add fills new only, del old only, context both.
       const showOld = kind !== "add"
       const showNew = kind !== "del"
       const oldLabel = showOld ? oldLine : undefined
@@ -457,12 +377,8 @@ export const CodeDisplay: FC<CodeDisplayProps> = ({
 
     return rowData.map(({ lineIndex, kind, rowNodes, oldLabel, newLabel }) => {
       const sign = kind === "add" ? "+" : kind === "del" ? "-" : " "
-      // The tint sits behind the character-level feedback painted inside
-      // `rowNodes` (SLOT_CORRECT/SLOT_WRONG set their own background
-      // directly on the character span), which is what makes it win: a
-      // child's own background always paints over its ancestor's in normal
-      // stacking order, so nothing here has to know about slot status to
-      // stay out of its way.
+      // Character feedback sets its own background, which paints over this
+      // row tint, so the tint needs no knowledge of slot status.
       const tintClass =
         kind === "add"
           ? "bg-green-500/10"
@@ -511,18 +427,10 @@ export const CodeDisplay: FC<CodeDisplayProps> = ({
             {newLabel ?? ""}
           </span>
           {/*
-            A real `<pre>`, not a `<code>` styled to look like one: Prism's
-            imported theme (`prism-tomorrow.css`) carries an unlayered
-            `:not(pre) > code[class*="language-"]` rule that overrides
-            `white-space` to `normal` and paints an opaque background —
-            unlayered CSS outranks any `@layer utilities` class regardless
-            of specificity (the same fact `TEXT_GRADIENT_STYLE`'s own
-            comment already documents for `color`), so a Tailwind
-            `whitespace-pre` utility on a bare `<code>` here would silently
-            lose to it, collapsing indentation and hiding the row tint
-            behind an opaque background no DOM-only test would catch. The
-            no-hunk path was never exposed to this because `code` already
-            sits inside a real `pre` there.
+            A real `<pre>`: Prism's unlayered `:not(pre) > code[class*="language-"]`
+            rule sets `white-space: normal` and an opaque background, and beats
+            any utility class (see `TEXT_GRADIENT_STYLE`), collapsing
+            indentation and hiding the row tint.
           */}
           <pre className="m-0 min-w-0 flex-1">
             <code className={`language-${language}`} style={codeStyle}>

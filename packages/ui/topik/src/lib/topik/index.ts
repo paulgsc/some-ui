@@ -5,9 +5,7 @@
  * Import from this file to get all core functionality.
  */
 
-// ═══════════════════════════════════════════════════════════════════════════
 // CORE TYPES
-// ═══════════════════════════════════════════════════════════════════════════
 
 export type {
   // State types
@@ -52,9 +50,7 @@ export {
   TopikMetadataSchema,
 } from "./entity/topik-metadata"
 
-// ═══════════════════════════════════════════════════════════════════════════
 // CORE FUNCTIONS
-// ═══════════════════════════════════════════════════════════════════════════
 
 export { createTopikRepository } from "./core/topik-repository"
 export { createTopikMetadataRepository } from "./core/topik-metadata-repository"
@@ -63,9 +59,7 @@ export { createSessionMachine } from "./core/session-machine"
 
 export { EffectExecutor, createEffectExecutor } from "./core/effect-executor"
 
-// ═══════════════════════════════════════════════════════════════════════════
 // SELECTORS & ACTIONS
-// ═══════════════════════════════════════════════════════════════════════════
 
 export {
   selectors,
@@ -75,15 +69,11 @@ export {
   getVisibleMessages,
 } from "./adapter/session-selectors"
 
-// ═══════════════════════════════════════════════════════════════════════════
 // VALIDATION
-// ═══════════════════════════════════════════════════════════════════════════
 
 export { TopikFileSchema } from "./entity/topik-types"
 
-// ═══════════════════════════════════════════════════════════════════════════
 // REACT ADAPTER (optional)
-// ═══════════════════════════════════════════════════════════════════════════
 
 export { useKoreanStudyPageVM } from "./adapter/hooks"
 export { useSession } from "./adapter/hooks"

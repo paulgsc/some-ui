@@ -1,16 +1,10 @@
 /**
  * The Android app's voice: the phone's own text-to-speech engine (#1625).
  *
- * The APK runs in Android System WebView, which has no working
- * `speechSynthesis`, so the browser voice the static build uses is silent
- * there. `TTSProvider` hands the speech session `deviceSpeechBackend()` as
- * its `native` voice instead, and everything that speaks through the
- * session gets it: TOPIK's lessons and Honeycomb's word prompts alike.
- *
- * The plugin sits behind a dynamic import, so the web builds, which never
- * pass it to the session, never load it. On the phone it loads with the
- * session, which asks for the phone's voices and whether it has Korean
- * before the first line.
+ * Android System WebView has no working `speechSynthesis`, so `TTSProvider`
+ * hands the session `deviceSpeechBackend()` as its `native` voice, and
+ * everything that speaks gets it. The plugin is dynamically imported, so the
+ * web builds never load it.
  */
 import type {
   NativeSpeechBackend,
@@ -54,9 +48,8 @@ const lazyEngine: NativeSpeechEngine = {
 const announced = new Set<SpokenLanguage>()
 
 /**
- * Said once per language per launch, not per refused utterance: a lesson
- * refuses every line it tries, and the first toast already said it all.
- * Settings carries the same fact for as long as it holds.
+ * Said once per language per launch, not per refused utterance (a lesson
+ * refuses every line). Settings carries the same fact while it holds.
  */
 function announceMissingVoice(language: SpokenLanguage): void {
   if (announced.has(language)) return

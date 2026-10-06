@@ -1,5 +1,5 @@
 import type { JSX } from "react"
-import type { SpeechOutcome } from "@some-ui/speech"
+import type { Speaker, SpeechOutcome } from "@some-ui/speech"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
 import type {
@@ -12,6 +12,7 @@ import {
   createPastedLessonStore,
   RETIRED_LESSONS_KEY,
 } from "@topik/lib/topik/adapter/pasted-lesson"
+import type { ReadAloudStore } from "@topik/lib/topik/adapter/read-aloud-store"
 import { createReadAloudStore } from "@topik/lib/topik/adapter/read-aloud-store"
 import type { StorageLike } from "@topik/lib/topik/adapter/resume-point"
 import { createResumeStore } from "@topik/lib/topik/adapter/resume-point"
@@ -21,6 +22,7 @@ import {
   SURVEY_TTL_MS,
 } from "@topik/lib/topik/adapter/survey-store"
 import { pinMisses } from "@topik/lib/topik/core/lesson-survey"
+import { memoryStorage } from "@topik/testing/memory-storage"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
 import { HandheldLesson } from "."
@@ -31,39 +33,44 @@ import {
   fixtureTopikRepository,
 } from "./fixture"
 
-const memoryStorage = (): StorageLike => {
-  const map = new Map<string, string>()
-  return {
-    getItem: (key: string): string | null => map.get(key) ?? null,
-    setItem: (key: string, value: string): void => void map.set(key, value),
-  }
+type ResumeStore = ReturnType<typeof createResumeStore>
+
+type RenderOptions = {
+  storage?: StorageLike
+  topikRepository?: ITopikRepository
+  surveyStore?: SurveyStore
+  pastedStore?: PastedLessonStore
+  pastedResumeStore?: ResumeStore
+  metadataRepository?: ITopikMetadataRepository
+  client?: QueryClient
+  // No voice by default: the ladder starts at Hangul (canon Def. 9.3).
+  speaker?: Speaker | null
+  readAloudStore?: ReadAloudStore
 }
 
-function renderLesson(
+function renderLesson({
   storage = memoryStorage(),
-  topikRepository: ITopikRepository = fixtureTopikRepository,
-  surveyStore: SurveyStore = createSurveyStore(memoryStorage()),
-  pastedStore: PastedLessonStore = createPastedLessonStore(memoryStorage()),
+  topikRepository = fixtureTopikRepository,
+  surveyStore = createSurveyStore(memoryStorage()),
+  pastedStore = createPastedLessonStore(memoryStorage()),
   pastedResumeStore = createResumeStore(memoryStorage()),
-  metadataRepository: ITopikMetadataRepository = fixtureMetadataRepository,
-  client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-): ReturnType<typeof createResumeStore> {
+  metadataRepository = fixtureMetadataRepository,
+  client = new QueryClient({ defaultOptions: { queries: { retry: false } } }),
+  speaker = null,
+  readAloudStore,
+}: RenderOptions = {}): ResumeStore {
   const store = createResumeStore(storage)
   const tree = (): JSX.Element => (
     <QueryClientProvider client={client}>
       <SessionConfigProvider
-        value={{
-          topikRepository,
-          metadataRepository,
-          // No voice: the ladder starts at Hangul (canon Def. 9.3).
-          speaker: null,
-        }}
+        value={{ topikRepository, metadataRepository, speaker }}
       >
         <HandheldLesson
           resumeStore={store}
           surveyStore={surveyStore}
           pastedStore={pastedStore}
           pastedResumeStore={pastedResumeStore}
+          readAloudStore={readAloudStore}
         />
       </SessionConfigProvider>
     </QueryClientProvider>
@@ -71,6 +78,29 @@ function renderLesson(
   render(tree())
   return store
 }
+
+const voice = (say: Speaker["say"]): Speaker => ({
+  available: true,
+  say,
+  stop: (): void => undefined,
+  muted: false,
+  subscribe: () => (): void => undefined,
+  describe: () => ({
+    platform: "browser",
+    voice: null,
+    availability: "available",
+  }),
+})
+
+const CAFE_LINE = "어서 오세요. 뭐 드릴까요?"
+const CARD_LINE = "카드로 할게요. 감사합니다."
+/** A resume point on conversation 2's c2-m2, which anchors two probes. */
+const AT_C2_M2 = { batchId: 2, conversation: 1, messageId: "c2-m2" }
+
+const resumeAt = (
+  storage: StorageLike,
+  point: Parameters<ResumeStore["set"]>[1] = AT_C2_M2
+): void => createResumeStore(storage).set(FIXTURE_TOPIK_KEY, point)
 
 const click = (name: string | RegExp): void => {
   fireEvent.click(screen.getByRole("button", { name }))
@@ -90,16 +120,39 @@ const buildFromTiles = (pieces: Array<string>): void => {
   }
 }
 
+/** Pick an answer, check it, and move on. */
+const answer = (name: RegExp): void => {
+  pick(name)
+  click("Check")
+  click(/Continue/)
+}
+
+/** Build from tiles, check it, and move on. */
+const build = (pieces: Array<string>): void => {
+  buildFromTiles(pieces)
+  click("Check")
+  click(/Continue/)
+}
+
+const openCafe = async (): Promise<void> => {
+  fireEvent.click(
+    await screen.findByRole("button", { name: /Ordering at a café/ })
+  )
+  await screen.findByText(CAFE_LINE)
+}
+
+const continueAtCard = async (): Promise<void> => {
+  fireEvent.click(await screen.findByRole("button", { name: /Continue/ }))
+  await screen.findByText(CARD_LINE)
+}
+
 afterEach(cleanup)
 
 describe("HandheldLesson", () => {
   it("follows a line with a probe about it, never a first-order question (canon Cor. 4.5)", async () => {
     renderLesson()
-    fireEvent.click(
-      await screen.findByRole("button", { name: /Ordering at a café/ })
-    )
-
-    expect(await screen.findByText("어서 오세요. 뭐 드릴까요?")).toBeTruthy()
+    await openCafe()
+    expect(screen.getByText(CAFE_LINE)).toBeTruthy()
     // The line anchors a probe, so its English waits for the answer.
     expect(screen.queryByRole("button", { name: /Show English/ })).toBeNull()
 
@@ -129,43 +182,13 @@ describe("HandheldLesson", () => {
 
   it("lets a replay interrupt what is playing, while a line the lesson reaches waits its turn", async () => {
     const urgencies: Array<string> = []
-    render(
-      <QueryClientProvider
-        client={
-          new QueryClient({ defaultOptions: { queries: { retry: false } } })
-        }
-      >
-        <SessionConfigProvider
-          value={{
-            topikRepository: fixtureTopikRepository,
-            metadataRepository: fixtureMetadataRepository,
-            speaker: {
-              available: true,
-              say: (_text, options): Promise<SpeechOutcome> => {
-                urgencies.push(options.urgency ?? "next")
-                return Promise.resolve({ kind: "heard" })
-              },
-              stop: (): void => undefined,
-              muted: false,
-              subscribe: () => (): void => undefined,
-              describe: () => ({
-                platform: "browser",
-                voice: null,
-                availability: "available",
-              }),
-            },
-          }}
-        >
-          <HandheldLesson
-            resumeStore={createResumeStore(memoryStorage())}
-            surveyStore={createSurveyStore(memoryStorage())}
-            pastedStore={createPastedLessonStore(memoryStorage())}
-            pastedResumeStore={createResumeStore(memoryStorage())}
-            readAloudStore={createReadAloudStore(memoryStorage())}
-          />
-        </SessionConfigProvider>
-      </QueryClientProvider>
-    )
+    renderLesson({
+      speaker: voice((_text, options): Promise<SpeechOutcome> => {
+        urgencies.push(options.urgency ?? "next")
+        return Promise.resolve({ kind: "heard" })
+      }),
+      readAloudStore: createReadAloudStore(memoryStorage()),
+    })
     fireEvent.click(
       await screen.findByRole("button", { name: /Ordering at a café/ })
     )
@@ -179,41 +202,10 @@ describe("HandheldLesson", () => {
   })
 
   it("opens the read-aloud drill from the material list, and comes back", async () => {
-    render(
-      <QueryClientProvider
-        client={
-          new QueryClient({ defaultOptions: { queries: { retry: false } } })
-        }
-      >
-        <SessionConfigProvider
-          value={{
-            topikRepository: fixtureTopikRepository,
-            metadataRepository: fixtureMetadataRepository,
-            speaker: {
-              available: true,
-              say: (): Promise<SpeechOutcome> =>
-                Promise.resolve({ kind: "heard" }),
-              stop: (): void => undefined,
-              muted: false,
-              subscribe: () => (): void => undefined,
-              describe: () => ({
-                platform: "browser",
-                voice: null,
-                availability: "available",
-              }),
-            },
-          }}
-        >
-          <HandheldLesson
-            resumeStore={createResumeStore(memoryStorage())}
-            surveyStore={createSurveyStore(memoryStorage())}
-            pastedStore={createPastedLessonStore(memoryStorage())}
-            pastedResumeStore={createResumeStore(memoryStorage())}
-            readAloudStore={createReadAloudStore(memoryStorage())}
-          />
-        </SessionConfigProvider>
-      </QueryClientProvider>
-    )
+    renderLesson({
+      speaker: voice(() => Promise.resolve({ kind: "heard" })),
+      readAloudStore: createReadAloudStore(memoryStorage()),
+    })
     fireEvent.click(await screen.findByRole("button", { name: /Read aloud/ }))
     expect(screen.getByRole("button", { name: /Start/ })).toBeTruthy()
     expect(screen.getByLabelText("Your reading aloud")).toBeTruthy()
@@ -225,15 +217,10 @@ describe("HandheldLesson", () => {
 
   it("judges transformations, builds one from tiles, and revisits a miss once", async () => {
     renderLesson()
-    fireEvent.click(
-      await screen.findByRole("button", { name: /Ordering at a café/ })
-    )
-    await screen.findByText("어서 오세요. 뭐 드릴까요?")
+    await openCafe()
 
     click(/^Next/) // reply probe
-    pick(/아이스 아메리카노 한 잔 주세요/)
-    click("Check")
-    click(/Continue/)
+    answer(/아이스 아메리카노 한 잔 주세요/)
 
     click(/^Next/) // line 2 -> odd one out
     expect(
@@ -246,9 +233,7 @@ describe("HandheldLesson", () => {
     click(/Continue/)
 
     click(/^Next/) // line 3 -> honorific
-    pick(/It honours the customer/)
-    click("Check")
-    click(/Continue/)
+    answer(/It honours the customer/)
 
     click(/^Next/) // line 4 -> build the negation
     expect(screen.getByText("Turn this into a negative request.")).toBeTruthy()
@@ -259,9 +244,7 @@ describe("HandheldLesson", () => {
 
     // The missed odd-one-out, once more, before the wrap.
     expect(screen.getByText("Once more")).toBeTruthy()
-    pick(/Negation.*안 주세요/)
-    click("Check")
-    click(/Continue/)
+    answer(/Negation.*안 주세요/)
 
     expect(
       screen.getByText("3 of 4 understood on the first listen")
@@ -269,33 +252,20 @@ describe("HandheldLesson", () => {
     expect(screen.getByText("1 revisited after the conversation")).toBeTruthy()
   })
 
-  it("keeps a miss pinned to the probe that was missed when the file refreshes (Codex, #1554)", async () => {
+  it("keeps a miss pinned to the probe that was missed when the file refreshes", async () => {
     let batches = FIXTURE_BATCHES
     const client = new QueryClient({
       defaultOptions: { queries: { retry: false } },
     })
-    const storage = memoryStorage()
-    const store = renderLesson(
-      storage,
-      { load: () => Promise.resolve(batches) },
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      client
-    )
-    fireEvent.click(
-      await screen.findByRole("button", { name: /Ordering at a café/ })
-    )
-    await screen.findByText("어서 오세요. 뭐 드릴까요?")
+    const store = renderLesson({
+      topikRepository: { load: () => Promise.resolve(batches) },
+      client,
+    })
+    await openCafe()
     click(/^Next/)
-    pick(/아이스 아메리카노 한 잔 주세요/)
-    click("Check")
-    click(/Continue/)
+    answer(/아이스 아메리카노 한 잔 주세요/)
     click(/^Next/)
-    pick(/Same meaning.*부탁해요/) // valid, so a miss
-    click("Check")
-    click(/Continue/)
+    answer(/Same meaning.*부탁해요/) // valid, so a miss
 
     // The lesson is revised under the same probe id, and the file refetched.
     const revised = structuredClone(FIXTURE_BATCHES)
@@ -316,9 +286,7 @@ describe("HandheldLesson", () => {
     // A later miss in the same conversation is pinned to what it is now;
     // the earlier one keeps the pin it was missed under.
     click(/^Next/)
-    pick(/past tense/)
-    click("Check")
-    click(/Continue/)
+    answer(/past tense/)
 
     click("Back to materials")
     expect(store.get(FIXTURE_TOPIK_KEY)?.survey?.missed).toEqual({
@@ -329,30 +297,35 @@ describe("HandheldLesson", () => {
     })
   })
 
-  it("resumes at the line it was left on, by message id", async () => {
+  it.each([
+    [
+      "resumes at the line it was left on, by message id",
+      fixtureTopikRepository,
+      "Conversation 2 of 2",
+    ],
+    [
+      "finds the saved conversation by its id when the file reorders them",
+      // The file now lists conversation 2 first.
+      {
+        load: (): Promise<typeof FIXTURE_BATCHES> =>
+          Promise.resolve([...FIXTURE_BATCHES].reverse()),
+      },
+      "Conversation 1 of 2",
+    ],
+  ])("%s", async (_, topikRepository, position) => {
     const storage = memoryStorage()
-    createResumeStore(storage).set(FIXTURE_TOPIK_KEY, {
-      batchId: 2,
-      conversation: 1,
-      messageId: "c2-m2",
-    })
-    renderLesson(storage)
-
+    resumeAt(storage)
+    renderLesson({ storage, topikRepository })
     fireEvent.click(await screen.findByRole("button", { name: /Continue/ }))
-    expect(await screen.findByText("카드로 할게요. 감사합니다.")).toBeTruthy()
-    expect(screen.getByText("Conversation 2 of 2")).toBeTruthy()
+    expect(await screen.findByText(CARD_LINE)).toBeTruthy()
+    expect(screen.getByText(position)).toBeTruthy()
   })
 
-  it("keeps the gloss out of feedback while another probe on the line is pending (Codex, #1544)", async () => {
+  it("keeps the gloss out of feedback while another probe on the line is pending", async () => {
     const storage = memoryStorage()
-    createResumeStore(storage).set(FIXTURE_TOPIK_KEY, {
-      batchId: 2,
-      conversation: 1,
-      messageId: "c2-m2",
-    })
-    renderLesson(storage)
-    fireEvent.click(await screen.findByRole("button", { name: /Continue/ }))
-    await screen.findByText("카드로 할게요. 감사합니다.")
+    resumeAt(storage)
+    renderLesson({ storage })
+    await continueAtCard()
 
     // c2-m2 anchors two probes: the odd-one-out, then the past-tense build.
     click(/^Next/)
@@ -370,13 +343,10 @@ describe("HandheldLesson", () => {
     expect(screen.getByText("I'll pay by card. Thank you.")).toBeTruthy()
   })
 
-  it("keeps answered probes and promised repeats across a reload (Codex, #1544)", async () => {
+  it("keeps answered probes and promised repeats across a reload", async () => {
     const storage = memoryStorage()
-    renderLesson(storage)
-    fireEvent.click(
-      await screen.findByRole("button", { name: /Ordering at a café/ })
-    )
-    await screen.findByText("어서 오세요. 뭐 드릴까요?")
+    renderLesson({ storage })
+    await openCafe()
     click(/^Next/) // the reply probe
     pick(/네, 어서 오세요/)
     click("Check")
@@ -384,62 +354,35 @@ describe("HandheldLesson", () => {
 
     // The tab reloads before Continue.
     cleanup()
-    renderLesson(storage)
+    renderLesson({ storage })
     fireEvent.click(await screen.findByRole("button", { name: /Continue/ }))
 
     // Back at the probe's line; the answered probe is passed over.
-    expect(await screen.findByText("어서 오세요. 뭐 드릴까요?")).toBeTruthy()
+    expect(await screen.findByText(CAFE_LINE)).toBeTruthy()
     click(/^Next/)
     expect(screen.getByText("아이스 아메리카노 한 잔 주세요.")).toBeTruthy()
 
     click(/^Next/)
-    pick(/Negation.*안 주세요/)
-    click("Check")
-    click(/Continue/)
+    answer(/Negation.*안 주세요/)
     click(/^Next/)
-    pick(/It honours the customer/)
-    click("Check")
-    click(/Continue/)
+    answer(/It honours the customer/)
     click(/^Next/)
-    buildFromTiles(["포장하지", "마세요"])
-    click("Check")
-    click(/Continue/)
+    build(["포장하지", "마세요"])
 
     // The miss from before the reload still comes back.
     expect(screen.getByText("Once more")).toBeTruthy()
-    pick(/아이스 아메리카노 한 잔 주세요/)
-    click("Check")
-    click(/Continue/)
+    answer(/아이스 아메리카노 한 잔 주세요/)
     expect(
       screen.getByText("3 of 4 understood on the first listen")
     ).toBeTruthy()
   })
 
-  it("finds the saved conversation by its id when the file reorders them (Codex, #1544)", async () => {
-    const storage = memoryStorage()
-    createResumeStore(storage).set(FIXTURE_TOPIK_KEY, {
-      batchId: 2,
-      conversation: 1,
-      messageId: "c2-m2",
-    })
-    // The file now lists conversation 2 first.
-    renderLesson(storage, {
-      load: () => Promise.resolve([...FIXTURE_BATCHES].reverse()),
-    })
-    fireEvent.click(await screen.findByRole("button", { name: /Continue/ }))
-    expect(await screen.findByText("카드로 할게요. 감사합니다.")).toBeTruthy()
-    expect(screen.getByText("Conversation 1 of 2")).toBeTruthy()
-  })
-
   it("does not resume a point that cannot say which conversation it was", async () => {
     const storage = memoryStorage()
-    createResumeStore(storage).set(FIXTURE_TOPIK_KEY, {
-      conversation: 1,
-      messageId: "c2-m2",
-    })
-    renderLesson(storage)
+    resumeAt(storage, { conversation: 1, messageId: "c2-m2" })
+    renderLesson({ storage })
     fireEvent.click(await screen.findByRole("button", { name: /Continue/ }))
-    expect(await screen.findByText("어서 오세요. 뭐 드릴까요?")).toBeTruthy()
+    expect(await screen.findByText(CAFE_LINE)).toBeTruthy()
     expect(screen.getByText("Conversation 1 of 2")).toBeTruthy()
   })
 
@@ -449,30 +392,19 @@ describe("HandheldLesson", () => {
       surveys: SurveyStore
     ): Promise<StorageLike> => {
       const storage = memoryStorage()
-      createResumeStore(storage).set(FIXTURE_TOPIK_KEY, {
-        batchId: 2,
-        conversation: 1,
-        messageId: "c2-m2",
-      })
-      renderLesson(storage, fixtureTopikRepository, surveys)
-      fireEvent.click(await screen.findByRole("button", { name: /Continue/ }))
-      await screen.findByText("카드로 할게요. 감사합니다.")
+      resumeAt(storage)
+      renderLesson({ storage, surveyStore: surveys })
+      await continueAtCard()
 
       click(/^Next/)
-      pick(/Past tense.*했어요/) // valid, so a miss
-      click("Check")
-      click(/Continue/)
-      buildFromTiles(["카드로", "했어요"])
-      click("Check")
-      click(/Continue/)
-      pick(/Question.*할게요\?/) // the repeat, answered
-      click("Check")
-      click(/Continue/)
+      answer(/Past tense.*했어요/) // valid, so a miss
+      build(["카드로", "했어요"])
+      answer(/Question.*할게요\?/) // the repeat, answered
       click(/Finish/)
       return storage
     }
 
-    it("keeps the lesson's place while its survey is open, and lets it go once answered (Codex, #1554)", async () => {
+    it("keeps the lesson's place while its survey is open, and lets it go once answered", async () => {
       const surveys = createSurveyStore(memoryStorage())
       const storage = await finishWithAMiss(surveys)
       expect(screen.getByText("Was this lesson worthwhile?")).toBeTruthy()
@@ -481,9 +413,8 @@ describe("HandheldLesson", () => {
       // A reload with the survey open: the lesson comes back, not from the
       // top, and finishing it asks again with the same miss on offer.
       cleanup()
-      renderLesson(storage, fixtureTopikRepository, surveys)
-      fireEvent.click(await screen.findByRole("button", { name: /Continue/ }))
-      await screen.findByText("카드로 할게요. 감사합니다.")
+      renderLesson({ storage, surveyStore: surveys })
+      await continueAtCard()
       // Its checks were answered; stepping on passes over them to the end.
       for (let step = 0; step < 10; step += 1) {
         if (screen.queryByRole("button", { name: /Finish/ })) break
@@ -545,14 +476,12 @@ describe("HandheldLesson", () => {
       ])
     })
 
-    it("keeps what it will offer across leaving and resuming (Codex, #1554)", async () => {
+    it("keeps what it will offer across leaving and resuming", async () => {
       const surveys = createSurveyStore(memoryStorage(), () => 7)
       const storage = memoryStorage()
       // Evidence from conversation 1, gathered before an earlier leave.
-      createResumeStore(storage).set(FIXTURE_TOPIK_KEY, {
-        batchId: 2,
-        conversation: 1,
-        messageId: "c2-m2",
+      resumeAt(storage, {
+        ...AT_C2_M2,
         survey: {
           missed: pinMisses(FIXTURE_BATCHES, { 1: ["c1-request-forms"] }),
           flagged: [
@@ -565,14 +494,11 @@ describe("HandheldLesson", () => {
           ],
         },
       })
-      const store = renderLesson(storage, fixtureTopikRepository, surveys)
-      fireEvent.click(await screen.findByRole("button", { name: /Continue/ }))
-      await screen.findByText("카드로 할게요. 감사합니다.")
+      const store = renderLesson({ storage, surveyStore: surveys })
+      await continueAtCard()
 
       click(/^Next/)
-      pick(/Past tense.*했어요/) // valid, so a miss in conversation 2
-      click("Check")
-      click(/Continue/)
+      answer(/Past tense.*했어요/) // valid, so a miss in conversation 2
 
       // Leave mid-lesson: the point now holds both conversations' misses.
       click("Back to materials")
@@ -583,15 +509,10 @@ describe("HandheldLesson", () => {
         })
       )
 
-      fireEvent.click(await screen.findByRole("button", { name: /Continue/ }))
-      await screen.findByText("카드로 할게요. 감사합니다.")
+      await continueAtCard()
       click(/^Next/)
-      buildFromTiles(["카드로", "했어요"])
-      click("Check")
-      click(/Continue/)
-      pick(/Question.*할게요\?/) // the repeat, answered
-      click("Check")
-      click(/Continue/)
+      build(["카드로", "했어요"])
+      answer(/Question.*할게요\?/) // the repeat, answered
       click(/Finish/)
 
       click("Yes, worth it")
@@ -622,6 +543,20 @@ describe("HandheldLesson", () => {
   })
 
   describe("choosing what comes next (canon Rem. 3.5)", () => {
+    /** A report that was too hard and stuck on negation. */
+    const tooHardOnNegation = (): SurveyStore => {
+      const surveys = createSurveyStore(memoryStorage())
+      surveys.add(
+        "another-lesson",
+        {
+          difficulty: "too-hard",
+          stuck: [{ batchId: 9, probeId: "x", relations: ["negation"] }],
+        },
+        { level: 1 }
+      )
+      return surveys
+    }
+
     it("puts the held level's lesson up next, and moves only when the learner does", async () => {
       renderLesson()
       const upNext = await screen.findByRole("region", { name: "Up next" })
@@ -641,39 +576,25 @@ describe("HandheldLesson", () => {
       ).toMatch(/Changing subway lines/)
     })
 
-    it("falls back to the operator's order, not the alphabet (Codex, #1555)", async () => {
+    it("falls back to the operator's order, not the alphabet", async () => {
       const manifest = await fixtureMetadataRepository.loadCatalog()
       const [cafe] = manifest.topiks
       if (!cafe) throw new Error("fixture lost its café lesson")
       const zebra = { ...cafe, key: "zebra", displayName: "Zebra crossing" }
-      renderLesson(
-        memoryStorage(),
-        fixtureTopikRepository,
-        undefined,
-        undefined,
-        undefined,
-        {
+      renderLesson({
+        metadataRepository: {
           loadCatalog: () =>
             Promise.resolve({ ...manifest, topiks: [zebra, cafe] }),
-        }
-      )
+        },
+      })
       const upNext = await screen.findByRole("region", { name: "Up next" })
       expect(upNext.textContent).toMatch(/Zebra crossing/)
       expect(upNext.textContent).not.toMatch(/Ordering at a café/)
     })
 
     it("says why: what blocked the learner comes back, shorter after too hard", async () => {
-      const surveys = createSurveyStore(memoryStorage())
-      surveys.add(
-        "another-lesson",
-        {
-          difficulty: "too-hard",
-          stuck: [{ batchId: 9, probeId: "x", relations: ["negation"] }],
-        },
-        { level: 1 }
-      )
       // A longer twin of the café lesson, bringing back the same: size is
-      // what puts the café first, so it may say so (Codex, #1555).
+      // what puts the café first, so it may say so.
       const manifest = await fixtureMetadataRepository.loadCatalog()
       const [cafe, ...rest] = manifest.topiks
       if (!cafe) throw new Error("fixture lost its café lesson")
@@ -683,17 +604,13 @@ describe("HandheldLesson", () => {
         displayName: "Ordering for the whole office",
         totalMessages: cafe.totalMessages * 3,
       }
-      renderLesson(
-        memoryStorage(),
-        fixtureTopikRepository,
-        surveys,
-        undefined,
-        undefined,
-        {
+      renderLesson({
+        surveyStore: tooHardOnNegation(),
+        metadataRepository: {
           loadCatalog: () =>
             Promise.resolve({ ...manifest, topiks: [longer, cafe, ...rest] }),
-        }
-      )
+        },
+      })
       const upNext = await screen.findByRole("region", { name: "Up next" })
       expect(upNext.textContent).toMatch(/Ordering at a café/)
       expect(upNext.textContent).toMatch(/Brings back negation\./)
@@ -702,23 +619,14 @@ describe("HandheldLesson", () => {
       )
     })
 
-    it("does not call the only lesson at its level shorter (Codex, #1555)", async () => {
-      const surveys = createSurveyStore(memoryStorage())
-      surveys.add(
-        "another-lesson",
-        {
-          difficulty: "too-hard",
-          stuck: [{ batchId: 9, probeId: "x", relations: ["negation"] }],
-        },
-        { level: 1 }
-      )
-      renderLesson(memoryStorage(), fixtureTopikRepository, surveys)
+    it("does not call the only lesson at its level shorter", async () => {
+      renderLesson({ surveyStore: tooHardOnNegation() })
       const upNext = await screen.findByRole("region", { name: "Up next" })
       expect(upNext.textContent).toMatch(/Brings back negation\./)
       expect(upNext.textContent).not.toMatch(/Shorter/)
     })
 
-    it("stops ordering by a report once it expires, in a tab left open (Codex, #1555)", async () => {
+    it("stops ordering by a report once it expires, in a tab left open", async () => {
       let now = 1
       const surveys = createSurveyStore(memoryStorage(), () => now)
       surveys.add(
@@ -726,7 +634,7 @@ describe("HandheldLesson", () => {
         { worthwhile: "yes", stuck: [] },
         { level: 2 }
       )
-      renderLesson(memoryStorage(), fixtureTopikRepository, surveys)
+      renderLesson({ surveyStore: surveys })
       const level = (n: number): string | null =>
         screen
           .getByRole("radio", { name: `TOPIK ${n}` })
@@ -739,7 +647,7 @@ describe("HandheldLesson", () => {
       expect(level(1)).toBe("true")
     })
 
-    it("records the level held for a lesson that has none (Codex, #1555)", async () => {
+    it("records the level held for a lesson that has none", async () => {
       const surveys = createSurveyStore(memoryStorage())
       const pasted = createPastedLessonStore(memoryStorage())
       pasted.set(
@@ -754,18 +662,12 @@ describe("HandheldLesson", () => {
         FIXTURE_BATCHES
       )
       const session = createResumeStore(memoryStorage())
-      session.set("local:any-level", {
-        batchId: 2,
-        conversation: 1,
-        messageId: "c2-m2",
+      session.set("local:any-level", AT_C2_M2)
+      renderLesson({
+        surveyStore: surveys,
+        pastedStore: pasted,
+        pastedResumeStore: session,
       })
-      renderLesson(
-        memoryStorage(),
-        fixtureTopikRepository,
-        surveys,
-        pasted,
-        session
-      )
       const held = await screen.findByRole("region", {
         name: "Pasted this session",
       })
@@ -775,15 +677,11 @@ describe("HandheldLesson", () => {
           button.textContent.includes("Any level")
         )!
       )
-      await screen.findByText("카드로 할게요. 감사합니다.")
+      await screen.findByText(CARD_LINE)
 
       click(/^Next/)
-      pick(/Question.*할게요\?/)
-      click("Check")
-      click(/Continue/)
-      buildFromTiles(["카드로", "했어요"])
-      click("Check")
-      click(/Continue/)
+      answer(/Question.*할게요\?/)
+      build(["카드로", "했어요"])
       click(/Finish/)
       click("Yes, worth it")
       click("About right")
@@ -823,6 +721,20 @@ describe("HandheldLesson", () => {
       "```",
     ].join("\n")
 
+    const pasteReply = (): void => {
+      fireEvent.change(
+        screen.getByRole("textbox", { name: "Your model's reply" }),
+        { target: { value: modelReply } }
+      )
+      click("Check the lesson")
+    }
+
+    const writeYourOwn = async (): Promise<void> => {
+      fireEvent.click(
+        await screen.findByRole("button", { name: /Write your own lesson/ })
+      )
+    }
+
     it("hands out the prompt, takes the lesson back, and holds it for the session only", async () => {
       const writeText = stubClipboard()
       const pasted = createPastedLessonStore(memoryStorage())
@@ -832,11 +744,9 @@ describe("HandheldLesson", () => {
         { worthwhile: "no", stuck: [], becoming: "reading webtoons raw" },
         { displayName: "An earlier lesson" }
       )
-      renderLesson(memoryStorage(), fixtureTopikRepository, surveys, pasted)
+      renderLesson({ surveyStore: surveys, pastedStore: pasted })
 
-      fireEvent.click(
-        await screen.findByRole("button", { name: /Write your own lesson/ })
-      )
+      await writeYourOwn()
       fireEvent.click(screen.getByRole("radio", { name: "TOPIK 2" }))
       click(/Copy the prompt/)
       await screen.findByText(/Copied/)
@@ -848,17 +758,13 @@ describe("HandheldLesson", () => {
       // ...and the free text is not kept once carried (canon Rem. 7.4).
       expect(surveys.list()[0]?.becoming).toBeUndefined()
 
-      fireEvent.change(
-        screen.getByRole("textbox", { name: "Your model's reply" }),
-        { target: { value: modelReply } }
-      )
-      click("Check the lesson")
+      pasteReply()
       expect(
         screen.getByText(/Every probe will be asked as written/)
       ).toBeTruthy()
       click(/^Start$/)
 
-      expect(await screen.findByText("어서 오세요. 뭐 드릴까요?")).toBeTruthy()
+      expect(await screen.findByText(CAFE_LINE)).toBeTruthy()
       expect(pasted.get()?.meta.key).toBe("local:first-dinner")
 
       // Back on the list, it is held for this session, and can be let go.
@@ -875,36 +781,19 @@ describe("HandheldLesson", () => {
       expect(pasted.get()).toBeNull()
     })
 
-    it("keeps a pasted lesson's place with the lesson: fresh on paste, gone on forget, never in localStorage (Codex, #1554, #1555)", async () => {
+    it("keeps a pasted lesson's place with the lesson: fresh on paste, gone on forget, never in localStorage", async () => {
       stubClipboard()
-      const served = memoryStorage()
       const session = createResumeStore(memoryStorage())
       // A place left in an earlier lesson pasted under the same key.
-      session.set("local:first-dinner", {
-        batchId: 2,
-        conversation: 1,
-        messageId: "c2-m2",
-      })
-      const store = renderLesson(
-        served,
-        fixtureTopikRepository,
-        undefined,
-        undefined,
-        session
-      )
+      session.set("local:first-dinner", AT_C2_M2)
+      const store = renderLesson({ pastedResumeStore: session })
 
-      fireEvent.click(
-        await screen.findByRole("button", { name: /Write your own lesson/ })
-      )
-      fireEvent.change(
-        screen.getByRole("textbox", { name: "Your model's reply" }),
-        { target: { value: modelReply } }
-      )
-      click("Check the lesson")
+      await writeYourOwn()
+      pasteReply()
       click(/^Start$/)
       // The first line, not the old lesson's conversation 2.
-      expect(await screen.findByText("어서 오세요. 뭐 드릴까요?")).toBeTruthy()
-      expect(screen.queryByText("카드로 할게요. 감사합니다.")).toBeNull()
+      expect(await screen.findByText(CAFE_LINE)).toBeTruthy()
+      expect(screen.queryByText(CARD_LINE)).toBeNull()
 
       click(/^Next/)
       click("Back to materials")
@@ -917,14 +806,10 @@ describe("HandheldLesson", () => {
       expect(session.get("local:first-dinner")).toBeNull()
     })
 
-    it("drops places left in pasted lessons kept by an older build, and offers the served one to continue (Codex, #1555)", async () => {
+    it("drops places left in pasted lessons kept by an older build, and offers the served one to continue", async () => {
       const storage = memoryStorage()
       const points = createResumeStore(storage)
-      points.set(FIXTURE_TOPIK_KEY, {
-        batchId: 2,
-        conversation: 1,
-        messageId: "c2-m2",
-      })
+      points.set(FIXTURE_TOPIK_KEY, AT_C2_M2)
       // Left last, in the localStorage store, by a build that kept lessons.
       points.set("local:first-dinner", {
         batchId: 1,
@@ -932,7 +817,7 @@ describe("HandheldLesson", () => {
         messageId: "c1-m1",
         survey: { missed: {}, flagged: [] },
       })
-      const store = renderLesson(storage)
+      const store = renderLesson({ storage })
       expect(
         await screen.findByRole("button", { name: /Continue/ })
       ).toBeTruthy()
@@ -940,14 +825,14 @@ describe("HandheldLesson", () => {
       expect(store.last()?.topikKey).toBe(FIXTURE_TOPIK_KEY)
     })
 
-    it("deletes what the retired lesson store left in localStorage (Codex, #1555)", async () => {
+    it("deletes what the retired lesson store left in localStorage", async () => {
       window.localStorage.setItem(RETIRED_LESSONS_KEY, "[]")
       renderLesson()
       await screen.findByRole("region", { name: "Up next" })
       expect(window.localStorage.getItem(RETIRED_LESSONS_KEY)).toBeNull()
     })
 
-    it("keeps the survey's free text until the prompt actually reaches the learner (Codex, #1555)", async () => {
+    it("keeps the survey's free text until the prompt actually reaches the learner", async () => {
       vi.stubGlobal("navigator", {
         ...navigator,
         clipboard: {
@@ -960,10 +845,8 @@ describe("HandheldLesson", () => {
         { stuck: [], becoming: "reading webtoons raw" },
         { displayName: "An earlier lesson" }
       )
-      renderLesson(memoryStorage(), fixtureTopikRepository, surveys)
-      fireEvent.click(
-        await screen.findByRole("button", { name: /Write your own lesson/ })
-      )
+      renderLesson({ surveyStore: surveys })
+      await writeYourOwn()
       click(/Copy the prompt/)
       const manual = await screen.findByRole("textbox", {
         name: "Prompt to copy",
@@ -972,7 +855,7 @@ describe("HandheldLesson", () => {
       expect(surveys.list()[0]?.becoming).toBe("reading webtoons raw")
 
       // Another tab adds a report while the fallback is open; this prompt
-      // never carried it (Codex, #1555).
+      // never carried it.
       surveys.add(
         "local:later",
         { stuck: [], becoming: "ordering without pointing" },
@@ -997,7 +880,7 @@ describe("HandheldLesson", () => {
       expect(earlier?.becoming).toBeUndefined()
     })
 
-    it("plays the lesson it was handed when the device refuses to keep it (Codex, #1554)", async () => {
+    it("plays the lesson it was handed when the device refuses to keep it", async () => {
       stubClipboard()
       const storage = memoryStorage()
       // An older lesson held under the same key, then storage that takes no
@@ -1019,25 +902,14 @@ describe("HandheldLesson", () => {
           throw new Error("QuotaExceededError")
         },
       }
-      renderLesson(
-        memoryStorage(),
-        fixtureTopikRepository,
-        undefined,
-        createPastedLessonStore(full)
-      )
+      renderLesson({ pastedStore: createPastedLessonStore(full) })
 
-      fireEvent.click(
-        await screen.findByRole("button", { name: /Write your own lesson/ })
-      )
-      fireEvent.change(
-        screen.getByRole("textbox", { name: "Your model's reply" }),
-        { target: { value: modelReply } }
-      )
-      click("Check the lesson")
+      await writeYourOwn()
+      pasteReply()
       click(/^Start$/)
       // The lesson just pasted, from its first conversation - not the older
       // one storage still holds under the key.
-      expect(await screen.findByText("어서 오세요. 뭐 드릴까요?")).toBeTruthy()
+      expect(await screen.findByText(CAFE_LINE)).toBeTruthy()
       click("Back to materials")
       const held = await screen.findByRole("region", {
         name: "Pasted this session",
@@ -1049,14 +921,9 @@ describe("HandheldLesson", () => {
     it("keeps a flagged answer for the next prompt even when the survey is skipped", async () => {
       const surveys = createSurveyStore(memoryStorage(), () => 9)
       const storage = memoryStorage()
-      createResumeStore(storage).set(FIXTURE_TOPIK_KEY, {
-        batchId: 2,
-        conversation: 1,
-        messageId: "c2-m2",
-      })
-      renderLesson(storage, fixtureTopikRepository, surveys)
-      fireEvent.click(await screen.findByRole("button", { name: /Continue/ }))
-      await screen.findByText("카드로 할게요. 감사합니다.")
+      resumeAt(storage)
+      renderLesson({ storage, surveyStore: surveys })
+      await continueAtCard()
 
       click(/^Next/)
       pick(/Question.*할게요\?/)
@@ -1066,9 +933,7 @@ describe("HandheldLesson", () => {
         screen.getByRole("button", { name: /Flagged for your next prompt/ })
       ).toBeTruthy()
       click(/Continue/)
-      buildFromTiles(["카드로", "했어요"])
-      click("Check")
-      click(/Continue/)
+      build(["카드로", "했어요"])
       click(/Finish/)
       click("Not now")
 

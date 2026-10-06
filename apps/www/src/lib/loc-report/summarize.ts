@@ -1,10 +1,7 @@
 /**
  * What the widget shows, computed from a snapshot: pure functions, no clock.
- *
- * Every range ends on the snapshot's own last day (`through`), never on today.
- * The snapshot is as old as the build that carried it, and "the last 7 days"
- * of a three-week-old build is the week the numbers are about, which the
- * widget's footer dates ("as of Sep 12") rather than pretending otherwise.
+ * Every range ends on the snapshot's last day (`through`), never today; the
+ * footer dates it ("as of Sep 12").
  */
 
 import { addDays } from "some-ui-utils"

@@ -84,9 +84,7 @@ describe("ExerciseCard", () => {
   })
 
   it("keeps focus on the keystroke-capture element across a step advance", () => {
-    // The player's hands do not leave the keys, so a step boundary that
-    // dropped focus would silently stop accepting input. Asserted rather
-    // than felt.
+    // A step boundary that dropped focus would silently stop input.
     const first = seed.steps[1]
     const second = seed.steps[9]
     if (!first || !second) throw new Error("the seed exercise has ten steps")
@@ -140,10 +138,8 @@ describe("ExerciseCard", () => {
     expect(declared[0]?.getAttribute("data-scroll-intent")).toBe("code-display")
   })
 
-  it("passes a step's patch overlay through to the gutter (LTY-PATCH P3, #1078)", () => {
-    // End-to-end wiring check: a step's typing block's `patch` (P2, #1077)
-    // has to survive ExerciseCard -> TypingViewport -> CodeDisplay for the
-    // gutter to ever render at all.
+  it("passes a step's patch overlay through to the gutter (LTY-PATCH)", () => {
+    // The overlay must survive ExerciseCard -> TypingViewport -> CodeDisplay.
     const patched = nextExercise({ preferId: "diagnostic-division-guard" })
     const step = patched.steps[0]
     if (!step) throw new Error("diagnostic-division-guard has one step")

@@ -1,21 +1,17 @@
 /**
  * How many recommendations fit one row, and how many search results fit the
- * overlay - the two numbers epic #852 turns on.
+ * overlay (#852).
  *
- * Both live here, in the pure package, for one reason: the launcher and the
- * test that proves the launcher fits have to agree on them. A constant
- * written twice is a constant that will disagree exactly once, in the commit
- * that changes it, and the fit test would then be measuring a layout that
- * isn't shipped.
+ * Here, in the pure package, so the launcher and the test that proves it fits
+ * read the same constants.
  */
 
 /**
  * Tailwind's `sm` and `lg`, in pixels.
  *
- * Mirrored from the breakpoints the launcher's grid classes actually use
- * (`grid-cols-2 sm:grid-cols-3 lg:grid-cols-4`). Keeping them next to the
- * function that reads them means the column count and the item count are one
- * decision rather than two that drift.
+ * Mirrored from the launcher's grid classes
+ * (`grid-cols-2 sm:grid-cols-3 lg:grid-cols-4`), so column count and item
+ * count are one decision.
  */
 const SM = 640
 const LG = 1024

@@ -1,22 +1,16 @@
 /**
- * Copies what the home `file_host` publishes into the phone's database, so
- * it can be studied later with no network: TOPIK lessons (which exist
- * nowhere else) and any Leetype rounds newer than the bundled corpus.
+ * Copies what the home `file_host` publishes into the phone's database, for
+ * offline study: TOPIK lessons (which exist nowhere else) and Leetype rounds
+ * newer than the bundled corpus.
  *
- * One direction only, home -> phone, and only published content: nothing
- * the learner did (sessions, shelf, signals) travels either way yet. That is
- * a separate decision - two histories of one person's sessions need a
- * merge rule, and "last write wins" across devices is not one.
+ * One direction (home -> phone) and published content only: syncing the
+ * learner's own history would need a merge rule. Every route read here is
+ * uncredentialed on the server, so no sign-in is needed.
  *
- * Every route read here is one the server serves without a session (the
- * curriculum and round reads are its uncredentialed modules), so a sync
- * needs no sign-in on the phone.
- *
- * `get` is injected: the app hands it Capacitor's native HTTP (`native-http`),
+ * `get` is injected: the app passes Capacitor's native HTTP (`native-http`),
  * which reaches a plain-`http:` LAN address from the WebView's `https:` page
- * where a browser `fetch` would be blocked as mixed content. Tests hand it a
- * second device backend standing in for home - which is honest precisely
- * because the device backend passes the server's own contracts.
+ * (a `fetch` would be mixed content). Tests pass a second device backend
+ * standing in for home, which passes the server's own contracts.
  */
 import { isRecord } from "@/lib/device-backend/common"
 import type { LessonEntry } from "@/lib/device-backend/content-store"
@@ -115,10 +109,9 @@ export async function syncFromHome(
     failed: [],
   }
 
-  // The manifest first, and a failure here fails the sync: an unreachable
-  // home is the one error a person needs told plainly. So does a manifest
-  // with no `topiks` array: it is not an empty one, and retiring against it
-  // would empty the phone's catalogue.
+  // The manifest first; its failure fails the sync (an unreachable home must
+  // be said plainly). A manifest with no `topiks` array is not an empty one,
+  // and retiring against it would empty the catalogue.
   const manifest = await getJson(get, base, "/curriculum/manifest.json")
   if (!isRecord(manifest) || !Array.isArray(manifest.topiks)) {
     throw new Error("home's curriculum manifest has no `topiks` array")
@@ -160,9 +153,8 @@ export async function syncFromHome(
   for (const listing of listings) {
     try {
       const id = encodeURIComponent(listing.id)
-      // Same bytes as already held: no body to fetch. The runs still are,
-      // since home can record runs without changing the round, and a sync
-      // whose runs request failed must be able to pick them up next time.
+      // Same bytes: no body to fetch, but the runs still are (home can record
+      // runs without changing the round, or a prior runs request failed).
       if ((await storedRoundHash(db, listing.id)) !== listing.contentHash) {
         const body = await get(`${base}/leetype/rounds/${id}`)
         if (body.status !== 200) throw new Error(String(body.status))

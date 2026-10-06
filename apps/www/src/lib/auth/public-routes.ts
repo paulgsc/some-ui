@@ -6,25 +6,15 @@ const PUBLIC_PATHS: ReadonlySet<string> = new Set([
   "/",
   "/auth",
   "/resume",
-  // A page built to be sent to someone who has no account here and never
-  // will - gating it behind the passkey screen would defeat the only reason
-  // it exists.
+  // Built to be sent to someone with no account here.
   "/extensions",
 ])
 
 /**
- * Whether `pathname` is one of `PUBLIC_PATHS`.
- *
- * The router's own basepath rewrite preserves a trailing slash (it only
- * strips the basepath prefix), and GitHub Pages' /resume/index.html shell
- * (see vite.config.ts's build.rolldownOptions.input) is the canonical,
- * publicly-shared résumé URL - with the slash. A bare string match against
- * "/resume" would pass every in-app navigation (which the router's default
- * trailingSlash: "never" always produces without one) but fail a fresh
- * visitor's first hit on that exact canonical link, redirecting them to
- * /auth instead of the résumé they followed. Stripping a single trailing
- * slash before comparing (never for "/" itself, which has nothing left to
- * strip) matches that default instead of special-casing "/resume/" alone.
+ * Whether `pathname` is one of `PUBLIC_PATHS`, ignoring one trailing slash
+ * (never for "/"): the router's basepath rewrite keeps it, and the canonical
+ * shared résumé URL is `/resume/` (Pages' resume/index.html shell), which a
+ * bare match would send to /auth.
  */
 export function isPublicPath(pathname: string): boolean {
   const normalized =

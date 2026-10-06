@@ -8,7 +8,7 @@ import type { MetaData } from "@censor/types/states"
  * The selectors live in `layout/fields.ts`, shared with the layout crawler's
  * fingerprint so the checked-in table describes what this actually reads.
  * Each field is tried against the Polymer renderers first and the Lit-era
- * lockups second (#973); see that module for why the lockup side matches on
+ * lockups second; see that module for why the lockup side matches on
  * class substrings rather than position.
  */
 
@@ -32,7 +32,7 @@ function firstText(
  * The raw upload-date run, exactly as YouTube rendered it.
  *
  * Split out of {@link extractMeta} so the observability layer can bank the
- * raw string (OBS1, #1395) without re-deriving these two selectors, and
+ * raw string (OBS1) without re-deriving these two selectors, and
  * without paying for the channel-name and duration lookups it must not record
  * anyway. Still pure (E1): the caller decides what to do with the string.
  */

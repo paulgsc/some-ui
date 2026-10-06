@@ -1,5 +1,5 @@
 /**
- * R2 (#1205), Def. 1.2 / Def. 1.3 / Ax. 3.1: evaluating a constraint at a
+ * R2, Def. 1.2 / Def. 1.3 / Ax. 3.1: evaluating a constraint at a
  * numeric point, and the cross-check that keeps a constraint's dimension
  * honest against the cost graph it is actually bounding.
  *

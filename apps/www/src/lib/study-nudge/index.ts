@@ -1,31 +1,16 @@
 /**
  * Should the app interrupt you right now to say a session is waiting?
  *
- * This module answers exactly that and nothing else. It is pure — no
- * `Notification`, no `navigator`, no `localStorage`, no clock of its own —
- * so the interesting question (when is an interruption *welcome*) is
- * decided by a function that can be tested at any hour of any day, and the
- * browser plumbing that acts on the answer lives next door in
- * `service-worker.ts`.
+ * Pure (no `Notification`, `navigator`, `localStorage` or clock of its own),
+ * so when an interruption is welcome can be tested at any hour; the browser
+ * plumbing lives in `service-worker.ts`.
  *
- * ## Why the decision is a value, not a side effect
+ * A badly timed nudge teaches people to dismiss the app's notifications on
+ * sight, so every reason to stay quiet is named (`NudgeSilentReason`): the
+ * settings UI shows which is in force, and tests assert the reason.
  *
- * A nudge is the one part of this app that speaks without being spoken to.
- * Getting it wrong is expensive in a way a wrong render is not: a
- * notification that fires while you are already studying, or at 3am, or for
- * the fourth time in an hour, teaches you to dismiss the app's
- * notifications on sight, and there is no undo for that. So every reason to
- * stay quiet is named (`NudgeSilentReason`) rather than expressed as an
- * early `return` — the settings UI can show you which one is currently in
- * force, and a test can assert the *reason*, not just the silence.
- *
- * ## What it deliberately does not know
- *
- * Nothing here schedules anything. `decideNudge` is asked, repeatedly, "is
- * now a good time?"; it never says "ask me again at 19:00". That keeps the
- * whole scheduling question — which is genuinely the adaptive engine's, and
- * which will eventually move server-side alongside the rest of the learning
- * model — out of a client module that would only have to give it back.
+ * Nothing here schedules: `decideNudge` is asked "is now a good time?", and
+ * scheduling stays with the adaptive engine.
  */
 
 import type { SessionRecord, SessionStatus } from "@/lib/tenant/types"
@@ -39,35 +24,24 @@ export type NudgePreferences = {
   /** Floor on the gap between two nudges, measured from when one was shown. */
   minHoursBetweenNudges: number
   /**
-   * What they agreed to be pushed about, by the server's own topic names.
-   *
-   * A preference in shape only — it is really a *consent record*, and it
-   * lives here because this is already the block that says what this app
-   * may do unprompted, and because it has to round-trip with `enabled`.
-   * The server holds the authoritative copy alongside the subscription; this
-   * is what gets re-sent when a subscription is replaced, which is the one
-   * moment the page needs to know it without asking.
-   *
-   * An empty list is a real answer, not a missing one: the server honours
-   * it as "receives nothing" rather than reading it as "receives
-   * everything". Nothing here defaults it to the full set for that reason.
+   * What they agreed to be pushed about, by the server's topic names: a
+   * consent record. The server holds the authoritative copy; this is re-sent
+   * when a subscription is replaced. An empty list means "receives nothing",
+   * so nothing defaults it to the full set.
    */
   pushTopics: Array<string>
 }
 
 /**
- * The topic the settings toggle's own words describe: "nudge me when a
- * session is prepared". Used as the grant when someone turns reminders on
- * without opening the topic list — not a guess at what they want, but the
- * thing the control they just used says it does.
+ * The topic the settings toggle's own words describe ("nudge me when a
+ * session is prepared"), granted when reminders are turned on without
+ * opening the topic list.
  */
 const DEFAULT_PUSH_TOPIC = "lesson-ready"
 
 export const DEFAULT_NUDGE_PREFERENCES: NudgePreferences = {
-  // Off until asked for, and not negotiable: turning this on requires a
-  // browser permission prompt, and a permission prompt nobody asked for is
-  // the fastest way to get permanently denied. The settings toggle is the
-  // gesture that earns it.
+  // Off until asked for: an unrequested permission prompt is the fastest way
+  // to be permanently denied. The settings toggle is the gesture that earns it.
   enabled: false,
   quietHoursStart: 22,
   quietHoursEnd: 8,
@@ -115,11 +89,8 @@ export const SILENT_REASON_LABEL: Record<NudgeSilentReason, string> = {
 
 /**
  * Quiet hours are a half-open local-hour range `[start, end)` that may wrap
- * midnight — 22→8 is the default and the common case, so the wrapping
- * branch is the one that has to be right rather than the edge case.
- * Equal bounds mean "no quiet hours" rather than "always quiet": a person
- * who drags both ends together has flattened the range, not muted the app,
- * and `enabled` is the control for muting it.
+ * midnight (22→8 is the default). Equal bounds mean "no quiet hours", not
+ * "always quiet": `enabled` is the control for muting.
  */
 export function isWithinQuietHours(
   hour: number,
@@ -131,8 +102,7 @@ export function isWithinQuietHours(
   return hour >= start || hour < end
 }
 
-/** Same calendar day in the viewer's own timezone, which is the only sense
- * of "today" a person means when they say they've studied today. */
+/** Same calendar day in the viewer's own timezone. */
 function isSameLocalDay(a: Date, b: Date): boolean {
   return (
     a.getFullYear() === b.getFullYear() &&
@@ -151,14 +121,9 @@ function touchedToday(session: SessionRecord, now: Date): boolean {
 }
 
 /**
- * Which prepared session is worth naming in the notification.
- *
- * Rank before recency, because the statuses mean genuinely different
- * things to a person being interrupted: `paused` is unfinished work with
- * momentum behind it, `scheduled` is something they deliberately queued,
- * and `draft` is merely something that exists. `completed` and `active` are
- * not candidates at all — the callers above have already ruled those out
- * for stronger reasons.
+ * Which prepared session to name: rank before recency. `paused` is unfinished
+ * work with momentum, `scheduled` was deliberately queued, `draft` merely
+ * exists. `completed` and `active` were ruled out earlier.
  */
 const CANDIDATE_RANK: Partial<Record<SessionStatus, number>> = {
   paused: 0,
@@ -214,9 +179,8 @@ function describe(session: SessionRecord): { title: string; body: string } {
 
 function hoursSince(from: string, now: Date): number {
   const at = new Date(from)
-  // An unparseable stamp is a corrupted cooldown, and the safe reading of a
-  // corrupted cooldown is "expired" — the alternative is a nudge that never
-  // fires again and gives no sign why.
+  // An unparseable stamp reads as expired, or the nudge would never fire
+  // again with no sign why.
   if (Number.isNaN(at.getTime())) return Number.POSITIVE_INFINITY
   return (now.getTime() - at.getTime()) / 3_600_000
 }
@@ -243,8 +207,7 @@ export function decideNudge(input: NudgeInput): NudgeDecision {
     return { kind: "silent", reason: "quiet-hours" }
   }
 
-  // Ranked above "studied today" because it is the stronger statement: a
-  // running session is happening *now*, whatever the day's history says.
+  // Above "studied today": a running session is happening *now*.
   if (sessions.some((s) => s.status === "active")) {
     return { kind: "silent", reason: "session-in-progress" }
   }
@@ -256,9 +219,8 @@ export function decideNudge(input: NudgeInput): NudgeDecision {
   const candidate = pickCandidate(sessions)
   if (!candidate) return { kind: "silent", reason: "nothing-prepared" }
 
-  // Last, so that a person inspecting the status row sees the specific
-  // reason rather than a cooldown masking the fact that nothing is
-  // prepared anyway.
+  // Last, so the status row shows the specific reason rather than a cooldown
+  // masking that nothing is prepared.
   if (
     lastNudgeAt !== null &&
     hoursSince(lastNudgeAt, now) < preferences.minHoursBetweenNudges
@@ -270,20 +232,15 @@ export function decideNudge(input: NudgeInput): NudgeDecision {
 }
 
 /**
- * Fill in fields a browser stored before they existed, the same way
- * `withAudioDefaults` does for the audio block and for the same reason —
- * settings persist as one blob, so a new nested field comes back
- * `undefined` from any browser that saved before it was added.
+ * Fill in fields a browser stored before they existed (settings persist as
+ * one blob), like `withAudioDefaults`.
  */
 export function withNudgeDefaults(
   stored: Partial<NudgePreferences> | undefined
 ): NudgePreferences {
   const merged = { ...DEFAULT_NUDGE_PREFERENCES, ...stored }
-  // A browser that stored preferences before topics existed has no grant
-  // recorded, but did turn the toggle on — and the toggle says it nudges
-  // about prepared sessions. Reading that as the one topic it names is
-  // narrower than the alternative (everything) and matches what they were
-  // actually shown. An explicitly empty list survives untouched.
+  // Stored before topics existed with the toggle on: grant the one topic the
+  // toggle named, not everything. An explicitly empty list survives.
   return Array.isArray(merged.pushTopics)
     ? merged
     : { ...merged, pushTopics: [DEFAULT_PUSH_TOPIC] }

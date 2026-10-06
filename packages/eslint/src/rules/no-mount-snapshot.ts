@@ -1,9 +1,7 @@
 import type { Rule, Scope } from "eslint"
 
-// CallExpression/NewExpression/MemberExpression shapes aren't narrowed
-// cleanly through @types/eslint's Node union, so this rule reads ESTree
-// nodes as `any` - the convention no-loading-elided-default.ts and
-// no-unbounded-intent.ts document.
+// ESTree shapes aren't narrowed cleanly by @types/eslint's Node union.
+
 /* eslint-disable @typescript-eslint/no-explicit-any -- ESTree shapes not modeled precisely by @types/eslint's Node union, see comment above */
 
 /**

@@ -32,9 +32,7 @@ const meta: Meta<typeof WideRoundSurface> = {
 export default meta
 type Story = StoryObj<typeof WideRoundSurface>
 
-// The exact same round `ArtifactSwitcher`'s own `ComposedFromRealArtifacts`
-// story uses — this file's whole point is proving the wide surface
-// reproduces C1's sequencing for one round, not a different one.
+// The same round as `ArtifactSwitcher`'s `ComposedFromRealArtifacts` story.
 const BINARY_SEARCH: Algorithm = {
   source: `export function binarySearch(target: number, values: number[]): number {
   let lo = 0
@@ -71,10 +69,7 @@ const OPTIONS: ReadonlyArray<PropositionOption> = [
 const ANSWER_ID: PropositionId = "CW-P6"
 const ANSWER_TEXT = OPTIONS.find((option) => option.id === ANSWER_ID)!.text
 
-// Static — used only by `Narrow`, the same positional demonstration
-// `ArtifactSwitcher`'s own `ComposedFromRealArtifacts` story already makes,
-// with no commitment to observe. `InteractiveRound` below builds its own
-// array instead, because it has to wire a real `onCommit`.
+// Static, for `Narrow` only; `InteractiveRound` builds its own to wire `onCommit`.
 const ARTIFACTS: ReadonlyArray<SwitchableArtifact> = [
   {
     id: "algorithm",
@@ -121,18 +116,10 @@ const REVEAL_ARTIFACTS: ReadonlyArray<SwitchableArtifact> = [
 const PROBE_EXERCISE = nextExercise({ preferId: FIXTURE_EXERCISE_ID })
 
 /**
- * `PreCommitment`/`PostCommitment` share this rather than each building a
- * fixed snapshot: `commitment` has to be real React state, wired to the
- * *same* `RoundChoices` instance's `onCommit` that feeds it, or the two
- * stories only ever show two disconnected renders instead of one
- * transition a reader can actually watch happen (review finding, #1439,
- * chatgpt-codex-connector — the original version hard-coded `commitment`
- * per story while `RoundChoices` kept its own independent, always-fresh
- * `committed` state, so `PreCommitment` could never open the reveal pane no
- * matter what a reader clicked, and `PostCommitment` showed the reveal pane
- * next to option rows that still looked unanswered — the exact
- * pre-commitment leak this component exists to prevent, on the story meant
- * to demonstrate the opposite).
+ * Shared by `PreCommitment`/`PostCommitment`: `commitment` is real state fed
+ * by the same `RoundChoices`' `onCommit`, so the stories show one real
+ * transition. A hard-coded `commitment` would show a reveal pane beside
+ * unanswered rows, the very leak this component prevents.
  */
 const InteractiveRound: FC = () => {
   const [commitment, setCommitment] = useState<Commitment | null>(null)
@@ -181,11 +168,8 @@ const InteractiveRound: FC = () => {
 }
 
 /**
- * The same round, at C1's own reference width — this component adds nothing
- * here; a phone gets the plain switcher `#1213` already built, one artifact
- * at a time, no reveal pane and no production probe in sight. Included so
- * this file can point at "the same round, both widths" without asking a
- * reader to flip back to `ArtifactSwitcher`'s own story file.
+ * The same round at phone width: the plain switcher, one artifact at a time,
+ * no reveal pane or probe.
  */
 export const Narrow: Story = {
   parameters: { viewport: { defaultViewport: "mobile1" } },
@@ -197,27 +181,18 @@ export const Narrow: Story = {
 }
 
 /**
- * The wide surface's default: one artifact at a time, same as the phone —
- * extra room buys size, not simultaneity (Rem. 9.2). Genuinely interactive:
- * pick an option below to watch the reveal pane actually appear, rather
- * than trusting a caption that it would. Neither this story nor
- * `PostCommitment` below is "the" primary wide story; they're peers showing
- * the same round before and after the one thing that changes what's on
- * screen.
+ * The wide default: one artifact at a time, as on the phone (Rem. 9.2: extra
+ * room buys size, not simultaneity). Pick an option to watch the reveal pane
+ * appear.
  */
 export const PreCommitment: Story = {
   render: () => <InteractiveRound />,
 }
 
 /**
- * Once a commitment lands, simultaneous display is where it belongs: the
- * diff and the now-revealed proposition, side by side. The `play` function
- * makes the *same* commit gesture a learner would — clicking the answer row
- * inside `RoundChoices` — rather than hard-coding `commitment` while
- * `RoundChoices` itself stays fresh and unanswered underneath: that gap is
- * exactly the commitment leak this component exists to rule out, so this
- * story's default state has to be reached the same way a real one would be,
- * not merely made to look reached.
+ * After a commitment: the diff and the revealed proposition side by side.
+ * `play` makes the real commit gesture (clicking the answer row) rather than
+ * faking `commitment`.
  */
 export const PostCommitment: Story = {
   render: () => <InteractiveRound />,
@@ -227,10 +202,7 @@ export const PostCommitment: Story = {
         button.textContent.includes(ANSWER_TEXT)
       )
 
-    // The answer lives on the option-set artifact, reached only after the
-    // switcher visits it — `ArtifactSwitcher` never mounts an artifact
-    // nobody has navigated to, so the button this story wants to click
-    // doesn't exist until "Next" has been pressed enough times to reach it.
+    // The option-set artifact mounts only once visited, so press Next to it.
     for (let i = 0; i < 5 && !findAnswerButton(); i++) {
       canvasElement
         .querySelector<HTMLButtonElement>('button[aria-label="Next artifact"]')

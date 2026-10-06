@@ -22,9 +22,7 @@ export type WebSocketSnapshot<I = unknown> = {
   reconnectAttempts: number
 }
 
-/**
- * Singleton WebSocket manager with lifecycle coordination
- */
+/** Singleton WebSocket manager with lifecycle coordination. */
 export class WebSocketManager {
   private static instances = new Map<string, WebSocketManager>()
 
@@ -116,56 +114,46 @@ export class WebSocketManager {
     this.emitStoreChange()
   }
 
-  /**
-   * Calculate exponential backoff delay with jitter
-   */
+  /** Exponential backoff with jitter. */
   private getBackoffDelay(): number {
     const base = this.options.reconnectInterval ?? 1000
     const max = this.options.maxReconnectInterval ?? 30000
 
     const exp = Math.min(base * 2 ** this.reconnectAttempts, max)
 
-    // ±20% jitter to prevent thundering herd
+    // ±20% jitter against a thundering herd.
     const jitter = exp * (Math.random() * 0.4 - 0.2)
     return Math.max(0, exp + jitter)
   }
 
-  /**
-   * Acquire a reference to this manager
-   * ✅ Guarantees ONE initialization for N callers (thundering herd protection)
-   */
+  /** Acquire a reference. N concurrent callers share one initialization. */
   async acquire(init?: InitFunction): Promise<void> {
     const count = this.refCounter.acquire()
 
-    // Store init function on first acquire
     if (count === 1 && init) {
       this.initFunction = init
     }
 
-    // Already initialized - just return
     if (this.lifecycle.is("initialized")) {
       return
     }
 
-    // ✅ If there was a recent init failure, throw it immediately
-    // This prevents cascading retries from multiple callers
+    // A recent init failure is rethrown, so callers do not cascade retries.
     if (this.lastInitError && Date.now() - this.initErrorTime < 5000) {
       this.log("Rejecting acquire() - recent init failure")
       throw this.lastInitError
     }
 
-    // ✅ Currently initializing - ALL callers wait on the SAME promise
+    // Currently initializing: every caller waits on the same promise.
     if (this.lifecycle.is("initializing")) {
       this.log("Waiting for existing initialization...")
       if (!this.initPromise) {
         throw new Error("Initialization in progress but no promise found")
       }
-      // This is the key: everyone waits on the same promise
       await this.initPromise
       return
     }
 
-    // ✅ Start initialization - create ONE promise for all waiters
     this.lifecycle.transitionTo("initializing")
     this.updateSnapshot({ isInitializing: true })
 
@@ -173,10 +161,8 @@ export class WebSocketManager {
       try {
         this.log("Starting initialization...")
 
-        // Connect socket
         await this.connectSocket()
 
-        // Run init callback if provided
         if (this.initFunction) {
           this.log("Running init callback...")
           await this.initFunction(this)
@@ -189,7 +175,6 @@ export class WebSocketManager {
           error: null,
         })
 
-        // ✅ Clear error state on success
         this.lastInitError = null
         this.initErrorTime = 0
 
@@ -197,7 +182,6 @@ export class WebSocketManager {
       } catch (err) {
         this.log("Initialization failed:", err)
 
-        // ✅ Store error to prevent cascading retries
         this.lastInitError = err instanceof Error ? err : new Error(String(err))
         this.initErrorTime = Date.now()
 
@@ -207,29 +191,22 @@ export class WebSocketManager {
           error: err instanceof Error ? err.message : String(err),
         })
 
-        // ✅ Clear promise so next acquire can try again (after debounce period)
+        // The next acquire may retry once the 5s debounce passes.
         this.initPromise = null
 
         throw err
       }
     })()
 
-    // ✅ All callers wait on this same promise
     await this.initPromise
   }
 
-  /**
-   * Release a reference to this manager
-   * Automatically disposes when ref count reaches zero
-   */
+  /** Release a reference; disposes when the count reaches zero. */
   release(): void {
     const count = this.refCounter.release()
     this.log(`Released reference (count: ${count})`)
   }
 
-  /**
-   * Connect the underlying WebSocket
-   */
   private async connectSocket(): Promise<void> {
     return new Promise((resolve, reject) => {
       this.manualDisconnect = false
@@ -314,16 +291,12 @@ export class WebSocketManager {
     })
   }
 
-  /**
-   * Reconnect after disconnect
-   */
   private async reconnect(): Promise<void> {
     if (!this.lifecycle.is("initialized") || this.isConnected) return
 
     try {
       await this.connectSocket()
 
-      // Re-run init callback after reconnect
       if (this.initFunction) {
         await this.initFunction(this)
       }
@@ -333,9 +306,6 @@ export class WebSocketManager {
     }
   }
 
-  /**
-   * Disconnect the socket
-   */
   private disconnect(): void {
     this.manualDisconnect = true
     this.clearReconnectTimer()
@@ -346,9 +316,7 @@ export class WebSocketManager {
     }
   }
 
-  /**
-   * Dispose of this manager (called when ref count reaches zero)
-   */
+  /** Called when the ref count reaches zero. */
   private dispose(): void {
     if (this.lifecycle.is("disposing")) return
 
@@ -384,9 +352,7 @@ export class WebSocketManager {
     this.log("Manager disposed")
   }
 
-  /**
-   * Send a message immediately (not serialized)
-   */
+  /** Sends immediately, not serialized. */
   sendMessage(message: unknown): void {
     if (this.socket?.readyState !== WebSocket.OPEN) {
       throw new Error("WebSocket is not connected")
@@ -394,16 +360,11 @@ export class WebSocketManager {
     this.socket.send(JSON.stringify(message))
   }
 
-  /**
-   * Send a message with serialization guarantee
-   */
+  /** Sends through the serialized mutation queue. */
   sendSerialized(message: unknown): Promise<void> {
     return this.mutationQueue.enqueue(() => this.sendMessage(message))
   }
 
-  /**
-   * Enqueue a custom mutation
-   */
   enqueueMutation<T>(fn: () => T | Promise<T>): Promise<T> {
     return this.mutationQueue.enqueue(fn)
   }

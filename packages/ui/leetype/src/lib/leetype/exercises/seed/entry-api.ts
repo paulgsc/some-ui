@@ -5,9 +5,8 @@ import { typingBlockFromDiff } from "@leetype/types/exercise"
 import { withJudgment } from "./judgment-step"
 
 /**
- * Failure class 4: the double lookup — deliberately the same subject
- * matter as `entryApi` below, in diagnostic form. Folded into `entryApi`'s
- * tail (LTY-FAMILIES A4) rather than kept as a freestanding exercise.
+ * Failure class 4: the double lookup, `entryApi`'s subject in diagnostic
+ * form, folded into `entryApi`'s tail.
  *
  * Defined ahead of `entryApi`: `const` bindings are not hoisted, and this
  * step's value is spread into `entryApi.steps` below under a renamed id.
@@ -20,11 +19,9 @@ const diagnosticDoubleLookupStep: DiagnosticStep = {
     CONCEPT_IDS.doubleLookup,
     CONCEPT_IDS.amortizedHashing,
   ],
-  // LTY-SEAM S3 (#1017): entry-04-fill constructs single-lookup mutation
-  // via Entry; this diagnostic probes recognition of the same idea from
-  // its failure mode — repairing a naive check-then-fetch back into it.
-  // Renamed to entry-09-diagnostic-double-lookup below (LTY-FAMILIES A4),
-  // and this field travels with it.
+  // LTY-SEAM S3: entry-04-fill constructs single-lookup mutation; this
+  // probes the same idea from its failure mode. Renamed to
+  // entry-09-diagnostic-double-lookup below, with this field.
   transferFrom: "entry-04-fill",
   blocks: [
     {
@@ -85,36 +82,22 @@ const diagnosticEagerLazyDefaultStep: DiagnosticStep = {
 
 /**
  * The motivation's own example, as a chain of commitments (LTY-FAMILIES A4).
+ * No `PromptBlock` carries conceptual exposition: every claim lives in a
+ * rendered evidence block (what follows, not why) or in an unrendered
+ * `obligation`.
  *
- * The corpus's flagship, and the clearest surviving instance of the shape
- * this milestone retired: eight steps of *explain, then reproduce what was
- * explained*, prose doing the conceptual work before the engine ever saw a
- * keystroke. Rewritten in place — same id, so the diff is the argument —
- * with the exposition deleted rather than shortened. No `PromptBlock` here
- * carries conceptual exposition; every claim that used to live in prose now
- * lives in a rendered evidence block (what follows, not why) or in an
- * `obligation` field the player never sees at all.
+ * It builds toward `map.entry(key).or_insert_with(Vec::new).push(value);`.
+ * Each commitment's frame re-shows the prior ones as `‹context›` with the
+ * new witness inside: "what has already been established" is what
+ * LTY-FRAME's context role carries.
  *
- * The line the whole exercise still builds toward is
- * `map.entry(key).or_insert_with(Vec::new).push(value);`. Each commitment's
- * frame re-shows every prior commitment as `‹context›` and anchors the new
- * witness inside it — not because anything is buggy (that is the diagnostic
- * family's use of the same mechanism), but because "what has already been
- * established" is exactly what LTY-FRAME's context role was built to carry.
+ * Step ids stay `entry-NN-slug`, tail included: the shim's test treats id
+ * order as the ladder's order, so the folded-in diagnostic steps are renamed
+ * at the point of use (originals: `diagnosticDoubleLookupStep`,
+ * `diagnosticEagerLazyDefaultStep` above).
  *
- * Step ids stay `entry-NN-slug` throughout, tail included: the shim's own
- * test (`../../index.test.ts`) treats id order as the ladder's order, and a
- * folded-in diagnostic step keeping its freestanding `diagnostic-*` id
- * would sort before every `entry-*` id and break that invariant. Renaming
- * at the point of use is cheap; the original id is still findable in this
- * file, on `diagnosticDoubleLookupStep`/`diagnosticEagerLazyDefaultStep`
- * above.
- *
- * Step-length variance is preserved on purpose — `entry-01`/`entry-02` and
- * the individual commitments run under 40 characters typed, `entry-08`'s
- * generalized function runs well past 120 — because a rewrite that quietly
- * narrowed what the shell is tested against would be a regression dressed
- * as a refactor.
+ * Step lengths vary on purpose (under 40 typed characters up to `entry-08`'s
+ * well past 120), so the shell stays tested against both.
  */
 export const entryApi: Exercise = {
   id: "rust-hashmap-entry",
@@ -161,12 +144,8 @@ export const entryApi: Exercise = {
           before: "unresolved",
           after: "vacant | occupied",
         },
-        // LTY-PATCH P5 (#1080): the first hunk in an accumulating chain —
-        // no prior commitment to carry as context yet, so the whole
-        // rendered line is `add`. Steps 04 and 05 below re-show this exact
-        // line as context and extend it, the construction family's own
-        // reading of the diagnostic mapping (docs/leetype/README.md's
-        // LTY-PATCH section).
+        // The first hunk of an accumulating chain: all `add`. Steps 04 and
+        // 05 re-show this line as context and extend it (LTY-PATCH).
         typingBlockFromDiff({
           language: "rust",
           path: "src/entry.rs",
@@ -197,9 +176,7 @@ export const entryApi: Exercise = {
           headline: "hash ops",
           observations: [{ label: "entry + fill", value: "1" }],
         },
-        // entry-03-place's whole line returns here as context (line 0),
-        // unaltered — the accumulation is not new authoring, it is what
-        // the source already did before this story painted it as a diff.
+        // entry-03-place's whole line returns as context (line 0).
         typingBlockFromDiff({
           language: "rust",
           path: "src/entry.rs",
@@ -287,10 +264,8 @@ export const entryApi: Exercise = {
         CONCEPT_IDS.eagerVsLazyEvaluation,
         CONCEPT_IDS.inPlaceMutation,
       ],
-      // LTY-SEAM S3 (#1017): entry-03-place introduces lookupAsPlace —
-      // holding a lookup as a place rather than a value. This step is the
-      // corpus's own "transfer" (it says so in its id): recognizing the
-      // same abstraction applies to a structurally different value type.
+      // LTY-SEAM S3: entry-03-place introduces lookupAsPlace; this step
+      // transfers it to a structurally different value type.
       transferFrom: "entry-03-place",
       obligation:
         "the commit-fill-mutate shape transfers to counting, where or_insert is the right call because there is nothing to defer — 0 is a literal, not a closure's worth of work",
@@ -344,10 +319,8 @@ export const entryApi: Exercise = {
         locator: "std::collections::hash_map::Entry",
       },
     }),
-    // The diagnostic handoff (LTY-FAMILIES A4): construction creates the
-    // available forms, diagnosis makes their causal boundaries visible.
-    // Renamed from their freestanding ids (still findable above) so the
-    // exercise's step order and its ids' sort order keep agreeing.
+    // The diagnostic tail: construction creates the forms, diagnosis shows
+    // their causal boundaries. Renamed so id order matches step order.
     { ...diagnosticDoubleLookupStep, id: "entry-09-diagnostic-double-lookup" },
     {
       ...diagnosticEagerLazyDefaultStep,

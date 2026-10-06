@@ -152,7 +152,7 @@ describe("planConversation", () => {
     expect(plan2.checkCount).toBe(1)
   })
 
-  it("judges a build by the target its board tiles, not an accepted alternative (Codex, #1546)", () => {
+  it("judges a build by the target its board tiles, not an accepted alternative", () => {
     const build = (id: string, target: string, alternative: string): Probe => ({
       id,
       kind: "build",
@@ -290,7 +290,7 @@ describe("lessonReducer", () => {
     )
   })
 
-  it("passes over a check already answered when a line is revisited (Codex, #1544)", () => {
+  it("passes over a check already answered when a line is revisited", () => {
     // L0 -> p2 (missed) -> L1, then back to L0 and forward again.
     const revisited = run([
       { type: "NEXT" },
@@ -317,7 +317,7 @@ describe("lessonReducer", () => {
 })
 
 describe("glossUnlocked", () => {
-  it("waits for every check anchored to the line, not just the first (Codex, #1544)", () => {
+  it("waits for every check anchored to the line, not just the first", () => {
     const twoOnOne = planConversation({
       id: 9,
       messages: [message("x1", "카드로 할게요. 감사합니다.")],
@@ -332,7 +332,7 @@ describe("glossUnlocked", () => {
   })
 })
 
-describe("resume outcomes (Codex, #1544)", () => {
+describe("resume outcomes", () => {
   it("round-trips a conversation's results through a resume", () => {
     // p2 anchored to L0 missed, p0 on L1 answered right; the learner is on L2.
     const before = run([
@@ -392,7 +392,7 @@ describe("resume outcomes (Codex, #1544)", () => {
   })
 })
 
-describe("check identity and once-only repeats (Codex, #1544)", () => {
+describe("check identity and once-only repeats", () => {
   it("keys results by probe id, so a reordered file keeps each result on its probe", () => {
     const answered = run([{ type: "NEXT" }, answer(false)]) // p2 missed
     const reordered: ConversationBatch = {
@@ -449,7 +449,7 @@ describe("check identity and once-only repeats (Codex, #1544)", () => {
   })
 })
 
-describe("probe versions (canon Thm. 1.1; carried over from #1544)", () => {
+describe("probe versions (canon Thm. 1.1)", () => {
   it("fingerprints what is asked and what counts as right, not the wording around it", () => {
     const base = batch.probes![0]!
     expect(base.kind).toBe("pick-valid")

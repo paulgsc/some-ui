@@ -1,11 +1,8 @@
 /**
  * The page's load/render behaviour.
  *
- * #1396 sets the testing bar at some-filter's debug page, which has none —
- * but its own review found two ways this page could show one session while
- * naming another, and "the export writes the wrong session's file" is the one
- * failure a page whose output feeds QC2 (#1384) must not have. So the load
- * path gets a harness even though the bar did not demand one.
+ * "The export writes the wrong session's file" is the one failure a page whose
+ * output feeds QC2 (#1384) must not have, so the load path gets a harness.
  *
  * The module renders on import and holds module-scope state, so each test
  * re-imports it against a fresh fake `storage.local`.
@@ -152,7 +149,7 @@ describe("the diagnostics page", () => {
   })
 })
 
-describe("switching sessions never shows one session under another's name (#1407's own review)", () => {
+describe("switching sessions never shows one session under another's name", () => {
   it("drops the old bundle and the Export button the moment the picker changes, before the read resolves", async () => {
     const { store, held } = installFakeStorage((key) =>
       key.startsWith("bc.observability.session.")
@@ -221,7 +218,7 @@ describe("switching sessions never shows one session under another's name (#1407
   })
 })
 
-describe("retrying after a failed read (#1407's own review, round 3)", () => {
+describe("retrying after a failed read", () => {
   it("clears the Unavailable panel as soon as the retry starts, not when it finishes", async () => {
     let failBundleReads = false
     let holdNextBundleRead = false
@@ -278,7 +275,7 @@ describe("retrying after a failed read (#1407's own review, round 3)", () => {
   })
 })
 
-describe("a superseded load commits nothing (#1407's own review, round 2)", () => {
+describe("a superseded load commits nothing", () => {
   it("does not let a slow Refresh reset the selection the user has since made — that would name one session while exporting another", async () => {
     let holdNextIndexRead = false
     const { store, held } = installFakeStorage((key) => {
@@ -331,7 +328,7 @@ describe("a superseded load commits nothing (#1407's own review, round 2)", () =
   })
 })
 
-describe("Refresh sessions (#1407's own review)", () => {
+describe("Refresh sessions", () => {
   it("discovers a recording created after the page opened, and renders it", async () => {
     const { store } = installFakeStorage()
     store.set(INDEX_KEY, [entry("s1", 1, NOW)])

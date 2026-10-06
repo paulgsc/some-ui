@@ -1,11 +1,7 @@
 /**
- * LAYER 2 — Lint-time integration tests for
- * wasm-loader-guard/no-bare-wasm-singleton (UTL-WASM epic #529, S5).
+ * Lint-time integration tests for wasm-loader-guard/no-bare-wasm-singleton
+ * (#529). Syntactic, so a plain @typescript-eslint/parser suffices.
  *
- * Purely syntactic (ImportExpression/CallExpression shape checks, no type
- * information needed), so a plain @typescript-eslint/parser (no `project`/
- * `projectService` option) is enough. Same rationale as
- * switch-lint.lint.test.ts.
  */
 
 import { wasmLoaderGuardPlugin } from "@eslint/configs/wasm-loader-guard.config.js"
@@ -42,21 +38,24 @@ describe("lint: wasm-loader-guard/no-bare-wasm-singleton", () => {
 let wasmModule: unknown = null
 
 export async function loadWasm() {
-  const mod = await import("@some-ui/polyhedron")
+  const mod = await import("@some-ui/hangul-game-core")
   await mod.default()
   wasmModule = mod
   return wasmModule
 }
 `
     const msgs = await lintSnippet(makeConfig(), code, TS_FILE)
-    expectMessageForRule(msgs, RULE_ID, "bare polyhedron singleton import")
+    expectMessageForRule(
+      msgs,
+      RULE_ID,
+      "bare hangul-game-core singleton import"
+    )
   })
 
-  it("fires for each of the 5 known wasm-bindgen crate names", async () => {
+  it("fires for each of the 4 known wasm-bindgen crate names", async () => {
     const crates = [
       "@some-ui/hangul-game-core",
       "@some-ui/leetype-wasm",
-      "@some-ui/polyhedron",
       "some-charts",
       "@some-ui/some-hexagon",
     ]
@@ -80,7 +79,7 @@ import { createWasmLoader } from "@some-ui/wasm-loader"
 
 const loader = createWasmLoader({
   importModule: async () => {
-    const mod = await import("@some-ui/polyhedron")
+    const mod = await import("@some-ui/hangul-game-core")
     await mod.default()
     return mod
   },
@@ -100,7 +99,7 @@ import { createWasmLoader } from "@some-ui/wasm-loader"
 
 const loader = createWasmLoader({
   importModule: async () => {
-    const mod = await import("@some-ui/polyhedron")
+    const mod = await import("@some-ui/hangul-game-core")
     await mod.default()
     return mod
   },
@@ -109,7 +108,7 @@ const loader = createWasmLoader({
 // A second, unrelated bare load of the same crate - not covered by the
 // loader above, so it must still be flagged.
 export async function legacyLoad() {
-  return import("@some-ui/polyhedron")
+  return import("@some-ui/hangul-game-core")
 }
 `
     const msgs = await lintSnippet(makeConfig(), code, TS_FILE)

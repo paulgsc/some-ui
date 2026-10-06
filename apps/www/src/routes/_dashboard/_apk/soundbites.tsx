@@ -8,10 +8,9 @@ import type { SessionRecord, SessionStatus } from "@/lib/tenant"
 import { sessionsQuery, useSessions } from "@/lib/tenant"
 
 /**
- * `?say=` arrives from a tap that already meant "let me talk": Home's "Not
- * today? Say why", a study reminder's "Not today" action, or "Hold to talk"
- * in Home's + sheet. The page starts listening at once, and records which it
- * was.
+ * `?say=` comes from a tap that already meant "let me talk" (Home's "Not
+ * today? Say why", a reminder's "Not today", "Hold to talk"): the page starts
+ * listening at once and records which.
  */
 type SoundbitesSearch = { say?: "sessions" | "reminder" | "capture" }
 
@@ -66,9 +65,8 @@ const SoundbitesRoute = (): JSX.Element => {
   // The way in. Read once by the page, which keeps it until a take is
   // stored, so clearing `?say=` below does not lose it.
   const source = sourceOf(say)
-  // A new request remounts the recorder, which reads its way in once: "Talk
-  // now" while already here would otherwise be ignored. The clearing below
-  // is not a new request, so it never remounts mid-take.
+  // A new request remounts the recorder (it reads its way in once); the
+  // clearing below is not a new request, so it never remounts mid-take.
   const arrival = useArrivalKey(isSaySource(say) ? say : undefined)
 
   return (

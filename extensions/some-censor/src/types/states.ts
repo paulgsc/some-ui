@@ -5,12 +5,9 @@
  * Scope note: the *state union* itself (Masked/MetaState/… and the transition
  * functions over them) lives in `lib/content/fsm.ts`, because every state there
  * carries a SessionId and that is what makes cross-session transitions
- * unrepresentable (fsm.ts F1). This module previously carried a second,
- * session-free copy of that union — structurally assignable to the real one, so
- * the compiler could not tell them apart and a state could silently lose its
- * session on the way through a signature. Only the leaf payloads live here now:
- * they are what the extract layer produces, and the extract layer has no
- * session to carry.
+ * unrepresentable (fsm.ts F1). A session-free copy here would be structurally
+ * assignable to it and could silently drop the session, so only the leaf
+ * payloads live here: what the extract layer produces, with no session.
  */
 
 export type MetaData = {

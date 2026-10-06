@@ -35,9 +35,7 @@ import {
 } from "@topik/lib/topik/core/tile-assembly"
 import { assertNever } from "some-ui-utils"
 
-// ═══════════════════════════════════════════════════════════════════════════
 // PLAN
-// ═══════════════════════════════════════════════════════════════════════════
 
 /** How much of a line is showing: 0 audio only, 1 Hangul, 2 gloss too. */
 export type RevealLevel = 0 | 1 | 2
@@ -177,9 +175,7 @@ export function planConversation(batch: ConversationBatch): LessonPlan {
   return { steps, lineCount: messages.length, checkCount }
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
 // STATE
-// ═══════════════════════════════════════════════════════════════════════════
 
 export type ResponseChannel = "selection" | "assembly"
 
@@ -425,9 +421,7 @@ function lineStepIndex(plan: LessonPlan, message: number): number {
   )
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
 // REDUCER
-// ═══════════════════════════════════════════════════════════════════════════
 
 const max = (a: RevealLevel, b: RevealLevel | undefined): RevealLevel =>
   b === undefined || a >= b ? a : b
@@ -566,9 +560,7 @@ export function lessonReducer(
   }
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
 // DERIVED VIEW
-// ═══════════════════════════════════════════════════════════════════════════
 
 export type LessonTally = {
   /** Checks answered correctly on first presentation. */

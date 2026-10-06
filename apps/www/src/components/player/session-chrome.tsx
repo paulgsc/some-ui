@@ -1,54 +1,18 @@
 /**
  * Everything that is not the activity, on a phone, behind one icon.
  *
- * # What this replaces, and why folding rather than shrinking
+ * On a 390px phone the header, the now/next strip and the transport row
+ * would take more of the screen than the activity. Shrinking leaves a
+ * permanent band with sub-thumb buttons; folding fits the frequency (Pause
+ * once a session, Theme almost never). One control, not two: both mean "not
+ * the exercise", and the sheet keeps them visibly grouped (session controls
+ * first, app chrome under a rule).
  *
- * On a wide screen the session player wears three pieces of chrome around
- * the viewport: the dashboard header (sidebar trigger, theme, audio), the
- * now/next strip, and the transport row. Each is a reasonable use of space
- * that a desktop has spare. On a 390px phone they are three stacked bands
- * that between them take more of the screen than the activity does — and
- * the activity is the entire point of the route.
- *
- * The instinct is to shrink them. That is the wrong move twice over: a
- * shrunken transport row is still a permanent band, and the buttons inside
- * it get smaller than a thumb. Folding is the honest answer, because the
- * frequency actually justifies it — over a ten-minute session a person
- * touches Pause perhaps once and Theme approximately never, while they look
- * at the exercise continuously. Chrome that is used once should not be
- * resident for ten minutes.
- *
- * # Why one control and not two
- *
- * The bottom transport and the top header are separate concerns on a
- * desktop and are folded together here. Two floating buttons on a phone is
- * two things to aim at and two things obscuring the activity, and from the
- * reader's position mid-exercise both mean the same thing: *not the
- * exercise*. They stay visibly separate inside the sheet — the session's own
- * controls first, the app's chrome under a rule beneath — so the grouping is
- * preserved without spending a second corner of the screen on it.
- *
- * # The sheet is on the overlay plane; the trigger is not
- *
- * `docs/session-viewport/01-overflow-doctrine-and-audit.md` §2 carves out an
- * overlay plane: toasts and "any future command palette / modal" paint
- * *above* `V` rather than tiling it, and are not part of `Layout(t)`. The
- * sheet is exactly that.
- *
- * The **trigger** deliberately is not, and the first draft of this component
- * getting that wrong is worth recording. Floated into the viewport's
- * top-right corner it landed squarely on LeetType's own progress counter —
- * and that was not a LeetType problem: the host has no idea what any applet
- * paints in any corner, so *every* corner is somebody's content. A floating
- * trigger over a full-bleed leaf is a collision waiting for whichever
- * activity is unlucky.
- *
- * So the trigger gets a strip of its own, above `V`, and `V` is what remains.
- * It costs 36px of an 800px viewport — against the ~200px the header, the
- * now/next strip and the transport row were taking between them — and in
- * exchange no activity ever has the host painted across it. That is the
- * honest trade: the host needs *somewhere* to be, and a thin strip it owns
- * beats an overlay it does not.
+ * The sheet is on the overlay plane
+ * (`docs/session-viewport/01-overflow-doctrine-and-audit.md` §2); the trigger
+ * is not. The host cannot know what an applet paints in any corner (floated,
+ * it covered LeetType's progress counter), so the trigger gets a 36px strip
+ * of its own above `V`, and no activity is ever painted over.
  */
 
 import type { JSX } from "react"
@@ -104,11 +68,8 @@ export const SessionChrome = ({
   const resume = useOrchestratorStore((s) => s.resume)
   const stop = useOrchestratorStore((s) => s.stop)
   const skipCurrentScene = useOrchestratorStore((s) => s.skipCurrentScene)
-  // Read here rather than passed down from the header this replaces: the
-  // header is not rendered on this route at this width, and #940's rule is
-  // that an ambient signal is quiet when there is nothing to say and never
-  // silent when there is. Folding the chrome must not turn it into the
-  // latter.
+  // Read here: the header is not rendered on this route at this width, and
+  // an ambient signal must never be silent when there is something to say.
 
   const nowPlaying = primaryScene
     ? friendlyActivityName(
@@ -122,8 +83,8 @@ export const SessionChrome = ({
     .sort((a, b) => a.start_time - b.start_time)
     .at(0)
 
-  // Every control closes the sheet after acting. A person who taps Pause
-  // wants the activity back, not the menu they used to pause it.
+  // Every control closes the sheet after acting: the person wants the
+  // activity back.
   const act = (run: () => void) => (): void => {
     run()
     setOpen(false)
@@ -131,10 +92,8 @@ export const SessionChrome = ({
 
   return (
     <>
-      {/* The strip. Transparent and exactly tall enough for the trigger, so
-          it reads as the activity starting just below rather than as a bar
-          across the top — but it is real layout, which is the whole point:
-          nothing below it is ever painted over. */}
+      {/* The strip: transparent and just tall enough for the trigger, but
+          real layout, so nothing below it is painted over. */}
       <div className="flex h-9 shrink-0 items-center justify-end pr-2 pt-[env(safe-area-inset-top)]">
         <Button
           type="button"
@@ -166,10 +125,7 @@ export const SessionChrome = ({
             </SheetDescription>
           </SheetHeader>
 
-          {/* Session transport. Full-width rows rather than the desktop's
-              inline button cluster — a thumb needs the whole width and 44px
-              of height, and there is room for it here in a way there was
-              never room for it in a resident band. */}
+          {/* Session transport: full-width 44px rows for a thumb. */}
           <div className="mt-4 flex flex-col gap-2">
             {!isRunning && !isPaused && (
               <Button className="h-11 w-full" onClick={act(onPlay)}>
@@ -220,17 +176,9 @@ export const SessionChrome = ({
 
           <Separator className="my-4" />
 
-          {/* The dashboard header's own contents, which this route does not
-              render at this width. Kept visibly subordinate to the transport
-              above: on this screen they are the rare case.
-
-              Right-aligned for thumb reach on the hand most people hold a
-              phone in — and, incidentally, clear of the bottom-left corner,
-              where the TanStack devtools button sits at `z-index: 99999` and
-              was intercepting taps on the sidebar trigger. That widget is
-              stripped from production (`routes/__root.tsx`), so this is not a
-              fix for a shipped defect; it costs nothing and makes the control
-              reachable while developing on a phone. */}
+          {/* The dashboard header's contents, subordinate to the transport.
+              Right-aligned for thumb reach, and clear of the dev-only TanStack
+              devtools button in the bottom-left corner. */}
           <div className="flex items-center justify-end gap-2">
             <SidebarTrigger />
             <ThemeSwitcher />

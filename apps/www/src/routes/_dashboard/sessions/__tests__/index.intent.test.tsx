@@ -1,47 +1,27 @@
 /**
  * @vitest-environment jsdom
  *
- * #939, S2 of #934: the other two flows the story names by file — a
- * single-shot write (a card's own delete) and a bulk write (`deleteMany` /
- * `updateStatusMany` at sessions/index.tsx:243,249), sabotaged the same four
- * ways as the composer chain in `session-composer.intent.test.tsx`. See
- * `test-support/file-host-sabotage.ts` for why this is Vitest against the
- * real route component rather than a Playwright suite booting the real app.
+ * The sessions list's writes (a card's delete and duplicate, and the bulk
+ * delete), sabotaged the same ways as the composer chain in
+ * `session-composer.intent.test.tsx`; see `test-support/file-host-sabotage.ts`.
+ * `useSessions` is mocked to hand the route a fixed list; the writes are real
+ * code all the way down to `global.fetch`.
  *
- * `useSessions` is mocked to hand the route a fixed list without needing a
- * live backend for the *read* — the whole point of this suite is what
- * happens when the *write* the person triggers fails, which is real,
- * unmocked production code (`useDeleteSession`, `useDeleteManySessions`,
- * `useUpdateStatusManySessions`, `lib/tenant/hooks.ts`,
- * `lib/file-host-config/client.ts`) all the way down to `global.fetch`.
- *
- * #936 migrated both flows onto `useIntent`/`IntentButton` - every `it.fails`
- * this suite originally wrote for the not-yet-true "tells the person"
- * outcome has flipped to a plain `it` now that it is true.
- *
- * #937 S3 extends coverage to a third flow in this file: a card's own
- * duplicate action (`SessionCard`'s `duplicateIntent`, adjacent to the
- * delete intent above it). The bulk status-change intent
- * (`updateStatusManyIntent`, driven from a Radix `Select`) is a real
- * remaining gap - this suite has no existing precedent or polyfills for
- * driving a Radix `Select` through jsdom (`hasPointerCapture`,
- * `scrollIntoView`), and building that harness is its own piece of work
- * rather than something to bolt on here without it either being flaky or
- * silently wrong. `bulkStatusChangeFailure` (this file's own renderer for
- * that intent) reuses the same `IntentFailure` component every other
- * covered flow does, so the render path is not untested, only the
- * Select-driven route-level path.
+ * Not covered: the bulk status change, driven from a Radix `Select` that jsdom
+ * cannot drive without extra polyfills. Its failure renders through the same
+ * `IntentFailure` every covered flow uses.
  */
 
-import type { JSX, ReactNode } from "react"
 import {
   expectRetryAffordanceTracksRetryable,
   expectSomeFailureAffordance,
   installFileHostSabotage,
   SABOTAGE_MODES,
 } from "@/test-support/file-host-sabotage"
+import { fakeQueryResult, withQueryClient } from "@/test-support/query-client"
+import { routeComponent } from "@/test-support/router-stubs"
+import { sessionRecord } from "@/test-support/session-record"
 import { signInForTests } from "@/test-support/sign-in"
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import type * as ReactRouterModule from "@tanstack/react-router"
 import {
   act,
@@ -50,49 +30,23 @@ import {
   render,
   screen,
   waitFor,
-  within,
 } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import type * as TenantModule from "@/lib/tenant"
-import type { SessionRecord } from "@/lib/tenant"
 
-// These suites are about the account's store failing: start from an account.
-beforeEach(() => {
-  signInForTests()
-})
+import { bulkDeleteButton, selectAllSessions } from "./helpers"
 
-function fixtureSession(id: string, name: string): SessionRecord {
-  return {
-    id,
-    name,
-    status: "draft",
-    activities: [],
-    scenes: [],
-    layoutMode: "basic",
-    totalDurationMs: 0,
-    createdAt: "2026-01-01T00:00:00.000Z",
-    updatedAt: "2026-01-01T00:00:00.000Z",
-  }
-}
-
-const FIXTURE_SESSIONS: Array<SessionRecord> = [
-  fixtureSession("session-1", "Vocabulary warm-up"),
-  fixtureSession("session-2", "Grammar review"),
+const FIXTURE_SESSIONS = [
+  sessionRecord({ id: "session-1", name: "Vocabulary warm-up" }),
+  sessionRecord({ id: "session-2", name: "Grammar review" }),
 ]
 
 vi.mock(
   "@tanstack/react-router",
   async (importOriginal): Promise<typeof ReactRouterModule> => {
-    const actual = await importOriginal<typeof ReactRouterModule>()
-    return {
-      ...actual,
-      // Test stand-in for tanstack-router's Link - href is irrelevant here.
-      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- LinkComponent's real signature is generic over the whole route tree; a plain <a> stand-in has no narrower match.
-      Link: (({ children, ...props }: { children?: ReactNode }) => (
-        <a {...props}>{children}</a>
-      )) as typeof ReactRouterModule.Link,
-    }
+    const { withPlainLink } = await import("@/test-support/router-stubs")
+    return withPlainLink(await importOriginal<typeof ReactRouterModule>())
   }
 )
 
@@ -103,41 +57,54 @@ vi.mock(
     return {
       ...actual,
       useSessions: () =>
-        // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- stubbing TanStack Query's rich UseQueryResult with the two fields this route actually reads; the real shape has no minimal constructor.
-        ({ data: FIXTURE_SESSIONS, isLoading: false }) as ReturnType<
-          typeof TenantModule.useSessions
-        >,
+        fakeQueryResult({ data: FIXTURE_SESSIONS, isLoading: false }),
     }
   }
 )
 
 const { Route } = await import("@/routes/_dashboard/sessions/index")
-// eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- createFileRoute's Route.options.component is typed broader than the concrete component this file actually registered; there is no narrower accessor.
-const SessionsRoute = Route.options.component as () => JSX.Element
+const SessionsRoute = routeComponent(Route)
 
-/** No jest-dom in this app's vitest setup - a plain attribute check avoids
- * needing an HTMLButtonElement type assertion just to read `.disabled`. */
+/** No jest-dom here: a plain attribute check. */
 function isDisabled(element: HTMLElement): boolean {
   return element.hasAttribute("disabled")
 }
 
-function withQueryClient(children: ReactNode): JSX.Element {
-  const client = new QueryClient({
-    defaultOptions: { mutations: { retry: false } },
-  })
-  return <QueryClientProvider client={client}>{children}</QueryClientProvider>
-}
-
 const REJECTING_MODES = SABOTAGE_MODES.filter((mode) => mode !== "hang")
 
-/** `not-configured` -> `FileHostNotConfiguredError` -> `IntentError.kind
- * "unavailable"`, the one rejecting mode that is not retryable - see
- * `lib/intent/errors.ts`'s `mapFileHostError`. */
+/** `not-configured` is the one rejecting mode that is not retryable
+ * (`unavailable`, `lib/intent/errors.ts`). */
 function isRetryableMode(mode: (typeof REJECTING_MODES)[number]): boolean {
   return mode !== "not-configured"
 }
 
+async function click(button: HTMLElement): Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/require-await -- act's async form is what flushes the microtask-queued mutation state update; see file-host-sabotage.ts's header.
+  await act(async () => {
+    fireEvent.click(button)
+  })
+}
+
+/** Renders the list (optionally selecting every row), then sabotages fetch. */
+function renderSabotaged(
+  mode: (typeof REJECTING_MODES)[number],
+  selectAll = false
+): () => void {
+  render(withQueryClient(<SessionsRoute />))
+  if (selectAll) selectAllSessions()
+  return installFileHostSabotage(mode)
+}
+
+async function expectFailureTold(
+  mode: (typeof REJECTING_MODES)[number]
+): Promise<void> {
+  await expectSomeFailureAffordance(document.body)
+  expectRetryAffordanceTracksRetryable(document.body, isRetryableMode(mode))
+}
+
+// These suites are about the account's store failing: start from an account.
 beforeEach(() => {
+  signInForTests()
   vi.spyOn(window, "confirm").mockReturnValue(true)
 })
 
@@ -150,37 +117,23 @@ afterEach(() => {
 describe("sessions list: single-shot delete on a card", () => {
   describe.each(REJECTING_MODES)("file_host sabotaged: %s", (mode) => {
     it("re-enables the delete button once the request settles, and the row is still there (sanity)", async () => {
-      render(withQueryClient(<SessionsRoute />))
-      const restore = installFileHostSabotage(mode)
-
+      const restore = renderSabotaged(mode)
       const [deleteButton] = screen.getAllByTitle("Delete")
 
-      // eslint-disable-next-line @typescript-eslint/require-await -- act's async form is what flushes the microtask-queued mutation state update; see file-host-sabotage.ts's header.
-      await act(async () => {
-        fireEvent.click(deleteButton)
-      })
+      await click(deleteButton)
 
       expect(window.confirm).toHaveBeenCalled()
       expect(isDisabled(deleteButton)).toBe(false)
-      // The row the person confirmed deleting is, correctly, still present
-      // (the mocked list never changed) - the failure this row exists to
-      // demonstrate is that nothing *tells* them that.
       expect(screen.getByText("Vocabulary warm-up")).toBeTruthy()
       restore()
     })
 
     it("tells the person the delete failed, with a retry control tracking retryability", async () => {
-      render(withQueryClient(<SessionsRoute />))
-      const restore = installFileHostSabotage(mode)
+      const restore = renderSabotaged(mode)
 
-      const [deleteButton] = screen.getAllByTitle("Delete")
-      // eslint-disable-next-line @typescript-eslint/require-await -- see the sanity test above
-      await act(async () => {
-        fireEvent.click(deleteButton)
-      })
+      await click(screen.getAllByTitle("Delete")[0])
 
-      await expectSomeFailureAffordance(document.body)
-      expectRetryAffordanceTracksRetryable(document.body, isRetryableMode(mode))
+      await expectFailureTold(mode)
       restore()
     })
   })
@@ -189,14 +142,9 @@ describe("sessions list: single-shot delete on a card", () => {
 describe("sessions list: duplicate on a card", () => {
   describe.each(REJECTING_MODES)("file_host sabotaged: %s", (mode) => {
     it("re-enables the duplicate button once the request settles (sanity)", async () => {
-      render(withQueryClient(<SessionsRoute />))
-      const restore = installFileHostSabotage(mode)
+      const restore = renderSabotaged(mode)
 
-      const [duplicateButton] = screen.getAllByTitle("Duplicate")
-      // eslint-disable-next-line @typescript-eslint/require-await -- see the delete suite's own sanity test
-      await act(async () => {
-        fireEvent.click(duplicateButton)
-      })
+      await click(screen.getAllByTitle("Duplicate")[0])
 
       await waitFor(() => {
         expect(isDisabled(screen.getAllByTitle("Duplicate")[0])).toBe(false)
@@ -205,81 +153,36 @@ describe("sessions list: duplicate on a card", () => {
     })
 
     it("tells the person the duplicate failed, with a retry control tracking retryability", async () => {
-      render(withQueryClient(<SessionsRoute />))
-      const restore = installFileHostSabotage(mode)
+      const restore = renderSabotaged(mode)
 
-      const [duplicateButton] = screen.getAllByTitle("Duplicate")
-      // eslint-disable-next-line @typescript-eslint/require-await -- see the delete suite's own sanity test
-      await act(async () => {
-        fireEvent.click(duplicateButton)
-      })
+      await click(screen.getAllByTitle("Duplicate")[0])
 
-      await expectSomeFailureAffordance(document.body)
-      expectRetryAffordanceTracksRetryable(document.body, isRetryableMode(mode))
+      await expectFailureTold(mode)
       restore()
     })
   })
 })
 
-function selectAllSessions(): void {
-  const checkboxes = screen.getAllByRole("checkbox")
-  for (const checkbox of checkboxes) {
-    fireEvent.click(checkbox)
-  }
-}
-
-/** The bulk bar's own "Delete" button, distinguished from each card's own
- * identically-labelled delete button by scoping to the toolbar that only
- * renders once something is selected (`{count} selected`) - the toolbar's
- * root div is the `<span>`'s own parent. */
-function bulkToolbar(): HTMLElement {
-  const root = screen.getByText(/selected$/).closest("div")
-  if (!(root instanceof HTMLElement)) {
-    throw new Error("bulk selection toolbar not found")
-  }
-  return root
-}
-
 describe("sessions list: bulk delete from the selection toolbar", () => {
   describe.each(REJECTING_MODES)("file_host sabotaged: %s", (mode) => {
     it("re-enables the toolbar once the request settles, selection still checked (sanity)", async () => {
-      render(withQueryClient(<SessionsRoute />))
-      selectAllSessions()
-      const restore = installFileHostSabotage(mode)
+      const restore = renderSabotaged(mode, true)
 
-      const bulkDelete = within(bulkToolbar()).getByRole("button", {
-        name: /delete/i,
-      })
-
-      // eslint-disable-next-line @typescript-eslint/require-await -- see the composer suite's header note
-      await act(async () => {
-        fireEvent.click(bulkDelete)
-      })
+      await click(bulkDeleteButton())
 
       expect(window.confirm).toHaveBeenCalled()
-      // Both rows are still on screen - the batch failed as a whole, which
-      // is the correct transport-level outcome. What's missing is anyone
-      // being told that's what happened.
+      // The batch failed as a whole: both rows are still on screen.
       expect(screen.getByText("Vocabulary warm-up")).toBeTruthy()
       expect(screen.getByText("Grammar review")).toBeTruthy()
       restore()
     })
 
     it("tells the person the bulk delete failed, with a retry control tracking retryability", async () => {
-      render(withQueryClient(<SessionsRoute />))
-      selectAllSessions()
-      const restore = installFileHostSabotage(mode)
+      const restore = renderSabotaged(mode, true)
 
-      const bulkDelete = within(bulkToolbar()).getByRole("button", {
-        name: /delete/i,
-      })
-      // eslint-disable-next-line @typescript-eslint/require-await -- see the composer suite's header note
-      await act(async () => {
-        fireEvent.click(bulkDelete)
-      })
+      await click(bulkDeleteButton())
 
-      await expectSomeFailureAffordance(document.body)
-      expectRetryAffordanceTracksRetryable(document.body, isRetryableMode(mode))
+      await expectFailureTold(mode)
       restore()
     })
   })

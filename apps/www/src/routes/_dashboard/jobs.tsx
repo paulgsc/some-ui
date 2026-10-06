@@ -30,10 +30,7 @@ import { ExternalLink, Plus, Sparkles, Trash2 } from "lucide-react"
 
 import { createJobTrackerRepository } from "@/lib/job-tracker"
 
-// A single repository instance for the life of the tab: this queue has no
-// server counterpart and no reason to be re-created per render, only read
-// and written through — same reasoning as the module-level `resumeData`
-// import in the résumé route.
+// One repository for the tab's life: this queue has no server counterpart.
 const repository = createJobTrackerRepository()
 
 const STATUS_LABEL: Record<JobStatus, string> = {
@@ -77,10 +74,8 @@ type FormState = {
 
 const EMPTY_FORM: FormState = { company: "", role: "", url: "", notes: "" }
 
-// Blocking content shown in place of the form once the queue is at
-// capacity: this is a queue meant to be worked through, not an
-// ever-growing backlog, so adding a lead is deliberately gated on removing
-// or resolving one already there rather than silently allowed to grow.
+// Shown in place of the form at capacity: the queue is meant to be worked
+// through, so adding waits on removing or resolving one.
 const FullQueueNotice = ({
   oldest,
   onPruneOldest,

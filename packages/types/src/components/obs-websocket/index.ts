@@ -1,41 +1,41 @@
 import { z } from "zod"
 
-export const SceneInfoSchema = z.object({
+const SceneInfoSchema = z.object({
   name: z.string(),
   index: z.number().optional(),
 })
 
-export const SourceInfoSchema = z.object({
+const SourceInfoSchema = z.object({
   name: z.string(),
   typeId: z.string(),
   kind: z.string(),
 })
 
-export const InputInfoSchema = z.object({
+const InputInfoSchema = z.object({
   name: z.string(),
   kind: z.string(),
   unversionedKind: z.string(),
 })
 
-export const TransitionInfoSchema = z.object({
+const TransitionInfoSchema = z.object({
   name: z.string(),
   kind: z.string(),
   fixed: z.boolean(),
 })
 
-export const FilterInfoSchema = z.object({
+const FilterInfoSchema = z.object({
   name: z.string(),
   kind: z.string(),
   index: z.number(),
   enabled: z.boolean(),
 })
 
-export const HotkeyInfoSchema = z.object({
+const HotkeyInfoSchema = z.object({
   name: z.string(),
   description: z.string(),
 })
 
-export const ObsStatsSchema = z.object({
+const ObsStatsSchema = z.object({
   cpuUsage: z.number(),
   memoryUsage: z.number(),
   availableDiskSpace: z.number(),
@@ -328,212 +328,3 @@ export const ObsEventSchema = z.discriminatedUnion("type", [
     data: IdentifiedDataSchema.partial(),
   }),
 ])
-
-export type ObsEvent = z.infer<typeof ObsEventSchema>
-
-export type SceneInfo = {
-  name: string
-  index?: number
-}
-
-export type SourceInfo = {
-  name: string
-  typeId: string
-  kind: string
-}
-
-export type InputInfo = {
-  name: string
-  kind: string
-  unversionedKind: string
-}
-
-export type TransitionInfo = {
-  name: string
-  kind: string
-  fixed: boolean
-}
-
-export type FilterInfo = {
-  name: string
-  kind: string
-  index: number
-  enabled: boolean
-}
-
-export type HotkeyInfo = {
-  name: string
-  description: string
-}
-
-export type ObsStats = {
-  cpuUsage: number
-  memoryUsage: number
-  availableDiskSpace: number
-  activeFps: number
-  averageFrameTime: number
-  renderTotalFrames: number
-  renderMissedFrames: number
-  outputTotalFrames: number
-  outputSkippedFrames: number
-  webSocketSessionIncomingMessages: number
-  webSocketSessionOutgoingMessages: number
-}
-
-export type ClientObsState = {
-  obsVersion: string
-
-  websocketVersion: string
-
-  identified: boolean
-
-  streaming: boolean
-
-  streamTimecode: string
-
-  recording: boolean
-
-  recordTimecode: string
-
-  scenes: Array<SceneInfo>
-
-  currentScene: string
-
-  sources: Array<SourceInfo>
-
-  inputs: Array<InputInfo>
-
-  audioMutes: Record<string, boolean>
-
-  audioVolumes: Record<string, { volumeDb: number; volumeMul: number }>
-
-  profiles: Array<string>
-
-  currentProfile: string
-
-  collections: Array<string>
-
-  currentCollection: string
-
-  virtualCamActive: boolean
-
-  replayBufferActive: boolean
-
-  studioModeEnabled: boolean
-
-  stats: ObsStats
-
-  currentTransitionName: string
-
-  currentTransitionDuration: number
-
-  transitions: Array<TransitionInfo>
-
-  lastTransitionStartedName?: string
-
-  lastTransitionEndedName?: string
-
-  sourceFilters: Record<string, Array<FilterInfo>>
-
-  hotkeys: Array<HotkeyInfo>
-
-  sceneItemEnableStates: Record<string, Record<number, boolean>>
-
-  lastUnknownResponse?: { requestType: string; data: unknown }
-
-  lastUnknownEvent?: { eventType: string; data: unknown }
-}
-
-// Define the individual variant schemas
-const StartStreamSchema = z.object({
-  type: z.literal("startStream"),
-})
-
-const StopStreamSchema = z.object({
-  type: z.literal("stopStream"),
-})
-
-const StartRecordingSchema = z.object({
-  type: z.literal("startRecording"),
-})
-
-const StopRecordingSchema = z.object({
-  type: z.literal("stopRecording"),
-})
-
-const SwitchSceneSchema = z.object({
-  type: z.literal("switchScene"),
-  data: z.string(),
-})
-
-const SetInputMuteSchema = z.object({
-  type: z.literal("setInputMute"),
-  data: z.tuple([z.string(), z.boolean()]),
-})
-
-const SetInputVolumeSchema = z.object({
-  type: z.literal("setInputVolume"),
-  data: z.tuple([z.string(), z.number()]),
-})
-
-const ToggleStudioModeSchema = z.object({
-  type: z.literal("toggleStudioMode"),
-})
-
-const ToggleVirtualCameraSchema = z.object({
-  type: z.literal("toggleVirtualCamera"),
-})
-
-const ToggleReplayBufferSchema = z.object({
-  type: z.literal("toggleReplayBuffer"),
-})
-
-const CustomSchema = z.object({
-  type: z.literal("custom"),
-  data: z.unknown(), // or z.any() if you want to allow anything
-})
-
-// Union of all variants
-export const ObsCommandSchema = z.discriminatedUnion("type", [
-  StartStreamSchema,
-  StopStreamSchema,
-  StartRecordingSchema,
-  StopRecordingSchema,
-  SwitchSceneSchema,
-  SetInputMuteSchema,
-  SetInputVolumeSchema,
-  ToggleStudioModeSchema,
-  ToggleVirtualCameraSchema,
-  ToggleReplayBufferSchema,
-  CustomSchema,
-])
-
-export type ObsCommand = z.infer<typeof ObsCommandSchema>
-
-export const EventTypeSchema = z.enum([
-  "ping",
-  "pong",
-  "error",
-  "obsStatus",
-  "tabMetaData",
-])
-
-export const OutgoingObsEventSchema = z.discriminatedUnion("type", [
-  z.object({ type: z.literal("ping") }),
-  z.object({ type: z.literal("pong") }),
-  z.object({ type: z.literal("error"), message: z.string() }),
-  z.object({
-    type: z.literal("subscribe"),
-    event_types: z.array(EventTypeSchema),
-  }),
-  z.object({
-    type: z.literal("unsubscribe"),
-    event_types: z.array(EventTypeSchema),
-  }),
-  z.object({
-    type: z.literal("obsCmd"),
-    cmd: ObsCommandSchema,
-  }),
-])
-
-export type OutgoingObsEvent = z.infer<typeof OutgoingObsEventSchema>

@@ -1,13 +1,10 @@
-// Diagnostics page (`debug.html`) — some-filter's counterpart to
-// suspender-ledger's `debug.html` (`extensions/suspender-ledger/src/debug/
-// index.ts`), adapted for a workspace with no single background worker to
-// message: some-filter's interesting state lives in each tab's content
-// script, one recorder per page load (`coverage-observability.ts`'s header
-// explains why). This page is a session *picker* over `storage.local`
-// instead of a live query to one worker — it reads the index of currently
-// known sessions, then that session's persisted bundle, directly.
+// Diagnostics page (`debug.html`) — the counterpart to suspender-ledger's
+// `debug.html`. some-filter has no single background worker to query (one
+// recorder per page load; see `coverage-observability.ts`'s header), so this
+// is a session *picker* over `storage.local`: the index of known sessions,
+// then the selected session's persisted bundle.
 //
-// It answers, without a server and without any data leaving the machine:
+// It answers, with no data leaving the machine:
 //
 //   - which tabs does this extension currently have diagnostics for?
 //   - for the selected one, does Remark C.1's coverage invariant hold right
@@ -15,12 +12,10 @@
 //   - what happened in that tab, in order — specifically, what did the
 //     coverage watchdog observe around the last `yt-navigate-*` pair?
 //
-// Health is *recomputed* here from the last persisted `coverage` snapshot
-// (a plain `CoverageContext`) rather than read as a separately-persisted
-// verdict — coverageInvariants and runInvariants are both pure, so this page
-// stays a pure projection of recorded state (never a second place a health
-// score could drift from the content script's own) exactly as
-// suspender-ledger's own header describes for its page.
+// Health is *recomputed* from the last persisted `coverage` snapshot rather
+// than read as a persisted verdict: the invariants are pure, so this page is
+// a pure projection of recorded state and cannot drift from the content
+// script's own.
 
 import {
   contrastInvariants,
@@ -105,10 +100,8 @@ async function computeHealth(b: Bundle): Promise<HealthReport> {
   const rawCtx = b.snapshots["coverage"]
   const now = Date.now()
   if (!isCoverageContext(rawCtx)) {
-    // No coverage check has landed yet for this session — every invariant
-    // reports unknown rather than a fabricated "healthy", per this
-    // package's own "an unknown must never be reported as a failure" rule
-    // (and, symmetrically, never as a clean bill of health either).
+    // No coverage check has landed yet: every invariant reports unknown,
+    // never a fabricated "healthy" (nor a failure).
     const results = await runInvariants(coverageInvariants, undefined, now)
     const { score, status } = scoreHealth(results, 0)
     return {
@@ -126,13 +119,9 @@ async function computeHealth(b: Bundle): Promise<HealthReport> {
 }
 
 /**
- * SF-RC5 (#1344): the contrast/legibility axis, computed the same
- * pure-projection way `computeHealth` above computes coverageHealth — from
- * the last persisted `"contrast"` snapshot, never a separately-persisted
- * verdict — and reported as its own `HealthReport`, never merged into
- * coverageHealth's. See `contrast-observability.ts`'s own header for why a
- * session must be able to show `coverage=ok` and `contrast=violated` at
- * once.
+ * The contrast/legibility axis, projected the same way from the last
+ * persisted `"contrast"` snapshot and reported as its own `HealthReport`,
+ * never merged into coverage's (see `contrast-observability.ts`'s header).
  */
 async function computeContrastHealth(b: Bundle): Promise<HealthReport> {
   const rawCtx = b.snapshots["contrast"]
@@ -141,17 +130,10 @@ async function computeContrastHealth(b: Bundle): Promise<HealthReport> {
     ? await runInvariants(contrastInvariants, rawCtx, now)
     : await runInvariants(contrastInvariants, undefined, now)
 
-  // SF-RC5 (#1344), bot-found (Codex review round 3 on #1443): scoreHealth
-  // excludes "unknown" results from its own score rather than penalizing
-  // it, so a session that has genuinely audited nothing — no "contrast"
-  // snapshot at all, or a persisted one with auditedCount: 0 (a session
-  // that left auto with nothing to report, or an all-underdetermined
-  // round) — would otherwise score 100/healthy, reading as "audited and
-  // clean" rather than "never usefully evaluated." Unlike coverageHealth's
-  // own no-snapshot case (a brief startup race — every non-off applyState
-  // call writes a "coverage" snapshot almost immediately), this is the
-  // *steady state* for any session that has never entered auto mode at
-  // all, not a race to tolerate.
+  // scoreHealth excludes "unknown" from its score, so a session that audited
+  // nothing (no snapshot, or auditedCount: 0) would score 100/healthy. Unlike
+  // coverage's brief startup race, this is the steady state for any session
+  // that never entered auto, so it must read as "never evaluated".
   if (results.every((r) => r.status === "unknown")) {
     return {
       score: 0,
@@ -399,10 +381,8 @@ function stateSection(b: Bundle): HTMLElement {
   return section
 }
 
-// SF-OB (#1270): a dedicated per-scope breakdown, alongside the existing
-// per-check list above — the generic stateSection below would otherwise
-// flatten this into one unreadable compact() line, the same way it already
-// does for "coverage".
+// A dedicated per-scope breakdown; the generic stateSection below would
+// flatten it into one unreadable compact() line.
 
 function isScopeCoverageEntry(value: unknown): value is ScopeCoverageEntry {
   if (value === null || typeof value !== "object") return false
@@ -578,8 +558,7 @@ function downloadBundle(
   health: HealthReport,
   contrastHealth: HealthReport
 ): void {
-  // SF-RC5 (#1344): exported under its own key, alongside `health` — never
-  // merged into it, same discipline as the two live sections below.
+  // Exported under its own key, never merged into `health`.
   const exportable = { ...b, health, contrastHealth }
   const blob = new Blob([JSON.stringify(exportable, null, 2)], {
     type: "application/json",

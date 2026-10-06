@@ -167,8 +167,7 @@ export type HandheldLessonVM = {
     /**
      * The prompt reached the learner - the clipboard took it, or they copied
      * it by hand - so the digest's free text is deleted: the prompt carried
-     * it. Not before, or a refused clipboard would lose it unsent (Codex,
-     * #1555).
+     * it. Not before, or a refused clipboard would lose it unsent.
      */
     handedOff: (prompt: string) => void
     /**
@@ -197,7 +196,7 @@ export type UseHandheldLessonOptions = {
    * Where a pasted lesson's place is kept; defaults to `sessionStorage`. A
    * place lasts exactly as long as its lesson: in `localStorage` it outlived
    * the tab, pointed "Continue" at a lesson that was gone, and handed its
-   * progress to the next lesson pasted under the same key (Codex, #1555).
+   * progress to the next lesson pasted under the same key.
    */
   pastedResumeStore?: ResumeStore
 }
@@ -217,7 +216,7 @@ export function useHandheldLesson({
     // Places left in pasted lessons by builds that kept them in
     // `localStorage` go with those lessons (Rem. 7.4): they would hold
     // outcomes and flags for good, and one left as `last` would hide the
-    // served lesson "Continue" should offer (Codex, #1555). Done before the
+    // served lesson "Continue" should offer. Done before the
     // first render reads `last`.
     points.clearWhere((key) => key.startsWith(LOCAL_LESSON_PREFIX))
     return points
@@ -233,7 +232,7 @@ export function useHandheldLesson({
 
   // In the manifest's own order: it is the operator's, and selection falls
   // back to it (canon Rem. 3.5). The sorted list the desktop picker reads
-  // would put the alphabetically first lesson up next (Codex, #1555).
+  // would put the alphabetically first lesson up next.
   const catalogQuery = useTopikManifest(metadataRepository)
   const served = useMemo(
     () => catalogQuery.data?.topiks ?? [],
@@ -249,7 +248,7 @@ export function useHandheldLesson({
   // Re-read after every write, so selection sees the report just added, and
   // whenever the learner comes back to the list or the tab: a report expires
   // by the clock, and a tab left open for days would otherwise keep ordering
-  // by it (Codex, #1555).
+  // by it.
   const [reports, setReports] = useState(() => surveys.list())
   useEffect(() => {
     const refresh = (): void => {
@@ -285,8 +284,7 @@ export function useHandheldLesson({
   // state only holds the current conversation, so they are gathered here.
   // Each is pinned (`id@fp`) to the probe as it was when missed, and never
   // re-pinned: the file can refresh mid-lesson, and a miss re-pinned to a
-  // revised probe would report content the learner never missed (Codex,
-  // #1554).
+  // revised probe would report content the learner never missed.
   const [missed, setMissed] = useState<Record<number, Array<string>>>({})
   const [surveyPending, setSurveyPending] = useState(false)
   const [finishedSeen, setFinishedSeen] = useState(false)
@@ -342,7 +340,7 @@ export function useHandheldLesson({
         contextFor(conversation)
       )
       // The survey's evidence from the conversations before this one: the
-      // outcomes only cover this one (Codex, #1554).
+      // outcomes only cover this one.
       if (point.survey) {
         setMissed(point.survey.missed)
         setFlagged(point.survey.flagged)
@@ -360,8 +358,7 @@ export function useHandheldLesson({
   )
   // Only once `lesson` is this topik's: on the render that restores a point,
   // it is still the previous lesson's state. The merge is an updater so a
-  // restore's own setMissed, queued in the same render, is never overwritten
-  // (Codex, #1554).
+  // restore's own setMissed, queued in the same render, is never overwritten.
   const pinnedIds = (keys: Array<string> = []): Array<string> =>
     keys.map((key) => key.slice(0, key.lastIndexOf("@")))
   if (
@@ -478,7 +475,7 @@ export function useHandheldLesson({
     if (topikKey === null || restoredFor !== topikKey) return
     // A finished lesson's place goes once its survey is answered or skipped,
     // not before: a reload or a leave while the survey is open would restart
-    // the lesson and lose what the survey was about to offer (Codex, #1554).
+    // the lesson and lose what the survey was about to offer.
     // Until then the point left before finishing stands.
     if (lesson.finished) {
       if (!surveyPending) points.clear(topikKey)
@@ -565,7 +562,7 @@ export function useHandheldLesson({
   const lessonName = current?.displayName
   // A lesson with no level tag suits any level, and was played at the one
   // the learner held: that is the level its report carries, or the next
-  // visit would fall back to the last lesson left, or to 1 (Codex, #1555).
+  // visit would fall back to the last lesson left, or to 1.
   const lessonLevel = topikLevelOf(current?.tags) ?? level
 
   const submitSurvey = useCallback(
@@ -635,7 +632,7 @@ export function useHandheldLesson({
     (meta: TopikMetadata, lessonBatches: Array<ConversationBatch>): void => {
       held.set(meta, lessonBatches)
       // A newly pasted lesson starts fresh, whatever an earlier one under the
-      // same key left behind (Codex, #1554).
+      // same key left behind.
       sessionPoints.clear(meta.key)
       setPasted({ meta, batches: lessonBatches })
       select(meta.key)
@@ -652,7 +649,7 @@ export function useHandheldLesson({
   // Each prompt built, and the reports its digest was made from. A handoff
   // names the prompt it handed off, so it forgets what that prompt carried
   // and nothing else - not the reports of a later prompt, built while an
-  // earlier one was still on screen to copy (Codex, #1555).
+  // earlier one was still on screen to copy.
   const carried = useRef(new Map<string, Array<SurveyReport>>())
 
   const prompt = useCallback(

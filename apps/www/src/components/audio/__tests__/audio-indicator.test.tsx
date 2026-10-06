@@ -7,10 +7,10 @@
  */
 
 import type { JSX, ReactNode } from "react"
+import { withQueryClient } from "@/test-support/query-client"
 import type { SpeechAdapter, VoiceReport } from "@some-ui/speech"
 import { SpeechProvider } from "@some-ui/speech"
 import { httpSpeech } from "@some-ui/speech/http"
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import {
   act,
   cleanup,
@@ -59,14 +59,21 @@ function reportingAdapter(
 }
 
 function renderIndicator(session: (children: ReactNode) => JSX.Element): void {
-  const client = new QueryClient({
-    defaultOptions: { queries: { retry: false } },
-  })
-  render(
-    <QueryClientProvider client={client}>
-      {session(<AudioIndicator />)}
-    </QueryClientProvider>
-  )
+  render(withQueryClient(session(<AudioIndicator />)))
+}
+
+/** The indicator under a static session whose only voice is `adapter`. */
+function renderWithAdapter(adapter: SpeechAdapter): void {
+  renderIndicator((children) => (
+    <SpeechProvider
+      config={{
+        mode: "static",
+        adapters: { server: () => adapter, static: () => adapter },
+      }}
+    >
+      {children}
+    </SpeechProvider>
+  ))
 }
 
 async function trigger(): Promise<HTMLElement> {
@@ -119,16 +126,7 @@ describe("AudioIndicator - who reads lessons aloud", () => {
       voice: "Samantha",
       availability: "missing",
     })
-    renderIndicator((children) => (
-      <SpeechProvider
-        config={{
-          mode: "static",
-          adapters: { server: () => adapter, static: () => adapter },
-        }}
-      >
-        {children}
-      </SpeechProvider>
-    ))
+    renderWithAdapter(adapter)
 
     const button = await trigger()
     expect(button.textContent).toContain("⚠")
@@ -156,16 +154,7 @@ describe("AudioIndicator - who reads lessons aloud", () => {
       voice: null,
       availability: "checking",
     })
-    renderIndicator((children) => (
-      <SpeechProvider
-        config={{
-          mode: "static",
-          adapters: { server: () => adapter, static: () => adapter },
-        }}
-      >
-        {children}
-      </SpeechProvider>
-    ))
+    renderWithAdapter(adapter)
     const button = await trigger()
     expect(button.getAttribute("title")).toBe(
       "Lessons: Checking for a Korean voice · your browser's own voice"

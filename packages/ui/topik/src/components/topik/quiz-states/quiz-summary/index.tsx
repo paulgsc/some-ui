@@ -18,13 +18,9 @@ type QuizSummaryProps = {
 /**
  * The end-of-batch result.
  *
- * This is the stage that produced #899: at `p-12`, `text-7xl` and `space-y-8`
- * it asked for roughly 950px of height inside a pane that the session viewport
- * had granted around 340, and painted the difference over whatever the layout
- * had put below it. Every size here is therefore chosen against the shortest
- * pane this applet is rendered into rather than against the tallest - the
- * panel-fit gate (apps/www/tests/ui-fit/panel-fit.spec.ts) is what holds it
- * there.
+ * Every size is chosen against the shortest pane this applet is rendered
+ * into (around 340px tall), not the tallest; the panel-fit gate
+ * (apps/www/tests/ui-fit/panel-fit.spec.ts) holds it there (see #899).
  */
 export const QuizSummary = ({
   score,

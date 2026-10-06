@@ -7,7 +7,7 @@ import { describe, expect, it } from "vitest"
  * `.has()` without narrowing first. */
 const KNOWN_IDS: Set<string> = new Set(Object.values(CONCEPT_IDS))
 
-describe("concept identity (LTY-SEAM S5, #1019)", () => {
+describe("concept identity (LTY-SEAM S5)", () => {
   it("every id is stable kebab-case, never a display string", () => {
     for (const id of Object.values(CONCEPT_IDS)) {
       expect(id).toMatch(/^[a-z0-9]+(-[a-z0-9]+)*$/)

@@ -1,20 +1,12 @@
 /**
- * G0.2 creation-trace drivers for the #1262 Gate 0 falsification harness.
+ * G0.2 creation-trace drivers for the Gate 0 falsification harness (#1262).
  *
- * Each function creates a hardcoded-white, viewport-covering surface inside
- * an `attachShadow({mode: "open"})` root, via one of three distinct
- * orderings of "populate" vs. "connect" vs. "mutate" that the falsification
- * spec this harness answers names as independent traces (G0.2) — the
- * issue's own original repro only ever proved a root that was already
- * connected and populated before the page settled, which cannot distinguish
- * any of these three from each other or say which (if any) a fix must
- * handle differently. No assertion lives here; see the Gate 0 specs that
- * call these against a frame oracle (frames.ts) or the plain pipeline
- * internals (G0.1).
+ * Each creates a hardcoded-white, viewport-covering surface inside an open
+ * shadow root via one of three independent orderings of "populate" vs.
+ * "connect" vs. "mutate". No assertion lives here.
  *
- * The surface is deliberately `position: fixed; inset: 0` — full-viewport —
- * so a frame oracle sampling the whole page reliably catches it regardless
- * of where #host-anchor sits in normal flow.
+ * The surface is `position: fixed; inset: 0` so a whole-page frame oracle
+ * catches it wherever #host-anchor sits.
  */
 
 import type { Page } from "@playwright/test"
@@ -35,10 +27,8 @@ export async function traceDisconnectedThenInsert(page: Page): Promise<void> {
     surface.id = "shadow-trace-surface"
     surface.setAttribute("style", css)
     root.appendChild(surface)
-    // Population happened above, on a host with no parent at all — the
-    // shadow tree existed, populated, before it was reachable from the
-    // document tree by any route. Connection is the very next statement:
-    // the earliest possible instant this content could ever have painted.
+    // Populated on a detached host; connecting it is the earliest instant
+    // this content could paint.
     const anchor = document.getElementById("host-anchor")
     if (anchor === null) throw new Error("fixture missing #host-anchor")
     anchor.appendChild(host)
@@ -52,9 +42,8 @@ export async function traceAttachOnConnectedHost(page: Page): Promise<void> {
     host.id = "shadow-trace-host"
     const anchor = document.getElementById("host-anchor")
     if (anchor === null) throw new Error("fixture missing #host-anchor")
-    // Connect first, with no shadow root at all yet — an ordinary, inert
-    // light-DOM element the existing pipeline can (and does) see, and finds
-    // nothing to theme in (it has no background of its own).
+    // Connect first, with no shadow root yet: an inert light-DOM element
+    // with nothing to theme.
     anchor.appendChild(host)
     const root = host.attachShadow({ mode: "open" })
     const surface = document.createElement("div")
@@ -65,11 +54,8 @@ export async function traceAttachOnConnectedHost(page: Page): Promise<void> {
 }
 
 /**
- * Trace 3 setup — an open root exists, connected, from before the page ever
- * settles, with its surface initially transparent (carrying no color
- * evidence either way). Call this *before* `waitForClassification()`, so
- * the root is present for whatever the pipeline's initial pass does or does
- * not do with it.
+ * Trace 3 setup: an open root, connected before the page settles, with a
+ * transparent surface. Call *before* `waitForClassification()`.
  */
 export async function traceMutationSetup(page: Page): Promise<void> {
   await page.evaluate((css: string) => {
@@ -87,11 +73,9 @@ export async function traceMutationSetup(page: Page): Promise<void> {
 }
 
 /**
- * Trace 3 mutation — after classification has settled and the veil is down,
- * mutate the *existing* surface's own background in place. No new nodes, no
- * new root: this isolates the observer gap (does a mutation inside an
- * already-registered open root get observed at all?) from the creation-
- * timing questions traces 1 and 2 test.
+ * Trace 3 mutation: after classification settles, mutate the existing
+ * surface's background in place — isolating the observer question (is a
+ * mutation inside a registered root seen?) from creation timing.
  */
 export async function traceMutateExistingSurface(page: Page): Promise<void> {
   await page.evaluate((css: string) => {

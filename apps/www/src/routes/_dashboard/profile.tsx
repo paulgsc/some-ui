@@ -66,7 +66,6 @@ const ProfileForm = ({ profile }: { profile: UserProfile }): JSX.Element => {
 
   const isDirty = JSON.stringify(profile) !== JSON.stringify(draft)
 
-  // Lifted verbatim from the pre-migration `onSuccess`.
   useIntentEffect(saveIntent.state, () => {
     toast("Profile saved")
   })
@@ -156,11 +155,8 @@ const ProfileRoute = (): JSX.Element => {
     failed: (error, retry) => <IntentFailure error={error} onRetry={retry} />,
     ready: (profile, refreshError) => (
       <div className="max-w-xl space-y-4">
-        {/* A cached profile through a failed background refresh may be
-            stale, so the refresh failure rides alongside the editable form
-            instead of being silently discarded - a bot review caught the
-            identical gap in `sessions/$sessionId.tsx`/`new.tsx` and this
-            file shared it. */}
+        {/* A cached profile through a failed refresh may be stale, so the
+            failure rides alongside the editable form. */}
         {refreshError && (
           <IntentFailure
             error={refreshError.error}

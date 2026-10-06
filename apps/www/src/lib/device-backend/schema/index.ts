@@ -1,20 +1,14 @@
 /**
  * The on-device database's schema: the subset of paulgsc/server's
- * `migrations/` that the device backend serves, copied column for column.
+ * `migrations/` the device backend serves, copied column for column (subject
+ * included), so a row here is one `file_host` could take verbatim. Each table
+ * names its source migration and anything left out.
  *
- * Kept the same shape on purpose, subject column included, even though the
- * phone has one person on it: a row here is then a row `file_host` could
- * take verbatim, which is what any later sync between the two would need.
- * The source migration is named above each table; where the device leaves
- * something out (the `account` trigger on `learner_shelf`, whose table is
- * the passkey store the device has no use for) it says so.
+ * One table is the device's own: `device_round_from_home` (migration 2), so
+ * the bundled seed never replaces synced rounds with older bytes.
  *
- * One table is the device's own, with no server counterpart:
- * `device_round_from_home` (migration 2), the rounds the sync from home
- * wrote, so the bundled seed never replaces them with older bytes.
- *
- * Migrations are append-only and numbered by `PRAGMA user_version`. Never
- * edit a shipped entry - a phone that already ran it will not run it again.
+ * Migrations are append-only, numbered by `PRAGMA user_version`. Never edit a
+ * shipped entry: a phone that ran it will not run it again.
  */
 import type { SqlDriver } from "@/lib/device-backend/sql"
 import { num, one } from "@/lib/device-backend/sql"

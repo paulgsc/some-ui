@@ -3,22 +3,11 @@
  *
  * The dashboard shell must never let the *page* scroll sideways.
  *
- * This pins a one-class fix whose absence is invisible in code review and
- * catastrophic in layout: `SidebarInset` is the flexible child of
- * `SidebarProvider`'s flex row, and a flex item's default `min-width: auto`
- * refuses to shrink below its content's min-content width. Without `min-w-0`,
- * a single un-shrinkable descendant anywhere in any route grows `<main>` past
- * the viewport and the whole document scrolls horizontally, instead of the
- * offending box handling its own overflow.
- *
- * That is exactly what `fits-the-box/no-unshrinkable-flex-child` exists to
- * catch (#899, `docs/ui-fit`) — the rule had simply never been pointed at this
- * shared primitive, so every consumer inherited the defect. It surfaced as
- * 499px of `scrollWidth` against a 390px viewport on `/sessions`.
- *
- * jsdom computes no layout, so this asserts the class rather than the
- * geometry; the geometry was verified in Chromium at 390px across `/app`,
- * `/sessions`, `/profile` and `/settings`.
+ * `SidebarInset` is the flex child of `SidebarProvider`'s row, and a flex
+ * item's default `min-width: auto` won't shrink below its content: without
+ * `min-w-0`, one un-shrinkable descendant scrolls the whole document
+ * (`fits-the-box/no-unshrinkable-flex-child`, `docs/ui-fit`). jsdom has no
+ * layout, so this asserts the class, not the geometry.
  */
 
 import type { JSX } from "react"

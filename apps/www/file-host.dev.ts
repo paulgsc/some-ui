@@ -1,21 +1,14 @@
 /**
- * Which `file_host` `vite dev` proxies to: the one run from source, while one
- * runs, and the container otherwise - without anyone choosing a port.
+ * Which `file_host` `vite dev` proxies to: the one run from source while it
+ * runs, the container (port 3000) otherwise.
  *
- * The container holds 3000. paulgsc/server's `make dev` runs the server from
- * source beside it: it takes the next free port and records it, with its
- * pid, in a well-known file (`listen::PortFile` there). This reads that file.
- * A record whose process is gone is a leftover (a `kill -9` never cleans up)
- * and is ignored. `FILE_HOST_PROXY_TARGET` still overrides everything, for a
- * `file_host` on another machine.
+ * paulgsc/server's `make dev` takes the next free port and records it, with
+ * its pid, in a well-known file (`listen::PortFile`; path agreed with its
+ * Makefile's `DEV_PORT_FILE`, change both together). A record whose process
+ * is gone is ignored. `FILE_HOST_PROXY_TARGET` overrides everything.
  *
- * `fileHostDevPlugin` watches the file, and restarts the dev server when the
- * answer changes - `make dev` starting or stopping - so the switch needs no
- * hand either way. The restart reloads the page too, which matters for the
- * `VITE_FILE_HOST_ENDPOINT` below.
- *
- * The file's path is agreed with paulgsc/server's Makefile (`DEV_PORT_FILE`);
- * change both together.
+ * `fileHostDevPlugin` restarts the dev server (and so reloads the page, for
+ * `VITE_FILE_HOST_ENDPOINT`) when the answer changes.
  */
 
 import fs from "node:fs"
@@ -23,17 +16,14 @@ import { dirname } from "node:path"
 import type { Plugin } from "vite"
 
 /**
- * What `vite dev` and `vite preview` refuse to forward to `file_host`, the
- * counterpart of `location ^~ /api/file-host/api/v1/tabs { return 404; }` in
- * nginx.https.conf. `file_host`'s tabs captures are unauthenticated and the
- * learning app does not use them, and a proxy with no path allowlist forwards
- * them to anyone who can reach the dev server (it listens on 0.0.0.0). A
- * stop-gap; the permanent fix is a separate decision.
+ * What `vite dev`/`preview` refuse to forward, the counterpart of nginx.https.conf's
+ * `location ^~ /api/file-host/api/v1/tabs { return 404; }`: `file_host`'s
+ * tabs captures are unauthenticated and the dev server listens on 0.0.0.0. A
+ * stop-gap.
  *
- * Judged the way nginx judges a location: on the path alone, dot segments
- * resolved, percent-escapes decoded and repeated slashes merged, so
- * `/api/file-host//api/v1/%74abs` is the tabs route and not something else. A
- * path that cannot be decoded is refused rather than guessed at.
+ * Judged like an nginx location: dot segments resolved, percent-escapes
+ * decoded, repeated slashes merged (`/api/file-host//api/v1/%74abs` is the
+ * tabs route). An undecodable path is refused.
  */
 const BLOCKED_PROXY_PREFIXES: ReadonlyArray<string> = [
   "/api/file-host/api/v1/tabs",

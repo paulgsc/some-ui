@@ -1,17 +1,11 @@
 /**
- * Telling `file_host` what session is currently on screen.
+ * Telling `file_host` what session is on screen: `POST /presence/lease` with
+ * the session id in view (`paulgsc/server` nudge::presence). Every post just
+ * says "I am looking at this, now", so there is one entry point and no
+ * lifecycle.
  *
- * Presence used to be inferred from a WebSocket connection count, which
- * server-side redesign (`paulgsc/server` nudge::presence) replaced with a
- * lease this app asserts directly: `POST /presence/lease` with the session id
- * currently in view. There is no "start presence" / "stop presence" call —
- * every post is just "I am looking at this, right now" — so this module has
- * exactly one entry point rather than a subsystem with its own lifecycle.
- *
- * `context_key` has to be the literal string the server compares against
- * `StudyAction::session_id()`, unmodified — that is the same string the
- * app's own `/sessions/:id` route param already carries, which is what
- * `use-presence-lease.ts` passes in.
+ * `context_key` must be the literal string the server compares with
+ * `StudyAction::session_id()`: the `/sessions/:id` route param.
  */
 
 import { DATA_MODE } from "@/lib/data-mode"
@@ -31,11 +25,9 @@ type PresenceDeps = {
 type PresenceLeaseResponse = { context_key: string; observed_at: string }
 
 /**
- * Assert presence on one session, swallowing every failure.
- *
- * A missed write just means presence reads as absent, which is the server's
- * safe default — not a broken feature — so there is nothing for a caller to
- * retry or surface. Returns whether it landed, for tests only.
+ * Assert presence on one session, swallowing every failure: a missed write
+ * reads as absent, the server's safe default. Returns whether it landed, for
+ * tests.
  */
 export async function reportPresence(
   contextKey: string,

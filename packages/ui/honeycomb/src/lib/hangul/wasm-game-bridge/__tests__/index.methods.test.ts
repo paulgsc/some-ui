@@ -70,12 +70,7 @@ function makeCore(
   }
 }
 
-/**
- * `HangulGameCore` is a wasm-bindgen class; a plain mock can only ever
- * implement the handful of methods these tests call, never its full
- * generated surface. This is the single, documented cast that lets a
- * `MockHangulGameCore` stand in for it.
- */
+/** `HangulGameCore` is a wasm-bindgen class; a partial mock needs this one cast. */
 function asHangulGameCore(core: MockHangulGameCore): HangulGameCore {
   // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- see comment above
   return core as unknown as HangulGameCore

@@ -4,15 +4,10 @@ import { DATA_MODE } from "@/lib/data-mode"
  * Go to `href` once a ceremony has started a session, possibly for a
  * different account than this tab last acted for.
  *
- * With a server, this is a full page load, not a router navigation. The new
- * account then starts from nothing in memory: no cached query, no mutation
- * still in flight for the previous account whose callback could write that
- * account's data back after a cache clear, and no module-level state. It is
- * one fence at the account boundary, where fencing each cache, callback and
- * store separately would miss the next one written.
- *
- * On the static build there is no server session to come back to (the demo's
- * "session" lives in memory), so it stays a router navigation.
+ * With a server, a full page load, not a router navigation: the new account
+ * starts with no cached query, no in-flight mutation from the previous
+ * account, and no module state. One fence at the account boundary. On the
+ * static build (no server session) it stays a router navigation.
  */
 export function enterAccount(
   href: string,
@@ -31,12 +26,9 @@ export function enterAccount(
 const FALLBACK = "/app"
 
 /**
- * `href` under this app's base, resolved the way the browser will resolve
- * it, and refused (for `/app`) unless it stays on this origin. `/auth`'s
- * `?redirect=` is attacker-controlled: `/\evil.example` starts with `/` and
- * not `//`, yet a URL parser reads the backslash as a slash and lands on
- * another host. Checking the parsed origin catches that and any other
- * spelling a prefix check would miss.
+ * `href` under this app's base, as the browser resolves it, refused (for
+ * `/app`) unless it stays on this origin: `?redirect=` is attacker-controlled,
+ * and `/\evil.example` passes a prefix check but parses to another host.
  */
 function sameOriginUrl(href: string, here: string): string {
   const base = import.meta.env.BASE_URL.replace(/\/+$/, "")

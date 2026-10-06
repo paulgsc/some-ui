@@ -80,7 +80,7 @@ describe("narrow", () => {
   })
 })
 
-describe("rationale-match.ts stays engine-free (LTY-WHY W3, #1103)", () => {
+describe("rationale-match.ts stays engine-free (LTY-WHY W3)", () => {
   it("imports nothing from the wasm hook, the wasm package, or types/leetype's engine vocabulary", () => {
     const source = sourceOf("./rationale-match.ts")
     const codeOnly = source

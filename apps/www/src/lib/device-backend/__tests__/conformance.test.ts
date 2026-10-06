@@ -3,10 +3,8 @@
  * contract in `@some-ui/contract-harness` whose route the device serves is
  * probed through the device's `fetch`, and must pass.
  *
- * This is what makes "the phone answers like the server" a checked claim
- * rather than a hope. A contract for a route the device does not serve is
- * skipped by name below, so a new server route shows up here as a gap to
- * decide on, not as silence.
+ * A contract for a route the device does not serve is skipped by name, so a
+ * new server route shows up as a gap to decide on, not as silence.
  */
 import { readFileSync } from "node:fs"
 import { openNodeSqlite } from "@/test-support/node-sqlite-driver"

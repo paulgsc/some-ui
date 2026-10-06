@@ -1,20 +1,10 @@
 /**
  * @vitest-environment jsdom
  *
- * That every data route still has a loader, and that the loader prefetches the
- * key its component reads.
- *
- * This exists because the bug it guards against is silent. The router was
- * configured with `defaultPreload: "intent"` and `defaultPreloadStaleTime: 0`
- * and no route had a `loader`, so hovering a link preloaded route *code* and
- * fetched no data - a setting that looks switched on and does nothing. Nothing
- * failed; navigation was just slower than it read. Deleting a loader below, or
- * pointing one at a key its component does not use, would restore exactly that
- * silence, so the wiring is asserted rather than assumed.
- *
- * The queryClient is a recording stand-in: the loaders take theirs from router
- * context, so what is checkable here is which query options each one hands
- * over, without a repository, a fetch, or a render in the picture.
+ * Every data route has a loader that prefetches the key its component reads.
+ * Without one, `defaultPreload: "intent"` preloads only route code: nothing
+ * fails, navigation is just slower, so the wiring is asserted. The
+ * queryClient is a recording stand-in taken from router context.
  */
 
 import { QueryClient } from "@tanstack/react-query"
@@ -27,11 +17,7 @@ import {
   settingsQuery,
 } from "@/lib/tenant"
 
-/**
- * A real client with `prefetchQuery` stubbed, so the options each loader hands
- * over are readable without any queryFn running: this is a test about wiring,
- * not about what the repositories return.
- */
+/** A real client with `prefetchQuery` stubbed: no queryFn runs. */
 function recordingContext(): {
   context: { queryClient: QueryClient }
   prefetched: () => Array<ReadonlyArray<unknown>>
@@ -48,12 +34,8 @@ function recordingContext(): {
   }
 }
 
-/**
- * `Route.options.loader` is typed against the whole route tree's context and
- * params; every loader under test reads only `context`, and `$sessionId`/`new`
- * additionally read `params`/`deps`. This is the narrowest shape that covers
- * all of them.
- */
+/** The narrowest shape every loader under test reads (`context`, plus
+ * `params`/`deps` for `$sessionId` and `new`). */
 type LoaderUnderTest = (args: {
   context: { queryClient: QueryClient }
   params?: Record<string, string>
@@ -130,9 +112,8 @@ describe("route loaders prefetch what their components read", () => {
   it("/sessions/new fetches nothing without ?edit=", async () => {
     const { Route } = await import("@/routes/_dashboard/sessions/new")
 
-    // A blank composer has no existing session to warm. Prefetching
-    // `sessionQuery("")` instead would put a permanently-disabled query in the
-    // cache under a key nothing reads.
+    // A blank composer has nothing to warm: `sessionQuery("")` would cache
+    // a permanently-disabled query.
     expect(
       keysPrefetchedBy(Route.options.loader, { deps: { edit: undefined } })
     ).toStrictEqual([])

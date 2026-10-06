@@ -1,41 +1,23 @@
 /**
- * A duration gate — the cost discipline this extension did not have.
+ * A duration gate. Other cost rules bound how often a round *starts*
+ * (`RECONCILE_POLICY`), how many DOM *writes* happen
+ * (`issue-831-quiescence.spec.ts`), but not time: "converges" and
+ * "converges cheaply" are different propositions.
  *
- * Every other cost rule here measures something other than time.
- * `RECONCILE_POLICY`'s debounce bounds how often a round *starts*;
- * `issue-831-quiescence.spec.ts` counts DOM *writes*; the admission budget
- * that briefly existed counted *elements*. None of them quantifies over
- * duration, so a change could be perfectly compliant with all of them and
- * still occupy the main thread — "converges" and "converges cheaply" are
- * different propositions and only the first was ever formalised.
+ * Measures wall-clock under the three drivers that cost: mutation churn, a
+ * continuous pointer sweep, and a *paused* pointer sweep. The paused sweep
+ * is essential: a continuous sweep never lets `INTERACTION_SETTLE_MS`
+ * elapse, so it never fires the settled-interaction pass — a continuous-only
+ * version was green while every pause blocked ~600ms. Stopping costs, not
+ * moving.
  *
- * This measures wall-clock, under the three drivers that actually cost:
- * mutation churn, a continuous pointer sweep, and a *paused* pointer sweep.
+ * ## What this gate does not cover
  *
- * The third is not a variation on the second, and leaving it out is how the
- * worst regression in this file's history went unmeasured. A continuous
- * sweep never lets `INTERACTION_SETTLE_MS` elapse, so it never fires the
- * settled-interaction pass at all — the first version of this spec swept
- * continuously, reported zero long tasks, and was green while every pointer
- * *pause* on a large page blocked the main thread for ~600ms. What costs
- * here is stopping, not moving.
- *
- * ## What this gate does not cover, stated plainly
- *
- * It runs on Chromium, because that is the only engine this project's
- * fixture can drive (`fixture.ts` explains why). The regression that
- * prompted it — a document-wide `:has()` on a dynamic pseudo-class —
- * reproduced on Gecko and *not* here, because Chromium's `:has()`
- * invalidation is far better optimised. So this gate would not have caught
- * the incident it exists because of.
- *
- * That is not a reason to skip it; it is a reason to know what it is for.
- * It catches long tasks this extension's *own JavaScript* creates, which is
- * the larger and more portable class. The selector shape that Chromium
- * forgives is covered separately and statically, by the declarative-cost
- * tests over `DARK_THEME_BODY_RULES` in `theme-apply.test.ts` — a lint, not
- * a measurement, precisely because no measurement available here can see
- * it.
+ * Chromium only (`fixture.ts`). The regression that prompted it — a
+ * document-wide `:has()` on a dynamic pseudo-class — reproduced on Gecko,
+ * not here, so this would not have caught it. It catches long tasks our own
+ * JavaScript creates; the selector shape Chromium forgives is covered
+ * statically by the declarative-cost tests in `theme-apply.test.ts`.
  */
 
 import { expect, test, waitForClassification } from "@filter/playwright/fixture"
@@ -46,42 +28,33 @@ declare global {
 }
 
 /**
- * Generous on purpose. This is a regression gate against a *pathology* — a
- * mechanism that occupies the thread per input event or per mutation batch
- * — not a performance target. A threshold tight enough to measure ordinary
- * variance would flake on shared CI and get disabled, which is worse than
- * a loose threshold that stays green and red in the right places.
+ * Generous on purpose: a gate against a *pathology* (work per input event
+ * or mutation batch), not a performance target. A tight threshold would
+ * flake on shared CI and get disabled.
  */
 const MAX_TOTAL_BLOCKING_MS = 300
 const MAX_SINGLE_TASK_MS = 150
 
-/**
- * Pauses in the paused sweep, and the count the invariant is stated
- * against.
- */
+/** Pauses in the paused sweep, and the count the invariant is stated against. */
 const PAUSE_COUNT = 12
 
 /**
  * Long tasks the paused sweep may produce, total, for {@link PAUSE_COUNT}
  * pauses.
  *
- * Deliberately an absolute count rather than a per-pause average, because
- * the property being defended is that the two are *unrelated*: work on this
- * path must be bounded per page, not per interaction. Measured on a
- * 1500-row page, twelve pauses produce **1 long task totalling 1168ms**
- * with the self-measuring budget in place, against **12 totalling 13108ms**
- * with it removed — verified by removing it, not assumed.
+ * Absolute, not per pause: work on this path must be bounded per page, not
+ * per interaction. Measured on a 1500-row page, twelve pauses produce **1
+ * long task totalling 1168ms** with the self-measuring budget, against **12
+ * totalling 13108ms** without it (verified by removing it).
  *
- * The count is what this defends, not the milliseconds. Individual tasks
- * got *bigger* when the audit stopped being rooted at the interaction's own
- * subtree (see INTERACTION_AUDIT_BUDGET_MS — a partial scan could not
- * safely drive this channel's document-scoped realization), and that is the
- * right trade: a constant number of large tasks per page is survivable,
- * one per pointer pause is a browser that appears hung.
+ * The count is what this defends: tasks got bigger when the audit stopped
+ * being rooted at the interaction's subtree (see
+ * INTERACTION_AUDIT_BUDGET_MS), and a constant number of large tasks per
+ * page is survivable where one per pause looks hung.
  *
- * Three leaves headroom for the measured task, the page's own initial
- * classification if it lands in the window, and a scheduling artifact — and
- * still fails an order of magnitude below the behaviour it exists to catch.
+ * Three leaves headroom for the measured task, the initial classification,
+ * and a scheduling artifact, and still fails an order of magnitude below
+ * the behaviour it catches.
  */
 const MAX_PAUSED_SWEEP_TASKS = 3
 
@@ -91,9 +64,7 @@ async function measure(
   page: Page,
   drive: (page: Page) => Promise<void>
 ): Promise<Budget> {
-  // Declared on the page's own global rather than cast onto `window`: the
-  // lint here forbids type assertions outright, and a module-scope
-  // declaration is what the types actually want.
+  // Declared on the page's global: the lint forbids type assertions.
   await page.evaluate(() => {
     globalThis.__swLongTasks = []
     new PerformanceObserver((list) => {
@@ -155,9 +126,8 @@ test.describe("main-thread budget", () => {
     const page = await fixture.goto("light-page")
     await waitForClassification(page)
 
-    // Deep and wide, like a real application view rather than a flat list:
-    // the audit this defends against resolves each carrier's backdrop by
-    // climbing ancestors, so depth is part of what makes it expensive.
+    // Deep and wide like a real view: backdrop resolution climbs ancestors,
+    // so depth is part of the cost.
     await page.evaluate(() => {
       const root = document.createElement("div")
       let cursor: HTMLElement = root

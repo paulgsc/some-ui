@@ -2,31 +2,14 @@
  * @vitest-environment jsdom
  */
 
-import type { JSX, ReactNode } from "react"
+import { queryClientWrapper } from "@/test-support/query-client"
 import type { Intent } from "@some-ui/intent-kit"
 import { matchIntent } from "@some-ui/intent-kit"
-import {
-  QueryClient,
-  QueryClientProvider,
-  useMutation,
-} from "@tanstack/react-query"
+import { useMutation } from "@tanstack/react-query"
 import { act, renderHook, waitFor } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
 import { useIntent } from "@/lib/intent/use-intent"
-
-function withQueryClient(): {
-  wrapper: (props: { children: ReactNode }) => JSX.Element
-} {
-  const client = new QueryClient({
-    defaultOptions: { mutations: { retry: false } },
-  })
-  return {
-    wrapper: ({ children }: { children: ReactNode }) => (
-      <QueryClientProvider client={client}>{children}</QueryClientProvider>
-    ),
-  }
-}
 
 /** Reads the current state through the sealed accessor, the same way a
  * real consumer would - never `.state.status` directly. */
@@ -45,13 +28,9 @@ afterEach(() => {
 
 describe("useIntent", () => {
   it("starts idle, and the sequence idle -> working -> succeeded matches the real mutation", async () => {
-    const { wrapper } = withQueryClient()
-    // Held open under the test's own control rather than a fixed delay: a
-    // timer-based delay races against however TanStack's mutation observer
-    // happens to schedule its own notifications, which is exactly what made
-    // this assertion flaky before. A promise that only resolves when the
-    // test says so makes "working" a stable state to observe, not a window
-    // to get lucky catching.
+    const wrapper = queryClientWrapper()
+    // Held open under the test's control: a timer races TanStack's
+    // notification scheduling, which made this flaky.
     let resolveMutation: ((value: string) => void) | undefined
     const mutationFn = vi.fn(
       (input: string) =>
@@ -93,7 +72,7 @@ describe("useIntent", () => {
   })
 
   it("maps a rejected mutation to a failed intent carrying a working retry", async () => {
-    const { wrapper } = withQueryClient()
+    const wrapper = queryClientWrapper()
     const mutationFn = vi
       .fn<(input: string) => Promise<string>>()
       .mockRejectedValue(new Error("boom"))
@@ -126,10 +105,8 @@ describe("useIntent", () => {
       },
     })
 
-    // retry() re-ran with the original variables ("session-a"), not
-    // something re-derived or lost - #943's own named regression risk.
-    // (TanStack's mutationFn also receives an internal context object as a
-    // second argument; only the caller-supplied variable is asserted here.)
+    // retry() re-ran with the original variables. (mutationFn also gets
+    // TanStack's context as a second argument; only the variable is checked.)
     await waitFor(() => {
       expect(mutationFn.mock.calls).toHaveLength(1)
     })
@@ -140,7 +117,7 @@ describe("useIntent", () => {
   })
 
   it("uses a custom mapError when supplied, instead of the file_host default", async () => {
-    const { wrapper } = withQueryClient()
+    const wrapper = queryClientWrapper()
     const mutationFn = vi
       .fn<(input: string) => Promise<string>>()
       .mockRejectedValue(new Error("domain-specific failure"))
@@ -169,7 +146,7 @@ describe("useIntent", () => {
   })
 
   it("reset() returns a succeeded intent to idle", async () => {
-    const { wrapper } = withQueryClient()
+    const wrapper = queryClientWrapper()
     // eslint-disable-next-line @typescript-eslint/require-await -- mutationFn's contract is Promise<T>; async is the plainest way to satisfy it for a stub with nothing to actually await.
     const mutationFn = vi.fn(async (_input: string) => "done")
 
@@ -195,7 +172,7 @@ describe("useIntent", () => {
   })
 
   it("exposes the presentation option unchanged, for the renderer to read", () => {
-    const { wrapper } = withQueryClient()
+    const wrapper = queryClientWrapper()
     // eslint-disable-next-line @typescript-eslint/require-await -- mutationFn's contract is Promise<T>; async is the plainest way to satisfy it for a stub with nothing to actually await.
     const mutationFn = vi.fn(async () => "done")
 
@@ -208,7 +185,7 @@ describe("useIntent", () => {
   })
 
   it("does not expose a raw status or isPending - only `state` and `presentation` are on the result", () => {
-    const { wrapper } = withQueryClient()
+    const wrapper = queryClientWrapper()
     // eslint-disable-next-line @typescript-eslint/require-await -- mutationFn's contract is Promise<T>; async is the plainest way to satisfy it for a stub with nothing to actually await.
     const mutationFn = vi.fn(async () => "done")
 
@@ -227,7 +204,7 @@ describe("useIntent", () => {
   })
 
   it("leaves the underlying mutation's own onMutate/onSuccess/onSettled behaviour untouched", async () => {
-    const { wrapper } = withQueryClient()
+    const wrapper = queryClientWrapper()
     const calls: Array<string> = []
     // eslint-disable-next-line @typescript-eslint/require-await -- mutationFn's contract is Promise<T>; async is the plainest way to satisfy it for a stub with nothing to actually await.
     const mutationFn = vi.fn(async (input: string) => `created:${input}`)
@@ -270,7 +247,7 @@ describe("useIntent", () => {
   })
 
   it("thundering-herd guard: two start() calls in the same burst dispatch only once", async () => {
-    const { wrapper } = withQueryClient()
+    const wrapper = queryClientWrapper()
     // eslint-disable-next-line @typescript-eslint/require-await -- mutationFn's contract is Promise<T>; async is the plainest way to satisfy it for a stub with nothing to actually await.
     const mutationFn = vi.fn(async (input: string) => `created:${input}`)
 
@@ -280,10 +257,8 @@ describe("useIntent", () => {
       { wrapper }
     )
 
-    // Two calls with no `act`/`await` between them, mimicking a fast
-    // double-click or two synchronous `fireEvent.click()`s landing before
-    // React has re-rendered with the "pending" status - the exact race
-    // #936 calls out for "Save and play".
+    // Two calls with no `act`/`await` between them: a fast double-click
+    // landing before React re-renders with "pending".
     act(() => {
       result.current.start("session-a")
       result.current.start("session-a")
@@ -299,7 +274,7 @@ describe("useIntent", () => {
   })
 
   it("thundering-herd guard: retry() during an in-flight retry does not double-dispatch", async () => {
-    const { wrapper } = withQueryClient()
+    const wrapper = queryClientWrapper()
     let resolveMutation: ((value: string) => void) | undefined
     const mutationFn = vi
       .fn<(input: string) => Promise<string>>()

@@ -64,9 +64,8 @@ function particle(spec: PetalSpec, className: string): HTMLSpanElement {
  * there are and how bright they get.
  *
  * No per-frame loop: the card only moves when it is dragged, placed or
- * resized, and its owner calls `reposition()` at exactly those moments. (A
- * requestAnimationFrame loop re-reading the anchor's rect every frame, for as
- * long as the card existed, used to do this.) The particles' drift is CSS and
+ * resized, and its owner calls `reposition()` at exactly those moments. The
+ * particles' drift is CSS and
  * stops with the layer. Everything here ends with `life` — the card's active
  * scope, since the layer lives outside the card's dormant gate: the layer,
  * and each burst's removal timer.

@@ -1,12 +1,9 @@
 /**
  * The diagnostics page's pure surface.
  *
- * #1396 sets the testing bar at "whichever pattern some-filter's debug page
- * uses today, if any" — which is none. These cover the three functions that
- * are not DOM rendering, because they are what QC2 (#1384) actually consumes
- * out of an exported bundle: the corpus extraction, the export shape, and the
- * filename the story names. The rendering itself is left at the sibling's
- * bar rather than given a harness this story does not need.
+ * The three functions that are not DOM rendering, because they are what QC2
+ * (#1384) consumes out of an exported bundle: the corpus extraction, the
+ * export shape, and the filename.
  */
 
 import { corpusOf, diagnosticsFilename, exportShape } from "@censor/debug/index"
@@ -40,7 +37,7 @@ const HEALTH: JsonValue = {
   ],
 }
 
-describe("corpusOf — the date corpus #1384 consumes", () => {
+describe("corpusOf — the date corpus QC2 consumes", () => {
   it("pulls every dates.<surface> snapshot, keyed by surface", () => {
     expect(
       corpusOf(
@@ -168,7 +165,7 @@ describe("exportShape — what lands in the downloaded file", () => {
 })
 
 describe("diagnosticsFilename", () => {
-  it("matches the name #1396 specifies", () => {
+  it("matches the specified diagnostics file name", () => {
     vi.setSystemTime(new Date("2026-09-14T03:27:38.123Z"))
     expect(diagnosticsFilename(new Date())).toBe(
       "some-censor-diagnostics-2026-09-14T03-27-38-123Z.json"

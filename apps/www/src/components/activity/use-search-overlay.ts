@@ -4,12 +4,8 @@ import type { ActivityDefinition } from "@some-ui/activity-catalog"
 import { searchActivities } from "@some-ui/activity-catalog"
 
 /**
- * The fields the handler actually reads.
- *
- * Narrower than `React.KeyboardEvent` on purpose: a handler that only needs
- * `key` and `preventDefault` should say so, and a test then drives it with
- * those two rather than constructing a synthetic event to exercise plumbing
- * that is not under test. It stays assignable to `onKeyDown` either way.
+ * The fields the handler reads, narrower than `React.KeyboardEvent` so a test
+ * drives it with just these; still assignable to `onKeyDown`.
  */
 export type OverlayKeyEvent = Pick<
   KeyboardEvent<HTMLInputElement>,
@@ -32,21 +28,17 @@ export type SearchOverlay = {
 
 type Options = {
   /**
-   * Pass the *ranked* catalogue. Equally good text matches come back in the
-   * order they arrived, so recommendation order becomes the tie-break for
-   * free and the two rankings compose instead of competing.
+   * Pass the *ranked* catalogue: equal text matches keep arrival order, so
+   * recommendation order is the tie-break.
    */
   catalogue: ReadonlyArray<ActivityDefinition>
   onLaunch: (activity: ActivityDefinition) => void
 }
 
 /**
- * The keyboard half of the search overlay, kept out of the component so it
- * can be tested without a router, a query client or a DOM (#855).
- *
- * "Fully operable by keyboard" is an acceptance criterion, and an acceptance
- * criterion that can only be checked by mounting the whole dashboard is one
- * that quietly stops being checked.
+ * The keyboard half of the search overlay, kept out of the component so
+ * keyboard operability can be tested without a router, query client or DOM
+ * (#855).
  */
 export function useSearchOverlay({
   catalogue,
@@ -61,9 +53,8 @@ export function useSearchOverlay({
   )
 
   const isOpen = query.trim().length > 0
-  // Clamped rather than reset on every result change: the index only has to
-  // be *valid*, and snapping to the top mid-typing moves the selection out
-  // from under someone who is still narrowing.
+  // Clamped, not reset on every result change: snapping to the top mid-typing
+  // moves the selection from under someone still narrowing.
   const safeIndex =
     results.length === 0 ? 0 : Math.min(activeIndex, results.length - 1)
   const active = results[safeIndex]
@@ -76,8 +67,7 @@ export function useSearchOverlay({
   const handleKeyDown = (event: OverlayKeyEvent): void => {
     if (event.key === "Escape") {
       // Escape restores the recommended set rather than only blurring: the
-      // overlay is the thing in the way, and dismissing it is what the key
-      // is for here.
+      // overlay is what is in the way.
       setQuery("")
       return
     }

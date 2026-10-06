@@ -143,15 +143,9 @@ export const uiRecommended: Config = [
  * Recommended preset for deployable apps (`apps/*`).
  *
  * Extends maishatuRecommended with the lints that only mean something for a
- * thing that ships a bundle. Today that is lazy-registry (a *host* is the
- * only place a static import can short-circuit the content registry's
- * dynamic boundary, because the host is what has an entry chunk — a library
- * importing a sibling library is ordinary composition, and linting it there
- * only manufactures exceptions) and styleImportProtocolConfig (a *host* is
- * the only place with an index.css and a main.tsx, so it is the only place
- * that can reopen #636 by importing a sibling package's compiled
- * "style.css" instead of letting main.tsx pull that package's authored CSS
- * from source).
+ * thing that ships a bundle: lazy-registry (only a host has an entry chunk
+ * a static import can short-circuit) and styleImportProtocolConfig (only a
+ * host has the index.css and main.tsx that could reopen #636).
  *
  * The parallel is `extensionsRecommended`. A lint that can limit itself by
  * file glob or call site may sit in maishatuRecommended and stay inert where
@@ -164,7 +158,4 @@ export const appsRecommended: Config = [
   ...styleImportProtocolConfig,
 ]
 
-/**
- * Default export
- */
 export default maishatuRecommended

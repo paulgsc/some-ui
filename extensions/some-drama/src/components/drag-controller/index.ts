@@ -6,9 +6,8 @@
 // Lifetimes (Charter §8), all derived from the owner's:
 //   - `pointerdown` on the handle — this controller's lifetime.
 //   - `pointermove` / `pointerup` / `pointercancel` on the document — one drag
-//     gesture's: added on pointerdown, gone on release. (They used to be
-//     added at construction and never removed, and the card is rebuilt on
-//     every state change, so they piled up for the life of the tab.)
+//     gesture's: added on pointerdown, gone on release. The card is rebuilt
+//     on every state change, so listeners kept past that would pile up.
 //   - the didDrag reset timer — this controller's.
 
 import { clamp } from "@drama/logic/content/utils"

@@ -74,9 +74,7 @@ describe("roundProbeOf", () => {
     expect(answer?.text).toBe(PROPOSITION_REGISTER["CW-P1"].title)
   })
 
-  // The literal acceptance criterion this story closes (#1236, Step 5, B2):
-  // the option pool is a function of the register and which proposition
-  // μ(d) names, never of the diff's own hunk content, path, or role.
+  // The pool depends on the register and μ(d), never the hunk, path or role.
   it("two diffs witnessing the same CW-P proposition offer the same option pool, drawn from the register", () => {
     const probeA = roundProbeOf(memberOf("CW-P5", "a"), 42)
     const probeB = roundProbeOf(memberOf("CW-P5", "totally/different/path"), 42)
@@ -85,12 +83,7 @@ describe("roundProbeOf", () => {
     expect(probeA.options).toEqual(probeB.options)
   })
 
-  // Thm. 6.1 and Def. 8.1 both frame the learner's selection as a pair
-  // (d, p) ranging over the whole of D, not just its admissible member —
-  // a distractor diff is an equally real `d` with its own `μ(d)` (review
-  // finding on this PR: an earlier draft always answered with the
-  // admissible member's own proposition, regardless of which diff the
-  // card was posed for).
+  // `d` ranges over all of D (Thm. 6.1, Def. 8.1): a distractor has its own μ(d).
   it("answers with the selected diff's own proposition even when it is not the admissible one", () => {
     const admissibleProbe = roundProbeOf(memberOf("CW-P5", "a", true), 1)
     const distractorProbe = roundProbeOf(memberOf("CW-P9", "b", false), 1)
@@ -112,10 +105,7 @@ describe("roundProbeOf", () => {
     expect(new Set(seeds).size).toBeGreaterThan(1)
   })
 
-  // No preference ranking exists (see round-probe/index.ts's own doc
-  // comment, "No preference ranking," for why): a restricted pool proves
-  // distractors are drawn from exactly the candidates handed in, nothing
-  // more and nothing preferred among them.
+  // No preference ranking: distractors come from exactly the pool given.
   it("draws distractors only from the pool handed in", () => {
     const pool = (["CW-P7", "CW-P9"] as const).map((id) => ({
       id,
@@ -143,14 +133,8 @@ describe("roundProbeOf", () => {
     }
   })
 
-  // PropositionIdSchema legitimately accepts a retired id (Rem. 7.1/7.2's
-  // amendment protocol keeps old citations resolving) — but a live card's
-  // *answer* is a different claim than "this citation still resolves,"
-  // and propositionPoolOf already refuses to offer a retired entry as a
-  // distractor. The real register has no retired entries yet, so this
-  // exercises a synthetic one (review finding on this PR: an earlier draft
-  // built the answer straight from the register, bypassing that same
-  // active-only reasoning entirely).
+  // A retired id still resolves as a citation, but cannot be a live answer.
+  // The real register has none retired, so this uses a synthetic entry.
   it("refuses to answer with a retired proposition, even though it still resolves as a citation", () => {
     const retiredRegister = {
       ...PROPOSITION_REGISTER,
@@ -167,10 +151,8 @@ describe("roundProbeOf", () => {
     ).toThrow(/retired/)
   })
 
-  // B3 (#1220), #1330: the verdict's justification is the answer's own
-  // register statement — canon §7's full authored claim, not the short
-  // `title` `options` carry.
-  describe("justification and gloss (#1220)", () => {
+  // The justification is the answer's full §7 statement, not its `title`.
+  describe("justification and gloss", () => {
     it("carries the answer entry's own register statement as justification", () => {
       const probe = roundProbeOf(memberOf("CW-P1", "a"), 1)
       expect(probe.justification).toBe(PROPOSITION_REGISTER["CW-P1"].statement)
@@ -197,10 +179,7 @@ describe("roundProbeOf", () => {
       expect(probe.gloss).toBe(gloss)
     })
 
-    // A distractor diff's own μ(d) is still a real proposition (per this
-    // module's own "answer is μ(d) of the selected diff" section) — its
-    // gloss, when authored, must follow the same diff, not the round's
-    // admissible member.
+    // The gloss follows the selected diff, not the admissible member.
     it("reads gloss off the selected diff even when it is the non-admissible one", () => {
       const gloss = "this distractor rewrite instantiates CW-P9 instead"
       const distractorMember: DiffSetMember = {

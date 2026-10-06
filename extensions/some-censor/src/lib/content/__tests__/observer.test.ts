@@ -1,5 +1,5 @@
 /**
- * The observer's shape signals (#1504's own review, round 3).
+ * The observer's shape signals.
  *
  * jsdom delivers MutationObserver callbacks as microtasks, so each scenario
  * mutates and then lets the queue drain before looking. The manager is the
@@ -105,8 +105,8 @@ describe("a card whose subtree is replaced", () => {
   })
 
   it("adopts a lockup that replaces its cell for the same video", async () => {
-    // Round 4 of #1504's own review: the recycled cell and the lockup that
-    // replaced it carry the same video. The lockup must not find the cell's
+    // The recycled cell and the lockup that replaced it carry the same video.
+    // The lockup must not find the cell's
     // entry and repair it; the cell is retired first, then the lockup mounts.
     const cell = videoCell("same_vid")
     document.body.appendChild(cell)
@@ -126,7 +126,7 @@ describe("a card whose subtree is replaced", () => {
 
   it("does not disturb a card whose subtree merely churned", async () => {
     // The bounded walk re-upserts the card; upsert() must then find the same
-    // artifact and leave the entry alone (M2, #1423).
+    // artifact and leave the entry alone (M2).
     const cell = videoCell("stable")
     document.body.appendChild(cell)
     await settle()

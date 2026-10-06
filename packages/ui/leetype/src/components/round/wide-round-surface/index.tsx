@@ -8,109 +8,53 @@ import type { Exercise } from "@leetype/types/exercise"
 import { cn } from "some-ui-utils"
 
 type WideRoundSurfaceProps = {
-  /** Opaque round-identity token, forwarded to `ArtifactSwitcher` unchanged — see that component's own doc comment for what resets on a change. Also what this component resets its own local `probeOpen` state on (below). */
+  /** Opaque round-identity token, forwarded to `ArtifactSwitcher`; a change also closes the probe. */
   roundId: string
   /**
-   * Def. 9.2's six artifacts, exactly as C1's own `ArtifactSwitcher` takes
-   * them — already filtered to the round's current phase, already carrying
-   * whichever `content` owns the commit gesture (`RoundChoices`/
-   * `CommitmentControl`). Unchanged across the commitment boundary: the
-   * artifact that reveals a verdict (e.g. `RoundChoices`) does so by
-   * re-rendering its own already-mounted instance, not by this component
-   * swapping the array out from under it.
+   * Def. 9.2's artifacts as `ArtifactSwitcher` takes them, including the one
+   * owning the commit gesture. Unchanged across the commitment: a verdict is
+   * revealed by that artifact re-rendering in place.
    */
   artifacts: ReadonlyArray<SwitchableArtifact>
   /**
-   * What the second, simultaneous switcher is permitted to show once a
-   * commitment lands (Rem. 9.2's own exception) — typically the diff set
-   * (`D`) beside `artifacts`' own now-revealed verdict, "the diff and the
-   * proposition side by side." Absent or empty: the post-commitment render
-   * still shows exactly one switcher, since Rem. 9.2 calls simultaneity a
-   * permission, never a requirement.
+   * What a second, simultaneous switcher may show once a commitment lands
+   * (Rem. 9.2's exception), typically `D` beside the verdict. Absent or
+   * empty: still one switcher (simultaneity is a permission).
    */
   revealArtifacts?: ReadonlyArray<SwitchableArtifact>
   /**
-   * Whether — and what — the learner has committed to, for *this* round.
-   * Controlled rather than observed: this component has no more ability to
-   * discover a commitment on its own than `ArtifactSwitcher` does to read
-   * one (both treat artifact `content` as opaque), so whichever caller owns
-   * real round-cycle state is the one that watches `RoundChoices`'/
-   * `CommitmentControl`'s own `onCommit` and hands the result down here.
-   * `null` before a commitment gates two things, both absent rather than
-   * merely disabled: the second, simultaneous switcher, and the production
-   * probe's own "Open" affordance (see this component's own doc comment).
+   * What the learner committed to this round, controlled by the caller that
+   * owns round-cycle state (artifact content is opaque here). While `null`,
+   * the second switcher and the probe's "Open" affordance are absent.
    */
   commitment: Commitment | null
-  /**
-   * Fed to the production probe once a learner deliberately opens it —
-   * which, per `commitment` above, is never before a commitment lands. A
-   * fixed prop rather than something this component derives, the same
-   * "caller resolves, this component only draws" split `Leetype` itself
-   * draws around `TypingSession`.
-   */
+  /** Fed to the production probe once the learner opens it (only after a commitment). */
   probeExercise: Exercise
   className?: string
 }
 
 /**
- * C4 (#1216), Rem. 9.2 / Prop. 9.2: the wide surface, reproducing C1's own
- * sequencing rather than inheriting correctness from having more room.
+ * The wide surface (Rem. 9.2 / Prop. 9.2), reproducing the phone's
+ * sequencing rather than inheriting correctness from more room.
  *
- * # Extra room buys size, not simultaneity — by construction, not by CSS
+ * Extra room buys size, not simultaneity: whether a second
+ * `ArtifactSwitcher` renders depends only on `commitment`, never on
+ * viewport width, and no responsive class could show two artifacts before a
+ * commitment. The switcher is `ArtifactSwitcher` itself, unmodified: one
+ * component, two sizes.
  *
- * `Leetype` picks a surface by component branch, not by media query (see
- * its own doc comment on why) — the same posture this component takes on
- * *its* one degree of freedom: whether a second `ArtifactSwitcher` renders
- * is decided entirely by `commitment`, never by viewport width. There is no
- * responsive class anywhere in this file that would let two artifacts
- * appear side by side before a commitment lands just because a preview
- * happens to be wide — the single-switcher default holds unconditionally,
- * the same way `Leetype`'s narrow branch unconditionally never mounts the
- * engine. This is also why the switcher used here is `ArtifactSwitcher`
- * itself, completely unmodified: "one component, two sizes, not two
- * components" (#1216's own acceptance criterion) means this file adds
- * layout and gating around C1's switcher, never a fork of it.
+ * The primary switcher is always the grid's first child, so it survives the
+ * commitment transition as the same instance and keeps its position and any
+ * artifact state.
  *
- * # Why the primary switcher survives the commitment transition
+ * `TypingSession` (the optional production probe) mounts only when the
+ * learner presses "Open production probe", which is what loads the engine;
+ * its output is discarded, and unmounting frees the engine. The affordance
+ * is absent until `commitment` is non-null, since an open probe beside the
+ * unanswered option set is the simultaneity Rem. 9.2 rules out.
  *
- * The first `ArtifactSwitcher` below is always the first child of the grid,
- * whether or not a second one joins it — so React reconciles it as the same
- * instance across a commitment landing rather than remounting it, and
- * whatever position the learner had navigated to (and any local state an
- * artifact's own `content` holds, e.g. `SourcePanel`'s toggle) survives the
- * transition instead of resetting the instant a second pane appears.
- *
- * # The production probe is a deliberate, separate gate — and stays behind
- * # the commitment gate too
- *
- * `TypingSession` (the "optional production probe," C2/#1214) is not
- * rendered until a learner presses "Open production probe" — mounting it
- * for the first time is what triggers the real engine load (`useTypingGame`'s
- * own mount effect calls the existing lazy `loadWasm` singleton; nothing new
- * to build there), so the engine loads on open and never merely from this
- * component mounting wide with nothing opened yet, the same "mount ≠ open"
- * distinction `Leetype`'s own test suite already pins for its wide branch.
- * No `onSessionComplete` is wired anywhere from here: whatever the probe
- * produces is discarded, and closing it (or a round advancing, below)
- * unmounts `TypingSession`, which already frees the engine on unmount.
- *
- * The "Open production probe" affordance itself doesn't exist at all until
- * `commitment` is non-null (review finding, #1439, chatgpt-codex-connector):
- * offering it earlier would let a learner park the still-open, unanswered
- * option set on screen next to an unrelated interactive surface, which is
- * the same "several things visible before a commitment" shape Rem. 9.2
- * rules out for the artifacts themselves — and #1216's own opening line
- * ("extra room buys size, not simultaneity") draws no exception for the
- * probe. Absence, not a disabled control — the same idiom `ArtifactSwitcher`
- * itself uses for an artifact the round hasn't reached yet.
- *
- * # Closing the probe on round advance
- *
- * Same "adjust state during render" idiom `ArtifactSwitcher` itself uses
- * for its own round-reset: an open probe from a spent round has nothing to
- * do with the next one, so it closes (and its engine is freed, per above)
- * the instant `roundId` changes, rather than carrying an open production
- * probe silently across a round boundary.
+ * A round change closes the probe ("adjust state during render", as
+ * `ArtifactSwitcher` resets).
  */
 export const WideRoundSurface: FC<WideRoundSurfaceProps> = ({
   roundId,
@@ -143,11 +87,7 @@ export const WideRoundSurface: FC<WideRoundSurfaceProps> = ({
         <ArtifactSwitcher
           artifacts={artifacts}
           roundId={roundId}
-          // Only distinguishing from the reveal switcher's own label below
-          // matters when both are on screen at once — explicit here (rather
-          // than left at the component's own generic default) so the two
-          // switchers' Previous/Next buttons never collide (review finding,
-          // #1439, chatgpt-codex-connector).
+          // Explicit so the two switchers' Previous/Next names never collide.
           ariaLabel={reveal ? "Round artifact" : undefined}
         />
         {reveal && (

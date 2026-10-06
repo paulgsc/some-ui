@@ -51,11 +51,9 @@ const isInlineSpace = (char: string | undefined): boolean =>
 /**
  * The body of every ``` or ```json fence in `text`, in order.
  *
- * A scan, not a regular expression: this reads whatever was pasted, and the
- * pattern it replaces (```` /```(?:json)?\s*\n([\s\S]*?)```/g ````) backtracked
- * polynomially on a fence followed by many whitespace-and-newline pairs,
- * because `\s*` could also consume the newline it then required (CodeQL,
- * #1564). Each fence is visited once, so this is linear in `text`.
+ * A scan, not a regular expression: this reads whatever was pasted, and a
+ * `\s*\n` pattern backtracks polynomially on many whitespace-and-newline
+ * pairs (CodeQL, #1564). Each fence is visited once: linear in `text`.
  */
 export function fencedBodies(text: string): Array<string> {
   const bodies: Array<string> = []
@@ -220,8 +218,8 @@ function withholdErrors(
   findings: Array<ProbeFinding>
 ): Array<ConversationBatch> {
   // By position among the probes that loaded, not by id: when two probes
-  // share an id only the later is in error, and the first still plays
-  // (Codex, #1554). A probe that did not load has no position, and is gone.
+  // share an id only the later is in error, and the first still plays.
+  // A probe that did not load has no position, and is gone.
   const withheld = new Set(
     findings.flatMap((finding) =>
       finding.severity === "error" &&

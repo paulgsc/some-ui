@@ -1,39 +1,15 @@
 /**
- * Guarantees a working `localStorage` in the jsdom tests, whatever Node the
- * runner happens to be.
+ * Guarantees a working `localStorage` in the jsdom tests, whatever Node runs.
  *
- * The failure this exists for looks like a test bug and is not one:
+ * Symptom: `TypeError: window.localStorage.clear is not a function`, in CI
+ * only. Vitest's `populateGlobal` skips copying jsdom's window keys that the
+ * runtime already defines (`if (k in global) return keysArray.includes(k)`),
+ * and Node 22+ ships a global `localStorage` which, without a valid
+ * `--localstorage-file`, is not a usable `Storage`. CI's `nodejs_latest`
+ * (`nix/node`) is ahead of contributors' Node.
  *
- *    TypeError: window.localStorage.clear is not a function
- *
- * from CI only, on a test that passes on every developer machine. The cause
- * is an interaction between the runtime and Vitest's jsdom environment.
- * `populateGlobal` copies jsdom's window properties onto the global object,
- * but it deliberately skips any key the runtime already defines and that is
- * not in its own KEYS list:
- *
- *    if (k in global) return keysArray.includes(k)
- *
- * `localStorage` is not in that list. Node ships Web Storage from v22
- * onwards (enabled by default in recent majors), so on a new enough Node
- * there *is* a global `localStorage` before jsdom is installed - and jsdom's
- * own is therefore never copied. What the tests then touch is Node's
- * object, which without a valid `--localstorage-file` is not a usable
- * `Storage` at all: no `clear`, no `key`, no `length`. Older Node has no
- * global `localStorage`, jsdom's gets copied, and everything works. That is
- * the entire "passes locally, fails in CI" delta - CI resolves its Node
- * through `nix/node`'s `nodejs_latest`, which is by definition ahead of
- * whatever a contributor has installed.
- *
- * The shim is deliberately conditional: where the environment already
- * provides a real `Storage` (any current developer machine), it does
- * nothing at all and tests keep using jsdom's. It only steps in where the
- * ambient object cannot do the job, so this cannot mask a genuine
- * regression in code under test - only the runtime's own gap.
- *
- * The lasting fix is pinning that Node rather than tracking `latest`; this
- * keeps the suite honest either way, and would go on doing so the next time
- * a runtime grows a global that jsdom also defines.
+ * Conditional: where a real `Storage` exists it does nothing, so it cannot
+ * mask a regression in code under test. The lasting fix is pinning Node.
  */
 
 /** Everything the `Storage` interface promises, in memory. */
@@ -70,9 +46,8 @@ function createMemoryStorage(): Storage {
 }
 
 /**
- * A `Storage` in name only is worse than none: it satisfies a `typeof`
- * check and then throws on the first call, which is exactly how this
- * surfaced. Probe the methods the tests actually use.
+ * A `Storage` in name only passes a `typeof` check and throws on first call,
+ * so probe the methods the tests use.
  */
 function isUsableStorage(candidate: unknown): boolean {
   if (typeof candidate !== "object" || candidate === null) return false

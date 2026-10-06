@@ -1,27 +1,15 @@
 /**
- * CI guardrail (LTY-PROBE B1, #1218): the fifth of this repository's
- * data-as-CI-input lint family — `scripts/check-wasm-bindgen-boundary.sh`,
- * `scripts/check-mutation-boundary.sh`, `docs/canon/scripts/check-
- * citations.sh` and `check-corpus-lint.ts` are the other four. Wired into
- * `lint:corpus` (turbo-filtered, real CI today) rather than a new
- * standalone workflow step, so it runs the same way the corpus lint
- * already does.
+ * CI guardrail (LTY-PROBE B1), run by `lint:corpus`. Two checks, reported
+ * together:
  *
- * Two independent checks, both reported in one run:
+ * 1. Freshness: `generated.ts` matches what canon §7 produces now
+ *    (Rem. 7.2: "generated, never transcribed").
+ * 2. Citations: every `CW-P` id in the tracked tree resolves against the
+ *    register and is not retired (Rem. 7.1). Only §7's own declaration
+ *    lines are excluded; any other mention, in the canon too, is checked.
  *
- * 1. Freshness — `generated.ts` matches what `docs/canon/complexity-
- *    witness-canon.typ` §7 produces right now (Rem. 7.2's "generated,
- *    never transcribed").
- * 2. Citations — every `CW-P`n` found anywhere in the tracked tree (outside
- *    the register's own §7 declaration lines — not the whole canon tree;
- *    a `CW-P` mention elsewhere in that same file, or in a sibling canon,
- *    is a real citation and is checked like any other — review finding on
- *    #1241, chatgpt-codex-connector) resolves against the register, and
- *    is not a retired entry (Rem. 7.1, Amendment protocol rule 2).
- *
- * Failure mode 2 of Rem. 7.1 (a register entry with no corpus instance) is
- * deliberately not run here against real data — see `checkRegisterCoverage`'s
- * own doc comment in `citation-check.ts` for why.
+ * Rem. 7.1's failure mode 2 (an entry with no corpus instance) is not run
+ * here; see `checkRegisterCoverage` in `citation-check.ts`.
  */
 import { execFileSync } from "node:child_process"
 import { existsSync, readFileSync } from "node:fs"
@@ -40,13 +28,9 @@ import {
 
 const CITATION_PATTERN = "CW-P[0-9]+"
 
-// Excluded at the file level because the *whole* file is non-citational:
-// `generated.ts` is generated data (every `"CW-Pn"` in it is a real id,
-// never prose), and this module's own tests intentionally write ids that
-// do not resolve against the real register (proving the dangling-citation
-// direction requires exactly that). Canon §7's own declaration lines are
-// excluded separately, below, at line granularity — everything else in
-// docs/canon/ is real citation content and stays in scope.
+// Whole files with no citations: `generated.ts` is data, and the register's
+// own tests write dangling ids on purpose. §7's declaration lines are
+// excluded separately, below.
 const EXCLUDED_PATHSPECS = [
   `:(exclude)${GENERATED_RELATIVE_PATH}`,
   ":(exclude,glob)packages/ui/leetype/src/lib/leetype/proposition-register/**/*.test.ts",
@@ -108,10 +92,8 @@ function scanRepoForCitations(root: string): Array<Citation> {
 }
 
 /**
- * Drops exactly the register's own §7 declaration lines from `citations`
- * — the one legitimate exclusion `scanRepoForCitations` can't express as
- * a pathspec, since only *some* lines of `docs/canon/complexity-witness-
- * canon.typ` are definition sites and the rest is real citation content.
+ * Drops exactly §7's declaration lines from `citations`, an exclusion a
+ * pathspec cannot express.
  */
 function withoutDefinitionSites(
   citations: ReadonlyArray<Citation>,

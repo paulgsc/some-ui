@@ -1,5 +1,5 @@
 /**
- * What the Actuator is handed (BC4, #1437): Core's actions, with the
+ * What the Actuator is handed (BC4): Core's actions, with the
  * elements a key names bound on by the runtime.
  *
  * Core cannot name an element (Boundary Contract B2), and the Actuator may
@@ -16,8 +16,8 @@ export type CustodyRole =
   /** Carries the veil, the `data-boyo-vid` stamp and the click target. */
   | "anchor"
   /**
-   * Inside an anchor and matching a pre-mask rule of its own (#1426's grid
-   * cell around a lockup is the reverse: there the *inner* is the anchor).
+   * Inside an anchor and matching a pre-mask rule of its own (a grid cell
+   * around a lockup is the reverse: there the *inner* is the anchor).
    * Gets `data-boyo` so the occluder releases it, nothing else — D6.
    */
   | "nested"

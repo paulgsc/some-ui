@@ -13,9 +13,7 @@
     "target": "ES2022",
     "paths": {
       "@shared/*": ["./packages/ui/shared/src/*"],
-      "@chat/*": ["./packages/ui/chat/src/*"],
       "@utils/*": ["./packages/utils/src/*"],
-      "@dice-card/*": ["./packages/ui/dice-card/src/*"],
       "@leetype/*": ["./packages/ui/leetype/src/*"],
       "@topik/*": ["./packages/ui/topik/src/*"],
       "@honeycomb/*": ["./packages/ui/honeycomb/src/*"],
@@ -35,7 +33,6 @@
     }
   },
   "include": [
-    "assets/",
     "eslint/",
     "eslint.config.js",
     "eslint.config-deprecated.mjs",

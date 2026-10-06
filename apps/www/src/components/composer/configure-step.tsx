@@ -48,8 +48,7 @@ export const ConfigureStep = ({
     totalById.set(item.activityId, (totalById.get(item.activityId) ?? 0) + 1)
   }
 
-  // Computed against the full list before paginating, so an instance's "#N"
-  // label stays stable regardless of which page it's currently showing on.
+  // Numbered against the full list before paginating, so "#N" is stable.
   const ordinalByInstanceId = new Map<string, number>()
   const seenById = new Map<ActivityId, number>()
   for (const item of items) {
@@ -58,9 +57,8 @@ export const ConfigureStep = ({
     ordinalByInstanceId.set(item.instanceId, ordinal)
   }
 
-  // Memoized for `useFittedPage`: a fresh array each render reads to it as a
-  // genuine content change, which is its cue to re-try a page size it had
-  // already measured as too tall.
+  // Memoized: a fresh array reads to `useFittedPage` as new content and
+  // re-tries a page size already measured too tall.
   const paged = useMemo(() => [...items], [items])
   const {
     viewportRef,
@@ -73,13 +71,10 @@ export const ConfigureStep = ({
   } = useFittedPage(paged, {
     minPerPage: 1,
     maxPerPage: 12,
-    // Editing a field rebuilds `items` (and so `paged`) via `.map()` even
-    // though the edited card's rendered height doesn't change - no field
-    // here affects a card's layout (see `ActivityInputNote`, driven only by
-    // `activityId`). Without this, that edit reads as a same-length content
-    // swap and re-tries a page size already measured too tall, which can
-    // grow `perPage` mid-edit and slide a different card under the one being
-    // typed into.
+    // Editing a field rebuilds `items` via `.map()` without changing any
+    // card's height (`ActivityInputNote` depends only on `activityId`). Read as
+    // new content, it could grow `perPage` mid-edit and slide another card
+    // under the one being typed into.
     getItemKey: (item) => item.instanceId,
   })
 
@@ -89,19 +84,9 @@ export const ConfigureStep = ({
         ref={viewportRef}
         data-scroll-intent="fitted-residue"
         className={
-          // scroll-intent: fitted-residue — `useFittedPage` guarantees this
-          // box's content fits it, with exactly one documented exception:
-          // at `minPerPage` a single item taller than the whole box has to
-          // overflow somewhere (see the hook's own Options doc). This says
-          // where. It is not a greedy scroll - in every case the fit can
-          // actually solve, the scrollbar never appears because the content
-          // genuinely fits - it is the named home for the residue the fit
-          // is honest about not being able to remove. Clipping it instead
-          // is worse than it sounds: a card whose centre falls outside the
-          // box stops being clickable at all.
-          // On a handheld the bar is hidden (`handheld:no-scrollbar`): a phone
-          // scrolls by finger, so a bar there is only noise - and on a
-          // browser that lays bars out it took its width out of the box.
+          // scroll-intent: fitted-residue — see activity-picker-step.tsx's
+          // catalogue box: the one item taller than the box at `minPerPage`
+          // scrolls here rather than being clipped unclickable.
           "min-h-0 flex-1 overflow-y-auto handheld:no-scrollbar"
         }
       >
@@ -194,12 +179,8 @@ export const ConfigureStep = ({
                       </div>
                     )
                   })}
-                  {/* Said here, on the last screen before the session is built,
-                  and only for an activity whose small-screen interaction is a
-                  genuinely different exercise. A person configuring a session
-                  length is committing to the thing; finding out afterwards
-                  that their phone plays a different exercise is exactly the
-                  disclosure this is for. */}
+                  {/* On the last screen before the session is built, for an
+                  activity that becomes a different exercise on a phone. */}
                   <ActivityInputNote
                     activity={activity}
                     className="sm:col-span-2"

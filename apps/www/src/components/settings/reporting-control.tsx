@@ -1,22 +1,14 @@
 /**
  * The one switch that lets an account hear about a learner's behaviour:
- * "Reminders and progress sync".
+ * "Reminders and progress sync" (canon Remark 7.6). On, this browser tells the
+ * server which session is open, when the person studies and which browser to
+ * wake, so reminders arrive with the browser closed. Off, none of that is
+ * sent, and reminders appear only while a tab is open.
  *
- * Keeping an account stores the person's sessions and nothing about when they
- * study. This is the separate, opt-in step (canon Remark 7.6): with it on, this
- * browser tells the server which session is open, when the person studies and
- * which browser to wake with a reminder, so reminders can arrive with the
- * browser closed. With it off none of that is sent, and reminders only appear
- * while a tab is open (`lib/study-nudge/use-study-nudge`).
- *
- * It is shown only where there is something to choose: a remote account.
- * Learning on the device sends nothing, the demo has no server, and the
- * Android app's backend never leaves the phone.
- *
- * Off ends the push subscription at both ends *before* the setting flips, while
- * the transport that can say so to the server is still allowed. What the server
- * already holds (activity it was sent while on) stays under the account until
- * it is deleted, and the copy says that.
+ * Shown only for a remote account (the device, the demo and the Android
+ * backend send nothing). Off ends the push subscription at both ends *before*
+ * the setting flips, while the transport is still allowed; what the server
+ * already holds stays until deleted, and the copy says so.
  */
 
 import type { JSX } from "react"

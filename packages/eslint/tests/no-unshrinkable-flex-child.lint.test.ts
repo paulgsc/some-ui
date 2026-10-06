@@ -1,16 +1,10 @@
 /**
- * LAYER 2 — Lint-time integration tests for
- * fits-the-box/no-unshrinkable-flex-child.
+ * Lint-time integration tests for fits-the-box/no-unshrinkable-flex-child.
+ * The fixtures are #899's chains, before and after: an `h-full flex
+ * flex-col` card around a `flex-1` body with no `min-h-0`. The rule reads the
+ * parent/child relationship, not a single class. Syntactic, so a plain
+ * @typescript-eslint/parser with JSX suffices.
  *
- * The fixtures are the real chains from #899, before and after. The quiz
- * summary's card was `h-full flex flex-col` around a `flex-1` body with no
- * `min-h-0`: correct-looking on its own, and the reason ~950px of content
- * pushed past a ~340px panel rect. The rule reads that relationship - a flex
- * parent and a flexible child - rather than a single class, so what it reports
- * is the defect rather than the symptom.
- *
- * Purely syntactic (JSX ancestry plus string-literal class lists), so a plain
- * @typescript-eslint/parser with ecmaFeatures.jsx is enough.
  */
 
 import { fitsTheBoxPlugin } from "@eslint/configs/fits-the-box.config.js"

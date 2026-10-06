@@ -1,12 +1,10 @@
 /**
- * BOYO — the home feed's polymorphic grid cell (#1422, [ORP1])
+ * BOYO — the home feed's polymorphic grid cell ([ORP1])
  *
  * `ytd-rich-item-renderer` wraps whatever the feed item is: a video, but also
- * an ad slot, a Shorts shelf, a community post. It used to be catalogued as a
- * plain video tag, so a non-video cell was occluded by the pre-mask rule,
- * could never produce a videoId, and was never released — a permanently
- * blurred, permanently unclickable tile — while keeping the retry loop alive
- * for the life of the tab.
+ * an ad slot, a Shorts shelf, a community post. Treated as a plain video tag,
+ * a non-video cell would stay occluded and unclickable forever and keep the
+ * retry loop alive.
  *
  * O1 — A non-video cell is neither adopted nor left under the occluder.
  * O2 — A video cell is still pre-masked at first paint: the guard that fixes
@@ -94,9 +92,8 @@ test("O3: the non-video cell does not keep the retry loop alive", async ({
 }) => {
   const page = await fixture.goto("yt-home")
 
-  // The ad cell can never resolve. It used to be retried at 500ms forever,
-  // each pass re-scanning the whole document. The budget is ~10s, so by 15s
-  // the queue must have drained with the cell released from it.
+  // The ad cell can never resolve. The budget is ~10s, so by 15s the queue
+  // must have drained with the cell released from it.
   const snap = await fixture.pollDebug(page, (d) => d.unresolved === 0, {
     timeout: 15_000,
   })
@@ -110,8 +107,8 @@ test("O3: the non-video cell does not keep the retry loop alive", async ({
 test("O4: a cell wrapping a lockup is released, and the lockup is the card", async ({
   fixture,
 }) => {
-  // #1426's DOM fact, and #1504's own review: the grid cell contains the
-  // lockup's watch links, so a link check alone would adopt the cell as one
+  // The grid cell contains the lockup's watch links, so a link check alone
+  // would adopt the cell as one
   // card with one veil over the lockup — and the cell's `pointer-events:
   // none` under the occluder would make that veil unclickable anyway.
   const page = await fixture.goto("yt-home")

@@ -19,11 +19,9 @@
  *          video-only — videoId present, channelId absent; can MASK now,
  *                       channel backfilled later by the retry loop.
  *          raw        — videoId absent; nothing actionable yet.
- *        The video-only rung is what fixes the <60% resolution rate: real
- *        YouTube cards routinely expose a watch href (→ videoId) long before
- *        the channel anchor / channel-name node hydrates.  Previously those
- *        cards sat in `_unresolved` until an unrelated mutation happened to
- *        re-trigger extraction — frequently never.
+ *        The video-only rung matters because real YouTube cards routinely
+ *        expose a watch href (→ videoId) long before the channel anchor /
+ *        channel-name node hydrates.
  */
 
 import { extractChannelId } from "./channel-id"

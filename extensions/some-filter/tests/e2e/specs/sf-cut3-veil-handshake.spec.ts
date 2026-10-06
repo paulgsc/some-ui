@@ -1,27 +1,22 @@
 /**
- * SF-CUT3 (#1489) — the enforcement sheet's veil handshake, measured frame by
- * frame.
+ * The enforcement sheet's veil handshake, measured frame by frame.
  *
- * Every scene runs with `enforcementSheetEnabled` on, where auto mode is the
- * sheet alone: the content script requests the sheet for its own document,
- * confirms it by reading `<html>`'s computed background, and only then lets
- * the veil come down. The claim under test is therefore about frames, not
- * about DOM state at rest: at no sampled animation frame is the page both
- * unveiled and unenforced. A sampler installed with `addInitScript` (so it
- * runs from `document_start`, in every frame, main world) records, on every
- * rAF, whether the veil is present and what `<html>` computes to.
+ * With `enforcementSheetEnabled` on, auto mode is the sheet alone: the
+ * content script requests the sheet, confirms it with a cascade read, and
+ * only then lets the veil down. The claim is about frames: at no sampled
+ * animation frame is the page both unveiled and unenforced. A sampler
+ * installed with `addInitScript` (document_start, every frame, main world)
+ * records on every rAF whether the veil is present and what `<html>`
+ * computes to.
  *
- * The sampler reads computed style every frame, which forces a style flush
- * per frame — it perturbs timing slightly, in the direction of *more*
- * opportunities to observe an unveiled frame, not fewer.
+ * Its per-frame style read forces a flush, perturbing timing towards *more*
+ * chances to observe an unveiled frame, not fewer.
  */
 
 import { expect, test } from "@filter/playwright/fixture"
 import type { BrowserContext, Frame, Page, Worker } from "@playwright/test"
 
-// SWATCHES.default.bg0 — a literal, for the same reason
-// adr0002-enforcement-sheet.spec.ts gives: the worker's evaluate() context is
-// not this module graph.
+// SWATCHES.default.bg0, as a literal (see adr0002-enforcement-sheet.spec.ts).
 const ENFORCED_BG = "rgb(23, 28, 37)"
 const VEIL_ID = "__sw_prepaint_veil"
 // lib/content/enforcement-handshake.ts's ENFORCEMENT_LIVENESS_MS.
@@ -149,9 +144,8 @@ async function backgroundWorker(context: BrowserContext): Promise<Worker> {
 }
 
 /**
- * Turns the flag on and waits for the background's reaction to it: the
- * subframe script registration (background.ts's syncFrameScript), which is
- * what a frame created after this point depends on.
+ * Turns the flag on and waits for the background's subframe script
+ * registration (syncFrameScript), which a frame created later depends on.
  */
 async function enableEnforcement(sw: Worker): Promise<void> {
   await sw.evaluate(async () => {
@@ -479,9 +473,8 @@ test.describe("SF-CUT3 veil handshake (flag on)", () => {
     expect(released.applied).toBe("none")
     expect(released.dcl).not.toBeNull()
     // The request goes out one storage read after DOMContentLoaded; the
-    // release lands within the bound plus the issue's 200 ms allowance (and
-    // a polling interval), and not before the bound — which would mean it
-    // was not the liveness path at all.
+    // release lands within the bound plus a 200 ms allowance (and a polling
+    // interval), and not before the bound, or it was not the liveness path.
     const heldFor = released.now - (released.dcl ?? 0)
     expect(heldFor).toBeGreaterThanOrEqual(LIVENESS_MS - 50)
     expect(heldFor).toBeLessThanOrEqual(LIVENESS_MS + 200 + 100)

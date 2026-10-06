@@ -1,16 +1,7 @@
 /**
  * The canonical theme registry — one source of truth for every theme selector
- * this package ships in CSS.
- *
- * There used to be two registries with different schemas and different
- * membership: `theme/registry.ts` listed the four palettes a user can persist,
- * and `preset/themes.ts` listed every class selector shipped in CSS. Both were
- * called "themes" and both were exported from the package root, so each
- * consumer picked whichever interpretation was locally convenient — Storybook
- * took the exhaustive one, apps/www took the small one, and
- * `strawberry-moon` / `peachy-blossom` existed in both with different metadata.
- * That ambiguity is the reason nothing could state, and therefore nothing could
- * enforce, what a reusable component is allowed to do with a theme.
+ * this package ships in CSS, so what a reusable component may do with a theme
+ * can be stated and enforced.
  *
  * The shapes are genuinely different, so they are named rather than merged,
  * and {@link ThemeScope} is the distinction that matters to a component author:
@@ -194,14 +185,6 @@ export const FEATURE_APPEARANCES = [
     mode: "light",
     scope: "feature",
     boundary: { classNames: ["topik"], dataTheme: "topik" },
-    selectable: false,
-  },
-  {
-    id: "conveyor",
-    label: "Conveyor",
-    mode: "dark",
-    scope: "feature",
-    boundary: { classNames: ["conveyor"], dataTheme: "conveyor" },
     selectable: false,
   },
 ] as const satisfies ReadonlyArray<ThemeDefinition>

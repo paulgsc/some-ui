@@ -7,7 +7,7 @@ set -euo pipefail
 # (`pnpm build:unsafe --filter='!./crates/*'`) to keep session startup
 # fast for sessions that never touch wasm code. Run this script by hand
 # when a task actually depends on one of them (e.g. @some-ui/honeycomb
-# depends on hangul-game-core, some-hexagon, and polyhedron).
+# depends on hangul-game-core and some-hexagon).
 #
 # The toolchain to build these IS available in this sandbox — cargo and
 # rustup are preinstalled. This script just fills the two gaps that trip
@@ -36,7 +36,7 @@ set -euo pipefail
 #
 # Usage:
 #   scripts/bootstrap-wasm-crates.sh                  # build every wasm crate
-#   scripts/bootstrap-wasm-crates.sh hangul-game-core some-hexagon polyhedron
+#   scripts/bootstrap-wasm-crates.sh hangul-game-core some-hexagon
 #
 # After this, build the downstream JS/TS package directly via its own
 # script (`pnpm --filter <pkg> build`), NOT via `turbo run build` for that
@@ -46,7 +46,7 @@ set -euo pipefail
 
 # Keep in sync with crates/*/package.json — these are the crates whose
 # `build`/`wasm:prod` script invokes wasm-pack.
-ALL_WASM_CRATES=(hangul-game-core leetype_wasm polyhedron some-hexagon)
+ALL_WASM_CRATES=(hangul-game-core leetype_wasm some-hexagon)
 CRATES=("${@:-${ALL_WASM_CRATES[@]}}")
 
 export PATH="$HOME/.cargo/bin:$PATH"

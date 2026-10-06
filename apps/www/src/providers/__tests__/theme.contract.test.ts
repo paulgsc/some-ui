@@ -1,20 +1,10 @@
 /**
  * The host adapter's half of the theme protocol, checked against the canonical
- * registry.
- *
- * Two things here are hand-maintained duplicates of `@some-ui/styles/theme`,
- * and both were carrying a "keep in sync" comment and nothing else:
- *
- *   - the pre-paint no-flash script in `index.html`, which has to run before
- *     any module loads and therefore cannot import the controller; and
- *   - the fallback `<style>` block above it, which paints the default theme's
- *     background for the frame before that script runs.
- *
- * Drift in the first is invisible in dev (the provider corrects it on mount)
- * and shows up in production as a flash of the wrong theme, or — for a theme
- * added to the registry but not to the map — as the app silently falling back
- * to light on reload while the switcher still says otherwise. That is a bug
- * report nobody traces to an HTML comment, so it is asserted instead.
+ * registry. Two hand-maintained duplicates of `@some-ui/styles/theme` in
+ * `index.html`: the pre-paint no-flash script (it runs before any module
+ * loads, so cannot import the controller) and the fallback `<style>` above
+ * it. Drift is invisible in dev and shows in production as a flash of the
+ * wrong theme, or a silent fallback to light on reload.
  */
 
 import { readFileSync } from "node:fs"
@@ -39,21 +29,16 @@ const prePaintEntrySchema = z.object({
 type PrePaintEntry = z.infer<typeof prePaintEntrySchema>
 
 /**
- * The `map` object literal out of the pre-paint script.
- *
- * Returned as a Map so a missing theme reads as `undefined` at the call site
- * rather than as a lie from the index signature — a theme absent from the map
- * is precisely the drift being tested for.
+ * The `map` object literal out of the pre-paint script, as a Map so a
+ * missing theme reads as `undefined`.
  */
 function prePaintMap(): Map<string, PrePaintEntry> {
   const match = indexHtml.match(/var map = (\{[\s\S]*?\n {10}\})/)
   if (!match?.[1])
     throw new Error("pre-paint theme map not found in index.html")
 
-  // The literal is JSON-shaped JS: bare identifier keys and possible trailing
-  // commas are the only two things standing between it and JSON.parse. Parsing
-  // beats evaluating — this file ships to browsers, and a test that runs it
-  // would happily run whatever else landed inside those braces.
+  // JSON-shaped JS (bare keys, maybe trailing commas): parsed, never
+  // evaluated.
   const json = match[1]
     .replace(/([{,]\s*)([A-Za-z_$][\w$]*)\s*:/g, '$1"$2":')
     .replace(/,(\s*[}\]])/g, "$1")
@@ -88,9 +73,8 @@ describe("pre-paint script ↔ registry", () => {
   })
 
   it("paints the default preference's background in the no-JS fallback", () => {
-    // `html:not([data-theme])` covers the frame before the script runs. It has
-    // to match whatever DEFAULT_PREFERENCE resolves to, or the very first paint
-    // is the wrong color — the exact flash the script exists to prevent.
+    // `html:not([data-theme])` must match DEFAULT_PREFERENCE, or the first
+    // paint is the flash the script exists to prevent.
     const fallback = resolveTheme(DEFAULT_PREFERENCE, true)
     expect(indexHtml).toMatch(
       new RegExp(

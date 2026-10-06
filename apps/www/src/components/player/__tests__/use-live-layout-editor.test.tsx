@@ -1,27 +1,21 @@
 /**
  * @vitest-environment jsdom
  *
- * #946/S2: the layout autosave's `ambient-durable` migration. Two things
- * this producer needs that a plain `ambient` one doesn't (see
- * `presentation.ts`'s "autosave verdict" and `durable-failure.ts`'s
- * header): a failure has to remain visible while it's live, and it has to
- * still be visible after this hook's owning component unmounts and a
- * later mount picks the same session back up - the shape of "the person
- * edited the layout, it failed to save, and they left before noticing."
- *
- * Also covers the debounce's own thundering-herd guard on this write path:
- * several rapid edits must coalesce into one PATCH, not one per edit.
+ * The layout autosave as `ambient-durable` (`presentation.ts`,
+ * `durable-failure.ts`): a failure stays visible while live, and still after
+ * the owning component unmounts and a later mount picks the session back up.
+ * Also: rapid edits coalesce into one PATCH.
  */
 
-import type { JSX, ReactNode } from "react"
+import { queryClientWrapper } from "@/test-support/query-client"
+import { sessionRecord } from "@/test-support/session-record"
 import { signInForTests } from "@/test-support/sign-in"
 import { matchIntent } from "@some-ui/intent-kit"
 import type { ActiveLifetime } from "@some-ui/types"
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
+import type { RenderHookResult } from "@testing-library/react"
 import { act, renderHook } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
-import type { SessionRecord } from "@/lib/tenant"
 import { useLiveLayoutEditor } from "@/components/player/use-live-layout-editor"
 
 // These suites are about the account's store failing: start from an account.
@@ -29,65 +23,40 @@ beforeEach(() => {
   signInForTests()
 })
 
-function withQueryClient(): {
-  wrapper: (props: { children: ReactNode }) => JSX.Element
-} {
-  const client = new QueryClient({
-    defaultOptions: { mutations: { retry: false } },
-  })
-  return {
-    wrapper: ({ children }: { children: ReactNode }) => (
-      <QueryClientProvider client={client}>{children}</QueryClientProvider>
-    ),
-  }
-}
-
-function fixtureSession(): SessionRecord {
-  return {
-    id: "session-durable-1",
-    name: "Layout test",
-    status: "active",
-    activities: [],
-    scenes: [],
-    layoutMode: "basic",
-    totalDurationMs: 60_000,
-    createdAt: "2026-01-01T00:00:00.000Z",
-    updatedAt: "2026-01-01T00:00:00.000Z",
-  }
-}
+const SESSION = sessionRecord({
+  id: "session-durable-1",
+  name: "Layout test",
+  status: "active",
+  totalDurationMs: 60_000,
+})
 
 const NO_LIFETIMES: Array<ActiveLifetime> = []
 
-function stubPatch(options: { fail: boolean }): void {
+/** Answers PATCH (failing, or echoing the session); rejects everything else,
+ * such as the incidental list read `lib/tenant/hooks.ts` triggers. */
+function stubPatch(options: { fail: boolean; onPatch?: () => void }): void {
   const impl: typeof fetch = async (input, init) => {
-    const url = String(input)
-    const method = init?.method ?? "GET"
-    if (method === "PATCH") {
-      if (options.fail) {
-        return new Response(
-          JSON.stringify({
-            error: { code: "internal_error", message: "boom" },
-          }),
-          { status: 500 }
-        )
-      }
-      const sessionId = url.split("/sessions/")[1]
+    if ((init?.method ?? "GET") !== "PATCH") {
+      return Promise.reject(new TypeError("Failed to fetch"))
+    }
+    options.onPatch?.()
+    if (options.fail) {
       return new Response(
-        JSON.stringify({ ...fixtureSession(), id: sessionId }),
-        { status: 200 }
+        JSON.stringify({ error: { code: "internal_error", message: "boom" } }),
+        { status: 500 }
       )
     }
-    // The incidental migration/list check every test here triggers just by
-    // importing lib/tenant/hooks.ts - see session-composer.test.tsx's own
-    // fetch stub for the same note.
-    return Promise.reject(new TypeError("Failed to fetch"))
+    const sessionId = String(input).split("/sessions/")[1]
+    return new Response(JSON.stringify({ ...SESSION, id: sessionId }), {
+      status: 200,
+    })
   }
   vi.stubGlobal("fetch", impl)
 }
 
-function autosaveSummary(
-  state: ReturnType<typeof useLiveLayoutEditor>["autosaveStatus"]
-): string | null {
+type Editor = ReturnType<typeof useLiveLayoutEditor>
+
+function autosaveSummary(state: Editor["autosaveStatus"]): string | null {
   return matchIntent(state, {
     idle: () => null,
     working: () => null,
@@ -96,9 +65,7 @@ function autosaveSummary(
   })
 }
 
-function autosaveRetryable(
-  state: ReturnType<typeof useLiveLayoutEditor>["autosaveStatus"]
-): boolean | null {
+function autosaveRetryable(state: Editor["autosaveStatus"]): boolean | null {
   return matchIntent(state, {
     idle: () => null,
     working: () => null,
@@ -107,44 +74,48 @@ function autosaveRetryable(
   })
 }
 
+const settle = (): Promise<void> =>
+  act(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 500))
+  })
+
+/** Edits the tree `times` times in one debounce window and lets it flush. */
+async function edit(result: { current: Editor }, times = 1): Promise<void> {
+  act(() => {
+    for (let i = 0; i < times; i += 1) {
+      result.current.onTreeChange(result.current.tree)
+    }
+  })
+  await settle()
+}
+
 afterEach(() => {
   vi.unstubAllGlobals()
   window.localStorage.clear()
 })
 
 describe("useLiveLayoutEditor: autosave durability", () => {
+  const mount = (
+    wrapper: ReturnType<typeof queryClientWrapper>
+  ): RenderHookResult<Editor, unknown> =>
+    renderHook(() => useLiveLayoutEditor(SESSION, NO_LIFETIMES), { wrapper })
+
   it("a debounced autosave failure renders, and survives an unmount + remount of the same session", async () => {
     stubPatch({ fail: true })
-    const { wrapper } = withQueryClient()
-    const session = fixtureSession()
+    const wrapper = queryClientWrapper()
 
-    const mounted = renderHook(
-      () => useLiveLayoutEditor(session, NO_LIFETIMES),
-      { wrapper }
-    )
-
-    act(() => {
-      mounted.result.current.onTreeChange(mounted.result.current.tree)
-    })
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 500))
-    })
+    const mounted = mount(wrapper)
+    await edit(mounted.result)
 
     expect(autosaveSummary(mounted.result.current.autosaveStatus)).toBeTruthy()
 
     mounted.unmount()
+    const remounted = mount(wrapper)
 
-    const remounted = renderHook(
-      () => useLiveLayoutEditor(session, NO_LIFETIMES),
-      { wrapper }
+    expect(autosaveSummary(remounted.result.current.autosaveStatus)).toContain(
+      "didn't save"
     )
-
-    const restoredSummary = autosaveSummary(
-      remounted.result.current.autosaveStatus
-    )
-    expect(restoredSummary).toContain("didn't save")
-    // No retry payload survives the unmount (see durable-failure.ts) - a
-    // restored failure never offers a control that can't actually retry.
+    // No retry payload survives the unmount, so no retry control is offered.
     expect(autosaveRetryable(remounted.result.current.autosaveStatus)).toBe(
       false
     )
@@ -152,78 +123,31 @@ describe("useLiveLayoutEditor: autosave durability", () => {
 
   it("a subsequent successful autosave clears the durable record for the next mount", async () => {
     stubPatch({ fail: true })
-    const { wrapper } = withQueryClient()
-    const session = fixtureSession()
+    const wrapper = queryClientWrapper()
 
-    const first = renderHook(() => useLiveLayoutEditor(session, NO_LIFETIMES), {
-      wrapper,
-    })
-    act(() => {
-      first.result.current.onTreeChange(first.result.current.tree)
-    })
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 500))
-    })
+    const first = mount(wrapper)
+    await edit(first.result)
     first.unmount()
 
     stubPatch({ fail: false })
-    const second = renderHook(
-      () => useLiveLayoutEditor(session, NO_LIFETIMES),
-      { wrapper }
-    )
+    const second = mount(wrapper)
     expect(autosaveSummary(second.result.current.autosaveStatus)).toContain(
       "didn't save"
     )
-
-    act(() => {
-      second.result.current.onTreeChange(second.result.current.tree)
-    })
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 500))
-    })
+    await edit(second.result)
     second.unmount()
 
-    const third = renderHook(() => useLiveLayoutEditor(session, NO_LIFETIMES), {
-      wrapper,
-    })
+    const third = mount(wrapper)
     expect(autosaveSummary(third.result.current.autosaveStatus)).toBeNull()
   })
 
   it("rapid consecutive edits coalesce into a single write, not one per edit", async () => {
     let patchCount = 0
-    const impl: typeof fetch = async (input, init) => {
-      const method = init?.method ?? "GET"
-      if (method === "PATCH") {
-        patchCount += 1
-        const sessionId = String(input).split("/sessions/")[1]
-        return new Response(
-          JSON.stringify({ ...fixtureSession(), id: sessionId }),
-          { status: 200 }
-        )
-      }
-      return Promise.reject(new TypeError("Failed to fetch"))
-    }
-    vi.stubGlobal("fetch", impl)
+    stubPatch({ fail: false, onPatch: () => (patchCount += 1) })
 
-    const { wrapper } = withQueryClient()
-    const session = fixtureSession()
-    const { result } = renderHook(
-      () => useLiveLayoutEditor(session, NO_LIFETIMES),
-      { wrapper }
-    )
-
-    // Three edits in the same debounce window, the same shape a resize
-    // drag produces - the pre-existing debounce is the guard, and this is
-    // the regression the migration must not quietly break.
-    act(() => {
-      result.current.onTreeChange(result.current.tree)
-      result.current.onTreeChange(result.current.tree)
-      result.current.onTreeChange(result.current.tree)
-    })
-
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 500))
-    })
+    const { result } = mount(queryClientWrapper())
+    // Three edits in one debounce window, as a resize drag produces.
+    await edit(result, 3)
 
     expect(patchCount).toBe(1)
   })

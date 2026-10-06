@@ -3,7 +3,7 @@
 // pinned font files (scripts/typst.mjs, scripts/fonts.mjs) both come through
 // here.
 //
-// Two things `fetch()` does not do on its own (#1451):
+// Two things `fetch()` does not do on its own:
 //
 // - Say what failed. A connection that never completes throws a bare
 //   "fetch failed" and puts the reason — an errno, a TLS verdict, a DNS

@@ -20,7 +20,7 @@ type BudgetDisplayProps = {
 }
 
 /**
- * `B`, rendered (R2, #1205, Ax. 3.1): an operation-count bound, its
+ * `B`, rendered (Ax. 3.1): an operation-count bound, its
  * optional wall-clock annotation, and the coarseness statement — all three
  * always on the surface, never behind a toggle. Prop. 1.1's own posture
  * ("the reveal may never be conditioned") is about `SourcePanel`'s `A`, not
@@ -33,7 +33,7 @@ type BudgetDisplayProps = {
  * component's own added — Def. 1.3 calls it "a wall-clock figure," not a
  * fragment this renderer completes, so a caller who writes `"~1 second"`
  * gets exactly `(~1 second)` rather than `(~~1 second)` from a `~` this
- * file prepended on top of the caller's own (review finding on #1251).
+ * file prepended on top of the caller's own.
  */
 export const BudgetDisplay: FC<BudgetDisplayProps> = ({
   budget,

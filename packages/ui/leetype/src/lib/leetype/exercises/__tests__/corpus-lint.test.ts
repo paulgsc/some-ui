@@ -14,9 +14,10 @@ import type {
   Block,
   ConstructionStep,
   DiagnosticStep,
+  Step,
 } from "@leetype/types/exercise"
 import { typingBlockFromDiff } from "@leetype/types/exercise"
-import type { DiffSet } from "@leetype/types/round"
+import type { DiffSet, DiffSetMember } from "@leetype/types/round"
 import { describe, expect, it } from "vitest"
 
 const failure: Block = {
@@ -69,6 +70,18 @@ function constructionStep(
   }
 }
 
+/** Lints `steps` as one exercise. */
+function lintSteps(...steps: Array<Step>): Array<string> {
+  return lintCorpus([{ id: "e1", title: "t", steps }])
+}
+
+function hasViolation(
+  violations: ReadonlyArray<string>,
+  ...fragments: ReadonlyArray<string>
+): boolean {
+  return violations.some((v) => fragments.every((f) => v.includes(f)))
+}
+
 describe("lintCorpus — the real corpus", () => {
   it("finds no violations in the validated shim corpus", () => {
     expect(lintCorpus(ALL_FIXTURE_EXERCISES)).toEqual([])
@@ -76,167 +89,171 @@ describe("lintCorpus — the real corpus", () => {
 })
 
 describe("lintCorpus — deliberately malformed fixtures", () => {
-  it("fails when rationale.whyRepairDiscriminates restates rationale.cause", () => {
-    const step = diagnosticStep({
-      rationale: {
-        cause: "cursor never advances toward input.len()",
-        whyRepairDiscriminates: "cursor never advances toward input.len()",
-      },
-    })
-    const violations = lintCorpus([{ id: "e1", title: "t", steps: [step] }])
-    expect(violations.some((v) => v.includes("say the same"))).toBe(true)
-  })
-
-  it("fails when obligation quotes the witness's code back as prose", () => {
-    const step = constructionStep({
-      obligation: "call map.entry(key) to get the place",
-    })
-    const violations = lintCorpus([{ id: "e1", title: "t", steps: [step] }])
-    expect(violations.some((v) => v.includes("quotes the witness"))).toBe(true)
-  })
-
-  it("fails when a diagnostic step's repair runs past the bounded-answer budget", () => {
-    // Re-validated through the strict DiagnosticStepSchema, which the
-    // generic parse the shim runs at module load does not apply.
-    const step = diagnosticStep({
-      blocks: [
-        failure,
-        { kind: "typing", source: "a".repeat(51), language: "rust" },
+  it.each<{ name: string; steps: Array<Step>; fragment: string }>([
+    {
+      name: "rationale.whyRepairDiscriminates restates rationale.cause",
+      steps: [
+        diagnosticStep({
+          rationale: {
+            cause: "cursor never advances toward input.len()",
+            whyRepairDiscriminates: "cursor never advances toward input.len()",
+          },
+        }),
       ],
-    })
-    const violations = lintCorpus([{ id: "e1", title: "t", steps: [step] }])
-    expect(violations.some((v) => v.includes("typed characters"))).toBe(true)
+      fragment: "say the same",
+    },
+    {
+      name: "obligation quotes the witness's code back as prose",
+      steps: [
+        constructionStep({
+          obligation: "call map.entry(key) to get the place",
+        }),
+      ],
+      fragment: "quotes the witness",
+    },
+    {
+      // Re-validated through the strict DiagnosticStepSchema.
+      name: "a diagnostic step's repair runs past the bounded-answer budget",
+      steps: [
+        diagnosticStep({
+          blocks: [
+            failure,
+            { kind: "typing", source: "a".repeat(51), language: "rust" },
+          ],
+        }),
+      ],
+      fragment: "typed characters",
+    },
+    {
+      // Re-validated through the strict ConstructionStepSchema.
+      name: "a construction step has no evidence besides its witness",
+      steps: [constructionStep({ blocks: [witness] })],
+      fragment: "at least one block besides its witness",
+    },
+    {
+      name: "a step's evidence exceeds PromptPanel's row budget",
+      steps: [
+        diagnosticStep({
+          blocks: [
+            {
+              kind: "trace",
+              observations: Array.from({ length: 8 }, (_, i) => ({
+                label: `o${i}`,
+                value: `v${i}`,
+              })),
+            },
+            repair,
+          ],
+        }),
+      ],
+      fragment: "evidence rows",
+    },
+    {
+      name: "concepts is empty",
+      steps: [diagnosticStep({ concepts: [] })],
+      fragment: "concepts is empty",
+    },
+    {
+      name: "transferFrom references a step id not in the corpus",
+      steps: [diagnosticStep({ transferFrom: "does-not-exist" })],
+      fragment: "is not a step id",
+    },
+    {
+      name: "transferFrom references the step itself",
+      steps: [diagnosticStep({ transferFrom: "story-diagnostic" })],
+      fragment: "references itself",
+    },
+    {
+      name: "transferFrom's target shares no concept id",
+      steps: [
+        constructionStep({ id: "source", concepts: ["other-concept"] }),
+        diagnosticStep({ transferFrom: "source" }),
+      ],
+      fragment: "shares no concept id",
+    },
+  ])("fails when $name", ({ steps, fragment }) => {
+    expect(hasViolation(lintSteps(...steps), fragment)).toBe(true)
   })
 
-  it("fails when a construction step has no evidence besides its witness", () => {
-    // Re-validated through the strict ConstructionStepSchema, same reason.
-    const step = constructionStep({ blocks: [witness] })
-    const violations = lintCorpus([{ id: "e1", title: "t", steps: [step] }])
-    expect(
-      violations.some((v) =>
-        v.includes("at least one block besides its witness")
-      )
-    ).toBe(true)
-  })
-
-  it("fails when a step's evidence exceeds PromptPanel's row budget", () => {
-    const manyObservations: Block = {
-      kind: "trace",
-      observations: Array.from({ length: 8 }, (_, i) => ({
-        label: `o${i}`,
-        value: `v${i}`,
-      })),
-    }
-    const step = diagnosticStep({ blocks: [manyObservations, repair] })
-    const violations = lintCorpus([{ id: "e1", title: "t", steps: [step] }])
-    expect(violations.some((v) => v.includes("evidence rows"))).toBe(true)
-  })
-
-  it("fails when concepts is empty", () => {
-    const step = diagnosticStep({ concepts: [] })
-    const violations = lintCorpus([{ id: "e1", title: "t", steps: [step] }])
-    expect(violations.some((v) => v.includes("concepts is empty"))).toBe(true)
-  })
-
-  it("fails when two exercises share a step id — the collision indexStepsById cannot itself detect", () => {
-    // Regression for a real review finding on #1073: a `Map` silently lets
-    // a later step with the same id shadow an earlier one, which would
-    // check a transferFrom reference against the wrong step instead of
-    // catching the real mismatch. This is the loud failure that replaces
-    // that silent one.
-    const stepA = constructionStep({ id: "dup", concepts: ["a"] })
-    const stepB = diagnosticStep({ id: "dup", concepts: ["b"] })
+  it("fails when two exercises share a step id, which indexStepsById cannot detect itself", () => {
+    // A Map would let the later step shadow the earlier one silently.
     const violations = lintCorpus([
-      { id: "e1", title: "t1", steps: [stepA] },
-      { id: "e2", title: "t2", steps: [stepB] },
+      {
+        id: "e1",
+        title: "t1",
+        steps: [constructionStep({ id: "dup", concepts: ["a"] })],
+      },
+      {
+        id: "e2",
+        title: "t2",
+        steps: [diagnosticStep({ id: "dup", concepts: ["b"] })],
+      },
     ])
-    expect(
-      violations.some((v) => v.includes('step id "dup" is used by both'))
-    ).toBe(true)
+    expect(hasViolation(violations, 'step id "dup" is used by both')).toBe(true)
   })
 
-  it("fails when transferFrom references a step id not in the corpus", () => {
-    const step = diagnosticStep({ transferFrom: "does-not-exist" })
-    const violations = lintCorpus([{ id: "e1", title: "t", steps: [step] }])
-    expect(violations.some((v) => v.includes("is not a step id"))).toBe(true)
-  })
-
-  it("fails when transferFrom references the step itself", () => {
-    const step = diagnosticStep({ transferFrom: "story-diagnostic" })
-    const violations = lintCorpus([{ id: "e1", title: "t", steps: [step] }])
-    expect(violations.some((v) => v.includes("references itself"))).toBe(true)
-  })
-
-  it("fails when transferFrom's target shares no concept id", () => {
-    const source = constructionStep({
-      id: "source",
-      concepts: ["other-concept"],
-    })
-    const step = diagnosticStep({ transferFrom: "source" })
-    const violations = lintCorpus([
-      { id: "e1", title: "t", steps: [source, step] },
-    ])
-    expect(violations.some((v) => v.includes("shares no concept id"))).toBe(
-      true
-    )
-  })
-
-  it("passes when transferFrom's target shares a concept id", () => {
-    const source = constructionStep({ id: "source", concepts: ["shared"] })
-    const step = diagnosticStep({
-      transferFrom: "source",
-      concepts: ["shared"],
-    })
-    const violations = lintCorpus([
-      { id: "e1", title: "t", steps: [source, step] },
-    ])
-    expect(violations).toEqual([])
-  })
-
-  it("passes a well-formed diagnostic step and a well-formed construction step", () => {
-    const violations = lintCorpus([
-      { id: "e1", title: "t", steps: [diagnosticStep(), constructionStep()] },
-    ])
-    expect(violations).toEqual([])
+  it.each<[string, Array<Step>]>([
+    [
+      "transferFrom's target shares a concept id",
+      [
+        constructionStep({ id: "source", concepts: ["shared"] }),
+        diagnosticStep({ transferFrom: "source", concepts: ["shared"] }),
+      ],
+    ],
+    [
+      "a well-formed diagnostic step and a well-formed construction step",
+      [diagnosticStep(), constructionStep()],
+    ],
+    ["a step with no diff overlay at all", [constructionStep()]],
+    [
+      "a well-formed diff-shaped step",
+      [
+        constructionStep({
+          blocks: [
+            constraint,
+            typingBlockFromDiff({
+              language: "rust",
+              path: "src/example.rs",
+              oldStart: 1,
+              newStart: 1,
+              segments: [
+                { kind: "context", text: "line-a\n" },
+                { kind: "addition", text: "line-b" },
+              ],
+            }),
+          ],
+        }),
+      ],
+    ],
+  ])("passes %s", (_name, steps) => {
+    expect(lintSteps(...steps)).toEqual([])
   })
 })
 
-describe("rationaleChoices — no shared prefix (LTY-WHY W2, #1102)", () => {
-  it("fails when one candidate is a strict prefix of another", () => {
-    const step = diagnosticStep({
-      rationaleChoices: [
-        { text: "borrowing avoids the copy" },
-        { text: "borrowing avoids the copy entirely" },
+describe("rationaleChoices — no shared prefix (LTY-WHY W2)", () => {
+  it.each([
+    [
+      "one candidate is a strict prefix of another",
+      ["borrowing avoids the copy", "borrowing avoids the copy entirely"],
+    ],
+    [
+      // Positions 0 and 2: a neighbours-only check would miss it.
+      "the shared prefix is non-adjacent",
+      [
+        "the same prefix",
+        "an unrelated middle candidate",
+        "the same prefix, extended",
       ],
-    })
-    const violations = lintCorpus([{ id: "e1", title: "t", steps: [step] }])
-    expect(violations.some((v) => v.includes("share a full prefix"))).toBe(true)
-  })
-
-  it("fails on a non-adjacent shared prefix, not just neighboring candidates", () => {
-    // The shape a check that only compares adjacent pairs would miss: the
-    // colliding pair sits at positions 0 and 2, with an unrelated candidate
-    // between them.
+    ],
+    [
+      "two candidates are identical (the degenerate prefix case)",
+      ["identical candidate text", "identical candidate text"],
+    ],
+  ])("fails when %s", (_name, texts) => {
     const step = diagnosticStep({
-      rationaleChoices: [
-        { text: "the same prefix" },
-        { text: "an unrelated middle candidate" },
-        { text: "the same prefix, extended" },
-      ],
+      rationaleChoices: texts.map((text) => ({ text })),
     })
-    const violations = lintCorpus([{ id: "e1", title: "t", steps: [step] }])
-    expect(violations.some((v) => v.includes("share a full prefix"))).toBe(true)
-  })
-
-  it("fails when two candidates are identical — the degenerate prefix case", () => {
-    const step = diagnosticStep({
-      rationaleChoices: [
-        { text: "identical candidate text" },
-        { text: "identical candidate text" },
-      ],
-    })
-    const violations = lintCorpus([{ id: "e1", title: "t", steps: [step] }])
-    expect(violations.some((v) => v.includes("share a full prefix"))).toBe(true)
+    expect(hasViolation(lintSteps(step), "share a full prefix")).toBe(true)
   })
 
   it("passes candidates that share a common start but diverge before either ends", () => {
@@ -246,70 +263,36 @@ describe("rationaleChoices — no shared prefix (LTY-WHY W2, #1102)", () => {
         { text: "borrowing avoids the allocation" },
       ],
     })
-    const violations = lintCorpus([{ id: "e1", title: "t", steps: [step] }])
-    expect(violations).toEqual([])
-  })
-})
-
-describe("a step's diff overlay (LTY-PATCH)", () => {
-  it("never checks a step with no diff overlay at all", () => {
-    const violations = lintCorpus([
-      { id: "e1", title: "t", steps: [constructionStep()] },
-    ])
-    expect(violations).toEqual([])
-  })
-
-  it("passes a well-formed diff-shaped step", () => {
-    const diffWitness: Block = typingBlockFromDiff({
-      language: "rust",
-      path: "src/example.rs",
-      oldStart: 1,
-      newStart: 1,
-      segments: [
-        { kind: "context", text: "line-a\n" },
-        { kind: "addition", text: "line-b" },
-      ],
-    })
-    const step = constructionStep({ blocks: [constraint, diffWitness] })
-    const violations = lintCorpus([{ id: "e1", title: "t", steps: [step] }])
-    expect(violations).toEqual([])
+    expect(lintSteps(step)).toEqual([])
   })
 })
 
 describe("checkNoMeasurementEntailmentClaim — the two forbidden inferences (LTY-EXEC X4, Cor. 4.1)", () => {
-  it("flags 'it timed out, therefore it is Θ(n²)'", () => {
-    const violations = checkNoMeasurementEntailmentClaim(
-      "It timed out, therefore it is Θ(n²).",
-      "fixture"
-    )
+  it.each([
+    "It timed out, therefore it is Θ(n²).",
+    "It ran in 4ms, therefore it is Θ(n).",
+  ])("flags %j", (text) => {
+    const violations = checkNoMeasurementEntailmentClaim(text, "fixture")
     expect(violations).toHaveLength(1)
-    expect(violations[0]).toContain("It timed out, therefore it is Θ(n²).")
+    expect(violations[0]).toContain(text)
     expect(violations[0]).toContain("Cor. 4.1")
   })
 
-  it("flags 'it ran in 4ms, therefore it is Θ(n)'", () => {
-    const violations = checkNoMeasurementEntailmentClaim(
-      "It ran in 4ms, therefore it is Θ(n).",
-      "fixture"
-    )
-    expect(violations).toHaveLength(1)
-    expect(violations[0]).toContain("Cor. 4.1")
-  })
-
-  it("passes a legitimate sentence mentioning a measurement and a class without claiming entailment", () => {
-    const violations = checkNoMeasurementEntailmentClaim(
+  it.each([
+    [
+      "a measurement and a class without claiming entailment",
       "It timed out; the cost graph is what says why.",
-      "fixture"
-    )
-    expect(violations).toEqual([])
-  })
-
-  it("does not flag a measurement term and a class term in different sentences", () => {
-    const violations = checkNoMeasurementEntailmentClaim(
+    ],
+    [
+      "a measurement term and a class term in different sentences",
       "It timed out on the largest input. Separately, the register lists linear scans.",
-      "fixture"
-    )
-    expect(violations).toEqual([])
+    ],
+    [
+      "an ordinary call ending in 'o', not a standalone Big-O token",
+      "The slow foo(input) call should be cached.",
+    ],
+  ])("does not flag %s", (_name, text) => {
+    expect(checkNoMeasurementEntailmentClaim(text, "fixture")).toEqual([])
   })
 
   it("is a heuristic with a reviewed, per-sentence escape", () => {
@@ -324,60 +307,37 @@ describe("checkNoMeasurementEntailmentClaim — the two forbidden inferences (LT
     const step = diagnosticStep({
       goal: "Explain that it timed out, therefore it is Θ(n²).",
     })
-    const violations = lintCorpus([{ id: "e1", title: "t", steps: [step] }])
-    expect(violations.some((v) => v.includes("Cor. 4.1"))).toBe(true)
-  })
-
-  it("does not mistake an ordinary call ending in 'o' for a standalone Big-O token (review finding on #1240)", () => {
-    const violations = checkNoMeasurementEntailmentClaim(
-      "The slow foo(input) call should be cached.",
-      "fixture"
-    )
-    expect(violations).toEqual([])
+    expect(hasViolation(lintSteps(step), "Cor. 4.1")).toBe(true)
   })
 })
 
-describe("checkNoAssertedComplexityClassLiteral — no round anywhere holds a Θ string (G3, #1211, Prop. 2.1)", () => {
-  it("flags a bare Θ( literal", () => {
-    const violations = checkNoAssertedComplexityClassLiteral(
-      "This rewrite is Θ(n log n).",
-      "fixture"
-    )
+describe("checkNoAssertedComplexityClassLiteral — no round anywhere holds a Θ string (Prop. 2.1)", () => {
+  it.each([
+    ["Θ(", "This rewrite is Θ(n log n).", "Θ(n log n)"],
+    ["O(", "The naive approach is O(n^2).", "O(n^2)"],
+    [
+      "Ω(",
+      "Any comparison sort is Ω(n log n) in the worst case.",
+      "Ω(n log n)",
+    ],
+  ])("flags a bare %s literal", (_symbol, text, literal) => {
+    const violations = checkNoAssertedComplexityClassLiteral(text, "fixture")
     expect(violations).toHaveLength(1)
-    expect(violations[0]).toContain("Θ(n log n)")
+    expect(violations[0]).toContain(literal)
     expect(violations[0]).toContain("Prop. 2.1")
   })
 
-  it("flags a bare O( literal", () => {
-    const violations = checkNoAssertedComplexityClassLiteral(
-      "The naive approach is O(n^2).",
-      "fixture"
-    )
-    expect(violations).toHaveLength(1)
-  })
-
-  it("flags a bare Ω( literal", () => {
-    const violations = checkNoAssertedComplexityClassLiteral(
-      "Any comparison sort is Ω(n log n) in the worst case.",
-      "fixture"
-    )
-    expect(violations).toHaveLength(1)
-  })
-
-  it("does not mistake an ordinary call ending in 'o' for a standalone Big-O token", () => {
-    const violations = checkNoAssertedComplexityClassLiteral(
+  it.each([
+    [
+      "an ordinary call ending in 'o' for a standalone Big-O token",
       "The slow foo(input) call should be cached.",
-      "fixture"
-    )
-    expect(violations).toEqual([])
-  })
-
-  it("does not flag prose describing a class in words rather than notation", () => {
-    const violations = checkNoAssertedComplexityClassLiteral(
+    ],
+    [
+      "prose describing a class in words rather than notation",
       "This rewrite is linear, trading space for the repeated search it avoids.",
-      "fixture"
-    )
-    expect(violations).toEqual([])
+    ],
+  ])("does not mistake %s", (_name, text) => {
+    expect(checkNoAssertedComplexityClassLiteral(text, "fixture")).toEqual([])
   })
 
   it("is a heuristic with a reviewed, per-sentence escape for register text", () => {
@@ -397,8 +357,7 @@ describe("checkNoAssertedComplexityClassLiteral — no round anywhere holds a Θ
     const step = diagnosticStep({
       goal: "Recognize that this repair changes the class to Θ(n).",
     })
-    const violations = lintCorpus([{ id: "e1", title: "t", steps: [step] }])
-    expect(violations.some((v) => v.includes("Prop. 2.1"))).toBe(true)
+    expect(hasViolation(lintSteps(step), "Prop. 2.1")).toBe(true)
   })
 
   it("finds no violations in the validated shim corpus — the real corpus holds no asserted class literal", () => {
@@ -408,46 +367,75 @@ describe("checkNoAssertedComplexityClassLiteral — no round anywhere holds a Θ
   })
 })
 
-describe("lintRoundCorpus — R5 (#1208), the round-shaped corpus lint", () => {
+describe("lintRoundCorpus — the round-shaped corpus lint (R5)", () => {
+  /** A diff-set member with a one-line hunk at `src/fixture/<name>.rs`. */
+  function member(
+    name: string,
+    fields: Omit<DiffSetMember, "hunk">,
+    text = `let ${name} = true;`
+  ): DiffSetMember {
+    return {
+      hunk: {
+        path: `src/fixture/${name}.rs`,
+        oldStart: 1,
+        newStart: 1,
+        segments: [{ kind: "addition", text }],
+      },
+      ...fields,
+    }
+  }
+
+  /** The usual second member: a CW-P2 distractor. */
+  const distractorB = member("b", {
+    propositionId: "CW-P2",
+    admissible: false,
+    distractorStatement: "a plausible but wrong repair.",
+  })
+
   function round(overrides: Partial<RoundCorpusEntry> = {}): RoundCorpusEntry {
     const constraints: ConstraintSet = [
       { dimension: "n", operator: "<=", bound: 1_000 },
     ]
     const diffSet: DiffSet = [
-      {
-        hunk: {
-          path: "src/fixture/a.rs",
-          oldStart: 1,
-          newStart: 1,
-          segments: [{ kind: "addition", text: "let repaired = true;" }],
+      member(
+        "a",
+        { propositionId: "CW-P1", admissible: true },
+        "let repaired = true;"
+      ),
+      member(
+        "b",
+        {
+          propositionId: "CW-P2",
+          admissible: false,
+          distractorStatement: "swaps in a different repair entirely.",
         },
-        propositionId: "CW-P1",
-        admissible: true,
-      },
-      {
-        hunk: {
-          path: "src/fixture/b.rs",
-          oldStart: 1,
-          newStart: 1,
-          segments: [{ kind: "addition", text: "let other = 1;" }],
-        },
-        propositionId: "CW-P2",
-        admissible: false,
-        distractorStatement: "swaps in a different repair entirely.",
-      },
+        "let other = 1;"
+      ),
     ]
     return { id: "fixture-round", constraints, diffSet, ...overrides }
   }
 
+  /** One admissible member followed by distractors, one per id. */
+  function diffSetOf(ids: ReadonlyArray<PropositionId>): DiffSet {
+    return ids.map((propositionId, index) =>
+      member(
+        String(index),
+        {
+          propositionId,
+          admissible: index === 0,
+          ...(index === 0
+            ? {}
+            : { distractorStatement: `distractor ${index}` }),
+        },
+        `let v${index} = ${index};`
+      )
+    )
+  }
+
   /**
-   * The corpus-wide coverage checks (rows 3 and 4) are evaluated against
-   * the *whole* real register (Rem. 7.1 / Rem. 10.2 both name "every
-   * instantiable register entry", not "every entry the corpus under test
-   * happens to cite") — by design, an isolated one- or two-round fixture
-   * built to exercise a single per-round check will always be missing most
-   * of the other fifteen propositions' coverage. Tests for a *per-round*
-   * check's own "passes" case filter that expected noise out rather than
-   * asserting the whole call returns no violations at all.
+   * Coverage checks run against the whole register, so a one-round fixture
+   * always misses most propositions' coverage; per-round "passes" cases
+   * filter that noise out.
    */
   function withoutCoverageNoise(
     violations: ReadonlyArray<string>
@@ -463,72 +451,46 @@ describe("lintRoundCorpus — R5 (#1208), the round-shaped corpus lint", () => {
     expect(lintRoundCorpus(ALL_FIXTURE_ROUNDS)).toEqual([])
   })
 
-  it("passes a single well-formed round in isolation", () => {
+  it("passes a single well-formed round with distinct propositionIds in isolation", () => {
     expect(withoutCoverageNoise(lintRoundCorpus([round()]))).toEqual([])
   })
 
   describe("cardinality (Ax. 1.1, Rem. 1.1)", () => {
     it("fails when |C| = 0", () => {
       const violations = lintRoundCorpus([round({ constraints: [] })])
-      expect(violations.some((v) => v.includes("0 < |C|"))).toBe(true)
+      expect(hasViolation(violations, "0 < |C|")).toBe(true)
     })
 
     it("fails when |C| > |D|", () => {
-      const constraints: ConstraintSet = [
-        { dimension: "n", operator: "<=", bound: 1_000 },
-        { dimension: "m", operator: "<=", bound: 1_000 },
-        { dimension: "k", operator: "<=", bound: 1_000 },
-      ]
+      const constraints: ConstraintSet = ["n", "m", "k"].map(
+        (dimension): ConstraintSet[number] => ({
+          dimension,
+          operator: "<=",
+          bound: 1_000,
+        })
+      )
       const violations = lintRoundCorpus([round({ constraints })])
-      expect(violations.some((v) => v.includes("|C| = 3 > |D| = 2"))).toBe(true)
+      expect(hasViolation(violations, "|C| = 3 > |D| = 2")).toBe(true)
     })
 
     it("fails when |D| > N", () => {
-      const ids: ReadonlyArray<PropositionId> = [
+      const diffSet = diffSetOf([
         "CW-P1",
         "CW-P2",
         "CW-P3",
         "CW-P4",
         "CW-P5",
         "CW-P6",
-      ]
-      const diffSet: DiffSet = ids.map((propositionId, index) => ({
-        hunk: {
-          path: `src/fixture/${index}.rs`,
-          oldStart: 1,
-          newStart: 1,
-          segments: [{ kind: "addition", text: `let v${index} = ${index};` }],
-        },
-        propositionId,
-        admissible: index === 0,
-        ...(index === 0 ? {} : { distractorStatement: `distractor ${index}` }),
-      }))
+      ])
       expect(diffSet.length).toBe(MAX_PRESENTABLE_DIFFS + 1)
       const violations = lintRoundCorpus([round({ diffSet })])
-      expect(
-        violations.some((v) => v.includes(`> N = ${MAX_PRESENTABLE_DIFFS}`))
-      ).toBe(true)
+      expect(hasViolation(violations, `> N = ${MAX_PRESENTABLE_DIFFS}`)).toBe(
+        true
+      )
     })
 
-    it("passes the boundary |D| = N — five is a valid, maximal round (Thm. 10.1's k <= 5, review finding on #1283)", () => {
-      const ids: ReadonlyArray<PropositionId> = [
-        "CW-P1",
-        "CW-P2",
-        "CW-P3",
-        "CW-P4",
-        "CW-P5",
-      ]
-      const diffSet: DiffSet = ids.map((propositionId, index) => ({
-        hunk: {
-          path: `src/fixture/${index}.rs`,
-          oldStart: 1,
-          newStart: 1,
-          segments: [{ kind: "addition", text: `let v${index} = ${index};` }],
-        },
-        propositionId,
-        admissible: index === 0,
-        ...(index === 0 ? {} : { distractorStatement: `distractor ${index}` }),
-      }))
+    it("passes the boundary |D| = N — five is a valid, maximal round (Thm. 10.1's k <= 5)", () => {
+      const diffSet = diffSetOf(["CW-P1", "CW-P2", "CW-P3", "CW-P4", "CW-P5"])
       expect(diffSet.length).toBe(MAX_PRESENTABLE_DIFFS)
       expect(
         withoutCoverageNoise(lintRoundCorpus([round({ diffSet })]))
@@ -536,68 +498,29 @@ describe("lintRoundCorpus — R5 (#1208), the round-shaped corpus lint", () => {
     })
   })
 
-  describe("schema re-validation (row 6: exactly one member of D is admissible, Ax. 1.1/R4)", () => {
+  describe("schema re-validation (exactly one member of D is admissible, Ax. 1.1)", () => {
     it("fails when a round's D has two admissible members", () => {
       const diffSet: DiffSet = [
-        {
-          hunk: {
-            path: "src/fixture/a.rs",
-            oldStart: 1,
-            newStart: 1,
-            segments: [{ kind: "addition", text: "let a = true;" }],
-          },
-          propositionId: "CW-P1",
-          admissible: true,
-        },
-        {
-          hunk: {
-            path: "src/fixture/b.rs",
-            oldStart: 1,
-            newStart: 1,
-            segments: [{ kind: "addition", text: "let b = true;" }],
-          },
-          propositionId: "CW-P2",
-          admissible: true,
-        },
+        member("a", { propositionId: "CW-P1", admissible: true }),
+        member("b", { propositionId: "CW-P2", admissible: true }),
       ]
       const violations = lintRoundCorpus([round({ diffSet })])
-      expect(
-        violations.some((v) => v.includes("exactly one member of D"))
-      ).toBe(true)
+      expect(hasViolation(violations, "exactly one member of D")).toBe(true)
     })
   })
 
   describe("discriminability (Prop. 6.1) — deliberately not checked", () => {
-    // Two straight review rounds on #1283 (chatgpt-codex-connector) showed
-    // every attempt at a mechanical Prop. 6.1 check unsound given this
-    // data model (see the doc comment above citationsOfRound in
-    // corpus-lint.ts for the full trace and the tracked follow-up). These
-    // tests document the deferral: none of the shapes a discriminability
-    // check might once have flagged produce a Prop. 6.1 violation now.
+    // No mechanical Prop. 6.1 check is sound on this data model (see the
+    // comment above citationsOfRound in corpus-lint.ts).
     it("does not flag two diff-set members sharing the same propositionId, admissible or not", () => {
       const diffSet: DiffSet = [
-        {
-          hunk: {
-            path: "src/fixture/a.rs",
-            oldStart: 1,
-            newStart: 1,
-            segments: [{ kind: "addition", text: "let a = true;" }],
-          },
-          propositionId: "CW-P1",
-          admissible: true,
-        },
-        {
-          hunk: {
-            path: "src/fixture/b.rs",
-            oldStart: 1,
-            newStart: 1,
-            segments: [{ kind: "addition", text: "let b = true;" }],
-          },
+        member("a", { propositionId: "CW-P1", admissible: true }),
+        member("b", {
           propositionId: "CW-P1",
           admissible: false,
           distractorStatement:
             "a different rewrite witnessing the same proposition, only one of which restores this round's own budget.",
-        },
+        }),
       ]
       expect(
         withoutCoverageNoise(lintRoundCorpus([round({ diffSet })])).filter(
@@ -605,196 +528,118 @@ describe("lintRoundCorpus — R5 (#1208), the round-shaped corpus lint", () => {
         )
       ).toEqual([])
     })
-
-    it("passes when every diff-set member carries a distinct propositionId", () => {
-      expect(withoutCoverageNoise(lintRoundCorpus([round()]))).toEqual([])
-    })
   })
 
   describe("citation resolution (Rem. 7.1)", () => {
     it("fails when a diff-set member's propositionId does not resolve against the register", () => {
-      // Deliberately not "CW-Pn"-shaped: scripts/check-proposition-citations.ts
-      // scans every tracked file for that literal pattern, and this file is
-      // not one of the proposition-register module's own tests.
+      // Not "CW-Pn"-shaped, so check-proposition-citations.ts ignores it.
       // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- deliberately injecting a value PropositionId's own type rules out, to prove checkCitations' runtime dangling-citation check fires even though DiffSetMember's compile-time type would normally prevent this.
       const badId = "not-a-real-proposition-id" as PropositionId
       const diffSet: DiffSet = [
-        {
-          hunk: {
-            path: "src/fixture/a.rs",
-            oldStart: 1,
-            newStart: 1,
-            segments: [{ kind: "addition", text: "let a = true;" }],
-          },
-          propositionId: badId,
-          admissible: true,
-        },
-        {
-          hunk: {
-            path: "src/fixture/b.rs",
-            oldStart: 1,
-            newStart: 1,
-            segments: [{ kind: "addition", text: "let b = true;" }],
-          },
-          propositionId: "CW-P2",
-          admissible: false,
-          distractorStatement: "a plausible but wrong repair.",
-        },
+        member("a", { propositionId: badId, admissible: true }),
+        distractorB,
       ]
       const violations = lintRoundCorpus([round({ diffSet })])
-      expect(violations.some((v) => v.includes("dangling citation"))).toBe(true)
+      expect(hasViolation(violations, "dangling citation")).toBe(true)
     })
   })
 
-  describe("coverage — an instance as μ(d) of any member (Rem. 7.1, Rem. 10.2, row 3)", () => {
+  describe("coverage — an instance as μ(d) of any member (Rem. 7.1, Rem. 10.2)", () => {
     it("fails when an active register entry is cited by no member of any round", () => {
       // CW-P16 is μ of round-cw-p16's admissible member and of
       // round-cw-p15's distractor; removing both leaves it uncited.
       const withoutCwP16 = ALL_FIXTURE_ROUNDS.filter(
         (r) => r.id !== "round-cw-p16" && r.id !== "round-cw-p15"
       )
-      const violations = lintRoundCorpus(withoutCwP16)
       expect(
-        violations.some(
-          (v) => v.includes("CW-P16") && v.includes("no corpus instance")
+        hasViolation(
+          lintRoundCorpus(withoutCwP16),
+          "CW-P16",
+          "no corpus instance"
         )
       ).toBe(true)
     })
 
-    it("passes row 3 when a register entry appears only as a distractor (decided on #1540)", () => {
-      // Rem. 10.2's "a round with it as μ(d)" puts no condition on d, and
-      // Thm. 6.1 scores p = μ(d) for whichever d is selected. Removing
-      // round-cw-p1 leaves CW-P1 only as round-cw-p16's distractor, and
-      // that still counts as an instance.
+    it("counts a register entry that appears only as a distractor", () => {
+      // Without round-cw-p1, CW-P1 is only round-cw-p16's distractor, which
+      // still counts (Rem. 10.2 puts no condition on d).
       const withoutCwP1Admissible = ALL_FIXTURE_ROUNDS.filter(
         (r) => r.id !== "round-cw-p1"
       )
-      const violations = lintRoundCorpus(withoutCwP1Admissible)
       expect(
-        violations.some(
-          (v) => v.includes("CW-P1 ") && v.includes("no corpus instance")
+        hasViolation(
+          lintRoundCorpus(withoutCwP1Admissible),
+          "CW-P1 ",
+          "no corpus instance"
         )
       ).toBe(false)
     })
   })
 
-  describe("coverage — distractor role required (Rem. 10.2, Prop. 10.1, row 4)", () => {
+  describe("coverage — distractor role required (Rem. 10.2, Prop. 10.1)", () => {
     it("fails when an active register entry never appears purely as a distractor", () => {
       // round-cw-p16 is the only round presenting CW-P1 as a distractor;
-      // CW-P1 is still admissible in round-cw-p1, so this isolates row 4
-      // without also breaking row 3's "any instance" coverage for CW-P1.
+      // CW-P1 stays admissible in round-cw-p1, isolating this check.
       const withoutCwP16 = ALL_FIXTURE_ROUNDS.filter(
         (r) => r.id !== "round-cw-p16"
       )
-      const violations = lintRoundCorpus(withoutCwP16)
       expect(
-        violations.some(
-          (v) =>
-            v.includes("CW-P1") &&
-            v.includes("no round") &&
-            v.includes("distractor")
+        hasViolation(
+          lintRoundCorpus(withoutCwP16),
+          "CW-P1",
+          "no round",
+          "distractor"
         )
       ).toBe(true)
     })
   })
 
-  describe("no authored Θ string anywhere (Prop. 2.1, row 7)", () => {
-    it("fails when a distractorStatement asserts a complexity class literal", () => {
-      const diffSet: DiffSet = [
-        {
-          hunk: {
-            path: "src/fixture/a.rs",
-            oldStart: 1,
-            newStart: 1,
-            segments: [{ kind: "addition", text: "let a = true;" }],
-          },
-          propositionId: "CW-P1",
-          admissible: true,
-        },
-        {
-          hunk: {
-            path: "src/fixture/b.rs",
-            oldStart: 1,
-            newStart: 1,
-            segments: [{ kind: "addition", text: "let b = true;" }],
-          },
-          propositionId: "CW-P2",
-          admissible: false,
-          distractorStatement: "this rewrite is Θ(n²), not a real repair.",
-        },
-      ]
-      const violations = lintRoundCorpus([round({ diffSet })])
-      expect(violations.some((v) => v.includes("Prop. 2.1"))).toBe(true)
-    })
-
-    it("fails when a propositionGloss asserts a complexity class literal (review finding on #1543)", () => {
-      const diffSet: DiffSet = [
-        {
-          hunk: {
-            path: "src/fixture/a.rs",
-            oldStart: 1,
-            newStart: 1,
-            segments: [{ kind: "addition", text: "let a = true;" }],
-          },
-          propositionId: "CW-P1",
-          admissible: true,
-          propositionGloss: "This rewrite is Θ(n).",
-        },
-        {
-          hunk: {
-            path: "src/fixture/b.rs",
-            oldStart: 1,
-            newStart: 1,
-            segments: [{ kind: "addition", text: "let b = true;" }],
-          },
-          propositionId: "CW-P2",
-          admissible: false,
-          distractorStatement: "a plausible but wrong repair.",
-        },
-      ]
-      const violations = lintRoundCorpus([round({ diffSet })])
-      expect(
-        violations.some(
-          (v) => v.includes("propositionGloss") && v.includes("Prop. 2.1")
-        )
-      ).toBe(true)
-    })
-
-    it("fails when a hunk segment's own text asserts a complexity class literal (review finding on #1283)", () => {
-      // A round's diff is displayed source, not distractorStatement's own
-      // prose, but a segment's text can still carry a comment — and Prop.
-      // 2.1 forbids an asserted class literal anywhere, not just in prose.
-      const diffSet: DiffSet = [
-        {
-          hunk: {
-            path: "src/fixture/a.rs",
-            oldStart: 1,
-            newStart: 1,
-            segments: [
-              {
-                kind: "addition",
-                text: "let a = true; // this repair is Θ(n log n)",
-              },
-            ],
-          },
-          propositionId: "CW-P1",
-          admissible: true,
-        },
-        {
-          hunk: {
-            path: "src/fixture/b.rs",
-            oldStart: 1,
-            newStart: 1,
-            segments: [{ kind: "addition", text: "let b = true;" }],
-          },
-          propositionId: "CW-P2",
-          admissible: false,
-          distractorStatement: "a plausible but wrong repair.",
-        },
-      ]
-      const violations = lintRoundCorpus([round({ diffSet })])
-      expect(violations.some((v) => v.includes("Prop. 2.1"))).toBe(true)
-    })
+  describe("no authored Θ string anywhere (Prop. 2.1)", () => {
+    it.each<{ name: string; diffSet: DiffSet; fragments: Array<string> }>([
+      {
+        name: "a distractorStatement",
+        diffSet: [
+          member("a", { propositionId: "CW-P1", admissible: true }),
+          member("b", {
+            propositionId: "CW-P2",
+            admissible: false,
+            distractorStatement: "this rewrite is Θ(n²), not a real repair.",
+          }),
+        ],
+        fragments: ["Prop. 2.1"],
+      },
+      {
+        name: "a propositionGloss",
+        diffSet: [
+          member("a", {
+            propositionId: "CW-P1",
+            admissible: true,
+            propositionGloss: "This rewrite is Θ(n).",
+          }),
+          distractorB,
+        ],
+        fragments: ["propositionGloss", "Prop. 2.1"],
+      },
+      {
+        // Displayed source, but a segment can carry a comment.
+        name: "a hunk segment's own text",
+        diffSet: [
+          member(
+            "a",
+            { propositionId: "CW-P1", admissible: true },
+            "let a = true; // this repair is Θ(n log n)"
+          ),
+          distractorB,
+        ],
+        fragments: ["Prop. 2.1"],
+      },
+    ])(
+      "fails when $name asserts a complexity class literal",
+      ({ diffSet, fragments }) => {
+        const violations = lintRoundCorpus([round({ diffSet })])
+        expect(hasViolation(violations, ...fragments)).toBe(true)
+      }
+    )
 
     it("finds no asserted class literal in the real fixture round corpus", () => {
       expect(

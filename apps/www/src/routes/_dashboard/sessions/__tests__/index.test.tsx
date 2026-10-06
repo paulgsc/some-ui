@@ -1,74 +1,43 @@
 /**
  * @vitest-environment jsdom
  *
- * #946/S3's own regressions for this route, alongside
- * `index.intent.test.tsx`'s failure-visibility suite: the thundering-herd
- * guard on a row's own duplicate action, and the bulk selection's
- * survives-a-failure property `lib/intent/render/index.ts`'s own header
- * commits to verifying "at the migration site rather than asserted there."
+ * The sessions list beside `index.intent.test.tsx`'s failure suite: a stored
+ * session naming a retired activity, the thundering-herd guard on a row's
+ * duplicate, and the bulk selection surviving a failed batch
+ * (`lib/intent/render/index.ts`).
  */
 
-import type { JSX, ReactNode } from "react"
+import { fakeQueryResult, withQueryClient } from "@/test-support/query-client"
+import { routeComponent } from "@/test-support/router-stubs"
+import { sessionRecord } from "@/test-support/session-record"
 import { signInForTests } from "@/test-support/sign-in"
 import { getActivity } from "@some-ui/activity-catalog"
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import type * as ReactRouterModule from "@tanstack/react-router"
-import {
-  act,
-  cleanup,
-  fireEvent,
-  render,
-  screen,
-  within,
-} from "@testing-library/react"
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import type * as TenantModule from "@/lib/tenant"
-import type { SessionRecord } from "@/lib/tenant"
 
-// These suites are about the account's store failing: start from an account.
-beforeEach(() => {
-  signInForTests()
-})
+import { bulkDeleteButton, selectAllSessions } from "./helpers"
 
-function fixtureSession(id: string, name: string): SessionRecord {
-  return {
-    id,
-    name,
-    status: "draft",
-    activities: [],
-    scenes: [],
-    layoutMode: "basic",
-    totalDurationMs: 0,
-    createdAt: "2026-01-01T00:00:00.000Z",
-    updatedAt: "2026-01-01T00:00:00.000Z",
-  }
-}
-
-const FIXTURE_SESSIONS: Array<SessionRecord> = [
-  fixtureSession("session-1", "Vocabulary warm-up"),
-  {
-    ...fixtureSession("session-2", "Grammar review"),
-    // Composed while "interview" was still offered; it has since been
-    // retired, and the stored record still names it.
+const FIXTURE_SESSIONS = [
+  sessionRecord({ id: "session-1", name: "Vocabulary warm-up" }),
+  sessionRecord({
+    id: "session-2",
+    name: "Grammar review",
+    // "interview" has since been retired; the stored record still names it.
     activities: [
       { activityId: "interview", config: {} },
       { activityId: "topik", config: getActivity("topik").defaultConfig },
     ],
-  },
+  }),
 ]
 
 vi.mock(
   "@tanstack/react-router",
   async (importOriginal): Promise<typeof ReactRouterModule> => {
-    const actual = await importOriginal<typeof ReactRouterModule>()
-    return {
-      ...actual,
-      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- LinkComponent's real signature is generic over the whole route tree; a plain <a> stand-in has no narrower match.
-      Link: (({ children, ...props }: { children?: ReactNode }) => (
-        <a {...props}>{children}</a>
-      )) as typeof ReactRouterModule.Link,
-    }
+    const { withPlainLink } = await import("@/test-support/router-stubs")
+    return withPlainLink(await importOriginal<typeof ReactRouterModule>())
   }
 )
 
@@ -79,44 +48,30 @@ vi.mock(
     return {
       ...actual,
       useSessions: () =>
-        // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- stubbing TanStack Query's rich UseQueryResult with the two fields this route actually reads; the real shape has no minimal constructor.
-        ({ data: FIXTURE_SESSIONS, isLoading: false }) as ReturnType<
-          typeof TenantModule.useSessions
-        >,
+        fakeQueryResult({ data: FIXTURE_SESSIONS, isLoading: false }),
     }
   }
 )
 
 const { Route } = await import("@/routes/_dashboard/sessions/index")
-// eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- createFileRoute's Route.options.component is typed broader than the concrete component this file actually registered; there is no narrower accessor.
-const SessionsRoute = Route.options.component as () => JSX.Element
+const SessionsRoute = routeComponent(Route)
 
-function withQueryClient(children: ReactNode): JSX.Element {
-  const client = new QueryClient({
-    defaultOptions: { mutations: { retry: false } },
-  })
-  return <QueryClientProvider client={client}>{children}</QueryClientProvider>
-}
-
-function bulkToolbar(): HTMLElement {
-  const root = screen.getByText(/selected$/).closest("div")
-  if (!(root instanceof HTMLElement)) {
-    throw new Error("bulk selection toolbar not found")
-  }
-  return root
-}
-
-function selectAllSessions(): void {
-  for (const checkbox of screen.getAllByRole("checkbox")) {
-    fireEvent.click(checkbox)
-  }
-}
+const offline = (): Promise<Response> =>
+  Promise.reject(new TypeError("Failed to fetch"))
 
 function isChecked(element: HTMLElement): boolean {
   return element instanceof HTMLInputElement && element.checked
 }
 
+async function clickAndWait(button: HTMLElement): Promise<void> {
+  await act(async () => {
+    fireEvent.click(button)
+    await new Promise((resolve) => setTimeout(resolve, 20))
+  })
+}
+
 beforeEach(() => {
+  signInForTests()
   vi.spyOn(window, "confirm").mockReturnValue(true)
 })
 
@@ -128,9 +83,7 @@ afterEach(() => {
 
 describe("sessions list: a stored session that names a retired activity", () => {
   it("still lists the session, with a badge only for what it can still play", () => {
-    vi.stubGlobal("fetch", () =>
-      Promise.reject(new TypeError("Failed to fetch"))
-    )
+    vi.stubGlobal("fetch", offline)
 
     render(withQueryClient(<SessionsRoute />))
 
@@ -143,26 +96,29 @@ describe("sessions list: thundering-herd guard on a row's own actions", () => {
   it("double-clicking a card's Duplicate button issues exactly one duplicate request", async () => {
     let duplicateCalls = 0
     const impl: typeof fetch = async (input, init) => {
-      const url = String(input)
-      if ((init?.method ?? "GET") === "POST" && url.includes("/duplicate")) {
+      if (
+        (init?.method ?? "GET") === "POST" &&
+        String(input).includes("/duplicate")
+      ) {
         duplicateCalls += 1
         return new Response(
           JSON.stringify(
-            fixtureSession("session-3", "Vocabulary warm-up (copy)")
+            sessionRecord({
+              id: "session-3",
+              name: "Vocabulary warm-up (copy)",
+            })
           ),
           { status: 200 }
         )
       }
-      return Promise.reject(new TypeError("Failed to fetch"))
+      return offline()
     }
     vi.stubGlobal("fetch", impl)
 
     render(withQueryClient(<SessionsRoute />))
     const [duplicateButton] = screen.getAllByTitle("Duplicate")
 
-    // No `act`/`await` between the two clicks - the same fast-double-click
-    // shape #936 must close for every migrated write, not just the
-    // composer's chain.
+    // No `act`/`await` between the two clicks: a fast double-click.
     act(() => {
       fireEvent.click(duplicateButton)
       fireEvent.click(duplicateButton)
@@ -178,57 +134,38 @@ describe("sessions list: thundering-herd guard on a row's own actions", () => {
 
 describe("sessions list: bulk selection survives a failed batch", () => {
   it("a failed bulk delete leaves every row selected, so retrying is one click", async () => {
-    vi.stubGlobal("fetch", async () =>
-      Promise.reject(new TypeError("Failed to fetch"))
-    )
+    vi.stubGlobal("fetch", offline)
 
     render(withQueryClient(<SessionsRoute />))
     selectAllSessions()
 
-    const checkboxesBefore = screen.getAllByRole("checkbox")
-    expect(checkboxesBefore.every(isChecked)).toBe(true)
+    expect(screen.getAllByRole("checkbox").every(isChecked)).toBe(true)
 
-    const bulkDelete = within(bulkToolbar()).getByRole("button", {
-      name: /delete/i,
-    })
-    await act(async () => {
-      fireEvent.click(bulkDelete)
-      await new Promise((resolve) => setTimeout(resolve, 20))
-    })
+    await clickAndWait(bulkDeleteButton())
 
-    // The toolbar (and both rows' checkboxes) are still on screen, still
-    // checked - a failed batch must not silently drop the selection the
-    // person built, since that's what turns "retry" into "reselect everything".
-    const checkboxesAfter = screen.getAllByRole("checkbox")
-    expect(checkboxesAfter.every(isChecked)).toBe(true)
+    expect(screen.getAllByRole("checkbox").every(isChecked)).toBe(true)
     expect(screen.getByText(/2 selected/)).toBeTruthy()
   })
 
-  it("a successful bulk delete clears the selection - unchanged from pre-migration", async () => {
+  it("a successful bulk delete clears the selection", async () => {
     vi.stubGlobal(
       "fetch",
       async (input: RequestInfo | URL, init?: RequestInit) => {
-        const url = String(input)
-        if ((init?.method ?? "GET") === "DELETE" && url.endsWith("/sessions")) {
-          // Every file_host route answers with a JSON body, deletes included
-          // (see client.ts's own requestJSON header) - a 204 with no body
-          // would make `.json()` throw and the mutation fail, not succeed.
+        if (
+          (init?.method ?? "GET") === "DELETE" &&
+          String(input).endsWith("/sessions")
+        ) {
+          // Deletes answer with a JSON body too (client.ts's requestJSON).
           return new Response(JSON.stringify({ removed: 2 }), { status: 200 })
         }
-        return Promise.reject(new TypeError("Failed to fetch"))
+        return offline()
       }
     )
 
     render(withQueryClient(<SessionsRoute />))
     selectAllSessions()
 
-    const bulkDelete = within(bulkToolbar()).getByRole("button", {
-      name: /delete/i,
-    })
-    await act(async () => {
-      fireEvent.click(bulkDelete)
-      await new Promise((resolve) => setTimeout(resolve, 20))
-    })
+    await clickAndWait(bulkDeleteButton())
 
     expect(screen.queryByText(/selected$/)).toBeNull()
   })

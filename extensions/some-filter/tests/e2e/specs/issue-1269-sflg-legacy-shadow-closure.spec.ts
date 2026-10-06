@@ -1,35 +1,21 @@
 /**
- * SF-LG (#1269) — promotes Gate 0's G0.7 finding (cited in #1263, restated
- * in canon §9.2's coverage-gap addendum) into permanent regression coverage:
- * legacy mode's document-level `html { filter: invert(...) ... }`
- * (`theme-apply.ts`'s `applyLegacyFilter`) already composites correctly
- * across a flat open shadow root, a shadow root nested two levels deep, and
- * slotted light-DOM content — both as a raw CSS platform primitive and in
- * the real built extension. Per the canon passage this spec locks in:
- * "legacy mode needs no new custody machinery: it is the degenerate point
- * in Definition D.5's own state space where every non-root scope stays
- * permanently unregistered, entirely covered by r_0's pre-existing,
- * document-wide Bootstrap hold." Nothing here changes `applyLegacyFilter`'s
- * filter chain — this is a regression lock on an already-proven property,
- * not a fix.
+ * Regression coverage for Gate 0's G0.7 finding (canon §9.2's coverage-gap
+ * addendum): legacy mode's document-level `html { filter: invert(...) }`
+ * already composites correctly across a flat open shadow root, a root nested
+ * two levels deep, and slotted light-DOM content — as a raw CSS primitive
+ * and in the real built extension. Per the canon: "legacy mode needs no new
+ * custody machinery: it is the degenerate point in Definition D.5's own
+ * state space where every non-root scope stays permanently unregistered,
+ * entirely covered by r_0's pre-existing, document-wide Bootstrap hold."
+ * A lock on a proven property, not a fix.
  *
- * Structural note shared with `legacy-invert-regimes.spec.ts`: `filter`
- * compositing is invisible to `getComputedStyle`, so every assertion below
- * is a pixel sample (`pixels.ts`), not a declared-value check.
+ * `filter` compositing is invisible to `getComputedStyle`, so every
+ * assertion is a pixel sample (`pixels.ts`).
  *
- * Convergence with #1191: #1191's own open question — whether an ancestor
- * `filter` reaches content promoted into the browser's *top layer*
- * (Popover API, native `<dialog>`, `:fullscreen`) — is a separate mechanism
- * from shadow-DOM encapsulation and is deliberately untouched here. Nothing
- * in this file promotes any node to the top layer.
+ * Out of scope: whether an ancestor `filter` reaches the *top layer* (#1191),
+ * a separate mechanism; nothing here promotes a node to the top layer.
  *
- * SF4 (#1360) classification: already compliant, not one of the 16 needing
- * classification — this file's own "Structural note" above already states
- * it, and every assertion is a real `pixels.ts` sample. Flagged here as a
- * correction to #1360's own inventory, which counted only
- * `issue-741-auto-defects.spec.ts` and `legacy-invert-regimes.spec.ts` as
- * sampling real output; this file (added or converted after #1360 was
- * filed) already meets that bar too.
+ * Classification (#1360): already compliant (real pixel samples).
  */
 
 import { expect, test, waitForClassification } from "@filter/playwright/fixture"
@@ -56,10 +42,8 @@ const FILTER_STRING = [
 
 /**
  * A `position: fixed; inset: 0` surface's containing block is the viewport
- * regardless of shadow nesting depth (the same boundary-crossing property
- * `custody-primitive.ts`'s own occlusion layer relies on) — so a full white
- * surface at this z-index covers the entire viewport, making a whole-page
- * screenshot an unambiguous sample of exactly the surface under test.
+ * at any shadow depth, so a whole-page screenshot samples exactly the
+ * surface under test.
  */
 const FULL_VIEWPORT_SURFACE_STYLE =
   "position:fixed;inset:0;z-index:999999;margin:0;padding:0;" +

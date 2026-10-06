@@ -2,14 +2,10 @@
  * `/shelf/:activity[/:key]`, as `file_host` serves it (paulgsc/server
  * `handlers/shelf.rs`, `crates/db/learner_shelf`), over `learner_shelf`.
  *
- * On the phone this is where a pasted TOPIK lesson or a hand-made Leetype
- * round is kept past the tab that pasted it - the packages' "Keep on this
- * account" - so it is the one write path for authored content offline.
- *
- * Copied, not re-decided: the cap (20 per activity) never refuses a
- * replace; an identical body is `unchanged` and keeps its old `savedAt`;
- * problems are collected into one `422` keyed by field; `DELETE` is `204`
- * whether or not the row existed.
+ * The one offline write path for authored content (the packages' "Keep on
+ * this account"). Copied, not re-decided: the cap (20 per activity) never
+ * refuses a replace; an identical body is `unchanged` and keeps `savedAt`;
+ * problems are one `422` keyed by field; `DELETE` is `204` either way.
  */
 import {
   DEVICE_SUBJECT,

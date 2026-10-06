@@ -4,12 +4,10 @@
  * Shared between observer.ts, video-manager.ts, events.ts and — via
  * `PREMASK_SELECTORS` — the static occluder rules in `styles/content.css`,
  * which are the only thing hiding a card between paint and the content
- * script taking ownership. Those two lists disagreeing is exactly the bug
- * reported in #973:
- * a card type present in the CSS but absent here is blurred forever, and a card
- * type present here but absent from the CSS flashes its thumbnail before the
- * veil mounts. `selectors.test.ts` asserts the stylesheet still derives from
- * this file.
+ * script taking ownership. If the two lists disagree, a card type only in the
+ * CSS is blurred forever, and one only here flashes its thumbnail before the
+ * veil mounts. `selectors.test.ts` asserts the stylesheet derives from this
+ * file.
  *
  * ## Two families, and why one of them needs a guard
  *
@@ -22,34 +20,19 @@
  * too, distinguished only by what is inside it.
  *
  *   - `yt-lockup-view-model` is the Lit-era card, and it renders a video, a
- *     playlist, a channel, a podcast, or a "collection" shelf tile. This is
- *     what #973 ran into from the other side — the tag was missing entirely,
- *     so every card in the newer shelves (the upcoming-feed slider, watch-next,
- *     most of search) went unmasked.
+ *     playlist, a channel, a podcast, or a "collection" shelf tile.
  *   - `ytd-rich-item-renderer` is Polymer, but it is the home feed's *generic
- *     grid cell*, not a video renderer: it wraps whatever the feed item is —
- *     a video, an ad slot (`ytd-ad-slot-renderer`), a Shorts shelf, a
- *     community post, a playlist tile. An earlier revision of this file
- *     listed it with the plain tags on the claim that "every instance of it
- *     is a video"; that claim is false, and it is the whole mechanism of
- *     #1422 (`[ORP1]`): the ad cell was occluded by the pre-mask rule, could
- *     never produce a videoId, and so was never released — a permanently
- *     blurred, permanently unclickable tile — while keeping the retry loop
- *     alive for the life of the tab.
+ *     grid cell*: it wraps a video, an ad slot (`ytd-ad-slot-renderer`), a
+ *     Shorts shelf, a community post or a playlist tile (`[ORP1]`).
  *
- * Adding a polymorphic tag bare over-corrects in exactly that way: an element
- * that can never produce a videoId is occluded by the pre-mask rule with no
- * content script coming to replace that occlusion, and it sits in the
- * manager's unresolved queue keeping the retry loop alive forever.
+ * Adding a polymorphic tag bare is wrong: an element that can never produce a
+ * videoId is occluded by the pre-mask rule with nothing coming to lift it (a
+ * permanently blurred, unclickable tile), and it keeps the retry loop alive.
  *
- * So the polymorphic tags carry `requiresVideoLink`. Such an element counts
- * as a card only once it contains a watch or shorts href — the same
- * condition, expressed as `:has()` in the stylesheet and as
- * {@link isVideoCard} in TypeScript, so the two layers cannot drift into
- * disagreeing about what a card is. The guard is what lets {@link isVideoCard}
- * say "not a card" for the ad cell, which is what lets the manager stop
- * retrying it and what keeps the stylesheet from occluding it in the first
- * place.
+ * So the polymorphic tags carry `requiresVideoLink`: such an element counts as
+ * a card only once it contains a watch or shorts href — `:has()` in the
+ * stylesheet, {@link isVideoCard} in TypeScript, so the two layers agree on
+ * what a card is.
  */
 
 /** A tracked card element type. */
@@ -70,13 +53,12 @@ export type CardSelector = {
    * unconditionally on an engine that cannot parse the `:has()` guard
    * (Firefox 112–120, per the baseline note in `styles/content.css`).
    *
-   * Only the tag that used to be occluded unconditionally carries this:
-   * `ytd-rich-item-renderer` is the home feed's primary cell, and losing its
-   * floor on a declared-supported engine would fail the whole surface open.
-   * The price on those engines is the pre-#1422 behaviour — a non-video cell
-   * stays blurred — which is the fail-closed direction. The Lit-era lockups
-   * deliberately do not carry it: their unguarded form occludes channel and
-   * playlist tiles that nothing could ever release (#973, L2).
+   * Only `ytd-rich-item-renderer` carries this: it is the home feed's primary
+   * cell, and losing its floor on a declared-supported engine would fail the
+   * whole surface open. The price there is that a non-video cell stays
+   * blurred, the fail-closed direction. The Lit-era lockups deliberately do
+   * not: unguarded, they occlude channel and playlist tiles that nothing could
+   * ever release (L2).
    */
   readonly unguardedFallback?: boolean
 }
@@ -90,15 +72,14 @@ export const CARD_SELECTORS: ReadonlyArray<CardSelector> = [
   { tag: "ytd-grid-video-renderer", requiresVideoLink: false },
   { tag: "ytd-compact-video-renderer", requiresVideoLink: false },
   { tag: "ytd-playlist-panel-video-renderer", requiresVideoLink: false },
-  // Playlist pages: rows are their own renderer, never covered by the four
-  // above, so every playlist listing was unmasked (#973).
+  // Playlist pages: rows are their own renderer, not covered by the four above.
   { tag: "ytd-playlist-video-renderer", requiresVideoLink: false },
   // Legacy shorts shelf item.
   { tag: "ytd-reel-item-renderer", requiresVideoLink: false },
 
   // ── Polymorphic tags: need the video-link guard ──────────────────────────
   // The home feed's generic grid cell (Polymer). Wraps videos, but also ad
-  // slots, Shorts shelves, posts and playlist tiles — see the header (#1422).
+  // slots, Shorts shelves, posts and playlist tiles — see the header.
   {
     tag: "ytd-rich-item-renderer",
     requiresVideoLink: true,
@@ -138,13 +119,10 @@ export const SEL = VIDEO_SELECTORS.join(",")
  * Guarded tags get `:has(<video link>)` so a channel or playlist lockup is
  * never occluded by a rule no content script will ever lift.
  *
- * Each entry is a standalone selector, not one shared comma list (#1390 /
- * QC0): CSS selector-list invalidation is all-or-nothing, so an engine that
- * cannot parse one selector — e.g. `:has()` on Firefox 112–120, which the
- * manifest declares supported but which predate Firefox 121's unflagged
- * `:has()` — would otherwise drop the whole rule, including the plain tags
- * that never needed `:has()` at all. content.css gives each entry here its
- * own `{ }` block for exactly that reason; see the rationale there.
+ * Each entry is a standalone selector, not one shared comma list (QC0): CSS
+ * selector-list invalidation is all-or-nothing, so an engine that cannot parse
+ * `:has()` (Firefox 112–120, declared supported) would drop the whole rule,
+ * plain tags included. content.css gives each entry its own `{ }` block.
  */
 export const PREMASK_SELECTORS: ReadonlyArray<string> = CARD_SELECTORS.map(
   ({ tag, requiresVideoLink }) =>
@@ -201,32 +179,19 @@ export function detectOccluderEngine(root: ParentNode): OccluderEngine {
  * spells in CSS — carrying no `data-boyo`. Without it, the guarded rules are
  * gone and the occluder is the plain rules plus the fallback block: every
  * unstamped element of a plain tag, and every unstamped element of a tag
- * with {@link CardSelector.unguardedFallback} — shells and containers
- * included, which is precisely what makes the fallback engine's stranded
- * cells visible to `OccluderReleases` (bot-found on #1504's own review).
+ * with {@link CardSelector.unguardedFallback}, shells and containers
+ * included, so the fallback engine's stranded cells reach `OccluderReleases`.
  *
- * Both are the stylesheet's condition written in TypeScript rather than a
- * `querySelectorAll` of the stylesheet's own selector text. It used to be
- * the latter; the container exclusion (`:not(:has(<card tags>))`) is valid
- * CSS on every engine that has `:has()` at all, but jsdom's selector engine
- * cannot parse a `:has()` nested inside `:not()`, and a reading that
- * silently returned nothing under the unit suite would leave
- * `OccluderReleases` blind exactly where it is tested. The two spellings
- * are pinned together on a real engine instead: `rich-item-cells.spec.ts`
- * asserts, for every catalogue element in the fixture, that
- * `el.matches(<its pre-mask selector>)` agrees with this function — so the
- * stylesheet cannot drift from the predicate without a rendered test
- * failing.
+ * Both are the stylesheet's condition in TypeScript rather than a
+ * `querySelectorAll` of its selector text: jsdom cannot parse a `:has()`
+ * nested inside `:not()`, and a query silently returning nothing would blind
+ * `OccluderReleases` under the unit suite. `rich-item-cells.spec.ts` pins the
+ * two spellings together on a real engine.
  *
- * Every other health signal in this workspace reads `VideoManager`'s
- * bookkeeping, and bookkeeping cannot represent an element that fell out of
- * every collection it keeps (#1421, #1425); this asks the page instead.
- *
- * `root` is required rather than defaulting to `document`: this module is the
- * logic layer, and naming a browser global here is what
- * `extension-charter/no-logic-layer-side-effects` forbids. The caller supplies
- * the tree, which also lets a test scope the query to a fixture — and, via
- * `engine`, lets a test stand on the fallback engine without being on it.
+ * `root` is required rather than defaulting to `document`: this is the logic
+ * layer (`extension-charter/no-logic-layer-side-effects`). It also lets a test
+ * scope the query to a fixture, and `engine` lets it stand on the fallback
+ * engine.
  */
 export function occludedElements(
   root: ParentNode,
@@ -253,7 +218,7 @@ export function occludedElements(
  *
  *   `card`      — a video tile BOYO should own.
  *   `container` — a catalogue tag wrapping *other* catalogue cards: the home
- *                 feed's grid cell around a lockup (#1426), or a shelf around
+ *                 feed's grid cell around a lockup, or a shelf around
  *                 a row of them. It holds video links, so a link check alone
  *                 would adopt it and mount one veil over everything inside;
  *                 the cards inside are the cards, and this is never one. It
@@ -263,13 +228,10 @@ export function occludedElements(
  *                 in. Queued under the budget in case it hydrates.
  *   `none`      — not a catalogue tag at all.
  *
- * This is the polymorphism guard that {@link SEL} deliberately omits, applied
- * before an element is adopted so a non-video tile never reaches the
- * unresolved queue — which is what keeps the 500ms retry loop bounded by the
- * number of real video cards on the page rather than by every tile YouTube
- * happens to render (Charter §8). The stylesheet spells the same three-way
- * condition in {@link PREMASK_SELECTORS}, so the two cannot disagree about
- * which elements are cards.
+ * This is the polymorphism guard {@link SEL} omits, applied before adoption so
+ * the 500ms retry loop is bounded by real video cards, not every tile YouTube
+ * renders (Charter §8). {@link PREMASK_SELECTORS} spells the same condition in
+ * CSS.
  */
 export type CardKind = "card" | "container" | "shell" | "none"
 

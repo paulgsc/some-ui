@@ -1,15 +1,8 @@
 /**
- * The lines-of-code pulse: a small standing indicator in the dashboard header,
- * beside the audio one, of how much code has been written lately.
- *
- * At rest it is seven bars (the last seven days) and a number. Hovering shows
- * a card with the week in words; clicking opens the breakdown - added and
- * removed, a bar chart for the range, the split between repositories, and a
- * switch that brings lockfiles and generated files back in.
- *
- * The numbers are a snapshot taken when this build was made
- * (`lib/loc-report`), not a live count, and the footer says which day it is
- * as of. A build that carries no snapshot renders nothing at all.
+ * The lines-of-code pulse in the dashboard header: seven bars (the last seven
+ * days) and a number; hover for the week in words, click for the breakdown
+ * (added/removed, a chart, the split by repository, a switch for generated
+ * files). A build-time snapshot (`lib/loc-report`), dated in the footer.
  */
 
 import type { JSX } from "react"
@@ -40,9 +33,8 @@ const REMOVED_TEXT = "text-orange-700 dark:text-orange-400"
 const REMOVED_FILL = "bg-orange-700 dark:bg-orange-400"
 
 /**
- * Where each repository's own numbers can be seen live on GitHub: its
- * code-frequency graph. One link per repository, because the snapshot is a sum
- * over several and a single link would open one of them.
+ * Each repository's live code-frequency graph on GitHub, one link each since
+ * the snapshot sums several.
  */
 const GITHUB_URL = "https://github.com/paulgsc"
 
@@ -383,9 +375,8 @@ const LocPulse = ({ snapshot }: { snapshot: LocSnapshot }): JSX.Element => {
 }
 
 /**
- * Renders nothing when the build carries no snapshot, so a checkout that never
- * ran `pnpm loc:snapshot` has no empty box in its header. The snapshot is a
- * prop, defaulting to this build's, so a test can hand it one.
+ * Renders nothing without a snapshot (a checkout that never ran
+ * `pnpm loc:snapshot`). The snapshot is a prop, for tests.
  */
 export const LocIndicator = ({
   snapshot = locSnapshot,

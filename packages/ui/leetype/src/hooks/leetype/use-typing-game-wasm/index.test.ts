@@ -1,44 +1,24 @@
 import { resetWasm } from "@leetype/lib/leetype/leetype-wasm-loader"
 import type { GameState } from "@leetype/types/leetype"
 import type { default as wasmInit } from "@some-ui/leetype-wasm"
+import type { RenderHookResult } from "@testing-library/react"
 import { act, renderHook, waitFor } from "@testing-library/react"
 import type { Mock } from "vitest"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 import { useTypingGame } from "."
 
-/**
- * What `__wbg_init` resolves to — the wasm exports table.
- *
- * Derived from the bindings rather than written as `void` so these mocks
- * keep tracking the real signature: the stub now takes its types from the
- * published `.d.ts`, so init's return type is the crate's to change. The
- * loader awaits init purely for sequencing and never reads the table, so a
- * stand-in value is enough.
- */
+/** What `__wbg_init` resolves to; the loader awaits it but never reads it. */
 type InitOutput = Awaited<ReturnType<typeof wasmInit>>
 
 // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- a stand-in for the wasm exports table, which the loader awaits but never reads
 const INIT_OUTPUT = {} as InitOutput
 
-// ═══════════════════════════════════════════════════════════════════════════
-// Two things are pinned here.
-//
-// 1. The workspace's canonical `const aliveRef = { current: true }`
-//    mount-guard (#554): an async `loadWasm()` that resolves *after*
-//    unmount must not construct a `TypedTypingGame` instance or touch a
-//    freed one, and `free()` must run exactly once on cleanup.
-//
-// 2. The keystroke contract that replaced the old whole-buffer
-//    `handle_input(string)`: the hook forwards one `press`/`backspace`
-//    command per keystroke, only while playing, and republishes the
-//    engine's own snapshot rather than deriving a cursor of its own.
-//
-// The leetype-wasm crate itself is mocked so `loadWasm()`'s real
-// caching/guard logic in leetype-wasm-loader.ts runs unmodified against a
-// controllable fake. `resetWasm()` (exported "useful for testing") clears
-// the loader's module-level singleton between tests.
-// ═══════════════════════════════════════════════════════════════════════════
+// Pins (1) the `aliveRef` mount guard: a `loadWasm()` settling after unmount
+// constructs nothing, and `free()` runs exactly once; and (2) the keystroke
+// contract: one `press`/`backspace` per keystroke, only while playing, with
+// the engine's own snapshot republished. The crate is mocked so the loader's
+// real caching runs; `resetWasm()` clears its singleton between tests.
 
 const SNAPSHOT = {
   cursorSlot: 0,
@@ -83,14 +63,7 @@ type FakeTypingGameInstance = {
 
 let instances: Array<FakeTypingGameInstance>
 
-/**
- * Merged onto `SNAPSHOT` for one test at a time (LTY-SEAM S2, #1016).
- *
- * Every other test in this file relies on `SNAPSHOT`'s fixed zeroes, so this
- * stays `{}` — a no-op spread — except inside "the assistance seam" below,
- * which needs `assisted`/`attempt` at values `0` cannot be told apart from
- * "stripped" at.
- */
+/** Merged onto `SNAPSHOT`; `{}` except in "the assistance seam". */
 let snapshotOverride: Partial<typeof SNAPSHOT> = {}
 
 vi.mock("@some-ui/leetype-wasm", () => {
@@ -240,7 +213,7 @@ function methodsOf(
   return (instance?.calls ?? []).map((call) => call.method)
 }
 
-/** Deferred promise controller — lets a test decide exactly when `init()` settles. */
+/** Deferred promise controller: lets a test decide exactly when `init()` settles. */
 function deferred<T>(): {
   promise: Promise<T>
   resolve: (value: T) => void
@@ -253,6 +226,25 @@ function deferred<T>(): {
     reject = rej
   })
   return { promise, resolve, reject }
+}
+
+/** Renders the hook and waits for the engine to load. */
+async function renderLoaded(
+  props: Parameters<typeof useTypingGame>[0] = baseProps()
+): Promise<RenderHookResult<ReturnType<typeof useTypingGame>, unknown>> {
+  const rendered = renderHook(() => useTypingGame(props))
+  await waitFor(() => expect(rendered.result.current.isLoading).toBe(false))
+  return rendered
+}
+
+/** Runs `body` under fake timers, restoring real ones after. */
+async function withFakeTimers(body: () => Promise<void>): Promise<void> {
+  vi.useFakeTimers()
+  try {
+    await body()
+  } finally {
+    vi.useRealTimers()
+  }
 }
 
 beforeEach(async () => {
@@ -278,8 +270,7 @@ describe("lazy init", () => {
   })
 
   it("publishes the engine's layout and maps once loaded", async () => {
-    const { result } = renderHook(() => useTypingGame(baseProps()))
-    await waitFor(() => expect(result.current.isLoading).toBe(false))
+    const { result } = await renderLoaded()
 
     expect(result.current.layout.slotCount).toBe(3)
     expect(Array.from(result.current.roles)).toEqual([1, 1, 1])
@@ -306,8 +297,7 @@ describe("lazy init", () => {
 
 describe("keystroke commands", () => {
   it("forwards one press per keystroke instead of a whole buffer", async () => {
-    const { result } = renderHook(() => useTypingGame(baseProps()))
-    await waitFor(() => expect(result.current.isLoading).toBe(false))
+    const { result } = await renderLoaded()
 
     act(() => {
       result.current.press("c")
@@ -321,10 +311,7 @@ describe("keystroke commands", () => {
   })
 
   it("ignores typing while the game is not playing", async () => {
-    const { result } = renderHook(() =>
-      useTypingGame(baseProps({ gameState: "idle" }))
-    )
-    await waitFor(() => expect(result.current.isLoading).toBe(false))
+    const { result } = await renderLoaded(baseProps({ gameState: "idle" }))
 
     act(() => {
       result.current.press("c")
@@ -336,10 +323,7 @@ describe("keystroke commands", () => {
   })
 
   it("dismisses the error alert even when not playing", async () => {
-    const { result } = renderHook(() =>
-      useTypingGame(baseProps({ gameState: "idle" }))
-    )
-    await waitFor(() => expect(result.current.isLoading).toBe(false))
+    const { result } = await renderLoaded(baseProps({ gameState: "idle" }))
 
     act(() => {
       result.current.onDismiss()
@@ -349,8 +333,7 @@ describe("keystroke commands", () => {
   })
 
   it("forwards the reveal toggle to the engine while playing", async () => {
-    const { result } = renderHook(() => useTypingGame(baseProps()))
-    await waitFor(() => expect(result.current.isLoading).toBe(false))
+    const { result } = await renderLoaded()
 
     act(() => {
       result.current.toggleReveal()
@@ -360,10 +343,7 @@ describe("keystroke commands", () => {
   })
 
   it("ignores the reveal toggle while the game is not playing", async () => {
-    const { result } = renderHook(() =>
-      useTypingGame(baseProps({ gameState: "idle" }))
-    )
-    await waitFor(() => expect(result.current.isLoading).toBe(false))
+    const { result } = await renderLoaded(baseProps({ gameState: "idle" }))
 
     act(() => {
       result.current.toggleReveal()
@@ -375,11 +355,8 @@ describe("keystroke commands", () => {
 
 describe("the reveal loop's clock", () => {
   it("ticks the engine while a step is in flight", async () => {
-    // Not optional plumbing: the loop's most important input is a player who
-    // has *stopped* typing, and a state machine driven only by keystrokes
-    // cannot see one.
-    vi.useFakeTimers()
-    try {
+    // Keystrokes alone cannot show a player who has *stopped* typing.
+    await withFakeTimers(async () => {
       const { result } = renderHook(() => useTypingGame(baseProps()))
       await vi.waitFor(() => expect(result.current.isLoading).toBe(false))
 
@@ -388,14 +365,11 @@ describe("the reveal loop's clock", () => {
         vi.advanceTimersByTime(1_000)
       })
       expect(methodsOf(instances[0])).toContain("tick")
-    } finally {
-      vi.useRealTimers()
-    }
+    })
   })
 
   it("does not tick a step nobody is playing", async () => {
-    vi.useFakeTimers()
-    try {
+    await withFakeTimers(async () => {
       const { result } = renderHook(() =>
         useTypingGame(baseProps({ gameState: "idle" }))
       )
@@ -405,31 +379,24 @@ describe("the reveal loop's clock", () => {
         vi.advanceTimersByTime(2_000)
       })
       expect(methodsOf(instances[0])).not.toContain("tick")
-    } finally {
-      vi.useRealTimers()
-    }
+    })
   })
 })
 
 describe("calibration", () => {
   it("hands the engine the player's own baseline at construction", async () => {
-    const { result } = renderHook(() =>
-      useTypingGame({
-        ...baseProps(),
-        initialBaseline: { wpm: 88, dispersion: 7, samples: 3, updatedAt: 0 },
-      })
-    )
-    await waitFor(() => expect(result.current.isLoading).toBe(false))
+    await renderLoaded({
+      ...baseProps(),
+      initialBaseline: { wpm: 88, dispersion: 7, samples: 3, updatedAt: 0 },
+    })
 
     expect(instances[0]?.baselineWpm).toBe(88)
     expect(instances[0]?.dispersionWpm).toBe(7)
   })
 
   it("applies a fresh sample as a command rather than a remount", async () => {
-    // Tearing the engine down to apply a baseline would reset the session
-    // clock and the totals with it.
-    const { result } = renderHook(() => useTypingGame(baseProps()))
-    await waitFor(() => expect(result.current.isLoading).toBe(false))
+    // A remount would reset the session clock and totals.
+    const { result } = await renderLoaded()
     expect(instances).toHaveLength(1)
 
     act(() => {
@@ -448,9 +415,7 @@ describe("calibration", () => {
 
 describe("teardown", () => {
   it("frees the game instance exactly once on unmount", async () => {
-    const { result, unmount } = renderHook(() => useTypingGame(baseProps()))
-
-    await waitFor(() => expect(result.current.isLoading).toBe(false))
+    const { unmount } = await renderLoaded()
     const instance = instances[0]
     expect(instance).toBeDefined()
 
@@ -460,20 +425,17 @@ describe("teardown", () => {
   })
 
   it("reinitializes independently on remount after a prior unmount", async () => {
-    const first = renderHook(() => useTypingGame(baseProps()))
-    await waitFor(() => expect(first.result.current.isLoading).toBe(false))
+    const first = await renderLoaded()
     first.unmount()
 
     const firstInstance = instances[0]
     expect(firstInstance?.free).toHaveBeenCalledTimes(1)
 
-    const second = renderHook(() => useTypingGame(baseProps()))
-    await waitFor(() => expect(second.result.current.isLoading).toBe(false))
+    const second = await renderLoaded()
 
     expect(instances).toHaveLength(2)
     expect(instances[1]).not.toBe(firstInstance)
-    // Unmounting the first hook must not have reached into the second's
-    // instance — the guard is per-mount, not global.
+    // The guard is per-mount, not global.
     expect(instances[1]?.freed).toBe(false)
 
     second.unmount()
@@ -488,9 +450,7 @@ describe("resolve-after-unmount safety (aliveRef guard)", () => {
 
     const { unmount } = renderHook(() => useTypingGame(baseProps()))
 
-    // Unmount while `loadWasm()` is still in flight — cleanup runs
-    // synchronously and flips `aliveRef.current = false` before the promise
-    // ever settles.
+    // Unmount while `loadWasm()` is in flight.
     unmount()
     expect(instances).toHaveLength(0)
 
@@ -499,8 +459,6 @@ describe("resolve-after-unmount safety (aliveRef guard)", () => {
       await gate.promise
     })
 
-    // The `if (!aliveRef.current) return` guard must have short-circuited
-    // before `new TypedTypingGame(...)` — no instance, nothing to free.
     expect(instances).toHaveLength(0)
   })
 
@@ -517,30 +475,17 @@ describe("resolve-after-unmount safety (aliveRef guard)", () => {
       await gate.promise.catch(() => {})
     })
 
-    // `result.current` is frozen at its last pre-unmount render; the
-    // point of this assertion is that the rejection handler's
-    // `if (!aliveRef.current) return` fired instead of calling
-    // `setError`/`setIsLoading` on the unmounted fiber.
+    // The guard returned instead of setting state on the unmounted fiber.
     expect(result.current.error).toBeNull()
     expect(instances).toHaveLength(0)
   })
 })
 
-describe("the assistance seam (LTY-SEAM S2, #1016)", () => {
+describe("the assistance seam (LTY-SEAM S2)", () => {
   it("republishes assisted and attempt from the engine untouched", async () => {
-    // Neither field has a reader in this workspace today — the component
-    // above this hook destructures `assisted` (to fold into
-    // `CompletedSessionStats.assistance`) but nothing reads `attempt` off
-    // `snapshot` at all, and the eventual belief system these fields are
-    // for (adaptive-learning-canon.typ's O3) does not exist yet. That is
-    // exactly the shape of field a well-meaning "remove what's unused"
-    // pass would target. `0`, `SNAPSHOT`'s default for both, cannot be
-    // told apart from "silently stripped" — so this pins them at values
-    // that can, proving the hook still hands back whatever the engine
-    // reports rather than a hook-side default standing in for it.
+    // Nonzero, since 0 cannot be told apart from a stripped field.
     snapshotOverride = { assisted: 2, attempt: 1 }
-    const { result } = renderHook(() => useTypingGame(baseProps()))
-    await waitFor(() => expect(result.current.isLoading).toBe(false))
+    const { result } = await renderLoaded()
 
     act(() => {
       result.current.press("c")

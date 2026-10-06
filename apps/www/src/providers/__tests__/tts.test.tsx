@@ -1,18 +1,15 @@
 /**
  * @vitest-environment jsdom
  *
- * `SpeechProvider`'s mount effect builds a real adapter - an audio context,
- * a network client (see `packages/speech/src/components/speech-provider`).
- * `TTSProvider` wraps the whole app above the router, and where the speech is
- * made depends on whose data this is:
+ * `SpeechProvider` builds a real adapter on mount (an audio context, a
+ * network client), and where speech is made depends on whose data this is:
  *
  * - on the device, the browser's own voice (`mode: "static"`), so what a
  *   learner reads aloud never reaches the operator's TTS service;
  * - on the account, the server's speech service;
  * - in the Android app, the phone's own engine (`mode: "static"` with a
  *   `native` backend), in Korean, and no other backend;
- * - while a returning account user's authority is undecided, nothing is built
- *   at all.
+ * - while a returning account user's authority is undecided, nothing is built.
  *
  * `children` (the routed app) renders in every case.
  */

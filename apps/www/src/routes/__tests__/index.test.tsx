@@ -1,14 +1,11 @@
 /**
  * @vitest-environment jsdom
  *
- * `"/"` is two pages. Where a person can learn on the device (every build with
- * a `file_host`) the destinations landing is the front door for everyone, with
- * no session. On the public site, which has no server, the extensions comb is
- * the front door for a visitor with no (demo) session, and the landing for one
- * who opened the demo. The choice is made in the component, not by a redirect,
- * so it is asserted by rendering the route's component under each state - and
- * a change has to swap the page in place, which is what the subscribing
- * `useAuthoritySnapshot` read is for.
+ * `"/"` is two pages: with a `file_host`, the destinations landing for
+ * everyone; on the public site, the extensions comb without a (demo) session
+ * and the landing with one. Chosen in the component, so asserted by rendering
+ * it under each state; a change swaps the page in place
+ * (`useAuthoritySnapshot`).
  */
 
 import type { JSX, ReactNode } from "react"

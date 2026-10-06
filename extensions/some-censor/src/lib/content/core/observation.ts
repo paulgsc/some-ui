@@ -1,10 +1,10 @@
 /**
- * What the Sensor tells Core about a card (BC3, #1436) — the observation
+ * What the Sensor tells Core about a card (BC3) — the observation
  * record, as opposed to anything presentable.
  *
  * Raw vendor text lives here and only here: `uploadDate` in particular is
  * the string exactly as YouTube rendered it, kept because the observability
- * corpus (#1395) records it and because `project()` still renders it for
+ * corpus records it and because `project()` still renders it for
  * parity. #1384 (QC2) is the story that makes a raw date structurally unable
  * to reach the render model; this type is the observation half of that
  * split, so QC2 becomes a change to what `project()` may read, not a new

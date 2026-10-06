@@ -4,17 +4,9 @@ export type GameState = "idle" | "playing" | "finished"
 
 export type Language = "typescript" | "rust" | "cpp" | "c"
 /**
- * Alternate source-text coloring, swapped in for Prism's syntax-highlight
- * palette — a `text-gradient-*` utility (packages/some-styles/tailwind.css)
- * painted across the not-yet-typed code instead. Options mirror the
- * swatch-driven gradient stops already defined for headings/accents
- * (tokens/base.css's `--gradient-heading` / `--gradient-accent` /
- * `--gradient-muted`), so the same "text is never the flat maximum-contrast
- * color" idiom applies to the code display, not just prose.
- *
- * Cosmetic and story-independent: it survived the prune because it costs
- * nothing, and it is a host prop rather than a menu because the new session
- * flow has no menus in it.
+ * Alternate coloring for not-yet-typed code instead of Prism's palette: the
+ * swatch gradients (`--gradient-heading`/`-accent`/`-muted`, tokens/base.css)
+ * used for headings and accents. Cosmetic; a host prop, not a menu.
  */
 export type TextGradient = "none" | "heading" | "accent" | "muted"
 

@@ -1,16 +1,11 @@
 /**
- * Turning "Reminders and progress sync" on or off, as one sequence.
+ * Turning "Reminders and progress sync" on or off, as one sequence; the order
+ * is coordination, so it lives here (`docs/monorepo-boundaries.md`, R1):
  *
- * The order is the point, and it is coordination, so it lives here and not in
- * the switch's component (`docs/monorepo-boundaries.md`, R1):
- *
- * - **Off**: the push subscription is ended at both ends *first*, through the
- *   reporting transport while it is still allowed, and only then does the
- *   setting flip. Flipping first would make the call that tells the server
- *   impossible, and leave its row for this browser behind.
- * - **On**: the setting flips first (it is what lets a transport out), and then,
- *   if reminders were already asked for and permitted, this browser registers
- *   at once instead of waiting for a toggle off and on.
+ * - **Off**: end the push subscription at both ends *first*, while the
+ *   reporting transport is allowed, then flip the setting.
+ * - **On**: flip first (it lets a transport out), then register at once if
+ *   reminders were already asked for and permitted.
  */
 
 import { authority } from "@/lib/authority"

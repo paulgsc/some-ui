@@ -1,12 +1,9 @@
 /**
- * Core's state (BC3, #1436) — Boundary Contract B8: one explicit value,
- * threaded through pure reducers, never a private field.
+ * Core's state (BC3) — Boundary Contract B8: one explicit value, threaded
+ * through pure reducers, never a private field.
  *
- * Everything the old `VideoManager` kept across seven `HTMLElement`-keyed
- * maps, sets and weak maps is here as plain data keyed by {@link CardKey},
- * which is why a recorded event log folds back into the same state every
- * time and why the diagnostics page can render it without reconstructing
- * anything.
+ * Plain data keyed by {@link CardKey}, so a recorded event log folds back into
+ * the same state every time and the diagnostics page can render it directly.
  */
 
 import type { ViewState } from "@censor/lib/content/fsm"
@@ -26,7 +23,7 @@ type ChannelState =
    * `query` is the lookup's ordinal within this incarnation
    * ({@link CardState.queries}); the answer echoes it, so an answer to an
    * earlier question — the same channel asked about twice, A→B→A — cannot
-   * satisfy a later one (bot-found, #1506's own review).
+   * satisfy a later one.
    */
   | {
       readonly kind: "pending"
@@ -51,10 +48,8 @@ export type CardState = {
    * key — before and after a `gone`, or across a navigation — ever share it.
    * Every async request (`query-whitelist`, `transform-title`, `schedule`)
    * carries it and every answer echoes it; an answer from a previous
-   * incarnation is stale however well its other fields match. Bot-found
-   * (#1506's own review): a key re-observed while its first whitelist lookup
-   * was still in flight would otherwise take the old answer for the new card
-   * and discard the new one.
+   * incarnation is stale however well its other fields match: otherwise a key
+   * re-observed mid-lookup would take the old answer for the new card.
    */
   readonly generation: number
   /** How many whitelist lookups this incarnation has issued; see `ChannelState`. */
@@ -63,9 +58,8 @@ export type CardState = {
    * Whether the current view was reached from a whitelist verdict rather
    * than by the user — the `whitelisted` tint, or the `revealed` its timer
    * completes to. A view the whitelist earned is the whitelist's to take
-   * back when the channel turns out to be another (bot-found, #1506's own
-   * review: the timer's transition to `revealed` otherwise erased whether
-   * the user or a verdict had exposed the card). A gesture or a command
+   * back when the channel turns out to be another (the timer's transition to
+   * `revealed` would otherwise erase who exposed the card). A gesture or a command
    * clears it; the user's own reveals are never taken back (Entry-4).
    */
   readonly autoRevealed: boolean

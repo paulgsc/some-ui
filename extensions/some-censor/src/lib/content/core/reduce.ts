@@ -1,20 +1,19 @@
 /**
- * The Core reducer (BC3, #1436): `reduce(state, event) → { state, actions }`.
+ * The Core reducer (BC3): `reduce(state, event) → { state, actions }`.
  *
  * Pure and total. Every branch below is a function of the state it is given
  * and the event it is handed — no clock, no randomness, no session counter,
  * no DOM, no browser call (Boundary Contract B6, B8). The disclosure ladder
  * is `fsm.ts`'s, ported as-is (F1–F4 still hold: every view carries its
  * session, transitions are typed over their legal sources, `project()` is
- * exhaustive); what this module adds is the *orchestration* `VideoManager`
- * and `VideoEntry` used to do in place — as data in, data out.
+ * exhaustive); what this module adds is the *orchestration*, as data in, data
+ * out.
  *
  * Invariants:
  *
  *   R1 — Phase gate. Nothing but `start` does anything while idle (M1).
  *   R2 — One card per artifact. `observed` for a key already held folds the
- *        observation and re-renders; it never creates a second card (M2, and
- *        #1426's "adopting the same card twice produces exactly one entry").
+ *        observation and re-renders; it never creates a second card (M2).
  *   R3 — Navigation is total. `nav` unmounts and forgets every card and
  *        adopts the shell's new session; nothing survives it (C2, M3, F1).
  *   R4 — Async answers are correlated. Every request names the card's
@@ -22,10 +21,9 @@
  *        where the view matters, its `version`; an answer whose generation is
  *        not the card's, or whose version has moved on, is discarded and
  *        recorded as stale (Entry-2, M6 — as data rather than tokens on a
- *        WeakMap). Bot-found (#1506's own review): key and channel alone let
- *        a re-observed key take its predecessor's whitelist answer, and a
- *        version that restarts at zero let a predecessor's transform or
- *        timer through after a `gone` or a navigation.
+ *        WeakMap). Key and channel alone would let a re-observed key take its
+ *        predecessor's whitelist answer, and a version restarting at zero
+ *        would let a predecessor's transform or timer through.
  *   R5 — Every state change renders. A card's view or channel changing
  *        always emits `render` for it; the Actuator's idempotence is what
  *        makes that cheap, and it is what keeps "what Core believes" and
@@ -151,8 +149,8 @@ function channelIdOf(card: CardState): ChannelId | null {
 }
 
 /**
- * Whitelist a card locally — the fan-out `_whitelistChannelLocally` used to
- * do — from any view (parity with `applyWhitelist`; #1385 narrows this).
+ * Whitelist a card locally from any view (parity with `applyWhitelist`;
+ * #1385 narrows this).
  */
 function whitelistLocally(state: CoreState, channelId: ChannelId): Step {
   let current = state
@@ -498,9 +496,8 @@ function reobserve(
   const videoId = keyVideoId(card.key)
 
   // A channel arriving late upgrades a provisional card (Entry-4): ask the
-  // background about it now, once. A channel *changing* — the extractor fell
-  // back to a display name and a later observation carries the hydrated
-  // canonical handle (bot-found, #1506's own review) — is the same question
+  // background about it now, once. A channel *changing* (a display-name
+  // fallback replaced by the hydrated canonical handle) is the same question
   // asked afresh: the card goes back to pending under the new id, so the
   // answer still in flight for the old one is stale by the channel check in
   // `whitelist-answer`, and a verdict that only ever named the old id cannot
@@ -528,12 +525,10 @@ function reobserve(
     )
   }
 
-  // A date arriving late is corpus (#1395): YouTube hydrates it after the
-  // card, so the adoption-time fact alone would miss most forms. Recorded
-  // when a later observation supplies a date the card did not have, or a
-  // different one — never for a repeat of what was already recorded, and
-  // whatever else this observation did (bot-found, #1506's own review: an
-  // early return on the remask path below used to skip it).
+  // A date arriving late is corpus: YouTube hydrates it after the card, so
+  // the adoption-time fact alone would miss most forms. Recorded when a later
+  // observation supplies a new or different date, never a repeat, and before
+  // any early return below.
   if (
     merged.uploadDate !== null &&
     merged.uploadDate !== card.observation.uploadDate
@@ -549,8 +544,8 @@ function reobserve(
   }
 
   // A view the whitelist earned — the tint, or the reveal its timer completed
-  // to — was earned by the channel this card no longer has (bot-found,
-  // #1506's own review): a verdict that named only the old channel must not
+  // to — was earned by the channel this card no longer has: a verdict that
+  // named only the old channel must not
   // go on exposing the card, nor may a pending reveal timer complete. Back to
   // masked; the version bump retires the timer. Views the user climbed to
   // are not touched (Entry-4).
@@ -567,14 +562,14 @@ function reobserve(
   }
 
   // A title transform in flight was asked with the old channel id (the hook
-  // takes it as input and may answer differently for another — bot-found,
-  // #1506's own review). Re-issue the step: the version bump retires the old
+  // takes it as input and may answer differently for another). Re-issue the
+  // step: the version bump retires the old
   // answer, and the transition asks again under the channel the card has
   // now, from the observed title rather than a translation made for the
   // wrong channel. The user's own step, so provenance stays the user's.
   // Gated on the view alone, not on the text it shows: a hook may answer
-  // with an empty string, and that answer is as stale as any other
-  // (bot-found, #1506's own review). `transition()` retires the old answer
+  // with an empty string, and that answer is as stale as any other.
+  // `transition()` retires the old answer
   // by version either way and asks again only when there is a title to ask
   // about.
   if (reopened !== null && next.view.kind === "title") {
@@ -621,7 +616,7 @@ function clickView(card: CardState): ViewState {
 /**
  * Advance every masked or meta card to title — pointwise the same transition
  * a single card takes, so the command cannot express anything one card could
- * not (#1385's bulk-equivalence requirement, met by construction).
+ * not (#1385's bulk-equivalence requirement).
  */
 function advanceAll(state: CoreState): Step {
   let current = state

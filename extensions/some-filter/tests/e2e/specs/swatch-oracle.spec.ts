@@ -1,38 +1,19 @@
 /**
- * Swatch-oracle hostile-page e2e — S6 (#691) of the some-filter-on-transport
- * epic. Mirrors #618's hostile-page conformance proof (transport's own
- * `tests/e2e/specs/*`, asserted against protocol state and the null
- * adapter) with its domain-output counterpart: same class of hostile churn,
- * but now asserting the *real* adapter actually lands the page on a chosen
- * swatch, never leaks native luminance, exonerates soundly, and is
- * comfortable — not just dark — once settled.
+ * Swatch-oracle hostile-page e2e: the domain-output counterpart to
+ * transport's hostile-page conformance proof. Same class of hostile churn,
+ * asserting the *real* adapter lands the page on a chosen swatch, never
+ * leaks native luminance, exonerates soundly, and is comfortable — not just
+ * dark — once settled.
  *
- * Scope note (read before extending): every spec here runs against
- * `SWATCHES.default` — the only swatch reachable through the shipped
- * pipeline today. `content.ts`'s auto-mode content session hardcodes
- * `SWATCHES[DEFAULT_SWATCH_ID]` (S5, #690); no swatch-selection mechanism
- * exists yet to drive the other six registry entries through the real
- * extension (S2, #687's own non-goal: "No user-facing picker UI ... a
- * separate follow-on"). Once that selector exists, the convergence/comfort
- * specs below should be parameterized over `Object.values(SWATCHES)`
- * exactly as their acceptance criteria describe; until then, asserting a
- * swatch this pipeline can never actually select would be testing a
- * capability that doesn't exist.
+ * Scope note: every spec runs against `SWATCHES.default`, the only swatch
+ * the shipped pipeline can select (no swatch picker exists). Once one does,
+ * parameterize the convergence/comfort specs over `Object.values(SWATCHES)`.
  *
- * SF4 (#1360) classification: mostly visual-claim, already sound — the
- * per-surface adapter this file exercises patches `background-color`
- * directly (never `filter`), so `getComputedStyle`/`colorsClose` reads here
- * have no compositing gap to hide behind, unlike the legacy invert
- * mechanism. One exception, known gap: the "leak (Δt_eval = 0)" describe
- * block below claims no *transient* native-bright frame across the full
- * churn sequence, but only samples `getComputedStyle` at each step's
- * boundary — it cannot see a flash between two samples the way
- * `tests/e2e/fixtures/frames.ts`'s `captureFrames`/`firstLeak` video-frame
- * oracle would (the mechanism `scope-registry-handoff.spec.ts`/
- * `scope-registry-self-heal.spec.ts` already use for this exact class of
- * claim). Not promoted in this story: re-deriving this file's own nine-step
- * churn sequence against a frame recording is a substantially larger rewrite
- * than this audit's budget covers.
+ * Classification (#1360): mostly visual claims, sound — the adapter patches
+ * `background-color` directly (never `filter`), so computed-style reads have
+ * no compositing gap. Known gap: the "leak (Δt_eval = 0)" block samples only
+ * at step boundaries and cannot see a flash between samples the way
+ * `frames.ts`'s `captureFrames`/`firstLeak` oracle would; not promoted.
  */
 
 import {
@@ -64,10 +45,8 @@ function colorsClose(
 }
 
 // ── Churn step table ──────────────────────────────────────────────────────────
-// One named, self-contained transition per entry. Every recovery test below is
-// built from this table so a failure localizes to a specific primitive (or to
-// the accumulated history leading into it) instead of a single opaque 30s
-// timeout at the end of a nine-operation script.
+// One named transition per entry, so a failure localizes to a primitive (or
+// the history leading into it) instead of one opaque timeout.
 
 type ChurnStep = {
   readonly name: string
@@ -102,11 +81,9 @@ async function runFullChurnSequence(page: Page): Promise<void> {
   }
 }
 
-// A single falsifiable transition assertion: after whatever just happened, the
-// light hostile page must (re)settle onto the default swatch's dark canvas.
-// waitForClassification is the recovery signal (the pipeline re-stamps
-// swThemeApplied); the 300ms margin lets the coalescer's reconcile window plus
-// realize() land before the computed style is read.
+// After whatever just happened, the light hostile page must (re)settle onto
+// the default swatch's dark canvas. The 300ms margin lets the reconcile
+// window plus realize() land before the computed style is read.
 async function expectConverged(page: Page): Promise<void> {
   await waitForClassification(page)
   await page.waitForTimeout(300)
@@ -155,10 +132,8 @@ test.describe("swatch-oracle: convergence (positive proof)", () => {
   })
 })
 
-// Each test owns exactly one transition: converge from a clean load, apply a
-// single churn primitive, then require the page to re-converge. A failure here
-// names the primitive that breaks recovery *in isolation* (independent of any
-// accumulated history), so it is separable from an order/history effect.
+// One transition per test from a clean load: a failure names the primitive
+// that breaks recovery in isolation, separable from a history effect.
 test.describe("swatch-oracle: single-primitive recovery (isolation)", () => {
   for (const step of CHURN_STEPS) {
     test(`re-converges after ${step.name}()`, async ({ fixture }) => {
@@ -176,18 +151,10 @@ test.describe("swatch-oracle: single-primitive recovery (isolation)", () => {
   }
 })
 
-// The cumulative counterpart: one page walked through the whole sequence, with
-// a convergence gate after every primitive. Because it is interleaved and
-// history-preserving, the Playwright report reads as
-//
-//   ✓ blank        ✓ converge after blank
-//   ✓ themeFlip    ✓ converge after themeFlip
-//   ✗ converge after bodyHeadReplace   (timeout)
-//
-// which names the *first operation, given the full history before it*, after
-// which the pipeline stops recovering — the single most useful signal for an
-// observer-based system. Given up to nine 5s convergence gates, the default
-// 30s test budget is not enough even on the happy path, so raise it.
+// The cumulative counterpart: one page walked through the whole sequence,
+// with a convergence gate after every primitive, so the report names the
+// first operation (given the full history before it) after which recovery
+// stops. Up to nine 5s gates exceed the default 30s budget, so raise it.
 test.describe("swatch-oracle: cumulative recovery (history-preserving)", () => {
   test("re-converges after every prefix of the full hostile sequence", async ({
     fixture,
@@ -227,9 +194,8 @@ test.describe("swatch-oracle: leak (Δt_eval = 0, §9.2/Thm C.1)", () => {
       const c = parseColor(result.bg)
       const luminance =
         c === null ? 0 : 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2] // coarse, sampling-only
-      // "Visible" native luminance means: the veil is down AND the sampled
-      // background reads light — i.e. the vendor's true (unthemed) canvas
-      // would be showing right now.
+      // "Visible" native luminance: the veil is down AND the background
+      // reads light.
       samples.push({ luminance, visible: !result.veilUp && luminance > 0.5 })
     }
 
@@ -305,13 +271,9 @@ test.describe("swatch-oracle: comfort (Leg B — Φ_comfort on rendered output)"
       bg: getComputedStyle(document.body).backgroundColor,
     }))
 
-    // Φ_comfort is defined over the swatch's own (bg0, text0) hex pair
-    // (registry-time, S2). Re-running it here against the *rendered* body
-    // background is Leg B's whole point: the same predicate, now checked
-    // against live computed style rather than static registry data. The
-    // registry-time predicate itself is re-asserted for the active swatch
-    // as the anchor this comparison depends on (already covered
-    // exhaustively for every registry entry by `swatches.test.ts`, S2).
+    // Φ_comfort against the *rendered* body background rather than registry
+    // hex; the registry-time predicate is re-asserted as the anchor (every
+    // entry is covered by `swatches.test.ts`).
     expect(colorsClose(rendered.bg, swatch.bg0)).toBe(true)
     expect(satisfiesComfort(swatchSample(swatch))).toBe(true)
   })

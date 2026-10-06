@@ -7,9 +7,9 @@ import type { Disposables } from "./disposables"
  *
  * Deliberately *not* window focus. An overlay captured into a stream (an OBS
  * window capture) is visible while the user's focus is elsewhere, and that is
- * exactly when it must keep running. some-conveyor's PageMonitor, which this
- * is the shared core of (#281), adds focus and activity signals for its own
- * product; those stay in the workspace.
+ * exactly when it must keep running (#281). A workspace that also wants focus
+ * or activity signals adds them for its own product; those stay in the
+ * workspace.
  */
 export function isPageShowing(doc: Document = document): boolean {
   // `!fullscreenElement`, not `=== null`: an environment without the

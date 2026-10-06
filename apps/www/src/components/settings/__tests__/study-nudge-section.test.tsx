@@ -1,19 +1,13 @@
 /**
  * @vitest-environment jsdom
  *
- * #947: `study-nudge-section.tsx`'s two `async` handlers - the only
- * non-mutation intents in the app - migrated onto `useAsyncIntent`. The
- * acceptance criterion this suite exists to hold: the handlers "keep their
- * current behaviour on the paths that already signalled" (the denied-
- * permission toast, the degraded-subscribe toast, the failed-test toast) -
- * this is a consolidation, not a rewrite, and every one of those must still
- * fire with its original copy. What's new and also covered here: a working
- * state while the chain runs, and the thundering-herd guard on a rapid
- * double-toggle.
+ * `study-nudge-section.tsx`'s two async handlers on `useAsyncIntent`: the
+ * paths that already signalled (the denied-permission, degraded-subscribe
+ * and failed-test toasts) keep their copy, plus a working state and the
+ * thundering-herd guard on a rapid double-toggle.
  */
 
-import type { JSX, ReactNode } from "react"
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
+import { fakeQueryResult, withQueryClient } from "@/test-support/query-client"
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
@@ -77,10 +71,7 @@ vi.mock(
     return {
       ...actual,
       useSessions: () =>
-        // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- stubbing TanStack Query's rich UseQueryResult with the two fields StatusLine actually reads; the real shape has no minimal constructor.
-        ({ data: NO_SESSIONS, isLoading: false }) as ReturnType<
-          typeof TenantModule.useSessions
-        >,
+        fakeQueryResult({ data: NO_SESSIONS, isLoading: false }),
     }
   }
 )
@@ -89,21 +80,37 @@ const { StudyNudgeSection } = await import(
   "@/components/settings/study-nudge-section"
 )
 
-function withQueryClient(children: ReactNode): JSX.Element {
-  const client = new QueryClient()
-  return <QueryClientProvider client={client}>{children}</QueryClientProvider>
-}
-
-function renderSection(preferences: NudgePreferences): {
+function renderSection(enabled: boolean): {
   onChange: ReturnType<typeof vi.fn>
 } {
   const onChange = vi.fn()
+  const preferences: NudgePreferences = {
+    ...DEFAULT_NUDGE_PREFERENCES,
+    enabled,
+  }
   render(
     withQueryClient(
       <StudyNudgeSection preferences={preferences} onChange={onChange} />
     )
   )
   return { onChange }
+}
+
+const toggle = (): HTMLElement =>
+  screen.getByRole("switch", { name: /study reminders/i })
+const sendTest = (): HTMLElement =>
+  screen.getByRole("button", { name: /send a test/i })
+
+const settle = (): Promise<void> =>
+  act(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 20))
+  })
+
+async function clickAndSettle(element: HTMLElement): Promise<void> {
+  await act(async () => {
+    fireEvent.click(element)
+    await new Promise((resolve) => setTimeout(resolve, 20))
+  })
 }
 
 beforeEach(() => {
@@ -119,18 +126,11 @@ afterEach(() => {
 })
 
 describe("study-nudge-section: enabling reminders", () => {
-  it("a declined permission shows the same toast as before, and does not call onChange", async () => {
+  it("a declined permission shows the permission toast, and does not call onChange", async () => {
     requestNudgePermission.mockResolvedValue("denied")
-    const { onChange } = renderSection({
-      ...DEFAULT_NUDGE_PREFERENCES,
-      enabled: false,
-    })
+    const { onChange } = renderSection(false)
 
-    const toggle = screen.getByRole("switch", { name: /study reminders/i })
-    await act(async () => {
-      fireEvent.click(toggle)
-      await new Promise((resolve) => setTimeout(resolve, 20))
-    })
+    await clickAndSettle(toggle())
 
     expect(toastSpy).toHaveBeenCalledWith(
       "Reminders need notification permission",
@@ -140,20 +140,13 @@ describe("study-nudge-section: enabling reminders", () => {
       })
     )
     expect(onChange).not.toHaveBeenCalled()
-    expect(toggle.hasAttribute("disabled")).toBe(false)
+    expect(toggle().hasAttribute("disabled")).toBe(false)
   })
 
-  it("a granted permission calls onChange with enabled: true - unchanged from pre-migration", async () => {
-    const { onChange } = renderSection({
-      ...DEFAULT_NUDGE_PREFERENCES,
-      enabled: false,
-    })
+  it("a granted permission calls onChange with enabled: true", async () => {
+    const { onChange } = renderSection(false)
 
-    const toggle = screen.getByRole("switch", { name: /study reminders/i })
-    await act(async () => {
-      fireEvent.click(toggle)
-      await new Promise((resolve) => setTimeout(resolve, 20))
-    })
+    await clickAndSettle(toggle())
 
     expect(onChange).toHaveBeenCalledWith(
       expect.objectContaining({ enabled: true })
@@ -161,20 +154,15 @@ describe("study-nudge-section: enabling reminders", () => {
   })
 
   it("double-clicking the switch in the same burst requests permission exactly once (thundering-herd regression)", async () => {
-    const { onChange } = renderSection({
-      ...DEFAULT_NUDGE_PREFERENCES,
-      enabled: false,
-    })
+    const { onChange } = renderSection(false)
 
-    const toggle = screen.getByRole("switch", { name: /study reminders/i })
+    const toggleSwitch = toggle()
     act(() => {
-      fireEvent.click(toggle)
-      fireEvent.click(toggle)
+      fireEvent.click(toggleSwitch)
+      fireEvent.click(toggleSwitch)
     })
 
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 20))
-    })
+    await settle()
 
     expect(requestNudgePermission.mock.calls).toHaveLength(1)
     expect(onChange.mock.calls).toHaveLength(1)
@@ -182,15 +170,11 @@ describe("study-nudge-section: enabling reminders", () => {
 })
 
 describe("study-nudge-section: Send a test", () => {
-  it("a failed test notification shows the same toast as before", async () => {
+  it("a failed test notification shows the check-permission toast", async () => {
     showTestNudge.mockResolvedValue(false)
-    renderSection({ ...DEFAULT_NUDGE_PREFERENCES, enabled: true })
+    renderSection(true)
 
-    const sendTest = screen.getByRole("button", { name: /send a test/i })
-    await act(async () => {
-      fireEvent.click(sendTest)
-      await new Promise((resolve) => setTimeout(resolve, 20))
-    })
+    await clickAndSettle(sendTest())
 
     expect(toastSpy).toHaveBeenCalledWith(
       "Could not show a notification - check permission."
@@ -199,13 +183,9 @@ describe("study-nudge-section: Send a test", () => {
 
   it("a successful test notification shows no toast - the notification is the confirmation", async () => {
     showTestNudge.mockResolvedValue(true)
-    renderSection({ ...DEFAULT_NUDGE_PREFERENCES, enabled: true })
+    renderSection(true)
 
-    const sendTest = screen.getByRole("button", { name: /send a test/i })
-    await act(async () => {
-      fireEvent.click(sendTest)
-      await new Promise((resolve) => setTimeout(resolve, 20))
-    })
+    await clickAndSettle(sendTest())
 
     expect(toastSpy).not.toHaveBeenCalled()
   })

@@ -1,9 +1,6 @@
 import type { Rule } from "eslint"
 
-// JSX/CallExpression/VariableDeclarator shapes aren't narrowed cleanly
-// through @types/eslint's Node union across nested `.type` checks, so this
-// rule reads several values as `any` - same convention documented in
-// require-fail-fast-default.ts.
+// ESTree shapes aren't narrowed cleanly by @types/eslint's Node union.
 /* eslint-disable @typescript-eslint/no-explicit-any -- ESTree shapes not modeled precisely by @types/eslint's Node union, see comment above */
 
 const DEFAULT_EFFECT_CALLEES: ReadonlyArray<string> = [
@@ -113,9 +110,9 @@ export const noUnboundedIntent: Rule.RuleModule = {
       {
         type: "object",
         properties: {
-          // The census this rule is written against found four effect
-          // kinds; there will be a fifth - configure it rather than
-          // waiting for a rule change.
+          // Extra effect kinds, configured rather than waiting for a rule
+          // change.
+
           effectCallees: {
             type: "array",
             items: { type: "string", minLength: 1 },

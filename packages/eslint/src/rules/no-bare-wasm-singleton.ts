@@ -1,22 +1,16 @@
 import type { Rule } from "eslint"
 
-// ESTree shapes aren't modeled precisely by @types/eslint's Node union
-// across this visitor (ImportExpression/CallExpression/Property shapes), so
-// this rule reads them as `any` and narrows by `.type`, matching the
-// convention documented in the other rules in this directory.
+// ESTree shapes aren't narrowed cleanly by @types/eslint's Node union.
 /* eslint-disable @typescript-eslint/no-explicit-any -- ESTree shapes not modeled precisely by @types/eslint's Node union, see comment above */
 
 /**
- * The 5 wasm-bindgen crate names (UTL-WASM epic #529). Kept as a literal list
- * rather than a naming convention because these package names don't share a
- * common prefix/suffix to pattern-match on. 4 of the 5 are published under the
- * @some-ui npm scope; some-charts isn't a pnpm workspace package yet, so it
- * stays unscoped.
+ * The wasm-bindgen crate names, listed because they share no pattern.
+ * some-charts is not a workspace package yet, so it stays unscoped.
+ *
  */
 const WASM_CRATE_NAMES = [
   "@some-ui/hangul-game-core",
   "@some-ui/leetype-wasm",
-  "@some-ui/polyhedron",
   "some-charts",
   "@some-ui/some-hexagon",
 ]

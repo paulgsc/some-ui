@@ -6,20 +6,15 @@ import {
 import { afterEach, describe, expect, it } from "vitest"
 
 describe("parseColor", () => {
-  it("returns null for empty string", () => {
-    expect(parseColor("")).toBeNull()
-  })
-
-  it("returns null for 'transparent'", () => {
-    expect(parseColor("transparent")).toBeNull()
-  })
-
-  it("returns null for 'rgba(0, 0, 0, 0)'", () => {
-    expect(parseColor("rgba(0, 0, 0, 0)")).toBeNull()
-  })
-
-  it("returns null for 'none'", () => {
-    expect(parseColor("none")).toBeNull()
+  it.each([
+    ["empty string", ""],
+    ["'transparent'", "transparent"],
+    ["'rgba(0, 0, 0, 0)'", "rgba(0, 0, 0, 0)"],
+    ["'none'", "none"],
+    ["alpha < 0.05", "rgba(255, 255, 255, 0.04)"],
+    ["hex alpha below the 0.05 floor", "#ffffff05"],
+  ])("returns null for %s", (_title, css) => {
+    expect(parseColor(css)).toBeNull()
   })
 
   it("parses rgb(255, 255, 255) as opaque white", () => {
@@ -44,10 +39,6 @@ describe("parseColor", () => {
     const c = parseColor("rgba(255, 128, 64, 0.8)")
     expect(c).not.toBeNull()
     expect(c![3]).toBeCloseTo(0.8)
-  })
-
-  it("returns null for alpha < 0.05", () => {
-    expect(parseColor("rgba(255, 255, 255, 0.04)")).toBeNull()
   })
 
   it("returns non-null for alpha exactly 0.05", () => {
@@ -90,10 +81,6 @@ describe("parseColor", () => {
     expect(c![3]).toBeCloseTo(1)
   })
 
-  it("returns null for hex alpha below the 0.05 floor", () => {
-    expect(parseColor("#ffffff05")).toBeNull()
-  })
-
   it("returns null for a malformed hex string", () => {
     expect(parseColor("#zzz")).toBeNull()
     expect(parseColor("#12345")).toBeNull()
@@ -116,16 +103,12 @@ describe("relativeLuminance", () => {
     expect(relativeLuminance(0, 0, 0)).toBeCloseTo(0)
   })
 
-  it("returns ~0.2126 for pure red", () => {
-    expect(relativeLuminance(1, 0, 0)).toBeCloseTo(0.2126, 3)
-  })
-
-  it("returns ~0.7152 for pure green", () => {
-    expect(relativeLuminance(0, 1, 0)).toBeCloseTo(0.7152, 3)
-  })
-
-  it("returns ~0.0722 for pure blue", () => {
-    expect(relativeLuminance(0, 0, 1)).toBeCloseTo(0.0722, 3)
+  it.each([
+    [0.2126, "red", [1, 0, 0]],
+    [0.7152, "green", [0, 1, 0]],
+    [0.0722, "blue", [0, 0, 1]],
+  ] as const)("returns ~%s for pure %s", (expected, _name, [r, g, b]) => {
+    expect(relativeLuminance(r, g, b)).toBeCloseTo(expected, 3)
   })
 
   it("white luminance is > any other color luminance", () => {

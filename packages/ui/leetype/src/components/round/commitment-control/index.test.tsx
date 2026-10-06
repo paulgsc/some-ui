@@ -40,7 +40,7 @@ describe("CommitmentControl", () => {
     ).toBeInTheDocument()
   })
 
-  it("takes a caller-supplied group label — #1200's real prompt, once it exists", () => {
+  it("takes a caller-supplied group label as the group's accessible name", () => {
     render(
       <CommitmentControl
         options={OPTIONS}

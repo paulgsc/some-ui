@@ -1,8 +1,8 @@
 /**
  * Extraction against both YouTube generations.
  *
- * Adding the Lit-era tags to the catalogue (#973) only masks those cards; it
- * does not make them *readable*. Their title is an anchor with a BEM class
+ * Masking the Lit-era tags does not make them *readable*. Their title is an
+ * anchor with a BEM class
  * instead of `#video-title`, their duration is a badge instead of a thumbnail
  * overlay, and their channel is an untagged metadata run — so without matching
  * selectors, a lockup would mask correctly and then reveal an empty meta chip

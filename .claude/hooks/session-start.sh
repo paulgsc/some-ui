@@ -21,8 +21,8 @@ pnpm install
 #   Both scripts now carry `--filter='!./crates/*'`, so the only difference
 #   between them is the resource-limit wrapper.
 # - The crates filter lives in the root package.json rather than here. The
-#   Rust/wasm-bindgen crates (leetype-wasm, polyhedron, hangul-game-core,
-#   some-hexagon) are
+#   Rust/wasm-bindgen crates (leetype-wasm, hangul-game-core, some-hexagon)
+#   are
 #   consumed from the npm registry by every workspace that needs them, so
 #   nothing in a normal build depends on crates/*/dist. Building them
 #   requires wasm-pack, the wasm32-unknown-unknown target and wasm-opt's

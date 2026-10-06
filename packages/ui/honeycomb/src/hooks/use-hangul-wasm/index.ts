@@ -22,10 +22,7 @@ export type UseHangulGameWasmOptions = {
    * callers only need to override it for a curated subset.
    */
   wordPool?: Array<ChallengeSeed>
-  /**
-   * Opaque session/instance identity, forwarded to loadHangulWasm unchanged
-   * - see its own doc comment for why this exists alongside mode-diffing.
-   */
+  /** Opaque session identity, forwarded to loadHangulWasm (see its doc). */
   sessionKey?: string
 }
 
@@ -70,32 +67,16 @@ export function useHangulGameWasm({
   const [bridge, setBridge] = useState<WasmGameBridge | null>(null)
 
   const initializedRef = useRef(false)
-  // What this hook instance last successfully initialized against - not
-  // necessarily the current props, if the caller re-renders with a new mode
-  // and/or sessionKey on an already-initialized instance rather than
-  // remounting. Compared below to force a fresh initialize() in that case,
-  // instead of initializedRef's guard silently keeping the stale values.
-  // Tracked as an explicit pair, not inferred from hook lifecycle timing:
-  // mode can legitimately change mid-session (a live mode switch) and
-  // sessionKey can legitimately stay the same across a mode switch or change
-  // independent of mode (a new session that happens to reuse the same
-  // mode) - either difference alone must trigger a fresh load.
+  // What this instance last initialized against. A rerender with a new mode
+  // or sessionKey (either alone) forces a fresh initialize() past
+  // initializedRef's guard.
   const loadedModeRef = useRef<GameMode | null>(null)
   const loadedSessionKeyRef = useRef<string | undefined>(undefined)
-  // The vocabulary the engine was actually built with. Without this the guard
-  // above was satisfied by an unchanged mode/sessionKey pair, so a word pool
-  // that arrived *after* mount — which is the normal case in apps/www, where
-  // the vocabulary is fetched — was silently discarded for the whole session
-  // and the player got the demo seed instead.
-  //
-  // Identity, not deep equality: the pool is a fetch result or a module
-  // constant, so a new array genuinely means new words. A caller that builds
-  // its pool inline on every render would re-initialize on every render, which
-  // is the same requirement every other array-valued prop in this codebase
-  // carries.
+  // The vocabulary the engine was built with, so a pool that arrives after
+  // mount (apps/www fetches it) is not discarded. Compared by identity: a
+  // caller must not build its pool inline every render.
   const loadedWordPoolRef = useRef<Array<ChallengeSeed> | null>(null)
 
-  // Wrap inside useCallback to safely add it to useEffect dependency arrays
   const initialize = useCallback(async (): Promise<void> => {
     if (
       initializedRef.current &&
@@ -124,13 +105,9 @@ export function useHangulGameWasm({
     }
   }, [mode, config, wordPool, sessionKey])
 
-  // Explicit, safe autoStart initialization effect - also the
-  // mode/session/word-pool switch path: a change to any of them re-creates
-  // `initialize` (all three are in its dep array above), which re-runs this
-  // effect and, per initialize()'s own guard, performs a fresh load rather
-  // than a no-op. A mid-session vocabulary swap therefore resets the engine,
-  // score and streak included - the alternative is a session that keeps
-  // scoring against words the player is no longer being shown.
+  // autoStart, and the mode/session/word-pool switch path: a change to any
+  // re-creates `initialize` and re-runs this effect. A mid-session vocabulary
+  // swap therefore resets the engine, score and streak included.
   useEffect(() => {
     let active = true
 
@@ -147,7 +124,6 @@ export function useHangulGameWasm({
     }
   }, [autoStart, initialize])
 
-  // System cleanup effect
   useEffect(() => {
     return (): void => {
       setBridge(null)

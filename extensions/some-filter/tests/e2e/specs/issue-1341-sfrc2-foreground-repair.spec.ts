@@ -1,22 +1,16 @@
 /**
- * SF-RC2 (#1341) — the independent foreground action alphabet, proven
- * against the real `--load-extension` build rather than a jsdom DOM.
+ * The independent foreground action alphabet, against the real
+ * `--load-extension` build.
  *
- * The unit suite (`src/adapter/__tests__/foreground-repair.test.ts`) proves
- * the decide/realize halves in isolation; only a real Chromium can show
- * that the emitted rule actually *wins the cascade* against an inline
- * `style="color: …"` and against the co-located (#741) `emit-surface-color`
- * rule that can match the same carrier, and that what ends up rendered
- * clears the floor. Both of those are exactly what the epic's own Gate-0
- * recon measured at 1.025:1 and 1.14:1 before this story.
+ * `foreground-repair.test.ts` proves decide/realize in isolation; only real
+ * Chromium shows the emitted rule *wins the cascade* against an inline
+ * `style="color: …"` and the co-located `emit-surface-color` rule, and that
+ * the rendered pair clears the floor (Gate-0 recon measured 1.025:1 and
+ * 1.14:1 before).
  *
- * Deliberately measures the *resolved* pair (the carrier's own computed
- * `color` against the nearest opaque ancestor background) rather than
- * sampling pixels: a screenshot oracle would also fold in font antialiasing
- * and subpixel coverage, which is not what a WCAG contrast floor is defined
- * over. `issue-741-auto-defects.spec.ts` uses a pixel oracle where the
- * claim genuinely is about painted output (a full-viewport veil); this
- * claim is about colour resolution.
+ * Measures the *resolved* pair rather than pixels: antialiasing is not what
+ * a WCAG floor is defined over. (`issue-741-auto-defects.spec.ts` uses
+ * pixels where the claim is about painted output.)
  */
 
 import { relativeLuminance } from "@filter/lib/content/color"
@@ -58,11 +52,8 @@ function contrastOf(reading: CarrierReading): number {
 }
 
 /**
- * Reads one carrier's rendered foreground and the first opaque background
- * at or above it — the same "nearest opaque ancestor wins" walk
- * `resolveEffectiveBackdrop` performs, kept deliberately naive here (no
- * hazard handling, no alpha compositing) so the fixture, not the
- * measurement, is what has to stay simple.
+ * Reads one carrier's rendered foreground and the first opaque background at
+ * or above it (`resolveEffectiveBackdrop`'s walk, without hazards or alpha).
  */
 async function readCarrier(page: Page, id: string): Promise<CarrierReading> {
   return page.evaluate((elementId: string) => {
@@ -114,10 +105,8 @@ test.describe("SF-RC2: rendered foreground repair, document scope (#1341)", () =
         `Gate-0 measured this witness at 1.025:1 before the repair existed.`
     ).toBeGreaterThanOrEqual(MIN_CONTRAST_RATIO)
 
-    // κ_hi (canon Definition C.3): the repair lifts into
-    // modifyForegroundColor's own band and stops at the first value that
-    // clears — never raw white, which is as unacceptable a failure mode as
-    // the unreadable one it replaces.
+    // κ_hi (canon Definition C.3): the repair stops at the first value in
+    // modifyForegroundColor's band that clears — never raw white.
     expect(chip.color).not.toBe("rgb(255, 255, 255)")
   })
 
@@ -154,9 +143,7 @@ test.describe("SF-RC2: rendered foreground repair, document scope (#1341)", () =
 
     const inherits = await readCarrier(page, "inherits")
 
-    // An absence assertion, per #1341's own acceptance criteria — the point
-    // is not that some other element got repaired instead, it is that this
-    // one is left strictly alone.
+    // An absence assertion: this one is left strictly alone.
     expect(
       inherits.repairKey,
       "#inherits declares no colour of its own; it already inherits #card's " +
@@ -179,11 +166,8 @@ test.describe("SF-RC2: rendered foreground repair, document scope (#1341)", () =
     await waitForClassification(page)
     await page.waitForTimeout(300)
 
-    // Past #transitioned's own 0.3s transition, so the round driven below
-    // starts from a *settled* repaired colour. That is the state in which
-    // suppressing the repair sheet without a transition freeze reads the
-    // repair back as if it were the authored colour — mid-transition the
-    // sensed value is still violating and the bug hides itself.
+    // Past the 0.3s transition, so the round below starts from a *settled*
+    // repaired colour; mid-transition the bug hides itself.
     await page.waitForTimeout(700)
 
     const sheetBefore = await page.evaluate(
@@ -191,11 +175,9 @@ test.describe("SF-RC2: rendered foreground repair, document scope (#1341)", () =
     )
     expect(sheetBefore).toBeTruthy()
 
-    // A real vendor mutation, which is what drives a reconcile round.
-    // Without the audit's own repair-sheet suppression the next round reads
-    // back this channel's own !important colour, calls the carrier legible,
-    // drops the rule, and the carrier reverts — a flicker driven by nothing
-    // but the extension's own output.
+    // A real vendor mutation drives a round. Without repair-sheet
+    // suppression it would read back our own !important colour, drop the
+    // rule, and flicker.
     await page.evaluate(() => {
       const el = document.createElement("p")
       el.textContent = "late content"
@@ -210,15 +192,9 @@ test.describe("SF-RC2: rendered foreground repair, document scope (#1341)", () =
     ).not.toBeNull()
     expect(contrastOf(chip)).toBeGreaterThanOrEqual(MIN_CONTRAST_RATIO)
 
-    // Same claim for a carrier whose own `color` is under a vendor
-    // transition. Suppressing the repair sheet is itself a style change, so
-    // it *starts* that transition — and a read taken right after returns the
-    // transition's start value, which is this channel's own repair
-    // (confirmed directly against real Chromium). Sensing would then call
-    // the carrier legible and drop the repair, and the transition would
-    // finish at the illegible authored colour with no mutation left to
-    // schedule another round. Only a transition freeze around the read makes
-    // the sensed value the settled destination.
+    // Suppressing the repair sheet *starts* a vendor colour transition, and
+    // an immediate read returns its start value — our own repair (confirmed
+    // in Chromium). Only a freeze around the read senses the settled value.
     const transitioned = await readCarrier(page, "transitioned")
     expect(
       transitioned.repairKey,
@@ -241,19 +217,11 @@ test.describe("SF-RC2: leaving auto mode returns the page to native (#1341)", ()
     context,
     fixture,
   }) => {
-    // Codex review round 1, on this PR: the repair sheet's only teardown
-    // was a reconcile round that settles without `activate-theme`, and
-    // leaving auto mode never produces one — content.ts's applyState calls
-    // contentSession.teardown() (which merely disconnects the observer)
-    // before restoreVendor(), and restoreVendor() knows only about the two
-    // pre-adapter layers.
-    //
-    // Measured directly while confirming that finding: the per-surface
-    // background half leaks identically and far more visibly — #card
-    // rendered `rgb(23, 23, 23)` with the extension switched *off*, i.e.
-    // the page simply stayed dark. So this asserts the whole transition,
-    // not just this story's own half: a "common mode-transition cleanup
-    // path" that knowingly skipped its siblings would be a fiction.
+    // Leaving auto never runs a round that settles without `activate-theme`,
+    // and restoreVendor() knows only the pre-adapter layers, so both the
+    // repair sheet and the per-surface background half would leak (measured:
+    // #card stayed rgb(23, 23, 23) with the extension off). Asserts the whole
+    // transition cleanup.
     const page = await fixture.goto("legibility-repair-page")
     await waitForClassification(page)
     await page.waitForTimeout(300)
@@ -310,9 +278,8 @@ test.describe("SF-RC2: leaving auto mode returns the page to native (#1341)", ()
       patched: 0,
       fixed: 0,
       legibility: 0,
-      // The fixture's own authored values, back untouched — the real claim
-      // here, since an attribute count of zero would still be satisfied by
-      // a stylesheet nobody cleaned up.
+      // The fixture's authored values, untouched — a zero attribute count
+      // alone would pass with an uncleaned stylesheet.
       cardBg: "rgb(245, 245, 245)",
       chipColor: "rgb(17, 17, 17)",
     })

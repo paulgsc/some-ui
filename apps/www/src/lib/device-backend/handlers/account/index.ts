@@ -1,24 +1,18 @@
 /**
- * The routes around the person rather than their content: auth, study
- * signals, presence and push, as the device answers them.
+ * The routes around the person rather than their content (auth, signals,
+ * presence, push), as the device answers them.
  *
- * **Auth.** The phone has one person and no passkey store, so
- * `GET /auth/session` always answers signed in (`SessionView`: only
- * `expiresAt`), and the ceremony routes answer `503 feature_not_configured`,
- * which is what `file_host` says when passkeys are unconfigured. The app
- * therefore never shows the passkey screen on the device - the app's own
- * lock screen is the phone's.
+ * **Auth.** One person, no passkey store: `GET /auth/session` always answers
+ * signed in, and the ceremony routes answer `503 feature_not_configured`, as
+ * `file_host` does with passkeys unconfigured. The lock screen is the phone's.
  *
- * **Signals and presence** keep their wire shapes (snake_case, unlike the
- * session routes) and `presence_leases` is written as the server writes it.
- * The server's engagement fold behind `/signals` is not ported: on the device
- * the nudge decision is the client's own policy (`clientOwnsNudgeDelivery`),
- * delivered as a native notification, so `/signals` validates and answers
- * `eligible_at: now` without storing a charge nobody reads.
+ * **Signals and presence** keep their wire shapes (snake_case) and
+ * `presence_leases` is written as the server writes it. The engagement fold
+ * is not ported (the client's policy decides on the device), so `/signals`
+ * validates and answers `eligible_at: now` without storing.
  *
- * **Push** answers `503 feature_not_configured`: a device has no VAPID
- * identity, and that code is the one the client already reads as "stop
- * asking and fall back" (`FileHostNotConfiguredError`).
+ * **Push** answers `503 feature_not_configured`: no VAPID identity, which the
+ * client reads as "fall back" (`FileHostNotConfiguredError`).
  */
 import { DEVICE_SUBJECT, isRecord, rfc3339 } from "@/lib/device-backend/common"
 import type { DeviceRoute } from "@/lib/device-backend/router"

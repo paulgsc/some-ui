@@ -1,31 +1,20 @@
 import { create } from "zustand"
 
 /**
- * Facts about "what's currently playing, and is it allowed to run right
- * now" - shared across every registry component and the layout editor, so
- * any of them can fold their own reset/suspend behavior into the same flow
- * instead of each one wiring up its own bespoke channel.
- *
- * Deliberately local-only: no connection/streaming state (contrast
- * orchestrator-store.ts's `_commandSender`/`isConnected`/`_streamId`, which
- * assume a server round-trip). This store works standalone in a fully
- * static app; a server integration, if one is ever needed, is a separate
- * adapter that calls these same setters/getters from outside - never
- * something this store's own shape has to assume.
+ * "What is playing, and may it run now", shared by every registry component
+ * and the layout editor so each folds its reset/suspend behavior into one
+ * flow. Deliberately local-only (unlike orchestrator-store.ts): a server
+ * integration would be an adapter calling these setters from outside.
  */
 type SessionContextState = {
   /**
-   * Opaque identity of whichever session is currently live, or null when
-   * nothing is playing. A consumer that holds state which must not bleed
-   * across sessions (e.g. a WASM engine's board/stats) diffs this against
-   * whatever it last saw.
+   * Opaque identity of the live session, or null. A consumer whose state must
+   * not bleed across sessions (a WASM engine's board) diffs this.
    */
   sessionKey: string | null
   /**
-   * True when something outside a registry's own control currently needs
-   * exclusive control (e.g. the layout editor is open). A registry that
-   * runs its own clock/loop/input-capture should idle while this is true,
-   * the same way it would for its own internal pause.
+   * Something outside the registry needs exclusive control (the layout editor
+   * is open). A registry with its own clock, loop or input capture idles.
    */
   suspended: boolean
 }
@@ -44,22 +33,15 @@ const useSessionContextStore = create<
   setSuspended: (suspended): void => set({ suspended }),
 }))
 
-// Plain, framework-agnostic functions - the only surface any adapter (this
-// app's own session viewport, or a future server-sync integration) should
-// ever need. Safe to call from outside React entirely.
+// The only surface an adapter needs; safe to call outside React.
 export const setSessionKey = (key: string | null): void =>
   useSessionContextStore.getState().setSessionKey(key)
 export const setSuspended = (suspended: boolean): void =>
   useSessionContextStore.getState().setSuspended(suspended)
-export const getSessionKey = (): string | null =>
-  useSessionContextStore.getState().sessionKey
-export const getSuspended = (): boolean =>
-  useSessionContextStore.getState().suspended
 
-// React selector hooks - for the layer that owns this store's writes to
-// read its own values back reactively. Registries never call these
-// directly; they receive the resolved values as plain props instead (see
-// OrchestratedYouTubeViewport's `extraProps`).
+// For the layer that owns the writes. Registries get these values as props
+// instead (see OrchestratedYouTubeViewport's `extraProps`).
+
 export const useSessionKey = (): string | null =>
   useSessionContextStore((s) => s.sessionKey)
 export const useSuspended = (): boolean =>

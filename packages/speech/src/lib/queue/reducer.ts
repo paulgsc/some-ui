@@ -7,12 +7,9 @@ import type { SpeechQueueState } from "./types"
  * The status to settle on once the in-flight item is done with, whatever
  * became of it.
  *
- * The `paused` arm is the fix for a real bug: `PAUSE` aborts the current
- * item, that abort rejects the in-flight `speak()`, and the resulting
- * `ITEM_CANCELLED` used to overwrite `status` with `speaking` whenever the
- * queue still held work - so the pause a caller asked for lasted exactly as
- * long as it took the abort to land, and the queue carried on talking. Only
- * `RESUME` may lift `paused`.
+ * `PAUSE` aborts the current item, and that abort lands as `ITEM_CANCELLED`;
+ * settling on `speaking` there would undo the pause. Only `RESUME` may lift
+ * `paused`.
  */
 function settledStatus(state: SpeechQueueState): SpeechQueueState["status"] {
   if (state.status === "paused") return "paused"

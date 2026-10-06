@@ -330,19 +330,25 @@ backs should be cut, not kept and re-justified.
 
 == Counts
 
-*46 workspace packages, 6 browser extensions* --- counted 2026-10-03 by
+*42 workspace packages, 5 browser extensions* --- counted 2026-10-05 by
 `scripts/check-claims.mjs`, which walks the globs in `pnpm-workspace.yaml`
 (`packages/ui/*`, `apps/*`, `docs/canon`, `extensions/**`, `packages/*`,
 `crates/*`) for a `package.json`, the same method `pnpm -r list --depth -1`
 uses and the one this section has used since the last recount. The extension
 count is directories under `extensions/` that ship a real `manifest.json`
 under `public/` (not merely something matching `*manifest*`, which also
-catches build scripts): `some-censor`, `some-conveyor`, `some-drama`,
-`some-filter`, `some-mujik`, `suspender-ledger`. `common`, `transport`,
+catches build scripts): `some-censor`, `some-drama`, `some-filter`,
+`some-mujik`, `suspender-ledger`. `common`, `transport`,
 `filter-classifier`, `docs`, and `scripts` are excluded — shared code and a
 test corpus, not shipped extensions.
 
-The package count is 46 -> 45 on 2026-10-03: `packages/ui/interview` was
+The package count is 45 -> 42 on 2026-10-05, and the extension count 6 -> 5:
+the `extensions/some-conveyor` extension, `crates/polyhedron` (the wasm crate
+only it loaded) and `packages/ui/chat` (no dependents) were deleted. Before
+that it was 46 -> 45 the same day: `packages/ui/dice-card` was
+deleted; no deployable or other workspace depended on it. Before that it
+was 45 -> 46 on 2026-10-03, when `packages/ui/aph` landed (#1659), and
+before that 46 -> 45 the same day: `packages/ui/interview` was
 deleted; the catalogue retired its mock-interview activity, which had never
 worked end to end. Before that it was 51 -> 46 on 2026-10-02: `packages/ui/slideshow`,
 `packages/ui/makjang`, `packages/ui/umag`, `packages/ui/neon-sign` and

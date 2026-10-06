@@ -18,11 +18,10 @@ type Fake = {
 }
 
 /**
- * A background that inserts/removes one copy per request (measured: two
- * identical insertCSS calls stack on Chromium 1194), with the cascade read
- * reporting the sheet's sentinel (the swatch id, as a computed custom property
- * reads — with its leading space) while any copy is present. `respond` decides whether a
- * request is answered at all.
+ * A background that inserts/removes one copy per request (insertCSS stacks),
+ * with the cascade read reporting the sentinel (the swatch id, with the
+ * leading space a computed custom property has) while any copy is present.
+ * `respond` decides whether a request is answered at all.
  */
 function fake(
   options: {
@@ -106,7 +105,7 @@ describe("ensureEnforcement", () => {
       { type: "ENSURE_ENFORCEMENT", swatchId: "default" },
     ])
     // Freeze before the request, removed only after the confirm read and a
-    // painted frame (the #1462 transition finding).
+    // painted frame.
     expect(f.events).toEqual([
       "freeze",
       "send:ENSURE_ENFORCEMENT",
@@ -189,7 +188,7 @@ describe("removeEnforcement", () => {
   })
 })
 
-describe("createEnforcementQueue — one document's operations, in call order (bot-found on #1521)", () => {
+describe("createEnforcementQueue — one document's operations, in call order", () => {
   beforeEach(() => {
     vi.useFakeTimers()
   })

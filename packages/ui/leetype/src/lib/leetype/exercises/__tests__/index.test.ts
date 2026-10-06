@@ -21,8 +21,7 @@ import { describe, expect, it } from "vitest"
 
 describe("the exercise shim", () => {
   it("adds the 24-rung engineering-judgment curriculum alongside the existing corpus", () => {
-    // Additive, not a replacement: the new curriculum joins session rotation
-    // on both surfaces, it does not become the only thing either one serves.
+    // Additive: the new curriculum joins the rotation, not replaces it.
     expect(SESSION_EXERCISE_IDS).toContain(FIXTURE_LEETCODE_3302_EXERCISE_ID)
     expect(SESSION_EXERCISE_IDS.length).toBeGreaterThan(1)
     const exercise = nextExercise({
@@ -46,9 +45,7 @@ describe("the exercise shim", () => {
   })
 
   it("takes selection state and ignores everything but preferId — the signature is the contract", () => {
-    // The point of `completed` is that the future pipeline is a body swap,
-    // not a signature change through every caller. Ignoring it today is the
-    // implementation.
+    // `completed` is accepted so a future pipeline is a body swap.
     expect(
       nextExercise({
         completed: ["rust-hashmap-entry"],
@@ -64,10 +61,7 @@ describe("the exercise shim", () => {
   })
 
   it("throws on an id nothing in the corpus matches, rather than silently substituting a default", () => {
-    // The deterministic-first-item fallback this shim used to have is
-    // exactly the behavior the session scheduler and deep links exist to
-    // replace — a stale or typo'd id should fail loudly at the seam, not
-    // quietly resolve to entryApi.
+    // A stale or typo'd id fails at the seam, not quietly resolving to entryApi.
     expect(() => nextExercise({ preferId: "no-such-exercise" })).toThrow(
       /is not an id in the validated corpus/
     )
@@ -135,10 +129,7 @@ describe("the seed set", () => {
   })
 
   it("keeps every step in the validated corpus inside the prose budget", () => {
-    // `CORPUS` is `ExerciseCorpusSchema.parse`d at module load, so this is
-    // really just re-asserting a load-bearing fact — but a step this far
-    // over budget failing silently at import time, in every consumer of the
-    // shim at once, is exactly the failure a direct test here avoids.
+    // Already parsed at module load; a direct test names the failure.
     for (const exercise of [
       nextExercise({ preferId: FIXTURE_EXERCISE_ID }),
       nextExercise({ preferId: FIXTURE_ADVERSARIAL_EXERCISE_ID }),
@@ -157,12 +148,8 @@ describe("the diagnostic instances still freestanding (LTY-FAMILIES A3)", () => 
   })
 
   it("each validates through the strict DiagnosticStepSchema, not just StepSchema", () => {
-    // StepSchema accepting them is necessary (the shim's load-time parse
-    // already proves it) but not sufficient — this is the check that they
-    // actually satisfy the family's own contract: rationale present, a
-    // trace block present, and the repair within the bounded-answer budget.
-    // A step that passed StepSchema but failed this would be silent
-    // evidence the fixture had drifted out of the shape it claims.
+    // The generic parse is not enough: each must satisfy the family's own
+    // contract (rationale, trace block, bounded repair).
     for (const id of FIXTURE_DIAGNOSTIC_EXERCISE_IDS) {
       const exercise = nextExercise({ preferId: id })
       expect(exercise.id).toBe(id)
@@ -174,11 +161,8 @@ describe("the diagnostic instances still freestanding (LTY-FAMILIES A3)", () => 
   })
 
   it("keeps every repair a single line under the bounded-answer budget", () => {
-    // "Copying each fully-revealed repair takes seconds, not a minute" —
-    // approximated here as a hard length/line bound on the typed portion,
-    // the same measure DiagnosticStepSchema itself enforces. The frame
-    // around each repair is intentionally excluded (see typedPortionOf in
-    // types/exercise.ts) and can run to several lines.
+    // "Seconds to copy, not a minute": a bound on the typed portion only;
+    // the frame may run to several lines.
     for (const id of FIXTURE_DIAGNOSTIC_EXERCISE_IDS) {
       const exercise = nextExercise({ preferId: id })
       const source = typingBlockOf(exercise.steps[0]!)?.source ?? ""
@@ -189,10 +173,7 @@ describe("the diagnostic instances still freestanding (LTY-FAMILIES A3)", () => 
   })
 
   it("anchors every repair inside a visible frame, never floating beneath it", () => {
-    // Constraint 6: revealable in isolation. Structurally, that means every
-    // diagnostic instance's typing source actually uses a context span —
-    // the repair sits inside the buggy attempt, not appended after a blank
-    // canvas.
+    // Constraint 6: the repair sits inside a context span, not after a blank.
     for (const id of FIXTURE_DIAGNOSTIC_EXERCISE_IDS) {
       const exercise = nextExercise({ preferId: id })
       const source = typingBlockOf(exercise.steps[0]!)?.source ?? ""
@@ -201,8 +182,7 @@ describe("the diagnostic instances still freestanding (LTY-FAMILIES A3)", () => 
   })
 
   it("no longer serves instances 4 and 5 as freestanding exercises (A4 folded them in)", () => {
-    // The freestanding ids from A3 must not resolve to anything anymore —
-    // nextExercise throws rather than silently keeping a duplicate around.
+    // The retired freestanding ids must not resolve.
     expect(() =>
       nextExercise({ preferId: "diagnostic-double-lookup" })
     ).toThrow(/is not an id in the validated corpus/)
@@ -277,7 +257,7 @@ describe("entryApi's diagnostic tail (LTY-FAMILIES A4)", () => {
   })
 })
 
-describe("the construction reading — entryApi as an accumulating hunk (LTY-PATCH P5, #1080)", () => {
+describe("the construction reading — entryApi as an accumulating hunk (LTY-PATCH)", () => {
   /** The rendered form of a `‹…›`-marked source: delimiters stripped, content kept. */
   function renderedFormOf(source: string): string {
     return source.replace(/[‹›]/g, "")
@@ -301,9 +281,7 @@ describe("the construction reading — entryApi as an accumulating hunk (LTY-PAT
   })
 
   it("re-shows each commitment's whole rendered line as the next step's leading context", () => {
-    // The claim the epic actually rests on for this story: the chain reads
-    // as one accumulating hunk, not three unrelated ones — each step's `+`
-    // line is exactly the same text the next step carries forward as `‹context›`.
+    // One accumulating hunk: each step's `+` line is the next step's `‹context›`.
     const steps = nextExercise({ preferId: FIXTURE_EXERCISE_ID }).steps
     const place = steps.find((s) => s.id === "entry-03-place")
     const fill = steps.find((s) => s.id === "entry-04-fill")
@@ -325,18 +303,11 @@ describe("the construction reading — entryApi as an accumulating hunk (LTY-PAT
 })
 
 /**
- * R4 (#1207) guardrail: `renderedDiffLineKinds` output must stay unchanged
- * for every existing corpus hunk while this story reuses `DiffHunkSchema`
- * verbatim (Def. 1.4's own reuse claim). Pins every step across the whole
- * corpus that carries a `.diff` overlay — not just entryApi's three, which
- * the describe block above already covers for a different reason (the
- * accumulating-hunk invariant, not a general regression pin) — computed
- * once against the pre-R4 behavior and asserted unchanged here. A step
- * added elsewhere with a new diff hunk must extend this table explicitly,
- * so a corpus change to `renderedDiffLineKinds`'s own logic cannot silently
- * drift an untested hunk.
+ * Pins `renderedDiffLineKinds` for every corpus step with a `.diff` overlay
+ * (Def. 1.4's reuse of `DiffHunkSchema`). A new diff hunk must extend this
+ * table, so no hunk drifts untested.
  */
-describe("renderedDiffLineKinds is pinned across every corpus hunk (R4/#1207 guardrail)", () => {
+describe("renderedDiffLineKinds is pinned across every corpus hunk", () => {
   it("computes the same per-line classification for every DiffHunk in the corpus", () => {
     const PINNED_KINDS: Readonly<
       Record<string, ReadonlyArray<RenderedDiffLineKind>>
@@ -382,19 +353,14 @@ describe("renderedDiffLineKinds is pinned across every corpus hunk (R4/#1207 gua
       }
     }
 
-    // Every pinned id was actually found, and nothing in the corpus carries
-    // a diff hunk this pin doesn't know about.
+    // Every pinned id exists, and no unpinned diff hunk does.
     expect(foundIds).toEqual(new Set(Object.keys(PINNED_KINDS)))
   })
 })
 
 describe("the hostile prompt fixture", () => {
   it("is genuinely over budget — it fails StepSchema", () => {
-    // The whole point of keeping it out of SEED_EXERCISES: a step this far
-    // past PromptBlockSchema's line budget cannot survive the shim's
-    // load-time validation, so it is exported as a raw, unvalidated value
-    // instead. This test is the guarantee that it stays hostile rather than
-    // quietly drifting inside the budget and testing nothing.
+    // Kept out of the validated corpus; this keeps it over budget.
     expect(StepSchema.safeParse(FIXTURE_HOSTILE_PROMPT_STEP).success).toBe(
       false
     )

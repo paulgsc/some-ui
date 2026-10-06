@@ -1,12 +1,8 @@
 /**
- * The invariant, in #933's own words: every user-initiated effect must
- * terminate in a state a person can observe, and the *only* way to read
- * that state is to handle all of it. `TanStack Query`'s `UseMutationResult`
- * already carries the full lifecycle (`status`, `data`, `error`) — the
- * problem #934's census found was never a missing state, it was that
- * reading the state is optional: `status` sits on a result object with
- * twenty other fields, and nothing forces a consumer to look at it. All 17
- * call sites in that census simply didn't.
+ * The invariant (#933): every user-initiated effect terminates in a state a
+ * person can observe, and the *only* way to read that state is to handle all
+ * of it. `UseMutationResult` already carries the lifecycle; the problem is
+ * that reading `status` is optional.
  *
  * `Intent` is a projection of that lifecycle, not a replacement for it —
  * see `apps/www/src/lib/intent/use-intent.ts` for the `UseMutationResult`
@@ -16,17 +12,10 @@
  *
  * ## Four states, not five
  *
- * `Idle | Working | Succeeded | Failed`. No `Cancelled`: nothing in
- * `apps/www` today threads an `AbortController` through a mutation, every
- * write is `mutations: { retry: false }` (a single immediate attempt), and
- * the longest observed one is a `POST` to a LAN service — #934's S3
- * classification confirmed no intent in the population needs it. Adding
- * `cancelled` in advance of a real caller means all 17 migrated call sites
- * render a dead arm (`() => null`) for a state that cannot occur, which
- * teaches every future reader that arms are ceremony rather than a
- * decision. When a genuinely cancellable intent lands (a long upload, a
- * streamed generation), adding the state will force a deliberate audit of
- * every consumer — which is the correct moment to pay that cost, not now.
+ * `Idle | Working | Succeeded | Failed`. No `Cancelled`: no intent threads an
+ * `AbortController` today, and a dead `() => null` arm at every call site
+ * teaches that arms are ceremony. A genuinely cancellable intent (a long
+ * upload) should add it and force an audit of every consumer then.
  *
  * `idle` stays even though it is the one arguably-redundant state, because
  * it is reachable at every call site from first render and is where the
@@ -36,10 +25,9 @@
 import type { IntentError } from "./intent-error"
 
 /**
- * `working`'s optional `step` is for a composite intent — the
- * create→update→navigate chain in `session-composer.tsx:241` is one
- * intent, not three, and "saved, but couldn't start" needs to be
- * expressible without inventing a fifth top-level state. `TStep` is
+ * `working`'s optional `step` is for a composite intent (a
+ * create→update→navigate chain is one intent, not three), so "saved, but
+ * couldn't start" needs no fifth top-level state. `TStep` is
  * `never` by default so a simple, non-composite intent's `working` arm
  * takes no argument and callers don't pay for a feature they don't use.
  */
@@ -67,21 +55,14 @@ export type IntentArms<T, R, TStep extends string = never> = {
 }
 
 /**
- * Exported so `switch-lint/require-fail-fast-default`'s default
- * `helperNames` (`assertNever`/`assertUnreachable`/`unreachable`) has one
- * canonical implementation to point every `apps/www` consumer at, rather
- * than each file re-declaring its own copy of the same three-line function -
- * see `apps/www/src/lib/intent/index.ts`'s header for the three-layer
- * enforcement this is one piece of. `_value: never` is polymorphic over
- * whatever union a given call site has already exhaustively switched on, so
- * one implementation serves every one of them.
+ * The one implementation of the helper `switch-lint/require-fail-fast-default`
+ * accepts by default (see `apps/www/src/lib/intent/index.ts`). `_value:
+ * never` serves any exhaustively switched union.
  */
 export function assertNever(_value: never): never {
-  // `_value` is `never` at every real call site - the only way to reach this
-  // at runtime is a status this module doesn't know about, which is exactly
-  // the defensive case `matchIntent`'s own test exercises directly. No safe,
-  // assertion-free way to read `.status` off a `never`-typed value, so the
-  // message stays generic rather than reaching for one.
+  // Reached only with a status this module doesn't know; `.status` cannot be
+  // read off `never` without an assertion, so the message stays generic.
+
   throw new Error(
     "unhandled Intent status - a status matchIntent's callers cannot have constructed through this module's own constructors"
   )

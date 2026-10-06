@@ -24,27 +24,17 @@ import { useEffect, useRef, useState, type RefObject } from "react"
 
 import { useIsMounted } from "../use-is-mounted"
 
-/** The size of the observed element. */
 type Size = {
-  /** The width of the observed element. */
   width: number | undefined
-  /** The height of the observed element. */
   height: number | undefined
 }
 
-/** The options for the ResizeObserver. */
 type UseResizeObserverOptions<T extends Element = Element> = {
   /** The ref of the element to observe. Nullable to match `useRef<T>(null)`. */
   ref: RefObject<T | null>
-  /**
-   * When using `onResize`, the hook doesn't re-render on element size changes; it delegates handling to the provided callback.
-   * @default undefined
-   */
+  /** With `onResize`, the hook does not re-render on resize; the callback gets the size. */
   onResize?: (size: Size) => void
-  /**
-   * The box model to use for the ResizeObserver.
-   * @default 'content-box'
-   */
+  /** @default 'content-box' */
   box?: "border-box" | "content-box" | "device-pixel-content-box"
 }
 
@@ -54,22 +44,8 @@ const initialSize: Size = {
 }
 
 /**
- * Custom hook that observes the size of an element using the [`ResizeObserver API`](https://developer.mozilla.org/en-US/docs/Web/API/ResizeObserver).
- * @template T - The type of the element to observe.
- * @param {UseResizeObserverOptions<T>} options - The options for the ResizeObserver.
- * @returns {Size} - The size of the observed element.
- * @public
- * @see [Documentation](https://usehooks-ts.com/react-hook/use-resize-observer)
- * @example
- * ```tsx
- * const myRef = useRef(null);
- * const { width = 0, height = 0 } = useResizeObserver({
- *   ref: myRef,
- *   box: 'content-box',
- * });
- *
- * <div ref={myRef}>Hello, world!</div>
- * ```
+ * Observes an element's size with `ResizeObserver`.
+ * @see https://usehooks-ts.com/react-hook/use-resize-observer
  */
 export function useResizeObserver<T extends Element = Element>(
   options: UseResizeObserverOptions<T>
@@ -79,9 +55,9 @@ export function useResizeObserver<T extends Element = Element>(
   const isMounted = useIsMounted()
   const previousSize = useRef<Size>({ ...initialSize })
   const onResize = useRef<((size: Size) => void) | undefined>(undefined)
-  // Keep the latest onResize callback available to the ResizeObserver's
-  // (async) event handler without calling it a dependency of the effect
-  // below - written in an effect, not during render, per react-hooks/refs.
+  // Latest `onResize` for the observer without making it a dependency;
+  // written in an effect, not during render, per react-hooks/refs.
+
   useEffect(() => {
     onResize.current = options.onResize
   })

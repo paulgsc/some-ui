@@ -7,50 +7,26 @@ import type {
 import { renderedDiffLineKinds, typingBlockOf } from "@leetype/types/exercise"
 
 /**
- * The mobile path's whole derivation layer (LTY-MOBILE), and the only place
- * in this package that reads a step in order to ask a question about it
- * rather than to have it typed.
+ * The mobile path's derivation layer (LTY-MOBILE): the only place that reads
+ * a step to ask a question about it rather than to have it typed.
  *
- * # Engine-free, on purpose
+ * Engine-free on purpose: no `types/leetype`, wasm loader or hook, so the
+ * mobile surface mounts without fetching `@some-ui/leetype-wasm`. The
+ * reading path never learns what a slot, caret or WPM figure is.
  *
- * Nothing here imports `types/leetype`, the wasm loader, or any hook. A
- * reading probe is a pure function of authored corpus data, which is what
- * makes the mobile surface mountable without `@some-ui/leetype-wasm` ever
- * being fetched — see `components/reading-game/reading-session`. The desktop
- * path's boundary ("the typing engine must never know why a snippet exists")
- * holds here in the mirror image: the reading path never learns what a slot,
- * a caret or a WPM figure is.
- *
- * # What a probe is, and what it deliberately is not
- *
- * Desktop probes **production**: the player produces the witness by typing
- * it, and fluency under a masking loop is the evidence. A phone cannot carry
- * that channel — a code keyboard on a 390px viewport is an obstacle, not an
- * input modality — so the small-screen surface switches the probe to
- * **discrimination**: the same hunk, the same authored evidence, and the
- * player picks the claim the change actually makes out of a set of claims
- * the corpus makes about other changes.
- *
- * Discrimination is a strictly weaker signal than production and this module
- * makes no attempt to pretend otherwise. Nothing it returns is read by
- * `weightedWpm`, `gateThreshold`, `progression()`, the baseline store, or any
- * persisted anything — the same `p_credited = false` posture LTY-SEAM already
- * holds for the whole exercise (#1015), inherited rather than re-argued.
+ * Desktop probes **production** (typing the witness). A phone cannot carry
+ * that channel, so the small screen probes **discrimination**: the same hunk
+ * and evidence, and the player picks the claim this change makes from claims
+ * the corpus makes about other changes. That is a weaker signal, and nothing
+ * here feeds `weightedWpm`, `gateThreshold`, `progression()`, the baseline
+ * store or any persistence (`p_credited = false`, as LTY-SEAM).
  */
 
 /**
- * One rendered line of a step's hunk, ready to paint.
- *
- * Derived, never authored: `kind` comes from `renderedDiffLineKinds` and the
- * text from the same segments that generate the engine-facing `source`, so a
- * mobile row and a desktop row can no more disagree about a line than
- * `source` and `lineKinds` can (`types/exercise.ts`, LTY-PATCH).
- *
- * `oldLine`/`newLine` follow the ordinary two-column diff convention — an
- * `add` row occupies the new column only, a `del` row the old column only —
- * computed here rather than in the component because it is arithmetic over
- * `kind`, not a rendering decision, and `CodeDisplay` already computes the
- * identical thing for the desktop gutter.
+ * One rendered line of a step's hunk, ready to paint. Derived from the same
+ * segments as the engine-facing `source`, so mobile and desktop rows cannot
+ * disagree. `oldLine`/`newLine` follow the two-column diff convention (`add`
+ * has only a new line, `del` only an old one).
  */
 export type ReadingRow = {
   /** Position in the hunk, and the row's React key. */
@@ -73,29 +49,18 @@ export type ReadingHunk = {
 }
 
 /**
- * Strips LTY-FRAME's `‹…›` context-span delimiters.
- *
- * Duplicated from `exercises/corpus-lint.ts`'s private helper of the same
- * name rather than shared, and it is worth saying why: that one is a lint's
- * approximation of the engine's `typed_stream` and its known gaps (an
- * unmatched `‹`, documented at length in `exercises/totality.ts`) are gaps in
- * a *check*. This one is a renderer's, and the two would drift apart the
- * moment either grew a case for its own purpose. Both are three lines.
+ * Strips LTY-FRAME's `‹…›` context-span delimiters. Deliberately not shared
+ * with corpus-lint's similar helper: that one approximates the engine for a
+ * check, this one renders, and they would drift apart for their own reasons.
  */
 function withoutContextDelimiters(source: string): string {
   return source.replace(/[‹›]/g, "")
 }
 
 /**
- * The rows a step's typing block renders as on the reading surface.
- *
- * Total for every step the schema admits, including one with no `diff`
- * overlay: without a hunk there is nothing marked added or removed, so every
- * line is `context` and the card degrades into a plain code card with a
- * language chip and no sign column entries. That is the honest rendering —
- * the step genuinely has no delta to point at — and it keeps the reading
- * surface playable across the whole corpus rather than only the
- * patch-shaped part of it.
+ * The rows a step's typing block renders as on the reading surface. Total:
+ * a step without a `diff` renders every line as `context`, a plain code
+ * card, so the whole corpus stays playable.
  */
 export function readingHunkOf(step: Step): ReadingHunk | null {
   const typing = typingBlockOf(step)
@@ -134,9 +99,7 @@ export function readingHunkOfDiff(
   let newLine = diff.newStart
 
   const rows = text.split("\n").map((line, index): ReadingRow => {
-    // A `lineKinds` shorter than the rendered line count is legal (LTY-PATCH
-    // P2) — the tail renders as unmarked context, total rather than throwing,
-    // exactly as `CodeDisplay` treats it.
+    // A short `kinds` renders its tail as context, as `CodeDisplay` does.
     const kind: RenderedDiffLineKind = kinds[index] ?? "context"
     const showOld = kind !== "add"
     const showNew = kind !== "del"
@@ -156,13 +119,9 @@ export function readingHunkOfDiff(
 }
 
 /**
- * The two step families, as a question the learner can actually be asked.
- *
- * A diagnostic step's authored `rationale.cause` is a claim about what was
- * wrong; a construction step's `obligation` is a claim about what the change
- * establishes. They are different sentences answering different questions, so
- * the probe carries the question with the claim rather than wording one
- * prompt vaguely enough to cover both.
+ * Which authored field a claim came from, as a question the learner can be
+ * asked: `rationale.cause` says what was wrong, `obligation` what the change
+ * establishes, `goal` what it is for. Each gets its own prompt.
  */
 export type ReadingFamily = "diagnostic" | "construction" | "goal"
 
@@ -178,47 +137,26 @@ export type Claim = {
   stepId: string
   family: ReadingFamily
   text: string
-  /**
-   * The originating step's `concepts`, carried along because distractor
-   * selection prefers a claim that shares one (see `readingProbeOf`). A bag
-   * of strings nothing branches on beyond that set intersection — the same
-   * posture `concepts` holds everywhere else in this package.
-   */
+  /** The originating step's `concepts`; distractor selection prefers a shared one. */
   concepts: ReadonlyArray<string>
-  /**
-   * Why this claim and not a weaker one, when the corpus authored it.
-   * Diagnostic steps carry `rationale.whyRepairDiscriminates`, which is
-   * already exactly this sentence; nothing else does yet.
-   */
+  /** Why this claim and not a weaker one: `rationale.whyRepairDiscriminates`, when present. */
   justification?: string
 }
 
 /**
  * The one sentence a step asserts about its own change.
  *
- * Total by construction: `rationale.cause` if the step has one,
- * `obligation` if it has that, and otherwise `goal`, which the schema
- * requires of every step. A corpus can therefore never produce a step the
- * reading surface has no question for — which matters, because the reading
- * path is the session itself on a phone (Prop. 9.2), so a step it could not
- * pose would be a hard dead end, not a gap the surface could quietly absorb.
+ * Total: `rationale.cause`, else `obligation`, else the required `goal`. On
+ * a phone the reading path is the session (Prop. 9.2), so a step it could
+ * not pose would be a dead end.
  *
- * # This renders `rationale` and `obligation`, which the desktop path may not
- *
- * `docs/leetype/README.md` records both as authoring metadata "never rendered
- * to the learner," and on the production path that is exactly right: an
- * obligation shown above a blank is the description card the whole M20 shift
- * retired, handing the player the answer to the thing they were about to
- * type. The reading path inverts the situation — here the claim *is* the
- * answer, offered inside a closed set alongside claims the corpus makes about
- * other changes, and discriminating it is the entire task. An answer key
- * among distractors is the format, not a leak.
- *
- * That distinction is a real amendment, not a loophole, and it is recorded as
- * one under LTY-MOBILE in `docs/leetype/README.md`. The bound it comes with:
- * a claim may be rendered **only** as one option among others, never on its
- * own and never before a choice is made. `claim-choices` is the one component
- * entitled to draw one, and `reading-feedback` the one entitled to say which.
+ * This renders `rationale` and `obligation`, which the typing path never
+ * may: there, a claim above a blank hands over the answer. Here the claim
+ * *is* the answer inside a closed set of other steps' claims, and
+ * discriminating it is the task. Recorded under LTY-MOBILE in
+ * `docs/leetype/README.md`, with its bound: a claim is shown **only** as one
+ * option among others, never alone and never before a choice.
+ * `claim-choices` may draw one; `reading-feedback` may say which.
  */
 export function claimOf(step: Step): Claim {
   if (step.rationale !== undefined) {
@@ -253,24 +191,16 @@ export type ReadingOption = {
 }
 
 /**
- * A step, posed.
- *
- * `answerId` is knowable without a semantic verifier — it is exact identity
- * with the step's own authored claim — which is what separates this from
- * LTY-WHY's typed rationale, where a verdict would have been a judgement with
- * no justification behind it. Here the judgement is "you picked the sentence
- * this step's author wrote about this step," and `justification` is the
- * author's own reason for it. The repository's rule (*no judgment is allowed
- * unless it can produce its own justification*) is satisfied literally rather
- * than by exemption.
+ * A step, posed. `answerId` is exact identity with the step's own authored
+ * claim, so no semantic verifier is needed, and `justification` is the
+ * author's reason: *no judgment without its own justification* holds
+ * literally.
  */
 export type ReadingProbe = {
   stepId: string
   /**
-   * Which authored field the answer came from. Read by `ReadingSession` for
-   * exactly one thing: a `"goal"` probe's answer is the step's own goal, so
-   * the card must not also print that goal as its title — the title would be
-   * the answer, sitting above four options one of which repeats it verbatim.
+   * Which authored field the answer came from. `ReadingSession` reads it
+   * only to avoid titling a `"goal"` card with its own answer.
    */
   family: ReadingFamily
   prompt: string
@@ -280,42 +210,24 @@ export type ReadingProbe = {
 }
 
 /**
- * How many options a card offers, including the answer.
- *
- * Four because that is what fits above the fold on a 390px viewport beside a
- * hunk without either becoming a scroll destination, and because three makes
- * a lucky guess a third of the time. A corpus too small to supply three
- * distractors yields fewer options rather than repeated or invented ones —
- * see `readingProbeOf`.
+ * How many options a card offers, including the answer. Four fits above the
+ * fold beside a hunk at 390px; three would make a lucky guess a third of the
+ * time. A small pool yields fewer options, never repeated or invented ones.
  */
 export const READING_OPTION_COUNT = 4
 
 /**
  * Builds one card's question from the step, a pool of claims, and a seed.
  *
- * # Where distractors come from, and why not from an authored field
+ * Distractors are other steps' own claims, not authored per-step lists
+ * (which would leave existing steps unplayable and age into strawmen). The
+ * whole judgement: *a distractor is another step's authored claim,
+ * preferring one that shares a `concepts` entry, ordered by seed.* Sharing a
+ * concept makes it a near miss rather than eliminable without reading the
+ * code.
  *
- * They are other steps' own claims. Not authored per-step distractor lists,
- * which would leave the surface unreachable on every one of the corpus's
- * existing steps until someone wrote three plausible wrong answers for each,
- * and would age into strawmen the moment the author's attention moved on.
- * A claim drawn from the corpus is a sentence somebody meant, about a change
- * somebody made — the strongest kind of distractor there is, and it arrives
- * free with every exercise added afterwards.
- *
- * The judgement this performs is small enough to state completely, which is
- * the bar this package holds itself to: *a distractor is another step's
- * authored claim, preferring one that shares a `concepts` entry with this
- * step, ordered by seed.* The concept preference is what makes the choice a
- * near miss rather than a category error — a `HashMap` entry-API claim beside
- * a divide-by-zero hunk is eliminable without reading the code, and a probe
- * you can pass without reading the code probes nothing.
- *
- * # Determinism
- *
- * Same step, same pool, same seed → same options in the same order, so a
- * story, a test, and a replayed bug report all show one screen. `seed` is the
- * session seed mixed with the step's position; the caller owns that mixing.
+ * Deterministic: same step, pool and seed give the same options in the same
+ * order. The caller mixes the session seed with the step's position.
  */
 export function readingProbeOf(
   step: Step,
@@ -329,9 +241,8 @@ export function readingProbeOf(
   const candidates = pool.filter(
     (claim) => claim.stepId !== step.id && claim.text !== answer.text
   )
-  // Deduplicated by text: two steps in the corpus are allowed to make the
-  // same claim (a transferFrom pairing is exactly that), and the same
-  // sentence twice on one card reads as a bug rather than as a choice.
+  // Deduplicated by text: two steps may make the same claim (a transferFrom
+  // pair), and one sentence twice on a card reads as a bug.
   const seen = new Set<string>()
   const unique = candidates.filter((claim) => {
     if (seen.has(claim.text)) return false
@@ -343,25 +254,15 @@ export function readingProbeOf(
     claim.concepts.some((concept) => concepts.has(concept))
 
   /**
-   * Ranks a distractor: same family first, then shared concept.
-   *
-   * **Family before concept, and the order matters.** The three families are
-   * authored in visibly different registers — a `cause` is a lowercase
-   * subordinate clause ("the loop body never mutates cursor, so …"), an
-   * `obligation` is a lowercase claim ("a lookup can be held as a place"), a
-   * `goal` is a sentence-cased imperative ending in a period ("Bring HashMap
-   * into scope."). Mixing them puts a typographic tell on the card: the odd
-   * one out is spottable without reading a line of the code, and a probe you
-   * can pass without reading the code probes nothing. Matching the register
-   * removes the tell, and the concept preference — the near-miss rule — then
-   * does its work inside a set that all looks alike.
+   * Ranks a distractor: same family first, then shared concept. Family comes
+   * first because the families read differently (a lowercase `cause` clause,
+   * a lowercase `obligation`, a sentence-cased `goal` with a period), and a
+   * mixed card has a typographic tell that needs no code reading.
    */
   const rank = (claim: Claim): number =>
     (claim.family === answer.family ? 0 : 2) + (sharesConcept(claim) ? 0 : 1)
 
-  // Shuffled first, then ordered by rank: a stable sort keeps the seeded
-  // permutation as the tie-break inside each rank, so two equally good
-  // distractors are still chosen by seed rather than by corpus order.
+  // Shuffle, then stable-sort by rank: ties break by seed, not corpus order.
   const distractors = shuffledBySeed(unique, seed)
     .map((claim, index) => ({ claim, index }))
     .sort((a, b) => rank(a.claim) - rank(b.claim) || a.index - b.index)
@@ -388,13 +289,9 @@ export function readingProbeOf(
 }
 
 /**
- * Every claim a set of steps makes, in order — the pool `readingProbeOf`
- * draws distractors from.
- *
- * Callers hand it the whole eligible corpus rather than one exercise: an
- * exercise is three or four steps about one concept, so distractors drawn
- * from within it would be so close as to be arbitrary, and there would
- * rarely be three of them.
+ * Every claim a set of steps makes, in order: the distractor pool. Callers
+ * pass the whole eligible corpus; one exercise's few same-concept steps
+ * would be too close and too few.
  */
 export function claimPoolOf(steps: ReadonlyArray<Step>): ReadonlyArray<Claim> {
   return steps.map(claimOf)

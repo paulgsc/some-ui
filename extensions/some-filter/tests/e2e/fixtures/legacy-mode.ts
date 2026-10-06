@@ -31,11 +31,8 @@ export async function enterLegacyMode(
   urlSubstring: string,
   config: typeof LEGACY_CONFIG = LEGACY_CONFIG
 ): Promise<void> {
-  // This runs inside the extension's own MV3 service worker via CDP, not
-  // through this repo's module graph — `@filter/platform`'s browser.*
-  // wrapper isn't reachable here, and the fixture (tests/e2e/fixture.ts)
-  // is Chromium-only by design, so the raw chrome.* API is the correct
-  // (only) tool for the job.
+  // Runs inside the extension's service worker via CDP, outside this repo's
+  // module graph, so the raw (Chromium-only) chrome.* API is the tool.
   await sw.evaluate(
     async ({ urlSubstring, config }) => {
       // eslint-disable-next-line no-restricted-globals

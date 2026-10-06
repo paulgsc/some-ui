@@ -8,16 +8,12 @@ import { createShelfKeeper, createShelfList } from "../../../lib/shelf/runtime"
 import { Button } from "../button"
 
 /*
- * The learner shelf on screen (canon Rem. 7.3; see `lib/shelf` for what
- * every call here is held to): the list of what the learner kept, and
- * "Keep on this account". Shared by every activity that keeps something; an
- * activity supplies its words (`ShelfWords`) and how a kept body is read
- * back. The calls and which result is stale are `lib/shelf/runtime`'s; these
- * components read its snapshot and turn taps into calls.
- *
- * Mounted only when the host passes a shelf. Every call is a tap: the list
- * loads when it is shown, and an item is kept, read or removed when the
- * learner asks for that one.
+ * The learner shelf on screen (canon Rem. 7.3; `lib/shelf` holds the rules
+ * every call follows): the kept list and "Keep on this account". An activity
+ * supplies its words (`ShelfWords`) and how a kept body is read back; calls
+ * and staleness are `lib/shelf/runtime`'s. Mounted only when the host passes
+ * a shelf.
+
  */
 
 /** What an activity calls the thing it keeps, in the learner's words. */

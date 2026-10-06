@@ -1,5 +1,5 @@
 /**
- * BOYO — the upcoming-feed slider (#973)
+ * BOYO — the upcoming-feed slider
  *
  * Two defects were reported against the same shelf, and both are here because
  * both were invisible to the existing suite: its fixture contained only
@@ -142,9 +142,8 @@ test("L3: the unresolvable cards do not keep the retry loop alive", async ({
   const page = await fixture.goto("yt-home")
 
   // The channel lockup can never resolve and the shorts card can never produce
-  // a channel. Both used to be retried at 500ms forever, each pass re-scanning
-  // the whole document. The attempt budget is ~10s, so by 15s the queue must
-  // have drained.
+  // a channel. The attempt budget is ~10s, so by 15s the queue must have
+  // drained.
   const snap = await fixture.pollDebug(page, (d) => d.unresolved === 0, {
     timeout: 15_000,
   })

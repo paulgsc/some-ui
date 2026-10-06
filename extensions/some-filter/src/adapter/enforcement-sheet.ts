@@ -3,185 +3,70 @@
  * text, built once per swatch and injected by `background/background.ts` at
  * the CSS **user origin** (`chrome.scripting.insertCSS({ origin: "USER" })`),
  * whose `!important` declarations outrank every author-origin declaration
- * regardless of the vendor's own specificity or `!important` use (§2.1).
- * Never reads page state — no `getComputedStyle`, no DOM reference anywhere
- * in this file — which is the architectural point (§1.4): this replaces the
- * classify-then-apply pipeline's conditional "does this page need theming?"
- * with an unconditional "every page renders in E."
+ * regardless of the vendor's specificity or `!important` use (§2.1). Never
+ * reads page state — no `getComputedStyle`, no DOM reference in this file —
+ * which is the architectural point (§1.4): an unconditional "every page
+ * renders in E" in place of classify-then-apply.
  *
- * §7 step 2, behind a flag: this module has no caller in the shipped
- * content-script path (`adapter/pipeline.ts`, `lib/content/theme-apply.ts`)
- * and changes no existing behavior by existing. `background/background.ts`
- * is its only consumer, gated on `enforcementSheetEnabled` in
- * `storage.local` (default `false` — see that module's own header for how to
- * flip it). Since SF-CUT3 (#1489) the flag makes auto mode this sheet alone,
- * requested per document by the content side and confirmed by a cascade read
- * before the veil is released (`lib/content/enforcement-handshake.ts`; §4:
- * "the veil is retained ... only the commit/release decision simplifies").
+ * §7 step 2, behind a flag: `background/background.ts` is the only consumer,
+ * gated on `enforcementSheetEnabled` in `storage.local` (default `false`).
+ * With the flag on, auto mode is this sheet alone, requested per document and
+ * confirmed by a cascade read before the veil is released
+ * (`lib/content/enforcement-handshake.ts`; §4).
  *
- * Every declaration below is guarded against this extension's own DOM (the
- * prepaint veil, the debug overlay — both carry `[data-my-ext]`, per
- * `theme-apply.ts`'s own `EXT_GUARD`) precisely because this sheet is meant
- * to run *alongside* that machinery during the flagged rollout, not instead
- * of it: an unguarded erase rule would blank the veil's own opaque cover
- * (and, since the veil carries `popover="manual"`, would also be
- * re-painted by the `[popover]` highlight-table rule below with the wrong
- * color) the moment both are active in the same tab.
+ * Every rule is guarded against this extension's own DOM (the prepaint veil,
+ * the debug overlay — both carry `[data-my-ext]`, per `EXT_GUARD`): an
+ * unguarded erase rule would blank the veil's opaque cover, and the
+ * `[popover]` highlight row would repaint it.
  *
- * `docs/adr/0003-embrace-shadow-crossing-and-highlight-table.md` amends the
- * "Open, blocking finding" immediately below (accepts shadow crossing as
- * the mechanism, conditional on the e2e canary this file's own tests carry
- * staying in the suite permanently) and implements its §3 highlight table
- * (`HIGHLIGHT_TABLE`, further down) — everything except that ADR's §3.1
- * `svg *` row, held back deliberately for its own sign-off.
+ * ── Shadow crossing (ADR 0002 §3.1 did not replicate) ─────────────────────
  *
- * ── Open, blocking finding: ADR 0002 §3.1 did not replicate here ──────────
+ * §3.1 measured that a user-origin `!important` rule does not cross a shadow
+ * boundary. Measured here (`tests/e2e/specs/adr0002-enforcement-sheet.spec.ts`,
+ * Chromium 1194) and confirmed live on github.com: a sheet injected via
+ * `insertCSS({ origin: "USER" })` DOES reach inside an open shadow root and
+ * override an inline author style, so the erase rule overrides
+ * shadow-scope-theming's per-scope realization. ADR 0003
+ * (`docs/adr/0003-embrace-shadow-crossing-and-highlight-table.md`) accepts
+ * crossing as the mechanism, conditional on that e2e canary staying in the
+ * suite, and adds the §3 highlight table (`HIGHLIGHT_TABLE`) — all but its
+ * §3.1 `svg *` row, held back for its own sign-off. Whether the crossing is
+ * Chromium-specific is still open: Firefox honours the user origin (manual
+ * check, no shadow roots on that page).
  *
- * §3.1 measured that a user-origin `!important` rule does not cross a
- * shadow boundary, and §5.2 relies on that to retain the entire shadow
- * stack untouched. `tests/e2e/specs/adr0002-enforcement-sheet.spec.ts`'s own
- * §3.1 case — the direct regression test for that claim, run against
- * Chromium 1194, the same revision the ADR itself measured against — found
- * the opposite: a rule injected via the real MV3 extension surface,
- * `chrome.scripting.insertCSS({ origin: "USER" })`, from a real background
- * service worker, DOES reach inside an open shadow root and override an
- * explicit inline author-origin style there. Reproduced with the full erase
- * rule and, isolated further, with a single trivial `div { background-color:
- * ... !important }` rule and no other CSS in the sheet at all — this is not
- * an interaction with anything else this file adds (`color-scheme` was
- * already ruled out and removed for a related but distinct reason, above in
- * this diff's history).
+ * ── Containers get a lift gradient, not a forced border ───────────────────
  *
- * This module still builds the sheet exactly as ADR 0002 §2 describes — the
- * point of this step is to test the mechanism live, and this divergence
- * *is* one of the things that testing is for. But it means the "shadow
- * stack needs no changes" premise this file was written against does not
- * hold as measured: this sheet's erase rule would presently override the
- * existing shadow-scope-theming pipeline's own per-scope realization
- * (`adapter/shadow-scope-theming.ts`, `adapter/shadow-actuator.ts`) for any
- * page with a shadow-hosted vendor component, rather than leaving it
- * untouched. Before this goes any further than "behind a flag, alongside
- * the existing pipeline for live comparison" — in particular before ADR
- * 0002 §7 step 3 (Firefox parity) or step 5 (deleting the old pipeline,
- * irreversible) — this needs its own investigation: whether `insertCSS`'s
- * `origin: "USER"` is actually taking effect as true user-origin CSS in
- * this Chromium build/version, or whether user-origin genuinely does cross
- * shadow boundaries for an extension-injected sheet specifically (as
- * opposed to whatever mechanism the ADR's own §3.1 measurement used).
- *
- * Independently confirmed live, not just in this sandbox: the user ran the
- * identical probe (a fresh `attachShadow({mode:"open"})` host, a child with
- * `background-color`/`color` set inline with `!important` — the exact case
- * ADR 0002 §2.1's own table cites as the reason this mechanism is worth a
- * rewrite in the first place) against a real production page
- * (github.com), with the tab confirmed `data-sw-tab-state === "off"` first
- * (so the existing shadow-scope-theming pipeline, which legitimately
- * themes shadow roots via `adoptedStyleSheets` and is a real, separate
- * confound if left running, was not a factor). Result: `background-color:
- * rgba(0, 0, 0, 0)` and `color: rgb(134, 153, 177)` — both properties
- * overridden, exactly as this sandbox's own e2e case shows. Two
- * independent Chromium instances, two different pages, one isolated to
- * rule out the confound above; this is no longer a single-environment
- * anomaly to hope goes away.
- *
- * Partial update: the user manually loaded a real `build:firefox` build in
- * live Firefox and reported the canvas rule, the erase rule's `color`, and
- * `borderStrong`'s own `border-color` all landing correctly on a real page —
- * the first evidence either way on ADR 0002 §6's own open question (does
- * Firefox honor `browser.scripting.insertCSS({ origin: "USER" })` at all).
- * That page had no open shadow roots, so it says nothing about whether this
- * §3.1 divergence is Chromium-specific or general — still open. Manual,
- * not an automated e2e result (this sandbox has no Firefox binary — see
- * `CLAUDE.md`) — recorded here as a data point, not a verification.
- *
- * ── border soup: containers get a lift gradient, not a forced border ───────
- *
- * A live probe against real GitHub markup (a `.Box`-classed div) found
- * `borderStrong`'s own `border-color` applying exactly as built, but
- * `border-width: 0px` — the vendor element declared no border of its own, so
- * nothing rendered despite the correct color. ADR 0002 §2.3 argues borders
- * carry hierarchy on a generic `<div>` tree precisely because backgrounds
- * have collapsed to `bg0`; a color with no width to paint through is the
- * same as no border at all for that argument, and §5.4 already names this
- * risk ("flat hierarchy on div soup ... unmeasured against the user's real
- * sites") — this was that measurement.
- *
- * The first fix forced `border-style`/`border-width` on the same broad
- * `ERASE_SELECTOR` as `background-color`/`color` — every erased element,
- * `<span>`/`<a>`/`<code>` included. Live testing found exactly the cost its
- * own comment predicted: loaded against a real, dense UI (this project's own
- * Claude Code web app, with the extension enabled on that tab), every chip,
- * badge, code span, and button sitting next to its neighbors got boxed —
- * visually noisy, not "crisp, low-contrast hierarchy."
- *
- * A second fix narrowed the forced border to a dedicated container selector
- * (`div`, `section`, list/table elements, landmark regions, form controls) —
- * better, but still a border around every `div`/`section`/`li`/`td` on a
- * div-soup page: a border *soup*, boxes around everything rather than the
- * intended "crisp, low-contrast hierarchy."
- *
- * The mechanism now is a translucent, fixed-height, top-lit gradient (a
- * "lift") on `LIFT_SELECTOR` — every structural container *that has at least
- * one sibling* — instead of a border on every container:
+ * A border colour with no vendor width paints nothing, so §2.3's "borders
+ * carry hierarchy" needs a width (§5.4's div-soup risk). Forcing width on
+ * every erased element boxed every chip and code span; forcing it on every
+ * container drew boxes around everything. Instead, a translucent,
+ * fixed-height, top-lit gradient (a "lift") goes on `LIFT_SELECTOR` — every
+ * structural container *that has at least one sibling*:
  *
  *   - Siblings are separate concerns. `:not(:only-child)` marks each concern
- *     exactly where the tree branches, without reading layout or the vendor's
- *     own styling.
- *   - Wrapper chains collapse: a run of single-child wrapper `div`s matches
- *     nothing, so there's no restart of the cue at every intermediate edge.
- *   - It composes: translucent-over-transparent layers over the canvas, a
- *     `HIGHLIGHT_TABLE` `bg1` surface, or a parent's own lift alike —
- *     brightness steps at the edges become the separation cue.
- *   - Fixed height (not full-height): a tall `main` and a small card get the
- *     same visible edge; a full-height fade would be invisible on a tall
- *     container.
+ *     where the tree branches, without reading layout or vendor styling.
+ *   - Wrapper chains collapse: single-child wrappers match nothing.
+ *   - It composes: translucent layers over the canvas, a `bg1` surface, or a
+ *     parent's lift — brightness steps at the edges become the cue.
+ *   - Fixed height: a tall `main` and a small card get the same visible edge.
  *
- *  * ── the lift's raster cost must not scale with container height ────────────
+ * Raster cost must not scale with container height: a gradient with no
+ * `background-size` sizes itself to the whole box (colour stops only place
+ * colours), and pages like a PR diff have many tall sibling containers.
+ * `background-size: 100% 3rem` + `no-repeat` + `top` bounds the raster to an
+ * O(1) strip per container with the same visual result.
  *
- * The fixed-height claim above is about *where the fade is visible*, not
- * about *how much the browser has to rasterize* — those are different
- * costs, and the first live measurement only checked the first one. A CSS
- * gradient with no explicit `background-size` sizes itself to the entire
- * background positioning area; the `0`/`3rem` color-stop lengths in a plain
- * `linear-gradient(...)` only place colors along that area; they do not
- * bound it. On a real dense page this is not academic: GitHub's PR "Files
- * changed" tab wraps each changed file's diff in its own `CONTAINER`-matched
- * box (`details`, among others) with as many sibling boxes as files
- * changed, and an expanded diff's own box height scales with that file's
- * line count — thousands of pixels for a large file. Every one of those
- * boxes is `:not(:only-child)` (they are siblings of each other), so
- * without a bound, the lift would cost the browser a full-box-height
- * gradient raster on every repaint of every expanded file, scaling with
- * files-changed × lines-changed on exactly the kind of page (many
- * `CONTAINER` siblings, some of them tall) this mechanism exists for.
- * `background-size: 100% 3rem` + `no-repeat` + `background-position: top`
- * (below) bounds the rasterized area to the same 3rem strip regardless of
- * the box's real height — the visual result is identical (the color stops
- * inside that fixed-size image still run 0% to 100%), the raster cost is
- * now `O(1)` per container instead of `O(container height)`.
+ * Rejected: `:has(> * ~ *)` (costly tree-wide invalidation, see
+ * `LIFT_SELECTOR`); a depth ladder (counts nesting, not concerns); reading
+ * vendor styles ("never read the vendor theme"); JS role tagging
+ * (main-thread work that re-triggers invalidation); container queries (force
+ * `container-type`, altering layout); an opaque gradient (identical nested
+ * fills); a translucent full fill (compounds as `1 − (1 − α)ⁿ` toward white).
  *
- * Rejected: `:is(C):has(> * ~ *)` (lift the group envelope) is the more
- * semantically direct read but is a broad subject with a universal `:has()`
- * argument, which is costly to invalidate on every child mutation — not
- * viable on a streaming or dense page (see `LIFT_SELECTOR`'s own comment).
- * A descendant depth ladder counts DOM nesting, not concerns, and its
- * `:has()` form is the worst case of that same cost. Reading vendor styles
- * or stylesheets to recover depth violates "never read the vendor theme."
- * JS/`MutationObserver` role tagging is also main-thread work, and the
- * attribute writes it would need re-trigger style invalidation anyway.
- * Container queries require forcing `container-type`, which alters vendor
- * layout. An opaque gradient per container produces identical nested fills —
- * no separation; a translucent *full fill* per container compounds as
- * `1 − (1 − α)ⁿ` in div soup and washes the page toward white.
- *
- * `border-width`/`border-style` still exist, but only on
- * `BORDER_CONTAINER_SELECTOR` below, narrowed to where a border is
- * affordance rather than structure (`input`/`textarea`/`select`/`button`/
- * `dialog`) — everything that used to be a bordered *structural* container
- * gets the lift instead. Inline/text-level carriers (`span`, `a`, `code`/
- * `kbd`/`samp`) still keep `border-color` only, from `ERASE_SELECTOR` —
- * present if the vendor already declared a width, invisible otherwise, never
- * forced, same as before this fix existed.
+ * Borders remain only on `BORDER_CONTAINER_SELECTOR` (form controls and
+ * `dialog`, where a border is affordance). Inline carriers keep
+ * `border-color` only, from `ERASE_SELECTOR`: visible only where the vendor
+ * declared a width.
  */
 
 import { EXT_GUARD } from "@filter/lib/content/theme-apply"
@@ -189,131 +74,75 @@ import { EXT_GUARD } from "@filter/lib/content/theme-apply"
 import type { Swatch } from "./swatches"
 
 /**
- * §3.2: the erase rule below (`ERASE_SELECTOR`) has specificity (0,0,4) —
- * `:not()` takes the specificity of its argument, and it chains four type
- * selectors — which outranks a bare `html, body` canvas rule at (0,0,1) and
- * blanks the canvas too: the page renders on the UA's own white default
- * with E's light text on it, the exact light-on-light failure this sheet
- * exists to prevent. Measured directly: `html`/`body` read back as
- * `rgba(0, 0, 0, 0)` under the unboosted selector, the correct swatch color
- * under this one.
- *
- * `:root:root` chains two pseudo-classes for specificity (0,2,0) on `html`
- * itself, and `:root:root body` — (0,2,1) — extends the same boost to
- * `body`, a descendant of `html` the plain `:root:root` selector does not
- * itself match. (0,2,*) always outranks (0,0,4): the second tuple component
- * (class/attribute/pseudo-class count) dominates the third (type count)
- * regardless of how many `:not()` clauses the erase rule chains.
+ * §3.2: the erase rule (`ERASE_SELECTOR`) has specificity (0,1,4), which
+ * would outrank a bare `html, body` canvas rule and leave the page on the
+ * UA's white default with E's light text (measured). `:root:root` is (0,2,0)
+ * on `html`, `:root:root body` (0,2,1) on `body`; (0,2,*) always outranks the
+ * erase rule.
  */
 const CANVAS_SELECTOR = ":root:root, :root:root body"
 
 /**
- * SF-CUT3 (#1489): a custom property only this sheet declares, carrying the
- * swatch id, which the content side reads back
- * (`getComputedStyle(<html>).getPropertyValue(...)`) as proof the sheet is in
- * the document's cascade. Not the canvas colour: a vendor page can paint its
- * own `<html>` exactly `bg0` (bot-found on #1521), and the veil would then
- * come down on an unenforced page. At the user origin, `!important` beats
- * every author declaration of the same name, `!important` or not, so a page
- * cannot fake it either.
+ * A custom property only this sheet declares, carrying the swatch id; the
+ * content side reads it back from `<html>` as proof the sheet is in the
+ * cascade. Not the canvas colour: a vendor can paint its own `<html>` exactly
+ * `bg0`. At the user origin, `!important` beats every author declaration of
+ * the same name, so a page cannot fake it either.
  */
 export const ENFORCEMENT_SENTINEL_PROPERTY = "--sw-enforcement-sheet"
 
 /**
- * §2.2 (erase, don't paint): every carrier except the four excluded from
- * `background-image: none` below. `svg` is excluded alongside
- * `img`/`video`/`canvas` because it can carry its own fill/gradient defs
- * meant to be read, not erased — the same class of carrier as the other
- * three, not itself a background-color surface this rule needs to flatten.
+ * §2.2 (erase, don't paint): every carrier except media (`img`/`video`/
+ * `svg`/`canvas`, which carry content meant to be read), plus the
+ * `[data-my-ext]` exclusion. Exclusion must be by selector: a separate
+ * `[data-my-ext] { all: revert }` at the user origin rolls back to the UA
+ * origin, stripping `prepaint.css`'s author styling from the veil.
+ * Descendants of an extension-owned element are excluded too, the same
+ * contract as `EXT_GUARD`.
  *
- * ADR 0002 §2.2's own measured snippet plus one `:not([data-my-ext])`,
- * which is how this extension's own DOM (the prepaint veil, the debug
- * overlay) is kept out of the erase rule. An earlier revision left this
- * selector verbatim and instead wrote a separate
- * `[data-my-ext] { all: revert !important }` rule — bot-found on #1463
- * (Codex, P1): at the *user* origin `revert` rolls the cascade back to the
- * user-agent origin, not merely past this sheet, so it stripped
- * `prepaint.css`'s author-origin styling from the veil too (its fixed
- * positioning, viewport size and dark fill), leaving a UA-default popover
- * box while the page settled. Exclusion by selector is the only form that
- * leaves author-origin styling of these elements untouched.
- *
- * Descendants of an extension-owned element are excluded too (#1497), the
- * same contract `EXT_GUARD` states for every highlight row and the
- * detector's `closest("[data-my-ext]")` applies: nested extension UI (the
- * overlay root's children, another extension's mounted widget) keeps its
- * own author styling.
- *
- * Specificity is (0,1,4) — one attribute selector on top of the four type
- * negations. Still strictly below `CANVAS_SELECTOR`'s (0,2,0)/(0,2,1) and
- * below every `:where(...)${EXT_GUARD}` row's (0,2,0), which is the
- * relationship the rest of this sheet is calibrated against. That is why the
- * descendant clause is `:not(:where([data-my-ext] *))` and not `EXT_GUARD`'s
- * bare `:not([data-my-ext] *)`: `:not()` takes its argument's specificity, so
- * the bare form would add (0,1,0), lift this rule to (0,2,4), and let it beat
- * the canvas rule and every highlight row it exists to sit under.
+ * Specificity (0,1,4), deliberately below `CANVAS_SELECTOR` and every
+ * `:where(...)${EXT_GUARD}` row's (0,2,0). Hence `:not(:where([data-my-ext] *))`
+ * rather than `EXT_GUARD`'s bare `:not([data-my-ext] *)`, which would add
+ * (0,1,0) and beat the rules this sits under.
  */
 const ERASE_SELECTOR =
   "*:not(img):not(video):not(svg):not(canvas):not([data-my-ext]):not(:where([data-my-ext] *))"
 
 /**
- * Same erase policy for generated content. `*` never matches a
- * pseudo-element, so `ERASE_SELECTOR` alone leaves a vendor's `::before`/
- * `::after` boxes painting whatever they were authored with — a fixed white
- * `html::before` overlay, a light card background drawn on `::after`, a
- * gradient on a pseudo — on top of the erased canvas (bot-found on #1463,
- * Codex, P1). Independent paint surfaces, so they get the same four
- * declarations. Specificity: `:where()` contributes nothing, the
- * pseudo-element counts as one type — (0,0,1) — and user-origin
- * `!important` is what wins against the vendor regardless. `EXT_GUARD`
- * inside the `:where()` excludes an extension-owned element's own
- * pseudo-elements and its descendants' alike, at no specificity cost.
+ * Same erase policy for generated content: `*` never matches a
+ * pseudo-element, so vendor `::before`/`::after` boxes (a white overlay, a
+ * light card fill) would otherwise paint over the erased canvas.
+ * Specificity (0,0,1); user-origin `!important` wins regardless. `EXT_GUARD`
+ * inside `:where()` excludes extension-owned pseudo-elements at no
+ * specificity cost.
  */
 const ERASE_PSEUDO_SELECTOR = ["::before", "::after"]
   .map((pseudo) => `:where(*${EXT_GUARD})${pseudo}`)
   .join(", ")
 
 /**
- * A file input's button (#1497) is painted like every other button — the
- * `HIGHLIGHT_TABLE` input/button row's `inputBg` — not erased. Chromium
- * implements `::file-selector-button` as an `<input type="button">` inside
- * the control's UA shadow tree, which that row already reaches (§8.1
- * crossing) at (0,2,0), so a transparent erase here loses to it there and
- * wins in an engine where the pseudo-element is a real one: measured
- * `inputBg` on Chromium 1194 against a vendor `background-color: white`.
- * Naming the same token on the pseudo-element makes both engines agree.
- * `:where(input)` + `EXT_GUARD` before the pseudo-element, the same shape
- * as the `::placeholder` rule, since a pseudo-element cannot sit inside
- * `:where()`.
+ * A file input's button is painted like every other button (`inputBg`), not
+ * erased. Chromium implements `::file-selector-button` as an
+ * `<input type="button">` in the UA shadow tree, which the input/button
+ * highlight row already reaches (§8.1 crossing); naming the same token here
+ * makes engines with a real pseudo-element agree. A pseudo-element cannot sit
+ * inside `:where()`, hence `:where(input)` + `EXT_GUARD` before it.
  */
 const FILE_BUTTON_SELECTOR = `:where(input)${EXT_GUARD}::file-selector-button`
 
 /**
- * The typographic pseudo-elements (#1497): `::first-letter`, `::first-line`
- * and `::marker` paint a fragment of their originating element's own text, so
- * they get the erase rule's channel resets but not its colour. `color:
- * inherit` hands them whatever colour the originating element was enforced
- * to — the erase rule's `text0`, or a `HIGHLIGHT_TABLE` row's tier — where a
- * hard-coded `text0` would repaint the first line of every `p` (`text1`) and
- * the bullet of every `li` in a different colour from the text beside it, the
- * same override `-webkit-text-fill-color: currentColor` avoids for glyphs.
- * `::marker` ignores every property here except `color`; the rest apply to
- * the first-letter/first-line boxes. `:where()` again, so (0,0,1).
+ * `::first-letter`, `::first-line` and `::marker` paint a fragment of their
+ * originating element's text, so they get the erase resets with
+ * `color: inherit`: a hard-coded `text0` would repaint the first line of
+ * every `p` (`text1`) and every `li` bullet in a different colour from the
+ * text beside it. `::marker` ignores everything here but `color`. (0,0,1).
  *
- * The subjects are tag-constrained, not `*`, because a universal
- * `::first-line`/`::first-letter` rule makes the engine resolve those
- * pseudo-styles for every block in the document. Measured on #1478's
- * dense-diff fixture (36k elements, UpdateLayoutTree summed over a CDP
- * trace, medians of 4–6 runs, tab off so only the sheet contributes): the
- * universal three-pseudo rule took the initial style pass from 117 ms to
- * 270 ms and streaming 10k rows from 137 ms to 259 ms — `::first-letter`
- * alone +55 ms, `::first-line` +31 ms, `::marker` +8 ms. These subjects
- * measured 129 ms / 137 ms, inside noise of no rule at all. The trade is a
- * vendor `::first-line`/`::first-letter` on an element outside
- * `TEXT_BLOCK` (a `div` lead paragraph, say), which keeps its authored
- * colour. `::marker` follows `li`/`summary`, the elements that are list items
- * by default; an element made a list item by `display: list-item` alone is the
- * same kind of miss.
+ * Tag-constrained, not `*`: a universal rule makes the engine resolve these
+ * pseudo-styles for every block. Measured on a 36k-element fixture: the
+ * universal rule took the initial style pass from 117 ms to 270 ms; these
+ * subjects measured within noise of no rule. The trade: a vendor
+ * `::first-line` on an element outside `TEXT_BLOCK`, or a `display: list-item`
+ * marker, keeps its authored colour.
  */
 const TEXT_BLOCK =
   "p, h1, h2, h3, h4, h5, h6, li, blockquote, dd, dt, figcaption, caption"
@@ -324,89 +153,43 @@ const ERASE_TEXT_PSEUDO_SELECTOR = [
 ].join(", ")
 
 /**
- * Structural containers eligible for the lift gradient below — see this
- * module's own header, "border soup: containers get a lift gradient, not a
- * forced border", for why these no longer get a forced border instead.
- *
- * Form controls, `td`/`tr` (would stripe every table row), and
- * `code`/`kbd`/`samp`/`pre` (already given their own fill by
- * `HIGHLIGHT_TABLE`) are deliberately excluded — they have their own
- * affordance or fill and don't need the lift's separation cue. `li` is also
- * excluded: it would turn every multi-item list into softly-lit rows, which
- * may suit a menu but is untested for noise on a long list — left for a
- * follow-up rather than defaulted on here.
+ * Structural containers eligible for the lift (see the header). Excluded:
+ * form controls (own affordance), `td`/`tr` (would stripe every row),
+ * `code`/`kbd`/`samp`/`pre` (own fill), and `li` (untested for noise on long
+ * lists).
  */
 const CONTAINER =
   "div, section, article, aside, nav, header, footer, main, ul, ol, table, form, fieldset, figure, details"
 
 /**
- * `:not(:only-child)` — the container has at least one sibling, i.e. the
- * tree branches at this point. Each such branch is a separate UI concern
- * (this module's own header); a chain of single-child wrappers matches
- * nothing, so the lift doesn't restart at every intermediate wrapper edge.
- *
- * Not `:has(> * ~ *)` (lift the group envelope instead of each sibling):
- * `:has()` invalidates on every mutation within its argument's reach, and a
- * broad subject (`CONTAINER`) with a universal argument (`* ~ *`) makes that
- * cost apply tree-wide on every child mutation — unacceptable on a streaming
- * or dense page. `:only-child`'s own invalidation is sibling-local: adding
- * or removing a child only needs to re-check that child's own siblings, not
- * walk ancestors or descendants.
+ * `:not(:only-child)`: the tree branches here. Not `:has(> * ~ *)`: `:has()`
+ * invalidates on every mutation within its argument's reach, which with a
+ * broad subject and universal argument is tree-wide on every child mutation.
+ * `:only-child` invalidation is sibling-local.
  */
 const LIFT_SELECTOR = `:is(${CONTAINER}):not(:only-child)`
 
 /**
- * Borders only where they are affordance, not structure — see this module's
- * own header for the border-soup finding this replaces. `HIGHLIGHT_TABLE`
- * already gives these a distinct background; a border reads as an expected
- * interactive-control affordance here, unlike a border on a generic `div`
- * or `section`, which is what the lift now handles instead.
- *
- * No `:where()`/`EXT_GUARD` boost needed: nothing else in this sheet sets
- * `border-width`/`border-style`, so there is no specificity to out-rank —
- * the `[data-my-ext]` exclusion's own (0,1,0) already beats this selector's
- * plain (0,0,1) regardless.
+ * Borders only where they are affordance, not structure (see the header).
+ * No specificity boost needed: nothing else sets `border-width`/`border-style`.
  */
 const BORDER_CONTAINER_SELECTOR = "input, textarea, select, button, dialog"
 
 /**
- * ADR 0003 §3 — the compile-time highlight table: an IDE syntax
- * highlighter's token-to-color grammar, not a page-reading classifier.
- * Originally just background-color tiers for a §2.3 "semantic surface"
- * vocabulary (dialog/input/th/nav); generalized here to any property a
- * static selector table can reasonably own, because the erase rule's own
- * flat `color: ${swatch.text0}` on every element was itself an unmeasured
- * "div soup" risk of exactly the kind ADR 0002 §5.4 already named for
- * borders — this is that same gap, for content.
+ * ADR 0003 §3 — the compile-time highlight table: an IDE highlighter's
+ * token-to-colour grammar, not a page-reading classifier. It replaces the
+ * erase rule's flat `color: text0` on content (the §5.4 div-soup risk).
  *
- * Every text-tier/link/code row below is *ported*, not invented: it
- * reproduces `theme-apply.ts`'s own `DARK_THEME_BODY_RULES`, already
- * shipped without incident in the existing pipeline. Reusing those exact
- * selector/tier choices (rather than picking new ones) means a page themed
- * by both layers at once — the flagged state this step ships in — shows
- * one opinion about a given element's color, not two disagreeing ones.
- * `accent-color` has no existing-pipeline precedent — flagged inline below.
+ * Text-tier/link/code rows are ported from `theme-apply.ts`'s
+ * `DARK_THEME_BODY_RULES`, so a page themed by both layers shows one opinion
+ * per element. `accent-color` and the `nav`/`header`/`aside` → `bg1`
+ * placement have no ported precedent; ADR 0002 §7 step 4 checks those live.
+ * ADR 0003 §3.1's `svg *` fill/stroke row is excluded (a new cost that
+ * flattens multi-colour icons; the ADR asks to see it live first).
  *
- * `nav`/`header`/`aside` → `bg1` and `button` joining the input group are
- * the one placement choice with no ported precedent either way (carried
- * over unchanged from this table's original, narrower form) — ADR 0002 §7
- * step 4's eye-strain validation is where that gets checked against a real
- * page rather than argued from here.
- *
- * Deliberately excludes the `svg *` → `fill`/`stroke: currentColor` row ADR
- * 0003 §3.1 proposes: that one is a strictly new cost (flattens
- * intentionally multi-color icon content) rather than a ported or additive
- * win like every row actually below, and ADR 0003 §3.1 itself asks for it
- * to be seen live before landing, not bundled in on this table's own
- * precedent.
- *
- * Each selector is wrapped in `:where()` (zero specificity of its own) so
- * every entry's specificity is exactly `EXT_GUARD`'s (0,2,0) regardless of
- * how complex the base selector is — comfortably past the erase rule's
- * (0,0,4), for both `color` and `background-color` alike — and to match
- * `theme-apply.ts`'s own `:where(...)${EXT_GUARD}` idiom for the identical
- * reason it's used there. `declarations` returns raw CSS text rather than a
- * single token, since a row like `code`/`pre` needs more than one property.
+ * Each selector is wrapped in `:where()` so every row is exactly
+ * `EXT_GUARD`'s (0,2,0), past the erase rule, matching `theme-apply.ts`'s
+ * idiom. `declarations` returns raw CSS since some rows set several properties.
  */
 const HIGHLIGHT_TABLE: ReadonlyArray<{
   readonly selector: string
@@ -442,7 +225,7 @@ const HIGHLIGHT_TABLE: ReadonlyArray<{
       `background-color: ${s.bg2} !important; color: ${s.text0} !important;`,
   },
 
-  // Semantic surfaces — this table's original rows (#1463).
+  // Semantic surfaces.
   {
     selector: "dialog, [popover]",
     declarations: (s) => `background-color: ${s.surface} !important;`,
@@ -465,11 +248,8 @@ const HIGHLIGHT_TABLE: ReadonlyArray<{
     declarations: (s) => `background-color: ${s.bg1} !important;`,
   },
 
-  // New (ADR 0003 §3, not §3.1's svg row — see this table's own header).
-  // No existing-pipeline precedent: theme-apply.ts never themed native
-  // checkbox/radio/range controls at all. accent-color is the dedicated,
-  // compile-time-only CSS property for exactly this — no DOM reads, no
-  // fill/stroke flattening risk the svg row carries.
+  // ADR 0003 §3, no ported precedent: accent-color is the compile-time-only
+  // property for native checkbox/radio/range controls.
   {
     selector: "input, textarea, select",
     declarations: (s) => `accent-color: ${s.link} !important;`,
@@ -478,38 +258,17 @@ const HIGHLIGHT_TABLE: ReadonlyArray<{
 
 /**
  * Builds the enforcement sheet's full CSS text for `swatch` — pure, no DOM,
- * no randomness. Two calls with the same `swatch` produce byte-identical
- * output.
+ * no randomness; byte-identical across calls.
  *
- * Implements ADR 0002 §2.2 (erase, don't paint) + §2.3 (visual hierarchy on
- * a flattened tree — a border via `swatch.borderStrong` on affordance
- * controls, `BORDER_CONTAINER_SELECTOR`, and a top-lit lift gradient via
- * `swatch.lift` on structural containers, `LIFT_SELECTOR` — see this
- * module's own header for why the lift replaces borders on the latter) +
- * §3.2 (the canvas specificity boost) + §3.5 (`background-image: none`, the
- * required, blunt fidelity cost) + ADR 0003 §3 (`HIGHLIGHT_TABLE`, the
- * compile-time token-to-color table replacing flat erasure for
- * text/links/code/form controls) + the `[data-my-ext]` exclusion this
- * module's own header explains.
+ * Implements ADR 0002 §2.2 (erase) + §2.3 (hierarchy: `borderStrong` on
+ * affordance controls, `lift` on structural containers) + §3.2 (canvas
+ * boost) + §3.5 (`background-image: none`, the accepted fidelity cost) + ADR
+ * 0003 §3 (`HIGHLIGHT_TABLE`) + the `[data-my-ext]` exclusion.
  *
- * Deliberately omits `color-scheme: dark` (§3.3/§3.4), despite §3.3
- * describing it as part of "the full sheet": this file's own
- * `tests/e2e/specs/adr0002-enforcement-sheet.spec.ts` §3.1 case measured —
- * against the same Chromium build this repo's e2e harness already targets —
- * that adding it does not merely risk the §3.4 shadow-piercing quirk as a
- * possibility to avoid *relying on*, it actively *reproduces* it here: the
- * erase rule's own `background-color: transparent` leaked into an open
- * shadow root's own explicitly-styled child, turning a real
- * `rgb(255, 255, 255)` into `rgba(0, 0, 0, 0)`. That directly breaks §3.1's
- * and §5.2's own guarantee ("the shadow stack stays... retained") — a
- * correctness regression against this step's own acceptance bar, not an
- * acceptable trade. §3.3's UA-canvas/native-control fallback is a real,
- * separate requirement this sheet does not yet meet; re-adding it is
- * follow-up work once it can be done without this side effect (a
- * `color-scheme`-only sheet on its own origin/pass, or re-verifying this
- * quirk is gone in a newer Chromium), not something to ship now on the
- * strength of an ADR clause alone when direct measurement in this exact
- * environment says otherwise.
+ * Deliberately omits `color-scheme: dark` (§3.3/§3.4): measured in the
+ * adr0002 e2e spec, adding it reproduces the §3.4 shadow-piercing quirk (an
+ * open shadow root's styled child turned `rgba(0, 0, 0, 0)`). §3.3's
+ * UA-canvas/native-control fallback is follow-up work.
  */
 export function buildEnforcementCSS(swatch: Swatch): string {
   const highlightRules = HIGHLIGHT_TABLE.map(

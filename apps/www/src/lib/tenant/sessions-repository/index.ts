@@ -32,14 +32,8 @@ export type UpdateSessionInput = Partial<
 >
 
 /**
- * What the rest of the app is allowed to know about session storage.
- *
- * Extracted so there can be two implementations of it — this file's
- * `localStorage` one and the HTTP one in `http-sessions-repository.ts` —
- * without `hooks.ts` or anything above it changing. That the seam was
- * already drawn here is why moving the source of truth to `file_host` is a
- * swap rather than a rewrite; `MOCK_LATENCY_MS` existed to simulate exactly
- * the network that now exists.
+ * What the rest of the app may know about session storage, with two
+ * implementations: this `localStorage` one and `http-sessions-repository.ts`.
  */
 export type SessionsStore = {
   list: () => Promise<Array<SessionRecord>>
@@ -67,9 +61,8 @@ export class SessionNotFoundError extends Error {
 }
 
 /**
- * The `localStorage` backend. Still the whole story for the GitHub Pages
- * build, which has no backend to talk to (`DATA_MODE === "static"`), and
- * still what the repository tests run against through an in-memory adapter.
+ * The `localStorage` backend: the Pages build's only store, and what the
+ * repository tests run against via an in-memory adapter.
  */
 export class SessionsRepository implements SessionsStore {
   constructor(
@@ -143,9 +136,8 @@ export class SessionsRepository implements SessionsStore {
     this.writeAll(this.readAll().filter((s) => !idSet.has(s.id)))
   }
 
-  /** Bulk status transition - the one field it's coherent to set identically across an
-   * arbitrary, heterogeneous group of sessions (unlike name/activities/scenes, which are
-   * per-session by nature). */
+  /** Bulk status transition: the one field coherent to set identically
+   * across a heterogeneous group. */
   async updateStatusMany(
     ids: ReadonlyArray<string>,
     status: SessionStatus

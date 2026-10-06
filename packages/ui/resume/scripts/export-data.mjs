@@ -2,15 +2,11 @@
 // Extracts each composition's content from the Typst document and writes it as
 // TypeScript for the web reading view (src/react).
 //
-// Why this exists. apps/www needs the résumé as *text*: a PDF does not render
-// inline on mobile browsers, and Typst's SVG export contains no text at all —
-// every glyph is a path — so neither can be read, selected, searched, or
-// crawled on a phone. Before this, apps/www carried a hand-copied transcript
-// of the résumé in TSX, which had already drifted from the source.
-//
-// So the text is derived instead. `typst query` reads the `<resume-export>`
-// metadata that src/main.typ attaches to the document it just laid out, which
-// means the web view and the PDF cannot describe different résumés.
+// apps/www needs the résumé as *text*: a PDF does not render inline on mobile
+// browsers, and Typst's SVG export has no text at all. `typst query` reads the
+// `<resume-export>` metadata src/main.typ attaches to the laid-out document,
+// so the web view and the PDF cannot describe different résumés.
+
 //
 // The output is committed rather than generated into dist/. It is small
 // (~7 KB/variant), it makes content changes reviewable as a diff, and it keeps
@@ -21,10 +17,8 @@
 // checks the data against the declared shape. The assert below covers what
 // types cannot: that a composition is not empty.
 //
-// This script is the one piece here that does not survive moving rendering to
-// the server (paulgsc/some-ui#1132): once a service owns the résumé, it serves
-// this payload directly and nothing queries `.typ` from Node. The *shape*
-// below is the part that lasts — it becomes the response body.
+// If rendering moves to a service (#1132), this script goes and the shape
+// becomes the response body.
 import { execFileSync } from "node:child_process"
 import { writeFileSync } from "node:fs"
 import { join } from "node:path"

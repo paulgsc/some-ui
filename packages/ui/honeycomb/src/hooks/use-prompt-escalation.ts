@@ -1,16 +1,13 @@
 import { useEffect, useState } from "react"
 
 /**
- * Hint tiers for the Prompt/Concept Station (#762). Escalation is computed
- * client-side purely from already-observable signals - miss count and
- * elapsed time on the currently active challenge - never a new engine-owned
- * concept (canon Axiom 3.1: the engine stays free of UI/hint policy).
+ * Hint tiers for the Prompt/Concept Station, computed client-side from miss
+ * count and elapsed time on the active challenge (canon Axiom 3.1: the engine
+ * stays free of hint policy).
  *
- * The top tier is `icon-tts-hangul`, not romanization: the target the player
- * is typing is Hangul, so the last-resort hint has to be the thing they need
- * to produce. Romanization is a Latin-alphabet crutch that teaches the wrong
- * mapping - the player reads "sagwa" and has to re-derive 사과 to get anywhere,
- * which is the exact skill the hint was supposed to unblock.
+ * The top tier is `icon-tts-hangul`, not romanization: the player types
+ * Hangul, and "sagwa" would make them re-derive 사과, the very skill the hint
+ * is meant to unblock.
  */
 export type HintTier = "idle" | "icon" | "icon-tts" | "icon-tts-hangul"
 
@@ -34,10 +31,9 @@ export function usePromptEscalation({
   spawnedAt,
   missCount,
 }: UsePromptEscalationProps): HintTier {
-  // Only ever written from inside the interval's own callback (never
-  // synchronously in the effect body) - `Date.now()` is impure, so it can
-  // only be called in response to an external event (the timer firing), not
-  // during render or as a direct effect-body side effect.
+  // Written only in the interval callback: `Date.now()` is impure, so not
+  // during render or in the effect body.
+
   const [elapsedMs, setElapsedMs] = useState(0)
 
   useEffect((): (() => void) | undefined => {

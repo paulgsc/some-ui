@@ -1,4 +1,5 @@
 import type { StorageLike } from "@topik/lib/topik/adapter/resume-point"
+import { memoryStorage } from "@topik/testing/memory-storage"
 import { describe, expect, it } from "vitest"
 
 import {
@@ -8,19 +9,10 @@ import {
   SURVEY_TTL_MS,
 } from "."
 
-const memory = (): StorageLike & { map: Map<string, string> } => {
-  const map = new Map<string, string>()
-  return {
-    map,
-    getItem: (key: string): string | null => map.get(key) ?? null,
-    setItem: (key: string, value: string): void => void map.set(key, value),
-  }
-}
-
 describe("createSurveyStore", () => {
   it("keeps a report, newest first, with only what was answered", () => {
     let clock = 1
-    const store = createSurveyStore(memory(), () => clock++)
+    const store = createSurveyStore(memoryStorage(), () => clock++)
     store.add("a", { worthwhile: "yes", stuck: [] })
     store.add("b", {
       difficulty: "too-hard",
@@ -40,14 +32,14 @@ describe("createSurveyStore", () => {
   })
 
   it("does not keep a blank report: that was a skip", () => {
-    const storage = memory()
+    const storage = memoryStorage()
     createSurveyStore(storage).add("a", { stuck: [], becoming: "  " })
     expect(storage.map.has(SURVEY_STORAGE_KEY)).toBe(false)
   })
 
   it("forgets the oldest past the bound", () => {
     let clock = 0
-    const store = createSurveyStore(memory(), () => clock++)
+    const store = createSurveyStore(memoryStorage(), () => clock++)
     for (let i = 0; i <= MAX_SURVEYS; i += 1) {
       store.add(`t${i}`, { worthwhile: "yes", stuck: [] })
     }
@@ -57,7 +49,7 @@ describe("createSurveyStore", () => {
   })
 
   it("never reads a report past its expiry, even with nothing written since (canon Rem. 7.4)", () => {
-    const storage = memory()
+    const storage = memoryStorage()
     let clock = 1_000
     createSurveyStore(storage, () => clock).add("old", {
       worthwhile: "no",
@@ -69,8 +61,8 @@ describe("createSurveyStore", () => {
     expect(createSurveyStore(storage, () => clock).list()).toEqual([])
   })
 
-  it("deletes an expired report from storage on the read that drops it (Codex, #1555)", () => {
-    const storage = memory()
+  it("deletes an expired report from storage on the read that drops it", () => {
+    const storage = memoryStorage()
     let clock = 1_000
     const store = createSurveyStore(storage, () => clock)
     store.add("old", { stuck: [], becoming: "reading webtoons raw" })
@@ -84,7 +76,7 @@ describe("createSurveyStore", () => {
   })
 
   it("records the lesson's level and name with the report", () => {
-    const store = createSurveyStore(memory(), () => 5)
+    const store = createSurveyStore(memoryStorage(), () => 5)
     store.add(
       "k",
       { difficulty: "right", stuck: [] },
@@ -95,7 +87,7 @@ describe("createSurveyStore", () => {
 
   it("forgets the free text of the reports a prompt carried, and only theirs", () => {
     let clock = 1
-    const store = createSurveyStore(memory(), () => clock++)
+    const store = createSurveyStore(memoryStorage(), () => clock++)
     store.add("a", { stuck: [], becoming: "older" })
     store.add("b", { stuck: [], becoming: "newer" })
     const [carried] = store.list()
@@ -103,8 +95,7 @@ describe("createSurveyStore", () => {
     store.add("c", { stuck: [], becoming: "after the prompt" })
     store.forgetBecoming(carried ? [carried] : [])
     const [latest, newest, older] = store.list()
-    // Not carried, so not forgotten, though it is now the newest (Codex,
-    // #1555).
+    // Not carried, so not forgotten, though it is now the newest.
     expect(latest?.becoming).toBe("after the prompt")
     expect(newest?.becoming).toBeUndefined()
     // A report left with nothing else in it is still the learner's verdict
@@ -114,7 +105,7 @@ describe("createSurveyStore", () => {
   })
 
   it("discards a document it cannot read, and survives storage that throws", () => {
-    const storage = memory()
+    const storage = memoryStorage()
     storage.map.set(SURVEY_STORAGE_KEY, '{"version":9}')
     expect(createSurveyStore(storage).list()).toEqual([])
 

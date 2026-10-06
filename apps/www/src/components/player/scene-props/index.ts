@@ -14,19 +14,11 @@ export type ScenePropsMap = Partial<
 >
 
 /**
- * Build a `ScenePropsMap` with its keys actually checked against the registry's
- * own union, so a renamed or misspelled panel is a compile error here rather
- * than props that silently go nowhere.
- *
- * The `Record<Exclude<keyof T, RegistryKey>, never>` intersection is doing that
- * work, and it is not redundant with the annotation. Annotating the literal
- * `ScenePropsMap` directly does *not* catch a bad key: `ScenePropsMap` is a
- * "weak" type (every property optional), and TypeScript only reports the
- * no-properties-in-common error for those when *nothing* matches - so
- * `{ hangull: …, leetype: … }` type-checks clean on the strength of `leetype`
- * alone, which is exactly the typo worth catching. Forcing any key outside the
- * union to be `never` turns it into a plain assignability error, which TS does
- * report.
+ * Build a `ScenePropsMap` with its keys checked against the registry's union,
+ * so a misspelled panel is a compile error. The `Record<Exclude<…>, never>`
+ * intersection does that: `ScenePropsMap` is a weak type (all optional), and
+ * TS only reports a weak-type mismatch when *no* key matches, so
+ * `{ hangull: …, leetype: … }` would pass on `leetype` alone.
  */
 export function defineSceneProps<T extends ScenePropsMap>(
   map: T & Record<Exclude<keyof T, RegistryKey>, never>
@@ -36,25 +28,12 @@ export function defineSceneProps<T extends ScenePropsMap>(
 
 /**
  * Merge each panel's runtime props into the lifetimes the orchestrator is
- * about to render, by that panel's own `registry_key`.
+ * about to render, by that panel's own `registry_key`, so no panel receives
+ * another's props and the viewport holds no app content concerns.
  *
- * This replaces threading one `extraProps` bag through the viewport and
- * spreading it onto *every* panel regardless of key. That was wrong in both
- * directions: `hangul`'s `words`/`sessionKey`/`suspended` and `leetype`'s
- * `challenges` were landing on every unrelated panel as stray props, and the
- * viewport - a generic layout component - was the thing holding a bag of this
- * app's content concerns. Nothing in that bag was ever genuinely
- * cross-cutting; each member targeted exactly one key. So the association is
- * made here, statically, where both sides are known, and the viewport goes
- * back to rendering panels with the props they came with.
- *
- * Persisted scene props stay the base layer and runtime props win on
- * conflict - the same precedence `extraProps` had, since a stale value baked
- * into a saved scene should not beat what this render actually resolved.
- *
- * Untouched subtrees keep their identity all the way up, so a render that
- * injects nothing hands the orchestrator the very array it was given rather
- * than an equal copy.
+ * Runtime props win over persisted scene props: a stale saved value should
+ * not beat what this render resolved. Untouched subtrees keep their identity,
+ * so a render that injects nothing returns the very array it was given.
  */
 export function withSceneProps(
   lifetimes: Array<ActiveLifetime>,
@@ -87,7 +66,7 @@ function mergeLayout(
 
   const entries = Object.entries(panels)
   // Checked before rebuilding so a layout with nothing to inject keeps its
-  // own identity, which is what lets the no-op case short-circuit above.
+  // identity.
   const injectsSomething = entries.some(
     ([, panel]) => lookup(props, panel.registry_key) !== undefined
   )
@@ -110,11 +89,9 @@ function unchanged<T>(next: Array<T>, prev: Array<T>): boolean {
 }
 
 /**
- * `registry_key` arrives as a plain `string` (it crosses the orchestrator's
- * zod boundary that way, and a persisted scene can name a key this build no
- * longer has), so the lookup is a guarded read rather than an index - and
- * `hasOwn`, not `in`, so a panel named `constructor` doesn't resolve to
- * something off `Object.prototype`.
+ * `registry_key` is a plain `string` (a persisted scene can name a key this
+ * build lacks), so the lookup is guarded, with `hasOwn` so `constructor`
+ * doesn't resolve off `Object.prototype`.
  */
 function lookup(
   props: ScenePropsMap,

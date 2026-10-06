@@ -58,9 +58,6 @@ export const createApiHooks = (
   client: FetchClient = apiClient
 ): QueryHookFactory => {
   return {
-    /**
-     * Create a type-safe hook for data fetching with React Query
-     */
     createQueryHook: <TData, TError = unknown>(
       endpoint: URL,
       schema: z.ZodType<TData>,
@@ -70,7 +67,6 @@ export const createApiHooks = (
         "queryKey" | "queryFn"
       > = {}
     ) => {
-      // Actual hook function that consumers will use
       return (
         params: Record<string, string | number> = {},
         options: Omit<
@@ -78,32 +74,24 @@ export const createApiHooks = (
           "queryKey" | "queryFn"
         > = {}
       ) => {
-        // Clone the URL to avoid modifying the original
+        // A copy, so the shared URL is not mutated.
         const url = new URL(endpoint.toString())
         const pathParams: Record<string, string> = {}
 
-        // Process path parameters and query parameters
         Object.entries(params).forEach(([key, value]) => {
           const placeholder = `:${key}`
           const pathTemplate = url.pathname
 
           if (pathTemplate.includes(placeholder)) {
-            // Handle path parameters
             url.pathname = pathTemplate.replace(placeholder, String(value))
             pathParams[key] = String(value)
           } else {
-            // Handle query parameters
             url.searchParams.append(key, String(value))
           }
         })
 
-        /**
-         * ⚠️ REFACTOR NOTE:
-         * The queryKey below couples the cache to EVERY parameter.
-         * If 'params' contains values not used in the URL, this hook
-         * will trigger unnecessary network requests.
-         */
-        // Create query key based on endpoint and params
+        // The key couples the cache to every param, so a param not in the URL
+        // still causes extra fetches (see the module doc).
         const queryKey = [endpoint.toString(), params]
 
         return useQuery<TData, TError>({
@@ -123,9 +111,6 @@ export const createApiHooks = (
       }
     },
 
-    /**
-     * Create a type-safe hook for data mutations with React Query
-     */
     createMutationHook: <TData, TVariables, TError = unknown>(
       endpoint: URL,
       schema: z.ZodType<TData>,
@@ -135,7 +120,6 @@ export const createApiHooks = (
         "mutationFn"
       > = {}
     ) => {
-      // Actual hook function that consumers will use
       return (
         params: Record<string, string | number> = {},
         options: Omit<
@@ -143,10 +127,9 @@ export const createApiHooks = (
           "mutationFn"
         > = {}
       ) => {
-        // Clone the URL to avoid modifying the original
+        // A copy, so the shared URL is not mutated.
         const url = new URL(endpoint.toString())
 
-        // Replace URL parameters in the pathname
         Object.entries(params).forEach(([key, value]) => {
           const placeholder = `:${key}`
           if (url.pathname.includes(placeholder)) {
@@ -171,5 +154,4 @@ export const createApiHooks = (
   }
 }
 
-// Export default hooks factory using the default API client
 export const apiHooks = createApiHooks()

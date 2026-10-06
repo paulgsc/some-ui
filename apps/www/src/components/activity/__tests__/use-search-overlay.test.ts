@@ -1,8 +1,7 @@
 /**
  * @vitest-environment jsdom
  *
- * "Fully operable by keyboard" is an acceptance criterion of #855, so it is
- * asserted here rather than inspected: arrow through, Enter launches, Escape
+ * Keyboard operability (#855): arrow through, Enter launches, Escape
  * restores the recommended set.
  */
 

@@ -2,15 +2,11 @@
 // Typographic regression check: prove that no two lines of the rendered
 // documents are set tighter than ordinary body leading.
 //
-// Why this exists. The templates stack a title over a subtitle in several
-// places (name over role, project over stack, rail heading over its blurb).
-// Typst's `#v(.., weak: true)` collapses against an adjoining block, so those
-// gaps silently went to zero and the subtitle's line box rode up into the line
-// above it. Nothing in the source looked wrong, the one-page assertion still
-// passed, and the ATS text check still passed — the text was all there, just
-// overlapping. Only looking at the PDF caught it.
-//
-// So it is measured instead. `pdftotext -bbox-layout` reports a bounding box
+// The templates stack titles over subtitles, and Typst's `#v(.., weak: true)`
+// collapses against an adjoining block, so a subtitle can ride up into the
+// line above with nothing wrong in the source or the text checks. So it is
+// measured: `pdftotext -bbox-layout` reports a bounding box
+
 // per rendered line; for each pair of vertically adjacent lines that share a
 // column, this asserts the gap between their boxes.
 //

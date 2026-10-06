@@ -1,17 +1,12 @@
 /**
- * `HomeGet` over Capacitor's native HTTP, for the sync from home.
+ * `HomeGet` over Capacitor's native HTTP, for the sync from home: a `fetch`
+ * from `https://localhost` to a plain-`http:` LAN address is mixed content
+ * (and would need CORS). Android's cleartext policy still applies;
+ * `AndroidManifest.xml` allows it.
  *
- * Native rather than `fetch` because the app's page is `https://localhost`
- * and home is a plain-`http:` LAN address: the WebView blocks that `fetch`
- * as mixed content, and the server's CORS allowlist would have to name the
- * app's origin besides. A native request is neither. (Android's own
- * cleartext policy still applies to it; `AndroidManifest.xml` allows
- * cleartext for exactly this.)
- *
- * The plugin parses any `application/json` answer whatever `responseType`
- * asks for (`HttpRequestHandler.readData`), so `data` may arrive as an
- * object; it is re-serialised here, and `home-sync` stores Leetype rounds
- * against the server's attested hash for that reason.
+ * The plugin parses any `application/json` answer regardless of
+ * `responseType`, so `data` is re-serialised here, and `home-sync` stores
+ * rounds against the server's attested hash.
  */
 import { CapacitorHttp } from "@capacitor/core"
 

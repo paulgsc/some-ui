@@ -4,21 +4,14 @@ import { ChevronLeft, ChevronRight } from "lucide-react"
 import { cn } from "some-ui-utils"
 
 /**
- * Def. 9.2's own six artifacts, one id per letter of the tuple
- * `(A, C, B, D, P, r)` — descriptive rather than single-letter, since these
- * ids are read in Storybook titles, test names and (eventually) a real
- * caller's own code, not just this file:
+ * Def. 9.2's six artifacts, one id per letter of `(A, C, B, D, P, r)`:
  *
- * - `"algorithm"` — `A`, `SourcePanel`'s own prop (R1, #1204).
- * - `"constraintDiff"` — `C`, rendered as `(C, C′)` by `ConstraintDiff` (R3, #1206).
- * - `"budget"` — `B`, `BudgetDisplay` (R2, #1205).
- * - `"diffSet"` — `D`, Def. 1.4/1.6's diff set (R4, #1207); no dedicated
- *   renderer exists yet — "what each artifact looks like inside" is this
- *   story's own declared out-of-scope, D included.
- * - `"optionSet"` — the presented option set drawn from `P`, `RoundChoices`
- *   (B2/B3, #1219/#1220).
- * - `"runResult"` — `r`, `RunResult` (X1, #1222); no dedicated renderer
- *   exists yet either (X2, #1223, is a later, independent story).
+ * - `"algorithm"`: `A` (`SourcePanel`).
+ * - `"constraintDiff"`: `C`, rendered as `(C, C′)` by `ConstraintDiff`.
+ * - `"budget"`: `B` (`BudgetDisplay`).
+ * - `"diffSet"`: `D`, the diff set (Def. 1.4/1.6).
+ * - `"optionSet"`: the option set drawn from `P` (`RoundChoices`).
+ * - `"runResult"`: `r` (`RunResult`).
  */
 export type ArtifactId =
   | "algorithm"
@@ -29,12 +22,9 @@ export type ArtifactId =
   | "runResult"
 
 /**
- * One artifact, as data: an id (for position-tracking only — see this
- * file's own doc comment on why the switcher never reads it for anything
- * else), a short label for the header and the screen-reader position
- * announcement, and the already-rendered content. `content` is opaque:
- * this component never inspects it, mirroring `CodeDisplay`'s own
- * "contains no vocabulary from any of them" invariant one level up.
+ * One artifact, as data: an id (position tracking only), a short label for
+ * the header and screen-reader announcement, and the rendered `content`,
+ * which this component never inspects.
  */
 export type SwitchableArtifact = {
   readonly id: ArtifactId
@@ -44,43 +34,25 @@ export type SwitchableArtifact = {
 
 type ArtifactSwitcherProps = {
   /**
-   * Def. 9.2's artifact set, already filtered to what the round's current
-   * phase makes available (there is no `r` before a run, no option set
-   * before a commitment) — display order. An artifact the round has not
-   * reached yet is simply absent from this array; this component has no
-   * concept of "disabled" and never renders one, by construction rather
-   * than by a flag a caller could get wrong (the acceptance criterion this
-   * satisfies: "unavailability is absence, never a disabled control that
-   * hints at what is coming").
+   * Def. 9.2's artifact set in display order, already filtered to what the
+   * round's phase makes available. An unreached artifact is absent; there is
+   * no "disabled" state ("unavailability is absence, never a disabled control
+   * that hints at what is coming").
    */
   artifacts: ReadonlyArray<SwitchableArtifact>
   /**
-   * An opaque round-identity token — not round content, and not read for
-   * anything but this comparison. Compared during render against what was
-   * last seen, the same "adjust state during render" idiom `SourcePanel`
-   * already uses for `algorithm.source` (R1, #1204): the instant this
-   * differs from the previous render, position resets to the first
-   * available artifact before anything paints, with no stale frame shown
-   * at the old position first. A caller may keep the same `ArtifactSwitcher`
-   * instance mounted across rounds (the same reason `SourcePanel` keeps
-   * this idiom rather than relying on a caller remounting via `key`) —
-   * `ReadingSession` already does exactly this with `DiffCard`'s own
-   * `hunk` prop, swapping content on an already-mounted instance rather
-   * than remounting it.
+   * An opaque round-identity token. Compared during render ("adjust state
+   * during render", as `SourcePanel` does): when it changes, position resets
+   * to the first artifact before anything paints. Callers may keep one
+   * instance mounted across rounds rather than remounting via `key`.
    */
   roundId: string
   /**
-   * Read only by assistive tech, on the visually-hidden position
-   * announcement — and, when explicitly supplied, folded into the Previous/
-   * Next buttons' own accessible names too (`"<ariaLabel>: previous
-   * artifact"`), not just left as this component's own generic "Previous
-   * artifact"/"Next artifact" (review finding, #1439, chatgpt-codex-
-   * connector: a caller mounting two instances side by side, as `WideRound
-   * Surface` does post-commitment, otherwise leaves screen-reader and
-   * voice-control users with two pairs of identically-named controls and no
-   * way to tell which switcher a navigation action targets). Left `undefined`
-   * — the common case, every caller before `WideRoundSurface` — the button
-   * labels stay exactly "Previous artifact"/"Next artifact", unchanged.
+   * Read by assistive tech on the hidden position announcement and, when
+   * supplied, folded into the Previous/Next names (`"<ariaLabel>: previous
+   * artifact"`) so two side-by-side instances (`WideRoundSurface`) have
+   * distinguishable controls. Unset, the buttons are "Previous artifact" /
+   * "Next artifact".
    */
   ariaLabel?: string
   /**
@@ -144,102 +116,53 @@ function prefersReducedMotion(): boolean {
 }
 
 /**
- * Def. 9.2 / Rem. 9.2 (C1, #1213): the switcher owning "which of the six
- * artifacts is in view" — the `CodeDisplay` posture (`components/typing-
- * game/code-display`) one level up. `CodeDisplay` "knows nothing about
- * exercises, prompts, steps or competencies" and "draws what it is
- * handed"; this component knows nothing about answers, commitments or
- * ledgers, and draws whichever `content` it is handed for the artifact
- * currently in view. `artifacts[number].id` is read for exactly three
- * purposes — finding the current artifact's position after a re-render,
- * testing Set membership to decide what stays mounted, and naming each
- * tab/panel pair for assistive tech — never to branch rendering or
- * interaction on which artifact it is. There is no `switch (id)` anywhere
- * in this file, and there should never need to be one: a seventh artifact
- * some future story adds costs its caller one more array entry, not a
- * change here.
+ * Def. 9.2 / Rem. 9.2: the switcher owning "which of the six artifacts is in
+ * view", the `CodeDisplay` posture one level up. It knows nothing about
+ * answers, commitments or ledgers and draws whichever `content` it is
+ * handed. `artifacts[number].id` is read only to find the current position,
+ * decide what stays mounted and name tab/panel pairs; there is no
+ * `switch (id)`, so a seventh artifact costs its caller one array entry.
  *
- * # A pager the finger drives, not a slideshow with buttons
+ * # A pager the finger drives
  *
- * The artifacts sit side by side in one native horizontal scroller with
- * mandatory scroll snapping, one artifact per page. A swipe is therefore
- * the platform's own scroll: the content follows the finger, flings and
- * settles the way every other pager on the phone does, and needs no
- * gesture code here. Position is read back from the scroller (`onScroll`),
- * so a swipe, a tab press, an arrow press and a `focusId` move all land in
- * the one `activeId`, and the effect below scrolls the pager to wherever
- * `activeId` says when something other than the scroller moved it. There is
- * no swipe-only or press-only transition (the literal acceptance criterion:
- * "a swipe that means something no press can mean is a keyboard by another
- * name").
- *
- * The pager grows to fill whatever height its caller gives it, so the whole
- * screen below the tabs is something to swipe on, not just the few lines a
- * short artifact like the budget draws.
+ * Artifacts sit side by side in one native horizontal scroller with
+ * mandatory snapping, one per page, so a swipe is the platform's own scroll
+ * and needs no gesture code. Position is read back from the scroller, so a
+ * swipe, tab press, arrow press and `focusId` all land in the one
+ * `activeId`; there is no swipe-only or press-only transition. The pager
+ * grows to fill the caller's height so the whole area is swipeable.
  *
  * # Phones get labelled tabs; wide screens keep arrows and dots
  *
- * Below `md` the header is a row of tabs naming every artifact, with the
- * current one marked: on a phone the swipe is the expected affordance, and
- * dots plus a pair of chevrons said less (a dot has no name) while taking
- * the same row. From `md` up, where a pointer and not a thumb is the usual
- * input, the header keeps its chevron buttons (`type="button"`, so a
- * mounted `<form>` upstream never submits on press; disabled at the ends,
- * a real boundary of the *current* set, not a hint about an artifact that
- * does not exist right now) and the dots. Both headers are always in the
- * DOM and CSS shows one, so the same buttons are reachable by role in a
- * test at any width.
+ * Below `md` the header is a row of tabs naming every artifact (a dot has no
+ * name). From `md` up it keeps chevron buttons (`type="button"`; disabled at
+ * the ends of the *current* set) and dots. Both headers are always in the
+ * DOM and CSS shows one, so tests reach the same buttons at any width.
  *
  * # A scrolling artifact keeps its own horizontal scroll
  *
- * LTY-MOBILE's rule, kept verbatim: "the code region scrolls horizontally
- * inside itself, the page does not." With a native pager this needs no
- * code either. The browser gives a horizontal gesture to the innermost
- * scroller that can still move that way, so dragging a long line in
- * `SourcePanel` or `DiffCard` reads past its edge; only once that region is
- * at its edge does a new swipe page between artifacts. The pager sets
- * `overscroll-behavior-x: contain`, so swiping past the last artifact never
- * becomes the browser's own back gesture.
+ * The browser gives a horizontal gesture to the innermost scroller that can
+ * still move, so a long line in `SourcePanel` or `DiffCard` scrolls first and
+ * only then does a swipe page. `overscroll-behavior-x: contain` keeps the
+ * last page from triggering the browser's back gesture.
  *
  * # No round state
  *
- * `activeId` and `visitedIds` are the only state this component owns, and
- * both name positions, never an answer. Nothing here reads a commitment, a
- * ledger, or `runResult`'s own `ok`/`error` discriminant — the artifacts
- * array is opaque `content`, and this component would render identically
- * if every artifact's `content` were replaced with a fixed placeholder.
+ * `activeId` and `visitedIds` name positions, never an answer; the
+ * component would render identically with placeholder `content`.
  *
- * # Switching away never unmounts — it makes inert
+ * # Switching away never unmounts; it makes inert
  *
- * An artifact's own `content` may hold state that only exists once, the
- * same way `RoundChoices`'s one-shot `committed` does (review finding on
- * #1430, chatgpt-codex-connector): unmounting it on a switch would mount a
- * fresh instance on switching back, silently re-arming an already-spent
- * commitment. So every artifact this switcher has ever shown *this round*
- * stays mounted — `visitedIds` grows as `activeId` visits new positions —
- * and so do the current artifact's neighbours, so a swipe has something to
- * drag in. Every slot but the current one is `inert` and `aria-hidden`: out
- * of the tab order and the accessibility tree, so this is still "exactly
- * one is load-bearing," Def. 9.2, in every way a learner or a screen reader
- * can observe. A slot that is neither visited nor next to the current one
- * is laid out (the pager's page positions need its width) but empty, so an
- * artifact two swipes away still costs nothing. `visitedIds` clears with
- * everything else on a round advance — carrying a previous round's mounted
- * instances forward would reintroduce the identical staleness one round
- * later, since not every artifact's own content resets itself on a prop
- * change the way `SourcePanel` does for `algorithm.source`.
- *
- * Clearing `visitedIds` alone is not sufficient, and was itself a review
- * finding (#1430, chatgpt-codex-connector, round 2): consecutive rounds
- * typically share a first artifact id (`algorithm` is first every round),
- * so that one child sits at the same keyed position before and after a
- * round change, and React reconciles a same-key same-type child by
- * updating its props rather than remounting it — carrying local state
- * across the round boundary regardless of what this component's own
- * bookkeeping reset. Every slot is therefore keyed on
- * `` `${roundId}:${artifact.id}` ``, not `artifact.id` alone, so a round
- * change always produces a genuinely new key and a genuine remount, even
- * for an artifact whose id and position did not change.
+ * An artifact's content may hold one-shot state (`RoundChoices`'
+ * `committed`); remounting it would re-arm a spent commitment. So every
+ * artifact shown this round stays mounted (`visitedIds`), as do the current
+ * one's neighbours (so a swipe drags real content). Every slot but the
+ * current is `inert` and `aria-hidden`, so exactly one is load-bearing
+ * (Def. 9.2) to a learner or screen reader. Other slots are laid out but
+ * empty. `visitedIds` clears on a round advance, and slots are keyed on
+ * `` `${roundId}:${artifact.id}` `` so even an artifact at the same id and
+ * position remounts: React would otherwise update a same-key child in place
+ * and carry its state across rounds.
  */
 export const ArtifactSwitcher: FC<ArtifactSwitcherProps> = ({
   artifacts,
@@ -280,19 +203,12 @@ export const ArtifactSwitcher: FC<ArtifactSwitcherProps> = ({
     }
   }
 
-  // Derived, never stored: an id that no longer appears in `artifacts` (a
-  // defensive case, not one a monotonically-revealing round should ever
-  // produce) falls back to the first artifact rather than an out-of-bounds
-  // index, without this component having to remember it was ever wrong.
+  // Derived: an id no longer in `artifacts` (defensive) falls back to the first.
   const rawIndex = artifacts.findIndex((artifact) => artifact.id === activeId)
   const index = rawIndex === -1 ? 0 : rawIndex
   const current = artifacts[index]
 
-  // The current artifact joins the visited set the instant it becomes
-  // current — synchronously during render, the same "adjust state during
-  // render" idiom the round-reset above uses, so the very first paint of a
-  // newly-active artifact already includes it rather than a frame of
-  // nothing.
+  // Joins the visited set during render, so its first paint is not empty.
   if (current !== undefined && !visitedIds.has(current.id)) {
     setVisitedIds(new Set([...visitedIds, current.id]))
   }
@@ -528,18 +444,8 @@ export const ArtifactSwitcher: FC<ArtifactSwitcherProps> = ({
         {artifacts.map((artifact) => {
           const isCurrent = artifact.id === current.id
           return (
-            // Keyed on `roundId` too, not just `artifact.id` (review finding
-            // on #1430, chatgpt-codex-connector): consecutive rounds sharing
-            // a first artifact id (the common case — `algorithm` is
-            // typically first every round) would otherwise keep that one
-            // child at the same keyed position across a round change, and
-            // React reconciles same-key same-type children by updating
-            // props rather than remounting — carrying its local state into
-            // the new round despite `visitedIds`/`activeId` both having
-            // reset. Prefixing the key with `roundId` guarantees every
-            // child gets a genuinely new key the instant the round changes,
-            // so "resets on round advance" holds for a child's own state,
-            // not just for this component's position bookkeeping.
+            // Keyed on `roundId` too, so every slot remounts on a round change
+            // (see the component doc comment).
             <div
               key={`${roundId}:${artifact.id}`}
               id={panelId(artifact)}

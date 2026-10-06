@@ -2,19 +2,13 @@
  * The shape of the lines-of-code snapshot: what `scripts/loc-snapshot.ts`
  * writes before a build and what the header's `LocIndicator` reads.
  *
- * The file is `src/generated/loc-snapshot.json`. It is *tracked* as an empty
- * placeholder (`through: null`) that a pipeline overwrites right before it
- * builds, and not git-ignored, because of what the pipelines do with files:
- * the Docker build's `turbo prune` drops anything git ignores, and turbo only
- * folds a file into a build's cache key when it is not ignored. An ignored
- * snapshot would be missing from the image and, elsewhere, stale from cache.
- * A placeholder shows the feature as absent, so a checkout that never ran the
- * script (every local one, by default) ships no widget rather than a broken
- * one.
+ * `src/generated/loc-snapshot.json` is *tracked* as an empty placeholder
+ * (`through: null`) that a pipeline overwrites before building: an ignored
+ * file would be dropped by `turbo prune` and left out of turbo's cache key. A
+ * placeholder ships no widget rather than a broken one.
  *
- * Only the bundle imports this. The generator (`scripts/loc-snapshot.ts`,
- * through `collect.ts`) must run with nothing installed, so it does not load
- * `zod`; `collect.ts` says why and its test checks the output against this.
+ * Only the bundle imports this; the generator runs with nothing installed
+ * (see `collect.ts`), and `collect.ts`'s test checks its output against it.
  */
 
 import { z } from "zod"
@@ -54,9 +48,9 @@ export type LocSnapshot = Omit<
 > & { through: string; generatedAt: string }
 
 /**
- * A snapshot for the widget, or `null` when there is nothing to show: the
- * placeholder, or a file that does not match the shape. The widget is an
- * optional extra, so a bad file hides it instead of breaking the page.
+ * A snapshot for the widget, or `null` (the placeholder, or a file that does
+ * not match): a bad file hides the optional widget rather than breaking the
+ * page.
  */
 export function readSnapshot(raw: unknown): LocSnapshot | null {
   const parsed = snapshot.safeParse(raw)

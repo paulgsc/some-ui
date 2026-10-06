@@ -1,11 +1,9 @@
 /**
  * @vitest-environment jsdom
  *
- * The opt-in that lets an account hear about when a learner studies. It is
- * shown only where there is something to choose, it is off until the person
- * turns it on, and turning it off ends the push subscription at both ends
- * before the setting flips, while the transport that can tell the server is
- * still allowed.
+ * The opt-in that lets an account hear about when a learner studies: shown
+ * only where there is a choice, off by default, and off ends the push
+ * subscription at both ends before the setting flips.
  */
 
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"

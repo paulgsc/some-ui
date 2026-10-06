@@ -1,14 +1,8 @@
 /**
  * The Leetype corpus this repository ships (`packages/ui/leetype/corpus`),
- * seeded into the device's tables so rounds - and their recorded runs - play
- * on a phone that has never seen the home server.
- *
- * The same files `file_host`'s importer reads, as raw text: storing the
- * bytes rather than a re-serialisation is what keeps each round's content
- * hash equal to the hash its runs were recorded against.
- *
- * TOPIK has no counterpart here: its lessons exist only in the home
- * server's database, so they arrive by sync (`device-backend/home-sync`).
+ * seeded so rounds and their runs play on a phone that never saw home. Raw
+ * text, the same files the server's importer reads, so content hashes match
+ * the runs. TOPIK lessons arrive only by sync (`device-backend/home-sync`).
  */
 import { upsertRound, upsertRuns } from "@/lib/device-backend/content-store"
 import type { SqlDriver } from "@/lib/device-backend/sql"

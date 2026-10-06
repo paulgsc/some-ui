@@ -17,21 +17,12 @@ import {
 import { ThemeSwitcher } from "@/components/theme-switcher"
 
 /**
- * The "why" behind this workspace, as a page rather than a document.
- *
- * "/" answers *what* is deployed here (an app, a Storybook, a résumé) and
- * sends you to it. Nothing answered why any of it exists — and the projects
- * in this repo are not features, they are positions: a browser is an
- * operating system, exposure should be opt-in, visual comfort is measurable,
- * a curriculum should adapt to the learner. Those positions are the actual
- * through-line, and they were previously only legible to someone willing to
- * read four separate READMEs and three canons.
- *
- * Deliberately not a journal or a blog: no dates, no narrative, no posts.
- * Each position is one refusal, one claim, and one mechanism, stated at a
- * size you can read across a room. The rule the copy is held to is the same
- * one `packages/ui/resume/resume.typ` follows — a premise earns its place
- * only if it is immediately cashed out in the mechanism implementing it.
+ * The "why" behind this workspace, as a page: "/" says *what* is deployed;
+ * this states the positions the projects take (a browser is an operating
+ * system, exposure should be opt-in, visual comfort is measurable, a
+ * curriculum should adapt). Not a blog: each position is one refusal, one
+ * claim and one mechanism, held to `packages/ui/resume/resume.typ`'s rule
+ * that a premise is immediately cashed out in its mechanism.
  */
 
 type Position = {

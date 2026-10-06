@@ -28,11 +28,11 @@ type UseKeyboardInputProps = {
   setLastPoints: Dispatch<SetStateAction<number>>
   setAmbiguousCharacters: Dispatch<SetStateAction<Array<string>>>
   playSound: (event: AudioEvent) => void
-  /** Tracks the currently in-progress multi-token challenge, if any (#426). */
+  /** The in-progress multi-token challenge, if any. */
   setWordProgress?: Dispatch<SetStateAction<WordProgress | null>>
-  /** The just-completed word's glyph text, for the "Celebrate" ceremony (#426). */
+  /** The just-completed word's glyph text, for the "Celebrate" ceremony. */
   setCelebrationWord?: Dispatch<SetStateAction<string | undefined>>
-  /** Misses observed since the tracked word spawned, for #762's hint escalation. */
+  /** Misses observed since the tracked word spawned, for hint escalation. */
   setMissCount?: Dispatch<SetStateAction<number>>
 }
 
@@ -85,19 +85,15 @@ export const useKeyboardInput = ({
         return
       }
 
-      // Ignore other special keys
       if (e.key.length > 1) return
       if (e.key === " ") return
 
       const now = Date.now()
 
-      // Add to local display buffer
       keyboardManager.addKey(e.key, now)
 
-      // Send to WASM engine - returns array of events
       const events = gameBridge.processKeyPress(e.key)
 
-      // Process each event
       events.forEach((event) => {
         processGameEvent(event, {
           setActiveCharacters,
@@ -137,10 +133,6 @@ export const useKeyboardInput = ({
     setMissCount,
   ])
 }
-
-// ============================================================================
-// EVENT PROCESSOR
-// ============================================================================
 
 type EventHandlers = {
   setActiveCharacters: Dispatch<
@@ -183,15 +175,12 @@ function processGameEvent(event: GameEvent, handlers: EventHandlers): void {
         setActiveCharacters((prev) => {
           const next = new Map(prev)
 
-          // A word challenge locks in every cell it reserved (ADR 0003 §2(a)),
-          // not just one; a single-jamo (n=1) match has cellIds = [cellId],
-          // so this loop is exactly today's single-cell behavior there.
+          // A word locks in every cell it reserved (ADR 0003 §2(a)); a
+          // single-jamo match has cellIds = [cellId].
           event.cellIds.forEach((cellId) => {
             if (event.countsTowardCompletion) {
-              // Completed: lock the character into its cell (persist) and stop
-              // it counting down. The engine has already drained it from the
-              // test pool and reserved the cell, so nothing will spawn on top
-              // of it.
+              // Completed: lock it into its cell and stop its countdown. The
+              // engine has reserved the cell, so nothing spawns on top.
               const solved = next.get(cellId)
               if (solved) {
                 next.set(cellId, {
@@ -212,9 +201,7 @@ function processGameEvent(event: GameEvent, handlers: EventHandlers): void {
         setLastPoints(event.points)
 
         // A multi-token match is a word's "Celebrate" ceremony (ADR 0003
-        // §2(c)): show the completed glyph text alongside the points popup.
-        // A single-jamo match clears it back to undefined, matching today's
-        // points-only popup.
+        // §2(c)); a single-jamo match shows the points popup alone.
         setCelebrationWord?.(
           event.cellIds.length > 1 ? event.hangul : undefined
         )
@@ -300,8 +287,7 @@ function processGameEvent(event: GameEvent, handlers: EventHandlers): void {
         setKeyBuffer("")
         setAmbiguousCharacters([])
 
-        // Drives #762's hint-tier escalation (miss count on the current
-        // challenge); reset back to 0 on each new spawn (useGameLoop).
+        // Drives hint-tier escalation; reset to 0 on each spawn (useGameLoop).
         setMissCount?.((count) => count + 1)
 
         playSound("match_miss")
@@ -328,10 +314,8 @@ function processGameEvent(event: GameEvent, handlers: EventHandlers): void {
       case "characterSpawned":
       case "charactersExpired":
       case "boardFull": {
-        // These are handled by:
-        // - spawn loop
-        // - update loop
-        // - board lifecycle logic
+        // Handled by the spawn loop, update loop and board lifecycle.
+
         break
       }
 

@@ -1,3 +1,4 @@
+import type { ComponentProps, JSX } from "react"
 import { fireEvent, render, screen } from "@testing-library/react"
 import type { TopikMetadata } from "@topik/lib/topik"
 import { describe, expect, it, vi } from "vitest"
@@ -15,132 +16,82 @@ function makeItems(count: number): Array<TopikMetadata> {
   }))
 }
 
-function searchField(): HTMLElement {
-  return screen.getByPlaceholderText(/search materials/i)
+const input = (
+  props: Partial<ComponentProps<typeof OmniSearchInput>> = {}
+): JSX.Element => (
+  <OmniSearchInput
+    value=""
+    onChange={vi.fn()}
+    items={makeItems(3)}
+    onHighlight={vi.fn()}
+    onSelect={vi.fn()}
+    {...props}
+  />
+)
+
+const press = (key: string): void => {
+  fireEvent.keyDown(screen.getByPlaceholderText(/search materials/i), { key })
 }
 
 describe("OmniSearchInput - auto-highlight", () => {
   it("highlights the first item on mount when nothing is highlighted yet", () => {
     const onHighlight = vi.fn()
-    render(
-      <OmniSearchInput
-        value=""
-        onChange={vi.fn()}
-        items={makeItems(3)}
-        onHighlight={onHighlight}
-        onSelect={vi.fn()}
-      />
-    )
+    render(input({ onHighlight }))
     expect(onHighlight).toHaveBeenCalledWith("topik-0")
   })
 
   it("does not override an existing highlight", () => {
     const onHighlight = vi.fn()
-    render(
-      <OmniSearchInput
-        value=""
-        onChange={vi.fn()}
-        items={makeItems(3)}
-        onHighlight={onHighlight}
-        onSelect={vi.fn()}
-        highlightedKey="topik-1"
-      />
-    )
+    render(input({ onHighlight, highlightedKey: "topik-1" }))
     expect(onHighlight).not.toHaveBeenCalled()
   })
 })
 
 describe("OmniSearchInput - arrow-key navigation", () => {
-  it("wraps forward past the last item back to the first", () => {
+  it.each([
+    [
+      "forward past the last item back to the first",
+      "topik-2",
+      "ArrowDown",
+      "topik-0",
+    ],
+    [
+      "backward past the first item to the last",
+      "topik-0",
+      "ArrowUp",
+      "topik-2",
+    ],
+  ])("wraps %s", (_, highlightedKey, key, expected) => {
     const onHighlight = vi.fn()
-    render(
-      <OmniSearchInput
-        value=""
-        onChange={vi.fn()}
-        items={makeItems(3)}
-        onHighlight={onHighlight}
-        onSelect={vi.fn()}
-        highlightedKey="topik-2"
-      />
-    )
+    render(input({ onHighlight, highlightedKey }))
 
-    fireEvent.keyDown(searchField(), { key: "ArrowDown" })
-    expect(onHighlight).toHaveBeenCalledWith("topik-0")
-  })
-
-  it("wraps backward past the first item to the last", () => {
-    const onHighlight = vi.fn()
-    render(
-      <OmniSearchInput
-        value=""
-        onChange={vi.fn()}
-        items={makeItems(3)}
-        onHighlight={onHighlight}
-        onSelect={vi.fn()}
-        highlightedKey="topik-0"
-      />
-    )
-
-    fireEvent.keyDown(searchField(), { key: "ArrowUp" })
-    expect(onHighlight).toHaveBeenCalledWith("topik-2")
+    press(key)
+    expect(onHighlight).toHaveBeenCalledWith(expected)
   })
 
   it("selects the highlighted item on Enter", () => {
     const onSelect = vi.fn()
-    render(
-      <OmniSearchInput
-        value=""
-        onChange={vi.fn()}
-        items={makeItems(3)}
-        onHighlight={vi.fn()}
-        onSelect={onSelect}
-        highlightedKey="topik-1"
-      />
-    )
+    render(input({ onSelect, highlightedKey: "topik-1" }))
 
-    fireEvent.keyDown(searchField(), { key: "Enter" })
+    press("Enter")
     expect(onSelect).toHaveBeenCalledWith("topik-1")
   })
 
   it("ignores arrow keys when there are no items", () => {
     const onHighlight = vi.fn()
-    render(
-      <OmniSearchInput
-        value=""
-        onChange={vi.fn()}
-        items={[]}
-        onHighlight={onHighlight}
-        onSelect={vi.fn()}
-      />
-    )
+    render(input({ onHighlight, items: [] }))
 
-    fireEvent.keyDown(searchField(), { key: "ArrowDown" })
+    press("ArrowDown")
     expect(onHighlight).not.toHaveBeenCalled()
   })
 })
 
 describe("OmniSearchInput - results count", () => {
   it("only shows the result count once a query is typed", () => {
-    const { rerender } = render(
-      <OmniSearchInput
-        value=""
-        onChange={vi.fn()}
-        items={makeItems(1)}
-        onHighlight={vi.fn()}
-        onSelect={vi.fn()}
-      />
-    )
+    const { rerender } = render(input({ items: makeItems(1) }))
     expect(screen.queryByText(/result/)).not.toBeInTheDocument()
 
-    rerender(
-      <OmniSearchInput
-        value="a"
-        onChange={vi.fn()}
-        items={makeItems(1)}
-        onHighlight={vi.fn()}
-        onSelect={vi.fn()}
-      />
-    )
+    rerender(input({ value: "a", items: makeItems(1) }))
     expect(screen.getByText("1 result")).toBeInTheDocument()
   })
 })

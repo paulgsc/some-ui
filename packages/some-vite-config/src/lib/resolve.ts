@@ -18,8 +18,8 @@ export function createResolveConfig(
       ...defaultAlias,
       ...alias,
     },
-    // Native tsconfig "paths" resolution (Vite 8+) replaces the
-    // vite-tsconfig-paths plugin previously wired up in ./plugins.ts.
+    // Native tsconfig "paths" resolution (Vite 8+).
+
     tsconfigPaths: true,
   }
 }

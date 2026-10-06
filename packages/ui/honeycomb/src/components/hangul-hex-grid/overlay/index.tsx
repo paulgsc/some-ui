@@ -47,50 +47,32 @@ const DEFAULT_EFFECTS_VOLUME = 0.5
 
 type HangulHexGridProps = {
   /**
-   * Whether this instance may play its sound effects, and how loudly.
-   *
-   * A host with an audio preference passes it here; one without gets
-   * today's behaviour (on, at half volume). The component never reads a
-   * global - the host owns the person's choice, this owns the sounds.
+   * Whether this instance may play sound effects, and how loudly. The host
+   * owns the person's choice; omitted, sound is on at half volume.
    */
   audio?: { enabled?: boolean; volume?: number }
   mode?: GameMode
   /**
-   * A named difficulty, not raw engine config (ADR-aligned with #762's
-   * "host-layer realizations of engine primitives" idiom): a host app picks
-   * one of three lay-facing labels, and this package alone knows what each
-   * means in terms of GameConfig fields (see difficulty-presets).
+   * A named difficulty, not raw engine config: this package alone maps each
+   * label to GameConfig fields (see difficulty-presets).
    * @default "standard"
    */
   difficulty?: DifficultyPreset
   /**
-   * Opaque identity of whatever session/instance is currently placing this
-   * component - this package doesn't interpret it, only forwards it so the
-   * WASM loader singleton can tell "a new session started" apart from "the
-   * same session continues," independent of whether `mode` also changed
-   * (see useHangulGameWasm). Omit if the host has no such concept (e.g.
-   * Storybook) - the engine falls back to mode-only diffing.
+   * Opaque identity of the placing session, forwarded so the WASM loader
+   * singleton can tell a new session from the same one continuing (see
+   * useHangulGameWasm). Omitted, the engine diffs on mode only.
    */
   sessionKey?: string
   /**
-   * True when something outside this component currently needs exclusive
-   * control (e.g. a host-level layout editor is open) - the game loop and
-   * keyboard capture idle while this is true, the same way they already do
-   * for the manual pause button, rather than silently continuing to spawn/
-   * tick/consume keystrokes underneath whatever else is now in control.
-   * Omit if the host has no such concept.
+   * Something outside needs exclusive control (a host layout editor): the
+   * game loop and keyboard capture idle as for the pause button.
    */
   suspended?: boolean
   /**
-   * The word pool for "vocabulary"/"vocabulary-endless" modes (ignored by
-   * every other mode) - defaults to the bundled demo seed
-   * (`@honeycomb/data`'s `HANGUL_WORDS`), same as before this prop existed.
-   * This is the seam a host app uses to swap in its own challenge seed
-   * (e.g. an LLM-generated, environment-specific vocab set fetched at
-   * runtime) without this package knowing or caring where the words came
-   * from - it only ever sees a plain `Array<WordEntry>`, matching
-   * `hangul-words.ts`'s own shape/constraints (open-syllable only, see that
-   * file's header comment).
+   * The word pool for the vocabulary modes, defaulting to `HANGUL_WORDS`.
+   * A host swaps in its own seed here, in `hangul-words.ts`'s shape.
+   *
    */
   words?: Array<WordEntry>
 }
@@ -103,18 +85,15 @@ export const HangulHexGrid = ({
   suspended = false,
   words = HANGUL_WORDS,
 }: HangulHexGridProps): JSX.Element => {
-  // Memoized so useHangulGameWasm's own [mode, config, wordPool]-keyed
-  // initialize() callback stays referentially stable across re-renders that
-  // don't change the difficulty prop.
+  // Memoized so useHangulGameWasm's [mode, config, wordPool]-keyed
+  // initialize() stays stable.
   const config = useMemo(
     () => resolveDifficultyConfig(difficulty),
     [difficulty]
   )
   const wordPool = useMemo(() => words.map(toChallengeSeed), [words])
-  // The engine only reports whether romanization is *currently* shown
-  // (TimingParams.showRomanization), not the streak threshold that governs
-  // it - StatsPanel needs the actual configured number to display, which
-  // for "standard" is the engine's own default (no override present).
+  // The engine reports only whether romanization is shown now, not the
+  // streak threshold StatsPanel displays ("standard" uses the default).
   const hideRomanizationStreak =
     config.hideRomanizationStreak ?? DEFAULT_GAME_CONFIG.hideRomanizationStreak
   const [keyboardManager] = useState(() => new KeyboardInputManager())
@@ -151,13 +130,9 @@ export const HangulHexGrid = ({
   // missed) and the debrief panel explains what was missed, and only once it
   // is dismissed do those cells go away and the next word spawn.
   const [missedWord, setMissedWord] = useState<MissedWord | null>(null)
-  // The honeycomb grid's own hex-geometry WASM module (@some-ui/some-hexagon,
-  // via HexGrid/useHexgridWasm) is an entirely separate concern from the
-  // game engine's WASM module above - a fatal failure there previously had
-  // no way to reach this component at all: the grid would show its own
-  // inline error while the game loop, audio, and timer kept running blind
-  // (spawning, ticking, playing sounds) with nothing rendered to show it on.
-  // HexGrid's onStatusChange callback closes that gap.
+  // The grid's own hex-geometry WASM (via HexGrid) is separate from the game
+  // engine's; HexGrid's onStatusChange lets a fatal grid failure stop the
+  // loop, audio and timer instead of running blind.
   const [gridError, setGridError] = useState<string | null>(null)
   const isGridFatal = gridError !== null
   const handleGridStatusChange = useCallback(
@@ -175,10 +150,7 @@ export const HangulHexGrid = ({
     sessionKey,
   })
 
-  // Initialize audio. The host decides whether sound effects play at all
-  // and how loudly - this package has no idea what a person has chosen, and
-  // hardcoding `enabled: true` here made every audio preference in every
-  // host a toggle that controlled nothing.
+  // The host decides whether and how loudly sound effects play.
   const { unlockAudio, playSound } = useGameAudio({
     enabled: audio?.enabled ?? true,
     volume: audio?.volume ?? DEFAULT_EFFECTS_VOLUME,
@@ -194,7 +166,6 @@ export const HangulHexGrid = ({
     return () => window.removeEventListener("keydown", handler)
   }, [unlockAudio])
 
-  // Game timer hook (for timed modes)
   const { gameStatus, isGameOver, timeRemainingMs, progress } = useGameTimer({
     gameBridge,
     isInitialized,
@@ -212,22 +183,14 @@ export const HangulHexGrid = ({
     },
   })
 
-  // Everything that stops the run: the manual pause button, a terminal game
-  // status, a fatal grid failure, a host taking exclusive control - and now a
-  // missed-word debrief, which holds the session in place until the player
-  // has seen what they missed. Spawning is what actually needs holding: the
-  // debrief renders off cells that would otherwise be overwritten by the next
-  // word.
-  //
-  // isGameOver is in here (rather than left to the manual pause state)
-  // because without it the spawn/update interval only stops once the
-  // onComplete/onTimeout callback's setIsPaused(true) round-trips through a
-  // render, one or more ticks after the engine-derived status already says
-  // the game is over.
+  // Everything that stops the run: pause, a terminal status, a fatal grid
+  // failure, a host taking control, or a missed-word debrief (which renders
+  // off cells the next spawn would overwrite). isGameOver is here directly so
+  // the loop stops on the tick the engine says so, not after
+  // setIsPaused(true) round-trips through a render.
   const isHalted =
     isPaused || isGameOver || isGridFatal || suspended || missedWord !== null
 
-  // Game loop hook
   useGameLoop({
     gameBridge,
     isInitialized,
@@ -245,7 +208,6 @@ export const HangulHexGrid = ({
     onWordMissed: setMissedWord,
   })
 
-  // Keyboard input hook
   useKeyboardInput({
     gameBridge,
     isInitialized,
@@ -264,9 +226,8 @@ export const HangulHexGrid = ({
     setMissCount,
   })
 
-  // #762 Prompt/Concept Station: derive the tracked word's stimulus/spawn
-  // time from the same activeCharacters entries the hex cells already read,
-  // rather than duplicating that state.
+  // The tracked word's stimulus/spawn time, derived from the same
+  // activeCharacters entries the hex cells read.
   const trackedCellId = wordProgress?.cellIds[0]
   const trackedCharacter = trackedCellId
     ? activeCharacters.get(trackedCellId)
@@ -277,10 +238,7 @@ export const HangulHexGrid = ({
     missCount,
   })
 
-  // Same trick as `trackedCharacter` above, for the word being debriefed: its
-  // cells are deliberately still on the board (revealed and flagged missed),
-  // so the seed entry behind them is a lookup away rather than another copy
-  // of state to keep in sync.
+  // Likewise for the debriefed word, whose cells stay on the board.
   const missedCellId = missedWord?.cellIds[0]
   const missedStimulus = missedCellId
     ? activeCharacters.get(missedCellId)?.stimulus
@@ -316,7 +274,6 @@ export const HangulHexGrid = ({
     setMissedWord(null)
     setIsPaused(false)
 
-    // Restart timer for timed modes
     if (mode === "completion") {
       gameBridge.startTimer()
     }
@@ -378,11 +335,9 @@ export const HangulHexGrid = ({
               viewBoxFactor={1.2}
               cellContent={cellContent}
               backgroundOpacity={0.8}
-              // "shrink-only" (the default) is required here, not optional: the
-              // game engine's cell ids are enumerated from HANGUL_GRID_RADIUS
-              // (see wasm-game-bridge), so a smaller negotiated radius would
-              // make HexGrid render a different set of cell ids than the ones
-              // the game is spawning characters into.
+              // "shrink-only" is required: engine cell ids come from
+              // HANGUL_GRID_RADIUS (see wasm-game-bridge), and a smaller radius
+              // would render different ids than the game spawns into.
               fitStrategy="shrink-only"
               onStatusChange={handleGridStatusChange}
               className="[&_g:first-of-type_path]:stroke-white/30 [&_g:first-of-type_path]:stroke-[2]"
@@ -405,16 +360,11 @@ export const HangulHexGrid = ({
                   },
                   theme: { opacity },
                 } = content
-                // Only a genuine multi-cell word challenge (ADR 0003 §2(a))
-                // masks its cells until the token-cursor reaches them. A
-                // single-jamo (n=1) challenge's gameplay predates this epic
-                // and must stay exactly as it was: the glyph is visible from
-                // the instant it spawns, full stop - it is never "reached"
-                // by a cursor, because single-jamo play has no cursor
-                // concept at all (answerProgress never fires for n=1, so
-                // tokenIndex/cursor would otherwise both sit at their 0/0
-                // spawn defaults for the cell's entire lifetime, which is
-                // indistinguishable from "not yet reached" without this gate).
+                // Only a multi-cell word (ADR 0003 §2(a)) masks cells until
+                // the cursor reaches them. A single-jamo cell has no cursor
+                // (answerProgress never fires for n=1; 0/0 would read as
+                // "not yet reached"), so it is visible from spawn.
+
                 const isPlaceholder =
                   !isSolved && answerGlyphs.length > 1 && tokenIndex >= cursor
                 return (

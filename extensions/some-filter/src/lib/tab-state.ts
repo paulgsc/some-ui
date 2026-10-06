@@ -2,10 +2,7 @@ import type { TabState } from "@filter/types/tab"
 
 /**
  * Shared tab-state model for the content script and the background service
- * worker. Both used to define their own copy of the keybind cycle (content.ts
- * cycleState() and background.ts STATE_CYCLE) plus a hardcoded "auto" default in
- * several places; those drifted independently. This is the single source of
- * truth.
+ * worker — the single source of truth for the keybind cycle and default.
  *
  * Semantics under the always-apply model (#235):
  *   - "auto"   — themed by default (apply-then-detect dark theme). This is the

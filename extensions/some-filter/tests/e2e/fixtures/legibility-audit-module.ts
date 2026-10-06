@@ -1,22 +1,12 @@
 /**
- * Compiles `src/adapter/legibility-audit.ts` into a browser-runnable IIFE
- * for #1374's own e2e regression, and for any future real-Chromium spec
- * that needs this module's real, compiled behavior independent of the full
- * `--load-extension` pipeline (whose per-surface theming can itself repair
- * a carrier's foreground color before this audit ever sees it — confounding
- * an assertion aimed at this module's own resolution logic with an
- * unrelated pipeline behavior).
+ * Compiles `src/adapter/legibility-audit.ts` into a browser-runnable IIFE for
+ * real-Chromium specs that need the module independent of the full pipeline
+ * (whose per-surface theming can repair a carrier before the audit runs).
  *
- * Unlike `inline-module.ts`'s `compileAdapterModuleForBrowser` (a bare
- * `ts.transpileModule` pass, correct only for a zero-runtime-import module
- * like `scope-registry.ts`), `legibility-audit.ts` has real cross-file
- * imports (`@filter/lib/content/color`, `@filter/lib/content/modify-colors`,
- * `./actuator`) that a type-strip-only transpile would leave as unresolved
- * `require(...)` calls. Vite's own build pipeline — already a real
- * dependency of this package, already the tool that builds the actual
- * extension — resolves that graph properly; `configFile: false` skips this
- * project's own `vite.config.ts` (irrelevant here, and its own alias
- * resolution assumes the extension's multi-entry build shape).
+ * Unlike `inline-module.ts`'s bare `ts.transpileModule` (fine for modules
+ * with no runtime imports), this module has real cross-file imports, so it
+ * goes through Vite's build; `configFile: false` skips the extension's
+ * multi-entry `vite.config.ts`.
  */
 
 import path from "path"
@@ -54,14 +44,9 @@ export async function legibilityAuditScript(): Promise<string> {
     logLevel: "warn",
   })
 
-  // `write: false` (non-watch mode) resolves to a `RolldownOutput` — or, as
-  // confirmed directly in this exact build configuration, an array
-  // containing exactly one — whose own `.output` array holds Rollup-shaped
-  // chunks/assets rather than writing to disk. This build has exactly one
-  // JS chunk (the IIFE) and no other assets, so the first chunk is always
-  // it. `build()`'s own return type also covers watch mode
-  // (`RolldownWatcher`, no `.output`), which this call never requests (no
-  // `build.watch` option passed).
+  // `write: false` resolves to a `RolldownOutput` (or, in this configuration,
+  // an array of exactly one) whose `.output` holds the single IIFE chunk.
+  // Watch mode's `RolldownWatcher` is never requested.
   const single = Array.isArray(result) ? result[0] : result
   if (single === undefined || !("output" in single)) {
     throw new Error(

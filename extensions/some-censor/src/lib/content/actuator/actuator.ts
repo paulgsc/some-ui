@@ -1,5 +1,5 @@
 /**
- * The Actuator (BC4, #1437) — Boundary Contract B7: the only writer.
+ * The Actuator (BC4) — Boundary Contract B7: the only writer.
  *
  * `realize(actions)` executes what Core named and decides nothing. It is
  * the one module in the new architecture that mutates VendorDOM (stamps,
@@ -19,14 +19,14 @@
  *   A2 — Single veil (D2). One veil per anchor, re-attached if the vendor
  *        removed it, never duplicated — a veil still animating out is
  *        removed at once when a new one is mounted.
- *   A3 — Idempotent (D2, and #1437's own bar). Realizing the same actions
+ *   A3 — Idempotent (D2). Realizing the same actions
  *        twice leaves the same DOM: a render whose model and targets are
  *        unchanged re-asserts the stamps and touches nothing else.
  *   A4 — Full cleanup (D3). `unmount` leaves every element it stamped as it
  *        was before — stamps, veil, a veil still animating out, and the
  *        anchoring position; `dispose` does so for everything at once.
- *   A5 — Custody is accounted for here, once (D6, and the lesson of #1432's
- *        eighth round). Which elements carry which key's stamp is one map in
+ *   A5 — Custody is accounted for here, once (D6). Which elements carry which
+ *        key's stamp is one map in
  *        this module; a render diffs its targets against it and strips the
  *        elements that left — but only those this key still owns, so an
  *        element that moved to another card keeps that card's stamp

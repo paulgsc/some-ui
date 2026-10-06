@@ -1,5 +1,5 @@
 /**
- * The recorded runs this package ships (X2, #1223): `corpus/runs/<id>.json`,
+ * The recorded runs this package ships (X2): `corpus/runs/<id>.json`,
  * one per reviewed round, copied verbatim from `paulgsc/server`'s
  * `dump-leetype-snapshot` (LTY-SRV4, `paulgsc/server#328`). They are the
  * route's own bytes (`GET /leetype/rounds/:id/runs`) for the round version

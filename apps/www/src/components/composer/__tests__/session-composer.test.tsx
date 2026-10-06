@@ -1,28 +1,25 @@
 /**
  * @vitest-environment jsdom
  *
- * #946/S2's own acceptance criteria for the migrated composer: the
- * double-submit regression (a thundering-herd concern the migration must
- * close, not just the failure-visibility one #939 already covers), the
- * honest middle-failure message for a new session's "Save & Play" chain,
- * and success-path behaviour preservation (same navigation targets, same
- * toast copy, lifted verbatim from the pre-migration `onSuccess` bodies).
+ * The composer's save flows: the double-submit guard, the honest
+ * middle-failure message for a new session's "Save & Play" chain, and the
+ * success paths' navigation targets and toast copy.
  */
 
-import type { JSX, ReactNode } from "react"
+import { sessionRecord } from "@/test-support/session-record"
 import { signInForTests } from "@/test-support/sign-in"
 import { resetViewport, setViewport } from "@/test-support/viewport"
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import type * as ReactRouterModule from "@tanstack/react-router"
 import {
   act,
   cleanup,
   fireEvent,
-  render,
   screen,
   waitFor,
 } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+
+import { renderAtReviewStep as renderReview } from "./helpers"
 
 // These suites are about the account's store failing: start from an account.
 beforeEach(() => {
@@ -57,19 +54,9 @@ const { SessionComposer } = await import(
   "@/components/composer/session-composer"
 )
 
-function withQueryClient(children: ReactNode): JSX.Element {
-  const client = new QueryClient({
-    defaultOptions: { mutations: { retry: false } },
-  })
-  return <QueryClientProvider client={client}>{children}</QueryClientProvider>
-}
-
 type FetchCall = { method: string; url: string; body: unknown }
 
-/** Reads `body.name` off a JSON-parsed request body without a bare type
- * assertion - `body` is `unknown` by construction (parsed from whatever the
- * test's own fetch mock was handed), and a mock is exactly the place a
- * malformed shape should degrade to a fallback rather than throw. */
+/** `body.name` of a parsed request body, or "untitled". */
 function nameFrom(body: unknown): string {
   if (typeof body !== "object" || body === null || !("name" in body)) {
     return "untitled"
@@ -78,18 +65,12 @@ function nameFrom(body: unknown): string {
   return typeof name === "string" ? name : "untitled"
 }
 
-/** A `global.fetch` stand-in that answers real session-shaped JSON for the
- * three routes this file's flows touch, and records every call so the
- * regression tests can count POSTs (creates) vs PATCHes (updates)
- * precisely - the whole point of the double-submit and middle-failure
- * assertions below. */
+/** A `global.fetch` answering session-shaped JSON for create and PATCH, and
+ * recording every call so tests can count creates and updates. */
 function installFileHostSuccess(options: {
   failPatch?: boolean
-  /** Default 500 (retryable). Pass a 4xx to reproduce a *definitive*
-   * activate rejection - a bot review's fresh finding: `mapFileHostError`
-   * marks that non-retryable but never `blocksResubmission` (only a
-   * `FileHostUnreachableError` timeout sets that), a shape the earlier
-   * "failPatch" 500 case can't reach. */
+  /** Default 500 (retryable). A 4xx is a definitive activate rejection:
+   * non-retryable, but not `blocksResubmission`. */
   failPatchStatus?: number
 }): {
   calls: Array<FetchCall>
@@ -110,17 +91,10 @@ function installFileHostSuccess(options: {
       !url.includes("duplicate")
     ) {
       createdCount += 1
-      const record = {
+      const record = sessionRecord({
         id: `session-${createdCount}`,
         name: nameFrom(body),
-        status: "draft",
-        activities: [],
-        scenes: [],
-        layoutMode: "basic",
-        totalDurationMs: 0,
-        createdAt: "2026-01-01T00:00:00.000Z",
-        updatedAt: "2026-01-01T00:00:00.000Z",
-      }
+      })
       return new Response(JSON.stringify(record), { status: 200 })
     }
 
@@ -135,26 +109,20 @@ function installFileHostSuccess(options: {
       }
       const sessionId = url.split("/sessions/")[1]
       return new Response(
-        JSON.stringify({
-          id: sessionId,
-          name: "untitled",
-          status: "active",
-          activities: [],
-          scenes: [],
-          layoutMode: "basic",
-          totalDurationMs: 0,
-          createdAt: "2026-01-01T00:00:00.000Z",
-          updatedAt: "2026-01-01T00:00:00.000Z",
-          startedAt: "2026-01-01T00:00:00.000Z",
-        }),
+        JSON.stringify(
+          sessionRecord({
+            id: sessionId,
+            name: "untitled",
+            status: "active",
+            startedAt: "2026-01-01T00:00:00.000Z",
+          })
+        ),
         { status: 200 }
       )
     }
 
-    // Anything else (the incidental migration/list check every test in
-    // this file triggers just by importing lib/tenant/hooks.ts) fails as a
-    // connection refused - handled gracefully by the production code (see
-    // sessions-backend.ts's own afterReady/migration .catch).
+    // Anything else (the incidental list read lib/tenant/hooks.ts triggers)
+    // fails as a connection refused, which the production code tolerates.
     return Promise.reject(new TypeError("Failed to fetch"))
   }
 
@@ -162,16 +130,13 @@ function installFileHostSuccess(options: {
   return { calls, restore: () => vi.unstubAllGlobals() }
 }
 
-async function renderAtReviewStep(): Promise<void> {
-  render(withQueryClient(<SessionComposer initialActivity="honeycomb" />))
-  for (let i = 0; i < 3; i += 1) {
-    const continueButton = screen.getByRole("button", { name: /continue/i })
-    // eslint-disable-next-line @typescript-eslint/require-await -- act's async form is what flushes the microtask-queued mutation state update.
-    await act(async () => {
-      fireEvent.click(continueButton)
-    })
-  }
-}
+const creates = (calls: Array<FetchCall>): Array<FetchCall> =>
+  calls.filter((c) => c.method === "POST" && c.url.includes("/sessions"))
+
+const isDisabled = (name: RegExp): boolean =>
+  screen.getByRole("button", { name }).hasAttribute("disabled")
+
+const renderAtReviewStep = (): Promise<void> => renderReview(SessionComposer)
 
 beforeEach(() => {
   navigateSpy.mockClear()
@@ -192,34 +157,23 @@ describe("SessionComposer: Save & Play, new session - success path and regressio
     await renderAtReviewStep()
 
     const saveAndPlay = screen.getByRole("button", { name: /save.*play/i })
-    // No `act`/`await` between the two clicks - the same fast-double-click
-    // shape the pre-migration code corrupted data on (two clicks issued two
-    // `createSession` calls, silently creating a duplicate session).
+    // No `act`/`await` between the two clicks: a fast double-click.
     act(() => {
       fireEvent.click(saveAndPlay)
       fireEvent.click(saveAndPlay)
     })
 
-    // Waiting for the count to read 1 is not enough: `waitFor` returns the
-    // instant that's true, which for a duplicate-POST bug is exactly the
-    // moment the *first* one lands - before a second, wrongly-issued POST
-    // has had a chance to arrive. `navigateSpy` firing is this chain's own
-    // terminal signal (create -> activate -> navigate, same success path
-    // "save & play: navigates..." below exercises) - by the time it fires,
-    // every request the double-click could have triggered has resolved
-    // against the mock, so the count taken right after it is exact.
+    // Wait for the chain's terminal signal (navigate), not for the count to
+    // read 1, which is already true before a duplicate POST would land.
     await waitFor(() => {
       expect(navigateSpy).toHaveBeenCalled()
     })
 
-    const posts = calls.filter(
-      (c) => c.method === "POST" && c.url.includes("/sessions")
-    )
-    expect(posts).toHaveLength(1)
+    expect(creates(calls)).toHaveLength(1)
     restore()
   })
 
-  it("saves as draft: toast copy and navigation target unchanged from the pre-migration onSuccess", async () => {
+  it("saves as draft: toast copy and navigation target", async () => {
     const { restore } = installFileHostSuccess({})
     await renderAtReviewStep()
 
@@ -233,7 +187,7 @@ describe("SessionComposer: Save & Play, new session - success path and regressio
     restore()
   })
 
-  it("save & play: navigates to the new session's player, no toast - unchanged from pre-migration", async () => {
+  it("save & play: navigates to the new session's player, no toast", async () => {
     const { restore } = installFileHostSuccess({})
     await renderAtReviewStep()
 
@@ -262,24 +216,11 @@ describe("SessionComposer: Save & Play, new session - success path and regressio
     // The chain never navigated - the failure is visible instead.
     expect(navigateSpy).not.toHaveBeenCalled()
 
-    // A bot review's fresh finding beyond the ambiguous-timeout case: the
-    // create here *definitely* succeeded (only the activate PATCH failed),
-    // so `createIntent.state` is `succeeded`, not `failed` - "Save as draft"
-    // must still be disabled, since clicking it would fire a second
-    // `POST /sessions` for a session that already exists under a different
-    // id. "Save & Play" itself must stay enabled, though - its own "Try
-    // again" retries only the (safe, idempotent) activate PATCH, asserted
-    // below.
-    expect(
-      screen
-        .getByRole("button", { name: /save as draft/i })
-        .hasAttribute("disabled")
-    ).toBe(true)
+    // The create succeeded, so "Save as draft" (a second POST) is disabled;
+    // "Save & Play"'s "Try again" retries only the activate PATCH.
+    expect(isDisabled(/save as draft/i)).toBe(true)
 
-    const postsBeforeRetry = calls.filter(
-      (c) => c.method === "POST" && c.url.includes("/sessions")
-    )
-    expect(postsBeforeRetry).toHaveLength(1)
+    expect(creates(calls)).toHaveLength(1)
 
     fireEvent.click(screen.getByRole("button", { name: /try again/i }))
 
@@ -288,12 +229,9 @@ describe("SessionComposer: Save & Play, new session - success path and regressio
       expect(patches.length).toBeGreaterThanOrEqual(2)
     })
 
-    const postsAfterRetry = calls.filter(
-      (c) => c.method === "POST" && c.url.includes("/sessions")
-    )
     const patches = calls.filter((c) => c.method === "PATCH")
     // Still exactly one session created; retry only re-ran the PATCH.
-    expect(postsAfterRetry).toHaveLength(1)
+    expect(creates(calls)).toHaveLength(1)
     expect(patches.length).toBeGreaterThanOrEqual(2)
     restore()
   })
@@ -309,32 +247,15 @@ describe("SessionComposer: Save & Play, new session - success path and regressio
     fireEvent.click(saveAndPlay)
 
     await screen.findByRole("alert")
-    // Unlike the 500 case above, a 4xx activate failure is not retryable, so
-    // `IntentButton` shows no "Try again" - and, absent this fix, would fall
-    // back to `onClick={onPress}` (`handleSaveAndPlay`, which restarts the
-    // *whole* chain from `createIntent.start` since it has no way to know a
-    // session already exists). The fix disables the button outright instead
-    // of leaving that fallback reachable.
+    // A 4xx is not retryable: no "Try again", and the `onPress` fallback
+    // (which would restart the whole chain) is disabled too.
     expect(screen.queryByRole("button", { name: /try again/i })).toBeNull()
-    expect(
-      screen
-        .getByRole("button", { name: /save.*play/i })
-        .hasAttribute("disabled")
-    ).toBe(true)
-    expect(
-      screen
-        .getByRole("button", { name: /save as draft/i })
-        .hasAttribute("disabled")
-    ).toBe(true)
+    expect(isDisabled(/save.*play/i)).toBe(true)
+    expect(isDisabled(/save as draft/i)).toBe(true)
 
-    // Clicking a disabled button fires no click event (jsdom mirrors real
-    // browser behavior here) - confirms this isn't just a visual affordance
-    // but actually prevents the second POST.
+    // A disabled button fires no click, so no second POST.
     fireEvent.click(saveAndPlay)
-    const posts = calls.filter(
-      (c) => c.method === "POST" && c.url.includes("/sessions")
-    )
-    expect(posts).toHaveLength(1)
+    expect(creates(calls)).toHaveLength(1)
     restore()
   })
 })

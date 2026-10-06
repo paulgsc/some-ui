@@ -1,8 +1,5 @@
 /**
- * Session Machine - Core Actor Implementation
- *
- * Framework-agnostic state machine
- * Can run in Node, Deno, Bun, or browser
+ * The session actor: framework-agnostic, runs anywhere.
  *
  * INVARIANTS ENFORCED:
  * - All core invariants via reducer
@@ -21,9 +18,7 @@ import type {
   SessionState,
 } from "@topik/lib/topik/core/session-types"
 
-// ═══════════════════════════════════════════════════════════════════════════
 // SESSION MACHINE
-// ═══════════════════════════════════════════════════════════════════════════
 
 export class SessionMachine implements ISessionMachine {
   private state: SessionState
@@ -33,53 +28,35 @@ export class SessionMachine implements ISessionMachine {
     this.state = initialState ?? createInitialState()
   }
 
-  /**
-   * Get current state (immutable)
-   */
   getState(): SessionState {
     return this.state
   }
 
-  /**
-   * Dispatch event and return effects
-   * V2: Pure dispatch, returns effects for runtime
-   */
+  /** V2: pure dispatch; returns the effects for the runtime. */
   dispatch(event: SessionEvent): Array<SessionEffect> {
     const before = this.state
     const { state: after, effects } = sessionReducer(before, event)
 
-    // Only notify if state changed
     if (after !== before) {
       this.state = after
       this._notify()
     }
 
-    // Always return effects (even if state unchanged)
     return effects
   }
 
-  /**
-   * Subscribe to state changes
-   */
   subscribe(listener: (state: SessionState) => void): () => void {
     this.listeners.add(listener)
 
-    // Return unsubscribe function
     return () => {
       this.listeners.delete(listener)
     }
   }
 
-  /**
-   * Destroy machine
-   */
   destroy(): void {
     this.listeners.clear()
   }
 
-  /**
-   * Notify all listeners
-   */
   private _notify(): void {
     const state = this.state
     for (const listener of this.listeners) {
@@ -88,16 +65,9 @@ export class SessionMachine implements ISessionMachine {
   }
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
 // FACTORY
-// ═══════════════════════════════════════════════════════════════════════════
 
-/**
- * Create session machine
- *
- * @param repository - Topik repository instance
- * @param initialState - Optional initial state (for hydration)
- */
+/** @param initialState - Optional initial state (for hydration) */
 export function createSessionMachine(
   initialState?: SessionState
 ): ISessionMachine {

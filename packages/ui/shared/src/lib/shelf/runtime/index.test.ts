@@ -123,7 +123,7 @@ describe("createShelfList", () => {
     })
   })
 
-  it("never plays a replay the learner walked away from (review, #1600)", async () => {
+  it("never plays a replay the learner walked away from", async () => {
     const body = deferred<unknown>()
     const runtime = createShelfList(shelfOf({ read: () => body.promise }))
     const stop = runtime.start()

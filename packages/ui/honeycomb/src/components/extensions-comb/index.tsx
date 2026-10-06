@@ -6,7 +6,6 @@ import { assertNever } from "@honeycomb/utils/error"
 import type { LucideIcon } from "lucide-react"
 import {
   ArrowLeft,
-  Boxes,
   CodeXml,
   Contrast,
   EyeOff,
@@ -45,7 +44,7 @@ import { HEX, INSET, VIEWBOX_FACTOR } from "./geometry"
 import "./index.css"
 
 /**
- * The /extensions comb: six browser extensions, told visually.
+ * The /extensions comb: five browser extensions, told visually.
  *
  * ## The design law
  *
@@ -53,18 +52,11 @@ import "./index.css"
  * > user interaction.
  *
  * At rest the page paints the comb and the three-word rest cue, and nothing
- * else. Words are disclosed progressively and never rendered preemptively:
- * names and micro-labels ride in the cells, and the one sentence a level has
- * to say appears in the caption directly under the comb (beside it on a short
- * landscape screen). Nothing ever covers the comb — no dialog, no drawer, no
- * popover — so disclosure happens by *re-roling the cells that are already
+ * else. Names and micro-labels ride in the cells, and a level's one sentence
+ * appears in the caption under the comb (beside it on a short landscape
+ * screen), as page type so it stays readable at any comb scale. Nothing ever
+ * covers the comb, so disclosure happens by *re-roling the cells already
  * there*.
- *
- * The sentence used to live inside the centroid, scaled with the comb. That
- * made its type size a function of the viewport, and on a phone it landed at
- * 7–8px — the payload of the whole level, unreadable exactly where most
- * visitors arrive. The caption is page type, so it is the same readable size
- * on every screen, and the comb keeps only what it can say at any scale.
  *
  * ## The register model
  *
@@ -73,18 +65,16 @@ import "./index.css"
  * hold changes, which is what makes the model recursive: an L3 would be the
  * same move again.
  *
- *   L0 · index    ring = the six extensions      core = brand mark + rest cue
+ *   L0 · index    ring = the five extensions     core = brand mark + rest cue
  *   L1 · subject  ring = facets of one extension core = its emblem + name
  *   L2 · facet    ring = that facet's atoms      core = the facet's name
  *
  * ## Painted by `HexGrid`
  *
- * The comb is honeycomb's own `HexGrid`, so its geometry comes from the same
- * WASM crate (`@some-ui/some-hexagon`) that lays out every other hex surface
- * in this package: one hex renderer, not two. `HexGrid` paints each of the
- * seven cells as a *wax* path — the lattice — and hands this file the cell's
- * path and centre through `renderCell`, where the cell proper is drawn inset
- * within its wax, so the walls between cells are the wax showing through.
+ * Geometry comes from the same WASM crate (`@some-ui/some-hexagon`) as every
+ * other hex surface here. `HexGrid` paints each cell as a *wax* path and
+ * hands its path and centre to `renderCell`, which draws the cell inset
+ * within its wax, so the walls are the wax showing through.
  *
  * All paint comes from the `.comb` component skin in `@some-ui/styles`
  * (`themes/comb.css`): fixed honey, and wax derived from the session theme.
@@ -182,10 +172,8 @@ const onKeyActivate =
  * One register, drawn in the cell's own coordinates (origin at its centre).
  *
  * An actionable register is a focusable `role="button"` group carrying an
- * `aria-label`, reachable by Tab and activated by Enter or Space. Its focus
- * and hover state is a stroke on the hexagon itself, so the ring follows all
- * six edges — the old CSS clip-path cells could only ever ring their flat top
- * and bottom, and ate `outline` entirely.
+ * `aria-label`, activated by Enter or Space. Its focus and hover state is a
+ * stroke on the hexagon itself, so the ring follows all six edges.
  */
 const CombCell = ({
   spec,
@@ -330,7 +318,6 @@ const EMBLEM_ICON = {
   memory: HardDrive,
   contrast: Contrast,
   covered: EyeOff,
-  belt: Boxes,
   music: Music,
   beat: HeartPulse,
 } as const satisfies Record<Emblem, LucideIcon>
@@ -601,32 +588,6 @@ const Mini = ({ kind }: { kind: Mechanism }): JSX.Element => {
         </g>
       )
     }
-    case "cubes": {
-      return (
-        <g aria-hidden>
-          <defs>
-            <clipPath id="xcomb-belt">
-              <rect x={-70} y={-30} width={140} height={60} />
-            </clipPath>
-          </defs>
-          <line x1={-70} x2={70} y1={26} y2={26} className="xcomb-mini-rail" />
-          <g clipPath="url(#xcomb-belt)">
-            {[0, 1, 2].map((k) => (
-              <rect
-                key={k}
-                x={72}
-                y={-14}
-                width={30}
-                height={30}
-                rx={4}
-                className="xcomb-mini-cube"
-                style={{ animationDelay: `${k * 1.1}s` }}
-              />
-            ))}
-          </g>
-        </g>
-      )
-    }
     case "follow": {
       return (
         <g aria-hidden>
@@ -749,13 +710,11 @@ export const ExtensionsComb = (): JSX.Element => {
   const [peek, setPeek] = useState<number | null>(null)
 
   /**
-   * The cell to focus once a transition lands. Every cell is re-keyed when
-   * the level changes (that is what replays the entrance), so the cell that
-   * was just activated unmounts while it holds focus, and focus would fall to
-   * the document: the next Tab would restart at the page chrome, outside the
-   * comb. Each move therefore names where focus goes instead — into the
-   * level's first facet going down, and back to the cell it came from going
-   * up. `null` on arrival, so loading the page steals no focus.
+   * The cell to focus once a transition lands. Every cell is re-keyed on a
+   * level change, so the activated cell unmounts while focused and focus
+   * would fall to the document. Each move names where focus goes: the first
+   * facet going down, the originating cell going up. `null` on arrival, so
+   * loading the page steals no focus.
    */
   const [focusKey, setFocusKey] = useState<string | null>(null)
 
@@ -861,6 +820,10 @@ export const ExtensionsComb = (): JSX.Element => {
  * screen cannot hover, so there the name also rides in the cell itself; that
  * is keyed on the pointer's capability in `index.css`, not on width, because
  * a narrow desktop window still hovers.
+ *
+ * Slots past the last extension stay ghost cells, as unused slots do at L2:
+ * the comb never loses a cell. With five extensions that is slot 5, the
+ * upper-left cell that is the way up at every deeper level.
  */
 function indexLevel(
   peek: number | null,
@@ -869,7 +832,7 @@ function indexLevel(
 ): Level {
   const peeked = peek === null ? null : (EXTENSIONS[peek] ?? null)
 
-  const ring = EXTENSIONS.map(
+  const tools = EXTENSIONS.map(
     (ext, i): CellSpec => ({
       key: `index-${ext.id}`,
       honey: ext.level,
@@ -888,6 +851,10 @@ function indexLevel(
         </>
       ),
     })
+  )
+  const ring = [0, 1, 2, 3, 4, 5].map(
+    (slot): CellSpec =>
+      tools[slot] ?? { key: `index-ghost-${slot}`, ghost: true }
   )
 
   const core: CellSpec = {
@@ -930,7 +897,8 @@ function subjectLevel(
       art: () => <Mini kind={subject.mechanism} />,
     },
     {
-      // The SAME honey value carried up from L0.
+      // The same honey value as at L0.
+
       key: `subject-stage-${subject.id}`,
       honey: subject.level,
       label: `How far along ${subject.name} is: ${STAGE_LABEL[subject.stage]}`,
@@ -994,7 +962,7 @@ function subjectLevel(
         </>
       ),
     },
-    backCell(`subject-up-${subject.id}`, "Back to all six", LABEL.up, onUp),
+    backCell(`subject-up-${subject.id}`, "Back to all five", LABEL.up, onUp),
   ]
 
   const core: CellSpec = {
@@ -1054,7 +1022,7 @@ function facetLevel(
           })
         )
       : [
-          // First, this tool's own network answer; then what all six share.
+          // First, this tool's own network answer; then what all five share.
           {
             id: `network-${subject.network}`,
             label: NETWORK_LABEL[subject.network],

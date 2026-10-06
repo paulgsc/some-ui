@@ -70,31 +70,27 @@ const PlayerFailure = ({
   </Card>
 )
 
-/** Split from `SessionPlayerRoute` so the outcome logic can be exercised
- * directly with a plain `sessionId` prop - `Route.useParams()` needs a real
- * matched router context that a component test has no reason to build. */
+/** Split from `SessionPlayerRoute` so a test can pass `sessionId` directly,
+ * without a matched router context. */
 export const SessionPlayer = ({
   sessionId,
 }: {
   sessionId: string
 }): JSX.Element => {
-  // The same string this route's own URL and the push notification's deep
-  // link (`sessions/${id}`) carry, which is what the server compares a lease
-  // against — see `usePresenceLease`.
+  // The same string as this route's URL and the push deep link
+  // (`sessions/${id}`), which the server compares a lease against.
   usePresenceLease(sessionId)
   const outcome = queryOutcome(useSession(sessionId))
 
   return matchQueryOutcome(outcome, {
     pending: () => <PlayerSkeleton />,
     // Distinct from `SessionNotFound`: a failed read has not told us the
-    // session is absent, only that we don't yet know - see the
-    // route-arrival handoff's Safety invariant.
+    // session is absent (the route-arrival Safety invariant).
     failed: (error, retry) => <PlayerFailure error={error} onRetry={retry} />,
     ready: (session, refreshError) => {
       if (!session) {
-        // A cached "no session" through a *failed* refresh hasn't actually
-        // been reconfirmed - the same Safety invariant as the `failed` arm
-        // above, not "not found" wearing a different arm.
+        // A cached "no session" through a failed refresh is not reconfirmed:
+        // the same Safety invariant.
         if (refreshError) {
           return (
             <PlayerFailure
@@ -105,10 +101,8 @@ export const SessionPlayer = ({
         }
         return <SessionNotFound />
       }
-      // A cached *non-null* session through a failed refresh is the same
-      // Safety invariant again: the content on screen may be stale, so the
-      // refresh failure rides alongside it instead of being silently
-      // dropped - a bot review caught this arm handling only the null case.
+      // A cached session through a failed refresh may be stale, so the
+      // refresh failure rides alongside it.
       const refreshBanner = refreshError && (
         <IntentFailure
           error={refreshError.error}
@@ -126,10 +120,8 @@ export const SessionPlayer = ({
       if (!refreshBanner) {
         return <LivePlayer key={session.id} session={session} />
       }
-      // LivePlayer expects to be the sole height-filling child of its
-      // parent (its own root is `h-full`) - an extra flex layer here keeps
-      // that contract intact while giving the banner room above it, rather
-      // than LivePlayer collapsing to zero height under a plain sibling.
+      // LivePlayer's root is `h-full` and expects to be its parent's sole
+      // height-filling child; this flex layer keeps that with a banner above.
       return (
         <div className="flex h-full min-h-0 w-full flex-col gap-3">
           {refreshBanner}
@@ -148,16 +140,10 @@ const SessionPlayerRoute = (): JSX.Element => {
 }
 
 export const Route = createFileRoute("/_dashboard/sessions/$sessionId")({
-  // Starts the session fetch when the router starts the navigation - on hover,
-  // given `defaultPreload: "intent"` - instead of after this component has
-  // rendered and mounted. That ordering was the whole cost: the layout above
-  // had to render before the effect below could ask for anything.
-  //
-  // Not awaited, and `prefetchQuery` rather than `ensureQueryData`, so this
-  // stays a pure head start: navigation is never held up by a slow or failing
-  // request, and `useSession` below remains the thing that decides what is on
-  // screen. A prefetch that fails changes nothing - the component falls back
-  // to PlayerSkeleton and then SessionNotFound exactly as it does today.
+  // Starts the session fetch when navigation starts (on hover, via
+  // `defaultPreload: "intent"`) rather than after mount. Not awaited, and
+  // `prefetchQuery` not `ensureQueryData`: a pure head start that never
+  // holds navigation up; `useSession` still decides what is shown.
   loader: ({ context, params }) => {
     void context.queryClient.prefetchQuery(
       sessionQuery(String(params.sessionId))

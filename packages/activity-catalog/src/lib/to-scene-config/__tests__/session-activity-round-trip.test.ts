@@ -4,20 +4,11 @@ import type { SessionActivity } from "@activity-catalog/lib/to-scene-config"
 import { describe, expect, it } from "vitest"
 
 /**
- * `paulgsc/server#272`'s round trip, checked from this side of the
- * boundary: `toSceneProps` is a closure, and JSON has no encoding for one,
- * so a server-composed session can never carry it. What it *can* carry is
- * exactly `SessionActivity` — `{ activityId, config }` — and #272's whole
- * argument is that this is already sufficient, because `sequenceScenes`
- * only ever needed that much: it looks `toSceneProps` up from this
- * package's own catalogue, it does not expect the caller to supply it.
- *
- * `JSON.parse(JSON.stringify(...))` simulates the one thing a server
- * response actually does to this data that a same-process object never
- * would: strip anything that isn't representable as JSON. Running the
- * catalogue's own `defaultConfig` through that boundary and confirming
- * `sequenceScenes` produces identical output either side of it is the
- * server-composed-session case in miniature.
+ * The round trip of `paulgsc/server#272`, from this side: `toSceneProps` is a
+ * closure JSON cannot carry, so a server-composed session carries only
+ * `SessionActivity` (`{ activityId, config }`), and `sequenceScenes` looks
+ * `toSceneProps` up from this package's catalogue. `JSON.parse(JSON.stringify
+ * (...))` strips what a server response would.
  */
 describe("a server-composed SessionActivity list survives the JSON wire (server#272)", () => {
   const activities: ReadonlyArray<SessionActivity> = ACTIVITY_IDS.map((id) => ({

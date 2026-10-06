@@ -4,9 +4,7 @@ import type { TopikMetadata } from "@topik/lib/topik"
 import { Layers, Target } from "lucide-react"
 import { cn } from "some-ui-utils"
 
-// ═══════════════════════════════════════════════════════════════
 // Spine accent colors — muted, library-like palette
-// ═══════════════════════════════════════════════════════════════
 const SPINE_COLORS = [
   "bg-[hsl(30,30%,40%)]",
   "bg-[hsl(200,18%,42%)]",
@@ -33,9 +31,7 @@ const DIFFICULTY_STYLES: Record<string, string> = {
     "bg-[hsl(350,20%,88%)] text-[hsl(350,25%,35%)] dark:bg-[hsl(350,15%,18%)] dark:text-[hsl(350,20%,70%)]",
 }
 
-// ═══════════════════════════════════════════════════════════════
 // Props
-// ═══════════════════════════════════════════════════════════════
 
 type TopikBookCardProps = {
   item: TopikMetadata

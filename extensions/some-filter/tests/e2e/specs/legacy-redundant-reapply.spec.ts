@@ -1,38 +1,19 @@
 /**
- * Regression for a flash reported after the GET_TAB_FILTER_STATE fix (#1188)
- * started actually resolving: every page load's async init reconciliation
- * now genuinely reaches enterOrRefreshLegacy() a second time, moments after
- * the synchronous sessionStorage-cached paint already applied the same
- * config. Before that fix the response was always `undefined`, so this
- * second call never happened on Chrome — it was unreachable, not idempotent.
+ * Redundant legacy re-application. Every page load's async init
+ * reconciliation reaches enterOrRefreshLegacy() a second time, moments after
+ * the cached paint applied the same config.
  *
- * enterOrRefreshLegacy()'s "already legacy" branch used to call
- * applyTheme("legacy", config) unconditionally whenever the tab was already
- * in legacy mode, trusting theme-apply.ts's setStyleText() to no-op an
- * unchanged rewrite. That guard is one step too late: applyLegacyFilter()
- * calls `setAttribute(LEGACY_THEME_ATTR, "")` before setStyleText ever
- * compares anything, and setAttribute has no same-value short-circuit — it
- * fires a real MutationRecord even when the attribute already holds that
- * exact value (verified directly, isolated from this extension entirely).
- * That re-triggers every selector gated on `[data-sw-legacy]` across two
- * stylesheets, on the element that is also the root filter's own target.
- * This sandbox's headless/swiftshader rendering hasn't reproduced a visible
- * frame from that churn (tried via CDP screencast on a real page.reload()),
- * but a real, hardware-composited Chrome may — a `filter`-bearing root
- * re-evaluating its own gated selectors is exactly the kind of thing
- * compositing layers are sensitive to. Checked here as what's actually
- * measurable: zero DOM writes on a redundant call, not zero pixels — the
- * same standard #831's veil test already holds enablePrepaint() to.
+ * applyLegacyFilter()'s `setAttribute(LEGACY_THEME_ATTR, "")` fires a real
+ * MutationRecord even for an unchanged value (verified in isolation),
+ * re-triggering every `[data-sw-legacy]` selector on the root filter's own
+ * target. The headless harness has not reproduced a visible frame from it,
+ * but real composited Chrome may, so this checks what is measurable: zero
+ * DOM writes on a redundant call (the standard #831 holds enablePrepaint()
+ * to).
  *
- * SF4 (#1360) classification: internal-state claim, fine as-is, for both
- * tests below. The first (mutation-count) is explicitly, by this file's own
- * admission above, checking what's measurable in this sandbox instead of
- * the real pixel claim — an honest, already-documented known gap, not one
- * this audit needs to restate. The second (reload correction) checks the
- * injected stylesheet's literal text, the same "which config string got
- * written" claim as legacy-config-cache.spec.ts's own SF4 note — sound as a
- * wiring check, and legacy-invert-regimes.spec.ts already owns the separate
- * real pixel-sampled claim for what a landed legacy filter renders as.
+ * Classification (#1360): internal-state claims. The mutation count is the
+ * measurable proxy stated above; the reload test checks the injected
+ * stylesheet's text (legacy-invert-regimes.spec.ts owns the pixel claim).
  */
 
 import { LEGACY_PRESETS } from "@filter/lib/legacy-presets"
@@ -62,13 +43,10 @@ test("a redundant TOGGLE_FILTER with an unchanged config writes nothing to the l
     { timeout: 5_000, polling: 100 }
   )
 
-  // Playwright's page.evaluate() runs in the page's own main-world context,
-  // not the content script's isolated world — chrome.* isn't reachable
-  // there. The observer is set up in the page (MutationObserver sees DOM
-  // changes regardless of which world caused them); the redundant message
-  // itself goes through the real background service worker via
-  // chrome.tabs.sendMessage, the same route background.ts's own
-  // tabs.onUpdated handler uses to trigger this in practice.
+  // page.evaluate() runs in the page's main world, where chrome.* is not
+  // reachable; the observer lives there (it sees all DOM changes) and the
+  // message goes through the real worker via chrome.tabs.sendMessage, the
+  // route background.ts's tabs.onUpdated uses in practice.
   await page.evaluate(() => {
     const style = document.getElementById("__sw_legacy_filter")
     if (style === null) throw new Error("legacy stylesheet missing")
@@ -81,9 +59,7 @@ test("a redundant TOGGLE_FILTER with an unchanged config writes nothing to the l
       childList: true,
       subtree: true,
     })
-    // The <html> attribute set is also part of the redundant call's cost —
-    // watch it too, even though setAttribute to an unchanged value is
-    // already a browser-level no-op mutation-wise.
+    // The <html> attribute set is part of the redundant call's cost too.
     observer.observe(document.documentElement, {
       attributes: true,
       attributeFilter: ["data-sw-legacy"],
@@ -129,19 +105,11 @@ test("a redundant TOGGLE_FILTER with an unchanged config writes nothing to the l
 })
 
 /**
- * Companion regression, caught by review on the fix above rather than
- * measured first: enterOrRefreshLegacy()'s no-op check compares the
- * module-level `filterConfig` against the incoming one, but content.ts's own
- * async init reconciliation used to overwrite that module-level value with
- * the incoming config *before* calling enterOrRefreshLegacy() — so the
- * comparison was always "config equals itself", regardless of what was
- * actually painted. On a reload, the synchronous sessionStorage-cached paint
- * always re-enters legacy mode with content.ts's own hardcoded default
- * filter (module state resets on every fresh injection; only the *state*
- * cache survives, not the config), so a tab whose real, stored style is
- * "dim" would reload showing "invert", reconcile, and then never actually
- * correct to "dim" — the too-early overwrite made the mismatch invisible to
- * the very check meant to catch it.
+ * Init reconciliation must compare the incoming config against the
+ * module-level `filterConfig` *before* overwriting it. A reload re-enters
+ * legacy with content.ts's default filter (only the state is cached, not the
+ * config), so a tab whose stored style is "dim" must be corrected from
+ * "invert".
  */
 test("a reload's stale cached-default paint is still corrected to the real stored style", async ({
   context,
@@ -149,9 +117,8 @@ test("a reload's stale cached-default paint is still corrected to the real store
 }) => {
   const page = await fixture.goto("transparent-page")
   const sw = await backgroundWorker(context)
-  // "dim" is deliberately not content.ts's own hardcoded default (which
-  // matches LEGACY_PRESETS.invert) — the reload below must repaint away
-  // from that default, not merely tolerate already being on it.
+  // "dim" is deliberately not content.ts's default (LEGACY_PRESETS.invert),
+  // so the reload must repaint away from it.
   await enterLegacyMode(sw, "transparent-page.html", LEGACY_PRESETS.dim)
 
   await page.waitForFunction(

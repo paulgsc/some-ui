@@ -1,20 +1,14 @@
 /**
- * One transfer at a time across every tab of this browser.
+ * One transfer at a time across every tab of this browser: two tabs pressing
+ * "Copy to my account" before either wrote a receipt would each send a copy.
+ * A tab that cannot get the lock says so rather than waiting.
  *
- * Two tabs that both press "Copy to my account" before either has written a
- * receipt would each plan a create and each send it: two copies of one device
- * session. So the whole of a transfer (plan, then run) happens under a lock
- * that only one tab holds, and a tab that cannot get it says so rather than
- * waiting or going ahead.
- *
- * - **Web Locks** (`navigator.locks`) where the browser has them: atomic across
- *   tabs, released by the browser if the holder's tab dies. Only secure
- *   contexts have them (https and localhost).
- * - **A storage lease** where it does not (the Docker image's plain `http://`
- *   listener): a timestamped token in `localStorage`, renewed while held and
- *   expiring if its holder dies. Writing then re-reading after a short wait
- *   shrinks the race to two presses landing in the same instant; it cannot
- *   close it, and `docs/learner-data-authority.md` (LA2) says so.
+ * - **Web Locks** (`navigator.locks`, secure contexts only): atomic, released
+ *   if the holder's tab dies.
+ * - **A storage lease** otherwise (the Docker image's plain `http://`): a
+ *   timestamped `localStorage` token, renewed while held. Write-then-reread
+ *   after a short wait shrinks the race to simultaneous presses but cannot
+ *   close it (`docs/learner-data-authority.md`, LA2).
  */
 
 import type { StorageAdapter } from "@/lib/tenant/storage"

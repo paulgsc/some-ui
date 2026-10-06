@@ -81,6 +81,26 @@ async function tap(name: string | RegExp): Promise<void> {
   await settle(() => fireEvent.click(button))
 }
 
+/** A fake `Audio` whose `play` is `play(src)`, and stub object URLs. */
+function stubAudio(
+  play: (src: string) => Promise<void>,
+  url: () => string
+): void {
+  vi.stubGlobal(
+    "Audio",
+    class {
+      onended: (() => void) | null = null
+      constructor(readonly src: string) {}
+      play(): Promise<void> {
+        return play(this.src)
+      }
+      pause(): void {}
+    }
+  )
+  vi.spyOn(URL, "createObjectURL").mockImplementation(url)
+  vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => undefined)
+}
+
 /** Six kept, `b0` the newest and `b5` the oldest. */
 const FULL = Array.from({ length: 6 }, (_, i) => bite(`b${i}`, i * 60))
 
@@ -285,22 +305,14 @@ describe("Soundbites", () => {
       src: string
       fail: (error: Error) => void
     }> = []
-    vi.stubGlobal(
-      "Audio",
-      class {
-        onended: (() => void) | null = null
-        constructor(readonly src: string) {}
-        play(): Promise<void> {
-          return new Promise((_resolve, reject) => {
-            audios.push({ src: this.src, fail: reject })
-          })
-        }
-        pause(): void {}
-      }
-    )
     let urls = 0
-    vi.spyOn(URL, "createObjectURL").mockImplementation(() => `blob:${++urls}`)
-    vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => undefined)
+    stubAudio(
+      (src) =>
+        new Promise((_resolve, reject) => {
+          audios.push({ src, fail: reject })
+        }),
+      () => `blob:${++urls}`
+    )
     setup({ kept: [bite("a", 5), bite("b", 10)] })
 
     const [first, second] = await screen.findAllByRole("button", {
@@ -388,21 +400,14 @@ describe("Soundbites", () => {
 
   it("plays one recording at a time, however fast the taps", async () => {
     const played: Array<string> = []
-    vi.stubGlobal(
-      "Audio",
-      class {
-        onended: (() => void) | null = null
-        constructor(readonly src: string) {}
-        play(): Promise<void> {
-          played.push(this.src)
-          return Promise.resolve()
-        }
-        pause(): void {}
-      }
-    )
     let urls = 0
-    vi.spyOn(URL, "createObjectURL").mockImplementation(() => `blob:${++urls}`)
-    vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => undefined)
+    stubAudio(
+      (src) => {
+        played.push(src)
+        return Promise.resolve()
+      },
+      () => `blob:${++urls}`
+    )
     setup({ kept: [bite("a", 5), bite("b", 10)] })
 
     const [first, second] = await screen.findAllByRole("button", {
@@ -445,22 +450,15 @@ describe("Soundbites", () => {
     expect(screen.queryByRole("alert")).not.toBeInTheDocument()
   })
 
-  it("plays nothing while the microphone opens (#1636, finding 11)", async () => {
+  it("plays nothing while the microphone opens", async () => {
     const played: Array<string> = []
-    vi.stubGlobal(
-      "Audio",
-      class {
-        onended: (() => void) | null = null
-        constructor(readonly src: string) {}
-        play(): Promise<void> {
-          played.push(this.src)
-          return Promise.resolve()
-        }
-        pause(): void {}
-      }
+    stubAudio(
+      (src) => {
+        played.push(src)
+        return Promise.resolve()
+      },
+      () => "blob:1"
     )
-    vi.spyOn(URL, "createObjectURL").mockImplementation(() => "blob:1")
-    vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => undefined)
     const mic = fakeMic()
     let open: (recording: Recording) => void = () => undefined
     mic.start.mockImplementationOnce(

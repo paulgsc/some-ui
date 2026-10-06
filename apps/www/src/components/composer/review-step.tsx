@@ -41,10 +41,9 @@ type ReviewStepProps = {
   onSessionNameChange: (name: string) => void
   defaultName: string
   /**
-   * The save controls, when this pane is where a session is finished. On a
-   * phone the tab bar is the navigation, so there is no Back / Continue
-   * footer to carry them and they belong to the last pane - the lesson CRM's
-   * Check pane holds its Save the same way.
+   * The save controls, when this pane finishes a session: on a phone there is
+   * no Back/Continue footer, so the last pane holds them (as the lesson CRM's
+   * Check pane does).
    */
   actions?: ReactNode
 }
@@ -60,11 +59,8 @@ export const ReviewStep = ({
 }: ReviewStepProps): JSX.Element => {
   const totalDurationMs = totalDurationOfScenes(scenes)
 
-  // Numbered against the full list before paginating, same reasoning as the
-  // other composer steps' lists.
-  // Memoized: `useFittedPage` reads a new `items` reference as a real content
-  // change and re-tries a rejected page size on it, so an array rebuilt every
-  // render would keep re-opening a fit it had already settled.
+  // Numbered against the full list before paginating. Memoized: a new array
+  // reads to `useFittedPage` as new content and re-opens a settled fit.
   const numberedItems = useMemo(
     () => items.map((item, index) => ({ item, position: index + 1 })),
     [items]
@@ -112,19 +108,9 @@ export const ReviewStep = ({
             ref={viewportRef}
             data-scroll-intent="fitted-residue"
             className={
-              // scroll-intent: fitted-residue — `useFittedPage` guarantees this
-              // box's content fits it, with exactly one documented exception:
-              // at `minPerPage` a single item taller than the whole box has to
-              // overflow somewhere (see the hook's own Options doc). This says
-              // where. It is not a greedy scroll - in every case the fit can
-              // actually solve, the scrollbar never appears because the content
-              // genuinely fits - it is the named home for the residue the fit
-              // is honest about not being able to remove. Clipping it instead
-              // is worse than it sounds: a card whose centre falls outside the
-              // box stops being clickable at all.
-              // On a handheld the bar is hidden (`handheld:no-scrollbar`): a phone
-              // scrolls by finger, so a bar there is only noise - and on a
-              // browser that lays bars out it took its width out of the box.
+              // scroll-intent: fitted-residue — see activity-picker-step.tsx's
+              // catalogue box: the one item taller than the box at `minPerPage`
+              // scrolls here rather than being clipped unclickable.
               "min-h-0 flex-1 overflow-y-auto handheld:no-scrollbar"
             }
           >
@@ -164,11 +150,8 @@ export const ReviewStep = ({
         </CardContent>
       </Card>
 
-      {/* The same two facts, twice, because a short window cannot afford the
-          card that carries them. Stacked in a card of its own it is ~64px of
-          padding and border around two lines of text - on a landscape phone
-          that is most of what the activity list has left, so the short form
-          keeps the facts and drops the box. */}
+      {/* The same two facts in a short form: on a short window the card's
+          ~64px of chrome is most of what the activity list has left. */}
       <Card className={cn("shrink-0", TALL_WINDOW_ONLY)}>
         <CardContent className="flex items-center justify-between py-[var(--card-p,1.5rem)]">
           <div className="min-w-0">

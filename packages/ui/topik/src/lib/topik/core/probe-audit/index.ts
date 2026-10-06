@@ -40,7 +40,7 @@ export type ProbeFinding = {
   /**
    * Where the probe sits among the conversation's probes that load, so the
    * one named can be withheld without its namesakes: two probes can share an
-   * id, and only the later is in error (Codex, #1554). Absent when the probe
+   * id, and only the later is in error. Absent when the probe
    * does not load at all, or the finding is not about one probe.
    */
   index?: number
@@ -197,7 +197,7 @@ export function auditTopikFile(raw: unknown): Array<ProbeFinding> {
 
   // Conversation and line ids are identities, not labels: a resume point
   // finds its place by them, and survey evidence is keyed by them. A second
-  // holder of one would be resumed into the first (Codex, #1554).
+  // holder of one would be resumed into the first.
   const conversations = new Set<number>()
   for (const batch of parsed.data) {
     if (conversations.has(batch.id)) {

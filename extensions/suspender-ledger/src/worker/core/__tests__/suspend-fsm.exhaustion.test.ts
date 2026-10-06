@@ -3,15 +3,15 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 /**
- * Transition graph exhaustion test (issue #345).
+ * Transition graph exhaustion test.
  *
  * Enumerates the entire (state × event) matrix and asserts the invariant holds
  * on the resulting state for every pair. This is deterministic: it finds gaps
  * in the transition graph that a hand-picked unit test would miss. Property
- * tests (issue #344) complement this by exploring *sequences*.
+ * tests complement this by exploring *sequences*.
  *
  * `allStates` / `allEvents` are exported from `suspend-fsm.ts` so the property
- * suite reuses them as arbitraries (an acceptance criterion of #345).
+ * suite reuses them as arbitraries.
  */
 
 import {

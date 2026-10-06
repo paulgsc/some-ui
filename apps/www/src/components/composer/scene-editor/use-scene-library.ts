@@ -1,13 +1,6 @@
 /**
- * Scene Library - Domain-Specific Adapter
- *
- * This is the thin specialization layer that defines:
- * - Scene-specific types
- * - Scene normalization policy
- * - Scene fallback policy
- * - Scene key derivation
- *
- * No discovery logic, no loading logic, purely policy.
+ * Scene library: the scene-specific policy (types, normalization, fallback,
+ * key derivation) over the generic library engine. No discovery or loading.
  */
 
 import type { SceneConfig } from "@some-ui/types"
@@ -18,10 +11,6 @@ import {
   useRecursiveLibrary,
 } from "some-ui-utils"
 import { z } from "zod"
-
-// -----------------------------
-// Scene-Specific Types
-// -----------------------------
 
 /** Raw file format: array of UI layout intents */
 const SceneUIFileSchema = z.array(UILayoutIntentSchema)
@@ -45,16 +34,9 @@ export type UseSceneLibraryReturn = {
   get: (key: string) => SceneConfig | undefined
 }
 
-// -----------------------------
-// Scene Normalization Policy
-// -----------------------------
-
 /**
- * Transform raw UI array into full SceneConfig
- * This encodes domain policy:
- * - All library scenes default to 60s duration
- * - All library scenes start at 0
- * - scene_name is derived from key
+ * Raw UI array → full SceneConfig: library scenes default to 60s, start at 0,
+ * and take `scene_name` from the key.
  */
 const normalizeScene = (key: string, ui: SceneUIFile): SceneConfig => {
   return SceneConfigSchema.parse({
@@ -65,13 +47,7 @@ const normalizeScene = (key: string, ui: SceneUIFile): SceneConfig => {
   })
 }
 
-// -----------------------------
-// Scene Fallback Policy
-// -----------------------------
-
-/**
- * Create a minimal valid scene when file load fails
- */
+/** A minimal valid scene for when a file fails to load. */
 const createFallbackScene = (key: string): SceneConfig => ({
   scene_name: key,
   duration: 60_000,
@@ -79,29 +55,13 @@ const createFallbackScene = (key: string): SceneConfig => ({
   ui: [],
 })
 
-// -----------------------------
-// Scene Key Derivation
-// -----------------------------
-
-/**
- * Extract scene key from file path
- * Example: "/scenes/hangul-typing.json" → "hangul-typing"
- */
+/** "/scenes/hangul-typing.json" → "hangul-typing" */
 const deriveSceneKey = (filePath: string): string => {
   const fileName = filePath.split("/").pop() ?? ""
   return fileName.replace(".json", "")
 }
 
-// -----------------------------
-// Scene Library Hook
-// -----------------------------
-
-/**
- * Scene-specific library hook
- *
- * This is now a thin wrapper that only provides scene-specific configuration
- * to the generic recursive library engine.
- */
+/** The scene-specific configuration for the generic library engine. */
 export const useSceneLibrary = (): UseSceneLibraryReturn => {
   const result = useRecursiveLibrary<SceneUIFile, SceneConfig>({
     rootPath: "/scenes",

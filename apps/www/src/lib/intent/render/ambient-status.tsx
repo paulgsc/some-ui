@@ -1,16 +1,7 @@
 /**
- * #945/#944: the ambient renderer — a persistent, low-prominence status
- * affordance rather than a `sonner` toast, per `presentation.ts`'s own
- * documented reasoning (a toast for something nobody asked for is a toast
- * they can miss with no way to check later). `role="status"` is an
- * implicit polite live region: present in the DOM whether or not anyone is
- * looking, and read out if a screen reader happens to be active when it
- * appears - the ambient equivalent of `IntentFailure`'s `role="alert"`.
- *
- * Working and succeeded render nothing, per policy - ambient means quiet
- * progress. Only `failed` renders, because ambient's whole point is that
- * *quiet* and *invisible* are different things (`failureMayBeSilent` is
- * `false` for every mode - see `presentation.ts`).
+ * The ambient renderer: a persistent, low-prominence `role="status"` (a
+ * polite live region), not a toast (`presentation.ts`). Working and succeeded
+ * render nothing; only `failed` renders, since quiet is not invisible.
  */
 
 import type { JSX } from "react"

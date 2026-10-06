@@ -1,19 +1,13 @@
 /**
- * session-reducer.test.ts
- *
- * Covers the invariants documented in ../README.md and in the header comment
- * of ./session-reducer.ts. Only V1, V2, V3, V5, V6, V7, V8, V9, V10, V11,
- * V12, V13, V17, V18, V20 have any grounding anywhere in this codebase (see
- * README.md's "Invariants Enforced" section and the V-number code comments
- * across core/*.ts). V4, V14, V15, V16, and V19 are named in the parent
- * issue but are not documented or referenced anywhere in source - rather
- * than invent meaning for them, this file covers every remaining reducer
- * branch (catalog lifecycle, quiz scoring/feedback, batch pass/fail, reset)
- * under plain behavioral `describe` blocks instead of a fabricated label.
+ * Covers the reducer invariants (V-numbers) in lib/topik/README.md → "Invariants
+ * Enforced". V4, V14, V15, V16 and V19 are documented nowhere, so the
+ * remaining branches (catalog lifecycle, quiz scoring, batch pass/fail, reset)
+ * sit under plain behavioural `describe` blocks instead of an invented label.
  */
 import type { ConversationBatch } from "@topik/lib/topik"
 import type {
   BatchMetadata,
+  SessionEvent,
   SessionState,
 } from "@topik/lib/topik/core/session-types"
 import { describe, expect, it } from "vitest"
@@ -25,10 +19,6 @@ import {
   sessionReducer,
   validateCursor,
 } from "."
-
-// ═══════════════════════════════════════════════════════════════════════════
-// FIXTURES
-// ═══════════════════════════════════════════════════════════════════════════
 
 function makeBatch(
   id: number,
@@ -61,23 +51,37 @@ function makeMeta(overrides: Partial<BatchMetadata> = {}): BatchMetadata {
   return { id: 0, messageCount: 3, questionCount: 2, ...overrides }
 }
 
-/** Drives the reducer through SELECT_TOPIK -> HYDRATION_SUCCESS into "active". */
-function hydrate(
+/** Applies each event in turn and returns the final state. */
+function fold(
   state: SessionState,
-  key: string,
-  batches: Array<ConversationBatch>
+  ...events: Array<SessionEvent>
 ): SessionState {
-  ;({ state } = sessionReducer(state, { type: "SELECT_TOPIK", key }))
-  ;({ state } = sessionReducer(state, {
+  return events.reduce((s, event) => sessionReducer(s, event).state, state)
+}
+
+const select = (key: string): SessionEvent => ({ type: "SELECT_TOPIK", key })
+const CHANGE: SessionEvent = { type: "CHANGE_TOPIK" }
+const PAUSE: SessionEvent = { type: "PAUSE_CHAT" }
+const START_QUIZ: SessionEvent = { type: "START_QUIZ" }
+const ANSWER_OK: SessionEvent = { type: "ANSWER_SUBMITTED", correct: true }
+const ADVANCE_Q: SessionEvent = { type: "ADVANCE_QUESTION" }
+const ADVANCE_M: SessionEvent = { type: "ADVANCE_MESSAGE" }
+/** Answer the only question and land on the batch summary. */
+const TO_SUMMARY = [START_QUIZ, ANSWER_OK, ADVANCE_Q]
+
+/** SELECT_TOPIK -> HYDRATION_SUCCESS into "active". */
+function hydrate(
+  batches: Array<ConversationBatch> = [makeBatch(0, 3, 2)],
+  key = "t1"
+): SessionState {
+  return fold(createInitialState(), select(key), {
     type: "HYDRATION_SUCCESS",
     key,
     batches,
-  }))
-  return state
+  })
 }
 
-// Deterministic PRNG (mulberry32) so the property-style test below is
-// reproducible across runs without pulling in a new test dependency.
+// Deterministic PRNG (mulberry32): reproducible without a new dependency.
 function mulberry32(seed: number): () => number {
   let a = seed
   return () => {
@@ -88,10 +92,6 @@ function mulberry32(seed: number): () => number {
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296
   }
 }
-
-// ═══════════════════════════════════════════════════════════════════════════
-// createInitialState
-// ═══════════════════════════════════════════════════════════════════════════
 
 describe("createInitialState", () => {
   it("returns the selecting phase with empty data and zeroed epochs", () => {
@@ -119,43 +119,32 @@ describe("createInitialState", () => {
   })
 })
 
-// ═══════════════════════════════════════════════════════════════════════════
-// Cursor utilities: validateCursor, isBatchesComplete, createActiveState
-// ═══════════════════════════════════════════════════════════════════════════
-
 describe("validateCursor (V10: cursor bounds safety)", () => {
   it("returns the cursor unchanged when no metadata is available", () => {
     const cursor = { batch: 99, message: 99, question: 99 }
     expect(validateCursor(cursor, null, 0)).toBe(cursor)
   })
 
-  it("clamps each field to its upper bound", () => {
+  it.each([
+    [
+      "clamps each field to its upper bound",
+      { batch: 10, message: 10, question: 10 },
+      { batch: 3, message: 4, question: 2 },
+    ],
+    [
+      "leaves an already-in-bounds cursor untouched",
+      { batch: 1, message: 2, question: 1 },
+      { batch: 1, message: 2, question: 1 },
+    ],
+  ])("%s", (_, cursor, expected) => {
     const meta = makeMeta({ messageCount: 5, questionCount: 3 })
-    expect(
-      validateCursor({ batch: 10, message: 10, question: 10 }, meta, 4)
-    ).toEqual({
-      batch: 3,
-      message: 4,
-      question: 2,
-    })
+    expect(validateCursor(cursor, meta, 4)).toEqual(expected)
   })
 
   it("clamps negative values up to 0", () => {
-    const meta = makeMeta()
     expect(
-      validateCursor({ batch: -5, message: -1, question: -3 }, meta, 4)
+      validateCursor({ batch: -5, message: -1, question: -3 }, makeMeta(), 4)
     ).toEqual({ batch: 0, message: 0, question: 0 })
-  })
-
-  it("leaves an already-in-bounds cursor untouched", () => {
-    const meta = makeMeta({ messageCount: 5, questionCount: 3 })
-    expect(
-      validateCursor({ batch: 1, message: 2, question: 1 }, meta, 4)
-    ).toEqual({
-      batch: 1,
-      message: 2,
-      question: 1,
-    })
   })
 
   it("property: clamped cursor is always within [0, bound-1] for any cursor/metadata pair", () => {
@@ -181,9 +170,7 @@ describe("validateCursor (V10: cursor bounds safety)", () => {
       expect(result.message).toBeGreaterThanOrEqual(0)
       expect(result.question).toBeGreaterThanOrEqual(0)
 
-      // Math.min(cursor, bound - 1) with bound = 0 clamps to -1, then
-      // Math.max(0, -1) floors it back to 0 - so an empty bound still
-      // produces 0 rather than a negative index.
+      // An empty bound clamps to -1 first, then floors back to 0.
       expect(result.batch).toBeLessThanOrEqual(Math.max(0, batchCount - 1))
       expect(result.message).toBeLessThanOrEqual(Math.max(0, messageCount - 1))
       expect(result.question).toBeLessThanOrEqual(
@@ -225,17 +212,10 @@ describe("createActiveState", () => {
   })
 })
 
-// ═══════════════════════════════════════════════════════════════════════════
-// V2: Pure, deterministic, no side effects
-// ═══════════════════════════════════════════════════════════════════════════
-
 describe("V2: reducer purity", () => {
   it("does not mutate the input state and returns a distinct object on a real transition", () => {
     const state = createInitialState()
-    const { state: newState } = sessionReducer(state, {
-      type: "SELECT_TOPIK",
-      key: "test",
-    })
+    const { state: newState } = sessionReducer(state, select("test"))
 
     expect(state).not.toBe(newState)
     expect(state.phase).toBe("selecting")
@@ -244,122 +224,92 @@ describe("V2: reducer purity", () => {
 
   it("is deterministic: the same (state, event) pair always yields an equal result", () => {
     const state = createInitialState()
-    const event = { type: "SELECT_TOPIK" as const, key: "test" }
+    const event = select("test")
 
-    const first = sessionReducer(state, event)
-    const second = sessionReducer(state, event)
-
-    expect(first).toEqual(second)
-    expect(state).toEqual(createInitialState()) // original input still untouched
+    expect(sessionReducer(state, event)).toEqual(sessionReducer(state, event))
+    expect(state).toEqual(createInitialState())
   })
 
   it("emits no effects for a no-op transition", () => {
-    const state = createInitialState()
-    const { effects } = sessionReducer(state, { type: "START_CHAT" })
+    const { effects } = sessionReducer(createInitialState(), {
+      type: "START_CHAT",
+    })
     expect(effects).toEqual([])
   })
 })
 
-// ═══════════════════════════════════════════════════════════════════════════
-// V3 / V11: Only explicitly-defined transitions change state
-// ═══════════════════════════════════════════════════════════════════════════
-
 describe("V3 / V11: explicit transitions only, illegal transitions no-op", () => {
-  it("returns the exact same state reference for an event that doesn't apply to the current phase", () => {
-    const state = createInitialState() // phase: selecting
-    const { state: after } = sessionReducer(state, { type: "START_CHAT" })
-    expect(after).toBe(state)
-  })
-
-  it("ignores ANSWER_SUBMITTED while in chat mode (not quiz mode)", () => {
-    const active = hydrate(createInitialState(), "t1", [makeBatch(0, 3, 2)])
-    const { state: after } = sessionReducer(active, {
-      type: "ANSWER_SUBMITTED",
-      correct: true,
-    })
-    expect(after).toBe(active)
-  })
-
-  it("ignores BATCH_PASSED unless quizStage is summary", () => {
-    const active = hydrate(createInitialState(), "t1", [makeBatch(0, 3, 2)])
-    const { state } = sessionReducer(active, { type: "START_QUIZ" }) // quizStage: question
-    const { state: after } = sessionReducer(state, { type: "BATCH_PASSED" })
-    expect(after).toBe(state)
-  })
-
-  it("falls through to unchanged() for a totally unrecognized phase/event combination", () => {
-    const complete: SessionState = {
-      ...createInitialState(),
-      phase: "complete",
-      active: null,
-    }
-    const { state: after } = sessionReducer(complete, { type: "TIMER_TICK" })
-    expect(after).toBe(complete)
+  it.each<[string, () => SessionState, SessionEvent]>([
+    [
+      "an event that doesn't apply to the current phase",
+      createInitialState,
+      { type: "START_CHAT" },
+    ],
+    [
+      "ANSWER_SUBMITTED while in chat mode",
+      (): SessionState => hydrate(),
+      ANSWER_OK,
+    ],
+    [
+      "BATCH_PASSED unless quizStage is summary",
+      (): SessionState => fold(hydrate(), START_QUIZ),
+      { type: "BATCH_PASSED" },
+    ],
+    [
+      "an unrecognized phase/event combination",
+      (): SessionState => ({
+        ...createInitialState(),
+        phase: "complete",
+        active: null,
+      }),
+      { type: "TIMER_TICK" },
+    ],
+  ])("returns the same state reference for %s", (_, make, event) => {
+    const state = make()
+    expect(sessionReducer(state, event).state).toBe(state)
   })
 })
-
-// ═══════════════════════════════════════════════════════════════════════════
-// V5 / V6: Hydration epoch tracking backs idempotent load + remount stability
-// ═══════════════════════════════════════════════════════════════════════════
 
 describe("V5 / V6: epoch tracking", () => {
   it("increments hydrationEpoch exactly once per SELECT_TOPIK", () => {
     let state = createInitialState()
     expect(state.hydrationEpoch).toBe(0)
-    ;({ state } = sessionReducer(state, { type: "SELECT_TOPIK", key: "t1" }))
+    state = fold(state, select("t1"))
     expect(state.hydrationEpoch).toBe(1)
-    ;({ state } = sessionReducer(state, { type: "CHANGE_TOPIK" }))
-    ;({ state } = sessionReducer(state, { type: "SELECT_TOPIK", key: "t2" }))
+    state = fold(state, CHANGE, select("t2"))
     expect(state.hydrationEpoch).toBe(2)
   })
 
   it("increments sessionEpoch on every successful hydration and on CHANGE_TOPIK", () => {
-    let state = createInitialState()
-    expect(state.sessionEpoch).toBe(0)
-
-    state = hydrate(state, "t1", [makeBatch(0, 1, 1)])
+    expect(createInitialState().sessionEpoch).toBe(0)
+    const state = hydrate([makeBatch(0, 1, 1)])
     expect(state.sessionEpoch).toBe(1)
-    ;({ state } = sessionReducer(state, { type: "CHANGE_TOPIK" }))
-    expect(state.sessionEpoch).toBe(2)
+    expect(fold(state, CHANGE).sessionEpoch).toBe(2)
   })
 
   it("V6 (reducer-level): a JSON round-tripped snapshot continues identically to the live state", () => {
-    let state = hydrate(createInitialState(), "t1", [makeBatch(0, 3, 2)])
-    ;({ state } = sessionReducer(state, { type: "ADVANCE_MESSAGE" }))
-
-    // Simulates a remount: the machine is recreated from a persisted,
-    // plain-JSON snapshot of the last known state (see
-    // createSessionMachine(initialState) in session-machine.ts).
+    const state = fold(hydrate(), ADVANCE_M)
+    // A remount recreates the machine from a plain-JSON snapshot
+    // (createSessionMachine(initialState) in session-machine.ts).
     const restored = structuredClone(state)
 
-    const fromLive = sessionReducer(state, { type: "ADVANCE_MESSAGE" })
-    const fromRestored = sessionReducer(restored, { type: "ADVANCE_MESSAGE" })
-
-    expect(fromRestored.state).toEqual(fromLive.state)
+    expect(fold(restored, ADVANCE_M)).toEqual(fold(state, ADVANCE_M))
   })
 })
 
-// ═══════════════════════════════════════════════════════════════════════════
-// V7: Invalidation / clearing of hydrated data is explicit only
-// ═══════════════════════════════════════════════════════════════════════════
-
 describe("V7: batches are only cleared by an explicit CHANGE_TOPIK", () => {
   it("leaves batches and topikKey untouched across unrelated events", () => {
-    let state = hydrate(createInitialState(), "t1", [makeBatch(0, 3, 2)])
-    const batchesBefore = state.dataRef.batches
-    const keyBefore = state.dataRef.topikKey
+    const before = hydrate()
+    const state = fold(before, { type: "TIMER_TICK" }, PAUSE, {
+      type: "RESUME_CHAT",
+    })
 
-    ;({ state } = sessionReducer(state, { type: "TIMER_TICK" }))
-    ;({ state } = sessionReducer(state, { type: "PAUSE_CHAT" }))
-    ;({ state } = sessionReducer(state, { type: "RESUME_CHAT" }))
-
-    expect(state.dataRef.batches).toBe(batchesBefore)
-    expect(state.dataRef.topikKey).toBe(keyBefore)
+    expect(state.dataRef.batches).toBe(before.dataRef.batches)
+    expect(state.dataRef.topikKey).toBe(before.dataRef.topikKey)
   })
 
   it("CHANGE_TOPIK explicitly clears batches, topikKey, and status", () => {
-    let state = hydrate(createInitialState(), "t1", [makeBatch(0, 3, 2)])
-    ;({ state } = sessionReducer(state, { type: "CHANGE_TOPIK" }))
+    const state = fold(hydrate(), CHANGE)
 
     expect(state.dataRef.batches).toBeNull()
     expect(state.dataRef.topikKey).toBeNull()
@@ -367,45 +317,34 @@ describe("V7: batches are only cleared by an explicit CHANGE_TOPIK", () => {
   })
 })
 
-// ═══════════════════════════════════════════════════════════════════════════
-// V8: Out-of-order (stale) hydration responses are rejected
-// ═══════════════════════════════════════════════════════════════════════════
-
 describe("V8: stale-response rejection", () => {
-  it("ignores a stale HYDRATION_SUCCESS for a topik that is no longer selected", () => {
-    let state = createInitialState()
-
-    ;({ state } = sessionReducer(state, {
-      type: "SELECT_TOPIK",
-      key: "topik-01",
-    }))
-    ;({ state } = sessionReducer(state, { type: "CHANGE_TOPIK" }))
-    ;({ state } = sessionReducer(state, {
-      type: "SELECT_TOPIK",
-      key: "topik-02",
-    }))
-
-    const { state: after } = sessionReducer(state, {
+  it.each<SessionEvent>([
+    {
       type: "HYDRATION_SUCCESS",
       key: "topik-01",
       batches: [makeBatch(0, 1, 1)],
-    })
+    },
+    { type: "HYDRATION_FAILURE", key: "topik-01", error: "stale failure" },
+  ])(
+    "ignores a stale $type for a topik that is no longer selected",
+    (event) => {
+      const state = fold(
+        createInitialState(),
+        select("topik-01"),
+        CHANGE,
+        select("topik-02")
+      )
+      const { state: after } = sessionReducer(state, event)
 
-    // Stale response ignored - state reference unchanged, still hydrating topik-02
-    expect(after).toBe(state)
-    expect(after.dataRef.topikKey).toBe("topik-02")
-    expect(after.phase).toBe("hydrating")
-  })
+      expect(after).toBe(state)
+      expect(after.dataRef.topikKey).toBe("topik-02")
+      expect(after.phase).toBe("hydrating")
+    }
+  )
 
   it("accepts a HYDRATION_SUCCESS whose key matches the currently selected topik", () => {
-    let state = createInitialState()
-    ;({ state } = sessionReducer(state, {
-      type: "SELECT_TOPIK",
-      key: "topik-01",
-    }))
-
     const batches = [makeBatch(0, 4, 2)]
-    const { state: after } = sessionReducer(state, {
+    const after = fold(createInitialState(), select("topik-01"), {
       type: "HYDRATION_SUCCESS",
       key: "topik-01",
       batches,
@@ -415,112 +354,69 @@ describe("V8: stale-response rejection", () => {
     expect(after.dataRef.batches).toBe(batches)
     expect(after.dataRef.topikKey).toBe("topik-01")
   })
-
-  it("also ignores a stale HYDRATION_FAILURE for a topik that is no longer selected", () => {
-    let state = createInitialState()
-    ;({ state } = sessionReducer(state, {
-      type: "SELECT_TOPIK",
-      key: "topik-01",
-    }))
-    ;({ state } = sessionReducer(state, { type: "CHANGE_TOPIK" }))
-    ;({ state } = sessionReducer(state, {
-      type: "SELECT_TOPIK",
-      key: "topik-02",
-    }))
-
-    const { state: after } = sessionReducer(state, {
-      type: "HYDRATION_FAILURE",
-      key: "topik-01",
-      error: "stale failure",
-    })
-
-    expect(after).toBe(state)
-    expect(after.dataRef.topikKey).toBe("topik-02")
-  })
 })
-
-// ═══════════════════════════════════════════════════════════════════════════
-// V9: Duplicate events are idempotent
-// ═══════════════════════════════════════════════════════════════════════════
 
 describe("V9: idempotent duplicate events", () => {
-  it("START_CHAT is a no-op if already running", () => {
-    const state = hydrate(createInitialState(), "t1", [makeBatch(0, 3, 2)])
-    expect(state.active?.playState).toBe("running")
-
-    const { state: after } = sessionReducer(state, { type: "START_CHAT" })
-    expect(after).toBe(state)
-  })
-
-  it("PAUSE_CHAT is a no-op if already paused", () => {
-    let state = hydrate(createInitialState(), "t1", [makeBatch(0, 3, 2)])
-    ;({ state } = sessionReducer(state, { type: "PAUSE_CHAT" }))
-    expect(state.active?.playState).toBe("paused")
-
-    const { state: after } = sessionReducer(state, { type: "PAUSE_CHAT" })
-    expect(after).toBe(state)
-  })
-
-  it("RESUME_CHAT is a no-op if already running", () => {
-    const state = hydrate(createInitialState(), "t1", [makeBatch(0, 3, 2)])
-    const { state: after } = sessionReducer(state, { type: "RESUME_CHAT" })
-    expect(after).toBe(state)
-  })
-
-  it("TIMER_TICK is a no-op once timeRemaining has reached 0", () => {
-    let state = hydrate(createInitialState(), "t1", [makeBatch(0, 3, 2)])
-    state = { ...state, active: { ...state.active!, timeRemaining: 0 } }
-
-    const { state: after } = sessionReducer(state, { type: "TIMER_TICK" })
-    expect(after).toBe(state)
+  it.each<
+    [
+      string,
+      (s: SessionState) => SessionState,
+      "running" | "paused",
+      SessionEvent,
+    ]
+  >([
+    [
+      "START_CHAT is a no-op if already running",
+      (s): SessionState => s,
+      "running",
+      { type: "START_CHAT" },
+    ],
+    [
+      "PAUSE_CHAT is a no-op if already paused",
+      (s): SessionState => fold(s, PAUSE),
+      "paused",
+      PAUSE,
+    ],
+    [
+      "RESUME_CHAT is a no-op if already running",
+      (s): SessionState => s,
+      "running",
+      { type: "RESUME_CHAT" },
+    ],
+    [
+      "TIMER_TICK is a no-op once timeRemaining has reached 0",
+      (s): SessionState => ({
+        ...s,
+        active: { ...s.active!, timeRemaining: 0 },
+      }),
+      "running",
+      { type: "TIMER_TICK" },
+    ],
+  ])("%s", (_, prepare, playState, event) => {
+    const state = prepare(hydrate())
+    expect(state.active?.playState).toBe(playState)
+    expect(sessionReducer(state, event).state).toBe(state)
   })
 })
-
-// ═══════════════════════════════════════════════════════════════════════════
-// V17: Forward progress only
-// ═══════════════════════════════════════════════════════════════════════════
 
 describe("V17: forward progress", () => {
-  it("ADVANCE_MESSAGE never moves the cursor backward or holds it in place", () => {
-    const state = hydrate(createInitialState(), "t1", [makeBatch(0, 3, 2)])
-    const before = state.active!.cursor.message
-
-    const { state: after } = sessionReducer(state, { type: "ADVANCE_MESSAGE" })
-
-    expect(after.active!.cursor.message).toBeGreaterThan(before)
-  })
-
-  it("ADVANCE_QUESTION never moves the cursor backward or holds it in place", () => {
-    let state = hydrate(createInitialState(), "t1", [makeBatch(0, 3, 2)])
-    ;({ state } = sessionReducer(state, { type: "START_QUIZ" }))
-    ;({ state } = sessionReducer(state, {
-      type: "ANSWER_SUBMITTED",
-      correct: true,
-    }))
-    const before = state.active!.cursor.question
-
-    const { state: after } = sessionReducer(state, { type: "ADVANCE_QUESTION" })
-
-    expect(after.active!.cursor.question).toBeGreaterThan(before)
-  })
+  it.each([
+    ["ADVANCE_MESSAGE", [], ADVANCE_M, "message"],
+    ["ADVANCE_QUESTION", [START_QUIZ, ANSWER_OK], ADVANCE_Q, "question"],
+  ] as const)(
+    "%s never moves the cursor backward or holds it in place",
+    (_, setup, event, field) => {
+      const state = fold(hydrate(), ...setup)
+      const before = state.active!.cursor[field]
+      expect(fold(state, event).active!.cursor[field]).toBeGreaterThan(before)
+    }
+  )
 })
 
-// ═══════════════════════════════════════════════════════════════════════════
-// V18: Terminal state stability
-// ═══════════════════════════════════════════════════════════════════════════
-
 describe("V18: complete phase only accepts CHANGE_TOPIK", () => {
-  function completeSession(): SessionState {
-    let state = hydrate(createInitialState(), "t1", [makeBatch(0, 1, 1)])
-    ;({ state } = sessionReducer(state, { type: "START_QUIZ" }))
-    ;({ state } = sessionReducer(state, {
-      type: "ANSWER_SUBMITTED",
-      correct: true,
-    }))
-    ;({ state } = sessionReducer(state, { type: "ADVANCE_QUESTION" })) // -> summary
-    ;({ state } = sessionReducer(state, { type: "BATCH_PASSED" })) // last batch -> complete
-    return state
-  }
+  // The last batch's BATCH_PASSED -> complete.
+  const completeSession = (): SessionState =>
+    fold(hydrate([makeBatch(0, 1, 1)]), ...TO_SUMMARY, { type: "BATCH_PASSED" })
 
   it("reaches the complete phase with active cleared", () => {
     const state = completeSession()
@@ -535,25 +431,19 @@ describe("V18: complete phase only accepts CHANGE_TOPIK", () => {
     { type: "RESET_SESSION" as const },
   ])("ignores $type while complete", (event) => {
     const state = completeSession()
-    const { state: after } = sessionReducer(state, event)
-    expect(after).toBe(state)
+    expect(sessionReducer(state, event).state).toBe(state)
   })
 
   it("CHANGE_TOPIK is still allowed from the complete phase and returns to selecting", () => {
-    const state = completeSession()
-    const { state: after } = sessionReducer(state, { type: "CHANGE_TOPIK" })
+    const after = fold(completeSession(), CHANGE)
     expect(after.phase).toBe("selecting")
     expect(after.dataRef.topikKey).toBeNull()
   })
 })
 
-// ═══════════════════════════════════════════════════════════════════════════
-// V20: No silent data loss on failure paths
-// ═══════════════════════════════════════════════════════════════════════════
-
 describe("V20: failures surface their error rather than disappearing silently", () => {
   it("CATALOG_FAILURE preserves the error message", () => {
-    const { state } = sessionReducer(createInitialState(), {
+    const state = fold(createInitialState(), {
       type: "CATALOG_FAILURE",
       error: "network down",
     })
@@ -562,10 +452,7 @@ describe("V20: failures surface their error rather than disappearing silently", 
   })
 
   it("HYDRATION_FAILURE (matching key) preserves the error and returns to selecting", () => {
-    let state = createInitialState()
-    ;({ state } = sessionReducer(state, { type: "SELECT_TOPIK", key: "t1" }))
-
-    const { state: after } = sessionReducer(state, {
+    const after = fold(createInitialState(), select("t1"), {
       type: "HYDRATION_FAILURE",
       key: "t1",
       error: "fetch failed",
@@ -577,32 +464,19 @@ describe("V20: failures surface their error rather than disappearing silently", 
   })
 
   it("BATCH_FAILED preserves score while resetting the current batch's cursor", () => {
-    let state = hydrate(createInitialState(), "t1", [makeBatch(0, 1, 1)])
-    ;({ state } = sessionReducer(state, { type: "START_QUIZ" }))
-    ;({ state } = sessionReducer(state, {
-      type: "ANSWER_SUBMITTED",
-      correct: true,
-    }))
-    expect(state.active?.score).toBe(1)
-    ;({ state } = sessionReducer(state, { type: "ADVANCE_QUESTION" })) // -> summary
+    const answered = fold(hydrate([makeBatch(0, 1, 1)]), START_QUIZ, ANSWER_OK)
+    expect(answered.active?.score).toBe(1)
 
-    const { state: after } = sessionReducer(state, { type: "BATCH_FAILED" })
+    const after = fold(answered, ADVANCE_Q, { type: "BATCH_FAILED" })
 
     expect(after.active?.score).toBe(0)
     expect(after.active?.cursor).toEqual({ batch: 0, message: 0, question: 0 })
   })
 })
 
-// ═══════════════════════════════════════════════════════════════════════════
-// Memory & Scale (V1, V12, V13): metadata stays O(1) regardless of payload size
-// ═══════════════════════════════════════════════════════════════════════════
-
 describe("V1 / V12 / V13: metadata tracking is independent of payload size", () => {
   it("currentBatchMeta only ever holds counts, never message/question content", () => {
-    const bigBatch = makeBatch(0, 200, 50)
-    const state = hydrate(createInitialState(), "t1", [bigBatch])
-
-    expect(state.dataRef.currentBatchMeta).toEqual({
+    expect(hydrate([makeBatch(0, 200, 50)]).dataRef.currentBatchMeta).toEqual({
       id: 0,
       messageCount: 200,
       questionCount: 50,
@@ -610,41 +484,27 @@ describe("V1 / V12 / V13: metadata tracking is independent of payload size", () 
   })
 
   it("currentBatchMeta is null when the hydrated topik has no batches", () => {
-    const state = hydrate(createInitialState(), "t1", [])
+    const state = hydrate([])
     expect(state.dataRef.currentBatchMeta).toBeNull()
     expect(state.dataRef.batchCount).toBe(0)
   })
 })
 
-// ═══════════════════════════════════════════════════════════════════════════
-// Catalog lifecycle (orthogonal to phase) - not tied to a specific V-number
-// ═══════════════════════════════════════════════════════════════════════════
-
 describe("catalog request/loading/success/failure lifecycle", () => {
+  const REQUEST: SessionEvent = { type: "REQUEST_CATALOG" }
+
   it("REQUEST_CATALOG transitions idle -> loading and emits TRIGGER_CATALOG_QUERY", () => {
-    const { state, effects } = sessionReducer(createInitialState(), {
-      type: "REQUEST_CATALOG",
-    })
+    const { state, effects } = sessionReducer(createInitialState(), REQUEST)
     expect(state.dataRef.catalog.status).toBe("loading")
     expect(effects).toEqual([{ type: "TRIGGER_CATALOG_QUERY" }])
   })
 
   it("REQUEST_CATALOG is a no-op while already loading or ready", () => {
-    let state = createInitialState()
-    ;({ state } = sessionReducer(state, { type: "REQUEST_CATALOG" }))
+    const loading = fold(createInitialState(), REQUEST)
+    expect(sessionReducer(loading, REQUEST).state).toBe(loading)
 
-    const { state: stillLoading } = sessionReducer(state, {
-      type: "REQUEST_CATALOG",
-    })
-    expect(stillLoading).toBe(state)
-    ;({ state } = sessionReducer(state, {
-      type: "CATALOG_SUCCESS",
-      data: [],
-    }))
-    const { state: stillReady } = sessionReducer(state, {
-      type: "REQUEST_CATALOG",
-    })
-    expect(stillReady).toBe(state)
+    const ready = fold(loading, { type: "CATALOG_SUCCESS", data: [] })
+    expect(sessionReducer(ready, REQUEST).state).toBe(ready)
   })
 
   it("CATALOG_SUCCESS stores the data and is idempotent once ready", () => {
@@ -658,49 +518,40 @@ describe("catalog request/loading/success/failure lifecycle", () => {
         totalMessages: 1,
       },
     ]
-    let state = createInitialState()
-    ;({ state } = sessionReducer(state, { type: "CATALOG_SUCCESS", data }))
+    const event: SessionEvent = { type: "CATALOG_SUCCESS", data }
+    const state = fold(createInitialState(), event)
     expect(state.dataRef.catalog).toEqual({
       status: "ready",
       data,
       error: null,
     })
-
-    const { state: after } = sessionReducer(state, {
-      type: "CATALOG_SUCCESS",
-      data,
-    })
-    expect(after).toBe(state)
+    expect(sessionReducer(state, event).state).toBe(state)
   })
 
   it("catalog state is orthogonal to phase - surviving a topik selection", () => {
-    let state = createInitialState()
-    ;({ state } = sessionReducer(state, { type: "CATALOG_SUCCESS", data: [] }))
-    ;({ state } = sessionReducer(state, { type: "SELECT_TOPIK", key: "t1" }))
+    const state = fold(
+      createInitialState(),
+      { type: "CATALOG_SUCCESS", data: [] },
+      select("t1")
+    )
 
     expect(state.dataRef.catalog.status).toBe("ready")
     expect(state.phase).toBe("hydrating")
   })
 })
 
-// ═══════════════════════════════════════════════════════════════════════════
-// Chat -> quiz -> batch-summary flow (full happy path, not tied to one V-number)
-// ═══════════════════════════════════════════════════════════════════════════
-
 describe("chat/quiz/batch flow", () => {
   it("ADVANCE_MESSAGE past the last message transitions chat -> quiz", () => {
-    const state = hydrate(createInitialState(), "t1", [makeBatch(0, 1, 2)])
-    const { state: after } = sessionReducer(state, { type: "ADVANCE_MESSAGE" })
+    const after = fold(hydrate([makeBatch(0, 1, 2)]), ADVANCE_M)
 
     expect(after.active?.mode).toBe("quiz")
     expect(after.active?.cursor.question).toBe(0)
   })
 
   it("ANSWER_SUBMITTED records feedback and increments score only when correct", () => {
-    let state = hydrate(createInitialState(), "t1", [makeBatch(0, 1, 2)])
-    ;({ state } = sessionReducer(state, { type: "START_QUIZ" }))
+    const state = fold(hydrate([makeBatch(0, 1, 2)]), START_QUIZ)
 
-    const { state: correct } = sessionReducer(state, {
+    const correct = fold(state, {
       type: "ANSWER_SUBMITTED",
       correct: true,
       userAnswer: "a",
@@ -709,7 +560,7 @@ describe("chat/quiz/batch flow", () => {
     expect(correct.active?.quizStage).toBe("feedback")
     expect(correct.feedback?.isCorrect).toBe(true)
 
-    const { state: incorrect } = sessionReducer(state, {
+    const incorrect = fold(state, {
       type: "ANSWER_SUBMITTED",
       correct: false,
       userAnswer: "b",
@@ -719,31 +570,16 @@ describe("chat/quiz/batch flow", () => {
   })
 
   it("ADVANCE_QUESTION past the last question transitions to summary", () => {
-    let state = hydrate(createInitialState(), "t1", [makeBatch(0, 1, 1)])
-    ;({ state } = sessionReducer(state, { type: "START_QUIZ" }))
-    ;({ state } = sessionReducer(state, {
-      type: "ANSWER_SUBMITTED",
-      correct: true,
-    }))
-
-    const { state: after } = sessionReducer(state, {
-      type: "ADVANCE_QUESTION",
-    })
+    const after = fold(hydrate([makeBatch(0, 1, 1)]), ...TO_SUMMARY)
     expect(after.active?.quizStage).toBe("summary")
     expect(after.feedback).toBeNull()
   })
 
   it("BATCH_PASSED on a non-final batch advances to the next batch and resets progress", () => {
-    let state = hydrate(createInitialState(), "t1", [
-      makeBatch(0, 1, 1),
-      makeBatch(1, 1, 1),
-    ])
-    ;({ state } = sessionReducer(state, { type: "START_QUIZ" }))
-    ;({ state } = sessionReducer(state, {
-      type: "ANSWER_SUBMITTED",
-      correct: true,
-    }))
-    ;({ state } = sessionReducer(state, { type: "ADVANCE_QUESTION" })) // -> summary
+    const state = fold(
+      hydrate([makeBatch(0, 1, 1), makeBatch(1, 1, 1)]),
+      ...TO_SUMMARY
+    )
 
     const { state: after, effects } = sessionReducer(state, {
       type: "BATCH_PASSED",
@@ -760,21 +596,20 @@ describe("chat/quiz/batch flow", () => {
   })
 
   it("RESET_SESSION returns to selecting while preserving the loaded topik/data", () => {
-    const state = hydrate(createInitialState(), "t1", [makeBatch(0, 1, 1)])
-    const { state: after, effects } = sessionReducer(state, {
-      type: "RESET_SESSION",
-    })
+    const { state: after, effects } = sessionReducer(
+      hydrate([makeBatch(0, 1, 1)]),
+      { type: "RESET_SESSION" }
+    )
 
     expect(after.phase).toBe("selecting")
     expect(after.active).toBeNull()
     expect(after.feedback).toBeNull()
-    expect(after.dataRef.topikKey).toBe("t1") // data untouched, only session progress resets
+    expect(after.dataRef.topikKey).toBe("t1")
     expect(effects).toEqual([{ type: "STOP_TIMER" }, { type: "STOP_AUDIO" }])
   })
 
   it("JUMP_MESSAGE seeks to a clamped index without changing mode", () => {
-    const state = hydrate(createInitialState(), "t1", [makeBatch(0, 5, 1)])
-    const { state: after } = sessionReducer(state, {
+    const after = fold(hydrate([makeBatch(0, 5, 1)]), {
       type: "JUMP_MESSAGE",
       index: 3,
     })

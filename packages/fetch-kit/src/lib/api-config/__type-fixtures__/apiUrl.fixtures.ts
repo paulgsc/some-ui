@@ -1,14 +1,9 @@
 /**
- * Type-level proof that `apiUrl`'s generic surface does what some-ui#1040
- * asks for: a path the server doesn't have, an unbound `:name`, or an extra
- * binding are all `tsc` errors, not runtime 404s discovered three days
- * later. Same convention as `apps/www/src/lib/intent/__type-fixtures__` (and
- * `@some-ui/intent-kit`'s own `src/__type-fixtures__`): part of the ordinary
- * `tsc --noEmit` run (excluded from `tsconfig.build.json`, so none of this
- * ships), not something vitest executes. Every `@ts-expect-error` below has
- * to be lying about a real error one line down, or TypeScript's own "unused
- * '@ts-expect-error' directive" diagnostic turns red - which is the actual
- * enforcement mechanism, same as the precedent this file follows.
+ * Type-level proof that a path the server lacks, an unbound `:name` or an
+ * extra binding is a `tsc` error. Checked by `tsc --noEmit` (excluded from
+ * the build), not vitest: every `@ts-expect-error` must sit on a real error,
+ * or TypeScript reports the directive as unused.
+ *
  */
 
 import { apiUrl, unversionedApiUrl } from ".."

@@ -28,16 +28,9 @@ import {
 import { AudioActivityHint } from "@/components/audio/audio-activity-notice"
 
 /**
- * How the step's height is split between the two lists it shows.
- *
- * The catalogue is what the step is *for*, so it gets the larger share; the
- * manifest of what has been added is a running confirmation and gets the
- * rest. Both are shares of whatever the wizard's body turns out to be, not
- * measurements of their own - which is the whole difference from the fixed
- * `h-72 sm:h-80` this replaced. That box was a design-time constant, so it
- * fit exactly one window: a tall phone left a third of it empty and paged a
- * four-item catalogue into four pages, and a landscape phone spent 82% of
- * the window on it and pushed the wizard's own Continue below the fold.
+ * How the step's height is split between its two lists: the catalogue (what
+ * the step is for) gets the larger share, the manifest the rest. Shares of
+ * the wizard's body, not fixed heights, so they fit every window.
  */
 const CATALOGUE_SHARE = "min-h-0 flex-[3]"
 const MANIFEST_SHARE = "min-h-0 flex-[2]"
@@ -52,9 +45,8 @@ type PickedActivity = {
 }
 
 /**
- * Which half of the picker to show. A wide screen shows both, the catalogue
- * above the manifest, in one step. A phone gives each concern a pane of its
- * own (`./panes`), so each half fits, and is fitted to, the whole of one.
+ * Which half of the picker to show. A wide screen shows both in one step; a
+ * phone gives each a pane of its own (`./panes`).
  */
 type PickerSection = "both" | "catalogue" | "manifest"
 
@@ -66,34 +58,20 @@ type ActivityPickerStepProps = {
   /** Where the manifest's empty state sends someone who has added nothing. */
   onBrowse?: () => void
   /**
-   * The catalogue's search, held by the composer rather than here. This
-   * component is mounted in a different place by each of the composer's two
-   * layouts, so whatever it holds itself is lost when the window crosses
-   * `md` (a phone turned, a window resized) - the composer's position and
-   * picks survived that from the start; the search did not.
+   * The catalogue's search, held by the composer: each layout mounts this
+   * component in a different place, so its own state is lost when the window
+   * crosses `md`.
    */
   query: string
   onQueryChange: (query: string) => void
 }
 
 /**
- * The composer's picker: the whole catalogue, paged (#856).
- *
- * Recommendation is the dashboard's answer and the wrong one here - someone
- * composing a session wants to see what exists. Paging is the right one, and
- * half of this file already knew that: the picked-items list below has been
- * paged since it was written. The catalogue grid above it was not, and
- * rendered `ACTIVITY_IDS.map` into a fixed grid instead.
- *
- * Search and paging are complements rather than alternatives - the field
- * narrows the catalogue, the pager walks whatever is left.
- *
- * Both lists are fitted to shares of the step's own height rather than paged
- * by a constant, and that is the same decision twice rather than a preference:
- * a constant page size is wrong at every window but the one it was picked in,
- * and the two constants that used to live here (a `h-72 sm:h-80` box for the
- * catalogue, a page of 10 for the manifest) were each picked in a different
- * one.
+ * The composer's picker: the whole catalogue, paged (#856). Someone composing
+ * a session wants to see what exists, not a recommendation. Search narrows
+ * the catalogue; the pager walks whatever is left. Both lists are fitted to
+ * shares of the step's height, since a constant page size is right at only
+ * one window.
  */
 export const ActivityPickerStep = ({
   items,
@@ -121,9 +99,8 @@ export const ActivityPickerStep = ({
     countsById.set(item.activityId, (countsById.get(item.activityId) ?? 0) + 1)
   }
 
-  // An empty query is "no search", not "no results" - `searchActivities`
-  // returns nothing for one on purpose, so the unfiltered catalogue is the
-  // explicit fallback rather than something the matcher has to fake.
+  // An empty query is "no search": `searchActivities` returns nothing for one
+  // on purpose.
   const visible = useMemo(
     () =>
       query.trim().length > 0
@@ -132,20 +109,13 @@ export const ActivityPickerStep = ({
     [query]
   )
 
-  // Fitted rather than a constant page size: the card height varies with what
-  // each activity carries (a maturity note, an audio hint), so dividing the
-  // box by an average silently overflows on the pages with the tall cards.
-  // Destructured rather than held as an object: `useFittedPage` hands back
-  // two refs alongside the page data, and react-hooks/refs reads any property
-  // access on that object as a ref read during render.
+  // Fitted, not a constant page size: card height varies (a maturity note, an
+  // audio hint). Destructured because react-hooks/refs reads any property
+  // access on the returned object as a ref read during render.
   //
-  // `minPerPage: 1`, not 2: the grid is `sm:grid-cols-2`, so "2" only means
-  // "one row" above that breakpoint. Below it the grid is a single column, and
-  // a floor of 2 would force two full-height cards to stack whether or not the
-  // share of the step this box got can hold them - on a short landscape window
-  // it cannot, and the overflow paints over the pager below rather than
-  // clipping. A floor of 1 leaves the fit free to grow to a full row, and
-  // beyond, wherever there is room; it just never forces an unfittable one.
+  // `minPerPage: 1`, not 2: below `sm` the grid is one column, and a floor of
+  // 2 would force two full-height cards onto a short landscape window, where
+  // the overflow paints over the pager.
   const {
     viewportRef,
     contentRef,
@@ -156,12 +126,9 @@ export const ActivityPickerStep = ({
     previous: previousPage,
   } = useFittedPage(visible, { minPerPage: 1, maxPerPage: 12 })
 
-  // Numbered against the full list before paginating, so the badge always
-  // reflects each instance's true position in the session, not its position
-  // within the current page. Memoized because `useFittedPage` reads a genuine
-  // change of `items` as permission to re-try a page size it had rejected,
-  // and an array rebuilt on every render is not a genuine change - see that
-  // hook's doc comment on what it can and cannot infer from a caller.
+  // Numbered against the full list before paginating, so the badge shows the
+  // instance's position in the session. Memoized because `useFittedPage`
+  // reads a new `items` array as permission to retry a rejected page size.
   const numberedItems = useMemo(
     () => items.map((item, index) => ({ item, position: index + 1 })),
     [items]
@@ -180,9 +147,8 @@ export const ActivityPickerStep = ({
     <div className="flex h-full min-h-0 flex-col gap-2 [@media(min-height:640px)]:gap-4">
       {showCatalogue && (
         <>
-          {/* A first-run explainer: the first thing a short window sheds. On a
-          landscape phone it wraps to four lines and takes ~80px of a ~170px
-          body - half the room the catalogue it explains has to work in. */}
+          {/* A first-run explainer: the first thing a short window sheds (on
+          a landscape phone it would take half the catalogue's room). */}
           <p
             className={cn(
               "text-muted-foreground shrink-0 text-sm",
@@ -214,19 +180,12 @@ export const ActivityPickerStep = ({
                 ref={viewportRef}
                 data-scroll-intent="fitted-residue"
                 className={
-                  // scroll-intent: fitted-residue — `useFittedPage` guarantees this
-                  // box's content fits it, with exactly one documented exception:
-                  // at `minPerPage` a single item taller than the whole box has to
-                  // overflow somewhere (see the hook's own Options doc). This says
-                  // where. It is not a greedy scroll - in every case the fit can
-                  // actually solve, the scrollbar never appears because the content
-                  // genuinely fits - it is the named home for the residue the fit
-                  // is honest about not being able to remove. Clipping it instead
-                  // is worse than it sounds: a card whose centre falls outside the
-                  // box stops being clickable at all.
-                  // On a handheld the bar is hidden (`handheld:no-scrollbar`): a phone
-                  // scrolls by finger, so a bar there is only noise - and on a
-                  // browser that lays bars out it took its width out of the box.
+                  // scroll-intent: fitted-residue — `useFittedPage` makes the
+                  // content fit, except a single item taller than the whole box
+                  // at `minPerPage` (see the hook's Options doc). This is where
+                  // that residue scrolls; clipping it would make a card whose
+                  // centre falls outside unclickable. The bar is hidden on a
+                  // handheld, which scrolls by finger.
                   "min-h-0 flex-1 overflow-y-auto handheld:no-scrollbar"
                 }
               >
@@ -264,10 +223,8 @@ export const ActivityPickerStep = ({
                               <p className="text-muted-foreground text-sm">
                                 {activity.description}
                               </p>
-                              {/* Both said while the person is still choosing, so
-                              neither what this does to their ears nor what it
-                              asks of their hands is a surprise once the
-                              session starts. */}
+                              {/* Said while still choosing, so neither the
+                              audio nor the input it asks for is a surprise. */}
                               <ActivityInputHint activity={activity} />
                               <AudioActivityHint activity={activity} />
                             </div>
@@ -287,9 +244,8 @@ export const ActivityPickerStep = ({
                 </div>
               </div>
 
-              {/* Paging the catalogue does not touch `items`, so adding an
-              activity from page 3 leaves you on page 3 - the fitted pager
-              only resets when the list it is paging changes length. */}
+              {/* Paging the catalogue does not touch `items`, so adding from
+              page 3 stays on page 3. */}
               <PageControls
                 page={page}
                 pageCount={pageCount}
@@ -314,19 +270,7 @@ export const ActivityPickerStep = ({
             ref={manifestViewportRef}
             data-scroll-intent="fitted-residue"
             className={
-              // scroll-intent: fitted-residue — `useFittedPage` guarantees this
-              // box's content fits it, with exactly one documented exception:
-              // at `minPerPage` a single item taller than the whole box has to
-              // overflow somewhere (see the hook's own Options doc). This says
-              // where. It is not a greedy scroll - in every case the fit can
-              // actually solve, the scrollbar never appears because the content
-              // genuinely fits - it is the named home for the residue the fit
-              // is honest about not being able to remove. Clipping it instead
-              // is worse than it sounds: a card whose centre falls outside the
-              // box stops being clickable at all.
-              // On a handheld the bar is hidden (`handheld:no-scrollbar`): a phone
-              // scrolls by finger, so a bar there is only noise - and on a
-              // browser that lays bars out it took its width out of the box.
+              // scroll-intent: fitted-residue — see the catalogue box above.
               "min-h-0 flex-1 overflow-y-auto handheld:no-scrollbar"
             }
           >

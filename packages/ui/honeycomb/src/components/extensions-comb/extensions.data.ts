@@ -42,14 +42,14 @@ export const STAGE_LINE: Readonly<Record<Stage, string>> = {
 }
 
 /** Which miniature plays in the L1 top register. One per extension, no text. */
-export type Mechanism = "tabs" | "theme" | "veil" | "cubes" | "follow" | "ride"
+export type Mechanism = "tabs" | "theme" | "veil" | "follow" | "ride"
 
 /** Where the extension acts: one named site, or the whole web. */
 export type Reach = "one-site" | "everywhere"
 
 /**
  * What an extension sends over the network, which is the answer the privacy
- * facet gives. Read off each extension's source, not assumed: the six do not
+ * facet gives. Read off each extension's source, not assumed: the five do not
  * share one answer, and a page that told a stranger "talks to no server" about
  * a popup that fetches Google Fonts would be making a false privacy claim.
  *
@@ -66,9 +66,8 @@ export type Reach = "one-site" | "everywhere"
  * extension with site images and web fonts is `site-images`.
  *
  * When an extension's network behaviour changes, change this with it.
- * `local-server` currently describes none of the six — BOYO and Conveyor only
- * reach a local server in development builds — and is kept for when one of
- * them does.
+ * `local-server` describes none of the five today (BOYO reaches one only in
+ * development builds).
  */
 export type Network = "none" | "local-server" | "web-fonts" | "site-images"
 
@@ -77,13 +76,7 @@ export type Network = "none" | "local-server" | "web-fonts" | "site-images"
  * component so this file stays a content manifest with no React in it — the
  * comb owns the mapping to actual icons.
  */
-export type Emblem =
-  | "memory"
-  | "contrast"
-  | "covered"
-  | "belt"
-  | "music"
-  | "beat"
+export type Emblem = "memory" | "contrast" | "covered" | "music" | "beat"
 
 export type ExtensionDefinition = {
   /** Stable key. Matches the workspace under extensions/, but is never shown. */
@@ -153,21 +146,6 @@ export const EXTENSIONS: ReadonlyArray<ExtensionDefinition> = [
     emblem: "covered",
   },
   {
-    id: "some-conveyor",
-    name: "Conveyor",
-    line: "Turning cubes drift along the foot of every page, showing the time and today's progress.",
-    level: 0.2,
-    stage: "idea",
-    firefox: true,
-    chrome: true,
-    reach: "everywhere",
-    mechanism: "cubes",
-    // effect-bus.ts can call localhost, but no face action dispatches it —
-    // the only wired action opens the popup — so it requests nothing.
-    network: "none",
-    emblem: "belt",
-  },
-  {
     id: "some-mujik",
     name: "Music Overlay",
     line: "The music stays in a tab you are not watching; a card follows you to the one you are.",
@@ -228,7 +206,7 @@ export const NETWORK_LABEL: Readonly<Record<Network, string>> = {
   "site-images": "site images",
 }
 
-/** The privacy atoms every one of the six shares. */
+/** The privacy atoms every one of the five shares. */
 export const PRIVACY_ATOMS: ReadonlyArray<{
   readonly id: string
   readonly label: string
@@ -242,20 +220,15 @@ export const LABEL = {
   runsIn: "runs in",
   reach: "where it acts",
   privacy: "what it sends",
-  up: "all six",
+  up: "all five",
   back: "back",
   cue: "pick a cell",
 } as const
 
 /**
- * The document's heading. It is rendered visually hidden, so it is a label
- * rather than copy: the comb is the page, and at rest a visitor reads nothing
- * they did not ask for by touching a cell. It exists because a screen reader
- * has no comb to look at and a document with no heading gives it nothing to
- * announce or navigate by.
+ * The document's heading, visually hidden: a label for screen readers, which
+ * have no comb to look at. It names what the page is and makes no privacy
+ * claim, since the five do not all meet one (see `Network`).
  *
- * It was "The comb" through design, which names the shape and makes no claim,
- * and then "Six tools that stay on your machine" — a privacy claim the six do
- * not all meet (see `Network`). It names what the page is instead.
  */
-export const PAGE_TITLE = "Six small tools for your browser"
+export const PAGE_TITLE = "Five small tools for your browser"

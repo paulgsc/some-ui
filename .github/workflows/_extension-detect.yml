@@ -20,8 +20,8 @@ name: Extension Context Detection
 # path pattern — so it automatically tracks the real dep graph as it evolves.
 # No pnpm install is needed; Node.js is always present on ubuntu-latest.
 #
-# Rule (d) ensures that changes to wasm crates (e.g. crates/polyhedron) trigger
-# verification for the extensions that depend on them (e.g. some-conveyor).
+# Rule (d) ensures that changes to a wasm crate trigger verification for any
+# extension that depends on it (no extension depends on one today).
 #
 # Adding a new extension requires no CI changes — drop a directory under
 # extensions/ and it is automatically discovered.

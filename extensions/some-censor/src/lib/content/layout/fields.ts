@@ -2,12 +2,11 @@
  * The named extraction selectors — one list per card field — shared by the
  * extract layer, which reads them off a live element, and the layout
  * fingerprint, which records which of them a surface's cards actually
- * satisfy (BC1, #1434).
+ * satisfy (BC1).
  *
  * One source of truth on purpose. The crawler's fingerprint is only worth
  * checking in if it describes the selectors the extension really uses; a
- * second copy here would let the two drift the way `PREMASK_SELECTORS` and
- * `content.css` once did (#973).
+ * second copy would let the two drift.
  *
  * Each field is tried against the Polymer renderers first and the Lit-era
  * lockups second. The lockup side is matched on class *substrings* and
@@ -31,7 +30,7 @@ export const FIELD_SELECTORS: Readonly<
   Record<CardField, ReadonlyArray<string>>
 > = {
   // Ordered most-specific first. The `yt-*-view-model` entries are the Lit-era
-  // lockups adopted in #973: their title is an anchor carrying a BEM-ish class
+  // lockups: their title is an anchor carrying a BEM-ish class
   // rather than the `#video-title` id the Polymer renderers use.
   title: [
     "#video-title",

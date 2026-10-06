@@ -12,12 +12,9 @@ import { hasAudience, profile } from "virtual:build-profile"
 
 /**
  * A `beforeLoad` for the pathless layout that gates one audience's routes
- * (`routes/_dashboard/_lan.tsx` for "lan").
- *
- * The routes under it exist in every build - same route tree, same types, same
- * typed links - but in a build whose profile leaves the audience out, their
- * workspaces are stubs. This turns a visit into the app's ordinary not-found
- * page before any loader or component can reach one.
+ * (`routes/_dashboard/_lan.tsx` for "lan"). The routes exist in every build,
+ * but where the audience is stubbed this turns a visit into not-found before
+ * any loader or component runs.
  */
 export function requireAudience(audience: Audience): () => void {
   return (): void => {
@@ -26,13 +23,10 @@ export function requireAudience(audience: Audience): () => void {
 }
 
 /**
- * True in the Android app's build: the `mobile` profile in build.profiles.ts,
- * which apps/mobile's `build:web` selects. That app carries sessions and
- * nothing else; `lib/app-surface` is what narrows it.
- *
- * The profile's name is repeated here because build.profiles.ts is Node-side
- * config the bundle cannot import. `routes/__tests__/mobile-surface.test.ts`
- * takes the name from there, so the two cannot drift apart unnoticed.
+ * True in the Android app's build (the `mobile` profile, selected by
+ * apps/mobile's `build:web`). The name is repeated because the bundle cannot
+ * import build.profiles.ts; `routes/__tests__/mobile-surface.test.ts` checks
+ * the two agree.
  */
 export const MOBILE_APP = profile === "mobile"
 

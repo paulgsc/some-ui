@@ -5,7 +5,7 @@ import { typingBlockFromDiff } from "@leetype/types/exercise"
 import { withJudgment } from "./judgment-step"
 
 /**
- * LTY-PATCH P5's own instance (#1080): a construction `-` line carrying a
+ * LTY-PATCH P5's own instance: a construction `-` line carrying a
  * genuinely ruled-out form, not a prior commitment — the reading
  * `entryApi`'s retrofit (`./entry-api.ts`) never demonstrates on its own,
  * since every `-` line there is inherited context, not an alternative. The

@@ -13,10 +13,8 @@ import {
 } from "."
 
 /**
- * The summary is what a person reads off the chrome at a glance, and the
- * defaults-merge is what stands between a returning user and a blank page.
- * Both are small enough to look obviously right and both fail silently when
- * they aren't.
+ * The summary the chrome shows, and the defaults-merge between a returning
+ * user and a blank page; both fail silently.
  */
 
 describe("summarizeAudio", () => {

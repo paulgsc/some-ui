@@ -1,3 +1,4 @@
+import type { ComponentProps } from "react"
 import { act } from "react"
 import { RoundSession } from "@leetype/components/round/round-session"
 import { AUTHORED_ROUNDS } from "@leetype/lib/leetype/authored-rounds"
@@ -79,6 +80,60 @@ function memberOfCard(card: HTMLElement): DiffSetMember {
   return member
 }
 
+/** Renders a session on `COUNT_PRESENT` with seed 3 and an empty pasted store, overridden by `props`. */
+function renderRound(
+  props: Partial<ComponentProps<typeof RoundSession>> = {}
+): ReturnType<typeof render> {
+  return render(
+    <RoundSession
+      rounds={[COUNT_PRESENT]}
+      sessionSeed={3}
+      pastedStore={memoryStore()}
+      {...props}
+    />
+  )
+}
+
+/** Runs `body` with the session clock faked, restoring real timers after. */
+function withFakeClock(body: () => void): void {
+  vi.useFakeTimers({
+    toFake: ["setInterval", "clearInterval", "performance"],
+  })
+  try {
+    body()
+  } finally {
+    vi.useRealTimers()
+  }
+}
+
+/** Lets the session timer run out (sessionDurationMs 1000). */
+function endSession(): void {
+  act(() => {
+    vi.advanceTimersByTime(1250)
+  })
+}
+
+const CW_P6_TITLE = new RegExp(PROPOSITION_REGISTER["CW-P6"].title)
+
+/** In `COUNT_PRESENT`: choose the binary_search rewrite and commit CW-P6, its answer. */
+function answerCountPresentCorrectly(): void {
+  goTo("Rewrites")
+  chooseRewriteContaining("binary_search")
+  fireEvent.click(screen.getByRole("button", { name: CW_P6_TITLE }))
+}
+
+/** The first proposition option whose title is (or, when `matches` is false, is not) `title`. */
+function propositionOption(title: string, matches: boolean): HTMLElement {
+  return screen
+    .getAllByRole("button")
+    .find(
+      (button) =>
+        Object.values(PROPOSITION_REGISTER).some(({ title: known }) =>
+          button.textContent.includes(known)
+        ) && button.textContent.includes(title) === matches
+    )!
+}
+
 /** Presses the switcher's Next until `label` is the artifact in view. */
 function goTo(label: string): void {
   for (let step = 0; step < 6; step += 1) {
@@ -109,25 +164,14 @@ describe("RoundSession", () => {
   })
 
   it("plays a round end to end: the admissible rewrite, its proposition, the verdict, the next round", () => {
-    render(
-      <RoundSession
-        rounds={[COUNT_PRESENT]}
-        sessionSeed={3}
-        pastedStore={memoryStore()}
-      />
-    )
+    renderRound()
     expect(screen.getByText("Round 1")).toBeInTheDocument()
     // Prop. 8.1: the header counts rounds played, never a fraction of a
     // corpus. (The switcher's own "k of n" is a position among artifacts.)
     expect(screen.queryByText(/Round \d+ (of|\/)/)).not.toBeInTheDocument()
     expect(screen.queryByRole("progressbar")).not.toBeInTheDocument()
 
-    goTo("Rewrites")
-    chooseRewriteContaining("binary_search")
-
-    // The option set appears and is brought into view.
-    const answer = PROPOSITION_REGISTER["CW-P6"].title
-    fireEvent.click(screen.getByRole("button", { name: new RegExp(answer) }))
+    answerCountPresentCorrectly()
     expect(screen.getByText("Correct")).toBeInTheDocument()
     expect(
       screen.getByText("This rewrite fits the budget at the new bounds.")
@@ -141,13 +185,7 @@ describe("RoundSession", () => {
   })
 
   it("asks the rescue question when the chosen rewrite does not fit but a bound change would", () => {
-    render(
-      <RoundSession
-        rounds={[COUNT_PRESENT]}
-        sessionSeed={3}
-        pastedStore={memoryStore()}
-      />
-    )
+    renderRound()
     goTo("Rewrites")
     chooseRewriteContaining("break;")
     // Any commitment moves the cycle on (Ax. 9.1); abstain is a real row.
@@ -161,26 +199,17 @@ describe("RoundSession", () => {
 
   it("plays the learner's own round first, from the session store", () => {
     const own: Round = { ...COUNT_PRESENT, id: "my-own-round" }
-    render(
-      <RoundSession
-        rounds={[AUTHORED_ROUNDS[1]!]}
-        sessionSeed={3}
-        pastedStore={memoryStore(own)}
-      />
-    )
+    renderRound({
+      rounds: [AUTHORED_ROUNDS[1]!],
+      pastedStore: memoryStore(own),
+    })
     expect(screen.getByText("Your round")).toBeInTheDocument()
   })
 
   it("takes a pasted round through the generate panel and plays it next", () => {
     const store = memoryStore()
     const set = vi.spyOn(store, "set")
-    render(
-      <RoundSession
-        rounds={[AUTHORED_ROUNDS[1]!]}
-        sessionSeed={3}
-        pastedStore={store}
-      />
-    )
+    renderRound({ rounds: [AUTHORED_ROUNDS[1]!], pastedStore: store })
     fireEvent.click(screen.getByRole("button", { name: /Make your own/ }))
     fireEvent.change(screen.getByLabelText("Your model's reply"), {
       target: { value: `\`\`\`json\n${serializeRound(COUNT_PRESENT)}\`\`\`` },
@@ -193,81 +222,37 @@ describe("RoundSession", () => {
   })
 
   it("starts a fresh session on Restart: round 1 again, not where the last one stopped", () => {
-    vi.useFakeTimers({
-      toFake: ["setInterval", "clearInterval", "performance"],
-    })
-    try {
-      render(
-        <RoundSession
-          rounds={[COUNT_PRESENT]}
-          sessionSeed={3}
-          sessionDurationMs={1000}
-          pastedStore={memoryStore()}
-        />
-      )
-      goTo("Rewrites")
-      chooseRewriteContaining("binary_search")
-      fireEvent.click(
-        screen.getByRole("button", {
-          name: new RegExp(PROPOSITION_REGISTER["CW-P6"].title),
-        })
-      )
+    withFakeClock(() => {
+      renderRound({ sessionDurationMs: 1000 })
+      answerCountPresentCorrectly()
       fireEvent.click(screen.getByRole("button", { name: "Next round" }))
       expect(screen.getByText("Round 2")).toBeInTheDocument()
 
-      act(() => {
-        vi.advanceTimersByTime(1250)
-      })
+      endSession()
       expect(screen.getByText("1 round played")).toBeInTheDocument()
       fireEvent.click(screen.getByRole("button", { name: "Restart" }))
       expect(screen.getByText("Round 1")).toBeInTheDocument()
-    } finally {
-      vi.useRealTimers()
-    }
+    })
   })
 
   it("keeps a committed answer committed across opening and cancelling the generator", () => {
-    render(
-      <RoundSession
-        rounds={[COUNT_PRESENT]}
-        sessionSeed={3}
-        pastedStore={memoryStore()}
-      />
-    )
-    goTo("Rewrites")
-    chooseRewriteContaining("binary_search")
-    const answer = new RegExp(PROPOSITION_REGISTER["CW-P6"].title)
-    fireEvent.click(screen.getByRole("button", { name: answer }))
+    renderRound()
+    answerCountPresentCorrectly()
 
     fireEvent.click(screen.getByRole("button", { name: /Make your own/ }))
     fireEvent.click(screen.getByRole("button", { name: "Back to the rounds" }))
 
-    // Still one-shot: the option rows stay disabled after the round is
-    // shown again.
-    expect(screen.getByRole("button", { name: answer })).toBeDisabled()
+    // Still one-shot: the option rows stay disabled after the round is shown again.
+    expect(screen.getByRole("button", { name: CW_P6_TITLE })).toBeDisabled()
     expect(screen.getByRole("button", { name: "Next round" })).toBeEnabled()
   })
 
   it("files each (d, p) commitment into the ledger: three cases, the wrong choice named", () => {
     const ledgerStore = memoryLedgerStore()
-    render(
-      <RoundSession
-        rounds={[COUNT_PRESENT]}
-        sessionSeed={3}
-        pastedStore={memoryStore()}
-        ledgerStore={ledgerStore}
-      />
-    )
+    renderRound({ ledgerStore })
     goTo("Rewrites")
     chooseRewriteContaining("binary_search")
-    const wrong = screen
-      .getAllByRole("button")
-      .find(
-        (button) =>
-          Object.values(PROPOSITION_REGISTER).some(({ title }) =>
-            button.textContent.includes(title)
-          ) && !button.textContent.includes(PROPOSITION_REGISTER["CW-P6"].title)
-      )!
+    const wrong = propositionOption(PROPOSITION_REGISTER["CW-P6"].title, false)
     const chosen = Object.values(PROPOSITION_REGISTER).find(({ title }) =>
       wrong.textContent.includes(title)
     )!.id
@@ -287,14 +272,7 @@ describe("RoundSession", () => {
 
   it("keeps what another tab stored since mount when it files a commitment", () => {
     const ledgerStore = memoryLedgerStore()
-    render(
-      <RoundSession
-        rounds={[COUNT_PRESENT]}
-        sessionSeed={3}
-        pastedStore={memoryStore()}
-        ledgerStore={ledgerStore}
-      />
-    )
+    renderRound({ ledgerStore })
     // Another tab answers a card after this one read the store.
     const elsewhere = observationsOfCommitment({
       answerId: "CW-P16",
@@ -307,13 +285,7 @@ describe("RoundSession", () => {
     })
     ledgerStore.set(recordObservations(EMPTY_LEDGER, elsewhere))
 
-    goTo("Rewrites")
-    chooseRewriteContaining("binary_search")
-    fireEvent.click(
-      screen.getByRole("button", {
-        name: new RegExp(PROPOSITION_REGISTER["CW-P6"].title),
-      })
-    )
+    answerCountPresentCorrectly()
 
     const roundsOf = (id: PropositionId): Array<string> =>
       (ledgerStore.held().entries[id]?.ring ?? []).map(({ roundId }) => roundId)
@@ -323,21 +295,12 @@ describe("RoundSession", () => {
 
   it("never files the learner's own round: its key was in hand (Ax. 9.2)", () => {
     const ledgerStore = memoryLedgerStore()
-    render(
-      <RoundSession
-        rounds={[AUTHORED_ROUNDS[1]!]}
-        sessionSeed={3}
-        pastedStore={memoryStore({ ...COUNT_PRESENT, id: "my-own-round" })}
-        ledgerStore={ledgerStore}
-      />
-    )
-    goTo("Rewrites")
-    chooseRewriteContaining("binary_search")
-    fireEvent.click(
-      screen.getByRole("button", {
-        name: new RegExp(PROPOSITION_REGISTER["CW-P6"].title),
-      })
-    )
+    renderRound({
+      rounds: [AUTHORED_ROUNDS[1]!],
+      pastedStore: memoryStore({ ...COUNT_PRESENT, id: "my-own-round" }),
+      ledgerStore,
+    })
+    answerCountPresentCorrectly()
     expect(ledgerStore.held()).toEqual(EMPTY_LEDGER)
   })
 
@@ -350,14 +313,7 @@ describe("RoundSession", () => {
       WEIGHT_FLOOR / (WEIGHT_FLOOR + (n - 1) * (WEIGHT_FLOOR + BOOST_CAP))
     const bound = Math.ceil(Math.log(n / 1e-6) / -Math.log(1 - p))
     const ledgerStore = memoryLedgerStore()
-    render(
-      <RoundSession
-        rounds={AUTHORED_ROUNDS}
-        sessionSeed={11}
-        pastedStore={memoryStore()}
-        ledgerStore={ledgerStore}
-      />
-    )
+    renderRound({ rounds: AUTHORED_ROUNDS, sessionSeed: 11, ledgerStore })
     const reached = new Set<string>()
     for (let draw = 0; draw < bound && reached.size < n; draw += 1) {
       // Every artifact is there before any answer: nothing is gated.
@@ -374,15 +330,7 @@ describe("RoundSession", () => {
       fireEvent.click(
         within(card).getByRole("button", { name: /^Choose rewrite/ })
       )
-      const wrong = screen
-        .getAllByRole("button")
-        .find(
-          (button) =>
-            Object.values(PROPOSITION_REGISTER).some(({ title }) =>
-              button.textContent.includes(title)
-            ) && !button.textContent.includes(answer.title)
-        )!
-      fireEvent.click(wrong)
+      fireEvent.click(propositionOption(answer.title, false))
 
       // Wrong, and everything is revealed anyway: the answer's statement,
       // the next state, and the way on (Ax. 9.1).
@@ -400,29 +348,10 @@ describe("RoundSession", () => {
   }, 15_000)
 
   it("says recognized after one correct selection, and never mastery (Cor. 10.1)", () => {
-    vi.useFakeTimers({
-      toFake: ["setInterval", "clearInterval", "performance"],
-    })
-    try {
-      render(
-        <RoundSession
-          rounds={[COUNT_PRESENT]}
-          sessionSeed={3}
-          sessionDurationMs={1000}
-          pastedStore={memoryStore()}
-          ledgerStore={memoryLedgerStore()}
-        />
-      )
-      goTo("Rewrites")
-      chooseRewriteContaining("binary_search")
-      fireEvent.click(
-        screen.getByRole("button", {
-          name: new RegExp(PROPOSITION_REGISTER["CW-P6"].title),
-        })
-      )
-      act(() => {
-        vi.advanceTimersByTime(1250)
-      })
+    withFakeClock(() => {
+      renderRound({ sessionDurationMs: 1000, ledgerStore: memoryLedgerStore() })
+      answerCountPresentCorrectly()
+      endSession()
       const ledger = screen.getByRole("region", { name: "Your ledger" })
       const row = within(ledger)
         .getByText(PROPOSITION_REGISTER["CW-P6"].title)
@@ -430,9 +359,7 @@ describe("RoundSession", () => {
       expect(row).toHaveTextContent(LEDGER_STATE_COPY.recognized)
       expect(row).not.toHaveTextContent(/Demonstrated:/)
       expect(document.body.textContent).not.toMatch(/master|%|streak|level/i)
-    } finally {
-      vi.useRealTimers()
-    }
+    })
   })
 
   it("skips a round that fails the authored-round checks rather than playing it", () => {
@@ -441,13 +368,7 @@ describe("RoundSession", () => {
       id: "broken",
       graph: { kind: "work", cost: 1 },
     }
-    render(
-      <RoundSession
-        rounds={[broken]}
-        sessionSeed={3}
-        pastedStore={memoryStore()}
-      />
-    )
+    renderRound({ rounds: [broken] })
     expect(
       screen.getByText(
         "No rounds are available right now. You can make your own."
@@ -494,16 +415,7 @@ describe("RoundSession — margin notes (canon Rem. 3.7)", () => {
   it("saves a note on whatever is showing with one tap, and files nothing in the ledger", () => {
     const notes = memoryNoteStore()
     const ledger = memoryLedgerStore()
-    render(
-      <RoundSession
-        rounds={[COUNT_PRESENT]}
-        sessionSeed={3}
-        pastedStore={memoryStore()}
-        ledgerStore={ledger}
-        noteStore={notes}
-        dictation={null}
-      />
-    )
+    renderRound({ ledgerStore: ledger, noteStore: notes, dictation: null })
     goTo("Rewrites")
     chooseRewriteContaining("binary_search")
     // Choosing a rewrite brings the question into view; go back to it.
@@ -545,15 +457,10 @@ describe("RoundSession — margin notes (canon Rem. 3.7)", () => {
 
   it("offers speech where there is a recognizer, says whose it is, and keeps the words", async () => {
     const notes = memoryNoteStore()
-    render(
-      <RoundSession
-        rounds={[COUNT_PRESENT]}
-        sessionSeed={3}
-        pastedStore={memoryStore()}
-        noteStore={notes}
-        dictation={hearing("the budget is per test case")}
-      />
-    )
+    renderRound({
+      noteStore: notes,
+      dictation: hearing("the budget is per test case"),
+    })
     fireEvent.click(screen.getByRole("button", { name: "Note on Program" }))
     fireEvent.click(screen.getByRole("button", { name: "Just a thought" }))
     expect(screen.getByText(/Your phone's speech service/)).toBeInTheDocument()
@@ -574,15 +481,7 @@ describe("RoundSession — margin notes (canon Rem. 3.7)", () => {
 
   it("keeps Make your own unavailable while a spoken note is still being turned into text", async () => {
     const notes = memoryNoteStore()
-    render(
-      <RoundSession
-        rounds={[COUNT_PRESENT]}
-        sessionSeed={3}
-        pastedStore={memoryStore()}
-        noteStore={notes}
-        dictation={hearing("which bound grew")}
-      />
-    )
+    renderRound({ noteStore: notes, dictation: hearing("which bound grew") })
     fireEvent.click(screen.getByRole("button", { name: "Note on Program" }))
     fireEvent.click(screen.getByRole("button", { name: "I don't know this" }))
     fireEvent.click(screen.getByRole("button", { name: "Speak" }))
@@ -600,15 +499,7 @@ describe("RoundSession — margin notes (canon Rem. 3.7)", () => {
   })
 
   it("puts focus back on the Note button after Done, and leaves it alone when a control elsewhere closed the note", () => {
-    render(
-      <RoundSession
-        rounds={[COUNT_PRESENT]}
-        sessionSeed={3}
-        pastedStore={memoryStore()}
-        noteStore={memoryNoteStore()}
-        dictation={null}
-      />
-    )
+    renderRound({ noteStore: memoryNoteStore(), dictation: null })
     const press = (element: HTMLElement): void => {
       fireEvent.pointerDown(element)
       fireEvent.click(element)
@@ -637,15 +528,7 @@ describe("RoundSession — margin notes (canon Rem. 3.7)", () => {
   })
 
   it("offers no microphone where there is no recognizer", () => {
-    render(
-      <RoundSession
-        rounds={[COUNT_PRESENT]}
-        sessionSeed={3}
-        pastedStore={memoryStore()}
-        noteStore={memoryNoteStore()}
-        dictation={null}
-      />
-    )
+    renderRound({ noteStore: memoryNoteStore(), dictation: null })
     fireEvent.click(screen.getByRole("button", { name: "Note on Program" }))
     fireEvent.click(screen.getByRole("button", { name: "This looks wrong" }))
     expect(
@@ -655,15 +538,7 @@ describe("RoundSession — margin notes (canon Rem. 3.7)", () => {
   })
 
   it("carries the notes into the prompt the learner copies to their model", () => {
-    render(
-      <RoundSession
-        rounds={[COUNT_PRESENT]}
-        sessionSeed={3}
-        pastedStore={memoryStore()}
-        noteStore={memoryNoteStore()}
-        dictation={null}
-      />
-    )
+    renderRound({ noteStore: memoryNoteStore(), dictation: null })
     fireEvent.click(screen.getByRole("button", { name: "Note on Program" }))
     fireEvent.click(screen.getByRole("button", { name: "I don't know this" }))
     fireEvent.click(screen.getByRole("button", { name: "Done" }))
@@ -680,20 +555,12 @@ describe("RoundSession — margin notes (canon Rem. 3.7)", () => {
   })
 
   it("lists the session's notes on the session-complete screen", () => {
-    vi.useFakeTimers({
-      toFake: ["setInterval", "clearInterval", "performance"],
-    })
-    try {
-      render(
-        <RoundSession
-          rounds={[COUNT_PRESENT]}
-          sessionSeed={3}
-          sessionDurationMs={1000}
-          pastedStore={memoryStore()}
-          noteStore={memoryNoteStore()}
-          dictation={null}
-        />
-      )
+    withFakeClock(() => {
+      renderRound({
+        sessionDurationMs: 1000,
+        noteStore: memoryNoteStore(),
+        dictation: null,
+      })
       fireEvent.click(screen.getByRole("button", { name: "Note on Program" }))
       fireEvent.click(
         screen.getByRole("button", { name: "Not sure what it's asking" })
@@ -701,21 +568,17 @@ describe("RoundSession — margin notes (canon Rem. 3.7)", () => {
       fireEvent.change(screen.getByLabelText("Add words to the note"), {
         target: { value: "what is n here?" },
       })
-      act(() => {
-        vi.advanceTimersByTime(1250)
-      })
+      endSession()
       const notes = screen.getByRole("region", { name: "Your notes" })
       expect(
         within(notes).getByText("Not sure what it's asking")
       ).toBeInTheDocument()
       expect(within(notes).getByText("what is n here?")).toBeInTheDocument()
-    } finally {
-      vi.useRealTimers()
-    }
+    })
   })
 })
 
-describe("RoundSession — recorded runs (X2, #1223)", () => {
+describe("RoundSession — recorded runs", () => {
   const HAS_DUPLICATE = AUTHORED_ROUNDS.find(
     (round) => round.id === "has-duplicate-sort-adjacent"
   )!
@@ -741,15 +604,7 @@ describe("RoundSession — recorded runs (X2, #1223)", () => {
     fireEvent.click(
       within(card).getByRole("button", { name: /^Choose rewrite/ })
     )
-    const button = screen
-      .getAllByRole("button")
-      .find(
-        (node) =>
-          Object.values(PROPOSITION_REGISTER).some(({ title }) =>
-            node.textContent.includes(title)
-          ) && node.textContent.includes(answer.title) === correct
-      )!
-    fireEvent.click(button)
+    fireEvent.click(propositionOption(answer.title, correct))
   }
 
   function runsPanel(): HTMLElement | null {
@@ -760,14 +615,7 @@ describe("RoundSession — recorded runs (X2, #1223)", () => {
     const loadRuns = vi.fn(() =>
       Promise.resolve(BUNDLED_ROUND_RUNS[HAS_DUPLICATE.id])
     )
-    render(
-      <RoundSession
-        rounds={[HAS_DUPLICATE]}
-        sessionSeed={3}
-        pastedStore={memoryStore()}
-        loadRuns={loadRuns}
-      />
-    )
+    renderRound({ rounds: [HAS_DUPLICATE], loadRuns })
     await settle()
     expect(loadRuns).toHaveBeenCalledWith(HAS_DUPLICATE.id)
     // Before the commitment the transcript is loaded but nowhere: it would
@@ -799,17 +647,12 @@ describe("RoundSession — recorded runs (X2, #1223)", () => {
   })
 
   it("shows no runs between choosing a rewrite and committing its proposition", async () => {
-    // The window a leak would live in (review, #1601): the rewrite is
-    // chosen, so its C′ run would say whether it fits, and `p` is not yet
-    // committed.
-    render(
-      <RoundSession
-        rounds={[HAS_DUPLICATE]}
-        sessionSeed={3}
-        pastedStore={memoryStore()}
-        loadRuns={() => Promise.resolve(BUNDLED_ROUND_RUNS[HAS_DUPLICATE.id])}
-      />
-    )
+    // The window a leak would live in: the rewrite is chosen, so its C′ run
+    // would say whether it fits, and `p` is not yet committed.
+    renderRound({
+      rounds: [HAS_DUPLICATE],
+      loadRuns: () => Promise.resolve(BUNDLED_ROUND_RUNS[HAS_DUPLICATE.id]),
+    })
     await settle()
     goTo("Rewrites")
     const card = screen
@@ -846,13 +689,7 @@ describe("RoundSession — recorded runs (X2, #1223)", () => {
   })
 
   it("shows the chosen rewrite's own runs, whichever the learner chose", async () => {
-    render(
-      <RoundSession
-        rounds={[HAS_DUPLICATE]}
-        sessionSeed={3}
-        pastedStore={memoryStore()}
-      />
-    )
+    renderRound({ rounds: [HAS_DUPLICATE] })
     await settle()
     commit(false, false)
     goTo("Runs")
@@ -868,14 +705,10 @@ describe("RoundSession — recorded runs (X2, #1223)", () => {
   })
 
   it("falls back to the bundled transcript when the server cannot be reached", async () => {
-    render(
-      <RoundSession
-        rounds={[HAS_DUPLICATE]}
-        sessionSeed={3}
-        pastedStore={memoryStore()}
-        loadRuns={() => Promise.reject(new Error("unreachable"))}
-      />
-    )
+    renderRound({
+      rounds: [HAS_DUPLICATE],
+      loadRuns: () => Promise.reject(new Error("unreachable")),
+    })
     await settle()
     commit(true, true)
     goTo("Runs")
@@ -887,14 +720,10 @@ describe("RoundSession — recorded runs (X2, #1223)", () => {
       ...HAS_DUPLICATE,
       budget: { ...HAS_DUPLICATE.budget, wallClock: "a second or so" },
     }
-    render(
-      <RoundSession
-        rounds={[edited]}
-        sessionSeed={3}
-        pastedStore={memoryStore()}
-        loadRuns={() => Promise.resolve(BUNDLED_ROUND_RUNS[HAS_DUPLICATE.id])}
-      />
-    )
+    renderRound({
+      rounds: [edited],
+      loadRuns: () => Promise.resolve(BUNDLED_ROUND_RUNS[HAS_DUPLICATE.id]),
+    })
     await settle()
     commit(true, true)
     await settle()
@@ -906,14 +735,7 @@ describe("RoundSession — recorded runs (X2, #1223)", () => {
     const loadRuns = vi.fn(() =>
       Promise.resolve(BUNDLED_ROUND_RUNS[HAS_DUPLICATE.id])
     )
-    render(
-      <RoundSession
-        rounds={[COUNT_PRESENT]}
-        sessionSeed={3}
-        pastedStore={memoryStore(HAS_DUPLICATE)}
-        loadRuns={loadRuns}
-      />
-    )
+    renderRound({ pastedStore: memoryStore(HAS_DUPLICATE), loadRuns })
     expect(screen.getByText("Your round")).toBeInTheDocument()
     await settle()
     commit(true, true)

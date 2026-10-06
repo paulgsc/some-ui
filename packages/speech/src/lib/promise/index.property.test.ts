@@ -11,10 +11,8 @@ import { createAbortError, isAbortError } from "./abort"
  * flushes, every promise it ever handed out settles exactly once, and the
  * ledger ends up holding nothing.
  *
- * Example-based tests can't cover this honestly. The bug being defended
- * against - a promise stranded because the thing that owned it was replaced
- * - only shows up at particular interleavings, and picking those by hand is
- * the same reasoning that produced the bug in the first place.
+ * Example-based tests can't cover this honestly: a promise stranded because
+ * its owner was replaced only shows up at particular interleavings.
  */
 
 type Op =

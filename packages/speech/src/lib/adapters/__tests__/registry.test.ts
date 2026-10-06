@@ -89,45 +89,37 @@ describe("createSpeechAdapter - mode-driven selection", () => {
     ).toThrow('No speech backend for "server" mode')
   })
 
-  it("falls through to the other mode's adapter when the chosen one can't speak", () => {
+  // A runtime without Web Audio is a fact about the browser, not about the
+  // deployment - the caller shouldn't have to find out about it.
+  it.each([
+    [
+      "falls through to the other mode's adapter when the chosen one can't speak",
+      true,
+      undefined,
+      "web-speech",
+      true,
+    ],
+    [
+      "keeps the mode's own adapter when neither can speak",
+      false,
+      undefined,
+      "http",
+      false,
+    ],
+    ["respects an opt-out of the fallback", true, false, "http", false],
+  ] as const)("%s", (_, staticSpeaks, fallbackWhenUnsupported, id, speaks) => {
     const adapter = createSpeechAdapter({
       mode: "server",
+      fallbackWhenUnsupported,
       adapters: {
         server: () => unsupported("http"),
-        static: () => supported("web-speech"),
+        static: () =>
+          staticSpeaks ? supported("web-speech") : unsupported("web-speech"),
       },
     })
 
-    // A runtime without Web Audio is a fact about the browser, not about
-    // the deployment - the caller shouldn't have to find out about it.
-    expect(adapter.id).toBe("web-speech")
-    expect(adapter.supported).toBe(true)
-  })
-
-  it("keeps the mode's own adapter when neither can speak", () => {
-    const adapter = createSpeechAdapter({
-      mode: "server",
-      adapters: {
-        server: () => unsupported("http"),
-        static: () => unsupported("web-speech"),
-      },
-    })
-
-    expect(adapter.id).toBe("http")
-    expect(adapter.supported).toBe(false)
-  })
-
-  it("respects an opt-out of the fallback", () => {
-    const adapter = createSpeechAdapter({
-      mode: "server",
-      fallbackWhenUnsupported: false,
-      adapters: {
-        server: () => unsupported("http"),
-        static: () => supported("web-speech"),
-      },
-    })
-
-    expect(adapter.id).toBe("http")
+    expect(adapter.id).toBe(id)
+    expect(adapter.supported).toBe(speaks)
   })
 
   it("disposes the adapter it discards, so nothing is left holding promises", () => {

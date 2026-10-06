@@ -61,11 +61,8 @@ export type ActivityConfigValues = Record<string, string | number>
  * How finished an activity is, in a person's terms rather than a
  * developer's.
  *
- * This app ships applets at very different stages, and shipping them is the
- * right call - they get better by being used. What is not right is letting
- * someone walk into a half-built room expecting a finished one. This is the
- * wet-floor sign: enough warning to set expectations, no diagnostics, no
- * internals, no apology.
+ * The wet-floor sign for applets shipped at different stages: enough warning
+ * to set expectations, no diagnostics, no internals, no apology.
  *
  * - `"ready"` - works end to end. Says nothing, because there is nothing to
  *   warn about, and a badge on everything is a badge on nothing.
@@ -110,23 +107,12 @@ export type InputModalityId = "keyboard" | "touch"
 /**
  * What an activity asks of a person's hands, in their terms.
  *
- * The sibling of `ActivityAudio` above, and it exists for the same reason:
- * a person choosing an activity on their phone deserves to know before the
- * click what it is going to ask them to do, not after.
- *
- * The case that forced it is LeetType. Its large-screen surface is a typing
- * probe — the player produces code under a masking loop — and its
- * small-screen surface is not a narrower version of that but a different
- * exercise: read a change, say what it does (`@some-ui/leetype`'s
- * `LTY-MOBILE`, `docs/leetype/README.md`). A single description written for
- * one of those is false on the other, and "Prove one competency at a time by
- * typing the smallest code that shows it" was false on every phone that read
- * it.
- *
- * Declared per-activity rather than as one global note for the same reason
- * audio is: modules genuinely differ. Honeycomb is a tap game at every width;
- * TOPIK reading is the same on both. Only an activity that actually changes
- * shape needs to say so.
+ * The sibling of `ActivityAudio`, per activity for the same reason: a person
+ * on a phone should know before the click what it will ask of them. Only an
+ * activity that changes shape needs to say so - LeetType's small-screen
+ * surface is a different exercise from its typing probe (`@some-ui/leetype`'s
+ * `LTY-MOBILE`, `docs/leetype/README.md`), so one description cannot be true
+ * of both.
  */
 type ActivityInput = {
   /** Every modality this activity can be played through, across all widths. */
@@ -166,8 +152,7 @@ export type ActivityDefinition = {
    * activity's registry component. Some fields (e.g. picking an exact
    * question set or code challenge) are intentionally left as simple
    * identifiers here - resolving them into the full objects those
-   * components expect is the live player's job (Epic E), once it's actually
-   * mounting and can be checked against the real component in a browser.
+   * components expect is the live player's job.
    */
   toSceneProps: (config: ActivityConfigValues) => Record<string, unknown>
 }

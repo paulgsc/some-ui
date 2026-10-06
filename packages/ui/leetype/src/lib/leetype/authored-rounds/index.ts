@@ -9,7 +9,7 @@ import {
 import type { Round } from "@leetype/types/authored-round"
 
 /**
- * LTY-AUTHOR (#1540): the authored round corpus. Real rounds, unlike
+ * LTY-AUTHOR: the authored round corpus. Real rounds, unlike
  * `lib/leetype/round-corpus`'s fixtures: every `A` is a complete Rust
  * program that compiles (`scripts/check-round-programs-compile.ts`), every
  * hunk applies to it (`lintAuthoredRounds`), and every authored
@@ -26,7 +26,7 @@ import type { Round } from "@leetype/types/authored-round"
  * (`CW-P4`, `CW-P8`, `CW-P9`, `CW-P11`, `CW-P16`), so they appear here as
  * the μ of distractors rather than of admissible members. That counts
  * toward Rem. 7.1's coverage: a proposition is instantiated by μ(d) on any
- * member of D (decided on #1540). The corpus does not cover the register
+ * member of D. The corpus does not cover the register
  * yet, so `lintAuthoredRounds` does not run the register-wide checks.
  */
 

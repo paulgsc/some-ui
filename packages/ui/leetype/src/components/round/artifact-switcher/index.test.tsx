@@ -67,14 +67,55 @@ const settleOn = (pager: HTMLElement, page: number): void => {
   fireEvent.scroll(pager)
 }
 
+const renderSwitcher = (
+  artifacts: ReadonlyArray<SwitchableArtifact> = ARTIFACTS,
+  roundId = "round-1"
+): ReturnType<typeof render> =>
+  render(<ArtifactSwitcher artifacts={artifacts} roundId={roundId} />)
+
+/** Renders `ARTIFACTS` and returns the laid-out pager, `scrollTo` stubbed when given. */
+const renderPager = (
+  scrollTo?: () => void
+): { pager: HTMLElement } & ReturnType<typeof render> => {
+  const rendered = renderSwitcher()
+  const pager = pagerOf(rendered.container)
+  if (scrollTo) stubScrollTo(pager, scrollTo)
+  return { ...rendered, pager }
+}
+
+const button = (name: string): HTMLElement =>
+  screen.getByRole("button", { name })
+const pressNext = (): void => {
+  fireEvent.click(button("Next artifact"))
+}
+
+/** A child with one-shot local state, to tell a remount from a preserved instance. */
+function makeCommitOnce(onCommit: () => void = () => undefined): FC {
+  const CommitOnce: FC = () => {
+    const [committed, setCommitted] = useState(false)
+    return (
+      <button
+        type="button"
+        onClick={() => {
+          if (committed) return
+          setCommitted(true)
+          onCommit()
+        }}
+      >
+        {committed ? "Committed" : "Commit"}
+      </button>
+    )
+  }
+  return CommitOnce
+}
+
 describe("ArtifactSwitcher", () => {
   it("shows exactly one artifact's content at a time (Def. 9.2: exactly one is load-bearing)", () => {
-    render(<ArtifactSwitcher artifacts={ARTIFACTS} roundId="round-1" />)
+    renderSwitcher()
     expectCurrent(screen.getByText("Source of A"))
     // The neighbour is mounted, so a swipe drags real content in, but inert.
     expectAway(screen.getByText("C to C′"))
-    // Two pages away and never visited, so not even mounted — a stronger
-    // claim than "not current."
+    // Two pages away and never visited: not even mounted.
     expect(screen.queryByText("Operation count")).not.toBeInTheDocument()
   })
 
@@ -86,21 +127,17 @@ describe("ArtifactSwitcher", () => {
   })
 
   it("an artifact absent from the array never appears — there is no disabled placeholder for it", () => {
-    render(
-      <ArtifactSwitcher artifacts={ARTIFACTS.slice(0, 2)} roundId="round-1" />
-    )
+    renderSwitcher(ARTIFACTS.slice(0, 2))
     expect(screen.queryByText("Operation count")).not.toBeInTheDocument()
-    // Only two positions exist, so "Next" is reachable exactly once before
-    // it disables — an unavailable third artifact is absence, not a control
-    // hinting at what is coming.
-    fireEvent.click(screen.getByRole("button", { name: "Next artifact" }))
-    expect(screen.getByRole("button", { name: "Next artifact" })).toBeDisabled()
+    // Two positions: "Next" disables after one press.
+    pressNext()
+    expect(button("Next artifact")).toBeDisabled()
   })
 
   it("moves forward and back on press, disabling at each end", () => {
-    render(<ArtifactSwitcher artifacts={ARTIFACTS} roundId="round-1" />)
-    const previous = screen.getByRole("button", { name: "Previous artifact" })
-    const next = screen.getByRole("button", { name: "Next artifact" })
+    renderSwitcher()
+    const previous = button("Previous artifact")
+    const next = button("Next artifact")
 
     expect(previous).toBeDisabled()
     expect(next).not.toBeDisabled()
@@ -119,109 +156,64 @@ describe("ArtifactSwitcher", () => {
     fireEvent.click(previous)
     expectCurrent(screen.getByText("C to C′"))
     expectAway(screen.getByText("Operation count"))
-    // Every artifact visited this round stays mounted, just hidden — the
-    // fix for the state-preservation regression this file also tests below.
+    // Every artifact visited this round stays mounted, just hidden.
     expectAway(screen.getByText("Source of A"))
   })
 
   it("survives a re-render with the same round — a prop change alone never moves position", () => {
-    const { rerender } = render(
-      <ArtifactSwitcher artifacts={ARTIFACTS} roundId="round-1" />
-    )
-    fireEvent.click(screen.getByRole("button", { name: "Next artifact" }))
+    const { rerender } = renderSwitcher()
+    pressNext()
     expect(screen.getByText("C to C′")).toBeInTheDocument()
 
-    // A new array reference, same round, same content — the kind of
-    // re-render a phase transition elsewhere in the same round causes.
+    // A new array reference, same round and content.
     rerender(<ArtifactSwitcher artifacts={[...ARTIFACTS]} roundId="round-1" />)
     expect(screen.getByText("C to C′")).toBeInTheDocument()
   })
 
   it("resets to the first artifact when the round advances, dropping every mounted instance", () => {
-    const { rerender } = render(
-      <ArtifactSwitcher artifacts={ARTIFACTS} roundId="round-1" />
-    )
-    fireEvent.click(screen.getByRole("button", { name: "Next artifact" }))
-    fireEvent.click(screen.getByRole("button", { name: "Next artifact" }))
+    const { rerender } = renderSwitcher()
+    pressNext()
+    pressNext()
     expectCurrent(screen.getByText("Operation count"))
 
     rerender(<ArtifactSwitcher artifacts={ARTIFACTS} roundId="round-2" />)
     expectCurrent(screen.getByText("Source of A"))
-    // Not just inert — gone. Carrying a previous round's mounted instances
-    // forward would reintroduce the same staleness this file's own
-    // "preserves a child's local state" test below proves was fixed, one
-    // round later. (`C` is back only as the new current one's neighbour,
-    // in a freshly keyed slot.)
+    // Gone, not inert: old instances must not carry into a new round.
     expect(screen.queryByText("Operation count")).not.toBeInTheDocument()
   })
 
-  it("preserves a child's local state across switching away and back — the regression this story's own review found", () => {
+  it("preserves a child's local state across switching away and back", () => {
     const onCommit = vi.fn()
-    const CommitOnce: FC = () => {
-      const [committed, setCommitted] = useState(false)
-      return (
-        <button
-          type="button"
-          onClick={() => {
-            if (committed) return
-            setCommitted(true)
-            onCommit()
-          }}
-        >
-          {committed ? "Committed" : "Commit"}
-        </button>
-      )
-    }
-    const artifactsWithStatefulChild: ReadonlyArray<SwitchableArtifact> = [
+    const CommitOnce = makeCommitOnce(onCommit)
+    renderSwitcher([
       ARTIFACTS[0]!,
       { id: "optionSet", label: "Choice", content: <CommitOnce /> },
-    ]
-    render(
-      <ArtifactSwitcher
-        artifacts={artifactsWithStatefulChild}
-        roundId="round-1"
-      />
-    )
+    ])
 
-    fireEvent.click(screen.getByRole("button", { name: "Next artifact" }))
+    pressNext()
     fireEvent.click(screen.getByRole("button", { name: "Commit" }))
     expectCurrent(screen.getByRole("button", { name: "Committed" }))
     expect(onCommit).toHaveBeenCalledOnce()
 
     // Away, and back — a remounted `CommitOnce` would show "Commit" again.
-    fireEvent.click(screen.getByRole("button", { name: "Previous artifact" }))
-    fireEvent.click(screen.getByRole("button", { name: "Next artifact" }))
+    fireEvent.click(button("Previous artifact"))
+    pressNext()
 
     expectCurrent(screen.getByRole("button", { name: "Committed" }))
-    // And a fresh instance would also let this fire a second time for the
-    // same round — the double-commit risk the review finding named.
+    // A fresh instance would also allow a second commit.
     fireEvent.click(screen.getByRole("button", { name: "Committed" }))
     expect(onCommit).toHaveBeenCalledOnce()
   })
 
-  it("remounts a child's local state on round advance, even when the first artifact's id is unchanged — round 2 of the same review finding", () => {
-    const CommitOnce: FC = () => {
-      const [committed, setCommitted] = useState(false)
-      return (
-        <button type="button" onClick={() => setCommitted(true)}>
-          {committed ? "Committed" : "Commit"}
-        </button>
-      )
-    }
-    // The realistic shape: `algorithm` is first in both rounds, the same
-    // way it is every round — this is exactly the case a plain
-    // `key={artifact.id}` reconciles across the round boundary instead of
-    // remounting, since the id at position 0 never changes.
+  it("remounts a child's local state on round advance, even when the first artifact's id is unchanged", () => {
+    const CommitOnce = makeCommitOnce()
+    // `algorithm` first in both rounds: a plain `key={artifact.id}` would
+    // reconcile it instead of remounting.
     const artifactsWithStatefulFirst: ReadonlyArray<SwitchableArtifact> = [
       { id: "algorithm", label: "Algorithm", content: <CommitOnce /> },
       ARTIFACTS[1]!,
     ]
-    const { rerender } = render(
-      <ArtifactSwitcher
-        artifacts={artifactsWithStatefulFirst}
-        roundId="round-1"
-      />
-    )
+    const { rerender } = renderSwitcher(artifactsWithStatefulFirst)
 
     fireEvent.click(screen.getByRole("button", { name: "Commit" }))
     expectCurrent(screen.getByRole("button", { name: "Committed" }))
@@ -236,11 +228,11 @@ describe("ArtifactSwitcher", () => {
   })
 
   it("announces the current artifact and its position for assistive tech", () => {
-    render(<ArtifactSwitcher artifacts={ARTIFACTS} roundId="round-1" />)
+    renderSwitcher()
     expect(
       screen.getByText("Round artifact: Algorithm, 1 of 3")
     ).toBeInTheDocument()
-    fireEvent.click(screen.getByRole("button", { name: "Next artifact" }))
+    pressNext()
     expect(
       screen.getByText("Round artifact: Constraints, 2 of 3")
     ).toBeInTheDocument()
@@ -252,9 +244,9 @@ describe("ArtifactSwitcher", () => {
       ARTIFACTS[0]!,
       ARTIFACTS[1]!,
     ]
-    render(<ArtifactSwitcher artifacts={reordered} roundId="round-1" />)
+    renderSwitcher(reordered)
     expect(screen.getByText("Operation count")).toBeInTheDocument()
-    fireEvent.click(screen.getByRole("button", { name: "Next artifact" }))
+    pressNext()
     expect(screen.getByText("Source of A")).toBeInTheDocument()
   })
 
@@ -262,27 +254,22 @@ describe("ArtifactSwitcher", () => {
     const allSix: ReadonlyArray<SwitchableArtifact> = ALL_ARTIFACT_IDS.map(
       (id) => ({ id, label: id, content: <p>content: {id}</p> })
     )
-    render(<ArtifactSwitcher artifacts={allSix} roundId="round-1" />)
+    renderSwitcher(allSix)
 
     for (const id of ALL_ARTIFACT_IDS) {
       expectCurrent(screen.getByText(`content: ${id}`))
-      fireEvent.click(screen.getByRole("button", { name: "Next artifact" }))
+      pressNext()
     }
-    // One press past the last artifact does nothing further — "Next" is
-    // already disabled at the end, the same boundary every other test
-    // exercises with a shorter set.
-    expect(screen.getByRole("button", { name: "Next artifact" })).toBeDisabled()
+    expect(button("Next artifact")).toBeDisabled()
     expectCurrent(screen.getByText("content: runResult"))
-    // Every one of the six was visited, so all six are mounted by now — but
-    // only the last is visible, "exactly one load-bearing" holding even at
-    // the full width of the real set.
+    // All six visited and mounted, only the last load-bearing.
     for (const id of ALL_ARTIFACT_IDS.slice(0, -1)) {
       expectAway(screen.getByText(`content: ${id}`))
     }
   })
 
   it("names every artifact in a tab and marks the current one", () => {
-    render(<ArtifactSwitcher artifacts={ARTIFACTS} roundId="round-1" />)
+    renderSwitcher()
     const tabs = screen.getAllByRole("tab")
     expect(tabs.map((tab) => tab.textContent)).toEqual([
       "Algorithm",
@@ -298,7 +285,7 @@ describe("ArtifactSwitcher", () => {
   })
 
   it("moves straight to an artifact on a tab press", () => {
-    render(<ArtifactSwitcher artifacts={ARTIFACTS} roundId="round-1" />)
+    renderSwitcher()
     fireEvent.click(screen.getByRole("tab", { name: "Budget" }))
     expectCurrent(screen.getByText("Operation count"))
     expect(screen.getByRole("tab", { name: "Budget" })).toHaveAttribute(
@@ -308,7 +295,7 @@ describe("ArtifactSwitcher", () => {
   })
 
   it("moves between tabs with the arrow, Home and End keys, taking focus along", () => {
-    render(<ArtifactSwitcher artifacts={ARTIFACTS} roundId="round-1" />)
+    renderSwitcher()
     const first = screen.getByRole("tab", { name: "Algorithm" })
     first.focus()
     fireEvent.keyDown(first, { key: "ArrowRight" })
@@ -323,10 +310,7 @@ describe("ArtifactSwitcher", () => {
   })
 
   it("follows a swipe: the pager coming to rest on a page makes that artifact current", () => {
-    const { container } = render(
-      <ArtifactSwitcher artifacts={ARTIFACTS} roundId="round-1" />
-    )
-    const pager = pagerOf(container)
+    const { pager } = renderPager()
     settleOn(pager, 1)
     expectCurrent(screen.getByText("C to C′"))
     settleOn(pager, 2)
@@ -339,12 +323,8 @@ describe("ArtifactSwitcher", () => {
   })
 
   it("scrolls the pager to the artifact a press chose", () => {
-    const { container } = render(
-      <ArtifactSwitcher artifacts={ARTIFACTS} roundId="round-1" />
-    )
-    const pager = pagerOf(container)
     const scrollTo = vi.fn()
-    stubScrollTo(pager, scrollTo)
+    renderPager(scrollTo)
     fireEvent.click(screen.getByRole("tab", { name: "Budget" }))
     expect(scrollTo).toHaveBeenLastCalledWith(
       expect.objectContaining({ left: 720 })
@@ -352,21 +332,14 @@ describe("ArtifactSwitcher", () => {
   })
 
   it("does not scroll the pager back to where a swipe already left it", () => {
-    const { container } = render(
-      <ArtifactSwitcher artifacts={ARTIFACTS} roundId="round-1" />
-    )
-    const pager = pagerOf(container)
     const scrollTo = vi.fn()
-    stubScrollTo(pager, scrollTo)
+    const { pager } = renderPager(scrollTo)
     settleOn(pager, 1)
     expect(scrollTo).not.toHaveBeenCalled()
   })
 
   it("jumps rather than scrolls back to the first artifact on a round advance", () => {
-    const { container, rerender } = render(
-      <ArtifactSwitcher artifacts={ARTIFACTS} roundId="round-1" />
-    )
-    const pager = pagerOf(container)
+    const { pager, rerender } = renderPager()
     settleOn(pager, 2)
     const scrollTo = vi.fn()
     stubScrollTo(pager, scrollTo)
@@ -375,11 +348,7 @@ describe("ArtifactSwitcher", () => {
   })
 
   it("ignores the pages a press's own scroll passes on its way", () => {
-    const { container } = render(
-      <ArtifactSwitcher artifacts={ARTIFACTS} roundId="round-1" />
-    )
-    const pager = pagerOf(container)
-    stubScrollTo(pager, vi.fn())
+    const { pager } = renderPager(vi.fn())
     fireEvent.click(screen.getByRole("tab", { name: "Budget" }))
     // The smooth scroll's first steps still rest nearest the first page.
     settleOn(pager, 0)
@@ -393,11 +362,7 @@ describe("ArtifactSwitcher", () => {
   })
 
   it("hands the pager back to a finger that takes it over mid-scroll", () => {
-    const { container } = render(
-      <ArtifactSwitcher artifacts={ARTIFACTS} roundId="round-1" />
-    )
-    const pager = pagerOf(container)
-    stubScrollTo(pager, vi.fn())
+    const { pager } = renderPager(vi.fn())
     fireEvent.click(screen.getByRole("tab", { name: "Budget" }))
     fireEvent.pointerDown(pager)
     settleOn(pager, 1)
@@ -405,11 +370,7 @@ describe("ArtifactSwitcher", () => {
   })
 
   it("takes wherever the pager comes to rest as current, even short of a press's target", () => {
-    const { container } = render(
-      <ArtifactSwitcher artifacts={ARTIFACTS} roundId="round-1" />
-    )
-    const pager = pagerOf(container)
-    stubScrollTo(pager, vi.fn())
+    const { pager } = renderPager(vi.fn())
     fireEvent.click(screen.getByRole("tab", { name: "Budget" }))
     // The press's scroll stops on the middle page instead of the third.
     settleOn(pager, 1)

@@ -29,18 +29,12 @@ type Options<T> = {
   /** Upper bound on the fitted count, so a very tall viewport doesn't render an unbounded page. */
   maxPerPage?: number
   /**
-   * Identifies each item across renders, for a caller whose `items` array is
-   * rebuilt on every update to *any* item even when a given item's own
-   * identity — and hence its rendered height — did not change: editing one
-   * field on one activity rebuilds the whole array via `.map()`, the same
-   * shape as a search swapping in a different result set. Without this, the
-   * hook cannot tell those two apart and grants both the same one-shot
-   * permission to ignore the overflow floor, which can regrow `perPage` past
-   * a count already measured too tall and reshuffle which item is on screen
-   * over a value that never touched layout. Omit when items are only ever
-   * added, removed (both already change `items.length`, which resets the
-   * floor unconditionally) or swapped wholesale, never mutated in place —
-   * the plain identity check already covers those correctly.
+   * Identifies each item across renders, for a caller that rebuilds `items`
+   * whenever any one item changes (editing one field via `.map()`). Without
+   * it, that rebuild reads like a search swapping in new results, and the
+   * one-shot floor retry it earns can regrow `perPage` past a count already
+   * measured too tall. Omit when items are only added, removed or swapped
+   * wholesale: plain identity covers those.
    */
   getItemKey?: (item: T, index: number) => string | number
 }
@@ -50,102 +44,51 @@ const DEFAULT_MAX_PER_PAGE = 24
 
 /**
  * Show as many list items as actually fit the available height, and page the
- * rest — instead of letting the list grow and handing the overflow to a
- * scrollbar.
+ * rest, instead of handing the overflow to a scrollbar. A fixed page size is
+ * wrong at every viewport but one.
  *
- * Why measured rather than a fixed page size: a constant is wrong at every
- * viewport but one. Five rows overflow a short window and waste half a tall
- * one, and "responsive" then means "picks a different wrong number per
- * breakpoint". The only page size that always fits is the one derived from
- * the box it has to fit in.
+ * The fit is found by *probing*, not by arithmetic on a row height: rows are
+ * not uniform and the grid may have several columns, where the next item
+ * often costs no extra height because it joins the row already on screen. So
+ * each pass tries one more and lets the next measurement rule on it. Three
+ * rules make up the whole algorithm:
  *
- * The fit is found by *probing* rather than by arithmetic on a measured row
- * height. Rows here are not uniform (a two-line label is taller than a
- * one-line one) and the grid they sit in is not necessarily one column, so
- * there is no estimate that answers "would one more fit" correctly: dividing
- * by an average silently overflows on the pages with the tall rows, and in a
- * multi-column grid the next item frequently costs *no* extra height at all
- * because it joins the row already on screen. An estimate that assumes
- * vertical stacking therefore under-fills a `sm:grid-cols-2` catalogue by
- * half — a real symptom, not a hypothetical one: at 780×390 the composer's
- * picker sat at one card per page, and paged to "1 / 4", inside a box with
- * room for the other card beside it.
- *
- * So each pass simply tries one more and lets the *next* measurement rule on
- * it. Three rules keep that honest, and between them they are the whole
- * algorithm:
- *
- * 1. **Overflow shrinks, always.** `used > available` is a real measurement
- *    of real content, and the page giving an item back is never wrong.
+ * 1. **Overflow shrinks, always.** `used > available` is a real measurement,
+ *    and giving an item back is never wrong.
  *
  * 2. **A rejected count is rejected for the whole list, not for the page it
- *    was rejected on.** `perPage` is one number governing every page, so the
- *    bound on it has to be one number too. `overflowFloor` is the smallest
- *    count any page has been *seen* to overflow at, for the current box
- *    geometry; growth never proposes it or anything above it again. That is
- *    what makes probing terminate: a proposal either fits (and `perPage`
- *    rises) or lowers the floor to itself (and is never proposed again), so
- *    no count is ever tried twice and the walk is bounded by `maxPerPage`.
- *    It is also what makes the fit *correct* rather than merely stable —
- *    a count that overflows page 3 overflows page 3 no matter which page is
- *    showing when it is next proposed, and a hook that forgets that between
- *    pages is choosing a page size that does not fit.
+ *    was rejected on.** `overflowFloor` is the smallest count any page has
+ *    been seen to overflow at, for the current box geometry; growth never
+ *    proposes it or anything above it again. That makes probing terminate
+ *    (no count is tried twice; the walk is bounded by `maxPerPage`) and makes
+ *    the fit correct across pages.
  *
- *    Deliberately not keyed on "did the content change" inferred from the
- *    caller's React state. Two attempts at that inference were each wrong in
- *    a different real direction: keying on the item array's identity reads
- *    every render as new content for a caller that rebuilds its rows without
- *    memoizing, defeating the guard permanently; keying on the viewport and
- *    page instead misses a genuine change that touches neither, such as a
- *    badge disappearing and un-wrapping a row. Both questions disappear if
- *    the floor is invalidated only by the one thing that genuinely
- *    invalidates a fit — the box being a different size — plus the list
- *    being a different length, which tears the whole measurement down and
- *    rebuilds it (see this effect's dependencies). Neither is a proxy for
- *    anything; both are numbers off the DOM and the input.
+ *    The floor is invalidated only by the box changing size, or the list
+ *    changing length (which tears the effect down). It is deliberately not
+ *    keyed on React state: array identity reads every render as new content
+ *    for a caller that does not memoize, and keying on viewport/page misses a
+ *    badge disappearing and un-wrapping a row. A same-length swap still earns
+ *    a one-shot retry when the caller's change (not the hook's own
+ *    convergence step) changes what `items` identifies; see `getItemKey`.
  *
- *    A same-length swap (a search result set replacing another) still needs
- *    a floor learned from the old content to not block the new content's own
- *    growth, so a one-shot retry is granted whenever the caller's own state
- *    change, not the hook's own convergence step, changes what `items`
- *    identifies — see `getItemKey` below for the one case that default
- *    identity gets wrong: a caller that mutates one item in place and rebuilds
- *    the array to do it.
+ * 3. **Only a full page is evidence of room.** On the last page the list has
+ *    run out, so spare space there says nothing about how much fits. Reading
+ *    it as room grew `perPage`, collapsed `pageCount`, and clamped the page
+ *    back, so Next looked like a dead button.
  *
- * 3. **Only a full page is evidence of room.** This is the rule whose absence
- *    was the bug that motivated the rewrite. On the last page the list has
- *    run out, so `used` is small for a reason that has nothing to do with how
- *    much fits: at four activities and three per page, page 2 holds one card
- *    in a box sized for three. Reading that leftover space as "room for a
- *    fourth per page" grew `perPage` to 4, which collapsed `pageCount` to 1,
- *    which clamped the page index back to 0 — so pressing Next flashed page 2
- *    and then landed back on page 1, looking for all the world like a dead
- *    button. Growth now requires the current page to actually be full, so
- *    the only spare space it can ever read is spare space that a further item
- *    would genuinely occupy.
+ * Reaching the fit takes several passes, and the DOM need not resize between
+ * them (a card joining a row no taller than before), so the
+ * `ResizeObserver` may report nothing. Each pass that changes `perPage`
+ * schedules the next itself, and page changes or item swaps schedule their
+ * own pass too.
  *
- * Reaching the fit takes several passes in a row, and nothing about the DOM
- * necessarily changes size between two of them — adding a card into a grid
- * row that was already exactly that tall changes what is rendered without
- * changing `content`'s own height, so the `ResizeObserver` below reports
- * nothing. Each pass therefore explicitly requests the next one itself when
- * it actually changes `perPage`. The same gap exists one level up: paging to
- * a different page, or a search result swapping in, changes what should be
- * measured next without changing `perPage` or necessarily any rendered size
- * either — so those are watched directly and schedule their own pass, rather
- * than waiting on a notification that may never come.
- *
- * Both refs are required: the viewport is the box to fit, the content is what
- * is being fitted. Measuring one element against itself cannot work, since a
- * `min-h-0` flex child reports the height it was given, not the height it
- * wants.
+ * Both refs are required: a `min-h-0` flex child measured against itself
+ * reports the height it was given, not the height it wants.
  */
 /**
- * Whether two `itemsSignature` readings (see that variable's own comment)
- * represent the same items. Reference equality covers the `getItemKey`-less
- * case exactly as before (`items` itself is the signature there); an
- * element-by-element comparison, not a joined string, is what makes the
- * `getItemKey` case collision-free across arbitrary string/number keys.
+ * Whether two `itemsSignature` readings represent the same items. Element-wise
+ * comparison, not a joined string, keeps arbitrary string/number keys
+ * collision-free.
  */
 function sameItemsSignature(
   previous: ReadonlyArray<string | number> | ReadonlyArray<unknown>,
@@ -177,51 +120,32 @@ export function useFittedPage<T>(
   const safePage = Math.min(page, pageCount - 1)
   const start = safePage * perPage
 
-  // What "the items changed" means for the retry grant below. Without
-  // `getItemKey`, this is the array reference itself — the original,
-  // still-correct behavior for a caller that only ever adds, removes, or
-  // wholesale-swaps `items`. With it, this is the ordered sequence of keys:
-  // a caller that rebuilds the array to mutate one item in place (same
-  // items, same order, one changed value) produces the same sequence, so it
-  // no longer reads as a swap. Kept as an array rather than joined into a
-  // string - `getItemKey` allows arbitrary strings and numbers, and a joined
-  // string is not injective over that (`["a|b", "c"]` and `["a", "b|c"]`
-  // join identically, and so do a numeric key and its string double).
+  // What "the items changed" means for the retry grant. Without
+  // `getItemKey`, the array reference; with it, the ordered keys, so an
+  // in-place mutation that rebuilds the array is not a swap. An array, not a
+  // joined string: `["a|b", "c"]` and `["a", "b|c"]` join identically.
   const itemsSignature: ReadonlyArray<string | number> | ReadonlyArray<T> =
     getItemKey ? items.map((item, index) => getItemKey(item, index)) : items
 
-  // Both adjustments happen during render rather than in an effect (React's
-  // own "adjusting state when props change" shape): React discards this render
-  // and immediately re-renders, so no frame ever paints against an
-  // out-of-range slice, and there is no cascading-render effect.
-  //
-  // A different list is a different reading position...
+  // Adjusted during render (React's "adjusting state when props change"), so
+  // no frame paints an out-of-range slice. A different list resets the page;
   if (listLength !== items.length) {
     setListLength(items.length)
     setPage(0)
   } else if (safePage !== page) {
-    // ...and a page that no longer exists (the fit grew) has to become one
-    // that does.
+    // a page that no longer exists (the fit grew) is clamped.
     setPage(safePage)
   }
 
-  // Read inside the layout effect below without being dependencies of it -
-  // the effect only needs to *see* the latest `perPage`/`itemsSignature`/
-  // `safePage`, not to tear itself down and resubscribe its ResizeObserver whenever one
-  // of them changes, which would discard the accumulated `overflowFloor`
-  // along with it and undo rule 2 on every single step. A ref cannot be
-  // written during render, so a dedicated, dependency-less layout effect
-  // keeps it current instead - and doubles as the trigger for the "changed
-  // without resizing" gap described above: a page change or an item-array
-  // swap is a React-level event with no necessary DOM size change to be
-  // observed, so this effect schedules a pass itself whenever either differs
-  // from what it saw last render.
+  // Read by the measuring effect without being its dependencies: resubscribing
+  // on every change would discard `overflowFloor` and undo rule 2. A ref
+  // cannot be written during render, so this dependency-less layout effect
+  // keeps it current, and schedules a pass when the page or items changed
+  // with no DOM resize to observe.
   const latestRef = useRef({ perPage, itemsSignature, page: safePage })
   const scheduleRef = useRef<(() => void) | null>(null)
-  // A one-shot permission for the next growth attempt to ignore the floor,
-  // earned by the list's contents actually being swapped out. See rule 2's
-  // "hidden candidate" note below for why a floor alone cannot see that, and
-  // why a *page* change deliberately does not earn one.
+  // One-shot permission for the next growth attempt to ignore the floor,
+  // earned only by the list's contents being swapped (rule 2), not by paging.
   const retryFloorRef = useRef(false)
   // Set immediately before `settle` calls `setPerPage`, so the effect below
   // can tell this hook's own convergence renders apart from a caller's.
@@ -252,22 +176,15 @@ export function useFittedPage<T>(
 
     let frame = 0
 
-    // The smallest count any page has been measured to overflow at, for the
-    // box geometry recorded alongside it. See rule 2 above: this is a
-    // property of the list, not of whichever page happened to prove it, and
-    // it is what makes probing terminate.
+    // Rule 2's floor: a property of the list, not of the page that proved it.
     let overflowFloor = Number.POSITIVE_INFINITY
-    // The box each count has been seen in. A count is always measured in the
-    // box *it* produces - the pager beside the box exists only while there is
-    // more than one page, so a count that changes the page count changes the
-    // box's height too - which makes "the box differs from the last pass" a
-    // question the hook's own probing answers yes to. "The same count now
-    // produces a different box" is the question only the outside can answer.
+    // The box each count was seen in. The pager exists only with more than
+    // one page, so a count that changes the page count changes the box
+    // itself; only "the same count now produces a different box" means the
+    // outside changed.
     const measuredAt = new Map<number, { available: number; width: number }>()
-    // What the previous pass saw, so that content changing height *on its
-    // own* - same page, same count, different pixels - can be told apart
-    // from this hook's own convergence steps, which change `perPage` and are
-    // therefore expected to change the height.
+    // Tells content changing height on its own (same page and count) apart
+    // from this hook's own steps, which are expected to change the height.
     let lastPass: { perPage: number; page: number; used: number } | null = null
 
     const settle = (): void => {
@@ -275,32 +192,20 @@ export function useFittedPage<T>(
       const used = content.scrollHeight
       if (available === 0) return
 
-      // `offsetWidth`, not `clientWidth`: this is the box's *identity*, and a
-      // classic scrollbar takes its width out of `clientWidth` exactly while
-      // the content overflows. Overflow is what a rejected probe is - so with
-      // `clientWidth` here, every rejection changed the "box", which voided
-      // the floor that rejection had just set, which let the same count be
-      // proposed again, which overflowed again: one pass per frame, forever,
-      // with the scrollbar flickering in and out as the visible symptom. The
-      // border-box width is set by layout and is the same with or without a
-      // bar, so only the window (or a parent) actually resizing changes it.
-      // Height stays `clientHeight`: nothing this hook measures gains a
-      // horizontal bar from its own probing.
+      // `offsetWidth`, not `clientWidth`: a classic scrollbar takes its width
+      // out of `clientWidth` exactly while content overflows, so every
+      // rejected probe changed the "box", voided its own floor, and retried
+      // forever with a flickering scrollbar. Height stays `clientHeight`:
+      // nothing here gains a horizontal bar from probing.
       const width = viewport.offsetWidth
 
       const current = latestRef.current.perPage
 
-      // A box of a different size is a different question, and every answer
-      // learned about the old one is void. This is the *only* thing that
-      // clears the floor from inside a pass - a list of a different length
-      // tears this whole effect down and rebuilds it, which clears it too.
-      //
-      // "Different" is judged count by count (see `measuredAt`): with one
-      // remembered box, the pager appearing because two per page became one
-      // per page was a new box, which voided the rejection of two, which let
-      // two be tried again - forever, with the page length flickering. The
-      // pager appearing is what one per page always looks like; the window
-      // growing is one per page looking different from last time.
+      // A box of a different size voids every answer learned about the old
+      // one; this is the only in-pass floor reset besides the two below.
+      // Judged per count (see `measuredAt`): with one remembered box, the
+      // pager appearing at one per page voided the rejection of two, and two
+      // was retried forever.
       const seen = measuredAt.get(current)
       if (
         seen !== undefined &&
@@ -311,18 +216,14 @@ export function useFittedPage<T>(
       }
       measuredAt.set(current, { available, width })
 
-      // Consumed regardless of which branch below runs: a one-shot grant is
-      // spent on the very next attempt whether or not it turns out to need it.
+      // Spent on the next attempt whether or not it needs it.
       const retryFloor = retryFloorRef.current
       retryFloorRef.current = false
       if (retryFloor) overflowFloor = Number.POSITIVE_INFINITY
 
-      // The other half of that grant, for content whose height is driven by
-      // state kept entirely outside `items` - a badge on a card, say, that
-      // changes what wraps. Nothing about the input or the page moved, so
-      // neither the floor's own numbers nor an identity check can see it;
-      // the rendered height changing while this hook held `perPage` and the
-      // page still is the measurement that can.
+      // Height driven by state outside `items` (a badge that changes what
+      // wraps) shows only as the rendered height changing while `perPage`
+      // and the page held still.
       const currentPass = {
         perPage: latestRef.current.perPage,
         page: latestRef.current.page,
@@ -345,34 +246,16 @@ export function useFittedPage<T>(
       let settled = current
 
       if (used > available && current > minPerPage) {
-        // Rule 1, and the only place rule 2's floor is ever learned: this
-        // count demonstrably does not fit, so nothing may propose it again
-        // until the box changes size.
+        // Rule 1, and the only place rule 2's floor is learned.
         overflowFloor = Math.min(overflowFloor, current)
         settled = clamp(current - 1)
       } else if (used <= available) {
-        // Rule 3: spare space on a partial page is the list running out, not
-        // room for another item per page. Only a page that is actually full
-        // can testify that the box has room to spare - and "full" has to be
-        // asked of the slice growth would actually produce, not of the one
-        // already on screen. `start = safePage * perPage`, so growing
-        // `perPage` while on a nonzero page changes *which slice* that page
-        // is, and `growthFillsThisPage` (below) answers "is the grown slice
-        // entirely real items" - but a review caught that "entirely real
-        // items" is not the same question as "the same items the reader was
-        // looking at": four items at one per page, on page index 1 (item 1),
-        // growing to two per page keeps page 1 fully populated (items 2-3)
-        // by that count alone, yet silently swaps out the very item that was
-        // on screen for two different ones - no bounce, no overflow, nothing
-        // rule 1 or the page-count guard before it can see, because the new
-        // slice is both full *and* a valid page index. The only page whose
-        // start is invariant under a change to `perPage` is page 0
-        // (`0 * anything = 0`), so it is the only page on which growth can
-        // ever be evidenced by what is already being looked at rather than
-        // by a slice nobody has measured yet. Growth is therefore restricted
-        // to page 0; a nonzero page still shrinks immediately when it
-        // overflows (rule 1 is unconditional), and picks up any accumulated
-        // room the next time the reader returns to page 0.
+        // Rule 3: only a full page testifies to room, judged on the slice
+        // growth would produce. Growth is limited to page 0, the only page
+        // whose start (`page * perPage`) does not move when `perPage` grows:
+        // on page 1 at one per page, growing to two swaps the on-screen item
+        // for two others, a full and valid page nothing else would catch. A
+        // nonzero page still shrinks on overflow and regrows back on page 0.
         const proposed = current + 1
         const growthFillsThisPage =
           currentPage * proposed + proposed <= items.length
@@ -391,11 +274,8 @@ export function useFittedPage<T>(
 
       setIsMeasuring(false)
 
-      // Only reschedule on an actual change, and do it unconditionally
-      // (rather than trusting the ResizeObserver below to notice): the DOM
-      // does not necessarily resize between two convergence steps - e.g.
-      // adding a card into a grid row no taller than the row already was -
-      // and a step that changes nothing has nothing left to converge toward.
+      // Reschedule ourselves on a change: the DOM need not resize between
+      // two convergence steps, so the ResizeObserver may stay quiet.
       if (settled !== current) {
         settlingRef.current = true
         setPerPage(settled)
@@ -408,16 +288,12 @@ export function useFittedPage<T>(
       frame = requestAnimationFrame(settle)
     }
 
-    // Exposed so the "did the page or item array change" effect above can
-    // request a pass too - it fires on events this effect has no dependency
-    // on (see its own comment), so it cannot call `schedule` directly.
+    // For the page/items effect above, which this effect does not depend on.
     scheduleRef.current = schedule
     schedule()
 
-    // Absent in jsdom and on the server. Without it the fit is measured once
-    // on mount and simply never revised, which degrades to a static page size
-    // rather than throwing - the wrong number of rows is a far smaller
-    // problem than a component that cannot render at all.
+    // Absent in jsdom and on the server: the fit is measured once on mount
+    // and never revised, rather than throwing.
     if (typeof ResizeObserver === "undefined") {
       return (): void => {
         scheduleRef.current = null

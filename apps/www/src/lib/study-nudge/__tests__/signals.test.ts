@@ -1,11 +1,7 @@
 /**
- * The signal ingress, which is where the server half's work originates.
- *
- * The property worth pinning hardest is the negative one: only a *change*
- * of status is a behaviour. Reporting `session-started` every time an
- * already-running session is touched would inflate the engagement level the
- * server paces reminders against, and the symptom would be reminders that
- * quietly stop arriving — indistinguishable from the feature working.
+ * The signal ingress, where the server half's work originates. Pinned
+ * hardest: only a *change* of status is a behaviour, or touching a running
+ * session would inflate engagement and reminders would quietly stop.
  */
 import { describe, expect, it } from "vitest"
 

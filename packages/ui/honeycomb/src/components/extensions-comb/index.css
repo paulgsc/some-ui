@@ -291,7 +291,7 @@
   }
 
   /* Touch has no hover, so the L0 name-peek in the centroid is unreachable
-     and a visitor would get six glyphs and nothing else. The name comes to
+     and a visitor would get five glyphs and nothing else. The name comes to
      the cell instead, and the glyph moves up to make room for it. Keyed on
      the pointer's capability rather than on width, because a narrow desktop
      window still hovers.
@@ -369,7 +369,6 @@
      the cell's origin, which would fling it across the comb. */
 
   .xcomb-mini-tab,
-  .xcomb-mini-cube,
   .xcomb-mini-bar,
   .xcomb-mini-beat,
   .xcomb-mini-beat-ping {
@@ -469,31 +468,6 @@
 
     100% {
       transform: translateY(0);
-    }
-  }
-
-  /* Conveyor: three squares ride the belt, turning as they go. */
-  .xcomb-mini-rail {
-    fill: var(--comb-mini-rail);
-    stroke: var(--comb-mini-rail);
-    stroke-width: 3px;
-  }
-
-  .xcomb-mini-cube {
-    animation: xcomb-belt 3.3s linear infinite;
-    fill: none;
-    stroke: var(--comb-honey-surface);
-    stroke-width: 3px;
-    transform-origin: center;
-  }
-
-  @keyframes xcomb-belt {
-    from {
-      transform: translateX(0) rotate(0deg);
-    }
-
-    to {
-      transform: translateX(-176px) rotate(180deg);
     }
   }
 
@@ -769,7 +743,6 @@
     .xcomb-mini-tab,
     .xcomb-mini-page,
     .xcomb-mini-veil,
-    .xcomb-mini-cube,
     .xcomb-mini-bar,
     .xcomb-mini-browse,
     .xcomb-mini-ride,

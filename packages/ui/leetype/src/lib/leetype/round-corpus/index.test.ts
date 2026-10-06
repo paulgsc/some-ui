@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest"
 
 import { ALL_FIXTURE_ROUNDS } from "./index"
 
-describe("ALL_FIXTURE_ROUNDS — the R5 (#1208) round fixture corpus", () => {
+describe("ALL_FIXTURE_ROUNDS — the R5 round fixture corpus", () => {
   it("has one round per active proposition register entry", () => {
     const activeCount = Object.values(PROPOSITION_REGISTER).filter(
       (entry) => entry.status === "active"

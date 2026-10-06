@@ -1,17 +1,12 @@
 /**
  * @vitest-environment jsdom
  *
- * `lib/auth/session` holds the client's belief about its session and runs
- * the passkey ceremonies. The server is faked at the transport seam
- * (`FileHostTransport`), and the browser's WebAuthn prompt at
- * `lib/passkey`, so what is asserted is exactly what this module sends and
- * what it concludes from each answer.
+ * `lib/auth/session`'s belief about its session and its passkey ceremonies.
+ * The server is faked at `FileHostTransport` and WebAuthn at `lib/passkey`,
+ * so what is asserted is what this module sends and concludes.
  *
- * `useHasSession` exists so providers mounted above the router (the TTS
- * provider, the study nudge watcher) react to sign-in without a route change
- * to force their re-render: without a subscription, a query enabled off a
- * one-time `hasSession()` read would stay disabled for the rest of the tab's
- * life once flipped true.
+ * `useHasSession` lets providers above the router react to sign-in without a
+ * route change; a one-time `hasSession()` read would stay stale for the tab.
  */
 
 import { act, renderHook } from "@testing-library/react"

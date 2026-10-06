@@ -4,17 +4,9 @@
  * There is one speech queue per page, because there is one pair of
  * speakers. This module owns it.
  *
- * The old version was a `let` that could only ever be assigned once: a
- * second `initializeSpeechQueue` call logged "Speech queue already
- * initialized" and handed back the *first* manager. That is the other half
- * of the session-poisoning bug. Switching TTS provider, remounting the
- * provider component, or navigating between two pages that both initialize
- * speech all took that branch, so the new session silently kept speaking
- * through the old session's adapter - whose audio context had already been
- * torn down with the component that created it - behind a queue still
- * holding the old session's undelivered items.
- *
- * The rule now: **one live manager, keyed by adapter identity.**
+ * **One live manager, keyed by adapter identity.** Switching provider,
+ * remounting, or navigating between pages that each initialize speech must
+ * not keep speaking through the old session's torn-down adapter.
  * Re-initializing with the same adapter is a no-op (React Strict Mode
  * double-invokes effects, and that must not churn the queue); initializing
  * with a different adapter disposes the old manager first, which aborts its

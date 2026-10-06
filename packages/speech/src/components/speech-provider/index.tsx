@@ -4,12 +4,10 @@
  * The session boundary: one adapter, one queue, created when this mounts
  * and destroyed when it unmounts or its configuration changes.
  *
- * Everything a consumer app used to do by hand - build a TTS hook out of a
- * hardcoded endpoint and API key, call `initializeSpeechQueue` from an
- * effect, swallow the "already initialized" error, and never tear any of it
- * down - happens here instead, once, correctly. The app supplies
- * configuration, and the backends it runs (see `adapters/registry`); which
- * of them answers is this package's business.
+ * The app supplies configuration and the backends it runs (see
+ * `adapters/registry`); building the adapter, initializing the queue and
+ * tearing both down happen here, once. Which backend answers is this
+ * package's business.
  *
  * Changing the configuration ends the old session before the new one
  * starts: the old adapter is disposed, which flushes every promise it still

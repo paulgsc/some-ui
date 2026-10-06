@@ -10,18 +10,14 @@ import type { Rule } from "eslint"
  *     session preference → host adapter → DOM boundary (class + data-theme)
  *       → semantic custom properties → components inherit
  *
- * and both failures this file catches are ways a component steps out of that
- * last arrow. `no-theme-boundary` catches a component opening its own
- * boundary, which replaces the tokens for its whole subtree. `no-structural-
- * palette-color` catches a component painting a substrate role with a literal
- * gray, which ignores the tokens entirely. Neither is visible in review — both
- * look like ordinary class names — and neither breaks a build, which is why
- * they accumulated across the ui workspaces unnoticed.
+ * and both rules catch a component stepping out of the last arrow:
+ * `no-theme-boundary` a component opening its own boundary (replacing the
+ * tokens for its subtree), `no-structural-palette-color` a substrate role
+ * painted with a literal gray. Both look like ordinary class names.
+ *
  */
 
-// rawNode/parts: any — ESTree shapes not modeled precisely by @types/eslint's
-// Node union; same "rawNode: any" convention documented in the other rules
-// in this directory (no-unsafe-* is off repo-wide for this reason).
+// ESTree shapes aren't modeled precisely by @types/eslint's Node union.
 /* eslint-disable @typescript-eslint/no-explicit-any -- see comment above */
 
 const DEFAULT_ATTRIBUTE_NAMES = ["className", "class"]
@@ -61,7 +57,6 @@ const BOUNDARY_OVERRIDE_CLASSES = [
   "code",
   "cdrama",
   "topik",
-  "conveyor",
 ]
 
 /**

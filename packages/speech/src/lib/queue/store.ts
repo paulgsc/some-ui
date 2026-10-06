@@ -3,22 +3,13 @@
  *
  * The minimal reducer store the speech queue runs on.
  *
- * It is a trimmed copy of the generic "ochestra" store that used to live in
- * `some-ui-utils` - which the S2 census (`packages/UTILS_CENSUS.md` §14)
- * found had no consumers outside that package at all. Copying the ~60 lines
- * the queue actually uses is cheaper than the alternative: a dependency
- * from this workspace back onto `some-ui-utils`, which now depends on
- * *this* one for its speech shim, would be a cycle.
+ * Local rather than imported from `some-ui-utils`, which depends on this
+ * package for its speech shim: importing it back would be a cycle.
  *
- * Two deliberate differences from the original, both about teardown:
- * `dispatch` applies synchronously, and `dispose` exists. The original ran
- * a macrotask-paced action queue, which meant a session that had already
- * been torn down could still be applying actions dispatched before it died
- * - the same shape of leak as the promise bug this package's rewrite is
- * about. Its two riders on that queue go with it: key-dedupe (only ever
- * suppressed a duplicate dispatched inside the queue's own drain window,
- * which no longer exists) and action-level priority (item priority is the
- * reducer's job, and always was - see `reducer.ts`'s ordered insert).
+ * Both choices are about teardown: `dispatch` applies synchronously, so a
+ * torn-down session cannot still be applying actions dispatched before it
+ * died, and `dispose` exists. Item priority is the reducer's job (see
+ * `reducer.ts`'s ordered insert), not the store's.
  */
 
 export type Action<K extends string = string> = {

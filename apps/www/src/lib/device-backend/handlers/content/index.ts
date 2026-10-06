@@ -3,12 +3,10 @@
  * `/leetype/rounds*`, as `file_host` serves them (paulgsc/server
  * `handlers/db/{curriculum,leetype}.rs`).
  *
- * What fills the tables differs from the server - the device seeds its
- * bundled Leetype corpus and copies whatever the home server has when it
- * syncs (`device-backend/content-store`) - but what comes out does not:
- * manifests list unretired rows ordered by key, a manifest's `version` is
- * the SHA-256 of its compact JSON in the server's field order, and a body is
- * answered verbatim with its content hash as the ETag.
+ * The tables are filled differently (bundled seed plus home sync,
+ * `device-backend/content-store`), but answers match: manifests list
+ * unretired rows by key, `version` is the SHA-256 of the compact JSON in the
+ * server's field order, and a body is verbatim with its hash as the ETag.
  */
 import { sha256Hex } from "@/lib/device-backend/common"
 import type { DeviceRoute } from "@/lib/device-backend/router"

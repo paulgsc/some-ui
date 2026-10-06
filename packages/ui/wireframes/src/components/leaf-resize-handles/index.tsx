@@ -33,10 +33,8 @@ const NUDGE_DELTA_BY_KEY: Record<Edge, Partial<Record<string, number>>> = {
 }
 
 /**
- * Right-click any leaf (story 7) arms it for resize without entering edit
- * mode - just the existing `resize` intent's drag handles, surfaced on
- * demand instead of always-on, so they don't compete with real content
- * during normal playback.
+ * Right-click any leaf to arm it for resize without edit mode: the `resize`
+ * intent's drag handles, on demand so they do not compete with content.
  */
 export const LeafResizeHandles = ({
   leafId,
@@ -111,11 +109,9 @@ export const LeafResizeHandles = ({
           onMouseDown={handleMouseDown(edge)}
           onKeyDown={handleKeyDown(edge)}
           className={cn(
-            // Kept fully inside the leaf's own rect (no straddling
-            // translate past the edge) - a leaf at the outer boundary of
-            // the viewport sits inside an `overflow-hidden` ancestor, and
-            // a handle translated past its own box risks landing in
-            // clipped, unhittable space there.
+            // Kept inside the leaf's rect: at the viewport edge an
+            // `overflow-hidden` ancestor would clip a straddling handle.
+
             "bg-primary/60 hover:bg-primary pointer-events-auto absolute transition-colors",
             (edge === "left" || edge === "right") && "top-0 bottom-0 w-1.5",
             edge === "left" && "left-0 cursor-ew-resize",

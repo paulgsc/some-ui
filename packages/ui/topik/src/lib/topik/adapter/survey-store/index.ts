@@ -80,7 +80,7 @@ export type SurveyStore = {
    * prompt has now carried it to the learner's model, and it has said what
    * it had to say. Named rather than counted, because the store can change
    * between building a prompt and handing it off - another tab can add a
-   * report - and the newest `n` then are not the ones carried (Codex, #1555).
+   * report - and the newest `n` then are not the ones carried.
    */
   forgetBecoming(carried: Array<Pick<SurveyReport, "topikKey" | "at">>): void
 }
@@ -128,7 +128,7 @@ export function createSurveyStore(
       const kept = fresh(parsed.data.reports, at)
       // What a read drops is deleted, not just hidden: an expired report's
       // free text and evidence would otherwise stay on the device until the
-      // next survey happened to rewrite it (Codex, #1555).
+      // next survey happened to rewrite it.
       if (kept.length < parsed.data.reports.length) write(kept, at)
       return kept
     } catch {

@@ -1,31 +1,22 @@
 /**
  * Study nudges on the Android app, as native local notifications.
  *
- * An Android WebView has neither the web `Notification` API nor push, so
- * neither delivery path the web builds use exists there. What the OS does
- * have is a scheduler that fires with the app closed - which is the whole
- * point of a nudge. So the device hands it one notification at a time:
+ * A WebView has no web `Notification` API and no push, but the OS scheduler
+ * fires with the app closed, so the device hands it one notification at a
+ * time:
  *
- * - **leaving the screen** - `nextNudge` (the policy, stepped forward) picks
- *   the moment, and it is scheduled;
- * - **coming back** - if that moment has passed and the OS no longer holds
- *   the notification as pending, it was shown, and its time becomes the
- *   cooldown `decideNudge` reads (the same `localStorage` stamp the web
- *   builds write). An inexact alarm can still be pending after its time,
- *   and that one was not shown. Then whatever is still pending is
- *   cancelled, since sessions or preferences may be about to change.
+ * - **leaving the screen**: `nextNudge` picks the moment and it is scheduled;
+ * - **coming back**: if that moment passed and the OS no longer holds it as
+ *   pending, it was shown, and its time becomes the cooldown `decideNudge`
+ *   reads (an inexact alarm can still be pending after its time). Whatever is
+ *   still pending is then cancelled.
  *
- * One notification id, so a reschedule replaces rather than stacks. The
- * settings page's test notification has its own id, so it never cancels
- * or replaces the real one.
+ * One notification id, so a reschedule replaces rather than stacks; the
+ * settings test has its own. A nudge's one button, **Not today: say why**,
+ * opens the soundbites page listening (`?say=reminder`), when the reason is
+ * freshest.
  *
- * A nudge carries one button, **Not today: say why**, which opens the
- * soundbites page already listening (`?say=reminder`). A reminder that is
- * not going to be followed is the moment the reason is freshest, so that
- * answer is one tap away rather than a dismissal.
- *
- * Only ever imported dynamically, and only by the device build: the plugin
- * is native, and the web builds have no business loading it.
+ * Only ever imported dynamically, and only by the device build.
  */
 import { LocalNotifications } from "@capacitor/local-notifications"
 
@@ -84,11 +75,9 @@ function writeScheduledAt(at: Date | null): void {
 }
 
 /**
- * Declares the "Not today" button. The plugin keeps action groups across
- * launches, so this only has to have happened once before a nudge is
- * scheduled; it is repeated per schedule because that costs nothing.
- * Only where the soundbites page exists ("apk"); elsewhere a nudge is a plain
- * notification.
+ * Declares the "Not today" button (only where the soundbites page exists,
+ * "apk"). The plugin keeps action groups across launches; repeating it per
+ * schedule costs nothing.
  */
 async function nudgeActionTypeId(): Promise<string | undefined> {
   if (!hasAudience("apk")) return undefined
@@ -125,11 +114,9 @@ export async function scheduleNativeNudge(
         title: next.decision.title,
         body: next.decision.body,
         schedule: { at: next.at },
-        // Inexact on purpose. The plugin defaults to exact (since 8.3.0), and
-        // on Android 12+ an app without exact-alarm access then gets the
-        // "Alarms & reminders" settings screen opened on every schedule().
-        // A study nudge minutes late is fine, and the APK does not ask for
-        // SCHEDULE_EXACT_ALARM (apps/mobile AndroidManifest.xml).
+        // Inexact on purpose: the plugin defaults to exact (8.3.0+), which on
+        // Android 12+ opens "Alarms & reminders" on every schedule() for an
+        // app without SCHEDULE_EXACT_ALARM (not requested; AndroidManifest.xml).
         isExactNotification: false,
         extra: { url: `/sessions/${next.decision.sessionId}` },
       },

@@ -272,8 +272,8 @@ jobs:
       # needs the rest of the workspace installed. That's not just an
       # optimization: a full install is actually broken at this point in the
       # pipeline. On the release commit, changesets has already bumped
-      # consumer package.json files (e.g. extensions/some-conveyor pinning
-      # "@some-ui/polyhedron": "0.0.4") to a version that doesn't exist on
+      # consumer package.json files (e.g. packages/ui/honeycomb pinning
+      # "@some-ui/some-hexagon": "0.0.5") to a version that doesn't exist on
       # npm yet - this job is what's about to publish it. Those are plain
       # semver pins, not `workspace:`, so pnpm won't link them locally; any
       # whole-workspace resolution (even with --no-frozen-lockfile, even

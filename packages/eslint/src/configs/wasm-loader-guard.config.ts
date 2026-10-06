@@ -14,10 +14,9 @@ export const wasmLoaderGuardPlugin = {
 }
 
 /**
- * On by default (included in maishatuRecommended) - unlike switch-lint,
- * this isn't a style preference a workspace opts into, it's a regression
- * guard for a specific completed migration. A bare `import("<wasm-crate>")`
- * outside createWasmLoader() is never intentional post-#529.
+ * On by default (in maishatuRecommended): a bare `import("<wasm-crate>")`
+ * outside createWasmLoader() is never intentional.
+ *
  */
 export default defineConfig([
   {

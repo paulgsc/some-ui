@@ -1,25 +1,15 @@
 /**
  * @vitest-environment jsdom
  *
- * The read hooks in `hooks.ts` are the one place every tenant-data consumer
- * goes through, whether it lives inside the signed-in dashboard (already
- * covered by the router's `beforeLoad` guard) or above the router entirely
- * (`AppProviders`, `TTSProvider` - no route guard reaches those). This
- * exercises the actual `queryFn`s these hooks drive, through a real
- * `QueryClient`, rather than asserting on an `enabled` flag's shape: the
- * property that matters is that no request goes out before there is a
- * session, and one does once there is - not that some option object looks
- * a particular way. `./queries`' own `queryOptions` are swapped for fakes
- * so this exercises `hooks.ts`'s gating logic without touching the real
- * repositories (localStorage, `file_host`) behind them.
+ * The read hooks gate every tenant-data consumer, including those above the
+ * router (`AppProviders`, `TTSProvider`) that no route guard reaches. This
+ * drives the real hooks through a real `QueryClient` and checks that no
+ * request goes out before the authority is decided, with `./queries`'
+ * `queryOptions` swapped for fakes.
  */
 
-import type { JSX, ReactNode } from "react"
-import {
-  QueryClient,
-  QueryClientProvider,
-  queryOptions,
-} from "@tanstack/react-query"
+import { queryClientWrapper } from "@/test-support/query-client"
+import { queryOptions } from "@tanstack/react-query"
 import { renderHook, waitFor } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
@@ -56,13 +46,26 @@ vi.mock("@/lib/authority", () => ({
   }),
 }))
 
-function wrapper(
-  client: QueryClient
-): ({ children }: { children: ReactNode }) => JSX.Element {
-  const Wrapper = ({ children }: { children: ReactNode }): JSX.Element => (
-    <QueryClientProvider client={client}>{children}</QueryClientProvider>
+async function renderReadHooks(): Promise<{ rerender: () => void }> {
+  const { useProfile, useSettings, useSessions } = await import(
+    "@/lib/tenant/hooks"
   )
-  return Wrapper
+  return renderHook(
+    () => {
+      useProfile()
+      useSettings()
+      useSessions()
+    },
+    { wrapper: queryClientWrapper() }
+  )
+}
+
+async function expectAllRead(): Promise<void> {
+  await waitFor(() => {
+    expect(profileQueryFn).toHaveBeenCalled()
+    expect(settingsQueryFn).toHaveBeenCalled()
+    expect(sessionsQueryFn).toHaveBeenCalled()
+  })
 }
 
 afterEach(() => {
@@ -73,19 +76,7 @@ afterEach(() => {
 
 describe("tenant read hooks: no read before the authority is decided", () => {
   it("useProfile/useSettings/useSessions stay idle while it is undecided, and fire once it is", async () => {
-    const { useProfile, useSettings, useSessions } = await import(
-      "@/lib/tenant/hooks"
-    )
-    const client = new QueryClient()
-
-    const { rerender } = renderHook(
-      () => {
-        useProfile()
-        useSettings()
-        useSessions()
-      },
-      { wrapper: wrapper(client) }
-    )
+    const { rerender } = await renderReadHooks()
 
     await new Promise((resolve) => setTimeout(resolve, 20))
     expect(profileQueryFn).not.toHaveBeenCalled()
@@ -95,31 +86,13 @@ describe("tenant read hooks: no read before the authority is decided", () => {
     kind = "account"
     rerender()
 
-    await waitFor(() => {
-      expect(profileQueryFn).toHaveBeenCalled()
-      expect(settingsQueryFn).toHaveBeenCalled()
-      expect(sessionsQueryFn).toHaveBeenCalled()
-    })
+    await expectAllRead()
   })
 
   it("reads at once on the device, where there is no session to wait for", async () => {
     kind = "local"
-    const { useProfile, useSettings, useSessions } = await import(
-      "@/lib/tenant/hooks"
-    )
-    renderHook(
-      () => {
-        useProfile()
-        useSettings()
-        useSessions()
-      },
-      { wrapper: wrapper(new QueryClient()) }
-    )
+    await renderReadHooks()
 
-    await waitFor(() => {
-      expect(profileQueryFn).toHaveBeenCalled()
-      expect(settingsQueryFn).toHaveBeenCalled()
-      expect(sessionsQueryFn).toHaveBeenCalled()
-    })
+    await expectAllRead()
   })
 })

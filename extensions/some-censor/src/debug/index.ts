@@ -1,46 +1,27 @@
 /**
- * Diagnostics page (`debug.html`) — OBS2 (#1396).
+ * Diagnostics page (`debug.html`) — OBS2.
  *
- * some-filter's `debug.html` is the direct model, for the reason #1396 gives:
- * neither extension has a single long-lived background worker to message, so
- * this page cannot query a live thing. State lives per content-script session
- * in `storage.local`, and the page is a *session picker* over it — it reads
- * the capped index OBS1 (#1395) publishes, then that session's bundle.
+ * Modelled on some-filter's `debug.html`: there is no long-lived background
+ * worker to query, so the page is a *session picker* over `storage.local`. It
+ * reads the capped index OBS1 publishes, then that session's bundle.
  *
  * ## Why health is read, not recomputed
  *
- * some-filter's page deliberately *recomputes* its `HealthReport` from the
- * last persisted context, so the page can never become a second place a score
- * drifts. This page deliberately does not, and the difference is not laziness:
- *
- *   - **some-filter's invariants are time-independent.** `CoverageHeld` and
- *     its siblings compare booleans about what is in the DOM. Re-running them
- *     against a stored context yields the same answer whenever you ask.
- *   - **some-censor's are not.** `OccludedCardResolves` asks whether
- *     `now - firstSeenAt` has passed `RESOLVE_BUDGET_MS`, and
- *     `PromotionGuardClears` whether `now - startedAt` has passed
- *     `PROMOTION_STALL_MS`. Re-running those here, against a session that
- *     ended an hour ago, would report every card that happened to be mid-queue
- *     at teardown as permanently stuck — manufacturing violations out of
- *     nothing but elapsed wall-clock.
- *
- * So OBS1 records the verdict *at the moment it was true*, and this page
- * renders that verdict with the age of the reading attached. It is still a
- * pure projection — more strictly one than a recomputation, since there is no
- * second evaluation to disagree. #1396's own acceptance criteria allow this
- * ("match whichever #1395 actually returns").
- *
- * The `queues` snapshot is counts rather than the per-card arrays, for the
- * same reason: those arrays are what a recomputation would need, and a
- * recomputation is the thing that would be wrong.
+ * some-filter's page recomputes its `HealthReport` from the persisted context;
+ * its invariants are time-independent. some-censor's are not:
+ * `OccludedCardResolves` and `PromotionGuardClears` compare `now` against a
+ * start time, so re-running them against a session that ended an hour ago
+ * would report every card mid-queue at teardown as stuck. OBS1 records the
+ * verdict *at the moment it was true*, and this page renders it with the age
+ * of the reading. The `queues` snapshot is counts, not per-card arrays, for the
+ * same reason.
  *
  * ## What it must not render
  *
  * A diagnostics viewer, not a new disclosure surface (#1382). The bundle
- * carries no title, channel name or thumbnail — OBS1 records none — and this
- * page adds no label of its own beyond what is in the bundle. The one content
- * string it does show is the raw upload-date corpus, which `H2` already treats
- * as nonsemantic and which is the entire reason #1394 precedes QC2 (#1384).
+ * carries no title, channel name or thumbnail, and this page adds no label of
+ * its own. The one content string it shows is the raw upload-date corpus,
+ * which `H2` treats as nonsemantic.
  */
 
 import {
@@ -90,12 +71,9 @@ let bundle: Bundle | undefined
 /**
  * Which session `bundle` actually came from.
  *
- * Bot-found (#1407's own review): without this the rendered bundle and the
- * picker's selection could disagree across the storage read, and the Export
- * button stayed live throughout — so exporting during that window produced
- * the *previous* session's file while the page named the new one. A
- * mislabelled corpus is the one failure this page must not have, since
- * handing one to QC2 (#1384) is the whole reason it exists.
+ * Without it the rendered bundle and the picker's selection could disagree
+ * across the storage read, and Export would write the previous session's
+ * file under the new one's name: a mislabelled corpus.
  */
 let loadedSessionId: string | undefined
 /** Guards against two loads landing out of order; see {@link load}. */
@@ -166,10 +144,8 @@ export type CorpusEntry = { surface: string; forms: Array<string> }
  * Pull the `dates.<surface>` snapshots out of a bundle.
  *
  * Exported and pure so the shape QC2 (#1384) consumes is testable without a
- * DOM. A snapshot that is not an array of strings is skipped rather than
- * coerced: OBS1 sizes `maxDetailBytes` so a full corpus fits, but a bundle
- * written by an older build could have been clamped to a truncated string,
- * and showing that as if it were a corpus would be worse than omitting it.
+ * DOM. A snapshot that is not an array of strings is skipped, not coerced: a
+ * bundle from an older build could have been clamped to a truncated string.
  */
 export function corpusOf(b: Bundle): Array<CorpusEntry> {
   const out: Array<CorpusEntry> = []
@@ -233,10 +209,7 @@ function el<K extends keyof HTMLElementTagNameMap>(
  * The session picker.
  *
  * Labelled by origin, surface and session ordinal — never the page title,
- * which on YouTube is the video title and so the one field this extension
- * exists to withhold (#1382). OBS1's `IndexEntry` carries no title for that
- * reason; some-filter's does, which is fine for a general-purpose theming
- * extension and would not be here.
+ * which on YouTube is the video title (#1382).
  */
 function pickerSection(): HTMLElement {
   const select = el("select")
@@ -256,19 +229,14 @@ function pickerSection(): HTMLElement {
   select.addEventListener("change", () => {
     selectedSessionId = select.value || undefined
     filter = { kind: "" }
-    // Drop the old session's bundle before the read starts, not after it
-    // finishes: the handler that creates the divergence is the one that has
-    // to resolve it. Rendering here immediately takes the Export button out
-    // with it, so there is no window in which it would write the wrong file.
+    // Drop the old session's bundle before the read starts, so there is no
+    // window in which Export would write the wrong file.
     clearLoadedBundle()
     render()
     void load()
   })
 
   const refresh = el("button", { text: "Refresh sessions" })
-  // Bot-found (#1407's own review): this used to call loadSessions() alone,
-  // which mutates module state and renders nothing — so a recording created
-  // after the page opened stayed invisible however often it was clicked.
   refresh.addEventListener("click", () => void load(true))
 
   const section = el("section")
@@ -290,9 +258,8 @@ function severityClass(status: InvariantResult["status"]): string {
 /**
  * The recorded health verdict, with the age of the reading attached.
  *
- * The age is not decoration: this is a reading taken at a moment, not a live
- * check (see this module's header), so a score with no indication of when it
- * was taken would invite exactly the misreading the design avoids.
+ * The age matters: this is a reading taken at a moment, not a live check (see
+ * this module's header).
  */
 function healthSection(health: RecordedHealth, samples: number): HTMLElement {
   const cls =
@@ -314,11 +281,8 @@ function healthSection(health: RecordedHealth, samples: number): HTMLElement {
       inv.status === "ok" ? "✓" : inv.status === "violated" ? "✕" : "–"
     const body = el("div")
     body.append(el("div", { text: inv.name }))
-    // OBS1's health snapshot records name/status/details but not the
-    // description — it would cost a copy of this prose in every persisted
-    // bundle for no benefit, since the text is a constant of the build. Look
-    // it up from the live adapter instead. A bundle naming an invariant this
-    // build no longer has simply renders without one, rather than breaking.
+    // The snapshot omits descriptions (a build constant), so look them up from
+    // the live adapter. An invariant this build no longer has renders without.
     const described = boyoInvariants.find((i) => i.name === inv.name)
     if (described) {
       body.append(el("div", { class: "bc-desc", text: described.description }))
@@ -371,11 +335,8 @@ function noHealthSection(): HTMLElement {
 }
 
 /**
- * The observed date corpus — the reason this epic precedes QC2 (#1384).
- *
- * Rendered first among the data sections because it is what a user hands over,
- * and because seeing it is how they know whether a surface still needs
- * visiting before the corpus is worth exporting.
+ * The observed date corpus for QC2 (#1384). Rendered first among the data
+ * sections because it is what a user hands over.
  */
 function corpusSection(b: Bundle): HTMLElement {
   const entries = corpusOf(b)
@@ -515,10 +476,8 @@ function matches(event: ObservabilityEvent, f: Filter): boolean {
 }
 
 function timelineSection(b: Bundle, rerender: () => void): HTMLElement {
-  // Offered in the adapter's declared order, not the order this bundle
-  // happens to contain — a kind that is absent is itself worth being able
-  // to look for, and OBS1 exports the vocabulary so this page need not
-  // restate it.
+  // The adapter's declared vocabulary, not this bundle's: an absent kind is
+  // itself worth being able to look for.
   const present = new Set(b.events.map((e) => e.kind))
   const kindSelect = el("select")
   kindSelect.appendChild(new Option("all events", ""))
@@ -594,11 +553,8 @@ function timelineSection(b: Bundle, rerender: () => void): HTMLElement {
  * The exported bundle: the whole `PersistedState` plus the recorded health
  * verdict lifted to the top level.
  *
- * `health` is lifted rather than left only inside `snapshots` because that is
- * the shape #1396 names, and because whoever consumes this — QC2 (#1384) for
- * the corpus, a bug report for everything else — should not have to know that
- * a verdict happens to be stored as a snapshot. It is a copy, not a second
- * source: `snapshots.health` stays exactly as recorded.
+ * `health` is lifted so a consumer need not know the verdict is stored as a
+ * snapshot. It is a copy: `snapshots.health` stays exactly as recorded.
  */
 export function exportShape(
   b: Bundle
@@ -703,22 +659,9 @@ function clearLoadedBundle(): void {
 }
 
 /**
- * Which session to show, given a freshly read index. Pure, and that is the
- * point.
- *
- * Bot-found (#1407's own review, round 2): this used to be an async
- * `loadSessions()` that assigned `sessions` and `selectedSessionId` itself —
- * *before* {@link load}'s token check could discard a superseded run. So a
- * slow "Refresh sessions" that the user overtook by picking another session
- * still reset the selection when it finally resolved, leaving
- * `selectedSessionId` naming one session while `bundle` held another. The
- * next render that does not reload — a timeline filter change is enough —
- * then drew the picker on the stale selection with the other session's bundle
- * still exported behind it: the same mislabelled-export failure round 1 was
- * about, re-entered through the guard meant to prevent it.
- *
- * Computing the candidate and committing it only after the guard is what
- * makes that structurally impossible rather than ordered-correctly-for-now.
+ * Which session to show, given a freshly read index. Pure, so {@link load}
+ * can commit the candidate only after its token check: a superseded load
+ * must not reset the selection.
  */
 function nextSelection(
   index: ReadonlyArray<IndexEntry>,
@@ -752,16 +695,9 @@ function nextSelection(
  */
 async function load(pickMostRecent = false): Promise<void> {
   const token = ++loadToken
-  // Bot-found (#1407's own review, round 3): clearing the error without
-  // painting it away left the "Unavailable" panel on screen for the whole
-  // retry — and render() returns early while loadError is set, so nothing
-  // else in this function would have repainted it either when the selection
-  // has not changed (the ordinary header-Refresh case). A retry that looks
-  // like it never started is one a user hits again, and again.
-  //
-  // Conditional rather than an unconditional render at the top: on the far
-  // more common no-error path there is nothing to repaint, and a render there
-  // would flash the whole page on every refresh.
+  // Repaint away a stale "Unavailable" panel (render() returns early while
+  // loadError is set), but only then: an unconditional render would flash
+  // the page on every refresh.
   const hadError = loadError !== undefined
   loadError = undefined
   if (hadError) render()

@@ -2,27 +2,19 @@
  * Speech to text on the Android app, for LeetType's margin notes
  * (`@some-ui/leetype`'s `Dictation` port; canon Rem. 3.7).
  *
- * An Android WebView has no Web Speech recognizer, so the browser path the
- * web builds use (`webSpeechDictation`, inside the package) finds nothing
- * there. What the phone does have is its own `SpeechRecognizer`, reached
- * through `@capacitor-community/speech-recognition`. It hands back text and
- * nothing else; no audio is written anywhere. The recognizer is the phone's
- * (Google's, on most), which may send the audio to its vendor, and the
- * composer says so before the first use.
+ * A WebView has no Web Speech recognizer, so this uses the phone's own
+ * `SpeechRecognizer` via `@capacitor-community/speech-recognition`. It returns
+ * text only; no audio is written. The recognizer may send audio to its vendor
+ * (Google, on most), and the composer says so before first use.
  *
- * One utterance per `listen`, ending on a pause or on `stop`. The plugin is
- * asked for final results only (`partialResults: false`): in that mode
- * `start` settles with the transcript or rejects with the recognizer's
- * error, whereas with partial results it resolves at once and a later
- * error, or hearing nothing, reaches JavaScript as nothing at all. So no
- * words appear while the learner speaks; they appear when they stop.
+ * One utterance per `listen`, ending on a pause or `stop`. Final results only
+ * (`partialResults: false`): with partial results `start` resolves at once
+ * and a later error, or silence, reaches JavaScript as nothing. So words
+ * appear when the learner stops speaking.
  *
- * The microphone permission is RECORD_AUDIO, the one soundbites already
- * asks for (apps/mobile's manifest and `review/policy.json`).
- *
- * The plugin is imported on the first `listen` only, so no build loads it
- * before a learner taps Speak, and only the device build passes this in
- * (`components/player/session-viewport.tsx`).
+ * The permission is RECORD_AUDIO, as for soundbites (apps/mobile's manifest,
+ * `review/policy.json`). The plugin loads on the first `listen`, and only the
+ * device build passes this in (`components/player/session-viewport.tsx`).
  */
 // Types only: erased at build, so the activity stays out of the main bundle
 // (the reason `lib/leetype-content` imports nothing from the package).

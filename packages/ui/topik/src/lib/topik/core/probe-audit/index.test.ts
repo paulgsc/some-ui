@@ -168,7 +168,7 @@ describe("auditTopikFile", () => {
     ])
   })
 
-  it("places each finding among the probes that load, so a namesake is not blamed (Codex, #1554)", () => {
+  it("places each finding among the probes that load, so a namesake is not blamed", () => {
     const findings = auditTopikFile(
       fileWith({ id: "broken" }, oddOneOut(), oddOneOut())
     )
@@ -178,7 +178,7 @@ describe("auditTopikFile", () => {
     ])
   })
 
-  it("refuses a conversation or line id used twice: they are identities (Codex, #1554)", () => {
+  it("refuses a conversation or line id used twice: they are identities", () => {
     const conversation = (id: number, ...lines: Array<string>): unknown => ({
       id,
       messages: lines.map((lineId) => line(lineId, "네.")),

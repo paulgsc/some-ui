@@ -3,12 +3,10 @@
  *
  * Integrity tests for the canonical theme registry.
  *
- * These exist because the registry's whole value is being the *only* list.
- * The two failure modes that produced the drift this file was written to end
- * are both mechanical, and both are checked here: metadata for a class that
- * ships no CSS (a switcher entry that silently does nothing), and CSS for a
- * class no metadata mentions (a theme nothing can enumerate, which is how
- * `.code` and `.topik` ended up hardcoded inside components).
+ * The registry's value is being the *only* list, so both drift directions are
+ * checked: metadata for a class that ships no CSS (a switcher entry that does
+ * nothing), and CSS for a class no metadata mentions (a theme nothing can
+ * enumerate).
  */
 
 import { readdirSync, readFileSync } from "node:fs"
@@ -137,13 +135,9 @@ describe("registry integrity", () => {
   })
 
   it("agrees with the lint rule's inlined copy of the override classes", () => {
-    // `theme-protocol/no-theme-boundary` cannot import this package:
-    // @some-ui/eslint-kit compiles to CJS and ESM and typechecks under node16
-    // resolution, so resolving the design system's source there is both a
-    // layering inversion and a build failure. Its list is therefore a
-    // duplicate, and this is what stops the duplicate rotting — register a
-    // session or feature theme without updating the rule and the rule goes
-    // quiet on the new class, which is a lint that silently stops linting.
+    // `theme-protocol/no-theme-boundary` cannot import this package (the lint
+    // kit builds CJS/ESM under node16 resolution), so its list is a duplicate;
+    // this keeps it from rotting, or the rule goes quiet on a new theme.
     const rule = readFileSync(
       join(PACKAGE_ROOT, "../eslint/src/rules/theme-protocol.ts"),
       "utf8"
@@ -201,9 +195,9 @@ describe("applyTheme", () => {
   })
 
   it("leaves a nested feature boundary alone", () => {
-    // The regression this guards: if the controller cleared every known theme
-    // class it would strip `.code` off a host-mounted subtree the moment the
-    // user touched the session switcher.
+    // Clearing every known theme class would strip `.code` off a host-mounted
+    // subtree whenever the user touched the session switcher.
+
     const element = root()
     element.classList.add("code")
     applyTheme(element, resolveTheme("dark"))

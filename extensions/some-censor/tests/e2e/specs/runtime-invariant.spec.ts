@@ -17,8 +17,8 @@
  * T7 — watch-page sidebar (compact renderers) is masked.
  * T8 — navigation BUMPS the session (the fix for stale state).
  * T9 — dblclick reveals from any state, and the veil stops taking clicks.
- * T10 — a revealed renderer repointed at a new video re-masks (QD1, #1423).
- * T11 — a revealed href-only lockup survives preview-anchor churn (#1423).
+ * T10 — a revealed renderer repointed at a new video re-masks (QD1).
+ * T11 — a revealed href-only lockup survives preview-anchor churn.
  */
 
 import { expect, test } from "@censor/playwright/fixture"
@@ -414,9 +414,8 @@ test("T10: a revealed renderer repointed at a new video re-masks, and is never i
   // 1. The QD1 half: a renderer whose authoritative data-video-id has moved on
   //    is a different artifact, however much of the old one is still lying
   //    around in its subtree. It must NOT inherit the old card's `revealed`.
-  // 2. The #1423 half: re-masking must not route through the bare static
-  //    occluder, which takes no pointer events — blurred *and* unclickable was
-  //    the reported symptom.
+  // 2. Re-masking must not route through the bare static occluder, which
+  //    takes no pointer events (blurred *and* unclickable).
   const page = await fixture.goto("yt-home")
 
   await fixture.pollDebug(page, (d) => "vid_bbb222" in d.entries, {
@@ -469,8 +468,7 @@ test("T10: a revealed renderer repointed at a new video re-masks, and is never i
 test("T11: a revealed href-only lockup survives preview-anchor churn", async ({
   fixture,
 }) => {
-  // The other half of #1423, and the one the user actually reported: a Lit
-  // lockup has no authoritative `data-video-id`, so anchor membership is the
+  // A Lit lockup has no authoritative `data-video-id`, so anchor membership is the
   // only evidence there is. A preview anchor landing ahead of the card's own
   // changes what extraction answers, and re-masking on that would revoke the
   // user's disclosure and drop the card under the occluder's

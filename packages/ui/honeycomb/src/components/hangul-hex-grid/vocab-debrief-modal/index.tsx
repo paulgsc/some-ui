@@ -8,10 +8,8 @@ import { useSpeaker } from "@some-ui/speech"
 import "./index.css"
 
 /**
- * How long the debrief holds the session before handing back to the next
- * word - long enough to read a sentence of prose and one example, short
- * enough that a player who already knows the word isn't being punished for
- * missing it. Any engagement at all freezes the clock (see `useAutoDismiss`).
+ * How long the debrief holds the session: long enough for a sentence and an
+ * example. Any engagement freezes the clock (see `useAutoDismiss`).
  */
 const AUTO_DISMISS_MS = 9000
 
@@ -19,9 +17,8 @@ type VocabDebriefModalProps = {
   /** The expired-unfinished word, or null when there is nothing to debrief. */
   missed: MissedWord | null
   /**
-   * The full seed entry for `missed`, when it resolved. Absent for a
-   * host-supplied word pool whose stimulus id didn't match any entry - the
-   * panel still runs off `missed` alone rather than swallowing the debrief.
+   * The full seed entry for `missed`, when it resolved. Absent for an
+   * unmatched host word; the panel then runs off `missed` alone.
    */
   entry: WordEntry | undefined
   /** Move on to the next word. Called on Escape, on timeout, or on the button. */
@@ -29,23 +26,14 @@ type VocabDebriefModalProps = {
 }
 
 /**
- * The pedagogical half of a missed vocabulary word (the other half is the
- * board itself, where `HangulHexCell` reveals the jamo the player never
- * reached).
+ * The pedagogical half of a missed vocabulary word (the board, where
+ * `HangulHexCell` reveals the unreached jamo, is the other). A word that ran
+ * out of time is the one moment worth spending attention on prose, so the run
+ * stops here: the word, its jamo with misses marked, and a line each of
+ * motivation and usage.
  *
- * A word that ran out of time is the one moment in the session where the
- * player has demonstrably reached for something and come up short, which
- * makes it the only moment worth spending their attention on prose. So
- * instead of dropping the cells and spawning the next word, the run stops
- * here: the word is presented as a neon sign, its jamo are laid out with the
- * missed ones marked, and one line each of motivation and usage explain why
- * it was worth knowing.
- *
- * It leaves on its own - `useAutoDismiss` - so the session never needs a
- * click to keep moving, but the countdown freezes the instant the player
- * engages (hover, or focus moving inside the panel), because a debrief that
- * vanishes mid-sentence teaches nothing. Escape leaves immediately, for the
- * player who already knew.
+ * It leaves on its own (`useAutoDismiss`), but the countdown freezes while
+ * the player engages (hover or focus inside). Escape leaves immediately.
  */
 export const VocabDebriefModal = ({
   missed,
@@ -53,20 +41,16 @@ export const VocabDebriefModal = ({
   onDismiss,
 }: VocabDebriefModalProps): React.JSX.Element | null => {
   const speaker = useSpeaker()
-  // Tracked apart rather than as one "engaged" flag: a player who tabs in and
-  // then happens to move the mouse back out is still reading, and collapsing
-  // the two would have that pointer-leave cancel their focus.
+  // Tracked apart: a pointer-leave must not cancel engagement held by focus.
   const [isHovered, setIsHovered] = useState(false)
   const [isFocusWithin, setIsFocusWithin] = useState(false)
   const isEngaged = isHovered || isFocusWithin
   const active = missed !== null
   const [wasActive, setWasActive] = useState(active)
 
-  // Engagement is per-debrief, cleared during render on the active edge (see
-  // useAutoDismiss for the same shape). It has to be cleared *somewhere*: the
-  // panel is usually torn down with the pointer still over it, and a
-  // pointerleave never arrives for an element that stopped existing - so a
-  // stuck `isHovered` would leave the next word's debrief paused forever.
+  // Engagement is per-debrief, cleared during render on the active edge (as
+  // in useAutoDismiss): the panel is usually torn down under the pointer, so
+  // no pointerleave arrives and `isHovered` would stick for the next word.
   if (wasActive !== active) {
     setWasActive(active)
     setIsHovered(false)
@@ -95,8 +79,8 @@ export const VocabDebriefModal = ({
 
   const onPointerEnter = useCallback(() => setIsHovered(true), [])
   const onPointerLeave = useCallback(() => setIsHovered(false), [])
-  // React's onFocus/onBlur are focusin/focusout, so these fire for descendants
-  // too - which is the point: focus landing on any control inside counts.
+  // React's onFocus/onBlur bubble (focusin/focusout), so focus on any
+  // descendant counts.
   const onFocus = useCallback(() => setIsFocusWithin(true), [])
   const onBlur = useCallback(() => setIsFocusWithin(false), [])
 
@@ -108,23 +92,17 @@ export const VocabDebriefModal = ({
   return (
     <div
       className="absolute inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-md"
-      // Presentational: every way out of this panel is either a real control
-      // inside it, the Escape key, or the timer. Clicking the scrim is
-      // deliberately not one of them - the point is to be read.
+      // Presentational: the ways out are a control inside, Escape, or the
+      // timer. Clicking the scrim deliberately is not one.
       role="presentation"
     >
       <div
         className={
-          // scroll-intent: long-form — `pedagogy.note` and `pedagogy.example`
-          // are prose carried by the word entry, so their length belongs to
-          // whoever wrote the corpus, not to this layout. docs/ui-fit's
-          // earlier options all come off worse here: tabs and a paged list
-          // both put a click between the player and the sentence they missed
-          // the word for, on a panel that dismisses itself in nine seconds,
-          // and the surface cannot be enlarged - it is already the full
-          // height of the board it covers. Scrolling is safe on this one
-          // surface precisely because engagement pauses the countdown (see
-          // `useAutoDismiss`), so a player who scrolls is not racing a timer.
+          // scroll-intent: long-form — the corpus decides the prose's length.
+          // Tabs or paging would put a click before the sentence on a
+          // self-dismissing panel already the board's full height; scrolling
+          // is safe because engagement pauses the countdown.
+
           "hangul-debrief-panel relative mx-4 flex max-h-[calc(100%-2rem)] w-full max-w-lg flex-col gap-5 overflow-y-auto rounded-3xl border border-white/15 bg-slate-950/85 px-6 py-7 text-center text-white shadow-2xl sm:px-10"
         }
         data-scroll-intent="long-form"

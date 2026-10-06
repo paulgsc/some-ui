@@ -1,18 +1,13 @@
 /**
- * The cost algebra (LTY-COST, G1) — `docs/canon/complexity-witness-canon.typ`
- * Def. 2.1, Def. 2.2.
+ * The cost algebra (LTY-COST): canon Def. 2.1, Def. 2.2.
  *
- * Three constructors, one pure function: `W`/`Seq`/`Loop` build a cost graph
- * `G`, and `costOf` computes `T(G)`. Sibling control flow adds, nested
- * control flow multiplies — nothing else is in the grammar. `T` returns a
- * *symbolic* cost expression over input dimensions, never a number:
- * evaluating it at a point (admissibility) and reducing it to a dominant
- * term (the Θ-class) are later stories' jobs, not this one's. A round that
- * authors a `Θ` string instead of a graph is the exact error Prop. 2.1
- * forbids — this module is what makes the class derived instead.
+ * `W`/`Seq`/`Loop` build a cost graph `G`; `costOf` computes `T(G)`. Sibling
+ * control flow adds, nested control flow multiplies, nothing else. `T` is a
+ * *symbolic* expression over input dimensions, never a number. A round that
+ * authors a `Θ` string instead of a graph is the error Prop. 2.1 forbids;
+ * this module makes the class derived.
  *
- * Engine-free, in the register of `lib/leetype/reading-probe`: nothing here
- * imports the wasm loader or any hook, and nothing live imports this yet.
+ * Engine-free: no wasm loader or hook.
  */
 
 import { assertNever } from "some-ui-utils"
@@ -94,10 +89,8 @@ export function printMonomial(monomial: Monomial): string {
   return monomial.map(printFactor).join(" * ")
 }
 
-// Single source for the identifier shape a dimension name must have — reused
-// by `validateDimension` below so a name `dim`/`logDim` accepts is always one
-// `parseFactor` can read back, which is what makes `parseMonomial` actually
-// the inverse of `printMonomial` on every monomial this module can construct.
+// One identifier shape for `validateDimension` and `parseFactor`, so every
+// name `dim`/`logDim` accept parses back (`parseMonomial` inverts `printMonomial`).
 const DIMENSION_SOURCE = "[A-Za-z]\\w*"
 const DIMENSION_NAME = new RegExp(`^${DIMENSION_SOURCE}$`)
 const LOG_PAREN = new RegExp(`^\\(log\\s+(${DIMENSION_SOURCE})\\)\\^(-?\\d+)$`)
@@ -253,11 +246,9 @@ export function dimensionsOfMonomial(
 }
 
 /**
- * Every dimension any `Loop` in the graph repeats over (Def. 2.1: only a
- * `Loop`'s repetition expression carries a dimension — `W`'s cost is a bare
- * number). The identifiers a constraint's own `dimension` is checked
- * against (R2, #1205's own acceptance criterion: "dimension identifiers
- * are shared with the cost graph's repetition expressions").
+ * Every dimension any `Loop` in the graph repeats over (only repetitions
+ * carry dimensions; `W`'s cost is a number). Constraint dimensions are
+ * checked against these.
  */
 export function dimensionsOfGraph(graph: CostGraph): ReadonlySet<Dimension> {
   switch (graph.kind) {
@@ -287,14 +278,12 @@ export function dimensionsOfGraph(graph: CostGraph): ReadonlySet<Dimension> {
 }
 
 /**
- * G2 (#1210), Thm. 2.1 / Cor. 2.1 / Def. 2.3 / Rem. 2.1: `T(G)` decomposed
- * into the root-to-leaf paths whose products sum to it, and the "dominant"
- * subset among them — the structure a future renderer (#1199) points at to
- * show *which* nesting is the expensive one, rather than only naming the
- * class.
+ * Thm. 2.1 / Cor. 2.1 / Def. 2.3 / Rem. 2.1: `T(G)` decomposed into the
+ * root-to-leaf paths whose products sum to it, and the dominant subset, so a
+ * renderer can show *which* nesting is expensive.
  */
 
-/** One root-to-leaf path through a cost graph (Thm. 2.1): the `Loop` nodes traversed, root to leaf, and the `W` leaf the path ends at — actual node references, not a reduced monomial, so a caller walking `G` can identify by `===` which nodes a path passes through (what "renderable" means for this story: "the round can highlight the nesting chain that dominates"). */
+/** One root-to-leaf path through a cost graph (Thm. 2.1): the `Loop` nodes traversed and the `W` leaf, as node references so a caller can match them by `===` to highlight the chain. */
 export type CostPath = {
   readonly loops: ReadonlyArray<Extract<CostGraph, { kind: "loop" }>>
   readonly leaf: Extract<CostGraph, { kind: "work" }>
@@ -321,19 +310,15 @@ function pathsOf(
 }
 
 /**
- * `paths(G)` (Thm. 2.1): every root-to-leaf path through the graph. `Seq`
- * branches into one path set per child (disjoint union, per the theorem's
- * own proof); `Loop` prefixes its repetition onto every path through its
- * body; `W` terminates exactly one path. A graph with several `Seq`
- * siblings nested several levels deep has as many paths as leaves — not
- * the same count as `costOf`'s own `CostExpr`, which merges paths that
- * land on the same monomial (`normalizeCostExpr`) into one term.
+ * `paths(G)` (Thm. 2.1): every root-to-leaf path. `Seq` unions its children's
+ * paths, `Loop` prefixes onto its body's, `W` ends one. One path per leaf,
+ * unlike `costOf`, which merges paths landing on the same monomial.
  */
 export function paths(graph: CostGraph): ReadonlyArray<CostPath> {
   return pathsOf(graph, [])
 }
 
-/** `Π_{v∈p} r_v` (Thm. 2.1): a path's own repetition monomials, multiplied — nesting still multiplies, the same rule `scaleCost` already encodes, just walked as a path instead of recursed as a tree. */
+/** `Π_{v∈p} r_v` (Thm. 2.1): a path's repetition monomials, multiplied. */
 export function monomialOfPath(path: CostPath): Monomial {
   return path.loops.reduce(
     (product, loop) => multiplyMonomials(product, loop.repetition),
@@ -341,7 +326,7 @@ export function monomialOfPath(path: CostPath): Monomial {
   )
 }
 
-/** One path's own contribution to `T(G)`: its leaf's constant, times its monomial. Summing this over every `paths(G)` reconstructs `costOf(G)` exactly — Thm. 2.1's identity, and the two independent computations this story's own test holds against each other. */
+/** One path's contribution to `T(G)`: leaf constant times monomial. Summed over `paths(G)` it equals `costOf(G)` (Thm. 2.1). */
 export function costOfPath(path: CostPath): CostExpr {
   return normalizeCostExpr([
     { coefficient: path.leaf.cost, monomial: monomialOfPath(path) },
@@ -349,23 +334,11 @@ export function costOfPath(path: CostPath): CostExpr {
 }
 
 /**
- * A path's degree (Cor. 2.1's `Σ_v a_v`, generalized): the sum of its
- * `pow`-kind factors' exponents, primary; the sum of its `log`-kind
- * factors' exponents, secondary. Cor. 2.1's own precondition is a single
- * shared dimension with every repetition a bare power of it — where that
- * holds, `log` is `0` for every path and only `pow` ever decides.
- * `pow` alone stops being sufficient the moment a repetition legitimately
- * combines a power with a logarithm of the *same* dimension (`n * log n`,
- * a `Monomial` `Loop` already accepts): `log n` grows strictly slower
- * than any positive power of `n`, but strictly *faster* than doing
- * nothing — a path of `n * log n` genuinely dominates a same-degree path
- * of `n` alone, and comparing `pow` only would wrongly call them tied
- * (review finding on #1252). Comparing multiple *different* dimensions'
- * degrees this way (`n²` against `m³`) remains outside what this can
- * justify — that comparison depends on the relationship between `n` and
- * `m`, which nothing here knows, and stays out of scope the same way
- * non-monomial repetition expressions do (this story's own "out of
- * scope" line).
+ * A path's degree (Cor. 2.1's `Σ_v a_v`, generalized): summed `pow`
+ * exponents first, summed `log` exponents as tie-break. The `log` part
+ * matters for `n * log n` against `n`: slower than any power, faster than
+ * nothing. Comparing different dimensions (`n²` vs `m³`) is out of scope,
+ * since it depends on how `n` and `m` relate.
  */
 type Degree = { readonly pow: number; readonly log: number }
 
@@ -375,7 +348,7 @@ function sumExponents(monomial: Monomial, kind: "pow" | "log"): number {
     .reduce((total, factor) => total + factor.exponent, 0)
 }
 
-/** A monomial's own degree — `pow` primary, `log` secondary — independent of any path or graph it came from, so `dominantTerms` (below) can compare a `CostExpr`'s terms the same way `dominantPaths` compares a graph's paths. */
+/** A monomial's degree, so `dominantTerms` compares terms as `dominantPaths` compares paths. */
 function degreeOfMonomial(monomial: Monomial): Degree {
   return {
     pow: sumExponents(monomial, "pow"),
@@ -398,30 +371,17 @@ function degreesEqual(a: Degree, b: Degree): boolean {
 }
 
 /**
- * `dominantPaths(G)` (Def. 2.3, Cor. 2.1): the maximizing set among
- * `paths(G)` — every path whose degree equals the graph's maximum. **A
- * set, not a path**: Def. 2.3 says a dominant path "need not be unique;
- * where it is not, the round may not assert that it is" — there is
- * deliberately no singular `dominantPath(G)` export a caller could reach
- * for instead, which is what makes that rule true by construction rather
- * than by a convention every call site has to remember.
+ * `dominantPaths(G)` (Def. 2.3, Cor. 2.1): every path whose degree equals
+ * the maximum. **A set, not a path**: a dominant path "need not be unique;
+ * where it is not, the round may not assert that it is", so there is no
+ * singular export to reach for.
  *
- * A path whose leaf costs `0` is excluded before the comparison, never a
- * candidate for dominance regardless of degree: Thm. 2.1's own proof
- * takes "the leaf's own constant" as the product's last factor, so a
- * zero leaf makes the whole product — and the path's real contribution to
- * `T(G)` — zero (`costOfPath`'s term is dropped by `normalizeCostExpr`'s
- * own zero-coefficient filter, the same one `costOf` itself relies on). A
- * higher-degree path that contributes nothing is not "the expensive
- * nesting" Def. 2.3 means (review finding on #1252). If every path costs
- * `0`, `T(G)` is identically `0` and nothing meaningfully dominates —
- * this returns the empty set rather than picking one arbitrarily.
+ * Paths whose leaf costs `0` are excluded: they contribute nothing to
+ * `T(G)`, so they are not "the expensive nesting". If every path costs `0`
+ * this returns the empty set.
  *
- * Rem. 2.1's own counterexample is why this compares by degree (summed
- * exponents) rather than by depth or path length: two siblings, one `n`
- * and one `n³`, inside an outer `n`-loop, give two paths of degree 2 and
- * 4 — the degree-4 path is dominant (`Θ(n⁴)`), never a `Θ(n⁵)` a
- * depth-3-implies-cubed-again misreading would produce.
+ * Compared by degree, not depth (Rem. 2.1): siblings `n` and `n³` inside an
+ * outer `n`-loop give degrees 2 and 4, so `Θ(n⁴)`, never `Θ(n⁵)`.
  */
 export function dominantPaths(graph: CostGraph): ReadonlyArray<CostPath> {
   const contributingPaths = paths(graph).filter((path) => path.leaf.cost !== 0)
@@ -451,25 +411,13 @@ function isMaximalDegree(
 }
 
 /**
- * G3 (#1211), Prop. 2.1: the dominant term(s) of `T(G)` itself — the same
- * kind of degree comparison `dominantPaths` runs over a graph's paths, run
- * instead over a cost expression's own (already-summed) terms, so a caller
- * holding only `T` (no graph reference) can still find what dominates it.
- * `T`'s terms are already normalized (`normalizeCostExpr`), so two paths
- * landing on the same monomial have already been merged into one term by
- * the time this runs — but two *distinct* monomials of equal degree (`n^2`
- * and `n * m`) are not merged and can genuinely tie. Def. 2.3's "need not
- * be unique" applies here exactly as it does to `dominantPaths`, so this
- * returns every tied term rather than choosing one.
+ * The dominant term(s) of `T(G)` (Prop. 2.1): `dominantPaths`' comparison
+ * over a cost expression's terms, for a caller holding only `T`. Distinct
+ * monomials of equal degree (`n^2`, `n * m`) can tie, and every tied term is
+ * returned (Def. 2.3).
  *
- * Degree is only compared **within** terms sharing the exact same set of
- * dimensions — R2's own "relating two dimensions to each other" is out of
- * scope, so nothing here can say `n^3` "beats" `m^2`: `m` is free to grow
- * independently of `n`, and summing exponents across unrelated dimensions
- * would silently drop a term that could dominate for some valid input
- * (review finding: `n^3 + m^2` was reduced to `Θ(n^3)`). A term maximal
- * within its own dimension-set group survives; a different group never
- * eliminates it, regardless of summed degree.
+ * Degree is compared only **within** terms over the same dimension set:
+ * `m` may grow independently of `n`, so `n^3 + m^2` keeps both terms.
  */
 export function dominantTerms(cost: CostExpr): CostExpr {
   if (cost.length === 0) return []
@@ -494,17 +442,10 @@ export function dominantTerms(cost: CostExpr): CostExpr {
 }
 
 /**
- * The rendered `Θ`-class of a cost expression — Prop. 2.1's own "a round
- * ... derives ... its `Θ`-class. It never authors the `Θ`-class directly":
- * this is that derivation, the only function in this workspace allowed to
- * produce a `Θ(...)` string, so that no schema needs a field to hold one
- * (G3's own acceptance criterion). A genuine tie among `dominantTerms`
- * prints as a sum (canon gives no rule for preferring one tied monomial
- * over another); coefficients are dropped the same way `printMonomial`
- * already drops them, since Ax. 3.1's coarseness means a constant factor
- * was never part of the class. `T(G) ≡ 0` (every leaf costs `0`) has no
- * dominant term and prints as `Θ(0)` rather than throwing — a graph that
- * does no work at all is a legitimate, if degenerate, cost graph.
+ * The rendered `Θ`-class of a cost expression: Prop. 2.1's derivation, and
+ * the only producer of a `Θ(...)` string, so no schema holds one. Ties print
+ * as a sum (the canon prefers none); coefficients are dropped (Ax. 3.1).
+ * `T(G) ≡ 0` prints `Θ(0)`.
  */
 export function printClass(cost: CostExpr): string {
   const dominant = dominantTerms(cost)

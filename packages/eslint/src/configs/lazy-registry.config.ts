@@ -11,12 +11,11 @@ import { defineConfig } from "eslint/config"
  * regardless - the dynamic import is still there, still lazy-looking, and
  * no longer doing anything.
  *
- * This is invisible without building. `import type { WordEntry }` and
- * `import { interviewQuestions }` differ by one keyword, live in the same
- * kind of file, and grep reports them identically - but only the second is
- * a bundle edge. It went unnoticed here until someone diffed a chunk.
+ * Invisible without building: `import type { X }` and `import { x }` differ
+ * by one keyword, but only the second is a bundle edge (see the rule).
  *
  * Type imports are always allowed, because they are erased. Value imports
+ *
  * need a stated reason: either the applet should own the thing (take plain
  * config through scene props, default its own data), or the host's use is
  * genuinely direct and goes in `allow` with a comment.

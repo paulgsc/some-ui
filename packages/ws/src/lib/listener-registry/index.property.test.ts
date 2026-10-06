@@ -95,7 +95,7 @@ describe("ListenerRegistry - notify calls every currently-registered listener ex
   })
 })
 
-describe("ListenerRegistry - regression: a throwing listener does not block the others", () => {
+describe("ListenerRegistry - a throwing listener does not block the others", () => {
   it("still notifies every other listener when one listener throws", () => {
     const registry = new ListenerRegistry<number>()
     const before = vi.fn()
@@ -118,7 +118,7 @@ describe("ListenerRegistry - regression: a throwing listener does not block the 
   })
 })
 
-describe("ListenerRegistry - regression: re-adding the same reference is a no-op on size", () => {
+describe("ListenerRegistry - re-adding the same reference is a no-op on size", () => {
   it("does not double-count or double-notify a listener added twice", () => {
     const registry = new ListenerRegistry<void>()
     const fn = vi.fn()

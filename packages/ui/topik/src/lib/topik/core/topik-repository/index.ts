@@ -1,26 +1,13 @@
 /**
- * Topik Repository - Pure Data Access Layer
- *
- * RESPONSIBILITIES:
- * - Fetch remote topik data
- * - Validate schema integrity
- * - Normalize/transform data structure
- *
- * NON-RESPONSIBILITIES (delegated to TanStack Query):
- * - Caching
- * - Request deduplication
- * - Invalidation
- * - Memory management
- * - Lifecycle coordination
+ * Topik data access: fetch, validate and normalize. Caching, deduplication,
+ * invalidation and lifecycle are TanStack Query's.
  */
 
 import type { ConversationBatch } from "@topik/lib/topik"
 import { TopikFileSchema } from "@topik/lib/topik"
 import type { ITopikRepository } from "@topik/lib/topik/core/session-types"
 
-// ═══════════════════════════════════════════════════════════════════════════
 // REPOSITORY IMPLEMENTATION
-// ═══════════════════════════════════════════════════════════════════════════
 
 export class TopikRepository implements ITopikRepository {
   constructor(
@@ -28,22 +15,14 @@ export class TopikRepository implements ITopikRepository {
     private readonly validator: typeof TopikFileSchema
   ) {}
 
-  /**
-   * Load and validate topik data.
-   * Pure data access - no caching, no deduplication.
-   * TanStack Query handles those concerns.
-   */
   async load(key: string): Promise<Array<ConversationBatch>> {
     const raw = await this.loader(key)
 
-    // Validate schema - throws on invalid data
     return this.validator.parse(raw)
   }
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
 // FACTORY
-// ═══════════════════════════════════════════════════════════════════════════
 
 async function defaultLoader(key: string): Promise<unknown> {
   const response = await fetch(key)

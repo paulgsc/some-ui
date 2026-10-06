@@ -4,10 +4,6 @@ import type { SpeechQueueState } from "@speech/lib/queue/types"
 import fc from "fast-check"
 import { describe, expect, it } from "vitest"
 
-// ═══════════════════════════════════════════════════════════════════════════
-// FIXTURES
-// ═══════════════════════════════════════════════════════════════════════════
-
 function initialState(
   overrides: Partial<SpeechQueueState> = {}
 ): SpeechQueueState {
@@ -30,28 +26,29 @@ function speak(componentId: string, priority: number): SpeechAction {
   }
 }
 
+function fold(
+  state: SpeechQueueState,
+  ...actions: Array<SpeechAction>
+): SpeechQueueState {
+  return actions.reduce(speechReducer, state)
+}
+
+/** A queue fed one SPEAK per priority, from components c0, c1, ... */
+const queued = (priorities: Array<number>): SpeechQueueState =>
+  fold(initialState(), ...priorities.map((p, i) => speak(`c${i}`, p)))
+
 function isNonIncreasing(priorities: Array<number>): boolean {
   return priorities.every((p, i) => i === 0 || priorities[i - 1]! >= p)
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// SPEAK - priority-ordered insertion
-// ═══════════════════════════════════════════════════════════════════════════
-
 describe("speechReducer - SPEAK priority ordering", () => {
   it("inserts an out-of-order priority sequence into descending order", () => {
-    const priorities = [1, 5, 3, 2, 4]
-    let state = initialState()
-    priorities.forEach((p, i) => {
-      state = speechReducer(state, speak(`c${i}`, p))
-    })
+    const state = queued([1, 5, 3, 2, 4])
     expect(state.items.map((i) => i.priority)).toEqual([5, 4, 3, 2, 1])
   })
 
   it("keeps equal-priority items in insertion order (stable ties)", () => {
-    let state = initialState()
-    state = speechReducer(state, speak("first", 3))
-    state = speechReducer(state, speak("second", 3))
+    const state = fold(initialState(), speak("first", 3), speak("second", 3))
     expect(state.items.map((i) => i.componentId)).toEqual(["first", "second"])
   })
 
@@ -63,10 +60,7 @@ describe("speechReducer - SPEAK priority ordering", () => {
           maxLength: 20,
         }),
         (priorities) => {
-          let state = initialState()
-          priorities.forEach((priority, i) => {
-            state = speechReducer(state, speak(`c${i}`, priority))
-          })
+          const state = queued(priorities)
           expect(isNonIncreasing(state.items.map((i) => i.priority))).toBe(true)
         }
       ),
@@ -82,10 +76,7 @@ describe("speechReducer - SPEAK priority ordering", () => {
           maxLength: 20,
         }),
         (priorities) => {
-          let state = initialState()
-          priorities.forEach((priority, i) => {
-            state = speechReducer(state, speak(`c${i}`, priority))
-          })
+          const state = queued(priorities)
 
           expect(state.items).toHaveLength(priorities.length)
           expect(new Set(state.items.map((item) => item.id)).size).toBe(
@@ -105,10 +96,7 @@ describe("speechReducer - SPEAK priority ordering", () => {
           maxLength: 20,
         }),
         (priorities) => {
-          let state = initialState()
-          priorities.forEach((priority, i) => {
-            state = speechReducer(state, speak(`c${i}`, priority))
-          })
+          const state = queued(priorities)
 
           // Within any one priority band, arrival order is the tie-break -
           // a queue that reorders equals speaks sentences out of sequence.
@@ -125,15 +113,9 @@ describe("speechReducer - SPEAK priority ordering", () => {
   })
 })
 
-// ═══════════════════════════════════════════════════════════════════════════
-// CANCEL - abort-on-cancel
-// ═══════════════════════════════════════════════════════════════════════════
-
 describe("speechReducer - CANCEL aborts controllers", () => {
   it("aborts and removes every queued item matching componentId", () => {
-    let state = initialState()
-    state = speechReducer(state, speak("a", 1))
-    state = speechReducer(state, speak("b", 1))
+    let state = fold(initialState(), speak("a", 1), speak("b", 1))
     const itemA = state.items.find((i) => i.componentId === "a")!
 
     state = speechReducer(state, {
@@ -146,9 +128,7 @@ describe("speechReducer - CANCEL aborts controllers", () => {
   })
 
   it("aborts only the specific itemId when one is given", () => {
-    let state = initialState()
-    state = speechReducer(state, speak("a", 1))
-    state = speechReducer(state, speak("a", 2))
+    let state = fold(initialState(), speak("a", 1), speak("a", 2))
     const [first, second] = state.items
 
     state = speechReducer(state, {
@@ -162,15 +142,16 @@ describe("speechReducer - CANCEL aborts controllers", () => {
   })
 
   it("aborts the in-flight current item when it matches, without clearing it", () => {
-    let state = initialState()
-    state = speechReducer(state, speak("a", 1))
+    let state = fold(initialState(), speak("a", 1))
     const item = state.items[0]!
-    state = speechReducer(state, { type: "ITEM_STARTED", payload: { item } })
-
-    state = speechReducer(state, {
-      type: "CANCEL",
-      payload: { componentId: "a" },
-    })
+    state = fold(
+      state,
+      { type: "ITEM_STARTED", payload: { item } },
+      {
+        type: "CANCEL",
+        payload: { componentId: "a" },
+      }
+    )
 
     expect(item.controller.signal.aborted).toBe(true)
     // CANCEL only aborts the controller; ITEM_CANCELLED (dispatched
@@ -179,27 +160,22 @@ describe("speechReducer - CANCEL aborts controllers", () => {
   })
 })
 
-// ═══════════════════════════════════════════════════════════════════════════
-// PAUSE / RESUME - status transitions
-// ═══════════════════════════════════════════════════════════════════════════
-
 describe("speechReducer - pause/resume status transitions", () => {
   it("PAUSE aborts the current item and sets status to 'paused'", () => {
-    let state = initialState()
-    state = speechReducer(state, speak("a", 1))
+    let state = fold(initialState(), speak("a", 1))
     const item = state.items[0]!
-    state = speechReducer(state, { type: "ITEM_STARTED", payload: { item } })
-
-    state = speechReducer(state, { type: "PAUSE" })
+    state = fold(
+      state,
+      { type: "ITEM_STARTED", payload: { item } },
+      { type: "PAUSE" }
+    )
 
     expect(item.controller.signal.aborted).toBe(true)
     expect(state.status).toBe("paused")
   })
 
   it("RESUME goes to 'speaking' when items remain queued", () => {
-    let state = initialState()
-    state = speechReducer(state, speak("a", 1))
-    state = speechReducer(state, { type: "PAUSE" })
+    let state = fold(initialState(), speak("a", 1), { type: "PAUSE" })
 
     state = speechReducer(state, { type: "RESUME" })
 
@@ -208,8 +184,7 @@ describe("speechReducer - pause/resume status transitions", () => {
   })
 
   it("RESUME goes to 'idle' when the queue is empty and nothing is in flight", () => {
-    let state = initialState()
-    state = speechReducer(state, { type: "PAUSE" })
+    let state = fold(initialState(), { type: "PAUSE" })
 
     state = speechReducer(state, { type: "RESUME" })
 
@@ -217,15 +192,9 @@ describe("speechReducer - pause/resume status transitions", () => {
   })
 })
 
-// ═══════════════════════════════════════════════════════════════════════════
-// CLEAR
-// ═══════════════════════════════════════════════════════════════════════════
-
 describe("speechReducer - CLEAR", () => {
   it("aborts every queued item and the current item, then resets to idle", () => {
-    let state = initialState()
-    state = speechReducer(state, speak("a", 1))
-    state = speechReducer(state, speak("b", 1))
+    let state = fold(initialState(), speak("a", 1), speak("b", 1))
     const startedItem = state.items[0]!
     state = speechReducer(state, {
       type: "ITEM_STARTED",
@@ -244,21 +213,18 @@ describe("speechReducer - CLEAR", () => {
   })
 })
 
-// ═══════════════════════════════════════════════════════════════════════════
-// ITEM_FAILED - retry logic
-// ═══════════════════════════════════════════════════════════════════════════
-
 describe("speechReducer - ITEM_FAILED retry logic", () => {
   it("re-queues at the front with an incremented retryCount and a fresh controller, when under maxRetries", () => {
-    let state = initialState()
-    state = speechReducer(state, speak("a", 1))
+    let state = fold(initialState(), speak("a", 1))
     const item = state.items[0]!
-    state = speechReducer(state, { type: "ITEM_STARTED", payload: { item } })
-
-    state = speechReducer(state, {
-      type: "ITEM_FAILED",
-      payload: { itemId: item.id, error: "boom", shouldRetry: true },
-    })
+    state = fold(
+      state,
+      { type: "ITEM_STARTED", payload: { item } },
+      {
+        type: "ITEM_FAILED",
+        payload: { itemId: item.id, error: "boom", shouldRetry: true },
+      }
+    )
 
     expect(state.currentItem).toBeNull()
     expect(state.items).toHaveLength(1)
@@ -268,15 +234,16 @@ describe("speechReducer - ITEM_FAILED retry logic", () => {
   })
 
   it("gives up and records the failure once shouldRetry is false", () => {
-    let state = initialState()
-    state = speechReducer(state, speak("a", 1))
+    let state = fold(initialState(), speak("a", 1))
     const item = state.items[0]!
-    state = speechReducer(state, { type: "ITEM_STARTED", payload: { item } })
-
-    state = speechReducer(state, {
-      type: "ITEM_FAILED",
-      payload: { itemId: item.id, error: "boom", shouldRetry: false },
-    })
+    state = fold(
+      state,
+      { type: "ITEM_STARTED", payload: { item } },
+      {
+        type: "ITEM_FAILED",
+        payload: { itemId: item.id, error: "boom", shouldRetry: false },
+      }
+    )
 
     expect(state.currentItem).toBeNull()
     expect(state.totalFailed).toBe(1)
@@ -284,10 +251,6 @@ describe("speechReducer - ITEM_FAILED retry logic", () => {
     expect(state.status).toBe("idle")
   })
 })
-
-// ═══════════════════════════════════════════════════════════════════════════
-// PAUSE - the status a settling item may not overwrite
-// ═══════════════════════════════════════════════════════════════════════════
 
 describe("speechReducer - paused survives whatever settles next", () => {
   const settlements: Array<[string, (itemId: string) => SpeechAction]> = [
@@ -324,8 +287,7 @@ describe("speechReducer - paused survives whatever settles next", () => {
   const pausedWithQueue = (
     queueDepth: number
   ): { state: SpeechQueueState; itemId: string } => {
-    let state = initialState()
-    state = speechReducer(state, speak("a", 1))
+    let state = fold(initialState(), speak("a", 1))
     const item = state.items[0]!
     state = speechReducer(state, { type: "ITEM_STARTED", payload: { item } })
     for (let i = 0; i < queueDepth; i++) {
@@ -340,28 +302,20 @@ describe("speechReducer - paused survives whatever settles next", () => {
       for (const queueDepth of [0, 1, 3]) {
         const { state, itemId } = pausedWithQueue(queueDepth)
 
-        // Only RESUME may lift a pause. Before this, PAUSE aborted the
-        // current item and the resulting ITEM_CANCELLED promoted the queue
-        // straight back to "speaking" - so a paused queue kept talking.
+        // Only RESUME may lift a pause (see `settledStatus`).
         expect(speechReducer(state, settle(itemId)).status).toBe("paused")
       }
     }
   )
 
   it("RESUME is the only way back out", () => {
-    let state = initialState()
-    state = speechReducer(state, speak("a", 1))
-    state = speechReducer(state, { type: "PAUSE" })
+    let state = fold(initialState(), speak("a", 1), { type: "PAUSE" })
     expect(state.status).toBe("paused")
 
     state = speechReducer(state, { type: "RESUME" })
     expect(state.status).toBe("speaking")
   })
 })
-
-// ═══════════════════════════════════════════════════════════════════════════
-// CONSERVATION - nothing is silently lost or duplicated
-// ═══════════════════════════════════════════════════════════════════════════
 
 describe("speechReducer - conservation properties", () => {
   it("property: CANCEL by componentId removes and aborts exactly that component's items", () => {
@@ -402,10 +356,7 @@ describe("speechReducer - conservation properties", () => {
         fc.array(fc.integer({ min: -5, max: 5 }), { maxLength: 15 }),
         fc.boolean(),
         (priorities, withCurrent) => {
-          let state = initialState()
-          priorities.forEach((priority, i) => {
-            state = speechReducer(state, speak(`c${i}`, priority))
-          })
+          let state = queued(priorities)
 
           let current = null
           if (withCurrent && state.items[0]) {
@@ -437,10 +388,7 @@ describe("speechReducer - conservation properties", () => {
           maxLength: 15,
         }),
         (priorities) => {
-          let state = initialState()
-          priorities.forEach((priority, i) => {
-            state = speechReducer(state, speak(`c${i}`, priority))
-          })
+          let state = queued(priorities)
 
           const item = state.items[0]!
           state = speechReducer(state, {
@@ -458,14 +406,9 @@ describe("speechReducer - conservation properties", () => {
   })
 })
 
-// ═══════════════════════════════════════════════════════════════════════════
-// ERROR LIFECYCLE - what `error` means, and for how long
-// ═══════════════════════════════════════════════════════════════════════════
-
 describe("speechReducer - error survives until something actually succeeds", () => {
   function failedState(): SpeechQueueState {
-    let state = initialState()
-    state = speechReducer(state, speak("a", 1))
+    let state = fold(initialState(), speak("a", 1))
     const item = state.items[0]!
     state = speechReducer(state, { type: "ITEM_STARTED", payload: { item } })
     return speechReducer(state, {
@@ -496,15 +439,17 @@ describe("speechReducer - error survives until something actually succeeds", () 
     let state = failedState()
     state = speechReducer(state, speak("b", 1))
     const next = state.items[0]!
-    state = speechReducer(state, {
-      type: "ITEM_STARTED",
-      payload: { item: next },
-    })
-
-    state = speechReducer(state, {
-      type: "ITEM_COMPLETED",
-      payload: { itemId: next.id },
-    })
+    state = fold(
+      state,
+      {
+        type: "ITEM_STARTED",
+        payload: { item: next },
+      },
+      {
+        type: "ITEM_COMPLETED",
+        payload: { itemId: next.id },
+      }
+    )
 
     expect(state.error).toBeNull()
     expect(state.totalProcessed).toBe(1)

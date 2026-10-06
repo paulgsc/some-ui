@@ -1,5 +1,5 @@
 /**
- * CI guardrail (X2, #1223): the recorded runs this package bundles
+ * CI guardrail (X2): the recorded runs this package bundles
  * (`corpus/runs/<id>.json`, `lib/leetype/round-runs/bundled`) still
  * describe the reviewed rounds.
  *

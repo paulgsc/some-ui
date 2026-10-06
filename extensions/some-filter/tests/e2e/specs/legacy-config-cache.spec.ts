@@ -1,37 +1,17 @@
 /**
- * Regression for a review finding on the TOGGLE_FILTER-idempotency fix
- * (content.ts's enterOrRefreshLegacy refactor): the async init reconciliation
- * used to write `filterConfig = response.config` unconditionally, once, before
- * branching on `response.enabled`. The refactor moved that assignment inside
- * the branches — dropping it for exactly the case where the background
- * confirms the tab is *not* in legacy mode and it already wasn't: nothing to
- * reconcile, so neither branch ran, and content.ts's local filterConfig cache
- * was left at its stale module-level default.
+ * Init reconciliation must keep content.ts's cached `filterConfig` current
+ * even when nothing else needs reconciling (background agrees the tab is not
+ * legacy). cycleState() — the keyboard shortcut — paints with that cache and
+ * carries no config, so a stale default would paint "invert" for a user
+ * whose chosen style is "dim".
  *
- * That cache is what cycleState() (the keyboard shortcut's CYCLE_TAB_STATE
- * handler) paints with — it carries no config of its own. So a tab sitting
- * in "auto" while the user's chosen legacy style is "dim" would, on the next
- * keyboard-cycled entry into legacy mode, paint with the default "invert"
- * preset instead — silently reverting the user's choice for exactly the one
- * entry point (the keyboard shortcut) that doesn't carry a config payload.
+ * This path also depends on background.ts's GET_TAB_FILTER_STATE actually
+ * calling `sendResponse` on Chrome; without it the assertions fail
+ * regardless.
  *
- * Exercising this also surfaced a second, pre-existing, independent bug this
- * test would otherwise have masked: background.ts's GET_TAB_FILTER_STATE
- * handler never actually responded to its caller on Chrome (`void handler();
- * return true` with no `sendResponse` ever captured or called), so this
- * whole reconciliation path was unreachable dead code before that was also
- * fixed. Without it, isGetTabFilterStateResponse(response) is always false
- * against an eternally-unresolved response, and the assertions below fail
- * the same way regardless of whether the filterConfig fix is present.
- *
- * SF4 (#1360) classification: internal-state claim, fine as-is. The
- * assertions read the literal text of the injected style element
- * (toContain("invert(0)") etc.) — a precise, directly observable claim
- * about which config string got written, not about how the resulting
- * filter composites once painted (legacy-invert-regimes.spec.ts already
- * owns that separate, real pixel-sampled claim for the legacy mechanism).
- * Promoting this to pixel sampling would prove nothing this string check
- * doesn't already prove more precisely.
+ * Classification (#1360): internal-state claim. The assertions read the
+ * injected style's literal text (which config string got written);
+ * legacy-invert-regimes.spec.ts owns the pixel claim.
  */
 
 import { expect, test } from "@filter/playwright/fixture"
@@ -43,19 +23,11 @@ test("a tab left in auto still picks up the user's chosen legacy style on keyboa
 }) => {
   const sw = await backgroundWorker(context)
 
-  // The user's standing choice is "dim", set before this tab ever loads —
-  // mirrors picking the style once via the popup/context menu, then later
-  // opening (or leaving idle in auto) a tab that never itself toggled legacy.
+  // The user's standing choice is "dim", set before this tab loads.
   await sw.evaluate(async () => {
-    // ext.runtime.onInstalled fires again on every fresh --load-extension
-    // launch (a new persistent context is a fresh install), and its own
-    // handler fire-and-forgets a storage.local.set() of the module defaults
-    // — including legacyStyle: "invert", the exact value this test needs
-    // to NOT be sitting in storage. backgroundWorker(context) only waits
-    // for the service worker to exist, not for that handler's promise to
-    // settle, so writing "dim" immediately below can race it and lose.
-    // Wait for the default write to land first (bounded poll), then
-    // overwrite it — the only ordering this test can rely on.
+    // onInstalled fires on every fresh --load-extension launch and
+    // fire-and-forgets a write of the defaults (legacyStyle: "invert"), which
+    // could race this one. Wait for the default write, then overwrite it.
     const deadline = Date.now() + 3_000
     while (Date.now() < deadline) {
       // eslint-disable-next-line no-restricted-globals
@@ -91,9 +63,8 @@ test("a tab left in auto still picks up the user's chosen legacy style on keyboa
   // regression lives in) time to land before cycling.
   await page.waitForTimeout(300)
 
-  // Keyboard cycle: auto -> off -> legacy (tab-state.ts's STATE_CYCLE), the
-  // same CYCLE_TAB_STATE message ext.commands.onCommand sends — carries no
-  // config, relies entirely on content.ts's own cached filterConfig.
+  // Keyboard cycle: auto -> off -> legacy via CYCLE_TAB_STATE, which carries
+  // no config.
   const target = await sw.evaluate(async () => {
     // eslint-disable-next-line no-restricted-globals
     const tabs = await chrome.tabs.query({})

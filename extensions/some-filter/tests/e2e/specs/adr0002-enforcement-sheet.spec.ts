@@ -1,21 +1,15 @@
 /**
  * ADR 0002 §7 step 2 — enforcement sheet e2e.
  *
- * Tests per §3.2 and §3.1, the ADR's own acceptance bar for this step.
- * Neither claim is checkable from a unit test: both are statements about
- * the real cascade (no jsdom), and §3.1 specifically is about a live
- * `chrome.scripting.insertCSS({ origin: "USER" })` call from a real MV3
- * service worker reaching a real shadow boundary.
+ * Tests §3.2 and §3.1, the ADR's acceptance bar for this step. Neither is
+ * checkable from a unit test: both are about the real cascade, and §3.1 is
+ * about a live `insertCSS({ origin: "USER" })` from a real MV3 service worker
+ * reaching a real shadow boundary.
  *
- * Every test here waits for the tab to report the sheet confirmed
+ * Every test waits for the tab to report the sheet confirmed
  * (`data-sw-theme-applied="enforced"`) and asserts the classifier never ran
- * (`data-sw-dark` absent). Since SF-CUT3 (#1489) the flag makes auto mode the
- * sheet alone — the classifier, shadow stack and scope watchdog are not
- * started — so what these tests read is attributable to the enforcement
- * sheet, the one code path under test. (Before #1489 the sheet was injected
- * on every tab regardless of state and these tests cycled the tab to "off" to
- * remove the classifier's coincidentally identical `bg0`; an off tab now gets
- * no sheet at all.)
+ * (`data-sw-dark` absent). With the flag on, auto mode is the sheet alone, so
+ * what these tests read is attributable to the sheet.
  */
 
 import { expect, test } from "@filter/playwright/fixture"
@@ -28,13 +22,10 @@ async function backgroundWorker(context: {
 }): Promise<Worker> {
   const [existing] = context.serviceWorkers()
   const sw = existing ?? (await context.waitForEvent("serviceworker"))
-  // Every test launches a fresh context and calls this before any page
-  // loads, so the worker can be handed back before its global scope is set
-  // up: `chrome.storage` is undefined (enableEnforcementSheet() then throws
-  // "Cannot read properties of undefined (reading 'local')"), and so, in
-  // the same window, is `setTimeout` — about 1 run in 100 under
-  // --repeat-each. A poll inside the worker cannot wait on that, so it
-  // polls from here, one evaluate() per attempt.
+  // Each test calls this before any page loads, so the worker can be handed
+  // back before its global scope is set up (`chrome.storage` and even
+  // `setTimeout` undefined, about 1 run in 100 under --repeat-each). A poll
+  // inside the worker cannot wait on that, so it polls from here.
   for (let attempt = 0; attempt < 250; attempt++) {
     const bound = await sw.evaluate(() => {
       // Partial: the typings declare every namespace present, which is the
@@ -49,25 +40,21 @@ async function backgroundWorker(context: {
 }
 
 /**
- * Flips the flag `background.ts`'s own header documents as the only way to
- * turn this experiment on today (no UI toggle exists yet). Must run before
- * `fixture.goto()` — `background.ts`'s own `tabs.onUpdated` "loading"
- * listener reads this at navigation time, not on some later poll.
+ * Flips the flag (no UI toggle exists yet; see `background.ts`). Must run
+ * before `fixture.goto()`: the content script reads it when auto starts.
  */
 async function enableEnforcementSheet(sw: Worker): Promise<void> {
   await sw.evaluate(async () => {
-    // Raw chrome.* — this runs inside the real MV3 service worker via CDP,
-    // not through this repo's module graph (mirrors legacy-mode.ts's own
-    // backgroundWorker()/enterLegacyMode() comment for the identical reason).
+    // Raw chrome.* — this runs inside the real service worker via CDP, not
+    // through this repo's module graph.
     // eslint-disable-next-line no-restricted-globals
     await chrome.storage.local.set({ enforcementSheetEnabled: true })
   })
 }
 
 /**
- * Waits for the content script's own confirm read (SF-CUT3, #1489) — the
- * sheet requested for this document and read back from the cascade — and
- * checks the classifier stayed off: under the flag it must never start in the
+ * Waits for the content script's confirm read (the sheet read back from the
+ * cascade) and checks the classifier stayed off: it must never start in the
  * same tab as the sheet.
  */
 async function awaitEnforced(page: Page): Promise<void> {
@@ -83,11 +70,8 @@ async function awaitEnforced(page: Page): Promise<void> {
   ).toBe(false)
 }
 
-// SWATCHES.default's bg0 (#171c25) — asserted as a literal rather than
-// imported from @filter/adapter/swatches, mirroring swatch-oracle.spec.ts's
-// own choice not to couple an e2e assertion to a module import the
-// background service worker's raw chrome.* evaluate() context (this file's
-// own backgroundWorker() comment) does not run inside.
+// SWATCHES.default's bg0 (#171c25), as a literal: the worker's raw
+// evaluate() context does not run inside this repo's module graph.
 const ENFORCED_BG = "rgb(23, 28, 37)"
 // SWATCHES.default.borderStrong, a literal for the same reason.
 const BORDER_STRONG = "rgba(255, 255, 255, 0.35)"
@@ -103,8 +87,7 @@ test.describe("ADR 0002 enforcement sheet", () => {
     const page = await fixture.goto("light-page")
     await awaitEnforced(page)
 
-    // Polls rather than asserting immediately: insertCSS is an async round
-    // trip through the service worker (ADR 0002 §4's own measured race),
+    // Polls: insertCSS is an async round trip through the service worker,
     // not synchronized with Playwright's page-load wait.
     await page.waitForFunction(
       (expected) =>
@@ -118,28 +101,23 @@ test.describe("ADR 0002 enforcement sheet", () => {
       getComputedStyle(document.body).backgroundColor,
     ])
 
-    // The regression this specificity boost exists for: an unboosted
-    // `html, body` canvas rule loses to the erase rule's own (0,0,4) and
-    // both read back as transparent (`rgba(0, 0, 0, 0)`), leaving the page
-    // on the UA's white default under E's light text — measured directly
-    // in ADR 0002 §3.2. Asserting the *specific* enforced color, not just
-    // "not transparent", catches that failure and a `background: transparent`
-    // no-op alike.
+    // An unboosted `html, body` rule loses to the erase rule and reads back
+    // transparent, leaving the UA's white default (ADR 0002 §3.2). Asserting
+    // the *specific* colour catches that and a `transparent` no-op alike.
     expect(htmlBg).toBe(ENFORCED_BG)
     expect(bodyBg).toBe(ENFORCED_BG)
   })
 
-  test("a vendor root filter does not invert E back to light (bot-found on #1463)", async ({
+  test("a vendor root filter does not invert E back to light", async ({
     context,
     fixture,
   }) => {
     const sw = await backgroundWorker(context)
     await enableEnforcementSheet(sw)
 
-    // light-page.html plus `html { filter: invert(1) }` — the vendor-side
-    // "dark mode via invert" trick. A compositing filter is applied after
-    // painting, so without neutralizing it the enforced bg0 would render as
-    // its inverse (a light grey) and every other token likewise.
+    // light-page.html plus `html { filter: invert(1) }`. A compositing
+    // filter applies after painting, so un-neutralized it would render bg0
+    // as its inverse.
     const page = await fixture.goto("filter-invert-vendor-page")
     await awaitEnforced(page)
     await page.waitForFunction(
@@ -157,7 +135,7 @@ test.describe("ADR 0002 enforcement sheet", () => {
     expect(bodyFilter).toBe("none")
   })
 
-  test("inset-shadow fills, descendant filters and a white dialog backdrop are all neutralized (bot-found on #1463, round 3)", async ({
+  test("inset-shadow fills, descendant filters and a white dialog backdrop are all neutralized", async ({
     context,
     fixture,
   }) => {
@@ -212,9 +190,8 @@ test.describe("ADR 0002 enforcement sheet", () => {
       }
     })
 
-    // Glyph and edge channels (bot-found on #1500, round 2): the shadow is
-    // gone, the outline keeps its vendor width/style but not its colour
-    // (SWATCHES.default.borderStrong, a literal for the same reason as
+    // Glyph and edge channels: the shadow is gone; the outline keeps its
+    // vendor width/style but takes borderStrong's colour (a literal, as
     // ENFORCED_BG).
     expect(probe.textShadow).toBe("none")
     expect(probe.outlineColor).toBe(BORDER_STRONG)
@@ -228,7 +205,7 @@ test.describe("ADR 0002 enforcement sheet", () => {
     expect(probe.backdropFilter).toBe("none")
   })
 
-  test("an authored ::placeholder colour is overridden by the highlight table (bot-found on #1500: the ported selector never matched)", async ({
+  test("an authored ::placeholder colour is overridden by the highlight table", async ({
     context,
     fixture,
   }) => {
@@ -259,7 +236,7 @@ test.describe("ADR 0002 enforcement sheet", () => {
     expect(placeholder).toBe("rgb(71, 85, 105)")
   })
 
-  test("[data-my-ext] keeps its author-origin styling, and vendor ::before/::after are erased (bot-found on #1463)", async ({
+  test("[data-my-ext] keeps its author-origin styling, and vendor ::before/::after are erased", async ({
     context,
     fixture,
   }) => {
@@ -276,10 +253,9 @@ test.describe("ADR 0002 enforcement sheet", () => {
     )
 
     const probe = await page.evaluate(() => {
-      // An author-origin sheet styling an extension-owned element exactly
-      // the way prepaint.css styles the veil, plus two vendor paint
-      // surfaces the erase policy must reach: a plain element and a
-      // fixed, full-viewport `html::before` overlay.
+      // An author-origin sheet styling an extension-owned element the way
+      // prepaint.css styles the veil, plus two vendor paint surfaces the
+      // erase policy must reach: a plain element and a fixed `html::before`.
       const style = document.createElement("style")
       style.textContent = [
         "#probe-ext { position: fixed; width: 40px; height: 40px; background-color: rgb(1, 2, 3); }",
@@ -304,9 +280,7 @@ test.describe("ADR 0002 enforcement sheet", () => {
     })
 
     // The extension-owned element is exactly as the author sheet declared
-    // it. An earlier revision's user-origin `all: revert` rule rolled these
-    // back to the UA defaults (transparent, static, auto) — which for the
-    // real veil meant a UA-styled popover box instead of a dark cover.
+    // it; a user-origin `all: revert` would roll it back to UA defaults.
     expect(probe.extBg).toBe("rgb(1, 2, 3)")
     expect(probe.extPosition).toBe("fixed")
     expect(probe.extWidth).toBe("40px")
@@ -416,15 +390,8 @@ test.describe("ADR 0002 enforcement sheet", () => {
     expect(probe.extChildFill).toBe("rgb(4, 5, 6)")
   })
 
-  // The following five cases replace a single "borderStrong actually
-  // renders on a bare vendor element" test that asserted light-page.html's
-  // <main> got a forced border. That test predates the lift-gradient
-  // amendment: <main> there is the sole child of <body>, so under the new
-  // scheme it is :only-child (no lift) and no longer in
-  // BORDER_CONTAINER_SELECTOR (no forced border either) — see
-  // `adapter/enforcement-sheet.ts`'s own header, "border soup: containers
-  // get a lift gradient, not a forced border", and lift-gradient-page.html's
-  // own header for the fixture these cases share.
+  // Shared fixture: lift-gradient-page.html (see its header and
+  // enforcement-sheet.ts's lift section).
 
   test("LIFT_SELECTOR — a container with an element sibling gets the lift gradient", async ({
     context,
@@ -469,10 +436,8 @@ test.describe("ADR 0002 enforcement sheet", () => {
       { timeout: 5_000, polling: 100 }
     )
 
-    // #lone-child is the sole child of #lone-parent — :only-child, so
-    // LIFT_SELECTOR's own :not(:only-child) excludes it. A chain of
-    // single-child wrappers is meant to match nothing (this module's own
-    // header, "wrapper chains collapse").
+    // #lone-child is :only-child, so LIFT_SELECTOR excludes it: wrapper
+    // chains collapse.
     const backgroundImage = await page.evaluate(() => {
       const el = document.getElementById("lone-child")
       if (el === null) throw new Error("fixture missing #lone-child")
@@ -499,13 +464,8 @@ test.describe("ADR 0002 enforcement sheet", () => {
       { timeout: 5_000, polling: 100 }
     )
 
-    // #tall-file is 6000px tall (GitHub's "Files changed" tab stand-in — a
-    // large expanded diff, this module's own header). Without an explicit
-    // background-size, a CSS gradient sizes itself to the element's full
-    // box, so the browser would rasterize a 6000px-tall gradient here
-    // instead of the fixed 3rem strip the design calls for. background-size
-    // must report the bounded size, not "auto" (which is what an unbounded
-    // gradient reports) and not the element's own 6000px height.
+    // #tall-file is 6000px tall. background-size must report the bounded
+    // strip, not "auto" (an unbounded gradient) or the element's height.
     const style = await page.evaluate(() => {
       const el = document.getElementById("tall-file")
       if (el === null) throw new Error("fixture missing #tall-file")
@@ -539,10 +499,7 @@ test.describe("ADR 0002 enforcement sheet", () => {
       { timeout: 5_000, polling: 100 }
     )
 
-    // #sibling-a declares no border of its own — the vendor default (0px,
-    // since the initial border-style is "none"), never forced. The
-    // structural-container border this once got is what produced the
-    // border-soup finding this fixture's cases guard against.
+    // #sibling-a declares no border: the vendor default (0px), never forced.
     const borderWidth = await page.evaluate(() => {
       const el = document.getElementById("sibling-a")
       if (el === null) throw new Error("fixture missing #sibling-a")
@@ -606,10 +563,8 @@ test.describe("ADR 0002 enforcement sheet", () => {
       { timeout: 5_000, polling: 100 }
     )
 
-    // #ext-marked sits among several other children of <main>, so absent
-    // the [data-my-ext] exclusion it would be :not(:only-child) and match
-    // LIFT_SELECTOR — this asserts the exclusion actually holds, not just
-    // that a div gets no lift by default.
+    // #ext-marked has siblings, so without the [data-my-ext] exclusion it
+    // would match LIFT_SELECTOR.
     const result = await page.evaluate(() => {
       const el = document.getElementById("ext-marked")
       if (el === null) throw new Error("fixture missing #ext-marked")
@@ -624,17 +579,10 @@ test.describe("ADR 0002 enforcement sheet", () => {
     expect(result.borderTopWidth).toBe("0px")
   })
 
-  // §3.1 claims a user-origin rule does not cross a shadow boundary. This
-  // regression test — run against Chromium 1194, the same revision the ADR
-  // itself measured against — found the opposite: see
-  // `adapter/enforcement-sheet.ts`'s own header, "Open, blocking finding",
-  // for the full account and isolating probes (the erase rule alone, and a
-  // single trivial rule with nothing else in the sheet, both reproduce it).
-  // This asserts the *actual* observed behavior, not the ADR's claim, so
-  // the suite documents current reality rather than going red over an open
-  // question this file cannot resolve on its own — flip this back to
-  // asserting non-crossing once that investigation lands a fix or shows
-  // this run was itself the anomaly.
+  // §3.1 claims a user-origin rule does not cross a shadow boundary; on
+  // Chromium 1194 it does (see enforcement-sheet.ts's header, "Shadow
+  // crossing"). This asserts observed behaviour, so the suite documents
+  // reality; ADR 0003 keeps it as a permanent canary.
   test("§3.1 (KNOWN DIVERGENCE) — a user-origin rule currently DOES cross a shadow boundary here", async ({
     context,
     fixture,
@@ -645,9 +593,8 @@ test.describe("ADR 0002 enforcement sheet", () => {
     const page = await fixture.goto("shadow-surface-page")
     await awaitEnforced(page)
 
-    // Confirms the sheet actually landed before trusting the shadow
-    // assertion below — a shadow assertion that merely never ran (sheet
-    // not yet injected) would pass for the wrong reason.
+    // Confirms the sheet landed first, so the shadow assertion cannot pass
+    // for the wrong reason.
     await page.waitForFunction(
       (expected) =>
         getComputedStyle(document.documentElement).backgroundColor === expected,
@@ -659,12 +606,8 @@ test.describe("ADR 0002 enforcement sheet", () => {
       const host = document.createElement("div")
       const root = host.attachShadow({ mode: "open" })
       const surface = document.createElement("div")
-      // An explicit author-origin background — exactly the case ADR 0002
-      // §3.1 measured (its own four-variant table's simplest member: an
-      // open root, populated via plain innerHTML/style rather than an
-      // adopted stylesheet). A real element the enforcement sheet's own
-      // erase rule flattens to transparent, measured here — contrary to
-      // §3.1 — because it *does* reach inside the shadow tree.
+      // An explicit author-origin background in an open root — the simplest
+      // case ADR 0002 §3.1 measured.
       surface.setAttribute(
         "style",
         "background-color: rgb(255, 255, 255); width: 10px; height: 10px;"
@@ -676,12 +619,9 @@ test.describe("ADR 0002 enforcement sheet", () => {
       return getComputedStyle(surface).backgroundColor
     })
 
-    // Measured, not the ADR's own claim: the erase rule's
-    // `background-color: transparent !important` overrides the shadow
-    // element's own inline style here. If this ever starts failing, that's
-    // good news (§3.1 replicating) — update this test and
-    // enforcement-sheet.ts's own header together rather than just loosening
-    // the assertion.
+    // Measured: the erase rule overrides the shadow element's inline style.
+    // If this starts failing, update this test and enforcement-sheet.ts's
+    // header together rather than loosening the assertion.
     expect(shadowBg).toBe("rgba(0, 0, 0, 0)")
   })
 })

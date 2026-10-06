@@ -28,10 +28,8 @@ import { useLiveLayoutEditor } from "./use-live-layout-editor"
 /**
  * LeetType's margin-note recognizer: the phone's own inside the Android app
  * (src/lib/dictation), absent elsewhere so the package uses the browser's.
- * Native, not merely the device build: the same build opened in a desktop
- * browser (`SOME_UI_PROFILE=mobile pnpm dev`) has only the plugin's web
- * stub, while that browser's own recognizer works. One per app: it holds
- * nothing until a learner taps Speak.
+ * Gated on native, not the device build: that build in a desktop browser has
+ * only the plugin's web stub. Holds nothing until a learner taps Speak.
  */
 const PHONE_DICTATION =
   import.meta.env.VITE_DEVICE_BACKEND === "true" && runsNatively()
@@ -52,19 +50,9 @@ export const SessionViewport = ({
 }: SessionViewportProps): JSX.Element => {
   const activeLifetimes = useSceneLifetimes()
   /**
-   * The live layout editor is a desktop authoring affordance, and on a phone
-   * it is not merely cramped — it is unreachable. Every one of its gestures
-   * assumes hardware that is not there: `E` to enter it needs a keyboard,
-   * right-click resize needs a mouse, and dragging a topology needs a
-   * pointer with hover. What it leaves behind on a small screen is a button
-   * advertising a mode that cannot be entered, a border and a corner radius
-   * inset from the edges of a screen with no room to spare, and an activity
-   * squeezed into the remainder.
-   *
-   * So on a phone `V` is the screen: no editor, no frame, no inset. The hook
-   * below still runs — it holds this session's layout and its autosave, both
-   * of which matter regardless of who can edit them — but nothing it exposes
-   * for editing is rendered.
+   * The live layout editor needs a keyboard, a mouse and hover, so on a phone
+   * it is unreachable: there `V` is the screen, with no editor, frame or
+   * inset. The hook still runs, for the layout and its autosave.
    */
   const isMobile = useIsMobile()
   const {
@@ -79,11 +67,8 @@ export const SessionViewport = ({
     autosaveStatus,
   } = useLiveLayoutEditor(session, activeLifetimes)
 
-  // This is the layer with write authority over both facts - which session
-  // is live, and whether the layout editor currently needs exclusive
-  // control - so it's the only place that ever calls these setters. Every
-  // registry component downstream only ever sees the resolved values as
-  // plain props (extraProps below), never this store.
+  // The only layer with write authority over which session is live and
+  // whether the editor needs exclusive control; downstream sees plain props.
   useEffect(() => {
     setSessionKey(session.id)
   }, [session.id])
@@ -95,17 +80,11 @@ export const SessionViewport = ({
   const sessionKey = useSessionKey()
   const suspended = useSuspended()
   const hangulWords = useHangulVocab()
-  // The effects channel, live. Honeycomb owns the sounds; the person owns
-  // whether they play, and this is the seam between the two - without it,
-  // the "Game sounds" toggle in the audio indicator would control nothing.
+  // The person owns whether Honeycomb's sounds play ("Game sounds").
   const { preferences: audioPreferences } = useAudioPreferences()
-  // The learner shelf (paulgsc/server#387): offered only while the learner's
-  // data is the account's, since every shelf route is per person and answers
-  // 401 without a session, and never on a build with no file_host
-  // (`createShelfClient` is then undefined). Learning on the device keeps no
-  // shelf: it would be a server store for someone who has not asked for one. A
-  // session ending mid-lesson takes the shelf away with it; the lesson plays
-  // on, because nothing in either activity depends on a shelf being there.
+  // The learner shelf (paulgsc/server#387): only while the data is the
+  // account's (every shelf route is per person) and a file_host exists. A
+  // device learner keeps no shelf. Nothing in either activity depends on it.
   const signedIn = useAuthority().kind === "account"
   const shelves = useMemo(
     () =>
@@ -118,29 +97,15 @@ export const SessionViewport = ({
     [signedIn]
   )
 
-  // Each panel's runtime props, associated with the one registry key that
-  // consumes them. Nothing here is cross-cutting - `words`/`sessionKey`/
-  // `suspended` are HangulHexGrid's alone - so the association is made
-  // statically here rather than by merging one bag onto every panel in the
-  // viewport.
+  // Each panel's runtime props, keyed by the one registry key that consumes
+  // them.
   //
-  // `leetype`'s exercises still need nothing injected: they come from its
-  // own shim (@some-ui/leetype's lib/leetype/exercises). Its rounds do
-  // (H1, #1231; canon Rem. 11.4): `loadRounds` fetches the served round
-  // corpus, and the package falls back to its bundled rounds when this
-  // resolves empty (a static build) or rejects. See src/lib/leetype-content.
-  //
-  // That stayed true when it grew a second surface. Below the small-screen
-  // breakpoint the activity switches from a typing probe to a reading one
-  // (LTY-MOBILE), and the switch is entirely inside the package: `Leetype`
-  // reads the viewport itself and mounts one surface or the other. Nothing
-  // here passes a `surface` prop, and nothing here should - a host deciding
-  // which probe a device gets would be this app holding an opinion about a
-  // package's internals, and the registry contract (render with no props) is
-  // exactly what that would break.
-  // Built through `defineSceneProps` rather than annotated: a plain
-  // ScenePropsMap annotation would not catch a misspelled registry key here -
-  // see that function's own comment.
+  // `leetype`'s rounds (H1, #1231; canon Rem. 11.4): `loadRounds` fetches the
+  // served corpus, and the package falls back to bundled rounds when it
+  // resolves empty or rejects (src/lib/leetype-content). Its small-screen
+  // reading surface (LTY-MOBILE) is chosen inside the package; no `surface`
+  // prop here, since the registry contract is render-with-no-props.
+  // Built through `defineSceneProps` so a misspelled registry key is caught.
   const sceneProps = useMemo(
     () =>
       defineSceneProps({
@@ -151,24 +116,19 @@ export const SessionViewport = ({
           audio: audioPreferences.effects,
         },
         topik: {
-          // Plain functions, not repositories: importing topik's factories
-          // here would pull the applet into this app's main bundle and undo
-          // the registry's lazy import. See src/lib/topik-content.
+          // Plain functions: importing topik's factories would pull the
+          // applet into the main bundle (src/lib/topik-content).
           loadManifest: loadTopikManifest,
           loadTopik: loadTopikFile,
           shelf: shelves?.topik,
         },
         leetype: {
-          // A plain function for the same reason; the package parses what
-          // it returns.
+          // A plain function too; the package parses what it returns.
           loadRounds: loadLeetypeRounds,
-          // A round's recorded runs, the same way: fetched in `server`
-          // mode, nothing in `static` mode (the package bundles them).
+          // Fetched in `server` mode, nothing in `static` (bundled).
           loadRuns: loadLeetypeRoundRuns,
           shelf: shelves?.leetype,
-          // A spoken margin note's recognizer: the phone's on the Android
-          // app, whose WebView has none of its own. Elsewhere the package
-          // uses the browser's (src/lib/dictation).
+          // The phone's recognizer on Android, whose WebView has none.
           dictation: PHONE_DICTATION,
         },
       }),
@@ -186,9 +146,7 @@ export const SessionViewport = ({
     <div
       className={cn(
         "bg-muted relative w-full flex-1 min-h-0 overflow-hidden",
-        // Full-bleed on a phone. The frame is what tells a desktop user
-        // where the session viewport ends and the dashboard resumes; on a
-        // phone there is no dashboard around it to distinguish it from.
+        // Full-bleed on a phone: there is no dashboard to frame it against.
         !isMobile && "rounded-lg border"
       )}
     >
@@ -231,10 +189,8 @@ export const SessionViewport = ({
         </>
       )}
 
-      {/* The layout autosave's failure notice. Suppressed on a phone along
-          with the editor that produces the edits: nothing there can change a
-          layout, so a notice about a layout write failing is a report about
-          a thing the reader did not do and cannot retry. */}
+      {/* The layout autosave's failure notice, hidden on a phone along with
+          the editor: nothing there can change a layout. */}
       {editable && (
         <AmbientIntentStatus
           state={autosaveStatus}

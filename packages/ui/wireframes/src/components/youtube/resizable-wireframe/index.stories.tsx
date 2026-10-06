@@ -10,11 +10,6 @@ import { useSceneLifetimes } from "some-ui-utils"
 
 import { OrchestratedYouTubeViewport } from "."
 
-// ============================================================================
-// Helper: AnimatedStory Wrapper
-// Ensures all required props are passed
-// ============================================================================
-
 type AnimatedStoryProps = {
   transitionMs?: number
   enableFocus?: boolean
@@ -44,10 +39,6 @@ const AnimatedStory = ({
   )
 }
 
-// ============================================================================
-// Meta Configuration
-// ============================================================================
-
 const meta = {
   title: "UI/Wireframes/OrchestratedYouTubeViewport",
   component: AnimatedStory,
@@ -73,10 +64,6 @@ Each panel is a parent component that can contain multiple time-limited children
 
 export default meta
 type Story = StoryObj<typeof meta>
-
-// ============================================================================
-// Stories
-// ============================================================================
 
 export const StudyLayout: Story = {
   render: (args) => <AnimatedStory transitionMs={args.transitionMs} />,

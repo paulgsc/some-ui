@@ -67,10 +67,9 @@ export type AuthorityRuntime = {
   /** Whether the current authority is `kind`. */
   is: (kind: AuthorityKind) => boolean
   /**
-   * Resolves once the authority is decided (anything but `pending`), at once
-   * if it already is. What a route waits on so that no page renders against
-   * the wrong store while a returning account user's session is checked. It
-   * starts nothing: the check is started elsewhere, and has a deadline.
+   * Resolves once the authority is decided (not `pending`), at once if it
+   * already is. Routes wait on it so no page renders against the wrong store.
+   * It starts nothing; the check, started elsewhere, has a deadline.
    */
   settled: () => Promise<void>
   chooseAccount: () => void
@@ -131,11 +130,9 @@ export function createAuthority(
     for (const listener of listeners) listener()
   }
 
-  // What one tab decides binds the whole browser, in the direction of less: a
-  // switch to the device or a turned-off opt-in made in another tab is applied
-  // here at once, so it cannot keep sending until this tab reloads. The other
-  // direction is not copied: signing in or opting in is that tab's own act, and
-  // this one has no session belief to go with it.
+  // Another tab's decision binds this one only toward less: a switch to the
+  // device or a turned-off opt-in applies at once. Signing or opting in is
+  // that tab's own act, with no session belief here to go with it.
   ports.onRemoteChange(() => {
     if (state.backend !== "remote") return
     if (state.choice === "account" && ports.readChoice() === "local") {

@@ -1,87 +1,41 @@
 /**
- * Time-to-first-keystroke, as an authoring audit (LTY-SEAM S4, #1018).
+ * Time-to-first-keystroke, as an authoring audit (LTY-SEAM S4): "does this
+ * authored instance block before the engine receives input?" A step whose
+ * evidence must be *understood* before typing looks fine on the page but
+ * not in play.
  *
- * # The question this answers
+ * Per instance, never per learner (`adaptive-learning-canon.typ` Axiom 3.1):
+ * a pause may be reading, deciding, interruption or being stumped. Per
+ * learner that identifies nothing; per instance, aggregated, the confound
+ * averages out and the outlier is the signal. Nothing here accepts or
+ * produces a learner identifier.
  *
- * Not "is this learner slow" — "does this authored instance block before
- * the engine receives input?" A step whose evidence must be *understood*
- * before typing can begin looks fine on the page and is measurably
- * different in play, and that is the one item on the authoring checklist a
- * human reviewer cannot reliably eyeball.
+ * Standardized against the player's own `Baseline.wpm` (Prop. 9.1), in
+ * "characters of typing time", the units `reveal.rs`'s `INITIAL_DELAY_CHARS`
+ * uses: milliseconds mean nothing without a speed.
  *
- * # Why per instance, never per learner (Axiom 3.1)
+ * # Censoring both reveal paths
  *
- * `adaptive-learning-canon.typ` Axiom 3.1: a pause is reading, deciding,
- * being interrupted, or being stumped, and nothing in the channel
- * separates them. Per learner that identifies nothing. Per *instance*,
- * aggregated across sessions, the confound averages into the baseline and
- * the outlier is the signal — a different, much weaker statistical claim,
- * which is why it holds. Nothing exported here accepts or produces a
- * learner identifier; there is no field for one to attach to.
+ * Two engine paths can show the answer before the first keystroke, and both
+ * must be censored or the metric looks cleanest exactly where it should
+ * flag:
  *
- * # Standardized against the learner's own baseline (Prop. 9.1)
+ * 1. The automatic reveal window (`RevealConfig::initial_delay_ms`) opens on
+ *    a timer regardless of input, so `Snapshot.revealK` may already be
+ *    nonzero.
+ * 2. Manual reveal (`toggle_manual_override`) shows every slot while `k`
+ *    keeps evolving as if it were off, so `revealK` can be `0` while the
+ *    whole answer is visible.
  *
- * `baseline-store` is reused, not paralleled: {@link standardizeTtfk} takes
- * a `Baseline.wpm` as a plain number rather than standing up a second
- * latency baseline, expressing TTFK in units of "characters of typing time
- * at this player's own copying speed" — the same units
- * `crates/leetype_wasm/src/leetype/reveal.rs`'s `INITIAL_DELAY_CHARS`
- * already uses for the same reason: a fixed millisecond figure means
- * nothing without a speed to divide it by.
+ * `computeTtfk` censors an observation with either flag set (both read
+ * before the first keystroke could change them).
  *
- * # The reveal-window interaction (the part likely to get silently wrong)
- *
- * Two engine paths can make an answer visible before the player types
- * anything, and both have to be censored or the metric looks cleanest
- * exactly on the instances it exists to catch:
- *
- * 1. `RevealConfig::initial_delay_ms(attempt)` opens the automatic reveal
- *    window after a delay, and the engine keeps ticking that delay forward
- *    on a timer (`docs/leetype/README.md`'s `Command::Tick`) independently
- *    of whether the player has typed anything yet. On a slow step the
- *    window can open before the first keystroke, at which point
- *    `Snapshot.revealK` is already nonzero.
- * 2. The manual-reveal toggle (`toggle_manual_override`,
- *    `crates/leetype_wasm/src/leetype/reveal.rs`) is a *separate* path:
- *    while `manual_override_until` is in force, `RevealState::is_visible`
- *    shows every slot regardless of `k` — and `k` itself keeps evolving
- *    exactly as if the override did not exist (`advance`'s own doc
- *    comment: "The override changes what is shown, never what the
- *    controller has concluded"). A player who toggles manual reveal
- *    immediately can therefore have `revealK` still at `0` while seeing
- *    the whole answer — `revealK` alone cannot see this path at all.
- *
- * {@link computeTtfk} censors on either: an observation whose
- * `revealKAtFirstKeystroke` is nonzero, or whose
- * `manualRevealActiveAtFirstKeystroke` is true (`Snapshot.revealK` /
- * `Snapshot.manualRevealActive`, both read at the instant of the first
- * keystroke, before that keystroke could itself have changed them), is
- * marked `censored`, never averaged into an instance's aggregate.
- *
- * # Explicitly not
- *
- * Not persisted (LTY-SEAM S2, #1016) — every function here is pure, and
- * nothing in this module touches `localStorage`. Not shown to the learner,
- * not scored, not credited — nothing exported carries a learner identifier
- * for a score to attach to in the first place. Not a routing input:
- * `routing.ts`'s `routeObligation` reads exactly
- * `Pick<Snapshot, "attempt" | "assisted">` and its own excess-property
- * check rejects anything else, including a TTFK-shaped value —
- * `ttfk.test.ts` pins this with a `@ts-expect-error`, the same proof
- * `routing.test.ts` already leans on for "reads nothing else."
- *
- * # The seam
- *
- * Nothing here is exported from `./index.ts`, and nothing in `./index.ts`
- * imports this file — the same posture `obligation-graph.ts` takes for the
- * identical reason: this module has no telemetry source to run against in
- * CI (there are no real keystroke timings in a statically authored
- * corpus), so it is exercised only by its own tests against synthetic
- * observations. {@link flagOutliers} returns the same `Array<string>`
- * violation-message shape `corpus-lint.ts`'s `lintCorpus` does, ready to be
- * unioned into it the day a real observation pipeline exists to feed it.
- * Wiring one up is a decision for whoever builds that pipeline, not a
- * consequence of this module existing.
+ * Pure and unpersisted; never shown, scored or credited; not a routing input
+ * (`routeObligation` reads only `Pick<Snapshot, "attempt" | "assisted">`,
+ * pinned by `ttfk.test.ts`'s `@ts-expect-error`). Not exported from
+ * `./index.ts`: there is no telemetry source yet. `flagOutliers` returns
+ * `lintCorpus`'s violation shape, ready to be unioned in once a pipeline
+ * exists.
  */
 
 import { median, quantile } from "@some-ui/core-utils"
@@ -90,9 +44,8 @@ import { median, quantile } from "@some-ui/core-utils"
 const CHARS_PER_WORD = 5
 
 /**
- * One player's time-to-first-keystroke on one step, in the raw units a
- * capture point would produce. No learner identifier — aggregation below
- * is keyed by `stepId` alone, on purpose (Axiom 3.1).
+ * One player's time-to-first-keystroke on one step, in raw capture units.
+ * No learner identifier: aggregation is keyed by `stepId` alone (Axiom 3.1).
  */
 export type TtfkObservation = {
   /** Which authored step this was measured on — the unit of analysis. */
@@ -102,17 +55,13 @@ export type TtfkObservation = {
   /** The player's sampled copying speed (`Baseline.wpm`) at the time of this observation. */
   baselineWpm: number
   /**
-   * `Snapshot.revealK` read at the instant of the first keystroke, before
-   * that keystroke could itself have moved it. Nonzero means the automatic
-   * reveal window had already opened on its own — see the module doc's
-   * "reveal-window interaction" section.
+   * `Snapshot.revealK` at the first keystroke, before it could move it.
+   * Nonzero means the automatic reveal window had already opened.
    */
   revealKAtFirstKeystroke: number
   /**
-   * `Snapshot.manualRevealActive` read at the same instant. `true` means
-   * the player toggled manual reveal before typing anything — a path
-   * `revealKAtFirstKeystroke` cannot see on its own, since the manual
-   * override leaves `k` to evolve independently of what it is showing.
+   * `Snapshot.manualRevealActive` at the same instant: manual reveal before
+   * typing, which `revealKAtFirstKeystroke` cannot see.
    */
   manualRevealActiveAtFirstKeystroke: boolean
 }
@@ -129,20 +78,15 @@ function msPerBaselineChar(baselineWpm: number): number {
 }
 
 /**
- * Raw TTFK, expressed as a multiple of how long this player's own baseline
- * takes to type one character — comparable across players of different
- * speeds, which a raw millisecond figure is not.
+ * Raw TTFK as a multiple of this player's per-character typing time, so it
+ * compares across speeds.
  */
 export function standardizeTtfk(ttfkMs: number, baselineWpm: number): number {
   const perChar = msPerBaselineChar(baselineWpm)
   return perChar > 0 ? ttfkMs / perChar : 0
 }
 
-/**
- * One observation, standardized — or censored, if the answer was already
- * visible before the player's first keystroke, by either reveal path (see
- * the module doc).
- */
+/** One observation, standardized, or censored if either reveal path pre-empted it. */
 export function computeTtfk(observation: TtfkObservation): TtfkResult {
   if (observation.revealKAtFirstKeystroke > 0) {
     return {
@@ -176,9 +120,8 @@ export type InstanceAggregate = {
 }
 
 /**
- * Every observation, folded per `stepId` — the unit of analysis Axiom 3.1
- * requires. Deterministic order (`stepId`, ascending) so a report's diff is
- * stable across runs, the same discipline `corpus-lint.ts` holds itself to.
+ * Every observation, folded per `stepId` (Axiom 3.1), sorted by `stepId` so
+ * a report's diff is stable.
  */
 export function aggregateByInstance(
   observations: ReadonlyArray<{ stepId: string; result: TtfkResult }>
@@ -210,14 +153,7 @@ export function aggregateByInstance(
     .sort((a, b) => a.stepId.localeCompare(b.stepId))
 }
 
-/**
- * How many interquartile ranges above the corpus's own third quartile an
- * instance's median has to sit before it is flagged — the conventional
- * Tukey outlier fence, not a number picked for this corpus. Borrowed from
- * the same robust-statistics family `baseline-store`'s own dispersion (an
- * IQR-derived spread) already draws on, so the flag and the figure it is
- * applied to share one statistical vocabulary rather than two.
- */
+/** The conventional Tukey fence: flagged above Q3 + 1.5 IQR of the corpus's medians. */
 const OUTLIER_IQR_MULTIPLIER = 1.5
 
 /** Below this many sampled instances, a quartile range does not mean anything — there is no distribution to be an outlier against yet. */
@@ -226,14 +162,7 @@ const MIN_INSTANCES_FOR_A_DISTRIBUTION = 4
 /**
  * Instances whose standardized TTFK sits far above the corpus's own
  * distribution: *"this step is being read, not typed."* Self-calibrated
- * against the corpus's own spread rather than an absolute constant, the
- * same posture `totality.ts`'s `MAX_OBLIGATIONS_PER_ROUTE` takes citing
- * `index.test.ts`'s own established ceiling — a bound grounded in
- * something already true of the data, not picked in the abstract.
- *
- * Returns the same violation-message shape `corpus-lint.ts`'s `lintCorpus`
- * does (see the module doc's "the seam" section for why this is not itself
- * wired into `lintCorpus`).
+ * against the corpus's spread. Returns `lintCorpus`'s violation shape.
  */
 export function flagOutliers(
   aggregates: ReadonlyArray<InstanceAggregate>

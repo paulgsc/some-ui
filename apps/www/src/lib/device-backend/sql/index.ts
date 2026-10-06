@@ -1,14 +1,8 @@
 /**
- * The whole SQL surface the device backend needs, and nothing more.
- *
- * Two implementations sit behind it: `capacitor-sqlite` (the APK, over
- * `@capacitor-community/sqlite`'s native SQLite) and a `node:sqlite` one the
- * tests use, so every handler runs its real SQL under test rather than
- * against a mock that would agree with whatever the handler assumed.
- *
- * Values are SQLite's own storage classes. Booleans and dates are the
- * handlers' business: they store what `file_host` stores (`INTEGER` 0/1,
- * RFC 3339 `TEXT`), so the two schemas read the same.
+ * The whole SQL surface the device backend needs. Two implementations:
+ * `capacitor-sqlite` (the APK) and `node:sqlite` for tests, so handlers run
+ * real SQL under test. Booleans and dates are stored as `file_host` stores
+ * them (`INTEGER` 0/1, RFC 3339 `TEXT`).
  */
 
 export type SqlValue = string | number | null

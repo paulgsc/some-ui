@@ -24,16 +24,8 @@ beforeEach(() => {
 })
 
 describe("loadHangulWasm mode switching", () => {
-  // Regression coverage: the loader is a page-wide singleton (one WASM
-  // module, one HangulGameCore instance, constructed exactly once). Before
-  // the first fix, a later loadHangulWasm() call with a different mode
-  // silently returned the already-loaded core untouched, so switching modes
-  // in the UI had no effect on actual gameplay after the first load. The
-  // correct fix (ADR 0004 §2(f)) is not to reconstruct the core on every
-  // switch either - mode is runtime lifecycle state on the *existing*
-  // engine (GameEngine::set_mode / HangulGameCore.changeMode), the same way
-  // reset() already mutates state on the existing core rather than
-  // requiring a new one.
+  // The core is a page-wide singleton; a mode switch is changeMode on the
+  // existing core (ADR 0004 §2(f)), never a reconstruction.
   it("constructs the core exactly once and calls changeMode on later mode switches", async () => {
     await loadHangulWasm(undefined, "completion", [])
     expect(hangulGameCoreCtor).toHaveBeenCalledTimes(1)
@@ -88,14 +80,8 @@ describe("loadHangulWasm mode switching", () => {
 })
 
 describe("loadHangulWasm sessionKey", () => {
-  // Regression coverage: this loader is a page-wide singleton with no
-  // concept of "session" on its own - it only ever sees whatever the caller
-  // hands it. Two *different* sessions that happen to play the same mode
-  // were indistinguishable by mode alone, so the second one's
-  // completed-cells/stats silently inherited the first session's board
-  // instead of starting clean. sessionKey is an explicit, caller-supplied
-  // identity this function diffs against what it last saw - not something
-  // inferred from unrelated signals like component mount timing.
+  // Two sessions on the same mode must not share a board: the caller's
+  // sessionKey is diffed against the last one seen.
   it("calls changeMode when sessionKey changes even though mode is unchanged", async () => {
     await loadHangulWasm(undefined, "completion", [], "session-a")
     expect(changeMode).not.toHaveBeenCalled()

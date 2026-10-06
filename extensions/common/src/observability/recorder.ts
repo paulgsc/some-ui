@@ -132,24 +132,14 @@ export class Recorder<
    *
    * ## Why this merges rather than replaces
    *
-   * `hydrate` is asynchronous — it awaits a storage read — but recording is
-   * not, and the worker does not wait. Module evaluation registers the event
-   * listeners, and whatever those listeners fire during the read window (an
-   * alarm that fired *and is what woke the page*, the startup sweep it kicks
-   * off) records into a recorder that has not loaded yet.
-   *
-   * The previous implementation then did `buffer.clear()` and overwrote every
-   * counter with the on-disk value, so all of it vanished. The visible symptom
-   * was a timeline where a sweep's `tab.skipped` events appear with no
-   * preceding `check.start`, and where a worker generation woken *by* an alarm
-   * shows `worker.start` → `alarm.kept` and no `alarm.fired` — which then reads
-   * downstream as a phantom "missed alarm" whose interval is a clean multiple
-   * of the period. The scheduler was fine; the recorder was eating the proof.
-   *
-   * That window is the single most diagnostically valuable part of a worker's
-   * life, so it is the one part that must not be dropped. Stored history is
-   * folded in *underneath* what this generation has already seen: disk events
-   * first, then live events re-sequenced to follow them.
+   * `hydrate` awaits a storage read, but recording does not wait. Whatever the
+   * listeners fire during the read window (often the very alarm that woke the
+   * page, and the sweep it kicks off) records into a recorder that has not
+   * loaded yet. Clearing the buffer and overwriting counters on load would
+   * lose exactly that window, the most diagnostically valuable part of a
+   * worker's life. So stored history is folded in *underneath* what this
+   * generation has already seen: disk events first, then live events
+   * re-sequenced to follow them.
    */
   async hydrate(): Promise<void> {
     if (this.hydrated || this.disposed) {

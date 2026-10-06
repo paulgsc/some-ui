@@ -23,11 +23,8 @@ import { defineConfig } from "eslint/config"
  *   4. Enlarge the surface — a wider or taller dialog is allowed.
  *   5. Only then, scroll, and say so.
  *
- * This is the fast, authoring-time half of the guard. The half that actually
- * proves the result is apps/www's tests/ui-fit sweep, which renders every
- * story at three viewport sizes and fails on anything that overflows or
- * scrolls greedily — a lint rule can only see the class name, not whether the
- * content ended up fitting.
+ * This is the authoring-time half; apps/www's tests/ui-fit sweep proves the
+ * result, since a lint rule sees only the class name.
  */
 export const fitsTheBoxPlugin = {
   meta: { name: "fits-the-box", version: "0.0.1" },
@@ -42,12 +39,10 @@ export default defineConfig([
     files: ["**/*.{ts,tsx,jsx}"],
     plugins: { "fits-the-box": fitsTheBoxPlugin },
     rules: {
-      // The structural half of the idiom, and the one #899 needed: a flexible
-      // child that cannot shrink below its content raises the floor of every
-      // box above it, so a panel handed a small rect paints past it. Unlike
-      // the rule below this one reads a *relationship* (a flex parent and its
-      // flexible child) rather than a single class, which is what lets it name
-      // the defect rather than the symptom.
+      // The structural half (#899): a flexible child that cannot shrink below
+      // its content raises every ancestor's floor. It reads a flex
+      // parent/child relationship, not a single class.
+
       "fits-the-box/no-unshrinkable-flex-child": "warn",
       "fits-the-box/no-greedy-overflow": [
         "warn",
@@ -56,17 +51,13 @@ export default defineConfig([
           // as an explicit list so adding one is a decision someone makes on
           // the record, not a class name that slipped through.
           allowInFiles: [
-            // Primitives whose scroll *is* the primitive: a command palette's
-            // result list, a table's overflow wrapper, a scroll area.
-            "ui/command",
-            "ui/table",
+            // Primitives whose scroll *is* the primitive: a scroll area.
             "scroll-area",
             "sidebar",
             // Surfaces whose length belongs to the author, not the layout.
             "code-display",
             "chat",
             "resume",
-            "slideshow",
           ],
         },
       ],

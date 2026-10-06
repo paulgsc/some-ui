@@ -12,13 +12,10 @@ const DEFAULT_HANGUL_VOCAB_TOPIC = "vocab"
 type HangulVocabParams = { topic: string }
 
 /**
- * Same relative path for both modes - `/hangul/words/<topic>.json`, served
- * from whatever's mounted/symlinked at `public/hangul/words` (see
- * infra/compose/www.yml and scripts/link-content-assets.js). The two-locator
- * shape only matters for `useHangulVocab`'s mode gate below: a genuine
- * bundled-static fallback would diverge this from `server`, but today there
- * isn't one - the GitHub Pages build ships no companion data at all, and
- * `HangulHexGrid`'s own bundled demo seed is the whole story there.
+ * Same relative path in both modes (`/hangul/words/<topic>.json`, from
+ * whatever is mounted at `public/hangul/words`; infra/compose/www.yml,
+ * scripts/link-content-assets.js). The Pages build ships no companion data,
+ * so `useHangulVocab`'s mode gate is what keeps it from fetching.
  */
 function locateVocabFile({ topic }: HangulVocabParams): URL {
   return new URL(`/hangul/words/${topic}.json`, window.location.origin)
@@ -31,36 +28,20 @@ const hangulVocabSource = createDataSource<HangulVocabParams, Array<WordEntry>>(
 )
 
 /**
- * The apps/www-only half of the "real vocab locally, demo vocab on GitHub
- * Pages" split (see hangul-words.ts's own header comment for the demo
- * seed's provenance rationale). `@some-ui/honeycomb` stays fetch-free and
- * ships only the bundled demo `WordEntry[]`; this hook is where a host app
- * opts into something else.
+ * The apps/www half of "real vocab locally, demo vocab on Pages":
+ * `@some-ui/honeycomb` stays fetch-free with its bundled demo `WordEntry[]`
+ * (see hangul-words.ts), and this hook is where a host opts into more.
  *
- * The fetch-or-seed decision is one build-time bit (`DATA_MODE`), not a
- * runtime guess:
+ * - **Pages** (`DATA_MODE === "static"`): the query is disabled; no request.
+ * - **Elsewhere**: fetches `/hangul/words/<topic>.json` (gitignored,
+ *   developer-populated from `packages/some-content/public/hangul/words`). A
+ *   404, common on a fresh checkout, resolves quietly to `undefined`; any
+ *   other failure (malformed JSON, a schema mismatch) is also non-fatal but
+ *   logged loudly.
  *
- * - **GitHub Pages**: `"static"`, the query is `enabled: false`, and no
- *   request is ever issued - there is no `public/hangul/words` dir in that
- *   build to fetch from anyway.
- * - **`vite dev` / `vite preview` / Docker**: fetches
- *   `/hangul/words/<topic>.json` (gitignored, developer-populated - see
- *   `packages/some-content/public/hangul/words`). A 404 (the common case on
- *   a fresh checkout, before anyone has generated a file) resolves quietly
- *   to `undefined`. Any other failure (malformed JSON, a schema mismatch -
- *   most likely a hand/LLM-authored `answerKeys`/`answerGlyphs` mistake) is
- *   also non-fatal to the caller, but is logged loudly so it doesn't read as
- *   "the feature silently doesn't work."
- *
- * Either way the caller gets back `Array<WordEntry> | undefined`; `undefined`
- * means "no override" - pass it straight through to `HangulHexGrid`'s
- * `words` prop, whose own default (`HANGUL_WORDS`) takes over.
- *
- * `topic` is forward-looking, not load-bearing today: the shim's one user
- * story is "one active LLM-generated file," so every caller currently omits
- * it and gets `vocab.json`. A future topic-picker UI (part of the eventual
- * adaptive-learning design, not this stub) can thread a real topic id
- * through without this hook's shape changing.
+ * `undefined` means "no override": pass it straight to `HangulHexGrid`'s
+ * `words`, whose default (`HANGUL_WORDS`) takes over. `topic` is unused by
+ * callers today (they get `vocab.json`).
  */
 export function useHangulVocab(
   topic: string = DEFAULT_HANGUL_VOCAB_TOPIC
@@ -74,9 +55,8 @@ export function useHangulVocab(
 
   useEffect(() => {
     if (!isError) return
-    // A missing file is steady state (nobody's generated one yet, or this
-    // topic doesn't have one) - only warn about failures that mean a file
-    // exists but this app couldn't use it.
+    // A missing file is steady state; only warn when a file exists but
+    // couldn't be used.
     if (error instanceof ApiError && error.status === 404) return
     // eslint-disable-next-line no-console
     console.warn(

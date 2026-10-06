@@ -13,13 +13,10 @@ import {
 import { compiledPackageStyleImportBanPattern } from "./style-import-protocol.config.js"
 
 /**
- * Exported so a workspace that must turn off the parent-relative-import ban
- * below (a raw-source package with no self-alias - see base.config.ts's
- * `no-restricted-imports` for the full rationale) can redeclare
- * `no-restricted-imports` with just this pattern, instead of silently
- * dropping the theme-provider ban too. Flat config replaces a rule's value
- * wholesale at the most specific matching config; there is no way to remove
- * one pattern from this list without restating the rest.
+ * Exported so a raw-source workspace that turns off the parent-relative-import
+ * ban (see base.config.ts) can redeclare `no-restricted-imports` with this
+ * pattern: flat config replaces a rule's value wholesale, so one pattern
+ * cannot be removed without restating the rest.
  */
 export const themeProviderBanPattern = {
   group: ["**/apps/www/**", "@/providers/theme"],
@@ -28,17 +25,10 @@ export const themeProviderBanPattern = {
 }
 
 /**
- * Same boundary, a different plumbing concern: a route's URL, query params,
- * and navigation are host-specific state, not something a reusable
- * component under packages/ui/* gets to reach for directly. The whole point
- * of this workspace boundary is that the same component stays mountable
- * from any client — this app today, a different TanStack app, a Next.js
- * app, or anything else tomorrow — each passing its own routing concerns
- * down as granular props/context instead of the component importing a
- * router and coupling itself to one framework's navigation model
- * (paulgsc/some-ui#1146's postmortem, on why "an app only owns concerns
- * that are a necessary part of its own plumbing" needed to become a rule
- * rather than stay a convention).
+ * Same boundary, a different plumbing concern: routing is host state. A
+ * component under packages/ui/* stays mountable from any client, each
+ * passing its routing concerns down as props/context, instead of importing
+ * a router and coupling to one framework (#1146).
  */
 export const routerImportBanPattern = {
   group: [
@@ -54,15 +44,9 @@ export const routerImportBanPattern = {
 }
 
 /**
- * `no-restricted-imports` (routerImportBanPattern, above) only sees static
- * `import`/`export from` syntax — it has no visibility into
- * `ImportExpression` (dynamic `import(...)`), so `await
- * import("react-router-dom")` inside packages/ui/* satisfies the ban's
- * letter while defeating its point. This is the same reason
- * react.config.ts needs `parentRelativeDynamicImportSelectors` alongside
- * base.config.ts's static "../" ban: ESLint's static- and dynamic-import
- * restrictions are two separate mechanisms, and a boundary meant to hold
- * against either call shape has to declare both.
+ * `no-restricted-imports` sees only static imports, not `ImportExpression`,
+ * so the dynamic half is declared separately (as with react.config.ts's
+ * `parentRelativeDynamicImportSelectors`).
  */
 export const routerDynamicImportSelectors = [
   {
@@ -77,13 +61,10 @@ export const routerDynamicImportSelectors = [
  * Plugin enforcing the theme protocol (`@some-ui/styles/theme`) at the one
  * boundary nothing could check before: reusable UI source.
  *
- * The design system already owned the token values and the host already owned
- * the DOM boundary. What was missing was a statement of how a *component* is
- * allowed to express theme-dependent visual intent — so components variously
- * mounted their own full palette (`dark code` on leetype's root, `dark topik`
- * on the study session) or bypassed tokens with literal grays. Both are
- * invisible in review and neither fails a build; the session theme changed and
- * those subtrees did not follow.
+ * It states how a *component* may express theme-dependent intent. Without
+ * it, components mounted their own palette (`dark code` on a root) or used
+ * literal grays, invisible in review, and those subtrees ignored the session
+ * theme.
  */
 export const themeProtocolPlugin = {
   meta: { name: "theme-protocol", version: "0.0.1" },
@@ -114,19 +95,12 @@ export default defineConfig([
     rules: {
       "theme-protocol/no-theme-boundary": "error",
       "theme-protocol/no-structural-palette-color": "error",
-      // A package reaching into an app's theme provider is the coupling this
-      // whole architecture exists to prevent — and it would not even work,
-      // since the protocol is CSS inheritance and has nothing to subscribe to.
-      // Restates base.config.ts's parent-relative-import ban alongside the
-      // theme-provider, style-import, and router bans below: this config is
-      // spread after maishatuRecommended in `uiRecommended`, and flat config
-      // replaces (not merges) a rule's value at the most specific matching
-      // config - so without restating all four here, this block would
-      // silently turn the others off for every non-story/test/spec .ts/.tsx
-      // file in every package/ui/* workspace. This array is now the one
-      // place that answers "what may a reusable UI workspace not import" —
-      // despite the file's name, it is the packages/ui/* host-boundary
-      // array, not only the theme half of it.
+      // The one place that answers "what may a reusable UI workspace not
+      // import". A package reaching into an app's theme provider is the
+      // coupling this architecture prevents (and the protocol is CSS
+      // inheritance, with nothing to subscribe to). Flat config replaces a
+      // rule's value at the most specific match, so base.config.ts's
+      // parent-relative ban is restated with the other three.
       "no-restricted-imports": [
         "error",
         {
@@ -138,13 +112,9 @@ export default defineConfig([
           ],
         },
       ],
-      // Same "restate or it goes dark" trap as the array above, for the
-      // dynamic-import half of import restriction: react.config.ts already
-      // declares `no-restricted-syntax` globally (reactImportBanSelectors +
-      // parentRelativeDynamicImportSelectors), and this block - later in
-      // `uiRecommended`, same-or-narrower `files` glob - would silently
-      // replace that declaration for every packages/ui/* .ts/.tsx file if it
-      // didn't restate both alongside routerDynamicImportSelectors.
+      // Likewise for the dynamic-import half: react.config.ts's global
+      // `no-restricted-syntax` selectors are restated alongside
+      // routerDynamicImportSelectors, or this block would replace them.
       "no-restricted-syntax": [
         "error",
         ...reactImportBanSelectors,
@@ -158,22 +128,14 @@ export default defineConfig([
 /**
  * A ratchet for source whose structural colors have not been migrated yet.
  *
- * Deliberately narrow: it turns off **only** the color rule, and only for the
- * globs handed to it. `no-theme-boundary` — the failure users actually
- * reported, and the one the whole repo is clean of as of this landing — stays
- * on everywhere with no exceptions.
+ * Deliberately narrow: it turns off **only** the color rule, for the globs
+ * handed to it; `no-theme-boundary` stays on everywhere. A boundary violation
+ * has one fix (an `appearance` prop defaulting to "inherit"); a structural
+ * color needs a per-call judgment about which role the literal stood for.
  *
- * The split is because the two checks cost different things to satisfy. A
- * boundary violation has one correct fix (take an `appearance` prop, default
- * it to "inherit"). A structural color needs a per-call judgment about which
- * role the literal was standing in for — substrate, text tier, outline — and
- * that judgment is the work. The first pass covered apps/www's dependency
- * closure, which is every component a user can currently reach; everything
- * else opts in here until someone does the same reading for it.
+ * Each caller lives in the unmigrated package's own `eslint.config.js`, in
+ * front of whoever next edits it. Delete the call to migrate.
  *
- * Each caller lives in the unmigrated package's own `eslint.config.js`, so
- * the exception is in front of whoever next edits that package rather than in
- * a central list nobody reads. Delete the call to migrate.
  */
 export function structuralColorRatchet(
   globs: Array<string> = ["**/*.{ts,tsx}"]

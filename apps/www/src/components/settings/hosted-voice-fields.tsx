@@ -1,15 +1,11 @@
 /**
- * The hosted voice: which provider, and which of its voices.
+ * The hosted voice: which provider, and which of its voices. Typed end to
+ * end: a `HostedVoiceChoice` pairs a provider only with its own voices, and
+ * the dropdown's string is parsed (`parseHostedVoiceChoice`) on arrival.
  *
- * Typed end to end. The value is a `HostedVoiceChoice`, so a provider is
- * only ever paired with one of its own voices, and the dropdown's string
- * goes through `parseHostedVoiceChoice` the moment it arrives.
- *
- * Under the dropdown, the voice a Korean lesson will actually be heard in,
- * computed by the same rule the session follows (`hostedVoiceFor`): the
- * chosen voice when it speaks Korean, otherwise the provider's Korean
- * default. The dropdown alone used to show "Onyx" with nothing chosen,
- * while lessons spoke SunHi.
+ * Under the dropdown, the voice a Korean lesson will be heard in, by the
+ * session's own rule (`hostedVoiceFor`): the chosen voice if it speaks
+ * Korean, else the provider's Korean default.
  */
 
 import type { JSX } from "react"
@@ -76,10 +72,9 @@ function assertNever(value: never): never {
 }
 
 const LessonVoice = ({ value }: { value: HostedVoiceChoice }): JSX.Element => {
-  // The fields below choose a hosted voice, but the session only uses one
-  // when it can reach the voice service (signed in, on a deployment that
-  // has it). Otherwise saying which hosted voice reads lessons would be
-  // false: the browser's own voice does.
+  // The session only uses a hosted voice when it can reach the voice service;
+  // otherwise the browser's own voice reads lessons, and saying otherwise
+  // would be false.
   const speaking = useVoiceReport(LESSON_LANGUAGE)
   if (speaking && speaking.platform !== "hosted") {
     const now = browserVoiceNow(speaking)

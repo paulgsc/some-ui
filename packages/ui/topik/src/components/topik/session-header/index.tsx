@@ -12,9 +12,7 @@ import {
   Trophy,
 } from "lucide-react"
 
-// ═══════════════════════════════════════════════════════════════
 // Props — public API unchanged
-// ═══════════════════════════════════════════════════════════════
 
 type SessionHeaderProps = {
   timeRemaining: number
@@ -33,9 +31,7 @@ type SessionHeaderProps = {
   onTopikReload?: () => void
 }
 
-// ═══════════════════════════════════════════════════════════════
 // Component — Session orchestration only
-// ═══════════════════════════════════════════════════════════════
 
 export const SessionHeader = ({
   timeRemaining,

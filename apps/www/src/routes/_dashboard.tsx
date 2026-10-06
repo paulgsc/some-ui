@@ -34,28 +34,16 @@ import { ThemeSwitcher } from "@/components/theme-switcher"
 
 /**
  * Matches only the session player route (/sessions/$sessionId), whose
- * content owns a fixed viewport V (see docs/session-viewport) — the
- * dashboard shell must not let the page scroll here, or V is never
- * genuinely bounded.
+ * content owns a fixed viewport V (docs/session-viewport): the shell must not
+ * let the page scroll here, or V is never bounded.
  */
 const SESSION_PLAYER_PATH = /^\/sessions\/(?!new$)[^/]+$/
 
 /**
- * The composer (/sessions/new), the shell's second bounded surface.
- *
- * A wizard is not an article. It is fixed chrome — a step rail on top, Back
- * and Continue on the bottom — around one variable body, and the whole point
- * of the chrome is that it stays reachable while you work the body. Rendered
- * as an ordinary scrolling document it stopped being that: the body was a
- * design-time constant (`h-72 sm:h-80`) that matched no viewport, so a tall
- * phone left a third of the box empty and paged a four-item catalogue into
- * four pages, while a landscape phone grew the document to twice the window
- * and pushed Continue below the fold.
- *
- * Bounding it is what makes "the layout chooses the size" true here rather
- * than aspirational (docs/ui-fit): the body becomes `flex-1 min-h-0` and
- * every step fits by construction, at every viewport, instead of each step
- * inventing its own constant for how much it guesses it has.
+ * The composer (/sessions/new), the shell's second bounded surface: fixed
+ * chrome (step rail, Back/Continue) around one variable body, which must stay
+ * reachable. Bounding it makes the body `flex-1 min-h-0`, so every step fits
+ * by construction at every viewport (docs/ui-fit).
  */
 const COMPOSER_PATH = /^\/sessions\/new$/
 
@@ -72,14 +60,12 @@ type NavItem = {
   to: "/app" | "/sessions" | "/resume" | "/jobs" | "/profile" | "/settings"
   label: string
   // Widened from `typeof Home` so the brand mark sits alongside the lucide
-  // glyphs. Both are sized the same way, by the sidebar's own `[&>svg]:size-4`
-  // rule rather than by anything either component asks for.
+  // glyphs; the sidebar's `[&>svg]:size-4` sizes both.
   icon: ComponentType<{ className?: string }>
 }
 
 const NAV_ITEMS: ReadonlyArray<NavItem> = [
-  // Home is the app's front door, so it gets the mark rather than a generic
-  // house — the same seven-cell comb as the favicon and the landing hero.
+  // Home gets the mark: the same seven-cell comb as the favicon.
   { to: "/app", label: "Home", icon: HexCombMark },
   { to: "/sessions", label: "Sessions", icon: ListVideo },
   { to: "/resume", label: "Résumé", icon: FileText },
@@ -158,44 +144,27 @@ const DashboardLayout = (): JSX.Element => {
   const isTerminal = useIsTerminal()
 
   /**
-   * `V` (the fixed, bounded, non-scrolling viewport) only exists while
-   * `LivePlayer` is actually rendering the live `SessionViewport`. Once a
-   * session is terminal, it swaps that for `CompletionSummary` - an
-   * ordinary, possibly-tall card that needs to scroll like any other route,
-   * not be clipped to whatever height `V`'s contract left it. So every
-   * viewport-only affordance below (the fixed-height/no-scroll shell *and*
-   * `bareViewport`, its bare-chrome subset) is gated on `!isTerminal`, not
-   * just on the route pattern.
+   * `V` only exists while `LivePlayer` renders the live `SessionViewport`; a
+   * terminal session shows `CompletionSummary`, an ordinary card that must
+   * scroll. So every viewport-only affordance is gated on `!isTerminal` too.
    */
   const isLiveViewportRoute = isViewportRoute && !isTerminal
 
   /**
-   * Both surfaces the shell hands a definite height to, and therefore must
-   * not let the page scroll behind. `dvh` rather than `svh`: neither of these
-   * routes can scroll, so the mobile browser's chrome never retracts and the
-   * two units never disagree in practice — but when one arrives from a route
-   * that *was* scrolled with the chrome hidden, `dvh` is the height actually
-   * on screen and `svh` is short by exactly the chrome.
+   * The surfaces the shell hands a definite height. `dvh`, not `svh`: arriving
+   * from a route scrolled with the mobile chrome hidden, `dvh` is what is on
+   * screen.
    */
   const isDeclaredBounded = useIsDeclaredBounded()
   const isBoundedRoute =
     isLiveViewportRoute || isComposerPath(pathname) || isDeclaredBounded
 
   /**
-   * The one place the shell gets out of the way entirely.
-   *
-   * On the session player route at phone width, `V` is the screen. The 56px
-   * header and the 24px inset are each defensible on their own and together
-   * cost roughly a fifth of a 390×780 viewport — spent on chrome, on the one
-   * route whose content is the reason the person is there. Everything the
-   * header carried is still reachable, folded into the session's own control
-   * (`components/player/session-chrome.tsx`), which paints on the overlay
-   * plane above `V` rather than taking a band out of it
+   * The one place the shell gets out of the way: on the session player at
+   * phone width, `V` is the screen. The header and inset would cost about a
+   * fifth of a 390×780 viewport; what the header carried is folded into
+   * `components/player/session-chrome.tsx`, on the overlay plane above `V`
    * (`docs/session-viewport/01-overflow-doctrine-and-audit.md` §2).
-   *
-   * Scoped to this route and this width deliberately. Every other route is
-   * an ordinary scrolling document that wants its header, and a wide session
-   * player has the room for one.
    */
   const bareViewport = isLiveViewportRoute && isMobile
 
@@ -209,14 +178,10 @@ const DashboardLayout = (): JSX.Element => {
             {!MOBILE_APP && <SidebarTrigger />}
             <ThemeSwitcher />
             {/* Layer 1 of audio disclosure: a standing indicator of what this
-                app may play, always visible and never interrupting. It is the
-                canonical place a person learns this app has audio, and the
-                place the first-use notices point back to. */}
+                app may play, and where first-use notices point back to. */}
             <AudioIndicator />
-            {/* Lines written lately, from a snapshot taken when this build was
-                made (`lib/loc-report`). Renders nothing in a build without
-                one. Before the phone's Settings link, which `ml-auto` pins to
-                the far side. */}
+            {/* Lines written lately (`lib/loc-report`); nothing in a build
+                without a snapshot. Before the Settings link `ml-auto` pins. */}
             <LocIndicator />
             {MOBILE_APP && (
               <Link
@@ -233,24 +198,19 @@ const DashboardLayout = (): JSX.Element => {
         <div
           className={cn(
             "flex-1",
-            // 24px on every side is a desktop budget. On a phone it is ~12%
-            // of the width spent on nothing, which the bounded routes below
-            // can least afford - they have exactly the window and no more.
+            // 24px on every side is a desktop budget the bounded routes on a
+            // phone cannot afford.
             bareViewport ? "p-0" : "p-4 sm:p-6",
             // scroll-intent: page — an ordinary document route scrolls as a
-            // page. The bounded routes take the overflow-hidden branch
-            // precisely so they cannot (docs/ui-fit,
-            // docs/session-viewport/02-kill-the-cutoff.md). A terminal
-            // session on the player route is back to an ordinary document.
+            // page; bounded routes take the overflow-hidden branch (docs/ui-fit,
+            // docs/session-viewport/02-kill-the-cutoff.md).
             isBoundedRoute ? "min-h-0 overflow-hidden" : "overflow-auto"
           )}
         >
           <Outlet />
         </div>
         {/* A persistent bar may not paint over a bounded surface
-            (docs/session-viewport/05-the-mobile-shell.md §4), so the
-            player and the composer go without it: they have their own
-            way back. */}
+            (docs/session-viewport/05-the-mobile-shell.md §4). */}
         {MOBILE_APP && !isBoundedRoute && <MobileNav pathname={pathname} />}
       </SidebarInset>
     </SidebarProvider>
@@ -258,9 +218,8 @@ const DashboardLayout = (): JSX.Element => {
 }
 
 export const Route = createFileRoute("/_dashboard")({
-  // No page here renders against the wrong store: a returning account user
-  // waits (once, with the probe's own deadline) for their session to be
-  // checked, and anyone learning on the device does not wait at all.
+  // No page renders against the wrong store: a returning account user waits
+  // (once, bounded by the probe's deadline); a device learner does not wait.
   beforeLoad: () => authority.settled(),
   component: DashboardLayout,
 })

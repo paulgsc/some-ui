@@ -1,18 +1,10 @@
 /**
  * @vitest-environment jsdom
  *
- * The activity outlives a change of layout.
- *
- * `LivePlayer` lays a session out one way on a handheld window and another on
- * a wide one, and which one it is can change mid-lesson: a window dragged
- * across `md`, a phone turned over. When the two layouts were two separate
- * returns, `SessionViewport` sat in a different slot in each, so React
- * unmounted it at the crossing and mounted a fresh one - and with it every
- * activity it holds. A Topik lesson went back to its material list.
- *
- * `SessionViewport` is stubbed with a component that counts its own mounts
- * and keeps a piece of state, which is exactly what an activity loses when
- * it is remounted. `useIsMobile` is the real one, reading the test viewport.
+ * The activity outlives a change of layout: `isMobile` can flip mid-lesson,
+ * and two separate returns would remount `SessionViewport` (a Topik lesson
+ * went back to its material list). The stub counts its mounts and keeps
+ * state; `useIsMobile` is the real one, reading the test viewport.
  */
 
 import type { JSX } from "react"

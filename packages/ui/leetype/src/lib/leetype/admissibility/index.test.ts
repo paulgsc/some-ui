@@ -81,14 +81,8 @@ describe("isAdmissible — Def. 3.1's own relation, T_A(C) <= B", () => {
     expect(isAdmissible(graph, constraints, budget)).toBe(false)
   })
 
-  // The modeling gotcha this story's own handoff calls out by name: two
-  // graphs sharing a Θ-class must not be treated as interchangeable by
-  // admissibility. Both G1 = Loop(n, W(1)) and G2 = Loop(n, W(1000)) are
-  // Θ(n) — printClass agrees on both — but their exact evaluated cost at
-  // the same bound differs by three orders of magnitude, and a budget
-  // between the two must find one admissible and the other not. If
-  // isAdmissible ever gets rewritten to compare classes instead of exact
-  // evaluated counts, this is the test that catches it.
+  // Same Θ-class, not interchangeable: Loop(n, W(1)) and Loop(n, W(1000))
+  // are both Θ(n), and a budget between their exact costs admits only one.
   it("does not reduce to the Θ-class first — same class, different evaluated cost, different verdict", () => {
     const cheap = Loop(dim("n"), W(1))
     const expensive = Loop(dim("n"), W(1000))
@@ -105,7 +99,7 @@ describe("isAdmissible — Def. 3.1's own relation, T_A(C) <= B", () => {
   })
 })
 
-describe("checkAdmissibleClaimsAgreeWithDerivation — G3's own check for R4's authored claim (#1207, not yet landed)", () => {
+describe("checkAdmissibleClaimsAgreeWithDerivation — authored admissible claims against the derivation", () => {
   const constraints: ConstraintSet = [
     { dimension: "n", operator: "<=", bound: 1000 },
   ]

@@ -2,40 +2,20 @@ import type { FC } from "react"
 import { cn } from "some-ui-utils"
 
 type RoundFeedbackProps = {
-  /** μ(d)'s own register statement (`#1330`) — canon §7's authored claim, general by construction. */
+  /** μ(d)'s register statement: canon §7's general claim. */
   justification: string
-  /**
-   * The round-specific gloss (`DiffSetMember.propositionGloss`,
-   * `types/round.ts`) — why *this* diff instantiates `justification`'s
-   * general claim. Absent on a diff-set member with no gloss authored
-   * yet, which is left visible as a real thinness rather than papered
-   * over (see this component's own doc comment).
-   */
+  /** Why *this* diff instantiates the claim (`DiffSetMember.propositionGloss`); may be absent. */
   gloss?: string
   className?: string
 }
 
 /**
- * The round-shaped counterpart to `components/reading-game`'s
- * `ReadingFeedback` (B3, #1220) — additive, new component, not a rewrite
- * of it, the same posture `RoundChoices` already takes on `ClaimChoices`.
+ * The round-shaped counterpart to `ReadingFeedback`. No verdict: the rows
+ * already carry it, so this is neutral paint and one eyebrow.
  *
- * # It carries no verdict, because the verdict is already where it belongs
- *
- * `RoundChoices` marks the answer and the missed pick on the rows
- * themselves, with a glyph and a word — repeating "Correct" here would be
- * the same fact said twice in two registers. So this panel is neutral
- * paint and one eyebrow, exactly `ReadingFeedback`'s own restraint.
- *
- * # Two paragraphs, never one instead of the other
- *
- * `justification` (canon §7's own statement) always renders — every
- * active register entry has one by construction (`#1330`). `gloss`, when
- * authored, renders *beneath* it, never instead of it (#1220's own
- * acceptance criterion): the general claim is the thing being taught, and
- * the gloss is the instance. A round whose gloss is missing reads thin on
- * purpose — the fix is an authored gloss, a corpus change argued on its
- * own merits, not generated prose standing in for one.
+ * `justification` always renders; `gloss`, when authored, renders beneath
+ * it, never instead. A missing gloss reads thin on purpose; the fix is an
+ * authored gloss, not generated prose.
  */
 export const RoundFeedback: FC<RoundFeedbackProps> = ({
   justification,

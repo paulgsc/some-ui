@@ -1,15 +1,9 @@
 /**
- * The voice control on the Android app (#1628).
- *
- * The web builds' "Text-to-speech provider" and "Voice" choose a hosted
- * voice, and the phone has no hosted voice to choose: it speaks with its
- * own engine. So on the phone those two fields give way to this one, which
- * lists the Korean voices the phone has, and says plainly when it has none,
- * with the button that fixes it, since otherwise every lesson is silent with
- * no hint why.
- *
- * The list is re-read when the app returns to the front, so a voice
- * installed from the system settings appears here without a reload.
+ * The voice control on the Android app (#1628), replacing the web's hosted
+ * provider/voice fields: it lists the phone's Korean voices, or says plainly
+ * there are none, with the button that fixes it (otherwise lessons are
+ * silent with no hint why). Re-read when the app returns to the front, so a
+ * newly installed voice appears without a reload.
  */
 
 import type { JSX } from "react"
@@ -79,9 +73,8 @@ const VoicePicker = ({
   const selected = voices.some((voice) => voice.id === value)
     ? value
     : PHONE_DEFAULT
-  // The sample is a line through the speech session like any other, so it
-  // interrupts what plays and honors mute; nothing writes to the engine
-  // behind the session's back.
+  // Through the speech session like any line, so it interrupts what plays and
+  // honours mute.
   const preview = useVoicePreview()
 
   return (

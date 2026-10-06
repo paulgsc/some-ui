@@ -1,13 +1,8 @@
 /**
- * The time, to the minute, as something React can subscribe to. For a page
- * that shows "what is due now" and stays open: Home on the phone, left in
- * the background over a checkpoint or past midnight.
- *
- * Two things move it: a timer on each wall-clock minute while the page runs, and the
- * page coming back into view, since a backgrounded WebView's timers stall
- * and the first thing seen on return should already be current. Both only
- * re-read `Date.now()`; nothing here holds state of its own beyond the
- * subscription, so a missed tick costs nothing.
+ * The time, to the minute, as something React can subscribe to, for a page
+ * left open (Home on the phone). It moves on each wall-clock minute and when
+ * the page comes back into view (a backgrounded WebView's timers stall). Both
+ * only re-read `Date.now()`, so a missed tick costs nothing.
  */
 import { useSyncExternalStore } from "react"
 

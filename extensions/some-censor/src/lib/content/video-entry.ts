@@ -51,10 +51,9 @@ type TransformTitleFn = (title: string, channelId: string) => Promise<unknown>
 /**
  * What {@link VideoEntry.advanceToTitle} actually did.
  *
- * Exists so a bulk advance can report its coverage instead of returning void
- * and leaving the caller to assume it covered everything (#1424). Three
- * outcomes rather than a boolean because "did not advance" has two causes that
- * mean opposite things about the page.
+ * Lets a bulk advance report its coverage. Three outcomes rather than a
+ * boolean because "did not advance" has two causes that mean opposite things
+ * about the page.
  */
 export type AdvanceOutcome =
   /** Was below title, and is now at it. */
@@ -120,7 +119,7 @@ export class VideoEntry {
     // The card as it is first seen during ordinary browsing — which is the
     // only moment most cards are ever observed, since extractMeta() otherwise
     // runs only when the user clicks one. Two selectors, once per entry, and
-    // the raw string is all that is kept (OBS1, #1395).
+    // the raw string is all that is kept (OBS1).
     recordUploadDate(
       extractUploadDate(this._handle.element),
       this._handle.element
@@ -145,15 +144,11 @@ export class VideoEntry {
    * Programmatically advance this entry to TitleState if it is currently below it.
    *
    * Called by VideoManager.advanceAllToTitle() on every entry in the registry.
-   * Safe to call unconditionally - the kind guard makes it a no-op for entries
-   * thata are already at or past title.
+   * A no-op for entries already at or past title.
    *
-   * Returns which of the three things happened rather than nothing, so the
-   * caller can say what the keystroke covered (#1424). The two non-advancing
-   * outcomes are not equivalent and must not be summed: `already-past` is a
-   * card the command had nothing to do to, while `detached` is a registry
-   * entry whose element left the DOM — a card the user can no longer see, but
-   * also a slot the registry is still holding.
+   * The two non-advancing outcomes must not be summed: `already-past` had
+   * nothing to do, while `detached` is a registry slot whose element left the
+   * DOM.
    */
   advanceToTitle(): AdvanceOutcome {
     if (!this._handle.element.isConnected) return "detached"
@@ -196,9 +191,8 @@ export class VideoEntry {
    *
    * `VideoManager._byVideo` is keyed by videoId, not by element, so looking an
    * entry up by id proves nothing about which renderer it belongs to — two
-   * elements can carry the same video (a grid cell wrapping a lockup, #1426).
-   * Any decision that acts on "the entry for this element" has to say so, and
-   * this is the only thing that can answer it without handing the element out.
+   * elements can carry the same video (a grid cell wrapping a lockup). This
+   * answers "the entry for this element" without handing the element out.
    */
   owns(el: HTMLElement): boolean {
     return this._handle.element === el
@@ -208,8 +202,8 @@ export class VideoEntry {
    * Is the element this entry is mounted on still a card?
    *
    * A live entry can outlast its element's role: the virtualizer hands the
-   * cell to a lockup for the *same* video, and the cell is a container now
-   * (#1504's own review, round 4). The manager asks this before treating
+   * cell to a lockup for the *same* video, and the cell is a container now.
+   * The manager asks this before treating
    * "an entry for this video already exists" as "nothing to do".
    */
   isCard(): boolean {

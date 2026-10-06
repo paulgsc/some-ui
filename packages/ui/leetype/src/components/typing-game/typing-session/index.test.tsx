@@ -7,31 +7,15 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 
 import { TypingSession } from "."
 
-/**
- * What `__wbg_init` resolves to — the wasm exports table. Derived from the
- * bindings rather than written as `void` so this mock keeps tracking the
- * real signature; the loader awaits init purely for sequencing and never
- * reads the table, so a stand-in value is enough.
- */
+/** What `__wbg_init` resolves to; the loader awaits it but never reads it. */
 // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- a stand-in for the wasm exports table, which the loader awaits but never reads
 const INIT_OUTPUT = {} as Awaited<ReturnType<typeof wasmInit>>
 
-// ═══════════════════════════════════════════════════════════════════════════
-// What is pinned here is the one thing the composition can get wrong in a way
-// no unit test would notice: **the runner advances exactly once per completed
-// step.**
-//
-// The hazard is React re-entrancy, not arithmetic. `TypingSession`'s completion
-// effect depends on the runner, so advancing the runner re-runs the effect —
-// and on that second run the snapshot it reads is still the *previous*
-// engine state, because the engine's own step-swap effect has scheduled a
-// state update rather than applied one. Left unguarded, every finished step
-// advances the runner twice and the player skips every other step.
-//
-// The engine is faked (not the reveal loop — that is proved in Rust) so this
-// file can drive completion deterministically: press the exact characters a
-// step owes and the fake reports `isComplete`.
-// ═══════════════════════════════════════════════════════════════════════════
+// Pins **the runner advances exactly once per completed step**: advancing
+// re-runs the completion effect while the snapshot still shows the previous
+// step, which unguarded would skip every other step. The engine is faked so
+// completion is deterministic: press the characters a step owes and it
+// reports `isComplete`.
 
 type Snapshot = {
   cursorSlot: number
@@ -66,13 +50,7 @@ type Snapshot = {
 let progression: "advance" | "repeat" | "escape"
 /** Every source the fake was handed, in order — the record under test. */
 let sourcesSeen: Array<string>
-/**
- * `Snapshot.assisted` the fake engine reports for every step (LTY-SEAM S2,
- * #1016). `0` everywhere except "the assistance seam" below, which needs a
- * nonzero value to prove `assisted` still reaches `CompletedSessionStats
- * .assistance` — every other test in this file runs a fluent session and
- * would not notice that pipeline silently dropping the field.
- */
+/** `Snapshot.assisted` for every step: `0` except in "the assistance seam". */
 let assistedOverride: number
 
 vi.mock("@some-ui/leetype-wasm", () => {
@@ -228,19 +206,41 @@ vi.mock("@some-ui/leetype-wasm", () => {
   }
 })
 
+type Step = Exercise["steps"][number]
+
+/** A step at position `index` typing `source`, with goal "Step <index>.". */
+function stepOf(
+  id: string,
+  index: number,
+  source: string,
+  extra: Partial<Step> = {}
+): Step {
+  return {
+    id,
+    goal: `Step ${index}.`,
+    concepts: [],
+    blocks: [
+      { kind: "prompt", lines: [`Prompt ${index}`] },
+      { kind: "typing", source, language: "rust" },
+    ],
+    ...extra,
+  }
+}
+
+const WITH_CHOICES: Partial<Step> = {
+  rationaleChoices: [
+    { text: "because borrowing avoids the copy" },
+    { text: "because the loop terminates early" },
+  ],
+}
+
 /** Three steps whose sources are short, distinct, and easy to count. */
 const EXERCISE: Exercise = {
   id: "test",
   title: "Three steps",
-  steps: ["aaa", "bbb", "ccc"].map((source, index) => ({
-    id: `s${index}`,
-    goal: `Step ${index}.`,
-    concepts: [],
-    blocks: [
-      { kind: "prompt" as const, lines: [`Prompt ${index}`] },
-      { kind: "typing" as const, source, language: "rust" as const },
-    ],
-  })),
+  steps: ["aaa", "bbb", "ccc"].map((source, index) =>
+    stepOf(`s${index}`, index, source)
+  ),
 }
 
 /** A stored baseline, so the warm-up is not in the way of these assertions. */
@@ -267,6 +267,30 @@ function typeStep(input: HTMLElement, length: number): void {
   }
 }
 
+/** With a stored baseline: render, press Begin, wait for step 0. */
+async function startSession(
+  props: Parameters<typeof TypingSession>[0]
+): Promise<HTMLElement> {
+  seedBaseline()
+  render(<TypingSession {...props} />)
+  const input = await begin()
+  await screen.findByText("Step 0.")
+  return input
+}
+
+/** Types all three steps of `EXERCISE`, then waits for the results card. */
+async function completeExercise(input: HTMLElement): Promise<void> {
+  for (let step = 0; step < 3; step++) {
+    typeStep(input, 3)
+    await waitFor(() =>
+      expect(sourcesSeen.length).toBeGreaterThanOrEqual(step + 1)
+    )
+  }
+  await screen.findByText(/Exercise complete/i)
+}
+
+const WHY = "Why is this the right fix?"
+
 beforeEach(async () => {
   localStorage.clear()
   progression = "advance"
@@ -281,14 +305,7 @@ beforeEach(async () => {
 
 describe("the step hand-off", () => {
   it("advances exactly one step per completed step", async () => {
-    // The re-entrancy guard, stated as the behaviour it protects. Without it
-    // the runner advances twice per completion and the player sees steps 1
-    // and 3, never 2.
-    seedBaseline()
-    render(<TypingSession exercise={EXERCISE} />)
-
-    const input = await begin()
-    await screen.findByText("Step 0.")
+    const input = await startSession({ exercise: EXERCISE })
 
     typeStep(input, 3)
     await screen.findByText("Step 1.")
@@ -296,48 +313,26 @@ describe("the step hand-off", () => {
     typeStep(input, 3)
     await screen.findByText("Step 2.")
 
-    // Every source the engine was handed, in order: no step skipped, none
-    // replayed. The first entry is the construction source.
+    // No step skipped, none replayed; the first is the construction source.
     expect(sourcesSeen).toEqual(["aaa", "bbb", "ccc"])
   })
 
   it("advances even when the engine reports the gate held (Ax. 9.1: revelation is unconditional)", async () => {
-    seedBaseline()
     progression = "repeat"
-    render(<TypingSession exercise={EXERCISE} />)
-
-    const input = await begin()
-    await screen.findByText("Step 0.")
+    const input = await startSession({ exercise: EXERCISE })
 
     typeStep(input, 3)
     await screen.findByText("Step 1.")
 
-    // The engine's own verdict was "repeat"; the surface moved on anyway —
-    // `readProgression` no longer consults it.
+    // The engine said "repeat"; `readProgression` does not consult it.
     expect(sourcesSeen).toEqual(["aaa", "bbb"])
   })
 
   it("reports the sequence once it runs out of steps", async () => {
-    seedBaseline()
     const onSessionComplete = vi.fn()
-    render(
-      <TypingSession
-        exercise={EXERCISE}
-        onSessionComplete={onSessionComplete}
-      />
+    await completeExercise(
+      await startSession({ exercise: EXERCISE, onSessionComplete })
     )
-
-    const input = await begin()
-    await screen.findByText("Step 0.")
-
-    for (let step = 0; step < 3; step++) {
-      typeStep(input, 3)
-      await waitFor(() =>
-        expect(sourcesSeen.length).toBeGreaterThanOrEqual(step + 1)
-      )
-    }
-
-    await screen.findByText(/Exercise complete/i)
     expect(onSessionComplete).toHaveBeenCalledTimes(1)
     expect(onSessionComplete.mock.calls[0]?.[0]).toMatchObject({
       stepsCompleted: 3,
@@ -346,137 +341,59 @@ describe("the step hand-off", () => {
   })
 })
 
-describe("the reason-reaffirmation shim (LTY-WHY W4, #1104)", () => {
-  /** One step carries rationaleChoices; the other doesn't, to prove the widget is per-step, not global. */
+describe("the reason-reaffirmation shim (LTY-WHY W4)", () => {
+  /** Only step 0 carries rationaleChoices: the widget is per-step. */
   const EXERCISE_WITH_RATIONALE: Exercise = {
     id: "test-rationale",
     title: "Two steps, one with rationaleChoices",
-    steps: [
-      {
-        id: "r0",
-        goal: "Step 0.",
-        concepts: [],
-        blocks: [
-          { kind: "prompt" as const, lines: ["Prompt 0"] },
-          {
-            kind: "typing" as const,
-            source: "aaa",
-            language: "rust" as const,
-          },
-        ],
-        rationaleChoices: [
-          { text: "because borrowing avoids the copy" },
-          { text: "because the loop terminates early" },
-        ],
-      },
-      {
-        id: "r1",
-        goal: "Step 1.",
-        concepts: [],
-        blocks: [
-          { kind: "prompt" as const, lines: ["Prompt 1"] },
-          {
-            kind: "typing" as const,
-            source: "bbb",
-            language: "rust" as const,
-          },
-        ],
-      },
-    ],
+    steps: [stepOf("r0", 0, "aaa", WITH_CHOICES), stepOf("r1", 1, "bbb")],
   }
 
   it("renders nothing while a rationaleChoices-bearing step is still in flight", async () => {
-    seedBaseline()
-    render(<TypingSession exercise={EXERCISE_WITH_RATIONALE} />)
-    await begin()
-    await screen.findByText("Step 0.")
-    expect(
-      screen.queryByText("Why is this the right fix?")
-    ).not.toBeInTheDocument()
+    await startSession({ exercise: EXERCISE_WITH_RATIONALE })
+    expect(screen.queryByText(WHY)).not.toBeInTheDocument()
   })
 
   it("renders the accordion once the step's hunk completes", async () => {
-    seedBaseline()
-    render(<TypingSession exercise={EXERCISE_WITH_RATIONALE} />)
-    const input = await begin()
-    await screen.findByText("Step 0.")
-
+    const input = await startSession({ exercise: EXERCISE_WITH_RATIONALE })
     typeStep(input, 3)
     await screen.findByText("Step 1.")
-    await screen.findByText("Why is this the right fix?")
+    await screen.findByText(WHY)
   })
 
   it("retires the accordion on the player's next keystroke, not before", async () => {
-    seedBaseline()
-    render(<TypingSession exercise={EXERCISE_WITH_RATIONALE} />)
-    const input = await begin()
-    await screen.findByText("Step 0.")
-
+    const input = await startSession({ exercise: EXERCISE_WITH_RATIONALE })
     typeStep(input, 3)
     await screen.findByText("Step 1.")
-    await screen.findByText("Why is this the right fix?")
+    await screen.findByText(WHY)
 
-    // Step 1 carries no rationaleChoices of its own — its first keystroke
-    // retires step 0's leftover accordion rather than replacing it.
+    // Step 1 has no choices of its own: its first keystroke retires step 0's.
     typeStep(input, 1)
     await waitFor(() => {
-      expect(
-        screen.queryByText("Why is this the right fix?")
-      ).not.toBeInTheDocument()
+      expect(screen.queryByText(WHY)).not.toBeInTheDocument()
     })
   })
 
   it("never renders for a step without rationaleChoices", async () => {
-    seedBaseline()
-    render(<TypingSession exercise={EXERCISE} />)
-    const input = await begin()
-    await screen.findByText("Step 0.")
+    const input = await startSession({ exercise: EXERCISE })
     typeStep(input, 3)
     await screen.findByText("Step 1.")
-    expect(
-      screen.queryByText("Why is this the right fix?")
-    ).not.toBeInTheDocument()
+    expect(screen.queryByText(WHY)).not.toBeInTheDocument()
   })
 
   it("stays reachable when its step is the last one in the sequence", async () => {
-    // Regression: runner.advance() on the last step's completion marks the
-    // whole run finished in the same tick the accordion's trigger would be
-    // captured, and the finished branch used to replace ExerciseCard (and
-    // everything rendered alongside it) with ResultsCard outright — making
-    // the final step's rationale permanently unreachable. Review finding
-    // on #1122.
-    const exerciseEndingWithRationale: Exercise = {
-      id: "test-rationale-last",
-      title: "One step, with rationaleChoices, and nothing after it",
-      steps: [
-        {
-          id: "last",
-          goal: "Step 0.",
-          concepts: [],
-          blocks: [
-            { kind: "prompt" as const, lines: ["Prompt 0"] },
-            {
-              kind: "typing" as const,
-              source: "aaa",
-              language: "rust" as const,
-            },
-          ],
-          rationaleChoices: [
-            { text: "because borrowing avoids the copy" },
-            { text: "because the loop terminates early" },
-          ],
-        },
-      ],
-    }
-
-    seedBaseline()
-    render(<TypingSession exercise={exerciseEndingWithRationale} />)
-    const input = await begin()
-    await screen.findByText("Step 0.")
-
+    // The last step's completion finishes the run in the same tick; the
+    // accordion must survive the swap to the results card.
+    const input = await startSession({
+      exercise: {
+        id: "test-rationale-last",
+        title: "One step, with rationaleChoices, and nothing after it",
+        steps: [stepOf("last", 0, "aaa", WITH_CHOICES)],
+      },
+    })
     typeStep(input, 3)
     await screen.findByText(/Exercise complete/i)
-    await screen.findByText("Why is this the right fix?")
+    await screen.findByText(WHY)
   })
 })
 
@@ -487,8 +404,7 @@ describe("the warm-up", () => {
     const input = await begin()
     await screen.findByText(/Warm up/i)
 
-    // The calibration passage, then the exercise's first step — and the
-    // exercise must start at step 0, not step 1.
+    // The calibration passage, then the exercise from step 0, not step 1.
     const passageLength = sourcesSeen[0]?.length ?? 0
     expect(passageLength).toBeGreaterThan(0)
 
@@ -498,47 +414,20 @@ describe("the warm-up", () => {
   }, 15000)
 
   it("is skipped entirely once a baseline is stored", async () => {
-    seedBaseline()
-    render(<TypingSession exercise={EXERCISE} />)
-
-    await begin()
-    await screen.findByText("Step 0.")
+    await startSession({ exercise: EXERCISE })
     expect(screen.queryByText(/Warm up/i)).not.toBeInTheDocument()
   })
 })
 
-describe("the assistance seam (LTY-SEAM S2, #1016)", () => {
+describe("the assistance seam (LTY-SEAM S2)", () => {
   it("carries a nonzero assisted count through to CompletedSessionStats.assistance", async () => {
-    // Nothing consumes `assistance` as a competence claim today — S2 (#1016)
-    // forbids that outright — but `adaptive-learning-canon.typ`'s eventual
-    // O3 will read it at this exact boundary, and every other test in this
-    // file runs a fluent session where `assisted` stays 0 throughout. That
-    // makes 0 the value a refactor that silently stopped forwarding
-    // `Snapshot.assisted` into this aggregate would *also* produce — so
-    // this test forces it nonzero and confirms the whole pipeline
-    // (Snapshot.assisted -> assistanceRef -> CompletedSessionStats
-    // .assistance) still carries it.
-    seedBaseline()
+    // Every other test keeps `assisted` at 0, the value a dropped pipeline
+    // (Snapshot.assisted -> assistanceRef -> assistance) would also give.
     assistedOverride = 1
     const onSessionComplete = vi.fn<(stats: CompletedSessionStats) => void>()
-    render(
-      <TypingSession
-        exercise={EXERCISE}
-        onSessionComplete={onSessionComplete}
-      />
+    await completeExercise(
+      await startSession({ exercise: EXERCISE, onSessionComplete })
     )
-
-    const input = await begin()
-    await screen.findByText("Step 0.")
-
-    for (let step = 0; step < 3; step++) {
-      typeStep(input, 3)
-      await waitFor(() =>
-        expect(sourcesSeen.length).toBeGreaterThanOrEqual(step + 1)
-      )
-    }
-
-    await screen.findByText(/Exercise complete/i)
     expect(onSessionComplete).toHaveBeenCalledTimes(1)
     const stats = onSessionComplete.mock.calls[0]?.[0]
     expect(stats?.assistance).toBeGreaterThan(0)

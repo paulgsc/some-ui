@@ -5,9 +5,9 @@ name: Extension Verification
 # by the build-workspace job in extension.yml. This job does NOT rebuild shared
 # packages — only the extension itself.
 #
-# Wasm is not among them: extensions depend on the published npm packages
-# (e.g. "@some-ui/polyhedron": "0.0.4"), so it arrives via pnpm install like
-# any other registry dependency. Nothing in extension CI runs wasm-pack.
+# Wasm is not among them: an extension that needs a wasm crate depends on its
+# published npm package (none does today), so it would arrive via pnpm install
+# like any other registry dependency. Nothing in extension CI runs wasm-pack.
 #
 # Forbidden-dep check: extensions must not list React/preact/lucide-react or
 # any packages/ui/* package as a runtime dependency. All deps bundled by Vite

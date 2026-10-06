@@ -1,14 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 /**
- * `DATA_MODE` is a module-level constant folded at build time, so each case
- * re-imports the module with a different env rather than calling a function.
- *
- * Worth pinning despite being a one-line ternary: getting it backwards fails
- * silently and asymmetrically. Flipped one way, GitHub Pages issues fetches
- * for files that were never deployed; flipped the other, `vite dev` and the
- * Docker image stop reading the content a developer just generated and quietly
- * serve demo seeds instead. Neither shows up as an error.
+ * `DATA_MODE` is folded at build time, so each case re-imports under a
+ * different env. Flipped, Pages fetches files never deployed, or dev and
+ * Docker silently serve demo seeds.
  */
 type DataModeModule = {
   DATA_MODE: "static" | "server"

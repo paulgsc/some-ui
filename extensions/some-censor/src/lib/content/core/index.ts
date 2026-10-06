@@ -1,5 +1,5 @@
 /**
- * The Core (BC3, #1436): a pure reducer over the Sensor's token stream and
+ * The Core (BC3): a pure reducer over the Sensor's token stream and
  * the extension's own inputs, emitting actions for the Actuator.
  *
  * Nothing under `core/` imports the DOM, `browser.*`, a clock or a session

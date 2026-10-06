@@ -8,26 +8,20 @@ import { syntheticCatalogue } from "@activity-catalog/testing/synthetic-catalogu
 import { describe, expect, it } from "vitest"
 
 /**
- * The guardrail for #858: the launcher must not be able to regress into a
- * scrollbar as the catalogue grows.
+ * The launcher must not grow into a scrollbar as the catalogue grows (#858).
  *
- * `no-greedy-overflow` bans the class string, and the ui-fit sweep measures
- * the rendered result. Neither catches the failure this epic is actually
- * about, which needs no `overflow-auto` at all: a grid that renders `N` cards
- * inside a document that happens to scroll. The property that stops it is
- * "the launcher renders `k`, and `k` comes from the box" - so that is what is
- * asserted here, in the same package as the catalogue it protects.
+ * Lint bans the class string and the ui-fit sweep measures the result, but
+ * neither catches a grid that renders `N` cards inside a document that
+ * scrolls. What stops it is "the launcher renders `k`, and `k` comes from
+ * the box", asserted here beside the catalogue it protects.
  */
 
 /**
  * How many activities exist today.
  *
- * This is a tripwire, not a rule. Adding an applet is meant to be easy, and
- * the whole point of the epic is that it needs no layout change - but the
- * person adding the fifth or twentieth one should find that out from CI
- * rather than from a reviewer, and should have to look at the launcher once
- * before saying so. Bump this number in the same commit that adds the
- * activity, having run `pnpm --filter www test:ui-fit`.
+ * A tripwire, not a rule: adding an applet needs no layout change, but its
+ * author should look at the launcher once. Bump this in the same commit that
+ * adds the activity, having run `pnpm --filter www test:ui-fit`.
  */
 const KNOWN_CATALOGUE_SIZE = 3
 
@@ -47,9 +41,8 @@ describe("catalogue size", () => {
   })
 
   it("is rendered by the launcher at k, never at N", () => {
-    // The regression this pins is the one #852 opened on: `ACTIVITY_IDS.map`
-    // into a fixed four-column grid, which is only well-behaved while N is
-    // exactly 4. Reverting to that makes this fail at every size but one.
+    // `ACTIVITY_IDS.map` into a fixed four-column grid behaves only while N
+    // is exactly 4; it fails here at every size but one.
     for (const size of [4, 10, 20, 50]) {
       const catalogue = syntheticCatalogue(size)
       for (const width of [390, 768, 1280, 1680]) {

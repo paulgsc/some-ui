@@ -2,10 +2,9 @@
  * @vitest-environment jsdom
  *
  * The transfer from this device to an account: explicit, per account, never
- * duplicating, resumable, and under one authority. Account stores here are the
- * localStorage repository against their own storage, which has the interface,
- * server-side id minting and the 404-for-someone-else's-session `get` that the
- * real one has.
+ * duplicating, resumable, and under one authority. Account stores are the
+ * localStorage repository on their own storage (server-side ids, and a `get`
+ * that 404s another account's session, as the real one does).
  */
 
 import { beforeEach, describe, expect, it } from "vitest"

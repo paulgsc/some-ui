@@ -18,7 +18,7 @@ type GenerateLessonProps = {
    * This prompt, exactly as handed off, reached the learner: the clipboard
    * took it, or they said they copied it from the fallback. A copy event on
    * the fallback is not enough - it proves some text was copied, not all of
-   * it (Codex, #1555) - so the learner confirms. Never called when the
+   * it - so the learner confirms. Never called when the
    * clipboard refused and nothing was confirmed.
    */
   onPromptHandedOff?: (prompt: string) => void

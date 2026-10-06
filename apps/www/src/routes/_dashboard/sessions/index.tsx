@@ -129,11 +129,8 @@ const SessionCard = ({
                 {STATUS_LABEL[session.status]}
               </Badge>
             </div>
-            {/* One tag per activity's mode/difficulty/etc. (the same
-                summarizeConfig the completion summary already uses) so
-                sessions of the same activity are distinguishable at a
-                glance - e.g. two Honeycomb drafts, one Vocabulary and one
-                Endless, don't otherwise look identical in this list. */}
+            {/* One tag per activity config (summarizeConfig), so two drafts
+                  of one activity are distinguishable. */}
             <div className="mt-1 flex flex-wrap items-center gap-1.5">
               {session.activities.map((sessionActivity, index) => {
                 const activity = findActivity(sessionActivity.activityId)
@@ -157,10 +154,8 @@ const SessionCard = ({
             </p>
           </div>
         </div>
-        {/* On a phone the actions drop below the details, and the "Updated"
-            line rides in their row rather than taking one of its own above
-            it: a row that held three buttons pushed to its right edge was a
-            band of nothing across the card. */}
+        {/* On a phone the actions drop below the details, with "Updated"
+              in their row. */}
         <div className="flex shrink-0 items-center gap-2 sm:self-auto">
           <p className="text-muted-foreground mr-auto min-w-0 truncate pl-7 text-xs sm:hidden">
             Updated {formatRelativeTime(session.updatedAt)}
@@ -256,14 +251,9 @@ function isIntentPending<T>(state: Intent<T>): boolean {
   })
 }
 
-/** A named function, not an inline arrow embedded in `BulkActionBar`'s own
- * JSX - the latter trips `react/no-unstable-nested-components` (a function
- * returning JSX, defined inside a render body, reads as a component to
- * that rule even though it's invoked directly here rather than mounted as
- * one). No dropdown/select has a matching button to attach a retry to
- * (`handleStatusChange` fires from a `Select`, not a click this component
- * can re-run standalone), so `IntentFailure`'s own built-in retry control
- * is rendered directly rather than through `IntentButton`. */
+/** Named, not an inline arrow, for `react/no-unstable-nested-components`.
+ * Status changes fire from a `Select`, with no button to retry through, so
+ * `IntentFailure`'s own retry control is rendered directly. */
 function bulkStatusChangeFailure(
   state: Intent<Array<SessionRecord>>
 ): JSX.Element | null {
@@ -293,11 +283,8 @@ const BulkActionBar = ({
     isIntentPending(deleteManyIntent.state) ||
     isIntentPending(updateStatusManyIntent.state)
 
-  // Decoupled from either `.start()` call, per #945's own recorded bulk
-  // decision (`lib/intent/render/index.ts`) - clearing the selection is
-  // what a *successful* batch means, not what starting one means, and it
-  // must not fire again just because this component re-renders while
-  // already succeeded.
+  // Decoupled from `.start()` (`lib/intent/render/index.ts`): a *successful*
+  // batch clears the selection, once.
   useIntentEffect(deleteManyIntent.state, onClearSelection)
   useIntentEffect(updateStatusManyIntent.state, onClearSelection)
 
@@ -433,10 +420,8 @@ const SessionsList = ({
 
   return (
     <div className="max-w-3xl space-y-8">
-      {/* A cached list stays on screen while its own background refresh
-          failed (see query-outcome's header) - this banner is the "honest
-          stale/failure signal" the route-arrival invariant requires instead
-          of silently discarding useful content. */}
+      {/* A cached list stays on screen through a failed refresh
+            (query-outcome's header); this banner says so. */}
       {refreshError && (
         <IntentFailure
           error={refreshError.error}

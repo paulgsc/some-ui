@@ -70,10 +70,8 @@ const DECLARATION_DIR = "dist/types"
  * A4. "Uses an alias" means what it means to TypeScript: the specifier
  *     matches a `paths` pattern AND the pattern's target file exists. A match
  *     with no target is a package import that TypeScript resolved from
- *     node_modules instead, and is left alone: chat's "@some-ui/*" -> assets
- *     pattern also matches "@some-ui/shared". (vite-plugin-dts got this
- *     wrong, rewriting "@some-ui/shared" into a missing assets path, so chat's
- *     and slideshow's consumers saw `any`.) A Vite-only alias
+ *     node_modules instead, and is left alone: a "@some-ui/*" -> assets
+ *     pattern also matches "@some-ui/shared". A Vite-only alias
  *     (`resolve.alias`) cannot reach a declaration at all, because `tsc`
  *     does not see it and would have failed to resolve it first.
  * A5. An alias's target is a source file `tsc` emitted a declaration for. A
@@ -86,11 +84,9 @@ const DECLARATION_DIR = "dist/types"
  * A7. `tsc`'s incremental state lives inside `dist/types`
  *     (`tsBuildInfoFile`). `tsconfig.ui.json` sets `composite`, which makes
  *     `tsc -p` incremental. `tsc -p` trusts its build info and does not check
- *     that the declarations it lists still exist. With the build info kept
- *     elsewhere (by default the package root, whenever `rootDir` is `./src`),
- *     deleting `dist/` or rewriting a declaration left `tsc` emitting nothing
- *     on the next run. Kept together, the two are removed together (a deleted
- *     `dist/`) or kept together (this plugin's own `buildStart`).
+ *     that the declarations it lists still exist, so build info kept
+ *     elsewhere outlives a deleted `dist/` and the next run emits nothing.
+ *     Kept together, the two are removed or kept together.
  *
  * NON-GOALS
  *
@@ -282,7 +278,7 @@ function pathsBaseOf(
 /**
  * The files a `paths` alias would send `specifier` to, if any pattern matches
  * it. An exact key ("@some-ui/leetype-wasm") matches only itself; a wildcard
- * key ("@chat/*") matches by prefix and suffix, as TypeScript does.
+ * key ("@leetype/*") matches by prefix and suffix, as TypeScript does.
  */
 export function aliasTargets(
   specifier: string,

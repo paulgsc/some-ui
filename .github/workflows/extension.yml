@@ -22,9 +22,9 @@ name: Extension CI
 # are skipped automatically by the dep graph.
 #
 # Wasm crates are not part of that closure, are not built here, and no longer
-# trigger this workflow. Extensions pin the published npm package
-# (extensions/some-conveyor: "@some-ui/polyhedron": "0.0.4"), so wasm arrives
-# from the registry via pnpm install. Editing a .rs file cannot change an
+# trigger this workflow. An extension that needs one pins the published npm
+# package (none does today), so wasm arrives from the registry via
+# pnpm install. Editing a .rs file cannot change an
 # extension bundle until wasm-release.yml publishes a new version and the pin
 # is bumped — and that bump touches package.json + pnpm-lock.yaml, which is
 # already in the trigger list below. crates/** here only bought a full
@@ -68,9 +68,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       # No cargo-cache: nothing in this job invokes cargo. The extension
-      # dependency closure resolves the wasm packages from the npm registry
-      # (extensions/some-conveyor pins "@some-ui/polyhedron": "0.0.4"), not
-      # from crates/* as workspace source, so `...{./extensions/*}` below
+      # dependency closure would resolve any wasm package from the npm
+      # registry (a pinned version), not from crates/* as workspace source,
+      # so `...{./extensions/*}` below
       # selects zero crates and the cache was restored and saved for a
       # toolchain the job never ran.
       - uses: actions/checkout@v7

@@ -6,23 +6,18 @@
  * `uno.config.ts` scans exactly this module and `styles/content.css` — nothing
  * else. So the emitted stylesheet is, by construction, the set of utilities
  * declared below; a class name written anywhere else is not generated and
- * therefore does nothing. That is deliberate. It replaces the sibling
- * extensions' "scan all of `src`, then blocklist twenty words that collide with
- * TypeScript identifiers" arrangement with a positive declaration, and it means
- * the answer to "what can this extension paint?" is one file long.
+ * therefore does nothing. That is deliberate: a positive declaration instead
+ * of scanning all of `src` and blocklisting words, and the answer to "what can
+ * this extension paint?" is one file long.
  *
  * `dom-handle.ts` consumes these constants and owns the DOM invariants; it does
- * not author class names. Keeping the split makes both halves readable: the
- * styling is a flat table you can diff, and the DOM code is about lifecycle.
+ * not author class names.
  *
- * ## Sizing is a container query, not a measurement (#973)
+ * ## Sizing is a container query, not a measurement
  *
  * The veil declares itself a container (`@container/boyo`), so every child
- * sizes against the *card's* width rather than the viewport's. This is what
- * fixes the overflow reported in #973: the same veil renders inside a 380px
- * home-feed card and inside a ~170px upcoming-slider tile, and previously both
- * got the 13px type, the 180px `min-width` meta chip and the unclamped title —
- * which the small tile simply could not contain.
+ * sizes against the *card's* width rather than the viewport's: the same veil
+ * renders inside a 380px home-feed card and a ~170px upcoming-slider tile.
  *
  * The scale is written smallest-first, so the *narrow* case is the default and
  * the roomy cases opt in:
@@ -50,8 +45,7 @@ import type { HintTone, RailStep } from "@censor/types/states"
  * `closest(".boyo-veil")` and the e2e suite asserts on it, so the namespace
  * class is load-bearing, not decoration.
  *
- * `group` lets the hint pill react to hover on the veil, which used to be a
- * `.boyo-veil:hover::before` descendant rule.
+ * `group` lets the hint pill react to hover on the veil.
  */
 const VEIL_BASE =
   "boyo-veil group @container/boyo " +
@@ -93,10 +87,9 @@ export const VEIL: Record<"occluding" | "whitelisted" | "revealed", string> = {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * Was `.boyo-veil::before` with a `content:` string per `[data-boyo]` value.
- * Pseudo-element copy cannot be sized by a container query on its own host and
- * cannot be read by a screen reader, so the pill is a real element now and its
- * copy comes from the FSM projection rather than from the stylesheet.
+ * A real element, not pseudo-element copy: that cannot be sized by a container
+ * query on its own host or read by a screen reader. Its copy comes from the
+ * FSM projection.
  */
 const HINT_BASE =
   "boyo-hint inline-flex items-center shrink-0 max-w-full truncate " +
@@ -145,7 +138,7 @@ export function hintClass(tone: HintTone): string {
 // Progress rail
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** Was `.boyo-veil::after`; a real element for the same reasons as the hint. */
+/** A real element for the same reasons as the hint. */
 const RAIL_BASE =
   "boyo-rail absolute bottom-0 left-0 h-2px rounded-b-[inherit] " +
   "pointer-events-none transition-all duration-400 ease-[var(--boyo-ease)]"
@@ -165,10 +158,8 @@ export function railClass(step: RailStep): string {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * `min-w-0` and the absence of any `min-width` are the #973 fix. The previous
- * rule set `min-width: 180px` on this chip, which is wider than an entire
- * upcoming-slider tile — so the chip forced the veil's content box past the
- * card's edge and the text ran out of the card rather than wrapping in it.
+ * `min-w-0` and no `min-width`: any fixed minimum wider than a ~170px slider
+ * tile pushes the veil's content box past the card's edge.
  */
 const META_BASE =
   "boyo-meta flex flex-col items-center w-full min-w-0 max-w-full " +
@@ -200,9 +191,8 @@ export const META_CHANNEL =
   "text-10px @[220px]:text-11px @[340px]:text-13px"
 
 /**
- * Duration · upload date. Hidden below 220px — this is the "render reduced meta
- * in the small card" the issue asks for. The channel is the one piece of meta
- * worth the space in a tile that narrow; the sub-line is what was overflowing.
+ * Duration · upload date. Hidden below 220px: the channel is the one piece of
+ * meta worth the space in a tile that narrow.
  */
 export const META_SUB =
   "boyo-meta-sub w-full min-w-0 truncate " +
@@ -214,10 +204,8 @@ export const META_SUB =
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * `line-clamp` rather than free-flowing text: a long title in a short tile used
- * to push the chip past the card's bottom edge. Clamping keeps the box inside
- * the veil and ellipsises the remainder, and the line budget grows with the
- * card.
+ * `line-clamp` rather than free-flowing text, so a long title in a short tile
+ * stays inside the veil. The line budget grows with the card.
  */
 const TITLE_BASE =
   "boyo-title-chip w-full min-w-0 max-w-full overflow-hidden " +
@@ -242,7 +230,7 @@ export const TITLE: Record<"plain" | "translated", string> = {
   translated: `${TITLE_BASE} ${TITLE_TRANSLATED}`,
 }
 
-/** Was `.boyo-title-chip[data-translated]::after { content: attr(data-lang) }`. */
+/** The translated-title language badge. */
 export const TITLE_LANG =
   "boyo-title-lang block w-full min-w-0 truncate mt-1 " +
   "uppercase tracking-[0.08em] font-400 " +

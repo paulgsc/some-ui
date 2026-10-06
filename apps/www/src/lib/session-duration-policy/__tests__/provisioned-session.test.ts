@@ -13,16 +13,9 @@ import {
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
 /**
- * `paulgsc/server`'s `activity_repo::provisioning::provision`, run once
- * against the real recommender and copied here by hand
- * (`cargo run --bin dump-proposed-session`, `paulgsc/server#281`) — the
- * same by-hand fixture discipline `to-scene-config`'s own
- * `session-activity-round-trip.test.ts` already uses for #272's round trip.
- *
- * Regenerate this file whenever the server's seed migration or the
- * recommender's rules change in a way that would move which activities get
- * proposed or what they're scheduled at — see the dump binary's own doc
- * comment.
+ * `paulgsc/server`'s `activity_repo::provisioning::provision`, dumped by hand
+ * with `cargo run --bin dump-proposed-session` (paulgsc/server#281).
+ * Regenerate it when the seed migration or the recommender's rules change.
  */
 const proposedSession: ReadonlyArray<SessionActivity> = JSON.parse(
   readFileSync(
@@ -32,19 +25,10 @@ const proposedSession: ReadonlyArray<SessionActivity> = JSON.parse(
 )
 
 /**
- * `paulgsc/server#281` (RCM4)'s own acceptance criterion: "a proposed
- * session passes the client's `checkSessionDuration` — verified by a
- * fixture consumed on the client side, not by re-implementing the check
- * here." This is that fixture and that test.
- *
- * The pipeline below is exactly what a real device runs — `sequenceScenes`
- * is the same function a Basic-composer session already calls (#272's own
- * argument for why a server-composed session is not a new client code
- * path) — so this cannot pass by agreeing with a reimplementation of
- * `checkSessionDuration`'s logic; it can only pass by actually satisfying
- * the real one.
+ * A server-proposed session passes the client's real `checkSessionDuration`,
+ * through the same `sequenceScenes` a Basic-composer session calls.
  */
-describe("a server-provisioned session passes the client's own duration policy (server#281)", () => {
+describe("a server-provisioned session passes the client's own duration policy", () => {
   const scenes = sequenceScenes(proposedSession)
 
   it("schedules every activity at its floor, never its default", () => {

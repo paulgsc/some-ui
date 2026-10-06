@@ -3,13 +3,12 @@ import type { DiagnosticStep, Exercise } from "@leetype/types/exercise"
 import { typingBlockFromDiff } from "@leetype/types/exercise"
 
 /**
- * LTY-SEED G4 (#1109): the epic's first worked generation run, diagnostic
+ * LTY-SEED G4: the epic's first worked generation run, diagnostic
  * half. Generated against `leetype-exercise-generator/index.md` v1.0 with
  * `Concept: memoization`, `Invariant violated: an overlapping-subproblems
  * recurrence must cache a prior result or it re-derives it exponentially
- * many times`. Landed after review against #1005's six constraints — see
- * `docs/leetype/leetype-exercise-generator-log.md` for what that review
- * caught and fixed before this module existed in this form.
+ * many times`; reviewed against the six diagnostic constraints (see
+ * `docs/leetype/leetype-exercise-generator-log.md`).
  *
  * `memoization` is a genuinely new concept (`concepts.ts`), not a
  * near-duplicate of anything already probed: `loopProgress` is about a

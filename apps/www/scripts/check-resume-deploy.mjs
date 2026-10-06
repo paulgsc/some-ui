@@ -1,23 +1,14 @@
 #!/usr/bin/env node
 // Deployment regression check for the /resume shell (apps/www/resume/index.html).
 //
-// GitHub Pages has no server-side rewrite, so before that shell existed, a
-// direct request to /some-ui/resume/ fell through to the SPA's 404.html
-// fallback: HTTP 404, and the app-shell's generic "Some UI — Focused study
-// sessions" title/description until React booted and took over. A browser
-// never notices (JS renders the correct route either way), but a crawler,
-// link-preview bot, or automated portfolio check reading the raw response
-// does — the one URL this app is shared as a résumé link would read as
-// missing or unrelated to anyone that doesn't run its JS.
-//
-// This asserts the published page never regresses back to that: a real
-// HTTP 200, résumé-specific <title>/description, the canonical /resume/
-// URL, and a stable identifier readable from the initial HTML alone.
+// Pages has no server-side rewrite, so without that shell /some-ui/resume/
+// would be the SPA's 404.html: HTTP 404 with the generic title, which a
+// crawler or link-preview bot reads as missing. This asserts a real 200,
+// résumé-specific <title>/description, the canonical /resume/ URL, and a
+// stable identifier in the initial HTML.
 //
 // Usage: node scripts/check-resume-deploy.mjs [url]
-// `url` defaults to the production Pages deployment; pass an explicit one
-// (e.g. a workflow's `steps.deployment.outputs.page_url` + "resume/") to
-// check a different deploy without editing this file.
+// `url` defaults to the production Pages deployment.
 const DEFAULT_URL = "https://paulgsc.github.io/some-ui/resume/"
 const EXPECTED_CANONICAL = "https://paulgsc.github.io/some-ui/resume/"
 const EXPECTED_RESUME_ID = "paul-gathondu-resume"
@@ -42,8 +33,7 @@ async function main() {
   const response = await fetch(url, { redirect: "manual" })
   if (response.status !== 200) {
     fail(`expected HTTP 200, got ${response.status} ${response.statusText}`)
-    // A non-200 response body isn't worth parsing further - every other
-    // assertion below would just compound the same failure.
+    // Every other assertion would compound a non-200.
     return
   }
 

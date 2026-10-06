@@ -39,9 +39,8 @@ export function applyIntent<R>(
 ): LayoutNode<R> | null {
   switch (intent.kind) {
     case "place": {
-      // A region can't be placed relative to itself - there's nothing to
-      // anchor to once it's removed, so treat it as a no-op rather than
-      // silently dropping the region (see the "move" case below).
+      // Placing a region relative to itself is a no-op: once removed there
+      // is no anchor, and the region would be dropped (as for "move").
       if (intent.relativeTo === intent.region) return tree
 
       // Re-placing a region that already exists elsewhere relocates it
@@ -53,12 +52,10 @@ export function applyIntent<R>(
     }
 
     case "move": {
-      // A region can't be moved relative to itself: removing it first would
-      // make the anchor disappear, so `placeRegion` would never find it to
-      // reinsert against - silently deleting the region instead of moving it.
+      // Moving a region relative to itself is a no-op: removing it first
+      // would delete the anchor, and with it the region.
       if (intent.region === intent.relativeTo) return tree
 
-      // Remove first, then place
       const withoutRegion = removeRegion(tree, intent.region)
       return placeRegion(
         withoutRegion,
@@ -91,15 +88,13 @@ export function applyIntent<R>(
     }
 
     default: {
-      // `intent` is exhaustively narrowed to `never` here - a bare `throw`
-      // (rather than a helper call) sidesteps accessing `.kind` on `never`.
+      // `intent` is `never` here; a bare `throw` avoids reading `.kind` on it.
       intent satisfies never
       throw new Error(`Unhandled layout intent: ${JSON.stringify(intent)}`)
     }
   }
 }
 
-// Helper to generate unique split IDs
 let splitCounter = 0
 function generateSplitId(): string {
   return `split-${splitCounter++}`
@@ -116,11 +111,8 @@ function placeRegion<R>(
     return { type: "leaf", id: region }
   }
 
-  // No anchor given (or an explicit "root" anchor): attach the new region as
-  // a top-level sibling of the whole tree. This has to hold regardless of
-  // whether `tree` is a lone leaf or an already-nested split - falling
-  // through to `return tree` below for the split case would silently drop
-  // the region instead of placing it.
+  // No anchor (or "root"): attach as a top-level sibling of the whole tree,
+  // whether `tree` is a leaf or a split.
   if (relativeTo === "root" || relativeTo === undefined) {
     return placeRelativeToRoot(tree, region, edge)
   }
@@ -197,7 +189,6 @@ function insertRelativeTo<R>(
       return child
     })
 
-    // Check if any child was rewritten
     const didRewrite = newChildren.some(
       (child, idx) => child.node !== node.children[idx]?.node
     )
@@ -244,14 +235,13 @@ function insertRelativeTo<R>(
   return walk(tree)
 }
 
-// Remove a region from the tree
 function removeRegion<R>(
   tree: LayoutNode<R> | null,
   region: R
 ): LayoutNode<R> | null {
   if (tree === null) return null
 
-  // If tree is just this leaf, return null (empty canvas)
+  // Removing the only leaf leaves an empty canvas.
   if (tree.type === "leaf" && tree.id === region) {
     return null
   }
@@ -264,7 +254,6 @@ function removeRegion<R>(
   return normalizeTree(removed)
 }
 
-// Reorder a region relative to another
 function reorderRegion<R>(
   tree: LayoutNode<R> | null,
   region: R,
@@ -273,16 +262,13 @@ function reorderRegion<R>(
 ): LayoutNode<R> | null {
   if (tree === null) return null
 
-  // Remove the region
   const withoutRegion = removeRegion(tree, region)
   if (withoutRegion === null) return tree
 
-  // Re-insert it relative to the target
   const edgeMap = edge === "before" ? "left" : "right"
   return placeRegion(withoutRegion, region, relativeTo, edgeMap)
 }
 
-// Deep clone a tree
 function cloneTree<R>(node: LayoutNode<R>): LayoutNode<R> {
   if (node.type === "leaf") {
     return { type: "leaf", id: node.id }
@@ -326,7 +312,6 @@ function resizeRegion<R>(
   const totalWeightInSplit = split.children.reduce((s, c) => s + c.weight, 0)
   const weightPerPx = totalWeightInSplit / containerSizePx
 
-  // Convert pixel delta to weight delta
   const weightDelta = deltaPx * weightPerPx
 
   // Direction:
@@ -410,7 +395,6 @@ function containsRegion<R>(node: LayoutNode<R>, region: R): boolean {
   return node.children.some((child) => containsRegion(child.node, region))
 }
 
-// Remove a leaf from the tree
 function removeLeafFromTree<R>(
   tree: LayoutNode<R>,
   leafId: R
@@ -443,7 +427,6 @@ function normalizeTree<R>(tree: LayoutNode<R>): LayoutNode<R> {
     return tree
   }
 
-  // Recursively normalize children
   const normalizedChildren = tree.children
     .map(({ node, weight }) => ({
       node: normalizeTree(node),

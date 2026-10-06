@@ -117,7 +117,7 @@ async function crawlOne(
       //
       // Best-effort, like the rest of a live crawl: a consent or regional
       // interstitial has no `ytd-app` at all, and a wait that threw here
-      // used to abort every surface after this one. An unhydrated page is
+      // would abort every surface after this one. An unhydrated page is
       // recorded as no shapes instead, which `assembleTable()` leaves out of
       // the table so the "*" union serves the surface.
       const hydrated = await page

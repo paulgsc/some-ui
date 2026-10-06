@@ -1,15 +1,10 @@
 /**
  * @vitest-environment jsdom
  *
- * `__root.tsx`'s `beforeLoad` is the gate every route goes through. Learning on
- * the device needs no session, so what is asserted here is that the gate lets
- * every page open for a visitor with none, and that it makes the one check it
- * does make (`resolveSessionIfChosen`, mocked here) without waiting on it: a
- * page must never be held up on a server round trip, and a visitor who never
- * chose an account is never asked about one (see `session.test.ts`).
- *
- * The pages that really are the account's are guarded by `requireAccount` in
- * their own layout (`routes/_dashboard/_lan.tsx`); `guards.test.ts` covers it.
+ * `__root.tsx`'s `beforeLoad` lets every page open for a visitor with no
+ * session, and makes its one check (`resolveSessionIfChosen`, mocked)
+ * without waiting on it. Account-only pages are guarded by `requireAccount`
+ * in their own layout (`guards.test.ts`).
  */
 
 import { describe, expect, it, vi } from "vitest"
@@ -25,12 +20,8 @@ vi.mock("@/lib/auth", async (importOriginal) => ({
   },
 }))
 
-/**
- * `Route.options.beforeLoad` is typed against the router's full context
- * (params, navigate, cause, ...); the guard reads only `location.pathname`,
- * so that is the narrowest shape worth asserting against here - mirrors
- * `loaders.test.ts`'s `LoaderUnderTest` pattern for the same reason.
- */
+/** The narrowest shape the guard reads (`location.pathname`), as in
+ * `loaders.test.ts`. */
 type BeforeLoadUnderTest = (args: {
   location: { pathname: string; href: string }
 }) => unknown

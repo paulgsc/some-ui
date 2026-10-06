@@ -1,11 +1,10 @@
 #!/usr/bin/env node
 // Keeps public/manifest.firefox.json's `version` in lockstep with
 // package.json's, for extensions that use that naming convention — not all
-// do (some-conveyor uses public/firefox-v3-manifest.json; some-drama and
-// some-mujik ship only public/manifest.json). An extension without
-// public/manifest.firefox.json is skipped entirely in both modes below:
-// this convention isn't universal, and neither entry point should block
-// signing an extension that never opted into it.
+// do (some-drama and some-mujik ship only public/manifest.json). An
+// extension without public/manifest.firefox.json is skipped entirely in both
+// modes below: this convention isn't universal, and neither entry point
+// should block signing an extension that never opted into it.
 //
 // Two entry points:
 //

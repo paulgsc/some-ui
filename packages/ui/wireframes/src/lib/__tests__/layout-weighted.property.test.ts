@@ -22,11 +22,9 @@ function approxEqual(a: number, b: number): boolean {
 }
 
 /**
- * Verifies a solved tree actually tiles `expectedRect`: every split's children
- * are contiguous along its axis (no gaps, no overlaps), match the parent's
- * cross-axis extent, and together cover the parent exactly. A test that only
- * checks one leaf's rect ("is the bolt tight") would miss a solver bug that
- * leaves a sliver of the viewport unrendered or double-renders a region.
+ * Whether a solved tree tiles `expectedRect`: every split's children are
+ * contiguous along its axis (no gaps or overlaps), match the parent's
+ * cross-axis extent, and together cover it exactly.
  */
 function isValidTiling<T>(node: SolvedNode<T>, expectedRect: Rect): boolean {
   if (
@@ -143,10 +141,8 @@ describe("solveLayout - geometry invariants", () => {
     )
   })
 
-  // Seed 1554378956 is the CI run that first caught this; it is pinned so the
-  // regression has a deterministic reproduction rather than one that depends
-  // on fast-check drawing the same shape again.
-  it("focus-aware solving tiles the viewport for the seed that first caught the absent-focus collapse", () => {
+  // A pinned seed and path, so this shape is reproduced deterministically.
+  it("focus-aware solving tiles the viewport for a pinned absent-focus seed", () => {
     fc.assert(
       fc.property(
         layoutIntentSequenceArbitrary,
@@ -171,11 +167,8 @@ describe("solveLayout - geometry invariants", () => {
     )
   })
 
-  // The shrunk counterexample from that run, as a plain example: a two-leaf
-  // tree focused at full intensity on a region it does not contain. Every
-  // node is off the focus path, so before the guard in `focusConstraints`
-  // both children solved to zero width while the root still claimed all
-  // 100x100 - a gap the size of the viewport.
+  // A two-leaf tree focused at full intensity on a region it lacks: every
+  // node is off the focus path (see the guard in `focusConstraints`).
   it("focusing a region absent from the tree is a no-op, not a collapse", () => {
     const viewport: Rect = { x: 0, y: 0, width: 100, height: 100 }
     const tree: LayoutNode<YouTubeRegion> = {
@@ -196,9 +189,7 @@ describe("solveLayout - geometry invariants", () => {
     expect(focused).toEqual(base)
   })
 
-  // The complement: a target that *is* present must still be emphasised at
-  // full intensity, so the guard above cannot be satisfied by disabling focus
-  // altogether.
+  // The complement, so the guard cannot pass by disabling focus altogether.
   it("focusing a region present in the tree still gives it the full extent at intensity 1", () => {
     const viewport: Rect = { x: 0, y: 0, width: 100, height: 100 }
     const tree: LayoutNode<YouTubeRegion> = {
@@ -256,9 +247,7 @@ describe("solveLayoutWithBindings - zero-collapse invariants (story 5)", () => {
           if (tree === null) return
 
           const leafIds = Array.from(extractLeafIds(tree))
-          // A lone root leaf can't collapse - there's no sibling to
-          // redistribute its space into, so it always keeps the full
-          // viewport regardless of binding state.
+          // A lone root leaf has no sibling to give its space to.
           if (leafIds.length < 2) return
 
           const boundLeafIds = new Set(
@@ -267,13 +256,9 @@ describe("solveLayoutWithBindings - zero-collapse invariants (story 5)", () => {
 
           const solved = solveLayoutWithBindings(tree, boundLeafIds, viewport)
 
-          // With at least one bound leaf, the tree (root included) always
-          // has somewhere to redistribute collapsed space into, so it
-          // still forms a valid tiling top to bottom. With zero bound
-          // leaves, the root itself has nothing above it to zero its own
-          // claim on `viewport` into - "bound leaves tile V" holds only
-          // vacuously then, so the whole-tree tiling check doesn't apply;
-          // the per-leaf zero-area check below still does.
+          // With a bound leaf the tree still tiles the viewport. With none,
+          // "bound leaves tile V" is vacuous (the root keeps its claim), so
+          // only the per-leaf zero-area check below applies.
           if (boundLeafIds.size > 0) {
             expect(isValidTiling(solved, viewport)).toBe(true)
           }

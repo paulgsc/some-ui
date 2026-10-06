@@ -1,48 +1,30 @@
-// hangul-words.ts
-// Seed vocabulary for VocabularyMode (ADR 0001 §2(d)/#424): a curated word list, each entry a
-// multi-token challenge for the generalized engine (epic #420, #421/#422).
+// Seed vocabulary for VocabularyMode (ADR 0001 §2(d)): each entry is a multi-token challenge.
 //
-// Provenance (ADR 0001 §5): every `icon` here is a Unicode-standard emoji glyph - no bundled
-// asset, no attribution obligation. `ttsText` is spoken at runtime via the Web Speech API
-// (`@honeycomb/lib/hangul/speech`) - generated on the fly, not bundled, so it carries no
-// licensing obligation either. No `Image` stimulus is seeded (ADR 0001's own stated preference:
-// "Prefer TTS ... and an existing openly-licensed icon set ... over hand-collected images").
-// Every entry's stimulus is `Icon` - `ttsText`/`romanization` are additional enrichment the
-// Prompt/Concept Station (#762) escalates to on struggle, not separate stimulus kinds.
+// Provenance (ADR 0001 §5): every `icon` is a Unicode emoji and `ttsText` is spoken at runtime
+// via the Web Speech API, so nothing bundled carries a licensing obligation. Every stimulus is
+// `Icon`; `ttsText`/`romanization` are enrichment the Prompt Station escalates to on struggle.
 //
-// `answerKeys`/`answerGlyphs` below are each word's full jamo stream in typing order, hand-verified
-// against `Korean::key_for`'s table (crates/hangul-game-core/src/internal/content_domain/korean.rs)
-// - not derived from `word` at runtime; the engine never calls `key_for` for vocabulary-mode
-// challenges (see `VocabularyMode::get_next_challenge`), it matches whatever token sequence a seed
-// supplies, verbatim. `key_for` is position-agnostic (19 consonants + 21 vowels, 7 of the vowels
-// composite), so batchim jamo decompose and play exactly like any other jamo - there is no
-// open-syllable restriction. (An earlier version of this comment claimed otherwise; disproven by
-// `batchim_word_completes_like_any_other_multi_token_challenge` in engine.rs's test module.) The
-// one real gap is `key_for` having no entry for a *compound* batchim as a single character
-// (ㄳ/ㄵ/ㄶ/ㄺ/ㄻ/ㄼ/ㄽ/ㄾ/ㄿ/ㅀ/ㅄ) - since nothing validates answerKeys against key_for at
-// runtime either, represent one as a single glyph slot with its two component keys concatenated
-// (e.g. 닭's ㄺ -> glyph "ㄺ", key "fr"), the same convention the composite vowels above already
-// use (e.g. ㅘ -> key "hk"). Verified working end to end by
-// `compound_batchim_as_one_glyph_with_a_combined_key_completes_too`, also in engine.rs.
+// `answerKeys`/`answerGlyphs` are each word's jamo stream in typing order, hand-verified against
+// `Korean::key_for` (crates/hangul-game-core/src/internal/content_domain/korean.rs). The engine
+// matches a seed's tokens verbatim and never calls `key_for` for vocabulary challenges. Batchim
+// play like any other jamo (no open-syllable restriction). A *compound* batchim (ㄳ/ㄵ/ㄶ/ㄺ/ㄻ/
+// ㄼ/ㄽ/ㄾ/ㄿ/ㅀ/ㅄ) has no `key_for` entry, so it is one glyph slot with its two component keys
+// concatenated (닭's ㄺ -> "fr"), like the composite vowels (ㅘ -> "hk"); engine.rs's
+// `compound_batchim_as_one_glyph_with_a_combined_key_completes_too` covers it.
 
 import type { ChallengeSeed } from "@honeycomb/lib/hangul/wasm-game-bridge"
 
 /**
- * What the missed-word debrief teaches with (see `VocabDebriefModal`). Only
- * read when a vocabulary challenge expires unfinished, so it is optional: a
- * host-supplied `words` override (HangulHexGrid's `words` prop) that omits it
- * still plays, it just gets a debrief with the word and its jamo and no prose.
- * The bundled seed below fills it in for every entry.
+ * What the missed-word debrief teaches with (see `VocabDebriefModal`).
+ * Optional: a host `words` override without it gets a debrief with only the
+ * word and its jamo.
  */
 export type WordPedagogy = {
   /** The English meaning, as short as it can honestly be. */
   gloss: string
   /**
-   * One sentence on why this word is worth the player's memory - a homograph
-   * to watch for, a minimal pair against another word on the board, a
-   * compound it seeds. Deliberately not a dictionary definition: `gloss`
-   * already covers "what it means", and a debrief the player reads for five
-   * seconds has to earn its space with something they'd otherwise miss.
+   * One sentence on why this word is worth remembering (a homograph, a
+   * minimal pair, a compound it seeds), not a definition: `gloss` covers that.
    */
   note: string
   /** One TOPIK-1-level sentence using the word, with its translation. */
@@ -58,12 +40,8 @@ export type WordEntry = {
   icon: string
   ttsText: string
   /**
-   * Free-form grouping label - purely descriptive, never read by the engine
-   * or any component (grep confirms no `.category` reader exists outside
-   * this file). Deliberately `string`, not a closed union: the demo set
-   * below happens to use "food"/"animal"/"object"/"nature", but a
-   * host-supplied `words` override (HangulHexGrid's `words` prop) is free to
-   * use whatever topic labels it wants (e.g. "numbers", "calendar").
+   * Free-form, descriptive grouping label, read by nothing. A `string`, not a
+   * union, so a host `words` override can use its own topics.
    */
   category: string
   /** Debrief content shown when this word expires unfinished - see `WordPedagogy`. */
@@ -437,7 +415,8 @@ export const HANGUL_WORDS: Array<WordEntry> = [
  * A `WordEntry` as the engine's `ChallengeSeed` wire shape (canon Def. 6.1's `Challenge`).
  * `identity` is the entry's stable slug, not its Hangul text - two entries could in principle
  * share display text, but ids are unique by construction. `stimulus.name` carries the same slug,
- * so `#762`'s Prompt Station can look the full `WordEntry` back up from an active challenge's
+ * so the Prompt Station can look the full `WordEntry` back up from an active challenge's
+ *
  * `Stimulus` alone (`HANGUL_WORDS.find(w => w.id === stimulus.name)`).
  */
 export function toChallengeSeed(entry: WordEntry): ChallengeSeed {

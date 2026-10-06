@@ -1,21 +1,14 @@
 import type { Rule } from "eslint"
 
-// ObjectPattern/Property/CallExpression shapes aren't narrowed cleanly
-// through @types/eslint's Node union across nested `.type` checks, so this
-// rule reads several values as `any` - same convention documented in
-// no-unbounded-intent.ts/require-fail-fast-default.ts.
+// ESTree shapes aren't narrowed cleanly by @types/eslint's Node union.
 /* eslint-disable @typescript-eslint/no-explicit-any -- ESTree shapes not modeled precisely by @types/eslint's Node union, see comment above */
 
 /**
- * #968/MS8: `const { data: sessions = [] } = useSessions()` reads exactly
- * like a safe default and is the opposite - `data` is `undefined` while a
- * query is pending *and* after it fails, so a `= []` (or any other default)
- * makes both of those collapse into the same value as a genuine successful
- * empty result. Nothing downstream that only ever sees `sessions` can tell
- * the three apart. Destructuring `isLoading`/`isPending`/`isError`/`error`/
- * `status` alongside `data` in the same statement is this rule's signal
- * that the caller is (at least trying to) read the state rather than
- * silently defaulting past it.
+ * `const { data: sessions = [] } = useSessions()` looks safe and is not:
+ * `data` is `undefined` while pending *and* after failing, so the default
+ * makes both look like a genuine empty result (#968). Destructuring
+ * `isLoading`/`isPending`/`isError`/`error`/`status` in the same statement
+ * is the signal the caller reads the state.
  */
 const SIBLING_STATE_KEYS = new Set([
   "isLoading",
@@ -25,13 +18,9 @@ const SIBLING_STATE_KEYS = new Set([
   "status",
 ])
 
-/** React hook naming convention - broad on purpose. The distinctive signal
- * this rule reports on is the destructuring shape (a defaulted `data` with
- * no sibling state key), not the callee's exact identity; there is no type
- * information here to confirm a given `use*()` actually returns a
- * `UseQueryResult`, and requiring an exact allowlist would miss every
- * app-specific wrapper (`useSessions`, `useProfile`, ...) that closes over
- * `useQuery` rather than being named `useQuery` itself. */
+/** Any `use*()`, on purpose: the signal is the destructuring shape, and an
+ * allowlist would miss app wrappers (`useSessions`) around `useQuery`. */
+
 const HOOK_CALL_PATTERN = /^use[A-Z]/
 
 function isHookCall(init: any): boolean {

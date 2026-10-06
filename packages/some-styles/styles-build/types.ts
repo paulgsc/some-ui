@@ -1,10 +1,6 @@
-// Declarative shape of a workspace's style.context.ts — see styles-build/run.mjs.
-//
-// This is the styles analogue of extensions/common/ext-build/types.ts: the
-// abstract single-pass Tailwind compiler lives in one canonical place
-// (@some-ui/styles), and each ui/apps workspace only declares its granular
-// context (which source files contribute class candidates, where the compiled
-// stylesheet goes). No CSS engine wiring is scattered across the consumers.
+// Declarative shape of a workspace's style.context.ts (see styles-build/run.mjs):
+// the compiler lives here, and each workspace declares only which sources
+// contribute class candidates and where the stylesheet goes.
 
 export type StyleTargetContext = {
   /**

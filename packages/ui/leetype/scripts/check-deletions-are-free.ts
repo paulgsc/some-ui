@@ -1,15 +1,11 @@
 /**
- * CI guardrail (LTY-PATCH P6, #1081) — the single test the whole epic's
- * safety claim rests on. #998 proved "context contributes nothing to the
- * gate" in Rust, for a frame; this proves the identical property
- * end-to-end for a hunk, against the real compiled engine, in the
- * workspace, because the failure mode is silent: a hunk whose deletion
- * secretly weighed on the gate would show up as every step escaping at
- * `MAX_STEP_ATTEMPTS`, with no error and no failing test — until this one.
+ * CI guardrail (LTY-PATCH): a hunk's deletion contributes nothing to the
+ * gate, proven end-to-end against the real compiled engine. The failure is
+ * silent otherwise: every step would escape at `MAX_STEP_ATTEMPTS` with no
+ * error.
  *
- * Drives the real `@some-ui/leetype-wasm` binary via `load-real-wasm.ts`,
- * not the `.d.ts` stub every `*.test.ts` file resolves to — see that
- * file's own doc comment for why a vitest test cannot do this.
+ * Drives the real binary via `load-real-wasm.ts`; vitest resolves the
+ * package to a `.d.ts` stub (see that file).
  *
  * Usage: pnpm --filter @some-ui/leetype test:deletions-are-free
  */
@@ -18,12 +14,9 @@ import { compareGateFigures, playToCompletion } from "./deletions-are-free"
 import { loadRealWasm } from "./load-real-wasm"
 
 /**
- * `TypingGameWasm`'s methods cross the wasm boundary raw (`layout(): unknown`,
- * etc.) — this workspace's own typed wrapper (`TypedTypingGame`) is what
- * normally narrows them, but that class is built for the app's async
- * loader/subscription lifecycle, not a one-shot script. This cast asserts
- * what the crate's own documented shape guarantees: `layout().displaySource`
- * and `roles()` are exactly what `PlayableGame` expects.
+ * The raw `TypingGameWasm` methods return `unknown`; `TypedTypingGame` suits
+ * the app's lifecycle, not a script. This cast asserts the crate's
+ * documented shape matches `PlayableGame`.
  */
 function asPlayableGame(instance: unknown): PlayableGame {
   // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- see above; the crate's documented shape is not statically checkable from `unknown`
@@ -31,12 +24,9 @@ function asPlayableGame(instance: unknown): PlayableGame {
 }
 
 /**
- * A hunk with a `-` side that dwarfs its `+` side: ten deleted lines of a
- * function nobody types, framing one added line, against that exact same
- * added line with no deletion at all. Large on purpose — the failure mode
- * this guards is a `-` side heavy enough to tip a real gate threshold, and
- * a one-line deletion would be too small to have ever tipped it even with
- * a real bug in the accounting.
+ * Ten deleted lines framing one added line, against the same added line
+ * alone. Large on purpose: a one-line deletion could never tip a real gate
+ * threshold even with an accounting bug.
  */
 const WITH_LARGE_DELETION =
   "‹fn slow_path(items: &[i32]) -> i32 {\n" +

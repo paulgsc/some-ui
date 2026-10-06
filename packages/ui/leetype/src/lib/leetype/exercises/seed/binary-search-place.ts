@@ -5,7 +5,7 @@ import { typingBlockFromDiff } from "@leetype/types/exercise"
 import { withJudgment } from "./judgment-step"
 
 /**
- * LTY-SEED G4 (#1109): the epic's first worked generation run, construction
+ * LTY-SEED G4: the epic's first worked generation run, construction
  * half. Generated against `leetype-exercise-generator/index.md` v1.0 with
  * `Concept: lookup-as-place`, `Invariant violated: a sorted search's own
  * failure branch already encodes where an absent element belongs, so

@@ -81,10 +81,8 @@ type SessionComposerProps = {
 
 type ComposerActivity = {
   /**
-   * Composer-local identity distinguishing repeated instances of the same
-   * activity within one session (e.g. two Honeycomb blocks with different
-   * modes) - never persisted. `SessionActivity` has no equivalent field;
-   * array position is authoritative there (see composer/utils.ts).
+   * Composer-local identity for repeated instances of one activity, never
+   * persisted; in `SessionActivity` array position is authoritative.
    */
   instanceId: string
   activityId: ActivityId
@@ -96,12 +94,8 @@ export const SessionComposer = ({
   existingSession,
 }: SessionComposerProps): JSX.Element => {
   const navigate = useNavigate()
-  // One create/update pair, shared by both buttons - matching the pre-
-  // migration code exactly (a single `createSession`/`updateSession`
-  // mutation object backed both handlers), which is why `isSaving` used to
-  // combine both `.isPending`s into one flag. `activeAction` (below) is
-  // what keeps each button showing *its own* state rather than the other
-  // button's leftover result now that both read the same two intents.
+  // One create/update pair shared by both buttons; `activeAction` keeps each
+  // button showing its own state rather than the other's leftover result.
   const createIntent = useIntent(useCreateSession(), {
     presentation: "interactive",
   })
@@ -109,11 +103,8 @@ export const SessionComposer = ({
     presentation: "interactive",
   })
 
-  // Which button most recently ran, so each button can tell "am I the one
-  // that's in flight/just finished" apart from "the other button happens to
-  // share my mutation instance". Reset on every press - never read as
-  // stale, since a fresh click always overwrites it before the intent's
-  // own state has had a chance to change.
+  // Which button most recently ran. Overwritten on every press, before the
+  // intent's own state can change, so never read stale.
   const [activeAction, setActiveAction] = useState<"draft" | "play" | null>(
     null
   )
@@ -132,23 +123,14 @@ export const SessionComposer = ({
       failed: () => false,
     })
 
-  // Whether firing a *fresh* `createIntent.start` (a new `POST /sessions`)
-  // is unsafe given what `createIntent` itself already knows - independent
-  // of which button is `activeAction`. Two distinct cases, both bot-review
-  // findings:
-  //
-  // 1. `failed` with `blocksResubmission` - the create's own POST timed out
-  //    ambiguously (see `client.ts`'s `isNonIdempotent`/`FileHostUnreachableError`).
-  // 2. `succeeded` - a session was *definitely* created already (e.g. "Save
-  //    & Play" created it, then the follow-up activate PATCH failed and the
-  //    composer stayed mounted showing that failure). `createIntent` mints
-  //    at most one session per composer instance; once it has, no button
-  //    should ever fire a second `POST /sessions` from the same instance.
-  //
-  // `updateIntent` (PATCH, used once `existingSession` is set, or for the
-  // activate step of the chain) never needs this itself: a PATCH timeout is
-  // always retryable, so it can never set `blocksResubmission`, and it can't
-  // mint a duplicate resource.
+  // Whether a fresh `createIntent.start` (a new `POST /sessions`) is unsafe,
+  // whichever button is active:
+  // 1. `failed` with `blocksResubmission`: the POST timed out ambiguously
+  //    (`client.ts`'s `isNonIdempotent`).
+  // 2. `succeeded`: a session already exists (e.g. "Save & Play" created it
+  //    and the activate PATCH failed). One composer mints at most one session.
+  // `updateIntent` never needs this: a PATCH timeout is always retryable and
+  // cannot mint a duplicate.
   const createBlocked = matchIntent(createIntent.state, {
     idle: () => false,
     working: () => false,
@@ -157,29 +139,14 @@ export const SessionComposer = ({
   })
 
   /**
-   * Whether a composed button's *own* state currently offers a legitimate
-   * retry (`IntentButton`'s "Try again", wired to the composed `retry`
-   * closure) - as opposed to a state that would fall back to `onPress`
-   * (idle, or a non-retryable failure `IntentButton` doesn't itself block).
+   * Whether a button's own state offers a legitimate retry (`IntentButton`'s
+   * "Try again") rather than falling back to `onPress`.
    *
-   * `createBlocked` alone isn't enough to decide whether to force-disable a
-   * button: gating it by `activeAction` (an earlier version of this fix)
-   * correctly left a legitimate 5xx activate-retry enabled, but a bot review
-   * caught the case that distinction missed - a *non-retryable* 4xx on the
-   * activate PATCH after a successful create. There, `saveAndPlayState` is
-   * `failed({retryable: false, blocksResubmission: undefined}, retry)`:
-   * `IntentButton`'s own logic sees a non-*blocked* non-retryable failure and
-   * falls back to `onClick={onPress}` (its generally-correct rule for a
-   * single mutation, where firing `onPress` again is just a fresh, safe
-   * attempt) - but `onPress` here is `handleSaveAndPlay`, which restarts the
-   * *whole* chain from `createIntent.start` because it has no way to know a
-   * session already exists, mismatching that generic rule against this
-   * composer's own compound one. Checking "does this button's own state
-   * offer a retry" instead of "is this the active button" closes that gap
-   * without special-casing activeAction at all: a button is force-disabled
-   * by `createBlocked` unless its own composed state is a *retryable*
-   * failure - a `disabled` HTML button fires no click, so this also removes
-   * the risky `onClick` outright, not just its visible affordance.
+   * Needed for a non-retryable 4xx on the activate PATCH after a successful
+   * create: `IntentButton` falls back to `onPress`, which here is
+   * `handleSaveAndPlay` and would restart the chain with a second create. So
+   * a button is force-disabled by `createBlocked` unless its own state is a
+   * retryable failure; a `disabled` button fires no click at all.
    */
   function hasOwnRetryableFailure<T, TStep extends string = never>(
     state: Intent<T, TStep>
@@ -192,12 +159,9 @@ export const SessionComposer = ({
     })
   }
 
-  // The chain: a new session's "Save & Play" creates, then activates. The
-  // middle failure - created, but couldn't start - is reported honestly
-  // rather than folded into a generic message: `composeSequentialIntents`
-  // already tells the difference between "create failed" and "activate
-  // failed" (only the latter defers to the second intent), so the rewrite
-  // below only fires when the session genuinely was created.
+  // "Save & Play" on a new session creates, then activates. "Created, but
+  // couldn't start" is reported as such: `composeSequentialIntents` only
+  // defers to the second intent when the first succeeded.
   const createdAlready = matchIntent(createIntent.state, {
     idle: () => false,
     working: () => false,
@@ -229,11 +193,9 @@ export const SessionComposer = ({
           : failed(error, retry),
     })
 
-  // A new session's create succeeding is the terminal outcome for "Save as
-  // draft" (toast + navigate to the list, lifted verbatim from the
-  // pre-migration onSuccess) and the mid-chain trigger for "Save & Play"
-  // (activate what was just created). `createIntent` is shared by both
-  // buttons - `activeAction` is what tells this effect which one to run.
+  // A create succeeding is terminal for "Save as draft" (toast, navigate) and
+  // the mid-chain trigger for "Save & Play" (activate). `activeAction` says
+  // which.
   useIntentEffect(createIntent.state, (session) => {
     if (activeAction === "draft") {
       toast("Session saved as draft")
@@ -246,10 +208,8 @@ export const SessionComposer = ({
     }
   })
 
-  // Terminal navigation, lifted verbatim from the pre-migration onSuccess
-  // callbacks - same targets, same toasts, just fired from here instead of
-  // from TanStack's own per-call onSuccess (useIntent doesn't re-expose
-  // that; see its header).
+  // Terminal navigation, fired here because useIntent doesn't re-expose
+  // TanStack's per-call onSuccess (see its header).
   useIntentEffect(updateIntent.state, (session) => {
     if (activeAction === "draft") {
       toast("Draft updated")
@@ -387,14 +347,9 @@ export const SessionComposer = ({
   }
 
   /**
-   * Whether the step rail may jump straight to `target`.
-   *
-   * Deliberately expressed as the same predicate Back and Continue are
-   * already governed by rather than a second, parallel one: going back is
-   * unconditional (Back's own rule), and going forward needs what Continue
-   * needs. A rail with its own idea of when a step is reachable is a second
-   * source of truth for the wizard's validity, and the first time a step
-   * grows a rule the two disagree.
+   * Whether the step rail may jump straight to `target`: the same predicate
+   * as Back (always) and Continue (what it needs), so the wizard has one
+   * source of truth for validity.
    */
   const canGoToStep = (target: ComposerStep): boolean => {
     if (target === step) return true
@@ -455,8 +410,7 @@ export const SessionComposer = ({
       return
     }
 
-    // The chain's first step; useIntentEffect above picks up the success
-    // and activates. See this file's top-level effects for the rest.
+    // The chain's first step; useIntentEffect above activates on success.
     createIntent.start({
       name: finalName,
       activities,
@@ -491,12 +445,8 @@ export const SessionComposer = ({
         variant="outline"
         disabled={
           anySaving ||
-          // Forced disabled whenever a fresh create is unsafe, *unless*
-          // this button's own state currently offers a legitimate
-          // retry of its own (see `hasOwnRetryableFailure`'s header) -
-          // not gated by `activeAction`, which let a non-retryable
-          // activate-PATCH failure on the *active* button slip through
-          // to its `onPress` fallback.
+          // Forced disabled whenever a fresh create is unsafe, unless this
+          // button's own state offers a retry (`hasOwnRetryableFailure`).
           (createBlocked && !hasOwnRetryableFailure(saveDraftState)) ||
           durationCheck.state !== "valid"
         }
@@ -525,12 +475,9 @@ export const SessionComposer = ({
   ) : null
 
   // On a phone the composer is the lesson CRM's shape (`@some-ui/lesson-crm`):
-  // one concern per pane, and the bottom tab bar - not a Back and a Continue -
-  // is how they are switched. Every pane stays mounted and only the current
-  // one shows, so leaving Browse does not forget what was typed into its
-  // search or which page it was on, exactly as the CRM keeps its prompt's
-  // level. A hidden pane measures 0px and `useFittedPage` sits out until it is
-  // shown, so the ones nobody has opened cost nothing to keep.
+  // one concern per pane, switched by the bottom tab bar. Every pane stays
+  // mounted so Browse keeps its search and page; a hidden pane measures 0px
+  // and `useFittedPage` sits out, so unopened panes cost nothing.
   const panes: Record<ComposerPane, ReactNode> = {
     browse: (
       <ActivityPickerStep
@@ -645,12 +592,9 @@ export const SessionComposer = ({
                     disabled={!reachable}
                     aria-current={s === step ? "step" : undefined}
                     aria-label={`Step ${s}: ${STEP_LABELS[s]}`}
-                    // 44px of touch target around a 28px dot: the dot is the
-                    // affordance, the padding is what a thumb actually hits.
-                    // Real padding rather than padding-plus-negative-margin - the
-                    // latter keeps the dots flush to the rail's edges but makes
-                    // every button paint 8px outside the nav that holds it, which
-                    // is a leak (docs/ui-fit) even when it looks fine.
+                    // 44px of touch target around a 28px dot. Real padding, not
+                    // padding plus negative margin, which would paint 8px
+                    // outside the nav (a leak, docs/ui-fit).
                     className="flex shrink-0 items-center gap-2 rounded-full p-2 disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     <span
@@ -668,11 +612,8 @@ export const SessionComposer = ({
                     </span>
                     <span
                       className={cn(
-                        // The rail only shows label text at `lg:`: below it the
-                        // numbered dots are the affordance, and each button
-                        // keeps the label as its aria-label. (A phone, below
-                        // `md`, does not get this rail at all - it gets the
-                        // tab bar above.)
+                        // Label text only at `lg:`; below it the numbered dots
+                        // are the affordance and the label is the aria-label.
                         "hidden text-sm lg:inline",
                         s === step ? "font-medium" : "text-muted-foreground"
                       )}

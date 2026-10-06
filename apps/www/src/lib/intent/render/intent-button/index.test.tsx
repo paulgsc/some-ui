@@ -168,12 +168,8 @@ describe("IntentButton", () => {
     )
     expect(screen.queryByRole("button", { name: "Try again" })).toBeNull()
     const button = screen.getByRole("button", { name: "Save & Play" })
-    // Disabled outright, not a fallback to onPress: the previous attempt's
-    // outcome is genuinely unknown here, so even a *new* attempt risks
-    // duplicating a write that may have already gone through - see this
-    // file's own header on the bot-review finding that caught the earlier
-    // fall-back-to-onPress behavior, and the finding after that which
-    // caught disabling this unconditionally for every non-retryable error.
+    // Disabled outright, not a fallback to onPress: the previous outcome is
+    // unknown, so even a new attempt risks a duplicate write.
     expect(button.hasAttribute("disabled")).toBe(true)
     fireEvent.click(button)
     expect(onPress).not.toHaveBeenCalled()

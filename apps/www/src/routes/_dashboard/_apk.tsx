@@ -3,15 +3,13 @@ import { createFileRoute, Outlet } from "@tanstack/react-router"
 import { requireAudience } from "@/lib/build-profile"
 
 /**
- * Home of the Android-app-only pages: what needs the phone itself (its
- * microphone, its own storage) and would be dead weight in a browser build.
+ * Home of the Android-only pages: what needs the phone itself (microphone,
+ * storage).
  *
  * Only files under this directory may import an "apk"-audience workspace
- * (`gates` in build.profiles.ts; the build fails otherwise). Builds whose
- * profile leaves "apk" out (every one but `mobile`) stub those workspaces,
- * and this guard sends any visit to not-found first.
- * src/routes/__tests__/audience-gates.test.ts checks that for every route
- * under here. What it cannot check is a review invariant
+ * (`gates` in build.profiles.ts). Where "apk" is stubbed (every profile but
+ * `mobile`), this guard sends a visit to not-found (checked by
+ * src/routes/__tests__/audience-gates.test.ts). Review invariants
  * (packages/some-vite-config/AUDIENCES.md):
  *
  *   A1  a route here uses nothing from an "apk" workspace's main entry in

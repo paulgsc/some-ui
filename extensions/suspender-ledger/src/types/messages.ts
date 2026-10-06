@@ -61,7 +61,7 @@ export type PopupCommand =
  *   carry both plain actions (suspend) and toggles (auto-suspendable,
  *   whitelist on/off).
  * - `storage` reads the merged `local` + `session` snapshot back through the
- *   worker — the same round-trip upstream's popup used to hydrate its controls.
+ *   worker, as upstream's popup does to hydrate its controls.
  */
 export type PopupToWorkerMessage =
   | {

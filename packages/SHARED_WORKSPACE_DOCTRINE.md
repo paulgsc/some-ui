@@ -117,7 +117,7 @@ keep decision under review, and every de-hoist candidate:
 
 ### Worked example: a 2-consumer util
 
-`useMeasureRect` is consumed by exactly two workspaces — say `packages/ui/chat`
+`useMeasureRect` is consumed by exactly two workspaces — say `packages/ui/topik`
 and `packages/ui/nfl` — each computing rect measurements for unrelated
 layout needs.
 

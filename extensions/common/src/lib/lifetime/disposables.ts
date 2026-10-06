@@ -21,9 +21,8 @@
  * the raw primitives that require-named-lifetime and require-scoped-lifetime
  * forbid elsewhere, with this object as their named lifetime.
  *
- * Hoisted from some-conveyor's DisposableRegistry (#280), which it follows in
- * spirit — reverse-order disposal, disposal errors contained, registering
- * after dispose disposes immediately — with the resource kinds built in.
+ * Reverse-order disposal, disposal errors contained, registering after
+ * dispose disposes immediately — with the resource kinds built in (#280).
  */
 
 export type Disposer = () => void

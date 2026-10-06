@@ -34,9 +34,8 @@ import { log, match, query } from "@suspender/worker/core/utils"
  *     dropped (Firefox has no `chrome.app`).
  *   - The Battery Status API gate is dropped (the API is deprecated and absent
  *     from Firefox).
- *   - Per-tab metadata is collected by the content layer's meta collector
- *     (ships with story #256); until then `executeScript` yields no meta and the
- *     affected tabs are skipped.
+ *   - Per-tab metadata is collected by the content layer's meta collector;
+ *     where `executeScript` yields no meta the affected tabs are skipped.
  */
 
 /**
@@ -118,21 +117,17 @@ function closeEnough(a: number | undefined, b: number): boolean {
  * and it has no built-in deadline — a rejection handler is no defence, because
  * nothing is ever rejected.
  *
- * Awaited unguarded in a sequential loop, one such tab is not a slow tab: it is
- * a permanently stopped sweep, and every tab behind it in the list is never
- * evaluated again for the life of the profile.
+ * Awaited unguarded in a sequential loop, one such tab would stop the sweep
+ * for good.
  */
 const META_TIMEOUT_MS = 5_000
 
 /**
  * How many tabs to probe at once.
  *
- * Strictly sequential probing costs a full round-trip per tab; across a
- * few-hundred-tab profile that is minutes of wall-clock during which the event
- * page can be recycled out from under the sweep — losing it just as surely as
- * a hang, only less obviously. Modest parallelism keeps a sweep to seconds.
- * Kept low deliberately: each probe runs script in a real page, and a good
- * citizen does not stampede the browser to save a few hundred milliseconds.
+ * Strictly sequential probing takes minutes on a few-hundred-tab profile,
+ * long enough for the event page to be recycled mid-sweep. Kept low
+ * deliberately: each probe runs script in a real page.
  */
 const META_CONCURRENCY = 6
 
@@ -259,11 +254,9 @@ async function readTabCensus(): Promise<{
 /**
  * Run a sweep, recording a rejection rather than dropping it.
  *
- * Every scheduled sweep is launched fire-and-forget, so before this an
- * exception thrown after `check.start` — anywhere outside the per-tab
- * `try`/`catch` — became an unhandled rejection: no event, no counter, no
- * console line. The sweep simply stopped existing, and the timeline showed a
- * `check.start` with nothing after it.
+ * Every scheduled sweep is launched fire-and-forget, so an exception thrown
+ * after `check.start` outside the per-tab `try`/`catch` would otherwise be an
+ * unhandled rejection with no event, counter or console line.
  */
 function runCheck(reason: string): void {
   void number.check(undefined, undefined, reason).catch((e: unknown) => {
@@ -334,25 +327,12 @@ const number: NumberMode = {
    * Ensure the periodic sweep alarm exists — **without resetting it** when it
    * already does.
    *
-   * This idempotency is the fix for the sporadic "tabs never get suspended"
-   * bug, and the reason it is load-bearing is worth spelling out.
-   *
-   * `install` is called from a `starters` callback, and `starters` run at
-   * module evaluation on *every* worker generation (see `core/startup.ts`:
-   * MV3 event pages are recycled aggressively, and neither `onStartup` nor
-   * `onInstalled` fires on a respawn, so the gate has to open unconditionally).
-   * The previous implementation unconditionally called `alarms.create` with
-   * `when: Date.now() + period`, which **re-armed the alarm from zero on every
-   * respawn**.
-   *
-   * The extension registers `tabs.onUpdated`, `tabs.onActivated`,
-   * `runtime.onMessage` and friends — so during active browsing the event page
-   * is woken every few seconds. Each wake pushed the next sweep another full
-   * interval into the future, so the alarm could only ever fire during a lull
-   * longer than the whole interval. Hence the symptom: suspension works fine
-   * on an idle machine and silently never happens while you are actually using
-   * the browser — sporadic, unreproducible on demand, and invisible in logs
-   * because nothing was failing. Nothing *ran*.
+   * `install` runs from a `starters` callback on *every* worker generation
+   * (see `core/startup.ts`), and during active browsing the event page wakes
+   * every few seconds. Re-creating the alarm with `when: Date.now() + period`
+   * on each wake would push the next sweep a full interval out every time, so
+   * it would fire only during a lull longer than the interval: suspension
+   * would silently never happen while the browser is in use.
    *
    * So: create the alarm only when it is missing or its cadence changed.
    */
@@ -403,11 +383,8 @@ const number: NumberMode = {
     count("checks_run")
     record("check.start", reason ?? "manual")
     // Completion is noted at the *terminal* points (`finish` / `abandon`), not
-    // here. Noting it on entry made CheckRanRecently ask "did the scheduler
-    // wake us" — which a sweep that starts and then hangs forever answers
-    // perfectly well. The whole class of bug the invariant exists to catch
-    // lives after this line, so a mark taken before it can only ever read
-    // green.
+    // here: a mark on entry would read green for a sweep that starts and then
+    // hangs, the class of bug CheckRanRecently exists to catch.
 
     const base = await storage<Omit<CheckPrefs, "whitelist.session">>({
       mode: "time-based",
@@ -597,10 +574,8 @@ const number: NumberMode = {
         return
       }
       try {
-        // An injection failure used to be swallowed whole (`() => []`), which
-        // made "this tab is silently never eligible" indistinguishable from
-        // "this tab is fine". Keep the same non-fatal behaviour, but keep the
-        // reason.
+        // Non-fatal, but keep the reason: otherwise "this tab is silently
+        // never eligible" looks the same as "this tab is fine".
         let injectionError: string | undefined
         let results: Array<MetaInjection> = []
         if (tb.status !== "unloaded") {
@@ -770,12 +745,8 @@ const number: NumberMode = {
       }
     }
 
-    // Note on the dropped early-exit: the sequential loop used to `break` once
-    // `arr` passed `max.single.discard`. That truncated the candidate set
-    // *before* it was sorted by age, so the cap was applied to whichever tabs
-    // the query happened to list first rather than to the oldest ones. The
-    // `slice` below still enforces the same cap, now against a fully-sorted
-    // set — the oldest tabs win, which is what the cap was always for.
+    // No early exit at `max.single.discard`: that would cap the set before it
+    // is sorted by age. The `slice` below applies the cap to the oldest tabs.
     await forEachConcurrent(tbs, META_CONCURRENCY, evaluate)
 
     if (prefs["icon-update"] === true) {
@@ -836,11 +807,8 @@ chrome.alarms.onAlarm.addListener((alarm) => {
     const now = Date.now()
     count("alarm_fires")
 
-    // Interval between consecutive fires is the single most diagnostic number
-    // this extension has: it is the difference between "the scheduler is
-    // running" and "the scheduler exists but never gets to run". The gap that
-    // exposed the deferred-alarm bug is visible here as a fire interval that
-    // simply never arrives.
+    // The interval between fires tells "the scheduler is running" apart from
+    // "the scheduler exists but never gets to run".
     const previous = readNumberSnapshot("alarm:lastFire")
     if (previous !== undefined) {
       const interval = now - previous
@@ -888,11 +856,9 @@ function readNumberSnapshot(key: string): number | undefined {
  * Watchdog: on every worker generation, notice a sweep that should already
  * have happened and run it now.
  *
- * Defence in depth behind the `install` fix. An alarm can also be lost to a
- * crash, a profile restore, or a browser bug — and the failure mode is
- * completely silent, because nothing errors when a timer simply never fires.
- * The cost of being wrong here is one extra sweep; the cost of not checking is
- * the bug this patch exists to fix, back again by another route.
+ * Defence in depth behind `install`'s idempotency. An alarm can also be lost
+ * to a crash, a profile restore, or a browser bug, silently. Being wrong here
+ * costs one extra sweep.
  */
 async function watchdog(periodSeconds: number): Promise<void> {
   const intervalMs = clampCheckPeriodSeconds(periodSeconds) * 1000

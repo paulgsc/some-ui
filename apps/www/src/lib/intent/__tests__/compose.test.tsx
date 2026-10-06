@@ -1,38 +1,20 @@
 /**
  * @vitest-environment jsdom
  *
- * The #933 flow itself: create a session, then activate it. Proves #943's
- * acceptance criterion directly - a failure in the second step never
- * reverts or re-triggers the first, and retrying only re-runs the step that
- * actually failed.
+ * Create a session, then activate it: a failure in the second step never
+ * reverts or re-triggers the first, and retrying re-runs only the failed
+ * step.
  */
 
-import type { JSX, ReactNode } from "react"
+import { queryClientWrapper } from "@/test-support/query-client"
 import { matchIntent } from "@some-ui/intent-kit"
-import {
-  QueryClient,
-  QueryClientProvider,
-  useMutation,
-} from "@tanstack/react-query"
+import { useMutation } from "@tanstack/react-query"
 import { act, renderHook, waitFor } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
 import { composeSequentialIntents } from "@/lib/intent/compose"
 import { useIntent } from "@/lib/intent/use-intent"
 import { useIntentEffect } from "@/lib/intent/use-intent-effect"
-
-function withQueryClient(): {
-  wrapper: (props: { children: ReactNode }) => JSX.Element
-} {
-  const client = new QueryClient({
-    defaultOptions: { mutations: { retry: false } },
-  })
-  return {
-    wrapper: ({ children }: { children: ReactNode }) => (
-      <QueryClientProvider client={client}>{children}</QueryClientProvider>
-    ),
-  }
-}
 
 function summarize(state: ReturnType<typeof composeSequentialIntents>): string {
   return matchIntent(state, {
@@ -57,10 +39,8 @@ function useSaveAndPlayChain(
   const activate = useIntent(useMutation({ mutationFn: activateFn }), {
     presentation: "interactive",
   })
-  // The chain: activate starts automatically once create succeeds - the
-  // shape session-composer.tsx's onSuccess-nested-in-onSuccess produces
-  // today, expressed through useIntentEffect instead of a render-phase
-  // side effect (see that module's header for why the difference matters).
+  // Activate starts once create succeeds, via useIntentEffect rather than a
+  // render-phase side effect.
   useIntentEffect(create.state, (createdSessionId) => {
     activate.start(createdSessionId)
   })
@@ -88,7 +68,7 @@ afterEach(() => {
 
 describe("composeSequentialIntents (the Save & Play chain)", () => {
   it("create-succeeded-then-activate-failed does not revert or re-run create, and retry only re-runs activate", async () => {
-    const { wrapper } = withQueryClient()
+    const wrapper = queryClientWrapper()
     // eslint-disable-next-line @typescript-eslint/require-await -- mutationFn's contract is Promise<T>; async is the plainest way to satisfy it for a stub with nothing to actually await.
     const createFn = vi.fn(async (name: string) => `session:${name}`)
     let rejectActivate = true
@@ -132,10 +112,8 @@ describe("composeSequentialIntents (the Save & Play chain)", () => {
       )
     })
 
-    // The whole point: create was never called again (no duplicate
-    // session), and activate was called exactly twice - the original
-    // failure and the retry, both for the same session id create already
-    // produced.
+    // Create was never called again; activate twice (failure and retry),
+    // both for the session create produced.
     expect(createFn.mock.calls).toHaveLength(1)
     expect(activateFn.mock.calls).toHaveLength(2)
     expect(activateFn.mock.calls[1]?.[0]).toBe("session:my-session")

@@ -5,10 +5,7 @@ import {
 } from "@leetype/lib/leetype/proposition-register/parse-canon"
 import { describe, expect, it } from "vitest"
 
-// Names `PropositionStatus` explicitly — see generated.test.ts's own note
-// on `PropositionId` for why an unreferenced-by-name type alias needs this
-// even when it is structurally used elsewhere (knip, this relay's #1240
-// handoff).
+// Names `PropositionStatus` so knip sees it used (see generated.test.ts).
 const exampleStatus: PropositionStatus = "retired"
 
 function canonFixture(
@@ -21,6 +18,12 @@ function canonFixture(
     )
     .join("\n")
   return `= The proposition register\n\n${body}`
+}
+
+/** A one-entry §7 whose body is `lines`, each indented on its own line. */
+function oneEntry(...lines: ReadonlyArray<string>): string {
+  const body = lines.map((line) => `  ${line}\n`).join("")
+  return `= The proposition register\n\n#proposition("7.1", name: "CW-P1 · Sequential composition adds")[\n${body}]\n`
 }
 
 describe("parsePropositionRegister", () => {
@@ -71,161 +74,76 @@ describe("parsePropositionRegister", () => {
     ])
   })
 
-  it("captures the bracketed body as `statement`, collapsing its own line breaks and indentation", () => {
-    const source =
-      `= The proposition register\n\n` +
-      `#proposition("7.1", name: "CW-P1 · Sequential composition adds")[\n` +
-      `  Sibling control flow executed in sequence contributes the sum of its\n` +
-      `  members' costs: $T("Seq"(G_1, ..., G_m)) = sum_i T(G_i)$.\n` +
-      `]\n`
-
-    expect(parsePropositionRegister(source)[0]?.statement).toBe(
-      `Sibling control flow executed in sequence contributes the sum of its members' costs: T(Seq(G_1, ..., G_m)) = sum_i T(G_i).`
+  it.each<[string, Array<string>, string]>([
+    [
+      "captures the bracketed body as `statement`, collapsing its own line breaks and indentation",
+      [
+        "Sibling control flow executed in sequence contributes the sum of its",
+        `members' costs: $T("Seq"(G_1, ..., G_m)) = sum_i T(G_i)$.`,
+      ],
+      `Sibling control flow executed in sequence contributes the sum of its members' costs: T(Seq(G_1, ..., G_m)) = sum_i T(G_i).`,
+    ],
+    [
+      "is bracket-depth-aware — a nested [...] inside the body does not truncate it",
+      ["See also #footnote[a nested block, itself closed] for detail."],
+      "See also #footnote[a nested block, itself closed] for detail.",
+    ],
+    [
+      // Typst never scans a raw span for markup.
+      "does not count a literal bracket inside a raw span as structural",
+      ["Indexes like `array[0]` read the first element."],
+      "Indexes like array[0] read the first element.",
+    ],
+    [
+      "does not count an escaped bracket as structural",
+      ["A literal \\[bracket\\] written by hand."],
+      "A literal [bracket] written by hand.",
+    ],
+    [
+      // `#link(...)` itself is kept verbatim, like `#footnote[...]`.
+      "does not count a bracket inside a string literal as structural",
+      ['A #link("path]part") value follows.'],
+      'A #link("path]part") value follows.',
+    ],
+    [
+      // Every "..." pair is treated as a string, so prose quotes (as in the
+      // real CW-P16) must still parse unchanged.
+      "does not misparse an ordinary quoted phrase in prose",
+      ['The failure is of a different kind from "too slow at this size."'],
+      'The failure is of a different kind from "too slow at this size."',
+    ],
+    [
+      // Comments are dropped, not kept: a comment's "*" would read as emphasis.
+      "omits a line comment entirely from the rendered statement",
+      ["A real claim. // note about ]", "A second line follows."],
+      "A real claim. A second line follows.",
+    ],
+    [
+      "omits a block comment entirely from the rendered statement, even a nested one",
+      [
+        "A real claim. /* an aside /* nested [ note */ about ] brackets */ follows.",
+      ],
+      "A real claim. follows.",
+    ],
+  ])("%s", (_name, lines, statement) => {
+    expect(parsePropositionRegister(oneEntry(...lines))[0]?.statement).toBe(
+      statement
     )
   })
 
-  // #1330: typst content between a body's own "[" and its matching "]" can
-  // nest brackets — no canon entry does today, but a parser that only works
-  // by accident of the current corpus is the same silent-miss risk this
-  // module has already had to fix once (the multi-line call-site check).
-  it("is bracket-depth-aware — a nested [...] inside the body does not truncate it", () => {
-    const source =
-      `= The proposition register\n\n` +
-      `#proposition("7.1", name: "CW-P1 · Sequential composition adds")[\n` +
-      `  See also #footnote[a nested block, itself closed] for detail.\n` +
-      `]\n`
-
-    expect(parsePropositionRegister(source)[0]?.statement).toBe(
-      "See also #footnote[a nested block, itself closed] for detail."
-    )
-  })
-
-  // Review finding on this PR (chatgpt-codex-connector): a raw span's own
-  // content is never scanned for markup by typst, so a literal "[" / "]"
-  // inside one (e.g. a code example like `array[0]`) must not be counted
-  // as a content-block delimiter — it would otherwise truncate the body
-  // early or report a false unbalanced block.
-  it("does not count a literal bracket inside a raw span as structural", () => {
-    const source =
-      `= The proposition register\n\n` +
-      '#proposition("7.1", name: "CW-P1 · Sequential composition adds")[\n' +
-      "  Indexes like `array[0]` read the first element.\n" +
-      "]\n"
-
-    expect(parsePropositionRegister(source)[0]?.statement).toBe(
-      "Indexes like array[0] read the first element."
-    )
-  })
-
-  // Same finding: typst's own backslash escape (`\[`, `\]`) makes a bracket
-  // literal too, independent of raw spans.
-  it("does not count an escaped bracket as structural", () => {
-    const source =
-      `= The proposition register\n\n` +
-      `#proposition("7.1", name: "CW-P1 · Sequential composition adds")[\n` +
-      `  A literal \\[bracket\\] written by hand.\n` +
-      `]\n`
-
-    expect(parsePropositionRegister(source)[0]?.statement).toBe(
-      "A literal [bracket] written by hand."
-    )
-  })
-
-  // Review finding, round 3 (chatgpt-codex-connector): a bracket inside a
-  // typst string literal (a code-mode call's own argument, e.g.
-  // `#link("...")`) is a character in a string, not a content-block
-  // delimiter — it must not decrement depth either. `#link(...)` itself is
-  // not rendered specially (same posture as `#footnote[...]` above), only
-  // no longer breaks bracket counting.
-  it("does not count a bracket inside a string literal as structural", () => {
-    const source =
-      `= The proposition register\n\n` +
-      `#proposition("7.1", name: "CW-P1 · Sequential composition adds")[\n` +
-      `  A #link("path]part") value follows.\n` +
-      `]\n`
-
-    expect(parsePropositionRegister(source)[0]?.statement).toBe(
-      'A #link("path]part") value follows.'
-    )
-  })
-
-  // Guards the string-literal fix's own documented bluntness: it treats
-  // every unescaped "..." pair as a string regardless of typst's actual
-  // code/markup mode, so an ordinary quoted phrase in prose (no pairing
-  // significance to typst at all) must still parse unchanged. Mirrors the
-  // real canon's own CW-P16 body.
-  it("does not misparse an ordinary quoted phrase in prose", () => {
-    const source =
-      `= The proposition register\n\n` +
-      `#proposition("7.1", name: "CW-P1 · Sequential composition adds")[\n` +
-      `  The failure is of a different kind from "too slow at this size."\n` +
-      `]\n`
-
-    expect(parsePropositionRegister(source)[0]?.statement).toBe(
-      'The failure is of a different kind from "too slow at this size."'
-    )
-  })
-
-  it("throws on an unterminated string literal", () => {
-    const source =
-      `= The proposition register\n\n` +
-      `#proposition("7.1", name: "CW-P1 · Sequential composition adds")[\n` +
-      `  A #link("unterminated value follows.\n` +
-      `]\n`
-
-    expect(() => parsePropositionRegister(source)).toThrow(
-      /unterminated string literal/
-    )
-  })
-
-  // Review finding, round 4 (chatgpt-codex-connector): a bracket inside a
-  // typst comment (line or block) is comment text, not a content-block
-  // delimiter, in either markup or code mode — unlike the string-literal
-  // case above, there is no mode ambiguity here. `docs/canon/complexity-
-  // witness-canon.typ` already uses `//` extensively elsewhere in the
-  // file (section separators), just not inside a §7 body yet.
-  //
-  // The comment is also gone from the *rendered* statement entirely, not
-  // merely bracket-safe — real typst never shows a comment to a reader,
-  // and this fix's own first attempt (keeping it verbatim, matching the
-  // #link()/#footnote[] precedent) discovered a comment's own "*"
-  // characters get read as emphasis delimiters by renderInlineMarkup,
-  // actively corrupting the output rather than just leaving it unstyled.
-  it("omits a line comment entirely from the rendered statement", () => {
-    const source =
-      `= The proposition register\n\n` +
-      `#proposition("7.1", name: "CW-P1 · Sequential composition adds")[\n` +
-      `  A real claim. // note about ]\n` +
-      `  A second line follows.\n` +
-      `]\n`
-
-    expect(parsePropositionRegister(source)[0]?.statement).toBe(
-      "A real claim. A second line follows."
-    )
-  })
-
-  it("omits a block comment entirely from the rendered statement, even a nested one", () => {
-    const source =
-      `= The proposition register\n\n` +
-      `#proposition("7.1", name: "CW-P1 · Sequential composition adds")[\n` +
-      `  A real claim. /* an aside /* nested [ note */ about ] brackets */ follows.\n` +
-      `]\n`
-
-    expect(parsePropositionRegister(source)[0]?.statement).toBe(
-      "A real claim. follows."
-    )
-  })
-
-  it("throws on an unterminated block comment", () => {
-    const source =
-      `= The proposition register\n\n` +
-      `#proposition("7.1", name: "CW-P1 · Sequential composition adds")[\n` +
-      `  A real claim. /* unterminated aside.\n` +
-      `]\n`
-
-    expect(() => parsePropositionRegister(source)).toThrow(
-      /unterminated block comment/
-    )
+  it.each<[string, Array<string>, RegExp]>([
+    [
+      "an unterminated string literal",
+      ['A #link("unterminated value follows.'],
+      /unterminated string literal/,
+    ],
+    [
+      "an unterminated block comment",
+      ["A real claim. /* unterminated aside."],
+      /unterminated block comment/,
+    ],
+  ])("throws on %s", (_name, lines, error) => {
+    expect(() => parsePropositionRegister(oneEntry(...lines))).toThrow(error)
   })
 
   it("throws on an unbalanced body — an unmatched '[' with no closing ']'", () => {
@@ -237,125 +155,53 @@ describe("parsePropositionRegister", () => {
     expect(() => parsePropositionRegister(source)).toThrow(/no matching "\]"/)
   })
 
-  // Review finding on this PR (chatgpt-codex-connector): a component
-  // rendering `statement` verbatim would show the canon's own typst source
-  // syntax to a learner, not the sentence it authors.
-  describe("renders inline typst markup as display text", () => {
-    it("unwraps a raw span, keeping its content as plain text", () => {
-      const source =
-        `= The proposition register\n\n` +
-        `#proposition("7.1", name: "CW-P1 · Sequential composition adds")[\n` +
-        "  See also `CW-P5` for the related rewrite.\n" +
-        `]\n`
-
-      expect(parsePropositionRegister(source)[0]?.statement).toBe(
-        "See also CW-P5 for the related rewrite."
-      )
-    })
-
-    it("unwraps emphasis, keeping its content as plain text", () => {
-      const source =
-        `= The proposition register\n\n` +
-        `#proposition("7.1", name: "CW-P1 · Sequential composition adds")[\n` +
-        `  Improves the *best* case only.\n` +
-        `]\n`
-
-      expect(parsePropositionRegister(source)[0]?.statement).toBe(
-        "Improves the best case only."
-      )
-    })
-
-    it("renders typst's '---' as a real em dash", () => {
-      const source =
-        `= The proposition register\n\n` +
-        `#proposition("7.1", name: "CW-P1 · Sequential composition adds")[\n` +
-        `  A fixed cost --- unaffected by any bound.\n` +
-        `]\n`
-
-      expect(parsePropositionRegister(source)[0]?.statement).toBe(
-        "A fixed cost — unaffected by any bound."
-      )
-    })
-
-    it("drops a math span's own '$' delimiters and renders known symbol names", () => {
-      const source =
-        `= The proposition register\n\n` +
-        `#proposition("7.1", name: "CW-P1 · Sequential composition adds")[\n` +
-        `  Bounded by $Theta(n^2)$ in the worst case, provided $T_A (C) <= B$.\n` +
-        `]\n`
-
-      expect(parsePropositionRegister(source)[0]?.statement).toBe(
-        "Bounded by Θ(n^2) in the worst case, provided T_A (C) ≤ B."
-      )
-    })
-
-    // Review finding, round 5 (chatgpt-codex-connector) — caught against
-    // the real, already-generated CW-P1/CW-P2 statements, not a
-    // hypothetical: a quoted string inside math mode (typst's own
-    // convention for setting an operator name in upright text, e.g.
-    // $T("Seq"(...))$) rendered with its quote marks still visible.
-    // Stripped, and deliberately never run through MATH_SYMBOL_NAMES — a
-    // quoted name is an identifier, not a symbol the table should rewrite.
-    it("strips a quoted string's own delimiters inside math mode, without substituting its content", () => {
-      const source =
-        `= The proposition register\n\n` +
-        `#proposition("7.1", name: "CW-P1 · Sequential composition adds")[\n` +
-        `  Contributes $T("Seq"(G_1, ..., G_m)) = sum_i T(G_i)$.\n` +
-        `]\n`
-
-      expect(parsePropositionRegister(source)[0]?.statement).toBe(
-        "Contributes T(Seq(G_1, ..., G_m)) = sum_i T(G_i)."
-      )
-    })
-
-    it("does not substitute a math symbol name's content when it appears inside a quoted string", () => {
-      const source =
-        `= The proposition register\n\n` +
-        `#proposition("7.1", name: "CW-P1 · Sequential composition adds")[\n` +
-        `  A rewrite named $"Theta"(x)$ is a literal identifier, not the symbol.\n` +
-        `]\n`
-
-      expect(parsePropositionRegister(source)[0]?.statement).toBe(
-        "A rewrite named Theta(x) is a literal identifier, not the symbol."
-      )
-    })
-
-    // Review finding, round 2 (chatgpt-codex-connector): `bodyOfBracketBlock`
-    // already recognizes a raw span's delimiter as a run of backticks of
-    // arbitrary length, but the first cut of this unwrap only stripped a
-    // single pair — a double-backtick span left one backtick visible on
-    // each side (`` ``foo`` `` became `` `foo` ``, not `foo`). Fixed to
-    // match the same run-length rule on both sides.
-    it("unwraps a multi-backtick raw span, not just a single pair", () => {
-      const source =
-        `= The proposition register\n\n` +
-        `#proposition("7.1", name: "CW-P1 · Sequential composition adds")[\n` +
-        "  A double-backtick span like ``foo`` renders clean.\n" +
-        `]\n`
-
-      expect(parsePropositionRegister(source)[0]?.statement).toBe(
-        "A double-backtick span like foo renders clean."
-      )
-    })
-
-    // Review finding, round 3 (chatgpt-codex-connector): a raw span exists
-    // specifically so an author can show markup characters literally —
-    // typst never applies math/emphasis rendering inside one. The earlier
-    // sequential-replace version ran its math/emphasis passes over the
-    // whole string regardless, so a raw span containing "*literal*" or
-    // "$Theta$" got rendered anyway. The single-pass scanner extracts a raw
-    // span's content directly, so no later rule ever sees it.
-    it("does not apply math or emphasis rendering inside a raw span's own content", () => {
-      const source =
-        `= The proposition register\n\n` +
-        `#proposition("7.1", name: "CW-P1 · Sequential composition adds")[\n` +
-        "  The syntax `*literal*` keeps its asterisks, and `$Theta$` keeps its dollar signs.\n" +
-        `]\n`
-
-      expect(parsePropositionRegister(source)[0]?.statement).toBe(
-        "The syntax *literal* keeps its asterisks, and $Theta$ keeps its dollar signs."
-      )
-    })
+  // A component rendering `statement` must show the sentence, not typst source.
+  it.each<[string, string, string]>([
+    [
+      "unwraps a raw span, keeping its content as plain text",
+      "See also `CW-P5` for the related rewrite.",
+      "See also CW-P5 for the related rewrite.",
+    ],
+    [
+      "unwraps emphasis, keeping its content as plain text",
+      "Improves the *best* case only.",
+      "Improves the best case only.",
+    ],
+    [
+      "renders typst's '---' as a real em dash",
+      "A fixed cost --- unaffected by any bound.",
+      "A fixed cost — unaffected by any bound.",
+    ],
+    [
+      "drops a math span's own '$' delimiters and renders known symbol names",
+      "Bounded by $Theta(n^2)$ in the worst case, provided $T_A (C) <= B$.",
+      "Bounded by Θ(n^2) in the worst case, provided T_A (C) ≤ B.",
+    ],
+    [
+      // Upright operator names, as in the real CW-P1/CW-P2.
+      "strips a quoted string's own delimiters inside math mode, without substituting its content",
+      'Contributes $T("Seq"(G_1, ..., G_m)) = sum_i T(G_i)$.',
+      "Contributes T(Seq(G_1, ..., G_m)) = sum_i T(G_i).",
+    ],
+    [
+      "does not substitute a math symbol name's content when it appears inside a quoted string",
+      'A rewrite named $"Theta"(x)$ is a literal identifier, not the symbol.',
+      "A rewrite named Theta(x) is a literal identifier, not the symbol.",
+    ],
+    [
+      "unwraps a multi-backtick raw span, not just a single pair",
+      "A double-backtick span like ``foo`` renders clean.",
+      "A double-backtick span like foo renders clean.",
+    ],
+    [
+      "does not apply math or emphasis rendering inside a raw span's own content",
+      "The syntax `*literal*` keeps its asterisks, and `$Theta$` keeps its dollar signs.",
+      "The syntax *literal* keeps its asterisks, and $Theta$ keeps its dollar signs.",
+    ],
+  ])("renders inline typst markup: %s", (_name, line, statement) => {
+    expect(parsePropositionRegister(oneEntry(line))[0]?.statement).toBe(
+      statement
+    )
   })
 
   it("throws on a gap in the CW-P sequence", () => {
@@ -396,10 +242,7 @@ describe("parsePropositionRegister", () => {
     )
   })
 
-  // Review finding on #1241 (chatgpt-codex-connector): a #proposition(...)
-  // call site whose args don't fit the strict single-line regex would
-  // otherwise vanish silently rather than fail — the remaining, still-
-  // contiguous ids pass the sequence check on their own.
+  // Otherwise the unmatched entry would vanish and the rest still pass.
   it("throws when a §7 call site is not matched by the single-line regex (e.g. wrapped across lines)", () => {
     const source =
       `= The proposition register\n\n` +
@@ -453,9 +296,7 @@ describe("parsePropositionRegister", () => {
   })
 })
 
-// Review finding on #1241 (chatgpt-codex-connector): the citation checker
-// must exclude only §7's own declaration lines, not the whole canon tree
-// — this is what makes that possible.
+// The citation checker excludes only these lines, not the whole canon.
 describe("propositionDeclarationLineNumbers", () => {
   it("returns the 1-indexed line of each §7 declaration", () => {
     const source = canonFixture([

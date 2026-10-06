@@ -25,6 +25,8 @@
       ],
       "ignoreDependencies": [
         "@changesets/cli",
+        "tailwindcss",
+        "tailwindcss-animate",
         "typescript-language-server",
         "typescript-transform-paths"
       ]
@@ -50,14 +52,6 @@
         "scripts/setup-test-profile.mjs"
       ],
       "ignoreDependencies": ["@unocss/cli"]
-    },
-    "extensions/some-conveyor": {
-      "entry": [
-        "src/background/background.ts",
-        "src/content/content.ts",
-        "src/lib/platform/**/api.*.ts"
-      ],
-      "ignoreDependencies": ["@some-ui/polyhedron", "@unocss/cli"]
     },
     "extensions/some-drama": {
       "entry": [

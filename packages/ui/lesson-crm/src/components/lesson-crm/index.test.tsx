@@ -125,13 +125,22 @@ const pasteReply = (): void => {
   })
 }
 
+/** Renders the CRM, wide (or on a phone), once its list has loaded. */
+async function mount(
+  client: LessonCrmClient,
+  mobile = false
+): Promise<ReturnType<typeof recording>> {
+  viewport(mobile)
+  const reporting = recording()
+  render(<LessonCrm client={client} reporting={reporting} />)
+  await settle()
+  return reporting
+}
+
 describe("LessonCrm on a wide screen: a list rail and a step workflow", () => {
   it("opens a stored lesson at its check, previews it, and retires and restores it - saying so each time", async () => {
-    viewport(false)
     const client = fakeClient([lesson("a"), lesson("b")])
-    const reporting = recording()
-    render(<LessonCrm client={client} reporting={reporting} />)
-    await settle()
+    const reporting = await mount(client)
 
     fireEvent.click(screen.getByRole("button", { name: /Lesson a/ }))
     await settle()
@@ -174,11 +183,8 @@ describe("LessonCrm on a wide screen: a list rail and a step workflow", () => {
   })
 
   it("walks a new lesson from the prompt to a save: pasted as a file, filled from its entry", async () => {
-    viewport(false)
     const client = fakeClient([])
-    const reporting = recording()
-    render(<LessonCrm client={client} reporting={reporting} />)
-    await settle()
+    const reporting = await mount(client)
 
     fireEvent.click(screen.getByRole("button", { name: /New lesson/ }))
     expect(
@@ -219,12 +225,9 @@ describe("LessonCrm on a wide screen: a list rail and a step workflow", () => {
   })
 
   it("says why a save failed, and offers to try again", async () => {
-    viewport(false)
     const client = fakeClient([])
     vi.mocked(client.write).mockRejectedValueOnce(new Error("boom"))
-    const reporting = recording()
-    render(<LessonCrm client={client} reporting={reporting} />)
-    await settle()
+    const reporting = await mount(client)
 
     fireEvent.click(screen.getByRole("button", { name: /New lesson/ }))
     step(/Step 2: Lesson/)
@@ -251,12 +254,9 @@ describe("LessonCrm on a wide screen: a list rail and a step workflow", () => {
   })
 
   it("says the list failed to load, and keeps a way to try again", async () => {
-    viewport(false)
     const client = fakeClient([lesson("a")])
     vi.mocked(client.list).mockRejectedValueOnce(new Error("down"))
-    const reporting = recording()
-    render(<LessonCrm client={client} reporting={reporting} />)
-    await settle()
+    const reporting = await mount(client)
 
     expect(reporting.notices).toMatchObject([
       { tone: "error", title: "Couldn't load the lessons" },
@@ -267,10 +267,8 @@ describe("LessonCrm on a wide screen: a list rail and a step workflow", () => {
   })
 
   it("won't save a new lesson over an existing key", async () => {
-    viewport(false)
     const client = fakeClient([lesson("cafe-order")])
-    render(<LessonCrm client={client} reporting={recording()} />)
-    await settle()
+    await mount(client)
 
     fireEvent.click(screen.getByRole("button", { name: /New lesson/ }))
     step(/Step 2: Lesson/)
@@ -285,7 +283,6 @@ describe("LessonCrm on a wide screen: a list rail and a step workflow", () => {
   })
 
   it("keeps the editor on the lesson the operator moved to when an earlier save finishes", async () => {
-    viewport(false)
     const client = fakeClient([lesson("b")])
     let finishSave: () => void = () => undefined
     vi.mocked(client.write).mockImplementation(
@@ -298,8 +295,7 @@ describe("LessonCrm on a wide screen: a list rail and a step workflow", () => {
             })
         })
     )
-    render(<LessonCrm client={client} reporting={recording()} />)
-    await settle()
+    await mount(client)
 
     fireEvent.click(screen.getByRole("button", { name: /New lesson/ }))
     step(/Step 2: Lesson/)
@@ -328,10 +324,8 @@ describe("LessonCrm on a wide screen: a list rail and a step workflow", () => {
   })
 
   it("drops an upload that finishes after the operator moved to another lesson", async () => {
-    viewport(false)
     const client = fakeClient([lesson("a"), lesson("b")])
-    render(<LessonCrm client={client} reporting={recording()} />)
-    await settle()
+    await mount(client)
 
     fireEvent.click(screen.getByRole("button", { name: /Lesson a/ }))
     await settle()
@@ -360,7 +354,6 @@ describe("LessonCrm on a wide screen: a list rail and a step workflow", () => {
   })
 
   it("drops a slow read for a lesson the operator has moved away from", async () => {
-    viewport(false)
     const client = fakeClient([lesson("a"), lesson("b")])
     let finishA: (body: string) => void = () => undefined
     vi.mocked(client.read).mockImplementation((key: string) =>
@@ -370,8 +363,7 @@ describe("LessonCrm on a wide screen: a list rail and a step workflow", () => {
           })
         : Promise.resolve("[]")
     )
-    render(<LessonCrm client={client} reporting={recording()} />)
-    await settle()
+    await mount(client)
 
     fireEvent.click(screen.getByRole("button", { name: /Lesson a/ }))
     fireEvent.click(screen.getByRole("button", { name: /Lesson b/ }))
@@ -386,7 +378,6 @@ describe("LessonCrm on a wide screen: a list rail and a step workflow", () => {
 
 describe("LessonCrm: the latest source asked for is the one kept", () => {
   it("keeps a paste made while the opened lesson is still being read", async () => {
-    viewport(false)
     const client = fakeClient([lesson("a")])
     let finishA: (body: string) => void = () => undefined
     vi.mocked(client.read).mockImplementation(
@@ -395,8 +386,7 @@ describe("LessonCrm: the latest source asked for is the one kept", () => {
           finishA = resolve
         })
     )
-    render(<LessonCrm client={client} reporting={recording()} />)
-    await settle()
+    await mount(client)
 
     fireEvent.click(screen.getByRole("button", { name: /Lesson a/ }))
     await settle()
@@ -410,9 +400,7 @@ describe("LessonCrm: the latest source asked for is the one kept", () => {
   })
 
   it("drops an upload that finishes after the operator pasted another, or removed it", async () => {
-    viewport(false)
-    render(<LessonCrm client={fakeClient([])} reporting={recording()} />)
-    await settle()
+    await mount(fakeClient([]))
     fireEvent.click(screen.getByRole("button", { name: /New lesson/ }))
     step(/Step 2: Lesson/)
 
@@ -458,7 +446,6 @@ describe("LessonCrm: the latest source asked for is the one kept", () => {
 
 describe("LessonCrm: what a save writes is what the editor holds", () => {
   it("holds a new lesson's key while its save is on the way", async () => {
-    viewport(false)
     const client = fakeClient([])
     let finishSave: () => void = () => undefined
     vi.mocked(client.write).mockImplementation(
@@ -471,8 +458,7 @@ describe("LessonCrm: what a save writes is what the editor holds", () => {
             })
         })
     )
-    render(<LessonCrm client={client} reporting={recording()} />)
-    await settle()
+    await mount(client)
 
     fireEvent.click(screen.getByRole("button", { name: /New lesson/ }))
     step(/Step 2: Lesson/)
@@ -492,12 +478,9 @@ describe("LessonCrm: what a save writes is what the editor holds", () => {
   })
 
   it("retries a failed save with the editor as it is now, not as it was", async () => {
-    viewport(false)
     const client = fakeClient([])
     vi.mocked(client.write).mockRejectedValueOnce(new Error("boom"))
-    const reporting = recording()
-    render(<LessonCrm client={client} reporting={reporting} />)
-    await settle()
+    const reporting = await mount(client)
 
     fireEvent.click(screen.getByRole("button", { name: /New lesson/ }))
     step(/Step 2: Lesson/)
@@ -526,11 +509,9 @@ describe("LessonCrm: what a save writes is what the editor holds", () => {
   })
 
   it("won't save a new lesson until the list has loaded", async () => {
-    viewport(false)
     const client = fakeClient([])
     vi.mocked(client.list).mockRejectedValueOnce(new Error("down"))
-    render(<LessonCrm client={client} reporting={recording()} />)
-    await settle()
+    await mount(client)
 
     fireEvent.click(screen.getByRole("button", { name: /New lesson/ }))
     step(/Step 2: Lesson/)
@@ -545,9 +526,7 @@ describe("LessonCrm: what a save writes is what the editor holds", () => {
   })
 
   it("won't save while a replacement source is still loading", async () => {
-    viewport(false)
-    render(<LessonCrm client={fakeClient([])} reporting={recording()} />)
-    await settle()
+    await mount(fakeClient([]))
     fireEvent.click(screen.getByRole("button", { name: /New lesson/ }))
     step(/Step 2: Lesson/)
     pasteReply()
@@ -575,9 +554,7 @@ describe("LessonCrm: what a save writes is what the editor holds", () => {
   })
 
   it("can save again once a replacement source fails to load", async () => {
-    viewport(false)
-    render(<LessonCrm client={fakeClient([])} reporting={recording()} />)
-    await settle()
+    await mount(fakeClient([]))
     fireEvent.click(screen.getByRole("button", { name: /New lesson/ }))
     step(/Step 2: Lesson/)
     pasteReply()
@@ -598,9 +575,7 @@ describe("LessonCrm: what a save writes is what the editor holds", () => {
 
 describe("LessonCrm on a phone: a bottom tab per pane", () => {
   it("keeps the editor's tabs shut until a lesson is open, then lands on the prompt", async () => {
-    viewport(true)
-    render(<LessonCrm client={fakeClient([])} reporting={recording()} />)
-    await settle()
+    await mount(fakeClient([]), true)
 
     expect(screen.getByRole("tab", { name: "Lessons" })).toHaveAttribute(
       "aria-selected",

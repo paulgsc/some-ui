@@ -1,27 +1,18 @@
 /**
  * A yt-navigate-* route swap must not hand a themed page back to native
- * rendering just because the surfaces keeping it light are ones this
- * extension already themed.
+ * rendering because the surfaces keeping it light are ones we already
+ * themed.
  *
- * Reported live on YouTube (watch -> watch inside a Mix playlist): the veil
- * covered the navigation, then lifted onto the *native light* page, which
- * stayed white for ~3.6 s before a later reactive round re-themed it — a
- * full-screen flashbang on a page the extension had been theming a moment
- * earlier.
+ * Reported on YouTube (watch -> watch in a Mix): the veil lifted onto the
+ * native light page for ~3.6 s before a later round re-themed it.
  *
- * Mechanism (pipeline.ts): `yt-navigate-finish` bumps the content epoch, and
- * the next `ingest()` drops every hypothesis key (`dropStaleEvidence`) so
- * keys the new route no longer carries stop voting. But `scan()` skips every
- * element already tagged `data-sw-patched` (`shouldSkip`), and YouTube keeps
- * its app shell — the big light surfaces the first round tagged — across a
- * route swap. Those keys were dropped and could not be re-learned, so the
- * post-navigation verdict was decided by whatever *untagged* evidence was
- * left: mid-grey controls. Their mean reads as already dark, `decide()`
- * emits `restore-native`, and `document-scope.ts` exonerates the page and
- * releases the veil onto native white.
+ * Mechanism: `yt-navigate-finish` bumps the content epoch and the next
+ * `ingest()` drops stale hypothesis keys, but `scan()` skips elements
+ * already tagged `data-sw-patched`, and YouTube keeps its tagged app shell
+ * across the swap. The verdict then rests on untagged mid-grey controls,
+ * which read dark, so `decide()` emits `restore-native`.
  *
- * yt-spa-shell-page.html is that shape with no YouTube in it; its own
- * header lists which elements play which part.
+ * yt-spa-shell-page.html reproduces that shape (see its header).
  */
 
 import { parseColor, relativeLuminance } from "@filter/lib/content/color"
@@ -55,10 +46,8 @@ test.describe("auto mode keeps a themed shell themed across a yt-navigate-* rout
       "precondition: the first round tagged every persistent light shell surface"
     ).toBe(true)
 
-    // One page.evaluate() drives the whole navigation and samples every
-    // animation frame through it, so what is recorded is what each frame
-    // would paint (computed style + veil presence at rAF time), not what a
-    // poll from the test process happened to land on.
+    // One page.evaluate() samples every animation frame, so the record is
+    // what each frame would paint, not what a poll happened to land on.
     const frames = await page.evaluate(async () => {
       const records: Array<FrameRecord> = []
       let sampling = true

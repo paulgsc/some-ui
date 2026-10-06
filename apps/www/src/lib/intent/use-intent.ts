@@ -1,52 +1,24 @@
 /**
- * The React binding over `UseMutationResult` — per #935's Pushback 1, a
- * projection, not a replacement. The mutation still runs through TanStack
- * exactly as `lib/tenant/hooks.ts` defines it: `queryClient.invalidateQueries`
- * on success, `useUpdateSession`'s `onMutate` snapshot for optimistic
- * rollback, `reportSessionTransition` firing from `onSuccess`. None of that
- * moves. What changes is the accessor: `UseMutationResult.status` is a bare
- * string on an object with twenty other fields, and reading it is optional -
- * which is why #934's census found it unread at every one of 17 call sites.
- * `useIntent` returns a value whose only accessor is `matchIntent`.
+ * The React binding over `UseMutationResult`: a projection, not a
+ * replacement. The mutation still runs through TanStack as
+ * `lib/tenant/hooks.ts` defines it (invalidation, optimistic rollback,
+ * signals). What changes is the accessor: `status` is optional to read on
+ * `UseMutationResult`, while `useIntent`'s value is read only through
+ * `matchIntent`.
  *
- * ## What this deliberately does not do
+ * `start` does not re-expose per-call `onSuccess`/`onError`: a boundary with
+ * a bypass is not a boundary. A success continuation belongs in
+ * `matchIntent`'s `succeeded` arm or, for a side effect like `navigate`, in
+ * `useIntentEffect`.
  *
- * `start` wraps `mutate` but does not re-expose per-call `onSuccess`/
- * `onError`. That escape hatch is today's actual pattern (see
- * `session-composer.tsx`'s inline `onSuccess` callbacks), and a boundary
- * with a bypass is not a boundary. A success continuation belongs in the
- * `succeeded` arm of `matchIntent`, or - for a side effect that must not
- * run during render, like `navigate(...)` - in `useIntentEffect` (see that
- * module). This is expected to be the friction point when #936 migrates
- * `session-composer.tsx`'s `void navigate(...)`-in-`onSuccess` call sites;
- * that friction is the point, not a bug to route around.
+ * **Double-terminal.** `succeeded` stays until something changes it. Gate a
+ * re-submittable form on `disabled={!isDirty}` (as `SettingsForm` does), and
+ * call `reset()` when the intent must return to `idle` without a new edit.
  *
- * ## The double-terminal case
- *
- * TanStack keeps `status: "success"` (and the intent stays `succeeded`)
- * until something changes it. There is no automatic reversion to `idle` -
- * for a form that can be legitimately re-submitted, gate the control the
- * same way `SettingsForm`/`ProfileForm` already do (`disabled={!isDirty}`),
- * so a fresh edit is what makes `succeeded` stop being shown, not a timer.
- * Call `reset()` explicitly when the intent itself needs to return to
- * `idle` without a new edit prompting it (e.g. navigating away and back to
- * the same form instance).
- *
- * ## Thundering-herd guard
- *
- * `mutate()` doesn't change `mutation.status` inside the closure that just
- * called it - only the *next* render, once React has processed TanStack's
- * notification, sees the new status. Two `start()`/`retry()` calls that
- * both land before that re-render (a fast real double-click, or two
- * `fireEvent.click()`s fired synchronously in a test with no `await`
- * between them) would otherwise both read the same stale `idle`/`failed`
- * state and both dispatch - the exact failure mode #936 calls out
- * explicitly for "Save and play". `dispatchingRef` is a render-cycle-
- * independent guard: the second call in the same burst is dropped rather
- * than firing a second request, and it clears itself the moment
- * `mutation.status` actually changes, so a genuine subsequent action
- * (retry after a real failure, resubmitting a dirty form) is never
- * blocked - only a duplicate within the same burst is.
+ * **Thundering-herd guard.** `mutate()` doesn't change `status` until the
+ * next render, so two `start()`/`retry()` calls in one burst (a fast
+ * double-click) would both dispatch. `dispatchingRef` drops the second and
+ * clears when `status` changes, so a genuine later action is never blocked.
  */
 
 import { useCallback, useEffect, useRef } from "react"
@@ -68,34 +40,27 @@ import { mapFileHostError } from "./errors"
 
 export type UseIntentOptions = {
   /**
-   * Required, not defaulted - #944/S4's own point: a default here is a
-   * decision nobody made, and whether a failure may interrupt someone is
-   * exactly the decision that must not be made by omission.
+   * Required: whether a failure may interrupt someone must not be decided by
+   * omission.
    */
   presentation: IntentPresentation
-  /** Overrides the default `file_host` mapping. Most call sites don't need
-   * this; it exists for a mutation whose failures don't come from
-   * `file_host` at all. */
+  /** Overrides the default `file_host` mapping, for a mutation whose failures
+   * don't come from `file_host`. */
   mapError?: (error: unknown) => IntentError
 }
 
 export type UseIntentResult<TVariables, TData, TStep extends string = never> = {
   readonly state: Intent<TData, TStep>
   readonly presentation: IntentPresentation
-  /** Wraps `mutate`. No per-call `onSuccess`/`onError` - see this module's
-   * header for why. */
+  /** Wraps `mutate`. No per-call `onSuccess`/`onError` (see header). */
   readonly start: (variables: TVariables) => void
-  /** Returns the intent to `idle`, discarding the last result. See this
-   * module's header on the double-terminal case for when to call it. */
+  /** Returns the intent to `idle` (see header, "Double-terminal"). */
   readonly reset: () => void
 }
 
 /**
- * Wraps one `UseMutationResult`. `TVariables`/`TData` are inferred from the
- * mutation; the mutation's own `mutationFn`, `onMutate`, `onSuccess`,
- * `onSettled` are untouched and still fire exactly as `lib/tenant/hooks.ts`
- * defines them - `useIntent` only reads `status`/`data`/`error`/`variables`
- * off the result TanStack already computed.
+ * Wraps one `UseMutationResult`, reading only `status`/`data`/`error`/
+ * `variables`; the mutation's own callbacks fire untouched.
  */
 export function useIntent<TVariables, TData, TStep extends string = never>(
   mutation: UseMutationResult<TData, unknown, TVariables>,
@@ -112,11 +77,9 @@ export function useIntent<TVariables, TData, TStep extends string = never>(
 
   const retry = useCallback((): void => {
     if (dispatchingRef.current) return
-    // TanStack retains the variables from the last `mutate()` call on the
-    // result itself; re-deriving them locally would risk disagreeing with
-    // what actually ran. Nothing to retry with means nothing to do - not a
-    // state `matchIntent`'s `failed` arm should ever actually observe,
-    // since `retry` only exists once a mutation has already run once.
+    // TanStack retains the last `mutate()` variables; re-deriving them could
+    // disagree with what ran. `retry` only exists after a run, so `undefined`
+    // is not expected here.
     if (variables === undefined) return
     dispatchingRef.current = true
     mutate(variables)
@@ -136,11 +99,8 @@ export function useIntent<TVariables, TData, TStep extends string = never>(
   }, [mutationReset])
 
   const state = ((): Intent<TData, TStep> => {
-    // Switching on the destructured `status` (rather than `mutation.status`
-    // inline) so the compiler narrows a plain string literal in the default
-    // arm - narrowing `mutation.status` directly narrows `mutation` itself
-    // to `never` once every case is covered, and `never` has no `.status`
-    // to read at all.
+    // Switch on the destructured `status`: narrowing `mutation.status` would
+    // narrow `mutation` itself to `never` in the default arm.
     switch (status) {
       case "idle": {
         return idle()

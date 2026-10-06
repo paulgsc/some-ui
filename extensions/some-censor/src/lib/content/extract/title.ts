@@ -6,10 +6,9 @@ import { FIELD_SELECTORS } from "@censor/lib/content/layout/fields"
  *
  * The selector list lives in `layout/fields.ts` (ordered most-specific first)
  * so the layout crawler fingerprints the same selectors this reads. The
- * `yt-*-view-model` entries there are the Lit-era lockups adopted in #973:
- * their title is an anchor carrying a BEM-ish class rather than the
- * `#video-title` id the Polymer renderers use, so the id-based selectors never
- * matched them and every such card advanced to the title state showing nothing.
+ * `yt-*-view-model` entries there are the Lit-era lockups: their title is an
+ * anchor carrying a BEM-ish class rather than the `#video-title` id the
+ * Polymer renderers use.
  */
 export function extractTitle(el: HTMLElement): string | null {
   for (const s of FIELD_SELECTORS.title) {

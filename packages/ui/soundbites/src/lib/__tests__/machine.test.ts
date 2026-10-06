@@ -1,8 +1,7 @@
 // @vitest-environment node
 /**
- * The machine alone, in node: no DOM, no React, no ports. What used to be
- * rules each async path in the component had to keep (#1636's review
- * rounds) is pinned here as transitions.
+ * The machine alone, in node: no DOM, no React, no ports. The rules each
+ * async path would otherwise have to keep are pinned here as transitions.
  */
 import { bite } from "@soundbites/lib/__tests__/fixture"
 import type {
@@ -51,7 +50,7 @@ function recording(state = here()): SoundbitesState {
 }
 
 describe("step", () => {
-  it("cannot play while the microphone opens or records (#1636, finding 11)", () => {
+  it("cannot play while the microphone opens or records ", () => {
     const opening = step(here(), { type: "recordPressed" }).state
     expect(opening.activity.kind).toBe("opening")
     expect(step(opening, { type: "playPressed", id: "a" })).toEqual({

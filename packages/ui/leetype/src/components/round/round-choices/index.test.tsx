@@ -99,8 +99,7 @@ describe("RoundChoices", () => {
     expect(screen.queryByText("Not this one")).not.toBeInTheDocument()
   })
 
-  // #1220's own acceptance criterion: abstention is an answer, not a
-  // forfeit — the learner still sees the answer's row marked correct.
+  // Abstention is an answer, not a forfeit: the answer's row is still marked.
   it("abstention still reveals the answer's row as correct, with no 'Not this one' anywhere", () => {
     const onCommit = vi.fn()
     render(

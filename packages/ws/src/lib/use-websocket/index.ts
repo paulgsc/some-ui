@@ -41,14 +41,9 @@ export type UseWebSocketReturn<I, O> = {
 }
 
 /**
- * Generic WebSocket hook with singleton coordination
- *
- * Guarantees:
- * - One WebSocket connection per URL across all components
- * - Atomic initialization with serialized init callback
- * - Serialized mutations when using sendSerialized
- * - Automatic cleanup when last component unmounts
- * - No client-side history (use onIncomingMessage for app-specific buffering)
+ * WebSocket hook over the per-URL singleton manager: one connection across
+ * components, cleaned up when the last unmounts. Keeps no message history
+ * (buffer in `onIncomingMessage`).
  */
 export function useWebSocket<I, O = unknown>({
   url,
@@ -72,14 +67,13 @@ export function useWebSocket<I, O = unknown>({
     })
   )
 
-  // Subscribe to external store (no React state!)
   const snapshot = useSyncExternalStore(
     manager.subscribe,
     () => manager.getSnapshot<I>(),
     () => manager.getSnapshot<I>()
   )
 
-  // Store callbacks in ref to avoid dependency issues
+  // Latest callbacks in a ref, so they are not effect dependencies.
   const callbacksRef = useRef({
     onConnect,
     onDisconnect,
@@ -135,7 +129,6 @@ export function useWebSocket<I, O = unknown>({
     }
   }, [])
 
-  // Acquire/release lifecycle
   useEffect(() => {
     let acquired = false
 
@@ -181,7 +174,6 @@ export function useWebSocket<I, O = unknown>({
       }
 
       try {
-        // Validate outgoing message if schema provided
         if (outgoingMessageSchema) {
           outgoingMessageSchema.parse(message)
         }
@@ -205,7 +197,6 @@ export function useWebSocket<I, O = unknown>({
       }
 
       try {
-        // Validate outgoing message if schema provided
         if (outgoingMessageSchema) {
           outgoingMessageSchema.parse(message)
         }
