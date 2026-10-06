@@ -138,6 +138,8 @@ export const OrchestratorCommandSchema = z.union([
   z.object({ Reset: z.null() }),
   z.object({ ForceScene: z.string() }),
   z.object({ SkipCurrentScene: z.null() }),
+  /** Lengthens whichever scene ends last, so the session ends later. */
+  z.object({ Extend: TimeMsSchema }),
   z.object({ UpdateStreamStatus: StreamStatusSchema }),
 ])
 

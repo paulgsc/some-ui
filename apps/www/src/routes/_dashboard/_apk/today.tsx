@@ -2,12 +2,18 @@ import type { JSX } from "react"
 import { AphTodayCard, AphTodayEntries } from "@some-ui/aph"
 import { Button, Skeleton } from "@some-ui/shared"
 import { createFileRoute, Link } from "@tanstack/react-router"
-import { BookOpen, Mic } from "lucide-react"
+import { BookOpen, Check, Mic } from "lucide-react"
+import { cn } from "@some-ui/core-utils"
 
 import { useMinuteClock } from "@/lib/clock"
 import { matchQueryOutcome, queryOutcome } from "@/lib/query-outcome"
 import type { SessionRecord } from "@/lib/tenant"
-import { resumableSession, sessionsQuery, useSessions } from "@/lib/tenant"
+import {
+  finishedToday,
+  resumableSession,
+  sessionsQuery,
+  useSessions,
+} from "@/lib/tenant"
 
 /**
  * Home: the Android app's front door, where each daily tool shows what it
@@ -24,17 +30,35 @@ type StudyStatus =
   | {
       kind: "ready"
       open: SessionRecord | null
+      /** Finished today: with nothing open, the card says so and offers more. */
+      today: ReadonlyArray<SessionRecord>
       /** The list shown is cached; refreshing it just failed. */
       refreshRetry: (() => void) | null
     }
+
+/** The done card's line: "15 min · Korean", or "2 sessions · 33 min". */
+function studiedLine(today: ReadonlyArray<SessionRecord>): string {
+  const minutes = Math.max(
+    1,
+    Math.round(
+      today.reduce((sum, s) => sum + (s.finalElapsedMs ?? 0), 0) / 60_000
+    )
+  )
+  const only = today.length === 1 ? today[0] : undefined
+  return only
+    ? `${minutes} min · ${only.name}`
+    : `${today.length} sessions · ${minutes} min`
+}
 
 /**
  * The study card's honest states: still loading; failed (never read as
  * "nothing in progress", which would offer Start over a session that is
  * only unreadable); and known, which says so when what it shows is a cached
- * list whose refresh just failed.
+ * list whose refresh just failed. Known with nothing open and something
+ * finished today, it says so in the success colour and still offers another
+ * round.
  */
-const StudyCard = (): JSX.Element => {
+const StudyCard = ({ now }: { now: Date }): JSX.Element => {
   const outcome = queryOutcome(useSessions())
   const status = matchQueryOutcome(outcome, {
     pending: (): StudyStatus => ({ kind: "pending" }),
@@ -42,18 +66,37 @@ const StudyCard = (): JSX.Element => {
     ready: (sessions, refreshError): StudyStatus => ({
       kind: "ready",
       open: resumableSession(sessions),
+      today: finishedToday(sessions, now),
       refreshRetry: refreshError?.retry ?? null,
     }),
   })
 
+  const done =
+    status.kind === "ready" && status.open === null && status.today.length > 0
+
   return (
-    <div className="bg-card flex flex-col gap-2 rounded-xl border p-3">
+    <div
+      className={cn(
+        "flex flex-col gap-2 rounded-xl border p-3",
+        done
+          ? "border-success/30 bg-success/10 animate-in fade-in duration-700"
+          : "bg-card"
+      )}
+    >
       <div className="flex items-center gap-3">
-        <span className="bg-muted flex size-10 shrink-0 items-center justify-center rounded-lg">
-          <BookOpen aria-hidden className="size-5" />
-        </span>
+        {done ? (
+          <span className="bg-success text-success-foreground animate-in zoom-in-50 flex size-10 shrink-0 items-center justify-center rounded-full duration-500">
+            <Check aria-hidden className="size-5" strokeWidth={3} />
+          </span>
+        ) : (
+          <span className="bg-muted flex size-10 shrink-0 items-center justify-center rounded-lg">
+            <BookOpen aria-hidden className="size-5" />
+          </span>
+        )}
         <span className="flex min-w-0 flex-1 flex-col">
-          <span className="font-semibold">Study</span>
+          <span className={cn("font-semibold", done && "text-success")}>
+            {done ? "Studied today" : "Study"}
+          </span>
           {status.kind === "pending" && <Skeleton className="mt-1 h-4 w-32" />}
           {status.kind === "failed" && (
             <span className="text-destructive truncate text-sm">
@@ -62,7 +105,11 @@ const StudyCard = (): JSX.Element => {
           )}
           {status.kind === "ready" && (
             <span className="text-muted-foreground truncate text-sm">
-              {status.open === null ? "nothing in progress" : status.open.name}
+              {status.open !== null
+                ? status.open.name
+                : done
+                  ? studiedLine(status.today)
+                  : "nothing in progress"}
             </span>
           )}
         </span>
@@ -78,7 +125,7 @@ const StudyCard = (): JSX.Element => {
             variant={status.open === null ? "outline" : "default"}
           >
             {status.open === null ? (
-              <Link to="/sessions/new">Start</Link>
+              <Link to="/sessions/new">{done ? "Another round" : "Start"}</Link>
             ) : (
               <Link
                 to="/sessions/$sessionId"
@@ -103,14 +150,16 @@ const StudyCard = (): JSX.Element => {
           </Button>
         </p>
       )}
-      <Link
-        to="/soundbites"
-        search={{ say: "sessions" }}
-        className="text-muted-foreground flex items-center gap-1.5 self-end text-sm underline-offset-4 hover:underline"
-      >
-        <Mic aria-hidden className="size-3.5" />
-        Not today? Say why
-      </Link>
+      {!done && (
+        <Link
+          to="/soundbites"
+          search={{ say: "sessions" }}
+          className="text-muted-foreground flex items-center gap-1.5 self-end text-sm underline-offset-4 hover:underline"
+        >
+          <Mic aria-hidden className="size-3.5" />
+          Not today? Say why
+        </Link>
+      )}
     </div>
   )
 }
@@ -154,7 +203,7 @@ const TodayRoute = (): JSX.Element => {
             </Link>
           )}
         />
-        <StudyCard />
+        <StudyCard now={now} />
       </section>
 
       <section aria-labelledby="home-today" className="flex flex-col gap-2">

@@ -12,7 +12,8 @@
  * (`docs/session-viewport/01-overflow-doctrine-and-audit.md` §2); the trigger
  * is not. The host cannot know what an applet paints in any corner (floated,
  * it covered LeetType's progress counter), so the trigger gets a 36px strip
- * of its own above `V`, and no activity is ever painted over.
+ * of its own above `V`, and no activity is ever painted over. The strip also
+ * holds the wind-down nudge in a session's last minutes.
  */
 
 import type { JSX } from "react"
@@ -48,6 +49,7 @@ import { AudioIndicator } from "@/components/audio/audio-indicator"
 import { ThemeSwitcher } from "@/components/theme-switcher"
 
 import { friendlyActivityName } from "./utils"
+import { WindDownNudge } from "./wind-down-nudge"
 
 type SessionChromeProps = {
   scenes: Array<SceneConfig>
@@ -94,7 +96,8 @@ export const SessionChrome = ({
     <>
       {/* The strip: transparent and just tall enough for the trigger, but
           real layout, so nothing below it is painted over. */}
-      <div className="flex h-9 shrink-0 items-center justify-end pr-2 pt-[env(safe-area-inset-top)]">
+      <div className="flex min-h-9 shrink-0 items-center justify-end gap-2 px-2 pt-[env(safe-area-inset-top)]">
+        <WindDownNudge className="min-w-0 flex-1" />
         <Button
           type="button"
           variant="ghost"

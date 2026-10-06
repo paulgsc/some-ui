@@ -37,6 +37,7 @@ export function describeContext(
 ): string {
   const parts: Array<string> = []
   if (context.source === "reminder") parts.push("From a reminder")
+  if (context.source === "wrap") parts.push("After a session")
   if (context.lastSessionAt === null) {
     parts.push("No sessions yet")
   } else {

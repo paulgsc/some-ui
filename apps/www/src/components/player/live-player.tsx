@@ -19,6 +19,7 @@ import { NowNextStrip } from "./now-next-strip"
 import { SessionChrome } from "./session-chrome"
 import { SessionViewport } from "./session-viewport"
 import { TransportControls } from "./transport-controls"
+import { WindDownNudge } from "./wind-down-nudge"
 
 type LivePlayerProps = {
   session: SessionRecord
@@ -122,6 +123,7 @@ export const LivePlayer = ({ session }: LivePlayerProps): JSX.Element => {
         <SessionChrome scenes={session.scenes} onPlay={() => void start()} />
       )}
       <SessionViewport session={session} />
+      {!isMobile && <WindDownNudge className="self-center" />}
       {!isMobile && <NowNextStrip scenes={session.scenes} />}
       {!isMobile && <TransportControls onPlay={() => void start()} />}
     </div>

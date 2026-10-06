@@ -99,3 +99,47 @@ describe("CompletionSummary: Play again", () => {
     expect(navigateSpy).not.toHaveBeenCalled()
   })
 })
+
+describe("CompletionSummary: the wrap", () => {
+  it("counts a wrap-up in the last minutes as complete, and shows the time added", () => {
+    render(
+      withQueryClient(
+        <CompletionSummary
+          session={sessionRecord({
+            status: "completed",
+            totalDurationMs: 15 * 60_000,
+            finalElapsedMs: 14 * 60_000,
+          })}
+        />
+      )
+    )
+    expect(screen.getByText("Session complete")).toBeTruthy()
+    expect(screen.getByText("none")).toBeTruthy()
+    cleanup()
+
+    render(
+      withQueryClient(
+        <CompletionSummary
+          session={sessionRecord({
+            status: "completed",
+            totalDurationMs: 15 * 60_000,
+            finalElapsedMs: 20 * 60_000,
+          })}
+        />
+      )
+    )
+    expect(screen.getByText("+5 min")).toBeTruthy()
+  })
+
+  it("keeps a tapped answer, and a second tap clears it", () => {
+    localStorage.clear()
+    const session = sessionRecord({ status: "completed" })
+    render(withQueryClient(<CompletionSummary session={session} />))
+
+    const keen = screen.getByRole("button", { name: "Keen" })
+    fireEvent.click(keen)
+    expect(keen.getAttribute("aria-pressed")).toBe("true")
+    fireEvent.click(keen)
+    expect(keen.getAttribute("aria-pressed")).toBe("false")
+  })
+})

@@ -9,15 +9,16 @@ import { sessionsQuery, useSessions } from "@/lib/tenant"
 
 /**
  * `?say=` comes from a tap that already meant "let me talk" (Home's "Not
- * today? Say why", a reminder's "Not today", "Hold to talk"): the page starts
- * listening at once and records which.
+ * today? Say why", a reminder's "Not today", "Hold to talk", the wrap's "Say
+ * what stuck"): the page starts listening at once and records which.
  */
-type SoundbitesSearch = { say?: "sessions" | "reminder" | "capture" }
+type SoundbitesSearch = { say?: "sessions" | "reminder" | "capture" | "wrap" }
 
 const SAY_SOURCES: ReadonlyArray<NonNullable<SoundbitesSearch["say"]>> = [
   "sessions",
   "reminder",
   "capture",
+  "wrap",
 ]
 
 function isSaySource(

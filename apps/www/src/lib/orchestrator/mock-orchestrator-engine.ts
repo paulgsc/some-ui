@@ -203,6 +203,17 @@ export function applyCommand(
     return { ...engine, elapsedMs: earliestEnd }
   }
 
+  if ("Extend" in command) {
+    if (engine.mode !== "Running" && engine.mode !== "Paused") return engine
+    const end = totalDurationOf(engine.scenes)
+    const scenes = engine.scenes.map((s) =>
+      s.start_time + s.duration === end
+        ? { ...s, duration: s.duration + command.Extend }
+        : s
+    )
+    return { ...engine, scenes }
+  }
+
   // UpdateStreamStatus: the engine derives stream status from its own clock,
   // so there's nothing external to apply.
   return engine
