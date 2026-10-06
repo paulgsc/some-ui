@@ -3,8 +3,7 @@
     "@some-ui/types": "workspace:*",
     "@some-ui/topik": "workspace:*",
     "@some-ui/honeycomb": "workspace:*",
-    "@some-ui/leetype": "workspace:*",
-    "some-ui-utils": "workspace:*"
+    "@some-ui/leetype": "workspace:*"
   },
   "description": "Scene registry, layout orchestration, and other content-driven logic for the monorepo's activities. Pairs with @some-ui/content, which holds the actual assets/data this package registers and orchestrates.",
   "devDependencies": {

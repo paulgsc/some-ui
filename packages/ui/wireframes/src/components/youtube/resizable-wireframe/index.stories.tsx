@@ -1,4 +1,5 @@
 import { componentRegistry } from "@some-ui/content-registry"
+import type { ActiveLifetime } from "@some-ui/types"
 import type { Meta, StoryObj } from "@storybook/react-vite"
 import {
   dramaTree,
@@ -6,9 +7,12 @@ import {
   topikTree,
   voiceTree,
 } from "@wireframes/lib/layout-tree"
-import { useSceneLifetimes } from "some-ui-utils"
 
 import { OrchestratedYouTubeViewport } from "."
+
+// No orchestrator runs in Storybook, so no scene is ever live: every region
+// shows its placeholder box. Module-level so the array keeps one identity.
+const activeLifetimes: Array<ActiveLifetime> = []
 
 type AnimatedStoryProps = {
   transitionMs?: number
@@ -21,8 +25,6 @@ const AnimatedStory = ({
   transitionMs = 300,
   enableFocus = true,
 }: AnimatedStoryProps) => {
-  const activeLifetimes = useSceneLifetimes()
-
   return (
     <div className="absolute inset-0">
       <OrchestratedYouTubeViewport

@@ -12,6 +12,7 @@
 
 import type { JSX, ReactNode } from "react"
 import { useMemo, useState } from "react"
+import { cn } from "@some-ui/core-utils"
 import { Button } from "@some-ui/shared"
 import { DiffText } from "@topik/components/topik/handheld/diff-text"
 import { StepLayout } from "@topik/components/topik/handheld/step-layout"
@@ -49,7 +50,6 @@ import {
   Volume2,
   XCircle,
 } from "lucide-react"
-import { cn } from "some-ui-utils"
 
 type ProbeCardProps = {
   probe: Probe

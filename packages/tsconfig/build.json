@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "display": "Library declaration build",
+  // A library's tsconfig.build.json: `"extends": ["./tsconfig.json",
+  // "@some-ui/tsconfig/build.json"]`. `tsc -p tsconfig.build.json` writes only
+  // the declarations, into the dist/types that @some-ui/vite-config's
+  // declarations plugin publishes (packages/some-vite-config/src/lib/declarations.ts).
+  // ${configDir} is the extending config's directory, not this one's.
+  "compilerOptions": {
+    "noEmit": false,
+    "declaration": true,
+    "emitDeclarationOnly": true,
+    "declarationDir": "${configDir}/dist/types",
+    "incremental": true,
+    "tsBuildInfoFile": "${configDir}/dist/types/tsconfig.build.tsbuildinfo"
+  }
+}

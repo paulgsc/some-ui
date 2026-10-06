@@ -1,15 +1,15 @@
 import type { JSX } from "react"
 import { useEffect, useRef } from "react"
-import {
-  cn,
-  useIsMobile,
-  useIsTerminal,
-  useOrchestratorClock,
-  useOrchestratorStore,
-} from "some-ui-utils"
+import { cn } from "@some-ui/core-utils"
+import { useIsMobile } from "@some-ui/react-hooks"
 
 import { useIntent } from "@/lib/intent"
 import { AmbientIntentStatus } from "@/lib/intent/render"
+import {
+  useIsTerminal,
+  useOrchestratorClock,
+  useOrchestratorStore,
+} from "@/lib/orchestrator"
 import type { SessionRecord } from "@/lib/tenant"
 import { useUpdateSession } from "@/lib/tenant"
 import { SessionAudioNotice } from "@/components/audio/session-audio-notice"

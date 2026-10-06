@@ -14,7 +14,7 @@
  * remount under `StrictMode` does.
  */
 
-import { assertNever } from "some-ui-utils"
+import { assertNever } from "@some-ui/core-utils"
 
 import type { ShelfFailure, ShelfItem, ShelfPort } from ".."
 import { keepWithoutReplacing, shelfFailureOf } from ".."

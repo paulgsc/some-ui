@@ -10,8 +10,8 @@ import type {
   ActivityDefinition,
   ActivityMaturity,
 } from "@some-ui/activity-catalog"
+import { cn } from "@some-ui/core-utils"
 import { Badge } from "@some-ui/shared"
-import { cn } from "some-ui-utils"
 
 type MaturityCopy = {
   label: string

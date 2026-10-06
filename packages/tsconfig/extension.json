@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "display": "Browser extension",
+  // What the bundled extensions (some-censor, some-drama, some-filter,
+  // suspender-ledger) add to the rollup config. ${configDir} is the extending
+  // config's directory, not this one's.
+  "extends": "./rollupconfig.json",
+  "compilerOptions": {
+    // Next to the extending config, not in the outDir inherited from base.json
+    // (which resolves into packages/tsconfig/dist and is shared by every
+    // package on that chain, #1522).
+    "tsBuildInfoFile": "${configDir}/tsconfig.tsbuildinfo",
+    "allowImportingTsExtensions": true,
+    "isolatedModules": true
+  }
+}

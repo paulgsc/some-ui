@@ -1,5 +1,6 @@
 import type { JSX } from "react"
 import { useState } from "react"
+import { assertNever, cn } from "@some-ui/core-utils"
 import { Button, Textarea } from "@some-ui/shared"
 import { StepLayout } from "@topik/components/topik/handheld/step-layout"
 import type {
@@ -11,7 +12,6 @@ import type {
 } from "@topik/lib/topik/core/lesson-survey"
 import { MAX_BECOMING_LENGTH } from "@topik/lib/topik/core/lesson-survey"
 import { Check } from "lucide-react"
-import { assertNever, cn } from "some-ui-utils"
 
 type SurveyCardProps = {
   /** Probes missed on first presentation; the blocking step is skipped without them. */

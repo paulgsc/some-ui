@@ -1,8 +1,9 @@
 import type { FC, ReactNode } from "react"
 import { useCallback, useLayoutEffect, useRef, useState } from "react"
 import type { ReadingHunk } from "@leetype/lib/leetype/reading-probe"
+import { cn } from "@some-ui/core-utils"
+import { useResizeObserver } from "@some-ui/react-hooks"
 import Prism from "prismjs"
-import { cn, useResizeObserver } from "some-ui-utils"
 
 // Imported here too: this surface never mounts `CodeDisplay`, so on a phone
 // nothing else would load the theme and `.token.*` would render unstyled.

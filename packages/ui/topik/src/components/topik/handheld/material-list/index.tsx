@@ -1,4 +1,5 @@
 import type { JSX } from "react"
+import { assertNever, cn } from "@some-ui/core-utils"
 import { Button } from "@some-ui/shared"
 import type { TopikMetadata } from "@topik/lib/topik"
 import type {
@@ -15,7 +16,6 @@ import {
   Sparkles,
   X,
 } from "lucide-react"
-import { assertNever, cn } from "some-ui-utils"
 
 type MaterialListProps = {
   /** This level's served lessons, in order; the first is up next. */

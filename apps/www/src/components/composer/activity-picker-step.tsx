@@ -7,6 +7,8 @@ import {
   getActivity,
   searchActivities,
 } from "@some-ui/activity-catalog"
+import { cn } from "@some-ui/core-utils"
+import { useFittedPage } from "@some-ui/react-hooks"
 import {
   Badge,
   Button,
@@ -16,7 +18,6 @@ import {
   TALL_WINDOW_ONLY,
 } from "@some-ui/shared"
 import { Plus, X } from "lucide-react"
-import { cn, useFittedPage } from "some-ui-utils"
 
 import { ActivityIcon } from "@/components/activity-icon"
 import { ActivityInputHint } from "@/components/activity/activity-input"

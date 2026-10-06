@@ -1,19 +1,6 @@
-import { defineConfig } from "vitest/config"
+import { defineNodeTest } from "@some-ui/vite-config/vitest"
 
-export default defineConfig({
-  resolve: {
-    alias: {
-      "@fkit": new URL("./src", import.meta.url).pathname,
-    },
-  },
-
-  test: {
-    // Pure fetch/retry logic - no DOM needed.
-    environment: "node",
-
-    // Allows 'describe', 'it', 'expect' without importing them in every file
-    globals: true,
-
-    include: ["**/*.test.{ts,tsx}"],
-  },
+// Pure fetch/retry logic - no DOM needed.
+export default defineNodeTest({
+  alias: { "@fkit": new URL("./src", import.meta.url).pathname },
 })

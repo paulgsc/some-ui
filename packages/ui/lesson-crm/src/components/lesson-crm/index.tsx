@@ -27,9 +27,9 @@ import type { Editing, Pane } from "@lesson-crm/lib/panes"
 import { editorPanes, landingPane } from "@lesson-crm/lib/panes"
 import type { LessonSource } from "@lesson-crm/lib/source"
 import { sourceFromFile, sourceFromText } from "@lesson-crm/lib/source"
+import { useIsMobile, useShowOnScrollUp } from "@some-ui/react-hooks"
 import { Button } from "@some-ui/shared"
 import { ConversationPreview } from "@some-ui/topik"
-import { useIsMobile, useShowOnScrollUp } from "some-ui-utils"
 
 type LessonCrmProps = {
   client: LessonCrmClient

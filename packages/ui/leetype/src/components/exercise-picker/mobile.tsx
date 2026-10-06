@@ -1,5 +1,5 @@
 import type { FC } from "react"
-import { cn } from "some-ui-utils"
+import { cn } from "@some-ui/core-utils"
 
 import { ExercisePickerBadgeChip } from "./badge-chip"
 import type { ExercisePickerProps } from "./types"

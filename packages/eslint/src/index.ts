@@ -19,6 +19,7 @@ import {
   ownerGuardPlugin,
   queryGuardConfig,
   queryGuardPlugin,
+  rawSourceConfig,
   reactConfig,
   reactImportBanSelectors,
   reactPeerDependencyConfig,
@@ -85,6 +86,11 @@ export { switchLintConfig, switchLintPlugin }
 // ── Reusable no-restricted-syntax fragment for workspace-level overrides ───
 // See its own doc comment in react.config.ts.
 export { reactImportBanSelectors }
+
+// ── Raw-source workspaces (no build step, so "../" is allowed) ───────────
+// See raw-source.config.ts. Spread `rawSourceConfig` after a preset other
+// than maishatuRecommended (extensionsRecommended, say).
+export { rawSourceConfig }
 
 // ── Intent boundary guard (#937 S1) ─────────────────────────────────────────
 export { intentGuardConfig, intentGuardPlugin }
@@ -156,6 +162,15 @@ export const appsRecommended: Config = [
   ...maishatuRecommended,
   ...lazyRegistryConfig,
   ...styleImportProtocolConfig,
+]
+
+/**
+ * maishatuRecommended for a workspace that ships raw TS source with no build
+ * step of its own; see raw-source.config.ts.
+ */
+export const rawSourceRecommended: Config = [
+  ...maishatuRecommended,
+  ...rawSourceConfig,
 ]
 
 export default maishatuRecommended

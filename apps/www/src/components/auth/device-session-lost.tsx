@@ -1,6 +1,6 @@
 import type { JSX } from "react"
+import { cn } from "@some-ui/core-utils"
 import { Button } from "@some-ui/shared"
-import { cn } from "some-ui-utils"
 
 import { MOBILE_HOME } from "@/lib/app-surface"
 import { enterAccount } from "@/lib/auth/enter"

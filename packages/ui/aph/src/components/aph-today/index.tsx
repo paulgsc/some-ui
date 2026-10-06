@@ -25,9 +25,8 @@ import {
 import type { AphStore } from "@aph/lib/store"
 import { aphStore } from "@aph/lib/store"
 import { useAph } from "@aph/lib/use-aph"
-import { dayOf } from "@some-ui/core-utils"
+import { cn, dayOf } from "@some-ui/core-utils"
 import { Flag, TrendingUp, TriangleAlert } from "lucide-react"
-import { cn } from "some-ui-utils"
 
 type AphTodayCardProps = {
   /** The host's link to the logger, given the button's label. */

@@ -30,8 +30,7 @@ import {
 import type { AphStore } from "@aph/lib/store"
 import { aphStore } from "@aph/lib/store"
 import { useAph } from "@aph/lib/use-aph"
-import { dayOf, formatDay, formatWeekday } from "@some-ui/core-utils"
-import { cn } from "some-ui-utils"
+import { cn, dayOf, formatDay, formatWeekday } from "@some-ui/core-utils"
 
 export type AphHistoryProps = {
   /** Where "Enter their figure" goes: the logger, on the theirs side. */

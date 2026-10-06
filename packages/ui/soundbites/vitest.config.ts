@@ -1,26 +1,9 @@
 import path from "path"
-import react from "@vitejs/plugin-react"
-import { defineConfig } from "vitest/config"
+import { defineDomTest } from "@some-ui/vite-config/vitest"
 
-export default defineConfig({
-  plugins: [react()],
-  test: {
-    environment: "jsdom",
-    globals: true,
-    setupFiles: ["./vitest.setup.ts"],
-    include: ["**/*.test.{ts,tsx}"],
-    passWithNoTests: true,
-    deps: {
-      optimizer: {
-        client: {
-          include: ["@testing-library/react"],
-        },
-      },
-    },
-  },
-  resolve: {
-    alias: {
-      "@soundbites": path.resolve(import.meta.dirname, "./src"),
-    },
-  },
+export default defineDomTest({
+  alias: { "@soundbites": path.resolve(import.meta.dirname, "./src") },
+  setupFiles: ["./vitest.setup.ts"],
+  passWithNoTests: true,
+  optimizeTestingLibrary: true,
 })

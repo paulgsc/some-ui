@@ -188,8 +188,8 @@ it now sits one level deeper and can pass having scanned nothing.
 
 Removing code, tests and docs that your change made unreachable or redundant is part of the
 change, not widening it, whatever generic "keep the diff minimal" guidance says. Before
-adding a module, component, hook or helper, search `packages/ui/shared`, `packages/utils`
-and the sibling workspaces for one that already does the job, then reuse or generalize it.
+adding a module, component, hook or helper, search `packages/ui/shared`, `packages/core-utils`,
+`packages/react-hooks` and the sibling workspaces for one that already does the job, then reuse or generalize it.
 When yours replaces something, remove the old one and its tests in the same PR. When a
 behavior changes, edit its existing test rather than adding another beside it.
 

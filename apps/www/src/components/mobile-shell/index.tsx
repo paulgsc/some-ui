@@ -10,6 +10,7 @@
  */
 import type { ComponentType, JSX } from "react"
 import { useState } from "react"
+import { cn } from "@some-ui/core-utils"
 import {
   Sheet,
   SheetContent,
@@ -19,7 +20,6 @@ import {
 } from "@some-ui/shared"
 import { Link } from "@tanstack/react-router"
 import { BookOpen, House, Mic, Plus, TrendingUp } from "lucide-react"
-import { cn } from "some-ui-utils"
 
 import { hasAudience } from "@/lib/build-profile"
 

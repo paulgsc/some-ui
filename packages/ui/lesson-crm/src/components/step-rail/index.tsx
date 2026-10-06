@@ -1,7 +1,7 @@
 import type { JSX } from "react"
 import type { Pane } from "@lesson-crm/lib/panes"
 import { PANE_LABELS } from "@lesson-crm/lib/panes"
-import { cn } from "some-ui-utils"
+import { cn } from "@some-ui/core-utils"
 
 type StepRailProps = {
   steps: Array<Pane>

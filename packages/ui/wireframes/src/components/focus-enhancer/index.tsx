@@ -1,7 +1,7 @@
 import type { ComponentType, JSX } from "react"
 import type { SlotId } from "@some-ui/types"
 import { useRequestFocus } from "@wireframes/hooks/focus-system"
-import type { ComponentEnhancer } from "some-ui-utils"
+import type { ComponentEnhancer } from "@wireframes/lib/registry/renderer"
 
 /** Props of a component that accepts focus injection. */
 export type FocusCapableProps = {

@@ -3,14 +3,12 @@
  * key derivation) over the generic library engine. No discovery or loading.
  */
 
+import { HttpFileDiscovery, HttpJsonLoader } from "@some-ui/fetch-kit"
 import type { SceneConfig } from "@some-ui/types"
 import { SceneConfigSchema, UILayoutIntentSchema } from "@some-ui/types"
-import {
-  HttpFileDiscovery,
-  HttpJsonLoader,
-  useRecursiveLibrary,
-} from "some-ui-utils"
 import { z } from "zod"
+
+import { useRecursiveLibrary } from "@/hooks/use-recursive-library"
 
 /** Raw file format: array of UI layout intents */
 const SceneUIFileSchema = z.array(UILayoutIntentSchema)

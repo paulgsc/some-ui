@@ -27,13 +27,13 @@
  * handful of indexes.
  */
 
+import { assertNever } from "@some-ui/core-utils"
 import type { ConversationBatch, Message, Probe } from "@topik/lib/topik"
 import {
   hashSeed,
   MAX_TILES,
   tokenize,
 } from "@topik/lib/topik/core/tile-assembly"
-import { assertNever } from "some-ui-utils"
 
 // PLAN
 

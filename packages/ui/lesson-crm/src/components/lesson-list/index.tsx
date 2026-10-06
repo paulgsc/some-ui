@@ -1,11 +1,12 @@
 import type { JSX } from "react"
 import { useState } from "react"
 import type { OperatorLesson } from "@lesson-crm/lib/client"
+import { cn } from "@some-ui/core-utils"
 import type { Intent } from "@some-ui/intent-kit"
 import { matchIntent } from "@some-ui/intent-kit"
+import { useFittedPage } from "@some-ui/react-hooks"
 import { Badge, Button, PageControls } from "@some-ui/shared"
 import { Plus, RotateCcw } from "lucide-react"
-import { cn, useFittedPage } from "some-ui-utils"
 
 type Shelf = "listed" | "retired"
 

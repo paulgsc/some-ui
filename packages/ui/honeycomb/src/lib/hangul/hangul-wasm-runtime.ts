@@ -70,7 +70,7 @@ export function getCoreInstance(): HangulGameCore | null {
  *
  * `sessionKey` covers what mode-diffing cannot: two sessions playing the same
  * mode would otherwise share board/stats. It is an opaque token from the host
- * (ultimately `session.id`, via some-ui-utils's session-context-store),
+ * (ultimately `session.id`, via apps/www's session-context-store),
  * only diffed, never inferred from when a component mounted.
  */
 export async function loadHangulWasm(

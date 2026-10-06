@@ -13,6 +13,7 @@
  */
 
 import type { JSX } from "react"
+import { cn } from "@some-ui/core-utils"
 import { Button } from "@some-ui/shared"
 import { StepLayout } from "@topik/components/topik/handheld/step-layout"
 import { RepCard } from "@topik/components/topik/read-aloud/rep-card"
@@ -21,7 +22,6 @@ import type { UseReadAloudOptions } from "@topik/lib/topik/adapter/hooks/use-rea
 import { useReadAloud } from "@topik/lib/topik/adapter/hooks/use-read-aloud"
 import type { PracticeRecord } from "@topik/lib/topik/read-aloud/records"
 import { Pause, Play, X } from "lucide-react"
-import { cn } from "some-ui-utils"
 
 export type ReadAloudSessionProps = UseReadAloudOptions & {
   /** A phone on its side: stage and dock side by side. */

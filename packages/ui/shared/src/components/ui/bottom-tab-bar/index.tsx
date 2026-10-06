@@ -17,7 +17,7 @@ type BottomTabBarProps<Id extends string> = {
   tabs: ReadonlyArray<BottomTab<Id>>
   current: Id
   onChange: (id: Id) => void
-  /** See `useShowOnScrollUp` (some-ui-utils): hidden, the bar takes no room. */
+  /** See `useShowOnScrollUp` (@some-ui/react-hooks): hidden, the bar takes no room. */
   shown: boolean
   /** Names the tablist for assistive tech ("Lesson panes"). */
   label: string

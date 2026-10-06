@@ -8,7 +8,6 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json && vite build",
-    "build:tsc-alias": "tsc-alias -p tsconfig.json",
     "watch:lint": "eslint --watch --cache --fix \"**/*.{js,mjs,ts,tsx}\"",
     "clean": "rimraf .turbo && rimraf node_modules && rimraf .eslintcache && pnpm clean:build",
     "clean:build": "rimraf ./dist ./tsconfig.build.tsbuildinfo ./tsconfig.tsbuildinfo",

@@ -1,6 +1,6 @@
 import "./index.css"
 
-import { cn } from "some-ui-utils"
+import { cn } from "@some-ui/core-utils"
 
 const cards = [
   {

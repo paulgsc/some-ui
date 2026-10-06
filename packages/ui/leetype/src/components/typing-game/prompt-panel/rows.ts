@@ -1,5 +1,5 @@
 import type { ReadBlock } from "@leetype/types/exercise"
-import { assertNever } from "some-ui-utils"
+import { assertNever } from "@some-ui/core-utils"
 
 /**
  * One atomic, paginable unit of evidence — the granularity `useFittedPage`

@@ -10,6 +10,7 @@
  */
 
 import type { JSX } from "react"
+import { cn } from "@some-ui/core-utils"
 import {
   Button,
   Label,
@@ -21,7 +22,6 @@ import {
   Switch,
 } from "@some-ui/shared"
 import { useSpeechStatus, useVoiceReport } from "@some-ui/speech"
-import { cn } from "some-ui-utils"
 
 import type { AudioChannelId } from "@/lib/audio-preferences"
 import {

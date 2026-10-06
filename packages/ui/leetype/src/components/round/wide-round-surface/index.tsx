@@ -5,7 +5,7 @@ import { ArtifactSwitcher } from "@leetype/components/round/artifact-switcher"
 import { TypingSession } from "@leetype/components/typing-game/typing-session"
 import type { Commitment } from "@leetype/types/commitment"
 import type { Exercise } from "@leetype/types/exercise"
-import { cn } from "some-ui-utils"
+import { cn } from "@some-ui/core-utils"
 
 type WideRoundSurfaceProps = {
   /** Opaque round-identity token, forwarded to `ArtifactSwitcher`; a change also closes the probe. */

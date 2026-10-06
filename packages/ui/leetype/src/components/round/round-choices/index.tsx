@@ -3,8 +3,8 @@ import { useState } from "react"
 import type { PropositionId } from "@leetype/lib/leetype/proposition-register/generated"
 import type { PropositionOption } from "@leetype/lib/leetype/round-probe"
 import type { Commitment } from "@leetype/types/commitment"
+import { cn } from "@some-ui/core-utils"
 import { Check, CircleHelp, X } from "lucide-react"
-import { cn } from "some-ui-utils"
 
 /** A→B→C→D. Beyond the fourth option a card is a quiz page, not a card. */
 const BADGES = ["A", "B", "C", "D", "E"] as const

@@ -20,7 +20,7 @@ import {
 } from "@leetype/types/exercise"
 import type { DiffSet } from "@leetype/types/round"
 import { DiffSetSchema } from "@leetype/types/round"
-import { assertNever } from "some-ui-utils"
+import { assertNever } from "@some-ui/core-utils"
 
 /**
  * The corpus lint (LTY-FAMILIES A5): "no judgment is allowed unless it can

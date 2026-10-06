@@ -53,7 +53,7 @@ import {
   NOTE_TEXT_MAX,
 } from "@leetype/lib/leetype/notes"
 import type { DictationFailure } from "@leetype/lib/leetype/notes/dictation"
-import { assertNever } from "some-ui-utils"
+import { assertNever } from "@some-ui/core-utils"
 
 type Voice =
   | { readonly kind: "idle" }

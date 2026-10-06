@@ -16,6 +16,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable"
 import { resequence } from "@some-ui/activity-catalog"
+import { useFittedPage } from "@some-ui/react-hooks"
 import {
   Card,
   CardContent,
@@ -25,7 +26,6 @@ import {
   Switch,
 } from "@some-ui/shared"
 import type { SceneConfig } from "@some-ui/types"
-import { useFittedPage } from "some-ui-utils"
 
 import { formatTimecode } from "@/lib/format"
 import { EditSceneDialog } from "@/components/composer/scene-editor/edit-scene-dialog"

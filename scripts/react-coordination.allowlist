@@ -43,8 +43,9 @@
 1 packages/ui/topik/src/lib/topik/adapter/hooks/use-read-aloud/index.ts
 1 packages/ui/topik/src/lib/topik/adapter/hooks/use-session/index.ts
 2 packages/ui/wireframes/src/components/youtube/layout-crm/index.tsx
-9 packages/utils/src/lib/context/zustand-store/orchestrator-store.ts
-3 packages/utils/src/lib/discovery/hooks/use-recursive-library.ts
-3 packages/utils/src/lib/hooks/socket-tenants/orchestrator/use-orchestrator.ts
-1 packages/utils/src/lib/registry/utils.ts
-2 packages/ws/src/lib/use-websocket/index.ts
+
+# Coordination: React.lazy's own loading contract. The one await is inside the
+# factory React calls when the component first renders; it validates the
+# dynamically imported module's shape before React gets it. No component state
+# is sequenced here; preload() is the same loader, for callers that warm it.
+1 packages/some-content-registry/src/registry/lazy-with-preload.ts

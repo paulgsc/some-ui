@@ -1,9 +1,10 @@
 import type { JSX, ReactNode } from "react"
 import type { Draft } from "@lesson-crm/lib/draft"
+import { cn } from "@some-ui/core-utils"
+import { useFittedPage } from "@some-ui/react-hooks"
 import { Badge, PageControls } from "@some-ui/shared"
 import { RELATION_TAG_PREFIX } from "@some-ui/topik"
 import { Check } from "lucide-react"
-import { cn, useFittedPage } from "some-ui-utils"
 
 type LessonCheckProps = {
   draft: Draft | null

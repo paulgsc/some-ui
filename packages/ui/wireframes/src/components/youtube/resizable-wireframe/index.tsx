@@ -1,5 +1,6 @@
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react"
 import type { JSX, ReactNode } from "react"
+import { cn } from "@some-ui/core-utils"
 import type { ActiveLifetime, ComponentRegistry, SlotId } from "@some-ui/types"
 import { withFocus } from "@wireframes/components/focus-enhancer"
 import { FocusControlPopup } from "@wireframes/components/focus-popup"
@@ -11,8 +12,8 @@ import { extractLeafIds } from "@wireframes/lib/layout-intent"
 import type { Rect, SolvedNode } from "@wireframes/lib/layout-types"
 import type { LayoutNode } from "@wireframes/lib/layout-weighted"
 import { solveLayoutWithBindings } from "@wireframes/lib/layout-weighted"
+import { renderRegistryComponent } from "@wireframes/lib/registry/renderer"
 import { getSlotColor } from "@wireframes/lib/youtube-config"
-import { cn, renderRegistryComponent } from "some-ui-utils"
 
 /**
  * A region can be bound by several active lifetimes at once (a crossfade's

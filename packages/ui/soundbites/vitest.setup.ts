@@ -1,12 +1,3 @@
-import "@testing-library/jest-dom/vitest"
-
-import { cleanup } from "@testing-library/react"
-import { afterEach, vi } from "vitest"
-
-afterEach(() => {
-  // Cleans up the DOM (rendered hooks)
-  cleanup()
-  // Clears all mock call history and resets timers
-  vi.clearAllMocks()
-  vi.useRealTimers()
-})
+// The shared jsdom + Testing Library setup. Importing it here, rather than
+// naming it in vitest.config.ts, keeps jest-dom's matcher types in tsconfig.json.
+import "@some-ui/vite-config/vitest/setup"

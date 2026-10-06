@@ -1,7 +1,7 @@
 import type { FC, KeyboardEvent, ReactNode } from "react"
 import { useEffect, useId, useLayoutEffect, useRef, useState } from "react"
+import { cn } from "@some-ui/core-utils"
 import { ChevronLeft, ChevronRight } from "lucide-react"
-import { cn } from "some-ui-utils"
 
 /**
  * Def. 9.2's six artifacts, one id per letter of `(A, C, B, D, P, r)`:

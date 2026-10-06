@@ -1,5 +1,25 @@
 # `some-ui-utils` / `@some-ui/shared` Named-Import Consumer Census
 
+## Dissolved (2026-10-06): where each concern went
+
+`some-ui-utils` (`packages/utils`) no longer exists. Every export was
+recounted against its real consumers and moved to the workspace the
+[Doctrine](./SHARED_WORKSPACE_DOCTRINE.md) points at; the rest of this file
+is history.
+
+| Export(s)                                                                                                                                         | Went to                                              | Why                                                               |
+| ------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- | ----------------------------------------------------------------- |
+| `cn`, string/date/array/stats helpers (already re-exported from there)                                                                            | `@some-ui/core-utils`                                | many consumers                                                    |
+| `assertNever`                                                                                                                                     | `@some-ui/core-utils`                                | 4 consumers (www, leetype, shared, topik)                         |
+| `useIsMobile`, `HANDHELD_*`, `isHandheldBox`, `useFittedPage`, `FittedPage`, `useResizeObserver` (+ internal `useIsMounted`), `useShowOnScrollUp` | `@some-ui/react-hooks` (`packages/react-hooks`, new) | ≥2 consumers each                                                 |
+| orchestrator store, session-context store, `useMockOrchestrator` + its engine                                                                     | `apps/www/src/lib/orchestrator`                      | www only (§2 de-hoist)                                            |
+| `useEditModeHotkey`, `useLocalStorage`, `useRecursiveLibrary`                                                                                     | `apps/www/src/hooks`                                 | www only                                                          |
+| `HttpFileDiscovery`, `HttpJsonLoader`, `FileDiscovery`, `ResourceLoader`                                                                          | `@some-ui/fetch-kit`                                 | www only, but they call `fetch`, which LA1 bars in `apps/www/src` |
+| `lazyWithPreload`                                                                                                                                 | `packages/some-content-registry`                     | its only consumer                                                 |
+| `renderRegistryComponent`, `ComponentEnhancer`                                                                                                    | `packages/ui/wireframes`                             | its only consumer                                                 |
+| `useMeasureRect`                                                                                                                                  | deleted                                              | no consumer                                                       |
+| `useOrchestrator` (and with it `@some-ui/ws`)                                                                                                     | deleted                                              | its one caller was a Storybook decorator, also deleted            |
+
 > **Superseded counts (2026-10-02).** This is a dated snapshot. Workspaces it
 > counts as consumers have since been deleted: `nfl`, `attributions` and
 > `overlays` earlier, `emoji-animations` in #1640, `input` and `stepper` in

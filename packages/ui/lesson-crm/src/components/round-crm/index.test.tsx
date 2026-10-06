@@ -7,21 +7,23 @@ import type {
 } from "@lesson-crm/lib/round-client"
 import { toIntentError } from "@some-ui/intent-kit"
 import { AUTHORED_ROUNDS, serializeRound } from "@some-ui/leetype"
+import type * as ReactHooks from "@some-ui/react-hooks"
 import { fireEvent, render, screen, waitFor } from "@testing-library/react"
-import type * as SomeUiUtils from "some-ui-utils"
 import { describe, expect, it, vi } from "vitest"
 
 // jsdom lays nothing out; every page holds everything, as in LessonCrm's tests.
 // A phone's one-pane layout is chosen by `useIsMobile`; each test sets it.
 const viewport = { mobile: false }
-vi.mock("some-ui-utils", async () => {
-  const actual = await vi.importActual<typeof SomeUiUtils>("some-ui-utils")
+vi.mock("@some-ui/react-hooks", async () => {
+  const actual = await vi.importActual<typeof ReactHooks>(
+    "@some-ui/react-hooks"
+  )
   return {
     ...actual,
     useIsMobile: (): boolean => viewport.mobile,
     useFittedPage: <T,>(
       items: ReadonlyArray<T>
-    ): ReturnType<typeof SomeUiUtils.useFittedPage<T>> => ({
+    ): ReturnType<typeof ReactHooks.useFittedPage<T>> => ({
       viewportRef: { current: null },
       contentRef: { current: null },
       pageItems: [...items],

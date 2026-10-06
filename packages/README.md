@@ -10,10 +10,9 @@
 > code — see [`SHARED_WORKSPACE_DOCTRINE.md`](./SHARED_WORKSPACE_DOCTRINE.md)
 > for _whether_ an export belongs in a shared workspace at all.
 
-Reference implementations: `packages/utils` (`some-ui-utils`) and
-`packages/ui/shared` (`@some-ui/shared`). When in doubt, diff a new package
-against these two rather than an arbitrary sibling — they're the two
-workspaces this convention was extracted from.
+Reference implementations: `packages/core-utils` (`@some-ui/core-utils`)
+and `packages/react-hooks` (`@some-ui/react-hooks`). When in doubt, diff a
+new package against these two rather than an arbitrary sibling.
 
 ## 1. `package.json`
 
@@ -28,7 +27,7 @@ workspaces this convention was extracted from.
   in `peerDependencies`. Anything the package fully owns and bundles goes in
   `dependencies`. Get this wrong and you get duplicate-React or
   duplicate-store bugs at the consumer, not at build time.
-- **Scripts** (names matter — see §4 on turbo): `build`, `build:tsc-alias`,
+- **Scripts** (names matter — see §4 on turbo): `build`,
   `watch:build`, `watch:lint`, `clean`, `clean:build`, `lint`, `lint:js`,
   `prettier`, `typecheck`. Add `test` if the package ships tests.
 - **`sideEffects`:** `["*.css"]` if the package ships a stylesheet, `false`
@@ -44,11 +43,12 @@ workspaces this convention was extracted from.
 - `tsconfig.json` extends `@some-ui/tsconfig/rollupconfig.json`, sets
   `composite: true`, `rootDir: "./src"`, `outDir: "./dist"`,
   `declarationDir: "./"`, and declares the package's **own** internal path
-  alias (e.g. `"@utils/*": ["./src/*"]`) for imports inside the package.
+  alias (e.g. `"@core-utils/*": ["./src/*"]`) for imports inside the package.
   `include: ["src"]`, `exclude: ["node_modules", "build", "dist"]`.
-- `tsconfig.build.json` extends `./tsconfig.json`, adds `jsx: "react-jsx"`
-  if the package has components/hooks, and excludes `**/*.test.ts` and
-  `**/*.stories.tsx`.
+- `tsconfig.build.json` extends `./tsconfig.json` and then
+  `@some-ui/tsconfig/build.json` (declarations only, into `dist/types`),
+  adds `jsx: "react-jsx"` if the package has components/hooks, and excludes
+  `**/*.test.ts` and `**/*.stories.tsx`.
 
 ## 3. Build (`@some-ui/vite-config`)
 
@@ -70,7 +70,7 @@ export default createViteConfig({
 
 - `src/index.ts` re-exports the package's public surface (typically
   `export * from "./lib"` plus a `./types` barrel — see
-  `packages/utils/src/index.ts`). This barrel is also what the census (S2)
+  `packages/core-utils/src/index.ts`). This barrel is also what the census (S2)
   treats as the source of truth for "what does this package export."
 - **Turbo needs no per-package registration.** `turbo.json` at the repo
   root defines tasks by _name_ (`build`, `lint`, `typecheck`, `test`,
@@ -93,10 +93,7 @@ lint import-resolution until these are updated:
    top-level category.
 2. **Root `tsconfig.json`** `compilerOptions.paths` — add
    `"@<x>/*": ["./packages/<path>/src/"]` so the rest of the monorepo can
-   import the package by its short alias during type-checking. (This map
-   had drifted — `@utils/*` pointed at the non-existent
-   `packages/ui/utils/src/` instead of `packages/utils/src/`; fixed as part
-   of landing this convention.)
+   import the package by its short alias during type-checking.
 3. **`packages/eslint/tsconfig.workspace-resolve.json`**
    `compilerOptions.paths` — add `"@some-ui/<x>": ["../<path>/src/index.ts"]`
    (keyed by the real package _name_, not the short alias) so ESLint's

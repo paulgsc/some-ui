@@ -1,9 +1,9 @@
 import type { JSX } from "react"
+import { cn } from "@some-ui/core-utils"
 import type { ReadAloudDeck } from "@topik/lib/topik/read-aloud/content"
 import type { GlyphCell, GlyphMode } from "@topik/lib/topik/read-aloud/glyphs"
 import { glyphCells, isMarked } from "@topik/lib/topik/read-aloud/glyphs"
 import type { SetItem } from "@topik/lib/topik/read-aloud/set-builder"
-import { cn } from "some-ui-utils"
 
 type GlyphLineProps = {
   deck: ReadAloudDeck

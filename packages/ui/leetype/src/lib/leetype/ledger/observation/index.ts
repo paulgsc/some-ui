@@ -24,7 +24,7 @@
 import type { PropositionId } from "@leetype/lib/leetype/proposition-register/generated"
 import type { Commitment } from "@leetype/types/commitment"
 import { PropositionIdSchema } from "@leetype/types/round"
-import { assertNever } from "some-ui-utils"
+import { assertNever } from "@some-ui/core-utils"
 import { z } from "zod"
 
 /**

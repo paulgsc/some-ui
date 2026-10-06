@@ -1,5 +1,6 @@
 import type { JSX } from "react"
 import { useEffect, useRef, useState } from "react"
+import { cn } from "@some-ui/core-utils"
 import { Button } from "@some-ui/shared"
 import { StepLayout } from "@topik/components/topik/handheld/step-layout"
 import { GlyphLine } from "@topik/components/topik/read-aloud/glyph-line"
@@ -17,7 +18,6 @@ import type {
 } from "@topik/lib/topik/read-aloud/set-machine"
 import { SPEECH_MS_PER_SYLLABLE } from "@topik/lib/topik/read-aloud/timing"
 import { Hand, Play, SkipForward } from "lucide-react"
-import { cn } from "some-ui-utils"
 
 type RepCardStep = RepStep | IntroductionStep | "paused"
 

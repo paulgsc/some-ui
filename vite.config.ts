@@ -51,7 +51,10 @@ export default defineConfig({
         "./packages/some-content/src"
       ),
 
-      "@ws": path.resolve(import.meta.dirname, "./packages/ws/src"),
+      "@react-hooks": path.resolve(
+        import.meta.dirname,
+        "./packages/react-hooks/src"
+      ),
 
       "@auth": path.resolve(import.meta.dirname, "./packages/ui/auth/src"),
 

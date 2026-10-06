@@ -1,8 +1,8 @@
 import type { JSX } from "react"
+import { cn } from "@some-ui/core-utils"
 import type { SlotId } from "@some-ui/types"
 import type { LayoutNode } from "@wireframes/lib/layout-weighted"
 import { ChevronRight, Columns2, Rows2 } from "lucide-react"
-import { cn } from "some-ui-utils"
 
 type TreeVisualizerProps = {
   tree: LayoutNode<SlotId>

@@ -1,6 +1,6 @@
 import type { FC } from "react"
 import type { Budget } from "@leetype/types/constraint"
-import { cn } from "some-ui-utils"
+import { cn } from "@some-ui/core-utils"
 
 /**
  * Axiom 3.1's own honesty requirement, said plainly rather than implied by

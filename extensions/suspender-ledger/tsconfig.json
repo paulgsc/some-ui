@@ -1,27 +1,8 @@
 {
-  "extends": "@some-ui/tsconfig/rollupconfig.json",
+  "extends": "@some-ui/tsconfig/extension.json",
   "compilerOptions": {
-    // Next to this config, not in the outDir inherited from
-    // @some-ui/tsconfig (which resolves into packages/tsconfig/dist and is
-    // shared by every package on that chain, #1522).
-    "tsBuildInfoFile": "./tsconfig.tsbuildinfo",
     "target": "ES2020",
-    "useDefineForClassFields": true,
     "lib": ["ES2020", "DOM", "DOM.Iterable"],
-    "module": "ESNext",
-    "skipLibCheck": true,
-    "moduleResolution": "bundler",
-    "allowImportingTsExtensions": true,
-    "resolveJsonModule": true,
-    "isolatedModules": true,
-    "noEmit": true,
-    "jsx": "react-jsx",
-    "strict": true,
-    "strictNullChecks": true,
-    "noImplicitAny": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
-    "noFallthroughCasesInSwitch": true,
     "paths": {
       "@suspender/*": ["./src/*"],
       "@suspender/platform": ["./src/lib/platform/firefox.ts"]

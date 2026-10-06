@@ -12,7 +12,7 @@ import {
   watchSystem,
 } from "@some-ui/styles/theme"
 import type { Decorator } from "@storybook/react-vite"
-import { cn } from "some-ui-utils"
+import { cn } from "@some-ui/core-utils"
 
 /**
  * Storybook toolbar controls, one per layer of the theme protocol

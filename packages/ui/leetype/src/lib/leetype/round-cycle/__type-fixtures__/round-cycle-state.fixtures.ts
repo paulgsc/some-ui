@@ -19,7 +19,7 @@
  * `packages/intent-kit/src/__type-fixtures__/` for the same convention.
  */
 import type { RoundCycleState } from "@leetype/lib/leetype/round-cycle"
-import { assertNever } from "some-ui-utils"
+import { assertNever } from "@some-ui/core-utils"
 
 declare const state: RoundCycleState
 

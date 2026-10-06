@@ -2,6 +2,7 @@ import type { JSX } from "react"
 import { useMemo, useState } from "react"
 import type { Reporting } from "@lesson-crm/lib/operation"
 import { useOperation } from "@lesson-crm/lib/operation"
+import { cn } from "@some-ui/core-utils"
 import type { IntentError } from "@some-ui/intent-kit"
 import { Button, Input, Label, Textarea } from "@some-ui/shared"
 import type { TopikLevel } from "@some-ui/topik"
@@ -11,7 +12,6 @@ import {
   TOPIK_LEVELS,
 } from "@some-ui/topik"
 import { Check, ClipboardCopy } from "lucide-react"
-import { cn } from "some-ui-utils"
 
 /** The most conversations a batch lesson asks for; a scene, not a course. */
 const MAX_CONVERSATIONS = 6

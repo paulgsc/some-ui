@@ -2,9 +2,9 @@ import type { FC } from "react"
 import { DiffCard } from "@leetype/components/reading-game/diff-card"
 import { readingHunkOfDiff } from "@leetype/lib/leetype/reading-probe"
 import type { RoundDiffOption } from "@leetype/lib/leetype/round-cycle"
+import { cn } from "@some-ui/core-utils"
 import { Button } from "@some-ui/shared"
 import { Check } from "lucide-react"
-import { cn } from "some-ui-utils"
 
 /** A→E, the same badges `RoundChoices` puts on its rows; `D` holds at most five. */
 const BADGES = ["A", "B", "C", "D", "E"] as const

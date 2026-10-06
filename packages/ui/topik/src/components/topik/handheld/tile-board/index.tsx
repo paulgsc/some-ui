@@ -1,5 +1,5 @@
 import type { JSX } from "react"
-import { cn } from "some-ui-utils"
+import { cn } from "@some-ui/core-utils"
 
 /** A tile with a stable identity, since the same text may appear twice. */
 export type Tile = { id: string; text: string }

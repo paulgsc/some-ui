@@ -1,4 +1,6 @@
 import type { ComponentType, JSX } from "react"
+import { cn } from "@some-ui/core-utils"
+import { useIsMobile } from "@some-ui/react-hooks"
 import {
   Sidebar,
   SidebarContent,
@@ -20,10 +22,10 @@ import {
   useRouterState,
 } from "@tanstack/react-router"
 import { Briefcase, FileText, ListVideo, Settings, User } from "lucide-react"
-import { cn, useIsMobile, useIsTerminal } from "some-ui-utils"
 
 import { authority } from "@/lib/authority"
 import { MOBILE_APP } from "@/lib/build-profile"
+import { useIsTerminal } from "@/lib/orchestrator"
 import { useIsDeclaredBounded } from "@/lib/route-bounds"
 import { AudioIndicator } from "@/components/audio/audio-indicator"
 import { AccountUnavailableBanner } from "@/components/auth/account-unavailable-banner"

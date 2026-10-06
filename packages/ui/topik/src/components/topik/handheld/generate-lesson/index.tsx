@@ -1,5 +1,6 @@
 import type { JSX } from "react"
 import { useState } from "react"
+import { cn } from "@some-ui/core-utils"
 import { Button, Input, Textarea } from "@some-ui/shared"
 import { StepLayout } from "@topik/components/topik/handheld/step-layout"
 import type { ConversationBatch, TopikMetadata } from "@topik/lib/topik"
@@ -8,7 +9,6 @@ import { TOPIK_LEVELS } from "@topik/lib/topik/generation"
 import type { Intake } from "@topik/lib/topik/generation/intake"
 import { fixRequest, intakeLesson } from "@topik/lib/topik/generation/intake"
 import { Check, ClipboardCopy, Play } from "lucide-react"
-import { cn } from "some-ui-utils"
 
 type GenerateLessonProps = {
   defaultLevel: TopikLevel

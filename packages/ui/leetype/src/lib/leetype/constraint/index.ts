@@ -15,7 +15,7 @@ import type {
   ConstraintSet,
 } from "@leetype/types/constraint"
 import type { RenderedDiffLineKind } from "@leetype/types/exercise"
-import { assertNever } from "some-ui-utils"
+import { assertNever } from "@some-ui/core-utils"
 
 /**
  * A constraint evaluated at a numeric point (Def. 1.2's own "a bound

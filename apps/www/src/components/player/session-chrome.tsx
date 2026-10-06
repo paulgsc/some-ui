@@ -35,15 +35,15 @@ import {
   SlidersHorizontal,
   Square,
 } from "lucide-react"
+
+import { formatTimecode } from "@/lib/format"
 import {
   useIsPaused,
   useIsRunning,
   useOrchestratorClock,
   useOrchestratorStore,
   usePrimaryScene,
-} from "some-ui-utils"
-
-import { formatTimecode } from "@/lib/format"
+} from "@/lib/orchestrator"
 import { AudioIndicator } from "@/components/audio/audio-indicator"
 import { ThemeSwitcher } from "@/components/theme-switcher"
 

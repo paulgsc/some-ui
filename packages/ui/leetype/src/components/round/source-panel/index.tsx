@@ -1,6 +1,7 @@
 import type { FC, ReactNode } from "react"
 import { useState } from "react"
 import type { Algorithm } from "@leetype/types/algorithm"
+import { cn } from "@some-ui/core-utils"
 import {
   Accordion,
   AccordionContent,
@@ -8,7 +9,6 @@ import {
   AccordionTrigger,
 } from "@some-ui/shared"
 import Prism from "prismjs"
-import { cn } from "some-ui-utils"
 
 // Imported here too: this may mount where neither `CodeDisplay` nor
 // `DiffCard` does (see `DiffCard`).

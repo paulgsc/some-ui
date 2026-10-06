@@ -1,7 +1,7 @@
 import type { JSX, ReactNode } from "react"
 import { useMemo } from "react"
+import { cn } from "@some-ui/core-utils"
 import type { SolvedNode } from "@wireframes/lib/layout-types"
-import { cn } from "some-ui-utils"
 
 export const RenderSolved = <T extends string>({
   node,

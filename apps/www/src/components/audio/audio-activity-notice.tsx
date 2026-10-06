@@ -10,8 +10,8 @@
 
 import type { JSX } from "react"
 import type { ActivityDefinition } from "@some-ui/activity-catalog"
+import { cn } from "@some-ui/core-utils"
 import { Alert, AlertDescription, AlertTitle, Button } from "@some-ui/shared"
-import { cn, useLocalStorage } from "some-ui-utils"
 
 import {
   setAllEnabled,
@@ -19,6 +19,7 @@ import {
   summarizeAudio,
 } from "@/lib/audio-preferences"
 import { useAudioPreferences } from "@/lib/audio-preferences/use-audio-preferences"
+import { useLocalStorage } from "@/hooks/use-local-storage"
 
 const STORAGE_PREFIX = "some-ui.audio.activity-notice.v1"
 

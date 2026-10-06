@@ -7,6 +7,7 @@
 
 import type { JSX } from "react"
 import { useMemo, useState } from "react"
+import { cn, formatDay } from "@some-ui/core-utils"
 import {
   Button,
   Label,
@@ -20,7 +21,6 @@ import {
   TooltipTrigger,
 } from "@some-ui/shared"
 import { ArrowUpRight, TrendingDown, TrendingUp } from "lucide-react"
-import { cn, formatDay } from "some-ui-utils"
 
 import type { LocSnapshot } from "@/lib/loc-report/schema"
 import { locSnapshot } from "@/lib/loc-report/snapshot"

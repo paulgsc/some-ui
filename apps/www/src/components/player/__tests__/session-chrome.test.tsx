@@ -11,9 +11,9 @@ import { ThemeProvider } from "@/providers/theme"
 import { withQueryClient } from "@/test-support/query-client"
 import { SidebarProvider } from "@some-ui/shared"
 import { cleanup, fireEvent, render, screen } from "@testing-library/react"
-import type * as SomeUiUtils from "some-ui-utils"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
+import type * as Orchestrator from "@/lib/orchestrator"
 import { SessionChrome } from "@/components/player/session-chrome"
 
 const pause = vi.fn()
@@ -26,8 +26,9 @@ let paused = false
 
 // The orchestrator store is faked: this file is about what the chrome renders
 // and which command a tap issues.
-vi.mock("some-ui-utils", async () => {
-  const actual = await vi.importActual<typeof SomeUiUtils>("some-ui-utils")
+vi.mock("@/lib/orchestrator", async () => {
+  const actual =
+    await vi.importActual<typeof Orchestrator>("@/lib/orchestrator")
   return {
     ...actual,
     useIsRunning: (): boolean => running,

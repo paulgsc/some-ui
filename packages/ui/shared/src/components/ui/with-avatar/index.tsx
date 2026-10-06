@@ -1,5 +1,5 @@
 import type { ComponentProps, FC } from "react"
-import { getAcronymFromString } from "some-ui-utils"
+import { getAcronymFromString } from "@some-ui/core-utils"
 
 import { cn } from "../../../lib/utils"
 import type { CSSVarProperties } from "../../../types"

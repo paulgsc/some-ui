@@ -1,5 +1,6 @@
 import type { JSX } from "react"
 import { useState } from "react"
+import { cn } from "@some-ui/core-utils"
 import {
   Card,
   CardContent,
@@ -16,7 +17,6 @@ import {
   Skeleton,
 } from "@some-ui/shared"
 import { createFileRoute } from "@tanstack/react-router"
-import { cn } from "some-ui-utils"
 import { toast } from "sonner"
 
 import { useIntent, useIntentEffect } from "@/lib/intent"

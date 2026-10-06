@@ -1,5 +1,6 @@
 import type { JSX } from "react"
 import { useEffect, useRef, useState } from "react"
+import { cn } from "@some-ui/core-utils"
 import { Button, Card } from "@some-ui/shared"
 import type { SlotId } from "@some-ui/types"
 import { LayoutNodeRenderer } from "@wireframes/components/editor-layout-renderer"
@@ -25,7 +26,6 @@ import {
   Plus,
   RotateCcw,
 } from "lucide-react"
-import { cn } from "some-ui-utils"
 import { toast } from "sonner"
 
 export const LayoutEditor = (): JSX.Element => {

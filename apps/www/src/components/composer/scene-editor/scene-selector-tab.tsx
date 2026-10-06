@@ -1,5 +1,6 @@
 import type { JSX } from "react"
 import { useState } from "react"
+import { cn } from "@some-ui/core-utils"
 import {
   Alert,
   AlertDescription,
@@ -9,7 +10,6 @@ import {
   ScrollArea,
 } from "@some-ui/shared"
 import { AlertCircle, Check, Copy, Library, Plus, Trash2 } from "lucide-react"
-import { cn } from "some-ui-utils"
 
 import type { SceneSelection } from "@/components/composer/scene-editor/scene-selector"
 import {

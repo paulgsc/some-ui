@@ -1,6 +1,7 @@
 import type { JSX } from "react"
 import { useState } from "react"
 import { findActivity, summarizeConfig } from "@some-ui/activity-catalog"
+import { cn, formatRelativeTime } from "@some-ui/core-utils"
 import type { Intent, IntentError } from "@some-ui/intent-kit"
 import { matchIntent } from "@some-ui/intent-kit"
 import {
@@ -17,7 +18,6 @@ import {
 } from "@some-ui/shared"
 import { createFileRoute, Link } from "@tanstack/react-router"
 import { Copy, Pencil, Play, Sparkles, Trash2, X } from "lucide-react"
-import { cn, formatRelativeTime } from "some-ui-utils"
 
 import { MOBILE_APP } from "@/lib/build-profile"
 import { useIntent, useIntentEffect } from "@/lib/intent"

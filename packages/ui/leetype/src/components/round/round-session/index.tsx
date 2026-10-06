@@ -81,10 +81,10 @@ import {
 } from "@leetype/lib/leetype/shelf"
 import type { Round } from "@leetype/types/authored-round"
 import type { Commitment } from "@leetype/types/commitment"
+import { cn } from "@some-ui/core-utils"
 import type { ShelfPort } from "@some-ui/shared"
 import { Button, KeepOnShelf, KeptShelf } from "@some-ui/shared"
 import { Sparkles } from "lucide-react"
-import { cn } from "some-ui-utils"
 
 /** Each artifact's tab label, also how a margin note names where it was raised. */
 const ARTIFACT_LABELS: Readonly<Record<ArtifactId, string>> = {

@@ -4,7 +4,7 @@
  * footer dates it ("as of Sep 12").
  */
 
-import { addDays } from "some-ui-utils"
+import { addDays } from "@some-ui/core-utils"
 
 import type { LocSnapshot } from "./schema.ts"
 

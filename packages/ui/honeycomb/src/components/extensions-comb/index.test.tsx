@@ -9,8 +9,8 @@ import {
 } from "@honeycomb/components/extensions-comb/extensions.data"
 import { useHexgridWasm } from "@honeycomb/hooks/use-hexgrid-wasm"
 import type { HexRenderData } from "@honeycomb/types/hex-grid"
+import type * as ReactHooks from "@some-ui/react-hooks"
 import { fireEvent, render, screen } from "@testing-library/react"
-import type * as SomeUiUtils from "some-ui-utils"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 vi.mock("@honeycomb/hooks/use-hexgrid-wasm", () => ({
@@ -18,9 +18,9 @@ vi.mock("@honeycomb/hooks/use-hexgrid-wasm", () => ({
 }))
 
 vi.mock(
-  "some-ui-utils",
-  async (importOriginal): Promise<typeof SomeUiUtils> => ({
-    ...(await importOriginal<typeof SomeUiUtils>()),
+  "@some-ui/react-hooks",
+  async (importOriginal): Promise<typeof ReactHooks> => ({
+    ...(await importOriginal<typeof ReactHooks>()),
     useResizeObserver: (): { width: number; height: number } => ({
       width: 800,
       height: 800,

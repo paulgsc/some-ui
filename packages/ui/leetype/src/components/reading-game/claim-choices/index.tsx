@@ -1,8 +1,8 @@
 import type { FC } from "react"
 import { useId } from "react"
 import type { ReadingOption } from "@leetype/lib/leetype/reading-probe"
+import { cn } from "@some-ui/core-utils"
 import { Check, X } from "lucide-react"
-import { cn } from "some-ui-utils"
 
 /** A→B→C→D. Beyond the fourth option a card is a quiz page, not a card. */
 const BADGES = ["A", "B", "C", "D", "E"] as const

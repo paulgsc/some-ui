@@ -6,9 +6,9 @@
  */
 
 import type { JSX } from "react"
+import { cn } from "@some-ui/core-utils"
 import type { IntentError } from "@some-ui/intent-kit"
 import { Alert, AlertDescription, Button } from "@some-ui/shared"
-import { cn } from "some-ui-utils"
 
 export type IntentFailureProps = {
   error: IntentError
