@@ -17,6 +17,7 @@ import type { StopEvent, StopState } from "@/lib/session-stop"
 import {
   closedPatch,
   closingStop,
+  cutShortStop,
   GLANCE_MS,
   latestStop,
   PICK_UP_MS,
@@ -142,6 +143,21 @@ describe("a stop's machine", () => {
 })
 
 describe("stored stops", () => {
+  it('is cut short against the plan at the stop, "+5 min" included', () => {
+    const MIN = 60_000
+    const stopAt = (elapsedMs: number): void => {
+      localStorage.clear()
+      seedStop(
+        stopRecord(0, { elapsedMs, plannedMs: 25 * MIN, outcome: "done" })
+      )
+    }
+
+    stopAt(21 * MIN)
+    expect(cutShortStop("session-1")).not.toBeNull()
+    stopAt(24 * MIN)
+    expect(cutShortStop("session-1")).toBeNull()
+  })
+
   it("merges an update into the stored record, not a stale copy", () => {
     const stale = seedStop(stopRecord())
     updateStop(stale, { reason: "call", reasonFrom: "return" })

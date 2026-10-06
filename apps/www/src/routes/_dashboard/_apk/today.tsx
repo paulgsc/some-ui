@@ -51,7 +51,10 @@ function studiedLine(today: ReadonlyArray<SessionRecord>): string {
   const minutes = Math.max(
     1,
     Math.round(
-      today.reduce((sum, s) => sum + (s.finalElapsedMs ?? 0), 0) / 60_000
+      today.reduce(
+        (sum, s) => sum + (s.finalElapsedMs ?? s.totalDurationMs),
+        0
+      ) / 60_000
     )
   )
   const only = today.length === 1 ? today[0] : undefined
@@ -103,7 +106,7 @@ const StudyCard = ({ now }: { now: Date }): JSX.Element => {
         (b.completedAt ?? "") > (a.completedAt ?? "") ? b : a
       )
     : null
-  const cut = lastFinished && cutShortStop(lastFinished)
+  const cut = lastFinished && cutShortStop(lastFinished.id)
 
   return (
     <div

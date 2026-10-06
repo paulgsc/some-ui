@@ -41,7 +41,7 @@ export const CompletionSummary = ({
   const finalElapsedMs = session.finalElapsedMs ?? session.totalDurationMs
   const finishedNaturally = endedInLead(finalElapsedMs, session.totalDurationMs)
   const addedMs = finalElapsedMs - session.totalDurationMs
-  const cutShort = cutShortStop(session)
+  const cutShort = cutShortStop(session.id)
   const phone = hasAudience("apk")
 
   // Replay hands the player a fresh draft copy and drops them into the
@@ -67,10 +67,10 @@ export const CompletionSummary = ({
               <StopCircle className="text-muted-foreground size-6" />
             )}
             <CardTitle>
-              {finishedNaturally
-                ? "Session complete"
-                : cutShort
-                  ? `${formatDurationMs(finalElapsedMs)}, banked`
+              {cutShort
+                ? `${formatDurationMs(finalElapsedMs)}, banked`
+                : finishedNaturally
+                  ? "Session complete"
                   : "Session stopped early"}
             </CardTitle>
           </div>

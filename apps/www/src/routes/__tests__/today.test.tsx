@@ -107,6 +107,16 @@ describe("Home's study card", () => {
     expect(screen.queryByText(/Not today/)).toBeNull()
   })
 
+  it("counts a finished session with no recorded time at its planned length", () => {
+    const { finalElapsedMs: _unset, ...noTime } = finished(
+      "Korean",
+      15 * 60_000
+    )
+    renderWith({ data: [noTime], isError: false })
+
+    expect(screen.getByText("15 min · Korean")).toBeTruthy()
+  })
+
   it("offers Resume over Studied today while a session is still open", () => {
     const open = { ...finished("Open", 0), status: "paused" as const }
     renderWith({ data: [open, finished("Korean", 60_000)], isError: false })

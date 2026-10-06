@@ -91,14 +91,14 @@ export function msSinceStop(stop: Stop, now: Date): number {
   return now.getTime() - new Date(stop.stoppedAt).getTime()
 }
 
-/** Ended at its stop, not at its end: what the wrap and Home call cut short. */
-export function cutShortStop(
-  session: Pick<SessionRecord, "id" | "totalDurationMs" | "finalElapsedMs">
-): Stop | null {
-  const stop = latestStop(session.id)
-  const elapsed = session.finalElapsedMs ?? session.totalDurationMs
+/**
+ * Ended at its stop, not at its end: what the wrap and Home call cut short.
+ * Measured against the plan at the stop, which includes any "+5 min".
+ */
+export function cutShortStop(sessionId: string): Stop | null {
+  const stop = latestStop(sessionId)
   return (stop?.outcome === "done" || stop?.outcome === "lapsed") &&
-    !finishedNaturally(elapsed, session.totalDurationMs)
+    !finishedNaturally(stop.elapsedMs, stop.plannedMs)
     ? stop
     : null
 }
