@@ -12,8 +12,7 @@
  * (`docs/session-viewport/01-overflow-doctrine-and-audit.md` §2); the trigger
  * is not. The host cannot know what an applet paints in any corner (floated,
  * it covered LeetType's progress counter), so the trigger gets a 36px strip
- * of its own above `V`, and no activity is ever painted over. The strip also
- * holds the wind-down nudge in a session's last minutes.
+ * of its own above `V`, and no activity is ever painted over.
  */
 
 import type { JSX } from "react"

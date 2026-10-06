@@ -7,17 +7,23 @@ import { createFileRoute, Link } from "@tanstack/react-router"
 import { BookOpen, Check, Mic } from "lucide-react"
 
 import { useMinuteClock } from "@/lib/clock"
+import { formatTimecode } from "@/lib/format"
 import { matchQueryOutcome, queryOutcome } from "@/lib/query-outcome"
-import { hasLapsed, latestStop, REASONS, settle } from "@/lib/session-stop"
+import {
+  closedPatch,
+  closingStop,
+  cutShortStop,
+  latestStop,
+  REASONS,
+} from "@/lib/session-stop"
+import { touchedToday } from "@/lib/study-nudge"
 import type { SessionRecord } from "@/lib/tenant"
 import {
-  finishedToday,
   resumableSession,
   sessionsQuery,
   useSessions,
   useUpdateSession,
 } from "@/lib/tenant"
-import { formatRemaining } from "@/lib/wind-down"
 import { StopReasons } from "@/components/player/session-stop"
 
 /**
@@ -41,7 +47,6 @@ type StudyStatus =
       refreshRetry: (() => void) | null
     }
 
-/** The done card's line: "15 min · Korean", or "2 sessions · 33 min". */
 function studiedLine(today: ReadonlyArray<SessionRecord>): string {
   const minutes = Math.max(
     1,
@@ -59,9 +64,7 @@ function studiedLine(today: ReadonlyArray<SessionRecord>): string {
  * The study card's honest states: still loading; failed (never read as
  * "nothing in progress", which would offer Start over a session that is
  * only unreadable); and known, which says so when what it shows is a cached
- * list whose refresh just failed. Known with nothing open and something
- * finished today, it says so in the success colour and still offers another
- * round.
+ * list whose refresh just failed.
  */
 const StudyCard = ({ now }: { now: Date }): JSX.Element => {
   const outcome = queryOutcome(useSessions())
@@ -71,7 +74,9 @@ const StudyCard = ({ now }: { now: Date }): JSX.Element => {
     ready: (sessions, refreshError): StudyStatus => ({
       kind: "ready",
       open: resumableSession(sessions),
-      today: finishedToday(sessions, now),
+      today: sessions.filter(
+        (s) => s.status === "completed" && touchedToday(s, now)
+      ),
       refreshRetry: refreshError?.retry ?? null,
     }),
   })
@@ -79,33 +84,24 @@ const StudyCard = ({ now }: { now: Date }): JSX.Element => {
   const done =
     status.kind === "ready" && status.open === null && status.today.length > 0
 
-  // An open session's stop: still within reach, or past it and closed here,
-  // as it stood, so it counts today and stops offering a pick-up.
-  const openStop =
-    status.kind === "ready" && status.open ? latestStop(status.open.id) : null
+  // An open session stopped past its window closes here, as it stood, and
+  // a close whose write failed is retried each minute Home is open.
+  const openId = status.kind === "ready" ? (status.open?.id ?? null) : null
+  const openStop = openId === null ? null : latestStop(openId)
   const stopped = openStop?.outcome === "open" ? openStop : null
-  const lapsed = stopped && hasLapsed(stopped, now) ? stopped : null
   const { mutate: updateSession } = useUpdateSession()
   useEffect(() => {
-    if (lapsed === null) return
-    settle(lapsed, "lapsed")
-    updateSession({
-      id: lapsed.sessionId,
-      patch: {
-        status: "completed",
-        completedAt: lapsed.stoppedAt,
-        finalElapsedMs: lapsed.elapsedMs,
-      },
-    })
-  }, [lapsed, updateSession])
+    const closing = openId === null ? null : closingStop(openId, now)
+    if (closing)
+      updateSession({ id: closing.sessionId, patch: closedPatch(closing) })
+  }, [openId, now, updateSession])
 
-  // The latest finished session, if it was cut short: Home asks why once.
-  const lastStop =
-    done && status.today[0] ? latestStop(status.today[0].id) : null
-  const cut =
-    lastStop?.outcome === "done" || lastStop?.outcome === "lapsed"
-      ? lastStop
-      : null
+  const lastFinished = done
+    ? status.today.reduce((a, b) =>
+        (b.completedAt ?? "") > (a.completedAt ?? "") ? b : a
+      )
+    : null
+  const cut = lastFinished && cutShortStop(lastFinished)
 
   return (
     <div
@@ -140,7 +136,7 @@ const StudyCard = ({ now }: { now: Date }): JSX.Element => {
             <span className="text-muted-foreground truncate text-sm">
               {status.open !== null
                 ? stopped
-                  ? `Stopped at ${formatRemaining(stopped.elapsedMs)} · ${status.open.name}`
+                  ? `Stopped at ${formatTimecode(stopped.elapsedMs)} · ${status.open.name}`
                   : status.open.name
                 : done
                   ? studiedLine(status.today)
@@ -175,7 +171,7 @@ const StudyCard = ({ now }: { now: Date }): JSX.Element => {
       {cut && (
         <div className="flex flex-col gap-2">
           <p className="text-muted-foreground text-sm">
-            Cut short at {formatRemaining(cut.elapsedMs)}
+            Cut short at {formatTimecode(cut.elapsedMs)}
             {cut.reason
               ? `: ${REASONS.find(([id]) => id === cut.reason)?.[1] ?? ""}`
               : "."}

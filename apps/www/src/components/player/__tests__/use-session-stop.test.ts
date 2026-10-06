@@ -1,17 +1,16 @@
 /**
  * @vitest-environment jsdom
  *
- * A stop in the player: kept the moment it happens (a tap or leaving the
- * app), forgotten when it was a mis-tap or a glance, and picked up or closed
- * as it stood when the person comes back.
+ * The wiring: the orchestrator as the playback port, and leaving the app
+ * forwarded on the phone. What each event means is `lib/session-stop`'s.
  */
 
+import { seedStop, stopRecord } from "@/test-support/session-stop"
 import { act, cleanup, renderHook } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import type * as Orchestrator from "@/lib/orchestrator"
-import type { Stop } from "@/lib/session-stop"
-import { GLANCE_MS, latestStop, PICK_UP_MS, saveStop } from "@/lib/session-stop"
+import { latestStop, PICK_UP_MS } from "@/lib/session-stop"
 import { useSessionStop } from "@/components/player/use-session-stop"
 
 const commands = {
@@ -26,10 +25,7 @@ let mode = { is_running: true, is_paused: false }
 vi.mock("@/lib/orchestrator", async () => {
   const actual =
     await vi.importActual<typeof Orchestrator>("@/lib/orchestrator")
-  const reading = {
-    started_at: 0,
-    kind: { Scene: { scene_name: "reading" } },
-  }
+  const reading = { started_at: 0, kind: { Scene: { scene_name: "reading" } } }
   return {
     ...actual,
     useOrchestratorStore: {
@@ -52,19 +48,6 @@ function setVisibility(next: DocumentVisibilityState): void {
   })
 }
 
-const open = (agoMs: number): Stop => ({
-  sessionId: "s",
-  stoppedAt: new Date(Date.now() - agoMs).toISOString(),
-  elapsedMs: 738_000,
-  plannedMs: 1_200_000,
-  scene: "reading",
-  via: "left",
-  reason: null,
-  reasonFrom: null,
-  outcome: "open",
-  settledAt: null,
-})
-
 beforeEach(() => {
   mode = { is_running: true, is_paused: false }
   Object.defineProperty(document, "visibilityState", {
@@ -76,28 +59,23 @@ beforeEach(() => {
 afterEach(() => {
   cleanup()
   vi.clearAllMocks()
-  vi.useRealTimers()
   localStorage.clear()
   visibility = "visible"
 })
 
 describe("useSessionStop", () => {
-  it("keeps a tapped stop where it stopped, and forgets it on keep going", () => {
+  it("stops the orchestrator where it is, on a tap", () => {
     const { result } = renderHook(() => useSessionStop("s"))
 
-    act(() => result.current.gotToGo())
+    act(() => result.current.stops.tap())
+
     expect(commands.pause).toHaveBeenCalledTimes(1)
     expect(latestStop("s")).toMatchObject({
       via: "tap",
       elapsedMs: 738_000,
       scene: "reading",
-      outcome: "open",
     })
-
-    mode = { is_running: false, is_paused: true }
-    act(() => result.current.pickUp())
-    expect(commands.resume).toHaveBeenCalledTimes(1)
-    expect(latestStop("s")).toBeNull()
+    expect(result.current.state.kind).toBe("open")
   })
 
   it("keeps a stop on leaving the app, and drops it after a glance", () => {
@@ -105,63 +83,32 @@ describe("useSessionStop", () => {
 
     setVisibility("hidden")
     expect(latestStop("s")?.via).toBe("left")
-
     setVisibility("visible")
+
     expect(latestStop("s")).toBeNull()
-    expect(result.current.stop).toBeNull()
+    expect(result.current.state.kind).toBe("none")
     expect(commands.resume).toHaveBeenCalledTimes(1)
   })
 
-  it("offers the pick-up on coming back after more than a glance", () => {
-    vi.useFakeTimers({ toFake: ["Date"] })
-    const { result } = renderHook(() => useSessionStop("s"))
-
-    setVisibility("hidden")
-    vi.setSystemTime(Date.now() + GLANCE_MS + 1)
-    setVisibility("visible")
-
-    expect(result.current.stop?.outcome).toBe("open")
-    expect(result.current.returning).toBe(true)
-    expect(commands.resume).not.toHaveBeenCalled()
-  })
-
-  it("reopened inside the window, picks up at the stopped scene", () => {
-    saveStop(open(5 * 60_000))
+  it("restarts at the stopped scene when picked up after reopening", () => {
+    seedStop(stopRecord(5 * 60_000, { sessionId: "s" }))
     mode = { is_running: false, is_paused: false }
     const { result } = renderHook(() => useSessionStop("s"))
 
-    act(() => result.current.begin())
-    expect(commands.start).not.toHaveBeenCalled()
-    expect(result.current.returning).toBe(true)
+    act(() => result.current.stops.begin())
+    act(() => result.current.stops.pickUp())
 
-    act(() => result.current.pickUp())
     expect(commands.start).toHaveBeenCalledTimes(1)
     expect(commands.forceScene).toHaveBeenCalledWith("reading")
-    expect(latestStop("s")?.outcome).toBe("resumed")
   })
 
-  it("reopened past the window, closes the session as it stood", () => {
-    saveStop(open(PICK_UP_MS + 60_000))
+  it("ends the session when reopened past the window", () => {
+    seedStop(stopRecord(PICK_UP_MS + 60_000, { sessionId: "s" }))
     const { result } = renderHook(() => useSessionStop("s"))
 
-    act(() => result.current.begin())
+    act(() => result.current.stops.begin())
 
     expect(commands.stop).toHaveBeenCalledTimes(1)
-    expect(result.current.stop?.outcome).toBe("lapsed")
     expect(latestStop("s")?.outcome).toBe("lapsed")
-  })
-
-  it("calls it done at the stop's own time", () => {
-    saveStop(open(5 * 60_000))
-    const { result } = renderHook(() => useSessionStop("s"))
-    act(() => result.current.begin())
-
-    act(() => result.current.callItDone())
-
-    expect(commands.stop).toHaveBeenCalledTimes(1)
-    expect(result.current.stop).toMatchObject({
-      outcome: "done",
-      elapsedMs: 738_000,
-    })
   })
 })

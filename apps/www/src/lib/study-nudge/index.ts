@@ -13,7 +13,6 @@
  * scheduling stays with the adaptive engine.
  */
 
-import { isSameLocalDay } from "@/lib/tenant/resumable"
 import type { SessionRecord, SessionStatus } from "@/lib/tenant/types"
 
 export type NudgePreferences = {
@@ -101,6 +100,15 @@ export function isWithinQuietHours(
   if (start === end) return false
   if (start < end) return hour >= start && hour < end
   return hour >= start || hour < end
+}
+
+/** Same calendar day in the viewer's own timezone. */
+function isSameLocalDay(a: Date, b: Date): boolean {
+  return (
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate()
+  )
 }
 
 /** Started or finished on the viewer's calendar day: what "studied today" reads. */

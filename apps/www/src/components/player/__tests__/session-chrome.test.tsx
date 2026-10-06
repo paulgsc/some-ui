@@ -132,7 +132,6 @@ describe("SessionChrome", () => {
     mount()
 
     expect(screen.queryByRole("button", { name: /got to go/i })).toBeNull()
-    expect(screen.getByRole("button", { name: /wrap up/i })).toBeDefined()
   })
 
   it("opens onto what is playing and how long is left", () => {

@@ -2,27 +2,18 @@ import type { JSX } from "react"
 import { cn } from "@some-ui/core-utils"
 import { Button } from "@some-ui/shared"
 
+import { formatTimecode } from "@/lib/format"
 import {
   useIsPaused,
   useIsRunning,
   useOrchestratorClock,
   useOrchestratorStore,
 } from "@/lib/orchestrator"
-import {
-  EXTEND_MS,
-  formatRemaining,
-  isWindingDown,
-  leadMs,
-} from "@/lib/wind-down"
+import { EXTEND_MS, isWindingDown, leadMs } from "@/lib/wind-down"
 
-/** The ring's circumference, r = 9. */
 const RING = 2 * Math.PI * 9
 
-/**
- * The session's last minutes, said once and quietly: a pill beside the
- * activity, never over it, offering more time or a wrap now. Ignored, the
- * session ends on time and the wrap follows.
- */
+/** The session's last minutes: a pill beside the activity, never over it. */
 export const WindDownNudge = ({
   className,
 }: {
@@ -65,7 +56,7 @@ export const WindDownNudge = ({
         />
       </svg>
       <span className="min-w-0 flex-1 text-sm font-semibold tabular-nums">
-        {formatRemaining(remaining)} left
+        {formatTimecode(remaining)} left
       </span>
       <Button
         size="sm"

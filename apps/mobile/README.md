@@ -525,10 +525,9 @@ announced, not sprung:
 
 - **The last two minutes** (a quarter of a session under eight): a pill
   appears in the strip above the activity, never over it, with a ring running
-  down, **+5 min** and **Wrap up**. Ignored, the session ends on time.
-  `lib/wind-down` decides this from the orchestrator's clock alone, so it has
-  no state of its own; +5 min is the orchestrator's `Extend` command, which
-  lengthens whichever scene ends last.
+  down, **+5 min** and **Wrap up**. Ignored, the session ends on time. +5
+  min is the orchestrator's `Extend` command, which lengthens whichever scene
+  ends last.
 - **The wrap** replaces the bare timing summary: the time played, planned
   and added; "How did it go?" (worth it, pace, energy: optional, one tap
   each, the latest 20 sessions' answers kept on this phone,
@@ -547,32 +546,31 @@ LeetType's own "Session complete" inside the activity until the session ends.
 
 Real life interrupts, and often there is no time to say so. Stopping never
 asks anything; the reason is optional, can come later, and may never come.
-Each stop is one record (`lib/session-stop`, the newest 20 kept on this
-phone) so that what keeps cutting study short can be read over time.
+Each stop is one record (the newest 20 kept on this phone) so that what keeps
+cutting study short can be read over time.
 
 - **Got to go** sits in the strip above the activity (until the wind-down's
-  **Wrap up** takes over). One tap pauses the session and keeps the stop:
-  "Saved. Stopped at 12:18." Six optional reasons (break's over, someone
-  needs me, call or message, on the move, can't focus, something else), then
-  **Go**, or **Oops, keep going**, which forgets a mis-tap.
+  **Wrap up** takes over). One tap pauses the session and keeps the stop,
+  with six optional reasons, **Go**, and **Oops, keep going**, which forgets
+  a mis-tap.
 - **Leaving the app** mid-session is a stop too, with nothing to tap. Back
-  within a minute it was a glance: the stop is forgotten and the session
-  carries on.
-- **Coming back within 30 minutes** offers **Pick up where you left off** or
-  **Call it done**, with the same optional reasons. Picking up from the
-  player you left resumes exactly; reopened from Home, the activity restarts
-  at the beginning of the scene it stopped in.
-- **Past 30 minutes** the session closes as it stood, dated when it stopped,
-  and counts toward **Studied today**. Home then asks once why it was cut
-  short, without blocking anything. The wrap of a cut-short session reads "12
-  minutes, banked", not "stopped early".
+  within a minute it was a glance, and is forgotten.
+- **Within 30 minutes** of the stop the person can **Pick up where you left
+  off** (exactly, in the player they left; at the start of the stopped scene
+  once reopened) or **Call it done**.
+- **Past 30 minutes**, whether the stop screen is still up, the app is
+  reopened or Home is, the session closes as it stood, dated when it
+  stopped, and counts toward **Studied today**; a close whose write failed is
+  retried. Home asks once, optionally, why the latest finished session was
+  cut short, and its wrap reads "12 min, banked".
 
-A record keeps when it stopped, how far in and in which scene, whether by a
-tap or by leaving, the reason and where it was given (the stop, the return,
-the wrap or Home), and how it ended: picked up, called done, or lapsed.
-Unanswered stays `null`, which is data too. The records never leave the phone
-yet; reading them across devices needs them on the session record, a server
-migration.
+A record keeps when it stopped, how far in and in which scene, a tap or
+leaving, the reason and where it was given (the stop, the return, the wrap or
+Home), how it ended (picked up, called done or lapsed) and when, which says
+how long the person was away. The policy is one pure `step` in
+`apps/www/src/lib/session-stop`, run by `./runtime`; the player only forwards
+taps and `visibilitychange`. The records never leave the phone yet: reading
+them across devices needs them on the session record, a server migration.
 
 ## aph: my figure, their figure, and the goal
 

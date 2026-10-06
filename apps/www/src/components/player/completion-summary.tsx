@@ -18,10 +18,10 @@ import { hasAudience } from "@/lib/build-profile"
 import { formatDurationMs } from "@/lib/format"
 import { useIntent, useIntentEffect } from "@/lib/intent"
 import { IntentButton } from "@/lib/intent/render"
-import { latestStop } from "@/lib/session-stop"
+import { cutShortStop } from "@/lib/session-stop"
 import type { SessionRecord } from "@/lib/tenant"
 import { useDuplicateSession } from "@/lib/tenant"
-import { leadMs } from "@/lib/wind-down"
+import { finishedNaturally as endedInLead } from "@/lib/wind-down"
 import { ActivityIcon } from "@/components/activity-icon"
 
 import { SessionReflection } from "./session-reflection"
@@ -39,17 +39,9 @@ export const CompletionSummary = ({
     presentation: "interactive",
   })
   const finalElapsedMs = session.finalElapsedMs ?? session.totalDurationMs
-  // "Wrap up" from the wind-down nudge is a finish too, not a stop.
-  const finishedNaturally =
-    finalElapsedMs >= session.totalDurationMs - leadMs(session.totalDurationMs)
+  const finishedNaturally = endedInLead(finalElapsedMs, session.totalDurationMs)
   const addedMs = finalElapsedMs - session.totalDurationMs
-  // Stopped and not picked up: still a close, never a failure.
-  const stop = latestStop(session.id)
-  const cutShort =
-    !finishedNaturally &&
-    (stop?.outcome === "done" || stop?.outcome === "lapsed")
-      ? stop
-      : null
+  const cutShort = cutShortStop(session)
   const phone = hasAudience("apk")
 
   // Replay hands the player a fresh draft copy and drops them into the
@@ -78,7 +70,7 @@ export const CompletionSummary = ({
               {finishedNaturally
                 ? "Session complete"
                 : cutShort
-                  ? `${Math.floor(finalElapsedMs / 60_000)} minutes, banked`
+                  ? `${formatDurationMs(finalElapsedMs)}, banked`
                   : "Session stopped early"}
             </CardTitle>
           </div>

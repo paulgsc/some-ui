@@ -2,96 +2,136 @@
  * @vitest-environment jsdom
  */
 
-import { beforeEach, describe, expect, it } from "vitest"
-
-import type { Stop } from "@/lib/session-stop"
+import { seedStop, stopRecord } from "@/test-support/session-stop"
 import {
-  forgetStop,
-  hasLapsed,
+  afterAll,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest"
+
+import type { StopEvent, StopState } from "@/lib/session-stop"
+import {
+  closedPatch,
+  closingStop,
+  GLANCE_MS,
   latestStop,
   PICK_UP_MS,
-  readStops,
-  saveStop,
-  STOP_LIMIT,
+  step,
   updateStop,
 } from "@/lib/session-stop"
 
-const stopAt = (sessionId: string, stoppedAt: string): Stop => ({
-  sessionId,
-  stoppedAt,
-  elapsedMs: 738_000,
-  plannedMs: 1_200_000,
-  scene: "reading",
-  via: "left",
-  reason: null,
-  reasonFrom: null,
-  outcome: "open",
-  settledAt: null,
+// Frozen, so a fixture's "ago" is exact against `now`.
+const now = new Date("2026-10-06T12:00:00.000Z")
+beforeAll(() => {
+  vi.useFakeTimers({ toFake: ["Date"], now })
 })
-
-const NOON = "2026-10-06T12:00:00.000Z"
+afterAll(() => {
+  vi.useRealTimers()
+})
+const NONE: StopState = { kind: "none" }
+const open = (
+  agoMs: number,
+  over: Partial<Extract<StopState, { kind: "open" }>> = {}
+): StopState => ({
+  kind: "open",
+  stop: stopRecord(agoMs),
+  returning: true,
+  live: true,
+  ...over,
+})
+const kinds = (event: StopEvent, state: StopState = NONE): Array<string> =>
+  step(state, event)[1].map((e) => e.kind)
 
 beforeEach(() => {
   localStorage.clear()
 })
 
-describe("session stops", () => {
-  it("keeps a session's latest stop, newest first", () => {
-    saveStop(stopAt("a", NOON))
-    saveStop(stopAt("a", "2026-10-06T13:00:00.000Z"))
-
-    expect(latestStop("a")?.stoppedAt).toBe("2026-10-06T13:00:00.000Z")
-    expect(latestStop("b")).toBeNull()
+describe("a stop's machine", () => {
+  it("keeps a stop on a tap or on leaving, never when nothing plays", () => {
+    const [tapped, effects] = step(NONE, { type: "tap", stop: stopRecord() })
+    expect(tapped).toMatchObject({ kind: "open", returning: false })
+    expect(effects.map((e) => e.kind)).toEqual(["pause", "save"])
+    expect(step(NONE, { type: "hidden", stop: stopRecord() })[0]).toMatchObject(
+      { kind: "open", returning: true, stop: { via: "left" } }
+    )
+    expect(step(NONE, { type: "tap", stop: null })[0]).toBe(NONE)
   })
 
+  it("forgets a mis-tap and a glance, and resumes in place", () => {
+    const tapped = open(0, { returning: false })
+    expect(kinds({ type: "pickUp", now }, tapped)).toEqual(["forget", "resume"])
+    expect(kinds({ type: "visible", now }, open(GLANCE_MS - 1))).toEqual([
+      "forget",
+      "resume",
+    ])
+    expect(kinds({ type: "visible", now }, open(GLANCE_MS + 1))).toEqual([])
+  })
+
+  it("picks up in place, or at the scene once the activity remounted", () => {
+    expect(step(open(5 * 60_000), { type: "pickUp", now })[1]).toEqual([
+      expect.objectContaining({ kind: "settle", outcome: "resumed" }),
+      { kind: "resume" },
+    ])
+    expect(
+      step(open(5 * 60_000, { live: false }), { type: "pickUp", now })[1][1]
+    ).toEqual({ kind: "restart", scene: "reading" })
+  })
+
+  it("closes past the window on any event, even with the screen still up", () => {
+    for (const type of ["tick", "visible", "pickUp"] as const) {
+      const [next, effects] = step(open(PICK_UP_MS + 1), { type, now })
+      expect(next).toMatchObject({
+        kind: "closed",
+        stop: { outcome: "lapsed" },
+      })
+      expect(effects.map((e) => e.kind)).toEqual(["settle", "end"])
+    }
+  })
+
+  it("on reopening: offers the pick-up, lapses, or retries a failed close", () => {
+    const begin = (agoMs: number, outcome = "open" as const): StopState =>
+      step(NONE, {
+        type: "begin",
+        latest: stopRecord(agoMs, { outcome }),
+        now,
+      })[0]
+
+    expect(begin(5 * 60_000)).toMatchObject({ kind: "open", live: false })
+    expect(begin(PICK_UP_MS + 1)).toMatchObject({ kind: "closed" })
+    expect(
+      kinds({
+        type: "begin",
+        latest: stopRecord(0, { outcome: "done" }),
+        now,
+      })
+    ).toEqual(["end"])
+    expect(kinds({ type: "begin", latest: null, now })).toEqual(["start"])
+  })
+})
+
+describe("stored stops", () => {
   it("merges an update into the stored record, not a stale copy", () => {
-    const stale = stopAt("a", NOON)
-    saveStop(stale)
+    const stale = seedStop(stopRecord())
     updateStop(stale, { reason: "call", reasonFrom: "return" })
 
-    const settled = updateStop(stale, { outcome: "done" })
-
-    expect(settled.reason).toBe("call")
-    expect(latestStop("a")).toMatchObject({ reason: "call", outcome: "done" })
+    expect(updateStop(stale, { outcome: "done" }).reason).toBe("call")
   })
 
-  it("forgets a stop that was not one", () => {
-    const stop = stopAt("a", NOON)
-    saveStop(stop)
-    forgetStop(stop)
+  it("closes a session at its stop, dated by how it ended", () => {
+    const stop = seedStop(stopRecord(PICK_UP_MS + 1))
 
-    expect(readStops()).toEqual([])
-  })
+    const closing = closingStop(stop.sessionId, now)
 
-  it("stays bounded", () => {
-    for (let i = 0; i < STOP_LIMIT + 5; i += 1) {
-      saveStop(stopAt(`s${String(i)}`, NOON))
-    }
-
-    expect(readStops()).toHaveLength(STOP_LIMIT)
-    expect(latestStop(`s${String(STOP_LIMIT + 4)}`)).not.toBeNull()
-    expect(latestStop("s0")).toBeNull()
-  })
-
-  it("reads what it cannot trust as no stops", () => {
-    localStorage.setItem("some-ui:session-stops", "{not json")
-    expect(readStops()).toEqual([])
-
-    localStorage.setItem(
-      "some-ui:session-stops",
-      JSON.stringify([{ ...stopAt("a", NOON), reason: "bored" }, 7])
-    )
-    expect(readStops()).toEqual([])
-  })
-
-  it("lapses an open stop only past the pick-up window", () => {
-    const stop = stopAt("a", NOON)
-    const at = (ms: number): Date => new Date(Date.parse(NOON) + ms)
-
-    expect(hasLapsed(stop, at(PICK_UP_MS))).toBe(false)
-    expect(hasLapsed(stop, at(PICK_UP_MS + 1))).toBe(true)
-    expect(hasLapsed({ ...stop, outcome: "resumed" }, at(2 * PICK_UP_MS))).toBe(
-      false
-    )
+    expect(latestStop(stop.sessionId)?.outcome).toBe("lapsed")
+    expect(closing && closedPatch(closing)).toEqual({
+      status: "completed",
+      completedAt: stop.stoppedAt,
+      finalElapsedMs: 738_000,
+    })
+    expect(closingStop("other", now)).toBeNull()
   })
 })

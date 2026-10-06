@@ -10,6 +10,7 @@ import {
   useOrchestratorClock,
   useOrchestratorStore,
 } from "@/lib/orchestrator"
+import { closedPatch } from "@/lib/session-stop"
 import type { SessionRecord } from "@/lib/tenant"
 import { useUpdateSession } from "@/lib/tenant"
 import { SessionAudioNotice } from "@/components/audio/session-audio-notice"
@@ -35,8 +36,8 @@ type LivePlayerProps = {
 export const LivePlayer = ({ session }: LivePlayerProps): JSX.Element => {
   const configure = useOrchestratorStore((s) => s.configure)
   const start = useOrchestratorStore((s) => s.start)
-  const { stop, returning, begin, gotToGo, pickUp, callItDone } =
-    useSessionStop(session.id)
+  const { state: stop, stops } = useSessionStop(session.id)
+  const closedAt = stop.kind === "closed" ? stop.stop : null
   const isTerminal = useIsTerminal()
   const isMobile = useIsMobile()
   const { current_time: currentTime } = useOrchestratorClock()
@@ -48,13 +49,11 @@ export const LivePlayer = ({ session }: LivePlayerProps): JSX.Element => {
 
   const hasConfiguredRef = useRef(false)
   const hasWrittenBackRef = useRef(false)
-  // A stopped session ends where it stopped, even reopened from scratch.
-  const endedMs = stop?.elapsedMs ?? currentTime
-  const latestTimeRef = useRef(endedMs)
+  const latestTimeRef = useRef(currentTime)
 
   useEffect(() => {
-    latestTimeRef.current = endedMs
-  }, [endedMs])
+    latestTimeRef.current = currentTime
+  }, [currentTime])
 
   useEffect(() => {
     if (hasConfiguredRef.current) return
@@ -62,7 +61,7 @@ export const LivePlayer = ({ session }: LivePlayerProps): JSX.Element => {
 
     void configure(session.scenes).then(() => {
       if (session.status === "active" || session.status === "paused") {
-        begin()
+        stops.begin()
       }
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps -- runs exactly once per mount; caller remounts this component per session id via key
@@ -78,15 +77,14 @@ export const LivePlayer = ({ session }: LivePlayerProps): JSX.Element => {
 
     completeSessionIntent.start({
       id: session.id,
-      patch: {
-        status: "completed",
-        // A lapsed stop counts on the day it stopped, as Home dates it.
-        completedAt:
-          stop?.outcome === "lapsed"
-            ? stop.stoppedAt
-            : new Date().toISOString(),
-        finalElapsedMs: latestTimeRef.current,
-      },
+      // A stopped session ends where it stopped, even reopened from scratch.
+      patch: closedAt
+        ? closedPatch(closedAt)
+        : {
+            status: "completed",
+            completedAt: new Date().toISOString(),
+            finalElapsedMs: latestTimeRef.current,
+          },
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps -- `completeSessionIntent.start` is stable per useIntent's own useCallback; `completeSessionIntent` itself is a fresh object every render and would defeat `hasWrittenBackRef`'s guard for no benefit if included here.
   }, [isTerminal, session.id, session.status, completeSessionIntent.start])
@@ -95,7 +93,11 @@ export const LivePlayer = ({ session }: LivePlayerProps): JSX.Element => {
     const completedSession: SessionRecord =
       session.status === "completed"
         ? session
-        : { ...session, status: "completed", finalElapsedMs: endedMs }
+        : {
+            ...session,
+            status: "completed",
+            finalElapsedMs: closedAt?.elapsedMs ?? currentTime,
+          }
     return (
       <div className="flex flex-col gap-3">
         <CompletionSummary session={completedSession} />
@@ -115,40 +117,44 @@ export const LivePlayer = ({ session }: LivePlayerProps): JSX.Element => {
    * `SessionViewport` and reset the activity. Each child owns one slot in both
    * layouts (`__tests__/live-player.test.tsx` flips it mid-render).
    */
+  // A stop is modal: the paused activity behind it is inert.
   return (
-    <div
-      className={cn(
-        "relative flex h-full min-h-0 w-full flex-col",
-        !isMobile && "gap-4"
-      )}
-    >
-      {/* Layer 2 of audio disclosure: shown the first time a person enters
+    <>
+      <div
+        inert={stop.kind === "open"}
+        className={cn(
+          "flex h-full min-h-0 w-full flex-col",
+          !isMobile && "gap-4"
+        )}
+      >
+        {/* Layer 2 of audio disclosure: shown the first time a person enters
           an activity that uses audio, then never again for that activity. */}
-      <SessionAudioNotice
-        session={session}
-        className={isMobile ? "shrink-0" : undefined}
-      />
-      {/* Above the viewport, not over it (see `SessionChrome`). */}
-      {isMobile && (
-        <SessionChrome
-          scenes={session.scenes}
-          onPlay={() => void start()}
-          onGotToGo={gotToGo}
+        <SessionAudioNotice
+          session={session}
+          className={isMobile ? "shrink-0" : undefined}
         />
-      )}
-      <SessionViewport session={session} />
-      {!isMobile && <WindDownNudge className="self-center" />}
-      {!isMobile && <NowNextStrip scenes={session.scenes} />}
-      {!isMobile && <TransportControls onPlay={() => void start()} />}
-      {stop?.outcome === "open" && (
+        {/* Above the viewport, not over it (see `SessionChrome`). */}
+        {isMobile && (
+          <SessionChrome
+            scenes={session.scenes}
+            onPlay={() => void start()}
+            onGotToGo={stops.tap}
+          />
+        )}
+        <SessionViewport session={session} />
+        {!isMobile && <WindDownNudge className="self-center" />}
+        {!isMobile && <NowNextStrip scenes={session.scenes} />}
+        {!isMobile && <TransportControls onPlay={() => void start()} />}
+      </div>
+      {stop.kind === "open" && (
         <StopScreen
-          stop={stop}
-          returning={returning}
-          onPickUp={pickUp}
-          onDone={callItDone}
-          className="absolute inset-0 z-20"
+          stop={stop.stop}
+          returning={stop.returning}
+          onPickUp={stops.pickUp}
+          onDone={stops.done}
+          className="fixed inset-0 z-50"
         />
       )}
-    </div>
+    </>
   )
 }

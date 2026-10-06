@@ -2,19 +2,18 @@
  * @vitest-environment jsdom
  *
  * Home's study card must not read a failed sessions read as "nothing in
- * progress" and offer Start over a session that is only unreadable. It also
- * settles a stopped session: a pick-up while the window is open, a close
- * past it, and one optional ask of why it was cut short.
+ * progress" and offer Start over a session that is only unreadable.
  */
 
 import { fakeQueryResult, withQueryClient } from "@/test-support/query-client"
 import { routeComponent } from "@/test-support/router-stubs"
+import { sessionRecord } from "@/test-support/session-record"
+import { seedStop, stopRecord } from "@/test-support/session-stop"
 import type * as ReactRouterModule from "@tanstack/react-router"
 import { cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
-import type { Stop } from "@/lib/session-stop"
-import { latestStop, PICK_UP_MS, saveStop } from "@/lib/session-stop"
+import { latestStop, PICK_UP_MS } from "@/lib/session-stop"
 import type * as TenantModule from "@/lib/tenant"
 import type { SessionRecord } from "@/lib/tenant"
 
@@ -118,7 +117,7 @@ describe("Home's study card", () => {
 
   it("offers Pick up for a session stopped within the window", () => {
     const open = { ...finished("Open", 0), status: "active" as const }
-    saveStop(stopOf("Open", 5 * 60_000))
+    seedStop(stopRecord(5 * 60_000, { sessionId: "Open" }))
     renderWith({ data: [open], isError: false })
 
     expect(screen.getByText("Pick up")).toBeTruthy()
@@ -128,8 +127,9 @@ describe("Home's study card", () => {
 
   it("closes a stop past the window as it stood, dated when it stopped", () => {
     const open = { ...finished("Open", 0), status: "active" as const }
-    const stop = stopOf("Open", PICK_UP_MS + 60_000)
-    saveStop(stop)
+    const stop = seedStop(
+      stopRecord(PICK_UP_MS + 60_000, { sessionId: "Open" })
+    )
     renderWith({ data: [open], isError: false })
 
     expect(updateSession).toHaveBeenCalledWith({
@@ -144,8 +144,11 @@ describe("Home's study card", () => {
   })
 
   it("asks once, optionally, why a finished session was cut short", () => {
-    saveStop({ ...stopOf("Korean", 0), outcome: "done" })
-    renderWith({ data: [finished("Korean", 738_000)], isError: false })
+    seedStop(stopRecord(0, { sessionId: "Korean", outcome: "done" }))
+    renderWith({
+      data: [finished("Korean", 738_000, 1_200_000)],
+      isError: false,
+    })
 
     expect(screen.getByText("Cut short at 12:18.")).toBeTruthy()
     fireEvent.click(screen.getByRole("button", { name: /call or message/i }))
@@ -156,35 +159,17 @@ describe("Home's study card", () => {
   })
 })
 
-/** A stop of `sessionId` at 12:18 in, `agoMs` before now. */
-function stopOf(sessionId: string, agoMs: number): Stop {
-  return {
-    sessionId,
-    stoppedAt: new Date(Date.now() - agoMs).toISOString(),
-    elapsedMs: 738_000,
-    plannedMs: 1_200_000,
-    scene: null,
-    via: "left",
-    reason: null,
-    reasonFrom: null,
-    outcome: "open",
-    settledAt: null,
-  }
-}
-
-function finished(name: string, elapsedMs: number): SessionRecord {
-  const now = new Date().toISOString()
-  return {
+function finished(
+  name: string,
+  elapsedMs: number,
+  totalDurationMs = elapsedMs
+): SessionRecord {
+  return sessionRecord({
     id: name,
     name,
     status: "completed",
-    activities: [],
-    scenes: [],
-    layoutMode: "basic",
-    totalDurationMs: elapsedMs,
-    createdAt: now,
-    updatedAt: now,
-    completedAt: now,
+    totalDurationMs,
+    completedAt: new Date().toISOString(),
     finalElapsedMs: elapsedMs,
-  }
+  })
 }

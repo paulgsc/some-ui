@@ -8,12 +8,13 @@
 import type { ReactNode } from "react"
 import { withQueryClient } from "@/test-support/query-client"
 import { sessionRecord } from "@/test-support/session-record"
+import { seedStop, stopRecord } from "@/test-support/session-stop"
 import { signInForTests } from "@/test-support/sign-in"
 import type * as ReactRouterModule from "@tanstack/react-router"
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
-import { latestStop, saveStop } from "@/lib/session-stop"
+import { latestStop } from "@/lib/session-stop"
 
 // These suites are about the account's store failing: start from an account.
 beforeEach(() => {
@@ -152,21 +153,10 @@ describe("CompletionSummary: the wrap", () => {
       totalDurationMs: 20 * 60_000,
       finalElapsedMs: 738_000,
     })
-    saveStop({
-      sessionId: session.id,
-      stoppedAt: new Date().toISOString(),
-      elapsedMs: 738_000,
-      plannedMs: 20 * 60_000,
-      scene: null,
-      via: "tap",
-      reason: null,
-      reasonFrom: null,
-      outcome: "done",
-      settledAt: null,
-    })
+    seedStop(stopRecord(0, { sessionId: session.id, outcome: "done" }))
     render(withQueryClient(<CompletionSummary session={session} />))
 
-    expect(screen.getByText("12 minutes, banked")).toBeTruthy()
+    expect(screen.getByText("12 min, banked")).toBeTruthy()
     expect(screen.queryByText("Session stopped early")).toBeNull()
     fireEvent.click(screen.getByRole("button", { name: /break’s over/i }))
     expect(latestStop(session.id)).toMatchObject({
