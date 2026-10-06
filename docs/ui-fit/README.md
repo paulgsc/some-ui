@@ -314,7 +314,8 @@ document called them "the actual gate", and no workflow invoked them — which
 is its own lesson about where guardrails actually live. `pr.yml` now builds
 Storybook and runs `panel-fit`, `launcher-fit` and `exercise-shell-fit`
 whenever a PR touches `packages/ui/**`, `packages/some-content-registry/**`,
-`packages/some-styles/**`, `apps/www/src/**` or `.storybook/**`.
+`packages/some-styles/**`, `apps/www/src/**`, `apps/www/tests/ui-fit/**`,
+`.storybook/**`, the root `package.json` or `pnpm-lock.yaml`.
 
 ### 4. Review
 

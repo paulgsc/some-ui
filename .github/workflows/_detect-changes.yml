@@ -50,6 +50,8 @@ jobs:
               - 'packages/**/*.{ts,tsx,js,jsx,css,json}'
               - 'apps/**/*.{ts,tsx,js,jsx,css,json}'
               - 'package.json'
+              # A transitive bump can break any build, Storybook's included.
+              - 'pnpm-lock.yaml'
               - '.nvmrc'
               - 'tsconfig*.json'
               - 'vite.config.*'

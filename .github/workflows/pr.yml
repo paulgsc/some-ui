@@ -290,7 +290,9 @@ jobs:
       # Scoped to PRs that touch UI, because a Storybook build is minutes, not
       # seconds. The registry is in the trigger set on purpose - binding a new
       # key delegates size authority to a component the panel sweep has never
-      # measured.
+      # measured. So are the root manifest and lockfile: a Storybook, addon or
+      # React bump changes nothing else here, and nothing else builds
+      # Storybook.
       - name: E2E — content fits its box (panels, launcher, exercise shell)
         run: |
           files=$(git diff --name-only --diff-filter=ACMR HEAD^1 -- \
@@ -299,7 +301,9 @@ jobs:
             'packages/some-styles/**' \
             'apps/www/src/**' \
             'apps/www/tests/ui-fit/**' \
-            '.storybook/**' || true)
+            '.storybook/**' \
+            'package.json' \
+            'pnpm-lock.yaml' || true)
           if [ -n "$files" ]; then
             # A repo-wide Storybook build needs a repo-wide package build, so
             # this is NOT turbo-filtered the way the steps above are.
