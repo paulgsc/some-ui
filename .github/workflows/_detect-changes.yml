@@ -53,6 +53,8 @@ jobs:
               - '.nvmrc'
               - 'tsconfig*.json'
               - 'vite.config.*'
+              # Built by node-e2e for the panel-fit gate, its only CI build.
+              - '.storybook/**'
               # Read by @some-ui/resume's check-claims.mjs, which fails on a
               # stale route figure; without these a README-only edit would
               # skip the build that runs it.
