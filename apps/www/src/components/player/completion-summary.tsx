@@ -18,12 +18,14 @@ import { hasAudience } from "@/lib/build-profile"
 import { formatDurationMs } from "@/lib/format"
 import { useIntent, useIntentEffect } from "@/lib/intent"
 import { IntentButton } from "@/lib/intent/render"
+import { latestStop } from "@/lib/session-stop"
 import type { SessionRecord } from "@/lib/tenant"
 import { useDuplicateSession } from "@/lib/tenant"
 import { leadMs } from "@/lib/wind-down"
 import { ActivityIcon } from "@/components/activity-icon"
 
 import { SessionReflection } from "./session-reflection"
+import { StopReasons } from "./session-stop"
 
 type CompletionSummaryProps = {
   session: SessionRecord
@@ -41,6 +43,13 @@ export const CompletionSummary = ({
   const finishedNaturally =
     finalElapsedMs >= session.totalDurationMs - leadMs(session.totalDurationMs)
   const addedMs = finalElapsedMs - session.totalDurationMs
+  // Stopped and not picked up: still a close, never a failure.
+  const stop = latestStop(session.id)
+  const cutShort =
+    !finishedNaturally &&
+    (stop?.outcome === "done" || stop?.outcome === "lapsed")
+      ? stop
+      : null
   const phone = hasAudience("apk")
 
   // Replay hands the player a fresh draft copy and drops them into the
@@ -58,7 +67,7 @@ export const CompletionSummary = ({
       <Card>
         <CardHeader>
           <div className="flex items-center gap-2">
-            {finishedNaturally ? (
+            {finishedNaturally || cutShort ? (
               <span className="bg-success text-success-foreground animate-in zoom-in-50 flex size-8 items-center justify-center rounded-full duration-500">
                 <Check className="size-5" strokeWidth={3} aria-hidden />
               </span>
@@ -66,7 +75,11 @@ export const CompletionSummary = ({
               <StopCircle className="text-muted-foreground size-6" />
             )}
             <CardTitle>
-              {finishedNaturally ? "Session complete" : "Session stopped early"}
+              {finishedNaturally
+                ? "Session complete"
+                : cutShort
+                  ? `${Math.floor(finalElapsedMs / 60_000)} minutes, banked`
+                  : "Session stopped early"}
             </CardTitle>
           </div>
         </CardHeader>
@@ -129,6 +142,8 @@ export const CompletionSummary = ({
               )
             })}
           </div>
+
+          {cutShort && <StopReasons stop={cutShort} from="close" />}
 
           <SessionReflection sessionId={session.id} />
 

@@ -23,6 +23,8 @@ const skipCurrentScene = vi.fn()
 
 let running = true
 let paused = false
+let remaining = 554_000
+const gotToGo = vi.fn()
 
 // The orchestrator store is faked: this file is about what the chrome renders
 // and which command a tap issues.
@@ -36,9 +38,11 @@ vi.mock("@/lib/orchestrator", async () => {
     useOrchestratorClock: (): {
       current_time: number
       time_remaining: number
+      total_duration: number
     } => ({
       current_time: 30_000,
-      time_remaining: 554_000,
+      time_remaining: remaining,
+      total_duration: 600_000,
     }),
     // A real scene shape: `friendlyActivityName` resolves the registry key
     // through the catalogue, and an empty `ui` would fall back to the raw
@@ -70,7 +74,11 @@ function withProviders(node: ReactNode): JSX.Element {
 }
 
 const mount = (): ReturnType<typeof render> =>
-  render(withProviders(<SessionChrome scenes={[]} onPlay={vi.fn()} />))
+  render(
+    withProviders(
+      <SessionChrome scenes={[]} onPlay={vi.fn()} onGotToGo={gotToGo} />
+    )
+  )
 
 /** Mounts and opens the sheet. */
 function open(): void {
@@ -81,6 +89,7 @@ function open(): void {
 beforeEach(() => {
   running = true
   paused = false
+  remaining = 554_000
   // jsdom has no `matchMedia` (`SidebarProvider` reads one); `true` because
   // this component only renders in `LivePlayer`'s phone-width branch.
   const matchMedia = (query: string): MediaQueryList => ({
@@ -103,17 +112,27 @@ afterEach(() => {
 })
 
 describe("SessionChrome", () => {
-  it("costs one icon at rest — no resident transport band", () => {
+  it("costs one icon and the way out at rest — no resident transport band", () => {
     mount()
 
     // No jest-dom: `getByRole` throwing when absent is the assertion.
     expect(
       screen.getByRole("button", { name: /session controls/i })
     ).toBeDefined()
+    fireEvent.click(screen.getByRole("button", { name: /got to go/i }))
+    expect(gotToGo).toHaveBeenCalledTimes(1)
     // The transport's buttons are not on screen until asked for.
     expect(screen.queryByRole("button", { name: /^pause$/i })).toBeNull()
     expect(screen.queryByRole("button", { name: /^stop$/i })).toBeNull()
     expect(screen.queryByText(/remaining/i)).toBeNull()
+  })
+
+  it("leaves the way out to the nudge's Wrap up in the last minutes", () => {
+    remaining = 60_000
+    mount()
+
+    expect(screen.queryByRole("button", { name: /got to go/i })).toBeNull()
+    expect(screen.getByRole("button", { name: /wrap up/i })).toBeDefined()
   })
 
   it("opens onto what is playing and how long is left", () => {

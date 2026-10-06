@@ -543,6 +543,37 @@ Not yet: LeetType runs its own session clock from its mount, which +5 min
 does not reach, so a LeetType session extended past its planned end shows
 LeetType's own "Session complete" inside the activity until the session ends.
 
+## A session cut short still closes
+
+Real life interrupts, and often there is no time to say so. Stopping never
+asks anything; the reason is optional, can come later, and may never come.
+Each stop is one record (`lib/session-stop`, the newest 20 kept on this
+phone) so that what keeps cutting study short can be read over time.
+
+- **Got to go** sits in the strip above the activity (until the wind-down's
+  **Wrap up** takes over). One tap pauses the session and keeps the stop:
+  "Saved. Stopped at 12:18." Six optional reasons (break's over, someone
+  needs me, call or message, on the move, can't focus, something else), then
+  **Go**, or **Oops, keep going**, which forgets a mis-tap.
+- **Leaving the app** mid-session is a stop too, with nothing to tap. Back
+  within a minute it was a glance: the stop is forgotten and the session
+  carries on.
+- **Coming back within 30 minutes** offers **Pick up where you left off** or
+  **Call it done**, with the same optional reasons. Picking up from the
+  player you left resumes exactly; reopened from Home, the activity restarts
+  at the beginning of the scene it stopped in.
+- **Past 30 minutes** the session closes as it stood, dated when it stopped,
+  and counts toward **Studied today**. Home then asks once why it was cut
+  short, without blocking anything. The wrap of a cut-short session reads "12
+  minutes, banked", not "stopped early".
+
+A record keeps when it stopped, how far in and in which scene, whether by a
+tap or by leaving, the reason and where it was given (the stop, the return,
+the wrap or Home), and how it ended: picked up, called done, or lapsed.
+Unanswered stays `null`, which is data too. The records never leave the phone
+yet; reading them across devices needs them on the session record, a server
+migration.
+
 ## aph: my figure, their figure, and the goal
 
 A reconciliation, the way a ledger is reconciled against a bank statement.

@@ -283,11 +283,16 @@ export const useIsTerminal = (): boolean =>
   useOrchestratorStore(selectIsTerminal)
 
 /** The earliest-started active scene, or null when none is active. */
-export function usePrimaryScene(): ActiveLifetime | null {
-  const lifetimes = useSceneLifetimes()
+export function primaryOf(
+  lifetimes: Array<ActiveLifetime>
+): ActiveLifetime | null {
   if (lifetimes.length === 0) return null
 
   return lifetimes.reduce((earliest, current) =>
     current.started_at < earliest.started_at ? current : earliest
   )
+}
+
+export function usePrimaryScene(): ActiveLifetime | null {
+  return primaryOf(useSceneLifetimes())
 }

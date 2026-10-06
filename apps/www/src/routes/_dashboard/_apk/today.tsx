@@ -1,19 +1,24 @@
 import type { JSX } from "react"
+import { useEffect } from "react"
 import { AphTodayCard, AphTodayEntries } from "@some-ui/aph"
+import { cn } from "@some-ui/core-utils"
 import { Button, Skeleton } from "@some-ui/shared"
 import { createFileRoute, Link } from "@tanstack/react-router"
 import { BookOpen, Check, Mic } from "lucide-react"
-import { cn } from "@some-ui/core-utils"
 
 import { useMinuteClock } from "@/lib/clock"
 import { matchQueryOutcome, queryOutcome } from "@/lib/query-outcome"
+import { hasLapsed, latestStop, REASONS, settle } from "@/lib/session-stop"
 import type { SessionRecord } from "@/lib/tenant"
 import {
   finishedToday,
   resumableSession,
   sessionsQuery,
   useSessions,
+  useUpdateSession,
 } from "@/lib/tenant"
+import { formatRemaining } from "@/lib/wind-down"
+import { StopReasons } from "@/components/player/session-stop"
 
 /**
  * Home: the Android app's front door, where each daily tool shows what it
@@ -74,6 +79,34 @@ const StudyCard = ({ now }: { now: Date }): JSX.Element => {
   const done =
     status.kind === "ready" && status.open === null && status.today.length > 0
 
+  // An open session's stop: still within reach, or past it and closed here,
+  // as it stood, so it counts today and stops offering a pick-up.
+  const openStop =
+    status.kind === "ready" && status.open ? latestStop(status.open.id) : null
+  const stopped = openStop?.outcome === "open" ? openStop : null
+  const lapsed = stopped && hasLapsed(stopped, now) ? stopped : null
+  const { mutate: updateSession } = useUpdateSession()
+  useEffect(() => {
+    if (lapsed === null) return
+    settle(lapsed, "lapsed")
+    updateSession({
+      id: lapsed.sessionId,
+      patch: {
+        status: "completed",
+        completedAt: lapsed.stoppedAt,
+        finalElapsedMs: lapsed.elapsedMs,
+      },
+    })
+  }, [lapsed, updateSession])
+
+  // The latest finished session, if it was cut short: Home asks why once.
+  const lastStop =
+    done && status.today[0] ? latestStop(status.today[0].id) : null
+  const cut =
+    lastStop?.outcome === "done" || lastStop?.outcome === "lapsed"
+      ? lastStop
+      : null
+
   return (
     <div
       className={cn(
@@ -106,7 +139,9 @@ const StudyCard = ({ now }: { now: Date }): JSX.Element => {
           {status.kind === "ready" && (
             <span className="text-muted-foreground truncate text-sm">
               {status.open !== null
-                ? status.open.name
+                ? stopped
+                  ? `Stopped at ${formatRemaining(stopped.elapsedMs)} · ${status.open.name}`
+                  : status.open.name
                 : done
                   ? studiedLine(status.today)
                   : "nothing in progress"}
@@ -131,12 +166,25 @@ const StudyCard = ({ now }: { now: Date }): JSX.Element => {
                 to="/sessions/$sessionId"
                 params={{ sessionId: status.open.id }}
               >
-                Resume
+                {stopped ? "Pick up" : "Resume"}
               </Link>
             )}
           </Button>
         )}
       </div>
+      {cut && (
+        <div className="flex flex-col gap-2">
+          <p className="text-muted-foreground text-sm">
+            Cut short at {formatRemaining(cut.elapsedMs)}
+            {cut.reason
+              ? `: ${REASONS.find(([id]) => id === cut.reason)?.[1] ?? ""}`
+              : "."}
+          </p>
+          {cut.reason === null && (
+            <StopReasons key={cut.stoppedAt} stop={cut} from="home" />
+          )}
+        </div>
+      )}
       {status.kind === "ready" && status.refreshRetry !== null && (
         <p
           role="status"

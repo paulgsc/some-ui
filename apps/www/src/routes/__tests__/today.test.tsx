@@ -2,7 +2,9 @@
  * @vitest-environment jsdom
  *
  * Home's study card must not read a failed sessions read as "nothing in
- * progress" and offer Start over a session that is only unreadable.
+ * progress" and offer Start over a session that is only unreadable. It also
+ * settles a stopped session: a pick-up while the window is open, a close
+ * past it, and one optional ask of why it was cut short.
  */
 
 import { fakeQueryResult, withQueryClient } from "@/test-support/query-client"
@@ -11,17 +13,27 @@ import type * as ReactRouterModule from "@tanstack/react-router"
 import { cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
+import type { Stop } from "@/lib/session-stop"
+import { latestStop, PICK_UP_MS, saveStop } from "@/lib/session-stop"
 import type * as TenantModule from "@/lib/tenant"
 import type { SessionRecord } from "@/lib/tenant"
 
 const refetch = vi.fn()
+const updateSession = vi.fn()
 let mockResult: ReturnType<typeof TenantModule.useSessions>
 
 vi.mock(
   "@/lib/tenant",
   async (importOriginal): Promise<typeof TenantModule> => {
     const actual = await importOriginal<typeof TenantModule>()
-    return { ...actual, useSessions: () => mockResult }
+    return {
+      ...actual,
+      useSessions: () => mockResult,
+      useUpdateSession: () => ({
+        ...actual.useUpdateSession(),
+        mutate: updateSession,
+      }),
+    }
   }
 )
 
@@ -46,6 +58,8 @@ const TodayRoute = routeComponent(Route)
 afterEach(() => {
   cleanup()
   refetch.mockClear()
+  updateSession.mockClear()
+  localStorage.clear()
 })
 
 type Sessions = Array<SessionRecord>
@@ -101,7 +115,62 @@ describe("Home's study card", () => {
     expect(screen.getByText("Resume")).toBeTruthy()
     expect(screen.queryByText("Studied today")).toBeNull()
   })
+
+  it("offers Pick up for a session stopped within the window", () => {
+    const open = { ...finished("Open", 0), status: "active" as const }
+    saveStop(stopOf("Open", 5 * 60_000))
+    renderWith({ data: [open], isError: false })
+
+    expect(screen.getByText("Pick up")).toBeTruthy()
+    expect(screen.getByText("Stopped at 12:18 · Open")).toBeTruthy()
+    expect(updateSession).not.toHaveBeenCalled()
+  })
+
+  it("closes a stop past the window as it stood, dated when it stopped", () => {
+    const open = { ...finished("Open", 0), status: "active" as const }
+    const stop = stopOf("Open", PICK_UP_MS + 60_000)
+    saveStop(stop)
+    renderWith({ data: [open], isError: false })
+
+    expect(updateSession).toHaveBeenCalledWith({
+      id: "Open",
+      patch: {
+        status: "completed",
+        completedAt: stop.stoppedAt,
+        finalElapsedMs: 738_000,
+      },
+    })
+    expect(latestStop("Open")?.outcome).toBe("lapsed")
+  })
+
+  it("asks once, optionally, why a finished session was cut short", () => {
+    saveStop({ ...stopOf("Korean", 0), outcome: "done" })
+    renderWith({ data: [finished("Korean", 738_000)], isError: false })
+
+    expect(screen.getByText("Cut short at 12:18.")).toBeTruthy()
+    fireEvent.click(screen.getByRole("button", { name: /call or message/i }))
+    expect(latestStop("Korean")).toMatchObject({
+      reason: "call",
+      reasonFrom: "home",
+    })
+  })
 })
+
+/** A stop of `sessionId` at 12:18 in, `agoMs` before now. */
+function stopOf(sessionId: string, agoMs: number): Stop {
+  return {
+    sessionId,
+    stoppedAt: new Date(Date.now() - agoMs).toISOString(),
+    elapsedMs: 738_000,
+    plannedMs: 1_200_000,
+    scene: null,
+    via: "left",
+    reason: null,
+    reasonFrom: null,
+    outcome: "open",
+    settledAt: null,
+  }
+}
 
 function finished(name: string, elapsedMs: number): SessionRecord {
   const now = new Date().toISOString()

@@ -13,6 +13,8 @@ import type * as ReactRouterModule from "@tanstack/react-router"
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
+import { latestStop, saveStop } from "@/lib/session-stop"
+
 // These suites are about the account's store failing: start from an account.
 beforeEach(() => {
   signInForTests()
@@ -141,5 +143,35 @@ describe("CompletionSummary: the wrap", () => {
     expect(keen.getAttribute("aria-pressed")).toBe("true")
     fireEvent.click(keen)
     expect(keen.getAttribute("aria-pressed")).toBe("false")
+  })
+
+  it("banks a session stopped and not picked up, and asks why, optionally", () => {
+    localStorage.clear()
+    const session = sessionRecord({
+      status: "completed",
+      totalDurationMs: 20 * 60_000,
+      finalElapsedMs: 738_000,
+    })
+    saveStop({
+      sessionId: session.id,
+      stoppedAt: new Date().toISOString(),
+      elapsedMs: 738_000,
+      plannedMs: 20 * 60_000,
+      scene: null,
+      via: "tap",
+      reason: null,
+      reasonFrom: null,
+      outcome: "done",
+      settledAt: null,
+    })
+    render(withQueryClient(<CompletionSummary session={session} />))
+
+    expect(screen.getByText("12 minutes, banked")).toBeTruthy()
+    expect(screen.queryByText("Session stopped early")).toBeNull()
+    fireEvent.click(screen.getByRole("button", { name: /break’s over/i }))
+    expect(latestStop(session.id)).toMatchObject({
+      reason: "break",
+      reasonFrom: "close",
+    })
   })
 })

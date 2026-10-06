@@ -17,8 +17,10 @@ import { SessionAudioNotice } from "@/components/audio/session-audio-notice"
 import { CompletionSummary } from "./completion-summary"
 import { NowNextStrip } from "./now-next-strip"
 import { SessionChrome } from "./session-chrome"
+import { StopScreen } from "./session-stop"
 import { SessionViewport } from "./session-viewport"
 import { TransportControls } from "./transport-controls"
+import { useSessionStop } from "./use-session-stop"
 import { WindDownNudge } from "./wind-down-nudge"
 
 type LivePlayerProps = {
@@ -33,6 +35,8 @@ type LivePlayerProps = {
 export const LivePlayer = ({ session }: LivePlayerProps): JSX.Element => {
   const configure = useOrchestratorStore((s) => s.configure)
   const start = useOrchestratorStore((s) => s.start)
+  const { stop, returning, begin, gotToGo, pickUp, callItDone } =
+    useSessionStop(session.id)
   const isTerminal = useIsTerminal()
   const isMobile = useIsMobile()
   const { current_time: currentTime } = useOrchestratorClock()
@@ -44,11 +48,13 @@ export const LivePlayer = ({ session }: LivePlayerProps): JSX.Element => {
 
   const hasConfiguredRef = useRef(false)
   const hasWrittenBackRef = useRef(false)
-  const latestTimeRef = useRef(currentTime)
+  // A stopped session ends where it stopped, even reopened from scratch.
+  const endedMs = stop?.elapsedMs ?? currentTime
+  const latestTimeRef = useRef(endedMs)
 
   useEffect(() => {
-    latestTimeRef.current = currentTime
-  }, [currentTime])
+    latestTimeRef.current = endedMs
+  }, [endedMs])
 
   useEffect(() => {
     if (hasConfiguredRef.current) return
@@ -56,7 +62,7 @@ export const LivePlayer = ({ session }: LivePlayerProps): JSX.Element => {
 
     void configure(session.scenes).then(() => {
       if (session.status === "active" || session.status === "paused") {
-        void start()
+        begin()
       }
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps -- runs exactly once per mount; caller remounts this component per session id via key
@@ -74,7 +80,11 @@ export const LivePlayer = ({ session }: LivePlayerProps): JSX.Element => {
       id: session.id,
       patch: {
         status: "completed",
-        completedAt: new Date().toISOString(),
+        // A lapsed stop counts on the day it stopped, as Home dates it.
+        completedAt:
+          stop?.outcome === "lapsed"
+            ? stop.stoppedAt
+            : new Date().toISOString(),
         finalElapsedMs: latestTimeRef.current,
       },
     })
@@ -85,7 +95,7 @@ export const LivePlayer = ({ session }: LivePlayerProps): JSX.Element => {
     const completedSession: SessionRecord =
       session.status === "completed"
         ? session
-        : { ...session, status: "completed", finalElapsedMs: currentTime }
+        : { ...session, status: "completed", finalElapsedMs: endedMs }
     return (
       <div className="flex flex-col gap-3">
         <CompletionSummary session={completedSession} />
@@ -108,7 +118,7 @@ export const LivePlayer = ({ session }: LivePlayerProps): JSX.Element => {
   return (
     <div
       className={cn(
-        "flex h-full min-h-0 w-full flex-col",
+        "relative flex h-full min-h-0 w-full flex-col",
         !isMobile && "gap-4"
       )}
     >
@@ -120,12 +130,25 @@ export const LivePlayer = ({ session }: LivePlayerProps): JSX.Element => {
       />
       {/* Above the viewport, not over it (see `SessionChrome`). */}
       {isMobile && (
-        <SessionChrome scenes={session.scenes} onPlay={() => void start()} />
+        <SessionChrome
+          scenes={session.scenes}
+          onPlay={() => void start()}
+          onGotToGo={gotToGo}
+        />
       )}
       <SessionViewport session={session} />
       {!isMobile && <WindDownNudge className="self-center" />}
       {!isMobile && <NowNextStrip scenes={session.scenes} />}
       {!isMobile && <TransportControls onPlay={() => void start()} />}
+      {stop?.outcome === "open" && (
+        <StopScreen
+          stop={stop}
+          returning={returning}
+          onPickUp={pickUp}
+          onDone={callItDone}
+          className="absolute inset-0 z-20"
+        />
+      )}
     </div>
   )
 }
