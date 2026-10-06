@@ -13,6 +13,8 @@ export type SoundbiteSource =
   | "reminder"
   /** "Hold to talk" in Home's + sheet: a comment, not a reason. */
   | "capture"
+  /** "Say what stuck" on a finished session's wrap: a summary, not a reason. */
+  | "wrap"
   /** The soundbites page itself. */
   | "direct"
 

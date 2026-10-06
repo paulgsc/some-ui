@@ -84,4 +84,38 @@ describe("Home's study card", () => {
     expect(screen.getByText("Start")).toBeTruthy()
     expect(screen.queryByText(/this may be out of date/)).toBeNull()
   })
+
+  it("says a session was finished today, and still offers another round", () => {
+    renderWith({ data: [finished("Korean", 15 * 60_000)], isError: false })
+
+    expect(screen.getByText("Studied today")).toBeTruthy()
+    expect(screen.getByText("15 min · Korean")).toBeTruthy()
+    expect(screen.getByText("Another round")).toBeTruthy()
+    expect(screen.queryByText(/Not today/)).toBeNull()
+  })
+
+  it("offers Resume over Studied today while a session is still open", () => {
+    const open = { ...finished("Open", 0), status: "paused" as const }
+    renderWith({ data: [open, finished("Korean", 60_000)], isError: false })
+
+    expect(screen.getByText("Resume")).toBeTruthy()
+    expect(screen.queryByText("Studied today")).toBeNull()
+  })
 })
+
+function finished(name: string, elapsedMs: number): SessionRecord {
+  const now = new Date().toISOString()
+  return {
+    id: name,
+    name,
+    status: "completed",
+    activities: [],
+    scenes: [],
+    layoutMode: "basic",
+    totalDurationMs: elapsedMs,
+    createdAt: now,
+    updatedAt: now,
+    completedAt: now,
+    finalElapsedMs: elapsedMs,
+  }
+}

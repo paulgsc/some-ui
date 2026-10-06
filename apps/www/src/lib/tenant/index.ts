@@ -32,4 +32,4 @@ export {
   useUpdateStatusManySessions,
 } from "./hooks"
 export type { TransferPreview } from "./sessions-transfer"
-export { resumableSession } from "./resumable"
+export { finishedToday, resumableSession } from "./resumable"

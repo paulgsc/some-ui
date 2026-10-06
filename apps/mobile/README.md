@@ -482,6 +482,31 @@ with `isExactNotification: false`, and the manifest removes the plugin's
 exact, and without exact-alarm access (Android 14 denies it by default) each
 `schedule()` would open the "Alarms & reminders" settings screen.
 
+## A session ends by winding down, not by stopping
+
+A session's length is the person's budget, and it holds, but the end is
+announced, not sprung:
+
+- **The last two minutes** (a quarter of a session under eight): a pill
+  appears in the strip above the activity, never over it, with a ring running
+  down, **+5 min** and **Wrap up**. Ignored, the session ends on time.
+  `lib/wind-down` decides this from the orchestrator's clock alone, so it has
+  no state of its own; +5 min is the orchestrator's `Extend` command, which
+  lengthens whichever scene ends last.
+- **The wrap** replaces the bare timing summary: the time played, planned
+  and added; "How did it go?" (worth it, pace, energy: optional, one tap
+  each, the latest 20 sessions' answers kept on this phone,
+  `lib/session-reflection`); **Say what stuck**, a soundbite (`say=wrap`);
+  and **Done**, back to Home. Wrapping up inside the last minutes counts as
+  complete, not "stopped early".
+- **Home** then says **Studied today** ("15 min · Korean", or "2 sessions ·
+  33 min") in the success colour and offers **Another round**; "Not today?
+  Say why" steps aside. A session still open keeps **Resume** first.
+
+Not yet: LeetType runs its own session clock from its mount, which +5 min
+does not reach, so a LeetType session extended past its planned end shows
+LeetType's own "Session complete" inside the activity until the session ends.
+
 ## aph: my figure, their figure, and the goal
 
 A reconciliation, the way a ledger is reconciled against a bank statement.
@@ -530,7 +555,8 @@ row of sentence starters ("Too tired", "No time today", "The app got in the
 way" …) is there for the moment the mind goes blank.
 
 **Talk now** in the + sheet opens it listening too, for a comment rather
-than a reason (`say=capture`). **Bites** in the bottom bar opens the same
+than a reason (`say=capture`), and so does a finished session's **Say what
+stuck**, for a summary (`say=wrap`). **Bites** in the bottom bar opens the same
 page without listening: the way to play back or delete what is kept, with
 no live microphone.
 

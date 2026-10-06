@@ -12,14 +12,18 @@ import {
   CardTitle,
 } from "@some-ui/shared"
 import { Link, useNavigate } from "@tanstack/react-router"
-import { CheckCircle2, RotateCcw, StopCircle } from "lucide-react"
+import { Check, Mic, RotateCcw, StopCircle } from "lucide-react"
 
+import { hasAudience } from "@/lib/build-profile"
 import { formatDurationMs } from "@/lib/format"
 import { useIntent, useIntentEffect } from "@/lib/intent"
 import { IntentButton } from "@/lib/intent/render"
 import type { SessionRecord } from "@/lib/tenant"
 import { useDuplicateSession } from "@/lib/tenant"
+import { leadMs } from "@/lib/wind-down"
 import { ActivityIcon } from "@/components/activity-icon"
+
+import { SessionReflection } from "./session-reflection"
 
 type CompletionSummaryProps = {
   session: SessionRecord
@@ -33,7 +37,11 @@ export const CompletionSummary = ({
     presentation: "interactive",
   })
   const finalElapsedMs = session.finalElapsedMs ?? session.totalDurationMs
-  const finishedNaturally = finalElapsedMs >= session.totalDurationMs
+  // "Wrap up" from the wind-down nudge is a finish too, not a stop.
+  const finishedNaturally =
+    finalElapsedMs >= session.totalDurationMs - leadMs(session.totalDurationMs)
+  const addedMs = finalElapsedMs - session.totalDurationMs
+  const phone = hasAudience("apk")
 
   // Replay hands the player a fresh draft copy and drops them into the
   // composer's Configure step, where everything is still editable.
@@ -51,7 +59,9 @@ export const CompletionSummary = ({
         <CardHeader>
           <div className="flex items-center gap-2">
             {finishedNaturally ? (
-              <CheckCircle2 className="text-primary size-6" />
+              <span className="bg-success text-success-foreground animate-in zoom-in-50 flex size-8 items-center justify-center rounded-full duration-500">
+                <Check className="size-5" strokeWidth={3} aria-hidden />
+              </span>
             ) : (
               <StopCircle className="text-muted-foreground size-6" />
             )}
@@ -75,8 +85,14 @@ export const CompletionSummary = ({
               </p>
             </div>
             <div>
-              <p className="text-muted-foreground text-sm">Activities</p>
-              <p className="font-semibold">{session.activities.length}</p>
+              <p className="text-muted-foreground text-sm">You added</p>
+              <p
+                className={
+                  addedMs > 0 ? "text-success font-semibold" : "font-semibold"
+                }
+              >
+                {addedMs > 0 ? `+${formatDurationMs(addedMs)}` : "none"}
+              </p>
             </div>
           </div>
 
@@ -114,11 +130,21 @@ export const CompletionSummary = ({
             })}
           </div>
 
-          <p className="text-muted-foreground text-xs">
-            Detailed per-activity results (accuracy, score, etc.) are not yet
-            wired up for every activity - this summary reflects session timing
-            only.
-          </p>
+          <SessionReflection sessionId={session.id} />
+
+          {phone && (
+            <div className="space-y-1">
+              <Button asChild variant="outline" className="h-11 w-full">
+                <Link to="/soundbites" search={{ say: "wrap" }}>
+                  <Mic className="mr-2 size-4" aria-hidden />
+                  Say what stuck
+                </Link>
+              </Button>
+              <p className="text-muted-foreground text-center text-xs">
+                Up to a minute, out loud. Kept on this phone.
+              </p>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -137,9 +163,15 @@ export const CompletionSummary = ({
             }
             workingLabel="Replaying..."
           />
-          <Button asChild variant="outline">
-            <Link to="/sessions">Back to sessions</Link>
-          </Button>
+          {phone ? (
+            <Button asChild>
+              <Link to="/today">Done</Link>
+            </Button>
+          ) : (
+            <Button asChild variant="outline">
+              <Link to="/sessions">Back to sessions</Link>
+            </Button>
+          )}
         </div>
       </div>
     </div>

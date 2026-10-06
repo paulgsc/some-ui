@@ -280,6 +280,31 @@ describe("applyCommand", () => {
       engine
     )
   })
+
+  it("Extend lengthens the scene that ends last, and nothing else", () => {
+    const scenes = [
+      scene({ scene_name: "a", start_time: 0, duration: 3_000 }),
+      scene({ scene_name: "b", start_time: 3_000, duration: 5_000 }),
+    ]
+    const engine = configured(scenes, {
+      mode: "Running",
+      elapsedMs: 7_000,
+      lastTickAt: 0,
+    })
+    const next = applyCommand(engine, cmd({ Extend: 2_000 }), 0)
+    expect(next.scenes.map((s) => s.duration)).toEqual([3_000, 7_000])
+    expect(totalDurationOf(next.scenes)).toBe(10_000)
+    expect(next.elapsedMs).toBe(7_000)
+    expect(next.mode).toBe("Running")
+  })
+
+  it("Extend is a no-op once the session has ended", () => {
+    const engine = configured([scene({ duration: 1_000 })], {
+      mode: "Finished",
+      elapsedMs: 1_000,
+    })
+    expect(applyCommand(engine, cmd({ Extend: 2_000 }), 0)).toBe(engine)
+  })
 })
 
 describe("formatTimecode", () => {

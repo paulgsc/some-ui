@@ -72,15 +72,23 @@ const STARTERS = [
 ]
 
 /**
- * What the page asks for. Every way in but "Talk now" is about a session
- * that is not happening; "Talk now" (`capture`) is a comment on anything,
- * so it asks for that, and the starters, which are all reasons, stay away.
+ * What the page asks for. Every way in but "Talk now" and the wrap is about
+ * a session that is not happening; "Talk now" (`capture`) is a comment on
+ * anything and the wrap (`wrap`) a summary of a session just done, so they
+ * ask for that, and the starters, which are all reasons, stay away.
  */
 function askFor(source: SoundbiteSource): {
   title: string
   lede: string
   starters: boolean
 } {
+  if (source === "wrap") {
+    return {
+      title: "What stuck?",
+      lede: "Say what you'll remember from this session, out loud, in a minute or less.",
+      starters: false,
+    }
+  }
   return source === "capture"
     ? {
         title: "Talk now",

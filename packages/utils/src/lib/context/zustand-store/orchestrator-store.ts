@@ -63,6 +63,7 @@ type OrchestratorStoreState = {
   resume: () => Promise<void>
   forceScene: (scene: string) => Promise<void>
   skipCurrentScene: () => Promise<void>
+  extend: (ms: number) => Promise<void>
   updateStreamStatus: (status: StreamStatus) => Promise<void>
 }
 
@@ -250,6 +251,16 @@ export const useOrchestratorStore = create<OrchestratorStoreState>(
         return
       }
       await _commandSender({ SkipCurrentScene: null })
+    },
+
+    // Returned, not awaited: a forward with nothing after it (R1 counts awaits).
+    extend: (ms): Promise<void> => {
+      const { _commandSender } = get()
+      if (!_commandSender) {
+        warn("extend")
+        return Promise.resolve()
+      }
+      return _commandSender({ Extend: ms })
     },
 
     updateStreamStatus: async (status): Promise<void> => {
