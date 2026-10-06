@@ -11,7 +11,7 @@ import { openDeviceBackend } from "@/lib/device-backend/backend"
 import { deviceFileHostBase } from "@/lib/device-backend/boot"
 import { BUNDLED_ROUND_COUNT } from "@/lib/device-backend/bundled-corpus"
 import {
-  retireLessonsExcept,
+  removeLessonsExcept,
   upsertLesson,
 } from "@/lib/device-backend/content-store"
 import type { DeviceBackend } from "@/lib/device-backend/interceptor"
@@ -208,7 +208,7 @@ describe("content on the device", () => {
     })
   })
 
-  it("serves a synced TOPIK lesson verbatim, and drops a retired one from the manifest", async () => {
+  it("serves a synced TOPIK lesson verbatim, and nothing once it is removed", async () => {
     const body = '{ "batches": [] }'
     await upsertLesson(
       db,
@@ -235,12 +235,13 @@ describe("content on the device", () => {
       (await fetchIn(`${BASE}/curriculum/k1-greetings.json`)).text()
     ).resolves.toBe(body)
 
-    await retireLessonsExcept(db, [], clock)
+    await removeLessonsExcept(db, [])
     await expect(
       (await fetchIn(`${BASE}/curriculum/manifest.json`)).json()
     ).resolves.toMatchObject({ topiks: [] })
-    // Retired is unlisted, not gone: a session naming it still loads.
-    expect((await fetchIn(`${BASE}/curriculum/k1-greetings`)).status).toBe(200)
+    // Gone, where the server would still answer for a retired key: nothing
+    // on the phone saves a lesson's key (README, "differs on purpose").
+    expect((await fetchIn(`${BASE}/curriculum/k1-greetings`)).status).toBe(404)
   })
 
   it("passes anything outside the file_host base to the network", async () => {

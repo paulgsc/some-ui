@@ -79,11 +79,19 @@ request goes to the real network.
   device serves no route the server does not.
 - **It differs from the server on purpose in three places** (named in that
   test):
+
   - `/auth/session` is always signed in. There is one person, and the phone's
     lock screen is the lock.
   - `/push/*` answers `503 feature_not_configured`. There is no VAPID identity
     on a phone.
   - The server's engagement fold behind `/signals` is not ported.
+
+  And in two that no contract exercises, both from the storage budget below:
+  a session save or shelf keep past it is refused (`400
+max_record_limit_exceeded`, and the full shelf's `409`); and a lesson home
+  stopped listing is deleted, so `GET /curriculum/:key` answers `404` for it
+  where the server would still serve it. Nothing on the phone loads a lesson
+  by a key it saved: a session stores a level.
 
 | Served on the device                                      | From                                                       |
 | --------------------------------------------------------- | ---------------------------------------------------------- |
@@ -95,6 +103,30 @@ request goes to the real network.
 
 Anything else answers `file_host`'s plain-text `404`, which is what a server
 too old to have that route would answer.
+
+### What the phone keeps
+
+The app's database and WebView storage together stay under Android's
+[25 MB backup quota](https://developer.android.com/identity/data/autobackup),
+past which Android stops backing the app up without saying so, and that
+backup is the only other copy of the phone's history (`device-backend/storage`).
+There is no size per table.
+
+- **Nothing the person made is deleted without their yes.** A session save
+  or shelf keep that would cross the budget is refused. The app then names
+  the oldest finished session (never today's or an unfinished one) and
+  removes it only if the person agrees. Sessions sync nowhere yet, so a
+  removed one is gone: that it hurts is the signal sessions need a server.
+- **Published content follows its source.** A sync deletes the lessons and
+  rounds home stopped listing, records a retired bundled round so the next
+  start does not restore it, and skips what would not fit. The seed deletes
+  bundled rounds the app no longer ships. All of it is reported. If home's
+  corpus is older than the app's, a sync also drops the newer bundled rounds
+  home does not list, until home lists them.
+- **Presence leases** are trimmed to the server's own 16.
+
+The database runs with `auto_vacuum = FULL`, so deleted rows leave the file
+Android backs up.
 
 ### What content is on the phone
 
@@ -438,8 +470,8 @@ phone's database:
 - any Leetype round whose content hash differs from the one the phone holds,
   together with its runs.
 
-A lesson home no longer lists is retired (unlisted, still loadable by key).
-A lesson that merely failed to download is kept. Only published content
+A lesson or round home no longer lists is deleted. A lesson that merely
+failed to download is kept, and one that would not fit is skipped. Only published content
 moves, and only home → phone. Sessions and the shelf stay where they were
 made.
 
@@ -636,5 +668,6 @@ offline, in any language whose voice data is installed (#1625):
 
 - **Nothing syncs back.** A session recorded on the phone stays on the
   phone. Two histories of one person's sessions need a merge rule first.
+  Until then, a session removed to make room is gone for good.
 - **Nothing here has run on a phone yet.** CI proves the APK builds. Every
   test runs the backend's SQL in Node's SQLite, not through the native bridge.

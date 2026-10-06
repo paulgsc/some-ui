@@ -7,6 +7,9 @@
  * learner's own history would need a merge rule. Every route read here is
  * uncredentialed on the server, so no sign-in is needed.
  *
+ * What home no longer lists is deleted; what would take the phone past its
+ * budget (`device-backend/storage`) is skipped. The report counts both.
+ *
  * `get` is injected: the app passes Capacitor's native HTTP (`native-http`),
  * which reaches a plain-`http:` LAN address from the WebView's `https:` page
  * (a `fetch` would be mixed content). Tests pass a second device backend
@@ -15,13 +18,20 @@
 import { isRecord } from "@/lib/device-backend/common"
 import type { LessonEntry } from "@/lib/device-backend/content-store"
 import {
-  retireLessonsExcept,
+  removeLessonsExcept,
+  removeRoundsExcept,
   storedRoundHash,
   upsertLesson,
   upsertRound,
   upsertRuns,
 } from "@/lib/device-backend/content-store"
 import type { SqlDriver } from "@/lib/device-backend/sql"
+import type { StorageBudget } from "@/lib/device-backend/storage"
+import {
+  ANDROID_BACKUP_BUDGET,
+  budgetedDriver,
+  OverBudgetError,
+} from "@/lib/device-backend/storage"
 
 /**
  * A GET against home. `body` is the answer as text; a transport that parsed
@@ -29,9 +39,18 @@ import type { SqlDriver } from "@/lib/device-backend/sql"
  */
 export type HomeGet = (url: string) => Promise<{ status: number; body: string }>
 
+/** `removed`: home stopped listing it. `skipped`: it would not fit. */
+type Tally = {
+  listed: number
+  added: number
+  updated: number
+  removed: number
+  skipped: number
+}
+
 export type SyncReport = {
-  lessons: { listed: number; added: number; updated: number; retired: number }
-  rounds: { listed: number; added: number; updated: number; runs: number }
+  lessons: Tally
+  rounds: Tally & { runs: number }
   /** Items home listed but would not hand over, by key or id. */
   failed: Array<string>
 }
@@ -100,25 +119,28 @@ export async function syncFromHome(
   db: SqlDriver,
   homeInput: string,
   get: HomeGet,
-  now: () => number = Date.now
+  now: () => number = Date.now,
+  budget: StorageBudget = ANDROID_BACKUP_BUDGET
 ): Promise<SyncReport> {
   const base = homeApiBase(homeInput)
+  const store = budgetedDriver(db, budget)
+  const empty = { listed: 0, added: 0, updated: 0, removed: 0, skipped: 0 }
   const report: SyncReport = {
-    lessons: { listed: 0, added: 0, updated: 0, retired: 0 },
-    rounds: { listed: 0, added: 0, updated: 0, runs: 0 },
+    lessons: { ...empty },
+    rounds: { ...empty, runs: 0 },
     failed: [],
   }
 
   // The manifest first; its failure fails the sync (an unreachable home must
   // be said plainly). A manifest with no `topiks` array is not an empty one,
-  // and retiring against it would empty the catalogue.
+  // and removing against it would empty the catalogue.
   const manifest = await getJson(get, base, "/curriculum/manifest.json")
   if (!isRecord(manifest) || !Array.isArray(manifest.topiks)) {
     throw new Error("home's curriculum manifest has no `topiks` array")
   }
   const listed: Array<unknown> = manifest.topiks
   // Every key home still lists, including an entry this phone cannot read:
-  // that one fails, and is not retired.
+  // that one fails, and is not removed.
   const listedKeys = listed.flatMap((entry) =>
     isRecord(entry) && typeof entry.key === "string" ? [entry.key] : []
   )
@@ -127,29 +149,39 @@ export async function syncFromHome(
   for (const key of listedKeys) {
     if (!entries.some((entry) => entry.key === key)) report.failed.push(key)
   }
+  // First, so what home dropped makes room for what it added. By what home
+  // lists, so a lesson that merely fails to download below is kept.
+  report.lessons.removed = await removeLessonsExcept(db, listedKeys)
   for (const entry of entries) {
     try {
       const answer = await get(
         `${base}/curriculum/${encodeURIComponent(entry.key)}`
       )
       if (answer.status !== 200) throw new Error(String(answer.status))
-      const outcome = await upsertLesson(db, entry, answer.body, now())
+      const outcome = await upsertLesson(store, entry, answer.body, now())
       if (outcome === "inserted") report.lessons.added += 1
       if (outcome === "updated") report.lessons.updated += 1
-    } catch {
-      report.failed.push(entry.key)
+    } catch (error) {
+      if (error instanceof OverBudgetError) report.lessons.skipped += 1
+      else report.failed.push(entry.key)
     }
   }
-  // Only once every listed lesson had its turn: retire what home no longer
-  // lists, but never a lesson that merely failed to download just now.
-  report.lessons.retired = await retireLessonsExcept(db, listedKeys, now())
 
   const rounds = await getJson(get, base, "/leetype/rounds")
-  const listings =
-    isRecord(rounds) && Array.isArray(rounds.rounds)
-      ? rounds.rounds.filter(isRoundListing)
-      : []
+  // Only a listing that is an array is one to remove against.
+  const roundsListed: Array<unknown> | null =
+    isRecord(rounds) && Array.isArray(rounds.rounds) ? rounds.rounds : null
+  const listings = (roundsListed ?? []).filter(isRoundListing)
   report.rounds.listed = listings.length
+  if (roundsListed !== null) {
+    report.rounds.removed = await removeRoundsExcept(
+      db,
+      roundsListed.flatMap((entry) =>
+        isRecord(entry) && typeof entry.id === "string" ? [entry.id] : []
+      ),
+      "home"
+    )
+  }
   for (const listing of listings) {
     try {
       const id = encodeURIComponent(listing.id)
@@ -159,7 +191,7 @@ export async function syncFromHome(
         const body = await get(`${base}/leetype/rounds/${id}`)
         if (body.status !== 200) throw new Error(String(body.status))
         const outcome = await upsertRound(
-          db,
+          store,
           body.body,
           now(),
           "home",
@@ -170,10 +202,11 @@ export async function syncFromHome(
       }
       const runs = await get(`${base}/leetype/rounds/${id}/runs`)
       if (runs.status === 200) {
-        report.rounds.runs += await upsertRuns(db, runs.body, now())
+        report.rounds.runs += await upsertRuns(store, runs.body, now())
       }
-    } catch {
-      report.failed.push(listing.id)
+    } catch (error) {
+      if (error instanceof OverBudgetError) report.rounds.skipped += 1
+      else report.failed.push(listing.id)
     }
   }
   return report

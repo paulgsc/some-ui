@@ -7,9 +7,10 @@
  * `file_host` does with passkeys unconfigured. The lock screen is the phone's.
  *
  * **Signals and presence** keep their wire shapes (snake_case) and
- * `presence_leases` is written as the server writes it. The engagement fold
- * is not ported (the client's policy decides on the device), so `/signals`
- * validates and answers `eligible_at: now` without storing.
+ * `presence_leases` is written, and trimmed to the server's cap, as the server
+ * does it. The engagement fold is not ported (the client's policy decides on
+ * the device), so `/signals` validates and answers `eligible_at: now` without
+ * storing.
  *
  * **Push** answers `503 feature_not_configured`: no VAPID identity, which the
  * client reads as "fall back" (`FileHostNotConfiguredError`).
@@ -23,6 +24,9 @@ import {
   shapeRejected,
   unprocessable,
 } from "@/lib/device-backend/router"
+
+/** The server's own cap and trim (paulgsc/server `crates/db/presence`). */
+const MAX_LEASES_PER_SUBJECT = 16
 
 /** How far ahead the device's always-live session says it runs. */
 const SESSION_HORIZON_MS = 30 * 24 * 60 * 60 * 1000
@@ -103,13 +107,24 @@ export const accountRoutes: ReadonlyArray<DeviceRoute> = [
         return unprocessable({ context_key: ["must not be empty"] })
       }
       const observedAt = rfc3339(now())
-      await db.transaction(() =>
-        db.run(
+      await db.transaction(async () => {
+        await db.run(
           `INSERT INTO presence_leases (subject_id, context_key, observed_at) VALUES (?, ?, ?)
            ON CONFLICT(subject_id, context_key) DO UPDATE SET observed_at = excluded.observed_at`,
           [DEVICE_SUBJECT, contextKey, observedAt]
         )
-      )
+        await db.run(
+          `DELETE FROM presence_leases
+           WHERE subject_id = ?
+             AND context_key NOT IN (
+                 SELECT context_key FROM presence_leases
+                 WHERE subject_id = ?
+                 ORDER BY observed_at DESC
+                 LIMIT ?
+             )`,
+          [DEVICE_SUBJECT, DEVICE_SUBJECT, MAX_LEASES_PER_SUBJECT]
+        )
+      })
       return json(200, { context_key: contextKey, observed_at: observedAt })
     },
   },

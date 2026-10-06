@@ -5,7 +5,9 @@
  * The one offline write path for authored content (the packages' "Keep on
  * this account"). Copied, not re-decided: the cap (20 per activity) never
  * refuses a replace; an identical body is `unchanged` and keeps `savedAt`;
- * problems are one `422` keyed by field; `DELETE` is `204` either way.
+ * problems are one `422` keyed by field; `DELETE` is `204` either way. The
+ * phone's own: a keep that would grow it past its budget
+ * (`device-backend/storage`) gets the `409` a full shelf gets.
  */
 import {
   DEVICE_SUBJECT,
@@ -23,6 +25,7 @@ import {
 } from "@/lib/device-backend/router"
 import type { SqlRow } from "@/lib/device-backend/sql"
 import { one, text } from "@/lib/device-backend/sql"
+import { budgeted, OverBudgetError } from "@/lib/device-backend/storage"
 
 const SHELF_CAP = 20
 const SHELF_BODY_CEILING = 262_144
@@ -99,7 +102,10 @@ export const shelfRoutes: ReadonlyArray<DeviceRoute> = [
   {
     method: "PUT",
     path: "/shelf/:activity/:key",
-    handler: async ({ params, body }, { db, now }): Promise<Response> => {
+    handler: async (
+      { params, body },
+      { db, now, budget }
+    ): Promise<Response> => {
       const activity = params.activity ?? ""
       const key = params.key ?? ""
       const details: ErrorDetails = {}
@@ -112,7 +118,7 @@ export const shelfRoutes: ReadonlyArray<DeviceRoute> = [
       if (Object.keys(details).length > 0) return unprocessable(details)
 
       const contentHash = await sha256Hex(body)
-      return db.transaction(async () => {
+      return budgeted(db, budget, async () => {
         const stored = await one(
           db,
           "SELECT key, content_hash, saved_at FROM learner_shelf WHERE subject_id = ? AND activity_id = ? AND key = ?",
@@ -157,6 +163,9 @@ export const shelfRoutes: ReadonlyArray<DeviceRoute> = [
           change: "kept",
           item: { key, contentHash, savedAt },
         })
+      }).catch((error: unknown) => {
+        if (!(error instanceof OverBudgetError)) throw error
+        return errorResponse(409, "conflict", { message: error.message })
       })
     },
   },

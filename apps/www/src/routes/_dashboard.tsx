@@ -32,6 +32,7 @@ import { AccountUnavailableBanner } from "@/components/auth/account-unavailable-
 import { HexCombMark } from "@/components/brand/hex-comb-mark"
 import { LocIndicator } from "@/components/loc/loc-indicator"
 import { MobileNav } from "@/components/mobile-shell"
+import { DeviceStoragePrompt } from "@/components/settings/device-storage"
 import { ThemeSwitcher } from "@/components/theme-switcher"
 
 /**
@@ -197,6 +198,12 @@ const DashboardLayout = (): JSX.Element => {
           </header>
         )}
         {!bareViewport && <AccountUnavailableBanner />}
+        {/* On every route, the player's and composer's included: a save
+            refused there is what it answers. Inline, so the web builds
+            drop this device-only import. */}
+        {import.meta.env.VITE_DEVICE_BACKEND === "true" ? (
+          <DeviceStoragePrompt />
+        ) : null}
         <div
           className={cn(
             "flex-1",

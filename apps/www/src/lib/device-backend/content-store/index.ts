@@ -45,8 +45,8 @@ function witnessesOf(round: unknown): Array<Witness> {
  * `body`: Capacitor's native HTTP parses `application/json`, so a synced body
  * is a re-serialisation, and runs are keyed on the server's hash.
  *
- * A `"bundled"` write leaves a round the home sync wrote alone
- * (`"unchanged"`); a `"home"` write marks the round as home's.
+ * A `"bundled"` write leaves a round the home sync wrote, or home retired,
+ * alone (`"unchanged"`); a `"home"` write marks the round as home's.
  */
 export async function upsertRound(
   db: SqlDriver,
@@ -66,8 +66,9 @@ export async function upsertRound(
       origin === "bundled" &&
       (await one(
         db,
-        "SELECT 1 FROM device_round_from_home WHERE round_id = ?",
-        [id]
+        `SELECT 1 FROM device_round_from_home WHERE round_id = ?
+         UNION ALL SELECT 1 FROM device_round_retired WHERE round_id = ?`,
+        [id, id]
       )) !== null
     ) {
       return "unchanged"
@@ -107,6 +108,7 @@ export async function upsertRound(
         "INSERT OR IGNORE INTO device_round_from_home (round_id) VALUES (?)",
         [id]
       )
+      await db.run("DELETE FROM device_round_retired WHERE round_id = ?", [id])
     }
     return stored === null ? "inserted" : "updated"
   })
@@ -268,30 +270,63 @@ export async function upsertLesson(
 }
 
 /**
- * Retires every listed lesson whose key is not in `keep`, after a sync copies
- * the home manifest. Retired, not deleted: a session naming it still loads it
- * by key, as on the server.
+ * Deletes every lesson whose key is not in `keep`, after a sync copies the
+ * home manifest. Deleted, where the server retires: nothing on the phone loads
+ * a lesson by a key it saved (a session stores a level; every loader takes its
+ * key from the manifest), so a retired row is only weight.
  */
-export async function retireLessonsExcept(
+export async function removeLessonsExcept(
+  db: SqlDriver,
+  keep: ReadonlyArray<string>
+): Promise<number> {
+  const { changes } = await db.transaction(() =>
+    db.run(
+      "DELETE FROM curriculum WHERE key NOT IN (SELECT value FROM json_each(?))",
+      [JSON.stringify(keep)]
+    )
+  )
+  return changes
+}
+
+/**
+ * Deletes every round whose id is not in `keep`, its witnesses and runs
+ * with it (`ON DELETE CASCADE`).
+ *
+ * `"home"`: home's listing is the word on every round, so one home stopped
+ * listing goes whatever its origin, and is recorded as retired so the next
+ * start's seed does not put a bundled copy back. `"bundled"`: the seed
+ * dropping what this build no longer ships, never a round home wrote, and
+ * forgetting retirements of rounds the bundle no longer has.
+ */
+export async function removeRoundsExcept(
   db: SqlDriver,
   keep: ReadonlyArray<string>,
-  nowMs: number
+  origin: RoundOrigin
 ): Promise<number> {
+  const kept = JSON.stringify(keep)
   return db.transaction(async () => {
-    const listed = await db.all(
-      "SELECT key FROM curriculum WHERE retired_at IS NULL"
-    )
-    const keeping = new Set(keep)
-    let retired = 0
-    for (const row of listed) {
-      const key = text(row, "key")
-      if (keeping.has(key)) continue
-      await db.run("UPDATE curriculum SET retired_at = ? WHERE key = ?", [
-        rfc3339(nowMs),
-        key,
-      ])
-      retired += 1
+    if (origin === "home") {
+      await db.run(
+        `INSERT OR IGNORE INTO device_round_retired (round_id)
+         SELECT id FROM leetype_round WHERE id NOT IN (SELECT value FROM json_each(?))`,
+        [kept]
+      )
+      const { changes } = await db.run(
+        "DELETE FROM leetype_round WHERE id NOT IN (SELECT value FROM json_each(?))",
+        [kept]
+      )
+      return changes
     }
-    return retired
+    await db.run(
+      "DELETE FROM device_round_retired WHERE round_id NOT IN (SELECT value FROM json_each(?))",
+      [kept]
+    )
+    const { changes } = await db.run(
+      `DELETE FROM leetype_round
+       WHERE id NOT IN (SELECT value FROM json_each(?))
+         AND id NOT IN (SELECT round_id FROM device_round_from_home)`,
+      [kept]
+    )
+    return changes
   })
 }

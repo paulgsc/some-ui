@@ -4,8 +4,10 @@
  * included), so a row here is one `file_host` could take verbatim. Each table
  * names its source migration and anything left out.
  *
- * One table is the device's own: `device_round_from_home` (migration 2), so
- * the bundled seed never replaces synced rounds with older bytes.
+ * Three tables are the device's own: `device_round_from_home` (migration 2),
+ * so the bundled seed never replaces synced rounds with older bytes;
+ * `device_round_retired` (3), so it never restores one home retired; and
+ * `device_storage_notice` (3), removals not yet shown (`device-backend/storage`).
  *
  * Migrations are append-only, numbered by `PRAGMA user_version`. Never edit a
  * shipped entry: a phone that ran it will not run it again.
@@ -116,6 +118,19 @@ const MIGRATIONS: ReadonlyArray<string> = [
       round_id TEXT PRIMARY KEY REFERENCES leetype_round(id) ON DELETE CASCADE
   );
   `,
+  // 3 - device only: bundled rounds home retired (`content-store`), and
+  // removals not yet shown (`storage`'s `PruneNotice`). Both stay small: the
+  // seed trims the first to ids the bundle still ships; the second is one row.
+  `
+  CREATE TABLE device_round_retired (
+      round_id TEXT PRIMARY KEY
+  );
+  CREATE TABLE device_storage_notice (
+      id     INTEGER PRIMARY KEY CHECK (id = 1),
+      rounds INTEGER NOT NULL,
+      since  TEXT    NOT NULL
+  );
+  `,
 ]
 
 /** The schema version a fully migrated database reports. */
@@ -125,11 +140,16 @@ const SCHEMA_VERSION = MIGRATIONS.length
  * Brings `db` up to `SCHEMA_VERSION`, one migration per transaction, and
  * turns on the foreign keys the round tables' cascades rely on (a
  * per-connection setting in SQLite, so every open sets it).
+ *
+ * A new database first gets `auto_vacuum = FULL`, which only takes before
+ * its first table: deleted rows' pages then leave the file at each commit,
+ * so the file Android backs up shrinks with what is removed.
  */
 export async function migrate(db: SqlDriver): Promise<void> {
-  await db.exec("PRAGMA foreign_keys = ON")
   const row = await one(db, "PRAGMA user_version")
   const current = row === null ? 0 : num(row, "user_version")
+  if (current === 0) await db.exec("PRAGMA auto_vacuum = FULL")
+  await db.exec("PRAGMA foreign_keys = ON")
   for (let index = current; index < SCHEMA_VERSION; index++) {
     const sql = MIGRATIONS[index] ?? ""
     await db.transaction(async () => {

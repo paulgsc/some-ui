@@ -4,7 +4,12 @@
  * text, the same files the server's importer reads, so content hashes match
  * the runs. TOPIK lessons arrive only by sync (`device-backend/home-sync`).
  */
-import { upsertRound, upsertRuns } from "@/lib/device-backend/content-store"
+import { isRecord } from "@/lib/device-backend/common"
+import {
+  removeRoundsExcept,
+  upsertRound,
+  upsertRuns,
+} from "@/lib/device-backend/content-store"
 import type { SqlDriver } from "@/lib/device-backend/sql"
 
 const ROUNDS: Record<string, string> = import.meta.glob(
@@ -20,16 +25,28 @@ const RUNS: Record<string, string> = import.meta.glob(
   { eager: true, query: "?raw", import: "default" }
 )
 
-export type SeedReport = { rounds: number; runs: number }
+/** `removed`: bundled rounds this build no longer ships, deleted. */
+export type SeedReport = { rounds: number; runs: number; removed: number }
+
+function idOf(body: string): Array<string> {
+  const round: unknown = JSON.parse(body)
+  return isRecord(round) && typeof round.id === "string" ? [round.id] : []
+}
 
 /**
  * Idempotent: an unchanged round is a read, not a write. A round the home
- * sync wrote is left as it is, even when the bundle's bytes differ.
+ * sync wrote, or home retired, is left as it is. A bundled round an earlier
+ * build shipped and this one does not is deleted.
  */
 export async function seedBundledCorpus(
   db: SqlDriver,
   nowMs: number
 ): Promise<SeedReport> {
+  const removed = await removeRoundsExcept(
+    db,
+    Object.values(ROUNDS).flatMap(idOf),
+    "bundled"
+  )
   let rounds = 0
   for (const body of Object.values(ROUNDS)) {
     if ((await upsertRound(db, body, nowMs, "bundled")) !== "unchanged")
@@ -39,7 +56,7 @@ export async function seedBundledCorpus(
   for (const body of Object.values(RUNS)) {
     runs += await upsertRuns(db, body, nowMs)
   }
-  return { rounds, runs }
+  return { rounds, runs, removed }
 }
 
 /** How many rounds the bundle carries; tests pin it against the corpus. */
