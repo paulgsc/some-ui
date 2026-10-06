@@ -51,6 +51,17 @@ function isValidScore(value: number): boolean {
   return Number.isFinite(value) && value >= SCORE_MIN && value <= SCORE_MAX
 }
 
+/** `Date#toISOString`'s shape, which is what a score records. */
+const ISO_TIMESTAMP = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?Z$/
+
+function isIsoTimestamp(value: unknown): boolean {
+  return (
+    typeof value === "string" &&
+    ISO_TIMESTAMP.test(value) &&
+    !Number.isNaN(Date.parse(value))
+  )
+}
+
 /**
  * Thresholds #730's Playwright oracle regression enforces against. Defined
  * here, not there, so Story 2's own "notes required on disagreement" check
@@ -106,6 +117,10 @@ export function validateEyeScore(
 
   if (score.reviewer.trim().length === 0) {
     issues.push("reviewer must not be empty")
+  }
+
+  if (!isIsoTimestamp(score.scoredAt)) {
+    issues.push("scoredAt must be an ISO 8601 timestamp (Date#toISOString)")
   }
 
   if (requiresExplanation(fixture, score) && score.notes.trim().length === 0) {

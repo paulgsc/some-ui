@@ -276,8 +276,8 @@ rewrite or a duplicate/orphaned key. It's deliberately dependency-free
 (plain Node `fs`/`path`, no TypeScript import), so it does not validate.
 `corpus.spec.ts`'s "every committed eye score is valid for its fixture"
 does, over the whole committed map: a known fixture id, every score in
-0–100, `overall` equal to `computeOverall` of the four, a reviewer, and
-notes wherever `validateEyeScore` requires them.
+0–100, `overall` equal to `computeOverall` of the four, a reviewer, an ISO
+`scoredAt`, and notes wherever `validateEyeScore` requires them.
 
 `eye-scores.json` holds only real human scores. Populating it is the point
 of scoring fixtures yourself, not something to fake to make the file look
