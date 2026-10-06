@@ -135,6 +135,9 @@ export async function syncFromHome(
   // be said plainly). A manifest with no `topiks` array is not an empty one,
   // and removing against it would empty the catalogue.
   const manifest = await getJson(get, base, "/curriculum/manifest.json")
+  // Both listings before any write, so a failure here removes nothing that
+  // the report it aborts would have had to name.
+  const rounds = await getJson(get, base, "/leetype/rounds")
   if (!isRecord(manifest) || !Array.isArray(manifest.topiks)) {
     throw new Error("home's curriculum manifest has no `topiks` array")
   }
@@ -167,7 +170,6 @@ export async function syncFromHome(
     }
   }
 
-  const rounds = await getJson(get, base, "/leetype/rounds")
   // Only a listing that is an array is one to remove against.
   const roundsListed: Array<unknown> | null =
     isRecord(rounds) && Array.isArray(rounds.rounds) ? rounds.rounds : null

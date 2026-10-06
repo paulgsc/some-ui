@@ -135,6 +135,18 @@ describe("sessions at the budget", () => {
     })
   })
 
+  it("switches a database made before auto-vacuum over to it", async () => {
+    const mode = async (): Promise<number> => {
+      const row = await one(db, "PRAGMA auto_vacuum")
+      return row === null ? -1 : num(row, "auto_vacuum")
+    }
+    await db.exec("PRAGMA auto_vacuum = NONE")
+    await db.exec("VACUUM")
+    expect(await mode()).toBe(0)
+    backend = await openDeviceBackend(db, () => NOW, budget)
+    expect(await mode()).toBe(1)
+  })
+
   it("gives a removed session's pages back to the file", async () => {
     const before = await databaseBytes(db)
     const id = await create("gone soon")

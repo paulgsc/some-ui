@@ -133,6 +133,9 @@ const MIGRATIONS: ReadonlyArray<string> = [
   `,
 ]
 
+/** `PRAGMA auto_vacuum`'s value for `FULL`. */
+const AUTO_VACUUM_FULL = 1
+
 /** The schema version a fully migrated database reports. */
 const SCHEMA_VERSION = MIGRATIONS.length
 
@@ -141,14 +144,25 @@ const SCHEMA_VERSION = MIGRATIONS.length
  * turns on the foreign keys the round tables' cascades rely on (a
  * per-connection setting in SQLite, so every open sets it).
  *
- * A new database first gets `auto_vacuum = FULL`, which only takes before
- * its first table: deleted rows' pages then leave the file at each commit,
- * so the file Android backs up shrinks with what is removed.
+ * First, `auto_vacuum = FULL`, so deleted rows' pages leave the file Android
+ * backs up at each commit. A new database takes it before its first table; an
+ * existing one also needs a `VACUUM` to rebuild, once. That is best effort:
+ * if it fails, the app still opens and the next start tries again.
  */
 export async function migrate(db: SqlDriver): Promise<void> {
   const row = await one(db, "PRAGMA user_version")
   const current = row === null ? 0 : num(row, "user_version")
-  if (current === 0) await db.exec("PRAGMA auto_vacuum = FULL")
+  const vacuum = await one(db, "PRAGMA auto_vacuum")
+  if (vacuum === null || num(vacuum, "auto_vacuum") !== AUTO_VACUUM_FULL) {
+    await db.exec("PRAGMA auto_vacuum = FULL")
+    if (current > 0) {
+      try {
+        await db.exec("VACUUM")
+      } catch {
+        // The file keeps its old size until a later start's VACUUM succeeds.
+      }
+    }
+  }
   await db.exec("PRAGMA foreign_keys = ON")
   for (let index = current; index < SCHEMA_VERSION; index++) {
     const sql = MIGRATIONS[index] ?? ""
