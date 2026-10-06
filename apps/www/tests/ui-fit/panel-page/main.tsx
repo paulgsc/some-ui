@@ -1,13 +1,15 @@
 /**
  * The ui-fit panel page (`../panel-fit.spec.ts`): mounts one fixture
  * (`?panel=<id>`, ./fixtures.tsx) in a rect shaped like a session leaf, with
- * www's own providers and stylesheets, so the sweep measures panels against
- * the CSS the app ships rather than a separate pipeline's copy of it.
+ * www's stylesheets and the providers a panel's layout can depend on (theme,
+ * query client, toaster). The rest of `AppProviders` is left out on purpose:
+ * the study-nudge watcher, the TTS provider and the orchestrator reach for
+ * push, speech services and sockets, none of which a fit measurement needs.
  *
  * Built only on request (`pnpm --filter www build:fit`, which sets
- * `WWW_FIT_HARNESS`; vite.config.ts), into `dist-fit/`. No shipped build has
- * this entry. With no `?panel`, the page lists the ids it knows, so the sweep
- * can tell a stale build from a renamed fixture.
+ * `WWW_FIT_HARNESS`; vite.config.ts), into `out/ui-fit/`. No shipped build
+ * has this entry. With no `?panel`, the page lists the ids it knows, so the
+ * sweep can fail on a fixture nothing sweeps.
  */
 
 import type { JSX, ReactNode } from "react"
@@ -24,7 +26,8 @@ import { isPanelId, PANEL_FIXTURES, PANEL_IDS } from "./fixtures"
 // The authored component CSS www's own entry loads (src/main.tsx), with the
 // same globs: keep the two in step. It lives in each entry rather than in a
 // shared module because `treeshake.moduleSideEffects: false` drops a module
-// imported only for its side effects, globbed stylesheets included.
+// imported only for its side effects, and its globbed stylesheets with it
+// (measured: moved into one, www's built CSS lost 16 KB).
 import.meta.glob(
   [
     "../../../../../packages/ui/**/src/**/*.css",

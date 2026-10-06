@@ -28,7 +28,6 @@ export const PANEL_PAGE_BUILD = resolve(
 /** The page's path inside that build: Vite keeps the source's layout. */
 export const PANEL_PAGE_PATH = "/tests/ui-fit/panel-page/index.html"
 
-/** Whether a panel page has been built where the sweep looks for one. */
 export function panelPageBuilt(): boolean {
   return existsSync(join(PANEL_PAGE_BUILD, PANEL_PAGE_PATH))
 }

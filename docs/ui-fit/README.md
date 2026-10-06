@@ -136,7 +136,7 @@ swept (#1687): a gate that claims coverage nothing enforces is worse than
 none.
 
 Two properties of the panel harness are load-bearing, and both were wrong on
-the first attempt, when it swept a built Storybook:
+the first attempt:
 
 - **It serves over HTTP, not `file://`.** Chromium blocks cross-origin ES
   module loads from a file origin, so every panel rendered an empty root and
@@ -261,9 +261,7 @@ with www's Vite config, providers and stylesheets (`pnpm --filter www
 build:fit`, into `apps/www/out/ui-fit`), so its CSS is byte-identical to what
 www ships. Storybook compiled its own copy, and in #1685 that copy lost
 Tailwind while www was fine: a gate measuring a second pipeline can fail, or
-pass, for reasons the app does not have. Reverting #899's `QuizSummary` turns
-the sweep red on this page with _"holds 517px more content than its own
-height"_ (#1687).
+pass, for reasons the app does not have.
 
 ### 2d. `apps/www/tests/composer` (Playwright, and the only one that runs the app)
 
@@ -329,10 +327,8 @@ is its own lesson about where guardrails actually live. `pr.yml` now builds
 the panel page and runs `panel-fit`, `launcher-fit` and `exercise-shell-fit`
 whenever a PR touches `packages/ui/**`, `packages/some-content-registry/**`,
 `packages/some-styles/**`, `apps/www/src/**`, `apps/www/tests/ui-fit/**`,
-www's build config (`vite.config.ts`, `style.context.ts`, `build.profiles.ts`,
-`index.html`, `package.json`, `playwright.config.ts`), the root
-`package.json` or `pnpm-lock.yaml`. Under CI a missing panel build fails the
-spec rather than skipping it.
+www's build config (the list is in `pr.yml`), the root `package.json` or
+`pnpm-lock.yaml`.
 
 ### 4. Review
 

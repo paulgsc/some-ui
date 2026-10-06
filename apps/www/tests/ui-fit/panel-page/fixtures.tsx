@@ -4,9 +4,7 @@
  * The registry's panels are mounted through `componentRegistry` itself, the
  * lazy entries a session binds, with no props beyond the one a session would
  * choose (hangul's mode). The TOPIK quiz stages are mounted through
- * `QuizPanel` one by one, because the applet only reaches feedback and
- * summary after a played lesson, and a sweep of the applet alone measures the
- * one stage that always fitted: that is how #899 shipped.
+ * `QuizPanel` one by one (`PANEL_STAGES` in the spec says why).
  *
  * `planted-overflow` is not a panel. It is the sweep's self-test: a box that
  * fills its rect around content that cannot fit, so a harness that silently
@@ -91,7 +89,6 @@ export const PANEL_FIXTURES = {
     </SpeechProvider>
   ),
 
-  // The conversation is still playing: the assessment has not started.
   "topik-quiz-idle-playing": quizStage({
     isInQuiz: false,
     chatPlayState: "running",
@@ -101,7 +98,6 @@ export const PANEL_FIXTURES = {
     currentQuestion: 2,
     questions: [MULTIPLE_CHOICE, MULTIPLE_CHOICE, TEXT_INPUT],
   }),
-  // Answered wrong: the learner's answer beside the correct one.
   "topik-quiz-feedback-incorrect-text-input": quizStage({
     quizStage: "feedback",
     currentQuestion: 3,

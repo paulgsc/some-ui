@@ -28,9 +28,8 @@
  * The panel page (`./panel-page`) mounts one fixture per load inside a rect
  * shaped the way `RenderSolved` shapes a leaf: an `absolute` box that clips,
  * and a full-size box inside it (`data-fit-slot`) that the panel fills. It is
- * built with www's own Vite config, providers and stylesheets, so the CSS
- * measured here is the CSS the app ships, not a second pipeline's copy of it
- * (#1685 lost Tailwind in exactly such a copy while www was fine). Overflow is
+ * built with www's own Vite config and stylesheets, so the CSS measured here
+ * is the CSS the app ships (docs/ui-fit, 2c). Overflow is
  * measured from the slot with `getBoundingClientRect` and `scrollHeight`, both
  * of which report where content *would* paint, so the leaf's clipping cannot
  * hide a regression from this sweep the way it hides it from the eye.
@@ -69,10 +68,7 @@ import type { PanelId } from "./panel-page/fixtures"
  *   `unswept`  no fixture mounts this component at all, so there is nothing to
  *              measure. The weakest state, and the one to argue down first.
  *
- * Every entry that is not a plain `panel` is an admission, not a category,
- * and today there are none: hangul's debt went once the sweep measured the
- * leaf a session grants rather than a padded story canvas, and leetype became
- * sweepable once panels were mounted through the registry (#1687).
+ * Every entry that is not a plain `panel` is an admission, not a category.
  */
 type PanelCoverage =
   | { panel: PanelId }
@@ -106,7 +102,6 @@ const PANEL_STAGES: ReadonlyArray<PanelId> = [
   "topik-quiz-summary-failed",
 ]
 
-/** The planted panel the self-test at the bottom expects to see overflow. */
 const PLANTED_OVERFLOW: PanelId = "planted-overflow"
 
 /**
@@ -359,7 +354,7 @@ test.describe("every panel fits the rect the viewport grants it", () => {
       `pnpm --filter www build:fit (or point WWW_FIT_HARNESS_DIST at one).`
   )
 
-  test("the panel page is built and mounts every swept panel", async ({
+  test("the panel page is built, and every fixture on it is swept", async ({
     page,
   }) => {
     expect(
@@ -367,20 +362,22 @@ test.describe("every panel fits the rect the viewport grants it", () => {
       `No panel page at ${PANEL_PAGE_BUILD}: run pnpm --filter www build:fit.`
     ).toBe(true)
 
-    // The ids are typed against the fixtures, so a mismatch here means the
-    // build is older than the source - which would sweep yesterday's panels.
+    // `PanelId` typing catches a swept id with no fixture (and a missing one
+    // renders nothing below). It cannot catch the reverse: a fixture added to
+    // the page that neither PANELS nor PANEL_STAGES names, which would sit
+    // there unmeasured.
     await page.goto(`${site!.origin}${PANEL_PAGE_PATH}`)
-    const known = new Set(
-      await page.locator("[data-fit-panels] li").allTextContents()
-    )
-    const missing = [
+    const swept = new Set<string>([
       ...SWEPT.map((panel) => panel.panel),
       PLANTED_OVERFLOW,
-    ].filter((panel) => !known.has(panel))
+    ])
+    const unswept = (
+      await page.locator("[data-fit-panels] li").allTextContents()
+    ).filter((panel) => !swept.has(panel))
     expect(
-      missing,
-      `The built panel page does not know these panels; rebuild it ` +
-        `(pnpm --filter www build:fit): ${missing.join(", ")}`
+      unswept,
+      `These fixtures are on the panel page but nothing sweeps them; add each ` +
+        `to PANELS or PANEL_STAGES: ${unswept.join(", ")}`
     ).toEqual([])
   })
 
