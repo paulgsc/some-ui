@@ -195,7 +195,13 @@ export function step(
     case "tap":
     case "hidden": {
       const returning = event.type === "hidden"
-      if (state.kind === "open") return [{ ...state, returning }, []]
+      if (state.kind === "open") {
+        // Leaving with the dialog up turns it into the return; a tap can't
+        // reach it (the player is inert) and is ignored.
+        return returning && !state.returning
+          ? [{ ...state, returning }, []]
+          : [state, []]
+      }
       if (state.kind === "closed" || event.stop === null) return [state, []]
       const via: Stop["via"] = returning ? "left" : "tap"
       const stop: Stop = { ...event.stop, via }

@@ -99,6 +99,13 @@ describe("a stop's machine", () => {
     ).toEqual({ kind: "restart", scene: "reading" })
   })
 
+  it("calls it done where it stopped", () => {
+    expect(step(open(5 * 60_000), { type: "done", now })[0]).toMatchObject({
+      kind: "closed",
+      stop: { outcome: "done", elapsedMs: 738_000 },
+    })
+  })
+
   it("closes past the window on any event, even with the screen still up", () => {
     for (const type of ["tick", "visible", "pickUp"] as const) {
       const [next, effects] = step(open(PICK_UP_MS + 1), { type, now })

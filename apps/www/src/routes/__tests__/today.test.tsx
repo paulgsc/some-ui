@@ -143,6 +143,20 @@ describe("Home's study card", () => {
     expect(latestStop("Open")?.outcome).toBe("lapsed")
   })
 
+  it("asks about the session finished last, not the one listed first", () => {
+    seedStop(stopRecord(0, { sessionId: "Late", outcome: "done" }))
+    const early = {
+      ...finished("Early", 60_000),
+      completedAt: new Date(Date.now() - 3_600_000).toISOString(),
+    }
+    renderWith({
+      data: [early, finished("Late", 738_000, 1_200_000)],
+      isError: false,
+    })
+
+    expect(screen.getByText("Cut short at 12:18.")).toBeTruthy()
+  })
+
   it("asks once, optionally, why a finished session was cut short", () => {
     seedStop(stopRecord(0, { sessionId: "Korean", outcome: "done" }))
     renderWith({

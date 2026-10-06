@@ -56,7 +56,7 @@ export const WindDownNudge = ({
         />
       </svg>
       <span className="min-w-0 flex-1 text-sm font-semibold tabular-nums">
-        {formatTimecode(remaining)} left
+        {formatTimecode(Math.ceil(remaining / 1000) * 1000)} left
       </span>
       <Button
         size="sm"

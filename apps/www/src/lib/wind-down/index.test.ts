@@ -12,6 +12,7 @@ describe("wind-down", () => {
 
   it("winds down only inside the lead, and never with no session", () => {
     expect(isWindingDown(3 * MIN, 15 * MIN)).toBe(false)
+    expect(isWindingDown(2 * MIN, 15 * MIN)).toBe(true)
     expect(isWindingDown(0, 0)).toBe(false)
   })
 

@@ -76,7 +76,12 @@ function withProviders(node: ReactNode): JSX.Element {
 const mount = (): ReturnType<typeof render> =>
   render(
     withProviders(
-      <SessionChrome scenes={[]} onPlay={vi.fn()} onGotToGo={gotToGo} />
+      <SessionChrome
+        scenes={[]}
+        onPlay={vi.fn()}
+        onGotToGo={gotToGo}
+        stopped={false}
+      />
     )
   )
 

@@ -90,11 +90,13 @@ const StudyCard = ({ now }: { now: Date }): JSX.Element => {
   const openStop = openId === null ? null : latestStop(openId)
   const stopped = openStop?.outcome === "open" ? openStop : null
   const { mutate: updateSession } = useUpdateSession()
+  const minute = now.getTime()
   useEffect(() => {
-    const closing = openId === null ? null : closingStop(openId, now)
+    const closing =
+      openId === null ? null : closingStop(openId, new Date(minute))
     if (closing)
       updateSession({ id: closing.sessionId, patch: closedPatch(closing) })
-  }, [openId, now, updateSession])
+  }, [openId, minute, updateSession])
 
   const lastFinished = done
     ? status.today.reduce((a, b) =>

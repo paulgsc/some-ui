@@ -1,4 +1,5 @@
 import type { JSX } from "react"
+import { cn } from "@some-ui/core-utils"
 import { Button } from "@some-ui/shared"
 import type { LucideIcon } from "lucide-react"
 
@@ -26,7 +27,7 @@ export function ToggleChips<T extends string>({
         size="sm"
         variant={value === id ? "default" : "outline"}
         aria-pressed={value === id}
-        className="h-11 justify-start gap-2"
+        className={cn("h-11 gap-2", Icon && "justify-start")}
         onClick={() => onChange(value === id ? null : id)}
       >
         {Icon && <Icon aria-hidden className="size-4 shrink-0" />}

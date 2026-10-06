@@ -139,6 +139,7 @@ export const LivePlayer = ({ session }: LivePlayerProps): JSX.Element => {
             scenes={session.scenes}
             onPlay={() => void start()}
             onGotToGo={stops.tap}
+            stopped={stop.kind === "open"}
           />
         )}
         <SessionViewport session={session} />
