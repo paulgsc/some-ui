@@ -48,11 +48,3 @@ export const TextInput: Story = {
     },
   },
 }
-
-/** The speak button is disabled while audio is already playing. */
-export const Speaking: Story = {
-  args: {
-    ...MultipleChoice.args,
-    isSpeaking: true,
-  },
-}
