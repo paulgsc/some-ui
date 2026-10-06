@@ -14,9 +14,6 @@ on:
       wasm:
         description: "True if wasm crate sources changed"
         value: ${{ jobs.detect.outputs.wasm }}
-      storybook:
-        description: "True if storybook config or component stories changed"
-        value: ${{ jobs.detect.outputs.storybook }}
       ci:
         description: "True if CI config itself changed (force re-run all)"
         value: ${{ jobs.detect.outputs.ci }}
@@ -32,7 +29,6 @@ jobs:
       node: ${{ steps.filter.outputs.node }}
       extensions: ${{ steps.filter.outputs.extensions }}
       wasm: ${{ steps.filter.outputs.wasm }}
-      storybook: ${{ steps.filter.outputs.storybook }}
       ci: ${{ steps.filter.outputs.ci }}
     steps:
       - uses: actions/checkout@v7
@@ -72,10 +68,6 @@ jobs:
             wasm:
               - 'crates/**'
               - 'Cargo.lock'
-            storybook:
-              - 'packages/**/*.stories.{ts,tsx}'
-              - '.storybook/**'
-              - 'packages/**/*.{ts,tsx,css}'
             ci:
               - '.github/workflows/**'
               - '.github/actions/**'

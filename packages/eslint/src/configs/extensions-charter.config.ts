@@ -5,7 +5,6 @@ import {
   noZindexEscalation,
   requireNamedLifetime,
   requireScopedLifetime,
-  requireStoryTitlePrefix,
 } from "@eslint/rules/index.js"
 import { defineConfig } from "eslint/config"
 
@@ -27,7 +26,6 @@ export const extensionCharterPlugin = {
     "no-zindex-escalation": noZindexEscalation,
     "no-logic-layer-side-effects": noLogicLayerSideEffects,
     "no-raw-storage": noRawStorage,
-    "require-story-title-prefix": requireStoryTitlePrefix,
     "require-named-lifetime": requireNamedLifetime,
     "require-scoped-lifetime": requireScopedLifetime,
   },
@@ -36,8 +34,7 @@ export const extensionCharterPlugin = {
 /**
  * Base Charter config: registers the plugin and enables the rules that
  * have safe workspace-agnostic defaults (z-index, raw storage, and the
- * "Extensions/" story title prefix that .storybook/unocss-decorator.tsx
- * relies on to scope UnoCSS output to extension stories only).
+ * lifetime rules).
  *
  * The other two rules require per-workspace configuration:
  *   - no-unprefixed-namespace  → needs `prefix` option
@@ -67,18 +64,6 @@ const extensionsCharterConfig = defineConfig([
       "extension-charter/require-scoped-lifetime": [
         "warn",
         { lifecycleModule: "@some-extension/common's Disposables" },
-      ],
-    },
-  },
-  {
-    files: ["**/*.stories.tsx"],
-    plugins: {
-      "extension-charter": extensionCharterPlugin,
-    },
-    rules: {
-      "extension-charter/require-story-title-prefix": [
-        "error",
-        { prefix: "Extensions/" },
       ],
     },
   },

@@ -52,7 +52,7 @@ cut content off somewhere else.
 
    ```tsx
    <pre
-     data-scroll-intent="long-form"          // what the sweep reads
+     data-scroll-intent="long-form"          // what the Playwright specs read
      className={
        // scroll-intent: long-form — a stack trace is as long as it is
        "overflow-auto max-h-32 …"            // what the lint rule reads
@@ -115,51 +115,40 @@ The rule is still worth having; the lesson is where to compensate for it. A
 **layout primitive** that hands its children to a flex context defined
 elsewhere is exactly the shape the linter cannot check, so those want
 `min-w-0` / `min-h-0` by construction and a test that says so — the Playwright
-sweep below is the backstop, but only for components that ship a story, and a
-shell primitive rendered by a route does not.
+specs below are no backstop for it: they measure the panels a story mounts and
+two hand-mirrored fixtures, and a shell primitive rendered by a route is none
+of those.
 
 ### 2. `apps/www/tests/ui-fit` (Playwright, the actual gate)
 
-Renders **every story in the monorepo** at four viewport sizes and fails on
-anything that scrolls sideways or scrolls vertically without declaring intent.
+Three specs, all run in CI (section 3): `panel-fit` (2c) mounts real panels
+from a built Storybook, and `launcher-fit` (2b) and `exercise-shell-fit`
+measure static fixtures that mirror the shipped classes.
 
 ```bash
-CI=1 pnpm build-storybook -o storybook-static          # or STORYBOOK_WORKSPACE=<dir> to scope
+CI=1 pnpm build-storybook -o storybook-static
 STORYBOOK_STATIC=storybook-static pnpm --filter www test:e2e tests/ui-fit
 ```
 
-This is the layer worth trusting, for one reason: it needs no per-component
-work. Every component here already ships stories, so new UI is covered the day
-it lands, and _not_ shipping a story is the only way to avoid the check — which
-is a thing a reviewer can see.
+There was a fourth, a sweep of every story in the monorepo in an unbounded
+canvas. No workflow ever ran it, and it went with the stories it swept
+(#1687): a gate that claims coverage nothing enforces is worse than none.
 
-Two properties of the harness are load-bearing and were both wrong on the first
-attempt:
+Two properties of the Storybook harness are load-bearing and were both wrong
+on the first attempt:
 
 - **It serves over HTTP, not `file://`.** Chromium blocks cross-origin ES
   module loads from a file origin, so every story rendered an empty root and
   the sweep passed having measured nothing.
 - **It asserts each story actually mounted.** A story that renders nothing
   cannot be checked, and a harness that reports that as a pass is worse than
-  no harness. Known-broken stories go in `NON_RENDERING_STORIES` with the
-  reason, so the debt stays greppable. That list is currently empty, and
-  should be argued down rather than added to.
-
-That second guard immediately earned itself: it caught four leetype story
-groups (CodeDisplay, CodeInputCard, Leetype, LeetypeApp) rendering nothing at
-all in a built Storybook, dying on `TypeError: f is not a function`. The cause
-was `vite-plugin-top-level-await`, arriving via the root `vite.config.ts` that
-Storybook auto-loads: it rewrites every module downstream of a top-level await
-so its exports are assigned only after a `__tla` promise settles, then leaves
-consumer chunks importing those bindings without awaiting it. Storybook builds
-at `es2022`, which supports top-level await natively, so the plugin had nothing
-to add and is now filtered out in `.storybook/main.ts`.
+  no harness.
 
 If you add a sweep like this elsewhere, plant a deliberately-overflowing
 fixture and confirm it goes red before believing a green run.
 
-A third property, added later and for the same reason as the first two —
-because its absence had been load-bearing:
+A third, added later and for the same reason — because its absence had been
+load-bearing:
 
 - **One of the four viewports is a phone in landscape** (780×390). For a long
   time the matrix was three sizes, all of them portrait phone or
@@ -168,9 +157,7 @@ because its absence had been load-bearing:
   not the suite being lenient; it is the suite never having rendered the case.
   Adding the orientation immediately turned up two real failures in
   `panel-fit` (`QuizSummary`, advanced and failed, painting 6px past the rect
-  it was granted) that the other three sizes could not see, and in the
-  topik-scoped layer-2 sweep it catches two stories no other viewport catches
-  (`ChangeMaterialDialog` in its Loading and Fatal Error states).
+  it was granted) that the other three sizes could not see.
 
   Landscape earns a slot rather than being a fourth variation on the same
   shape, because it breaks the most assumptions at once. Every Tailwind width
@@ -187,25 +174,12 @@ because its absence had been load-bearing:
   question is answered by CSS at paint time and nothing re-renders when a
   phone is turned over.
 
-**Scoping the build is by directory name, not package name.**
-`STORYBOOK_WORKSPACE` is globbed straight into
-`../packages/ui/<value>/**/*.stories.*` (see `.storybook/main.ts`), so it
-wants `topik`, not `@some-ui/topik`. Getting this wrong does not fail — it
-builds successfully with only the always-included design-system stories, and
-every sweep then passes in about a second having measured almost nothing.
-Check the story count before believing a fast green run:
-
-```bash
-CI=1 STORYBOOK_WORKSPACE=topik pnpm build-storybook -o storybook-static
-python3 -c "import json; print(len(json.load(open('storybook-static/index.json'))['entries']))"
-```
-
 ### 2b. `apps/www/tests/ui-fit/launcher-fit.spec.ts` (Playwright, for `apps/www`)
 
-The sweep above globs `packages/**` and `extensions/**`, so it never sees
-`apps/www` — and the failure epic #852 was about needs no `overflow-auto` at
-all to happen. A grid that renders N cards inside a page that happens to
-scroll passes the lint, passes the sweep, and pushes everything below it off
+`panel-fit` only measures what a story mounts, so it never sees `apps/www` —
+and the failure epic #852 was about needs no `overflow-auto` at all to
+happen. A grid that renders N cards inside a page that happens to scroll
+passes the lint and pushes everything below it off
 the first screen anyway. The rule guards the symptom; nothing guarded the
 property.
 
@@ -213,7 +187,7 @@ This spec guards the property, for the two surfaces that render the activity
 catalogue:
 
 ```bash
-pnpm --filter www test:ui-fit          # runs both this and the sweep
+pnpm --filter www test:ui-fit          # runs all three ui-fit specs
 ```
 
 It asserts an invariant rather than a pixel budget: **the launcher's
@@ -244,8 +218,8 @@ you did is meant to be automatic.
 
 ### 2c. `apps/www/tests/ui-fit/panel-fit.spec.ts` (Playwright, the #899 gate)
 
-The sweep in 2 renders every story in a canvas of **unbounded height**, and
-that is a hole exactly the shape of #899. A component whose box comes from its
+Storybook renders a story in a canvas of **unbounded height**, and that is a
+hole exactly the shape of #899. A component whose box comes from its
 host has no host in a story: `h-full` resolves against `auto`, the content sets
 its own height, and "content fits its box" passes vacuously because there is no
 box. The TOPIK quiz summary sat at ~950px of content behind that pass for
@@ -280,7 +254,7 @@ only appears after ten answers; sweeping only the applet's initial state is how
 ### 2d. `apps/www/tests/composer` (Playwright, and the only one that runs the app)
 
 Every layer above measures something that is not the running application.
-Layer 2 sweeps a built Storybook, `launcher-fit` hand-mirrors the shipped
+`launcher-fit` hand-mirrors the shipped
 classes in static HTML rather than mounting the component, `panel-fit` mounts
 panels inside a synthetic rect, and `tests/csp` fulfils routes without a
 server. Each of those trades is defensible on its own. Together they left a
@@ -335,23 +309,12 @@ more that nothing else could see:
 
 ### 3. CI
 
-Layers 2, 2b and 2c ran nowhere until #899. `pnpm test:ui-fit` existed, this
-document called layer 2 "the actual gate", and no workflow invoked it — which
+The ui-fit specs ran nowhere until #899. `pnpm test:ui-fit` existed, this
+document called them "the actual gate", and no workflow invoked them — which
 is its own lesson about where guardrails actually live. `pr.yml` now builds
 Storybook and runs `panel-fit`, `launcher-fit` and `exercise-shell-fit`
 whenever a PR touches `packages/ui/**`, `packages/some-content-registry/**`,
 `packages/some-styles/**`, `apps/www/src/**` or `.storybook/**`.
-
-**Layer 2 is deliberately not in that list yet.** Run against a
-packages-scoped build today it reports **128 stories** — Sandlot, the
-scheduler's node popups, the chat surfaces, topik's change-material dialog,
-and a long tail of extension stories that render nothing at all. All of it
-predates #899. Making it required would fail every UI PR for work it did not
-do, and quietly pressure the next author to delete the check rather than the
-debt. The honest position is the one recorded here: the sweep is real, it is
-red, it runs locally, and the number above is the size of the backlog. Bring
-it down and wire it in — one package at a time is a perfectly good shape for
-that, since `STORYBOOK_WORKSPACE=<pkg>` scopes the build.
 
 ### 4. Review
 

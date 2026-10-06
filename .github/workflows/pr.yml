@@ -25,12 +25,12 @@ name: PR
 #
 # Convention — scoped test:e2e invocations (#1137):
 #   A package's `test:e2e` script (`playwright test` with no filter) runs
-#   that package's ENTIRE e2e suite, including any known-failing backlog
-#   (e.g. apps/www's tests/ui-fit/no-overflow.spec.ts, ~42 stories, #899).
-#   A step whose name and trigger paths imply a narrow scope — "E2E — CSP
-#   regression (www)" below, for example — must pass explicit spec paths
-#   to `test:e2e`, or it silently inherits that backlog and fails PRs for
-#   work they never touched. Any new `test:e2e` step in CI must do the same.
+#   that package's ENTIRE e2e suite, including specs that need a build or a
+#   server the step never prepared. A step whose name and trigger paths imply
+#   a narrow scope — "E2E — CSP regression (www)" below, for example — must
+#   pass explicit spec paths to `test:e2e`, or it inherits those and fails
+#   PRs for work they never touched. Any new `test:e2e` step in CI must do
+#   the same.
 on:
   pull_request:
     branches: [main]
@@ -285,15 +285,7 @@ jobs:
       # docs/ui-fit calls its Playwright layer "the actual gate", and until #899
       # nothing ran it: it lived behind `pnpm test:ui-fit`, which no workflow
       # invoked, so a panel could paint outside its rect for months with every
-      # check green. This wires the part of it that is green.
-      #
-      # `no-overflow.spec.ts` - the repo-wide story sweep - is deliberately not
-      # in this list. It reports 128 stories today (Sandlot, the scheduler's
-      # popups, the chat surfaces, topik's change-material dialog …), all of it
-      # predating #899, and turning that into a required check would fail every
-      # UI PR for work it did not do. It stays a local command until that
-      # backlog is worked down; the three specs here are the ones that pass and
-      # therefore the ones that can regress.
+      # check green. This runs all three of its specs.
       #
       # Scoped to PRs that touch UI, because a Storybook build is minutes, not
       # seconds. The registry is in the trigger set on purpose - binding a new
@@ -312,12 +304,12 @@ jobs:
             # A repo-wide Storybook build needs a repo-wide package build, so
             # this is NOT turbo-filtered the way the steps above are.
             #
-            # STORYBOOK_SCOPE=packages compiles every story under packages/**,
-            # and a story reaching a sibling workspace by package name resolves
-            # it through node_modules to that package's dist/. "Build (affected
-            # packages)" only covers the changed package and its dependents, so
-            # any workspace outside that closure has no dist and the build dies
-            # on "Rolldown failed to resolve", pointing at a file the PR never
+            # Storybook compiles every story under packages/**, and a story
+            # reaching a sibling workspace by package name resolves it through
+            # node_modules to that package's dist/. "Build (affected packages)"
+            # only covers the changed package and its dependents, so any
+            # workspace outside that closure has no dist and the build dies on
+            # "Rolldown failed to resolve", pointing at a file the PR never
             # touched.
             #
             # This stayed hidden for as long as every UI change dragged
@@ -328,7 +320,7 @@ jobs:
               --filter='./packages/**' \
               --concurrency=100%
 
-            nix develop .#ci --command env CI=1 STORYBOOK_SCOPE=packages \
+            nix develop .#ci --command env CI=1 \
               pnpm build-storybook -o storybook-static
             nix develop .#ci-playwright --command env STORYBOOK_STATIC=storybook-static \
               pnpm --filter www test:e2e \
@@ -345,15 +337,8 @@ jobs:
       # apply the way it does to the steps above. Regression coverage for
       # #660 (www's CSP header blocked WebAssembly instantiation).
       #
-      # The spec argument is load-bearing. `test:e2e` is `playwright test`
-      # with no filter, so without it this step ran the ENTIRE suite - which
-      # includes tests/ui-fit/no-overflow.spec.ts, the sweep the step above
-      # deliberately does not run because its backlog predates #899 and would
-      # "fail every UI PR for work it did not do". Any PR touching
-      # apps/www/Dockerfile therefore inherited ~42 unrelated story overflow
-      # failures from packages it never touched. Nothing is skipped by naming
-      # the spec: the three ui-fit specs that pass are still enforced above,
-      # and no-overflow stays a local command exactly as documented there.
+      # The spec argument is load-bearing: see "scoped test:e2e invocations"
+      # at the top of this file.
       - name: E2E — CSP regression (www)
         run: |
           files=$(git diff --name-only --diff-filter=ACMR HEAD^1 -- \

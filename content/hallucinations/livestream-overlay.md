@@ -1,7 +1,3 @@
-import { Meta } from "@storybook/addon-docs/blocks"
-
-<Meta title="Content/Hallucinations/LivestreamOverlay" />
-
 # Epistemic Overlay for Long-Form Livestreams
 
 ## A Design Specification for Scene-Isomorphic, Machine-Legible Stream Annotation

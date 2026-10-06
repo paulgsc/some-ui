@@ -1,12 +1,11 @@
 /**
- * Folds a downloaded `<fixture-id>.eyescore.json` (produced by Comfort Lab's
- * "Download annotation" button, #727) into the committed
- * `tests/e2e/fixtures/eye-scores.json` (#729) — so a reviewer never
+ * Folds a `<fixture-id>.eyescore.json` holding one eye score into the
+ * committed `tests/e2e/fixtures/eye-scores.json` (#729) — so a reviewer never
  * hand-edits the committed file directly.
  *
- * Validation already happened client-side: `EyeScorePanel` disables
- * "Download annotation" until `validateEyeScore` (#728) reports zero
- * issues. This script's only job is the merge — kept dependency-free (plain
+ * It does not validate: `validateEyeScore` (#728) is the scoring UI's job,
+ * and there is no scoring UI right now (README, "Comfort Lab"). This
+ * script's only job is the merge — kept dependency-free (plain
  * Node `fs`/`path`, no TypeScript import) so it needs nothing beyond what
  * ships with Node itself. `mergeEyeScores` is the pure part, exported for
  * `tests/e2e/specs/merge-eye-score.spec.ts` to check directly; `main()` is

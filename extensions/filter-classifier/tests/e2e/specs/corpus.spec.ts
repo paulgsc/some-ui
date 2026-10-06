@@ -11,7 +11,6 @@
 
 import { expect, test } from "@playwright/test"
 
-import * as comfortLabStories from "../../../src/comfort-lab/ComfortFixture.stories"
 import { CORPUS } from "../fixtures/corpus"
 import { loadEyeScores } from "../fixtures/eye-scores-store"
 
@@ -81,35 +80,7 @@ test.describe("corpus coverage", () => {
     expect(sunFixture?.expectComfortable).toBe(false)
   })
 
-  // #731 (corpus expansion workflow): a fixture added to CORPUS without its
-  // Comfort Lab story is a plain authoring omission, not something that
-  // needs a human's time — CSF3 requires a literal named export per story
-  // (ComfortFixture.stories.tsx's own header comment explains why this
-  // can't be generated), so this is a hard failure, not a skip. Converts
-  // "sun-glare-badges" -> "SunGlareBadges" to match that file's own naming.
-  function storyExportName(fixtureId: string): string {
-    return fixtureId
-      .split("-")
-      .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
-      .join("")
-  }
-
-  test("every CORPUS fixture has a matching Comfort Lab story export (#727)", () => {
-    for (const fixture of CORPUS) {
-      const exportName = storyExportName(fixture.id)
-      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-      const story = (comfortLabStories as Record<string, unknown>)[exportName]
-      expect(
-        story,
-        `"${fixture.id}" has no exported story "${exportName}" in ` +
-          `src/comfort-lab/ComfortFixture.stories.tsx — add one alongside the ` +
-          `CORPUS entry, not as a follow-up`
-      ).toBeDefined()
-    }
-  })
-
-  // Unlike the story-coverage check above, an unscored fixture isn't a bug
-  // to fix right now — it requires an actual human to look at it (#726's
+  // An unscored fixture isn't a bug to fix right now — it requires an actual human to look at it (#726's
   // whole point). One skip per unscored fixture, each naming exactly which
   // one, so it stays visible in the report rather than silently absent —
   // the same "not a silent skip" bar #730's own empty-eye-scores.json
@@ -118,10 +89,10 @@ test.describe("corpus coverage", () => {
   for (const fixture of CORPUS) {
     if (fixture.id in eyeScores) continue
 
-    test(`"${fixture.id}" has not been scored in Comfort Lab yet`, () => {
+    test(`"${fixture.id}" has not been scored yet`, () => {
       test.skip(
         true,
-        `Score "${fixture.id}" in Comfort Lab (#727) and run ` +
+        `Score "${fixture.id}" (README, "Comfort Lab") and run ` +
           "`pnpm eye-score:merge` (#729) to activate its oracle regression check (#730)."
       )
     })

@@ -76,7 +76,7 @@ function formatTime(seconds: number): string {
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
-export type OverlaySong = {
+type OverlaySong = {
   title: string
   artist: string
   videoId: string

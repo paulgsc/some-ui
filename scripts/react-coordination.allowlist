@@ -31,7 +31,6 @@
 1 packages/ui/leetype/src/components/leetype/index.tsx
 2 packages/ui/leetype/src/components/round/generate-round/index.tsx
 1 packages/ui/leetype/src/components/round/round-session/index.tsx
-1 packages/ui/leetype/src/hooks/leetype/use-preview-game/index.ts
 1 packages/ui/leetype/src/hooks/leetype/use-typing-game-wasm/index.ts
 6 packages/ui/lesson-crm/src/components/lesson-crm/index.tsx
 1 packages/ui/lesson-crm/src/components/prompt-card/index.tsx

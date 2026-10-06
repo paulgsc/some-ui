@@ -288,8 +288,7 @@ pnpm --filter @some-extension/drama test    # vitest
 ```
 
 Load `dist/manifest.json` from `about:debugging#/runtime/this-firefox` →
-**Load Temporary Add-on**. Stories live next to each component and run in the
-repo-root Storybook (`STORYBOOK_WORKSPACE=some-drama`).
+**Load Temporary Add-on**.
 
 ## Storage (`browser.storage.local`)
 

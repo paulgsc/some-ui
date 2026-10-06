@@ -71,7 +71,7 @@ const DEFAULT_MOMENTUM: DramaEntryOpinionated["momentum"] = {
   direction: "steady",
 }
 
-export function defaultDraft(prefill: Partial<DramaEntry>): JournalDraft {
+function defaultDraft(prefill: Partial<DramaEntry>): JournalDraft {
   return {
     title: prefill.title ?? "",
     episode: prefill.episode ? Number(prefill.episode) || 0 : 0,

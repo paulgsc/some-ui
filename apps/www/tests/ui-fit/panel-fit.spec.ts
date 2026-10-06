@@ -3,8 +3,8 @@
  *
  * ## The gap this closes
  *
- * The Storybook sweep next door renders every story in a canvas of unbounded
- * height. That makes it blind to the whole class of failure #899 reported: a
+ * Storybook renders every story in a canvas of unbounded height. That makes
+ * a plain story render blind to the whole class of failure #899 reported: a
  * component whose box comes from its *host* has no host in a story, so
  * `h-full` resolves against `auto`, the content sets its own height, and
  * "content fits its box" is vacuously true because there is no box. The same
@@ -42,8 +42,7 @@
  *
  * Skips itself with a clear message when no build is pointed at, and fails
  * rather than passes when a story renders nothing - a sweep that measures an
- * empty root and reports success is worse than no sweep. Both properties are
- * the ones the sweep next door learned the hard way.
+ * empty root and reports success is worse than no sweep.
  */
 
 import { expect, test, type Page } from "@playwright/test"
@@ -80,8 +79,7 @@ const PANELS: Record<RegistryKey, PanelCoverage> = {
     debt: "the hex grid's last row clears the rect by ~10px on a short leaf; the grid measures its own cell size and needs to measure the rect too",
   },
   leetype: {
-    story: "ui-input-components-typing-leetype--default",
-    debt: "the story mounts the applet in an `h-screen` page shell, and the code pane's long lines clear the rect sideways",
+    unswept: "no story mounts the applet",
   },
   topik: { story: "ui-chat-components-topik-koreanstudypage--default" },
 }
@@ -124,10 +122,10 @@ const GRANT_RECT = `
 /**
  * Hand the rect down the decorator chain to the panel.
  *
- * Storybook's own wrappers (the theme decorator, the UnoCSS decorator) size to
- * content, and a percentage height against an `auto` parent computes to `auto`
+ * Storybook's own wrappers (the theme, provider and toaster decorators) size
+ * to content, and a percentage height against an `auto` parent computes to `auto`
  * - so a panel rooted at `h-full` would quietly go back to sizing itself and
- * the sweep would measure the same unbounded canvas the sweep next door does.
+ * the sweep would measure the same unbounded canvas a plain story render does.
  * Walking the single-child chain and making each link definite is the harness
  * standing in for `SidebarInset → SessionViewport → RenderSolved`'s leaf, which
  * is a definite chain all the way down in the app.
@@ -317,7 +315,7 @@ const SWEPT: ReadonlyArray<SweptPanel> = [
   ...PANEL_STAGES.map((story) => ({ label: story, story, debt: null })),
 ]
 
-const STORY_IDS = new Set(loadStoryIds().map((entry) => entry.id))
+const STORY_IDS = loadStoryIds()
 
 /** Mount one panel in a granted rect and measure what leaves it. */
 async function measure(
@@ -374,25 +372,14 @@ test.describe("every panel fits the rect the viewport grants it", () => {
   )
 
   test("every swept panel names a story that exists", () => {
-    // A workspace-scoped build (STORYBOOK_WORKSPACE=<pkg>) legitimately holds
-    // only one package's stories, so absence alone proves nothing. What does
-    // prove something: the component is in this build and the *named story* of
-    // it is not - that is a rename, and a renamed story stops being swept.
-    const components = new Set(
-      [...STORY_IDS].map((id) => id.slice(0, id.lastIndexOf("--")))
-    )
-    const missing = SWEPT.filter(
-      (panel) =>
-        !STORY_IDS.has(panel.story) &&
-        components.has(panel.story.slice(0, panel.story.lastIndexOf("--")))
-    )
+    // Asserted rather than looked up: a renamed or mistyped story is skipped by
+    // every test below, so it would stop being swept with the run still green.
+    const missing = SWEPT.filter((panel) => !STORY_IDS.has(panel.story))
     expect(
       missing,
-      `These panels name a story id the built Storybook does not have — a ` +
-        `renamed story silently stops being swept, so the id is asserted ` +
-        `rather than looked up:\n${missing
-          .map((panel) => `  ${panel.label} → ${panel.story}`)
-          .join("\n")}`
+      `These panels name a story id the built Storybook does not have:\n${missing
+        .map((panel) => `  ${panel.label} → ${panel.story}`)
+        .join("\n")}`
     ).toEqual([])
   })
 
