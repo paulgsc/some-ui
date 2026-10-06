@@ -273,9 +273,11 @@ pnpm eye-score:merge ~/sun-glare-badges.eyescore.json
 `scripts/merge-eye-score.mjs` overwrites just that one fixture's entry and
 re-sorts keys, so a re-score produces a one-entry diff, never a full-file
 rewrite or a duplicate/orphaned key. It's deliberately dependency-free
-(plain Node `fs`/`path`, no TypeScript import), so it does not validate:
-the scoring UI did that with `validateEyeScore`, and a score written by
-hand should be checked against `validateEyeScore`'s rules by its author.
+(plain Node `fs`/`path`, no TypeScript import), so it does not validate.
+`corpus.spec.ts`'s "every committed eye score is valid for its fixture"
+does, over the whole committed map: a known fixture id, every score in
+0–100, `overall` equal to `computeOverall` of the four, a reviewer, and
+notes wherever `validateEyeScore` requires them.
 
 `eye-scores.json` holds only real human scores. Populating it is the point
 of scoring fixtures yourself, not something to fake to make the file look

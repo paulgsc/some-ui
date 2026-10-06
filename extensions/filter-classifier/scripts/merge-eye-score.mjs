@@ -3,9 +3,10 @@
  * committed `tests/e2e/fixtures/eye-scores.json` (#729) — so a reviewer never
  * hand-edits the committed file directly.
  *
- * It does not validate: `validateEyeScore` (#728) is the scoring UI's job,
- * and there is no scoring UI right now (README, "Comfort Lab"). This
- * script's only job is the merge — kept dependency-free (plain
+ * It does not validate: it cannot load the corpus a score is checked
+ * against. `corpus.spec.ts`'s "every committed eye score is valid for its
+ * fixture" checks the whole committed map instead. This script's only job is
+ * the merge — kept dependency-free (plain
  * Node `fs`/`path`, no TypeScript import) so it needs nothing beyond what
  * ships with Node itself. `mergeEyeScores` is the pure part, exported for
  * `tests/e2e/specs/merge-eye-score.spec.ts` to check directly; `main()` is

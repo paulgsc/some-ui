@@ -12,6 +12,7 @@
 import { expect, test } from "@playwright/test"
 
 import { CORPUS } from "../fixtures/corpus"
+import { computeOverall, validateEyeScore } from "../fixtures/eye-score"
 import { loadEyeScores } from "../fixtures/eye-scores-store"
 
 const HARNESS_BUNDLE = "tests/e2e/harness/dist/entry.js"
@@ -80,11 +81,46 @@ test.describe("corpus coverage", () => {
     expect(sunFixture?.expectComfortable).toBe(false)
   })
 
-  // An unscored fixture isn't a bug to fix right now — it requires an actual human to look at it (#726's
-  // whole point). One skip per unscored fixture, each naming exactly which
-  // one, so it stays visible in the report rather than silently absent —
-  // the same "not a silent skip" bar #730's own empty-eye-scores.json
-  // placeholder already meets, just per-fixture instead of suite-wide.
+  // Scores are written by hand and `pnpm eye-score:merge` does not validate
+  // them, so the committed map is checked here instead. A malformed entry
+  // would otherwise reach the oracle (#730) and pass it: an `overall` that is
+  // not a number reads as borderline, and borderline agrees with anything.
+  test("every committed eye score is valid for its fixture (#728)", () => {
+    const problems: Array<string> = []
+
+    for (const [fixtureId, score] of Object.entries(loadEyeScores())) {
+      const fixture = CORPUS.find((entry) => entry.id === fixtureId)
+      if (fixture === undefined) {
+        problems.push(`${fixtureId}: no CORPUS fixture has this id`)
+        continue
+      }
+
+      let issues: Array<string>
+      try {
+        issues = [...validateEyeScore(fixture, score)]
+      } catch (error) {
+        // A missing `reviewer` or `notes` throws inside the validator.
+        issues = [`malformed entry: ${String(error)}`]
+      }
+      const derived = computeOverall(score)
+      if (score.overall !== derived) {
+        issues.push(
+          `overall must be the rounded mean of the four sub-scores (${derived})`
+        )
+      }
+
+      for (const issue of issues) problems.push(`${fixtureId}: ${issue}`)
+    }
+
+    expect(problems, problems.join("\n")).toEqual([])
+  })
+
+  // An unscored fixture isn't a bug to fix right now — it requires an actual
+  // human to look at it (#726's whole point). One skip per unscored fixture,
+  // each naming exactly which one, so it stays visible in the report rather
+  // than silently absent — the same "not a silent skip" bar #730's own
+  // empty-eye-scores.json placeholder already meets, just per-fixture
+  // instead of suite-wide.
   const eyeScores = loadEyeScores()
   for (const fixture of CORPUS) {
     if (fixture.id in eyeScores) continue
