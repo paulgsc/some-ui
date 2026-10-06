@@ -35,10 +35,3 @@ export function sourceFromText(
 export async function sourceFromFile(file: File): Promise<LessonSource> {
   return { file, text: await file.text(), origin: "uploaded" }
 }
-
-/** "12.4 KB" - the one size a person needs to recognise their paste. */
-export function formatSize(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
-}

@@ -9,6 +9,25 @@ export const SOUNDBITE_LIMIT = 6
 /** A soundbite stops itself, and is kept, at one minute. */
 export const SOUNDBITE_MAX_MS = 60_000
 
+/** The recorder's target bitrate: Opus is clear for a voice at 32 kbps. */
+export const SOUNDBITE_BITS_PER_SECOND = 32_000
+
+/**
+ * The most audio the kept soundbites may hold: six full minutes at the target
+ * bitrate. The store refuses a save past it (`fitsMaxBytes`), so an app
+ * budgeting its storage can keep exactly this free for them.
+ */
+export const SOUNDBITES_MAX_BYTES =
+  SOUNDBITE_LIMIT * (SOUNDBITE_MAX_MS / 1000) * (SOUNDBITE_BITS_PER_SECOND / 8)
+
+/** Whether `size` more bytes beside those `staying` keep within the cap. */
+export function fitsMaxBytes(
+  staying: ReadonlyArray<number>,
+  size: number
+): boolean {
+  return staying.reduce((sum, each) => sum + each, size) <= SOUNDBITES_MAX_BYTES
+}
+
 /** Shorter than this is a stray double-tap, not something said. */
 export const SOUNDBITE_MIN_MS = 1_000
 

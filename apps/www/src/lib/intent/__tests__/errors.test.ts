@@ -59,6 +59,23 @@ describe("mapFileHostError", () => {
     expect(result.summary).toMatch(/sign in/i)
   })
 
+  it("says a full phone refused a session save, and only for sessions", () => {
+    const refused = mapFileHostError(
+      new FileHostResponseError(400, "/sessions", "max_record_limit_exceeded")
+    )
+    expect(refused.retryable).toBe(true)
+    expect(refused.summary).toMatch(/phone is full/i)
+
+    const listing = mapFileHostError(
+      new FileHostResponseError(
+        400,
+        "/curriculum/manifest",
+        "max_record_limit_exceeded"
+      )
+    )
+    expect(listing.summary).not.toMatch(/phone/i)
+  })
+
   it("falls back to intent-kit's generic normalizer for anything else, rather than throwing", () => {
     const inputs: ReadonlyArray<unknown> = [
       new Error("some unrelated failure"),

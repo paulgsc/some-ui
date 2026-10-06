@@ -45,7 +45,7 @@ export class FileHostNotConfiguredError extends Error {
 export class FileHostResponseError extends Error {
   constructor(
     readonly status: number,
-    route: string,
+    readonly route: string,
     /** `file_host`'s own error code, e.g. `not_found`; see its `error.rs`. */
     readonly code: string | null
   ) {

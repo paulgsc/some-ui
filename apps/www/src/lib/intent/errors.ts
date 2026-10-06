@@ -75,6 +75,19 @@ function fromResponseError(error: FileHostResponseError): IntentError {
       cause: error,
     }
   }
+  // The phone's backend: full; retryable once room is made (`device-backend/storage`).
+  if (
+    error.code === "max_record_limit_exceeded" &&
+    error.route.startsWith("/sessions")
+  ) {
+    return {
+      kind: "rejected",
+      retryable: true,
+      summary:
+        "This phone is full, so this wasn't saved. Make room, then try again.",
+      cause: error,
+    }
+  }
   return {
     kind: "rejected",
     retryable: isRetryableStatus(error.status),

@@ -9,6 +9,7 @@
  * an older server.
  */
 import type { SqlDriver } from "@/lib/device-backend/sql"
+import type { StorageBudget } from "@/lib/device-backend/storage"
 
 type DeviceRequest = {
   method: string
@@ -23,6 +24,8 @@ export type DeviceContext = {
   db: SqlDriver
   /** Wall-clock milliseconds; a seam so tests can pin time. */
   now: () => number
+  /** What the app may store in all (`device-backend/storage`). */
+  budget: StorageBudget
 }
 
 type DeviceHandler = (

@@ -12,7 +12,10 @@ export type SqlRow = Readonly<Record<string, SqlValue | undefined>>
 export type SqlDriver = {
   /** Runs one or more `;`-separated statements that take no parameters. */
   exec: (sql: string) => Promise<void>
-  /** One parameterised statement; `changes` is the rows it touched. */
+  /**
+   * One parameterised statement; `changes` is the rows it touched, cascades
+   * included on the Capacitor bridge (a `total_changes()` delta).
+   */
   run: (
     sql: string,
     params?: ReadonlyArray<SqlValue>

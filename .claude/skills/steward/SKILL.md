@@ -24,6 +24,29 @@ re-review only that delta. Request `@codex review` per push only while the user 
 Codex: `chatgpt-codex-connector` reviews on open, ready-for-review or an explicit mention,
 **not on later pushes, a rebase included**, so a head nobody requested it for stays uncovered.
 
+## A line-justification pass before green
+
+Correctness reviews do not ask whether a line should exist. Before treating a PR as ready to
+merge, spawn one independent agent (no part in writing the change; give it the diff and the
+intent, not your reasoning) whose only job is to argue against the added lines, in three
+categories:
+
+- **Duplication:** code that re-implements something the repo already has (search
+  `packages/ui/shared`, `packages/utils`, sibling workspaces, test-support), or two places in
+  the diff doing one job. Dedupe it: reuse or generalize the existing code, per CLAUDE.md
+  "Deleting is in scope".
+- **Comments that add nothing:** restating the code, narrating history ("now", "before",
+  "a review found"), or repeating a rationale stated elsewhere. Delete or shorten them.
+- **Tests something else already guarantees:** a property the type system, the schema
+  (CHECK, keys, foreign keys), an existing test, a lint or build guard, or the data
+  structure itself already enforces. Delete them.
+
+Apply what it finds before the final review round, so the head that review covers is the
+trimmed one. Record the pass in a PR comment (head SHA, findings, what was cut). Run it once
+per PR on the head you mean to merge, and again only if a later push adds substantial new
+code. It came from #1692, where a draft carried a second copy of an existing policy and
+about a quarter of its production lines were comments.
+
 ## Treat every bot finding as a bug report until traced and disproven
 
 Across this org's relay history the false-positive rate on Codex findings has been at or near

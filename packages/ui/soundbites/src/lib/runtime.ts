@@ -22,6 +22,7 @@ import { initialState, step } from "./machine"
 import type { Recording, StartRecording } from "./recorder"
 import { RecordingError } from "./recorder"
 import type { SoundbiteStore } from "./store"
+import { SoundbitesFullError } from "./store"
 import type { SoundbiteSource } from "./types"
 
 /** One playback of a recording's audio. */
@@ -166,7 +167,11 @@ export function createSoundbites(
         const { bite } = effect
         ports.store.save(bite, effect.audio, effect.replace).then(
           () => dispatch({ type: "saved", bite }),
-          () => dispatch({ type: "saveFailed" })
+          (error: unknown) =>
+            dispatch({
+              type: "saveFailed",
+              full: error instanceof SoundbitesFullError,
+            })
         )
         return
       }
