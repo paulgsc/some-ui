@@ -12,7 +12,7 @@ vi.mock("sonner", () => ({
   toast: { info: vi.fn(), warning: vi.fn(), dismiss: vi.fn() },
 }))
 
-vi.mock("some-ui-utils", () => ({
+vi.mock("@some-ui/react-hooks", () => ({
   useResizeObserver: (): { width: number; height: number } => ({
     width: 400,
     height: 400,

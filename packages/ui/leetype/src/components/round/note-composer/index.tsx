@@ -16,9 +16,9 @@ import {
   isListening,
 } from "@leetype/lib/leetype/notes/composer"
 import type { Dictation } from "@leetype/lib/leetype/notes/dictation"
+import { cn } from "@some-ui/core-utils"
 import { Button, Textarea } from "@some-ui/shared"
 import { Mic, NotebookPen, Square } from "lucide-react"
-import { cn } from "some-ui-utils"
 
 /**
  * Who turns speech into text, said before the learner first speaks (canon

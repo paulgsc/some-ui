@@ -19,11 +19,11 @@
  */
 
 import type { JSX, PropsWithChildren, ReactNode } from "react"
+import { cn } from "@some-ui/core-utils"
 import type { Intent } from "@some-ui/intent-kit"
 import { matchIntent } from "@some-ui/intent-kit"
 import type { ButtonProps } from "@some-ui/shared"
 import { Button } from "@some-ui/shared"
-import { cn } from "some-ui-utils"
 
 import { IntentFailure } from "@/lib/intent/render"
 

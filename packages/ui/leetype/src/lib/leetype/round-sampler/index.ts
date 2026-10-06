@@ -55,7 +55,7 @@ import {
   semanticDistance,
 } from "@leetype/lib/leetype/rewrite"
 import type { Round } from "@leetype/types/authored-round"
-import { assertNever } from "some-ui-utils"
+import { assertNever } from "@some-ui/core-utils"
 
 /** Every round's base weight: the part no response can remove. */
 export const WEIGHT_FLOOR = 1

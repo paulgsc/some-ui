@@ -34,6 +34,7 @@
  *   page, once the thirty minutes have passed.
  */
 
+import { assertNever } from "@some-ui/core-utils"
 import type { Urgency } from "@some-ui/speech"
 import type { ReadAloudLevel } from "@topik/lib/topik/read-aloud/content"
 import type { PaceBook, PaceEntry } from "@topik/lib/topik/read-aloud/records"
@@ -54,7 +55,6 @@ import {
   SUMMARY_MS,
   wordTurnMs,
 } from "@topik/lib/topik/read-aloud/timing"
-import { assertNever } from "some-ui-utils"
 
 // TYPES
 

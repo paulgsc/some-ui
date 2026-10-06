@@ -1,5 +1,5 @@
 import type { FC } from "react"
-import { cn } from "some-ui-utils"
+import { cn } from "@some-ui/core-utils"
 
 type RoundFeedbackProps = {
   /** μ(d)'s register statement: canon §7's general claim. */

@@ -5,7 +5,7 @@ import type {
   RunLine,
 } from "@leetype/lib/leetype/round-runs"
 import { runLinesOf } from "@leetype/lib/leetype/round-runs"
-import { cn } from "some-ui-utils"
+import { cn } from "@some-ui/core-utils"
 
 const BOUNDS_LABEL: Record<RunBounds, string> = {
   before: "Old bounds",

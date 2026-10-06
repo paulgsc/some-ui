@@ -6,10 +6,10 @@ import {
   ACTIVITY_IDS,
   pickRecommended,
 } from "@some-ui/activity-catalog"
+import { cn } from "@some-ui/core-utils"
 import { Button, Card, CardContent } from "@some-ui/shared"
 import { Link, useNavigate } from "@tanstack/react-router"
 import { ArrowRight, SearchX } from "lucide-react"
-import { cn } from "some-ui-utils"
 
 import { useProfile, useSessions } from "@/lib/tenant"
 import { useRecommendedCount } from "@/hooks/use-recommended-count"

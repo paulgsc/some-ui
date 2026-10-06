@@ -7,21 +7,23 @@ import type {
 } from "@lesson-crm/lib/client"
 import type { CrmNotice, Reporting } from "@lesson-crm/lib/operation"
 import { toIntentError } from "@some-ui/intent-kit"
+import type * as ReactHooks from "@some-ui/react-hooks"
 import { act, fireEvent, render, screen, within } from "@testing-library/react"
-import type * as SomeUiUtils from "some-ui-utils"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
 // jsdom lays nothing out, so a measured page would settle on one row. This
 // file is about the CRM's flow, not about fitting - `useFittedPage` has its
 // own tests, and the ui-fit sweep measures real boxes - so every page here
 // holds everything.
-vi.mock("some-ui-utils", async () => {
-  const actual = await vi.importActual<typeof SomeUiUtils>("some-ui-utils")
+vi.mock("@some-ui/react-hooks", async () => {
+  const actual = await vi.importActual<typeof ReactHooks>(
+    "@some-ui/react-hooks"
+  )
   return {
     ...actual,
     useFittedPage: <T,>(
       items: ReadonlyArray<T>
-    ): ReturnType<typeof SomeUiUtils.useFittedPage<T>> => ({
+    ): ReturnType<typeof ReactHooks.useFittedPage<T>> => ({
       viewportRef: { current: null },
       contentRef: { current: null },
       pageItems: [...items],

@@ -20,8 +20,7 @@ import {
 import type { AphStore } from "@aph/lib/store"
 import { aphStore } from "@aph/lib/store"
 import { useAph } from "@aph/lib/use-aph"
-import { addDays, dayOf, formatDay } from "@some-ui/core-utils"
-import { cn } from "some-ui-utils"
+import { addDays, cn, dayOf, formatDay } from "@some-ui/core-utils"
 
 type AphTrendProps = {
   /** The host's clock (`useMinuteClock` in www), which moves while the screen stays open. */

@@ -449,7 +449,7 @@ jobs:
             'apps/www/src/components/composer/**' \
             'apps/www/src/routes/_dashboard.tsx' \
             'apps/www/src/routes/_dashboard/sessions/new.tsx' \
-            'packages/utils/src/lib/hooks/use-fitted-page/**' \
+            'packages/react-hooks/src/lib/use-fitted-page/**' \
             'apps/www/tests/composer/**' \
             'apps/www/playwright.config.ts' || true)
           if [ -n "$files" ]; then

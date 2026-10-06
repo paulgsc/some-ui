@@ -14,14 +14,14 @@
  * applet measures its own box rather than the viewport, since a host may
  * mount it in a pane.
  *
- * The numbers are the workspace's (`isHandheldBox`, some-ui-utils), not this
+ * The numbers are the workspace's (`isHandheldBox`, @some-ui/react-hooks), not this
  * applet's own: the host's `useIsMobile` applies the same rule to the window,
  * and two pairs of constants would disagree on a landscape phone.
  */
 
 import type { RefObject } from "react"
 import { useLayoutEffect, useState } from "react"
-import { HANDHELD_MAX_HEIGHT, isHandheldBox } from "some-ui-utils"
+import { HANDHELD_MAX_HEIGHT, isHandheldBox } from "@some-ui/react-hooks"
 
 export type Surface = "desktop" | "handheld"
 export type SurfacePreference = Surface | "auto"

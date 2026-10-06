@@ -75,8 +75,7 @@ export function useKoreanStudyPageVM(): KoreanStudyPageVM {
 
   // componentId is an opaque, per-instance key threaded through to the
   // session/TTS pipeline (see use-session.ts, tts-effect-handler.ts) - it's
-  // never parsed or persisted, so React's own useId() (already the pattern
-  // some-ui-utils's use-speech-queue.ts uses for the same purpose) is a
+  // never parsed or persisted, so React's own useId() is a
   // better fit than a hand-rolled UUID: it's stable across re-renders
   // without touching a ref during render.
   const componentId = useId()

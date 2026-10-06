@@ -12,6 +12,7 @@
 
 import type { JSX } from "react"
 import { useMemo, useRef } from "react"
+import { cn } from "@some-ui/core-utils"
 import type { ShelfPort } from "@some-ui/shared"
 import { useSpeaker } from "@some-ui/speech"
 import type { Appearance } from "@some-ui/styles/theme"
@@ -36,7 +37,6 @@ import {
   isShort,
   useElementBox,
 } from "@topik/lib/topik/adapter/hooks/use-surface"
-import { cn } from "some-ui-utils"
 
 /** Where the manifest lives when a host doesn't say otherwise. */
 const DEFAULT_TOPIK_MANIFEST_URL = "/topiks/manifest.json"

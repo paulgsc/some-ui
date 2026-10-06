@@ -21,6 +21,7 @@
  */
 import type { JSX } from "react"
 import { useEffect, useState, useSyncExternalStore } from "react"
+import { cn } from "@some-ui/core-utils"
 import { Button } from "@some-ui/shared"
 import {
   describeContext,
@@ -40,7 +41,6 @@ import type { SoundbitesPorts } from "@soundbites/lib/runtime"
 import { createSoundbites } from "@soundbites/lib/runtime"
 import type { Soundbite, SoundbiteSource } from "@soundbites/lib/types"
 import { Mic, Pause, Play, Square, Trash2 } from "lucide-react"
-import { cn } from "some-ui-utils"
 
 export type SoundbitesProps = {
   /** Where the app stands. Read once, as each soundbite is kept. */

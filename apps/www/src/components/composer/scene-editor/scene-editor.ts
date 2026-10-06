@@ -1,5 +1,5 @@
+import { assertNever } from "@some-ui/core-utils"
 import type { SceneConfig } from "@some-ui/types"
-import { assertNever } from "some-ui-utils"
 
 import type { SceneSelection } from "@/components/composer/scene-editor/scene-selector"
 

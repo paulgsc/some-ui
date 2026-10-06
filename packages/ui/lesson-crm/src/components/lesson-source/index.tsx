@@ -3,9 +3,9 @@ import { useState } from "react"
 import type { Draft } from "@lesson-crm/lib/draft"
 import type { LessonSource } from "@lesson-crm/lib/source"
 import { formatSize } from "@lesson-crm/lib/source"
+import { cn } from "@some-ui/core-utils"
 import { Button } from "@some-ui/shared"
 import { ClipboardPaste, FileJson, Upload, X } from "lucide-react"
-import { cn } from "some-ui-utils"
 
 type LessonSourcePaneProps = {
   source: LessonSource | null

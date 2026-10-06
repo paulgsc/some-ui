@@ -24,12 +24,13 @@
     "react-dom": "^19.0.0"
   },
   "dependencies": {
+    "@some-ui/core-utils": "workspace:*",
     "@some-ui/intent-kit": "workspace:*",
     "@some-ui/leetype": "workspace:*",
+    "@some-ui/react-hooks": "workspace:*",
     "@some-ui/shared": "workspace:*",
     "@some-ui/topik": "workspace:*",
-    "lucide-react": "catalog:",
-    "some-ui-utils": "workspace:*"
+    "lucide-react": "catalog:"
   },
   "devDependencies": {
     "@some-ui/tsconfig": "workspace:*",

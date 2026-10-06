@@ -1,8 +1,9 @@
 import type { FC, ReactNode } from "react"
 import { useMemo } from "react"
 import type { ReadBlock } from "@leetype/types/exercise"
+import { assertNever, cn } from "@some-ui/core-utils"
+import { useFittedPage } from "@some-ui/react-hooks"
 import { PageControls } from "@some-ui/shared"
-import { assertNever, cn, useFittedPage } from "some-ui-utils"
 
 import type { EvidenceRow } from "./rows"
 import { evidenceRowsOf } from "./rows"

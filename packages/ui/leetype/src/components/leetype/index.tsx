@@ -20,10 +20,11 @@ import type {
   CompletedSessionStats,
   TextGradient,
 } from "@leetype/types/leetype"
+import { cn } from "@some-ui/core-utils"
+import { useIsMobile } from "@some-ui/react-hooks"
 import type { ShelfPort } from "@some-ui/shared"
 import type { Appearance } from "@some-ui/styles/theme"
 import { appearanceClassName } from "@some-ui/styles/theme"
-import { cn, useIsMobile } from "some-ui-utils"
 
 /**
  * Which probe the player gets. `"auto"` (default, what hosts pass) reads the
@@ -118,7 +119,7 @@ type LeetypeProps = {
  *
  * # The breakpoint is `useIsMobile`'s
  *
- * 768px, from `some-ui-utils`, so the workspace has one answer to "is this a
+ * 768px, from `@some-ui/react-hooks`, so the workspace has one answer to "is this a
  * phone". It reads the media query via `useSyncExternalStore`, so the first
  * render already picks the right surface instead of starting a wasm load
  * for what turns out to be a reading session.

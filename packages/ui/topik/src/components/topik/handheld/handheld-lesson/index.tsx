@@ -13,6 +13,7 @@
 
 import type { JSX } from "react"
 import { useState } from "react"
+import { cn } from "@some-ui/core-utils"
 import { Button, KeepOnShelf, KeptShelf } from "@some-ui/shared"
 import { GenerateLesson } from "@topik/components/topik/handheld/generate-lesson"
 import { LineCard } from "@topik/components/topik/handheld/line-card"
@@ -32,7 +33,6 @@ import {
 } from "@topik/lib/topik/adapter/shelf"
 import { TOPIK_LEVELS } from "@topik/lib/topik/generation"
 import { ChevronLeft, Loader2 } from "lucide-react"
-import { cn } from "some-ui-utils"
 
 type HandheldLessonProps = UseHandheldLessonOptions & {
   /** Landscape phone: two columns, compact chrome. */

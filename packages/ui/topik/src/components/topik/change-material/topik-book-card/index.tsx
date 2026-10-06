@@ -1,8 +1,8 @@
 import type { JSX } from "react"
+import { cn } from "@some-ui/core-utils"
 import { Badge } from "@some-ui/shared"
 import type { TopikMetadata } from "@topik/lib/topik"
 import { Layers, Target } from "lucide-react"
-import { cn } from "some-ui-utils"
 
 // Spine accent colors — muted, library-like palette
 const SPINE_COLORS = [

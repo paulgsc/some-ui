@@ -11,8 +11,8 @@
 
 import type { JSX } from "react"
 import type { ActivityDefinition } from "@some-ui/activity-catalog"
+import { cn } from "@some-ui/core-utils"
 import { Keyboard, Pointer } from "lucide-react"
-import { cn } from "some-ui-utils"
 
 export type ActivityInputProps = {
   activity: ActivityDefinition

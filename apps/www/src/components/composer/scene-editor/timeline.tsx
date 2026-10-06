@@ -2,6 +2,7 @@ import type { FC, JSX } from "react"
 import { useMemo } from "react"
 import { useSortable } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
+import { cn } from "@some-ui/core-utils"
 import {
   Badge,
   Card,
@@ -12,13 +13,13 @@ import {
 } from "@some-ui/shared"
 import type { SceneConfig } from "@some-ui/types"
 import { AlertCircle, Edit2, Layers, Layout, Trash2 } from "lucide-react"
+
 import {
-  cn,
   selectCurrentTime,
   selectTotalDuration,
   useOrchestratorStore,
   useSceneLifetimes,
-} from "some-ui-utils"
+} from "@/lib/orchestrator"
 
 type OrchestratorTimelineProps = {
   scenes: Array<SceneConfig>

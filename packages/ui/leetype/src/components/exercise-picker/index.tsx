@@ -1,5 +1,5 @@
 import type { FC } from "react"
-import { useIsMobile } from "some-ui-utils"
+import { useIsMobile } from "@some-ui/react-hooks"
 
 import { ExercisePickerDesktop } from "./desktop"
 import { ExercisePickerMobile } from "./mobile"

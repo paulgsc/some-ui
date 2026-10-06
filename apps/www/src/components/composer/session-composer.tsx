@@ -11,6 +11,7 @@ import type {
   ActivityConfigValues,
   ActivityId,
 } from "@some-ui/activity-catalog"
+import { cn } from "@some-ui/core-utils"
 import type { Intent } from "@some-ui/intent-kit"
 import {
   failed,
@@ -19,6 +20,7 @@ import {
   succeeded,
   working,
 } from "@some-ui/intent-kit"
+import { useIsMobile, useShowOnScrollUp } from "@some-ui/react-hooks"
 import { BottomTabBar, Button } from "@some-ui/shared"
 import type { SceneConfig } from "@some-ui/types"
 import { useNavigate } from "@tanstack/react-router"
@@ -29,7 +31,6 @@ import {
   ListOrdered,
   SlidersHorizontal,
 } from "lucide-react"
-import { cn, useIsMobile, useShowOnScrollUp } from "some-ui-utils"
 import { toast } from "sonner"
 
 import {

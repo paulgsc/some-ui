@@ -55,10 +55,10 @@
     "@radix-ui/react-tabs": "catalog:",
     "@radix-ui/react-tooltip": "catalog:",
     "@some-ui/core-utils": "workspace:*",
+    "@some-ui/react-hooks": "workspace:*",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "catalog:",
-    "some-ui-utils": "workspace:*",
     "tailwind-merge": "^3.6.0"
   },
   "devDependencies": {

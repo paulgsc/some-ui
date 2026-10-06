@@ -1,5 +1,5 @@
 import type { JSX } from "react"
-import { cn } from "some-ui-utils"
+import { cn } from "@some-ui/core-utils"
 
 /**
  * The Some UI mark: a seven-cell honeycomb, one core cell ringed by six.

@@ -1,4 +1,5 @@
 import type { JSX } from "react"
+import { cn } from "@some-ui/core-utils"
 import {
   Badge,
   Button,
@@ -24,7 +25,6 @@ import {
   Library as LibraryIcon,
   Save,
 } from "lucide-react"
-import { cn } from "some-ui-utils"
 
 import { LibraryTemplatePicker } from "@/components/composer/scene-editor/library-picker"
 import type {

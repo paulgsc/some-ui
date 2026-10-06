@@ -5,6 +5,7 @@ import type {
   ActivityConfigValues,
   ActivityId,
 } from "@some-ui/activity-catalog"
+import { useFittedPage } from "@some-ui/react-hooks"
 import {
   Card,
   CardContent,
@@ -19,7 +20,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@some-ui/shared"
-import { useFittedPage } from "some-ui-utils"
 
 import { ActivityIcon } from "@/components/activity-icon"
 import { ActivityInputNote } from "@/components/activity/activity-input"

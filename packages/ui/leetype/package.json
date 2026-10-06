@@ -30,13 +30,13 @@
   "dependencies": {
     "@some-ui/core-utils": "workspace:*",
     "@some-ui/leetype-wasm": "^0.0.14",
+    "@some-ui/react-hooks": "workspace:*",
     "@some-ui/shared": "workspace:*",
     "@some-ui/styles": "workspace:*",
     "@some-ui/wasm-loader": "workspace:*",
     "lucide-react": "catalog:",
     "prettier": "3.4.2",
     "prismjs": "^1.30.0",
-    "some-ui-utils": "workspace:*",
     "zod": "catalog:"
   },
   "devDependencies": {

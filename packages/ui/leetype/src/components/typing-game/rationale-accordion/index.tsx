@@ -2,13 +2,13 @@ import type { FC } from "react"
 import { useEffect, useId, useRef, useState } from "react"
 import { narrow } from "@leetype/lib/leetype/rationale-match"
 import type { RationaleChoice } from "@leetype/types/exercise"
+import { cn } from "@some-ui/core-utils"
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
 } from "@some-ui/shared"
-import { cn } from "some-ui-utils"
 
 type RationaleAccordionProps = {
   /**

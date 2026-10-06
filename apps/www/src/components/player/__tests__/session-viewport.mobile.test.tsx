@@ -9,19 +9,30 @@
 import type { JSX } from "react"
 import { withQueryClient } from "@/test-support/query-client"
 import { sessionRecord } from "@/test-support/session-record"
+import type * as ReactHooks from "@some-ui/react-hooks"
 import { cleanup, render, screen } from "@testing-library/react"
-import type * as SomeUiUtils from "some-ui-utils"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
+import type * as Orchestrator from "@/lib/orchestrator"
 import { SessionViewport } from "@/components/player/session-viewport"
 
 let mobile = true
 
-vi.mock("some-ui-utils", async () => {
-  const actual = await vi.importActual<typeof SomeUiUtils>("some-ui-utils")
+vi.mock("@some-ui/react-hooks", async () => {
+  const actual = await vi.importActual<typeof ReactHooks>(
+    "@some-ui/react-hooks"
+  )
   return {
     ...actual,
     useIsMobile: (): boolean => mobile,
+  }
+})
+
+vi.mock("@/lib/orchestrator", async () => {
+  const actual =
+    await vi.importActual<typeof Orchestrator>("@/lib/orchestrator")
+  return {
+    ...actual,
     useSceneLifetimes: (): Array<unknown> => [
       {
         kind: {

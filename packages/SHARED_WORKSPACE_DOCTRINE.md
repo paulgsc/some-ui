@@ -14,6 +14,16 @@ package. This doctrine exists because that bundling has a real, ongoing
 cost, and every epic in milestone 14 (M14) reads this document before
 deciding what moves, what stays, and what goes back where it came from.
 
+> **`some-ui-utils` dissolved (2026-10-06).** The bundle this document was
+> written against is gone. Its exports went to `@some-ui/core-utils` (pure
+> helpers, `assertNever`), a new `@some-ui/react-hooks` (the hooks with ≥2
+> consumers), and back to their single consumers (§2): `apps/www`, the
+> content registry and `packages/ui/wireframes`. Two HTTP adapters with only
+> www as a consumer went to `@some-ui/fetch-kit` instead, because LA1
+> (`docs/learner-data-authority.md`) bars `fetch` in `apps/www/src`. The
+> table is in [`UTILS_CENSUS.md`](./UTILS_CENSUS.md). The doctrine itself is
+> unchanged and applies to those workspaces and any future one.
+
 ---
 
 ## 0. Sharing is not free — the blast-radius argument

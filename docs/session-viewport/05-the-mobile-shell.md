@@ -113,6 +113,6 @@ Measured in Chromium at 390×800 on the real route, not computed from the CSS.
   note is about giving it the room to be, not about making it so. LeetType
   answers that question for itself (`docs/leetype/README.md`, LTY-MOBILE);
   the others have not been asked yet.
-- **No breakpoint of its own.** `useIsMobile`'s 768px, from `some-ui-utils`,
+- **No breakpoint of its own.** `useIsMobile`'s 768px, from `@some-ui/react-hooks`,
   reused rather than re-picked. The workspace has exactly one answer to "is
   this a phone" and a second would drift from it.

@@ -13,7 +13,6 @@
     "target": "ES2022",
     "paths": {
       "@shared/*": ["./packages/ui/shared/src/*"],
-      "@utils/*": ["./packages/utils/src/*"],
       "@leetype/*": ["./packages/ui/leetype/src/*"],
       "@topik/*": ["./packages/ui/topik/src/*"],
       "@honeycomb/*": ["./packages/ui/honeycomb/src/*"],
@@ -27,7 +26,7 @@
       "@suspender/*": ["./extensions/suspender-ledger/src/*"],
       "@some-ui/content/*": ["./packages/some-content/src/*"],
       "@wasm-loader/*": ["./packages/wasm-loader/src/*"],
-      "@ws/*": ["./packages/ws/src/*"],
+      "@react-hooks/*": ["./packages/react-hooks/src/*"],
       "@speech/*": ["./packages/speech/src/*"],
       "@activity-catalog/*": ["./packages/activity-catalog/src/*"]
     }

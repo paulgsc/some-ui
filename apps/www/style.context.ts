@@ -8,9 +8,9 @@ import type { StyleContext } from "@some-ui/styles/styles-build"
  * static-build drift in #636).
  *
  * This is www's dependency closure that renders UI. Pure build/util packages
- * (vite-config, tsconfig, wasm-loader, fetch-kit, ws, types, *-utils) author no
- * class candidates, so they're omitted; add one here if it ever ships a
- * component.
+ * (vite-config, tsconfig, wasm-loader, fetch-kit, react-hooks, types, *-utils)
+ * author no class candidates, so they're omitted; add one here if it ever
+ * ships a component.
  *
  * Omitting a package that *does* render is not a missing-stylesheet failure —
  * it degrades far more quietly than that. Tailwind generates a utility if any

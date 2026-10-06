@@ -7,9 +7,9 @@ import {
   SLOT_WRONG,
   VISIBILITY_MASKED,
 } from "@leetype/types/leetype"
+import { cn } from "@some-ui/core-utils"
 import { ChevronDown } from "lucide-react"
 import Prism from "prismjs"
-import { cn } from "some-ui-utils"
 
 import "prismjs/themes/prism-tomorrow.css"
 import "prismjs/components/prism-typescript"

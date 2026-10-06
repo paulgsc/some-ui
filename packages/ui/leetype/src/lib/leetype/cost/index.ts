@@ -10,7 +10,7 @@
  * Engine-free: no wasm loader or hook.
  */
 
-import { assertNever } from "some-ui-utils"
+import { assertNever } from "@some-ui/core-utils"
 
 /** An input dimension's identifier — `n`, `m`, whatever a round's author names (Def. 1.2). */
 export type Dimension = string

@@ -13,7 +13,7 @@
 
 import type { JSX } from "react"
 import { findActivity } from "@some-ui/activity-catalog"
-import { cn } from "some-ui-utils"
+import { cn } from "@some-ui/core-utils"
 
 import type { SessionRecord } from "@/lib/tenant"
 import { AudioActivityNotice } from "@/components/audio/audio-activity-notice"

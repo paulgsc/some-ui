@@ -37,8 +37,6 @@ Positive examples already in the repo, all of which predate this document:
 - `packages/ui/wireframes/src/lib/` owns the layout-tree engine (`LayoutNode`,
   `applyIntent`), pure and property-tested; `apps/www`'s
   `use-live-layout-editor.ts` imports the type and one function.
-- `packages/utils`'s `orchestrator-store.ts` owns the FSM;
-  `apps/www/src/providers/orchestrator.tsx` is a 19-line wrapper.
 - `packages/ui/honeycomb` is a thin React shell over the separately-published
   `@some-ui/hangul-game-core` wasm crate.
 
@@ -99,9 +97,10 @@ Three edges moved with it, each one an instance of a rule above:
 - `AudioChannelId` moved _into_ the catalogue, because activities are where
   channels are declared and `lib/audio-preferences` is where they are
   consumed. Two modules cannot both own a vocabulary.
-- `useEditModeHotkey` went to `packages/utils` instead of a new package: 42
-  lines of `useState` plus a window listener is a hook, not a concern, and
-  test 3 says so.
+- `useEditModeHotkey` went to the shared utils workspace instead of a new
+  package: 42 lines of `useState` plus a window listener is a hook, not a
+  concern, and test 3 says so. With one consumer, it has since moved back to
+  `apps/www/src/hooks`.
 
 ## Inside a React package: the component is not the coordinator
 

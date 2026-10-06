@@ -7,6 +7,7 @@ import type {
   RoundChange,
   RoundCrmClient,
 } from "@lesson-crm/lib/round-client"
+import { cn } from "@some-ui/core-utils"
 import { matchIntent } from "@some-ui/intent-kit"
 import {
   buildRoundPrompt,
@@ -14,6 +15,7 @@ import {
   intakeRound,
   serializeRound,
 } from "@some-ui/leetype"
+import { useFittedPage, useIsMobile } from "@some-ui/react-hooks"
 import { Badge, Button, PageControls, Textarea } from "@some-ui/shared"
 import {
   Archive,
@@ -24,7 +26,6 @@ import {
   RotateCcw,
   Save,
 } from "lucide-react"
-import { cn, useFittedPage, useIsMobile } from "some-ui-utils"
 
 type RoundCrmProps = {
   client: RoundCrmClient

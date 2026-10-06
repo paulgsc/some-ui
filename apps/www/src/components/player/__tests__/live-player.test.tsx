@@ -15,16 +15,17 @@ import {
   turnViewport,
 } from "@/test-support/viewport"
 import { cleanup, fireEvent, render, screen } from "@testing-library/react"
-import type * as SomeUiUtils from "some-ui-utils"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
+import type * as Orchestrator from "@/lib/orchestrator"
 import type { SessionRecord } from "@/lib/tenant"
 import { LivePlayer } from "@/components/player/live-player"
 
 const lifecycle = { mounts: 0, unmounts: 0 }
 
-vi.mock("some-ui-utils", async () => {
-  const actual = await vi.importActual<typeof SomeUiUtils>("some-ui-utils")
+vi.mock("@/lib/orchestrator", async () => {
+  const actual =
+    await vi.importActual<typeof Orchestrator>("@/lib/orchestrator")
   const store = {
     configure: (): Promise<void> => Promise.resolve(),
     start: (): void => {},

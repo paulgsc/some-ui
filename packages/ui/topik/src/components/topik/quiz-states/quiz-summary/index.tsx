@@ -1,3 +1,4 @@
+import { cn } from "@some-ui/core-utils"
 import { Button, Card, TALL_WINDOW_ONLY } from "@some-ui/shared"
 import {
   CheckCircle2,
@@ -7,7 +8,6 @@ import {
   Trophy,
   XCircle,
 } from "lucide-react"
-import { cn } from "some-ui-utils"
 
 type QuizSummaryProps = {
   score: number

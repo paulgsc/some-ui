@@ -3,8 +3,7 @@
  *
  * The minimal reducer store the speech queue runs on.
  *
- * Local rather than imported from `some-ui-utils`, which depends on this
- * package for its speech shim: importing it back would be a cycle.
+ * Local to this package rather than imported from a shared workspace.
  *
  * Both choices are about teardown: `dispatch` applies synchronously, so a
  * torn-down session cannot still be applying actions dispatched before it

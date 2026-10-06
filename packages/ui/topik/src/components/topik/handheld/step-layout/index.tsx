@@ -1,5 +1,5 @@
 import type { JSX, ReactNode } from "react"
-import { cn } from "some-ui-utils"
+import { cn } from "@some-ui/core-utils"
 
 type StepLayoutProps = {
   /** What the step is about: the line, the question, the recap. */

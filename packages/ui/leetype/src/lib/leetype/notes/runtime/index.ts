@@ -22,7 +22,7 @@ import {
 import type { Dictation, Listening } from "@leetype/lib/leetype/notes/dictation"
 import { dictationFailureOf } from "@leetype/lib/leetype/notes/dictation"
 import type { NoteStore } from "@leetype/lib/leetype/notes/store"
-import { assertNever } from "some-ui-utils"
+import { assertNever } from "@some-ui/core-utils"
 
 export type ComposerPorts = {
   store: NoteStore

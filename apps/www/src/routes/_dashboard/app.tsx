@@ -1,4 +1,5 @@
 import type { JSX } from "react"
+import { formatRelativeTime } from "@some-ui/core-utils"
 import type { IntentError } from "@some-ui/intent-kit"
 import {
   Avatar,
@@ -11,7 +12,6 @@ import {
 } from "@some-ui/shared"
 import { createFileRoute, Link } from "@tanstack/react-router"
 import { ArrowRight, Play, Sparkles } from "lucide-react"
-import { formatRelativeTime } from "some-ui-utils"
 
 import { IntentFailure } from "@/lib/intent/render"
 import type { QueryOutcome } from "@/lib/query-outcome"

@@ -24,10 +24,10 @@ import type {
   TextGradient,
 } from "@leetype/types/leetype"
 import { VISIBILITY_REVEALED } from "@leetype/types/leetype"
+import { cn } from "@some-ui/core-utils"
 import { Button } from "@some-ui/shared"
 import type { Appearance } from "@some-ui/styles/theme"
 import { appearanceClassName } from "@some-ui/styles/theme"
-import { cn } from "some-ui-utils"
 
 /**
  * A baseline sample from one finished step: its mean inter-keystroke

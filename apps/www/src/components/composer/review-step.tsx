@@ -9,6 +9,8 @@ import type {
   ActivityConfigValues,
   ActivityId,
 } from "@some-ui/activity-catalog"
+import { cn } from "@some-ui/core-utils"
+import { useFittedPage } from "@some-ui/react-hooks"
 import {
   Badge,
   Card,
@@ -24,7 +26,6 @@ import {
   TALL_WINDOW_ONLY,
 } from "@some-ui/shared"
 import type { SceneConfig } from "@some-ui/types"
-import { cn, useFittedPage } from "some-ui-utils"
 
 import { formatDurationMs } from "@/lib/format"
 import { ActivityIcon } from "@/components/activity-icon"

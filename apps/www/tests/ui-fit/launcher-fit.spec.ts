@@ -187,7 +187,7 @@ type PickerVariant = "catalogue" | "paged"
  * The composer's step 1 at catalogue size `size`.
  *
  * `paged` mirrors the bounded box the fitted pager measures. The pager's own
- * arithmetic is unit-tested in `packages/utils`; what is checked here is that
+ * arithmetic is unit-tested in `packages/react-hooks`; what is checked here is that
  * the box it is measured against is genuinely bounded, so paging has
  * something to converge on.
  */

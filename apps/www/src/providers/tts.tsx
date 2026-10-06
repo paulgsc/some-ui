@@ -1,10 +1,10 @@
 import type { JSX, ReactNode } from "react"
+import { cn } from "@some-ui/core-utils"
 import type { SpeechNotice } from "@some-ui/speech"
 import { SpeechProvider } from "@some-ui/speech"
 import { httpSpeech } from "@some-ui/speech/http"
 import { nativeSpeech } from "@some-ui/speech/native"
 import { webSpeech } from "@some-ui/speech/web-speech"
-import { cn } from "some-ui-utils"
 import { toast } from "sonner"
 
 import { useAudioPreferences } from "@/lib/audio-preferences/use-audio-preferences"

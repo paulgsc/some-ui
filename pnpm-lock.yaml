@@ -106,6 +106,9 @@ importers:
       '@playwright/test':
         specifier: 1.62.1
         version: 1.62.1
+      '@some-ui/core-utils':
+        specifier: workspace:*
+        version: link:packages/core-utils
       '@some-ui/eslint-kit':
         specifier: workspace:*
         version: link:packages/eslint
@@ -208,9 +211,6 @@ importers:
       rimraf:
         specifier: 6.0.1
         version: 6.0.1
-      some-ui-utils:
-        specifier: workspace:*
-        version: link:packages/utils
       storybook:
         specifier: 10.6.0
         version: 10.6.0(@types/react@19.2.17)(prettier@3.4.2)(react@19.0.0)
@@ -268,9 +268,6 @@ importers:
       vitest:
         specifier: ^5.0.2
         version: 5.0.2(@opentelemetry/api@1.9.1)(@types/node@26.0.1)(happy-dom@20.10.6)(jsdom@26.0.0(supports-color@10.2.2))(vite@8.3.1(@types/node@26.0.1)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0))
-      zod:
-        specifier: 'catalog:'
-        version: 4.6.5
 
   apps/mobile:
     dependencies:
@@ -350,6 +347,9 @@ importers:
       '@some-ui/content-registry':
         specifier: workspace:*
         version: link:../../packages/some-content-registry
+      '@some-ui/core-utils':
+        specifier: workspace:*
+        version: link:../../packages/core-utils
       '@some-ui/fetch-kit':
         specifier: workspace:*
         version: link:../../packages/fetch-kit
@@ -368,6 +368,9 @@ importers:
       '@some-ui/lesson-crm':
         specifier: workspace:*
         version: link:../../packages/ui/lesson-crm
+      '@some-ui/react-hooks':
+        specifier: workspace:*
+        version: link:../../packages/react-hooks
       '@some-ui/resume':
         specifier: workspace:*
         version: link:../../packages/ui/resume
@@ -416,12 +419,12 @@ importers:
       react-dom:
         specifier: ^19.0.0
         version: 19.0.0(react@19.0.0)
-      some-ui-utils:
-        specifier: workspace:*
-        version: link:../../packages/utils
       sonner:
         specifier: ^2.0.7
         version: 2.0.7(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
+      usehooks-ts:
+        specifier: 3.1.1
+        version: 3.1.1(react@19.0.0)
       web-vitals:
         specifier: ^6.2.2
         version: 6.2.2
@@ -431,6 +434,9 @@ importers:
       zod:
         specifier: 'catalog:'
         version: 4.6.5
+      zustand:
+        specifier: ^5.0.9
+        version: 5.0.14(@types/react@19.2.17)(react@19.0.0)(use-sync-external-store@1.6.0(react@19.0.0))
     devDependencies:
       '@playwright/test':
         specifier: 1.62.1
@@ -839,6 +845,28 @@ importers:
         specifier: workspace:*
         version: link:../some-vite-config
 
+  packages/react-hooks:
+    dependencies:
+      react:
+        specifier: ^19.0.0
+        version: 19.0.0
+    devDependencies:
+      '@some-ui/tsconfig':
+        specifier: workspace:*
+        version: link:../tsconfig
+      '@some-ui/vite-config':
+        specifier: workspace:*
+        version: link:../some-vite-config
+      '@testing-library/react':
+        specifier: ^16.3.0
+        version: 16.3.2(@testing-library/dom@10.4.1)(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
+      fast-check:
+        specifier: ^4.10.2
+        version: 4.10.2
+      jsdom:
+        specifier: 26.0.0
+        version: 26.0.0(supports-color@10.2.2)
+
   packages/server-routes:
     devDependencies:
       '@some-ui/tsconfig':
@@ -871,9 +899,6 @@ importers:
       react-dom:
         specifier: ^19.0.0
         version: 19.0.0(react@19.0.0)
-      some-ui-utils:
-        specifier: workspace:*
-        version: link:../utils
       vite:
         specifier: ^6.0.7
         version: 6.4.3(@types/node@26.0.1)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0)
@@ -1019,9 +1044,6 @@ importers:
       react-dom:
         specifier: ^19.0.0
         version: 19.0.0(react@19.0.0)
-      some-ui-utils:
-        specifier: workspace:*
-        version: link:../../utils
     devDependencies:
       '@some-ui/tsconfig':
         specifier: workspace:*
@@ -1069,9 +1091,15 @@ importers:
 
   packages/ui/honeycomb:
     dependencies:
+      '@some-ui/core-utils':
+        specifier: workspace:*
+        version: link:../../core-utils
       '@some-ui/hangul-game-core':
         specifier: 0.0.5
         version: 0.0.5
+      '@some-ui/react-hooks':
+        specifier: workspace:*
+        version: link:../../react-hooks
       '@some-ui/some-hexagon':
         specifier: 0.0.5
         version: 0.0.5
@@ -1090,9 +1118,6 @@ importers:
       react-dom:
         specifier: ^19.0.0
         version: 19.0.0(react@19.0.0)
-      some-ui-utils:
-        specifier: workspace:*
-        version: link:../../utils
       sonner:
         specifier: ^2.0.7
         version: 2.0.7(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
@@ -1115,6 +1140,9 @@ importers:
       '@some-ui/leetype-wasm':
         specifier: ^0.0.14
         version: 0.0.14
+      '@some-ui/react-hooks':
+        specifier: workspace:*
+        version: link:../../react-hooks
       '@some-ui/shared':
         specifier: workspace:*
         version: link:../shared
@@ -1139,9 +1167,6 @@ importers:
       react-dom:
         specifier: ^19.0.0
         version: 19.0.0(react@19.0.0)
-      some-ui-utils:
-        specifier: workspace:*
-        version: link:../../utils
       zod:
         specifier: 'catalog:'
         version: 4.6.5
@@ -1164,12 +1189,18 @@ importers:
 
   packages/ui/lesson-crm:
     dependencies:
+      '@some-ui/core-utils':
+        specifier: workspace:*
+        version: link:../../core-utils
       '@some-ui/intent-kit':
         specifier: workspace:*
         version: link:../../intent-kit
       '@some-ui/leetype':
         specifier: workspace:*
         version: link:../leetype
+      '@some-ui/react-hooks':
+        specifier: workspace:*
+        version: link:../../react-hooks
       '@some-ui/shared':
         specifier: workspace:*
         version: link:../shared
@@ -1185,9 +1216,6 @@ importers:
       react-dom:
         specifier: ^19.0.0
         version: 19.0.0(react@19.0.0)
-      some-ui-utils:
-        specifier: workspace:*
-        version: link:../../utils
     devDependencies:
       '@some-ui/tsconfig':
         specifier: workspace:*
@@ -1271,6 +1299,9 @@ importers:
       '@some-ui/core-utils':
         specifier: workspace:*
         version: link:../../core-utils
+      '@some-ui/react-hooks':
+        specifier: workspace:*
+        version: link:../../react-hooks
       class-variance-authority:
         specifier: ^0.7.1
         version: 0.7.1
@@ -1280,9 +1311,6 @@ importers:
       lucide-react:
         specifier: 'catalog:'
         version: 0.562.0(react@19.0.0)
-      some-ui-utils:
-        specifier: workspace:*
-        version: link:../../utils
       tailwind-merge:
         specifier: ^3.6.0
         version: 3.6.0
@@ -1302,6 +1330,9 @@ importers:
 
   packages/ui/soundbites:
     dependencies:
+      '@some-ui/core-utils':
+        specifier: workspace:*
+        version: link:../../core-utils
       '@some-ui/shared':
         specifier: workspace:*
         version: link:../shared
@@ -1314,9 +1345,6 @@ importers:
       react-dom:
         specifier: ^19.0.0
         version: 19.0.0(react@19.0.0)
-      some-ui-utils:
-        specifier: workspace:*
-        version: link:../../utils
     devDependencies:
       '@some-ui/tsconfig':
         specifier: workspace:*
@@ -1330,6 +1358,12 @@ importers:
 
   packages/ui/topik:
     dependencies:
+      '@some-ui/core-utils':
+        specifier: workspace:*
+        version: link:../../core-utils
+      '@some-ui/react-hooks':
+        specifier: workspace:*
+        version: link:../../react-hooks
       '@some-ui/shared':
         specifier: workspace:*
         version: link:../shared
@@ -1351,9 +1385,6 @@ importers:
       react-dom:
         specifier: ^19.0.0
         version: 19.0.0(react@19.0.0)
-      some-ui-utils:
-        specifier: workspace:*
-        version: link:../../utils
       zod:
         specifier: 'catalog:'
         version: 4.6.5
@@ -1370,6 +1401,9 @@ importers:
 
   packages/ui/wireframes:
     dependencies:
+      '@some-ui/core-utils':
+        specifier: workspace:*
+        version: link:../../core-utils
       '@some-ui/shared':
         specifier: workspace:*
         version: link:../shared
@@ -1385,9 +1419,6 @@ importers:
       react-dom:
         specifier: ^19.0.0
         version: 19.0.0(react@19.0.0)
-      some-ui-utils:
-        specifier: workspace:*
-        version: link:../../utils
       sonner:
         specifier: ^2.0.7
         version: 2.0.7(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
@@ -1408,73 +1439,11 @@ importers:
         specifier: ^4.10.2
         version: 4.10.2
 
-  packages/utils:
-    dependencies:
-      '@some-ui/core-utils':
-        specifier: workspace:*
-        version: link:../core-utils
-      '@some-ui/types':
-        specifier: workspace:*
-        version: link:../types
-      '@some-ui/ws':
-        specifier: workspace:*
-        version: link:../ws
-      react:
-        specifier: ^19.0.0
-        version: 19.0.0
-      react-dom:
-        specifier: ^19.0.0
-        version: 19.0.0(react@19.0.0)
-      usehooks-ts:
-        specifier: 3.1.1
-        version: 3.1.1(react@19.0.0)
-      zod:
-        specifier: 'catalog:'
-        version: 4.6.5
-      zustand:
-        specifier: ^5.0.9
-        version: 5.0.14(@types/react@19.2.17)(react@19.0.0)(use-sync-external-store@1.6.0(react@19.0.0))
-    devDependencies:
-      '@some-ui/tsconfig':
-        specifier: workspace:*
-        version: link:../tsconfig
-      '@testing-library/react':
-        specifier: ^16.3.0
-        version: 16.3.2(@testing-library/dom@10.4.1)(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
-      fast-check:
-        specifier: ^4.10.2
-        version: 4.10.2
-      jsdom:
-        specifier: 26.0.0
-        version: 26.0.0(supports-color@10.2.2)
-
   packages/wasm-loader:
     devDependencies:
       '@some-ui/tsconfig':
         specifier: workspace:*
         version: link:../tsconfig
-
-  packages/ws:
-    dependencies:
-      react:
-        specifier: ^19.0.0
-        version: 19.0.0
-      react-dom:
-        specifier: ^19.0.0
-        version: 19.0.0(react@19.0.0)
-      zod:
-        specifier: 'catalog:'
-        version: 4.6.5
-    devDependencies:
-      '@some-ui/tsconfig':
-        specifier: workspace:*
-        version: link:../tsconfig
-      '@some-ui/vite-config':
-        specifier: workspace:*
-        version: link:../some-vite-config
-      fast-check:
-        specifier: ^4.10.2
-        version: 4.10.2
 
 packages:
 

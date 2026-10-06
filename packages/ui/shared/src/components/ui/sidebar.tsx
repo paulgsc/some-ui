@@ -9,10 +9,10 @@ import {
 } from "react"
 import type { ComponentProps, ComponentRef } from "react"
 import { Slot } from "@radix-ui/react-slot"
+import { useIsMobile } from "@some-ui/react-hooks"
 import type { VariantProps } from "class-variance-authority"
 import { cva } from "class-variance-authority"
 import { PanelLeft } from "lucide-react"
-import { useIsMobile } from "some-ui-utils"
 
 import { cn } from "../../lib/utils"
 import type { CSSVarProperties } from "../../types"

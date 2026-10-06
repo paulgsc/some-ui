@@ -16,7 +16,7 @@ import {
   getCellCountForHexagonalGridRadius,
   getHexagonalGridRadiusForCellCount,
 } from "@honeycomb/utils/hexagon-math"
-import { useResizeObserver } from "some-ui-utils"
+import { useResizeObserver } from "@some-ui/react-hooks"
 import { toast } from "sonner"
 
 export type HexGridProps<T = unknown> = {

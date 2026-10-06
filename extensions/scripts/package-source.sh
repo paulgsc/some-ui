@@ -35,14 +35,15 @@ git -C "$REPO_ROOT" archive --format=zip HEAD \
   -o "$ARCHIVE"
 
 # Root package.json also lists devDependencies used by repo-wide tooling that
-# isn't part of this minimal bundle (e.g. some-ui-utils, needed by Storybook's
-# root-level decorators, whose source lives under packages/utils/ — not
-# archived here). `git archive` above deliberately omits package.json so we
-# can splice in a pruned copy instead of the real one: keeping those entries
+# isn't part of this minimal bundle (e.g. @some-ui/core-utils, needed by
+# Storybook's root-level decorators, whose source lives under
+# packages/core-utils/ — not archived here). `git archive` above deliberately
+# omits package.json so we can splice in a pruned copy instead of the real
+# one: keeping those entries
 # would make `pnpm install --frozen-lockfile` fail inside the extracted
 # archive with an unresolvable `workspace:*` reference.
 PRUNED_PKG_JSON="$(mktemp)"
-ARCHIVE_ONLY_DEPS='["some-ui-utils","rollup"]'
+ARCHIVE_ONLY_DEPS='["@some-ui/core-utils","rollup"]'
 node -e "
   const fs = require('fs');
   const pkg = JSON.parse(fs.readFileSync('$REPO_ROOT/package.json', 'utf8'));

@@ -12,8 +12,8 @@ import {
   typingBlockOf,
 } from "@leetype/types/exercise"
 import type { GameState, Rejection, TextGradient } from "@leetype/types/leetype"
+import { cn } from "@some-ui/core-utils"
 import { Eye } from "lucide-react"
-import { cn } from "some-ui-utils"
 
 /**
  * The one message a refused keystroke is worth interrupting for. The other

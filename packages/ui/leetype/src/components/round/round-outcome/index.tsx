@@ -10,8 +10,8 @@ import type {
 } from "@leetype/lib/leetype/round-cycle"
 import { roundProbeOf } from "@leetype/lib/leetype/round-probe"
 import type { Budget, ConstraintSet } from "@leetype/types/constraint"
+import { cn } from "@some-ui/core-utils"
 import { Check, X } from "lucide-react"
-import { cn } from "some-ui-utils"
 
 /** `n ≤ 1,000 · m ≤ 100,000`: a bound set as one line, the way `ConstraintDiff` writes a row. */
 function constraintLabel(constraints: ConstraintSet): string {

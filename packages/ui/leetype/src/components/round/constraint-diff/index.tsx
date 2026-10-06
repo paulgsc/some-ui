@@ -5,7 +5,7 @@ import type {
   ComparisonOperator,
   ConstraintDiff as ConstraintDiffValue,
 } from "@leetype/types/constraint"
-import { cn } from "some-ui-utils"
+import { cn } from "@some-ui/core-utils"
 
 /** The mathematical symbol each operator reads as in the canon's own worked examples (`n ≤ 10^5`). */
 const OPERATOR_SYMBOL: Record<ComparisonOperator, string> = {

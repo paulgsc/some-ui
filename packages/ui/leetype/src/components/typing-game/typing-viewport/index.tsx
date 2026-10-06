@@ -6,7 +6,7 @@ import type {
 } from "@leetype/components/typing-game/code-display"
 import { CodeDisplay } from "@leetype/components/typing-game/code-display"
 import type { TextGradient } from "@leetype/types/leetype"
-import { cn } from "some-ui-utils"
+import { cn } from "@some-ui/core-utils"
 
 /**
  * How close to an edge the caret gets before the viewport recentres it.

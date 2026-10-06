@@ -4,7 +4,7 @@
 //
 // Why: package-source.sh splices a pruned copy of the root package.json into
 // the AMO source archive, dropping devDependencies whose source isn't
-// archived (e.g. some-ui-utils, only needed by Storybook's root decorators).
+// archived (e.g. @some-ui/core-utils, only needed by Storybook's root decorators).
 // The archived pnpm-lock.yaml was left untouched, so its root importer still
 // listed those same deps with a `link:` version pointing at a directory the
 // archive never includes. `pnpm install --frozen-lockfile` — the exact first

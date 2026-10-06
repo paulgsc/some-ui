@@ -8,7 +8,6 @@ import {
   working,
 } from "@some-ui/intent-kit"
 import type { ActiveLifetime, SlotId } from "@some-ui/types"
-import { useEditModeHotkey, usePrimaryScene } from "some-ui-utils"
 import type { LayoutIntent, LayoutNode } from "wireframes"
 import { applyIntent } from "wireframes"
 
@@ -18,8 +17,10 @@ import {
   readDurableFailure,
   writeDurableFailure,
 } from "@/lib/intent/durable-failure"
+import { usePrimaryScene } from "@/lib/orchestrator"
 import type { SessionRecord } from "@/lib/tenant"
 import { useUpdateSession } from "@/lib/tenant"
+import { useEditModeHotkey } from "@/hooks/use-edit-mode-hotkey"
 
 import { NAIVE_LAYOUT } from "./layout"
 import { useSessionLayout } from "./use-session-layout"

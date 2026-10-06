@@ -3,10 +3,10 @@
     "url": "https://github.com/paulgsc/some-ui/issues"
   },
   "dependencies": {
+    "@some-ui/core-utils": "workspace:*",
     "@some-ui/shared": "workspace:*",
     "@some-ui/types": "workspace:*",
     "lucide-react": "catalog:",
-    "some-ui-utils": "workspace:*",
     "sonner": "^2.0.7",
     "zod": "catalog:",
     "zustand": "^5.0.9"

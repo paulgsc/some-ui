@@ -1,0 +1,18 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "declaration": true,
+    "emitDeclarationOnly": true,
+    "declarationDir": "./dist/types",
+    "incremental": true,
+    "tsBuildInfoFile": "./dist/types/tsconfig.build.tsbuildinfo"
+  },
+  "include": ["src"],
+  "exclude": [
+    "**/*.stories.tsx",
+    "**/*.stories.ts",
+    "**/*.test.ts",
+    "**/*.test.tsx"
+  ]
+}

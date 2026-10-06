@@ -1,5 +1,6 @@
 import type { JSX, PointerEvent } from "react"
 import { useRef } from "react"
+import { cn } from "@some-ui/core-utils"
 import { Button } from "@some-ui/shared"
 import { StepLayout } from "@topik/components/topik/handheld/step-layout"
 import type { Message } from "@topik/lib/topik"
@@ -12,7 +13,6 @@ import {
   Languages,
   Volume2,
 } from "lucide-react"
-import { cn } from "some-ui-utils"
 
 type LineCardProps = {
   message: Message

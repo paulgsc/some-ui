@@ -6,9 +6,9 @@
  * grading is therefore a lookup, never a judgement made here.
  */
 
+import { assertNever } from "@some-ui/core-utils"
 import type { MorphismRelation, Probe, ProbeOption } from "@topik/lib/topik"
 import { seededShuffle } from "@topik/lib/topik/core/tile-assembly"
-import { assertNever } from "some-ui-utils"
 
 /**
  * Chips for the relations probes most often name. Any other relation is its

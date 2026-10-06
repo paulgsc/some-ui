@@ -27,8 +27,7 @@
   "dependencies": {
     "@some-ui/core-utils": "workspace:*",
     "@some-ui/shared": "workspace:*",
-    "lucide-react": "catalog:",
-    "some-ui-utils": "workspace:*"
+    "lucide-react": "catalog:"
   },
   "devDependencies": {
     "@some-ui/tsconfig": "workspace:*",

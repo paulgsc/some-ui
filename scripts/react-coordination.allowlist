@@ -20,11 +20,14 @@
 5 apps/www/src/components/settings/account-section.tsx
 3 apps/www/src/components/settings/device-section.tsx
 7 apps/www/src/components/settings/study-nudge-section.tsx
+3 apps/www/src/hooks/use-recursive-library.ts
 15 apps/www/src/lib/auth/session.ts
 1 apps/www/src/lib/intent/use-async-intent.ts
+9 apps/www/src/lib/orchestrator/orchestrator-store.ts
 9 apps/www/src/lib/study-nudge/use-study-nudge.ts
 3 apps/www/src/routes/auth.tsx
 1 packages/fetch-kit/src/lib/query-hooks/index.ts
+1 packages/some-content-registry/src/registry/lazy-with-preload.ts
 3 packages/ui/honeycomb/src/hooks/use-game-audio.ts
 3 packages/ui/honeycomb/src/hooks/use-hangul-wasm/index.ts
 3 packages/ui/honeycomb/src/hooks/use-hexgrid-wasm/index.ts
@@ -43,8 +46,3 @@
 1 packages/ui/topik/src/lib/topik/adapter/hooks/use-read-aloud/index.ts
 1 packages/ui/topik/src/lib/topik/adapter/hooks/use-session/index.ts
 2 packages/ui/wireframes/src/components/youtube/layout-crm/index.tsx
-9 packages/utils/src/lib/context/zustand-store/orchestrator-store.ts
-3 packages/utils/src/lib/discovery/hooks/use-recursive-library.ts
-3 packages/utils/src/lib/hooks/socket-tenants/orchestrator/use-orchestrator.ts
-1 packages/utils/src/lib/registry/utils.ts
-2 packages/ws/src/lib/use-websocket/index.ts

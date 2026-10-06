@@ -1,15 +1,8 @@
 import type { JSX } from "react"
 import { useEffect, useMemo } from "react"
 import { componentRegistry } from "@some-ui/content-registry"
-import {
-  cn,
-  setSessionKey,
-  setSuspended,
-  useIsMobile,
-  useSceneLifetimes,
-  useSessionKey,
-  useSuspended,
-} from "some-ui-utils"
+import { cn } from "@some-ui/core-utils"
+import { useIsMobile } from "@some-ui/react-hooks"
 import { LiveEditOverlay, OrchestratedYouTubeViewport } from "wireframes"
 
 import { useAudioPreferences } from "@/lib/audio-preferences/use-audio-preferences"
@@ -18,6 +11,13 @@ import { phoneDictation, runsNatively } from "@/lib/dictation"
 import { useHangulVocab } from "@/lib/hangul-vocab"
 import { AmbientIntentStatus } from "@/lib/intent/render"
 import { loadLeetypeRoundRuns, loadLeetypeRounds } from "@/lib/leetype-content"
+import {
+  setSessionKey,
+  setSuspended,
+  useSceneLifetimes,
+  useSessionKey,
+  useSuspended,
+} from "@/lib/orchestrator"
 import { createShelfClient } from "@/lib/shelf-client"
 import type { SessionRecord } from "@/lib/tenant"
 import { loadTopikFile, loadTopikManifest } from "@/lib/topik-content"

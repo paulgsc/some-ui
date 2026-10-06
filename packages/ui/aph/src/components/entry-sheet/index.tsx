@@ -12,7 +12,7 @@ import type { Entry } from "@aph/lib/model"
 import { formatDelta, formatValue, labelsFor, reconcile } from "@aph/lib/model"
 import type { AphStore } from "@aph/lib/store"
 import { useAph } from "@aph/lib/use-aph"
-import { formatDay, formatWeekday } from "@some-ui/core-utils"
+import { cn, formatDay, formatWeekday } from "@some-ui/core-utils"
 import {
   Button,
   Input,
@@ -23,7 +23,6 @@ import {
   SheetTitle,
 } from "@some-ui/shared"
 import { CheckCheck, Flag, Undo2 } from "lucide-react"
-import { cn } from "some-ui-utils"
 
 export type EntrySheetProps = {
   entryId: string | null

@@ -18,6 +18,7 @@
  * itself, or the order declared for it.
  */
 
+import { assertNever } from "@some-ui/core-utils"
 import type { Message, MorphismRelation, Probe } from "@topik/lib/topik"
 import { GLOSS_RELATION, ProbeSchema, TopikFileSchema } from "@topik/lib/topik"
 import { anchorOf, isDeliverable } from "@topik/lib/topik/core/lesson-track"
@@ -30,7 +31,6 @@ import {
   excerptRevealsAnswer,
   tokenize,
 } from "@topik/lib/topik/core/tile-assembly"
-import { assertNever } from "some-ui-utils"
 
 export type ProbeFinding = {
   /** The conversation's authored id, or null for a file-level finding. */

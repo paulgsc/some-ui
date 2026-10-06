@@ -1,10 +1,11 @@
 import type { JSX } from "react"
-import { useMockOrchestrator } from "some-ui-utils"
+
+import { useMockOrchestrator } from "@/lib/orchestrator"
 
 // Orchestrator wrapper - drives the shared orchestrator store with a
 // client-only mock engine (no WebSocket, no backend) so tenant sessions can
-// play entirely standalone. See packages/utils' useMockOrchestrator for the
-// simulated FSM/tick contract.
+// play entirely standalone. See lib/orchestrator's useMockOrchestrator for
+// the simulated FSM/tick contract.
 export const OrchestratorWrapper = ({
   children,
 }: {

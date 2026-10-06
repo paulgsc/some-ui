@@ -17,6 +17,7 @@
 
 import type { RefObject } from "react"
 import { useEffect, useLayoutEffect, useRef, useState } from "react"
+import { assertNever } from "@some-ui/core-utils"
 import type { Speaker, Urgency } from "@some-ui/speech"
 import { SPOKEN_LANGUAGE } from "@topik/lib/topik/core/spoken-language"
 import type {
@@ -40,7 +41,6 @@ import {
   progressOf,
   setMachineReducer,
 } from "@topik/lib/topik/read-aloud/set-machine"
-import { assertNever } from "some-ui-utils"
 
 export type ReadAloudRecordEvent =
   | { type: "rep"; creditMs: number }

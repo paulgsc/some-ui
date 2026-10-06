@@ -1,8 +1,8 @@
 import type { FC, ReactNode } from "react"
 import { useState } from "react"
 import type { Commitment, CommitmentOption } from "@leetype/types/commitment"
+import { cn } from "@some-ui/core-utils"
 import { CircleHelp } from "lucide-react"
-import { cn } from "some-ui-utils"
 
 /**
  * The abstention Def. 9.1 requires of *every* commitment control, added here

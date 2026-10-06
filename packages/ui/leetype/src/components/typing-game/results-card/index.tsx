@@ -1,8 +1,8 @@
 import type { FC } from "react"
 import type { CompletedSessionStats } from "@leetype/types/leetype"
+import { cn } from "@some-ui/core-utils"
 import { Button, Card } from "@some-ui/shared"
 import { CheckCircle2, RotateCcw } from "lucide-react"
-import { cn } from "some-ui-utils"
 
 type ResultsCardProps = {
   exerciseTitle: string

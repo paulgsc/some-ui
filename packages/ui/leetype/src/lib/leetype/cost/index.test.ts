@@ -28,7 +28,7 @@ import {
   sumCost,
   W,
 } from "@leetype/lib/leetype/cost"
-import { assertNever } from "some-ui-utils"
+import { assertNever } from "@some-ui/core-utils"
 import { describe, expect, it } from "vitest"
 
 describe("costOf — the canon's own worked instances (Def. 2.1, Def. 2.2)", () => {

@@ -21,7 +21,7 @@ import {
   printMonomial,
 } from "@leetype/lib/leetype/cost"
 import type { Budget, ConstraintSet } from "@leetype/types/constraint"
-import { assertNever } from "some-ui-utils"
+import { assertNever } from "@some-ui/core-utils"
 
 /**
  * A rewrite (Def. 5.1): a pair of cost graphs, the algorithm's own before

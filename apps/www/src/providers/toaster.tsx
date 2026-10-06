@@ -1,5 +1,5 @@
 import type { JSX } from "react"
-import { useIsMobile } from "some-ui-utils"
+import { useIsMobile } from "@some-ui/react-hooks"
 import { Toaster } from "sonner"
 
 /**

@@ -1,10 +1,10 @@
 import type { ReactNode } from "react"
 import { useState } from "react"
+import { cn } from "@some-ui/core-utils"
 import type { SlotId } from "@some-ui/types"
 import type { SolvedNode } from "@wireframes/lib/layout-types"
 import { getSlotColor } from "@wireframes/lib/youtube-config"
 import { X } from "lucide-react"
-import { cn } from "some-ui-utils"
 
 type LayoutNodeRendererProps = {
   node: SolvedNode<SlotId>

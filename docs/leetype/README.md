@@ -445,7 +445,7 @@ The consequence worth stating: every engine invariant proved by
 `cargo test -p leetype_wasm` remains a statement about a system the mobile
 surface cannot perturb, because it never instantiates one.
 
-The breakpoint is `useIsMobile`'s 768px, from `some-ui-utils`, reused rather
+The breakpoint is `useIsMobile`'s 768px, from `@some-ui/react-hooks`, reused rather
 than re-picked. The workspace already has exactly one answer to "is this a
 phone"; a second constant here would be a second answer, and the two would
 drift.

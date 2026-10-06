@@ -13,6 +13,7 @@ import {
   formatValue,
   goalDelta,
 } from "@aph/lib/model"
+import { cn } from "@some-ui/core-utils"
 import {
   CheckCheck,
   CircleCheck,
@@ -20,7 +21,6 @@ import {
   Flag,
   TriangleAlert,
 } from "lucide-react"
-import { cn } from "some-ui-utils"
 
 type StatusLook = {
   label: string

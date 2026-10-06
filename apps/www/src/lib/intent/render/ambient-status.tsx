@@ -5,9 +5,9 @@
  */
 
 import type { JSX } from "react"
+import { cn } from "@some-ui/core-utils"
 import type { Intent } from "@some-ui/intent-kit"
 import { matchIntent } from "@some-ui/intent-kit"
-import { cn } from "some-ui-utils"
 
 export type AmbientIntentStatusProps<T, TStep extends string = never> = {
   state: Intent<T, TStep>

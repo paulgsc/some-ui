@@ -1,15 +1,15 @@
 import type { JSX } from "react"
 import { Button } from "@some-ui/shared"
 import { Pause, Play, SkipForward, Square } from "lucide-react"
+
+import { formatTimecode } from "@/lib/format"
 import {
   useIsPaused,
   useIsRunning,
   useOrchestratorClock,
   useOrchestratorStore,
   usePrimaryScene,
-} from "some-ui-utils"
-
-import { formatTimecode } from "@/lib/format"
+} from "@/lib/orchestrator"
 
 import { friendlyActivityName } from "./utils"
 

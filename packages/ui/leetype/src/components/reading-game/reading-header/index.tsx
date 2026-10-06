@@ -1,5 +1,5 @@
 import type { FC } from "react"
-import { cn } from "some-ui-utils"
+import { cn } from "@some-ui/core-utils"
 
 type ReadingHeaderProps = {
   /** 1-based position of the step in flight. */

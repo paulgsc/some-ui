@@ -12,8 +12,8 @@ import {
   readingProbeOf,
 } from "@leetype/lib/leetype/reading-probe"
 import type { Exercise } from "@leetype/types/exercise"
+import { cn } from "@some-ui/core-utils"
 import { Button } from "@some-ui/shared"
-import { cn } from "some-ui-utils"
 
 /**
  * Mixed into the session seed per step so two steps in one session never draw

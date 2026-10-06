@@ -1,6 +1,6 @@
 import type { JSX } from "react"
+import { cn } from "@some-ui/core-utils"
 import { highlightFor } from "@topik/lib/topik/core/morph-diff"
-import { cn } from "some-ui-utils"
 
 type DiffTextProps = {
   /** The utterance the candidate is judged against. */

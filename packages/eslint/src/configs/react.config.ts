@@ -57,7 +57,7 @@ export const reactImportBanSelectors = [
   },
 ]
 
-// Cross-package specifiers (@some-ui/shared, some-ui-utils, ...) resolve
+// Cross-package specifiers (@some-ui/shared, @some-ui/react-hooks, ...) resolve
 // via package.json main/exports pointing at dist/, which doesn't exist
 // without a build. tsconfig.workspace-resolve.json maps them straight to
 // source so every consuming package's ESLint run resolves them without

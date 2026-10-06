@@ -3,6 +3,7 @@ import type { CSSProperties, JSX, KeyboardEvent, ReactNode } from "react"
 import { HexGrid } from "@honeycomb/components/hex-grid"
 import type { HexPoint } from "@honeycomb/types/hex-grid"
 import { assertNever } from "@honeycomb/utils/error"
+import { cn } from "@some-ui/core-utils"
 import type { LucideIcon } from "lucide-react"
 import {
   ArrowLeft,
@@ -18,7 +19,6 @@ import {
   UserX,
   WifiOff,
 } from "lucide-react"
-import { cn } from "some-ui-utils"
 
 import { CombField, useCombFrame } from "./comb-field"
 import type {

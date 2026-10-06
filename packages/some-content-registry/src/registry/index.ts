@@ -1,5 +1,6 @@
 import type { ComponentRegistry } from "@some-ui/types"
-import { lazyWithPreload } from "some-ui-utils"
+
+import { lazyWithPreload } from "./lazy-with-preload"
 
 /**
  * Every panel identity this app can bind, known at compile time. Exported so

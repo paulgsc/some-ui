@@ -12,9 +12,9 @@ import type { PropositionId } from "@leetype/lib/leetype/proposition-register/ge
 import { PROPOSITION_REGISTER } from "@leetype/lib/leetype/proposition-register/generated"
 import type { Round } from "@leetype/types/authored-round"
 import { PropositionIdSchema } from "@leetype/types/round"
+import { cn } from "@some-ui/core-utils"
 import { Button, Input, Textarea } from "@some-ui/shared"
 import { Check, ClipboardCopy, Play } from "lucide-react"
-import { cn } from "some-ui-utils"
 
 /** Violations shown before "and N more". */
 const SHOWN_VIOLATIONS = 6

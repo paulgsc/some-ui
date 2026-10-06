@@ -1,6 +1,6 @@
 import type { FC } from "react"
+import { cn } from "@some-ui/core-utils"
 import { Flame, Snowflake } from "lucide-react"
-import { cn } from "some-ui-utils"
 
 import type { ExercisePickerBadge } from "./types"
 
