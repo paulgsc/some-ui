@@ -70,7 +70,7 @@ export class OverBudgetError extends Error {
  * the database past the budget less its reserve. A write that grew nothing
  * (a rename, a status change) always goes through: refusing it frees nothing.
  */
-async function budgeted<T>(
+export async function budgeted<T>(
   db: SqlDriver,
   budget: StorageBudget,
   write: () => Promise<T>

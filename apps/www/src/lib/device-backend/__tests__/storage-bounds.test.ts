@@ -164,6 +164,17 @@ describe("the shelf at the budget", () => {
 })
 
 describe("presence leases", () => {
+  it("skips a lease that would grow a full phone, and still answers", async () => {
+    quota = await databaseBytes(db)
+    for (let index = 0; index < 16; index++) {
+      const response = await call("POST", "/presence/lease", {
+        context_key: `${"k".repeat(500)}-${index}`,
+      })
+      expect(response.status).toBe(200)
+    }
+    expect(await databaseBytes(db)).toBeLessThanOrEqual(quota)
+  })
+
   it("keeps the latest 16 contexts, as the server does", async () => {
     let clock = NOW
     backend = await openDeviceBackend(db, () => clock, budget)
