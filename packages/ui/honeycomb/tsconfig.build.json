@@ -1,8 +1,6 @@
 {
   "extends": ["./tsconfig.json", "@some-ui/tsconfig/build.json"],
   "exclude": [
-    "**/*.stories.tsx",
-    "**/*.stories.ts",
     // Tests are typechecked by `pnpm typecheck` (tsconfig.json, which picks up
     // vitest.setup.ts and with it the jest-dom matcher augmentation) - the
     // build excludes them because they contribute nothing to the emitted

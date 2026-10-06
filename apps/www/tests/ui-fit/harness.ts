@@ -1,12 +1,12 @@
 /**
- * Plumbing for the Storybook-driven fit sweep (panel-fit): the viewport sizes
- * it sweeps, a static Storybook served over HTTP (never `file://` - Chromium
- * blocks cross-origin ES module loads from a file origin, and every story then
- * renders an empty root and the sweep passes having measured nothing), and the
- * story index.
+ * Plumbing for the panel sweep (panel-fit): the viewport sizes it sweeps, and
+ * the panel page (`./panel-page`) built with www's own config, served over
+ * HTTP. Never `file://`: Chromium blocks cross-origin ES module loads from a
+ * file origin, every panel then renders an empty root, and a sweep that does
+ * not check for that passes having measured nothing.
  */
 
-import { createReadStream, existsSync, readFileSync, statSync } from "node:fs"
+import { createReadStream, existsSync, statSync } from "node:fs"
 import { createServer, type Server } from "node:http"
 import { dirname, extname, join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
@@ -16,11 +16,22 @@ const __dirname = dirname(fileURLToPath(import.meta.url))
 /** Repo root, from `apps/www/tests/ui-fit`. */
 const REPO_ROOT = resolve(__dirname, "../../../..")
 
-/** Where the static Storybook lives, if one was built. */
-export const STORYBOOK_STATIC = resolve(
+/**
+ * Where `pnpm --filter www build:fit` writes the panel page. `out/` because
+ * it is ignored at any depth; the build is not part of `dist/`, which ships.
+ */
+export const PANEL_PAGE_BUILD = resolve(
   REPO_ROOT,
-  process.env["STORYBOOK_STATIC"] ?? "storybook-static"
+  process.env["WWW_FIT_HARNESS_DIST"] ?? "apps/www/out/ui-fit"
 )
+
+/** The page's path inside that build: Vite keeps the source's layout. */
+export const PANEL_PAGE_PATH = "/tests/ui-fit/panel-page/index.html"
+
+/** Whether a panel page has been built where the sweep looks for one. */
+export function panelPageBuilt(): boolean {
+  return existsSync(join(PANEL_PAGE_BUILD, PANEL_PAGE_PATH))
+}
 
 /**
  * Sizes chosen for what they prove, not for device names: the shortest
@@ -58,32 +69,6 @@ export const VIEWPORTS = [
   { name: "desktop", width: 1680, height: 1050 },
 ] as const
 
-/** Every non-docs story id in the built Storybook, or none if none was built. */
-export function loadStoryIds(): Set<string> {
-  const indexPath = resolve(STORYBOOK_STATIC, "index.json")
-  if (!existsSync(indexPath)) return new Set()
-
-  const parsed: unknown = JSON.parse(readFileSync(indexPath, "utf8"))
-  if (typeof parsed !== "object" || parsed === null || !("entries" in parsed)) {
-    return new Set()
-  }
-
-  const entries: unknown = parsed.entries
-  if (typeof entries !== "object" || entries === null) return new Set()
-
-  // Storybook's index is external JSON, so each row is narrowed rather than
-  // asserted - a shape change should drop rows, not crash the sweep.
-  return new Set(
-    Object.values(entries).flatMap((entry): Array<string> => {
-      if (typeof entry !== "object" || entry === null) return []
-      const row: Record<string, unknown> = { ...entry }
-      const { id, type } = row
-      if (typeof id !== "string" || type === "docs") return []
-      return [id]
-    })
-  )
-}
-
 const MIME: Record<string, string> = {
   ".html": "text/html; charset=utf-8",
   ".js": "text/javascript; charset=utf-8",
@@ -99,7 +84,7 @@ const MIME: Record<string, string> = {
 
 export type StaticSite = { origin: string; close: () => Promise<void> }
 
-/** A static file server for the built Storybook, on an ephemeral port. */
+/** A static file server for a build directory, on an ephemeral port. */
 export function serve(root: string): Promise<StaticSite> {
   const server: Server = createServer((request, response) => {
     const url = new URL(request.url ?? "/", "http://localhost")

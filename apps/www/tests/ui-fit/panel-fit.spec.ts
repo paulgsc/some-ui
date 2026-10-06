@@ -3,15 +3,13 @@
  *
  * ## The gap this closes
  *
- * Storybook renders every story in a canvas of unbounded height. That makes
- * a plain story render blind to the whole class of failure #899 reported: a
- * component whose box comes from its *host* has no host in a story, so
- * `h-full` resolves against `auto`, the content sets its own height, and
- * "content fits its box" is vacuously true because there is no box. The same
- * component in `/sessions/$id` is handed a leaf rect of a few hundred pixels
- * and paints the rest of itself over whatever the layout put below it -
- * which is exactly what the screenshot on #899 shows the TOPIK quiz summary
- * doing.
+ * A component rendered on its own has no host, so `h-full` resolves against
+ * `auto`, the content sets its own height, and "content fits its box" is
+ * vacuously true because there is no box. That makes a plain render blind to
+ * the whole class of failure #899 reported. The same component in
+ * `/sessions/$id` is handed a leaf rect of a few hundred pixels and paints the
+ * rest of itself over whatever the layout put below it - which is exactly
+ * what the screenshot on #899 shows the TOPIK quiz summary doing.
  *
  * Stated as an invariant rather than a symptom:
  *
@@ -22,83 +20,94 @@
  *
  * The registry *is* that boundary: a key there is a delegation of size
  * authority across a workspace edge, which is why the coverage map below is
- * keyed by `RegistryKey`. Adding a panel without a swept story is then a
- * type error, not an omission nobody notices.
+ * keyed by `RegistryKey`. Adding a panel without a fixture is then a type
+ * error, not an omission nobody notices.
  *
  * ## How the rect is granted
  *
- * `#storybook-root` is pinned to the viewport and `overflow: hidden`, and the
- * decorator chain below it is made definite down to the panel - the same shape
- * `RenderSolved` gives a leaf (`absolute` rect, `overflow-hidden`, an inner
- * `size-full` box). Overflow is then measured with `getBoundingClientRect` and
- * `scrollHeight`, both of which report where content *would* paint, so
- * clipping cannot hide a regression from this sweep the way it hides it from
- * the eye.
+ * The panel page (`./panel-page`) mounts one fixture per load inside a rect
+ * shaped the way `RenderSolved` shapes a leaf: an `absolute` box that clips,
+ * and a full-size box inside it (`data-fit-slot`) that the panel fills. It is
+ * built with www's own Vite config, providers and stylesheets, so the CSS
+ * measured here is the CSS the app ships, not a second pipeline's copy of it
+ * (#1685 lost Tailwind in exactly such a copy while www was fine). Overflow is
+ * measured from the slot with `getBoundingClientRect` and `scrollHeight`, both
+ * of which report where content *would* paint, so the leaf's clipping cannot
+ * hide a regression from this sweep the way it hides it from the eye.
  *
- * Run against a built Storybook:
+ * Run against a built panel page:
  *
- *   CI=1 pnpm build-storybook -o storybook-static
- *   STORYBOOK_STATIC=storybook-static pnpm --filter www test:ui-fit
+ *   pnpm --filter www build:fit
+ *   pnpm --filter www test:ui-fit
  *
- * Skips itself with a clear message when no build is pointed at, and fails
- * rather than passes when a story renders nothing - a sweep that measures an
- * empty root and reports success is worse than no sweep.
+ * Skips itself with a clear message when no build is found, except under CI,
+ * where it fails instead. It also fails rather than passes when a panel
+ * renders nothing - a sweep that measures an empty root and reports success
+ * is worse than no sweep.
  */
 
 import { expect, test, type Page } from "@playwright/test"
 import type { RegistryKey } from "@some-ui/content-registry"
 
-import { loadStoryIds, serve, STORYBOOK_STATIC, VIEWPORTS } from "./harness"
+import {
+  PANEL_PAGE_BUILD,
+  PANEL_PAGE_PATH,
+  panelPageBuilt,
+  serve,
+  VIEWPORTS,
+  type StaticSite,
+} from "./harness"
+import type { PanelId } from "./panel-page/fixtures"
 
 /**
  * How this sweep sees a panel. Three states, and two of them are debt:
  *
- *   `story`    swept and held to the invariant.
+ *   `panel`    swept and held to the invariant.
  *   `debt`     swept, known not to fit, with the reason. Reported rather than
  *              failed - and the sweep asserts it *still* overflows, so an
  *              entry cannot quietly rot after someone fixes the panel.
- *   `unswept`  no story mounts this component at all, so there is nothing to
+ *   `unswept`  no fixture mounts this component at all, so there is nothing to
  *              measure. The weakest state, and the one to argue down first.
  *
- * Every entry that is not `story` is an admission, not a category. #899 fixed
- * the TOPIK applet; the rest predate it and each needs its own fit decision.
+ * Every entry that is not a plain `panel` is an admission, not a category,
+ * and today there are none: hangul's debt went once the sweep measured the
+ * leaf a session grants rather than a padded story canvas, and leetype became
+ * sweepable once panels were mounted through the registry (#1687).
  */
 type PanelCoverage =
-  | { story: string }
-  | { story: string; debt: string }
+  | { panel: PanelId }
+  | { panel: PanelId; debt: string }
   | { unswept: string }
 
 /**
  * Every registry key, and where this sweep sees it. `Record<RegistryKey, …>`
  * is load-bearing: a new panel in `componentRegistry` fails `tsc` here until
- * someone says how it gets fitted.
+ * someone says how it gets fitted. `PanelId` is too: a fixture renamed or
+ * removed in `./panel-page/fixtures.tsx` fails `tsc` here, not the sweep.
  */
 const PANELS: Record<RegistryKey, PanelCoverage> = {
-  hangul: {
-    story: "ui-honeycomb-hangul-flow-hangulhexgrid--endless",
-    debt: "the hex grid's last row clears the rect by ~10px on a short leaf; the grid measures its own cell size and needs to measure the rect too",
-  },
-  leetype: {
-    unswept: "no story mounts the applet",
-  },
-  topik: { story: "ui-chat-components-topik-koreanstudypage--default" },
+  hangul: { panel: "hangul" },
+  leetype: { panel: "leetype" },
+  topik: { panel: "topik" },
 }
 
 /**
- * Stages a panel passes through that a single top-level story never reaches.
- * The TOPIK applet only shows its summary after ten answers, so the story that
- * mounts the applet renders the one state that always fitted - which is how
- * #899 shipped. A stage with its own story is swept as its own panel.
+ * Stages a panel passes through that the panel alone never reaches. The
+ * TOPIK applet only shows its summary after ten answers, so a fixture that
+ * mounts the applet renders the one stage that always fitted - which is how
+ * #899 shipped. Each stage here is its own fixture, swept as its own panel.
  */
-const PANEL_STAGES: ReadonlyArray<string> = [
-  "ui-chat-components-topik-quizstates-quizidle--playing",
-  "ui-chat-components-topik-quizstates-quizready--default",
-  "ui-chat-components-topik-quizstates-quizactive--multiple-choice",
-  "ui-chat-components-topik-quizstates-quizactive--text-input",
-  "ui-chat-components-topik-quizstates-quizfeedback--incorrect-text-input",
-  "ui-chat-components-topik-quizstates-quizsummary--advanced",
-  "ui-chat-components-topik-quizstates-quizsummary--failed",
+const PANEL_STAGES: ReadonlyArray<PanelId> = [
+  "topik-quiz-idle-playing",
+  "topik-quiz-active-multiple-choice",
+  "topik-quiz-active-text-input",
+  "topik-quiz-feedback-incorrect-text-input",
+  "topik-quiz-summary-advanced",
+  "topik-quiz-summary-failed",
 ]
+
+/** The planted panel the self-test at the bottom expects to see overflow. */
+const PLANTED_OVERFLOW: PanelId = "planted-overflow"
 
 /**
  * Deliberate escapes, matched against `data-fit-intent` on the element or any
@@ -112,49 +121,6 @@ const ALLOWED_FIT_INTENTS = new Set([
   // Decorative motion (particles, glows) that is clipped by design.
   "ambient",
 ])
-
-/** The grant: a leaf-shaped rect for the story root to fill. */
-const GRANT_RECT = `
-  html, body { height: 100% !important; margin: 0 !important; padding: 0 !important; overflow: hidden !important; }
-  #storybook-root { position: absolute !important; inset: 0 !important; padding: 0 !important; overflow: hidden !important; }
-`
-
-/**
- * Hand the rect down the decorator chain to the panel.
- *
- * Storybook's own wrappers (the theme, provider and toaster decorators) size
- * to content, and a percentage height against an `auto` parent computes to `auto`
- * - so a panel rooted at `h-full` would quietly go back to sizing itself and
- * the sweep would measure the same unbounded canvas a plain story render does.
- * Walking the single-child chain and making each link definite is the harness
- * standing in for `SidebarInset → SessionViewport → RenderSolved`'s leaf, which
- * is a definite chain all the way down in the app.
- *
- * The walk stops at the first element that asks for its host's box, because
- * that element is the panel: giving *it* the full height is what a leaf does,
- * and going deeper would start reshaping the component's own internals.
- */
-async function grantRect(page: Page): Promise<void> {
-  await page.addStyleTag({ content: GRANT_RECT })
-  await page.evaluate(() => {
-    const asksForHostBox = /(^|\s)(h-full|size-full|h-screen)(\s|$)/
-    let node: Element | null = document.getElementById("storybook-root")
-    for (let depth = 0; node && depth < 8; depth += 1) {
-      // Empty siblings (the toaster decorator mounts a zero-height <section>)
-      // do not make a wrapper ambiguous - only painted children do.
-      const painted = Array.from(node.children).filter((element) => {
-        const box = element.getBoundingClientRect()
-        return box.height > 0 && box.width > 0
-      })
-      if (painted.length !== 1) break
-      const child = painted[0]
-      if (!(child instanceof HTMLElement)) break
-      child.style.height = "100%"
-      if (asksForHostBox.test(child.className.toString())) break
-      node = child
-    }
-  })
-}
 
 /**
  * One way a panel can break the contract, in the terms the fix is written in.
@@ -186,7 +152,7 @@ async function findViolations(
   return page.evaluate(
     (allowed: Array<string>) => {
       const intents = new Set(allowed)
-      const root = document.getElementById("storybook-root")
+      const root = document.querySelector("[data-fit-slot]")
       if (!root || root.childElementCount === 0) {
         return { mounted: false, violations: [] }
       }
@@ -272,11 +238,11 @@ async function findViolations(
   )
 }
 
-type SweptPanel = { label: string; story: string; debt: string | null }
+type SweptPanel = { label: string; panel: PanelId; debt: string | null }
 
 /** One violation, said in the terms of the fix rather than the measurement. */
 function describe(panel: SweptPanel, violation: Violation): string {
-  const where = `${panel.label} (${panel.story}): <${violation.tag}>`
+  const where = `${panel.label} (${panel.panel}): <${violation.tag}>`
   const classes = `classes: ${violation.classes}`
 
   if (violation.kind === "leak") {
@@ -302,84 +268,119 @@ function describe(panel: SweptPanel, violation: Violation): string {
 const SWEPT: ReadonlyArray<SweptPanel> = [
   ...Object.entries(PANELS).flatMap(
     ([key, coverage]): Array<SweptPanel> =>
-      "story" in coverage
+      "panel" in coverage
         ? [
             {
               label: key,
-              story: coverage.story,
+              panel: coverage.panel,
               debt: "debt" in coverage ? coverage.debt : null,
             },
           ]
         : []
   ),
-  ...PANEL_STAGES.map((story) => ({ label: story, story, debt: null })),
+  ...PANEL_STAGES.map((panel) => ({ label: panel, panel, debt: null })),
 ]
 
-const STORY_IDS = loadStoryIds()
+const BUILT = panelPageBuilt()
 
-/** Mount one panel in a granted rect and measure what leaves it. */
+let site: StaticSite | null = null
+
+/**
+ * Mount one panel in its granted rect and measure what leaves it. `errors`
+ * carries anything the page threw, so a panel that renders nothing says why.
+ */
 async function measure(
   page: Page,
-  story: string
-): Promise<{ mounted: boolean; violations: Array<Violation> }> {
-  await page.goto(
-    `${storybook!.origin}/iframe.html?id=${story}&viewMode=story`,
-    { waitUntil: "load" }
+  panel: PanelId
+): Promise<{
+  mounted: boolean
+  violations: Array<Violation>
+  errors: Array<string>
+}> {
+  const errors: Array<string> = []
+  const onError = (error: Error): void => {
+    errors.push(error.message)
+  }
+  page.on("pageerror", onError)
+  try {
+    await page.goto(`${site!.origin}${PANEL_PAGE_PATH}?panel=${panel}`, {
+      waitUntil: "load",
+    })
+    // Wait for the mount rather than guessing at it: a lazy applet that needs
+    // one frame more than a fixed sleep would otherwise be reported as a
+    // harness failure on a slow machine.
+    await page
+      .waitForFunction(
+        () =>
+          (document.querySelector("[data-fit-slot]")?.childElementCount ?? 0) >
+          0,
+        undefined,
+        { timeout: 10_000 }
+      )
+      .catch(() => undefined)
+    // Panels that measure themselves (the hex grid sizes its cells to the
+    // rect) need a few frames to settle.
+    await page.waitForTimeout(400)
+
+    return { ...(await findViolations(page, [...ALLOWED_FIT_INTENTS])), errors }
+  } finally {
+    page.off("pageerror", onError)
+  }
+}
+
+/** Why a panel rendered nothing, with what the page threw if it threw. */
+function renderedNothing(panel: SweptPanel, errors: Array<string>): string {
+  const thrown = errors.length > 0 ? ` It threw: ${errors.join(" | ")}` : ""
+  return (
+    `${panel.label} (${panel.panel}): rendered nothing — a panel the sweep ` +
+    `cannot measure is a harness failure, not a pass.${thrown}`
   )
-  // Wait for the mount rather than guessing at it: a lazy applet that needs
-  // one frame more than a fixed sleep would otherwise be reported as a
-  // harness failure on a slow machine. This has to happen *before* the rect is
-  // granted - the grant walks the mounted tree, and walking an empty root
-  // hands out nothing, which reads as "every panel fits".
-  await page
-    .waitForFunction(
-      () =>
-        (document.getElementById("storybook-root")?.childElementCount ?? 0) > 0,
-      undefined,
-      { timeout: 10_000 }
-    )
-    .catch(() => undefined)
-  // Panels that measure themselves need a frame to settle.
-  await page.waitForTimeout(250)
-
-  await grantRect(page)
-  // And another for anything that re-measures once the rect changes.
-  await page.waitForTimeout(150)
-
-  return findViolations(page, [...ALLOWED_FIT_INTENTS])
 }
 
 // One test walks every panel at one viewport; the config's 15s default is
 // sized for the fixture specs next door, which load one page each.
 test.describe.configure({ timeout: 5 * 60 * 1000 })
 
-let storybook: { origin: string; close: () => Promise<void> } | null = null
-
 test.beforeAll(async () => {
-  if (STORY_IDS.size > 0) storybook = await serve(STORYBOOK_STATIC)
+  if (BUILT) site = await serve(PANEL_PAGE_BUILD)
 })
 
 test.afterAll(async () => {
-  await storybook?.close()
+  await site?.close()
 })
 
 test.describe("every panel fits the rect the viewport grants it", () => {
+  // Locally a missing build is a skip with directions. Under CI it is a
+  // failure (the first test below): a build step that broke must not turn
+  // this gate into a green run that measured nothing.
   test.skip(
-    STORY_IDS.size === 0,
-    `No built Storybook at ${STORYBOOK_STATIC}. Build one first: ` +
-      `CI=1 pnpm build-storybook -o storybook-static, then re-run with ` +
-      `STORYBOOK_STATIC pointing at it.`
+    !BUILT && !process.env["CI"],
+    `No panel page at ${PANEL_PAGE_BUILD}. Build one first: ` +
+      `pnpm --filter www build:fit (or point WWW_FIT_HARNESS_DIST at one).`
   )
 
-  test("every swept panel names a story that exists", () => {
-    // Asserted rather than looked up: a renamed or mistyped story is skipped by
-    // every test below, so it would stop being swept with the run still green.
-    const missing = SWEPT.filter((panel) => !STORY_IDS.has(panel.story))
+  test("the panel page is built and mounts every swept panel", async ({
+    page,
+  }) => {
+    expect(
+      BUILT,
+      `No panel page at ${PANEL_PAGE_BUILD}: run pnpm --filter www build:fit.`
+    ).toBe(true)
+
+    // The ids are typed against the fixtures, so a mismatch here means the
+    // build is older than the source - which would sweep yesterday's panels.
+    await page.goto(`${site!.origin}${PANEL_PAGE_PATH}`)
+    const known = new Set(
+      await page.locator("[data-fit-panels] li").allTextContents()
+    )
+    const missing = [
+      ...SWEPT.map((panel) => panel.panel),
+      PLANTED_OVERFLOW,
+    ].filter((panel) => !known.has(panel))
     expect(
       missing,
-      `These panels name a story id the built Storybook does not have:\n${missing
-        .map((panel) => `  ${panel.label} → ${panel.story}`)
-        .join("\n")}`
+      `The built panel page does not know these panels; rebuild it ` +
+        `(pnpm --filter www build:fit): ${missing.join(", ")}`
     ).toEqual([])
   })
 
@@ -395,18 +396,14 @@ test.describe("every panel fits the rect the viewport grants it", () => {
       const failures: Array<string> = []
 
       for (const panel of SWEPT) {
-        if (!STORY_IDS.has(panel.story)) continue
         // Known-unfitted panels are held by the debt test below instead, so
         // this one stays a clean signal: it goes red only for a regression.
         if (panel.debt !== null) continue
 
-        const { mounted, violations } = await measure(page, panel.story)
+        const { mounted, violations, errors } = await measure(page, panel.panel)
 
         if (!mounted) {
-          failures.push(
-            `${panel.label} (${panel.story}): rendered nothing — a panel the ` +
-              `sweep cannot measure is a harness failure, not a pass.`
-          )
+          failures.push(renderedNothing(panel, errors))
           continue
         }
 
@@ -432,18 +429,20 @@ test.describe("every panel fits the rect the viewport grants it", () => {
     const failures: Array<string> = []
 
     for (const panel of SWEPT) {
-      if (panel.debt === null || !STORY_IDS.has(panel.story)) continue
+      if (panel.debt === null) continue
 
       let overflowedSomewhere = false
       let renderedSomewhere = false
+      const thrown: Array<string> = []
 
       for (const viewport of VIEWPORTS) {
         await page.setViewportSize({
           width: viewport.width,
           height: viewport.height,
         })
-        const { mounted, violations } = await measure(page, panel.story)
-        // A story that renders nothing is not evidence of anything, least of
+        const { mounted, violations, errors } = await measure(page, panel.panel)
+        thrown.push(...errors)
+        // A panel that renders nothing is not evidence of anything, least of
         // all of an overflow - counting it as "still overflowing" would let a
         // debt panel go dark and keep this test green.
         if (!mounted) continue
@@ -455,16 +454,13 @@ test.describe("every panel fits the rect the viewport grants it", () => {
       }
 
       if (!renderedSomewhere) {
-        failures.push(
-          `  ${panel.label} (${panel.story}): rendered nothing at any viewport — ` +
-            `the debt entry cannot be checked, which is a harness failure, not a pass.`
-        )
+        failures.push(`  ${renderedNothing(panel, thrown)} (at every viewport)`)
         continue
       }
 
       if (!overflowedSomewhere) {
         failures.push(
-          `  ${panel.label}: now fits at every viewport. Delete its entry from ` +
+          `  ${panel.label}: now fits at every viewport. Delete its debt from ` +
             `PANELS so the sweep guards it again. Recorded as: ${panel.debt}`
         )
       }
@@ -478,32 +474,28 @@ test.describe("every panel fits the rect the viewport grants it", () => {
 
   /**
    * The guard the doctrine asks for: plant a panel that cannot fit and confirm
-   * the measurement sees it. Without this, a harness that silently measured
-   * nothing (a selector typo, a normalisation that stopped applying) would
-   * report every panel above as fitting.
+   * the measurement sees it. It is a fixture on the same built page as the
+   * real panels, so a harness that silently measured nothing (a selector
+   * typo, a slot that stopped being definite, a build that mounts nothing)
+   * fails here instead of reporting every panel above as fitting.
    */
   test("a panel that overflows its rect is seen", async ({ page }) => {
     await page.setViewportSize({ width: 800, height: 400 })
-    // Shaped like a real story: a decorator wrapper, a panel that fills the
-    // rect it is granted, and content inside it that does not fit.
-    await page.setContent(`
-      <div id="storybook-root">
-        <div class="decorator">
-          <div class="h-full panel">
-            <div style="height: 900px" class="oversized-panel">too tall</div>
-          </div>
-        </div>
-      </div>
-    `)
-    await grantRect(page)
 
-    const { mounted, violations } = await findViolations(page, [])
+    const { mounted, violations, errors } = await measure(
+      page,
+      PLANTED_OVERFLOW
+    )
 
-    expect(mounted).toBe(true)
+    expect(
+      mounted,
+      `The planted panel rendered nothing: ${errors.join(" | ")}`
+    ).toBe(true)
     expect(
       violations.some(
         (violation) =>
-          violation.kind === "leak" && violation.classes.includes("panel")
+          violation.kind === "leak" &&
+          violation.classes.includes("planted-panel")
       ),
       `The planted panel holds 900px of content in a 400px rect and does not ` +
         `clip it. If this is not reported, the sweep above is measuring ` +

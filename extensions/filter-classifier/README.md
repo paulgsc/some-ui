@@ -200,8 +200,7 @@ DOM fixture → a human looks at it   → human eye-score              (this sec
 ### No scoring UI right now
 
 The scoring UI (a blind-mode panel beside each fixture rendered in an
-`<iframe srcDoc>`) lived in Storybook, and was removed with this repo's
-stories (#1687). It belongs in some-filter itself, as a popover, if this
+`<iframe srcDoc>`) lived in Storybook, and was removed with it (#1687). It belongs in some-filter itself, as a popover, if this
 story continues. Until then a score is written by hand in the schema below
 and merged with `pnpm eye-score:merge`. Score blind: render the fixture's
 `html()` and judge it before reading its `note` or expected labels.

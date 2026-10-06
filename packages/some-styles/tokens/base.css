@@ -5,7 +5,7 @@
    Pure CSS custom properties — no Tailwind / UnoCSS directives.
 
    Consumed by:
-     - tailwind.css        (dev-time, design surface / storybook)
+     - tailwind.css        (the Tailwind v4 entry apps/www builds from)
      - the UnoCSS preset   (maps these vars to utilities)
      - extensions          (imported directly as vanilla CSS at runtime)
 

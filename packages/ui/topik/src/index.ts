@@ -62,3 +62,12 @@ export type {
 } from "./lib/topik/read-aloud/content"
 export { STARTER_DECK } from "./lib/topik/read-aloud/starter"
 export { BUNDLED_DECK } from "./lib/topik/read-aloud/bundled"
+
+/**
+ * The quiz pane, by stage. `KoreanStudyPage` reaches the feedback and summary
+ * stages only after a played lesson's answers, so apps/www's panel-fit
+ * harness (`tests/ui-fit/panel-page`) mounts each stage here directly: the
+ * summary that #899 found painting outside its pane is otherwise unreachable
+ * without playing a lesson through.
+ */
+export { QuizPanel } from "./components/topik/quiz-panel"

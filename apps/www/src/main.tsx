@@ -16,8 +16,9 @@ import reportWebVitals from "./reportWebVitals.ts"
 
 // Authored component CSS (plain keyframes/selectors) lives beside each
 // package's components, and the Tailwind pass (index.css) does not carry it,
-// so pull it from package source as .storybook/preview.tsx does. Root
-// `<pkg>/src/index.css` entries only `@import` the shared layer index.css has.
+// so pull it from package source. Root `<pkg>/src/index.css` entries only
+// `@import` the shared layer index.css has. The ui-fit panel page
+// (tests/ui-fit/panel-page/main.tsx) repeats these globs: keep the two in step.
 import.meta.glob(
   [
     "../../../packages/ui/**/src/**/*.css",

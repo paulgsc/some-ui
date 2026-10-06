@@ -12,8 +12,7 @@
 @layer utilities {
   /* ------------------------------------------------------------ layout
      The root is a size container, so the comb is fitted against the box it
-     was given (the viewport on /extensions, the story frame in Storybook)
-     rather than against the window. */
+     was given (the viewport on /extensions) rather than against the window. */
   .xcomb-root {
     container-type: size;
     inset: 0;

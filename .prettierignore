@@ -154,10 +154,7 @@ temp/
 # Misc generated/deployment
 .fix
 certs/*
-.storybook/
-storybook-static/
 *.log
-*storybook.log
 
 # Documentation generated outputs
 docs/.vuepress/dist/

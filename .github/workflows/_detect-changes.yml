@@ -50,13 +50,13 @@ jobs:
               - 'packages/**/*.{ts,tsx,js,jsx,css,json}'
               - 'apps/**/*.{ts,tsx,js,jsx,css,json}'
               - 'package.json'
-              # A transitive bump can break any build, Storybook's included.
+              # A transitive bump can break any build, and a Tailwind, Vite or
+              # React bump changes what the panel-fit gate measures.
               - 'pnpm-lock.yaml'
               - '.nvmrc'
               - 'tsconfig*.json'
-              - 'vite.config.*'
-              # Built by node-e2e for the panel-fit gate, its only CI build.
-              - '.storybook/**'
+              # The panel-fit page's HTML entry, which the globs above miss.
+              - 'apps/www/tests/ui-fit/panel-page/**'
               # Read by @some-ui/resume's check-claims.mjs, which fails on a
               # stale route figure; without these a README-only edit would
               # skip the build that runs it.

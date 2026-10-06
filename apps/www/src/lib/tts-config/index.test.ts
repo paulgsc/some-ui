@@ -46,7 +46,7 @@ describe("resolveTTSEndpoint", () => {
   })
 
   it("stays on plain HTTP for an HTTP page, proxy or no proxy", () => {
-    // Storybook and cert-less `vite dev`: no same-origin proxy.
+    // Cert-less `vite dev`: no same-origin proxy.
     servePageOver("http:", "nixos.local")
     vi.stubEnv("VITE_TTS_ENDPOINT", undefined)
 

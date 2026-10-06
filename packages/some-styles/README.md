@@ -29,7 +29,7 @@ runtime, no engine, no scanning in the browser.
 | `@some-ui/styles/tokens.css`              | Framework-agnostic design tokens (`:root` + `.dark`)    |
 | `@some-ui/styles/themes.css`              | Color themes (`.theme-blue`, …)                         |
 | `@some-ui/styles/themes/*`                | App themes (`scheduler`, `code`, …)                     |
-| `@some-ui/styles/tailwind.css`            | Tailwind v4 entry (existing surface / Storybook)        |
+| `@some-ui/styles/tailwind.css`            | Tailwind v4 entry (apps/www's `index.css`)              |
 | `@some-ui/styles/styles-build`            | `StyleContext` type — the per-workspace declaration     |
 | `@some-ui/styles/styles-build/compile`    | `compileStyles()` — the single-pass compiler core       |
 | `@some-ui/styles/styles-build/dev-config` | `createStyleConfig()` — dev/build-server vite helper    |

@@ -1,0 +1,19 @@
+<!doctype html>
+<!-- The ui-fit panel page: one panel per load, in a leaf-shaped rect, built
+     with www's own Vite config and stylesheets (`pnpm build:fit`). Never part
+     of a shipped build; see ./main.tsx. -->
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light dark" />
+    <!-- As www's index.html links it: first, which is what puts the Tailwind
+         layer ahead of the authored package CSS in the cascade. -->
+    <link href="/src/index.css" rel="stylesheet" />
+    <title>ui-fit panel page</title>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module" src="./main.tsx"></script>
+  </body>
+</html>

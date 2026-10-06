@@ -22,8 +22,8 @@
  *   reassigning `--background` — at which point they stop being an override
  *   and become composable.
  *
- * Every consumer — the controller, `preset/themes.ts`, apps/www's switcher,
- * the Storybook toolbar — reads a derived view of these arrays. Nothing
+ * Every consumer — the controller, `preset/themes.ts`, apps/www's switcher —
+ * reads a derived view of these arrays. Nothing
  * maintains a second list.
  */
 

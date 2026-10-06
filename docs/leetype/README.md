@@ -818,7 +818,7 @@ fetched — the difference between them is gone rather than documented.
 ```bash
 cargo test -p leetype_wasm     # the reveal loop and the gate
 pnpm --filter @some-ui/leetype test   # the contract, the shim, the shell
-STORYBOOK_STATIC=… pnpm --filter www test:ui-fit   # the boxes
+pnpm --filter www build:fit && pnpm --filter www test:ui-fit   # the boxes
 ```
 
 The first is the one that matters most, because it is the one that could not

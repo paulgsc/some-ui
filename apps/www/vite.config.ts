@@ -108,6 +108,13 @@ function warnMissingContentAssets(): Plugin {
 // /resume.
 const isMobileBuild = process.env.SOME_UI_PROFILE === MOBILE_PROFILE
 
+// `pnpm build:fit` sets this to build the ui-fit panel page
+// (tests/ui-fit/panel-page) in place of the app: the same config, plugins and
+// stylesheets, so tests/ui-fit/panel-fit.spec.ts measures panels against the
+// CSS this file ships. The page is that build's only entry, and no other
+// build has it.
+const isFitHarnessBuild = process.env.WWW_FIT_HARNESS === "1"
+
 // What a profile's output carries from public/ that it never loads
 // (build.paths.ts, `offPathPublicFiles`; the Android app's résumé PDFs are
 // about as much as every other file it ships from public/ together). Vite
@@ -317,12 +324,21 @@ export default defineConfig(
         // resume/index.html's header comment) that GitHub Pages can serve
         // as a real 200 at /resume/ instead of the generic app-shell
         // 404.html fallback every other unmatched path relies on.
-        input: {
-          main: resolve(import.meta.dirname, "index.html"),
-          ...(isMobileBuild
-            ? {}
-            : { resume: resolve(import.meta.dirname, "resume/index.html") }),
-        },
+        input: isFitHarnessBuild
+          ? {
+              "panel-page": resolve(
+                import.meta.dirname,
+                "tests/ui-fit/panel-page/index.html"
+              ),
+            }
+          : {
+              main: resolve(import.meta.dirname, "index.html"),
+              ...(isMobileBuild
+                ? {}
+                : {
+                    resume: resolve(import.meta.dirname, "resume/index.html"),
+                  }),
+            },
         // No `output.manualChunks`. The hand-rolled version here matched with
         // `id.includes(pkg)` — a substring test against the full module path —
         // which under pnpm matches far more than the package named. pnpm

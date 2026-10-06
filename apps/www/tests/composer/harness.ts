@@ -2,7 +2,7 @@
  * Boots the real app for the composer specs next door.
  *
  * Every other Playwright suite in this repo measures something that is not
- * the running app: `tests/ui-fit` sweeps a built Storybook, `tests/csp`
+ * the running app: `tests/ui-fit` sweeps panels one at a time, `tests/csp`
  * fulfils routes without a server, and `launcher-fit.spec.ts` hand-mirrors
  * the shipped classes in static HTML rather than mounting the component. That
  * is a deliberate trade in each case - but it is also exactly why the
