@@ -20,14 +20,11 @@
 5 apps/www/src/components/settings/account-section.tsx
 3 apps/www/src/components/settings/device-section.tsx
 7 apps/www/src/components/settings/study-nudge-section.tsx
-3 apps/www/src/hooks/use-recursive-library.ts
 15 apps/www/src/lib/auth/session.ts
 1 apps/www/src/lib/intent/use-async-intent.ts
-9 apps/www/src/lib/orchestrator/orchestrator-store.ts
 9 apps/www/src/lib/study-nudge/use-study-nudge.ts
 3 apps/www/src/routes/auth.tsx
 1 packages/fetch-kit/src/lib/query-hooks/index.ts
-1 packages/some-content-registry/src/registry/lazy-with-preload.ts
 3 packages/ui/honeycomb/src/hooks/use-game-audio.ts
 3 packages/ui/honeycomb/src/hooks/use-hangul-wasm/index.ts
 3 packages/ui/honeycomb/src/hooks/use-hexgrid-wasm/index.ts
@@ -46,3 +43,23 @@
 1 packages/ui/topik/src/lib/topik/adapter/hooks/use-read-aloud/index.ts
 1 packages/ui/topik/src/lib/topik/adapter/hooks/use-session/index.ts
 2 packages/ui/wireframes/src/components/youtube/layout-crm/index.tsx
+
+# Coordination: React.lazy's own loading contract. The one await is inside the
+# factory React calls when the component first renders; it validates the
+# dynamically imported module's shape before React gets it. No component state
+# is sequenced here; preload() is the same loader, for callers that warm it.
+1 packages/some-content-registry/src/registry/lazy-with-preload.ts
+
+# Coordination: the orchestrator's command port. Each action awaits the
+# injected command sender exactly once and sequences nothing after it. The
+# state machine those commands drive lives outside React, in
+# lib/orchestrator/mock-orchestrator-engine.ts; the store only forwards.
+9 apps/www/src/lib/orchestrator/orchestrator-store.ts
+
+# Coordination: HTTP discovery and loading through @some-ui/fetch-kit's
+# FileDiscovery and ResourceLoader ports. It loads once per mount (config is
+# documented as stable) and publishes one batch after every file settles. Its
+# returned reload() could overlap a load, but nothing calls it today. Its only
+# caller is the composer's library tabs, which #1647 will either delete (this
+# goes with them) or give a real source (then this moves into a runtime).
+3 apps/www/src/hooks/use-recursive-library.ts
