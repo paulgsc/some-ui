@@ -55,8 +55,8 @@ Each one found is a **blocking** finding, never a nit, suggestion or optional co
    TOPIK's `LessonShelf` this way, and #1641 merges them.
 2. **A parallel implementation of something that exists.** An added module, component,
    hook or helper whose job existing code already does. Search before flagging: look for the
-   added exports' names and close synonyms in `packages/ui/shared`, `packages/utils` and
-   the sibling workspaces of the one the diff touches. Flag only with the existing code's
+   added exports' names and close synonyms in `packages/ui/shared`, `packages/core-utils`,
+   `packages/react-hooks` and the sibling workspaces of the one the diff touches. Flag only with the existing code's
    path in hand.
 3. **Code left behind.** A diff that moves callers to a new way of doing something and
    keeps the old one, now with fewer callers or none. Likewise a behavior change that adds
