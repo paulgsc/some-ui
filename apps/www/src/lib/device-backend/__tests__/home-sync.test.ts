@@ -224,6 +224,18 @@ describe("syncFromHome", () => {
     )
   })
 
+  it("re-lists a lesson an older build retired, once home lists it", async () => {
+    await syncFromHome(phoneDb, HOME, verbatimGet, () => NOW)
+    await phoneDb.run("UPDATE curriculum SET retired_at = ? WHERE key = ?", [
+      "2026-09-29T09:00:00+00:00",
+      "k2-cafe",
+    ])
+    await syncFromHome(phoneDb, HOME, verbatimGet, () => NOW)
+    await expect(phoneJson("/curriculum/manifest.json")).resolves.toMatchObject(
+      { topiks: [{ key: "k2-cafe" }] }
+    )
+  })
+
   it("says home is unreachable, and changes nothing, off the home network", async () => {
     const offline: HomeGet = () =>
       Promise.reject(new TypeError("Failed to fetch"))

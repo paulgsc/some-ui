@@ -221,7 +221,7 @@ export async function upsertLesson(
   return db.transaction(async () => {
     const stored = await one(
       db,
-      `SELECT content_hash, version, level, display_name, description,
+      `SELECT content_hash, version, retired_at, level, display_name, description,
               batch_count, total_questions, total_messages, tags
        FROM curriculum WHERE key = ?`,
       [entry.key]
@@ -229,6 +229,8 @@ export async function upsertLesson(
     if (
       stored !== null &&
       text(stored, "content_hash") === contentHash &&
+      // A lesson an older build retired comes back when home lists it again.
+      stored.retired_at === null &&
       stored.level === level &&
       stored.display_name === entry.displayName &&
       stored.description === entry.description &&
@@ -249,7 +251,7 @@ export async function upsertLesson(
          total_questions = excluded.total_questions, total_messages = excluded.total_messages,
          tags = excluded.tags, published_at = excluded.published_at,
          version = excluded.version, content_hash = excluded.content_hash,
-         body = excluded.body`,
+         body = excluded.body, retired_at = NULL`,
       [
         entry.key,
         level,
