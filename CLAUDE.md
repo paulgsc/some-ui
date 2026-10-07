@@ -374,6 +374,14 @@ never "sounds like good practice."
   three are all portrait or landscape-desktop, and a phone held sideways was therefore a
   shape nothing could fail on. If a report is about an orientation or window shape, check
   that matrix contains it before concluding the surface is fine.
+- **A Capacitor plugin object is a thenable: never resolve a promise with one.**
+  `registerPlugin` returns a Proxy that answers every property with a native call, `then`
+  included, so `return SpeechRecognition` from an `async` function (or a `callForeign` start)
+  hands the promise machinery a "then" it calls and that never settles. Nothing throws and
+  nothing logs; the caller just waits forever. Box it (`return { plugin }`). A test's
+  `vi.mock` of the plugin as a plain object passes either way, so mock it as a Proxy that, like
+  the real one, answers every key (`apps/www/src/lib/dictation/index.test.ts`,
+  `asCapacitorPlugin`).
 - **Run `git diff --cached --stat` before every commit, not only `git status`.** Run it
   after staging (`git add`) — plain `git diff --stat` only shows the unstaged worktree, so
   it can miss binary corruption in content that's already staged and about to be committed.

@@ -16,16 +16,13 @@
 # This file is where F1 is reviewed. The check counts; it does not judge.
 
 # Grandfathered: these waited on a foreign API before F1 landed. Debt, not a
-# judgment that each is fine: apps/www/src/lib/dictation is the one #1671's
-# notes shipped broken on (a recognizer that cannot start reads as a frame of
-# "Listening…" and a notice that blames the speaker). A count here may only
-# fall (lower it in the same change), and an entry leaves when its file stops
-# waiting outside the boundary.
+# judgment that each is fine. A count here may only fall (lower it in the
+# same change), and an entry leaves when its file stops waiting outside the
+# boundary, as apps/www/src/lib/dictation did first.
 11 apps/www/src/lib/device-backend/capacitor-sqlite/index.ts
 1 apps/www/src/lib/device-backend/native-http/index.ts
 1 apps/www/src/lib/device-backend/storage/index.ts
 6 apps/www/src/lib/device-speech/native.ts
-4 apps/www/src/lib/dictation/index.ts
 7 apps/www/src/lib/study-nudge/native.ts
 6 apps/www/src/lib/study-nudge/service-worker.ts
 1 packages/ui/leetype/src/components/round/generate-round/index.tsx

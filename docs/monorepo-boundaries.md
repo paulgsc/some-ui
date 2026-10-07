@@ -283,9 +283,11 @@ came first and stays: its four laws are the same idea inside one package.
 >   assignment. Those are review findings. "Grandfathered counts never rise"
 >   is mechanical; not yet a rule, as for R1.
 >
-> True when declared: all 14 entries (41 waits) are in the `Grandfathered:`
-> group, nothing calls `callForeign` yet, and the check passes on the tree
-> that declares F1.
+> True when declared: all 13 entries (37 waits) are in the `Grandfathered:`
+> group, and the check passes. The first port through the boundary is the
+> phone's dictation (`apps/www/src/lib/dictation`) with the browser's
+> (`packages/ui/leetype/src/lib/leetype/notes/dictation`), whose wrapped
+> `new Promise` the count could not have seen.
 
 ## How this is enforced
 

@@ -20,7 +20,6 @@ import {
   step,
 } from "@leetype/lib/leetype/notes/composer"
 import type { Dictation, Listening } from "@leetype/lib/leetype/notes/dictation"
-import { dictationFailureOf } from "@leetype/lib/leetype/notes/dictation"
 import type { NoteStore } from "@leetype/lib/leetype/notes/store"
 import { assertNever } from "@some-ui/core-utils"
 
@@ -101,7 +100,18 @@ export function createNoteComposer(ports: ComposerPorts): ComposerRuntime {
         cancel()
         const { seq } = effect
         if (ports.dictation === null) {
-          send({ type: "listenFailed", seq, reason: "failed" })
+          // Unreachable while `canListen` follows the port; said honestly
+          // if it ever is.
+          send({
+            type: "listenFailed",
+            seq,
+            error: {
+              kind: "unavailable",
+              retryable: false,
+              summary: "There is no speech recognizer here.",
+              cause: null,
+            },
+          })
           return
         }
         const entry = { live: true }
@@ -115,19 +125,27 @@ export function createNoteComposer(ports: ComposerPorts): ComposerRuntime {
           if (listening?.entry === entry) listening = null
           return true
         }
-        handle.done.then(
-          (text) => {
-            if (settled()) send({ type: "transcribed", seq, text })
-          },
-          (error: unknown) => {
-            if (!settled()) return
-            send({
-              type: "listenFailed",
-              seq,
-              reason: dictationFailureOf(error),
-            })
+        // `outcome` never rejects (`callForeign`'s first law), so there is
+        // no rejection arm to forget.
+        void handle.outcome.then((outcome) => {
+          if (!settled()) return
+          switch (outcome.status) {
+            case "succeeded": {
+              send({ type: "transcribed", seq, text: outcome.value })
+              return
+            }
+            case "failed": {
+              send({ type: "listenFailed", seq, error: outcome.error })
+              return
+            }
+            case "abandoned": {
+              return
+            }
+            default: {
+              assertNever(outcome)
+            }
           }
-        )
+        })
         return
       }
       case "finishListening": {
