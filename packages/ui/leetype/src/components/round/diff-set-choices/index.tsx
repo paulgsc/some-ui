@@ -21,9 +21,8 @@ type DiffSetChoicesProps = {
 }
 
 /**
- * `D`, rendered (Def. 1.4, Def. 8.1 case 2): every candidate rewrite as the
- * same code card the reading surface draws a step's change on, each with one
- * button that selects it. The selection is the first half of the learner's
+ * `D`, rendered (Def. 1.4, Def. 8.1 case 2): every candidate rewrite as a
+ * `DiffCard`, each with one button that selects it. The selection is the first half of the learner's
  * pair `(d, p)`, and it is one-shot like every commitment on this surface
  * (Def. 9.1): once a diff is picked every button disables and the picked
  * card says so. Nothing here marks which diff is admissible; that is the

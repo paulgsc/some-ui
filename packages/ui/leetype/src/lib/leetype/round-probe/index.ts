@@ -7,9 +7,8 @@ import type { DiffSetMember } from "@leetype/types/round"
 
 /**
  * A round posed as a proposition-discrimination card (LTY-PROBE B2): canon
- * Rem. 6.2, Thm. 6.1, Def. 1.6. The round-shaped counterpart to
- * `reading-probe`'s `readingProbeOf`, sharing `shuffledBySeed` and
- * `READING_OPTION_COUNT`.
+ * Rem. 6.2, Thm. 6.1, Def. 1.6. Seeded by `shuffledBySeed`; offers
+ * `READING_OPTION_COUNT` options.
  *
  * The option pool is `P`, the proposition register (Rem. 6.2): sentences
  * true in general, not other steps' authored claims. Two rounds sharing a
@@ -82,10 +81,9 @@ export function propositionPoolOf(
 }
 
 /**
- * A round, posed as a proposition-discrimination card. Unlike
- * `ReadingProbe` there is no `family`/`prompt`: a round always asks the one
- * question `ROUND_PROBE_PROMPT`. For `justification`/`gloss` see the module
- * doc comment.
+ * A round, posed as a proposition-discrimination card. A round always asks
+ * the one question `ROUND_PROBE_PROMPT`. For `justification`/`gloss` see the
+ * module doc comment.
  */
 export type RoundProbe = {
   answerId: PropositionId

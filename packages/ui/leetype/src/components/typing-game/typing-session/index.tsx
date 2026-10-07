@@ -68,10 +68,10 @@ type TypingSessionProps = {
 }
 
 /**
- * The optional production probe (Prop. 9.2): a competency probe whose input
- * is typing, rendered on viewports wide enough for a keyboard *instead of*
- * `ReadingSession`, which is the session itself. `Leetype` mounts exactly
- * one of the two, so neither mounts the other's hooks.
+ * The production probe (Prop. 9.2): a competency probe whose input is
+ * typing, rendered on viewports wide enough for a keyboard *instead of*
+ * rounds. `Leetype` mounts exactly one of the two, so neither mounts the
+ * other's hooks.
  *
  * The loop is *read one sentence → type → observe → repeat*, with no menu
  * inside it and no XP. This component composes three collaborators, each

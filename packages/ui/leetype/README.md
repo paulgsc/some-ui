@@ -66,12 +66,11 @@ Leetype                        picks a modality, and nothing else
 │       └── TypingViewport     the one scroll container in the card
 │           └── CodeDisplay    a pure glyph renderer
 │
-└── ReadingSession  < 768px    the same corpus, a discrimination probe
-    ├── useExerciseRunner      the same hook, advanced and never repeated
-    ├── readingProbeOf         a card derived from authored data alone
-    ├── DiffCard               the focal object: one unified hunk
-    ├── ClaimChoices           a real radio group that looks like rows
-    └── ReadingFeedback        the author's reason, no verdict of its own
+└── RoundSession    < 768px    rounds (Def. 1.7), one artifact at a time
+    ├── ArtifactSwitcher       pages between the round's artifacts
+    ├── DiffSetChoices         the candidate rewrites, each a DiffCard
+    ├── RoundChoices           commit-and-reveal rows
+    └── RoundFeedback          the authored reason, no verdict of its own
 ```
 
 Four boundaries hold the typing branch together, and each is worth stating

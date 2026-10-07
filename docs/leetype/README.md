@@ -384,6 +384,16 @@ proposed again by someone who has not read this section:
 
 ## LTY-MOBILE: below the breakpoint, the modality changes and the subject does not
 
+> **Retired (2026-10).** Rounds replaced the reading surface on the phone in
+> #1598, after which `ReadingSession` played only for a host-forced
+> `exercise` and no host forced one. It was removed with `ClaimChoices`,
+> `ReadingFeedback`, `ReadingHeader`, the mobile `ExercisePicker` and the
+> claim derivation in `lib/leetype/reading-probe` (`claimOf`,
+> `readingProbeOf`, `claimPoolOf`). `DiffCard` and the module's row model
+> stay, because rounds draw their hunks with them. A narrow window now always
+> plays rounds; the record below is kept for why the phone probes
+> discrimination rather than production.
+
 Before this, LeetType had one surface. Below about 768px that surface was
 still rendered, still masked text, still measured WPM, and still gated on a
 baseline — on a device with no keyboard to produce code with. It looked

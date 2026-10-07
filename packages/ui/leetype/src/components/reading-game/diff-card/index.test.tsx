@@ -97,8 +97,8 @@ describe("DiffCard", () => {
 
   // ── The scroller's memory across a step boundary ────────────────────────
   //
-  // `ReadingSession` renders one `DiffCard` and swaps its prop, so the scroll
-  // box is the same DOM element from step to step. jsdom computes no layout,
+  // A caller that renders one `DiffCard` and swaps its prop keeps the same
+  // scroll box from hunk to hunk. jsdom computes no layout,
   // so `scrollWidth`/`clientWidth` are faked here — which is exactly what
   // makes this test honest: with them faked, `ResizeObserver` absent from
   // jsdom entirely, and no user scroll event, the *only* thing that can reset

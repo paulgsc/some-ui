@@ -102,9 +102,10 @@ export const SessionViewport = ({
   //
   // `leetype`'s rounds (H1, #1231; canon Rem. 11.4): `loadRounds` fetches the
   // served corpus, and the package falls back to bundled rounds when it
-  // resolves empty or rejects (src/lib/leetype-content). Its small-screen
-  // reading surface (LTY-MOBILE) is chosen inside the package; no `surface`
-  // prop here, since the registry contract is render-with-no-props.
+  // resolves empty or rejects (src/lib/leetype-content). The phone gets
+  // rounds and a wide window the typing surface, chosen inside the package;
+  // no `surface` prop here, since the registry contract is
+  // render-with-no-props.
   // Built through `defineSceneProps` so a misspelled registry key is caught.
   const sceneProps = useMemo(
     () =>

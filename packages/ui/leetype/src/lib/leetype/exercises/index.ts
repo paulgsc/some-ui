@@ -104,13 +104,3 @@ export const ALL_FIXTURE_EXERCISES: ReadonlyArray<Exercise> = CORPUS
 export const SESSION_EXERCISE_IDS: ReadonlyArray<string> = CORPUS.filter(
   (exercise) => exercise.id !== ADVERSARIAL_EXERCISE_ID
 ).map((exercise) => exercise.id)
-
-/**
- * Every step of every session-eligible exercise, flattened: the reading
- * surface's distractor pool (`lib/leetype/reading-probe`). Filtered like
- * `SESSION_EXERCISE_IDS`, so the adversarial fixture's prose never becomes a
- * distractor. Not a selection API.
- */
-export const SESSION_STEPS: ReadonlyArray<Step> = CORPUS.filter((exercise) =>
-  SESSION_EXERCISE_IDS.includes(exercise.id)
-).flatMap((exercise) => exercise.steps)
