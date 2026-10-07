@@ -80,6 +80,6 @@
     "@some-ui/topik": "workspace:*",
     "@vitejs/plugin-react": "^6.1.1",
     "rollup-plugin-visualizer": "^5.12.0",
-    "vite": "^8.3.1"
+    "vite": "^8.3.2"
   }
 }
