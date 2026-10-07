@@ -24,6 +24,7 @@ export default defineConfig({
       // Same reason, same placement: read by the audience-gate test.
       "@/build.profiles": resolve(import.meta.dirname, "./build.profiles.ts"),
       "@/build.paths": resolve(import.meta.dirname, "./build.paths.ts"),
+      "@/build.minify": resolve(import.meta.dirname, "./build.minify.ts"),
       "@/file-host.dev": resolve(import.meta.dirname, "./file-host.dev.ts"),
       // Mirrors vite.config.ts's "@" -> "./src" alias, which this config
       // doesn't extend.

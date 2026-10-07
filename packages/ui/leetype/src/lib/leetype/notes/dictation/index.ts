@@ -24,51 +24,30 @@
  * One utterance per `listen`: the recognizer ends on a pause, and the
  * composer appends each transcript to the note, so tapping the microphone
  * again adds more rather than replacing what was said.
+ *
+ * Each implementation runs its recognizer through `callForeign` (F1), so
+ * the composer gets a `ForeignOutcome`. Hearing nothing is `succeeded` with
+ * empty text, not a failure.
  */
 
-/** Why listening ended without a transcript. */
-export type DictationFailure =
-  /** The learner, or the platform, refused the microphone. */
-  | "denied"
-  /** The recognizer heard no words. */
-  | "silent"
-  /** Anything else: no network for a cloud recognizer, a busy service. */
-  | "failed"
-
-export class DictationError extends Error {
-  constructor(readonly reason: DictationFailure) {
-    super(`dictation ${reason}`)
-    this.name = "DictationError"
-  }
-}
-
-const FAILURES: ReadonlyArray<DictationFailure> = ["denied", "silent", "failed"]
-
-/**
- * Why a `Listening`'s `done` rejected. The contract is structural: any
- * rejection carrying a `reason` that is a `DictationFailure` says which, so
- * a host's port (`apps/www`'s) need not import this class, and with it this
- * package, into its main bundle. Anything else is `"failed"`.
- */
-export function dictationFailureOf(error: unknown): DictationFailure {
-  if (typeof error !== "object" || error === null || !("reason" in error)) {
-    return "failed"
-  }
-  const { reason } = error
-  return FAILURES.find((failure) => failure === reason) ?? "failed"
-}
+import type { ForeignOutcome, ForeignVerdict } from "@some-ui/intent-kit"
+import {
+  callForeign,
+  ForeignDeadlineError,
+  reportFailure,
+} from "@some-ui/intent-kit"
 
 /** One utterance being listened to. */
 export type Listening = {
   /**
-   * The transcript once the recognizer is done, or a rejection carrying a
-   * `reason` (`DictationError`, or any object `dictationFailureOf` reads).
-   * Never settles with empty text: hearing nothing rejects with `"silent"`.
+   * What became of it, from `callForeign`: never rejects. `succeeded` with
+   * the transcript, empty when nothing was heard; `failed` with why, in
+   * `IntentError`'s words; `abandoned` after `cancel`.
    */
-  readonly done: Promise<string>
-  /** Asks the recognizer to finish now; `done` settles with what it heard. */
+  readonly outcome: Promise<ForeignOutcome<string>>
+  /** Asks the recognizer to finish now; `outcome` settles with what it heard. */
   stop(): void
-  /** Abandons the utterance; whatever `done` does afterwards is ignored. */
+  /** Abandons the utterance: `outcome` settles `abandoned`, and nothing after counts. */
   cancel(): void
 }
 
@@ -78,6 +57,13 @@ export type Dictation = {
   /** Starts listening; `onHeard` gets the words so far, as they change. */
   listen(onHeard: (heard: string) => void): Listening
 }
+
+/**
+ * How long one utterance may take. The recognizer ends on a pause, so this
+ * only ends one that never does (another app took the microphone, the
+ * service died); the composer's own `FINISH_TIMEOUT_MS` ends a Stop sooner.
+ */
+const LISTEN_DEADLINE_MS = 60_000
 
 /** The part of the Web Speech API this uses. */
 type RecognitionResultList = ArrayLike<
@@ -115,13 +101,69 @@ function transcriptOf(results: RecognitionResultList): string {
   return text.trim()
 }
 
-/** A Web Speech error code, as this port's failure. */
-function failureOf(error: string): DictationFailure {
-  if (error === "not-allowed" || error === "service-not-allowed") {
-    return "denied"
+/** The browser's recognizer ended on an error: Web Speech's code. */
+class WebSpeechError extends Error {
+  constructor(readonly code: string) {
+    super(`speech recognition error: ${code}`)
+    this.name = "WebSpeechError"
   }
-  if (error === "no-speech") return "silent"
-  return "failed"
+}
+
+const BLOCKED: ForeignVerdict = {
+  kind: "rejected",
+  retryable: false,
+  summary: "The microphone is blocked for this page.",
+}
+
+/**
+ * What each Web Speech error code means here
+ * (`SpeechRecognitionErrorEvent.error`). `no-speech` and `aborted` never
+ * get here: they are silence and our own cancel.
+ */
+const WEB_SPEECH_VERDICTS: Readonly<Record<string, ForeignVerdict>> = {
+  "not-allowed": BLOCKED,
+  "service-not-allowed": BLOCKED,
+  "audio-capture": {
+    kind: "unavailable",
+    retryable: false,
+    summary: "The browser can't find a microphone.",
+  },
+  "language-not-supported": {
+    kind: "unavailable",
+    retryable: false,
+    summary: "The browser can't recognize speech in your language.",
+  },
+  network: {
+    kind: "unreachable",
+    retryable: true,
+    summary: "The browser's speech service couldn't be reached.",
+  },
+}
+
+const NO_ANSWER: ForeignVerdict = {
+  kind: "unreachable",
+  retryable: true,
+  summary: "The browser's speech service didn't answer.",
+}
+
+const UNRECOGNIZED: ForeignVerdict = {
+  kind: "unknown",
+  retryable: true,
+  summary: "The browser's speech service couldn't listen.",
+}
+
+function classifyWebSpeech(error: unknown): ForeignVerdict {
+  if (error instanceof ForeignDeadlineError) return NO_ANSWER
+  if (!(error instanceof WebSpeechError)) return UNRECOGNIZED
+  return Object.hasOwn(WEB_SPEECH_VERDICTS, error.code)
+    ? (WEB_SPEECH_VERDICTS[error.code] ?? UNRECOGNIZED)
+    : UNRECOGNIZED
+}
+
+const WEB_SPEECH_PORT = {
+  name: "browser speech recognizer",
+  classify: classifyWebSpeech,
+  report: reportFailure,
 }
 
 /**
@@ -139,57 +181,58 @@ export function webSpeechDictation(
   return {
     recognizer: "browser",
     listen(onHeard): Listening {
-      let heard = ""
-      let failure: DictationFailure | null = null
       let cancelled = false
       let recognition: Recognition | null = null
-      const done = new Promise<string>((resolve, reject) => {
-        try {
-          recognition = new Constructor()
-          recognition.lang = lang
-          recognition.interimResults = true
-          recognition.continuous = false
-          recognition.maxAlternatives = 1
-          recognition.onresult = (event): void => {
-            heard = transcriptOf(event.results)
-            if (!cancelled) onHeard(heard)
-          }
-          recognition.onerror = (event): void => {
-            // `aborted` is our own `cancel`; `no-speech` after some words
-            // is not silence.
-            if (event.error === "aborted") return
-            if (event.error === "no-speech" && heard !== "") return
-            failure = failureOf(event.error)
-          }
-          recognition.onend = (): void => {
-            if (failure !== null) reject(new DictationError(failure))
-            else if (heard === "") reject(new DictationError("silent"))
-            else resolve(heard)
-          }
-          recognition.start()
-        } catch {
-          reject(new DictationError("failed"))
-        }
+      const call = callForeign<string>({
+        port: WEB_SPEECH_PORT,
+        deadlineMs: LISTEN_DEADLINE_MS,
+        start: (signal) =>
+          new Promise<string>((resolve, reject) => {
+            let heard = ""
+            let failure: string | null = null
+            const created = new Constructor()
+            recognition = created
+            created.lang = lang
+            created.interimResults = true
+            created.continuous = false
+            created.maxAlternatives = 1
+            created.onresult = (event): void => {
+              heard = transcriptOf(event.results)
+              if (!cancelled) onHeard(heard)
+            }
+            created.onerror = (event): void => {
+              // `aborted` is our own `cancel`; `no-speech` is silence, which
+              // is not a failure, and after some words is not even silence.
+              if (event.error === "aborted" || event.error === "no-speech")
+                return
+              failure = event.error
+            }
+            created.onend = (): void => {
+              if (failure !== null) reject(new WebSpeechError(failure))
+              else resolve(heard)
+            }
+            signal.addEventListener("abort", () => {
+              try {
+                created.abort()
+              } catch {
+                // Already ended: `onend` has settled.
+              }
+            })
+            created.start()
+          }),
       })
-      // Settled by `cancel` as often as by the recognizer; nobody may be
-      // listening by then, and an unhandled rejection is not a failure.
-      done.catch(() => undefined)
       return {
-        done,
+        outcome: call.outcome,
         stop: (): void => {
           try {
             recognition?.stop()
           } catch {
-            // Already ended: `onend` has settled `done`.
+            // Already ended: `onend` has settled.
           }
         },
         cancel: (): void => {
           cancelled = true
-          try {
-            recognition?.abort()
-          } catch {
-            // Already ended.
-          }
+          call.abandon()
         },
       }
     },

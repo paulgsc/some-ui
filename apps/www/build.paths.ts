@@ -109,6 +109,7 @@ const DEVICE_MODULES = [
   "apps/www/src/lib/device-backend/**",
   "apps/www/src/lib/device-speech/**",
   "apps/www/src/lib/dictation/**",
+  "apps/www/src/lib/native-log/**",
   "apps/www/src/lib/study-nudge/native.ts",
   "apps/www/src/lib/study-nudge/schedule.ts",
   "apps/www/src/components/auth/device-*.tsx",
@@ -209,8 +210,9 @@ export const paths: PathRules<Profile> = definePaths<Profile>({
         "apps/www/src/lib/study-nudge/native.ts",
         "apps/www/src/lib/study-nudge/schedule.ts",
         "apps/www/src/lib/dictation/index.ts",
+        "apps/www/src/lib/native-log/index.ts",
       ],
-      why: "the Android app answers file_host, speaks, nudges and takes dictation through these; a build without one is an APK that installs and then fails",
+      why: "the Android app answers file_host, speaks, nudges, takes dictation and logs its failures through these; a build without one is an APK that installs and then fails, or fails and says nothing",
     },
     {
       profile: MOBILE_PROFILE,

@@ -1,6 +1,10 @@
 {
   "extends": "@some-ui/tsconfig/eslint.tsconfig.json",
   "compilerOptions": {
+    // The counted checks (site-count.ts and its users) also run on Node's
+    // own type stripping (scripts/check-*.ts), which resolves an import only
+    // by its real `.ts` name; the build rewrites it to `.js`.
+    "rewriteRelativeImportExtensions": true,
     "paths": {
       "@eslint/*": ["./src/*"]
     }

@@ -46,40 +46,27 @@
 // word "await" in JSX text or a comment is not a site.
 import ts from "typescript"
 
-export const ALLOWLIST_FILE = "scripts/react-coordination.allowlist"
+import type { CountedCheck, CountViolation } from "./site-count.ts"
+import {
+  describeCountViolation,
+  findCountViolations,
+  isInScope,
+  parseCountAllowlist,
+  parseSource,
+  PROMISE_CHAIN,
+} from "./site-count.ts"
 
-const SCOPE = /^(?:apps|packages|extensions)\//
-const SOURCE = /\.[cm]?[jt]sx?$/
+export { isInScope }
+
+const ALLOWLIST_FILE = "scripts/react-coordination.allowlist"
+
 const JSX_SOURCE = /\.[jt]sx$/
-const OUT_OF_SCOPE = [
-  /(?:^|\/)(?:node_modules|dist|__tests__|__mocks__|tests|test-support|e2e|lint-fixtures)\//,
-  /\.(?:test|spec|stories)\.[cm]?[jt]sx?$/,
-  /\.d\.[cm]?ts$/,
-  /\.gen\.[cm]?[jt]sx?$/,
-]
 // `react`, `react-dom`, their subpaths, and bindings named for React:
 // `@tanstack/react-query`, `react-hook-form`, `lucide-react`.
 const REACT_LIBRARY = /(?:^|\/)react(?:-[^/]*)?(?:\/|$)|-react(?:\/|$)/
 const HOOK_NAME = /^use[A-Z0-9]/
 const NAMESPACE = /^[A-Z]/
-const PROMISE_CHAIN = new Set(["then", "catch", "finally"])
 const REASON = /^#\s*(?:Coordination|Grandfathered):\s*\S/
-
-/** Whether `path` (repo-relative, `/`-separated) is a source file R1 covers. */
-export function isInScope(path: string): boolean {
-  return (
-    SCOPE.test(path) &&
-    SOURCE.test(path) &&
-    !OUT_OF_SCOPE.some((pattern) => pattern.test(path))
-  )
-}
-
-function scriptKind(path: string): ts.ScriptKind {
-  if (path.endsWith(".tsx")) return ts.ScriptKind.TSX
-  if (path.endsWith(".jsx")) return ts.ScriptKind.JSX
-  if (/\.[cm]?js$/.test(path)) return ts.ScriptKind.JS
-  return ts.ScriptKind.TS
-}
 
 function importsReact(file: ts.SourceFile): boolean {
   return file.statements.some(
@@ -136,13 +123,7 @@ function isSite(node: ts.Node): boolean {
  * module (and so is not R1's concern at all).
  */
 export function coordinationSites(path: string, source: string): number | null {
-  const file = ts.createSourceFile(
-    path,
-    source,
-    ts.ScriptTarget.Latest,
-    false,
-    scriptKind(path)
-  )
+  const file = parseSource(path, source)
   if (!JSX_SOURCE.test(path) && !importsReact(file) && !hasHook(file))
     return null
   let sites = 0
@@ -154,80 +135,19 @@ export function coordinationSites(path: string, source: string): number | null {
   return sites
 }
 
-export type AllowlistEntry = {
-  readonly path: string
-  readonly sites: number
-  readonly line: number
-  /** Whether its comment block says `Coordination:` or `Grandfathered:`. */
-  readonly reasoned: boolean
-}
-
-export type AllowlistProblem = {
-  readonly line: number
-  readonly text: string
-}
-
 /**
  * Entries are `<sites> <path>` lines. A blank line ends a group, and every
  * entry is reasoned by its group's `#` lines: one of them must start
  * `Coordination:` (why this module coordinates) or `Grandfathered:` (it did
  * before R1, and is debt).
  */
-export function parseAllowlist(text: string): {
-  entries: Array<AllowlistEntry>
-  problems: Array<AllowlistProblem>
-} {
-  const entries: Array<AllowlistEntry> = []
-  const problems: Array<AllowlistProblem> = []
-  let group: Array<{ path: string; sites: number; line: number }> = []
-  let reasoned = false
-  const close = (): void => {
-    for (const entry of group) entries.push({ ...entry, reasoned })
-    group = []
-    reasoned = false
-  }
-  for (const [index, raw] of text.split("\n").entries()) {
-    const line = raw.trim()
-    if (line === "") {
-      close()
-      continue
-    }
-    if (line.startsWith("#")) {
-      if (REASON.test(line)) reasoned = true
-      continue
-    }
-    const entry = /^(?<sites>\d+)\s+(?<path>\S+)$/.exec(line)?.groups
-    if (entry?.sites === undefined || entry.path === undefined) {
-      problems.push({ line: index + 1, text: raw })
-      continue
-    }
-    group.push({
-      path: entry.path,
-      sites: Number(entry.sites),
-      line: index + 1,
-    })
-  }
-  close()
-  return { entries, problems }
+export function parseAllowlist(
+  text: string
+): ReturnType<typeof parseCountAllowlist> {
+  return parseCountAllowlist(text, REASON)
 }
 
-export type CoordinationViolation =
-  | { readonly kind: "malformed"; readonly line: number; readonly text: string }
-  | { readonly kind: "duplicate"; readonly path: string; readonly line: number }
-  | {
-      readonly kind: "unreasoned"
-      readonly path: string
-      readonly line: number
-    }
-  | { readonly kind: "unlisted"; readonly path: string; readonly sites: number }
-  | {
-      readonly kind: "changed"
-      readonly path: string
-      readonly line: number
-      readonly listed: number
-      readonly sites: number
-    }
-  | { readonly kind: "stale"; readonly path: string; readonly line: number }
+export type CoordinationViolation = CountViolation
 
 /**
  * Compares the sites found (`actual`: every in-scope React module with at
@@ -237,74 +157,29 @@ export function findCoordinationViolations(
   actual: ReadonlyMap<string, number>,
   allowlist: string
 ): Array<CoordinationViolation> {
-  const { entries, problems } = parseAllowlist(allowlist)
-  const violations: Array<CoordinationViolation> = problems.map((problem) => ({
-    kind: "malformed",
-    ...problem,
-  }))
-  const listed = new Map<string, AllowlistEntry>()
-  for (const entry of entries) {
-    if (listed.has(entry.path)) {
-      violations.push({ kind: "duplicate", path: entry.path, line: entry.line })
-      continue
-    }
-    listed.set(entry.path, entry)
-    if (!entry.reasoned)
-      violations.push({
-        kind: "unreasoned",
-        path: entry.path,
-        line: entry.line,
-      })
-    const sites = actual.get(entry.path)
-    if (sites === undefined)
-      violations.push({ kind: "stale", path: entry.path, line: entry.line })
-    else if (sites !== entry.sites)
-      violations.push({
-        kind: "changed",
-        path: entry.path,
-        line: entry.line,
-        listed: entry.sites,
-        sites,
-      })
-  }
-  for (const [path, sites] of [...actual].sort(([a], [b]) =>
-    a.localeCompare(b)
-  )) {
-    if (!listed.has(path)) violations.push({ kind: "unlisted", path, sites })
-  }
-  return violations
+  return findCountViolations(actual, allowlist, REASON)
 }
 
-function assertNever(value: never): never {
-  throw new Error(`unhandled violation: ${JSON.stringify(value)}`)
+/** R1 as `runCountedCheck` runs it (`scripts/check-react-coordination.ts`). */
+export const COORDINATION_CHECK: CountedCheck = {
+  tag: "react-coordination",
+  id: "R1",
+  allowlistFile: ALLOWLIST_FILE,
+  reason: REASON,
+  reasonLine: '"# Coordination: <why>"',
+  reasonHint:
+    "Say why this React module coordinates async work instead of a runtime outside React doing it.",
+  count: coordinationSites,
+  sites: "await/promise-chain sites",
+  unlisted: (sites) =>
+    `a React module with ${sites} await/promise-chain site(s), not in ${ALLOWLIST_FILE}. Either move the coordination out of React (docs/monorepo-boundaries.md, R1)`,
+  raised: "More coordination in a React module: if it belongs there,",
+  staleAlso: "(or is gone, or is no longer a React module)",
+  counted: "React modules coordinate",
 }
 
 export function describeCoordinationViolation(
   v: CoordinationViolation
 ): string {
-  switch (v.kind) {
-    case "malformed": {
-      return `${ALLOWLIST_FILE}:${v.line}: not a "<sites> <path>" entry, a "#" comment or blank: ${v.text}`
-    }
-    case "duplicate": {
-      return `${ALLOWLIST_FILE}:${v.line}: ${v.path} is listed twice.`
-    }
-    case "unreasoned": {
-      return `${ALLOWLIST_FILE}:${v.line}: ${v.path} has no "# Coordination: <why>" line in its group. Say why this React module coordinates async work instead of a runtime outside React doing it.`
-    }
-    case "unlisted": {
-      return `${v.path}: a React module with ${v.sites} await/promise-chain site(s), not in ${ALLOWLIST_FILE}. Either move the coordination out of React (docs/monorepo-boundaries.md, R1), or add "${v.sites} ${v.path}" under a "# Coordination: <why>" line.`
-    }
-    case "changed": {
-      return v.sites > v.listed
-        ? `${v.path}: ${v.sites} await/promise-chain sites, listed as ${v.listed}. More coordination in a React module: if it belongs there, raise the count in ${ALLOWLIST_FILE}:${v.line}, and if that entry is Grandfathered, move it under its own "# Coordination: <why>" (R1).`
-        : `${v.path}: ${v.sites} await/promise-chain sites, listed as ${v.listed}. Lower the count in ${ALLOWLIST_FILE}:${v.line} to match.`
-    }
-    case "stale": {
-      return `${ALLOWLIST_FILE}:${v.line}: ${v.path} no longer has await/promise-chain sites (or is gone, or is no longer a React module). Remove the entry.`
-    }
-    default: {
-      return assertNever(v)
-    }
-  }
+  return describeCountViolation(COORDINATION_CHECK, v)
 }

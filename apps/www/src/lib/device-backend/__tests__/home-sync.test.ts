@@ -23,6 +23,7 @@ import {
 import type { DeviceBackend } from "@/lib/device-backend/interceptor"
 import { createDeviceFetch } from "@/lib/device-backend/interceptor"
 import type { SqlDriver } from "@/lib/device-backend/sql"
+import { DeviceStorageError } from "@/lib/device-backend/sql"
 import type { StorageBudget } from "@/lib/device-backend/storage"
 import { databaseBytes } from "@/lib/device-backend/storage"
 
@@ -204,6 +205,26 @@ describe("syncFromHome", () => {
     await expect(phoneJson("/curriculum/manifest.json")).resolves.toMatchObject(
       { topiks: [{ key: "k2-cafe" }] }
     )
+  })
+
+  it("stops on the phone's storage failing, rather than counting the lesson as not fetched", async () => {
+    const failing = new DeviceStorageError({
+      kind: "unreachable",
+      retryable: true,
+      summary: "This phone's storage didn't answer.",
+      cause: null,
+    })
+    // Only the lesson's own write: the storage gives out mid-loop.
+    const storageGone: SqlDriver = {
+      ...phoneDb,
+      run: (sql, params) =>
+        sql.includes("INSERT INTO curriculum")
+          ? Promise.reject(failing)
+          : phoneDb.run(sql, params),
+    }
+    await expect(
+      syncFromHome(storageGone, HOME, verbatimGet, () => NOW)
+    ).rejects.toBe(failing)
   })
 
   it("removes nothing when the rounds listing fails after the lessons'", async () => {

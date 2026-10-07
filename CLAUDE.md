@@ -219,6 +219,10 @@ entry is allowed when the reason is real: put it in its own group under
 grandfathered group. If the only honest reason is "it needs an await", the code belongs in the
 runtime instead.
 
+A port to anything we do not own (a native plugin, `navigator`, `Notification`) waits through
+`callForeign` (`@some-ui/intent-kit`), never its own failure union or timeout; `unavailable` means
+withdraw the control. `pnpm check:foreign-boundary` counts bare waits as R1 does (F1).
+
 A component or hook that seeds `useState`/`useReducer` from its own prop or from the clock keeps
 a copy frozen at mount while the owner moves on; #1659's review found that five times, one per
 round. `owner-guard/no-mount-snapshot` (eslint-kit's opt-in `ownerGuardConfig`, on in aph,
@@ -365,6 +369,13 @@ never "sounds like good practice."
   three are all portrait or landscape-desktop, and a phone held sideways was therefore a
   shape nothing could fail on. If a report is about an orientation or window shape, check
   that matrix contains it before concluding the surface is fine.
+- **A Capacitor plugin object is a thenable: never resolve a promise with one.** Its Proxy
+  answers `then` too, so `return SpeechRecognition` from an `async` function waits forever,
+  silently. Box it (`return { plugin }`), and mock plugins as a Proxy that answers every key
+  (`asCapacitorPlugin` in `apps/www/src/lib/dictation/index.test.ts`), or the test passes anyway.
+- **A `console.error` in www is gone from release builds** (`build.minify.ts`), and the APK's
+  console reaches nothing anyway. Report failures through `reportFailure` (`@some-ui/intent-kit`),
+  which survives both: `adb logcat -s SomeUI`.
 - **Run `git diff --cached --stat` before every commit, not only `git status`.** Run it
   after staging (`git add`) — plain `git diff --stat` only shows the unstaged worktree, so
   it can miss binary corruption in content that's already staged and about to be committed.

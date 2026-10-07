@@ -6,6 +6,7 @@ import viteReact from "@vitejs/plugin-react"
 import type { HtmlTagDescriptor, Plugin, UserConfig } from "vite"
 import { defineConfig, loadEnv } from "vite"
 
+import { RELEASE_MINIFY } from "./build.minify.ts"
 import { offPathPublicFiles } from "./build.paths.ts"
 import { buildAudiencePlugin, MOBILE_PROFILE } from "./build.profiles.ts"
 import {
@@ -352,14 +353,11 @@ export default defineConfig(
         // for `advancedChunks` (Rolldown's grouping API) if this ever needs
         // manual grouping again — and match on package *boundaries*, not
         // substrings of the resolved path.
-        // Production builds strip console calls (terser's `drop_console`,
-        // carried over to oxc — see `minify` below). Not in the analyze
-        // build: this object is spread over Vite's own `minify` setting, so
-        // it would override the `minify: false` that scripts/
+        // Production builds strip console calls (build.minify.ts). Not in
+        // the analyze build: this object is spread over Vite's own `minify`
+        // setting, so it would override the `minify: false` that scripts/
         // analyze-bundle.js passes to keep its chunks unminified.
-        output: analyze
-          ? {}
-          : { minify: { compress: { dropConsole: true }, mangle: true } },
+        output: analyze ? {} : { minify: RELEASE_MINIFY },
         // Tree shaking options
         treeshake: {
           // Every module is treated as side-effect free, so an import that

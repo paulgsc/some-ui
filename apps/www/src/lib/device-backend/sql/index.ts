@@ -5,7 +5,23 @@
  * them (`INTEGER` 0/1, RFC 3339 `TEXT`).
  */
 
+import type { IntentError } from "@some-ui/intent-kit"
+
 export type SqlValue = string | number | null
+
+/**
+ * The storage itself failed, as opposed to a statement: what a `SqlDriver`
+ * throws when the native database will not open or answer
+ * (`capacitor-sqlite`'s port, through `callForeign`). `error` is the failure
+ * in `IntentError`'s words; `unavailable` means no retry in this process can
+ * help. The interceptor answers it as a 503, never as a server fault.
+ */
+export class DeviceStorageError extends Error {
+  constructor(readonly error: IntentError) {
+    super(error.summary, { cause: error.cause })
+    this.name = "DeviceStorageError"
+  }
+}
 
 export type SqlRow = Readonly<Record<string, SqlValue | undefined>>
 

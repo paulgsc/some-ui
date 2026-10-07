@@ -19,6 +19,7 @@ import {
   syncFromHome,
 } from "@/lib/device-backend/home-sync"
 import { nativeHomeGet } from "@/lib/device-backend/native-http"
+import { DeviceStorageError } from "@/lib/device-backend/sql"
 import { deviceStorage } from "@/lib/device-backend/storage-view"
 import { useAsyncIntent } from "@/lib/intent"
 import { IntentButton } from "@/lib/intent/render"
@@ -76,10 +77,14 @@ export const DeviceSection = (): JSX.Element => {
         await queryClient.invalidateQueries()
         toast.success(describe(report))
       } catch (error) {
+        // The phone's own storage says so in its words (reported, with the
+        // plugin's, to the native log); anything else names the error.
         toast.error(
           error instanceof HomeUnreachableError
             ? `Couldn't reach ${error.base}. Are you on the home network?`
-            : `Sync failed: ${String(error)}`
+            : error instanceof DeviceStorageError
+              ? `Sync failed: ${error.error.summary}`
+              : `Sync failed: ${String(error)}`
         )
       }
     },

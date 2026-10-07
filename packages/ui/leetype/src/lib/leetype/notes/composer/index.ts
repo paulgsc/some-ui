@@ -31,7 +31,16 @@
  *   the last words said are kept. Pressing it again waits for the same
  *   transcript; after `FINISH_TIMEOUT_MS` without one the note closes with
  *   what was heard, so a recognizer that never settles cannot hold the
- *   panel open.
+ *   panel open. Stop, and hiding the page, wait the same way: a recognizer
+ *   that never answers a Stop ends as a failure, never as a button stuck
+ *   on "Finishing…".
+ * - **A failure says what failed, and never invites a tap that cannot
+ *   work.** The recognizer's port reports it as an `IntentError`
+ *   (`../dictation`): its `summary` is the notice, and when it is not
+ *   `retryable` (no recognizer, a blocked microphone), or
+ *   `FAILURES_BEFORE_WITHDRAWING` listens in a row have failed, the
+ *   microphone is withdrawn for the session. Hearing nothing is not a
+ *   failure.
  * - **Nothing listens while the page is off screen.** Hiding the page
  *   finishes an utterance in progress (what was heard is kept), and the
  *   microphone does not start while hidden.
@@ -52,8 +61,8 @@ import {
   clampNoteText,
   NOTE_TEXT_MAX,
 } from "@leetype/lib/leetype/notes"
-import type { DictationFailure } from "@leetype/lib/leetype/notes/dictation"
 import { assertNever } from "@some-ui/core-utils"
+import type { IntentError } from "@some-ui/intent-kit"
 
 type Voice =
   | { readonly kind: "idle" }
@@ -75,8 +84,13 @@ export type Composer =
 
 export type ComposerState = {
   readonly composer: Composer
-  /** Whether a recognizer exists here; without one the composer types only. */
+  /**
+   * Whether the microphone is offered: a recognizer exists here and has not
+   * been withdrawn after a failure no tap can fix.
+   */
   readonly canListen: boolean
+  /** Listens that failed in a row since the last one that did not. */
+  readonly failures: number
   readonly visible: boolean
   /** The latest listen asked for; a result for any other is stale. */
   readonly seq: number
@@ -112,7 +126,7 @@ type ComposerSignal =
   | {
       readonly type: "listenFailed"
       readonly seq: number
-      readonly reason: DictationFailure
+      readonly error: IntentError
     }
   | { readonly type: "hidden" }
   | { readonly type: "shown" }
@@ -144,10 +158,21 @@ export type ComposerStep = {
 export const COMPOSER_NOTICES = {
   saved: "Noted.",
   removed: "Note removed.",
-  denied: "The microphone is blocked. You can type instead.",
   silent: "Didn't catch that. Tap the microphone and try again.",
-  failed: "Couldn't turn that into text. You can type instead.",
-} as const satisfies Record<"saved" | "removed" | DictationFailure, string>
+  /** A Stop the recognizer never answered, by `FINISH_TIMEOUT_MS`. */
+  noAnswer: "The speech service didn't answer.",
+  /** After a failure's summary: the microphone is still offered. */
+  retry: "Tap the microphone to try again, or type instead.",
+  /** After a failure's summary: the microphone has been withdrawn. */
+  withdrawn: "You can type instead.",
+} as const
+
+/**
+ * Failed listens in a row after which the microphone is withdrawn even
+ * though each said a retry could help: a third tap on a recognizer that has
+ * failed twice is an invitation the app cannot honour.
+ */
+export const FAILURES_BEFORE_WITHDRAWING = 2
 
 /**
  * How long a closing note waits for its last transcript. A phone's
@@ -162,6 +187,7 @@ export function initialComposerState(canListen: boolean): ComposerState {
   return {
     composer: { phase: "closed" },
     canListen,
+    failures: 0,
     visible: true,
     seq: 0,
     notice: "",
@@ -221,6 +247,51 @@ function finish(state: ComposerState): ComposerStep {
   }
 }
 
+/** Whether `seq` is the utterance in progress, the only one whose result counts. */
+type Hearing = Extract<Composer, { readonly phase: "noted" }> & {
+  readonly voice: Exclude<Voice, { readonly kind: "idle" }>
+}
+
+function isCurrent(composer: Composer, seq: number): composer is Hearing {
+  return (
+    composer.phase === "noted" &&
+    composer.voice.kind !== "idle" &&
+    composer.voice.seq === seq
+  )
+}
+
+/**
+ * The utterance `seq` failed: words heard before it are kept, the failure
+ * is counted, and the microphone is withdrawn if no tap can fix it (or none
+ * has, `FAILURES_BEFORE_WITHDRAWING` times in a row).
+ */
+function failedListen(
+  state: ComposerState,
+  seq: number,
+  summary: string,
+  retryable: boolean
+): ComposerStep {
+  const { composer } = state
+  if (!isCurrent(composer, seq)) return stay(state)
+  const { heard } = composer.voice
+  const failures = state.failures + 1
+  const withdraw = !retryable || failures >= FAILURES_BEFORE_WITHDRAWING
+  const notice =
+    heard !== "" && !withdraw
+      ? ""
+      : `${summary} ${withdraw ? COMPOSER_NOTICES.withdrawn : COMPOSER_NOTICES.retry}`
+  return landed(
+    {
+      ...state,
+      failures,
+      canListen: state.canListen && !withdraw,
+    },
+    seq,
+    heard,
+    notice
+  )
+}
+
 /** The utterance `seq` is over; `text` (possibly empty) joins the note. */
 function landed(
   state: ComposerState,
@@ -229,10 +300,7 @@ function landed(
   notice: string
 ): ComposerStep {
   const { composer } = state
-  if (composer.phase !== "noted" || composer.voice.kind === "idle") {
-    return stay(state)
-  }
-  if (composer.voice.seq !== seq) return stay(state)
+  if (!isCurrent(composer, seq)) return stay(state)
   const note =
     text === ""
       ? composer.note
@@ -311,7 +379,10 @@ export function step(state: ComposerState, event: ComposerEvent): ComposerStep {
               voice: { ...composer.voice, kind: "finishing" },
             },
           },
-          effects: [{ type: "finishListening" }],
+          effects: [
+            { type: "finishListening" },
+            { type: "startFinishTimer", seq: composer.voice.seq },
+          ],
         }
       }
       if (composer.voice.kind === "finishing") return stay(state)
@@ -344,21 +415,21 @@ export function step(state: ComposerState, event: ComposerEvent): ComposerStep {
       })
     }
     case "transcribed": {
-      return landed(state, event.seq, event.text, "")
+      if (!isCurrent(composer, event.seq)) return stay(state)
+      // Heard nothing is a listen that worked: the learner was quiet.
+      return landed(
+        { ...state, failures: 0 },
+        event.seq,
+        event.text,
+        event.text === "" ? COMPOSER_NOTICES.silent : ""
+      )
     }
     case "listenFailed": {
-      // Words heard before a failure are still the learner's words.
-      const heard =
-        composer.phase === "noted" &&
-        composer.voice.kind !== "idle" &&
-        composer.voice.seq === event.seq
-          ? composer.voice.heard
-          : ""
-      return landed(
+      return failedListen(
         state,
         event.seq,
-        heard,
-        heard === "" ? COMPOSER_NOTICES[event.reason] : ""
+        event.error.summary,
+        event.error.retryable
       )
     }
     case "textEdited": {
@@ -417,7 +488,10 @@ export function step(state: ComposerState, event: ComposerEvent): ComposerStep {
             voice: { ...composer.voice, kind: "finishing" },
           },
         },
-        effects: [{ type: "finishListening" }],
+        effects: [
+          { type: "finishListening" },
+          { type: "startFinishTimer", seq: composer.voice.seq },
+        ],
       }
     }
     case "shown": {
@@ -426,16 +500,18 @@ export function step(state: ComposerState, event: ComposerEvent): ComposerStep {
     case "finishTimedOut": {
       if (
         composer.phase !== "noted" ||
-        !composer.closing ||
         composer.voice.kind !== "finishing" ||
         composer.voice.seq !== event.seq
       ) {
         return stay(state)
       }
-      // The transcript never came: close with what was heard (nothing, on
-      // a phone), and let go of the recognizer. The note itself was saved
-      // when its kind was picked.
-      const landing = landed(state, event.seq, composer.voice.heard, "")
+      // The transcript never came: keep what was heard (nothing, on a
+      // phone), and let go of the recognizer. Closing, the note simply
+      // closes (it was saved when its kind was picked); otherwise the Stop
+      // went unanswered, which is a failure the learner is told about.
+      const landing = composer.closing
+        ? landed(state, event.seq, composer.voice.heard, "")
+        : failedListen(state, event.seq, COMPOSER_NOTICES.noAnswer, true)
       return {
         state: landing.state,
         effects: [...landing.effects, { type: "cancelListening" }],

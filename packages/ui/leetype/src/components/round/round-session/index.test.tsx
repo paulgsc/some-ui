@@ -19,6 +19,7 @@ import { BUNDLED_ROUND_RUNS } from "@leetype/lib/leetype/round-runs/bundled"
 import { BOOST_CAP, WEIGHT_FLOOR } from "@leetype/lib/leetype/round-sampler"
 import type { Round } from "@leetype/types/authored-round"
 import type { DiffSetMember } from "@leetype/types/round"
+import type { ForeignOutcome } from "@some-ui/intent-kit"
 import { fireEvent, render, screen, within } from "@testing-library/react"
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest"
 
@@ -398,13 +399,35 @@ function hearing(words: string): Dictation {
     recognizer: "phone",
     listen(onHeard): Listening {
       let finish: (text: string) => void = () => undefined
-      const done = new Promise<string>((resolve) => {
-        finish = resolve
+      const outcome = new Promise<ForeignOutcome<string>>((resolve) => {
+        finish = (value): void => resolve({ status: "succeeded", value })
       })
       onHeard(words)
-      return { done, stop: (): void => finish(words), cancel: () => undefined }
+      return {
+        outcome,
+        stop: (): void => finish(words),
+        cancel: () => undefined,
+      }
     },
   }
+}
+
+/** A phone whose recognizer cannot start, as its port reports it. */
+const NO_RECOGNIZER: Dictation = {
+  recognizer: "phone",
+  listen: (): Listening => ({
+    outcome: Promise.resolve({
+      status: "failed",
+      error: {
+        kind: "unavailable",
+        retryable: false,
+        summary: "This phone has no speech recognizer this app can use.",
+        cause: new Error("Speech recognition service is not available."),
+      },
+    }),
+    stop: () => undefined,
+    cancel: () => undefined,
+  }),
 }
 
 describe("RoundSession — margin notes (canon Rem. 3.7)", () => {
@@ -477,6 +500,30 @@ describe("RoundSession — margin notes (canon Rem. 3.7)", () => {
       spoken: true,
       anchor: { artifact: "algorithm" },
     })
+  })
+
+  it("says why on a phone whose recognizer cannot start, and stops offering the microphone", async () => {
+    renderRound({ noteStore: memoryNoteStore(), dictation: NO_RECOGNIZER })
+    fireEvent.click(screen.getByRole("button", { name: "Note on Program" }))
+    fireEvent.click(screen.getByRole("button", { name: "Just a thought" }))
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Speak" }))
+      await Promise.resolve()
+    })
+    expect(
+      within(
+        screen.getByRole("region", { name: "Note on the program" })
+      ).getByText(
+        "This phone has no speech recognizer this app can use. You can type instead."
+      )
+    ).toBeInTheDocument()
+    expect(
+      screen.queryByRole("button", { name: "Speak" })
+    ).not.toBeInTheDocument()
+    expect(screen.getByLabelText("Add words to the note")).toHaveAttribute(
+      "placeholder",
+      "Add words, if you like"
+    )
   })
 
   it("keeps Make your own unavailable while a spoken note is still being turned into text", async () => {

@@ -224,7 +224,7 @@ export const NoteComposer: FC<NoteComposerProps> = ({
           placeholder={
             listening
               ? "Listening…"
-              : recognizer === null
+              : recognizer === null || !state.canListen
                 ? "Add words, if you like"
                 : "Add words, if you like: say them or type them"
           }
@@ -260,8 +260,9 @@ export const NoteComposer: FC<NoteComposerProps> = ({
             Done
           </Button>
         </div>
+        {/* Said to the learner, so not in the disclosure's fine print. */}
         {notice !== "" && notice !== COMPOSER_NOTICES.saved && (
-          <p className="text-pretty text-xs text-muted-foreground">{notice}</p>
+          <p className="text-pretty text-sm text-foreground">{notice}</p>
         )}
         {recognizer !== null && state.canListen && (
           <p className="text-pretty text-xs text-muted-foreground">

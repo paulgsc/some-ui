@@ -24,6 +24,7 @@
       "@/style.context": ["./style.context"],
       "@/build.profiles": ["./build.profiles"],
       "@/build.paths": ["./build.paths"],
+      "@/build.minify": ["./build.minify"],
       "@/file-host.dev": ["./file-host.dev"],
       "@tests/*": ["./tests/*"],
       "@some-ui/content-registry/*": [
