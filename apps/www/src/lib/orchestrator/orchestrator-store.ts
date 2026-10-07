@@ -63,6 +63,7 @@ type OrchestratorStoreState = {
   resume: () => Promise<void>
   forceScene: (scene: string) => Promise<void>
   skipCurrentScene: () => Promise<void>
+  extend: (ms: number) => Promise<void>
   updateStreamStatus: (status: StreamStatus) => Promise<void>
 }
 
@@ -206,6 +207,9 @@ export const useOrchestratorStore = create<OrchestratorStoreState>(
         SkipCurrentScene: null,
       }),
 
+    extend: (ms): Promise<void> =>
+      sendCommand(get()._commandSender, "extend", { Extend: ms }),
+
     updateStreamStatus: (status): Promise<void> =>
       sendCommand(get()._commandSender, "updateStreamStatus", {
         UpdateStreamStatus: status,
@@ -279,11 +283,16 @@ export const useIsTerminal = (): boolean =>
   useOrchestratorStore(selectIsTerminal)
 
 /** The earliest-started active scene, or null when none is active. */
-export function usePrimaryScene(): ActiveLifetime | null {
-  const lifetimes = useSceneLifetimes()
+export function primaryOf(
+  lifetimes: Array<ActiveLifetime>
+): ActiveLifetime | null {
   if (lifetimes.length === 0) return null
 
   return lifetimes.reduce((earliest, current) =>
     current.started_at < earliest.started_at ? current : earliest
   )
+}
+
+export function usePrimaryScene(): ActiveLifetime | null {
+  return primaryOf(useSceneLifetimes())
 }
