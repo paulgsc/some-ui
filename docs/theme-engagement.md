@@ -26,8 +26,8 @@ The effect is documented, and it is moderate:
 - **Pleasure drives continued use.** Hassenzahl's AttrakDiff work separates
   pragmatic quality ("does it work") from hedonic quality ("is it pleasant").
   Hedonic quality predicts appeal and coming back.
-- **Choosing helps.** Being able to customise raises the sense that the app is
-  one's own (Sundar & Marathe, _Human Communication Research_, 2010). Picking a
+- **Choosing helps.** Customising an interface raises the sense that it is
+  one's own and expresses who one is (Marathe & Sundar, CHI 2011). Picking a
   theme is a small instance of that.
 
 ## Caveats

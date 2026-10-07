@@ -1,9 +1,9 @@
 /**
  * The host adapter's half of the theme protocol, checked against the canonical
- * registry. Two hand-maintained duplicates of `@some-ui/styles/theme` in
- * `index.html`: the pre-paint no-flash script (it runs before any module
- * loads, so cannot import the controller) and the fallback `<style>` above
- * it. Drift is invisible in dev and shows in production as a flash of the
+ * registry. Two hand-maintained duplicates of `@some-ui/styles/theme` in each
+ * HTML entry (`index.html` and `resume/index.html`): the pre-paint no-flash
+ * script (it runs before any module loads, so cannot import the controller)
+ * and the fallback `<style>` above it. Drift is invisible in dev and shows in production as a flash of the
  * wrong theme, or a silent fallback to light on reload.
  */
 
@@ -21,7 +21,8 @@ import { describe, expect, it } from "vitest"
 import { z } from "zod"
 
 const APP_ROOT = join(dirname(fileURLToPath(import.meta.url)), "../../..")
-const indexHtml = readFileSync(join(APP_ROOT, "index.html"), "utf8")
+/** Every HTML entry that carries its own copy of the pre-paint script. */
+const ENTRIES = ["index.html", "resume/index.html"]
 
 const prePaintEntrySchema = z.object({
   classes: z.array(z.string()),
@@ -33,10 +34,9 @@ type PrePaintEntry = z.infer<typeof prePaintEntrySchema>
  * The `map` object literal out of the pre-paint script, as a Map so a
  * missing theme reads as `undefined`.
  */
-function prePaintMap(): Map<string, PrePaintEntry> {
+function prePaintMap(indexHtml: string): Map<string, PrePaintEntry> {
   const match = indexHtml.match(/var map = (\{[\s\S]*?\n {10}\})/)
-  if (!match?.[1])
-    throw new Error("pre-paint theme map not found in index.html")
+  if (!match?.[1]) throw new Error("pre-paint theme map not found")
 
   // JSON-shaped JS (bare keys, maybe trailing commas): parsed, never
   // evaluated.
@@ -50,19 +50,21 @@ function prePaintMap(): Map<string, PrePaintEntry> {
   return new Map(Object.entries(parsed))
 }
 
-describe("pre-paint script ↔ registry", () => {
+describe.each(ENTRIES)("%s pre-paint script ↔ registry", (file) => {
+  const indexHtml = readFileSync(join(APP_ROOT, file), "utf8")
+
   it("uses the controller's storage key", () => {
     expect(indexHtml).toContain(`var key = "${THEME_STORAGE_KEY}"`)
   })
 
   it("maps exactly the selectable session themes", () => {
-    expect([...prePaintMap().keys()].sort()).toEqual(
+    expect([...prePaintMap(indexHtml).keys()].sort()).toEqual(
       SESSION_THEMES.map((t) => t.id).sort()
     )
   })
 
   it("applies the same classes and color-scheme the controller would", () => {
-    const map = prePaintMap()
+    const map = prePaintMap(indexHtml)
     for (const theme of SESSION_THEMES) {
       const entry = map.get(theme.id)
       expect(entry, `no pre-paint entry for "${theme.id}"`).toBeDefined()

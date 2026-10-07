@@ -26,7 +26,8 @@
           var pref = localStorage.getItem(key) || "system"
           // RETIRED_THEMES in the controller: a retired id opens as its successor.
           var retired = { "strawberry-moon": "rose-night" }
-          if (retired[pref]) pref = retired[pref]
+          if (Object.prototype.hasOwnProperty.call(retired, pref))
+            pref = retired[pref]
           var map = {
             light: { classes: [], mode: "light" },
             dark: { classes: ["dark"], mode: "dark" },

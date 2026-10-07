@@ -168,13 +168,29 @@ describe("registry integrity", () => {
 })
 
 describe("readStoredPreference", () => {
-  const stored = (value: string) => ({
-    getItem: () => value,
-    setItem: () => undefined,
+  function stored(value: string): Pick<Storage, "getItem" | "setItem"> & {
+    writes: Array<string>
+  } {
+    const writes: Array<string> = []
+    return {
+      writes,
+      getItem: (): string => value,
+      setItem: (_key: string, next: string): void => {
+        writes.push(next)
+      },
+    }
+  }
+
+  it("opens a retired theme as its successor and stores the successor", () => {
+    const storage = stored("strawberry-moon")
+    expect(readStoredPreference(storage)).toBe("rose-night")
+    expect(storage.writes).toEqual(["rose-night"])
   })
 
-  it("opens a retired theme as its successor", () => {
-    expect(readStoredPreference(stored("strawberry-moon"))).toBe("rose-night")
+  it("leaves a live preference alone", () => {
+    const storage = stored("harvest-sky")
+    expect(readStoredPreference(storage)).toBe("harvest-sky")
+    expect(storage.writes).toEqual([])
   })
 
   it("retires only into themes that still exist", () => {
@@ -188,6 +204,8 @@ describe("readStoredPreference", () => {
 
   it("still drops an id it has never heard of", () => {
     expect(readStoredPreference(stored("no-such-theme"))).toBeNull()
+    // An inherited key is not a retired theme.
+    expect(readStoredPreference(stored("constructor"))).toBeNull()
   })
 })
 

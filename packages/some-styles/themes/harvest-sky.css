@@ -16,10 +16,12 @@
                        gradient, charts); it never carries a state
 
    Text is moonlight: a warm cream at 73% lightness, well short of
-   white, the same "never the sun" bar as Rosé Night.
-   Measured: muted text is >= 4.5:1 on every surface, and every
-   label on a filled button (primary, destructive, warning) is
-   >= 5.9:1.
+   white, on the same "never the sun" bar as rose-night.css.
+
+   Measured (WCAG 2.2): muted text >= 4.5:1 on every surface
+   (background, card, popover, muted, secondary, accent, sidebar);
+   every filled-button label (primary, destructive, warning)
+   >= 5.9:1; selected text 5.8:1.
 
    `--accent` is shadcn's quiet hover / menu-focus surface, so it
    stays a near-ground indigo.
@@ -38,11 +40,11 @@
   /* Raspberry, the one bright fruit */
   --primary: oklch(70% 0.16 355deg);
   --primary-foreground: oklch(17% 0.04 355deg);
-  --secondary: oklch(31% 0.05 285deg);
+  --secondary: oklch(29.5% 0.05 285deg);
   --secondary-foreground: var(--foreground);
-  --muted: oklch(29% 0.045 285deg);
-  --muted-foreground: oklch(64% 0.035 285deg);
-  --accent: oklch(31.5% 0.05 285deg);
+  --muted: oklch(28% 0.045 285deg);
+  --muted-foreground: oklch(67% 0.035 285deg);
+  --accent: oklch(30% 0.05 285deg);
   --accent-foreground: var(--foreground);
   --destructive: oklch(67% 0.18 33deg);
   --destructive-foreground: oklch(17% 0.04 33deg);
@@ -74,7 +76,7 @@
   --code-foreground: var(--surface-foreground);
   --code-highlight: oklch(29% 0.045 285deg);
   --code-number: oklch(63% 0.035 285deg);
-  --selection: color-mix(in oklab, var(--primary) 35%, var(--background));
+  --selection: color-mix(in oklab, var(--primary) 25%, var(--background));
   --selection-foreground: var(--foreground);
 
   /* Heading glows like the moon, honey down to a dimmer amber; the
