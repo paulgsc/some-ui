@@ -3,11 +3,9 @@ import type { JSX, ReactNode } from "react"
 import { cn } from "@some-ui/core-utils"
 import type { ActiveLifetime, ComponentRegistry, SlotId } from "@some-ui/types"
 import { withFocus } from "@wireframes/components/focus-enhancer"
-import { FocusControlPopup } from "@wireframes/components/focus-popup"
 import { LeafResizeHandles } from "@wireframes/components/leaf-resize-handles"
 import { RenderSolved } from "@wireframes/components/render-solved"
 import { useContainerRect } from "@wireframes/hooks/use-container-rect"
-import { useFocusControls } from "@wireframes/hooks/use-focus-controls"
 import { extractLeafIds } from "@wireframes/lib/layout-intent"
 import type { Rect, SolvedNode } from "@wireframes/lib/layout-types"
 import type { LayoutNode } from "@wireframes/lib/layout-weighted"
@@ -32,8 +30,6 @@ type OrchestratedViewportProps<K extends string> = {
   activeLifetimes: Array<ActiveLifetime>
 
   componentRegistry: ComponentRegistry<K>
-
-  enableFocus?: boolean
 
   transitionMs?: number
 
@@ -76,19 +72,11 @@ export const OrchestratedYouTubeViewport = <K extends string>({
   layoutTree,
   activeLifetimes,
   componentRegistry,
-  enableFocus = true,
   transitionMs = 300,
   collapseUnbound = true,
   onLeafResize,
 }: OrchestratedViewportProps<K>): JSX.Element => {
   const { ref, rect } = useContainerRect()
-
-  const focusControls = useFocusControls<SlotId>()
-
-  const [popup, setPopup] = useState<{
-    regionId: SlotId
-    position: { x: number; y: number }
-  } | null>(null)
 
   const [resizeArmedLeaf, setResizeArmedLeaf] = useState<SlotId | null>(null)
 
@@ -143,42 +131,8 @@ export const OrchestratedYouTubeViewport = <K extends string>({
       ? new Set(Object.keys(mergedPanels))
       : extractLeafIds(layoutTree)
 
-    return solveLayoutWithBindings(
-      layoutTree,
-      boundLeafIds,
-      rect,
-      enableFocus ? focusControls.focusedRegion : null,
-      enableFocus ? focusControls.focusIntensity : 0
-    )
-  }, [
-    layoutTree,
-    rect,
-    enableFocus,
-    focusControls.focusedRegion,
-    focusControls.focusIntensity,
-    mergedPanels,
-    collapseUnbound,
-  ])
-
-  const handleLeafClick = useCallback(
-    (id: SlotId, position: { x: number; y: number }) => {
-      if (!enableFocus) return
-      setPopup({ regionId: id, position })
-    },
-    [enableFocus]
-  )
-
-  const handleApplyFocus = useCallback(
-    (regionId: SlotId, intensity: number) => {
-      focusControls.setFocus(regionId, intensity)
-      setPopup(null)
-    },
-    [focusControls]
-  )
-
-  const handleClosePopup = useCallback(() => {
-    setPopup(null)
-  }, [])
+    return solveLayoutWithBindings(layoutTree, boundLeafIds, rect)
+  }, [layoutTree, rect, mergedPanels, collapseUnbound])
 
   const handleLeafContextMenu = useCallback(
     (id: SlotId) => {
@@ -228,7 +182,6 @@ export const OrchestratedYouTubeViewport = <K extends string>({
         <RenderSolved
           node={layout}
           renderLeaf={renderLeaf}
-          onLeafClick={enableFocus ? handleLeafClick : undefined}
           onLeafContextMenu={onLeafResize ? handleLeafContextMenu : undefined}
           transitionMs={transitionMs}
         />
@@ -239,15 +192,6 @@ export const OrchestratedYouTubeViewport = <K extends string>({
           leafId={resizeArmedLeaf}
           rect={armedLeafRect}
           onResize={onLeafResize}
-        />
-      )}
-
-      {enableFocus && popup && (
-        <FocusControlPopup
-          regionId={popup.regionId}
-          position={popup.position}
-          onApply={handleApplyFocus}
-          onClose={handleClosePopup}
         />
       )}
     </div>

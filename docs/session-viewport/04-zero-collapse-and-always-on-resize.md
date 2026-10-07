@@ -75,6 +75,10 @@ of) the existing `onLeafClick` (focus popup). Keeping them independent
 means resize works even with `enableFocus={false}` (the real player's
 setting today) and doesn't have to reason about focus state at all.
 
+(Later: the focus popup, `onLeafClick` and `enableFocus` were removed. The
+player never turned focus on, so right-click resize is now the only leaf
+interaction.)
+
 One real bug surfaced while browser-testing this: the handle for an edge
 was originally centered _on_ the boundary line between two leaves (a CSS
 translate pushing it half outside its own leaf's rect). For a leaf sitting

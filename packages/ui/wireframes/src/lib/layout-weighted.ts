@@ -1,6 +1,6 @@
 // layout-weighted.ts - Layout with explicit weights in tree structure
 import type { Constraint, Rect, SolvedNode } from "./layout-types"
-import { clamp, getFocusPath, lerp } from "./layout-types"
+import { clamp } from "./layout-types"
 
 export type LayoutNode<T> =
   | { type: "leaf"; id: T }
@@ -13,75 +13,6 @@ export type LayoutNode<T> =
         weight: number
       }>
     }
-
-// --- Focus Logic ---
-
-function focusConstraints<T>(
-  tree: LayoutNode<T>,
-  base: Map<T | string, Constraint>,
-  focusId: T | null,
-  t: number
-): Map<T | string, Constraint> {
-  if (!focusId || t <= 0) return base
-
-  const next = new Map(base)
-  const clampedT = clamp(t, 0, 1)
-
-  /**
-   * Adapter for getFocusPath:
-   * strips weights and exposes a pure tree shape
-   */
-  const focusPath = getFocusPath(
-    tree,
-    focusId,
-    (node: LayoutNode<T>) =>
-      node.type === "split" ? node.children.map((c) => c.node) : [],
-    (node: LayoutNode<T>) => (node.type === "leaf" ? node.id : node.splitId)
-  )
-
-  // A `focusId` not in this tree (held across a layout change) gives an
-  // empty path, so every node would lerp to 0 and the layout collapse into a
-  // screen-sized gap. Focusing nothing laid out is a no-op. The guard lives
-  // here, not in `solveWeightsFromConstraints`, whose zeroing
-  // `solveLayoutWithBindings` relies on.
-
-  if (focusPath.size === 0) return base
-
-  const stack: Array<LayoutNode<T>> = [tree]
-
-  while (stack.length) {
-    const node = stack.pop()!
-
-    if (node.type === "split") {
-      for (const { node: child } of node.children) {
-        const key = child.type === "leaf" ? child.id : child.splitId
-        const c = next.get(key)
-
-        if (c) {
-          const onPath = focusPath.has(key)
-          next.set(key, {
-            ...c,
-            ideal: onPath
-              ? lerp(c.ideal, c.max, clampedT)
-              : lerp(c.ideal, c.min, clampedT),
-          })
-        }
-
-        stack.push(child)
-      }
-    } else {
-      const c = next.get(node.id)
-      if (c && node.id === focusId) {
-        next.set(node.id, {
-          ...c,
-          ideal: lerp(c.ideal, c.max, clampedT),
-        })
-      }
-    }
-  }
-
-  return next
-}
 
 // --- Geometry Solver (Uses explicit weights) ---
 
@@ -153,33 +84,10 @@ export function solveLayout<T>(
   return results.get(tree)!
 }
 
-// --- Focus-aware solver ---
-
-export function solveLayoutWithFocus<T>(
-  tree: LayoutNode<T>,
-  viewport: Rect,
-  focusId: T | null = null,
-  focusIntensity = 0
-): SolvedNode<T> {
-  if (!focusId || focusIntensity <= 0) {
-    return solveLayout(tree, viewport)
-  }
-
-  const baseConstraints = weightsToConstraints(tree)
-  const focusedConstraints = focusConstraints(
-    tree,
-    baseConstraints,
-    focusId,
-    focusIntensity
-  )
-
-  return solveLayoutWithConstraints(tree, focusedConstraints, viewport)
-}
-
 // --- Binding-aware solver ---
 
 /**
- * Solves geometry the same way `solveLayoutWithFocus` does, except a leaf
+ * Solves geometry from the tree's weights, except a leaf
  * with nothing bound to it (not in `boundLeafIds`) gets zero effective
  * weight, so its siblings redistribute proportionally into the space it
  * would have taken. A split whose entire subtree is unbound also
@@ -195,52 +103,13 @@ export function solveLayoutWithFocus<T>(
 export function solveLayoutWithBindings<T>(
   tree: LayoutNode<T>,
   boundLeafIds: ReadonlySet<T>,
-  viewport: Rect,
-  focusId: T | null = null,
-  focusIntensity = 0
+  viewport: Rect
 ): SolvedNode<T> {
-  const baseConstraints = weightsToConstraintsWithBindings(tree, boundLeafIds)
-
-  const constraints =
-    focusId && focusIntensity > 0
-      ? focusConstraints(tree, baseConstraints, focusId, focusIntensity)
-      : baseConstraints
-
+  const constraints = weightsToConstraintsWithBindings(tree, boundLeafIds)
   return solveLayoutWithConstraints(tree, constraints, viewport)
 }
 
 // --- Constraints extraction ---
-
-function weightsToConstraints<T>(
-  tree: LayoutNode<T>
-): Map<T | string, Constraint> {
-  const constraints = new Map<T | string, Constraint>()
-  const stack: Array<LayoutNode<T>> = [tree]
-
-  while (stack.length > 0) {
-    const node = stack.pop()!
-
-    if (node.type === "leaf") {
-      constraints.set(node.id, { ideal: 1, min: 0, max: 1 })
-    } else {
-      const totalWeight = node.children.reduce((sum, c) => sum + c.weight, 0)
-
-      for (const { node: child, weight } of node.children) {
-        const key = child.type === "leaf" ? child.id : child.splitId
-
-        constraints.set(key, {
-          ideal: weight / totalWeight,
-          min: 0,
-          max: 1,
-        })
-
-        stack.push(child)
-      }
-    }
-  }
-
-  return constraints
-}
 
 const ZERO_CONSTRAINT: Constraint = { ideal: 0, min: 0, max: 0 }
 

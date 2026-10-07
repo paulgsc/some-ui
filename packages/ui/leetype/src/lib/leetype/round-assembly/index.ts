@@ -32,8 +32,7 @@ import type { DiffHunk } from "@leetype/types/exercise"
  * premise (admissible before the constraint diff, inadmissible after) holds.
  *
  * Engine-free, in the register of `lib/leetype/round-cycle`: nothing here
- * imports the wasm loader, a hook, or a component. Wiring the result into
- * `WideRoundSurface`/`ArtifactSwitcher` is the Leetype cutover's job.
+ * imports the wasm loader, a hook, or a component.
  */
 
 /** The outcome of applying one hunk to a source: the patched source, or why it does not apply. */
