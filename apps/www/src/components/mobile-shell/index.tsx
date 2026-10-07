@@ -81,8 +81,14 @@ export const MobileNav = ({
 }: {
   pathname: string
 }): JSX.Element | null => {
-  const [quickOpen, setQuickOpen] = useState(false)
+  // The page the + sheet was opened over. Android's back changes the page
+  // under an open sheet, which then closes rather than stay over a page it
+  // was not opened on, and is forgotten so a later visit there does not
+  // reopen it.
+  const [quickOpenOn, setQuickOpenOn] = useState<string | null>(null)
+  if (quickOpenOn !== null && quickOpenOn !== pathname) setQuickOpenOn(null)
   if (!hasAudience("apk")) return null
+  const quickOpen = quickOpenOn === pathname
 
   return (
     <>
@@ -98,7 +104,7 @@ export const MobileNav = ({
             type="button"
             aria-label="Quick entry"
             aria-haspopup="dialog"
-            onClick={() => setQuickOpen(true)}
+            onClick={() => setQuickOpenOn(pathname)}
             className="bg-primary text-primary-foreground flex size-12 items-center justify-center rounded-2xl shadow-[var(--glow-primary)]"
           >
             <Plus aria-hidden className="size-6" />
@@ -108,7 +114,10 @@ export const MobileNav = ({
           <TabLink key={tab.to} tab={tab} pathname={pathname} />
         ))}
       </nav>
-      <QuickEntry open={quickOpen} onOpenChange={setQuickOpen} />
+      <QuickEntry
+        open={quickOpen}
+        onOpenChange={(open) => setQuickOpenOn(open ? pathname : null)}
+      />
     </>
   )
 }

@@ -45,7 +45,8 @@ How that is enforced (www `src/lib/app-surface`):
   composer), where the header holds a Home link instead. "Start something
   new" goes to the composer rather than the web Home's launcher.
 - Android's back (the button or the edge swipe) walks the app's history, and
-  leaves the app only from the first page (`MainActivity`). The app does not
+  leaves the app from Home or from a page with nothing behind it
+  (`MainActivity`). The app does not
   carry `@capacitor/app`, without which back would close it from any page.
 - The build leaves out the résumé's PDFs and its `/resume/` document, and the
   web-push service worker `sw.js` (www `build.paths.ts`, `offPathPublicFiles`).

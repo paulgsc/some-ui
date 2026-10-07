@@ -3,11 +3,12 @@
  *
  * Where the bottom bar steps aside (the composer), the header's Home link is
  * the visible way out: without it, the composer could only be left by
- * finishing it.
+ * finishing it. And Android's back, which changes the page under the + sheet,
+ * must not leave the sheet open over a page it was not opened on.
  */
 
 import type * as ReactRouterModule from "@tanstack/react-router"
-import { cleanup, render, screen } from "@testing-library/react"
+import { cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
 import type * as BuildProfileModule from "@/lib/build-profile"
@@ -30,7 +31,7 @@ vi.mock(
   }
 )
 
-const { MobileHomeLink } = await import("@/components/mobile-shell")
+const { MobileHomeLink, MobileNav } = await import("@/components/mobile-shell")
 
 afterEach(() => {
   cleanup()
@@ -52,5 +53,20 @@ describe("MobileHomeLink", () => {
     render(<MobileHomeLink />)
 
     expect(screen.queryByText("Home")).toBeNull()
+  })
+})
+
+describe("MobileNav's + sheet", () => {
+  it("closes when the page under it changes, and stays closed on return", () => {
+    const { rerender } = render(<MobileNav pathname="/today" />)
+    fireEvent.click(screen.getByRole("button", { name: "Quick entry" }))
+    expect(screen.getByRole("dialog")).toBeTruthy()
+
+    // Android's back, with the sheet open.
+    rerender(<MobileNav pathname="/sessions" />)
+    expect(screen.queryByRole("dialog")).toBeNull()
+
+    rerender(<MobileNav pathname="/today" />)
+    expect(screen.queryByRole("dialog")).toBeNull()
   })
 })

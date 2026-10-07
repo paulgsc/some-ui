@@ -372,6 +372,22 @@ never "sounds like good practice."
   three are all portrait or landscape-desktop, and a phone held sideways was therefore a
   shape nothing could fail on. If a report is about an orientation or window shape, check
   that matrix contains it before concluding the surface is fine.
+- **Nothing on a PR builds the Android app, and nothing in CI renders the APK's own UI.**
+  `mobile-apk.yml` (Gradle compile, R8 release build, Android Lint, the Play review) runs
+  only on pushes to `main`, so a Java error in `apps/mobile/android` or a Lint/R8 failure
+  first appears after merge, on a green PR. Build it here before pushing any change under
+  `apps/mobile/android`: dl.google.com is reachable, so unzip Google's `commandlinetools`
+  into the scratchpad, `sdkmanager --sdk_root=<dir> "platforms;android-36"
+"build-tools;36.0.0"`, then `pnpm exec cap sync android` from `apps/mobile` (it
+  generates the gitignored `capacitor-cordova-android-plugins/`, without which Gradle
+  fails to configure) and `ANDROID_HOME=<dir> ./gradlew :app:lintRelease
+:app:assembleRelease`. Maven Central can answer 429 mid-download; that is rate limiting,
+  so retry. Separately, vitest and every Playwright suite run the default or `pages` build
+  profile, never `mobile`: `MOBILE_APP` is false and `hasAudience("apk")` is false
+  there, so an APK-only branch (the bottom bar, the header's Home link) is rendered by no
+  test unless that test mocks `@/lib/build-profile` itself, and the www e2e suite passing
+  says nothing about the phone. Android behaviour that lives in `MainActivity` (back
+  handling: the app has no `@capacitor/app`) is reached by no test at all.
 - **Run `git diff --cached --stat` before every commit, not only `git status`.** Run it
   after staging (`git add`) — plain `git diff --stat` only shows the unstaged worktree, so
   it can miss binary corruption in content that's already staged and about to be committed.
