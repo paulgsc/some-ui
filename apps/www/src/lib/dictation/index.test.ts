@@ -10,6 +10,7 @@
 import { readFileSync } from "node:fs"
 import { createRequire } from "node:module"
 import { dirname, join } from "node:path"
+import { FOREIGN_FAILURE_TAG } from "@some-ui/intent-kit"
 import type { Listening } from "@some-ui/leetype"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
@@ -135,7 +136,8 @@ describe("phoneDictation", () => {
       error: { kind: "unavailable", retryable: false, cause: refusal },
     })
     expect(console.error).toHaveBeenCalledWith(
-      expect.stringContaining("android speech recognizer"),
+      FOREIGN_FAILURE_TAG,
+      expect.stringContaining("[android speech recognizer] unavailable"),
       refusal
     )
   })

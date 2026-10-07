@@ -116,6 +116,31 @@ less what soundbites can hold at most (their own cap, from
 growth never refuses a session. The WebView's other storage (preferences and
 small capped stores) is not counted.
 
+A restore has to be able to open what it brings back. The SQLite plugin's
+default (`androidIsEncryption: true`) kept an encrypted preferences file keyed
+in the Android Keystore; Auto Backup restores the file after an uninstall but
+never the key, so the reinstalled plugin failed to load and the app could
+read none of the history it had just restored (2026-10-07; clearing the
+app's data was the only way out, and it deleted that history).
+`capacitor.config.ts` turns the setting off, and the review fails an APK
+whose shipped config does not (`review/policy.json`, `pluginConfig`).
+
+### Diagnostics
+
+A release WebView's console reaches nothing: Capacitor forwards it to logcat
+only in debug builds, and enabling that for release would also log every
+plugin call's arguments. The app's own log does reach it, in every build:
+
+```sh
+adb logcat -s SomeUI
+```
+
+It carries each failure the app reported through `callForeign`
+(`foreign-failure [<port>] <kind>: <summary> (<cause>)`) and
+`device storage: opened` once the database is open, and nothing a person
+wrote. The launch test fails a run without that line, or with a device
+storage failure (`launch/launch-test.sh`).
+
 - **Nothing the person made is deleted without their yes.** A session save
   or shelf keep that would cross the budget is refused. The app then names
   the oldest finished session (never today's or an unfinished one) and

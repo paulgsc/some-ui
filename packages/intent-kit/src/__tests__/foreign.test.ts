@@ -12,7 +12,13 @@ import type {
   ForeignOutcome,
   ForeignVerdict,
 } from "@intent-kit/foreign"
-import { callForeign, ForeignDeadlineError } from "@intent-kit/foreign"
+import {
+  addFailureSink,
+  callForeign,
+  FOREIGN_FAILURE_TAG,
+  ForeignDeadlineError,
+  reportFailure,
+} from "@intent-kit/foreign"
 import { assertNever } from "@intent-kit/intent"
 import fc from "fast-check"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
@@ -201,6 +207,40 @@ describe("callForeign", () => {
       expect(() =>
         callForeign({ port, deadlineMs, start: () => undefined })
       ).toThrow(RangeError)
+    }
+  })
+})
+
+describe("reportFailure", () => {
+  const failure: ForeignFailure = {
+    port: "test port",
+    error: { ...VERDICT, cause: new Error("the platform's words") },
+  }
+
+  it("writes a tagged console line with the cause, then hands the failure to every sink until removed", () => {
+    const console = vi.spyOn(globalThis.console, "error").mockReturnValue()
+    const seen: Array<ForeignFailure> = []
+    const broken = addFailureSink(() => {
+      throw new Error("a sink that breaks")
+    })
+    const remove = addFailureSink((reported) => {
+      seen.push(reported)
+    })
+    try {
+      reportFailure(failure)
+      expect(console).toHaveBeenCalledWith(
+        FOREIGN_FAILURE_TAG,
+        "[test port] unavailable: Not on this device.",
+        failure.error.cause
+      )
+      // A sink that throws is skipped; the next one still hears.
+      expect(seen).toEqual([failure])
+      remove()
+      reportFailure(failure)
+      expect(seen).toHaveLength(1)
+    } finally {
+      broken()
+      console.mockRestore()
     }
   })
 })

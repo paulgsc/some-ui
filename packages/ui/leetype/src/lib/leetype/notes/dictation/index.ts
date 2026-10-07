@@ -41,7 +41,7 @@ import type { ForeignOutcome, ForeignVerdict } from "@some-ui/intent-kit"
 import {
   callForeign,
   ForeignDeadlineError,
-  reportToConsole,
+  reportFailure,
 } from "@some-ui/intent-kit"
 
 /** One utterance being listened to. */
@@ -170,7 +170,7 @@ function classifyWebSpeech(error: unknown): ForeignVerdict {
 const WEB_SPEECH_PORT = {
   name: "browser speech recognizer",
   classify: classifyWebSpeech,
-  report: reportToConsole,
+  report: reportFailure,
 }
 
 /**

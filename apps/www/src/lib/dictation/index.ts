@@ -30,7 +30,7 @@ import type { ForeignCall, ForeignVerdict } from "@some-ui/intent-kit"
 import {
   callForeign,
   ForeignDeadlineError,
-  reportToConsole,
+  reportFailure,
 } from "@some-ui/intent-kit"
 // Types only: erased at build, so the activity stays out of the main bundle
 // (the reason `lib/leetype-content` imports nothing from the package).
@@ -141,7 +141,7 @@ export function classifyPhoneSpeech(error: unknown): ForeignVerdict {
 const PORT = {
   name: "android speech recognizer",
   classify: classifyPhoneSpeech,
-  report: reportToConsole,
+  report: reportFailure,
 }
 
 /**

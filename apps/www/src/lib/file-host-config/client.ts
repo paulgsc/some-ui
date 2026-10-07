@@ -34,6 +34,13 @@ export type FileHostTransport = (
  * all). Distinct from `FileHostUnreachableError` ("retry later"): this server
  * will never answer, so stop asking and fall back.
  */
+/** The `503` codes that are an answer, not an unconfigured feature. */
+const UNAVAILABLE_ANSWERS: ReadonlySet<string> = new Set([
+  "service_overloaded",
+  "device_storage_unavailable",
+  "device_storage_failed",
+])
+
 export class FileHostNotConfiguredError extends Error {
   constructor(route: string) {
     super(`file_host has no ${route} on this deployment`)
@@ -236,10 +243,12 @@ export async function requestJSON<T>(
     })
 
     if (response.status === 503) {
-      // `503` is either an unconfigured feature or `service_overloaded` (a
-      // busy server, a spent quota such as the daily new-account cap).
+      // `503` is either an unconfigured feature or a real answer: a busy
+      // server, a spent quota such as the daily new-account cap
+      // (`service_overloaded`), or, in the Android app, its own storage
+      // failing (`device-backend/interceptor`).
       const code = await errorCodeOf(response)
-      if (code === "service_overloaded") {
+      if (code !== null && UNAVAILABLE_ANSWERS.has(code)) {
         throw new FileHostResponseError(503, route, code)
       }
       throw new FileHostNotConfiguredError(route)

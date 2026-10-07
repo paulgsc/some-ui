@@ -30,7 +30,10 @@
  *    classifier that throws makes the failure `unknown`, never lost.
  * 4. **Told once.** Every `failed` outcome goes to the port's `report`
  *    exactly once (the diagnostic channel cannot be forgotten: it is
- *    required). `succeeded` and `abandoned` are not reported.
+ *    required). `succeeded` and `abandoned` are not reported. The usual
+ *    `report`, `reportFailure`, writes a console line that a production
+ *    build keeps, and hands the failure to every sink the app added
+ *    (`addFailureSink`: on the phone, its native log).
  * 5. **Late is ignored.** Once the outcome is decided (or the caller
  *    abandons), nothing the foreign side does afterwards changes it, is
  *    reported, or surfaces as an unhandled rejection.
@@ -75,7 +78,7 @@ export type ForeignPort = {
   readonly classify: (error: unknown) => ForeignVerdict
   /**
    * Where every failure goes, cause included: log it, never render it.
-   * `reportToConsole` is the default most ports want.
+   * `reportFailure` is the default most ports want.
    */
   readonly report: (failure: ForeignFailure) => void
 }
@@ -124,13 +127,52 @@ export class ForeignDeadlineError extends Error {
   }
 }
 
-/** Logs a failure with its cause. The usual `ForeignPort.report`. */
-export function reportToConsole(failure: ForeignFailure): void {
-  // eslint-disable-next-line no-console -- the diagnostic channel itself: a developer reads this, a person never does.
-  console.error(
+/**
+ * The first word of every line `reportFailure` writes, so a log can be
+ * searched for failures (`adb logcat | grep foreign-failure`, the APK's
+ * launch test).
+ */
+export const FOREIGN_FAILURE_TAG = "foreign-failure"
+
+/** Somewhere else a reported failure should go, such as a native log. */
+export type FailureSink = (failure: ForeignFailure) => void
+
+const sinks = new Set<FailureSink>()
+
+/**
+ * Sends every failure `reportFailure` reports to `sink` as well, until the
+ * returned function is called. For the app, once, at boot: a browser's
+ * console is enough, a release APK's is not (Capacitor forwards it to
+ * logcat only in debug builds).
+ */
+export function addFailureSink(sink: FailureSink): () => void {
+  sinks.add(sink)
+  return (): void => {
+    sinks.delete(sink)
+  }
+}
+
+/**
+ * The usual `ForeignPort.report`: a console line with the cause, then each
+ * sink. Through `globalThis.console`, on purpose: apps strip `console.*`
+ * calls from production builds (www's `dropConsole`), which removes the
+ * bare form and keeps this one, so the failure still reaches the browser's
+ * console. www's `check-bundle-paths.ts` fails a build that loses it. A sink
+ * that throws is skipped, never fatal.
+ */
+export function reportFailure(failure: ForeignFailure): void {
+  globalThis.console.error(
+    FOREIGN_FAILURE_TAG,
     `[${failure.port}] ${failure.error.kind}: ${failure.error.summary}`,
     failure.error.cause
   )
+  for (const sink of sinks) {
+    try {
+      sink(failure)
+    } catch {
+      // Nowhere left to report a reporter's own failure.
+    }
+  }
 }
 
 function classified(port: ForeignPort, cause: unknown): IntentError {

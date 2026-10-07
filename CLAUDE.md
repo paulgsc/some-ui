@@ -382,6 +382,12 @@ never "sounds like good practice."
   `vi.mock` of the plugin as a plain object passes either way, so mock it as a Proxy that, like
   the real one, answers every key (`apps/www/src/lib/dictation/index.test.ts`,
   `asCapacitorPlugin`).
+- **A `console.error` you add to www is gone from every release build, and the APK's
+  console reaches nothing anyway.** www's production minifier strips `console.*`
+  (`apps/www/build.minify.ts`), and Capacitor forwards a WebView's console to logcat only in
+  debug builds. So a failure logged that way is silent exactly where it matters. Report it
+  through `callForeign`'s `reportFailure` (`@some-ui/intent-kit`), which survives the minifier
+  and reaches the phone's own log (`adb logcat -s SomeUI`, `apps/www/src/lib/native-log`).
 - **Run `git diff --cached --stat` before every commit, not only `git status`.** Run it
   after staging (`git add`) — plain `git diff --stat` only shows the unstaged worktree, so
   it can miss binary corruption in content that's already staged and about to be committed.

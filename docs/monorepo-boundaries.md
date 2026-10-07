@@ -228,7 +228,13 @@ The answers are shared instead, in `@some-ui/intent-kit`:
   settles exactly once and never rejects; by a deadline every call must
   name; as an `IntentError` whose cause is exactly what the foreign side
   threw; reported once to the port's required `report`; and nothing the
-  foreign side does after that counts. `src/__tests__/foreign.test.ts`
+  foreign side does after that counts. The usual `report`, `reportFailure`,
+  survives a release build: www strips `console.*` calls from production
+  (`build.minify.ts`), so it writes through `globalThis.console`, which the
+  minifier leaves (`release-console.test.ts` minifies it as a release does
+  and runs it), and hands the failure to the app's sinks: in the Android
+  app, its native log (`apps/www/src/lib/native-log`, tag `SomeUI` in
+  logcat), since a release WebView's console reaches nothing. `src/__tests__/foreign.test.ts`
   checks the five laws as one property over every way a foreign side can
   behave (answer or fail at any time, fail with anything, throw, never
   answer), so a port does not re-test them with its own handful of cases.
@@ -283,11 +289,13 @@ came first and stays: its four laws are the same idea inside one package.
 >   assignment. Those are review findings. "Grandfathered counts never rise"
 >   is mechanical; not yet a rule, as for R1.
 >
-> True when declared: all 13 entries (37 waits) are in the `Grandfathered:`
-> group, and the check passes. The first port through the boundary is the
-> phone's dictation (`apps/www/src/lib/dictation`) with the browser's
-> (`packages/ui/leetype/src/lib/leetype/notes/dictation`), whose wrapped
-> `new Promise` the count could not have seen.
+> True when declared: 12 entries (28 waits) are in the `Grandfathered:`
+> group and one is `Unbounded:` (the native log's own fire-and-forget
+> write), and the check passes. Through the boundary so far: the phone's
+> dictation (`apps/www/src/lib/dictation`) with the browser's
+> (`packages/ui/leetype/src/lib/leetype/notes/dictation`, whose wrapped
+> `new Promise` the count could not have seen), and the phone's database
+> (`apps/www/src/lib/device-backend/capacitor-sqlite`).
 
 ## How this is enforced
 

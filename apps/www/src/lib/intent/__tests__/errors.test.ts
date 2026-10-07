@@ -39,6 +39,18 @@ describe("mapFileHostError", () => {
       "rejected",
       false,
     ],
+    [
+      "the phone's storage that will not open",
+      new FileHostResponseError(503, "/sessions", "device_storage_unavailable"),
+      "unavailable",
+      false,
+    ],
+    [
+      "the phone's storage that did not finish",
+      new FileHostResponseError(503, "/sessions", "device_storage_failed"),
+      "unreachable",
+      true,
+    ],
   ] as const)(
     "%s -> kind %s, retryable %s",
     (_label, error, kind, retryable) => {

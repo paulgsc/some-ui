@@ -10,6 +10,7 @@
  */
 import type { DeviceContext, DeviceRouter } from "@/lib/device-backend/router"
 import { errorResponse } from "@/lib/device-backend/router"
+import { DeviceStorageError } from "@/lib/device-backend/sql"
 
 export type DeviceBackend = { router: DeviceRouter; context: DeviceContext }
 
@@ -60,6 +61,18 @@ export function createDeviceFetch(
       const body = await requestBody(input, init)
       return await router.handle(method, path, url.searchParams, body, context)
     } catch (error) {
+      // The phone's storage failed: its own 503, never a server fault, so the
+      // page says what failed (`lib/intent/errors.ts`). The failure was
+      // already reported, with its cause, where it happened.
+      if (error instanceof DeviceStorageError) {
+        return errorResponse(
+          503,
+          error.error.retryable
+            ? "device_storage_failed"
+            : "device_storage_unavailable",
+          { message: error.error.summary }
+        )
+      }
       // A handler bug answers like a server fault, naming the route, not like
       // "file_host unreachable".
       // eslint-disable-next-line no-console -- visible in a dev build's WebView inspector; the production minifier drops it

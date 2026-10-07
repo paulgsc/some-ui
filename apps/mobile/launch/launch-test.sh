@@ -11,12 +11,21 @@
 # nothing. <out-dir> gets two screenshots, the monkey log and logcat, which
 # the job uploads.
 #
+# It also fails when the app's own database did not open: the app's native
+# log (tag "SomeUI", NativeLogPlugin.java) must say "device storage: opened"
+# and must not carry a "foreign-failure [device storage]" line. A plugin that
+# fails to load does not crash; it fails every database call behind a page
+# that renders, which is how "CapacitorSQLitePlugin: null" reached a phone
+# (2026-10-07) through a green run. Every other reported failure (a missing
+# speech recognizer, say) is listed in the summary, not failed on.
+#
 # What it cannot see is a WebView that starts and stays blank: that does not
 # crash. Only the screenshot shows the page rendered. Two signals that looked
 # like they would were tried on the first run (2026-09-30) and read nothing:
 # `uiautomator dump` exposes no WebView text, and Capacitor forwards console
 # output to logcat only in debug builds (`loggingBehavior` defaults to
-# "debug"), so a release build's console errors never reach it.
+# "debug"), so a release build's console errors never reach it. That is why
+# the native log exists: it writes to logcat in every build.
 #
 # It is one script rather than the action's `script:` input because that
 # input runs each line as its own shell, so no variable or `if` spans lines.
@@ -74,6 +83,17 @@ if grep -q "ANR in $pkg" "$out/logcat.txt"; then
   failures+=("an ANR in $pkg (logcat.txt)")
 fi
 
+# The app's own log (apps/www src/lib/native-log): its database, and what
+# it reported failing.
+grep -E "\bSomeUI\b" "$out/logcat.txt" > "$out/native-log.txt" || true
+if grep -q "foreign-failure \[device storage\]" "$out/native-log.txt"; then
+  failures+=("the app's database failed: $(grep -m1 "foreign-failure \[device storage\]" "$out/native-log.txt" | sed 's/.*foreign-failure/foreign-failure/') (native-log.txt)")
+fi
+if ! grep -q "device storage: opened" "$out/native-log.txt"; then
+  failures+=("the app's database never opened: no \"device storage: opened\" in its native log (native-log.txt)")
+fi
+reported=$(grep -c "foreign-failure" "$out/native-log.txt" || true)
+
 events=$(grep -oE "Events injected: [0-9]+" "$out/monkey.txt" | grep -oE "[0-9]+$" || echo 0)
 
 {
@@ -81,8 +101,10 @@ events=$(grep -oE "Events injected: [0-9]+" "$out/monkey.txt" | grep -oE "[0-9]+
   echo
   echo "- Release APK: \`$(basename "$apk")\`, installed and started on the emulator."
   echo "- Monkey events injected: **$events**."
+  echo "- Failures the app reported to its native log: **$reported** (native-log.txt)."
+  grep -o "foreign-failure.*" "$out/native-log.txt" | sort | uniq -c | head -5 | sed 's/^ */  - /' || true
   if [ ${#failures[@]} -eq 0 ]; then
-    echo "- No crash, ANR or dead process."
+    echo "- No crash, ANR or dead process, and the database opened."
   else
     for f in "${failures[@]}"; do echo "- ❌ $f"; done
   fi

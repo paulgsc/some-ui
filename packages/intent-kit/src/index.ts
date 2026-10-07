@@ -14,6 +14,7 @@ export { toIntentError } from "./intent-error"
 export type { IntentPresentation } from "./presentation"
 
 export type {
+  FailureSink,
   ForeignCall,
   ForeignCallOptions,
   ForeignFailure,
@@ -21,4 +22,10 @@ export type {
   ForeignPort,
   ForeignVerdict,
 } from "./foreign"
-export { callForeign, ForeignDeadlineError, reportToConsole } from "./foreign"
+export {
+  addFailureSink,
+  callForeign,
+  FOREIGN_FAILURE_TAG,
+  ForeignDeadlineError,
+  reportFailure,
+} from "./foreign"

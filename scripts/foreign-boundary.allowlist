@@ -15,11 +15,15 @@
 #
 # This file is where F1 is reviewed. The check counts; it does not judge.
 
+# Unbounded: best effort, and nobody waits on the answer: the native log
+# (`NativeLog.write`, fire and forget) is where a failure is told, so its own
+# failure has nowhere to go and changes nothing a person sees.
+1 apps/www/src/lib/native-log/index.ts
+
 # Grandfathered: these waited on a foreign API before F1 landed. Debt, not a
 # judgment that each is fine. A count here may only fall (lower it in the
 # same change), and an entry leaves when its file stops waiting outside the
 # boundary, as apps/www/src/lib/dictation did first.
-11 apps/www/src/lib/device-backend/capacitor-sqlite/index.ts
 1 apps/www/src/lib/device-backend/native-http/index.ts
 1 apps/www/src/lib/device-backend/storage/index.ts
 6 apps/www/src/lib/device-speech/native.ts
