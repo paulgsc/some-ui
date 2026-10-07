@@ -1,0 +1,101 @@
+/* ============================================================
+   HARVEST SKY THEME — dark, a low June moon over indigo
+   ------------------------------------------------------------
+   The strawberry moon taken literally: the June full moon hangs
+   low, honey-rose, in an indigo sky, and the strawberry is the
+   one bright fruit in the field. So the ground is cool indigo
+   (285deg) and the raspberry primary pops against it as a
+   complement, rather than melting into a pink ground:
+
+     raspberry 355deg  primary
+     coral      33deg  destructive, the only red
+     leaf      150deg  success
+     ember      58deg  warning
+     sky       240deg  charts
+     moon       85deg  a pale honey, decorative only (heading
+                       gradient, charts); it never carries a state
+
+   Text is moonlight: a warm cream at 73% lightness, well short of
+   white, the same "never the sun" bar as Rosé Night.
+   Measured: muted text is >= 4.5:1 on every surface, and every
+   label on a filled button (primary, destructive, warning) is
+   >= 5.9:1.
+
+   `--accent` is shadcn's quiet hover / menu-focus surface, so it
+   stays a near-ground indigo.
+
+   Pairs with `.dark` (the controller adds both).
+   ============================================================ */
+
+.harvest-sky {
+  --background: oklch(17% 0.035 285deg);
+  --foreground: oklch(73% 0.03 75deg);
+  --card: oklch(23% 0.045 285deg);
+  --card-foreground: var(--foreground);
+  --popover: oklch(26.5% 0.05 285deg);
+  --popover-foreground: var(--foreground);
+
+  /* Raspberry, the one bright fruit */
+  --primary: oklch(70% 0.16 355deg);
+  --primary-foreground: oklch(17% 0.04 355deg);
+  --secondary: oklch(31% 0.05 285deg);
+  --secondary-foreground: var(--foreground);
+  --muted: oklch(29% 0.045 285deg);
+  --muted-foreground: oklch(64% 0.035 285deg);
+  --accent: oklch(31.5% 0.05 285deg);
+  --accent-foreground: var(--foreground);
+  --destructive: oklch(67% 0.18 33deg);
+  --destructive-foreground: oklch(17% 0.04 33deg);
+  --success: oklch(76% 0.12 150deg);
+  --success-foreground: oklch(18% 0.04 150deg);
+  --warning: oklch(76% 0.14 58deg);
+  --warning-foreground: oklch(19% 0.05 58deg);
+  --border: oklch(33% 0.045 285deg);
+  --input: oklch(36% 0.05 285deg);
+  --ring: var(--primary);
+
+  /* One hue per series: raspberry, sky, leaf, moon, ember */
+  --chart-1: oklch(70% 0.16 355deg);
+  --chart-2: oklch(74% 0.1 240deg);
+  --chart-3: oklch(76% 0.12 150deg);
+  --chart-4: oklch(81% 0.075 85deg);
+  --chart-5: oklch(76% 0.14 58deg);
+  --sidebar: oklch(19.5% 0.038 285deg);
+  --sidebar-foreground: oklch(67% 0.03 75deg);
+  --sidebar-primary: var(--primary);
+  --sidebar-primary-foreground: var(--primary-foreground);
+  --sidebar-accent: var(--accent);
+  --sidebar-accent-foreground: var(--foreground);
+  --sidebar-border: var(--border);
+  --sidebar-ring: var(--ring);
+  --surface: oklch(20.5% 0.04 285deg);
+  --surface-foreground: var(--muted-foreground);
+  --code: var(--surface);
+  --code-foreground: var(--surface-foreground);
+  --code-highlight: oklch(29% 0.045 285deg);
+  --code-number: oklch(63% 0.035 285deg);
+  --selection: color-mix(in oklab, var(--primary) 35%, var(--background));
+  --selection-foreground: var(--foreground);
+
+  /* Heading glows like the moon, honey down to a dimmer amber; the
+     accent sweep runs raspberry up into moonlight. */
+  --gradient-heading: linear-gradient(
+    180deg,
+    oklch(78% 0.05 80deg),
+    oklch(66% 0.045 55deg)
+  );
+  --gradient-accent: linear-gradient(
+    100deg,
+    oklch(72% 0.16 355deg),
+    oklch(81% 0.075 85deg)
+  );
+  --gradient-muted: linear-gradient(
+    180deg,
+    oklch(64% 0.035 285deg),
+    oklch(55% 0.035 285deg)
+  );
+  --radius: 0.75rem;
+
+  background-color: var(--background);
+  color: var(--foreground);
+}

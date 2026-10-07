@@ -40,7 +40,7 @@
     --background: oklch(18% 0.01 260deg);
 
     /* Dimmed from oklch(0.92 0.01 260) — same "never the sun" bar as
-       tokens/base.css's own --foreground, hue kept at this theme's own
+       rose-night.css's --foreground, hue kept at this theme's own
        260. */
     --foreground: oklch(68% 0.035 260deg);
     --card: oklch(22% 0.01 260deg);

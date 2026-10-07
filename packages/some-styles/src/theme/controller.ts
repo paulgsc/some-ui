@@ -40,6 +40,16 @@ function safeStorage(): StorageLike | null {
   }
 }
 
+/**
+ * Session themes that were removed, mapped to the theme that replaced them, so
+ * someone who picked one opens to its successor instead of silently falling
+ * back to the default. The pre-paint script in `apps/www/index.html` mirrors
+ * this map.
+ */
+export const RETIRED_THEMES: Readonly<Record<string, SessionThemeId>> = {
+  "strawberry-moon": "rose-night",
+}
+
 export function isThemePreference(value: string): value is ThemePreference {
   return (
     value === SYSTEM_PREFERENCE || SESSION_THEMES.some((t) => t.id === value)
@@ -70,7 +80,8 @@ export function resolveTheme(
 export function readStoredPreference(
   storage: StorageLike | null = safeStorage()
 ): ThemePreference | null {
-  const raw = storage?.getItem(THEME_STORAGE_KEY)
+  const stored = storage?.getItem(THEME_STORAGE_KEY)
+  const raw = (stored && RETIRED_THEMES[stored]) ?? stored
   return raw && isThemePreference(raw) ? raw : null
 }
 

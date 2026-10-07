@@ -7,7 +7,8 @@
 @import "./themes/comb.css";
 @import "./themes/scheduler.css";
 @import "./themes/code.css";
-@import "./themes/strawberry-moon.css";
+@import "./themes/rose-night.css";
+@import "./themes/harvest-sky.css";
 @import "./themes/peachy-blossom.css";
 
 @plugin "tailwindcss-animate";

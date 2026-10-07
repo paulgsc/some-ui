@@ -1,0 +1,103 @@
+/* ============================================================
+   ROSÉ NIGHT THEME — dark, strawberry milk under a plum sky
+   ------------------------------------------------------------
+   Successor to Strawberry Moon, which ran one berry red through
+   primary, destructive, selection and four of five chart series,
+   so a Delete button, a flagged row and the Start button all said
+   the same thing. Here every job gets its own hue:
+
+     rose  355deg  primary: a soft, light pink, never an alarm
+     coral  32deg  destructive: the only red, kept for what went wrong
+     mint  165deg  success, softer than pure green
+     honey  80deg  warning, a state that waits on the person
+     iris  295deg  the moonlight: charts and the accent gradient
+
+   The ground is plum (330deg) rather than berry, tinted but
+   low-chroma, so pink stays an accent instead of bleeding into
+   every card. Text holds the "never the sun" bar the other
+   opinionated themes cite: foreground at 71% lightness, and each
+   state colour no brighter than about 1.3x body text's contrast. Measured: muted text is
+   >= 4.5:1 on every surface, and every label on a filled button
+   (primary, destructive, warning) is >= 6.3:1.
+
+   `--accent` is shadcn's quiet hover / menu-focus surface, so it
+   stays a near-ground tone; the vivid moonlit colour lives in the
+   chart and gradient tokens instead.
+
+   Pairs with `.dark` (the controller adds both).
+   ============================================================ */
+
+.rose-night {
+  --background: oklch(17% 0.02 330deg);
+  --foreground: oklch(71% 0.025 340deg);
+  --card: oklch(22.5% 0.025 330deg);
+  --card-foreground: var(--foreground);
+  --popover: oklch(25.5% 0.03 330deg);
+  --popover-foreground: var(--foreground);
+
+  /* Strawberry milk */
+  --primary: oklch(76% 0.11 355deg);
+  --primary-foreground: oklch(20% 0.04 355deg);
+  --secondary: oklch(30% 0.03 330deg);
+  --secondary-foreground: var(--foreground);
+  --muted: oklch(28% 0.025 330deg);
+  --muted-foreground: oklch(63.5% 0.025 330deg);
+  --accent: oklch(30.5% 0.03 330deg);
+  --accent-foreground: var(--foreground);
+
+  /* Coral ember, 37deg off the brand and darker than it */
+  --destructive: oklch(69% 0.16 32deg);
+  --destructive-foreground: oklch(18% 0.04 32deg);
+  --success: oklch(75% 0.1 165deg);
+  --success-foreground: oklch(18% 0.03 165deg);
+  --warning: oklch(78% 0.11 80deg);
+  --warning-foreground: oklch(19% 0.04 80deg);
+  --border: oklch(32% 0.025 330deg);
+  --input: oklch(35% 0.03 330deg);
+  --ring: var(--primary);
+
+  /* One hue per series: rose, iris, mint, honey, sky */
+  --chart-1: oklch(76% 0.11 355deg);
+  --chart-2: oklch(75% 0.085 295deg);
+  --chart-3: oklch(75% 0.1 165deg);
+  --chart-4: oklch(78% 0.11 80deg);
+  --chart-5: oklch(72% 0.08 235deg);
+  --sidebar: oklch(19% 0.021 330deg);
+  --sidebar-foreground: oklch(66% 0.025 335deg);
+  --sidebar-primary: var(--primary);
+  --sidebar-primary-foreground: var(--primary-foreground);
+  --sidebar-accent: var(--accent);
+  --sidebar-accent-foreground: var(--foreground);
+  --sidebar-border: var(--border);
+  --sidebar-ring: var(--ring);
+  --surface: oklch(20% 0.022 330deg);
+  --surface-foreground: var(--muted-foreground);
+  --code: var(--surface);
+  --code-foreground: var(--surface-foreground);
+  --code-highlight: oklch(28% 0.025 330deg);
+  --code-number: oklch(62% 0.025 330deg);
+  --selection: color-mix(in oklab, var(--primary) 35%, var(--background));
+  --selection-foreground: var(--foreground);
+
+  /* Heading runs moonlit rose down to plum, never at flat max
+     brightness; the accent sweep goes strawberry milk to iris. */
+  --gradient-heading: linear-gradient(
+    180deg,
+    oklch(75% 0.03 345deg),
+    oklch(63% 0.035 330deg)
+  );
+  --gradient-accent: linear-gradient(
+    100deg,
+    oklch(78% 0.11 355deg),
+    oklch(74% 0.085 295deg)
+  );
+  --gradient-muted: linear-gradient(
+    180deg,
+    oklch(64% 0.025 335deg),
+    oklch(56% 0.025 330deg)
+  );
+  --radius: 0.75rem;
+
+  background-color: var(--background);
+  color: var(--foreground);
+}

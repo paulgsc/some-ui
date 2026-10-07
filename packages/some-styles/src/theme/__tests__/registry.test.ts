@@ -22,7 +22,9 @@ import {
   FEATURE_APPEARANCES,
   getFeatureAppearance,
   getSessionTheme,
+  readStoredPreference,
   resolveTheme,
+  RETIRED_THEMES,
   SESSION_THEME_CLASSES,
   SESSION_THEMES,
   THEMES,
@@ -165,6 +167,30 @@ describe("registry integrity", () => {
   })
 })
 
+describe("readStoredPreference", () => {
+  const stored = (value: string) => ({
+    getItem: () => value,
+    setItem: () => undefined,
+  })
+
+  it("opens a retired theme as its successor", () => {
+    expect(readStoredPreference(stored("strawberry-moon"))).toBe("rose-night")
+  })
+
+  it("retires only into themes that still exist", () => {
+    for (const successor of Object.values(RETIRED_THEMES)) {
+      expect(getSessionTheme(successor)).toBeDefined()
+    }
+    for (const retired of Object.keys(RETIRED_THEMES)) {
+      expect(getSessionTheme(retired)).toBeUndefined()
+    }
+  })
+
+  it("still drops an id it has never heard of", () => {
+    expect(readStoredPreference(stored("no-such-theme"))).toBeNull()
+  })
+})
+
 describe("applyTheme", () => {
   function root(): HTMLElement {
     const element = document.createElement("html")
@@ -174,10 +200,13 @@ describe("applyTheme", () => {
 
   it("swaps session classes without accumulating them", () => {
     const element = root()
-    applyTheme(element, resolveTheme("strawberry-moon"))
+    applyTheme(element, resolveTheme("rose-night"))
+    expect(Array.from(element.classList).sort()).toEqual(["dark", "rose-night"])
+
+    applyTheme(element, resolveTheme("harvest-sky"))
     expect(Array.from(element.classList).sort()).toEqual([
       "dark",
-      "strawberry-moon",
+      "harvest-sky",
     ])
 
     applyTheme(element, resolveTheme("peachy-blossom"))

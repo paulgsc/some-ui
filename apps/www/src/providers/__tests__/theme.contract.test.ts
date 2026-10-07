@@ -13,6 +13,7 @@ import { fileURLToPath } from "node:url"
 import {
   DEFAULT_PREFERENCE,
   resolveTheme,
+  RETIRED_THEMES,
   SESSION_THEMES,
   THEME_STORAGE_KEY,
 } from "@some-ui/styles/theme"
@@ -70,6 +71,13 @@ describe("pre-paint script ↔ registry", () => {
       )
       expect(entry?.mode).toBe(theme.mode)
     }
+  })
+
+  it("opens a retired theme as the controller does", () => {
+    const match = indexHtml.match(/var retired = (\{[^\n]*\})/)
+    if (!match?.[1])
+      throw new Error("retired-theme map not found in index.html")
+    expect(JSON.parse(match[1])).toEqual(RETIRED_THEMES)
   })
 
   it("paints the default preference's background in the no-JS fallback", () => {

@@ -24,13 +24,14 @@
         try {
           var key = "some-ui.theme"
           var pref = localStorage.getItem(key) || "system"
+          // RETIRED_THEMES in the controller: a retired id opens as its successor.
+          var retired = { "strawberry-moon": "rose-night" }
+          if (retired[pref]) pref = retired[pref]
           var map = {
             light: { classes: [], mode: "light" },
             dark: { classes: ["dark"], mode: "dark" },
-            "strawberry-moon": {
-              classes: ["dark", "strawberry-moon"],
-              mode: "dark",
-            },
+            "rose-night": { classes: ["dark", "rose-night"], mode: "dark" },
+            "harvest-sky": { classes: ["dark", "harvest-sky"], mode: "dark" },
             "peachy-blossom": { classes: ["peachy-blossom"], mode: "light" },
           }
           if (pref === "system" || !map[pref]) {
