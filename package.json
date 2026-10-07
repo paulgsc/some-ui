@@ -63,7 +63,7 @@
     "@playwright/test": "1.62.1",
     "@some-ui/eslint-kit": "workspace:*",
     "@tailwindcss/postcss": "4.1.12",
-    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/jest-dom": "^7.0.1",
     "@testing-library/react": "^16.3.0",
     "@types/chrome": "^0.0.293",
     "@types/node": "^26.0.1",
