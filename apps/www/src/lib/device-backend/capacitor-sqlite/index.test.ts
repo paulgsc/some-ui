@@ -106,4 +106,21 @@ describe("openCapacitorSqlite", () => {
       refused
     )
   })
+
+  it("rejects a transaction with what failed in it, not with a rollback that failed too", async () => {
+    native.methods = {
+      checkConnectionsConsistency: (): Promise<unknown> =>
+        Promise.resolve({ result: true }),
+      createConnection: (): Promise<unknown> => Promise.resolve(),
+      open: (): Promise<unknown> => Promise.resolve(),
+      beginTransaction: (): Promise<unknown> => Promise.resolve({}),
+      rollbackTransaction: (): Promise<unknown> =>
+        Promise.reject(new Error("RollbackTransaction: not in a transaction")),
+    }
+    const driver = await openCapacitorSqlite("test")
+    const failed = new Error("the handler's own failure")
+    await expect(driver.transaction(() => Promise.reject(failed))).rejects.toBe(
+      failed
+    )
+  })
 })

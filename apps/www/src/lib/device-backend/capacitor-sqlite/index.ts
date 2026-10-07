@@ -172,7 +172,9 @@ export async function openCapacitorSqlite(
           await statement(() => db.commitTransaction())
           return value
         } catch (error) {
-          await statement(() => db.rollbackTransaction())
+          // What failed is what the caller hears; a rollback that fails too
+          // has already been reported, and must not replace it.
+          await statement(() => db.rollbackTransaction()).catch(() => undefined)
           throw error
         }
       })

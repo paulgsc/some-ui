@@ -33,7 +33,8 @@ async function open(): Promise<DeviceBackend> {
     import("@/lib/device-backend/backend"),
     import("@/lib/native-log"),
   ])
-  // Before the database: a failure to open it is the first thing to tell.
+  // Again here (it is idempotent), so it is in before the database even if
+  // boot's own import has not landed yet.
   installNativeLog()
   const backend = await openDeviceBackend(await openCapacitorSqlite())
   writeNativeLog(DEVICE_STORAGE_OPENED)
@@ -70,13 +71,20 @@ export function deviceFileHostBase(): URL | undefined {
   return base === undefined ? undefined : new URL(base, window.location.origin)
 }
 
-/** Installs the device backend in the device build; a no-op in any other. */
+/**
+ * Installs the device backend in the device build, and its native log, so a
+ * failure any native API reports reaches it from the start, not only from
+ * the first database request; a no-op in any other build.
+ */
 export function bootDeviceBackend(): void {
   if (
     import.meta.env.VITE_DEVICE_BACKEND !== "true" ||
     typeof window === "undefined"
   )
     return
+  void import("@/lib/native-log").then(({ installNativeLog }) =>
+    installNativeLog()
+  )
   const base = deviceFileHostBase()
   if (base === undefined) return
   installDeviceFetch(base, deviceBackend)

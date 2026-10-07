@@ -4,7 +4,7 @@
  * is kept, so every request says the same true thing at once; any other is
  * forgotten, so "Try again" opens again.
  */
-import { beforeEach, describe, expect, it, vi } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import type { DeviceBackend } from "@/lib/device-backend/interceptor"
 import type * as Sql from "@/lib/device-backend/sql"
@@ -92,5 +92,25 @@ describe("deviceBackend", () => {
     await expect(deviceBackend()).rejects.toThrow("a migration bug")
     await expect(deviceBackend()).resolves.toEqual({ db: "db" })
     expect(mocks.openCapacitorSqlite).toHaveBeenCalledTimes(3)
+  })
+})
+
+describe("bootDeviceBackend", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs()
+    vi.unstubAllGlobals()
+  })
+
+  it("installs the native log at boot, before any request opens the database", async () => {
+    vi.stubEnv("VITE_DEVICE_BACKEND", "true")
+    vi.stubGlobal("window", { location: new URL("https://localhost/") })
+    vi.stubGlobal(
+      "fetch",
+      (): Promise<Response> => Promise.reject(new Error("unused"))
+    )
+    const { bootDeviceBackend } = await boot()
+    bootDeviceBackend()
+    await vi.waitFor(() => expect(mocks.installNativeLog).toHaveBeenCalled())
+    expect(mocks.openCapacitorSqlite).not.toHaveBeenCalled()
   })
 })
