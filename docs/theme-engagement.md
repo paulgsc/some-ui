@@ -50,7 +50,7 @@ The effect is documented, and it is moderate:
   `--destructive` and `--warning`, and diffs use `--diff-add` and
   `--diff-remove`. The `theme-protocol/no-fixed-status-color` lint rule keeps
   reusable UI on them. What still hard-codes a state is listed in a
-  `statusColorRatchet` call in its package's `eslint.config.js`, each with the
+  `paletteRatchet` call in its package's `eslint.config.js`, each with the
   reason: Honeycomb's fixed dark HUD, and desktop-only surfaces (LeetType's
   typing game, topik's desktop quiz and chat, lesson-crm's round editor) that
   the desktop rebuild will replace.

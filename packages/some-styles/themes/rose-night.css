@@ -62,9 +62,11 @@
   --warning: oklch(78% 0.11 80deg);
   --warning-foreground: oklch(19% 0.04 80deg);
 
-  /* Teal against the coral: they stay apart under deuteranopia, where
-     mint against coral would not */
-  --diff-add: oklch(75% 0.09 200deg);
+  /* Sky against the coral: they stay apart under deuteranopia, where
+     mint against coral would not, and sky stays clear of the mint of
+     success. Removed lines share the coral; their strike-through and
+     minus sign tell them from a wrong answer's badge. */
+  --diff-add: oklch(75% 0.09 235deg);
   --diff-remove: var(--destructive);
   --border: oklch(32% 0.025 330deg);
   --input: oklch(35% 0.03 330deg);

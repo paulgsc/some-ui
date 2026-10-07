@@ -143,11 +143,12 @@ The APK is the product. The desktop experience is being rebuilt to mirror it,
 so desktop-only UI is going to churn. Before polishing, migrating or fixing UI,
 check which surface renders it: work on APK and platform-agnostic UI is
 worthwhile, and work on desktop-only UI is usually wasted. Phone and desktop
-split in a few places: `useIsMobile` in `Leetype` (`RoundSession` on phones,
-the typing game on desktop), `chooseSurface` in topik (`HandheldLesson` vs
-`DesktopSession`), the `lan` audience (not in the APK build), and the
-`_apk` routes. When a repo-wide sweep has to skip a desktop-only file, say so
-where the skip lives, as the `statusColorRatchet` calls do.
+split in a few places: `useIsMobile` in `Leetype` (`RoundSession` under 768px
+wide, the typing game above), `chooseSurface` in topik (`HandheldLesson` under
+768px wide or 480px tall, `DesktopSession` otherwise), the `lan` audience (not
+in the APK build), and the `_apk` routes. The window-size splits follow the
+window, not the device, so the APK on a tablet gets the wide surfaces too. When a repo-wide sweep has to skip a desktop-only file, say so
+where the skip lives, as the `paletteRatchet` calls do.
 
 ## Vestiges
 

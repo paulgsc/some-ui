@@ -5,6 +5,7 @@
  */
 
 import themeProtocolConfig, {
+  paletteRatchet,
   themeProtocolPlugin,
 } from "@eslint/configs/theme-protocol.config.js"
 import typescriptParser from "@typescript-eslint/parser"
@@ -53,6 +54,12 @@ describe("lint: theme-protocol/no-theme-boundary", () => {
     [
       "fires on a session theme class in a className literal",
       `const C = () => <div className="dark flex flex-col" />`,
+      BOUNDARY,
+      true,
+    ],
+    [
+      "fires on a theme class in a static part of a template",
+      "const C = ({ base }) => <div className={`${base} code`} />",
       BOUNDARY,
       true,
     ],
@@ -141,6 +148,12 @@ describe("lint: theme-protocol/no-structural-palette-color", () => {
       true,
     ],
     [
+      "fires through an important marker and an arbitrary variant",
+      `const C = () => <div className="!bg-slate-900 [&>p]:text-gray-400/[60%]" />`,
+      COLOR,
+      true,
+    ],
+    [
       "fires on a clsx conditional-object key, where the key is the class",
       `const C = ({ on }) => <div className={cn({ "text-gray-500": !on })} />`,
       COLOR,
@@ -212,6 +225,36 @@ describe("lint: theme-protocol/no-fixed-status-color", () => {
       true,
     ],
     [
+      "fires through an important marker and an arbitrary variant",
+      `const C = () => <div className="!text-red-500 [&>svg]:text-emerald-500 data-[state=open]:bg-amber-500" />`,
+      STATUS,
+      true,
+    ],
+    [
+      "fires on a trailing important marker and a percentage opacity",
+      `const C = () => <div className="text-red-500! bg-rose-500/[7%]" />`,
+      STATUS,
+      true,
+    ],
+    [
+      "fires on a static part of a template with an expression",
+      "const C = ({ base }) => <div className={`${base} text-green-500`} />",
+      STATUS,
+      true,
+    ],
+    [
+      "fires on Tailwind 4 shadow and inset-ring utilities",
+      `const C = () => <div className="drop-shadow-red-500 inset-ring-emerald-500/40" />`,
+      STATUS,
+      true,
+    ],
+    [
+      "does not fire on a hue split across an expression",
+      "const C = ({ tone }) => <div className={`text-${tone}-500 text-red-${tone}`} />",
+      STATUS,
+      false,
+    ],
+    [
       "does not fire on the state tokens",
       `const C = () => <div className="text-success bg-destructive/10 border-l-diff-add/70 stroke-warning" />`,
       STATUS,
@@ -240,6 +283,23 @@ describe("lint: theme-protocol/no-fixed-status-color", () => {
     expect(msgs.find((m) => m.ruleId === STATUS)?.message).toContain(
       "text-destructive"
     )
+  })
+})
+
+describe("paletteRatchet", () => {
+  const code = `const C = () => <div className="text-red-500 bg-slate-900" />`
+
+  it("turns off only the rules it names, for only its globs", async () => {
+    const config = defineConfig([
+      makeConfig(),
+      paletteRatchet(["src/example.tsx"], ["status"]),
+    ])
+    const ratcheted = await lintSnippet(config, code, TSX_FILE)
+    expect(ratcheted.some((m) => m.ruleId === STATUS)).toBe(false)
+    expect(ratcheted.some((m) => m.ruleId === COLOR)).toBe(true)
+
+    const elsewhere = await lintSnippet(config, code, "src/other.tsx")
+    expect(elsewhere.some((m) => m.ruleId === STATUS)).toBe(true)
   })
 })
 

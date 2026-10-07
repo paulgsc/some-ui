@@ -102,23 +102,52 @@ const STRUCTURAL_ROLES: Record<string, string> = {
   to: "the semantic token for the surface this gradient sits on",
 }
 
+/** Matched against {@link bareUtility}; any opacity form (`/50`, `/[7%]`). */
 const STRUCTURAL_COLOR_RE = new RegExp(
-  `^(?:[a-z0-9-]+:)*(${Object.keys(STRUCTURAL_ROLES).join(
+  `^(${Object.keys(STRUCTURAL_ROLES).join(
     "|"
-  )})-(?:${NEUTRAL_FAMILIES.join("|")})-\\d{2,3}(?:\\/\\d+)?$`
+  )})-(?:${NEUTRAL_FAMILIES.join("|")})-\\d{2,3}(?:\\/\\S+)?$`
 )
 
-function staticText(node: any): string | undefined {
+/**
+ * The static class text a node carries: a string literal's value, or every
+ * static part of a template literal. A template's parts are read even around
+ * `${}`, since `${base} text-red-500` paints red whatever `base` is; a class
+ * split across an expression (`text-${tone}-500`) is not a whole token on
+ * either side, so it never matches.
+ */
+function classTexts(node: any): Array<string> | undefined {
   if (node.type === "Literal" && typeof node.value === "string") {
     const value: string = node.value
-    return value
+    return [value]
   }
-  if (node.type === "TemplateLiteral" && node.expressions.length === 0) {
-    const cooked: string =
-      node.quasis[0]?.value.cooked ?? node.quasis[0]?.value.raw ?? ""
-    return cooked
+  if (node.type === "TemplateLiteral") {
+    const quasis: Array<any> = node.quasis
+    return quasis.map((quasi): string => {
+      const text: string = quasi.value.cooked ?? quasi.value.raw ?? ""
+      return text
+    })
   }
   return undefined
+}
+
+/**
+ * A class token reduced to its utility: variants (`dark:`, `hover:`,
+ * `[&>svg]:`, `data-[state=open]:`) and important markers (`!text-red-500`,
+ * `text-red-500!`) stripped, so a palette color is matched however it is
+ * qualified. A colon inside brackets belongs to an arbitrary variant, not to
+ * the chain.
+ */
+function bareUtility(token: string): string {
+  let depth = 0
+  let start = 0
+  for (let index = 0; index < token.length; index++) {
+    const char = token[index]
+    if (char === "[" || char === "(") depth++
+    else if (char === "]" || char === ")") depth--
+    else if (char === ":" && depth === 0) start = index + 1
+  }
+  return token.slice(start).replace(/^!/, "").replace(/!$/, "")
 }
 
 /** True when `objectNode` is passed directly to cn(...)/clsx(...)/…. */
@@ -242,8 +271,53 @@ const SHARED_SCHEMA = {
   additionalProperties: false,
 }
 
-export const noThemeBoundary: Rule.RuleModule = {
-  meta: {
+/**
+ * The shape all three rules share: find the class text in a class-name
+ * context, split it into tokens, and let `judge` decide which token to report
+ * and how. Only the judgment differs between the rules.
+ */
+function classTokenRule(
+  meta: Rule.RuleMetaData,
+  judge: (
+    token: string
+  ) => { messageId: string; data: Record<string, string> } | undefined
+): Rule.RuleModule {
+  return {
+    meta,
+    create(context): Rule.RuleListener {
+      const options = readOptions(context)
+
+      function check(rawNode: any): void {
+        const texts = classTexts(rawNode)
+        if (texts === undefined) return
+        if (
+          !isClassNameContext(
+            rawNode,
+            options.attributeNames,
+            options.calleeNames,
+            options.identifierPattern
+          )
+        ) {
+          return
+        }
+        for (const text of texts) {
+          for (const token of text.split(/\s+/)) {
+            const finding = judge(token)
+            if (finding) context.report({ node: rawNode, ...finding })
+          }
+        }
+      }
+
+      return {
+        Literal: check,
+        TemplateLiteral: check,
+      }
+    },
+  }
+}
+
+export const noThemeBoundary: Rule.RuleModule = classTokenRule(
+  {
     type: "problem",
     docs: {
       description:
@@ -257,41 +331,17 @@ export const noThemeBoundary: Rule.RuleModule = {
         'Reusable UI must not apply "dark" to its own markup. Beyond replacing the palette it pins every `dark:*` utility in this subtree on, so the component stays dark even under a light session theme. Use semantic tokens (bg-background, text-foreground) and let the host\'s boundary decide.',
     },
   },
-  create(context): Rule.RuleListener {
-    const options = readOptions(context)
-
-    function check(rawNode: any): void {
-      const text = staticText(rawNode)
-      if (text === undefined) return
-      if (
-        !isClassNameContext(
-          rawNode,
-          options.attributeNames,
-          options.calleeNames,
-          options.identifierPattern
-        )
-      ) {
-        return
-      }
-      for (const token of text.split(/\s+/)) {
-        if (!BOUNDARY_OVERRIDE_CLASSES.includes(token)) continue
-        context.report({
-          node: rawNode,
+  (token) =>
+    BOUNDARY_OVERRIDE_CLASSES.includes(token)
+      ? {
           messageId: token === "dark" ? "darkVariantRoot" : "boundary",
           data: { className: token },
-        })
-      }
-    }
+        }
+      : undefined
+)
 
-    return {
-      Literal: check,
-      TemplateLiteral: check,
-    }
-  },
-}
-
-export const noStructuralPaletteColor: Rule.RuleModule = {
-  meta: {
+export const noStructuralPaletteColor: Rule.RuleModule = classTokenRule(
+  {
     type: "problem",
     docs: {
       description:
@@ -303,42 +353,18 @@ export const noStructuralPaletteColor: Rule.RuleModule = {
         '"{{token}}" is a fixed palette color in a structural role, so it cannot follow the active theme. Use a semantic token ({{suggestion}}). If this color is genuinely content-semantic rather than substrate — a chart series, a syntax category, a brand identity — keep it and add an eslint-disable-next-line with the reason.',
     },
   },
-  create(context): Rule.RuleListener {
-    const options = readOptions(context)
-
-    function check(rawNode: any): void {
-      const text = staticText(rawNode)
-      if (text === undefined) return
-      if (
-        !isClassNameContext(
-          rawNode,
-          options.attributeNames,
-          options.calleeNames,
-          options.identifierPattern
-        )
-      ) {
-        return
-      }
-      for (const token of text.split(/\s+/)) {
-        const match = STRUCTURAL_COLOR_RE.exec(token)
-        if (!match) continue
-        context.report({
-          node: rawNode,
-          messageId: "structural",
-          data: {
-            token,
-            suggestion: STRUCTURAL_ROLES[match[1] ?? ""] ?? "a semantic token",
-          },
-        })
-      }
-    }
-
+  (token) => {
+    const match = STRUCTURAL_COLOR_RE.exec(bareUtility(token))
+    if (!match) return undefined
     return {
-      Literal: check,
-      TemplateLiteral: check,
+      messageId: "structural",
+      data: {
+        token,
+        suggestion: STRUCTURAL_ROLES[match[1] ?? ""] ?? "a semantic token",
+      },
     }
-  },
-}
+  }
+)
 
 /**
  * Hue families that read as a state: green for correct or done, red for wrong
@@ -367,26 +393,31 @@ const COLOR_UTILITIES = [
   "divide",
   "outline",
   "ring(?:-offset)?",
+  "inset-ring",
   "placeholder",
   "caret",
   "decoration",
   "fill",
   "stroke",
   "shadow",
+  "inset-shadow",
+  "text-shadow",
+  "drop-shadow",
   "accent",
   "from",
   "via",
   "to",
 ]
 
+/** Matched against {@link bareUtility}; any opacity form (`/60`, `/[0.07]`). */
 const STATUS_COLOR_RE = new RegExp(
-  `^(?:[a-z0-9-]+:)*(?:${COLOR_UTILITIES.join("|")})-(${Object.keys(
-    STATUS_FAMILIES
-  ).join("|")})-\\d{2,3}(?:\\/[\\d.[\\]]+)?$`
+  `^(?:${COLOR_UTILITIES.join("|")})-(${Object.keys(STATUS_FAMILIES).join(
+    "|"
+  )})-\\d{2,3}(?:\\/\\S+)?$`
 )
 
-export const noFixedStatusColor: Rule.RuleModule = {
-  meta: {
+export const noFixedStatusColor: Rule.RuleModule = classTokenRule(
+  {
     type: "problem",
     docs: {
       description:
@@ -398,36 +429,10 @@ export const noFixedStatusColor: Rule.RuleModule = {
         '"{{token}}" paints a state with a fixed hue, so it cannot follow the active theme. Use the {{role}} token (text-{{role}}, bg-{{role}}/10, …), or diff-add / diff-remove for the lines of a diff. If the hue is content rather than state, such as a category or a chart series, keep it and add an eslint-disable-next-line with the reason.',
     },
   },
-  create(context): Rule.RuleListener {
-    const options = readOptions(context)
-
-    function check(rawNode: any): void {
-      const text = staticText(rawNode)
-      if (text === undefined) return
-      if (
-        !isClassNameContext(
-          rawNode,
-          options.attributeNames,
-          options.calleeNames,
-          options.identifierPattern
-        )
-      ) {
-        return
-      }
-      for (const token of text.split(/\s+/)) {
-        const match = STATUS_COLOR_RE.exec(token)
-        if (!match) continue
-        context.report({
-          node: rawNode,
-          messageId: "status",
-          data: { token, role: STATUS_FAMILIES[match[1] ?? ""] ?? "success" },
-        })
-      }
-    }
-
-    return {
-      Literal: check,
-      TemplateLiteral: check,
-    }
-  },
-}
+  (token) => {
+    const match = STATUS_COLOR_RE.exec(bareUtility(token))
+    const role = STATUS_FAMILIES[match?.[1] ?? ""]
+    if (!role) return undefined
+    return { messageId: "status", data: { token, role } }
+  }
+)

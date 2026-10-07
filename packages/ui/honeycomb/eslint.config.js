@@ -1,8 +1,4 @@
-import {
-  statusColorRatchet,
-  structuralColorRatchet,
-  uiRecommended,
-} from "@some-ui/eslint-kit"
+import { paletteRatchet, uiRecommended } from "@some-ui/eslint-kit"
 import { defineConfig } from "eslint/config"
 
 export default defineConfig([
@@ -16,16 +12,25 @@ export default defineConfig([
   // Scoped to the files that predate the rule (plus HexGrid's legacy
   // loading/error literals); remove each as it migrates.
 
-  ...structuralColorRatchet([
-    "src/components/hangul-hex-grid/**",
-    "src/components/hex-grid/index.tsx",
-  ]),
+  ...paletteRatchet(
+    ["src/components/hangul-hex-grid/**", "src/components/hex-grid/index.tsx"],
+    ["structural"]
+  ),
 
   // The same fixed dark canvas carries the HUD's correct/missed/warning hues,
   // and a theme's --success is tuned for the theme's own ground, not this
   // one. Migrates with the substrate above.
-  ...statusColorRatchet([
-    "src/components/hangul-hex-grid/**",
-    "src/components/hex-grid/index.tsx",
-  ]),
+  ...paletteRatchet(
+    [
+      "src/components/hangul-hex-grid/error-state/index.tsx",
+      "src/components/hangul-hex-grid/game-over-modal/index.tsx",
+      "src/components/hangul-hex-grid/grid-error-overlay/index.tsx",
+      "src/components/hangul-hex-grid/key-buffer-display/index.tsx",
+      "src/components/hangul-hex-grid/stats-panel/index.tsx",
+      "src/components/hangul-hex-grid/success-feedback/index.tsx",
+      "src/components/hangul-hex-grid/vocab-debrief-modal/index.tsx",
+      "src/components/hex-grid/index.tsx",
+    ],
+    ["status"]
+  ),
 ])

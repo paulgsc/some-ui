@@ -97,9 +97,10 @@ export const OrchestratorTimeline = ({
           </Badge>
         </div>
         <div className="relative h-8 w-full bg-background/50 rounded-md overflow-hidden border">
-          {/* Playhead */}
+          {/* Playhead: foreground, not primary, so it stays visible over the
+              active scene's primary bar, which it always sits inside. */}
           <div
-            className="absolute top-0 bottom-0 w-px bg-primary z-10 shadow-[0_0_8px_rgba(var(--primary),0.8)]"
+            className="absolute top-0 bottom-0 w-px bg-foreground z-10 shadow-[0_0_8px_color-mix(in_oklab,var(--foreground)_60%,transparent)]"
             style={{ left: `${(currentTime / maxTimelineEnd) * 100}%` }}
           />
           {sceneLayouts.map((s) => (
