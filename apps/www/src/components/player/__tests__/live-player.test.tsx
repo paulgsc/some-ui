@@ -36,8 +36,11 @@ vi.mock("@/lib/orchestrator", async () => {
     useOrchestratorClock: (): { current_time: number } => ({
       current_time: 0,
     }),
-    useOrchestratorStore: <T,>(select: (s: typeof store) => T): T =>
-      select(store),
+    // `getState` too: the stop hook reads the store when a session starts.
+    useOrchestratorStore: Object.assign(
+      <T,>(select: (s: typeof store) => T): T => select(store),
+      { getState: (): typeof store => store }
+    ),
   }
 })
 

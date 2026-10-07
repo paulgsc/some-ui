@@ -14,14 +14,14 @@ import { Leetype } from "@some-ui/leetype"
 ;<Leetype />
 ```
 
-That is the only way in. `Leetype` mounts with no required props: the
-exercise comes from the shim (`lib/leetype/exercises`), and a host that wants
-a specific one passes `exercise`.
+That is the only way in. `Leetype` mounts with no required props. On a wide
+window the learner picks an exercise from the shim (`lib/leetype/exercises`)
+and types it; a host that wants a specific one passes `exercise`.
 
-**Below 768px it is a different probe** (LTY-MOBILE). A phone has no keyboard
-to produce code with, so the small-screen surface asks the player to read a
-change and pick out the claim it makes, rather than to type it. Same corpus,
-same runner, same schedule — a weaker signal, honestly weaker, and no engine
+**Below 768px it plays rounds** (canon Def. 1.7). A phone has no keyboard to
+produce code with, so a round asks the player to pick the change that does
+something and name what it keeps, rather than to type it. Rounds come from the
+host's `loadRounds`, falling back to the bundled `AUTHORED_ROUNDS`. No engine
 at all: `@some-ui/leetype-wasm` is never fetched on a phone. The host does
 nothing to opt in.
 
@@ -66,12 +66,11 @@ Leetype                        picks a modality, and nothing else
 │       └── TypingViewport     the one scroll container in the card
 │           └── CodeDisplay    a pure glyph renderer
 │
-└── ReadingSession  < 768px    the same corpus, a discrimination probe
-    ├── useExerciseRunner      the same hook, advanced and never repeated
-    ├── readingProbeOf         a card derived from authored data alone
-    ├── DiffCard               the focal object: one unified hunk
-    ├── ClaimChoices           a real radio group that looks like rows
-    └── ReadingFeedback        the author's reason, no verdict of its own
+└── RoundSession    < 768px    rounds (Def. 1.7), one artifact at a time
+    ├── ArtifactSwitcher       pages between the round's artifacts
+    ├── DiffSetChoices         the candidate rewrites, each a DiffCard
+    ├── RoundChoices           commit-and-reveal rows
+    └── RoundFeedback          the authored reason, no verdict of its own
 ```
 
 Four boundaries hold the typing branch together, and each is worth stating
@@ -89,15 +88,15 @@ because each was crossed by the version this replaced:
    the player's own sampled baseline (`lib/leetype/baseline-store`), which is
    ephemeral: clearing it costs one warm-up and nothing else.
 
-The reading branch has a boundary of its own, and it is the one to check a
+The rounds branch has a boundary of its own, and it is the one to check a
 change against first:
 
-5. **The reading path imports nothing engine-shaped.** No `types/leetype`
-   vocabulary, no wasm loader, no typing hook — `lib/leetype/reading-probe` is
-   a pure function of authored corpus data and `DiffCard` takes a hunk and
-   nothing else. That is what makes "a phone never loads the engine" true by
-   construction; `components/leetype/index.test.tsx` pins it, with a negative
-   control that asserts the wide branch does load it.
+5. **The rounds path imports nothing engine-shaped.** No `types/leetype`
+   vocabulary, no wasm loader, no typing hook: `lib/leetype/round-probe` and
+   `lib/leetype/round-cycle` are pure functions of authored round data, and
+   `DiffCard` takes a hunk and nothing else. That is what makes "a phone never
+   loads the engine" true by construction; `components/leetype/index.test.tsx`
+   pins it, with a negative control that asserts the wide branch does load it.
 
 ## Margin notes: saying where you got stuck
 

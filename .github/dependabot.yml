@@ -27,10 +27,6 @@ updates:
           - "eslint*"
           - "@eslint/*"
         update-types: ["minor", "patch"]
-      storybook:
-        patterns:
-          - "@storybook/*"
-          - "storybook"
       vite:
         patterns:
           - "vite*"

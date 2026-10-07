@@ -5,9 +5,10 @@ import { describe, expect, it } from "vitest"
 
 /**
  * The brand mark exists twice on disk (the site root's `/favicon.svg`, and
- * Storybook's own static dir) and the copies must be byte-identical. The
- * shared copy lives under packages/some-styles/brand because .gitignore
- * excludes every `public` folder under packages.
+ * the shared copy the extensions' icons are rasterized from) and the copies
+ * must be byte-identical. The shared copy lives under
+ * packages/some-styles/brand because .gitignore excludes every `public`
+ * folder under packages.
  */
 
 const REPO_ROOT = resolve(

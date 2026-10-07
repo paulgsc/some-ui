@@ -146,7 +146,9 @@ function transferCalls(path: string, text: string): Array<string> {
     if (
       ts.isCallExpression(node) &&
       ts.isIdentifier(node.expression) &&
-      node.expression.text in TRANSFER_CALLERS
+      // Own keys only: `in` would match a call named `valueOf` or
+      // `toString` to the object's prototype.
+      Object.hasOwn(TRANSFER_CALLERS, node.expression.text)
     ) {
       found.push(node.expression.text)
     }

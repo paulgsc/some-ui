@@ -7,7 +7,8 @@
 @import "./themes/comb.css";
 @import "./themes/scheduler.css";
 @import "./themes/code.css";
-@import "./themes/strawberry-moon.css";
+@import "./themes/rose-night.css";
+@import "./themes/harvest-sky.css";
 @import "./themes/peachy-blossom.css";
 
 @plugin "tailwindcss-animate";
@@ -60,6 +61,8 @@
   --color-success-foreground: var(--success-foreground);
   --color-warning: var(--warning);
   --color-warning-foreground: var(--warning-foreground);
+  --color-diff-add: var(--diff-add);
+  --color-diff-remove: var(--diff-remove);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);

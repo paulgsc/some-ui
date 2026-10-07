@@ -32,6 +32,7 @@ import { AccountUnavailableBanner } from "@/components/auth/account-unavailable-
 import { HexCombMark } from "@/components/brand/hex-comb-mark"
 import { LocIndicator } from "@/components/loc/loc-indicator"
 import { MobileHomeLink, MobileNav } from "@/components/mobile-shell"
+import { DeviceStoragePrompt } from "@/components/settings/device-storage"
 import { ThemeSwitcher } from "@/components/theme-switcher"
 
 /**
@@ -200,6 +201,9 @@ const DashboardLayout = (): JSX.Element => {
           </header>
         )}
         {!bareViewport && <AccountUnavailableBanner />}
+        {import.meta.env.VITE_DEVICE_BACKEND === "true" ? (
+          <DeviceStoragePrompt />
+        ) : null}
         <div
           className={cn(
             "flex-1",

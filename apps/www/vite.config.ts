@@ -6,6 +6,7 @@ import viteReact from "@vitejs/plugin-react"
 import type { HtmlTagDescriptor, Plugin, UserConfig } from "vite"
 import { defineConfig, loadEnv } from "vite"
 
+import { RELEASE_MINIFY } from "./build.minify.ts"
 import { offPathPublicFiles } from "./build.paths.ts"
 import { buildAudiencePlugin, MOBILE_PROFILE } from "./build.profiles.ts"
 import {
@@ -107,6 +108,10 @@ function warnMissingContentAssets(): Plugin {
 // its build leaves out the document entry below, which exists only for
 // /resume.
 const isMobileBuild = process.env.SOME_UI_PROFILE === MOBILE_PROFILE
+
+// `pnpm build:fit`: build only the ui-fit panel page, with this config
+// (tests/ui-fit/panel-page/main.tsx says why).
+const isFitHarnessBuild = process.env.WWW_FIT_HARNESS === "1"
 
 // What a profile's output carries from public/ that it never loads
 // (build.paths.ts, `offPathPublicFiles`; the Android app's résumé PDFs are
@@ -311,18 +316,27 @@ export default defineConfig(
     build: {
       // Enable rollup bundle analysis
       rolldownOptions: {
-        // Two HTML entries, one JS app: both boot the same
-        // src/main.tsx/router, so the /resume shell isn't a second copy of
-        // the app - it's the same SPA under a route-specific document (see
+        // The fit build aside (above), two HTML entries, one JS app: both
+        // boot the same src/main.tsx/router, so the /resume shell isn't a
+        // second copy of the app - it's the same SPA under a route-specific document (see
         // resume/index.html's header comment) that GitHub Pages can serve
         // as a real 200 at /resume/ instead of the generic app-shell
         // 404.html fallback every other unmatched path relies on.
-        input: {
-          main: resolve(import.meta.dirname, "index.html"),
-          ...(isMobileBuild
-            ? {}
-            : { resume: resolve(import.meta.dirname, "resume/index.html") }),
-        },
+        input: isFitHarnessBuild
+          ? {
+              "panel-page": resolve(
+                import.meta.dirname,
+                "tests/ui-fit/panel-page/index.html"
+              ),
+            }
+          : {
+              main: resolve(import.meta.dirname, "index.html"),
+              ...(isMobileBuild
+                ? {}
+                : {
+                    resume: resolve(import.meta.dirname, "resume/index.html"),
+                  }),
+            },
         // No `output.manualChunks`. The hand-rolled version here matched with
         // `id.includes(pkg)` — a substring test against the full module path —
         // which under pnpm matches far more than the package named. pnpm
@@ -339,14 +353,11 @@ export default defineConfig(
         // for `advancedChunks` (Rolldown's grouping API) if this ever needs
         // manual grouping again — and match on package *boundaries*, not
         // substrings of the resolved path.
-        // Production builds strip console calls (terser's `drop_console`,
-        // carried over to oxc — see `minify` below). Not in the analyze
-        // build: this object is spread over Vite's own `minify` setting, so
-        // it would override the `minify: false` that scripts/
+        // Production builds strip console calls (build.minify.ts). Not in
+        // the analyze build: this object is spread over Vite's own `minify`
+        // setting, so it would override the `minify: false` that scripts/
         // analyze-bundle.js passes to keep its chunks unminified.
-        output: analyze
-          ? {}
-          : { minify: { compress: { dropConsole: true }, mangle: true } },
+        output: analyze ? {} : { minify: RELEASE_MINIFY },
         // Tree shaking options
         treeshake: {
           // Every module is treated as side-effect free, so an import that

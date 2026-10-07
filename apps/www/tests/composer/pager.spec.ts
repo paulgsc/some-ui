@@ -11,7 +11,7 @@
  *
  * That defect had a clear run past every existing gate, and the reason is
  * worth stating: no test in this repository had ever clicked that button.
- * `tests/ui-fit` sweeps a built Storybook, `launcher-fit.spec.ts` mirrors the
+ * `tests/ui-fit` sweeps panels one at a time, `launcher-fit.spec.ts` mirrors the
  * shipped classes in hand-written HTML rather than mounting the component,
  * and the hook's own unit tests drive a fake ResizeObserver. All three are
  * good at what they measure and none of them can see a pager that does not

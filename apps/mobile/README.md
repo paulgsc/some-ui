@@ -26,7 +26,7 @@ The + in the middle of the bar is a shortcut into those same tools ("Talk
 now", aph's mine or theirs, a new session), never a place of its own.
 Nothing else www routes to is here: the landing page, the web's Home, the
 résumé, jobs, profile, the extensions tour and the LAN tools are the web
-app's; the Storybook is a separate site that was never in www's bundle.
+app's.
 **Settings** stays, behind the gear in the header, because on the phone it
 is the phone's own page: the sync from home, study reminders and the voice.
 
@@ -83,11 +83,19 @@ request goes to the real network.
   device serves no route the server does not.
 - **It differs from the server on purpose in three places** (named in that
   test):
+
   - `/auth/session` is always signed in. There is one person, and the phone's
     lock screen is the lock.
   - `/push/*` answers `503 feature_not_configured`. There is no VAPID identity
     on a phone.
   - The server's engagement fold behind `/signals` is not ported.
+
+  And in two that no contract exercises, both from the storage budget below:
+  a session save or shelf keep past it is refused with
+  `400 max_record_limit_exceeded`; and a lesson home stopped listing is
+  deleted, so `GET /curriculum/:key` answers `404` for it
+  where the server would still serve it. Nothing on the phone loads a lesson
+  by a key it saved: a session stores a level.
 
 | Served on the device                                      | From                                                       |
 | --------------------------------------------------------- | ---------------------------------------------------------- |
@@ -99,6 +107,54 @@ request goes to the real network.
 
 Anything else answers `file_host`'s plain-text `404`, which is what a server
 too old to have that route would answer.
+
+### What the phone keeps
+
+The app's database and WebView storage together stay under Android's
+[25 MB backup quota](https://developer.android.com/identity/data/autobackup),
+past which Android stops backing the app up without saying so, and that
+backup is the only other copy of the phone's history (`device-backend/storage`).
+There is no size per table. Only the database is checked, against the quota
+less what soundbites can hold at most (their own cap, from
+`@some-ui/soundbites/contract`, which their store refuses to pass), so WebView
+growth never refuses a session. The WebView's other storage (preferences and
+small capped stores) is not counted.
+
+A restore has to be able to open what it brings back, which is why the SQLite
+plugin's unused encryption is off (`capacitor.config.ts` says why; the review
+holds the APK to it).
+
+### Diagnostics
+
+A release WebView's console reaches nothing: Capacitor forwards it to logcat
+only in debug builds, and enabling that for release would also log every
+plugin call's arguments. The app's own log does reach it, in every build:
+
+```sh
+adb logcat -s SomeUI
+```
+
+It carries each failure the app reported through `callForeign`
+(`foreign-failure [<port>] <kind>: <summary> (<cause>)`) and
+`device storage: opened` once the database is open, and nothing a person
+wrote. The launch test fails a run without that line, or with a device
+storage failure (`launch/launch-test.sh`).
+
+- **Nothing the person made is deleted without their yes.** A session save
+  or shelf keep that would cross the budget is refused. The app then names
+  the oldest finished session (never today's or an unfinished one) and
+  removes it only if the person agrees. Sessions sync nowhere yet, so a
+  removed one is gone: that it hurts is the signal sessions need a server.
+- **Published content follows its source.** A sync deletes the lessons and
+  rounds home stopped listing, records a retired bundled round so the next
+  start does not restore it, and skips what would not fit. The seed deletes
+  bundled rounds the app no longer ships. All of it is reported. If home's
+  corpus is older than the app's, a sync also drops the newer bundled rounds
+  home does not list, until home lists them.
+- **Presence leases** are trimmed to the server's own 16.
+
+The database runs with `auto_vacuum = FULL`, so deleted rows leave the file
+Android backs up.
 
 ### What content is on the phone
 
@@ -442,8 +498,8 @@ phone's database:
 - any Leetype round whose content hash differs from the one the phone holds,
   together with its runs.
 
-A lesson home no longer lists is retired (unlisted, still loadable by key).
-A lesson that merely failed to download is kept. Only published content
+A lesson or round home no longer lists is deleted. A lesson that merely
+failed to download is kept, and one that would not fit is skipped. Only published content
 moves, and only home → phone. Sessions and the shelf stay where they were
 made.
 
@@ -485,6 +541,60 @@ with `isExactNotification: false`, and the manifest removes the plugin's
 `SCHEDULE_EXACT_ALARM`. Both halves matter: from plugin 8.3.0 the default is
 exact, and without exact-alarm access (Android 14 denies it by default) each
 `schedule()` would open the "Alarms & reminders" settings screen.
+
+## A session ends by winding down, not by stopping
+
+A session's length is the person's budget, and it holds, but the end is
+announced, not sprung:
+
+- **The last two minutes** (a quarter of a session under eight): a pill
+  appears in the strip above the activity, never over it, with a ring running
+  down, **+5 min** and **Wrap up**. Ignored, the session ends on time. +5
+  min is the orchestrator's `Extend` command, which lengthens whichever scene
+  ends last.
+- **The wrap** replaces the bare timing summary: the time played, planned
+  and added; "How did it go?" (worth it, pace, energy: optional, one tap
+  each, the latest 20 sessions' answers kept on this phone,
+  `lib/session-reflection`); **Say what stuck**, a soundbite (`say=wrap`);
+  and **Done**, back to Home. Wrapping up inside the last minutes counts as
+  complete, not "stopped early".
+- **Home** then says **Studied today** ("15 min · Korean", or "2 sessions ·
+  33 min") in the success colour and offers **Another round**; "Not today?
+  Say why" steps aside. A session still open keeps **Resume** first.
+
+Not yet: LeetType runs its own session clock from its mount, which +5 min
+does not reach, so a LeetType session extended past its planned end shows
+LeetType's own "Session complete" inside the activity until the session ends.
+
+## A session cut short still closes
+
+Real life interrupts, and often there is no time to say so. Stopping never
+asks anything; the reason is optional, can come later, and may never come.
+Each stop is one record (the newest 20 kept on this phone) so that what keeps
+cutting study short can be read over time.
+
+- **Got to go** sits in the strip above the activity (until the wind-down's
+  **Wrap up** takes over). One tap pauses the session and keeps the stop,
+  with six optional reasons, **Go**, and **Oops, keep going**, which forgets
+  a mis-tap.
+- **Leaving the app** mid-session is a stop too, with nothing to tap. Back
+  within a minute it was a glance, and is forgotten.
+- **Within 30 minutes** of the stop the person can **Pick up where you left
+  off** (exactly, in the player they left; at the start of the stopped scene
+  once reopened) or **Call it done**.
+- **Past 30 minutes**, whether the stop screen is still up, the app is
+  reopened or Home is, the session closes as it stood, dated when it
+  stopped, and counts toward **Studied today**; a close whose write failed is
+  retried. Home asks once, optionally, why the latest finished session was
+  cut short, and its wrap reads "12 min, banked".
+
+A record keeps when it stopped, how far in and in which scene, a tap or
+leaving, the reason and where it was given (the stop, the return, the wrap or
+Home), how it ended (picked up, called done or lapsed) and when, which says
+how long the person was away. The policy is one pure `step` in
+`apps/www/src/lib/session-stop`, run by `./runtime`; the player only forwards
+taps and `visibilitychange`. The records never leave the phone yet: reading
+them across devices needs them on the session record, a server migration.
 
 ## aph: my figure, their figure, and the goal
 
@@ -534,7 +644,8 @@ row of sentence starters ("Too tired", "No time today", "The app got in the
 way" …) is there for the moment the mind goes blank.
 
 **Talk now** in the + sheet opens it listening too, for a comment rather
-than a reason (`say=capture`). **Bites** in the bottom bar opens the same
+than a reason (`say=capture`), and so does a finished session's **Say what
+stuck**, for a summary (`say=wrap`). **Bites** in the bottom bar opens the same
 page without listening: the way to play back or delete what is kept, with
 no live microphone.
 

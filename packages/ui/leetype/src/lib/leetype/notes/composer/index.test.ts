@@ -6,9 +6,13 @@ import type {
 import {
   COMPOSER_NOTICES,
   draftOf,
+  FAILURES_BEFORE_WITHDRAWING,
   initialComposerState,
+  isListening,
   step,
 } from "@leetype/lib/leetype/notes/composer"
+import type { IntentError } from "@some-ui/intent-kit"
+import fc from "fast-check"
 import { describe, expect, it } from "vitest"
 
 const ANCHOR: NoteAnchor = {
@@ -36,6 +40,13 @@ function run(
     )
   }
   return { state, effects }
+}
+
+const BUSY: IntentError = {
+  kind: "rejected",
+  retryable: true,
+  summary: "Your phone's speech service couldn't start listening.",
+  cause: "busy",
 }
 
 const OPENED: ReadonlyArray<ComposerEvent> = [
@@ -89,7 +100,7 @@ describe("the note composer's step", () => {
     const { state, effects } = run([
       ...OPENED,
       { type: "micPressed" },
-      { type: "listenFailed", seq: 1, reason: "silent" },
+      { type: "transcribed", seq: 1, text: "" },
       { type: "micPressed" },
       { type: "transcribed", seq: 1, text: "late" },
       { type: "heard", seq: 1, heard: "late" },
@@ -151,21 +162,49 @@ describe("the note composer's step", () => {
     expect(state.composer.phase).toBe("closed")
   })
 
-  it("keeps words heard before a failure, and says why when there were none", () => {
+  it("keeps words heard before a failure", () => {
     const kept = run([
       ...OPENED,
       { type: "micPressed" },
       { type: "heard", seq: 1, heard: "half a" },
-      { type: "listenFailed", seq: 1, reason: "failed" },
+      { type: "listenFailed", seq: 1, error: BUSY },
     ])
     expect(kept.effects.at(-1)).toBe("save:half a")
     expect(kept.state.notice).toBe("")
-    const denied = run([
+  })
+
+  it("tells a quiet learner it heard nothing, without counting it as a failure", () => {
+    const { state } = run([
       ...OPENED,
       { type: "micPressed" },
-      { type: "listenFailed", seq: 1, reason: "denied" },
+      { type: "listenFailed", seq: 1, error: BUSY },
+      { type: "micPressed" },
+      { type: "transcribed", seq: 2, text: "" },
     ])
-    expect(denied.state.notice).toBe(COMPOSER_NOTICES.denied)
+    expect(state.notice).toBe(COMPOSER_NOTICES.silent)
+    expect(state.failures).toBe(0)
+    expect(state.canListen).toBe(true)
+  })
+
+  it("ends a Stop the recognizer never answers, as a failure, not a stuck button", () => {
+    const stopped = run([
+      ...OPENED,
+      { type: "micPressed" },
+      { type: "micPressed" },
+    ])
+    expect(stopped.effects.slice(-2)).toEqual([
+      "finishListening",
+      "startFinishTimer",
+    ])
+    const { state, effects } = run(
+      [{ type: "finishTimedOut", seq: 1 }],
+      stopped.state
+    )
+    expect(effects).toEqual(["cancelListening"])
+    expect(isListening(state.composer)).toBe(false)
+    expect(state.notice).toBe(
+      `${COMPOSER_NOTICES.noAnswer} ${COMPOSER_NOTICES.retry}`
+    )
   })
 
   it("removes the note on undo, abandoning an utterance", () => {
@@ -207,7 +246,10 @@ describe("the note composer's step", () => {
     const hidden = run([...OPENED, { type: "hidden" }, { type: "micPressed" }])
     expect(hidden.effects).toEqual(["save:"])
     const midway = run([...OPENED, { type: "micPressed" }, { type: "hidden" }])
-    expect(midway.effects.at(-1)).toBe("finishListening")
+    expect(midway.effects.slice(-2)).toEqual([
+      "finishListening",
+      "startFinishTimer",
+    ])
   })
 
   it("offers no microphone where there is no recognizer", () => {
@@ -237,5 +279,104 @@ describe("the note composer's step", () => {
     ])
     expect(effects).toEqual([])
     expect(state.composer.phase).toBe("closed")
+  })
+})
+
+/** One tap on the microphone, and how the recognizer answers it. */
+type Attempt = {
+  readonly heard: string
+  readonly answer:
+    | { readonly kind: "transcribed"; readonly text: string }
+    | { readonly kind: "failed"; readonly error: IntentError }
+    /** The learner pressed Stop, and the recognizer never answered. */
+    | { readonly kind: "unanswered" }
+}
+
+const attempt: fc.Arbitrary<Attempt> = fc.record({
+  heard: fc.constantFrom("", "half a"),
+  answer: fc.oneof(
+    fc.record({
+      kind: fc.constant("transcribed" as const),
+      text: fc.constantFrom("", "the bound grew"),
+    }),
+    fc.record({
+      kind: fc.constant("failed" as const),
+      error: fc.record({
+        kind: fc.constantFrom(
+          "unreachable" as const,
+          "rejected" as const,
+          "unavailable" as const,
+          "unknown" as const
+        ),
+        retryable: fc.boolean(),
+        summary: fc.constantFrom("It broke.", "It is not here."),
+        cause: fc.anything(),
+      }),
+    }),
+    fc.constant({ kind: "unanswered" as const })
+  ),
+})
+
+/** What the learner can see of the panel. */
+function screen(state: ComposerState): string {
+  return JSON.stringify([
+    draftOf(state.composer),
+    state.notice,
+    state.canListen,
+  ])
+}
+
+describe("the note composer, for any run of answers from the recognizer", () => {
+  it("ends every tap, says every failure, withdraws what cannot work, and never leaves a failed tap looking like nothing happened", () => {
+    fc.assert(
+      fc.property(fc.array(attempt, { maxLength: 8 }), (attempts) => {
+        let { state } = run(OPENED)
+        let failuresInARow = 0
+        let withdrawn = false
+        for (const [index, { heard, answer }] of attempts.entries()) {
+          const seq = state.seq + 1
+          const before = screen(state)
+          const tapped = step(state, { type: "micPressed" })
+          if (withdrawn) {
+            // Withdrawn stays withdrawn: no tap starts a listen again.
+            expect(tapped.effects).toEqual([])
+            continue
+          }
+          const events: Array<ComposerEvent> =
+            heard === "" ? [] : [{ type: "heard", seq, heard }]
+          if (answer.kind === "transcribed")
+            events.push({ type: "transcribed", seq, text: answer.text })
+          if (answer.kind === "failed")
+            events.push({ type: "listenFailed", seq, error: answer.error })
+          if (answer.kind === "unanswered")
+            events.push({ type: "micPressed" }, { type: "finishTimedOut", seq })
+          state = run(events, tapped.state).state
+
+          // Every tap ends: nothing is left listening or finishing.
+          expect(isListening(state.composer), `attempt ${index}`).toBe(false)
+          if (answer.kind === "transcribed") {
+            failuresInARow = 0
+            continue
+          }
+          failuresInARow += 1
+          const retryable =
+            answer.kind === "unanswered" || answer.error.retryable
+          withdrawn =
+            !retryable || failuresInARow >= FAILURES_BEFORE_WITHDRAWING
+          // What no tap can fix, or what taps have not fixed, is withdrawn.
+          expect(state.canListen).toBe(!withdrawn)
+          // A failure with nothing to show for it says what failed.
+          if (heard === "" || withdrawn) {
+            const summary =
+              answer.kind === "failed"
+                ? answer.error.summary
+                : COMPOSER_NOTICES.noAnswer
+            expect(state.notice.startsWith(summary)).toBe(true)
+          }
+          // The failed tap changed what the learner sees.
+          expect(screen(state)).not.toBe(before)
+        }
+      })
+    )
   })
 })

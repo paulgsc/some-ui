@@ -10,8 +10,8 @@ type RoundFeedbackProps = {
 }
 
 /**
- * The round-shaped counterpart to `ReadingFeedback`. No verdict: the rows
- * already carry it, so this is neutral paint and one eyebrow.
+ * A round's explanation. No verdict: the rows already carry it, so this is
+ * neutral paint and one eyebrow.
  *
  * `justification` always renders; `gloss`, when authored, renders beneath
  * it, never instead. A missing gloss reads thin on purpose; the fix is an

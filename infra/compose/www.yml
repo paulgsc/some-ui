@@ -12,8 +12,8 @@
 # same-origin /api/tts/ route that this container proxies to the TTS
 # container over some-ui-network (service-to-service, so :5050 never has to
 # be reachable from the browser at all), and apps/www's src/lib/tts-config
-# defaults to it whenever the page is HTTPS. Plain-HTTP consumers - Storybook,
-# cert-less `vite dev`, the :80 listener here - are untouched and keep
+# defaults to it whenever the page is HTTPS. Plain-HTTP consumers - cert-less
+# `vite dev`, the :80 listener here - are untouched and keep
 # talking to the published :5050 as before.
 #
 # The TTS containers are not a `depends_on` of this service, deliberately:

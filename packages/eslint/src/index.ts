@@ -5,7 +5,6 @@ import {
   baseConfig,
   compiledPackageStyleImportBanPattern,
   depsOverrideConfig,
-  eslintPluginStorybook,
   extensionCharterPlugin,
   extensionsCharterConfig,
   extensionsSecurityConfig,
@@ -47,7 +46,6 @@ export const maishatuRecommended: Config = defineConfig(
   ...typescriptConfig,
   ...reactConfig,
   ...reactPeerDependencyConfig,
-  ...eslintPluginStorybook,
   ...wasmLoaderGuardConfig,
   ...switchLintConfig,
   ...tailwindIdiomConfig,
@@ -65,7 +63,6 @@ export const maishatuNonStylistic: Config = defineConfig(
   ...typescriptConfig,
   ...reactConfig,
   ...reactPeerDependencyConfig,
-  ...eslintPluginStorybook,
   ...wasmLoaderGuardConfig,
   ...tailwindIdiomConfig,
   toolsOverrideConfig,
@@ -106,7 +103,7 @@ export { fitsTheBoxConfig, fitsTheBoxPlugin }
 
 // ── Theme protocol (reusable UI must inherit its theme, not choose one) ────
 export { themeProtocolConfig, themeProtocolPlugin, themeProviderBanPattern }
-export { structuralColorRatchet } from "./configs/index.js"
+export { paletteRatchet } from "./configs/index.js"
 
 // ── Router boundary (reusable UI must not import a router/framework) ───────
 export { routerImportBanPattern, routerDynamicImportSelectors }

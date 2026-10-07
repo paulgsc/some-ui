@@ -26,11 +26,10 @@ type RoundChoicesProps = {
 }
 
 /**
- * The round-shaped counterpart to `ClaimChoices`. Where `ClaimChoices`
- * records a choice a later submission resolves, a round has no second step
- * (Def. 9.1: "a single, cheap, mandatory-before-reveal action"), so each row
- * is a button that commits and reveals on tap, like `CommitmentControl`,
- * with the verdict landing on the rows as a glyph plus a word.
+ * A round's options. A round has no second step (Def. 9.1: "a single,
+ * cheap, mandatory-before-reveal action"), so each row is a button that
+ * commits and reveals on tap, like `CommitmentControl`, with the verdict
+ * landing on the rows as a glyph plus a word.
  *
  * # No option is colored before a commitment
  *
@@ -75,8 +74,7 @@ export const RoundChoices: FC<RoundChoicesProps> = ({
         {options.map((option, index) => {
           const isAnswer = option.id === revealedAnswerId
           const isPicked = option.id === pickedId
-          // After a commitment only the answer and the pick say anything,
-          // matching `ClaimChoices`' resolution states.
+          // After a commitment only the answer and the pick say anything.
           const resolution =
             revealedAnswerId === null
               ? "open"
@@ -99,9 +97,9 @@ export const RoundChoices: FC<RoundChoicesProps> = ({
                 resolution === "open" &&
                   "border-l-border/40 text-muted-foreground hover:bg-card/70",
                 resolution === "correct" &&
-                  "border-l-emerald-500 bg-emerald-500/[0.07] text-foreground",
+                  "border-l-success bg-success/[0.07] text-foreground",
                 resolution === "missed" &&
-                  "border-l-rose-500 bg-rose-500/[0.06] text-foreground",
+                  "border-l-destructive bg-destructive/[0.06] text-foreground",
                 resolution === "quiet" &&
                   "border-l-border/30 text-muted-foreground/60",
                 committed !== null && "cursor-default"
@@ -113,9 +111,9 @@ export const RoundChoices: FC<RoundChoicesProps> = ({
                   "mt-px flex size-5 shrink-0 items-center justify-center rounded-full border text-[11px] font-semibold tabular-nums",
                   resolution === "open" &&
                     "border-border/60 text-muted-foreground/70",
-                  resolution === "correct" &&
-                    "border-emerald-500 text-emerald-400",
-                  resolution === "missed" && "border-rose-500 text-rose-400",
+                  resolution === "correct" && "border-success text-success",
+                  resolution === "missed" &&
+                    "border-destructive text-destructive",
                   resolution === "quiet" &&
                     "border-border/60 text-muted-foreground/70",
                   "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
@@ -129,13 +127,13 @@ export const RoundChoices: FC<RoundChoicesProps> = ({
               </span>
 
               {resolution === "correct" && (
-                <span className="flex shrink-0 items-center gap-1 text-[11px] font-medium text-emerald-400">
+                <span className="flex shrink-0 items-center gap-1 text-[11px] font-medium text-success">
                   <Check className="size-3.5" aria-hidden="true" />
                   Correct
                 </span>
               )}
               {resolution === "missed" && (
-                <span className="flex shrink-0 items-center gap-1 text-[11px] font-medium text-rose-400">
+                <span className="flex shrink-0 items-center gap-1 text-[11px] font-medium text-destructive">
                   <X className="size-3.5" aria-hidden="true" />
                   Not this one
                 </span>

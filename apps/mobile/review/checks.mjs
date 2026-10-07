@@ -516,6 +516,52 @@ export function sizeBreakdown(entries) {
     .sort((a, b) => b.bytes - a.bytes)
 }
 
+// ── The shipped Capacitor config ─────────────────────────────────────────
+
+/** `dotted.path` in a parsed JSON object, or undefined. */
+function at(object, path) {
+  return path
+    .split(".")
+    .reduce(
+      (node, key) =>
+        typeof node === "object" && node !== null ? node[key] : undefined,
+      object
+    )
+}
+
+/**
+ * Holds the config the APK carries (`assets/capacitor.config.json`, which
+ * `cap sync` writes from capacitor.config.ts) to policy.json's
+ * `pluginConfig`: each `plugins.` path has exactly its value. Checked in the
+ * built APK, not the source, because no type guards a plugin's config keys:
+ * a misspelt key typechecks and the plugin silently keeps its default.
+ */
+export function reviewPluginConfig(label, configText, expected) {
+  if (configText === undefined) {
+    return [
+      {
+        level: "error",
+        check: "plugin-config",
+        message: `${label}: no assets/capacitor.config.json, so nothing says how its plugins are configured.`,
+      },
+    ]
+  }
+  const config = JSON.parse(configText)
+  const findings = []
+  for (const [path, { value, reason }] of Object.entries(expected)) {
+    if (path.startsWith("$")) continue
+    const actual = at(config, `plugins.${path}`)
+    if (actual !== value) {
+      findings.push({
+        level: "error",
+        check: "plugin-config",
+        message: `${label}: plugins.${path} is ${JSON.stringify(actual)}, not ${JSON.stringify(value)}. ${reason}`,
+      })
+    }
+  }
+  return findings
+}
+
 export function reviewSize(label, bytes, budget) {
   const mib = bytes / (1024 * 1024)
   if (mib > budget.warnMiB) {

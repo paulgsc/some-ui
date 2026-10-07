@@ -8,7 +8,7 @@
  * server has no route for them, and audio is the one thing that database
  * would hold as large opaque values for no query to read.
  */
-import { byNewest, displacedBy, SOUNDBITE_LIMIT } from "./policy"
+import { byNewest, displacedBy, fitsMaxBytes, SOUNDBITE_LIMIT } from "./policy"
 import type { Soundbite } from "./types"
 
 export type SoundbiteStore = {
@@ -17,7 +17,8 @@ export type SoundbiteStore = {
   audio: (id: string) => Promise<Blob | null>
   /**
    * Keeps `bite` with its audio. When the phone already holds the limit, it
-   * replaces `replace` if that is still kept, else the oldest.
+   * replaces `replace` if that is still kept, else the oldest. Rejects with
+   * `SoundbitesFullError`, keeping nothing, past `SOUNDBITES_MAX_BYTES`.
    */
   save: (bite: Soundbite, audio: Blob, replace: string | null) => Promise<void>
   remove: (id: string) => Promise<void>
@@ -26,6 +27,13 @@ export type SoundbiteStore = {
    * page showing the list can re-read it. Returns an unsubscribe.
    */
   subscribe: (listener: () => void) => () => void
+}
+
+export class SoundbitesFullError extends Error {
+  constructor() {
+    super("soundbites are at their storage cap")
+    this.name = "SoundbitesFullError"
+  }
 }
 
 const DB_NAME = "some-ui.soundbites"
@@ -128,7 +136,20 @@ export function indexedDbSoundbiteStore(): SoundbiteStore {
       // Read and evict inside the one transaction: the cap holds even if two
       // saves overlap (a second tab of the WebView, say).
       const kept = await allKept(meta)
-      for (const id of displacedBy(kept, replace, SOUNDBITE_LIMIT)) {
+      const displaced = displacedBy(kept, replace, SOUNDBITE_LIMIT)
+      const staying = await Promise.all(
+        kept
+          .filter((each) => !displaced.includes(each.id))
+          .map(async (each) => {
+            const blob: unknown = await result(audios.get(each.id))
+            return blob instanceof Blob ? blob.size : 0
+          })
+      )
+      if (!fitsMaxBytes(staying, audio.size)) {
+        tx.abort()
+        throw new SoundbitesFullError()
+      }
+      for (const id of displaced) {
         meta.delete(id)
         audios.delete(id)
       }

@@ -1,9 +1,5 @@
-import {
-  DictationError,
-  dictationFailureOf,
-  webSpeechDictation,
-} from "@leetype/lib/leetype/notes/dictation"
-import { describe, expect, it } from "vitest"
+import { webSpeechDictation } from "@leetype/lib/leetype/notes/dictation"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 type Handlers = {
   onresult:
@@ -71,7 +67,32 @@ const results = (...parts: Array<string>): Results =>
     Object.assign([{ transcript }], { isFinal: index < parts.length - 1 })
   )
 
+/**
+ * Every `SpeechRecognitionErrorEvent.error` the Web Speech API defines
+ * (https://webaudio.github.io/web-speech-api/#speechreco-error), with what
+ * each must become: the list is the platform's and closed, so all of it is
+ * here, not a sample.
+ */
+const WEB_SPEECH_ERRORS = [
+  ["no-speech", "silence"],
+  ["aborted", "silence"],
+  ["audio-capture", "unavailable"],
+  ["network", "unreachable"],
+  ["not-allowed", "rejected"],
+  ["service-not-allowed", "rejected"],
+  ["language-not-supported", "unavailable"],
+  ["phrases-not-supported", "unknown"],
+] as const
+
 describe("webSpeechDictation", () => {
+  beforeEach(() => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined)
+  })
+  afterEach(() => {
+    vi.useRealTimers()
+    vi.restoreAllMocks()
+  })
+
   it("is null where the browser has no recognizer", () => {
     expect(webSpeechDictation({})).toBeNull()
     expect(webSpeechDictation(undefined)).toBeNull()
@@ -96,26 +117,37 @@ describe("webSpeechDictation", () => {
     listening.stop()
     expect(recognition!.stopped).toBe(true)
     recognition!.onend!()
-    await expect(listening.done).resolves.toBe("the bounds grow")
+    await expect(listening.outcome).resolves.toEqual({
+      status: "succeeded",
+      value: "the bounds grow",
+    })
     expect(heard).toEqual(["the bounds grow"])
   })
 
-  it("rejects silence, a refusal and a failure with their reasons", async () => {
+  it("reads each of the platform's errors as silence or as a failure in our words", async () => {
     const { FakeRecognition, instances } = fakeRecognition()
     const dictation = webSpeechDictation({
       SpeechRecognition: FakeRecognition,
     })!
-    const cases = [
-      [undefined, "silent"],
-      ["not-allowed", "denied"],
-      ["network", "failed"],
-    ] as const
-    for (const [error, reason] of cases) {
+    for (const [code, meaning] of WEB_SPEECH_ERRORS) {
       const listening = dictation.listen(() => undefined)
       const recognition = instances.at(-1)!
-      if (error !== undefined) recognition.onerror!({ error })
+      recognition.onerror!({ error: code })
       recognition.onend!()
-      await expect(listening.done).rejects.toEqual(new DictationError(reason))
+      const outcome = await listening.outcome
+      if (meaning === "silence") {
+        expect(outcome, code).toEqual({ status: "succeeded", value: "" })
+        continue
+      }
+      expect(outcome, code).toMatchObject({
+        status: "failed",
+        error: { kind: meaning, cause: { code } },
+      })
+      if (outcome.status !== "failed") continue
+      // What no tap can fix withdraws the microphone.
+      expect(outcome.error.retryable, code).toBe(
+        meaning !== "unavailable" && meaning !== "rejected"
+      )
     }
   })
 
@@ -128,10 +160,27 @@ describe("webSpeechDictation", () => {
     recognition!.onresult!({ results: results("half") })
     recognition!.onerror!({ error: "no-speech" })
     recognition!.onend!()
-    await expect(listening.done).resolves.toBe("half")
+    await expect(listening.outcome).resolves.toEqual({
+      status: "succeeded",
+      value: "half",
+    })
   })
 
-  it("aborts on cancel and reports nothing after it", () => {
+  it("fails by its deadline when the recognizer never ends, and aborts it", async () => {
+    vi.useFakeTimers()
+    const { FakeRecognition, instances } = fakeRecognition()
+    const listening = webSpeechDictation({
+      SpeechRecognition: FakeRecognition,
+    })!.listen(() => undefined)
+    await vi.advanceTimersByTimeAsync(60_000)
+    await expect(listening.outcome).resolves.toMatchObject({
+      status: "failed",
+      error: { kind: "unreachable", retryable: true },
+    })
+    expect(instances[0]!.aborted).toBe(true)
+  })
+
+  it("aborts on cancel and reports nothing after it", async () => {
     const { FakeRecognition, instances } = fakeRecognition()
     const heard: Array<string> = []
     const listening = webSpeechDictation({
@@ -141,16 +190,9 @@ describe("webSpeechDictation", () => {
     const [recognition] = instances
     expect(recognition!.aborted).toBe(true)
     recognition!.onresult!({ results: results("late") })
+    recognition!.onend!()
+    await expect(listening.outcome).resolves.toEqual({ status: "abandoned" })
     expect(heard).toEqual([])
-  })
-})
-
-describe("dictationFailureOf", () => {
-  it("reads a reason from any rejection that carries one, and calls the rest failed", () => {
-    expect(dictationFailureOf(new DictationError("denied"))).toBe("denied")
-    expect(dictationFailureOf({ reason: "silent" })).toBe("silent")
-    expect(dictationFailureOf({ reason: "exploded" })).toBe("failed")
-    expect(dictationFailureOf(new Error("boom"))).toBe("failed")
-    expect(dictationFailureOf(undefined)).toBe("failed")
+    expect(console.error).not.toHaveBeenCalled()
   })
 })

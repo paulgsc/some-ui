@@ -22,8 +22,8 @@
  *   reassigning `--background` — at which point they stop being an override
  *   and become composable.
  *
- * Every consumer — the controller, `preset/themes.ts`, apps/www's switcher,
- * the Storybook toolbar — reads a derived view of these arrays. Nothing
+ * Every consumer — the controller, `preset/themes.ts`, apps/www's switcher —
+ * reads a derived view of these arrays. Nothing
  * maintains a second list.
  */
 
@@ -112,26 +112,42 @@ export const SESSION_THEMES = [
     selectable: true,
     swatch: {
       bg: "oklch(0.145 0 0)",
-      fg: "oklch(0.9 0.004 260)",
+      fg: "oklch(0.985 0 0)",
       accent: "oklch(0.922 0 0)",
     },
   },
   {
     // `dark` rides along so shared `.dark` component styles resolve beside the
     // standalone palette class.
-    id: "strawberry-moon",
-    label: "Strawberry Moon",
+    id: "rose-night",
+    label: "Rosé Night",
     mode: "dark",
     scope: "session",
     boundary: {
-      classNames: ["dark", "strawberry-moon"],
-      dataTheme: "strawberry-moon",
+      classNames: ["dark", "rose-night"],
+      dataTheme: "rose-night",
     },
     selectable: true,
     swatch: {
-      bg: "oklch(0.16 0.03 350)",
-      fg: "oklch(0.88 0.02 350)",
-      accent: "oklch(0.68 0.19 15)",
+      bg: "oklch(0.17 0.02 330)",
+      fg: "oklch(0.71 0.025 340)",
+      accent: "oklch(0.76 0.11 355)",
+    },
+  },
+  {
+    id: "harvest-sky",
+    label: "Harvest Sky",
+    mode: "dark",
+    scope: "session",
+    boundary: {
+      classNames: ["dark", "harvest-sky"],
+      dataTheme: "harvest-sky",
+    },
+    selectable: true,
+    swatch: {
+      bg: "oklch(0.17 0.035 285)",
+      fg: "oklch(0.73 0.03 75)",
+      accent: "oklch(0.7 0.16 355)",
     },
   },
   {

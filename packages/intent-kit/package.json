@@ -31,7 +31,8 @@
   "dependencies": {},
   "devDependencies": {
     "@some-ui/tsconfig": "workspace:*",
-    "@some-ui/vite-config": "workspace:*"
+    "@some-ui/vite-config": "workspace:*",
+    "fast-check": "^4.10.2"
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json && vite build",

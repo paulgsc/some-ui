@@ -30,16 +30,16 @@
   "dependencies": {
     "@vitejs/plugin-react": "^6.1.1",
     "typescript": "^5.7.3",
-    "vite": "^8.3.1",
+    "vite": "^8.3.2",
     "zod": "catalog:"
   },
   "devDependencies": {
     "@some-ui/tsconfig": "workspace:*",
-    "tsc-alias": "^1.9.5",
-    "vitest": "^5.0.2"
+    "tsc-alias": "^1.9.7",
+    "vitest": "^5.0.3"
   },
   "peerDependencies": {
-    "vite": "^8.3.1"
+    "vite": "^8.3.2"
   },
   "exports": {
     ".": {

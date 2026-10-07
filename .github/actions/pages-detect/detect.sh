@@ -21,7 +21,7 @@ if [ "$is_release_commit" = "true" ]; then
 	release_mode=publish
 elif [ "$EVENT_NAME" = "push" ]; then
 	# pages.yml's own `on.push.paths` filter already restricted this push to
-	# one touching apps/www, packages/**, .storybook/**, pnpm-lock.yaml, or
+	# one touching apps/www, packages/**, pnpm-lock.yaml, or
 	# this workflow's/action's own files - no need to re-diff here.
 	release_mode=release-pr
 elif [ "$EVENT_NAME" = "workflow_dispatch" ]; then

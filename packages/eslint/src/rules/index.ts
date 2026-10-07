@@ -6,8 +6,6 @@ export { noUnshrinkableFlexChild } from "./no-unshrinkable-flex-child.js"
 export { noInterpolatedClassname } from "./no-interpolated-classname.js"
 export { noLogicLayerSideEffects } from "./no-logic-layer-side-effects.js"
 export { noRawStorage } from "./no-raw-storage.js"
-export { requireStoryTitlePrefix } from "./require-story-title-prefix.js"
-export { preferMetaSatisfies } from "./prefer-meta-satisfies.js"
 export { requireCaseBraces } from "./require-case-braces.js"
 export { requireFailFastDefault } from "./require-fail-fast-default.js"
 export { noBareWasmSingleton } from "./no-bare-wasm-singleton.js"
@@ -17,4 +15,8 @@ export { noLoadingElidedDefault } from "./no-loading-elided-default.js"
 export { requireNamedLifetime } from "./require-named-lifetime.js"
 export { requireScopedLifetime } from "./require-scoped-lifetime.js"
 export { noMountSnapshot } from "./no-mount-snapshot.js"
-export { noStructuralPaletteColor, noThemeBoundary } from "./theme-protocol.js"
+export {
+  noFixedStatusColor,
+  noStructuralPaletteColor,
+  noThemeBoundary,
+} from "./theme-protocol.js"

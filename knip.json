@@ -18,15 +18,12 @@
   "workspaces": {
     ".": {
       "entry": [
-        ".storybook/uno.config.ts",
         "scripts/audit-node-licenses.mjs",
         "scripts/fix-gen.ts",
         "extensions/scripts/*.mjs"
       ],
       "ignoreDependencies": [
         "@changesets/cli",
-        "tailwindcss",
-        "tailwindcss-animate",
         "typescript-language-server",
         "typescript-transform-paths"
       ]
@@ -38,6 +35,9 @@
         "@capacitor-community/text-to-speech",
         "@capacitor/local-notifications"
       ]
+    },
+    "apps/www": {
+      "entry": ["tests/ui-fit/panel-page/main.tsx"]
     },
     "extensions/common": {
       "ignoreDependencies": ["@types/firefox-webext-browser"]
@@ -101,6 +101,9 @@
     },
     "packages/ui/resume": {
       "ignoreDependencies": ["@some-ui/contract-harness"]
+    },
+    "packages/ui/soundbites": {
+      "entry": ["src/index.ts", "src/contract.ts"]
     },
     "packages/ui/shared": {
       "ignoreDependencies": ["clsx", "tailwind-merge"]

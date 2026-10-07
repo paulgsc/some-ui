@@ -12,22 +12,51 @@
  */
 import type { DeviceBackend } from "@/lib/device-backend/interceptor"
 import { installDeviceFetch } from "@/lib/device-backend/interceptor"
+import { DeviceStorageError } from "@/lib/device-backend/sql"
 import { resolveFileHostBase } from "@/lib/file-host-config"
 
 let opening: Promise<DeviceBackend> | null = null
 
 /**
+ * The line the native log gets once the database has opened: the launch
+ * test (apps/mobile launch/launch-test.sh) waits for it.
+ */
+export const DEVICE_STORAGE_OPENED = "device storage: opened"
+
+async function open(): Promise<DeviceBackend> {
+  const [
+    { openCapacitorSqlite },
+    { openDeviceBackend },
+    { installNativeLog, writeNativeLog },
+  ] = await Promise.all([
+    import("@/lib/device-backend/capacitor-sqlite"),
+    import("@/lib/device-backend/backend"),
+    import("@/lib/native-log"),
+  ])
+  // Again here (it is idempotent), so it is in before the database even if
+  // boot's own import has not landed yet.
+  installNativeLog()
+  const backend = await openDeviceBackend(await openCapacitorSqlite())
+  writeNativeLog(DEVICE_STORAGE_OPENED)
+  return backend
+}
+
+/**
  * Opens the database once; every request waits on the same promise. Also
  * how device-only UI (the sync from home) reaches the same database.
+ *
+ * A failed open is kept only when no retry in this process can help (the
+ * plugin never loaded: `DeviceStorageError`, not `retryable`). Any other is
+ * forgotten, so the next request opens again rather than repeating an
+ * answer that "Try again" was promised could change.
  */
 export function deviceBackend(): Promise<DeviceBackend> {
-  opening ??= (async (): Promise<DeviceBackend> => {
-    const [{ openCapacitorSqlite }, { openDeviceBackend }] = await Promise.all([
-      import("@/lib/device-backend/capacitor-sqlite"),
-      import("@/lib/device-backend/backend"),
-    ])
-    return openDeviceBackend(await openCapacitorSqlite())
-  })()
+  opening ??= open().catch((error: unknown) => {
+    if (!(error instanceof DeviceStorageError) || error.error.retryable) {
+      opening = null
+    }
+    throw error
+  })
   return opening
 }
 
@@ -42,13 +71,20 @@ export function deviceFileHostBase(): URL | undefined {
   return base === undefined ? undefined : new URL(base, window.location.origin)
 }
 
-/** Installs the device backend in the device build; a no-op in any other. */
+/**
+ * Installs the device backend in the device build, and its native log, so a
+ * failure any native API reports reaches it from the start, not only from
+ * the first database request; a no-op in any other build.
+ */
 export function bootDeviceBackend(): void {
   if (
     import.meta.env.VITE_DEVICE_BACKEND !== "true" ||
     typeof window === "undefined"
   )
     return
+  void import("@/lib/native-log").then(({ installNativeLog }) =>
+    installNativeLog()
+  )
   const base = deviceFileHostBase()
   if (base === undefined) return
   installDeviceFetch(base, deviceBackend)

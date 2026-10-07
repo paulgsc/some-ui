@@ -23,6 +23,9 @@ import {
 import type { DeviceBackend } from "@/lib/device-backend/interceptor"
 import { createDeviceFetch } from "@/lib/device-backend/interceptor"
 import type { SqlDriver } from "@/lib/device-backend/sql"
+import { DeviceStorageError } from "@/lib/device-backend/sql"
+import type { StorageBudget } from "@/lib/device-backend/storage"
+import { databaseBytes } from "@/lib/device-backend/storage"
 
 const HOME = "http://192.168.1.10:3000"
 const PHONE = "https://localhost/api/file-host/api/v1"
@@ -149,22 +152,108 @@ describe("syncFromHome", () => {
     }
   )
 
-  it("is idempotent, and retires what home stopped listing", async () => {
+  it("is idempotent, and removes what home stopped listing", async () => {
     await syncFromHome(phoneDb, HOME, verbatimGet, () => NOW)
     const again = await syncFromHome(phoneDb, HOME, verbatimGet, () => NOW)
-    expect(again.lessons).toMatchObject({ added: 0, updated: 0, retired: 0 })
-    expect(again.rounds).toMatchObject({ added: 0, updated: 0 })
+    expect(again.lessons).toMatchObject({ added: 0, updated: 0, removed: 0 })
+    expect(again.rounds).toMatchObject({ added: 0, updated: 0, removed: 0 })
 
     await homeDb.run("UPDATE curriculum SET retired_at = ? WHERE key = ?", [
       "2026-09-29T09:00:00+00:00",
       "k2-cafe",
     ])
+    await homeDb.run("UPDATE leetype_round SET retired_at = ? WHERE id = ?", [
+      "2026-09-29T09:00:00+00:00",
+      "home-only-round",
+    ])
     const third = await syncFromHome(phoneDb, HOME, verbatimGet, () => NOW)
-    expect(third.lessons.retired).toBe(1)
+    expect(third.lessons.removed).toBe(1)
+    expect(third.rounds.removed).toBe(1)
     await expect(phoneJson("/curriculum/manifest.json")).resolves.toMatchObject(
       {
         topiks: [],
       }
+    )
+    const rounds = await phoneDb.all(
+      "SELECT id FROM leetype_round WHERE id = 'home-only-round'"
+    )
+    expect(rounds).toEqual([])
+  })
+
+  it("skips what would grow the phone past its budget, and counts it", async () => {
+    await syncFromHome(phoneDb, HOME, verbatimGet, () => NOW)
+    const big = { ...LESSON, key: "k3-big", displayName: "Long" }
+    await upsertLesson(
+      homeDb,
+      big,
+      JSON.stringify({ batches: ["x".repeat(20_000)] }),
+      NOW
+    )
+    const full: StorageBudget = {
+      quotaBytes: await databaseBytes(phoneDb),
+      reservedBytes: 0,
+    }
+    const report = await syncFromHome(
+      phoneDb,
+      HOME,
+      verbatimGet,
+      () => NOW,
+      full
+    )
+    expect(report.lessons).toMatchObject({ listed: 2, added: 0, skipped: 1 })
+    expect(report.failed).toEqual([])
+    await expect(phoneJson("/curriculum/manifest.json")).resolves.toMatchObject(
+      { topiks: [{ key: "k2-cafe" }] }
+    )
+  })
+
+  it("stops on the phone's storage failing, rather than counting the lesson as not fetched", async () => {
+    const failing = new DeviceStorageError({
+      kind: "unreachable",
+      retryable: true,
+      summary: "This phone's storage didn't answer.",
+      cause: null,
+    })
+    // Only the lesson's own write: the storage gives out mid-loop.
+    const storageGone: SqlDriver = {
+      ...phoneDb,
+      run: (sql, params) =>
+        sql.includes("INSERT INTO curriculum")
+          ? Promise.reject(failing)
+          : phoneDb.run(sql, params),
+    }
+    await expect(
+      syncFromHome(storageGone, HOME, verbatimGet, () => NOW)
+    ).rejects.toBe(failing)
+  })
+
+  it("removes nothing when the rounds listing fails after the lessons'", async () => {
+    await syncFromHome(phoneDb, HOME, verbatimGet, () => NOW)
+    await homeDb.run("UPDATE curriculum SET retired_at = ? WHERE key = ?", [
+      "2026-09-29T09:00:00+00:00",
+      "k2-cafe",
+    ])
+    const noRounds: HomeGet = async (url) =>
+      url.endsWith("/leetype/rounds")
+        ? { status: 500, body: "" }
+        : verbatimGet(url)
+    await expect(
+      syncFromHome(phoneDb, HOME, noRounds, () => NOW)
+    ).rejects.toThrow(/500/)
+    await expect(phoneJson("/curriculum/manifest.json")).resolves.toMatchObject(
+      { topiks: [{ key: "k2-cafe" }] }
+    )
+  })
+
+  it("re-lists a lesson an older build retired, once home lists it", async () => {
+    await syncFromHome(phoneDb, HOME, verbatimGet, () => NOW)
+    await phoneDb.run("UPDATE curriculum SET retired_at = ? WHERE key = ?", [
+      "2026-09-29T09:00:00+00:00",
+      "k2-cafe",
+    ])
+    await syncFromHome(phoneDb, HOME, verbatimGet, () => NOW)
+    await expect(phoneJson("/curriculum/manifest.json")).resolves.toMatchObject(
+      { topiks: [{ key: "k2-cafe" }] }
     )
   })
 
@@ -195,7 +284,7 @@ describe("syncFromHome", () => {
     ).resolves.toMatchObject({ runs: [{ variant: "A" }] })
   })
 
-  it("keeps a lesson that failed to download, rather than retiring it", async () => {
+  it("keeps a lesson that failed to download, rather than removing it", async () => {
     await syncFromHome(phoneDb, HOME, verbatimGet, () => NOW)
     const flaky: HomeGet = async (url) =>
       url.endsWith("/curriculum/k2-cafe")
@@ -203,12 +292,12 @@ describe("syncFromHome", () => {
         : verbatimGet(url)
     const report = await syncFromHome(phoneDb, HOME, flaky, () => NOW)
     expect(report.failed).toEqual(["k2-cafe"])
-    expect(report.lessons.retired).toBe(0)
+    expect(report.lessons.removed).toBe(0)
   })
 })
 
 describe("syncFromHome against a home it cannot read", () => {
-  it("fails on a manifest with no `topiks` array, and retires nothing", async () => {
+  it("fails on a manifest with no `topiks` array, and removes nothing", async () => {
     await syncFromHome(phoneDb, HOME, verbatimGet, () => NOW)
     const skewed: HomeGet = async (url) =>
       url.endsWith("/curriculum/manifest.json")
@@ -233,7 +322,7 @@ describe("syncFromHome against a home it cannot read", () => {
         : verbatimGet(url)
     const report = await syncFromHome(phoneDb, HOME, partial, () => NOW)
     expect(report.failed).toEqual(["k2-cafe"])
-    expect(report.lessons.retired).toBe(0)
+    expect(report.lessons.removed).toBe(0)
   })
 })
 

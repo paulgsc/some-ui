@@ -70,7 +70,7 @@ export const RoundOutcome: FC<RoundOutcomeProps> = ({
       <p
         role="status"
         className={cn(
-          "flex items-center gap-2 text-sm text-emerald-400",
+          "flex items-center gap-2 text-sm text-success",
           className
         )}
       >
@@ -111,12 +111,12 @@ export const RoundOutcome: FC<RoundOutcomeProps> = ({
                     <span className="flex items-center gap-2">
                       {fits ? (
                         <Check
-                          className="size-4 text-emerald-400"
+                          className="size-4 text-success"
                           aria-hidden="true"
                         />
                       ) : (
                         <X
-                          className="size-4 text-rose-400"
+                          className="size-4 text-destructive"
                           aria-hidden="true"
                         />
                       )}

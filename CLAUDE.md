@@ -123,7 +123,7 @@ the shortest life that works, and nothing recreated leaves its old copy behind.
   day-old build anyway.
 - **What stays, and why** (not artifacts, so no `retention-days` applies):
   - Actions caches (`pnpm-cache`, `cargo-cache`, `resume-assets-cache`, the
-    workspace-dist and Storybook caches, the Docker `type=gha` layer cache in
+    workspace-dist cache, the Docker `type=gha` layer cache in
     `www-docker-release.yml`): GitHub evicts an entry unused for 7 days and caps the
     repo at 10 GB. Keys that change with their inputs churn that cap but cannot grow
     past it.
@@ -136,6 +136,19 @@ the shortest life that works, and nothing recreated leaves its old copy behind.
 - **Repo setting, not code:** Settings → Actions → General → "Artifact and log
   retention" sets the default for any upload without `retention-days` and caps any
   explicit value above it. It also sets how long run logs are kept.
+
+## Desktop follows the APK
+
+The APK is the product. The desktop experience is being rebuilt to mirror it,
+so desktop-only UI is going to churn. Before polishing, migrating or fixing UI,
+check which surface renders it: work on APK and platform-agnostic UI is
+worthwhile, and work on desktop-only UI is usually wasted. Phone and desktop
+split in a few places: `useIsMobile` in `Leetype` (`RoundSession` under 768px
+wide, the typing game above), `chooseSurface` in topik (`HandheldLesson` under
+768px wide or 480px tall, `DesktopSession` otherwise), the `lan` audience (not
+in the APK build), and the `_apk` routes. The window-size splits follow the
+window, not the device, so the APK on a tablet gets the wide surfaces too. When a repo-wide sweep has to skip a desktop-only file, say so
+where the skip lives, as the `paletteRatchet` calls do.
 
 ## Vestiges
 
@@ -218,6 +231,10 @@ entry is allowed when the reason is real: put it in its own group under
 `# Coordination: <the external work, and why it cannot live outside React>`, never in the
 grandfathered group. If the only honest reason is "it needs an await", the code belongs in the
 runtime instead.
+
+A port to anything we do not own (a native plugin, `navigator`, `Notification`) waits through
+`callForeign` (`@some-ui/intent-kit`), never its own failure union or timeout; `unavailable` means
+withdraw the control. `pnpm check:foreign-boundary` counts bare waits as R1 does (F1).
 
 A component or hook that seeds `useState`/`useReducer` from its own prop or from the clock keeps
 a copy frozen at mount while the owner moves on; #1659's review found that five times, one per
@@ -360,18 +377,18 @@ never "sounds like good practice."
   (`git fetch origin main && git checkout -B <branch> origin/main`) before adding new
   commits — never stack new work on already-merged history. Fetch fresh; a stale local
   `origin/main` ref produces false alarms in both directions.
-- **`STORYBOOK_WORKSPACE` is a directory name, not a package name.** It is globbed
-  straight into `../packages/ui/<value>/**/*.stories.*`, so it wants `topik`, not
-  `@some-ui/topik` — and getting it wrong does not fail. The build succeeds with only
-  the six always-included design-system stories, and every ui-fit sweep then passes in
-  about a second having measured nothing you cared about. Check the count before
-  believing a fast green run:
-  `python3 -c "import json; print(len(json.load(open('storybook-static/index.json'))['entries']))"`.
 - **A green ui-fit run proves only what is in the viewport matrix.** It is four sizes in
   `apps/www/tests/ui-fit/harness.ts`, one of which (780×390) exists because the other
   three are all portrait or landscape-desktop, and a phone held sideways was therefore a
   shape nothing could fail on. If a report is about an orientation or window shape, check
   that matrix contains it before concluding the surface is fine.
+- **A Capacitor plugin object is a thenable: never resolve a promise with one.** Its Proxy
+  answers `then` too, so `return SpeechRecognition` from an `async` function waits forever,
+  silently. Box it (`return { plugin }`), and mock plugins as a Proxy that answers every key
+  (`asCapacitorPlugin` in `apps/www/src/lib/dictation/index.test.ts`), or the test passes anyway.
+- **A `console.error` in www is gone from release builds** (`build.minify.ts`), and the APK's
+  console reaches nothing anyway. Report failures through `reportFailure` (`@some-ui/intent-kit`),
+  which survives both: `adb logcat -s SomeUI`.
 - **Nothing on a PR builds the Android app, and nothing in CI renders the APK's own UI.**
   `mobile-apk.yml` (Gradle compile, R8 release build, Android Lint, the Play review) runs
   only on pushes to `main`, so a Java error in `apps/mobile/android` or a Lint/R8 failure
@@ -416,16 +433,6 @@ test.describe() to be called here`, thrown from the _first_ `test.describe()` in
   added. Prepend the workspace root before invoking: `PATH="$(git rev-parse
 --show-toplevel)/node_modules/.bin:$PATH" bash extensions/some-filter/scripts/claude-e2e.sh
 <args>`.
-- **Driving a `storybook build` output with Playwright over a bare `file://` URL silently
-  renders nothing.** The built preview loads its bundle as ES modules, and Chromium enforces
-  CORS on `file://` script/stylesheet requests — every asset fails with "Access to script...
-  has been blocked by CORS policy... Cross origin requests are only supported for protocol
-  schemes: chrome, ... http, https", the page body stays empty, and a query like `page.locator(
-'[aria-label="..."]').count()` just comes back `0` with no exception thrown — reads exactly
-  like the component isn't rendering what you think it renders, not like a transport problem.
-  Serve the build over a local HTTP server first (`python3 -m http.server <port>` from the
-  `storybook-static` dir, backgrounded) and point Playwright at `http://localhost:<port>/...`
-  instead of the `file://` path.
 - **A cancelled `Extension CI` run reads as a fully green PR — including from
   `get_check_runs` on the correct head.** Your own next push cancels the in-flight run for the
   same PR via its concurrency group, and a cancelled run contributes **no check runs at all**.

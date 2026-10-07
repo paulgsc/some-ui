@@ -7,8 +7,7 @@
 # There are two ways in, and which one a page uses comes down to its scheme:
 #
 #   - Plain-HTTP pages reach nginx below on ${PORT:-5050} of whatever host
-#     serves them - Storybook, cert-less `vite dev`, the www container's :80
-#     listener. apps/www derives exactly that by default
+#     serves them - cert-less `vite dev`, the www container's :80 listener. apps/www derives exactly that by default
 #     (src/lib/tts-config).
 #   - HTTPS pages cannot: this stack terminates no TLS, and an http:// fetch
 #     from an https:// document is mixed content, blocked by the browser

@@ -18,6 +18,7 @@ import {
   reviewElf,
   reviewLint,
   reviewManifest,
+  reviewPluginConfig,
   reviewSigner,
   reviewTargetSdk,
   reviewVersionCode,
@@ -407,4 +408,32 @@ test("lintIssues and reviewLint: report-only until gated", () => {
   ])
   assert.deepEqual(levels(reviewLint(issues, { gate: true })), ["error:lint"])
   assert.deepEqual(reviewLint(issues.slice(1), { gate: true }), [])
+})
+
+test("reviewPluginConfig holds the shipped config to policy.json, and fails without one", () => {
+  const shipped = (plugins) => JSON.stringify({ appId: "x", plugins })
+  assert.deepEqual(
+    reviewPluginConfig(
+      "apk",
+      shipped({ CapacitorSQLite: { androidIsEncryption: false } }),
+      policy.pluginConfig
+    ),
+    []
+  )
+  // The plugin's own default, a misspelt key, and no plugins section all
+  // leave encryption on.
+  for (const plugins of [
+    { CapacitorSQLite: { androidIsEncryption: true } },
+    { CapacitorSQLite: { androidIsEncrypted: false } },
+    undefined,
+  ]) {
+    assert.deepEqual(
+      levels(reviewPluginConfig("apk", shipped(plugins), policy.pluginConfig)),
+      ["error:plugin-config"]
+    )
+  }
+  assert.deepEqual(
+    levels(reviewPluginConfig("apk", undefined, policy.pluginConfig)),
+    ["error:plugin-config"]
+  )
 })

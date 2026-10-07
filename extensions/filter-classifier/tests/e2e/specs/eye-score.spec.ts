@@ -153,6 +153,24 @@ test.describe("requiresExplanation / validateEyeScore", () => {
     )
     expect(issues.some((issue) => issue.includes("reviewer"))).toBe(true)
   })
+
+  test("validateEyeScore rejects a scoredAt that is not an ISO timestamp", () => {
+    for (const scoredAt of [
+      "",
+      "yesterday",
+      "2026-07-20",
+      "2026-13-45T99:00:00Z",
+      // Date.parse accepts both; toISOString never writes either.
+      "2026-02-30T00:00:00.000Z",
+      "2026-07-20T01:03:58Z",
+    ]) {
+      const issues = validateEyeScore(notApplicableFixture, score({ scoredAt }))
+      expect(
+        issues.some((issue) => issue.includes("scoredAt")),
+        scoredAt
+      ).toBe(true)
+    }
+  })
 })
 
 // Synthetic values only — #730's actual oracle regression

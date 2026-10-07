@@ -41,6 +41,7 @@ import {
   reviewElf,
   reviewLint,
   reviewManifest,
+  reviewPluginConfig,
   reviewSigner,
   reviewSize,
   reviewTargetSdk,
@@ -172,6 +173,18 @@ for (const variant of ["debug", "release"]) {
   }
   add(reviewNativeLibs(label, bytes, entries, /^lib\/[^/]+\/[^/]+\.so$/))
 
+  // What the plugins were told: read from the APK, as the phone reads it.
+  const configEntry = entries.find(
+    (e) => e.name === "assets/capacitor.config.json"
+  )
+  add(
+    reviewPluginConfig(
+      label,
+      configEntry && entryBytes(bytes, configEntry).toString("utf8"),
+      policy.pluginConfig
+    )
+  )
+
   const mib = (n) => `${(n / (1024 * 1024)).toFixed(2)} MiB`
   const size = statSync(apk).size
   add(reviewSize(label, size, policy.size))
@@ -188,11 +201,16 @@ for (const variant of ["debug", "release"]) {
   )
 }
 
+/** One ZIP entry's contents, inflated if it was deflated. */
+function entryBytes(bytes, e) {
+  const raw = bytes.subarray(e.dataOffset, e.dataOffset + e.compressedSize)
+  return e.method === 0 ? Buffer.from(raw) : inflateRawSync(raw)
+}
+
 function reviewNativeLibs(label, bytes, entries, pattern) {
   const out = []
   for (const e of entries.filter((e) => pattern.test(e.name))) {
-    const raw = bytes.subarray(e.dataOffset, e.dataOffset + e.compressedSize)
-    const so = e.method === 0 ? raw : inflateRawSync(raw)
+    const so = entryBytes(bytes, e)
     out.push(...reviewElf(label, e.name, elfLoadAlignments(so)))
   }
   return out

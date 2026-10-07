@@ -14,6 +14,8 @@
  * - `origin` only ever moves `system -> user`;
  * - a duplicate is a fresh `draft` with `" (copy)"` appended, and carries
  *   `finalElapsedMs` over (the server's `..source` spread does).
+ *
+ * Saves are budgeted (`device-backend/storage`).
  */
 import { DEVICE_SUBJECT, isRecord, rfc3339 } from "@/lib/device-backend/common"
 import type { DeviceRoute } from "@/lib/device-backend/router"
@@ -25,6 +27,8 @@ import {
 } from "@/lib/device-backend/router"
 import type { SqlDriver, SqlRow, SqlValue } from "@/lib/device-backend/sql"
 import { num, numOrNull, one, text, textOrNull } from "@/lib/device-backend/sql"
+import { budgetedAnswer } from "@/lib/device-backend/storage"
+import { touchedToday } from "@/lib/study-nudge"
 
 const STATUSES = ["draft", "scheduled", "active", "paused", "completed"]
 const LAYOUT_MODES = ["basic", "advanced"]
@@ -172,6 +176,38 @@ function layoutField(body: Record<string, unknown>): string | null | undefined {
   return JSON.stringify(body.layout ?? null)
 }
 
+export type RemovableSession = { id: string; name: string; finishedAt: string }
+
+/**
+ * The session the app offers to remove when the phone is full: the oldest
+ * finished one that is not `spare`, and never one the study card and nudge
+ * read as studied today.
+ */
+export async function oldestRemovable(
+  db: SqlDriver,
+  nowMs: number,
+  spare: string | null = null
+): Promise<RemovableSession | null> {
+  const rows = await db.all(
+    "SELECT id, name, started_at, completed_at, updated_at FROM sessions WHERE subject_id = ? AND status = 'completed'",
+    [DEVICE_SUBJECT]
+  )
+  const removable = rows
+    .map((row) => ({
+      id: text(row, "id"),
+      name: text(row, "name"),
+      startedAt: textOrNull(row, "started_at") ?? undefined,
+      completedAt: textOrNull(row, "completed_at") ?? undefined,
+      finishedAt: textOrNull(row, "completed_at") ?? text(row, "updated_at"),
+    }))
+    .filter((row) => row.id !== spare && !touchedToday(row, new Date(nowMs)))
+    .sort((a, b) => Date.parse(a.finishedAt) - Date.parse(b.finishedAt))
+  const oldest = removable.at(0)
+  return oldest === undefined
+    ? null
+    : { id: oldest.id, name: oldest.name, finishedAt: oldest.finishedAt }
+}
+
 function idsOf(value: unknown): Array<string> | null {
   if (!isRecord(value) || !Array.isArray(value.ids)) return null
   const ids = value.ids
@@ -204,7 +240,7 @@ export const sessionRoutes: ReadonlyArray<DeviceRoute> = [
   {
     method: "POST",
     path: "/sessions",
-    handler: async ({ body }, { db, now }): Promise<Response> => {
+    handler: async ({ body }, { db, now, budget }): Promise<Response> => {
       const read = readJson(body)
       if (!read.ok) return read.response
       const input = read.value
@@ -241,14 +277,19 @@ export const sessionRoutes: ReadonlyArray<DeviceRoute> = [
         scenes: JSON.stringify(scenes),
         layout: layout ?? null,
       }
-      await db.transaction(() => write(db, session))
-      return json(200, toWire(session))
+      return budgetedAnswer(db, budget, null, async () => {
+        await write(db, session)
+        return json(200, toWire(session))
+      })
     },
   },
   {
     method: "PATCH",
     path: "/sessions/:id",
-    handler: async ({ params, body }, { db, now }): Promise<Response> => {
+    handler: async (
+      { params, body },
+      { db, now, budget }
+    ): Promise<Response> => {
       const read = readJson(body)
       if (!read.ok) return read.response
       const patch = read.value
@@ -266,7 +307,7 @@ export const sessionRoutes: ReadonlyArray<DeviceRoute> = [
       ) {
         return shapeRejected("unknown `layoutMode`")
       }
-      return db.transaction(async () => {
+      return budgetedAnswer(db, budget, params.id ?? null, async () => {
         const current = await find(db, params.id ?? "")
         if (current === null) return notFound()
         const next: Stored = { ...current, updatedAt: rfc3339(now()) }
@@ -371,8 +412,8 @@ export const sessionRoutes: ReadonlyArray<DeviceRoute> = [
   {
     method: "POST",
     path: "/sessions/:id/duplicate",
-    handler: async ({ params }, { db, now }): Promise<Response> =>
-      db.transaction(async () => {
+    handler: async ({ params }, { db, now, budget }): Promise<Response> =>
+      budgetedAnswer(db, budget, params.id ?? null, async () => {
         const source = await find(db, params.id ?? "")
         if (source === null) return notFound()
         const stamp = rfc3339(now())

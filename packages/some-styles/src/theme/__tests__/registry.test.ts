@@ -22,7 +22,9 @@ import {
   FEATURE_APPEARANCES,
   getFeatureAppearance,
   getSessionTheme,
+  readStoredPreference,
   resolveTheme,
+  RETIRED_THEMES,
   SESSION_THEME_CLASSES,
   SESSION_THEMES,
   THEMES,
@@ -165,6 +167,48 @@ describe("registry integrity", () => {
   })
 })
 
+describe("readStoredPreference", () => {
+  function stored(value: string): Pick<Storage, "getItem" | "setItem"> & {
+    writes: Array<string>
+  } {
+    const writes: Array<string> = []
+    return {
+      writes,
+      getItem: (): string => value,
+      setItem: (_key: string, next: string): void => {
+        writes.push(next)
+      },
+    }
+  }
+
+  it("opens a retired theme as its successor and stores the successor", () => {
+    const storage = stored("strawberry-moon")
+    expect(readStoredPreference(storage)).toBe("rose-night")
+    expect(storage.writes).toEqual(["rose-night"])
+  })
+
+  it("leaves a live preference alone", () => {
+    const storage = stored("harvest-sky")
+    expect(readStoredPreference(storage)).toBe("harvest-sky")
+    expect(storage.writes).toEqual([])
+  })
+
+  it("retires only into themes that still exist", () => {
+    for (const successor of Object.values(RETIRED_THEMES)) {
+      expect(getSessionTheme(successor)).toBeDefined()
+    }
+    for (const retired of Object.keys(RETIRED_THEMES)) {
+      expect(getSessionTheme(retired)).toBeUndefined()
+    }
+  })
+
+  it("still drops an id it has never heard of", () => {
+    expect(readStoredPreference(stored("no-such-theme"))).toBeNull()
+    // An inherited key is not a retired theme.
+    expect(readStoredPreference(stored("constructor"))).toBeNull()
+  })
+})
+
 describe("applyTheme", () => {
   function root(): HTMLElement {
     const element = document.createElement("html")
@@ -174,10 +218,13 @@ describe("applyTheme", () => {
 
   it("swaps session classes without accumulating them", () => {
     const element = root()
-    applyTheme(element, resolveTheme("strawberry-moon"))
+    applyTheme(element, resolveTheme("rose-night"))
+    expect(Array.from(element.classList).sort()).toEqual(["dark", "rose-night"])
+
+    applyTheme(element, resolveTheme("harvest-sky"))
     expect(Array.from(element.classList).sort()).toEqual([
       "dark",
-      "strawberry-moon",
+      "harvest-sky",
     ])
 
     applyTheme(element, resolveTheme("peachy-blossom"))

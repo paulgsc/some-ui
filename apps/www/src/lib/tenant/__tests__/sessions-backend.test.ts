@@ -10,6 +10,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import { authority, StaleAuthorityError } from "@/lib/authority"
+import {
+  readDurableFailure,
+  writeDurableFailure,
+} from "@/lib/intent/durable-failure"
 import { createSessionsBackend } from "@/lib/tenant/sessions-backend"
 import type { SessionsStore } from "@/lib/tenant/sessions-repository"
 import {
@@ -110,6 +114,23 @@ describe("learning on the device", () => {
     writeJSON(storage, STORAGE_KEY, [onDevice])
     const store = createSessionsBackend({ storage, remote: () => null })
     expect(await store.list()).toEqual([onDevice])
+  })
+})
+
+describe("removing a session", () => {
+  it("forgets its autosave failure, which has nothing left to warn about", async () => {
+    const storage = createInMemoryStorage()
+    writeJSON(storage, STORAGE_KEY, [onDevice])
+    const store = createSessionsBackend({ storage, remote: () => null })
+    const failure = { kind: "unreachable" as const, summary: "not saved" }
+    writeDurableFailure(onDevice.id, failure)
+    writeDurableFailure("other", failure)
+
+    await store.remove(onDevice.id)
+    expect(readDurableFailure(onDevice.id)).toBeNull()
+
+    await store.removeMany(["other"])
+    expect(readDurableFailure("other")).toBeNull()
   })
 })
 

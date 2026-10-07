@@ -29,7 +29,7 @@ runtime, no engine, no scanning in the browser.
 | `@some-ui/styles/tokens.css`              | Framework-agnostic design tokens (`:root` + `.dark`)    |
 | `@some-ui/styles/themes.css`              | Color themes (`.theme-blue`, …)                         |
 | `@some-ui/styles/themes/*`                | App themes (`scheduler`, `code`, …)                     |
-| `@some-ui/styles/tailwind.css`            | Tailwind v4 entry (existing surface / Storybook)        |
+| `@some-ui/styles/tailwind.css`            | Tailwind v4 entry (apps/www's `index.css`)              |
 | `@some-ui/styles/styles-build`            | `StyleContext` type — the per-workspace declaration     |
 | `@some-ui/styles/styles-build/compile`    | `compileStyles()` — the single-pass compiler core       |
 | `@some-ui/styles/styles-build/dev-config` | `createStyleConfig()` — dev/build-server vite helper    |
@@ -253,6 +253,13 @@ import {
   (`.theme-blue .theme-container`).
 - **Session and feature themes** are standalone palettes applied to a boundary
   element (`.dark`, `.peachy-blossom`, `.scheduler`, `.code`).
+
+Session themes come in two kinds. `light` and `dark` are vanilla: stock shadcn
+neutral, the familiar look a person finds in any other app. The named themes
+(`rose-night`, `harvest-sky`, `peachy-blossom`) are opinionated, with tinted
+grounds, dimmed text and one hue per role. Palette quality is treated as an
+engagement lever, not decoration; see
+[`docs/theme-engagement.md`](../../docs/theme-engagement.md).
 
 ## Typography
 

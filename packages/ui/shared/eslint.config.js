@@ -24,11 +24,7 @@ export default defineConfig([
     // compiled style.css, router) for its files/ignores: flat config replaces
     // a rule's value wholesale, so the "off" above would drop them.
     files: ["**/*.{ts,tsx}"],
-    ignores: [
-      "**/*.stories.{ts,tsx}",
-      "**/*.test.{ts,tsx}",
-      "**/*.spec.{ts,tsx}",
-    ],
+    ignores: ["**/*.test.{ts,tsx}", "**/*.spec.{ts,tsx}"],
     rules: {
       "no-restricted-imports": [
         "error",

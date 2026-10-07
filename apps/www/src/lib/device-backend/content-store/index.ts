@@ -11,8 +11,9 @@
  * by content hash) keep matching.
  */
 import { isRecord, rfc3339, sha256Hex } from "@/lib/device-backend/common"
-import type { SqlDriver } from "@/lib/device-backend/sql"
+import type { SqlDriver, SqlValue } from "@/lib/device-backend/sql"
 import { num, one, text } from "@/lib/device-backend/sql"
+import { notePruned } from "@/lib/device-backend/storage"
 
 export type UpsertOutcome = "inserted" | "updated" | "unchanged"
 
@@ -45,8 +46,8 @@ function witnessesOf(round: unknown): Array<Witness> {
  * `body`: Capacitor's native HTTP parses `application/json`, so a synced body
  * is a re-serialisation, and runs are keyed on the server's hash.
  *
- * A `"bundled"` write leaves a round the home sync wrote alone
- * (`"unchanged"`); a `"home"` write marks the round as home's.
+ * A `"bundled"` write leaves a round the home sync wrote, or home retired,
+ * alone (`"unchanged"`); a `"home"` write marks the round as home's.
  */
 export async function upsertRound(
   db: SqlDriver,
@@ -66,8 +67,9 @@ export async function upsertRound(
       origin === "bundled" &&
       (await one(
         db,
-        "SELECT 1 FROM device_round_from_home WHERE round_id = ?",
-        [id]
+        `SELECT 1 FROM device_round_from_home WHERE round_id = ?
+         UNION ALL SELECT 1 FROM device_round_retired WHERE round_id = ?`,
+        [id, id]
       )) !== null
     ) {
       return "unchanged"
@@ -107,6 +109,7 @@ export async function upsertRound(
         "INSERT OR IGNORE INTO device_round_from_home (round_id) VALUES (?)",
         [id]
       )
+      await db.run("DELETE FROM device_round_retired WHERE round_id = ?", [id])
     }
     return stored === null ? "inserted" : "updated"
   })
@@ -226,6 +229,7 @@ export async function upsertLesson(
     if (
       stored !== null &&
       text(stored, "content_hash") === contentHash &&
+      // A lesson an older build retired comes back when home lists it again.
       stored.retired_at === null &&
       stored.level === level &&
       stored.display_name === entry.displayName &&
@@ -268,30 +272,79 @@ export async function upsertLesson(
 }
 
 /**
- * Retires every listed lesson whose key is not in `keep`, after a sync copies
- * the home manifest. Retired, not deleted: a session naming it still loads it
- * by key, as on the server.
+ * Deletes every lesson whose key is not in `keep`, after a sync copies the
+ * home manifest. Deleted, where the server retires: nothing on the phone loads
+ * a lesson by a key it saved (a session stores a level; every loader takes its
+ * key from the manifest), so a retired row is only weight.
  */
-export async function retireLessonsExcept(
+export async function removeLessonsExcept(
+  db: SqlDriver,
+  keep: ReadonlyArray<string>
+): Promise<number> {
+  return db.transaction(() =>
+    deleteCounted(
+      db,
+      "curriculum",
+      "key NOT IN (SELECT value FROM json_each(?))",
+      [JSON.stringify(keep)]
+    )
+  )
+}
+
+/** Counted first: on the Capacitor bridge `changes` includes cascades (`sql`). */
+async function deleteCounted(
+  db: SqlDriver,
+  table: string,
+  where: string,
+  params: ReadonlyArray<SqlValue>
+): Promise<number> {
+  const row = await one(
+    db,
+    `SELECT COUNT(*) AS n FROM ${table} WHERE ${where}`,
+    params
+  )
+  await db.run(`DELETE FROM ${table} WHERE ${where}`, params)
+  return row === null ? 0 : num(row, "n")
+}
+
+/**
+ * Deletes every round whose id is not in `keep`, its witnesses and runs
+ * with it (`ON DELETE CASCADE`).
+ *
+ * `"home"`: home's listing is the word on every round, so one home stopped
+ * listing goes whatever its origin, and is recorded as retired so the next
+ * start's seed does not put a bundled copy back. `"bundled"`: the seed
+ * dropping what this build no longer ships, never a round home wrote,
+ * noting it for the person, and forgetting retirements of rounds the bundle
+ * no longer has.
+ */
+export async function removeRoundsExcept(
   db: SqlDriver,
   keep: ReadonlyArray<string>,
-  nowMs: number
+  origin: RoundOrigin
 ): Promise<number> {
+  const kept = [JSON.stringify(keep)]
+  const unlisted = "id NOT IN (SELECT value FROM json_each(?))"
   return db.transaction(async () => {
-    const listed = await db.all(
-      "SELECT key FROM curriculum WHERE retired_at IS NULL"
-    )
-    const keeping = new Set(keep)
-    let retired = 0
-    for (const row of listed) {
-      const key = text(row, "key")
-      if (keeping.has(key)) continue
-      await db.run("UPDATE curriculum SET retired_at = ? WHERE key = ?", [
-        rfc3339(nowMs),
-        key,
-      ])
-      retired += 1
+    if (origin === "home") {
+      await db.run(
+        `INSERT OR IGNORE INTO device_round_retired (round_id)
+         SELECT id FROM leetype_round WHERE ${unlisted}`,
+        kept
+      )
+      return deleteCounted(db, "leetype_round", unlisted, kept)
     }
-    return retired
+    await db.run(
+      "DELETE FROM device_round_retired WHERE round_id NOT IN (SELECT value FROM json_each(?))",
+      kept
+    )
+    const removed = await deleteCounted(
+      db,
+      "leetype_round",
+      `${unlisted} AND id NOT IN (SELECT round_id FROM device_round_from_home)`,
+      kept
+    )
+    await notePruned(db, removed)
+    return removed
   })
 }

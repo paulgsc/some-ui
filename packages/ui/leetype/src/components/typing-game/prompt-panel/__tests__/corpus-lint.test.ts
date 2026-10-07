@@ -11,10 +11,9 @@ import { describe, expect, it } from "vitest"
  * needs pages, it is not granular enough" turned into a CI failure rather
  * than a sentence in a doc comment.
  *
- * `PromptPanel`'s pagination path is a defensive floor now — real code,
- * proven against the deliberately-hostile fixture (see
- * `index.stories.tsx`'s `DeliberatelyAbusive`) — but never something a
- * validated corpus should reach. This is the other half of that claim: it
+ * `PromptPanel`'s pagination path is a defensive floor now — real code that
+ * no test drives (it was only ever checked by eye, in a story #1687 deleted)
+ * — and never something a validated corpus should reach. This is the other half of that claim: it
  * walks every step in `ALL_FIXTURE_EXERCISES` — the whole validated corpus,
  * not just the ones `nextExercise` happens to reach by default or by a
  * `preferId` this file knows to ask for — and fails loudly if one would.

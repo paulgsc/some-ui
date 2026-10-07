@@ -1,20 +1,18 @@
 name: Pages
 # Builds and deploys the GitHub Pages site: the tanstack `www` app at the
-# site root, Storybook nested under /storybook/.
+# site root.
 #
 # GitHub Pages serves exactly one live deployment per repo, and
 # actions/deploy-pages replaces the *entire* artifact on every run - it
-# can't merge with whatever a separate workflow deployed earlier. So this
-# is one workflow, not two: build-www and build-storybook each produce a
-# plain (non-Pages) artifact, a single assemble job merges both into one
-# directory tree, and only that merged tree is ever uploaded as the Pages
-# artifact / deployed. Splitting this into per-app workflows would silently
-# make each deploy wipe out the other app's last-deployed content.
+# can't merge with whatever a separate workflow deployed earlier. So
+# anything else this site serves has to be built here and assembled into
+# the one tree the assemble job uploads; a second workflow deploying to
+# Pages would silently wipe out this one's last-deployed content.
 #
 # A plain `push: branches: [main]` trigger would also mean every merge to
 # main rebuilds and redeploys the whole site, even though several PRs often
-# land within minutes of each other - each one paying for a full www +
-# Storybook build that the next merge immediately supersedes. So, patterned
+# land within minutes of each other - each one paying for a full www
+# build that the next merge immediately supersedes. So, patterned
 # after wasm-release.yml / www-docker-release.yml: a push to main that
 # touches release-worthy paths doesn't deploy directly. It opens/updates a
 # standing release PR (branch `release/pages`) instead, and only merging
@@ -27,7 +25,6 @@ on:
     paths:
       - "apps/www/**"
       - "packages/**"
-      - ".storybook/**"
       - "pnpm-lock.yaml"
       - ".github/workflows/pages.yml"
       - ".github/actions/**"
@@ -40,7 +37,6 @@ on:
     paths:
       - "apps/www/**"
       - "packages/**"
-      - ".storybook/**"
       - "pnpm-lock.yaml"
       - ".github/workflows/pages.yml"
       - ".github/actions/**"
@@ -65,24 +61,20 @@ concurrency:
   group: pages-${{ github.ref }}
   cancel-in-progress: false
 jobs:
-  # ── Detect which builds a PR needs, and what main's push should do ──────
-  # The paths above decide whether this workflow runs at all, but they're a
-  # union - a PR touching only apps/www/** still matches, and would build
-  # Storybook too without the per-path split below. On pull_request, split
-  # www vs storybook so each preview build only runs when its own inputs
-  # changed.
+  # ── Detect whether a PR needs the build, and what main's push should do ─
+  # On pull_request, the path filter below decides whether the preview
+  # build runs.
   #
-  # On push (and workflow_dispatch), the per-path split doesn't apply -
+  # On push (and workflow_dispatch), the path filter doesn't apply -
   # pages-detect below decides instead whether this push opens/updates the
-  # release PR or is the release PR's own merge landing (in which case both
-  # builds always run regardless of what changed, since assemble/deploy
+  # release PR or is the release PR's own merge landing (in which case the
+  # build always runs regardless of what changed, since assemble/deploy
   # replace the *entire* Pages artifact each run - see header).
   detect:
     name: Detect Pages Changes
     runs-on: ubuntu-latest
     outputs:
       www: ${{ steps.filter.outputs.www }}
-      storybook: ${{ steps.filter.outputs.storybook }}
       release_mode: ${{ steps.pages-detect.outputs.release_mode }}
     steps:
       - uses: actions/checkout@v7
@@ -99,12 +91,6 @@ jobs:
             www:
               - 'apps/www/**'
               - 'packages/**'
-              - 'pnpm-lock.yaml'
-              - '.github/workflows/pages.yml'
-              - '.github/actions/**'
-            storybook:
-              - 'packages/**'
-              - '.storybook/**'
               - 'pnpm-lock.yaml'
               - '.github/workflows/pages.yml'
               - '.github/actions/**'
@@ -154,7 +140,7 @@ jobs:
           commit-message: ${{ env.RELEASE_COMMIT_MESSAGE }}
           title: ${{ env.RELEASE_COMMIT_MESSAGE }}
           body: >
-            Opened automatically because a change reachable from `apps/www`, `packages/**`, or `.storybook/**` landed on `main`. Several PRs landing close together would otherwise each trigger their own Pages build+deploy; this collects them into one. Review and merge via **squash** (the merge commit message drives the deploy step below) to build and deploy the Pages site (www + Storybook).
+            Opened automatically because a change reachable from `apps/www` or `packages/**` landed on `main`. Several PRs landing close together would otherwise each trigger their own Pages build+deploy; this collects them into one. Review and merge via **squash** (the merge commit message drives the deploy step below) to build and deploy the Pages site.
 
   # ── Build the tanstack app ───────────────────────────────────────────────
   build-www:
@@ -253,74 +239,10 @@ jobs:
           path: apps/www/dist
           if-no-files-found: error
           retention-days: 1
-  # ── Build Storybook ──────────────────────────────────────────────────────
-  build-storybook:
-    name: Build Storybook
-    needs: detect
-    if: >
-      (github.event_name == 'pull_request' && needs.detect.outputs.storybook == 'true') ||
-      (github.event_name != 'pull_request' && needs.detect.outputs.release_mode == 'publish')
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          ref: ${{ inputs.rollback_sha || github.sha }}
-      - uses: ./.github/actions/nix-setup
-      - uses: ./.github/actions/pnpm-cache
-      - name: Cache workspace build outputs
-        uses: actions/cache@v6
-        with:
-          path: packages/*/dist
-          key: workspace-dist-${{ runner.os }}-${{ hashFiles('packages/**/src/**') }}
-          restore-keys: workspace-dist-${{ runner.os }}-
-      - name: Cache Storybook intermediates
-        uses: actions/cache@v6
-        with:
-          path: |
-            node_modules/.cache/storybook
-            node_modules/.cache/sb-vite-plugin-externals
-          key: storybook-cache-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml', '.storybook/**', 'packages/**/*.stories.*') }}
-          restore-keys: storybook-cache-${{ runner.os }}-
-      - name: Install dependencies
-        run: |
-          nix develop .#ci --command pnpm install \
-            --frozen-lockfile \
-            --prefer-offline
-        env:
-          HUSKY: 0
-
-      - uses: ./.github/actions/resume-assets-cache
-
-      # `pnpm build` is `turbo run build --filter='!./crates/*'` (see the root
-      # package.json). The filter is what keeps wasm-pack out of this job:
-      # crates/* are pnpm workspaces with a `build` script that shells out to
-      # `wasm-pack build --release`, so an unfiltered `turbo run build`
-      # discovered and compiled all six of them here - despite Storybook, like
-      # www, importing those packages from the registry rather than from
-      # source. Note there is no cargo-cache in this job either, so each of
-      # those six builds compiled its full Rust dependency tree from cold.
-      - name: Build workspace packages
-        run: nix develop .#ci --command pnpm build --concurrency=100%
-        env:
-          NODE_ENV: production
-      - name: Build Storybook
-        run: nix develop .#ci --command pnpm build-storybook
-        env:
-          NODE_ENV: production
-          NODE_OPTIONS: --max-old-space-size=4096
-          STORYBOOK_DISABLE_TELEMETRY: 1
-          STORYBOOK_BASE_PATH: /${{ github.event.repository.name }}/storybook/
-      - name: Upload Storybook build artifact
-        uses: actions/upload-artifact@v7
-        with:
-          name: storybook-dist
-          path: ./storybook-static
-          if-no-files-found: error
-          retention-days: 1
-  # ── Assemble the combined site and upload the single Pages artifact ─────
+  # ── Assemble the site and upload the single Pages artifact ──────────────
   assemble:
     name: Assemble Pages site
-    needs: [build-www, build-storybook]
+    needs: [build-www]
     runs-on: ubuntu-latest
     steps:
       - name: Download www build
@@ -328,11 +250,6 @@ jobs:
         with:
           name: www-dist
           path: site
-      - name: Download Storybook build
-        uses: actions/download-artifact@v8
-        with:
-          name: storybook-dist
-          path: site/storybook
       # Read only by `deploy`, in this same run. 1 is also the action's own
       # default; it is spelled out so the retention check need not know that.
       - name: Upload combined Pages artifact

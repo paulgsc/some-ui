@@ -9,9 +9,7 @@
  * the window it was built in. M20 deleted all three, and replaced them with a
  * shell that has the same failure mode available to it in a new place.
  *
- * The Storybook sweep next door already asserts the static half: nothing
- * overflows sideways, and no element is a greedy scroll container. What it
- * cannot see is the half that only exists over *time*:
+ * What a static render cannot see is the half that only exists over *time*:
  *
  *   1. **The prompt panel's box is invariant across a typing run.** A prompt
  *      that reflows mid-step moves the code under the player's hands, which
@@ -27,8 +25,8 @@
  * no WASM build, no engine to drive. What is being measured is a layout
  * question, and the layout is CSS. The cost is that the CSS below mirrors the
  * shipped classes and can drift from them — so what it mirrors is stated
- * class-for-class against the component it came from, and the check that
- * cannot drift is the Storybook sweep.
+ * class-for-class against the component it came from. Nothing else measures
+ * the shipped classes, so a drift goes unseen.
  *
  * The one thing this spec must never do is measure a card whose viewport
  * never overflowed: a "the prompt did not move" assertion over content that
@@ -48,7 +46,7 @@
 import { expect, test, type Page } from "@playwright/test"
 
 /**
- * The same three sizes the Storybook sweep uses, for the same reasons: the
+ * Three of the sizes panel-fit sweeps (`harness.ts`), for the same reasons: the
  * shortest viewport a laptop realistically presents, a narrow phone, and a
  * large desktop.
  */

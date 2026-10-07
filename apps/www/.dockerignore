@@ -366,10 +366,6 @@ Thumbs.db
 # Generated documentation
 jsdoc/
 
-# Storybook
-.storybook/
-storybook-static/
-
 # Jest
 jest.config.*
 

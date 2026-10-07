@@ -72,15 +72,23 @@ const STARTERS = [
 ]
 
 /**
- * What the page asks for. Every way in but "Talk now" is about a session
- * that is not happening; "Talk now" (`capture`) is a comment on anything,
- * so it asks for that, and the starters, which are all reasons, stay away.
+ * What the page asks for. Every way in but "Talk now" and the wrap is about
+ * a session that is not happening; "Talk now" (`capture`) is a comment on
+ * anything and the wrap (`wrap`) a summary of a session just done, so they
+ * ask for that, and the starters, which are all reasons, stay away.
  */
 function askFor(source: SoundbiteSource): {
   title: string
   lede: string
   starters: boolean
 } {
+  if (source === "wrap") {
+    return {
+      title: "What stuck?",
+      lede: "Say what you'll remember from this session, out loud, in a minute or less.",
+      starters: false,
+    }
+  }
   return source === "capture"
     ? {
         title: "Talk now",
@@ -152,7 +160,7 @@ const RecordButton = ({
           r={RING_RADIUS}
           className={cn(
             "fill-none transition-[stroke-dashoffset] duration-100",
-            warning ? "stroke-amber-500" : "stroke-destructive"
+            warning ? "stroke-warning" : "stroke-destructive"
           )}
           strokeWidth="4"
           strokeLinecap="round"
@@ -229,7 +237,7 @@ const KeptSoundbite = ({
     <li
       className={cn(
         "flex items-center gap-3 rounded-lg border p-3",
-        isNextReplaced && "border-amber-500/60 bg-amber-500/5"
+        isNextReplaced && "border-warning/60 bg-warning/5"
       )}
     >
       <Button
@@ -258,7 +266,7 @@ const KeptSoundbite = ({
         </p>
         {full &&
           (isNextReplaced ? (
-            <p className="text-xs font-medium text-amber-700 dark:text-amber-400">
+            <p className="text-xs font-medium text-warning">
               Replaced by your next one
             </p>
           ) : (

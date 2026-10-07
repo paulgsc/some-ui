@@ -1,8 +1,6 @@
 import type { FC } from "react"
-import { useIsMobile } from "@some-ui/react-hooks"
 
 import { ExercisePickerDesktop } from "./desktop"
-import { ExercisePickerMobile } from "./mobile"
 import type { ExercisePickerProps } from "./types"
 
 // `ExercisePickerItem` stays reachable from `./types` rather than re-exported
@@ -28,19 +26,12 @@ export type { ExercisePickerBadge, ExercisePickerProps } from "./types"
  * `badge` is optional per item precisely so a host with no such data yet
  * can render a plain, badge-free picker.
  *
- * # Desktop vs. mobile
+ * # Wide windows only
  *
- * A component branch on `useIsMobile`, the same idiom `components/leetype`
- * itself uses and for a related reason: a picker built for a pointer (a
- * multi-column grid, hover states) and one built for a thumb (one column,
- * larger tap targets, the phone's single-vertical-scroll rule) are two
- * different layouts, not one layout narrowed by a media query.
+ * `Leetype` shows the picker only on its typing surface; a phone plays
+ * rounds instead, which choose their own artifact. So the picker is laid out
+ * for a pointer (a multi-column grid, hover states) and has no thumb layout.
  */
-export const ExercisePicker: FC<ExercisePickerProps> = (props) => {
-  const isMobile = useIsMobile()
-  return isMobile ? (
-    <ExercisePickerMobile {...props} />
-  ) : (
-    <ExercisePickerDesktop {...props} />
-  )
-}
+export const ExercisePicker: FC<ExercisePickerProps> = (props) => (
+  <ExercisePickerDesktop {...props} />
+)

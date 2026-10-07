@@ -41,9 +41,9 @@ export default defineConfig(
       "**/.docusaurus/**",
       "**/*.cache/**",
       "**/build/**",
+      "**/out/**",
       "**/.next/**",
       "**/tsconfig.json",
-      "**/storybook-static/**",
       ".stylelintrc.mjs",
       "**/vite-env.d.ts",
 

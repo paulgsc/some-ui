@@ -12,8 +12,8 @@
  *   speech goes silent with nothing in the UI to say why. nginx.https.conf
  *   and `vite dev` (vite.config.ts) proxy that path.
  * - **HTTP page** -> `http://<hostname>:5050` directly, the port
- *   `infra/compose/tts.yml` publishes (Storybook, cert-less `vite dev`, the
- *   container's port-80 listener).
+ *   `infra/compose/tts.yml` publishes (cert-less `vite dev`, the container's
+ *   port-80 listener).
  *
  * `VITE_TTS_ENDPOINT` overrides both.
  */

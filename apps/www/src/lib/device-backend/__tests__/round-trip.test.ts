@@ -11,14 +11,16 @@ import { openDeviceBackend } from "@/lib/device-backend/backend"
 import { deviceFileHostBase } from "@/lib/device-backend/boot"
 import { BUNDLED_ROUND_COUNT } from "@/lib/device-backend/bundled-corpus"
 import {
-  retireLessonsExcept,
+  removeLessonsExcept,
   upsertLesson,
 } from "@/lib/device-backend/content-store"
 import type { DeviceBackend } from "@/lib/device-backend/interceptor"
 import { createDeviceFetch } from "@/lib/device-backend/interceptor"
 import type { SqlDriver } from "@/lib/device-backend/sql"
+import { DeviceStorageError } from "@/lib/device-backend/sql"
 import type { FileHostTransport } from "@/lib/file-host-config/client"
 import { createFileHostTransport } from "@/lib/file-host-config/client"
+import { mapFileHostError } from "@/lib/intent/errors"
 import { createShelfClient, ShelfRefusedError } from "@/lib/shelf-client"
 import { createHttpSessionsRepository } from "@/lib/tenant/http-sessions-repository"
 import type { CreateSessionInput } from "@/lib/tenant/sessions-repository"
@@ -42,8 +44,8 @@ function deviceFetch(): typeof fetch {
  * The app's real `createFileHostTransport`, with the device's fetch
  * installed as the global it calls - exactly the arrangement on the phone.
  */
-function transport(): FileHostTransport {
-  vi.stubGlobal("fetch", deviceFetch())
+function transport(fetchImpl: typeof fetch = deviceFetch()): FileHostTransport {
+  vi.stubGlobal("fetch", fetchImpl)
   const real = createFileHostTransport("ceremony", {
     baseUrl: BASE,
     source: "override",
@@ -208,7 +210,7 @@ describe("content on the device", () => {
     })
   })
 
-  it("serves a synced TOPIK lesson verbatim, and drops a retired one from the manifest", async () => {
+  it("serves a synced TOPIK lesson verbatim, and nothing once it is removed", async () => {
     const body = '{ "batches": [] }'
     await upsertLesson(
       db,
@@ -235,13 +237,46 @@ describe("content on the device", () => {
       (await fetchIn(`${BASE}/curriculum/k1-greetings.json`)).text()
     ).resolves.toBe(body)
 
-    await retireLessonsExcept(db, [], clock)
+    await removeLessonsExcept(db, [])
     await expect(
       (await fetchIn(`${BASE}/curriculum/manifest.json`)).json()
     ).resolves.toMatchObject({ topiks: [] })
-    // Retired is unlisted, not gone: a session naming it still loads.
-    expect((await fetchIn(`${BASE}/curriculum/k1-greetings`)).status).toBe(200)
+    expect((await fetchIn(`${BASE}/curriculum/k1-greetings`)).status).toBe(404)
   })
+
+  it.each([
+    [false, "unavailable", false, /storage couldn't be opened/],
+    [true, "unreachable", true, /storage didn't finish that/],
+  ] as const)(
+    "says the phone's own storage failed, never a server (retryable %s)",
+    async (retryable, kind, offersRetry, summary) => {
+      // What the SQLite port throws when the plugin will not open or answer.
+      const failure = new DeviceStorageError({
+        kind: retryable ? "unreachable" : "unavailable",
+        retryable,
+        summary: "This phone's storage couldn't be opened.",
+        cause: new Error("CapacitorSQLitePlugin: null"),
+      })
+      const failing = createDeviceFetch(
+        new URL(BASE),
+        () => Promise.reject(failure),
+        () => Promise.reject(new Error("no network in this test"))
+      )
+      // The app's real sessions client, as the Study page lists them.
+      const error: unknown = await createHttpSessionsRepository(
+        transport(failing)
+      )
+        .list()
+        .then(
+          () => null,
+          (thrown: unknown) => thrown
+        )
+      const said = mapFileHostError(error)
+      expect(said).toMatchObject({ kind, retryable: offersRetry })
+      expect(said.summary).toMatch(summary)
+      expect(said.summary).not.toMatch(/server/i)
+    }
+  )
 
   it("passes anything outside the file_host base to the network", async () => {
     const seen: Array<string> = []

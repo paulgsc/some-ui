@@ -24,6 +24,7 @@ import { resolveSessionIfChosen } from "@/lib/auth/session"
 import type { Authority } from "@/lib/authority"
 import { authority, StaleAuthorityError } from "@/lib/authority"
 import { createFileHostTransport } from "@/lib/file-host-config/client"
+import { clearDurableFailure } from "@/lib/intent/durable-failure"
 
 import { createHttpSessionsRepository } from "./http-sessions-repository"
 import type {
@@ -96,9 +97,16 @@ export function createSessionsBackend(
       through((s) => s.create(input)),
     update: (id: string, patch: UpdateSessionInput): Promise<SessionRecord> =>
       through((s) => s.update(id, patch)),
-    remove: (id: string): Promise<void> => through((s) => s.remove(id)),
-    removeMany: (ids: ReadonlyArray<string>): Promise<void> =>
-      through((s) => s.removeMany(ids)),
+    // A removed session's autosave-failure record has nothing left to warn
+    // about; without this it stays in `localStorage` for good.
+    remove: async (id: string): Promise<void> => {
+      await through((s) => s.remove(id))
+      clearDurableFailure(id)
+    },
+    removeMany: async (ids: ReadonlyArray<string>): Promise<void> => {
+      await through((s) => s.removeMany(ids))
+      for (const id of ids) clearDurableFailure(id)
+    },
     updateStatusMany: (
       ids: ReadonlyArray<string>,
       status: SessionStatus

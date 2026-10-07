@@ -34,8 +34,6 @@
     "extensions/**/test-results/**",
 
     "**/*.test.ts",
-    "**/*.stories.tsx",
-    "**/*.stories.ts",
     "tests"
   ]
 }

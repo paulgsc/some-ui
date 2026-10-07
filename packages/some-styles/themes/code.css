@@ -7,7 +7,7 @@
   --background: oklch(12% 0.01 240deg);
 
   /* Dimmed from oklch(0.92 0.01 260) — same "never the sun" bar as
-     tokens/base.css's own --foreground, hue kept at this theme's own
+     rose-night.css's --foreground, hue kept at this theme's own
      260 (vim-night blue). */
   --foreground: oklch(68% 0.045 260deg);
 

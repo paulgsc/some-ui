@@ -75,12 +75,48 @@ function fromResponseError(error: FileHostResponseError): IntentError {
       cause: error,
     }
   }
+  // The phone's backend: full; retryable once room is made (`device-backend/storage`).
+  if (
+    error.code === "max_record_limit_exceeded" &&
+    error.route.startsWith("/sessions")
+  ) {
+    return {
+      kind: "rejected",
+      retryable: true,
+      summary:
+        "This phone is full, so this wasn't saved. Make room, then try again.",
+      cause: error,
+    }
+  }
+  // The phone's own storage (`device-backend/interceptor`): there is no
+  // server to blame, and one that will not open is not a retry away.
+  if (error.code === "device_storage_unavailable") {
+    return {
+      kind: "unavailable",
+      retryable: false,
+      summary:
+        "This phone's storage couldn't be opened, so nothing here can load. Close the app and open it again.",
+      cause: error,
+    }
+  }
+  if (error.code === "device_storage_failed") {
+    return {
+      kind: "unreachable",
+      retryable: true,
+      summary: "This phone's storage didn't finish that. Try again.",
+      cause: error,
+    }
+  }
   return {
     kind: "rejected",
     retryable: isRetryableStatus(error.status),
-    summary: isRetryableStatus(error.status)
-      ? "The study server had a problem on its end. Try again in a moment."
-      : "That request couldn't be completed.",
+    summary: !isRetryableStatus(error.status)
+      ? "That request couldn't be completed."
+      : // In the Android app the "server" is the app itself, answering
+        // from the phone's own database.
+        import.meta.env.VITE_DEVICE_BACKEND === "true"
+        ? "Something went wrong on this phone. Try again in a moment."
+        : "The study server had a problem on its end. Try again in a moment.",
     cause: error,
   }
 }

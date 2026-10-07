@@ -115,11 +115,12 @@
   /* ── Per-session-theme honey ───────────────────────────────────
      The theme class sits on the document root and `.comb` on the
      component, so each rule below outranks the default above. Order
-     matters where two themes share a root: Strawberry Moon carries
-     `.dark` too, so its block comes after dark's and wins the tie. */
+     matters where two themes share a root: Rosé Night and Harvest Sky
+     carry `.dark` too, so their blocks come after dark's and win the
+     tie. */
 
-  /* Dark: the theme's own slate — the hue of its foreground and muted
-     ink (254-257deg) — as a cool, moonlit fill. */
+  /* Dark: a cool slate (254-262deg) on its neutral ground, a moonlit
+     fill. */
   .dark .comb {
     --comb-honey-deep: oklch(42% 0.06 262deg);
     --comb-honey-mid: oklch(58% 0.08 258deg);
@@ -128,14 +129,24 @@
     --comb-ink: oklch(14.5% 0.01 257deg);
   }
 
-  /* Strawberry Moon: the berry (its --primary, 15deg) rising to the
-     moonlit rose of its ground (350deg). */
-  .strawberry-moon .comb {
-    --comb-honey-deep: oklch(44% 0.15 12deg);
-    --comb-honey-mid: oklch(62% 0.19 15deg);
-    --comb-honey-surface: oklch(72% 0.16 8deg);
-    --comb-honey-meniscus: oklch(88% 0.07 350deg);
-    --comb-ink: oklch(16% 0.03 350deg);
+  /* Rosé Night: strawberry milk (its --primary, 355deg) clearing to
+     the plum of its ground (330deg). */
+  .rose-night .comb {
+    --comb-honey-deep: oklch(48% 0.11 355deg);
+    --comb-honey-mid: oklch(66% 0.12 355deg);
+    --comb-honey-surface: oklch(76% 0.11 355deg);
+    --comb-honey-meniscus: oklch(89% 0.05 330deg);
+    --comb-ink: oklch(17% 0.02 330deg);
+  }
+
+  /* Harvest Sky: the low June moon, honey (85deg) over its indigo
+     ground (285deg). Real honey, for once. */
+  .harvest-sky .comb {
+    --comb-honey-deep: oklch(52% 0.1 70deg);
+    --comb-honey-mid: oklch(70% 0.11 78deg);
+    --comb-honey-surface: oklch(81% 0.075 85deg);
+    --comb-honey-meniscus: oklch(91% 0.04 90deg);
+    --comb-ink: oklch(17% 0.035 285deg);
   }
 
   /* Peachy Blossom: coral blossom (its --primary, 25deg) up to ripe

@@ -19,8 +19,11 @@ import {
   syncFromHome,
 } from "@/lib/device-backend/home-sync"
 import { nativeHomeGet } from "@/lib/device-backend/native-http"
+import { DeviceStorageError } from "@/lib/device-backend/sql"
+import { deviceStorage } from "@/lib/device-backend/storage-view"
 import { useAsyncIntent } from "@/lib/intent"
 import { IntentButton } from "@/lib/intent/render"
+import { DeviceStorageSummary } from "@/components/settings/device-storage"
 
 const HOME_KEY = "some-ui.device.home-server.v1"
 const LAST_SYNC_KEY = "some-ui.device.last-sync.v1"
@@ -47,7 +50,10 @@ function describe(report: SyncReport): string {
     `${lessons.listed} TOPIK lesson${lessons.listed === 1 ? "" : "s"} (${lessons.added} new, ${lessons.updated} updated)`,
     `${rounds.added + rounds.updated} Leetype round${rounds.added + rounds.updated === 1 ? "" : "s"} refreshed`,
   ]
-  if (lessons.retired > 0) parts.push(`${lessons.retired} retired`)
+  const removed = lessons.removed + rounds.removed
+  if (removed > 0) parts.push(`${removed} home no longer lists removed`)
+  const skipped = lessons.skipped + rounds.skipped
+  if (skipped > 0) parts.push(`${skipped} not added: this phone is full`)
   if (failed.length > 0) parts.push(`${failed.length} could not be fetched`)
   return parts.join(" · ")
 }
@@ -62,6 +68,7 @@ export const DeviceSection = (): JSX.Element => {
       try {
         const { context } = await deviceBackend()
         const report = await syncFromHome(context.db, address, nativeHomeGet)
+        void deviceStorage.refresh()
         remember(HOME_KEY, address)
         const summary = `${new Date().toLocaleString()} - ${describe(report)}`
         remember(LAST_SYNC_KEY, summary)
@@ -70,10 +77,14 @@ export const DeviceSection = (): JSX.Element => {
         await queryClient.invalidateQueries()
         toast.success(describe(report))
       } catch (error) {
+        // The phone's own storage says so in its words (reported, with the
+        // plugin's, to the native log); anything else names the error.
         toast.error(
           error instanceof HomeUnreachableError
             ? `Couldn't reach ${error.base}. Are you on the home network?`
-            : `Sync failed: ${String(error)}`
+            : error instanceof DeviceStorageError
+              ? `Sync failed: ${error.error.summary}`
+              : `Sync failed: ${String(error)}`
         )
       }
     },
@@ -92,6 +103,8 @@ export const DeviceSection = (): JSX.Element => {
           you&apos;re on the home network, and they stay here for later.
         </p>
       </div>
+
+      <DeviceStorageSummary />
 
       <div className="space-y-2">
         <Label htmlFor="home-server">Home server</Label>

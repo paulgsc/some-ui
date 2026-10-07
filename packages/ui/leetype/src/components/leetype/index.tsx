@@ -2,7 +2,6 @@ import type { FC } from "react"
 import { useCallback, useEffect, useState } from "react"
 import type { ExercisePickerBadge } from "@leetype/components/exercise-picker"
 import { ExercisePicker } from "@leetype/components/exercise-picker"
-import { ReadingSession } from "@leetype/components/reading-game/reading-session"
 import { RoundSession } from "@leetype/components/round/round-session"
 import { TypingSession } from "@leetype/components/typing-game/typing-session"
 import { AUTHORED_ROUNDS } from "@leetype/lib/leetype/authored-rounds"
@@ -30,28 +29,29 @@ import { appearanceClassName } from "@some-ui/styles/theme"
  * Which probe the player gets. `"auto"` (default, what hosts pass) reads the
  * viewport; the explicit values are for stories, tests and deep links.
  */
-export type LeetypeSurface = "auto" | "reading" | "typing"
+export type LeetypeSurface = "auto" | "rounds" | "typing"
 
-/** Matches `TypingSession`/`ReadingSession`'s own default — see why below at `mountedAt`. */
+/** Matches `TypingSession`'s own default — see why below at `mountedAt`. */
 const DEFAULT_SESSION_DURATION_MS = 10 * 60_000
 
 type LeetypeProps = {
   /**
-   * A fixed exercise for a preview or deep link. Normal sessions omit it and
-   * the learner picks from `ExercisePicker`. The seam a generator plugs into
-   * (see `lib/leetype/exercises`).
+   * A fixed exercise for a preview or deep link, played on the typing
+   * surface. Normal sessions omit it and the learner picks from
+   * `ExercisePicker`. The seam a generator plugs into (see
+   * `lib/leetype/exercises`). The rounds surface ignores it.
    */
   exercise?: Exercise
   /** Session term supplied by the composer/scene, in milliseconds. */
   sessionDurationMs?: number
   /** Deterministic override for tests, previews, and replaying an ordering bug. */
   sessionSeed?: number
-  /** Cosmetic, and typing-only: the reading surface paints no gradient over code. */
+  /** Cosmetic, and typing-only: rounds paint no gradient over code. */
   textGradient?: TextGradient
   /**
    * Called once the whole sequence is finished. `stats` comes only from the
-   * typing surface; the reading surface has no keystrokes to measure, so it
-   * reports completion with nothing rather than misleading zeroes.
+   * typing surface; rounds have no keystrokes to measure, so they report
+   * completion with nothing rather than misleading zeroes.
    */
   onSessionComplete?: (stats?: CompletedSessionStats) => void
   /** Art direction. See `TypingSession` for the full note; `inherit` is the default. */
@@ -100,29 +100,27 @@ type LeetypeProps = {
  * LeetType: a competency probe, on whichever channel the device actually has.
  *
  * ```text
- * Leetype                         picks a modality, then an exercise
- * ├── ExercisePicker               no exercise chosen yet (either surface)
- * ├── ReadingSession  < 768px      the session itself — discriminate the claim (Prop. 9.2)
- * └── TypingSession   ≥ 768px      its optional production probe, standing in for it where there is room
+ * Leetype                         picks a surface
+ * ├── RoundSession    < 768px      rounds (Def. 1.7): pick a change, name what it keeps
+ * └── ≥ 768px                      the typing surface
+ *     ├── ExercisePicker           no exercise chosen yet
+ *     └── TypingSession            the chosen exercise, typed
  * ```
  *
  * # Why a branch here rather than responsive CSS
  *
- * Discrimination and production are different interactions, not one at two
- * widths (Prop. 9.2): the small-screen surface is the complete design, and
- * the wide one substitutes a production probe where there is room. Reflowing
- * `TypingSession` into a narrow column would report numbers that mean
- * nothing. A component branch (not a media query) also lets the phone path
- * mount none of the engine: `useTypingGame` cannot be called conditionally,
- * so a phone never fetches `@some-ui/leetype-wasm`. `ExercisePicker` makes
- * its own mobile/desktop choice for the same reason.
+ * Rounds and typing are different interactions, not one at two widths.
+ * Reflowing `TypingSession` into a narrow column would report numbers that
+ * mean nothing. A component branch (not a media query) also lets the phone
+ * path mount none of the engine: `useTypingGame` cannot be called
+ * conditionally, so a phone never fetches `@some-ui/leetype-wasm`.
  *
  * # The breakpoint is `useIsMobile`'s
  *
  * 768px, from `@some-ui/react-hooks`, so the workspace has one answer to "is this a
  * phone". It reads the media query via `useSyncExternalStore`, so the first
  * render already picks the right surface instead of starting a wasm load
- * for what turns out to be a reading session.
+ * for what turns out to be a round.
  *
  * # The learner chooses the exercise
  *
@@ -153,7 +151,7 @@ export const Leetype: FC<LeetypeProps> = ({
 }) => {
   const isMobile = useIsMobile()
   const resolved =
-    surface === "auto" ? (isMobile ? "reading" : "typing") : surface
+    surface === "auto" ? (isMobile ? "rounds" : "typing") : surface
 
   /**
    * The orchestrator removes this component at mount time plus
@@ -163,7 +161,7 @@ export const Leetype: FC<LeetypeProps> = ({
    */
   const [mountedAt] = useState(() => performance.now())
 
-  const playsRounds = resolved === "reading" && exercise === undefined
+  const playsRounds = resolved === "rounds"
   // The rounds and the session budget left once they arrived, snapshotted
   // together: time spent loading comes out of the term, for the reason
   // `picked` below snapshots it (the orchestrator's deadline is fixed at
@@ -233,8 +231,7 @@ export const Leetype: FC<LeetypeProps> = ({
     [onSessionComplete, exercise]
   )
 
-  // On a phone with no exercise forced, the session is rounds (Def. 1.7). An
-  // explicit `exercise` still plays the reading session it names.
+  // On a phone the session is rounds (Def. 1.7).
   if (playsRounds) {
     return (
       <div className={cn(appearanceClassName(appearance), "absolute inset-0")}>
@@ -268,19 +265,6 @@ export const Leetype: FC<LeetypeProps> = ({
     return (
       <div className={cn(appearanceClassName(appearance), "absolute inset-0")}>
         <ExercisePicker items={items} onSelect={handleSelect} />
-      </div>
-    )
-  }
-
-  if (resolved === "reading") {
-    return (
-      <div className={cn(appearanceClassName(appearance), "absolute inset-0")}>
-        <ReadingSession
-          exercise={active}
-          sessionDurationMs={activeDurationMs}
-          sessionSeed={sessionSeed}
-          onSessionComplete={(): void => handleComplete()}
-        />
       </div>
     )
   }

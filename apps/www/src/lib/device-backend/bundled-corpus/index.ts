@@ -4,7 +4,12 @@
  * text, the same files the server's importer reads, so content hashes match
  * the runs. TOPIK lessons arrive only by sync (`device-backend/home-sync`).
  */
-import { upsertRound, upsertRuns } from "@/lib/device-backend/content-store"
+import { stringsAt } from "@/lib/device-backend/common"
+import {
+  removeRoundsExcept,
+  upsertRound,
+  upsertRuns,
+} from "@/lib/device-backend/content-store"
 import type { SqlDriver } from "@/lib/device-backend/sql"
 
 const ROUNDS: Record<string, string> = import.meta.glob(
@@ -24,12 +29,21 @@ export type SeedReport = { rounds: number; runs: number }
 
 /**
  * Idempotent: an unchanged round is a read, not a write. A round the home
- * sync wrote is left as it is, even when the bundle's bytes differ.
+ * sync wrote, or home retired, is left as it is. A bundled round an earlier
+ * build shipped and this one does not is deleted.
  */
 export async function seedBundledCorpus(
   db: SqlDriver,
   nowMs: number
 ): Promise<SeedReport> {
+  await removeRoundsExcept(
+    db,
+    stringsAt(
+      Object.values(ROUNDS).map((body): unknown => JSON.parse(body)),
+      "id"
+    ),
+    "bundled"
+  )
   let rounds = 0
   for (const body of Object.values(ROUNDS)) {
     if ((await upsertRound(db, body, nowMs, "bundled")) !== "unchanged")

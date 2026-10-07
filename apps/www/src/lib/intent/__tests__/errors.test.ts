@@ -39,6 +39,18 @@ describe("mapFileHostError", () => {
       "rejected",
       false,
     ],
+    [
+      "the phone's storage that will not open",
+      new FileHostResponseError(503, "/sessions", "device_storage_unavailable"),
+      "unavailable",
+      false,
+    ],
+    [
+      "the phone's storage that did not finish",
+      new FileHostResponseError(503, "/sessions", "device_storage_failed"),
+      "unreachable",
+      true,
+    ],
   ] as const)(
     "%s -> kind %s, retryable %s",
     (_label, error, kind, retryable) => {
@@ -57,6 +69,23 @@ describe("mapFileHostError", () => {
     expect(result.kind).toBe("rejected")
     expect(result.retryable).toBe(false)
     expect(result.summary).toMatch(/sign in/i)
+  })
+
+  it("says a full phone refused a session save, and only for sessions", () => {
+    const refused = mapFileHostError(
+      new FileHostResponseError(400, "/sessions", "max_record_limit_exceeded")
+    )
+    expect(refused.retryable).toBe(true)
+    expect(refused.summary).toMatch(/phone is full/i)
+
+    const listing = mapFileHostError(
+      new FileHostResponseError(
+        400,
+        "/curriculum/manifest",
+        "max_record_limit_exceeded"
+      )
+    )
+    expect(listing.summary).not.toMatch(/phone/i)
   })
 
   it("falls back to intent-kit's generic normalizer for anything else, rather than throwing", () => {

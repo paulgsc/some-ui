@@ -6,14 +6,12 @@ import type { SolvedNode } from "@wireframes/lib/layout-types"
 export const RenderSolved = <T extends string>({
   node,
   renderLeaf,
-  onLeafClick,
   onLeafContextMenu,
   transitionMs = 300,
 }: {
   node: SolvedNode<T>
   renderLeaf: (id: T) => ReactNode
-  onLeafClick?: (id: T, position: { x: number; y: number }) => void
-  /** Fires on right-click independent of `onLeafClick` - e.g. story 7's always-on resize affordance, unrelated to whether focus (`onLeafClick`) is enabled. */
+  /** Fires on right-click, e.g. story 7's always-on resize affordance. */
   onLeafContextMenu?: (id: T, position: { x: number; y: number }) => void
   transitionMs?: number
 }): JSX.Element => {
@@ -39,7 +37,6 @@ export const RenderSolved = <T extends string>({
             onContextMenu={(e) => {
               e.preventDefault()
               const position = { x: e.clientX, y: e.clientY }
-              onLeafClick?.(current.id, position)
               onLeafContextMenu?.(current.id, position)
             }}
             style={{
@@ -48,7 +45,6 @@ export const RenderSolved = <T extends string>({
               top: y,
               width,
               height,
-              cursor: onLeafClick ? "pointer" : "default",
               transition: `all ${transitionMs}ms ease-in-out`,
             }}
             // The theme's own border token: a hardcoded light pink read as a
@@ -68,7 +64,7 @@ export const RenderSolved = <T extends string>({
     }
 
     return out
-  }, [node, lone, renderLeaf, onLeafClick, onLeafContextMenu, transitionMs])
+  }, [node, lone, renderLeaf, onLeafContextMenu, transitionMs])
 
   return <>{elements}</>
 }

@@ -1,10 +1,10 @@
 import type { NoteAnchor, RoundNote } from "@leetype/lib/leetype/notes"
 import { FINISH_TIMEOUT_MS } from "@leetype/lib/leetype/notes/composer"
 import type { Dictation, Listening } from "@leetype/lib/leetype/notes/dictation"
-import { DictationError } from "@leetype/lib/leetype/notes/dictation"
 import type { ComposerRuntime } from "@leetype/lib/leetype/notes/runtime"
 import { createNoteComposer } from "@leetype/lib/leetype/notes/runtime"
 import type { NoteStore } from "@leetype/lib/leetype/notes/store"
+import type { ForeignOutcome, IntentError } from "@some-ui/intent-kit"
 import { describe, expect, it, vi } from "vitest"
 
 const ANCHOR: NoteAnchor = {
@@ -30,12 +30,14 @@ function memoryStore(): NoteStore & { notes: Map<string, RoundNote> } {
   }
 }
 
-/** A recognizer the test drives: each `listen` is one controllable utterance. */
+/**
+ * A recognizer the test drives: each `listen` is one utterance whose
+ * outcome the test settles, as a port's `callForeign` would.
+ */
 function fakeDictation(): Dictation & {
   utterances: Array<{
     heard: (text: string) => void
-    resolve: (text: string) => void
-    reject: (error: unknown) => void
+    settle: (outcome: ForeignOutcome<string>) => void
     stop: ReturnType<typeof vi.fn>
     cancel: ReturnType<typeof vi.fn>
   }>
@@ -45,23 +47,27 @@ function fakeDictation(): Dictation & {
     recognizer: "browser",
     utterances,
     listen(onHeard): Listening {
-      let resolve: (text: string) => void = () => undefined
-      let reject: (error: unknown) => void = () => undefined
-      const done = new Promise<string>((res, rej) => {
-        resolve = res
-        reject = rej
+      let settle: (outcome: ForeignOutcome<string>) => void = () => undefined
+      const outcome = new Promise<ForeignOutcome<string>>((resolve) => {
+        settle = resolve
       })
       const utterance = {
         heard: onHeard,
-        resolve,
-        reject,
+        settle,
         stop: vi.fn(),
         cancel: vi.fn(),
       }
       utterances.push(utterance)
-      return { done, stop: utterance.stop, cancel: utterance.cancel }
+      return { outcome, stop: utterance.stop, cancel: utterance.cancel }
     },
   }
+}
+
+const BLOCKED: IntentError = {
+  kind: "rejected",
+  retryable: false,
+  summary: "The microphone is blocked for this page.",
+  cause: "not-allowed",
 }
 
 function setup(dictation: Dictation | null = fakeDictation()): {
@@ -115,7 +121,10 @@ describe("the note composer's runtime", () => {
     })
     runtime.dispatch({ type: "micPressed" })
     expect(utterance!.stop).toHaveBeenCalled()
-    utterance!.resolve("what does the budget mean")
+    utterance!.settle({
+      status: "succeeded",
+      value: "what does the budget mean",
+    })
     await Promise.resolve()
     expect(store.notes.get("n1")).toMatchObject({
       text: "what does the budget mean",
@@ -124,16 +133,18 @@ describe("the note composer's runtime", () => {
     expect(changes).toHaveBeenCalled()
   })
 
-  it("turns a recognizer's failure into the composer's notice", async () => {
+  it("turns a recognizer's failure into the composer's notice, withdrawing what cannot work", async () => {
     const dictation = fakeDictation()
     const { runtime } = setup(dictation)
     runtime.dispatch({ type: "notePressed", anchor: ANCHOR })
     runtime.dispatch({ type: "kindPicked", kind: "gap" })
     runtime.dispatch({ type: "micPressed" })
-    dictation.utterances[0]!.reject(new DictationError("denied"))
-    await Promise.resolve()
+    dictation.utterances[0]!.settle({ status: "failed", error: BLOCKED })
     await Promise.resolve()
     expect(runtime.getSnapshot().notice).toMatch(/blocked/)
+    expect(runtime.getSnapshot().canListen).toBe(false)
+    runtime.dispatch({ type: "micPressed" })
+    expect(dictation.utterances).toHaveLength(1)
   })
 
   it("finishes the utterance when the page hides, and cancels it on detach", () => {
@@ -176,7 +187,7 @@ describe("the note composer's runtime", () => {
     detach()
     const [utterance] = dictation.utterances
     utterance!.heard("after unmount")
-    utterance!.resolve("after unmount")
+    utterance!.settle({ status: "succeeded", value: "after unmount" })
     await Promise.resolve()
     expect(store.notes.get("n1")?.text).toBe("")
     expect(runtime.getSnapshot().composer).toMatchObject({
