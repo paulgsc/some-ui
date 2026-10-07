@@ -253,8 +253,9 @@ came first and stays: its four laws are the same idea inside one package.
 >   `scripts/check-foreign-boundary.ts`, the root `lint` script or the
 >   "Check the foreign boundary" step of pr.yml's `react-coordination` job
 >   that narrows what is counted or stops it running: a foreign module or
->   global dropped, a kind of site dropped, a path excluded, a step removed,
->   a file deleted or renamed.
+>   global dropped, a kind of site dropped, the `callForeign` exemption
+>   widened past its inline `start` function, a path excluded, a step
+>   removed, a file deleted or renamed.
 > - _Scope:_ `scripts/foreign-boundary.allowlist` and the files named above.
 > - _Why not enforced:_ the count is: `pnpm check:foreign-boundary` fails any
 >   file whose count differs from its entry, in either direction. Whether a

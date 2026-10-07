@@ -21,8 +21,9 @@
 // post(subscription)` waits on `post`, ours, even when it is handed a
 // foreign value. Awaiting `import("@capacitor/…")` itself loads
 // our own bundle, so it is not a site, though what it yields is foreign.
-// Anything inside the arguments of a `callForeign(...)` call imported from
-// `@some-ui/intent-kit` (under any local name) is bounded, so not a site.
+// The body of the `start` function written inline in a `callForeign({...})`
+// imported from `@some-ui/intent-kit` (under any local name) is bounded, so
+// not a site. Its other arguments run before the boundary does, so they count.
 //
 // Known blind spots, each the reviewer's rather than this count's:
 // - a callback API wrapped in a hand-made `new Promise` (Web Speech,
@@ -236,7 +237,7 @@ function boundaryNames(file: ts.SourceFile): {
 function isBoundaryCall(
   node: ts.Node,
   names: ReturnType<typeof boundaryNames>
-): boolean {
+): node is ts.CallExpression {
   if (!ts.isCallExpression(node)) return false
   const callee = node.expression
   if (ts.isIdentifier(callee)) return names.direct.has(callee.text)
@@ -246,6 +247,21 @@ function isBoundaryCall(
     names.namespaces.has(callee.expression.text) &&
     callee.name.text === BOUNDARY_EXPORT
   )
+}
+
+/**
+ * The `start` callback written inline in a boundary call's options: the only
+ * code `callForeign` runs under its deadline. Its other arguments are
+ * evaluated before the boundary exists (`start: await Plugin.make()` waits
+ * unbounded), so they are counted like any other code.
+ */
+function boundedStart(node: ts.Node): boolean {
+  if (!ts.isMethodDeclaration(node) && !ts.isPropertyAssignment(node))
+    return false
+  if (!ts.isIdentifier(node.name) || node.name.text !== "start") return false
+  if (ts.isMethodDeclaration(node)) return true
+  const value = unwrap(node.initializer)
+  return ts.isArrowFunction(value) || ts.isFunctionExpression(value)
 }
 
 /** What a site waits on, or null when `node` is not a site. */
@@ -269,7 +285,16 @@ export function foreignSites(path: string, source: string): number {
   const boundary = boundaryNames(file)
   let sites = 0
   const visit = (node: ts.Node): void => {
-    if (isBoundaryCall(node, boundary)) return
+    if (isBoundaryCall(node, boundary)) {
+      visit(node.expression)
+      for (const argument of node.arguments) {
+        if (!ts.isObjectLiteralExpression(argument)) visit(argument)
+        else
+          for (const property of argument.properties)
+            if (!boundedStart(property)) visit(property)
+      }
+      return
+    }
     const operand = awaited(node)
     if (
       operand !== null &&

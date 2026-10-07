@@ -80,7 +80,7 @@ describe("foreignSites", () => {
     ).toBe(3)
   })
 
-  it("does not count a wait inside callForeign, under any local name", () => {
+  it("does not count a wait inside callForeign's start, under any local name", () => {
     const boundary = `
       const port = { name: "p", classify: () => ({ kind: "unknown", retryable: true, summary: "" }), report: () => {} }
       export async function f() {
@@ -106,6 +106,18 @@ describe("foreignSites", () => {
         `${plugin}import * as Intent from "@some-ui/intent-kit"\n${boundary.replace("CALL", "Intent.callForeign")}`
       )
     ).toBe(0)
+    // Only `start` runs under the deadline: an argument awaited to build the
+    // call waits before the boundary exists.
+    expect(
+      sites(
+        `${plugin}import { callForeign } from "@some-ui/intent-kit"
+        export async function f() {
+          return callForeign({ port, deadlineMs: 1000, async start() {
+            return LocalNotifications.checkPermissions().then((p) => p.display)
+          }, label: await LocalNotifications.getLabel() })
+        }`
+      )
+    ).toBe(1)
     // A lookalike from anywhere else is not the boundary.
     expect(
       sites(
