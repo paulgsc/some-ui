@@ -42,14 +42,11 @@ import type { CountedCheck, CountViolation } from "./site-count.ts"
 import {
   describeCountViolation,
   findCountViolations,
-  isInScope,
   parseSource,
   PROMISE_CHAIN,
 } from "./site-count.ts"
 
-export { isInScope }
-
-export const ALLOWLIST_FILE = "scripts/foreign-boundary.allowlist"
+const ALLOWLIST_FILE = "scripts/foreign-boundary.allowlist"
 
 const FOREIGN_MODULE = /^@capacitor(?:-community)?\//
 const FOREIGN_GLOBALS: ReadonlySet<string> = new Set([

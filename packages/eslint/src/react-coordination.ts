@@ -58,7 +58,7 @@ import {
 
 export { isInScope }
 
-export const ALLOWLIST_FILE = "scripts/react-coordination.allowlist"
+const ALLOWLIST_FILE = "scripts/react-coordination.allowlist"
 
 const JSX_SOURCE = /\.[jt]sx$/
 // `react`, `react-dom`, their subpaths, and bindings named for React:
