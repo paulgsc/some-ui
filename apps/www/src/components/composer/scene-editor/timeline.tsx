@@ -97,10 +97,10 @@ export const OrchestratorTimeline = ({
           </Badge>
         </div>
         <div className="relative h-8 w-full bg-background/50 rounded-md overflow-hidden border">
-          {/* Playhead: foreground, not primary, so it stays visible over the
-              active scene's primary bar, which it always sits inside. */}
+          {/* Playhead. The scene playing under it is success, not primary, so
+              the two stay apart in every theme. */}
           <div
-            className="absolute top-0 bottom-0 w-px bg-foreground z-10 shadow-[0_0_8px_color-mix(in_oklab,var(--foreground)_60%,transparent)]"
+            className="absolute top-0 bottom-0 w-px bg-primary z-10 shadow-[var(--glow-primary)]"
             style={{ left: `${(currentTime / maxTimelineEnd) * 100}%` }}
           />
           {sceneLayouts.map((s) => (
@@ -109,7 +109,7 @@ export const OrchestratorTimeline = ({
               className={cn(
                 "absolute h-3 top-2.5 rounded-sm transition-colors",
                 activeSceneIds.has(s.scene.scene_name)
-                  ? "bg-primary"
+                  ? "bg-success"
                   : "bg-primary/20"
               )}
               style={{
@@ -197,7 +197,7 @@ const GanttTimelineScene: FC<GanttTimelineSceneProps> = ({
         className={cn(
           "relative border-l-4 transition-all duration-200 hover:shadow-md",
           isActive
-            ? "border-l-primary bg-primary/5 ring-1 ring-primary/20"
+            ? "border-l-success bg-success/5 ring-1 ring-success/20"
             : "border-l-transparent",
           isPast && "opacity-60 grayscale-[0.5]",
           isDragging && "z-50 shadow-2xl"
@@ -236,7 +236,7 @@ const GanttTimelineScene: FC<GanttTimelineSceneProps> = ({
               <div
                 className={cn(
                   "absolute h-full rounded-full",
-                  isActive ? "bg-primary" : "bg-primary/40"
+                  isActive ? "bg-success" : "bg-primary/40"
                 )}
                 style={{ left: `${startPercent}%`, width: `${widthPercent}%` }}
               />

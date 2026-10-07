@@ -64,6 +64,12 @@ describe("lint: theme-protocol/no-theme-boundary", () => {
       true,
     ],
     [
+      "does not fire on a theme class glued to an expression",
+      "const C = ({ mode }) => <div className={`dark${mode} p-2`} />",
+      BOUNDARY,
+      false,
+    ],
+    [
       "fires on a feature appearance class in a className literal",
       `const C = () => <div className="code absolute inset-0" />`,
       BOUNDARY,
@@ -247,6 +253,12 @@ describe("lint: theme-protocol/no-fixed-status-color", () => {
       `const C = () => <div className="drop-shadow-red-500 inset-ring-emerald-500/40" />`,
       STATUS,
       true,
+    ],
+    [
+      "does not fire on a token glued to an expression",
+      "const C = ({ s, m }) => <div className={`text-red-500${s} ${m}bg-rose-500 x`} />",
+      STATUS,
+      false,
     ],
     [
       "does not fire on a hue split across an expression",

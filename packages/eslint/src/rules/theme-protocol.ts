@@ -110,25 +110,30 @@ const STRUCTURAL_COLOR_RE = new RegExp(
 )
 
 /**
- * The static class text a node carries: a string literal's value, or every
- * static part of a template literal. A template's parts are read even around
- * `${}`, since `${base} text-red-500` paints red whatever `base` is; a class
- * split across an expression (`text-${tone}-500`) is not a whole token on
- * either side, so it never matches.
+ * The whole class tokens a node carries statically: a string literal's
+ * tokens, or a template literal's. A template is read around `${}`, since
+ * `${base} text-red-500` paints red whatever `base` is, but a token that
+ * touches an expression with no whitespace between them is only part of a
+ * class (`dark${mode}` may be `darkroom`, `text-red-500${suffix}` may be
+ * `text-red-500-ish`), so it is not judged.
  */
-function classTexts(node: any): Array<string> | undefined {
+function classTokens(node: any): Array<string> | undefined {
   if (node.type === "Literal" && typeof node.value === "string") {
     const value: string = node.value
-    return [value]
+    return value.split(/\s+/)
   }
-  if (node.type === "TemplateLiteral") {
-    const quasis: Array<any> = node.quasis
-    return quasis.map((quasi): string => {
-      const text: string = quasi.value.cooked ?? quasi.value.raw ?? ""
-      return text
-    })
-  }
-  return undefined
+  if (node.type !== "TemplateLiteral") return undefined
+  const quasis: Array<any> = node.quasis
+  return quasis.flatMap((quasi, index): Array<string> => {
+    const text: string = quasi.value.cooked ?? quasi.value.raw ?? ""
+    const tokens = text.split(/\s+/)
+    // An expression before this part glues onto its first token, one after
+    // it onto its last; split() leaves an empty edge token where whitespace
+    // separates them, so dropping the edge drops only a fragment.
+    if (index > 0) tokens.shift()
+    if (index < quasis.length - 1) tokens.pop()
+    return tokens
+  })
 }
 
 /**
@@ -288,8 +293,8 @@ function classTokenRule(
       const options = readOptions(context)
 
       function check(rawNode: any): void {
-        const texts = classTexts(rawNode)
-        if (texts === undefined) return
+        const tokens = classTokens(rawNode)
+        if (tokens === undefined) return
         if (
           !isClassNameContext(
             rawNode,
@@ -300,11 +305,9 @@ function classTokenRule(
         ) {
           return
         }
-        for (const text of texts) {
-          for (const token of text.split(/\s+/)) {
-            const finding = judge(token)
-            if (finding) context.report({ node: rawNode, ...finding })
-          }
+        for (const token of tokens) {
+          const finding = judge(token)
+          if (finding) context.report({ node: rawNode, ...finding })
         }
       }
 
