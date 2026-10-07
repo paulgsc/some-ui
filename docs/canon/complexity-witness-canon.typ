@@ -81,7 +81,7 @@
     `packages/some-content/prompts/leetype-exercise-generator` · `pedagogy/`
   ]
   #v(1em)
-  #text(size: 9.5pt)[Version 1.0 --- 2026-08-28]
+  #text(size: 9.5pt)[Version 1.1 --- 2026-10-07]
   #v(2cm)
 ]
 
@@ -1381,6 +1381,30 @@ superseded and kept.
   emit anything on its own account.
 ]
 
+#remark("11.6", name: "Rem. 11.1's reading-surface artifacts are retired")[
+  Amends Rem. 11.1, which is retained as filed. Three of its rows named
+  artifacts of the phone's reading surface: `claimOf`, `readingProbeOf` and
+  `claimPoolOf` in `lib/leetype/reading-probe`, and `ClaimChoices` and
+  `ReadingFeedback` in `components/reading-game`. Rounds took the phone over
+  in `#1598`, after which the reading surface played only for a host-forced
+  exercise that no host forced, and `#1702` removed it with those five
+  artifacts.
+
+  What each row was retained *for* survives in the round surface, so no
+  result of §6 or §9 loses its grounding:
+
+  - §6's selection machine is `lib/leetype/round-probe`'s `roundProbeOf`, the
+    substitution Rem. 11.1 forecast already made: the pool is §7's register
+    and the answer is $mu(d)$. It keeps `READING_OPTION_COUNT`, which stays in
+    `lib/leetype/reading-probe` beside the row model `DiffCard` paints with.
+  - The rendering of a round is `DiffCard` (retained), `RoundChoices` and
+    `RoundFeedback`. `RoundChoices` commits and reveals on one tap, which is
+    Axiom 9.2's mechanism without `ClaimChoices`' separate submission step.
+
+  Evidence: the code (Amendment protocol, fourth rule). No learner
+  observation motivates it; the artifacts had no caller.
+]
+
 // ═══════════════════════════════════════════════════════════════════════════
 = Falsifiers
 // ═══════════════════════════════════════════════════════════════════════════
@@ -1519,6 +1543,12 @@ document exists to prevent and will be made again:
 `CW-P16` was added in the course of the second, and is the register's first
 entry contributed by a proof obligation rather than a teaching intention
 (Rem. 7.3).
+
+*v1.1 --- 2026-10-07.* Rem. 11.6 retires the reading-surface artifacts
+Rem. 11.1 listed as retained (`claimOf`, `readingProbeOf`, `claimPoolOf`,
+`ClaimChoices`, `ReadingFeedback`), removed with the reading surface in
+`#1702`, and names the round-surface artifacts that carry their roles. No
+Definition, Axiom, Theorem or `CW-P` entry changes.
 
 #pagebreak()
 
