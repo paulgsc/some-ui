@@ -67,6 +67,16 @@ function answersOf(value: unknown): Reflection {
   return answers
 }
 
+/** Every kept reflection, newest first (the agent export reads them all). */
+export function allReflections(): Array<{
+  sessionId: string
+  answers: Reflection
+}> {
+  return store
+    .read()
+    .map((e) => ({ sessionId: e.id, answers: answersOf(e.answers) }))
+}
+
 export function readReflection(sessionId: string): Reflection {
   return answersOf(store.read().find((e) => e.id === sessionId)?.answers)
 }

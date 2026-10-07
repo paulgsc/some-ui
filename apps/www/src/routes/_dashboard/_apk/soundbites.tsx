@@ -1,9 +1,12 @@
 import type { JSX } from "react"
 import type { SoundbiteSituation, SoundbiteSource } from "@some-ui/soundbites"
-import { Soundbites } from "@some-ui/soundbites"
+import { phoneSoundbiteStore, Soundbites } from "@some-ui/soundbites"
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
 
+import { shareAgentExport } from "@/lib/agent-export"
 import { useArrivalKey } from "@/lib/arrival-key"
+import { useAsyncIntent } from "@/lib/intent"
+import { IntentButton } from "@/lib/intent/render"
 import type { SessionRecord, SessionStatus } from "@/lib/tenant"
 import { sessionsQuery, useSessions } from "@/lib/tenant"
 
@@ -69,19 +72,38 @@ const SoundbitesRoute = (): JSX.Element => {
   // A new request remounts the recorder (it reads its way in once); the
   // clearing below is not a new request, so it never remounts mid-take.
   const arrival = useArrivalKey(isSaySource(say) ? say : undefined)
+  const share = useAsyncIntent(() => shareAgentExport(phoneSoundbiteStore()), {
+    presentation: "interactive",
+  })
 
   return (
-    <Soundbites
-      key={arrival}
-      source={source}
-      autoStart={source !== "direct"}
-      // Forget the request once honoured, so going back or reloading does
-      // not open the microphone again.
-      onAutoStart={() =>
-        void navigate({ to: "/soundbites", search: {}, replace: true })
-      }
-      situation={() => situationFrom(sessions ?? [])}
-    />
+    <div className="flex flex-col">
+      <Soundbites
+        key={arrival}
+        source={source}
+        autoStart={source !== "direct"}
+        // Forget the request once honoured, so going back or reloading does
+        // not open the microphone again.
+        onAutoStart={() =>
+          void navigate({ to: "/soundbites", search: {}, replace: true })
+        }
+        situation={() => situationFrom(sessions ?? [])}
+      />
+      <section className="mx-auto w-full max-w-md space-y-2 pb-8">
+        <p className="text-muted-foreground text-sm">
+          Your soundbites, session reflections and stop reasons, as files for an
+          agent to read. You pick where they go.
+        </p>
+        <IntentButton
+          state={share.state}
+          onPress={() => share.start(undefined)}
+          variant="outline"
+          size="sm"
+          idleLabel="Share with an agent"
+          workingLabel="Preparing..."
+        />
+      </section>
+    </div>
   )
 }
 

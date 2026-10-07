@@ -70,6 +70,11 @@ const same =
   (b: Stop): boolean =>
     a.sessionId === b.sessionId && a.stoppedAt === b.stoppedAt
 
+/** Every kept stop, newest first (the agent export reads them all). */
+export function allStops(): Array<Stop> {
+  return store.read()
+}
+
 export function latestStop(sessionId: string): Stop | null {
   return store.read().find((s) => s.sessionId === sessionId) ?? null
 }
