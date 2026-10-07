@@ -64,7 +64,10 @@ services:
     image: nginx:alpine
     container_name: openai-edge-tts-proxy
     ports:
-      - "${PORT:-5050}:80" # Expose nginx on your desired port
+      # LAN, deliberately: plain-HTTP pages reach this from Windows and the
+      # phone at nixos.local:5050 (see the header). Docker-published ports
+      # bypass the host firewall, so the host IP here is the whole policy.
+      - "0.0.0.0:${PORT:-5050}:80"
     volumes:
       - ${REPO_ROOT:-.}/nginx.conf:/etc/nginx/nginx.conf:ro
     networks:
