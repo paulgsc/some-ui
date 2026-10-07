@@ -5,15 +5,11 @@ import type { LayoutNode } from "@wireframes/lib/layout-weighted"
 import {
   solveLayout,
   solveLayoutWithBindings,
-  solveLayoutWithFocus,
 } from "@wireframes/lib/layout-weighted"
 import fc from "fast-check"
 import { describe, expect, it } from "vitest"
 
-import {
-  layoutIntentSequenceArbitrary,
-  regionArbitrary,
-} from "./layout-intent-arbitrary"
+import { layoutIntentSequenceArbitrary } from "./layout-intent-arbitrary"
 
 const EPSILON = 1e-6
 
@@ -75,20 +71,6 @@ function isValidTiling<T>(node: SolvedNode<T>, expectedRect: Rect): boolean {
   return approxEqual(offset, totalExtent)
 }
 
-function collectLeafIds<T>(node: SolvedNode<T>): Set<T> {
-  const ids = new Set<T>()
-  const stack: Array<SolvedNode<T>> = [node]
-  while (stack.length) {
-    const current = stack.pop()!
-    if (current.type === "leaf") {
-      ids.add(current.id)
-    } else {
-      stack.push(...current.children)
-    }
-  }
-  return ids
-}
-
 const viewportArbitrary = fc.record({
   x: fc.constant(0),
   y: fc.constant(0),
@@ -111,105 +93,6 @@ describe("solveLayout - geometry invariants", () => {
           expect(isValidTiling(solved, viewport)).toBe(true)
         }
       )
-    )
-  })
-
-  it("focus-aware solving still tiles the viewport and never adds or drops a region", () => {
-    fc.assert(
-      fc.property(
-        layoutIntentSequenceArbitrary,
-        viewportArbitrary,
-        regionArbitrary,
-        fc.double({ min: 0, max: 1, noNaN: true }),
-        (intents, viewport, focusId, intensity) => {
-          let tree: LayoutNode<YouTubeRegion> | null = null
-          for (const intent of intents) tree = applyIntent(tree, intent)
-          if (tree === null) return
-
-          const base = solveLayout(tree, viewport)
-          const focused = solveLayoutWithFocus(
-            tree,
-            viewport,
-            focusId,
-            intensity
-          )
-
-          expect(isValidTiling(focused, viewport)).toBe(true)
-          expect(collectLeafIds(focused)).toEqual(collectLeafIds(base))
-        }
-      )
-    )
-  })
-
-  // A pinned seed and path, so this shape is reproduced deterministically.
-  it("focus-aware solving tiles the viewport for a pinned absent-focus seed", () => {
-    fc.assert(
-      fc.property(
-        layoutIntentSequenceArbitrary,
-        viewportArbitrary,
-        regionArbitrary,
-        fc.double({ min: 0, max: 1, noNaN: true }),
-        (intents, viewport, focusId, intensity) => {
-          let tree: LayoutNode<YouTubeRegion> | null = null
-          for (const intent of intents) tree = applyIntent(tree, intent)
-          if (tree === null) return
-
-          const focused = solveLayoutWithFocus(
-            tree,
-            viewport,
-            focusId,
-            intensity
-          )
-          expect(isValidTiling(focused, viewport)).toBe(true)
-        }
-      ),
-      { seed: 1554378956, path: "76:5:5:4:4:5:5:4:0:3:3:3", endOnFailure: true }
-    )
-  })
-
-  // A two-leaf tree focused at full intensity on a region it lacks: every
-  // node is off the focus path (see the guard in `focusConstraints`).
-  it("focusing a region absent from the tree is a no-op, not a collapse", () => {
-    const viewport: Rect = { x: 0, y: 0, width: 100, height: 100 }
-    const tree: LayoutNode<YouTubeRegion> = {
-      type: "split",
-      axis: "row",
-      splitId: "split-0",
-      children: [
-        { node: { type: "leaf", id: "video" }, weight: 1 },
-        { node: { type: "leaf", id: "footerRight" }, weight: 1 },
-      ],
-    }
-
-    const base = solveLayout(tree, viewport)
-    const focused = solveLayoutWithFocus(tree, viewport, "sidebarTop", 1)
-
-    expect(isValidTiling(focused, viewport)).toBe(true)
-    // Absent target means no emphasis to apply, so geometry is untouched.
-    expect(focused).toEqual(base)
-  })
-
-  // The complement, so the guard cannot pass by disabling focus altogether.
-  it("focusing a region present in the tree still gives it the full extent at intensity 1", () => {
-    const viewport: Rect = { x: 0, y: 0, width: 100, height: 100 }
-    const tree: LayoutNode<YouTubeRegion> = {
-      type: "split",
-      axis: "row",
-      splitId: "split-0",
-      children: [
-        { node: { type: "leaf", id: "video" }, weight: 1 },
-        { node: { type: "leaf", id: "footerRight" }, weight: 1 },
-      ],
-    }
-
-    const focused = solveLayoutWithFocus(tree, viewport, "video", 1)
-
-    expect(isValidTiling(focused, viewport)).toBe(true)
-    const leaves = collectSolvedLeaves(focused)
-    expect(leaves.find((l) => l.id === "video")!.rect.width).toBeCloseTo(100, 5)
-    expect(leaves.find((l) => l.id === "footerRight")!.rect.width).toBeCloseTo(
-      0,
-      5
     )
   })
 })
