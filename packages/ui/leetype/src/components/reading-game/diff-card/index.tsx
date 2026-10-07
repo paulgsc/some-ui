@@ -112,8 +112,8 @@ export const DiffCard: FC<DiffCardProps> = ({ hunk, className }) => {
 
   /**
    * Back to the start of the line whenever the card gets a different hunk.
-   * `ReadingSession` swaps the prop without remounting, so the scroller keeps
-   * its `scrollLeft`, and `ResizeObserver` does not fire (the box is the same).
+   * A caller that swaps the prop without remounting keeps the scroller's
+   * `scrollLeft`, and `ResizeObserver` does not fire (the box is the same).
    *
    * Keyed on a signature of the rows, not the `hunk` object, which callers
    * may rebuild every render. A layout effect, so no frame paints at the

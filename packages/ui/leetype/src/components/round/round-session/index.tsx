@@ -96,7 +96,10 @@ const ARTIFACT_LABELS: Readonly<Record<ArtifactId, string>> = {
   runResult: "Runs",
 }
 
-/** Decorrelates consecutive rounds' seeds; the same stride `ReadingSession` uses per step. */
+/**
+ * Decorrelates consecutive rounds' seeds: a large odd constant, the ordinary
+ * way to decorrelate a counter before it reaches a generator.
+ */
 const ROUND_SEED_STRIDE = 0x9e3779b9
 
 /** Separates a draw's seed from the same round's presentation seed. */
@@ -426,8 +429,8 @@ export const RoundSession: FC<RoundSessionProps> = ({
   }, [onSessionComplete])
 
   useEffect(() => {
-    // Anchored at mount, for the reason `ReadingSession`'s clock is: the
-    // orchestrator removes this scene at its own `start_time + duration`.
+    // Anchored at mount: the orchestrator removes this scene at its own
+    // `start_time + duration`.
     const startedAt = performance.now()
     const update = (): void => {
       setSessionClockMs(
@@ -442,8 +445,7 @@ export const RoundSession: FC<RoundSessionProps> = ({
   useEffect(() => {
     if (finished || sessionClockMs < sessionDurationMs) return
     // The term running out is an external fact the orchestrator's clock
-    // owns, the same shape and justification as `ReadingSession`'s own
-    // end-of-session effect.
+    // owns, so the effect only reports it.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setFinishedAt(Date.now())
     // The round surface is gone: a note open on it closes with it.
@@ -651,8 +653,9 @@ export const RoundSession: FC<RoundSessionProps> = ({
   }
 
   const column =
-    // scroll-intent: reading-page — the phone's one vertical scroll, for
-    // the reason `ReadingSession` gives; nothing nested scrolls vertically.
+    // scroll-intent: reading-page — the phone's one vertical scroll: two
+    // nested vertical scrollers fight a thumb, so nothing nested scrolls
+    // vertically.
     "mx-auto flex h-full w-full max-w-lg flex-col gap-4 overflow-y-auto px-3 pb-[max(1rem,env(safe-area-inset-bottom))] pt-1"
 
   if (play === null) {
@@ -769,9 +772,9 @@ export const RoundSession: FC<RoundSessionProps> = ({
   const roundKey = `${play.own ? "own" : "corpus"}:${round.id}:${played}`
 
   return (
-    // scroll-intent: reading-page — the phone's one vertical scroll, for the
-    // reason `ReadingSession` gives; the switcher shows one artifact at a
-    // time inside it, and nothing nested scrolls vertically.
+    // scroll-intent: reading-page — the phone's one vertical scroll; the
+    // switcher shows one artifact at a time inside it, and nothing nested
+    // scrolls vertically.
     <div data-scroll-intent="reading-page" className={cn(column, className)}>
       {generating && (
         <>

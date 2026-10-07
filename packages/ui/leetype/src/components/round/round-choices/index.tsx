@@ -26,11 +26,10 @@ type RoundChoicesProps = {
 }
 
 /**
- * The round-shaped counterpart to `ClaimChoices`. Where `ClaimChoices`
- * records a choice a later submission resolves, a round has no second step
- * (Def. 9.1: "a single, cheap, mandatory-before-reveal action"), so each row
- * is a button that commits and reveals on tap, like `CommitmentControl`,
- * with the verdict landing on the rows as a glyph plus a word.
+ * A round's options. A round has no second step (Def. 9.1: "a single,
+ * cheap, mandatory-before-reveal action"), so each row is a button that
+ * commits and reveals on tap, like `CommitmentControl`, with the verdict
+ * landing on the rows as a glyph plus a word.
  *
  * # No option is colored before a commitment
  *
@@ -75,8 +74,7 @@ export const RoundChoices: FC<RoundChoicesProps> = ({
         {options.map((option, index) => {
           const isAnswer = option.id === revealedAnswerId
           const isPicked = option.id === pickedId
-          // After a commitment only the answer and the pick say anything,
-          // matching `ClaimChoices`' resolution states.
+          // After a commitment only the answer and the pick say anything.
           const resolution =
             revealedAnswerId === null
               ? "open"

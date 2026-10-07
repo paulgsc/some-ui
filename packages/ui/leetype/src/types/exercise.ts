@@ -287,10 +287,6 @@ export const ProvenanceSchema = z.object({
  * path (nothing renders it or branches on it); checked mechanically, not for
  * quality, by the corpus lint (LTY-FAMILIES A5).
  *
- * LTY-MOBILE exception: the reading surface poses `cause` as one option among
- * distractors and, after the player chooses, shows `whyRepairDiscriminates`
- * as the explanation. A verdict is allowed there because its justification
- * ships with it.
  */
 export const RationaleSchema = z.object({
   /** The one principal causal defect the failure signal points at. */
@@ -554,11 +550,7 @@ const StepObjectSchema = z.object({
    * same reason as `rationale`; `ConstructionStepSchema` requires it.
    *
    * Authoring metadata: **never rendered on the typing path**, where it would
-   * become a description card. LTY-MOBILE exception: the reading surface
-   * shows it only as one option among other steps' claims
-   * (`lib/leetype/reading-probe`, `components/reading-game/claim-choices`),
-   * never alone and never before the player chooses. See
-   * `docs/leetype/README.md` → LTY-MOBILE.
+   * become a description card.
    */
   obligation: z.string().min(1).optional(),
   /**

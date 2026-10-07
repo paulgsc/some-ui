@@ -8,7 +8,7 @@ import { act, fireEvent, render, screen } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 // This file tests which surface mounts. Mocking the loader lets the typing
-// branch render, and counting calls proves the reading branch never loads it.
+// branch render, and counting calls proves the rounds branch never loads it.
 const loadWasm = vi.fn()
 vi.mock("@leetype/lib/leetype/leetype-wasm-loader", () => ({
   loadWasm: (): Promise<never> => {
@@ -45,23 +45,22 @@ afterEach(() => {
 })
 
 describe("Leetype", () => {
-  it("gives a narrow viewport the reading surface", () => {
+  it("gives a narrow viewport rounds, even when an exercise is passed", () => {
     setViewport(true)
     render(<Leetype exercise={EXERCISE} sessionSeed={7} />)
 
-    expect(screen.getByText("Practice")).toBeInTheDocument()
-    expect(screen.getByRole("group")).toBeInTheDocument()
-    expect(screen.getAllByRole("radio").length).toBeGreaterThan(1)
+    expect(screen.getByText("Round 1")).toBeInTheDocument()
+    expect(screen.queryByLabelText("Typing input")).not.toBeInTheDocument()
   })
 
   it("gives a wide viewport the typing surface", () => {
     setViewport(false)
     render(<Leetype exercise={EXERCISE} sessionSeed={7} />)
 
-    // The typing surface's own keystroke-capture element, which the reading
-    // surface has no equivalent of.
+    // The typing surface's own keystroke-capture element, which rounds have
+    // no equivalent of.
     expect(screen.getByLabelText("Typing input")).toBeInTheDocument()
-    expect(screen.queryByRole("radio")).not.toBeInTheDocument()
+    expect(screen.queryByText("Round 1")).not.toBeInTheDocument()
   })
 
   // A phone never fetches the engine: true by construction, pinned here.
@@ -80,9 +79,9 @@ describe("Leetype", () => {
   it("honours an explicit surface override, whatever the viewport says", () => {
     setViewport(false)
     const { unmount } = render(
-      <Leetype exercise={EXERCISE} sessionSeed={7} surface="reading" />
+      <Leetype exercise={EXERCISE} sessionSeed={7} surface="rounds" />
     )
-    expect(screen.getByRole("group")).toBeInTheDocument()
+    expect(screen.getByText("Round 1")).toBeInTheDocument()
     expect(loadWasm).not.toHaveBeenCalled()
     unmount()
 
