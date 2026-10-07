@@ -160,7 +160,6 @@ export const SessionViewport = ({
             layoutTree={tree}
             activeLifetimes={renderedLifetimes}
             componentRegistry={componentRegistry}
-            enableFocus={false}
             collapseUnbound={editable ? !editMode : true}
             onLeafResize={onLeafResize}
           />

@@ -50,8 +50,8 @@ type ArtifactSwitcherProps = {
   /**
    * Read by assistive tech on the hidden position announcement and, when
    * supplied, folded into the Previous/Next names (`"<ariaLabel>: previous
-   * artifact"`) so two side-by-side instances (`WideRoundSurface`) have
-   * distinguishable controls. Unset, the buttons are "Previous artifact" /
+   * artifact"`), so controls stay distinguishable wherever more than one
+   * switcher is on screen. Unset, the buttons are "Previous artifact" /
    * "Next artifact".
    */
   ariaLabel?: string
