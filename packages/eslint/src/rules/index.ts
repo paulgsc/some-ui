@@ -15,4 +15,8 @@ export { noLoadingElidedDefault } from "./no-loading-elided-default.js"
 export { requireNamedLifetime } from "./require-named-lifetime.js"
 export { requireScopedLifetime } from "./require-scoped-lifetime.js"
 export { noMountSnapshot } from "./no-mount-snapshot.js"
-export { noStructuralPaletteColor, noThemeBoundary } from "./theme-protocol.js"
+export {
+  noFixedStatusColor,
+  noStructuralPaletteColor,
+  noThemeBoundary,
+} from "./theme-protocol.js"

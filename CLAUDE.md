@@ -137,6 +137,19 @@ the shortest life that works, and nothing recreated leaves its old copy behind.
   retention" sets the default for any upload without `retention-days` and caps any
   explicit value above it. It also sets how long run logs are kept.
 
+## Desktop follows the APK
+
+The APK is the product. The desktop experience is being rebuilt to mirror it,
+so desktop-only UI is going to churn. Before polishing, migrating or fixing UI,
+check which surface renders it: work on APK and platform-agnostic UI is
+worthwhile, and work on desktop-only UI is usually wasted. Phone and desktop
+split in a few places: `useIsMobile` in `Leetype` (`RoundSession` under 768px
+wide, the typing game above), `chooseSurface` in topik (`HandheldLesson` under
+768px wide or 480px tall, `DesktopSession` otherwise), the `lan` audience (not
+in the APK build), and the `_apk` routes. The window-size splits follow the
+window, not the device, so the APK on a tablet gets the wide surfaces too. When a repo-wide sweep has to skip a desktop-only file, say so
+where the skip lives, as the `paletteRatchet` calls do.
+
 ## Vestiges
 
 A workspace earns its place only while something live points to it: an app, a shipped

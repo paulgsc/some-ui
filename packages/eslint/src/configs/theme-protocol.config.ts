@@ -1,9 +1,10 @@
 import {
+  noFixedStatusColor,
   noStructuralPaletteColor,
   noThemeBoundary,
 } from "@eslint/rules/index.js"
+import type { Linter } from "eslint"
 import { defineConfig } from "eslint/config"
-import type { Config } from "typescript-eslint"
 
 import { parentRelativeImportPattern } from "./base.config.js"
 import {
@@ -71,6 +72,7 @@ export const themeProtocolPlugin = {
   rules: {
     "no-theme-boundary": noThemeBoundary,
     "no-structural-palette-color": noStructuralPaletteColor,
+    "no-fixed-status-color": noFixedStatusColor,
   },
 }
 
@@ -91,6 +93,7 @@ export default defineConfig([
     rules: {
       "theme-protocol/no-theme-boundary": "error",
       "theme-protocol/no-structural-palette-color": "error",
+      "theme-protocol/no-fixed-status-color": "error",
       // The one place that answers "what may a reusable UI workspace not
       // import". A package reaching into an app's theme provider is the
       // coupling this architecture prevents (and the protocol is CSS
@@ -121,25 +124,35 @@ export default defineConfig([
   },
 ])
 
+/** The palette rules a ratchet can switch off, by the name a caller uses. */
+const PALETTE_RULES = {
+  structural: "theme-protocol/no-structural-palette-color",
+  status: "theme-protocol/no-fixed-status-color",
+} as const
+
 /**
- * A ratchet for source whose structural colors have not been migrated yet.
- *
- * Deliberately narrow: it turns off **only** the color rule, for the globs
- * handed to it; `no-theme-boundary` stays on everywhere. A boundary violation
- * has one fix (an `appearance` prop defaulting to "inherit"); a structural
- * color needs a per-call judgment about which role the literal stood for.
+ * A ratchet for source whose colors have not been migrated yet: it turns off
+ * the named palette rules (`structural` for literal grays, `status` for
+ * literal status hues) for the globs handed to it. `no-theme-boundary` stays
+ * on everywhere. A boundary violation has one fix (an `appearance` prop
+ * defaulting to "inherit"); a palette color needs a per-call judgment about
+ * which role the literal stood for.
  *
  * Each caller lives in the unmigrated package's own `eslint.config.js`, in
- * front of whoever next edits it. Delete the call to migrate.
- *
+ * front of whoever next edits it, and says why its files are not migrated
+ * yet (a fixed art direction, a surface about to be rewritten). Delete a glob
+ * to migrate it.
  */
-export function structuralColorRatchet(
-  globs: Array<string> = ["**/*.{ts,tsx}"]
-): Config {
+export function paletteRatchet(
+  globs: Array<string>,
+  rules: ReadonlyArray<keyof typeof PALETTE_RULES>
+): Array<Linter.Config> {
   return defineConfig([
     {
       files: globs,
-      rules: { "theme-protocol/no-structural-palette-color": "off" },
+      rules: Object.fromEntries(
+        rules.map((rule) => [PALETTE_RULES[rule], "off"])
+      ),
     },
   ])
 }

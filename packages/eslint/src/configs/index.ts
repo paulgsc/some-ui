@@ -45,7 +45,7 @@ export {
 } from "./owner-guard.config.js"
 export {
   default as themeProtocolConfig,
-  structuralColorRatchet,
+  paletteRatchet,
   themeProtocolPlugin,
   themeProviderBanPattern,
   routerImportBanPattern,

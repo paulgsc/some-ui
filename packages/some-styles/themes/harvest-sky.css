@@ -52,6 +52,11 @@
   --success-foreground: oklch(18% 0.04 150deg);
   --warning: oklch(76% 0.14 58deg);
   --warning-foreground: oklch(19% 0.05 58deg);
+
+  /* Sky for added lines, against the coral of removed ones: blue
+     against orange-red survives deuteranopia */
+  --diff-add: oklch(74% 0.1 240deg);
+  --diff-remove: var(--destructive);
   --border: oklch(33% 0.045 285deg);
   --input: oklch(36% 0.05 285deg);
   --ring: var(--primary);

@@ -24,7 +24,7 @@ class ComponentErrorBoundary extends Component<
     if (this.state.hasError) {
       return (
         this.props.fallback ?? (
-          <div className="flex items-center justify-center h-full text-red-500 text-sm">
+          <div className="flex items-center justify-center h-full text-destructive text-sm">
             Component failed to load
           </div>
         )

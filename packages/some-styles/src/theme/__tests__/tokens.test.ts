@@ -62,6 +62,10 @@ const CORE_ROLES = [
   "--accent",
   "--border",
   "--destructive",
+  "--success",
+  "--warning",
+  "--diff-add",
+  "--diff-remove",
 ]
 
 /**

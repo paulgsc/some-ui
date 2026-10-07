@@ -40,13 +40,13 @@ const ROW_PAINT: Record<
     text: "opacity-60",
   },
   add: {
-    row: "border-l-emerald-500/70 bg-emerald-500/[0.07]",
-    sign: "text-emerald-400",
+    row: "border-l-diff-add/70 bg-diff-add/[0.07]",
+    sign: "text-diff-add",
   },
   del: {
-    row: "border-l-rose-500/60 bg-rose-500/[0.06]",
-    sign: "text-rose-400",
-    text: "line-through decoration-rose-400/40 opacity-70",
+    row: "border-l-diff-remove/60 bg-diff-remove/[0.06]",
+    sign: "text-diff-remove",
+    text: "line-through decoration-diff-remove/40 opacity-70",
   },
 }
 

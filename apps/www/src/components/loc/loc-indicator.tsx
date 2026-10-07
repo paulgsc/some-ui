@@ -27,10 +27,10 @@ import { locSnapshot } from "@/lib/loc-report/snapshot"
 import type { RangeKey, Summary } from "@/lib/loc-report/summarize"
 import { compactCount, RANGES, summarize } from "@/lib/loc-report/summarize"
 
-const ADDED_TEXT = "text-blue-700 dark:text-blue-400"
-const ADDED_FILL = "bg-blue-700 dark:bg-blue-400"
-const REMOVED_TEXT = "text-orange-700 dark:text-orange-400"
-const REMOVED_FILL = "bg-orange-700 dark:bg-orange-400"
+const ADDED_TEXT = "text-diff-add"
+const ADDED_FILL = "bg-diff-add"
+const REMOVED_TEXT = "text-diff-remove"
+const REMOVED_FILL = "bg-diff-remove"
 
 /**
  * Each repository's live code-frequency graph on GitHub, one link each since
