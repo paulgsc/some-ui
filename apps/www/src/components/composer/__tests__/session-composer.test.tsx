@@ -173,7 +173,7 @@ describe("SessionComposer: Save & Play, new session - success path and regressio
     restore()
   })
 
-  it("saves as draft: toast copy and navigation target", async () => {
+  it("saves as draft: toast copy, and a navigation that replaces the spent composer", async () => {
     const { restore } = installFileHostSuccess({})
     await renderAtReviewStep()
 
@@ -182,12 +182,15 @@ describe("SessionComposer: Save & Play, new session - success path and regressio
 
     await waitFor(() => {
       expect(toastSpy).toHaveBeenCalledWith("Session saved as draft")
-      expect(navigateSpy).toHaveBeenCalledWith({ to: "/sessions" })
+      expect(navigateSpy).toHaveBeenCalledWith({
+        to: "/sessions",
+        replace: true,
+      })
     })
     restore()
   })
 
-  it("save & play: navigates to the new session's player, no toast", async () => {
+  it("save & play: replaces the composer with the new session's player, no toast", async () => {
     const { restore } = installFileHostSuccess({})
     await renderAtReviewStep()
 
@@ -198,6 +201,7 @@ describe("SessionComposer: Save & Play, new session - success path and regressio
       expect(navigateSpy).toHaveBeenCalledWith({
         to: "/sessions/$sessionId",
         params: { sessionId: "session-1" },
+        replace: true,
       })
     })
     expect(toastSpy).not.toHaveBeenCalled()

@@ -19,7 +19,14 @@ import {
   SheetTitle,
 } from "@some-ui/shared"
 import { Link } from "@tanstack/react-router"
-import { BookOpen, House, Mic, Plus, TrendingUp } from "lucide-react"
+import {
+  BookOpen,
+  ChevronLeft,
+  House,
+  Mic,
+  Plus,
+  TrendingUp,
+} from "lucide-react"
 
 import { hasAudience } from "@/lib/build-profile"
 
@@ -103,6 +110,25 @@ export const MobileNav = ({
       </nav>
       <QuickEntry open={quickOpen} onOpenChange={setQuickOpen} />
     </>
+  )
+}
+
+/**
+ * The way home while the bar steps aside (the composer, the player on a wide
+ * window): the header carries it instead, so no screen can only be left by
+ * finishing it. Android's back does the same from any page, through the
+ * history (apps/mobile `MainActivity`); this is the one you can see.
+ */
+export const MobileHomeLink = (): JSX.Element | null => {
+  if (!hasAudience("apk")) return null
+  return (
+    <Link
+      to="/today"
+      className="hover:bg-accent -ml-2 flex h-10 items-center gap-0.5 rounded-md pr-3 pl-1 text-sm font-medium"
+    >
+      <ChevronLeft aria-hidden className="size-5" />
+      Home
+    </Link>
   )
 }
 

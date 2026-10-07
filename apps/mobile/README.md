@@ -42,8 +42,11 @@ How that is enforced (www `src/lib/app-surface`):
   and a page added to www later stays off the phone until someone lists it.
 - There is no sidebar: the bottom bar (`src/components/mobile-shell`) links
   the tools, and steps aside on the two bounded screens (the player and the
-  composer). "Start something new" goes to the composer rather than the web
-  Home's launcher.
+  composer), where the header holds a Home link instead. "Start something
+  new" goes to the composer rather than the web Home's launcher.
+- Android's back (the button or the edge swipe) walks the app's history, and
+  leaves the app only from the first page (`MainActivity`). The app does not
+  carry `@capacitor/app`, without which back would close it from any page.
 - The build leaves out the résumé's PDFs and its `/resume/` document, and the
   web-push service worker `sw.js` (www `build.paths.ts`, `offPathPublicFiles`).
 
