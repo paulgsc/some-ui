@@ -5,8 +5,9 @@
  * wraps this in a thin React context, but a plain script (or a pre-paint inline
  * snippet) can drive it just as well.
  *
- * The pre-paint no-flash script in `apps/www/index.html` mirrors the small
- * subset here (storage key + class mapping); keep them in sync.
+ * The pre-paint no-flash scripts in `apps/www/index.html` and
+ * `apps/www/resume/index.html` mirror the small subset here (storage key,
+ * class mapping, retired ids); www's theme contract test keeps them in sync.
  */
 
 import type { SessionTheme, SessionThemeId } from "./registry"
@@ -40,6 +41,18 @@ function safeStorage(): StorageLike | null {
   }
 }
 
+/**
+ * Session themes that were removed, mapped to the theme that replaced them, so
+ * someone who picked one opens to its successor instead of silently falling
+ * back to the default. Reading a retired id also writes its successor back, so
+ * an entry can be deleted once the people who stored it have opened the app
+ * since: a few releases after the removal is plenty. The pre-paint scripts
+ * mirror this map.
+ */
+export const RETIRED_THEMES: Readonly<Record<string, SessionThemeId>> = {
+  "strawberry-moon": "rose-night",
+}
+
 export function isThemePreference(value: string): value is ThemePreference {
   return (
     value === SYSTEM_PREFERENCE || SESSION_THEMES.some((t) => t.id === value)
@@ -67,11 +80,22 @@ export function resolveTheme(
   return getSessionTheme(preference) ?? SESSION_THEMES[0]
 }
 
+/** The successor of a retired theme id, or undefined for any other value. */
+function successorOf(id: string): SessionThemeId | undefined {
+  return Object.hasOwn(RETIRED_THEMES, id) ? RETIRED_THEMES[id] : undefined
+}
+
 export function readStoredPreference(
   storage: StorageLike | null = safeStorage()
 ): ThemePreference | null {
-  const raw = storage?.getItem(THEME_STORAGE_KEY)
-  return raw && isThemePreference(raw) ? raw : null
+  const stored = storage?.getItem(THEME_STORAGE_KEY)
+  if (!stored) return null
+  const successor = successorOf(stored)
+  if (successor) {
+    writeStoredPreference(successor, storage)
+    return successor
+  }
+  return isThemePreference(stored) ? stored : null
 }
 
 export function writeStoredPreference(

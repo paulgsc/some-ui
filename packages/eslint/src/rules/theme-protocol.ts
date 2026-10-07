@@ -51,7 +51,8 @@ const DEFAULT_CALLEE_NAMES = [
  */
 const BOUNDARY_OVERRIDE_CLASSES = [
   "dark",
-  "strawberry-moon",
+  "rose-night",
+  "harvest-sky",
   "peachy-blossom",
   "scheduler",
   "code",

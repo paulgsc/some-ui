@@ -44,6 +44,7 @@ export {
   prefersDark,
   readStoredPreference,
   resolveTheme,
+  RETIRED_THEMES,
   SYSTEM_PREFERENCE,
   THEME_STORAGE_KEY,
   watchSystem,

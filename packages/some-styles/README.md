@@ -254,6 +254,13 @@ import {
 - **Session and feature themes** are standalone palettes applied to a boundary
   element (`.dark`, `.peachy-blossom`, `.scheduler`, `.code`).
 
+Session themes come in two kinds. `light` and `dark` are vanilla: stock shadcn
+neutral, the familiar look a person finds in any other app. The named themes
+(`rose-night`, `harvest-sky`, `peachy-blossom`) are opinionated, with tinted
+grounds, dimmed text and one hue per role. Palette quality is treated as an
+engagement lever, not decoration; see
+[`docs/theme-engagement.md`](../../docs/theme-engagement.md).
+
 ## Typography
 
 Font families resolve through single tokens — `--font-sans`, `--font-mono`, and

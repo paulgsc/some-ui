@@ -91,7 +91,7 @@ describe("lint: theme-protocol/no-theme-boundary", () => {
     ],
     [
       "still fires on the value beside such a key",
-      `const THEME_CLASS = { "moody": "dark strawberry-moon" }`,
+      `const THEME_CLASS = { "moody": "dark rose-night" }`,
       BOUNDARY,
       true,
     ],

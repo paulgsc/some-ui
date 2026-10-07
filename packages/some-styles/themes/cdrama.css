@@ -68,7 +68,7 @@
 
   /* Dimmed from oklch(0.96 0.02 40) — same "text is never the brightest
      thing on screen" argument as some-filter's swatch registry (see
-     packages/some-styles/tokens/base.css's own --foreground comment);
+     the "never the sun" paragraph in rose-night.css's header);
      0.96 read as glowing white against this dark ground regardless of
      its tiny chroma. Hue kept at 40 (cdrama's own warm cream tone). */
   --foreground: oklch(68% 0.03 40deg);
