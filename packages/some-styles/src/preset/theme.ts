@@ -32,6 +32,10 @@ export const colors = {
   destructive: pair("destructive"),
   success: pair("success"),
   warning: pair("warning"),
+  diff: {
+    add: "var(--diff-add)",
+    remove: "var(--diff-remove)",
+  },
   card: pair("card"),
   popover: pair("popover"),
   surface: pair("surface"),

@@ -46,9 +46,13 @@ The effect is documented, and it is moderate:
 - Engagement is not measured yet. When it is, record the active theme
   (`data-theme` on `<html>`) with each session, so whether theme choice tracks
   return rate can be checked instead of assumed.
-- A theme can only reach what reads its tokens. These still hard-code colour
-  and look the same under every theme: LeetType's `diff-card`,
-  `constraint-diff` and typing `code-display`, topik's `quiz-summary`, the
-  claim/round choice lists, and the soundbites countdown's last-ten-seconds
-  amber. "New" also has no token of its own (an `--info` role would give it
-  one).
+- A theme can only reach what reads its tokens. States use `--success`,
+  `--destructive` and `--warning`, and diffs use `--diff-add` and
+  `--diff-remove`. The `theme-protocol/no-fixed-status-color` lint rule keeps
+  reusable UI on them. What still hard-codes a state is listed in a
+  `statusColorRatchet` call in its package's `eslint.config.js`, each with the
+  reason: Honeycomb's fixed dark HUD, and desktop-only surfaces (LeetType's
+  typing game, topik's desktop quiz and chat, lesson-crm's round editor) that
+  the desktop rebuild will replace.
+- "New" has no colour of its own. Nothing on the APK marks anything as new
+  yet; when something does, add an `--info` role for it then.

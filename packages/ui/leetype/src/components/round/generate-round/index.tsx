@@ -237,7 +237,7 @@ export const GenerateRound: FC<GenerateRoundProps> = ({
         )}
         {intake?.ok && (
           <p role="status" className="flex items-center gap-2 text-sm">
-            <Check className="size-4 text-emerald-400" aria-hidden="true" />
+            <Check className="size-4 text-success" aria-hidden="true" />
             {intake.round.id}: {intake.round.diffOptions.length} rewrites, every
             check passed.
           </p>

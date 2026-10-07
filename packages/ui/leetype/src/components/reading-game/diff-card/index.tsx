@@ -48,14 +48,14 @@ const ROW_PAINT: Record<
     code: "opacity-60",
   },
   add: {
-    row: "border-l-emerald-500/70 bg-emerald-500/[0.07]",
-    sign: "text-emerald-400",
+    row: "border-l-diff-add/70 bg-diff-add/[0.07]",
+    sign: "text-diff-add",
   },
   del: {
-    row: "border-l-rose-500/60 bg-rose-500/[0.06]",
-    sign: "text-rose-400",
+    row: "border-l-diff-remove/60 bg-diff-remove/[0.06]",
+    sign: "text-diff-remove",
     // Struck through, as `CodeDisplay` paints a deletion.
-    code: "line-through decoration-rose-400/40 opacity-70",
+    code: "line-through decoration-diff-remove/40 opacity-70",
   },
 }
 
@@ -188,8 +188,8 @@ export const DiffCard: FC<DiffCardProps> = ({ hunk, className }) => {
                 <span
                   className={cn(
                     "sticky left-0 z-10 w-9 shrink-0 select-none bg-secondary px-1 text-right tabular-nums text-muted-foreground/40",
-                    row.kind === "add" && "bg-emerald-500/[0.07]",
-                    row.kind === "del" && "bg-rose-500/[0.06]"
+                    row.kind === "add" && "bg-diff-add/[0.07]",
+                    row.kind === "del" && "bg-diff-remove/[0.06]"
                   )}
                 >
                   {row.newLine ?? row.oldLine ?? ""}
@@ -198,8 +198,8 @@ export const DiffCard: FC<DiffCardProps> = ({ hunk, className }) => {
                   aria-hidden="true"
                   className={cn(
                     "sticky left-9 z-10 w-4 shrink-0 select-none bg-secondary text-center",
-                    row.kind === "add" && "bg-emerald-500/[0.07]",
-                    row.kind === "del" && "bg-rose-500/[0.06]",
+                    row.kind === "add" && "bg-diff-add/[0.07]",
+                    row.kind === "del" && "bg-diff-remove/[0.06]",
                     paint.sign
                   )}
                 >

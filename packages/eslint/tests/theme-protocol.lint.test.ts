@@ -24,6 +24,7 @@ const TSX_FILE = "src/example.tsx"
 
 const BOUNDARY = "theme-protocol/no-theme-boundary"
 const COLOR = "theme-protocol/no-structural-palette-color"
+const STATUS = "theme-protocol/no-fixed-status-color"
 
 function makeConfig(): Array<Linter.Config> {
   return defineConfig([
@@ -37,6 +38,7 @@ function makeConfig(): Array<Linter.Config> {
       rules: {
         [BOUNDARY]: "error",
         [COLOR]: "error",
+        [STATUS]: "error",
       },
     },
   ])
@@ -150,8 +152,8 @@ describe("lint: theme-protocol/no-structural-palette-color", () => {
       COLOR,
       false,
     ],
-    // A chart series, a syntax category or a status hue may legitimately be
-    // fixed; flagging those would bury the real findings under exceptions.
+    // Chromatic colors are not this rule's: a chart series or a syntax
+    // category may be fixed, and status hues belong to no-fixed-status-color.
     [
       "does not fire on chromatic colors",
       `const C = () => <div className="bg-emerald-500 text-red-400 from-purple-400" />`,
@@ -179,6 +181,64 @@ describe("lint: theme-protocol/no-structural-palette-color", () => {
     const msgs = await lintSnippet(makeConfig(), code, TSX_FILE)
     expect(msgs.find((m) => m.ruleId === COLOR)?.message).toContain(
       "bg-background"
+    )
+  })
+})
+
+describe("lint: theme-protocol/no-fixed-status-color", () => {
+  it.each<SnippetCase>([
+    [
+      "fires on a status hue painting text",
+      `const C = () => <span className="text-emerald-400">Correct</span>`,
+      STATUS,
+      true,
+    ],
+    [
+      "fires on a per-side border with an arbitrary opacity",
+      `const C = () => <div className="border-l-rose-500/60 bg-rose-500/[0.06]" />`,
+      STATUS,
+      true,
+    ],
+    [
+      "fires behind a variant prefix",
+      `const C = () => <p className="text-amber-700 dark:text-amber-400" />`,
+      STATUS,
+      true,
+    ],
+    [
+      "fires on a cn() argument",
+      `const C = ({ warn }) => <svg className={cn(warn ? "stroke-amber-500" : "stroke-destructive")} />`,
+      STATUS,
+      true,
+    ],
+    [
+      "does not fire on the state tokens",
+      `const C = () => <div className="text-success bg-destructive/10 border-l-diff-add/70 stroke-warning" />`,
+      STATUS,
+      false,
+    ],
+    // Blue, purple and cyan carry charts, syntax and brand identity.
+    [
+      "does not fire on hues that do not read as a state",
+      `const C = () => <div className="text-blue-600 from-purple-400 bg-cyan-400/40" />`,
+      STATUS,
+      false,
+    ],
+    [
+      "does not fire outside a class-name context",
+      `const doc = "text-emerald-400 used to mean correct"`,
+      STATUS,
+      false,
+    ],
+  ])("%s", (title, code, rule, fires) =>
+    expectSnippet(makeConfig(), code, TSX_FILE, rule, fires, title)
+  )
+
+  it("names the state token for the hue", async () => {
+    const code = `const C = () => <div className="bg-rose-500" />`
+    const msgs = await lintSnippet(makeConfig(), code, TSX_FILE)
+    expect(msgs.find((m) => m.ruleId === STATUS)?.message).toContain(
+      "text-destructive"
     )
   })
 })

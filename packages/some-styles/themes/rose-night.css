@@ -61,6 +61,11 @@
   --success-foreground: oklch(18% 0.03 165deg);
   --warning: oklch(78% 0.11 80deg);
   --warning-foreground: oklch(19% 0.04 80deg);
+
+  /* Teal against the coral: they stay apart under deuteranopia, where
+     mint against coral would not */
+  --diff-add: oklch(75% 0.09 200deg);
+  --diff-remove: var(--destructive);
   --border: oklch(32% 0.025 330deg);
   --input: oklch(35% 0.03 330deg);
   --ring: var(--primary);

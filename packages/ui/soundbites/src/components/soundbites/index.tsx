@@ -160,7 +160,7 @@ const RecordButton = ({
           r={RING_RADIUS}
           className={cn(
             "fill-none transition-[stroke-dashoffset] duration-100",
-            warning ? "stroke-amber-500" : "stroke-destructive"
+            warning ? "stroke-warning" : "stroke-destructive"
           )}
           strokeWidth="4"
           strokeLinecap="round"
@@ -237,7 +237,7 @@ const KeptSoundbite = ({
     <li
       className={cn(
         "flex items-center gap-3 rounded-lg border p-3",
-        isNextReplaced && "border-amber-500/60 bg-amber-500/5"
+        isNextReplaced && "border-warning/60 bg-warning/5"
       )}
     >
       <Button
@@ -266,7 +266,7 @@ const KeptSoundbite = ({
         </p>
         {full &&
           (isNextReplaced ? (
-            <p className="text-xs font-medium text-amber-700 dark:text-amber-400">
+            <p className="text-xs font-medium text-warning">
               Replaced by your next one
             </p>
           ) : (

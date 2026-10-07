@@ -108,7 +108,7 @@ export const OrchestratorTimeline = ({
               className={cn(
                 "absolute h-3 top-2.5 rounded-sm transition-colors",
                 activeSceneIds.has(s.scene.scene_name)
-                  ? "bg-emerald-500"
+                  ? "bg-primary"
                   : "bg-primary/20"
               )}
               style={{
@@ -196,7 +196,7 @@ const GanttTimelineScene: FC<GanttTimelineSceneProps> = ({
         className={cn(
           "relative border-l-4 transition-all duration-200 hover:shadow-md",
           isActive
-            ? "border-l-emerald-500 bg-emerald-500/5 ring-1 ring-emerald-500/20"
+            ? "border-l-primary bg-primary/5 ring-1 ring-primary/20"
             : "border-l-transparent",
           isPast && "opacity-60 grayscale-[0.5]",
           isDragging && "z-50 shadow-2xl"
@@ -222,7 +222,7 @@ const GanttTimelineScene: FC<GanttTimelineSceneProps> = ({
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <AlertCircle size={14} className="text-amber-500" />
+                      <AlertCircle size={14} className="text-warning" />
                     </TooltipTrigger>
                     <TooltipContent>Overlaps with another scene</TooltipContent>
                   </Tooltip>
@@ -235,7 +235,7 @@ const GanttTimelineScene: FC<GanttTimelineSceneProps> = ({
               <div
                 className={cn(
                   "absolute h-full rounded-full",
-                  isActive ? "bg-emerald-500" : "bg-primary/40"
+                  isActive ? "bg-primary" : "bg-primary/40"
                 )}
                 style={{ left: `${startPercent}%`, width: `${widthPercent}%` }}
               />

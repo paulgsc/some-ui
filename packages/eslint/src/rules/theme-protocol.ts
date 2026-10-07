@@ -10,10 +10,12 @@ import type { Rule } from "eslint"
  *     session preference → host adapter → DOM boundary (class + data-theme)
  *       → semantic custom properties → components inherit
  *
- * and both rules catch a component stepping out of the last arrow:
+ * and these rules catch a component stepping out of the last arrow:
  * `no-theme-boundary` a component opening its own boundary (replacing the
  * tokens for its subtree), `no-structural-palette-color` a substrate role
- * painted with a literal gray. Both look like ordinary class names.
+ * painted with a literal gray, `no-fixed-status-color` a state (correct,
+ * wrong, warning, an added or removed line) painted with a literal hue. All
+ * three look like ordinary class names.
  *
  */
 
@@ -293,7 +295,7 @@ export const noStructuralPaletteColor: Rule.RuleModule = {
     type: "problem",
     docs: {
       description:
-        "Forbid painting a structural role (surface, text, border, ring, …) with a literal neutral from the Tailwind palette inside reusable UI. bg-slate-900 and text-gray-400 are fixed values: they cannot follow --background or --muted-foreground, so the component is 90% themed and wrong in the remaining 10%, which reads as a component bug rather than a theming gap. Chromatic colors are not flagged — a chart series, a syntax token or a status hue may legitimately be fixed — and neither are white/black, which are usually correct over media and scrims.",
+        "Forbid painting a structural role (surface, text, border, ring, …) with a literal neutral from the Tailwind palette inside reusable UI. bg-slate-900 and text-gray-400 are fixed values: they cannot follow --background or --muted-foreground, so the component is 90% themed and wrong in the remaining 10%, which reads as a component bug rather than a theming gap. Chromatic colors are not flagged here — a chart series or a syntax token may legitimately be fixed, and status hues are no-fixed-status-color's — and neither are white/black, which are usually correct over media and scrims.",
     },
     schema: [SHARED_SCHEMA],
     messages: {
@@ -327,6 +329,98 @@ export const noStructuralPaletteColor: Rule.RuleModule = {
             token,
             suggestion: STRUCTURAL_ROLES[match[1] ?? ""] ?? "a semantic token",
           },
+        })
+      }
+    }
+
+    return {
+      Literal: check,
+      TemplateLiteral: check,
+    }
+  },
+}
+
+/**
+ * Hue families that read as a state: green for correct or done, red for wrong
+ * or an error, amber for a warning. A component that paints a state with one
+ * of these cannot follow the theme's own state colours, so under a pink or
+ * coral theme its "correct" and "wrong" stop matching every other surface.
+ * Blue, purple, cyan and the rest stay allowed: they carry charts, syntax and
+ * brand identity, where a fixed hue is the point.
+ */
+const STATUS_FAMILIES: Record<string, string> = {
+  green: "success",
+  emerald: "success",
+  lime: "success",
+  red: "destructive",
+  rose: "destructive",
+  amber: "warning",
+  yellow: "warning",
+  orange: "warning",
+}
+
+/** Utilities that take a color, including the per-side border forms. */
+const COLOR_UTILITIES = [
+  "bg",
+  "text",
+  "border(?:-[xytrblse])?",
+  "divide",
+  "outline",
+  "ring(?:-offset)?",
+  "placeholder",
+  "caret",
+  "decoration",
+  "fill",
+  "stroke",
+  "shadow",
+  "accent",
+  "from",
+  "via",
+  "to",
+]
+
+const STATUS_COLOR_RE = new RegExp(
+  `^(?:[a-z0-9-]+:)*(?:${COLOR_UTILITIES.join("|")})-(${Object.keys(
+    STATUS_FAMILIES
+  ).join("|")})-\\d{2,3}(?:\\/[\\d.[\\]]+)?$`
+)
+
+export const noFixedStatusColor: Rule.RuleModule = {
+  meta: {
+    type: "problem",
+    docs: {
+      description:
+        "Forbid painting a state with a literal status hue (green, emerald, lime, red, rose, amber, yellow, orange) inside reusable UI. The theme defines --success, --destructive and --warning, and --diff-add / --diff-remove for a diff, so a component that hard-codes text-emerald-400 for correct keeps that green under every theme.",
+    },
+    schema: [SHARED_SCHEMA],
+    messages: {
+      status:
+        '"{{token}}" paints a state with a fixed hue, so it cannot follow the active theme. Use the {{role}} token (text-{{role}}, bg-{{role}}/10, …), or diff-add / diff-remove for the lines of a diff. If the hue is content rather than state, such as a category or a chart series, keep it and add an eslint-disable-next-line with the reason.',
+    },
+  },
+  create(context): Rule.RuleListener {
+    const options = readOptions(context)
+
+    function check(rawNode: any): void {
+      const text = staticText(rawNode)
+      if (text === undefined) return
+      if (
+        !isClassNameContext(
+          rawNode,
+          options.attributeNames,
+          options.calleeNames,
+          options.identifierPattern
+        )
+      ) {
+        return
+      }
+      for (const token of text.split(/\s+/)) {
+        const match = STATUS_COLOR_RE.exec(token)
+        if (!match) continue
+        context.report({
+          node: rawNode,
+          messageId: "status",
+          data: { token, role: STATUS_FAMILIES[match[1] ?? ""] ?? "success" },
         })
       }
     }

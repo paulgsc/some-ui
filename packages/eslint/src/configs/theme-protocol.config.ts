@@ -1,4 +1,5 @@
 import {
+  noFixedStatusColor,
   noStructuralPaletteColor,
   noThemeBoundary,
 } from "@eslint/rules/index.js"
@@ -71,6 +72,7 @@ export const themeProtocolPlugin = {
   rules: {
     "no-theme-boundary": noThemeBoundary,
     "no-structural-palette-color": noStructuralPaletteColor,
+    "no-fixed-status-color": noFixedStatusColor,
   },
 }
 
@@ -91,6 +93,7 @@ export default defineConfig([
     rules: {
       "theme-protocol/no-theme-boundary": "error",
       "theme-protocol/no-structural-palette-color": "error",
+      "theme-protocol/no-fixed-status-color": "error",
       // The one place that answers "what may a reusable UI workspace not
       // import". A package reaching into an app's theme provider is the
       // coupling this architecture prevents (and the protocol is CSS
@@ -140,6 +143,21 @@ export function structuralColorRatchet(
     {
       files: globs,
       rules: { "theme-protocol/no-structural-palette-color": "off" },
+    },
+  ])
+}
+
+/**
+ * The same ratchet for `no-fixed-status-color`: source that still paints a
+ * state with a literal hue. Each caller names its files and says why they are
+ * not migrated yet (a fixed art direction, a surface about to be rewritten),
+ * in its own `eslint.config.js`. Delete a glob to migrate it.
+ */
+export function statusColorRatchet(globs: Array<string>): Config {
+  return defineConfig([
+    {
+      files: globs,
+      rules: { "theme-protocol/no-fixed-status-color": "off" },
     },
   ])
 }

@@ -54,6 +54,13 @@
      figures). Amber, dark enough to read as text on --background. */
   --warning: oklch(52% 0.13 65deg);
   --warning-foreground: oklch(98.5% 0 0deg);
+
+  /* Lines a diff adds and removes. Blue and orange rather than green and
+     red: green against red collapses into one colour for deuteranopes,
+     blue against orange does not (GitHub's colour-blind themes make the
+     same swap). Tailwind blue-700 / orange-700 here, -400 under .dark. */
+  --diff-add: oklch(48.8% 0.243 264.376deg);
+  --diff-remove: oklch(55.3% 0.195 38.402deg);
   --border: oklch(92.2% 0 0deg);
   --input: oklch(92.2% 0 0deg);
   --ring: oklch(70.8% 0 0deg);
@@ -173,6 +180,8 @@
   --success-foreground: oklch(15% 0.02 150deg);
   --warning: oklch(80% 0.14 75deg);
   --warning-foreground: oklch(18% 0.03 75deg);
+  --diff-add: oklch(70.7% 0.165 254.624deg);
+  --diff-remove: oklch(75% 0.183 55.934deg);
   --border: oklch(100% 0 0deg / 10%);
   --input: oklch(100% 0 0deg / 15%);
   --ring: oklch(55.6% 0 0deg);
