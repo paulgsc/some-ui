@@ -6,15 +6,6 @@
  * `callForeign` turns it into one `ForeignOutcome`, in our vocabulary
  * (`IntentError`), by a deadline.
  *
- * Why shared: a port that writes its own answer to "what can go wrong, how
- * long do we wait, what is the person told, where does the cause go" tends
- * to skip one. LeetType's phone dictation (#1671) skipped all four: no
- * "unavailable", no cause, no deadline on Stop, so a phone whose recognizer
- * could not start flashed "Listening…" for a frame on every tap, logged
- * nothing, and could hold Stop at "Finishing…" for good. Each answer is a
- * law below, kept once. `@some-ui/speech`'s settlement contract is the same
- * idea inside one package; this is it for everyone else.
- *
  * # The laws (`__tests__/foreign.test.ts` checks them for any behaviour of
  * the foreign side)
  *
@@ -141,9 +132,8 @@ const sinks = new Set<FailureSink>()
 
 /**
  * Sends every failure `reportFailure` reports to `sink` as well, until the
- * returned function is called. For the app, once, at boot: a browser's
- * console is enough, a release APK's is not (Capacitor forwards it to
- * logcat only in debug builds).
+ * returned function is called. For the app, once, at boot: on the phone,
+ * its native log (apps/www `lib/native-log`).
  */
 export function addFailureSink(sink: FailureSink): () => void {
   sinks.add(sink)
@@ -154,11 +144,10 @@ export function addFailureSink(sink: FailureSink): () => void {
 
 /**
  * The usual `ForeignPort.report`: a console line with the cause, then each
- * sink. Through `globalThis.console`, on purpose: apps strip `console.*`
- * calls from production builds (www's `dropConsole`), which removes the
- * bare form and keeps this one, so the failure still reaches the browser's
- * console. www's `check-bundle-paths.ts` fails a build that loses it. A sink
- * that throws is skipped, never fatal.
+ * sink. Through `globalThis.console`, on purpose: www's release minifier
+ * strips the bare `console.*` form and keeps this one
+ * (`apps/www/src/lib/intent/__tests__/release-console.test.ts` holds it to
+ * that). A sink that throws is skipped, never fatal.
  */
 export function reportFailure(failure: ForeignFailure): void {
   globalThis.console.error(

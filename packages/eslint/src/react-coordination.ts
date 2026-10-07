@@ -46,12 +46,14 @@
 // word "await" in JSX text or a comment is not a site.
 import ts from "typescript"
 
-import type { CountViolation } from "./site-count.ts"
+import type { CountedCheck, CountViolation } from "./site-count.ts"
 import {
+  describeCountViolation,
   findCountViolations,
   isInScope,
   parseCountAllowlist,
   parseSource,
+  PROMISE_CHAIN,
 } from "./site-count.ts"
 
 export { isInScope }
@@ -64,7 +66,6 @@ const JSX_SOURCE = /\.[jt]sx$/
 const REACT_LIBRARY = /(?:^|\/)react(?:-[^/]*)?(?:\/|$)|-react(?:\/|$)/
 const HOOK_NAME = /^use[A-Z0-9]/
 const NAMESPACE = /^[A-Z]/
-const PROMISE_CHAIN = new Set(["then", "catch", "finally"])
 const REASON = /^#\s*(?:Coordination|Grandfathered):\s*\S/
 
 function importsReact(file: ts.SourceFile): boolean {
@@ -159,36 +160,26 @@ export function findCoordinationViolations(
   return findCountViolations(actual, allowlist, REASON)
 }
 
-function assertNever(value: never): never {
-  throw new Error(`unhandled violation: ${JSON.stringify(value)}`)
+/** R1 as `runCountedCheck` runs it (`scripts/check-react-coordination.ts`). */
+export const COORDINATION_CHECK: CountedCheck = {
+  tag: "react-coordination",
+  id: "R1",
+  allowlistFile: ALLOWLIST_FILE,
+  reason: REASON,
+  reasonLine: '"# Coordination: <why>"',
+  reasonHint:
+    "Say why this React module coordinates async work instead of a runtime outside React doing it.",
+  count: coordinationSites,
+  sites: "await/promise-chain sites",
+  unlisted: (sites) =>
+    `a React module with ${sites} await/promise-chain site(s), not in ${ALLOWLIST_FILE}. Either move the coordination out of React (docs/monorepo-boundaries.md, R1)`,
+  raised: "More coordination in a React module: if it belongs there,",
+  staleAlso: "(or is gone, or is no longer a React module)",
+  counted: "React modules coordinate",
 }
 
 export function describeCoordinationViolation(
   v: CoordinationViolation
 ): string {
-  switch (v.kind) {
-    case "malformed": {
-      return `${ALLOWLIST_FILE}:${v.line}: not a "<sites> <path>" entry, a "#" comment or blank: ${v.text}`
-    }
-    case "duplicate": {
-      return `${ALLOWLIST_FILE}:${v.line}: ${v.path} is listed twice.`
-    }
-    case "unreasoned": {
-      return `${ALLOWLIST_FILE}:${v.line}: ${v.path} has no "# Coordination: <why>" line in its group. Say why this React module coordinates async work instead of a runtime outside React doing it.`
-    }
-    case "unlisted": {
-      return `${v.path}: a React module with ${v.sites} await/promise-chain site(s), not in ${ALLOWLIST_FILE}. Either move the coordination out of React (docs/monorepo-boundaries.md, R1), or add "${v.sites} ${v.path}" under a "# Coordination: <why>" line.`
-    }
-    case "changed": {
-      return v.sites > v.listed
-        ? `${v.path}: ${v.sites} await/promise-chain sites, listed as ${v.listed}. More coordination in a React module: if it belongs there, raise the count in ${ALLOWLIST_FILE}:${v.line}, and if that entry is Grandfathered, move it under its own "# Coordination: <why>" (R1).`
-        : `${v.path}: ${v.sites} await/promise-chain sites, listed as ${v.listed}. Lower the count in ${ALLOWLIST_FILE}:${v.line} to match.`
-    }
-    case "stale": {
-      return `${ALLOWLIST_FILE}:${v.line}: ${v.path} no longer has await/promise-chain sites (or is gone, or is no longer a React module). Remove the entry.`
-    }
-    default: {
-      return assertNever(v)
-    }
-  }
+  return describeCountViolation(COORDINATION_CHECK, v)
 }

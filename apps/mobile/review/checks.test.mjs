@@ -433,7 +433,7 @@ test("reviewPluginConfig holds the shipped config to policy.json, and fails with
     )
   }
   assert.deepEqual(
-    levels(reviewPluginConfig("apk", null, policy.pluginConfig)),
+    levels(reviewPluginConfig("apk", undefined, policy.pluginConfig)),
     ["error:plugin-config"]
   )
 })

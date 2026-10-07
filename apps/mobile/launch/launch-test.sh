@@ -11,21 +11,18 @@
 # nothing. <out-dir> gets two screenshots, the monkey log and logcat, which
 # the job uploads.
 #
-# It also fails when the app's own database did not open: the app's native
-# log (tag "SomeUI", NativeLogPlugin.java) must say "device storage: opened"
-# and must not carry a "foreign-failure [device storage]" line. A plugin that
-# fails to load does not crash; it fails every database call behind a page
-# that renders, which is how "CapacitorSQLitePlugin: null" reached a phone
-# (2026-10-07) through a green run. Every other reported failure (a missing
-# speech recognizer, say) is listed in the summary, not failed on.
+# It also fails when the app's database did not open, which does not crash:
+# the app's native log (tag "SomeUI", NativeLogPlugin.java) must say "device
+# storage: opened" and carry no "foreign-failure [device storage]" line.
+# Other reported failures (no speech recognizer, say) are listed, not failed.
 #
 # What it cannot see is a WebView that starts and stays blank: that does not
 # crash. Only the screenshot shows the page rendered. Two signals that looked
 # like they would were tried on the first run (2026-09-30) and read nothing:
 # `uiautomator dump` exposes no WebView text, and Capacitor forwards console
 # output to logcat only in debug builds (`loggingBehavior` defaults to
-# "debug"), so a release build's console errors never reach it. That is why
-# the native log exists: it writes to logcat in every build.
+# "debug"), so a release build's console errors never reach it. The native
+# log does.
 #
 # It is one script rather than the action's `script:` input because that
 # input runs each line as its own shell, so no variable or `if` spans lines.
@@ -87,7 +84,7 @@ fi
 # it reported failing.
 grep -E "\bSomeUI\b" "$out/logcat.txt" > "$out/native-log.txt" || true
 if grep -q "foreign-failure \[device storage\]" "$out/native-log.txt"; then
-  failures+=("the app's database failed: $(grep -m1 "foreign-failure \[device storage\]" "$out/native-log.txt" | sed 's/.*foreign-failure/foreign-failure/') (native-log.txt)")
+  failures+=("the app's database reported a failure: $(grep -m1 "foreign-failure \[device storage\]" "$out/native-log.txt" | sed 's/.*foreign-failure/foreign-failure/') (native-log.txt)")
 fi
 if ! grep -q "device storage: opened" "$out/native-log.txt"; then
   failures+=("the app's database never opened: no \"device storage: opened\" in its native log (native-log.txt)")

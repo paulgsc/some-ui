@@ -12,14 +12,8 @@
  * and a later error, or silence, reaches JavaScript as nothing. So words
  * appear when the learner stops speaking.
  *
- * Every call into the plugin goes through `callForeign` (docs/monorepo-
- * boundaries.md, F1): asking for the microphone, and the utterance itself,
- * each by its own deadline. `classifyPhoneSpeech` reads the plugin's error
- * text (`SpeechRecognition.java`'s `getErrorText` and `Constants`, pinned
- * against that source in the test) into an `IntentError`, so a phone with no
- * usable recognizer is `unavailable` and the microphone is withdrawn instead
- * of flashing "Listening…" on every tap. Failures are logged with the
- * plugin's own words.
+ * Asking for the microphone, and the utterance itself, each go through
+ * `callForeign` (F1) by their own deadline.
  *
  * The permission is RECORD_AUDIO, as for soundbites (apps/mobile's manifest,
  * `review/policy.json`). The plugin loads on the first `listen`, and only the

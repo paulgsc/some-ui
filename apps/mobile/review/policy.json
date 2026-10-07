@@ -86,7 +86,7 @@
     "$comment": "Plugin settings the APK must ship with, read from its assets/capacitor.config.json (capacitor.config.ts's `plugins`). Keys are paths under `plugins`, spelt as the plugin's Java reads them.",
     "CapacitorSQLite.androidIsEncryption": {
       "value": false,
-      "reason": "The plugin's default is true (SqliteConfig.java), and its load() then opens an EncryptedSharedPreferences file keyed in the Android Keystore. Auto Backup restores the file after an uninstall but never the key, so the reinstalled plugin fails to load and every database call answers \"CapacitorSQLitePlugin: null\" (2026-10-07). The database is 'no-encryption'; nothing needs the key. Read as pConfig.has(\"androidIsEncryption\") in CapacitorSQLitePlugin.getSqliteConfig."
+      "reason": "With the plugin's default (true), a reinstall that Auto Backup restores cannot open its database: apps/mobile/capacitor.config.ts says why. Read as pConfig.has(\"androidIsEncryption\") in CapacitorSQLitePlugin.getSqliteConfig."
     }
   },
 

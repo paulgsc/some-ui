@@ -23,6 +23,7 @@ import {
   upsertRuns,
 } from "@/lib/device-backend/content-store"
 import type { SqlDriver } from "@/lib/device-backend/sql"
+import { DeviceStorageError } from "@/lib/device-backend/sql"
 import type { StorageBudget } from "@/lib/device-backend/storage"
 import {
   ANDROID_BACKUP_BUDGET,
@@ -159,6 +160,8 @@ export async function syncFromHome(
       if (outcome === "inserted") report.lessons.added += 1
       if (outcome === "updated") report.lessons.updated += 1
     } catch (error) {
+      // The phone's storage failing is not this item's: stop and say so.
+      if (error instanceof DeviceStorageError) throw error
       if (error instanceof OverBudgetError) report.lessons.skipped += 1
       else report.failed.push(entry.key)
     }
@@ -198,6 +201,8 @@ export async function syncFromHome(
         report.rounds.runs += await upsertRuns(store, runs.body, now())
       }
     } catch (error) {
+      // The phone's storage failing is not this item's: stop and say so.
+      if (error instanceof DeviceStorageError) throw error
       if (error instanceof OverBudgetError) report.rounds.skipped += 1
       else report.failed.push(listing.id)
     }

@@ -1,15 +1,8 @@
 // F1 (docs/monorepo-boundaries.md, "A port translates: the foreign
 // boundary"): every wait on an API this codebase does not own goes through
-// `callForeign` (`@some-ui/intent-kit`), which gives it a deadline, our error
-// vocabulary, the foreign cause and a report. A wait anywhere else is listed
-// in `scripts/foreign-boundary.allowlist`, with exactly how many such sites
-// its file has, under a comment block that says why it needs no boundary
-// (`Unbounded:`) or that it predates the rule (`Grandfathered:`).
-//
-// A count, like R1 (`react-coordination.ts`), and for a related reason:
-// whether a given wait can hang, or fail in words a person never hears, is
-// not decidable from syntax. So the check never judges. It makes every new
-// unbounded wait a line in the diff, which is where F1 is reviewed.
+// `callForeign` (`@some-ui/intent-kit`), or is listed in
+// `scripts/foreign-boundary.allowlist` at its file's exact count. A count,
+// like R1, for the reason the doc gives.
 //
 // What is foreign: whatever is imported from a native plugin
 // (`@capacitor/*`, `@capacitor-community/*`), statically or by `import()`,
@@ -45,8 +38,14 @@
 // the same change, so the pin always says what is there.
 import ts from "typescript"
 
-import type { CountViolation } from "./site-count.ts"
-import { findCountViolations, isInScope, parseSource } from "./site-count.ts"
+import type { CountedCheck, CountViolation } from "./site-count.ts"
+import {
+  describeCountViolation,
+  findCountViolations,
+  isInScope,
+  parseSource,
+  PROMISE_CHAIN,
+} from "./site-count.ts"
 
 export { isInScope }
 
@@ -59,7 +58,6 @@ const FOREIGN_GLOBALS: ReadonlySet<string> = new Set([
 ])
 const BOUNDARY_MODULE = "@some-ui/intent-kit"
 const BOUNDARY_EXPORT = "callForeign"
-const PROMISE_CHAIN = new Set(["then", "catch", "finally"])
 const REASON = /^#\s*(?:Unbounded|Grandfathered):\s*\S/
 
 function isForeignImport(node: ts.Node): boolean {
@@ -297,36 +295,26 @@ export function findForeignBoundaryViolations(
   return findCountViolations(actual, allowlist, REASON)
 }
 
-function assertNever(value: never): never {
-  throw new Error(`unhandled violation: ${JSON.stringify(value)}`)
+/** F1 as `runCountedCheck` runs it (`scripts/check-foreign-boundary.ts`). */
+export const FOREIGN_BOUNDARY_CHECK: CountedCheck = {
+  tag: "foreign-boundary",
+  id: "F1",
+  allowlistFile: ALLOWLIST_FILE,
+  reason: REASON,
+  reasonLine: '"# Unbounded: <why>"',
+  reasonHint:
+    "Say why this wait on a foreign API needs no deadline, no classified failure and no report.",
+  count: foreignSites,
+  sites: "unbounded foreign waits",
+  unlisted: (sites) =>
+    `${sites} wait(s) on a foreign API (a native plugin, navigator, Notification) outside callForeign. Run it through callForeign from @some-ui/intent-kit (docs/monorepo-boundaries.md, F1)`,
+  raised: "A new one goes through callForeign; if it truly needs no boundary,",
+  staleAlso: "(or is gone)",
+  counted: "files wait on a foreign API outside callForeign",
 }
 
 export function describeForeignBoundaryViolation(
   v: ForeignBoundaryViolation
 ): string {
-  switch (v.kind) {
-    case "malformed": {
-      return `${ALLOWLIST_FILE}:${v.line}: not a "<sites> <path>" entry, a "#" comment or blank: ${v.text}`
-    }
-    case "duplicate": {
-      return `${ALLOWLIST_FILE}:${v.line}: ${v.path} is listed twice.`
-    }
-    case "unreasoned": {
-      return `${ALLOWLIST_FILE}:${v.line}: ${v.path} has no "# Unbounded: <why>" line in its group. Say why this wait on a foreign API needs no deadline, no classified failure and no report.`
-    }
-    case "unlisted": {
-      return `${v.path}: ${v.sites} wait(s) on a foreign API (a native plugin, navigator, Notification) outside callForeign. Run it through callForeign from @some-ui/intent-kit (docs/monorepo-boundaries.md, F1), or add "${v.sites} ${v.path}" under a "# Unbounded: <why>" line in ${ALLOWLIST_FILE}.`
-    }
-    case "changed": {
-      return v.sites > v.listed
-        ? `${v.path}: ${v.sites} unbounded foreign waits, listed as ${v.listed}. A new one goes through callForeign (F1); if it truly needs no boundary, raise the count in ${ALLOWLIST_FILE}:${v.line}, and if that entry is Grandfathered, move it under its own "# Unbounded: <why>".`
-        : `${v.path}: ${v.sites} unbounded foreign waits, listed as ${v.listed}. Lower the count in ${ALLOWLIST_FILE}:${v.line} to match.`
-    }
-    case "stale": {
-      return `${ALLOWLIST_FILE}:${v.line}: ${v.path} no longer waits on a foreign API outside callForeign (or is gone). Remove the entry.`
-    }
-    default: {
-      return assertNever(v)
-    }
-  }
+  return describeCountViolation(FOREIGN_BOUNDARY_CHECK, v)
 }

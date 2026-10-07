@@ -125,8 +125,6 @@ export function createNoteComposer(ports: ComposerPorts): ComposerRuntime {
           if (listening?.entry === entry) listening = null
           return true
         }
-        // `outcome` never rejects (`callForeign`'s first law), so there is
-        // no rejection arm to forget.
         void handle.outcome.then((outcome) => {
           if (!settled()) return
           switch (outcome.status) {

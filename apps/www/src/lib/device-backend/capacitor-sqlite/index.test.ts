@@ -92,18 +92,18 @@ describe("openCapacitorSqlite", () => {
     await settled
   })
 
-  it("reads a failed statement as the storage's, retryable", async () => {
+  it("rethrows a statement the storage refused as the plugin's own error, for the handler's 500", async () => {
+    const refused = new Error("Run: UNIQUE constraint failed: sessions.id")
     native.methods = {
       checkConnectionsConsistency: (): Promise<unknown> =>
         Promise.resolve({ result: true }),
       createConnection: (): Promise<unknown> => Promise.resolve(),
       open: (): Promise<unknown> => Promise.resolve(),
-      run: (): Promise<unknown> =>
-        Promise.reject(new Error("Run: disk I/O error")),
+      run: (): Promise<unknown> => Promise.reject(refused),
     }
     const driver = await openCapacitorSqlite("test")
-    await expect(driver.run("DELETE FROM sessions")).rejects.toMatchObject({
-      error: { kind: "unknown", retryable: true },
-    })
+    await expect(driver.run("INSERT INTO sessions VALUES (1)")).rejects.toBe(
+      refused
+    )
   })
 })

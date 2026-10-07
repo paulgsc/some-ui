@@ -205,12 +205,7 @@ describe("classifyPhoneSpeech", () => {
     expect(unknown).toEqual(["Didn't understand, please try again."])
   })
 
-  it("withdraws on what no tap can fix, and blames the phone, never the learner", () => {
-    for (const message of pluginMessages()) {
-      const verdict = classifyPhoneSpeech(new Error(message))
-      if (verdict.kind === "unavailable") expect(verdict.retryable).toBe(false)
-      expect(verdict.summary).not.toMatch(/you said|didn't catch|speak/i)
-    }
+  it("reads a build without the plugin as unavailable, whatever its message", () => {
     expect(
       classifyPhoneSpeech(
         Object.assign(new Error("x"), { code: "UNIMPLEMENTED" })

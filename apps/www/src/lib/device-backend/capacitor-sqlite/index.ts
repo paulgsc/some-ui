@@ -9,14 +9,8 @@
  * its own transaction, which cannot nest inside `transaction()` below and
  * turns a seed into hundreds of fsyncs.
  *
- * Every call into the plugin goes through `callForeign` (docs/monorepo-
- * boundaries.md, F1): by a deadline, in `IntentError`'s words, reported
- * with the plugin's own message. A failure reaches handlers as a
- * `DeviceStorageError`, which the interceptor answers as a 503, so a phone
- * whose database will not open says that, not "the study server had a
- * problem". The plugin's encryption is off (apps/mobile capacitor.config.ts
- * says why); `classifyDeviceStorage` still names its failed load, should
- * anything else make it fail.
+ * Every call into the plugin goes through `callForeign` (F1); the storage
+ * failing reaches handlers as a `DeviceStorageError`, a 503 of its own.
  */
 import { CapacitorSQLite, SQLiteConnection } from "@capacitor-community/sqlite"
 import type { SQLiteDBConnection } from "@capacitor-community/sqlite"
@@ -40,14 +34,14 @@ const OPEN_DEADLINE_MS = 30_000
 const STATEMENT_DEADLINE_MS = 60_000
 
 /**
- * What the plugin's failure means here. It rejects with its `load()`'s
- * message, prefixed "CapacitorSQLitePlugin: ", whenever its native side
- * failed to start (`CapacitorSQLitePlugin.java`): every call fails the same
- * way until the process restarts, so no retry helps. A Capacitor `code` of
- * `UNAVAILABLE` or `UNIMPLEMENTED` (no plugin in this build) is as final.
- * Anything else is one statement failing.
+ * When the storage itself failed, not a statement: its deadline passed, or
+ * the plugin is not there to answer. It rejects every call with its
+ * `load()`'s message, prefixed "CapacitorSQLitePlugin: ", once its native
+ * side failed to start (`CapacitorSQLitePlugin.java`), and a Capacitor
+ * `code` of `UNAVAILABLE` or `UNIMPLEMENTED` means no plugin in this build:
+ * no retry in this process helps either.
  */
-function classifyDeviceStorage(error: unknown): ForeignVerdict {
+function storageFailure(error: unknown): ForeignVerdict | null {
   if (error instanceof ForeignDeadlineError) {
     return {
       kind: "unreachable",
@@ -60,35 +54,55 @@ function classifyDeviceStorage(error: unknown): ForeignVerdict {
       ? Reflect.get(error, "code")
       : undefined
   const message = error instanceof Error ? error.message : String(error)
-  if (
-    code === "UNAVAILABLE" ||
+  return code === "UNAVAILABLE" ||
     code === "UNIMPLEMENTED" ||
     message.startsWith("CapacitorSQLitePlugin:")
-  ) {
-    return {
-      kind: "unavailable",
-      retryable: false,
-      summary: "This phone's storage couldn't be opened.",
-    }
-  }
-  return {
-    kind: "unknown",
-    retryable: true,
-    summary: "This phone's storage couldn't finish that.",
-  }
+    ? {
+        kind: "unavailable",
+        retryable: false,
+        summary: "This phone's storage couldn't be opened.",
+      }
+    : null
 }
 
-const PORT = {
+/** Opening: any other failure is still the storage's, and may pass. */
+const OPEN = {
   name: "device storage",
-  classify: classifyDeviceStorage,
+  classify: (error: unknown): ForeignVerdict =>
+    storageFailure(error) ?? {
+      kind: "unknown",
+      retryable: true,
+      summary: "This phone's storage didn't open.",
+    },
   report: reportFailure,
 }
 
-/** A call's value, or the storage's failure as a `DeviceStorageError`. */
+/**
+ * A statement: any other failure is the statement refused (a constraint, bad
+ * SQL), which is a handler's bug and no retry fixes.
+ */
+const STATEMENT = {
+  ...OPEN,
+  classify: (error: unknown): ForeignVerdict =>
+    storageFailure(error) ?? {
+      kind: "rejected",
+      retryable: false,
+      summary: "This phone's storage refused that.",
+    },
+}
+
+/**
+ * A call's value. A refused statement is rethrown as the plugin's own error,
+ * so it reaches the interceptor's 500 naming the route, as it always did;
+ * the storage failing is a `DeviceStorageError`, its own 503.
+ */
 async function resultOf<T>(call: ForeignCall<T>): Promise<T> {
   const outcome = await call.outcome
   if (outcome.status === "succeeded") return outcome.value
-  if (outcome.status === "failed") throw new DeviceStorageError(outcome.error)
+  if (outcome.status === "failed") {
+    if (outcome.error.kind === "rejected") throw outcome.error.cause
+    throw new DeviceStorageError(outcome.error)
+  }
   // Nothing here abandons a call.
   throw new Error("device storage: a call was abandoned")
 }
@@ -105,7 +119,7 @@ export async function openCapacitorSqlite(
   // thenable Proxy (CLAUDE.md), and this keeps that question out of the way.
   const { db } = await resultOf(
     callForeign({
-      port: PORT,
+      port: OPEN,
       deadlineMs: OPEN_DEADLINE_MS,
       start: async (): Promise<{ db: SQLiteDBConnection }> => {
         const sqlite = new SQLiteConnection(CapacitorSQLite)
@@ -130,7 +144,7 @@ export async function openCapacitorSqlite(
   )
   const statement = <T>(start: () => PromiseLike<T>): Promise<T> =>
     resultOf(
-      callForeign({ port: PORT, deadlineMs: STATEMENT_DEADLINE_MS, start })
+      callForeign({ port: STATEMENT, deadlineMs: STATEMENT_DEADLINE_MS, start })
     )
 
   let queue: Promise<unknown> = Promise.resolve()

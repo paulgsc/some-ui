@@ -219,14 +219,9 @@ entry is allowed when the reason is real: put it in its own group under
 grandfathered group. If the only honest reason is "it needs an await", the code belongs in the
 runtime instead.
 
-The port to anything we do not own (a native plugin, `navigator`, `Notification`) waits through
-`callForeign` from `@some-ui/intent-kit`, not a bare `await`: it takes a deadline, the port's
-`classify` into `IntentError` (`unavailable` means withdraw the control, not invite another tap)
-and a `report`, and it is the one place the "settles once, by a deadline, cause kept, told once"
-laws are tested, as a property over every way the foreign side can behave. Don't write a port
-its own failure union or its own timeout, and don't test it with a fake that only succeeds.
-`pnpm check:foreign-boundary` counts bare foreign waits against
-`scripts/foreign-boundary.allowlist` exactly as R1 counts (`docs/monorepo-boundaries.md`, F1).
+A port to anything we do not own (a native plugin, `navigator`, `Notification`) waits through
+`callForeign` (`@some-ui/intent-kit`), never its own failure union or timeout; `unavailable` means
+withdraw the control. `pnpm check:foreign-boundary` counts bare waits as R1 does (F1).
 
 A component or hook that seeds `useState`/`useReducer` from its own prop or from the clock keeps
 a copy frozen at mount while the owner moves on; #1659's review found that five times, one per
@@ -374,20 +369,13 @@ never "sounds like good practice."
   three are all portrait or landscape-desktop, and a phone held sideways was therefore a
   shape nothing could fail on. If a report is about an orientation or window shape, check
   that matrix contains it before concluding the surface is fine.
-- **A Capacitor plugin object is a thenable: never resolve a promise with one.**
-  `registerPlugin` returns a Proxy that answers every property with a native call, `then`
-  included, so `return SpeechRecognition` from an `async` function (or a `callForeign` start)
-  hands the promise machinery a "then" it calls and that never settles. Nothing throws and
-  nothing logs; the caller just waits forever. Box it (`return { plugin }`). A test's
-  `vi.mock` of the plugin as a plain object passes either way, so mock it as a Proxy that, like
-  the real one, answers every key (`apps/www/src/lib/dictation/index.test.ts`,
-  `asCapacitorPlugin`).
-- **A `console.error` you add to www is gone from every release build, and the APK's
-  console reaches nothing anyway.** www's production minifier strips `console.*`
-  (`apps/www/build.minify.ts`), and Capacitor forwards a WebView's console to logcat only in
-  debug builds. So a failure logged that way is silent exactly where it matters. Report it
-  through `callForeign`'s `reportFailure` (`@some-ui/intent-kit`), which survives the minifier
-  and reaches the phone's own log (`adb logcat -s SomeUI`, `apps/www/src/lib/native-log`).
+- **A Capacitor plugin object is a thenable: never resolve a promise with one.** Its Proxy
+  answers `then` too, so `return SpeechRecognition` from an `async` function waits forever,
+  silently. Box it (`return { plugin }`), and mock plugins as a Proxy that answers every key
+  (`asCapacitorPlugin` in `apps/www/src/lib/dictation/index.test.ts`), or the test passes anyway.
+- **A `console.error` in www is gone from release builds** (`build.minify.ts`), and the APK's
+  console reaches nothing anyway. Report failures through `reportFailure` (`@some-ui/intent-kit`),
+  which survives both: `adb logcat -s SomeUI`.
 - **Run `git diff --cached --stat` before every commit, not only `git status`.** Run it
   after staging (`git add`) — plain `git diff --stat` only shows the unstaged worktree, so
   it can miss binary corruption in content that's already staged and about to be committed.

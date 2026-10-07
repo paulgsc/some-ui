@@ -177,22 +177,10 @@ for (const variant of ["debug", "release"]) {
   const configEntry = entries.find(
     (e) => e.name === "assets/capacitor.config.json"
   )
-  const configRaw =
-    configEntry === undefined
-      ? null
-      : bytes.subarray(
-          configEntry.dataOffset,
-          configEntry.dataOffset + configEntry.compressedSize
-        )
   add(
     reviewPluginConfig(
       label,
-      configRaw === null
-        ? null
-        : (configEntry.method === 0
-            ? Buffer.from(configRaw)
-            : inflateRawSync(configRaw)
-          ).toString("utf8"),
+      configEntry && entryBytes(bytes, configEntry).toString("utf8"),
       policy.pluginConfig
     )
   )
@@ -213,11 +201,16 @@ for (const variant of ["debug", "release"]) {
   )
 }
 
+/** One ZIP entry's contents, inflated if it was deflated. */
+function entryBytes(bytes, e) {
+  const raw = bytes.subarray(e.dataOffset, e.dataOffset + e.compressedSize)
+  return e.method === 0 ? Buffer.from(raw) : inflateRawSync(raw)
+}
+
 function reviewNativeLibs(label, bytes, entries, pattern) {
   const out = []
   for (const e of entries.filter((e) => pattern.test(e.name))) {
-    const raw = bytes.subarray(e.dataOffset, e.dataOffset + e.compressedSize)
-    const so = e.method === 0 ? raw : inflateRawSync(raw)
+    const so = entryBytes(bytes, e)
     out.push(...reviewElf(label, e.name, elfLoadAlignments(so)))
   }
   return out

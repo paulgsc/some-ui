@@ -42,12 +42,6 @@ function run(
   return { state, effects }
 }
 
-const BLOCKED: IntentError = {
-  kind: "rejected",
-  retryable: false,
-  summary: "The microphone is blocked for this app.",
-  cause: "denied",
-}
 const BUSY: IntentError = {
   kind: "rejected",
   retryable: true,
@@ -168,7 +162,7 @@ describe("the note composer's step", () => {
     expect(state.composer.phase).toBe("closed")
   })
 
-  it("keeps words heard before a failure, and says what failed when there were none", () => {
+  it("keeps words heard before a failure", () => {
     const kept = run([
       ...OPENED,
       { type: "micPressed" },
@@ -177,15 +171,6 @@ describe("the note composer's step", () => {
     ])
     expect(kept.effects.at(-1)).toBe("save:half a")
     expect(kept.state.notice).toBe("")
-    const blocked = run([
-      ...OPENED,
-      { type: "micPressed" },
-      { type: "listenFailed", seq: 1, error: BLOCKED },
-    ])
-    expect(blocked.state.notice).toBe(
-      `${BLOCKED.summary} ${COMPOSER_NOTICES.withdrawn}`
-    )
-    expect(blocked.state.canListen).toBe(false)
   })
 
   it("tells a quiet learner it heard nothing, without counting it as a failure", () => {

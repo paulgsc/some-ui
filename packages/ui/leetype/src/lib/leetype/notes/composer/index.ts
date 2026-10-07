@@ -248,7 +248,11 @@ function finish(state: ComposerState): ComposerStep {
 }
 
 /** Whether `seq` is the utterance in progress, the only one whose result counts. */
-function isCurrent(composer: Composer, seq: number): boolean {
+type Hearing = Extract<Composer, { readonly phase: "noted" }> & {
+  readonly voice: Exclude<Voice, { readonly kind: "idle" }>
+}
+
+function isCurrent(composer: Composer, seq: number): composer is Hearing {
   return (
     composer.phase === "noted" &&
     composer.voice.kind !== "idle" &&
@@ -268,13 +272,7 @@ function failedListen(
   retryable: boolean
 ): ComposerStep {
   const { composer } = state
-  if (
-    composer.phase !== "noted" ||
-    composer.voice.kind === "idle" ||
-    composer.voice.seq !== seq
-  ) {
-    return stay(state)
-  }
+  if (!isCurrent(composer, seq)) return stay(state)
   const { heard } = composer.voice
   const failures = state.failures + 1
   const withdraw = !retryable || failures >= FAILURES_BEFORE_WITHDRAWING
@@ -302,10 +300,7 @@ function landed(
   notice: string
 ): ComposerStep {
   const { composer } = state
-  if (composer.phase !== "noted" || composer.voice.kind === "idle") {
-    return stay(state)
-  }
-  if (composer.voice.seq !== seq) return stay(state)
+  if (!isCurrent(composer, seq)) return stay(state)
   const note =
     text === ""
       ? composer.note

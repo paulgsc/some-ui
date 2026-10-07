@@ -116,14 +116,9 @@ less what soundbites can hold at most (their own cap, from
 growth never refuses a session. The WebView's other storage (preferences and
 small capped stores) is not counted.
 
-A restore has to be able to open what it brings back. The SQLite plugin's
-default (`androidIsEncryption: true`) kept an encrypted preferences file keyed
-in the Android Keystore; Auto Backup restores the file after an uninstall but
-never the key, so the reinstalled plugin failed to load and the app could
-read none of the history it had just restored (2026-10-07; clearing the
-app's data was the only way out, and it deleted that history).
-`capacitor.config.ts` turns the setting off, and the review fails an APK
-whose shipped config does not (`review/policy.json`, `pluginConfig`).
+A restore has to be able to open what it brings back, which is why the SQLite
+plugin's unused encryption is off (`capacitor.config.ts` says why; the review
+holds the APK to it).
 
 ### Diagnostics
 

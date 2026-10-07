@@ -44,8 +44,8 @@ function deviceFetch(): typeof fetch {
  * The app's real `createFileHostTransport`, with the device's fetch
  * installed as the global it calls - exactly the arrangement on the phone.
  */
-function transport(): FileHostTransport {
-  vi.stubGlobal("fetch", deviceFetch())
+function transport(fetchImpl: typeof fetch = deviceFetch()): FileHostTransport {
+  vi.stubGlobal("fetch", fetchImpl)
   const real = createFileHostTransport("ceremony", {
     baseUrl: BASE,
     source: "override",
@@ -257,21 +257,15 @@ describe("content on the device", () => {
         summary: "This phone's storage couldn't be opened.",
         cause: new Error("CapacitorSQLitePlugin: null"),
       })
-      vi.stubGlobal(
-        "fetch",
-        createDeviceFetch(
-          new URL(BASE),
-          () => Promise.reject(failure),
-          () => Promise.reject(new Error("no network in this test"))
-        )
+      const failing = createDeviceFetch(
+        new URL(BASE),
+        () => Promise.reject(failure),
+        () => Promise.reject(new Error("no network in this test"))
       )
-      const real = createFileHostTransport("ceremony", {
-        baseUrl: BASE,
-        source: "override",
-      })
-      if (real === null) throw new Error("expected a transport")
       // The app's real sessions client, as the Study page lists them.
-      const error: unknown = await createHttpSessionsRepository(real)
+      const error: unknown = await createHttpSessionsRepository(
+        transport(failing)
+      )
         .list()
         .then(
           () => null,

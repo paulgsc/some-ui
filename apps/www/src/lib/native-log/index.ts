@@ -1,14 +1,8 @@
 /**
- * The phone's own log for this app (`apps/mobile`'s `NativeLogPlugin.java`,
- * tag "SomeUI"): where a release APK's diagnostics go, since its console
- * reaches nothing. `adb logcat -s SomeUI` reads it. Device build only
- * (`build.paths.ts`); `installNativeLog` runs before the device storage
- * opens (`device-backend/boot`).
- *
- * Only failures `reportFailure` reports (`@some-ui/intent-kit`, cause
- * included), and the notes the app writes on purpose, ever reach it: never
- * what a person wrote, which is why this exists instead of Capacitor's own
- * `loggingBehavior: "production"`, which logs every plugin call's arguments.
+ * The phone's own log for this app, tag "SomeUI" (`NativeLogPlugin.java`
+ * says why it exists): every failure `reportFailure` reports, and the notes
+ * the app writes on purpose. Device build only; installed before the device
+ * storage opens (`device-backend/boot`).
  */
 import { registerPlugin } from "@capacitor/core"
 import type { ForeignFailure } from "@some-ui/intent-kit"

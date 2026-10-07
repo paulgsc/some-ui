@@ -29,11 +29,6 @@ export type FileHostTransport = (
   init?: RequestInit
 ) => Promise<Response>
 
-/**
- * The deployment has no such feature (an unconfigured VAPID identity, most of
- * all). Distinct from `FileHostUnreachableError` ("retry later"): this server
- * will never answer, so stop asking and fall back.
- */
 /** The `503` codes that are an answer, not an unconfigured feature. */
 const UNAVAILABLE_ANSWERS: ReadonlySet<string> = new Set([
   "service_overloaded",
@@ -41,6 +36,11 @@ const UNAVAILABLE_ANSWERS: ReadonlySet<string> = new Set([
   "device_storage_failed",
 ])
 
+/**
+ * The deployment has no such feature (an unconfigured VAPID identity, most of
+ * all). Distinct from `FileHostUnreachableError` ("retry later"): this server
+ * will never answer, so stop asking and fall back.
+ */
 export class FileHostNotConfiguredError extends Error {
   constructor(route: string) {
     super(`file_host has no ${route} on this deployment`)

@@ -25,16 +25,9 @@
  * composer appends each transcript to the note, so tapping the microphone
  * again adds more rather than replacing what was said.
  *
- * # In our words (docs/monorepo-boundaries.md, F1)
- *
- * Each implementation runs its recognizer through `callForeign`
- * (`@some-ui/intent-kit`), so what reaches the composer is a
- * `ForeignOutcome`: settled once, by a deadline, never a rejection. Its own
- * `classify` reads the platform's errors into an `IntentError` whose
- * `summary` names the cause ("The microphone is blocked") and whose
- * `retryable` says whether another tap can help; `unavailable` means it
- * cannot, and the composer withdraws the microphone. Hearing nothing is not
- * a failure: it is `succeeded` with empty text.
+ * Each implementation runs its recognizer through `callForeign` (F1), so
+ * the composer gets a `ForeignOutcome`. Hearing nothing is `succeeded` with
+ * empty text, not a failure.
  */
 
 import type { ForeignOutcome, ForeignVerdict } from "@some-ui/intent-kit"

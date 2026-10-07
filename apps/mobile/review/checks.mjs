@@ -537,7 +537,7 @@ function at(object, path) {
  * a misspelt key typechecks and the plugin silently keeps its default.
  */
 export function reviewPluginConfig(label, configText, expected) {
-  if (configText === null) {
+  if (configText === undefined) {
     return [
       {
         level: "error",

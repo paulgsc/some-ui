@@ -1,10 +1,7 @@
-# F1 (docs/monorepo-boundaries.md, "A port translates: the foreign boundary").
-# Every source file that waits on an API this codebase does not own (a native
-# plugin, `navigator`, `Notification`) outside `callForeign` from
-# `@some-ui/intent-kit`, with exactly how many such waits it has (`await`,
-# `for await`, `.then`/`.catch`/`.finally`). `pnpm check:foreign-boundary`
-# fails on any file missing here, and on any count that no longer matches, in
-# either direction.
+# F1 (docs/monorepo-boundaries.md, "A port translates: the foreign boundary"):
+# every file that waits on a foreign API outside `callForeign`, at its exact
+# count. `pnpm check:foreign-boundary` fails on a file missing here and on a
+# count that moved, either way.
 #
 # One entry per line: `<sites> <path>`. A blank line ends a group, and each
 # group's `#` lines must include one starting `Unbounded:` (why this wait needs
@@ -23,7 +20,7 @@
 # Grandfathered: these waited on a foreign API before F1 landed. Debt, not a
 # judgment that each is fine. A count here may only fall (lower it in the
 # same change), and an entry leaves when its file stops waiting outside the
-# boundary, as apps/www/src/lib/dictation did first.
+# boundary.
 1 apps/www/src/lib/device-backend/native-http/index.ts
 1 apps/www/src/lib/device-backend/storage/index.ts
 6 apps/www/src/lib/device-speech/native.ts
