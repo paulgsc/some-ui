@@ -41,6 +41,7 @@ import {
   reviewElf,
   reviewLint,
   reviewManifest,
+  reviewPluginConfig,
   reviewSigner,
   reviewSize,
   reviewTargetSdk,
@@ -171,6 +172,30 @@ for (const variant of ["debug", "release"]) {
     ])
   }
   add(reviewNativeLibs(label, bytes, entries, /^lib\/[^/]+\/[^/]+\.so$/))
+
+  // What the plugins were told: read from the APK, as the phone reads it.
+  const configEntry = entries.find(
+    (e) => e.name === "assets/capacitor.config.json"
+  )
+  const configRaw =
+    configEntry === undefined
+      ? null
+      : bytes.subarray(
+          configEntry.dataOffset,
+          configEntry.dataOffset + configEntry.compressedSize
+        )
+  add(
+    reviewPluginConfig(
+      label,
+      configRaw === null
+        ? null
+        : (configEntry.method === 0
+            ? Buffer.from(configRaw)
+            : inflateRawSync(configRaw)
+          ).toString("utf8"),
+      policy.pluginConfig
+    )
+  )
 
   const mib = (n) => `${(n / (1024 * 1024)).toFixed(2)} MiB`
   const size = statSync(apk).size

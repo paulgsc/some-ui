@@ -53,6 +53,22 @@ const config: CapacitorConfig = {
      */
     androidScheme: "https",
   },
+
+  plugins: {
+    /**
+     * Off, though the database was never encrypted: the plugin's own
+     * default is `true` (`SqliteConfig.java`), and with it every launch
+     * makes an Android Keystore key and an EncryptedSharedPreferences file
+     * (`sqlite_encrypted_shared_prefs`) that nothing here uses. Auto Backup
+     * restores that file after an uninstall, but a Keystore key is never
+     * backed up, so the reinstalled plugin cannot open it, fails to load,
+     * and answers every call with "CapacitorSQLitePlugin: null": the app
+     * starts with its history restored and cannot read any of it. Off, the
+     * plugin never touches the Keystore. The review holds the APK to this
+     * (`review/policy.json`, `pluginConfig`).
+     */
+    CapacitorSQLite: { androidIsEncryption: false },
+  },
 }
 
 export default config
