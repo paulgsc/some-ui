@@ -462,7 +462,10 @@ Each one ships, and none needs a better model than exists today.
   webtoon (panels, speech bubbles, sound-effect lettering), the direction
   chosen from four phone prototypes on 2026-10-08. How each scene anchors a
   feeling within today's limits is still being designed, and settles before
-  M2's renderer is built. The legacy-conversation adapter and the teaching
+  M2's renderer is built. The generator prompt writes one scene tree per
+  reply, and the learner's paste-in loop (Cor. 8.2) accepts trees through the
+  two audits, so M2 has real branched content from its first day rather than
+  only synthetic fixtures. The legacy-conversation adapter and the teaching
   audit's pruning, in topik. The media port types. Speaker names, choices as
   large text targets, consequence and repair scenes, a distinct device
   voice (or pitch) per character where the device allows it. `core/lesson-track`
@@ -471,8 +474,11 @@ Each one ships, and none needs a better model than exists today.
   the scene resolved instead. M2 is done when it passes the test above: on
   screen the learner follows characters through a scene, and no screen is
   framed as an exercise ("Check", "Question N", "N of M").
-- **M3: generated scene trees.** The generator prompt writes one tree per
-  reply. The two audits gate it. The weekly batch (Cor. 8.3) serves trees.
+- **M3: served scene trees.** The operator's weekly batch (Cor. 8.3) serves
+  reviewed trees as a phone-only feed, beside the conversation batch the
+  desktop session keeps reading. Today both renderers read one batch through
+  the same repositories (`study-session`), so M3 adds a feed rather than
+  converting the existing one, and neither renderer reads the other's.
 - **Later, one capability at a time:** a learner-defined genre and ensemble
   in the prompt, a standing cast, series and memory across lessons, per-character cloud
   voices, generated art in a fixed style, portraits, video beats, whole-series
