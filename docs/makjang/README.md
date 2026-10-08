@@ -318,9 +318,10 @@ positional), so M2 adds one
 choice comes from generation. Nothing in `@some-ui/makjang` or topik names a
 particular scene, trope, character or item, and no catalogue of cases (scene
 types, gift kinds, icon sets) is enumerated anywhere. The one closed set is the
-renderer's feeling vocabulary, and it is a palette, not a catalogue: like a
-colour theme, it says how a scene may look and sound, never what happens in
-it, and no feeling names a scene, a trope or a character. The schema, the bounds,
+renderer's feeling vocabulary, with its eight symbols, and it is a palette, not
+a catalogue: like a colour theme, it says how a scene may look and sound, never
+what happens in it, and no feeling or symbol names a scene, a trope or a
+character. The schema, the bounds,
 the audits and the engine are generic over whatever a generated tree
 contains. The scenes in this document are illustrations of the shape.
 
@@ -483,7 +484,7 @@ wrapped in one feeling, and the feeling is anchored the way a show's sting is:
 the same kit, every time it recurs, so the fifth time the reader meets it they
 feel it before they read a word. A kit is a convention (a variety-show caption,
 a sweat drop, a slammed panel), not a joke, which is why it survives being
-repeated. One feeling per scene for now; layering several is a later design.
+repeated.
 
 ### The vocabulary
 
@@ -512,20 +513,23 @@ v −0.3, a −0.65) is the next open place on the plane.
 ### Derived, never chosen
 
 A feeling's colours, edges, timing and sound are derived from its point and
-hue, relative to the session theme the person chose (`@some-ui/styles`: light,
-dark, rose-night, harvest-sky, peachy-blossom), so every feeling lives inside
-every session theme rather than beside it. A feeling never overrides a session
-role; it sets only its own private tokens.
+hue, relative to the session theme the person chose (`SESSION_THEMES` in
+`@some-ui/styles`), so every feeling lives inside every session theme rather
+than beside it. A feeling never overrides a session role; it sets only its own
+private tokens, and the drama brings no colour of its own: its buttons and its
+choice panel are the session's.
 
-- **Ground:** the session background mixed in oklab toward the hue, 18% + 14%·|v|
-  (24% + 14%·|v| on a dark theme). A reveal (|v| < 0.2 and a ≥ 0.8) swaps ground
-  and ink.
-- **Ink and muted text:** the session's own, their chroma turned to the hue.
+- **Ground:** the session background mixed in oklab toward a tint of the hue
+  (lightness 0.86 − 0.08·max(a, 0) on a light theme, 0.42 on a dark one;
+  chroma 0.04 + 0.12·|v|), by 18% + 14%·|v| (24% + 14%·|v| on a dark theme). A
+  reveal (|v| < 0.2 and a ≥ 0.8) swaps ground and ink.
+- **Ink and muted text:** the session's own, each mixed halfway toward the same
+  lightness at chroma 0.09 in the hue.
 - **Accent** (symbol, lettering, texture): the hue at lightness 0.52 on a light
   theme or 0.80 on a dark one, chroma 0.06 + 0.12·|v|.
-- **Contrast floor:** muted text clears 4.5:1 and marks 3:1 on the ground; a
-  colour that falls short steps its lightness away from the ground until it
-  does. Body ink is the session's and clears it already.
+- **Contrast floor:** body ink and muted text clear 4.5:1 and marks 3:1 on the
+  ground; a colour that falls short steps its lightness away from the ground
+  until it does.
 - **Edge:** 2 + 2·a px of ink; jagged when v ≤ −0.6 and a ≥ 0.8, rounded 20·v px
   when v ≥ 0.4.
 - **Texture:** the feeling's kind, in the accent at 10–18% alpha, denser as a
@@ -535,12 +539,9 @@ role; it sets only its own private tokens.
 - **Caption lettering:** the hue as fill, a dark ink stroke, the session ground
   as its halo.
 - **Sound:** a synthesized tone, register 196·2^a Hz, rising in a major triad
-  when v > 0.3, falling a semitone when v < −0.3, otherwise the dun-dun of a
+  when v ≥ 0.3, falling a semitone when v ≤ −0.3, otherwise the dun-dun of a
   reveal; then the cry, voiced at rate 0.9 + 0.2·a and pitch 1 + 0.12·v. No
   asset files.
-
-The accent colour of the lesson itself (buttons, the choice panel) is the
-session theme's primary; the drama brings no brand colour of its own.
 
 ### Where the anchor goes
 
@@ -552,18 +553,21 @@ session theme's primary; the drama brings no brand colour of its own.
 - **A leaf closes on an ending panel** in the same theme.
 - **Never on a choice.** The choice panel and the learner's chosen line stay in
   the session theme. A child scene's feeling first shows on the cover after the
-  chosen line, so it is part of the consequence, revealed after the item is
-  answered, and says nothing about any item still open (canon Prop. 9.4; it is
-  a value of `p_reveal`, amendment 1). On a repair scene it signals the earlier
-  miss, which the consequence scene has already shown.
+  chosen line, so it adds nothing about the choice just answered that the
+  child scene itself does not show.
+
+**What the anchor reveals.** The anchor is a rendition kind in Prop. 9.4's
+sense. A scene's feeling is on screen while that scene's own choice is open
+(the root's before anything is answered), so it can change the choice's
+`p_hint`: it names the scene's mood, the same for every candidate, which the
+scene's Korean already carries, and so it can stand in for reading the scene.
+It lands in M2 with the canon line the invariant on rendition kinds requires,
+stating that valuation and why it is acceptable.
+
 - **Hangul first.** The caption is Korean, with its gloss one tap away; the cry
   is heard, in Korean.
 - **Sound only after a tap.** It is off until the learner turns it on, plays
   once per scene, and never speaks over a line.
-
-The prototypes these were settled on live in the user's design canvas
-("Makjang phone prototypes"). They are reference, not source: the renderer is
-built from this section.
 
 ## Where it lives
 
@@ -573,7 +577,7 @@ built from this section.
   restriction on its engine module keeps media out of the engine.
 - **`@some-ui/styles`** owns the feeling themes as presentation: the
   vocabulary's points, hues, textures and motions, the derivation and its
-  contrast floor, tested against every session theme. Topik owns their words
+  contrast floor. Topik owns their words
   (captions, cries, lettering) and symbols, keyed by the same feeling keys.
 - **`@some-ui/topik`** keeps the teaching: probes, the hint ladder, tiles, the
   teaching audit, the evaluation report, and the handheld renderer, which
@@ -622,9 +626,9 @@ Neither needs a better model than exists today.
   capability, plus a canon line, and change neither the story schema nor the
   engine. Longitudinal structure (a standing cast, series, memory across
   lessons) and a learner-defined genre do change the schema, and get their
-  own design.
+  own design, as does layering several feelings in one scene.
 
-## Invariants to declare with M1
+## Invariants to declare with M1 and M2
 
 Design commitments, not yet invariants: there is no code for them to be true
 of. They are declared in the house shape (`CLAUDE.md`, "Gray-area invariants")
@@ -639,10 +643,9 @@ in the change that adds the code, and enforced where they can be.
 - **A choice's outcome is its first choice, whatever follows, and an
   unreached choice has none.** Mechanical: a property test over every route
   of synthetic trees.
-- **Every feeling theme clears the contrast floor on every session theme**
-  (with M2). Mechanical: a test over the session themes × the vocabulary.
-- **No feeling anchor sits on a choice or a chosen line** (with M2).
-  Mechanical: a
+- **Every feeling theme clears the contrast floor on every session theme.**
+  Mechanical: a test over the session themes × the vocabulary.
+- **No feeling anchor sits on a choice or a chosen line.** Mechanical: a
   renderer test over every route of a synthetic tree.
 - **A new rendition kind lands with its valuation.** Not mechanical: whether a
   picture or a face reveals the answer needs a person. Falsified by a change
