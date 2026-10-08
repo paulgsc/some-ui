@@ -149,7 +149,7 @@ is fixed by tuning the lesson. Both go away when the drama is the structure.
 The canon governs **how the lesson may claim anything about learning**: which
 items are admissible, what is credited, what persists. This story governs
 **what the lesson is for**. The story supplies the reason to come back
-(Rem. 9.1); the canon supplies the rigor the story insists on.
+(Rem. 3.3); the canon supplies the rigor the story insists on.
 
 Most of the architecture below is derivable from results the canon already
 has. Some of it is not, and per the canon's amendment protocol those
@@ -166,9 +166,9 @@ amendments land with, or before, the first source change that relies on them
 - Scenes, branches and consequences as authored content, produced at
   authoring time and graded by lookup (Prop. 8.1, Rem. 4.7, Def. 8.3).
 - Voice, art and video as what a renderer can present, its capability set
-  (Def. 9.3), sharing every other object (Thm. 9.1, Prop. 9.3). A missing
-  asset narrows the capability set and changes no other object; a missing
-  model changes the supply of content and nothing else (Thm. 8.2). That is
+  (Def. 9.3), sharing every other object (Thm. 9.1, Prop. 9.3). A lesson
+  with no asset for a port falls back to text at that port and changes no
+  other object; a missing model changes the supply of content and nothing else (Thm. 8.2). That is
   the formal version of "don't block on the technology".
 
 **Needs an amendment (to land with M1, below)**
@@ -190,10 +190,13 @@ amendments land with, or before, the first source change that relies on them
    its scene and may turn on any line the route has shown, including lines
    whose gloss the learner has already reached. Its valuation is declared:
    `p_hint` is on demand over the route so far (every line's gloss stays one
-   rung away, as the ladder allows), and each option's gloss is on demand
-   too. Under `p_credited = "false"` this is harmless; it is recorded, as
-   Cor. 4.5 (ii) records the gloss candidate, so that the day `p_credited`
-   moves (Rem. 4.5) it is a known interaction rather than a discovered one.
+   rung away, as the ladder allows). The candidates' glosses are withheld
+   until the choice is answered, as Cor. 4.4 withholds the anchor line's: an
+   English gloss of each candidate would spell out the transformation the
+   item tests, which is Prop. 4.2's confound by another road. That a line's
+   gloss may be reached before the choice is recorded, as Cor. 4.5 (ii)
+   records the gloss candidate, so that the day `p_credited` moves
+   (Rem. 4.5) it is a known interaction rather than a discovered one.
 4. **The budget is one lesson, and the resume point is a route.** The
    handheld capability set's budget (Def. 9.3), one conversation in
    Cor. 4.4, becomes one lesson: one route through one tree, at most three
@@ -253,13 +256,20 @@ Scene     = { id, place, beats: (Line | Narration)[], choice? }
 Line      = { id, speaker: CharacterId, text, gloss, direction? }
 Narration = { id, text, gloss }
 Choice    = { id, prompt, check: Check, options: Option[2..4] }  // none at MAX_DEPTH
-Option    = { id, text, gloss, art?, child: Scene }
+Option    = { id, art?, child: Scene }  // id = a candidate's id in the check
 ```
 
 `text` is in the language being learned and `gloss` in the learner's; neither
 the schema nor the engine knows which languages those are. `Check` is the
 teaching layer's item, a type parameter to makjang, which carries it without
-reading it.
+reading it. An option holds no words of its own: what the learner reads is
+the check's candidate with the same id, so a candidate's text lives in one
+place. Only checks with candidates can be choices (today `pick-valid` and
+`odd-one-out`, each with exactly one keyed candidate); a `build` check has
+none, so it cannot be a choice and the tree prompt does not author it.
+Candidates carry no id today (`ProbeOption` in `entity/topik-types.ts` is
+positional), so M2 adds one
+(Thm. 1.1).
 
 - **Depth** is the number of choices between the root and a scene.
   `MAX_DEPTH = 2`: a scene at depth 2 has no choice; it is a leaf, and the
@@ -269,8 +279,7 @@ reading it.
   a choice, and four is about what a phone screen shows as large thumb
   targets.
 - **Which option is the answer is the check's to say, not the option's.**
-  Each option is one of the check's candidates, matched by id, and the
-  check's answer key decides which one the item wants (in an odd-one-out it
+  Each option is one of the check's candidates, and the check's answer key decides which one the item wants (in an odd-one-out it
   is the invalid one). The option the key names leads the story on. Every
   other option's child is its consequence: the mother-in-law receiving the
   wrong gift, in Korean. A consequence's own choice, if it has one, is the
@@ -349,8 +358,10 @@ branches that converge, which bring back the joins and flags the tree does
 without. Nothing here waits for it.
 
 The handheld surface plays scene trees only. Conversation files stay the
-desktop session's format, and units kept on the device in that format are not
-migrated.
+desktop session's format. A conversation unit the learner pasted lasts the
+session (Rem. 7.4) and is gone with it; one kept on their account shelf no
+longer reads as a lesson on the phone, and the shelf already shows such an
+entry as unreadable, for the learner to remove.
 
 ### 2. Engine: what happens next
 
@@ -364,8 +375,10 @@ not the coordinator") requires and as topik's `core/` already models.
 - **Events:** advance, go back a beat, choose an option, restart, resume.
   Going back stops at the start of the current scene and never crosses a
   choice: crossing one would let the learner choose again, which is a retry,
-  and the check's valuation forbids retries (Cor. 4.4). Restart returns to the
-  root and keeps the first choices.
+  and the check's valuation forbids retries (Cor. 4.4). Restart is a replay
+  of the whole lesson, which Cor. 8.2 expects, not a retry: it returns to the
+  root, the first choices stay as they were, and a choice made again on the
+  replay records nothing new.
 - **Recursion is in the content, not the engine.** Entering a child scene is
   pushing an option id onto the route. The engine is the same at every depth
   and never needs to know how deep the tree is.
@@ -431,10 +444,14 @@ source idea, then a model, then JSON, then a deterministic audit, then review,
 then served content (Rem. 8.1, Cor. 8.3), with the learner's own model as an
 option (Def. 8.3).
 
-- **The generator prompt** grows from "conversations plus probes" to "one
-  scene tree", keeping every probe rule it has now. It stays a standalone
-  prompt: no other lesson goes into it. Its vocabulary moves with it: today
-  it calls a conversation a "beat", and here a beat is a line or a narration.
+- **A tree prompt beside the conversation prompt.** Today one prompt
+  (`generation/lesson-prompt.md`) feeds both the learner's paste-in loop and
+  the operator's weekly batch, which the LAN lesson CRM (`@some-ui/lesson-crm`)
+  builds, checks and saves. The conversation prompt stays, because the
+  desktop session's batch still needs it. A second prompt writes one scene
+  tree, keeping every probe rule the first has, and stays standalone: no
+  other lesson goes into it. Its vocabulary differs: the conversation prompt
+  calls a conversation a "beat", and here a beat is a line or a narration.
 - **Two audits, by owner.** The story audit checks shape: two to four options
   per choice, no choice at the maximum depth, ids unique across the tree,
   every speaker and `pov` in the cast, every option leading to a scene. The
@@ -456,7 +473,8 @@ option (Def. 8.3).
   teaching audit, the evaluation report, and the handheld renderer, which
   becomes a renderer of the engine. Topik depends on makjang, never the
   reverse. Only topik's handheld path (its renderer and its teaching audit)
-  imports makjang. The desktop session (`DesktopSession`, the session
+  and the lesson CRM, which checks and saves the operator's batch of trees,
+  import makjang. The desktop session (`DesktopSession`, the session
   machine) does not, and is not changed by any increment here.
 
 M1 and M2 land in one pull request: a workspace nothing depends on is a
@@ -472,13 +490,14 @@ Neither needs a better model than exists today.
   never on a curated scene. No UI change.
 - **M2: the phone lesson plays scene trees.**
   - It renders as a vertical webtoon: panels, speech bubbles, sound-effect
-    lettering. Each scene carries one feeling, anchored visually; how is
-    being designed now, and that design is recorded here before the renderer
-    is built.
-  - Content: the generator prompt writes one scene tree per reply, the
-    learner's paste-in loop (Cor. 8.2) accepts trees through the two audits,
-    and a phone-only feed holds the operator's first reviewed batch of trees
-    (Cor. 8.3). Today both renderers read one batch through the same
+    lettering. Each scene carries one feeling, anchored visually. The
+    anchor's design is settled and recorded in this document before the
+    renderer is built.
+  - Content: the tree prompt, beside the conversation prompt. The learner's
+    paste-in loop (Cor. 8.2) accepts trees through the two audits. A
+    phone-only feed holds the operator's first reviewed batch of trees
+    (Cor. 8.3), which the lesson CRM builds from the tree prompt and checks
+    with both audits. Candidates gain ids. Today both renderers read one batch through the same
     repositories (`study-session`), so the feed is added beside the desktop's
     conversation batch rather than converting it, and neither renderer reads
     the other's.
