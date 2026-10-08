@@ -190,10 +190,11 @@ amendments land with, or before, the first source change that relies on them
    its scene and may turn on any line the route has shown, including lines
    whose gloss the learner has already reached. Its valuation is declared:
    `p_hint` is on demand over the route so far (every line's gloss stays one
-   rung away, as the ladder allows). The candidates' glosses are withheld
-   until the choice is answered, as Cor. 4.4 withholds the anchor line's: an
-   English gloss of each candidate would spell out the transformation the
-   item tests, which is Prop. 4.2's confound by another road. That a line's
+   rung away, as the ladder allows). Candidates carry no English gloss, and
+   each candidate's `why` stays hidden until the choice is answered, as
+   Cor. 4.4 withholds the anchor line's gloss: an English rendering of each
+   candidate would spell out the transformation the item tests, which is
+   Prop. 4.2's confound by another road. That a line's
    gloss may be reached before the choice is recorded, as Cor. 4.5 (ii)
    records the gloss candidate, so that the day `p_credited` moves
    (Rem. 4.5) it is a known interaction rather than a discovered one.
