@@ -695,14 +695,18 @@ package visibility for that one intent, not a permission. Soundbites itself
 does not transcribe: it keeps recording audio through the WebView, and two
 recorders cannot reliably share the microphone on Android.
 
-**Not done yet: getting soundbites off the phone.** Today they can be played
-back and deleted on the phone, and nothing more. Delivery (a file to share,
-or the home server, for an agent to read), then clearing what was
-delivered, is the next step. A WebView cannot download a blob, so on the
-phone a file needs `@capacitor/filesystem` and `@capacitor/share` (neither
-adds a permission or an exported component: their manifests are empty,
-checked 2026-10-01 at 8.1.3 and 8.0.2), and the home server needs a route to
-receive them.
+**Getting them off the phone: "Share with an agent".** Below the list, one
+button writes a `context.json` (sessions, end-of-session reflections, stop
+reasons, each soundbite's metadata, and a note saying what an agent should
+use them for: shaping the next lesson, and finding where the app gets in the
+way) plus each soundbite's audio to the app's cache, then opens Android's
+share sheet, where the person picks where they go (Drive, say).
+`apps/www/src/lib/agent-export`. A WebView cannot download a blob, so this
+goes through `@capacitor/filesystem` and `@capacitor/share`: neither adds a
+permission or an exported component (their manifests are empty, checked
+2026-10-07 at 8.1.4 and 8.0.3), and the share plugin hands files out through
+the template's `FileProvider`, already in `AndroidManifest.xml`. Not done:
+the home server receiving soundbites itself, and clearing what was shared.
 
 ## Speech
 

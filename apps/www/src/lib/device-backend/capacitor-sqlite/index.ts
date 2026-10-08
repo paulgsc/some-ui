@@ -24,6 +24,7 @@ import {
 
 import type { SqlDriver, SqlRow, SqlValue } from "@/lib/device-backend/sql"
 import { DeviceStorageError } from "@/lib/device-backend/sql"
+import { foreignValue, isMissingPlugin } from "@/lib/intent/foreign"
 
 /** The on-device database's file name (the plugin appends `SQLite.db`). */
 const DEVICE_DB_NAME = "some-ui"
@@ -49,14 +50,8 @@ function storageFailure(error: unknown): ForeignVerdict | null {
       summary: "This phone's storage didn't answer.",
     }
   }
-  const code: unknown =
-    typeof error === "object" && error !== null
-      ? Reflect.get(error, "code")
-      : undefined
   const message = error instanceof Error ? error.message : String(error)
-  return code === "UNAVAILABLE" ||
-    code === "UNIMPLEMENTED" ||
-    message.startsWith("CapacitorSQLitePlugin:")
+  return isMissingPlugin(error) || message.startsWith("CapacitorSQLitePlugin:")
     ? {
         kind: "unavailable",
         retryable: false,
@@ -96,15 +91,10 @@ const STATEMENT = {
  * so it reaches the interceptor's 500 naming the route, as it always did;
  * the storage failing is a `DeviceStorageError`, its own 503.
  */
-async function resultOf<T>(call: ForeignCall<T>): Promise<T> {
-  const outcome = await call.outcome
-  if (outcome.status === "succeeded") return outcome.value
-  if (outcome.status === "failed") {
-    if (outcome.error.kind === "rejected") throw outcome.error.cause
-    throw new DeviceStorageError(outcome.error)
-  }
-  // Nothing here abandons a call.
-  throw new Error("device storage: a call was abandoned")
+function resultOf<T>(call: ForeignCall<T>): Promise<T> {
+  return foreignValue(call, (error) =>
+    error.kind === "rejected" ? error.cause : new DeviceStorageError(error)
+  )
 }
 
 export async function openCapacitorSqlite(

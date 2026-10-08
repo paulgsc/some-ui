@@ -33,7 +33,9 @@
         "@capacitor-community/speech-recognition",
         "@capacitor-community/sqlite",
         "@capacitor-community/text-to-speech",
-        "@capacitor/local-notifications"
+        "@capacitor/filesystem",
+        "@capacitor/local-notifications",
+        "@capacitor/share"
       ]
     },
     "apps/www": {

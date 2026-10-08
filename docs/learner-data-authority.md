@@ -248,7 +248,10 @@ declared (checked by reading every call site and by the tests named).
   the device, or lost with it. There is no recovery channel, by design.
 - **What a learner chooses to send.** Binding the music overlay opens a WebSocket
   to `file_host`; a user-selected speech provider receives the text it speaks; a
-  kept shelf item is stored verbatim. These are explicit actions on the account
-  path or by the learner, not defaults.
+  kept shelf item is stored verbatim; the phone's "Share with an agent"
+  (`lib/agent-export`) hands Android's share sheet a file of the device's
+  sessions, reflections, stops and soundbites, and the learner picks where it
+  goes. These are explicit actions on the account path or by the learner, not
+  defaults.
 - **The server's side.** What `file_host` stores and logs is
   `paulgsc/server` `docs/identity.md`.

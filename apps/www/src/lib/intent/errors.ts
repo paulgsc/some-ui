@@ -20,6 +20,7 @@ import {
   FileHostNotConfiguredError,
   FileHostResponseError,
 } from "@/lib/file-host-config/client"
+import { ForeignCallError } from "@/lib/intent/foreign"
 
 /** A 5xx: the request was fine and the server failed, so a retry may work.
  * A 4xx: retrying the unchanged request won't. */
@@ -122,11 +123,12 @@ function fromResponseError(error: FileHostResponseError): IntentError {
 }
 
 /**
- * Total, never throws. Anything but the three `FileHost*Error` classes falls
- * back to `@some-ui/intent-kit`'s `toIntentError` (`kind: "unknown"`,
+ * Total, never throws. A `ForeignCallError` is already in these words. Anything
+ * else but the three `FileHost*Error` classes falls back to `@some-ui/intent-kit`'s `toIntentError` (`kind: "unknown"`,
  * `retryable: true`).
  */
 export function mapFileHostError(error: unknown): IntentError {
+  if (error instanceof ForeignCallError) return error.error
   if (error instanceof FileHostUnreachableError) return fromUnreachable(error)
   if (error instanceof FileHostNotConfiguredError)
     return fromNotConfigured(error)

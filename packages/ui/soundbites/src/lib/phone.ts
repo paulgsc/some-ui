@@ -47,10 +47,14 @@ function onPageVisibility(listener: (hidden: boolean) => void): () => void {
 /** One store per page load, so the database opens once. */
 let store: SoundbiteStore | null = null
 
-export function phonePorts(): SoundbitesPorts {
+export function phoneSoundbiteStore(): SoundbiteStore {
   store ??= indexedDbSoundbiteStore()
+  return store
+}
+
+export function phonePorts(): SoundbitesPorts {
   return {
-    store,
+    store: phoneSoundbiteStore(),
     startRecording: startMicRecording,
     player: audioPlayer,
     now: () => Date.now(),

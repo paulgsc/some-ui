@@ -1,4 +1,6 @@
 export { Soundbites } from "./components/soundbites"
 export type { SoundbitesProps } from "./components/soundbites"
 export type { SoundbiteSituation } from "./lib/machine"
-export type { SoundbiteContext, SoundbiteSource } from "./lib/types"
+export { phoneSoundbiteStore } from "./lib/phone"
+export type { SoundbiteStore } from "./lib/store"
+export type { Soundbite, SoundbiteContext, SoundbiteSource } from "./lib/types"
