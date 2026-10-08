@@ -67,7 +67,7 @@ function answersOf(value: unknown): Reflection {
   return answers
 }
 
-/** Every kept reflection, newest first (the agent export reads them all). */
+/** Every kept reflection, newest first. */
 export function allReflections(): Array<{
   sessionId: string
   answers: Reflection

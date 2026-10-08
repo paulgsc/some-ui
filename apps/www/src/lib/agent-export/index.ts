@@ -4,29 +4,20 @@
  * beside it. Handed to Android's share sheet, so the person picks where it
  * goes (Drive, say); nothing here sends anything anywhere.
  *
- * The bundle answers two questions, stated in the file for its reader: how
- * to shape the next lesson, and where the app gets in the way of studying.
- * Until the home server can take soundbites and an agent can reach it, this
- * is how they leave the phone (`apps/mobile/README.md`, "Soundbites").
- *
- * `buildAgentContext` is pure; `shareAgentExport` writes the files to the
- * app's cache and opens the sheet, through `@capacitor/filesystem` and
- * `@capacitor/share`, each wait in a `callForeign` (F1).
+ * `buildAgentContext` is pure; `shareAgentExport` waits on the plugins
+ * through `callForeign` (F1).
  */
 import { Directory, Encoding, Filesystem } from "@capacitor/filesystem"
 import { Share } from "@capacitor/share"
-import type {
-  ForeignCall,
-  ForeignVerdict,
-  IntentError,
-} from "@some-ui/intent-kit"
+import type { ForeignVerdict } from "@some-ui/intent-kit"
 import {
   callForeign,
   ForeignDeadlineError,
   reportFailure,
 } from "@some-ui/intent-kit"
+import type { Soundbite, SoundbiteStore } from "@some-ui/soundbites"
 
-import { mapFileHostError } from "@/lib/intent/errors"
+import { foreignValue, isMissingPlugin } from "@/lib/intent/foreign"
 import { allReflections, QUESTIONS } from "@/lib/session-reflection"
 import type { Reflection } from "@/lib/session-reflection"
 import { allStops, REASONS } from "@/lib/session-stop"
@@ -34,14 +25,7 @@ import type { Stop } from "@/lib/session-stop"
 import type { SessionRecord } from "@/lib/tenant"
 import { sessionsRepository } from "@/lib/tenant/queries"
 
-/** A soundbite's metadata as `@some-ui/soundbites` keeps it. */
-type SoundbiteMeta = { id: string; mimeType: string }
-
-/** The soundbite store's read side (`@some-ui/soundbites`), passed in by its page. */
-export type SoundbiteReader = {
-  list: () => Promise<Array<SoundbiteMeta>>
-  audio: (id: string) => Promise<Blob | null>
-}
+type SoundbiteReader = Pick<SoundbiteStore, "list" | "audio">
 
 const ABOUT = [
   "Exported from the some-ui study app on the learner's phone, for an agent helping them.",
@@ -52,7 +36,7 @@ const ABOUT = [
 ].join("\n")
 
 /** `audio/webm;codecs=opus` -> `soundbite-<id>.webm`. */
-function soundbiteFile(bite: SoundbiteMeta): string {
+function soundbiteFile(bite: Soundbite): string {
   const extension = bite.mimeType.split(/[/;]/)[1] ?? "bin"
   return `soundbite-${bite.id}.${extension}`
 }
@@ -63,8 +47,7 @@ function buildAgentContext(input: {
   sessions: ReadonlyArray<SessionRecord>
   reflections: ReadonlyArray<{ sessionId: string; answers: Reflection }>
   stops: ReadonlyArray<Stop>
-  /** `withAudio`: whether its audio is among the shared files. */
-  soundbites: ReadonlyArray<{ bite: SoundbiteMeta; withAudio: boolean }>
+  soundbites: ReadonlyArray<{ bite: Soundbite; withAudio: boolean }>
 }): string {
   return JSON.stringify(
     {
@@ -97,10 +80,6 @@ const WRITE_DEADLINE_MS = 60_000
 /** The share sheet waits on a person choosing where the files go. */
 const SHARE_DEADLINE_MS = 10 * 60_000
 
-/**
- * What the plugins' failures mean here. A Capacitor `code` of `UNAVAILABLE`
- * or `UNIMPLEMENTED` is no plugin in this build, which no retry changes.
- */
 function classifyExport(error: unknown): ForeignVerdict {
   if (error instanceof ForeignDeadlineError) {
     return {
@@ -109,11 +88,7 @@ function classifyExport(error: unknown): ForeignVerdict {
       summary: "The phone didn't finish sharing. Try again.",
     }
   }
-  const code: unknown =
-    typeof error === "object" && error !== null
-      ? Reflect.get(error, "code")
-      : undefined
-  return code === "UNAVAILABLE" || code === "UNIMPLEMENTED"
+  return isMissingPlugin(error)
     ? {
         kind: "unavailable",
         retryable: false,
@@ -130,32 +105,6 @@ const PORT = {
   name: "agent export (filesystem, share sheet)",
   classify: classifyExport,
   report: reportFailure,
-}
-
-/** A failed foreign call, carrying what it means here. */
-class AgentExportError extends Error {
-  constructor(readonly intent: IntentError) {
-    super(intent.summary)
-    this.name = "AgentExportError"
-  }
-}
-
-/**
- * `mapError` for the export's intent: a foreign failure as `classifyExport`
- * read it; reading the sessions fails as any `file_host` read does.
- */
-export function agentExportError(error: unknown): IntentError {
-  return error instanceof AgentExportError
-    ? error.intent
-    : mapFileHostError(error)
-}
-
-async function foreign<T>(call: ForeignCall<T>): Promise<T> {
-  const outcome = await call.outcome
-  if (outcome.status === "succeeded") return outcome.value
-  if (outcome.status === "failed") throw new AgentExportError(outcome.error)
-  // Nothing here abandons a call.
-  throw new Error("agent export: a call was abandoned")
 }
 
 /** Base64 without the `data:` prefix, which is what `writeFile` takes for bytes. */
@@ -194,7 +143,7 @@ export async function shareAgentExport(
     soundbites: bites.map((bite) => ({ bite, withAudio: audio.has(bite.id) })),
   })
 
-  const files = await foreign(
+  const files = await foreignValue(
     callForeign({
       port: PORT,
       deadlineMs: WRITE_DEADLINE_MS,
@@ -231,7 +180,7 @@ export async function shareAgentExport(
     })
   )
 
-  await foreign(
+  await foreignValue(
     callForeign({
       port: PORT,
       deadlineMs: SHARE_DEADLINE_MS,

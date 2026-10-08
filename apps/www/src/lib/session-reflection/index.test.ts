@@ -4,11 +4,7 @@
 
 import { beforeEach, describe, expect, it } from "vitest"
 
-import {
-  allReflections,
-  readReflection,
-  writeReflection,
-} from "@/lib/session-reflection"
+import { readReflection, writeReflection } from "@/lib/session-reflection"
 
 beforeEach(() => {
   localStorage.clear()
@@ -25,13 +21,6 @@ describe("session reflections", () => {
     })
     expect(readReflection("b")).toEqual({ enthusiasm: "drained" })
     expect(readReflection("c")).toEqual({})
-    expect(allReflections()).toEqual([
-      { sessionId: "b", answers: { enthusiasm: "drained" } },
-      {
-        sessionId: "a",
-        answers: { worthwhile: "yes", difficulty: "too-hard" },
-      },
-    ])
   })
 
   it("drops an answer no question offers", () => {

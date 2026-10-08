@@ -47,7 +47,6 @@ function onPageVisibility(listener: (hidden: boolean) => void): () => void {
 /** One store per page load, so the database opens once. */
 let store: SoundbiteStore | null = null
 
-/** The phone's store, shared with whatever else on the page reads it. */
 export function phoneSoundbiteStore(): SoundbiteStore {
   store ??= indexedDbSoundbiteStore()
   return store

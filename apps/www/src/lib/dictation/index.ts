@@ -30,6 +30,8 @@ import {
 // (the reason `lib/leetype-content` imports nothing from the package).
 import type { Dictation, Listening } from "@some-ui/leetype"
 
+import { isMissingPlugin } from "@/lib/intent/foreign"
+
 /** The learner said no to the microphone (or Android did, for them). */
 class MicrophoneDeniedError extends Error {
   constructor() {
@@ -121,11 +123,7 @@ export function classifyPhoneSpeech(error: unknown): ForeignVerdict {
     }
   }
   if (error instanceof MicrophoneDeniedError) return BLOCKED
-  const code: unknown =
-    typeof error === "object" && error !== null
-      ? Reflect.get(error, "code")
-      : undefined
-  if (code === "UNAVAILABLE" || code === "UNIMPLEMENTED") return NO_RECOGNIZER
+  if (isMissingPlugin(error)) return NO_RECOGNIZER
   const message = messageOf(error)
   return Object.hasOwn(PLUGIN_VERDICTS, message)
     ? (PLUGIN_VERDICTS[message] ?? UNRECOGNIZED)

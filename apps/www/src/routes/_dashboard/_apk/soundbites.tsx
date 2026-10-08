@@ -3,7 +3,7 @@ import type { SoundbiteSituation, SoundbiteSource } from "@some-ui/soundbites"
 import { phoneSoundbiteStore, Soundbites } from "@some-ui/soundbites"
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
 
-import { agentExportError, shareAgentExport } from "@/lib/agent-export"
+import { shareAgentExport } from "@/lib/agent-export"
 import { useArrivalKey } from "@/lib/arrival-key"
 import { useAsyncIntent } from "@/lib/intent"
 import { IntentButton } from "@/lib/intent/render"
@@ -74,7 +74,6 @@ const SoundbitesRoute = (): JSX.Element => {
   const arrival = useArrivalKey(isSaySource(say) ? say : undefined)
   const share = useAsyncIntent(() => shareAgentExport(phoneSoundbiteStore()), {
     presentation: "interactive",
-    mapError: agentExportError,
   })
 
   return (
