@@ -160,7 +160,7 @@ export const SESSION_THEMES = [
     swatch: {
       bg: "oklch(0.98 0.02 60)",
       fg: "oklch(0.34 0.04 40)",
-      accent: "oklch(0.74 0.16 25)",
+      accent: "oklch(0.54 0.15 38)",
     },
   },
 ] as const satisfies ReadonlyArray<SessionTheme>

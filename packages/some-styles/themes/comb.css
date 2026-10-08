@@ -149,7 +149,7 @@
     --comb-ink: oklch(17% 0.035 285deg);
   }
 
-  /* Peachy Blossom: coral blossom (its --primary, 25deg) up to ripe
+  /* Peachy Blossom: coral blossom (28deg, near its --primary) up to ripe
      peach (its --accent, 65deg). Its dusk variant keeps the same two
      hues, and this block, coming after dark's, wins there too. */
   .peachy-blossom .comb {

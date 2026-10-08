@@ -253,7 +253,7 @@ split, and a maximum depth past which a scene may not split and must resolve.
 ```
 Lesson    = { id, level, pov: CharacterId, cast: Character[], root: Scene }
 Character = { id, name, standing, registers, voice?, look? }
-Scene     = { id, place, beats: (Line | Narration)[], choice? }
+Scene     = { id, place, feeling, beats: (Line | Narration)[], choice? }
 Line      = { id, speaker: CharacterId, text, gloss, direction? }
 Narration = { id, text, gloss }
 Choice    = { id, prompt, check: Check, options: Option[2..4] }  // none at MAX_DEPTH
@@ -307,11 +307,21 @@ positional), so M2 adds one
   so the learner knows where they are. An option may carry a short art
   description, which the media layer renders when it can and otherwise
   ignores.
+- **Feeling.** Every scene names the one feeling it is wrapped in, as a key
+  from the renderer's vocabulary (see "The webtoon: one feeling per scene").
+  Makjang carries it as a string without reading it, as it carries `art`: the
+  story audit checks that it is there, and topik checks that the renderer has
+  it. A tree that fails either is rejected at load like any other malformed
+  tree, so no scene renders without its anchor.
 
 **The code knows the shape, never a scene.** Every scene, character, line and
 choice comes from generation. Nothing in `@some-ui/makjang` or topik names a
 particular scene, trope, character or item, and no catalogue of cases (scene
-types, gift kinds, icon sets) is enumerated anywhere. The schema, the bounds,
+types, gift kinds, icon sets) is enumerated anywhere. The one closed set is the
+renderer's feeling vocabulary, with its eight symbols, and it is a palette, not
+a catalogue: like a colour theme, it says how a scene may look and sound, never
+what happens in it, and no feeling or symbol names a scene, a trope or a
+character. The schema, the bounds,
 the audits and the engine are generic over whatever a generated tree
 contains. The scenes in this document are illustrations of the shape.
 
@@ -455,14 +465,109 @@ option (Def. 8.3).
   calls a conversation a "beat", and here a beat is a line or a narration.
 - **Two audits, by owner.** The story audit checks shape: two to four options
   per choice, no choice at the maximum depth, ids unique across the tree,
-  every speaker and `pov` in the cast, every option leading to a scene. The
-  teaching audit is the existing probe audit, plus a match between each
-  choice's options and its check's candidates. A choice it rejects is not
-  asked: its scene becomes a leaf and the subtree under it is dropped, the
-  tree's version of Remark 4.7's "dropped at load".
+  every speaker and `pov` in the cast, every option leading to a scene, every
+  scene naming a feeling. The teaching audit is the existing probe audit, plus
+  a match between each choice's options and its check's candidates. A choice
+  it rejects is not asked: its scene becomes a leaf and the subtree under it is
+  dropped, the tree's version of Remark 4.7's "dropped at load". Topik also
+  rejects a tree whose scene names a feeling the renderer does not have.
 - **Asset jobs** are a separate authoring step (cast voices, option art,
   later portraits and video), so a lesson can ship with no assets at all and
   gain them later without its story changing.
+
+## The webtoon: one feeling per scene
+
+The phone renders a lesson as a vertical webtoon: one panel per beat, speech
+bubbles, narration in caption boxes, sound-effect lettering. On its own that
+reads as a conversation in panels. What makes it a drama is that every scene is
+wrapped in one feeling, and the feeling is anchored the way a show's sting is:
+the same kit, every time it recurs, so the fifth time the reader meets it they
+feel it before they read a word. A kit is a convention (a variety-show caption,
+a sweat drop, a slammed panel), not a joke, which is why it survives being
+repeated.
+
+### The vocabulary
+
+Eight feelings, each placed on the valence × arousal plane (v from unpleasant
+−1 to pleasant 1, a from calm −1 to agitated 1). The caption, the voiced cry
+and the sound-effect lettering are fixed per feeling, never generated, so the
+anchor is identical wherever it recurs.
+
+| Key       | Feeling | v     | a     | Hue | Texture | Motion  | Caption (예능 자막) | Cry           | Lettering |
+| --------- | ------- | ----- | ----- | --- | ------- | ------- | ------------------- | ------------- | --------- |
+| `tension` | 긴장    | −0.35 | 0.45  | 260 | lines   | settle  | 숨 막히는 긴장감    | 흠…           | 꿀꺽      |
+| `rivalry` | 기싸움  | −0.45 | 0.70  | 300 | stripes | flicker | 기싸움 시작         | 호오?         | 파직      |
+| `chill`   | 싸늘    | −0.60 | −0.45 | 235 | dots    | frost   | 갑분싸              | 헐.           | 휘잉      |
+| `cringe`  | 민망    | −0.30 | 0.30  | 350 | tone    | shake   | 동공지진            | 아이고…       | 삐질      |
+| `fury`    | 분노    | −0.85 | 0.95  | 28  | burst   | slam    | 분노 폭발           | 허, 참!       | 쾅        |
+| `twist`   | 반전    | 0     | 0.90  | 95  | burst   | punch   | 충격 반전           | 헉!           | 두둥      |
+| `flutter` | 설렘    | 0.70  | 0.55  | 345 | petals  | float   | 심쿵                | 어머나~       | 두근      |
+| `warmth`  | 훈훈    | 0.75  | −0.35 | 75  | none    | glow    | 훈훈한 마무리       | 휴, 다행이다. | 휴        |
+
+Each feeling also has one symbol, a small inline icon: tension lines,
+a lightning bolt, cold wind, sweat drops, an anger vein, shock lines,
+sparkles, rising steam. Adding a feeling is placing a new point and writing its
+words; everything else follows from the rules below. 짠함 (bittersweet, about
+v −0.3, a −0.65) is the next open place on the plane.
+
+### Derived, never chosen
+
+A feeling's colours, edges, timing and sound are derived from its point and
+hue, relative to the session theme the person chose (`SESSION_THEMES` in
+`@some-ui/styles`), so every feeling lives inside every session theme rather
+than beside it. A feeling never overrides a session role; it sets only its own
+private tokens, and the drama brings no colour of its own: its buttons and its
+choice panel are the session's.
+
+- **Ground:** the session background mixed in oklab toward a tint of the hue
+  (lightness 0.86 − 0.08·max(a, 0) on a light theme, 0.42 on a dark one;
+  chroma 0.04 + 0.12·|v|), by 18% + 14%·|v| (24% + 14%·|v| on a dark theme). A
+  reveal (|v| < 0.2 and a ≥ 0.8) swaps ground and ink.
+- **Ink and muted text:** the session's own, each mixed halfway toward the same
+  lightness at chroma 0.09 in the hue.
+- **Accent** (symbol, lettering, texture): the hue at lightness 0.52 on a light
+  theme or 0.80 on a dark one, chroma 0.06 + 0.12·|v|.
+- **Contrast floor:** body ink and muted text clear 4.5:1 and marks 3:1 on the
+  ground; a colour that falls short steps its lightness away from the ground
+  until it does.
+- **Edge:** 2 + 2·max(a, 0) px of ink; jagged when v ≤ −0.6 and a ≥ 0.8, rounded 20·v px
+  when v ≥ 0.4.
+- **Texture:** the feeling's kind, in the accent at 10–18% alpha, denser as a
+  rises.
+- **Motion:** the feeling's kind, played once, 950 − 450·max(a, 0) ms at
+  amplitude 0.35 + 0.65·max(a, 0), and not at all under `prefers-reduced-motion`.
+- **Caption lettering:** the hue as fill, a dark ink stroke, the session ground
+  as its halo.
+- **Sound:** a synthesized tone, register 196·2^max(a, 0) Hz, rising in a major triad
+  when v ≥ 0.3, falling a semitone when v ≤ −0.3, otherwise the dun-dun of a
+  reveal; then the cry, voiced at rate 0.9 + 0.2·a and pitch 1 + 0.12·v. No
+  asset files.
+
+### Where the anchor goes
+
+- **A cover beat opens every scene,** in the feeling's theme: its caption, its
+  symbol and its lettering, entering with its motion. With sound on, the cover
+  plays the tone and then the cry.
+- **Every panel of the scene wears the feeling's theme** (ground, texture,
+  edge) and carries its symbol beside the speaker.
+- **A leaf closes on an ending panel** in the same theme.
+- **Never on a choice.** The choice panel and the learner's chosen line stay in
+  the session theme. A child scene's feeling first shows on the cover after the
+  chosen line, so it adds nothing about the choice just answered that the
+  child scene itself does not show.
+
+**What the anchor reveals.** The anchor is a rendition kind in Prop. 9.4's
+sense. A scene's feeling is on screen while that scene's own choice is open
+(the root's before anything is answered), so it can change the choice's
+`p_hint`: it names the scene's mood, the same for every candidate, which the
+scene's Korean already carries, and so it can stand in for reading the scene.
+It lands in M2 with the canon line the invariant on rendition kinds requires,
+stating that valuation and why it is acceptable.
+
+- **Hangul first.** The caption is Korean, with its gloss one tap away; the cry
+  is heard, in Korean.
+- **Sound only after a tap.** It is off until the learner turns it on, plays
+  once per scene, and never speaks over a line.
 
 ## Where it lives
 
@@ -470,6 +575,10 @@ option (Def. 8.3).
   the story audit and the engine, and from M2 the media port types. It
   imports nothing from topik, which the package boundary enforces; an import
   restriction on its engine module keeps media out of the engine.
+- **`@some-ui/styles`** owns the feeling themes as presentation: the
+  vocabulary's points, hues, textures and motions, the derivation and its
+  contrast floor. Topik owns their words
+  (captions, cries, lettering) and symbols, keyed by the same feeling keys.
 - **`@some-ui/topik`** keeps the teaching: probes, the hint ladder, tiles, the
   teaching audit, the evaluation report, and the handheld renderer, which
   becomes a renderer of the engine. Topik depends on makjang, never the
@@ -491,9 +600,8 @@ Neither needs a better model than exists today.
   never on a curated scene. No UI change.
 - **M2: the phone lesson plays scene trees.**
   - It renders as a vertical webtoon: panels, speech bubbles, sound-effect
-    lettering. Each scene carries one feeling, anchored visually. The
-    anchor's design is settled and recorded in this document before the
-    renderer is built.
+    lettering. Each scene carries one feeling, anchored as "The webtoon: one
+    feeling per scene" records. The tree prompt lists the vocabulary's keys.
   - Content: the tree prompt, beside the conversation prompt. The learner's
     paste-in loop (Cor. 8.2) accepts trees through the two audits. A
     phone-only feed holds the operator's first reviewed batch of trees
@@ -518,9 +626,9 @@ Neither needs a better model than exists today.
   capability, plus a canon line, and change neither the story schema nor the
   engine. Longitudinal structure (a standing cast, series, memory across
   lessons) and a learner-defined genre do change the schema, and get their
-  own design.
+  own design, as does layering several feelings in one scene.
 
-## Invariants to declare with M1
+## Invariants to declare with M1 and M2
 
 Design commitments, not yet invariants: there is no code for them to be true
 of. They are declared in the house shape (`CLAUDE.md`, "Gray-area invariants")
@@ -535,6 +643,10 @@ in the change that adds the code, and enforced where they can be.
 - **A choice's outcome is its first choice, whatever follows, and an
   unreached choice has none.** Mechanical: a property test over every route
   of synthetic trees.
+- **Every feeling theme clears the contrast floor on every session theme.**
+  Mechanical: a test over the session themes × the vocabulary.
+- **No feeling anchor sits on a choice or a chosen line.** Mechanical: a
+  renderer test over every route of a synthetic tree.
 - **A new rendition kind lands with its valuation.** Not mechanical: whether a
   picture or a face reveals the answer needs a person. Falsified by a change
   that adds a rendition kind to a renderer's capability set with no canon line
