@@ -76,10 +76,11 @@
   #v(0.15em)
   #text(size: 10pt)[
     Governing `@some-ui/honeycomb` · `@some-ui/leetype` · `@some-ui/topik` ·\
-    `@some-ui/interview` · `pedagogy/` · and every tutor skill
+    `@some-ui/makjang` · `@some-ui/interview` · `pedagogy/` · and every tutor
+    skill
   ]
   #v(1em)
-  #text(size: 9.5pt)[Version 1.11 --- 2026-10-02]
+  #text(size: 9.5pt)[Version 1.13 --- 2026-10-08]
   #v(2cm)
 ]
 
@@ -1601,6 +1602,97 @@ rather than as *data*, and the remedy is to exhibit the data.
   set, never through a session.
 ]
 
+#remark("4.11", name: "A consequence is a reveal")[
+  Definition 4.2's $p_"reveal"$ gains a value, *consequence*: after an
+  outcome, what is shown is content the chosen candidate leads to --- in a
+  drama unit (Cor. 4.7), the scene the chosen option opens, authored with the
+  unit (Prop. 8.1) --- with the candidate's authored reason available after
+  it. It is a new value of an existing dimension, which Theorem 4.1 says is
+  cheap: no mode is introduced, and every other dimension keeps its meaning.
+  A consequence is presentation, not evidence. Which scene follows an outcome
+  changes nothing about how the outcome is recorded (Cor. 4.7 (iv)).
+]
+
+#corollary("4.7", name: "A drama unit is a bounded tree")[
+  The handheld Topik renderer (Cor. 4.4, Cor. 4.5) gains a second unit shape,
+  the *drama unit*, which it plays in place of a conversation. A drama unit
+  is one *scene*: lines and narration, each with the audio, Hangul and gloss
+  ladder of Corollary 4.4, ending in at most one *choice*. A choice is a
+  morphism probe of order two or three (Def. 4.6, Def. 4.7, Rem. 4.8) with two
+  to four candidates, each identified by an authored id (Thm. 1.1) and each
+  leading to a child scene, which is a scene in its own right. Corollary 4.4
+  is retained and amended in four respects.
+
+  (i) *The unit is a bounded tree, not a sequence.* No route crosses more than
+  two choices: a scene two choices below the root has none, and the unit
+  resolves there. A scene above it may resolve too.
+
+  (ii) *A miss leads to its consequence, not to a repeat.* Corollary 4.4's
+  $p_"repeat" = "on-error"$ is replaced. A candidate other than the one the
+  item keys opens its consequence scene ($p_"reveal" = "consequence"$,
+  Rem. 4.11), whose own choice, where it has one, is the repair item. What
+  comes back after a miss is authored into that subtree and bounded by the
+  tree's depth: there is no loop to retry in. $p_"retry" = "forbidden"$
+  stands, so going back within a scene stops at its first line and never
+  crosses a choice.
+
+  (iii) *A choice off the route is no outcome.* A choice the learner's route
+  never reaches was never presented, so it is not an outcome of any kind, and
+  in particular not a miss.
+
+  (iv) *An outcome is the first choice.* A choice's outcome is the candidate
+  first chosen there, kept when the unit is gone through again, which
+  Corollary 8.2 expects; a choice made again on a replay records nothing new,
+  and a learner who reached a scene by a repair branch is recorded no
+  differently for the items there.
+
+  Every other decision of Corollaries 4.4 and 4.5 stands: first-order checks
+  are withheld, $p_"pressure" = "none"$, $p_"credited" = "false"$ (so
+  Proposition 3.1 and Corollary 3.2 hold vacuously, as there), and an item the
+  audit rejects is not asked. In a tree that means its scene ends there and
+  the subtree under it is dropped, which is Remark 4.7's "dropped at load"
+  for a tree and leaves every route a unit (Thm. 8.2). One is amended in
+  passing: $p_"scored" = "false"$, since the unit ends on how its scene
+  resolved, not on a tally. The shape is checked in two audits by owner:
+  the bounds and identities by `@some-ui/makjang`'s story audit, the items by
+  `@some-ui/topik`'s teaching audit.
+]
+
+#remark("4.12", name: "A choice is about its scene")[
+  Corollaries 4.4 and 4.5 present a check right after the line it anchors to,
+  and withhold that line's gloss until it is answered. A choice in a drama
+  unit is presented at the end of its scene and may turn on any line the
+  route has shown, including lines whose gloss the learner has already
+  reached. Its valuation is declared: $p_"hint" = "on-demand"$ over the route
+  so far, since every line's gloss stays one rung away as the ladder allows.
+  Candidates carry no gloss of their own, and each candidate's authored
+  reason stays hidden until the choice is answered, as Corollary 4.4
+  withholds the anchor line's gloss: an English rendering of each candidate
+  would spell out the transformation the item tests, which is
+  Proposition 4.2's confound by another road. That a line's gloss may be
+  reached before the choice is answered is recorded here, as Corollary 4.5
+  (ii) records the gloss candidate, so that the day $p_"credited"$ moves
+  (Rem. 4.5) it is a known interaction with Proposition 3.1 rather than a
+  discovered one: the rung reached on each line of the route is then part of
+  the choice's $p$.
+]
+
+#remark("4.13", name: "The budget is one unit, and the resume point is a route")[
+  The handheld capability set's budget (Def. 9.3), one conversation in
+  Corollary 4.4, is one drama unit when the renderer plays one: one route
+  through one tree, at most three scenes. The resume point of Corollary 4.4
+  (iii) is amended: in place of a conversation index and a message
+  identifier it holds the route (the candidate ids chosen from the root), the
+  current line's id, and the candidate first chosen at each choice reached
+  (Cor. 4.7 (iv)). It is resolved by identity and discarded to the root when
+  any part of it no longer resolves (Thm. 1.1). As before it is not a
+  competence claim, it sits outside O3, and losing it costs a restart and
+  nothing else (Thm. 7.2). Nothing crosses units: a drama unit refers to no
+  other unit, and its generator is given none, beyond the digest of
+  evaluation reports Corollary 8.2 already carries, which is about fit and
+  not about what happened.
+]
+
 // ═══════════════════════════════════════════════════════════════════════════
 = The Estimator
 // ═══════════════════════════════════════════════════════════════════════════
@@ -2234,6 +2326,32 @@ repeating what is already known buys little.
   argued the same way.
 ]
 
+#axiom("6.3", name: "Honest exposure teaches, for the drama")[
+  For a route $w$ through a drama unit (Cor. 4.7), let $K_w$ be the concepts
+  its lines present and $overline(mu)_t (w)$ the mean of $mu_t (k)$ over
+  $K_w$, and take the route's intervention gain (Def. 4.3) to be the mean of
+  the gain over $K_w$. Write $G_h (w, S)$ for that gain conditioned on the
+  learner following the route honestly --- reading, or hearing and reading,
+  each line in the language being learned, and reaching for its gloss only
+  when the line will not come otherwise --- and $G_(not h) (w, S)$ for the
+  gain conditioned on their not doing so, with $pi$ the probability of
+  honest practice, as in Axiom 6.2. There is a fixed $g_w in (0, 1]$ such
+  that $G_h (w, S) >= g_w dot (1 - overline(mu)_t (w))$ for every route,
+  whether or not anything measures it, and $G_(not h) >= 0$.
+]
+
+This is Remark 3.3's weaker claim stated for following a scene, as
+Axiom 6.2 states it for reading aloud, and it is likewise an assumption and
+not a result: the drama observes nothing from which it could be derived. It
+is what makes "literacy emerges from continued time with the drama" a claim
+this canon holds rather than a slogan, and it conditions the gain on honest
+practice. A learner who reaches the gloss of every line is following the
+drama in their own language, and the axiom promises nothing for that route.
+Remark 6.7's reading carries over unchanged: a change that makes the drama
+more pleasant by making it less Korean (glosses up front, narration in
+English) raises continuation at the cost of $pi$, and is not preferred on
+engagement alone.
+
 // ═══════════════════════════════════════════════════════════════════════════
 = The Persistence Budget
 // ═══════════════════════════════════════════════════════════════════════════
@@ -2835,6 +2953,26 @@ estimating a cost.
   shares every object of §§1--8 with the first.
 ]
 
+#remark("9.2", name: "The feeling anchor is a rendition kind")[
+  The drama unit's renderer wraps each scene in one *feeling*, drawn from a
+  closed vocabulary: a caption, a symbol, colour, edge and motion, and, when
+  the learner turns sound on, a tone and a voiced cry, the same kit wherever
+  the feeling recurs. By Proposition 9.4's argument this is a rendition kind,
+  and a valuation change. A scene's feeling is on screen while that scene's
+  own choice is open, so it is co-visible with the item, and it changes that
+  choice's $p_"hint"$ and nothing else. It names the scene's mood, the same
+  for every candidate, which the scene's own lines already carry, so it can
+  stand in for reading the scene but cannot single out a candidate. That is
+  acceptable for the reason Corollary 4.5 (i)'s highlighting is: it renders
+  what the item is about, not whether a candidate holds. Two constraints keep
+  it there. The feeling is never shown on a choice or on the chosen
+  candidate, and a child scene's feeling first shows after the choice that
+  opens it is answered, so it adds nothing about that choice that the child
+  scene itself does not show. Each further rendition kind (option art, a
+  portrait, a face on video) lands with its own line here saying what it
+  reveals and why that is acceptable.
+]
+
 // ═══════════════════════════════════════════════════════════════════════════
 = Grounding Against the Present Source
 // ═══════════════════════════════════════════════════════════════════════════
@@ -3206,6 +3344,19 @@ would cost.
   remark. Detectable mechanically: `apps/www/tests/local-mode` records what the
   built application sends with and without an account and without the opt-in.
 
++ *Following the drama does not carry over to reading.* Axiom 6.3 cannot be
+  checked from inside the drama, which sees the rung each line reached and
+  nothing about reading. A learner who has followed many routes at a level
+  should read unseen text of that level --- another unit's lines, before
+  their gloss --- reaching for the gloss less often than when they began. If
+  they do not, and in particular if they reach the gloss on nearly every
+  line, the drama is being followed in the learner's own language ($pi$
+  near zero) or the gain was never there. Cost: the gloss rung moves further
+  from the line, or the drama acquires a measurement of reading
+  ($beta > 0$), and Axiom 6.3 is withdrawn for the surface. Detectable from
+  the rung reached on each line, which the handheld teaching state records
+  (Cor. 4.4) and never credits.
+
 // ═══════════════════════════════════════════════════════════════════════════
 = Amendment Protocol
 // ═══════════════════════════════════════════════════════════════════════════
@@ -3423,6 +3574,30 @@ the canon could not tell "I do not know this" from "I cannot tell what this
 asks". Filed with `packages/ui/leetype`'s `lib/leetype/notes`, which
 implements it.
 
+*v1.13 --- 2026-10-08.* Admits the drama unit on the handheld surface: a
+lesson that is one scene tree the learner follows in Korean, whose choices
+are morphism probes. Five amendments and one declaration, each a new item. A
+consequence is a value of $p_"reveal"$ (Remark 4.11). A drama unit is a
+bounded tree: a miss leads to its consequence and a repair rather than a
+repeat, a choice off the route is no outcome, and an outcome is the first
+choice (Corollary 4.7). A choice is about its scene, with $p_"hint"$ on
+demand over the route and candidates that carry no gloss (Remark 4.12). The
+budget is one unit and the resume point a route, resolved by identity
+(Remark 4.13). Honest exposure teaches, for the drama, as an assumption with
+a falsifier added to §12 (Axiom 6.3). And the webtoon's feeling anchor is a
+rendition kind that changes a choice's $p_"hint"$ only (Remark 9.2).
+Motivated by the user story in `docs/makjang/README.md`: the handheld
+lesson kept a drama's lines and threw away its cast, its choices and their
+consequences, so the learner could say which exercise they had done but not
+what happened. Filed with `packages/makjang` (the scene-tree schema, its
+story audit and the engine, whose resume and first-choice rules are
+Remark 4.13 and Corollary 4.7 (iv), held by a property test over every route
+of a synthetic tree) and `packages/ui/topik`'s tree teaching audit, which
+implement the shape; the renderer that plays a tree follows them, and
+Remark 9.2 is filed ahead of it. Adds `@some-ui/makjang` to the governed
+workspaces, and moves the front-matter version line, which had stayed at
+1.11 through v1.12.
+
 #pagebreak()
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -3462,6 +3637,8 @@ implements it.
   [$K_e$], [The set of concepts a read-aloud rep examines: the words it presents (Def. 4.8)],
   [$overline(mu)_t (e)$], [Mean mastery over the words a read-aloud rep presents (Axiom 6.2)],
   [$N_gamma$], [Expected discounted, survival- and mastery-weighted count of honest read-aloud reps (Cor. 6.4)],
+  [$K_w$, $overline(mu)_t (w)$], [The concepts a route through a drama unit presents, and mean mastery over them (Axiom 6.3)],
+  [$g_w$], [Lower bound on the gain of a drama route followed honestly, relative to what remains to learn (Axiom 6.3)],
   [$nu$], [Renderer nuisance parameters (Def. 9.2)],
 )
 

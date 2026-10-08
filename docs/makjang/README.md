@@ -154,7 +154,9 @@ items are admissible, what is credited, what persists. This story governs
 Most of the architecture below is derivable from results the canon already
 has. Some of it is not, and per the canon's amendment protocol those
 amendments land with, or before, the first source change that relies on them
-(not with this document, which changes no source).
+(not with this document, which changes no source). They landed with M1 as
+canon v1.13 (MKJ-S1): Remark 4.11, Corollary 4.7, Remarks 4.12 and 4.13,
+Axiom 6.3, and Remark 9.2 for the feeling anchor.
 
 **Derivable today**
 
@@ -171,20 +173,20 @@ amendments land with, or before, the first source change that relies on them
   other object; a missing model changes the supply of content and nothing else (Thm. 8.2). That is
   the formal version of "don't block on the technology".
 
-**Needs an amendment (to land with M1, below)**
+**Needed an amendment (canon v1.13, landed with M1)**
 
-1. **A consequence as a value of `p_reveal`** (Def. 4.2). After a miss, what
+1. **A consequence as a value of `p_reveal`** (Def. 4.2; Rem. 4.11). After a miss, what
    is shown is the scene the chosen candidate leads to, with the authored
    `why` available after it. It is a new value of an existing dimension, which
    Theorem 4.1 says is cheap.
-2. **A unit is a bounded tree, not a sequence.** Corollary 4.4 brings a missed
+2. **A unit is a bounded tree, not a sequence** (Cor. 4.7). Corollary 4.4 brings a missed
    check back once after the last line. In a drama unit, a missed choice
    instead leads to its consequence scene, whose own choice is the repair
    item: what comes back after a miss is authored into that subtree, bounded
    by the tree's depth. A choice the learner's route never reaches was never
    presented, so it is not an outcome of any kind, and in particular not a
    miss.
-3. **A choice is about its scene, not one line.** Corollaries 4.4 and 4.5
+3. **A choice is about its scene, not one line** (Rem. 4.12). Corollaries 4.4 and 4.5
    present a check right after the line it anchors to, and withhold that
    line's gloss until the check is answered. A choice is asked at the end of
    its scene and may turn on any line the route has shown, including lines
@@ -198,7 +200,7 @@ amendments land with, or before, the first source change that relies on them
    gloss may be reached before the choice is recorded, as Cor. 4.5 (ii)
    records the gloss candidate, so that the day `p_credited` moves
    (Rem. 4.5) it is a known interaction rather than a discovered one.
-4. **The budget is one lesson, and the resume point is a route.** The
+4. **The budget is one lesson, and the resume point is a route** (Rem. 4.13). The
    handheld capability set's budget (Def. 9.3), one conversation in
    Cor. 4.4, becomes one lesson: one route through one tree, at most three
    scenes. The resume point replaces Cor. 4.4 (iii)'s conversation index and
@@ -207,7 +209,7 @@ amendments land with, or before, the first source change that relies on them
    is resolved by identity and discarded to the root when it no longer
    resolves (Thm. 1.1). Nothing crosses lessons (see "One lesson stands
    alone").
-5. **Honest exposure teaches, for the drama.** Axiom 6.2 is stated for the
+5. **Honest exposure teaches, for the drama** (Axiom 6.3). Axiom 6.2 is stated for the
    read-aloud rep. The drama needs the same assumption, stated for following
    a scene in Korean, with honest practice defined as reaching the gloss only
    when a line will not come otherwise. Like Axiom 6.2 it is an assumption,
@@ -268,9 +270,9 @@ the check's candidate with the same id, so a candidate's text lives in one
 place. Only checks with candidates can be choices (today `pick-valid` and
 `odd-one-out`, each with exactly one keyed candidate); a `build` check has
 none, so it cannot be a choice and the tree prompt does not author it.
-Candidates carry no id today (`ProbeOption` in `entity/topik-types.ts` is
-positional), so M2 adds one
-(Thm. 1.1).
+A candidate carries an `id` (Thm. 1.1): optional on `ProbeOption` in
+`entity/topik-types.ts`, since a conversation file's candidates stay
+positional, and required by the teaching audit of every choice in a tree.
 
 - **Depth** is the number of choices between the root and a scene.
   `MAX_DEPTH = 2`: a scene at depth 2 has no choice; it is a leaf, and the
@@ -561,8 +563,8 @@ sense. A scene's feeling is on screen while that scene's own choice is open
 (the root's before anything is answered), so it can change the choice's
 `p_hint`: it names the scene's mood, the same for every candidate, which the
 scene's Korean already carries, and so it can stand in for reading the scene.
-It lands in M2 with the canon line the invariant on rendition kinds requires,
-stating that valuation and why it is acceptable.
+Its canon line, stating that valuation and why it is acceptable, is
+Remark 9.2 (v1.13), filed ahead of the renderer.
 
 - **Hangul first.** The caption is Korean, with its gloss one tap away; the cry
   is heard, in Korean.
@@ -587,8 +589,10 @@ stating that valuation and why it is acceptable.
   import makjang. The desktop session (`DesktopSession`, the session
   machine) does not, and is not changed by any increment here.
 
-M1 and M2 land in one pull request: a workspace nothing depends on is a
-vestige from its first day (`CLAUDE.md`, "Vestiges").
+Each story lands with a live consumer (epic #1708), so makjang is never a
+vestige (`CLAUDE.md`, "Vestiges"): MKJ-S1 lands the workspace with the lesson
+CRM, a LAN deployable, building the tree prompt and checking a pasted tree
+with both audits; later stories add the phone's renderer, sound and feed.
 
 ## Increments
 
@@ -628,26 +632,88 @@ Neither needs a better model than exists today.
   lessons) and a learner-defined genre do change the schema, and get their
   own design, as does layering several feelings in one scene.
 
-## Invariants to declare with M1 and M2
+## Invariants
 
-Design commitments, not yet invariants: there is no code for them to be true
-of. They are declared in the house shape (`CLAUDE.md`, "Gray-area invariants")
-in the change that adds the code, and enforced where they can be.
+Declared in the house shape (`CLAUDE.md`, "Gray-area invariants"). MK1 to MK4
+landed with M1 (MKJ-S1). Each is enforced, and each says what a reviewer
+still checks: the part no lint, type or test can see. All four held when
+declared: the engine imports only the schema, the package has no
+dependencies, and the tests named below pass. The module doc comments of
+`schema.ts`, `story-audit.ts`, `engine.ts` and topik's `core/tree-audit`
+carry the one-line summaries.
 
-- **The engine imports no media and no topik.** Mechanical: the package
-  boundary and an import restriction on the engine module.
-- **Every tree is within its bounds.** Mechanical: the story audit, on every
-  served or pasted lesson.
-- **Every choice that is asked passes the teaching audit.** Mechanical, with a
-  rejected choice pruned to a leaf.
-- **A choice's outcome is its first choice, whatever follows, and an
-  unreached choice has none.** Mechanical: a property test over every route
-  of synthetic trees.
+> **MK1: The engine imports no media and no topik.**
+>
+> - _Claim:_ `packages/makjang/src/engine.ts` imports only `@makjang/schema`,
+>   and `@some-ui/makjang` has no runtime or peer dependency and no workspace
+>   devDependency but `@some-ui/tsconfig` and `@some-ui/vite-config`.
+> - _Falsified by_ a hunk that adds any other import to `engine.ts`; that adds
+>   such a dependency to `packages/makjang/package.json`; that removes,
+>   narrows or re-scopes the `src/engine.ts` block of
+>   `packages/makjang/eslint.config.js`; that moves or renames `engine.ts` out
+>   of that block's `files`; or that deletes or weakens
+>   `packages/makjang/src/__tests__/package-shape.test.ts`.
+> - _Scope:_ `packages/makjang`.
+> - _Why not wholly enforced:_ the imports are lint (`no-restricted-imports`
+>   on the engine, which restates the `../` ban) and the dependencies are a
+>   test that reads the manifest. No check sees its own configuration being
+>   edited away, which is why the falsifier names those files.
+>
+> **MK2: Every tree the engine walks is within its bounds.**
+>
+> - _Claim:_ every tree passed to `start`, `step` or `resume` is the `lesson`
+>   of an `ok: true` `auditStory` result (or a pruning of one by
+>   `auditTeaching`), and `auditStory` rejects a choice at `MAX_DEPTH`, a
+>   choice outside `MIN_BRANCHES` to `MAX_BRANCHES` options, an id used
+>   twice, a speaker, `pov` or register key outside the cast, an option
+>   without a scene, a scene without beats, and a scene without a feeling.
+> - _Falsified by_ a hunk that passes the engine a tree built any other way;
+>   that changes `MAX_DEPTH`, `MIN_BRANCHES` or `MAX_BRANCHES` without
+>   "1. Story" above changing with it; or that removes one of those checks
+>   from `packages/makjang/src/story-audit.ts`, or its test from
+>   `src/__tests__/story-audit.test.ts`.
+> - _Scope:_ `packages/makjang` and every caller of its engine.
+> - _Why not wholly enforced:_ the audit runs on every tree and is tested,
+>   but `Lesson<Check>` is a plain type anyone can construct, so whether a
+>   caller's tree came through the audit is data flow at the call site, which
+>   no type or lint rule sees.
+>
+> **MK3: A choice's outcome is its first choice, and an unreached choice has
+> none.**
+>
+> - _Claim:_ in `engine.ts`, `DramaState.first` gains an entry only on a
+>   `choose` at an open choice that has none, for that choice and the option
+>   chosen, and is never otherwise changed: `restart` keeps it, and `advance`
+>   and `back` leave it.
+> - _Falsified by_ a hunk to `engine.ts` that writes `first` anywhere else,
+>   overwrites an entry, or drops it on `restart`; or one that deletes or
+>   weakens the MK3 property in `packages/makjang/src/__tests__/engine.test.ts`
+>   (its loop over every scene's route, its oracle, or its event set).
+> - _Scope:_ `packages/makjang/src/engine.ts`.
+> - _Why not wholly enforced:_ the property runs random events after reaching
+>   every route of a synthetic tree and fails on any violation. What it cannot
+>   check is itself, so a reviewer checks the falsifier's second half.
+>
+> **MK4: Every choice that is asked passes the teaching audit.**
+>
+> - _Claim:_ a tree's choices reach a learner, or the lesson CRM's verdict,
+>   only as a `checked` `TreeIntake` from `intakeTree` holds them, where every
+>   choice `auditTeaching` reported an error on is pruned to a leaf.
+> - _Falsified by_ a hunk that plays or shows a tree's choices from anything
+>   but that `lesson`, or that makes `auditTeaching` return a choice it
+>   reported an error on.
+> - _Scope:_ `packages/ui/topik` and `packages/ui/lesson-crm`.
+> - _Why not wholly enforced:_ the pruning is tested
+>   (`core/tree-audit/index.test.ts`), but which value a renderer reads is
+>   data flow; the phone's renderer arrives with MKJ-S2.
+
+Still to declare, with the code they are true of:
+
 - **Every feeling theme clears the contrast floor on every session theme.**
-  Mechanical: a test over the session themes × the vocabulary.
+  Mechanical: a test over the session themes × the vocabulary (MKJ-S2).
 - **No feeling anchor sits on a choice or a chosen line.** Mechanical: a
-  renderer test over every route of a synthetic tree.
+  renderer test over every route of a synthetic tree (MKJ-S2).
 - **A new rendition kind lands with its valuation.** Not mechanical: whether a
   picture or a face reveals the answer needs a person. Falsified by a change
   that adds a rendition kind to a renderer's capability set with no canon line
-  saying what it reveals.
+  saying what it reveals. Remark 9.2 is the feeling anchor's line.

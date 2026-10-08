@@ -77,10 +77,16 @@ function keyedRelation(probe: Probe): MorphismRelation | undefined {
   }
 }
 
+/** Where a rule reports what it finds about one probe. */
+export type ProbeReport = (
+  severity: ProbeFinding["severity"],
+  message: string
+) => void
+
 function auditProbe(
   probe: Probe,
   messages: Array<Message>,
-  report: (severity: ProbeFinding["severity"], message: string) => void
+  report: ProbeReport
 ): void {
   if (probe.anchorMessageId === undefined) {
     report(
@@ -99,8 +105,24 @@ function auditProbe(
     messages
   )
   const anchorLine = messages[anchor]
-  const source = probe.source ?? (anchorLine ? lineText(anchorLine) : "")
+  auditItem(
+    probe,
+    probe.source ?? (anchorLine ? lineText(anchorLine) : ""),
+    report
+  )
+}
 
+/**
+ * The rules about the item itself, given the utterance it is judged against
+ * (`""` when there is none): what is keyed, what can be tiled, and how each
+ * candidate stands to the source. Where the probe sits is the caller's - a
+ * line of a conversation here, a scene's choice in `core/tree-audit`.
+ */
+export function auditItem(
+  probe: Probe,
+  source: string,
+  report: ProbeReport
+): void {
   if (keyedRelation(probe)?.trim().toLowerCase() === GLOSS_RELATION) {
     report(
       "error",
@@ -255,10 +277,7 @@ export function auditTopikFile(raw: unknown): Array<ProbeFinding> {
           ? candidate.id
           : `#${position}`
       let at: number | undefined
-      const report = (
-        severity: ProbeFinding["severity"],
-        message: string
-      ): void => {
+      const report: ProbeReport = (severity, message) => {
         findings.push({
           batch: batch.id,
           probe: name,

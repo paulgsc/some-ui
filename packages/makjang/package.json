@@ -1,0 +1,52 @@
+{
+  "name": "@some-ui/makjang",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "The drama as data: the scene-tree schema, its story audit, and a pure engine that walks a tree. No media, no pedagogy, no React.",
+  "license": "MIT",
+  "homepage": "https://pgdev.maishatu.com/?tab=github",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/paulgsc/some-ui"
+  },
+  "bugs": {
+    "url": "https://github.com/paulgsc/some-ui/issues"
+  },
+  "keywords": [],
+  "main": "./dist/@some-ui/makjang.es.js",
+  "module": "./dist/@some-ui/makjang.es.js",
+  "types": "./dist/@some-ui/makjang.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/@some-ui/makjang.d.ts",
+      "import": "./dist/@some-ui/makjang.es.js",
+      "default": "./dist/@some-ui/makjang.es.js"
+    },
+    "./style.css": "./dist/makjang.css"
+  },
+  "files": [
+    "dist"
+  ],
+  "dependencies": {},
+  "devDependencies": {
+    "@some-ui/tsconfig": "workspace:*",
+    "@some-ui/vite-config": "workspace:*",
+    "fast-check": "^4.10.2"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json && vite build",
+    "clean": "rimraf .turbo && rimraf node_modules && rimraf .eslintcache && pnpm clean:build",
+    "clean:build": "rimraf ./dist ./tsconfig.build.tsbuildinfo ./tsconfig.tsbuildinfo",
+    "knip": "knip --directory \"$(git rev-parse --show-toplevel)\" --workspace \"$(git rev-parse --show-prefix | sed 's:/*$::')\"",
+    "lint": "pnpm lint:js && pnpm prettier && pnpm typecheck",
+    "lint:js": "cross-env NODE_OPTIONS='--max_old_space_size=4096' eslint \"**/*.{js,mjs,ts,tsx}\" --cache",
+    "prettier": "prettier . --ignore-path $(git rev-parse --show-toplevel)/.prettierignore --check --cache",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "style": "./dist/makjang.css",
+  "sideEffects": [
+    "*.css"
+  ]
+}

@@ -74,6 +74,32 @@ describe("ProbeSchema", () => {
     expect(named("condition: -(으)면")).toBe(true)
     expect(named("  ")).toBe(false)
   })
+
+  it("keeps a candidate's id when it has one, and needs none (a conversation's are positional)", () => {
+    const parsed = ProbeSchema.safeParse({
+      ...oddOneOut,
+      options: [
+        { ...option("a", true), id: "a" },
+        option("b", true),
+        option("c", false),
+      ],
+    })
+    expect(
+      parsed.success && parsed.data.kind !== "build"
+        ? parsed.data.options.map(({ id }) => id)
+        : null
+    ).toEqual(["a", undefined, undefined])
+    expect(
+      ProbeSchema.safeParse({
+        ...oddOneOut,
+        options: [
+          { ...option("a", true), id: " " },
+          option("b", true),
+          option("c", false),
+        ],
+      }).success
+    ).toBe(false)
+  })
 })
 
 describe("TopikFileSchema probes", () => {

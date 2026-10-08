@@ -1,6 +1,7 @@
 /**
- * What the app hands the learner to give their own model: the lesson prompt,
- * with their request and the delta their recent surveys record.
+ * What the app hands the learner to give their own model: the lesson prompt
+ * or the scene-tree prompt, with their request and the delta their recent
+ * surveys record.
  *
  * The app provides the grammar - the prompt, its schema and its invariants -
  * and the learner's model does the generating (adaptive-learning canon
@@ -8,6 +9,7 @@
  * learner copies, and the lesson comes back the same way (see `parse`).
  */
 
+import { FEELING_KEYS, FEELING_WORDS } from "@topik/lib/topik/core/feeling"
 import type {
   Difficulty,
   Enthusiasm,
@@ -17,6 +19,7 @@ import type {
 } from "@topik/lib/topik/core/lesson-survey"
 
 import LESSON_PROMPT from "./lesson-prompt.md?raw"
+import TREE_PROMPT from "./tree-prompt.md?raw"
 
 export { LESSON_PROMPT }
 
@@ -103,16 +106,15 @@ export function surveyDigest(
     .join("\n")
 }
 
-/** The prompt, with this request appended; ready to copy. */
-export function buildLessonPrompt(request: LessonRequest): string {
-  const lines = [
-    `Level: ${request.level}`,
-    `Scene: ${request.scene?.trim() || "(invent one)"}`,
-    `Conversations: ${request.conversations ?? DEFAULT_CONVERSATIONS}`,
-  ]
+/** `prompt`, then this request's lines and its survey; ready to copy. */
+function withRequest(
+  prompt: string,
+  lines: Array<string>,
+  request: Pick<LessonRequest, "survey" | "audience">
+): string {
   const survey = request.survey?.trim()
   return [
-    LESSON_PROMPT.trimEnd(),
+    prompt.trimEnd(),
     "",
     "---",
     "",
@@ -127,4 +129,49 @@ export function buildLessonPrompt(request: LessonRequest): string {
         : "Survey: none yet - this is their first lesson.",
     "",
   ].join("\n")
+}
+
+/** The prompt, with this request appended; ready to copy. */
+export function buildLessonPrompt(request: LessonRequest): string {
+  return withRequest(
+    LESSON_PROMPT,
+    [
+      `Level: ${request.level}`,
+      `Scene: ${request.scene?.trim() || "(invent one)"}`,
+      `Conversations: ${request.conversations ?? DEFAULT_CONVERSATIONS}`,
+    ],
+    request
+  )
+}
+
+/** Where the tree prompt takes the feeling vocabulary. */
+const FEELINGS_MARKER = "<!-- feelings -->"
+
+/** The vocabulary as the tree prompt lists it: the app's keys, never a copy. */
+const feelingTable = (): string =>
+  [
+    "| Key | Feeling | What it is |",
+    "| --- | ------- | ---------- |",
+    ...FEELING_KEYS.map(
+      (key) =>
+        `| \`${key}\` | ${FEELING_WORDS[key].name} | ${FEELING_WORDS[key].meaning} |`
+    ),
+  ].join("\n")
+
+/**
+ * The scene-tree prompt (docs/makjang/README.md, "4. Authoring"), with the
+ * feeling vocabulary filled in and this request appended. A tree is one
+ * scene, so the request has no conversation count.
+ */
+export function buildTreePrompt(
+  request: Omit<LessonRequest, "conversations">
+): string {
+  return withRequest(
+    TREE_PROMPT.replace(FEELINGS_MARKER, feelingTable()),
+    [
+      `Level: ${request.level}`,
+      `Scene: ${request.scene?.trim() || "(invent one)"}`,
+    ],
+    request
+  )
 }

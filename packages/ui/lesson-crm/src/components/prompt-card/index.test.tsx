@@ -1,7 +1,7 @@
 import { PromptCard } from "@lesson-crm/components/prompt-card"
 import type { CrmNotice, Reporting } from "@lesson-crm/lib/operation"
 import { toIntentError } from "@some-ui/intent-kit"
-import { buildLessonPrompt } from "@some-ui/topik"
+import { buildLessonPrompt, buildTreePrompt } from "@some-ui/topik"
 import { act, fireEvent, render, screen } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
@@ -59,6 +59,22 @@ describe("PromptCard", () => {
     expect(reporting.notices).toEqual([
       { tone: "success", title: "Prompt copied: paste it into your model" },
     ])
+  })
+
+  it("copies the scene-tree prompt, which asks no conversation count", async () => {
+    const writeText = vi.fn(() => Promise.resolve())
+    stubClipboard({ writeText })
+    render(<PromptCard reporting={recording()} />)
+
+    fireEvent.click(screen.getByRole("radio", { name: "Scene tree" }))
+    expect(screen.queryByLabelText("Conversations")).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole("radio", { name: "TOPIK 3" }))
+    fireEvent.click(screen.getByRole("button", { name: /Copy the prompt/ }))
+    await settle()
+
+    expect(writeText).toHaveBeenCalledWith(
+      buildTreePrompt({ level: 3, audience: "batch" })
+    )
   })
 
   it("shows the prompt to copy by hand where the page has no clipboard", async () => {

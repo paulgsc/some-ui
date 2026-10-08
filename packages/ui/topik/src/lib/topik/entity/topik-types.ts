@@ -77,6 +77,13 @@ export type MorphismRelation = string
 export const GLOSS_RELATION = "gloss"
 
 export type ProbeOption = {
+  /**
+   * Stable identity (Thm. 1.1). Optional, because a conversation file's
+   * candidates are positional; required of a scene tree's choice, where an
+   * option names the candidate it shows by this id
+   * (`core/tree-audit`, docs/makjang/README.md "1. Story").
+   */
+  id?: string
   /** The candidate: an utterance, or a situation/meaning described in prose. */
   text: string
   relation: MorphismRelation
@@ -130,6 +137,7 @@ export type Probe =
     })
 
 const ProbeOptionSchema = z.object({
+  id: z.string().trim().min(1).optional(),
   text: z.string().min(1),
   relation: z.string().trim().min(1),
   label: z.string().optional(),

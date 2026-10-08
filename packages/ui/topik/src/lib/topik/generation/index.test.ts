@@ -1,7 +1,13 @@
+import { FEELING_KEYS } from "@topik/lib/topik/core/feeling"
 import type { SurveyReport } from "@topik/lib/topik/core/lesson-survey"
 import { describe, expect, it } from "vitest"
 
-import { buildLessonPrompt, LESSON_PROMPT, surveyDigest } from "."
+import {
+  buildLessonPrompt,
+  buildTreePrompt,
+  LESSON_PROMPT,
+  surveyDigest,
+} from "."
 
 const report = (extra: Partial<SurveyReport>): SurveyReport => ({
   topikKey: "local:first-dinner",
@@ -95,5 +101,26 @@ describe("buildLessonPrompt", () => {
     // The learner pastes it into any model; the repo is not there.
     expect(LESSON_PROMPT).not.toMatch(/packages\/|pnpm |canon |cargo /)
     expect(LESSON_PROMPT).toContain("## Output")
+  })
+})
+
+describe("buildTreePrompt", () => {
+  it("lists the app's feeling keys in place of the marker, and appends the request", () => {
+    const prompt = buildTreePrompt({
+      level: 3,
+      scene: "the gift goes wrong",
+      audience: "batch",
+    })
+    expect(prompt).not.toContain("<!-- feelings -->")
+    for (const key of FEELING_KEYS) {
+      expect(prompt).toContain(`| \`${key}\` |`)
+    }
+    expect(prompt).toContain(
+      "## This request\n\nLevel: 3\nScene: the gift goes wrong\n"
+    )
+    expect(prompt).not.toContain("Conversations:")
+    expect(prompt).toContain(
+      "Survey: none - this lesson joins the weekly batch"
+    )
   })
 })

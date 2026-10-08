@@ -1,5 +1,10 @@
 import { LessonCrm } from "@lesson-crm/components/lesson-crm"
-import { LESSON, REPLY } from "@lesson-crm/lib/__tests__/fixture"
+import {
+  LESSON,
+  REPLY,
+  TREE,
+  treeReply,
+} from "@lesson-crm/lib/__tests__/fixture"
 import type {
   LessonCrmClient,
   LessonWrite,
@@ -121,9 +126,9 @@ const step = (name: RegExp): void => {
   fireEvent.click(screen.getByRole("button", { name }))
 }
 
-const pasteReply = (): void => {
+const pasteReply = (reply = REPLY): void => {
   fireEvent.paste(screen.getByLabelText("Paste the lesson here"), {
-    clipboardData: { getData: () => REPLY, files: [] },
+    clipboardData: { getData: () => reply, files: [] },
   })
 }
 
@@ -572,6 +577,72 @@ describe("LessonCrm: what a save writes is what the editor holds", () => {
     await settle()
     step(/Step 5: Check/)
     expect(screen.getByRole("button", { name: /^Save$/ })).toBeEnabled()
+  })
+})
+
+describe("LessonCrm: a scene tree is checked, not saved", () => {
+  it("reports a clean tree as clean, and has nothing to save", async () => {
+    await mount(fakeClient([]))
+    fireEvent.click(screen.getByRole("button", { name: /New lesson/ }))
+    step(/Continue/)
+    pasteReply(treeReply())
+    await settle()
+    expect(
+      within(
+        document.querySelector<HTMLElement>('[data-slot="lesson-file"]') ??
+          document.body
+      ).getByText(/a scene tree/)
+    ).toBeInTheDocument()
+
+    step(/Step 5: Check/)
+    const check = screen.getByRole("status", { name: "Lesson check" })
+    expect(
+      within(check).getByText(/Every choice will be asked as written/)
+    ).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: /^Save$/ })).toBeDisabled()
+  })
+
+  it("shows the story audit's and the teaching audit's findings by path", async () => {
+    await mount(fakeClient([]))
+    fireEvent.click(screen.getByRole("button", { name: /New lesson/ }))
+    step(/Continue/)
+    pasteReply(treeReply({ ...TREE, pov: "nobody" }))
+    await settle()
+    step(/Step 5: Check/)
+    const check = screen.getByRole("status", { name: "Lesson check" })
+    expect(within(check).getByRole("alert")).toHaveTextContent(
+      /can't be played: 1 finding/
+    )
+    expect(
+      within(check).getByText(
+        'Error · story · pov: "nobody" is not in the cast'
+      )
+    ).toBeInTheDocument()
+
+    step(/Step 2: Lesson/)
+    fireEvent.click(screen.getByRole("button", { name: "Remove the lesson" }))
+    const unkeyed = {
+      ...TREE.root.choice.check,
+      options: TREE.root.choice.check.options.map(
+        ({ id: _id, ...option }) => option
+      ),
+    }
+    pasteReply(
+      treeReply({
+        ...TREE,
+        root: { ...TREE.root, choice: { ...TREE.root.choice, check: unkeyed } },
+      })
+    )
+    await settle()
+    step(/Step 5: Check/)
+    expect(
+      within(check).getByText(
+        /^Error · teaching · root\.choice\.check: candidate 0 /
+      )
+    ).toBeInTheDocument()
+    expect(
+      within(check).getByLabelText("Fixes for the model")
+    ).toHaveDisplayValue(/at root\.choice\.check: candidate 0/)
   })
 })
 

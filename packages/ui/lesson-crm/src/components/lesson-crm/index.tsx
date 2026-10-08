@@ -376,9 +376,11 @@ export const LessonCrm = ({
       />
     ) : (
       <p className="text-muted-foreground text-sm">
-        {draft
-          ? "Nothing to preview until the lesson checks out: see Check."
-          : "Nothing to preview yet: bring in a lesson first."}
+        {draft?.tree
+          ? "A scene tree is checked, not previewed: the phone lesson plays trees once it can (MKJ-S2). See Check."
+          : draft
+            ? "Nothing to preview until the lesson checks out: see Check."
+            : "Nothing to preview yet: bring in a lesson first."}
       </p>
     ),
     check: (

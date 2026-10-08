@@ -8,6 +8,7 @@ import { Button, Input, Label, Textarea } from "@some-ui/shared"
 import type { TopikLevel } from "@some-ui/topik"
 import {
   buildLessonPrompt,
+  buildTreePrompt,
   DEFAULT_CONVERSATIONS,
   TOPIK_LEVELS,
 } from "@some-ui/topik"
@@ -15,6 +16,17 @@ import { Check, ClipboardCopy } from "lucide-react"
 
 /** The most conversations a batch lesson asks for; a scene, not a course. */
 const MAX_CONVERSATIONS = 6
+
+/**
+ * Which prompt: the conversation lesson the desktop session plays, or a scene
+ * tree for the phone (docs/makjang/README.md, "4. Authoring").
+ */
+type Format = "conversations" | "tree"
+
+const FORMATS: Array<{ format: Format; label: string }> = [
+  { format: "conversations", label: "Conversations" },
+  { format: "tree", label: "Scene tree" },
+]
 
 /**
  * Not a transport failure, so not the host's to name: the clipboard API is
@@ -32,7 +44,8 @@ const NO_CLIPBOARD: IntentError = {
  * The first step of a new lesson: the generator prompt, for the operator to
  * give any model. It is the prompt the phone hands a learner
  * (`buildLessonPrompt`, `@some-ui/topik`), with the request marked as the
- * weekly batch rather than one learner's next lesson.
+ * weekly batch rather than one learner's next lesson - or the scene-tree
+ * prompt (`buildTreePrompt`), whose reply is checked but not yet saved.
  *
  * Copying is an intent: it says it worked, or why not. Where the clipboard is
  * out of reach the prompt is shown instead, filling the rest of the pane and
@@ -43,16 +56,20 @@ export const PromptCard = ({
 }: {
   reporting: Reporting
 }): JSX.Element => {
+  const [format, setFormat] = useState<Format>("conversations")
   const [level, setLevel] = useState<TopikLevel>(2)
   const [scene, setScene] = useState("")
   const [conversations, setConversations] = useState(DEFAULT_CONVERSATIONS)
 
-  const prompt = buildLessonPrompt({
+  const request = {
     level,
     scene: scene.trim() || undefined,
-    conversations,
     audience: "batch",
-  })
+  } as const
+  const prompt =
+    format === "tree"
+      ? buildTreePrompt(request)
+      : buildLessonPrompt({ ...request, conversations })
 
   const copyReporting = useMemo(
     (): Reporting => ({ ...reporting, mapError: () => NO_CLIPBOARD }),
@@ -79,6 +96,29 @@ export const PromptCard = ({
       aria-label="Lesson prompt"
       className="flex h-full min-h-0 flex-col gap-3"
     >
+      <div
+        role="radiogroup"
+        aria-label="Format"
+        className="grid shrink-0 grid-cols-2 gap-1"
+      >
+        {FORMATS.map(({ format: value, label }) => (
+          <button
+            key={value}
+            type="button"
+            role="radio"
+            aria-checked={format === value}
+            onClick={() => setFormat(value)}
+            className={cn(
+              "h-9 rounded-lg border text-sm font-semibold",
+              format === value
+                ? "border-primary/40 bg-primary/15"
+                : "border-border bg-card"
+            )}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
       <div
         role="radiogroup"
         aria-label="TOPIK level"
@@ -110,25 +150,28 @@ export const PromptCard = ({
           value={scene}
           onChange={(event) => setScene(event.target.value)}
         />
-        <div className="flex items-center gap-2">
-          <Label htmlFor="lesson-conversations" className="text-xs">
-            Conversations
-          </Label>
-          <Input
-            id="lesson-conversations"
-            type="number"
-            min={1}
-            max={MAX_CONVERSATIONS}
-            value={conversations}
-            onChange={(event) => {
-              const next = Number(event.target.value)
-              if (Number.isInteger(next) && next >= 1) {
-                setConversations(Math.min(next, MAX_CONVERSATIONS))
-              }
-            }}
-            className="w-16"
-          />
-        </div>
+        {/* A tree is one scene: it has no conversation count. */}
+        {format === "conversations" && (
+          <div className="flex items-center gap-2">
+            <Label htmlFor="lesson-conversations" className="text-xs">
+              Conversations
+            </Label>
+            <Input
+              id="lesson-conversations"
+              type="number"
+              min={1}
+              max={MAX_CONVERSATIONS}
+              value={conversations}
+              onChange={(event) => {
+                const next = Number(event.target.value)
+                if (Number.isInteger(next) && next >= 1) {
+                  setConversations(Math.min(next, MAX_CONVERSATIONS))
+                }
+              }}
+              className="w-16"
+            />
+          </div>
+        )}
       </div>
       <Button
         variant="outline"
@@ -160,8 +203,9 @@ export const PromptCard = ({
         />
       )}
       <p className="text-muted-foreground shrink-0 text-xs">
-        Then bring the model&apos;s whole reply to the Lesson step: the lesson,
-        and the entry that names it.
+        {format === "tree"
+          ? "Then bring the model's reply to the Lesson step: the tree is checked there, not saved yet."
+          : "Then bring the model's whole reply to the Lesson step: the lesson, and the entry that names it."}
       </p>
     </section>
   )

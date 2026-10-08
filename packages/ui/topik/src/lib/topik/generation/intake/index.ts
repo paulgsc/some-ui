@@ -77,7 +77,8 @@ export function fencedBodies(text: string): Array<string> {
   }
 }
 
-function jsonValues(text: string): Array<unknown> {
+/** Every JSON value in a pasted reply: its fenced blocks, or the whole text. */
+export function jsonValues(text: string): Array<unknown> {
   const fenced = fencedBodies(text)
   const candidates = fenced.length > 0 ? fenced : [text]
   return candidates.flatMap((candidate) => {
