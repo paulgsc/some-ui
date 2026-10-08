@@ -60,20 +60,24 @@ function situationFrom(
   }
 }
 
-/** Everything the phone knows about studying, out through the share sheet. */
-const ShareWithAgent = (): JSX.Element => {
+/**
+ * Everything the phone knows about studying, out through the share sheet.
+ * Held while a take is in flight, so the export cannot miss it.
+ */
+const ShareWithAgent = ({ taking }: { taking: boolean }): JSX.Element => {
   const share = useAsyncIntent(() => shareAgentExport(phoneSoundbiteStore()), {
     presentation: "interactive",
   })
   return (
-    <section className="mx-auto w-full max-w-md space-y-2 pb-8">
+    <section className="space-y-2">
       <p className="text-muted-foreground text-sm">
-        Your soundbites, session reflections and stop reasons, as files for an
-        agent to read. You pick where they go.
+        Your sessions, soundbites, session reflections and stop reasons, as
+        files for an agent to read. You pick where they go.
       </p>
       <IntentButton
         state={share.state}
         onPress={() => share.start(undefined)}
+        disabled={taking}
         variant="outline"
         size="sm"
         idleLabel="Share with an agent"
@@ -82,6 +86,15 @@ const ShareWithAgent = (): JSX.Element => {
     </section>
   )
 }
+
+/**
+ * The page's footer on the phone. The flag is read inline, so other builds
+ * drop the export and its plugins (vite-env.d.ts, VITE_DEVICE_BACKEND).
+ */
+const shareFooter =
+  import.meta.env.VITE_DEVICE_BACKEND === "true"
+    ? (taking: boolean): JSX.Element => <ShareWithAgent taking={taking} />
+    : undefined
 
 const SoundbitesRoute = (): JSX.Element => {
   const { say } = Route.useSearch()
@@ -97,24 +110,18 @@ const SoundbitesRoute = (): JSX.Element => {
   const arrival = useArrivalKey(isSaySource(say) ? say : undefined)
 
   return (
-    <div className="flex flex-col">
-      <Soundbites
-        key={arrival}
-        source={source}
-        autoStart={source !== "direct"}
-        // Forget the request once honoured, so going back or reloading does
-        // not open the microphone again.
-        onAutoStart={() =>
-          void navigate({ to: "/soundbites", search: {}, replace: true })
-        }
-        situation={() => situationFrom(sessions ?? [])}
-      />
-      {/* Inline, so other builds drop the export and its plugins
-          (vite-env.d.ts, VITE_DEVICE_BACKEND). */}
-      {import.meta.env.VITE_DEVICE_BACKEND === "true" ? (
-        <ShareWithAgent />
-      ) : null}
-    </div>
+    <Soundbites
+      key={arrival}
+      source={source}
+      autoStart={source !== "direct"}
+      // Forget the request once honoured, so going back or reloading does
+      // not open the microphone again.
+      onAutoStart={() =>
+        void navigate({ to: "/soundbites", search: {}, replace: true })
+      }
+      situation={() => situationFrom(sessions ?? [])}
+      footer={shareFooter}
+    />
   )
 }
 

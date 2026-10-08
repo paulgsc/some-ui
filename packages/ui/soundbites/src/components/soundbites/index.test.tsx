@@ -1,5 +1,6 @@
 import type { JSX } from "react"
 import { StrictMode } from "react"
+import type { SoundbitesProps } from "@soundbites/components/soundbites"
 import { Soundbites } from "@soundbites/components/soundbites"
 import { bite, memoryStore } from "@soundbites/lib/__tests__/fixture"
 import type { SoundbiteSituation } from "@soundbites/lib/machine"
@@ -50,6 +51,7 @@ function setup(
     autoStart?: boolean
     onAutoStart?: () => void
     source?: SoundbiteContext["source"]
+    footer?: SoundbitesProps["footer"]
   } = {}
 ): ReturnType<typeof memoryStore> &
   ReturnType<typeof render> & { mic: FakeMic } {
@@ -62,6 +64,7 @@ function setup(
       ports={{ store: memory.store, startRecording: mic.start }}
       autoStart={options.autoStart}
       onAutoStart={options.onAutoStart}
+      footer={options.footer}
     />
   )
   return { ...memory, ...view, mic }
@@ -106,10 +109,14 @@ const FULL = Array.from({ length: 6 }, (_, i) => bite(`b${i}`, i * 60))
 
 describe("Soundbites", () => {
   it("listens on one tap and keeps what was said on the next", async () => {
-    const { kept, mic } = setup()
+    const { kept, mic } = setup({
+      footer: (taking) => <p>{taking ? "taking" : "settled"}</p>,
+    })
+    expect(screen.getByText("settled")).toBeInTheDocument()
 
     await tap("Start talking")
     expect(mic.start).toHaveBeenCalledTimes(1)
+    expect(screen.getByText("taking")).toBeInTheDocument()
     expect(
       screen.getByRole("button", { name: "Done, keep it" })
     ).toHaveAttribute("aria-pressed", "true")
@@ -125,6 +132,7 @@ describe("Soundbites", () => {
       context: CONTEXT,
     })
     expect(screen.getByRole("img", { name: "1 of 6 kept" })).toBeVisible()
+    expect(screen.getByText("settled")).toBeInTheDocument()
   })
 
   it("starts listening on arrival when asked, once", async () => {

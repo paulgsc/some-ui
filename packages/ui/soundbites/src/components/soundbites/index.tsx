@@ -19,7 +19,7 @@
  * runtime for as long as it is mounted, attached while it is
  * (docs/monorepo-boundaries.md, "Inside a React package").
  */
-import type { JSX } from "react"
+import type { JSX, ReactNode } from "react"
 import { useEffect, useState, useSyncExternalStore } from "react"
 import { cn } from "@some-ui/core-utils"
 import { Button } from "@some-ui/shared"
@@ -59,6 +59,11 @@ export type SoundbitesProps = {
   onAutoStart?: () => void
   /** The phone's ports unless a test says otherwise. Read once, on mount. */
   ports?: Partial<SoundbitesPorts>
+  /**
+   * Below the list. `taking`: a take is opening, recording or not yet
+   * stored, so what the store holds is about to change.
+   */
+  footer?: (taking: boolean) => ReactNode
 }
 
 /** Ideas to start a sentence with, for the moment the mind goes blank. */
@@ -299,6 +304,7 @@ export const Soundbites = ({
   autoStart = false,
   onAutoStart,
   ports,
+  footer,
 }: SoundbitesProps): JSX.Element => {
   // The runtime owns the microphone and the store for this mount, so it is
   // made once, from the props it arrived with. A new arrival is a new mount:
@@ -495,6 +501,11 @@ export const Soundbites = ({
           </ul>
         )}
       </section>
+      {footer?.(
+        activity.kind === "opening" ||
+          activity.kind === "recording" ||
+          activity.kind === "saving"
+      )}
     </div>
   )
 }
