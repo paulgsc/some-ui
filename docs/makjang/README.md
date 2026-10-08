@@ -23,10 +23,16 @@ desktop equivalent.
 
 In code, "mobile" today means topik's handheld surface (`chooseSurface`: under
 768px wide or 480px tall), which follows the window, not the device: a phone
-browser on the Pages build gets it, and the APK on a tablet does not. Whether
-the drama should key on the window or on the APK audience
-(`hasAudience("apk")`) is an open question below. Until it is settled, the
-drama lives in the handheld renderer and the window split stays as it is.
+browser on the Pages build gets it, and the APK on a tablet does not. The
+drama keys on that split, not on the APK audience (`hasAudience("apk")`),
+decided 2026-10-08 for three reasons. There is then one phone lesson: the
+handheld renderer becomes the drama wherever it mounts, and the lesson it
+replaces is deleted rather than kept alive for phone browsers. Tests reach
+it: no vitest or Playwright suite renders the `mobile` build profile, so an
+APK-only branch would be rendered by none. And the drama's design (one beat
+per screen, choices under the thumb) is about the shape of the screen, which
+is what the split measures. Moving it to the APK alone later changes which
+renderer mounts, not the engine or the content.
 
 What being phone-only buys in the design:
 
@@ -266,14 +272,12 @@ Option = { id, label, art?, right: boolean, check?, child: Scene }
   where she did. No flags and no joins are needed while branches never
   converge. Converging branches (and the flags they would need to remember what
   differs) belong to the longitudinal stage, not the MVP.
-- **The size is bounded by both constants.** A full tree has
-  `(4^(D+1) − 1) / 3` scenes: 21 at depth 2, 85 at depth 3. The learner sees
-  only one route, `D + 1` scenes with `D` choices, but the generator writes
-  them all in one reply, so the depth is a cost decision as much as a story one.
-  The audit also caps the total scene count, so a tree can be pruned (fewer
-  options, earlier leaves) rather than fail. The values are constants in
-  `@some-ui/makjang`, to be chosen against real generator output; depth 2 is the suggested
-  start.
+- **The size is bounded by both constants.** `MAX_DEPTH = 2` (decided
+  2026-10-08). A full tree has `(4^(D+1) − 1) / 3` scenes, so at most 21. The
+  learner sees one route: three scenes and two choices. The generator writes
+  every scene in one reply, so the depth is a cost decision as much as a story
+  one, and the two constants together bound it; no separate cap is needed.
+  Both are constants in `@some-ui/makjang`.
 - **Cast, inline.** A lesson declares its own characters: an id, a name in
   Korean and English, how they stand to the protagonist, which register they
   use to whom and receive, and medium-free descriptions of voice (age,
@@ -349,9 +353,11 @@ One state union and a pure `step(state, event) → { state, effects }` in
 not the coordinator") requires and as topik's `core/` already models.
 
 - **State:** the route (the option ids chosen from the root, which locates
-  the current scene), the beat index in it, the line's reveal level, and the
-  first-try outcome of each choice reached, keyed by its id.
-- **Events:** reveal, advance, choose an option, replay a line, resume.
+  the current scene), the current beat by id, and the option first chosen at
+  each choice reached, keyed by the choice's id. How much of a line is showing
+  (the audio, Hangul, gloss ladder) is teaching, so topik's renderer keeps it
+  beside the engine's state rather than inside it.
+- **Events:** advance, go back a beat, choose an option, restart, resume.
 - **Recursion is in the content, not the engine.** Entering a child scene is
   pushing an option id onto the route. The engine is the same at every depth
   and never needs to know how deep the tree is.
@@ -410,8 +416,7 @@ option (Def. 8.3).
   scene tree", keeping every probe rule it has now. It stays a standalone
   prompt: no other lesson goes into it.
 - **Two audits, by owner.** The story audit checks structure: fan-out at most
-  four, no choice at or past the maximum depth, the total scene count under
-  its cap, ids unique across the tree, every speaker in the cast, and exactly
+  four, no choice at or past the maximum depth, ids unique across the tree, every speaker in the cast, and exactly
   one right option per choice. The teaching audit is the existing probe
   audit. A choice it rejects is not asked: its scene becomes a leaf and the
   subtree under it is dropped, the tree's version of Remark 4.7's "dropped at
@@ -423,7 +428,7 @@ option (Def. 8.3).
 ## Where it lives
 
 - **`@some-ui/makjang`** (new, framework-agnostic: no React): the story schema,
-  the story audit, the engine, and the media port types. It imports nothing
+  the story audit and the engine, and from M2 the media port types. It imports nothing
   from topik. The package boundary is the point: it makes "the drama knows no
   Korean pedagogy" a dependency rule the toolchain enforces, where a folder
   inside topik would make it a convention.
@@ -436,8 +441,10 @@ option (Def. 8.3).
 
 This is the second `makjang` workspace. The first (removed in #1645) held
 stream-overlay widgets and some SVG scenery, not a drama, and was removed as a
-vestige because nothing live depended on it. This one is reached from its first
-change, through topik's phone lesson. It does fail the hoisting doctrine's
+vestige because nothing live depended on it. This one is reached through
+topik's phone lesson from M2, so M1 and M2 land in one pull request: a
+workspace merged before anything depends on it is a vestige from its first
+day. It does fail the hoisting doctrine's
 fan-out test (one consumer, `docs/monorepo-boundaries.md`), and that is
 accepted on purpose: the boundary exists to fix the direction of a dependency,
 not to share code.
@@ -448,10 +455,12 @@ Each one ships, and none needs a better model than exists today.
 
 - **M1: the drama as data.** The canon amendments above. `@some-ui/makjang`
   with the scene-tree schema, the story audit and the engine, tested in `node`.
-  The legacy-conversation adapter. Tests run on
+  Tests run on
   generated trees and on minimal synthetic fixtures (a root, one split, a
   leaf at maximum depth), never on a curated scene. No UI change yet.
-- **M2: the phone lesson runs on the engine.** Speaker names, choices as
+- **M2: the phone lesson runs on the engine.** The legacy-conversation
+  adapter and the teaching audit's pruning, in topik. The media port types.
+  Speaker names, choices as
   large text targets, consequence and repair scenes, a distinct device
   voice (or pitch) per character where the device allows it. `core/lesson-track`
   and its tests are removed once nothing uses them. The wrap card loses
@@ -476,7 +485,7 @@ invariants") in the change that adds the code, and enforced where they can be.
 - **The engine imports no media and no topik.** Mechanical: an import
   restriction on `@some-ui/makjang`'s `lib/`.
 - **Every scene tree is within its bounds.** At most four options per
-  choice, no choice at the maximum depth, the total under its cap. Mechanical:
+  choice, no choice at the maximum depth. Mechanical:
   the story audit, run on every served or pasted lesson.
 - **Every choice that is asked passes the probe audit.** Mechanical: the
   teaching audit, with a rejected choice pruned to a leaf.
@@ -490,10 +499,5 @@ invariants") in the change that adds the code, and enforced where they can be.
 
 ## Open questions
 
-- **Depth and cap.** Depth 2 (21 scenes at most, 3 on any route) or 3 (85,
-  4 on a route)? The generator's reply length on real output decides it.
-- **Window or APK.** Should the drama follow topik's window-size split (so a
-  phone browser on the Pages build plays it too, and the APK on a tablet does
-  not), or the APK audience (`hasAudience("apk")`, so only the installed app
-  plays it, at any size)? Either works with this architecture: it decides
-  which renderer mounts, not what the engine or the content looks like.
+None for M1. Depth (2) and where the drama mounts (the handheld window
+split) were decided on 2026-10-08 and are recorded where they apply above.
