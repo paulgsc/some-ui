@@ -26,12 +26,12 @@ citation anchors survive section reshuffles.
 
 ## The canons
 
-| Canon                                                                | Title                        | Governs                                                                                                               |
-| -------------------------------------------------------------------- | ---------------------------- | --------------------------------------------------------------------------------------------------------------------- |
-| [`dom-state-estimation-canon.typ`](./dom-state-estimation-canon.typ) | _The Unsettled Surface_      | `extensions/transport`, `extensions/some-censor`, `extensions/some-filter`, and all descendants                       |
-| [`hangul-progression-canon.typ`](./hangul-progression-canon.typ)     | _The Single-Glyph Ceiling_   | `crates/hangul-game-core`, `crates/leetype_wasm`, `packages/ui/honeycomb`                                             |
-| [`adaptive-learning-canon.typ`](./adaptive-learning-canon.typ)       | _The Unobservable Learner_   | `packages/ui/honeycomb`, `packages/ui/leetype`, `packages/ui/topik`, `pedagogy/`, and the tutor skills                |
-| [`complexity-witness-canon.typ`](./complexity-witness-canon.typ)     | _The Unprovable Measurement_ | `packages/ui/leetype`, `crates/leetype_wasm`, `packages/some-content/prompts/leetype-exercise-generator`, `pedagogy/` |
+| Canon                                                                | Title                        | Governs                                                                                                                    |
+| -------------------------------------------------------------------- | ---------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| [`dom-state-estimation-canon.typ`](./dom-state-estimation-canon.typ) | _The Unsettled Surface_      | `extensions/transport`, `extensions/some-censor`, `extensions/some-filter`, and all descendants                            |
+| [`hangul-progression-canon.typ`](./hangul-progression-canon.typ)     | _The Single-Glyph Ceiling_   | `crates/hangul-game-core`, `crates/leetype_wasm`, `packages/ui/honeycomb`                                                  |
+| [`adaptive-learning-canon.typ`](./adaptive-learning-canon.typ)       | _The Unobservable Learner_   | `packages/ui/honeycomb`, `packages/ui/leetype`, `packages/ui/topik`, `packages/makjang`, `pedagogy/`, and the tutor skills |
+| [`complexity-witness-canon.typ`](./complexity-witness-canon.typ)     | _The Unprovable Measurement_ | `packages/ui/leetype`, `crates/leetype_wasm`, `packages/some-content/prompts/leetype-exercise-generator`, `pedagogy/`      |
 
 The four are deliberately layered rather than independent:
 _The Unsettled Surface_ fixes the estimation-then-control factorization,

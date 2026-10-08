@@ -82,9 +82,11 @@ export const LessonSourcePane = ({
               {ORIGIN_WORDS[source.origin]} · {formatSize(source.file.size)}
               {draft?.ok
                 ? ` · ${draft.intake.meta.batchCount} conversations`
-                : draft
-                  ? " · not a lesson yet"
-                  : ""}
+                : draft?.tree
+                  ? " · a scene tree"
+                  : draft
+                    ? " · not a lesson yet"
+                    : ""}
             </span>
           </div>
           <Button

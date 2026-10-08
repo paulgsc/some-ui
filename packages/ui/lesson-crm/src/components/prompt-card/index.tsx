@@ -8,6 +8,7 @@ import { Button, Input, Label, Textarea } from "@some-ui/shared"
 import type { TopikLevel } from "@some-ui/topik"
 import {
   buildLessonPrompt,
+  buildTreePrompt,
   DEFAULT_CONVERSATIONS,
   TOPIK_LEVELS,
 } from "@some-ui/topik"
@@ -15,6 +16,64 @@ import { Check, ClipboardCopy } from "lucide-react"
 
 /** The most conversations a batch lesson asks for; a scene, not a course. */
 const MAX_CONVERSATIONS = 6
+
+/**
+ * Which prompt: the conversation lesson the desktop session plays, or a scene
+ * tree for the phone (docs/makjang/README.md, "4. Authoring").
+ */
+type Format = "conversations" | "tree"
+
+const FORMATS: Array<Choice<Format>> = [
+  { value: "conversations", label: "Conversations" },
+  { value: "tree", label: "Scene tree" },
+]
+
+type Choice<T> = {
+  value: T
+  label: string
+  /** The accessible name, when the label alone is too terse. */
+  name?: string
+}
+
+/** One row of mutually exclusive buttons, as a radio group. */
+const Choices = <T extends string | number>({
+  label,
+  columns,
+  options,
+  value,
+  onChange,
+}: {
+  label: string
+  columns: string
+  options: Array<Choice<T>>
+  value: T
+  onChange: (value: T) => void
+}): JSX.Element => (
+  <div
+    role="radiogroup"
+    aria-label={label}
+    className={cn("grid shrink-0 gap-1", columns)}
+  >
+    {options.map((option) => (
+      <button
+        key={option.value}
+        type="button"
+        role="radio"
+        aria-checked={value === option.value}
+        aria-label={option.name}
+        onClick={() => onChange(option.value)}
+        className={cn(
+          "h-9 rounded-lg border text-sm font-semibold",
+          value === option.value
+            ? "border-primary/40 bg-primary/15"
+            : "border-border bg-card"
+        )}
+      >
+        {option.label}
+      </button>
+    ))}
+  </div>
+)
 
 /**
  * Not a transport failure, so not the host's to name: the clipboard API is
@@ -32,7 +91,8 @@ const NO_CLIPBOARD: IntentError = {
  * The first step of a new lesson: the generator prompt, for the operator to
  * give any model. It is the prompt the phone hands a learner
  * (`buildLessonPrompt`, `@some-ui/topik`), with the request marked as the
- * weekly batch rather than one learner's next lesson.
+ * weekly batch rather than one learner's next lesson - or the scene-tree
+ * prompt (`buildTreePrompt`), whose reply is checked but not yet saved.
  *
  * Copying is an intent: it says it worked, or why not. Where the clipboard is
  * out of reach the prompt is shown instead, filling the rest of the pane and
@@ -43,16 +103,20 @@ export const PromptCard = ({
 }: {
   reporting: Reporting
 }): JSX.Element => {
+  const [format, setFormat] = useState<Format>("conversations")
   const [level, setLevel] = useState<TopikLevel>(2)
   const [scene, setScene] = useState("")
   const [conversations, setConversations] = useState(DEFAULT_CONVERSATIONS)
 
-  const prompt = buildLessonPrompt({
+  const request = {
     level,
     scene: scene.trim() || undefined,
-    conversations,
     audience: "batch",
-  })
+  } as const
+  const prompt =
+    format === "tree"
+      ? buildTreePrompt(request)
+      : buildLessonPrompt({ ...request, conversations })
 
   const copyReporting = useMemo(
     (): Reporting => ({ ...reporting, mapError: () => NO_CLIPBOARD }),
@@ -79,30 +143,24 @@ export const PromptCard = ({
       aria-label="Lesson prompt"
       className="flex h-full min-h-0 flex-col gap-3"
     >
-      <div
-        role="radiogroup"
-        aria-label="TOPIK level"
-        className="grid shrink-0 grid-cols-6 gap-1"
-      >
-        {TOPIK_LEVELS.map((value) => (
-          <button
-            key={value}
-            type="button"
-            role="radio"
-            aria-checked={level === value}
-            aria-label={`TOPIK ${value}`}
-            onClick={() => setLevel(value)}
-            className={cn(
-              "h-9 rounded-lg border text-sm font-semibold",
-              level === value
-                ? "border-primary/40 bg-primary/15"
-                : "border-border bg-card"
-            )}
-          >
-            {value}
-          </button>
-        ))}
-      </div>
+      <Choices
+        label="Format"
+        columns="grid-cols-2"
+        options={FORMATS}
+        value={format}
+        onChange={setFormat}
+      />
+      <Choices
+        label="TOPIK level"
+        columns="grid-cols-6"
+        options={TOPIK_LEVELS.map((value) => ({
+          value,
+          label: String(value),
+          name: `TOPIK ${value}`,
+        }))}
+        value={level}
+        onChange={setLevel}
+      />
       <div className="grid shrink-0 gap-2 sm:grid-cols-[1fr_auto]">
         <Input
           aria-label="Scene"
@@ -110,25 +168,27 @@ export const PromptCard = ({
           value={scene}
           onChange={(event) => setScene(event.target.value)}
         />
-        <div className="flex items-center gap-2">
-          <Label htmlFor="lesson-conversations" className="text-xs">
-            Conversations
-          </Label>
-          <Input
-            id="lesson-conversations"
-            type="number"
-            min={1}
-            max={MAX_CONVERSATIONS}
-            value={conversations}
-            onChange={(event) => {
-              const next = Number(event.target.value)
-              if (Number.isInteger(next) && next >= 1) {
-                setConversations(Math.min(next, MAX_CONVERSATIONS))
-              }
-            }}
-            className="w-16"
-          />
-        </div>
+        {format === "conversations" && (
+          <div className="flex items-center gap-2">
+            <Label htmlFor="lesson-conversations" className="text-xs">
+              Conversations
+            </Label>
+            <Input
+              id="lesson-conversations"
+              type="number"
+              min={1}
+              max={MAX_CONVERSATIONS}
+              value={conversations}
+              onChange={(event) => {
+                const next = Number(event.target.value)
+                if (Number.isInteger(next) && next >= 1) {
+                  setConversations(Math.min(next, MAX_CONVERSATIONS))
+                }
+              }}
+              className="w-16"
+            />
+          </div>
+        )}
       </div>
       <Button
         variant="outline"
@@ -160,8 +220,9 @@ export const PromptCard = ({
         />
       )}
       <p className="text-muted-foreground shrink-0 text-xs">
-        Then bring the model&apos;s whole reply to the Lesson step: the lesson,
-        and the entry that names it.
+        {format === "tree"
+          ? "Then bring the model's reply to the Lesson step: the tree is checked there, not saved yet."
+          : "Then bring the model's whole reply to the Lesson step: the lesson, and the entry that names it."}
       </p>
     </section>
   )

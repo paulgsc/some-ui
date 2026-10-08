@@ -793,6 +793,18 @@ importers:
         specifier: workspace:*
         version: link:../some-vite-config
 
+  packages/makjang:
+    devDependencies:
+      '@some-ui/tsconfig':
+        specifier: workspace:*
+        version: link:../tsconfig
+      '@some-ui/vite-config':
+        specifier: workspace:*
+        version: link:../some-vite-config
+      fast-check:
+        specifier: ^4.10.2
+        version: 4.10.2
+
   packages/react-hooks:
     dependencies:
       react:
@@ -1318,6 +1330,9 @@ importers:
       '@some-ui/core-utils':
         specifier: workspace:*
         version: link:../../core-utils
+      '@some-ui/makjang':
+        specifier: workspace:*
+        version: link:../../makjang
       '@some-ui/react-hooks':
         specifier: workspace:*
         version: link:../../react-hooks

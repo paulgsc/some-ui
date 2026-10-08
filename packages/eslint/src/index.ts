@@ -16,6 +16,7 @@ import {
   lazyRegistryPlugin,
   ownerGuardConfig,
   ownerGuardPlugin,
+  parentRelativeImportPattern,
   queryGuardConfig,
   queryGuardPlugin,
   rawSourceConfig,
@@ -104,6 +105,10 @@ export { fitsTheBoxConfig, fitsTheBoxPlugin }
 // ── Theme protocol (reusable UI must inherit its theme, not choose one) ────
 export { themeProtocolConfig, themeProtocolPlugin, themeProviderBanPattern }
 export { paletteRatchet } from "./configs/index.js"
+
+// ── Parent-relative import ban (base.config.ts), for a workspace that sets
+// its own `no-restricted-imports` and so must restate it ──────────────────
+export { parentRelativeImportPattern }
 
 // ── Router boundary (reusable UI must not import a router/framework) ───────
 export { routerImportBanPattern, routerDynamicImportSelectors }

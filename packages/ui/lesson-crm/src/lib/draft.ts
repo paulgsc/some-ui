@@ -14,8 +14,13 @@
  * than as new material.
  */
 
-import type { ConversationBatch, Intake, TopikMetadata } from "@some-ui/topik"
-import { intakeLesson, RELATION_TAG_PREFIX } from "@some-ui/topik"
+import type {
+  ConversationBatch,
+  Intake,
+  TopikMetadata,
+  TreeIntake,
+} from "@some-ui/topik"
+import { intakeLesson, intakeTree, RELATION_TAG_PREFIX } from "@some-ui/topik"
 
 import type { LessonWrite, OperatorLesson } from "./client"
 
@@ -112,15 +117,36 @@ export function fillForm(form: LessonForm, text: string): LessonForm {
 export const servedBody = (batches: Array<ConversationBatch>): string =>
   `${JSON.stringify(batches, null, 2)}\n`
 
+/** A scene tree the text held, with both audits' verdict on it. */
+export type TreeCheck = Exclude<TreeIntake, { status: "absent" }>
+
 export type Draft =
-  | { ok: false; error: string; intake: Intake | null }
+  | {
+      ok: false
+      error: string
+      intake: Intake | null
+      /** Present when the text is a scene tree. */
+      tree?: TreeCheck
+    }
   | { ok: true; intake: Extract<Intake, { ok: true }>; write: LessonWrite }
 
 /**
+ * Why a tree has nothing to save: trees are checked here, and saved and
+ * served with the phone feed (MKJ-S4, #1712).
+ */
+export const TREE_NOT_SAVED =
+  "A scene tree is checked here, not saved yet: saving trees comes with the phone feed."
+
+/**
  * The lesson text and the form, checked and turned into the write a save
- * sends - or the reason there is nothing to save.
+ * sends - or the reason there is nothing to save. A scene tree goes through
+ * `intakeTree` instead.
  */
 export function draftLesson(text: string, form: LessonForm): Draft {
+  const tree = intakeTree(text)
+  if (tree.status !== "absent") {
+    return { ok: false, error: TREE_NOT_SAVED, intake: null, tree }
+  }
   const intake = intakeLesson(text, {
     displayName: form.displayName,
     description: form.description,

@@ -30,9 +30,18 @@ export type { Intake } from "./lib/topik/generation/intake"
 export { RELATION_TAG_PREFIX } from "./lib/topik/core/lesson-selection"
 export type { ProbeFinding } from "./lib/topik/core/probe-audit"
 export type { ConversationBatch, TopikMetadata } from "./lib/topik"
-/** The generator prompt, for the operator to hand a model a batch lesson. */
+/** Scene-tree intake, for the lesson CRM. */
+export {
+  findingPlace,
+  intakeTree,
+  treeFixRequest,
+} from "./lib/topik/generation/tree-intake"
+export type { TreeIntake } from "./lib/topik/generation/tree-intake"
+export type { TreeFinding } from "./lib/topik/core/tree-audit"
+/** The generator prompts, for the operator to hand a model a batch lesson. */
 export {
   buildLessonPrompt,
+  buildTreePrompt,
   DEFAULT_CONVERSATIONS,
   TOPIK_LEVELS,
 } from "./lib/topik/generation"

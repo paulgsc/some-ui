@@ -1,4 +1,7 @@
-export { default as baseConfig } from "./base.config.js"
+export {
+  default as baseConfig,
+  parentRelativeImportPattern,
+} from "./base.config.js"
 export { default as typescriptConfig } from "./typescript.config.js"
 export {
   default as reactConfig,

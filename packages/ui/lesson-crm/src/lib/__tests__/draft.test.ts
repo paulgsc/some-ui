@@ -7,11 +7,12 @@ import {
   keyProblem,
   parseTags,
   servedBody,
+  TREE_NOT_SAVED,
 } from "@lesson-crm/lib/draft"
 import { intakeLesson } from "@some-ui/topik"
 import { describe, expect, it } from "vitest"
 
-import { LESSON, REPLY } from "./fixture"
+import { LESSON, REPLY, treeReply } from "./fixture"
 
 describe("draftLesson", () => {
   it("serves the lesson as intake leaves it, under the form's key and entry", () => {
@@ -99,6 +100,18 @@ describe("draftLesson", () => {
       key: "mine",
       displayName: "Mine",
       description: "Ordering a coffee.",
+    })
+  })
+})
+
+describe("draftLesson on a scene tree", () => {
+  it("checks a tree with both audits and offers nothing to save", () => {
+    const draft = draftLesson(treeReply(), fillForm(EMPTY_FORM, treeReply()))
+    expect(draft).toMatchObject({
+      ok: false,
+      error: TREE_NOT_SAVED,
+      intake: null,
+      tree: { status: "checked", findings: [] },
     })
   })
 })

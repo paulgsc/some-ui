@@ -24,6 +24,7 @@
   },
   "dependencies": {
     "@some-ui/core-utils": "workspace:*",
+    "@some-ui/makjang": "workspace:*",
     "@some-ui/react-hooks": "workspace:*",
     "@some-ui/shared": "workspace:*",
     "@some-ui/speech": "workspace:*",
