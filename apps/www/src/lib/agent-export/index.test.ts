@@ -6,7 +6,7 @@ import { sessionRecord } from "@/test-support/session-record"
 import { seedStop, stopRecord } from "@/test-support/session-stop"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
-import { shareAgentExport } from "@/lib/agent-export"
+import { agentExportError, shareAgentExport } from "@/lib/agent-export"
 import { writeReflection } from "@/lib/session-reflection"
 
 const written = vi.hoisted(() => new Map<string, string>())
@@ -52,6 +52,8 @@ const soundbites = {
 }
 
 beforeEach(() => {
+  // A failure is reported (`reportFailure`); the console line is not under test.
+  vi.spyOn(globalThis.console, "error").mockImplementation(() => undefined)
   localStorage.clear()
   written.clear()
   share.mockReset().mockResolvedValue({})
@@ -87,13 +89,48 @@ describe("shareAgentExport", () => {
     expect(context).not.toHaveProperty(["sessions", 0, "scenes"])
   })
 
+  it("names no file for a soundbite whose audio is gone", async () => {
+    await shareAgentExport({
+      ...soundbites,
+      audio: (): Promise<null> => Promise.resolve(null),
+    })
+
+    expect(share).toHaveBeenCalledWith(
+      expect.objectContaining({
+        files: ["file:///cache/agent-export/context.json"],
+      })
+    )
+    expect(
+      JSON.parse(written.get("agent-export/context.json") ?? "null")
+    ).toMatchObject({ soundbites: [{ id: "b1", file: null }] })
+  })
+
   it("treats backing out of the share sheet as done, and anything else as a failure", async () => {
     share.mockRejectedValueOnce(new Error("Share canceled"))
     await expect(shareAgentExport(soundbites)).resolves.toBeUndefined()
 
-    share.mockRejectedValueOnce(
-      new Error("Can't share while sharing is in progress")
+    const busy = new Error("Can't share while sharing is in progress")
+    share.mockRejectedValueOnce(busy)
+    const failure: unknown = await shareAgentExport(soundbites).catch(
+      (error: unknown) => error
     )
-    await expect(shareAgentExport(soundbites)).rejects.toThrow("in progress")
+    expect(agentExportError(failure)).toMatchObject({
+      kind: "unknown",
+      retryable: true,
+      cause: busy,
+    })
+  })
+
+  it("says sharing is unavailable when the build has no share plugin", async () => {
+    share.mockRejectedValueOnce(
+      Object.assign(new Error("not implemented"), { code: "UNIMPLEMENTED" })
+    )
+    const failure: unknown = await shareAgentExport(soundbites).catch(
+      (error: unknown) => error
+    )
+    expect(agentExportError(failure)).toMatchObject({
+      kind: "unavailable",
+      retryable: false,
+    })
   })
 })

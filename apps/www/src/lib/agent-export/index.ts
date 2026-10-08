@@ -11,11 +11,22 @@
  *
  * `buildAgentContext` is pure; `shareAgentExport` writes the files to the
  * app's cache and opens the sheet, through `@capacitor/filesystem` and
- * `@capacitor/share`.
+ * `@capacitor/share`, each wait in a `callForeign` (F1).
  */
 import { Directory, Encoding, Filesystem } from "@capacitor/filesystem"
 import { Share } from "@capacitor/share"
+import type {
+  ForeignCall,
+  ForeignVerdict,
+  IntentError,
+} from "@some-ui/intent-kit"
+import {
+  callForeign,
+  ForeignDeadlineError,
+  reportFailure,
+} from "@some-ui/intent-kit"
 
+import { mapFileHostError } from "@/lib/intent/errors"
 import { allReflections, QUESTIONS } from "@/lib/session-reflection"
 import type { Reflection } from "@/lib/session-reflection"
 import { allStops, REASONS } from "@/lib/session-stop"
@@ -48,16 +59,18 @@ function soundbiteFile(bite: SoundbiteMeta): string {
 
 function buildAgentContext(input: {
   exportedAt: string
+  timeZone: string
   sessions: ReadonlyArray<SessionRecord>
   reflections: ReadonlyArray<{ sessionId: string; answers: Reflection }>
   stops: ReadonlyArray<Stop>
-  soundbites: ReadonlyArray<SoundbiteMeta>
+  /** `withAudio`: whether its audio is among the shared files. */
+  soundbites: ReadonlyArray<{ bite: SoundbiteMeta; withAudio: boolean }>
 }): string {
   return JSON.stringify(
     {
       about: ABOUT,
       exportedAt: input.exportedAt,
-      timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      timeZone: input.timeZone,
       // How the codes below read on screen.
       legend: { reflectionQuestions: QUESTIONS, stopReasons: REASONS },
       // Without `scenes` and `layout`: playback wiring, not what was studied.
@@ -66,9 +79,10 @@ function buildAgentContext(input: {
       ),
       reflections: input.reflections,
       stops: input.stops,
-      soundbites: input.soundbites.map((bite) => ({
+      // `file: null`: its audio could not be read (removed since listed).
+      soundbites: input.soundbites.map(({ bite, withAudio }) => ({
         ...bite,
-        file: soundbiteFile(bite),
+        file: withAudio ? soundbiteFile(bite) : null,
       })),
     },
     null,
@@ -77,6 +91,72 @@ function buildAgentContext(input: {
 }
 
 const DIR = "agent-export"
+
+/** Writing the files: a few megabytes at most (`SOUNDBITES_MAX_BYTES`). */
+const WRITE_DEADLINE_MS = 60_000
+/** The share sheet waits on a person choosing where the files go. */
+const SHARE_DEADLINE_MS = 10 * 60_000
+
+/**
+ * What the plugins' failures mean here. A Capacitor `code` of `UNAVAILABLE`
+ * or `UNIMPLEMENTED` is no plugin in this build, which no retry changes.
+ */
+function classifyExport(error: unknown): ForeignVerdict {
+  if (error instanceof ForeignDeadlineError) {
+    return {
+      kind: "unreachable",
+      retryable: true,
+      summary: "The phone didn't finish sharing. Try again.",
+    }
+  }
+  const code: unknown =
+    typeof error === "object" && error !== null
+      ? Reflect.get(error, "code")
+      : undefined
+  return code === "UNAVAILABLE" || code === "UNIMPLEMENTED"
+    ? {
+        kind: "unavailable",
+        retryable: false,
+        summary: "Sharing isn't available in this build of the app.",
+      }
+    : {
+        kind: "unknown",
+        retryable: true,
+        summary: "Couldn't share the files. Try again.",
+      }
+}
+
+const PORT = {
+  name: "agent export (filesystem, share sheet)",
+  classify: classifyExport,
+  report: reportFailure,
+}
+
+/** A failed foreign call, carrying what it means here. */
+class AgentExportError extends Error {
+  constructor(readonly intent: IntentError) {
+    super(intent.summary)
+    this.name = "AgentExportError"
+  }
+}
+
+/**
+ * `mapError` for the export's intent: a foreign failure as `classifyExport`
+ * read it; reading the sessions fails as any `file_host` read does.
+ */
+export function agentExportError(error: unknown): IntentError {
+  return error instanceof AgentExportError
+    ? error.intent
+    : mapFileHostError(error)
+}
+
+async function foreign<T>(call: ForeignCall<T>): Promise<T> {
+  const outcome = await call.outcome
+  if (outcome.status === "succeeded") return outcome.value
+  if (outcome.status === "failed") throw new AgentExportError(outcome.error)
+  // Nothing here abandons a call.
+  throw new Error("agent export: a call was abandoned")
+}
 
 /** Base64 without the `data:` prefix, which is what `writeFile` takes for bytes. */
 function base64(blob: Blob): Promise<string> {
@@ -99,46 +179,71 @@ export async function shareAgentExport(
   soundbites: SoundbiteReader,
   now: () => Date = () => new Date()
 ): Promise<void> {
+  const audio = new Map<string, Blob>()
   const bites = await soundbites.list()
+  for (const bite of bites) {
+    const blob = await soundbites.audio(bite.id)
+    if (blob) audio.set(bite.id, blob)
+  }
   const context = buildAgentContext({
     exportedAt: now().toISOString(),
+    timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     sessions: await sessionsRepository.list(),
     reflections: allReflections(),
     stops: allStops(),
-    soundbites: bites,
+    soundbites: bites.map((bite) => ({ bite, withAudio: audio.has(bite.id) })),
   })
 
-  await Filesystem.rmdir({
-    path: DIR,
-    directory: Directory.Cache,
-    recursive: true,
-  }).catch(() => undefined)
-  const write = async (
-    name: string,
-    data: string,
-    utf8: boolean
-  ): Promise<string> =>
-    (
-      await Filesystem.writeFile({
-        path: `${DIR}/${name}`,
-        directory: Directory.Cache,
-        data,
-        recursive: true,
-        ...(utf8 ? { encoding: Encoding.UTF8 } : {}),
-      })
-    ).uri
-  const files = [await write("context.json", context, true)]
-  for (const bite of bites) {
-    const audio = await soundbites.audio(bite.id)
-    if (audio)
-      files.push(await write(soundbiteFile(bite), await base64(audio), false))
-  }
+  const files = await foreign(
+    callForeign({
+      port: PORT,
+      deadlineMs: WRITE_DEADLINE_MS,
+      start: async (): Promise<Array<string>> => {
+        await Filesystem.rmdir({
+          path: DIR,
+          directory: Directory.Cache,
+          recursive: true,
+        }).catch(() => undefined)
+        const write = async (
+          name: string,
+          data: string,
+          utf8: boolean
+        ): Promise<string> =>
+          (
+            await Filesystem.writeFile({
+              path: `${DIR}/${name}`,
+              directory: Directory.Cache,
+              data,
+              recursive: true,
+              ...(utf8 ? { encoding: Encoding.UTF8 } : {}),
+            })
+          ).uri
+        const uris = [await write("context.json", context, true)]
+        for (const bite of bites) {
+          const blob = audio.get(bite.id)
+          if (blob)
+            uris.push(
+              await write(soundbiteFile(bite), await base64(blob), false)
+            )
+        }
+        return uris
+      },
+    })
+  )
 
-  try {
-    await Share.share({ title: "Study context for an agent", files })
-  } catch (error) {
-    if (!(error instanceof Error && error.message === "Share canceled")) {
-      throw error
-    }
-  }
+  await foreign(
+    callForeign({
+      port: PORT,
+      deadlineMs: SHARE_DEADLINE_MS,
+      start: async (): Promise<void> => {
+        try {
+          await Share.share({ title: "Study context for an agent", files })
+        } catch (error) {
+          if (!(error instanceof Error && error.message === "Share canceled")) {
+            throw error
+          }
+        }
+      },
+    })
+  )
 }
