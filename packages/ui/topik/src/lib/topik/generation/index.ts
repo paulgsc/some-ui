@@ -106,11 +106,14 @@ export function surveyDigest(
     .join("\n")
 }
 
-/** `prompt`, then this request's lines and its survey; ready to copy. */
+/**
+ * `prompt`, then this request (its level, scene and `extra` lines) and its
+ * survey; ready to copy.
+ */
 function withRequest(
   prompt: string,
-  lines: Array<string>,
-  request: Pick<LessonRequest, "survey" | "audience">
+  request: Pick<LessonRequest, "level" | "scene" | "survey" | "audience">,
+  extra: Array<string> = []
 ): string {
   const survey = request.survey?.trim()
   return [
@@ -120,7 +123,9 @@ function withRequest(
     "",
     "## This request",
     "",
-    ...lines,
+    `Level: ${request.level}`,
+    `Scene: ${request.scene?.trim() || "(invent one)"}`,
+    ...extra,
     "",
     survey
       ? `Survey (newest first):\n${survey}`
@@ -133,15 +138,9 @@ function withRequest(
 
 /** The prompt, with this request appended; ready to copy. */
 export function buildLessonPrompt(request: LessonRequest): string {
-  return withRequest(
-    LESSON_PROMPT,
-    [
-      `Level: ${request.level}`,
-      `Scene: ${request.scene?.trim() || "(invent one)"}`,
-      `Conversations: ${request.conversations ?? DEFAULT_CONVERSATIONS}`,
-    ],
-    request
-  )
+  return withRequest(LESSON_PROMPT, request, [
+    `Conversations: ${request.conversations ?? DEFAULT_CONVERSATIONS}`,
+  ])
 }
 
 /** Where the tree prompt takes the feeling vocabulary. */
@@ -168,10 +167,6 @@ export function buildTreePrompt(
 ): string {
   return withRequest(
     TREE_PROMPT.replace(FEELINGS_MARKER, feelingTable()),
-    [
-      `Level: ${request.level}`,
-      `Scene: ${request.scene?.trim() || "(invent one)"}`,
-    ],
     request
   )
 }

@@ -173,7 +173,7 @@ Axiom 6.3, and Remark 9.2 for the feeling anchor.
   other object; a missing model changes the supply of content and nothing else (Thm. 8.2). That is
   the formal version of "don't block on the technology".
 
-**Needed an amendment (canon v1.13, landed with M1)**
+**Amendments (canon v1.13)**
 
 1. **A consequence as a value of `p_reveal`** (Def. 4.2; Rem. 4.11). After a miss, what
    is shown is the scene the chosen candidate leads to, with the authored
@@ -634,13 +634,12 @@ Neither needs a better model than exists today.
 
 ## Invariants
 
-Declared in the house shape (`CLAUDE.md`, "Gray-area invariants"). MK1 to MK4
-landed with M1 (MKJ-S1). Each is enforced, and each says what a reviewer
-still checks: the part no lint, type or test can see. All four held when
-declared: the engine imports only the schema, the package has no
-dependencies, and the tests named below pass. The module doc comments of
-`schema.ts`, `story-audit.ts`, `engine.ts` and topik's `core/tree-audit`
-carry the one-line summaries.
+Declared in the house shape (`CLAUDE.md`, "Gray-area invariants"). Each is
+enforced, and each says what a reviewer still checks: the part no lint, type
+or test can see. All four held when declared: the engine imports only the
+schema, the package has no dependencies, and the tests named below pass. The
+module doc comments of `story-audit.ts`, `engine.ts` and topik's
+`core/tree-audit` carry the one-line summaries.
 
 > **MK1: The engine imports no media and no topik.**
 >

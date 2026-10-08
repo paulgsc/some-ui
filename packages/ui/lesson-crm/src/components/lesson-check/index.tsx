@@ -40,9 +40,16 @@ const rowsOf = (draft: Draft | null): Array<Row> =>
 
 /**
  * A scene tree's verdict: whether it plays, and what the audits drop from it.
- * Nothing is saved; the findings go back to the model as one message.
+ * `note` says why there is nothing to save; the findings go back to the model
+ * as one message.
  */
-const TreeVerdict = ({ tree }: { tree: TreeCheck }): JSX.Element => {
+const TreeVerdict = ({
+  tree,
+  note,
+}: {
+  tree: TreeCheck
+  note: string
+}): JSX.Element => {
   const errors = tree.findings.filter(({ severity }) => severity === "error")
   const fixes = tree.findings.length > 0 && (
     <details className="text-xs">
@@ -87,9 +94,7 @@ const TreeVerdict = ({ tree }: { tree: TreeCheck }): JSX.Element => {
             : "Warnings only: the tree plays as written."}
         </p>
       )}
-      <p className="text-muted-foreground text-xs">
-        Scene trees are checked here, not saved yet.
-      </p>
+      <p className="text-muted-foreground text-xs">{note}</p>
       {fixes}
     </div>
   )
@@ -129,7 +134,7 @@ export const LessonCheck = ({
     }
     if (!draft.ok) {
       return draft.tree ? (
-        <TreeVerdict tree={draft.tree} />
+        <TreeVerdict tree={draft.tree} note={draft.error} />
       ) : (
         <p role="alert" className="text-destructive text-sm">
           {draft.error}

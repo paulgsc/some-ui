@@ -32,19 +32,17 @@ describe("package.json stays dependency-free", () => {
     expect(manifest.dependencies ?? {}).toEqual({})
   })
 
-  it("has no devDependency or peerDependency on React, TanStack Query, or zod", () => {
+  // peerDependencies are covered by the test below, which wants none at all.
+  it("has no devDependency on React, TanStack Query, or zod", () => {
     const manifest = readManifest()
-    const names = [
-      ...Object.keys(manifest.devDependencies ?? {}),
-      ...Object.keys(manifest.peerDependencies ?? {}),
-    ]
+    const names = Object.keys(manifest.devDependencies ?? {})
 
     for (const name of names) {
       const lower = name.toLowerCase()
       for (const forbidden of FORBIDDEN_SUBSTRINGS) {
         expect(
           lower.includes(forbidden),
-          `${name} in devDependencies/peerDependencies looks like it pulls in ${forbidden} - packages/makjang must not know what React, a query cache or a schema library is: it is the story schema and a pure engine (docs/makjang/README.md, "Where it lives")`
+          `${name} in devDependencies looks like it pulls in ${forbidden} - packages/makjang must not know what React, a query cache or a schema library is: it is the story schema and a pure engine (docs/makjang/README.md, "Where it lives")`
         ).toBe(false)
       }
     }

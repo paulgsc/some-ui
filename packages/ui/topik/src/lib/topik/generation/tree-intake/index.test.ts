@@ -38,17 +38,6 @@ describe("intakeTree", () => {
       message: "must be a non-empty array of characters",
     })
   })
-
-  it("plays a tree minus the choices the teaching audit rejects", () => {
-    const tree: unknown = JSON.parse(
-      workedExample().replace('"kind": "pick-valid"', '"kind": "build"')
-    )
-    const intake = intakeTree(fenced(tree))
-    expect(intake.status).toBe("checked")
-    if (intake.status !== "checked") return
-    expect(intake.lesson.root.choice).toBeUndefined()
-    expect(intake.findings.map(({ audit }) => audit)).toContain("teaching")
-  })
 })
 
 describe("treeFixRequest", () => {

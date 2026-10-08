@@ -1,12 +1,7 @@
 /**
- * Taking a scene tree back from a model (docs/makjang/README.md,
- * "4. Authoring").
- *
- * The tree's counterpart of `intakeLesson`: it finds the tree in whatever was
- * pasted, holds it to makjang's story audit (shape), then to topik's teaching
- * audit (items), in the browser. A story finding rejects the tree whole; a
- * teaching finding drops the choice it names, and the tree plays without it.
- * Nothing is sent anywhere.
+ * Taking a scene tree back from a model: the tree's counterpart of
+ * `intakeLesson` (docs/makjang/README.md, "4. Authoring"). Both audits are
+ * described in `core/tree-audit`. Nothing is sent anywhere.
  */
 
 import type { Lesson } from "@some-ui/makjang"
@@ -14,7 +9,7 @@ import { auditStory } from "@some-ui/makjang"
 import type { ChoiceProbe } from "@topik/lib/topik/core/probe"
 import type { TreeFinding } from "@topik/lib/topik/core/tree-audit"
 import { auditTeaching } from "@topik/lib/topik/core/tree-audit"
-import { jsonValues } from "@topik/lib/topik/generation/intake"
+import { isRecord, jsonValues } from "@topik/lib/topik/generation/intake"
 
 export type TreeIntake =
   /** The reply holds no scene tree at all. */
@@ -23,16 +18,11 @@ export type TreeIntake =
   | { status: "rejected"; findings: Array<TreeFinding> }
   | {
       status: "checked"
-      /** The tree as it plays: every choice an error names is pruned. */
       lesson: Lesson<ChoiceProbe>
       findings: Array<TreeFinding>
     }
 
-const isTree = (value: unknown): boolean =>
-  typeof value === "object" &&
-  value !== null &&
-  !Array.isArray(value) &&
-  "root" in value
+const isTree = (value: unknown): boolean => isRecord(value) && "root" in value
 
 /** Reads a pasted reply. Never throws. */
 export function intakeTree(reply: string): TreeIntake {

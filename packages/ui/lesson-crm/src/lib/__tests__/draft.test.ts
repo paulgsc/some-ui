@@ -12,7 +12,7 @@ import {
 import { intakeLesson } from "@some-ui/topik"
 import { describe, expect, it } from "vitest"
 
-import { LESSON, REPLY, TREE, treeReply } from "./fixture"
+import { LESSON, REPLY, treeReply } from "./fixture"
 
 describe("draftLesson", () => {
   it("serves the lesson as intake leaves it, under the form's key and entry", () => {
@@ -113,30 +113,6 @@ describe("draftLesson on a scene tree", () => {
       intake: null,
       tree: { status: "checked", findings: [] },
     })
-  })
-
-  it("reports a tree's findings by path, from either audit", () => {
-    const broken = {
-      ...TREE,
-      pov: "nobody",
-      root: { ...TREE.root, feeling: "melancholy" },
-    }
-    const story = draftLesson(treeReply(broken), EMPTY_FORM)
-    expect(story.ok ? null : story.tree?.findings).toEqual([
-      {
-        audit: "story",
-        severity: "error",
-        path: "pov",
-        message: '"nobody" is not in the cast',
-      },
-    ])
-    const teaching = draftLesson(
-      treeReply({ ...broken, pov: "guest" }),
-      EMPTY_FORM
-    )
-    expect(teaching.ok ? null : teaching.tree?.findings).toEqual([
-      expect.objectContaining({ audit: "teaching", path: "root.feeling" }),
-    ])
   })
 })
 

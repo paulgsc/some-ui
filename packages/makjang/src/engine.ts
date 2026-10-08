@@ -25,7 +25,7 @@
  */
 
 import type { Beat, Lesson, Route, Scene } from "@makjang/schema"
-import { isLine, sceneAt, scenesOf } from "@makjang/schema"
+import { isLine, isRecord, sceneAt, scenesOf } from "@makjang/schema"
 
 /** Where the learner is inside the current scene. */
 export type At =
@@ -36,7 +36,6 @@ export type At =
   | { kind: "end" }
 
 export type DramaState = {
-  /** The option ids chosen from the root: it locates the current scene. */
   route: Route
   at: At
   /** Choice id → the option first chosen there: a choice's outcome. */
@@ -71,6 +70,13 @@ const voice = (beat: Beat): DramaEffect => ({
 const afterBeats = <Check>(scene: Scene<Check>): At =>
   scene.choice ? { kind: "choice" } : { kind: "end" }
 
+const enterScene = <Check>(scene: Scene<Check>): DramaEffect => ({
+  type: "enter-scene",
+  scene: scene.id,
+  place: scene.place,
+  feeling: scene.feeling,
+})
+
 /** Entering a scene: its first beat, or straight to what follows the beats. */
 function enter<Check>(scene: Scene<Check>): {
   at: At
@@ -79,15 +85,7 @@ function enter<Check>(scene: Scene<Check>): {
   const first = scene.beats[0]
   return {
     at: first ? { kind: "beat", id: first.id } : afterBeats(scene),
-    effects: [
-      {
-        type: "enter-scene",
-        scene: scene.id,
-        place: scene.place,
-        feeling: scene.feeling,
-      },
-      ...(first ? [voice(first)] : []),
-    ],
+    effects: [enterScene(scene), ...(first ? [voice(first)] : [])],
   }
 }
 
@@ -202,9 +200,6 @@ function unreachable(value: never): never {
   throw new Error(`unhandled drama event: ${JSON.stringify(value)}`)
 }
 
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === "object" && value !== null && !Array.isArray(value)
-
 const isStringArray = (value: unknown): value is Array<string> =>
   Array.isArray(value) && value.every((item) => typeof item === "string")
 
@@ -280,9 +275,10 @@ export function resume<Check>(
     return start(lesson)
   }
 
+  const beat = scene.beats[beatIndex(scene, at)]
   const atResolves =
     at.kind === "beat"
-      ? scene.beats.some((beat) => beat.id === at.id)
+      ? beat !== undefined
       : at.kind === "choice"
         ? scene.choice !== undefined
         : scene.choice === undefined
@@ -295,21 +291,8 @@ export function resume<Check>(
     return start(lesson)
   }
 
-  const state: DramaState = { route: [...route], at, first }
-  const beat =
-    at.kind === "beat"
-      ? scene.beats.find((candidate) => candidate.id === at.id)
-      : undefined
   return {
-    state,
-    effects: [
-      {
-        type: "enter-scene",
-        scene: scene.id,
-        place: scene.place,
-        feeling: scene.feeling,
-      },
-      ...(beat ? [voice(beat)] : []),
-    ],
+    state: { route: [...route], at, first },
+    effects: [enterScene(scene), ...(beat ? [voice(beat)] : [])],
   }
 }

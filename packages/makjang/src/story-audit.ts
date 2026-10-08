@@ -28,7 +28,12 @@ import type {
   Option,
   Scene,
 } from "@makjang/schema"
-import { MAX_BRANCHES, MAX_DEPTH, MIN_BRANCHES } from "@makjang/schema"
+import {
+  isRecord,
+  MAX_BRANCHES,
+  MAX_DEPTH,
+  MIN_BRANCHES,
+} from "@makjang/schema"
 
 /** One problem, at a dotted path into the input (`root.choice.options.1`). */
 export type StoryFinding = { path: string; message: string }
@@ -36,9 +41,6 @@ export type StoryFinding = { path: string; message: string }
 export type StoryAudit =
   | { ok: true; lesson: Lesson<unknown> }
   | { ok: false; findings: Array<StoryFinding> }
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === "object" && value !== null && !Array.isArray(value)
 
 const at = (path: string, key: string | number): string =>
   path === "" ? String(key) : `${path}.${key}`
@@ -315,11 +317,7 @@ function auditScene(
   }
 }
 
-/**
- * Holds `raw` (parsed JSON) to the scene-tree schema and its bounds. Returns
- * the typed tree, or every finding: a tree with any finding is rejected
- * whole. Never throws.
- */
+/** Holds `raw` (parsed JSON) to the scene-tree schema. Never throws. */
 export function auditStory(raw: unknown): StoryAudit {
   if (!isRecord(raw)) {
     return {

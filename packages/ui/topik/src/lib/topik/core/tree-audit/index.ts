@@ -33,6 +33,7 @@ import { FEELING_KEYS, isFeelingKey } from "@topik/lib/topik/core/feeling"
 import type { ChoiceProbe } from "@topik/lib/topik/core/probe"
 import type { ProbeReport } from "@topik/lib/topik/core/probe-audit"
 import { auditItem } from "@topik/lib/topik/core/probe-audit"
+import { TOPIK_LEVELS } from "@topik/lib/topik/generation"
 
 export type TreeFinding = {
   /** Shape (makjang's story audit) or items (this one). */
@@ -52,8 +53,6 @@ export type TeachingAudit =
       findings: Array<TreeFinding>
     }
   | { ok: false; findings: Array<TreeFinding> }
-
-const TOPIK_LEVELS = new Set([1, 2, 3, 4, 5, 6])
 
 /** The check, if it may be asked as this choice; findings either way. */
 function auditChoice(
@@ -143,16 +142,12 @@ const reporter =
     context.findings.push({ audit: "teaching", severity, path, message })
   }
 
-/** A finding that rejects the tree whole. */
 function rejectTree(context: Context, path: string, message: string): void {
   context.rejected = true
   reporter(context, path)("error", message)
 }
 
-/**
- * Audits `scene` and everything under it, and returns it as it plays. A
- * pruned choice's subtree is still audited, for its findings.
- */
+/** Audits `scene` and its subtree; returns it as it plays. */
 function auditScene(
   scene: Scene<unknown>,
   path: string,
@@ -198,7 +193,7 @@ function auditScene(
  */
 export function auditTeaching(lesson: Lesson<unknown>): TeachingAudit {
   const context: Context = { findings: [], rejected: false }
-  if (!TOPIK_LEVELS.has(lesson.level)) {
+  if (!TOPIK_LEVELS.some((level) => level === lesson.level)) {
     rejectTree(context, "level", `${lesson.level} is not a TOPIK level (1-6)`)
   }
   const root = auditScene(lesson.root, "root", context)

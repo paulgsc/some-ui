@@ -91,7 +91,7 @@ export function jsonValues(text: string): Array<unknown> {
   })
 }
 
-const isRecord = (value: unknown): value is Record<string, unknown> =>
+export const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value)
 
 const text = (value: unknown): string | undefined =>

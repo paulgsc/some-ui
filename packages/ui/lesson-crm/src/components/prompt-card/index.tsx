@@ -23,10 +23,57 @@ const MAX_CONVERSATIONS = 6
  */
 type Format = "conversations" | "tree"
 
-const FORMATS: Array<{ format: Format; label: string }> = [
-  { format: "conversations", label: "Conversations" },
-  { format: "tree", label: "Scene tree" },
+const FORMATS: Array<Choice<Format>> = [
+  { value: "conversations", label: "Conversations" },
+  { value: "tree", label: "Scene tree" },
 ]
+
+type Choice<T> = {
+  value: T
+  label: string
+  /** The accessible name, when the label alone is too terse. */
+  name?: string
+}
+
+/** One row of mutually exclusive buttons, as a radio group. */
+const Choices = <T extends string | number>({
+  label,
+  columns,
+  options,
+  value,
+  onChange,
+}: {
+  label: string
+  columns: string
+  options: Array<Choice<T>>
+  value: T
+  onChange: (value: T) => void
+}): JSX.Element => (
+  <div
+    role="radiogroup"
+    aria-label={label}
+    className={cn("grid shrink-0 gap-1", columns)}
+  >
+    {options.map((option) => (
+      <button
+        key={option.value}
+        type="button"
+        role="radio"
+        aria-checked={value === option.value}
+        aria-label={option.name}
+        onClick={() => onChange(option.value)}
+        className={cn(
+          "h-9 rounded-lg border text-sm font-semibold",
+          value === option.value
+            ? "border-primary/40 bg-primary/15"
+            : "border-border bg-card"
+        )}
+      >
+        {option.label}
+      </button>
+    ))}
+  </div>
+)
 
 /**
  * Not a transport failure, so not the host's to name: the clipboard API is
@@ -96,53 +143,24 @@ export const PromptCard = ({
       aria-label="Lesson prompt"
       className="flex h-full min-h-0 flex-col gap-3"
     >
-      <div
-        role="radiogroup"
-        aria-label="Format"
-        className="grid shrink-0 grid-cols-2 gap-1"
-      >
-        {FORMATS.map(({ format: value, label }) => (
-          <button
-            key={value}
-            type="button"
-            role="radio"
-            aria-checked={format === value}
-            onClick={() => setFormat(value)}
-            className={cn(
-              "h-9 rounded-lg border text-sm font-semibold",
-              format === value
-                ? "border-primary/40 bg-primary/15"
-                : "border-border bg-card"
-            )}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
-      <div
-        role="radiogroup"
-        aria-label="TOPIK level"
-        className="grid shrink-0 grid-cols-6 gap-1"
-      >
-        {TOPIK_LEVELS.map((value) => (
-          <button
-            key={value}
-            type="button"
-            role="radio"
-            aria-checked={level === value}
-            aria-label={`TOPIK ${value}`}
-            onClick={() => setLevel(value)}
-            className={cn(
-              "h-9 rounded-lg border text-sm font-semibold",
-              level === value
-                ? "border-primary/40 bg-primary/15"
-                : "border-border bg-card"
-            )}
-          >
-            {value}
-          </button>
-        ))}
-      </div>
+      <Choices
+        label="Format"
+        columns="grid-cols-2"
+        options={FORMATS}
+        value={format}
+        onChange={setFormat}
+      />
+      <Choices
+        label="TOPIK level"
+        columns="grid-cols-6"
+        options={TOPIK_LEVELS.map((value) => ({
+          value,
+          label: String(value),
+          name: `TOPIK ${value}`,
+        }))}
+        value={level}
+        onChange={setLevel}
+      />
       <div className="grid shrink-0 gap-2 sm:grid-cols-[1fr_auto]">
         <Input
           aria-label="Scene"
@@ -150,7 +168,6 @@ export const PromptCard = ({
           value={scene}
           onChange={(event) => setScene(event.target.value)}
         />
-        {/* A tree is one scene: it has no conversation count. */}
         {format === "conversations" && (
           <div className="flex items-center gap-2">
             <Label htmlFor="lesson-conversations" className="text-xs">

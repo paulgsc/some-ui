@@ -8,16 +8,11 @@
  * item is named, and `text`/`gloss` are "the language being learned" and "the
  * learner's" without saying which. `Check` is the teaching layer's item; this
  * package carries it without reading it, and `feeling` and `art` likewise.
- *
- * Invariants (full text in docs/makjang/README.md, "Invariants"):
- * - MK2: every tree an engine walks is within `MAX_DEPTH` and 2-4 options per
- *   choice; `auditStory` is the gate.
  */
 
 /** Choices between the root and the deepest scene. A scene at it is a leaf. */
 export const MAX_DEPTH = 2
 
-/** One option is not a choice. */
 export const MIN_BRANCHES = 2
 
 /** About what a phone shows as large thumb targets. */
@@ -99,6 +94,10 @@ export type Lesson<Check> = {
 export type Route = ReadonlyArray<string>
 
 export const isLine = (beat: Beat): beat is Line => "speaker" in beat
+
+/** A JSON object; for reading untrusted input. Not part of the public API. */
+export const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null && !Array.isArray(value)
 
 /**
  * The scene `route` leads to from `root`, or `undefined` when some step names

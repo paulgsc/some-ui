@@ -125,7 +125,7 @@ export type Draft =
       ok: false
       error: string
       intake: Intake | null
-      /** Present when the text is a scene tree: checked, never saved. */
+      /** Present when the text is a scene tree. */
       tree?: TreeCheck
     }
   | { ok: true; intake: Extract<Intake, { ok: true }>; write: LessonWrite }
@@ -139,9 +139,8 @@ export const TREE_NOT_SAVED =
 
 /**
  * The lesson text and the form, checked and turned into the write a save
- * sends - or the reason there is nothing to save. A scene tree
- * (docs/makjang/README.md) goes through its own intake, the story audit and
- * the teaching audit, and is reported rather than saved.
+ * sends - or the reason there is nothing to save. A scene tree goes through
+ * `intakeTree` instead.
  */
 export function draftLesson(text: string, form: LessonForm): Draft {
   const tree = intakeTree(text)

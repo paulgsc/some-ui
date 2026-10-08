@@ -1,12 +1,10 @@
 import { auditStory, MAX_BRANCHES, MAX_DEPTH, sceneAt } from "@makjang/index"
+import { isRecord } from "@makjang/schema"
 import { describe, expect, it } from "vitest"
 
 import { rawTree } from "./fixture"
 
 type Raw = Record<string, unknown>
-
-const isRaw = (value: unknown): value is Raw =>
-  typeof value === "object" && value !== null && !Array.isArray(value)
 
 /** The value at a dotted path into a fixture. */
 function valueAt(root: Raw, path: string): unknown {
@@ -14,7 +12,7 @@ function valueAt(root: Raw, path: string): unknown {
   for (const key of path.split(".")) {
     value = Array.isArray(value)
       ? value[Number(key)]
-      : isRaw(value)
+      : isRecord(value)
         ? value[key]
         : undefined
   }
@@ -24,7 +22,7 @@ function valueAt(root: Raw, path: string): unknown {
 /** The object at a dotted path, for changing a fixture in place. */
 function get(root: Raw, path: string): Raw {
   const value = valueAt(root, path)
-  if (!isRaw(value)) throw new Error(`${path} is not an object`)
+  if (!isRecord(value)) throw new Error(`${path} is not an object`)
   return value
 }
 
