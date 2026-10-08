@@ -17,7 +17,7 @@ The drama is the mobile app's experience, and only the mobile app's. The web
 app and the mobile app are different experiences, not one experience
 transposed to two platforms: neither is meant to mirror the other, from the UI
 and UX down to the content format. So nothing here is designed so that the
-desktop session can render it, the episode format is not something the desktop
+desktop session can render it, the scene-tree format is not something the desktop
 must read, and a choice that is right for a thumb on a phone does not need a
 desktop equivalent.
 
@@ -34,7 +34,7 @@ What being phone-only buys in the design:
   `apps/www/tests/ui-fit/harness.ts` as the shape it must also survive.
 - **Choices under the thumb,** as a small set of large targets (pictures where
   the item allows them), never a dense list.
-- **Short sittings.** An episode fits the handheld budget of one unit,
+- **Short sittings.** A lesson fits the handheld budget of one unit,
   resumable at beat granularity (Cor. 4.4), because a phone session is picked
   up and put down.
 - **Audio as a first-class channel,** since a phone is often used with sound,
@@ -128,11 +128,13 @@ amendments land with, or before, the first source change that relies on them
    is shown is the scene the chosen candidate leads to, with the authored
    `why` available after it. It is a new value of an existing dimension, which
    Theorem 4.1 says is cheap.
-2. **A unit is a graph, not a sequence.** Corollary 4.4's "a check follows the
-   line it is about" stands, but "a missed check comes back once after the
-   last line" is replaced in a drama unit by "a missed choice leads to its
-   consequence and then to a repair item". The missed item keeps its identity
-   (Thm. 1.1), so selection can bring it back in a later episode (Rem. 3.5).
+2. **A unit is a bounded tree, not a sequence.** Corollary 4.4's "a check
+   follows the line it is about" stands, but "a missed check comes back once
+   after the last line" is replaced in a drama unit by "a missed choice leads
+   to its consequence scene, whose own choice is the repair item". What comes
+   back after a miss is authored into that subtree, bounded by the tree's
+   depth. A node the learner's route never visits was never presented, so it
+   is not an outcome of any kind, and in particular not a miss.
 3. **The situational probe, and the rule that keeps it second- or
    third-order.** "What should she buy?" with pictures is, on its face, the
    first-order item Prop. 4.2 forbids: recognising one noun picks the answer.
@@ -144,10 +146,12 @@ amendments land with, or before, the first source change that relies on them
    ginseng glosses the noun. Under the mention-all condition that is harmless,
    because the item tests the structure and not the noun, and the amendment
    should say so rather than leave it to be discovered.
-5. **Story memory outside the belief envelope.** Flags a choice sets ("gave
-   the flowers") are persisted like the resume point (Cor. 4.4 (iii)): not a
-   competence claim, evictable (Thm. 7.2), and losing them costs continuity
-   and nothing else.
+5. **The resume point is a route.** Within a lesson, the route (the options
+   chosen from the root) and a beat index replace Corollary 4.4 (iii)'s
+   conversation index and message id. It is keyed by option ids, resolved by
+   identity, and discarded to the root when it no longer resolves (Thm. 1.1).
+   Nothing else is persisted, and nothing crosses lessons (see "One lesson
+   stands alone").
 
 ## The architecture
 
@@ -157,8 +161,8 @@ Four layers, each of which can improve without the others changing.
   authoring time                          runtime
  ┌───────────────┐   reviewed JSON    ┌──────────────────────────────┐
  │ 4. Authoring  │ ─────────────────▶ │ 1. Story (content)           │
- │  generator,   │   + media assets   │  cast, episodes, scenes,     │
- │  audits,      │                    │  beats, choices, flags       │
+ │  generator,   │   + media assets   │  one lesson = one scene tree │
+ │  audits,      │                    │  (≤4 options, ≤ max depth)   │
  │  asset jobs   │                    └──────────────┬───────────────┘
  └───────────────┘                                   │
                                      ┌───────────────▼───────────────┐
@@ -181,42 +185,76 @@ The drama is data, authored ahead of time (Prop. 8.1). It has stable
 identities throughout, because everything persisted is keyed by identity, never
 by position (Thm. 1.1).
 
-- **Cast.** A character has an id, a name in Korean and English, how they
-  stand to the protagonist, and how they speak: which register they use to
-  whom, and which they receive. It also carries medium-free descriptions of
-  voice (age, temperament) and look, which the media layer turns into
-  renditions when it can. The cast is shared across a series, which is what
-  keeps forms of address consistent from week to week.
-- **Series, episode, scene, beat.** A series is a cast and a premise. An
-  episode is one sitting: the unit the session budget (Def. 4.4), the resume
-  point and the evaluation report (Cor. 3.4) attach to. A scene is a place and
-  a set of characters. A beat is the smallest step.
-- **Beat kinds.**
-  - _Line:_ a speaker (a cast id, not `user`/`assistant`), the Korean, its
-    gloss, and an optional stage direction (how it is said).
-  - _Narration:_ the setting or an action, short, so the learner knows where
-    they are.
-  - _Choice:_ the drama's question, asked inside the story ("She is at the
-    shop. What does she buy?"). Each option has a label, an optional art key
-    (`gift.red-ginseng`), whether the story treats it as the right one, and the
-    beat it leads to. A right option continues. A wrong one leads to its
-    consequence.
-  - _Join:_ where branches rejoin.
-- **Consequence and repair.** A wrong option's target is a short branch: the
-  consequence (the scene that follows from it), then a repair choice (calm it
-  down), which is itself an item, usually harder and usually third-order. Every
-  branch either rejoins the spine or ends the scene. Repair is bounded: it does
-  not loop until the learner gets it right.
-- **Flags.** A choice may set a named flag, and a later beat may have a
-  variant for a flag ("the mother-in-law remembers the flowers"). Flags are a
-  finite, authored set per series. In the first version they are scoped to an
-  episode. Series-wide memory is the same mechanism with a longer scope.
+**A lesson is a scene, and a scene nests scenes.** A choice splits a scene into
+child scenes, one per option, and each child is a scene in its own right that
+may split again. The shape borrows from a quadtree: at most four children per
+split, and a maximum depth past which a scene may not split and must resolve.
 
-A legacy topik conversation is a degenerate episode: two unnamed speakers, a
-straight line of beats, its probes as choices whose every option continues. So
+```
+Lesson = { id, level, cast: Character[], root: Scene }
+Scene  = { id, setting, beats: (Line | Narration)[], choice? }
+Choice = { id, prompt, options: Option[1..4] }      // absent at max depth
+Option = { id, label, art?, right: boolean, check?, child: Scene }
+```
+
+- **Depth** is the number of choices between the root and a scene. A scene at
+  `MAX_DEPTH` has no choice: it is a leaf, and the story resolves there. A
+  scene above it may also be a leaf. Depth is what bounds the repair: there is
+  no loop to retry in, only a subtree that ends.
+- **Fan-out** is at most `MAX_BRANCHES = 4`, which is also about what a phone
+  screen shows as large thumb targets.
+- **The right option's child continues the story. A wrong option's child is
+  its consequence:** the mother-in-law receiving the wrong gift, in Korean. Its
+  own choice, if it has one, is the repair (calm her down), usually harder and
+  usually third-order, since politeness toward an elder is what it tests.
+- **The route is the memory.** Because the shape is a tree, every scene knows
+  exactly what led to it: its ancestors. A consequence scene does not need a
+  flag saying "she bought the flowers", because it only exists on the route
+  where she did. No flags and no joins are needed while branches never
+  converge. Converging branches (and the flags they would need to remember what
+  differs) belong to the longitudinal stage, not the MVP.
+- **The size is bounded by both constants.** A full tree has
+  `(4^(D+1) − 1) / 3` scenes: 21 at depth 2, 85 at depth 3. The learner sees
+  only one route, `D + 1` scenes with `D` choices, but the generator writes
+  them all in one reply, so the depth is a cost decision as much as a story one.
+  The audit also caps the total scene count, so a tree can be pruned (fewer
+  options, earlier leaves) rather than fail. The values are constants in
+  `@some-ui/makjang`, to be chosen with the pilot; depth 2 is the suggested
+  start.
+- **Cast, inline.** A lesson declares its own characters: an id, a name in
+  Korean and English, how they stand to the protagonist, which register they
+  use to whom and receive, and medium-free descriptions of voice (age,
+  temperament) and look, which the media layer turns into renditions when it
+  can. Lines name a speaker by cast id, never `user`/`assistant`.
+- **Beats.** A _line_ has a speaker, the Korean, its gloss and an optional
+  stage direction (how it is said). A _narration_ is a short setting or action
+  so the learner knows where they are. The choice is the drama's question,
+  asked inside the story ("She is at the shop. What does she buy?"), with an
+  optional art key per option (`gift.red-ginseng`).
+
+#### One lesson stands alone
+
+In the MVP every lesson is self-contained, the way a lesson generated from one
+session prompt is today. It does not know about any other lesson, any other
+scene tree, or any recurring cast, and the generator is given no story from
+earlier lessons: the prompt, the level and an optional scene idea are enough.
+The digest of recent evaluation reports the prompt already carries (Cor. 8.2)
+stays, since it is about how lessons fit, not what happened in them. The app
+keeps nothing between lessons beyond what the handheld surface already keeps
+(the reports and the shelf). The standing cast in today's generator prompt can
+stay as a default to draw from, as long as no lesson relies on another.
+
+Longitudinal structure (a standing ensemble, a series, the mother-in-law
+remembering last week) is a later goal, and the model leaves room for it: a
+cast moves from inline to a shared reference, and a lesson becomes one node of a
+larger tree. Nothing in the MVP waits for it.
+
+A legacy topik conversation is a degenerate tree: two unnamed speakers, one
+root scene with no choice, its probes kept as the line-anchored checks they are
+today. So
 content already served to the handheld surface keeps playing there during the
 migration. The adapter runs one way only: the desktop session keeps its own
-conversation format and never reads an episode.
+conversation format and never reads a scene tree.
 
 ### 2. Engine: what happens next
 
@@ -224,9 +262,13 @@ One state union and a pure `step(state, event) → { state, effects }` in
 `lib/`, tested in `node`, as `docs/monorepo-boundaries.md` ("the component is
 not the coordinator") requires and as topik's `core/` already models.
 
-- **State:** the current beat, the line's reveal level, the flags, and the
-  outcome of each choice keyed by its id.
+- **State:** the route (the option ids chosen from the root, which locates
+  the current scene), the beat index in it, the line's reveal level, and the
+  first-try outcome of each choice reached, keyed by its id.
 - **Events:** reveal, advance, choose an option, replay a line, resume.
+- **Recursion is in the content, not the engine.** Entering a child scene is
+  pushing an option id onto the route. The engine is the same at every depth
+  and never needs to know how deep the tree is.
 - **Effects:** "voice this line as this character", "show this scene's
   backdrop", "persist the resume point". The engine names _what_ should be
   presented, never _how_.
@@ -242,7 +284,8 @@ Three rules keep it sound:
 - **The route never changes the record.** A choice's outcome is the first try,
   recorded by id, whatever route the drama then takes. The consequence is
   presentation (`p_reveal`), not evidence, and a learner who reached a scene by
-  a repair branch is not recorded differently for the items there.
+  a repair branch is not recorded differently for the items there. Choices on
+  routes not taken are not recorded at all.
 
 ### 3. Media: renditions over ports
 
@@ -256,7 +299,7 @@ never generated by a model while a learner waits (Thm. 8.1).
 | Voice  | Device TTS, one voice per language (`@some-ui/speech`) | A voice per character, from the cast               | Text only       |
 | Art    | Hand-made SVG icons for choice options                 | Generated icons, portraits, backdrops in one style | Text labels     |
 | Motion | None                                                   | A character speaking a beat, as video              | Portrait, voice |
-| Script | One generated episode at a time                        | A coherent series from a series-level prompt       | (authoring)     |
+| Script | One self-contained scene tree per lesson               | A coherent series with a standing cast             | (authoring)     |
 
 `@some-ui/speech` already separates the voice from the line (`TTSOptions.voice`
 is used for previews only today), so a per-character voice is a mapping from a
@@ -269,22 +312,23 @@ canon saying what it reveals and why that is acceptable, as amendment 4 does
 for option art. That is the one place where "add it when the technology is
 ready" needs a review step and not just an asset.
 
-### 4. Authoring: how episodes get made
+### 4. Authoring: how lessons get made
 
 The pipeline the canon already declares, extended rather than replaced:
 source idea, then a model, then JSON, then a deterministic audit, then review,
 then served content (Rem. 8.1, Cor. 8.3), with the learner's own model as an
 option (Def. 8.3).
 
-- **The generator prompt** grows from "conversations plus probes" to "an
-  episode as a beat graph", keeping every probe rule it has now.
-- **Two audits, by owner.** The story audit checks structure: every beat is
-  reachable, every route ends, every wrong option has a consequence and a
-  repair, every speaker is in the cast, every flag that is read is set
-  somewhere. The teaching audit checks the items: the existing probe audit,
+- **The generator prompt** grows from "conversations plus probes" to "one
+  scene tree", keeping every probe rule it has now. It stays a standalone
+  prompt: no other lesson goes into it.
+- **Two audits, by owner.** The story audit checks structure: fan-out at most
+  four, no choice at or past the maximum depth, the total scene count under
+  its cap, ids unique across the tree, every speaker in the cast, and exactly
+  one right option per choice. The teaching audit checks the items: the existing probe audit,
   plus the mention-all condition for situational choices.
 - **Asset jobs** are a separate authoring step (cast voices, option icons,
-  later portraits and video), so an episode can ship with no assets at all and
+  later portraits and video), so a lesson can ship with no assets at all and
   gain them later without its story changing.
 
 ## Where it lives
@@ -314,18 +358,20 @@ not to share code.
 Each one ships, and none needs a better model than exists today.
 
 - **M1: the drama as data.** The canon amendments above. `@some-ui/makjang`
-  with the story schema, the story audit and the engine, tested in `node`. The
-  legacy-conversation adapter. One hand-written pilot episode: the gift for the
-  mother-in-law, with its consequence and repair. No UI change yet.
+  with the scene-tree schema, the story audit and the engine, tested in `node`.
+  The legacy-conversation adapter. One hand-written pilot tree: the gift for
+  the mother-in-law, with its consequence and repair subtrees. No UI change
+  yet.
 - **M2: the phone lesson runs on the engine.** Speaker names, choices with
   hand-made SVG option art, consequence and repair scenes, a distinct device
   voice (or pitch) per character where the device allows it. `core/lesson-track`
   and its tests are removed once nothing uses them. The wrap card loses
-  "Conversation N of M" and the tally as its headline, and ends an episode on
-  what happens next instead.
-- **M3: generated episodes.** The generator prompt writes beat graphs. The two
-  audits gate them. The weekly batch (Cor. 8.3) serves episodes.
-- **Later, one capability at a time:** series-wide flags, per-character cloud
+  "Conversation N of M" and the tally as its headline, and ends a lesson on how
+  the scene resolved instead.
+- **M3: generated scene trees.** The generator prompt writes one tree per
+  reply. The two audits gate it. The weekly batch (Cor. 8.3) serves trees.
+- **Later, one capability at a time:** a standing cast, series and memory
+  across lessons, per-character cloud
   voices, generated art in a fixed style, portraits, video beats, whole-series
   scripts. Each adds assets and a renderer capability, plus its canon line, and
   changes neither the story schema nor the engine.
@@ -338,12 +384,14 @@ invariants") in the change that adds the code, and enforced where they can be.
 
 - **The engine imports no media and no topik.** Mechanical: an import
   restriction on `@some-ui/makjang`'s `lib/`.
-- **Every route through an episode ends, and every wrong option has a
-  consequence.** Mechanical: the story audit, run on every served episode.
+- **Every scene tree is within its bounds.** At most four options per
+  choice, no choice at the maximum depth, the total under its cap. Mechanical:
+  the story audit, run on every served or pasted lesson.
 - **Every situational option is mentioned before its choice.** Mechanical: the
   teaching audit.
-- **A choice's outcome does not depend on the route taken afterwards.**
-  Mechanical: an engine test over every route of the pilot episode.
+- **A choice's outcome does not depend on the route taken afterwards, and
+  an unvisited choice has none.** Mechanical: an engine test over every route
+  of the pilot tree.
 - **A new rendition kind lands with its valuation.** Not mechanical: whether a
   picture or a face reveals the answer needs a person. Falsified by a change
   that adds a rendition kind to a renderer's capability set with no canon line
@@ -351,16 +399,8 @@ invariants") in the change that adds the code, and enforced where they can be.
 
 ## Open questions
 
-- **Series or vignettes.** One continuing drama with the standing cast, or
-  standalone trope scenes (the airport goodbye, the envelope of money)? The
-  model supports both. The first content and the generator prompt need one
-  answer.
-- **How long memory lasts.** Do flags stay within an episode, or does the
-  mother-in-law remember next week? The mechanism is the same. The authoring
-  burden and the audit are not.
-- **Where the missed item comes back.** In the same episode after the repair,
-  or in a later one through selection (Rem. 3.5)? The canon's repeat-on-error
-  is the default until this is decided.
+- **Depth and cap.** Depth 2 (21 scenes at most, 3 on any route) or 3 (85,
+  4 on a route)? The pilot and the generator's reply length decide it.
 - **Window or APK.** Should the drama follow topik's window-size split (so a
   phone browser on the Pages build plays it too, and the APK on a tablet does
   not), or the APK audience (`hasAudience("apk")`, so only the installed app
