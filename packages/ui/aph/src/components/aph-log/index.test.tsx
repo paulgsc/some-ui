@@ -123,6 +123,47 @@ describe("a logger left open", () => {
   })
 })
 
+describe("logging a day I missed", () => {
+  it("steps back a day, and saves there at the checkpoint still missing", () => {
+    // Noon on Oct 3; Oct 2 holds 7:00 but not 12:00.
+    const { type, onSaved } = setup({ now: new Date(2026, 9, 3, 12, 4) })
+    fireEvent.click(screen.getByRole("button", { name: "Earlier day" }))
+    expect(screen.getByText("Yesterday")).toBeInTheDocument()
+    expect(screen.getByRole("radio", { name: /12:00/ })).toHaveAttribute(
+      "aria-checked",
+      "true"
+    )
+    type("4900")
+    fireEvent.click(
+      screen.getByRole("button", { name: /Save mine · Oct 2 12:00/ })
+    )
+    expect(onSaved).toHaveBeenCalledWith(
+      expect.objectContaining({ day: "2026-10-02", checkpoint: "12" }),
+      "mine"
+    )
+  })
+
+  it("goes back two weeks and stops", () => {
+    setup({ now: new Date(2026, 9, 8, 9, 0) })
+    const earlier = screen.getByRole("button", { name: "Earlier day" })
+    for (let i = 0; i < 14; i += 1) fireEvent.click(earlier)
+    expect(screen.getByText("Thu Sep 24")).toBeInTheDocument()
+    expect(earlier).toBeDisabled()
+    fireEvent.click(screen.getByRole("button", { name: "Later day" }))
+    expect(screen.getByText("Fri Sep 25")).toBeInTheDocument()
+  })
+
+  it("opens on the day a link names", () => {
+    setup({ now: new Date(2026, 9, 8, 9, 0), initialDay: "2026-10-05" })
+    expect(screen.getByText("Mon Oct 5")).toBeInTheDocument()
+  })
+
+  it("ignores a linked day past two weeks", () => {
+    setup({ now: new Date(2026, 9, 8, 9, 0), initialDay: "2026-09-20" })
+    expect(screen.getByText("Today")).toBeInTheDocument()
+  })
+})
+
 describe("logging theirs", () => {
   it("shows, before saving, that a far-off figure will wait on my call", () => {
     const { type, store } = setup({ initialSide: "theirs" })

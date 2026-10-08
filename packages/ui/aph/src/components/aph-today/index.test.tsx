@@ -14,24 +14,26 @@ describe("Today so far", () => {
         side: "mine",
         digits: "5100",
         approx: false,
+        day: null,
         checkpoint: "12",
         pinned: true,
         target: null,
         labels: [],
       },
-      { day: "2026-10-03", time: "12:30", id: "noon" }
+      { today: "2026-10-03", time: "12:30", id: "noon" }
     )
     store.save(
       {
         side: "mine",
         digits: "4200",
         approx: true,
+        day: null,
         checkpoint: "7",
         pinned: true,
         target: null,
         labels: [],
       },
-      { day: "2026-10-03", time: "12:31", id: "late" }
+      { today: "2026-10-03", time: "12:31", id: "late" }
     )
     render(
       <ul>

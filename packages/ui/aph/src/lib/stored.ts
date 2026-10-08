@@ -1,0 +1,141 @@
+/**
+ * aph's state as kept on the device: one `localStorage` key, under the APK's
+ * pinned `https://localhost` origin (`apps/mobile/capacitor.config.ts`), so
+ * it outlives a reload, a restart and an update installed over the app, and
+ * goes into Android's backup with the rest of the WebView's storage.
+ *
+ * What is kept is my own record and has no other copy, so nothing here ever
+ * writes over something it could not read:
+ *
+ * - a value that does not parse, is another version, or breaks a rule in
+ *   `violations` is moved aside to a key of its own (`QUARANTINE_PREFIX`)
+ *   before the store starts again from its fallback, and stays there;
+ * - when even that is impossible (the storage throws), the store is opened
+ *   read-only: it shows the fallback and refuses every change, rather than
+ *   save over the record it failed to read.
+ *
+ * Synchronous, like the store, so the store keeps its one rule: a change is
+ * kept or refused at the tap, never later.
+ */
+import { z } from "zod"
+
+import type { AphSettings, Entry } from "./model"
+import { violations } from "./model"
+
+/** The part of `Storage` this touches, so tests can pass a fake. */
+export type AphStorage = Pick<Storage, "getItem" | "setItem">
+
+export const STORAGE_KEY = "aph:state"
+/** Followed by 1, 2 …: an unreadable value, kept as it was found. */
+export const QUARANTINE_PREFIX = "aph:state:unreadable:"
+const VERSION = 1
+
+const CheckpointSchema = z.object({
+  id: z.string(),
+  label: z.string(),
+  minutes: z.number(),
+  goal: z.number(),
+})
+
+const SettingsSchema: z.ZodType<AphSettings> = z.object({
+  checkpoints: z.array(CheckpointSchema),
+  labels: z.array(z.string()),
+  step: z.number(),
+  usualLow: z.number(),
+  usualHigh: z.number(),
+  tolerance: z.number(),
+  since: z.string(),
+})
+
+const EntrySchema: z.ZodType<Entry> = z.object({
+  id: z.string(),
+  day: z.string(),
+  checkpoint: z.string().nullable(),
+  time: z.string().nullable(),
+  mine: z.object({ value: z.number(), approx: z.boolean() }).nullable(),
+  theirs: z.object({ value: z.number() }).nullable(),
+  goal: z.number().nullable(),
+  labels: z.array(z.string()),
+  note: z.string().nullable(),
+  review: z.enum(["agreed", "flagged"]).nullable(),
+})
+
+const StoredSchema = z.object({
+  v: z.literal(VERSION),
+  settings: SettingsSchema,
+  entries: z.array(EntrySchema),
+})
+
+export type Kept = {
+  settings: AphSettings
+  entries: ReadonlyArray<Entry>
+}
+
+/**
+ * What opening the storage found:
+ *
+ * - `kept`: a readable state;
+ * - `empty`: nothing yet, or an unreadable value now moved aside;
+ * - `unreadable`: the storage itself threw, so nothing may be written.
+ */
+export type Opened =
+  | { kind: "kept"; state: Kept }
+  | { kind: "empty" }
+  | { kind: "unreadable" }
+
+/** `window.localStorage`, or null wherever touching it throws. */
+export function localStorageOrNull(): AphStorage | null {
+  try {
+    return typeof window === "undefined" ? null : window.localStorage
+  } catch {
+    return null
+  }
+}
+
+function parse(raw: string): Kept | null {
+  try {
+    const stored = StoredSchema.safeParse(JSON.parse(raw))
+    if (!stored.success) return null
+    const { settings, entries } = stored.data
+    return violations(settings, entries).length === 0
+      ? { settings, entries }
+      : null
+  } catch {
+    return null
+  }
+}
+
+/** Moves `raw` to the first free quarantine key; false if it could not. */
+function quarantine(storage: AphStorage, raw: string): boolean {
+  try {
+    let n = 1
+    while (storage.getItem(`${QUARANTINE_PREFIX}${n}`) !== null) n += 1
+    storage.setItem(`${QUARANTINE_PREFIX}${n}`, raw)
+    return true
+  } catch {
+    return false
+  }
+}
+
+export function openStored(storage: AphStorage): Opened {
+  let raw: string | null
+  try {
+    raw = storage.getItem(STORAGE_KEY)
+  } catch {
+    return { kind: "unreadable" }
+  }
+  if (raw === null) return { kind: "empty" }
+  const state = parse(raw)
+  if (state !== null) return { kind: "kept", state }
+  return quarantine(storage, raw) ? { kind: "empty" } : { kind: "unreadable" }
+}
+
+/** Writes `state`; false when the storage refused it (full, or disabled). */
+export function writeStored(storage: AphStorage, state: Kept): boolean {
+  try {
+    storage.setItem(STORAGE_KEY, JSON.stringify({ v: VERSION, ...state }))
+    return true
+  } catch {
+    return false
+  }
+}

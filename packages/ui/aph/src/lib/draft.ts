@@ -3,8 +3,9 @@
  * keypad, the chips and the side switch change, so what a sequence of taps
  * leaves behind is testable without rendering anything.
  *
- * Two sides, one form: "mine" is my figure for a checkpoint today, "theirs"
- * is a reported figure for an entry that is waiting on one.
+ * Two sides, one form: "mine" is my figure for a checkpoint, today or a day
+ * I missed (`loggableDays`), "theirs" is a reported figure for an entry that
+ * is waiting on one.
  */
 import { dayOf } from "@some-ui/core-utils"
 
@@ -13,6 +14,7 @@ import {
   awaitingTheirs,
   checkpointById,
   dueCheckpoint,
+  loggableDays,
   minutesOf,
 } from "./model"
 
@@ -24,6 +26,11 @@ export type Draft = {
   digits: string
   /** Mine only: written with a "~". */
   approx: boolean
+  /**
+   * Mine only: the day it is for, or null for today, whatever day it is at
+   * the tap. Set only for a day I went back to.
+   */
+  day: string | null
   /**
    * Mine only: the checkpoint, or null for another time of day. Until
    * `pinned`, a default that `atTime` replaces with the clock's.
@@ -49,6 +56,8 @@ export type DraftEvent =
   | { type: "toggleApprox" }
   | { type: "side"; side: Side }
   | { type: "pickCheckpoint"; checkpoint: string | null }
+  /** A day I missed, or null to come back to today. */
+  | { type: "pickDay"; day: string | null }
   | { type: "pickTarget"; target: string }
   | { type: "toggleLabel"; label: string }
 
@@ -58,12 +67,14 @@ const MAX_DIGITS = 5
 export function newDraft(
   side: Side,
   checkpoint: string | null,
-  target: string | null
+  target: string | null,
+  day: string | null = null
 ): Draft {
   return {
     side,
     digits: "",
     approx: true,
+    day,
     checkpoint,
     pinned: false,
     target,
@@ -95,6 +106,9 @@ export function stepDraft(draft: Draft, event: DraftEvent): Draft {
     case "pickCheckpoint": {
       return { ...draft, checkpoint: event.checkpoint, pinned: true }
     }
+    case "pickDay": {
+      return { ...draft, day: event.day }
+    }
     case "pickTarget": {
       return { ...draft, target: event.target, digits: "" }
     }
@@ -116,13 +130,35 @@ function assertNever(value: never): never {
   throw new Error(`Unhandled draft event: ${JSON.stringify(value)}`)
 }
 
-/** The checkpoint a new figure of mine goes to by default at a moment. */
+/**
+ * The day a figure of mine is for when saved on `today`: the one I went
+ * back to, else today.
+ */
+export function draftDay(draft: Draft, today: string): string {
+  return draft.day ?? today
+}
+
+/**
+ * The checkpoint a new figure of mine goes to by default at a moment: today,
+ * the one the clock says is due; on a day I went back to, whose windows have
+ * all closed, the first one that day is still missing.
+ */
 function defaultCheckpoint(
   settings: AphSettings,
   entries: ReadonlyArray<Entry>,
+  day: string,
   at: Date
 ): string | null {
-  const due = dueCheckpoint(settings, entries, dayOf(at), minutesOf(at))
+  const today = dayOf(at)
+  const due =
+    day === today
+      ? dueCheckpoint(settings, entries, today, minutesOf(at))
+      : settings.checkpoints.find(
+          (c) =>
+            !entries.some(
+              (e) => e.day === day && e.checkpoint === c.id && e.mine !== null
+            )
+        )
   return due?.id ?? settings.checkpoints[0]?.id ?? null
 }
 
@@ -143,7 +179,7 @@ export function atTime(
     ...draft,
     checkpoint: draft.pinned
       ? draft.checkpoint
-      : defaultCheckpoint(settings, entries, at),
+      : defaultCheckpoint(settings, entries, draftDay(draft, dayOf(at)), at),
     target: draft.target ?? awaitingTheirs(settings, entries)[0]?.id ?? null,
   }
 }
@@ -156,9 +192,9 @@ export function draftValue(draft: Draft): number | null {
 export type Saved = { entries: Array<Entry>; id: string }
 
 export type Commit = {
-  /** Local day for a new entry of mine. */
-  day: string
-  /** Clock time for an entry of mine off the checkpoints ("16:05"). */
+  /** Local day at the tap: a figure of mine is for it unless the draft names a day. */
+  today: string
+  /** Clock time at the tap, for an entry of mine today off the checkpoints ("16:05"). */
   time: string
   /** Id for a new entry. */
   id: string
@@ -168,9 +204,10 @@ export type Commit = {
  * The entries after saving `draft`, with the id of the entry the figure
  * landed on (an existing one when it filled in or corrected), or null when
  * there is nothing to save
- * (no figure, or theirs with no entry chosen).
+ * (no figure, theirs with no entry chosen, or mine for a day further back
+ * than `loggableDays` reaches).
  *
- * Mine at a checkpoint where today already holds a reported figure but none
+ * Mine at a checkpoint where the day already holds a reported figure but none
  * of mine fills that entry in, so the two meet; an unlabelled figure where
  * one is already logged corrects it (`correcting`); otherwise it is a new
  * entry.
@@ -206,11 +243,16 @@ export function commitDraft(
     }
   }
 
+  // The draft's day is checked here, at the tap, not when it was picked: a
+  // form left open past midnight can have carried it out of reach.
+  const day = draftDay(draft, commit.today)
+  if (!loggableDays(settings, commit.today).includes(day)) return null
+
   const mine = { value, approx: draft.approx }
   const reportedOnly = entries.find(
     (e) =>
       draft.checkpoint !== null &&
-      e.day === commit.day &&
+      e.day === day &&
       e.checkpoint === draft.checkpoint &&
       e.mine === null
   )
@@ -225,7 +267,7 @@ export function commitDraft(
   // An unlabelled figure where one is already logged corrects it: the day
   // has one plain figure per checkpoint, the one `primary` reads. A changed
   // figure deserves a fresh look, so any earlier call on it is cleared.
-  const corrected = correcting(entries, draft, commit.day)
+  const corrected = correcting(entries, draft, day)
   if (corrected !== undefined) {
     return {
       id: corrected.id,
@@ -241,9 +283,11 @@ export function commitDraft(
       ...entries,
       {
         id: commit.id,
-        day: commit.day,
+        day,
         checkpoint: checkpoint?.id ?? null,
-        time: checkpoint === null ? commit.time : null,
+        // The clock's time is only true of today. On a day I went back to,
+        // the time was never written down, and History flags it as such.
+        time: checkpoint === null && day === commit.today ? commit.time : null,
         mine,
         theirs: null,
         goal: checkpoint?.goal ?? null,

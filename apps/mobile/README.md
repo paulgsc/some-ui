@@ -618,10 +618,20 @@ past. Colours are theme tokens (`--success`, `--warning`, `--destructive`,
 `--chart-*`), so every theme restyles it.
 
 Code: `packages/ui/aph` (`lib/model.ts` decides everything; the screens
-draw it), routed under `_dashboard/_apk/aph`. **Not stored yet:** entries
-live in memory, starting from the paper notes they replace
-(`lib/seed.ts`), and a reload starts over. Storage comes once the screens
-have settled.
+draw it), routed under `_dashboard/_apk/aph`.
+
+- **Kept on the phone** (`lib/stored.ts`): entries and settings live in one
+  `localStorage` key under the pinned `https://localhost` origin, so they
+  survive a reload, a restart and an update installed over the app, and go
+  into Android's backup with the WebView's storage. The first launch starts
+  from the paper notes they replace (`lib/seed.ts`) and keeps them. A change
+  the phone refuses to keep is refused on screen too ("Not saved"), and a
+  record that cannot be read is moved aside, never written over.
+  Uninstalling the app, or clearing its data, still deletes it.
+- **A day I missed** can still be logged, up to two weeks back
+  (`loggableDays`): the logger steps back a day at a time, and History's
+  "not logged" rows open it on that day. A figure off the checkpoints on a
+  past day keeps no clock time, since the time was never written down.
 
 ## Soundbites: saying why a session did not happen
 

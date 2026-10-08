@@ -24,6 +24,27 @@ function setup(): {
   return { store, onEnterTheirs }
 }
 
+describe("History's missed days", () => {
+  it("open the logger on a gap's latest day while it is within two weeks", () => {
+    const onLogDay = vi.fn()
+    render(
+      <AphHistory
+        now={noon}
+        store={createAphStore({
+          settings: SEED_SETTINGS,
+          entries: SEED_ENTRIES,
+        })}
+        onLogDay={onLogDay}
+      />
+    )
+    // Sep 30 is within reach of Oct 2; Sep 14 – 15, 17 days back, is not.
+    fireEvent.click(screen.getByRole("button", { name: /Log Sep 30/ }))
+    expect(onLogDay).toHaveBeenCalledWith("2026-09-30")
+    expect(screen.queryByRole("button", { name: /Log Sep 15/ })).toBeNull()
+    expect(screen.getByText(/Sep 14 – Sep 15 · 2 days/)).toBeInTheDocument()
+  })
+})
+
 describe("History", () => {
   it("counts what waits on my call, and filters to it", () => {
     setup()

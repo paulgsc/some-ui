@@ -241,6 +241,28 @@ function byLatest(settings: AphSettings): (a: Entry, b: Entry) => number {
     a.day === b.day ? rank(a) - rank(b) : b.day.localeCompare(a.day)
 }
 
+/** How many days back a missed figure of mine can still be logged. */
+const BACKFILL_DAYS = 14
+
+/**
+ * The days a figure of mine can be logged on, today first: back
+ * `BACKFILL_DAYS`, and never before `settings.since`, where History stops
+ * (today itself always, as History always shows it). Past that a figure
+ * from memory is a guess, not an observation.
+ */
+export function loggableDays(
+  settings: AphSettings,
+  today: string
+): Array<string> {
+  const days: Array<string> = []
+  for (let back = 0; back <= BACKFILL_DAYS; back += 1) {
+    const day = addDays(today, -back)
+    if (back > 0 && day < settings.since) break
+    days.push(day)
+  }
+  return days
+}
+
 export function minutesOf(date: Date): number {
   return date.getHours() * 60 + date.getMinutes()
 }
