@@ -253,7 +253,7 @@ split, and a maximum depth past which a scene may not split and must resolve.
 ```
 Lesson    = { id, level, pov: CharacterId, cast: Character[], root: Scene }
 Character = { id, name, standing, registers, voice?, look? }
-Scene     = { id, place, feeling?, beats: (Line | Narration)[], choice? }
+Scene     = { id, place, feeling, beats: (Line | Narration)[], choice? }
 Line      = { id, speaker: CharacterId, text, gloss, direction? }
 Narration = { id, text, gloss }
 Choice    = { id, prompt, check: Check, options: Option[2..4] }  // none at MAX_DEPTH
@@ -307,11 +307,12 @@ positional), so M2 adds one
   so the learner knows where they are. An option may carry a short art
   description, which the media layer renders when it can and otherwise
   ignores.
-- **Feeling.** A scene may name the one feeling it is wrapped in, as a key
+- **Feeling.** Every scene names the one feeling it is wrapped in, as a key
   from the renderer's vocabulary (see "The webtoon: one feeling per scene").
-  Makjang carries it as a string without reading it, as it carries `art`; the
-  story audit does not check it, and a key the renderer does not know renders
-  as no feeling at all.
+  Makjang carries it as a string without reading it, as it carries `art`: the
+  story audit checks that it is there, and topik checks that the renderer has
+  it. A tree that fails either is rejected at load like any other malformed
+  tree, so no scene renders without its anchor.
 
 **The code knows the shape, never a scene.** Every scene, character, line and
 choice comes from generation. Nothing in `@some-ui/makjang` or topik names a
@@ -463,11 +464,12 @@ option (Def. 8.3).
   calls a conversation a "beat", and here a beat is a line or a narration.
 - **Two audits, by owner.** The story audit checks shape: two to four options
   per choice, no choice at the maximum depth, ids unique across the tree,
-  every speaker and `pov` in the cast, every option leading to a scene. The
-  teaching audit is the existing probe audit, plus a match between each
-  choice's options and its check's candidates. A choice it rejects is not
-  asked: its scene becomes a leaf and the subtree under it is dropped, the
-  tree's version of Remark 4.7's "dropped at load".
+  every speaker and `pov` in the cast, every option leading to a scene, every
+  scene naming a feeling. The teaching audit is the existing probe audit, plus
+  a match between each choice's options and its check's candidates. A choice
+  it rejects is not asked: its scene becomes a leaf and the subtree under it is
+  dropped, the tree's version of Remark 4.7's "dropped at load". Topik also
+  rejects a tree whose scene names a feeling the renderer does not have.
 - **Asset jobs** are a separate authoring step (cast voices, option art,
   later portraits and video), so a lesson can ship with no assets at all and
   gain them later without its story changing.
