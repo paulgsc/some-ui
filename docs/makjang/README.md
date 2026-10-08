@@ -530,15 +530,15 @@ choice panel are the session's.
 - **Contrast floor:** body ink and muted text clear 4.5:1 and marks 3:1 on the
   ground; a colour that falls short steps its lightness away from the ground
   until it does.
-- **Edge:** 2 + 2·a px of ink; jagged when v ≤ −0.6 and a ≥ 0.8, rounded 20·v px
+- **Edge:** 2 + 2·max(a, 0) px of ink; jagged when v ≤ −0.6 and a ≥ 0.8, rounded 20·v px
   when v ≥ 0.4.
 - **Texture:** the feeling's kind, in the accent at 10–18% alpha, denser as a
   rises.
-- **Motion:** the feeling's kind, played once, 950 − 450·a ms at amplitude
-  0.35 + 0.65·a, and not at all under `prefers-reduced-motion`.
+- **Motion:** the feeling's kind, played once, 950 − 450·max(a, 0) ms at
+  amplitude 0.35 + 0.65·max(a, 0), and not at all under `prefers-reduced-motion`.
 - **Caption lettering:** the hue as fill, a dark ink stroke, the session ground
   as its halo.
-- **Sound:** a synthesized tone, register 196·2^a Hz, rising in a major triad
+- **Sound:** a synthesized tone, register 196·2^max(a, 0) Hz, rising in a major triad
   when v ≥ 0.3, falling a semitone when v ≤ −0.3, otherwise the dun-dun of a
   reveal; then the cry, voiced at rate 0.9 + 0.2·a and pitch 1 + 0.12·v. No
   asset files.
