@@ -213,11 +213,14 @@ const EntryDetail = ({
           maxLength={140}
           placeholder="Anything a label doesn’t say"
           onChange={(e) => setNote(e.target.value)}
-          onBlur={() =>
-            store.editEntry(entry.id, {
+          onBlur={() => {
+            const kept = store.editEntry(entry.id, {
               note: note.trim() === "" ? null : note.trim(),
             })
-          }
+            // Refused (the phone did not keep it): show what is kept, not
+            // what was typed.
+            if (!kept) setNote(entry.note ?? "")
+          }}
         />
       </div>
     </div>

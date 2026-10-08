@@ -2,6 +2,7 @@ import { AphHistory } from "@aph/components/aph-history"
 import { SEED_ENTRIES, SEED_SETTINGS } from "@aph/lib/seed"
 import type { AphStore } from "@aph/lib/store"
 import { createAphStore } from "@aph/lib/store"
+import { memoryStorage } from "@some-ui/vite-config/vitest/memory-storage"
 import { fireEvent, render, screen, within } from "@testing-library/react"
 import { describe, expect, it, vi } from "vitest"
 
@@ -23,6 +24,27 @@ function setup(): {
   render(<AphHistory now={noon} store={store} onEnterTheirs={onEnterTheirs} />)
   return { store, onEnterTheirs }
 }
+
+describe("History's missed days", () => {
+  it("open the logger on a gap's latest day while it is within two weeks", () => {
+    const onLogDay = vi.fn()
+    render(
+      <AphHistory
+        now={noon}
+        store={createAphStore({
+          settings: SEED_SETTINGS,
+          entries: SEED_ENTRIES,
+        })}
+        onLogDay={onLogDay}
+      />
+    )
+    // Sep 30 is within reach of Oct 2; Sep 14 – 15, 17 days back, is not.
+    fireEvent.click(screen.getByRole("button", { name: /Log Sep 30/ }))
+    expect(onLogDay).toHaveBeenCalledWith("2026-09-30")
+    expect(screen.queryByRole("button", { name: /Log Sep 15/ })).toBeNull()
+    expect(screen.getByText(/Sep 14 – Sep 15 · 2 days/)).toBeInTheDocument()
+  })
+})
 
 describe("History", () => {
   it("counts what waits on my call, and filters to it", () => {
@@ -123,5 +145,21 @@ describe("History", () => {
   it("folds missed days into one line", () => {
     setup()
     expect(screen.getByText(/Sep 26 – Sep 27 · 2 days/)).toBeInTheDocument()
+  })
+
+  it("shows the note that was kept when the phone refuses a new one", () => {
+    const storage = memoryStorage()
+    const store = createAphStore(
+      { settings: SEED_SETTINGS, entries: SEED_ENTRIES },
+      storage
+    )
+    render(<AphHistory now={noon} store={store} />)
+    const day = screen.getByRole("region", { name: "Fri Oct 2" })
+    fireEvent.click(within(day).getByRole("button", { name: /7:00/ }))
+    storage.full = true
+    const note = screen.getByLabelText("Note")
+    fireEvent.change(note, { target: { value: "after coffee" } })
+    fireEvent.blur(note)
+    expect(note).toHaveValue("")
   })
 })

@@ -12,6 +12,7 @@
  * resolves means the conversation's start (Thm. 1.1).
  */
 
+import { localStorageOrNull } from "@some-ui/core-utils"
 import type { SurveyItem } from "@topik/lib/topik/core/lesson-survey"
 import { z } from "zod"
 
@@ -120,19 +121,10 @@ export type ResumeStore = {
 
 export type StorageLike = Pick<Storage, "getItem" | "setItem">
 
-/** `window.localStorage`, or null wherever touching it throws. */
-function defaultStorage(): Storage | null {
-  try {
-    return typeof window === "undefined" ? null : window.localStorage
-  } catch {
-    return null
-  }
-}
-
 export function createResumeStore(
   storage:
     | (StorageLike & Partial<Pick<Storage, "removeItem">>)
-    | null = defaultStorage(),
+    | null = localStorageOrNull(),
   now: () => number = Date.now
 ): ResumeStore {
   const read = (): ResumeDocument => {

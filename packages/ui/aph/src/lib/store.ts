@@ -1,14 +1,14 @@
 /**
- * Where aph's entries and settings live while the app is open: in memory,
- * starting from the paper notes (`seed.ts`). Nothing is written anywhere, so
- * a reload starts over. That is deliberate for now: the screens' shape comes
- * first, and storage replaces this module's insides later without changing
- * what the screens read.
+ * Where aph's entries and settings live: in memory while the app is open,
+ * and on the device (`stored.ts`) between launches, so a reload, a restart
+ * or an update keeps them. The first launch starts from the paper notes
+ * (`seed.ts`) and keeps them from then on.
  *
  * Every write is checked against `violations` (the state it leaves) and
  * `breaches` (the step it takes), both in model.ts, and refused, the state
  * left as it was, when it would break one: the rules live here, once, not
- * in each screen that edits.
+ * in each screen that edits. A change the device refuses to keep is refused
+ * too, so what the screens show is always what a restart will show.
  *
  * Synchronous on purpose. Every change is a pure function of the current
  * value (`draft.ts`, `model.ts`), so there is no result that can arrive late
@@ -20,6 +20,8 @@ import { commitDraft, reviewEntry } from "./draft"
 import type { AphSettings, Entry, Review } from "./model"
 import { breaches, violations } from "./model"
 import { SEED_ENTRIES, SEED_SETTINGS } from "./seed"
+import type { AphStorage } from "./stored"
+import { deviceStorage, openStored, writeStored } from "./stored"
 
 export type AphState = {
   settings: AphSettings
@@ -40,12 +42,26 @@ export type AphStore = {
   editSettings: (patch: Partial<AphSettings>) => boolean
 }
 
-export function createAphStore(initial: AphState): AphStore {
-  let state = initial
+/**
+ * A store over `storage`, starting from what it keeps, or from `initial` when
+ * it keeps nothing readable (which it then keeps). Without `storage`, memory
+ * only.
+ */
+export function createAphStore(
+  initial: AphState,
+  storage: AphStorage | null = null
+): AphStore {
+  const opened = storage === null ? null : openStored(storage)
+  let state = opened?.kind === "kept" ? opened.state : initial
+  const keep = (next: AphState): boolean =>
+    storage === null ||
+    (opened?.kind !== "unreadable" && writeStored(storage, next))
+  if (opened?.kind === "empty") keep(state)
   const listeners = new Set<() => void>()
   const set = (next: AphState): boolean => {
     if (violations(next.settings, next.entries).length > 0) return false
     if (breaches(state.entries, next.entries).length > 0) return false
+    if (!keep(next)) return false
     state = next
     for (const listener of listeners) listener()
     return true
@@ -78,8 +94,8 @@ export function createAphStore(initial: AphState): AphStore {
   }
 }
 
-/** The app's one store, for as long as the page lives. */
-export const aphStore = createAphStore({
-  settings: SEED_SETTINGS,
-  entries: SEED_ENTRIES,
-})
+/** The app's one store, kept in the WebView's `localStorage`. */
+export const aphStore = createAphStore(
+  { settings: SEED_SETTINGS, entries: SEED_ENTRIES },
+  deviceStorage()
+)

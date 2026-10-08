@@ -8,6 +8,7 @@ import {
   goalDelta,
   history,
   isMissed,
+  loggableDays,
   needsAttention,
   nextCheckpoint,
   reconcile,
@@ -212,6 +213,24 @@ describe("the paper notes", () => {
     }
     const labels = stats(retired, SEED_ENTRIES, today).labels
     expect(labels.find((l) => l.label === "w/o office")?.tagged).toBe(1)
+  })
+})
+
+describe("the days a figure can be logged on", () => {
+  it("are today and the two weeks before it, newest first", () => {
+    const days = loggableDays(settings, "2026-10-20")
+    expect(days).toHaveLength(15)
+    expect(days[0]).toBe("2026-10-20")
+    expect(days.at(-1)).toBe("2026-10-06")
+  })
+
+  it("stop where tracking began, but always hold today", () => {
+    expect(loggableDays(settings, "2026-09-16")).toEqual([
+      "2026-09-16",
+      "2026-09-15",
+      "2026-09-14",
+    ])
+    expect(loggableDays(settings, "2026-09-01")).toEqual(["2026-09-01"])
   })
 })
 

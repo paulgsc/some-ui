@@ -5,7 +5,8 @@
  * tap "Your call" and only what waits on me is left.
  *
  * Missed days stay visible, folded into one line per run, because a gap is
- * information too.
+ * information too. One still within `loggableDays` opens the logger on its
+ * latest day.
  */
 import type { JSX } from "react"
 import { useState } from "react"
@@ -23,6 +24,7 @@ import {
   formatValue,
   goalDelta,
   history,
+  loggableDays,
   reconcile,
   RECONCILE_ORDER,
   stats,
@@ -35,6 +37,8 @@ import { cn, dayOf, formatDay, formatWeekday } from "@some-ui/core-utils"
 export type AphHistoryProps = {
   /** Where "Enter their figure" goes: the logger, on the theirs side. */
   onEnterTheirs?: (entryId: string) => void
+  /** Where a missed day goes: the logger, on mine, for that day. */
+  onLogDay?: (day: string) => void
   /** The host's clock (`useMinuteClock` in www), which moves while the screen stays open. */
   now: Date
   store?: AphStore
@@ -42,6 +46,7 @@ export type AphHistoryProps = {
 
 export const AphHistory = ({
   onEnterTheirs,
+  onLogDay,
   now,
   store = aphStore,
 }: AphHistoryProps): JSX.Element => {
@@ -49,6 +54,7 @@ export const AphHistory = ({
   const [filter, setFilter] = useState<ReconcileStatus | null>(null)
   const [open, setOpen] = useState<string | null>(null)
   const today = dayOf(now)
+  const reachable = loggableDays(settings, today)
   const counts = stats(settings, entries, today).reconciliation
   const shows = (e: Entry): boolean =>
     filter === null || reconcile(settings, e).status === filter
@@ -91,15 +97,18 @@ export const AphHistory = ({
 
       {rows.map((row) =>
         row.kind === "gap" ? (
-          <div
+          <GapRow
             key={row.from}
-            className="text-muted-foreground flex h-9 items-center rounded-lg border border-dashed px-3 text-sm"
-          >
-            {row.days === 1
-              ? `${formatWeekday(row.from)} ${formatDay(row.from)}`
-              : `${formatDay(row.from)} – ${formatDay(row.to)} · ${row.days} days`}{" "}
-            · not logged
-          </div>
+            from={row.from}
+            to={row.to}
+            days={row.days}
+            // The gap's latest day, the one most likely still remembered.
+            onLog={
+              onLogDay !== undefined && reachable.includes(row.to)
+                ? (): void => onLogDay(row.to)
+                : undefined
+            }
+          />
         ) : (
           <section
             key={row.day}
@@ -190,5 +199,40 @@ export const AphHistory = ({
         store={store}
       />
     </div>
+  )
+}
+
+/** A run of days with nothing logged; a button while it can still be logged. */
+const GapRow = ({
+  from,
+  to,
+  days,
+  onLog,
+}: {
+  from: string
+  to: string
+  days: number
+  onLog: (() => void) | undefined
+}): JSX.Element => {
+  const when = `${
+    days === 1
+      ? `${formatWeekday(from)} ${formatDay(from)}`
+      : `${formatDay(from)} – ${formatDay(to)} · ${days} days`
+  } · not logged`
+  const className =
+    "text-muted-foreground flex h-9 items-center rounded-lg border border-dashed px-3 text-sm"
+  return onLog === undefined ? (
+    <div className={className}>{when}</div>
+  ) : (
+    <button
+      type="button"
+      onClick={onLog}
+      className={cn(className, "hover:bg-accent text-left")}
+    >
+      {when}
+      <span className="text-foreground ml-auto font-medium">
+        Log {formatDay(to)}
+      </span>
+    </button>
   )
 }

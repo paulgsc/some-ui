@@ -18,6 +18,7 @@
  *   prompt has carried it to the learner's model.
  */
 
+import { localStorageOrNull } from "@some-ui/core-utils"
 import type { StorageLike } from "@topik/lib/topik/adapter/resume-point"
 import type {
   LessonSurvey,
@@ -85,17 +86,8 @@ export type SurveyStore = {
   forgetBecoming(carried: Array<Pick<SurveyReport, "topikKey" | "at">>): void
 }
 
-/** `window.localStorage`, or null wherever touching it throws. */
-function defaultStorage(): StorageLike | null {
-  try {
-    return typeof window === "undefined" ? null : window.localStorage
-  } catch {
-    return null
-  }
-}
-
 export function createSurveyStore(
-  storage: StorageLike | null = defaultStorage(),
+  storage: StorageLike | null = localStorageOrNull(),
   now: () => number = Date.now
 ): SurveyStore {
   // Each operation reads the clock once: one add, one moment.

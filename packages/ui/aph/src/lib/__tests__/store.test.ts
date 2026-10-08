@@ -7,6 +7,10 @@
  * Their figure is aimed at any entry, filled or not, the way a stale link or
  * a Back press aims it. Replacing a reported figure leaves a valid state, so
  * only `breaches`, which judges the step, catches it.
+ *
+ * Mine is aimed at days in and out of the two weeks a missed figure can
+ * still be logged on, and every step is kept: a store opened afresh on the
+ * same storage, as after a restart, finds exactly what the screens showed.
  */
 import { newDraft, stepDraft } from "@aph/lib/draft"
 import type { Draft, DraftEvent } from "@aph/lib/draft"
@@ -14,6 +18,7 @@ import type { Entry } from "@aph/lib/model"
 import { breaches, violations } from "@aph/lib/model"
 import { SEED_ENTRIES, SEED_SETTINGS } from "@aph/lib/seed"
 import { createAphStore } from "@aph/lib/store"
+import { memoryStorage } from "@some-ui/vite-config/vitest/memory-storage"
 import { describe, expect, it } from "vitest"
 
 const settings = SEED_SETTINGS
@@ -37,7 +42,9 @@ function someLabels(next: () => number): Array<string> {
   return settings.labels.filter(() => next() < 0.3)
 }
 
-const DAYS = ["2026-10-01", "2026-10-02", "2026-10-03"]
+const TODAY = "2026-10-03"
+/** Today, two within reach, and one (18 days back) past it. */
+const DAYS = [null, "2026-10-01", "2026-10-02", "2026-09-15"]
 
 function figure(next: () => number): Array<DraftEvent> {
   return [...String(3000 + Math.floor(next() * 3500))].map((digit) => ({
@@ -65,7 +72,8 @@ describe("the store's rules, under random edits", () => {
   for (const seed of [1, 2, 3, 4, 5, 6, 7, 8]) {
     it(`holds after every one of 400 random edits (seed ${seed})`, () => {
       const next = random(seed)
-      const store = createAphStore({ settings, entries: SEED_ENTRIES })
+      const storage = memoryStorage()
+      const store = createAphStore({ settings, entries: SEED_ENTRIES }, storage)
       for (let step = 0; step < 400; step += 1) {
         const { entries } = store.get()
         const before = entries
@@ -74,13 +82,18 @@ describe("the store's rules, under random edits", () => {
           // Mine: at a checkpoint or not, with or without labels.
           const checkpoint =
             pick(next, [...settings.checkpoints.map((c) => c.id), null]) ?? null
-          let draft: Draft = newDraft("mine", checkpoint, null)
+          let draft: Draft = newDraft(
+            "mine",
+            checkpoint,
+            null,
+            pick(next, DAYS) ?? null
+          )
           for (const event of figure(next)) draft = stepDraft(draft, event)
           for (const label of someLabels(next)) {
             draft = stepDraft(draft, { type: "toggleLabel", label })
           }
           store.save(draft, {
-            day: pick(next, DAYS) ?? "2026-10-03",
+            today: TODAY,
             time: "16:05",
             id: `r${seed}-${step}`,
           })
@@ -89,7 +102,7 @@ describe("the store's rules, under random edits", () => {
           if (target !== undefined) {
             let draft: Draft = newDraft("theirs", null, target.id)
             for (const event of figure(next)) draft = stepDraft(draft, event)
-            store.save(draft, { day: target.day, time: "", id: "unused" })
+            store.save(draft, { today: TODAY, time: "", id: "unused" })
           }
         } else if (kind === 3) {
           const target = pick(next, entries)
@@ -112,6 +125,8 @@ describe("the store's rules, under random edits", () => {
         expect(breaches(before, store.get().entries), `step ${step}`).toEqual(
           []
         )
+        const reopened = createAphStore({ settings, entries: [] }, storage)
+        expect(reopened.get(), `step ${step}`).toEqual(store.get())
       }
     })
   }

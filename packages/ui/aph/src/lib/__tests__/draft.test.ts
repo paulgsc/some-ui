@@ -18,7 +18,7 @@ function must<T>(value: T | undefined): T {
   if (value === undefined) throw new Error("expected a value")
   return value
 }
-const commit = { day: "2026-10-02", time: "16:05", id: "new" }
+const commit = { today: "2026-10-02", time: "16:05", id: "new" }
 
 function run(draft: Draft, events: ReadonlyArray<DraftEvent>): Draft {
   return events.reduce(stepDraft, draft)
@@ -173,6 +173,68 @@ describe("saving mine", () => {
     expect(
       commitDraft(settings, [], newDraft("mine", "7", null), commit)
     ).toBeNull()
+  })
+})
+
+describe("a day I missed", () => {
+  // Oct 2: 7:00 is logged, 12:00 is not.
+  it("defaults to the first checkpoint still missing that day", () => {
+    const at = new Date(2026, 9, 3, 9, 0)
+    expect(
+      atTime(
+        newDraft("mine", null, null, "2026-10-02"),
+        settings,
+        SEED_ENTRIES,
+        at
+      ).checkpoint
+    ).toBe("12")
+    expect(
+      atTime(
+        newDraft("mine", null, null, "2026-09-30"),
+        settings,
+        SEED_ENTRIES,
+        at
+      ).checkpoint
+    ).toBe("7")
+  })
+
+  it("lands on that day, with its goal and the clock's time left out", () => {
+    const today = { ...commit, today: "2026-10-08" }
+    const atNoon = run(
+      newDraft("mine", "12", null, "2026-10-02"),
+      typed("4600")
+    )
+    expect(
+      commitDraft(settings, SEED_ENTRIES, atNoon, today)?.entries.at(-1)
+    ).toMatchObject({ day: "2026-10-02", checkpoint: "12", goal: 5100 })
+    const other = run(newDraft("mine", null, null, "2026-10-02"), typed("4700"))
+    expect(commitDraft(settings, [], other, today)?.entries[0]).toMatchObject({
+      day: "2026-10-02",
+      checkpoint: null,
+      time: null,
+    })
+  })
+
+  it("corrects what that day already holds, not today's", () => {
+    const d = run(newDraft("mine", "7", null, "2026-10-02"), typed("4400"))
+    const saved = commitDraft(settings, SEED_ENTRIES, d, {
+      ...commit,
+      today: "2026-10-08",
+    })
+    if (saved === null) throw new Error("expected a save")
+    expect(saved.entries).toHaveLength(SEED_ENTRIES.length)
+    expect(must(saved.entries.find((e) => e.id === saved.id)).day).toBe(
+      "2026-10-02"
+    )
+  })
+
+  it("reaches back two weeks and no further", () => {
+    const d = (day: string): Draft =>
+      run(newDraft("mine", "7", null, day), typed("4400"))
+    const today = { ...commit, today: "2026-10-20" }
+    expect(commitDraft(settings, [], d("2026-10-05"), today)).toBeNull()
+    // Nor into the future.
+    expect(commitDraft(settings, [], d("2026-10-21"), today)).toBeNull()
   })
 })
 

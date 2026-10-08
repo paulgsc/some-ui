@@ -14,7 +14,7 @@
  * - Sep 22's "@12 ~5200:w/o:office~4200" is two figures at noon: ~5,200, and
  *   ~4,200 under "w/o office".
  *
- * Until entries are stored on the phone, this is what the screens start from.
+ * What the first launch starts from (`store.ts`).
  */
 import type { AphSettings, Entry } from "./model"
 

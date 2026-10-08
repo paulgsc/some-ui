@@ -1,6 +1,6 @@
 /**
- * Log a figure: mine for a checkpoint today, or theirs for an entry that is
- * waiting on one. Built for one thumb and a few seconds: the checkpoint is
+ * Log a figure: mine for a checkpoint today (or a day I missed, up to two
+ * weeks back), or theirs for an entry that is waiting on one. Built for one thumb and a few seconds: the checkpoint is
  * picked from the clock, the keypad is always there, and before saving the
  * screen already says what the figure means (how far from the goal, or
  * whether it reconciles with mine).
@@ -20,6 +20,7 @@ import type { Draft, Side } from "@aph/lib/draft"
 import {
   atTime,
   correcting,
+  draftDay,
   draftValue,
   newDraft,
   stepDraft,
@@ -31,15 +32,24 @@ import {
   formatDelta,
   formatValue,
   isUsual,
+  loggableDays,
   primary,
   reconcile,
 } from "@aph/lib/model"
 import type { AphStore } from "@aph/lib/store"
 import { aphStore } from "@aph/lib/store"
 import { useAph } from "@aph/lib/use-aph"
-import { cn, dayOf, formatDay } from "@some-ui/core-utils"
+import { cn, dayOf, formatDay, formatWeekday } from "@some-ui/core-utils"
 import { Button } from "@some-ui/shared"
-import { Check, Delete, Minus, Plus, TriangleAlert } from "lucide-react"
+import {
+  Check,
+  ChevronLeft,
+  ChevronRight,
+  Delete,
+  Minus,
+  Plus,
+  TriangleAlert,
+} from "lucide-react"
 
 export type AphLogProps = {
   /**
@@ -52,12 +62,22 @@ export type AphLogProps = {
    * once; without it, the newest entry awaiting their figure, at the time.
    */
   initialTarget?: string | null
+  /**
+   * Mine: a day I missed, when the way here already chose one (History's
+   * "not logged"). Read once; without it, today. One that has fallen out
+   * of `loggableDays` since the link was made (a tap past midnight) still
+   * opens, as out of reach with Save off, rather than as today, where the
+   * figure would land on the wrong day.
+   */
+  initialDay?: string | null
   /** Called after a save, with the entry as it now stands and the side saved. */
   onSaved?: (entry: Entry, side: Side) => void
   /** The host's clock (`useMinuteClock` in www), which moves while the screen stays open. */
   now: Date
   store?: AphStore
 }
+
+const DAY = /^\d{4}-\d{2}-\d{2}$/
 
 const KEYS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "00", "0"] as const
 
@@ -71,6 +91,7 @@ function clockOf(date: Date): string {
 export const AphLog = ({
   initialSide = "mine",
   initialTarget = null,
+  initialDay = null,
   onSaved,
   now,
   store = aphStore,
@@ -79,15 +100,27 @@ export const AphLog = ({
   const today = dayOf(now)
   const waiting = awaitingTheirs(settings, entries)
   const [showOlder, setShowOlder] = useState(false)
+  const [refused, setRefused] = useState(false)
+  const days = loggableDays(settings, today)
 
   const [raw, dispatch] = useReducer(
     stepDraft,
     undefined,
-    (): Draft => newDraft(initialSide, null, initialTarget)
+    (): Draft =>
+      newDraft(
+        initialSide,
+        null,
+        initialTarget,
+        initialDay !== null && DAY.test(initialDay) && initialDay < today
+          ? initialDay
+          : null
+      )
   )
   // The checkpoint follows the clock, and the target the waiting list,
   // until I pick one (`atTime`).
   const draft = atTime(raw, settings, entries, now)
+  const day = draftDay(draft, today)
+  const dayIndex = days.indexOf(day)
 
   const value = draftValue(draft)
   const checkpoint = checkpointById(settings, draft.checkpoint)
@@ -105,16 +138,24 @@ export const AphLog = ({
     // may have sat open across midnight.
     // The entry it landed on: a new one, or the one it filled in or corrected.
     const landed = store.save(draft, {
-      day: today,
+      today,
       time: clockOf(now),
       id,
     })
+    setRefused(landed === null)
     if (landed !== null) onSaved?.(landed, raw.side)
   }
 
   const shownWaiting = showOlder ? waiting : waiting.slice(0, RECENT_WAITING)
   const canSave =
-    value !== null && (draft.side === "mine" || targetEntry !== null)
+    value !== null &&
+    (draft.side === "mine" ? dayIndex !== -1 : targetEntry !== null)
+  const pickDay = (index: number): void => {
+    const next = days[index]
+    if (next !== undefined) {
+      dispatch({ type: "pickDay", day: next === today ? null : next })
+    }
+  }
 
   return (
     <div className="mx-auto flex w-full max-w-md flex-col gap-4">
@@ -144,6 +185,47 @@ export const AphLog = ({
         ))}
       </div>
 
+      {draft.side === "mine" && (
+        <div className="flex items-center justify-between gap-2">
+          <Button
+            variant="outline"
+            size="icon"
+            aria-label="Earlier day"
+            disabled={dayIndex === -1 || dayIndex >= days.length - 1}
+            onClick={() => pickDay(dayIndex + 1)}
+            className="rounded-full"
+          >
+            <ChevronLeft aria-hidden className="size-4" />
+          </Button>
+          <div aria-live="polite" className="flex flex-col items-center">
+            <span className="text-sm font-semibold">
+              {day === today
+                ? "Today"
+                : dayIndex === 1
+                  ? "Yesterday"
+                  : `${formatWeekday(day)} ${formatDay(day)}`}
+            </span>
+            {day !== today && (
+              <span className="text-warning text-xs">
+                {dayIndex === -1
+                  ? "Too far back to log"
+                  : `Logging a missed day · back to ${formatDay(days.at(-1) ?? day)}`}
+              </span>
+            )}
+          </div>
+          <Button
+            variant="outline"
+            size="icon"
+            aria-label="Later day"
+            disabled={day === today}
+            onClick={() => pickDay(Math.max(0, dayIndex - 1))}
+            className="rounded-full"
+          >
+            <ChevronRight aria-hidden className="size-4" />
+          </Button>
+        </div>
+      )}
+
       {draft.side === "mine" ? (
         <div
           role="radiogroup"
@@ -152,8 +234,7 @@ export const AphLog = ({
         >
           {[...settings.checkpoints, null].map((c) => {
             const id = c?.id ?? null
-            const logged =
-              c === null ? undefined : primary(entries, today, c.id)
+            const logged = c === null ? undefined : primary(entries, day, c.id)
             const picked = draft.checkpoint === id
             return (
               <button
@@ -177,7 +258,9 @@ export const AphLog = ({
                 </span>
                 <span className="text-muted-foreground text-xs">
                   {c === null
-                    ? "any time"
+                    ? day === today
+                      ? "any time"
+                      : "time unknown"
                     : logged?.mine != null
                       ? `${formatValue(logged.mine.value, logged.mine.approx)} logged`
                       : `goal ${formatValue(c.goal, true)}`}
@@ -329,6 +412,15 @@ export const AphLog = ({
         </button>
       </div>
 
+      {refused && (
+        <p
+          role="alert"
+          className="bg-destructive/10 text-destructive rounded-md px-3 py-1.5 text-center text-sm"
+        >
+          Not saved: the phone did not keep it.
+        </p>
+      )}
+
       <Button
         size="lg"
         disabled={!canSave}
@@ -337,7 +429,7 @@ export const AphLog = ({
       >
         <Check aria-hidden className="mr-2 size-5" />
         {draft.side === "mine"
-          ? `${correcting(entries, draft, today) === undefined ? "Save" : "Correct"} mine · ${checkpoint?.label ?? "now"}`
+          ? `${correcting(entries, draft, day) === undefined ? "Save" : "Correct"} mine · ${day === today ? "" : `${formatDay(day)} `}${checkpoint?.label ?? (day === today ? "now" : "other")}`
           : targetEntry === null
             ? "Save theirs"
             : `Save theirs · ${formatDay(targetEntry.day)} ${whenOf(settings, targetEntry)}`}

@@ -64,6 +64,10 @@
       "types": "./dist/esm/src/vitest/vitest.setup.d.ts",
       "import": "./dist/esm/src/vitest/vitest.setup.js"
     },
+    "./vitest/memory-storage": {
+      "types": "./dist/esm/src/vitest/memory-storage.d.ts",
+      "import": "./dist/esm/src/vitest/memory-storage.js"
+    },
     "./bundle-paths": {
       "types": "./dist/esm/src/bundle-paths/index.d.ts",
       "import": "./dist/esm/src/bundle-paths/index.js",

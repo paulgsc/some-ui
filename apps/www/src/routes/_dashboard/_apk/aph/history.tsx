@@ -14,6 +14,7 @@ const HistoryRoute = (): JSX.Element => {
       onEnterTheirs={(entry) =>
         void navigate({ to: "/aph", search: { side: "theirs", entry } })
       }
+      onLogDay={(day) => void navigate({ to: "/aph", search: { day } })}
     />
   )
 }

@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto"
 import type { JSX } from "react"
 import type { ShelfItem, ShelfPort } from "@some-ui/shared"
+import { memoryStorage } from "@some-ui/vite-config/vitest/memory-storage"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import {
   cleanup,
@@ -24,7 +25,6 @@ import {
 } from "@topik/lib/topik/adapter/pasted-lesson"
 import { createResumeStore } from "@topik/lib/topik/adapter/resume-point"
 import { createSurveyStore } from "@topik/lib/topik/adapter/survey-store"
-import { memoryStorage } from "@topik/testing/memory-storage"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
 const DINNER: TopikMetadata = {

@@ -1,6 +1,7 @@
 import type { JSX } from "react"
 import type { Side } from "@some-ui/aph"
 import { AphLog } from "@some-ui/aph"
+import { dayOf } from "@some-ui/core-utils"
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
 
 import { useMinuteClock } from "@/lib/clock"
@@ -8,11 +9,13 @@ import { useMinuteClock } from "@/lib/clock"
 /**
  * `?side=theirs` opens the logger on their figure, and `?entry=` names the
  * entry it is for, which is how History's "Enter their figure" arrives.
+ * `?day=` opens mine on a day I missed, which is how History's "not logged"
+ * arrives.
  */
-type LogSearch = { side?: Side; entry?: string }
+type LogSearch = { side?: Side; entry?: string; day?: string }
 
 const LogRoute = (): JSX.Element => {
-  const { side, entry } = readSearch(Route.useSearch())
+  const { side, entry, day } = readSearch(Route.useSearch())
   const navigate = useNavigate()
   const now = useMinuteClock()
 
@@ -20,13 +23,20 @@ const LogRoute = (): JSX.Element => {
     <AphLog
       now={now}
       // A new arrival (another entry, the other side) is a fresh form.
-      key={`${side ?? "mine"}:${entry ?? ""}`}
+      key={`${side ?? "mine"}:${entry ?? ""}:${day ?? ""}`}
       initialSide={side}
       initialTarget={entry ?? null}
-      onSaved={(_entry, saved) =>
-        // By the side saved, not the side asked for: the form can switch.
-        // Mine came from Home's "due" card; theirs mostly from History.
-        void navigate({ to: saved === "theirs" ? "/aph/history" : "/today" })
+      initialDay={day ?? null}
+      onSaved={(saved, savedSide) =>
+        // By what was saved, not what was asked for: the form can switch.
+        // Mine for today came from Home's "due" card; theirs, and a day I
+        // missed, mostly from History, which lists it.
+        void navigate({
+          to:
+            savedSide === "theirs" || saved.day !== dayOf(now)
+              ? "/aph/history"
+              : "/today",
+        })
       }
     />
   )
@@ -49,6 +59,7 @@ function validateSearch(search: Record<string, unknown>): LogSearch {
       ? { side: search.side }
       : {}),
     ...(typeof search.entry === "string" ? { entry: search.entry } : {}),
+    ...(typeof search.day === "string" ? { day: search.day } : {}),
   }
 }
 
