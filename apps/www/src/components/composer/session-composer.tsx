@@ -196,11 +196,12 @@ export const SessionComposer = ({
 
   // A create succeeding is terminal for "Save as draft" (toast, navigate) and
   // the mid-chain trigger for "Save & Play" (activate). `activeAction` says
-  // which.
+  // which. Each terminal navigation replaces the composer's history entry: a
+  // saved composer is spent, so back (Android's, on the phone) skips it.
   useIntentEffect(createIntent.state, (session) => {
     if (activeAction === "draft") {
       toast("Session saved as draft")
-      void navigate({ to: "/sessions" })
+      void navigate({ to: "/sessions", replace: true })
     } else if (activeAction === "play") {
       updateIntent.start({
         id: session.id,
@@ -214,11 +215,12 @@ export const SessionComposer = ({
   useIntentEffect(updateIntent.state, (session) => {
     if (activeAction === "draft") {
       toast("Draft updated")
-      void navigate({ to: "/sessions" })
+      void navigate({ to: "/sessions", replace: true })
     } else if (activeAction === "play") {
       void navigate({
         to: "/sessions/$sessionId",
         params: { sessionId: session.id },
+        replace: true,
       })
     }
   })

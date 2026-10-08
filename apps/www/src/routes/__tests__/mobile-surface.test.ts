@@ -9,7 +9,7 @@
  * later is probed without touching this suite.
  */
 
-import { existsSync } from "node:fs"
+import { existsSync, readFileSync } from "node:fs"
 import { resolve } from "node:path"
 import { MOBILE_ROUTE_FILES } from "@/build.paths"
 import { globToRegExp } from "@some-ui/vite-config/bundle-paths"
@@ -130,6 +130,19 @@ describe("the Android app's surface", () => {
     // The account banner links a signed-out visit to /auth, which in this
     // build offers a reload; off the surface, it would be sent to Home first.
     expect(isOnMobileSurface("/auth")).toBe(true)
+  })
+
+  it("leaves the app on Android's back from the same Home (MainActivity)", () => {
+    // MainActivity repeats MOBILE_HOME as the page back exits from; renamed
+    // here alone, back would walk the history from Home instead.
+    const activity = readFileSync(
+      resolve(
+        import.meta.dirname,
+        "../../../../mobile/android/app/src/main/java/dev/paulgsc/someui/MainActivity.java"
+      ),
+      "utf8"
+    )
+    expect(activity).toContain(`HOME_PATH = "${MOBILE_HOME}";`)
   })
 
   it("matches whole path segments only", () => {

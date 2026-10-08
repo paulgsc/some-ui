@@ -31,7 +31,7 @@ import { AudioIndicator } from "@/components/audio/audio-indicator"
 import { AccountUnavailableBanner } from "@/components/auth/account-unavailable-banner"
 import { HexCombMark } from "@/components/brand/hex-comb-mark"
 import { LocIndicator } from "@/components/loc/loc-indicator"
-import { MobileNav } from "@/components/mobile-shell"
+import { MobileHomeLink, MobileNav } from "@/components/mobile-shell"
 import { DeviceStoragePrompt } from "@/components/settings/device-storage"
 import { ThemeSwitcher } from "@/components/theme-switcher"
 
@@ -179,6 +179,9 @@ const DashboardLayout = (): JSX.Element => {
         {!bareViewport && (
           <header className="flex h-14 shrink-0 items-center gap-2 border-b px-4">
             {!MOBILE_APP && <SidebarTrigger />}
+            {/* Where the bottom bar steps aside, the header holds the way
+                home, so the composer can be left without finishing it. */}
+            {MOBILE_APP && isBoundedRoute && <MobileHomeLink />}
             <ThemeSwitcher />
             {/* Layer 1 of audio disclosure: a standing indicator of what this
                 app may play, and where first-use notices point back to. */}

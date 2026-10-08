@@ -19,7 +19,14 @@ import {
   SheetTitle,
 } from "@some-ui/shared"
 import { Link } from "@tanstack/react-router"
-import { BookOpen, House, Mic, Plus, TrendingUp } from "lucide-react"
+import {
+  BookOpen,
+  ChevronLeft,
+  House,
+  Mic,
+  Plus,
+  TrendingUp,
+} from "lucide-react"
 
 import { hasAudience } from "@/lib/build-profile"
 
@@ -74,8 +81,14 @@ export const MobileNav = ({
 }: {
   pathname: string
 }): JSX.Element | null => {
-  const [quickOpen, setQuickOpen] = useState(false)
+  // The page the + sheet was opened over. Android's back changes the page
+  // under an open sheet, which then closes rather than stay over a page it
+  // was not opened on, and is forgotten so a later visit there does not
+  // reopen it.
+  const [quickOpenOn, setQuickOpenOn] = useState<string | null>(null)
+  if (quickOpenOn !== null && quickOpenOn !== pathname) setQuickOpenOn(null)
   if (!hasAudience("apk")) return null
+  const quickOpen = quickOpenOn === pathname
 
   return (
     <>
@@ -91,7 +104,7 @@ export const MobileNav = ({
             type="button"
             aria-label="Quick entry"
             aria-haspopup="dialog"
-            onClick={() => setQuickOpen(true)}
+            onClick={() => setQuickOpenOn(pathname)}
             className="bg-primary text-primary-foreground flex size-12 items-center justify-center rounded-2xl shadow-[var(--glow-primary)]"
           >
             <Plus aria-hidden className="size-6" />
@@ -101,8 +114,30 @@ export const MobileNav = ({
           <TabLink key={tab.to} tab={tab} pathname={pathname} />
         ))}
       </nav>
-      <QuickEntry open={quickOpen} onOpenChange={setQuickOpen} />
+      <QuickEntry
+        open={quickOpen}
+        onOpenChange={(open) => setQuickOpenOn(open ? pathname : null)}
+      />
     </>
+  )
+}
+
+/**
+ * The way home while the bar steps aside (the composer, the player on a wide
+ * window): the header carries it instead, so no screen can only be left by
+ * finishing it. Android's back does the same from any page, through the
+ * history (apps/mobile `MainActivity`); this is the one you can see.
+ */
+export const MobileHomeLink = (): JSX.Element | null => {
+  if (!hasAudience("apk")) return null
+  return (
+    <Link
+      to="/today"
+      className="hover:bg-accent -ml-2 flex h-10 items-center gap-0.5 rounded-md pr-3 pl-1 text-sm font-medium"
+    >
+      <ChevronLeft aria-hidden className="size-5" />
+      Home
+    </Link>
   )
 }
 

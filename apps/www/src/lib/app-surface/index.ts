@@ -30,7 +30,11 @@ const MOBILE_SURFACE: ReadonlyArray<keyof FileRoutesByTo> = [
   "/auth",
 ]
 
-/** Where the app opens, and where a path off the surface lands: Home. */
+/**
+ * Where the app opens, and where a path off the surface lands: Home. Android's
+ * back leaves the app from here, so apps/mobile's `MainActivity` repeats it
+ * (`routes/__tests__/mobile-surface.test.ts` checks the two agree).
+ */
 export const MOBILE_HOME = "/today" satisfies keyof FileRoutesByTo
 
 /** Whether `pathname` is one of `MOBILE_SURFACE`'s routes or under one. */
