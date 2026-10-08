@@ -16,4 +16,7 @@ count.txt
 /public/leetype
 /public/resume*.pdf
 /public/resume*.svg
+/public/resume*.json
+/public/resume*.md
+/public/llms.txt
 dist-pages

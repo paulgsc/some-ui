@@ -627,6 +627,15 @@ substantiate those claims.
 
 = Current revision
 
+*v14 (2026-10-08).* Made the evidence machine-readable. Every project bullet
+and practice line in `src/data/resume.typ` now carries the repository paths it
+rests on, and the build publishes each composition as Markdown and JSON Resume
+with those paths as links, plus an `llms.txt` index (`README.md`, "Evidence,
+and the documents agents read"). The server paths were read from a clone of
+`paulgsc/server` at `656e38c`. Linking them surfaced one stale claim: "six"
+shipped extensions (a fullstack bullet and two highlights) after the Counts
+note above had already recounted five, so all three now say five.
+
 *v13 (2026-09-27).* Brought three figures back in line with the repositories
 they cite, after the server's route snapshot started syncing automatically
 (some-ui #1547) and exposed how far the hand-kept numbers had drifted.

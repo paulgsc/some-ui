@@ -61,9 +61,11 @@ const OFF_PATH_PUBLIC_FILES: Readonly<Record<Profile, ReadonlyArray<RegExp>>> =
     lan: [],
     pages: [],
     [MOBILE_PROFILE]: [
-      // What scripts/sync-resume.mjs copies in for /resume, which is not on
-      // the Android app's surface (src/lib/app-surface).
-      /^resume.*\.pdf$/,
+      // What scripts/sync-resume.mjs copies in for /resume and for agents
+      // reading the résumé, neither of which is on the Android app's surface
+      // (src/lib/app-surface).
+      /^resume.*\.(?:pdf|md|json)$/,
+      /^llms\.txt$/,
       // The web-push service worker: src/lib/study-nudge/service-worker.ts
       // never registers it in this build, which nudges natively.
       /^sw\.js$/,

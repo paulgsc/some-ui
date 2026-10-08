@@ -114,7 +114,7 @@ const isMobileBuild = process.env.SOME_UI_PROFILE === MOBILE_PROFILE
 const isFitHarnessBuild = process.env.WWW_FIT_HARNESS === "1"
 
 // What a profile's output carries from public/ that it never loads
-// (build.paths.ts, `offPathPublicFiles`; the Android app's résumé PDFs are
+// (build.paths.ts, `offPathPublicFiles`; the Android app's résumé documents are
 // about as much as every other file it ships from public/ together). Vite
 // copies public/ wholesale, with no filter of its own, and before the bundle
 // is written, so they come out once the build is done.

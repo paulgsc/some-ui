@@ -11,6 +11,7 @@ import { join } from "node:path"
 import {
   baseArgs,
   DEFAULT_TEMPLATE,
+  DEFAULT_VARIANT,
   inputArgs,
   outDir,
   packageDir,
@@ -157,7 +158,10 @@ async function main() {
   }
 
   // Preserve the original public filename as the default/backend composition.
-  copyFileSync(join(outDir, "resume-backend.pdf"), join(outDir, "resume.pdf"))
+  copyFileSync(
+    join(outDir, `resume-${DEFAULT_VARIANT}.pdf`),
+    join(outDir, "resume.pdf")
+  )
 
   // A manifest of exactly what this run produced, so
   // apps/www/scripts/sync-resume.mjs can require the full set without

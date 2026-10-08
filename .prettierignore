@@ -39,6 +39,14 @@ out/
 # and linted; only formatting is skipped.
 packages/ui/resume/src/react/generated/
 
+# The résumé documents that build writes (PDFs, and the Markdown/JSON Resume
+# files and llms.txt export-data.mjs renders from the same data), and their
+# copies apps/www/scripts/sync-resume.mjs puts in public/. Build output in
+# the generator's own style, same reasoning as above.
+packages/ui/resume/documents/
+apps/www/public/resume*
+apps/www/public/llms.txt
+
 # @some-ui/server-routes' generated route union — same reasoning again.
 # paulgsc/server's `dump-routes -- --ts` (server#266) renders it in its own
 # style and this repo checks it in verbatim (some-ui#1040); reformatting it

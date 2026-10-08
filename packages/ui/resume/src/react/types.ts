@@ -22,11 +22,23 @@ type ResumeProfile = {
   location: string | null
 }
 
+// A path in one of the two source repositories, linked on its default branch.
+type ResumeEvidence = {
+  repo: "paulgsc/some-ui" | "paulgsc/server"
+  path: string
+}
+
+// One claim and the sources it rests on (src/data/resume.typ says why).
+export type ResumeClaim = {
+  text: string
+  evidence: ReadonlyArray<ResumeEvidence>
+}
+
 export type ResumeProject = {
   name: string
   kind: string
   premise: string
-  bullets: ReadonlyArray<string>
+  bullets: ReadonlyArray<ResumeClaim>
 }
 
 export type ResumeHighlight = { title: string; body: string }
@@ -69,7 +81,7 @@ export type ResumeData = {
   summary: string
   skills: string
   projects: ReadonlyArray<ResumeProject>
-  platform: ReadonlyArray<string>
+  platform: ReadonlyArray<ResumeClaim>
   highlights: ReadonlyArray<ResumeHighlight>
   toolbox: ReadonlyArray<ResumeToolboxGroup>
   repositories: ReadonlyArray<ResumeRepository>

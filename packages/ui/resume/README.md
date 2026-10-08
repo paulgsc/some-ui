@@ -174,6 +174,36 @@ would mean making every template and theme change twice with nothing able to
 assert the two agree. The PDF stays the canonical artefact; this is how it is
 read without downloading it.
 
+### Evidence, and the documents agents read
+
+Every project bullet and practice line in `src/data/resume.typ` is a claim
+record, `(text: ..., evidence: (ui("path"), server("path")))`: the text the
+templates print, and the paths in `paulgsc/some-ui` or `paulgsc/server` it
+rests on. `src/main.typ` hands the templates the text alone; the export keeps
+both.
+
+After a compile, `scripts/export-data.mjs` also writes these into `documents/`
+(from `scripts/agent-documents.mjs`) and adds them to its manifest, so
+`apps/www` publishes them beside the PDFs:
+
+| file                       | for                                                               |
+| -------------------------- | ----------------------------------------------------------------- |
+| `resume-<variant>.md`      | an LLM or a person: each claim followed by its evidence links     |
+| `resume-<variant>.json`    | JSON Resume v1.0.0, with an `evidence` list beside each claim set |
+| `resume.md`, `resume.json` | the default (`backend`) composition, as `resume.pdf` is           |
+| `llms.txt`                 | the [llms.txt](https://llmstxt.org) index of all of the above     |
+
+Links follow each repository's default branch, so they read the current
+source. The site is a project page, so `llms.txt` is served at
+`/some-ui/llms.txt`, not the domain root; `apps/www/resume/index.html` points
+to it and to the default documents with `<link rel="alternate">` and its
+JSON-LD.
+
+The export fails when a claim names no evidence, or names a `paulgsc/some-ui`
+path that does not exist. `paulgsc/server` is not checked out in CI, so its
+paths are checked only with `RESUME_SERVER_CHECKOUT=<clone>`: run that after
+editing a server path (`pnpm --filter @some-ui/resume export:data`).
+
 Typst's own HTML export was evaluated and rejected: it is gated behind
 `--features html`, documented as "do not rely on this feature for production
 use cases", and errors on these templates (`page configuration is not allowed

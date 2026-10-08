@@ -1,6 +1,7 @@
 import type { JSX } from "react"
 
 import type {
+  ResumeClaim,
   ResumeData,
   ResumeHighlight,
   ResumeProject,
@@ -50,6 +51,11 @@ const Bullets = ({ items }: { items: ReadonlyArray<string> }): JSX.Element => (
   </ul>
 )
 
+// The view prints a claim's text only; its evidence is for the published
+// resume-*.md/.json, where a reader or an agent follows the links.
+const claimText = (claims: ReadonlyArray<ResumeClaim>): ReadonlyArray<string> =>
+  claims.map((claim) => claim.text)
+
 // Title over supporting line, the shape the rail entries use in print.
 const Pair = ({
   term,
@@ -71,7 +77,7 @@ const Project = ({ project }: { project: ResumeProject }): JSX.Element => (
     <h3 className="text-foreground text-sm font-semibold">{project.name}</h3>
     <p className="text-muted-foreground mt-1 text-xs">{project.kind}</p>
     <p className="text-primary mt-1.5 text-sm italic">{project.premise}</p>
-    <Bullets items={project.bullets} />
+    <Bullets items={claimText(project.bullets)} />
   </article>
 )
 
@@ -157,7 +163,7 @@ export const ResumeDocument = ({
       </Section>
 
       <Section title="Engineering practice">
-        <Bullets items={data.platform} />
+        <Bullets items={claimText(data.platform)} />
       </Section>
 
       <Section title="Repositories">

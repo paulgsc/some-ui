@@ -49,6 +49,18 @@
 )
 
 #let chosen = templates.at(template-name)
+#let composition = resume-compositions.at(variant)
+
+// Each claim is `(text, evidence)` in src/data/resume.typ; the print templates
+// take the text alone. Evidence is for the exported data below (the web view,
+// resume-*.json/.md and llms.txt), where a reader can follow a link.
+#let claim-text(claim) = claim.text
+#let print-composition = composition + (
+  projects: composition.projects.map(project => project + (
+    bullets: project.bullets.map(claim-text),
+  )),
+  platform: composition.platform.map(claim-text),
+)
 
 #set document(
   title: resume-profile.name + " — Résumé (" + variant + ")",
@@ -59,7 +71,7 @@
 #(chosen.render)((
   profile: resume-profile,
   personal: personal,
-  composition: resume-compositions.at(variant),
+  composition: print-composition,
   highlights: resume-highlights.at(variant),
   toolbox: resume-toolbox.at(variant),
   repositories: resume-repositories,
@@ -93,11 +105,11 @@
     portfolio: resume-profile.portfolio,
     location: resume-profile.location,
   ),
-  label: resume-compositions.at(variant).label,
-  summary: resume-compositions.at(variant).summary,
-  skills: resume-compositions.at(variant).skills,
-  projects: resume-compositions.at(variant).projects,
-  platform: resume-compositions.at(variant).platform,
+  label: composition.label,
+  summary: composition.summary,
+  skills: composition.skills,
+  projects: composition.projects,
+  platform: composition.platform,
   highlights: resume-highlights.at(variant),
   toolbox: resume-toolbox.at(variant),
   repositories: resume-repositories,

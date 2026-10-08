@@ -3,7 +3,8 @@
 // any of them.
 //
 // Everything here is distilled from paulgsc/some-ui and paulgsc/server, and
-// every claim traces to code — src/canon/resume.meta.typ records the trace.
+// every claim traces to code — src/canon/resume.meta.typ records the trace,
+// and each claim's `evidence` below names the paths it rests on.
 // Facts that live outside those repositories (degrees, spoken languages,
 // certifications, non-engineering roles) belong in src/data/personal.typ.
 
@@ -21,6 +22,19 @@
   photo-placeholder: "PG",
 )
 
+// Where a claim's evidence lives: a path in one of the two repositories it is
+// distilled from, linked on that repository's default branch. Every project
+// bullet and practice line is `(text: ..., evidence: (...))`, so a reader (or
+// an agent reading the published resume-*.json/.md) can open the source a
+// claim rests on instead of taking it on trust. If a path stops supporting
+// its claim, cut or fix the claim, as for any other evidence.
+//
+// scripts/export-data.mjs fails the build when a some-ui path does not exist.
+// paulgsc/server is not checked out in CI, so its paths are checked only when
+// RESUME_SERVER_CHECKOUT points at a clone (see that script).
+#let ui(path) = (repo: "paulgsc/some-ui", path: path)
+#let server(path) = (repo: "paulgsc/server", path: path)
+
 #let resume-compositions = (
   backend: (
     label: "Backend & event-driven systems",
@@ -29,27 +43,27 @@
     skills: "Rust; TypeScript; Axum; Tokio; SQLx/SQLite; Redis; NATS JetStream; WebSockets; REST APIs; JSON; Node.js; SQL query and schema design; distributed and event-driven systems; asynchronous processing; Docker; Prometheus/Grafana/OpenTelemetry; unit, integration, contract, and Playwright testing; GitHub Actions CI/CD",
     projects: (
       (name: "file_host backend service", kind: "Rust, Axum, Tokio, SQLx, Redis, NATS JetStream", premise: "A backend boundary is production-ready only when overload, dependency failure, contract drift, and shutdown are designed states rather than surprises.", bullets: (
-        "Authored a Rust/Axum service exposing 40+ inventoried HTTP operations plus WebSocket transport for sessions, engagement signals, push subscriptions, mood events, tab state, media metadata, and asynchronous processing.",
-        "Modeled sessions, consent, engagement gates, interventions, tabs, and mood events in SQLite/SQLx repositories with paired migrations, compile-time query validation, WAL mode, bounded pools, and explicit last-write-wins semantics.",
-        "Built per-client token buckets, concurrency/body limits, load shedding, timeouts, typed 429/413/503 outcomes, and refusal metrics that distinguish rejected work from successful low latency.",
-        "Connected Redis caching and in-flight coalescing to NATS/JetStream jobs; retryable worker failures are NAKed for redelivery while cache invalidation follows database mutations.",
-        "Implemented restart-aware WebSockets with permits, heartbeat/staleness, broadcast isolation, presence, cancellation, and bounded shutdown of SQLite, NATS, sockets, and OpenTelemetry.",
-        "Published a schema-versioned route inventory and source-parity tests so undeclared, stale, duplicated, or unaudited Axum routes fail before client contracts drift.",
+        (text: "Authored a Rust/Axum service exposing 40+ inventoried HTTP operations plus WebSocket transport for sessions, engagement signals, push subscriptions, mood events, tab state, media metadata, and asynchronous processing.", evidence: (server("apps/servers/file_host/src/routes"), server("apps/servers/file_host/src/websocket.rs"), server("apps/servers/file_host/docs/route-inventory.md"),)),
+        (text: "Modeled sessions, consent, engagement gates, interventions, tabs, and mood events in SQLite/SQLx repositories with paired migrations, compile-time query validation, WAL mode, bounded pools, and explicit last-write-wins semantics.", evidence: (server("crates/db"), server("migrations"), server("apps/servers/file_host/src/main.rs"),)),
+        (text: "Built per-client token buckets, concurrency/body limits, load shedding, timeouts, typed 429/413/503 outcomes, and refusal metrics that distinguish rejected work from successful low latency.", evidence: (server("apps/servers/file_host/src/rate_limiter/token_bucket.rs"), server("apps/servers/file_host/src/metrics/refusals.rs"), server("apps/servers/file_host/src/main.rs"),)),
+        (text: "Connected Redis caching and in-flight coalescing to NATS/JetStream jobs; retryable worker failures are NAKed for redelivery while cache invalidation follows database mutations.", evidence: (server("crates/some-cache/src/dedup.rs"), server("crates/some-transport/src/nats/jetstream.rs"), server("apps/servers/file_host/src/handlers/db/tab.rs"),)),
+        (text: "Implemented restart-aware WebSockets with permits, heartbeat/staleness, broadcast isolation, presence, cancellation, and bounded shutdown of SQLite, NATS, sockets, and OpenTelemetry.", evidence: (server("apps/servers/file_host/src/websocket"), server("apps/servers/file_host/src/websocket/shutdown.rs"), server("apps/servers/file_host/src/websocket/heartbeat.rs"),)),
+        (text: "Published a schema-versioned route inventory and source-parity tests so undeclared, stale, duplicated, or unaudited Axum routes fail before client contracts drift.", evidence: (server("apps/servers/file_host/src/routes/inventory.rs"), server("apps/servers/file_host/src/bin/dump_routes.rs"), ui("packages/contract-harness/routes.server.json"),)),
       )),
       (name: "Study-session and notification system", kind: "Rust services, TypeScript/Zod contracts, Web Push", premise: "An intervention should follow learner state and consent, not a clock, and delivery failure must never become load-bearing for study.", bullets: (
-        "Separated warrant, admissibility, and actuation across pure Rust policy, file_host constraints, and push_kit VAPID/RFC 8291/8292 delivery behind a testable transport trait.",
-        "Represented engagement as a decaying vector, solved threshold crossings per signal, persisted eligible_at, and reduced the asynchronous waker to an indexed due-work query.",
-        "Made consent a data-model precondition; malformed or empty grants become silence, while VAPID key mismatch fails at startup instead of invalidating delivery invisibly.",
-        "Integrated typed TypeScript/Zod clients checked by a contract harness that diffs every contract against the server's generated route inventory, plus Playwright coverage of a real Chromium push/service-worker hop.",
-        "Classified expiry, payload rejection, authentication, rate limiting, and transport failure; removed expired subscriptions and persisted outcomes so quiet behavior remains explainable.",
+        (text: "Separated warrant, admissibility, and actuation across pure Rust policy, file_host constraints, and push_kit VAPID/RFC 8291/8292 delivery behind a testable transport trait.", evidence: (server("crates/intervention"), server("apps/servers/file_host/src/nudge/constraints.rs"), server("crates/push_kit/src/transport.rs"),)),
+        (text: "Represented engagement as a decaying vector, solved threshold crossings per signal, persisted eligible_at, and reduced the asynchronous waker to an indexed due-work query.", evidence: (server("crates/intervention/src/charge.rs"), server("apps/servers/file_host/src/nudge/waker.rs"), server("migrations/20260924001000_index_intervention_log_decided_at.up.sql"),)),
+        (text: "Made consent a data-model precondition; malformed or empty grants become silence, while VAPID key mismatch fails at startup instead of invalidating delivery invisibly.", evidence: (server("crates/db/push/src/repository/subscription.rs"), server("apps/servers/file_host/src/nudge.rs"),)),
+        (text: "Integrated typed TypeScript/Zod clients checked by a contract harness that diffs every contract against the server's generated route inventory, plus Playwright coverage of a real Chromium push/service-worker hop.", evidence: (ui("packages/contract-harness"), ui("apps/www/tests/study-nudge/service-worker.spec.ts"), ui("apps/www/src/lib/study-nudge/service-worker.ts"),)),
+        (text: "Classified expiry, payload rejection, authentication, rate limiting, and transport failure; removed expired subscriptions and persisted outcomes so quiet behavior remains explainable.", evidence: (server("crates/push_kit/src/outcome.rs"), server("crates/push_kit/src/sender.rs"), server("crates/db/engagement/src/repository.rs"),)),
       )),
     ),
     platform: (
-      "Maintain a multi-crate Rust workspace under a ratcheted all/pedantic/nursery Clippy baseline that blocks new findings, cargo-deny, migrated SQLx schema preparation, 300+ test functions, and change-scoped GitHub Actions.",
-      "Ship distroless Docker images and compose Axum, Redis, NATS, Caddy, Prometheus, Grafana, exporters, and analytics behind explicit health/readiness boundaries.",
-      "Define six falsifiable fault states — unreachable, dependency-down, rejecting, saturated, stalled, and observability-blind — in bounded-cardinality metrics and generated dashboards.",
-      "Render missing telemetry as unknown rather than healthy; probe SQLite, NATS, and Redis independently under bounded timeouts.",
-      "Version invariants, migrations, route contracts, failure conditions, and operational limits beside source and tests rather than as tribal knowledge.",
+      (text: "Maintain a multi-crate Rust workspace under a ratcheted all/pedantic/nursery Clippy baseline that blocks new findings, cargo-deny, migrated SQLx schema preparation, 300+ test functions, and change-scoped GitHub Actions.", evidence: (server("Cargo.toml"), server(".github/workflows/lint.yml"), server("scripts/clippy_baseline.json"), server("deny.toml"), server(".github/workflows/test.yml"),)),
+      (text: "Ship distroless Docker images and compose Axum, Redis, NATS, Caddy, Prometheus, Grafana, exporters, and analytics behind explicit health/readiness boundaries.", evidence: (server("infra/docker"), server("infra/compose"), server("infra/Caddyfile"),)),
+      (text: "Define six falsifiable fault states — unreachable, dependency-down, rejecting, saturated, stalled, and observability-blind — in bounded-cardinality metrics and generated dashboards.", evidence: (server("docs/fault-conditions.md"), server("infra/grafana/dashboards"),)),
+      (text: "Render missing telemetry as unknown rather than healthy; probe SQLite, NATS, and Redis independently under bounded timeouts.", evidence: (server("docs/dashboard-honesty.md"), server("apps/servers/file_host/src/handlers/readiness.rs"),)),
+      (text: "Version invariants, migrations, route contracts, failure conditions, and operational limits beside source and tests rather than as tribal knowledge.", evidence: (server("docs"), server("migrations"), server("apps/servers/file_host/docs/route-inventory.md"),)),
     ),
   ),
   platform: (
@@ -59,22 +73,22 @@
     skills: "TypeScript; Rust; Node.js; GitHub Actions; Turbo and Cargo dependency graphs; Docker; DevOps automation; CI/CD pipeline automation; contract and route-parity testing; SQLx schema preparation; Changesets release automation; Playwright; Prometheus/Grafana; observability",
     projects: (
       (name: "Cross-repo contract and route parity", kind: "TypeScript, Zod, generated route inventories", premise: "A client and server repository that each describe the same API independently will drift unless something proves they still agree.", bullets: (
-        "Authored a TypeScript/Zod contract harness checked against a schema-versioned server route inventory and live HTTP responses across two independently deployed repositories.",
-        "Gated server pull requests on the client's contracts so a route change that breaks one fails before merge, with integration tests that start a real HTTP server and assert concrete schema and route divergence.",
-        "Distinguished contract-breaking drift from informative slack — an undeclared field the server added, or a declared-optional field it never sends — instead of collapsing both into one failure.",
+        (text: "Authored a TypeScript/Zod contract harness checked against a schema-versioned server route inventory and live HTTP responses across two independently deployed repositories.", evidence: (ui("packages/contract-harness"), ui("packages/contract-harness/routes.server.json"),)),
+        (text: "Gated server pull requests on the client's contracts so a route change that breaks one fails before merge, with integration tests that start a real HTTP server and assert concrete schema and route divergence.", evidence: (server(".github/workflows/routes.yml"), ui("scripts/sync-server-routes.sh"), ui("packages/contract-harness/tests/probe.integration.test.ts"),)),
+        (text: "Distinguished contract-breaking drift from informative slack — an undeclared field the server added, or a declared-optional field it never sends — instead of collapsing both into one failure.", evidence: (ui("packages/contract-harness/src"), ui("packages/contract-harness/README.md"),)),
       )),
       (name: "CI/CD and release automation", kind: "GitHub Actions, Turbo, Docker, Changesets, web-ext", premise: "A monorepo's CI should scope to what a change actually touches, and a release should be reproducible from source rather than assembled by hand.", bullets: (
-        "Implemented change-scoped GitHub Actions on Turbo/Cargo dependency graphs so lint, typecheck, and test run only against changed packages and their transitive dependents, backed by a full-repo nightly sweep.",
-        "Built Docker image build/publish pipelines for the web and server images, SQLx offline-query preparation, and Changesets-driven versioning across the workspace.",
-        "Built a human-gated extension release pipeline that derives AMO notes from versioned changelogs, validates reviewer metadata and field limits, synchronizes manifest/package versions, and blocks signing when source and artifact versions drift.",
+        (text: "Implemented change-scoped GitHub Actions on Turbo/Cargo dependency graphs so lint, typecheck, and test run only against changed packages and their transitive dependents, backed by a full-repo nightly sweep.", evidence: (ui(".github/workflows/pr.yml"), ui(".github/workflows/_detect-changes.yml"), ui(".github/workflows/trunk.yml"), ui("turbo.json"),)),
+        (text: "Built Docker image build/publish pipelines for the web and server images, SQLx offline-query preparation, and Changesets-driven versioning across the workspace.", evidence: (ui(".github/workflows/www-docker-release.yml"), ui("apps/www/Dockerfile"), server(".github/workflows/build-image.yml"), ui(".changeset"),)),
+        (text: "Built a human-gated extension release pipeline that derives AMO notes from versioned changelogs, validates reviewer metadata and field limits, synchronizes manifest/package versions, and blocks signing when source and artifact versions drift.", evidence: (ui(".github/workflows/extension-release.yml"), ui("extensions/scripts/build-amo-metadata.mjs"), ui("extensions/scripts/sync-manifest-version.mjs"), ui(".github/workflows/_extension-sign.yml"),)),
       )),
     ),
     platform: (
-      "Run Rust/TypeScript CI with a ratcheted Clippy baseline, SQLx checks, route parity, API contracts, browser conformance, and signed release gates.",
-      "Compose distroless services with Caddy, Redis, NATS, Prometheus, Grafana, exporters, and service-specific readiness probes.",
-      "Generate dashboards from Jsonnet with measured-good, measured-bad, and missing/unknown as irreducible states.",
-      "Use bounded-cardinality Prometheus metrics and OpenTelemetry traces for HTTP, dependencies, pools, cache, admission, connections, and loop progress.",
-      "Maintain typed shared crates for transport, caching, metrics, connections, events, repositories, and policy rather than copying infrastructure between binaries.",
+      (text: "Run Rust/TypeScript CI with a ratcheted Clippy baseline, SQLx checks, route parity, API contracts, browser conformance, and signed release gates.", evidence: (server(".github/workflows/lint.yml"), server("scripts/check_clippy_baseline.py"), server(".github/workflows/routes.yml"), ui(".github/workflows/pr.yml"),)),
+      (text: "Compose distroless services with Caddy, Redis, NATS, Prometheus, Grafana, exporters, and service-specific readiness probes.", evidence: (server("infra/compose"), server("infra/Caddyfile"), server("infra/docker"),)),
+      (text: "Generate dashboards from Jsonnet with measured-good, measured-bad, and missing/unknown as irreducible states.", evidence: (server("infra/grafana/dashboards"), server("docs/dashboard-honesty.md"),)),
+      (text: "Use bounded-cardinality Prometheus metrics and OpenTelemetry traces for HTTP, dependencies, pools, cache, admission, connections, and loop progress.", evidence: (server("apps/servers/file_host/src/metrics"), server("apps/servers/file_host/src/trace.rs"),)),
+      (text: "Maintain typed shared crates for transport, caching, metrics, connections, events, repositories, and policy rather than copying infrastructure between binaries.", evidence: (server("crates"),)),
     ),
   ),
   fullstack: (
@@ -84,24 +98,24 @@
     skills: "TypeScript; React; Rust/WebAssembly; reusable React components; REST API contracts; browser extensions; MV3 service workers; responsive web UI; cross-browser Playwright testing; Node.js; Vite; TanStack; Vitest; GitHub Actions CI/CD",
     projects: (
       (name: "Adaptive learning platform", kind: "Rust/WebAssembly engine, React application", premise: "Learning software should estimate what a learner knows and choose the smallest next concept that produces progress.", bullets: (
-        "Built a pure-Rust engine compiled to WebAssembly and consumed by React hex-grid, TOPIK exam-prep, and typing-drill web applications on one curriculum platform.",
-        "Implemented reusable React components generalized from single-glyph to typed multi-token Stimulus/Answer models after deriving the prior model's ceiling before implementation.",
-        "Authored a formal model of latent state, observation, estimation, policy, persistence, and falsifiers; proved a completed-item set plus one scalar cannot become adaptive.",
-        "Kept study_domain independent of storage and transport so lessons, sessions, scores, and curriculum rules test without Axum, SQLx, Tokio, or browser code.",
+        (text: "Built a pure-Rust engine compiled to WebAssembly and consumed by React hex-grid, TOPIK exam-prep, and typing-drill web applications on one curriculum platform.", evidence: (ui("crates/hangul-game-core"), ui("packages/ui/honeycomb"), ui("packages/ui/topik"), ui("crates/leetype_wasm"),)),
+        (text: "Implemented reusable React components generalized from single-glyph to typed multi-token Stimulus/Answer models after deriving the prior model's ceiling before implementation.", evidence: (ui("docs/canon/hangul-progression-canon.typ"), ui("crates/hangul-game-core"),)),
+        (text: "Authored a formal model of latent state, observation, estimation, policy, persistence, and falsifiers; proved a completed-item set plus one scalar cannot become adaptive.", evidence: (ui("docs/canon/adaptive-learning-canon.typ"),)),
+        (text: "Kept study_domain independent of storage and transport so lessons, sessions, scores, and curriculum rules test without Axum, SQLx, Tokio, or browser code.", evidence: (server("crates/study_domain"),)),
       )),
       (name: "Browser extension platform", kind: "TypeScript, Firefox/Chromium MV3, Playwright, WebAssembly", premise: "A browser is host to code it did not author, so an extension's own UI and state must stay provably isolated from the page around it.", bullets: (
-        "Built typed popup/worker/content protocols and MV3 service-worker bundles across six shipped Firefox/Chromium extensions, with platform shims isolating browser-specific APIs.",
-        "Modeled UI and resolver states as exhaustive discriminated unions so illegal transitions fail at compile time rather than at runtime.",
-        "Built a post-actuation contrast-closure pass that remeasures computed foreground/background colors against WCAG AA's 4.5:1 floor, selects a hue-preserving foreground repair, realizes it across document and open Shadow DOM scopes, and rechecks hover/focus color changes after interaction settles.",
-        "Built a typed lifecycle for document and open-Shadow-DOM scopes, browser-verified in Chromium for late-root discovery, coverage of unresolved content, and self-healing after host-page mutation, plus a per-scope generation counter, unit-tested, that rejects stale asynchronous completions.",
+        (text: "Built typed popup/worker/content protocols and MV3 service-worker bundles across five shipped Firefox/Chromium extensions, with platform shims isolating browser-specific APIs.", evidence: (ui("extensions/suspender-ledger/src/types/messages.ts"), ui("extensions/suspender-ledger/src/lib/platform/firefox.ts"), ui("extensions/common/GOOD_CITIZEN.md"),)),
+        (text: "Modeled UI and resolver states as exhaustive discriminated unions so illegal transitions fail at compile time rather than at runtime.", evidence: (ui("extensions/some-censor/src/lib/content/fsm.ts"), ui("extensions/some-censor/src/types/states.ts"),)),
+        (text: "Built a post-actuation contrast-closure pass that remeasures computed foreground/background colors against WCAG AA's 4.5:1 floor, selects a hue-preserving foreground repair, realizes it across document and open Shadow DOM scopes, and rechecks hover/focus color changes after interaction settles.", evidence: (ui("extensions/some-filter/src/adapter/legibility-audit.ts"), ui("extensions/some-filter/src/adapter/foreground-repair.ts"), ui("extensions/some-filter/src/adapter/shadow-scope-theming.ts"), ui("extensions/some-filter/tests/e2e/specs/issue-1341-sfrc2-foreground-repair.spec.ts"),)),
+        (text: "Built a typed lifecycle for document and open-Shadow-DOM scopes, browser-verified in Chromium for late-root discovery, coverage of unresolved content, and self-healing after host-page mutation, plus a per-scope generation counter, unit-tested, that rejects stale asynchronous completions.", evidence: (ui("extensions/some-filter/src/adapter/scope-registry.ts"), ui("extensions/some-filter/src/adapter/shadow-scope-discovery.ts"), ui("extensions/some-filter/tests/e2e/specs/issue-1267-sfdc-shadow-custody.spec.ts"), ui("extensions/some-filter/src/adapter/__tests__/scope-registry.test.ts"),)),
       )),
     ),
     platform: (
-      "Ship Rust services and web UI in Docker behind Caddy/Nginx with TLS, readiness, Redis, NATS, Prometheus, Grafana, and Docker Hub/GitHub Actions delivery.",
-      "Exercise a multi-crate Rust workspace with 300+ tests, a ratcheted Clippy baseline, cargo-deny, SQLx preparation, route parity, and downstream contract/browser suites.",
-      "Treat missing telemetry as a fault; dashboards expose unreachable, dependency-down, rejecting, saturated, stalled, and blind states.",
-      "Derive architecture from written domain boundaries and falsifiable failures kept beside migrations, source, metrics, and tests.",
-      "Own the path from learning-state model through schema, HTTP contract, decision worker, push provider, browser worker, UI, and operational dashboard.",
+      (text: "Ship Rust services and web UI in Docker behind Caddy/Nginx with TLS, readiness, Redis, NATS, Prometheus, Grafana, and Docker Hub/GitHub Actions delivery.", evidence: (server("infra/compose"), ui("apps/www/Dockerfile"), ui(".github/workflows/www-docker-release.yml"),)),
+      (text: "Exercise a multi-crate Rust workspace with 300+ tests, a ratcheted Clippy baseline, cargo-deny, SQLx preparation, route parity, and downstream contract/browser suites.", evidence: (server(".github/workflows/test.yml"), server("scripts/clippy_baseline.json"), server("deny.toml"), ui("packages/contract-harness"),)),
+      (text: "Treat missing telemetry as a fault; dashboards expose unreachable, dependency-down, rejecting, saturated, stalled, and blind states.", evidence: (server("docs/fault-conditions.md"), server("docs/dashboard-honesty.md"),)),
+      (text: "Derive architecture from written domain boundaries and falsifiable failures kept beside migrations, source, metrics, and tests.", evidence: (server("docs"), ui("docs/canon"),)),
+      (text: "Own the path from learning-state model through schema, HTTP contract, decision worker, push provider, browser worker, UI, and operational dashboard.", evidence: (server("crates/intervention"), server("apps/servers/file_host/src/nudge"), ui("apps/www/src/lib/study-nudge"), server("infra/grafana/dashboards"),)),
     ),
   ),
 )
@@ -140,7 +154,7 @@
       body: "Turbo/Cargo dependency graphs scope lint, typecheck, and test to changed packages and their transitive dependents, backed by a full-repo nightly sweep.",
     ),
     (
-      title: "Six signed extension releases",
+      title: "Five signed extension releases",
       body: "Every browser-extension release is gated on typecheck, unit tests, lint, and signed web-ext packaging before publish.",
     ),
     (
@@ -154,7 +168,7 @@
       body: "One pure-Rust learning engine compiled to WASM and consumed by hex-grid, TOPIK exam-prep, and typing-drill React web applications on a shared platform.",
     ),
     (
-      title: "Six shipped browser extensions",
+      title: "Five shipped browser extensions",
       body: "Typed popup/worker/content protocols and MV3 service-worker bundles, with a cross-browser Playwright test corpus bundling the real shipped modules.",
     ),
     (

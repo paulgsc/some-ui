@@ -94,10 +94,35 @@
     />
     <meta name="twitter:image" content="/logo512.png" />
 
+    <!-- The same résumé for a reader that does not run JS: Markdown and
+         JSON Resume, each claim paired with links to the source it rests
+         on, plus an llms.txt index of every composition. Written by
+         @some-ui/resume's export-data.mjs, copied in by
+         scripts/sync-resume.mjs. Absolute, like the canonical above, so
+         they name the published copy from any build profile. -->
+    <link
+      rel="alternate"
+      type="text/markdown"
+      href="https://paulgsc.github.io/some-ui/resume.md"
+      title="Résumé (Markdown, with evidence links)"
+    />
+    <link
+      rel="alternate"
+      type="application/json"
+      href="https://paulgsc.github.io/some-ui/resume.json"
+      title="Résumé (JSON Resume, with evidence links)"
+    />
+    <link
+      rel="alternate"
+      type="text/plain"
+      href="https://paulgsc.github.io/some-ui/llms.txt"
+      title="llms.txt"
+    />
+
     <!-- Structured data: a stable identifier a crawler or automated
          portfolio check can read straight from the static response, ahead
          of and independent from anything the SPA renders once React
-         hydrates over it. -->
+         hydrates over it. `subjectOf` names the documents above. -->
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
@@ -106,7 +131,21 @@
         "name": "Paul Gathondu",
         "jobTitle": "Software Engineer",
         "url": "https://paulgsc.github.io/some-ui/resume/",
-        "sameAs": ["https://github.com/paulgsc"]
+        "sameAs": ["https://github.com/paulgsc"],
+        "subjectOf": [
+          {
+            "@type": "DigitalDocument",
+            "name": "Résumé (Markdown, with evidence links)",
+            "encodingFormat": "text/markdown",
+            "url": "https://paulgsc.github.io/some-ui/resume.md"
+          },
+          {
+            "@type": "DigitalDocument",
+            "name": "Résumé (JSON Resume, with evidence links)",
+            "encodingFormat": "application/json",
+            "url": "https://paulgsc.github.io/some-ui/resume.json"
+          }
+        ]
       }
     </script>
   </head>

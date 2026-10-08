@@ -1,7 +1,9 @@
 #!/usr/bin/env node
-// Copies the compiled résumé PDFs from @some-ui/resume's build output into
-// public/, where Vite serves them for the /resume route. PDFs only: phones get
-// the route's HTML ResumeDocument, not an SVG image.
+// Copies the compiled résumé documents from @some-ui/resume's build output
+// into public/, where Vite serves them: the PDFs for the /resume route, and
+// the Markdown/JSON Resume files and llms.txt that let an agent read the
+// résumé, with each claim's evidence, without running the SPA. No SVGs:
+// phones get the route's HTML ResumeDocument, not an image.
 //
 // Turbo builds @some-ui/resume first (`^build`); run directly, missing PDFs
 // only warn, but a missing *module* build fails at once (see below).
@@ -15,7 +17,7 @@ const publicDir = join(appDir, "public")
 
 // `compile.mjs` writes documents/manifest.json listing exactly the PDFs that
 // compile produced (every composition x template, plus the `resume.pdf`
-// alias). Reading it avoids a hard-coded list that drifts on every rename,
+// alias), and `export-data.mjs` adds the agent-readable documents to it. Reading it avoids a hard-coded list that drifts on every rename,
 // and a cross-package import (a banned `../` path, or an `exports` subpath
 // @some-ui/vite-config's build overwrites).
 //
@@ -62,13 +64,13 @@ function syncResumePdfs() {
     }
     // eslint-disable-next-line no-console
     console.log(
-      `[www] synced ${expected.length} résumé PDF(s) from @some-ui/resume`
+      `[www] synced ${expected.length} résumé document(s) from @some-ui/resume`
     )
   } else {
     const detail =
       missing === null
         ? "documents/manifest.json not found"
-        : `${missing.length} of ${expected.length} compiled résumé PDFs ` +
+        : `${missing.length} of ${expected.length} compiled résumé documents ` +
           `missing: ${missing.join(", ")}`
 
     if (process.env["CI"]) {

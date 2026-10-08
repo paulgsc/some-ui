@@ -49,7 +49,7 @@ function run(
   }
 }
 
-// The résumé PDFs the build copies from public/ (`build` runs this first too).
+// The résumé documents the build copies into public/ (`build` runs this first too).
 run("node", ["scripts/sync-resume.mjs"], process.env)
 const publicFiles = readdirSync(join(appRoot, "public"))
 
@@ -64,7 +64,7 @@ function publicViolations(
     .filter((file) => !publicFiles.some((name) => file.test(name)))
     .map(
       (file) =>
-        `${String(file)} names no file in public/: renamed, or not generated (scripts/sync-resume.mjs copies the résumé's PDFs only once it is built)`
+        `${String(file)} names no file in public/: renamed, or not generated (scripts/sync-resume.mjs copies the résumé documents only once it is built)`
     )
   const shipped = readdirSync(outDir)
     .filter((name) => offPath.some((file) => file.test(name)))

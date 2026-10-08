@@ -34,6 +34,9 @@ export const outDir = join(packageDir, "documents")
 const cacheDir = join(packageDir, "node_modules", ".cache", "typst-bin")
 
 export const variants = ["backend", "platform", "fullstack"]
+// The composition that also claims the unsuffixed filenames (resume.pdf,
+// resume.md, resume.json): the one a bare "/resume.pdf" link has always meant.
+export const DEFAULT_VARIANT = "backend"
 export const templates = [
   "rail",
   "classic",
