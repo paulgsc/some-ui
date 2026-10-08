@@ -125,7 +125,7 @@ function auditCharacter(
   const voice = optionalText(context, raw, "voice", path)
   const look = optionalText(context, raw, "look", path)
 
-  const registers: Record<string, string> = {}
+  const registers: Array<[string, string]> = []
   const rawRegisters = raw.registers ?? {}
   if (isRecord(rawRegisters)) {
     for (const [to, register] of Object.entries(rawRegisters)) {
@@ -133,7 +133,7 @@ function auditCharacter(
       inCast(context, to, where)
       if (to === id) report(context, where, "a register is toward another")
       if (typeof register === "string" && register.trim() !== "") {
-        registers[to] = register
+        registers.push([to, register])
       } else {
         report(context, where, "must be a non-blank string")
       }
@@ -149,7 +149,8 @@ function auditCharacter(
     id,
     name,
     standing,
-    registers,
+    // Defined, not assigned: a cast id may be any string, `__proto__` included.
+    registers: Object.fromEntries(registers),
     ...(voice === undefined ? {} : { voice }),
     ...(look === undefined ? {} : { look }),
   }

@@ -1682,8 +1682,10 @@ rather than as *data*, and the remedy is to exhibit the data.
   Corollary 4.4, is one drama unit when the renderer plays one: one route
   through one tree, at most three scenes. The resume point of Corollary 4.4
   (iii) is amended: in place of a conversation index and a message
-  identifier it holds the route (the candidate ids chosen from the root), the
-  current line's id, and the candidate first chosen at each choice reached
+  identifier it holds the route (the candidate ids chosen from the root),
+  where in the current scene the learner is (a line or narration by its id,
+  the scene's open choice, or the unit's end), and the candidate first
+  chosen at each choice reached
   (Cor. 4.7 (iv)). It is resolved by identity and discarded to the root when
   any part of it no longer resolves (Thm. 1.1). As before it is not a
   competence claim, it sits outside O3, and losing it costs a restart and
@@ -2335,8 +2337,8 @@ repeating what is already known buys little.
   each line in the language being learned, and reaching for its gloss only
   when the line will not come otherwise --- and $G_(not h) (w, S)$ for the
   gain conditioned on their not doing so, with $pi$ the probability of
-  honest practice, as in Axiom 6.2. There is a fixed $g_w in (0, 1]$ such
-  that $G_h (w, S) >= g_w dot (1 - overline(mu)_t (w))$ for every route,
+  honest practice, as in Axiom 6.2. There is a fixed $g_D in (0, 1]$ such
+  that $G_h (w, S) >= g_D dot (1 - overline(mu)_t (w))$ for every route,
   whether or not anything measures it, and $G_(not h) >= 0$.
 ]
 
@@ -3638,7 +3640,7 @@ workspaces, and moves the front-matter version line, which had stayed at
   [$overline(mu)_t (e)$], [Mean mastery over the words a read-aloud rep presents (Axiom 6.2)],
   [$N_gamma$], [Expected discounted, survival- and mastery-weighted count of honest read-aloud reps (Cor. 6.4)],
   [$K_w$, $overline(mu)_t (w)$], [The concepts a route through a drama unit presents, and mean mastery over them (Axiom 6.3)],
-  [$g_w$], [Lower bound on the gain of a drama route followed honestly, relative to what remains to learn (Axiom 6.3)],
+  [$g_D$], [Lower bound on the gain of any drama route followed honestly, relative to what remains to learn (Axiom 6.3)],
   [$nu$], [Renderer nuisance parameters (Def. 9.2)],
 )
 

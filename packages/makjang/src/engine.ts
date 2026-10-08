@@ -217,12 +217,13 @@ function readAt(value: unknown): At | undefined {
 
 function readFirst(value: unknown): Record<string, string> | undefined {
   if (!isRecord(value)) return undefined
-  const first: Record<string, string> = {}
+  const entries: Array<[string, string]> = []
   for (const [choice, option] of Object.entries(value)) {
     if (typeof option !== "string") return undefined
-    first[choice] = option
+    entries.push([choice, option])
   }
-  return first
+  // Defined, not assigned: an id may be any string, `__proto__` included.
+  return Object.fromEntries(entries)
 }
 
 /**

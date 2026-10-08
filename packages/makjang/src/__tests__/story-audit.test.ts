@@ -60,6 +60,18 @@ describe("auditStory accepts a tree within bounds", () => {
     expect("extra" in audit.lesson.root).toBe(false)
   })
 
+  it("keeps a register toward a character whose id is `__proto__`", () => {
+    const tree = rawTree()
+    get(tree, "cast.1").id = "__proto__"
+    get(tree, "cast.0").registers = JSON.parse('{"__proto__": "polite"}')
+    get(tree, "root.beats.1").speaker = "p1"
+    const audit = auditStory(tree)
+    if (!audit.ok) throw new Error(JSON.stringify(audit.findings))
+    expect(Object.entries(audit.lesson.cast[0]?.registers ?? {})).toEqual([
+      ["__proto__", "polite"],
+    ])
+  })
+
   it("lets two choices use the same option ids", () => {
     const tree = rawTree()
     get(tree, "root.choice.options.1.child.choice.options.0").id = "a"

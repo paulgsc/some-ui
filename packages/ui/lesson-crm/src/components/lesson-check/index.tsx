@@ -21,14 +21,16 @@ type LessonCheckProps = {
 /** One finding as the list shows it, whichever intake made it. */
 type Row = { key: string; error: boolean; text: string }
 
-const probeRow = (finding: ProbeFinding): Row => ({
-  key: `${finding.batch ?? "file"}:${finding.index ?? finding.probe ?? ""}:${finding.message}`,
+// Keys carry the position: two findings can read the same (a candidate
+// repeated twice over), and both are shown.
+const probeRow = (finding: ProbeFinding, position: number): Row => ({
+  key: `${position}:${finding.batch ?? "file"}:${finding.index ?? finding.probe ?? ""}:${finding.message}`,
   error: finding.severity === "error",
   text: `${finding.severity === "error" ? "Withheld" : "Warning"} · conversation ${finding.batch ?? "?"}${finding.probe ? `, ${finding.probe}` : ""}: ${finding.message}`,
 })
 
-const treeRow = (finding: TreeFinding): Row => ({
-  key: `${finding.audit}:${finding.path}:${finding.message}`,
+const treeRow = (finding: TreeFinding, position: number): Row => ({
+  key: `${position}:${finding.audit}:${finding.path}:${finding.message}`,
   error: finding.severity === "error",
   text: `${finding.severity === "error" ? "Error" : "Warning"} · ${finding.audit} · ${findingPlace(finding)}: ${finding.message}`,
 })

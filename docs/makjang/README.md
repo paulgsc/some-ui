@@ -204,8 +204,9 @@ Axiom 6.3, and Remark 9.2 for the feeling anchor.
    handheld capability set's budget (Def. 9.3), one conversation in
    Cor. 4.4, becomes one lesson: one route through one tree, at most three
    scenes. The resume point replaces Cor. 4.4 (iii)'s conversation index and
-   message id with the route (the option ids chosen from the root), the
-   current beat's id, and the option first chosen at each choice reached. It
+   message id with the route (the option ids chosen from the root), where
+   the learner is in the scene (a beat's id, its open choice, or the end),
+   and the option first chosen at each choice reached. It
    is resolved by identity and discarded to the root when it no longer
    resolves (Thm. 1.1). Nothing crosses lessons (see "One lesson stands
    alone").
@@ -651,7 +652,9 @@ module doc comments of `story-audit.ts`, `engine.ts` and topik's
 >   narrows or re-scopes the `src/engine.ts` block of
 >   `packages/makjang/eslint.config.js`; that moves or renames `engine.ts` out
 >   of that block's `files`; or that deletes or weakens
->   `packages/makjang/src/__tests__/package-shape.test.ts`.
+>   `packages/makjang/src/__tests__/package-shape.test.ts`, or deletes,
+>   renames or moves it or `eslint.config.js`, which a pure rename shows with
+>   no hunk at all.
 > - _Scope:_ `packages/makjang`.
 > - _Why not wholly enforced:_ the imports are lint (`no-restricted-imports`
 >   on the engine, which restates the `../` ban) and the dependencies are a
@@ -668,9 +671,11 @@ module doc comments of `story-audit.ts`, `engine.ts` and topik's
 >   without a scene, a scene without beats, and a scene without a feeling.
 > - _Falsified by_ a hunk that passes the engine a tree built any other way;
 >   that changes `MAX_DEPTH`, `MIN_BRANCHES` or `MAX_BRANCHES` without
->   "1. Story" above changing with it; or that removes one of those checks
->   from `packages/makjang/src/story-audit.ts`, or its test from
->   `src/__tests__/story-audit.test.ts`.
+>   "1. Story" above changing with it; that removes or weakens one of those
+>   checks in `packages/makjang/src/story-audit.ts` (a bound loosened by one
+>   counts), or deletes or weakens its test in
+>   `src/__tests__/story-audit.test.ts`; or that deletes, renames or moves
+>   either file, which a pure rename shows with no hunk at all.
 > - _Scope:_ `packages/makjang` and every caller of its engine.
 > - _Why not wholly enforced:_ the audit runs on every tree and is tested,
 >   but `Lesson<Check>` is a plain type anyone can construct, so whether a
@@ -680,14 +685,21 @@ module doc comments of `story-audit.ts`, `engine.ts` and topik's
 > **MK3: A choice's outcome is its first choice, and an unreached choice has
 > none.**
 >
-> - _Claim:_ in `engine.ts`, `DramaState.first` gains an entry only on a
->   `choose` at an open choice that has none, for that choice and the option
->   chosen, and is never otherwise changed: `restart` keeps it, and `advance`
->   and `back` leave it.
+> - _Claim:_ in `packages/makjang/src/engine.ts`, `step` adds an entry to
+>   `DramaState.first` only on a `choose` at an open choice that has none,
+>   for that choice and the option chosen, and otherwise passes it on
+>   unchanged: `restart` keeps it, and `advance` and `back` leave it. The one
+>   other place `first` is built is `resume`, which takes a stored one whole
+>   or not at all: it keeps every entry of a point that `firstResolves`
+>   accepts and discards the point to the opening otherwise.
 > - _Falsified by_ a hunk to `engine.ts` that writes `first` anywhere else,
->   overwrites an entry, or drops it on `restart`; or one that deletes or
->   weakens the MK3 property in `packages/makjang/src/__tests__/engine.test.ts`
->   (its loop over every scene's route, its oracle, or its event set).
+>   overwrites or drops an entry, or drops `first` on `restart`; that makes
+>   `resume` keep part of a stored `first`, or weakens `firstResolves`; that
+>   deletes or weakens the MK3 property in
+>   `packages/makjang/src/__tests__/engine.test.ts` (its loop over every
+>   scene's route, its oracle, or its event set); or that deletes, renames or
+>   moves `engine.ts` or that test file, which a pure rename shows with no
+>   hunk at all.
 > - _Scope:_ `packages/makjang/src/engine.ts`.
 > - _Why not wholly enforced:_ the property runs random events after reaching
 >   every route of a synthetic tree and fails on any violation. What it cannot
@@ -699,8 +711,11 @@ module doc comments of `story-audit.ts`, `engine.ts` and topik's
 >   only as a `checked` `TreeIntake` from `intakeTree` holds them, where every
 >   choice `auditTeaching` reported an error on is pruned to a leaf.
 > - _Falsified by_ a hunk that plays or shows a tree's choices from anything
->   but that `lesson`, or that makes `auditTeaching` return a choice it
->   reported an error on.
+>   but that `lesson`; that makes `auditTeaching` return a choice it reported
+>   an error on; that deletes or weakens the pruning tests in
+>   `packages/ui/topik/src/lib/topik/core/tree-audit/index.test.ts`; or that
+>   deletes, renames or moves `core/tree-audit` or
+>   `generation/tree-intake`, which a pure rename shows with no hunk at all.
 > - _Scope:_ `packages/ui/topik` and `packages/ui/lesson-crm`.
 > - _Why not wholly enforced:_ the pruning is tested
 >   (`core/tree-audit/index.test.ts`), but which value a renderer reads is

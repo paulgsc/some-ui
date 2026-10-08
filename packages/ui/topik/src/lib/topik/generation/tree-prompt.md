@@ -667,8 +667,8 @@ wrong reply `b`.
 - [checkable] Every option leads to a scene, every scene has at least one
   beat, and no scene two choices below the root has a choice.
 - [checkable] Every choice has 2–4 options.
-- [checkable] Ids are unique across the tree; option ids are unique within
-  their choice.
+- [checkable] Ids are unique across the tree, checks' ids included; option
+  ids are unique within their choice.
 - [checkable] Every speaker, `pov` and `registers` key is a cast `id`.
 - [checkable] Every scene's `feeling` is one of the keys in **Feelings**.
 - [checkable] Every check is a `pick-valid` or `odd-one-out` that passes the

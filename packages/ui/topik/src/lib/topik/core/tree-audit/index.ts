@@ -11,8 +11,8 @@
  *   option shows the candidate with its id;
  * - the probe rules every handheld item is held to (`auditItem`), plus two a
  *   choice adds: no candidate is an English gloss (canon v1.13, a choice is
- *   about its scene), and an odd-one-out names its `source`, having no anchor
- *   line to default to;
+ *   about its scene), an odd-one-out names its `source`, having no anchor
+ *   line to default to, and no two checks share an id;
  * - every scene names a feeling the renderer has (`core/feeling`).
  *
  * A choice with an error is not asked: its scene becomes a leaf and the
@@ -58,6 +58,7 @@ export type TeachingAudit =
 function auditChoice(
   check: unknown,
   optionIds: Array<string>,
+  probeIds: Set<string>,
   report: ProbeReport
 ): ChoiceProbe | undefined {
   const parsed = ProbeSchema.safeParse(check)
@@ -85,6 +86,12 @@ function auditChoice(
     if (severity === "error") verdict.rejected = true
     report(severity, message)
   }
+
+  // First tries are keyed by the probe's id (Thm. 1.1), across the tree.
+  if (probeIds.has(probe.id)) {
+    reject("error", `check id "${probe.id}" is already another choice's`)
+  }
+  probeIds.add(probe.id)
 
   const candidateIds = new Set<string>()
   probe.options.forEach((option, index) => {
@@ -119,7 +126,7 @@ function auditChoice(
       "anchorMessageId is ignored in a scene tree: a choice is asked at the end of its scene; set `source` to the utterance it tests"
     )
   }
-  if (probe.kind === "odd-one-out" && probe.source === undefined) {
+  if (probe.kind === "odd-one-out" && !probe.source?.trim()) {
     reject(
       "error",
       "an odd-one-out in a scene tree names its `source`: there is no anchor line to transform"
@@ -134,6 +141,8 @@ type Context = {
   findings: Array<TreeFinding>
   /** Set by a finding no pruning can mend. */
   rejected: boolean
+  /** Every check id seen so far, in depth-first order. */
+  probeIds: Set<string>
 }
 
 const reporter =
@@ -167,6 +176,7 @@ function auditScene(
   const check = auditChoice(
     choice.check,
     choice.options.map(({ id }) => id),
+    context.probeIds,
     reporter(context, `${choicePath}.check`)
   )
   const options = choice.options.map((option, index) => ({
@@ -192,7 +202,11 @@ function auditScene(
  * as it plays. Never throws.
  */
 export function auditTeaching(lesson: Lesson<unknown>): TeachingAudit {
-  const context: Context = { findings: [], rejected: false }
+  const context: Context = {
+    findings: [],
+    rejected: false,
+    probeIds: new Set(),
+  }
   if (!TOPIK_LEVELS.some((level) => level === lesson.level)) {
     rejectTree(context, "level", `${lesson.level} is not a TOPIK level (1-6)`)
   }

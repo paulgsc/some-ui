@@ -314,6 +314,35 @@ describe("auditTeaching", () => {
     expect(audit.findings[0]?.message).toContain("names its `source`")
   })
 
+  it("prunes an odd-one-out whose source is blank", () => {
+    const audit = auditTeaching(
+      lesson(
+        rawTree(({ b }) => {
+          withCheck(b, oddOneOut({ source: "  " }))
+        })
+      )
+    )
+    if (!audit.ok) throw new Error("expected a playable tree")
+    expect(sceneAt(audit.lesson.root, ["b"])?.choice).toBeUndefined()
+  })
+
+  it("prunes the later of two choices whose checks share an id", () => {
+    const audit = auditTeaching(
+      lesson(
+        rawTree(({ b }) => {
+          withCheck(b, oddOneOut({ id: "p-root" }))
+        })
+      )
+    )
+    if (!audit.ok) throw new Error("expected a playable tree")
+    expect(audit.lesson.root.choice).toBeDefined()
+    expect(sceneAt(audit.lesson.root, ["b"])?.choice).toBeUndefined()
+    expect(audit.findings[0]).toMatchObject({
+      path: "root.choice.options.1.child.choice.check",
+      message: 'check id "p-root" is already another choice\'s',
+    })
+  })
+
   it("warns that an anchorMessageId is ignored, and still asks the choice", () => {
     const audit = auditTeaching(
       lesson(

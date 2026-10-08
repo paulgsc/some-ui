@@ -235,6 +235,22 @@ describe("resume", () => {
     expect(resume(LESSON, point(end)).state).toEqual(end.state)
   })
 
+  it("keeps a first choice whose choice id is `__proto__`", () => {
+    const tree = rawTree()
+    const root = tree.root
+    if (typeof root !== "object" || root === null) throw new Error("no root")
+    Reflect.set(Reflect.get(root, "choice"), "id", "__proto__")
+    const audit = auditStory(tree)
+    if (!audit.ok) throw new Error(JSON.stringify(audit.findings))
+    let state = start(audit.lesson).state
+    for (const event of [ADVANCE, ADVANCE, ADVANCE, choose("b")]) {
+      state = step(audit.lesson, state, event).state
+    }
+    expect(Object.hasOwn(state.first, "__proto__")).toBe(true)
+    const stored: unknown = JSON.parse(JSON.stringify(state))
+    expect(resume(audit.lesson, stored).state).toEqual(state)
+  })
+
   const opening = start(LESSON)
   const valid = {
     route: ["b"],
