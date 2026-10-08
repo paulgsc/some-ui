@@ -1,18 +1,11 @@
 import type { JSX, PointerEvent } from "react"
 import { useRef } from "react"
 import { cn } from "@some-ui/core-utils"
-import { Button } from "@some-ui/shared"
+import { LadderDock } from "@topik/components/topik/handheld/ladder-dock"
 import { StepLayout } from "@topik/components/topik/handheld/step-layout"
 import type { Message } from "@topik/lib/topik"
 import type { RevealLevel } from "@topik/lib/topik/core/lesson-track"
-import {
-  ChevronLeft,
-  ChevronRight,
-  Ear,
-  Eye,
-  Languages,
-  Volume2,
-} from "lucide-react"
+import { Ear } from "lucide-react"
 
 type LineCardProps = {
   message: Message
@@ -74,17 +67,6 @@ export const LineCard = ({
     if (Math.abs(dx) < 10 && Math.abs(dy) < 10 && canReveal) onReveal()
   }
 
-  const nextRung =
-    reveal === 0 ? (
-      <>
-        <Eye className="size-4" /> Show Korean
-      </>
-    ) : (
-      <>
-        <Languages className="size-4" /> Show English
-      </>
-    )
-
   const stage = (
     <div
       data-slot="topik-line"
@@ -139,47 +121,19 @@ export const LineCard = ({
   )
 
   const dock = (
-    <>
-      <div className="flex gap-2">
-        {audio && (
-          <Button
-            variant="secondary"
-            className="h-12 rounded-2xl min-w-0 flex-1 gap-2"
-            onClick={onReplay}
-            aria-label="Play line"
-          >
-            <Volume2 className={cn("size-5", speaking && "animate-pulse")} />
-            {reveal === 0 ? "Listen" : "Again"}
-          </Button>
-        )}
-        {canReveal && (
-          <Button
-            variant="outline"
-            className="h-12 rounded-2xl min-w-0 flex-1 gap-2"
-            onClick={onReveal}
-          >
-            {nextRung}
-          </Button>
-        )}
-      </div>
-      <div className="flex gap-2">
-        <Button
-          variant="ghost"
-          className="h-12 rounded-2xl px-3"
-          onClick={onPrev}
-          disabled={!canGoBack}
-          aria-label="Previous line"
-        >
-          <ChevronLeft className="size-5" />
-        </Button>
-        <Button
-          className="h-12 rounded-2xl min-w-0 flex-1 gap-2"
-          onClick={onNext}
-        >
-          Next <ChevronRight className="size-5" />
-        </Button>
-      </div>
-    </>
+    <LadderDock
+      rung={reveal}
+      canReveal={canReveal}
+      audio={audio}
+      speaking={speaking}
+      canGoBack={canGoBack}
+      previousLabel="Previous line"
+      replayLabel="Play line"
+      onReplay={onReplay}
+      onReveal={onReveal}
+      onPrev={onPrev}
+      onNext={onNext}
+    />
   )
 
   return <StepLayout short={short} stage={stage} dock={dock} />

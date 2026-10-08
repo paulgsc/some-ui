@@ -1,4 +1,4 @@
-import { FEELING_KEYS } from "@topik/lib/topik/core/feeling"
+import { FEELING_KEYS } from "@some-ui/styles/theme"
 import type { SurveyReport } from "@topik/lib/topik/core/lesson-survey"
 import { describe, expect, it } from "vitest"
 

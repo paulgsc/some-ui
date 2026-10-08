@@ -5,6 +5,7 @@ export {
   COMPONENT_SKINS,
   FEATURE_APPEARANCE_IDS,
   FEATURE_APPEARANCES,
+  FEELING_THEMES,
   getComponentSkin,
   getFeatureAppearance,
   getSessionTheme,
@@ -50,3 +51,28 @@ export {
   watchSystem,
   writeStoredPreference,
 } from "./controller"
+
+export type {
+  FeelingColors,
+  FeelingFrame,
+  FeelingKey,
+  FeelingMotion,
+  FeelingPoint,
+  FeelingTexture,
+  Oklch,
+  SessionRoles,
+} from "./feeling"
+
+export {
+  CONTRAST_FLOOR,
+  contrastRatio,
+  FEELING_CLASS,
+  FEELING_KEYS,
+  FEELING_MOTION_CLASS,
+  FEELING_PANEL_CLASS,
+  FEELING_POINTS,
+  feelingColors,
+  feelingFrame,
+  feelingThemeClass,
+  isFeelingKey,
+} from "./feeling"

@@ -70,9 +70,10 @@ import {
   tallyOf,
 } from "@topik/lib/topik/core/lesson-track"
 import { SPOKEN_LANGUAGE } from "@topik/lib/topik/core/spoken-language"
-import type { LessonRequest } from "@topik/lib/topik/generation"
+import type { LessonFormat, LessonRequest } from "@topik/lib/topik/generation"
 import {
   buildLessonPrompt,
+  buildTreePrompt,
   DIGEST_LESSONS,
   surveyDigest,
 } from "@topik/lib/topik/generation"
@@ -163,7 +164,10 @@ export type HandheldLessonVM = {
     open: () => void
     close: () => void
     /** The prompt for this request, with the learner's survey digest. */
-    prompt: (request: Omit<LessonRequest, "survey">) => string
+    prompt: (
+      request: Omit<LessonRequest, "survey">,
+      format: LessonFormat
+    ) => string
     /**
      * The prompt reached the learner - the clipboard took it, or they copied
      * it by hand - so the digest's free text is deleted: the prompt carried
@@ -653,9 +657,9 @@ export function useHandheldLesson({
   const carried = useRef(new Map<string, Array<SurveyReport>>())
 
   const prompt = useCallback(
-    (request: Omit<LessonRequest, "survey">): string => {
+    (request: Omit<LessonRequest, "survey">, format: LessonFormat): string => {
       const digest = surveys.list().slice(0, DIGEST_LESSONS)
-      const text = buildLessonPrompt({
+      const text = (format === "tree" ? buildTreePrompt : buildLessonPrompt)({
         ...request,
         survey: surveyDigest(digest, DIGEST_LESSONS),
       })

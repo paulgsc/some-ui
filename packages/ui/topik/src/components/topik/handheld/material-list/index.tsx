@@ -2,6 +2,7 @@ import type { JSX } from "react"
 import { assertNever, cn } from "@some-ui/core-utils"
 import { Button } from "@some-ui/shared"
 import type { TopikMetadata } from "@topik/lib/topik"
+import type { DramaLesson } from "@topik/lib/topik/core/drama"
 import type {
   Selection,
   SelectionReason,
@@ -27,6 +28,16 @@ type MaterialListProps = {
   onLevel: (level: number) => void
   /** The lesson pasted this session, if any. */
   pasted?: TopikMetadata | null
+  /**
+   * The scene tree pasted this session, if any, with how to play and forget
+   * it. It shares the pasted slot, so at most one of this and `pasted` is
+   * held.
+   */
+  pastedTree?: {
+    lesson: DramaLesson
+    onPlay: () => void
+    onForget: () => void
+  } | null
   loading: boolean
   error: string | null
   resume: { topik: TopikMetadata; conversation: number } | null
@@ -115,6 +126,50 @@ const Row = ({
   </li>
 )
 
+/** The lesson pasted this session: it plays, and it can be let go. */
+const PastedCard = ({
+  title,
+  lang,
+  details: about,
+  onPlay,
+  forgetLabel,
+  onForget,
+}: {
+  title: string
+  lang?: string
+  details: string
+  onPlay: () => void
+  forgetLabel: string
+  onForget?: () => void
+}): JSX.Element => (
+  <div className="bg-card border-border flex min-h-16 items-stretch rounded-2xl border">
+    <button
+      type="button"
+      onClick={onPlay}
+      className="flex min-w-0 flex-1 items-center gap-3 p-4 text-left"
+    >
+      <span className="min-w-0 flex-1">
+        <span lang={lang} className="block truncate font-semibold">
+          {title}
+        </span>
+        <span className="text-muted-foreground mt-1 block text-xs">
+          {about} · until this tab closes
+        </span>
+      </span>
+    </button>
+    {onForget && (
+      <button
+        type="button"
+        aria-label={forgetLabel}
+        onClick={onForget}
+        className="text-muted-foreground flex w-12 shrink-0 items-center justify-center"
+      >
+        <X className="size-4" />
+      </button>
+    )}
+  </div>
+)
+
 /**
  * The handheld start screen. What comes next is chosen for the learner from
  * this week's lessons, by their recent surveys, within their level (canon
@@ -126,6 +181,7 @@ export const MaterialList = ({
   level,
   onLevel,
   pasted = null,
+  pastedTree = null,
   loading,
   error,
   resume,
@@ -240,39 +296,33 @@ export const MaterialList = ({
         </button>
       )}
 
-      {pasted && (
+      {(pastedTree ?? pasted) && (
         <section
           aria-label="Pasted this session"
           className="flex flex-col gap-2"
         >
           <Heading>Pasted this session</Heading>
-          <div className="bg-card border-border flex min-h-16 items-stretch rounded-2xl border">
-            <button
-              type="button"
-              onClick={() => onSelect(pasted.key)}
-              className="flex min-w-0 flex-1 items-center gap-3 p-4 text-left"
-            >
-              <span className="min-w-0 flex-1">
-                <span className="block truncate font-semibold">
-                  {pasted.displayName}
-                </span>
-                <span className="text-muted-foreground mt-1 block text-xs">
-                  {details(pasted)} · until this tab closes
-                </span>
-              </span>
-            </button>
-            {onForget && (
-              <button
-                type="button"
-                aria-label={`Forget ${pasted.displayName}`}
-                onClick={onForget}
-                className="text-muted-foreground flex w-12 shrink-0 items-center justify-center"
-              >
-                <X className="size-4" />
-              </button>
-            )}
-          </div>
-          {keep}
+          {pastedTree ? (
+            <PastedCard
+              title={pastedTree.lesson.root.place}
+              lang="ko"
+              details={`Drama · TOPIK ${pastedTree.lesson.level}`}
+              onPlay={pastedTree.onPlay}
+              forgetLabel="Forget this drama"
+              onForget={pastedTree.onForget}
+            />
+          ) : (
+            pasted && (
+              <PastedCard
+                title={pasted.displayName}
+                details={details(pasted)}
+                onPlay={() => onSelect(pasted.key)}
+                forgetLabel={`Forget ${pasted.displayName}`}
+                onForget={onForget}
+              />
+            )
+          )}
+          {pasted && keep}
         </section>
       )}
 

@@ -5,7 +5,7 @@ import { useOperation } from "@lesson-crm/lib/operation"
 import { cn } from "@some-ui/core-utils"
 import type { IntentError } from "@some-ui/intent-kit"
 import { Button, Input, Label, Textarea } from "@some-ui/shared"
-import type { TopikLevel } from "@some-ui/topik"
+import type { LessonFormat, TopikLevel } from "@some-ui/topik"
 import {
   buildLessonPrompt,
   buildTreePrompt,
@@ -21,9 +21,7 @@ const MAX_CONVERSATIONS = 6
  * Which prompt: the conversation lesson the desktop session plays, or a scene
  * tree for the phone (docs/makjang/README.md, "4. Authoring").
  */
-type Format = "conversations" | "tree"
-
-const FORMATS: Array<Choice<Format>> = [
+const FORMATS: Array<Choice<LessonFormat>> = [
   { value: "conversations", label: "Conversations" },
   { value: "tree", label: "Scene tree" },
 ]
@@ -103,7 +101,7 @@ export const PromptCard = ({
 }: {
   reporting: Reporting
 }): JSX.Element => {
-  const [format, setFormat] = useState<Format>("conversations")
+  const [format, setFormat] = useState<LessonFormat>("conversations")
   const [level, setLevel] = useState<TopikLevel>(2)
   const [scene, setScene] = useState("")
   const [conversations, setConversations] = useState(DEFAULT_CONVERSATIONS)

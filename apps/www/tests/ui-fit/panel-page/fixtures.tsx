@@ -4,7 +4,8 @@
  * The registry's panels are mounted through `componentRegistry` itself, the
  * lazy entries a session binds, with no props beyond the one a session would
  * choose (hangul's mode). The TOPIK quiz stages are mounted through
- * `QuizPanel` one by one (`PANEL_STAGES` in the spec says why).
+ * `QuizPanel` one by one (`PANEL_STAGES` in the spec says why), and the
+ * phone's drama through `DramaLesson`, opened at a state by a resume point.
  *
  * `planted-overflow` is not a panel. It is the sweep's self-test: a box that
  * fills its rect around content that cannot fit, so a harness that silently
@@ -13,13 +14,14 @@
 
 import type { ComponentProps, JSX } from "react"
 import { componentRegistry } from "@some-ui/content-registry"
+import { HANDHELD_MAX_HEIGHT } from "@some-ui/react-hooks"
 import { SpeechProvider } from "@some-ui/speech"
 import { webSpeech } from "@some-ui/speech/web-speech"
 // This page is its own build (`build:fit`) and in no shipped bundle, so the
 // eager edge the rule guards against costs nothing here, and the quiz stages
 // are reachable through no lazy entry.
 // eslint-disable-next-line lazy-registry/no-eager-registry-import
-import { QuizPanel } from "@some-ui/topik"
+import { DramaLesson, intakeTree, QuizPanel } from "@some-ui/topik"
 
 type QuizPanelProps = ComponentProps<typeof QuizPanel>
 type Question = QuizPanelProps["questions"][number]
@@ -65,6 +67,141 @@ const QUIZ: QuizPanelProps = {
 function quizStage(stage: Partial<QuizPanelProps>): () => JSX.Element {
   const QuizStage = (): JSX.Element => <QuizPanel {...QUIZ} {...stage} />
   return QuizStage
+}
+
+/**
+ * A scene tree written to stress the phone's layout rather than to teach:
+ * the root asks four long replies, the most a choice may offer, so the dock
+ * is as full as a tree can make it.
+ */
+const STRESS_TREE = {
+  id: "fit-tree",
+  level: 3,
+  pov: "seoyeon",
+  cast: [
+    { id: "seoyeon", name: "윤서연", standing: "the fiancée", registers: {} },
+    {
+      id: "chairman",
+      name: "강 회장님",
+      standing: "his mother",
+      registers: {},
+    },
+  ],
+  root: {
+    id: "s1",
+    place: "회장님 댁 거실, 결혼 이야기가 처음 나온 저녁",
+    feeling: "fury",
+    beats: [
+      {
+        id: "s1-n1",
+        text: "서연이 처음으로 회장님 댁에 와서 거실 소파 끝에 조심스럽게 앉았다.",
+        gloss: "Seo-yeon has come to the chairman's house for the first time.",
+      },
+      {
+        id: "s1-l1",
+        speaker: "chairman",
+        text: "우리 집안에 들어오려면 그 정도 각오는 하고 왔겠지? 대답해 봐.",
+        gloss: "You came ready for that, if you mean to join this family?",
+        direction: "setting her cup down hard",
+      },
+    ],
+    choice: {
+      id: "c1",
+      prompt: "서연은 회장님께 뭐라고 대답해야 할까?",
+      check: {
+        id: "c1-reply",
+        kind: "pick-valid",
+        order: 3,
+        source: "우리 집안에 들어오려면 그 정도 각오는 하고 왔겠지? 대답해 봐.",
+        prompt: "Which reply fits, to the chairman?",
+        options: [
+          {
+            id: "a",
+            text: "네, 회장님. 부족하지만 각오는 단단히 하고 왔습니다.",
+            relation: "reply",
+            valid: true,
+            why: "Formal -습니다 answers an elder's challenge.",
+          },
+          {
+            id: "b",
+            text: "응, 당연하지. 그런 거 다 알고 왔어.",
+            relation: "reply",
+            valid: false,
+            why: "반말 to an elder at a first meeting is rude.",
+          },
+          {
+            id: "c",
+            text: "글쎄요, 잘 모르겠는데요. 생각해 본 적이 없어서요.",
+            relation: "reply",
+            valid: false,
+            why: "It dodges the question she asked.",
+          },
+          {
+            id: "d",
+            text: "회장님이야말로 각오는 하셨어요? 저도 쉽지 않거든요.",
+            relation: "reply",
+            valid: false,
+            why: "Turning the question back on her is a challenge.",
+          },
+        ],
+      },
+      options: ["a", "b", "c", "d"].map((id) => ({
+        id,
+        child: {
+          id: `s-${id}`,
+          place: "회장님 댁 거실",
+          feeling: id === "a" ? "warmth" : "chill",
+          beats: [
+            {
+              id: `s-${id}-l1`,
+              speaker: "chairman",
+              text: "그래, 어디 한번 두고 보자. 말보다 행동이 중요한 법이니까.",
+              gloss: "Fine, we shall see. Deeds matter more than words.",
+            },
+          ],
+        },
+      })),
+    },
+  },
+}
+
+const fitTree = ((): ComponentProps<typeof DramaLesson>["lesson"] => {
+  const intake = intakeTree(JSON.stringify(STRESS_TREE))
+  if (intake.status !== "checked") {
+    throw new Error(`the fit tree no longer passes intake: ${intake.status}`)
+  }
+  return intake.lesson
+})()
+
+/**
+ * The drama opened at `point`, in the box the handheld gives it: a flex
+ * column under its header (44px on a phone held sideways, 56px otherwise).
+ */
+function dramaStage(point: unknown): () => JSX.Element {
+  const DramaStage = (): JSX.Element => {
+    const short = window.innerHeight < HANDHELD_MAX_HEIGHT
+    return (
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          width: "100%",
+          height: "100%",
+          minHeight: 0,
+        }}
+      >
+        <div style={{ height: short ? 44 : 56, flexShrink: 0 }} />
+        <DramaLesson
+          lesson={fitTree}
+          voice={null}
+          points={{ get: () => point, set: noop }}
+          short={short}
+          onLeave={noop}
+        />
+      </div>
+    )
+  }
+  return DramaStage
 }
 
 const Hangul = componentRegistry.hangul.Component
@@ -121,6 +258,24 @@ export const PANEL_FIXTURES = {
     quizStage: "summary",
     score: 4,
     totalQuestions: 10,
+  }),
+
+  // The webtoon at its last beat, with the choice open (four options in the
+  // dock), and at a leaf's ending.
+  "topik-drama-beat": dramaStage({
+    route: [],
+    at: { kind: "beat", id: "s1-l1" },
+    first: {},
+  }),
+  "topik-drama-choice": dramaStage({
+    route: [],
+    at: { kind: "choice" },
+    first: {},
+  }),
+  "topik-drama-ending": dramaStage({
+    route: ["d"],
+    at: { kind: "end" },
+    first: { c1: "d" },
   }),
 
   // Inline styles, not utilities: this directory is outside www's Tailwind

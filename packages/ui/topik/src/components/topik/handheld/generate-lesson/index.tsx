@@ -1,19 +1,34 @@
 import type { JSX } from "react"
 import { useState } from "react"
 import { cn } from "@some-ui/core-utils"
+import { scenesOf } from "@some-ui/makjang"
 import { Button, Input, Textarea } from "@some-ui/shared"
 import { StepLayout } from "@topik/components/topik/handheld/step-layout"
 import type { ConversationBatch, TopikMetadata } from "@topik/lib/topik"
-import type { LessonRequest, TopikLevel } from "@topik/lib/topik/generation"
+import type { DramaLesson } from "@topik/lib/topik/core/drama"
+import type {
+  LessonFormat,
+  LessonRequest,
+  TopikLevel,
+} from "@topik/lib/topik/generation"
 import { TOPIK_LEVELS } from "@topik/lib/topik/generation"
-import type { Intake } from "@topik/lib/topik/generation/intake"
 import { fixRequest, intakeLesson } from "@topik/lib/topik/generation/intake"
+import type { FindingRow } from "@topik/lib/topik/generation/tree-intake"
+import {
+  intakeTree,
+  treeFindingRow,
+  treeFixRequest,
+  treeSummary,
+} from "@topik/lib/topik/generation/tree-intake"
 import { Check, ClipboardCopy, Play } from "lucide-react"
 
 type GenerateLessonProps = {
   defaultLevel: TopikLevel
   /** The prompt for a request, with the learner's survey digest appended. */
-  buildPrompt: (request: Omit<LessonRequest, "survey">) => string
+  buildPrompt: (
+    request: Omit<LessonRequest, "survey">,
+    format: LessonFormat
+  ) => string
   /**
    * This prompt, exactly as handed off, reached the learner: the clipboard
    * took it, or they said they copied it from the fallback. A copy event on
@@ -24,9 +39,9 @@ type GenerateLessonProps = {
   onPromptHandedOff?: (prompt: string) => void
   /** Holds the lesson for this session and starts it (canon Rem. 7.4). */
   onStart: (meta: TopikMetadata, batches: Array<ConversationBatch>) => void
+  /** Holds a checked scene tree for this session and plays it. */
+  onStartTree: (lesson: DramaLesson) => void
   short: boolean
-  /** Stories open with a reply already pasted. */
-  initialReply?: string
   /**
    * The learner's shelf of kept lessons, where the host has one: shown
    * after the paste, since replaying one is the other way to a lesson of
@@ -37,6 +52,186 @@ type GenerateLessonProps = {
 
 /** Findings shown before "and N more". */
 const SHOWN_FINDINGS = 6
+
+const FORMATS: ReadonlyArray<Choice<LessonFormat>> = [
+  { value: "tree", label: "Drama" },
+  { value: "conversations", label: "Conversations" },
+]
+
+const LEVELS: ReadonlyArray<Choice<TopikLevel>> = TOPIK_LEVELS.map((value) => ({
+  value,
+  label: String(value),
+  name: `TOPIK ${value}`,
+}))
+
+type Choice<T> = { value: T; label: string; name?: string }
+
+/** One row of mutually exclusive buttons, as a radio group. */
+const RadioRow = <T extends string | number>({
+  label,
+  choices,
+  value,
+  onChange,
+  className,
+}: {
+  label: string
+  choices: ReadonlyArray<Choice<T>>
+  value: T
+  onChange: (value: T) => void
+  className: string
+}): JSX.Element => (
+  <div
+    role="radiogroup"
+    aria-label={label}
+    className={cn("grid gap-2", className)}
+  >
+    {choices.map((choice) => (
+      <button
+        key={choice.value}
+        type="button"
+        role="radio"
+        aria-checked={value === choice.value}
+        aria-label={choice.name}
+        onClick={() => onChange(choice.value)}
+        className={cn(
+          "h-11 rounded-xl border text-base font-semibold",
+          value === choice.value
+            ? "border-primary/40 bg-primary/15"
+            : "border-border bg-card"
+        )}
+      >
+        {choice.label}
+      </button>
+    ))}
+  </div>
+)
+
+/**
+ * A reply as its format's intake judged it, in the words the screen shows:
+ * no lesson at all, or a lesson that plays (`start`) or cannot (`null`),
+ * with its findings and the fixes to send back.
+ */
+type Verdict =
+  | { kind: "absent"; error: string }
+  | {
+      kind: "checked" | "rejected"
+      title: string | null
+      summary: string | null
+      findings: Array<FindingRow>
+      fixes: string
+      start: (() => void) | null
+    }
+
+const plural = (count: number, noun: string): string =>
+  `${count} ${noun}${count === 1 ? "" : "s"}`
+
+function verdictOf(
+  format: LessonFormat,
+  reply: string,
+  start: {
+    conversations: (
+      meta: TopikMetadata,
+      batches: Array<ConversationBatch>
+    ) => void
+    tree: (lesson: DramaLesson) => void
+  }
+): Verdict {
+  if (format === "conversations") {
+    const intake = intakeLesson(reply)
+    if (!intake.ok) return { kind: "absent", error: intake.error }
+    const errors = intake.findings.filter(
+      ({ severity }) => severity === "error"
+    )
+    return {
+      kind: "checked",
+      title: `${intake.meta.displayName} · ${intake.meta.batchCount} conversations`,
+      summary:
+        intake.findings.length === 0
+          ? null
+          : errors.length > 0
+            ? `${plural(errors.length, "probe problem")}: those probes are left out. You can start without them, or send the fixes to your model.`
+            : "Warnings only: the lesson plays as written.",
+      findings: intake.findings.map((finding) => ({
+        key: `${finding.batch ?? "file"}:${finding.probe ?? ""}:${finding.message}`,
+        error: finding.severity === "error",
+        text: `${finding.probe ? `${finding.probe}: ` : ""}${finding.message}`,
+      })),
+      fixes: fixRequest(intake.findings),
+      start: () => start.conversations(intake.meta, intake.batches),
+    }
+  }
+  const intake = intakeTree(reply)
+  if (intake.status === "absent") return { kind: "absent", error: intake.error }
+  const { lesson } = intake.status === "checked" ? intake : { lesson: null }
+  return {
+    kind: intake.status,
+    title: lesson
+      ? `Drama · TOPIK ${lesson.level} · ${scenesOf(lesson.root).length} scenes`
+      : null,
+    summary: treeSummary(intake),
+    findings: intake.findings.map(treeFindingRow),
+    fixes: treeFixRequest(intake.findings),
+    start: lesson ? (): void => start.tree(lesson) : null,
+  }
+}
+
+/** What the intake made of the reply. */
+const VerdictView = ({
+  verdict,
+  success,
+}: {
+  verdict: Verdict
+  /** Said when a lesson that plays has no findings. */
+  success: string
+}): JSX.Element => {
+  if (verdict.kind === "absent") {
+    return (
+      <p role="alert" className="text-destructive text-sm">
+        {verdict.error}
+      </p>
+    )
+  }
+  const rejected = verdict.kind === "rejected"
+  return (
+    <div
+      role={rejected ? "alert" : "status"}
+      className="flex flex-col gap-2 text-sm"
+    >
+      {verdict.title && <p className="font-semibold">{verdict.title}</p>}
+      {verdict.summary === null ? (
+        <p className="text-success flex items-center gap-2">
+          <Check className="size-4" /> {success}
+        </p>
+      ) : (
+        <p className={rejected ? "text-destructive" : "text-muted-foreground"}>
+          {verdict.summary}
+        </p>
+      )}
+      {verdict.findings.length > 0 && (
+        <ul className="flex flex-col gap-1">
+          {verdict.findings.slice(0, SHOWN_FINDINGS).map((finding) => (
+            <li
+              key={finding.key}
+              className={cn(
+                "rounded-lg px-2 py-1 text-xs",
+                finding.error
+                  ? "bg-destructive/10 text-destructive"
+                  : "bg-muted text-muted-foreground"
+              )}
+            >
+              {finding.text}
+            </li>
+          ))}
+        </ul>
+      )}
+      {verdict.findings.length > SHOWN_FINDINGS && (
+        <p className="text-muted-foreground text-xs">
+          and {verdict.findings.length - SHOWN_FINDINGS} more
+        </p>
+      )}
+    </div>
+  )
+}
 
 async function copy(text: string): Promise<boolean> {
   try {
@@ -60,10 +255,11 @@ export const GenerateLesson = ({
   buildPrompt,
   onPromptHandedOff,
   onStart,
+  onStartTree,
   short,
-  initialReply = "",
   kept,
 }: GenerateLessonProps): JSX.Element => {
+  const [format, setFormat] = useState<LessonFormat>("tree")
   const [level, setLevel] = useState<TopikLevel>(defaultLevel)
   const [scene, setScene] = useState("")
   const [copied, setCopied] = useState<"prompt" | "fixes" | null>(null)
@@ -72,10 +268,8 @@ export const GenerateLesson = ({
     text: string
     kind: "prompt" | "fixes"
   } | null>(null)
-  const [reply, setReply] = useState(initialReply)
-  const [intake, setIntake] = useState<Intake | null>(() =>
-    initialReply ? intakeLesson(initialReply) : null
-  )
+  const [reply, setReply] = useState("")
+  const [verdict, setVerdict] = useState<Verdict | null>(null)
 
   const hand = async (
     text: string,
@@ -97,13 +291,9 @@ export const GenerateLesson = ({
 
   const copyPrompt = (): void =>
     void hand(
-      buildPrompt({ level, scene: scene.trim() || undefined }),
+      buildPrompt({ level, scene: scene.trim() || undefined }, format),
       "prompt"
     )
-
-  const errors = intake?.ok
-    ? intake.findings.filter((finding) => finding.severity === "error").length
-    : 0
 
   const stage = (
     <div data-slot="topik-generate" className="flex w-full flex-col gap-5">
@@ -111,30 +301,26 @@ export const GenerateLesson = ({
         <h2 className="text-muted-foreground text-xs font-medium tracking-wider uppercase">
           1 · Ask your model
         </h2>
-        <div
-          role="radiogroup"
-          aria-label="TOPIK level"
-          className="grid grid-cols-6 gap-2"
-        >
-          {TOPIK_LEVELS.map((value) => (
-            <button
-              key={value}
-              type="button"
-              role="radio"
-              aria-checked={level === value}
-              aria-label={`TOPIK ${value}`}
-              onClick={() => setLevel(value)}
-              className={cn(
-                "h-11 rounded-xl border text-base font-semibold",
-                level === value
-                  ? "border-primary/40 bg-primary/15"
-                  : "border-border bg-card"
-              )}
-            >
-              {value}
-            </button>
-          ))}
-        </div>
+        <RadioRow
+          label="Lesson format"
+          choices={FORMATS}
+          value={format}
+          onChange={(value) => {
+            // Another format is another prompt, not yet copied.
+            setFormat(value)
+            setVerdict(null)
+            setCopied(null)
+            setManual(null)
+          }}
+          className="grid-cols-2"
+        />
+        <RadioRow
+          label="TOPIK level"
+          choices={LEVELS}
+          value={level}
+          onChange={setLevel}
+          className="grid-cols-6"
+        />
         <Input
           aria-label="Scene"
           placeholder="Scene (optional): the fiancée meets his mother"
@@ -181,60 +367,37 @@ export const GenerateLesson = ({
           rows={short ? 3 : 5}
           onChange={(event) => {
             setReply(event.target.value)
-            setIntake(null)
+            setVerdict(null)
           }}
           className="rounded-xl font-mono text-xs"
         />
-        {intake && !intake.ok && (
-          <p role="alert" className="text-destructive text-sm">
-            {intake.error}
-          </p>
-        )}
-        {intake?.ok && (
-          <div role="status" className="flex flex-col gap-2 text-sm">
-            <p className="font-semibold">
-              {intake.meta.displayName} · {intake.meta.batchCount} conversations
-            </p>
-            {intake.findings.length === 0 ? (
-              <p className="text-success flex items-center gap-2">
-                <Check className="size-4" /> Every probe will be asked as
-                written.
-              </p>
-            ) : (
-              <>
-                <p className="text-muted-foreground">
-                  {errors > 0
-                    ? `${errors} probe problem${errors === 1 ? "" : "s"}: those probes are left out. You can start without them, or send the fixes to your model.`
-                    : "Warnings only: the lesson plays as written."}
-                </p>
-                <ul className="flex flex-col gap-1">
-                  {intake.findings.slice(0, SHOWN_FINDINGS).map((finding) => (
-                    <li
-                      key={`${finding.batch ?? "file"}:${finding.probe ?? ""}:${finding.message}`}
-                      className={cn(
-                        "rounded-lg px-2 py-1 text-xs",
-                        finding.severity === "error"
-                          ? "bg-destructive/10 text-destructive"
-                          : "bg-muted text-muted-foreground"
-                      )}
-                    >
-                      {finding.probe ? `${finding.probe}: ` : ""}
-                      {finding.message}
-                    </li>
-                  ))}
-                </ul>
-                {intake.findings.length > SHOWN_FINDINGS && (
-                  <p className="text-muted-foreground text-xs">
-                    and {intake.findings.length - SHOWN_FINDINGS} more
-                  </p>
-                )}
-              </>
-            )}
-          </div>
+        {verdict && (
+          <VerdictView
+            verdict={verdict}
+            success={
+              format === "tree"
+                ? "Every choice will be asked as written."
+                : "Every probe will be asked as written."
+            }
+          />
         )}
       </section>
       {kept}
     </div>
+  )
+
+  const copyAgain = (prominent: boolean): JSX.Element => (
+    <Button
+      variant={prominent ? "outline" : "ghost"}
+      className={cn(
+        "w-full gap-2 rounded-2xl",
+        prominent ? "h-12" : "h-10 text-sm"
+      )}
+      onClick={copyPrompt}
+    >
+      <ClipboardCopy className={prominent ? "size-5" : "size-4"} /> Copy the
+      prompt again
+    </Button>
   )
 
   const dock = ((): JSX.Element => {
@@ -253,55 +416,47 @@ export const GenerateLesson = ({
         </Button>
       )
     }
-    if (intake === null) {
+    if (verdict === null) {
       return (
         <>
           <Button
             className="h-12 w-full rounded-2xl"
-            onClick={() => setIntake(intakeLesson(reply))}
+            onClick={() =>
+              setVerdict(
+                verdictOf(format, reply, {
+                  conversations: onStart,
+                  tree: onStartTree,
+                })
+              )
+            }
           >
             Check the lesson
           </Button>
-          <Button
-            variant="ghost"
-            className="h-10 w-full rounded-2xl text-sm"
-            onClick={copyPrompt}
-          >
-            Copy the prompt again
-          </Button>
+          {copyAgain(false)}
         </>
       )
     }
-    if (!intake.ok) {
-      return (
-        <Button
-          variant="outline"
-          className="h-12 w-full gap-2 rounded-2xl"
-          onClick={copyPrompt}
-        >
-          <ClipboardCopy className="size-5" /> Copy the prompt again
-        </Button>
-      )
-    }
+    if (verdict.kind === "absent") return copyAgain(true)
+    const { start, fixes, findings } = verdict
     return (
       <>
-        <Button
-          className="h-12 w-full gap-2 rounded-2xl"
-          onClick={() => onStart(intake.meta, intake.batches)}
-        >
-          <Play className="size-5" /> Start
-        </Button>
-        {intake.findings.length > 0 && (
+        {start && (
+          <Button className="h-12 w-full gap-2 rounded-2xl" onClick={start}>
+            <Play className="size-5" /> Start
+          </Button>
+        )}
+        {findings.length > 0 && (
           <Button
-            variant="ghost"
+            variant={start ? "ghost" : "outline"}
             className="h-10 w-full rounded-2xl text-sm"
-            onClick={() => void hand(fixRequest(intake.findings), "fixes")}
+            onClick={() => void hand(fixes, "fixes")}
           >
             {copied === "fixes"
               ? "Fixes copied: paste them to your model"
               : "Copy the fixes for your model"}
           </Button>
         )}
+        {!start && copyAgain(false)}
       </>
     )
   })()

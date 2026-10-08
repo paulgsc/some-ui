@@ -100,6 +100,11 @@ const PANEL_STAGES: ReadonlyArray<PanelId> = [
   "topik-quiz-feedback-incorrect-text-input",
   "topik-quiz-summary-advanced",
   "topik-quiz-summary-failed",
+  // The phone's drama: a beat, an open choice and an ending, each in the
+  // shape a phone gives it (the 780x390 landscape among them).
+  "topik-drama-beat",
+  "topik-drama-choice",
+  "topik-drama-ending",
 ]
 
 const PLANTED_OVERFLOW: PanelId = "planted-overflow"

@@ -10,6 +10,12 @@ type StepLayoutProps = {
   short: boolean
   /** Stage scrolls (a recap, an explanation) rather than centring. */
   longForm?: boolean
+  /**
+   * The dock holds a list that scrolls (a drama's choices): in portrait it
+   * is bounded, so it shrinks to the list rather than pushing past the
+   * screen. Other docks keep their height and the stage gives way.
+   */
+  dockScrolls?: boolean
 }
 
 /**
@@ -25,6 +31,7 @@ export const StepLayout = ({
   dock,
   short,
   longForm = false,
+  dockScrolls = false,
 }: StepLayoutProps): JSX.Element => (
   <div
     className={cn(
@@ -51,7 +58,8 @@ export const StepLayout = ({
         "flex shrink-0 flex-col justify-end gap-2",
         short
           ? "w-64 py-2"
-          : "border-border/60 border-t px-4 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))]"
+          : "border-border/60 border-t px-4 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))]",
+        dockScrolls && !short && "max-h-[70%] min-h-0"
       )}
     >
       {dock}

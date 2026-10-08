@@ -103,7 +103,7 @@ const Chip = ({
 )
 
 /** A candidate as it reads in a list: its relation, then the text itself. */
-const CandidateText = ({
+export const CandidateText = ({
   option,
   source,
   withRelation,

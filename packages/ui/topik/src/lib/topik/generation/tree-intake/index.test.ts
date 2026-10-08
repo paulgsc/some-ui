@@ -2,18 +2,11 @@ import {
   intakeTree,
   treeFixRequest,
 } from "@topik/lib/topik/generation/tree-intake"
-import TREE_PROMPT from "@topik/lib/topik/generation/tree-prompt.md?raw"
+import {
+  fenced,
+  workedExample,
+} from "@topik/lib/topik/generation/tree-intake/worked-example"
 import { describe, expect, it } from "vitest"
-
-/** The prompt's worked example: the one tree it tells every model to copy. */
-const workedExample = (): string => {
-  const section = TREE_PROMPT.slice(TREE_PROMPT.indexOf("## Worked example"))
-  const open = section.indexOf("```json\n") + "```json\n".length
-  return section.slice(open, section.indexOf("```", open))
-}
-
-const fenced = (value: unknown): string =>
-  `Here it is.\n\n\`\`\`json\n${JSON.stringify(value, null, 2)}\n\`\`\`\n`
 
 describe("intakeTree", () => {
   it("says when a reply holds no tree: prose, or a conversation lesson", () => {

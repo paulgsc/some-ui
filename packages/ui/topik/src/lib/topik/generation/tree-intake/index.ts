@@ -58,7 +58,7 @@ export function intakeTree(reply: string): TreeIntake {
 }
 
 /** Where a finding is, as a person reads it: the path, or the lesson. */
-export const findingPlace = ({ path }: TreeFinding): string =>
+const findingPlace = ({ path }: TreeFinding): string =>
   path === "" ? "the lesson" : path
 
 /**
@@ -75,4 +75,37 @@ export function treeFixRequest(findings: Array<TreeFinding>): string {
     ),
     "",
   ].join("\n")
+}
+
+/** One finding as a list shows it. */
+export type FindingRow = { key: string; error: boolean; text: string }
+
+/**
+ * A tree finding as the phone and the lesson CRM list it. The key carries the
+ * position: two findings can read the same, and both are shown.
+ */
+export const treeFindingRow = (
+  finding: TreeFinding,
+  position: number
+): FindingRow => ({
+  key: `${position}:${finding.audit}:${finding.path}:${finding.message}`,
+  error: finding.severity === "error",
+  text: `${finding.severity === "error" ? "Error" : "Warning"} · ${finding.audit} · ${findingPlace(finding)}: ${finding.message}`,
+})
+
+/**
+ * What a tree's audits mean for playing it, in one sentence; `null` when
+ * every choice is asked as written.
+ */
+export function treeSummary(
+  intake: Exclude<TreeIntake, { status: "absent" }>
+): string | null {
+  const { findings } = intake
+  if (intake.status === "rejected") {
+    return `This scene tree can't be played: ${findings.length} finding${findings.length === 1 ? "" : "s"}.`
+  }
+  if (findings.length === 0) return null
+  return findings.some(({ severity }) => severity === "error")
+    ? "A choice an error names is not asked: its scene ends there, and the scenes under it are dropped."
+    : "Warnings only: the tree plays as written."
 }
