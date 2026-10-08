@@ -10,6 +10,18 @@
    Distinct from `.cdrama` (that one leans cream/romantic); this one
    is warmer, more saturated peach with a coral pop. Ships a dark
    variant for the `.dark` pairing.
+
+   One coral does two jobs, a filled button and text on the cream
+   (`text-primary`), so it is deep enough for both: a light coral
+   fill under a white label read at 2.4:1. Destructive takes its own
+   hue (raspberry, 33deg off the coral) so a Delete button and the
+   Start button no longer share one colour.
+
+   Measured (WCAG 2.2): muted text >= 4.7:1 on every surface
+   (background, card, popover, muted, secondary, sidebar, surface);
+   primary as text >= 4.5:1 on each of them but the secondary chip
+   (4.2:1); filled-button labels (primary, destructive, success,
+   warning) >= 4.9:1; selected text 7.9:1.
    ============================================================ */
 
 .peachy-blossom {
@@ -20,19 +32,21 @@
   --popover: oklch(99% 0.015 60deg);
   --popover-foreground: var(--foreground);
 
-  /* Coral blossom */
-  --primary: oklch(74% 0.16 25deg);
-  --primary-foreground: oklch(99% 0.01 25deg);
+  /* Coral blossom, deep enough to read as text on the cream */
+  --primary: oklch(54% 0.15 38deg);
+  --primary-foreground: oklch(99% 0.01 38deg);
   --secondary: oklch(92% 0.04 55deg);
   --secondary-foreground: oklch(38% 0.05 40deg);
   --muted: oklch(94% 0.025 60deg);
-  --muted-foreground: oklch(54% 0.04 40deg);
+  --muted-foreground: oklch(50% 0.04 40deg);
 
   /* Ripe peach */
   --accent: oklch(82% 0.13 65deg);
   --accent-foreground: oklch(34% 0.06 45deg);
-  --destructive: oklch(60% 0.2 25deg);
-  --destructive-foreground: oklch(99% 0.01 25deg);
+
+  /* Raspberry: the only red, kept for what went wrong */
+  --destructive: oklch(54% 0.2 5deg);
+  --destructive-foreground: oklch(99% 0.01 5deg);
   --border: oklch(89% 0.03 55deg);
   --input: oklch(89% 0.03 55deg);
   --ring: var(--primary);
@@ -55,8 +69,8 @@
   --code-foreground: var(--surface-foreground);
   --code-highlight: oklch(93% 0.03 55deg);
   --code-number: oklch(60% 0.04 40deg);
-  --selection: oklch(74% 0.16 25deg);
-  --selection-foreground: oklch(99% 0.01 25deg);
+  --selection: color-mix(in oklab, var(--primary) 25%, var(--background));
+  --selection-foreground: var(--foreground);
   --gradient-heading: linear-gradient(
     180deg,
     oklch(50% 0.08 35deg),
