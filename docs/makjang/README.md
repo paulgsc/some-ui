@@ -253,7 +253,7 @@ split, and a maximum depth past which a scene may not split and must resolve.
 ```
 Lesson    = { id, level, pov: CharacterId, cast: Character[], root: Scene }
 Character = { id, name, standing, registers, voice?, look? }
-Scene     = { id, place, beats: (Line | Narration)[], choice? }
+Scene     = { id, place, feeling?, beats: (Line | Narration)[], choice? }
 Line      = { id, speaker: CharacterId, text, gloss, direction? }
 Narration = { id, text, gloss }
 Choice    = { id, prompt, check: Check, options: Option[2..4] }  // none at MAX_DEPTH
@@ -307,11 +307,19 @@ positional), so M2 adds one
   so the learner knows where they are. An option may carry a short art
   description, which the media layer renders when it can and otherwise
   ignores.
+- **Feeling.** A scene may name the one feeling it is wrapped in, as a key
+  from the renderer's vocabulary (see "The webtoon: one feeling per scene").
+  Makjang carries it as a string without reading it, as it carries `art`; the
+  story audit does not check it, and a key the renderer does not know renders
+  as no feeling at all.
 
 **The code knows the shape, never a scene.** Every scene, character, line and
 choice comes from generation. Nothing in `@some-ui/makjang` or topik names a
 particular scene, trope, character or item, and no catalogue of cases (scene
-types, gift kinds, icon sets) is enumerated anywhere. The schema, the bounds,
+types, gift kinds, icon sets) is enumerated anywhere. The one closed set is the
+renderer's feeling vocabulary, and it is a palette, not a catalogue: like a
+colour theme, it says how a scene may look and sound, never what happens in
+it, and no feeling names a scene, a trope or a character. The schema, the bounds,
 the audits and the engine are generic over whatever a generated tree
 contains. The scenes in this document are illustrations of the shape.
 
@@ -464,12 +472,107 @@ option (Def. 8.3).
   later portraits and video), so a lesson can ship with no assets at all and
   gain them later without its story changing.
 
+## The webtoon: one feeling per scene
+
+The phone renders a lesson as a vertical webtoon: one panel per beat, speech
+bubbles, narration in caption boxes, sound-effect lettering. On its own that
+reads as a conversation in panels. What makes it a drama is that every scene is
+wrapped in one feeling, and the feeling is anchored the way a show's sting is:
+the same kit, every time it recurs, so the fifth time the reader meets it they
+feel it before they read a word. A kit is a convention (a variety-show caption,
+a sweat drop, a slammed panel), not a joke, which is why it survives being
+repeated. One feeling per scene for now; layering several is a later design.
+
+### The vocabulary
+
+Eight feelings, each placed on the valence × arousal plane (v from unpleasant
+−1 to pleasant 1, a from calm −1 to agitated 1). The caption, the voiced cry
+and the sound-effect lettering are fixed per feeling, never generated, so the
+anchor is identical wherever it recurs.
+
+| Key       | Feeling | v     | a     | Hue | Texture | Motion  | Caption (예능 자막) | Cry           | Lettering |
+| --------- | ------- | ----- | ----- | --- | ------- | ------- | ------------------- | ------------- | --------- |
+| `tension` | 긴장    | −0.35 | 0.45  | 260 | lines   | settle  | 숨 막히는 긴장감    | 흠…           | 꿀꺽      |
+| `rivalry` | 기싸움  | −0.45 | 0.70  | 300 | stripes | flicker | 기싸움 시작         | 호오?         | 파직      |
+| `chill`   | 싸늘    | −0.60 | −0.45 | 235 | dots    | frost   | 갑분싸              | 헐.           | 휘잉      |
+| `cringe`  | 민망    | −0.30 | 0.30  | 350 | tone    | shake   | 동공지진            | 아이고…       | 삐질      |
+| `fury`    | 분노    | −0.85 | 0.95  | 28  | burst   | slam    | 분노 폭발           | 허, 참!       | 쾅        |
+| `twist`   | 반전    | 0     | 0.90  | 95  | burst   | punch   | 충격 반전           | 헉!           | 두둥      |
+| `flutter` | 설렘    | 0.70  | 0.55  | 345 | petals  | float   | 심쿵                | 어머나~       | 두근      |
+| `warmth`  | 훈훈    | 0.75  | −0.35 | 75  | none    | glow    | 훈훈한 마무리       | 휴, 다행이다. | 휴        |
+
+Each feeling also has one symbol, a small inline icon: tension lines,
+a lightning bolt, cold wind, sweat drops, an anger vein, shock lines,
+sparkles, rising steam. Adding a feeling is placing a new point and writing its
+words; everything else follows from the rules below. 짠함 (bittersweet, about
+v −0.3, a −0.65) is the next open place on the plane.
+
+### Derived, never chosen
+
+A feeling's colours, edges, timing and sound are derived from its point and
+hue, relative to the session theme the person chose (`@some-ui/styles`: light,
+dark, rose-night, harvest-sky, peachy-blossom), so every feeling lives inside
+every session theme rather than beside it. A feeling never overrides a session
+role; it sets only its own private tokens.
+
+- **Ground:** the session background mixed in oklab toward the hue, 18% + 14%·|v|
+  (24% + 14%·|v| on a dark theme). A reveal (|v| < 0.2 and a ≥ 0.8) swaps ground
+  and ink.
+- **Ink and muted text:** the session's own, their chroma turned to the hue.
+- **Accent** (symbol, lettering, texture): the hue at lightness 0.52 on a light
+  theme or 0.80 on a dark one, chroma 0.06 + 0.12·|v|.
+- **Contrast floor:** muted text clears 4.5:1 and marks 3:1 on the ground; a
+  colour that falls short steps its lightness away from the ground until it
+  does. Body ink is the session's and clears it already.
+- **Edge:** 2 + 2·a px of ink; jagged when v ≤ −0.6 and a ≥ 0.8, rounded 20·v px
+  when v ≥ 0.4.
+- **Texture:** the feeling's kind, in the accent at 10–18% alpha, denser as a
+  rises.
+- **Motion:** the feeling's kind, played once, 950 − 450·a ms at amplitude
+  0.35 + 0.65·a, and not at all under `prefers-reduced-motion`.
+- **Caption lettering:** the hue as fill, a dark ink stroke, the session ground
+  as its halo.
+- **Sound:** a synthesized tone, register 196·2^a Hz, rising in a major triad
+  when v > 0.3, falling a semitone when v < −0.3, otherwise the dun-dun of a
+  reveal; then the cry, voiced at rate 0.9 + 0.2·a and pitch 1 + 0.12·v. No
+  asset files.
+
+The accent colour of the lesson itself (buttons, the choice panel) is the
+session theme's primary; the drama brings no brand colour of its own.
+
+### Where the anchor goes
+
+- **A cover beat opens every scene,** in the feeling's theme: its caption, its
+  symbol and its lettering, entering with its motion. With sound on, the cover
+  plays the tone and then the cry.
+- **Every panel of the scene wears the feeling's theme** (ground, texture,
+  edge) and carries its symbol beside the speaker.
+- **A leaf closes on an ending panel** in the same theme.
+- **Never on a choice.** The choice panel and the learner's chosen line stay in
+  the session theme. A child scene's feeling first shows on the cover after the
+  chosen line, so it is part of the consequence, revealed after the item is
+  answered, and says nothing about any item still open (canon Prop. 9.4; it is
+  a value of `p_reveal`, amendment 1). On a repair scene it signals the earlier
+  miss, which the consequence scene has already shown.
+- **Hangul first.** The caption is Korean, with its gloss one tap away; the cry
+  is heard, in Korean.
+- **Sound only after a tap.** It is off until the learner turns it on, plays
+  once per scene, and never speaks over a line.
+
+The prototypes these were settled on live in the user's design canvas
+("Makjang phone prototypes"). They are reference, not source: the renderer is
+built from this section.
+
 ## Where it lives
 
 - **`@some-ui/makjang`** (new, framework-agnostic: no React): the story schema,
   the story audit and the engine, and from M2 the media port types. It
   imports nothing from topik, which the package boundary enforces; an import
   restriction on its engine module keeps media out of the engine.
+- **`@some-ui/styles`** owns the feeling themes as presentation: the
+  vocabulary's points, hues, textures and motions, the derivation and its
+  contrast floor, tested against every session theme. Topik owns their words
+  (captions, cries, lettering) and symbols, keyed by the same feeling keys.
 - **`@some-ui/topik`** keeps the teaching: probes, the hint ladder, tiles, the
   teaching audit, the evaluation report, and the handheld renderer, which
   becomes a renderer of the engine. Topik depends on makjang, never the
@@ -491,9 +594,8 @@ Neither needs a better model than exists today.
   never on a curated scene. No UI change.
 - **M2: the phone lesson plays scene trees.**
   - It renders as a vertical webtoon: panels, speech bubbles, sound-effect
-    lettering. Each scene carries one feeling, anchored visually. The
-    anchor's design is settled and recorded in this document before the
-    renderer is built.
+    lettering. Each scene carries one feeling, anchored as "The webtoon: one
+    feeling per scene" records. The tree prompt lists the vocabulary's keys.
   - Content: the tree prompt, beside the conversation prompt. The learner's
     paste-in loop (Cor. 8.2) accepts trees through the two audits. A
     phone-only feed holds the operator's first reviewed batch of trees
@@ -535,6 +637,11 @@ in the change that adds the code, and enforced where they can be.
 - **A choice's outcome is its first choice, whatever follows, and an
   unreached choice has none.** Mechanical: a property test over every route
   of synthetic trees.
+- **Every feeling theme clears the contrast floor on every session theme**
+  (with M2). Mechanical: a test over the session themes × the vocabulary.
+- **No feeling anchor sits on a choice or a chosen line** (with M2).
+  Mechanical: a
+  renderer test over every route of a synthetic tree.
 - **A new rendition kind lands with its valuation.** Not mechanical: whether a
   picture or a face reveals the answer needs a person. Falsified by a change
   that adds a rendition kind to a renderer's capability set with no canon line
