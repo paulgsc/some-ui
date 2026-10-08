@@ -1,4 +1,4 @@
-import { memoryStorage } from "@topik/testing/memory-storage"
+import { memoryStorage } from "@some-ui/vite-config/vitest/memory-storage"
 import { describe, expect, it } from "vitest"
 
 import { createResumeStore, MAX_RESUME_POINTS, RESUME_STORAGE_KEY } from "."

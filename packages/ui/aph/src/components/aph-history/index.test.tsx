@@ -2,6 +2,7 @@ import { AphHistory } from "@aph/components/aph-history"
 import { SEED_ENTRIES, SEED_SETTINGS } from "@aph/lib/seed"
 import type { AphStore } from "@aph/lib/store"
 import { createAphStore } from "@aph/lib/store"
+import { memoryStorage } from "@some-ui/vite-config/vitest/memory-storage"
 import { fireEvent, render, screen, within } from "@testing-library/react"
 import { describe, expect, it, vi } from "vitest"
 
@@ -144,5 +145,21 @@ describe("History", () => {
   it("folds missed days into one line", () => {
     setup()
     expect(screen.getByText(/Sep 26 – Sep 27 · 2 days/)).toBeInTheDocument()
+  })
+
+  it("shows the note that was kept when the phone refuses a new one", () => {
+    const storage = memoryStorage()
+    const store = createAphStore(
+      { settings: SEED_SETTINGS, entries: SEED_ENTRIES },
+      storage
+    )
+    render(<AphHistory now={noon} store={store} />)
+    const day = screen.getByRole("region", { name: "Fri Oct 2" })
+    fireEvent.click(within(day).getByRole("button", { name: /7:00/ }))
+    storage.full = true
+    const note = screen.getByLabelText("Note")
+    fireEvent.change(note, { target: { value: "after coffee" } })
+    fireEvent.blur(note)
+    expect(note).toHaveValue("")
   })
 })

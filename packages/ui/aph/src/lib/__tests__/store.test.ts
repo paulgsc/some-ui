@@ -18,9 +18,8 @@ import type { Entry } from "@aph/lib/model"
 import { breaches, violations } from "@aph/lib/model"
 import { SEED_ENTRIES, SEED_SETTINGS } from "@aph/lib/seed"
 import { createAphStore } from "@aph/lib/store"
+import { memoryStorage } from "@some-ui/vite-config/vitest/memory-storage"
 import { describe, expect, it } from "vitest"
-
-import { memoryStorage } from "./memory-storage"
 
 const settings = SEED_SETTINGS
 

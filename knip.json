@@ -91,7 +91,11 @@
       "entry": ["tests/e2e/harness/entry.ts"]
     },
     "packages/some-vite-config": {
-      "entry": ["src/vitest/index.ts", "src/vitest/vitest.setup.ts"]
+      "entry": [
+        "src/vitest/index.ts",
+        "src/vitest/vitest.setup.ts",
+        "src/vitest/memory-storage.ts"
+      ]
     },
     "packages/speech": {
       "entry": [

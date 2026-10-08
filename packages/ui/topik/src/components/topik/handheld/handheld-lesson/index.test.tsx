@@ -1,5 +1,6 @@
 import type { JSX } from "react"
 import type { Speaker, SpeechOutcome } from "@some-ui/speech"
+import { memoryStorage } from "@some-ui/vite-config/vitest/memory-storage"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
 import type {
@@ -22,7 +23,6 @@ import {
   SURVEY_TTL_MS,
 } from "@topik/lib/topik/adapter/survey-store"
 import { pinMisses } from "@topik/lib/topik/core/lesson-survey"
-import { memoryStorage } from "@topik/testing/memory-storage"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
 import { HandheldLesson } from "."

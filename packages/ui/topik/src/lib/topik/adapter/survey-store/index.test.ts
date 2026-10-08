@@ -1,5 +1,5 @@
+import { memoryStorage } from "@some-ui/vite-config/vitest/memory-storage"
 import type { StorageLike } from "@topik/lib/topik/adapter/resume-point"
-import { memoryStorage } from "@topik/testing/memory-storage"
 import { describe, expect, it } from "vitest"
 
 import {

@@ -8,9 +8,8 @@ import { SEED_ENTRIES, SEED_SETTINGS } from "@aph/lib/seed"
 import type { AphState } from "@aph/lib/store"
 import { createAphStore } from "@aph/lib/store"
 import { deviceStorage, QUARANTINE_PREFIX, STORAGE_KEY } from "@aph/lib/stored"
+import { memoryStorage } from "@some-ui/vite-config/vitest/memory-storage"
 import { describe, expect, it, vi } from "vitest"
-
-import { memoryStorage } from "./memory-storage"
 
 const seed: AphState = { settings: SEED_SETTINGS, entries: SEED_ENTRIES }
 
@@ -45,13 +44,13 @@ describe("what the phone keeps", () => {
     const storage = memoryStorage(new Map([[STORAGE_KEY, "{not json"]]))
     const store = createAphStore(seed, storage)
     expect(store.get()).toEqual(seed)
-    expect(storage.kept.get(`${QUARANTINE_PREFIX}1`)).toBe("{not json")
+    expect(storage.map.get(`${QUARANTINE_PREFIX}1`)).toBe("{not json")
 
     // A second one goes beside the first, not over it.
-    storage.kept.set(STORAGE_KEY, JSON.stringify({ v: 99 }))
+    storage.map.set(STORAGE_KEY, JSON.stringify({ v: 99 }))
     createAphStore(seed, storage)
-    expect(storage.kept.get(`${QUARANTINE_PREFIX}1`)).toBe("{not json")
-    expect(storage.kept.get(`${QUARANTINE_PREFIX}2`)).toBe('{"v":99}')
+    expect(storage.map.get(`${QUARANTINE_PREFIX}1`)).toBe("{not json")
+    expect(storage.map.get(`${QUARANTINE_PREFIX}2`)).toBe('{"v":99}')
   })
 
   it("moves aside a record that breaks the rules", () => {
@@ -63,7 +62,7 @@ describe("what the phone keeps", () => {
     })
     const storage = memoryStorage(new Map([[STORAGE_KEY, raw]]))
     createAphStore(seed, storage)
-    expect(storage.kept.get(`${QUARANTINE_PREFIX}1`)).toBe(raw)
+    expect(storage.map.get(`${QUARANTINE_PREFIX}1`)).toBe(raw)
   })
 
   it("opens read-only on storage it cannot read, and never writes to it", () => {
@@ -103,6 +102,6 @@ describe("what the phone keeps", () => {
     storage.full = true
     const store = createAphStore(seed, storage)
     expect(store.save(figure("4900"), commit)).toBeNull()
-    expect(storage.kept.get(STORAGE_KEY)).toBe("{not json")
+    expect(storage.map.get(STORAGE_KEY)).toBe("{not json")
   })
 })

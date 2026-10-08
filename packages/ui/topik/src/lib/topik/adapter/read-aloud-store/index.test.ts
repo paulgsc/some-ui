@@ -1,3 +1,4 @@
+import { memoryStorage } from "@some-ui/vite-config/vitest/memory-storage"
 import {
   createReadAloudStore,
   READ_ALOUD_STORAGE_KEYS,
@@ -5,7 +6,6 @@ import {
 import type { StorageLike } from "@topik/lib/topik/adapter/resume-point"
 import { emptyRecord } from "@topik/lib/topik/read-aloud/records"
 import type { SetProgress } from "@topik/lib/topik/read-aloud/set-machine"
-import { memoryStorage } from "@topik/testing/memory-storage"
 import { describe, expect, it } from "vitest"
 
 const refusing: StorageLike = {

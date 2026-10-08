@@ -1,11 +1,11 @@
 import type { Speaker, SpeechOutcome } from "@some-ui/speech"
+import { memoryStorage } from "@some-ui/vite-config/vitest/memory-storage"
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
 import {
   readAloudLevelFor,
   ReadAloudScreen,
 } from "@topik/components/topik/read-aloud/read-aloud-screen"
 import { createReadAloudStore } from "@topik/lib/topik/adapter/read-aloud-store"
-import { memoryStorage } from "@topik/testing/memory-storage"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 function fakeSpeech(): Speaker {
