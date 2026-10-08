@@ -11,7 +11,8 @@
     "src",
     "uno.config.ts",
     "vitest.config.ts",
-    "styles-build/**/*.ts"
+    "styles-build/**/*.ts",
+    "scripts/**/*.ts"
   ],
   "exclude": ["node_modules", "dist"]
 }

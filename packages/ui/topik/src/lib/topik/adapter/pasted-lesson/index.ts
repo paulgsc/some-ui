@@ -14,15 +14,20 @@
  * shelf (`adapter/shelf`, canon Rem. 7.3), and replaying a kept lesson puts
  * it back in this slot. Nothing here writes to the shelf by itself.
  *
- * One slot: pasting another lesson replaces it. It is validated on the way
- * out, like everything read back from storage, and every failure is silent:
- * losing it costs a paste.
+ * One slot, for a conversation lesson or a scene tree: pasting another
+ * replaces it. It is validated on the way out, like everything read back
+ * from storage, and every failure is silent: losing it costs a paste. A tree
+ * is read back through `intakeTree`, both audits and all, so the choices a
+ * learner meets are only ever a `checked` intake's (MK4). Keeping a tree on
+ * the account is not offered yet: saving trees is MKJ-S4's.
  */
 
 import { localStorageOrNull } from "@some-ui/core-utils"
 import type { ConversationBatch, TopikMetadata } from "@topik/lib/topik"
 import { TopikFileSchema, TopikMetadataSchema } from "@topik/lib/topik"
 import type { StorageLike } from "@topik/lib/topik/adapter/resume-point"
+import type { DramaLesson } from "@topik/lib/topik/core/drama"
+import { intakeTree } from "@topik/lib/topik/generation/tree-intake"
 import { z } from "zod"
 
 export const PASTED_LESSON_KEY = "topik:pasted-lesson"
@@ -33,11 +38,22 @@ export type PastedLesson = {
 }
 
 export type PastedLessonStore = {
+  /** The conversation lesson held, or null (nothing, or a tree). */
   get(): PastedLesson | null
   /** Holds this lesson for the session, replacing any other. */
   set(meta: TopikMetadata, batches: Array<ConversationBatch>): void
+  /** The scene tree held, or null (nothing, or a conversation lesson). */
+  getTree(): DramaLesson | null
+  /** Holds this tree for the session, replacing any other lesson. */
+  setTree(lesson: DramaLesson): void
   clear(): void
 }
+
+const TreeDocumentSchema = z.object({
+  version: z.literal(1),
+  kind: z.literal("tree"),
+  tree: z.unknown(),
+})
 
 const PastedDocumentSchema = z.object({
   version: z.literal(1),
@@ -92,18 +108,29 @@ export function createPastedLessonStore(
     }
   }
 
+  const read = (): unknown => {
+    try {
+      const raw = storage?.getItem(PASTED_LESSON_KEY)
+      return raw ? JSON.parse(raw) : null
+    } catch {
+      return null
+    }
+  }
+
   return {
+    getTree: (): DramaLesson | null => {
+      const parsed = TreeDocumentSchema.safeParse(read())
+      if (!parsed.success) return null
+      const intake = intakeTree(JSON.stringify(parsed.data.tree))
+      return intake.status === "checked" ? intake.lesson : null
+    },
+    setTree: (lesson): void =>
+      write(JSON.stringify({ version: 1, kind: "tree", tree: lesson })),
     get: (): PastedLesson | null => {
-      try {
-        const raw = storage?.getItem(PASTED_LESSON_KEY)
-        if (!raw) return null
-        const parsed = PastedDocumentSchema.safeParse(JSON.parse(raw))
-        return parsed.success
-          ? { meta: parsed.data.meta, batches: parsed.data.batches }
-          : null
-      } catch {
-        return null
-      }
+      const parsed = PastedDocumentSchema.safeParse(read())
+      return parsed.success
+        ? { meta: parsed.data.meta, batches: parsed.data.batches }
+        : null
     },
     set: (meta, batches): void => write(serializePastedLesson(meta, batches)),
     // An empty value is "nothing held": StorageLike has no removeItem.

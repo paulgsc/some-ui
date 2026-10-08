@@ -2,7 +2,14 @@ import type { JSX } from "react"
 import type { Speaker, SpeechOutcome } from "@some-ui/speech"
 import { memoryStorage } from "@some-ui/vite-config/vitest/memory-storage"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  within,
+} from "@testing-library/react"
 import type {
   ITopikMetadataRepository,
   ITopikRepository,
@@ -23,6 +30,7 @@ import {
   SURVEY_TTL_MS,
 } from "@topik/lib/topik/adapter/survey-store"
 import { pinMisses } from "@topik/lib/topik/core/lesson-survey"
+import { workedExample } from "@topik/lib/topik/generation/tree-intake/worked-example"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
 import { HandheldLesson } from "."
@@ -733,7 +741,52 @@ describe("HandheldLesson", () => {
       fireEvent.click(
         await screen.findByRole("button", { name: /Write your own lesson/ })
       )
+      fireEvent.click(screen.getByRole("radio", { name: "Conversations" }))
     }
+
+    it("plays a pasted scene tree as the drama, and holds it in the same slot", async () => {
+      const pasted = createPastedLessonStore(memoryStorage())
+      pasted.set(
+        {
+          key: "local:earlier",
+          displayName: "An earlier lesson",
+          description: "",
+          batchCount: 1,
+          totalQuestions: 1,
+          totalMessages: 1,
+        },
+        FIXTURE_BATCHES
+      )
+      renderLesson({ pastedStore: pasted })
+      fireEvent.click(
+        await screen.findByRole("button", { name: /Write your own lesson/ })
+      )
+      fireEvent.change(
+        screen.getByRole("textbox", { name: "Your model's reply" }),
+        { target: { value: workedExample() } }
+      )
+      click("Check the lesson")
+      click(/^Start$/)
+
+      expect(await screen.findByText("숨 막히는 긴장감")).toBeTruthy()
+      expect(pasted.getTree()?.id).toBe("first-tea")
+      expect(pasted.get()).toBeNull()
+
+      click("Back to materials")
+      const held = await screen.findByRole("region", {
+        name: "Pasted this session",
+      })
+      expect(held.textContent).toMatch(/Drama · TOPIK 2/)
+      expect(held.textContent).not.toMatch(/An earlier lesson/)
+      fireEvent.click(within(held).getByText("회장님 댁 거실"))
+      expect(await screen.findByText("숨 막히는 긴장감")).toBeTruthy()
+      click("Back to materials")
+      click("Forget this drama")
+      expect(
+        screen.queryByRole("region", { name: "Pasted this session" })
+      ).toBeNull()
+      expect(pasted.getTree()).toBeNull()
+    })
 
     it("hands out the prompt, takes the lesson back, and holds it for the session only", async () => {
       const writeText = stubClipboard()

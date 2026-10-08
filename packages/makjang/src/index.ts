@@ -30,3 +30,5 @@ export type {
   Transition,
 } from "./engine"
 export { resume, start, step } from "./engine"
+
+export type { MediaPorts, Presented, VoicePort, VoiceRequest } from "./media"

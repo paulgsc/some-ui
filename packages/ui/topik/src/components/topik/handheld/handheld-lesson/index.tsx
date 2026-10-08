@@ -9,12 +9,17 @@
  * (Cor. 4.4): one line at a time, heard before it is read, each check right
  * after the line it is about, typed answers built from tiles, and a place
  * kept across interruptions.
+ *
+ * A pasted scene tree plays here as the drama instead (`DramaLesson`,
+ * docs/makjang/README.md); conversation lessons keep playing the old way
+ * until MKJ-S5 removes them.
  */
 
 import type { JSX } from "react"
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { cn } from "@some-ui/core-utils"
 import { Button, KeepOnShelf, KeptShelf } from "@some-ui/shared"
+import { DramaLesson } from "@topik/components/topik/handheld/drama-lesson"
 import { GenerateLesson } from "@topik/components/topik/handheld/generate-lesson"
 import { LineCard } from "@topik/components/topik/handheld/line-card"
 import { MaterialList } from "@topik/components/topik/handheld/material-list"
@@ -22,15 +27,23 @@ import { ProbeCard } from "@topik/components/topik/handheld/probe-card"
 import { SurveyCard } from "@topik/components/topik/handheld/survey-card"
 import { WrapCard } from "@topik/components/topik/handheld/wrap-card"
 import { ReadAloudScreen } from "@topik/components/topik/read-aloud/read-aloud-screen"
+import type { ConversationBatch, TopikMetadata } from "@topik/lib/topik"
 import { useSessionConfig } from "@topik/lib/topik/adapter/context/session-config-context"
+import { createDramaPointStore } from "@topik/lib/topik/adapter/drama-point"
 import type { UseHandheldLessonOptions } from "@topik/lib/topik/adapter/hooks/use-handheld-lesson"
 import { useHandheldLesson } from "@topik/lib/topik/adapter/hooks/use-handheld-lesson"
+import { usePastedTree } from "@topik/lib/topik/adapter/hooks/use-pasted-tree"
+import {
+  createPastedLessonStore,
+  sessionStorageOrNull,
+} from "@topik/lib/topik/adapter/pasted-lesson"
 import type { ReadAloudStore } from "@topik/lib/topik/adapter/read-aloud-store"
 import {
   keptLessonOf,
   LESSON_SHELF_WORDS,
   shelfKeyOf,
 } from "@topik/lib/topik/adapter/shelf"
+import { speakerVoice } from "@topik/lib/topik/adapter/voice-port"
 import { TOPIK_LEVELS } from "@topik/lib/topik/generation"
 import { ChevronLeft, Loader2 } from "lucide-react"
 
@@ -49,14 +62,29 @@ export const HandheldLesson = ({
   pastedResumeStore,
   readAloudStore,
 }: HandheldLessonProps): JSX.Element => {
+  // One pasted slot, shared by the conversation lesson and the drama.
+  const [held] = useState(() => pastedStore ?? createPastedLessonStore())
+  const [dramaPoints] = useState(() =>
+    createDramaPointStore(sessionStorageOrNull())
+  )
   const vm = useHandheldLesson({
     resumeStore,
     surveyStore,
-    pastedStore,
+    pastedStore: held,
     pastedResumeStore,
   })
   const { lesson, audio, dispatch, generator } = vm
+  const drama = usePastedTree(held, dramaPoints)
   const { speaker, shelf } = useSessionConfig()
+  const voice = useMemo(() => speakerVoice(speaker), [speaker])
+  // A conversation lesson taking the slot lets the pasted tree go.
+  const startConversation = (
+    meta: TopikMetadata,
+    batches: Array<ConversationBatch>
+  ): void => {
+    drama.replaced()
+    generator.start(meta, batches)
+  }
   // The read-aloud drill takes the whole screen, header included; leaving it
   // returns to the material list it was opened from.
   const [reading, setReading] = useState(false)
@@ -74,6 +102,49 @@ export const HandheldLesson = ({
           store={readAloudStore}
           short={short}
           onExit={() => setReading(false)}
+        />
+      </div>
+    )
+  }
+
+  if (drama.playing && drama.tree) {
+    return (
+      <div
+        data-slot="topik-handheld"
+        data-short={short || undefined}
+        className="flex size-full min-h-0 flex-col"
+      >
+        <header className="shrink-0">
+          <div
+            className={cn(
+              "flex items-center gap-2 px-2",
+              short ? "h-11" : "h-14"
+            )}
+          >
+            <Button
+              variant="ghost"
+              size="icon"
+              className="size-11 shrink-0"
+              onClick={drama.leave}
+              aria-label="Back to materials"
+            >
+              <ChevronLeft className="size-6" />
+            </Button>
+            <h1
+              lang="ko"
+              className="min-w-0 flex-1 truncate text-base font-semibold"
+            >
+              {drama.tree.root.place}
+            </h1>
+          </div>
+        </header>
+        <DramaLesson
+          key={drama.tree.id}
+          lesson={drama.tree}
+          voice={voice}
+          points={dramaPoints}
+          short={short}
+          onLeave={drama.leave}
         />
       </div>
     )
@@ -168,7 +239,12 @@ export const HandheldLesson = ({
           defaultLevel={TOPIK_LEVELS.find((level) => level === held) ?? 1}
           buildPrompt={generator.prompt}
           onPromptHandedOff={generator.handedOff}
-          onStart={generator.start}
+          onStart={startConversation}
+          onStartTree={(tree) => {
+            generator.forget()
+            generator.close()
+            drama.start(tree)
+          }}
           short={short}
           kept={
             shelf ? (
@@ -177,7 +253,7 @@ export const HandheldLesson = ({
                 words={LESSON_SHELF_WORDS}
                 replay={{
                   read: keptLessonOf,
-                  play: (kept) => generator.start(kept.meta, kept.batches),
+                  play: (kept) => startConversation(kept.meta, kept.batches),
                 }}
               />
             ) : undefined
@@ -193,6 +269,15 @@ export const HandheldLesson = ({
           level={vm.selection.level}
           onLevel={vm.selection.chooseLevel}
           pasted={generator.pasted}
+          pastedTree={
+            drama.tree
+              ? {
+                  lesson: drama.tree,
+                  onPlay: drama.play,
+                  onForget: drama.forget,
+                }
+              : null
+          }
           onCreate={generator.open}
           onForget={generator.forget}
           keep={

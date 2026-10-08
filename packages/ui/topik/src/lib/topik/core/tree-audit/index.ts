@@ -28,8 +28,8 @@
  */
 
 import type { Lesson, Scene } from "@some-ui/makjang"
+import { FEELING_KEYS, isFeelingKey } from "@some-ui/styles/theme"
 import { GLOSS_RELATION, ProbeSchema } from "@topik/lib/topik"
-import { FEELING_KEYS, isFeelingKey } from "@topik/lib/topik/core/feeling"
 import type { ChoiceProbe } from "@topik/lib/topik/core/probe"
 import type { ProbeReport } from "@topik/lib/topik/core/probe-audit"
 import { auditItem } from "@topik/lib/topik/core/probe-audit"

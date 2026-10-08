@@ -9,7 +9,8 @@
  * learner copies, and the lesson comes back the same way (see `parse`).
  */
 
-import { FEELING_KEYS, FEELING_WORDS } from "@topik/lib/topik/core/feeling"
+import { FEELING_KEYS } from "@some-ui/styles/theme"
+import { FEELING_WORDS } from "@topik/lib/topik/core/feeling"
 import type {
   Difficulty,
   Enthusiasm,
@@ -25,6 +26,9 @@ export { LESSON_PROMPT }
 
 export const TOPIK_LEVELS = [1, 2, 3, 4, 5, 6] as const
 export type TopikLevel = (typeof TOPIK_LEVELS)[number]
+
+/** Which prompt: a conversation lesson, or a scene tree (the drama). */
+export type LessonFormat = "conversations" | "tree"
 
 export type LessonRequest = {
   level: TopikLevel

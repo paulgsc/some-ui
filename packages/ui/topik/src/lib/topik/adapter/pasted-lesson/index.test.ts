@@ -1,5 +1,6 @@
 import { FIXTURE_BATCHES } from "@topik/components/topik/handheld/handheld-lesson/fixture"
 import type { TopikMetadata } from "@topik/lib/topik"
+import { workedLesson } from "@topik/lib/topik/generation/tree-intake/worked-example"
 import { describe, expect, it } from "vitest"
 
 import {
@@ -40,6 +41,29 @@ describe("createPastedLessonStore", () => {
     store.set(meta("local:b"), FIXTURE_BATCHES)
     expect(store.get()?.meta.key).toBe("local:b")
     expect(store.get()?.batches).toHaveLength(FIXTURE_BATCHES.length)
+  })
+
+  it("holds a scene tree in the same slot: either replaces the other", () => {
+    const store = createPastedLessonStore(memoryStorage())
+    store.set(meta("local:a"), FIXTURE_BATCHES)
+    store.setTree(workedLesson())
+    expect(store.get()).toBeNull()
+    expect(store.getTree()).toEqual(workedLesson())
+    store.set(meta("local:b"), FIXTURE_BATCHES)
+    expect(store.getTree()).toBeNull()
+  })
+
+  it("reads a held tree back through both audits (MK4)", () => {
+    const storage = memoryStorage()
+    const store = createPastedLessonStore(storage)
+    store.setTree(workedLesson())
+    const held: unknown = JSON.parse(storage.getItem(PASTED_LESSON_KEY) ?? "")
+    // A tree edited in storage to name a feeling the renderer lacks.
+    storage.setItem(
+      PASTED_LESSON_KEY,
+      JSON.stringify(held).replace('"feeling":"tension"', '"feeling":"ennui"')
+    )
+    expect(store.getTree()).toBeNull()
   })
 
   it("forgets the lesson on clear", () => {

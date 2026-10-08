@@ -72,11 +72,12 @@ describe("registry integrity", () => {
   it("gives every theme a concrete mode unless it composes", () => {
     // Only themes that layer onto a substrate somebody else already chose may
     // report `inherit`, since they have no `color-scheme` of their own: every
-    // accent, and a component skin whose tokens derive from that substrate
-    // (`.comb`) rather than fixing a ground of their own (`.headline`).
+    // accent, a feeling, and a component skin whose tokens derive from that
+    // substrate (`.comb`) rather than fixing a ground of their own
+    // (`.headline`).
     for (const theme of THEMES) {
       if (theme.mode === "inherit")
-        expect(["accent", "component"]).toContain(theme.scope)
+        expect(["accent", "component", "feeling"]).toContain(theme.scope)
       else expect(theme.scope).not.toBe("accent")
     }
   })

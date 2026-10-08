@@ -14,6 +14,9 @@
  *   opt-in art direction, never a component's own default.
  * - `accent`  — layers a `--primary` family onto `.theme-container` without
  *   touching the substrate. Composes with any session theme.
+ * - `feeling` — a makjang webtoon feeling (`./feeling`): like a component
+ *   skin it declares only private `--feeling-*` tokens, derived per session
+ *   theme, so the drama's panels wear it without shadowing the user's theme.
  * - `component` — a namespaced skin that declares only its own `--*` tokens
  *   and never touches the semantic contract. A component may apply one to
  *   itself: doing so cannot shadow the user's theme, which is the whole
@@ -27,10 +30,17 @@
  * maintains a second list.
  */
 
+import { FEELING_CLASS, FEELING_KEYS, feelingThemeClass } from "./feeling"
+
 /** Native `color-scheme` a theme reports; `inherit` leaves it to the host. */
 export type ThemeMode = "light" | "dark" | "inherit"
 
-export type ThemeScope = "session" | "feature" | "accent" | "component"
+export type ThemeScope =
+  | "session"
+  | "feature"
+  | "accent"
+  | "component"
+  | "feeling"
 
 /**
  * How a theme is carried in the DOM. The full contract is:
@@ -268,12 +278,32 @@ export const ACCENT_THEMES: ReadonlyArray<ThemeDefinition> = (
   selectable: false,
 }))
 
+/**
+ * The webtoon's feelings (`themes/feeling.css`, generated from `./feeling`).
+ * Each composes with whatever session theme is active, which is why its
+ * `mode` is `inherit`, and a reusable component may apply one to itself.
+ */
+export const FEELING_THEMES: ReadonlyArray<ThemeDefinition> = FEELING_KEYS.map(
+  (key) => ({
+    id: feelingThemeClass(key),
+    label: key,
+    mode: "inherit" as const,
+    scope: "feeling" as const,
+    boundary: {
+      classNames: [FEELING_CLASS, feelingThemeClass(key)],
+      dataTheme: feelingThemeClass(key),
+    },
+    selectable: false,
+  })
+)
+
 /** Every theme selector shipped in CSS, in one list. */
 export const THEMES: ReadonlyArray<ThemeDefinition> = [
   ...SESSION_THEMES,
   ...FEATURE_APPEARANCES,
   ...COMPONENT_SKINS,
   ...ACCENT_THEMES,
+  ...FEELING_THEMES,
 ]
 
 /**

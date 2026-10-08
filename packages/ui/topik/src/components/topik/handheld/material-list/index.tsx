@@ -2,6 +2,7 @@ import type { JSX } from "react"
 import { assertNever, cn } from "@some-ui/core-utils"
 import { Button } from "@some-ui/shared"
 import type { TopikMetadata } from "@topik/lib/topik"
+import type { DramaLesson } from "@topik/lib/topik/core/drama"
 import type {
   Selection,
   SelectionReason,
@@ -27,6 +28,16 @@ type MaterialListProps = {
   onLevel: (level: number) => void
   /** The lesson pasted this session, if any. */
   pasted?: TopikMetadata | null
+  /**
+   * The scene tree pasted this session, if any, with how to play and forget
+   * it. It shares the pasted slot, so at most one of this and `pasted` is
+   * held.
+   */
+  pastedTree?: {
+    lesson: DramaLesson
+    onPlay: () => void
+    onForget: () => void
+  } | null
   loading: boolean
   error: string | null
   resume: { topik: TopikMetadata; conversation: number } | null
@@ -126,6 +137,7 @@ export const MaterialList = ({
   level,
   onLevel,
   pasted = null,
+  pastedTree = null,
   loading,
   error,
   resume,
@@ -238,6 +250,41 @@ export const MaterialList = ({
           </span>
           <ChevronRight className="text-muted-foreground size-5 shrink-0" />
         </button>
+      )}
+
+      {pastedTree && (
+        <section
+          aria-label="Pasted this session"
+          className="flex flex-col gap-2"
+        >
+          <Heading>Pasted this session</Heading>
+          <div className="bg-card border-border flex min-h-16 items-stretch rounded-2xl border">
+            <button
+              type="button"
+              onClick={pastedTree.onPlay}
+              className="flex min-w-0 flex-1 items-center gap-3 p-4 text-left"
+            >
+              <PlayCircle className="text-primary size-6 shrink-0" />
+              <span className="min-w-0 flex-1">
+                <span lang="ko" className="block truncate font-semibold">
+                  {pastedTree.lesson.root.place}
+                </span>
+                <span className="text-muted-foreground mt-1 block text-xs">
+                  Drama · TOPIK {pastedTree.lesson.level} · until this tab
+                  closes
+                </span>
+              </span>
+            </button>
+            <button
+              type="button"
+              aria-label="Forget this drama"
+              onClick={pastedTree.onForget}
+              className="text-muted-foreground flex w-12 shrink-0 items-center justify-center"
+            >
+              <X className="size-4" />
+            </button>
+          </div>
+        </section>
       )}
 
       {pasted && (

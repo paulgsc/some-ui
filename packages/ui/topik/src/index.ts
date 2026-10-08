@@ -45,7 +45,7 @@ export {
   DEFAULT_CONVERSATIONS,
   TOPIK_LEVELS,
 } from "./lib/topik/generation"
-export type { TopikLevel } from "./lib/topik/generation"
+export type { LessonFormat, TopikLevel } from "./lib/topik/generation"
 /** The lesson's conversations as the study session's chat plays them. */
 export { ConversationPreview } from "./components/topik/conversation-preview"
 
@@ -74,3 +74,9 @@ export { BUNDLED_DECK } from "./lib/topik/read-aloud/bundled"
 
 /** The quiz pane by stage; apps/www's panel-fit page mounts each stage directly. */
 export { QuizPanel } from "./components/topik/quiz-panel"
+
+/**
+ * The phone's drama by state; apps/www's panel-fit page mounts it at a beat,
+ * an open choice and an ending, through a resume point.
+ */
+export { DramaLesson } from "./components/topik/handheld/drama-lesson"
