@@ -59,6 +59,19 @@ Two things are true at once, and neither is allowed to win:
   standard (§4: no first-order checks, authored validity, grammar
   commensurate with the level).
 
+### The test the app fails today
+
+Time spent in the app is time spent consuming a drama. In the first iteration
+that drama is text and speech, and later it can be voices, art and video, but
+at every stage it is a drama: a learner who puts the phone down should be able
+to say what happened in the scene, not which exercise they just did. The
+teaching happens inside that, at the moments the story asks something of
+them.
+
+The phone lesson fails this today. Its screens are exercises with a
+conversation attached: unnamed lines, checks between them, a tally at the end.
+Every design decision below is measured against this test first.
+
 ### What it is not
 
 - **Not gamified engagement.** No streaks, no catalogue to complete, no "X of
@@ -237,6 +250,32 @@ types, gift kinds, icon sets) is enumerated anywhere. The schema, the bounds,
 the audits and the engine are generic over whatever a generated tree
 contains. The scenes in this document are illustrations of the shape.
 
+#### Who defines the drama
+
+Eventually, the learner does. They choose the genre, the kind of family
+drama, and the ensemble they want, and they and their own language model
+generate scenes from that, conforming to the schema. The canon already has
+the mechanism: learner-side authoring (Def. 8.3), the clipboard loop the
+handheld lesson ships today, where the application supplies the grammar and
+checks what comes back. What we provide is the generic shape. Any particular
+ensemble or genre is one instance of it.
+
+That is not the first iteration, where the operator's prompt and its makjang
+setting are the default. But the first iteration must not close it off, which
+constrains it now:
+
+- **The cast is a list of any size,** and how characters stand to each other
+  is described text, not a fixed set of roles. There is no `motherInLaw` or
+  `rival` field. The one structural fact is which character the learner
+  follows (`pov`, a cast id).
+- **Register is per pair of characters,** read from the cast, not implied by a
+  role.
+- **The setting is a parameter of the prompt,** a default a learner could
+  replace, not text the app depends on. The makjang family romcom is the
+  default genre, not an assumption.
+- **No audit checks anything genre-specific.** The story audit checks shape,
+  the teaching audit checks items, and neither knows what the drama is about.
+
 #### One lesson stands alone
 
 In the MVP every lesson is self-contained, the way a lesson generated from one
@@ -375,11 +414,13 @@ Each one ships, and none needs a better model than exists today.
   voice (or pitch) per character where the device allows it. `core/lesson-track`
   and its tests are removed once nothing uses them. The wrap card loses
   "Conversation N of M" and the tally as its headline, and ends a lesson on how
-  the scene resolved instead.
+  the scene resolved instead. M2 is done when it passes the test above: on
+  screen the learner follows characters through a scene, and no screen is
+  framed as an exercise ("Check", "Question N", "N of M").
 - **M3: generated scene trees.** The generator prompt writes one tree per
   reply. The two audits gate it. The weekly batch (Cor. 8.3) serves trees.
-- **Later, one capability at a time:** a standing cast, series and memory
-  across lessons, per-character cloud
+- **Later, one capability at a time:** a learner-defined genre and ensemble
+  in the prompt, a standing cast, series and memory across lessons, per-character cloud
   voices, generated art in a fixed style, portraits, video beats, whole-series
   scripts. Each adds assets and a renderer capability, plus its canon line, and
   changes neither the story schema nor the engine.
