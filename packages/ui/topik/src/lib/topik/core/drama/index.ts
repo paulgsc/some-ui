@@ -58,6 +58,8 @@ export type DramaSession = {
    * prompt, a scene's cover caption. Ids are unique across a tree.
    */
   rungs: Readonly<Record<string, Rung>>
+  /** Choices whose chosen candidate's `why` has been opened, by choice id. */
+  whys: Readonly<Record<string, true>>
   /** Whether lines can be heard. Without it the ladder starts at Hangul. */
   audio: boolean
 }
@@ -65,6 +67,8 @@ export type DramaSession = {
 export type SessionEvent =
   | DramaEvent
   | { type: "reveal"; id: string }
+  /** Opens the `why` of the candidate chosen at a choice. */
+  | { type: "why"; choice: string }
   /** Whether lines can be heard changed: muted, unmuted, a voice found. */
   | { type: "audible"; audible: boolean }
 
@@ -114,7 +118,12 @@ export function openSession(
 ): SessionTransition {
   const opened = point === undefined ? start(lesson) : resume(lesson, point)
   return {
-    session: readSilently(lesson, { drama: opened.state, rungs: {}, audio }),
+    session: readSilently(lesson, {
+      drama: opened.state,
+      rungs: {},
+      whys: {},
+      audio,
+    }),
     effects: opened.effects,
   }
 }
@@ -137,6 +146,17 @@ export function stepSession(
           ),
       effects: [],
     }
+  }
+  if (event.type === "why") {
+    return Object.hasOwn(session.whys, event.choice)
+      ? { session, effects: [] }
+      : {
+          session: {
+            ...session,
+            whys: { ...session.whys, [event.choice]: true },
+          },
+          effects: [],
+        }
   }
   if (event.type === "reveal") {
     const rung = rungOf(lesson, session, event.id)

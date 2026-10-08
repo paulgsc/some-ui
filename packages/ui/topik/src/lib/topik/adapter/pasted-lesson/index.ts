@@ -101,7 +101,11 @@ export function createPastedLessonStore(
     | (StorageLike & Partial<Pick<Storage, "removeItem">>)
     | null = sessionStorageOrNull()
 ): PastedLessonStore {
+  // The point written last this visit; it goes with whatever slot it was in.
+  let latest: { lessonId: string; point: unknown } | null = null
+
   const write = (value: string): void => {
+    latest = null
     try {
       storage?.setItem(PASTED_LESSON_KEY, value)
     } catch {
@@ -140,12 +144,16 @@ export function createPastedLessonStore(
       write(JSON.stringify({ version: 1, kind: "tree", tree: lesson })),
     points: {
       get: (lessonId): unknown => {
+        if (latest?.lessonId === lessonId) return latest.point
         const parsed = TreeDocumentSchema.safeParse(read())
         return parsed.success && treeIdOf(parsed.data.tree) === lessonId
           ? parsed.data.point
           : undefined
       },
       set: (lessonId, point): void => {
+        // Kept in memory too: storage that refuses writes would otherwise
+        // lose the place while the tree plays on from memory.
+        latest = { lessonId, point }
         const parsed = TreeDocumentSchema.safeParse(read())
         if (!parsed.success || treeIdOf(parsed.data.tree) !== lessonId) return
         try {
@@ -154,7 +162,7 @@ export function createPastedLessonStore(
             JSON.stringify({ ...parsed.data, point })
           )
         } catch {
-          // The tree stays held; its place lasts this visit only.
+          // The point lasts this visit, in `latest`.
         }
       },
     },

@@ -91,6 +91,8 @@ export const DramaLesson = ({
           lesson={lesson}
           rungOf={rung}
           onReveal={reveal}
+          whyOpen={(choice) => Object.hasOwn(session.whys, choice)}
+          onWhy={(choice) => dispatch({ type: "why", choice })}
           audio={session.audio}
           speaking={speaking}
           onReplay={replay}

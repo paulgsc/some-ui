@@ -56,6 +56,17 @@ describe("the ladder", () => {
   })
 })
 
+describe("why", () => {
+  it("is its own state, which no id in the tree can share", () => {
+    // A tree may name a beat anything, `c1:why` included.
+    const session = play([{ type: "reveal", id: "c1:why" }])
+    expect(session.whys).toEqual({})
+    const opened = stepSession(lesson, session, { type: "why", choice: "c1" })
+    expect(opened.session.whys).toEqual({ c1: true })
+    expect(rungOf(lesson, opened.session, "c1")).toBe(1)
+  })
+})
+
 describe("panelsOf", () => {
   it("opens the root on its cover, then its beats as they are reached", () => {
     expect(panelsOf(lesson, play([])).map(({ kind }) => kind)).toEqual([

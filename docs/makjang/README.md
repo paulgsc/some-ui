@@ -804,7 +804,11 @@ the one-line summaries.
 > - _Falsified by_ a hunk that adds a port to `MediaPorts`
 >   (`packages/makjang/src/media.ts`), or a new kind of element to the
 >   anchor or the panels (option art, a portrait, a face on video, a sound),
->   with no canon line in the same change saying what it reveals.
+>   with no canon line in the same change saying what it reveals; or a hunk
+>   to `docs/canon/adaptive-learning-canon.typ` that deletes, moves or
+>   rewords Remark 9.2 or Corollary 4.4's audio rung so that it no longer
+>   says what the anchor or the voice reveals, or renames or moves that
+>   file.
 > - _Scope:_ `packages/makjang/src/media.ts` and `packages/ui/topik`'s drama
 >   renderer.
 > - _Why not enforced:_ whether a picture or a face reveals the answer needs

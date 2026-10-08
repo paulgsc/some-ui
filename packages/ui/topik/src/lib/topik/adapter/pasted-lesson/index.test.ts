@@ -66,6 +66,23 @@ describe("createPastedLessonStore", () => {
     expect(store.getTree()).toBeNull()
   })
 
+  it("keeps a tree's place for the visit when storage refuses to write", () => {
+    const refusing = {
+      getItem: (): string | null => null,
+      setItem: (): void => {
+        throw new Error("QuotaExceededError")
+      },
+    }
+    const store = createPastedLessonStore(refusing)
+    store.setTree(workedLesson())
+    store.points.set("first-tea", { route: ["b"] })
+    expect(store.points.get("first-tea")).toEqual({ route: ["b"] })
+    expect(store.points.get("another")).toBeUndefined()
+    // A new paste starts from its opening.
+    store.setTree(workedLesson())
+    expect(store.points.get("first-tea")).toBeUndefined()
+  })
+
   it("forgets the lesson on clear", () => {
     const store = createPastedLessonStore(memoryStorage())
     store.set(meta("local:a"), FIXTURE_BATCHES)
