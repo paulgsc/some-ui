@@ -807,8 +807,8 @@ the one-line summaries.
 >   with no canon line in the same change saying what it reveals; or a hunk
 >   to `docs/canon/adaptive-learning-canon.typ` that deletes, moves or
 >   rewords Remark 9.2 or Corollary 4.4's audio rung so that it no longer
->   says what the anchor or the voice reveals, or renames or moves that
->   file.
+>   says what the anchor or the voice reveals, or why that is acceptable,
+>   or renames or moves that file.
 > - _Scope:_ `packages/makjang/src/media.ts` and `packages/ui/topik`'s drama
 >   renderer.
 > - _Why not enforced:_ whether a picture or a face reveals the answer needs
