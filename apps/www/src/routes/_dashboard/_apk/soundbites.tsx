@@ -60,6 +60,29 @@ function situationFrom(
   }
 }
 
+/** Everything the phone knows about studying, out through the share sheet. */
+const ShareWithAgent = (): JSX.Element => {
+  const share = useAsyncIntent(() => shareAgentExport(phoneSoundbiteStore()), {
+    presentation: "interactive",
+  })
+  return (
+    <section className="mx-auto w-full max-w-md space-y-2 pb-8">
+      <p className="text-muted-foreground text-sm">
+        Your soundbites, session reflections and stop reasons, as files for an
+        agent to read. You pick where they go.
+      </p>
+      <IntentButton
+        state={share.state}
+        onPress={() => share.start(undefined)}
+        variant="outline"
+        size="sm"
+        idleLabel="Share with an agent"
+        workingLabel="Preparing..."
+      />
+    </section>
+  )
+}
+
 const SoundbitesRoute = (): JSX.Element => {
   const { say } = Route.useSearch()
   const navigate = useNavigate()
@@ -72,9 +95,6 @@ const SoundbitesRoute = (): JSX.Element => {
   // A new request remounts the recorder (it reads its way in once); the
   // clearing below is not a new request, so it never remounts mid-take.
   const arrival = useArrivalKey(isSaySource(say) ? say : undefined)
-  const share = useAsyncIntent(() => shareAgentExport(phoneSoundbiteStore()), {
-    presentation: "interactive",
-  })
 
   return (
     <div className="flex flex-col">
@@ -89,20 +109,11 @@ const SoundbitesRoute = (): JSX.Element => {
         }
         situation={() => situationFrom(sessions ?? [])}
       />
-      <section className="mx-auto w-full max-w-md space-y-2 pb-8">
-        <p className="text-muted-foreground text-sm">
-          Your soundbites, session reflections and stop reasons, as files for an
-          agent to read. You pick where they go.
-        </p>
-        <IntentButton
-          state={share.state}
-          onPress={() => share.start(undefined)}
-          variant="outline"
-          size="sm"
-          idleLabel="Share with an agent"
-          workingLabel="Preparing..."
-        />
-      </section>
+      {/* Inline, so other builds drop the export and its plugins
+          (vite-env.d.ts, VITE_DEVICE_BACKEND). */}
+      {import.meta.env.VITE_DEVICE_BACKEND === "true" ? (
+        <ShareWithAgent />
+      ) : null}
     </div>
   )
 }

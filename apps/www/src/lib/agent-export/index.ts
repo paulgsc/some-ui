@@ -4,11 +4,10 @@
  * beside it. Handed to Android's share sheet, so the person picks where it
  * goes (Drive, say); nothing here sends anything anywhere.
  *
- * `buildAgentContext` is pure; `shareAgentExport` waits on the plugins
- * through `callForeign` (F1).
+ * `buildAgentContext` is pure; `shareAgentExport` loads and waits on the
+ * plugins inside `callForeign` (F1). Phone-only: its page renders it only in
+ * the device build, so no other profile ships it (`build.paths.ts`).
  */
-import { Directory, Encoding, Filesystem } from "@capacitor/filesystem"
-import { Share } from "@capacitor/share"
 import type { ForeignVerdict } from "@some-ui/intent-kit"
 import {
   callForeign,
@@ -148,6 +147,9 @@ export async function shareAgentExport(
       port: PORT,
       deadlineMs: WRITE_DEADLINE_MS,
       start: async (): Promise<Array<string>> => {
+        const { Directory, Encoding, Filesystem } = await import(
+          "@capacitor/filesystem"
+        )
         await Filesystem.rmdir({
           path: DIR,
           directory: Directory.Cache,
@@ -185,6 +187,7 @@ export async function shareAgentExport(
       port: PORT,
       deadlineMs: SHARE_DEADLINE_MS,
       start: async (): Promise<void> => {
+        const { Share } = await import("@capacitor/share")
         try {
           await Share.share({ title: "Study context for an agent", files })
         } catch (error) {

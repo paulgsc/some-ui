@@ -106,6 +106,7 @@ const SPEECH_ENTRY = "packages/speech/dist/@some-ui/speech"
 /** Modules that exist for the phone: the device backend and its plugins. */
 const DEVICE_MODULES = [
   `${SPEECH_ENTRY}/native.es.js`,
+  "apps/www/src/lib/agent-export/**",
   "apps/www/src/lib/device-backend/**",
   "apps/www/src/lib/device-speech/**",
   "apps/www/src/lib/dictation/**",
