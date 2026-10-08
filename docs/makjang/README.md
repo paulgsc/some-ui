@@ -458,9 +458,12 @@ Each one ships, and none needs a better model than exists today.
   Tests run on
   generated trees and on minimal synthetic fixtures (a root, one split, a
   leaf at maximum depth), never on a curated scene. No UI change yet.
-- **M2: the phone lesson runs on the engine.** The legacy-conversation
-  adapter and the teaching audit's pruning, in topik. The media port types.
-  Speaker names, choices as
+- **M2: the phone lesson runs on the engine.** It renders as a vertical
+  webtoon (panels, speech bubbles, sound-effect lettering), the direction
+  chosen from four phone prototypes on 2026-10-08. How each scene anchors a
+  feeling within today's limits is still being designed, and settles before
+  M2's renderer is built. The legacy-conversation adapter and the teaching
+  audit's pruning, in topik. The media port types. Speaker names, choices as
   large text targets, consequence and repair scenes, a distinct device
   voice (or pitch) per character where the device allows it. `core/lesson-track`
   and its tests are removed once nothing uses them. The wrap card loses
