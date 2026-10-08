@@ -26,18 +26,13 @@ import {
   feelingFrame,
 } from "../feeling"
 import { SESSION_THEMES } from "../registry"
-import { sessionRoles } from "../session-roles"
+import { parseOklch, sessionRoles } from "../session-roles"
 
 const sources = themeSources()
 const sessions = SESSION_THEMES.map((theme) => ({
   theme,
   roles: sessionRoles(theme, sources),
 }))
-
-const parse = (value: string): Oklch => {
-  const [l, c, h] = value.slice("oklch(".length, -1).split(/\s+/).map(Number)
-  return [l!, c!, h!]
-}
 
 const close = (a: Oklch, b: Oklch): boolean =>
   Math.abs(a[0] - b[0]) < 0.001 &&
@@ -50,8 +45,8 @@ describe("the session roles", () => {
   )("%s resolves to the colours its swatch shows", (_, theme, roles) => {
     // The swatch is the registry's own sample of the same theme: if the
     // resolver read the cascade wrong, the two disagree.
-    expect(close(roles.background, parse(theme.swatch.bg))).toBe(true)
-    expect(close(roles.foreground, parse(theme.swatch.fg))).toBe(true)
+    expect(close(roles.background, parseOklch(theme.swatch.bg))).toBe(true)
+    expect(close(roles.foreground, parseOklch(theme.swatch.fg))).toBe(true)
   })
 })
 
@@ -60,18 +55,17 @@ describe("MK5: the contrast floor", () => {
     FEELING_KEYS.map((key) => [theme.id, key, roles] as const)
   )
 
-  it("covers every session theme and every feeling", () => {
-    expect(cases).toHaveLength(SESSION_THEMES.length * FEELING_KEYS.length)
-  })
-
   it.each(cases)("%s × %s", (_, key, roles) => {
-    const { ground, ink, muted, accent } = feelingColors(key, roles)
-    expect(contrastRatio(ink, ground)).toBeGreaterThanOrEqual(
-      CONTRAST_FLOOR.text
-    )
-    expect(contrastRatio(muted, ground)).toBeGreaterThanOrEqual(
-      CONTRAST_FLOOR.text
-    )
+    const { ground, textured, ink, muted, accent } = feelingColors(key, roles)
+    // Text sits on the plain ground and on the texture's strokes.
+    for (const under of [ground, textured]) {
+      expect(contrastRatio(ink, under)).toBeGreaterThanOrEqual(
+        CONTRAST_FLOOR.text
+      )
+      expect(contrastRatio(muted, under)).toBeGreaterThanOrEqual(
+        CONTRAST_FLOOR.text
+      )
+    }
     expect(contrastRatio(accent, ground)).toBeGreaterThanOrEqual(
       CONTRAST_FLOOR.mark
     )

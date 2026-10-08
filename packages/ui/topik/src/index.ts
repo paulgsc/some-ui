@@ -32,11 +32,12 @@ export type { ProbeFinding } from "./lib/topik/core/probe-audit"
 export type { ConversationBatch, TopikMetadata } from "./lib/topik"
 /** Scene-tree intake, for the lesson CRM. */
 export {
-  findingPlace,
   intakeTree,
+  treeFindingRow,
   treeFixRequest,
+  treeSummary,
 } from "./lib/topik/generation/tree-intake"
-export type { TreeIntake } from "./lib/topik/generation/tree-intake"
+export type { FindingRow, TreeIntake } from "./lib/topik/generation/tree-intake"
 export type { TreeFinding } from "./lib/topik/core/tree-audit"
 /** The generator prompts, for the operator to hand a model a batch lesson. */
 export {

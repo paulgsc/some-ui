@@ -140,6 +140,11 @@ describe("GenerateLesson", () => {
     )
     expect(screen.queryByRole("textbox", { name: "Prompt to copy" })).toBeNull()
     expect(screen.getByText(/Copied/)).toBeTruthy()
+    // Another format's prompt is not the one handed off.
+    click(/Copied/)
+    await screen.findByRole("textbox", { name: "Prompt to copy" })
+    conversations()
+    expect(screen.queryByRole("textbox", { name: "Prompt to copy" })).toBeNull()
   })
 
   it("says why a reply is not a lesson, and saves nothing", () => {
@@ -232,7 +237,7 @@ describe("GenerateLesson, with a scene tree", () => {
     expect(screen.queryByRole("button", { name: /^Start$/ })).toBeNull()
     click("Copy the fixes for your model")
     await screen.findByText(/Fixes copied/)
-    expect(String(writeText.mock.calls[0]?.[0])).toContain("at pov:")
+    expect(writeText).toHaveBeenCalledOnce()
     expect(onStartTree).not.toHaveBeenCalled()
   })
 

@@ -39,6 +39,10 @@ export type VoiceRequest = {
 export type VoicePort = {
   /** Resolves once the beat has been said, could not be, or `signal` fired. */
   voice(request: VoiceRequest, signal: AbortSignal): Promise<Presented>
+  /** Whether a beat could be heard now: false while muted, or voiceless. */
+  audible(): boolean
+  /** Calls `listener` when `audible` may have changed; returns the unsubscribe. */
+  subscribe(listener: () => void): () => void
 }
 
 /** Every port a renderer may have; `null` where it presents text instead. */

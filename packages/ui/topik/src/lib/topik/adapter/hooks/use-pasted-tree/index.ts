@@ -6,7 +6,6 @@
  */
 
 import { useCallback, useState } from "react"
-import type { DramaPoints } from "@topik/lib/topik/adapter/drama-point"
 import type { PastedLessonStore } from "@topik/lib/topik/adapter/pasted-lesson"
 import type { DramaLesson } from "@topik/lib/topik/core/drama"
 
@@ -23,18 +22,14 @@ export type PastedTree = {
   replaced: () => void
 }
 
-export function usePastedTree(
-  store: PastedLessonStore,
-  points: DramaPoints
-): PastedTree {
+export function usePastedTree(store: PastedLessonStore): PastedTree {
   const [tree, setTree] = useState(() => store.getTree())
   const [playing, setPlaying] = useState(false)
 
   const replaced = useCallback((): void => {
-    points.clear()
     setTree(null)
     setPlaying(false)
-  }, [points])
+  }, [])
 
   return {
     tree,
@@ -42,12 +37,10 @@ export function usePastedTree(
     start: useCallback(
       (lesson: DramaLesson): void => {
         store.setTree(lesson)
-        // A newly pasted tree starts fresh, whatever an earlier one left.
-        points.clear()
         setTree(lesson)
         setPlaying(true)
       },
-      [store, points]
+      [store]
     ),
     play: useCallback((): void => setPlaying(true), []),
     leave: useCallback((): void => setPlaying(false), []),

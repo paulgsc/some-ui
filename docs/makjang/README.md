@@ -525,14 +525,17 @@ choice panel are the session's.
 - **Ground:** the session background mixed in oklab toward a tint of the hue
   (lightness 0.86 − 0.08·max(a, 0) on a light theme, 0.42 on a dark one;
   chroma 0.04 + 0.12·|v|), by 18% + 14%·|v| (24% + 14%·|v| on a dark theme). A
-  reveal (|v| < 0.2 and a ≥ 0.8) swaps ground and ink.
+  reveal (|v| < 0.2 and a ≥ 0.8) swaps ground and ink: its ground is the
+  session's ink mixed 8% toward lightness 0.5 at chroma 0.1 in the hue, its
+  ink is the session's ground, its muted text is that ground mixed 28% toward
+  the session's ink, and its accent takes the other mode's lightness.
 - **Ink and muted text:** the session's own, each mixed halfway toward the same
   lightness at chroma 0.09 in the hue.
 - **Accent** (symbol, lettering, texture): the hue at lightness 0.52 on a light
   theme or 0.80 on a dark one, chroma 0.06 + 0.12·|v|.
-- **Contrast floor:** body ink and muted text clear 4.5:1 and marks 3:1 on the
-  ground; a colour that falls short steps its lightness away from the ground
-  until it does.
+- **Contrast floor:** body ink and muted text clear 4.5:1 on the ground and
+  on the ground under a texture stroke, and marks 3:1 on the ground; a colour
+  that falls short steps its lightness away from the ground until it does.
 - **Edge:** 2 + 2·max(a, 0) px of ink; jagged when v ≤ −0.6 and a ≥ 0.8, rounded 20·v px
   when v ≥ 0.4.
 - **Texture:** the feeling's kind, in the accent at 10–18% alpha, denser as a
@@ -552,8 +555,9 @@ In code, `@some-ui/styles` derives (`src/theme/feeling.ts`, registered as the
 holds every feeling on every session theme as literal `--feeling-*` tokens
 under that theme's root classes, since the contrast floor's stepping has no
 CSS expression and topik need not know which session theme is active. A
-panel wears a feeling as a frame with `feeling-frame feeling-<key>` around a
-`.feeling` element; the cover's frame adds `feeling-motion`.
+panel wears a feeling as a boundary, `feeling feeling-<key>`, which carries
+the tokens and a jagged edge's outline, around a `feeling-panel` element that
+paints them; the cover's boundary adds `feeling-motion`.
 
 ### Where the anchor goes
 
@@ -742,13 +746,16 @@ the one-line summaries.
 > - _Claim:_ for every theme in `SESSION_THEMES` and every key in
 >   `FEELING_KEYS`, with the session's roles resolved from
 >   `tokens/base.css` and `themes/*.css` (`session-roles.ts`),
->   `feelingColors` gives body ink and muted text at least 4.5:1 and the
->   accent at least 3:1 on the feeling's ground, and `themes/feeling.css` is
+>   `feelingColors` gives body ink and muted text at least 4.5:1 on the
+>   feeling's ground and on that ground under a texture stroke, and the
+>   accent at least 3:1 on the ground, and `themes/feeling.css` is
 >   exactly what `feelingStylesheet` writes from them, declaring no custom
 >   property outside `--feeling-*`.
 > - _Falsified by_ a hunk that lowers `CONTRAST_FLOOR` or weakens `clear` in
->   `packages/some-styles/src/theme/feeling.ts`; that edits
->   `themes/feeling.css` by hand; that deletes or weakens a test in
+>   `packages/some-styles/src/theme/feeling.ts`; that changes
+>   `themes/feeling.css` in a diff that changes none of `feeling.ts`,
+>   `session-roles.ts`, `tokens/base.css` or a session theme's
+>   `themes/<id>.css`; that deletes or weakens a test in
 >   `src/theme/__tests__/feeling.test.ts` (the loop over every session
 >   theme and feeling, the swatch cross-check of the resolver, the drift
 >   check, or the `--feeling-*` check); that paints text or a mark inside a
@@ -760,7 +767,8 @@ the one-line summaries.
 > - _Scope:_ `packages/some-styles`' feeling themes, and the feeling panels
 >   in `packages/ui/topik/src/components/topik/handheld/webtoon-panel`.
 > - _Why not wholly enforced:_ the floor is a test over the session themes'
->   real values, so retuning a theme re-runs it. What it cannot see is a
+>   real values, so retuning a theme re-runs it. The stroke is composited as
+>   the browser paints it, in sRGB, at the texture's alpha. What it cannot see is a
 >   panel drawing its text in some other colour over the ground: which class
 >   a JSX element carries inside which ancestor is markup no lint rule here
 >   relates, and jsdom computes no colours.

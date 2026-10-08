@@ -29,6 +29,8 @@
 
 import { assertNever } from "@some-ui/core-utils"
 import type { ConversationBatch, Message, Probe } from "@topik/lib/topik"
+import type { Rung } from "@topik/lib/topik/core/drama"
+import { firstRung } from "@topik/lib/topik/core/drama"
 import {
   hashSeed,
   MAX_TILES,
@@ -38,7 +40,7 @@ import {
 // PLAN
 
 /** How much of a line is showing: 0 audio only, 1 Hangul, 2 gloss too. */
-export type RevealLevel = 0 | 1 | 2
+export type RevealLevel = Rung
 
 export type LineStep = {
   kind: "line"
@@ -249,8 +251,6 @@ export type LessonOutcomes = {
   reviewed?: Array<string>
 }
 
-const startReveal = (audio: boolean): RevealLevel => (audio ? 0 : 1)
-
 export function createLessonState(
   audio: boolean,
   conversation = 0
@@ -258,7 +258,7 @@ export function createLessonState(
   return {
     conversation,
     step: 0,
-    reveal: startReveal(audio),
+    reveal: firstRung(audio),
     heard: {},
     answered: null,
     firstTry: {},
@@ -446,7 +446,7 @@ function moveTo(
   const reveal =
     arriving?.kind === "line"
       ? // A line already climbed returns at its old rung; a new one starts over.
-        (heard[arriving.message] ?? startReveal(ctx.audio))
+        (heard[arriving.message] ?? firstRung(ctx.audio))
       : state.reveal
 
   return { ...state, step, heard, reveal, answered: null }
@@ -513,7 +513,7 @@ export function lessonReducer(
         correct: event.correct,
         response: event.response,
         channel: event.channel,
-        anchorReveal: state.heard[step.anchor] ?? startReveal(ctx.audio),
+        anchorReveal: state.heard[step.anchor] ?? firstRung(ctx.audio),
       }
       if (step.repeat) {
         return { ...state, answered, reviewed: [...state.reviewed, step.id] }

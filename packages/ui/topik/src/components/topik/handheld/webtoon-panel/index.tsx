@@ -3,8 +3,8 @@ import { assertNever, cn } from "@some-ui/core-utils"
 import type { FeelingKey } from "@some-ui/styles/theme"
 import {
   FEELING_CLASS,
-  FEELING_FRAME_CLASS,
   FEELING_MOTION_CLASS,
+  FEELING_PANEL_CLASS,
   feelingThemeClass,
 } from "@some-ui/styles/theme"
 import { FeelingSymbol } from "@topik/components/topik/handheld/feeling-symbol"
@@ -23,12 +23,7 @@ type WebtoonPanelProps = {
   onReplay: (beatId: string) => void
 }
 
-/**
- * A panel in the scene's feeling: the frame carries the theme's tokens (and
- * a jagged edge's outline), the panel inside wears its ground, texture and
- * edge (`@some-ui/styles`, `themes/feeling.css`). Only cover, beat and ending
- * panels are drawn through here (MK6).
- */
+/** A panel in the scene's feeling (`@some-ui/styles`' `feeling.ts`; MK6). */
 const Themed = ({
   feeling,
   slot,
@@ -45,12 +40,12 @@ const Themed = ({
   <div
     data-feeling={feeling}
     className={cn(
-      FEELING_FRAME_CLASS,
+      FEELING_CLASS,
       feelingThemeClass(feeling),
       motion && FEELING_MOTION_CLASS
     )}
   >
-    <section data-slot={slot} className={cn(FEELING_CLASS, className)}>
+    <section data-slot={slot} className={cn(FEELING_PANEL_CLASS, className)}>
       {children}
     </section>
   </div>
@@ -64,6 +59,24 @@ const Initial = ({ name }: { name: string }): JSX.Element => (
   >
     {name.slice(0, 1)}
   </span>
+)
+
+/** Hears a beat again. */
+const Replay = ({
+  speaking,
+  onReplay,
+}: {
+  speaking: boolean
+  onReplay: () => void
+}): JSX.Element => (
+  <button
+    type="button"
+    onClick={onReplay}
+    aria-label="Play line"
+    className="flex size-11 shrink-0 items-center justify-center"
+  >
+    <Volume2 className={cn("size-5", speaking && "animate-pulse")} />
+  </button>
 )
 
 /** A beat's text on its rung: heard only, its Hangul, then its gloss too. */
@@ -102,10 +115,7 @@ const Ladder = ({
 
 /**
  * One panel of the webtoon (docs/makjang/README.md, "The webtoon: one feeling
- * per scene"). The cover opens a scene in its feeling, each beat is a panel
- * in it with the feeling's symbol by the speaker, and a leaf closes on an
- * ending panel. The chosen line and the open choice stay in the session
- * theme.
+ * per scene").
  */
 export const WebtoonPanel = ({
   panel,
@@ -204,19 +214,10 @@ export const WebtoonPanel = ({
               />
             </button>
             {audio && (
-              <button
-                type="button"
-                onClick={() => onReplay(line.id)}
-                aria-label="Play line"
-                className="flex size-11 shrink-0 items-center justify-center"
-              >
-                <Volume2
-                  className={cn(
-                    "size-5",
-                    speaking === line.id && "animate-pulse"
-                  )}
-                />
-              </button>
+              <Replay
+                speaking={speaking === line.id}
+                onReplay={() => onReplay(line.id)}
+              />
             )}
           </span>
         </Themed>
@@ -243,6 +244,12 @@ export const WebtoonPanel = ({
               speaking={speaking === narration.id}
             />
           </button>
+          {audio && (
+            <Replay
+              speaking={speaking === narration.id}
+              onReplay={() => onReplay(narration.id)}
+            />
+          )}
           <FeelingSymbol
             feeling={panel.feeling}
             className="feeling-accent size-5 shrink-0"

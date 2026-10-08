@@ -156,15 +156,49 @@ export function mixOklab(from: Oklch, to: Oklch, weight: number): Oklch {
 }
 
 /** WCAG 2 relative luminance, through linear sRGB (gamut-clamped). */
-function luminance(color: Oklch): number {
+type Rgb = [number, number, number]
+
+/** Linear sRGB, clamped to the gamut. */
+function toLinearSrgb(color: Oklch): Rgb {
   const [L, A, B] = toLab(color)
   const l = (L + 0.3963377774 * A + 0.2158037573 * B) ** 3
   const m = (L - 0.1055613458 * A - 0.0638541728 * B) ** 3
   const s = (L - 0.0894841775 * A - 1.291485548 * B) ** 3
   const clamp = (x: number): number => Math.min(1, Math.max(0, x))
-  const r = clamp(4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s)
-  const g = clamp(-1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s)
-  const b = clamp(-0.0041960863 * l - 0.7034186147 * m + 1.707614701 * s)
+  return [
+    clamp(4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s),
+    clamp(-1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s),
+    clamp(-0.0041960863 * l - 0.7034186147 * m + 1.707614701 * s),
+  ]
+}
+
+function fromLinearSrgb([r, g, b]: Rgb): Oklch {
+  const l = Math.cbrt(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b)
+  const m = Math.cbrt(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b)
+  const s = Math.cbrt(0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b)
+  return toLch([
+    0.2104542553 * l + 0.793617785 * m - 0.0040720468 * s,
+    1.9779984951 * l - 2.428592205 * m + 0.4505937099 * s,
+    0.0259040371 * l + 0.7827717662 * m - 0.808675766 * s,
+  ])
+}
+
+const encode = (x: number): number =>
+  x <= 0.0031308 ? 12.92 * x : 1.055 * x ** (1 / 2.4) - 0.055
+const decode = (x: number): number =>
+  x <= 0.04045 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4
+
+/** `top` at `alpha` over `under`, blended as a browser paints it: in sRGB. */
+function composite(top: Oklch, under: Oklch, alpha: number): Oklch {
+  const [tr, tg, tb] = toLinearSrgb(top)
+  const [ur, ug, ub] = toLinearSrgb(under)
+  const over = (t: number, u: number): number =>
+    decode(encode(t) * alpha + encode(u) * (1 - alpha))
+  return fromLinearSrgb([over(tr, ur), over(tg, ug), over(tb, ub)])
+}
+
+function luminance(color: Oklch): number {
+  const [r, g, b] = toLinearSrgb(color)
   return 0.2126 * r + 0.7152 * g + 0.0722 * b
 }
 
@@ -179,14 +213,20 @@ export function contrastRatio(a: Oklch, b: Oklch): number {
 export const CONTRAST_FLOOR = { text: 4.5, mark: 3 } as const
 
 /**
- * `color`, its lightness stepped away from `ground` until it clears `floor`.
- * It stops at black or white, so a ground too close to both still falls
- * short, and the floor's test says so.
+ * `color`, its lightness stepped away from the grounds until it clears
+ * `floor` on each. It stops at black or white, so a ground too close to both
+ * still falls short, and the floor's test says so.
  */
-function clear(color: Oklch, ground: Oklch, floor: number): Oklch {
-  const away = luminance(ground) > 0.18 ? -0.01 : 0.01
+function clear(
+  color: Oklch,
+  grounds: ReadonlyArray<Oklch>,
+  floor: number
+): Oklch {
+  const away = luminance(grounds[0] ?? color) > 0.18 ? -0.01 : 0.01
+  const short = (c: Oklch): boolean =>
+    grounds.some((ground) => contrastRatio(c, ground) < floor)
   let [l, c, h] = color
-  for (let i = 0; i < 100 && contrastRatio([l, c, h], ground) < floor; i++) {
+  for (let i = 0; i < 100 && short([l, c, h]); i++) {
     l = Math.min(1, Math.max(0, l + away))
   }
   return [l, c, h]
@@ -202,6 +242,8 @@ export type SessionRoles = {
 
 export type FeelingColors = {
   ground: Oklch
+  /** The ground under a texture stroke; the ground itself with no texture. */
+  textured: Oklch
   /** Body text and the panel's edge. */
   ink: Oklch
   muted: Oklch
@@ -245,13 +287,23 @@ export function feelingColors(
   // On a reveal the ground is the session's ink, so its accent is the other
   // mode's.
   const lightAccent = dark === reveal
-  const accent: Oklch = [lightAccent ? 0.52 : 0.8, 0.06 + 0.12 * v, hue]
+  const accent = clear(
+    [lightAccent ? 0.52 : 0.8, 0.06 + 0.12 * v, hue],
+    [ground],
+    CONTRAST_FLOOR.mark
+  )
+  // Text sits on the texture too, so it clears the floor on a stroke.
+  const textured =
+    point.texture === "none"
+      ? ground
+      : composite(accent, ground, feelingFrame(key).textureAlpha)
 
   return {
     ground,
-    ink: clear(ink, ground, CONTRAST_FLOOR.text),
-    muted: clear(muted, ground, CONTRAST_FLOOR.text),
-    accent: clear(accent, ground, CONTRAST_FLOOR.mark),
+    textured,
+    ink: clear(ink, [ground, textured], CONTRAST_FLOOR.text),
+    muted: clear(muted, [ground, textured], CONTRAST_FLOOR.text),
+    accent,
     caption: {
       fill: [0.87, reveal ? 0.16 : 0.14, hue],
       stroke: [0.22, 0.06, hue],
@@ -293,19 +345,19 @@ export function feelingFrame(key: FeelingKey): FeelingFrame {
 // ── The stylesheet ──────────────────────────────────────────────────────────
 
 /**
- * A feeling panel is two elements: a frame with the feeling's theme class,
- * which carries its tokens and draws a jagged edge's outline (a clip cuts its
- * own element's outline away), and inside it the `.feeling` panel itself.
+ * A feeling panel is two elements: the boundary, `feeling feeling-<key>`,
+ * which carries the tokens and draws a jagged edge's outline (a clip cuts its
+ * own element's outline away), and inside it the painted `feeling-panel`.
  */
-export const FEELING_FRAME_CLASS = "feeling-frame"
-
 export const FEELING_CLASS = "feeling"
 
-/** The frame's class for `key`'s tokens. */
+export const FEELING_PANEL_CLASS = "feeling-panel"
+
+/** The boundary's class for `key`'s tokens. */
 export const feelingThemeClass = (key: FeelingKey): string =>
   `${FEELING_CLASS}-${key}`
 
-/** On a frame: plays the feeling's motion once, unless reduced motion is preferred. */
+/** On a boundary: plays the feeling's motion once, unless reduced motion is preferred. */
 export const FEELING_MOTION_CLASS = "feeling-motion"
 
 const css = ([l, c, h]: Oklch, alpha?: number): string =>
@@ -446,7 +498,7 @@ export function feelingStylesheet(
   sessions: ReadonlyArray<{ theme: SessionTheme; roles: SessionRoles }>
 ): string {
   const rules: Array<string> = [
-    block(`.${FEELING_CLASS}`, [
+    block(`.${FEELING_PANEL_CLASS}`, [
       "background: var(--feeling-background)",
       "color: var(--feeling-ink)",
       "border: var(--feeling-edge-width) solid var(--feeling-ink)",
@@ -473,7 +525,7 @@ export function feelingStylesheet(
         )
         .join(", ")}`,
     ]),
-    block(`.${FEELING_FRAME_CLASS}`, ["filter: var(--feeling-outline)"]),
+    block(`.${FEELING_CLASS}`, ["filter: var(--feeling-outline)"]),
     block(`.${FEELING_MOTION_CLASS}`, ["animation: var(--feeling-animation)"]),
   ]
 

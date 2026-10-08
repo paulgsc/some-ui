@@ -18,8 +18,10 @@
  * replaces it. It is validated on the way out, like everything read back
  * from storage, and every failure is silent: losing it costs a paste. A tree
  * is read back through `intakeTree`, both audits and all, so the choices a
- * learner meets are only ever a `checked` intake's (MK4). Keeping a tree on
- * the account is not offered yet: saving trees is MKJ-S4's.
+ * learner meets are only ever a `checked` intake's (MK4). A tree's resume
+ * point (canon Rem. 4.13) is kept in the tree's own document, so it lasts
+ * exactly as long as its lesson and goes when the slot is replaced. Keeping
+ * a tree on the account is not offered.
  */
 
 import { localStorageOrNull } from "@some-ui/core-utils"
@@ -27,6 +29,7 @@ import type { ConversationBatch, TopikMetadata } from "@topik/lib/topik"
 import { TopikFileSchema, TopikMetadataSchema } from "@topik/lib/topik"
 import type { StorageLike } from "@topik/lib/topik/adapter/resume-point"
 import type { DramaLesson } from "@topik/lib/topik/core/drama"
+import type { DramaPointStore } from "@topik/lib/topik/core/drama-runtime"
 import { intakeTree } from "@topik/lib/topik/generation/tree-intake"
 import { z } from "zod"
 
@@ -44,8 +47,10 @@ export type PastedLessonStore = {
   set(meta: TopikMetadata, batches: Array<ConversationBatch>): void
   /** The scene tree held, or null (nothing, or a conversation lesson). */
   getTree(): DramaLesson | null
-  /** Holds this tree for the session, replacing any other lesson. */
+  /** Holds this tree for the session, from its start, replacing any lesson. */
   setTree(lesson: DramaLesson): void
+  /** The held tree's resume point, by its lesson id; unvalidated. */
+  points: DramaPointStore
   clear(): void
 }
 
@@ -53,7 +58,14 @@ const TreeDocumentSchema = z.object({
   version: z.literal(1),
   kind: z.literal("tree"),
   tree: z.unknown(),
+  point: z.unknown().optional(),
 })
+
+/** The held tree's id, read without the audits: it only keys the point. */
+const treeIdOf = (tree: unknown): unknown =>
+  typeof tree === "object" && tree !== null && "id" in tree
+    ? tree.id
+    : undefined
 
 const PastedDocumentSchema = z.object({
   version: z.literal(1),
@@ -126,6 +138,26 @@ export function createPastedLessonStore(
     },
     setTree: (lesson): void =>
       write(JSON.stringify({ version: 1, kind: "tree", tree: lesson })),
+    points: {
+      get: (lessonId): unknown => {
+        const parsed = TreeDocumentSchema.safeParse(read())
+        return parsed.success && treeIdOf(parsed.data.tree) === lessonId
+          ? parsed.data.point
+          : undefined
+      },
+      set: (lessonId, point): void => {
+        const parsed = TreeDocumentSchema.safeParse(read())
+        if (!parsed.success || treeIdOf(parsed.data.tree) !== lessonId) return
+        try {
+          storage?.setItem(
+            PASTED_LESSON_KEY,
+            JSON.stringify({ ...parsed.data, point })
+          )
+        } catch {
+          // The tree stays held; its place lasts this visit only.
+        }
+      },
+    },
     get: (): PastedLesson | null => {
       const parsed = PastedDocumentSchema.safeParse(read())
       return parsed.success

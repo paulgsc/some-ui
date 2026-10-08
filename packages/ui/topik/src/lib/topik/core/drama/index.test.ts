@@ -91,16 +91,3 @@ describe("canGoBack", () => {
     expect(stepSession(lesson, child, { type: "back" }).session).toBe(child)
   })
 })
-
-describe("openSession", () => {
-  it("resumes a point that resolves, and opens the root otherwise", () => {
-    const left = play([advance, advance, { type: "choose", option: "b" }])
-    expect(openSession(lesson, true, left.drama).session.drama).toEqual(
-      left.drama
-    )
-    expect(
-      openSession(lesson, true, { ...left.drama, route: ["nope"] }).session
-        .drama.route
-    ).toEqual([])
-  })
-})

@@ -11,9 +11,9 @@
 
 import type { JSX } from "react"
 import { useEffect, useMemo, useRef } from "react"
-import { cn } from "@some-ui/core-utils"
 import type { VoicePort } from "@some-ui/makjang"
 import { Button } from "@some-ui/shared"
+import { LadderDock } from "@topik/components/topik/handheld/ladder-dock"
 import { CandidateText } from "@topik/components/topik/handheld/probe-card"
 import { StepLayout } from "@topik/components/topik/handheld/step-layout"
 import { WebtoonPanel } from "@topik/components/topik/handheld/webtoon-panel"
@@ -27,14 +27,7 @@ import {
 } from "@topik/lib/topik/core/drama"
 import type { DramaPointStore } from "@topik/lib/topik/core/drama-runtime"
 import { orderedOptions, showsRelations } from "@topik/lib/topik/core/probe"
-import {
-  ChevronLeft,
-  ChevronRight,
-  Eye,
-  Languages,
-  RotateCcw,
-  Volume2,
-} from "lucide-react"
+import { ChevronLeft, RotateCcw } from "lucide-react"
 
 type DramaLessonProps = {
   /** A `checked` `TreeIntake`'s lesson (MK4). Remount with a new `key`. */
@@ -69,7 +62,10 @@ export const DramaLesson = ({
   useEffect(() => {
     const node = end.current
     if (node && typeof node.scrollIntoView === "function") {
-      node.scrollIntoView({ block: "end", behavior: "smooth" })
+      const still =
+        typeof window.matchMedia === "function" &&
+        window.matchMedia("(prefers-reduced-motion: reduce)").matches
+      node.scrollIntoView({ block: "end", behavior: still ? "auto" : "smooth" })
     }
   }, [last])
 
@@ -84,7 +80,9 @@ export const DramaLesson = ({
   const stage = (
     <div
       data-slot="topik-drama"
-      className="mx-auto flex w-full max-w-md flex-col gap-3"
+      // A cover's motion shakes it sideways while it plays; that must not
+      // widen the strip. The padding keeps a jagged edge's outline inside.
+      className="mx-auto flex w-full max-w-md flex-col gap-3 overflow-x-clip px-1"
     >
       {panels.map((panel) => (
         <WebtoonPanel
@@ -178,48 +176,18 @@ export const DramaLesson = ({
     const beat = at.id
     const current = rung(beat)
     return (
-      <>
-        <div className="flex gap-2">
-          {session.audio && (
-            <Button
-              variant="secondary"
-              className="h-12 min-w-0 flex-1 gap-2 rounded-2xl"
-              onClick={() => replay(beat)}
-            >
-              <Volume2
-                className={cn("size-5", speaking === beat && "animate-pulse")}
-              />
-              {current === 0 ? "Listen" : "Again"}
-            </Button>
-          )}
-          {current < 2 && (
-            <Button
-              variant="outline"
-              className="h-12 min-w-0 flex-1 gap-2 rounded-2xl"
-              onClick={() => reveal(beat)}
-            >
-              {current === 0 ? (
-                <>
-                  <Eye className="size-4" /> Show Korean
-                </>
-              ) : (
-                <>
-                  <Languages className="size-4" /> Show English
-                </>
-              )}
-            </Button>
-          )}
-        </div>
-        <div className="flex gap-2">
-          {back}
-          <Button
-            className="h-12 min-w-0 flex-1 gap-2 rounded-2xl"
-            onClick={() => dispatch({ type: "advance" })}
-          >
-            Next <ChevronRight className="size-5" />
-          </Button>
-        </div>
-      </>
+      <LadderDock
+        rung={current}
+        canReveal={current < 2}
+        audio={session.audio}
+        speaking={speaking === beat}
+        canGoBack={canGoBack(lesson, session)}
+        previousLabel="Previous beat"
+        onReplay={() => replay(beat)}
+        onReveal={() => reveal(beat)}
+        onPrev={() => dispatch({ type: "back" })}
+        onNext={() => dispatch({ type: "advance" })}
+      />
     )
   })()
 

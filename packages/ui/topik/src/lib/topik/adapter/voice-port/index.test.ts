@@ -5,13 +5,18 @@ import { describe, expect, it, vi } from "vitest"
 
 const speakerSaying = (
   outcome: SpeechOutcome,
-  available = true
+  available = true,
+  { muted = false, voice = "available" } = {}
 ): Speaker & { say: Mock<Speaker["say"]> } => ({
   available,
-  muted: false,
+  muted,
   say: vi.fn<Speaker["say"]>(() => Promise.resolve(outcome)),
   stop: vi.fn(),
-  describe: vi.fn(),
+  describe: vi.fn<Speaker["describe"]>(() => ({
+    platform: "browser",
+    voice: null,
+    availability: voice === "missing" ? "missing" : "available",
+  })),
   subscribe: vi.fn(() => () => {}),
 })
 
@@ -59,5 +64,16 @@ describe("speakerVoice", () => {
         signal
       )
     ).toBe("cancelled")
+  })
+
+  it("is audible unless muted or without a Korean voice", () => {
+    const heard = { kind: "heard" } as const
+    expect(speakerVoice(speakerSaying(heard))!.audible()).toBe(true)
+    expect(
+      speakerVoice(speakerSaying(heard, true, { muted: true }))!.audible()
+    ).toBe(false)
+    expect(
+      speakerVoice(speakerSaying(heard, true, { voice: "missing" }))!.audible()
+    ).toBe(false)
   })
 })

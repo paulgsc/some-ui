@@ -91,6 +91,14 @@ function number(text: string, scale: number): number {
   return percent ? (parsed / 100) * scale : parsed
 }
 
+/** An `oklch(L C H [/ A])` value; the alpha is ignored. */
+export function parseOklch(value: string): Oklch {
+  const lch = call(value.trim(), "oklch")
+  if (lch === undefined) throw new Error(`not an oklch() value: ${value}`)
+  const [l = "", c = "", h = ""] = (lch.split("/")[0] ?? "").trim().split(/\s+/)
+  return [number(l, 1), number(c, 0.4), number(h, 1)]
+}
+
 function resolve(
   value: string,
   properties: Map<string, string>,
@@ -105,11 +113,7 @@ function resolve(
     if (target === undefined) throw new Error(`${name} is not declared`)
     return resolve(target, properties, new Set(Array.from(seen).concat(name)))
   }
-  const lch = call(v, "oklch")
-  if (lch !== undefined) {
-    const [l = "", c = "", h = ""] = lch.split("/")[0]!.trim().split(/\s+/)
-    return [number(l, 1), number(c, 0.4), number(h, 1)]
-  }
+  if (call(v, "oklch") !== undefined) return parseOklch(v)
   const mix = call(v, "color-mix")
   if (mix !== undefined) {
     const [space, first = "", second = ""] = args(mix)

@@ -11,18 +11,21 @@
  *
  * Lines voice themselves only once the learner has touched the lesson: a tap
  * is what lets a phone play audio at all, and a lesson that talks before
- * being asked to is another way to lose a learner (Axiom 6.1).
+ * being asked to is another way to lose a learner (Axiom 6.1). While nothing
+ * can be heard (muted, or no Korean voice) the ladder starts at Hangul, and
+ * the line refused meanwhile is said once sound returns, if it is still the
+ * one on screen.
  */
 
 import { assertNever } from "@some-ui/core-utils"
-import type { Beat, DramaEffect, MediaPorts } from "@some-ui/makjang"
-import { isLine, scenesOf } from "@some-ui/makjang"
+import type { DramaEffect, MediaPorts } from "@some-ui/makjang"
+import { isLine } from "@some-ui/makjang"
 import type {
   DramaLesson,
   DramaSession,
   SessionEvent,
 } from "@topik/lib/topik/core/drama"
-import { openSession, stepSession } from "@topik/lib/topik/core/drama"
+import { beatsOf, openSession, stepSession } from "@topik/lib/topik/core/drama"
 
 /** Where a lesson's place is kept, by lesson id. */
 export type DramaPointStore = {
@@ -42,26 +45,21 @@ export type DramaSnapshot = {
 export class DramaRuntime {
   private snapshot: DramaSnapshot
   private readonly listeners = new Set<() => void>()
-  private readonly beats: ReadonlyMap<string, Beat>
   private armed = false
   private line: AbortController | null = null
+  /** The beat the voice could not say, owed once it can. */
+  private owed: string | null = null
 
   constructor(
     private readonly lesson: DramaLesson,
     private readonly ports: DramaPorts
   ) {
-    this.beats = new Map(
-      scenesOf(lesson.root).flatMap(({ scene }) =>
-        scene.beats.map((beat): [string, Beat] => [beat.id, beat])
-      )
-    )
     const opened = openSession(
       lesson,
-      ports.voice !== null,
+      ports.voice?.audible() ?? false,
       ports.points.get(lesson.id)
     )
     this.snapshot = { session: opened.session, speaking: null }
-    // The opening's voice effect is dropped: nothing has been touched yet.
     this.run(opened.effects)
   }
 
@@ -81,20 +79,45 @@ export class DramaRuntime {
     this.run(moved.effects)
   }
 
-  /** The learner's own replay: it cuts in on whatever is playing. */
+  /** The learner's replay: it cuts in on whatever is playing. */
   replay = (beatId: string): void => {
     this.armed = true
     this.say(beatId, true)
   }
 
   /**
-   * Stops the line in flight and waits for the next touch before voicing
-   * another. The runtime stays usable: React's StrictMode unmounts and
+   * Follows whether lines can be heard, until the returned dispose, which
+   * also stops the line in flight and waits for the next touch before
+   * voicing another. Connect again after it: React's StrictMode unmounts and
    * remounts a component that keeps the same runtime.
    */
-  dispose = (): void => {
-    this.armed = false
-    this.stop()
+  connect = (): (() => void) => {
+    const voice = this.ports.voice
+    const follow = (): void => {
+      if (voice === null) return
+      const audible = voice.audible()
+      const moved = stepSession(this.lesson, this.snapshot.session, {
+        type: "audible",
+        audible,
+      })
+      if (moved.session !== this.snapshot.session) {
+        this.publish({ ...this.snapshot, session: moved.session })
+      }
+      const { at } = this.snapshot.session.drama
+      const owed = this.owed
+      if (audible && this.armed && owed !== null) {
+        this.owed = null
+        if (at.kind === "beat" && at.id === owed) this.say(owed, false)
+      }
+    }
+    follow()
+    const unsubscribe = voice?.subscribe(follow)
+    return () => {
+      unsubscribe?.()
+      this.armed = false
+      this.owed = null
+      this.stop()
+    }
   }
 
   private publish(next: DramaSnapshot): void {
@@ -136,9 +159,10 @@ export class DramaRuntime {
 
   private say(beatId: string, interrupt: boolean): void {
     const voice = this.ports.voice
-    const beat = this.beats.get(beatId)
+    const beat = beatsOf(this.lesson).get(beatId)
     if (voice === null || beat === undefined) return
     this.stop()
+    this.owed = null
     const line = new AbortController()
     this.line = line
     const current = (): boolean => this.line === line
@@ -155,9 +179,9 @@ export class DramaRuntime {
         },
         line.signal
       )
-      .then(() => {
-        // A line a newer one replaced has already been cleared.
+      .then((presented) => {
         if (!current()) return
+        if (presented === "unavailable") this.owed = beatId
         this.line = null
         this.publish({ ...this.snapshot, speaking: null })
       })

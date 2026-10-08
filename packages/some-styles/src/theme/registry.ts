@@ -278,11 +278,7 @@ export const ACCENT_THEMES: ReadonlyArray<ThemeDefinition> = (
   selectable: false,
 }))
 
-/**
- * The webtoon's feelings (`themes/feeling.css`, generated from `./feeling`).
- * Each composes with whatever session theme is active, which is why its
- * `mode` is `inherit`, and a reusable component may apply one to itself.
- */
+/** The webtoon's feelings (`./feeling`). */
 export const FEELING_THEMES: ReadonlyArray<ThemeDefinition> = FEELING_KEYS.map(
   (key) => ({
     id: feelingThemeClass(key),

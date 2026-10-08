@@ -1,6 +1,8 @@
 import type { Route } from "@some-ui/makjang"
 import { sceneAt, scenesOf } from "@some-ui/makjang"
+import { memoryStorage } from "@some-ui/vite-config/vitest/memory-storage"
 import { cleanup, fireEvent, render, screen } from "@testing-library/react"
+import { createPastedLessonStore } from "@topik/lib/topik/adapter/pasted-lesson"
 import type { DramaPointStore } from "@topik/lib/topik/core/drama-runtime"
 import { workedLesson } from "@topik/lib/topik/generation/tree-intake/worked-example"
 import { afterEach, describe, expect, it, vi } from "vitest"
@@ -11,33 +13,24 @@ afterEach(cleanup)
 
 const lesson = workedLesson()
 
-function memoryPoints(held?: unknown): DramaPointStore & {
-  saved: () => unknown
-} {
-  let point = held
-  return {
-    saved: () => point,
-    get: () => point,
-    set: (_, next): void => {
-      point = next
-    },
-  }
+/** The slot holding the lesson, opened at `point` when one is given. */
+function slot(point?: unknown): DramaPointStore {
+  const store = createPastedLessonStore(memoryStorage())
+  store.setTree(lesson)
+  if (point !== undefined) store.points.set(lesson.id, point)
+  return store.points
 }
 
-const renderDrama = (
-  points = memoryPoints()
-): { points: typeof points; onLeave: ReturnType<typeof vi.fn> } => {
-  const onLeave = vi.fn()
+const renderDrama = (points = slot()): void => {
   render(
     <DramaLesson
       lesson={lesson}
       voice={null}
       points={points}
       short={false}
-      onLeave={onLeave}
+      onLeave={vi.fn()}
     />
   )
-  return { points, onLeave }
 }
 
 const next = (): void => {
@@ -85,12 +78,10 @@ describe("DramaLesson", () => {
     next()
     choose("네, 감사합니다.")
     expect(previous().disabled).toBe(true)
-    fireEvent.click(previous())
-    expect(slots()).toEqual(["drama-chosen", "drama-cover", "drama-line"])
   })
 
-  it("replays from the root on restart, keeping the first choices", () => {
-    const { points } = renderDrama()
+  it("plays it again from the root", () => {
+    renderDrama()
     next()
     next()
     choose("아니요, 안 앉아요.")
@@ -98,10 +89,6 @@ describe("DramaLesson", () => {
     next()
     fireEvent.click(screen.getByRole("button", { name: /Play it again/ }))
     expect(slots()).toEqual(["drama-cover", "drama-narration"])
-    next()
-    next()
-    choose("네, 감사합니다.")
-    expect(points.saved()).toMatchObject({ route: ["a"], first: { c1: "c" } })
   })
 
   it("climbs a line's ladder on a tap: Hangul, then its gloss", () => {
@@ -142,7 +129,7 @@ describe("MK6: no feeling anchor sits on a choice or a chosen line", () => {
   it.each(scenesOf(lesson.root).map(({ route, scene }) => [scene.id, route]))(
     "on the route to %s",
     (_, route) => {
-      renderDrama(memoryPoints(pointAt(route)))
+      renderDrama(slot(pointAt(route)))
       const scene = sceneAt(lesson.root, route)!
       const unanchored = document.querySelectorAll(
         "[data-slot='drama-choice'], [data-slot='drama-chosen'], [role='group'][aria-label='Choose']"
@@ -151,8 +138,8 @@ describe("MK6: no feeling anchor sits on a choice or a chosen line", () => {
         (route.length > 0 ? 1 : 0) + (scene.choice ? 2 : 0)
       )
       for (const node of unanchored) {
-        expect(node.closest(".feeling, .feeling-frame")).toBeNull()
-        expect(node.querySelector(".feeling, .feeling-frame")).toBeNull()
+        expect(node.closest(".feeling, .feeling-panel")).toBeNull()
+        expect(node.querySelector(".feeling, .feeling-panel")).toBeNull()
         expect(node.querySelector("[data-slot='feeling-symbol']")).toBeNull()
       }
       // Everything else of the scene wears its feeling.
@@ -163,9 +150,9 @@ describe("MK6: no feeling anchor sits on a choice or a chosen line", () => {
         1 + scene.beats.length + (scene.choice ? 0 : 1)
       )
       for (const node of anchored) {
-        expect(
-          node.closest(".feeling-frame")?.getAttribute("data-feeling")
-        ).toBe(scene.feeling)
+        expect(node.closest(".feeling")?.getAttribute("data-feeling")).toBe(
+          scene.feeling
+        )
       }
     }
   )

@@ -5,7 +5,9 @@
  * Every character speaks in the voice the person chose in Settings, since a
  * `Speaker` cannot name one (docs/makjang/README.md, "3. Media"). What
  * became of a line is translated once, here: a muted, failed or ended line
- * was not presented, and the beat stays readable as text.
+ * was not presented, and the beat stays readable as text. A line is audible
+ * unless the person muted voice or the device has no Korean voice; one still
+ * being checked counts as audible.
  */
 
 import type { Presented, VoicePort } from "@some-ui/makjang"
@@ -34,5 +36,9 @@ export function speakerVoice(speaker: Speaker | null): VoicePort | null {
           onStart: request.onStart,
         })
         .then((outcome) => PRESENTED[outcome.kind]),
+    audible: () =>
+      !speaker.muted &&
+      speaker.describe(SPOKEN_LANGUAGE).availability !== "missing",
+    subscribe: (listener) => speaker.subscribe(listener),
   }
 }

@@ -8,11 +8,12 @@
  * full palette (overriding the session theme) just to get three variables.
  */
 
-import { readdirSync, readFileSync } from "node:fs"
+import { readFileSync } from "node:fs"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 import { describe, expect, it } from "vitest"
 
+import { themeSources } from "../../../scripts/write-feeling-css"
 import { FEATURE_APPEARANCES, SESSION_THEMES } from "../index"
 
 const PACKAGE_ROOT = join(dirname(fileURLToPath(import.meta.url)), "../../..")
@@ -125,11 +126,7 @@ describe("base tokens", () => {
 })
 
 describe("session and feature palettes", () => {
-  const themeCss = Object.fromEntries(
-    readdirSync(join(PACKAGE_ROOT, "themes"))
-      .filter((f) => f.endsWith(".css"))
-      .map((f) => [f.replace(/\.css$/, ""), read("themes", f)])
-  )
+  const themeCss = themeSources().themes
 
   const palettes = [...SESSION_THEMES, ...FEATURE_APPEARANCES].filter(
     // `light` is :root itself and `dark` lives in base.css, both covered above.

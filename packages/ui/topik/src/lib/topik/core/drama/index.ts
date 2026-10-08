@@ -43,8 +43,11 @@ import { isFeelingKey } from "@some-ui/styles/theme"
 import type { ProbeOption } from "@topik/lib/topik"
 import type { ChoiceProbe } from "@topik/lib/topik/core/probe"
 
-/** Audio only, Hangul, gloss. */
+/** Audio only, Hangul, gloss: canon Cor. 4.4's ladder. */
 export type Rung = 0 | 1 | 2
+
+/** Where a heard line's ladder starts: at Hangul when nothing can speak. */
+export const firstRung = (audio: boolean): Rung => (audio ? 0 : 1)
 
 export type DramaLesson = Lesson<ChoiceProbe>
 
@@ -59,19 +62,32 @@ export type DramaSession = {
   audio: boolean
 }
 
-export type SessionEvent = DramaEvent | { type: "reveal"; id: string }
+export type SessionEvent =
+  | DramaEvent
+  | { type: "reveal"; id: string }
+  /** Whether lines can be heard changed: muted, unmuted, a voice found. */
+  | { type: "audible"; audible: boolean }
 
 export type SessionTransition = {
   session: DramaSession
   effects: Array<DramaEffect>
 }
 
-const beatIds = (lesson: DramaLesson): ReadonlySet<string> =>
-  new Set(
-    scenesOf(lesson.root).flatMap(({ scene }) =>
-      scene.beats.map((beat) => beat.id)
+const indexed = new WeakMap<DramaLesson, ReadonlyMap<string, Beat>>()
+
+/** Every beat of the tree, by id. */
+export function beatsOf(lesson: DramaLesson): ReadonlyMap<string, Beat> {
+  let beats = indexed.get(lesson)
+  if (beats === undefined) {
+    beats = new Map(
+      scenesOf(lesson.root).flatMap(({ scene }) =>
+        scene.beats.map((beat): [string, Beat] => [beat.id, beat])
+      )
     )
-  )
+    indexed.set(lesson, beats)
+  }
+  return beats
+}
 
 /**
  * Where `id` stands on its ladder. Only a beat is heard first; a prompt or a
@@ -84,7 +100,7 @@ export function rungOf(
 ): Rung {
   const reached = session.rungs[id]
   if (reached !== undefined) return reached
-  return session.audio && beatIds(lesson).has(id) ? 0 : 1
+  return beatsOf(lesson).has(id) ? firstRung(session.audio) : 1
 }
 
 /**
@@ -108,6 +124,29 @@ export function stepSession(
   session: DramaSession,
   event: SessionEvent
 ): SessionTransition {
+  if (event.type === "audible") {
+    if (event.audible === session.audio) return { session, effects: [] }
+    // A rung never goes back: a line already read stays readable when
+    // sound returns.
+    const read = event.audible
+      ? Object.fromEntries(
+          shownBeats(sceneOf(lesson, session), session).map(
+            (beat): [string, Rung] => [
+              beat.id,
+              session.rungs[beat.id] ?? firstRung(false),
+            ]
+          )
+        )
+      : {}
+    return {
+      session: {
+        ...session,
+        audio: event.audible,
+        rungs: { ...session.rungs, ...read },
+      },
+      effects: [],
+    }
+  }
   if (event.type === "reveal") {
     const rung = rungOf(lesson, session, event.id)
     if (rung === 2) return { session, effects: [] }
@@ -183,12 +222,7 @@ function shownBeats(
   return scene.beats.slice(0, index + 1)
 }
 
-/**
- * The current scene's panels, top to bottom. Only the cover, the beats and
- * the ending wear the scene's feeling; the chosen line and the open choice
- * stay in the session theme, so a child scene's feeling first shows on the
- * cover after the chosen line (MK6).
- */
+/** The current scene's panels, top to bottom (MK6). */
 export function panelsOf(
   lesson: DramaLesson,
   session: DramaSession

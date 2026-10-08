@@ -11,8 +11,7 @@
  * kept across interruptions.
  *
  * A pasted scene tree plays here as the drama instead (`DramaLesson`,
- * docs/makjang/README.md); conversation lessons keep playing the old way
- * until MKJ-S5 removes them.
+ * docs/makjang/README.md).
  */
 
 import type { JSX } from "react"
@@ -29,14 +28,10 @@ import { WrapCard } from "@topik/components/topik/handheld/wrap-card"
 import { ReadAloudScreen } from "@topik/components/topik/read-aloud/read-aloud-screen"
 import type { ConversationBatch, TopikMetadata } from "@topik/lib/topik"
 import { useSessionConfig } from "@topik/lib/topik/adapter/context/session-config-context"
-import { createDramaPointStore } from "@topik/lib/topik/adapter/drama-point"
 import type { UseHandheldLessonOptions } from "@topik/lib/topik/adapter/hooks/use-handheld-lesson"
 import { useHandheldLesson } from "@topik/lib/topik/adapter/hooks/use-handheld-lesson"
 import { usePastedTree } from "@topik/lib/topik/adapter/hooks/use-pasted-tree"
-import {
-  createPastedLessonStore,
-  sessionStorageOrNull,
-} from "@topik/lib/topik/adapter/pasted-lesson"
+import { createPastedLessonStore } from "@topik/lib/topik/adapter/pasted-lesson"
 import type { ReadAloudStore } from "@topik/lib/topik/adapter/read-aloud-store"
 import {
   keptLessonOf,
@@ -62,11 +57,7 @@ export const HandheldLesson = ({
   pastedResumeStore,
   readAloudStore,
 }: HandheldLessonProps): JSX.Element => {
-  // One pasted slot, shared by the conversation lesson and the drama.
   const [held] = useState(() => pastedStore ?? createPastedLessonStore())
-  const [dramaPoints] = useState(() =>
-    createDramaPointStore(sessionStorageOrNull())
-  )
   const vm = useHandheldLesson({
     resumeStore,
     surveyStore,
@@ -74,10 +65,9 @@ export const HandheldLesson = ({
     pastedResumeStore,
   })
   const { lesson, audio, dispatch, generator } = vm
-  const drama = usePastedTree(held, dramaPoints)
+  const drama = usePastedTree(held)
   const { speaker, shelf } = useSessionConfig()
   const voice = useMemo(() => speakerVoice(speaker), [speaker])
-  // A conversation lesson taking the slot lets the pasted tree go.
   const startConversation = (
     meta: TopikMetadata,
     batches: Array<ConversationBatch>
@@ -107,68 +97,35 @@ export const HandheldLesson = ({
     )
   }
 
-  if (drama.playing && drama.tree) {
-    return (
-      <div
-        data-slot="topik-handheld"
-        data-short={short || undefined}
-        className="flex size-full min-h-0 flex-col"
-      >
-        <header className="shrink-0">
-          <div
-            className={cn(
-              "flex items-center gap-2 px-2",
-              short ? "h-11" : "h-14"
-            )}
-          >
-            <Button
-              variant="ghost"
-              size="icon"
-              className="size-11 shrink-0"
-              onClick={drama.leave}
-              aria-label="Back to materials"
-            >
-              <ChevronLeft className="size-6" />
-            </Button>
-            <h1
-              lang="ko"
-              className="min-w-0 flex-1 truncate text-base font-semibold"
-            >
-              {drama.tree.root.place}
-            </h1>
-          </div>
-        </header>
-        <DramaLesson
-          key={drama.tree.id}
-          lesson={drama.tree}
-          voice={voice}
-          points={dramaPoints}
-          short={short}
-          onLeave={drama.leave}
-        />
-      </div>
-    )
-  }
+  const playing = drama.playing ? drama.tree : null
 
-  const title = lesson
-    ? lesson.displayName
-    : vm.loading
-      ? "Loading..."
-      : generator.active
-        ? "New lesson"
-        : "Korean listening"
+  const title = playing
+    ? playing.root.place
+    : lesson
+      ? lesson.displayName
+      : vm.loading
+        ? "Loading..."
+        : generator.active
+          ? "New lesson"
+          : "Korean listening"
 
   const header = (
     <header className="shrink-0">
       <div
         className={cn("flex items-center gap-2 px-2", short ? "h-11" : "h-14")}
       >
-        {vm.lesson || vm.loading || generator.active ? (
+        {playing || vm.lesson || vm.loading || generator.active ? (
           <Button
             variant="ghost"
             size="icon"
             className="size-11 shrink-0"
-            onClick={generator.active ? generator.close : vm.leave}
+            onClick={
+              playing
+                ? drama.leave
+                : generator.active
+                  ? generator.close
+                  : vm.leave
+            }
             aria-label="Back to materials"
           >
             <ChevronLeft className="size-6" />
@@ -177,7 +134,12 @@ export const HandheldLesson = ({
           <span className="w-2" />
         )}
         <div className="min-w-0 flex-1">
-          <h1 className="truncate text-base font-semibold">{title}</h1>
+          <h1
+            lang={playing ? "ko" : undefined}
+            className="truncate text-base font-semibold"
+          >
+            {title}
+          </h1>
           {lesson && !short && (
             <p className="text-muted-foreground text-xs">
               Conversation {lesson.conversation + 1} of{" "}
@@ -210,6 +172,18 @@ export const HandheldLesson = ({
   )
 
   const body = ((): JSX.Element => {
+    if (playing) {
+      return (
+        <DramaLesson
+          key={playing.id}
+          lesson={playing}
+          voice={voice}
+          points={held.points}
+          short={short}
+          onLeave={drama.leave}
+        />
+      )
+    }
     if (vm.loading) {
       return (
         <div className="flex flex-1 flex-col items-center justify-center gap-3 p-6 text-center">

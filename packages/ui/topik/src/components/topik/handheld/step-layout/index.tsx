@@ -51,7 +51,9 @@ export const StepLayout = ({
         "flex shrink-0 flex-col justify-end gap-2",
         short
           ? "w-64 py-2"
-          : "border-border/60 border-t px-4 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))]"
+          : // Bounded, so a dock whose list scrolls (a drama's choices)
+            // shrinks to it rather than pushing past the screen.
+            "border-border/60 max-h-[70%] min-h-0 border-t px-4 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))]"
       )}
     >
       {dock}

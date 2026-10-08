@@ -4,11 +4,12 @@ import type { Draft, TreeCheck } from "@lesson-crm/lib/draft"
 import { cn } from "@some-ui/core-utils"
 import { useFittedPage } from "@some-ui/react-hooks"
 import { Badge, PageControls, Textarea } from "@some-ui/shared"
-import type { ProbeFinding, TreeFinding } from "@some-ui/topik"
+import type { FindingRow, ProbeFinding } from "@some-ui/topik"
 import {
-  findingPlace,
   RELATION_TAG_PREFIX,
+  treeFindingRow,
   treeFixRequest,
+  treeSummary,
 } from "@some-ui/topik"
 import { Check } from "lucide-react"
 
@@ -18,27 +19,18 @@ type LessonCheckProps = {
   actions?: ReactNode
 }
 
-/** One finding as the list shows it, whichever intake made it. */
-type Row = { key: string; error: boolean; text: string }
-
 // Keys carry the position: two findings can read the same (a candidate
 // repeated twice over), and both are shown.
-const probeRow = (finding: ProbeFinding, position: number): Row => ({
+const probeRow = (finding: ProbeFinding, position: number): FindingRow => ({
   key: `${position}:${finding.batch ?? "file"}:${finding.index ?? finding.probe ?? ""}:${finding.message}`,
   error: finding.severity === "error",
   text: `${finding.severity === "error" ? "Withheld" : "Warning"} · conversation ${finding.batch ?? "?"}${finding.probe ? `, ${finding.probe}` : ""}: ${finding.message}`,
 })
 
-const treeRow = (finding: TreeFinding, position: number): Row => ({
-  key: `${position}:${finding.audit}:${finding.path}:${finding.message}`,
-  error: finding.severity === "error",
-  text: `${finding.severity === "error" ? "Error" : "Warning"} · ${finding.audit} · ${findingPlace(finding)}: ${finding.message}`,
-})
-
-const rowsOf = (draft: Draft | null): Array<Row> =>
+const rowsOf = (draft: Draft | null): Array<FindingRow> =>
   draft?.ok
     ? draft.intake.findings.map(probeRow)
-    : (draft?.tree?.findings.map(treeRow) ?? [])
+    : (draft?.tree?.findings.map(treeFindingRow) ?? [])
 
 /**
  * A scene tree's verdict: whether it plays, and what the audits drop from it.
@@ -52,7 +44,7 @@ const TreeVerdict = ({
   tree: TreeCheck
   note: string
 }): JSX.Element => {
-  const errors = tree.findings.filter(({ severity }) => severity === "error")
+  const summary = treeSummary(tree)
   const fixes = tree.findings.length > 0 && (
     <details className="text-xs">
       <summary className="cursor-pointer">The fixes, to send the model</summary>
@@ -70,8 +62,7 @@ const TreeVerdict = ({
     return (
       <div className="flex flex-col gap-3 text-sm">
         <p role="alert" className="text-destructive">
-          This scene tree can&apos;t be played: {tree.findings.length} finding
-          {tree.findings.length === 1 ? "" : "s"} below.
+          {summary}
         </p>
         {fixes}
       </div>
@@ -85,16 +76,12 @@ const TreeVerdict = ({
         {" · "}TOPIK {tree.lesson.level} · {characters} character
         {characters === 1 ? "" : "s"}
       </p>
-      {tree.findings.length === 0 ? (
+      {summary === null ? (
         <p className="text-success flex items-center gap-2">
           <Check className="size-4" /> Every choice will be asked as written.
         </p>
       ) : (
-        <p className="text-muted-foreground">
-          {errors.length > 0
-            ? "A choice an error names is not asked: its scene ends there, and the scenes under it are dropped."
-            : "Warnings only: the tree plays as written."}
-        </p>
+        <p className="text-muted-foreground">{summary}</p>
       )}
       <p className="text-muted-foreground text-xs">{note}</p>
       {fixes}
