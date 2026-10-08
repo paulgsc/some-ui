@@ -12,6 +12,7 @@
  * none of it leaves the device.
  */
 
+import { localStorageOrNull } from "@some-ui/core-utils"
 import type { StorageLike } from "@topik/lib/topik/adapter/resume-point"
 import type { ReadAloudLevel } from "@topik/lib/topik/read-aloud/content"
 import type {
@@ -49,15 +50,6 @@ export type ReadAloudStore = {
   /** The set left unfinished at this level, or null. */
   progress: (level: ReadAloudLevel) => SetProgress | null
   saveProgress: (level: ReadAloudLevel, progress: SetProgress | null) => void
-}
-
-/** `window.localStorage`, or null wherever touching it throws. */
-function defaultStorage(): StorageLike | null {
-  try {
-    return typeof window === "undefined" ? null : window.localStorage
-  } catch {
-    return null
-  }
 }
 
 const Id = z.string().min(1)
@@ -100,7 +92,7 @@ const ProgressDocumentSchema = z.object({
 })
 
 export function createReadAloudStore(
-  storage: StorageLike | null = defaultStorage()
+  storage: StorageLike | null = localStorageOrNull()
 ): ReadAloudStore {
   const read = (key: string): unknown => {
     try {
