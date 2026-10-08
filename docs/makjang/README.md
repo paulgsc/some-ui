@@ -72,6 +72,42 @@ The phone lesson fails this today. Its screens are exercises with a
 conversation attached: unnamed lines, checks between them, a tally at the end.
 Every design decision below is measured against this test first.
 
+### What we claim, and what we do not
+
+We never claim a learner has learned anything. The claim is weaker, and it is
+the one the product rests on: someone who keeps coming back to a drama they
+can only follow in Korean becomes more literate in Korean as a result. It is
+not a guarantee for any one lesson. It is what emerges from continued, honest
+time with the language. The learner is here to enjoy a drama, and literacy is
+what they come away with.
+
+The canon says the same thing, and says why the stronger claim is not
+available:
+
+- No single unit's outcomes can show that it taught anything (Thm. 3.1), so
+  the system claims only that persistence is how learning happens, and what a
+  unit owes the learner is a reason to come back (Rem. 3.3).
+- Coming back is part of the objective itself, not a product concern beside
+  it (Axiom 6.1, Rem. 6.1).
+- For the read-aloud exercise the canon already states this as an assumption,
+  not a result: honest repetition teaches, with a gain that shrinks as words
+  near mastery (Axiom 6.2).
+
+It is also stricter than "engaging content teaches", in two ways that are
+design rules here:
+
+- **The gain is conditional on honest practice** (Axiom 6.2). For a drama,
+  honest practice is following it in Korean. A learner who reads the English
+  gloss of every line is enjoying a drama in English, and nothing emerges. So
+  the drama stays in Hangul as far as the level allows: the gloss is a rung
+  the learner reaches for on a line, never the default; narration, choice
+  prompts and consequences are in Korean wherever the level can carry them;
+  and English is the fallback, not the channel.
+- **Engagement may not be bought with the gain** (Rem. 6.7). A change that
+  makes the drama more pleasant by making it less Korean (glosses up front,
+  English narration for flow) is not preferred on engagement alone, and has to
+  be argued the way any change to the teaching is.
+
 ### What it is not
 
 - **Not gamified engagement.** No streaks, no catalogue to complete, no "X of
@@ -163,6 +199,12 @@ amendments land with, or before, the first source change that relies on them
    identity, and discarded to the root when it no longer resolves (Thm. 1.1).
    Nothing else is persisted, and nothing crosses lessons (see "One lesson
    stands alone").
+4. **Honest exposure teaches, for the drama.** Axiom 6.2 is stated for the
+   read-aloud rep. The drama needs the same assumption, stated for following
+   a scene in Korean, with honest practice defined as reaching the gloss only
+   when a line will not come otherwise. Like Axiom 6.2 it is an assumption,
+   falsifiable and not observed, and it is what makes "literacy emerges" a
+   claim the canon holds rather than a slogan.
 
 ## The architecture
 
