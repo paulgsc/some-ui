@@ -67,7 +67,7 @@ Two things are true at once, and neither is allowed to win:
   learner kept up. What the learner understood or missed changes what happens
   next.
 
-### The example that defines it
+### An illustration
 
 Seo-yeon is told what to buy before she meets her future mother-in-law. Later
 she is at the shop, and the learner is asked what she should buy, with the
@@ -77,6 +77,13 @@ and the learner sees what happens: a scene, in Korean. Then the learner has to
 calm things down, which takes the right apology at the right level of
 politeness to an elder. The mistake does not end in a red X. It produces more
 drama, more Korean to read, and a second, harder item.
+
+This illustrates the shape (a choice inside the story, a consequence instead
+of a correction, a repair), not an item to build. "What should she buy?" is
+itself the kind of question the canon rules out (a learner who recognises one
+noun answers it, Prop. 4.2), and so it would not be asked. Questions that do
+pass the rules, and keep the same shape, are plentiful: which reply would
+offend her, what Seo-yeon is really saying, what she should say back.
 
 ### Why the current phone lesson drifted
 
@@ -112,8 +119,10 @@ amendments land with, or before, the first source change that relies on them
 **Derivable today**
 
 - Beats as lines with the audio, Hangul, gloss ladder (Cor. 4.4).
-- Choices as morphism probes of order three: situation of use, felicitous
-  reply, register (Def. 4.6, Def. 4.7, Rem. 4.8).
+- Choices as morphism probes of order two or three (Def. 4.6, Def. 4.7,
+  Rem. 4.8, Cor. 4.5). A choice is a probe and nothing new: a question that
+  would break an existing rule (first-order, Prop. 4.2, among them) is simply
+  not asked, and the existing audit drops it (Rem. 4.7, Thm. 8.2).
 - Scenes, branches and consequences as authored content, produced at
   authoring time and graded by lookup (Prop. 8.1, Rem. 4.7, Def. 8.3).
 - Voices, art and video as renderers with capability sets, which share every
@@ -135,18 +144,7 @@ amendments land with, or before, the first source change that relies on them
    back after a miss is authored into that subtree, bounded by the tree's
    depth. A node the learner's route never visits was never presented, so it
    is not an outcome of any kind, and in particular not a miss.
-3. **The situational probe, and the rule that keeps it second- or
-   third-order.** "What should she buy?" with pictures is, on its face, the
-   first-order item Prop. 4.2 forbids: recognising one noun picks the answer.
-   It is admissible only when **every option is mentioned in the scene before
-   the choice**, so that recognising a noun cannot separate them and only the
-   structure around it (negation, reason, reported speech, who said what) can.
-   This "mention-all" condition is mechanical, and belongs in the audit.
-4. **Images on options are a modality change** (Prop. 9.4). A picture of red
-   ginseng glosses the noun. Under the mention-all condition that is harmless,
-   because the item tests the structure and not the noun, and the amendment
-   should say so rather than leave it to be discovered.
-5. **The resume point is a route.** Within a lesson, the route (the options
+3. **The resume point is a route.** Within a lesson, the route (the options
    chosen from the root) and a beat index replace Corollary 4.4 (iii)'s
    conversation index and message id. It is keyed by option ids, resolved by
    identity, and discarded to the root when it no longer resolves (Thm. 1.1).
@@ -229,8 +227,7 @@ Option = { id, label, art?, right: boolean, check?, child: Scene }
 - **Beats.** A _line_ has a speaker, the Korean, its gloss and an optional
   stage direction (how it is said). A _narration_ is a short setting or action
   so the learner knows where they are. The choice is the drama's question,
-  asked inside the story ("She is at the shop. What does she buy?"), with an
-  optional art key per option (`gift.red-ginseng`).
+  asked inside the story, with an optional art key per option.
 
 #### One lesson stands alone
 
@@ -308,8 +305,8 @@ cast id to a voice choice at the port, not a change to the engine.
 **Media is not pedagogically neutral.** A picture glosses a noun. A frown on a
 video face is a hint on a register item. Each new rendition kind changes the
 valuation the renderer delivers (Prop. 9.4), so it lands with a line in the
-canon saying what it reveals and why that is acceptable, as amendment 4 does
-for option art. That is the one place where "add it when the technology is
+canon saying what it reveals and why that is acceptable, option art included
+when M2 adds it. That is the one place where "add it when the technology is
 ready" needs a review step and not just an asset.
 
 ### 4. Authoring: how lessons get made
@@ -325,8 +322,10 @@ option (Def. 8.3).
 - **Two audits, by owner.** The story audit checks structure: fan-out at most
   four, no choice at or past the maximum depth, the total scene count under
   its cap, ids unique across the tree, every speaker in the cast, and exactly
-  one right option per choice. The teaching audit checks the items: the existing probe audit,
-  plus the mention-all condition for situational choices.
+  one right option per choice. The teaching audit is the existing probe
+  audit. A choice it rejects is not asked: its scene becomes a leaf and the
+  subtree under it is dropped, the tree's version of Remark 4.7's "dropped at
+  load".
 - **Asset jobs** are a separate authoring step (cast voices, option icons,
   later portraits and video), so a lesson can ship with no assets at all and
   gain them later without its story changing.
@@ -339,7 +338,7 @@ option (Def. 8.3).
   Korean pedagogy" a dependency rule the toolchain enforces, where a folder
   inside topik would make it a convention.
 - **`@some-ui/topik`** keeps the teaching: probes, the hint ladder, tiles, the
-  probe and mention-all audits, the evaluation report, and the handheld
+  probe audit, the evaluation report, and the handheld
   renderer, which becomes a renderer of the engine. Topik depends on makjang,
   never the reverse. Only the handheld renderer imports makjang. The desktop
   session (`DesktopSession`, the session machine) does not, and is not changed
@@ -359,8 +358,8 @@ Each one ships, and none needs a better model than exists today.
 
 - **M1: the drama as data.** The canon amendments above. `@some-ui/makjang`
   with the scene-tree schema, the story audit and the engine, tested in `node`.
-  The legacy-conversation adapter. One hand-written pilot tree: the gift for
-  the mother-in-law, with its consequence and repair subtrees. No UI change
+  The legacy-conversation adapter. One hand-written pilot tree whose choices
+  pass the existing probe rules, with a consequence and a repair subtree. No UI change
   yet.
 - **M2: the phone lesson runs on the engine.** Speaker names, choices with
   hand-made SVG option art, consequence and repair scenes, a distinct device
@@ -387,8 +386,8 @@ invariants") in the change that adds the code, and enforced where they can be.
 - **Every scene tree is within its bounds.** At most four options per
   choice, no choice at the maximum depth, the total under its cap. Mechanical:
   the story audit, run on every served or pasted lesson.
-- **Every situational option is mentioned before its choice.** Mechanical: the
-  teaching audit.
+- **Every choice that is asked passes the probe audit.** Mechanical: the
+  teaching audit, with a rejected choice pruned to a leaf.
 - **A choice's outcome does not depend on the route taken afterwards, and
   an unvisited choice has none.** Mechanical: an engine test over every route
   of the pilot tree.
