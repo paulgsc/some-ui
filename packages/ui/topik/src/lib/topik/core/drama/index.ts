@@ -114,7 +114,7 @@ export function openSession(
 ): SessionTransition {
   const opened = point === undefined ? start(lesson) : resume(lesson, point)
   return {
-    session: { drama: opened.state, rungs: {}, audio },
+    session: readSilently(lesson, { drama: opened.state, rungs: {}, audio }),
     effects: opened.effects,
   }
 }
@@ -126,24 +126,15 @@ export function stepSession(
 ): SessionTransition {
   if (event.type === "audible") {
     if (event.audible === session.audio) return { session, effects: [] }
-    // A rung never goes back: a line already read stays readable when
-    // sound returns.
-    const read = event.audible
-      ? Object.fromEntries(
-          shownBeats(sceneOf(lesson, session), session).map(
-            (beat): [string, Rung] => [
-              beat.id,
-              session.rungs[beat.id] ?? firstRung(false),
-            ]
-          )
-        )
-      : {}
+    // Falling silent shows the scene's beats at Hangul; they stay read.
     return {
-      session: {
-        ...session,
-        audio: event.audible,
-        rungs: { ...session.rungs, ...read },
-      },
+      session: event.audible
+        ? { ...session, audio: true }
+        : readSilently(
+            lesson,
+            { ...session, audio: false },
+            shownBeats(sceneOf(lesson, session), session)
+          ),
       effects: [],
     }
   }
@@ -161,7 +152,44 @@ export function stepSession(
   const moved = step(lesson, session.drama, event)
   return moved.state === session.drama
     ? { session, effects: moved.effects }
-    : { session: { ...session, drama: moved.state }, effects: moved.effects }
+    : {
+        session: readSilently(lesson, { ...session, drama: moved.state }),
+        effects: moved.effects,
+      }
+}
+
+/**
+ * While nothing can be heard, a beat is shown at its Hangul; recording that
+ * keeps it there once sound returns, since a rung never goes back. `beats`
+ * defaults to the beat on screen.
+ */
+function readSilently(
+  lesson: DramaLesson,
+  session: DramaSession,
+  beats: ReadonlyArray<Beat> = currentBeat(lesson, session)
+): DramaSession {
+  if (session.audio || beats.length === 0) return session
+  return {
+    ...session,
+    rungs: {
+      ...session.rungs,
+      ...Object.fromEntries(
+        beats.map((beat): [string, Rung] => [
+          beat.id,
+          session.rungs[beat.id] ?? firstRung(false),
+        ])
+      ),
+    },
+  }
+}
+
+const currentBeat = (
+  lesson: DramaLesson,
+  session: DramaSession
+): Array<Beat> => {
+  const { at } = session.drama
+  const beat = at.kind === "beat" ? beatsOf(lesson).get(at.id) : undefined
+  return beat ? [beat] : []
 }
 
 // ── What the renderer draws ─────────────────────────────────────────────────

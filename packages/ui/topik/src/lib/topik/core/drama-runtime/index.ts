@@ -181,7 +181,11 @@ export class DramaRuntime {
       )
       .then((presented) => {
         if (!current()) return
-        if (presented === "unavailable") this.owed = beatId
+        // Owed only when it went unsaid because nothing could be heard; a
+        // line that failed is not said again on its own.
+        if (presented === "unavailable" && !voice.audible()) {
+          this.owed = beatId
+        }
         this.line = null
         this.publish({ ...this.snapshot, speaking: null })
       })

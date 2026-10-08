@@ -19,6 +19,8 @@ type LadderDockProps = {
   canGoBack: boolean
   /** The back button's accessible name. */
   previousLabel: string
+  /** The replay button's name; absent, its visible "Listen" or "Again". */
+  replayLabel?: string
   onReplay: () => void
   onReveal: () => void
   onPrev: () => void
@@ -33,6 +35,7 @@ export const LadderDock = ({
   speaking,
   canGoBack,
   previousLabel,
+  replayLabel,
   onReplay,
   onReveal,
   onPrev,
@@ -45,7 +48,7 @@ export const LadderDock = ({
           variant="secondary"
           className="h-12 min-w-0 flex-1 gap-2 rounded-2xl"
           onClick={onReplay}
-          aria-label="Play line"
+          aria-label={replayLabel}
         >
           <Volume2 className={cn("size-5", speaking && "animate-pulse")} />
           {rung === 0 ? "Listen" : "Again"}

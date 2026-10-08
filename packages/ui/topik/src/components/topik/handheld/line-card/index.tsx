@@ -128,6 +128,7 @@ export const LineCard = ({
       speaking={speaking}
       canGoBack={canGoBack}
       previousLabel="Previous line"
+      replayLabel="Play line"
       onReplay={onReplay}
       onReveal={onReveal}
       onPrev={onPrev}

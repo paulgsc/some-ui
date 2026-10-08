@@ -191,5 +191,13 @@ export const DramaLesson = ({
     )
   })()
 
-  return <StepLayout short={short} stage={stage} dock={dock} longForm />
+  return (
+    <StepLayout
+      short={short}
+      stage={stage}
+      dock={dock}
+      longForm
+      dockScrolls={at.kind === "choice"}
+    />
+  )
 }

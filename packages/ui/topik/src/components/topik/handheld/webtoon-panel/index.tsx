@@ -63,16 +63,18 @@ const Initial = ({ name }: { name: string }): JSX.Element => (
 
 /** Hears a beat again. */
 const Replay = ({
+  label,
   speaking,
   onReplay,
 }: {
+  label: string
   speaking: boolean
   onReplay: () => void
 }): JSX.Element => (
   <button
     type="button"
     onClick={onReplay}
-    aria-label="Play line"
+    aria-label={label}
     className="flex size-11 shrink-0 items-center justify-center"
   >
     <Volume2 className={cn("size-5", speaking && "animate-pulse")} />
@@ -215,6 +217,7 @@ export const WebtoonPanel = ({
             </button>
             {audio && (
               <Replay
+                label={`Play ${name}'s line`}
                 speaking={speaking === line.id}
                 onReplay={() => onReplay(line.id)}
               />
@@ -246,6 +249,7 @@ export const WebtoonPanel = ({
           </button>
           {audio && (
             <Replay
+              label="Play the narration"
               speaking={speaking === narration.id}
               onReplay={() => onReplay(narration.id)}
             />

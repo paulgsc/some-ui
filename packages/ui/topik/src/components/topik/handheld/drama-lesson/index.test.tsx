@@ -80,8 +80,10 @@ describe("DramaLesson", () => {
     expect(previous().disabled).toBe(true)
   })
 
-  it("plays it again from the root", () => {
-    renderDrama()
+  it("plays it again from the root, keeping the first choice in the slot", () => {
+    const store = createPastedLessonStore(memoryStorage())
+    store.setTree(lesson)
+    renderDrama(store.points)
     next()
     next()
     choose("아니요, 안 앉아요.")
@@ -89,6 +91,13 @@ describe("DramaLesson", () => {
     next()
     fireEvent.click(screen.getByRole("button", { name: /Play it again/ }))
     expect(slots()).toEqual(["drama-cover", "drama-narration"])
+    next()
+    next()
+    choose("네, 감사합니다.")
+    expect(store.points.get(lesson.id)).toMatchObject({
+      route: ["a"],
+      first: { c1: "c" },
+    })
   })
 
   it("climbs a line's ladder on a tap: Hangul, then its gloss", () => {

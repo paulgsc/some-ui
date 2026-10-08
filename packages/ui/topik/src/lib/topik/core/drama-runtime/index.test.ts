@@ -121,6 +121,17 @@ describe("DramaRuntime", () => {
     ])
   })
 
+  it("does not say a failed line again on its own", async () => {
+    const voice = heldVoice()
+    const runtime = new DramaRuntime(lesson, { voice, points: slot().points })
+    runtime.connect()
+    runtime.dispatch({ type: "advance" })
+    await voice.finish(0, "unavailable")
+    // A later notice (a voice list changing) is not sound returning.
+    voice.mute(false)
+    expect(voice.requests).toHaveLength(1)
+  })
+
   it("stops the line when disconnected, and follows the voice no more", () => {
     const voice = heldVoice()
     const runtime = new DramaRuntime(lesson, { voice, points: slot().points })

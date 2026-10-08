@@ -34,6 +34,17 @@ describe("the ladder", () => {
     expect(rungOf(lesson, play([]), "s1")).toBe(1)
   })
 
+  it("keeps a beat read while muted at its Hangul once sound returns", () => {
+    const muted = play([advance, { type: "back" }], false)
+    const unmuted = stepSession(lesson, muted, {
+      type: "audible",
+      audible: true,
+    }).session
+    // s1-l1 was reached, then left by going back: it stays read too.
+    expect(rungOf(lesson, unmuted, "s1-l1")).toBe(1)
+    expect(rungOf(lesson, unmuted, "s1-n1")).toBe(1)
+  })
+
   it("keeps every gloss one rung away while a choice is open (Rem. 4.12)", () => {
     const atChoice = play([advance, advance, { type: "reveal", id: "s1-l1" }])
     expect(atChoice.drama.at).toEqual({ kind: "choice" })

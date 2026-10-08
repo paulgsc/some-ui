@@ -784,12 +784,12 @@ the one-line summaries.
 > - _Falsified by_ a hunk that gives the `chosen` or `choice` arm of `Panel`
 >   a feeling, or puts the chosen line after the cover in `panelsOf`; that
 >   draws `Themed`, `FeelingSymbol`, `FEELING_WORDS` or a feeling class in
->   the `chosen` or `choice` case of `webtoon-panel` or in `drama-lesson`'s
->   dock; that deletes or weakens the MK6 test in
+>   the `chosen` or `choice` case of `webtoon-panel`, in `drama-lesson`'s
+>   dock or in the `ladder-dock` it uses; that deletes or weakens the MK6 test in
 >   `components/topik/handheld/drama-lesson/index.test.tsx` (its loop over
 >   every scene's route, or its selectors); or that deletes, renames or moves
->   `core/drama`, `webtoon-panel` or `drama-lesson`, which a pure rename
->   shows with no hunk at all.
+>   `core/drama`, `webtoon-panel`, `drama-lesson` or `ladder-dock`, which a
+>   pure rename shows with no hunk at all.
 > - _Scope:_ `packages/ui/topik`'s drama renderer.
 > - _Why not wholly enforced:_ the test renders every route of a tree and
 >   fails on an anchor inside or around a choice or a chosen line. What it
