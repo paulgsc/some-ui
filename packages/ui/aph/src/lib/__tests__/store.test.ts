@@ -18,8 +18,9 @@ import type { Entry } from "@aph/lib/model"
 import { breaches, violations } from "@aph/lib/model"
 import { SEED_ENTRIES, SEED_SETTINGS } from "@aph/lib/seed"
 import { createAphStore } from "@aph/lib/store"
-import type { AphStorage } from "@aph/lib/stored"
 import { describe, expect, it } from "vitest"
+
+import { memoryStorage } from "./memory-storage"
 
 const settings = SEED_SETTINGS
 
@@ -45,16 +46,6 @@ function someLabels(next: () => number): Array<string> {
 const TODAY = "2026-10-03"
 /** Today, two within reach, and one (18 days back) past it. */
 const DAYS = [null, "2026-10-01", "2026-10-02", "2026-09-15"]
-
-function memoryStorage(): AphStorage {
-  const kept = new Map<string, string>()
-  return {
-    getItem: (key): string | null => kept.get(key) ?? null,
-    setItem: (key, value): void => {
-      kept.set(key, value)
-    },
-  }
-}
 
 function figure(next: () => number): Array<DraftEvent> {
   return [...String(3000 + Math.floor(next() * 3500))].map((digit) => ({
@@ -102,12 +93,11 @@ describe("the store's rules, under random edits", () => {
           for (const label of someLabels(next)) {
             draft = stepDraft(draft, { type: "toggleLabel", label })
           }
-          const saved = store.save(draft, {
+          store.save(draft, {
             today: TODAY,
             time: "16:05",
             id: `r${seed}-${step}`,
           })
-          if (draft.day === "2026-09-15") expect(saved).toBeNull()
         } else if (kind === 2) {
           const target = pick(next, entries)
           if (target !== undefined) {

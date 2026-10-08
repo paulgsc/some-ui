@@ -30,7 +30,7 @@ const LogRoute = (): JSX.Element => {
       onSaved={(saved, savedSide) =>
         // By what was saved, not what was asked for: the form can switch.
         // Mine for today came from Home's "due" card; theirs, and a day I
-        // missed, mostly from History, where it now shows.
+        // missed, mostly from History, which lists it.
         void navigate({
           to:
             savedSide === "theirs" || saved.day !== dayOf(now)
@@ -59,9 +59,7 @@ function validateSearch(search: Record<string, unknown>): LogSearch {
       ? { side: search.side }
       : {}),
     ...(typeof search.entry === "string" ? { entry: search.entry } : {}),
-    ...(typeof search.day === "string" && /^\d{4}-\d{2}-\d{2}$/.test(search.day)
-      ? { day: search.day }
-      : {}),
+    ...(typeof search.day === "string" ? { day: search.day } : {}),
   }
 }
 

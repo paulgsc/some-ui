@@ -143,14 +143,16 @@ describe("logging a day I missed", () => {
     )
   })
 
-  it("goes back two weeks and stops", () => {
-    setup({ now: new Date(2026, 9, 8, 9, 0) })
+  it("stops at the earliest day it can log, and steps forward again", () => {
+    // Two days after tracking began (Sep 14).
+    setup({ now: new Date(2026, 8, 16, 9, 0) })
     const earlier = screen.getByRole("button", { name: "Earlier day" })
-    for (let i = 0; i < 14; i += 1) fireEvent.click(earlier)
-    expect(screen.getByText("Thu Sep 24")).toBeInTheDocument()
+    fireEvent.click(earlier)
+    fireEvent.click(earlier)
+    expect(screen.getByText("Mon Sep 14")).toBeInTheDocument()
     expect(earlier).toBeDisabled()
     fireEvent.click(screen.getByRole("button", { name: "Later day" }))
-    expect(screen.getByText("Fri Sep 25")).toBeInTheDocument()
+    expect(screen.getByText("Yesterday")).toBeInTheDocument()
   })
 
   it("opens on the day a link names", () => {
@@ -158,9 +160,14 @@ describe("logging a day I missed", () => {
     expect(screen.getByText("Mon Oct 5")).toBeInTheDocument()
   })
 
-  it("ignores a linked day past two weeks", () => {
-    setup({ now: new Date(2026, 9, 8, 9, 0), initialDay: "2026-09-20" })
-    expect(screen.getByText("Today")).toBeInTheDocument()
+  it("opens a linked day now past two weeks as out of reach, not as today", () => {
+    const { type } = setup({
+      now: new Date(2026, 9, 8, 9, 0),
+      initialDay: "2026-09-20",
+    })
+    expect(screen.getByText("Too far back to log")).toBeInTheDocument()
+    type("4400")
+    expect(screen.getByRole("button", { name: /Save mine/ })).toBeDisabled()
   })
 })
 

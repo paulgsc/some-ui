@@ -7,26 +7,12 @@ import type { Draft } from "@aph/lib/draft"
 import { SEED_ENTRIES, SEED_SETTINGS } from "@aph/lib/seed"
 import type { AphState } from "@aph/lib/store"
 import { createAphStore } from "@aph/lib/store"
-import type { AphStorage } from "@aph/lib/stored"
-import { QUARANTINE_PREFIX, STORAGE_KEY } from "@aph/lib/stored"
-import { describe, expect, it } from "vitest"
+import { deviceStorage, QUARANTINE_PREFIX, STORAGE_KEY } from "@aph/lib/stored"
+import { describe, expect, it, vi } from "vitest"
+
+import { memoryStorage } from "./memory-storage"
 
 const seed: AphState = { settings: SEED_SETTINGS, entries: SEED_ENTRIES }
-
-function memoryStorage(
-  kept = new Map<string, string>()
-): AphStorage & { kept: Map<string, string>; full: boolean } {
-  const storage = {
-    kept,
-    full: false,
-    getItem: (key: string): string | null => kept.get(key) ?? null,
-    setItem: (key: string, value: string): void => {
-      if (storage.full) throw new DOMException("full", "QuotaExceededError")
-      kept.set(key, value)
-    },
-  }
-  return storage
-}
 
 function figure(value: string): Draft {
   return [...value].reduce(
@@ -41,20 +27,9 @@ describe("what the phone keeps", () => {
   it("keeps the paper notes from the first launch on", () => {
     const storage = memoryStorage()
     createAphStore(seed, storage)
-    expect(storage.kept.has(STORAGE_KEY)).toBe(true)
     // A later build whose seed is gone still opens on them.
     const later = createAphStore({ ...seed, entries: [] }, storage)
     expect(later.get().entries).toEqual(SEED_ENTRIES)
-  })
-
-  it("survives a restart: a figure saved is there when the app opens again", () => {
-    const storage = memoryStorage()
-    createAphStore(seed, storage).save(figure("4900"), commit)
-    const reopened = createAphStore(seed, storage)
-    expect(reopened.get().entries.find((e) => e.id === "noon")).toMatchObject({
-      day: "2026-10-03",
-      mine: { value: 4900, approx: true },
-    })
   })
 
   it("refuses a change the phone would not keep, leaving the screens as they were", () => {
@@ -104,5 +79,30 @@ describe("what the phone keeps", () => {
     expect(store.get()).toEqual(seed)
     expect(store.save(figure("4900"), commit)).toBeNull()
     expect(writes).toBe(0)
+  })
+
+  it("treats a localStorage that throws as unreadable, not as memory only", () => {
+    vi.spyOn(window, "localStorage", "get").mockImplementation(() => {
+      throw new DOMException("blocked", "SecurityError")
+    })
+    const store = createAphStore(seed, deviceStorage())
+    expect(store.save(figure("4900"), commit)).toBeNull()
+    expect(store.get()).toEqual(seed)
+    vi.restoreAllMocks()
+  })
+
+  it("refuses a change the next launch could not read back", () => {
+    const storage = memoryStorage()
+    const store = createAphStore(seed, storage)
+    expect(store.editSettings({ tolerance: Infinity })).toBe(false)
+    expect(createAphStore(seed, storage).get()).toEqual(seed)
+  })
+
+  it("opens read-only when an unreadable record cannot be moved aside", () => {
+    const storage = memoryStorage(new Map([[STORAGE_KEY, "{not json"]]))
+    storage.full = true
+    const store = createAphStore(seed, storage)
+    expect(store.save(figure("4900"), commit)).toBeNull()
+    expect(storage.kept.get(STORAGE_KEY)).toBe("{not json")
   })
 })

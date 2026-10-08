@@ -143,7 +143,7 @@ export function checkpointById(
   return settings.checkpoints.find((c) => c.id === id) ?? null
 }
 
-function hasMine(
+export function hasMine(
   entries: ReadonlyArray<Entry>,
   day: string,
   checkpoint: string
@@ -241,7 +241,6 @@ function byLatest(settings: AphSettings): (a: Entry, b: Entry) => number {
     a.day === b.day ? rank(a) - rank(b) : b.day.localeCompare(a.day)
 }
 
-/** How many days back a missed figure of mine can still be logged. */
 const BACKFILL_DAYS = 14
 
 /**

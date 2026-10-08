@@ -64,8 +64,10 @@ export type AphLogProps = {
   initialTarget?: string | null
   /**
    * Mine: a day I missed, when the way here already chose one (History's
-   * "not logged"). Read once; without it, today. Past `loggableDays` it is
-   * ignored.
+   * "not logged"). Read once; without it, today. One that has fallen out
+   * of `loggableDays` since the link was made (a tap past midnight) still
+   * opens, as out of reach with Save off, rather than as today, where the
+   * figure would land on the wrong day.
    */
   initialDay?: string | null
   /** Called after a save, with the entry as it now stands and the side saved. */
@@ -74,6 +76,8 @@ export type AphLogProps = {
   now: Date
   store?: AphStore
 }
+
+const DAY = /^\d{4}-\d{2}-\d{2}$/
 
 const KEYS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "00", "0"] as const
 
@@ -97,7 +101,6 @@ export const AphLog = ({
   const waiting = awaitingTheirs(settings, entries)
   const [showOlder, setShowOlder] = useState(false)
   const [refused, setRefused] = useState(false)
-  // Oldest last: the stepper's back arrow walks down this list.
   const days = loggableDays(settings, today)
 
   const [raw, dispatch] = useReducer(
@@ -108,7 +111,7 @@ export const AphLog = ({
         initialSide,
         null,
         initialTarget,
-        initialDay !== null && initialDay !== today && days.includes(initialDay)
+        initialDay !== null && DAY.test(initialDay) && initialDay < today
           ? initialDay
           : null
       )
@@ -147,8 +150,6 @@ export const AphLog = ({
   const canSave =
     value !== null &&
     (draft.side === "mine" ? dayIndex !== -1 : targetEntry !== null)
-  // Moving the day back or forward; today is stored as null, so it stays
-  // today across midnight.
   const pickDay = (index: number): void => {
     const next = days[index]
     if (next !== undefined) {
@@ -416,7 +417,7 @@ export const AphLog = ({
           role="alert"
           className="bg-destructive/10 text-destructive rounded-md px-3 py-1.5 text-center text-sm"
         >
-          Not saved: the phone did not keep it. Try again.
+          Not saved: the phone did not keep it.
         </p>
       )}
 

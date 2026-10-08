@@ -18,6 +18,7 @@
 
 import type { RoundNote } from "@leetype/lib/leetype/notes"
 import { boundNotes, RoundNoteSchema } from "@leetype/lib/leetype/notes"
+import { localStorageOrNull } from "@some-ui/core-utils"
 import { z } from "zod"
 
 export const NOTES_KEY = "leetype:notes"
@@ -33,15 +34,6 @@ export type NoteStore = {
   put(note: RoundNote, now: number): void
   /** Removes the note with `id`, if kept. Failures are silent. */
   remove(id: string, now: number): void
-}
-
-/** `window.localStorage`, or null wherever touching it throws. */
-function localStorageOrNull(): Storage | null {
-  try {
-    return typeof window === "undefined" ? null : window.localStorage
-  } catch {
-    return null
-  }
 }
 
 /** The key's envelope; each note is checked on its own, below. */

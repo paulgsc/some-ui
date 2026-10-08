@@ -19,6 +19,7 @@
  * losing it costs a paste.
  */
 
+import { localStorageOrNull } from "@some-ui/core-utils"
 import type { ConversationBatch, TopikMetadata } from "@topik/lib/topik"
 import { TopikFileSchema, TopikMetadataSchema } from "@topik/lib/topik"
 import type { StorageLike } from "@topik/lib/topik/adapter/resume-point"
@@ -129,13 +130,5 @@ export function purgeRetiredLessons(
     storage?.removeItem(RETIRED_LESSONS_KEY)
   } catch {
     // Privacy mode: there is nothing it could have kept.
-  }
-}
-
-function localStorageOrNull(): Storage | null {
-  try {
-    return typeof window === "undefined" ? null : window.localStorage
-  } catch {
-    return null
   }
 }

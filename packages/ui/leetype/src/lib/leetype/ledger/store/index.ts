@@ -24,6 +24,7 @@
 
 import type { Ledger } from "@leetype/lib/leetype/ledger"
 import { EMPTY_LEDGER, parseLedger } from "@leetype/lib/leetype/ledger"
+import { localStorageOrNull } from "@some-ui/core-utils"
 
 export const LEDGER_KEY = "leetype:ledger"
 
@@ -35,15 +36,6 @@ export type LedgerStore = {
   get(): Ledger
   /** Replaces the persisted ledger; failures are silent (Prop. 7.2). */
   set(ledger: Ledger): void
-}
-
-/** `window.localStorage`, or null wherever touching it throws. */
-function localStorageOrNull(): Storage | null {
-  try {
-    return typeof window === "undefined" ? null : window.localStorage
-  } catch {
-    return null
-  }
 }
 
 export function createLedgerStore(

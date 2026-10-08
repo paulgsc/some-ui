@@ -14,6 +14,7 @@ import {
   awaitingTheirs,
   checkpointById,
   dueCheckpoint,
+  hasMine,
   loggableDays,
   minutesOf,
 } from "./model"
@@ -26,10 +27,7 @@ export type Draft = {
   digits: string
   /** Mine only: written with a "~". */
   approx: boolean
-  /**
-   * Mine only: the day it is for, or null for today, whatever day it is at
-   * the tap. Set only for a day I went back to.
-   */
+  /** Mine only: the day it is for, or null for today, whatever day it is at the tap. */
   day: string | null
   /**
    * Mine only: the checkpoint, or null for another time of day. Until
@@ -56,7 +54,6 @@ export type DraftEvent =
   | { type: "toggleApprox" }
   | { type: "side"; side: Side }
   | { type: "pickCheckpoint"; checkpoint: string | null }
-  /** A day I missed, or null to come back to today. */
   | { type: "pickDay"; day: string | null }
   | { type: "pickTarget"; target: string }
   | { type: "toggleLabel"; label: string }
@@ -130,10 +127,6 @@ function assertNever(value: never): never {
   throw new Error(`Unhandled draft event: ${JSON.stringify(value)}`)
 }
 
-/**
- * The day a figure of mine is for when saved on `today`: the one I went
- * back to, else today.
- */
 export function draftDay(draft: Draft, today: string): string {
   return draft.day ?? today
 }
@@ -153,12 +146,7 @@ function defaultCheckpoint(
   const due =
     day === today
       ? dueCheckpoint(settings, entries, today, minutesOf(at))
-      : settings.checkpoints.find(
-          (c) =>
-            !entries.some(
-              (e) => e.day === day && e.checkpoint === c.id && e.mine !== null
-            )
-        )
+      : settings.checkpoints.find((c) => !hasMine(entries, day, c.id))
   return due?.id ?? settings.checkpoints[0]?.id ?? null
 }
 
@@ -285,8 +273,7 @@ export function commitDraft(
         id: commit.id,
         day,
         checkpoint: checkpoint?.id ?? null,
-        // The clock's time is only true of today. On a day I went back to,
-        // the time was never written down, and History flags it as such.
+        // The clock's time is only true of today.
         time: checkpoint === null && day === commit.today ? commit.time : null,
         mine,
         theirs: null,

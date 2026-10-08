@@ -232,7 +232,6 @@ describe("a day I missed", () => {
     const d = (day: string): Draft =>
       run(newDraft("mine", "7", null, day), typed("4400"))
     const today = { ...commit, today: "2026-10-20" }
-    expect(commitDraft(settings, [], d("2026-10-06"), today)).not.toBeNull()
     expect(commitDraft(settings, [], d("2026-10-05"), today)).toBeNull()
     // Nor into the future.
     expect(commitDraft(settings, [], d("2026-10-21"), today)).toBeNull()

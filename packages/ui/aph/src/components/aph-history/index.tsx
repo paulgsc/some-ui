@@ -214,21 +214,22 @@ const GapRow = ({
   days: number
   onLog: (() => void) | undefined
 }): JSX.Element => {
-  const when =
+  const when = `${
     days === 1
       ? `${formatWeekday(from)} ${formatDay(from)}`
       : `${formatDay(from)} – ${formatDay(to)} · ${days} days`
+  } · not logged`
   const className =
     "text-muted-foreground flex h-9 items-center rounded-lg border border-dashed px-3 text-sm"
   return onLog === undefined ? (
-    <div className={className}>{when} · not logged</div>
+    <div className={className}>{when}</div>
   ) : (
     <button
       type="button"
       onClick={onLog}
       className={cn(className, "hover:bg-accent text-left")}
     >
-      {when} · not logged
+      {when}
       <span className="text-foreground ml-auto font-medium">
         Log {formatDay(to)}
       </span>

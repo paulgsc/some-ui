@@ -13,14 +13,13 @@
  * - when even that is impossible (the storage throws), the store is opened
  *   read-only: it shows the fallback and refuses every change, rather than
  *   save over the record it failed to read.
- *
- * Synchronous, like the store, so the store keeps its one rule: a change is
- * kept or refused at the tap, never later.
  */
+import { localStorageOrNull } from "@some-ui/core-utils"
 import { z } from "zod"
 
 import type { AphSettings, Entry } from "./model"
 import { violations } from "./model"
+import type { AphState } from "./store"
 
 /** The part of `Storage` this touches, so tests can pass a fake. */
 export type AphStorage = Pick<Storage, "getItem" | "setItem">
@@ -66,11 +65,6 @@ const StoredSchema = z.object({
   entries: z.array(EntrySchema),
 })
 
-export type Kept = {
-  settings: AphSettings
-  entries: ReadonlyArray<Entry>
-}
-
 /**
  * What opening the storage found:
  *
@@ -79,20 +73,11 @@ export type Kept = {
  * - `unreadable`: the storage itself threw, so nothing may be written.
  */
 export type Opened =
-  | { kind: "kept"; state: Kept }
+  | { kind: "kept"; state: AphState }
   | { kind: "empty" }
   | { kind: "unreadable" }
 
-/** `window.localStorage`, or null wherever touching it throws. */
-export function localStorageOrNull(): AphStorage | null {
-  try {
-    return typeof window === "undefined" ? null : window.localStorage
-  } catch {
-    return null
-  }
-}
-
-function parse(raw: string): Kept | null {
+function parse(raw: string): AphState | null {
   try {
     const stored = StoredSchema.safeParse(JSON.parse(raw))
     if (!stored.success) return null
@@ -117,6 +102,27 @@ function quarantine(storage: AphStorage, raw: string): boolean {
   }
 }
 
+/** Stands in for a `localStorage` the page has but cannot touch. */
+const BLOCKED: AphStorage = {
+  getItem: () => {
+    throw new Error("localStorage is blocked")
+  },
+  setItem: () => {
+    throw new Error("localStorage is blocked")
+  },
+}
+
+/**
+ * The device's storage: null only where there is no window at all (Node, a
+ * prerender), which is memory only by design. A window whose `localStorage`
+ * throws is storage that cannot be read, so the store opens read-only on it
+ * rather than pretend to keep what a restart would lose.
+ */
+export function deviceStorage(): AphStorage | null {
+  if (typeof window === "undefined") return null
+  return localStorageOrNull() ?? BLOCKED
+}
+
 export function openStored(storage: AphStorage): Opened {
   let raw: string | null
   try {
@@ -130,10 +136,16 @@ export function openStored(storage: AphStorage): Opened {
   return quarantine(storage, raw) ? { kind: "empty" } : { kind: "unreadable" }
 }
 
-/** Writes `state`; false when the storage refused it (full, or disabled). */
-export function writeStored(storage: AphStorage, state: Kept): boolean {
+/**
+ * Writes `state`; false when the storage refused it (full, or disabled), or
+ * when the next launch could not read it back (a figure JSON cannot hold,
+ * such as `Infinity`), which would quarantine the whole record.
+ */
+export function writeStored(storage: AphStorage, state: AphState): boolean {
+  const text = JSON.stringify({ v: VERSION, ...state })
+  if (parse(text) === null) return false
   try {
-    storage.setItem(STORAGE_KEY, JSON.stringify({ v: VERSION, ...state }))
+    storage.setItem(STORAGE_KEY, text)
     return true
   } catch {
     return false

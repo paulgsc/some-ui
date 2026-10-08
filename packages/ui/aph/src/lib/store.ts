@@ -21,7 +21,7 @@ import type { AphSettings, Entry, Review } from "./model"
 import { breaches, violations } from "./model"
 import { SEED_ENTRIES, SEED_SETTINGS } from "./seed"
 import type { AphStorage } from "./stored"
-import { localStorageOrNull, openStored, writeStored } from "./stored"
+import { deviceStorage, openStored, writeStored } from "./stored"
 
 export type AphState = {
   settings: AphSettings
@@ -45,7 +45,7 @@ export type AphStore = {
 /**
  * A store over `storage`, starting from what it keeps, or from `initial` when
  * it keeps nothing readable (which it then keeps). Without `storage`, memory
- * only. Storage that throws on reading opens it read-only (`stored.ts`).
+ * only.
  */
 export function createAphStore(
   initial: AphState,
@@ -97,5 +97,5 @@ export function createAphStore(
 /** The app's one store, kept in the WebView's `localStorage`. */
 export const aphStore = createAphStore(
   { settings: SEED_SETTINGS, entries: SEED_ENTRIES },
-  localStorageOrNull()
+  deviceStorage()
 )
