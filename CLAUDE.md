@@ -157,9 +157,11 @@ code, test, fallback or comment for them (a `webkit`-prefixed global Chrome does
 not need, an Apple meta tag, a Safari-version workaround, an iPhone branch), and
 delete one you find while working. A finding that reproduces only on iOS or
 Safari is answered with this rule, not fixed or filed. This is a review rule
-(`REVIEW.md`, "The phone is Android only"), not a declared invariant: whether a
-line exists "for" Safari is a reading of intent no lint can make, so a reviewer
-judges the hunk, and nothing is claimed about code that predates the rule.
+(`REVIEW.md`, "The phone is Android only"), not a declared invariant: beyond a
+few tokens (`webkitAudioContext`, `apple-touch-icon`, an `iphone` user-agent
+test), whether a line exists "for" Safari is a reading of intent, since Chrome
+has `webkit`-prefixed APIs of its own, so a reviewer judges the hunk. A check
+for those tokens is mechanical; not yet a rule.
 
 ## Vestiges
 

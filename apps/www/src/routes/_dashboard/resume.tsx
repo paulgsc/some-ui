@@ -216,9 +216,8 @@ const ResumeRoute = (): JSX.Element => {
             </div>
           ) : mobilePreview ? (
             // A phone's browser downloads a PDF rather than showing it, so
-            // phones get the same content as
-            // HTML from @some-ui/resume's data: selectable, searchable,
-            // screen-reader navigable and themed.
+            // phones get the same content as HTML from @some-ui/resume's
+            // data: selectable, searchable, screen-reader navigable and themed.
             <ResumeDocument data={resumeData[composition]} />
           ) : (
             <>

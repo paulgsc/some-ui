@@ -52,7 +52,7 @@ const BROWSER_FIX_TAIL =
 /** The system a browser runs on, from its user agent, as far as it says. */
 export function deviceKindOf(userAgent: string): DeviceKind {
   if (/android/i.test(userAgent)) return "android"
-  if (/macintosh|mac os x/i.test(userAgent)) return "mac"
+  if (/macintosh/i.test(userAgent)) return "mac"
   if (/windows/i.test(userAgent)) return "windows"
   return "other"
 }
