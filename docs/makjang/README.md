@@ -547,12 +547,12 @@ choice panel are the session's.
   as its halo.
 - **Sound:** a synthesized tone, register 196·2^max(a, 0) Hz, rising in a major triad
   when v ≥ 0.3, falling a semitone when v ≤ −0.3 (with a noise crash when
-  a ≥ 0.8 too), otherwise the dun-dun of a reveal; then the cry, voiced at
-  rate 0.9 + 0.2·a and pitch 1 + 0.12·v. No asset files. The cry's prosody
-  waits on the same `@some-ui/speech` change as per-character voices: a
-  `Speaker` takes no pitch, and its `playbackRate` replaces the rate the
-  person chose rather than scaling it, so the cry is voiced at the
-  session's own.
+  a ≥ 0.8 too), otherwise the dun-dun of a reveal, an octave and more below
+  the register; then the cry, voiced at rate 0.9 + 0.2·a and pitch
+  1 + 0.12·v. No asset files. The cry's prosody waits on the same
+  `@some-ui/speech` change as per-character voices: a `Speaker` takes no
+  pitch, and its `playbackRate` replaces the rate the person chose rather
+  than scaling it, so the cry is voiced at the session's own.
 
 In code, `@some-ui/styles` derives (`src/theme/feeling.ts`, registered as the
 `feeling` scope) and the result reaches CSS generated, not inline:

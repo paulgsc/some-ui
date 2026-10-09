@@ -39,6 +39,7 @@ import { feelingTone, isFeelingKey } from "@some-ui/styles/theme"
 import type { StorageLike } from "@topik/lib/topik/adapter/resume-point"
 import { sayKorean } from "@topik/lib/topik/adapter/voice-port"
 import { FEELING_WORDS } from "@topik/lib/topik/core/feeling"
+import { SPOKEN_LANGUAGE } from "@topik/lib/topik/core/spoken-language"
 
 // ── The control ─────────────────────────────────────────────────────────────
 
@@ -241,11 +242,20 @@ function playTone(
     deadlineMs: tone.length * 1000 + TONE_SLACK_MS,
     start: async (stopped) => {
       const context = makeContext()
+      // Closed when the tone ends or is given up, even while a `resume`
+      // that never settles (an interrupted iOS session) still holds `start`.
+      let open = true
+      const close = (): void => {
+        stopped.removeEventListener("abort", close)
+        if (open) void context.close().catch(() => undefined)
+        open = false
+      }
+      stopped.addEventListener("abort", close, { once: true })
       try {
         if (context.state === "suspended") await context.resume()
         await schedule(context, tone, stopped)
       } finally {
-        void context.close().catch(() => undefined)
+        close()
       }
     },
   })
@@ -272,7 +282,8 @@ export function feelingSound({
 }: FeelingSoundOptions): SoundPort | null {
   if (tones === null) return null
   const cry = (text: string, signal: AbortSignal): Promise<Presented> =>
-    speaker?.available
+    speaker?.available &&
+    speaker.describe(SPOKEN_LANGUAGE).availability !== "missing"
       ? sayKorean(speaker, text, { urgency: "next", signal })
       : Promise.resolve("unavailable")
   return {

@@ -21,7 +21,9 @@
  * learner leaves the scene. It plays once the learner has touched the lesson
  * with sound on: before the scene's next line, which waits for it, or at once
  * when sound is turned on and no line is playing. The learner's own replay
- * cuts it off, so it never sounds over a line.
+ * cuts it off, so it never sounds over a line. A lesson resumed at a choice
+ * or its end has no line left to play its sting before, so it plays there
+ * only if sound is turned on there.
  */
 
 import { assertNever } from "@some-ui/core-utils"
@@ -168,11 +170,11 @@ export class DramaRuntime {
           this.ports.points.set(this.lesson.id, effect.point)
           break
         }
-        // The scene's feeling is drawn from the snapshot; what plays is
-        // its sting, owed to this visit. The last scene's sound ends here.
+        // The scene's feeling is drawn from the snapshot, and its sting is
+        // owed to this visit.
         case "enter-scene": {
           this.stop()
-          this.owedSting = { scene: effect.scene, feeling: effect.feeling }
+          this.owedSting = { feeling: effect.feeling }
           break
         }
         // A choice's outcome is the engine's `first`, kept in the resume point.
@@ -226,7 +228,6 @@ export class DramaRuntime {
   private say(beatId: string, interrupt: boolean): void {
     this.stopLine()
     this.owed = null
-    // A replay cuts the sting off; a line the lesson reached waits for it.
     if (interrupt) this.stopSting()
     else this.playOwedSting()
     const voice = this.ports.voice

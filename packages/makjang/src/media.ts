@@ -47,16 +47,13 @@ export type VoicePort = {
 }
 
 export type StingRequest = {
-  /** The scene entered, by id. */
-  scene: string
-  /** Its feeling, by key. */
+  /** The scene's feeling, by key. */
   feeling: string
 }
 
 /**
  * A scene's feeling as sound (docs/makjang/README.md, "Where the anchor
- * goes"): played on the scene's cover, only once the learner has turned
- * sound on, and never over a line.
+ * goes"): played on the scene's cover, and never over a line.
  */
 export type SoundPort = {
   /**
@@ -73,6 +70,5 @@ export type SoundPort = {
 /** Every port a renderer may have; `null` where it presents text instead. */
 export type MediaPorts = {
   voice: VoicePort | null
-  /** `null` falls back to the cover's caption, unheard. */
   sound: SoundPort | null
 }

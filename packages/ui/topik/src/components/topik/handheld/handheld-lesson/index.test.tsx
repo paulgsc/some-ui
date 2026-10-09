@@ -29,6 +29,7 @@ import type {
   ToneContextFactory,
 } from "@topik/lib/topik/adapter/sound-port"
 import { createSoundControl } from "@topik/lib/topik/adapter/sound-port"
+import { fakeTones } from "@topik/lib/topik/adapter/sound-port/fake-tones"
 import type { SurveyStore } from "@topik/lib/topik/adapter/survey-store"
 import {
   createSurveyStore,
@@ -50,11 +51,6 @@ import {
 } from "./fixture"
 
 type ResumeStore = ReturnType<typeof createResumeStore>
-
-/** A browser that could play a tone; none of these tests plays one. */
-const tones: ToneContextFactory = () => {
-  throw new Error("no tone is played here")
-}
 
 type RenderOptions = {
   storage?: StorageLike
@@ -811,14 +807,22 @@ describe("HandheldLesson", () => {
       const pasted = createPastedLessonStore(memoryStorage())
       pasted.setTree(workedLesson())
       const control = createSoundControl(memoryStorage())
-      renderLesson({ pastedStore: pasted, soundControl: control, tones })
-      fireEvent.click(await screen.findByText("회장님 댁 거실"))
+      const tones = fakeTones()
+      renderLesson({
+        pastedStore: pasted,
+        soundControl: control,
+        tones: tones.factory,
+      })
+      const held = await screen.findByText("회장님 댁 거실")
+      expect(screen.queryByRole("button", { name: "Scene sound" })).toBeNull()
+      fireEvent.click(held)
       const toggle = await screen.findByRole("button", { name: "Scene sound" })
       expect(toggle.getAttribute("aria-pressed")).toBe("false")
       fireEvent.click(toggle)
       expect(control.state()).toBe("on")
       expect(toggle.getAttribute("aria-pressed")).toBe("true")
-      // Withdrawn where it cannot play, and absent off the drama.
+      // Turning it on plays the opening scene's tone, inside that tap.
+      expect(tones.made()).toBe(1)
       act(() => control.withdraw())
       expect(screen.queryByRole("button", { name: "Scene sound" })).toBeNull()
     })
