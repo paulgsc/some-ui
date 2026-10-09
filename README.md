@@ -87,8 +87,10 @@ and shared-workspace policy, continue with [`packages/README.md`](packages/READM
 
 ### Prerequisites
 
-- Node.js matching [`.nvmrc`](.nvmrc)
-- pnpm `11.20.0` (declared in [`package.json`](package.json))
+- Node.js matching [`.nvmrc`](.nvmrc), and the pnpm named by `packageManager` in
+  [`package.json`](package.json). Both follow the Nix flake (`flake.lock`), so
+  `nix develop .#extension` gives you exactly those, plus the npm that ships
+  inside that Node; `pnpm check:toolchain` fails if they have drifted apart
 - Rust stable for work under `crates/`
 - `wasm-pack` when building a browser-facing Rust crate
 

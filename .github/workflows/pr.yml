@@ -514,6 +514,25 @@ jobs:
       - name: Check workflows
         run: nix develop .#ci --command node --no-warnings scripts/check-workflows.ts
 
+  # ── Toolchain pins (repo-wide) ─────────────────────────────────────────
+  # package.json's `packageManager` and .nvmrc equal the pnpm and Node that
+  # flake.lock provides (packages/eslint/src/toolchain-pins.ts). Without this a
+  # hand edit, or a lock bump that skips the sync, leaves the pnpm that runs
+  # (pnpm swaps itself for `packageManager`) different from the one nix
+  # provided. No `changes` gate for test-layout's reason: flake.lock, nix/** and
+  # package.json each reach it from PRs that touch no other node path. It needs
+  # `nix eval`, so it runs here and not in the root `pnpm lint`. The
+  # `extension` shell, not `ci`: Node and pnpm only, so no Rust toolchain to
+  # realize for a check that reads two files.
+  toolchain:
+    name: Toolchain pins
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/nix-setup
+      - name: Check toolchain pins
+        run: nix develop .#extension --command node --no-warnings scripts/sync-toolchain.ts --check
+
   ci-gate:
     name: CI Gate
     runs-on: ubuntu-latest
@@ -529,6 +548,7 @@ jobs:
         test-layout,
         react-coordination,
         workflows,
+        toolchain,
       ]
     if: always()
     steps:
@@ -583,6 +603,14 @@ jobs:
             FAILED=true
           else
             echo "✅ workflows: $WORKFLOWS_RESULT"
+          fi
+
+          TOOLCHAIN_RESULT="${{ needs.toolchain.result }}"
+          if [ "$TOOLCHAIN_RESULT" != "success" ]; then
+            echo "❌ toolchain: $TOOLCHAIN_RESULT (always required)"
+            FAILED=true
+          else
+            echo "✅ toolchain: $TOOLCHAIN_RESULT"
           fi
 
           DENY_RESULT="${{ needs.deny.result }}"

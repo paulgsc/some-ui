@@ -1,0 +1,85 @@
+name: Flake update
+# Keeps flake.lock, and the Node and pnpm versions that follow it, from going
+# stale. Weekly (or on demand) this runs `nix flake update`, copies the
+# resulting versions into package.json's `packageManager`, .nvmrc and the
+# package-manager section pnpm 12 keeps in pnpm-lock.yaml (scripts/sync-toolchain.ts,
+# rules in packages/eslint/src/toolchain-pins.ts), and opens one PR on
+# `bot/flake-update` with all of it. pr.yml's "Toolchain pins" job fails any PR
+# where the lock and those files disagree, so the bump and its pins can only
+# land together. The lockfile part is not optional: with a stale section,
+# `pnpm install --frozen-lockfile` fails in every CI job.
+#
+# Review the PR like any dependency bump, and read the diff for major moves: a
+# nixos-unstable update can take pnpm or Node up a major, and can remove an
+# attribute the shells use (nodePackages went that way, which failed every
+# shell until nix/ moved to the top-level `pnpm` and `web-ext`). The PR's CI is
+# what finds either, which is why it must run:
+#
+# A PR opened with the default GITHUB_TOKEN does not start pull_request
+# workflows, so CI Gate would never report on it. Set the FLAKE_UPDATE_TOKEN
+# secret (a fine-grained token on this repo with contents and pull requests
+# write) and the PR opens as that user, which does start them. Without it the
+# PR still opens, with the default token, and CI starts once someone pushes to
+# the branch or closes and reopens the PR.
+#
+# When nothing moved, create-pull-request has no diff to commit: it opens no PR
+# and, with `delete-branch`, closes a stale one. The branch is this workflow's
+# alone.
+on:
+  schedule:
+    - cron: "41 5 * * 1"
+  workflow_dispatch:
+env:
+  UPDATE_MESSAGE: "chore(deps): update flake inputs and toolchain pins"
+permissions:
+  contents: read
+concurrency:
+  group: flake-update
+  cancel-in-progress: false
+jobs:
+  update:
+    name: Update flake.lock and toolchain pins
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    env:
+      # Nix resolves `github:` inputs through api.github.com, which rate-limits
+      # anonymous callers per runner IP. Authenticate so a shared IP cannot
+      # fail the update.
+      NIX_CONFIG: access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/nix-setup
+      - name: Update flake inputs and sync the pins
+        run: |
+          {
+            nix flake update
+            nix develop .#extension --command node --no-warnings scripts/sync-toolchain.ts
+          } 2>&1 | tee "$RUNNER_TEMP/flake-update.log"
+      - name: Describe the update
+        run: |
+          {
+            echo "Opened automatically by \`flake-update.yml\`: \`nix flake update\`, then \`scripts/sync-toolchain.ts\` to move \`packageManager\` and \`.nvmrc\` to the Node and pnpm the new lock provides. npm ships inside that Node."
+            echo
+            echo "Check the diff for major bumps (pnpm, Node) and for nixpkgs attributes the shells use that were renamed or removed; CI on this PR is what finds those."
+            echo
+            echo '```'
+            cat "$RUNNER_TEMP/flake-update.log"
+            echo '```'
+          } > "$RUNNER_TEMP/flake-update-body.md"
+      - name: Open PR
+        uses: peter-evans/create-pull-request@v8
+        with:
+          token: ${{ secrets.FLAKE_UPDATE_TOKEN || secrets.GITHUB_TOKEN }}
+          branch: bot/flake-update
+          base: main
+          delete-branch: true
+          add-paths: |
+            flake.lock
+            package.json
+            .nvmrc
+            pnpm-lock.yaml
+          commit-message: ${{ env.UPDATE_MESSAGE }}
+          title: ${{ env.UPDATE_MESSAGE }}
+          body-path: ${{ runner.temp }}/flake-update-body.md
