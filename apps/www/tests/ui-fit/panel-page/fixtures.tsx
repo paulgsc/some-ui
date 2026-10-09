@@ -194,6 +194,7 @@ function dramaStage(point: unknown): () => JSX.Element {
         <DramaLesson
           lesson={fitTree}
           voice={null}
+          sound={null}
           points={{ get: () => point, set: noop }}
           short={short}
           onLeave={noop}

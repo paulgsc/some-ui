@@ -1330,6 +1330,9 @@ importers:
       '@some-ui/core-utils':
         specifier: workspace:*
         version: link:../../core-utils
+      '@some-ui/intent-kit':
+        specifier: workspace:*
+        version: link:../../intent-kit
       '@some-ui/makjang':
         specifier: workspace:*
         version: link:../../makjang

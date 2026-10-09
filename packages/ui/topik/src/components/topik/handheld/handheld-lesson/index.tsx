@@ -11,11 +11,11 @@
  * kept across interruptions.
  *
  * A pasted scene tree plays here as the drama instead (`DramaLesson`,
- * docs/makjang/README.md).
+ * docs/makjang/README.md), with a toggle for its scenes' sound in the header.
  */
 
 import type { JSX } from "react"
-import { useMemo, useState } from "react"
+import { useMemo, useState, useSyncExternalStore } from "react"
 import { cn } from "@some-ui/core-utils"
 import { Button, KeepOnShelf, KeptShelf } from "@some-ui/shared"
 import { DramaLesson } from "@topik/components/topik/handheld/drama-lesson"
@@ -38,15 +38,27 @@ import {
   LESSON_SHELF_WORDS,
   shelfKeyOf,
 } from "@topik/lib/topik/adapter/shelf"
+import type {
+  SoundControl,
+  ToneContextFactory,
+} from "@topik/lib/topik/adapter/sound-port"
+import {
+  createSoundControl,
+  feelingSound,
+} from "@topik/lib/topik/adapter/sound-port"
 import { speakerVoice } from "@topik/lib/topik/adapter/voice-port"
 import { TOPIK_LEVELS } from "@topik/lib/topik/generation"
-import { ChevronLeft, Loader2 } from "lucide-react"
+import { ChevronLeft, Loader2, Music } from "lucide-react"
 
 type HandheldLessonProps = UseHandheldLessonOptions & {
   /** Landscape phone: two columns, compact chrome. */
   short?: boolean
   /** Injected in tests and stories; defaults to `localStorage`. */
   readAloudStore?: ReadAloudStore
+  /** Injected in tests; defaults to `localStorage`. */
+  soundControl?: SoundControl
+  /** Injected in tests; defaults to the browser's `AudioContext`. */
+  tones?: ToneContextFactory | null
 }
 
 export const HandheldLesson = ({
@@ -56,6 +68,8 @@ export const HandheldLesson = ({
   pastedStore,
   pastedResumeStore,
   readAloudStore,
+  soundControl,
+  tones,
 }: HandheldLessonProps): JSX.Element => {
   const [held] = useState(() => pastedStore ?? createPastedLessonStore())
   const vm = useHandheldLesson({
@@ -68,6 +82,16 @@ export const HandheldLesson = ({
   const drama = usePastedTree(held)
   const { speaker, shelf } = useSessionConfig()
   const voice = useMemo(() => speakerVoice(speaker), [speaker])
+  const [control] = useState(() => soundControl ?? createSoundControl())
+  const sound = useMemo(
+    () => feelingSound({ control, speaker, tones }),
+    [control, speaker, tones]
+  )
+  const soundState = useSyncExternalStore(
+    control.subscribe,
+    control.state,
+    control.state
+  )
   const startConversation = (
     meta: TopikMetadata,
     batches: Array<ConversationBatch>
@@ -152,6 +176,21 @@ export const HandheldLesson = ({
             {lesson.conversation + 1}/{lesson.conversationCount}
           </span>
         )}
+        {playing && sound && soundState !== "withdrawn" && (
+          <Button
+            variant={soundState === "on" ? "secondary" : "ghost"}
+            size="icon"
+            className={cn(
+              "size-11 shrink-0",
+              soundState === "off" && "text-muted-foreground"
+            )}
+            aria-pressed={soundState === "on"}
+            aria-label="Scene sound"
+            onClick={() => control.set(soundState !== "on")}
+          >
+            <Music className="size-5" />
+          </Button>
+        )}
       </div>
       {lesson && (
         <div
@@ -178,6 +217,7 @@ export const HandheldLesson = ({
           key={playing.id}
           lesson={playing}
           voice={voice}
+          sound={sound}
           points={held.points}
           short={short}
           onLeave={drama.leave}

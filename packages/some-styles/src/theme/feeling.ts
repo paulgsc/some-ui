@@ -3,8 +3,8 @@
  * (docs/makjang/README.md, "The webtoon: one feeling per scene").
  *
  * A feeling is a point on the valence × arousal plane, a hue, one texture and
- * one motion. Every colour, edge and timing is derived from that point
- * relative to the session theme the person chose, so each feeling lives
+ * one motion. Every colour, edge, timing and tone is derived from that point,
+ * colours relative to the session theme the person chose, so each feeling lives
  * inside every session theme rather than beside it: a new feeling is a new
  * point, never a new palette. Topik owns the words (caption, cry, lettering)
  * and the symbols, keyed by the same `FeelingKey`.
@@ -339,6 +339,100 @@ export function feelingFrame(key: FeelingKey): FeelingFrame {
     textureAlpha: 0.1 + 0.08 * a,
     motionMs: Math.round(950 - 450 * a),
     amplitude: 0.35 + 0.65 * a,
+  }
+}
+
+// ── Sound ───────────────────────────────────────────────────────────────────
+
+/** A noise burst is band-passed at `hz`; every other wave is an oscillator. */
+export type ToneWave = "sine" | "triangle" | "sawtooth" | "noise"
+
+export type ToneNote = {
+  wave: ToneWave
+  hz: number
+  /** Seconds from the tone's start. */
+  at: number
+  /** Seconds it sounds, its decay included. */
+  length: number
+  /** Peak gain, 0..1. */
+  level: number
+}
+
+export type FeelingTone = {
+  notes: ReadonlyArray<ToneNote>
+  /** Seconds until the last note has ended. */
+  length: number
+}
+
+/** `semitones` above (or, negative, below) `hz`, equal-tempered. */
+const interval = (hz: number, semitones: number): number =>
+  hz * 2 ** (semitones / 12)
+
+/**
+ * The feeling's tone, as data: synthesizing it is the renderer's. Its
+ * register is 196·2^max(a, 0) Hz (G3, an octave up at full arousal). A
+ * pleasant feeling (v ≥ 0.3) rises in a major triad, an unpleasant one
+ * (v ≤ −0.3, inclusive, so `cringe` at exactly −0.30 falls) falls a
+ * semitone, with a noise crash when it is also agitated (a ≥ 0.8), and
+ * anything between is the dun-dun of a reveal. Notes shorten as arousal
+ * rises.
+ */
+export function feelingTone(key: FeelingKey): FeelingTone {
+  const { valence, arousal } = FEELING_POINTS[key]
+  const a = Math.max(arousal, 0)
+  const root = 196 * 2 ** a
+  const beat = 0.3 - 0.12 * a
+  const notes = ((): Array<ToneNote> => {
+    if (valence >= 0.3) {
+      return [0, 4, 7].map((semitones, index) => ({
+        wave: "sine",
+        hz: interval(root, semitones),
+        at: index * 0.09,
+        length: beat + 0.2,
+        level: 0.07,
+      }))
+    }
+    if (valence <= -0.3) {
+      const fall: Array<ToneNote> = [
+        {
+          wave: "triangle",
+          hz: interval(root, 1),
+          at: 0,
+          length: beat,
+          level: 0.08,
+        },
+        {
+          wave: "triangle",
+          hz: root,
+          at: beat + 0.04,
+          length: beat + 0.15,
+          level: 0.08,
+        },
+      ]
+      const crash: ToneNote = {
+        wave: "noise",
+        hz: 700,
+        at: 0,
+        length: 0.25,
+        level: 0.25,
+      }
+      return arousal >= 0.8 ? [...fall, crash] : fall
+    }
+    return [
+      { wave: "sawtooth", hz: root / 2, at: 0, length: 0.16, level: 0.06 },
+      { wave: "sawtooth", hz: root / 2, at: 0.22, length: 0.16, level: 0.06 },
+      {
+        wave: "sawtooth",
+        hz: interval(root, -17),
+        at: 0.44,
+        length: 0.5,
+        level: 0.07,
+      },
+    ]
+  })()
+  return {
+    notes,
+    length: Math.max(...notes.map((note) => note.at + note.length)),
   }
 }
 
