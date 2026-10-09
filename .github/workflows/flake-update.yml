@@ -1,0 +1,74 @@
+name: Flake update
+# Weekly `nix flake update`, opened as one PR on `bot/flake-update`.
+#
+# The flake picks the toolchain every CI job and `nix develop` shell runs
+# (Node, pnpm, Rust, Playwright's browsers), and nothing else moved flake.lock,
+# so it sat for months while .nvmrc and package.json's packageManager were
+# bumped by hand to versions the flake did not provide. Here the lock moves on
+# a schedule, and scripts/sync-toolchain.sh carries the new Node and pnpm
+# versions into those copies in the same commit (pr.yml's "Toolchain pins"
+# job fails any PR where they differ).
+#
+# Re-running before the PR merges updates the same branch, so a skipped week
+# folds into the next one. create-pull-request's `delete-branch` closes the
+# PR when main already carries the result.
+#
+# Opened with FLAKE_UPDATE_TOKEN if that secret is set (a fine-grained token
+# with contents and pull-requests write), otherwise the default token. A PR
+# the default token opens does not start pull_request workflows, so its CI,
+# the only thing that shows whether the new inputs build, needs a person to
+# close and reopen the PR once.
+on:
+  schedule:
+    # Mondays, alongside Dependabot's weekly run (.github/dependabot.yml).
+    - cron: "23 5 * * 1"
+  workflow_dispatch:
+permissions: {}
+concurrency:
+  group: flake-update
+  cancel-in-progress: true
+jobs:
+  update:
+    name: Update flake inputs
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/nix-setup
+      - name: Update flake.lock
+        run: nix flake update
+      # Rewrites .nvmrc, packageManager, the www Dockerfile's base image and
+      # pnpm-lock.yaml's pnpm entry from the new lock.
+      - name: Sync toolchain pins
+        run: scripts/sync-toolchain.sh
+      - name: Summarize
+        id: summary
+        run: |
+          toolchain=$(nix eval --json ".#toolchain.$(nix eval --impure --raw --expr builtins.currentSystem)")
+          echo "toolchain=$toolchain" >>"$GITHUB_OUTPUT"
+          echo "Toolchain after update: \`$toolchain\`" >>"$GITHUB_STEP_SUMMARY"
+      - name: Open PR
+        uses: peter-evans/create-pull-request@v8
+        with:
+          token: ${{ secrets.FLAKE_UPDATE_TOKEN || github.token }}
+          branch: bot/flake-update
+          base: main
+          delete-branch: true
+          commit-message: "chore(nix): update flake inputs"
+          title: "chore(nix): update flake inputs"
+          body: >
+            Opened automatically by `.github/workflows/flake-update.yml`:
+            `nix flake update`, then `scripts/sync-toolchain.sh` to carry the
+            flake's Node and pnpm versions into `.nvmrc`, `packageManager`,
+            the www Dockerfile and `pnpm-lock.yaml`.
+
+
+            Toolchain after this update: `${{ steps.summary.outputs.toolchain }}`.
+            The flake.lock diff shows every other input that moved (Rust via
+            rust-overlay, Playwright's browsers, the rest of nixpkgs).
+
+
+            If no CI checks appear on this PR, it was opened with the default
+            token, which does not start workflows: close and reopen it once.

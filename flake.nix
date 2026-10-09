@@ -36,6 +36,11 @@
       # ── Helpers ───────────────────────────────────────────────────────────
       mkLdPath = libs: pkgs.lib.makeLibraryPath libs;
     in {
+      # Node and pnpm versions the shells below provide. Read by
+      # scripts/sync-toolchain.sh, which copies them into .nvmrc,
+      # package.json's packageManager and the www Dockerfile.
+      toolchain = node.versions;
+
       devShells = {
         # ── default: full local dev ───────────────────────────────────────
         # Rust + wasm + desktop GUI + dev ergonomics.
@@ -68,7 +73,7 @@
             rust.deps
             ++ node.deps
             ++ pdf.deps
-            ++ [pkgs.nodePackages.web-ext];
+            ++ [pkgs.web-ext];
 
           shellHook = ''
             export RUST_BACKTRACE=${rust.ciEnv.RUST_BACKTRACE}
@@ -126,7 +131,7 @@
         ci-playwright = pkgs.mkShell {
           buildInputs =
             node.deps
-            ++ [pkgs.nodePackages.web-ext]
+            ++ [pkgs.web-ext]
             ++ playwright.deps;
 
           LD_LIBRARY_PATH = mkLdPath playwright.ldLibs;
