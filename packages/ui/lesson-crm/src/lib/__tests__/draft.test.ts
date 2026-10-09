@@ -13,7 +13,7 @@ import {
 import { intakeLesson, intakeTree } from "@some-ui/topik"
 import { describe, expect, it } from "vitest"
 
-import { LESSON, REPLY, TREE, treeReply } from "./fixture"
+import { REPLY, TREE, treeReply } from "./fixture"
 
 describe("draftLesson", () => {
   it("serves the lesson as intake leaves it, under the form's key and entry", () => {
@@ -178,8 +178,3 @@ function intakeOk(text: string): Parameters<typeof servedBody>[0] {
   if (!intake.ok) throw new Error(intake.error)
   return intake.batches
 }
-
-// The fixture is a lesson intake takes; tests above rely on it.
-it("the fixture is a clean lesson", () => {
-  expect(intakeOk(JSON.stringify(LESSON))).toHaveLength(1)
-})

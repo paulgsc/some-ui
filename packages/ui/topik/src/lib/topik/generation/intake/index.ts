@@ -13,11 +13,6 @@ import type { ConversationBatch, TopikMetadata } from "@topik/lib/topik"
 import { TopikFileSchema } from "@topik/lib/topik"
 import { topikLevelOf } from "@topik/lib/topik/core/lesson-selection"
 
-export { topikLevelOf }
-
-/** Keys of lessons pasted this session; never confused with a served one. */
-export const LOCAL_LESSON_PREFIX = "local:"
-
 export type Intake =
   | {
       ok: true
@@ -155,7 +150,7 @@ export function intakeLesson(
       : undefined)
 
   const meta: TopikMetadata = {
-    key: `${LOCAL_LESSON_PREFIX}${slug(text(given.key) ?? displayName)}`,
+    key: slug(text(given.key) ?? displayName),
     displayName,
     description: text(given.description) ?? "",
     batchCount: batches.length,

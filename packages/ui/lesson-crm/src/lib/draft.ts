@@ -114,9 +114,8 @@ export function fillForm(form: LessonForm, text: string): LessonForm {
   }
   const intake = intakeLesson(text)
   if (!intake.ok) return form
-  const suggested = intake.meta.key.replace(/^local:/, "")
   return {
-    key: form.key || suggested,
+    key: form.key || intake.meta.key,
     displayName: form.displayName || intake.meta.displayName,
     description: form.description || intake.meta.description,
     tags: form.tags.length > 0 ? form.tags : (intake.meta.tags ?? []),

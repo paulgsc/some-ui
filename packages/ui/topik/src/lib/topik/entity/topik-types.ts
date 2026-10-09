@@ -106,17 +106,14 @@ type ProbeBase = {
   explanation?: string
 }
 
-export type Probe =
-  | (ProbeBase & {
-      /** "Which of these is NOT a valid transformation?" - exactly one invalid. */
-      kind: "odd-one-out"
-      options: Array<ProbeOption>
-    })
-  | (ProbeBase & {
-      /** "Which reply fits?" - exactly one valid. */
-      kind: "pick-valid"
-      options: Array<ProbeOption>
-    })
+export type Probe = ProbeBase & {
+  /**
+   * `odd-one-out`: "Which of these is NOT a valid transformation?" - exactly
+   * one invalid. `pick-valid`: "Which reply fits?" - exactly one valid.
+   */
+  kind: "odd-one-out" | "pick-valid"
+  options: Array<ProbeOption>
+}
 
 const ProbeOptionSchema = z.object({
   id: z.string().trim().min(1).optional(),
@@ -170,7 +167,6 @@ export type ConversationBatch = {
   questions: Array<Question>
 }
 
-/** A file written while conversations still carried `probes` loads without them. */
 const ConversationBatchSchema = z.object({
   id: z.number(),
   messages: z.array(MessageSchema),

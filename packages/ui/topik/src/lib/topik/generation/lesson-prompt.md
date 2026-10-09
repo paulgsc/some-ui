@@ -40,6 +40,9 @@ survey **steers the content within that level**:
 - **What they feel it is making them into** (following a drama without
   subtitles, holding their own with in-laws): choose scenes and registers
   that point there.
+- **An answer they flagged as keyed wrong:** re-examine that form. If the key
+  was wrong, don't repeat the mistake; if it was right, bring the form back
+  with an `explanation` that makes the rule plainer.
 
 Never quote the survey back in the lesson.
 
@@ -228,5 +231,4 @@ Return two ` ```json ` blocks and nothing else, in this order.
 ## Versioning
 
 **`v2.0`.** The prompt the app assembles. The app appends **This request**
-below. Since `v2.0` a conversation carries no `probes`: the phone plays scene
-trees, and these conversations serve the desktop session.
+below.

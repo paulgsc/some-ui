@@ -1,12 +1,7 @@
 import { FIXTURE_BATCHES } from "@topik/components/topik/handheld/handheld-lesson/fixture"
 import { describe, expect, it } from "vitest"
 
-import {
-  fencedBodies,
-  intakeLesson,
-  LOCAL_LESSON_PREFIX,
-  topikLevelOf,
-} from "."
+import { fencedBodies, intakeLesson } from "."
 
 const entry = {
   key: "first-dinner",
@@ -41,12 +36,12 @@ describe("intakeLesson", () => {
     })
     if (!intake.ok) throw new Error(intake.error)
     expect(intake.meta).toEqual({
-      key: `${LOCAL_LESSON_PREFIX}week-40`,
+      key: "week-40",
       displayName: "Edited",
       description: "From the CRM's form.",
       batchCount: 2,
-      totalQuestions: intake.meta.totalQuestions,
-      totalMessages: intake.meta.totalMessages,
+      totalQuestions: 4,
+      totalMessages: 6,
       difficulty: "intermediate",
       tags: ["topik-4"],
     })
@@ -64,7 +59,7 @@ describe("intakeLesson", () => {
     if (!intake.ok) throw new Error(intake.error)
     expect(intake.batches).toHaveLength(2)
     expect(intake.meta).toEqual({
-      key: `${LOCAL_LESSON_PREFIX}first-dinner`,
+      key: "first-dinner",
       displayName: "The first family dinner",
       description: "Seo-yeon meets Chairman Kang.",
       batchCount: 2,
@@ -79,7 +74,7 @@ describe("intakeLesson", () => {
   it("takes bare JSON too, and names a lesson that came without an entry", () => {
     const intake = intakeLesson(JSON.stringify(FIXTURE_BATCHES))
     if (!intake.ok) throw new Error(intake.error)
-    expect(intake.meta.key).toBe(`${LOCAL_LESSON_PREFIX}untitled-lesson`)
+    expect(intake.meta.key).toBe("untitled-lesson")
   })
 
   it("sends back a lesson whose conversation or line ids repeat", () => {
@@ -116,13 +111,6 @@ describe("intakeLesson", () => {
       ok: false,
       error: "The lesson has no conversations.",
     })
-  })
-})
-
-describe("topikLevelOf", () => {
-  it("reads the level tag", () => {
-    expect(topikLevelOf(["makjang", "topik-4"])).toBe(4)
-    expect(topikLevelOf(["topik-9"])).toBeUndefined()
   })
 })
 

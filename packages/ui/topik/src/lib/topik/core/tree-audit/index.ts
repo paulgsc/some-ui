@@ -16,8 +16,7 @@
  * - every scene names a feeling the renderer has (`core/feeling`).
  *
  * A choice with an error is not asked: its scene becomes a leaf and the
- * subtree under it is dropped, the tree's version of Remark 4.7's "dropped at
- * load". A feeling outside the vocabulary or a level outside TOPIK's has no
+ * subtree under it is dropped, as Remark 4.7 drops an item at load. A feeling outside the vocabulary or a level outside TOPIK's has no
  * smaller piece to drop, so it rejects the tree. Findings are reported over
  * the whole tree, a dropped subtree included, so one round of fixes covers
  * everything.
@@ -64,11 +63,12 @@ type Report = (severity: TreeFinding["severity"], message: string) => void
 const normalize = (text: string): string => text.replace(/[\s.,!~…'"]+/g, "")
 
 /**
- * The rules about a check's candidates, judged against its `source` (`""`
- * when there is none). Which transformation a candidate claims is its
- * author's to name (canon Rem. 4.8), so no rule judges the relation itself.
+ * The rules about a check's candidates, an odd-one-out's judged against its
+ * `source`. Which transformation a candidate claims is its author's to name
+ * (canon Rem. 4.8), so no rule judges the relation itself.
  */
-function auditCandidates(probe: Probe, source: string, report: Report): void {
+function auditCandidates(probe: Probe, report: Report): void {
+  const source = probe.source ?? ""
   const seen = new Set<string>()
   for (const option of probe.options) {
     const label = `"${option.text}"`
@@ -175,7 +175,7 @@ function auditChoice(
       "an odd-one-out in a scene tree names its `source`: there is no anchor line to transform"
     )
   }
-  auditCandidates(probe, probe.source ?? "", reject)
+  auditCandidates(probe, reject)
 
   return verdict.rejected ? undefined : probe
 }

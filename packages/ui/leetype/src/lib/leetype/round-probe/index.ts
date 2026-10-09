@@ -1,9 +1,9 @@
-import { shuffledBySeed } from "@leetype/lib/leetype/deterministic-random"
 import type { PropositionId } from "@leetype/lib/leetype/proposition-register/generated"
 import { PROPOSITION_REGISTER } from "@leetype/lib/leetype/proposition-register/generated"
 import type { PropositionRegisterEntry } from "@leetype/lib/leetype/proposition-register/parse-canon"
 import { READING_OPTION_COUNT } from "@leetype/lib/leetype/reading-probe"
 import type { DiffSetMember } from "@leetype/types/round"
+import { shuffledBySeed } from "@some-ui/core-utils"
 
 /**
  * A round posed as a proposition-discrimination card (LTY-PROBE B2): canon

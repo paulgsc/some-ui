@@ -240,7 +240,7 @@ Four layers, each of which can improve without the others changing.
                          ┌───────────────────▼──┐   ┌────────▼──────────────┐
                          │ Teaching (topik)     │   │ 3. Media (ports)      │
                          │  probes, hint ladder,│   │  voice, art, motion;  │
-                         │  tiles, reports      │   │  fall back to text    │
+                         │  audit, reports      │   │  fall back to text    │
                          └──────────────────────┘   └───────────────────────┘
 ```
 
@@ -272,9 +272,7 @@ reading it. An option holds no words of its own: what the learner reads is
 the check's candidate with the same id, so a candidate's text lives in one
 place. A check is a `pick-valid` or an `odd-one-out`, each with exactly one
 keyed candidate. A candidate carries an `id` (Thm. 1.1), required by the
-teaching audit of every choice in a tree: optional on `ProbeOption` in
-`entity/topik-types.ts` only so that the audit can name the candidate that
-lacks one.
+teaching audit of every choice in a tree.
 
 - **Depth** is the number of choices between the root and a scene.
   `MAX_DEPTH = 2`: a scene at depth 2 has no choice; it is a leaf, and the
@@ -464,8 +462,8 @@ option (Def. 8.3).
 
 - **A tree prompt beside the conversation prompt.** The conversation prompt
   (`generation/lesson-prompt.md`) writes the desktop session's weekly batch,
-  which the LAN lesson CRM (`@some-ui/lesson-crm`) builds, checks and saves;
-  since MKJ-S6 its conversations carry no probes. The tree prompt writes one
+  which the LAN lesson CRM (`@some-ui/lesson-crm`) builds, checks and saves.
+  The tree prompt writes one
   scene tree, holding every choice to the probe rules, and stays standalone:
   no other lesson goes into it. Its vocabulary differs: the conversation
   prompt calls a conversation a "beat", and here a beat is a line or a
@@ -607,7 +605,7 @@ Remark 9.2 (v1.13), filed ahead of the renderer.
   vocabulary's points, hues, textures and motions, the derivation and its
   contrast floor. Topik owns their words
   (captions, cries, lettering) and symbols, keyed by the same feeling keys.
-- **`@some-ui/topik`** keeps the teaching: probes, the hint ladder, tiles, the
+- **`@some-ui/topik`** keeps the teaching: probes, the hint ladder, the
   teaching audit, the evaluation report, and the handheld renderer, which
   becomes a renderer of the engine. Topik depends on makjang, never the
   reverse. Only topik's handheld path (its renderer and its teaching audit)

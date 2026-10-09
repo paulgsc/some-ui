@@ -6,8 +6,8 @@
  * grading is therefore a lookup, never a judgement made here.
  */
 
+import { seedOf, shuffledBySeed } from "@some-ui/core-utils"
 import type { MorphismRelation, Probe, ProbeOption } from "@topik/lib/topik"
-import { seededShuffle } from "@topik/lib/topik/core/seeded-shuffle"
 
 /**
  * Chips for the relations probes most often name. Any other relation is its
@@ -42,7 +42,7 @@ export function orderedOptions(
   probe: Probe,
   seedKey: string
 ): Array<ProbeOption> {
-  return seededShuffle(probe.options, seedKey)
+  return shuffledBySeed(probe.options, seedOf(seedKey))
 }
 
 /**

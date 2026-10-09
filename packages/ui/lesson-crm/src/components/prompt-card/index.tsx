@@ -87,10 +87,10 @@ const NO_CLIPBOARD: IntentError = {
 
 /**
  * The first step of a new lesson: the generator prompt, for the operator to
- * give any model. It is the prompt the phone hands a learner
- * (`buildLessonPrompt`, `@some-ui/topik`), with the request marked as the
- * weekly batch rather than one learner's next lesson - or the scene-tree
- * prompt (`buildTreePrompt`), whose reply is checked but not yet saved.
+ * give any model: the conversation prompt (`buildLessonPrompt`,
+ * `@some-ui/topik`) for the desktop session, or the scene-tree prompt
+ * (`buildTreePrompt`) for the phone, each with the request marked as the
+ * weekly batch rather than one learner's next lesson.
  *
  * Copying is an intent: it says it worked, or why not. Where the clipboard is
  * out of reach the prompt is shown instead, filling the rest of the pane and
