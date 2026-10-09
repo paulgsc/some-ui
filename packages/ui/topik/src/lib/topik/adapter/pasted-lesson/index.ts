@@ -20,8 +20,9 @@
  * is read back through `intakeTree`, both audits and all, so the choices a
  * learner meets are only ever a `checked` intake's (MK4). A tree's resume
  * point (canon Rem. 4.13) is kept in the tree's own document, so it lasts
- * exactly as long as its lesson and goes when the slot is replaced. Keeping
- * a tree on the account is not offered.
+ * exactly as long as its lesson and goes when the slot is replaced. A tree
+ * is kept on the account as its document here (`serializePastedTree`), with
+ * no resume point.
  */
 
 import { localStorageOrNull } from "@some-ui/core-utils"
@@ -84,6 +85,18 @@ export function serializePastedLesson(
   return JSON.stringify({ version: 1, meta, batches })
 }
 
+/** A held tree's document, from its start: also the body a tree is kept as. */
+export const serializePastedTree = (lesson: DramaLesson): string =>
+  JSON.stringify({ version: 1, kind: "tree", tree: lesson })
+
+/** A kept or held tree document's lesson, through both audits (MK4). */
+export function treeOfDocument(document: unknown): DramaLesson | null {
+  const parsed = TreeDocumentSchema.safeParse(document)
+  if (!parsed.success) return null
+  const intake = intakeTree(JSON.stringify(parsed.data.tree))
+  return intake.status === "checked" ? intake.lesson : null
+}
+
 /**
  * `window.sessionStorage`, or null wherever touching it throws. Also where a
  * pasted lesson's resume point lives: a place lasts as long as its lesson.
@@ -134,14 +147,8 @@ export function createPastedLessonStore(
   }
 
   return {
-    getTree: (): DramaLesson | null => {
-      const parsed = TreeDocumentSchema.safeParse(read())
-      if (!parsed.success) return null
-      const intake = intakeTree(JSON.stringify(parsed.data.tree))
-      return intake.status === "checked" ? intake.lesson : null
-    },
-    setTree: (lesson): void =>
-      write(JSON.stringify({ version: 1, kind: "tree", tree: lesson })),
+    getTree: (): DramaLesson | null => treeOfDocument(read()),
+    setTree: (lesson): void => write(serializePastedTree(lesson)),
     points: {
       get: (lessonId): unknown => {
         if (latest?.lessonId === lessonId) return latest.point

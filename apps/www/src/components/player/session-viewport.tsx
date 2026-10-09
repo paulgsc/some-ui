@@ -20,7 +20,11 @@ import {
 } from "@/lib/orchestrator"
 import { createShelfClient } from "@/lib/shelf-client"
 import type { SessionRecord } from "@/lib/tenant"
-import { loadTopikFile, loadTopikManifest } from "@/lib/topik-content"
+import {
+  loadTopikFile,
+  loadTopikManifest,
+  loadTreeManifest,
+} from "@/lib/topik-content"
 
 import { defineSceneProps, withSceneProps } from "./scene-props"
 import { useLiveLayoutEditor } from "./use-live-layout-editor"
@@ -121,6 +125,8 @@ export const SessionViewport = ({
           // applet into the main bundle (src/lib/topik-content).
           loadManifest: loadTopikManifest,
           loadTopik: loadTopikFile,
+          // The served scene trees, which only the handheld lesson lists.
+          loadTreeManifest,
           shelf: shelves?.topik,
         },
         leetype: {

@@ -10,8 +10,10 @@
  * after the line it is about, typed answers built from tiles, and a place
  * kept across interruptions.
  *
- * A pasted scene tree plays here as the drama instead (`DramaLesson`,
- * docs/makjang/README.md), with a toggle for its scenes' sound in the header.
+ * A scene tree plays here as the drama instead (`DramaLesson`,
+ * docs/makjang/README.md), with a toggle for its scenes' sound in the header:
+ * one the learner pasted, or one of the operator's served trees
+ * (`adapter/tree-feed`), which only this renderer lists.
  */
 
 import type { JSX } from "react"
@@ -31,12 +33,20 @@ import { useSessionConfig } from "@topik/lib/topik/adapter/context/session-confi
 import type { UseHandheldLessonOptions } from "@topik/lib/topik/adapter/hooks/use-handheld-lesson"
 import { useHandheldLesson } from "@topik/lib/topik/adapter/hooks/use-handheld-lesson"
 import { usePastedTree } from "@topik/lib/topik/adapter/hooks/use-pasted-tree"
-import { createPastedLessonStore } from "@topik/lib/topik/adapter/pasted-lesson"
+import {
+  createPastedLessonStore,
+  serializePastedTree,
+} from "@topik/lib/topik/adapter/pasted-lesson"
 import type { ReadAloudStore } from "@topik/lib/topik/adapter/read-aloud-store"
+import {
+  useServedTree,
+  useTreeFeed,
+} from "@topik/lib/topik/adapter/server/tree-feed-queries"
 import {
   keptLessonOf,
   LESSON_SHELF_WORDS,
   shelfKeyOf,
+  treeShelfKeyOf,
 } from "@topik/lib/topik/adapter/shelf"
 import type {
   SoundControl,
@@ -46,7 +56,10 @@ import {
   createSoundControl,
   feelingSound,
 } from "@topik/lib/topik/adapter/sound-port"
+import { createServedPointStore } from "@topik/lib/topik/adapter/tree-feed"
 import { speakerVoice } from "@topik/lib/topik/adapter/voice-port"
+import type { DramaLesson as Tree } from "@topik/lib/topik/core/drama"
+import type { DramaPointStore } from "@topik/lib/topik/core/drama-runtime"
 import { TOPIK_LEVELS } from "@topik/lib/topik/generation"
 import { ChevronLeft, Loader2, Music } from "lucide-react"
 
@@ -59,6 +72,8 @@ type HandheldLessonProps = UseHandheldLessonOptions & {
   soundControl?: SoundControl
   /** Injected in tests; defaults to the browser's `AudioContext`. */
   tones?: ToneContextFactory | null
+  /** Injected in tests; defaults to `localStorage`. */
+  servedPoints?: DramaPointStore
 }
 
 export const HandheldLesson = ({
@@ -70,6 +85,7 @@ export const HandheldLesson = ({
   readAloudStore,
   soundControl,
   tones,
+  servedPoints,
 }: HandheldLessonProps): JSX.Element => {
   const [held] = useState(() => pastedStore ?? createPastedLessonStore())
   const vm = useHandheldLesson({
@@ -80,7 +96,12 @@ export const HandheldLesson = ({
   })
   const { lesson, audio, dispatch, generator } = vm
   const drama = usePastedTree(held)
-  const { speaker, shelf } = useSessionConfig()
+  const { speaker, shelf, treeFeed } = useSessionConfig()
+  const feed = useTreeFeed(treeFeed)
+  // The served tree chosen from the list, by key; its intake loads below.
+  const [servedKey, setServedKey] = useState<string | null>(null)
+  const served = useServedTree(treeFeed, servedKey)
+  const [servedPlace] = useState(() => servedPoints ?? createServedPointStore())
   const voice = useMemo(() => speakerVoice(speaker), [speaker])
   const [control] = useState(() => soundControl ?? createSoundControl())
   const sound = useMemo(
@@ -99,6 +120,12 @@ export const HandheldLesson = ({
     drama.replaced()
     generator.start(meta, batches)
   }
+  const startTree = (tree: Tree): void => {
+    generator.forget()
+    generator.close()
+    drama.start(tree)
+  }
+  const leaveServed = (): void => setServedKey(null)
   // The read-aloud drill takes the whole screen, header included; leaving it
   // returns to the material list it was opened from.
   const [reading, setReading] = useState(false)
@@ -121,13 +148,18 @@ export const HandheldLesson = ({
     )
   }
 
-  const playing = drama.playing ? drama.tree : null
+  const servedTree =
+    servedKey !== null && served.data?.status === "checked"
+      ? served.data.lesson
+      : null
+  const playing = drama.playing ? drama.tree : servedTree
+  const leave = drama.playing ? drama.leave : leaveServed
 
   const title = playing
     ? playing.root.place
     : lesson
       ? lesson.displayName
-      : vm.loading
+      : vm.loading || servedKey !== null
         ? "Loading..."
         : generator.active
           ? "New lesson"
@@ -138,14 +170,18 @@ export const HandheldLesson = ({
       <div
         className={cn("flex items-center gap-2 px-2", short ? "h-11" : "h-14")}
       >
-        {playing || vm.lesson || vm.loading || generator.active ? (
+        {playing ||
+        servedKey !== null ||
+        vm.lesson ||
+        vm.loading ||
+        generator.active ? (
           <Button
             variant="ghost"
             size="icon"
             className="size-11 shrink-0"
             onClick={
-              playing
-                ? drama.leave
+              playing || servedKey !== null
+                ? leave
                 : generator.active
                   ? generator.close
                   : vm.leave
@@ -218,10 +254,37 @@ export const HandheldLesson = ({
           lesson={playing}
           voice={voice}
           sound={sound}
-          points={held.points}
+          points={drama.playing ? held.points : servedPlace}
           short={short}
-          onLeave={drama.leave}
+          onLeave={leave}
         />
+      )
+    }
+    if (servedKey !== null) {
+      const failed =
+        served.isError ||
+        (served.data !== undefined && served.data.status !== "checked")
+      return (
+        <div className="flex flex-1 flex-col items-center justify-center gap-3 p-6 text-center">
+          {failed ? (
+            <>
+              <p className="text-destructive text-sm">
+                {served.isError
+                  ? "Couldn't load this drama."
+                  : "This drama can't be played."}
+              </p>
+              <Button
+                variant="outline"
+                className="h-11 rounded-xl"
+                onClick={leaveServed}
+              >
+                Back to materials
+              </Button>
+            </>
+          ) : (
+            <Loader2 className="text-muted-foreground size-6 animate-spin" />
+          )}
+        </div>
       )
     }
     if (vm.loading) {
@@ -254,11 +317,7 @@ export const HandheldLesson = ({
           buildPrompt={generator.prompt}
           onPromptHandedOff={generator.handedOff}
           onStart={startConversation}
-          onStartTree={(tree) => {
-            generator.forget()
-            generator.close()
-            drama.start(tree)
-          }}
+          onStartTree={startTree}
           short={short}
           kept={
             shelf ? (
@@ -267,7 +326,13 @@ export const HandheldLesson = ({
                 words={LESSON_SHELF_WORDS}
                 replay={{
                   read: keptLessonOf,
-                  play: (kept) => startConversation(kept.meta, kept.batches),
+                  play: (kept) =>
+                    kept.kind === "tree"
+                      ? startTree(kept.tree)
+                      : startConversation(
+                          kept.lesson.meta,
+                          kept.lesson.batches
+                        ),
                 }}
               />
             ) : undefined
@@ -292,13 +357,26 @@ export const HandheldLesson = ({
                 }
               : null
           }
+          dramas={
+            feed.data && feed.data.length > 0
+              ? { items: feed.data, onPlay: setServedKey }
+              : null
+          }
           onCreate={generator.open}
           onForget={generator.forget}
           keep={
-            shelf &&
-            generator.pasted &&
-            generator.pastedDocument !== null &&
-            generator.keptBodyFor !== null ? (
+            shelf && drama.tree ? (
+              <KeepOnShelf
+                key={drama.tree.id}
+                shelf={shelf}
+                words={LESSON_SHELF_WORDS}
+                shelfKey={treeShelfKeyOf(drama.tree)}
+                body={serializePastedTree(drama.tree)}
+              />
+            ) : shelf &&
+              generator.pasted &&
+              generator.pastedDocument !== null &&
+              generator.keptBodyFor !== null ? (
               <KeepOnShelf
                 // A newly pasted lesson is a new question: back to "Keep".
                 key={generator.pastedDocument}

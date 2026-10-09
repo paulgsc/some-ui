@@ -202,15 +202,24 @@ export async function storedRoundHash(
 }
 
 /**
- * One TOPIK lesson: its manifest entry and its body, verbatim. Unchanged
- * only when both are: home can edit a lesson's name, description, level or
- * tags without touching its body.
+ * The activity a curriculum row is listed under when nothing says otherwise:
+ * the conversation lessons the bare manifest lists, as on the server
+ * (`DEFAULT_ACTIVITY`, paulgsc/server `handlers/db/curriculum.rs`).
+ */
+export const DEFAULT_LESSON_ACTIVITY = "topik"
+
+/**
+ * One TOPIK lesson: its manifest entry and its body, verbatim, under the
+ * activity home lists it for. Unchanged only when all three are: home can
+ * edit a lesson's name, description, level or tags without touching its
+ * body.
  */
 export async function upsertLesson(
   db: SqlDriver,
   entry: LessonEntry,
   body: string,
-  nowMs: number
+  nowMs: number,
+  activityId: string = DEFAULT_LESSON_ACTIVITY
 ): Promise<UpsertOutcome> {
   const contentHash = await sha256Hex(body)
   const level =
@@ -221,8 +230,8 @@ export async function upsertLesson(
   return db.transaction(async () => {
     const stored = await one(
       db,
-      `SELECT content_hash, version, retired_at, level, display_name, description,
-              batch_count, total_questions, total_messages, tags
+      `SELECT content_hash, version, retired_at, activity_id, level, display_name,
+              description, batch_count, total_questions, total_messages, tags
        FROM curriculum WHERE key = ?`,
       [entry.key]
     )
@@ -231,6 +240,7 @@ export async function upsertLesson(
       text(stored, "content_hash") === contentHash &&
       // A lesson an older build retired comes back when home lists it again.
       stored.retired_at === null &&
+      stored.activity_id === activityId &&
       stored.level === level &&
       stored.display_name === entry.displayName &&
       stored.description === entry.description &&
@@ -244,9 +254,9 @@ export async function upsertLesson(
     const version = stored === null ? 1 : num(stored, "version") + 1
     await db.run(
       `INSERT INTO curriculum (key, activity_id, level, display_name, description, batch_count, total_questions, total_messages, tags, published_at, version, content_hash, body, retired_at)
-       VALUES (?, 'topik', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)
        ON CONFLICT(key) DO UPDATE SET
-         level = excluded.level, display_name = excluded.display_name,
+         activity_id = excluded.activity_id, level = excluded.level, display_name = excluded.display_name,
          description = excluded.description, batch_count = excluded.batch_count,
          total_questions = excluded.total_questions, total_messages = excluded.total_messages,
          tags = excluded.tags, published_at = excluded.published_at,
@@ -254,6 +264,7 @@ export async function upsertLesson(
          body = excluded.body, retired_at = NULL`,
       [
         entry.key,
+        activityId,
         level,
         entry.displayName,
         entry.description,
@@ -272,21 +283,23 @@ export async function upsertLesson(
 }
 
 /**
- * Deletes every lesson whose key is not in `keep`, after a sync copies the
- * home manifest. Deleted, where the server retires: nothing on the phone loads
- * a lesson by a key it saved (a session stores a level; every loader takes its
- * key from the manifest), so a retired row is only weight.
+ * Deletes every lesson of `activityId` whose key is not in `keep`, after a
+ * sync copies that activity's home manifest. Deleted, where the server
+ * retires: nothing on the phone loads a lesson by a key it saved (a session
+ * stores a level; every loader takes its key from the manifest), so a
+ * retired row is only weight.
  */
 export async function removeLessonsExcept(
   db: SqlDriver,
-  keep: ReadonlyArray<string>
+  keep: ReadonlyArray<string>,
+  activityId: string = DEFAULT_LESSON_ACTIVITY
 ): Promise<number> {
   return db.transaction(() =>
     deleteCounted(
       db,
       "curriculum",
-      "key NOT IN (SELECT value FROM json_each(?))",
-      [JSON.stringify(keep)]
+      "activity_id = ? AND key NOT IN (SELECT value FROM json_each(?))",
+      [activityId, JSON.stringify(keep)]
     )
   )
 }

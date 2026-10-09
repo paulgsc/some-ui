@@ -139,6 +139,19 @@ describe("loadTopikManifest - builds with a file_host", () => {
     )
   })
 
+  it("fetches the served trees from the same route's makjang activity", async () => {
+    const manifest = { version: "t", topiks: [] }
+    const { loadTreeManifest, fetchSpy } = await withFileHost(
+      jsonResponse(manifest)
+    )
+
+    await expect(loadTreeManifest()).resolves.toEqual(manifest)
+    expect(fetchSpy).toHaveBeenCalledWith(
+      new URL(`${httpBase()}/manifest.json?activity=makjang`),
+      expect.anything()
+    )
+  })
+
   it("treats a server with no curriculum route as an empty catalogue", async () => {
     const { loadTopikManifest, EMPTY_TOPIK_MANIFEST } = await withFileHost(
       serverErrorResponse(404, "not_found")

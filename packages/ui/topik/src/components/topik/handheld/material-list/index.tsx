@@ -38,6 +38,14 @@ type MaterialListProps = {
     onPlay: () => void
     onForget: () => void
   } | null
+  /**
+   * The operator's served scene trees (`adapter/tree-feed`), with how to
+   * play one; absent or null where none are served.
+   */
+  dramas?: {
+    items: Array<TopikMetadata>
+    onPlay: (key: string) => void
+  } | null
   loading: boolean
   error: string | null
   resume: { topik: TopikMetadata; conversation: number } | null
@@ -48,8 +56,8 @@ type MaterialListProps = {
   /** Lets the pasted lesson go before the session ends. */
   onForget?: () => void
   /**
-   * "Keep on this account" for the pasted lesson, where the host has a
-   * learner shelf; shown under it. Absent, the lesson lasts the session.
+   * "Keep on this account" for the pasted lesson or tree, where the host has
+   * a learner shelf; shown under it. Absent, it lasts the session.
    */
   keep?: JSX.Element
   /** Opens the read-aloud drill; absent where it isn't offered. */
@@ -64,6 +72,12 @@ const details = (item: TopikMetadata): string => {
   ]
     .filter(Boolean)
     .join(" · ")
+}
+
+/** A served tree's line: what it is, at which level. */
+const dramaDetails = (item: TopikMetadata): string => {
+  const level = topikLevelOf(item.tags)
+  return level ? `Drama · TOPIK ${level}` : "Drama"
 }
 
 /** Why a lesson is up next, in the learner's words (canon Rem. 3.5). */
@@ -99,10 +113,13 @@ const Row = ({
   item,
   onSelect,
   note,
+  about = details(item),
 }: {
   item: TopikMetadata
   onSelect: (key: string) => void
   note?: string
+  /** What the item is; a conversation lesson's counts by default. */
+  about?: string
 }): JSX.Element => (
   <li className="bg-card border-border flex min-h-16 items-stretch rounded-2xl border">
     <button
@@ -118,7 +135,7 @@ const Row = ({
           </span>
         )}
         <span className="text-muted-foreground mt-1 block text-xs">
-          {note ? `${details(item)} · ${note}` : details(item)}
+          {note ? `${about} · ${note}` : about}
         </span>
       </span>
       <ChevronRight className="text-muted-foreground size-5 shrink-0" />
@@ -182,6 +199,7 @@ export const MaterialList = ({
   onLevel,
   pasted = null,
   pastedTree = null,
+  dramas = null,
   loading,
   error,
   resume,
@@ -194,7 +212,12 @@ export const MaterialList = ({
 }: MaterialListProps): JSX.Element => {
   const [next, ...rest] = order
   const why = next ? reasonText(next.reasons) : null
-  const empty = !loading && !error && order.length === 0 && others.length === 0
+  const empty =
+    !loading &&
+    !error &&
+    order.length === 0 &&
+    others.length === 0 &&
+    dramas === null
 
   return (
     <div
@@ -322,7 +345,23 @@ export const MaterialList = ({
               />
             )
           )}
-          {pasted && keep}
+          {keep}
+        </section>
+      )}
+
+      {dramas && (
+        <section aria-label="Dramas" className="flex flex-col gap-2">
+          <Heading>Dramas</Heading>
+          <ul className="flex flex-col gap-2">
+            {dramas.items.map((item) => (
+              <Row
+                key={item.key}
+                item={item}
+                onSelect={dramas.onPlay}
+                about={dramaDetails(item)}
+              />
+            ))}
+          </ul>
         </section>
       )}
 

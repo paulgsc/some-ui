@@ -12,6 +12,11 @@
  * served a probe the audit rejected, and saving an unchanged lesson again
  * produces identical bytes, which the server reports as `unchanged` rather
  * than as new material.
+ *
+ * A scene tree goes through `intakeTree` instead, both audits, and is stored
+ * the same way: the tree as it plays, every choice an error names pruned to
+ * a leaf, under `TREE_ACTIVITY`. The server lists that activity only to the
+ * phone's handheld lesson (`?activity=`), never to the desktop session.
  */
 
 import type {
@@ -20,11 +25,17 @@ import type {
   TopikMetadata,
   TreeIntake,
 } from "@some-ui/topik"
-import { intakeLesson, intakeTree, RELATION_TAG_PREFIX } from "@some-ui/topik"
+import {
+  intakeLesson,
+  intakeTree,
+  RELATION_TAG_PREFIX,
+  TREE_ACTIVITY,
+  treeEntry,
+} from "@some-ui/topik"
 
 import type { LessonWrite, OperatorLesson } from "./client"
 
-/** Every served lesson is a topik lesson; the server announces it under this. */
+/** A served conversation lesson's activity; the server announces it under this. */
 const LESSON_ACTIVITY = "topik"
 
 /** What the operator edits beside the lesson text. */
@@ -99,6 +110,14 @@ export function formFromLesson(lesson: OperatorLesson): LessonForm {
  * never overwrites what they typed.
  */
 export function fillForm(form: LessonForm, text: string): LessonForm {
+  const tree = intakeTree(text)
+  if (tree.status === "checked") {
+    return {
+      ...form,
+      key: form.key || tree.lesson.id,
+      displayName: form.displayName || tree.lesson.root.place,
+    }
+  }
   const intake = intakeLesson(text)
   if (!intake.ok) return form
   const suggested = intake.meta.key.replace(/^local:/, "")
@@ -120,6 +139,9 @@ export const servedBody = (batches: Array<ConversationBatch>): string =>
 /** A scene tree the text held, with both audits' verdict on it. */
 export type TreeCheck = Exclude<TreeIntake, { status: "absent" }>
 
+/** A scene tree both audits let play. */
+export type CheckedTree = Extract<TreeIntake, { status: "checked" }>
+
 export type Draft =
   | {
       ok: false
@@ -128,24 +150,49 @@ export type Draft =
       /** Present when the text is a scene tree. */
       tree?: TreeCheck
     }
-  | { ok: true; intake: Extract<Intake, { ok: true }>; write: LessonWrite }
+  | {
+      ok: true
+      intake: Extract<Intake, { ok: true }>
+      tree?: undefined
+      write: LessonWrite
+    }
+  | { ok: true; intake: null; tree: CheckedTree; write: LessonWrite }
 
-/**
- * Why a tree has nothing to save: trees are checked here, and saved and
- * served with the phone feed (MKJ-S4, #1712).
- */
-export const TREE_NOT_SAVED =
-  "A scene tree is checked here, not saved yet: saving trees comes with the phone feed."
+/** Why a rejected tree has nothing to save. */
+export const TREE_REJECTED =
+  "Nothing to save: the tree doesn't play. Send the fixes to the model."
+
+/** Where a checked tree goes on save. */
+export const TREE_SAVES_TO_FEED =
+  "Saves to the phone's dramas: the handheld lesson lists it, and the desktop session never does."
+
+/** The one serialisation of a stored tree: the lesson as it plays. */
+export const servedTreeBody = (tree: CheckedTree["lesson"]): string =>
+  `${JSON.stringify(tree, null, 2)}\n`
 
 /**
  * The lesson text and the form, checked and turned into the write a save
  * sends - or the reason there is nothing to save. A scene tree goes through
- * `intakeTree` instead.
+ * `intakeTree` instead, and saves under `TREE_ACTIVITY`.
  */
 export function draftLesson(text: string, form: LessonForm): Draft {
   const tree = intakeTree(text)
-  if (tree.status !== "absent") {
-    return { ok: false, error: TREE_NOT_SAVED, intake: null, tree }
+  if (tree.status === "rejected") {
+    return { ok: false, error: TREE_REJECTED, intake: null, tree }
+  }
+  if (tree.status === "checked") {
+    const problem = keyProblem(form.key)
+    if (problem) return { ok: false, error: problem, intake: null, tree }
+    return {
+      ok: true,
+      intake: null,
+      tree,
+      write: {
+        activityId: TREE_ACTIVITY,
+        metadata: treeEntry(tree.lesson, form),
+        body: servedTreeBody(tree.lesson),
+      },
+    }
   }
   const intake = intakeLesson(text, {
     displayName: form.displayName,

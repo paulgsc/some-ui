@@ -5,6 +5,7 @@ import type {
   ITopikMetadataRepository,
   ITopikRepository,
 } from "@topik/lib/topik"
+import type { TreeFeed } from "@topik/lib/topik/adapter/tree-feed"
 
 export type SessionConfig = {
   topikRepository: ITopikRepository
@@ -21,6 +22,11 @@ export type SessionConfig = {
    * applet is otherwise the same.
    */
   shelf?: ShelfPort
+  /**
+   * The served scene trees (`adapter/tree-feed`), read by the handheld
+   * lesson only. Absent, it lists none.
+   */
+  treeFeed?: TreeFeed
 }
 
 const SessionConfigContext = createContext<SessionConfig | null>(null)

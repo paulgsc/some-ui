@@ -11,6 +11,10 @@
  * - **`DATA_MODE === "static"`** (Pages): no `file_host`, so the catalogue
  *   resolves to empty without a request.
  *
+ * The served scene trees (`loadTreeManifest`) are the same routes' `makjang`
+ * activity (`?activity=makjang`): only topik's handheld lesson reads them,
+ * and each loads by key like any lesson.
+ *
  * An empty catalogue is a *valid* manifest, not an error, so the applet shows
  * "nothing to study" (the server also answers an unimported corpus with an
  * empty manifest at 200). Only a 404 or a body that plainly isn't a manifest
@@ -57,6 +61,19 @@ function locateTopikManifestUrl(): URL {
   return toUrl(fileHostRouteUrl("/api/v1/curriculum/manifest.json"))
 }
 
+/**
+ * The curriculum activity served scene trees are listed under: topik's
+ * `TREE_ACTIVITY`, spelled again here because importing topik would put the
+ * applet in the main bundle.
+ */
+export const TREE_ACTIVITY = "makjang"
+
+function locateTreeManifestUrl(): URL {
+  const url = locateTopikManifestUrl()
+  url.searchParams.set("activity", TREE_ACTIVITY)
+  return url
+}
+
 /** A manifest key is a lesson's identity on the server, never a path. */
 export function locateTopikFileUrl(key: string): URL {
   return toUrl(fileHostRouteUrl("/api/v1/curriculum/:key", { key }))
@@ -66,6 +83,11 @@ export function locateTopikFileUrl(key: string): URL {
 // request below - but `createDataSource` wants one per mode.
 const manifestSource = createDataSource<void, unknown>(
   { static: locateTopikManifestUrl, server: locateTopikManifestUrl },
+  { mode: DATA_MODE, fetchOptions: PUBLIC_READ }
+)
+
+const treeManifestSource = createDataSource<void, unknown>(
+  { static: locateTreeManifestUrl, server: locateTreeManifestUrl },
   { mode: DATA_MODE, fetchOptions: PUBLIC_READ }
 )
 
@@ -99,12 +121,14 @@ function isNotAManifest(error: ApiError): boolean {
   )
 }
 
-/** Handed to `KoreanStudyPage` as `loadManifest`. */
-export async function loadTopikManifest(): Promise<unknown> {
+/** A manifest, or the empty one where this build or host has none. */
+async function loadManifestFrom(
+  source: typeof manifestSource
+): Promise<unknown> {
   if (!FETCHES_CONTENT) return EMPTY_TOPIK_MANIFEST
 
   try {
-    return await manifestSource.fetch(undefined, manifestShapeSchema)
+    return await source.fetch(undefined, manifestShapeSchema)
   } catch (error) {
     // A 404 (an older server with no curriculum route) or a body that is not
     // a manifest (not `file_host` at all) reads as "nothing to study".
@@ -117,6 +141,14 @@ export async function loadTopikManifest(): Promise<unknown> {
     throw error
   }
 }
+
+/** Handed to `KoreanStudyPage` as `loadManifest`. */
+export const loadTopikManifest = (): Promise<unknown> =>
+  loadManifestFrom(manifestSource)
+
+/** Handed to `KoreanStudyPage` as `loadTreeManifest`. */
+export const loadTreeManifest = (): Promise<unknown> =>
+  loadManifestFrom(treeManifestSource)
 
 /** Handed to `KoreanStudyPage` as `loadTopik`. */
 export function loadTopikFile(key: string): Promise<unknown> {

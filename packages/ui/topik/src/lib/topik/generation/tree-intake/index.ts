@@ -5,11 +5,17 @@
  */
 
 import type { Lesson } from "@some-ui/makjang"
-import { auditStory } from "@some-ui/makjang"
+import { auditStory, scenesOf } from "@some-ui/makjang"
+import type { TopikMetadata } from "@topik/lib/topik"
+import { topikLevelOf } from "@topik/lib/topik/core/lesson-selection"
 import type { ChoiceProbe } from "@topik/lib/topik/core/probe"
 import type { TreeFinding } from "@topik/lib/topik/core/tree-audit"
 import { auditTeaching } from "@topik/lib/topik/core/tree-audit"
-import { isRecord, jsonValues } from "@topik/lib/topik/generation/intake"
+import {
+  DIFFICULTY_BY_LEVEL,
+  isRecord,
+  jsonValues,
+} from "@topik/lib/topik/generation/intake"
 
 export type TreeIntake =
   /** The reply holds no scene tree at all. */
@@ -54,6 +60,40 @@ export function intakeTree(reply: string): TreeIntake {
     status: "checked",
     lesson: teaching.lesson,
     findings: teaching.findings,
+  }
+}
+
+/** What the operator types beside a tree they serve. */
+export type TreeEntryForm = Pick<
+  TopikMetadata,
+  "key" | "displayName" | "description"
+> & { tags: Array<string> }
+
+/**
+ * A checked tree's manifest entry, as the lesson CRM serves it: the
+ * operator's words, and what the tree says of itself. A tree is one lesson;
+ * its questions are its choices and its messages its beats, over every
+ * scene, routes not taken included. Its level is its `topik-N` tag, which
+ * replaces any typed one, and the difficulty that level maps to.
+ */
+export function treeEntry(
+  lesson: Lesson<ChoiceProbe>,
+  form: TreeEntryForm
+): TopikMetadata {
+  const scenes = scenesOf(lesson.root).map(({ scene }) => scene)
+  const difficulty = DIFFICULTY_BY_LEVEL[lesson.level]
+  return {
+    key: form.key,
+    displayName: form.displayName.trim() || lesson.root.place,
+    description: form.description.trim(),
+    batchCount: 1,
+    totalQuestions: scenes.filter((scene) => scene.choice).length,
+    totalMessages: scenes.reduce((sum, scene) => sum + scene.beats.length, 0),
+    ...(difficulty ? { difficulty } : {}),
+    tags: [
+      `topik-${lesson.level}`,
+      ...form.tags.filter((tag) => topikLevelOf([tag]) === undefined),
+    ],
   }
 }
 

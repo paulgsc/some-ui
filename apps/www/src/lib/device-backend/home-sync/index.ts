@@ -1,7 +1,8 @@
 /**
  * Copies what the home `file_host` publishes into the phone's database, for
- * offline study: TOPIK lessons (which exist nowhere else) and Leetype rounds
- * newer than the bundled corpus.
+ * offline study: TOPIK lessons and the served scene trees (which exist
+ * nowhere else; each under its own curriculum activity, as home lists them)
+ * and Leetype rounds newer than the bundled corpus.
  *
  * One direction (home -> phone) and published content only: syncing the
  * learner's own history would need a merge rule. Every route read here is
@@ -15,6 +16,7 @@
 import { isRecord, stringsAt } from "@/lib/device-backend/common"
 import type { LessonEntry } from "@/lib/device-backend/content-store"
 import {
+  DEFAULT_LESSON_ACTIVITY,
   removeLessonsExcept,
   removeRoundsExcept,
   storedRoundHash,
@@ -30,6 +32,7 @@ import {
   budgetedDriver,
   OverBudgetError,
 } from "@/lib/device-backend/storage"
+import { TREE_ACTIVITY } from "@/lib/topik-content"
 
 /**
  * A GET against home. `body` is the answer as text; a transport that parsed
@@ -48,6 +51,8 @@ type Tally = {
 
 export type SyncReport = {
   lessons: Tally
+  /** The served scene trees (`TREE_ACTIVITY`). */
+  trees: Tally
   rounds: Tally & { runs: number }
   /** Items home listed but would not hand over, by key or id. */
   failed: Array<string>
@@ -113,6 +118,66 @@ async function getJson(
   return parsed
 }
 
+/** A curriculum manifest's entries, or a refusal to remove against it. */
+function topiksOf(manifest: unknown): Array<unknown> {
+  // A manifest with no `topiks` array is not an empty one, and removing
+  // against it would empty the catalogue.
+  if (!isRecord(manifest) || !Array.isArray(manifest.topiks)) {
+    throw new Error("home's curriculum manifest has no `topiks` array")
+  }
+  return manifest.topiks
+}
+
+/** Copies one curriculum activity's listing into `tally`. */
+async function syncLessons(
+  sync: {
+    db: SqlDriver
+    store: SqlDriver
+    get: HomeGet
+    base: string
+    now: () => number
+    failed: Array<string>
+  },
+  activityId: string,
+  listed: Array<unknown>,
+  tally: Tally
+): Promise<void> {
+  const { db, store, get, base, now, failed } = sync
+  // Every key home still lists, including an entry this phone cannot read:
+  // that one fails, and is not removed.
+  const listedKeys = stringsAt(listed, "key")
+  const entries = listed.filter(isLessonEntry)
+  tally.listed = listedKeys.length
+  for (const key of listedKeys) {
+    if (!entries.some((entry) => entry.key === key)) failed.push(key)
+  }
+  // First, so what home dropped makes room for what it added. By what home
+  // lists, so a lesson that merely fails to download below is kept.
+  tally.removed = await removeLessonsExcept(db, listedKeys, activityId)
+  for (const entry of entries) {
+    try {
+      const answer = await get(
+        `${base}/curriculum/${encodeURIComponent(entry.key)}`
+      )
+      if (answer.status !== 200) throw new Error(String(answer.status))
+      const outcome = await upsertLesson(
+        store,
+        entry,
+        answer.body,
+        now(),
+        activityId
+      )
+      if (outcome === "inserted") tally.added += 1
+      if (outcome === "updated") tally.updated += 1
+    } catch (error) {
+      // The phone's storage failing is not this item's: stop and say so.
+      if (error instanceof DeviceStorageError) throw error
+      if (error instanceof OverBudgetError) tally.skipped += 1
+      else failed.push(entry.key)
+    }
+  }
+}
+
 export async function syncFromHome(
   db: SqlDriver,
   homeInput: string,
@@ -125,46 +190,35 @@ export async function syncFromHome(
   const empty = { listed: 0, added: 0, updated: 0, removed: 0, skipped: 0 }
   const report: SyncReport = {
     lessons: { ...empty },
+    trees: { ...empty },
     rounds: { ...empty, runs: 0 },
     failed: [],
   }
 
-  // The manifest first; its failure fails the sync (an unreachable home must
-  // be said plainly). A manifest with no `topiks` array is not an empty one,
-  // and removing against it would empty the catalogue.
-  const manifest = await getJson(get, base, "/curriculum/manifest.json")
-  // Both listings before any write: a failed fetch aborts with nothing removed.
+  // The manifests first; their failure fails the sync (an unreachable home
+  // must be said plainly). Every listing before any write: a failed fetch
+  // aborts with nothing removed.
+  const lessons = topiksOf(
+    await getJson(get, base, "/curriculum/manifest.json")
+  )
+  const trees = topiksOf(
+    await getJson(
+      get,
+      base,
+      `/curriculum/manifest.json?activity=${TREE_ACTIVITY}`
+    )
+  )
   const rounds = await getJson(get, base, "/leetype/rounds")
-  if (!isRecord(manifest) || !Array.isArray(manifest.topiks)) {
-    throw new Error("home's curriculum manifest has no `topiks` array")
-  }
-  const listed: Array<unknown> = manifest.topiks
-  // Every key home still lists, including an entry this phone cannot read:
-  // that one fails, and is not removed.
-  const listedKeys = stringsAt(listed, "key")
-  const entries = listed.filter(isLessonEntry)
-  report.lessons.listed = listedKeys.length
-  for (const key of listedKeys) {
-    if (!entries.some((entry) => entry.key === key)) report.failed.push(key)
-  }
-  // First, so what home dropped makes room for what it added. By what home
-  // lists, so a lesson that merely fails to download below is kept.
-  report.lessons.removed = await removeLessonsExcept(db, listedKeys)
-  for (const entry of entries) {
-    try {
-      const answer = await get(
-        `${base}/curriculum/${encodeURIComponent(entry.key)}`
-      )
-      if (answer.status !== 200) throw new Error(String(answer.status))
-      const outcome = await upsertLesson(store, entry, answer.body, now())
-      if (outcome === "inserted") report.lessons.added += 1
-      if (outcome === "updated") report.lessons.updated += 1
-    } catch (error) {
-      // The phone's storage failing is not this item's: stop and say so.
-      if (error instanceof DeviceStorageError) throw error
-      if (error instanceof OverBudgetError) report.lessons.skipped += 1
-      else report.failed.push(entry.key)
-    }
+
+  const sync = { db, store, get, base, now, failed: report.failed }
+  await syncLessons(sync, DEFAULT_LESSON_ACTIVITY, lessons, report.lessons)
+  // Keys are one namespace, so a home that lists a lesson in both answered
+  // the tree manifest with its lessons: it predates `?activity=`. Copying
+  // that listing would move every lesson under the trees' activity, so the
+  // trees are left as they are until home serves them.
+  const lessonKeys = new Set(stringsAt(lessons, "key"))
+  if (!stringsAt(trees, "key").some((key) => lessonKeys.has(key))) {
+    await syncLessons(sync, TREE_ACTIVITY, trees, report.trees)
   }
 
   const roundsListed: Array<unknown> | null =

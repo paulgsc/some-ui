@@ -37,6 +37,7 @@ import {
   isShort,
   useElementBox,
 } from "@topik/lib/topik/adapter/hooks/use-surface"
+import { createTreeFeed } from "@topik/lib/topik/adapter/tree-feed"
 
 /** Where the manifest lives when a host doesn't say otherwise. */
 const DEFAULT_TOPIK_MANIFEST_URL = "/topiks/manifest.json"
@@ -62,6 +63,12 @@ export type KoreanStudyPageProps = {
   loadManifest?: () => Promise<unknown>
   /** Same seam for a single topik's batches, keyed by its manifest key. */
   loadTopik?: (key: string) => Promise<unknown>
+  /**
+   * The served scene trees' manifest (`adapter/tree-feed`), which only the
+   * handheld lesson reads; each tree loads through `loadTopik`. Absent, the
+   * handheld lists no served trees.
+   */
+  loadTreeManifest?: () => Promise<unknown>
   /**
    * The learner shelf: where a lesson the learner pasted is kept on their
    * account when they ask (canon Rem. 7.3). A plain object for the same
@@ -171,6 +178,7 @@ export const KoreanStudyPage = ({
   manifestUrl = DEFAULT_TOPIK_MANIFEST_URL,
   loadManifest,
   loadTopik,
+  loadTreeManifest,
   shelf,
   appearance = "inherit",
   surface = "auto",
@@ -199,6 +207,9 @@ export const KoreanStudyPage = ({
         createTopikMetadataRepository(loadManifest ?? manifestUrl),
       speaker,
       ...(shelf ? { shelf } : {}),
+      ...(loadTreeManifest && loadTopik
+        ? { treeFeed: createTreeFeed(loadTreeManifest, loadTopik) }
+        : {}),
     }),
     [
       topikRepository,
@@ -206,6 +217,7 @@ export const KoreanStudyPage = ({
       manifestUrl,
       loadManifest,
       loadTopik,
+      loadTreeManifest,
       speaker,
       shelf,
     ]

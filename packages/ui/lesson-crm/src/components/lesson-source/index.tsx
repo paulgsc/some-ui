@@ -80,10 +80,10 @@ export const LessonSourcePane = ({
             </span>
             <span className="text-muted-foreground text-xs">
               {ORIGIN_WORDS[source.origin]} · {formatSize(source.file.size)}
-              {draft?.ok
-                ? ` · ${draft.intake.meta.batchCount} conversations`
-                : draft?.tree
-                  ? " · a scene tree"
+              {draft?.tree
+                ? " · a scene tree"
+                : draft?.ok
+                  ? ` · ${draft.intake.meta.batchCount} conversations`
                   : draft
                     ? " · not a lesson yet"
                     : ""}

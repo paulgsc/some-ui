@@ -635,7 +635,13 @@ Neither needs a better model than exists today.
     with both audits. Candidates gain ids. Today both renderers read one batch through the same
     repositories (`study-session`), so the feed is added beside the desktop's
     conversation batch rather than converting it, and neither renderer reads
-    the other's.
+    the other's. The CRM saves a checked tree, pruned as it plays, under the
+    curriculum activity `makjang`. The server lists one activity per
+    manifest, `topik`'s unless `?activity=` names another
+    (paulgsc/server#417). Only the handheld reads the `makjang` one
+    (`adapter/tree-feed`), and home sync carries it to the phone's mirror
+    under the same activity. The learner shelf keeps a pasted tree as it
+    keeps a conversation lesson.
   - The teaching audit's pruning, in topik. The media port types. Speaker
     names, choices as large text targets, consequence and repair scenes.
   - The handheld's conversation path goes: `core/lesson-track` and its tests
@@ -745,9 +751,10 @@ the one-line summaries.
 > - _Scope:_ `packages/ui/topik` and `packages/ui/lesson-crm`.
 > - _Why not wholly enforced:_ the pruning is tested
 >   (`core/tree-audit/index.test.ts`), but which value a renderer reads is
->   data flow. The phone's renderer reads a pasted tree only through
+>   data flow. The phone's renderer reads a pasted or kept tree only through
 >   `adapter/pasted-lesson`, which runs `intakeTree` again on the way out of
->   storage.
+>   storage, and a served one only through `adapter/tree-feed`, which runs it
+>   on the way in from the feed.
 >
 > **MK5: Every feeling clears the contrast floor on every session theme.**
 >

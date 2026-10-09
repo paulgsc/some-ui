@@ -45,14 +45,15 @@ function remember(key: string, value: string): void {
 }
 
 function describe(report: SyncReport): string {
-  const { lessons, rounds, failed } = report
+  const { lessons, trees, rounds, failed } = report
   const parts = [
     `${lessons.listed} TOPIK lesson${lessons.listed === 1 ? "" : "s"} (${lessons.added} new, ${lessons.updated} updated)`,
+    `${trees.listed} drama${trees.listed === 1 ? "" : "s"} (${trees.added} new, ${trees.updated} updated)`,
     `${rounds.added + rounds.updated} Leetype round${rounds.added + rounds.updated === 1 ? "" : "s"} refreshed`,
   ]
-  const removed = lessons.removed + rounds.removed
+  const removed = lessons.removed + trees.removed + rounds.removed
   if (removed > 0) parts.push(`${removed} home no longer lists removed`)
-  const skipped = lessons.skipped + rounds.skipped
+  const skipped = lessons.skipped + trees.skipped + rounds.skipped
   if (skipped > 0) parts.push(`${skipped} not added: this phone is full`)
   if (failed.length > 0) parts.push(`${failed.length} could not be fetched`)
   return parts.join(" · ")

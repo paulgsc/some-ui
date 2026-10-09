@@ -5,10 +5,12 @@
  *
  * The tables are filled differently (bundled seed plus home sync,
  * `device-backend/content-store`), but answers match: manifests list
- * unretired rows by key, `version` is the SHA-256 of the compact JSON in the
+ * unretired rows by key (the curriculum one, one activity's: topik's unless
+ * `?activity=` names another), `version` is the SHA-256 of the compact JSON in the
  * server's field order, and a body is verbatim with its hash as the ETag.
  */
 import { sha256Hex } from "@/lib/device-backend/common"
+import { DEFAULT_LESSON_ACTIVITY } from "@/lib/device-backend/content-store"
 import type { DeviceRoute } from "@/lib/device-backend/router"
 import {
   errorResponse,
@@ -48,11 +50,14 @@ function manifestEntry(row: SqlRow): Record<string, unknown> {
   }
 }
 
-const curriculumManifest: DeviceRoute["handler"] = async (_request, { db }) => {
+const curriculumManifest: DeviceRoute["handler"] = async (
+  { query },
+  { db }
+) => {
   const rows = await db.all(
     `SELECT key, display_name, description, batch_count, total_questions, total_messages, level, tags
-     FROM curriculum WHERE retired_at IS NULL ORDER BY key LIMIT ?`,
-    [MANIFEST_CEILING + 1]
+     FROM curriculum WHERE retired_at IS NULL AND activity_id = ? ORDER BY key LIMIT ?`,
+    [query.get("activity") ?? DEFAULT_LESSON_ACTIVITY, MANIFEST_CEILING + 1]
   )
   if (rows.length > MANIFEST_CEILING) {
     return errorResponse(400, "max_record_limit_exceeded")

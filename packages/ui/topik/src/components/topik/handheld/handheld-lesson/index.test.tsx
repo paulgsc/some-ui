@@ -35,6 +35,8 @@ import {
   createSurveyStore,
   SURVEY_TTL_MS,
 } from "@topik/lib/topik/adapter/survey-store"
+import type { TreeFeed } from "@topik/lib/topik/adapter/tree-feed"
+import { createServedPointStore } from "@topik/lib/topik/adapter/tree-feed"
 import { pinMisses } from "@topik/lib/topik/core/lesson-survey"
 import {
   workedExample,
@@ -65,6 +67,8 @@ type RenderOptions = {
   readAloudStore?: ReadAloudStore
   soundControl?: SoundControl
   tones?: ToneContextFactory | null
+  treeFeed?: TreeFeed
+  servedPoints?: ReturnType<typeof createServedPointStore>
 }
 
 function renderLesson({
@@ -79,12 +83,19 @@ function renderLesson({
   readAloudStore,
   soundControl,
   tones,
+  treeFeed,
+  servedPoints = createServedPointStore(memoryStorage()),
 }: RenderOptions = {}): ResumeStore {
   const store = createResumeStore(storage)
   const tree = (): JSX.Element => (
     <QueryClientProvider client={client}>
       <SessionConfigProvider
-        value={{ topikRepository, metadataRepository, speaker }}
+        value={{
+          topikRepository,
+          metadataRepository,
+          speaker,
+          ...(treeFeed ? { treeFeed } : {}),
+        }}
       >
         <HandheldLesson
           resumeStore={store}
@@ -94,6 +105,7 @@ function renderLesson({
           readAloudStore={readAloudStore}
           soundControl={soundControl}
           tones={tones}
+          servedPoints={servedPoints}
         />
       </SessionConfigProvider>
     </QueryClientProvider>
@@ -715,6 +727,78 @@ describe("HandheldLesson", () => {
         topikKey: "local:any-level",
         level: 2,
       })
+    })
+  })
+
+  describe("the operator's served dramas (MKJ-S4)", () => {
+    const TEA = {
+      key: "first-tea",
+      displayName: "Tea at the chairman's",
+      description: "",
+      batchCount: 1,
+      totalQuestions: 3,
+      totalMessages: 12,
+      tags: ["topik-2"],
+    }
+    const feedOf = (load: TreeFeed["load"]): TreeFeed => ({
+      list: () => Promise.resolve([TEA]),
+      load,
+    })
+
+    it("lists the served trees apart from the lessons, and plays one through both audits", async () => {
+      const load = vi.fn<TreeFeed["load"]>(() =>
+        Promise.resolve({
+          status: "checked",
+          lesson: workedLesson(),
+          findings: [],
+        })
+      )
+      const points = createServedPointStore(memoryStorage())
+      const place = vi.spyOn(points, "get")
+      renderLesson({ treeFeed: feedOf(load), servedPoints: points })
+      const dramas = await screen.findByRole("region", { name: "Dramas" })
+      expect(dramas.textContent).toMatch(/Drama · TOPIK 2/)
+      expect(load).not.toHaveBeenCalled()
+
+      fireEvent.click(within(dramas).getByText("Tea at the chairman's"))
+      expect(await screen.findByText("숨 막히는 긴장감")).toBeTruthy()
+      expect(load).toHaveBeenCalledWith("first-tea")
+      expect(
+        screen.getByRole("heading", { name: workedLesson().root.place })
+      ).toBeTruthy()
+      // Its place is this device's, read under the tree's id.
+      expect(place).toHaveBeenCalledWith("first-tea")
+
+      click("Back to materials")
+      expect(await screen.findByRole("region", { name: "Dramas" })).toBeTruthy()
+      // A served tree never takes the pasted slot.
+      expect(
+        screen.queryByRole("region", { name: "Pasted this session" })
+      ).toBeNull()
+    })
+
+    it("does not play a served tree the audits reject, and goes back", async () => {
+      renderLesson({
+        treeFeed: feedOf(() =>
+          Promise.resolve({ status: "rejected", findings: [] })
+        ),
+      })
+      fireEvent.click(await screen.findByText("Tea at the chairman's"))
+      expect(
+        await screen.findByText("This drama can't be played.")
+      ).toBeTruthy()
+      expect(screen.queryByText("숨 막히는 긴장감")).toBeNull()
+      // The screen's own way back, below the header's.
+      fireEvent.click(
+        screen.getAllByRole("button", { name: "Back to materials" }).at(-1)!
+      )
+      expect(await screen.findByRole("region", { name: "Dramas" })).toBeTruthy()
+    })
+
+    it("lists no dramas where the host serves none", async () => {
+      renderLesson()
+      await screen.findByRole("button", { name: /Write your own lesson/ })
+      expect(screen.queryByRole("region", { name: "Dramas" })).toBeNull()
     })
   })
 
