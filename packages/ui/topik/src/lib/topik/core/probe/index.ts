@@ -91,15 +91,10 @@ export const lineText = (message: Message): string =>
 const collapse = (text: string): string => text.replace(/\s+/g, "").trim()
 
 /**
- * Which line an item is about.
- *
- * Content may say so (`anchorMessageId`, an authoring-time field). Otherwise the
- * first line whose Korean contains the item's Korean excerpt, or is contained
- * by it, is taken. Failing both, the last line: the item is then asked once
- * the whole conversation has been heard.
- *
- * Anchoring is pacing, not belief (canon Cor. 4.4 (ii)), which is why a
- * heuristic is admissible here at all.
+ * Which line an item is about: the line it declares (`anchorMessageId`),
+ * else the first whose Korean contains the item's excerpt or is contained by
+ * it, else the last. A heuristic, since anchoring is pacing, not belief
+ * (canon Cor. 4.4 (ii)).
  */
 export function anchorOf(
   item: { anchorMessageId?: string; excerpt?: string },
@@ -117,7 +112,7 @@ export function anchorOf(
   const excerpt = collapse(item.excerpt ?? "")
   if (excerpt.length > 0) {
     const matched = messages.findIndex((message) => {
-      const line = collapse(message.korean || message.content)
+      const line = collapse(lineText(message))
       return (
         line.length > 0 && (line.includes(excerpt) || excerpt.includes(line))
       )
@@ -129,10 +124,8 @@ export function anchorOf(
 }
 
 /**
- * Whether a probe can be put to a learner. A build probe needs a board a
- * thumb can work (canon Def. 4.5); one whose target cannot be tiled is left
- * out rather than asked some other way, since asking it as a selection would
- * be a different exercise than the one authored.
+ * Whether a build probe's target tiles within `MAX_TILES` (canon Def. 4.5);
+ * any other probe is deliverable.
  */
 export function isDeliverable(probe: Probe): boolean {
   if (probe.kind !== "build") return true

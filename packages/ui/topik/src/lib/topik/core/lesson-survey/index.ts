@@ -9,12 +9,6 @@
  * worthwhile, how keen are they for the next, how hard it felt, what was
  * blocking, what they feel it is making them into. It never enters a belief
  * (Prop. 3.4). Nothing here reads or writes an outcome.
- *
- * The phone asked for one at the end of a conversation lesson (Cor. 3.4).
- * It plays scene trees now (docs/makjang/README.md) and asks for none, so
- * no report is written any more. The reports already on the device still
- * ride the prompt for the learner's own model (Cor. 8.2) and set the level
- * they hold, until they expire (`adapter/survey-store`).
  */
 
 export const WORTHWHILE = ["yes", "somewhat", "no"] as const

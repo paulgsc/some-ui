@@ -186,8 +186,8 @@ describe("the learner shelf (canon Rem. 7.3)", () => {
 
   it("shows a kept conversation lesson as unreadable on the phone, never played", async () => {
     const shelf = fakeShelf()
-    // What an earlier build kept: a conversation lesson, which the phone no
-    // longer plays (docs/makjang/README.md, "One lesson stands alone").
+    // A v1 conversation-lesson body (docs/makjang/README.md, "One lesson
+    // stands alone").
     shelf.bodies.set(
       "first-dinner",
       JSON.stringify({

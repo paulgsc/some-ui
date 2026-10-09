@@ -121,10 +121,9 @@ const PastedCard = ({
 )
 
 /**
- * The handheld start screen: the dramas there are to step into. The phone
- * plays scene trees only (docs/makjang/README.md): the operator's served
- * ones, in the order they are served, and one the learner's own model wrote.
- * With none served, writing one is the way in.
+ * The handheld start screen: the dramas there are to step into, the
+ * operator's served ones in the order they are served and one the learner's
+ * own model wrote. With none served, writing one is the way in.
  */
 export const MaterialList = ({
   level,

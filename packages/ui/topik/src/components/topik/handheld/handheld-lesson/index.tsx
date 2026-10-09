@@ -24,14 +24,15 @@ import type { PastedLessonStore } from "@topik/lib/topik/adapter/pasted-lesson"
 import {
   createPastedLessonStore,
   serializePastedTree,
+  treeOfDocument,
 } from "@topik/lib/topik/adapter/pasted-lesson"
 import type { ReadAloudStore } from "@topik/lib/topik/adapter/read-aloud-store"
+import { useTopikManifest } from "@topik/lib/topik/adapter/server/topik-metadata-queries"
 import {
   useServedTree,
   useTreeFeed,
 } from "@topik/lib/topik/adapter/server/tree-feed-queries"
 import {
-  keptLessonOf,
   LESSON_SHELF_WORDS,
   treeShelfKeyOf,
 } from "@topik/lib/topik/adapter/shelf"
@@ -84,8 +85,18 @@ export const HandheldLesson = ({
   const drama = usePastedTree(held)
   const lessonPrompt = useLessonPrompt(surveyStore)
   const [generating, setGenerating] = useState(false)
-  const { speaker, shelf, treeFeed } = useSessionConfig()
+  const { speaker, shelf, treeFeed, metadataRepository } = useSessionConfig()
   const feed = useTreeFeed(treeFeed)
+  // Keys are one namespace, so a tree the lessons' manifest also lists is a
+  // lesson: a server from before `?activity=` (paulgsc/server#417) answers
+  // the trees' manifest with its lessons. Those are not listed as dramas.
+  const lessons = useTopikManifest(metadataRepository)
+  const dramas =
+    feed.data && lessons.data
+      ? feed.data.filter(
+          ({ key }) => !lessons.data.topiks.some((item) => item.key === key)
+        )
+      : []
   // The served tree chosen from the list, by key; its intake loads below.
   const [servedKey, setServedKey] = useState<string | null>(null)
   const served = useServedTree(treeFeed, servedKey)
@@ -257,7 +268,7 @@ export const HandheldLesson = ({
               <KeptShelf
                 shelf={shelf}
                 words={LESSON_SHELF_WORDS}
-                replay={{ read: keptLessonOf, play: startTree }}
+                replay={{ read: treeOfDocument, play: startTree }}
               />
             ) : undefined
           }
@@ -277,9 +288,9 @@ export const HandheldLesson = ({
               }
             : null
         }
-        dramas={feed.data ?? []}
+        dramas={dramas}
         onPlay={setServedKey}
-        loading={feed.isLoading}
+        loading={feed.isLoading || lessons.isLoading}
         error={feed.isError ? "Couldn't load the dramas." : null}
         onReload={() => void feed.refetch()}
         onCreate={() => setGenerating(true)}

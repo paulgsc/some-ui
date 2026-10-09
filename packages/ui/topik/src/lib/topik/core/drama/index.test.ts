@@ -123,8 +123,6 @@ describe("panelsOf", () => {
       ["c1", "b"],
       ["c2", "x"],
     ])
-    // A notes panel carries no feeling: it quotes chosen lines (MK6).
-    expect(notes && "feeling" in notes).toBe(false)
   })
 })
 

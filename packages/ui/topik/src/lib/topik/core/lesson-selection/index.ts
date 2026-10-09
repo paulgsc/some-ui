@@ -3,11 +3,8 @@
  * relations its probes exercise (`relation:` tags, derived, never authored),
  * and the level the learner holds.
  *
- * The tags were made for selection (adaptive-learning canon Rem. 3.5), which
- * ordered the served conversation lessons on the phone by the learner's
- * recent surveys. The phone plays scene trees now (docs/makjang/README.md),
- * so nothing orders by them on the device; the lesson CRM still derives
- * them for the batch it serves.
+ * `relation:` tags are derived for the batch the lesson CRM serves
+ * (adaptive-learning canon Rem. 3.5).
  *
  * Everything here is pure and total.
  */

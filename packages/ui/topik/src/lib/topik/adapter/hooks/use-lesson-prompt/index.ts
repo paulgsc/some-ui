@@ -3,10 +3,8 @@
  * and the level the learner holds.
  *
  * The prompt is the tree prompt, carrying a digest of the evaluation reports
- * still on the device. The phone no longer writes reports
- * (`core/lesson-survey`), so the digest describes what is left of them until
- * they expire. The level is the learner's to choose; until they do, it is
- * the level of the last report that named one.
+ * still on the device (`adapter/survey-store`). The level is the learner's to
+ * choose; until they do, it is the level of the last report that named one.
  */
 
 import { useCallback, useEffect, useRef, useState } from "react"
@@ -31,7 +29,8 @@ export type LessonPrompt = {
   /**
    * The prompt reached the learner - the clipboard took it, or they copied
    * it by hand - so the digest's free text is deleted: the prompt carried
-   * it. Not before, or a refused clipboard would lose it unsent.
+   * it (canon Rem. 7.4). Not before, or a refused clipboard would lose it
+   * unsent.
    */
   handedOff: (prompt: string) => void
 }
@@ -70,8 +69,6 @@ export function useLessonPrompt(surveyStore?: SurveyStore): LessonPrompt {
     [surveys]
   )
 
-  // The digest's free text has now reached the learner; it is not kept to
-  // say it twice (canon Rem. 7.4).
   const handedOff = useCallback(
     (text: string): void => {
       const digest = carried.current.get(text)

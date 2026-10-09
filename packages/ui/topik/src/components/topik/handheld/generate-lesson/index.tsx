@@ -354,7 +354,7 @@ export const GenerateLesson = ({
             className="h-12 w-full rounded-2xl"
             onClick={() => setVerdict(verdictOf(reply, onStartTree))}
           >
-            Check the lesson
+            Read the reply
           </Button>
           {copyAgain(false)}
         </>

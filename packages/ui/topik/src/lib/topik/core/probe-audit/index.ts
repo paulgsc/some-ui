@@ -1,6 +1,6 @@
 /**
- * What a topik file's probes will actually do on the handheld surface, said
- * before anyone studies them.
+ * What a topik file's probes will do once delivered, said before anyone
+ * studies them.
  *
  * Probes fail quietly by design: a malformed one is dropped at load rather
  * than failing the topik (canon Rem. 4.7, Thm. 8.2), an anchor that names no
@@ -128,7 +128,7 @@ export function auditItem(
   if (keyedRelation(probe)?.trim().toLowerCase() === GLOSS_RELATION) {
     report(
       "error",
-      "its answer is a gloss - a first-order item (canon Prop. 4.2), which the handheld lesson must not ask (Cor. 4.5)"
+      "its answer is a gloss - a first-order item (canon Prop. 4.2), which must not be asked (Cor. 4.5)"
     )
   }
 
@@ -138,8 +138,8 @@ export function auditItem(
       report(
         "error",
         split === null
-          ? `target "${probe.target}" cannot be split into tiles (one word needs 2+ Hangul syllables); it is left out on handheld`
-          : `target "${probe.target}" needs ${split.tokens.length} tiles, over the limit; it is left out on handheld`
+          ? `target "${probe.target}" cannot be split into tiles (one word needs 2+ Hangul syllables); no board can ask it`
+          : `target "${probe.target}" needs ${split.tokens.length} tiles, over the limit; no board can ask it`
       )
     }
     if (source !== "" && normalize(source) === normalize(probe.target)) {
@@ -263,7 +263,7 @@ export function auditTopikFile(raw: unknown): Array<ProbeFinding> {
         probe: null,
         severity: "warning",
         message:
-          "no probes: this conversation is listening only on handheld (canon Cor. 4.5)",
+          "no probes: this conversation asks only first-order questions (canon Cor. 4.5)",
       })
       return
     }

@@ -25,8 +25,6 @@ export function usePastedTree(store: PastedLessonStore): PastedTree {
   const [tree, setTree] = useState(() => store.getTree())
   const [playing, setPlaying] = useState(false)
 
-  // Lessons and places earlier builds kept in `localStorage` go, so a pasted
-  // lesson really lasts the session (Rem. 7.4).
   useEffect(() => {
     purgeRetiredLessons()
   }, [])

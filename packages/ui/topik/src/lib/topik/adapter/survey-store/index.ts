@@ -2,16 +2,15 @@
  * The learner's lesson surveys, kept on the device and nowhere else, briefly.
  *
  * An evaluation report sits outside the belief envelope (adaptive-learning
- * canon Cor. 3.4), like the resume point beside it. Losing one costs that
+ * canon Cor. 3.4). Losing one costs that
  * report and nothing else, which is why every failure below is silent:
  * eviction, a full quota, a private window, a document an older build wrote.
  * It never leaves the device (Rem. 7.3). Its readers are the level the
  * learner holds and, on the learner's opt-in path, the digest they hand
  * their own model.
  *
- * Nothing writes a report any more: the phone asked for one at the end of a
- * conversation lesson, and plays scene trees now (`core/lesson-survey`). The
- * reports already kept are read until they expire.
+ * No code writes reports; `list` returns those already on the device until
+ * they expire.
  *
  * Kept briefly (Rem. 7.4):
  * - at most MAX_SURVEYS reports, the most recent;
@@ -83,7 +82,6 @@ export function createSurveyStore(
   storage: StorageLike | null = localStorageOrNull(),
   now: () => number = Date.now
 ): SurveyStore {
-  // Each operation reads the clock once: one moment.
   const fresh = (
     reports: Array<SurveyReport>,
     at: number

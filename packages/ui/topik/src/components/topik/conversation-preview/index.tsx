@@ -20,8 +20,7 @@ type ConversationPreviewProps = {
  * the session machine, so there is no quiz, no progress and nothing stored.
  *
  * For whoever is about to serve a lesson (the operator's lesson CRM): it
- * shows what learners will read, one conversation at a time. The phone's
- * handheld lesson presents the same lines as cards rather than a chat.
+ * shows what learners will read, one conversation at a time.
  *
  * Lines are spoken when a `<SpeechProvider>` is mounted, as in the session;
  * without one the speak button does nothing.

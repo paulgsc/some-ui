@@ -10,6 +10,7 @@ import {
   screen,
   within,
 } from "@testing-library/react"
+import { EXERCISE_FRAMING } from "@topik/components/topik/handheld/drama-lesson/exercise-framing"
 import { SessionConfigProvider } from "@topik/lib/topik/adapter/context/session-config-context"
 import type { PastedLessonStore } from "@topik/lib/topik/adapter/pasted-lesson"
 import {
@@ -30,6 +31,7 @@ import {
   createSurveyStore,
   SURVEY_STORAGE_KEY,
 } from "@topik/lib/topik/adapter/survey-store"
+import { reportsDocument } from "@topik/lib/topik/adapter/survey-store/held-reports"
 import type { TreeFeed } from "@topik/lib/topik/adapter/tree-feed"
 import { createServedPointStore } from "@topik/lib/topik/adapter/tree-feed"
 import type { SurveyReport } from "@topik/lib/topik/core/lesson-survey"
@@ -103,12 +105,11 @@ const voice = (say: Speaker["say"]): Speaker => ({
   }),
 })
 
-/** Reports an earlier build kept, newest first: nothing writes them now. */
+/** Puts `reports`, newest first, in the survey store's storage. */
 const holdReports = (
   storage: StorageLike,
   reports: Array<SurveyReport>
-): void =>
-  storage.setItem(SURVEY_STORAGE_KEY, JSON.stringify({ version: 1, reports }))
+): void => storage.setItem(SURVEY_STORAGE_KEY, reportsDocument(reports))
 
 const click = (name: string | RegExp): void => {
   fireEvent.click(screen.getByRole("button", { name }))
@@ -118,9 +119,7 @@ const writeYourOwnButton = (): Promise<HTMLElement> =>
   screen.findByRole("button", { name: /Write your own drama/ })
 
 const writeYourOwn = async (): Promise<void> => {
-  fireEvent.click(
-    await screen.findByRole("button", { name: /Write your own drama/ })
-  )
+  fireEvent.click(await writeYourOwnButton())
 }
 
 afterEach(cleanup)
@@ -130,9 +129,11 @@ describe("HandheldLesson", () => {
     renderLesson()
     const list = await screen.findByText("No dramas this week yet.")
     const screenText = list.closest("[data-slot='topik-handheld']")?.textContent
-    expect(screenText).not.toMatch(/Up next|Continue|Conversation|\d+ of \d+/)
-    // The lessons' manifest is the desktop's; the phone never lists it.
-    expect(screen.queryByText("Ordering at a café")).toBeNull()
+    expect(screenText).not.toMatch(EXERCISE_FRAMING)
+    expect(screenText).not.toMatch(/Continue/)
+    // Nor is the screen that writes one.
+    await writeYourOwn()
+    expect(document.body.textContent).not.toMatch(EXERCISE_FRAMING)
   })
 
   it("does not offer read-aloud without a voice (canon Cor. 4.6)", async () => {
@@ -241,6 +242,18 @@ describe("HandheldLesson", () => {
       expect(await screen.findByRole("region", { name: "Dramas" })).toBeTruthy()
     })
 
+    it("lists no lesson as a drama, from a server that ignores the trees' activity", async () => {
+      const lessonsAsTrees: TreeFeed = {
+        list: () =>
+          fixtureMetadataRepository.loadCatalog().then(({ topiks }) => topiks),
+        load: vi.fn(),
+      }
+      renderLesson({ treeFeed: lessonsAsTrees })
+      expect(await screen.findByText("No dramas this week yet.")).toBeTruthy()
+      expect(screen.queryByRole("region", { name: "Dramas" })).toBeNull()
+      expect(screen.queryByText("Ordering at a café")).toBeNull()
+    })
+
     it("says the dramas failed to load, and loads them again on request", async () => {
       const list = vi
         .fn<TreeFeed["list"]>()
@@ -276,7 +289,7 @@ describe("HandheldLesson", () => {
         screen.getByRole("textbox", { name: "Your model's reply" }),
         { target: { value: workedExample() } }
       )
-      click("Check the lesson")
+      click("Read the reply")
       click(/^Start$/)
 
       expect(await screen.findByText("숨 막히는 긴장감")).toBeTruthy()

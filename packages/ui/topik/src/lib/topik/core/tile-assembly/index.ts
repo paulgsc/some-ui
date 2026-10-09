@@ -3,15 +3,10 @@
  *
  * Typing Korean on a phone measures the learner's IME more than their
  * comprehension (adaptive-learning canon Prop. 9.4), so a build probe's answer
- * is meant to be *built* from tiles instead (Def. 4.5). The handheld's tile
- * board went with its conversation lesson (docs/makjang/README.md); what is
- * left here is what the probe audit still holds a build probe to - that its
- * answer can be tiled at all, and that its excerpt does not show it - and the
- * seeded shuffle the drama's options and the read-aloud sets are ordered by.
- *
- * Everything here is deterministic: the shuffle is seeded by a key the caller
- * supplies, so a re-render, a remount or a resumed lesson shows the same
- * order.
+ * is meant to be *built* from tiles instead (Def. 4.5). Here is what the
+ * probe audit holds a build probe to - that its answer can be tiled at all,
+ * and that its excerpt does not show it - and the seeded shuffle the drama's
+ * options and the read-aloud sets are ordered by.
  */
 
 const HANGUL = /[ᄀ-ᇿ㄰-㆏가-힯]/

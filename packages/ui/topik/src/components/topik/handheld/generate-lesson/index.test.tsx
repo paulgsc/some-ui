@@ -111,13 +111,11 @@ describe("GenerateLesson", () => {
   it("asks for a fresh check after the reply changes", () => {
     renderGenerate()
     paste(workedExample())
-    click("Check the lesson")
+    click("Read the reply")
     expect(screen.getByRole("button", { name: /^Start$/ })).toBeTruthy()
     paste(`${workedExample()}\n`)
     expect(screen.queryByRole("button", { name: /^Start$/ })).toBeNull()
-    expect(
-      screen.getByRole("button", { name: "Check the lesson" })
-    ).toBeTruthy()
+    expect(screen.getByRole("button", { name: "Read the reply" })).toBeTruthy()
   })
 })
 
@@ -125,7 +123,7 @@ describe("GenerateLesson, with a scene tree", () => {
   it("checks a pasted tree with both audits and plays what they hold", () => {
     const { onStartTree } = renderGenerate()
     paste(workedExample())
-    click("Check the lesson")
+    click("Read the reply")
     const status = screen.getByRole("status")
     expect(status.textContent).toMatch(/Drama · TOPIK 2 · 6 scenes/)
     expect(status.textContent).toMatch(/Every choice will be asked as written/)
@@ -138,7 +136,7 @@ describe("GenerateLesson, with a scene tree", () => {
     const { onStartTree } = renderGenerate()
     const tree: Record<string, unknown> = JSON.parse(workedExample())
     paste(fenced({ ...tree, pov: "nobody" }))
-    click("Check the lesson")
+    click("Read the reply")
     expect(screen.getByRole("alert").textContent).toMatch(
       /pov: "nobody" is not in the cast/
     )
@@ -152,7 +150,7 @@ describe("GenerateLesson, with a scene tree", () => {
   it("says a drama was expected when the reply holds none", () => {
     renderGenerate()
     paste("Sorry, I can't help with that.")
-    click("Check the lesson")
+    click("Read the reply")
     expect(screen.getByRole("alert").textContent).toMatch(/No scene tree found/)
   })
 })

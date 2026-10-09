@@ -20,6 +20,21 @@ export const metadataKeys = {
 
 // HOOKS (React Components Only)
 
+/** The manifest, with loading and error states and automatic refetching. */
+export function useTopikManifest(
+  repository: ITopikMetadataRepository,
+  options?: Omit<UseQueryOptions<TopikManifest>, "queryKey" | "queryFn">
+): UseQueryResult<TopikManifest> {
+  return useQuery<TopikManifest>({
+    queryKey: metadataKeys.manifest(),
+    queryFn: () => repository.loadCatalog(),
+    staleTime: 10 * 60 * 1000, // 10 minutes
+    gcTime: 30 * 60 * 1000, // 30 minutes
+    retry: 2,
+    ...options,
+  })
+}
+
 /** The manifest's items, sorted, for selection UIs. */
 export function useTopikMetadataList(
   repository: ITopikMetadataRepository,

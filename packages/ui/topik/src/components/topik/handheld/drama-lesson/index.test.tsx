@@ -8,6 +8,7 @@ import { workedLesson } from "@topik/lib/topik/generation/tree-intake/worked-exa
 import { afterEach, describe, expect, it, vi } from "vitest"
 
 import { DramaLesson } from "."
+import { EXERCISE_FRAMING } from "./exercise-framing"
 
 afterEach(cleanup)
 
@@ -65,8 +66,7 @@ describe("DramaLesson", () => {
     // The repair settles into warmth, and the leaf ends on its panel.
     expect(screen.getByText("훈훈한 마무리")).toBeTruthy()
     next()
-    // The leaf ends on its panel, then the author's notes: how the scene
-    // resolved, each choice with the line chosen and why, and no score.
+    // Then the author's notes, quoting each chosen line.
     expect(slots().slice(-2)).toEqual(["drama-ending", "drama-notes"])
     const notes = document.querySelector("[data-slot='drama-notes']")!
     expect(notes.textContent).toMatch(/작가의 말/)
@@ -179,10 +179,6 @@ describe("MK6: no feeling anchor sits on a choice or a chosen line", () => {
   )
 })
 
-/** What frames a screen as an exercise or a score (docs/makjang/README.md). */
-const EXERCISE =
-  /\bCheck\b|\bQuestion \d|\b\d+ of \d+\b|\b\d+\s*\/\s*\d+\b|understood|correct|score/i
-
 describe("no screen is framed as an exercise", () => {
   it.each(scenesOf(lesson.root).map(({ route, scene }) => [scene.id, route]))(
     "on the route to %s, at its first beat and at its choice or end",
@@ -192,15 +188,20 @@ describe("no screen is framed as an exercise", () => {
         kind: "beat",
         id: scene.beats[0]?.id ?? "",
       })
-      for (const point of [opening, pointAt(route)]) {
+      const landed = [
+        route.length > 0 ? "drama-chosen" : "drama-cover",
+        scene.choice ? "drama-choice" : "drama-notes",
+      ]
+      for (const [index, point] of [opening, pointAt(route)].entries()) {
         renderDrama(slot(point))
-        expect(slots().length).toBeGreaterThan(0)
+        // Opened where the point says, not at the root by fallback.
+        expect(index === 0 ? slots()[0] : slots().at(-1)).toBe(landed[index])
         const labels = Array.from(
           document.querySelectorAll("[aria-label]"),
           (node) => node.getAttribute("aria-label") ?? ""
         )
         for (const text of [document.body.textContent, ...labels]) {
-          expect(text).not.toMatch(EXERCISE)
+          expect(text).not.toMatch(EXERCISE_FRAMING)
         }
         cleanup()
       }

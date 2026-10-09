@@ -1,5 +1,6 @@
 import { memoryStorage } from "@some-ui/vite-config/vitest/memory-storage"
 import type { StorageLike } from "@topik/lib/topik/adapter/storage"
+import { reportsDocument } from "@topik/lib/topik/adapter/survey-store/held-reports"
 import type { SurveyReport } from "@topik/lib/topik/core/lesson-survey"
 import { describe, expect, it } from "vitest"
 
@@ -10,14 +11,10 @@ import {
   SURVEY_TTL_MS,
 } from "."
 
-/** Storage holding `reports` as an earlier build wrote them, newest first. */
 const holding = (
   reports: Array<SurveyReport>
-): ReturnType<typeof memoryStorage> => {
-  const storage = memoryStorage()
-  storage.map.set(SURVEY_STORAGE_KEY, JSON.stringify({ version: 1, reports }))
-  return storage
-}
+): ReturnType<typeof memoryStorage> =>
+  memoryStorage([[SURVEY_STORAGE_KEY, reportsDocument(reports)]])
 
 const report = (topikKey: string, at: number, extra = {}): SurveyReport => ({
   topikKey,
