@@ -128,7 +128,7 @@ export function auditItem(
   if (keyedRelation(probe)?.trim().toLowerCase() === GLOSS_RELATION) {
     report(
       "error",
-      "its answer is a gloss - a first-order item (canon Prop. 4.2), which must not be asked (Cor. 4.5)"
+      "its answer is a gloss - a first-order item (canon Prop. 4.2), which a probe must not key (Cor. 4.5)"
     )
   }
 
@@ -263,7 +263,7 @@ export function auditTopikFile(raw: unknown): Array<ProbeFinding> {
         probe: null,
         severity: "warning",
         message:
-          "no probes: this conversation asks only first-order questions (canon Cor. 4.5)",
+          "no probes: this conversation has no morphism probes (canon Cor. 4.5)",
       })
       return
     }

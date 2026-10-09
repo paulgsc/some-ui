@@ -1,10 +1,10 @@
 /**
  * The learner shelf, as an activity sees it: a host-supplied place on the
  * learner's account where something they made (a LeetType round, a pasted
- * TOPIK lesson) is kept on request, to replay on another device
+ * TOPIK drama) is kept on request, to replay on another device
  * (paulgsc/server#387; adaptive-learning canon Rem. 7.3). Each activity
  * supplies its key and how a kept body is read back (`keptRoundOf` in
- * `@some-ui/leetype`, `keptLessonOf` in `@some-ui/topik`).
+ * `@some-ui/leetype`, `treeOfDocument` in `@some-ui/topik`).
  *
  * `ShelfPort` is structural: the host (`apps/www`'s `lib/shelf-client`) builds
  * it over its own transport, and neither side imports the other. A host with

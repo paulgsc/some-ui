@@ -91,7 +91,9 @@ export const HandheldLesson = ({
   // lesson: a server from before `?activity=` (paulgsc/server#417) answers
   // the trees' manifest with its lessons. Those are not listed as dramas. A
   // lessons' manifest that fails to load guards nothing, and hides nothing.
-  const lessons = useTopikManifest(metadataRepository)
+  const lessons = useTopikManifest(metadataRepository, {
+    enabled: treeFeed !== undefined,
+  })
   const listed = lessons.data?.topiks ?? (lessons.isError ? [] : undefined)
   const dramas =
     feed.data && listed
@@ -290,7 +292,7 @@ export const HandheldLesson = ({
         }
         dramas={dramas}
         onPlay={setServedKey}
-        loading={feed.isLoading || lessons.isLoading}
+        loading={!feed.isError && (feed.isLoading || lessons.isLoading)}
         error={feed.isError ? "Couldn't load the dramas." : null}
         onReload={() => void feed.refetch()}
         onCreate={() => setGenerating(true)}

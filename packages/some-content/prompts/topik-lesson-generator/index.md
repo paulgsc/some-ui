@@ -35,10 +35,10 @@ the same page, which checks it the way the phone does and saves it.
   pnpm check:topik-probes path/to/lesson.json
   ```
 
-  This runs the same checker the app runs on a pasted lesson
+  This runs the same checker the lesson CRM runs on a lesson it saves
   (`core/probe-audit`). It reports each probe that would be dropped,
-  anchored to the wrong line, or left out on a phone. At runtime those
-  failures are silent.
+  anchored to the wrong line, or that no tile board can ask. At runtime
+  those failures are silent.
 
 ## Trials
 

@@ -3,4 +3,4 @@
  * may be (docs/makjang/README.md, M2). Test-only.
  */
 export const EXERCISE_FRAMING =
-  /\bCheck\b|\bQuestion \d|\b\d+ of \d+\b|understood|correct|score|Up next|Conversation/i
+  /\bCheck\b|\bQuestion \d|\b\d+ of \d+\b|\b\d+\s*\/\s*\d+\b|understood|correct|score|Up next|Conversation/i
