@@ -15,7 +15,7 @@
  * # Two implementations
  *
  * - `webSpeechDictation`: the Web Speech API (`SpeechRecognition`), which a
- *   phone's browser has (Chrome on Android, Safari on iOS) and an Android
+ *   phone's browser has (Chrome on Android, prefixed) and an Android
  *   WebView does not.
  * - The Android app's, over the phone's own `SpeechRecognizer`: a native
  *   plugin, so it lives in the host (`apps/www`, `lib/dictation`) and is

@@ -68,3 +68,11 @@ Each one found is a **blocking** finding, never a nit, suggestion or optional co
 No finding when the PR body's **Superseded** section names the existing code and says why
 both must exist. Whether that reason holds is for a person to judge. PRs a workflow opens with a
 fixed body (release, Changesets and snapshot PRs) carry generated content and are exempt.
+
+## The phone is Android only
+
+No finding whose failure reproduces only on iOS, iPadOS or Safari: those platforms are not
+targets, and whatever works there does so by coincidence (`CLAUDE.md`, "Desktop follows
+the APK"). The reverse is a **blocking** finding, since the fix is only deletion: a hunk that adds
+code, a test, a fallback or a comment for them (a `webkit`-prefixed global Chrome does not
+need, an Apple meta tag, a Safari-version workaround, an iPhone branch).

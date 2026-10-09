@@ -35,8 +35,8 @@ export type CodeInputProps = {
  * the table. Sibling traversal is arguably the better answer anyway: the DOM
  * already holds the ordering, so there is no second copy of it to keep in sync.
  *
- * Every slot carries `autoComplete="one-time-code"`, which is what makes iOS
- * and Android offer the SMS/email code above the keyboard, and paste is handled
+ * Every slot carries `autoComplete="one-time-code"`, which is what makes
+ * Android offer the SMS/email code above the keyboard, and paste is handled
  * on the whole group so pasting `123456` into any slot fills all of them —
  * without that, a pasted code lands entirely in one box and the field looks
  * broken.

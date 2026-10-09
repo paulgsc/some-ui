@@ -93,13 +93,7 @@ const bodilessAsNull =
   (transport: FileHostTransport): FileHostTransport =>
   async (route, init) => {
     const response = await transport(route, init)
-    // `new Response`, not `Response.json`: the static method is missing
-    // before Safari 17, where it would turn a done DELETE into a failure.
-    return response.status === 204
-      ? new Response("null", {
-          headers: { "content-type": "application/json" },
-        })
-      : response
+    return response.status === 204 ? Response.json(null) : response
   }
 
 /**

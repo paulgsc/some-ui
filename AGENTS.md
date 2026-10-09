@@ -25,5 +25,7 @@ apply to any agent working here, not only Claude.
   `packages/react-hooks` and sibling workspaces first, and cite the existing path); and old code or tests a change
   replaced but kept. No finding when the PR body's **Superseded** section names the
   existing code and says why both must exist.
+- **The phone is Android only.** No finding that reproduces only on iOS, iPadOS or
+  Safari. A hunk that adds code, a test, a fallback or a comment for them is blocking.
 
 Full text: `REVIEW.md`.

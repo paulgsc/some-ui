@@ -150,6 +150,19 @@ in the APK build), and the `_apk` routes. The window-size splits follow the
 window, not the device, so the APK on a tablet gets the wide surfaces too. When a repo-wide sweep has to skip a desktop-only file, say so
 where the skip lives, as the `paletteRatchet` calls do.
 
+**The phone is Android, and only Android** (owner, #1719). The APK and every
+phone surface target Android's WebView and Chrome. Nothing in this repo targets
+iOS, iPadOS or Safari, and whatever works there does so by coincidence. Add no
+code, test, fallback or comment for them (a `webkit`-prefixed global Chrome does
+not need, an Apple meta tag, a Safari-version workaround, an iPhone branch), and
+delete one you find while working. A finding that reproduces only on iOS or
+Safari is answered with this rule, not fixed or filed. This is a review rule
+(`REVIEW.md`, "The phone is Android only"), not a declared invariant: beyond a
+few tokens (`webkitAudioContext`, `apple-touch-icon`, an `iphone` user-agent
+test), whether a line exists "for" Safari is a reading of intent, since Chrome
+has `webkit`-prefixed APIs of its own, so a reviewer judges the hunk. A check
+for those tokens is mechanical; not yet a rule.
+
 ## Vestiges
 
 A workspace earns its place only while something live points to it: an app, a shipped

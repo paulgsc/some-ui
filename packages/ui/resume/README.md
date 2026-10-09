@@ -145,11 +145,10 @@ already-compiled PDFs.
 
 `apps/www` renders the résumé two ways, because a PDF only works one of them.
 
-On desktop the `/resume` route embeds the PDF. On mobile it cannot: **no mobile
-browser renders a PDF inside an `<iframe>`** — Android Chrome hands the URL to
-the download manager and iOS Safari shows a dead, non-scrollable first page.
-That is a browser capability, not a header; nothing about `Content-Disposition`
-changes it.
+On desktop the `/resume` route embeds the PDF. On the phone it cannot: **Android
+Chrome renders no PDF inside an `<iframe>`**, and hands the URL to the download
+manager instead. That is a browser capability, not a header; nothing about
+`Content-Disposition` changes it.
 
 The previous fallback was the compiled SVG shown as an `<img>`. Typst's SVG
 export contains **no text at all** — every glyph is a `<path>`, ~3,900 `<use>`

@@ -10,7 +10,7 @@ import type { SpokenLanguage, VoiceReport } from "@some-ui/speech"
 export const LESSON_LANGUAGE: SpokenLanguage = "korean"
 
 /** The systems whose speech settings this module can point into. */
-export type DeviceKind = "android" | "ios" | "mac" | "windows" | "other"
+export type DeviceKind = "android" | "mac" | "windows" | "other"
 
 export type LessonVoiceSummary = {
   /** Short, for a tooltip: "In-Joon (Korean Male) · this site's voice". */
@@ -40,7 +40,6 @@ const PLATFORM: Readonly<Record<VoiceReport["platform"], string>> = {
 const ADD_KOREAN_VOICE: Readonly<Record<DeviceKind, string>> = {
   android:
     "On Android: open Settings, search “Text-to-speech”, tap the engine’s ⚙ → Install voice data → Korean.",
-  ios: "On iPhone or iPad: Settings → Accessibility → Spoken Content → Voices → Korean, and download a voice.",
   mac: "On a Mac: System Settings → Accessibility → Spoken Content → System voice → Manage Voices… → Korean.",
   windows:
     "On Windows: Settings → Time & language → Speech → Manage voices → Add voices → Korean.",
@@ -53,10 +52,7 @@ const BROWSER_FIX_TAIL =
 /** The system a browser runs on, from its user agent, as far as it says. */
 export function deviceKindOf(userAgent: string): DeviceKind {
   if (/android/i.test(userAgent)) return "android"
-  if (/iphone|ipad|ipod/i.test(userAgent)) return "ios"
-  // iPadOS reports itself as a Mac, so an iPad gets the Mac steps; both live
-  // under Accessibility → Spoken Content.
-  if (/macintosh|mac os x/i.test(userAgent)) return "mac"
+  if (/macintosh/i.test(userAgent)) return "mac"
   if (/windows/i.test(userAgent)) return "windows"
   return "other"
 }
