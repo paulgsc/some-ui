@@ -57,7 +57,10 @@ import {
   createSoundControl,
   feelingSound,
 } from "@topik/lib/topik/adapter/sound-port"
-import { createServedPointStore } from "@topik/lib/topik/adapter/tree-feed"
+import {
+  createServedPointStore,
+  pointsFor,
+} from "@topik/lib/topik/adapter/tree-feed"
 import { speakerVoice } from "@topik/lib/topik/adapter/voice-port"
 import type { DramaLesson as Tree } from "@topik/lib/topik/core/drama"
 import type { DramaPointStore } from "@topik/lib/topik/core/drama-runtime"
@@ -271,7 +274,11 @@ export const HandheldLesson = ({
           lesson={playing}
           voice={voice}
           sound={sound}
-          points={drama.playing ? held.points : servedPlace}
+          points={
+            drama.playing || servedKey === null
+              ? held.points
+              : pointsFor(servedPlace, servedKey)
+          }
           short={short}
           onLeave={leave}
         />

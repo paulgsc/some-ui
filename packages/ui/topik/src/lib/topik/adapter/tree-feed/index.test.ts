@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest"
 import {
   createServedPointStore,
   createTreeFeed,
+  pointsFor,
   SERVED_DRAMA_POINT_KEY,
 } from "."
 
@@ -79,6 +80,15 @@ describe("createServedPointStore", () => {
     expect(points.get("second-tea")).toBeUndefined()
     points.set("second-tea", { route: [] })
     expect(points.get("first-tea")).toBeUndefined()
+  })
+
+  it("keeps one tree saved under two keys in two places", () => {
+    const store = createServedPointStore(memory())
+    pointsFor(store, "tea-v1").set("first-tea", { route: ["b"] })
+    expect(pointsFor(store, "tea-v1").get("first-tea")).toEqual({
+      route: ["b"],
+    })
+    expect(pointsFor(store, "tea-v2").get("first-tea")).toBeUndefined()
   })
 
   it("reads nothing from a slot it cannot parse, and survives storage refusing", () => {

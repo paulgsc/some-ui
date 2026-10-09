@@ -45,6 +45,19 @@ export function createTreeFeed(
   }
 }
 
+/**
+ * The place store for the served tree listed under `key`. A tree's id is the
+ * model's, and the operator can save one tree under two keys: each listing
+ * keeps its own place.
+ */
+export const pointsFor = (
+  store: DramaPointStore,
+  key: string
+): DramaPointStore => ({
+  get: (lessonId) => store.get(`${key}/${lessonId}`),
+  set: (lessonId, point) => store.set(`${key}/${lessonId}`, point),
+})
+
 export const SERVED_DRAMA_POINT_KEY = "topik:served-drama-point"
 
 const HeldPointSchema = z.object({ lessonId: z.string(), point: z.unknown() })

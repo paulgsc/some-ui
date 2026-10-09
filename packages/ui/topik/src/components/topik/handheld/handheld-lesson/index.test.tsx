@@ -766,8 +766,8 @@ describe("HandheldLesson", () => {
       expect(
         screen.getByRole("heading", { name: workedLesson().root.place })
       ).toBeTruthy()
-      // Its place is this device's, read under the tree's id.
-      expect(place).toHaveBeenCalledWith("first-tea")
+      // Its place is this device's, under its listing's key and its id.
+      expect(place).toHaveBeenCalledWith("first-tea/first-tea")
 
       click("Back to materials")
       expect(await screen.findByRole("region", { name: "Dramas" })).toBeTruthy()
