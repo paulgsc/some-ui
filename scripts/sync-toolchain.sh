@@ -67,7 +67,7 @@ for i in "${!files[@]}"; do
     echo "$expected" >"$file"
     echo "updated $file"
     if [[ $file == package.json ]]; then
-      nix develop .#extension --command pnpm install --lockfile-only
+      nix develop .#extension --command pnpm install --lockfile-only --no-frozen-lockfile
     fi
   fi
 done
