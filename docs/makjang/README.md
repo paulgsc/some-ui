@@ -780,6 +780,23 @@ connector, say):
 > Watch this folder. For each `drama-*.prompt.md` that has no matching
 > `drama-*.json`, follow it, and write that JSON file next to it.
 
+### Pulling a scene back (MKJ-S10)
+
+- **Where:** "Open a scene from storage" on the start screen, beside the
+  cards.
+- **How:** a plain `<input type="file">`. The Android app's WebView answers
+  it with the system picker (`BridgeWebChromeClient.onShowFileChooser`), and
+  the learner's drive appears there as a document provider. So there is no
+  plugin, no permission, no OAuth and no Drive API, and no `capture`, which
+  would ask for the camera. The read runs in `adapter/scene-file`, inside
+  `callForeign`.
+- **What it reads:** the file's text goes through `intakeTree`, exactly as a
+  paste (MK4): bare JSON or a reply with fenced blocks, through both audits.
+  A tree that plays with nothing to report starts at once, from the pasted
+  slot, with "Keep on this account" as today. Anything else opens the
+  write-your-own screen with the file as its reply and the intake's verdict
+  shown, so it says why and offers the fix request, as a bad paste does.
+
 ## Where it lives
 
 - **`@some-ui/makjang`** (new, framework-agnostic: no React): the story schema,
@@ -852,6 +869,9 @@ Neither needs a better model than exists today.
   learner's drive").
 - **MKJ-S9: the feed is cards.** Served dramas seed the learner's own
   prompt, or play as they are (see "The feed is cards").
+- **MKJ-S10: pulling a scene back.** A scene file the learner's agent wrote
+  opens from storage through the system picker (see "Pulling a scene
+  back").
 - **Later.** Media capabilities (per-character voices, generated art in a
   fixed style, portraits, video beats) each add assets and a renderer
   capability, plus a canon line, and change neither the story schema nor the

@@ -404,6 +404,26 @@ describe("HandheldLesson", () => {
       expect(screen.getByRole("textbox")).toHaveProperty("value", "")
     })
 
+    it("opens a scene from storage: a tree plays, and anything else is judged like a paste (MKJ-S10)", async () => {
+      renderLesson()
+      const pick = async (text: string): Promise<void> => {
+        fireEvent.change(
+          await screen.findByLabelText("Open a scene from storage"),
+          { target: { files: [new File([text], "drama-1.json")] } }
+        )
+      }
+      await pick(workedExample())
+      expect(await screen.findByText("숨 막히는 긴장감")).toBeTruthy()
+
+      click("Back to materials")
+      await pick("not a drama")
+      const reply = await screen.findByRole("textbox", {
+        name: "Your model's reply",
+      })
+      expect(reply).toHaveProperty("value", "not a drama")
+      expect(screen.getByRole("alert")).toBeTruthy()
+    })
+
     it("offers the drama's sound in the header, off until turned on", async () => {
       const pasted = createPastedLessonStore(memoryStorage())
       pasted.setTree(workedLesson())

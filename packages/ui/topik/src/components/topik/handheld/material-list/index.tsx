@@ -9,6 +9,7 @@ import { TOPIK_LEVELS } from "@topik/lib/topik/generation"
 import {
   BookOpenText,
   ChevronRight,
+  FolderOpen,
   Loader2,
   Play,
   Sparkles,
@@ -30,6 +31,10 @@ type MaterialListProps = {
   onPlay: (key: string) => void
   /** A card's premise and genres, for the learner's own drama. */
   onSeed: (seed: Seed) => void
+  /** A scene file the learner picked from storage; absent, not offered. */
+  onOpenFile?: (file: File) => void
+  /** Why the last picked file could not be opened. */
+  fileError?: string | null
   /** The feed is loading, or failed to load (`error`). */
   loading: boolean
   error: string | null
@@ -167,6 +172,8 @@ export const MaterialList = ({
   dramas,
   onPlay,
   onSeed,
+  onOpenFile,
+  fileError = null,
   loading,
   error,
   onReload,
@@ -256,6 +263,30 @@ export const MaterialList = ({
         />
         {keep}
       </section>
+    )}
+
+    {onOpenFile && (
+      <label className="bg-card border-border flex min-h-16 shrink-0 cursor-pointer items-center gap-3 rounded-2xl border p-4 text-left">
+        <FolderOpen className="text-primary size-6 shrink-0" />
+        <span className="min-w-0 flex-1">
+          <span className="block font-semibold">Open a scene from storage</span>
+          <span className="text-muted-foreground block text-sm">
+            {fileError ??
+              "A drama your model or agent saved, from your drive or this phone."}
+          </span>
+        </span>
+        <input
+          type="file"
+          aria-label="Open a scene from storage"
+          className="sr-only"
+          onChange={(event) => {
+            const file = event.currentTarget.files?.[0]
+            // The same file again is a new pick.
+            event.currentTarget.value = ""
+            if (file) onOpenFile(file)
+          }}
+        />
+      </label>
     )}
 
     {dramas.length > 0 && (
