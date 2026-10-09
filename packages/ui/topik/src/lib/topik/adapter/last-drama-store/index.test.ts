@@ -31,6 +31,17 @@ describe("createLastDramaStore", () => {
     expect(listener).toHaveBeenCalledTimes(2)
   })
 
+  it("tells its readers when the page comes back, so an expiry shows", () => {
+    const store = createLastDramaStore(memoryStorage(), () => 2)
+    const listener = vi.fn()
+    const unsubscribe = store.subscribe(listener)
+    document.dispatchEvent(new Event("visibilitychange"))
+    expect(listener).toHaveBeenCalledOnce()
+    unsubscribe()
+    document.dispatchEvent(new Event("visibilitychange"))
+    expect(listener).toHaveBeenCalledOnce()
+  })
+
   it("never reads a record past its expiry, and deletes it when made (canon Rem. 7.4)", () => {
     const storage = memoryStorage()
     let now = 1

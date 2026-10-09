@@ -131,8 +131,12 @@ export class DramaRuntime {
   review = (change: DramaReview): void => {
     const { last, session } = this.snapshot
     if (last === null || session.drama.at.kind !== "end") return
-    const next = withReview(last, change, Date.now())
-    this.ports.last.save(next)
+    // Another tab may have written since: merge into this drama's newer
+    // record, and leave another drama's alone.
+    const stored = this.ports.last.get()
+    const own = isRecordOf(stored, this.lesson)
+    const next = withReview(own ? stored : last, change, Date.now())
+    if (stored === null || own) this.ports.last.save(next)
     this.publish({ ...this.snapshot, last: next })
   }
 

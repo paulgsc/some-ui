@@ -153,9 +153,18 @@ export function createLastDramaStore(
         save(withReview(record, { next: undefined }, record.at))
       }
     },
+    // Also told when another tab writes, and when the page comes back into
+    // view, since an expiry fires no event of its own.
     subscribe: (listener): (() => void) => {
+      const page = typeof window === "undefined" ? null : window
       listeners.add(listener)
-      return () => listeners.delete(listener)
+      page?.addEventListener("storage", listener)
+      page?.document.addEventListener("visibilitychange", listener)
+      return () => {
+        listeners.delete(listener)
+        page?.removeEventListener("storage", listener)
+        page?.document.removeEventListener("visibilitychange", listener)
+      }
     },
   }
 }

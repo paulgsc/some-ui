@@ -352,6 +352,25 @@ describe("DramaRuntime", () => {
       expect(runtimeOf({ last }).getSnapshot().last).toBeNull()
     })
 
+    it("leaves a record another tab wrote since for another drama", () => {
+      const storage = memoryStorage()
+      const last = createLastDramaStore(storage)
+      const runtime = runtimeOf({ last })
+      playTo(runtime, "a")
+      last.save({
+        lessonId: "another",
+        content: "x",
+        level: 1,
+        title: "x",
+        at: Date.now(),
+        scenes: [],
+        tries: [],
+      })
+      runtime.review({ enjoyed: "loved" })
+      expect(last.get()?.lessonId).toBe("another")
+      expect(runtime.getSnapshot().last?.review).toEqual({ enjoyed: "loved" })
+    })
+
     it("takes a review only at an ending, and keeps it on screen when storage fails", () => {
       const storage = memoryStorage()
       const runtime = runtimeOf({ last: createLastDramaStore(storage) })
