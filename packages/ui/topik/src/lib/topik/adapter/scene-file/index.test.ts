@@ -24,6 +24,10 @@ function slow(text: string): {
   }
 }
 
+/** Lets every pending promise settle. */
+const settle = (): Promise<void> =>
+  new Promise((resolve) => setTimeout(resolve, 0))
+
 describe("SceneFileRuntime", () => {
   it("lets only the latest pick through, however the reads finish", async () => {
     const runtime = new SceneFileRuntime()
@@ -32,9 +36,13 @@ describe("SceneFileRuntime", () => {
     const read = vi.fn()
     runtime.open(first.file, read)
     runtime.open(second.file, read)
+    await settle()
+    expect(runtime.getSnapshot()).toEqual({ kind: "reading" })
+    first.finish()
+    await settle()
+    expect(read).not.toHaveBeenCalled()
     expect(runtime.getSnapshot()).toEqual({ kind: "reading" })
     second.finish()
-    first.finish()
     await vi.waitFor(() => expect(read).toHaveBeenCalledOnce())
     expect(read).toHaveBeenCalledWith("second")
     expect(runtime.getSnapshot()).toEqual({ kind: "idle" })
@@ -47,8 +55,7 @@ describe("SceneFileRuntime", () => {
     runtime.open(file.file, read)
     runtime.cancel()
     file.finish()
-    await Promise.resolve()
-    await Promise.resolve()
+    await settle()
     expect(read).not.toHaveBeenCalled()
   })
 

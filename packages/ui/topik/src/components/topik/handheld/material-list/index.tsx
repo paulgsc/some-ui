@@ -126,12 +126,15 @@ const OpenScene = ({
   onText: (text: string) => void
 }): JSX.Element => {
   const { state, open } = useSceneFile()
+  const name = useId()
   const about = useId()
   return (
     <label className="bg-card border-border focus-within:ring-ring relative flex min-h-16 shrink-0 cursor-pointer items-center gap-3 rounded-2xl border p-4 text-left focus-within:ring-2">
       <FolderOpen className="text-primary size-6 shrink-0" />
       <span className="min-w-0 flex-1">
-        <span className="block font-semibold">Open a scene from storage</span>
+        <span id={name} className="block font-semibold">
+          Open a scene from storage
+        </span>
         <span
           id={about}
           aria-live="polite"
@@ -151,8 +154,9 @@ const OpenScene = ({
       </span>
       <input
         type="file"
+        // Named by the title alone; the hint or the read's state describes it.
+        aria-labelledby={name}
         aria-describedby={about}
-        disabled={state.kind === "reading"}
         className="sr-only"
         onChange={(event) => {
           const file = event.currentTarget.files?.[0]
