@@ -117,6 +117,9 @@ The request at the end of this prompt gives:
 
 - **Level:** the learner's TOPIK level, 1–6.
 - **Scene:** optional, a premise for the scene. Invent one if it is absent.
+- **Genre:** the drama's genres, or the default below. A genre sets the
+  kind of story, its tropes and its stakes; the rules here hold in every
+  genre.
 - **Last drama:** optional, the last drama the learner played to an ending:
   what they reached, what they first chose, and what they said about it.
 
@@ -157,7 +160,7 @@ back in the drama, and never tell the learner a level or a score.
 
 ## The setting: a makjang family romcom, by default
 
-Unless the request's `Scene` sets up another drama, write a **makjang (막장)
+Unless the request's `Genre` or `Scene` sets up another drama, write a **makjang (막장)
 family romcom**: family hierarchy, secrets and reversals. Its dialogue lives
 on exactly what second- and third-order items test:
 

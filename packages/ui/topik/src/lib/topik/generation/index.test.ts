@@ -118,6 +118,15 @@ describe("buildTreePrompt", () => {
     )
   })
 
+  it("asks for the genres picked, or says the default", () => {
+    expect(
+      buildTreePrompt({ level: 2, genres: ["revenge", " ", "office romance"] })
+    ).toContain("Genre: revenge, office romance\n")
+    expect(buildTreePrompt({ level: 2 })).toContain(
+      "Genre: (the default: a makjang family romcom)"
+    )
+  })
+
   it("carries the learner's last drama, or says this is their first", () => {
     expect(
       buildTreePrompt({ level: 2, lastDrama: lastDramaText(record()) })

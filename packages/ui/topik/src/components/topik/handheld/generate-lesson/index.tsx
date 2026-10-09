@@ -7,7 +7,9 @@ import { SharePrompt } from "@topik/components/topik/handheld/share-prompt"
 import { StepLayout } from "@topik/components/topik/handheld/step-layout"
 import type { FileShare } from "@topik/lib/topik/adapter/next-scene-share"
 import type { DramaLesson } from "@topik/lib/topik/core/drama"
-import type { TopikLevel, TreeRequest } from "@topik/lib/topik/generation"
+import type { Seed } from "@topik/lib/topik/core/feed-card"
+import { GENRES } from "@topik/lib/topik/core/feed-card"
+import type { DramaRequest, TopikLevel } from "@topik/lib/topik/generation"
 import { TOPIK_LEVELS } from "@topik/lib/topik/generation"
 import type { FindingRow } from "@topik/lib/topik/generation/tree-intake"
 import {
@@ -21,7 +23,9 @@ import { Check, ClipboardCopy, Play } from "lucide-react"
 type GenerateLessonProps = {
   defaultLevel: TopikLevel
   /** The tree prompt for a request, with the learner's last drama. */
-  buildPrompt: (request: Pick<TreeRequest, "level" | "scene">) => string
+  buildPrompt: (request: DramaRequest) => string
+  /** A card's seed (`core/feed-card`), read once: remount with a new `key`. */
+  initialSeed?: Seed
   /**
    * This prompt, exactly as handed off, reached the learner: the clipboard
    * took it, or they said they copied it from the fallback. A copy event on
@@ -92,6 +96,58 @@ const RadioRow = <T extends string | number>({
     ))}
   </div>
 )
+
+/**
+ * The drama's genres, as chips: the templated ones and any a card brought.
+ * None picked is the prompt's default. Picking them is making one's own
+ * card, with no served drama behind it.
+ */
+const GenrePicker = ({
+  picked,
+  onPick,
+}: {
+  picked: Array<string>
+  onPick: (genres: Array<string>) => void
+}): JSX.Element => {
+  const offered = [
+    ...GENRES,
+    ...picked
+      .filter((genre) => !GENRES.some((known) => known.genre === genre))
+      .map((genre) => ({ genre, ko: genre })),
+  ]
+  return (
+    <div role="group" aria-label="Genre" className="flex flex-wrap gap-2">
+      {offered.map(({ genre, ko }) => {
+        const on = picked.includes(genre)
+        return (
+          <button
+            key={genre}
+            type="button"
+            aria-pressed={on}
+            onClick={() =>
+              onPick(
+                on
+                  ? picked.filter((kept) => kept !== genre)
+                  : [...picked, genre]
+              )
+            }
+            className={cn(
+              "flex min-h-11 flex-col items-start justify-center rounded-xl border px-3 py-1 text-left",
+              on ? "border-primary/40 bg-primary/15" : "border-border bg-card"
+            )}
+          >
+            <span lang="ko" className="text-sm font-semibold">
+              {ko}
+            </span>
+            {ko !== genre && (
+              <span className="text-muted-foreground text-xs">{genre}</span>
+            )}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
 
 /**
  * A reply as the tree intake judged it, in the words the screen shows:
@@ -211,9 +267,16 @@ export const GenerateLesson = ({
   short,
   kept,
   share,
+  initialSeed,
 }: GenerateLessonProps): JSX.Element => {
   const [level, setLevel] = useState<TopikLevel>(defaultLevel)
-  const [scene, setScene] = useState("")
+  const [scene, setScene] = useState(initialSeed?.scene ?? "")
+  const [genres, setGenres] = useState<Array<string>>(initialSeed?.genres ?? [])
+  const request = (): DramaRequest => ({
+    level,
+    scene: scene.trim() || undefined,
+    genres,
+  })
   const [copied, setCopied] = useState<"prompt" | "fixes" | null>(null)
   // Shown when the clipboard refuses: the text, selectable by hand.
   const [manual, setManual] = useState<{
@@ -241,8 +304,7 @@ export const GenerateLesson = ({
     setCopied("prompt")
   }
 
-  const prompt = (): string =>
-    buildPrompt({ level, scene: scene.trim() || undefined })
+  const prompt = (): string => buildPrompt(request())
   const copyPrompt = (): void => void hand(prompt(), "prompt")
 
   const stage = (
@@ -258,6 +320,7 @@ export const GenerateLesson = ({
           onChange={setLevel}
           className="grid-cols-6"
         />
+        <GenrePicker picked={genres} onPick={setGenres} />
         <Input
           aria-label="Scene"
           placeholder="Scene (optional): the fiancée meets his mother"

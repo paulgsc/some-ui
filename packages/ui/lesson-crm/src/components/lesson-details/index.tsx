@@ -63,7 +63,7 @@ export const LessonDetails = ({
       <Input
         id="lesson-tags"
         value={tagsText}
-        placeholder="topik-3, makjang"
+        placeholder="topik-3, makjang, genre:revenge"
         onChange={(event) => onTags(event.target.value)}
       />
     </div>

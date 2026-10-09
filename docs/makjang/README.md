@@ -712,6 +712,31 @@ Its rules:
 Remark 4.14 (v1.14), which amends Remark 4.13's "nothing crosses units",
 with a §10 row for MKJ-S6 and MKJ-S7.
 
+## The feed is cards (MKJ-S9)
+
+The served dramas are not lessons everyone takes. They are a row of cards,
+templates for a learner who can't think of a drama to ask for. The
+recommended path is still to write one's own, so "Write your own drama" comes
+first on the start screen.
+
+- **A card** shows a served tree's title, its genres and its premise (the
+  manifest entry's `displayName`, `genre:` tags and `description`).
+- **"Make my own"**, the main action, opens the learner's own prompt seeded
+  with the card's premise as its scene and its genres. It needs no session
+  data, so it is also the way back in for a learner who left a drama
+  unfinished. **"Play it"** plays the served drama as it is.
+- **Making one's own card:** the prompt's genre chips (`GENRES`: 막장, 복수,
+  로맨스, 가족, 오피스, 사극, 스릴러, 코미디) are a card with no served drama
+  behind it. Picking none leaves the prompt's default, the makjang family
+  romcom.
+- **Genres are tags and a prompt input, never a schema field.** The operator
+  types them in the lesson CRM as `genre:` tags (hyphens for spaces:
+  `genre:office-romance`), which the server stores like any tag, and the tree
+  prompt's request takes a `Genre` line. The scene tree has no genre, and no
+  audit knows one ("Who defines the drama": nothing checks anything
+  genre-specific). That is how #1708's "a learner-defined genre" lands without
+  the schema change it once assumed.
+
 ## The loop through the learner's drive
 
 The main path is a drama the learner creates: their own model writes it from
@@ -823,12 +848,14 @@ Neither needs a better model than exists today.
 - **MKJ-S8: sharing the next scene.** The prompt, carrying the last drama,
   goes to the learner's drive as one file (see "The loop through the
   learner's drive").
+- **MKJ-S9: the feed is cards.** Served dramas seed the learner's own
+  prompt, or play as they are (see "The feed is cards").
 - **Later.** Media capabilities (per-character voices, generated art in a
   fixed style, portraits, video beats) each add assets and a renderer
   capability, plus a canon line, and change neither the story schema nor the
   engine. Longitudinal structure (a standing cast, series, memory across
-  lessons) and a learner-defined genre do change the schema, and get their
-  own design, as does layering several feelings in one scene.
+  lessons) does change the schema, and gets its own design, as does
+  layering several feelings in one scene.
 
 ## Invariants
 

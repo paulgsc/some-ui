@@ -77,6 +77,7 @@ describe("GenerateLesson", () => {
     expect(buildPrompt).toHaveBeenCalledWith({
       level: 5,
       scene: "the will is read",
+      genres: [],
     })
     expect(writeText).toHaveBeenCalledWith(
       "PROMPT tree level=5 scene=the will is read"

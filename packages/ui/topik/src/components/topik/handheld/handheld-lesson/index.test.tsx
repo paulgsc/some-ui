@@ -189,11 +189,11 @@ describe("HandheldLesson", () => {
     const TEA = {
       key: "first-tea",
       displayName: "Tea at the chairman's",
-      description: "",
+      description: "Seo-yeon's first visit to the chairman's house",
       batchCount: 1,
       totalQuestions: 3,
       totalMessages: 12,
-      tags: ["topik-2"],
+      tags: ["topik-2", "genre:family", "genre:office-romance"],
     }
     const feedOf = (load: TreeFeed["load"]): TreeFeed => ({
       list: () => Promise.resolve([TEA]),
@@ -212,10 +212,16 @@ describe("HandheldLesson", () => {
       const place = vi.spyOn(points, "get")
       renderLesson({ treeFeed: feedOf(load), servedPoints: points })
       const dramas = await screen.findByRole("region", { name: "Dramas" })
-      expect(dramas.textContent).toMatch(/Drama · TOPIK 2/)
+      expect(dramas.textContent).toMatch(/TOPIK 2/)
+      expect(dramas.textContent).toMatch(/office romance/)
+      expect(dramas.textContent).not.toMatch(EXERCISE_FRAMING)
       expect(load).not.toHaveBeenCalled()
 
-      fireEvent.click(within(dramas).getByText("Tea at the chairman's"))
+      fireEvent.click(
+        within(dramas).getByRole("button", {
+          name: "Play Tea at the chairman's",
+        })
+      )
       expect(await screen.findByText("숨 막히는 긴장감")).toBeTruthy()
       expect(load).toHaveBeenCalledWith("first-tea")
       expect(
@@ -238,7 +244,11 @@ describe("HandheldLesson", () => {
           Promise.resolve({ status: "rejected", findings: [] })
         ),
       })
-      fireEvent.click(await screen.findByText("Tea at the chairman's"))
+      fireEvent.click(
+        await screen.findByRole("button", {
+          name: "Play Tea at the chairman's",
+        })
+      )
       expect(
         await screen.findByText("This drama can't be played.")
       ).toBeTruthy()
@@ -248,6 +258,33 @@ describe("HandheldLesson", () => {
         screen.getAllByRole("button", { name: "Back to materials" }).at(-1)!
       )
       expect(await screen.findByRole("region", { name: "Dramas" })).toBeTruthy()
+    })
+
+    it("seeds the learner's own drama from a card: its premise and genres (MKJ-S9)", async () => {
+      const writeText = vi.fn().mockResolvedValue(undefined)
+      vi.stubGlobal("navigator", { ...navigator, clipboard: { writeText } })
+      renderLesson({ treeFeed: feedOf(vi.fn()) })
+      fireEvent.click(
+        await screen.findByRole("button", {
+          name: "Make my own from Tea at the chairman's",
+        })
+      )
+      expect(screen.getByRole("textbox", { name: "Scene" })).toHaveProperty(
+        "value",
+        "Seo-yeon's first visit to the chairman's house"
+      )
+      const genre = within(screen.getByRole("group", { name: "Genre" }))
+      expect(
+        genre.getByRole("button", { name: /가족/ }).getAttribute("aria-pressed")
+      ).toBe("true")
+      // A pick of one's own, beside the card's.
+      fireEvent.click(genre.getByRole("button", { name: /복수/ }))
+      click(/Copy the prompt/)
+      await screen.findByText(/Copied/)
+      expect(String(writeText.mock.calls[0]?.[0])).toContain(
+        "Genre: family, office romance, revenge"
+      )
+      vi.unstubAllGlobals()
     })
 
     it("lists no lesson as a drama, from a server that ignores the trees' activity", async () => {
