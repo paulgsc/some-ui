@@ -48,4 +48,21 @@ describe("shareFiles", () => {
       error: { kind: "unknown", retryable: true },
     })
   })
+
+  it("runs shares to one place one at a time, so none deletes files a sheet holds", async () => {
+    let close: () => void = () => undefined
+    share.mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          close = resolve
+        })
+    )
+    const first = shareFiles("out", "t", [])
+    const second = shareFiles("out", "t", [])
+    await vi.waitFor(() => expect(share).toHaveBeenCalledOnce())
+    close()
+    await expect(first).resolves.toMatchObject({ value: "shared" })
+    await expect(second).resolves.toMatchObject({ value: "shared" })
+    expect(share).toHaveBeenCalledTimes(2)
+  })
 })

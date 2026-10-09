@@ -57,16 +57,33 @@ function base64(blob: Blob): Promise<string> {
   })
 }
 
+type Files = ReadonlyArray<{ name: string; data: string | Blob }>
+
+/** The share last started in each `dir`, settled or not. */
+const sharing = new Map<string, Promise<unknown>>()
+
 /**
  * Writes `files` (text as UTF-8, a blob as its bytes) to the cache under
  * `dir`, replacing what an earlier share left there, so the cache holds at
  * most one share per `dir`; then opens the share sheet with them. Backing
- * out of the sheet is `cancelled`, not a failure.
+ * out of the sheet is `cancelled`, not a failure. Shares to one `dir` run one
+ * at a time, so a second never deletes files a sheet still holds open.
  */
-export async function shareFiles(
+export function shareFiles(
   dir: string,
   title: string,
-  files: ReadonlyArray<{ name: string; data: string | Blob }>
+  files: Files
+): ReturnType<FileShare> {
+  const run = (): ReturnType<FileShare> => writeAndShare(dir, title, files)
+  const share = (sharing.get(dir) ?? Promise.resolve()).then(run, run)
+  sharing.set(dir, share)
+  return share
+}
+
+async function writeAndShare(
+  dir: string,
+  title: string,
+  files: Files
 ): ReturnType<FileShare> {
   const written = await callForeign({
     port: PORT,
