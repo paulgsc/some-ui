@@ -7,16 +7,25 @@
  * judge, exactly as a paste.
  *
  * The read waits on a document provider, which answers when it likes, so it
- * runs inside `callForeign` (F1), and the caller gets its outcome by
- * callback: no component awaits it.
+ * runs inside `callForeign` (F1). The runtime holds the one read in flight:
+ * a newer pick, or `cancel` when the learner leaves, lets it go, so a late
+ * result never lands over what the screen shows now. The lesson CRM reads
+ * its uploads with the same `file.text()`, awaited on a desktop page.
  */
 
-import type { ForeignOutcome, ForeignVerdict } from "@some-ui/intent-kit"
+import type {
+  ForeignCall,
+  ForeignPort,
+  ForeignVerdict,
+} from "@some-ui/intent-kit"
 import {
   callForeign,
   ForeignDeadlineError,
   reportFailure,
 } from "@some-ui/intent-kit"
+
+/** Far above any scene tree, far below a photo or a video. */
+export const SCENE_FILE_MAX_BYTES = 1_000_000
 
 /** A drive file is fetched on read; a phone on a slow line takes a while. */
 const READ_DEADLINE_MS = 60_000
@@ -34,22 +43,71 @@ const classify = (error: unknown): ForeignVerdict =>
         summary: "Couldn't open that file. Try again.",
       }
 
-const PORT = { name: "picked file", classify, report: reportFailure }
+const PORT: ForeignPort = {
+  name: "picked file",
+  classify,
+  report: reportFailure,
+}
 
-export function readSceneFile(
-  file: Blob,
-  onRead: (outcome: ForeignOutcome<string>) => void
-): void {
-  void callForeign({
-    port: PORT,
-    deadlineMs: READ_DEADLINE_MS,
-    start: () =>
-      new Promise<string>((resolve, reject) => {
-        const reader = new FileReader()
-        reader.onload = (): void => resolve(String(reader.result))
-        reader.onerror = (): void =>
-          reject(reader.error ?? new Error("read failed"))
-        reader.readAsText(file)
-      }),
-  }).outcome.then(onRead)
+export type SceneFileState =
+  | { kind: "idle" }
+  | { kind: "reading" }
+  | { kind: "failed"; summary: string }
+
+export class SceneFileRuntime {
+  private state: SceneFileState = { kind: "idle" }
+  private readonly listeners = new Set<() => void>()
+  private call: ForeignCall<string> | null = null
+
+  getSnapshot = (): SceneFileState => this.state
+
+  subscribe = (listener: () => void): (() => void) => {
+    this.listeners.add(listener)
+    return () => this.listeners.delete(listener)
+  }
+
+  /** Reads `file`; `onText` gets its text if it is still the latest pick. */
+  open = (
+    file: Pick<Blob, "text" | "size">,
+    onText: (text: string) => void
+  ): void => {
+    this.call?.abandon()
+    this.call = null
+    if (file.size > SCENE_FILE_MAX_BYTES) {
+      this.set({
+        kind: "failed",
+        summary: "That file is too large to be a scene.",
+      })
+      return
+    }
+    const call = callForeign({
+      port: PORT,
+      deadlineMs: READ_DEADLINE_MS,
+      start: () => file.text(),
+    })
+    this.call = call
+    this.set({ kind: "reading" })
+    void call.outcome.then((outcome) => {
+      if (this.call !== call) return
+      this.call = null
+      this.set(
+        outcome.status === "failed"
+          ? { kind: "failed", summary: outcome.error.summary }
+          : { kind: "idle" }
+      )
+      if (outcome.status === "succeeded") onText(outcome.value)
+    })
+  }
+
+  /** The learner left: a read in flight changes nothing. */
+  cancel = (): void => {
+    this.call?.abandon()
+    this.call = null
+    this.state = { kind: "idle" }
+  }
+
+  private set(state: SceneFileState): void {
+    this.state = state
+    for (const listener of this.listeners) listener()
+  }
 }

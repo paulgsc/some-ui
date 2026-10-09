@@ -30,7 +30,6 @@ import {
   treeOfDocument,
 } from "@topik/lib/topik/adapter/pasted-lesson"
 import type { ReadAloudStore } from "@topik/lib/topik/adapter/read-aloud-store"
-import { readSceneFile } from "@topik/lib/topik/adapter/scene-file"
 import { useTopikManifest } from "@topik/lib/topik/adapter/server/topik-metadata-queries"
 import {
   useServedTree,
@@ -96,7 +95,6 @@ export const HandheldLesson = ({
     seed?: Seed
     reply?: string
   } | null>(null)
-  const [fileError, setFileError] = useState<string | null>(null)
   const { speaker, shelf, treeFeed, metadataRepository, share } =
     useSessionConfig()
   const feed = useTreeFeed(treeFeed)
@@ -134,18 +132,13 @@ export const HandheldLesson = ({
     drama.start(tree)
   }
   // A picked file's text goes through the intake, as a paste does (MK4).
-  const openFile = (file: File): void => {
-    setFileError(null)
-    readSceneFile(file, (outcome) => {
-      if (outcome.status === "failed") setFileError(outcome.error.summary)
-      if (outcome.status !== "succeeded") return
-      const intake = intakeTree(outcome.value)
-      if (intake.status === "checked" && intake.findings.length === 0) {
-        startTree(intake.lesson)
-      } else {
-        setGenerating({ reply: outcome.value })
-      }
-    })
+  const openSceneText = (text: string): void => {
+    const intake = intakeTree(text)
+    if (intake.status === "checked" && intake.findings.length === 0) {
+      startTree(intake.lesson)
+    } else {
+      setGenerating({ reply: text })
+    }
   }
   const leaveServed = (): void => setServedKey(null)
   // The read-aloud drill takes the whole screen, header included; leaving it
@@ -333,8 +326,7 @@ export const HandheldLesson = ({
         dramas={dramas}
         onPlay={setServedKey}
         onSeed={(seed) => setGenerating({ seed })}
-        onOpenFile={openFile}
-        fileError={fileError}
+        onSceneText={openSceneText}
         loading={!feed.isError && (feed.isLoading || lessons.isLoading)}
         error={feed.isError ? "Couldn't load the dramas." : null}
         onReload={() => void feed.refetch()}

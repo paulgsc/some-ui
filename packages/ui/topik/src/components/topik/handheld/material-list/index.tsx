@@ -1,7 +1,9 @@
 import type { JSX } from "react"
+import { useId } from "react"
 import { cn } from "@some-ui/core-utils"
 import { Button } from "@some-ui/shared"
 import type { TopikMetadata } from "@topik/lib/topik"
+import { useSceneFile } from "@topik/lib/topik/adapter/hooks/use-scene-file"
 import type { DramaLesson } from "@topik/lib/topik/core/drama"
 import type { FeedCard, Seed } from "@topik/lib/topik/core/feed-card"
 import { cardOf, koreanGenre, seedOf } from "@topik/lib/topik/core/feed-card"
@@ -31,10 +33,8 @@ type MaterialListProps = {
   onPlay: (key: string) => void
   /** A card's premise and genres, for the learner's own drama. */
   onSeed: (seed: Seed) => void
-  /** A scene file the learner picked from storage; absent, not offered. */
-  onOpenFile?: (file: File) => void
-  /** Why the last picked file could not be opened. */
-  fileError?: string | null
+  /** A scene file's text, picked from storage; absent, not offered. */
+  onSceneText?: (text: string) => void
   /** The feed is loading, or failed to load (`error`). */
   loading: boolean
   error: string | null
@@ -116,6 +116,55 @@ const Card = ({
   </li>
 )
 
+/**
+ * "Open a scene from storage": the system picker, then the file's text. Its
+ * read is this card's, so leaving the list lets it go.
+ */
+const OpenScene = ({
+  onText,
+}: {
+  onText: (text: string) => void
+}): JSX.Element => {
+  const { state, open } = useSceneFile()
+  const about = useId()
+  return (
+    <label className="bg-card border-border focus-within:ring-ring relative flex min-h-16 shrink-0 cursor-pointer items-center gap-3 rounded-2xl border p-4 text-left focus-within:ring-2">
+      <FolderOpen className="text-primary size-6 shrink-0" />
+      <span className="min-w-0 flex-1">
+        <span className="block font-semibold">Open a scene from storage</span>
+        <span
+          id={about}
+          aria-live="polite"
+          className={cn(
+            "block text-sm",
+            state.kind === "failed"
+              ? "text-destructive"
+              : "text-muted-foreground"
+          )}
+        >
+          {state.kind === "failed"
+            ? state.summary
+            : state.kind === "reading"
+              ? "Opening..."
+              : "A drama your model or agent saved, from your drive or this phone."}
+        </span>
+      </span>
+      <input
+        type="file"
+        aria-describedby={about}
+        disabled={state.kind === "reading"}
+        className="sr-only"
+        onChange={(event) => {
+          const file = event.currentTarget.files?.[0]
+          // The same file again is a new pick.
+          event.currentTarget.value = ""
+          if (file) open(file, onText)
+        }}
+      />
+    </label>
+  )
+}
+
 /** The tree pasted this session: it plays, and it can be let go. */
 const PastedCard = ({
   title,
@@ -172,8 +221,7 @@ export const MaterialList = ({
   dramas,
   onPlay,
   onSeed,
-  onOpenFile,
-  fileError = null,
+  onSceneText,
   loading,
   error,
   onReload,
@@ -265,29 +313,7 @@ export const MaterialList = ({
       </section>
     )}
 
-    {onOpenFile && (
-      <label className="bg-card border-border flex min-h-16 shrink-0 cursor-pointer items-center gap-3 rounded-2xl border p-4 text-left">
-        <FolderOpen className="text-primary size-6 shrink-0" />
-        <span className="min-w-0 flex-1">
-          <span className="block font-semibold">Open a scene from storage</span>
-          <span className="text-muted-foreground block text-sm">
-            {fileError ??
-              "A drama your model or agent saved, from your drive or this phone."}
-          </span>
-        </span>
-        <input
-          type="file"
-          aria-label="Open a scene from storage"
-          className="sr-only"
-          onChange={(event) => {
-            const file = event.currentTarget.files?.[0]
-            // The same file again is a new pick.
-            event.currentTarget.value = ""
-            if (file) onOpenFile(file)
-          }}
-        />
-      </label>
-    )}
+    {onSceneText && <OpenScene onText={onSceneText} />}
 
     {dramas.length > 0 && (
       <section aria-label="Dramas" className="flex flex-col gap-2">

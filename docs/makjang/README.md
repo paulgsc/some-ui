@@ -787,9 +787,11 @@ connector, say):
 - **How:** a plain `<input type="file">`. The Android app's WebView answers
   it with the system picker (`BridgeWebChromeClient.onShowFileChooser`), and
   the learner's drive appears there as a document provider. So there is no
-  plugin, no permission, no OAuth and no Drive API, and no `capture`, which
-  would ask for the camera. The read runs in `adapter/scene-file`, inside
-  `callForeign`.
+  plugin, no permission, no OAuth and no Drive API, and no `accept` or
+  `capture` (with an image `accept`, `capture` would open the camera). The
+  read runs in `adapter/scene-file`, inside `callForeign`, and belongs to the
+  card: a newer pick or leaving the list lets it go, and a file over 1 MB is
+  refused before it is read, since no scene is that large.
 - **What it reads:** the file's text goes through `intakeTree`, exactly as a
   paste (MK4): bare JSON or a reply with fenced blocks, through both audits.
   A tree that plays with nothing to report starts at once, from the pasted
