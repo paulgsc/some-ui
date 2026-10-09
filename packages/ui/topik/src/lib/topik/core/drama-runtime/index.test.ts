@@ -326,7 +326,8 @@ describe("DramaRuntime", () => {
         lessonId: lesson.id,
         tries: [{ chosen: "네, 감사합니다. 주시면 마실게요.", answered: true }],
       })
-      expect(runtime.getSnapshot().last).toEqual(last.get())
+      // The stored object itself, so the store's later notices find nothing new.
+      expect(runtime.getSnapshot().last).toBe(last.get())
 
       runtime.review({ enjoyed: "loved" })
       expect(last.get()?.review).toEqual({ enjoyed: "loved" })
@@ -369,12 +370,15 @@ describe("DramaRuntime", () => {
       const storage = memoryStorage()
       const last = createLastDramaStore(storage)
       const runtime = runtimeOf({ last })
-      runtime.connect()
       playTo(runtime, "a")
       const mine = runtime.getSnapshot().last
-      // Another drama's record, or none after a failed write, changes nothing.
+      // A change made before it connects shows once it does.
+      last.save({ ...mine!, review: { korean: "easier" } })
+      runtime.connect()
+      expect(runtime.getSnapshot().last?.review).toEqual({ korean: "easier" })
+      // Another drama's record changes nothing.
       last.save({ ...mine!, lessonId: "another" })
-      expect(runtime.getSnapshot().last).toBe(mine)
+      expect(runtime.getSnapshot().last?.review).toEqual({ korean: "easier" })
       // This drama's, changed elsewhere (a share forgot its free text), shows.
       last.save({ ...mine!, review: { enjoyed: "fine" } })
       expect(runtime.getSnapshot().last?.review).toEqual({ enjoyed: "fine" })

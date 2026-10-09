@@ -137,13 +137,11 @@ export class DramaRuntime {
     const stored = this.ports.last.get()
     const next = withReview(this.current() ?? last, change, Date.now())
     // Another drama's record, written by another tab since, is newer.
-    this.publish({
-      ...this.snapshot,
-      last:
-        stored === null || isRecordOf(stored, this.lesson)
-          ? this.keep(next)
-          : next,
-    })
+    const kept =
+      stored === null || isRecordOf(stored, this.lesson)
+        ? this.keep(next)
+        : next
+    this.publish({ ...this.snapshot, last: kept })
   }
 
   /**
@@ -157,13 +155,15 @@ export class DramaRuntime {
   }
 
   /**
-   * Saves `record`, and answers the stored object when the save took, so the
-   * store's own notice finds nothing new; else `record`, held here only.
+   * Saves `record`, and answers the stored object when this save took, so a
+   * later notice finds nothing new; else `record`, held here only.
    */
   private keep(record: LastDrama): LastDrama {
     this.ports.last.save(record)
     const stored = this.ports.last.get()
-    return isRecordOf(stored, this.lesson) ? stored : record
+    return isRecordOf(stored, this.lesson) && stored.at === record.at
+      ? stored
+      : record
   }
 
   /** The learner's replay: it cuts in on whatever is playing. */
