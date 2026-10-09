@@ -13,7 +13,7 @@ import {
 import { intakeLesson, intakeTree } from "@some-ui/topik"
 import { describe, expect, it } from "vitest"
 
-import { LESSON, REPLY, TREE, treeReply } from "./fixture"
+import { REPLY, TREE, treeReply } from "./fixture"
 
 describe("draftLesson", () => {
   it("serves the lesson as intake leaves it, under the form's key and entry", () => {
@@ -36,8 +36,7 @@ describe("draftLesson", () => {
       totalQuestions: 1,
       totalMessages: 2,
       difficulty: "beginner",
-      // The model's own relation tag is gone; the probe's is derived.
-      tags: ["topik-1", "cafe", "relation:reply"],
+      tags: ["topik-1", "cafe"],
     })
     expect(JSON.parse(draft.write.body)).toEqual(draft.intake?.batches)
   })
@@ -61,7 +60,7 @@ describe("draftLesson", () => {
       totalQuestions: 1,
       totalMessages: 2,
       difficulty: "beginner",
-      tags: ["topik-1", "relation:reply"],
+      tags: ["topik-1", "makjang"],
       activityId: "topik",
       publishedAt: "2026-09-27T00:00:00+00:00",
       version: 1,
@@ -69,10 +68,10 @@ describe("draftLesson", () => {
       retiredAt: null,
     }
     const form = formFromLesson(stored)
-    expect(form.tags).toEqual(["topik-1"])
+    expect(form.tags).toEqual(["topik-1", "makjang"])
     const draft = draftLesson(servedBody(intakeOk(REPLY)), form)
     if (!draft.ok) throw new Error(draft.error)
-    expect(draft.write.metadata.tags).toEqual(["topik-1", "relation:reply"])
+    expect(draft.write.metadata.tags).toEqual(["topik-1", "makjang"])
   })
 
   it("refuses what the server would, and what intake would", () => {
@@ -154,8 +153,8 @@ describe("draftLesson on a scene tree", () => {
 })
 
 describe("parseTags and keyProblem", () => {
-  it("splits typed tags and drops relation tags, which are derived", () => {
-    expect(parseTags("topik-3, makjang  relation:x,, topik-3")).toEqual([
+  it("splits typed tags, keeping each once", () => {
+    expect(parseTags("topik-3, makjang,, topik-3")).toEqual([
       "topik-3",
       "makjang",
     ])
@@ -177,11 +176,5 @@ describe("parseTags and keyProblem", () => {
 function intakeOk(text: string): Parameters<typeof servedBody>[0] {
   const intake = intakeLesson(text)
   if (!intake.ok) throw new Error(intake.error)
-  expect(intake.findings).toEqual([])
   return intake.batches
 }
-
-// The fixture is a lesson the audit passes cleanly; tests above rely on it.
-it("the fixture is a clean lesson", () => {
-  expect(intakeOk(JSON.stringify(LESSON))).toHaveLength(1)
-})

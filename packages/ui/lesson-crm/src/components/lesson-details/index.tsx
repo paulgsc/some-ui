@@ -59,9 +59,7 @@ export const LessonDetails = ({
       />
     </div>
     <div className="flex flex-col gap-1 sm:col-span-2">
-      <Label htmlFor="lesson-tags">
-        Tags (yours: relation tags are derived from the probes)
-      </Label>
+      <Label htmlFor="lesson-tags">Tags</Label>
       <Input
         id="lesson-tags"
         value={tagsText}

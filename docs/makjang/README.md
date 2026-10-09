@@ -240,7 +240,7 @@ Four layers, each of which can improve without the others changing.
                          ┌───────────────────▼──┐   ┌────────▼──────────────┐
                          │ Teaching (topik)     │   │ 3. Media (ports)      │
                          │  probes, hint ladder,│   │  voice, art, motion;  │
-                         │  tiles, reports      │   │  fall back to text    │
+                         │  audit, reports      │   │  fall back to text    │
                          └──────────────────────┘   └───────────────────────┘
 ```
 
@@ -270,12 +270,9 @@ the schema nor the engine knows which languages those are. `Check` is the
 teaching layer's item, a type parameter to makjang, which carries it without
 reading it. An option holds no words of its own: what the learner reads is
 the check's candidate with the same id, so a candidate's text lives in one
-place. Only checks with candidates can be choices (today `pick-valid` and
-`odd-one-out`, each with exactly one keyed candidate); a `build` check has
-none, so it cannot be a choice and the tree prompt does not author it.
-A candidate carries an `id` (Thm. 1.1): optional on `ProbeOption` in
-`entity/topik-types.ts`, since a conversation file's candidates stay
-positional, and required by the teaching audit of every choice in a tree.
+place. A check is a `pick-valid` or an `odd-one-out`, each with exactly one
+keyed candidate. A candidate carries an `id` (Thm. 1.1), required by the
+teaching audit of every choice in a tree.
 
 - **Depth** is the number of choices between the root and a scene.
   `MAX_DEPTH = 2`: a scene at depth 2 has no choice; it is a leaf, and the
@@ -463,19 +460,20 @@ source idea, then a model, then JSON, then a deterministic audit, then review,
 then served content (Rem. 8.1, Cor. 8.3), with the learner's own model as an
 option (Def. 8.3).
 
-- **A tree prompt beside the conversation prompt.** Today one prompt
-  (`generation/lesson-prompt.md`) feeds both the learner's paste-in loop and
-  the operator's weekly batch, which the LAN lesson CRM (`@some-ui/lesson-crm`)
-  builds, checks and saves. The conversation prompt stays, because the
-  desktop session's batch still needs it. A second prompt writes one scene
-  tree, keeping every probe rule the first has, and stays standalone: no
-  other lesson goes into it. Its vocabulary differs: the conversation prompt
-  calls a conversation a "beat", and here a beat is a line or a narration.
+- **A tree prompt beside the conversation prompt.** The conversation prompt
+  (`generation/lesson-prompt.md`) writes the desktop session's weekly batch,
+  which the LAN lesson CRM (`@some-ui/lesson-crm`) builds, checks and saves.
+  The tree prompt writes one
+  scene tree, holding every choice to the probe rules, and stays standalone:
+  no other lesson goes into it. Its vocabulary differs: the conversation
+  prompt calls a conversation a "beat", and here a beat is a line or a
+  narration.
 - **Two audits, by owner.** The story audit checks shape: two to four options
   per choice, no choice at the maximum depth, ids unique across the tree,
   every speaker and `pov` in the cast, every option leading to a scene, every
-  scene naming a feeling. The teaching audit is the existing probe audit, plus
-  a match between each choice's options and its check's candidates. A choice
+  scene naming a feeling. The teaching audit holds each choice's check to the
+  probe rules (`core/tree-audit`), and matches its options to the check's
+  candidates. A choice
   it rejects is not asked: its scene becomes a leaf and the subtree under it is
   dropped, the tree's version of Remark 4.7's "dropped at load". Topik also
   rejects a tree whose scene names a feeling the renderer does not have.
@@ -607,7 +605,7 @@ Remark 9.2 (v1.13), filed ahead of the renderer.
   vocabulary's points, hues, textures and motions, the derivation and its
   contrast floor. Topik owns their words
   (captions, cries, lettering) and symbols, keyed by the same feeling keys.
-- **`@some-ui/topik`** keeps the teaching: probes, the hint ladder, tiles, the
+- **`@some-ui/topik`** keeps the teaching: probes, the hint ladder, the
   teaching audit, the evaluation report, and the handheld renderer, which
   becomes a renderer of the engine. Topik depends on makjang, never the
   reverse. Only topik's handheld path (its renderer and its teaching audit)
@@ -649,10 +647,8 @@ Neither needs a better model than exists today.
   - The teaching audit's pruning, in topik. The media port types. Speaker
     names, choices as large text targets, consequence and repair scenes.
   - The handheld's conversation path goes: `core/lesson-track` and its tests
-    are removed, after the helpers `core/probe-audit` and
-    `core/lesson-survey` import from it (`anchorOf`, `isDeliverable`,
-    `probeFingerprint`) move to `core/probe` or go with the code that no
-    longer needs them. The wrap card loses "Conversation N of M" and the tally
+    are removed, and with MKJ-S6 the conversation file's probes, their audit
+    and the helpers only they used. The wrap card loses "Conversation N of M" and the tally
     as its headline, and ends a lesson on how the scene resolved instead:
     the leaf's last beat, its ending panel, then the author's notes
     (작가의 말), each choice the route made with the line chosen and its

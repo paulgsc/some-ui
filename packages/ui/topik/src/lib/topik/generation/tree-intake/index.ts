@@ -6,9 +6,8 @@
 
 import type { Lesson } from "@some-ui/makjang"
 import { auditStory, scenesOf } from "@some-ui/makjang"
-import type { TopikMetadata } from "@topik/lib/topik"
+import type { Probe, TopikMetadata } from "@topik/lib/topik"
 import { topikLevelOf } from "@topik/lib/topik/core/lesson-selection"
-import type { ChoiceProbe } from "@topik/lib/topik/core/probe"
 import type { TreeFinding } from "@topik/lib/topik/core/tree-audit"
 import { auditTeaching } from "@topik/lib/topik/core/tree-audit"
 import {
@@ -24,7 +23,7 @@ export type TreeIntake =
   | { status: "rejected"; findings: Array<TreeFinding> }
   | {
       status: "checked"
-      lesson: Lesson<ChoiceProbe>
+      lesson: Lesson<Probe>
       findings: Array<TreeFinding>
     }
 
@@ -77,7 +76,7 @@ export type TreeEntryForm = Pick<
  * replaces any typed one, and the difficulty that level maps to.
  */
 export function treeEntry(
-  lesson: Lesson<ChoiceProbe>,
+  lesson: Lesson<Probe>,
   form: TreeEntryForm
 ): TopikMetadata {
   const scenes = scenesOf(lesson.root).map(({ scene }) => scene)

@@ -42,8 +42,7 @@ import {
 } from "@some-ui/makjang"
 import type { FeelingKey } from "@some-ui/styles/theme"
 import { isFeelingKey } from "@some-ui/styles/theme"
-import type { ProbeOption } from "@topik/lib/topik"
-import type { ChoiceProbe } from "@topik/lib/topik/core/probe"
+import type { Probe, ProbeOption } from "@topik/lib/topik"
 
 /** Audio only, Hangul, gloss: canon Cor. 4.4's ladder. */
 export type Rung = 0 | 1 | 2
@@ -51,7 +50,7 @@ export type Rung = 0 | 1 | 2
 /** Where a heard line's ladder starts: at Hangul when nothing can speak. */
 const firstRung = (audio: boolean): Rung => (audio ? 0 : 1)
 
-export type DramaLesson = Lesson<ChoiceProbe>
+export type DramaLesson = Lesson<Probe>
 
 export type DramaSession = {
   drama: DramaState
@@ -234,16 +233,16 @@ export type Panel =
   | {
       kind: "cover"
       id: string
-      scene: Scene<ChoiceProbe>
+      scene: Scene<Probe>
       feeling: FeelingKey
     }
   | { kind: "line"; id: string; line: Line; feeling: FeelingKey }
   | { kind: "narration"; id: string; narration: Narration; feeling: FeelingKey }
-  | { kind: "choice"; id: string; scene: Scene<ChoiceProbe> }
+  | { kind: "choice"; id: string; scene: Scene<Probe> }
   | {
       kind: "ending"
       id: string
-      scene: Scene<ChoiceProbe>
+      scene: Scene<Probe>
       feeling: FeelingKey
     }
   | { kind: "notes"; id: string; notes: Array<Note> }
@@ -252,8 +251,7 @@ export type Panel =
 export const sceneOf = (
   lesson: DramaLesson,
   session: DramaSession
-): Scene<ChoiceProbe> =>
-  sceneAt(lesson.root, session.drama.route) ?? lesson.root
+): Scene<Probe> => sceneAt(lesson.root, session.drama.route) ?? lesson.root
 
 /** The line the learner chose that led here; none at the root. */
 function chosenLineOf(
@@ -281,10 +279,7 @@ function notesOf(lesson: DramaLesson, session: DramaSession): Array<Note> {
 }
 
 /** The beats shown so far in `scene`: up to the current one, or all. */
-function shownBeats(
-  scene: Scene<ChoiceProbe>,
-  session: DramaSession
-): Array<Beat> {
+function shownBeats(scene: Scene<Probe>, session: DramaSession): Array<Beat> {
   const { at } = session.drama
   if (at.kind !== "beat") return scene.beats
   const index = scene.beats.findIndex((beat) => beat.id === at.id)

@@ -29,29 +29,6 @@ export const LESSON = [
         explanation: "커피 is coffee.",
       },
     ],
-    probes: [
-      {
-        id: "p1",
-        kind: "pick-valid",
-        order: 3,
-        anchorMessageId: "m1",
-        prompt: "Which reply fits?",
-        options: [
-          {
-            text: "커피 한 잔 주세요.",
-            relation: "reply",
-            valid: true,
-            why: "Answers the question with a polite request.",
-          },
-          {
-            text: "어서 오세요.",
-            relation: "reply",
-            valid: false,
-            why: "That is the shop's welcome, not a customer's order.",
-          },
-        ],
-      },
-    ],
   },
 ]
 
@@ -66,7 +43,7 @@ export const REPLY = [
     key: "Cafe Order",
     displayName: "At the café",
     description: "Ordering a coffee.",
-    tags: ["topik-1", "cafe", "relation:invented"],
+    tags: ["topik-1", "cafe"],
   }),
   "```",
 ].join("\n")

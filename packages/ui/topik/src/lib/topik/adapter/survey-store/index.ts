@@ -44,7 +44,6 @@ const SurveyItemSchema = z.object({
   probeId: z.string(),
   source: z.string().optional(),
   prompt: z.string().optional(),
-  relations: z.array(z.string()).optional(),
 })
 
 const SurveyDocumentSchema = z.object({

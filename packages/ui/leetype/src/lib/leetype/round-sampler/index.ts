@@ -43,7 +43,6 @@
  * last is damped so it rarely comes straight back.
  */
 
-import { unitIntervalBySeed } from "@leetype/lib/leetype/deterministic-random"
 import type { Ledger } from "@leetype/lib/leetype/ledger"
 import type { EntryReading } from "@leetype/lib/leetype/ledger/state"
 import { lastRoundId, readEntry } from "@leetype/lib/leetype/ledger/state"
@@ -55,7 +54,7 @@ import {
   semanticDistance,
 } from "@leetype/lib/leetype/rewrite"
 import type { Round } from "@leetype/types/authored-round"
-import { assertNever } from "@some-ui/core-utils"
+import { assertNever, unitIntervalBySeed } from "@some-ui/core-utils"
 
 /** Every round's base weight: the part no response can remove. */
 export const WEIGHT_FLOOR = 1

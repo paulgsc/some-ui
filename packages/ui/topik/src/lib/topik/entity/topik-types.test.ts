@@ -47,20 +47,6 @@ describe("ProbeSchema", () => {
     expect(ProbeSchema.safeParse(probe).success).toBe(false)
   })
 
-  it("requires a build probe's target", () => {
-    const build = {
-      id: "b",
-      kind: "build",
-      order: 2,
-      prompt: "Make it past",
-      relation: "past",
-    }
-    expect(ProbeSchema.safeParse(build).success).toBe(false)
-    expect(ProbeSchema.safeParse({ ...build, target: "했어요" }).success).toBe(
-      true
-    )
-  })
-
   it("takes any relation its author names, and refuses only a blank one (canon Rem. 4.8)", () => {
     const named = (relation: string): boolean =>
       ProbeSchema.safeParse({
@@ -76,25 +62,11 @@ describe("ProbeSchema", () => {
   })
 })
 
-describe("TopikFileSchema probes", () => {
-  const batch = {
-    id: 1,
-    messages: [],
-    questions: [],
-  }
-
-  it("parses a file authored before probes existed", () => {
-    const [parsed] = TopikFileSchema.parse([batch])
-    expect(parsed?.probes).toBeUndefined()
-  })
-
-  it("drops a malformed probe instead of the topik that carries it", () => {
+describe("TopikFileSchema", () => {
+  it("loads a file whose conversations still carry probes, without them", () => {
     const [parsed] = TopikFileSchema.parse([
-      {
-        ...batch,
-        probes: [oddOneOut, { id: "broken", kind: "odd-one-out" }, 42],
-      },
+      { id: 1, messages: [], questions: [], probes: [oddOneOut, 42] },
     ])
-    expect(parsed?.probes?.map((probe) => probe.id)).toEqual(["p1"])
+    expect(parsed).toEqual({ id: 1, messages: [], questions: [] })
   })
 })

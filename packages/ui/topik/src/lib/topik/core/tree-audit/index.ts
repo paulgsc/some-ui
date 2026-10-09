@@ -5,22 +5,21 @@
  *
  * It runs after makjang's story audit, on a tree whose shape already holds,
  * and checks what makjang carries without reading:
- * - each choice's `check` loads as a `pick-valid` or `odd-one-out` probe (a
- *   `build` has no candidates to be options);
+ * - each choice's `check` loads as a `pick-valid` or `odd-one-out` probe;
  * - its candidate ids match the choice's option ids one to one, since an
  *   option shows the candidate with its id;
- * - the probe rules every handheld item is held to (`auditItem`), plus two a
- *   choice adds: no candidate is an English gloss (canon v1.13, a choice is
- *   about its scene), an odd-one-out names its `source`, having no anchor
- *   line to default to, and no two checks share an id;
+ * - its candidates (`auditCandidates`): none is an English gloss (canon
+ *   v1.13, a choice is about its scene, and a keyed gloss would be a
+ *   first-order item, Prop. 4.2), none repeats another, each has a `why`,
+ *   and an odd-one-out's hold the content words of the `source` it names;
+ * - no two checks share an id;
  * - every scene names a feeling the renderer has (`core/feeling`).
  *
  * A choice with an error is not asked: its scene becomes a leaf and the
- * subtree under it is dropped, the tree's version of Remark 4.7's "dropped at
- * load" (`withholdErrors` is the conversation file's). A feeling outside the
- * vocabulary or a level outside TOPIK's has no smaller piece to drop, so it
- * rejects the tree. Findings are reported over the whole tree, a dropped
- * subtree included, so one round of fixes covers everything.
+ * subtree under it is dropped, as Remark 4.7 drops an item at load. A
+ * feeling outside the vocabulary or a level outside TOPIK's has no smaller
+ * piece to drop, so it rejects the tree. Findings are reported over the whole
+ * tree, a dropped subtree included, so one round of fixes covers everything.
  *
  * Invariants (full text in docs/makjang/README.md, "Invariants"):
  * - MK4: every choice the handheld asks has passed this audit; a rejected
@@ -29,10 +28,12 @@
 
 import type { Lesson, Scene } from "@some-ui/makjang"
 import { FEELING_KEYS, isFeelingKey } from "@some-ui/styles/theme"
+import type { Probe } from "@topik/lib/topik"
 import { GLOSS_RELATION, ProbeSchema } from "@topik/lib/topik"
-import type { ChoiceProbe } from "@topik/lib/topik/core/probe"
-import type { ProbeReport } from "@topik/lib/topik/core/probe-audit"
-import { auditItem } from "@topik/lib/topik/core/probe-audit"
+import {
+  diffUtterance,
+  MIN_DIFF_SIMILARITY,
+} from "@topik/lib/topik/core/morph-diff"
 import { TOPIK_LEVELS } from "@topik/lib/topik/generation"
 
 export type TreeFinding = {
@@ -49,18 +50,73 @@ export type TeachingAudit =
   | {
       ok: true
       /** The tree as it plays: every choice an error names is pruned. */
-      lesson: Lesson<ChoiceProbe>
+      lesson: Lesson<Probe>
       findings: Array<TreeFinding>
     }
   | { ok: false; findings: Array<TreeFinding> }
+
+/** Where a rule reports what it finds about one check. */
+type Report = (severity: TreeFinding["severity"], message: string) => void
+
+/** Spacing and closing punctuation aside - but not `?`, which is the whole of
+ * a question form's change. */
+const normalize = (text: string): string => text.replace(/[\s.,!~…'"]+/g, "")
+
+/**
+ * The rules about a check's candidates, an odd-one-out's judged against its
+ * `source`. Which transformation a candidate claims is its author's to name
+ * (canon Rem. 4.8), so no rule judges the relation itself.
+ */
+function auditCandidates(probe: Probe, report: Report): void {
+  const source = probe.source ?? ""
+  const seen = new Set<string>()
+  for (const option of probe.options) {
+    const label = `"${option.text}"`
+    if (option.relation.trim().toLowerCase() === GLOSS_RELATION) {
+      report(
+        "error",
+        `candidate ${label} is a gloss: a choice's candidates carry no English rendering, which would spell out what the item tests (canon Prop. 4.2)`
+      )
+    }
+    if (seen.has(option.text)) {
+      report("error", `candidate ${label} appears twice`)
+    }
+    seen.add(option.text)
+    if (option.why.trim() === "") {
+      report(
+        "error",
+        `candidate ${label} has no \`why\`: its feedback line would be blank`
+      )
+    }
+    // An odd-one-out's candidates are transformations of the source, so each
+    // should change what its relation acts on and hold the rest. A reply or a
+    // situation elsewhere is a different sentence by nature.
+    if (probe.kind === "odd-one-out" && option.lang !== "en" && source !== "") {
+      if (normalize(option.text) === normalize(source)) {
+        report(
+          "warning",
+          `candidate ${label} is the source unchanged, not a transformation of it`
+        )
+        continue
+      }
+      const { similarity } = diffUtterance(source, option.text)
+      if (similarity < MIN_DIFF_SIMILARITY) {
+        report(
+          "warning",
+          `candidate ${label} rewrites more than "${option.relation}" transforms (similarity ${similarity.toFixed(2)}): hold the content words fixed (canon Prop. 4.2); its diff will not be shown`
+        )
+      }
+    }
+  }
+}
 
 /** The check, if it may be asked as this choice; findings either way. */
 function auditChoice(
   check: unknown,
   optionIds: Array<string>,
   probeIds: Set<string>,
-  report: ProbeReport
-): ChoiceProbe | undefined {
+  report: Report
+): Probe | undefined {
   const parsed = ProbeSchema.safeParse(check)
   if (!parsed.success) {
     const issue = parsed.error.issues[0]
@@ -72,17 +128,10 @@ function auditChoice(
     return undefined
   }
   const probe = parsed.data
-  if (probe.kind === "build") {
-    report(
-      "error",
-      "a build check has no candidates, so it cannot be a choice: use pick-valid or odd-one-out"
-    )
-    return undefined
-  }
 
-  // Set from inside `reject`, which `auditItem` calls too.
+  // Set from inside `reject`, which `auditCandidates` calls too.
   const verdict = { rejected: false }
-  const reject: ProbeReport = (severity, message) => {
+  const reject: Report = (severity, message) => {
     if (severity === "error") verdict.rejected = true
     report(severity, message)
   }
@@ -101,12 +150,6 @@ function auditChoice(
       reject("error", `candidate id "${option.id}" is used twice`)
     } else {
       candidateIds.add(option.id)
-    }
-    if (option.relation.trim().toLowerCase() === GLOSS_RELATION) {
-      reject(
-        "error",
-        `candidate "${option.text}" is a gloss: a choice's candidates carry no English rendering, which would spell out what the item tests (canon Prop. 4.2)`
-      )
     }
   })
   for (const id of optionIds) {
@@ -132,7 +175,7 @@ function auditChoice(
       "an odd-one-out in a scene tree names its `source`: there is no anchor line to transform"
     )
   }
-  auditItem(probe, probe.source ?? "", reject)
+  auditCandidates(probe, reject)
 
   return verdict.rejected ? undefined : probe
 }
@@ -146,7 +189,7 @@ type Context = {
 }
 
 const reporter =
-  (context: Context, path: string): ProbeReport =>
+  (context: Context, path: string): Report =>
   (severity, message) => {
     context.findings.push({ audit: "teaching", severity, path, message })
   }
@@ -161,7 +204,7 @@ function auditScene(
   scene: Scene<unknown>,
   path: string,
   context: Context
-): Scene<ChoiceProbe> {
+): Scene<Probe> {
   if (!isFeelingKey(scene.feeling)) {
     rejectTree(
       context,

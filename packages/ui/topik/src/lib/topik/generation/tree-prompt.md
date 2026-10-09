@@ -244,7 +244,7 @@ any line of the route so far.
 - **`prompt`:** what the story asks, in the drama's own voice and in Korean
   where the level allows ("서연은 뭐라고 대답할까?").
 - **`check`:** the item, a probe of kind `pick-valid` or `odd-one-out` (see
-  **The two kinds**). A `build` cannot be a choice.
+  **The two kinds**).
 - **`options`:** 2–4, one per candidate of the check. An option's `id` is
   its candidate's `id`, and the option holds no words of its own: the
   learner reads the candidate. Each option leads to its `child` scene.

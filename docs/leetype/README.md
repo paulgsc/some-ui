@@ -595,9 +595,9 @@ question — the same `useExerciseRunner` the typing surface sequences with,
 advanced with `"advance"` and never with `"repeat"` or `"escape"`, because
 there is no gate to fall short of.
 
-**Determinism reaches the distractors.** `lib/leetype/deterministic-random`
-holds the xorshift32 that `exercises/scheduling.ts` used to keep private; both
-callers share it so "seed 7" cannot come to mean two things. A story, a test
+**Determinism reaches the distractors.** `@some-ui/core-utils`'s
+`shuffledBySeed` holds the one xorshift32 every caller shares, so "seed 7"
+cannot come to mean two things. A story, a test
 and a replayed bug report from one seed all show one screen, distractor
 ordering included.
 

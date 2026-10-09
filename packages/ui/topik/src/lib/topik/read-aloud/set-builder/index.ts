@@ -9,11 +9,11 @@
  * particular, a word's pace factor is pacing and nothing more (Cor. 4.6
  * (iii)), and no word is drawn more often for having been reported stuck.
  *
- * Everything here is deterministic in its seed key, like the tile board's
- * shuffle: a set can always be rebuilt from its key.
+ * Everything here is deterministic in its seed key, like the drama's option
+ * order: a set can always be rebuilt from its key.
  */
 
-import { seededShuffle } from "@topik/lib/topik/core/tile-assembly"
+import { fnv1a, shuffledBySeed } from "@some-ui/core-utils"
 import type {
   ReadAloudDeck,
   ReadAloudLevel,
@@ -116,8 +116,8 @@ export function buildSet(
   const below = eligible.filter((line) => line.level < level)
 
   const sentenceItems: Array<SetItem> = [
-    ...seededShuffle(atLevel, `${seedKey}:sentences:at`),
-    ...seededShuffle(below, `${seedKey}:sentences:below`),
+    ...shuffledBySeed(atLevel, fnv1a(`${seedKey}:sentences:at`)),
+    ...shuffledBySeed(below, fnv1a(`${seedKey}:sentences:below`)),
   ]
     .slice(0, Math.max(0, sentences))
     .map((line) => ({
@@ -134,7 +134,10 @@ export function buildSet(
   )
   const seen = new Set<string>()
   const wordItems: Array<SetItem> = []
-  for (const { line, occurrence } of seededShuffle(forms, `${seedKey}:words`)) {
+  for (const { line, occurrence } of shuffledBySeed(
+    forms,
+    fnv1a(`${seedKey}:words`)
+  )) {
     if (wordItems.length >= words) break
     if (seen.has(occurrence.wordId)) continue
     seen.add(occurrence.wordId)
@@ -150,7 +153,7 @@ export function buildSet(
 
   const all = [...wordItems, ...sentenceItems]
   for (let attempt = 0; attempt < ORDER_ATTEMPTS; attempt += 1) {
-    const order = seededShuffle(all, `${seedKey}:order:${attempt}`)
+    const order = shuffledBySeed(all, fnv1a(`${seedKey}:order:${attempt}`))
     if (!hasThreeAlike(order)) return order
   }
   return spread(wordItems, sentenceItems)

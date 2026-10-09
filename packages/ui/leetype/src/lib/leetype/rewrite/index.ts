@@ -21,7 +21,7 @@ import {
   printMonomial,
 } from "@leetype/lib/leetype/cost"
 import type { Budget, ConstraintSet } from "@leetype/types/constraint"
-import { assertNever } from "@some-ui/core-utils"
+import { assertNever, fnv1a } from "@some-ui/core-utils"
 
 /**
  * A rewrite (Def. 5.1): a pair of cost graphs, the algorithm's own before
@@ -236,14 +236,7 @@ function shapeOf(
   }
 }
 
-/** FNV-1a over UTF-16 code units, 32 bits, from a given offset basis. */
-function fnv1a(text: string, basis: number): string {
-  let hash = basis >>> 0
-  for (let index = 0; index < text.length; index += 1) {
-    hash = Math.imul(hash ^ text.charCodeAt(index), 0x01000193) >>> 0
-  }
-  return hash.toString(16).padStart(8, "0")
-}
+const hex = (hash: number): string => hash.toString(16).padStart(8, "0")
 
 /**
  * A rewrite's structural identity (used by the ledger): two
@@ -291,5 +284,5 @@ export function rewriteKeyOf(rewrite: Rewrite): string {
     if (least === undefined || shape < least) least = shape
   }
   const canonical = least ?? ""
-  return `rw:${fnv1a(canonical, 0x811c9dc5)}${fnv1a(canonical, 0x01000193)}`
+  return `rw:${hex(fnv1a(canonical))}${hex(fnv1a(canonical, 0x01000193))}`
 }

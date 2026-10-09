@@ -4,14 +4,9 @@ import type { Draft, TreeCheck } from "@lesson-crm/lib/draft"
 import { TREE_SAVES_TO_FEED } from "@lesson-crm/lib/draft"
 import { cn } from "@some-ui/core-utils"
 import { useFittedPage } from "@some-ui/react-hooks"
-import { Badge, PageControls, Textarea } from "@some-ui/shared"
-import type { FindingRow, ProbeFinding } from "@some-ui/topik"
-import {
-  RELATION_TAG_PREFIX,
-  treeFindingRow,
-  treeFixRequest,
-  treeSummary,
-} from "@some-ui/topik"
+import { PageControls, Textarea } from "@some-ui/shared"
+import type { FindingRow } from "@some-ui/topik"
+import { treeFindingRow, treeFixRequest, treeSummary } from "@some-ui/topik"
 import { Check } from "lucide-react"
 
 type LessonCheckProps = {
@@ -20,20 +15,8 @@ type LessonCheckProps = {
   actions?: ReactNode
 }
 
-// Keys carry the position: two findings can read the same (a candidate
-// repeated twice over), and both are shown.
-const probeRow = (finding: ProbeFinding, position: number): FindingRow => ({
-  key: `${position}:${finding.batch ?? "file"}:${finding.index ?? finding.probe ?? ""}:${finding.message}`,
-  error: finding.severity === "error",
-  text: `${finding.severity === "error" ? "Withheld" : "Warning"} · conversation ${finding.batch ?? "?"}${finding.probe ? `, ${finding.probe}` : ""}: ${finding.message}`,
-})
-
 const rowsOf = (draft: Draft | null): Array<FindingRow> =>
-  draft?.tree
-    ? draft.tree.findings.map(treeFindingRow)
-    : draft?.ok
-      ? draft.intake.findings.map(probeRow)
-      : []
+  draft?.tree ? draft.tree.findings.map(treeFindingRow) : []
 
 /**
  * A scene tree's verdict: whether it plays, and what the audits drop from it.
@@ -93,11 +76,9 @@ const TreeVerdict = ({
 }
 
 /**
- * What a save would serve: the intake's verdict on the lesson, exactly as a
- * learner's pasted lesson gets it - the counts it recounted, the tags it
- * derived, and every finding, with the probes an error withholds. A scene
- * tree gets both of its audits' findings, by path. Findings are a list of any
- * length, so they page to fit the pane.
+ * What a save would serve: the intake's verdict on the lesson, with the
+ * counts it recounted. A scene tree gets both of its audits' findings, by
+ * path; findings are a list of any length, so they page to fit the pane.
  */
 export const LessonCheck = ({
   draft,
@@ -136,49 +117,14 @@ export const LessonCheck = ({
     if (draft.tree) {
       return <TreeVerdict tree={draft.tree} note={TREE_SAVES_TO_FEED} />
     }
-    const { meta, findings } = draft.intake
-    const withheld = findings.filter((finding) => finding.severity === "error")
-    const relations = (meta.tags ?? []).filter((tag) =>
-      tag.startsWith(RELATION_TAG_PREFIX)
-    )
+    const { meta } = draft.intake
     return (
-      <div className="flex flex-col gap-3 text-sm">
-        <p>
-          <span className="font-semibold">{meta.batchCount} conversations</span>
-          {" · "}
-          {meta.totalMessages} lines · {meta.totalQuestions} questions
-          {meta.difficulty ? ` · ${meta.difficulty}` : ""}
-        </p>
-        <div className="flex flex-col gap-1">
-          <span className="text-muted-foreground text-xs">
-            Derived relation tags (what selection reads)
-          </span>
-          <div className="flex flex-wrap gap-1">
-            {relations.length === 0 ? (
-              <span className="text-muted-foreground text-xs">
-                None: no probe names a relation.
-              </span>
-            ) : (
-              relations.map((tag) => (
-                <Badge key={tag} variant="secondary">
-                  {tag}
-                </Badge>
-              ))
-            )}
-          </div>
-        </div>
-        {findings.length === 0 ? (
-          <p className="text-success flex items-center gap-2">
-            <Check className="size-4" /> Every probe will be asked as written.
-          </p>
-        ) : (
-          <p className="text-muted-foreground">
-            {withheld.length > 0
-              ? `${withheld.length} probe${withheld.length === 1 ? " is" : "s are"} withheld: learners are served the lesson without ${withheld.length === 1 ? "it" : "them"}.`
-              : "Warnings only: the lesson is served as written."}
-          </p>
-        )}
-      </div>
+      <p className="text-sm">
+        <span className="font-semibold">{meta.batchCount} conversations</span>
+        {" · "}
+        {meta.totalMessages} lines · {meta.totalQuestions} questions
+        {meta.difficulty ? ` · ${meta.difficulty}` : ""}
+      </p>
     )
   })()
 
