@@ -3,9 +3,17 @@ import { cn } from "@some-ui/core-utils"
 import { Button } from "@some-ui/shared"
 import type { TopikMetadata } from "@topik/lib/topik"
 import type { DramaLesson } from "@topik/lib/topik/core/drama"
-import { topikLevelOf } from "@topik/lib/topik/core/lesson-selection"
+import type { FeedCard, Seed } from "@topik/lib/topik/core/feed-card"
+import { cardOf, koreanGenre, seedOf } from "@topik/lib/topik/core/feed-card"
 import { TOPIK_LEVELS } from "@topik/lib/topik/generation"
-import { BookOpenText, ChevronRight, Loader2, Sparkles, X } from "lucide-react"
+import {
+  BookOpenText,
+  ChevronRight,
+  Loader2,
+  Play,
+  Sparkles,
+  X,
+} from "lucide-react"
 
 type MaterialListProps = {
   /** The level the learner holds: read-aloud's, and the prompt's default. */
@@ -17,9 +25,11 @@ type MaterialListProps = {
     onPlay: () => void
     onForget: () => void
   } | null
-  /** The operator's served scene trees (`adapter/tree-feed`). */
+  /** The operator's served scene trees (`adapter/tree-feed`), as cards. */
   dramas: Array<TopikMetadata>
   onPlay: (key: string) => void
+  /** A card's premise and genres, for the learner's own drama. */
+  onSeed: (seed: Seed) => void
   /** The feed is loading, or failed to load (`error`). */
   loading: boolean
   error: string | null
@@ -35,44 +45,69 @@ type MaterialListProps = {
   onReadAloud?: () => void
 }
 
-/** A served tree's line: what it is, at which level. */
-const dramaDetails = (item: TopikMetadata): string => {
-  const level = topikLevelOf(item.tags)
-  return level ? `Drama · TOPIK ${level}` : "Drama"
-}
-
 const Heading = ({ children }: { children: string }): JSX.Element => (
   <h2 className="text-muted-foreground px-1 pt-2 text-xs font-medium tracking-wider uppercase">
     {children}
   </h2>
 )
 
-const Row = ({
-  item,
-  onSelect,
+/**
+ * A served drama as a card: its title, genres and premise. Mainly a seed for
+ * the learner's own drama; it can also be played as it is.
+ */
+const Card = ({
+  card,
+  onSeed,
+  onPlay,
 }: {
-  item: TopikMetadata
-  onSelect: (key: string) => void
+  card: FeedCard
+  onSeed: (card: FeedCard) => void
+  onPlay: (key: string) => void
 }): JSX.Element => (
-  <li className="bg-card border-border flex min-h-16 items-stretch rounded-2xl border">
-    <button
-      type="button"
-      onClick={() => onSelect(item.key)}
-      className="flex min-w-0 flex-1 items-center gap-3 p-4 text-left"
-    >
-      <span className="min-w-0 flex-1">
-        <span className="block truncate font-semibold">{item.displayName}</span>
-        {item.description && (
-          <span className="text-muted-foreground line-clamp-2 text-sm">
-            {item.description}
-          </span>
-        )}
-        <span className="text-muted-foreground mt-1 block text-xs">
-          {dramaDetails(item)}
+  <li className="bg-card border-border flex flex-col gap-3 rounded-2xl border p-4">
+    <div className="min-w-0">
+      <span className="block font-semibold break-keep">{card.title}</span>
+      {card.genres.length > 0 && (
+        <span className="mt-1 flex flex-wrap gap-1">
+          {card.genres.map((genre) => (
+            <span
+              key={genre}
+              lang={koreanGenre(genre) ? "ko" : undefined}
+              className="bg-muted text-muted-foreground rounded-full px-2 py-0.5 text-xs"
+            >
+              {koreanGenre(genre) ?? genre}
+            </span>
+          ))}
         </span>
-      </span>
-      <ChevronRight className="text-muted-foreground size-5 shrink-0" />
-    </button>
+      )}
+      {card.premise && (
+        <span className="text-muted-foreground mt-1 line-clamp-3 block text-sm break-keep">
+          {card.premise}
+        </span>
+      )}
+      {card.level && (
+        <span className="text-muted-foreground mt-1 block text-xs">
+          TOPIK {card.level}
+        </span>
+      )}
+    </div>
+    <div className="flex gap-2">
+      <Button
+        className="h-11 min-w-0 flex-1 gap-2 rounded-xl"
+        aria-label={`Make my own from ${card.title}`}
+        onClick={() => onSeed(card)}
+      >
+        <Sparkles className="size-4" /> Make my own
+      </Button>
+      <Button
+        variant="outline"
+        className="h-11 gap-2 rounded-xl"
+        aria-label={`Play it: ${card.title}`}
+        onClick={() => onPlay(card.key)}
+      >
+        <Play className="size-4" /> Play it
+      </Button>
+    </div>
   </li>
 )
 
@@ -131,6 +166,7 @@ export const MaterialList = ({
   pastedTree = null,
   dramas,
   onPlay,
+  onSeed,
   loading,
   error,
   onReload,
@@ -172,6 +208,24 @@ export const MaterialList = ({
       ))}
     </div>
 
+    {onCreate && (
+      <button
+        type="button"
+        onClick={onCreate}
+        className="border-border flex min-h-16 shrink-0 items-center gap-3 rounded-2xl border border-dashed p-4 text-left"
+      >
+        <Sparkles className="text-muted-foreground size-5 shrink-0" />
+        <span className="min-w-0 flex-1">
+          <span className="block font-semibold">Write your own drama</span>
+          <span className="text-muted-foreground block text-sm">
+            Your model writes it from the app&apos;s prompt, and the app checks
+            it. It lasts this session.
+          </span>
+        </span>
+        <ChevronRight className="text-muted-foreground size-5 shrink-0" />
+      </button>
+    )}
+
     {onReadAloud && (
       <button
         type="button"
@@ -206,10 +260,15 @@ export const MaterialList = ({
 
     {dramas.length > 0 && (
       <section aria-label="Dramas" className="flex flex-col gap-2">
-        <Heading>Dramas</Heading>
+        <Heading>Start from a drama</Heading>
         <ul className="flex flex-col gap-2">
           {dramas.map((item) => (
-            <Row key={item.key} item={item} onSelect={onPlay} />
+            <Card
+              key={item.key}
+              card={cardOf(item)}
+              onSeed={(card) => onSeed(seedOf(card))}
+              onPlay={onPlay}
+            />
           ))}
         </ul>
       </section>
@@ -239,24 +298,6 @@ export const MaterialList = ({
       <p className="text-muted-foreground py-8 text-center text-sm">
         No dramas this week yet.
       </p>
-    )}
-
-    {onCreate && (
-      <button
-        type="button"
-        onClick={onCreate}
-        className="border-border flex min-h-16 items-center gap-3 rounded-2xl border border-dashed p-4 text-left"
-      >
-        <Sparkles className="text-muted-foreground size-5 shrink-0" />
-        <span className="min-w-0 flex-1">
-          <span className="block font-semibold">Write your own drama</span>
-          <span className="text-muted-foreground block text-sm">
-            Your model writes it from the app&apos;s prompt, and the app checks
-            it. It lasts this session.
-          </span>
-        </span>
-        <ChevronRight className="text-muted-foreground size-5 shrink-0" />
-      </button>
     )}
   </div>
 )

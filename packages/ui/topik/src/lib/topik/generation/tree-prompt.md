@@ -117,6 +117,8 @@ The request at the end of this prompt gives:
 
 - **Level:** the learner's TOPIK level, 1–6.
 - **Scene:** optional, a premise for the scene. Invent one if it is absent.
+- **Genre:** the drama's genres, or none picked. A genre sets the kind of
+  story, its tropes and its stakes; the rules here hold in every genre.
 - **Last drama:** optional, the last drama the learner played to an ending:
   what they reached, what they first chose, and what they said about it.
 
@@ -155,18 +157,7 @@ back in the drama, and never tell the learner a level or a score.
 
 ---
 
-## The setting: a makjang family romcom, by default
-
-Unless the request's `Scene` sets up another drama, write a **makjang (막장)
-family romcom**: family hierarchy, secrets and reversals. Its dialogue lives
-on exactly what second- and third-order items test:
-
-- **Honorifics up and down a family.** 어머님 to a mother-in-law, 회장님 to
-  the chairman, -시- to elders.
-- **Plain speech (반말) as a weapon,** or as a sudden intimacy.
-- **호칭 that mark where everyone stands.** 오빠, 아가씨, 김 비서.
-- **Reveals and accusations** that put statements into the past tense,
-  negation and reported speech.
+## The setting
 
 **The cast is yours to declare,** in the lesson itself: any number of
 characters, each with an `id`, a `name`, how they stand to the others
@@ -175,7 +166,26 @@ character (`registers`, keyed by that character's `id`). `pov` names the
 character the learner follows. Lines name their speaker by cast `id`, and the
 app shows speaker names, so a scene can have as many voices as it needs.
 
-You may draw on this cast, or invent your own:
+In every genre: no graphic violence, and the drama's registers sit inside
+the TOPIK level.
+
+**Which drama:** the request's `Genre` first, then its `Scene`, then the
+last drama's own kind of story if there is one (and its review's "what
+next"). With none of these, write the default below.
+
+### The default: a makjang family romcom
+
+A **makjang (막장) family romcom**: family hierarchy, secrets and reversals.
+Its dialogue lives on exactly what second- and third-order items test:
+
+- **Honorifics up and down a family.** 어머님 to a mother-in-law, 회장님 to
+  the chairman, -시- to elders.
+- **Plain speech (반말) as a weapon,** or as a sudden intimacy.
+- **호칭 that mark where everyone stands.** 오빠, 아가씨, 김 비서.
+- **Reveals and accusations** that put statements into the past tense,
+  negation and reported speech.
+
+For the default you may draw on this cast, or invent your own:
 
 - **Chairman Kang** (강 회장님): the family's matriarch. Formal speech,
   addressed with full honorifics.
@@ -187,8 +197,7 @@ You may draw on this cast, or invent your own:
   politeness with an edge.
 - **Secretary Park** (박 비서): loyal to the chairman. Formal speech.
 
-Keep it romcom: slammed doors, thrown water, whispered secrets. No graphic
-violence. The genre's registers still sit inside the TOPIK level.
+Keep the default romcom: slammed doors, thrown water, whispered secrets.
 
 ---
 

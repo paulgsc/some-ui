@@ -5,9 +5,15 @@ import { scenesOf } from "@some-ui/makjang"
 import { Button, Input, Textarea } from "@some-ui/shared"
 import { SharePrompt } from "@topik/components/topik/handheld/share-prompt"
 import { StepLayout } from "@topik/components/topik/handheld/step-layout"
+import {
+  ToggleChip,
+  toggled,
+} from "@topik/components/topik/handheld/toggle-chip"
 import type { FileShare } from "@topik/lib/topik/adapter/next-scene-share"
 import type { DramaLesson } from "@topik/lib/topik/core/drama"
-import type { TopikLevel, TreeRequest } from "@topik/lib/topik/generation"
+import type { Seed } from "@topik/lib/topik/core/feed-card"
+import { GENRES, koreanGenre } from "@topik/lib/topik/core/feed-card"
+import type { DramaRequest, TopikLevel } from "@topik/lib/topik/generation"
 import { TOPIK_LEVELS } from "@topik/lib/topik/generation"
 import type { FindingRow } from "@topik/lib/topik/generation/tree-intake"
 import {
@@ -21,7 +27,9 @@ import { Check, ClipboardCopy, Play } from "lucide-react"
 type GenerateLessonProps = {
   defaultLevel: TopikLevel
   /** The tree prompt for a request, with the learner's last drama. */
-  buildPrompt: (request: Pick<TreeRequest, "level" | "scene">) => string
+  buildPrompt: (request: DramaRequest) => string
+  /** A card's seed (`core/feed-card`), read at mount. */
+  initialSeed?: Seed
   /**
    * This prompt, exactly as handed off, reached the learner: the clipboard
    * took it, or they said they copied it from the fallback. A copy event on
@@ -90,6 +98,38 @@ const RadioRow = <T extends string | number>({
         {choice.label}
       </button>
     ))}
+  </div>
+)
+
+/**
+ * The drama's genres, as chips: the templated ones and any a card brought.
+ * None picked is the prompt's default.
+ */
+const GenrePicker = ({
+  brought,
+  picked,
+  onPick,
+}: {
+  brought: Array<string>
+  picked: Array<string>
+  onPick: (genres: Array<string>) => void
+}): JSX.Element => (
+  <div role="group" aria-label="Genre" className="flex flex-wrap gap-2">
+    {[...new Set([...GENRES.map(({ genre }) => genre), ...brought])].map(
+      (genre) => {
+        const ko = koreanGenre(genre)
+        return (
+          <ToggleChip
+            key={genre}
+            ko={ko ?? genre}
+            small={ko && genre}
+            smallLang="en"
+            picked={picked.includes(genre)}
+            onToggle={() => onPick(toggled(picked, genre))}
+          />
+        )
+      }
+    )}
   </div>
 )
 
@@ -211,9 +251,11 @@ export const GenerateLesson = ({
   short,
   kept,
   share,
+  initialSeed,
 }: GenerateLessonProps): JSX.Element => {
   const [level, setLevel] = useState<TopikLevel>(defaultLevel)
-  const [scene, setScene] = useState("")
+  const [scene, setScene] = useState(initialSeed?.scene ?? "")
+  const [genres, setGenres] = useState<Array<string>>(initialSeed?.genres ?? [])
   const [copied, setCopied] = useState<"prompt" | "fixes" | null>(null)
   // Shown when the clipboard refuses: the text, selectable by hand.
   const [manual, setManual] = useState<{
@@ -242,7 +284,7 @@ export const GenerateLesson = ({
   }
 
   const prompt = (): string =>
-    buildPrompt({ level, scene: scene.trim() || undefined })
+    buildPrompt({ level, scene: scene.trim() || undefined, genres })
   const copyPrompt = (): void => void hand(prompt(), "prompt")
 
   const stage = (
@@ -257,6 +299,11 @@ export const GenerateLesson = ({
           value={level}
           onChange={setLevel}
           className="grid-cols-6"
+        />
+        <GenrePicker
+          brought={initialSeed?.genres ?? []}
+          picked={genres}
+          onPick={setGenres}
         />
         <Input
           aria-label="Scene"

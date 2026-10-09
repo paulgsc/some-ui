@@ -38,6 +38,8 @@ export type LessonRequest = {
 }
 
 export type TreeRequest = Omit<LessonRequest, "conversations"> & {
+  /** Genres for the drama (`core/feed-card`); the default is the prompt's. */
+  genres?: Array<string>
   /** `lastDramaText` of the last session; omitted when there is none. */
   lastDrama?: string
   /**
@@ -49,6 +51,9 @@ export type TreeRequest = Omit<LessonRequest, "conversations"> & {
    */
   audience?: "learner" | "batch"
 }
+
+/** What the learner asks for: a tree request without its history. */
+export type DramaRequest = Pick<TreeRequest, "level" | "scene" | "genres">
 
 export const DEFAULT_CONVERSATIONS = 3
 
@@ -151,10 +156,12 @@ const feelingTable = (): string =>
  */
 export function buildTreePrompt(request: TreeRequest): string {
   const last = request.lastDrama?.trim()
+  const genres = request.genres ?? []
   return withRequest(
     TREE_PROMPT.replace(FEELINGS_MARKER, feelingTable()),
     request,
     [
+      `Genre: ${genres.length > 0 ? genres.join(", ") : "(none picked)"}`,
       "",
       last
         ? `Last drama:\n${last}`

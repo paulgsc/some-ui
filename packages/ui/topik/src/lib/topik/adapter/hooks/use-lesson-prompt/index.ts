@@ -12,7 +12,7 @@ import type {
   Carried,
   LastDramaStore,
 } from "@topik/lib/topik/adapter/last-drama-store"
-import type { TreeRequest } from "@topik/lib/topik/generation"
+import type { DramaRequest } from "@topik/lib/topik/generation"
 import { buildTreePrompt, lastDramaText } from "@topik/lib/topik/generation"
 
 export type LessonPrompt = {
@@ -21,7 +21,7 @@ export type LessonPrompt = {
   /** The learner moving to another level; a review never does. */
   chooseLevel: (level: number) => void
   /** The tree prompt for this request, with the last drama. */
-  prompt: (request: Pick<TreeRequest, "level" | "scene">) => string
+  prompt: (request: DramaRequest) => string
   /**
    * The prompt reached the learner - the clipboard took it, or they copied
    * it by hand - so the review's free text it carried is deleted (canon
@@ -40,7 +40,7 @@ export function useLessonPrompt(store: LastDramaStore): LessonPrompt {
   const carried = useRef(new Map<string, Carried>())
 
   const prompt = useCallback(
-    (request: Pick<TreeRequest, "level" | "scene">): string => {
+    (request: DramaRequest): string => {
       const record = store.get()
       const text = buildTreePrompt({
         ...request,

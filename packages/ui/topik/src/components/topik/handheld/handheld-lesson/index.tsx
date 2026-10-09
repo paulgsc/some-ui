@@ -54,6 +54,7 @@ import {
 import { speakerVoice } from "@topik/lib/topik/adapter/voice-port"
 import type { DramaLesson as Tree } from "@topik/lib/topik/core/drama"
 import type { DramaPointStore } from "@topik/lib/topik/core/drama-runtime"
+import type { Seed } from "@topik/lib/topik/core/feed-card"
 import { TOPIK_LEVELS } from "@topik/lib/topik/generation"
 import { ChevronLeft, Loader2, Music } from "lucide-react"
 
@@ -87,7 +88,8 @@ export const HandheldLesson = ({
   const drama = usePastedTree(held)
   const [last] = useState(() => lastDrama ?? createLastDramaStore())
   const lessonPrompt = useLessonPrompt(last)
-  const [generating, setGenerating] = useState(false)
+  // Writing one's own drama, from a card's seed or from nothing.
+  const [generating, setGenerating] = useState<{ seed?: Seed } | null>(null)
   const { speaker, shelf, treeFeed, metadataRepository, share } =
     useSessionConfig()
   const feed = useTreeFeed(treeFeed)
@@ -121,7 +123,7 @@ export const HandheldLesson = ({
   const heldLevel =
     TOPIK_LEVELS.find((level) => level === lessonPrompt.level) ?? 1
   const startTree = (tree: Tree): void => {
-    setGenerating(false)
+    setGenerating(null)
     drama.start(tree)
   }
   const leaveServed = (): void => setServedKey(null)
@@ -175,7 +177,7 @@ export const HandheldLesson = ({
             onClick={
               playing || servedKey !== null
                 ? leave
-                : (): void => setGenerating(false)
+                : (): void => setGenerating(null)
             }
             aria-label="Back to materials"
           >
@@ -274,6 +276,7 @@ export const HandheldLesson = ({
     if (generating) {
       return (
         <GenerateLesson
+          initialSeed={generating.seed}
           defaultLevel={heldLevel}
           buildPrompt={lessonPrompt.prompt}
           onPromptHandedOff={lessonPrompt.handedOff}
@@ -307,10 +310,11 @@ export const HandheldLesson = ({
         }
         dramas={dramas}
         onPlay={setServedKey}
+        onSeed={(seed) => setGenerating({ seed })}
         loading={!feed.isError && (feed.isLoading || lessons.isLoading)}
         error={feed.isError ? "Couldn't load the dramas." : null}
         onReload={() => void feed.refetch()}
-        onCreate={() => setGenerating(true)}
+        onCreate={() => setGenerating({})}
         keep={
           shelf && drama.tree ? (
             <KeepOnShelf

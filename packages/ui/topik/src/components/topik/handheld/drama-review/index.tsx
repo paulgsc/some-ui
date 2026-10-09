@@ -13,7 +13,6 @@
 
 import type { JSX } from "react"
 import { useState } from "react"
-import { cn } from "@some-ui/core-utils"
 import {
   Accordion,
   AccordionContent,
@@ -22,6 +21,10 @@ import {
   Input,
 } from "@some-ui/shared"
 import { isFeelingKey } from "@some-ui/styles/theme"
+import {
+  ToggleChip,
+  toggled,
+} from "@topik/components/topik/handheld/toggle-chip"
 import { FEELING_WORDS } from "@topik/lib/topik/core/feeling"
 import type {
   Enjoyed,
@@ -76,23 +79,14 @@ const Question = <Key extends string>({
     </legend>
     <div className="flex flex-wrap gap-2">
       {answers.map((answer) => (
-        <button
+        <ToggleChip
           key={answer.key}
-          type="button"
-          aria-pressed={answer.picked}
-          onClick={() => onPick(answer.key)}
-          className={cn(
-            "border-border flex min-h-12 flex-col items-start justify-center rounded-2xl border px-3 py-2 text-left",
-            answer.picked && "bg-primary text-primary-foreground border-primary"
-          )}
-        >
-          <span lang="ko" className="break-keep">
-            {answer.ko}
-          </span>
-          <span lang={answer.smallLang} className="text-xs opacity-75">
-            {answer.small}
-          </span>
-        </button>
+          ko={answer.ko}
+          small={answer.small}
+          smallLang={answer.smallLang}
+          picked={answer.picked}
+          onToggle={() => onPick(answer.key)}
+        />
       ))}
     </div>
   </fieldset>
@@ -168,13 +162,7 @@ export const DramaReview = ({
               smallLang: "ko",
               picked: more.includes(id),
             }))}
-            onPick={(id) =>
-              onReview({
-                more: more.includes(id)
-                  ? more.filter((kept) => kept !== id)
-                  : [...more, id],
-              })
-            }
+            onPick={(id) => onReview({ more: toggled(more, id) })}
           />
           <label className="flex flex-col gap-2">
             <span lang="ko" className="text-sm font-semibold break-keep">
