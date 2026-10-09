@@ -11,6 +11,7 @@ import {
   within,
 } from "@testing-library/react"
 import { EXERCISE_FRAMING } from "@topik/components/topik/handheld/drama-lesson/exercise-framing"
+import type { ITopikMetadataRepository } from "@topik/lib/topik"
 import { SessionConfigProvider } from "@topik/lib/topik/adapter/context/session-config-context"
 import type { PastedLessonStore } from "@topik/lib/topik/adapter/pasted-lesson"
 import {
@@ -45,6 +46,7 @@ import { HandheldLesson } from "."
 import { fixtureMetadataRepository, fixtureTopikRepository } from "./fixture"
 
 type RenderOptions = {
+  metadataRepository?: ITopikMetadataRepository
   surveyStore?: SurveyStore
   pastedStore?: PastedLessonStore
   client?: QueryClient
@@ -58,6 +60,7 @@ type RenderOptions = {
 }
 
 function renderLesson({
+  metadataRepository = fixtureMetadataRepository,
   surveyStore = createSurveyStore(memoryStorage()),
   pastedStore = createPastedLessonStore(memoryStorage()),
   client = new QueryClient({ defaultOptions: { queries: { retry: false } } }),
@@ -73,7 +76,7 @@ function renderLesson({
       <SessionConfigProvider
         value={{
           topikRepository: fixtureTopikRepository,
-          metadataRepository: fixtureMetadataRepository,
+          metadataRepository,
           speaker,
           ...(treeFeed ? { treeFeed } : {}),
         }}
@@ -252,6 +255,17 @@ describe("HandheldLesson", () => {
       expect(await screen.findByText("No dramas this week yet.")).toBeTruthy()
       expect(screen.queryByRole("region", { name: "Dramas" })).toBeNull()
       expect(screen.queryByText("Ordering at a café")).toBeNull()
+    })
+
+    it("lists the served trees when the lessons' manifest fails to load", async () => {
+      renderLesson({
+        metadataRepository: {
+          ...fixtureMetadataRepository,
+          loadCatalog: () => Promise.reject(new Error("500")),
+        },
+        treeFeed: feedOf(vi.fn()),
+      })
+      expect(await screen.findByText("Tea at the chairman's")).toBeTruthy()
     })
 
     it("says the dramas failed to load, and loads them again on request", async () => {

@@ -89,13 +89,13 @@ export const HandheldLesson = ({
   const feed = useTreeFeed(treeFeed)
   // Keys are one namespace, so a tree the lessons' manifest also lists is a
   // lesson: a server from before `?activity=` (paulgsc/server#417) answers
-  // the trees' manifest with its lessons. Those are not listed as dramas.
+  // the trees' manifest with its lessons. Those are not listed as dramas. A
+  // lessons' manifest that fails to load guards nothing, and hides nothing.
   const lessons = useTopikManifest(metadataRepository)
+  const listed = lessons.data?.topiks ?? (lessons.isError ? [] : undefined)
   const dramas =
-    feed.data && lessons.data
-      ? feed.data.filter(
-          ({ key }) => !lessons.data.topiks.some((item) => item.key === key)
-        )
+    feed.data && listed
+      ? feed.data.filter(({ key }) => !listed.some((item) => item.key === key))
       : []
   // The served tree chosen from the list, by key; its intake loads below.
   const [servedKey, setServedKey] = useState<string | null>(null)

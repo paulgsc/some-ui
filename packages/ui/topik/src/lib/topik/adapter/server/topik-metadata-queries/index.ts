@@ -30,7 +30,6 @@ export function useTopikManifest(
     queryFn: () => repository.loadCatalog(),
     staleTime: 10 * 60 * 1000, // 10 minutes
     gcTime: 30 * 60 * 1000, // 30 minutes
-    retry: 2,
     ...options,
   })
 }
