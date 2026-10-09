@@ -126,6 +126,23 @@ describe("feelingSound", () => {
     expect(speaker.say).not.toHaveBeenCalled()
   })
 
+  it("reports a cry the speech session failed to say", async () => {
+    const failures: Array<string> = []
+    detach = addFailureSink(({ port }) => failures.push(port))
+    vi.spyOn(globalThis.console, "error").mockImplementation(() => undefined)
+    const tones = fakeTones()
+    const sound = feelingSound({
+      control: on(),
+      speaker: fakeSpeaker({ kind: "failed", error: new Error("tts") }),
+      tones: tones.factory,
+    })!
+    const stung = sound.sting(request, new AbortController().signal)
+    await settle()
+    tones.end()
+    expect(await stung).toBe("unavailable")
+    expect(failures).toEqual(["speech session"])
+  })
+
   it("stops the tone, closes its context and says no cry when its signal fires", async () => {
     const tones = fakeTones()
     const speaker = fakeSpeaker()

@@ -13,8 +13,14 @@ import { describe, expect, it } from "vitest"
 
 const lesson = workedLesson()
 
-/** A port whose requests end only when the test says so. */
-function held<Request>(audible: boolean): {
+/**
+ * A port whose requests end when the test says so, or, with `resolveOnAbort`,
+ * when their signal fires, as a sting does.
+ */
+function held<Request>(
+  audible: boolean,
+  resolveOnAbort = false
+): {
   requests: Array<{ request: Request; signal: AbortSignal }>
   play: (request: Request, signal: AbortSignal) => Promise<Presented>
   audible: () => boolean
@@ -30,7 +36,12 @@ function held<Request>(audible: boolean): {
     requests,
     play: (request, signal): Promise<Presented> => {
       requests.push({ request, signal })
-      return new Promise((resolve) => ends.push(resolve))
+      return new Promise((resolve) => {
+        ends.push(resolve)
+        if (resolveOnAbort) {
+          signal.addEventListener("abort", () => resolve("cancelled"))
+        }
+      })
     },
     audible: (): boolean => audible,
     subscribe: (listener): (() => void) => {
@@ -56,7 +67,7 @@ const heldVoice = (): ReturnType<typeof held<VoiceRequest>> & VoicePort => {
 const heldSound = (
   on = true
 ): ReturnType<typeof held<StingRequest>> & SoundPort => {
-  const port = held<StingRequest>(on)
+  const port = held<StingRequest>(on, true)
   return { ...port, sting: port.play }
 }
 
@@ -247,7 +258,7 @@ describe("DramaRuntime", () => {
       ])
     })
 
-    it("is cut off by a replay, by sound turned off, and by leaving", () => {
+    it("is cut off by a replay, by sound turned off, and by leaving", async () => {
       const voice = heldVoice()
       const sound = heldSound()
       const runtime = runtimeOf({ voice, sound })
@@ -264,6 +275,9 @@ describe("DramaRuntime", () => {
       runtime.dispatch({ type: "choose", option: "b" })
       sound.turn(false)
       expect(sound.requests[1]?.signal.aborted).toBe(true)
+      // The line that waited for it is said.
+      for (let tick = 0; tick < 4; tick += 1) await Promise.resolve()
+      expect(beats(voice).at(-1)).toBe("s3-l1")
 
       sound.turn(true)
       runtime.dispatch({ type: "advance" })

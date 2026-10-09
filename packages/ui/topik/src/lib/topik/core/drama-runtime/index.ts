@@ -23,7 +23,8 @@
  * line, which waits for it, when sound is turned on, or when the line then
  * playing ends. The learner's own replay cuts it off, so it never sounds over
  * a line. A lesson resumed at a choice or its end has no line coming, so its
- * sting waits there for sound to be turned on or a line to be replayed.
+ * sting waits there until sound is turned on, a line is replayed, or the
+ * learner steps back to a line.
  */
 
 import { assertNever } from "@some-ui/core-utils"

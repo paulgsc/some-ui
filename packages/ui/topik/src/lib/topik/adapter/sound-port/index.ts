@@ -253,6 +253,7 @@ function playTone(
       stopped.addEventListener("abort", close, { once: true })
       try {
         if (context.state === "suspended") await context.resume()
+        if (stopped.aborted) return
         await schedule(context, tone, stopped)
       } finally {
         close()
@@ -268,7 +269,7 @@ function playTone(
 
 export type FeelingSoundOptions = {
   control: SoundControl
-  /** The page's speech session; without one, a sting is its tone alone. */
+  /** The page's speech session; without one, or without a Korean voice, a sting is its tone alone. */
   speaker: Speaker | null
   /** Defaults to the browser's `AudioContext`. */
   tones?: ToneContextFactory | null

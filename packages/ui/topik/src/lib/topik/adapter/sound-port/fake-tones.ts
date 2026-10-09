@@ -33,26 +33,26 @@ export function fakeTones(options: { fail?: Error; resume?: "never" } = {}): {
     exponentialRampToValueAtTime: (): void => undefined,
   }
   const source = (kind: FakeSource["kind"]): FakeSource => {
-    const made: FakeSource & Record<string, unknown> = {
+    const node: FakeSource & Record<string, unknown> = {
       kind,
       started: false,
       stopped: false,
       onended: null,
       connect,
       start: (): void => {
-        made.started = true
+        node.started = true
       },
       stop: (): void => {
-        made.stopped = true
+        node.stopped = true
       },
       frequency: {
         setValueAtTime: (hz: number): void => {
-          made.hz = hz
+          node.hz = hz
         },
       },
     }
-    sources.push(made)
-    return made
+    sources.push(node)
+    return node
   }
   const context = {
     state: "suspended",
@@ -86,7 +86,7 @@ export function fakeTones(options: { fail?: Error; resume?: "never" } = {}): {
     sources,
     closed: (): number => closed,
     end: (): void => {
-      for (const made of sources) made.onended?.()
+      for (const node of sources) node.onended?.()
     },
   }
 }
