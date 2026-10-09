@@ -326,7 +326,8 @@ describe("DramaRuntime", () => {
         lessonId: lesson.id,
         tries: [{ chosen: "네, 감사합니다. 주시면 마실게요.", answered: true }],
       })
-      expect(runtime.getSnapshot().last).toEqual(last.get())
+      // The stored object itself, so the store's later notices find nothing new.
+      expect(runtime.getSnapshot().last).toBe(last.get())
 
       runtime.review({ enjoyed: "loved" })
       expect(last.get()?.review).toEqual({ enjoyed: "loved" })
@@ -363,6 +364,24 @@ describe("DramaRuntime", () => {
         scenes: [{ id: "s1" }, { id: "s2" }, { id: "s6" }],
         review: { enjoyed: "loved" },
       })
+    })
+
+    it("follows the store while connected, for this drama's record only", () => {
+      const storage = memoryStorage()
+      const last = createLastDramaStore(storage)
+      const runtime = runtimeOf({ last })
+      playTo(runtime, "a")
+      const mine = runtime.getSnapshot().last
+      // A change made before it connects shows once it does.
+      last.save({ ...mine!, review: { korean: "easier" } })
+      runtime.connect()
+      expect(runtime.getSnapshot().last?.review).toEqual({ korean: "easier" })
+      // Another drama's record changes nothing.
+      last.save({ ...mine!, lessonId: "another" })
+      expect(runtime.getSnapshot().last?.review).toEqual({ korean: "easier" })
+      // This drama's, changed elsewhere (a share forgot its free text), shows.
+      last.save({ ...mine!, review: { enjoyed: "fine" } })
+      expect(runtime.getSnapshot().last?.review).toEqual({ enjoyed: "fine" })
     })
 
     it("leaves a record another tab wrote since for another drama", () => {

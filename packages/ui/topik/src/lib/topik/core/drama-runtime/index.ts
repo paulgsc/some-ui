@@ -58,6 +58,8 @@ export type DramaPointStore = {
 export type LastDramaPort = {
   get(): LastDrama | null
   save(record: LastDrama): void
+  /** Told when the record may have changed: a share or another tab. */
+  subscribe(listener: () => void): () => void
 }
 
 export type DramaPorts = MediaPorts & {
@@ -118,8 +120,9 @@ export class DramaRuntime {
       const { drama } = moved.session
       let { last } = this.snapshot
       if (drama.at.kind === "end" && was !== "end") {
-        last = lastDramaOf(this.lesson, drama, this.current(), Date.now())
-        this.ports.last.save(last)
+        last = this.keep(
+          lastDramaOf(this.lesson, drama, this.current(), Date.now())
+        )
       }
       this.publish({ ...this.snapshot, session: moved.session, last })
     }
@@ -134,10 +137,11 @@ export class DramaRuntime {
     const stored = this.ports.last.get()
     const next = withReview(this.current() ?? last, change, Date.now())
     // Another drama's record, written by another tab since, is newer.
-    if (stored === null || isRecordOf(stored, this.lesson)) {
-      this.ports.last.save(next)
-    }
-    this.publish({ ...this.snapshot, last: next })
+    const kept =
+      stored === null || isRecordOf(stored, this.lesson)
+        ? this.keep(next)
+        : next
+    this.publish({ ...this.snapshot, last: kept })
   }
 
   /**
@@ -148,6 +152,18 @@ export class DramaRuntime {
   private current(): LastDrama | null {
     const stored = this.ports.last.get()
     return isRecordOf(stored, this.lesson) ? stored : this.snapshot.last
+  }
+
+  /**
+   * Saves `record`, and answers the stored object when this save took, so a
+   * later notice finds nothing new; else `record`, held here only.
+   */
+  private keep(record: LastDrama): LastDrama {
+    this.ports.last.save(record)
+    const stored = this.ports.last.get()
+    return isRecordOf(stored, this.lesson) && stored.at === record.at
+      ? stored
+      : record
   }
 
   /** The learner's replay: it cuts in on whatever is playing. */
@@ -198,9 +214,19 @@ export class DramaRuntime {
       }
     }
     const unsubscribeSound = sound?.subscribe(followSound)
+    // A prompt handed off, or another tab, can change this drama's record.
+    const followLast = (): void => {
+      const stored = this.ports.last.get()
+      if (isRecordOf(stored, this.lesson) && stored !== this.snapshot.last) {
+        this.publish({ ...this.snapshot, last: stored })
+      }
+    }
+    const unsubscribeLast = this.ports.last.subscribe(followLast)
+    followLast()
     return () => {
       unsubscribe?.()
       unsubscribeSound?.()
+      unsubscribeLast()
       this.armed = false
       this.owed = null
       this.stop()

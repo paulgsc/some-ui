@@ -202,6 +202,7 @@ function dramaStage(
           last={{
             get: () => lastDramaOf(fitTree, point, null, Date.now()),
             save: noop,
+            subscribe: () => noop,
           }}
           short={short}
           onLeave={noop}

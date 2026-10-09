@@ -83,3 +83,4 @@ export { QuizPanel } from "./components/topik/quiz-panel"
  */
 export { DramaLesson } from "./components/topik/handheld/drama-lesson"
 export { lastDramaOf } from "./lib/topik/core/last-drama"
+export type { FileShare } from "./lib/topik/adapter/next-scene-share"

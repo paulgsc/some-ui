@@ -712,6 +712,47 @@ Its rules:
 Remark 4.14 (v1.14), which amends Remark 4.13's "nothing crosses units",
 with a §10 row for MKJ-S6 and MKJ-S7.
 
+## The loop through the learner's drive
+
+The main path is a drama the learner creates: their own model writes it from
+the tree prompt, and it plays on their device. Inside the Android app the
+prompt can travel as a file, so the learner's drive can carry the loop and
+their own agent can answer it unattended. We run no agent and no server for
+it; the only contract is the files. Its canon line is Remark 8.3 (v1.15).
+
+### Sharing the next scene (MKJ-S8)
+
+- **What leaves:** one file, `drama-<stamp>.prompt.md` (the stamp is the
+  moment it was shared, in UTC to the millisecond: `20261009T071503120Z`). It is the tree prompt with the
+  last drama folded into its request ("The last session, and its review"),
+  under a one-paragraph note for an agent. Nothing else: no raw record, no
+  telemetry.
+- **Where it is offered:** at a drama's ending, after the review, and beside
+  "Copy the prompt" when the learner starts a new drama. It never stands in
+  front of "Play it again".
+- **How:** Android's share sheet, through the host's `FileShare` port, the
+  same mechanism soundbites' "Share with an agent" uses. Only the Android app
+  injects it; elsewhere the prompt is copied.
+  Backing out of the sheet is not a failure. A build without the plugin
+  withdraws the button.
+- **Free text:** a prompt the learner sent is handed off, so the review's
+  free text it carried is deleted (Rem. 7.4), as after a copy. The shared
+  file itself stays in the app's cache until the next share replaces it:
+  the app the learner picked may still be reading it when the sheet closes.
+
+### The file contract
+
+The note at the top of every export says: write the drama the prompt asks
+for as one JSON file next to this one, named `drama-<stamp>.json` (the
+export's name with `.prompt.md` replaced by `.json`), holding the bare JSON
+with no code fence.
+So the learner's one-time agent setup is generic. The routine to give an
+agent connected to the drive's folder (a Claude Cowork routine with a Drive
+connector, say):
+
+> Watch this folder. For each `drama-*.prompt.md` that has no matching
+> `drama-*.json`, follow it, and write that JSON file next to it.
+
 ## Where it lives
 
 - **`@some-ui/makjang`** (new, framework-agnostic: no React): the story schema,
@@ -779,6 +820,9 @@ Neither needs a better model than exists today.
   drama played to an ending, and offers a review at the ending; both steer
   the next prompt (see "The last session, and its review"). The survey's
   store goes.
+- **MKJ-S8: sharing the next scene.** The prompt, carrying the last drama,
+  goes to the learner's drive as one file (see "The loop through the
+  learner's drive").
 - **Later.** Media capabilities (per-character voices, generated art in a
   fixed style, portraits, video beats) each add assets and a renderer
   capability, plus a canon line, and change neither the story schema nor the

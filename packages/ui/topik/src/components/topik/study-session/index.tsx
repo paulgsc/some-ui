@@ -37,6 +37,7 @@ import {
   isShort,
   useElementBox,
 } from "@topik/lib/topik/adapter/hooks/use-surface"
+import type { FileShare } from "@topik/lib/topik/adapter/next-scene-share"
 import { createTreeFeed } from "@topik/lib/topik/adapter/tree-feed"
 
 /** Where the manifest lives when a host doesn't say otherwise. */
@@ -76,6 +77,8 @@ export type KoreanStudyPageProps = {
    * session on a build with a `file_host`. Absent, nothing offers to keep.
    */
   shelf?: ShelfPort
+  /** The Android app's share sheet (`FileShare`); absent, none is offered. */
+  share?: FileShare
   /**
    * Art direction. `inherit` — the default — renders in whatever theme the
    * host established, so the user's session theme reaches the applet.
@@ -180,6 +183,7 @@ export const KoreanStudyPage = ({
   loadTopik,
   loadTreeManifest,
   shelf,
+  share,
   appearance = "inherit",
   surface = "auto",
 }: KoreanStudyPageProps = {}): JSX.Element => {
@@ -207,6 +211,7 @@ export const KoreanStudyPage = ({
         createTopikMetadataRepository(loadManifest ?? manifestUrl),
       speaker,
       ...(shelf ? { shelf } : {}),
+      ...(share ? { share } : {}),
       ...(loadTreeManifest && loadTopik
         ? { treeFeed: createTreeFeed(loadTreeManifest, loadTopik) }
         : {}),
@@ -220,6 +225,7 @@ export const KoreanStudyPage = ({
       loadTreeManifest,
       speaker,
       shelf,
+      share,
     ]
   )
 

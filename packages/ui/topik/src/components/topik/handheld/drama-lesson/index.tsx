@@ -42,6 +42,8 @@ type DramaLessonProps = {
   sound: SoundPort | null
   points: DramaPointStore
   last: LastDramaPort
+  /** Shown at an ending, after the review: the next scene's way out. */
+  ending?: JSX.Element
   short: boolean
   onLeave: () => void
 }
@@ -52,6 +54,7 @@ export const DramaLesson = ({
   sound,
   points,
   last,
+  ending,
   short,
   onLeave,
 }: DramaLessonProps): JSX.Element => {
@@ -115,6 +118,7 @@ export const DramaLesson = ({
       {at.kind === "end" && record && (
         <DramaReview record={record} onReview={review} />
       )}
+      {at.kind === "end" && ending}
       <div ref={end} />
     </div>
   )

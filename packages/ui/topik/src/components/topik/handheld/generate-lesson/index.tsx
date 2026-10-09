@@ -3,7 +3,9 @@ import { useState } from "react"
 import { cn } from "@some-ui/core-utils"
 import { scenesOf } from "@some-ui/makjang"
 import { Button, Input, Textarea } from "@some-ui/shared"
+import { SharePrompt } from "@topik/components/topik/handheld/share-prompt"
 import { StepLayout } from "@topik/components/topik/handheld/step-layout"
+import type { FileShare } from "@topik/lib/topik/adapter/next-scene-share"
 import type { DramaLesson } from "@topik/lib/topik/core/drama"
 import type { TopikLevel, TreeRequest } from "@topik/lib/topik/generation"
 import { TOPIK_LEVELS } from "@topik/lib/topik/generation"
@@ -37,6 +39,7 @@ type GenerateLessonProps = {
    * their own.
    */
   kept?: JSX.Element
+  share?: FileShare
 }
 
 /** Findings shown before "and N more". */
@@ -207,6 +210,7 @@ export const GenerateLesson = ({
   onStartTree,
   short,
   kept,
+  share,
 }: GenerateLessonProps): JSX.Element => {
   const [level, setLevel] = useState<TopikLevel>(defaultLevel)
   const [scene, setScene] = useState("")
@@ -237,11 +241,9 @@ export const GenerateLesson = ({
     setCopied("prompt")
   }
 
-  const copyPrompt = (): void =>
-    void hand(
-      buildPrompt({ level, scene: scene.trim() || undefined }),
-      "prompt"
-    )
+  const prompt = (): string =>
+    buildPrompt({ level, scene: scene.trim() || undefined })
+  const copyPrompt = (): void => void hand(prompt(), "prompt")
 
   const stage = (
     <div data-slot="topik-generate" className="flex w-full flex-col gap-5">
@@ -268,6 +270,13 @@ export const GenerateLesson = ({
           Paste it into any model, then paste its reply below. The lesson lasts
           this session; your chat with the model keeps it.
         </p>
+        {share && (
+          <SharePrompt
+            share={share}
+            prompt={prompt}
+            onShared={(text) => onPromptHandedOff?.(text)}
+          />
+        )}
         {manual !== null && (
           <>
             <Textarea

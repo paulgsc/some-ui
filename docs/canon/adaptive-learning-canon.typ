@@ -80,7 +80,7 @@
     skill
   ]
   #v(1em)
-  #text(size: 9.5pt)[Version 1.14 --- 2026-10-09]
+  #text(size: 9.5pt)[Version 1.15 --- 2026-10-09]
   #v(2cm)
 ]
 
@@ -2867,6 +2867,26 @@ estimating a cost.
   and not merely the present state.
 ]
 
+#remark("8.3", name: "The share sheet, and a file picked back")[
+  Corollary 8.3's "through the learner's clipboard only" is amended on the
+  handheld surface inside its Android app: the prompt may also leave as one
+  file the application writes to its own cache and hands to the platform's
+  share sheet, and a unit may come back as a file the learner picks through
+  the platform's file picker. Both are the learner's own act, per use, like a
+  copy and a paste. The application chooses no destination, learns nothing
+  of where the file went, holds no credential for it, and calls no model, so
+  Proposition 8.4 and Remark 7.3 are unchanged. The file holds exactly what a
+  copy would (the prompt, with Remark 4.14's record), plus a note telling
+  whatever reads it what to write and under which name, so that a learner's
+  own agent watching their storage can answer it unattended; that agent is
+  learner-side authoring (Def. 8.3), and what it writes is read back through
+  the same audits as a paste (Rem. 4.7). A file the learner sent is a prompt
+  handed off, so Remark 7.4's deletion of carried free text applies to it; a
+  share the learner backed out of is not. The file itself stays in the
+  application's cache until the next share replaces it, since the receiving
+  app may still be reading it when the sheet closes.
+]
+
 // ═══════════════════════════════════════════════════════════════════════════
 = The Renderer
 // ═══════════════════════════════════════════════════════════════════════════
@@ -3683,6 +3703,12 @@ phone). Motivated by the code: `packages/ui/topik` retired the survey's
 store, which nothing wrote after MKJ-S5, and its `core/last-drama` and
 `adapter/last-drama-store` implement the record. Moves the front-matter
 version line.
+
+*v1.15 --- 2026-10-09.* Admits the platform's share sheet and file picker
+beside the clipboard on the handheld surface's Android app, as a new item
+(Remark 8.3) amending Corollary 8.3's "clipboard only". Filed with the share
+(MKJ-S8) and ahead of the picker (MKJ-S10). Moves the front-matter version
+line.
 
 #pagebreak()
 
