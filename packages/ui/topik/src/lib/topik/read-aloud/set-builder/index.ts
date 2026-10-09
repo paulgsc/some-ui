@@ -9,11 +9,11 @@
  * particular, a word's pace factor is pacing and nothing more (Cor. 4.6
  * (iii)), and no word is drawn more often for having been reported stuck.
  *
- * Everything here is deterministic in its seed key, like the tile board's
- * shuffle: a set can always be rebuilt from its key.
+ * Everything here is deterministic in its seed key, like the drama's option
+ * order: a set can always be rebuilt from its key.
  */
 
-import { seededShuffle } from "@topik/lib/topik/core/tile-assembly"
+import { seededShuffle } from "@topik/lib/topik/core/seeded-shuffle"
 import type {
   ReadAloudDeck,
   ReadAloudLevel,

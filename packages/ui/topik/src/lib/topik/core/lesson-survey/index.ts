@@ -29,8 +29,6 @@ export type SurveyItem = {
   probeId: string
   source?: string
   prompt?: string
-  /** The relations the probe exercises (`probeRelations`), normalized. */
-  relations?: Array<string>
 }
 
 type LessonSurvey = {

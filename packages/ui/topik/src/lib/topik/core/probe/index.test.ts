@@ -1,10 +1,7 @@
-import type { Message, ProbeOption } from "@topik/lib/topik"
+import type { Probe, ProbeOption } from "@topik/lib/topik"
 import { describe, expect, it } from "vitest"
 
-import type { ChoiceProbe } from "."
 import {
-  acceptedForms,
-  anchorOf,
   isCorrectChoice,
   orderedOptions,
   relationLabel,
@@ -17,7 +14,7 @@ const option = (
   relation: ProbeOption["relation"] = "past"
 ): ProbeOption => ({ text, valid, relation, why: "" })
 
-const odd: ChoiceProbe = {
+const odd: Probe = {
   id: "o",
   kind: "odd-one-out",
   order: 2,
@@ -37,7 +34,7 @@ describe("probe grading", () => {
   })
 
   it("answers a pick-valid with its one valid candidate", () => {
-    const pick: ChoiceProbe = {
+    const pick: Probe = {
       ...odd,
       kind: "pick-valid",
       options: [option("a", true), option("b", false)],
@@ -70,50 +67,5 @@ describe("probe presentation", () => {
     expect(relationLabel("Reason: -아서 → -(으)니까")).toBe(
       "Reason: -아서 → -(으)니까"
     )
-  })
-
-  it("lists a build probe's accepted forms, target first, without repeats", () => {
-    expect(
-      acceptedForms({
-        id: "b",
-        kind: "build",
-        order: 2,
-        prompt: "",
-        relation: "negation",
-        target: "포장하지 마세요",
-        acceptedAnswers: ["포장하지 마세요", "포장하지 마세요."],
-      })
-    ).toEqual(["포장하지 마세요", "포장하지 마세요."])
-  })
-})
-
-describe("anchorOf", () => {
-  const message = (id: string, korean: string): Message => ({
-    id,
-    role: "assistant",
-    content: korean,
-    timestamp: "00:00",
-    korean,
-    english: `gloss of ${id}`,
-  })
-  const messages = [
-    message("m1", "안녕하세요, 저는 민수예요."),
-    message("m2", "오늘 날씨가 정말 좋네요."),
-    message("m3", "같이 산책할까요?"),
-  ]
-
-  it("prefers a declared anchor, then containment, then the last line", () => {
-    expect(anchorOf({ anchorMessageId: "m1" }, messages)).toBe(0)
-    expect(anchorOf({ excerpt: "날씨가 정말 좋네요" }, messages)).toBe(1)
-    expect(anchorOf({ excerpt: "unrelated" }, messages)).toBe(2)
-  })
-
-  it("ignores a declared anchor that no longer resolves", () => {
-    expect(
-      anchorOf(
-        { anchorMessageId: "gone", excerpt: "같이 산책할까요" },
-        messages
-      )
-    ).toBe(2)
   })
 })

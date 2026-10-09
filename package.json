@@ -42,7 +42,6 @@
     "check:test-layout": "node --no-warnings scripts/check-test-layout.ts",
     "report:vestiges": "node --no-warnings scripts/report-vestiges.ts",
     "loc:snapshot": "node --no-warnings scripts/loc-snapshot.ts",
-    "check:topik-probes": "tsx --tsconfig packages/ui/topik/tsconfig.json scripts/check-topik-probes.ts",
     "check:ui-manifests": "tsx scripts/check-ui-manifests.ts",
     "check:workflows": "node --no-warnings scripts/check-workflows.ts",
     "dump:activity-catalog": "tsx scripts/dump-activity-catalog.ts",

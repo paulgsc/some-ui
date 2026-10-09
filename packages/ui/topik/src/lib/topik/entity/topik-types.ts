@@ -38,12 +38,6 @@ export type Question = {
   correctAnswer: string
   explanation: string
   grammarNote?: string
-  /**
-   * The id of the message this question is about. Optional, authoring-time
-   * (adaptive-learning canon Prop. 8.1); `anchorOf` derives one when content
-   * declares none (Cor. 4.4 (ii)). The desktop quiz ignores it.
-   */
-  anchorMessageId?: string
 }
 
 const QuestionSchema = z.object({
@@ -56,10 +50,9 @@ const QuestionSchema = z.object({
   correctAnswer: z.string(),
   explanation: z.string(),
   grammarNote: z.string().optional(),
-  anchorMessageId: z.string().optional(),
 })
 
-// MORPHISM PROBES
+// MORPHISM PROBES: a scene tree's choices
 
 /**
  * How a candidate relates to the utterance it is judged against
@@ -77,10 +70,9 @@ export const GLOSS_RELATION = "gloss"
 
 export type ProbeOption = {
   /**
-   * Stable identity (Thm. 1.1). Optional, because a conversation file's
-   * candidates are positional; required of a scene tree's choice, where an
-   * option names the candidate it shows by this id
-   * (`core/tree-audit`, docs/makjang/README.md "1. Story").
+   * Stable identity (Thm. 1.1): an option names the candidate it shows by
+   * this id. Optional here so that `core/tree-audit` can say which candidate
+   * lacks one (docs/makjang/README.md "1. Story").
    */
   id?: string
   /** The candidate: an utterance, or a situation/meaning described in prose. */
@@ -106,9 +98,9 @@ type ProbeBase = {
   id: string
   /** 2 = structure (tense, negation, ...), 3 = use (reply, register, ...). */
   order: 2 | 3
-  /** The line this probe is about. */
+  /** Ignored: a choice is asked at its scene's end (`core/tree-audit` warns). */
   anchorMessageId?: string
-  /** The utterance under test; defaults to the anchor line's Korean. */
+  /** The utterance under test. */
   source?: string
   prompt: string
   explanation?: string
@@ -124,15 +116,6 @@ export type Probe =
       /** "Which reply fits?" - exactly one valid. */
       kind: "pick-valid"
       options: Array<ProbeOption>
-    })
-  | (ProbeBase & {
-      /** "Make it negative" - built from tiles (canon Def. 4.5). */
-      kind: "build"
-      relation: MorphismRelation
-      target: string
-      acceptedAnswers?: Array<string>
-      /** Plausible wrong pieces for the tile board, authored. */
-      distractors?: Array<string>
     })
 
 const ProbeOptionSchema = z.object({
@@ -176,28 +159,7 @@ export const ProbeSchema = z.discriminatedUnion("kind", [
     .refine((p) => countValid(p.options) === 1, {
       message: "a pick-valid probe has exactly one valid option",
     }),
-  z.object({
-    ...probeBase,
-    kind: z.literal("build"),
-    relation: z.string().trim().min(1),
-    target: z.string().min(1),
-    acceptedAnswers: z.array(z.string()).optional(),
-    distractors: z.array(z.string()).optional(),
-  }),
 ])
-
-/**
- * Probes parsed one at a time: a malformed probe is dropped, not the topik
- * that carries it (canon Rem. 4.7, Thm. 8.2). Content authored before probes
- * existed simply has none.
- */
-const ProbesSchema = z.array(z.unknown()).transform(
-  (raw): Array<Probe> =>
-    raw.flatMap((candidate) => {
-      const parsed = ProbeSchema.safeParse(candidate)
-      return parsed.success ? [parsed.data] : []
-    })
-)
 
 // BATCH TYPES
 
@@ -206,15 +168,13 @@ export type ConversationBatch = {
   messages: Array<Message>
   /** First-order items; the desktop quiz. */
   questions: Array<Question>
-  /** Second- and third-order items: morphism probes (Def. 4.6). */
-  probes?: Array<Probe>
 }
 
+/** A file written while conversations still carried `probes` loads without them. */
 const ConversationBatchSchema = z.object({
   id: z.number(),
   messages: z.array(MessageSchema),
   questions: z.array(QuestionSchema),
-  probes: ProbesSchema.optional(),
 })
 
 // FILE SCHEMA

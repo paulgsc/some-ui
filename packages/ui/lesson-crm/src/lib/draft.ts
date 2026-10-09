@@ -1,17 +1,14 @@
 /**
  * From what the operator pasted to what the server stores.
  *
- * A served lesson goes through the same intake as a pasted one
- * (`intakeLesson`, `@some-ui/topik`): the schema, the probe audit, errors
- * withheld, counts recounted and `relation:` tags derived from the probes
- * (canon Rem. 3.5). The server checks none of that - it stores the body
- * verbatim - so this is the only place a served lesson is held to it.
+ * A served conversation lesson goes through `intakeLesson`
+ * (`@some-ui/topik`): the schema, ids that repeat, counts recounted. The
+ * server checks none of that - it stores the body verbatim - so this is the
+ * only place a served lesson is held to it.
  *
- * What is stored is the lesson **as it plays**: the batches with every
- * erroring probe withheld, serialised one fixed way. A learner is never
- * served a probe the audit rejected, and saving an unchanged lesson again
- * produces identical bytes, which the server reports as `unchanged` rather
- * than as new material.
+ * What is stored is the lesson as the schema reads it, serialised one fixed
+ * way: saving an unchanged lesson again produces identical bytes, which the
+ * server reports as `unchanged` rather than as new material.
  *
  * A scene tree goes through `intakeTree` instead, both audits, and is stored
  * the same way: the tree as it plays, every choice an error names pruned to
@@ -29,7 +26,6 @@ import type {
 import {
   intakeLesson,
   intakeTree,
-  RELATION_TAG_PREFIX,
   TREE_ACTIVITY,
   treeEntry,
 } from "@some-ui/topik"
@@ -44,7 +40,6 @@ export type LessonForm = {
   key: string
   displayName: string
   description: string
-  /** Authored tags only (`topik-3`, `makjang`); `relation:` ones are derived. */
   tags: Array<string>
   difficulty?: TopikMetadata["difficulty"]
 }
@@ -81,16 +76,13 @@ export function keyProblem(key: string): string | null {
   return null
 }
 
-const authoredTags = (tags: Array<string> = []): Array<string> =>
-  tags.filter((tag) => !tag.startsWith(RELATION_TAG_PREFIX))
-
 /** Comma- or space-separated tags, as typed. */
 export const parseTags = (typed: string): Array<string> => [
   ...new Set(
     typed
       .split(/[,\s]+/)
       .map((tag) => tag.trim())
-      .filter((tag) => tag !== "" && !tag.startsWith(RELATION_TAG_PREFIX))
+      .filter((tag) => tag !== "")
   ),
 ]
 
@@ -100,7 +92,7 @@ export function formFromLesson(lesson: OperatorLesson): LessonForm {
     key: lesson.key,
     displayName: lesson.displayName,
     description: lesson.description,
-    tags: authoredTags(lesson.tags),
+    tags: lesson.tags ?? [],
     ...(lesson.difficulty ? { difficulty: lesson.difficulty } : {}),
   }
 }
@@ -127,7 +119,7 @@ export function fillForm(form: LessonForm, text: string): LessonForm {
     key: form.key || suggested,
     displayName: form.displayName || intake.meta.displayName,
     description: form.description || intake.meta.description,
-    tags: form.tags.length > 0 ? form.tags : authoredTags(intake.meta.tags),
+    tags: form.tags.length > 0 ? form.tags : (intake.meta.tags ?? []),
     ...((form.difficulty ?? intake.meta.difficulty)
       ? { difficulty: form.difficulty ?? intake.meta.difficulty }
       : {}),

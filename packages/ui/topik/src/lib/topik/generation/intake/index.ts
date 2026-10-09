@@ -1,29 +1,17 @@
 /**
- * Taking a lesson back from the learner's model.
- *
- * The learner pastes whatever their model replied - fenced JSON blocks, bare
- * JSON, prose around it. This finds the lesson in it, holds it to the schema,
- * and runs the same audit `check:topik-probes` runs (`core/probe-audit`), in
- * the browser: the app that gave the model its grammar is the thing that
- * checks the answer (adaptive-learning canon v1.7). Nothing is sent anywhere.
+ * Taking a conversation lesson back from a model: the operator's lesson CRM
+ * pastes whatever the model replied - fenced JSON blocks, bare JSON, prose
+ * around it. This finds the lesson in it and holds it to the schema. Nothing
+ * is sent anywhere.
  *
  * Counts in the manifest entry are recomputed from the conversations rather
  * than trusted: a model that miscounts should not be able to mislabel a
- * lesson. So are its `relation:` tags, which selection reads (canon
- * Rem. 3.5): they come from the probes, whatever the model wrote. The
- * operator's weekly batch goes through this same intake, so served entries
- * carry derived tags too.
+ * lesson.
  */
 
 import type { ConversationBatch, TopikMetadata } from "@topik/lib/topik"
 import { TopikFileSchema } from "@topik/lib/topik"
-import {
-  RELATION_TAG_PREFIX,
-  relationTags,
-  topikLevelOf,
-} from "@topik/lib/topik/core/lesson-selection"
-import type { ProbeFinding } from "@topik/lib/topik/core/probe-audit"
-import { auditTopikFile } from "@topik/lib/topik/core/probe-audit"
+import { topikLevelOf } from "@topik/lib/topik/core/lesson-selection"
 
 export { topikLevelOf }
 
@@ -34,10 +22,7 @@ export type Intake =
   | {
       ok: true
       meta: TopikMetadata
-      /** The lesson as it will play: every probe an error names is withheld. */
       batches: Array<ConversationBatch>
-      /** Probe-level findings: the lesson plays, minus what they name. */
-      findings: Array<ProbeFinding>
     }
   | { ok: false; error: string }
 
@@ -121,8 +106,7 @@ export const DIFFICULTY_BY_LEVEL: Record<number, TopikMetadata["difficulty"]> =
  * `entry`, when given, stands in for any manifest entry in the reply. The
  * operator's lesson CRM keeps the entry in a form, and a lesson file it reads
  * back from the server carries none; its authored tags (`topik-3`) must
- * survive an edit all the same. Counts and `relation:` tags are derived
- * either way.
+ * survive an edit all the same. Counts are derived either way.
  */
 export function intakeLesson(
   reply: string,
@@ -150,35 +134,17 @@ export function intakeLesson(
   if (parsed.data.length === 0) {
     return { ok: false, error: "The lesson has no conversations." }
   }
-  // The audit reads the raw value: the schema already dropped malformed
-  // probes from `parsed.data`, and the point is to say which.
-  const audit = auditTopikFile(raw)
-  // An error about no one probe is about the lesson's structure - a
-  // conversation or line id used twice - and no probe can be withheld to
-  // mend it: the lesson is sent back instead.
-  const structural = audit.find(
-    (finding) => finding.severity === "error" && finding.probe === null
-  )
-  if (structural) {
-    return {
-      ok: false,
-      error: `The lesson can't be played: ${structural.batch === null ? "" : `conversation ${structural.batch}: `}${structural.message}.`,
-    }
+  const batches = parsed.data
+  const repeated = repeatedId(batches)
+  if (repeated !== undefined) {
+    return { ok: false, error: `The lesson can't be played: ${repeated}.` }
   }
-  const findings = audit.filter((finding) => finding.batch !== null)
-  // What plays. Everything below - tags included - describes this, so a
-  // withheld probe's relation is never advertised to selection.
-  const batches = withholdErrors(parsed.data, findings)
 
   const given = entry ?? values.find(isRecord) ?? {}
   const displayName = text(given.displayName) ?? "Untitled lesson"
-  const authored = Array.isArray(given.tags)
-    ? given.tags.filter(
-        (tag): tag is string =>
-          typeof tag === "string" && !tag.startsWith(RELATION_TAG_PREFIX)
-      )
+  const tags = Array.isArray(given.tags)
+    ? given.tags.filter((tag): tag is string => typeof tag === "string")
     : []
-  const tags = [...authored, ...relationTags(batches)]
   const level = topikLevelOf(tags)
   const difficulty =
     (level ? DIFFICULTY_BY_LEVEL[level] : undefined) ??
@@ -205,61 +171,28 @@ export function intakeLesson(
     ...(tags.length > 0 ? { tags } : {}),
   }
 
-  return { ok: true, meta, batches, findings }
+  return { ok: true, meta, batches }
 }
 
 /**
- * The lesson minus every probe an error names. The schema lets through
- * probes that are well-formed but wrong - a keyed gloss, a blank reason, a
- * build that asks for its own source - and the audit only reports them, so
- * without this a pasted lesson would ask exactly what it was told it would
- * not. Warnings are authoring judgement and stay.
+ * The first conversation or line id used twice, said as the operator reads
+ * it. They are identities, not labels: the desktop session keys its
+ * conversations and the lines it speaks by them.
  */
-function withholdErrors(
-  batches: Array<ConversationBatch>,
-  findings: Array<ProbeFinding>
-): Array<ConversationBatch> {
-  // By position among the probes that loaded, not by id: when two probes
-  // share an id only the later is in error, and the first still plays.
-  // A probe that did not load has no position, and is gone.
-  const withheld = new Set(
-    findings.flatMap((finding) =>
-      finding.severity === "error" &&
-      finding.batch !== null &&
-      finding.index !== undefined
-        ? [`${finding.batch}:${finding.index}`]
-        : []
-    )
-  )
-  if (withheld.size === 0) return batches
-  return batches.map((batch) =>
-    batch.probes
-      ? {
-          ...batch,
-          probes: batch.probes.filter(
-            (_probe, index) => !withheld.has(`${batch.id}:${index}`)
-          ),
-        }
-      : batch
-  )
-}
-
-/**
- * The findings, as a message the learner sends back to their model: the loop
- * that fixes a lesson runs between the learner and their model, not through
- * us.
- */
-export function fixRequest(findings: Array<ProbeFinding>): string {
-  const lines = findings.map(
-    (finding) =>
-      `- ${finding.severity}: conversation ${finding.batch ?? "?"}${
-        finding.probe ? `, probe ${finding.probe}` : ""
-      }: ${finding.message}`
-  )
-  return [
-    "The app checked the lesson you wrote and found these problems. Fix them and return the whole lesson again, in the same two JSON blocks:",
-    "",
-    ...lines,
-    "",
-  ].join("\n")
+function repeatedId(batches: Array<ConversationBatch>): string | undefined {
+  const conversations = new Set<number>()
+  for (const batch of batches) {
+    if (conversations.has(batch.id)) {
+      return `conversation id ${batch.id} is used by more than one conversation`
+    }
+    conversations.add(batch.id)
+    const lines = new Set<string>()
+    for (const message of batch.messages) {
+      if (lines.has(message.id)) {
+        return `conversation ${batch.id}: line id "${message.id}" is used by more than one line`
+      }
+      lines.add(message.id)
+    }
+  }
+  return undefined
 }

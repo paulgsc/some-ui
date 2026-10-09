@@ -270,6 +270,29 @@ describe("auditTeaching", () => {
       "has no `why`",
     ],
     [
+      "a candidate repeated",
+      pickValid({
+        options: [
+          {
+            id: "a",
+            text: "네, 가요.",
+            relation: "reply",
+            valid: true,
+            why: "w",
+          },
+          {
+            id: "b",
+            text: "네, 가요.",
+            relation: "reply",
+            valid: false,
+            why: "w",
+          },
+          { id: "c", text: "안녕.", relation: "reply", valid: false, why: "w" },
+        ],
+      }),
+      'candidate "네, 가요." appears twice',
+    ],
+    [
       "a check that does not load",
       pickValid({ kind: "pick-any" }),
       "the check does not load",
@@ -357,6 +380,33 @@ describe("auditTeaching", () => {
       expect.objectContaining({
         path: "root.choice.check",
         severity: "warning",
+      }),
+    ])
+  })
+
+  it("warns about an odd-one-out candidate that rewrites its source, and still asks it", () => {
+    const check = oddOneOut()
+    const options = Array.isArray(check.options) ? [...check.options] : []
+    options[0] = {
+      id: "x",
+      text: "현금으로 드렸습니다.",
+      relation: "past",
+      valid: true,
+      why: "w",
+    }
+    const audit = auditTeaching(
+      lesson(
+        rawTree(({ b }) => {
+          withCheck(b, { ...check, options })
+        })
+      )
+    )
+    if (!audit.ok) throw new Error("expected a playable tree")
+    expect(sceneAt(audit.lesson.root, ["b"])?.choice).toBeDefined()
+    expect(audit.findings).toEqual([
+      expect.objectContaining({
+        severity: "warning",
+        message: expect.stringContaining("rewrites more than"),
       }),
     ])
   })

@@ -55,7 +55,7 @@ const lesson = (
   batchCount: 1,
   totalQuestions: 1,
   totalMessages: 2,
-  tags: ["topik-1", "relation:reply"],
+  tags: ["topik-1"],
   activityId: "topik",
   publishedAt: "2026-09-27T00:00:00+00:00",
   version: 1,
@@ -159,7 +159,7 @@ describe("LessonCrm on a wide screen: a list rail and a step workflow", () => {
     ).toHaveAttribute("aria-current", "step")
     expect(
       screen.getByRole("status", { name: "Lesson check" })
-    ).toHaveTextContent("relation:reply")
+    ).toHaveTextContent("1 conversations · 2 lines · 1 questions")
 
     step(/Step 3: Preview/)
     expect(screen.getByText("커피 한 잔 주세요.")).toBeInTheDocument()
@@ -218,7 +218,7 @@ describe("LessonCrm on a wide screen: a list rail and a step workflow", () => {
 
     const [key, write] = client.writes[0] ?? []
     expect(key).toBe("cafe-order")
-    expect(write?.metadata.tags).toEqual(["topik-1", "cafe", "relation:reply"])
+    expect(write?.metadata.tags).toEqual(["topik-1", "cafe"])
     expect(reporting.notices.at(-1)).toEqual({
       tone: "success",
       title: "cafe-order added to the manifest",

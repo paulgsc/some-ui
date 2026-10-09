@@ -1,10 +1,8 @@
 import { FIXTURE_BATCHES } from "@topik/components/topik/handheld/handheld-lesson/fixture"
-import { relationTags } from "@topik/lib/topik/core/lesson-selection"
 import { describe, expect, it } from "vitest"
 
 import {
   fencedBodies,
-  fixRequest,
   intakeLesson,
   LOCAL_LESSON_PREFIX,
   topikLevelOf,
@@ -18,8 +16,7 @@ const entry = {
   totalQuestions: 99,
   totalMessages: 99,
   difficulty: "advanced",
-  // The model's own relation tag is dropped: the app derives them.
-  tags: ["topik-2", "makjang", "relation:invented"],
+  tags: ["topik-2", "makjang"],
 }
 
 const reply = (lesson: unknown): string =>
@@ -35,12 +32,12 @@ const reply = (lesson: unknown): string =>
   ].join("\n")
 
 describe("intakeLesson", () => {
-  it("takes a given entry in place of the reply's, and still derives counts and relation tags", () => {
+  it("takes a given entry in place of the reply's, and still derives counts", () => {
     const intake = intakeLesson(JSON.stringify(FIXTURE_BATCHES), {
       key: "week-40",
       displayName: "Edited",
       description: "From the CRM's form.",
-      tags: ["topik-4", "relation:hand-written"],
+      tags: ["topik-4"],
     })
     if (!intake.ok) throw new Error(intake.error)
     expect(intake.meta).toEqual({
@@ -51,7 +48,7 @@ describe("intakeLesson", () => {
       totalQuestions: intake.meta.totalQuestions,
       totalMessages: intake.meta.totalMessages,
       difficulty: "intermediate",
-      tags: ["topik-4", ...relationTags(FIXTURE_BATCHES)],
+      tags: ["topik-4"],
     })
     // The reply's own entry is ignored when one is given.
     const overridden = intakeLesson(reply(FIXTURE_BATCHES), {
@@ -59,7 +56,7 @@ describe("intakeLesson", () => {
     })
     if (!overridden.ok) throw new Error(overridden.error)
     expect(overridden.meta.displayName).toBe("Mine")
-    expect(overridden.meta.tags).toEqual(relationTags(FIXTURE_BATCHES))
+    expect(overridden.meta.tags).toBeUndefined()
   })
 
   it("finds the lesson in a model's reply, and recounts rather than trusting it", () => {
@@ -75,70 +72,14 @@ describe("intakeLesson", () => {
       totalMessages: 6,
       // The level tag decides, over a mislabelled difficulty.
       difficulty: "beginner",
-      tags: ["topik-2", "makjang", ...relationTags(FIXTURE_BATCHES)],
+      tags: ["topik-2", "makjang"],
     })
-    expect(relationTags(FIXTURE_BATCHES)).toContain("relation:negation")
-    expect(intake.meta.tags).not.toContain("relation:invented")
-    expect(intake.findings).toEqual([])
   })
 
   it("takes bare JSON too, and names a lesson that came without an entry", () => {
     const intake = intakeLesson(JSON.stringify(FIXTURE_BATCHES))
     if (!intake.ok) throw new Error(intake.error)
     expect(intake.meta.key).toBe(`${LOCAL_LESSON_PREFIX}untitled-lesson`)
-  })
-
-  it("reports the probes the lesson would drop, and still takes the lesson", () => {
-    const broken = structuredClone(FIXTURE_BATCHES)
-    const first = broken[0]?.probes?.[0]
-    if (first) first.anchorMessageId = "nowhere"
-    const intake = intakeLesson(reply(broken))
-    if (!intake.ok) throw new Error(intake.error)
-    expect(intake.findings).toEqual([
-      expect.objectContaining({
-        probe: "c1-reply",
-        severity: "error",
-        message: expect.stringMatching(/"nowhere"/),
-      }),
-    ])
-    expect(fixRequest(intake.findings)).toMatch(
-      /Fix them and return the whole lesson[\s\S]*- error: conversation 1, probe c1-reply:/
-    )
-  })
-
-  it("withholds a probe an error names, and does not tag what it withheld", () => {
-    const flawed = structuredClone(FIXTURE_BATCHES)
-    const probe = flawed[0]?.probes?.find(
-      (candidate) => candidate.id === "c1-build-negation"
-    )
-    if (probe?.kind !== "build" || !probe.source) {
-      throw new Error("fixture lost c1-build-negation")
-    }
-    // A relation only this probe uses, and an error: its target is its source.
-    probe.relation = "honorific lowering"
-    probe.target = probe.source
-    const intake = intakeLesson(reply(flawed))
-    if (!intake.ok) throw new Error(intake.error)
-    const played = intake.batches.flatMap((batch) =>
-      (batch.probes ?? []).map((candidate) => candidate.id)
-    )
-    expect(played).not.toContain("c1-build-negation")
-    expect(played).toContain("c1-request-forms")
-    expect(intake.meta.tags).not.toContain("relation:honorific lowering")
-  })
-
-  it("withholds only the later of two probes sharing an id", () => {
-    const [one, ...rest] = structuredClone(FIXTURE_BATCHES)
-    const probes = one?.probes ?? []
-    // A probe the schema drops, ahead of them, must not shift which is which.
-    const doubled = [
-      { ...one, probes: [{ id: "unreadable" }, ...probes, probes[0]] },
-      ...rest,
-    ]
-    const intake = intakeLesson(reply(doubled))
-    if (!intake.ok) throw new Error(intake.error)
-    const ids = (intake.batches[0]?.probes ?? []).map((probe) => probe.id)
-    expect(ids).toEqual(FIXTURE_BATCHES[0]?.probes?.map((probe) => probe.id))
   })
 
   it("sends back a lesson whose conversation or line ids repeat", () => {

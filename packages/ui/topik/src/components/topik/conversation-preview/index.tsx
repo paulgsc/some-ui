@@ -4,7 +4,6 @@ import { cn } from "@some-ui/core-utils"
 import { useSpeaker } from "@some-ui/speech"
 import { ChatPanel } from "@topik/components/topik/chat-panel"
 import type { ConversationBatch, Message, PlayState } from "@topik/lib/topik"
-import { lineText } from "@topik/lib/topik/core/probe"
 import { SPOKEN_LANGUAGE } from "@topik/lib/topik/core/spoken-language"
 
 type ConversationPreviewProps = {
@@ -82,7 +81,7 @@ export const ConversationPreview = ({
     utterance.current = controller
     // Whatever its outcome (heard, cancelled, failed), the line is still
     // there to read; all that changes is that it is not being spoken.
-    await speech.say(lineText(message), {
+    await speech.say(message.korean || message.content, {
       language: SPOKEN_LANGUAGE,
       urgency: "now",
       signal: controller.signal,
@@ -117,7 +116,6 @@ export const ConversationPreview = ({
               )}
             >
               Conversation {batch.id} · {batch.messages.length} lines
-              {batch.probes?.length ? ` · ${batch.probes.length} probes` : ""}
             </button>
           ))}
         </div>
