@@ -3,15 +3,16 @@
  * (docs/makjang/README.md, "The webtoon: one feeling per scene").
  *
  * The component reads the runtime's snapshot and dispatches; the runtime
- * (`core/drama-runtime`, through `useDrama`) owns the voice and the resume
- * point, and the engine decides where the learner is. The current scene is
- * one strip of panels; its choice is asked in the dock, under the thumb, as
- * large Korean targets with no English gloss (Rem. 4.12).
+ * (`core/drama-runtime`, through `useDrama`) owns the voice, the sound and
+ * the resume point, and the engine decides where the learner is. The
+ * current scene is one strip of panels; its choice is asked in the dock,
+ * under the thumb, as large Korean targets with no English gloss
+ * (Rem. 4.12).
  */
 
 import type { JSX } from "react"
 import { useEffect, useMemo, useRef } from "react"
-import type { VoicePort } from "@some-ui/makjang"
+import type { SoundPort, VoicePort } from "@some-ui/makjang"
 import { Button } from "@some-ui/shared"
 import { LadderDock } from "@topik/components/topik/handheld/ladder-dock"
 import { CandidateText } from "@topik/components/topik/handheld/probe-card"
@@ -33,6 +34,8 @@ type DramaLessonProps = {
   /** A `checked` `TreeIntake`'s lesson (MK4). Remount with a new `key`. */
   lesson: Lesson
   voice: VoicePort | null
+  /** The scene's tone and cry; `null` where nothing can play them. */
+  sound: SoundPort | null
   points: DramaPointStore
   short: boolean
   onLeave: () => void
@@ -41,12 +44,14 @@ type DramaLessonProps = {
 export const DramaLesson = ({
   lesson,
   voice,
+  sound,
   points,
   short,
   onLeave,
 }: DramaLessonProps): JSX.Element => {
   const { session, speaking, dispatch, replay } = useDrama(lesson, {
     voice,
+    sound,
     points,
   })
   const panels = panelsOf(lesson, session)

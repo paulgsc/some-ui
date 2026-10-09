@@ -24,6 +24,7 @@ import {
   FEELING_POINTS,
   feelingColors,
   feelingFrame,
+  feelingTone,
 } from "../feeling"
 import { SESSION_THEMES } from "../registry"
 import { parseOklch, sessionRoles } from "../session-roles"
@@ -125,6 +126,39 @@ describe("the derivation", () => {
       radius: 14,
     })
     expect(feelingFrame("tension").edgeWidth).toBeCloseTo(2.9)
+  })
+
+  it("pitches the tone at 196·2^max(a, 0) Hz and shapes it by valence", () => {
+    const semitone = 2 ** (1 / 12)
+    const hz = (key: (typeof FEELING_KEYS)[number]): Array<number> =>
+      feelingTone(key)
+        .notes.filter(({ wave }) => wave !== "noise")
+        .map((note) => note.hz)
+    // flutter rises in a major triad from its register.
+    const [root, third, fifth] = hz("flutter")
+    expect(root).toBeCloseTo(196 * 2 ** 0.55)
+    expect(third! / root!).toBeCloseTo(semitone ** 4)
+    expect(fifth! / root!).toBeCloseTo(semitone ** 7)
+    // cringe, at exactly v = −0.30, falls a semitone onto its register.
+    const [from, to] = hz("cringe")
+    expect(to).toBeCloseTo(196 * 2 ** 0.3)
+    expect(from! / to!).toBeCloseTo(semitone)
+    // chill is calm (a < 0), so it sits at the register's floor.
+    expect(hz("chill")[1]).toBeCloseTo(196)
+    // Only an agitated fall crashes; the reveal is the dun-dun.
+    expect(
+      FEELING_KEYS.filter((key) =>
+        feelingTone(key).notes.some(({ wave }) => wave === "noise")
+      )
+    ).toEqual(["fury"])
+    expect(feelingTone("twist").notes.map(({ wave }) => wave)).toEqual([
+      "sawtooth",
+      "sawtooth",
+      "sawtooth",
+    ])
+    for (const key of FEELING_KEYS) {
+      expect(feelingTone(key).length).toBeLessThan(1)
+    }
   })
 
   it("swaps ground and ink only on a reveal", () => {

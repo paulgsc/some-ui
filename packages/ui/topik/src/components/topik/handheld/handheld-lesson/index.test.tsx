@@ -24,13 +24,22 @@ import type { ReadAloudStore } from "@topik/lib/topik/adapter/read-aloud-store"
 import { createReadAloudStore } from "@topik/lib/topik/adapter/read-aloud-store"
 import type { StorageLike } from "@topik/lib/topik/adapter/resume-point"
 import { createResumeStore } from "@topik/lib/topik/adapter/resume-point"
+import type {
+  SoundControl,
+  ToneContextFactory,
+} from "@topik/lib/topik/adapter/sound-port"
+import { createSoundControl } from "@topik/lib/topik/adapter/sound-port"
+import { fakeTones } from "@topik/lib/topik/adapter/sound-port/fake-tones"
 import type { SurveyStore } from "@topik/lib/topik/adapter/survey-store"
 import {
   createSurveyStore,
   SURVEY_TTL_MS,
 } from "@topik/lib/topik/adapter/survey-store"
 import { pinMisses } from "@topik/lib/topik/core/lesson-survey"
-import { workedExample } from "@topik/lib/topik/generation/tree-intake/worked-example"
+import {
+  workedExample,
+  workedLesson,
+} from "@topik/lib/topik/generation/tree-intake/worked-example"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
 import { HandheldLesson } from "."
@@ -54,6 +63,8 @@ type RenderOptions = {
   // No voice by default: the ladder starts at Hangul (canon Def. 9.3).
   speaker?: Speaker | null
   readAloudStore?: ReadAloudStore
+  soundControl?: SoundControl
+  tones?: ToneContextFactory | null
 }
 
 function renderLesson({
@@ -66,6 +77,8 @@ function renderLesson({
   client = new QueryClient({ defaultOptions: { queries: { retry: false } } }),
   speaker = null,
   readAloudStore,
+  soundControl,
+  tones,
 }: RenderOptions = {}): ResumeStore {
   const store = createResumeStore(storage)
   const tree = (): JSX.Element => (
@@ -79,6 +92,8 @@ function renderLesson({
           pastedStore={pastedStore}
           pastedResumeStore={pastedResumeStore}
           readAloudStore={readAloudStore}
+          soundControl={soundControl}
+          tones={tones}
         />
       </SessionConfigProvider>
     </QueryClientProvider>
@@ -786,6 +801,39 @@ describe("HandheldLesson", () => {
         screen.queryByRole("region", { name: "Pasted this session" })
       ).toBeNull()
       expect(pasted.getTree()).toBeNull()
+    })
+
+    it("offers the drama's sound in the header, off until turned on", async () => {
+      const pasted = createPastedLessonStore(memoryStorage())
+      pasted.setTree(workedLesson())
+      const control = createSoundControl(memoryStorage())
+      const tones = fakeTones()
+      renderLesson({
+        pastedStore: pasted,
+        soundControl: control,
+        tones: tones.factory,
+      })
+      const held = await screen.findByText("회장님 댁 거실")
+      expect(screen.queryByRole("button", { name: "Scene sound" })).toBeNull()
+      fireEvent.click(held)
+      const toggle = await screen.findByRole("button", { name: "Scene sound" })
+      expect(toggle.getAttribute("aria-pressed")).toBe("false")
+      fireEvent.click(toggle)
+      expect(control.state()).toBe("on")
+      expect(toggle.getAttribute("aria-pressed")).toBe("true")
+      // Turning it on plays the opening scene's tone, inside that tap.
+      expect(tones.made()).toBe(1)
+      act(() => control.withdraw())
+      expect(screen.queryByRole("button", { name: "Scene sound" })).toBeNull()
+    })
+
+    it("has no sound toggle where nothing can play a tone", async () => {
+      const pasted = createPastedLessonStore(memoryStorage())
+      pasted.setTree(workedLesson())
+      renderLesson({ pastedStore: pasted, tones: null })
+      fireEvent.click(await screen.findByText("회장님 댁 거실"))
+      expect(await screen.findByText("숨 막히는 긴장감")).toBeTruthy()
+      expect(screen.queryByRole("button", { name: "Scene sound" })).toBeNull()
     })
 
     it("hands out the prompt, takes the lesson back, and holds it for the session only", async () => {

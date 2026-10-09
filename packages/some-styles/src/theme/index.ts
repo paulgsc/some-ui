@@ -59,8 +59,11 @@ export type {
   FeelingMotion,
   FeelingPoint,
   FeelingTexture,
+  FeelingTone,
   Oklch,
   SessionRoles,
+  ToneNote,
+  ToneWave,
 } from "./feeling"
 
 export {
@@ -74,5 +77,6 @@ export {
   feelingColors,
   feelingFrame,
   feelingThemeClass,
+  feelingTone,
   isFeelingKey,
 } from "./feeling"

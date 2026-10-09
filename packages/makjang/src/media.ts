@@ -12,7 +12,8 @@
  * what to present, and a runtime calls the ports.
  *
  * A new kind of port is a new rendition kind, and lands with a canon line
- * saying what it reveals (MK7).
+ * saying what it reveals (MK7). The voice is Cor. 4.4's audio rung; the
+ * sound is the feeling anchor's tone and cry (Rem. 9.2).
  */
 
 import type { CharacterId } from "@makjang/schema"
@@ -45,7 +46,29 @@ export type VoicePort = {
   subscribe(listener: () => void): () => void
 }
 
+export type StingRequest = {
+  /** The scene's feeling, by key. */
+  feeling: string
+}
+
+/**
+ * A scene's feeling as sound (docs/makjang/README.md, "Where the anchor
+ * goes"): played on the scene's cover, and never over a line.
+ */
+export type SoundPort = {
+  /**
+   * Plays the feeling's tone, then its cry. Resolves once both have ended,
+   * could not play, or `signal` fired.
+   */
+  sting(request: StingRequest, signal: AbortSignal): Promise<Presented>
+  /** Whether a sting would play now: false until the learner turns sound on. */
+  audible(): boolean
+  /** Calls `listener` when `audible` may have changed; returns the unsubscribe. */
+  subscribe(listener: () => void): () => void
+}
+
 /** Every port a renderer may have; `null` where it presents text instead. */
 export type MediaPorts = {
   voice: VoicePort | null
+  sound: SoundPort | null
 }

@@ -31,4 +31,11 @@ export type {
 } from "./engine"
 export { resume, start, step } from "./engine"
 
-export type { MediaPorts, Presented, VoicePort, VoiceRequest } from "./media"
+export type {
+  MediaPorts,
+  Presented,
+  SoundPort,
+  StingRequest,
+  VoicePort,
+  VoiceRequest,
+} from "./media"

@@ -26,6 +26,7 @@ const renderDrama = (points = slot()): void => {
     <DramaLesson
       lesson={lesson}
       voice={null}
+      sound={null}
       points={points}
       short={false}
       onLeave={vi.fn()}

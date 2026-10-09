@@ -1,3 +1,4 @@
+import { addFailureSink } from "@some-ui/intent-kit"
 import type { Speaker, SpeechOutcome } from "@some-ui/speech"
 import { speakerVoice } from "@topik/lib/topik/adapter/voice-port"
 import type { Mock } from "vitest"
@@ -47,12 +48,16 @@ describe("speakerVoice", () => {
     ])
   })
 
-  it("reads a muted, failed or ended line as not presented", async () => {
+  it("reads a muted, failed or ended line as not presented, and reports a failed one", async () => {
+    const failures: Array<unknown> = []
+    const detach = addFailureSink(({ error }) => failures.push(error.cause))
+    vi.spyOn(globalThis.console, "error").mockImplementation(() => undefined)
+    const failed = new Error("x")
     const signal = new AbortController().signal
     for (const outcome of [
       { kind: "muted" },
       { kind: "ended" },
-      { kind: "failed", error: new Error("x") },
+      { kind: "failed", error: failed },
     ] as const) {
       expect(
         await speakerVoice(speakerSaying(outcome))!.voice(request, signal)
@@ -64,6 +69,8 @@ describe("speakerVoice", () => {
         signal
       )
     ).toBe("cancelled")
+    detach()
+    expect(failures).toEqual([failed])
   })
 
   it("is audible unless muted or without a Korean voice", () => {
