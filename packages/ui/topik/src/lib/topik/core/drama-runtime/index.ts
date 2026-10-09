@@ -7,7 +7,9 @@
  * names, and owns the handles with an async lifetime, the line being voiced
  * and the scene's sting: a newer line aborts the line, leaving the scene
  * ends both, and a late result from either changes nothing. It keeps the
- * resume point the engine hands it in `persist` (Rem. 4.13).
+ * resume point the engine hands it in `persist` (Rem. 4.13), and at each
+ * ending the last session's record (`core/last-drama`, Rem. 4.14), which the
+ * learner's review then changes.
  *
  * Lines voice themselves only once the learner has touched the lesson: a tap
  * is what lets a phone play audio at all, and a lesson that talks before
@@ -38,6 +40,8 @@ import type {
   SessionEvent,
 } from "@topik/lib/topik/core/drama"
 import { beatsOf, openSession, stepSession } from "@topik/lib/topik/core/drama"
+import type { DramaReview, LastDrama } from "@topik/lib/topik/core/last-drama"
+import { lastDramaOf, withReview } from "@topik/lib/topik/core/last-drama"
 
 /** Where a lesson's place is kept, by lesson id. */
 export type DramaPointStore = {
@@ -46,12 +50,23 @@ export type DramaPointStore = {
   set(lessonId: string, point: unknown): void
 }
 
-export type DramaPorts = MediaPorts & { points: DramaPointStore }
+/** Where the last session's record is kept: one, of any drama. */
+export type LastDramaPort = {
+  get(): LastDrama | null
+  save(record: LastDrama): void
+}
+
+export type DramaPorts = MediaPorts & {
+  points: DramaPointStore
+  last: LastDramaPort
+}
 
 export type DramaSnapshot = {
   session: DramaSession
   /** The beat being voiced right now, if any. */
   speaking: string | null
+  /** This drama's record, once it has reached an ending. */
+  last: LastDrama | null
 }
 
 export class DramaRuntime {
@@ -75,7 +90,11 @@ export class DramaRuntime {
       ports.voice?.audible() ?? false,
       ports.points.get(lesson.id)
     )
-    this.snapshot = { session: opened.session, speaking: null }
+    this.snapshot = {
+      session: opened.session,
+      speaking: null,
+      last: this.ownRecord(),
+    }
     this.run(opened.effects)
   }
 
@@ -88,12 +107,32 @@ export class DramaRuntime {
 
   dispatch = (event: SessionEvent): void => {
     this.armed = true
+    const was = this.snapshot.session.drama.at.kind
     const moved = stepSession(this.lesson, this.snapshot.session, event)
     if (moved.session !== this.snapshot.session) {
-      this.publish({ ...this.snapshot, session: moved.session })
+      const { drama } = moved.session
+      // Each arrival at an ending is the last session (Rem. 4.14).
+      if (drama.at.kind === "end" && was !== "end") {
+        this.ports.last.save(
+          lastDramaOf(this.lesson, drama, this.ports.last.get(), Date.now())
+        )
+      }
+      this.publish({
+        ...this.snapshot,
+        session: moved.session,
+        last: this.ownRecord(),
+      })
     }
     this.run(moved.effects)
     if (this.line === null) this.playOwedSting()
+  }
+
+  /** The learner's review of this drama, once it has reached an ending. */
+  review = (change: DramaReview): void => {
+    const record = this.snapshot.last
+    if (record === null) return
+    this.ports.last.save(withReview(record, change, Date.now()))
+    this.publish({ ...this.snapshot, last: this.ownRecord() })
   }
 
   /** The learner's replay: it cuts in on whatever is playing. */
@@ -151,6 +190,12 @@ export class DramaRuntime {
       this.owed = null
       this.stop()
     }
+  }
+
+  /** The kept record, if it is this drama's. */
+  private ownRecord(): LastDrama | null {
+    const record = this.ports.last.get()
+    return record?.lessonId === this.lesson.id ? record : null
   }
 
   private publish(next: DramaSnapshot): void {

@@ -1,9 +1,18 @@
-import type { Route } from "@some-ui/makjang"
+import type { DramaState, Route } from "@some-ui/makjang"
 import { sceneAt, scenesOf } from "@some-ui/makjang"
 import { memoryStorage } from "@some-ui/vite-config/vitest/memory-storage"
-import { cleanup, fireEvent, render, screen } from "@testing-library/react"
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  within,
+} from "@testing-library/react"
+import type { LastDramaStore } from "@topik/lib/topik/adapter/last-drama-store"
+import { createLastDramaStore } from "@topik/lib/topik/adapter/last-drama-store"
 import { createPastedLessonStore } from "@topik/lib/topik/adapter/pasted-lesson"
 import type { DramaPointStore } from "@topik/lib/topik/core/drama-runtime"
+import { lastDramaOf } from "@topik/lib/topik/core/last-drama"
 import { workedLesson } from "@topik/lib/topik/generation/tree-intake/worked-example"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
@@ -22,13 +31,17 @@ function slot(point?: unknown): DramaPointStore {
   return store.points
 }
 
-const renderDrama = (points = slot()): void => {
+const renderDrama = (
+  points = slot(),
+  last: LastDramaStore = createLastDramaStore(memoryStorage())
+): void => {
   render(
     <DramaLesson
       lesson={lesson}
       voice={null}
       sound={null}
       points={points}
+      last={last}
       short={false}
       onLeave={vi.fn()}
     />
@@ -73,6 +86,34 @@ describe("DramaLesson", () => {
     expect(notes.textContent).toMatch(/응, 마실래\./)
     expect(notes.textContent).toMatch(/죄송합니다, 회장님\./)
     expect(screen.getByRole("button", { name: /Play it again/ })).toBeTruthy()
+  })
+
+  it("offers the review at an ending, collapsed and never in the way, and saves each tap", () => {
+    const last = createLastDramaStore(memoryStorage())
+    renderDrama(slot(), last)
+    next()
+    next()
+    choose("네, 감사합니다.")
+    next()
+    next()
+    const review = screen.getByRole("button", { name: /어땠어요/ })
+    expect(review.getAttribute("aria-expanded")).toBe("false")
+    expect(
+      screen.getByRole<HTMLButtonElement>("button", { name: /Play it again/ })
+        .disabled
+    ).toBe(false)
+    fireEvent.click(review)
+    const panel = within(
+      document.querySelector<HTMLElement>("[data-slot='topik-drama-review']")!
+    )
+    const loved = panel.getByRole("button", { name: /재미있었어요/ })
+    fireEvent.click(loved)
+    expect(loved.getAttribute("aria-pressed")).toBe("true")
+    fireEvent.click(panel.getByRole("button", { name: /훈훈/ }))
+    expect(last.get()?.review).toEqual({ enjoyed: "loved", more: ["s2"] })
+    // Taken back with a second tap.
+    fireEvent.click(loved)
+    expect(last.get()?.review).toEqual({ more: ["s2"] })
   })
 
   it("never goes back across a choice", () => {
@@ -130,7 +171,7 @@ describe("DramaLesson", () => {
  * The resume point that opens `route` at `at`: by default its choice, or its
  * end.
  */
-function pointAt(route: Route, at?: { kind: "beat"; id: string }): unknown {
+function pointAt(route: Route, at?: { kind: "beat"; id: string }): DramaState {
   const first: Record<string, string> = {}
   route.forEach((option, depth) => {
     const choice = sceneAt(lesson.root, route.slice(0, depth))?.choice
@@ -144,19 +185,28 @@ function pointAt(route: Route, at?: { kind: "beat"; id: string }): unknown {
   }
 }
 
+/** A store holding this drama's record at `point`, as its ending left it. */
+function recorded(point: DramaState): LastDramaStore {
+  const last = createLastDramaStore(memoryStorage())
+  last.save(lastDramaOf(lesson, point, null, Date.now()))
+  return last
+}
+
 describe("MK6: no feeling anchor sits on a choice or a chosen line", () => {
   it.each(scenesOf(lesson.root).map(({ route, scene }) => [scene.id, route]))(
     "on the route to %s",
     (_, route) => {
-      renderDrama(slot(pointAt(route)))
+      const point = pointAt(route)
+      renderDrama(slot(point), recorded(point))
       const scene = sceneAt(lesson.root, route)!
       const unanchored = document.querySelectorAll(
-        "[data-slot='drama-choice'], [data-slot='drama-chosen'], [data-slot='drama-notes'], [role='group'][aria-label='Choose']"
+        "[data-slot='drama-choice'], [data-slot='drama-chosen'], [data-slot='drama-notes'], [data-slot='topik-drama-review'], [role='group'][aria-label='Choose']"
       )
       expect(unanchored.length).toBe(
         (route.length > 0 ? 1 : 0) +
           (scene.choice ? 2 : 0) +
-          (route.length > 0 && !scene.choice ? 1 : 0)
+          // The notes and the review.
+          (route.length > 0 && !scene.choice ? 2 : 0)
       )
       for (const node of unanchored) {
         expect(node.closest(".feeling, .feeling-panel")).toBeNull()
@@ -193,7 +243,13 @@ describe("no screen is framed as an exercise", () => {
         scene.choice ? "drama-choice" : "drama-notes",
       ]
       for (const [index, point] of [opening, pointAt(route)].entries()) {
-        renderDrama(slot(point))
+        renderDrama(slot(point), recorded(point))
+        // The review, opened in full, is held to the same test.
+        const review = screen.queryByRole("button", { name: /어땠어요/ })
+        if (review) {
+          fireEvent.click(review)
+          fireEvent.click(screen.getByRole("button", { name: "Show English" }))
+        }
         // Opened where the point says, not at the root by fallback.
         expect(index === 0 ? slots()[0] : slots().at(-1)).toBe(landed[index])
         const labels = Array.from(

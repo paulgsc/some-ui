@@ -52,7 +52,6 @@ describe("PromptCard", () => {
         level: 4,
         scene: "the wedding hall",
         conversations: 2,
-        audience: "batch",
       })
     )
     expect(screen.getByRole("button", { name: /Copied/ })).toBeInTheDocument()
@@ -93,7 +92,7 @@ describe("PromptCard", () => {
       },
     ])
     expect(screen.getByLabelText("Prompt to copy")).toHaveValue(
-      buildLessonPrompt({ level: 2, conversations: 3, audience: "batch" })
+      buildLessonPrompt({ level: 2, conversations: 3 })
     )
   })
 

@@ -20,6 +20,8 @@ import { ReadAloudScreen } from "@topik/components/topik/read-aloud/read-aloud-s
 import { useSessionConfig } from "@topik/lib/topik/adapter/context/session-config-context"
 import { useLessonPrompt } from "@topik/lib/topik/adapter/hooks/use-lesson-prompt"
 import { usePastedTree } from "@topik/lib/topik/adapter/hooks/use-pasted-tree"
+import type { LastDramaStore } from "@topik/lib/topik/adapter/last-drama-store"
+import { createLastDramaStore } from "@topik/lib/topik/adapter/last-drama-store"
 import type { PastedLessonStore } from "@topik/lib/topik/adapter/pasted-lesson"
 import {
   createPastedLessonStore,
@@ -44,7 +46,6 @@ import {
   createSoundControl,
   feelingSound,
 } from "@topik/lib/topik/adapter/sound-port"
-import type { SurveyStore } from "@topik/lib/topik/adapter/survey-store"
 import {
   createServedPointStore,
   pointsFor,
@@ -59,7 +60,7 @@ type HandheldLessonProps = {
   /** Landscape phone: two columns, compact chrome. */
   short?: boolean
   /** Injected in tests and stories; defaults to `localStorage`. */
-  surveyStore?: SurveyStore
+  lastDrama?: LastDramaStore
   /** Injected in tests and stories; defaults to `sessionStorage`. */
   pastedStore?: PastedLessonStore
   /** Injected in tests and stories; defaults to `localStorage`. */
@@ -74,7 +75,7 @@ type HandheldLessonProps = {
 
 export const HandheldLesson = ({
   short = false,
-  surveyStore,
+  lastDrama,
   pastedStore,
   readAloudStore,
   soundControl,
@@ -83,7 +84,8 @@ export const HandheldLesson = ({
 }: HandheldLessonProps): JSX.Element => {
   const [held] = useState(() => pastedStore ?? createPastedLessonStore())
   const drama = usePastedTree(held)
-  const lessonPrompt = useLessonPrompt(surveyStore)
+  const [last] = useState(() => lastDrama ?? createLastDramaStore())
+  const lessonPrompt = useLessonPrompt(last)
   const [generating, setGenerating] = useState(false)
   const { speaker, shelf, treeFeed, metadataRepository } = useSessionConfig()
   const feed = useTreeFeed(treeFeed)
@@ -223,6 +225,7 @@ export const HandheldLesson = ({
               ? held.points
               : pointsFor(servedPlace, servedKey)
           }
+          last={last}
           short={short}
           onLeave={leave}
         />

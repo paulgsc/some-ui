@@ -106,14 +106,10 @@ export const PromptCard = ({
   const [scene, setScene] = useState("")
   const [conversations, setConversations] = useState(DEFAULT_CONVERSATIONS)
 
-  const request = {
-    level,
-    scene: scene.trim() || undefined,
-    audience: "batch",
-  } as const
+  const request = { level, scene: scene.trim() || undefined }
   const prompt =
     format === "tree"
-      ? buildTreePrompt(request)
+      ? buildTreePrompt({ ...request, audience: "batch" })
       : buildLessonPrompt({ ...request, conversations })
 
   const copyReporting = useMemo(

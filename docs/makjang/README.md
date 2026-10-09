@@ -358,13 +358,12 @@ constrains it now:
 Every lesson is self-contained, the way a lesson generated from one prompt is
 today. It does not know about any other lesson, any other scene tree, or any
 recurring cast, and the generator is given no story from earlier lessons: the
-prompt, the level and an optional scene idea are enough. The digest of recent
-evaluation reports the prompt already carries (Cor. 8.2) stays, since it is
-about how lessons fit, not what happened in them. The app keeps nothing
-between lessons beyond the shelf and the reports earlier lessons left, which
-it reads until they expire: the phone no longer asks the conversation
-lesson's survey, and the drama's own review is a later design (see
-"Increments"). The standing cast in today's generator prompt can stay as a
+prompt, the level and an optional scene idea are enough. The one thing that
+crosses lessons is the last session's record (see "The last session, and its
+review"): the last drama's scenes, first tries and review, which steer how
+the next drama fits, never what happens in it. The app keeps nothing else
+between lessons beyond the shelf. The standing cast in today's generator
+prompt can stay as a
 default to draw from, as long as no lesson relies on another.
 
 Longitudinal structure (a standing ensemble, a series, the mother-in-law
@@ -595,6 +594,146 @@ Remark 9.2 (v1.13), filed ahead of the renderer.
   `core/drama-runtime`'s, and how is `adapter/sound-port`'s, over
   `@some-ui/styles`' `feelingTone`.
 
+## The last session, and its review
+
+A **session** is a drama played to an ending. The phone keeps one record of
+it, the last, and that record writes the "last drama" part of the next prompt
+the learner copies. At the ending the learner is offered a review of the
+drama. It is optional, it steers what comes next, and nothing scores it. It
+replaces the conversation lesson's survey (MKJ-S5) and the store that held
+it. Story #1723 asked four questions, and the owner decided the first, the
+second and the fourth.
+
+### Where comprehension lives: nowhere the app keeps
+
+The review only helps pick the next drama (#1723, option (a)). No answer is a
+claim about the learner, and nothing infers a level from one.
+
+- **First tries give the average guidance.** The material's shape is fixed,
+  so how a learner did on its choices supports inferences about which drama
+  fits them, on average. The app draws no such inference itself. It hands the
+  first tries to the learner's model as text, and that model draws it.
+- **The review overrides the average.** It is weighted strongly, but never
+  completely. A drama that fits the level the learner performs at can still be
+  wrong for this person. Some learners follow 10–20% of the Korean and happily
+  come back, and others are uncomfortable below 90%. "I barely understood a
+  sentence, but it was fun" is a valid answer, and so are "that was annoying"
+  and "too simple".
+- **There is no level and no score.** The only metric is implicit: the
+  learner comes back, finishes dramas and asks for the next one.
+
+### What it asks, and how it renders
+
+Three questions. Each is answered with one tap, and any of them can be
+skipped:
+
+| Question (Hangul; English one tap away) | Answers                                                                        | What it steers                                                  |
+| --------------------------------------- | ------------------------------------------------------------------------------ | --------------------------------------------------------------- |
+| 재미있었어요? Did you enjoy it?         | 재미있었어요 · 그저 그랬어요 · 별로였어요 (loved it · it was OK · not for me)  | Engagement: more of this, or change it                          |
+| 다음엔 한국어가… Next time, the Korean… | 더 쉬웠으면 · 딱 좋아요 · 더 어려워도 돼요 (easier · about right · stretch me) | How much the learner is comfortable following, within the level |
+| 더 보고 싶은 장면 More of this scene    | One chip per scene reached: its place, and its feeling's name                  | The scene, feeling or trope to amplify                          |
+
+A free-text line comes last: 다음엔 어떤 드라마? (what next: a genre, a
+trope, a character). It is capped at 200 characters.
+
+**Every question works for a learner who did not follow the plot.** None of
+them asks what happened. The second asks how comfortable the learner is, not
+how much they understood, so "about right" at 10% is a complete answer. The
+scene chips name what the learner saw on each cover (the place and the
+feeling's name), not what was said.
+
+**How it renders:**
+
+- It lives on the phone, in the session theme (MK6: the review quotes no
+  chosen line, and no item is open). Answers sit under the thumb as large
+  targets.
+- The questions are Hangul, and one "Show English" toggle at the panel's
+  foot shows their English. Each answer is a Korean word with its English
+  always shown small beneath it (a scene chip shows its feeling's Korean
+  name instead). The answers are not items, so their English costs no teaching, and a
+  level-1 learner must be able to answer.
+- It is framed as no exercise: no "N of M", no "correct", nothing the
+  `EXERCISE_FRAMING` test catches.
+
+### What persists, and where
+
+There is one record on the device, under `topik:last-drama`. It holds:
+
+- **When** the drama ended.
+- **The drama:** its id, its level, and its place (the root scene's `place`,
+  the drama's title).
+- **The scenes reached:** every scene any play of this drama reached, with
+  its place and its feeling, in the tree's order.
+- **The first tries:** for each choice reached, the choice's Korean, the
+  candidate first chosen, and whether that candidate answered it
+  (`isCorrectChoice`). The text rides along, since the drama will be gone
+  when the next prompt is read.
+- **The review**, if any was given.
+
+Its rules:
+
+- **Written at an ending.** It is written each time the drama reaches an
+  ending, and replaces the record of any other drama. A replay of the same
+  drama adds the scenes it reached and keeps the review; the first tries are
+  the engine's `first`, which a replay keeps (MK3).
+- **Brief** (Rem. 7.4): it is one record, and it expires after 30 days. Its
+  free text is deleted once a prompt has carried it, as a report's is. It
+  never leaves the device (Rem. 7.3), and losing it costs the next prompt its
+  "last drama" section and nothing else, so a failed write is swallowed.
+- **The level the learner holds** is the record's level until the learner
+  chooses another, else 1. It replaces `heldLevel`'s reading of the last
+  report. The review never moves it.
+- **The prompt's history.** The tree prompt's `Survey` becomes `Last drama`.
+  It carries the record as plain text: the title, the scenes reached and
+  their feelings, each first try, and the review. Its section in `tree-prompt.md`
+  tells the model to weigh the review over the first tries, and never to
+  read either as a level.
+- **What it retires:**
+
+  - `adapter/survey-store` (no writer since S5), `core/lesson-survey`,
+    `surveyDigest` and `DIGEST_LESSONS`;
+  - the survey section of both prompts;
+  - `buildLessonPrompt`'s `survey` and `audience`, since the lesson CRM only
+    builds the batch.
+
+  The old `topik:lesson-surveys` key joins the handheld's retired keys
+  (`RETIRED_KEYS`), deleted when it opens, since nothing would read it again
+  or let it expire.
+
+### When it is asked
+
+- **At the ending, after 작가의 말.** It is a collapsed panel at the foot of
+  the strip ("어땠어요? How was it?"), and a tap opens it.
+- **It never gates anything.** "Play it again" and "Back to lessons" stay in
+  the dock, enabled and unchanged.
+- **Each tap saves at once.** There is no submit, so leaving at any point
+  keeps what was given.
+- **On a replay** of the same drama, the panel shows the answers already
+  given, to change or leave. A second tap on an answer takes it back.
+- **If it is skipped,** the first tries alone steer the next prompt.
+
+### Its canon line
+
+Remark 4.13 said nothing crosses units "beyond the digest of evaluation
+reports", which is about fit and not about what happened. The record carries
+what happened: the scenes reached and the first tries. Its canon line is
+Remark 4.14 (v1.14), which amends Remark 4.13 and Corollary 8.2:
+
+- **What crosses units:** on the handheld drama, the last unit's record
+  (scenes reached, first tries, review) crosses into the next prompt, and
+  nothing else does.
+- **What the review is:** an evaluation report (Def. 3.3) of another shape:
+  enjoyment, comfort with how much was followed, where to go next.
+  Prop. 3.4 applies to it unchanged.
+- **The first tries are observations.** They are kept on the device as a
+  record outside the envelope (Rem. 7.5), bounded at one unit, and handed to
+  the learner's model only by the learner's copy (Cor. 8.2). No belief update
+  consumes them, since the surface has no belief.
+
+Cor. 3.4 (the survey before the tally) and Rem. 3.5 (served units ordered by
+the reports) no longer describe the phone. The §10 row v1.14 adds records
+that, with the MKJ-S6 row proposed on #1722.
+
 ## Where it lives
 
 - **`@some-ui/makjang`** (new, framework-agnostic: no React): the story schema,
@@ -658,12 +797,11 @@ Neither needs a better model than exists today.
   - It is verified on pasted and served trees, and done when it passes the
     test above: on screen the learner follows characters through a scene,
     and no screen is framed as an exercise ("Check", "Question N", "N of M").
-- **Later.** A review of the drama at its end, in place of the conversation
-  lesson's survey: how keen the learner is, and where they want the drama to
-  go (another genre; a scene, a feeling or a trope amplified). It never
-  blocks a learner who did not follow the plot, and what it reveals about
-  comprehension is inferred from how it is answered, never scored. It needs
-  its own design, UI and canon line. Media capabilities (per-character voices, generated art in a
+- **MKJ-S7: the last session, and its review.** The phone keeps the last
+  drama played to an ending, and offers a review at the ending; both steer
+  the next prompt (see "The last session, and its review"). The survey's
+  store goes.
+- **Later.** Media capabilities (per-character voices, generated art in a
   fixed style, portraits, video beats) each add assets and a renderer
   capability, plus a canon line, and change neither the story schema nor the
   engine. Longitudinal structure (a standing cast, series, memory across
@@ -804,18 +942,21 @@ the one-line summaries.
 >   feeling only to cover, line, narration and ending panels, and
 >   `webtoon-panel` draws a feeling's theme, symbol or words only for those,
 >   so the choice panel, the chosen line, the author's notes that quote the
->   chosen lines and the dock's options stay in the session theme, and a
->   child scene's feeling first shows on the cover after the chosen line.
+>   chosen lines, the drama review (`drama-review`, which names a scene's
+>   feeling in words but wears none) and the dock's options stay in the
+>   session theme, and a child scene's feeling first shows on the cover
+>   after the chosen line.
 > - _Falsified by_ a hunk that gives the `chosen`, `choice` or `notes` arm of
 >   `Panel` a feeling, or puts the chosen line after the cover in `panelsOf`;
 >   that draws `Themed`, `FeelingSymbol`, `FEELING_WORDS` or a feeling class
 >   in the `chosen`, `choice` or `notes` case of `webtoon-panel`, in
->   `drama-lesson`'s
->   dock or in the `ladder-dock` it uses; that deletes or weakens the MK6 test in
+>   `drama-lesson`'s dock or in the `ladder-dock` it uses; that draws
+>   `Themed`, `FeelingSymbol` or a feeling class in `drama-review`; that
+>   deletes or weakens the MK6 test in
 >   `components/topik/handheld/drama-lesson/index.test.tsx` (its loop over
 >   every scene's route, or its selectors); or that deletes, renames or moves
->   `core/drama`, `webtoon-panel`, `drama-lesson` or `ladder-dock`, which a
->   pure rename shows with no hunk at all.
+>   `core/drama`, `webtoon-panel`, `drama-lesson`, `drama-review` or
+>   `ladder-dock`, which a pure rename shows with no hunk at all.
 > - _Scope:_ `packages/ui/topik`'s drama renderer.
 > - _Why not wholly enforced:_ the test renders every route of a tree and
 >   fails on an anchor inside or around a choice or a chosen line. What it

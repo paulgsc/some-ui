@@ -5,7 +5,7 @@ import { scenesOf } from "@some-ui/makjang"
 import { Button, Input, Textarea } from "@some-ui/shared"
 import { StepLayout } from "@topik/components/topik/handheld/step-layout"
 import type { DramaLesson } from "@topik/lib/topik/core/drama"
-import type { LessonRequest, TopikLevel } from "@topik/lib/topik/generation"
+import type { TopikLevel, TreeRequest } from "@topik/lib/topik/generation"
 import { TOPIK_LEVELS } from "@topik/lib/topik/generation"
 import type { FindingRow } from "@topik/lib/topik/generation/tree-intake"
 import {
@@ -18,8 +18,8 @@ import { Check, ClipboardCopy, Play } from "lucide-react"
 
 type GenerateLessonProps = {
   defaultLevel: TopikLevel
-  /** The tree prompt for a request, with the learner's survey digest. */
-  buildPrompt: (request: Omit<LessonRequest, "survey">) => string
+  /** The tree prompt for a request, with the learner's last drama. */
+  buildPrompt: (request: Pick<TreeRequest, "level" | "scene">) => string
   /**
    * This prompt, exactly as handed off, reached the learner: the clipboard
    * took it, or they said they copied it from the fallback. A copy event on
@@ -264,9 +264,9 @@ export const GenerateLesson = ({
           className="h-11 rounded-xl text-base"
         />
         <p className="text-muted-foreground text-sm">
-          The prompt carries the lesson&apos;s rules and any recent survey
-          answers. Paste it into any model, then paste its reply below. The
-          lesson lasts this session; your chat with the model keeps it.
+          The prompt carries the drama&apos;s rules and how your last one went.
+          Paste it into any model, then paste its reply below. The lesson lasts
+          this session; your chat with the model keeps it.
         </p>
         {manual !== null && (
           <>

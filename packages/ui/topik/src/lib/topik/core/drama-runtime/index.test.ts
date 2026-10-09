@@ -6,6 +6,7 @@ import type {
   VoiceRequest,
 } from "@some-ui/makjang"
 import { memoryStorage } from "@some-ui/vite-config/vitest/memory-storage"
+import { createLastDramaStore } from "@topik/lib/topik/adapter/last-drama-store"
 import { createPastedLessonStore } from "@topik/lib/topik/adapter/pasted-lesson"
 import { DramaRuntime } from "@topik/lib/topik/core/drama-runtime"
 import { workedLesson } from "@topik/lib/topik/generation/tree-intake/worked-example"
@@ -87,6 +88,7 @@ const runtimeOf = (
     voice: null,
     sound: null,
     points: slot().points,
+    last: createLastDramaStore(memoryStorage()),
     ...ports,
   })
 
@@ -301,6 +303,60 @@ describe("DramaRuntime", () => {
       runtime.dispatch({ type: "choose", option: "y" })
       disconnect()
       expect(sound.requests[2]?.signal.aborted).toBe(true)
+    })
+  })
+
+  describe("the last session (canon Rem. 4.14)", () => {
+    /** Plays root, then `option`, to the leaf's end. */
+    const playTo = (runtime: DramaRuntime, option: string): void => {
+      runtime.dispatch({ type: "advance" })
+      runtime.dispatch({ type: "advance" })
+      runtime.dispatch({ type: "choose", option })
+      while (runtime.getSnapshot().session.drama.at.kind === "beat") {
+        runtime.dispatch({ type: "advance" })
+      }
+    }
+
+    it("keeps the record at each ending, and the review changes it", () => {
+      const last = createLastDramaStore(memoryStorage())
+      const runtime = runtimeOf({ last })
+      expect(runtime.getSnapshot().last).toBeNull()
+      playTo(runtime, "a")
+      expect(last.get()).toMatchObject({
+        lessonId: lesson.id,
+        tries: [{ chosen: "네, 감사합니다. 주시면 마실게요.", answered: true }],
+      })
+      expect(runtime.getSnapshot().last).toBe(last.get())
+
+      runtime.review({ enjoyed: "loved" })
+      expect(last.get()?.review).toEqual({ enjoyed: "loved" })
+      expect(runtime.getSnapshot().last?.review).toEqual({ enjoyed: "loved" })
+
+      // A replay to another ending keeps the first try and the review.
+      runtime.dispatch({ type: "restart" })
+      playTo(runtime, "c")
+      expect(last.get()).toMatchObject({
+        tries: [{ answered: true }],
+        review: { enjoyed: "loved" },
+      })
+      expect(last.get()?.scenes.length).toBe(3)
+    })
+
+    it("shows no other drama's record, and takes no review before an ending", () => {
+      const last = createLastDramaStore(memoryStorage())
+      last.save({
+        lessonId: "another",
+        level: 1,
+        title: "x",
+        at: Date.now(),
+        scenes: [],
+        tries: [],
+      })
+      const runtime = runtimeOf({ last })
+      expect(runtime.getSnapshot().last).toBeNull()
+      runtime.review({ enjoyed: "fine" })
+      expect(last.get()?.lessonId).toBe("another")
+      expect(last.get()?.review).toBeUndefined()
     })
   })
 })

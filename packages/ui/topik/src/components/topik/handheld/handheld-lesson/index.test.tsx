@@ -1,5 +1,5 @@
 import type { JSX } from "react"
-import type { Speaker, SpeechOutcome } from "@some-ui/speech"
+import type { Speaker } from "@some-ui/speech"
 import { memoryStorage } from "@some-ui/vite-config/vitest/memory-storage"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import {
@@ -13,6 +13,8 @@ import {
 import { EXERCISE_FRAMING } from "@topik/components/topik/handheld/drama-lesson/exercise-framing"
 import type { ITopikMetadataRepository } from "@topik/lib/topik"
 import { SessionConfigProvider } from "@topik/lib/topik/adapter/context/session-config-context"
+import type { LastDramaStore } from "@topik/lib/topik/adapter/last-drama-store"
+import { createLastDramaStore } from "@topik/lib/topik/adapter/last-drama-store"
 import type { PastedLessonStore } from "@topik/lib/topik/adapter/pasted-lesson"
 import {
   createPastedLessonStore,
@@ -26,16 +28,9 @@ import type {
 } from "@topik/lib/topik/adapter/sound-port"
 import { createSoundControl } from "@topik/lib/topik/adapter/sound-port"
 import { fakeTones } from "@topik/lib/topik/adapter/sound-port/fake-tones"
-import type { StorageLike } from "@topik/lib/topik/adapter/storage"
-import type { SurveyStore } from "@topik/lib/topik/adapter/survey-store"
-import {
-  createSurveyStore,
-  SURVEY_STORAGE_KEY,
-} from "@topik/lib/topik/adapter/survey-store"
-import { reportsDocument } from "@topik/lib/topik/adapter/survey-store/held-reports"
 import type { TreeFeed } from "@topik/lib/topik/adapter/tree-feed"
 import { createServedPointStore } from "@topik/lib/topik/adapter/tree-feed"
-import type { SurveyReport } from "@topik/lib/topik/core/lesson-survey"
+import type { LastDrama } from "@topik/lib/topik/core/last-drama"
 import {
   workedExample,
   workedLesson,
@@ -47,7 +42,7 @@ import { fixtureMetadataRepository, fixtureTopikRepository } from "./fixture"
 
 type RenderOptions = {
   metadataRepository?: ITopikMetadataRepository
-  surveyStore?: SurveyStore
+  lastDrama?: LastDramaStore
   pastedStore?: PastedLessonStore
   client?: QueryClient
   // No voice by default: the ladder starts at Hangul (canon Def. 9.3).
@@ -61,7 +56,7 @@ type RenderOptions = {
 
 function renderLesson({
   metadataRepository = fixtureMetadataRepository,
-  surveyStore = createSurveyStore(memoryStorage()),
+  lastDrama = createLastDramaStore(memoryStorage()),
   pastedStore = createPastedLessonStore(memoryStorage()),
   client = new QueryClient({ defaultOptions: { queries: { retry: false } } }),
   speaker = null,
@@ -82,7 +77,7 @@ function renderLesson({
         }}
       >
         <HandheldLesson
-          surveyStore={surveyStore}
+          lastDrama={lastDrama}
           pastedStore={pastedStore}
           readAloudStore={readAloudStore}
           soundControl={soundControl}
@@ -108,11 +103,20 @@ const voice = (say: Speaker["say"]): Speaker => ({
   }),
 })
 
-/** Puts `reports`, newest first, in the survey store's storage. */
-const holdReports = (
-  storage: StorageLike,
-  reports: Array<SurveyReport>
-): void => storage.setItem(SURVEY_STORAGE_KEY, reportsDocument(reports))
+/** A store holding `record`, read at time 2. */
+const holding = (extra: Partial<LastDrama> = {}): LastDramaStore => {
+  const store = createLastDramaStore(memoryStorage(), () => 2)
+  store.save({
+    lessonId: "earlier",
+    level: 4,
+    title: "회장님 댁 거실",
+    at: 1,
+    scenes: [{ id: "s0", place: "회장님 댁 거실", feeling: "tension" }],
+    tries: [],
+    ...extra,
+  })
+  return store
+}
 
 const click = (name: string | RegExp): void => {
   fireEvent.click(screen.getByRole("button", { name }))
@@ -157,12 +161,8 @@ describe("HandheldLesson", () => {
     expect(await writeYourOwnButton()).toBeTruthy()
   })
 
-  it("holds the level of the last report until the learner chooses another", async () => {
-    const storage = memoryStorage()
-    holdReports(storage, [
-      { topikKey: "local:earlier", at: 1, stuck: [], level: 4 },
-    ])
-    renderLesson({ surveyStore: createSurveyStore(storage, () => 2) })
+  it("holds the level of the last drama until the learner chooses another", async () => {
+    renderLesson({ lastDrama: holding() })
     const level = (value: number): string | null =>
       screen
         .getByRole("radio", { name: `TOPIK ${value}` })
@@ -358,22 +358,13 @@ describe("HandheldLesson", () => {
       expect(screen.queryByRole("button", { name: "Scene sound" })).toBeNull()
     })
 
-    it("hands out the tree prompt with what is left of the reports, and forgets their free text once carried", async () => {
+    it("hands out the tree prompt with the last drama, and forgets its free text once carried", async () => {
       const writeText = vi.fn().mockResolvedValue(undefined)
       vi.stubGlobal("navigator", { ...navigator, clipboard: { writeText } })
-      const storage = memoryStorage()
-      holdReports(storage, [
-        {
-          topikKey: "local:earlier",
-          displayName: "An earlier lesson",
-          at: 1,
-          worthwhile: "no",
-          stuck: [],
-          becoming: "reading webtoons raw",
-        },
-      ])
-      const surveys = createSurveyStore(storage, () => 2)
-      renderLesson({ surveyStore: surveys })
+      const last = holding({
+        review: { enjoyed: "not-for-me", next: "reading webtoons raw" },
+      })
+      renderLesson({ lastDrama: last })
 
       await writeYourOwn()
       fireEvent.click(screen.getByRole("radio", { name: "TOPIK 2" }))
@@ -381,68 +372,32 @@ describe("HandheldLesson", () => {
       await screen.findByText(/Copied/)
       const prompt = String(writeText.mock.calls[0]?.[0])
       expect(prompt).toContain("Level: 2")
-      expect(prompt).toContain("1. An earlier lesson: not worthwhile.")
-      expect(prompt).toContain('Making them into: "reading webtoons raw"')
+      expect(prompt).toContain('Last drama:\n"회장님 댁 거실", level 4.')
+      expect(prompt).toContain('what next: "reading webtoons raw"')
       // ...and the free text is not kept once carried (canon Rem. 7.4).
-      expect(surveys.list()[0]?.becoming).toBeUndefined()
+      expect(last.get()?.review).toEqual({ enjoyed: "not-for-me" })
     })
 
-    it("keeps the survey's free text until the prompt actually reaches the learner", async () => {
+    it("keeps the free text until the prompt actually reaches the learner", async () => {
       vi.stubGlobal("navigator", {
         ...navigator,
         clipboard: {
           writeText: vi.fn().mockRejectedValue(new Error("denied")),
         },
       })
-      const storage = memoryStorage()
-      holdReports(storage, [
-        {
-          topikKey: "local:earlier",
-          displayName: "An earlier lesson",
-          at: 1,
-          stuck: [],
-          becoming: "reading webtoons raw",
-        },
-      ])
-      const surveys = createSurveyStore(storage, () => 2)
-      renderLesson({ surveyStore: surveys })
+      const last = holding({ review: { next: "reading webtoons raw" } })
+      renderLesson({ lastDrama: last })
       await writeYourOwn()
       click(/Copy the prompt/)
       const manual = await screen.findByRole("textbox", {
         name: "Prompt to copy",
       })
       expect(manual.textContent).toContain("reading webtoons raw")
-      expect(surveys.list()[0]?.becoming).toBe("reading webtoons raw")
-
-      // Another tab's build adds a report while the fallback is open; this
-      // prompt never carried it.
-      holdReports(storage, [
-        {
-          topikKey: "local:later",
-          displayName: "A later lesson",
-          at: 2,
-          stuck: [],
-          becoming: "ordering without pointing",
-        },
-        ...surveys.list(),
-      ])
-      // A second prompt, carrying it, is built while the clipboard hangs;
-      // the fallback on screen is still the first prompt.
-      vi.stubGlobal("navigator", {
-        ...navigator,
-        clipboard: {
-          writeText: () => new Promise<SpeechOutcome>(() => undefined),
-        },
-      })
-      click(/Copy the prompt/)
-      expect(manual.textContent).not.toContain("ordering without pointing")
       // Copying proves nothing on its own; the learner's confirmation does.
       fireEvent.copy(manual)
-      expect(surveys.list()[1]?.becoming).toBe("reading webtoons raw")
+      expect(last.get()?.review?.next).toBe("reading webtoons raw")
       click(/I've copied it/)
-      const [later, earlier] = surveys.list()
-      expect(later?.becoming).toBe("ordering without pointing")
-      expect(earlier?.becoming).toBeUndefined()
+      expect(last.get()?.review).toBeUndefined()
     })
 
     it("deletes what retired stores left in localStorage", async () => {

@@ -152,10 +152,15 @@ export function createPastedLessonStore(
 /**
  * What retired stores left in `localStorage`, under these keys: lessons once
  * kept for good, until they were held for the session instead (Rem. 7.4),
- * and the places left in conversation lessons, with the misses and flags
- * their survey would have offered, until the phone played scene trees only.
+ * the places left in conversation lessons, until the phone played scene trees
+ * only, and the conversation lesson's survey reports, until the last drama's
+ * record replaced them (MKJ-S7).
  */
-export const RETIRED_KEYS = ["topik:local-lessons", "topik:handheld-resume"]
+export const RETIRED_KEYS = [
+  "topik:local-lessons",
+  "topik:handheld-resume",
+  "topik:lesson-surveys",
+]
 
 /**
  * Deletes what the retired stores left behind. Stopping writing to them was

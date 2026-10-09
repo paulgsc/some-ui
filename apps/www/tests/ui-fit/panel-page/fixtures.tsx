@@ -196,6 +196,24 @@ function dramaStage(point: unknown): () => JSX.Element {
           voice={null}
           sound={null}
           points={{ get: () => point, set: noop }}
+          // The record an ending leaves, so an ending shows its review.
+          last={{
+            get: () => ({
+              lessonId: fitTree.id,
+              level: fitTree.level,
+              title: fitTree.root.place,
+              at: Date.now(),
+              scenes: [
+                {
+                  id: fitTree.root.id,
+                  place: fitTree.root.place,
+                  feeling: fitTree.root.feeling,
+                },
+              ],
+              tries: [],
+            }),
+            save: noop,
+          }}
           short={short}
           onLeave={noop}
         />
