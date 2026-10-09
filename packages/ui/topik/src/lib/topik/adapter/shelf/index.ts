@@ -1,19 +1,24 @@
 /**
- * The learner shelf, as this applet sees it: a lesson the learner pasted,
- * kept on their account because they asked (paulgsc/server#387; canon
- * Rem. 7.3). The port, the keep and the screens are shared with LeetType's
- * rounds (`@some-ui/shared`, `lib/shelf`, which says what every call is held
- * to); what is TOPIK's is the key a lesson is kept under and how a kept body
- * is read back. The body kept is the pasted slot's own document
- * (`serializePastedLesson`): the lesson and its manifest entry, never a
- * survey, a resume point, a flag or an outcome. It is read back through the
- * same intake a paste goes through (`intakeLesson`) before it is played.
+ * The learner shelf, as this applet sees it: a lesson or a scene tree the
+ * learner pasted, kept on their account because they asked
+ * (paulgsc/server#387; canon Rem. 7.3). The port, the keep and the screens
+ * are shared with LeetType's rounds (`@some-ui/shared`, `lib/shelf`, which
+ * says what every call is held to); what is TOPIK's is the key an item is
+ * kept under and how a kept body is read back. The body kept is the pasted
+ * slot's own document (`serializePastedLesson`, `serializePastedTree`): the
+ * lesson and its manifest entry, or the tree, never a survey, a resume
+ * point, a flag or an outcome. It is read back through the same intake a
+ * paste goes through (`intakeLesson`, `intakeTree`) before it is played.
  */
 
 import type { ShelfWords } from "@some-ui/shared"
 import { plainShelfKey } from "@some-ui/shared"
 import type { PastedLesson } from "@topik/lib/topik/adapter/pasted-lesson"
-import { serializePastedLesson } from "@topik/lib/topik/adapter/pasted-lesson"
+import {
+  serializePastedLesson,
+  treeOfDocument,
+} from "@topik/lib/topik/adapter/pasted-lesson"
+import type { DramaLesson } from "@topik/lib/topik/core/drama"
 import {
   intakeLesson,
   LOCAL_LESSON_PREFIX,
@@ -26,6 +31,11 @@ export const LESSON_SHELF_WORDS: ShelfWords = {
   unreadable: "it no longer reads as a lesson",
   replayFrom: "Write your own lesson",
 }
+
+/** What a kept body plays as. */
+export type KeptLesson =
+  | { kind: "conversation"; lesson: PastedLesson }
+  | { kind: "tree"; tree: DramaLesson }
 
 /**
  * A lesson's document as kept under `shelfKey`: the pasted slot's document
@@ -53,6 +63,10 @@ export function shelfKeyOf(lessonKey: string): string {
   return plainShelfKey(bare, "lesson")
 }
 
+/** The shelf key for a pasted tree: its lesson id, held to the key rule. */
+export const treeShelfKeyOf = (tree: DramaLesson): string =>
+  plainShelfKey(tree.id, "lesson")
+
 const KeptDocumentSchema = z.object({
   version: z.literal(1),
   meta: z.record(z.string(), z.unknown()),
@@ -60,21 +74,27 @@ const KeptDocumentSchema = z.object({
 })
 
 /**
- * A kept body as a lesson to play, or null when it is not one. Checked as a
- * paste is: `intakeLesson` holds the conversations to the schema, withholds
+ * A kept body as a lesson or a tree to play, or null when it is neither. A
+ * tree is checked as a held one is (`treeOfDocument`, both audits). A lesson
+ * is checked as a paste is: `intakeLesson` holds the conversations to the schema, withholds
  * every probe the audit finds in error and derives the counts and relation
  * tags, with the kept manifest entry standing in for the one a reply
  * carries. The lesson plays under `local:<key>`, the key it was kept
  * under, so keeping it again from the pasted slot serializes to the kept
  * bytes and is found rather than kept twice (`keepWithoutReplacing`).
  */
-export function keptLessonOf(body: unknown, key: string): PastedLesson | null {
+export function keptLessonOf(body: unknown, key: string): KeptLesson | null {
+  const tree = treeOfDocument(body)
+  if (tree) return { kind: "tree", tree }
   const kept = KeptDocumentSchema.safeParse(body)
   if (!kept.success) return null
   const intake = intakeLesson(JSON.stringify(kept.data.batches), kept.data.meta)
   if (!intake.ok) return null
   return {
-    meta: { ...intake.meta, key: `${LOCAL_LESSON_PREFIX}${key}` },
-    batches: intake.batches,
+    kind: "conversation",
+    lesson: {
+      meta: { ...intake.meta, key: `${LOCAL_LESSON_PREFIX}${key}` },
+      batches: intake.batches,
+    },
   }
 }

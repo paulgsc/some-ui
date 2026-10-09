@@ -26,6 +26,7 @@ import type { SqlDriver } from "@/lib/device-backend/sql"
 import { DeviceStorageError } from "@/lib/device-backend/sql"
 import type { StorageBudget } from "@/lib/device-backend/storage"
 import { databaseBytes } from "@/lib/device-backend/storage"
+import { TREE_ACTIVITY } from "@/lib/topik-content"
 
 const HOME = "http://192.168.1.10:3000"
 const PHONE = "https://localhost/api/file-host/api/v1"
@@ -381,6 +382,90 @@ describe("a lesson home re-described", () => {
         ],
       }
     )
+  })
+})
+
+describe("the served scene trees (MKJ-S4)", () => {
+  const TREE = {
+    key: "first-tea",
+    displayName: "Tea at the chairman's",
+    description: "",
+    batchCount: 1,
+    totalQuestions: 3,
+    totalMessages: 12,
+    difficulty: "beginner",
+    tags: ["topik-2"],
+  }
+  /** As the lesson CRM serves a tree: pretty-printed, newline-terminated. */
+  const TREE_BODY = `${JSON.stringify({ id: "first-tea", root: { id: "s1" } }, null, 2)}\n`
+
+  it("carries them under their own activity, byte for byte, out of the lessons' manifest", async () => {
+    await upsertLesson(homeDb, TREE, TREE_BODY, NOW, TREE_ACTIVITY)
+    const report = await syncFromHome(phoneDb, HOME, verbatimGet, () => NOW)
+    expect(report.failed).toEqual([])
+    expect(report.lessons).toMatchObject({ listed: 1, added: 1 })
+    expect(report.trees).toMatchObject({ listed: 1, added: 1 })
+
+    // The bare manifest, which the desktop session reads, lists no tree.
+    await expect(phoneJson("/curriculum/manifest.json")).resolves.toMatchObject(
+      { topiks: [{ key: "k2-cafe" }] }
+    )
+    await expect(
+      phoneJson(`/curriculum/manifest.json?activity=${TREE_ACTIVITY}`)
+    ).resolves.toMatchObject({ topiks: [TREE] })
+    const body = await fetchFor(phone, PHONE)(`${PHONE}/curriculum/first-tea`)
+    await expect(body.text()).resolves.toBe(TREE_BODY)
+
+    // Home dropping the tree removes it, and leaves the lessons alone.
+    await homeDb.run("UPDATE curriculum SET retired_at = ? WHERE key = ?", [
+      "2026-09-29T09:00:00+00:00",
+      "first-tea",
+    ])
+    const again = await syncFromHome(phoneDb, HOME, verbatimGet, () => NOW)
+    expect(again.trees.removed).toBe(1)
+    expect(again.lessons.removed).toBe(0)
+  })
+
+  it("keeps a lesson home moved to the trees until the tree arrives", async () => {
+    await syncFromHome(phoneDb, HOME, verbatimGet, () => NOW)
+    await homeDb.run("UPDATE curriculum SET activity_id = ? WHERE key = ?", [
+      TREE_ACTIVITY,
+      "k2-cafe",
+    ])
+    // The move's download fails: the lesson stays, under its old activity.
+    const failing: HomeGet = (url) =>
+      url.endsWith("/curriculum/k2-cafe")
+        ? Promise.resolve({ status: 500, body: "" })
+        : verbatimGet(url)
+    const report = await syncFromHome(phoneDb, HOME, failing, () => NOW)
+    expect(report.failed).toEqual(["k2-cafe"])
+    expect(report.lessons.removed).toBe(0)
+    await expect(phoneJson("/curriculum/k2-cafe")).resolves.toEqual({
+      batches: [],
+    })
+    // Once it arrives, it is listed under the trees alone.
+    await syncFromHome(phoneDb, HOME, verbatimGet, () => NOW)
+    await expect(phoneJson("/curriculum/manifest.json")).resolves.toMatchObject(
+      { topiks: [] }
+    )
+    await expect(
+      phoneJson(`/curriculum/manifest.json?activity=${TREE_ACTIVITY}`)
+    ).resolves.toMatchObject({ topiks: [{ key: "k2-cafe" }] })
+  })
+
+  it("leaves them be on a home that answers every manifest with its lessons", async () => {
+    await upsertLesson(phoneDb, TREE, TREE_BODY, NOW, TREE_ACTIVITY)
+    // A home from before `?activity=`: the query is ignored.
+    const olderHome: HomeGet = (url) => verbatimGet(url.replace(/\?.*$/, ""))
+    const report = await syncFromHome(phoneDb, HOME, olderHome, () => NOW)
+    expect(report.lessons).toMatchObject({ listed: 1, added: 1 })
+    expect(report.trees).toMatchObject({ listed: 0, removed: 0 })
+    await expect(phoneJson("/curriculum/manifest.json")).resolves.toMatchObject(
+      { topiks: [{ key: "k2-cafe" }] }
+    )
+    await expect(
+      phoneJson(`/curriculum/manifest.json?activity=${TREE_ACTIVITY}`)
+    ).resolves.toMatchObject({ topiks: [{ key: "first-tea" }] })
   })
 })
 

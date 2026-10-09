@@ -105,14 +105,15 @@ const slug = (value: string): string =>
     .replace(/^-+|-+$/g, "")
     .slice(0, 48) || "lesson"
 
-const DIFFICULTY_BY_LEVEL: Record<number, TopikMetadata["difficulty"]> = {
-  1: "beginner",
-  2: "beginner",
-  3: "intermediate",
-  4: "intermediate",
-  5: "advanced",
-  6: "advanced",
-}
+export const DIFFICULTY_BY_LEVEL: Record<number, TopikMetadata["difficulty"]> =
+  {
+    1: "beginner",
+    2: "beginner",
+    3: "intermediate",
+    4: "intermediate",
+    5: "advanced",
+    6: "advanced",
+  }
 
 /**
  * Reads a pasted reply. Never throws.

@@ -1,6 +1,7 @@
 import type { JSX, ReactNode } from "react"
 import { useMemo } from "react"
 import type { Draft, TreeCheck } from "@lesson-crm/lib/draft"
+import { TREE_SAVES_TO_FEED } from "@lesson-crm/lib/draft"
 import { cn } from "@some-ui/core-utils"
 import { useFittedPage } from "@some-ui/react-hooks"
 import { Badge, PageControls, Textarea } from "@some-ui/shared"
@@ -28,14 +29,16 @@ const probeRow = (finding: ProbeFinding, position: number): FindingRow => ({
 })
 
 const rowsOf = (draft: Draft | null): Array<FindingRow> =>
-  draft?.ok
-    ? draft.intake.findings.map(probeRow)
-    : (draft?.tree?.findings.map(treeFindingRow) ?? [])
+  draft?.tree
+    ? draft.tree.findings.map(treeFindingRow)
+    : draft?.ok
+      ? draft.intake.findings.map(probeRow)
+      : []
 
 /**
  * A scene tree's verdict: whether it plays, and what the audits drop from it.
- * `note` says why there is nothing to save; the findings go back to the model
- * as one message.
+ * `note` says where a save puts it, or why there is nothing to save; the
+ * findings go back to the model as one message.
  */
 const TreeVerdict = ({
   tree,
@@ -129,6 +132,9 @@ export const LessonCheck = ({
           {draft.error}
         </p>
       )
+    }
+    if (draft.tree) {
+      return <TreeVerdict tree={draft.tree} note={TREE_SAVES_TO_FEED} />
     }
     const { meta, findings } = draft.intake
     const withheld = findings.filter((finding) => finding.severity === "error")

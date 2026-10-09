@@ -1,10 +1,13 @@
+import { scenesOf } from "@some-ui/makjang"
 import {
   intakeTree,
+  treeEntry,
   treeFixRequest,
 } from "@topik/lib/topik/generation/tree-intake"
 import {
   fenced,
   workedExample,
+  workedLesson,
 } from "@topik/lib/topik/generation/tree-intake/worked-example"
 import { describe, expect, it } from "vitest"
 
@@ -59,5 +62,30 @@ describe("treeFixRequest", () => {
         "",
       ].join("\n")
     )
+  })
+})
+
+describe("treeEntry", () => {
+  it("counts the tree's choices and beats, and tags its own level", () => {
+    const lesson = workedLesson()
+    const scenes = scenesOf(lesson.root).map(({ scene }) => scene)
+    expect(
+      treeEntry(lesson, {
+        key: "first-tea",
+        displayName: " ",
+        description: " Tea with the chairman. ",
+        // A typed level the tree does not have gives way to the tree's.
+        tags: ["topik-5", "makjang"],
+      })
+    ).toEqual({
+      key: "first-tea",
+      displayName: lesson.root.place,
+      description: "Tea with the chairman.",
+      batchCount: 1,
+      totalQuestions: scenes.filter((scene) => scene.choice).length,
+      totalMessages: scenes.reduce((sum, scene) => sum + scene.beats.length, 0),
+      difficulty: "beginner",
+      tags: ["topik-2", "makjang"],
+    })
   })
 })

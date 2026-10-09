@@ -7,12 +7,13 @@ import {
   keyProblem,
   parseTags,
   servedBody,
-  TREE_NOT_SAVED,
+  servedTreeBody,
+  TREE_REJECTED,
 } from "@lesson-crm/lib/draft"
-import { intakeLesson } from "@some-ui/topik"
+import { intakeLesson, intakeTree } from "@some-ui/topik"
 import { describe, expect, it } from "vitest"
 
-import { LESSON, REPLY, treeReply } from "./fixture"
+import { LESSON, REPLY, TREE, treeReply } from "./fixture"
 
 describe("draftLesson", () => {
   it("serves the lesson as intake leaves it, under the form's key and entry", () => {
@@ -38,7 +39,7 @@ describe("draftLesson", () => {
       // The model's own relation tag is gone; the probe's is derived.
       tags: ["topik-1", "cafe", "relation:reply"],
     })
-    expect(JSON.parse(draft.write.body)).toEqual(draft.intake.batches)
+    expect(JSON.parse(draft.write.body)).toEqual(draft.intake?.batches)
   })
 
   it("saves an unchanged stored lesson as the same bytes, so the server reports it unchanged", () => {
@@ -105,14 +106,50 @@ describe("draftLesson", () => {
 })
 
 describe("draftLesson on a scene tree", () => {
-  it("checks a tree with both audits and offers nothing to save", () => {
-    const draft = draftLesson(treeReply(), fillForm(EMPTY_FORM, treeReply()))
-    expect(draft).toMatchObject({
-      ok: false,
-      error: TREE_NOT_SAVED,
-      intake: null,
-      tree: { status: "checked", findings: [] },
+  it("saves a checked tree, as it plays, under the trees' own activity", () => {
+    const form = fillForm(EMPTY_FORM, treeReply())
+    expect(form).toMatchObject({ key: "cafe-tree", displayName: "카페" })
+    const draft = draftLesson(treeReply(), form)
+    if (!draft.ok || !draft.tree) throw new Error(JSON.stringify(draft))
+    expect(draft.tree).toMatchObject({ status: "checked", findings: [] })
+    expect(draft.write).toMatchObject({
+      activityId: "makjang",
+      metadata: {
+        key: "cafe-tree",
+        displayName: "카페",
+        batchCount: 1,
+        difficulty: "beginner",
+        tags: ["topik-1"],
+      },
+      body: servedTreeBody(draft.tree.lesson),
     })
+  })
+
+  it("round-trips: the stored tree reads back as the same lesson and the same bytes", () => {
+    const first = draftLesson(treeReply(), fillForm(EMPTY_FORM, treeReply()))
+    if (!first.ok || !first.tree) throw new Error(JSON.stringify(first))
+    const intake = intakeTree(first.write.body)
+    expect(intake).toMatchObject({ status: "checked" })
+    if (intake.status !== "checked") return
+    expect(intake.lesson).toEqual(first.tree.lesson)
+    const again = draftLesson(
+      first.write.body,
+      fillForm(EMPTY_FORM, treeReply())
+    )
+    if (!again.ok) throw new Error(again.error)
+    expect(again.write).toEqual(first.write)
+  })
+
+  it("offers nothing to save for a tree the audits reject, or under a bad key", () => {
+    const rejected = treeReply({ ...TREE, pov: "nobody" })
+    expect(draftLesson(rejected, { ...EMPTY_FORM, key: "k" })).toMatchObject({
+      ok: false,
+      error: TREE_REJECTED,
+      tree: { status: "rejected" },
+    })
+    expect(
+      draftLesson(treeReply(), { ...EMPTY_FORM, key: "manifest" })
+    ).toMatchObject({ ok: false, tree: { status: "checked" } })
   })
 })
 

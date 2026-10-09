@@ -580,9 +580,10 @@ describe("LessonCrm: what a save writes is what the editor holds", () => {
   })
 })
 
-describe("LessonCrm: a scene tree is checked, not saved", () => {
-  it("reports a clean tree as clean, and has nothing to save", async () => {
-    await mount(fakeClient([]))
+describe("LessonCrm: a scene tree is checked, and saved for the phone", () => {
+  it("reports a clean tree as clean, and saves it under the trees' activity", async () => {
+    const client = fakeClient([])
+    await mount(client)
     fireEvent.click(screen.getByRole("button", { name: /New lesson/ }))
     step(/Continue/)
     pasteReply(treeReply())
@@ -599,7 +600,18 @@ describe("LessonCrm: a scene tree is checked, not saved", () => {
     expect(
       within(check).getByText(/Every choice will be asked as written/)
     ).toBeInTheDocument()
-    expect(screen.getByRole("button", { name: /^Save$/ })).toBeDisabled()
+    expect(
+      within(check).getByText(/the desktop session never does/)
+    ).toBeInTheDocument()
+    fireEvent.click(screen.getByRole("button", { name: /^Save$/ }))
+    await settle()
+    expect(client.write).toHaveBeenCalledWith(
+      "cafe-tree",
+      expect.objectContaining({
+        activityId: "makjang",
+        metadata: expect.objectContaining({ key: "cafe-tree" }),
+      })
+    )
   })
 
   it("shows the story audit's and the teaching audit's findings by path", async () => {

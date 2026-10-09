@@ -368,21 +368,22 @@ export const LessonCrm = ({
         }
       />
     ),
-    preview: draft?.ok ? (
-      <ConversationPreview
-        // A different lesson starts the preview over.
-        key={editing.kind === "stored" ? editing.key : "new"}
-        batches={draft.intake.batches}
-      />
-    ) : (
-      <p className="text-muted-foreground text-sm">
-        {draft?.tree
-          ? "A scene tree is checked, not previewed: the phone lesson plays trees once it can (MKJ-S2). See Check."
-          : draft
-            ? "Nothing to preview until the lesson checks out: see Check."
-            : "Nothing to preview yet: bring in a lesson first."}
-      </p>
-    ),
+    preview:
+      draft?.ok && draft.intake ? (
+        <ConversationPreview
+          // A different lesson starts the preview over.
+          key={editing.kind === "stored" ? editing.key : "new"}
+          batches={draft.intake.batches}
+        />
+      ) : (
+        <p className="text-muted-foreground text-sm">
+          {draft?.tree
+            ? "A scene tree is checked, not previewed: the phone's handheld lesson plays it. See Check."
+            : draft
+              ? "Nothing to preview until the lesson checks out: see Check."
+              : "Nothing to preview yet: bring in a lesson first."}
+        </p>
+      ),
     check: (
       <LessonCheck draft={draft} actions={isMobile ? actions : undefined} />
     ),

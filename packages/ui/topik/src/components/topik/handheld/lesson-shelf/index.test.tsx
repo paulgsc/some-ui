@@ -22,9 +22,11 @@ import type { PastedLessonStore } from "@topik/lib/topik/adapter/pasted-lesson"
 import {
   createPastedLessonStore,
   serializePastedLesson,
+  serializePastedTree,
 } from "@topik/lib/topik/adapter/pasted-lesson"
 import { createResumeStore } from "@topik/lib/topik/adapter/resume-point"
 import { createSurveyStore } from "@topik/lib/topik/adapter/survey-store"
+import { workedLesson } from "@topik/lib/topik/generation/tree-intake/worked-example"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
 const DINNER: TopikMetadata = {
@@ -178,6 +180,35 @@ describe("the learner shelf (canon Rem. 7.3)", () => {
     // It plays as the pasted lesson, held for the session like a paste.
     expect(pasted.get()?.meta.key).toBe("local:first-dinner")
     expect(shelf.read).toHaveBeenCalledWith("first-dinner")
+  })
+
+  it("keeps a pasted scene tree when asked, and replays it as the drama", async () => {
+    const shelf = fakeShelf()
+    const pasted = createPastedLessonStore(memoryStorage())
+    pasted.setTree(workedLesson())
+    renderLesson(shelf, pasted)
+    await screen.findByRole("region", { name: "Pasted this session" })
+    expect(shelf.keep).not.toHaveBeenCalled()
+
+    click(/Keep on this account/)
+    expect(await screen.findByText(/Kept on this account/)).toBeTruthy()
+    // Under the tree's id, as the slot's own document.
+    expect(shelf.keep).toHaveBeenCalledWith(
+      "first-tea",
+      serializePastedTree(workedLesson())
+    )
+
+    click("Forget this drama")
+    expect(pasted.getTree()).toBeNull()
+    click(/Write your own lesson/)
+    const kept = await screen.findByRole("region", { name: "Your shelf" })
+    fireEvent.click(
+      within(kept).getByRole("button", { name: "Play first-tea" })
+    )
+
+    expect(await screen.findByText("숨 막히는 긴장감")).toBeTruthy()
+    // It plays as the pasted tree, held for the session like a paste.
+    expect(pasted.getTree()).toEqual(workedLesson())
   })
 
   it("says a full shelf is full, and removes only what the learner removes", async () => {

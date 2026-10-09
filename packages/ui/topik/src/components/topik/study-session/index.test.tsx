@@ -13,6 +13,7 @@ import type { SpeechAdapter } from "@some-ui/speech"
 import { SpeechProvider } from "@some-ui/speech"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { cleanup, render, screen, waitFor } from "@testing-library/react"
+import type { Mock } from "vitest"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
 import { KoreanStudyPage } from "."
@@ -136,5 +137,49 @@ describe("KoreanStudyPage - mountable by the registry", () => {
     // The default repositories fetch over HTTP; a host that passed its own
     // must not find them running anyway.
     expect(loadCatalog).toHaveBeenCalled()
+  })
+
+  describe("the served scene trees (MKJ-S4)", () => {
+    const TREES = {
+      version: "t",
+      topiks: [
+        {
+          key: "first-tea",
+          displayName: "Tea at the chairman's",
+          description: "",
+          batchCount: 1,
+          totalQuestions: 3,
+          totalMessages: 12,
+          tags: ["topik-2"],
+        },
+      ],
+    }
+    const loaders = (): {
+      loadManifest: Mock<() => Promise<unknown>>
+      loadTopik: Mock<(key: string) => Promise<unknown>>
+      loadTreeManifest: Mock<() => Promise<unknown>>
+    } => ({
+      loadManifest: vi.fn(() =>
+        Promise.resolve<unknown>({ version: "1", topiks: [] })
+      ),
+      loadTopik: vi.fn(() => Promise.resolve<unknown>([])),
+      loadTreeManifest: vi.fn(() => Promise.resolve<unknown>(TREES)),
+    })
+
+    it("never reach the desktop session: it neither requests nor lists them", async () => {
+      const load = loaders()
+      renderApplet(<KoreanStudyPage {...load} surface="desktop" />)
+      await mounted()
+      await waitFor(() => expect(load.loadManifest).toHaveBeenCalled())
+      expect(load.loadTreeManifest).not.toHaveBeenCalled()
+      expect(screen.queryByText("Tea at the chairman's")).toBeNull()
+    })
+
+    it("are listed by the handheld lesson", async () => {
+      const load = loaders()
+      renderApplet(<KoreanStudyPage {...load} surface="handheld" />)
+      expect(await screen.findByText("Tea at the chairman's")).toBeTruthy()
+      expect(load.loadTreeManifest).toHaveBeenCalled()
+    })
   })
 })

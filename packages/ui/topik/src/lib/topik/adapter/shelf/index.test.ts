@@ -4,10 +4,20 @@ import { keepWithoutReplacing } from "@some-ui/shared"
 import { FIXTURE_BATCHES } from "@topik/components/topik/handheld/handheld-lesson/fixture"
 import type { TopikMetadata } from "@topik/lib/topik"
 import type { PastedLesson } from "@topik/lib/topik/adapter/pasted-lesson"
-import { serializePastedLesson } from "@topik/lib/topik/adapter/pasted-lesson"
+import {
+  serializePastedLesson,
+  serializePastedTree,
+} from "@topik/lib/topik/adapter/pasted-lesson"
+import { workedLesson } from "@topik/lib/topik/generation/tree-intake/worked-example"
 import { describe, expect, it, vi } from "vitest"
 
 import { keptBodyOf, keptLessonOf, shelfKeyOf } from "."
+
+/** A kept body's conversation lesson, or null when it is not one. */
+const conversationOf = (body: unknown, key: string): PastedLesson | null => {
+  const kept = keptLessonOf(body, key)
+  return kept?.kind === "conversation" ? kept.lesson : null
+}
 
 const META: TopikMetadata = {
   key: "local:first-dinner",
@@ -38,18 +48,31 @@ describe("keptLessonOf", () => {
     JSON.parse(serializePastedLesson(META, FIXTURE_BATCHES))
 
   it("reads back what the pasted slot kept, under its shelf key", () => {
-    const lesson = keptLessonOf(kept(), "first-dinner")
+    const lesson = conversationOf(kept(), "first-dinner")
     expect(lesson?.meta.key).toBe("local:first-dinner")
     expect(lesson?.meta.displayName).toBe("The first family dinner")
     expect(lesson?.batches).toHaveLength(FIXTURE_BATCHES.length)
   })
 
   it("derives counts as a paste does, whatever the kept entry claims", () => {
-    const lesson = keptLessonOf(kept(), "first-dinner")
+    const lesson = conversationOf(kept(), "first-dinner")
     expect(lesson?.meta.batchCount).toBe(FIXTURE_BATCHES.length)
     expect(lesson?.meta.totalMessages).toBe(
       FIXTURE_BATCHES.reduce((sum, batch) => sum + batch.messages.length, 0)
     )
+  })
+
+  it("reads back a kept scene tree through both audits (MK4)", () => {
+    const body: unknown = JSON.parse(serializePastedTree(workedLesson()))
+    expect(keptLessonOf(body, "first-tea")).toEqual({
+      kind: "tree",
+      tree: workedLesson(),
+    })
+    // A tree edited to name a feeling the renderer lacks is not played.
+    const edited: unknown = JSON.parse(
+      JSON.stringify(body).replace('"feeling":"tension"', '"feeling":"ennui"')
+    )
+    expect(keptLessonOf(edited, "first-tea")).toBeNull()
   })
 
   it("refuses a body that is not a kept lesson", () => {
@@ -89,7 +112,7 @@ describe("keeping a replayed lesson again", () => {
     }
     // Two pastes, as intake leaves them, that share a model-chosen key.
     const pasted = (meta: TopikMetadata): PastedLesson =>
-      keptLessonOf(
+      conversationOf(
         JSON.parse(serializePastedLesson(meta, FIXTURE_BATCHES)),
         "first-dinner"
       )!
@@ -107,7 +130,7 @@ describe("keeping a replayed lesson again", () => {
       )
     ).resolves.toEqual({ change: "kept", key: "first-dinner-2" })
 
-    const replayed = keptLessonOf(
+    const replayed = conversationOf(
       JSON.parse(held.get("first-dinner-2")!),
       "first-dinner-2"
     )!

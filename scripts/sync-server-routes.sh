@@ -64,6 +64,9 @@ else
 fi
 
 if [[ $verify == true ]]; then
+  # Their workspace dependencies first: a checkout has no `dist/`, and
+  # server-routes' vitest config loads `@some-ui/vite-config/vitest` from it.
+  pnpm --filter "@some-ui/server-routes^..." --filter "@some-ui/contract-harness^..." run build
   pnpm --filter @some-ui/server-routes test
   pnpm --filter @some-ui/contract-harness contract:drift
 fi

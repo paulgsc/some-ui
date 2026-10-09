@@ -219,7 +219,7 @@ export const PromptCard = ({
       )}
       <p className="text-muted-foreground shrink-0 text-xs">
         {format === "tree"
-          ? "Then bring the model's reply to the Lesson step: the tree is checked there, not saved yet."
+          ? "Then bring the model's reply to the Lesson step: the tree is checked there, and saved for the phone."
           : "Then bring the model's whole reply to the Lesson step: the lesson, and the entry that names it."}
       </p>
     </section>
