@@ -806,6 +806,19 @@ describe("HandheldLesson", () => {
       expect(screen.queryByRole("region", { name: "Dramas" })).toBeNull()
     })
 
+    it("says the dramas failed to load, and loads them again on request", async () => {
+      const list = vi
+        .fn<TreeFeed["list"]>()
+        .mockRejectedValueOnce(new Error("500"))
+        .mockResolvedValue([TEA])
+      renderLesson({ treeFeed: { list, load: vi.fn() } })
+      const dramas = await screen.findByRole("region", { name: "Dramas" })
+      expect(dramas.textContent).toMatch(/Couldn't load the dramas/)
+      fireEvent.click(within(dramas).getByRole("button", { name: "Try again" }))
+      expect(await screen.findByText("Tea at the chairman's")).toBeTruthy()
+      expect(screen.queryByText(/Couldn't load the dramas/)).toBeNull()
+    })
+
     it("lists no dramas where the host serves none", async () => {
       renderLesson()
       await screen.findByRole("button", { name: /Write your own lesson/ })

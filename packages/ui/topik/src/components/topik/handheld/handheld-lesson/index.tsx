@@ -262,7 +262,12 @@ export const HandheldLesson = ({
     if (playing) {
       return (
         <DramaLesson
-          key={playing.id}
+          // A served tree reloaded under its id is new content: the drama
+          // starts again from its kept place rather than read the new tree
+          // with the old runtime.
+          key={
+            drama.playing ? playing.id : `${playing.id}:${served.dataUpdatedAt}`
+          }
           lesson={playing}
           voice={voice}
           sound={sound}
@@ -370,7 +375,15 @@ export const HandheldLesson = ({
               : null
           }
           dramas={
-            dramas.length > 0 ? { items: dramas, onPlay: setServedKey } : null
+            feed.isError
+              ? {
+                  items: [],
+                  onPlay: setServedKey,
+                  onReload: () => void feed.refetch(),
+                }
+              : dramas.length > 0
+                ? { items: dramas, onPlay: setServedKey }
+                : null
           }
           onCreate={generator.open}
           onForget={generator.forget}

@@ -26,11 +26,14 @@ export function useTreeFeed(
     enabled: feed !== undefined,
     staleTime: 10 * 60 * 1000,
     gcTime: 30 * 60 * 1000,
-    retry: 2,
   })
 }
 
-/** One served tree through both audits; idle while `key` is null. */
+/**
+ * One served tree through both audits; idle while `key` is null. Never stale
+ * by time: a tree changes on the phone only when a sync invalidates the
+ * queries, and the handheld remounts the drama when it does.
+ */
 export function useServedTree(
   feed: TreeFeed | undefined,
   key: string | null
@@ -42,8 +45,7 @@ export function useServedTree(
         ? feed.load(key)
         : { status: "absent", error: "No tree is chosen." },
     enabled: feed !== undefined && key !== null,
-    staleTime: 5 * 60 * 1000,
+    staleTime: Infinity,
     gcTime: 10 * 60 * 1000,
-    retry: 2,
   })
 }

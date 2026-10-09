@@ -40,11 +40,13 @@ type MaterialListProps = {
   } | null
   /**
    * The operator's served scene trees (`adapter/tree-feed`), with how to
-   * play one; absent or null where none are served.
+   * play one; absent or null where none are served. `onReload` is there
+   * when the feed failed to load.
    */
   dramas?: {
     items: Array<TopikMetadata>
     onPlay: (key: string) => void
+    onReload?: () => void
   } | null
   loading: boolean
   error: string | null
@@ -352,6 +354,20 @@ export const MaterialList = ({
       {dramas && (
         <section aria-label="Dramas" className="flex flex-col gap-2">
           <Heading>Dramas</Heading>
+          {dramas.onReload && (
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-destructive text-sm">
+                Couldn&apos;t load the dramas.
+              </p>
+              <Button
+                variant="outline"
+                className="h-11 rounded-xl"
+                onClick={dramas.onReload}
+              >
+                Try again
+              </Button>
+            </div>
+          )}
           <ul className="flex flex-col gap-2">
             {dramas.items.map((item) => (
               <Row

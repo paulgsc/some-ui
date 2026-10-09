@@ -19,6 +19,7 @@
  * phone's handheld lesson (`?activity=`), never to the desktop session.
  */
 
+import { plainShelfKey } from "@some-ui/shared"
 import type {
   ConversationBatch,
   Intake,
@@ -114,7 +115,8 @@ export function fillForm(form: LessonForm, text: string): LessonForm {
   if (tree.status === "checked") {
     return {
       ...form,
-      key: form.key || tree.lesson.id,
+      // The model's id, held to the key rule as a shelf key is.
+      key: form.key || plainShelfKey(tree.lesson.id, "lesson"),
       displayName: form.displayName || tree.lesson.root.place,
     }
   }

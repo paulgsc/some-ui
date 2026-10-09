@@ -426,6 +426,33 @@ describe("the served scene trees (MKJ-S4)", () => {
     expect(again.lessons.removed).toBe(0)
   })
 
+  it("keeps a lesson home moved to the trees until the tree arrives", async () => {
+    await syncFromHome(phoneDb, HOME, verbatimGet, () => NOW)
+    await homeDb.run("UPDATE curriculum SET activity_id = ? WHERE key = ?", [
+      TREE_ACTIVITY,
+      "k2-cafe",
+    ])
+    // The move's download fails: the lesson stays, under its old activity.
+    const failing: HomeGet = (url) =>
+      url.endsWith("/curriculum/k2-cafe")
+        ? Promise.resolve({ status: 500, body: "" })
+        : verbatimGet(url)
+    const report = await syncFromHome(phoneDb, HOME, failing, () => NOW)
+    expect(report.failed).toEqual(["k2-cafe"])
+    expect(report.lessons.removed).toBe(0)
+    await expect(phoneJson("/curriculum/k2-cafe")).resolves.toEqual({
+      batches: [],
+    })
+    // Once it arrives, it is listed under the trees alone.
+    await syncFromHome(phoneDb, HOME, verbatimGet, () => NOW)
+    await expect(phoneJson("/curriculum/manifest.json")).resolves.toMatchObject(
+      { topiks: [] }
+    )
+    await expect(
+      phoneJson(`/curriculum/manifest.json?activity=${TREE_ACTIVITY}`)
+    ).resolves.toMatchObject({ topiks: [{ key: "k2-cafe" }] })
+  })
+
   it("leaves them be on a home that answers every manifest with its lessons", async () => {
     await upsertLesson(phoneDb, TREE, TREE_BODY, NOW, TREE_ACTIVITY)
     // A home from before `?activity=`: the query is ignored.

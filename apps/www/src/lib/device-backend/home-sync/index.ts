@@ -128,7 +128,11 @@ function topiksOf(manifest: unknown): Array<unknown> {
   return manifest.topiks
 }
 
-/** Copies one curriculum activity's listing into `tally`. */
+/**
+ * Copies one curriculum activity's listing into `tally`. `listedAnywhere` is
+ * every key home lists under any activity: a key moving to another one is
+ * kept until that activity's pass replaces it.
+ */
 async function syncLessons(
   sync: {
     db: SqlDriver
@@ -137,12 +141,13 @@ async function syncLessons(
     base: string
     now: () => number
     failed: Array<string>
+    listedAnywhere: Array<string>
   },
   activityId: string,
   listed: Array<unknown>,
   tally: Tally
 ): Promise<void> {
-  const { db, store, get, base, now, failed } = sync
+  const { db, store, get, base, now, failed, listedAnywhere } = sync
   // Every key home still lists, including an entry this phone cannot read:
   // that one fails, and is not removed.
   const listedKeys = stringsAt(listed, "key")
@@ -153,7 +158,7 @@ async function syncLessons(
   }
   // First, so what home dropped makes room for what it added. By what home
   // lists, so a lesson that merely fails to download below is kept.
-  tally.removed = await removeLessonsExcept(db, listedKeys, activityId)
+  tally.removed = await removeLessonsExcept(db, listedAnywhere, activityId)
   for (const entry of entries) {
     try {
       const answer = await get(
@@ -210,16 +215,24 @@ export async function syncFromHome(
   )
   const rounds = await getJson(get, base, "/leetype/rounds")
 
-  const sync = { db, store, get, base, now, failed: report.failed }
-  await syncLessons(sync, DEFAULT_LESSON_ACTIVITY, lessons, report.lessons)
   // Keys are one namespace, so a home that lists a lesson in both answered
   // the tree manifest with its lessons: it predates `?activity=`. Copying
   // that listing would move every lesson under the trees' activity, so the
   // trees are left as they are until home serves them.
-  const lessonKeys = new Set(stringsAt(lessons, "key"))
-  if (!stringsAt(trees, "key").some((key) => lessonKeys.has(key))) {
-    await syncLessons(sync, TREE_ACTIVITY, trees, report.trees)
+  const lessonKeys = stringsAt(lessons, "key")
+  const treeKeys = stringsAt(trees, "key")
+  const scoped = !treeKeys.some((key) => lessonKeys.includes(key))
+  const sync = {
+    db,
+    store,
+    get,
+    base,
+    now,
+    failed: report.failed,
+    listedAnywhere: scoped ? [...lessonKeys, ...treeKeys] : lessonKeys,
   }
+  await syncLessons(sync, DEFAULT_LESSON_ACTIVITY, lessons, report.lessons)
+  if (scoped) await syncLessons(sync, TREE_ACTIVITY, trees, report.trees)
 
   const roundsListed: Array<unknown> | null =
     isRecord(rounds) && Array.isArray(rounds.rounds) ? rounds.rounds : null
