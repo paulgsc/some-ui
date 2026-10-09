@@ -514,6 +514,19 @@ jobs:
       - name: Check workflows
         run: nix develop .#ci --command node --no-warnings scripts/check-workflows.ts
 
+  # ── Toolchain pins (repo-wide) ─────────────────────────────────────────
+  # scripts/sync-toolchain.sh --check. No `changes` gate: either side can move
+  # alone (a flake.lock bump, a hand edit of .nvmrc), and a hand edit of a copy
+  # is the drift this exists to catch. No install: it only evaluates the flake.
+  toolchain:
+    name: Toolchain pins
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/nix-setup
+      - name: Check toolchain pins match the flake
+        run: scripts/sync-toolchain.sh --check
+
   ci-gate:
     name: CI Gate
     runs-on: ubuntu-latest
@@ -529,6 +542,7 @@ jobs:
         test-layout,
         react-coordination,
         workflows,
+        toolchain,
       ]
     if: always()
     steps:
@@ -583,6 +597,14 @@ jobs:
             FAILED=true
           else
             echo "✅ workflows: $WORKFLOWS_RESULT"
+          fi
+
+          TOOLCHAIN_RESULT="${{ needs.toolchain.result }}"
+          if [ "$TOOLCHAIN_RESULT" != "success" ]; then
+            echo "❌ toolchain: $TOOLCHAIN_RESULT (always required)"
+            FAILED=true
+          else
+            echo "✅ toolchain: $TOOLCHAIN_RESULT"
           fi
 
           DENY_RESULT="${{ needs.deny.result }}"

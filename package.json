@@ -51,7 +51,7 @@
     "contract": "pnpm --filter @some-ui/contract-harness contract",
     "contract:drift": "pnpm --filter @some-ui/contract-harness contract:drift"
   },
-  "packageManager": "pnpm@11.20.0",
+  "packageManager": "pnpm@12.9.0",
   "author": "pgdev",
   "devDependencies": {
     "@changesets/changelog-github": "^0.5.0",

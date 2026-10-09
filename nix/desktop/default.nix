@@ -13,15 +13,15 @@
     vulkan-loader
     udev
     libxkbcommon
-    xorg.libX11
-    xorg.libXcursor
-    xorg.libXrandr
-    xorg.libXrender
-    xorg.libxcb
-    xorg.libXi
-    xorg.libXext
-    xorg.libXfixes
-    xorg.libxkbfile
+    libx11
+    libxcursor
+    libxrandr
+    libxrender
+    libxcb
+    libxi
+    libxext
+    libxfixes
+    libxkbfile
   ];
 in {
   deps =

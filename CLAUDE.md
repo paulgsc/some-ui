@@ -130,9 +130,9 @@ the shortest life that works, and nothing recreated leaves its old copy behind.
   - The Pages deployment, npm packages, AMO submissions and the `paulgsc/www` Docker Hub
     image are the point of their workflows and are meant to last. Nothing prunes old
     Docker Hub tags; that is Docker Hub's storage, not this repo's.
-  - Bot branches (`release/pages`, `changeset-release/*`, `bot/server-route-snapshot`)
-    are opened with `create-pull-request`'s `delete-branch: true`, so each deletes itself
-    once `main` carries its content.
+  - Bot branches (`release/pages`, `changeset-release/*`, `bot/server-route-snapshot`,
+    `bot/flake-update`) are opened with `create-pull-request`'s `delete-branch: true`,
+    so each deletes itself once `main` carries its content.
 - **Repo setting, not code:** Settings → Actions → General → "Artifact and log
   retention" sets the default for any upload without `retention-days` and caps any
   explicit value above it. It also sets how long run logs are kept.

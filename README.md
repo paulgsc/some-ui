@@ -88,9 +88,14 @@ and shared-workspace policy, continue with [`packages/README.md`](packages/READM
 ### Prerequisites
 
 - Node.js matching [`.nvmrc`](.nvmrc)
-- pnpm `11.20.0` (declared in [`package.json`](package.json))
+- pnpm matching `packageManager` in [`package.json`](package.json)
 - Rust stable for work under `crates/`
 - `wasm-pack` when building a browser-facing Rust crate
+
+The Node and pnpm versions are chosen by the Nix flake
+([`nix/node`](nix/node/default.nix)); `.nvmrc` and `packageManager` are copies
+that [`scripts/sync-toolchain.sh`](scripts/sync-toolchain.sh) writes and CI
+checks, so change the flake, not them.
 
 ### Install and run
 
@@ -98,9 +103,13 @@ and shared-workspace policy, continue with [`packages/README.md`](packages/READM
 git clone https://github.com/paulgsc/some-ui.git
 cd some-ui
 
-# With nvm; use your version manager's equivalent if different.
+# Either enter the flake's shell, which provides both:
+nix develop .#extension
+# or use nvm (or your version manager's equivalent) and any pnpm, which
+# switches itself to the version package.json declares:
 nvm use
-corepack enable
+npm install -g pnpm
+
 pnpm install
 
 # Prefer a scoped command over the root `pnpm dev` (currently broken; see

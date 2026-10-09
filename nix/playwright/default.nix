@@ -40,12 +40,20 @@
     pkgs.lib.head
   ];
 
+  # The build directory is chrome-linux64 from Playwright 1.63, chrome-linux
+  # before it; take whichever this driver ships.
+  chromiumBuildDir = pkgs.lib.pipe (builtins.readDir "${browsers}/${chromiumDir}") [
+    builtins.attrNames
+    (pkgs.lib.filter (n: pkgs.lib.hasPrefix "chrome-linux" n))
+    pkgs.lib.head
+  ];
+
   # firefoxBin = "${browsers}/${firefoxDir}/firefox/firefox";
-  chromiumBin = "${browsers}/${chromiumDir}/chrome-linux/chrome";
+  chromiumBin = "${browsers}/${chromiumDir}/${chromiumBuildDir}/chrome";
 in {
   deps = with pkgs; [
     playwright-driver.browsers
-    nodePackages.web-ext
+    web-ext
 
     alsa-lib
     at-spi2-atk
@@ -63,18 +71,18 @@ in {
     nss
     pango
     udev
-    xorg.libX11
-    xorg.libXcomposite
-    xorg.libXcursor
-    xorg.libXdamage
-    xorg.libXext
-    xorg.libXfixes
-    xorg.libXi
-    xorg.libXrandr
-    xorg.libXrender
-    xorg.libXScrnSaver
-    xorg.libXtst
-    xorg.libxcb
+    libx11
+    libxcomposite
+    libxcursor
+    libxdamage
+    libxext
+    libxfixes
+    libxi
+    libxrandr
+    libxrender
+    libxscrnsaver
+    libxtst
+    libxcb
   ];
 
   env = {
@@ -106,15 +114,15 @@ in {
     nss
     pango
     udev
-    xorg.libX11
-    xorg.libXcomposite
-    xorg.libXcursor
-    xorg.libXdamage
-    xorg.libXext
-    xorg.libXfixes
-    xorg.libXi
-    xorg.libXrandr
-    xorg.libXrender
-    xorg.libxcb
+    libx11
+    libxcomposite
+    libxcursor
+    libxdamage
+    libxext
+    libxfixes
+    libxi
+    libxrandr
+    libxrender
+    libxcb
   ];
 }
