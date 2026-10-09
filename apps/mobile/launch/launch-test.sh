@@ -24,11 +24,9 @@
 # "debug"), so a release build's console errors never reach it. The native
 # log does.
 #
-# logcat is streamed to logcat.txt from before the install to the end, not
-# dumped once at the end: the emulator's ring buffer is 2 MB and system
-# noise can fill it in seconds, so by the time the monkey finished, a dump
-# no longer held the app's first lines ("device storage: opened" among them;
-# 2026-10-09, main's buffer then began 38 s after launch).
+# logcat is streamed, not dumped at the end: the emulator's 2 MB ring buffer
+# fills with system noise in seconds, and a dump after the monkey run no
+# longer held the app's first lines.
 #
 # It is one script rather than the action's `script:` input because that
 # input runs each line as its own shell, so no variable or `if` spans lines.
@@ -42,9 +40,8 @@ summary=${GITHUB_STEP_SUMMARY:-/dev/null}
 failures=()
 
 adb logcat -c
-adb logcat -v threadtime > "$out/logcat.txt" 2>&1 &
+adb logcat > "$out/logcat.txt" 2>&1 &
 logcat_pid=$!
-trap 'kill "$logcat_pid" 2>/dev/null || true' EXIT
 adb install -r "$apk"
 adb shell monkey -p "$pkg" -c android.intent.category.LAUNCHER 1 > /dev/null
 
@@ -71,9 +68,8 @@ adb exec-out screencap -p > "$out/launched.png" || true
 adb shell monkey -p "$pkg" --pct-syskeys 0 --throttle 250 -s 42 -v 300 \
   > "$out/monkey.txt" 2>&1 || true
 adb exec-out screencap -p > "$out/after-monkey.png" || true
-sleep 2
 kill "$logcat_pid" 2>/dev/null || true
-wait "$logcat_pid" 2>/dev/null || true
+wait "$logcat_pid" || true
 
 if ! grep -q "// Monkey finished" "$out/monkey.txt"; then
   failures+=("the monkey run did not finish (monkey.txt)")
