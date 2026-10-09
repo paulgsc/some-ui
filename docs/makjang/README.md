@@ -546,12 +546,13 @@ choice panel are the session's.
 - **Caption lettering:** the hue as fill, a dark ink stroke, the session ground
   as its halo.
 - **Sound:** a synthesized tone, register 196·2^max(a, 0) Hz, rising in a major triad
-  when v ≥ 0.3, falling a semitone when v ≤ −0.3, otherwise the dun-dun of a
-  reveal; then the cry, voiced at rate 0.9 + 0.2·a and pitch 1 + 0.12·v. No
-  asset files. The cry is voiced at the session's own rate and pitch for
-  now: a `Speaker` takes no pitch, and its `playbackRate` replaces the rate
-  the person chose rather than scaling it, so the prosody waits on the same
-  `@some-ui/speech` change as per-character voices.
+  when v ≥ 0.3, falling a semitone when v ≤ −0.3 (with a noise crash when
+  a ≥ 0.8 too), otherwise the dun-dun of a reveal; then the cry, voiced at
+  rate 0.9 + 0.2·a and pitch 1 + 0.12·v. No asset files. The cry's prosody
+  waits on the same `@some-ui/speech` change as per-character voices: a
+  `Speaker` takes no pitch, and its `playbackRate` replaces the rate the
+  person chose rather than scaling it, so the cry is voiced at the
+  session's own.
 
 In code, `@some-ui/styles` derives (`src/theme/feeling.ts`, registered as the
 `feeling` scope) and the result reaches CSS generated, not inline:
@@ -587,14 +588,10 @@ Remark 9.2 (v1.13), filed ahead of the renderer.
 - **Hangul first.** The caption is Korean, with its gloss one tap away; the cry
   is heard, in Korean.
 - **Sound only after a tap.** It is off until the learner turns it on, plays
-  once per scene, and never speaks over a line. In code the toggle sits in
-  the handheld's header, remembered per device, and the runtime
-  (`core/drama-runtime`) owes each visit to a scene its sting until it plays
-  or the scene is left: before the scene's next line, which waits for it, or
-  at once when sound is turned on with no line playing. A replay cuts it off.
-  `@some-ui/styles` derives the tone as data (`feelingTone`, beside
-  `FEELING_POINTS`); topik's `adapter/sound-port` synthesizes it with Web
-  Audio through `callForeign` and then says the cry through the `Speaker`.
+  once per scene, and never speaks over a line. Its toggle sits in the
+  handheld's header, remembered per device; when a sting plays is
+  `core/drama-runtime`'s, and how is `adapter/sound-port`'s, over
+  `@some-ui/styles`' `feelingTone`.
 
 ## Where it lives
 
@@ -816,7 +813,7 @@ the one-line summaries.
 >   (`packages/makjang/src/media.ts`), or a new kind of element to the
 >   anchor or the panels (option art, a portrait, a face on video), that no
 >   canon line names and says what it reveals, whether added in the same
->   change or filed ahead of it as Rem. 9.2 was for the tone and cry; or a
+>   change or already in the canon; or a
 >   hunk to `docs/canon/adaptive-learning-canon.typ` that deletes, moves or
 >   rewords Remark 9.2 or Corollary 4.4's audio rung so that it no longer
 >   says what the anchor (its tone and cry included) or the voice reveals,

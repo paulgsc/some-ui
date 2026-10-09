@@ -6,14 +6,14 @@
  * `Speaker` cannot name one (docs/makjang/README.md, "3. Media"). What
  * became of a line is translated once, here: a muted, failed or ended line
  * was not presented, and the beat stays readable as text. A failed one is
- * also reported (`reportFailure`), which release builds keep. A line is
+ * also reported (`reportFailure`). A line is
  * audible unless the person muted voice or the device has no Korean voice;
  * one still being checked counts as audible.
  */
 
 import { reportFailure, toIntentError } from "@some-ui/intent-kit"
 import type { Presented, VoicePort } from "@some-ui/makjang"
-import type { Speaker, SpeechOutcome } from "@some-ui/speech"
+import type { SayOptions, Speaker, SpeechOutcome } from "@some-ui/speech"
 import { SPOKEN_LANGUAGE } from "@topik/lib/topik/core/spoken-language"
 
 const PRESENTED: Readonly<Record<SpeechOutcome["kind"], Presented>> = {
@@ -25,8 +25,7 @@ const PRESENTED: Readonly<Record<SpeechOutcome["kind"], Presented>> = {
   cancelled: "cancelled",
 }
 
-/** What became of `outcome`, reporting it when the line failed. */
-export function presented(outcome: SpeechOutcome): Presented {
+function presented(outcome: SpeechOutcome): Presented {
   if (outcome.kind === "failed") {
     reportFailure({
       port: "speech session",
@@ -36,19 +35,24 @@ export function presented(outcome: SpeechOutcome): Presented {
   return PRESENTED[outcome.kind]
 }
 
+/** Says `text` in Korean, in the session's voice. Never rejects. */
+export const sayKorean = (
+  speaker: Speaker,
+  text: string,
+  options: Omit<SayOptions, "language">
+): Promise<Presented> =>
+  speaker.say(text, { ...options, language: SPOKEN_LANGUAGE }).then(presented)
+
 /** A voice port, or `null` when nothing here can speak at all. */
 export function speakerVoice(speaker: Speaker | null): VoicePort | null {
   if (!speaker?.available) return null
   return {
     voice: (request, signal) =>
-      speaker
-        .say(request.text, {
-          language: SPOKEN_LANGUAGE,
-          urgency: request.interrupt ? "now" : "next",
-          signal,
-          onStart: request.onStart,
-        })
-        .then(presented),
+      sayKorean(speaker, request.text, {
+        urgency: request.interrupt ? "now" : "next",
+        signal,
+        onStart: request.onStart,
+      }),
     audible: () =>
       !speaker.muted &&
       speaker.describe(SPOKEN_LANGUAGE).availability !== "missing",

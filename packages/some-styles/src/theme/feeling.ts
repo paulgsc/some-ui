@@ -364,19 +364,10 @@ export type FeelingTone = {
   length: number
 }
 
-/** `semitones` above (or, negative, below) `hz`, equal-tempered. */
 const interval = (hz: number, semitones: number): number =>
   hz * 2 ** (semitones / 12)
 
-/**
- * The feeling's tone, as data: synthesizing it is the renderer's. Its
- * register is 196·2^max(a, 0) Hz (G3, an octave up at full arousal). A
- * pleasant feeling (v ≥ 0.3) rises in a major triad, an unpleasant one
- * (v ≤ −0.3, inclusive, so `cringe` at exactly −0.30 falls) falls a
- * semitone, with a noise crash when it is also agitated (a ≥ 0.8), and
- * anything between is the dun-dun of a reveal. Notes shorten as arousal
- * rises.
- */
+/** The feeling's tone, as data: synthesizing it is the renderer's. */
 export function feelingTone(key: FeelingKey): FeelingTone {
   const { valence, arousal } = FEELING_POINTS[key]
   const a = Math.max(arousal, 0)

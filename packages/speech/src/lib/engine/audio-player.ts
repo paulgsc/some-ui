@@ -20,6 +20,7 @@
  *   `stop()` or `dispose()`.
  */
 
+import { audioContextConstructor } from "@some-ui/core-utils"
 import type { PendingSpeech } from "@speech/lib/promise"
 import { createSpeechLedger } from "@speech/lib/promise"
 import { createAbortError, toError } from "@speech/lib/promise/abort"
@@ -73,33 +74,14 @@ const IDLE_STATE: AudioPlayerState = {
   duration: 0,
 }
 
-type AudioContextConstructor = new () => AudioContext
-
-/**
- * Reads the constructor off `window` by name rather than through
- * `window.AudioContext`, whose type claims it is always present. It isn't:
- * Safari only exposes the `webkit`-prefixed one, and jsdom exposes neither.
- */
-function findAudioContextConstructor(): AudioContextConstructor | undefined {
-  if (typeof window === "undefined") return undefined
-  for (const key of ["AudioContext", "webkitAudioContext"]) {
-    const candidate = Reflect.get(window, key)
-    if (typeof candidate === "function") {
-      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- a `typeof x === "function"` check is as far as the type system goes here; the value came off `window` under a name only an AudioContext constructor is published as
-      return candidate as AudioContextConstructor
-    }
-  }
-  return undefined
-}
-
 function defaultAudioContextFactory(): AudioContext {
-  const Ctor = findAudioContextConstructor()
+  const Ctor = audioContextConstructor()
   if (!Ctor) throw new Error("AudioContext is not supported in this runtime")
   return new Ctor()
 }
 
 function isAudioContextAvailable(): boolean {
-  return findAudioContextConstructor() !== undefined
+  return audioContextConstructor() !== undefined
 }
 
 export function createAudioPlayer(

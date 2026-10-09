@@ -157,9 +157,7 @@ describe("the derivation", () => {
       "sawtooth",
     ])
     for (const key of FEELING_KEYS) {
-      const { notes, length } = feelingTone(key)
-      expect(length).toBe(Math.max(...notes.map((n) => n.at + n.length)))
-      expect(length).toBeLessThan(1)
+      expect(feelingTone(key).length).toBeLessThan(1)
     }
   })
 

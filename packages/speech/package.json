@@ -3,6 +3,7 @@
     "url": "https://github.com/paulgsc/some-ui/issues"
   },
   "dependencies": {
+    "@some-ui/core-utils": "workspace:*",
     "@some-ui/fetch-kit": "workspace:*"
   },
   "devDependencies": {

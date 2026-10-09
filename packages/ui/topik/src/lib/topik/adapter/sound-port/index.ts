@@ -3,12 +3,10 @@
  * feeling as its tone, synthesized with Web Audio from `@some-ui/styles`'
  * `feelingTone`, then its cry (`FEELING_WORDS`), said through the page's
  * `Speaker` once the tone has ended (docs/makjang/README.md, "Where the
- * anchor goes"). There are no audio files.
+ * anchor goes").
  *
  * Sound is off until the learner turns it on, and the choice is kept on the
- * device (`SoundControl`). The cry is said in the voice chosen in Settings at
- * its own rate and pitch: the doc's per-feeling prosody waits on the same
- * `@some-ui/speech` change as per-character voices.
+ * device (`SoundControl`).
  *
  * `AudioContext` is not ours, so a tone waits through `callForeign` (F1): by
  * a deadline, with a failure reported through `reportFailure`. A browser
@@ -20,7 +18,10 @@
  * package, and would make its own context too.
  */
 
-import { localStorageOrNull } from "@some-ui/core-utils"
+import {
+  audioContextConstructor,
+  localStorageOrNull,
+} from "@some-ui/core-utils"
 import type {
   ForeignOutcome,
   ForeignPort,
@@ -36,9 +37,8 @@ import type { Speaker } from "@some-ui/speech"
 import type { FeelingTone } from "@some-ui/styles/theme"
 import { feelingTone, isFeelingKey } from "@some-ui/styles/theme"
 import type { StorageLike } from "@topik/lib/topik/adapter/resume-point"
-import { presented } from "@topik/lib/topik/adapter/voice-port"
+import { sayKorean } from "@topik/lib/topik/adapter/voice-port"
 import { FEELING_WORDS } from "@topik/lib/topik/core/feeling"
-import { SPOKEN_LANGUAGE } from "@topik/lib/topik/core/spoken-language"
 
 // ── The control ─────────────────────────────────────────────────────────────
 
@@ -56,10 +56,7 @@ export type SoundControl = {
 
 export const SOUND_STORAGE_KEY = "topik:drama-sound"
 
-/**
- * Off unless this device was left on. A storage that refuses writes still
- * toggles for this page: what is lost is only the remembering.
- */
+/** Off unless this device was left on. */
 export function createSoundControl(
   storage: StorageLike | null = localStorageOrNull()
 ): SoundControl {
@@ -98,7 +95,6 @@ export function createSoundControl(
 
 // ── The tone ────────────────────────────────────────────────────────────────
 
-/** The part of `AudioContext` a tone uses. */
 export type ToneContext = Pick<
   AudioContext,
   | "state"
@@ -114,23 +110,12 @@ export type ToneContext = Pick<
   | "createBiquadFilter"
 >
 
-/** Makes a context inside the tap that plays it; `null` when there is none. */
+/** Makes a context; called inside the tap that plays the tone. */
 export type ToneContextFactory = () => ToneContext
 
-type ToneContextConstructor = new () => ToneContext
-
-/** The browser's, by name: Safari's is prefixed, and jsdom has neither. */
 function browserToneContext(): ToneContextFactory | null {
-  if (typeof window === "undefined") return null
-  for (const name of ["AudioContext", "webkitAudioContext"]) {
-    const found: unknown = Reflect.get(window, name)
-    if (typeof found === "function") {
-      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- a `typeof x === "function"` check is as far as the type system goes here; the value came off `window` under a name only an AudioContext constructor is published as
-      const Context = found as ToneContextConstructor
-      return () => new Context()
-    }
-  }
-  return null
+  const Context = audioContextConstructor()
+  return Context ? (): ToneContext => new Context() : null
 }
 
 /** How long a tone may take beyond its own length before it is given up. */
@@ -143,7 +128,6 @@ const UNAVAILABLE: ForeignVerdict = {
   summary: "This browser can't play sound.",
 }
 
-/** What a Web Audio failure means here, by its `DOMException` name. */
 function classifyTone(error: unknown): ForeignVerdict {
   if (error instanceof ForeignDeadlineError) {
     return {
@@ -289,9 +273,7 @@ export function feelingSound({
   if (tones === null) return null
   const cry = (text: string, signal: AbortSignal): Promise<Presented> =>
     speaker?.available
-      ? speaker
-          .say(text, { language: SPOKEN_LANGUAGE, urgency: "next", signal })
-          .then(presented)
+      ? sayKorean(speaker, text, { urgency: "next", signal })
       : Promise.resolve("unavailable")
   return {
     sting: async ({ feeling }, signal): Promise<Presented> => {
