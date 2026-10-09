@@ -5,6 +5,7 @@ import type {
   ITopikMetadataRepository,
   ITopikRepository,
 } from "@topik/lib/topik"
+import type { FileShare } from "@topik/lib/topik/adapter/next-scene-share"
 import type { TreeFeed } from "@topik/lib/topik/adapter/tree-feed"
 
 export type SessionConfig = {
@@ -27,6 +28,8 @@ export type SessionConfig = {
    * lesson only. Absent, it lists none.
    */
   treeFeed?: TreeFeed
+  /** The phone's share sheet (`FileShare`); absent, nothing offers it. */
+  share?: FileShare
 }
 
 const SessionConfigContext = createContext<SessionConfig | null>(null)

@@ -7,6 +7,7 @@ import {
   buildTreePrompt,
   lastDramaText,
   LESSON_PROMPT,
+  nextSceneFile,
 } from "."
 
 const record = (extra: Partial<LastDrama> = {}): LastDrama => ({
@@ -129,5 +130,14 @@ describe("buildTreePrompt", () => {
   it("ships a prompt that points at nothing outside itself", () => {
     const prompt = buildTreePrompt({ level: 1 })
     expect(prompt).not.toMatch(/packages\/|pnpm |canon |cargo /)
+  })
+})
+
+describe("nextSceneFile", () => {
+  it("names the export by its moment, and tells an agent the reply's name", () => {
+    const file = nextSceneFile("THE PROMPT", new Date(2026, 9, 9, 7, 5, 3))
+    expect(file.name).toBe("drama-20261009-070503.prompt.md")
+    expect(file.text).toContain("`drama-20261009-070503.json`")
+    expect(file.text.endsWith("\nTHE PROMPT")).toBe(true)
   })
 })

@@ -3,7 +3,9 @@ import { useState } from "react"
 import { cn } from "@some-ui/core-utils"
 import { scenesOf } from "@some-ui/makjang"
 import { Button, Input, Textarea } from "@some-ui/shared"
+import { SharePrompt } from "@topik/components/topik/handheld/share-prompt"
 import { StepLayout } from "@topik/components/topik/handheld/step-layout"
+import type { FileShare } from "@topik/lib/topik/adapter/next-scene-share"
 import type { DramaLesson } from "@topik/lib/topik/core/drama"
 import type { TopikLevel, TreeRequest } from "@topik/lib/topik/generation"
 import { TOPIK_LEVELS } from "@topik/lib/topik/generation"
@@ -37,6 +39,8 @@ type GenerateLessonProps = {
    * their own.
    */
   kept?: JSX.Element
+  /** The phone's share sheet: the prompt can go to a drive as a file. */
+  share?: FileShare
 }
 
 /** Findings shown before "and N more". */
@@ -207,6 +211,7 @@ export const GenerateLesson = ({
   onStartTree,
   short,
   kept,
+  share,
 }: GenerateLessonProps): JSX.Element => {
   const [level, setLevel] = useState<TopikLevel>(defaultLevel)
   const [scene, setScene] = useState("")
@@ -268,6 +273,15 @@ export const GenerateLesson = ({
           Paste it into any model, then paste its reply below. The lesson lasts
           this session; your chat with the model keeps it.
         </p>
+        {share && (
+          <SharePrompt
+            share={share}
+            prompt={() =>
+              buildPrompt({ level, scene: scene.trim() || undefined })
+            }
+            onShared={(text) => onPromptHandedOff?.(text)}
+          />
+        )}
         {manual !== null && (
           <>
             <Textarea

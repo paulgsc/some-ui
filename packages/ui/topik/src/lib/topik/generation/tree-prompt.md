@@ -6,6 +6,8 @@ follows in Korean**, at a given **TOPIK level** (1–6). The lesson is one
 asks them to act, they choose. Each choice is a strict comprehension item,
 and what they choose decides what happens next. Return the tree as JSON (see
 **Output**); it is pasted back into the app, which checks it and plays it.
+This prompt is the whole contract: everything the app checks is stated
+here, so you need no other source, and none overrides it.
 
 Two things are true at once, and neither may win:
 

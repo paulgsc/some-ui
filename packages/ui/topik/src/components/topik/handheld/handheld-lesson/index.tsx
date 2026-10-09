@@ -16,6 +16,7 @@ import { Button, KeepOnShelf, KeptShelf } from "@some-ui/shared"
 import { DramaLesson } from "@topik/components/topik/handheld/drama-lesson"
 import { GenerateLesson } from "@topik/components/topik/handheld/generate-lesson"
 import { MaterialList } from "@topik/components/topik/handheld/material-list"
+import { SharePrompt } from "@topik/components/topik/handheld/share-prompt"
 import { ReadAloudScreen } from "@topik/components/topik/read-aloud/read-aloud-screen"
 import { useSessionConfig } from "@topik/lib/topik/adapter/context/session-config-context"
 import { useLessonPrompt } from "@topik/lib/topik/adapter/hooks/use-lesson-prompt"
@@ -87,7 +88,8 @@ export const HandheldLesson = ({
   const [last] = useState(() => lastDrama ?? createLastDramaStore())
   const lessonPrompt = useLessonPrompt(last)
   const [generating, setGenerating] = useState(false)
-  const { speaker, shelf, treeFeed, metadataRepository } = useSessionConfig()
+  const { speaker, shelf, treeFeed, metadataRepository, share } =
+    useSessionConfig()
   const feed = useTreeFeed(treeFeed)
   // Keys are one namespace, so a tree the lessons' manifest also lists is a
   // lesson: a server from before `?activity=` (paulgsc/server#417) answers
@@ -116,6 +118,8 @@ export const HandheldLesson = ({
     control.state,
     control.state
   )
+  const heldLevel =
+    TOPIK_LEVELS.find((level) => level === lessonPrompt.level) ?? 1
   const startTree = (tree: Tree): void => {
     setGenerating(false)
     drama.start(tree)
@@ -226,6 +230,15 @@ export const HandheldLesson = ({
               : pointsFor(servedPlace, servedKey)
           }
           last={last}
+          ending={
+            share ? (
+              <SharePrompt
+                share={share}
+                prompt={() => lessonPrompt.prompt({ level: heldLevel })}
+                onShared={lessonPrompt.handedOff}
+              />
+            ) : undefined
+          }
           short={short}
           onLeave={leave}
         />
@@ -261,12 +274,11 @@ export const HandheldLesson = ({
     if (generating) {
       return (
         <GenerateLesson
-          defaultLevel={
-            TOPIK_LEVELS.find((level) => level === lessonPrompt.level) ?? 1
-          }
+          defaultLevel={heldLevel}
           buildPrompt={lessonPrompt.prompt}
           onPromptHandedOff={lessonPrompt.handedOff}
           onStartTree={startTree}
+          share={share}
           short={short}
           kept={
             shelf ? (

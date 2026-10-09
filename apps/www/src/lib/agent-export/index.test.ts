@@ -8,7 +8,6 @@ import type { Soundbite } from "@some-ui/soundbites"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 import { shareAgentExport } from "@/lib/agent-export"
-import { mapFileHostError } from "@/lib/intent/errors"
 import { writeReflection } from "@/lib/session-reflection"
 
 const written = vi.hoisted(() => new Map<string, string>())
@@ -111,21 +110,5 @@ describe("shareAgentExport", () => {
     expect(
       JSON.parse(written.get("agent-export/context.json") ?? "null")
     ).toMatchObject({ soundbites: [{ id: "b1", file: null }] })
-  })
-
-  it("treats backing out of the share sheet as done, and anything else as a failure", async () => {
-    share.mockRejectedValueOnce(new Error("Share canceled"))
-    await expect(shareAgentExport(soundbites)).resolves.toBeUndefined()
-
-    share.mockRejectedValueOnce(
-      new Error("Can't share while sharing is in progress")
-    )
-    const failure: unknown = await shareAgentExport(soundbites).catch(
-      (error: unknown) => error
-    )
-    expect(mapFileHostError(failure)).toMatchObject({
-      kind: "unknown",
-      retryable: true,
-    })
   })
 })

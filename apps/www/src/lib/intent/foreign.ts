@@ -32,7 +32,7 @@ export class ForeignCallError extends Error {
  * `ForeignCallError` unless the caller says otherwise.
  */
 export async function foreignValue<T>(
-  call: ForeignCall<T>,
+  call: Pick<ForeignCall<T>, "outcome">,
   failed: (error: IntentError) => unknown = (error) =>
     new ForeignCallError(error)
 ): Promise<T> {

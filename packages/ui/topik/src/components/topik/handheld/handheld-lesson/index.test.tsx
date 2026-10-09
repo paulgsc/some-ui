@@ -15,6 +15,7 @@ import type { ITopikMetadataRepository } from "@topik/lib/topik"
 import { SessionConfigProvider } from "@topik/lib/topik/adapter/context/session-config-context"
 import type { LastDramaStore } from "@topik/lib/topik/adapter/last-drama-store"
 import { createLastDramaStore } from "@topik/lib/topik/adapter/last-drama-store"
+import type { FileShare } from "@topik/lib/topik/adapter/next-scene-share"
 import type { PastedLessonStore } from "@topik/lib/topik/adapter/pasted-lesson"
 import {
   createPastedLessonStore,
@@ -52,6 +53,7 @@ type RenderOptions = {
   tones?: ToneContextFactory | null
   treeFeed?: TreeFeed
   servedPoints?: ReturnType<typeof createServedPointStore>
+  share?: FileShare
 }
 
 function renderLesson({
@@ -65,6 +67,7 @@ function renderLesson({
   tones,
   treeFeed,
   servedPoints = createServedPointStore(memoryStorage()),
+  share,
 }: RenderOptions = {}): void {
   const tree = (): JSX.Element => (
     <QueryClientProvider client={client}>
@@ -74,6 +77,7 @@ function renderLesson({
           metadataRepository,
           speaker,
           ...(treeFeed ? { treeFeed } : {}),
+          ...(share ? { share } : {}),
         }}
       >
         <HandheldLesson
@@ -324,6 +328,36 @@ describe("HandheldLesson", () => {
         screen.queryByRole("region", { name: "Pasted this session" })
       ).toBeNull()
       expect(pasted.getTree()).toBeNull()
+    })
+
+    it("shares the next scene's prompt at an ending, carrying the drama just played (MKJ-S8)", async () => {
+      const pasted = createPastedLessonStore(memoryStorage())
+      pasted.setTree(workedLesson())
+      const last = createLastDramaStore(memoryStorage())
+      const share = vi.fn<FileShare>(() =>
+        Promise.resolve({ status: "succeeded", value: "shared" })
+      )
+      renderLesson({ pastedStore: pasted, lastDrama: last, share })
+      fireEvent.click(await screen.findByText("회장님 댁 거실"))
+      click(/Next/)
+      click(/Next/)
+      click(/네, 감사합니다/)
+      click(/Next/)
+      click(/Next/)
+      click(/어땠어요/)
+      fireEvent.change(screen.getByRole("textbox"), {
+        target: { value: "more revenge" },
+      })
+      click(/Share the next scene's prompt/)
+      expect(document.body.textContent).not.toMatch(EXERCISE_FRAMING)
+
+      const file = share.mock.calls[0]?.[0]
+      expect(file?.name).toMatch(/^drama-\d{8}-\d{6}\.prompt\.md$/)
+      expect(file?.text).toMatch(/^> \*\*For an agent:\*\*/)
+      expect(file?.text).toContain('Last drama:\n"회장님 댁 거실", level 2.')
+      expect(file?.text).toContain('what next: "more revenge"')
+      // Shared is handed off: the free text it carried goes (Rem. 7.4).
+      await vi.waitFor(() => expect(last.get()?.review).toBeUndefined())
     })
 
     it("offers the drama's sound in the header, off until turned on", async () => {

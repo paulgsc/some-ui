@@ -18,6 +18,7 @@ import {
   useSessionKey,
   useSuspended,
 } from "@/lib/orchestrator"
+import { shareDramaPrompt } from "@/lib/share-files"
 import { createShelfClient } from "@/lib/shelf-client"
 import type { SessionRecord } from "@/lib/tenant"
 import {
@@ -38,6 +39,15 @@ import { useLiveLayoutEditor } from "./use-live-layout-editor"
 const PHONE_DICTATION =
   import.meta.env.VITE_DEVICE_BACKEND === "true" && runsNatively()
     ? phoneDictation()
+    : undefined
+
+/**
+ * The phone's share sheet, for the drama's next-scene prompt: inside the
+ * Android app only, like `PHONE_DICTATION`. Elsewhere the prompt is copied.
+ */
+const PHONE_SHARE =
+  import.meta.env.VITE_DEVICE_BACKEND === "true" && runsNatively()
+    ? shareDramaPrompt
     : undefined
 
 const BIND_OPTIONS = Object.keys(componentRegistry).map((key) => ({
@@ -128,6 +138,7 @@ export const SessionViewport = ({
           // The served scene trees, which only the handheld lesson lists.
           loadTreeManifest,
           shelf: shelves?.topik,
+          share: PHONE_SHARE,
         },
         leetype: {
           // A plain function too; the package parses what it returns.

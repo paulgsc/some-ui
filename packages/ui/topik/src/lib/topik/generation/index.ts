@@ -164,3 +164,34 @@ export function buildTreePrompt(request: TreeRequest): string {
     ]
   )
 }
+
+/** `drama-<stamp>`: the export's name, and the reply's (S10's file contract). */
+const stampOf = (at: Date): string => {
+  const two = (value: number): string => String(value).padStart(2, "0")
+  return `drama-${at.getFullYear()}${two(at.getMonth() + 1)}${two(
+    at.getDate()
+  )}-${two(at.getHours())}${two(at.getMinutes())}${two(at.getSeconds())}`
+}
+
+/**
+ * The next scene's prompt as a file for the learner's drive
+ * (docs/makjang/README.md, "Sharing the next scene"): a note telling any
+ * agent what to do with it and what to name the reply, then the prompt. The
+ * reply's name is the export's with `.prompt.md` replaced by `.json`, so one
+ * standing routine ("for each prompt file without its JSON, follow it")
+ * answers every export.
+ */
+export function nextSceneFile(
+  prompt: string,
+  at: Date
+): { name: string; text: string } {
+  const stamp = stampOf(at)
+  return {
+    name: `${stamp}.prompt.md`,
+    text: [
+      `> **For an agent:** follow the prompt below. Write the drama it asks for as one JSON file next to this one, named \`${stamp}.json\`, holding only the JSON. Write nothing else, and do not change this file.`,
+      "",
+      prompt,
+    ].join("\n"),
+  }
+}
