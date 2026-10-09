@@ -30,6 +30,8 @@ type GenerateLessonProps = {
   buildPrompt: (request: DramaRequest) => string
   /** A card's seed (`core/feed-card`), read at mount. */
   initialSeed?: Seed
+  /** A reply that came as a file and did not play, judged at once. */
+  initialReply?: string
   /**
    * This prompt, exactly as handed off, reached the learner: the clipboard
    * took it, or they said they copied it from the fallback. A copy event on
@@ -252,6 +254,7 @@ export const GenerateLesson = ({
   kept,
   share,
   initialSeed,
+  initialReply,
 }: GenerateLessonProps): JSX.Element => {
   const [level, setLevel] = useState<TopikLevel>(defaultLevel)
   const [scene, setScene] = useState(initialSeed?.scene ?? "")
@@ -262,8 +265,10 @@ export const GenerateLesson = ({
     text: string
     kind: "prompt" | "fixes"
   } | null>(null)
-  const [reply, setReply] = useState("")
-  const [verdict, setVerdict] = useState<Verdict | null>(null)
+  const [reply, setReply] = useState(initialReply ?? "")
+  const [verdict, setVerdict] = useState<Verdict | null>(() =>
+    initialReply === undefined ? null : verdictOf(initialReply, onStartTree)
+  )
 
   const hand = async (
     text: string,

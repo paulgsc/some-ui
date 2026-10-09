@@ -56,6 +56,7 @@ import type { DramaLesson as Tree } from "@topik/lib/topik/core/drama"
 import type { DramaPointStore } from "@topik/lib/topik/core/drama-runtime"
 import type { Seed } from "@topik/lib/topik/core/feed-card"
 import { TOPIK_LEVELS } from "@topik/lib/topik/generation"
+import { intakeTree } from "@topik/lib/topik/generation/tree-intake"
 import { ChevronLeft, Loader2, Music } from "lucide-react"
 
 type HandheldLessonProps = {
@@ -88,8 +89,12 @@ export const HandheldLesson = ({
   const drama = usePastedTree(held)
   const [last] = useState(() => lastDrama ?? createLastDramaStore())
   const lessonPrompt = useLessonPrompt(last)
-  // Writing one's own drama, from a card's seed or from nothing.
-  const [generating, setGenerating] = useState<{ seed?: Seed } | null>(null)
+  // Writing one's own drama: from a card's seed, from nothing, or from a
+  // picked file that did not play.
+  const [generating, setGenerating] = useState<{
+    seed?: Seed
+    reply?: string
+  } | null>(null)
   const { speaker, shelf, treeFeed, metadataRepository, share } =
     useSessionConfig()
   const feed = useTreeFeed(treeFeed)
@@ -125,6 +130,15 @@ export const HandheldLesson = ({
   const startTree = (tree: Tree): void => {
     setGenerating(null)
     drama.start(tree)
+  }
+  // A picked file's text goes through the intake, as a paste does (MK4).
+  const openSceneText = (text: string): void => {
+    const intake = intakeTree(text)
+    if (intake.status === "checked" && intake.findings.length === 0) {
+      startTree(intake.lesson)
+    } else {
+      setGenerating({ reply: text })
+    }
   }
   const leaveServed = (): void => setServedKey(null)
   // The read-aloud drill takes the whole screen, header included; leaving it
@@ -277,6 +291,7 @@ export const HandheldLesson = ({
       return (
         <GenerateLesson
           initialSeed={generating.seed}
+          initialReply={generating.reply}
           defaultLevel={heldLevel}
           buildPrompt={lessonPrompt.prompt}
           onPromptHandedOff={lessonPrompt.handedOff}
@@ -311,6 +326,7 @@ export const HandheldLesson = ({
         dramas={dramas}
         onPlay={setServedKey}
         onSeed={(seed) => setGenerating({ seed })}
+        onSceneText={openSceneText}
         loading={!feed.isError && (feed.isLoading || lessons.isLoading)}
         error={feed.isError ? "Couldn't load the dramas." : null}
         onReload={() => void feed.refetch()}
