@@ -508,10 +508,8 @@ const RIDE_PEAK = RIDE_BEATS[RIDE_BEATS.length - 1] ?? { x: 0, y: 0, r: 0 }
 
 /**
  * The L1 mechanism register: a looping diagram of what the tool does, with no
- * words at all. Drawn in SVG rather than as HTML in a `foreignObject`, which
- * WebKit — every browser on an iPhone — positions wrongly once its content is
- * transformed or animated. Keyframes live in `index.css` and every one of them
- * stops under `prefers-reduced-motion`.
+ * words at all, drawn in SVG. Keyframes live in `index.css` and every one of
+ * them stops under `prefers-reduced-motion`.
  */
 const Mini = ({ kind }: { kind: Mechanism }): JSX.Element => {
   switch (kind) {
