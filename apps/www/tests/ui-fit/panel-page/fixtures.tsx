@@ -21,7 +21,7 @@ import { webSpeech } from "@some-ui/speech/web-speech"
 // eager edge the rule guards against costs nothing here, and the quiz stages
 // are reachable through no lazy entry.
 // eslint-disable-next-line lazy-registry/no-eager-registry-import
-import { DramaLesson, intakeTree, QuizPanel } from "@some-ui/topik"
+import { DramaLesson, intakeTree, lastDramaOf, QuizPanel } from "@some-ui/topik"
 
 type QuizPanelProps = ComponentProps<typeof QuizPanel>
 type Question = QuizPanelProps["questions"][number]
@@ -177,7 +177,9 @@ const fitTree = ((): ComponentProps<typeof DramaLesson>["lesson"] => {
  * The drama opened at `point`, in the box the handheld gives it: a flex
  * column under its header (44px on a phone held sideways, 56px otherwise).
  */
-function dramaStage(point: unknown): () => JSX.Element {
+function dramaStage(
+  point: Parameters<typeof lastDramaOf>[1]
+): () => JSX.Element {
   const DramaStage = (): JSX.Element => {
     const short = window.innerHeight < HANDHELD_MAX_HEIGHT
     return (
@@ -196,6 +198,11 @@ function dramaStage(point: unknown): () => JSX.Element {
           voice={null}
           sound={null}
           points={{ get: () => point, set: noop }}
+          // The record an ending leaves, so an ending shows its review.
+          last={{
+            get: () => lastDramaOf(fitTree, point, null, Date.now()),
+            save: noop,
+          }}
           short={short}
           onLeave={noop}
         />

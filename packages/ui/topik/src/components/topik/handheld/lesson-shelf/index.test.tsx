@@ -17,12 +17,12 @@ import {
   fixtureTopikRepository,
 } from "@topik/components/topik/handheld/handheld-lesson/fixture"
 import { SessionConfigProvider } from "@topik/lib/topik/adapter/context/session-config-context"
+import { createLastDramaStore } from "@topik/lib/topik/adapter/last-drama-store"
 import type { PastedLessonStore } from "@topik/lib/topik/adapter/pasted-lesson"
 import {
   createPastedLessonStore,
   serializePastedTree,
 } from "@topik/lib/topik/adapter/pasted-lesson"
-import { createSurveyStore } from "@topik/lib/topik/adapter/survey-store"
 import { workedLesson } from "@topik/lib/topik/generation/tree-intake/worked-example"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
@@ -95,7 +95,7 @@ function renderLesson(
         }}
       >
         <HandheldLesson
-          surveyStore={createSurveyStore(memoryStorage())}
+          lastDrama={createLastDramaStore(memoryStorage())}
           pastedStore={pasted}
         />
       </SessionConfigProvider>

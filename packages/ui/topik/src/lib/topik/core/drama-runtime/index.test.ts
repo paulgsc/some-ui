@@ -6,6 +6,7 @@ import type {
   VoiceRequest,
 } from "@some-ui/makjang"
 import { memoryStorage } from "@some-ui/vite-config/vitest/memory-storage"
+import { createLastDramaStore } from "@topik/lib/topik/adapter/last-drama-store"
 import { createPastedLessonStore } from "@topik/lib/topik/adapter/pasted-lesson"
 import { DramaRuntime } from "@topik/lib/topik/core/drama-runtime"
 import { workedLesson } from "@topik/lib/topik/generation/tree-intake/worked-example"
@@ -87,6 +88,7 @@ const runtimeOf = (
     voice: null,
     sound: null,
     points: slot().points,
+    last: createLastDramaStore(memoryStorage()),
     ...ports,
   })
 
@@ -301,6 +303,100 @@ describe("DramaRuntime", () => {
       runtime.dispatch({ type: "choose", option: "y" })
       disconnect()
       expect(sound.requests[2]?.signal.aborted).toBe(true)
+    })
+  })
+
+  describe("the last session (canon Rem. 4.14)", () => {
+    /** Plays root, then `option`, to the leaf's end. */
+    const playTo = (runtime: DramaRuntime, option: string): void => {
+      runtime.dispatch({ type: "advance" })
+      runtime.dispatch({ type: "advance" })
+      runtime.dispatch({ type: "choose", option })
+      while (runtime.getSnapshot().session.drama.at.kind === "beat") {
+        runtime.dispatch({ type: "advance" })
+      }
+    }
+
+    it("keeps the record at each ending, and the review changes it", () => {
+      const last = createLastDramaStore(memoryStorage())
+      const runtime = runtimeOf({ last })
+      expect(runtime.getSnapshot().last).toBeNull()
+      playTo(runtime, "a")
+      expect(last.get()).toMatchObject({
+        lessonId: lesson.id,
+        tries: [{ chosen: "네, 감사합니다. 주시면 마실게요.", answered: true }],
+      })
+      expect(runtime.getSnapshot().last).toEqual(last.get())
+
+      runtime.review({ enjoyed: "loved" })
+      expect(last.get()?.review).toEqual({ enjoyed: "loved" })
+      expect(runtime.getSnapshot().last?.review).toEqual({ enjoyed: "loved" })
+
+      // A replay to another ending keeps the review.
+      runtime.dispatch({ type: "restart" })
+      playTo(runtime, "c")
+      expect(last.get()?.review).toEqual({ enjoyed: "loved" })
+    })
+
+    it("shows no other drama's record", () => {
+      const last = createLastDramaStore(memoryStorage())
+      last.save({
+        lessonId: "another",
+        content: "x",
+        level: 1,
+        title: "x",
+        at: Date.now(),
+        scenes: [],
+        tries: [],
+      })
+      expect(runtimeOf({ last }).getSnapshot().last).toBeNull()
+    })
+
+    it("merges an ending into what another tab added to this drama since", () => {
+      const storage = memoryStorage()
+      const here = runtimeOf({ last: createLastDramaStore(storage) })
+      const there = runtimeOf({ last: createLastDramaStore(storage) })
+      playTo(there, "a")
+      there.review({ enjoyed: "loved" })
+      playTo(here, "c")
+      expect(createLastDramaStore(storage).get()).toMatchObject({
+        scenes: [{ id: "s1" }, { id: "s2" }, { id: "s6" }],
+        review: { enjoyed: "loved" },
+      })
+    })
+
+    it("leaves a record another tab wrote since for another drama", () => {
+      const storage = memoryStorage()
+      const last = createLastDramaStore(storage)
+      const runtime = runtimeOf({ last })
+      playTo(runtime, "a")
+      last.save({
+        lessonId: "another",
+        content: "x",
+        level: 1,
+        title: "x",
+        at: Date.now(),
+        scenes: [],
+        tries: [],
+      })
+      runtime.review({ enjoyed: "loved" })
+      expect(last.get()?.lessonId).toBe("another")
+      expect(runtime.getSnapshot().last?.review).toEqual({ enjoyed: "loved" })
+    })
+
+    it("takes a review only at an ending, and keeps it on screen when storage fails", () => {
+      const storage = memoryStorage()
+      const runtime = runtimeOf({ last: createLastDramaStore(storage) })
+      playTo(runtime, "a")
+      // A fresh visit opens on the record, mid-drama: no review yet.
+      const again = runtimeOf({ last: createLastDramaStore(storage) })
+      expect(again.getSnapshot().last).not.toBeNull()
+      again.review({ enjoyed: "fine" })
+      expect(again.getSnapshot().last?.review).toBeUndefined()
+
+      storage.full = true
+      runtime.review({ enjoyed: "loved" })
+      expect(runtime.getSnapshot().last?.review).toEqual({ enjoyed: "loved" })
     })
   })
 })

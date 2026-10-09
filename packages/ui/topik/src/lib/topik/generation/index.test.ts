@@ -1,59 +1,67 @@
 import { FEELING_KEYS } from "@some-ui/styles/theme"
-import type { SurveyReport } from "@topik/lib/topik/core/lesson-survey"
+import type { LastDrama } from "@topik/lib/topik/core/last-drama"
 import { describe, expect, it } from "vitest"
 
 import {
   buildLessonPrompt,
   buildTreePrompt,
+  lastDramaText,
   LESSON_PROMPT,
-  surveyDigest,
 } from "."
 
-const report = (extra: Partial<SurveyReport>): SurveyReport => ({
-  topikKey: "local:first-dinner",
+const record = (extra: Partial<LastDrama> = {}): LastDrama => ({
+  lessonId: "first-dinner",
+  content: "x",
+  level: 2,
+  title: "회장님 댁 거실",
   at: 1,
-  stuck: [],
+  scenes: [
+    { id: "s0", place: "회장님 댁 거실", feeling: "tension" },
+    { id: "s1", place: "부엌", feeling: "chill" },
+  ],
+  tries: [
+    {
+      choice: "c1",
+      prompt: "서연은 뭐라고 대답할까?",
+      chosen: "응, 마실래.",
+      answered: false,
+    },
+  ],
   ...extra,
 })
 
-describe("surveyDigest", () => {
-  it("describes recent lessons in words, with the probe text rather than ids", () => {
-    const digest = surveyDigest([
-      report({
-        displayName: "The first family dinner",
-        worthwhile: "yes",
-        difficulty: "too-hard",
-        enthusiasm: "drained",
-        stuck: [
-          {
-            batchId: 2,
-            probeId: "c2-x",
-            source: "카드로 할게요.",
-            prompt: "Which is NOT a valid transformation?",
+describe("lastDramaText", () => {
+  it("describes the drama in words: scenes, first tries, then the review", () => {
+    expect(
+      lastDramaText(
+        record({
+          review: {
+            enjoyed: "loved",
+            korean: "easier",
+            more: ["s1"],
+            next: "more revenge",
           },
-        ],
-        flagged: [{ batchId: 1, probeId: "c1-y", source: "포장해 주세요." }],
-        becoming: "following a drama without subtitles",
-      }),
-      report({ topikKey: "local:older", worthwhile: "somewhat" }),
-    ])
-    expect(digest).toBe(
+        })
+      )
+    ).toBe(
       [
-        "1. The first family dinner: worthwhile; felt too hard; running out of steam.",
-        '   Blocking: 카드로 할게요. ("Which is NOT a valid transformation?")',
-        "   Flagged as keyed wrong: 포장해 주세요.",
-        '   Making them into: "following a drama without subtitles"',
-        "2. local:older: somewhat worthwhile.",
+        '"회장님 댁 거실", level 2.',
+        "Scenes reached: 회장님 댁 거실 (tension), 부엌 (chill).",
+        "First tries:",
+        '- 서연은 뭐라고 대답할까? -> "응, 마실래.": missed it.',
+        'Review: loved it; the Korean next time: easier to follow; more of: 부엌 (chill); what next: "more revenge".',
       ].join("\n")
     )
   })
 
-  it("keeps only the most recent lessons: the delta, not the path", () => {
-    const many = Array.from({ length: 8 }, (_, i) =>
-      report({ topikKey: `k${i}`, worthwhile: "yes" })
+  it("says the review was skipped, so the first tries steer alone", () => {
+    expect(lastDramaText(record({ tries: [] }))).toBe(
+      [
+        '"회장님 댁 거실", level 2.',
+        "Scenes reached: 회장님 댁 거실 (tension), 부엌 (chill).",
+        "Review: none - they skipped it.",
+      ].join("\n")
     )
-    expect(surveyDigest(many, 3).split("\n")).toHaveLength(3)
-    expect(surveyDigest([])).toBe("")
   })
 })
 
@@ -62,7 +70,6 @@ describe("buildLessonPrompt", () => {
     const prompt = buildLessonPrompt({
       level: 2,
       scene: "the fiancée meets his mother",
-      survey: "1. Lesson: worthwhile.",
     })
     expect(prompt.startsWith(LESSON_PROMPT.trimEnd())).toBe(true)
     expect(prompt).toContain(
@@ -73,27 +80,13 @@ describe("buildLessonPrompt", () => {
         "Scene: the fiancée meets his mother",
         "Conversations: 3",
         "",
-        "Survey (newest first):",
-        "1. Lesson: worthwhile.",
       ].join("\n")
     )
   })
 
-  it("says so when there is no survey yet, and lets the model invent a scene", () => {
-    const prompt = buildLessonPrompt({ level: 1, scene: "  " })
-    expect(prompt).toContain("Scene: (invent one)")
-    expect(prompt).toContain("Survey: none yet")
-  })
-
-  it("tells the model a batch lesson is for every learner at the level, not anyone's first", () => {
-    const prompt = buildLessonPrompt({ level: 3, audience: "batch" })
-    expect(prompt).toContain(
-      "Survey: none - this lesson joins the weekly batch"
-    )
-    expect(prompt).not.toContain("first lesson")
-    // A learner's prompt is unchanged by the option existing.
-    expect(buildLessonPrompt({ level: 3 })).toBe(
-      buildLessonPrompt({ level: 3, audience: "learner" })
+  it("lets the model invent a scene", () => {
+    expect(buildLessonPrompt({ level: 1, scene: "  " })).toContain(
+      "Scene: (invent one)"
     )
   })
 
@@ -120,7 +113,21 @@ describe("buildTreePrompt", () => {
     )
     expect(prompt).not.toContain("Conversations:")
     expect(prompt).toContain(
-      "Survey: none - this lesson joins the weekly batch"
+      "Last drama: none - this drama joins the batch every learner at this level chooses from."
     )
+  })
+
+  it("carries the learner's last drama, or says this is their first", () => {
+    expect(
+      buildTreePrompt({ level: 2, lastDrama: lastDramaText(record()) })
+    ).toContain('Last drama:\n"회장님 댁 거실", level 2.\n')
+    expect(buildTreePrompt({ level: 2 })).toContain(
+      "Last drama: none yet - this is their first."
+    )
+  })
+
+  it("ships a prompt that points at nothing outside itself", () => {
+    const prompt = buildTreePrompt({ level: 1 })
+    expect(prompt).not.toMatch(/packages\/|pnpm |canon |cargo /)
   })
 })

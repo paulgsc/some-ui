@@ -19,32 +19,6 @@ The request at the end of this prompt gives:
 - **Level:** the learner's TOPIK level, 1–6.
 - **Scene:** optional, a premise for the scene. Invent one if it is absent.
 - **Conversations:** how many beats the scene has (default 3).
-- **Survey:** optional, the learner's own verdict on their recent lessons.
-
----
-
-## The survey: what the learner says about the lessons
-
-`Survey`, when given, is the learner's own evaluation of their recent
-lessons. It is not evidence of their level, which arrives as `Level`. The
-survey **steers the content within that level**:
-
-- **Blocking** (a form they felt held them up): bring that form back in a
-  new line, from a different angle (another speaker, another situation).
-- **Too hard:** shorter lines, more of them. Keep the same level.
-- **Too easy:** reach the top of the level's grammar.
-- **Not worthwhile:** change what the lines are about, not how hard they are.
-- **Running out of steam:** a shorter lesson with more at stake in the scene.
-  Engagement is the point: a lesson they finish beats a thorough one they
-  don't.
-- **What they feel it is making them into** (following a drama without
-  subtitles, holding their own with in-laws): choose scenes and registers
-  that point there.
-- **An answer they flagged as keyed wrong:** re-examine that form. If the key
-  was wrong, don't repeat the mistake; if it was right, bring the form back
-  with an `explanation` that makes the rule plainer.
-
-Never quote the survey back in the lesson.
 
 ---
 
@@ -230,5 +204,5 @@ Return two ` ```json ` blocks and nothing else, in this order.
 
 ## Versioning
 
-**`v2.0`.** The prompt the app assembles. The app appends **This request**
+**`v2.1`.** The prompt the app assembles. The app appends **This request**
 below.

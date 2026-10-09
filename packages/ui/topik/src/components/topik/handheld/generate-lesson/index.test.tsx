@@ -1,6 +1,6 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react"
 import type { DramaLesson } from "@topik/lib/topik/core/drama"
-import type { LessonRequest } from "@topik/lib/topik/generation"
+import type { TreeRequest } from "@topik/lib/topik/generation"
 import {
   fenced,
   workedExample,
@@ -31,7 +31,7 @@ const renderGenerate = (
   onStartTree: Mock<(lesson: DramaLesson) => void>
 } => {
   const buildPrompt = vi.fn(
-    (request: Omit<LessonRequest, "survey">) =>
+    (request: Pick<TreeRequest, "level" | "scene">) =>
       `PROMPT tree level=${request.level} scene=${request.scene ?? "-"}`
   )
   const onStartTree = vi.fn<(lesson: DramaLesson) => void>()

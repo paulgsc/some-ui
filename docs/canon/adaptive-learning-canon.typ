@@ -80,7 +80,7 @@
     skill
   ]
   #v(1em)
-  #text(size: 9.5pt)[Version 1.13 --- 2026-10-08]
+  #text(size: 9.5pt)[Version 1.14 --- 2026-10-09]
   #v(2cm)
 ]
 
@@ -1695,6 +1695,51 @@ rather than as *data*, and the remedy is to exhibit the data.
   not about what happened.
 ]
 
+#remark("4.14", name: "The last unit crosses, and its review")[
+  Remark 4.13's last sentence is amended for the handheld drama: one thing
+  crosses units besides what Corollary 8.2 carried, the *record of the last
+  unit* the learner played to an end. It holds the unit's identity, level
+  and title; the scenes any play of it reached, by place and feeling; for
+  each choice reached, its prompt, the candidate first chosen and whether
+  that candidate answered it (the first choice of Cor. 4.7 (iv), with its
+  text, since the unit is gone when the record is read); and an optional
+  *drama review*. Nothing else crosses: no story, no cast, no line.
+
+  (i) The review is an evaluation report (Def. 3.3) of another shape,
+  offered at the unit's end and never required: whether the learner enjoyed
+  it, how much Korean they are comfortable following next time (easier,
+  about the same, more of a stretch), which scenes reached they want more
+  of, and free text on where the drama should go. Its object is the
+  teaching's fit, not the learner's competence; "about the same" from a
+  learner who followed a tenth of the unit is complete and true. It names
+  no concept and carries no outcome, Proposition 3.4 applies unchanged, and
+  it gates nothing (Cor. 3.4's step, retired from the phone with the
+  conversation lesson, is not reinstated).
+
+  (ii) The first choices are outcomes, so the record holds observations
+  (Def. 3.1). The surface keeps no belief, so no update consumes them; the
+  application draws no inference from them and shows the learner none. They
+  reach the learner's own model only inside the prompt the learner copies
+  (Cor. 8.2), as text, and that model weighs them as the average and the
+  review over them, strongly but never completely. That is input to content
+  generation, class IV (Def. 8.1), which Remark 3.3 already allows a report;
+  extended here to outcomes because the unit's shape is fixed, so its first
+  choices support an inference about fit on average and nothing about any
+  one item.
+
+  (iii) It is a record outside the envelope (Rem. 7.5), bounded at one: a
+  new unit's record replaces it, a unit being the same by identity and by
+  content (an identifier a model chose can recur), and a replay of the same
+  unit adds the scenes it reached and keeps the review and the first choices
+  already recorded, as Corollary 4.7 (iv) keeps them. It expires after
+  thirty days, its free text is deleted once a prompt has carried it
+  (Rem. 7.4), it stays on the device (Rem. 7.3), and losing it costs the
+  next prompt its last unit and nothing else (Thm. 7.2), so a write that
+  fails is swallowed (Prop. 7.2), and the record before it is removed,
+  since it describes another play. The level the learner holds defaults to
+  the record's level; the review never moves it.
+]
+
 // ═══════════════════════════════════════════════════════════════════════════
 = The Estimator
 // ═══════════════════════════════════════════════════════════════════════════
@@ -3146,6 +3191,31 @@ The row is retained as filed. Its "continuation alone" is read as
 Remark 6.7 states it (v1.10): continuation is the lever the exercise aims
 at, and the objective keeps its intervention term.
 
+#heading(level: 2)[Update --- MKJ-S6, MKJ-S7 (v1.14): `packages/ui/topik` handheld drama]
+
+As above, earlier rows are retained, the TPK-HANDHELD row (v1.3) among
+them, and this one is added.
+
+#table(
+  columns: (3.3cm, 3.5cm, 1fr),
+  stroke: 0.4pt,
+  inset: 6pt,
+  [*Surface*], [*Current learner model*], [*What changed, and what did not*],
+
+  [`packages/ui/topik`, handheld renderer],
+  [Unchanged: no belief, no persistence of competence. A resume point that
+   is a route (Rem. 4.13), and one record of the last unit played to an end
+   (Rem. 4.14)],
+  [The renderer plays scene trees only. The conversation valuation of
+   Corollaries 4.4 and 4.5 has no surface on the phone, a conversation file
+   carries no probes, and Corollary 3.4's survey and Remark 3.5's ordering
+   by reports no longer run there: the reports' store is gone. In their
+   place is Remark 4.14's record, with its optional review. Proposition 4.2
+   and Definitions 4.6--4.8 still govern every choice, through the tree's
+   teaching audit. The desktop surface and its §10 predictions are
+   unchanged.],
+)
+
 #heading(level: 2)[The unreconciled duplication]
 
 The most consequential finding of the audit is not in the table. Two
@@ -3599,6 +3669,20 @@ implement the shape; the renderer that plays a tree follows them, and
 Remark 9.2 is filed ahead of it. Adds `@some-ui/makjang` to the governed
 workspaces, and moves the front-matter version line, which had stayed at
 1.11 through v1.12.
+
+*v1.14 --- 2026-10-09.* Admits one record across drama units on the handheld
+surface, as a new item (Remark 4.14) amending the last sentence of
+Remark 4.13: the last unit played to an end, with its scenes, its first
+choices as text and an optional drama review, an evaluation report of
+another shape. The first choices reach only the learner's own model, inside
+the prompt the learner copies; nothing consumes them on the device. Adds a
+§10 row for the handheld drama recording MKJ-S6 (the conversation valuation
+of Corollaries 4.4 and 4.5 has no phone surface; conversation files carry no
+probes) and MKJ-S7 (the reports' store and Corollary 3.4's survey leave the
+phone). Motivated by the code: `packages/ui/topik` retired the survey's
+store, which nothing wrote after MKJ-S5, and its `core/last-drama` and
+`adapter/last-drama-store` implement the record. Moves the front-matter
+version line.
 
 #pagebreak()
 

@@ -115,33 +115,41 @@ The request at the end of this prompt gives:
 
 - **Level:** the learner's TOPIK level, 1–6.
 - **Scene:** optional, a premise for the scene. Invent one if it is absent.
-- **Survey:** optional, the learner's own verdict on their recent lessons.
+- **Last drama:** optional, the last drama the learner played to an ending:
+  what they reached, what they first chose, and what they said about it.
 
 ---
 
-## The survey: what the learner says about the lessons
+## The last drama: what the learner did, and what they said
 
-`Survey`, when given, is the learner's own evaluation of their recent
-lessons. It is not evidence of their level, which arrives as `Level`. The
-survey **steers the content within that level**:
+`Last drama`, when given, is the learner's last drama played to an ending.
+It is not evidence of their level, which arrives as `Level`, and it never
+sets one. It **steers the next drama within that level**, in two parts:
 
-- **Blocking** (an item they felt held them up): bring that form back in a
-  new line, from a different angle (another relation, another speaker).
-- **Too hard:** shorter lines, fewer beats per scene. Keep the same level.
-- **Too easy:** reach the top of the level's grammar, more third-order
-  choices, vary the relations.
-- **Not worthwhile:** change what the choices ask about, not how hard they
-  are.
-- **Running out of steam:** shorter scenes with more at stake. Engagement is
-  the point: a drama they finish beats a thorough one they don't.
-- **What they feel it is making them into** (following a drama without
-  subtitles, holding their own with in-laws): choose scenes and registers
-  that point there.
-- **An answer they flagged as wrong:** re-examine that form. If the key was
-  wrong, don't repeat the mistake; if it was right, bring the form back with
-  a `why` that makes the rule plainer.
+- **The first tries are the average guidance.** Each choice the learner
+  reached, the line they first chose, and whether it answered the choice.
+  Read them together, not one by one: a learner who missed most choices may
+  want shorter lines and clearer stakes; one who answered all of them can
+  take the top of the level's grammar and more third-order choices. A form
+  they missed can come back in a new line, from another angle (another
+  relation, another speaker).
+- **The review overrides the average,** strongly but never completely. It is
+  the learner's own word, and a drama that fits their performance can still
+  be the wrong drama for them:
+  - **loved it / it was OK / not for them:** keep what worked, or change
+    what the choices are about and what is at stake, not how hard they are.
+  - **The Korean next time:** how much they are comfortable following, not
+    how much they understood. Some learners happily follow a little of each
+    line; others want nearly all of it. "Easier to follow": shorter lines,
+    fewer beats per scene. "More of a stretch": reach the top of the level.
+    "About the same": keep the pitch.
+  - **More of:** a scene (its place and its feeling) to amplify: its feeling,
+    its trope, its kind of confrontation.
+  - **What next:** their own words on a genre, a trope or a character.
+    Follow it when it fits the level and the rules here.
 
-Never quote the survey back in the lesson.
+When the review is absent, the first tries steer alone. Never quote either
+back in the drama, and never tell the learner a level or a score.
 
 ---
 
@@ -701,5 +709,5 @@ Return **one** ` ```json ` block and nothing else: the lesson object, in
 
 ## Versioning
 
-**`v1.0`.** The prompt the app assembles. The app fills in **Feelings** and
+**`v1.1`.** The prompt the app assembles. The app fills in **Feelings** and
 appends **This request** below.

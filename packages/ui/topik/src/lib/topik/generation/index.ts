@@ -1,7 +1,7 @@
 /**
  * What the app hands the learner to give their own model: the lesson prompt
- * or the scene-tree prompt, with their request and the delta their recent
- * surveys record.
+ * or the scene-tree prompt, with their request and, for a tree, the last
+ * drama they played to an ending (`core/last-drama`).
  *
  * The app provides the grammar - the prompt, its schema and its invariants -
  * and the learner's model does the generating (adaptive-learning canon
@@ -12,12 +12,10 @@
 import { FEELING_KEYS } from "@some-ui/styles/theme"
 import { FEELING_WORDS } from "@topik/lib/topik/core/feeling"
 import type {
-  Difficulty,
-  Enthusiasm,
-  SurveyItem,
-  SurveyReport,
-  Worthwhile,
-} from "@topik/lib/topik/core/lesson-survey"
+  Enjoyed,
+  KoreanNext,
+  LastDrama,
+} from "@topik/lib/topik/core/last-drama"
 
 import LESSON_PROMPT from "./lesson-prompt.md?raw"
 import TREE_PROMPT from "./tree-prompt.md?raw"
@@ -30,96 +28,87 @@ export type TopikLevel = (typeof TOPIK_LEVELS)[number]
 /** Which prompt: a conversation lesson, or a scene tree (the drama). */
 export type LessonFormat = "conversations" | "tree"
 
+/** The operator's weekly batch of conversation lessons (canon Cor. 8.3). */
 export type LessonRequest = {
   level: TopikLevel
   /** A premise for the scene; the model invents one when absent. */
   scene?: string
   /** Beats in the scene. */
   conversations?: number
-  /** `surveyDigest` of recent reports; omitted when there are none. */
-  survey?: string
+}
+
+export type TreeRequest = Omit<LessonRequest, "conversations"> & {
+  /** `lastDramaText` of the last session; omitted when there is none. */
+  lastDrama?: string
   /**
-   * Who the lesson is for. `learner` (the default) is one person's next
-   * lesson, and a missing survey means it is their first. `batch` is the
-   * operator's weekly batch (canon Cor. 8.3), served to every learner at the
-   * level: no one learner's survey applies, and the prompt says so rather
-   * than calling it anyone's first lesson.
+   * Who the drama is for. `learner` (the default) is one person's next
+   * drama, and a missing last drama means it is their first. `batch` is the
+   * operator's batch (canon Cor. 8.3), served to every learner at the level:
+   * no one learner's last drama applies, and the prompt says so rather than
+   * calling it anyone's first.
    */
   audience?: "learner" | "batch"
 }
 
 export const DEFAULT_CONVERSATIONS = 3
 
-/** How many recent lessons a digest describes: the delta, not the path. */
-export const DIGEST_LESSONS = 5
-
-const WORTHWHILE_TEXT: Record<Worthwhile, string> = {
-  yes: "worthwhile",
-  somewhat: "somewhat worthwhile",
-  no: "not worthwhile",
+const ENJOYED_TEXT: Record<Enjoyed, string> = {
+  loved: "loved it",
+  fine: "it was OK",
+  "not-for-me": "not for them",
 }
 
-const DIFFICULTY_TEXT: Record<Difficulty, string> = {
-  "too-easy": "too easy",
-  right: "about right",
-  "too-hard": "too hard",
-}
-
-const ENTHUSIASM_TEXT: Record<Enthusiasm, string> = {
-  keen: "keen for the next one",
-  neutral: "either way about the next one",
-  drained: "running out of steam",
-}
-
-const describe = (item: SurveyItem): string => {
-  const source = item.source ? `${item.source}` : item.probeId
-  return item.prompt ? `${source} ("${item.prompt}")` : source
+const KOREAN_TEXT: Record<KoreanNext, string> = {
+  easier: "easier to follow",
+  right: "about the same",
+  stretch: "more of a stretch",
 }
 
 /**
- * The learner's recent verdicts, as plain text for the prompt. Newest first,
- * the last `limit` lessons only: the next lesson needs the delta, not the
- * learner's whole path. Empty when there is nothing to say.
+ * The last session, as plain text for the tree prompt: what the learner
+ * reached and first chose, then what they said.
  */
-export function surveyDigest(
-  reports: Array<SurveyReport>,
-  limit: number = DIGEST_LESSONS
-): string {
-  return reports
-    .slice(0, limit)
-    .map((report, index) => {
-      const verdict = [
-        report.worthwhile && WORTHWHILE_TEXT[report.worthwhile],
-        report.difficulty && `felt ${DIFFICULTY_TEXT[report.difficulty]}`,
-        report.enthusiasm && ENTHUSIASM_TEXT[report.enthusiasm],
+export function lastDramaText(record: LastDrama): string {
+  const place = (id: string): string => {
+    const scene = record.scenes.find((reached) => reached.id === id)
+    return scene ? `${scene.place} (${scene.feeling})` : id
+  }
+  const { review } = record
+  const next = review?.next?.trim()
+  const said = review
+    ? [
+        review.enjoyed && ENJOYED_TEXT[review.enjoyed],
+        review.korean && `the Korean next time: ${KOREAN_TEXT[review.korean]}`,
+        review.more && `more of: ${review.more.map(place).join(", ")}`,
+        next && `what next: "${next}"`,
       ].filter(Boolean)
-      const lines = [
-        `${index + 1}. ${report.displayName ?? report.topikKey}${
-          verdict.length > 0 ? `: ${verdict.join("; ")}.` : ""
-        }`,
-        ...report.stuck.map((item) => `   Blocking: ${describe(item)}`),
-        ...(report.flagged ?? []).map(
-          (item) => `   Flagged as keyed wrong: ${describe(item)}`
-        ),
-        ...(report.becoming
-          ? [`   Making them into: "${report.becoming}"`]
-          : []),
-      ]
-      return lines.join("\n")
-    })
-    .join("\n")
+    : []
+  return [
+    `"${record.title}", level ${record.level}.`,
+    `Scenes reached: ${record.scenes.map(({ id }) => place(id)).join(", ")}.`,
+    ...(record.tries.length > 0
+      ? [
+          "First tries:",
+          ...record.tries.map(
+            (first) =>
+              `- ${first.prompt} -> "${first.chosen}": ${
+                first.answered ? "answered it" : "missed it"
+              }.`
+          ),
+        ]
+      : []),
+    said.length > 0
+      ? `Review: ${said.join("; ")}.`
+      : "Review: none - they skipped it.",
+  ].join("\n")
 }
 
-/**
- * `prompt`, then this request (its level, scene and `extra` lines) and its
- * survey; ready to copy.
- */
+/** `prompt`, then this request (its level, scene and `extra` lines). */
 function withRequest(
   prompt: string,
-  request: Pick<LessonRequest, "level" | "scene" | "survey" | "audience">,
-  extra: Array<string> = []
+  request: { level: TopikLevel; scene?: string },
+  extra: Array<string>
 ): string {
-  const survey = request.survey?.trim()
   return [
     prompt.trimEnd(),
     "",
@@ -130,12 +119,6 @@ function withRequest(
     `Level: ${request.level}`,
     `Scene: ${request.scene?.trim() || "(invent one)"}`,
     ...extra,
-    "",
-    survey
-      ? `Survey (newest first):\n${survey}`
-      : request.audience === "batch"
-        ? "Survey: none - this lesson joins the weekly batch every learner at this level chooses from."
-        : "Survey: none yet - this is their first lesson.",
     "",
   ].join("\n")
 }
@@ -166,11 +149,18 @@ const feelingTable = (): string =>
  * feeling vocabulary filled in and this request appended. A tree is one
  * scene, so the request has no conversation count.
  */
-export function buildTreePrompt(
-  request: Omit<LessonRequest, "conversations">
-): string {
+export function buildTreePrompt(request: TreeRequest): string {
+  const last = request.lastDrama?.trim()
   return withRequest(
     TREE_PROMPT.replace(FEELINGS_MARKER, feelingTable()),
-    request
+    request,
+    [
+      "",
+      last
+        ? `Last drama:\n${last}`
+        : request.audience === "batch"
+          ? "Last drama: none - this drama joins the batch every learner at this level chooses from."
+          : "Last drama: none yet - this is their first.",
+    ]
   )
 }

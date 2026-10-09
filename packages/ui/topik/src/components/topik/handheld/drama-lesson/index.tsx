@@ -7,7 +7,7 @@
  * the resume point, and the engine decides where the learner is. The
  * current scene is one strip of panels; its choice is asked in the dock,
  * under the thumb, as large Korean targets with no English gloss
- * (Rem. 4.12).
+ * (Rem. 4.12). An ending offers the drama review after the author's notes.
  */
 
 import type { JSX } from "react"
@@ -15,6 +15,7 @@ import { useEffect, useMemo, useRef } from "react"
 import type { SoundPort, VoicePort } from "@some-ui/makjang"
 import { Button } from "@some-ui/shared"
 import { CandidateText } from "@topik/components/topik/handheld/candidate-text"
+import { DramaReview } from "@topik/components/topik/handheld/drama-review"
 import { LadderDock } from "@topik/components/topik/handheld/ladder-dock"
 import { StepLayout } from "@topik/components/topik/handheld/step-layout"
 import { WebtoonPanel } from "@topik/components/topik/handheld/webtoon-panel"
@@ -26,7 +27,10 @@ import {
   rungOf,
   sceneOf,
 } from "@topik/lib/topik/core/drama"
-import type { DramaPointStore } from "@topik/lib/topik/core/drama-runtime"
+import type {
+  DramaPointStore,
+  LastDramaPort,
+} from "@topik/lib/topik/core/drama-runtime"
 import { orderedOptions, showsRelations } from "@topik/lib/topik/core/probe"
 import { ChevronLeft, RotateCcw } from "lucide-react"
 
@@ -37,6 +41,7 @@ type DramaLessonProps = {
   /** The scene's tone and cry; `null` where nothing can play them. */
   sound: SoundPort | null
   points: DramaPointStore
+  last: LastDramaPort
   short: boolean
   onLeave: () => void
 }
@@ -46,14 +51,18 @@ export const DramaLesson = ({
   voice,
   sound,
   points,
+  last,
   short,
   onLeave,
 }: DramaLessonProps): JSX.Element => {
-  const { session, speaking, dispatch, replay } = useDrama(lesson, {
-    voice,
-    sound,
-    points,
-  })
+  const {
+    session,
+    speaking,
+    last: record,
+    dispatch,
+    replay,
+    review,
+  } = useDrama(lesson, { voice, sound, points, last })
   const panels = panelsOf(lesson, session)
   const scene = sceneOf(lesson, session)
   const { at } = session.drama
@@ -62,7 +71,7 @@ export const DramaLesson = ({
   const reveal = (id: string): void => dispatch({ type: "reveal", id })
 
   // Keep the newest panel in view, as a webtoon scrolls.
-  const last = panels[panels.length - 1]?.id
+  const newest = panels[panels.length - 1]?.id
   const end = useRef<HTMLDivElement>(null)
   useEffect(() => {
     const node = end.current
@@ -72,7 +81,7 @@ export const DramaLesson = ({
         window.matchMedia("(prefers-reduced-motion: reduce)").matches
       node.scrollIntoView({ block: "end", behavior: still ? "auto" : "smooth" })
     }
-  }, [last])
+  }, [newest])
 
   const options = useMemo(
     () =>
@@ -103,6 +112,9 @@ export const DramaLesson = ({
           onReplay={replay}
         />
       ))}
+      {at.kind === "end" && record && (
+        <DramaReview record={record} onReview={review} />
+      )}
       <div ref={end} />
     </div>
   )

@@ -2,9 +2,8 @@ import { boundedList } from "@/lib/bounded-list"
 
 /**
  * "How did it go?" on a finished session's wrap: one optional tap per
- * question, in TOPIK's lesson-survey words (worthwhile, difficulty,
- * enthusiasm), asked of the whole session. Kept on this device, for the
- * latest `REFLECTION_LIMIT` sessions.
+ * question (worthwhile, difficulty, enthusiasm), asked of the whole
+ * session. Kept on this device, for the latest `REFLECTION_LIMIT` sessions.
  */
 
 export const QUESTIONS = [

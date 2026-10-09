@@ -12,10 +12,12 @@ import type {
   DramaSnapshot,
 } from "@topik/lib/topik/core/drama-runtime"
 import { DramaRuntime } from "@topik/lib/topik/core/drama-runtime"
+import type { DramaReview } from "@topik/lib/topik/core/last-drama"
 
 export type UseDrama = DramaSnapshot & {
   dispatch: (event: SessionEvent) => void
   replay: (beatId: string) => void
+  review: (change: DramaReview) => void
 }
 
 export function useDrama(lesson: DramaLesson, ports: DramaPorts): UseDrama {
@@ -26,5 +28,10 @@ export function useDrama(lesson: DramaLesson, ports: DramaPorts): UseDrama {
     runtime.getSnapshot
   )
   useEffect(() => runtime.connect(), [runtime])
-  return { ...snapshot, dispatch: runtime.dispatch, replay: runtime.replay }
+  return {
+    ...snapshot,
+    dispatch: runtime.dispatch,
+    replay: runtime.replay,
+    review: runtime.review,
+  }
 }
