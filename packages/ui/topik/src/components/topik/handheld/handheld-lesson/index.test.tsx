@@ -795,6 +795,17 @@ describe("HandheldLesson", () => {
       expect(await screen.findByRole("region", { name: "Dramas" })).toBeTruthy()
     })
 
+    it("lists no lesson as a drama, from a server that ignores the trees' activity", async () => {
+      const lessonsAsTrees: TreeFeed = {
+        list: () =>
+          fixtureMetadataRepository.loadCatalog().then(({ topiks }) => topiks),
+        load: vi.fn(),
+      }
+      renderLesson({ treeFeed: lessonsAsTrees })
+      await screen.findByRole("region", { name: "Up next" })
+      expect(screen.queryByRole("region", { name: "Dramas" })).toBeNull()
+    })
+
     it("lists no dramas where the host serves none", async () => {
       renderLesson()
       await screen.findByRole("button", { name: /Write your own lesson/ })

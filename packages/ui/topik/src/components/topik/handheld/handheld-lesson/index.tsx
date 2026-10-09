@@ -38,6 +38,7 @@ import {
   serializePastedTree,
 } from "@topik/lib/topik/adapter/pasted-lesson"
 import type { ReadAloudStore } from "@topik/lib/topik/adapter/read-aloud-store"
+import { useTopikManifest } from "@topik/lib/topik/adapter/server/topik-metadata-queries"
 import {
   useServedTree,
   useTreeFeed,
@@ -96,8 +97,19 @@ export const HandheldLesson = ({
   })
   const { lesson, audio, dispatch, generator } = vm
   const drama = usePastedTree(held)
-  const { speaker, shelf, treeFeed } = useSessionConfig()
+  const { speaker, shelf, treeFeed, metadataRepository } = useSessionConfig()
   const feed = useTreeFeed(treeFeed)
+  // The lessons' manifest, which the list already reads. Keys are one
+  // namespace, so a tree it also lists is a lesson: a server from before
+  // `?activity=` answers the trees' manifest with its lessons. Those are
+  // not listed as dramas.
+  const lessons = useTopikManifest(metadataRepository)
+  const dramas =
+    feed.data && lessons.data
+      ? feed.data.filter(
+          ({ key }) => !lessons.data.topiks.some((item) => item.key === key)
+        )
+      : []
   // The served tree chosen from the list, by key; its intake loads below.
   const [servedKey, setServedKey] = useState<string | null>(null)
   const served = useServedTree(treeFeed, servedKey)
@@ -358,9 +370,7 @@ export const HandheldLesson = ({
               : null
           }
           dramas={
-            feed.data && feed.data.length > 0
-              ? { items: feed.data, onPlay: setServedKey }
-              : null
+            dramas.length > 0 ? { items: dramas, onPlay: setServedKey } : null
           }
           onCreate={generator.open}
           onForget={generator.forget}
