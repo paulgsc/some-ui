@@ -1,5 +1,3 @@
-import { FIXTURE_BATCHES } from "@topik/components/topik/handheld/handheld-lesson/fixture"
-import type { TopikMetadata } from "@topik/lib/topik"
 import { workedLesson } from "@topik/lib/topik/generation/tree-intake/worked-example"
 import { describe, expect, it } from "vitest"
 
@@ -7,7 +5,7 @@ import {
   createPastedLessonStore,
   PASTED_LESSON_KEY,
   purgeRetiredLessons,
-  RETIRED_LESSONS_KEY,
+  RETIRED_KEYS,
 } from "."
 
 const memoryStorage = (): Storage => {
@@ -24,33 +22,28 @@ const memoryStorage = (): Storage => {
   }
 }
 
-const meta = (key: string): TopikMetadata => ({
-  key,
-  displayName: key,
-  description: "",
-  batchCount: FIXTURE_BATCHES.length,
-  totalQuestions: 1,
-  totalMessages: 1,
+/** Another tree, under another id. */
+const otherLesson = (): ReturnType<typeof workedLesson> => ({
+  ...workedLesson(),
+  id: "second-tea",
 })
 
 describe("createPastedLessonStore", () => {
-  it("holds one lesson, and a second paste replaces the first", () => {
+  it("holds one tree, and a second paste replaces the first", () => {
     const store = createPastedLessonStore(memoryStorage())
-    expect(store.get()).toBeNull()
-    store.set(meta("local:a"), FIXTURE_BATCHES)
-    store.set(meta("local:b"), FIXTURE_BATCHES)
-    expect(store.get()?.meta.key).toBe("local:b")
-    expect(store.get()?.batches).toHaveLength(FIXTURE_BATCHES.length)
+    expect(store.getTree()).toBeNull()
+    store.setTree(workedLesson())
+    store.setTree(otherLesson())
+    expect(store.getTree()).toEqual(otherLesson())
   })
 
-  it("holds a scene tree in the same slot: either replaces the other", () => {
-    const store = createPastedLessonStore(memoryStorage())
-    store.set(meta("local:a"), FIXTURE_BATCHES)
-    store.setTree(workedLesson())
-    expect(store.get()).toBeNull()
-    expect(store.getTree()).toEqual(workedLesson())
-    store.set(meta("local:b"), FIXTURE_BATCHES)
-    expect(store.getTree()).toBeNull()
+  it("reads a conversation lesson an earlier build held as nothing", () => {
+    const storage = memoryStorage()
+    storage.setItem(
+      PASTED_LESSON_KEY,
+      JSON.stringify({ version: 1, meta: { key: "local:a" }, batches: [] })
+    )
+    expect(createPastedLessonStore(storage).getTree()).toBeNull()
   })
 
   it("reads a held tree back through both audits (MK4)", () => {
@@ -85,17 +78,17 @@ describe("createPastedLessonStore", () => {
 
   it("forgets the lesson on clear", () => {
     const store = createPastedLessonStore(memoryStorage())
-    store.set(meta("local:a"), FIXTURE_BATCHES)
+    store.setTree(workedLesson())
     store.clear()
-    expect(store.get()).toBeNull()
+    expect(store.getTree()).toBeNull()
   })
 
   it("reads nothing from a document it does not recognise", () => {
     const storage = memoryStorage()
     storage.setItem(PASTED_LESSON_KEY, JSON.stringify({ version: 2 }))
-    expect(createPastedLessonStore(storage).get()).toBeNull()
+    expect(createPastedLessonStore(storage).getTree()).toBeNull()
     storage.setItem(PASTED_LESSON_KEY, "{not json")
-    expect(createPastedLessonStore(storage).get()).toBeNull()
+    expect(createPastedLessonStore(storage).getTree()).toBeNull()
   })
 
   it("is silent when storage refuses", () => {
@@ -108,33 +101,33 @@ describe("createPastedLessonStore", () => {
       },
     }
     const store = createPastedLessonStore(refusing)
-    expect(() => store.set(meta("local:a"), FIXTURE_BATCHES)).not.toThrow()
-    expect(store.get()).toBeNull()
+    expect(() => store.setTree(workedLesson())).not.toThrow()
+    expect(store.getTree()).toBeNull()
   })
 })
 
 describe("a replacement storage refuses", () => {
-  it("empties the slot rather than leave the lesson it replaced", () => {
+  it("empties the slot rather than leave the tree it replaced", () => {
     const storage = memoryStorage()
     const store = createPastedLessonStore(storage)
-    store.set(meta("local:a"), FIXTURE_BATCHES)
+    store.setTree(workedLesson())
     const full: Storage = {
       ...storage,
       getItem: (key) => storage.getItem(key),
       setItem: (key, value) => {
-        // Room for an empty slot, not for a lesson.
+        // Room for an empty slot, not for a tree.
         if (value.length > 0) throw new Error("QuotaExceededError")
         storage.setItem(key, value)
       },
     }
-    createPastedLessonStore(full).set(meta("local:b"), FIXTURE_BATCHES)
-    expect(store.get()).toBeNull()
+    createPastedLessonStore(full).setTree(otherLesson())
+    expect(store.getTree()).toBeNull()
   })
 
-  it("removes the lesson it replaced when storage takes no write at all", () => {
+  it("removes the tree it replaced when storage takes no write at all", () => {
     const storage = memoryStorage()
     const store = createPastedLessonStore(storage)
-    store.set(meta("local:a"), FIXTURE_BATCHES)
+    store.setTree(workedLesson())
     // Reads and removals still work; every write is refused.
     const full: Storage = {
       ...storage,
@@ -144,18 +137,18 @@ describe("a replacement storage refuses", () => {
         throw new Error("QuotaExceededError")
       },
     }
-    createPastedLessonStore(full).set(meta("local:b"), FIXTURE_BATCHES)
-    expect(store.get()).toBeNull()
+    createPastedLessonStore(full).setTree(otherLesson())
+    expect(store.getTree()).toBeNull()
   })
 })
 
 describe("purgeRetiredLessons", () => {
-  it("deletes what the retired store kept, and nothing else", () => {
+  it("deletes what the retired stores kept, and nothing else", () => {
     const storage = memoryStorage()
-    storage.setItem(RETIRED_LESSONS_KEY, "[]")
+    for (const key of RETIRED_KEYS) storage.setItem(key, "[]")
     storage.setItem(PASTED_LESSON_KEY, "kept")
     purgeRetiredLessons(storage)
-    expect(storage.getItem(RETIRED_LESSONS_KEY)).toBeNull()
+    for (const key of RETIRED_KEYS) expect(storage.getItem(key)).toBeNull()
     expect(storage.getItem(PASTED_LESSON_KEY)).toBe("kept")
   })
 

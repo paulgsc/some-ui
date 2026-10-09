@@ -6,9 +6,17 @@
  * grading is therefore a lookup, never a judgement made here.
  */
 
-import { assertNever } from "@some-ui/core-utils"
-import type { MorphismRelation, Probe, ProbeOption } from "@topik/lib/topik"
-import { seededShuffle } from "@topik/lib/topik/core/tile-assembly"
+import type {
+  Message,
+  MorphismRelation,
+  Probe,
+  ProbeOption,
+} from "@topik/lib/topik"
+import {
+  MAX_TILES,
+  seededShuffle,
+  tokenize,
+} from "@topik/lib/topik/core/tile-assembly"
 
 /**
  * Chips for the relations probes most often name. Any other relation is its
@@ -32,29 +40,6 @@ export function relationLabel(
   override?: string
 ): string {
   return override ?? RELATION_LABELS[relation] ?? relation
-}
-
-/** What the learner is asked to do, as a short tag. */
-export function kindLabel(kind: Probe["kind"]): string {
-  switch (kind) {
-    case "odd-one-out": {
-      return "Odd one out"
-    }
-    case "pick-valid": {
-      return "Pick one"
-    }
-    case "build": {
-      return "Build it"
-    }
-    default: {
-      return assertNever(kind)
-    }
-  }
-}
-
-/** Comprehension order, named for a learner rather than a canon (Def. 4.7). */
-export function orderLabel(order: Probe["order"]): string {
-  return order === 2 ? "Structure" : "In use"
 }
 
 export type ChoiceProbe = Extract<Probe, { options: Array<ProbeOption> }>
@@ -97,4 +82,61 @@ export function acceptedForms(
  */
 export function showsRelations(probe: ChoiceProbe): boolean {
   return probe.kind === "odd-one-out"
+}
+
+/** A line as it is read and heard: its Korean, else its content. */
+export const lineText = (message: Message): string =>
+  message.korean || message.content
+
+const collapse = (text: string): string => text.replace(/\s+/g, "").trim()
+
+/**
+ * Which line an item is about.
+ *
+ * Content may say so (`anchorMessageId`, an authoring-time field). Otherwise the
+ * first line whose Korean contains the item's Korean excerpt, or is contained
+ * by it, is taken. Failing both, the last line: the item is then asked once
+ * the whole conversation has been heard.
+ *
+ * Anchoring is pacing, not belief (canon Cor. 4.4 (ii)), which is why a
+ * heuristic is admissible here at all.
+ */
+export function anchorOf(
+  item: { anchorMessageId?: string; excerpt?: string },
+  messages: Array<Message>
+): number {
+  if (messages.length === 0) return -1
+
+  if (item.anchorMessageId !== undefined) {
+    const declared = messages.findIndex(
+      (message) => message.id === item.anchorMessageId
+    )
+    if (declared !== -1) return declared
+  }
+
+  const excerpt = collapse(item.excerpt ?? "")
+  if (excerpt.length > 0) {
+    const matched = messages.findIndex((message) => {
+      const line = collapse(message.korean || message.content)
+      return (
+        line.length > 0 && (line.includes(excerpt) || excerpt.includes(line))
+      )
+    })
+    if (matched !== -1) return matched
+  }
+
+  return messages.length - 1
+}
+
+/**
+ * Whether a probe can be put to a learner. A build probe needs a board a
+ * thumb can work (canon Def. 4.5); one whose target cannot be tiled is left
+ * out rather than asked some other way, since asking it as a selection would
+ * be a different exercise than the one authored.
+ */
+export function isDeliverable(probe: Probe): boolean {
+  if (probe.kind !== "build") return true
+  // The target is the form the board tiles; alternatives are only graded.
+  const split = tokenize(probe.target)
+  return split !== null && split.tokens.length <= MAX_TILES
 }

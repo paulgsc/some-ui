@@ -5,9 +5,13 @@
  * canon Cor. 3.4), like the resume point beside it. Losing one costs that
  * report and nothing else, which is why every failure below is silent:
  * eviction, a full quota, a private window, a document an older build wrote.
- * It never leaves the device (Rem. 7.3). Its readers are selection, which
- * orders the served lessons (Rem. 3.5), and, on the learner's opt-in path,
- * the digest they hand their own model.
+ * It never leaves the device (Rem. 7.3). Its readers are the level the
+ * learner holds and, on the learner's opt-in path, the digest they hand
+ * their own model.
+ *
+ * Nothing writes a report any more: the phone asked for one at the end of a
+ * conversation lesson, and plays scene trees now (`core/lesson-survey`). The
+ * reports already kept are read until they expire.
  *
  * Kept briefly (Rem. 7.4):
  * - at most MAX_SURVEYS reports, the most recent;
@@ -19,16 +23,11 @@
  */
 
 import { localStorageOrNull } from "@some-ui/core-utils"
-import type { StorageLike } from "@topik/lib/topik/adapter/resume-point"
-import type {
-  LessonSurvey,
-  SurveyReport,
-} from "@topik/lib/topik/core/lesson-survey"
+import type { StorageLike } from "@topik/lib/topik/adapter/storage"
+import type { SurveyReport } from "@topik/lib/topik/core/lesson-survey"
 import {
   DIFFICULTY,
   ENTHUSIASM,
-  isBlank,
-  MAX_BECOMING_LENGTH,
   WORTHWHILE,
 } from "@topik/lib/topik/core/lesson-survey"
 import { z } from "zod"
@@ -68,12 +67,6 @@ const SurveyDocumentSchema = z.object({
 })
 
 export type SurveyStore = {
-  /** Keeps a report; a blank one is a skip and is not kept. */
-  add(
-    topikKey: string,
-    survey: LessonSurvey,
-    lesson?: { displayName?: string; level?: number }
-  ): void
   /** Newest first; never older than SURVEY_TTL_MS. */
   list(): Array<SurveyReport>
   /**
@@ -90,7 +83,7 @@ export function createSurveyStore(
   storage: StorageLike | null = localStorageOrNull(),
   now: () => number = Date.now
 ): SurveyStore {
-  // Each operation reads the clock once: one add, one moment.
+  // Each operation reads the clock once: one moment.
   const fresh = (
     reports: Array<SurveyReport>,
     at: number
@@ -129,25 +122,6 @@ export function createSurveyStore(
   }
 
   return {
-    add: (topikKey, survey, lesson): void => {
-      if (isBlank(survey)) return
-      const at = now()
-      const becoming = survey.becoming?.trim().slice(0, MAX_BECOMING_LENGTH)
-      const report: SurveyReport = {
-        topikKey,
-        ...(lesson?.displayName ? { displayName: lesson.displayName } : {}),
-        ...(lesson?.level ? { level: lesson.level } : {}),
-        at,
-        ...(survey.worthwhile ? { worthwhile: survey.worthwhile } : {}),
-        ...(survey.enthusiasm ? { enthusiasm: survey.enthusiasm } : {}),
-        ...(survey.difficulty ? { difficulty: survey.difficulty } : {}),
-        stuck: survey.stuck,
-        ...(survey.flagged?.length ? { flagged: survey.flagged } : {}),
-        ...(becoming ? { becoming } : {}),
-      }
-      write([report, ...read(at)], at)
-    },
-
     list: (): Array<SurveyReport> => read(now()),
 
     forgetBecoming: (carried): void => {

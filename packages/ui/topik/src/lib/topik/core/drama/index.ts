@@ -11,13 +11,15 @@
  *
  * `panelsOf` is what the renderer draws: one panel per beat shown, the
  * scene's cover first, the chosen line before it on a child scene, and the
- * open choice or the ending last. Which panels wear the scene's feeling is
- * decided here, once (MK6).
+ * open choice or the ending last. After an ending come the author's notes
+ * (작가의 말): each choice the route made, with the line chosen and why it
+ * reads as it does - how the scene resolved, never a score. Which panels wear
+ * the scene's feeling is decided here, once (MK6).
  *
  * Invariants (full text in docs/makjang/README.md, "Invariants"):
  * - MK4: the lesson here is a `checked` `TreeIntake`'s, never a raw tree.
- * - MK6: no feeling anchor sits on a choice or a chosen line: their panels
- *   carry no feeling.
+ * - MK6: no feeling anchor sits on a choice or a chosen line: their panels,
+ *   and the notes that quote chosen lines, carry no feeling.
  */
 
 import type {
@@ -47,7 +49,7 @@ import type { ChoiceProbe } from "@topik/lib/topik/core/probe"
 export type Rung = 0 | 1 | 2
 
 /** Where a heard line's ladder starts: at Hangul when nothing can speak. */
-export const firstRung = (audio: boolean): Rung => (audio ? 0 : 1)
+const firstRung = (audio: boolean): Rung => (audio ? 0 : 1)
 
 export type DramaLesson = Lesson<ChoiceProbe>
 
@@ -221,6 +223,12 @@ type ChosenLine = {
   candidate: ProbeOption
 }
 
+/** A choice the route made, as the author's notes give it. */
+export type Note = ChosenLine & {
+  /** The choice's prompt, in Korean. */
+  prompt: string
+}
+
 export type Panel =
   | { kind: "chosen"; id: string; chosen: ChosenLine; speaker: string }
   | {
@@ -238,6 +246,7 @@ export type Panel =
       scene: Scene<ChoiceProbe>
       feeling: FeelingKey
     }
+  | { kind: "notes"; id: string; notes: Array<Note> }
 
 /** The current scene: the engine's route, resolved. */
 export const sceneOf = (
@@ -257,6 +266,18 @@ function chosenLineOf(
   const candidate = choice?.check.options.find(({ id }) => id === last)
   if (choice === undefined || candidate === undefined) return undefined
   return { choice: choice.id, candidate }
+}
+
+/** Every choice on the route, in order, with the option it took. */
+function notesOf(lesson: DramaLesson, session: DramaSession): Array<Note> {
+  const { route } = session.drama
+  return route.flatMap((option, depth): Array<Note> => {
+    const choice = sceneAt(lesson.root, route.slice(0, depth))?.choice
+    const candidate = choice?.check.options.find(({ id }) => id === option)
+    return choice && candidate
+      ? [{ choice: choice.id, prompt: choice.prompt, candidate }]
+      : []
+  })
 }
 
 /** The beats shown so far in `scene`: up to the current one, or all. */
@@ -304,6 +325,10 @@ export function panelsOf(
     panels.push({ kind: "choice", id: `${scene.id}:choice`, scene })
   } else if (at.kind === "end") {
     panels.push({ kind: "ending", id: `${scene.id}:end`, scene, feeling })
+    const notes = notesOf(lesson, session)
+    if (notes.length > 0) {
+      panels.push({ kind: "notes", id: `${scene.id}:notes`, notes })
+    }
   }
   return panels
 }

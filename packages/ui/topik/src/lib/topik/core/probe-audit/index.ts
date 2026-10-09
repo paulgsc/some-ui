@@ -21,12 +21,16 @@
 import { assertNever } from "@some-ui/core-utils"
 import type { Message, MorphismRelation, Probe } from "@topik/lib/topik"
 import { GLOSS_RELATION, ProbeSchema, TopikFileSchema } from "@topik/lib/topik"
-import { anchorOf, isDeliverable } from "@topik/lib/topik/core/lesson-track"
 import {
   diffUtterance,
   MIN_DIFF_SIMILARITY,
 } from "@topik/lib/topik/core/morph-diff"
-import { acceptedForms } from "@topik/lib/topik/core/probe"
+import {
+  acceptedForms,
+  anchorOf,
+  isDeliverable,
+  lineText,
+} from "@topik/lib/topik/core/probe"
 import {
   excerptRevealsAnswer,
   tokenize,
@@ -48,8 +52,6 @@ export type ProbeFinding = {
   severity: "error" | "warning"
   message: string
 }
-
-const lineText = (message: Message): string => message.korean || message.content
 
 /** Spacing and closing punctuation aside - but not `?`, which is the whole of
  * a question form's change. */

@@ -4,7 +4,7 @@ import { cn } from "@some-ui/core-utils"
 import { useSpeaker } from "@some-ui/speech"
 import { ChatPanel } from "@topik/components/topik/chat-panel"
 import type { ConversationBatch, Message, PlayState } from "@topik/lib/topik"
-import { lineText } from "@topik/lib/topik/adapter/hooks/use-handheld-lesson"
+import { lineText } from "@topik/lib/topik/core/probe"
 import { SPOKEN_LANGUAGE } from "@topik/lib/topik/core/spoken-language"
 
 type ConversationPreviewProps = {

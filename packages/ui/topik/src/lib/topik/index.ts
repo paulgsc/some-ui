@@ -45,10 +45,7 @@ export type {
   TopikManifest,
   TopikManifestFile,
 } from "./entity/topik-metadata"
-export {
-  TopikManifestSchema,
-  TopikMetadataSchema,
-} from "./entity/topik-metadata"
+export { TopikManifestSchema } from "./entity/topik-metadata"
 
 // CORE FUNCTIONS
 

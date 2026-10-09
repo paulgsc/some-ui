@@ -4,15 +4,9 @@ import { cn } from "@some-ui/core-utils"
 import { scenesOf } from "@some-ui/makjang"
 import { Button, Input, Textarea } from "@some-ui/shared"
 import { StepLayout } from "@topik/components/topik/handheld/step-layout"
-import type { ConversationBatch, TopikMetadata } from "@topik/lib/topik"
 import type { DramaLesson } from "@topik/lib/topik/core/drama"
-import type {
-  LessonFormat,
-  LessonRequest,
-  TopikLevel,
-} from "@topik/lib/topik/generation"
+import type { LessonRequest, TopikLevel } from "@topik/lib/topik/generation"
 import { TOPIK_LEVELS } from "@topik/lib/topik/generation"
-import { fixRequest, intakeLesson } from "@topik/lib/topik/generation/intake"
 import type { FindingRow } from "@topik/lib/topik/generation/tree-intake"
 import {
   intakeTree,
@@ -24,11 +18,8 @@ import { Check, ClipboardCopy, Play } from "lucide-react"
 
 type GenerateLessonProps = {
   defaultLevel: TopikLevel
-  /** The prompt for a request, with the learner's survey digest appended. */
-  buildPrompt: (
-    request: Omit<LessonRequest, "survey">,
-    format: LessonFormat
-  ) => string
+  /** The tree prompt for a request, with the learner's survey digest. */
+  buildPrompt: (request: Omit<LessonRequest, "survey">) => string
   /**
    * This prompt, exactly as handed off, reached the learner: the clipboard
    * took it, or they said they copied it from the fallback. A copy event on
@@ -37,9 +28,7 @@ type GenerateLessonProps = {
    * clipboard refused and nothing was confirmed.
    */
   onPromptHandedOff?: (prompt: string) => void
-  /** Holds the lesson for this session and starts it (canon Rem. 7.4). */
-  onStart: (meta: TopikMetadata, batches: Array<ConversationBatch>) => void
-  /** Holds a checked scene tree for this session and plays it. */
+  /** Holds a checked scene tree for this session and plays it (Rem. 7.4). */
   onStartTree: (lesson: DramaLesson) => void
   short: boolean
   /**
@@ -52,11 +41,6 @@ type GenerateLessonProps = {
 
 /** Findings shown before "and N more". */
 const SHOWN_FINDINGS = 6
-
-const FORMATS: ReadonlyArray<Choice<LessonFormat>> = [
-  { value: "tree", label: "Drama" },
-  { value: "conversations", label: "Conversations" },
-]
 
 const LEVELS: ReadonlyArray<Choice<TopikLevel>> = TOPIK_LEVELS.map((value) => ({
   value,
@@ -107,7 +91,7 @@ const RadioRow = <T extends string | number>({
 )
 
 /**
- * A reply as its format's intake judged it, in the words the screen shows:
+ * A reply as the tree intake judged it, in the words the screen shows:
  * no lesson at all, or a lesson that plays (`start`) or cannot (`null`),
  * with its findings and the fixes to send back.
  */
@@ -122,44 +106,10 @@ type Verdict =
       start: (() => void) | null
     }
 
-const plural = (count: number, noun: string): string =>
-  `${count} ${noun}${count === 1 ? "" : "s"}`
-
 function verdictOf(
-  format: LessonFormat,
   reply: string,
-  start: {
-    conversations: (
-      meta: TopikMetadata,
-      batches: Array<ConversationBatch>
-    ) => void
-    tree: (lesson: DramaLesson) => void
-  }
+  start: (lesson: DramaLesson) => void
 ): Verdict {
-  if (format === "conversations") {
-    const intake = intakeLesson(reply)
-    if (!intake.ok) return { kind: "absent", error: intake.error }
-    const errors = intake.findings.filter(
-      ({ severity }) => severity === "error"
-    )
-    return {
-      kind: "checked",
-      title: `${intake.meta.displayName} · ${intake.meta.batchCount} conversations`,
-      summary:
-        intake.findings.length === 0
-          ? null
-          : errors.length > 0
-            ? `${plural(errors.length, "probe problem")}: those probes are left out. You can start without them, or send the fixes to your model.`
-            : "Warnings only: the lesson plays as written.",
-      findings: intake.findings.map((finding) => ({
-        key: `${finding.batch ?? "file"}:${finding.probe ?? ""}:${finding.message}`,
-        error: finding.severity === "error",
-        text: `${finding.probe ? `${finding.probe}: ` : ""}${finding.message}`,
-      })),
-      fixes: fixRequest(intake.findings),
-      start: () => start.conversations(intake.meta, intake.batches),
-    }
-  }
   const intake = intakeTree(reply)
   if (intake.status === "absent") return { kind: "absent", error: intake.error }
   const { lesson } = intake.status === "checked" ? intake : { lesson: null }
@@ -171,7 +121,7 @@ function verdictOf(
     summary: treeSummary(intake),
     findings: intake.findings.map(treeFindingRow),
     fixes: treeFixRequest(intake.findings),
-    start: lesson ? (): void => start.tree(lesson) : null,
+    start: lesson ? (): void => start(lesson) : null,
   }
 }
 
@@ -254,12 +204,10 @@ export const GenerateLesson = ({
   defaultLevel,
   buildPrompt,
   onPromptHandedOff,
-  onStart,
   onStartTree,
   short,
   kept,
 }: GenerateLessonProps): JSX.Element => {
-  const [format, setFormat] = useState<LessonFormat>("tree")
   const [level, setLevel] = useState<TopikLevel>(defaultLevel)
   const [scene, setScene] = useState("")
   const [copied, setCopied] = useState<"prompt" | "fixes" | null>(null)
@@ -291,7 +239,7 @@ export const GenerateLesson = ({
 
   const copyPrompt = (): void =>
     void hand(
-      buildPrompt({ level, scene: scene.trim() || undefined }, format),
+      buildPrompt({ level, scene: scene.trim() || undefined }),
       "prompt"
     )
 
@@ -301,19 +249,6 @@ export const GenerateLesson = ({
         <h2 className="text-muted-foreground text-xs font-medium tracking-wider uppercase">
           1 · Ask your model
         </h2>
-        <RadioRow
-          label="Lesson format"
-          choices={FORMATS}
-          value={format}
-          onChange={(value) => {
-            // Another format is another prompt, not yet copied.
-            setFormat(value)
-            setVerdict(null)
-            setCopied(null)
-            setManual(null)
-          }}
-          className="grid-cols-2"
-        />
         <RadioRow
           label="TOPIK level"
           choices={LEVELS}
@@ -329,7 +264,7 @@ export const GenerateLesson = ({
           className="h-11 rounded-xl text-base"
         />
         <p className="text-muted-foreground text-sm">
-          The prompt carries the lesson&apos;s rules and your last few survey
+          The prompt carries the lesson&apos;s rules and any recent survey
           answers. Paste it into any model, then paste its reply below. The
           lesson lasts this session; your chat with the model keeps it.
         </p>
@@ -374,11 +309,7 @@ export const GenerateLesson = ({
         {verdict && (
           <VerdictView
             verdict={verdict}
-            success={
-              format === "tree"
-                ? "Every choice will be asked as written."
-                : "Every probe will be asked as written."
-            }
+            success="Every choice will be asked as written."
           />
         )}
       </section>
@@ -421,14 +352,7 @@ export const GenerateLesson = ({
         <>
           <Button
             className="h-12 w-full rounded-2xl"
-            onClick={() =>
-              setVerdict(
-                verdictOf(format, reply, {
-                  conversations: onStart,
-                  tree: onStartTree,
-                })
-              )
-            }
+            onClick={() => setVerdict(verdictOf(reply, onStartTree))}
           >
             Check the lesson
           </Button>

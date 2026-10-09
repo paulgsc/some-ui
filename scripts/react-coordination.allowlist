@@ -38,7 +38,6 @@
 1 packages/ui/lesson-crm/src/lib/operation.ts
 1 packages/ui/topik/src/components/topik/conversation-preview/index.tsx
 2 packages/ui/topik/src/components/topik/handheld/generate-lesson/index.tsx
-1 packages/ui/topik/src/lib/topik/adapter/hooks/use-handheld-lesson/index.ts
 1 packages/ui/topik/src/lib/topik/adapter/hooks/use-read-aloud/index.ts
 1 packages/ui/topik/src/lib/topik/adapter/hooks/use-session/index.ts
 2 packages/ui/wireframes/src/components/youtube/layout-crm/index.tsx

@@ -20,7 +20,7 @@ export type TopikMetadata = {
   tags?: Array<string>
 }
 
-export const TopikMetadataSchema = z.object({
+const TopikMetadataSchema = z.object({
   key: z.string(),
   displayName: z.string(),
   description: z.string(),

@@ -16,28 +16,15 @@ import {
   fixtureMetadataRepository,
   fixtureTopikRepository,
 } from "@topik/components/topik/handheld/handheld-lesson/fixture"
-import type { TopikMetadata } from "@topik/lib/topik"
 import { SessionConfigProvider } from "@topik/lib/topik/adapter/context/session-config-context"
 import type { PastedLessonStore } from "@topik/lib/topik/adapter/pasted-lesson"
 import {
   createPastedLessonStore,
-  serializePastedLesson,
   serializePastedTree,
 } from "@topik/lib/topik/adapter/pasted-lesson"
-import { createResumeStore } from "@topik/lib/topik/adapter/resume-point"
 import { createSurveyStore } from "@topik/lib/topik/adapter/survey-store"
 import { workedLesson } from "@topik/lib/topik/generation/tree-intake/worked-example"
 import { afterEach, describe, expect, it, vi } from "vitest"
-
-const DINNER: TopikMetadata = {
-  key: "local:first-dinner",
-  displayName: "The first family dinner",
-  description: "Seo-yeon meets Chairman Kang.",
-  batchCount: FIXTURE_BATCHES.length,
-  totalQuestions: 0,
-  totalMessages: 0,
-  tags: ["topik-2"],
-}
 
 type FakeShelf = ShelfPort & { bodies: Map<string, string> }
 
@@ -108,10 +95,8 @@ function renderLesson(
         }}
       >
         <HandheldLesson
-          resumeStore={createResumeStore(memoryStorage())}
           surveyStore={createSurveyStore(memoryStorage())}
           pastedStore={pasted}
-          pastedResumeStore={createResumeStore(memoryStorage())}
         />
       </SessionConfigProvider>
     </QueryClientProvider>
@@ -119,9 +104,9 @@ function renderLesson(
   render(tree())
 }
 
-const holding = (meta: TopikMetadata = DINNER): PastedLessonStore => {
+const holding = (): PastedLessonStore => {
   const store = createPastedLessonStore(memoryStorage())
-  store.set(meta, FIXTURE_BATCHES)
+  store.setTree(workedLesson())
   return store
 }
 
@@ -138,48 +123,8 @@ describe("the learner shelf (canon Rem. 7.3)", () => {
     expect(
       screen.queryByRole("button", { name: /Keep on this account/ })
     ).toBeNull()
-    click(/Write your own lesson/)
+    click(/Write your own drama/)
     expect(screen.queryByRole("region", { name: "Your shelf" })).toBeNull()
-  })
-
-  it("keeps the pasted lesson only when asked, then replays it from the shelf", async () => {
-    const shelf = fakeShelf()
-    const pasted = holding()
-    renderLesson(shelf, pasted)
-    await screen.findByRole("region", { name: "Pasted this session" })
-    // Nothing is written, listed or read until the learner asks.
-    expect(shelf.keep).not.toHaveBeenCalled()
-    expect(shelf.list).not.toHaveBeenCalled()
-
-    click(/Keep on this account/)
-    expect(await screen.findByText(/Kept on this account/)).toBeTruthy()
-    // The key without its `local:` prefix; the body is the pasted slot's own
-    // document, as the slot reads it back.
-    const held = pasted.get()!
-    expect(shelf.keep).toHaveBeenCalledTimes(1)
-    expect(shelf.keep).toHaveBeenCalledWith(
-      "first-dinner",
-      serializePastedLesson(held.meta, held.batches)
-    )
-
-    // A new device, in effect: the tab's copy is gone.
-    click("Forget The first family dinner")
-    expect(pasted.get()).toBeNull()
-
-    click(/Write your own lesson/)
-    const kept = await screen.findByRole("region", { name: "Your shelf" })
-    expect(within(kept).getByText("1 / 20")).toBeTruthy()
-    fireEvent.click(
-      within(kept).getByRole("button", { name: "Play first-dinner" })
-    )
-
-    expect(await screen.findByText("어서 오세요. 뭐 드릴까요?")).toBeTruthy()
-    expect(
-      screen.getByRole("heading", { name: "The first family dinner" })
-    ).toBeTruthy()
-    // It plays as the pasted lesson, held for the session like a paste.
-    expect(pasted.get()?.meta.key).toBe("local:first-dinner")
-    expect(shelf.read).toHaveBeenCalledWith("first-dinner")
   })
 
   it("keeps a pasted scene tree when asked, and replays it as the drama", async () => {
@@ -188,7 +133,9 @@ describe("the learner shelf (canon Rem. 7.3)", () => {
     pasted.setTree(workedLesson())
     renderLesson(shelf, pasted)
     await screen.findByRole("region", { name: "Pasted this session" })
+    // Nothing is written, listed or read until the learner asks.
     expect(shelf.keep).not.toHaveBeenCalled()
+    expect(shelf.list).not.toHaveBeenCalled()
 
     click(/Keep on this account/)
     expect(await screen.findByText(/Kept on this account/)).toBeTruthy()
@@ -200,7 +147,7 @@ describe("the learner shelf (canon Rem. 7.3)", () => {
 
     click("Forget this drama")
     expect(pasted.getTree()).toBeNull()
-    click(/Write your own lesson/)
+    click(/Write your own drama/)
     const kept = await screen.findByRole("region", { name: "Your shelf" })
     fireEvent.click(
       within(kept).getByRole("button", { name: "Play first-tea" })
@@ -234,34 +181,40 @@ describe("the learner shelf (canon Rem. 7.3)", () => {
 
     click(/Keep on this account/)
     expect(await screen.findByText(/Kept on this account/)).toBeTruthy()
-    expect([...shelf.bodies.keys()]).toEqual(["oldest", "first-dinner"])
+    expect([...shelf.bodies.keys()]).toEqual(["oldest", "first-tea"])
   })
 
-  it("shows a kept body that fails the paste's check as unreadable, never played", async () => {
+  it("shows a kept conversation lesson as unreadable on the phone, never played", async () => {
     const shelf = fakeShelf()
+    // What an earlier build kept: a conversation lesson, which the phone no
+    // longer plays (docs/makjang/README.md, "One lesson stands alone").
     shelf.bodies.set(
-      "broken",
-      JSON.stringify({ version: 1, meta: {}, batches: [{ id: "x" }] })
+      "first-dinner",
+      JSON.stringify({
+        version: 1,
+        meta: { key: "local:first-dinner", displayName: "The first dinner" },
+        batches: FIXTURE_BATCHES,
+      })
     )
     const pasted = createPastedLessonStore(memoryStorage())
     renderLesson(shelf, pasted)
 
     fireEvent.click(
-      await screen.findByRole("button", { name: /Write your own lesson/ })
+      await screen.findByRole("button", { name: /Write your own drama/ })
     )
     const kept = await screen.findByRole("region", { name: "Your shelf" })
     fireEvent.click(
-      await within(kept).findByRole("button", { name: "Play broken" })
+      await within(kept).findByRole("button", { name: "Play first-dinner" })
     )
     expect(await within(kept).findByText(/Can't be played/)).toBeTruthy()
     expect(
-      within(kept).queryByRole("button", { name: "Play broken" })
+      within(kept).queryByRole("button", { name: "Play first-dinner" })
     ).toBeNull()
     expect(
-      within(kept).getByRole("button", { name: "Remove broken" })
+      within(kept).getByRole("button", { name: "Remove first-dinner" })
     ).toBeTruthy()
-    expect(pasted.get()).toBeNull()
-    expect(screen.getByRole("heading", { name: "New lesson" })).toBeTruthy()
+    expect(pasted.getTree()).toBeNull()
+    expect(screen.getByRole("heading", { name: "New drama" })).toBeTruthy()
   })
 
   it("asks a signed-out learner to sign in, rather than failing", async () => {

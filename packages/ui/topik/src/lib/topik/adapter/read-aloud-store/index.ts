@@ -13,7 +13,7 @@
  */
 
 import { localStorageOrNull } from "@some-ui/core-utils"
-import type { StorageLike } from "@topik/lib/topik/adapter/resume-point"
+import type { StorageLike } from "@topik/lib/topik/adapter/storage"
 import type { ReadAloudLevel } from "@topik/lib/topik/read-aloud/content"
 import type {
   PaceBook,
