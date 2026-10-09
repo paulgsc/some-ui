@@ -65,12 +65,14 @@ export function unitIntervalBySeed(seed: number): number {
   return randomValues(mixed(seed))() / 2 ** 32
 }
 
-/** A seed from a string key (FNV-1a), for callers keyed by an id. */
-export function seedOf(key: string): number {
-  let hash = 0x811c9dc5
-  for (let index = 0; index < key.length; index += 1) {
-    hash ^= key.charCodeAt(index)
-    hash = Math.imul(hash, 0x01000193)
+/**
+ * FNV-1a over UTF-16 code units, 32 bits: a seed from a string key, or, from
+ * another offset basis, a second independent hash of the same text.
+ */
+export function fnv1a(text: string, basis = 0x811c9dc5): number {
+  let hash = basis >>> 0
+  for (let index = 0; index < text.length; index += 1) {
+    hash = Math.imul(hash ^ text.charCodeAt(index), 0x01000193) >>> 0
   }
-  return hash >>> 0
+  return hash
 }

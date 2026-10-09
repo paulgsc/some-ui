@@ -6,7 +6,7 @@
  * grading is therefore a lookup, never a judgement made here.
  */
 
-import { seedOf, shuffledBySeed } from "@some-ui/core-utils"
+import { fnv1a, shuffledBySeed } from "@some-ui/core-utils"
 import type { MorphismRelation, Probe, ProbeOption } from "@topik/lib/topik"
 
 /**
@@ -42,7 +42,7 @@ export function orderedOptions(
   probe: Probe,
   seedKey: string
 ): Array<ProbeOption> {
-  return shuffledBySeed(probe.options, seedOf(seedKey))
+  return shuffledBySeed(probe.options, fnv1a(seedKey))
 }
 
 /**

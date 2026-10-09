@@ -13,7 +13,7 @@
  * order: a set can always be rebuilt from its key.
  */
 
-import { seedOf, shuffledBySeed } from "@some-ui/core-utils"
+import { fnv1a, shuffledBySeed } from "@some-ui/core-utils"
 import type {
   ReadAloudDeck,
   ReadAloudLevel,
@@ -116,8 +116,8 @@ export function buildSet(
   const below = eligible.filter((line) => line.level < level)
 
   const sentenceItems: Array<SetItem> = [
-    ...shuffledBySeed(atLevel, seedOf(`${seedKey}:sentences:at`)),
-    ...shuffledBySeed(below, seedOf(`${seedKey}:sentences:below`)),
+    ...shuffledBySeed(atLevel, fnv1a(`${seedKey}:sentences:at`)),
+    ...shuffledBySeed(below, fnv1a(`${seedKey}:sentences:below`)),
   ]
     .slice(0, Math.max(0, sentences))
     .map((line) => ({
@@ -136,7 +136,7 @@ export function buildSet(
   const wordItems: Array<SetItem> = []
   for (const { line, occurrence } of shuffledBySeed(
     forms,
-    seedOf(`${seedKey}:words`)
+    fnv1a(`${seedKey}:words`)
   )) {
     if (wordItems.length >= words) break
     if (seen.has(occurrence.wordId)) continue
@@ -153,7 +153,7 @@ export function buildSet(
 
   const all = [...wordItems, ...sentenceItems]
   for (let attempt = 0; attempt < ORDER_ATTEMPTS; attempt += 1) {
-    const order = shuffledBySeed(all, seedOf(`${seedKey}:order:${attempt}`))
+    const order = shuffledBySeed(all, fnv1a(`${seedKey}:order:${attempt}`))
     if (!hasThreeAlike(order)) return order
   }
   return spread(wordItems, sentenceItems)

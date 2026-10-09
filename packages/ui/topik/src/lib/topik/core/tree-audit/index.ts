@@ -16,10 +16,10 @@
  * - every scene names a feeling the renderer has (`core/feeling`).
  *
  * A choice with an error is not asked: its scene becomes a leaf and the
- * subtree under it is dropped, as Remark 4.7 drops an item at load. A feeling outside the vocabulary or a level outside TOPIK's has no
- * smaller piece to drop, so it rejects the tree. Findings are reported over
- * the whole tree, a dropped subtree included, so one round of fixes covers
- * everything.
+ * subtree under it is dropped, as Remark 4.7 drops an item at load. A
+ * feeling outside the vocabulary or a level outside TOPIK's has no smaller
+ * piece to drop, so it rejects the tree. Findings are reported over the whole
+ * tree, a dropped subtree included, so one round of fixes covers everything.
  *
  * Invariants (full text in docs/makjang/README.md, "Invariants"):
  * - MK4: every choice the handheld asks has passed this audit; a rejected
