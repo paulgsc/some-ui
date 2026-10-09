@@ -59,9 +59,11 @@ describe("createLastDramaStore", () => {
   it("forgets the free text a prompt carried, and keeps text written since", () => {
     const store = createLastDramaStore(memoryStorage(), () => 2)
     store.save(record({ review: { enjoyed: "fine", next: "revenge" } }))
-    store.forgetNext({ lessonId: "first-tea", next: "an older text" })
+    const carried = { lessonId: "first-tea", content: "x", next: "revenge" }
+    store.forgetNext({ ...carried, next: "an older text" })
+    store.forgetNext({ ...carried, content: "another drama, same id" })
     expect(store.get()?.review?.next).toBe("revenge")
-    store.forgetNext({ lessonId: "first-tea", next: "revenge" })
+    store.forgetNext(carried)
     expect(store.get()?.review).toEqual({ enjoyed: "fine" })
   })
 

@@ -8,7 +8,10 @@
  */
 
 import { useCallback, useRef, useState, useSyncExternalStore } from "react"
-import type { LastDramaStore } from "@topik/lib/topik/adapter/last-drama-store"
+import type {
+  Carried,
+  LastDramaStore,
+} from "@topik/lib/topik/adapter/last-drama-store"
 import type { TreeRequest } from "@topik/lib/topik/generation"
 import { buildTreePrompt, lastDramaText } from "@topik/lib/topik/generation"
 
@@ -34,7 +37,7 @@ export function useLessonPrompt(store: LastDramaStore): LessonPrompt {
   // Each prompt built, and the free text it carried. A handoff names the
   // prompt it handed off, so it forgets what that prompt carried and nothing
   // else: not text the learner wrote after the prompt was built.
-  const carried = useRef(new Map<string, { lessonId: string; next: string }>())
+  const carried = useRef(new Map<string, Carried>())
 
   const prompt = useCallback(
     (request: Pick<TreeRequest, "level" | "scene">): string => {
@@ -45,7 +48,8 @@ export function useLessonPrompt(store: LastDramaStore): LessonPrompt {
       })
       const next = record?.review?.next
       if (record && next !== undefined) {
-        carried.current.set(text, { lessonId: record.lessonId, next })
+        const { lessonId, content } = record
+        carried.current.set(text, { lessonId, content, next })
       }
       return text
     },

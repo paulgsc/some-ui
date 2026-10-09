@@ -1731,12 +1731,13 @@ rather than as *data*, and the remedy is to exhibit the data.
   new unit's record replaces it, a unit being the same by identity and by
   content (an identifier a model chose can recur), and a replay of the same
   unit adds the scenes it reached and keeps the review and the first choices
-  already recorded, as Corollary 4.7 (iv) keeps them. It expires after thirty days, its free text is deleted
-  once a prompt has carried it (Rem. 7.4), it stays on the device
-  (Rem. 7.3), and losing it costs the next prompt its last unit and nothing
-  else (Thm. 7.2), so a write that fails is swallowed (Prop. 7.2). The
-  level the learner holds defaults to the record's level; the review never
-  moves it.
+  already recorded, as Corollary 4.7 (iv) keeps them. It expires after
+  thirty days, its free text is deleted once a prompt has carried it
+  (Rem. 7.4), it stays on the device (Rem. 7.3), and losing it costs the
+  next prompt its last unit and nothing else (Thm. 7.2), so a write that
+  fails is swallowed (Prop. 7.2), and the record before it is removed,
+  since it describes another play. The level the learner holds defaults to
+  the record's level; the review never moves it.
 ]
 
 // ═══════════════════════════════════════════════════════════════════════════

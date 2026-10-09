@@ -681,7 +681,8 @@ Its rules:
 - **Brief** (Rem. 7.4): it is one record, and it expires after 30 days. Its
   free text is deleted once a prompt has carried it, as a report's is. It
   never leaves the device (Rem. 7.3), and losing it costs the next prompt its
-  "last drama" section and nothing else, so a failed write is swallowed.
+  "last drama" section and nothing else, so a failed write is swallowed, and
+  the record before it is removed, since it is another play's.
 - **The level the learner holds** is the record's level until the learner
   chooses another, else 1. It replaces `heldLevel`'s reading of the last
   report. The review never moves it.

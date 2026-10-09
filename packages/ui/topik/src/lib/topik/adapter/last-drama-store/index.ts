@@ -62,6 +62,11 @@ const DocumentSchema = z.object({
   last: LastDramaSchema,
 })
 
+/** Which drama's free text a prompt carried, and the text. */
+export type Carried = Pick<LastDrama, "lessonId" | "content"> & {
+  next: string
+}
+
 /**
  * `get` is `null` when there is no record, it expired, or this build cannot
  * read it, and the same object until the record changes.
@@ -72,7 +77,7 @@ export type LastDramaStore = LastDramaPort & {
    * carried it to the learner's model (Rem. 7.4). Text the learner changed
    * since is kept.
    */
-  forgetNext(carried: { lessonId: string; next: string }): void
+  forgetNext(carried: Carried): void
   subscribe(listener: () => void): () => void
 }
 
@@ -127,7 +132,7 @@ export function createLastDramaStore(
       )
     } catch {
       // Quota, privacy mode: a lost record is one prompt's history. The one
-      // before it is not this one's, so it goes too.
+      // before it is another play's, so it goes too.
       remove()
     }
     for (const listener of listeners) listener()
@@ -138,9 +143,13 @@ export function createLastDramaStore(
   return {
     get: read,
     save,
-    forgetNext: ({ lessonId, next }): void => {
+    forgetNext: ({ lessonId, content, next }): void => {
       const record = read()
-      if (record?.lessonId === lessonId && record.review?.next === next) {
+      if (
+        record?.lessonId === lessonId &&
+        record.content === content &&
+        record.review?.next === next
+      ) {
         save(withReview(record, { next: undefined }, record.at))
       }
     },

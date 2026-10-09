@@ -125,7 +125,8 @@ export const DramaReview = ({
             </span>
           </span>
         </AccordionTrigger>
-        <AccordionContent className="flex flex-col gap-4 pb-4">
+        {/* Its padding keeps the text field's focus ring inside the clip. */}
+        <AccordionContent className="flex flex-col gap-4 px-1 pb-4">
           <Question
             ko="재미있었어요?"
             en="Did you enjoy it?"
@@ -191,7 +192,7 @@ export const DramaReview = ({
               maxLength={NEXT_MAX}
               value={review.next ?? ""}
               onChange={(event) => onReview({ next: event.target.value })}
-              className="h-12 rounded-2xl text-base"
+              className="h-12 rounded-2xl text-base md:text-base"
             />
           </label>
           <button
