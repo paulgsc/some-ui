@@ -365,6 +365,21 @@ describe("DramaRuntime", () => {
       })
     })
 
+    it("follows the store while connected, for this drama's record only", () => {
+      const storage = memoryStorage()
+      const last = createLastDramaStore(storage)
+      const runtime = runtimeOf({ last })
+      runtime.connect()
+      playTo(runtime, "a")
+      const mine = runtime.getSnapshot().last
+      // Another drama's record, or none after a failed write, changes nothing.
+      last.save({ ...mine!, lessonId: "another" })
+      expect(runtime.getSnapshot().last).toBe(mine)
+      // This drama's, changed elsewhere (a share forgot its free text), shows.
+      last.save({ ...mine!, review: { enjoyed: "fine" } })
+      expect(runtime.getSnapshot().last?.review).toEqual({ enjoyed: "fine" })
+    })
+
     it("leaves a record another tab wrote since for another drama", () => {
       const storage = memoryStorage()
       const last = createLastDramaStore(storage)

@@ -723,7 +723,7 @@ it; the only contract is the files. Its canon line is Remark 8.3 (v1.15).
 ### Sharing the next scene (MKJ-S8)
 
 - **What leaves:** one file, `drama-<stamp>.prompt.md` (the stamp is the
-  moment it was shared, in UTC: `20261009T071503Z`). It is the tree prompt with the
+  moment it was shared, in UTC to the millisecond: `20261009T071503120Z`). It is the tree prompt with the
   last drama folded into its request ("The last session, and its review"),
   under a one-paragraph note for an agent. Nothing else: no raw record, no
   telemetry.

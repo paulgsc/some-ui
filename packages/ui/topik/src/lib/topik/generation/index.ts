@@ -168,18 +168,18 @@ export function buildTreePrompt(request: TreeRequest): string {
 /**
  * The next scene's prompt as a file for the learner's drive, under a note
  * telling an agent what to write and its name (docs/makjang/README.md, "The
- * file contract"). The stamp is the moment in UTC, so no clock change makes
- * two exports share a name.
+ * file contract"). The stamp is the moment in UTC to the millisecond, so
+ * neither a clock change nor two quick shares make two exports share a name.
  */
 export function nextSceneFile(
   prompt: string,
   at: Date
 ): { name: string; text: string } {
-  const stamp = `drama-${at.toISOString().replace(/[-:]|\.\d+/g, "")}`
+  const stamp = `drama-${at.toISOString().replace(/[-:.]/g, "")}`
   return {
     name: `${stamp}.prompt.md`,
     text: [
-      `> **For an agent:** follow the prompt below. Write the drama it asks for as one JSON file next to this one, named \`${stamp}.json\`, holding the bare JSON with no code fence. Write nothing else, and do not change this file.`,
+      `> **For an agent:** follow the prompt below. Write the drama it asks for as one JSON file next to this one, named \`${stamp}.json\`, holding the bare JSON, not the fenced block **Output** asks for. Write nothing else, and do not change this file.`,
       "",
       prompt,
     ].join("\n"),
