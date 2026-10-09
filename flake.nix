@@ -36,6 +36,13 @@
       # ── Helpers ───────────────────────────────────────────────────────────
       mkLdPath = libs: pkgs.lib.makeLibraryPath libs;
     in {
+      # The Node and pnpm versions the shells above provide, i.e. what flake.lock
+      # currently pins. `nix eval --json .#toolchain.<system>` reads it;
+      # scripts/sync-toolchain.ts keeps package.json's `packageManager` and
+      # .nvmrc equal to it, so those files follow `nix flake update` instead of
+      # drifting from it.
+      toolchain = node.versions;
+
       devShells = {
         # ── default: full local dev ───────────────────────────────────────
         # Rust + wasm + desktop GUI + dev ergonomics.
@@ -68,7 +75,7 @@
             rust.deps
             ++ node.deps
             ++ pdf.deps
-            ++ [pkgs.nodePackages.web-ext];
+            ++ [pkgs.web-ext];
 
           shellHook = ''
             export RUST_BACKTRACE=${rust.ciEnv.RUST_BACKTRACE}
@@ -126,7 +133,7 @@
         ci-playwright = pkgs.mkShell {
           buildInputs =
             node.deps
-            ++ [pkgs.nodePackages.web-ext]
+            ++ [pkgs.web-ext]
             ++ playwright.deps;
 
           LD_LIBRARY_PATH = mkLdPath playwright.ldLibs;

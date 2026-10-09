@@ -45,7 +45,7 @@
 in {
   deps = with pkgs; [
     playwright-driver.browsers
-    nodePackages.web-ext
+    web-ext
 
     alsa-lib
     at-spi2-atk
