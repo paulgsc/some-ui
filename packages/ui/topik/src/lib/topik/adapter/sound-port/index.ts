@@ -243,7 +243,7 @@ function playTone(
     start: async (stopped) => {
       const context = makeContext()
       // Closed when the tone ends or is given up, even while a `resume`
-      // that never settles (an interrupted iOS session) still holds `start`.
+      // that never settles still holds `start`.
       let open = true
       const close = (): void => {
         stopped.removeEventListener("abort", close)

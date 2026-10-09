@@ -102,11 +102,6 @@ describe("the one step that adds a Korean voice, on the device in hand", () => {
       "search “Text-to-speech”",
     ],
     [
-      "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15",
-      "ios",
-      "Spoken Content → Voices → Korean",
-    ],
-    [
       "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_6) AppleWebKit/605.1.15",
       "mac",
       "Manage Voices… → Korean",

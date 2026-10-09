@@ -150,6 +150,14 @@ in the APK build), and the `_apk` routes. The window-size splits follow the
 window, not the device, so the APK on a tablet gets the wide surfaces too. When a repo-wide sweep has to skip a desktop-only file, say so
 where the skip lives, as the `paletteRatchet` calls do.
 
+**The phone is Android, and only Android** (owner, #1717). Any work on the APK,
+and on the phone path generally, targets Android's WebView and Chrome. iOS,
+iPadOS and Safari are not targets: whatever works there does so by coincidence.
+So no code, test, fallback or comment exists for them (a `webkit`-prefixed
+global Chrome does not need, an Apple meta tag, a Safari-version workaround, an
+iPhone branch), and one found while working is deleted. A finding that
+reproduces only on iOS or Safari is answered with this rule, not fixed or filed.
+
 ## Vestiges
 
 A workspace earns its place only while something live points to it: an app, a shipped

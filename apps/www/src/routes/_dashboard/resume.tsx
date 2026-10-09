@@ -215,8 +215,8 @@ const ResumeRoute = (): JSX.Element => {
               </Button>
             </div>
           ) : mobilePreview ? (
-            // No mobile browser renders a PDF inline (Android downloads it,
-            // iOS shows a dead first page), so phones get the same content as
+            // A phone's browser downloads a PDF rather than showing it, so
+            // phones get the same content as
             // HTML from @some-ui/resume's data: selectable, searchable,
             // screen-reader navigable and themed.
             <ResumeDocument data={resumeData[composition]} />
