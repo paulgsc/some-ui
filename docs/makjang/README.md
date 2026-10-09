@@ -601,8 +601,7 @@ it, the last, and that record writes the "last drama" part of the next prompt
 the learner copies. At the ending the learner is offered a review of the
 drama. It is optional, it steers what comes next, and nothing scores it. It
 replaces the conversation lesson's survey (MKJ-S5) and the store that held
-it. Story #1723 asked four questions, and the owner decided the first, the
-second and the fourth.
+it.
 
 ### Where comprehension lives: nowhere the app keeps
 
@@ -659,9 +658,10 @@ feeling's name), not what was said.
 
 There is one record on the device, under `topik:last-drama`. It holds:
 
-- **When** the drama ended.
-- **The drama:** its id, its level, and its place (the root scene's `place`,
-  the drama's title).
+- **When** the drama ended, or the review last changed.
+- **The drama:** its id, a hash of its content (a model picks the id, so two
+  dramas, or a served one and its reload, can share one), its level, and its
+  place (the root scene's `place`, the drama's title).
 - **The scenes reached:** every scene any play of this drama reached, with
   its place and its feeling, in the tree's order.
 - **The first tries:** for each choice reached, the choice's Korean, the
@@ -674,8 +674,10 @@ Its rules:
 
 - **Written at an ending.** It is written each time the drama reaches an
   ending, and replaces the record of any other drama. A replay of the same
-  drama adds the scenes it reached and keeps the review; the first tries are
-  the engine's `first`, which a replay keeps (MK3).
+  drama (the same id and content) keeps what the record held (the scenes, the
+  first tries, the review) and adds what this play reached, so a first try
+  is never replaced by a later one, even when the play's own state lost it.
+  The review is taken only at an ending.
 - **Brief** (Rem. 7.4): it is one record, and it expires after 30 days. Its
   free text is deleted once a prompt has carried it, as a report's is. It
   never leaves the device (Rem. 7.3), and losing it costs the next prompt its
@@ -688,17 +690,9 @@ Its rules:
   their feelings, each first try, and the review. Its section in `tree-prompt.md`
   tells the model to weigh the review over the first tries, and never to
   read either as a level.
-- **What it retires:**
-
-  - `adapter/survey-store` (no writer since S5), `core/lesson-survey`,
-    `surveyDigest` and `DIGEST_LESSONS`;
-  - the survey section of both prompts;
-  - `buildLessonPrompt`'s `survey` and `audience`, since the lesson CRM only
-    builds the batch.
-
-  The old `topik:lesson-surveys` key joins the handheld's retired keys
-  (`RETIRED_KEYS`), deleted when it opens, since nothing would read it again
-  or let it expire.
+- **The survey's key** (`topik:lesson-surveys`) joins the handheld's
+  retired keys (`RETIRED_KEYS`), deleted when it opens, since nothing reads
+  it now or would let it expire.
 
 ### When it is asked
 
@@ -714,25 +708,8 @@ Its rules:
 
 ### Its canon line
 
-Remark 4.13 said nothing crosses units "beyond the digest of evaluation
-reports", which is about fit and not about what happened. The record carries
-what happened: the scenes reached and the first tries. Its canon line is
-Remark 4.14 (v1.14), which amends Remark 4.13 and Corollary 8.2:
-
-- **What crosses units:** on the handheld drama, the last unit's record
-  (scenes reached, first tries, review) crosses into the next prompt, and
-  nothing else does.
-- **What the review is:** an evaluation report (Def. 3.3) of another shape:
-  enjoyment, comfort with how much was followed, where to go next.
-  Prop. 3.4 applies to it unchanged.
-- **The first tries are observations.** They are kept on the device as a
-  record outside the envelope (Rem. 7.5), bounded at one unit, and handed to
-  the learner's model only by the learner's copy (Cor. 8.2). No belief update
-  consumes them, since the surface has no belief.
-
-Cor. 3.4 (the survey before the tally) and Rem. 3.5 (served units ordered by
-the reports) no longer describe the phone. The §10 row v1.14 adds records
-that, with the MKJ-S6 row proposed on #1722.
+Remark 4.14 (v1.14), which amends Remark 4.13's "nothing crosses units",
+with a §10 row for MKJ-S6 and MKJ-S7.
 
 ## Where it lives
 

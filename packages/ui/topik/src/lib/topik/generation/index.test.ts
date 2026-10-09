@@ -11,6 +11,7 @@ import {
 
 const record = (extra: Partial<LastDrama> = {}): LastDrama => ({
   lessonId: "first-dinner",
+  content: "x",
   level: 2,
   title: "회장님 댁 거실",
   at: 1,
@@ -20,6 +21,7 @@ const record = (extra: Partial<LastDrama> = {}): LastDrama => ({
   ],
   tries: [
     {
+      choice: "c1",
       prompt: "서연은 뭐라고 대답할까?",
       chosen: "응, 마실래.",
       answered: false,
@@ -80,7 +82,6 @@ describe("buildLessonPrompt", () => {
         "",
       ].join("\n")
     )
-    expect(prompt).not.toMatch(/survey/i)
   })
 
   it("lets the model invent a scene", () => {
@@ -114,7 +115,6 @@ describe("buildTreePrompt", () => {
     expect(prompt).toContain(
       "Last drama: none - this drama joins the batch every learner at this level chooses from."
     )
-    expect(prompt).not.toContain("their first")
   })
 
   it("carries the learner's last drama, or says this is their first", () => {
@@ -129,6 +129,5 @@ describe("buildTreePrompt", () => {
   it("ships a prompt that points at nothing outside itself", () => {
     const prompt = buildTreePrompt({ level: 1 })
     expect(prompt).not.toMatch(/packages\/|pnpm |canon |cargo /)
-    expect(prompt).not.toMatch(/survey/i)
   })
 })

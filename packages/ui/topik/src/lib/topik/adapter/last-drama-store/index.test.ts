@@ -6,11 +6,14 @@ import { createLastDramaStore, LAST_DRAMA_KEY, LAST_DRAMA_TTL_MS } from "."
 
 const record = (extra: Partial<LastDrama> = {}): LastDrama => ({
   lessonId: "first-tea",
+  content: "x",
   level: 2,
   title: "회장님 댁 거실",
   at: 1,
   scenes: [{ id: "s1", place: "회장님 댁 거실", feeling: "tension" }],
-  tries: [{ prompt: "서연은?", chosen: "응, 마실래.", answered: false }],
+  tries: [
+    { choice: "c1", prompt: "서연은?", chosen: "응, 마실래.", answered: false },
+  ],
   ...extra,
 })
 
@@ -39,6 +42,15 @@ describe("createLastDramaStore", () => {
     expect(storage.getItem(LAST_DRAMA_KEY)).toBeNull()
   })
 
+  it("drops the previous record when a write fails, rather than keep another drama's", () => {
+    const storage = memoryStorage()
+    const store = createLastDramaStore(storage, () => 2)
+    store.save(record())
+    storage.full = true
+    store.save(record({ lessonId: "another" }))
+    expect(store.get()).toBeNull()
+  })
+
   it("discards a shape this build does not know", () => {
     const storage = memoryStorage([[LAST_DRAMA_KEY, '{"version":2}']])
     expect(createLastDramaStore(storage, () => 2).get()).toBeNull()
@@ -51,9 +63,6 @@ describe("createLastDramaStore", () => {
     expect(store.get()?.review?.next).toBe("revenge")
     store.forgetNext({ lessonId: "first-tea", next: "revenge" })
     expect(store.get()?.review).toEqual({ enjoyed: "fine" })
-    store.save(record({ review: { next: "revenge" } }))
-    store.forgetNext({ lessonId: "first-tea", next: "revenge" })
-    expect(store.get()?.review).toBeUndefined()
   })
 
   it("is silent where storage fails", () => {

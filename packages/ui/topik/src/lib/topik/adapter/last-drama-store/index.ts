@@ -15,8 +15,14 @@
  */
 
 import { localStorageOrNull } from "@some-ui/core-utils"
+import type { LastDramaPort } from "@topik/lib/topik/core/drama-runtime"
 import type { LastDrama } from "@topik/lib/topik/core/last-drama"
-import { ENJOYED, KOREAN, NEXT_MAX } from "@topik/lib/topik/core/last-drama"
+import {
+  ENJOYED,
+  KOREAN,
+  NEXT_MAX,
+  withReview,
+} from "@topik/lib/topik/core/last-drama"
 import { z } from "zod"
 
 export const LAST_DRAMA_KEY = "topik:last-drama"
@@ -26,6 +32,7 @@ export const LAST_DRAMA_TTL_MS = 30 * 24 * 60 * 60 * 1000
 
 const LastDramaSchema = z.object({
   lessonId: z.string(),
+  content: z.string(),
   level: z.number().int().min(1).max(6),
   title: z.string(),
   at: z.number(),
@@ -33,7 +40,12 @@ const LastDramaSchema = z.object({
     z.object({ id: z.string(), place: z.string(), feeling: z.string() })
   ),
   tries: z.array(
-    z.object({ prompt: z.string(), chosen: z.string(), answered: z.boolean() })
+    z.object({
+      choice: z.string(),
+      prompt: z.string(),
+      chosen: z.string(),
+      answered: z.boolean(),
+    })
   ),
   review: z
     .object({
@@ -50,14 +62,11 @@ const DocumentSchema = z.object({
   last: LastDramaSchema,
 })
 
-export type LastDramaStore = {
-  /**
-   * The record, or `null` when there is none, it expired, or this build
-   * cannot read it. The same object until the record changes.
-   */
-  get(): LastDrama | null
-  /** Replaces the record. */
-  save(record: LastDrama): void
+/**
+ * `get` is `null` when there is no record, it expired, or this build cannot
+ * read it, and the same object until the record changes.
+ */
+export type LastDramaStore = LastDramaPort & {
   /**
    * Removes the review's free text if it is still `next`: a prompt has now
    * carried it to the learner's model (Rem. 7.4). Text the learner changed
@@ -102,21 +111,7 @@ export function createLastDramaStore(
     return record && record.at >= now() - LAST_DRAMA_TTL_MS ? record : null
   }
 
-  const save = (record: LastDrama): void => {
-    try {
-      storage?.setItem(
-        LAST_DRAMA_KEY,
-        JSON.stringify({ version: 1, last: record })
-      )
-    } catch {
-      // Quota, privacy mode: a lost record is one prompt's history.
-    }
-    for (const listener of listeners) listener()
-  }
-
-  // An expired or unreadable record is deleted, not just hidden, when the
-  // handheld opens: it would otherwise stay until the next ending.
-  if (read() === null) {
+  const remove = (): void => {
     try {
       storage?.removeItem(LAST_DRAMA_KEY)
     } catch {
@@ -124,16 +119,30 @@ export function createLastDramaStore(
     }
   }
 
+  const save = (record: LastDrama): void => {
+    try {
+      storage?.setItem(
+        LAST_DRAMA_KEY,
+        JSON.stringify({ version: 1, last: record })
+      )
+    } catch {
+      // Quota, privacy mode: a lost record is one prompt's history. The one
+      // before it is not this one's, so it goes too.
+      remove()
+    }
+    for (const listener of listeners) listener()
+  }
+
+  if (read() === null) remove()
+
   return {
     get: read,
     save,
     forgetNext: ({ lessonId, next }): void => {
       const record = read()
-      if (record?.lessonId !== lessonId || record.review === undefined) return
-      const { next: carried, ...review } = record.review
-      if (carried !== next) return
-      const { review: _old, ...rest } = record
-      save(Object.keys(review).length > 0 ? { ...rest, review } : rest)
+      if (record?.lessonId === lessonId && record.review?.next === next) {
+        save(withReview(record, { next: undefined }, record.at))
+      }
     },
     subscribe: (listener): (() => void) => {
       listeners.add(listener)

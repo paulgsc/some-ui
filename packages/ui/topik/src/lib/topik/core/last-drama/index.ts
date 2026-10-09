@@ -11,8 +11,9 @@
  * first tries as the average and the review over them (canon Rem. 4.14).
  */
 
-import type { DramaState, Route } from "@some-ui/makjang"
-import { sceneAt, scenesOf } from "@some-ui/makjang"
+import { fnv1a } from "@some-ui/core-utils"
+import type { DramaState } from "@some-ui/makjang"
+import { scenesOf } from "@some-ui/makjang"
 import type { DramaLesson } from "@topik/lib/topik/core/drama"
 import { isCorrectChoice } from "@topik/lib/topik/core/probe"
 
@@ -23,7 +24,6 @@ export type Enjoyed = (typeof ENJOYED)[number]
 export const KOREAN = ["easier", "right", "stretch"] as const
 export type KoreanNext = (typeof KOREAN)[number]
 
-/** The free text's cap, in characters. */
 export const NEXT_MAX = 200
 
 export type DramaReview = {
@@ -40,6 +40,7 @@ type SceneReached = { id: string; place: string; feeling: string }
 
 /** The first try at a choice reached. */
 type FirstTry = {
+  choice: string
   /** The choice's prompt, in Korean. */
   prompt: string
   /** The candidate first chosen, as written. */
@@ -50,6 +51,11 @@ type FirstTry = {
 
 export type LastDrama = {
   lessonId: string
+  /**
+   * The tree's content, hashed: a model picks the id, so two dramas, or a
+   * served one and its reload, can share one.
+   */
+  content: string
   level: number
   /** The root scene's place: the drama's title. */
   title: string
@@ -57,21 +63,34 @@ export type LastDrama = {
   at: number
   /** Every scene reached on any play, in the tree's order. */
   scenes: Array<SceneReached>
-  /** In the tree's order. */
+  /** The first try at each choice reached on any play, in the tree's order. */
   tries: Array<FirstTry>
   review?: DramaReview
 }
 
-/** The scenes on `route`, the root first. */
-const onRoute = (lesson: DramaLesson, route: Route): Array<string> =>
-  Array.from({ length: route.length + 1 }, (_, depth) =>
-    sceneAt(lesson.root, route.slice(0, depth))
-  ).flatMap((scene) => (scene ? [scene.id] : []))
+const hashes = new WeakMap<DramaLesson, string>()
+
+const contentOf = (lesson: DramaLesson): string => {
+  let hash = hashes.get(lesson)
+  if (hash === undefined) {
+    hash = fnv1a(JSON.stringify(lesson)).toString(36)
+    hashes.set(lesson, hash)
+  }
+  return hash
+}
+
+/** Whether `record` is this drama's, as written now. */
+export const isRecordOf = (
+  record: LastDrama | null,
+  lesson: DramaLesson
+): record is LastDrama =>
+  record?.lessonId === lesson.id && record.content === contentOf(lesson)
 
 /**
- * The record of `lesson` at its ending. A replay of the same drama keeps the
- * scenes it reached before and its review; any other drama's record is
- * replaced.
+ * The record of `lesson` at its ending. A replay of the same drama keeps
+ * what the record already held (the scenes, the first tries, the review),
+ * whether or not this play's state still carries it, and adds what this
+ * play reached; any other drama's record is replaced.
  */
 export function lastDramaOf(
   lesson: DramaLesson,
@@ -79,26 +98,32 @@ export function lastDramaOf(
   previous: LastDrama | null,
   at: number
 ): LastDrama {
-  const same = previous?.lessonId === lesson.id ? previous : null
-  const reached = new Set([
-    ...(same?.scenes.map(({ id }) => id) ?? []),
-    ...onRoute(lesson, drama.route),
-  ])
-  const scenes = scenesOf(lesson.root).map(({ scene }) => scene)
+  const same = isRecordOf(previous, lesson) ? previous : null
+  const scenes = scenesOf(lesson.root)
+  const reached = new Set(same?.scenes.map(({ id }) => id))
   return {
     lessonId: lesson.id,
+    content: contentOf(lesson),
     level: lesson.level,
     title: lesson.root.place,
     at,
     scenes: scenes
-      .filter(({ id }) => reached.has(id))
-      .map(({ id, place, feeling }) => ({ id, place, feeling })),
-    tries: scenes.flatMap(({ choice }): Array<FirstTry> => {
-      const option = choice && drama.first[choice.id]
-      const candidate = choice?.check.options.find(({ id }) => id === option)
-      return choice && candidate
+      .filter(
+        ({ route, scene }) =>
+          reached.has(scene.id) ||
+          route.every((option, depth) => drama.route[depth] === option)
+      )
+      .map(({ scene: { id, place, feeling } }) => ({ id, place, feeling })),
+    tries: scenes.flatMap(({ scene: { choice } }): Array<FirstTry> => {
+      if (choice === undefined) return []
+      const kept = same?.tries.find((tried) => tried.choice === choice.id)
+      if (kept) return [kept]
+      const option = drama.first[choice.id]
+      const candidate = choice.check.options.find(({ id }) => id === option)
+      return candidate
         ? [
             {
+              choice: choice.id,
               prompt: choice.prompt,
               chosen: candidate.text,
               answered: isCorrectChoice(choice.check, candidate),
@@ -112,7 +137,8 @@ export function lastDramaOf(
 
 /**
  * `record` with `change` applied: a field set to `undefined`, an empty list or
- * blank text is cleared, so a learner can take an answer back.
+ * empty text is cleared, so a learner can take an answer back. Free text is
+ * kept as typed.
  */
 export function withReview(
   record: LastDrama,
@@ -125,7 +151,7 @@ export function withReview(
     ...(enjoyed ? { enjoyed } : {}),
     ...(korean ? { korean } : {}),
     ...(more && more.length > 0 ? { more } : {}),
-    ...(text?.trim() ? { next: text } : {}),
+    ...(text ? { next: text } : {}),
   }
   const { review: _old, ...rest } = record
   return Object.keys(review).length > 0

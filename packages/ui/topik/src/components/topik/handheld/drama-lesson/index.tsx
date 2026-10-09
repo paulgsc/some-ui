@@ -7,8 +7,7 @@
  * the resume point, and the engine decides where the learner is. The
  * current scene is one strip of panels; its choice is asked in the dock,
  * under the thumb, as large Korean targets with no English gloss
- * (Rem. 4.12). An ending offers the drama review after the author's notes,
- * outside the dock, so it never stands in the way of what the dock offers.
+ * (Rem. 4.12). An ending offers the drama review after the author's notes.
  */
 
 import type { JSX } from "react"
@@ -42,7 +41,6 @@ type DramaLessonProps = {
   /** The scene's tone and cry; `null` where nothing can play them. */
   sound: SoundPort | null
   points: DramaPointStore
-  /** Where the last session's record is kept. */
   last: LastDramaPort
   short: boolean
   onLeave: () => void

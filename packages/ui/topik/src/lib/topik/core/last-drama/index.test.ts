@@ -2,7 +2,7 @@ import type { DramaState } from "@some-ui/makjang"
 import { workedLesson } from "@topik/lib/topik/generation/tree-intake/worked-example"
 import { describe, expect, it } from "vitest"
 
-import { lastDramaOf, NEXT_MAX, withReview } from "."
+import { isRecordOf, lastDramaOf, NEXT_MAX, withReview } from "."
 
 const lesson = workedLesson()
 
@@ -21,6 +21,7 @@ describe("lastDramaOf", () => {
     )
     expect(record).toEqual({
       lessonId: lesson.id,
+      content: expect.any(String),
       level: lesson.level,
       title: "회장님 댁 거실",
       at: 7,
@@ -31,11 +32,13 @@ describe("lastDramaOf", () => {
       ],
       tries: [
         {
+          choice: "c1",
           prompt: expect.any(String),
           chosen: "응, 마실래.",
           answered: false,
         },
         {
+          choice: "c2",
           prompt: expect.any(String),
           chosen: "죄송합니다, 회장님. 제가 실수했습니다.",
           answered: true,
@@ -50,25 +53,24 @@ describe("lastDramaOf", () => {
       { enjoyed: "loved" },
       2
     )
-    // The replay takes another route; the first choice stays the outcome.
-    const replay = lastDramaOf(
-      lesson,
-      ended(["a"], { c1: "b", c2: "x" }),
-      first,
-      3
-    )
+    // The replay takes another route, in a play whose state lost the first
+    // choices: the record keeps them, not the second tries.
+    const replay = lastDramaOf(lesson, ended(["a"], { c1: "a" }), first, 3)
     expect(replay.scenes.map(({ id }) => id)).toEqual(["s1", "s2", "s3", "s4"])
     expect(replay.tries.map(({ answered }) => answered)).toEqual([false, true])
     expect(replay.review).toEqual({ enjoyed: "loved" })
 
-    const other = lastDramaOf(
-      lesson,
-      ended(["a"], { c1: "a" }),
+    // Another drama, or this id with other content, starts afresh.
+    for (const previous of [
       { ...first, lessonId: "another" },
-      4
-    )
-    expect(other.scenes.map(({ id }) => id)).toEqual(["s1", "s2"])
-    expect(other.review).toBeUndefined()
+      { ...first, content: "reloaded" },
+    ]) {
+      const other = lastDramaOf(lesson, ended(["a"], { c1: "a" }), previous, 4)
+      expect(isRecordOf(previous, lesson)).toBe(false)
+      expect(other.scenes.map(({ id }) => id)).toEqual(["s1", "s2"])
+      expect(other.tries.map(({ answered }) => answered)).toEqual([true])
+      expect(other.review).toBeUndefined()
+    }
   })
 })
 
@@ -87,14 +89,15 @@ describe("withReview", () => {
     })
     const taken = withReview(
       given,
-      { korean: undefined, more: [], next: "  " },
+      { korean: undefined, more: [], next: "" },
       3
     )
     expect(taken.review).toBeUndefined()
     expect(taken.at).toBe(3)
   })
 
-  it("caps the free text", () => {
+  it("keeps the free text as typed, up to its cap", () => {
+    expect(withReview(record, { next: " 복수" }, 2).review?.next).toBe(" 복수")
     const long = "가".repeat(NEXT_MAX + 5)
     expect(withReview(record, { next: long }, 2).review?.next).toHaveLength(
       NEXT_MAX

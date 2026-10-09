@@ -108,6 +108,7 @@ const holding = (extra: Partial<LastDrama> = {}): LastDramaStore => {
   const store = createLastDramaStore(memoryStorage(), () => 2)
   store.save({
     lessonId: "earlier",
+    content: "x",
     level: 4,
     title: "회장님 댁 거실",
     at: 1,

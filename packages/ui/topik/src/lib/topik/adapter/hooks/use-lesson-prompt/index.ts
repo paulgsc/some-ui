@@ -4,8 +4,7 @@
  *
  * The prompt is the tree prompt, carrying the last drama the learner played
  * to an ending (`adapter/last-drama-store`, canon Rem. 4.14). The level is
- * the learner's to choose; until they do, it is that drama's level. The
- * review never moves it.
+ * the learner's to choose; until they do, it is that drama's level.
  */
 
 import { useCallback, useRef, useState, useSyncExternalStore } from "react"

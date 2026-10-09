@@ -37,10 +37,7 @@ export type LessonRequest = {
   conversations?: number
 }
 
-export type TreeRequest = {
-  level: TopikLevel
-  /** A premise for the scene; the model invents one when absent. */
-  scene?: string
+export type TreeRequest = Omit<LessonRequest, "conversations"> & {
   /** `lastDramaText` of the last session; omitted when there is none. */
   lastDrama?: string
   /**
@@ -69,8 +66,7 @@ const KOREAN_TEXT: Record<KoreanNext, string> = {
 
 /**
  * The last session, as plain text for the tree prompt: what the learner
- * reached and first chose, then what they said. The text rides along
- * because the drama is gone by the time the prompt is read.
+ * reached and first chose, then what they said.
  */
 export function lastDramaText(record: LastDrama): string {
   const place = (id: string): string => {
@@ -78,12 +74,13 @@ export function lastDramaText(record: LastDrama): string {
     return scene ? `${scene.place} (${scene.feeling})` : id
   }
   const { review } = record
+  const next = review?.next?.trim()
   const said = review
     ? [
         review.enjoyed && ENJOYED_TEXT[review.enjoyed],
         review.korean && `the Korean next time: ${KOREAN_TEXT[review.korean]}`,
         review.more && `more of: ${review.more.map(place).join(", ")}`,
-        review.next && `what next: "${review.next}"`,
+        next && `what next: "${next}"`,
       ].filter(Boolean)
     : []
   return [

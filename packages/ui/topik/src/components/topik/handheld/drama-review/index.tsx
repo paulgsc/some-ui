@@ -14,6 +14,13 @@
 import type { JSX } from "react"
 import { useState } from "react"
 import { cn } from "@some-ui/core-utils"
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+  Input,
+} from "@some-ui/shared"
 import { isFeelingKey } from "@some-ui/styles/theme"
 import { FEELING_WORDS } from "@topik/lib/topik/core/feeling"
 import type {
@@ -23,7 +30,6 @@ import type {
   DramaReview as Review,
 } from "@topik/lib/topik/core/last-drama"
 import { NEXT_MAX } from "@topik/lib/topik/core/last-drama"
-import { ChevronDown } from "lucide-react"
 
 const ENJOYED_WORDS: ReadonlyArray<[Enjoyed, string, string]> = [
   ["loved", "재미있었어요", "Loved it"],
@@ -100,34 +106,26 @@ export const DramaReview = ({
   record: LastDrama
   onReview: (change: Review) => void
 }): JSX.Element => {
-  const [open, setOpen] = useState(false)
   const [english, setEnglish] = useState(false)
   const review = record.review ?? {}
   const more = review.more ?? []
   return (
-    <section
+    <Accordion
+      type="single"
+      collapsible
       data-slot="topik-drama-review"
-      className="bg-card text-card-foreground border-border flex flex-col gap-4 rounded-2xl border p-4"
+      className="bg-card text-card-foreground border-border rounded-2xl border px-4"
     >
-      <button
-        type="button"
-        aria-expanded={open}
-        onClick={() => setOpen(!open)}
-        className="flex min-h-11 items-center justify-between gap-2 text-left"
-      >
-        <span className="text-sm font-semibold">
-          <span lang="ko">어땠어요?</span>{" "}
-          <span lang="en" className="text-muted-foreground font-normal">
-            How was it?
+      <AccordionItem value="review" className="border-none">
+        <AccordionTrigger className="min-h-11 text-sm font-semibold hover:no-underline">
+          <span>
+            <span lang="ko">어땠어요?</span>{" "}
+            <span lang="en" className="text-muted-foreground font-normal">
+              How was it?
+            </span>
           </span>
-        </span>
-        <ChevronDown
-          className={cn("size-5 shrink-0", open && "rotate-180")}
-          aria-hidden
-        />
-      </button>
-      {open && (
-        <>
+        </AccordionTrigger>
+        <AccordionContent className="flex flex-col gap-4 pb-4">
           <Question
             ko="재미있었어요?"
             en="Did you enjoy it?"
@@ -189,12 +187,11 @@ export const DramaReview = ({
                 </span>
               )}
             </span>
-            <input
-              type="text"
+            <Input
               maxLength={NEXT_MAX}
               value={review.next ?? ""}
               onChange={(event) => onReview({ next: event.target.value })}
-              className="border-border bg-background min-h-12 rounded-2xl border px-3 text-base"
+              className="h-12 rounded-2xl text-base"
             />
           </label>
           <button
@@ -205,8 +202,8 @@ export const DramaReview = ({
           >
             {english ? "Hide English" : "Show English"}
           </button>
-        </>
-      )}
-    </section>
+        </AccordionContent>
+      </AccordionItem>
+    </Accordion>
   )
 }

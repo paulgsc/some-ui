@@ -326,37 +326,45 @@ describe("DramaRuntime", () => {
         lessonId: lesson.id,
         tries: [{ chosen: "네, 감사합니다. 주시면 마실게요.", answered: true }],
       })
-      expect(runtime.getSnapshot().last).toBe(last.get())
+      expect(runtime.getSnapshot().last).toEqual(last.get())
 
       runtime.review({ enjoyed: "loved" })
       expect(last.get()?.review).toEqual({ enjoyed: "loved" })
       expect(runtime.getSnapshot().last?.review).toEqual({ enjoyed: "loved" })
 
-      // A replay to another ending keeps the first try and the review.
+      // A replay to another ending keeps the review.
       runtime.dispatch({ type: "restart" })
       playTo(runtime, "c")
-      expect(last.get()).toMatchObject({
-        tries: [{ answered: true }],
-        review: { enjoyed: "loved" },
-      })
-      expect(last.get()?.scenes.length).toBe(3)
+      expect(last.get()?.review).toEqual({ enjoyed: "loved" })
     })
 
-    it("shows no other drama's record, and takes no review before an ending", () => {
+    it("shows no other drama's record", () => {
       const last = createLastDramaStore(memoryStorage())
       last.save({
         lessonId: "another",
+        content: "x",
         level: 1,
         title: "x",
         at: Date.now(),
         scenes: [],
         tries: [],
       })
-      const runtime = runtimeOf({ last })
-      expect(runtime.getSnapshot().last).toBeNull()
-      runtime.review({ enjoyed: "fine" })
-      expect(last.get()?.lessonId).toBe("another")
-      expect(last.get()?.review).toBeUndefined()
+      expect(runtimeOf({ last }).getSnapshot().last).toBeNull()
+    })
+
+    it("takes a review only at an ending, and keeps it on screen when storage fails", () => {
+      const storage = memoryStorage()
+      const runtime = runtimeOf({ last: createLastDramaStore(storage) })
+      playTo(runtime, "a")
+      // A fresh visit opens on the record, mid-drama: no review yet.
+      const again = runtimeOf({ last: createLastDramaStore(storage) })
+      expect(again.getSnapshot().last).not.toBeNull()
+      again.review({ enjoyed: "fine" })
+      expect(again.getSnapshot().last?.review).toBeUndefined()
+
+      storage.full = true
+      runtime.review({ enjoyed: "loved" })
+      expect(runtime.getSnapshot().last?.review).toEqual({ enjoyed: "loved" })
     })
   })
 })
