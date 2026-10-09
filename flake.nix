@@ -36,9 +36,7 @@
       # ── Helpers ───────────────────────────────────────────────────────────
       mkLdPath = libs: pkgs.lib.makeLibraryPath libs;
     in {
-      # Node and pnpm versions the shells below provide. Read by
-      # scripts/sync-toolchain.sh, which copies them into .nvmrc,
-      # package.json's packageManager and the www Dockerfile.
+      # See nix/node.
       toolchain = node.versions;
 
       devShells = {

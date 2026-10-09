@@ -515,12 +515,9 @@ jobs:
         run: nix develop .#ci --command node --no-warnings scripts/check-workflows.ts
 
   # ── Toolchain pins (repo-wide) ─────────────────────────────────────────
-  # .nvmrc, package.json's packageManager and the www Dockerfile's base image
-  # are copies of the Node and pnpm versions the flake provides
-  # (nix/node/default.nix), written by scripts/sync-toolchain.sh. No `changes`
-  # gate: either side can move alone (a flake.lock bump, a hand edit of
-  # .nvmrc), and a hand edit of a copy is the drift this exists to catch. No
-  # install: it only evaluates the flake.
+  # scripts/sync-toolchain.sh --check. No `changes` gate: either side can move
+  # alone (a flake.lock bump, a hand edit of .nvmrc), and a hand edit of a copy
+  # is the drift this exists to catch. No install: it only evaluates the flake.
   toolchain:
     name: Toolchain pins
     runs-on: ubuntu-latest
