@@ -40,8 +40,16 @@
     pkgs.lib.head
   ];
 
+  # The build directory is chrome-linux64 from Playwright 1.63, chrome-linux
+  # before it; take whichever this driver ships.
+  chromiumBuildDir = pkgs.lib.pipe (builtins.readDir "${browsers}/${chromiumDir}") [
+    builtins.attrNames
+    (pkgs.lib.filter (n: pkgs.lib.hasPrefix "chrome-linux" n))
+    pkgs.lib.head
+  ];
+
   # firefoxBin = "${browsers}/${firefoxDir}/firefox/firefox";
-  chromiumBin = "${browsers}/${chromiumDir}/chrome-linux/chrome";
+  chromiumBin = "${browsers}/${chromiumDir}/${chromiumBuildDir}/chrome";
 in {
   deps = with pkgs; [
     playwright-driver.browsers
