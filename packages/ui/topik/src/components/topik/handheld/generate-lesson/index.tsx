@@ -39,7 +39,6 @@ type GenerateLessonProps = {
    * their own.
    */
   kept?: JSX.Element
-  /** The phone's share sheet: the prompt can go to a drive as a file. */
   share?: FileShare
 }
 
@@ -242,11 +241,9 @@ export const GenerateLesson = ({
     setCopied("prompt")
   }
 
-  const copyPrompt = (): void =>
-    void hand(
-      buildPrompt({ level, scene: scene.trim() || undefined }),
-      "prompt"
-    )
+  const prompt = (): string =>
+    buildPrompt({ level, scene: scene.trim() || undefined })
+  const copyPrompt = (): void => void hand(prompt(), "prompt")
 
   const stage = (
     <div data-slot="topik-generate" className="flex w-full flex-col gap-5">
@@ -276,9 +273,7 @@ export const GenerateLesson = ({
         {share && (
           <SharePrompt
             share={share}
-            prompt={() =>
-              buildPrompt({ level, scene: scene.trim() || undefined })
-            }
+            prompt={prompt}
             onShared={(text) => onPromptHandedOff?.(text)}
           />
         )}

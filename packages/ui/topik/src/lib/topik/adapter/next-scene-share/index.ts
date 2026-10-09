@@ -3,16 +3,16 @@
  * (docs/makjang/README.md, "Sharing the next scene"): the port the host
  * injects, and the runtime that holds one share's state so the button only
  * reads it (docs/monorepo-boundaries.md, "the component is not the
- * coordinator").
- *
- * The port is the host's: Android's share sheet is a native plugin, which
- * topik does not import. It runs through `callForeign`, so it never
- * rejects, and `unavailable` withdraws the button.
+ * coordinator"). The port is the host's: Android's share sheet is a native
+ * plugin, which topik does not import.
  */
 
 import type { ForeignOutcome } from "@some-ui/intent-kit"
 
-/** Hands one text file to the share sheet. Backing out is `cancelled`. */
+/**
+ * Hands one text file to the share sheet, through `callForeign`, so it
+ * never rejects. Backing out is `cancelled`.
+ */
 export type FileShare = (file: {
   name: string
   text: string
@@ -29,7 +29,7 @@ export type ShareState =
 export class ShareRuntime {
   private state: ShareState = { kind: "idle" }
   private readonly listeners = new Set<() => void>()
-  /** The share whose outcome still counts; a later one, or `dispose`, moves it. */
+  /** The share whose outcome still counts; `dispose` moves it. */
   private latest = 0
 
   constructor(private readonly share: FileShare) {}
@@ -42,10 +42,7 @@ export class ShareRuntime {
   }
 
   /** Shares `file`; `onShared` runs once the person sent it somewhere. */
-  start = (
-    file: { name: string; text: string },
-    onShared?: () => void
-  ): void => {
+  start = (file: Parameters<FileShare>[0], onShared?: () => void): void => {
     if (this.state.kind === "sharing" || this.state.kind === "withdrawn") return
     this.latest += 1
     const call = this.latest

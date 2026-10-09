@@ -231,13 +231,13 @@ export const HandheldLesson = ({
           }
           last={last}
           ending={
-            share ? (
+            share && (
               <SharePrompt
                 share={share}
                 prompt={() => lessonPrompt.prompt({ level: heldLevel })}
                 onShared={lessonPrompt.handedOff}
               />
-            ) : undefined
+            )
           }
           short={short}
           onLeave={leave}

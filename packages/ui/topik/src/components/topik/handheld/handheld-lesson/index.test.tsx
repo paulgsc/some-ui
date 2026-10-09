@@ -352,12 +352,12 @@ describe("HandheldLesson", () => {
       expect(document.body.textContent).not.toMatch(EXERCISE_FRAMING)
 
       const file = share.mock.calls[0]?.[0]
-      expect(file?.name).toMatch(/^drama-\d{8}-\d{6}\.prompt\.md$/)
-      expect(file?.text).toMatch(/^> \*\*For an agent:\*\*/)
       expect(file?.text).toContain('Last drama:\n"회장님 댁 거실", level 2.')
       expect(file?.text).toContain('what next: "more revenge"')
-      // Shared is handed off: the free text it carried goes (Rem. 7.4).
+      // Shared is handed off: the free text it carried goes (Rem. 7.4), from
+      // the store and from the field on screen.
       await vi.waitFor(() => expect(last.get()?.review).toBeUndefined())
+      expect(screen.getByRole("textbox")).toHaveProperty("value", "")
     })
 
     it("offers the drama's sound in the header, off until turned on", async () => {

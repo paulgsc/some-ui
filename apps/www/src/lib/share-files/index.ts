@@ -1,18 +1,9 @@
 /**
  * Files out through Android's share sheet: written to the app's cache, then
  * handed to `@capacitor/share`, so the person picks where they go (Drive,
- * say). Nothing here sends anything anywhere. Its users: soundbites' "Share
- * with an agent" (`lib/agent-export`) and the phone drama's next-scene
- * prompt (topik's `FileShare` port).
- *
- * Both waits run inside `callForeign` (F1). Phone-only: its callers render it
- * only in the device build (`build.paths.ts`).
+ * say). Nothing here sends anything anywhere. Phone-only (`build.paths.ts`).
  */
-import type {
-  ForeignOutcome,
-  ForeignPort,
-  ForeignVerdict,
-} from "@some-ui/intent-kit"
+import type { ForeignPort, ForeignVerdict } from "@some-ui/intent-kit"
 import {
   callForeign,
   ForeignDeadlineError,
@@ -21,12 +12,6 @@ import {
 import type { FileShare } from "@some-ui/topik"
 
 import { isMissingPlugin } from "@/lib/intent/foreign"
-
-/** Text is written as UTF-8; a blob, as its bytes. */
-export type SharedFile = { name: string; data: string | Blob }
-
-/** Backing out of the sheet is not a failure. */
-export type Shared = "shared" | "cancelled"
 
 /** Writing the files: a few megabytes at most (`SOUNDBITES_MAX_BYTES`). */
 const WRITE_DEADLINE_MS = 60_000
@@ -73,15 +58,16 @@ function base64(blob: Blob): Promise<string> {
 }
 
 /**
- * Writes `files` to the cache under `dir`, replacing what an earlier share
- * left there, so the cache holds at most one share per `dir`; then opens the
- * share sheet with them.
+ * Writes `files` (text as UTF-8, a blob as its bytes) to the cache under
+ * `dir`, replacing what an earlier share left there, so the cache holds at
+ * most one share per `dir`; then opens the share sheet with them. Backing
+ * out of the sheet is `cancelled`, not a failure.
  */
 export async function shareFiles(
   dir: string,
   title: string,
-  files: ReadonlyArray<SharedFile>
-): Promise<ForeignOutcome<Shared>> {
+  files: ReadonlyArray<{ name: string; data: string | Blob }>
+): ReturnType<FileShare> {
   const written = await callForeign({
     port: PORT,
     deadlineMs: WRITE_DEADLINE_MS,
@@ -114,7 +100,7 @@ export async function shareFiles(
   return callForeign({
     port: PORT,
     deadlineMs: SHARE_DEADLINE_MS,
-    start: async (): Promise<Shared> => {
+    start: async (): Promise<"shared" | "cancelled"> => {
       const { Share } = await import("@capacitor/share")
       try {
         await Share.share({ title, files: written.value })

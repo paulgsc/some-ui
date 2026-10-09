@@ -4,9 +4,8 @@
  * beside it. Handed to Android's share sheet, so the person picks where it
  * goes (Drive, say); nothing here sends anything anywhere.
  *
- * `buildAgentContext` is pure; `shareAgentExport` hands the files to
- * `lib/share-files`. Phone-only: its page renders it only in the device
- * build, so no other profile ships it (`build.paths.ts`).
+ * `buildAgentContext` is pure. Phone-only: its page renders it only in the
+ * device build, so no other profile ships it (`build.paths.ts`).
  */
 import type { Soundbite, SoundbiteStore } from "@some-ui/soundbites"
 
@@ -67,10 +66,7 @@ function buildAgentContext(input: {
   )
 }
 
-/**
- * Opens the share sheet with the bundle. Backing out of the sheet is not a
- * failure.
- */
+/** Opens the share sheet with the bundle. */
 export async function shareAgentExport(
   soundbites: SoundbiteReader,
   now: () => Date = () => new Date()

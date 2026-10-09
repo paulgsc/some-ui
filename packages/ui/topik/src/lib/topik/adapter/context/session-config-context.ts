@@ -28,7 +28,6 @@ export type SessionConfig = {
    * lesson only. Absent, it lists none.
    */
   treeFeed?: TreeFeed
-  /** The phone's share sheet (`FileShare`); absent, nothing offers it. */
   share?: FileShare
 }
 

@@ -2882,7 +2882,9 @@ estimating a cost.
   learner-side authoring (Def. 8.3), and what it writes is read back through
   the same audits as a paste (Rem. 4.7). A file the learner sent is a prompt
   handed off, so Remark 7.4's deletion of carried free text applies to it; a
-  share the learner backed out of is not.
+  share the learner backed out of is not. The file itself stays in the
+  application's cache until the next share replaces it, since the receiving
+  app may still be reading it when the sheet closes.
 ]
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -3704,13 +3706,9 @@ version line.
 
 *v1.15 --- 2026-10-09.* Admits the platform's share sheet and file picker
 beside the clipboard on the handheld surface's Android app, as a new item
-(Remark 8.3) amending Corollary 8.3's "clipboard only": the next unit's
-prompt leaves as one file the learner sends, with a note naming the reply's
-file, and a unit the learner's own agent wrote comes back as a file the
-learner picks, through the same audits as a paste. Motivated by the code:
-`apps/www`'s `lib/share-files`, which soundbites' agent export and topik's
-next-scene share now both use, and topik's `share-prompt`. Moves the
-front-matter version line.
+(Remark 8.3) amending Corollary 8.3's "clipboard only". Filed with the share
+(MKJ-S8) and ahead of the picker (MKJ-S10). Moves the front-matter version
+line.
 
 #pagebreak()
 

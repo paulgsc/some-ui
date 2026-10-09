@@ -135,9 +135,12 @@ describe("buildTreePrompt", () => {
 
 describe("nextSceneFile", () => {
   it("names the export by its moment, and tells an agent the reply's name", () => {
-    const file = nextSceneFile("THE PROMPT", new Date(2026, 9, 9, 7, 5, 3))
-    expect(file.name).toBe("drama-20261009-070503.prompt.md")
-    expect(file.text).toContain("`drama-20261009-070503.json`")
+    const file = nextSceneFile(
+      "THE PROMPT",
+      new Date("2026-10-09T07:05:03.120Z")
+    )
+    expect(file.name).toBe("drama-20261009T070503Z.prompt.md")
+    expect(file.text).toContain("`drama-20261009T070503Z.json`")
     expect(file.text.endsWith("\nTHE PROMPT")).toBe(true)
   })
 })

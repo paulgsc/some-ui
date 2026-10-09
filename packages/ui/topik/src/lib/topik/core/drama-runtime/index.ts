@@ -58,6 +58,8 @@ export type DramaPointStore = {
 export type LastDramaPort = {
   get(): LastDrama | null
   save(record: LastDrama): void
+  /** Told when the record may have changed: a share or another tab. */
+  subscribe(listener: () => void): () => void
 }
 
 export type DramaPorts = MediaPorts & {
@@ -198,9 +200,17 @@ export class DramaRuntime {
       }
     }
     const unsubscribeSound = sound?.subscribe(followSound)
+    // A prompt handed off, or another tab, can change this drama's record.
+    const unsubscribeLast = this.ports.last.subscribe(() => {
+      const stored = this.ports.last.get()
+      if (isRecordOf(stored, this.lesson) && stored !== this.snapshot.last) {
+        this.publish({ ...this.snapshot, last: stored })
+      }
+    })
     return () => {
       unsubscribe?.()
       unsubscribeSound?.()
+      unsubscribeLast()
       this.armed = false
       this.owed = null
       this.stop()

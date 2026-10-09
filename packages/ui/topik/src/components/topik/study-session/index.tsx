@@ -77,11 +77,7 @@ export type KoreanStudyPageProps = {
    * session on a build with a `file_host`. Absent, nothing offers to keep.
    */
   shelf?: ShelfPort
-  /**
-   * The phone's share sheet, for the next scene's prompt (`FileShare`).
-   * `apps/www` passes one only inside the Android app. Absent, the prompt
-   * is copied instead.
-   */
+  /** The Android app's share sheet (`FileShare`); absent, none is offered. */
   share?: FileShare
   /**
    * Art direction. `inherit` — the default — renders in whatever theme the

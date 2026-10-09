@@ -31,24 +31,16 @@ import { defineSceneProps, withSceneProps } from "./scene-props"
 import { useLiveLayoutEditor } from "./use-live-layout-editor"
 
 /**
- * LeetType's margin-note recognizer: the phone's own inside the Android app
- * (src/lib/dictation), absent elsewhere so the package uses the browser's.
- * Gated on native, not the device build: that build in a desktop browser has
- * only the plugin's web stub. Holds nothing until a learner taps Speak.
+ * The Android app's own ports, absent elsewhere: LeetType's margin-note
+ * recognizer (src/lib/dictation; elsewhere the package uses the browser's)
+ * and the share sheet for the drama's next-scene prompt. Gated on native,
+ * not the device build: that build in a desktop browser has only the
+ * plugins' web stubs. Neither holds anything until a learner taps.
  */
-const PHONE_DICTATION =
+const [PHONE_DICTATION, PHONE_SHARE] =
   import.meta.env.VITE_DEVICE_BACKEND === "true" && runsNatively()
-    ? phoneDictation()
-    : undefined
-
-/**
- * The phone's share sheet, for the drama's next-scene prompt: inside the
- * Android app only, like `PHONE_DICTATION`. Elsewhere the prompt is copied.
- */
-const PHONE_SHARE =
-  import.meta.env.VITE_DEVICE_BACKEND === "true" && runsNatively()
-    ? shareDramaPrompt
-    : undefined
+    ? ([phoneDictation(), shareDramaPrompt] as const)
+    : []
 
 const BIND_OPTIONS = Object.keys(componentRegistry).map((key) => ({
   value: key,

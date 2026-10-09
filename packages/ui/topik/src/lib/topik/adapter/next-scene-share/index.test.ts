@@ -1,21 +1,23 @@
-import type { ForeignOutcome } from "@some-ui/intent-kit"
 import { describe, expect, it, vi } from "vitest"
 
+import type { FileShare } from "."
 import { ShareRuntime } from "."
 
-type Outcome = ForeignOutcome<"shared" | "cancelled">
+type Outcome = Awaited<ReturnType<FileShare>>
 
 /** A share sheet that answers when the test says so. */
 function sheet(): {
-  share: () => Promise<Outcome>
+  share: ReturnType<typeof vi.fn<() => Promise<Outcome>>>
   answer: (outcome: Outcome) => Promise<void>
 } {
   let settle: (outcome: Outcome) => void = () => undefined
   return {
-    share: (): Promise<Outcome> =>
-      new Promise((resolve) => {
-        settle = resolve
-      }),
+    share: vi.fn(
+      (): Promise<Outcome> =>
+        new Promise((resolve) => {
+          settle = resolve
+        })
+    ),
     answer: async (outcome): Promise<void> => {
       settle(outcome)
       await Promise.resolve()
@@ -35,6 +37,7 @@ describe("ShareRuntime", () => {
     expect(runtime.getSnapshot()).toEqual({ kind: "sharing" })
     // A second tap while the sheet is open starts nothing.
     runtime.start(file, shared)
+    expect(share).toHaveBeenCalledOnce()
     await answer({ status: "succeeded", value: "cancelled" })
     expect(runtime.getSnapshot()).toEqual({ kind: "idle" })
     expect(shared).not.toHaveBeenCalled()

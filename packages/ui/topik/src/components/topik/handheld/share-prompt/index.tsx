@@ -1,9 +1,6 @@
 /**
- * "Share the next scene's prompt": the tree prompt, carrying the last drama,
- * out through the phone's share sheet as one file for the learner's drive,
- * where their own agent can answer it (docs/makjang/README.md, "Sharing the
- * next scene"). Offered only where the host has a share sheet; withdrawn if
- * this build turns out to have none.
+ * "Share the next scene's prompt" (docs/makjang/README.md, "Sharing the next
+ * scene"); withdrawn if this build turns out to have no share sheet.
  */
 
 import type { JSX } from "react"

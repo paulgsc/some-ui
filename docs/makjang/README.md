@@ -723,26 +723,29 @@ it; the only contract is the files. Its canon line is Remark 8.3 (v1.15).
 ### Sharing the next scene (MKJ-S8)
 
 - **What leaves:** one file, `drama-<stamp>.prompt.md` (the stamp is the
-  moment it was shared, `YYYYMMDD-HHMMSS`). It is the tree prompt with the
+  moment it was shared, in UTC: `20261009T071503Z`). It is the tree prompt with the
   last drama folded into its request ("The last session, and its review"),
   under a one-paragraph note for an agent. Nothing else: no raw record, no
   telemetry.
 - **Where it is offered:** at a drama's ending, after the review, and beside
   "Copy the prompt" when the learner starts a new drama. It never stands in
   front of "Play it again".
-- **How:** Android's share sheet, through the host's `FileShare` port
-  (`apps/www`'s `lib/share-files`, which soundbites' "Share with an agent"
-  uses too). Only the Android app injects it; elsewhere the prompt is copied.
+- **How:** Android's share sheet, through the host's `FileShare` port, the
+  same mechanism soundbites' "Share with an agent" uses. Only the Android app
+  injects it; elsewhere the prompt is copied.
   Backing out of the sheet is not a failure. A build without the plugin
   withdraws the button.
 - **Free text:** a prompt the learner sent is handed off, so the review's
-  free text it carried is deleted (Rem. 7.4), as after a copy.
+  free text it carried is deleted (Rem. 7.4), as after a copy. The shared
+  file itself stays in the app's cache until the next share replaces it:
+  the app the learner picked may still be reading it when the sheet closes.
 
 ### The file contract
 
 The note at the top of every export says: write the drama the prompt asks
 for as one JSON file next to this one, named `drama-<stamp>.json` (the
-export's name with `.prompt.md` replaced by `.json`), holding only the JSON.
+export's name with `.prompt.md` replaced by `.json`), holding the bare JSON
+with no code fence.
 So the learner's one-time agent setup is generic. The routine to give an
 agent connected to the drive's folder (a Claude Cowork routine with a Drive
 connector, say):
