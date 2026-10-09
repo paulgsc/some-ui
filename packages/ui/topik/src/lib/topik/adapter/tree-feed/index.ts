@@ -14,7 +14,7 @@
 import { localStorageOrNull } from "@some-ui/core-utils"
 import type { TopikMetadata } from "@topik/lib/topik"
 import { TopikManifestSchema } from "@topik/lib/topik"
-import type { StorageLike } from "@topik/lib/topik/adapter/resume-point"
+import type { StorageLike } from "@topik/lib/topik/adapter/storage"
 import type { DramaPointStore } from "@topik/lib/topik/core/drama-runtime"
 import type { TreeIntake } from "@topik/lib/topik/generation/tree-intake"
 import { intakeTree } from "@topik/lib/topik/generation/tree-intake"
@@ -63,8 +63,8 @@ export const SERVED_DRAMA_POINT_KEY = "topik:served-drama-point"
 const HeldPointSchema = z.object({ lessonId: z.string(), point: z.unknown() })
 
 /**
- * Where the served tree played last is in it, on this device: one slot, like
- * the conversation lessons' resume point, keyed by the tree's id so another
+ * Where the served tree played last is in it, on this device: one slot,
+ * keyed by the tree's id so another
  * tree starts from its opening. Unvalidated, as `DramaPointStore` says.
  */
 export function createServedPointStore(

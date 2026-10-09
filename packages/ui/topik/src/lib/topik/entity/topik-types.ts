@@ -40,9 +40,8 @@ export type Question = {
   grammarNote?: string
   /**
    * The id of the message this question is about. Optional, authoring-time
-   * (adaptive-learning canon Prop. 8.1): the handheld lesson presents a
-   * check right after the line it anchors to and derives an anchor itself
-   * when content declares none (Cor. 4.4 (ii)). The desktop quiz ignores it.
+   * (adaptive-learning canon Prop. 8.1); `anchorOf` derives one when content
+   * declares none (Cor. 4.4 (ii)). The desktop quiz ignores it.
    */
   anchorMessageId?: string
 }
@@ -205,9 +204,9 @@ const ProbesSchema = z.array(z.unknown()).transform(
 export type ConversationBatch = {
   id: number
   messages: Array<Message>
-  /** First-order items; the desktop quiz. Withheld on handheld (Cor. 4.5). */
+  /** First-order items; the desktop quiz. */
   questions: Array<Question>
-  /** Second- and third-order items; the handheld checks. */
+  /** Second- and third-order items: morphism probes (Def. 4.6). */
   probes?: Array<Probe>
 }
 

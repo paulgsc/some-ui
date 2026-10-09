@@ -1,11 +1,10 @@
 /**
  * A small topik for stories and tests: two conversations at a café counter.
  *
- * `questions` are the first-order items the desktop quiz asks; the handheld
- * lesson never does (canon Cor. 4.5). `probes` are what it asks instead, one
- * of each kind: odd-one-out over structural transformations, pick-valid over
- * replies and register, and build-from-tiles. Conversation 2's second line
- * carries two probes, which is the case the gloss gate exists for.
+ * `questions` are the first-order items the desktop quiz asks. `probes` are
+ * the morphism probes the audit checks, one of each kind: odd-one-out over
+ * structural transformations, pick-valid over replies and register, and
+ * build-from-tiles. Conversation 2's second line carries two probes.
  */
 
 import type {
@@ -16,7 +15,7 @@ import type {
 } from "@topik/lib/topik"
 import { relationTags } from "@topik/lib/topik/core/lesson-selection"
 
-export const FIXTURE_TOPIK_KEY = "cafe-order"
+const FIXTURE_TOPIK_KEY = "cafe-order"
 
 export const FIXTURE_BATCHES: Array<ConversationBatch> = [
   {

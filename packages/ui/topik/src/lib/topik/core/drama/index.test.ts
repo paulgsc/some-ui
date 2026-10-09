@@ -97,10 +97,32 @@ describe("panelsOf", () => {
       advance,
       advance,
     ])
-    expect(panelsOf(lesson, session).at(-1)).toMatchObject({
+    expect(panelsOf(lesson, session).at(-2)).toMatchObject({
       kind: "ending",
       feeling: "cringe",
     })
+  })
+
+  it("follows the ending with the author's notes: each choice the route made, and why", () => {
+    const session = play([
+      advance,
+      advance,
+      { type: "choose", option: "b" },
+      advance,
+      advance,
+      { type: "choose", option: "x" },
+      advance,
+    ])
+    const notes = panelsOf(lesson, session).at(-1)
+    expect(notes?.kind).toBe("notes")
+    expect(
+      notes?.kind === "notes"
+        ? notes.notes.map(({ choice, candidate }) => [choice, candidate.id])
+        : []
+    ).toEqual([
+      ["c1", "b"],
+      ["c2", "x"],
+    ])
   })
 })
 

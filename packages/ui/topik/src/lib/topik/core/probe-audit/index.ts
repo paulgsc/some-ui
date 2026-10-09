@@ -1,6 +1,6 @@
 /**
- * What a topik file's probes will actually do on the handheld surface, said
- * before anyone studies them.
+ * What a topik file's probes will do once delivered, said before anyone
+ * studies them.
  *
  * Probes fail quietly by design: a malformed one is dropped at load rather
  * than failing the topik (canon Rem. 4.7, Thm. 8.2), an anchor that names no
@@ -21,12 +21,16 @@
 import { assertNever } from "@some-ui/core-utils"
 import type { Message, MorphismRelation, Probe } from "@topik/lib/topik"
 import { GLOSS_RELATION, ProbeSchema, TopikFileSchema } from "@topik/lib/topik"
-import { anchorOf, isDeliverable } from "@topik/lib/topik/core/lesson-track"
 import {
   diffUtterance,
   MIN_DIFF_SIMILARITY,
 } from "@topik/lib/topik/core/morph-diff"
-import { acceptedForms } from "@topik/lib/topik/core/probe"
+import {
+  acceptedForms,
+  anchorOf,
+  isDeliverable,
+  lineText,
+} from "@topik/lib/topik/core/probe"
 import {
   excerptRevealsAnswer,
   tokenize,
@@ -48,8 +52,6 @@ export type ProbeFinding = {
   severity: "error" | "warning"
   message: string
 }
-
-const lineText = (message: Message): string => message.korean || message.content
 
 /** Spacing and closing punctuation aside - but not `?`, which is the whole of
  * a question form's change. */
@@ -126,7 +128,7 @@ export function auditItem(
   if (keyedRelation(probe)?.trim().toLowerCase() === GLOSS_RELATION) {
     report(
       "error",
-      "its answer is a gloss - a first-order item (canon Prop. 4.2), which the handheld lesson must not ask (Cor. 4.5)"
+      "its answer is a gloss - a first-order item (canon Prop. 4.2), which a probe must not key (Cor. 4.5)"
     )
   }
 
@@ -136,8 +138,8 @@ export function auditItem(
       report(
         "error",
         split === null
-          ? `target "${probe.target}" cannot be split into tiles (one word needs 2+ Hangul syllables); it is left out on handheld`
-          : `target "${probe.target}" needs ${split.tokens.length} tiles, over the limit; it is left out on handheld`
+          ? `target "${probe.target}" cannot be split into tiles (one word needs 2+ Hangul syllables); no board can ask it`
+          : `target "${probe.target}" needs ${split.tokens.length} tiles, over the limit; no board can ask it`
       )
     }
     if (source !== "" && normalize(source) === normalize(probe.target)) {
@@ -261,7 +263,7 @@ export function auditTopikFile(raw: unknown): Array<ProbeFinding> {
         probe: null,
         severity: "warning",
         message:
-          "no probes: this conversation is listening only on handheld (canon Cor. 4.5)",
+          "no probes: this conversation has no morphism probes (canon Cor. 4.5)",
       })
       return
     }

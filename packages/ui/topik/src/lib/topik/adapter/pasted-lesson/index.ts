@@ -1,5 +1,5 @@
 /**
- * The lesson the learner pasted this session, and only that one.
+ * The scene tree the learner pasted this session, and only that one.
  *
  * On the learner's opt-in path their own model writes a lesson, and they
  * paste it in (adaptive-learning canon Cor. 8.2). The app holds it for the
@@ -8,27 +8,23 @@
  * learner's conversation with their model already holds the lesson, and
  * doing it again means pasting it again.
  *
- * It is kept longer only when the learner asks, for that lesson, and then
- * on their account rather than on the device: "Keep on this account" puts
- * this slot's own document (`serializePastedLesson`) on the host's learner
- * shelf (`adapter/shelf`, canon Rem. 7.3), and replaying a kept lesson puts
- * it back in this slot. Nothing here writes to the shelf by itself.
+ * It is kept longer only when the learner asks, for that tree, and then on
+ * their account rather than on the device: "Keep on this account" puts its
+ * document (`serializePastedTree`, with no resume point) on the host's
+ * learner shelf (`adapter/shelf`, canon Rem. 7.3), and replaying a kept tree
+ * puts it back in this slot. Nothing here writes to the shelf by itself.
  *
- * One slot, for a conversation lesson or a scene tree: pasting another
- * replaces it. It is validated on the way out, like everything read back
- * from storage, and every failure is silent: losing it costs a paste. A tree
- * is read back through `intakeTree`, both audits and all, so the choices a
- * learner meets are only ever a `checked` intake's (MK4). A tree's resume
- * point (canon Rem. 4.13) is kept in the tree's own document, so it lasts
- * exactly as long as its lesson and goes when the slot is replaced. A tree
- * is kept on the account as its document here (`serializePastedTree`), with
- * no resume point.
+ * One slot: pasting another tree replaces it. It is read back through
+ * `intakeTree`, both audits and all, so the choices a learner meets are only
+ * ever a `checked` intake's (MK4), and every failure is silent: losing it
+ * costs a paste. Its resume point (canon Rem. 4.13) is kept in the tree's own
+ * document, so it lasts exactly as long as its lesson and goes when the slot
+ * is replaced. The phone plays scene trees only (docs/makjang/README.md), so
+ * a conversation lesson a build before that left here reads as nothing.
  */
 
 import { localStorageOrNull } from "@some-ui/core-utils"
-import type { ConversationBatch, TopikMetadata } from "@topik/lib/topik"
-import { TopikFileSchema, TopikMetadataSchema } from "@topik/lib/topik"
-import type { StorageLike } from "@topik/lib/topik/adapter/resume-point"
+import type { StorageLike } from "@topik/lib/topik/adapter/storage"
 import type { DramaLesson } from "@topik/lib/topik/core/drama"
 import type { DramaPointStore } from "@topik/lib/topik/core/drama-runtime"
 import { intakeTree } from "@topik/lib/topik/generation/tree-intake"
@@ -36,19 +32,10 @@ import { z } from "zod"
 
 export const PASTED_LESSON_KEY = "topik:pasted-lesson"
 
-export type PastedLesson = {
-  meta: TopikMetadata
-  batches: Array<ConversationBatch>
-}
-
 export type PastedLessonStore = {
-  /** The conversation lesson held, or null (nothing, or a tree). */
-  get(): PastedLesson | null
-  /** Holds this lesson for the session, replacing any other. */
-  set(meta: TopikMetadata, batches: Array<ConversationBatch>): void
-  /** The scene tree held, or null (nothing, or a conversation lesson). */
+  /** The scene tree held, or null. */
   getTree(): DramaLesson | null
-  /** Holds this tree for the session, from its start, replacing any lesson. */
+  /** Holds this tree for the session, from its start, replacing any other. */
   setTree(lesson: DramaLesson): void
   /** The held tree's resume point, by its lesson id; unvalidated. */
   points: DramaPointStore
@@ -68,24 +55,11 @@ const treeIdOf = (tree: unknown): unknown =>
     ? tree.id
     : undefined
 
-const PastedDocumentSchema = z.object({
-  version: z.literal(1),
-  meta: TopikMetadataSchema,
-  batches: TopikFileSchema,
-})
-
 /**
- * The document this slot holds, and the body "Keep on this account" sends:
- * one shape, so a kept lesson replays through the same check as a held one.
+ * A held tree's document, from its start: also the body "Keep on this
+ * account" sends, so a kept tree replays through the same check as a held
+ * one.
  */
-export function serializePastedLesson(
-  meta: TopikMetadata,
-  batches: Array<ConversationBatch>
-): string {
-  return JSON.stringify({ version: 1, meta, batches })
-}
-
-/** A held tree's document, from its start: also the body a tree is kept as. */
 export const serializePastedTree = (lesson: DramaLesson): string =>
   JSON.stringify({ version: 1, kind: "tree", tree: lesson })
 
@@ -97,11 +71,8 @@ export function treeOfDocument(document: unknown): DramaLesson | null {
   return intake.status === "checked" ? intake.lesson : null
 }
 
-/**
- * `window.sessionStorage`, or null wherever touching it throws. Also where a
- * pasted lesson's resume point lives: a place lasts as long as its lesson.
- */
-export function sessionStorageOrNull(): Storage | null {
+/** `window.sessionStorage`, or null wherever touching it throws. */
+function sessionStorageOrNull(): Storage | null {
   try {
     return typeof window === "undefined" ? null : window.sessionStorage
   } catch {
@@ -173,36 +144,33 @@ export function createPastedLessonStore(
         }
       },
     },
-    get: (): PastedLesson | null => {
-      const parsed = PastedDocumentSchema.safeParse(read())
-      return parsed.success
-        ? { meta: parsed.data.meta, batches: parsed.data.batches }
-        : null
-    },
-    set: (meta, batches): void => write(serializePastedLesson(meta, batches)),
     // An empty value is "nothing held": StorageLike has no removeItem.
     clear: (): void => write(""),
   }
 }
 
 /**
- * Where lessons were once kept for good: `localStorage`, under this key, until
- * they were held for the session instead (Rem. 7.4).
+ * What retired stores left in `localStorage`, under these keys: lessons once
+ * kept for good, until they were held for the session instead (Rem. 7.4),
+ * and the places left in conversation lessons, with the misses and flags
+ * their survey would have offered, until the phone played scene trees only.
  */
-export const RETIRED_LESSONS_KEY = "topik:local-lessons"
+export const RETIRED_KEYS = ["topik:local-lessons", "topik:handheld-resume"]
 
 /**
- * Deletes what the retired store left behind. Stopping writing to it was not
- * enough: whatever a learner saved there stayed on the device for good, which
- * is what holding lessons for the session is meant to rule out. Idempotent
- * and silent; the handheld runs it on mount.
+ * Deletes what the retired stores left behind. Stopping writing to them was
+ * not enough: whatever they held stayed on the device for good, which is
+ * what holding lessons for the session is meant to rule out. Idempotent and
+ * silent; the handheld runs it on mount.
  */
 export function purgeRetiredLessons(
   storage: Pick<Storage, "removeItem"> | null = localStorageOrNull()
 ): void {
-  try {
-    storage?.removeItem(RETIRED_LESSONS_KEY)
-  } catch {
-    // Privacy mode: there is nothing it could have kept.
+  for (const key of RETIRED_KEYS) {
+    try {
+      storage?.removeItem(key)
+    } catch {
+      // Privacy mode: there is nothing it could have kept.
+    }
   }
 }

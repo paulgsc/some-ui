@@ -8,6 +8,7 @@ import { workedLesson } from "@topik/lib/topik/generation/tree-intake/worked-exa
 import { afterEach, describe, expect, it, vi } from "vitest"
 
 import { DramaLesson } from "."
+import { EXERCISE_FRAMING } from "./exercise-framing"
 
 afterEach(cleanup)
 
@@ -65,7 +66,12 @@ describe("DramaLesson", () => {
     // The repair settles into warmth, and the leaf ends on its panel.
     expect(screen.getByText("훈훈한 마무리")).toBeTruthy()
     next()
-    expect(slots().at(-1)).toBe("drama-ending")
+    // Then the author's notes, quoting each chosen line.
+    expect(slots().slice(-2)).toEqual(["drama-ending", "drama-notes"])
+    const notes = document.querySelector("[data-slot='drama-notes']")!
+    expect(notes.textContent).toMatch(/작가의 말/)
+    expect(notes.textContent).toMatch(/응, 마실래\./)
+    expect(notes.textContent).toMatch(/죄송합니다, 회장님\./)
     expect(screen.getByRole("button", { name: /Play it again/ })).toBeTruthy()
   })
 
@@ -120,8 +126,11 @@ describe("DramaLesson", () => {
   })
 })
 
-/** The resume point that opens `route` at its choice, or at its end. */
-function pointAt(route: Route): unknown {
+/**
+ * The resume point that opens `route` at `at`: by default its choice, or its
+ * end.
+ */
+function pointAt(route: Route, at?: { kind: "beat"; id: string }): unknown {
   const first: Record<string, string> = {}
   route.forEach((option, depth) => {
     const choice = sceneAt(lesson.root, route.slice(0, depth))?.choice
@@ -130,7 +139,7 @@ function pointAt(route: Route): unknown {
   const scene = sceneAt(lesson.root, route)
   return {
     route,
-    at: scene?.choice ? { kind: "choice" } : { kind: "end" },
+    at: at ?? (scene?.choice ? { kind: "choice" } : { kind: "end" }),
     first,
   }
 }
@@ -142,10 +151,12 @@ describe("MK6: no feeling anchor sits on a choice or a chosen line", () => {
       renderDrama(slot(pointAt(route)))
       const scene = sceneAt(lesson.root, route)!
       const unanchored = document.querySelectorAll(
-        "[data-slot='drama-choice'], [data-slot='drama-chosen'], [role='group'][aria-label='Choose']"
+        "[data-slot='drama-choice'], [data-slot='drama-chosen'], [data-slot='drama-notes'], [role='group'][aria-label='Choose']"
       )
       expect(unanchored.length).toBe(
-        (route.length > 0 ? 1 : 0) + (scene.choice ? 2 : 0)
+        (route.length > 0 ? 1 : 0) +
+          (scene.choice ? 2 : 0) +
+          (route.length > 0 && !scene.choice ? 1 : 0)
       )
       for (const node of unanchored) {
         expect(node.closest(".feeling, .feeling-panel")).toBeNull()
@@ -163,6 +174,36 @@ describe("MK6: no feeling anchor sits on a choice or a chosen line", () => {
         expect(node.closest(".feeling")?.getAttribute("data-feeling")).toBe(
           scene.feeling
         )
+      }
+    }
+  )
+})
+
+describe("no screen is framed as an exercise", () => {
+  it.each(scenesOf(lesson.root).map(({ route, scene }) => [scene.id, route]))(
+    "on the route to %s, at its first beat and at its choice or end",
+    (_, route) => {
+      const scene = sceneAt(lesson.root, route)!
+      const opening = pointAt(route, {
+        kind: "beat",
+        id: scene.beats[0]?.id ?? "",
+      })
+      const landed = [
+        route.length > 0 ? "drama-chosen" : "drama-cover",
+        scene.choice ? "drama-choice" : "drama-notes",
+      ]
+      for (const [index, point] of [opening, pointAt(route)].entries()) {
+        renderDrama(slot(point))
+        // Opened where the point says, not at the root by fallback.
+        expect(index === 0 ? slots()[0] : slots().at(-1)).toBe(landed[index])
+        const labels = Array.from(
+          document.querySelectorAll("[aria-label]"),
+          (node) => node.getAttribute("aria-label") ?? ""
+        )
+        for (const text of [document.body.textContent, ...labels]) {
+          expect(text).not.toMatch(EXERCISE_FRAMING)
+        }
+        cleanup()
       }
     }
   )

@@ -3,7 +3,7 @@ import {
   createReadAloudStore,
   READ_ALOUD_STORAGE_KEYS,
 } from "@topik/lib/topik/adapter/read-aloud-store"
-import type { StorageLike } from "@topik/lib/topik/adapter/resume-point"
+import type { StorageLike } from "@topik/lib/topik/adapter/storage"
 import { emptyRecord } from "@topik/lib/topik/read-aloud/records"
 import type { SetProgress } from "@topik/lib/topik/read-aloud/set-machine"
 import { describe, expect, it } from "vitest"

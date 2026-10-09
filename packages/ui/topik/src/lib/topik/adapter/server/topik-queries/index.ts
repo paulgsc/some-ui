@@ -21,31 +21,6 @@ export const topikKeys = {
 
 // HOOKS
 
-/**
- * INVARIANTS ENFORCED BY TANSTACK QUERY:
- * - V5: Idempotent hydration (automatic)
- * - V6: Remount stability (queryKey-based)
- * - V8: Race safety (built-in deduplication)
- * - V12: Memory boundedness (gcTime config)
- */
-export function useTopikBatches(
-  repository: ITopikRepository,
-  key: string,
-  options?: Omit<
-    UseQueryOptions<Array<ConversationBatch>>,
-    "queryKey" | "queryFn"
-  >
-): UseQueryResult<Array<ConversationBatch>> {
-  return useQuery<Array<ConversationBatch>>({
-    queryKey: topikKeys.detail(key),
-    queryFn: () => repository.load(key),
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    gcTime: 10 * 60 * 1000, // 10 minutes (formerly cacheTime)
-    retry: 2,
-    ...options,
-  })
-}
-
 /** V13: batch metadata without full content, via select. */
 export function useTopikBatchMetadata(
   repository: ITopikRepository,

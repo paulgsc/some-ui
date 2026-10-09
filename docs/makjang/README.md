@@ -127,22 +127,24 @@ noun answers it, Prop. 4.2), and so it would not be asked. Questions that do
 pass the rules, and keep the same shape, are plentiful: which reply would
 offend her, what Seo-yeon is really saying, what she should say back.
 
-### Why the current phone lesson drifted
+### Why the phone lesson drifted
 
-The lesson generator already writes a makjang family romcom with a standing
+The lesson generator already wrote a makjang family romcom with a standing
 cast (`packages/ui/topik/src/lib/topik/generation/lesson-prompt.md`, "The
-setting"). The app around it then throws the drama away:
+setting"). Until MKJ-S5 the phone played it as a conversation lesson, which
+threw the drama away. The desktop still plays that format:
 
-| What the drama has           | What the lesson format keeps                                                                  |
+| What the drama has           | What the conversation format keeps                                                            |
 | ---------------------------- | --------------------------------------------------------------------------------------------- |
 | A cast of named characters   | `role: "user" \| "assistant"` per line; "a third character can be talked about but not heard" |
 | Who is speaking              | "The lesson never shows speaker names"                                                        |
-| Choices with consequences    | A fixed plan: line, its checks, misses once at the end, a wrap card (`core/lesson-track`)     |
-| A reason to see what is next | "Conversation 3 of 8", "Material complete", a first-listen tally (`handheld/wrap-card`)       |
+| Choices with consequences    | A fixed plan: line, its checks, misses once at the end, a wrap card                           |
+| A reason to see what is next | "Conversation 3 of 8", "Material complete", a first-listen tally                              |
 | A wrong answer as an event   | One line of `why` text under the option (`ProbeOption.why`)                                   |
 
 The Duolingo feel and the lecture feel are both symptoms of that loss. Neither
-is fixed by tuning the lesson. Both go away when the drama is the structure.
+was fixed by tuning the lesson. Both went away on the phone when the drama
+became the structure.
 
 ## How this relates to the canon
 
@@ -362,8 +364,10 @@ recurring cast, and the generator is given no story from earlier lessons: the
 prompt, the level and an optional scene idea are enough. The digest of recent
 evaluation reports the prompt already carries (Cor. 8.2) stays, since it is
 about how lessons fit, not what happened in them. The app keeps nothing
-between lessons beyond what the handheld surface already keeps (the reports
-and the shelf). The standing cast in today's generator prompt can stay as a
+between lessons beyond the shelf and the reports earlier lessons left, which
+it reads until they expire: the phone no longer asks the conversation
+lesson's survey, and the drama's own review is a later design (see
+"Increments"). The standing cast in today's generator prompt can stay as a
 default to draw from, as long as no lesson relies on another.
 
 Longitudinal structure (a standing ensemble, a series, the mother-in-law
@@ -649,11 +653,21 @@ Neither needs a better model than exists today.
     `core/lesson-survey` import from it (`anchorOf`, `isDeliverable`,
     `probeFingerprint`) move to `core/probe` or go with the code that no
     longer needs them. The wrap card loses "Conversation N of M" and the tally
-    as its headline, and ends a lesson on how the scene resolved instead.
+    as its headline, and ends a lesson on how the scene resolved instead:
+    the leaf's last beat, its ending panel, then the author's notes
+    (작가의 말), each choice the route made with the line chosen and its
+    `why`, in the session theme. The conversation lesson's survey leaves the
+    phone with it (MKJ-S5, owner's call); the reports it wrote are read until
+    they expire.
   - It is verified on pasted and served trees, and done when it passes the
     test above: on screen the learner follows characters through a scene,
     and no screen is framed as an exercise ("Check", "Question N", "N of M").
-- **Later.** Media capabilities (per-character voices, generated art in a
+- **Later.** A review of the drama at its end, in place of the conversation
+  lesson's survey: how keen the learner is, and where they want the drama to
+  go (another genre; a scene, a feeling or a trope amplified). It never
+  blocks a learner who did not follow the plot, and what it reveals about
+  comprehension is inferred from how it is answered, never scored. It needs
+  its own design, UI and canon line. Media capabilities (per-character voices, generated art in a
   fixed style, portraits, video beats) each add assets and a renderer
   capability, plus a canon line, and change neither the story schema nor the
   engine. Longitudinal structure (a standing cast, series, memory across
@@ -793,13 +807,14 @@ the one-line summaries.
 > - _Claim:_ in `packages/ui/topik`, `panelsOf` (`core/drama`) gives a
 >   feeling only to cover, line, narration and ending panels, and
 >   `webtoon-panel` draws a feeling's theme, symbol or words only for those,
->   so the choice panel, the chosen line and the dock's options stay in the
->   session theme, and a child scene's feeling first shows on the cover after
->   the chosen line.
-> - _Falsified by_ a hunk that gives the `chosen` or `choice` arm of `Panel`
->   a feeling, or puts the chosen line after the cover in `panelsOf`; that
->   draws `Themed`, `FeelingSymbol`, `FEELING_WORDS` or a feeling class in
->   the `chosen` or `choice` case of `webtoon-panel`, in `drama-lesson`'s
+>   so the choice panel, the chosen line, the author's notes that quote the
+>   chosen lines and the dock's options stay in the session theme, and a
+>   child scene's feeling first shows on the cover after the chosen line.
+> - _Falsified by_ a hunk that gives the `chosen`, `choice` or `notes` arm of
+>   `Panel` a feeling, or puts the chosen line after the cover in `panelsOf`;
+>   that draws `Themed`, `FeelingSymbol`, `FEELING_WORDS` or a feeling class
+>   in the `chosen`, `choice` or `notes` case of `webtoon-panel`, in
+>   `drama-lesson`'s
 >   dock or in the `ladder-dock` it uses; that deletes or weakens the MK6 test in
 >   `components/topik/handheld/drama-lesson/index.test.tsx` (its loop over
 >   every scene's route, or its selectors); or that deletes, renames or moves

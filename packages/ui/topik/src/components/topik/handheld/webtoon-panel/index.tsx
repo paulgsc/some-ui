@@ -352,6 +352,38 @@ export const WebtoonPanel = ({
         </Themed>
       )
     }
+    case "notes": {
+      // The session's own theme: the notes quote the lines chosen (MK6).
+      return (
+        <section
+          data-slot="drama-notes"
+          className="bg-card text-card-foreground border-border flex flex-col gap-3 rounded-2xl border p-4"
+        >
+          <h2 lang="ko" className="text-sm font-semibold">
+            작가의 말
+          </h2>
+          <ol className="flex flex-col gap-3">
+            {panel.notes.map((note) => (
+              <li key={note.choice} className="flex flex-col gap-1">
+                <span
+                  lang="ko"
+                  className="text-muted-foreground text-sm break-keep"
+                >
+                  {note.prompt}
+                </span>
+                <span
+                  lang={note.candidate.lang === "en" ? "en" : "ko"}
+                  className="font-semibold break-keep"
+                >
+                  {note.candidate.text}
+                </span>
+                <span className="text-sm">{note.candidate.why}</span>
+              </li>
+            ))}
+          </ol>
+        </section>
+      )
+    }
     default: {
       return assertNever(panel)
     }

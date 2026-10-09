@@ -1,12 +1,13 @@
 /**
- * The scene tree pasted this session, and whether it is playing: the drama's
- * side of the handheld's one pasted slot (`adapter/pasted-lesson`). A tree
- * and a conversation lesson share the slot, so starting either replaces the
- * other, and the caller tells this hook when a conversation took it.
+ * The scene tree pasted this session, and whether it is playing: the
+ * handheld's one pasted slot (`adapter/pasted-lesson`), as state. On mount it
+ * also deletes what retired stores left on the device
+ * (`purgeRetiredLessons`).
  */
 
-import { useCallback, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import type { PastedLessonStore } from "@topik/lib/topik/adapter/pasted-lesson"
+import { purgeRetiredLessons } from "@topik/lib/topik/adapter/pasted-lesson"
 import type { DramaLesson } from "@topik/lib/topik/core/drama"
 
 export type PastedTree = {
@@ -18,17 +19,14 @@ export type PastedTree = {
   leave: () => void
   /** Lets the tree go before the session ends. */
   forget: () => void
-  /** A conversation lesson took the slot: the tree and its place are gone. */
-  replaced: () => void
 }
 
 export function usePastedTree(store: PastedLessonStore): PastedTree {
   const [tree, setTree] = useState(() => store.getTree())
   const [playing, setPlaying] = useState(false)
 
-  const replaced = useCallback((): void => {
-    setTree(null)
-    setPlaying(false)
+  useEffect(() => {
+    purgeRetiredLessons()
   }, [])
 
   return {
@@ -46,8 +44,8 @@ export function usePastedTree(store: PastedLessonStore): PastedTree {
     leave: useCallback((): void => setPlaying(false), []),
     forget: useCallback((): void => {
       store.clear()
-      replaced()
-    }, [store, replaced]),
-    replaced,
+      setTree(null)
+      setPlaying(false)
+    }, [store]),
   }
 }

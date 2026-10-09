@@ -8,15 +8,8 @@
  * learner is a reason to come back. The report asks whether it did - was it
  * worthwhile, how keen are they for the next, how hard it felt, what was
  * blocking, what they feel it is making them into. It never enters a belief
- * (Prop. 3.4). By default it orders the served lessons the learner meets
- * next, on the device (Rem. 3.5, `core/lesson-selection`); on the learner's
- * opt-in path it also rides the prompt for their own model (Cor. 8.2).
- * Nothing here reads or writes an outcome.
+ * (Prop. 3.4). Nothing here reads or writes an outcome.
  */
-
-import type { ConversationBatch } from "@topik/lib/topik"
-import { probeRelations } from "@topik/lib/topik/core/lesson-selection"
-import { anchorOf, probeFingerprint } from "@topik/lib/topik/core/lesson-track"
 
 export const WORTHWHILE = ["yes", "somewhat", "no"] as const
 export type Worthwhile = (typeof WORTHWHILE)[number]
@@ -26,17 +19,6 @@ export type Enthusiasm = (typeof ENTHUSIASM)[number]
 
 export const DIFFICULTY = ["too-easy", "right", "too-hard"] as const
 export type Difficulty = (typeof DIFFICULTY)[number]
-
-/** A probe the learner may say was blocking them. */
-export type StuckCandidate = {
-  batchId: number
-  probeId: string
-  prompt: string
-  /** The Korean the probe was about. */
-  source: string
-  /** What the probe exercises, so a lesson that exercises it can return. */
-  relations: Array<string>
-}
 
 /**
  * A probe the report names. Its text rides along: lessons are ephemeral, so an
@@ -51,7 +33,7 @@ export type SurveyItem = {
   relations?: Array<string>
 }
 
-export type LessonSurvey = {
+type LessonSurvey = {
   worthwhile?: Worthwhile
   /** How keen they are for the next lesson. */
   enthusiasm?: Enthusiasm
@@ -65,93 +47,6 @@ export type LessonSurvey = {
   becoming?: string
 }
 
-/** A phone's dock holds this many chips above its button. */
-export const MAX_STUCK_CANDIDATES = 4
-
-export const MAX_BECOMING_LENGTH = 280
-
-/**
- * The probes missed on first presentation, as stuck candidates (canon
- * Cor. 3.4): offered, never presumed. In lesson order, the most recent kept
- * when there are more than a dock can hold.
- */
-export function stuckCandidates(
-  batches: Array<ConversationBatch>,
-  missed: Record<number, Array<string>>
-): Array<StuckCandidate> {
-  const candidates = batches.flatMap((batch) => {
-    const ids = new Set(missed[batch.id] ?? [])
-    return (batch.probes ?? []).flatMap((probe): Array<StuckCandidate> => {
-      if (!ids.has(probe.id)) return []
-      const anchor =
-        batch.messages[
-          anchorOf(
-            { anchorMessageId: probe.anchorMessageId, excerpt: probe.source },
-            batch.messages
-          )
-        ]
-      return [
-        {
-          batchId: batch.id,
-          probeId: probe.id,
-          prompt: probe.prompt,
-          source: probe.source ?? anchor?.korean ?? anchor?.content ?? "",
-          relations: probeRelations(probe),
-        },
-      ]
-    })
-  })
-  return candidates.slice(-MAX_STUCK_CANDIDATES)
-}
-
-/**
- * Misses, pinned to the version of each probe that was missed: `id@fp`, the
- * way the resume point's outcomes are keyed. A miss whose probe is no longer
- * in its conversation is not kept.
- */
-export function pinMisses(
-  batches: Array<ConversationBatch>,
-  missed: Record<number, Array<string>>
-): Record<number, Array<string>> {
-  return Object.fromEntries(
-    batches.flatMap((batch) => {
-      const ids = missed[batch.id]
-      if (!ids?.length) return []
-      const pinned = ids.flatMap((id) => {
-        const probe = batch.probes?.find((candidate) => candidate.id === id)
-        return probe ? [`${id}@${probeFingerprint(probe)}`] : []
-      })
-      return pinned.length > 0 ? [[batch.id, pinned]] : []
-    })
-  )
-}
-
-/**
- * The pinned misses that still describe the lesson as it is now. A probe
- * revised under an unchanged id was not the one missed, so its miss is
- * dropped rather than offered as blocking and carried into the next prompt.
- * An unpinned id, written before misses were pinned, cannot
- * be checked and is dropped too.
- */
-export function unpinMisses(
-  batches: Array<ConversationBatch>,
-  pinned: Record<number, Array<string>>
-): Record<number, Array<string>> {
-  return Object.fromEntries(
-    batches.flatMap((batch) => {
-      const current = new Set(
-        (batch.probes ?? []).map(
-          (probe) => `${probe.id}@${probeFingerprint(probe)}`
-        )
-      )
-      const ids = (pinned[batch.id] ?? []).flatMap((key) =>
-        current.has(key) ? [key.slice(0, key.lastIndexOf("@"))] : []
-      )
-      return ids.length > 0 ? [[batch.id, ids]] : []
-    })
-  )
-}
-
 /** A kept report: the survey, which lesson it was about, and when. */
 export type SurveyReport = LessonSurvey & {
   topikKey: string
@@ -161,16 +56,4 @@ export type SurveyReport = LessonSurvey & {
   level?: number
   /** Epoch ms. */
   at: number
-}
-
-/** A report with nothing in it is a skip, and is not kept. */
-export function isBlank(survey: LessonSurvey): boolean {
-  return (
-    survey.worthwhile === undefined &&
-    survey.enthusiasm === undefined &&
-    survey.difficulty === undefined &&
-    survey.stuck.length === 0 &&
-    (survey.flagged ?? []).length === 0 &&
-    (survey.becoming ?? "").trim() === ""
-  )
 }

@@ -15,21 +15,22 @@ The applet mounts one of two renderers, chosen by the room its host grants
 - **Desktop** (`md` width and up, 480px height and up) — the session machine:
   a conversation plays through, then a batch quiz with the transcript
   alongside it.
-- **Handheld** (below either) — `components/topik/handheld`, driven by the
-  pure `core/lesson-track` reducer: one line at a time, heard before it is
-  read (audio → Hangul → gloss), each check right after the line it is about,
-  typed answers built from tiles (`core/tile-assembly`), misses revisited once
-  instead of the batch replaying, and a resume point kept by message id.
+- **Handheld** (below either) — `components/topik/handheld`: the phone's
+  drama ([`docs/makjang/README.md`](../../../docs/makjang/README.md)). A
+  lesson is one scene tree, played as a vertical webtoon by makjang's engine
+  (`core/drama`, `core/drama-runtime`): each line heard before it is read
+  (audio → Hangul → gloss), each scene's choice asked as large Korean
+  targets, a wrong choice playing its consequence and repair, and the ending
+  followed by the author's notes (작가의 말) on the choices made. It plays
+  trees only: the operator's served ones (`adapter/tree-feed`), one the
+  learner's own model wrote, or one kept on their shelf. Conversation files
+  are the desktop's.
 
 The handheld surface is not the desktop one reflowed. Stacking the desktop
 panes on a phone scrolls the transcript out of view and silently turns an
 open-book quiz into a closed-book one; the canon names that a valuation change
-(Prop. 9.4) and declares the handheld valuation instead (Cor. 4.4, v1.3).
-Content may pin a check to its line with an optional `anchorMessageId`.
-
-The handheld lesson answers to a user story as well as to the canon:
-[`docs/makjang/README.md`](../../../docs/makjang/README.md) says what it is for
-(a drama you study inside, phone-only) and the architecture it is moving to.
+(Prop. 9.4) and declares the handheld valuation instead (Cor. 4.4, as the
+drama amends it in v1.13: Rem. 4.12, 4.13).
 
 > [!IMPORTANT] > **Canon-governed workspace — read the canon before editing this package.**
 >
