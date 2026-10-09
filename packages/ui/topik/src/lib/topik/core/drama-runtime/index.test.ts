@@ -258,6 +258,22 @@ describe("DramaRuntime", () => {
       ])
     })
 
+    it("plays on the first touch when sound was left on, though it voices nothing", () => {
+      const points = slot().points
+      const opened = runtimeOf({ points })
+      opened.dispatch({ type: "advance" })
+      opened.dispatch({ type: "advance" })
+      // Resumed at the root's choice, with no line coming.
+      const sound = heldSound()
+      const runtime = runtimeOf({ voice: heldVoice(), sound, points })
+      runtime.connect()
+      expect(sound.requests).toHaveLength(0)
+      runtime.dispatch({ type: "reveal", id: "s1-l1" })
+      expect(sound.requests.map(({ request }) => request.feeling)).toEqual([
+        "tension",
+      ])
+    })
+
     it("is cut off by a replay, by sound turned off, and by leaving", async () => {
       const voice = heldVoice()
       const sound = heldSound()
