@@ -118,7 +118,7 @@ export class DramaRuntime {
       const { drama } = moved.session
       let { last } = this.snapshot
       if (drama.at.kind === "end" && was !== "end") {
-        last = lastDramaOf(this.lesson, drama, last, Date.now())
+        last = lastDramaOf(this.lesson, drama, this.current(), Date.now())
         this.ports.last.save(last)
       }
       this.publish({ ...this.snapshot, session: moved.session, last })
@@ -131,13 +131,23 @@ export class DramaRuntime {
   review = (change: DramaReview): void => {
     const { last, session } = this.snapshot
     if (last === null || session.drama.at.kind !== "end") return
-    // Another tab may have written since: merge into this drama's newer
-    // record, and leave another drama's alone.
     const stored = this.ports.last.get()
-    const own = isRecordOf(stored, this.lesson)
-    const next = withReview(own ? stored : last, change, Date.now())
-    if (stored === null || own) this.ports.last.save(next)
+    const next = withReview(this.current() ?? last, change, Date.now())
+    // Another drama's record, written by another tab since, is newer.
+    if (stored === null || isRecordOf(stored, this.lesson)) {
+      this.ports.last.save(next)
+    }
     this.publish({ ...this.snapshot, last: next })
+  }
+
+  /**
+   * This drama's record as it stands: the stored one, which another tab may
+   * have added to since, else the one this runtime holds (a failed write
+   * left it only here).
+   */
+  private current(): LastDrama | null {
+    const stored = this.ports.last.get()
+    return isRecordOf(stored, this.lesson) ? stored : this.snapshot.last
   }
 
   /** The learner's replay: it cuts in on whatever is playing. */

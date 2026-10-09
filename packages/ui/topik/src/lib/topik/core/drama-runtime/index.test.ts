@@ -352,6 +352,19 @@ describe("DramaRuntime", () => {
       expect(runtimeOf({ last }).getSnapshot().last).toBeNull()
     })
 
+    it("merges an ending into what another tab added to this drama since", () => {
+      const storage = memoryStorage()
+      const here = runtimeOf({ last: createLastDramaStore(storage) })
+      const there = runtimeOf({ last: createLastDramaStore(storage) })
+      playTo(there, "a")
+      there.review({ enjoyed: "loved" })
+      playTo(here, "c")
+      expect(createLastDramaStore(storage).get()).toMatchObject({
+        scenes: [{ id: "s1" }, { id: "s2" }, { id: "s6" }],
+        review: { enjoyed: "loved" },
+      })
+    })
+
     it("leaves a record another tab wrote since for another drama", () => {
       const storage = memoryStorage()
       const last = createLastDramaStore(storage)
