@@ -224,7 +224,7 @@ type ChosenLine = {
 }
 
 /** A choice the route made, as the author's notes give it. */
-export type Note = ChosenLine & {
+type Note = ChosenLine & {
   /** The choice's prompt, in Korean. */
   prompt: string
 }
