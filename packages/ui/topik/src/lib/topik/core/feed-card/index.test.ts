@@ -17,7 +17,16 @@ describe("cardOf", () => {
   it("reads genres from genre: tags, and the level from its tag", () => {
     expect(
       cardOf(
-        entry({ tags: ["topik-2", "genre:office-romance", "genre:", "x"] })
+        entry({
+          tags: [
+            "topik-2",
+            "genre:Office-Romance",
+            "genre:office romance",
+            "genre:",
+            "genre:-",
+            "x",
+          ],
+        })
       )
     ).toEqual({
       key: "tea",

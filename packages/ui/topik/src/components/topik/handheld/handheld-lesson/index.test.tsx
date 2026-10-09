@@ -186,6 +186,10 @@ describe("HandheldLesson", () => {
   })
 
   describe("the operator's served dramas (MKJ-S4)", () => {
+    afterEach(() => {
+      vi.unstubAllGlobals()
+    })
+
     const TEA = {
       key: "first-tea",
       displayName: "Tea at the chairman's",
@@ -213,13 +217,12 @@ describe("HandheldLesson", () => {
       renderLesson({ treeFeed: feedOf(load), servedPoints: points })
       const dramas = await screen.findByRole("region", { name: "Dramas" })
       expect(dramas.textContent).toMatch(/TOPIK 2/)
-      expect(dramas.textContent).toMatch(/office romance/)
       expect(dramas.textContent).not.toMatch(EXERCISE_FRAMING)
       expect(load).not.toHaveBeenCalled()
 
       fireEvent.click(
         within(dramas).getByRole("button", {
-          name: "Play Tea at the chairman's",
+          name: "Play it: Tea at the chairman's",
         })
       )
       expect(await screen.findByText("숨 막히는 긴장감")).toBeTruthy()
@@ -246,7 +249,7 @@ describe("HandheldLesson", () => {
       })
       fireEvent.click(
         await screen.findByRole("button", {
-          name: "Play Tea at the chairman's",
+          name: "Play it: Tea at the chairman's",
         })
       )
       expect(
@@ -277,6 +280,11 @@ describe("HandheldLesson", () => {
       expect(
         genre.getByRole("button", { name: /가족/ }).getAttribute("aria-pressed")
       ).toBe("true")
+      // A card's own genre stays offered once taken back.
+      const office = genre.getByRole("button", { name: "office romance" })
+      fireEvent.click(office)
+      fireEvent.click(genre.getByRole("button", { name: "office romance" }))
+      expect(office.isConnected).toBe(true)
       // A pick of one's own, beside the card's.
       fireEvent.click(genre.getByRole("button", { name: /복수/ }))
       click(/Copy the prompt/)
@@ -284,7 +292,6 @@ describe("HandheldLesson", () => {
       expect(String(writeText.mock.calls[0]?.[0])).toContain(
         "Genre: family, office romance, revenge"
       )
-      vi.unstubAllGlobals()
     })
 
     it("lists no lesson as a drama, from a server that ignores the trees' activity", async () => {

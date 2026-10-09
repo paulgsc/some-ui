@@ -4,7 +4,7 @@ import { Button } from "@some-ui/shared"
 import type { TopikMetadata } from "@topik/lib/topik"
 import type { DramaLesson } from "@topik/lib/topik/core/drama"
 import type { FeedCard, Seed } from "@topik/lib/topik/core/feed-card"
-import { cardOf, seedOf } from "@topik/lib/topik/core/feed-card"
+import { cardOf, koreanGenre, seedOf } from "@topik/lib/topik/core/feed-card"
 import { TOPIK_LEVELS } from "@topik/lib/topik/generation"
 import {
   BookOpenText,
@@ -72,9 +72,10 @@ const Card = ({
           {card.genres.map((genre) => (
             <span
               key={genre}
+              lang={koreanGenre(genre) ? "ko" : undefined}
               className="bg-muted text-muted-foreground rounded-full px-2 py-0.5 text-xs"
             >
-              {genre}
+              {koreanGenre(genre) ?? genre}
             </span>
           ))}
         </span>
@@ -101,7 +102,7 @@ const Card = ({
       <Button
         variant="outline"
         className="h-11 gap-2 rounded-xl"
-        aria-label={`Play ${card.title}`}
+        aria-label={`Play it: ${card.title}`}
         onClick={() => onPlay(card.key)}
       >
         <Play className="size-4" /> Play it
@@ -211,7 +212,7 @@ export const MaterialList = ({
       <button
         type="button"
         onClick={onCreate}
-        className="border-border flex min-h-16 items-center gap-3 rounded-2xl border border-dashed p-4 text-left"
+        className="border-border flex min-h-16 shrink-0 items-center gap-3 rounded-2xl border border-dashed p-4 text-left"
       >
         <Sparkles className="text-muted-foreground size-5 shrink-0" />
         <span className="min-w-0 flex-1">

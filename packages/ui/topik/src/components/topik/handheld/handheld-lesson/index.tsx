@@ -276,7 +276,6 @@ export const HandheldLesson = ({
     if (generating) {
       return (
         <GenerateLesson
-          key={generating.seed?.scene ?? ""}
           initialSeed={generating.seed}
           defaultLevel={heldLevel}
           buildPrompt={lessonPrompt.prompt}

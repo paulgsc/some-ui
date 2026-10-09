@@ -156,12 +156,12 @@ const feelingTable = (): string =>
  */
 export function buildTreePrompt(request: TreeRequest): string {
   const last = request.lastDrama?.trim()
-  const genres = request.genres?.filter((genre) => genre.trim() !== "") ?? []
+  const genres = request.genres ?? []
   return withRequest(
     TREE_PROMPT.replace(FEELINGS_MARKER, feelingTable()),
     request,
     [
-      `Genre: ${genres.length > 0 ? genres.join(", ") : "(the default: a makjang family romcom)"}`,
+      `Genre: ${genres.length > 0 ? genres.join(", ") : "(none picked)"}`,
       "",
       last
         ? `Last drama:\n${last}`

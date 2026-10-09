@@ -2,10 +2,6 @@
  * The phone's feed as cards (docs/makjang/README.md, "The feed is cards"):
  * a served tree's manifest entry read as a title, its genres and a premise,
  * and the seed it gives the learner's own prompt. Pure and total.
- *
- * Genres are `genre:` tags the operator types in the lesson CRM, so the
- * server stores them as it stores any tag. They are a card's label and a
- * prompt input, never a field of the scene tree.
  */
 
 import type { TopikMetadata } from "@topik/lib/topik"
@@ -34,18 +30,24 @@ export type FeedCard = {
   level: number | undefined
 }
 
-/** `genre:office-romance` reads "office romance". */
+/** A templated genre's Korean name; none for a genre of the operator's own. */
+export const koreanGenre = (genre: string): string | undefined =>
+  GENRES.find((known) => known.genre === genre)?.ko
+
+/** `genre:Office-Romance` reads "office romance"; blanks and repeats go. */
 export function cardOf(item: TopikMetadata): FeedCard {
   const tags = item.tags ?? []
+  const genres = tags
+    .filter((tag) => tag.startsWith(GENRE_TAG))
+    .map((tag) =>
+      tag.slice(GENRE_TAG.length).replaceAll("-", " ").trim().toLowerCase()
+    )
+    .filter((genre) => genre !== "")
   return {
     key: item.key,
     title: item.displayName,
     premise: item.description,
-    genres: tags
-      .filter(
-        (tag) => tag.startsWith(GENRE_TAG) && tag.length > GENRE_TAG.length
-      )
-      .map((tag) => tag.slice(GENRE_TAG.length).replaceAll("-", " ")),
+    genres: [...new Set(genres)],
     level: topikLevelOf(tags),
   }
 }

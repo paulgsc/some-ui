@@ -337,8 +337,9 @@ handheld lesson ships today, where the application supplies the grammar and
 checks what comes back. What we provide is the generic shape. Any particular
 ensemble or genre is one instance of it.
 
-That is not the first iteration, where the operator's prompt and its makjang
-premise are the default. But the first iteration must not close it off, which
+That is not yet the whole of it: the operator's prompt and its makjang
+premise are the default, and the learner steers within it by picking genres
+and a scene (MKJ-S9). But the first iteration must not close it off, which
 constrains it now:
 
 - **The cast is a list of any size,** and how characters stand to each other
@@ -722,9 +723,8 @@ first on the start screen.
 - **A card** shows a served tree's title, its genres and its premise (the
   manifest entry's `displayName`, `genre:` tags and `description`).
 - **"Make my own"**, the main action, opens the learner's own prompt seeded
-  with the card's premise as its scene and its genres. It needs no session
-  data, so it is also the way back in for a learner who left a drama
-  unfinished. **"Play it"** plays the served drama as it is.
+  with the card's premise as its scene and its genres. **"Play it"** plays
+  the served drama as it is.
 - **Making one's own card:** the prompt's genre chips (`GENRES`: 막장, 복수,
   로맨스, 가족, 오피스, 사극, 스릴러, 코미디) are a card with no served drama
   behind it. Picking none leaves the prompt's default, the makjang family
@@ -732,7 +732,9 @@ first on the start screen.
 - **Genres are tags and a prompt input, never a schema field.** The operator
   types them in the lesson CRM as `genre:` tags (hyphens for spaces:
   `genre:office-romance`), which the server stores like any tag, and the tree
-  prompt's request takes a `Genre` line. The scene tree has no genre, and no
+  prompt's request takes a `Genre` line, which wins over `Scene` and the
+  last drama. The operator's own batch prompt in the CRM takes no genre: the
+  operator puts it in `Scene`, then tags the card. The scene tree has no genre, and no
   audit knows one ("Who defines the drama": nothing checks anything
   genre-specific). That is how #1708's "a learner-defined genre" lands without
   the schema change it once assumed.
