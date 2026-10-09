@@ -231,6 +231,22 @@ describe("DramaRuntime", () => {
       expect(beats(voice).at(-1)).toBe("s3-l1")
     })
 
+    it("plays once the line that was playing when sound was turned on ends", async () => {
+      const voice = heldVoice()
+      const sound = heldSound(false)
+      const runtime = runtimeOf({ voice, sound })
+      runtime.connect()
+      runtime.dispatch({ type: "advance" })
+      runtime.dispatch({ type: "advance" })
+      // s1-l1, the scene's last line, is still playing at its choice.
+      sound.turn(true)
+      expect(sound.requests).toHaveLength(0)
+      await voice.finish(0)
+      expect(sound.requests.map(({ request }) => request.feeling)).toEqual([
+        "tension",
+      ])
+    })
+
     it("is cut off by a replay, by sound turned off, and by leaving", () => {
       const voice = heldVoice()
       const sound = heldSound()

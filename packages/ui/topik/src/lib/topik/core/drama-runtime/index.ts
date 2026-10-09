@@ -19,11 +19,11 @@
  * Each visit to a scene owes its sting, the feeling's tone and then its cry
  * (docs/makjang/README.md, "Where the anchor goes"), until it plays or the
  * learner leaves the scene. It plays once the learner has touched the lesson
- * with sound on: before the scene's next line, which waits for it, or at once
- * when sound is turned on and no line is playing. The learner's own replay
- * cuts it off, so it never sounds over a line. A lesson resumed at a choice
- * or its end has no line left to play its sting before, so it plays there
- * only if sound is turned on there.
+ * with sound on, as soon as no line is playing: before the scene's next
+ * line, which waits for it, when sound is turned on, or when the line then
+ * playing ends. The learner's own replay cuts it off, so it never sounds over
+ * a line. A lesson resumed at a choice or its end has no line coming, so its
+ * sting waits there for sound to be turned on or a line to be replayed.
  */
 
 import { assertNever } from "@some-ui/core-utils"
@@ -264,6 +264,7 @@ export class DramaRuntime {
         }
         this.line = null
         this.publish({ ...this.snapshot, speaking: null })
+        this.playOwedSting()
       }
     )
   }
