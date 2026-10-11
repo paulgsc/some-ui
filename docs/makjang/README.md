@@ -592,10 +592,11 @@ Korean fruit or snack with one prop (a peach with rosy cheeks, a persimmon in
 spectacles, a rice triangle in a suit), from a closed vocabulary drawn at
 build time (`core/cast` for the keys and their words, `cast-figure` for the
 drawings). Nobody reads a face into a peach. What makes it feel alive is that
-it moves only while its character's line is heard: it bobs, its mouth opens
+it talks only while its character's line is heard: it bobs, its mouth opens
 and shuts, and talk lines flicker beside it. That is the cue a reader follows
-to see who is speaking, and it reads at a glance even with the sound off,
-because the replay is what makes it move.
+to see who is speaking. Otherwise a figure only blinks now and then, on its
+own beat, the same on every line. With voice muted no line is heard and no
+figure talks; the name beside each line still says who speaks.
 
 - **A costume, not a role.** A figure suggests the kind of part (`elder`,
   `heir`, `rival`); `standing` says who the character really is. The tree
@@ -609,7 +610,7 @@ because the replay is what makes it move.
 - **The panel's colours.** A figure is drawn in the ink, the accent and the
   ground of the panel it sits in. Inside a feeling panel those are the
   feeling's own (MK5), and on the chosen line they are the session's.
-- **Fixed per character.** The same drawing and expression on every line,
+- **Fixed per character.** The same drawing, expression and blink on every line,
   whatever the feeling or the choice. The chosen line shows the point of
   view's figure, which never moves, since a chosen line is not voiced. Under
   reduced motion nothing moves, and only the talk lines mark the speaker.
@@ -950,6 +951,9 @@ dependencies, and the tests named below pass. MK5–MK7 held when declared with
 MKJ-S2: all 40 session theme and feeling pairs clear the floor, the MK6 test
 passes on every route of the tree prompt's worked example, and the anchor and
 the voice are the renderer's only rendition kinds, each with its canon line.
+MK5 and MK7 still hold with MKJ-S11: the cast figure paints only the panel's
+ink, accent and ground, and the figure, its motion and the voice's part each
+have Remark 9.3.
 The module doc comments of `story-audit.ts`, `engine.ts`, `media.ts`, topik's
 `core/tree-audit` and `core/drama`, and `@some-ui/styles`' `feeling.ts` carry
 the one-line summaries.
@@ -1056,7 +1060,7 @@ the one-line summaries.
 >   check, or the `--feeling-*` check); that paints text or a mark inside a
 >   feeling panel (`packages/ui/topik`'s `webtoon-panel`) in a colour other
 >   than the panel's own (`--feeling-ink`, `feeling-muted`,
->   `feeling-accent`), such as a `text-muted-foreground` utility; or that
+>   `feeling-accent`, and `--feeling-ground` as a cast figure's fill), such as a `text-muted-foreground` utility; or that
 >   deletes, renames or moves `feeling.ts`, `session-roles.ts`, the test or
 >   `themes/feeling.css`, which a pure rename shows with no hunk at all.
 > - _Scope:_ `packages/some-styles`' feeling themes, and the feeling panels
@@ -1099,7 +1103,8 @@ the one-line summaries.
 > - _Claim:_ every rendition kind a drama renderer presents (today the
 >   feeling anchor, Rem. 9.2, whose kit includes the sound port's tone and
 >   cry; the voice, which is Cor. 4.4's audio rung; and the cast figure, its
->   motion while a line is heard, and the voice's part, Rem. 9.3) has a line
+>   motion while a line is heard and its idle blink, and the voice's part,
+>   Rem. 9.3) has a line
 >   in the canon saying what it reveals and why that is acceptable
 >   (Prop. 9.4).
 > - _Falsified by_ a hunk that adds a port to `MediaPorts`

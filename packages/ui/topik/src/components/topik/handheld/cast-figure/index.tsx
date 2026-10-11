@@ -19,6 +19,7 @@ const FILL = "cast-figure-fill"
 const ACCENT = "cast-figure-accent"
 const INK = "cast-figure-ink"
 
+/** Filled dots; a cheek or a highlight is not outlined, or the ink drowns it. */
 const dots = (
   points: ReadonlyArray<readonly [number, number]>,
   r: number,
@@ -26,7 +27,14 @@ const dots = (
 ): JSX.Element => (
   <>
     {points.map(([cx, cy]) => (
-      <circle key={`${cx},${cy}`} className={className} cx={cx} cy={cy} r={r} />
+      <circle
+        key={`${cx},${cy}`}
+        className={className}
+        cx={cx}
+        cy={cy}
+        r={r}
+        stroke={className === INK ? undefined : "none"}
+      />
     ))}
   </>
 )

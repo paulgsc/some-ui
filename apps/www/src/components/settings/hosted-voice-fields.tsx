@@ -5,7 +5,8 @@
  *
  * Under the dropdown, the voice a Korean lesson will be heard in, by the
  * session's own rule (`hostedVoiceFor`): the chosen voice if it speaks
- * Korean, else the provider's Korean default.
+ * Korean, else the provider's Korean default. A drama's characters of the
+ * other gender are read in the provider's Korean voice of that gender.
  */
 
 import type { JSX } from "react"
@@ -99,13 +100,23 @@ const LessonVoice = ({ value }: { value: HostedVoiceChoice }): JSX.Element => {
       </p>
     )
   }
+  const otherPart = lessonVoice.gender === "male" ? "female" : "male"
+  const other = hostedVoiceFor(value, LESSON_LANGUAGE, otherPart)
   return (
-    <p className="text-muted-foreground text-sm">
-      Korean lessons are read by {lessonVoice.name}
-      {chosen && chosen.id !== lessonVoice.id
-        ? `, since ${chosen.name} can't read Korean.`
-        : "."}
-    </p>
+    <>
+      <p className="text-muted-foreground text-sm">
+        Korean lessons are read by {lessonVoice.name}
+        {chosen && chosen.id !== lessonVoice.id
+          ? `, since ${chosen.name} can't read Korean.`
+          : "."}
+      </p>
+      {other && other.id !== lessonVoice.id && (
+        <p className="text-muted-foreground text-sm">
+          In a drama, {otherPart === "male" ? "men" : "women"} are read by{" "}
+          {other.name}.
+        </p>
+      )}
+    </>
   )
 }
 

@@ -139,30 +139,32 @@ export function buildLessonPrompt(request: LessonRequest): string {
 /** Where the tree prompt takes the feeling vocabulary. */
 const FEELINGS_MARKER = "<!-- feelings -->"
 
-/** The vocabulary as the tree prompt lists it: the app's keys, never a copy. */
-const feelingTable = (): string =>
-  [
-    "| Key | Feeling | What it is |",
-    "| --- | ------- | ---------- |",
-    ...FEELING_KEYS.map(
-      (key) =>
-        `| \`${key}\` | ${FEELING_WORDS[key].name} | ${FEELING_WORDS[key].meaning} |`
-    ),
-  ].join("\n")
-
 /** Where the tree prompt takes the figure vocabulary. */
 const FIGURES_MARKER = "<!-- figures -->"
 
-/** The cast figures as the tree prompt lists them, from the app's keys. */
-const figureTable = (): string =>
+/** A vocabulary as the tree prompt lists it: the app's keys, never a copy. */
+const vocabularyTable = <K extends string>(
+  headers: readonly [string, string],
+  keys: ReadonlyArray<K>,
+  cells: (key: K) => readonly [string, string]
+): string =>
   [
-    "| Key | Drawn as | Suits |",
-    "| --- | -------- | ----- |",
-    ...FIGURE_KEYS.map(
-      (key) =>
-        `| \`${key}\` | ${FIGURE_WORDS[key].name} | ${FIGURE_WORDS[key].suits} |`
-    ),
+    `| Key | ${headers.join(" | ")} |`,
+    `| --- | ${headers.map((header) => "-".repeat(header.length)).join(" | ")} |`,
+    ...keys.map((key) => `| \`${key}\` | ${cells(key).join(" | ")} |`),
   ].join("\n")
+
+const feelingTable = (): string =>
+  vocabularyTable(["Feeling", "What it is"], FEELING_KEYS, (key) => [
+    FEELING_WORDS[key].name,
+    FEELING_WORDS[key].meaning,
+  ])
+
+const figureTable = (): string =>
+  vocabularyTable(["Drawn as", "Suits"], FIGURE_KEYS, (key) => [
+    FIGURE_WORDS[key].name,
+    FIGURE_WORDS[key].suits,
+  ])
 
 /**
  * The scene-tree prompt (docs/makjang/README.md, "4. Authoring"), with the

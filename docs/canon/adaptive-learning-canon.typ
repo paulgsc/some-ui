@@ -3043,7 +3043,8 @@ estimating a cost.
 #remark("9.3", name: "The cast figure and the voice's part are rendition kinds")[
   The drama unit's renderer draws each character as a *cast figure*, one of a
   closed set of drawings made at build time, beside their name on every line
-  they speak. The figure moves while that line is heard. It also reads each
+  they speak. The figure talks while that line is heard, and otherwise only
+  blinks, on its own beat, the same whatever the line. It also reads each
   character's lines in a woman's or a man's *part*, as the cast gives their
   gender: a voice of that gender where the platform can name one, else the
   learner's chosen voice at a pitch for the part. Each is a rendition kind,
