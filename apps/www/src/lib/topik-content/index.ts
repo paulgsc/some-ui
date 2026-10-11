@@ -1,7 +1,8 @@
 /**
  * Where the Topik applet's study material comes from in this app: the loader
  * `@some-ui/topik`'s repository factories take, built on `@some-ui/fetch-kit`
- * `createDataSource` like `hangul-vocab`.
+ * `createDataSource` like the web surface's Hangul vocab
+ * (`lib/web-surface/hangul`).
  *
  * - **`DATA_MODE === "server"`** (`vite dev`/`preview`, Docker): `file_host`'s
  *   curriculum routes (`/api/v1/curriculum/manifest.json`, `/:key`) at the

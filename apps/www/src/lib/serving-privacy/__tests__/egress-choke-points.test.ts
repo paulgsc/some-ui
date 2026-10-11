@@ -182,9 +182,9 @@ describe("LA4: a corpus read carries no credentials", () => {
         /createDataSource\s*[<(]/.test(readFileSync(join(SRC, f), "utf8"))
       )
     expect(found.sort()).toEqual([
-      "lib/hangul-vocab/index.ts",
       "lib/leetype-content/index.ts",
       "lib/topik-content/index.ts",
+      "lib/web-surface/hangul/vocab.ts",
     ])
   })
 })

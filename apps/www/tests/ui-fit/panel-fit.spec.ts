@@ -46,7 +46,8 @@
  */
 
 import { expect, test, type Page } from "@playwright/test"
-import type { RegistryKey } from "@some-ui/content-registry"
+
+import type { PanelKey } from "@/lib/playable"
 
 import {
   PANEL_PAGE_BUILD,
@@ -76,12 +77,12 @@ type PanelCoverage =
   | { unswept: string }
 
 /**
- * Every registry key, and where this sweep sees it. `Record<RegistryKey, …>`
- * is load-bearing: a new panel in `componentRegistry` fails `tsc` here until
+ * Every panel key, and where this sweep sees it. `Record<PanelKey, …>`
+ * is load-bearing: a new panel in `PANELS` fails `tsc` here until
  * someone says how it gets fitted. `PanelId` is too: a fixture renamed or
  * removed in `./panel-page/fixtures.tsx` fails `tsc` here, not the sweep.
  */
-const PANELS: Record<RegistryKey, PanelCoverage> = {
+const PANELS: Record<PanelKey, PanelCoverage> = {
   hangul: { panel: "hangul" },
   leetype: { panel: "leetype" },
   topik: { panel: "topik" },

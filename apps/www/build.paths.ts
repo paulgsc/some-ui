@@ -1,7 +1,7 @@
 import type { PathRules } from "@some-ui/vite-config/bundle-paths"
 import { definePaths } from "@some-ui/vite-config/bundle-paths"
 
-import { gates, MOBILE_PROFILE, profiles } from "./build.profiles.ts"
+import { MOBILE_PROFILE, profiles, routeGates } from "./build.profiles.ts"
 
 /**
  * What each profile's output may carry, checked against a real build of it
@@ -125,7 +125,7 @@ const DEVICE_MODULES = [
  * audience and no other: elsewhere its layout sends every visit to
  * not-found, and the workspaces its pages render are stubs.
  */
-const gatedRoutes = Object.entries(gates).map(([audience, dirs]) => ({
+const gatedRoutes = routeGates.map(({ audience, dirs }) => ({
   modules: dirs.flatMap((dir) => [
     `apps/www/${dir}.tsx*`,
     `apps/www/${dir}/**`,
@@ -176,6 +176,11 @@ export const paths: PathRules<Profile> = definePaths<Profile>({
       ],
       profiles: ["lan"],
       why: "the hosted voice, which needs the TTS service only the home server runs: Pages has none, and the Android app speaks with the phone's engine (src/providers/tts.tsx)",
+    },
+    {
+      modules: ["apps/www/src/lib/web-surface/hangul/**"],
+      profiles: ["lan", "pages"],
+      why: "Hangul Honeycomb's panel, a desktop keyboard game the phone has no counterpart for: only the web door (src/lib/web-surface) binds it, and not in the Android app's build",
     },
     {
       modules: DEVICE_MODULES,
@@ -230,6 +235,11 @@ export const paths: PathRules<Profile> = definePaths<Profile>({
         `${SPEECH_ENTRY}/web-speech.es.js`,
       ],
       why: "the home server speaks through these (src/providers/tts.tsx); a build without them is silent",
+    },
+    {
+      profile: "lan",
+      modules: ["apps/www/src/lib/web-surface/hangul/panel.tsx"],
+      why: "the web builds play Hangul Honeycomb through this; without it the activity is offered and renders nothing. Also what keeps its `exclusive` rule from passing by matching nothing",
     },
     {
       profile: "lan",

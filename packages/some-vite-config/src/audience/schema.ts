@@ -14,12 +14,15 @@ import { z } from "zod"
  * - `lan`: builds served on the home network.
  * - `apk`: the Android app only - what needs the phone itself (its
  *   microphone, its own storage) and means nothing in a browser tab.
+ * - `web`: the web builds only (the home server and Pages) - what a desktop
+ *   browser affords (a physical keyboard, a wide window) and the phone has
+ *   no counterpart for.
  *
  * Adding an audience is adding a string here. Every profile, manifest and
  * gate is typed against this list, so a misspelt one fails `tsc` or the
  * manifest check rather than silently matching nothing.
  */
-const AUDIENCES = ["public", "lan", "apk"] as const
+const AUDIENCES = ["public", "lan", "apk", "web"] as const
 
 const AudienceSchema = z.enum(AUDIENCES)
 export type Audience = z.infer<typeof AudienceSchema>

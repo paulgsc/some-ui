@@ -1,5 +1,4 @@
 import type { JSX } from "react"
-import { isActivityId } from "@some-ui/activity-catalog"
 import type { ActivityId } from "@some-ui/activity-catalog"
 import type { IntentError } from "@some-ui/intent-kit"
 import {
@@ -12,6 +11,7 @@ import {
 import { createFileRoute, Link } from "@tanstack/react-router"
 
 import { IntentFailure } from "@/lib/intent/render"
+import { isOfferedActivityId } from "@/lib/playable"
 import { matchQueryOutcome, queryOutcome } from "@/lib/query-outcome"
 import { sessionQuery, useSession } from "@/lib/tenant"
 import { SessionComposer } from "@/components/composer/session-composer"
@@ -119,7 +119,9 @@ const NewSessionRoute = (): JSX.Element => {
 
 export const Route = createFileRoute("/_dashboard/sessions/new")({
   validateSearch: (search: Record<string, unknown>): NewSessionSearch => ({
-    activity: isActivityId(search.activity) ? search.activity : undefined,
+    activity: isOfferedActivityId(search.activity)
+      ? search.activity
+      : undefined,
     edit: typeof search.edit === "string" ? search.edit : undefined,
   }),
   // `?edit=` is what this route fetches, so the loader depends on it, or the

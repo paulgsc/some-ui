@@ -1,23 +1,20 @@
 import type { JSX } from "react"
 import { useEffect, useMemo } from "react"
-import { componentRegistry } from "@some-ui/content-registry"
+import type { RegistryKey } from "@some-ui/content-registry"
 import { cn } from "@some-ui/core-utils"
 import { useIsMobile } from "@some-ui/react-hooks"
 import { LiveEditOverlay, OrchestratedYouTubeViewport } from "wireframes"
 
-import { useAudioPreferences } from "@/lib/audio-preferences/use-audio-preferences"
 import { useAuthority } from "@/lib/authority"
 import { phoneDictation, runsNatively } from "@/lib/dictation"
-import { useHangulVocab } from "@/lib/hangul-vocab"
 import { AmbientIntentStatus } from "@/lib/intent/render"
 import { loadLeetypeRoundRuns, loadLeetypeRounds } from "@/lib/leetype-content"
 import {
   setSessionKey,
   setSuspended,
   useSceneLifetimes,
-  useSessionKey,
-  useSuspended,
 } from "@/lib/orchestrator"
+import { PANELS } from "@/lib/playable"
 import { shareDramaPrompt } from "@/lib/share-files"
 import { createShelfClient } from "@/lib/shelf-client"
 import type { SessionRecord } from "@/lib/tenant"
@@ -26,9 +23,11 @@ import {
   loadTopikManifest,
   loadTreeManifest,
 } from "@/lib/topik-content"
+import { WEB_PANEL_KEYS } from "@/lib/web-surface"
 
 import { defineSceneProps, withSceneProps } from "./scene-props"
 import { useLiveLayoutEditor } from "./use-live-layout-editor"
+import { withWebOnlyNotes } from "./web-only-note"
 
 /**
  * The Android app's own ports, absent elsewhere: LeetType's margin-note
@@ -42,7 +41,10 @@ const [PHONE_DICTATION, PHONE_SHARE] =
     ? ([phoneDictation(), shareDramaPrompt] as const)
     : []
 
-const BIND_OPTIONS = Object.keys(componentRegistry).map((key) => ({
+/** What the player renders: the bound panels, and a note for a web one. */
+const PLAYER_PANELS = withWebOnlyNotes(PANELS, WEB_PANEL_KEYS)
+
+const BIND_OPTIONS = Object.keys(PANELS).map((key) => ({
   value: key,
   label: key,
 }))
@@ -74,7 +76,7 @@ export const SessionViewport = ({
   } = useLiveLayoutEditor(session, activeLifetimes)
 
   // The only layer with write authority over which session is live and
-  // whether the editor needs exclusive control; downstream sees plain props.
+  // whether the editor needs exclusive control; a panel that cares reads them.
   useEffect(() => {
     setSessionKey(session.id)
   }, [session.id])
@@ -83,11 +85,6 @@ export const SessionViewport = ({
     setSuspended(editMode)
   }, [editMode])
 
-  const sessionKey = useSessionKey()
-  const suspended = useSuspended()
-  const hangulWords = useHangulVocab()
-  // The person owns whether Honeycomb's sounds play ("Game sounds").
-  const { preferences: audioPreferences } = useAudioPreferences()
   // The learner shelf (paulgsc/server#387): only while the data is the
   // account's (every shelf route is per person) and a file_host exists. A
   // device learner keeps no shelf. Nothing in either activity depends on it.
@@ -116,12 +113,6 @@ export const SessionViewport = ({
   const sceneProps = useMemo(
     () =>
       defineSceneProps({
-        hangul: {
-          sessionKey: sessionKey ?? undefined,
-          suspended,
-          words: hangulWords,
-          audio: audioPreferences.effects,
-        },
         topik: {
           // Plain functions: importing topik's factories would pull the
           // applet into the main bundle (src/lib/topik-content).
@@ -142,7 +133,7 @@ export const SessionViewport = ({
           dictation: PHONE_DICTATION,
         },
       }),
-    [sessionKey, suspended, hangulWords, audioPreferences.effects, shelves]
+    [shelves]
   )
 
   const renderedLifetimes = useMemo(
@@ -166,10 +157,12 @@ export const SessionViewport = ({
         </div>
       ) : (
         <>
-          <OrchestratedYouTubeViewport
+          {/* Typed over the keys every build binds. A web panel is found
+              like any key a saved scene names: by lookup. */}
+          <OrchestratedYouTubeViewport<RegistryKey>
             layoutTree={tree}
             activeLifetimes={renderedLifetimes}
-            componentRegistry={componentRegistry}
+            componentRegistry={PLAYER_PANELS}
             collapseUnbound={editable ? !editMode : true}
             onLeafResize={onLeafResize}
           />
