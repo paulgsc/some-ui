@@ -256,6 +256,41 @@ describe("what a set counts (Prop. 6.4)", () => {
     expect(progressOf(host.state)?.queue).toHaveLength(3)
   })
 
+  it("holds a rep for the session, off screen or on, and two minutes on screen end the sitting", () => {
+    const host = new Host()
+    host.begin(SET)
+    host.step()
+    host.send({ type: "held", at: host.now })
+    expect(host.state.phase).toMatchObject({ name: "paused", by: "session" })
+    expect(host.of("wait").at(-1)?.ms).toBe(MAX_SCREEN_MS)
+    // Only the session lets it go: not the learner's Resume.
+    host.send({ type: "resume", at: host.now })
+    expect(host.state.phase.name).toBe("paused")
+    // Hidden, it shows nothing and waits; shown, still held, it is on screen.
+    host.send({ type: "hidden", at: host.now })
+    expect(host.state.phase).toMatchObject({ by: "hidden" })
+    expect(() => host.step()).toThrow("nothing is running")
+    host.send({ type: "held", at: host.now })
+    expect(host.state.phase).toMatchObject({ by: "session" })
+    host.send({ type: "shown", at: host.now })
+    expect(host.state.phase.name).toBe("glyphs")
+    expect(host.state.cursor).toBe(0)
+
+    host.send({ type: "held", at: host.now })
+    host.step()
+    expect(host.state.phase.name).toBe("sitting-over")
+    expect(progressOf(host.state)?.queue).toHaveLength(3)
+  })
+
+  it("leaves a learner's pause to the learner when the session holds too", () => {
+    const host = new Host()
+    host.begin(SET)
+    host.send({ type: "pause", at: host.now })
+    host.send({ type: "held", at: host.now })
+    host.send({ type: "shown", at: host.now })
+    expect(host.state.phase).toMatchObject({ name: "paused", by: "learner" })
+  })
+
   it("counts a reported rep like any other, and its returns for nothing (ii)", () => {
     const quiet = new Host()
     quiet.begin(SET)

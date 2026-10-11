@@ -173,7 +173,7 @@ describe("useReadAloud", () => {
     rerender(true)
     expect(result.current.state.phase).toMatchObject({
       name: "paused",
-      by: "hidden",
+      by: "session",
     })
     expect(speech.stops).toBeGreaterThan(0)
     // Back from another app with the session still paused: still held.
@@ -184,6 +184,18 @@ describe("useReadAloud", () => {
     rerender(false)
     expect(result.current.state.phase.name).toBe("glyphs")
     expect(result.current.state.cursor).toBe(0)
+  })
+
+  it("lets nothing the learner taps run it while the session holds it", () => {
+    const { options, speech } = harness({ paused: true })
+    const { result } = renderHook(() => useReadAloud(options))
+
+    // The session's Pause leaves the drill's own controls reachable.
+    act(() => result.current.begin())
+    expect(result.current.state.phase).toMatchObject({ by: "session" })
+    act(() => result.current.resume())
+    expect(result.current.state.phase).toMatchObject({ by: "session" })
+    expect(speech.said).toEqual([])
   })
 
   it("resumes an unfinished set at its next rep", () => {

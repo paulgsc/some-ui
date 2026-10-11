@@ -44,7 +44,7 @@ export const ReadAloudSession = ({
   const onEntry = entry !== undefined && vm.started
   const paused = phase.name === "paused"
   // Held by the page or the host's session, which resume it, not the learner.
-  const held = phase.name === "paused" && phase.by === "hidden"
+  const held = phase.name === "paused" && phase.by !== "learner"
   const running =
     onEntry && phase.name !== "paused" && phase.name !== "sitting-over"
 

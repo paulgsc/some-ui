@@ -121,7 +121,6 @@ export const SessionViewport = ({
           loadTreeManifest,
           shelf: shelves?.topik,
           share: PHONE_SHARE,
-          // A stop or the controls' Pause holds the read-aloud drill too.
           paused,
         },
         leetype: {
