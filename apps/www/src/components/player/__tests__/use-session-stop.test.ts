@@ -112,7 +112,7 @@ describe("useSessionStop", () => {
     expect(latestStop("s")).toBeNull()
   })
 
-  it("keeps nothing for a session it never took over, finished or not yet begun", () => {
+  it("pauses, but keeps nothing, for a session it never took over", () => {
     // StrictMode's first cleanup too: `begin` waits for `configure`.
     const { unmount } = renderHook(() => useSessionStop("s"), {
       wrapper: StrictMode,
@@ -121,7 +121,8 @@ describe("useSessionStop", () => {
     unmount()
 
     expect(latestStop("s")).toBeNull()
-    expect(commands.pause).not.toHaveBeenCalled()
+    // A finished session played again would otherwise play on unseen.
+    expect(commands.pause).toHaveBeenCalled()
   })
 
   it("restarts where it stopped, its +5 min restored, after reopening", () => {

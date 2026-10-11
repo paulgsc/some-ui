@@ -111,10 +111,12 @@ export function createStopRuntime(
       return () => {
         document.removeEventListener("visibilitychange", onVisibility)
         clearInterval(clock)
-        // Pauses the app-wide orchestrator too, which would play on unseen.
-        // Only once `begin` ran: not for a finished session replayed, nor in
-        // StrictMode's first cleanup, which comes before it.
-        if (onPhone && begun) dispatch(here("hidden"))
+        if (!onPhone) return
+        // Either way the app-wide orchestrator pauses, or it plays on unseen.
+        // A stop is kept only once `begin` ran: not for a finished session
+        // played again, nor in StrictMode's first cleanup, which precedes it.
+        if (begun) dispatch(here("hidden"))
+        else playback.pause()
       }
     },
   }
