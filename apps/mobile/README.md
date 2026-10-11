@@ -618,10 +618,11 @@ leaving, the reason and where it was given (the stop, the return, the wrap or
 Home), how it ended (picked up, called done or lapsed) and when, which says
 how long the person was away. The policy is one pure `step` in
 `apps/www/src/lib/session-stop`, run by `./runtime`; the player only forwards
-taps and `visibilitychange`. The records leave the phone only in what the
-person shares (both shares in `lib/agent-export` carry them) and never reach
-the home server: reading them across devices needs them on the session
-record, a server migration.
+taps and `visibilitychange`. The app sends them nowhere: they leave the
+phone in what the person shares (both shares in `lib/agent-export` carry
+them) and, as WebView storage, in Android's backup ("What the phone keeps",
+PD3), and they never reach the home server: reading them across devices
+needs them on the session record, a server migration.
 
 ## aph: my figure, their figure, and the goal
 
