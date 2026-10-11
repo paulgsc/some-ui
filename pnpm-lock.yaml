@@ -378,9 +378,6 @@ importers:
 
   apps/mobile:
     dependencies:
-      '@capacitor-community/speech-recognition':
-        specifier: ^7.0.1
-        version: 7.0.1(@capacitor/core@8.5.2)
       '@capacitor-community/sqlite':
         specifier: ^8.1.1
         version: 8.1.1(@capacitor/core@8.5.2)
@@ -421,9 +418,6 @@ importers:
 
   apps/www:
     dependencies:
-      '@capacitor-community/speech-recognition':
-        specifier: ^7.0.1
-        version: 7.0.1(@capacitor/core@8.5.2)
       '@capacitor-community/sqlite':
         specifier: ^8.1.1
         version: 8.1.1(@capacitor/core@8.5.2)
@@ -481,9 +475,6 @@ importers:
       '@some-ui/job-tracker':
         specifier: workspace:*
         version: link:../../packages/job-tracker
-      '@some-ui/leetype':
-        specifier: workspace:*
-        version: link:../../packages/ui/leetype
       '@some-ui/lesson-crm':
         specifier: workspace:*
         version: link:../../packages/ui/lesson-crm
@@ -1261,9 +1252,6 @@ importers:
       '@some-ui/core-utils':
         specifier: workspace:*
         version: link:../../core-utils
-      '@some-ui/intent-kit':
-        specifier: workspace:*
-        version: link:../../intent-kit
       '@some-ui/leetype-wasm':
         specifier: ^0.0.14
         version: 0.0.14
@@ -1310,9 +1298,6 @@ importers:
       eslint-import-resolver-typescript:
         specifier: 4.4.5
         version: 4.4.5(eslint-plugin-import-x@4.17.1(@typescript-eslint/utils@8.71.0(eslint@10.12.0(jiti@2.7.0)(supports-color@7.2.0))(supports-color@7.2.0)(typescript@5.9.3))(eslint-import-resolver-node@0.3.10(supports-color@7.2.0))(eslint@10.12.0(jiti@2.7.0)(supports-color@7.2.0))(supports-color@7.2.0))(eslint-plugin-import@2.32.0)(eslint@10.12.0(jiti@2.7.0)(supports-color@7.2.0))(supports-color@7.2.0)
-      fast-check:
-        specifier: ^4.10.2
-        version: 4.10.2
       tsx:
         specifier: ^4.22.4
         version: 4.22.4
@@ -1702,11 +1687,6 @@ packages:
 
   '@cacheable/utils@2.5.0':
     resolution: {integrity: sha512-buipgOVDkkPXNR5+xBpDw7Zk2n1EvU7qBJCNUcL7rhQ//kfpOXPAvQ511Os0vpLYJ1pZnvudNytkQt2hst3wqA==}
-
-  '@capacitor-community/speech-recognition@7.0.1':
-    resolution: {integrity: sha512-ykpBZziR575X0eURO5vXaD9gVrXXC/7Ra2qql/2KP6/jxWOqAFuw4eKjSPjwdAgGE6a/Z+v8FJm4SVh57MVwDA==}
-    peerDependencies:
-      '@capacitor/core': '>=7.0.0'
 
   '@capacitor-community/sqlite@8.1.1':
     resolution: {integrity: sha512-wsqscMOMveDeIvB9WHLm38jkUV2317LmuWvvbhvmOB1REdr8GH6weFZpAiKmLimbpP2CQ2eVs8nmRcrTqbd9ng==}
@@ -8949,10 +8929,6 @@ snapshots:
     dependencies:
       hashery: 1.5.1
       keyv: 5.6.0
-
-  '@capacitor-community/speech-recognition@7.0.1(@capacitor/core@8.5.2)':
-    dependencies:
-      '@capacitor/core': 8.5.2
 
   '@capacitor-community/sqlite@8.1.1(@capacitor/core@8.5.2)':
     dependencies:

@@ -404,9 +404,10 @@ never "sounds like good practice."
   shape nothing could fail on. If a report is about an orientation or window shape, check
   that matrix contains it before concluding the surface is fine.
 - **A Capacitor plugin object is a thenable: never resolve a promise with one.** Its Proxy
-  answers `then` too, so `return SpeechRecognition` from an `async` function waits forever,
+  answers `then` too, so returning the plugin from an `async` function waits forever,
   silently. Box it (`return { plugin }`), and mock plugins as a Proxy that answers every key
-  (`asCapacitorPlugin` in `apps/www/src/lib/dictation/index.test.ts`), or the test passes anyway.
+  (`CapacitorSQLite` in `apps/www/src/lib/device-backend/capacitor-sqlite/index.test.ts`), or
+  the test passes anyway.
 - **A `console.error` in www is gone from release builds** (`build.minify.ts`), and the APK's
   console reaches nothing anyway. Report failures through `reportFailure` (`@some-ui/intent-kit`),
   which survives both: `adb logcat -s SomeUI`.

@@ -4,7 +4,7 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
-import { shareFiles } from "@/lib/share-files"
+import { runsNatively, shareFiles } from "@/lib/share-files"
 
 const share = vi.hoisted(() => vi.fn())
 
@@ -64,5 +64,18 @@ describe("shareFiles", () => {
     await expect(first).resolves.toMatchObject({ value: "shared" })
     await expect(second).resolves.toMatchObject({ value: "shared" })
     expect(share).toHaveBeenCalledTimes(2)
+  })
+})
+
+describe("runsNatively", () => {
+  it("asks the native bridge's Capacitor global, and is false without one", () => {
+    expect(runsNatively({})).toBe(false)
+    expect(runsNatively({ Capacitor: {} })).toBe(false)
+    expect(
+      runsNatively({ Capacitor: { isNativePlatform: (): boolean => false } })
+    ).toBe(false)
+    expect(
+      runsNatively({ Capacitor: { isNativePlatform: (): boolean => true } })
+    ).toBe(true)
   })
 })

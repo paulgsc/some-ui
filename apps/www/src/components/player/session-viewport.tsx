@@ -6,7 +6,6 @@ import { useIsMobile } from "@some-ui/react-hooks"
 import { LiveEditOverlay, OrchestratedYouTubeViewport } from "wireframes"
 
 import { useAuthority } from "@/lib/authority"
-import { phoneDictation, runsNatively } from "@/lib/dictation"
 import { AmbientIntentStatus } from "@/lib/intent/render"
 import { loadLeetypeRoundRuns, loadLeetypeRounds } from "@/lib/leetype-content"
 import {
@@ -15,7 +14,7 @@ import {
   useSceneLifetimes,
 } from "@/lib/orchestrator"
 import { PANELS } from "@/lib/playable"
-import { shareDramaPrompt } from "@/lib/share-files"
+import { runsNatively, shareDramaPrompt } from "@/lib/share-files"
 import { createShelfClient } from "@/lib/shelf-client"
 import type { SessionRecord } from "@/lib/tenant"
 import {
@@ -30,16 +29,13 @@ import { useLiveLayoutEditor } from "./use-live-layout-editor"
 import { withWebOnlyNotes } from "./web-only-note"
 
 /**
- * The Android app's own ports, absent elsewhere: LeetType's margin-note
- * recognizer (src/lib/dictation; elsewhere the package uses the browser's)
- * and the share sheet for the drama's next-scene prompt. Gated on native,
- * not the device build: that build in a desktop browser has only the
- * plugins' web stubs. Neither holds anything until a learner taps.
+ * The drama's share sheet: gated on native, not the device build, since that
+ * build in a desktop browser has only the plugin's web stub.
  */
-const [PHONE_DICTATION, PHONE_SHARE] =
+const PHONE_SHARE =
   import.meta.env.VITE_DEVICE_BACKEND === "true" && runsNatively()
-    ? ([phoneDictation(), shareDramaPrompt] as const)
-    : []
+    ? shareDramaPrompt
+    : undefined
 
 /** What the player renders: the bound panels, and a note for a web one. */
 const PLAYER_PANELS = withWebOnlyNotes(PANELS, WEB_PANEL_KEYS)
@@ -129,8 +125,6 @@ export const SessionViewport = ({
           // Fetched in `server` mode, nothing in `static` (bundled).
           loadRuns: loadLeetypeRoundRuns,
           shelf: shelves?.leetype,
-          // The phone's recognizer on Android, whose WebView has none.
-          dictation: PHONE_DICTATION,
         },
       }),
     [shelves]
