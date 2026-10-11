@@ -23,32 +23,34 @@
 
 #let resume-compositions = (
   backend: (
-    label: "Backend & event-driven systems",
-    tagline: "Software Engineer — Backend & API Systems",
-    summary: "Software engineer building production-oriented web services in Rust and TypeScript: versioned REST/HTTP APIs, WebSockets, asynchronous workers, SQL query and schema design, message-broker pipelines, caching, and container delivery. Independently designed and built across a multi-crate Rust workspace and a TypeScript client platform, owning contracts from browser mutation to durable storage and background actuation.",
-    skills: "Rust; TypeScript; Axum; Tokio; SQLx/SQLite; Redis; NATS JetStream; WebSockets; REST APIs; JSON; Node.js; SQL query and schema design; distributed and event-driven systems; asynchronous processing; Docker; Prometheus/Grafana/OpenTelemetry; unit, integration, contract, and Playwright testing; GitHub Actions CI/CD",
+    label: "Backend APIs, Data Pipelines, and Agent Analytics",
+    tagline: "Software Engineer — Backend APIs, Data Pipelines, and Agent Analytics",
+    summary: "Software engineer building backend APIs and data pipelines in TypeScript, Python, SQL, and Rust, with asynchronous processing and observability designed in: versioned REST/HTTP APIs, Redis/NATS JetStream jobs with retry and redelivery, and telemetry that reports missing data as unknown. Independently built a multi-crate Rust workspace and a TypeScript client platform, owning contracts from browser mutation to durable storage and background actuation.",
+    skills: "TypeScript; Python; SQL; Rust; Axum; Tokio; SQLx/SQLite; Redis; NATS JetStream; WebSockets; REST APIs; JSON; Node.js; SQL query and schema design; distributed and event-driven systems; asynchronous processing; data pipelines; observability; Docker; Prometheus/Grafana/OpenTelemetry; unit, integration, contract, and Playwright testing; GitHub Actions CI/CD",
     projects: (
       (name: "file_host backend service", kind: "Rust, Axum, Tokio, SQLx, Redis, NATS JetStream", premise: "A backend boundary is production-ready only when overload, dependency failure, contract drift, and shutdown are designed states rather than surprises.", bullets: (
         "Authored a Rust/Axum service exposing 40+ inventoried HTTP operations plus WebSocket transport for sessions, engagement signals, push subscriptions, mood events, tab state, media metadata, and asynchronous processing.",
         "Modeled sessions, consent, engagement gates, interventions, tabs, and mood events in SQLite/SQLx repositories with paired migrations, compile-time query validation, WAL mode, bounded pools, and explicit last-write-wins semantics.",
-        "Built per-client token buckets, concurrency/body limits, load shedding, timeouts, typed 429/413/503 outcomes, and refusal metrics that distinguish rejected work from successful low latency.",
         "Connected Redis caching and in-flight coalescing to NATS/JetStream jobs; retryable worker failures are NAKed for redelivery while cache invalidation follows database mutations.",
+        "Built per-client token buckets, concurrency/body limits, load shedding, timeouts, typed 429/413/503 outcomes, and refusal metrics that distinguish rejected work from successful low latency.",
         "Implemented restart-aware WebSockets with permits, heartbeat/staleness, broadcast isolation, presence, cancellation, and bounded shutdown of SQLite, NATS, sockets, and OpenTelemetry.",
         "Published a schema-versioned route inventory and source-parity tests so undeclared, stale, duplicated, or unaudited Axum routes fail before client contracts drift.",
       )),
-      (name: "Study-session and notification system", kind: "Rust services, TypeScript/Zod contracts, Web Push", premise: "An intervention should follow learner state and consent, not a clock, and delivery failure must never become load-bearing for study.", bullets: (
-        "Separated warrant, admissibility, and actuation across pure Rust policy, file_host constraints, and push_kit VAPID/RFC 8291/8292 delivery behind a testable transport trait.",
+      (name: "Study-session and notification system", kind: "Rust services, TypeScript/Zod contracts, Web Push, agent export", premise: "An intervention should follow learner state and consent, not a clock, and delivery failure must never become load-bearing for study.", bullets: (
+        "Integrated typed TypeScript/Zod clients checked by a contract harness against the server's versioned route inventory and live HTTP responses, failing on contract drift, plus Playwright coverage of a real Chromium push/service-worker hop.",
+        "Built a typed export pipeline that serializes sessions, reflections, stop reasons, and recorded context into a user-directed agent bundle, with bounded filesystem and share-boundary failures.",
         "Represented engagement as a decaying vector, solved threshold crossings per signal, persisted eligible_at, and reduced the asynchronous waker to an indexed due-work query.",
+        "Separated warrant, admissibility, and actuation across pure Rust policy, file_host constraints, and push_kit VAPID/RFC 8291/8292 delivery behind a testable transport trait.",
         "Made consent a data-model precondition; malformed or empty grants become silence, while VAPID key mismatch fails at startup instead of invalidating delivery invisibly.",
-        "Integrated typed TypeScript/Zod clients checked by a contract harness that diffs every contract against the server's generated route inventory, plus Playwright coverage of a real Chromium push/service-worker hop.",
         "Classified expiry, payload rejection, authentication, rate limiting, and transport failure; removed expired subscriptions and persisted outcomes so quiet behavior remains explainable.",
       )),
     ),
     platform: (
+      "Instrument HTTP, dependencies, cache, admission, and loop progress with bounded-cardinality Prometheus metrics and OpenTelemetry traces; render missing telemetry as unknown, not healthy.",
+      "Wrote Python CI checks reconciling Grafana queries with emitted metrics and the Prometheus scrape inventory with the compose stack.",
+      "Define six falsifiable fault states — unreachable, dependency-down, rejecting, saturated, stalled, and observability-blind — in bounded-cardinality metrics and generated dashboards.",
       "Maintain a multi-crate Rust workspace under a ratcheted all/pedantic/nursery Clippy baseline that blocks new findings, cargo-deny, migrated SQLx schema preparation, 300+ test functions, and change-scoped GitHub Actions.",
       "Ship distroless Docker images and compose Axum, Redis, NATS, Caddy, Prometheus, Grafana, exporters, and analytics behind explicit health/readiness boundaries.",
-      "Define six falsifiable fault states — unreachable, dependency-down, rejecting, saturated, stalled, and observability-blind — in bounded-cardinality metrics and generated dashboards.",
-      "Render missing telemetry as unknown rather than healthy; probe SQLite, NATS, and Redis independently under bounded timeouts.",
       "Version invariants, migrations, route contracts, failure conditions, and operational limits beside source and tests rather than as tribal knowledge.",
     ),
   ),
@@ -172,7 +174,7 @@
 // line, arranged so a reader can find a stack without reading a paragraph.
 #let resume-toolbox = (
   backend: (
-    (label: "Languages", items: "Rust, TypeScript, SQL"),
+    (label: "Languages", items: "TypeScript, Python, SQL, Rust"),
     (label: "Services", items: "Axum, Tower, Tokio, WebSockets, REST/JSON"),
     (label: "Data", items: "SQLx, SQLite, Postgres, Redis, migrations"),
     (label: "Messaging", items: "NATS JetStream, Web Push, async workers"),

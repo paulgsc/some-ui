@@ -21,7 +21,7 @@ import { outDir } from "./typst.mjs"
 const extractor = process.env.PDFTOTEXT_BIN ?? "pdftotext"
 
 const variants = {
-  backend: "Backend & event-driven systems",
+  backend: "Backend APIs, Data Pipelines, and Agent Analytics",
   platform: "Developer platform & release engineering",
   fullstack: "Full-stack web & product engineering",
 }

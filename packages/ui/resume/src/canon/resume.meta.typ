@@ -629,6 +629,31 @@ substantiate those claims.
 
 = Current revision
 
+*v14 (2026-10-11).* Re-aimed the `backend` composition at an agent-analytics
+backend posting (Amplitude, Software Engineer I) without adding a claim the
+repositories cannot back. Headline and focus label are now "Backend APIs,
+Data Pipelines, and Agent Analytics"; the summary's first sentence names
+TypeScript, Python, SQL, asynchronous processing, and observability; the API,
+SQLx, Redis/NATS, contract-harness, and telemetry bullets now lead, because
+`safe` renders only the first three or four of each list. Two lines are new:
+
+- *Agent export* --- `apps/www/src/lib/agent-export/index.ts` builds one
+  `context.json` from sessions, reflections, stop reasons (with their
+  legends), and soundbite metadata, beside each soundbite's audio, and hands
+  them to Android's share sheet so the person picks the destination;
+  `apps/www/src/lib/share-files/index.ts` writes through `callForeign` with a
+  60 s write deadline and a 10 min share deadline, classifying deadline,
+  missing-plugin, and unknown failures.
+- *Python CI checks* --- paulgsc/server `scripts/check_metric_contract.py`
+  (Grafana queries vs. emitted metric names, `test.yml`),
+  `scripts/check_scrape_inventory.py` (compose services vs. scrape inventory
+  vs. `prometheus.yml`, `test.yml`), and `scripts/check_instrument_skip.py`
+  (`lint.yml`). Checked at server `421a43f`.
+
+Still not claimed: ClickHouse, AI-agent analytics in use beyond that export,
+managed-cloud tenure, or commercial-scale traffic. "Agent Analytics" in the
+label names the target role, not a shipped analytics product.
+
 *v13 (2026-09-27).* Brought three figures back in line with the repositories
 they cite, after the server's route snapshot started syncing automatically
 (some-ui #1547) and exposed how far the hand-kept numbers had drifted.
