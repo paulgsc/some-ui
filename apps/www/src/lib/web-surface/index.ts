@@ -1,4 +1,4 @@
-import type { ComponentType } from "react"
+import type { ComponentType, ReactNode } from "react"
 import { lazyWithPreload } from "@some-ui/content-registry/registry/lazy-with-preload"
 import type { ComponentRegistry } from "@some-ui/types"
 
@@ -35,8 +35,11 @@ export const WEB_PANELS: Partial<ComponentRegistry<WebPanelKey>> =
 
 const Nothing = (): null => null
 
-/** The extensions tour's comb; nothing where the build has no web surface. */
-export const ExtensionsComb: ComponentType =
+/**
+ * The extensions tour's comb, given the host's brand mark; nothing where the
+ * build has no web surface.
+ */
+export const ExtensionsComb: ComponentType<{ mark?: ReactNode }> =
   import.meta.env.VITE_DEVICE_BACKEND !== "true" && hasAudience("web")
     ? lazyWithPreload(() => import("@some-ui/honeycomb"), "ExtensionsComb")
         .Component

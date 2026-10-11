@@ -41,11 +41,12 @@ or `passkeyOnly` for a deployment where a passkey is the only way in: every
 other method disappears, and with `onCreatePasskey` the sign-in step offers
 "Create a passkey", whose `passkey-enrollment` step is then the new-account
 step (a passkey _is_ the account, so there is nothing to skip to).
-The template defaults to the same seven-cell `AuthBrand` mark as the Some UI
-favicon and adds a subtle CSS honeycomb lattice. Every colour outside the
-fixed amber brand mark comes from the shared semantic tokens (`background`,
-`foreground`, `card`, `muted`, `border`, `primary`, and their companions), so
-the active Some Styles theme automatically reaches the complete auth surface.
+The template defaults to the same mochi `AuthBrand` mark as the Some UI
+favicon (`BrandMark` from `@some-ui/shared`). Every colour, the mark's
+included (`--brand`), comes from the shared semantic tokens (`background`,
+`foreground`, `card`, `muted`, `border`, `primary`, `brand`, and their
+companions), so the active Some Styles theme automatically reaches the
+complete auth surface.
 
 **Hooks** — `useAuthForm` (values, zod validation on submit, per-field
 messages) and `useAuthFlow` (step state for consumers with no router).

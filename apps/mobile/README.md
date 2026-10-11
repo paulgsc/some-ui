@@ -459,12 +459,14 @@ In the `CLAUDE.md` "Gray-area invariants" shape.
 ### Icon and splash
 
 The launcher icon is the favicon's mark (`apps/www/public/favicon.svg`): the
-seven-cell honeycomb in its honey pair, on the dark of www's `manifest.json`
-(`#101010`, `values/ic_launcher_background.xml`).
+honey mochi, on Mochi's cream (`#FFF5E7`, `values/ic_launcher_background.xml`,
+also www's `manifest.json` `theme_color`).
 
 - **Android 8+:** an adaptive icon whose foreground is a vector,
-  `drawable/ic_launcher_foreground.xml`, with the favicon's geometry, plus a
-  `monochrome` layer for Android 13's themed icons.
+  `drawable/ic_launcher_foreground.xml`, drawing the same body and face paths
+  as `BrandMark` in `@some-ui/shared` (`apps/www/src/lib/brand/favicon.test.ts`
+  checks them), plus a `monochrome` layer for Android 13's themed icons that
+  cuts the face out of the body.
 - **Android 7:** `mipmap-*/ic_launcher{,_round}.png`, rendered from the same
   geometry. Re-render them if the mark changes.
 - **Splash:** the same background and mark, as `drawable/splash.xml` before

@@ -228,8 +228,8 @@ describe("applyTheme", () => {
       "harvest-sky",
     ])
 
-    applyTheme(element, resolveTheme("peachy-blossom"))
-    expect(Array.from(element.classList).sort()).toEqual(["peachy-blossom"])
+    applyTheme(element, resolveTheme("mochi"))
+    expect(Array.from(element.classList).sort()).toEqual(["mochi"])
 
     applyTheme(element, resolveTheme("light"))
     expect(Array.from(element.classList)).toEqual([])
@@ -237,8 +237,8 @@ describe("applyTheme", () => {
 
   it("mirrors the boundary contract onto the element", () => {
     const element = root()
-    applyTheme(element, resolveTheme("peachy-blossom"))
-    expect(element.dataset.theme).toBe("peachy-blossom")
+    applyTheme(element, resolveTheme("mochi"))
+    expect(element.dataset.theme).toBe("mochi")
     expect(element.style.colorScheme).toBe("light")
   })
 
