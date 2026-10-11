@@ -63,6 +63,13 @@ const rep = (): HTMLElement | null =>
 
 const stepOf = (): string | undefined => rep()?.dataset["step"]
 
+const slotText = (slot: string): string | null =>
+  document.querySelector(`[data-slot="${slot}"]`)?.textContent ?? null
+
+const levelChip = (): string | null => slotText("read-aloud-level")
+
+const shortfall = (): string | null => slotText("read-aloud-shortfall")
+
 /** Let the ladder run until `done` holds, in small steps of the clock. */
 async function runUntil(done: () => boolean): Promise<void> {
   for (let tick = 0; tick < 2000 && !done(); tick += 1) await advance(100)
@@ -81,11 +88,20 @@ afterEach(() => {
 describe("ReadAloudSession", () => {
   it("waits on its start screen for the learner's tap", async () => {
     renderSession()
-    expect(screen.getByText("Level 1")).toBeTruthy()
+    expect(levelChip()).toBe("TOPIK 1")
     await advance(60_000)
     expect(rep()).toBeNull()
     fireEvent.click(screen.getByRole("button", { name: /start/i }))
     expect(stepOf()).toBe("glyphs")
+  })
+
+  it("keeps the level in sight, and says when lower levels fill its sets", () => {
+    renderSession({ level: 2 })
+    expect(levelChip()).toBe("TOPIK 2")
+    expect(shortfall()).toMatch(/^Only 2 sentences are written for TOPIK 2/)
+    fireEvent.click(screen.getByRole("button", { name: /start/i }))
+    expect(stepOf()).toBe("glyphs")
+    expect(levelChip()).toBe("TOPIK 2")
   })
 
   it("is not offered without a voice (Cor. 4.6)", () => {

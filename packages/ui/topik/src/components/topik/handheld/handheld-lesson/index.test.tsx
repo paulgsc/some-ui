@@ -154,12 +154,18 @@ describe("HandheldLesson", () => {
     expect(screen.queryByRole("button", { name: /Read aloud/ })).toBeNull()
   })
 
-  it("opens the read-aloud drill from the material list, and comes back", async () => {
+  it("opens the read-aloud drill at the level held, and comes back", async () => {
     renderLesson({
       speaker: voice(() => Promise.resolve({ kind: "heard" })),
       readAloudStore: createReadAloudStore(memoryStorage()),
     })
-    fireEvent.click(await screen.findByRole("button", { name: /Read aloud/ }))
+    const card = await screen.findByRole("button", { name: /Read aloud/ })
+    fireEvent.click(screen.getByRole("radio", { name: "TOPIK 5" }))
+    expect(card.textContent).toContain("TOPIK 3, the highest it reads")
+    fireEvent.click(card)
+    expect(
+      document.querySelector('[data-slot="read-aloud-level"]')?.textContent
+    ).toBe("TOPIK 3")
     expect(screen.getByRole("button", { name: /Start/ })).toBeTruthy()
     expect(screen.getByLabelText("Your reading aloud")).toBeTruthy()
     click("Back")

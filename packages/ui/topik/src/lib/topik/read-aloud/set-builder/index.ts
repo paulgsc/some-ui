@@ -95,6 +95,23 @@ function spread(
 }
 
 /**
+ * How many sentences the deck writes for the level itself, when that is
+ * fewer than a set draws and lower levels fill the rest (`buildSet`); null
+ * when the level's own lines fill a set, or nothing below could fill it.
+ * The start screen says so (Cor. 4.6 (ii)): a set at a higher level that is
+ * mostly lower-level lines otherwise reads exactly like a lower level.
+ */
+export function levelShortfall(
+  deck: ReadAloudDeck,
+  level: ReadAloudLevel,
+  sentences = DEFAULT_SENTENCES
+): number | null {
+  const own = deck.lines.filter((line) => line.level === level).length
+  const below = deck.lines.some((line) => line.level < level)
+  return own < sentences && below ? own : null
+}
+
+/**
  * Build one set from a deck.
  *
  * Sentences are drawn from lines at or below the level, the level's own
