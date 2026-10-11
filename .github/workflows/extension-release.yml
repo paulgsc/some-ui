@@ -138,8 +138,6 @@ jobs:
       - uses: ./.github/actions/pnpm-cache
       - name: Install dependencies
         run: nix develop .#ci --command pnpm install --frozen-lockfile --prefer-offline
-        env:
-          HUSKY: 0
       # The same two builds the publish path runs (build-workspace, then the
       # sign job's own extension build), so the digest compared here is the
       # one the sign job will see.
