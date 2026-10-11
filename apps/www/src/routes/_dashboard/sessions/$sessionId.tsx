@@ -117,11 +117,10 @@ export const SessionPlayer = ({
           </>
         )
       }
-      if (!refreshBanner) {
-        return <LivePlayer key={session.id} session={session} />
-      }
-      // LivePlayer's root is `h-full` and expects to be its parent's sole
-      // height-filling child; this flex layer keeps that with a banner above.
+      // One tree with or without the banner: a refresh failing or recovering
+      // must not remount LivePlayer, which would restart the session. Its
+      // root is `h-full`, so the flex layer keeps it the sole height-filling
+      // child with a banner above.
       return (
         <div className="flex h-full min-h-0 w-full flex-col gap-3">
           {refreshBanner}

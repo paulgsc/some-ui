@@ -4,11 +4,11 @@
  * picks where they go (Drive, say); nothing here sends anything anywhere.
  *
  * Two shares. `shareAgentExport` is everything: one `context.json` (sessions,
- * each with its reflections, stops, soundbites and the read-aloud practice
- * record) and every recording beside it. `shareReflections` is the
- * reflections of the sessions named, one file per session named for it with
- * that session's stops and the practice record, each voice note beside its
- * file. Either way, the
+ * each with its reflections and path counts, stops, soundbites and the
+ * read-aloud practice record) and every recording beside it.
+ * `shareReflections` is the reflections of the sessions named, one file per
+ * session named for it with that session's stops and path counts and the
+ * practice record, each voice note beside its file. Either way, the
  * reflections that went out leave the phone once the person says they arrived
  * (`handOff`): they are for the agent to act on, not for the phone to keep.
  *
@@ -26,7 +26,12 @@ import {
 } from "@/lib/reflection-voice"
 import type { Reflection } from "@/lib/session-reflection"
 import { inOrder, QUESTIONS, reflections } from "@/lib/session-reflection"
-import { allStops, REASONS } from "@/lib/session-stop"
+import {
+  allPathCounts,
+  allStops,
+  pathCounts,
+  REASONS,
+} from "@/lib/session-stop"
 import type { SharedFile } from "@/lib/share-files"
 import { shareFiles } from "@/lib/share-files"
 import type { SessionRecord } from "@/lib/tenant"
@@ -38,7 +43,10 @@ const READ_ALOUD_PRACTICE =
   "`readAloudPractice` is the read-aloud drill's practice record: for each of the 60 most recent days that had any (a day without practice has no entry, and an old day stays until 60 newer ones replace it), and in `totals` for all time, the reps read to the end, the sets finished and the practice they are credited with (a nominal time per rep, not the clock). All zeros means nothing was recorded or the stored record could not be read, which the app cannot tell apart; null means the app could not load the drill at all."
 
 const STOPS =
-  "`stops` are the times a session was stopped before its end, each with when (`stoppedAt`), how far in (`elapsedMs` of `plannedMs`, in `scene`), `via` a tap or leaving the app, the optional `reason` (`legend` reads it) and where it was given (`reasonFrom`), and `outcome` (open, resumed, done or lapsed, as of `settledAt`). Not every departure is here: leaving for under a minute, a tap taken back, and Android's back button or the app's Home link are not recorded, and only the newest 20 stops are kept, so an older session can show none."
+  '`stops` are the times a session was stopped before its end, each with when (`stoppedAt`), how far in (`elapsedMs` of `plannedMs`, in `scene`), `via` a tap on "Got to go" or leaving (`left`: the app went to the background, or Android\'s back button or a link in the app closed the session\'s screen), the optional `reason` (`legend` reads it) and where it was given (`reasonFrom`), and `outcome` (open, resumed, done or lapsed, as of `settledAt`). Not every departure is a stop: one the learner was back from within a minute (a glance), and a tap taken back before leaving ("Oops, keep going"), are deleted, and `paths` counts them instead. Only the newest 20 stops are kept, so an older session can show none.'
+
+const PATHS =
+  '`paths` counts, for one session, what the stops cannot show: `opens`, how many times the session\'s screen opened while it was unfinished, the first time included (more than one means it was left and reopened); `glances`, departures the learner was back from within a minute; `takenBack`, "Got to go" taps taken back before leaving ("Oops, keep going"); and `pickUps`, stops picked up again (each also reads `resumed` while its stop is kept). They are counted from the first app version that counted them, and kept for the 20 sessions counted most recently; null means none were counted for that session, or it was dropped for 20 newer ones. A departure the app could not see (the app crashing while on screen) leaves no stop and no glance, only one more `opens` once the session is reopened, and it then starts from the beginning.'
 
 const ABOUT = [
   "Exported from the some-ui study app on the learner's phone, for an agent helping them.",
@@ -47,6 +55,8 @@ const ABOUT = [
   "2. Where does the app get in the way on the phone: friction, blockers, anything that kept a session from happening or finishing? Soundbites are the learner speaking, often about exactly that.",
   "Each soundbite's and voice reflection's audio is a separate file, named in its `file`; a soundbite's `context.source` says what the learner tapped to record it.",
   STOPS,
+  PATHS,
+  "A deleted session's counts, still on the phone, are in `pathsWithoutSession`.",
   READ_ALOUD_PRACTICE,
 ].join("\n")
 
@@ -55,8 +65,9 @@ const ABOUT_REFLECTIONS = [
   "Each is something the learner said while it was fresh: a typed line, a voice note (its audio is the file named in `file`), or one-tap answers (`legend` reads them).",
   "`atMs` is how far into the session it was said; null means after the session ended.",
   STOPS,
+  PATHS,
   READ_ALOUD_PRACTICE,
-  "Use them to shape the next session. Once handed off the reflections leave the phone (the stops and the practice record stay): this file is then their only copy.",
+  "Use them to shape the next session. Once handed off the reflections leave the phone (the stops, path counts and the practice record stay): this file is then their only copy.",
 ].join("\n")
 
 /** `audio/webm;codecs=opus` -> `webm`. */
@@ -247,6 +258,7 @@ export async function shareReflections(
           session: session ? summary(session) : { id: sessionId },
           reflections: entries,
           stops: stops.filter((stop) => stop.sessionId === sessionId),
+          paths: pathCounts(sessionId),
           readAloudPractice: practice,
         },
         null,
@@ -291,6 +303,7 @@ export async function shareAgentExport(
       sessions: sessions.map((session) => ({
         ...summary(session),
         reflections: bySession.get(session.id)?.entries ?? [],
+        paths: pathCounts(session.id),
       })),
       // A deleted session's reflections, still on the phone until shared.
       reflectionsWithoutSession: [...bySession]
@@ -298,6 +311,9 @@ export async function shareAgentExport(
         .flatMap(([sessionId, { entries }]) =>
           entries.map((entry) => ({ sessionId, ...entry }))
         ),
+      pathsWithoutSession: allPathCounts().filter(
+        (counts) => !sessions.some((s) => s.id === counts.sessionId)
+      ),
       stops: allStops(),
       readAloudPractice: await readAloudPractice(),
       // `file: null`: its audio could not be read (removed since listed).

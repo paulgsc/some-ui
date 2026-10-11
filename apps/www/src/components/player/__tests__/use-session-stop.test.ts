@@ -1,10 +1,11 @@
 /**
  * @vitest-environment jsdom
  *
- * The wiring: the orchestrator as the playback port, and leaving the app
- * forwarded on the phone. What each event means is `lib/session-stop`'s.
+ * The wiring: the orchestrator as the playback port, and leaving forwarded
+ * on the phone. What each event means is `lib/session-stop`'s.
  */
 
+import { StrictMode } from "react"
 import { seedStop, stopRecord } from "@/test-support/session-stop"
 import { act, cleanup, renderHook } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
@@ -89,6 +90,39 @@ describe("useSessionStop", () => {
     expect(latestStop("s")).toBeNull()
     expect(result.current.state.kind).toBe("none")
     expect(commands.resume).toHaveBeenCalledTimes(1)
+  })
+
+  it("keeps a stop when the player closes mid-session, by Back or a link", () => {
+    const { result, unmount } = renderHook(() => useSessionStop("s"))
+    act(() => result.current.stops.begin())
+
+    unmount()
+
+    expect(commands.pause).toHaveBeenCalledTimes(1)
+    expect(latestStop("s")).toMatchObject({ via: "left", outcome: "open" })
+  })
+
+  it("keeps nothing when the player closes with nothing playing", () => {
+    mode = { is_running: false, is_paused: false }
+    const { result, unmount } = renderHook(() => useSessionStop("s"))
+    act(() => result.current.stops.begin())
+
+    unmount()
+
+    expect(latestStop("s")).toBeNull()
+  })
+
+  it("pauses, but keeps nothing, for a session it never took over", () => {
+    // StrictMode's first cleanup too: `begin` waits for `configure`.
+    const { unmount } = renderHook(() => useSessionStop("s"), {
+      wrapper: StrictMode,
+    })
+
+    unmount()
+
+    expect(latestStop("s")).toBeNull()
+    // A finished session played again would otherwise play on unseen.
+    expect(commands.pause).toHaveBeenCalled()
   })
 
   it("restarts where it stopped, its +5 min restored, after reopening", () => {

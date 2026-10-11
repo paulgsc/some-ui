@@ -10,6 +10,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 import { handOff, shareAgentExport, shareReflections } from "@/lib/agent-export"
 import type { Reflection } from "@/lib/session-reflection"
 import { reflections } from "@/lib/session-reflection"
+import { storeEffect } from "@/lib/session-stop"
 
 const written = vi.hoisted(() => new Map<string, string>())
 const share = vi.hoisted(() => vi.fn())
@@ -140,6 +141,7 @@ describe("shareReflections", () => {
   it("shares one file per session named for it, its voice notes beside it, and keeps them until handed off", async () => {
     seedStop(stopRecord(0, { sessionId: "s1-0000000000", reason: "break" }))
     seedStop(stopRecord(0, { sessionId: "another-session" }))
+    storeEffect({ kind: "count", sessionId: "s1-0000000000", path: "glances" })
     await expect(shareReflections(["s1-0000000000"], NOW)).resolves.toEqual({
       outcome: "shared",
       sent: ["v1", "t1"],
@@ -166,6 +168,7 @@ describe("shareReflections", () => {
         { id: "t1", kind: "text", text: "particles", atMs: null },
       ],
       stops: [{ sessionId: "s1-0000000000", reason: "break", via: "left" }],
+      paths: { glances: 1, opens: 0 },
       readAloudPractice: PRACTICE,
     })
     // Android says "shared" once an app is picked: nothing goes on that.
@@ -224,6 +227,8 @@ describe("shareReflections", () => {
 describe("shareAgentExport", () => {
   it("shares context.json with each session's reflections nested, and every recording", async () => {
     seedStop(stopRecord(0, { reason: "focus", outcome: "done" }))
+    storeEffect({ kind: "count", sessionId: "s1-0000000000", path: "opens" })
+    storeEffect({ kind: "count", sessionId: "gone-session", path: "glances" })
 
     const { sent } = await shareAgentExport(soundbites, NOW)
 
@@ -245,9 +250,11 @@ describe("shareAgentExport", () => {
         {
           id: "s1-0000000000",
           reflections: [{ id: "v1" }, { id: "t1", text: "particles" }],
+          paths: { opens: 1 },
         },
       ],
       reflectionsWithoutSession: [{ sessionId: "gone-session", id: "t2" }],
+      pathsWithoutSession: [{ sessionId: "gone-session", glances: 1 }],
       stops: [{ sessionId: "session-1", reason: "focus" }],
       readAloudPractice: PRACTICE,
       soundbites: [{ id: "b1", file: "soundbite-b1.webm" }],

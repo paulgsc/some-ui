@@ -22,8 +22,12 @@ export type StopRuntime = {
   tap: () => void
   pickUp: () => void
   done: () => void
-  /** Leaving and coming back (if `watchVisibility`) and a minute clock. */
-  connect: (watchVisibility: boolean) => () => void
+  /**
+   * A minute clock and, `onPhone`, leaving and coming back: the app hidden
+   * and shown, and the returned cleanup (the player unmounting, by Back or a
+   * link) as leaving.
+   */
+  connect: (onPhone: boolean) => () => void
 }
 
 /** One player mount's stop: runs `step` and its effects, owns the clock. */
@@ -33,6 +37,8 @@ export function createStopRuntime(
   now: () => Date = () => new Date()
 ): StopRuntime {
   let state: StopState = { kind: "none" }
+  // Whether this mount took the session over: a finished one never does.
+  let begun = false
   const listeners = new Set<() => void>()
 
   const run = (effect: StopEffect): void => {
@@ -76,19 +82,26 @@ export function createStopRuntime(
       listeners.add(listener)
       return () => listeners.delete(listener)
     },
-    begin: () =>
-      dispatch({ type: "begin", latest: latestStop(sessionId), now: now() }),
+    begin: (): void => {
+      begun = true
+      dispatch({
+        type: "begin",
+        sessionId,
+        latest: latestStop(sessionId),
+        now: now(),
+      })
+    },
     tap: () => dispatch(here("tap")),
     pickUp: () => dispatch({ type: "pickUp", now: now() }),
     done: () => dispatch({ type: "done", now: now() }),
-    connect: (watchVisibility) => {
+    connect: (onPhone) => {
       const onVisibility = (): void =>
         dispatch(
           document.visibilityState === "hidden"
             ? here("hidden")
             : { type: "visible", now: now() }
         )
-      if (watchVisibility) {
+      if (onPhone) {
         document.addEventListener("visibilitychange", onVisibility)
       }
       const clock = setInterval(
@@ -98,6 +111,12 @@ export function createStopRuntime(
       return () => {
         document.removeEventListener("visibilitychange", onVisibility)
         clearInterval(clock)
+        if (!onPhone) return
+        // Either way the app-wide orchestrator pauses, or it plays on unseen.
+        // A stop is kept only once `begin` ran: not for a finished session
+        // played again, nor in StrictMode's first cleanup, which precedes it.
+        if (begun) dispatch(here("hidden"))
+        else playback.pause()
       }
     },
   }
