@@ -33,7 +33,7 @@ import { sessionsRepository } from "@/lib/tenant/queries"
 type SoundbiteReader = Pick<SoundbiteStore, "list" | "audio">
 
 const READ_ALOUD_PRACTICE =
-  "`readAloudPractice` is the read-aloud drill's practice record: for each of the last 60 days, and in `totals` for all time, the reps read to the end, the sets finished and the practice they are credited with (a nominal time per rep, not the clock); null if the app could not load it."
+  "`readAloudPractice` is the read-aloud drill's practice record: for each of the 60 most recent days that had any (a day without practice has no entry, and an old day stays until 60 newer ones replace it), and in `totals` for all time, the reps read to the end, the sets finished and the practice they are credited with (a nominal time per rep, not the clock); null if the app could not load it."
 
 const STOPS =
   "`stops` are the times a session was stopped before its end, each with when (`stoppedAt`), how far in (`elapsedMs` of `plannedMs`, in `scene`), `via` a tap or leaving the app, the optional `reason` (`legend` reads it) and where it was given (`reasonFrom`), and `outcome` (open, resumed, done or lapsed, as of `settledAt`). Not every departure is here: leaving for under a minute, a tap taken back, and Android's back button or the app's Home link are not recorded, and only the newest 20 stops are kept, so an older session can show none."
