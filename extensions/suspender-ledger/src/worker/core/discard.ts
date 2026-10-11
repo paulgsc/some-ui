@@ -174,7 +174,7 @@ const perform = (tab: chrome.tabs.Tab): Promise<void> =>
     const tabId = tab.id
     const startedAt = Date.now()
     const origin = safeOrigin(tab.url)
-    trace("perform:start", tabId, { url: tab.url, title: tab.title })
+    trace("perform:start", tabId, { origin })
     count("suspend_attempts")
     snapshotTab(tabId, { fsm: "PREPARING", origin, lastAttemptAt: startedAt })
 
@@ -487,7 +487,7 @@ function reconcileActivatedTab(tabId: number): void {
     }
     if (typeof tab.title === "string" && tab.title.startsWith(`${marker} `)) {
       log("stripping stranded marker on activated tab", tabId)
-      trace("reconcileActivatedTab:title-heuristic-rollback", tabId, tab.title)
+      trace("reconcileActivatedTab:title-heuristic-rollback", tabId)
       count("reconcile_repairs")
       record(
         "reconcile.repaired",

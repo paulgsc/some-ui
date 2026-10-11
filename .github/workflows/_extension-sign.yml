@@ -10,6 +10,12 @@ on:
       matrix:
         required: true
         type: string
+      # The commit to build and sign. Empty (extension-sign-manual.yml) means
+      # the dispatched ref; extension-release.yml passes its release commit.
+      ref:
+        required: false
+        type: string
+        default: ""
     secrets:
       AMO_JWT_ISSUER:
         required: true
@@ -25,6 +31,8 @@ jobs:
       matrix: ${{ fromJSON(inputs.matrix) }}
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref }}
       - uses: ./.github/actions/nix-setup
       - uses: ./.github/actions/pnpm-cache
       - name: Install dependencies
@@ -53,19 +61,21 @@ jobs:
       # Build the extension itself — workspace deps already present from artifact.
       - name: Build release artifact
         run: nix develop .#ci --command pnpm --filter "${{ matrix.package_name }}" build
+      # For an extension with a release record (<extension>/release/release.json,
+      # written by extension-release.yml's release PR): refuse unless this
+      # dist/ is byte-for-byte the build that PR recorded, then write
+      # artifacts/amo-metadata.json from the record's AMO payload, the
+      # "Version notes" and "Notes for reviewers" exactly as the PR showed
+      # them. Nothing is regenerated here. An extension without a record signs
+      # with whatever notes its AMO dashboard already has.
+      - name: Check the build against its release record
+        run: nix develop .#ci --command node extensions/scripts/amo-release.mjs sign "${{ matrix.extension_path }}"
       # Package source archive for AMO source code submission requirement (A1).
       - name: Package source archive
         id: source
         run: |
           nix develop .#ci --command bash extensions/scripts/package-source.sh \
             "${{ matrix.extension_path }}"
-      # Builds the AMO "Version Notes" / "Notes for Reviewers" submission
-      # from CHANGELOG.md + README.build.md (see the script header for the
-      # exact field mapping). No-ops if the extension has no CHANGELOG.md
-      # yet — it just hasn't opted into automated release notes, so this
-      # sign falls back to whatever's already sitting in the AMO dashboard.
-      - name: Build AMO submission metadata
-        run: nix develop .#ci --command node extensions/scripts/build-amo-metadata.mjs "${{ matrix.extension_path }}"
       # Submits the xpi and, in the same request, PATCHes the source archive onto
       # the version web-ext just created (A1 fix). The previous approach signed
       # first and then PATCHed a hand-rolled `.../versions/upload/` URL as a

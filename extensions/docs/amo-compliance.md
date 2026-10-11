@@ -512,39 +512,43 @@ the `compliance_confirmed` checkbox referencing epic #310 §11's pre-sign checkl
 `suspender-ledger`; see A4's Status note above for what "opted in" requires):
 
 ```
-commit reachable from an opted-in extension lands on main
-└── detect (turbo dry-run diff against the previous push)
-    ├── nothing changed                         -> stop
-    ├── extension changed                       -> release-pr
-    │     ├── draft-release-notes.sh drafts changeset body from commit
-    │     │   subjects since the last release
-    │     ├── changeset version bump: package.json + CHANGELOG.md
-    │     ├── sync-manifest-version.mjs: public/manifest.firefox.json
-    │     │   follows package.json — one field to review, not two
-    │     └── opens/updates a PR (changeset-release/extension-<name>)
-    │           a human reviews it — the CHANGELOG section becomes the
-    │           public AMO release notes, so this is where draft bullets
-    │           get turned into real prose — and merges it (squash)
-    └── this push *is* that squash-merge commit -> build-workspace + sign
-          ├── build-amo-metadata.mjs: CHANGELOG.md section -> release_notes,
-          │   README.build.md -> approval_notes (both capped at AMO's 3000
-          │   char limit; a version/changelog mismatch fails the sign
-          │   rather than submitting stale or missing notes)
-          └── _extension-sign.yml: web-ext sign --amo-metadata ...
-                (still package:source + upload-source-code, as before)
+push to main that can change the extension's build
+└── detect: not a release commit -> release-pr
+    └── rebuild the extension from main, as the sign job will
+        amo-release.mjs prepare: compare with release/release.json (the last release)
+        ├── same content digest (lint/types/lockfile only) -> close any release PR, stop
+        └── different -> release/evidence.md + a release PR with:
+              the manifest surface table, built-file changes, commits since the release
+              ├── release/notes.md names this build's digest and an allowed version
+              │     -> bump package.json + manifest + CHANGELOG.md, rebuild,
+              │        write release.json (every dist/ file's SHA-256 + the exact AMO payload),
+              │        PR ready for review, its body showing both AMO fields verbatim
+              └── no notes, or stale ones -> PR stays a draft saying why;
+                    /amo-release-notes (a Claude Code skill) writes notes.md and
+                    pushes it to the branch, which re-runs this job
+squash-merge of the release PR
+└── detect: release commit on main -> build-workspace + sign at that commit
+      ├── amo-release.mjs sign: refuse unless every dist/ file matches release.json,
+      │   then write amo-metadata.json from release.json's payload (nothing regenerated)
+      └── _extension-sign.yml: web-ext sign --amo-metadata ... --upload-source-code ...
 ```
+
+"Notes for reviewers" is the agent's prose plus a generated tail: the comparison of every
+permission, the host list, content scripts, CSP, web-accessible resources, data collection and
+built files against the last release. Every "unchanged" in it is computed from the two builds,
+never asserted. The stable reviewer facts (what the extension does, why each permission) live in
+the extension's `amo-notes.md`, which the source archive carries and the notes point to.
 
 The merge itself is the human confirmation that used to come from the manual workflow's
 `compliance_confirmed` checkbox — nothing reaches AMO without a person reviewing a diff first.
-Neither path skips `package:source`/`upload:source`/AMO reviewer-notes — the automated path just
-stopped requiring a human to retype the version notes and reviewer notes into the AMO dashboard
-by hand after every sign (see extensions/scripts/build-amo-metadata.mjs).
+A `publish_only` retry takes the release commit's SHA and refuses anything that is not a release
+commit on `main`.
 
 Extending the automated path to another extension once its own A+B footguns are resolved: add it
 to `extension-release.yml`'s `EXTENSION_NAME`/allowlist (currently hardcoded to one extension —
-see the workflow's header comment for why it isn't a matrix yet), and give it a `CHANGELOG.md`
-bootstrapped with its currently-published version's notes (`build-amo-metadata.mjs` no-ops for
-any extension without one, so this is opt-in per extension, not a workspace-wide switch).
+see the workflow's header comment for why it isn't a matrix yet), and bootstrap its
+`release/release.json` from a rebuild of its currently-published version (`amo-release.mjs sign`
+skips any extension without one, so this is opt-in per extension, not a workspace-wide switch).
 
 ### Secrets required
 

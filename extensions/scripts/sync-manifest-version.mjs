@@ -8,12 +8,11 @@
 //
 // Two entry points:
 //
-//   sync-manifest-version.mjs <dir>          Fix + write. Used by the
-//                                             release-PR flow
-//                                             (extension-release-version),
-//                                             which commits the result in
-//                                             the same PR as the
-//                                             package.json bump.
+//   sync-manifest-version.mjs <dir>          Fix + write, for a person
+//                                             fixing the drift --check
+//                                             reports. (extension-release.yml
+//                                             bumps both files itself, in
+//                                             amo-release.mjs prepare.)
 //
 //   sync-manifest-version.mjs --check <dir>  Verify only, fail on mismatch.
 //                                             Used by _extension-sign.yml,

@@ -1,49 +1,46 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Is this push *the* release commit (the release PR opened by
-# extension-release.yml's release-pr job just got merged), rather than an
-# ordinary source change? That commit only touches this extension's
-# package.json + manifest + CHANGELOG.md, which still match the workflow's
-# trigger paths — it must still run, but as a publish rather than another
-# round of detection, or it would loop forever re-detecting its own version
-# bump as "the extension changed".
-is_release_commit=false
-if [ "$EVENT_NAME" = "workflow_dispatch" ] && [ "$PUBLISH_ONLY" = "true" ]; then
-	is_release_commit=true
-elif [ "$EVENT_NAME" = "push" ] && [[ "$COMMIT_MESSAGE" == "$RELEASE_COMMIT_MESSAGE"* ]]; then
-	is_release_commit=true
-fi
+# Decides extension-release.yml's release_mode, and for a publish, the commit
+# it signs:
+#
+#   publish     The release PR's squash-merge just landed on main (its message
+#               starts with the release commit message), or a publish_only
+#               retry named such a commit. `ref` is that commit.
+#   release-pr  Anything else. The release-pr job rebuilds the extension from
+#               main and itself decides whether the build differs from the
+#               last release (extensions/scripts/amo-release.mjs prepare), so
+#               no dependency-graph guess is made here: a lint or lockfile
+#               change that leaves the bundle byte-identical opens nothing.
+#
+# A retry signs the commit it names, never whatever main has become since:
+# the sign job refuses a dist/ that differs from the release record, and a
+# newer tree under the same version number is exactly what it must not send.
+fail() {
+	echo "::error::$1" >&2
+	exit 1
+}
 
-if [ "$is_release_commit" = "true" ]; then
+release_mode=release-pr
+ref=""
+
+if [ "$EVENT_NAME" = "workflow_dispatch" ] && [ "$PUBLISH_ONLY" = "true" ]; then
+	[ -n "$RELEASE_SHA" ] || fail "publish_only needs release_sha: the release commit on main to sign again."
+	git fetch --quiet origin main
+	sha=$(git rev-parse --verify --quiet "${RELEASE_SHA}^{commit}") ||
+		fail "release_sha ${RELEASE_SHA} is not a commit in this repository."
+	git merge-base --is-ancestor "$sha" origin/main ||
+		fail "release_sha ${sha} is not on main."
+	subject=$(git log -1 --format=%s "$sha")
+	[[ "$subject" == "$RELEASE_COMMIT_MESSAGE"* ]] ||
+		fail "release_sha ${sha} is \"${subject}\", not a release commit (\"${RELEASE_COMMIT_MESSAGE} ...\")."
 	release_mode=publish
-elif [ "$EVENT_NAME" = "workflow_dispatch" ]; then
-	release_mode=release-pr
-elif [ -z "$BASE_SHA" ] || [ "$BASE_SHA" = "0000000000000000000000000000000000000000" ]; then
-	# First push to main we've seen (or history was rewritten) — no prior
-	# state to diff against, so treat as changed.
-	release_mode=release-pr
-else
-	# `<package>...[from...to]` = the package and everything it depends
-	# on, scoped to what actually changed in that range. An empty task
-	# list means nothing reachable from this extension moved.
-	#
-	# TURBO_TELEMETRY_DISABLED silences turbo's one-time telemetry
-	# banner, which otherwise prints ahead of the JSON on a fresh CI
-	# runner (no persisted ~/.turbo/config.json) and breaks a plain `jq`
-	# parse of stdout.
-	task_count=$(
-		TURBO_TELEMETRY_DISABLED=1 \
-			nix develop .#ci --command pnpm turbo run build \
-			--filter="${PACKAGE_NAME}...[${BASE_SHA}...${HEAD_SHA}]" \
-			--dry=json |
-			jq '.tasks | length'
-	)
-	if [ "$task_count" -gt 0 ]; then
-		release_mode=release-pr
-	else
-		release_mode=skip
-	fi
+	ref=$sha
+elif [ "$EVENT_NAME" = "push" ] && [ "$GITHUB_REF" = "refs/heads/main" ] &&
+	[[ "$COMMIT_MESSAGE" == "$RELEASE_COMMIT_MESSAGE"* ]]; then
+	release_mode=publish
+	ref=$HEAD_SHA
 fi
 
 echo "release_mode=${release_mode}" >>"$GITHUB_OUTPUT"
+echo "ref=${ref}" >>"$GITHUB_OUTPUT"
