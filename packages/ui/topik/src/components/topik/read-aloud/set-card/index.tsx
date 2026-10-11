@@ -180,10 +180,8 @@ export const SetCard = (props: SetCardProps): JSX.Element => {
               )}
             </div>
           )}
+          {/* The level is the header's chip (`read-aloud-session`). */}
           <p className="text-2xl font-semibold">Read aloud</p>
-          <span className="text-muted-foreground text-xs font-medium tracking-wider uppercase">
-            TOPIK {props.level}
-          </span>
           {!props.empty && props.shortfall != null && (
             <p
               data-slot="read-aloud-shortfall"

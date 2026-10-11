@@ -66,7 +66,7 @@ export const ReadAloudSession = ({
         {/* The level stays in sight through every rep (Cor. 4.6 (ii)). */}
         <span
           data-slot="read-aloud-level"
-          className="bg-primary/15 shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold"
+          className="bg-primary/15 shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold last:mr-2"
         >
           TOPIK {options.level}
         </span>
