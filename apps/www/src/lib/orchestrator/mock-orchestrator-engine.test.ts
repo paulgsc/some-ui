@@ -256,6 +256,48 @@ describe("applyCommand", () => {
     )
   })
 
+  it("Seek moves the clock within the session and counts on from now", () => {
+    const engine = configured([scene({ duration: 10_000 })], {
+      mode: "Running",
+      elapsedMs: 1_000,
+      lastTickAt: 0,
+    })
+    const next = applyCommand(engine, cmd({ Seek: 4_000 }), 900)
+    expect(next).toMatchObject({ elapsedMs: 4_000, lastTickAt: 900 })
+    expect(advanceClock(next, 1_000).elapsedMs).toBe(4_100)
+    expect(applyCommand(engine, cmd({ Seek: 99_000 }), 0).elapsedMs).toBe(
+      10_000
+    )
+  })
+
+  it("keeps the time played across a remount, once picked up with Seek", () => {
+    const config = { tick_interval_ms: 1000, loop_scenes: false }
+    const scenes = [scene({ duration: 900_000 })]
+    const run = (
+      commands: Array<OrchestratorCommand>,
+      at: number
+    ): EngineState =>
+      commands.reduce(
+        (engine, command) => applyCommand(engine, command, at),
+        createEngineState()
+      )
+    // The first mount ran five minutes before the stop; the reopened one
+    // configures from scratch, then picks up where the stop left it.
+    const stoppedAt = advanceClock(
+      run([{ Configure: { scenes, ...config } }, { Start: null }], 0),
+      300_000
+    ).elapsedMs
+    const reopened = run(
+      [
+        { Configure: { scenes, ...config } },
+        { Start: null },
+        { Seek: stoppedAt },
+      ],
+      1_000_000
+    )
+    expect(advanceClock(reopened, 1_120_000).elapsedMs).toBe(420_000)
+  })
+
   it("SkipCurrentScene jumps to the earliest end among active scenes", () => {
     const scenes = [
       scene({ scene_name: "a", start_time: 0, duration: 3_000 }),

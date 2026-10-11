@@ -140,6 +140,8 @@ export const OrchestratorCommandSchema = z.union([
   z.object({ SkipCurrentScene: z.null() }),
   /** Lengthens whichever scene ends last, so the session ends later. */
   z.object({ Extend: TimeMsSchema }),
+  /** Moves the clock to a time, within the session, keeping its mode. */
+  z.object({ Seek: TimeMsSchema }),
   z.object({ UpdateStreamStatus: StreamStatusSchema }),
 ])
 

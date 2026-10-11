@@ -190,6 +190,16 @@ export function applyCommand(
     return { ...engine, elapsedMs: target.start_time }
   }
 
+  if ("Seek" in command) {
+    const elapsedMs = Math.min(
+      Math.max(0, command.Seek),
+      totalDurationOf(engine.scenes)
+    )
+    // Running, the next tick counts from now, not from before the seek.
+    const lastTickAt = engine.mode === "Running" ? now : engine.lastTickAt
+    return { ...engine, elapsedMs, lastTickAt }
+  }
+
   if ("SkipCurrentScene" in command) {
     const currentTime = Math.min(
       engine.elapsedMs,

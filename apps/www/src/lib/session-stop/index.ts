@@ -33,7 +33,7 @@ export type Stop = {
   stoppedAt: string
   elapsedMs: number
   plannedMs: number
-  /** Where a pick-up restarts once the activity has remounted. */
+  /** The scene it stopped in. */
   scene: string | null
   via: "tap" | "left"
   reason: Reason | null
@@ -157,14 +157,16 @@ export type StopEffect =
   | { kind: "settle"; stop: Stop; outcome: Stop["outcome"]; at: string }
   | { kind: "pause" | "resume" | "start" | "end" }
   /** `plannedMs`: the plan at the stop, any "+5 min" included. */
-  | { kind: "restart"; scene: string | null; plannedMs: number }
+  | { kind: "restart"; elapsedMs: number; plannedMs: number }
 
 const NONE: StopState = { kind: "none" }
 
 /** Carry on as if the stop never happened: a paused session stays paused. */
 function carryOn(playback: Playback, stop: Stop): Array<StopEffect> {
   if (playback === "remounted") {
-    return [{ kind: "restart", scene: stop.scene, plannedMs: stop.plannedMs }]
+    return [
+      { kind: "restart", elapsedMs: stop.elapsedMs, plannedMs: stop.plannedMs },
+    ]
   }
   return playback === "playing" ? [{ kind: "resume" }] : []
 }

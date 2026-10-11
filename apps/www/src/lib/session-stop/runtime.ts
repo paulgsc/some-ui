@@ -11,10 +11,11 @@ export type Playback = {
   resume: () => void
   start: () => void
   /**
-   * Starts again at `scene`'s beginning (the activity has remounted), with
-   * the plan back at `plannedMs`: a "+5 min" lived only in the old engine.
+   * Starts again where it stopped, `elapsedMs` in (the activity has
+   * remounted, so it begins its content again), with the plan back at
+   * `plannedMs`: a "+5 min" lived only in the old engine.
    */
-  restart: (scene: string | null, plannedMs: number) => void
+  restart: (elapsedMs: number, plannedMs: number) => void
   end: () => void
 }
 
@@ -40,7 +41,7 @@ export function createStopRuntime(
 
   const run = (effect: StopEffect): void => {
     if (effect.kind === "restart")
-      playback.restart(effect.scene, effect.plannedMs)
+      playback.restart(effect.elapsedMs, effect.plannedMs)
     else if (effect.kind === "pause") playback.pause()
     else if (effect.kind === "resume") playback.resume()
     else if (effect.kind === "start") playback.start()
