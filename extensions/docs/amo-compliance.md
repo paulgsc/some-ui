@@ -543,7 +543,7 @@ the extension's `amo-notes.md`, which the source archive carries and the notes p
 
 The merge itself is the human confirmation that used to come from the manual workflow's
 `compliance_confirmed` checkbox — nothing reaches AMO without a person reviewing a diff first.
-A `publish_only` retry is dispatched on a branch or tag at the release commit and refuses any other
+A `publish_only` retry is dispatched on a branch at the release commit (never a tag) and refuses any other
 commit on `main`.
 
 Extending the automated path to another extension once its own A+B footguns are resolved: add it

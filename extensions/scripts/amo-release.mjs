@@ -453,6 +453,17 @@ function git(args, opts = {}) {
  * merged there whose submission failed is not a baseline.
  */
 function defaultBaseRef(extRel) {
+  if (git(["rev-parse", "--is-shallow-repository"]).trim() === "true") {
+    fail(
+      "This clone is shallow, so the baseline cannot be found. Run `git fetch --unshallow --tags origin` first."
+    )
+  }
+  // A clone (an agent's, say) may never have fetched the tags.
+  try {
+    git(["fetch", "--quiet", "--tags", "origin"], { quiet: true })
+  } catch {
+    // Offline: the local tags are the best answer there is.
+  }
   const [newest] = git([
     "tag",
     "--list",
@@ -871,9 +882,15 @@ function readMainRecord(extRel) {
 
 function cmdPrepare(extDir, opts) {
   const ev = gatherEvidence(extDir, opts.baseRef)
+  const notesPath = path.join(extDir, "release", "notes.md")
+  const branchNotes = readIfExists(opts.branchNotes)
+  // New notes pushed to the branch reopen a release that is merged but never
+  // submitted (a failed upload that needs different notes, not new code).
+  const newBranchNotes =
+    branchNotes !== undefined && branchNotes !== readIfExists(notesPath)
   if (
     ev.candidate.content === ev.baseline.content ||
-    awaitingSubmission(readMainRecord(extDir), ev)
+    (!newBranchNotes && awaitingSubmission(readMainRecord(extDir), ev))
   ) {
     writeOutputs({
       changed: "false",
@@ -882,12 +899,7 @@ function cmdPrepare(extDir, opts) {
     })
     return
   }
-  const notesPath = path.join(extDir, "release", "notes.md")
-  const notesText = pickNotes(
-    ev.baseline,
-    readIfExists(opts.branchNotes),
-    readIfExists(notesPath)
-  )
+  const notesText = pickNotes(ev.baseline, branchNotes, readIfExists(notesPath))
   if (notesText !== undefined) fs.writeFileSync(notesPath, notesText)
   const result = evaluate(ev, notesText)
   const evidencePath = path.join(extDir, "release", "evidence.md")

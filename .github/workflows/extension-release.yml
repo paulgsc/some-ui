@@ -43,7 +43,7 @@ name: Extension Release
 # Only release/notes.md carries over from the release branch; every other
 # file there is regenerated from main on each run, so edits to them are lost.
 #
-# Retries: dispatch publish_only on a branch or tag at the release commit
+# Retries: dispatch publish_only on a branch at the release commit
 # (detect refuses any other commit), never on main once it has moved on.
 #
 # Deliberately NOT changesets: the version is the notes' decision (patch,
@@ -71,7 +71,7 @@ on:
   workflow_dispatch:
     inputs:
       publish_only:
-        description: "Sign the release commit this run is dispatched on (a branch or tag at it), to retry a publish that failed after the release PR merged"
+        description: "Sign the release commit this run is dispatched on (a branch at it, never a tag), to retry a publish that failed after the release PR merged"
         type: boolean
         default: false
 env:
