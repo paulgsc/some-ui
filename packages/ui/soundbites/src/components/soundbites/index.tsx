@@ -23,6 +23,7 @@ import type { JSX, ReactNode } from "react"
 import { useEffect, useState, useSyncExternalStore } from "react"
 import { cn } from "@some-ui/core-utils"
 import { BrandMark, Button, TalkGlyph } from "@some-ui/shared"
+import { RECORDING_FAILURE_COPY } from "@some-ui/voice-capture"
 import {
   describeContext,
   formatDuration,
@@ -36,7 +37,6 @@ import {
   SOUNDBITE_LIMIT,
   SOUNDBITE_MAX_MS,
 } from "@soundbites/lib/policy"
-import type { RecordingFailure } from "@soundbites/lib/recorder"
 import type { SoundbitesPorts } from "@soundbites/lib/runtime"
 import { createSoundbites } from "@soundbites/lib/runtime"
 import type { Soundbite, SoundbiteSource } from "@soundbites/lib/types"
@@ -77,23 +77,15 @@ const STARTERS = [
 ]
 
 /**
- * What the page asks for. Every way in but "Talk now" and the wrap is about
- * a session that is not happening; "Talk now" (`capture`) is a comment on
- * anything and the wrap (`wrap`) a summary of a session just done, so they
- * ask for that, and the starters, which are all reasons, stay away.
+ * What the page asks for. Every way in but "Talk now" is about a session
+ * that is not happening; "Talk now" (`capture`) is a comment on anything, so
+ * it asks for that, and the starters, which are all reasons, stay away.
  */
 function askFor(source: SoundbiteSource): {
   title: string
   lede: string
   starters: boolean
 } {
-  if (source === "wrap") {
-    return {
-      title: "What stuck?",
-      lede: "Say what you'll remember from this session, out loud, in a minute or less.",
-      starters: false,
-    }
-  }
   return source === "capture"
     ? {
         title: "Talk now",
@@ -105,14 +97,6 @@ function askFor(source: SoundbiteSource): {
         lede: "Say why, out loud, in a minute or less. No typing, no wrong answers.",
         starters: true,
       }
-}
-
-const BLOCKED_COPY: Record<RecordingFailure, string> = {
-  denied:
-    "The microphone is off for Some UI. Turn it on under Android Settings → Apps → Some UI → Permissions → Microphone, then try again.",
-  busy: "Another app is using the microphone. Try again once it lets go.",
-  unsupported: "This phone's web view can't record audio.",
-  failed: "The microphone didn't start. Try again.",
 }
 
 /** The last stretch of a take, when the fill warns that time is nearly up. */
@@ -362,7 +346,7 @@ export const Soundbites = ({
           role="alert"
           className="border-destructive/40 bg-destructive/5 space-y-3 rounded-lg border p-4 text-sm"
         >
-          <p>{BLOCKED_COPY[blocked]}</p>
+          <p>{RECORDING_FAILURE_COPY[blocked]}</p>
           {blocked !== "unsupported" && (
             <Button
               size="sm"

@@ -1,4 +1,5 @@
 import type { JSX } from "react"
+import { useId } from "react"
 import {
   getActivityByRegistryKey,
   summarizeConfig,
@@ -12,19 +13,21 @@ import {
   CardTitle,
 } from "@some-ui/shared"
 import { Link, useNavigate } from "@tanstack/react-router"
-import { Check, Mic, RotateCcw, StopCircle } from "lucide-react"
+import { Check, RotateCcw, StopCircle } from "lucide-react"
 
 import { hasAudience } from "@/lib/build-profile"
 import { formatDurationMs } from "@/lib/format"
 import { useIntent, useIntentEffect } from "@/lib/intent"
 import { IntentButton } from "@/lib/intent/render"
+import { useReflections } from "@/lib/session-reflection/use-reflections"
 import { cutShortStop } from "@/lib/session-stop"
 import type { SessionRecord } from "@/lib/tenant"
 import { useDuplicateSession } from "@/lib/tenant"
 import { finishedNaturally as endedInLead } from "@/lib/wind-down"
 import { ActivityIcon } from "@/components/activity-icon"
+import { DeviceShareReflections } from "@/components/reflection/device-share-reflections"
+import { ReflectPanel } from "@/components/reflection/reflect-panel"
 
-import { SessionReflection } from "./session-reflection"
 import { StopReasons } from "./session-stop"
 
 type CompletionSummaryProps = {
@@ -43,6 +46,8 @@ export const CompletionSummary = ({
   const addedMs = finalElapsedMs - session.totalDurationMs
   const cutShort = cutShortStop(session.id)
   const phone = hasAudience("apk")
+  const reflectionsId = useId()
+  const hasOwn = useReflections().kept.some((r) => r.sessionId === session.id)
 
   // Replay hands the player a fresh draft copy and drops them into the
   // composer's Configure step, where everything is still editable.
@@ -137,21 +142,26 @@ export const CompletionSummary = ({
 
           {cutShort && <StopReasons stop={cutShort} from="close" />}
 
-          <SessionReflection sessionId={session.id} />
-
-          {phone && (
-            <div className="space-y-1">
-              <Button asChild variant="outline" className="h-11 w-full">
-                <Link to="/soundbites" search={{ say: "wrap" }}>
-                  <Mic className="mr-2 size-4" aria-hidden />
-                  Say what stuck
-                </Link>
-              </Button>
-              <p className="text-muted-foreground text-center text-xs">
-                Up to a minute, out loud. Kept on this phone.
-              </p>
-            </div>
-          )}
+          <section aria-labelledby={reflectionsId} className="space-y-3">
+            <h3 id={reflectionsId} className="font-semibold">
+              How did it go?
+            </h3>
+            <ReflectPanel sessionId={session.id} atMs={null} />
+            {import.meta.env.VITE_DEVICE_BACKEND === "true" && hasOwn && (
+              <div className="space-y-1">
+                <DeviceShareReflections
+                  sessionIds={[session.id]}
+                  label="Hand off to Drive now"
+                  size="default"
+                  className="h-11 w-full"
+                />
+                <p className="text-muted-foreground text-center text-xs">
+                  Best read while it&apos;s fresh: your agent can shape the next
+                  session from it.
+                </p>
+              </div>
+            )}
+          </section>
         </CardContent>
       </Card>
 

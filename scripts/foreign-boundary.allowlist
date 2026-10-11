@@ -17,6 +17,14 @@
 # failure has nowhere to go and changes nothing a person sees.
 1 apps/www/src/lib/native-log/index.ts
 
+# Unbounded: the microphone's permission prompt, which waits on a person
+# deciding, for as long as they take, so no deadline fits. Its failures are
+# still classified (`RecordingFailure`) and reported (`reportFailure`, in
+# `refused`) in packages/voice-capture/src/lib/recorder.ts, and each caller
+# tells the person. Soundbites and voice reflections both reach the
+# microphone here and nowhere else.
+1 packages/voice-capture/src/lib/recorder.ts
+
 # Grandfathered: these waited on a foreign API before F1 landed. Debt, not a
 # judgment that each is fine. A count here may only fall (lower it in the
 # same change), and an entry leaves when its file stops waiting outside the
@@ -29,7 +37,6 @@
 1 packages/ui/leetype/src/components/round/generate-round/index.tsx
 1 packages/ui/lesson-crm/src/components/lesson-crm/index.tsx
 1 packages/ui/lesson-crm/src/components/prompt-card/index.tsx
-1 packages/ui/soundbites/src/lib/recorder.ts
 1 packages/ui/soundbites/src/lib/store.ts
 1 packages/ui/topik/src/components/topik/handheld/generate-lesson/index.tsx
 1 packages/ui/wireframes/src/components/youtube/layout-crm/index.tsx

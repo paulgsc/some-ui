@@ -330,7 +330,7 @@ backs should be cut, not kept and re-justified.
 
 == Counts
 
-*42 workspace packages, 5 browser extensions* --- counted 2026-10-08 by
+*43 workspace packages, 5 browser extensions* --- counted 2026-10-11 by
 `scripts/check-claims.mjs`, which walks the globs in `pnpm-workspace.yaml`
 (`packages/ui/*`, `apps/*`, `docs/canon`, `extensions/**`, `packages/*`,
 `crates/*`) for a `package.json`, the same method `pnpm -r list --depth -1`
@@ -342,7 +342,10 @@ catches build scripts): `some-censor`, `some-drama`, `some-filter`,
 `filter-classifier`, `docs`, and `scripts` are excluded — shared code and a
 test corpus, not shipped extensions.
 
-The package count is 41 -> 42 on 2026-10-08, when `packages/makjang`
+The package count is 42 -> 43 on 2026-10-11, when `packages/voice-capture`
+(`@some-ui/voice-capture`, the phone's microphone recorder moved out of
+`packages/ui/soundbites` so voice reflections could share it) landed. Before
+that it was 41 -> 42 on 2026-10-08, when `packages/makjang`
 (`@some-ui/makjang`, the scene-tree schema, story audit and engine) landed
 (#1715). Before that it was 42 -> 41 on 2026-10-06: `packages/utils`
 (`some-ui-utils`) was dissolved into `@some-ui/core-utils`, a new

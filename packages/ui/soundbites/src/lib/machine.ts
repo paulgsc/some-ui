@@ -36,6 +36,19 @@
  * `MediaRecorder.state`, `Audio.paused` or IndexedDB's state. Those reach us
  * only as events.
  */
+import type {
+  RecordingFailure,
+  Take,
+  TakePhase,
+  TakeStep,
+} from "@some-ui/voice-capture"
+import {
+  discardTake,
+  finishTake,
+  openTake,
+  stepTake,
+} from "@some-ui/voice-capture"
+
 import { formatDuration } from "./format"
 import {
   byNewest,
@@ -43,7 +56,6 @@ import {
   SOUNDBITE_MAX_MS,
   SOUNDBITE_MIN_MS,
 } from "./policy"
-import type { RecordingFailure, Take } from "./recorder"
 import type { Soundbite, SoundbiteContext, SoundbiteSource } from "./types"
 
 /** What the app knows when a take is kept, apart from the way in. */
@@ -209,6 +221,26 @@ export function canUseKept(activity: Activity): boolean {
 
 const stay = (state: SoundbitesState): Step => ({ state, effects: [] })
 
+const LIMITS = { minMs: SOUNDBITE_MIN_MS, maxMs: SOUNDBITE_MAX_MS }
+
+/** `saving` waits on the recorder for the take first, then on the store. */
+const FINISHING: TakePhase = { kind: "finishing" }
+
+/** A take still under way, as the page's activity. */
+function taking(
+  state: SoundbitesState,
+  next: TakeStep & { kind: "taking" }
+): Step {
+  const { phase } = next
+  return {
+    state: {
+      ...state,
+      activity: phase.kind === "finishing" ? { kind: "saving" } : phase,
+    },
+    effects: next.effects,
+  }
+}
+
 function read(state: SoundbitesState): Step {
   const seq = state.readSeq + 1
   return { state: { ...state, readSeq: seq }, effects: [{ type: "read", seq }] }
@@ -226,17 +258,15 @@ function startRecording(state: SoundbitesState): Step {
       ...(state.activity.kind === "playing"
         ? [{ type: "stopPlayback" } as const]
         : []),
-      { type: "openMic" },
+      ...openTake().effects,
     ],
   }
 }
 
 function finishRecording(state: SoundbitesState): Step {
   if (state.activity.kind !== "recording") return stay(state)
-  return {
-    state: { ...state, activity: { kind: "saving" } },
-    effects: [{ type: "stopClock" }, { type: "finishTake" }],
-  }
+  const next = finishTake(state.activity)
+  return next.kind === "taking" ? taking(state, next) : stay(state)
 }
 
 /**
@@ -339,22 +369,14 @@ export function step(state: SoundbitesState, event: SoundbitesEvent): Step {
           activity: { kind: "idle" },
           notice: NOTICES.thrownAway,
         },
-        effects: [{ type: "stopClock" }, { type: "discardTake" }],
+        effects: discardTake(activity).effects,
       }
     }
 
     case "ticked": {
       if (activity.kind !== "recording") return stay(state)
-      const ms = event.now - activity.startedAt
-      const ticked = {
-        ...state,
-        activity: {
-          ...activity,
-          elapsed: Math.min(ms, SOUNDBITE_MAX_MS),
-          level: event.level,
-        },
-      }
-      return ms >= SOUNDBITE_MAX_MS ? finishRecording(ticked) : stay(ticked)
+      const next = stepTake(activity, event, LIMITS)
+      return next.kind === "taking" ? taking(state, next) : stay(state)
     }
 
     case "micOpened": {
@@ -370,38 +392,32 @@ export function step(state: SoundbitesState, event: SoundbitesEvent): Step {
           },
           effects: [{ type: "discardTake" }],
         }
-      return {
-        state: {
-          ...state,
-          activity: {
-            kind: "recording",
-            startedAt: event.at,
-            elapsed: 0,
-            level: 0,
-          },
-        },
-        effects: [{ type: "startClock" }],
-      }
+      const next = stepTake({ kind: "opening" }, event, LIMITS)
+      return next.kind === "taking" ? taking(state, next) : stay(state)
     }
 
     case "micFailed": {
       if (activity.kind !== "opening") return stay(state)
+      const next = stepTake({ kind: "opening" }, event, LIMITS)
+      if (next.kind !== "blocked") return stay(state)
       return stay({
         ...state,
         activity: { kind: "idle" },
-        blocked: event.reason,
+        blocked: next.reason,
       })
     }
 
     case "taken": {
       if (activity.kind !== "saving") return stay(state)
-      const { take } = event
-      if (take.durationMs < SOUNDBITE_MIN_MS || take.blob.size === 0)
+      const next = stepTake(FINISHING, event, LIMITS)
+      if (next.kind === "short")
         return stay({
           ...state,
           activity: { kind: "idle" },
           notice: NOTICES.tooShort,
         })
+      if (next.kind !== "kept") return stay(state)
+      const { take } = next
       const bite: Soundbite = {
         id: event.id,
         recordedAt: event.at,

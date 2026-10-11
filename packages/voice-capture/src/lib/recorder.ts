@@ -1,5 +1,6 @@
 /**
- * The microphone, as one take at a time.
+ * The microphone, as one take at a time. Used by the soundbites page and by
+ * voice reflections, each passing its own bitrate.
  *
  * In the Android app, `getUserMedia` is the WebView's: Capacitor's
  * `BridgeWebChromeClient` turns its audio-capture request into Android's
@@ -7,7 +8,8 @@
  * declares that permission (apps/mobile). The page must be a secure context,
  * which the app's `https://localhost` is.
  */
-import { SOUNDBITE_BITS_PER_SECOND } from "./policy"
+import type { IntentErrorKind } from "@some-ui/intent-kit"
+import { reportFailure } from "@some-ui/intent-kit"
 
 export type RecordingFailure =
   /** The person, or Android settings, said no to the microphone. */
@@ -17,6 +19,24 @@ export type RecordingFailure =
   /** Another app holds the microphone (a call, say). */
   | "busy"
   | "failed"
+
+/** What to tell the person when the microphone refuses, in their words. */
+export const RECORDING_FAILURE_COPY: Record<RecordingFailure, string> = {
+  denied:
+    "The microphone is off for Some UI. Turn it on under Android Settings → Apps → Some UI → Permissions → Microphone, then try again.",
+  busy: "Another app is using the microphone. Try again once it lets go.",
+  unsupported: "This phone's web view can't record audio.",
+  failed: "The microphone didn't start. Try again.",
+}
+
+const PORT = "microphone (getUserMedia, MediaRecorder)"
+
+const KIND: Record<RecordingFailure, IntentErrorKind> = {
+  denied: "rejected",
+  busy: "unreachable",
+  unsupported: "unavailable",
+  failed: "unknown",
+}
 
 export class RecordingError extends Error {
   readonly reason: RecordingFailure
@@ -44,8 +64,8 @@ export type Recording = {
 export type StartRecording = () => Promise<Recording>
 
 /**
- * Opus in WebM is what Android's WebView records natively. At
- * `SOUNDBITE_BITS_PER_SECOND` a full minute is about a quarter of a megabyte.
+ * Opus in WebM is what Android's WebView records natively. At 32 kbps a full
+ * minute is about a quarter of a megabyte.
  */
 const PREFERRED_TYPES = [
   "audio/webm;codecs=opus",
@@ -104,15 +124,44 @@ function meter(stream: MediaStream): {
   }
 }
 
-/** Starts a take on the device's microphone. */
-export const startMicRecording: StartRecording = async () => {
+/**
+ * Takes on the device's microphone at `bitsPerSecond`: a speech bitrate, not
+ * Chromium's default (about 128 kbps), which would make each take four times
+ * the size. The caller's cap on what it keeps is in the same units.
+ */
+export function micRecorder({
+  bitsPerSecond,
+}: {
+  bitsPerSecond: number
+}): StartRecording {
+  return () => startMicRecording(bitsPerSecond)
+}
+
+/**
+ * The microphone said no: reported (`reportFailure`, which survives release
+ * builds and reaches logcat), then thrown for the caller to tell the person.
+ */
+function refused(reason: RecordingFailure, cause?: unknown): RecordingError {
+  reportFailure({
+    port: PORT,
+    error: {
+      kind: KIND[reason],
+      retryable: reason !== "unsupported",
+      summary: RECORDING_FAILURE_COPY[reason],
+      cause,
+    },
+  })
+  return new RecordingError(reason, { cause })
+}
+
+async function startMicRecording(bitsPerSecond: number): Promise<Recording> {
   if (
     !window.isSecureContext ||
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- feature detection: lib.dom assumes both exist, an old WebView may have neither
     !navigator.mediaDevices?.getUserMedia ||
     typeof MediaRecorder === "undefined"
   ) {
-    throw new RecordingError("unsupported")
+    throw refused("unsupported")
   }
 
   let stream: MediaStream
@@ -121,7 +170,7 @@ export const startMicRecording: StartRecording = async () => {
       audio: { echoCancellation: true, noiseSuppression: true },
     })
   } catch (error) {
-    throw new RecordingError(failureOf(error), { cause: error })
+    throw refused(failureOf(error), error)
   }
 
   const release = (): void => {
@@ -133,13 +182,11 @@ export const startMicRecording: StartRecording = async () => {
     const mimeType = pickMimeType()
     recorder = new MediaRecorder(stream, {
       ...(mimeType ? { mimeType } : {}),
-      // Speech, not music: Chromium's default (about 128 kbps) would make
-      // each soundbite four times the size.
-      audioBitsPerSecond: SOUNDBITE_BITS_PER_SECOND,
+      audioBitsPerSecond: bitsPerSecond,
     })
   } catch (error) {
     release()
-    throw new RecordingError("unsupported", { cause: error })
+    throw refused("unsupported", error)
   }
 
   const chunks: Array<Blob> = []
@@ -157,7 +204,7 @@ export const startMicRecording: StartRecording = async () => {
     // otherwise find the microphone still held by this failed attempt.
     levels.close()
     release()
-    throw new RecordingError("failed", { cause: error })
+    throw refused("failed", error)
   }
 
   const stopped = new Promise<void>((resolve) => {

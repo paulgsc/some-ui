@@ -11,6 +11,7 @@
       "@some-ui/styles": ["../some-styles/src/index.ts"],
       "@some-ui/vite-config": ["../some-vite-config/src/index.ts"],
       "@some-ui/wasm-loader": ["../wasm-loader/src/index.ts"],
+      "@some-ui/voice-capture": ["../voice-capture/src/index.ts"],
       "@some-ui/eslint-kit": ["./src/index.ts"],
       "@some-ui/types": ["../types/src/index.ts"],
       "@some-ui/shared": ["../ui/shared/src/index.ts"],

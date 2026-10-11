@@ -57,7 +57,9 @@ function base64(blob: Blob): Promise<string> {
   })
 }
 
-type Files = ReadonlyArray<{ name: string; data: string | Blob }>
+export type SharedFile = { name: string; data: string | Blob }
+
+type Files = ReadonlyArray<SharedFile>
 
 /** The share last started in each `dir`, settled or not. */
 const sharing = new Map<string, Promise<unknown>>()

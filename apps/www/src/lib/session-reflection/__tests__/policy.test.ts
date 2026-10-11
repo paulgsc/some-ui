@@ -1,0 +1,157 @@
+import { describe, expect, it } from "vitest"
+
+import type { Reflection } from "@/lib/session-reflection/policy"
+import {
+  admit,
+  bySession,
+  describeAge,
+  fromLegacy,
+  isStale,
+  parseReflection,
+  STALE_AFTER_MS,
+  withAnswers,
+} from "@/lib/session-reflection/policy"
+
+const DAY = 24 * 60 * 60_000
+const NOW = Date.parse("2026-10-11T12:00:00Z")
+
+function note(id: string, sessionId: string, daysAgo = 0): Reflection {
+  return {
+    id,
+    sessionId,
+    createdAt: new Date(NOW - daysAgo * DAY).toISOString(),
+    atMs: 1000,
+    body: { kind: "text", text: id },
+  }
+}
+
+describe("admit", () => {
+  it("counts every session's reflections toward one cap, and drops none for room", () => {
+    const kept = [note("a", "s1"), note("b", "s2")]
+
+    expect(admit(kept, note("c", "s3"), 3)).toMatchObject({
+      kind: "kept",
+      next: [{ id: "c" }, { id: "a" }, { id: "b" }],
+    })
+    const full = admit([...kept, note("c", "s3")], note("d", "s1"), 3)
+    expect(full.kind).toBe("full")
+    expect(full.next.map((r) => r.id)).toEqual(["a", "b", "c"])
+  })
+
+  it("replaces the one with the same id even when full", () => {
+    const kept = [note("a", "s1"), note("b", "s2")]
+    const edited: Reflection = {
+      ...note("a", "s1"),
+      body: { kind: "text", text: "x" },
+    }
+
+    expect(admit(kept, edited, 2)).toMatchObject({
+      kind: "kept",
+      next: [{ id: "a", body: { text: "x" } }, { id: "b" }],
+    })
+  })
+})
+
+describe("withAnswers", () => {
+  const made = { id: "new", createdAt: new Date(NOW).toISOString(), atMs: 5 }
+
+  it("keeps one set per session, changed in place", () => {
+    const first = withAnswers([], "s1", { difficulty: "too-hard" }, made)
+    expect(first).toMatchObject({
+      kind: "kept",
+      next: [{ id: "new", body: { answers: { difficulty: "too-hard" } } }],
+    })
+    const second = withAnswers(
+      first.next,
+      "s1",
+      { difficulty: "right", worthwhile: "yes" },
+      { ...made, id: "other" }
+    )
+    expect(second.next).toHaveLength(1)
+    expect(second.next[0]).toMatchObject({
+      id: "new",
+      body: { answers: { difficulty: "right", worthwhile: "yes" } },
+    })
+  })
+
+  it("lets the set go once every answer is cleared, and drops unknown answers", () => {
+    const first = withAnswers([], "s1", { enthusiasm: "keen" }, made)
+    expect(withAnswers(first.next, "s1", {}, made).next).toEqual([])
+    expect(withAnswers([], "s1", { enthusiasm: "sleepy" }, made).next).toEqual(
+      []
+    )
+  })
+})
+
+describe("staleness", () => {
+  it("turns stale at a week", () => {
+    expect(isStale(note("a", "s1", 6.9), NOW)).toBe(false)
+    expect(isStale(note("a", "s1", 7), NOW)).toBe(true)
+  })
+
+  it("says an age in days", () => {
+    expect(describeAge(0)).toBe("today")
+    expect(describeAge(DAY)).toBe("1 day")
+    expect(describeAge(9.5 * DAY)).toBe("9 days")
+  })
+})
+
+describe("bySession", () => {
+  it("groups per session, the longest-waiting first, each in the order said", () => {
+    const groups = bySession(
+      [note("b2", "s2", 1), note("a1", "s1", 2), note("b1", "s2", 8)],
+      NOW
+    )
+
+    expect(groups.map((g) => g.sessionId)).toEqual(["s2", "s1"])
+    expect(groups[0]).toMatchObject({ oldestMs: 8 * DAY, stale: true })
+    expect(groups[0]?.reflections.map((r) => r.id)).toEqual(["b1", "b2"])
+    expect(groups[1]?.stale).toBe(false)
+  })
+})
+
+describe("parseReflection", () => {
+  it("reads what was written and refuses anything else", () => {
+    const voice: Reflection = {
+      ...note("v", "s1"),
+      body: {
+        kind: "voice",
+        durationMs: 4000,
+        mimeType: "audio/webm",
+        bytes: 9,
+      },
+    }
+    expect(parseReflection(JSON.parse(JSON.stringify(voice)))).toEqual(voice)
+    expect(
+      parseReflection({ ...note("t", "s1"), body: { kind: "text", text: " " } })
+    ).toBeNull()
+    expect(
+      parseReflection({ ...note("t", "s1"), createdAt: "never" })
+    ).toBeNull()
+    expect(parseReflection({ ...note("t", "s1"), atMs: "1" })).toBeNull()
+  })
+})
+
+describe("fromLegacy", () => {
+  it("moves each old set of answers, dated stale, and skips what no question offers", () => {
+    const staleAt = new Date(NOW - STALE_AFTER_MS).toISOString()
+    expect(
+      fromLegacy(
+        [
+          { id: "s1", answers: { worthwhile: "yes", pace: 1 } },
+          { id: "s2", answers: { worthwhile: "maybe" } },
+          "junk",
+        ],
+        staleAt
+      )
+    ).toEqual([
+      {
+        id: "legacy-s1",
+        sessionId: "s1",
+        createdAt: staleAt,
+        atMs: null,
+        body: { kind: "answers", answers: { worthwhile: "yes" } },
+      },
+    ])
+  })
+})

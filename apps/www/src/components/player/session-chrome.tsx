@@ -47,12 +47,14 @@ import {
 } from "@/lib/orchestrator"
 import { isWindingDown } from "@/lib/wind-down"
 import { AudioIndicator } from "@/components/audio/audio-indicator"
+import { ReflectButton } from "@/components/reflection/reflect-button"
 import { ThemeSwitcher } from "@/components/theme-switcher"
 
 import { friendlyActivityName } from "./utils"
 import { WindDownNudge } from "./wind-down-nudge"
 
 type SessionChromeProps = {
+  sessionId: string
   scenes: Array<SceneConfig>
   onPlay: () => void
   /** Stops now and keeps the stop; the player shows what follows. */
@@ -60,6 +62,7 @@ type SessionChromeProps = {
 }
 
 export const SessionChrome = ({
+  sessionId,
   scenes,
   onPlay,
   onGotToGo,
@@ -117,6 +120,7 @@ export const SessionChrome = ({
           </Button>
         )}
         <WindDownNudge className="min-w-0 flex-1" />
+        <ReflectButton sessionId={sessionId} atMs={currentTime} />
         <Button
           type="button"
           variant="ghost"

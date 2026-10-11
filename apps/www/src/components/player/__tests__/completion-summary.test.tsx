@@ -14,6 +14,7 @@ import type * as ReactRouterModule from "@tanstack/react-router"
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
+import { reflections } from "@/lib/session-reflection"
 import { latestStop } from "@/lib/session-stop"
 
 // These suites are about the account's store failing: start from an account.
@@ -134,7 +135,7 @@ describe("CompletionSummary: the wrap", () => {
     expect(screen.getByText("+5 min")).toBeTruthy()
   })
 
-  it("keeps a tapped answer, and a second tap clears it", () => {
+  it("keeps a tapped answer as this session's reflection, said after it ended, and a second tap clears it", () => {
     localStorage.clear()
     const session = sessionRecord({ status: "completed" })
     render(withQueryClient(<CompletionSummary session={session} />))
@@ -142,8 +143,16 @@ describe("CompletionSummary: the wrap", () => {
     const keen = screen.getByRole("button", { name: "Keen" })
     fireEvent.click(keen)
     expect(keen.getAttribute("aria-pressed")).toBe("true")
+    expect(reflections.getSnapshot().kept).toMatchObject([
+      {
+        sessionId: session.id,
+        atMs: null,
+        body: { kind: "answers", answers: { enthusiasm: "keen" } },
+      },
+    ])
     fireEvent.click(keen)
     expect(keen.getAttribute("aria-pressed")).toBe("false")
+    expect(reflections.getSnapshot().kept).toEqual([])
   })
 
   it("banks a session stopped and not picked up, and asks why, optionally", () => {

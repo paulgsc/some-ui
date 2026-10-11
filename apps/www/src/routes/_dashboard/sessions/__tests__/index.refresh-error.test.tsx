@@ -3,7 +3,7 @@
  *
  * `SessionsList`'s empty-list early return must not skip the `refreshError`
  * banner: an empty cache whose refresh failed is not a confident "No sessions
- * yet".
+ * yet". Nor the hand-off strip: reflections outlive a deleted session.
  */
 
 import { cachedQueryResult, withQueryClient } from "@/test-support/query-client"
@@ -12,6 +12,7 @@ import type * as ReactRouterModule from "@tanstack/react-router"
 import { cleanup, render, screen } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
+import { reflections } from "@/lib/session-reflection"
 import type * as TenantModule from "@/lib/tenant"
 
 const refetch = vi.fn()
@@ -62,5 +63,26 @@ describe("SessionsRoute: an empty cached list through a failed refresh", () => {
     expect(document.querySelector('[role="alert"]') !== null).toBe(
       refreshFailed
     )
+  })
+})
+
+describe("SessionsRoute: no sessions left, reflections still kept", () => {
+  it("shows the hand-off strip, so they can still be let go", () => {
+    localStorage.clear()
+    reflections.keep({
+      id: "t1",
+      sessionId: "deleted-session",
+      createdAt: new Date().toISOString(),
+      atMs: null,
+      body: { kind: "text", text: "particles" },
+    })
+    mockResult = cachedQueryResult([], false, { refetch })
+
+    render(withQueryClient(<SessionsRoute />))
+
+    expect(screen.getByText("No sessions yet.")).toBeTruthy()
+    expect(
+      screen.getByRole("region", { name: "Reflections to hand off" })
+    ).toBeTruthy()
   })
 })
