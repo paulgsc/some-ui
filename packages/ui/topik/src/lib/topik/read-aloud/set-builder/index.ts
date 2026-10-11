@@ -94,17 +94,6 @@ function spread(
   return order
 }
 
-/** The deck's lines a level draws on: its own, and those below it. */
-function linesFor(
-  deck: ReadAloudDeck,
-  level: ReadAloudLevel
-): { atLevel: ReadAloudDeck["lines"]; below: ReadAloudDeck["lines"] } {
-  return {
-    atLevel: deck.lines.filter((line) => line.level === level),
-    below: deck.lines.filter((line) => line.level < level),
-  }
-}
-
 /**
  * How many sentences the deck writes for the level itself, when that is
  * fewer than a set draws and lower levels fill the rest (`buildSet`); null
@@ -117,8 +106,9 @@ export function levelShortfall(
   level: ReadAloudLevel,
   sentences = DEFAULT_SENTENCES
 ): number | null {
-  const { atLevel, below } = linesFor(deck, level)
-  return atLevel.length < sentences && below.length > 0 ? atLevel.length : null
+  const own = deck.lines.filter((line) => line.level === level).length
+  const below = deck.lines.some((line) => line.level < level)
+  return own < sentences && below ? own : null
 }
 
 /**
@@ -139,7 +129,8 @@ export function buildSet(
   }: SetOptions
 ): Array<SetItem> {
   const eligible = deck.lines.filter((line) => line.level <= level)
-  const { atLevel, below } = linesFor(deck, level)
+  const atLevel = eligible.filter((line) => line.level === level)
+  const below = eligible.filter((line) => line.level < level)
 
   const sentenceItems: Array<SetItem> = [
     ...shuffledBySeed(atLevel, fnv1a(`${seedKey}:sentences:at`)),

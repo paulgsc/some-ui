@@ -18,11 +18,8 @@ export type SetCardProps = { short: boolean; onStop: () => void } & (
       resuming: boolean
       /** The deck has nothing at or below this level to draw a set from. */
       empty?: boolean
-      /**
-       * How many sentences the deck writes for this level, where lower levels
-       * fill the rest of each set (`levelShortfall`); absent when they don't.
-       */
-      shortfall?: number | null
+      /** `levelShortfall`'s result for the deck at this level. */
+      shortfall: number | null
       /** The practice record and the learner's local day, where one is kept. */
       record?: { record: PracticeRecord; today: string }
       onStart: () => void
@@ -180,9 +177,8 @@ export const SetCard = (props: SetCardProps): JSX.Element => {
               )}
             </div>
           )}
-          {/* The level is the header's chip (`read-aloud-session`). */}
           <p className="text-2xl font-semibold">Read aloud</p>
-          {!props.empty && props.shortfall != null && (
+          {props.audio && props.shortfall !== null && (
             <p
               data-slot="read-aloud-shortfall"
               className="text-muted-foreground text-sm leading-relaxed"

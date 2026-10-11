@@ -161,7 +161,6 @@ describe("HandheldLesson", () => {
     })
     const card = await screen.findByRole("button", { name: /Read aloud/ })
     fireEvent.click(screen.getByRole("radio", { name: "TOPIK 5" }))
-    // The card names the level it reads, the drill's highest past TOPIK 3.
     expect(card.textContent).toContain("TOPIK 3, the highest it reads")
     fireEvent.click(card)
     expect(

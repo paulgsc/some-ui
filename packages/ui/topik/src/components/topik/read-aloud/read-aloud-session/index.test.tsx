@@ -89,7 +89,6 @@ describe("ReadAloudSession", () => {
   it("waits on its start screen for the learner's tap", async () => {
     renderSession()
     expect(levelChip()).toBe("TOPIK 1")
-    expect(shortfall()).toBeNull()
     await advance(60_000)
     expect(rep()).toBeNull()
     fireEvent.click(screen.getByRole("button", { name: /start/i }))

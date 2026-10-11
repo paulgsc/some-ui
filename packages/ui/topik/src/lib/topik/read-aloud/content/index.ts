@@ -33,10 +33,7 @@ import { z } from "zod"
 export const READ_ALOUD_LEVELS = [1, 2, 3] as const
 export type ReadAloudLevel = (typeof READ_ALOUD_LEVELS)[number]
 
-/**
- * The drill's level for a TOPIK level: its own, up to its highest, since that
- * is where the bundled vocabulary stops. TOPIK 4 to 6 read level 3.
- */
+/** The drill's level for a TOPIK level: its own, up to its highest. */
 export const readAloudLevelFor = (topikLevel: number): ReadAloudLevel =>
   topikLevel <= 1 ? 1 : topikLevel === 2 ? 2 : 3
 

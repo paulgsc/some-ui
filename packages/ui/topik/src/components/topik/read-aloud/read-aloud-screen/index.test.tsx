@@ -90,7 +90,6 @@ describe("ReadAloudScreen", () => {
         onExit={() => undefined}
       />
     )
-    // TOPIK 5 reads the drill's highest level.
     expect(
       document.querySelector('[data-slot="read-aloud-level"]')?.textContent
     ).toBe("TOPIK 3")
