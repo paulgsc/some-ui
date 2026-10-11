@@ -9,9 +9,7 @@
   <title>Some UI</title>
   <!--
     The mochi: one plump honey cell with a face. One solid shape on purpose:
-    the seven-cell comb it replaced was legible at 16px only because of the
-    gaps between its cells, and at launcher and splash size those gaps read
-    as a cluster of holes.
+    gaps between a mark's parts read as holes at launcher and splash size.
 
     Geometry (kept in step with MOCHI_BODY and MOCHI_FACE in
     packages/ui/shared/src/components/brand, which draws the same mark for
@@ -22,7 +20,7 @@
   -->
   <style>
     /* Honey holds on a dark tab strip; a light one takes the deeper honey,
-       as the comb's light pairing did, so the body keeps its edge. */
+       so the body keeps its edge. */
     .body { fill: #f5b75b; }
     .shine { fill: #fde4b8; }
     @media (prefers-color-scheme: light) {

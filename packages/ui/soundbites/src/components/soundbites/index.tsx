@@ -162,8 +162,7 @@ const RecordButton = ({
       // microphone hears, without a word on screen.
       style={recording ? { transform: `scale(${1 + level * 0.12})` } : {}}
     >
-      {/* The take fills the button from the bottom as the minute runs, in
-          place of a ring traced round an empty band. */}
+      {/* The take fills the button from the bottom as the minute runs. */}
       <span
         aria-hidden
         className={cn(
@@ -400,8 +399,6 @@ export const Soundbites = ({
           </h2>
           {/* Only a count that was read: before a read succeeds (or when
               it failed) there is no number to show, and 0 would say empty. */}
-          {/* Said in words, not a row of slots: six little holes waiting
-              to be filled was the look this screen is moving away from. */}
           {kept !== null && (
             <span className="bg-brand/30 text-brand-foreground dark:text-brand rounded-full px-3 py-0.5 text-xs font-bold tabular-nums">
               {kept.length} of {SOUNDBITE_LIMIT} kept

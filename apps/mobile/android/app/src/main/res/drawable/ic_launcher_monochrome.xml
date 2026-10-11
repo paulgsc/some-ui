@@ -10,9 +10,7 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <!-- The mark's 64 box, scaled 1.2 about its centre and moved onto the
-         108 canvas's: its outermost point sits at radius 30, inside the
-         66dp safe zone every launcher mask keeps. -->
+    <!-- Same transform as ic_launcher_foreground.xml. -->
     <group
         android:pivotX="32"
         android:pivotY="32"

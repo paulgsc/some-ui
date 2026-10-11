@@ -2,13 +2,11 @@ import type { JSX } from "react"
 import { cn } from "@some-ui/core-utils"
 
 /**
- * The Some UI mark: one plump honey mochi with a face. It replaced a
- * seven-cell honeycomb whose gaps read as a cluster of holes; this is one
- * solid shape with nothing cut between its parts.
+ * The Some UI mark: one plump honey mochi with a face, one solid shape with
+ * nothing cut between its parts.
  *
- * A 64 box: a flat-top hexagon of circumradius 19 rounded by 6 (so it spans
- * 7.8 to 56.2 across, 9.55 to 54.45 down), with the face a little below
- * centre. The same strings are drawn by `apps/www/public/favicon.svg`,
+ * A 64 box: a flat-top hexagon of circumradius 19 rounded by 6, with the face
+ * a little below centre. The same strings are drawn by `apps/www/public/favicon.svg`,
  * `packages/some-styles/brand/favicon.svg` and the Android launcher layers
  * (`apps/mobile/android/app/src/main/res/drawable/ic_launcher_*.xml`), which
  * cannot import this; `apps/www/src/lib/brand/favicon.test.ts` holds them to

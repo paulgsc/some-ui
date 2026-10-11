@@ -66,7 +66,6 @@ const TabLink = ({
           : "text-muted-foreground font-medium"
       )}
     >
-      {/* The active tab sits in a soft pill of the theme's mochi. */}
       <span
         className={cn(
           "flex h-7 w-12 items-center justify-center rounded-full",
@@ -96,8 +95,8 @@ export const MobileNav = ({
 
   return (
     <>
-      {/* A floating bar rather than a ruled-off strip: the page runs on
-          under it, so the screen ends in the room and not at a line. */}
+      {/* Floating: the page runs on under it, so the screen ends in the
+          room and not at a line. */}
       <nav
         aria-label="Main"
         className="bg-card border-border/50 sticky bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-10 mx-3 mb-[max(0.75rem,env(safe-area-inset-bottom))] flex h-[4.5rem] shrink-0 items-center rounded-[1.75rem] border px-1 shadow-lg"

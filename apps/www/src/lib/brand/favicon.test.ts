@@ -37,7 +37,8 @@ describe("brand favicon", () => {
   })
 
   it.each([
-    ...COPIES,
+    // The shared copy is held byte-identical to this one above.
+    COPIES[0],
     "apps/mobile/android/app/src/main/res/drawable/ic_launcher_foreground.xml",
     "apps/mobile/android/app/src/main/res/drawable/ic_launcher_monochrome.xml",
   ])("%s draws the shared mark's body and face", (path) => {

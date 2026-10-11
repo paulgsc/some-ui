@@ -3,7 +3,12 @@
  */
 import { describe, expect, it } from "vitest"
 
-import { appearanceClassName, appearanceProps, applyAppearance } from "../index"
+import {
+  appearanceClassName,
+  appearanceProps,
+  applyAppearance,
+  SESSION_THEMES,
+} from "../index"
 
 describe("appearanceProps", () => {
   it("emits nothing for the inherit default", () => {
@@ -21,7 +26,7 @@ describe("appearanceProps", () => {
   it("never emits a session theme class", () => {
     // The type already forbids it; this pins the runtime behaviour so a cast
     // or a JS caller cannot use this helper to force the user's theme.
-    for (const id of ["dark", "light", "mochi", "rose-night", "harvest-sky"]) {
+    for (const id of SESSION_THEMES.map((theme) => theme.id)) {
       // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- deliberately handing the helper a value its type forbids, which is the whole point: the guard has to hold for a JS caller or a cast too.
       expect(appearanceProps(id as "code")).toEqual({})
     }

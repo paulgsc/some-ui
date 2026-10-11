@@ -26,11 +26,10 @@
    `--accent` is shadcn's quiet hover / menu-focus surface, so it
    stays a near-ground indigo.
 
-   Retuned for the mochi shapes: the ground sits at 19.5% rather
-   than 17% and cards a clearer 6.5% above it, since they are lifted
-   surfaces now rather than outlined ones; corners are 1.25rem. The
-   raspberry is softened (75% / 0.13 from 70% / 0.16): on a pill
-   button the size of a thumb the old one glared.
+   Cards stand clearly above the ground, since they are lifted
+   rather than outlined; corners are the mochi radius. The
+   raspberry stays soft enough not to glare on a thumb-sized pill
+   button.
 
    Pairs with `.dark` (the controller adds both).
    ============================================================ */

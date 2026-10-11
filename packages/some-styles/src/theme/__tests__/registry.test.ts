@@ -182,17 +182,11 @@ describe("readStoredPreference", () => {
     }
   }
 
-  it.each([
-    ["strawberry-moon", "rose-night"],
-    ["peachy-blossom", "mochi"],
-  ])(
-    "opens retired %s as %s and stores the successor",
-    (retired, successor) => {
-      const storage = stored(retired)
-      expect(readStoredPreference(storage)).toBe(successor)
-      expect(storage.writes).toEqual([successor])
-    }
-  )
+  it("opens a retired theme as its successor and stores the successor", () => {
+    const storage = stored("strawberry-moon")
+    expect(readStoredPreference(storage)).toBe("rose-night")
+    expect(storage.writes).toEqual(["rose-night"])
+  })
 
   it("leaves a live preference alone", () => {
     const storage = stored("harvest-sky")

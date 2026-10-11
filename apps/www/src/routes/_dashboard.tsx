@@ -68,7 +68,6 @@ type NavItem = {
 }
 
 const NAV_ITEMS: ReadonlyArray<NavItem> = [
-  // Home gets the mark: the same mochi as the favicon.
   { to: "/app", label: "Home", icon: BrandMark },
   { to: "/sessions", label: "Sessions", icon: ListVideo },
   { to: "/resume", label: "Résumé", icon: FileText },

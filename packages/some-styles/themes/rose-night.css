@@ -33,11 +33,10 @@
    stays a near-ground tone; the vivid moonlit colour lives in the
    chart and gradient tokens instead.
 
-   Retuned for the mochi shapes: the ground sits at 19.5% rather
-   than 17%, so a tall phone's empty space reads as a room and not
-   a void, and cards stand a clearer 6% above it, since they are
-   lifted surfaces now rather than outlined ones. Corners are
-   1.25rem, the mochi radius.
+   The ground is light enough that a tall phone's empty space reads
+   as a room and not a void, and cards stand clearly above it,
+   since they are lifted rather than outlined. Corners are the
+   mochi radius.
 
    Pairs with `.dark` (the controller adds both).
    ============================================================ */

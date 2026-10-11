@@ -128,7 +128,7 @@ export const SESSION_THEMES = [
   },
   {
     // The brand's own theme and the default for a fresh install
-    // (`DEFAULT_PREFERENCE`). Successor to Peachy Blossom.
+    // (`DEFAULT_PREFERENCE`).
     id: "mochi",
     label: "Mochi",
     mode: "light",
