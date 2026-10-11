@@ -6,8 +6,9 @@
 #
 # There are two ways in, and which one a page uses comes down to its scheme:
 #
-#   - Plain-HTTP pages reach nginx below on ${PORT:-5050} of whatever host
-#     serves them - cert-less `vite dev`, the www container's :80 listener. apps/www derives exactly that by default
+#   - Plain-HTTP pages, which means only this machine's http://localhost ones
+#     since the port is published on 127.0.0.1, reach nginx below on
+#     ${PORT:-5050}. apps/www derives exactly that by default
 #     (src/lib/tts-config).
 #   - HTTPS pages cannot: this stack terminates no TLS, and an http:// fetch
 #     from an https:// document is mixed content, blocked by the browser
@@ -64,10 +65,9 @@ services:
     image: nginx:alpine
     container_name: openai-edge-tts-proxy
     ports:
-      # LAN, deliberately: plain-HTTP pages reach this from Windows and the
-      # phone at nixos.local:5050 (see the header). Docker-published ports
-      # bypass the host firewall, so the host IP here is the whole policy.
-      - "0.0.0.0:${PORT:-5050}:80"
+      # Loopback only (see the header). Docker-published ports bypass the host
+      # firewall, so the host IP here is the whole policy.
+      - "127.0.0.1:${PORT:-5050}:80"
     volumes:
       - ${REPO_ROOT:-.}/nginx.conf:/etc/nginx/nginx.conf:ro
     networks:

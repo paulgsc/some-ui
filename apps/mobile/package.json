@@ -9,7 +9,7 @@
     "knip": "knip --directory \"$(git rev-parse --show-toplevel)\" --workspace \"$(git rev-parse --show-prefix | sed 's:/*$::')\"",
     "sync": "cap sync android",
     "bundle": "pnpm build:web && pnpm sync",
-    "dev:web": "cross-env VITE_DEVICE_BACKEND=true VITE_STATIC_DATA=false VITE_BASE_PATH=/ SOME_UI_PROFILE=mobile SOME_UI_DEV_HTTP=1 pnpm --filter www exec vite",
+    "dev:web": "cross-env VITE_DEVICE_BACKEND=true VITE_STATIC_DATA=false VITE_BASE_PATH=/ SOME_UI_PROFILE=mobile pnpm --filter www exec vite",
     "dev:android": "cross-env SOME_UI_LIVE_RELOAD=1 cap run android --live-reload --host localhost --port 5173 --forwardPorts 5173:5173",
     "apk": "pnpm bundle && cd android && ./gradlew assembleDebug",
     "open": "cap open android",

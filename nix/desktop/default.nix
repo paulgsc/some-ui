@@ -29,7 +29,6 @@ in {
     ++ (with pkgs; [
       slint-lsp
       jq
-      mkcert
       sqlite
     ]);
 
