@@ -7,4 +7,8 @@ export type {
   StartRecording,
   Take,
 } from "./lib/recorder"
-export { micRecorder, RecordingError } from "./lib/recorder"
+export {
+  micRecorder,
+  RECORDING_FAILURE_COPY,
+  RecordingError,
+} from "./lib/recorder"

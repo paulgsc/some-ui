@@ -7,6 +7,7 @@ import { useMinuteClock } from "@/lib/clock"
 import { bySession, describeAge } from "@/lib/session-reflection"
 import { useReflections } from "@/lib/session-reflection/use-reflections"
 
+import { counted } from "./copy"
 import { DeviceShareReflections } from "./device-share-reflections"
 
 /**
@@ -16,9 +17,12 @@ import { DeviceShareReflections } from "./device-share-reflections"
  */
 export const SessionReflectionsRow = ({
   sessionId,
+  name,
   finished,
 }: {
   sessionId: string
+  /** The session's name, which says whose Share this is. */
+  name: string
   finished: boolean
 }): JSX.Element | null => {
   const { kept, shared } = useReflections()
@@ -30,16 +34,20 @@ export const SessionReflectionsRow = ({
   const sharedAt = shared.find((m) => m.sessionId === sessionId)?.sharedAt
 
   if (group) {
-    const n = group.reflections.length
     return (
       <div className="bg-primary/5 mt-2 flex items-center gap-2 rounded-lg px-2.5 py-1.5">
         <NotebookPen className="text-primary size-4 shrink-0" aria-hidden />
         <span className="min-w-0 flex-1 truncate text-sm">
-          {n} reflection{n === 1 ? "" : "s"} · {describeAge(group.oldestMs)} old
+          {counted(group.reflections.length)} · {describeAge(group.oldestMs)}{" "}
+          old
         </span>
         {group.stale && <Badge variant="secondary">stale</Badge>}
         {import.meta.env.VITE_DEVICE_BACKEND === "true" && (
-          <DeviceShareReflections sessionIds={[sessionId]} label="Share" />
+          <DeviceShareReflections
+            sessionIds={[sessionId]}
+            label="Share"
+            title={`Share the reflections from "${name}"`}
+          />
         )}
       </div>
     )

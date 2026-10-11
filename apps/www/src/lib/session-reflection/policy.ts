@@ -131,6 +131,13 @@ export function isStale(reflection: Reflection, nowMs: number): boolean {
   return ageMs(reflection, nowMs) >= STALE_AFTER_MS
 }
 
+export function staleCount(
+  kept: ReadonlyArray<Reflection>,
+  nowMs: number
+): number {
+  return kept.filter((r) => isStale(r, nowMs)).length
+}
+
 /** `today`, `1 day`, `9 days`: a reflection's age, as the screens say it. */
 export function describeAge(ms: number): string {
   const days = Math.floor(ms / (24 * 60 * 60_000))

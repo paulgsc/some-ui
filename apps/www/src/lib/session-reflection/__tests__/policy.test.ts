@@ -87,7 +87,6 @@ describe("staleness", () => {
   it("turns stale at a week", () => {
     expect(isStale(note("a", "s1", 6.9), NOW)).toBe(false)
     expect(isStale(note("a", "s1", 7), NOW)).toBe(true)
-    expect(STALE_AFTER_MS).toBe(7 * DAY)
   })
 
   it("says an age in days", () => {

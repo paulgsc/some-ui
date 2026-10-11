@@ -7,13 +7,14 @@ import { seedStop, stopRecord } from "@/test-support/session-stop"
 import type { Soundbite } from "@some-ui/soundbites"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
-import { shareAgentExport, shareReflections } from "@/lib/agent-export"
+import { handOff, shareAgentExport, shareReflections } from "@/lib/agent-export"
 import type { Reflection } from "@/lib/session-reflection"
 import { reflections } from "@/lib/session-reflection"
 
 const written = vi.hoisted(() => new Map<string, string>())
 const share = vi.hoisted(() => vi.fn())
 const removedAudio = vi.hoisted(() => vi.fn())
+const audioRead = vi.hoisted(() => ({ fails: false }))
 
 vi.mock("@capacitor/filesystem", () => ({
   Directory: { Cache: "CACHE" },
@@ -52,12 +53,15 @@ vi.mock("@/lib/reflection-voice", async () => {
   return {
     reflectionAudio: (): { get: (id: string) => Promise<Blob | null> } => ({
       get: (id: string): Promise<Blob | null> =>
-        Promise.resolve(id === "v1" ? new Blob(["opus"]) : null),
+        audioRead.fails
+          ? Promise.reject(new Error("IndexedDB unavailable"))
+          : Promise.resolve(id === "v1" ? new Blob(["opus"]) : null),
     }),
     letGoReflections: (ids: ReadonlyArray<string>): void => {
       store.letGo(ids)
       removedAudio(ids)
     },
+    isSaving: (): boolean => false,
   }
 })
 
@@ -99,6 +103,7 @@ beforeEach(() => {
   reflections.letGo(reflections.getSnapshot().kept.map((r) => r.id))
   written.clear()
   removedAudio.mockReset()
+  audioRead.fails = false
   share.mockReset().mockResolvedValue({})
   reflections.keep(
     reflection("v1", "s1-0000000000", {
@@ -123,10 +128,11 @@ beforeEach(() => {
 })
 
 describe("shareReflections", () => {
-  it("shares one file per session named for it, its voice notes beside it, then lets them go", async () => {
-    await expect(shareReflections(["s1-0000000000"], NOW)).resolves.toBe(
-      "shared"
-    )
+  it("shares one file per session named for it, its voice notes beside it, and keeps them until handed off", async () => {
+    await expect(shareReflections(["s1-0000000000"], NOW)).resolves.toEqual({
+      outcome: "shared",
+      sent: ["v1", "t1"],
+    })
 
     const base = "reflections/2026-10-10_morning-drama_s1-00000"
     expect(share).toHaveBeenCalledWith(
@@ -149,20 +155,37 @@ describe("shareReflections", () => {
         { id: "t1", kind: "text", text: "particles", atMs: null },
       ],
     })
+    // Android says "shared" once an app is picked: nothing goes on that.
+    expect(reflections.getSnapshot().kept).toHaveLength(3)
+
+    handOff(["v1", "t1"], NOW())
     expect(reflections.getSnapshot().kept.map((r) => r.id)).toEqual(["t2"])
-    expect(removedAudio).toHaveBeenCalledWith(["t1", "v1"])
+    expect(removedAudio).toHaveBeenCalledWith(["v1", "t1"])
     expect(reflections.getSnapshot().shared).toEqual([
       { sessionId: "s1-0000000000", sharedAt: NOW().toISOString() },
     ])
   })
 
-  it("keeps them when the share sheet is backed out of", async () => {
+  it("leaves out a voice note whose audio could not be read, so it stays", async () => {
+    audioRead.fails = true
+
+    const { sent } = await shareReflections(["s1-0000000000"], NOW)
+
+    expect(sent).toEqual(["t1"])
+    expect(
+      JSON.parse(
+        written.get("reflections/2026-10-10_morning-drama_s1-00000.json") ??
+          "null"
+      )
+    ).toMatchObject({ reflections: [{ id: "t1" }] })
+  })
+
+  it("says cancelled when the share sheet is backed out of", async () => {
     share.mockRejectedValue(new Error("Share canceled"))
 
-    await expect(shareReflections(["s1-0000000000"], NOW)).resolves.toBe(
-      "cancelled"
-    )
-    expect(reflections.getSnapshot().kept).toHaveLength(3)
+    await expect(
+      shareReflections(["s1-0000000000"], NOW)
+    ).resolves.toMatchObject({ outcome: "cancelled" })
   })
 })
 
@@ -170,7 +193,7 @@ describe("shareAgentExport", () => {
   it("shares context.json with each session's reflections nested, and every recording", async () => {
     seedStop(stopRecord(0, { reason: "focus", outcome: "done" }))
 
-    await shareAgentExport(soundbites, NOW)
+    const { sent } = await shareAgentExport(soundbites, NOW)
 
     expect(share).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -197,7 +220,7 @@ describe("shareAgentExport", () => {
       soundbites: [{ id: "b1", file: "soundbite-b1.webm" }],
     })
     expect(context).not.toHaveProperty(["sessions", 0, "scenes"])
-    expect(reflections.getSnapshot().kept).toEqual([])
+    expect(sent).toEqual(["t2", "v1", "t1"])
   })
 
   it("names no file for a recording whose audio is gone", async () => {

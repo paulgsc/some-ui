@@ -3,6 +3,7 @@
  * holds the recording, turns each effect into a call on a port and each
  * result into an event. It decides nothing; `step` does.
  */
+import { assertNever } from "@some-ui/core-utils"
 import type {
   BlobShelf,
   Recording,
@@ -20,6 +21,8 @@ export type VoicePorts = {
   audio: BlobShelf
   keep: (reflection: Reflection) => KeepResult
   letGo: (ids: ReadonlyArray<string>) => void
+  /** A kept voice reflection whose audio is being written, and when done. */
+  saving: (id: string, inFlight: boolean) => void
   /** Milliseconds since the epoch. */
   now: () => number
   newId: () => string
@@ -85,9 +88,14 @@ export function createVoiceNote(
       dispatch({ type: "saved", outcome: kept })
       return
     }
+    ports.saving(id, true)
     ports.audio.put(id, take.blob).then(
-      () => dispatch({ type: "saved", outcome: "kept" }),
+      () => {
+        ports.saving(id, false)
+        dispatch({ type: "saved", outcome: "kept" })
+      },
       (error: unknown) => {
+        ports.saving(id, false)
         ports.letGo([id])
         const outcome: Outcome =
           error instanceof ShelfFullError ? "full" : "failed"
@@ -165,8 +173,4 @@ export function createVoiceNote(
     stop: () => dispatch({ type: "stop", now: ports.now() }),
     leave: () => dispatch({ type: "left" }),
   }
-}
-
-function assertNever(value: never): never {
-  throw new Error(`unhandled voice effect: ${JSON.stringify(value)}`)
 }

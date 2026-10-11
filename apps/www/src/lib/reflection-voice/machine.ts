@@ -14,6 +14,7 @@
  *   it was opening, its arrival is discarded, never recorded.
  * - **It stops itself at `SOUNDBITE_MAX_MS`**, and is kept.
  */
+import { assertNever } from "@some-ui/core-utils"
 import {
   SOUNDBITE_MAX_MS,
   SOUNDBITE_MIN_MS,
@@ -70,7 +71,6 @@ export function step(state: VoiceState, event: VoiceEvent): Next {
           state: { kind: "opening", atMs: event.atMs },
           effects: [{ type: "openMic" }],
         }
-      // Opened after the person left: never record it.
       if (event.type === "micOpened")
         return { state, effects: [{ type: "discardTake" }] }
       return stay(state)
@@ -139,8 +139,4 @@ function finish(atMs: number | null): Next {
     state: { kind: "finishing", atMs },
     effects: [{ type: "stopClock" }, { type: "finishTake" }],
   }
-}
-
-function assertNever(value: never): never {
-  throw new Error(`unhandled voice state: ${JSON.stringify(value)}`)
 }

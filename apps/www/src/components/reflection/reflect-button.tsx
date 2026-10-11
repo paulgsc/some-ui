@@ -1,20 +1,14 @@
 import type { JSX } from "react"
 import { useState } from "react"
 import { cn } from "@some-ui/core-utils"
-import {
-  Button,
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from "@some-ui/shared"
+import { Button } from "@some-ui/shared"
 import { NotebookPen } from "lucide-react"
 
 import { formatTimecode } from "@/lib/format"
 import { useReflections } from "@/lib/session-reflection/use-reflections"
 
 import { ReflectPanel } from "./reflect-panel"
+import { ReflectionSheet } from "./reflection-sheet"
 
 /**
  * "Reflect", always one tap away during a session, with how many this session
@@ -57,28 +51,14 @@ export const ReflectButton = ({
           </span>
         )}
       </Button>
-      <Sheet open={open} onOpenChange={setOpen}>
-        <SheetContent
-          side="bottom"
-          data-scroll-intent="reflections"
-          className={
-            // scroll-intent: reflections — a session's list of them, or the
-            // hand-off list, can outgrow a phone held sideways; the sheet
-            // scrolls rather than clipping a Let go button.
-            "max-h-[90dvh] gap-0 overflow-y-auto pb-[max(1.5rem,env(safe-area-inset-bottom))]"
-          }
-        >
-          <SheetHeader className="px-0 text-left">
-            <SheetTitle>What&apos;s on your mind?</SheetTitle>
-            <SheetDescription>
-              Stamped {formatTimecode(atMs)} into the session. It keeps running.
-            </SheetDescription>
-          </SheetHeader>
-          <div className="mt-4">
-            {open && <ReflectPanel sessionId={sessionId} atMs={atMs} />}
-          </div>
-        </SheetContent>
-      </Sheet>
+      <ReflectionSheet
+        open={open}
+        onOpenChange={setOpen}
+        title="What's on your mind?"
+        description={`Stamped ${formatTimecode(atMs)} into the session. It keeps running.`}
+      >
+        <ReflectPanel sessionId={sessionId} atMs={atMs} />
+      </ReflectionSheet>
     </>
   )
 }

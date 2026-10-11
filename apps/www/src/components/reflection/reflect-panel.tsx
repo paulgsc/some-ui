@@ -9,20 +9,21 @@ import type { KeepResult, Reflection } from "@/lib/session-reflection"
 import {
   answersOf,
   inOrder,
-  isStale,
   QUESTIONS,
   REFLECTION_LIMIT,
   reflections,
+  staleCount,
 } from "@/lib/session-reflection"
 import { useReflections } from "@/lib/session-reflection/use-reflections"
 import { ToggleChips } from "@/components/player/toggle-chips"
 
+import { NO_ROOM } from "./copy"
 import { DeviceReflectionVoice } from "./device-reflection-voice"
 import { HandOff } from "./hand-off"
 import { letGo } from "./let-go"
 
 const REFUSED: Record<Exclude<KeepResult, "kept">, string> = {
-  full: "No room for it: share or let some go first.",
+  full: NO_ROOM,
   failed: "The phone wouldn't store that. Try again.",
 }
 
@@ -59,7 +60,7 @@ export const ReflectPanel = ({
   const own = inOrder(kept.filter((r) => r.sessionId === sessionId))
   const answers = answersOf(kept, sessionId)?.answers ?? {}
   const full = kept.length >= REFLECTION_LIMIT
-  const stale = kept.filter((r) => isStale(r, now)).length
+  const stale = staleCount(kept, now)
 
   const said = (result: KeepResult): boolean => {
     setRefused(result === "kept" ? null : REFUSED[result])
@@ -88,6 +89,14 @@ export const ReflectPanel = ({
         fresh
       </p>
 
+      {import.meta.env.VITE_DEVICE_BACKEND === "true" && (
+        <DeviceReflectionVoice
+          key={sessionId}
+          sessionId={sessionId}
+          atMs={atMs}
+          full={full}
+        />
+      )}
       {full ? (
         <div className="flex flex-col gap-2">
           <p className="font-medium">Time to hand these off</p>
@@ -99,36 +108,27 @@ export const ReflectPanel = ({
           <HandOff />
         </div>
       ) : (
-        <>
-          {import.meta.env.VITE_DEVICE_BACKEND === "true" && (
-            <DeviceReflectionVoice
-              key={sessionId}
-              sessionId={sessionId}
-              atMs={atMs}
-            />
-          )}
-          <form onSubmit={keepText} className="flex gap-2">
-            <Input
-              aria-label="Type a reflection"
-              placeholder={
-                import.meta.env.VITE_DEVICE_BACKEND === "true"
-                  ? "or type a line..."
-                  : "What's on your mind?"
-              }
-              value={text}
-              onChange={(event) => setText(event.target.value)}
-              className="h-11"
-            />
-            <Button
-              type="submit"
-              variant="outline"
-              className="h-11"
-              disabled={text.trim() === ""}
-            >
-              Keep
-            </Button>
-          </form>
-        </>
+        <form onSubmit={keepText} className="flex gap-2">
+          <Input
+            aria-label="Type a reflection"
+            placeholder={
+              import.meta.env.VITE_DEVICE_BACKEND === "true"
+                ? "or type a line..."
+                : "What's on your mind?"
+            }
+            value={text}
+            onChange={(event) => setText(event.target.value)}
+            className="h-11"
+          />
+          <Button
+            type="submit"
+            variant="outline"
+            className="h-11"
+            disabled={text.trim() === ""}
+          >
+            Keep
+          </Button>
+        </form>
       )}
 
       <div className="flex flex-col gap-2">
@@ -189,7 +189,11 @@ export const ReflectPanel = ({
                   size="icon"
                   variant="ghost"
                   className="size-8 shrink-0"
-                  aria-label="Let this one go"
+                  aria-label={`Let go of the one at ${
+                    reflection.atMs === null
+                      ? "the end"
+                      : formatTimecode(reflection.atMs)
+                  }`}
                   onClick={() => letGo([reflection.id])}
                 >
                   <X className="size-3.5" aria-hidden />

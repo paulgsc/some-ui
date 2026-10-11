@@ -27,9 +27,9 @@ export {
   bySession,
   describeAge,
   inOrder,
-  isStale,
   QUESTIONS,
   REFLECTION_LIMIT,
+  staleCount,
 } from "./policy"
 export type { Answers, Reflection } from "./policy"
 
@@ -128,7 +128,11 @@ export const reflections = {
     listeners.add(listener)
     return (): void => {
       listeners.delete(listener)
-      if (listeners.size === 0) window.removeEventListener("storage", onStorage)
+      if (listeners.size === 0) {
+        window.removeEventListener("storage", onStorage)
+        // Unwatched, another tab's write would go unseen: read afresh.
+        snapshot = null
+      }
     }
   },
 

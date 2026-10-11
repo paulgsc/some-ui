@@ -32,9 +32,7 @@ import.meta.glob(
 // before the app renders and anything issues a request. A no-op elsewhere.
 bootDeviceBackend()
 
-// Voice reflections' audio left behind when the app closed between a
-// reflection going and its audio going. The flag is read inline, so other
-// builds drop the module (src/vite-env.d.ts).
+// Voice reflections' audio whose reflection is gone (`sweepOrphanAudio`).
 if (import.meta.env.VITE_DEVICE_BACKEND === "true") sweepOrphanAudio()
 
 // A browser subscribed to push while signed in must not stay subscribed once

@@ -579,9 +579,10 @@ older than a week reads as **stale**. The study list says how many slots are
 taken and how long the oldest has waited ("To hand off"), and each session's
 card says how many it has, how old, and **Share**. Sharing (one session, or
 all of them, through the share sheet: one file per session named for its date,
-name and ID, each voice note beside it, `lib/agent-export`) takes them off the
-phone and leaves "Reflections shared" on the card; **Let go** removes them
-unshared. A voice reflection's audio is on a shelf of its own
+name and ID, each voice note beside it, `lib/agent-export`) then asks whether
+they arrived: Android says "shared" as soon as an app is picked, even if the
+person backs out of it. Yes takes them off the phone and leaves "Reflections
+shared" on the card; **Let go** removes them unshared. A voice reflection's audio is on a shelf of its own
 (`lib/reflection-voice`), counted toward the 20 and never toward the
 soundbites' six. Nothing about a reflection reaches the home server
 (`docs/learner-data-authority.md`, LA7).
@@ -731,7 +732,8 @@ reasons, each soundbite's metadata, and a note saying what an agent should
 use them for: shaping the next lesson, and finding where the app gets in the
 way) plus each soundbite's and voice reflection's audio to the app's cache,
 then opens Android's share sheet, where the person picks where they go
-(Drive, say). The reflections shared leave the phone, as above.
+(Drive, say). Once the person says they arrived, the reflections shared
+leave the phone, as above.
 `apps/www/src/lib/agent-export`. A WebView cannot download a blob, so this
 goes through `@capacitor/filesystem` and `@capacitor/share`: neither adds a
 permission or an exported component (their manifests are empty, checked

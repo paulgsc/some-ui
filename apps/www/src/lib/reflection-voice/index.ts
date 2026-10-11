@@ -1,8 +1,7 @@
 /**
  * Voice reflections on the phone: a take (`./runtime`) on the phone's
  * microphone, its audio on a shelf of its own, and letting reflections go
- * with their audio. Phone-only (`build.paths.ts`): reach it behind an inline
- * `import.meta.env.VITE_DEVICE_BACKEND === "true"`.
+ * with their audio. Phone-only (`build.paths.ts`).
  */
 import { SOUNDBITE_BITS_PER_SECOND } from "@some-ui/soundbites/contract"
 import type { BlobShelf } from "@some-ui/voice-capture"
@@ -18,6 +17,13 @@ export type { Outcome, VoiceState } from "./machine"
 export type { VoiceRuntime } from "./runtime"
 
 let shelf: BlobShelf | null = null
+/** Kept voice reflections whose audio is still being written. */
+const saving = new Set<string>()
+
+/** Whether `id`'s audio is still being written: not ready to share. */
+export function isSaving(id: string): boolean {
+  return saving.has(id)
+}
 
 /** One shelf per page load, so its database opens once. */
 export function reflectionAudio(): BlobShelf {
@@ -35,6 +41,10 @@ export function phoneVoiceNote(sessionId: string): VoiceRuntime {
       audio: reflectionAudio(),
       keep: (reflection) => reflections.keep(reflection),
       letGo: (ids) => reflections.letGo(ids),
+      saving: (id, inFlight) => {
+        if (inFlight) saving.add(id)
+        else saving.delete(id)
+      },
       now: () => Date.now(),
       newId: () => crypto.randomUUID(),
     },
@@ -55,9 +65,8 @@ export function letGoReflections(ids: ReadonlyArray<string>): void {
 
 /**
  * Audio whose reflection is gone (the app closed between the two removals):
- * removed, so the shelf holds only what the list names. A take being saved
- * is never caught here: its reflection is kept before its audio is written.
- * Best effort, and nothing waits on it.
+ * removed, so the shelf holds only what the list names. Best effort, and
+ * nothing waits on it.
  */
 export function sweepOrphanAudio(): void {
   const audio = reflectionAudio()

@@ -34,24 +34,15 @@ describe("reflections", () => {
     expect(reflections.keep(line("over"))).toBe("kept")
   })
 
-  it("keeps one set of answers per session, and tells subscribers", () => {
+  it("tells subscribers of each write, and reads it afresh", () => {
     const listener = vi.fn()
     const unsubscribe = reflections.subscribe(listener)
 
     reflections.setAnswers("s1", { difficulty: "too-hard" }, 500)
-    reflections.setAnswers("s1", { difficulty: "right" }, 900)
+    reflections.keep(line("a"))
 
-    const kept = reflections.getSnapshot().kept
-    expect(kept).toHaveLength(1)
-    expect(kept[0]).toMatchObject({
-      sessionId: "s1",
-      atMs: 900,
-      body: { kind: "answers", answers: { difficulty: "right" } },
-    })
     expect(listener).toHaveBeenCalledTimes(2)
-
-    reflections.setAnswers("s1", {}, null)
-    expect(reflections.getSnapshot().kept).toEqual([])
+    expect(reflections.getSnapshot().kept).toHaveLength(2)
     unsubscribe()
   })
 

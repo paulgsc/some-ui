@@ -1,7 +1,9 @@
 import {
   appsRecommended,
+  compiledPackageStyleImportBanPattern,
   intentGuardConfig,
   ownerGuardConfig,
+  parentRelativeImportPattern,
   queryGuardConfig,
 } from "@some-ui/eslint-kit"
 import { defineConfig } from "eslint/config"
@@ -23,6 +25,38 @@ import { defineConfig } from "eslint/config"
 // fetch-kit corpus reads) is outside this rule, and the doc says so.
 const NETWORK_GUARD =
   "Network access goes through createFileHostTransport (lib/file-host-config/client.ts), which refuses to send unless the learner's data authority allows it. See docs/learner-data-authority.md, LA1."
+
+// LA7: what holds or shows a reflection, what those may import from `@/`,
+// and the only other modules that may import them. `lib/agent-export` is the
+// share sheet's: it reads the sessions repository, so it is not held to the
+// first list, and LA7's falsifier names it for review instead.
+const REFLECTION_MODULES = [
+  "src/lib/session-reflection/**",
+  "src/lib/reflection-voice/**",
+  "src/components/reflection/**",
+]
+const REFLECTION_MAY_IMPORT = [
+  "lib/session-reflection",
+  "lib/reflection-voice",
+  "lib/agent-export",
+  "lib/bounded-list",
+  "lib/clock",
+  "lib/format",
+  "lib/intent",
+  "lib/tenant$",
+  "components/reflection",
+  "components/player/toggle-chips$",
+]
+const REFLECTION_IMPORTERS = [
+  "src/lib/agent-export/**",
+  "src/main.tsx",
+  "src/components/player/completion-summary.tsx",
+  "src/components/player/live-player.tsx",
+  "src/components/player/session-chrome.tsx",
+  "src/routes/_dashboard/sessions/index.tsx",
+  "src/routes/_dashboard/_apk/soundbites.tsx",
+]
+const TESTS = ["src/**/__tests__/**", "src/**/*.test.{ts,tsx}"]
 
 const REFLECTION_GUARD =
   "Reflections leave the device only through the share sheet (lib/agent-export), never by a server transport or a session record. See docs/learner-data-authority.md, LA7."
@@ -70,21 +104,12 @@ export default defineConfig([
     },
   },
 
-  // LA7 (docs/learner-data-authority.md): a reflection reaches no server. The
-  // modules that hold or show reflections import nothing that can send to
-  // `file_host` (the transport, the device backend, the authority, reporting)
-  // and, from the tenant, only `useSessions` to read session names, so a
-  // reflection cannot be written into a session record either; and none of
-  // those modules imports a reflection. The way out is the share sheet
-  // (`lib/agent-export`), which the person starts. The network globals are
-  // LA1's rule above.
+  // LA7 (docs/learner-data-authority.md): a reflection reaches no server. Both
+  // blocks are allowlists, and restate base.config.ts's patterns, which a
+  // block setting this rule would otherwise replace.
   {
-    files: [
-      "src/lib/session-reflection/**",
-      "src/lib/reflection-voice/**",
-      "src/components/reflection/**",
-    ],
-    ignores: ["src/**/__tests__/**", "src/**/*.test.{ts,tsx}"],
+    files: REFLECTION_MODULES,
+    ignores: TESTS,
     rules: {
       "no-restricted-imports": [
         "error",
@@ -97,20 +122,14 @@ export default defineConfig([
             },
           ],
           patterns: [
+            parentRelativeImportPattern,
+            compiledPackageStyleImportBanPattern,
             {
-              group: [
-                "@/lib/tenant/*",
-                "@/lib/file-host-config",
-                "@/lib/file-host-config/*",
-                "@/lib/device-backend",
-                "@/lib/device-backend/*",
-                "@/lib/authority",
-                "@/lib/authority/*",
-                "@/lib/study-nudge",
-                "@/lib/study-nudge/*",
-                "@some-ui/fetch-kit",
-                "@some-ui/fetch-kit/*",
-              ],
+              regex: `^@/(?!(${REFLECTION_MAY_IMPORT.join("|")})(/|$))`,
+              message: REFLECTION_GUARD,
+            },
+            {
+              group: ["@some-ui/fetch-kit", "@some-ui/fetch-kit/*"],
               message: REFLECTION_GUARD,
             },
           ],
@@ -119,23 +138,18 @@ export default defineConfig([
     },
   },
   {
-    files: [
-      "src/lib/tenant/**",
-      "src/lib/file-host-config/**",
-      "src/lib/device-backend/**",
-      "src/lib/authority/**",
-      "src/lib/study-nudge/**",
-    ],
-    ignores: ["src/**/__tests__/**", "src/**/*.test.{ts,tsx}"],
+    files: ["src/**/*.{ts,tsx}"],
+    ignores: [...REFLECTION_MODULES, ...REFLECTION_IMPORTERS, ...TESTS],
     rules: {
       "no-restricted-imports": [
         "error",
         {
           patterns: [
+            parentRelativeImportPattern,
+            compiledPackageStyleImportBanPattern,
             {
-              // Every reflection module but `reflection-voice/budget`, which
-              // the storage budget reads for the room their audio needs: a
-              // size, not a reflection.
+              // `reflection-voice/budget` is a size, which the storage
+              // budget reserves; it holds no reflection.
               regex:
                 "^@/(lib/(session-reflection|agent-export)|lib/reflection-voice(?!/budget$)|components/reflection)(/|$)",
               message: REFLECTION_GUARD,

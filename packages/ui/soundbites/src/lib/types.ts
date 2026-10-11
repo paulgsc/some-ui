@@ -14,9 +14,8 @@ export type SoundbiteSource =
   /** "Hold to talk" in Home's + sheet: a comment, not a reason. */
   | "capture"
   /**
-   * "Say what stuck" on a finished session's wrap. It records into that
-   * session's reflections now (www's `lib/reflection-voice`); the value
-   * stays, so older takes still read.
+   * "Say what stuck" on a finished session's wrap, before that became one of
+   * the session's reflections; kept so older takes still read.
    */
   | "wrap"
   /** The soundbites page itself. */

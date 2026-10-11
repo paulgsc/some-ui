@@ -1,25 +1,19 @@
 import type { JSX } from "react"
 import { useState } from "react"
 import { cn } from "@some-ui/core-utils"
-import {
-  Button,
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from "@some-ui/shared"
+import { Button } from "@some-ui/shared"
 
 import { useMinuteClock } from "@/lib/clock"
 import {
   bySession,
   describeAge,
-  isStale,
   REFLECTION_LIMIT,
+  staleCount,
 } from "@/lib/session-reflection"
 import { useReflections } from "@/lib/session-reflection/use-reflections"
 
 import { HandOff } from "./hand-off"
+import { ReflectionSheet } from "./reflection-sheet"
 
 /**
  * The study list's "To hand off": how many of the slots are taken, how long
@@ -33,7 +27,7 @@ export const HandOffStrip = (): JSX.Element | null => {
   if (kept.length === 0) return null
 
   const oldest = bySession(kept, now)[0]?.oldestMs ?? 0
-  const stale = kept.filter((r) => isStale(r, now)).length
+  const stale = staleCount(kept, now)
   const slots = Array.from({ length: REFLECTION_LIMIT }, (_, i) =>
     i < stale ? "stale" : i < kept.length ? "kept" : "free"
   )
@@ -78,27 +72,14 @@ export const HandOffStrip = (): JSX.Element | null => {
           : "Let them go once you've acted on them."}
       </p>
 
-      <Sheet open={open} onOpenChange={setOpen}>
-        <SheetContent
-          side="bottom"
-          data-scroll-intent="reflections"
-          className={
-            // scroll-intent: reflections — a session's list of them, or the
-            // hand-off list, can outgrow a phone held sideways; the sheet
-            // scrolls rather than clipping a Let go button.
-            "max-h-[90dvh] gap-0 overflow-y-auto pb-[max(1.5rem,env(safe-area-inset-bottom))]"
-          }
-        >
-          <SheetHeader className="px-0 text-left">
-            <SheetTitle>To hand off</SheetTitle>
-            <SheetDescription>
-              {kept.length} of {REFLECTION_LIMIT} slots taken
-              {stale > 0 ? `, ${stale} stale` : ""}.
-            </SheetDescription>
-          </SheetHeader>
-          <div className="mt-4">{open && <HandOff />}</div>
-        </SheetContent>
-      </Sheet>
+      <ReflectionSheet
+        open={open}
+        onOpenChange={setOpen}
+        title="To hand off"
+        description={`${kept.length} of ${REFLECTION_LIMIT} slots taken${stale > 0 ? `, ${stale} stale` : ""}.`}
+      >
+        <HandOff />
+      </ReflectionSheet>
     </section>
   )
 }

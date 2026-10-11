@@ -39,6 +39,7 @@ function ports(
       return "kept"
     },
     letGo: vi.fn(),
+    saving: vi.fn(),
     now: () => (now += 2_000),
     newId: () => "v1",
     ...overrides,

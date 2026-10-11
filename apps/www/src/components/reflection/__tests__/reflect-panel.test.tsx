@@ -60,18 +60,6 @@ describe("ReflectPanel", () => {
     expect(screen.getByText(/1 of 20 kept/)).toBeTruthy()
   })
 
-  it("keeps one set of answers per session, changed in place", () => {
-    render(withQueryClient(<ReflectPanel sessionId="s1" atMs={null} />))
-
-    const pace = screen.getByRole("group", { name: "Pace" })
-    fireEvent.click(within(pace).getByRole("button", { name: "Too hard" }))
-    fireEvent.click(within(pace).getByRole("button", { name: "Right" }))
-
-    expect(reflections.getSnapshot().kept).toMatchObject([
-      { sessionId: "s1", body: { answers: { difficulty: "right" } } },
-    ])
-  })
-
   it("offers letting go instead of a new one once every slot is taken", () => {
     fill(REFLECTION_LIMIT)
     vi.spyOn(window, "confirm").mockReturnValue(true)

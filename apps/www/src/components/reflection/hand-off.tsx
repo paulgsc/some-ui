@@ -7,12 +7,9 @@ import { bySession, describeAge } from "@/lib/session-reflection"
 import { useReflections } from "@/lib/session-reflection/use-reflections"
 import { useSessions } from "@/lib/tenant"
 
+import { counted } from "./copy"
 import { DeviceShareReflections } from "./device-share-reflections"
 import { letGo } from "./let-go"
-
-function counted(n: number): string {
-  return `${n} reflection${n === 1 ? "" : "s"}`
-}
 
 /**
  * Every session holding reflections, the longest-waiting first, each to share
@@ -59,6 +56,7 @@ export const HandOff = (): JSX.Element | null => {
                 <DeviceShareReflections
                   sessionIds={[group.sessionId]}
                   label="Share"
+                  title={`Share the reflections from "${name}"`}
                 />
               )}
               <Button
@@ -66,6 +64,7 @@ export const HandOff = (): JSX.Element | null => {
                 size="sm"
                 variant="outline"
                 className="text-destructive hover:text-destructive"
+                aria-label={`Let go of the reflections from "${name}"`}
                 onClick={() =>
                   confirmLetGo(
                     name,

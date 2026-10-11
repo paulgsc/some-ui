@@ -3,9 +3,9 @@ import type { SoundbiteSituation, SoundbiteSource } from "@some-ui/soundbites"
 import { phoneSoundbiteStore, Soundbites } from "@some-ui/soundbites"
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
 
-import { shareAgentExport } from "@/lib/agent-export"
+import { handOff, shareAgentExport } from "@/lib/agent-export"
 import { useArrivalKey } from "@/lib/arrival-key"
-import { useAsyncIntent } from "@/lib/intent"
+import { useAsyncIntent, useIntentEffect } from "@/lib/intent"
 import { IntentButton } from "@/lib/intent/render"
 import type { SessionRecord, SessionStatus } from "@/lib/tenant"
 import { sessionsQuery, useSessions } from "@/lib/tenant"
@@ -13,8 +13,7 @@ import { sessionsQuery, useSessions } from "@/lib/tenant"
 /**
  * `?say=` comes from a tap that already meant "let me talk" (Home's "Not
  * today? Say why", a reminder's "Not today", "Hold to talk"): the page starts
- * listening at once and records which. A session's own "Say what stuck" is a
- * reflection now, recorded where the session is (`components/reflection`).
+ * listening at once and records which.
  */
 type SoundbitesSearch = { say?: "sessions" | "reminder" | "capture" }
 
@@ -68,12 +67,23 @@ const ShareWithAgent = ({ taking }: { taking: boolean }): JSX.Element => {
   const share = useAsyncIntent(() => shareAgentExport(phoneSoundbiteStore()), {
     presentation: "interactive",
   })
+  // Android says "shared" once an app is picked, even if the person backs
+  // out of it: the reflections leave the phone only once they say so.
+  useIntentEffect(share.state, ({ outcome, sent }) => {
+    if (outcome !== "shared" || sent.length === 0) return
+    if (
+      confirm(
+        `Did they arrive? OK lets the ${sent.length} reflections go from this phone; Cancel keeps them here.`
+      )
+    )
+      handOff(sent)
+  })
   return (
     <section className="space-y-2">
       <p className="text-muted-foreground text-sm">
         Your sessions with their reflections, soundbites and stop reasons, as
-        files for an agent to read. You pick where they go; the reflections then
-        leave the phone.
+        files for an agent to read. You pick where they go; once they arrive,
+        the reflections leave the phone.
       </p>
       <IntentButton
         state={share.state}
