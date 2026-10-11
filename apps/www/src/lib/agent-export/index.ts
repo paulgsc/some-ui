@@ -4,9 +4,11 @@
  * picks where they go (Drive, say); nothing here sends anything anywhere.
  *
  * Two shares. `shareAgentExport` is everything: one `context.json` (sessions,
- * each with its reflections, stops and soundbites) and every recording beside
- * it. `shareReflections` is the reflections of the sessions named, one file
- * per session named for it, each voice note beside its file. Either way, the
+ * each with its reflections, stops, soundbites and the read-aloud practice
+ * record) and every recording beside it. `shareReflections` is the
+ * reflections of the sessions named, one file per session named for it with
+ * that session's stops and the practice record, each voice note beside its
+ * file. Either way, the
  * reflections that went out leave the phone once the person says they arrived
  * (`handOff`): they are for the agent to act on, not for the phone to keep.
  *
@@ -54,7 +56,7 @@ const ABOUT_REFLECTIONS = [
   "`atMs` is how far into the session it was said; null means after the session ended.",
   STOPS,
   READ_ALOUD_PRACTICE,
-  "Use them to shape the next session. Once handed off they leave the phone: this file is then the only copy.",
+  "Use them to shape the next session. Once handed off the reflections leave the phone (the stops and the practice record stay): this file is then their only copy.",
 ].join("\n")
 
 /** `audio/webm;codecs=opus` -> `webm`. */

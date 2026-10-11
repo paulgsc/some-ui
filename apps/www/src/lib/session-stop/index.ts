@@ -33,7 +33,7 @@ export type Stop = {
   stoppedAt: string
   elapsedMs: number
   plannedMs: number
-  /** For the record (the agent export); a pick-up seeks to `elapsedMs`. */
+  /** For the record (both shares in `lib/agent-export`); a pick-up seeks to `elapsedMs`. */
   scene: string | null
   via: "tap" | "left"
   reason: Reason | null

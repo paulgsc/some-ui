@@ -581,7 +581,8 @@ older than a week reads as **stale**. The study list says how many slots are
 taken and how long the oldest has waited ("To hand off"), and each session's
 card says how many it has, how old, and **Share**. Sharing (one session, or
 all of them, through the share sheet: one file per session named for its date,
-name and ID, each voice note beside it, `lib/agent-export`) then asks whether
+name and ID, each voice note beside it, with the session's stops and the
+read-aloud practice record, `lib/agent-export`) then asks whether
 they arrived: Android says "shared" as soon as an app is picked, even if the
 person backs out of it. Yes takes them off the phone and leaves "Reflections
 shared" on the card; **Let go** removes them unshared. A voice reflection's audio is on a shelf of its own
@@ -617,8 +618,11 @@ leaving, the reason and where it was given (the stop, the return, the wrap or
 Home), how it ended (picked up, called done or lapsed) and when, which says
 how long the person was away. The policy is one pure `step` in
 `apps/www/src/lib/session-stop`, run by `./runtime`; the player only forwards
-taps and `visibilitychange`. The records never leave the phone yet: reading
-them across devices needs them on the session record, a server migration.
+taps and `visibilitychange`. The app sends them nowhere: they leave the
+phone in what the person shares (both shares in `lib/agent-export` carry
+them) and, as WebView storage, in Android's backup ("What the phone keeps",
+PD3), and they never reach the home server: reading them across devices
+needs them on the session record, a server migration.
 
 ## aph: my figure, their figure, and the goal
 
@@ -731,7 +735,8 @@ recorders cannot reliably share the microphone on Android.
 
 **Getting them off the phone: "Share with an agent".** Below the list, one
 button writes a `context.json` (sessions, each with its reflections, stop
-reasons, each soundbite's metadata, and a note saying what an agent should
+reasons, each soundbite's metadata, the read-aloud practice record, and a
+note saying what an agent should
 use them for: shaping the next lesson, and finding where the app gets in the
 way) plus each soundbite's and voice reflection's audio to the app's cache,
 then opens Android's share sheet, where the person picks where they go
