@@ -33,7 +33,7 @@ const dots = (
         cx={cx}
         cy={cy}
         r={r}
-        stroke={className === INK ? undefined : "none"}
+        stroke="none"
       />
     ))}
   </>

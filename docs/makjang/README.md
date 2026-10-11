@@ -610,9 +610,9 @@ figure talks; the name beside each line still says who speaks.
 - **The panel's colours.** A figure is drawn in the ink, the accent and the
   ground of the panel it sits in. Inside a feeling panel those are the
   feeling's own (MK5), and on the chosen line they are the session's.
-- **Fixed per character.** The same drawing, expression and blink on every line,
-  whatever the feeling or the choice. The chosen line shows the point of
-  view's figure, which never moves, since a chosen line is not voiced. Under
+- **Fixed per character.** The same drawing, expression and blink on every
+  line, whatever the feeling or the choice. The chosen line shows the point
+  of view's figure, which never talks, since a chosen line is not voiced. Under
   reduced motion nothing moves, and only the talk lines mark the speaker.
 
 **What the cast reveals.** The figure and the voice part are rendition kinds
@@ -1060,8 +1060,8 @@ the one-line summaries.
 >   check, or the `--feeling-*` check); that paints text or a mark inside a
 >   feeling panel (`packages/ui/topik`'s `webtoon-panel`) in a colour other
 >   than the panel's own (`--feeling-ink`, `feeling-muted`,
->   `feeling-accent`, and `--feeling-ground` as a cast figure's fill), such as a `text-muted-foreground` utility; or that
->   deletes, renames or moves `feeling.ts`, `session-roles.ts`, the test or
+>   `feeling-accent`, and `--feeling-ground` as a cast figure's fill), such
+>   as a `text-muted-foreground` utility; or that deletes, renames or moves `feeling.ts`, `session-roles.ts`, the test or
 >   `themes/feeling.css`, which a pure rename shows with no hunk at all.
 > - _Scope:_ `packages/some-styles`' feeling themes, and the feeling panels
 >   in `packages/ui/topik/src/components/topik/handheld/webtoon-panel`.
