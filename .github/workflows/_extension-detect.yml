@@ -64,6 +64,7 @@ jobs:
               - '.github/workflows/extension.yml'
               - '.github/workflows/_extension-*.yml'
               - '.github/actions/**'
+              - 'extensions/scripts/**'
 
       - name: Resolve changed shared extension deps
         id: shared-deps
