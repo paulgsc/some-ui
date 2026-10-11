@@ -53,19 +53,15 @@ jobs:
       # Build the extension itself — workspace deps already present from artifact.
       - name: Build release artifact
         run: nix develop .#ci --command pnpm --filter "${{ matrix.package_name }}" build
+      # See amo-release.mjs's `sign` command.
+      - name: Check the build against its release record
+        run: nix develop .#ci --command node extensions/scripts/amo-release.mjs sign "${{ matrix.extension_path }}"
       # Package source archive for AMO source code submission requirement (A1).
       - name: Package source archive
         id: source
         run: |
           nix develop .#ci --command bash extensions/scripts/package-source.sh \
             "${{ matrix.extension_path }}"
-      # Builds the AMO "Version Notes" / "Notes for Reviewers" submission
-      # from CHANGELOG.md + README.build.md (see the script header for the
-      # exact field mapping). No-ops if the extension has no CHANGELOG.md
-      # yet — it just hasn't opted into automated release notes, so this
-      # sign falls back to whatever's already sitting in the AMO dashboard.
-      - name: Build AMO submission metadata
-        run: nix develop .#ci --command node extensions/scripts/build-amo-metadata.mjs "${{ matrix.extension_path }}"
       # Submits the xpi and, in the same request, PATCHes the source archive onto
       # the version web-ext just created (A1 fix). The previous approach signed
       # first and then PATCHed a hand-rolled `.../versions/upload/` URL as a

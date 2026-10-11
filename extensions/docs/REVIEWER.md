@@ -43,22 +43,36 @@ locally inside the content script. No network requests are made.
 
 ## suspender-ledger
 
-**What it does:** Replaces inactive browser tabs with a lightweight suspend page
-(`suspend.html`) to reclaim RAM. On explicit user click the original URL is
-restored.
+**What it does:** Suspends background tabs to reclaim memory, using the browser's
+native `tabs.discard()`. A discarded tab keeps its place, URL, title and history;
+activating it reloads the page as an ordinary navigation. There is no suspend
+page: the old `suspend.html` was removed in 0.2.1, and the extension never
+navigates a tab to an extension URL. It never closes a tab.
 
-**Why `*://*/*`:** The suspender must be able to intercept and replace any tab,
-regardless of its origin. Narrowing to specific domains would make the extension
-useless on the majority of tabs.
+**Why `*://*/*`:** Two content scripts run on every http(s) page. `watch.js`
+(`document_idle`) tracks whether the page holds unsaved form input and when it
+was last visible, so a tab with unsaved work is never suspended. `resume-veil.js`
+(`document_start`) paints a dark cover over a page that is reloading after a
+discard, so a light page does not flash. Before discarding, the worker also reads
+those flags from the page with `scripting.executeScript`. The user can suspend
+any tab, so narrowing the host list would leave most tabs unprotected.
 
-**Why `tabs`:** Required to query active/inactive tabs, detect the current URL,
-send messages to content scripts, and programmatically navigate tabs on restore.
+**Why the other permissions:** `tabs` to find, discard and switch between tabs;
+`scripting` for the pre-discard check and the optional title marker (a "💤 "
+prefix on the page's own `document.title`, removed on resume; the user can turn
+it off); `alarms` for the periodic sweep; `idle` for the optional "only
+suspend while the computer is idle" setting and to reschedule the sweep when the
+system wakes; `storage` for settings and the local diagnostics log;
+`contextMenus` for the tab and page menus; `notifications` for a short message
+when a menu action cannot be carried out.
 
-**Data collected:** None. Only the original URL + title are stored locally (in the
-suspend page's query string) to enable the restore. No browsing history is
-transmitted off-device.
+**Data collected:** None. Nothing is sent anywhere; there is no network code.
+Settings live in `storage.local`. A local diagnostics log (`storage.local`, at
+most 500 events and 256 KB) records the extension's own decisions with tabs
+identified by origin only. It leaves the machine only if the user clicks
+"Export JSON" on `debug.html`, which saves a file.
 
-→ [Host-permission justification](../suspender-ledger/amo-notes.md)
+→ [Per-version reviewer detail](../suspender-ledger/amo-notes.md)
 
 ---
 

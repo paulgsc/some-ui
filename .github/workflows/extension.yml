@@ -163,3 +163,16 @@ jobs:
     uses: ./.github/workflows/_extension-verify.yml
     with:
       matrix: ${{ needs.detect.outputs.matrix }}
+
+  # amo-release.mjs decides what AMO reviewers are told and refuses a sign
+  # whose build is not the reviewed one. The release PR itself is opened with
+  # GITHUB_TOKEN and so gets no CI, which makes this the script's only gate.
+  release-scripts:
+    name: Release scripts
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+      - name: Test amo-release.mjs
+        run: node --test extensions/scripts/amo-release.test.mjs

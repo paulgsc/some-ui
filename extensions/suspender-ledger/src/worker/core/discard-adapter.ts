@@ -161,7 +161,6 @@ export function getTab(
       discarded: tab.discarded,
       status: tab.status,
       active: tab.active,
-      title: tab.title,
     })
     callback(tab)
   })

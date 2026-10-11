@@ -308,17 +308,18 @@ backs should be cut, not kept and re-justified.
   (Docker/Docker Hub), `pages.yml` (GitHub Pages), `wasm-release.yml`,
   and `extension-sign*.yml` / `_extension-verify.yml` cover the rest.
 - *Human-gated extension release pipeline* --- `extension-release.yml`
-  drafts a changeset-versioned release PR and only builds+signs once a
-  human merges it; `extensions/scripts/build-amo-metadata.mjs` derives the
-  AMO "Version Notes" from `CHANGELOG.md`'s section for the current
-  `package.json` version and the "Notes for Reviewers" from
-  `README.build.md`, failing the build if either is missing, the
-  changelog has no section for that version, or either field exceeds
-  AMO's 3000-char cap; `extensions/scripts/sync-manifest-version.mjs`
-  keeps `public/manifest.firefox.json`'s `version` in lockstep with
-  `package.json`'s, and its `--check` mode (wired into
-  `_extension-sign.yml`, right before signing) fails the sign job outright
-  on drift between them.
+  opens a release PR only when the rebuilt extension differs from the last
+  release, and only builds+signs once a human merges it;
+  `extensions/scripts/amo-release.mjs` checks the AMO "Version Notes" and
+  "Notes for Reviewers" (`release/notes.md`) against the build they name,
+  the allowed next versions and AMO's 3000-char cap, appends a computed
+  permission/content-script/file comparison with the last release, bumps
+  `package.json` and `public/manifest.firefox.json` together, and, at sign
+  time, refuses any `dist/` that differs from the reviewed build
+  (`release/release.json`); the `--check` mode of
+  `extensions/scripts/sync-manifest-version.mjs` (wired into
+  `_extension-sign.yml`) still fails the sign job on drift between the two
+  version fields.
 - *Hoisted contract, not a shared runtime* --- `extensions/common`
   (`GOOD_CITIZEN.md` and the "two mandates": disjointness vs. no
   reinvention) with idioms enforced by `packages/eslint`

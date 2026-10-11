@@ -179,3 +179,8 @@ apps/mobile/android/
 # The lines-of-code snapshot a build overwrites (scripts/loc-snapshot.ts): its
 # formatting is the script's, not prettier's.
 apps/www/src/generated/loc-snapshot.json
+
+# AMO release record (extensions/scripts/amo-release.mjs). release.json and
+# evidence.md are generated, and notes.md is submitted to AMO verbatim, so a
+# formatter rewriting it would change what the reviewer reads.
+extensions/*/release/
