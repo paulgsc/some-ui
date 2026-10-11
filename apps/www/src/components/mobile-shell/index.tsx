@@ -21,6 +21,7 @@ import {
 import { Link } from "@tanstack/react-router"
 import {
   BookOpen,
+  Briefcase,
   ChevronLeft,
   House,
   Mic,
@@ -212,6 +213,15 @@ const QuickEntry = ({
               </span>
               <span className="text-muted-foreground text-xs">
                 TOPIK, LeetType
+              </span>
+            </Link>
+            <Link to="/jobs" onClick={close} className={cn(tile, "col-span-2")}>
+              <span className="flex items-center gap-2 text-sm font-semibold">
+                <Briefcase aria-hidden className="size-4" />
+                Jobs
+              </span>
+              <span className="text-muted-foreground text-xs">
+                today’s brief, apply kit, confirm
               </span>
             </Link>
           </div>

@@ -21,7 +21,7 @@ import {
   Outlet,
   useRouterState,
 } from "@tanstack/react-router"
-import { Briefcase, FileText, ListVideo, Settings, User } from "lucide-react"
+import { FileText, ListVideo, Settings, User } from "lucide-react"
 
 import { authority } from "@/lib/authority"
 import { MOBILE_APP } from "@/lib/build-profile"
@@ -60,7 +60,7 @@ function isComposerPath(pathname: string): boolean {
 
 /** The web app's sidebar. The Android app has its own bar (`MobileNav`). */
 type NavItem = {
-  to: "/app" | "/sessions" | "/resume" | "/jobs" | "/profile" | "/settings"
+  to: "/app" | "/sessions" | "/resume" | "/profile" | "/settings"
   label: string
   // Widened from `typeof Home` so the brand mark sits alongside the lucide
   // glyphs; the sidebar's `[&>svg]:size-4` sizes both.
@@ -72,7 +72,6 @@ const NAV_ITEMS: ReadonlyArray<NavItem> = [
   { to: "/app", label: "Home", icon: HexCombMark },
   { to: "/sessions", label: "Sessions", icon: ListVideo },
   { to: "/resume", label: "Résumé", icon: FileText },
-  { to: "/jobs", label: "Jobs", icon: Briefcase },
   { to: "/profile", label: "Profile", icon: User },
   { to: "/settings", label: "Settings", icon: Settings },
 ]

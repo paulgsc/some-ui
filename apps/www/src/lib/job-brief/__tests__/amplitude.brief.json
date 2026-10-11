@@ -1,0 +1,84 @@
+{
+  "schema": "some-ui.job-brief/1",
+  "id": "am-9c43",
+  "createdAt": "2026-10-11T15:00:00Z",
+  "posting": {
+    "title": "Software Engineer I, Agent Analytics",
+    "company": "Amplitude",
+    "location": "San Francisco · hybrid",
+    "compensation": "$125k–$188k + equity",
+    "experience": "0–2 yrs",
+    "postedOn": "2026-10-07",
+    "verifiedOpenOn": "2026-10-10",
+    "applyUrl": "https://jobs.ashbyhq.com/amplitude/9c43576b-d16f-4192-a366-7c9eb689c4be"
+  },
+  "verdict": "apply",
+  "wants": "Backend APIs for exploring agent sessions and traces, ingestion and export pipelines, data-correctness tests, slow-query investigation, and reliable, observable background jobs. Equivalent practical experience accepted.",
+  "fits": [
+    {
+      "title": "Session APIs",
+      "detail": "40+ inventoried Axum operations, SQLx repositories, typed async failures.",
+      "source": "server · apps/servers/file_host"
+    },
+    {
+      "title": "Pipelines and background jobs",
+      "detail": "Redis coalescing in front of NATS JetStream; retryable failures are NAKed for redelivery.",
+      "source": "server · crates"
+    },
+    {
+      "title": "Observability",
+      "detail": "Metrics, traces, dependency health and loop progress; missing telemetry reads as unknown. Python CI checks dashboards against emitted metrics.",
+      "source": "server · scripts/check_metric_contract.py"
+    },
+    {
+      "title": "Correctness and export",
+      "detail": "The contract harness fails on route and payload drift; a typed agent export bundles sessions, reflections and stop reasons.",
+      "source": "some-ui · apps/www/src/lib/agent-export"
+    }
+  ],
+  "gaps": [
+    { "kind": "unknown", "text": "Weekly office cadence" },
+    {
+      "kind": "learnable",
+      "text": "ClickHouse, analytical databases at scale, cloud infrastructure, their trace and evaluation schemas"
+    }
+  ],
+  "dontClaim": [
+    "ClickHouse",
+    "Production AI-agent analytics",
+    "Cloud-platform tenure",
+    "Commercial-scale traffic"
+  ],
+  "resume": {
+    "variant": "backend",
+    "template": "safe",
+    "ref": "b08c1ad",
+    "tailoring": "Headline “Backend APIs, Data Pipelines, and Agent Analytics”; leads with the API, SQL, Redis/NATS and telemetry bullets; adds the agent-export bullet."
+  },
+  "kit": {
+    "fields": [
+      { "label": "Email", "value": "paulgathondudev@gmail.com" },
+      { "label": "Location", "value": "Berkeley, CA" },
+      { "label": "GitHub", "value": "https://github.com/paulgsc" },
+      { "label": "Portfolio", "value": "https://paulgsc.github.io/some-ui" }
+    ],
+    "answers": [
+      {
+        "label": "Authorized to work in the US",
+        "value": "Yes, for any employer"
+      },
+      { "label": "Sponsorship", "value": "Not needed" },
+      { "label": "Start date", "value": "Two weeks" },
+      { "label": "Hybrid in San Francisco", "value": "Yes · no relocation" },
+      {
+        "label": "Salary expectation",
+        "value": "Open, within the posted range"
+      }
+    ],
+    "why": {
+      "prompt": "Why this role",
+      "draft": "I build backend services where the hard part is the data’s lifecycle: a Rust/Axum service with 40+ inventoried routes, SQLx repositories, and NATS JetStream jobs that redeliver on failure, with observability that reports missing telemetry as unknown rather than healthy. Agent Analytics’ loop — ingest sessions and traces, serve them through APIs, test their correctness, keep background jobs observable — is the loop I’ve been building for my own study app, which already exports sessions and stop reasons for an agent to read. I’d like to learn that work on Amplitude’s data stack."
+    }
+  },
+  "evidence": { "someUi": "c65cc66", "server": "421a43f" }
+}

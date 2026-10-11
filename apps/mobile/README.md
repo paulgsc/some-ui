@@ -35,7 +35,7 @@ How that is enforced (www `src/lib/app-surface`):
 - `build:web` selects the `mobile` profile (`apps/www/build.profiles.ts`),
   which sets `MOBILE_APP` in the bundle.
 - `MOBILE_SURFACE` is an **allowlist**: `/today`, `/sessions`, `/soundbites`,
-  `/aph` and `/settings`, typed against the route tree. (Also `/auth`, which the phone never shows since it
+  `/aph`, `/jobs` and `/settings`, typed against the route tree. (Also `/auth`, which the phone never shows since it
   is always signed in: should a device route ever answer 401, the account
   banner links there, and in this build it offers a reload, not a sign-in.) The root route redirects any other path to
   `/today` before its own guards run, so the app opens on Home,

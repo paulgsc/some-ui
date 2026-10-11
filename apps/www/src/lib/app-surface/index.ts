@@ -6,9 +6,9 @@ import { hasAudience, MOBILE_APP } from "@/lib/build-profile"
 /**
  * What the Android app (apps/mobile) carries: its own Home (`/today`), the
  * hub its daily tools hang off; sessions - the list, the composer and the
- * player; the soundbites; aph; and the settings page, which in that build is
- * the phone's own (sync from home, study nudges, the voice). Everything else
- * www routes to (the landing, the web's Home, the résumé, jobs, profile, the
+ * player; the soundbites; aph; jobs; and the settings page, which in that build
+ * is the phone's own (sync from home, study nudges, the voice). Everything else
+ * www routes to (the landing, the web's Home, the résumé, profile, the
  * extensions tour, the LAN tools) is the web app's, and the phone has no use
  * for it.
  *
@@ -19,9 +19,11 @@ import { hasAudience, MOBILE_APP } from "@/lib/build-profile"
 const MOBILE_SURFACE: ReadonlyArray<keyof FileRoutesByTo> = [
   "/sessions",
   // The pages only the Android app's build carries (the "apk" audience):
-  // Home, the soundbites (the phone's microphone) and aph. Asked rather than
-  // assumed, like any gated link.
-  ...(hasAudience("apk") ? (["/today", "/soundbites", "/aph"] as const) : []),
+  // Home, the soundbites (the phone's microphone), aph, and jobs (its share
+  // sheet). Asked rather than assumed, like any gated link.
+  ...(hasAudience("apk")
+    ? (["/today", "/soundbites", "/aph", "/jobs"] as const)
+    : []),
   "/settings",
   // Not a page the phone shows: the device backend is always signed in. But
   // a device route answering 401 ends the session belief, and the account

@@ -107,6 +107,7 @@ const SPEECH_ENTRY = "packages/speech/dist/@some-ui/speech"
 const DEVICE_MODULES = [
   `${SPEECH_ENTRY}/native.es.js`,
   "apps/www/src/lib/agent-export/**",
+  "apps/www/src/lib/job-brief/**",
   "apps/www/src/lib/share-files/**",
   "apps/www/src/lib/device-backend/**",
   "apps/www/src/lib/device-speech/**",
@@ -115,6 +116,7 @@ const DEVICE_MODULES = [
   "apps/www/src/lib/study-nudge/native.ts",
   "apps/www/src/lib/study-nudge/schedule.ts",
   "apps/www/src/components/auth/device-*.tsx",
+  "apps/www/src/components/jobs/**",
   "apps/www/src/components/settings/device-*.tsx",
   "node_modules/@capacitor/**",
   "node_modules/@capacitor-community/**",
@@ -267,7 +269,6 @@ export const paths: PathRules<Profile> = definePaths<Profile>({
       "mission.tsx*",
       "extensions.tsx*",
       "_dashboard/app.tsx*",
-      "_dashboard/jobs.tsx*",
       "_dashboard/profile.tsx*",
       "_dashboard/resume.tsx*",
     ].map(
