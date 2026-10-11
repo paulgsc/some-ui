@@ -271,9 +271,7 @@ came first and stays: its four laws are the same idea inside one package.
 > group and one is `Unbounded:` (the native log's own fire-and-forget
 > write), and the check passes. Through the boundary so far: the phone's
 > database (`apps/www/src/lib/device-backend/capacitor-sqlite`) and its share
-> sheet (`apps/www/src/lib/share-files`). The first port through it, the
-> phone's and the browser's dictation for LeetType's margin notes, left with
-> the notes (canon Rem. 3.8).
+> sheet (`apps/www/src/lib/share-files`).
 
 ## How this is enforced
 

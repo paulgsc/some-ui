@@ -6,7 +6,6 @@ import { useIsMobile } from "@some-ui/react-hooks"
 import { LiveEditOverlay, OrchestratedYouTubeViewport } from "wireframes"
 
 import { useAuthority } from "@/lib/authority"
-import { runsNatively } from "@/lib/intent/foreign"
 import { AmbientIntentStatus } from "@/lib/intent/render"
 import { loadLeetypeRoundRuns, loadLeetypeRounds } from "@/lib/leetype-content"
 import {
@@ -15,7 +14,7 @@ import {
   useSceneLifetimes,
 } from "@/lib/orchestrator"
 import { PANELS } from "@/lib/playable"
-import { shareDramaPrompt } from "@/lib/share-files"
+import { runsNatively, shareDramaPrompt } from "@/lib/share-files"
 import { createShelfClient } from "@/lib/shelf-client"
 import type { SessionRecord } from "@/lib/tenant"
 import {
@@ -30,10 +29,8 @@ import { useLiveLayoutEditor } from "./use-live-layout-editor"
 import { withWebOnlyNotes } from "./web-only-note"
 
 /**
- * The Android app's share sheet for the drama's next-scene prompt, absent
- * elsewhere. Gated on native, not the device build: that build in a desktop
- * browser has only the plugin's web stub. It holds nothing until a learner
- * taps.
+ * The drama's share sheet: gated on native, not the device build, since that
+ * build in a desktop browser has only the plugin's web stub.
  */
 const PHONE_SHARE =
   import.meta.env.VITE_DEVICE_BACKEND === "true" && runsNatively()

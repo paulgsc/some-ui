@@ -98,16 +98,6 @@ change against first:
    loads the engine" true by construction; `components/leetype/index.test.tsx`
    pins it, with a negative control that asserts the wide branch does load it.
 
-## Saying where you got stuck: a reflection, not a note
-
-The round surface has no note of its own (canon Rem. 3.8, retiring
-Rem. 3.7's margin note). What a learner wants to say about a round, before or
-after answering, they say as a session reflection: the host's **Reflect**
-button is one tap away in every activity (`apps/www`'s
-`components/reflection`), stamped with how far into the session it was said,
-and a spoken one is kept as audio, never transcribed. Nothing in this package
-records, transcribes or stores what the learner says.
-
 ## Where the engine ends and this package begins
 
 The reveal loop, both WPM figures, and the gate all live in

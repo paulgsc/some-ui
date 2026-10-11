@@ -135,5 +135,21 @@ async function writeAndShare(
 }
 
 /** The drama's next-scene prompt, as topik's `FileShare` port. */
+/**
+ * Whether this page runs inside the native app, read from the
+ * `window.Capacitor` the native bridge injects before the page loads,
+ * rather than from `@capacitor/core`, which would put the runtime in every
+ * build's main bundle to answer one question.
+ */
+export function runsNatively(host: object = globalThis): boolean {
+  const capacitor: unknown = Reflect.get(host, "Capacitor")
+  if (typeof capacitor !== "object" || capacitor === null) return false
+  const isNative: unknown = Reflect.get(capacitor, "isNativePlatform")
+  return (
+    typeof isNative === "function" &&
+    Reflect.apply(isNative, capacitor, []) === true
+  )
+}
+
 export const shareDramaPrompt: FileShare = ({ name, text }) =>
   shareFiles("drama-prompt", "The next scene's prompt", [{ name, data: text }])

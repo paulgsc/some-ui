@@ -62,7 +62,6 @@ import type { ShelfPort } from "@some-ui/shared"
 import { Button, KeepOnShelf, KeptShelf } from "@some-ui/shared"
 import { Sparkles } from "lucide-react"
 
-/** Each artifact's tab label. */
 const ARTIFACT_LABELS: Readonly<Record<ArtifactId, string>> = {
   algorithm: "Program",
   constraintDiff: "Bounds",
@@ -275,12 +274,6 @@ function playable(rounds: ReadonlyArray<Round>): Array<Round> {
  * their account ("Keep on this account", one tap per round), and the
  * generator lists what they kept: a kept round replayed goes through the
  * paste's own check and then plays exactly as a pasted one does.
- *
- * # No notes of its own (canon Rem. 3.8)
- *
- * What the learner wants to say about a round, they say as a session
- * reflection, which the host offers at every moment of every activity
- * (`apps/www`'s Reflect). Nothing here records or transcribes speech.
  */
 export const RoundSession: FC<RoundSessionProps> = ({
   rounds,
