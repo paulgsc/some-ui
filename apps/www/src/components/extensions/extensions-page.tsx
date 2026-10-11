@@ -1,8 +1,9 @@
-import { lazy, Suspense } from "react"
+import { Suspense } from "react"
 import type { JSX } from "react"
 import { Link } from "@tanstack/react-router"
 import { ArrowLeft } from "lucide-react"
 
+import { ExtensionsComb } from "@/lib/web-surface"
 import { HexCombMark } from "@/components/brand/hex-comb-mark"
 import { ThemeSwitcher } from "@/components/theme-switcher"
 
@@ -13,15 +14,7 @@ import { ThemeSwitcher } from "@/components/theme-switcher"
  * Mounted in two places: `"/"` for a visitor with no session (the front door,
  * so its chrome offers the résumé and sign-in), and `"/extensions"`, the
  * address to share (its chrome is a way back).
- *
- * The comb comes from `@some-ui/honeycomb` through a dynamic import: a static
- * value import would undo the registry's lazy load for every host
- * (`lazy-registry/no-eager-registry-import`).
  */
-const ExtensionsComb = lazy(async () => {
-  const { ExtensionsComb: Comb } = await import("@some-ui/honeycomb")
-  return { default: Comb }
-})
 
 const CHIP =
   "text-muted-foreground hover:text-foreground bg-background/70 pointer-events-auto inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-sm backdrop-blur transition-colors"

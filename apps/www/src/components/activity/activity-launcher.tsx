@@ -1,16 +1,13 @@
 import type { JSX } from "react"
 import { useId, useMemo, useRef } from "react"
 import type { ActivityDefinition } from "@some-ui/activity-catalog"
-import {
-  ACTIVITY_CATALOG,
-  ACTIVITY_IDS,
-  pickRecommended,
-} from "@some-ui/activity-catalog"
+import { pickRecommended } from "@some-ui/activity-catalog"
 import { cn } from "@some-ui/core-utils"
 import { Button, Card, CardContent } from "@some-ui/shared"
 import { Link, useNavigate } from "@tanstack/react-router"
 import { ArrowRight, SearchX } from "lucide-react"
 
+import { OFFERED_ACTIVITIES as CATALOGUE } from "@/lib/playable"
 import { useProfile, useSessions } from "@/lib/tenant"
 import { useRecommendedCount } from "@/hooks/use-recommended-count"
 import { ActivityIcon } from "@/components/activity-icon"
@@ -23,10 +20,6 @@ import {
 
 import { playsFromSessions } from "./launch-signals"
 import { useSearchOverlay } from "./use-search-overlay"
-
-const CATALOGUE: ReadonlyArray<ActivityDefinition> = ACTIVITY_IDS.map(
-  (id) => ACTIVITY_CATALOG[id]
-)
 
 /**
  * The dashboard's front door: `k` recommended activities, and search for
