@@ -26,7 +26,12 @@ import {
 } from "@/lib/reflection-voice"
 import type { Reflection } from "@/lib/session-reflection"
 import { inOrder, QUESTIONS, reflections } from "@/lib/session-reflection"
-import { allStops, pathCounts, REASONS } from "@/lib/session-stop"
+import {
+  allPathCounts,
+  allStops,
+  pathCounts,
+  REASONS,
+} from "@/lib/session-stop"
 import type { SharedFile } from "@/lib/share-files"
 import { shareFiles } from "@/lib/share-files"
 import type { SessionRecord } from "@/lib/tenant"
@@ -51,6 +56,7 @@ const ABOUT = [
   "Each soundbite's and voice reflection's audio is a separate file, named in its `file`; a soundbite's `context.source` says what the learner tapped to record it.",
   STOPS,
   PATHS,
+  "A deleted session's counts, still on the phone, are in `pathsWithoutSession`.",
   READ_ALOUD_PRACTICE,
 ].join("\n")
 
@@ -305,6 +311,9 @@ export async function shareAgentExport(
         .flatMap(([sessionId, { entries }]) =>
           entries.map((entry) => ({ sessionId, ...entry }))
         ),
+      pathsWithoutSession: allPathCounts().filter(
+        (counts) => !sessions.some((s) => s.id === counts.sessionId)
+      ),
       stops: allStops(),
       readAloudPractice: await readAloudPractice(),
       // `file: null`: its audio could not be read (removed since listed).

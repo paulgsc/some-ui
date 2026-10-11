@@ -228,6 +228,7 @@ describe("shareAgentExport", () => {
   it("shares context.json with each session's reflections nested, and every recording", async () => {
     seedStop(stopRecord(0, { reason: "focus", outcome: "done" }))
     storeEffect({ kind: "count", sessionId: "s1-0000000000", path: "opens" })
+    storeEffect({ kind: "count", sessionId: "gone-session", path: "glances" })
 
     const { sent } = await shareAgentExport(soundbites, NOW)
 
@@ -253,6 +254,7 @@ describe("shareAgentExport", () => {
         },
       ],
       reflectionsWithoutSession: [{ sessionId: "gone-session", id: "t2" }],
+      pathsWithoutSession: [{ sessionId: "gone-session", glances: 1 }],
       stops: [{ sessionId: "session-1", reason: "focus" }],
       readAloudPractice: PRACTICE,
       soundbites: [{ id: "b1", file: "soundbite-b1.webm" }],

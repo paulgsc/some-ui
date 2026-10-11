@@ -103,6 +103,11 @@ const paths = boundedList(
     PATHS.every((path) => typeof Reflect.get(value, path) === "number")
 )
 
+/** Each counted session's paths, most recently counted first. */
+export function allPathCounts(): Array<PathCounts> {
+  return paths.read()
+}
+
 export function pathCounts(sessionId: string): PathCounts | null {
   return paths.read().find((p) => p.sessionId === sessionId) ?? null
 }
