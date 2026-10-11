@@ -16,7 +16,8 @@
     "test": "vitest"
   },
   "dependencies": {
-    "@some-ui/core-utils": "workspace:*"
+    "@some-ui/core-utils": "workspace:*",
+    "@some-ui/intent-kit": "workspace:*"
   },
   "devDependencies": {
     "@some-ui/tsconfig": "workspace:*",

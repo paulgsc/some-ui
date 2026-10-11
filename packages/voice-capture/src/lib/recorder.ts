@@ -8,6 +8,9 @@
  * declares that permission (apps/mobile). The page must be a secure context,
  * which the app's `https://localhost` is.
  */
+import type { IntentErrorKind } from "@some-ui/intent-kit"
+import { reportFailure } from "@some-ui/intent-kit"
+
 export type RecordingFailure =
   /** The person, or Android settings, said no to the microphone. */
   | "denied"
@@ -24,6 +27,15 @@ export const RECORDING_FAILURE_COPY: Record<RecordingFailure, string> = {
   busy: "Another app is using the microphone. Try again once it lets go.",
   unsupported: "This phone's web view can't record audio.",
   failed: "The microphone didn't start. Try again.",
+}
+
+const PORT = "microphone (getUserMedia, MediaRecorder)"
+
+const KIND: Record<RecordingFailure, IntentErrorKind> = {
+  denied: "rejected",
+  busy: "unreachable",
+  unsupported: "unavailable",
+  failed: "unknown",
 }
 
 export class RecordingError extends Error {
@@ -125,6 +137,23 @@ export function micRecorder({
   return () => startMicRecording(bitsPerSecond)
 }
 
+/**
+ * The microphone said no: reported (`reportFailure`, which survives release
+ * builds and reaches logcat), then thrown for the caller to tell the person.
+ */
+function refused(reason: RecordingFailure, cause?: unknown): RecordingError {
+  reportFailure({
+    port: PORT,
+    error: {
+      kind: KIND[reason],
+      retryable: reason !== "unsupported",
+      summary: RECORDING_FAILURE_COPY[reason],
+      cause,
+    },
+  })
+  return new RecordingError(reason, { cause })
+}
+
 async function startMicRecording(bitsPerSecond: number): Promise<Recording> {
   if (
     !window.isSecureContext ||
@@ -132,7 +161,7 @@ async function startMicRecording(bitsPerSecond: number): Promise<Recording> {
     !navigator.mediaDevices?.getUserMedia ||
     typeof MediaRecorder === "undefined"
   ) {
-    throw new RecordingError("unsupported")
+    throw refused("unsupported")
   }
 
   let stream: MediaStream
@@ -141,7 +170,7 @@ async function startMicRecording(bitsPerSecond: number): Promise<Recording> {
       audio: { echoCancellation: true, noiseSuppression: true },
     })
   } catch (error) {
-    throw new RecordingError(failureOf(error), { cause: error })
+    throw refused(failureOf(error), error)
   }
 
   const release = (): void => {
@@ -157,7 +186,7 @@ async function startMicRecording(bitsPerSecond: number): Promise<Recording> {
     })
   } catch (error) {
     release()
-    throw new RecordingError("unsupported", { cause: error })
+    throw refused("unsupported", error)
   }
 
   const chunks: Array<Blob> = []
@@ -175,7 +204,7 @@ async function startMicRecording(bitsPerSecond: number): Promise<Recording> {
     // otherwise find the microphone still held by this failed attempt.
     levels.close()
     release()
-    throw new RecordingError("failed", { cause: error })
+    throw refused("failed", error)
   }
 
   const stopped = new Promise<void>((resolve) => {

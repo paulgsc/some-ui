@@ -2,7 +2,7 @@
  * @vitest-environment jsdom
  */
 
-import { beforeEach, describe, expect, it } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import { boundedList } from "@/lib/bounded-list"
 
@@ -17,6 +17,10 @@ beforeEach(() => {
   localStorage.clear()
 })
 
+afterEach(() => {
+  vi.restoreAllMocks()
+})
+
 describe("boundedList", () => {
   it("keeps the newest first, replaces a match, and drops the oldest past the limit", () => {
     for (const n of [1, 2, 3, 2, 4]) list.put(n, is(n))
@@ -24,6 +28,16 @@ describe("boundedList", () => {
     expect(list.read()).toEqual([4, 2, 3])
     list.remove(is(2))
     expect(list.read()).toEqual([4, 3])
+  })
+
+  it("says whether the device stored each write", () => {
+    expect(list.put(1, is(1))).toBe(true)
+    vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+      throw new DOMException("full", "QuotaExceededError")
+    })
+    expect(list.put(2, is(2))).toBe(false)
+    expect(list.remove(is(1))).toBe(false)
+    expect(list.read()).toEqual([1])
   })
 
   it("reads what it cannot trust as absent", () => {

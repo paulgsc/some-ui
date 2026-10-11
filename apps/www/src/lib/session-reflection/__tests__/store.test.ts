@@ -46,12 +46,20 @@ describe("reflections", () => {
     unsubscribe()
   })
 
-  it("says failed when the device does not store it", () => {
-    vi.spyOn(Storage.prototype, "setItem").mockImplementationOnce(() => {
+  it("says failed when the device does not store a new one, a change or a removal", () => {
+    reflections.setAnswers("s1", { difficulty: "too-hard" }, null)
+    vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
       throw new DOMException("full", "QuotaExceededError")
     })
     expect(reflections.keep(line("a"))).toBe("failed")
+    expect(reflections.setAnswers("s1", { difficulty: "right" }, null)).toBe(
+      "failed"
+    )
+    expect(reflections.setAnswers("s1", {}, null)).toBe("failed")
     vi.restoreAllMocks()
+    expect(reflections.getSnapshot().kept).toMatchObject([
+      { body: { answers: { difficulty: "too-hard" } } },
+    ])
   })
 
   it("moves the old answers list over once, as stale answers", () => {
@@ -65,6 +73,21 @@ describe("reflections", () => {
       { id: "legacy-s9", sessionId: "s9", body: { kind: "answers" } },
     ])
     expect(localStorage.getItem("some-ui:session-reflections")).toBeNull()
+  })
+
+  it("keeps the old answers list when moving it over could not be stored", () => {
+    localStorage.setItem(
+      "some-ui:session-reflections",
+      JSON.stringify([{ id: "s8", answers: { worthwhile: "yes" } }])
+    )
+    vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+      throw new DOMException("full", "QuotaExceededError")
+    })
+    reflections.letGo([])
+
+    expect(reflections.getSnapshot().kept).toEqual([])
+    expect(localStorage.getItem("some-ui:session-reflections")).not.toBeNull()
+    vi.restoreAllMocks()
   })
 
   it("remembers which sessions were shared", () => {

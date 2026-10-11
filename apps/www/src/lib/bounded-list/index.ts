@@ -1,8 +1,8 @@
 /**
  * A newest-first list in `localStorage`, never longer than `limit`. What it
  * cannot read (no storage, bad JSON, an item `isItem` rejects) reads as
- * absent, and a failed write is dropped: the stores built on it are optional
- * extras, never something a screen waits on.
+ * absent, and a failed write is dropped and said so (`false`): a store built
+ * on it decides whether that matters.
  */
 export function boundedList<T>(
   key: string,
@@ -10,9 +10,12 @@ export function boundedList<T>(
   isItem: (value: unknown) => value is T
 ): {
   read: () => Array<T>
-  /** Puts `item` first, replacing the one `same` matches. */
-  put: (item: T, same: (other: T) => boolean) => void
-  remove: (same: (other: T) => boolean) => void
+  /**
+   * Puts `item` first, replacing the one `same` matches. Says whether the
+   * device stored it (false: full or missing storage).
+   */
+  put: (item: T, same: (other: T) => boolean) => boolean
+  remove: (same: (other: T) => boolean) => boolean
 } {
   const read = (): Array<T> => {
     try {
@@ -22,11 +25,13 @@ export function boundedList<T>(
       return []
     }
   }
-  const write = (items: Array<T>): void => {
+  const write = (items: Array<T>): boolean => {
     try {
       localStorage.setItem(key, JSON.stringify(items.slice(0, limit)))
+      return true
     } catch {
-      // Full or missing storage: this item is lost, nothing else.
+      // Full or missing storage: this write is lost, nothing else.
+      return false
     }
   }
   return {

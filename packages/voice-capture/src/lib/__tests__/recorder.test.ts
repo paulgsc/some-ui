@@ -1,3 +1,4 @@
+import { addFailureSink } from "@some-ui/intent-kit"
 import { micRecorder, RecordingError } from "@voice-capture/lib/recorder"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
@@ -38,5 +39,31 @@ describe("micRecorder", () => {
     await expect(started).rejects.toBeInstanceOf(RecordingError)
     await expect(started).rejects.toMatchObject({ reason: "failed" })
     expect(stop).toHaveBeenCalledTimes(1)
+  })
+
+  it("reports a refused microphone, then says why", async () => {
+    vi.spyOn(globalThis.console, "error").mockImplementation(() => undefined)
+    const reported = vi.fn()
+    const remove = addFailureSink(reported)
+    vi.stubGlobal("isSecureContext", true)
+    vi.stubGlobal("MediaRecorder", class {})
+    vi.stubGlobal("navigator", {
+      mediaDevices: {
+        getUserMedia: (): Promise<never> =>
+          Promise.reject(new DOMException("no", "NotAllowedError")),
+      },
+    })
+
+    await expect(
+      micRecorder({ bitsPerSecond: 32_000 })()
+    ).rejects.toMatchObject({ reason: "denied" })
+    expect(reported).toHaveBeenCalledWith(
+      expect.objectContaining({
+        port: expect.stringContaining("microphone"),
+        error: expect.objectContaining({ kind: "rejected" }),
+      })
+    )
+    remove()
+    vi.restoreAllMocks()
   })
 })

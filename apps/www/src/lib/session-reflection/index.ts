@@ -82,15 +82,20 @@ function migrateLegacy(now: number): void {
   }
   const staleAt = new Date(now - STALE_AFTER_MS).toISOString()
   const moved = fromLegacy(Array.isArray(rows) ? rows : [], staleAt)
-  // Oldest first, so the list (newest first) keeps their order.
+  // Oldest first, so the list (newest first) keeps their order. The old list
+  // goes only once every row is stored; otherwise it is read again next
+  // time, and `legacy-<sessionId>` ids keep the move idempotent.
+  let movedAll = true
   for (const reflection of moved.slice(0, REFLECTION_LIMIT).reverse()) {
-    if (admit(list.read(), reflection).kind === "kept")
+    movedAll &&=
+      admit(list.read(), reflection).kind === "kept" &&
       list.put(reflection, (r) => r.id === reflection.id)
   }
+  if (!movedAll) return
   try {
     localStorage.removeItem(LEGACY_KEY)
   } catch {
-    // Read again next time; `legacy-<sessionId>` ids keep the move idempotent.
+    // Read again next time, as above.
   }
 }
 
@@ -107,19 +112,15 @@ function onStorage(event: StorageEvent): void {
     changed()
 }
 
-/** Whether `id` is stored now: a write the device refused reads as absent. */
-function stored(id: string): boolean {
-  return list.read().some((r) => r.id === id)
-}
-
+/** Writes `id` as `result` has it (kept, or gone); `failed` if refused. */
 function put(result: ReturnType<typeof admit>, id: string): KeepResult {
   if (result.kind === "full") return "full"
   const incoming = result.next.find((r) => r.id === id)
-  if (incoming) list.put(incoming, (r) => r.id === id)
-  else list.remove((r) => r.id === id)
+  const written = incoming
+    ? list.put(incoming, (r) => r.id === id)
+    : list.remove((r) => r.id === id)
   changed()
-  if (incoming && !stored(id)) return "failed"
-  return "kept"
+  return written ? "kept" : "failed"
 }
 
 export const reflections = {
