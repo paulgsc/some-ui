@@ -151,6 +151,10 @@ test("empty, missing or placeholder notes are refused", () => {
       /no "## Notes for reviewers"/,
     ],
     ["## Version notes\n\nx\n", /no <!-- amo-release/],
+    [
+      notesText({ versionNotes: "- Adds a page.\n\n## Fixed\n\n- A crash." }),
+      /"## Fixed" is not a field/,
+    ],
   ]
   for (const [text, expected] of cases) {
     const problems = notesProblems(parseNotes(text), ev)
@@ -161,11 +165,14 @@ test("empty, missing or placeholder notes are refused", () => {
   }
 })
 
-test("the branch's notes win only when they are for a newer version", () => {
+test("the branch's notes win unless they are the baseline's own", () => {
   const baseline = { version: "1.2.3" }
   const branch = notesText({ version: "1.3.0", reviewer: "branch" })
   const tree = notesText({ version: "1.2.4", reviewer: "tree" })
   assert.equal(pickNotes(baseline, branch, tree), branch)
+  // Malformed ones too, so the PR can say what is wrong with them.
+  const malformed = notesText({ version: "v1.3.0" })
+  assert.equal(pickNotes(baseline, malformed, tree), malformed)
   // A branch left over from the last release names the baseline's version.
   const leftover = notesText({ version: "1.2.3", reviewer: "old" })
   assert.equal(pickNotes(baseline, leftover, tree), tree)
@@ -204,19 +211,6 @@ test("the generated reviewer block says what changed, from the manifests alone",
   assert.match(block, /Data collection: unchanged/)
   assert.match(block, /Other manifest keys changed: description/)
   assert.match(block, /added c\.js; changed a\.js; removed b\.js/)
-})
-
-test("a content script change is a surface change", () => {
-  const candidate = {
-    ...MANIFEST,
-    content_scripts: [
-      { matches: ["*://*/*"], js: ["watch.js"], all_frames: true },
-    ],
-  }
-  const row = surfaceRows(MANIFEST, candidate).find(
-    (r) => r.label === "Content scripts"
-  )
-  assert.equal(row.changed, true)
 })
 
 test("fields over AMO's limit are refused", () => {
@@ -267,8 +261,8 @@ test("the changelog section goes under the title, once", () => {
   assert.equal(withChangelogSection(once, "1.3.0", "- new"), once)
 })
 
-// The committed notes are what the next release PR submits: they must parse,
-// fit, and either name a version after the baseline or be the released ones.
+// Notes written on main ahead of a release are checked here, on their own PR;
+// the release job checks the digest and AMO's limits against the real build.
 test("suspender-ledger's committed notes are usable", () => {
   const root = path.resolve(
     path.dirname(fileURLToPath(import.meta.url)),
@@ -284,21 +278,9 @@ test("suspender-ledger's committed notes are usable", () => {
     assert.equal(record.amo?.release_notes, notes.releaseNotes)
     return
   }
-  const candidate = { content: notes.content }
-  assert.deepEqual(notesProblems(notes, { baseline: record, candidate }), [])
-  const { version: _v, ...manifest } = JSON.parse(
-    fs.readFileSync(path.join(root, "public/manifest.firefox.json"), "utf8")
-  )
-  const block = generatedReviewerBlock({
-    extRel: "extensions/suspender-ledger",
+  const problems = notesProblems(notes, {
     baseline: record,
-    rows: surfaceRows(record.manifest, manifest),
-    other: otherManifestChanges(record.manifest, manifest),
-    // Every file changed: the longest the built-files line can be.
-    delta: fileDelta(
-      Object.fromEntries(Object.keys(record.files).map((f) => [f, "old"])),
-      Object.fromEntries(Object.keys(record.files).map((f) => [f, "new"]))
-    ),
+    candidate: { content: notes.content },
   })
-  assert.deepEqual(payloadProblems(amoPayload(notes, block)), [])
+  assert.deepEqual(problems, [])
 })

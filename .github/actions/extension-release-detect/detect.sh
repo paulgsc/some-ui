@@ -1,21 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Decides extension-release.yml's release_mode, and for a publish, the commit
-# it signs:
-#
-#   publish     The release PR's squash-merge just landed on main (its message
-#               starts with the release commit message), or a publish_only
-#               retry named such a commit. `ref` is that commit.
-#   release-pr  Anything else. The release-pr job rebuilds the extension from
-#               main and itself decides whether the build differs from the
-#               last release (extensions/scripts/amo-release.mjs prepare), so
-#               no dependency-graph guess is made here: a lint or lockfile
-#               change that leaves the bundle byte-identical opens nothing.
-#
-# A retry signs the commit it names, never whatever main has become since:
-# the sign job refuses a dist/ that differs from the release record, and a
-# newer tree under the same version number is exactly what it must not send.
+# Decides extension-release.yml's release_mode: `publish` (with `ref`, the
+# release commit to sign) or `release-pr`. See the workflow's header.
 fail() {
 	echo "::error::$1" >&2
 	exit 1

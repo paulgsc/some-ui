@@ -10,7 +10,8 @@ name: Extension Release
 #     -> detect: not a release commit, so release-pr
 #     -> release-pr rebuilds the extension from main exactly as the sign job
 #        will, and extensions/scripts/amo-release.mjs compares the build with
-#        the last release (<extension>/release/release.json on main):
+#        the last release AMO accepted (release/release.json at the newest
+#        `suspender-ledger@<version>` tag; main's copy before the first tag):
 #          - same content digest: nothing a reviewer would see changed;
 #            close any open release PR and stop. A lint, type or lockfile
 #            change that leaves the bundle byte-identical opens nothing.
@@ -32,6 +33,10 @@ name: Extension Release
 #     -> build-workspace + sign rebuild that commit, and _extension-sign.yml
 #        refuses unless every dist/ file matches release.json, then submits
 #        the xpi, the source archive and release.json's AMO payload together.
+#     -> tag marks the commit `suspender-ledger@<version>` once AMO took the
+#        upload: the next release's baseline. A release commit whose sign
+#        was refused (main moved under a ready PR) gets no tag, so the next
+#        release PR still compares with what AMO actually has.
 #
 # Only release/notes.md carries over from the release branch; every other
 # file there is regenerated from main on each run, so edits to them are lost.
@@ -45,7 +50,8 @@ name: Extension Release
 #
 # Extensions still gated by epic #310 are unaffected: this workflow only
 # ever acts on EXTENSION_NAME below, and extension-sign-manual.yml remains
-# the manual escape hatch (backfills, or any extension not yet opted in).
+# the manual escape hatch for them. For this extension it signs only a
+# release commit, since the sign step requires a matching release record.
 on:
   push:
     # The release branch is here so an agent's push of release/notes.md
@@ -150,7 +156,6 @@ jobs:
         id: prepare
         run: |
           nix develop .#ci --command node extensions/scripts/amo-release.mjs prepare "$EXTENSION_PATH" \
-            --base-ref HEAD \
             --branch-notes "$RUNNER_TEMP/branch-notes.md" \
             --body "$RUNNER_TEMP/pr-body.md"
           if [ -f "$RUNNER_TEMP/pr-body.md" ]; then cat "$RUNNER_TEMP/pr-body.md" >> "$GITHUB_STEP_SUMMARY"; fi
@@ -160,7 +165,7 @@ jobs:
         if: steps.prepare.outputs.ready == 'true'
         run: |
           nix develop .#ci --command pnpm --filter "$PACKAGE_NAME" build
-          nix develop .#ci --command node extensions/scripts/amo-release.mjs record "$EXTENSION_PATH" --base-ref HEAD
+          nix develop .#ci --command node extensions/scripts/amo-release.mjs record "$EXTENSION_PATH"
       - name: Open release PR
         id: cpr
         if: steps.prepare.outputs.changed == 'true'
@@ -251,3 +256,21 @@ jobs:
     with:
       matrix: ${{ needs.build-workspace.outputs.matrix }}
       ref: ${{ needs.detect.outputs.ref }}
+
+  # ── Mark what AMO accepted ────────────────────────────────────────────────
+  tag:
+    name: Tag Release
+    needs: [detect, sign]
+    if: needs.detect.outputs.release_mode == 'publish'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.detect.outputs.ref }}
+      - name: Tag the release commit
+        run: |
+          tag="${EXTENSION_NAME}@$(jq -r .version "extensions/${EXTENSION_NAME}/package.json")"
+          git tag "$tag"
+          git push origin "refs/tags/$tag"

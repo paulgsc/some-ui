@@ -61,13 +61,7 @@ jobs:
       # Build the extension itself — workspace deps already present from artifact.
       - name: Build release artifact
         run: nix develop .#ci --command pnpm --filter "${{ matrix.package_name }}" build
-      # For an extension with a release record (<extension>/release/release.json,
-      # written by extension-release.yml's release PR): refuse unless this
-      # dist/ is byte-for-byte the build that PR recorded, then write
-      # artifacts/amo-metadata.json from the record's AMO payload, the
-      # "Version notes" and "Notes for reviewers" exactly as the PR showed
-      # them. Nothing is regenerated here. An extension without a record signs
-      # with whatever notes its AMO dashboard already has.
+      # See amo-release.mjs's `sign` command.
       - name: Check the build against its release record
         run: nix develop .#ci --command node extensions/scripts/amo-release.mjs sign "${{ matrix.extension_path }}"
       # Package source archive for AMO source code submission requirement (A1).

@@ -28,10 +28,12 @@ suspended, so the host list cannot be narrowed to a set of sites.
   the extension set just before the discard.
 - Before discarding, the worker runs a small function in the page with
   `scripting.executeScript` (`collectMeta` in `src/content/meta.ts`) that
-  returns those two flags plus whether media is playing. If the user keeps the
-  title marker on (the default), it also prefixes the page's own
-  `document.title` with "💤 " and removes the prefix when the tab is activated
-  again (`src/worker/core/title-marker.ts`).
+  returns those two flags, whether media is playing or paused, and whether the
+  page holds notification permission (an optional setting, off by default,
+  keeps such tabs awake). If the user keeps the title marker on (the
+  default), it also prefixes the page's own `document.title` with "💤 " and
+  removes the prefix when the tab is activated again
+  (`src/worker/core/title-marker.ts`).
 
 Both content scripts also print one `console.log` line with the page's URL and
 title when they load. It is a temporary diagnostic for an open reliability bug;

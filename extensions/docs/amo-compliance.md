@@ -515,7 +515,8 @@ the `compliance_confirmed` checkbox referencing epic #310 §11's pre-sign checkl
 push to main that can change the extension's build
 └── detect: not a release commit -> release-pr
     └── rebuild the extension from main, as the sign job will
-        amo-release.mjs prepare: compare with release/release.json (the last release)
+        amo-release.mjs prepare: compare with release/release.json at the newest
+        <name>@<version> tag (the last release AMO took)
         ├── same content digest (lint/types/lockfile only) -> close any release PR, stop
         └── different -> release/evidence.md + a release PR with:
               the manifest surface table, built-file changes, commits since the release
@@ -530,7 +531,8 @@ squash-merge of the release PR
 └── detect: release commit on main -> build-workspace + sign at that commit
       ├── amo-release.mjs sign: refuse unless every dist/ file matches release.json,
       │   then write amo-metadata.json from release.json's payload (nothing regenerated)
-      └── _extension-sign.yml: web-ext sign --amo-metadata ... --upload-source-code ...
+      ├── _extension-sign.yml: web-ext sign --amo-metadata ... --upload-source-code ...
+      └── tag: <name>@<version> on the release commit, the next release's baseline
 ```
 
 "Notes for reviewers" is the agent's prose plus a generated tail: the comparison of every

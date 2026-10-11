@@ -8,12 +8,11 @@
 //                 "Notes for reviewers". A header comment pins the version
 //                 they describe and the content digest of the build they were
 //                 written against.
-//   release.json  Machine record of the last released version (on main), or
-//                 of the candidate (on the release branch): version, the main
-//                 commit it was built from, the content digest, every dist/
-//                 file's SHA-256, the manifest, and the exact AMO payload.
-//                 Written only by this script. On main it is the baseline the
-//                 next release is compared against.
+//   release.json  Machine record of a release (on main) or of the candidate
+//                 (on the release branch): version, the main commit its source
+//                 came from, the content digest, every dist/ file's SHA-256,
+//                 the manifest, and the exact AMO payload. Written only by
+//                 this script.
 //
 // The content digest hashes every dist/ file, with `version` removed from
 // the manifests, so the bump a release makes does not change it. Two builds
@@ -29,25 +28,32 @@
 //   check     Validate notes.md against the build (what the release PR will
 //             say), without changing anything.
 //   prepare   Release PR job. Picks notes (--branch-notes first, then the
-//             working tree's), validates them, writes release/evidence.md and
-//             the PR body (--body). When the notes are ready it also bumps
-//             package.json and the manifest and adds the CHANGELOG.md section.
-//             Writes changed/ready/version to $GITHUB_OUTPUT.
+//             working tree's), validates them and writes the PR body (--body).
+//             Ready: bumps package.json and the manifest and adds the
+//             CHANGELOG.md section. Not ready: writes release/evidence.md, so
+//             the draft PR has a diff and the agent writing notes has CI's
+//             digest. Writes changed/ready/version to $GITHUB_OUTPUT.
 //   record    Release PR job, after `prepare` reported ready and the
 //             extension was rebuilt at the new version: writes release.json.
 //   sign      Sign job. Refuses unless the dist/ being signed is byte-for-byte
 //             the one release.json records, then writes
 //             artifacts/amo-metadata.json from release.json's payload.
 //             Extensions without release/release.json are skipped (they sign
-//             through extension-sign-manual.yml with the dashboard's notes).
+//             through extension-sign-manual.yml with the dashboard's notes);
+//             one with it signs only a release commit.
 //
-// --base-ref <ref> (default origin/main) names where the baseline
-// release.json is read from; "." reads the working tree's copy.
+// The baseline is release.json at the newest `<name>@<version>` tag, which
+// extension-release.yml pushes only after AMO accepted the upload, so a
+// release commit that was merged but never submitted is not a baseline.
+// Before the first such tag it is main's release.json. --base-ref <ref>
+// overrides that; "." reads the working tree's copy.
 import { execFileSync } from "node:child_process"
 import crypto from "node:crypto"
 import fs from "node:fs"
 import path from "node:path"
 import { pathToFileURL } from "node:url"
+
+import { withVersion } from "./sync-manifest-version.mjs"
 
 // AMO's limit for both fields (addons-server versions/models.py).
 export const MAX_FIELD = 3000
@@ -184,6 +190,9 @@ export function parseNotes(text) {
     sections[name] === undefined ? undefined : sections[name].join("\n").trim()
   return {
     hasHeader: Boolean(header),
+    otherSections: Object.keys(sections).filter(
+      (name) => name !== VERSION_NOTES && name !== REVIEWER_NOTES
+    ),
     version: meta.version,
     content: meta.content,
     rationale: meta.rationale,
@@ -218,6 +227,11 @@ export function notesProblems(notes, { baseline, candidate }) {
   }
   if (!notes.rationale) {
     problems.push("no `rationale:` line saying why this bump")
+  }
+  for (const name of notes.otherSections) {
+    problems.push(
+      `"## ${name}" is not a field: only "## ${VERSION_NOTES}" and "## ${REVIEWER_NOTES}" are submitted, so its text would be lost`
+    )
   }
   for (const [name, value] of [
     [VERSION_NOTES, notes.releaseNotes],
@@ -378,9 +392,9 @@ export function generatedReviewerBlock({
 }) {
   const lines = [
     GENERATED_RULE,
-    "The uploaded source archive is `git archive` of the release commit (its id is the zip comment).",
+    "The uploaded source archive is `git archive` of the release commit (its id is the zip comment), with package.json and pnpm-lock.yaml pruned to what this extension builds from.",
     `Build steps: ${extRel}/README.build.md. Expected SHA-256 of every dist/ file: ${extRel}/release/release.json.`,
-    `Compared with ${baseline.version} (built from commit ${baseline.commit.slice(0, 12)}):`,
+    `Compared with ${baseline.version} (source at commit ${baseline.commit.slice(0, 12)}):`,
   ]
   for (const row of rows) {
     lines.push(
@@ -432,7 +446,20 @@ function git(args, opts = {}) {
   })
 }
 
-function readBaseline(extRel, baseRef) {
+/** The newest `<name>@<version>` tag, or main before the first one. */
+function defaultBaseRef(extRel) {
+  const [newest] = git([
+    "tag",
+    "--list",
+    `${path.basename(extRel)}@*`,
+    "--sort=-version:refname",
+  ])
+    .split("\n")
+    .filter(Boolean)
+  return newest ?? "origin/main"
+}
+
+function readBaseline(extRel, baseRef = defaultBaseRef(extRel)) {
   // "." reads the working tree's copy (for trying a baseline before it is committed).
   if (baseRef === ".") {
     return JSON.parse(
@@ -744,15 +771,16 @@ function isNewer(version, than) {
   return (a[0] - b[0] || a[1] - b[1] || a[2] - b[2]) > 0
 }
 
-/** Prefer the branch's notes, then the working tree's, if either is for a newer version. */
+/**
+ * The branch's notes unless they are the baseline's own (left over from the
+ * last release): even malformed ones, so the PR says what is wrong with them
+ * instead of dropping them.
+ */
 export function pickNotes(baseline, branchNotes, treeNotes) {
-  for (const text of [branchNotes, treeNotes]) {
-    if (
-      text !== undefined &&
-      isNewer(parseNotes(text).version, baseline.version)
-    ) {
-      return text
-    }
+  if (branchNotes !== undefined) {
+    const notes = parseNotes(branchNotes)
+    if (notes.hasHeader && notes.version !== baseline.version)
+      return branchNotes
   }
   return treeNotes
 }
@@ -765,14 +793,7 @@ function writeOutputs(outputs) {
 }
 
 function setVersion(file, version) {
-  const raw = fs.readFileSync(file, "utf8")
-  // In place, so the file keeps its Prettier formatting.
-  const re = /"version"\s*:\s*"[^"]*"/
-  if (!re.test(raw)) fail(`No "version" field in ${file}`)
-  fs.writeFileSync(
-    file,
-    raw.replace(re, () => `"version": "${version}"`)
-  )
+  fs.writeFileSync(file, withVersion(fs.readFileSync(file, "utf8"), version))
 }
 
 /** Insert `## <version>` under the changelog's title line. */
@@ -826,10 +847,9 @@ function cmdPrepare(extDir, opts) {
   )
   if (notesText !== undefined) fs.writeFileSync(notesPath, notesText)
   const result = evaluate(ev, notesText)
-  fs.writeFileSync(
-    path.join(extDir, "release", "evidence.md"),
-    evidenceMarkdown(ev)
-  )
+  const evidencePath = path.join(extDir, "release", "evidence.md")
+  if (result.status === "ready") fs.rmSync(evidencePath, { force: true })
+  else fs.writeFileSync(evidencePath, evidenceMarkdown(ev))
   if (opts.body) fs.writeFileSync(opts.body, prBody({ ...result, ev }))
   if (result.status === "ready") {
     const version = result.notes.version
@@ -957,7 +977,7 @@ const COMMANDS = {
 
 function parseArgs(argv) {
   const [command, extDir, ...rest] = argv
-  const opts = { baseRef: "origin/main" }
+  const opts = {}
   for (let i = 0; i < rest.length; i += 2) {
     const key = rest[i]
       .replace(/^--/, "")

@@ -35,10 +35,25 @@
 //                                             hypothetical.)
 import fs from "node:fs"
 import path from "node:path"
+import { pathToFileURL } from "node:url"
 
 function fail(message) {
   process.stderr.write(`::error::${message}\n`)
   throw new Error(message)
+}
+
+// A parse+re-stringify round trip would reformat the whole file to
+// Node's JSON.stringify style (e.g. every array exploded onto its own
+// lines) instead of the Prettier style it's actually checked into with —
+// turning a one-line version bump into a wall of unrelated reformatting
+// in the diff. Replace just the first "version" field's value in place
+// instead. Also used by amo-release.mjs for package.json.
+export function withVersion(raw, version) {
+  const versionFieldRe = /"version"\s*:\s*"[^"]*"/
+  if (!versionFieldRe.test(raw)) {
+    fail('Could not find a "version" field to replace')
+  }
+  return raw.replace(versionFieldRe, () => `"version": "${version}"`)
 }
 
 function main() {
@@ -85,24 +100,16 @@ function main() {
     )
   }
 
-  // A parse+re-stringify round trip would reformat the whole file to
-  // Node's JSON.stringify style (e.g. every array exploded onto its own
-  // lines) instead of the Prettier style it's actually checked into with —
-  // turning a one-line version bump into a wall of unrelated reformatting
-  // in the diff. Replace just the "version" field's value in place instead.
-  const versionFieldRe = /"version"\s*:\s*"[^"]*"/
-  if (!versionFieldRe.test(manifestRaw)) {
-    fail(`Could not find a "version" field to replace in ${manifestPath}`)
-  }
   const previous = manifest.version
-  const updated = manifestRaw.replace(
-    versionFieldRe,
-    () => `"version": "${version}"`
-  )
-  fs.writeFileSync(manifestPath, updated)
+  fs.writeFileSync(manifestPath, withVersion(manifestRaw, version))
   process.stdout.write(
     `::notice::sync-manifest-version: ${manifestPath} ${previous} -> ${version}\n`
   )
 }
 
-main()
+if (
+  process.argv[1] &&
+  import.meta.url === pathToFileURL(process.argv[1]).href
+) {
+  main()
+}
