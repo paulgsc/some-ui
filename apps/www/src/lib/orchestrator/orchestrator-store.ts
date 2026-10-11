@@ -64,6 +64,7 @@ type OrchestratorStoreState = {
   forceScene: (scene: string) => Promise<void>
   skipCurrentScene: () => Promise<void>
   extend: (ms: number) => Promise<void>
+  seek: (ms: number) => Promise<void>
   updateStreamStatus: (status: StreamStatus) => Promise<void>
 }
 
@@ -209,6 +210,9 @@ export const useOrchestratorStore = create<OrchestratorStoreState>(
 
     extend: (ms): Promise<void> =>
       sendCommand(get()._commandSender, "extend", { Extend: ms }),
+
+    seek: (ms): Promise<void> =>
+      sendCommand(get()._commandSender, "seek", { Seek: ms }),
 
     updateStreamStatus: (status): Promise<void> =>
       sendCommand(get()._commandSender, "updateStreamStatus", {

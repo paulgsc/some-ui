@@ -87,7 +87,7 @@ describe("a stop's machine", () => {
     ])
   })
 
-  it("picks up in place, or at the scene once the activity remounted", () => {
+  it("picks up in place, or where it stopped once the activity remounted", () => {
     expect(step(open(5 * 60_000), { type: "pickUp", now })[1]).toEqual([
       expect.objectContaining({ kind: "settle", outcome: "resumed" }),
       { kind: "resume" },
@@ -97,7 +97,7 @@ describe("a stop's machine", () => {
         type: "pickUp",
         now,
       })[1][1]
-    ).toEqual({ kind: "restart", scene: "reading", plannedMs: 1_200_000 })
+    ).toEqual({ kind: "restart", elapsedMs: 738_000, plannedMs: 1_200_000 })
   })
 
   it("calls it done where it stopped", () => {

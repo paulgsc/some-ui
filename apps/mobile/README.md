@@ -603,8 +603,9 @@ cutting study short can be read over time.
 - **Leaving the app** mid-session is a stop too, with nothing to tap. Back
   within a minute it was a glance, and is forgotten.
 - **Within 30 minutes** of the stop the person can **Pick up where you left
-  off** (exactly, in the player they left; at the start of the stopped scene
-  once reopened) or **Call it done**.
+  off** (exactly, in the player they left; once reopened, the clock goes on
+  from where it stopped, so time played adds up, and the activity starts its
+  content again) or **Call it done**.
 - **Past 30 minutes**, whether the stop screen is still up, the app is
   reopened or Home is, the session closes as it stood, dated when it
   stopped, and counts toward **Studied today**; a close whose write failed is

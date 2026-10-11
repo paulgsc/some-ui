@@ -22,12 +22,13 @@ const orchestrator: Playback = {
   pause: () => void useOrchestratorStore.getState().pause(),
   resume: () => void useOrchestratorStore.getState().resume(),
   start: () => void useOrchestratorStore.getState().start(),
-  restart: (scene, plannedMs) => {
+  restart: (elapsedMs, plannedMs) => {
     const o = useOrchestratorStore.getState()
     const lost = plannedMs - o.clock.total_duration
     void o.start()
-    if (scene !== null) void o.forceScene(scene)
+    // The plan first, so the seek is not clamped short of a "+5 min".
     if (lost > 0) void o.extend(lost)
+    void o.seek(elapsedMs)
   },
   end: () => void useOrchestratorStore.getState().stop(),
 }

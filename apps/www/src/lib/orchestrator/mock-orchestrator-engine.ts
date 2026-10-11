@@ -137,6 +137,18 @@ export function advanceClock(engine: EngineState, now: number): EngineState {
   return { ...engine, elapsedMs, mode, lastTickAt }
 }
 
+/**
+ * Moves the clock to `ms`, within the session. Running, the next tick counts
+ * from `now`, not from before the move.
+ */
+function moveClock(engine: EngineState, ms: number, now: number): EngineState {
+  return {
+    ...engine,
+    elapsedMs: Math.min(Math.max(0, ms), totalDurationOf(engine.scenes)),
+    lastTickAt: engine.mode === "Running" ? now : engine.lastTickAt,
+  }
+}
+
 /** Applies a single orchestrator command, returning the next engine state. */
 export function applyCommand(
   engine: EngineState,
@@ -187,8 +199,10 @@ export function applyCommand(
       (s) => s.scene_name === command.ForceScene
     )
     if (!target) return engine
-    return { ...engine, elapsedMs: target.start_time }
+    return moveClock(engine, target.start_time, now)
   }
+
+  if ("Seek" in command) return moveClock(engine, command.Seek, now)
 
   if ("SkipCurrentScene" in command) {
     const currentTime = Math.min(
@@ -200,7 +214,7 @@ export function applyCommand(
     const earliestEnd = Math.min(
       ...active.map((lt) => lt.started_at + lt.kind.Scene.duration)
     )
-    return { ...engine, elapsedMs: earliestEnd }
+    return moveClock(engine, earliestEnd, now)
   }
 
   if ("Extend" in command) {
