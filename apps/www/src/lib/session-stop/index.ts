@@ -33,7 +33,7 @@ export type Stop = {
   stoppedAt: string
   elapsedMs: number
   plannedMs: number
-  /** The scene it stopped in. */
+  /** For the record (the agent export); a pick-up seeks to `elapsedMs`. */
   scene: string | null
   via: "tap" | "left"
   reason: Reason | null

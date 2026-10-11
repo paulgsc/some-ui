@@ -10,11 +10,7 @@ export type Playback = {
   pause: () => void
   resume: () => void
   start: () => void
-  /**
-   * Starts again where it stopped, `elapsedMs` in (the activity has
-   * remounted, so it begins its content again), with the plan back at
-   * `plannedMs`: a "+5 min" lived only in the old engine.
-   */
+  /** Starts again `elapsedMs` in, with the plan back at `plannedMs`. */
   restart: (elapsedMs: number, plannedMs: number) => void
   end: () => void
 }

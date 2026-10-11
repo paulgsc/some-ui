@@ -102,6 +102,10 @@ describe("useSessionStop", () => {
     expect(commands.start).toHaveBeenCalledTimes(1)
     expect(commands.extend).toHaveBeenCalledWith(300_000)
     expect(commands.seek).toHaveBeenCalledWith(738_000)
+    // A seek before the "+5 min" would be clamped to the old plan.
+    expect(commands.extend.mock.invocationCallOrder[0]).toBeLessThan(
+      commands.seek.mock.invocationCallOrder[0] ?? 0
+    )
   })
 
   it("ends the session when reopened past the window", () => {
