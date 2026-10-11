@@ -220,7 +220,7 @@ const GapRow = ({
       : `${formatDay(from)} – ${formatDay(to)} · ${days} days`
   } · not logged`
   const className =
-    "text-muted-foreground flex h-9 items-center rounded-lg border border-dashed px-3 text-sm"
+    "text-muted-foreground bg-muted/60 flex h-9 items-center rounded-xl px-3 text-sm"
   return onLog === undefined ? (
     <div className={className}>{when}</div>
   ) : (

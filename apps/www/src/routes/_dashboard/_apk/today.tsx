@@ -2,9 +2,15 @@ import type { JSX } from "react"
 import { useEffect } from "react"
 import { AphTodayCard, AphTodayEntries } from "@some-ui/aph"
 import { cn } from "@some-ui/core-utils"
-import { Button, Skeleton } from "@some-ui/shared"
+import {
+  BrandMark,
+  Button,
+  Skeleton,
+  StudyGlyph,
+  TalkGlyph,
+} from "@some-ui/shared"
 import { createFileRoute, Link } from "@tanstack/react-router"
-import { BookOpen, Check, Mic } from "lucide-react"
+import { Check } from "lucide-react"
 
 import { useMinuteClock } from "@/lib/clock"
 import { formatTimecode } from "@/lib/format"
@@ -111,24 +117,24 @@ const StudyCard = ({ now }: { now: Date }): JSX.Element => {
   return (
     <div
       className={cn(
-        "flex flex-col gap-2 rounded-xl border p-3",
+        "flex flex-col gap-3 rounded-2xl border p-4 shadow-sm",
         done
           ? "border-success/30 bg-success/10 animate-in fade-in duration-700"
-          : "bg-card"
+          : "bg-card border-border/50"
       )}
     >
       <div className="flex items-center gap-3">
         {done ? (
-          <span className="bg-success text-success-foreground animate-in zoom-in-50 flex size-10 shrink-0 items-center justify-center rounded-full duration-500">
+          <span className="bg-success text-success-foreground animate-in zoom-in-50 flex size-12 shrink-0 items-center justify-center rounded-full duration-500">
             <Check aria-hidden className="size-5" strokeWidth={3} />
           </span>
         ) : (
-          <span className="bg-muted flex size-10 shrink-0 items-center justify-center rounded-lg">
-            <BookOpen aria-hidden className="size-5" />
+          <span className="bg-brand/30 text-brand-foreground dark:text-brand flex size-12 shrink-0 items-center justify-center rounded-2xl">
+            <StudyGlyph aria-hidden className="size-6" />
           </span>
         )}
         <span className="flex min-w-0 flex-1 flex-col">
-          <span className={cn("font-semibold", done && "text-success")}>
+          <span className={cn("font-bold", done && "text-success")}>
             {done ? "Studied today" : "Study"}
           </span>
           {status.kind === "pending" && <Skeleton className="mt-1 h-4 w-32" />}
@@ -203,9 +209,9 @@ const StudyCard = ({ now }: { now: Date }): JSX.Element => {
         <Link
           to="/soundbites"
           search={{ say: "sessions" }}
-          className="text-muted-foreground flex items-center gap-1.5 self-end text-sm underline-offset-4 hover:underline"
+          className="bg-muted text-muted-foreground hover:text-foreground flex items-center gap-2 self-start rounded-full py-1.5 pr-3.5 pl-2.5 text-sm font-medium"
         >
-          <Mic aria-hidden className="size-3.5" />
+          <TalkGlyph aria-hidden className="size-4" />
           Not today? Say why
         </Link>
       )}
@@ -213,27 +219,67 @@ const StudyCard = ({ now }: { now: Date }): JSX.Element => {
   )
 }
 
+/**
+ * Two low hills along the bottom of the screen, a shade off the ground, so a
+ * tall phone's Home ends in a landscape and not in an empty field. Fixed to
+ * the viewport, and below the cards in the column's own stacking context
+ * (`relative z-[1]` lifts that column over the shell's background, `-z-10`
+ * keeps the hills under its content). Capped at a quarter of the height so
+ * a phone held sideways keeps its header clear.
+ */
+const Hills = (): JSX.Element => (
+  <svg
+    aria-hidden
+    viewBox="0 0 390 220"
+    preserveAspectRatio="none"
+    className="pointer-events-none fixed inset-x-0 bottom-0 -z-10 h-[min(13.75rem,25vh)] w-full"
+  >
+    <ellipse
+      cx="80"
+      cy="230"
+      rx="230"
+      ry="120"
+      style={{
+        fill: "color-mix(in oklab, var(--muted) 45%, var(--background))",
+      }}
+    />
+    <ellipse
+      cx="330"
+      cy="240"
+      rx="210"
+      ry="130"
+      style={{
+        fill: "color-mix(in oklab, var(--muted) 70%, var(--background))",
+      }}
+    />
+  </svg>
+)
+
 const TodayRoute = (): JSX.Element => {
   // Moves while Home stays open, so a checkpoint turns due, then missed, and
   // the date turns over, without leaving the page.
   const now = useMinuteClock()
 
   return (
-    <div className="mx-auto flex w-full max-w-md flex-col gap-5">
-      <header className="flex flex-col">
-        <span className="text-muted-foreground text-sm">
-          {now.toLocaleDateString("en-US", { weekday: "long" })}
+    <div className="relative z-[1] mx-auto flex w-full max-w-md flex-col gap-6">
+      <Hills />
+      <header className="flex items-center gap-3">
+        <BrandMark tone="brand" className="size-12 shrink-0" />
+        <span className="flex flex-col">
+          <span className="text-muted-foreground text-sm font-semibold">
+            {now.toLocaleDateString("en-US", { weekday: "long" })}
+          </span>
+          <h1 className="text-2xl font-bold tracking-tight">
+            {now.toLocaleDateString("en-US", {
+              month: "short",
+              day: "numeric",
+            })}
+          </h1>
         </span>
-        <h1 className="text-2xl font-bold tracking-tight">
-          {now.toLocaleDateString("en-US", { month: "short", day: "numeric" })}
-        </h1>
       </header>
 
-      <section aria-labelledby="home-now" className="flex flex-col gap-2">
-        <h2
-          id="home-now"
-          className="text-muted-foreground text-xs font-semibold uppercase tracking-wide"
-        >
+      <section aria-labelledby="home-now" className="flex flex-col gap-3">
+        <h2 id="home-now" className="text-lg font-bold">
           Now
         </h2>
         <AphTodayCard
@@ -255,14 +301,11 @@ const TodayRoute = (): JSX.Element => {
         <StudyCard now={now} />
       </section>
 
-      <section aria-labelledby="home-today" className="flex flex-col gap-2">
-        <h2
-          id="home-today"
-          className="text-muted-foreground text-xs font-semibold uppercase tracking-wide"
-        >
+      <section aria-labelledby="home-today" className="flex flex-col gap-3">
+        <h2 id="home-today" className="text-lg font-bold">
           Today so far
         </h2>
-        <ul className="bg-card divide-y rounded-xl border">
+        <ul className="bg-card border-border/50 divide-border/50 divide-y rounded-2xl border shadow-sm">
           <AphTodayEntries
             now={now}
             empty={

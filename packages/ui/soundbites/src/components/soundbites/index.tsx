@@ -22,7 +22,7 @@
 import type { JSX, ReactNode } from "react"
 import { useEffect, useState, useSyncExternalStore } from "react"
 import { cn } from "@some-ui/core-utils"
-import { Button } from "@some-ui/shared"
+import { BrandMark, Button, TalkGlyph } from "@some-ui/shared"
 import {
   describeContext,
   formatDuration,
@@ -40,7 +40,7 @@ import type { RecordingFailure } from "@soundbites/lib/recorder"
 import type { SoundbitesPorts } from "@soundbites/lib/runtime"
 import { createSoundbites } from "@soundbites/lib/runtime"
 import type { Soundbite, SoundbiteSource } from "@soundbites/lib/types"
-import { Mic, Pause, Play, Square, Trash2 } from "lucide-react"
+import { Pause, Play, Square, Trash2 } from "lucide-react"
 
 export type SoundbitesProps = {
   /** Where the app stands. Read once, as each soundbite is kept. */
@@ -115,9 +115,7 @@ const BLOCKED_COPY: Record<RecordingFailure, string> = {
   failed: "The microphone didn't start. Try again.",
 }
 
-const RING_RADIUS = 46
-const RING_LENGTH = 2 * Math.PI * RING_RADIUS
-/** The last stretch of a take, when the ring warns that time is nearly up. */
+/** The last stretch of a take, when the fill warns that time is nearly up. */
 const WARN_MS = 10_000
 
 /** What the big button does when pressed, for a screen reader. */
@@ -146,73 +144,53 @@ const RecordButton = ({
   const label = RECORD_LABELS[activity.kind]
 
   return (
-    <div className="relative mx-auto size-44 [@media(max-height:479px)]:size-36">
-      <svg
-        className="absolute inset-0 size-full -rotate-90"
-        viewBox="0 0 100 100"
-        aria-hidden="true"
-      >
-        <circle
-          cx="50"
-          cy="50"
-          r={RING_RADIUS}
-          className="stroke-muted fill-none"
-          strokeWidth="4"
-        />
-        <circle
-          cx="50"
-          cy="50"
-          r={RING_RADIUS}
-          className={cn(
-            "fill-none transition-[stroke-dashoffset] duration-100",
-            warning ? "stroke-warning" : "stroke-destructive"
-          )}
-          strokeWidth="4"
-          strokeLinecap="round"
-          strokeDasharray={RING_LENGTH}
-          strokeDashoffset={RING_LENGTH * (1 - progress)}
-        />
-      </svg>
-      <button
-        type="button"
-        onClick={onPress}
-        disabled={busy}
-        aria-label={label}
-        aria-pressed={recording}
+    <button
+      type="button"
+      onClick={onPress}
+      disabled={busy}
+      aria-label={label}
+      aria-pressed={recording}
+      className={cn(
+        "relative mx-auto flex size-44 flex-col items-center justify-center gap-1.5 overflow-hidden rounded-full shadow-lg transition-[transform,background-color] duration-100 [@media(max-height:479px)]:size-36",
+        "focus-visible:ring-ring focus-visible:ring-offset-background focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none",
+        "disabled:opacity-70",
+        recording
+          ? "bg-muted text-foreground"
+          : "bg-brand text-brand-foreground active:scale-95"
+      )}
+      // The input level breathes the button while it listens: proof the
+      // microphone hears, without a word on screen.
+      style={recording ? { transform: `scale(${1 + level * 0.12})` } : {}}
+    >
+      {/* The take fills the button from the bottom as the minute runs, in
+          place of a ring traced round an empty band. */}
+      <span
+        aria-hidden
         className={cn(
-          "absolute inset-4 flex flex-col items-center justify-center gap-1 rounded-full shadow-lg transition-[transform,background-color] duration-100",
-          "focus-visible:ring-ring focus-visible:ring-offset-background focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none",
-          "disabled:opacity-70",
-          // White, not `text-destructive-foreground`: some session themes
-          // set that to a grey that all but vanishes on the red.
-          recording
-            ? "bg-destructive text-white"
-            : "bg-primary text-primary-foreground active:scale-95"
+          "absolute inset-x-0 bottom-0 transition-[height] duration-100",
+          warning ? "bg-warning" : "bg-destructive"
         )}
-        // The input level breathes the button while it listens: proof the
-        // microphone hears, without a word on screen.
-        style={recording ? { transform: `scale(${1 + level * 0.12})` } : {}}
-      >
-        {recording ? (
-          <>
-            <Square className="size-8 fill-current" aria-hidden="true" />
-            <span className="text-sm font-medium tabular-nums">
-              {formatDuration(SOUNDBITE_MAX_MS - elapsed)} left
-            </span>
-          </>
-        ) : (
-          <>
-            <Mic
-              className={cn("size-10", busy && "motion-safe:animate-pulse")}
-              aria-hidden="true"
-            />
-            <span className="text-sm font-medium">
-              {busy ? "…" : "Tap to talk"}
-            </span>
-          </>
-        )}
-      </button>
-    </div>
+        style={{ height: `${progress * 100}%` }}
+      />
+      {recording ? (
+        // On its own chip, so it reads over the fill at any height.
+        <span className="bg-background text-foreground relative flex flex-col items-center gap-1 rounded-2xl px-4 py-2">
+          <Square className="size-7 fill-current" aria-hidden="true" />
+          <span className="text-sm font-semibold tabular-nums">
+            {formatDuration(SOUNDBITE_MAX_MS - elapsed)} left
+          </span>
+        </span>
+      ) : (
+        <>
+          <TalkGlyph
+            className={cn("size-10", busy && "motion-safe:animate-pulse")}
+          />
+          <span className="text-base font-bold">
+            {busy ? "…" : "Tap to talk"}
+          </span>
+        </>
+      )}
+    </button>
   )
 }
 
@@ -241,14 +219,13 @@ const KeptSoundbite = ({
   return (
     <li
       className={cn(
-        "flex items-center gap-3 rounded-lg border p-3",
+        "bg-card border-border/50 flex items-center gap-3 rounded-2xl border p-3",
         isNextReplaced && "border-warning/60 bg-warning/5"
       )}
     >
       <Button
         size="icon"
-        variant="outline"
-        className="shrink-0 rounded-full"
+        className="bg-brand text-brand-foreground hover:bg-brand/85 size-11 shrink-0 rounded-full"
         onClick={onPlay}
         disabled={disabled}
         aria-label={playing ? `Stop playing ${when}` : `Play ${when}`}
@@ -403,11 +380,11 @@ export const Soundbites = ({
           <p className="text-muted-foreground text-center text-xs">
             Stuck? Start with one of these and keep going.
           </p>
-          <ul className="flex flex-wrap justify-center gap-1.5">
+          <ul className="flex flex-wrap justify-center gap-2">
             {STARTERS.map((starter) => (
               <li
                 key={starter}
-                className="bg-muted text-muted-foreground rounded-full px-3 py-1 text-xs"
+                className="bg-card border-border/50 rounded-full border px-3.5 py-1.5 text-sm font-medium shadow-sm"
               >
                 {starter}
               </li>
@@ -423,25 +400,12 @@ export const Soundbites = ({
           </h2>
           {/* Only a count that was read: before a read succeeds (or when
               it failed) there is no number to show, and 0 would say empty. */}
+          {/* Said in words, not a row of slots: six little holes waiting
+              to be filled was the look this screen is moving away from. */}
           {kept !== null && (
-            <div
-              className="flex items-center gap-1"
-              role="img"
-              aria-label={`${kept.length} of ${SOUNDBITE_LIMIT} kept`}
-            >
-              {Array.from({ length: SOUNDBITE_LIMIT }, (_, slot) => (
-                <span
-                  key={slot}
-                  className={cn(
-                    "size-2 rounded-full",
-                    slot < kept.length ? "bg-primary" : "bg-muted"
-                  )}
-                />
-              ))}
-              <span className="text-muted-foreground ml-1.5 text-xs tabular-nums">
-                {kept.length}/{SOUNDBITE_LIMIT}
-              </span>
-            </div>
+            <span className="bg-brand/30 text-brand-foreground dark:text-brand rounded-full px-3 py-0.5 text-xs font-bold tabular-nums">
+              {kept.length} of {SOUNDBITE_LIMIT} kept
+            </span>
           )}
         </div>
 
@@ -459,7 +423,7 @@ export const Soundbites = ({
         {library.kind === "unreadable" ? (
           <div
             role="alert"
-            className="space-y-3 rounded-lg border border-dashed p-4 text-center text-sm"
+            className="bg-muted/60 space-y-3 rounded-2xl p-4 text-center text-sm"
           >
             <p className="text-muted-foreground">
               Couldn&apos;t read what&apos;s on this phone. If it is full, your
@@ -474,7 +438,8 @@ export const Soundbites = ({
             </Button>
           </div>
         ) : kept === null ? null : kept.length === 0 ? (
-          <p className="text-muted-foreground rounded-lg border border-dashed p-4 text-center text-sm">
+          <p className="bg-card border-border/50 text-muted-foreground flex items-center gap-3 rounded-2xl border p-4 text-sm font-medium">
+            <BrandMark tone="brand" className="size-9 shrink-0" />
             Nothing kept yet.
           </p>
         ) : (

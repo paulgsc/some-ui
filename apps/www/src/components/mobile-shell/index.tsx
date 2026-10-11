@@ -12,21 +12,18 @@ import type { ComponentType, JSX } from "react"
 import { useState } from "react"
 import { cn } from "@some-ui/core-utils"
 import {
+  HomeGlyph,
   Sheet,
   SheetContent,
   SheetDescription,
   SheetHeader,
   SheetTitle,
+  StudyGlyph,
+  TalkGlyph,
+  TrendGlyph,
 } from "@some-ui/shared"
 import { Link } from "@tanstack/react-router"
-import {
-  BookOpen,
-  ChevronLeft,
-  House,
-  Mic,
-  Plus,
-  TrendingUp,
-} from "lucide-react"
+import { ChevronLeft, Plus } from "lucide-react"
 
 import { hasAudience } from "@/lib/build-profile"
 
@@ -38,12 +35,12 @@ type Tab = {
 
 /** Either side of the +. */
 const LEFT: ReadonlyArray<Tab> = [
-  { to: "/today", label: "Home", icon: House },
-  { to: "/sessions", label: "Study", icon: BookOpen },
+  { to: "/today", label: "Home", icon: HomeGlyph },
+  { to: "/sessions", label: "Study", icon: StudyGlyph },
 ]
 const RIGHT: ReadonlyArray<Tab> = [
-  { to: "/soundbites", label: "Bites", icon: Mic },
-  { to: "/aph", label: "aph", icon: TrendingUp },
+  { to: "/soundbites", label: "Bites", icon: TalkGlyph },
+  { to: "/aph", label: "aph", icon: TrendGlyph },
 ]
 
 function isActive(to: Tab["to"], pathname: string): boolean {
@@ -63,14 +60,21 @@ const TabLink = ({
       to={tab.to}
       aria-current={active ? "page" : undefined}
       className={cn(
-        "flex min-w-0 flex-1 flex-col items-center gap-0.5 py-2 text-[11px]",
-        active ? "text-foreground font-semibold" : "text-muted-foreground"
+        "flex min-w-0 flex-1 flex-col items-center gap-0.5 py-2 text-xs",
+        active
+          ? "text-foreground font-bold"
+          : "text-muted-foreground font-medium"
       )}
     >
-      <tab.icon
-        aria-hidden
-        className={cn("size-5", active && "text-primary")}
-      />
+      {/* The active tab sits in a soft pill of the theme's mochi. */}
+      <span
+        className={cn(
+          "flex h-7 w-12 items-center justify-center rounded-full",
+          active && "bg-brand/30 text-brand-foreground dark:text-brand"
+        )}
+      >
+        <tab.icon aria-hidden className="size-5" />
+      </span>
       {tab.label}
     </Link>
   )
@@ -92,9 +96,11 @@ export const MobileNav = ({
 
   return (
     <>
+      {/* A floating bar rather than a ruled-off strip: the page runs on
+          under it, so the screen ends in the room and not at a line. */}
       <nav
         aria-label="Main"
-        className="bg-background sticky bottom-0 z-10 flex shrink-0 items-center border-t pb-[env(safe-area-inset-bottom)]"
+        className="bg-card border-border/50 sticky bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-10 mx-3 mb-[max(0.75rem,env(safe-area-inset-bottom))] flex h-[4.5rem] shrink-0 items-center rounded-[1.75rem] border px-1 shadow-lg"
       >
         {LEFT.map((tab) => (
           <TabLink key={tab.to} tab={tab} pathname={pathname} />
@@ -105,9 +111,9 @@ export const MobileNav = ({
             aria-label="Quick entry"
             aria-haspopup="dialog"
             onClick={() => setQuickOpenOn(pathname)}
-            className="bg-primary text-primary-foreground flex size-12 items-center justify-center rounded-2xl shadow-[var(--glow-primary)]"
+            className="bg-brand text-brand-foreground ring-background -mt-7 flex size-14 items-center justify-center rounded-full shadow-md ring-[6px]"
           >
-            <Plus aria-hidden className="size-6" />
+            <Plus aria-hidden className="size-7" strokeWidth={3} />
           </button>
         </span>
         {RIGHT.map((tab) => (
@@ -154,7 +160,7 @@ const QuickEntry = ({
 }): JSX.Element => {
   const close = (): void => onOpenChange(false)
   const tile =
-    "bg-card hover:bg-accent flex min-h-20 flex-col justify-center gap-1 rounded-xl border p-3 text-left"
+    "bg-card hover:bg-accent border-border/50 flex min-h-20 flex-col justify-center gap-1 rounded-2xl border p-3 text-left"
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
@@ -172,15 +178,15 @@ const QuickEntry = ({
             to="/soundbites"
             search={{ say: "capture" }}
             onClick={close}
-            className="bg-primary text-primary-foreground flex h-16 items-center justify-center gap-3 rounded-xl text-base font-semibold"
+            className="bg-brand text-brand-foreground flex h-16 items-center justify-center gap-3 rounded-full text-base font-bold"
           >
-            <Mic aria-hidden className="size-6" />
+            <TalkGlyph aria-hidden className="size-6" />
             Talk now
           </Link>
           <div className="grid grid-cols-2 gap-2">
             <Link to="/aph" onClick={close} className={tile}>
               <span className="flex items-center gap-2 text-sm font-semibold">
-                <TrendingUp aria-hidden className="size-4" />
+                <TrendGlyph aria-hidden className="size-4" />
                 aph: mine
               </span>
               <span className="text-muted-foreground text-xs">
@@ -194,7 +200,7 @@ const QuickEntry = ({
               className={tile}
             >
               <span className="flex items-center gap-2 text-sm font-semibold">
-                <TrendingUp aria-hidden className="size-4" />
+                <TrendGlyph aria-hidden className="size-4" />
                 aph: theirs
               </span>
               <span className="text-muted-foreground text-xs">
@@ -207,7 +213,7 @@ const QuickEntry = ({
               className={cn(tile, "col-span-2")}
             >
               <span className="flex items-center gap-2 text-sm font-semibold">
-                <BookOpen aria-hidden className="size-4" />
+                <StudyGlyph aria-hidden className="size-4" />
                 Start a session
               </span>
               <span className="text-muted-foreground text-xs">

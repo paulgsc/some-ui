@@ -87,7 +87,7 @@ export const OrchestratorTimeline = ({
   return (
     <div className="flex flex-col gap-6 p-1">
       {/* 1. Global Track Minimap */}
-      <div className="bg-muted/30 p-3 rounded-xl border border-dashed border-border">
+      <div className="bg-muted/60 p-3 rounded-2xl">
         <div className="flex justify-between items-center mb-2">
           <span className="text-[10px] uppercase tracking-wider font-bold text-muted-foreground">
             Global Timeline
