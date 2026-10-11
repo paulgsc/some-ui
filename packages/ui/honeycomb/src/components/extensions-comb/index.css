@@ -195,14 +195,6 @@
     color: var(--comb-title);
   }
 
-  .xcomb-mark-ring {
-    fill: var(--comb-honey-mid);
-  }
-
-  .xcomb-mark-core {
-    fill: var(--comb-honey-meniscus);
-  }
-
   .xcomb-off {
     opacity: 0.2;
   }

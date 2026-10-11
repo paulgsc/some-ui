@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- www's manifest.json theme_color: the dark the favicon's honey pair is
-         drawn for. Also the splash background, before and after Android 12. -->
-    <color name="ic_launcher_background">#101010</color>
+    <!-- Mochi's cream (its --background), which www's manifest.json also
+         names as theme_color: the plate the honey mark sits on. Also the
+         splash background, before and after Android 12. -->
+    <color name="ic_launcher_background">#FFF5E7</color>
 </resources>

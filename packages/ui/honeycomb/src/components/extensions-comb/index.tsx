@@ -414,29 +414,19 @@ const Label = ({
   <Words text={text} y={y} size={19} className={cn("xcomb-label", className)} />
 )
 
-/** The mark's own ring offsets, as in `hex-comb-mark.tsx`. */
-const MARK_RING: ReadonlyArray<readonly [number, number]> = [
-  [0, -20],
-  [17.321, -10],
-  [17.321, 10],
-  [0, 20],
-  [-17.321, 10],
-  [-17.321, -10],
-]
-
-const MARK_CELL = "M9 0 4.5 7.794 -4.5 7.794 -9 0 -4.5 -7.794 4.5 -7.794Z"
-
-const BrandMark = ({ y }: { y: number }): JSX.Element => (
-  <g transform={`translate(0 ${y}) scale(1.35)`} aria-hidden>
-    {MARK_RING.map(([x, my]) => (
-      <path
-        key={`${x},${my}`}
-        d={MARK_CELL}
-        transform={`translate(${x} ${my})`}
-        className="xcomb-mark-ring"
-      />
-    ))}
-    <path d={MARK_CELL} className="xcomb-mark-core" />
+/**
+ * The host's brand mark (a 64 box centred on 32,32), drawn above the core's
+ * cue. The host passes it, so this package never carries the brand.
+ */
+const BrandMark = ({
+  y,
+  mark,
+}: {
+  y: number
+  mark: ReactNode
+}): JSX.Element => (
+  <g transform={`translate(0 ${y}) scale(1.35) translate(-32 -32)`} aria-hidden>
+    {mark}
   </g>
 )
 
@@ -703,7 +693,14 @@ type Level = {
   caption: string | null
 }
 
-export const ExtensionsComb = (): JSX.Element => {
+type ExtensionsCombProps = {
+  /** The brand mark's shapes for the core cell; see {@link BrandMark}. */
+  mark?: ReactNode
+}
+
+export const ExtensionsComb = ({
+  mark = null,
+}: ExtensionsCombProps): JSX.Element => {
   const [view, setView] = useState<View>({ subject: null, facet: null })
   const [peek, setPeek] = useState<number | null>(null)
 
@@ -725,7 +722,7 @@ export const ExtensionsComb = (): JSX.Element => {
 
   const level: Level =
     subject === null
-      ? indexLevel(peek, setPeek, (i) => {
+      ? indexLevel(mark, peek, setPeek, (i) => {
           setPeek(null)
           setView({ subject: i, facet: null })
           setFocusKey(`subject-stage-${EXTENSIONS[i]?.id ?? ""}`)
@@ -824,6 +821,7 @@ export const ExtensionsComb = (): JSX.Element => {
  * upper-left cell that is the way up at every deeper level.
  */
 function indexLevel(
+  mark: ReactNode,
   peek: number | null,
   onPeek: (i: number | null) => void,
   onPick: (i: number) => void
@@ -860,7 +858,7 @@ function indexLevel(
     art: () =>
       peeked === null ? (
         <>
-          <BrandMark y={-14} />
+          <BrandMark y={-14} mark={mark} />
           <Label text={LABEL.cue} y={58} className="xcomb-cue" />
         </>
       ) : (

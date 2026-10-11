@@ -1,16 +1,6 @@
 import type { FC } from "react"
 import { cn } from "@some-ui/core-utils"
-
-const RING_OFFSETS: ReadonlyArray<readonly [number, number]> = [
-  [0, -20],
-  [17.321, -10],
-  [17.321, 10],
-  [0, 20],
-  [-17.321, 10],
-  [-17.321, -10],
-]
-
-const CELL = "M9 0 4.5 7.794 -4.5 7.794 -9 0 -4.5 -7.794 4.5 -7.794Z"
+import { BrandMark } from "@some-ui/shared"
 
 export type AuthBrandProps = {
   name?: string
@@ -18,10 +8,7 @@ export type AuthBrandProps = {
   markClassName?: string
 }
 
-/**
- * The Some UI wordmark. Its geometry and honey colours intentionally match
- * `packages/some-styles/brand/favicon.svg` and `apps/www/public/favicon.svg`.
- */
+/** The Some UI wordmark: the mochi mark in the session theme's `--brand`, and the name. */
 export const AuthBrand: FC<AuthBrandProps> = ({
   name = "Some UI",
   className,
@@ -33,23 +20,7 @@ export const AuthBrand: FC<AuthBrandProps> = ({
       className
     )}
   >
-    <svg
-      viewBox="0 0 64 64"
-      className={cn("size-8", markClassName)}
-      aria-hidden="true"
-    >
-      <g transform="translate(32 32)">
-        {RING_OFFSETS.map(([x, y]) => (
-          <path
-            key={`${x},${y}`}
-            d={CELL}
-            transform={`translate(${x} ${y})`}
-            fill="#f59e0b"
-          />
-        ))}
-        <path d={CELL} fill="#fde68a" />
-      </g>
-    </svg>
+    <BrandMark tone="brand" className={cn("size-8", markClassName)} />
     <span>{name}</span>
   </div>
 )
