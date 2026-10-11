@@ -20,8 +20,10 @@ import {
   cutShortStop,
   GLANCE_MS,
   latestStop,
+  pathCounts,
   PICK_UP_MS,
   step,
+  storeEffect,
   updateStop,
 } from "@/lib/session-stop"
 
@@ -44,8 +46,11 @@ const open = (
   playback: "playing",
   ...over,
 })
+/** Each effect's kind, a count as "count:<path>". */
 const kinds = (event: StopEvent, state: StopState = NONE): Array<string> =>
-  step(state, event)[1].map((e) => e.kind)
+  step(state, event)[1].map((e) =>
+    e.kind === "count" ? `count:${e.path}` : e.kind
+  )
 
 beforeEach(() => {
   localStorage.clear()
@@ -70,9 +75,14 @@ describe("a stop's machine", () => {
 
   it("forgets a mis-tap and a glance, and resumes in place", () => {
     const tapped = open(0, { returning: false })
-    expect(kinds({ type: "pickUp", now }, tapped)).toEqual(["forget", "resume"])
+    expect(kinds({ type: "pickUp", now }, tapped)).toEqual([
+      "forget",
+      "count:takenBack",
+      "resume",
+    ])
     expect(kinds({ type: "visible", now }, open(GLANCE_MS - 1))).toEqual([
       "forget",
+      "count:glances",
       "resume",
     ])
     expect(kinds({ type: "visible", now }, open(GLANCE_MS + 1))).toEqual([])
@@ -80,9 +90,13 @@ describe("a stop's machine", () => {
 
   it("after a glance, leaves a paused session paused and restarts a remounted one", () => {
     const glance = { type: "visible", now } as const
-    expect(kinds(glance, open(0, { playback: "paused" }))).toEqual(["forget"])
+    expect(kinds(glance, open(0, { playback: "paused" }))).toEqual([
+      "forget",
+      "count:glances",
+    ])
     expect(kinds(glance, open(0, { playback: "remounted" }))).toEqual([
       "forget",
+      "count:glances",
       "restart",
     ])
   })
@@ -90,13 +104,14 @@ describe("a stop's machine", () => {
   it("picks up in place, or where it stopped once the activity remounted", () => {
     expect(step(open(5 * 60_000), { type: "pickUp", now })[1]).toEqual([
       expect.objectContaining({ kind: "settle", outcome: "resumed" }),
+      { kind: "count", sessionId: "session-1", path: "pickUps" },
       { kind: "resume" },
     ])
     expect(
       step(open(5 * 60_000, { playback: "remounted" }), {
         type: "pickUp",
         now,
-      })[1][1]
+      })[1][2]
     ).toEqual({ kind: "restart", elapsedMs: 738_000, plannedMs: 1_200_000 })
   })
 
@@ -122,6 +137,7 @@ describe("a stop's machine", () => {
     const begin = (agoMs: number, outcome = "open" as const): StopState =>
       step(NONE, {
         type: "begin",
+        sessionId: "session-1",
         latest: stopRecord(agoMs, { outcome }),
         now,
       })[0]
@@ -134,15 +150,52 @@ describe("a stop's machine", () => {
     expect(
       kinds({
         type: "begin",
+        sessionId: "session-1",
         latest: stopRecord(0, { outcome: "done" }),
         now,
       })
-    ).toEqual(["end"])
-    expect(kinds({ type: "begin", latest: null, now })).toEqual(["start"])
+    ).toEqual(["count:opens", "end"])
+    expect(
+      kinds({ type: "begin", sessionId: "session-1", latest: null, now })
+    ).toEqual(["count:opens", "start"])
+  })
+
+  it("on reopening within a minute of leaving, carries on where it was", () => {
+    const begin = (stop: ReturnType<typeof stopRecord>): Array<string> =>
+      kinds({ type: "begin", sessionId: "session-1", latest: stop, now })
+
+    expect(begin(stopRecord(GLANCE_MS - 1))).toEqual([
+      "count:opens",
+      "forget",
+      "count:glances",
+      "restart",
+    ])
+    // A tap is meant: its screen stays, however soon.
+    expect(begin(stopRecord(0, { via: "tap" }))).toEqual(["count:opens"])
+    expect(begin(stopRecord(GLANCE_MS + 1))).toEqual(["count:opens"])
   })
 })
 
 describe("stored stops", () => {
+  it("counts each path per session", () => {
+    const counted = (sessionId: string, path: "opens" | "glances"): void =>
+      storeEffect({ kind: "count", sessionId, path })
+    counted("a", "opens")
+    counted("a", "opens")
+    counted("a", "glances")
+    counted("b", "opens")
+
+    expect(pathCounts("a")).toEqual({
+      sessionId: "a",
+      opens: 2,
+      glances: 1,
+      takenBack: 0,
+      pickUps: 0,
+    })
+    expect(pathCounts("b")?.opens).toBe(1)
+    expect(pathCounts("c")).toBeNull()
+  })
+
   it('is cut short against the plan at the stop, "+5 min" included', () => {
     const MIN = 60_000
     const stopAt = (elapsedMs: number): void => {

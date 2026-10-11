@@ -35,8 +35,8 @@ const orchestrator: Playback = {
 
 /**
  * Wiring only: the runtime for this player mount, its state as a snapshot,
- * and leaving the app forwarded on the phone (a desktop tab switch is not a
- * stop).
+ * and leaving forwarded on the phone (a desktop tab switch, or navigating
+ * away on the desktop web, is not a stop).
  */
 export function useSessionStop(sessionId: string): {
   state: StopState

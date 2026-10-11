@@ -91,6 +91,24 @@ describe("useSessionStop", () => {
     expect(commands.resume).toHaveBeenCalledTimes(1)
   })
 
+  it("keeps a stop when the player closes mid-session, by Back or a link", () => {
+    const { unmount } = renderHook(() => useSessionStop("s"))
+
+    unmount()
+
+    expect(commands.pause).toHaveBeenCalledTimes(1)
+    expect(latestStop("s")).toMatchObject({ via: "left", outcome: "open" })
+  })
+
+  it("keeps nothing when the player closes with nothing playing", () => {
+    mode = { is_running: false, is_paused: false }
+    const { unmount } = renderHook(() => useSessionStop("s"))
+
+    unmount()
+
+    expect(latestStop("s")).toBeNull()
+  })
+
   it("restarts where it stopped, its +5 min restored, after reopening", () => {
     seedStop(stopRecord(5 * 60_000, { sessionId: "s", plannedMs: 1_500_000 }))
     mode = { is_running: false, is_paused: false }

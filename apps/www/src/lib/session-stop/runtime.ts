@@ -22,8 +22,12 @@ export type StopRuntime = {
   tap: () => void
   pickUp: () => void
   done: () => void
-  /** Leaving and coming back (if `watchVisibility`) and a minute clock. */
-  connect: (watchVisibility: boolean) => () => void
+  /**
+   * A minute clock and, `onPhone`, leaving and coming back: the app hidden
+   * and shown, and the returned cleanup (the player unmounting, by Back or a
+   * link) as leaving.
+   */
+  connect: (onPhone: boolean) => () => void
 }
 
 /** One player mount's stop: runs `step` and its effects, owns the clock. */
@@ -77,18 +81,23 @@ export function createStopRuntime(
       return () => listeners.delete(listener)
     },
     begin: () =>
-      dispatch({ type: "begin", latest: latestStop(sessionId), now: now() }),
+      dispatch({
+        type: "begin",
+        sessionId,
+        latest: latestStop(sessionId),
+        now: now(),
+      }),
     tap: () => dispatch(here("tap")),
     pickUp: () => dispatch({ type: "pickUp", now: now() }),
     done: () => dispatch({ type: "done", now: now() }),
-    connect: (watchVisibility) => {
+    connect: (onPhone) => {
       const onVisibility = (): void =>
         dispatch(
           document.visibilityState === "hidden"
             ? here("hidden")
             : { type: "visible", now: now() }
         )
-      if (watchVisibility) {
+      if (onPhone) {
         document.addEventListener("visibilitychange", onVisibility)
       }
       const clock = setInterval(
@@ -98,6 +107,10 @@ export function createStopRuntime(
       return () => {
         document.removeEventListener("visibilitychange", onVisibility)
         clearInterval(clock)
+        // Pauses the app-wide orchestrator too, which would play on unseen.
+        // StrictMode's first cleanup comes after the player's `configure`
+        // has set it back to idle, so no position and nothing kept.
+        if (onPhone) dispatch(here("hidden"))
       }
     },
   }

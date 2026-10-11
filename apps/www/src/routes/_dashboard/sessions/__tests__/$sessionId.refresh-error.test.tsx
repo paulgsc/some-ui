@@ -14,7 +14,11 @@
  */
 
 import type { JSX } from "react"
-import { cachedQueryResult, withQueryClient } from "@/test-support/query-client"
+import {
+  cachedQueryResult,
+  queryClientWrapper,
+  withQueryClient,
+} from "@/test-support/query-client"
 import { sessionRecord } from "@/test-support/session-record"
 import type * as ReactRouterModule from "@tanstack/react-router"
 import { cleanup, render, screen } from "@testing-library/react"
@@ -113,5 +117,20 @@ describe("SessionPlayer: a cached non-null session through a failed refresh is n
 
     expect(alert() !== null).toBe(refreshFailed)
     expect(screen.getByTestId("live-player-stub")).toBeTruthy()
+  })
+  it("keeps the live player mounted as a refresh fails and recovers", () => {
+    const session = sessionRecord({ status: "active" })
+    mockResult = cachedQueryResult(session, false, { refetch })
+    const { rerender } = render(<SessionPlayer sessionId="session-1" />, {
+      wrapper: queryClientWrapper(),
+    })
+    const player = screen.getByTestId("live-player-stub")
+
+    for (const refreshFailed of [true, false]) {
+      mockResult = cachedQueryResult(session, refreshFailed, { refetch })
+      rerender(<SessionPlayer sessionId="session-1" />)
+      // The same node: a remount would restart the session from scratch.
+      expect(screen.getByTestId("live-player-stub")).toBe(player)
+    }
   })
 })

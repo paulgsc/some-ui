@@ -5,10 +5,11 @@ import type { SessionRecord } from "@/lib/tenant"
 import { finishedNaturally } from "@/lib/wind-down"
 
 /**
- * A session stopped before its end, by "Got to go" or by leaving the app:
- * one record per stop, kept the moment it happens, its reason optional. The
- * newest `STOP_LIMIT` stay on this device (`apps/mobile/README.md`, "A
- * session cut short still closes").
+ * A session stopped before its end, by "Got to go" or by leaving it (the app
+ * hidden, or Back or a link taking its screen away): one record per stop,
+ * kept the moment it happens, its reason optional. The newest `STOP_LIMIT`
+ * stay on this device (`apps/mobile/README.md`, "A session cut short still
+ * closes"), beside each session's `PathCounts`.
  *
  * `step` is the whole policy: what a tap, leaving, coming back and the clock
  * mean for a stop. `./runtime` runs its effects; React only forwards events.
@@ -35,6 +36,7 @@ export type Stop = {
   plannedMs: number
   /** For the record (both shares in `lib/agent-export`); a pick-up seeks to `elapsedMs`. */
   scene: string | null
+  /** "left": the app went to the background, or the player's screen closed. */
   via: "tap" | "left"
   reason: Reason | null
   reasonFrom: "stop" | "return" | "close" | "home" | null
@@ -64,6 +66,41 @@ const store = boundedList(
     )
   }
 )
+
+/**
+ * How often a session took each path that leaves no stop of its own, or
+ * whose stop may since have been dropped. Counted as the machine takes it,
+ * for the export; nothing in the app reads them back.
+ */
+export type PathCounts = {
+  sessionId: string
+  /** The player opened on it unfinished, the first time included. */
+  opens: number
+  /** Back within `GLANCE_MS` of leaving: the stop was forgotten. */
+  glances: number
+  /** "Oops, keep going" just after "Got to go": the stop was forgotten. */
+  takenBack: number
+  /** Picked up after a stop, which then reads "resumed" while it is kept. */
+  pickUps: number
+}
+
+type Path = keyof Omit<PathCounts, "sessionId">
+
+const PATHS = ["opens", "glances", "takenBack", "pickUps"] as const
+
+const paths = boundedList(
+  "some-ui:session-paths",
+  STOP_LIMIT,
+  (value): value is PathCounts =>
+    typeof value === "object" &&
+    value !== null &&
+    typeof Reflect.get(value, "sessionId") === "string" &&
+    PATHS.every((path) => typeof Reflect.get(value, path) === "number")
+)
+
+export function pathCounts(sessionId: string): PathCounts | null {
+  return paths.read().find((p) => p.sessionId === sessionId) ?? null
+}
 
 const same =
   (a: Stop) =>
@@ -147,19 +184,26 @@ export type StopState =
   | { kind: "closed"; stop: Stop }
 
 export type StopEvent =
-  | { type: "begin"; latest: Stop | null; now: Date }
+  | { type: "begin"; sessionId: string; latest: Stop | null; now: Date }
   /** `stop`: what playback would stop at, null when nothing is playing. */
   | { type: "tap" | "hidden"; stop: Stop | null; playing: boolean }
   | { type: "visible" | "tick" | "pickUp" | "done"; now: Date }
 
 export type StopEffect =
   | { kind: "save" | "forget"; stop: Stop }
+  | { kind: "count"; sessionId: string; path: Path }
   | { kind: "settle"; stop: Stop; outcome: Stop["outcome"]; at: string }
   | { kind: "pause" | "resume" | "start" | "end" }
   /** `plannedMs`: the plan at the stop, any "+5 min" included. */
   | { kind: "restart"; elapsedMs: number; plannedMs: number }
 
 const NONE: StopState = { kind: "none" }
+
+const count = (stop: Stop | { sessionId: string }, path: Path): StopEffect => ({
+  kind: "count",
+  sessionId: stop.sessionId,
+  path,
+})
 
 /** Carry on as if the stop never happened: a paused session stays paused. */
 function carryOn(playback: Playback, stop: Stop): Array<StopEffect> {
@@ -190,16 +234,32 @@ export function step(
   switch (event.type) {
     case "begin": {
       const stop = event.latest
+      const opened = count(event, "opens")
       if (stop?.outcome === "done" || stop?.outcome === "lapsed") {
-        return [{ kind: "closed", stop }, [{ kind: "end" }]]
+        return [{ kind: "closed", stop }, [opened, { kind: "end" }]]
       }
-      if (stop?.outcome !== "open") return [NONE, [{ kind: "start" }]]
-      if (msSinceStop(stop, event.now) > PICK_UP_MS) {
-        return close(stop, "lapsed", event.now)
+      if (stop?.outcome !== "open") return [NONE, [opened, { kind: "start" }]]
+      const away = msSinceStop(stop, event.now)
+      if (away > PICK_UP_MS) {
+        const [closed, effects] = close(stop, "lapsed", event.now)
+        return [closed, [opened, ...effects]]
+      }
+      // Back in under a minute after leaving, even by Back and the app's own
+      // links: a glance, as it is while the player stays mounted.
+      if (stop.via === "left" && away < GLANCE_MS) {
+        return [
+          NONE,
+          [
+            opened,
+            { kind: "forget", stop },
+            count(stop, "glances"),
+            ...carryOn("remounted", stop),
+          ],
+        ]
       }
       return [
         { kind: "open", stop, returning: true, playback: "remounted" },
-        [],
+        [opened],
       ]
     }
     case "tap":
@@ -236,7 +296,11 @@ export function step(
       if (keepGoing || glance) {
         return [
           NONE,
-          [{ kind: "forget", stop }, ...carryOn(state.playback, stop)],
+          [
+            { kind: "forget", stop },
+            count(stop, keepGoing ? "takenBack" : "glances"),
+            ...carryOn(state.playback, stop),
+          ],
         ]
       }
       if (event.type !== "pickUp") return [state, []]
@@ -245,6 +309,7 @@ export function step(
         NONE,
         [
           { kind: "settle", stop, outcome: "resumed", at },
+          count(stop, "pickUps"),
           ...carryOn(
             state.playback === "remounted" ? "remounted" : "playing",
             stop
@@ -258,8 +323,22 @@ export function step(
   }
 }
 
-/** Runs a "save", "settle" or "forget" against the stored records. */
+/** Runs a "save", "settle", "forget" or "count" against the stored records. */
 export function storeEffect(effect: StopEffect): void {
+  if (effect.kind === "count") {
+    const { sessionId, path } = effect
+    const was = pathCounts(sessionId) ?? {
+      sessionId,
+      opens: 0,
+      glances: 0,
+      takenBack: 0,
+      pickUps: 0,
+    }
+    paths.put(
+      { ...was, [path]: was[path] + 1 },
+      (p) => p.sessionId === sessionId
+    )
+  }
   if (effect.kind === "save") store.put(effect.stop, same(effect.stop))
   if (effect.kind === "forget") store.remove(same(effect.stop))
   if (effect.kind === "settle") {
