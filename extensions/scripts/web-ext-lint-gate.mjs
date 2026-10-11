@@ -7,10 +7,7 @@
  * below that: some-censor's floor of 112 is a recorded decision
  * (`extensions/some-censor/src/styles/content.css`). An older Firefox ignores
  * the key, so the linter's warning that the floor predates it is true and
- * harmless. Those two codes pass only when they are about that key; any other
- * warning, and any error, fails as `--warnings-as-errors` would.
- *
- * Usage: node web-ext-lint-gate.mjs <dist-dir>   (web-ext on PATH)
+ * harmless. web-ext must be on PATH.
  */
 
 /* eslint-disable no-console, no-process-exit -- CLI gate: reports on stderr and CI reads its exit code. */
@@ -23,9 +20,7 @@ const ACCEPTED = new Set([
 
 const accepted = (warning) =>
   ACCEPTED.has(warning.code) &&
-  `${warning.message} ${warning.description}`.includes(
-    "data_collection_permissions"
-  )
+  String(warning.description).includes("data_collection_permissions")
 
 const dist = process.argv[2]
 if (!dist) {

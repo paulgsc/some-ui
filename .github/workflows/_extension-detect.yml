@@ -64,7 +64,6 @@ jobs:
               - '.github/workflows/extension.yml'
               - '.github/workflows/_extension-*.yml'
               - '.github/actions/**'
-              # Shared extension scripts, the verify job's gates among them.
               - 'extensions/scripts/**'
 
       - name: Resolve changed shared extension deps

@@ -117,7 +117,5 @@ jobs:
       # extensions/scripts/self-contained-baseline.json and ratchets down only.
       - name: Assert classic entries are self-contained
         run: nix develop .#ci --command node extensions/scripts/assert-self-contained.mjs "${{ matrix.extension_path }}/dist"
-      # --warnings-as-errors, less the two data_collection_permissions
-      # warnings every manifest raises on purpose (see the script).
       - name: web-ext lint
         run: nix develop .#ci --command node extensions/scripts/web-ext-lint-gate.mjs "${{ matrix.extension_path }}/dist"
