@@ -6,8 +6,9 @@
  * becomes one timer, replacing any other; a `speak` goes to the speech
  * adapter, and the time from the audio starting to its end is reported back
  * as what the learner heard, which sets the echo. Counts and pace go to the
- * host's callbacks, dated by the learner's local day, and a hidden page
- * pauses the rep so it starts over when the page is shown (Prop. 6.4 (i)).
+ * host's callbacks, dated by the learner's local day, and a hidden page or
+ * a paused host session pauses the rep so it starts over when the page is
+ * shown and the session plays (Prop. 6.4 (i)).
  *
  * Nothing starts until `begin`: a phone plays no audio before the learner's
  * first tap, and a drill that talks before being asked is its own way to lose
@@ -54,6 +55,13 @@ export type UseReadAloudOptions = {
   paces?: PaceBook
   /** A set left unfinished in an earlier sitting, resumed at its next rep. */
   resume?: SetProgress | null
+  /**
+   * The host's session is paused (its stop screen, its own Pause): the rep
+   * pauses, nothing the learner taps starts it, and it starts over once the
+   * session plays with the page shown. Left on screen for two minutes, the
+   * hold ends the sitting, as the learner's own pause does (Rem. 4.10).
+   */
+  paused?: boolean
   /** A counted rep or a finished set, and the local day it belongs to. */
   onRecord?: (event: ReadAloudRecordEvent, day: string) => void
   onPace?: (wordId: string, pace: PaceEntry) => void
@@ -104,6 +112,8 @@ type Runner = {
   begin: () => void
   /** The page was hidden: the rep pauses, and starts over when shown. */
   hide: () => void
+  /** The host's session paused, the page shown: a pause on screen. */
+  hold: () => void
   show: () => void
   /** Unmounting: pause the rep, then stop every timer and utterance. */
   dispose: () => void
@@ -309,6 +319,7 @@ function createRunner(
       drawSet()
     },
     hide: (): void => dispatch({ type: "hidden", at: now() }),
+    hold: (): void => dispatch({ type: "held", at: now() }),
     show: (): void => dispatch({ type: "shown", at: now() }),
     dispose: (): void => {
       dispatch({ type: "hidden", at: now() })
@@ -318,13 +329,27 @@ function createRunner(
   }
 }
 
-/** A learner's action, sent from an event handler, never during render. */
+/** A hidden page, else a paused session, holds the drill; shown needs neither. */
+function holdOrShow(runner: Runner, paused: boolean | undefined): void {
+  if (document.visibilityState === "hidden") runner.hide()
+  else if (paused === true) runner.hold()
+  else runner.show()
+}
+
+/**
+ * A learner's action, sent from an event handler, never during render. The
+ * hold is applied again after it: under the session's own Pause the drill's
+ * controls stay reachable, and Start or Resume must not run it.
+ */
 function send(
   runnerRef: RefObject<Runner | null>,
+  paused: boolean | undefined,
   type: "stuck" | "skip" | "pause" | "resume" | "next-set" | "start-sitting"
 ): void {
   const runner = runnerRef.current
-  runner?.dispatch({ type, at: runner.now() })
+  if (!runner) return
+  runner.dispatch({ type, at: runner.now() })
+  holdOrShow(runner, paused)
 }
 
 export function useReadAloud(options: UseReadAloudOptions): ReadAloudVM {
@@ -344,26 +369,28 @@ export function useReadAloud(options: UseReadAloudOptions): ReadAloudVM {
   const runnerRef = useRef<Runner | null>(null)
   const [started, setStarted] = useState(false)
 
-  // A hidden page interrupts the rep; shown again, it starts over. The same
-  // pair covers an unmount: whatever was running stops, and the set's
-  // progress, current rep included, is what the host last received.
+  // A hidden page or a paused session interrupts the rep; with neither, it
+  // starts over. The same pair covers an unmount: whatever was running
+  // stops, and the set's progress, current rep included, is what the host
+  // last received.
   useEffect(() => {
     const runner = (runnerRef.current ??= createRunner(
       () => latest.current,
       setSnapshot
     ))
-    const onVisibility = (): void => {
-      if (document.visibilityState === "hidden") runner.hide()
-      else runner.show()
-    }
+    const onVisibility = (): void => holdOrShow(runner, latest.current.paused)
     document.addEventListener("visibilitychange", onVisibility)
-    // A remount (React's development double mount) picks the rep up again.
-    runner.show()
     return (): void => {
       document.removeEventListener("visibilitychange", onVisibility)
       runner.dispose()
     }
   }, [])
+  // After the effect above, on every mount: a remount (React's development
+  // double mount) picks the rep up again, or holds it.
+  const { paused } = options
+  useEffect(() => {
+    if (runnerRef.current) holdOrShow(runnerRef.current, paused)
+  }, [paused])
 
   return {
     state: snapshot.state,
@@ -378,12 +405,14 @@ export function useReadAloud(options: UseReadAloudOptions): ReadAloudVM {
       if (started || !runner) return
       setStarted(true)
       runner.begin()
+      holdOrShow(runner, latest.current.paused)
     },
-    stuck: (): void => send(runnerRef, "stuck"),
-    skip: (): void => send(runnerRef, "skip"),
-    pause: (): void => send(runnerRef, "pause"),
-    resume: (): void => send(runnerRef, "resume"),
-    nextSet: (): void => send(runnerRef, "next-set"),
-    startSitting: (): void => send(runnerRef, "start-sitting"),
+    stuck: (): void => send(runnerRef, latest.current.paused, "stuck"),
+    skip: (): void => send(runnerRef, latest.current.paused, "skip"),
+    pause: (): void => send(runnerRef, latest.current.paused, "pause"),
+    resume: (): void => send(runnerRef, latest.current.paused, "resume"),
+    nextSet: (): void => send(runnerRef, latest.current.paused, "next-set"),
+    startSitting: (): void =>
+      send(runnerRef, latest.current.paused, "start-sitting"),
   }
 }

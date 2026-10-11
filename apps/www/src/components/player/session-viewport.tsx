@@ -11,6 +11,7 @@ import { loadLeetypeRoundRuns, loadLeetypeRounds } from "@/lib/leetype-content"
 import {
   setSessionKey,
   setSuspended,
+  useIsPaused,
   useSceneLifetimes,
 } from "@/lib/orchestrator"
 import { PANELS } from "@/lib/playable"
@@ -96,6 +97,8 @@ export const SessionViewport = ({
     [signedIn]
   )
 
+  const paused = useIsPaused()
+
   // Each panel's runtime props, keyed by the one registry key that consumes
   // them.
   //
@@ -118,6 +121,7 @@ export const SessionViewport = ({
           loadTreeManifest,
           shelf: shelves?.topik,
           share: PHONE_SHARE,
+          paused,
         },
         leetype: {
           // A plain function too; the package parses what it returns.
@@ -127,7 +131,7 @@ export const SessionViewport = ({
           shelf: shelves?.leetype,
         },
       }),
-    [shelves]
+    [shelves, paused]
   )
 
   const renderedLifetimes = useMemo(

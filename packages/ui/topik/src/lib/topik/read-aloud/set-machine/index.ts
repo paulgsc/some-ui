@@ -29,9 +29,10 @@
  *   begins - no rep, no introduction, no summary, no set. What is showing
  *   finishes first; a rep is never cut short by the bound. The set in
  *   progress is kept, and `start-sitting` resumes it at its next rep. Every
- *   screen ends within two minutes, the learner's pause included: a pause
- *   left for that long ends the sitting, and so does any pause, or hidden
- *   page, once the thirty minutes have passed.
+ *   screen ends within two minutes, a pause on screen included (the
+ *   learner's, or the host session's, `held`): a pause left for that long
+ *   ends the sitting, and so does any pause, or hidden page, once the thirty
+ *   minutes have passed. A hidden page's pause shows nothing, so it waits.
  */
 
 import { assertNever } from "@some-ui/core-utils"
@@ -90,7 +91,8 @@ type SetPhase =
   | { name: "summary" }
   | {
       name: "paused"
-      by: "learner" | "hidden"
+      /** "session": the host's session is paused, with the page shown. */
+      by: "learner" | "hidden" | "session"
       /** What starts again on resuming: the entry from its glyphs, or the summary. */
       resume: "entry" | "summary"
     }
@@ -161,6 +163,8 @@ export type SetEvent =
   | { type: "pause"; at: number }
   | { type: "resume"; at: number }
   | { type: "hidden"; at: number }
+  /** The host's session paused, the page shown; `shown` when neither. */
+  | { type: "held"; at: number }
   | { type: "shown"; at: number }
   | { type: "next-set"; at: number }
 
@@ -543,7 +547,7 @@ function onElapsed(state: SetMachineState, at: number): SetTransition {
       return leaveSummary(state, at)
     }
     case "paused": {
-      // Only a learner's pause waits, and it is a screen like any other
+      // Only a pause on screen waits, and it is a screen like any other
       // (Rem. 4.10): left for two minutes, it ends the sitting.
       return endSitting(state)
     }
@@ -557,9 +561,11 @@ function onElapsed(state: SetMachineState, at: number): SetTransition {
   }
 }
 
+type PausedBy = Extract<SetPhase, { name: "paused" }>["by"]
+
 function pauseWith(
   state: SetMachineState,
-  by: "learner" | "hidden",
+  by: PausedBy,
   at: number
 ): SetTransition {
   const { phase } = state
@@ -576,10 +582,32 @@ function pauseWith(
     resume: phase.name === "summary" ? "summary" : "entry",
   })
   const effects: Array<SetEffect> = [{ type: "stop-speech" }]
-  if (by === "learner") {
+  if (by !== "hidden") {
     effects.push({ type: "wait", seq: next.seq, ms: MAX_SCREEN_MS })
   }
   return { state: next, effects }
+}
+
+/**
+ * A held pause whose page was hidden, or a hidden one whose page is shown
+ * while the session still holds: the same pause, on or off the screen.
+ */
+function rehold(
+  state: SetMachineState,
+  by: "hidden" | "session",
+  at: number
+): SetTransition {
+  const { phase } = state
+  if (phase.name !== "paused") return { state, effects: [] }
+  if (sittingOver(state, at)) return endSitting(state)
+  const next = enter(state, { ...phase, by })
+  return {
+    state: next,
+    effects:
+      by === "session"
+        ? [{ type: "wait", seq: next.seq, ms: MAX_SCREEN_MS }]
+        : [],
+  }
 }
 
 // REDUCER
@@ -673,9 +701,17 @@ export function setMachineReducer(
     }
 
     case "hidden": {
-      return phase.name === "paused"
-        ? unchanged
-        : pauseWith(state, "hidden", event.at)
+      if (phase.name !== "paused") return pauseWith(state, "hidden", event.at)
+      return phase.by === "session"
+        ? rehold(state, "hidden", event.at)
+        : unchanged
+    }
+
+    case "held": {
+      if (phase.name !== "paused") return pauseWith(state, "session", event.at)
+      return phase.by === "hidden"
+        ? rehold(state, "session", event.at)
+        : unchanged
     }
 
     case "resume": {
@@ -685,7 +721,7 @@ export function setMachineReducer(
     }
 
     case "shown": {
-      return phase.name === "paused" && phase.by === "hidden"
+      return phase.name === "paused" && phase.by !== "learner"
         ? resumeFromPause(state, phase.resume, event.at)
         : unchanged
     }

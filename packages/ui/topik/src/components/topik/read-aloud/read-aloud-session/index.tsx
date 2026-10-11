@@ -16,7 +16,7 @@ import type { JSX } from "react"
 import { cn } from "@some-ui/core-utils"
 import { Button } from "@some-ui/shared"
 import { StepLayout } from "@topik/components/topik/handheld/step-layout"
-import { RepCard } from "@topik/components/topik/read-aloud/rep-card"
+import { HeldNote, RepCard } from "@topik/components/topik/read-aloud/rep-card"
 import { SetCard } from "@topik/components/topik/read-aloud/set-card"
 import type { UseReadAloudOptions } from "@topik/lib/topik/adapter/hooks/use-read-aloud"
 import { useReadAloud } from "@topik/lib/topik/adapter/hooks/use-read-aloud"
@@ -43,6 +43,8 @@ export const ReadAloudSession = ({
   const { phase } = state
   const onEntry = entry !== undefined && vm.started
   const paused = phase.name === "paused"
+  // Held by the page or the host's session, which resume it, not the learner.
+  const held = phase.name === "paused" && phase.by !== "learner"
   const running =
     onEntry && phase.name !== "paused" && phase.name !== "sitting-over"
 
@@ -70,7 +72,7 @@ export const ReadAloudSession = ({
         >
           TOPIK {options.level}
         </span>
-        {(running || (paused && onEntry)) && (
+        {(running || (paused && onEntry && !held)) && (
           <Button
             variant="ghost"
             size="icon"
@@ -153,9 +155,13 @@ export const ReadAloudSession = ({
           short={short}
           stage={<p className="text-muted-foreground text-sm">Paused</p>}
           dock={
-            <Button className="h-12 gap-2 rounded-2xl" onClick={vm.resume}>
-              <Play className="size-5" /> Resume
-            </Button>
+            held ? (
+              <HeldNote />
+            ) : (
+              <Button className="h-12 gap-2 rounded-2xl" onClick={vm.resume}>
+                <Play className="size-5" /> Resume
+              </Button>
+            )
           }
         />
       )
@@ -172,7 +178,7 @@ export const ReadAloudSession = ({
         short={short}
         onStuck={vm.stuck}
         onSkip={vm.skip}
-        onResume={vm.resume}
+        onResume={held ? undefined : vm.resume}
       />
     )
   })()
