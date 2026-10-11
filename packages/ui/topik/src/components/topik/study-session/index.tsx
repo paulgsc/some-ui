@@ -93,6 +93,11 @@ export type KoreanStudyPageProps = {
    * lessons, not two layouts of one (adaptive-learning canon Cor. 9.1).
    */
   surface?: SurfacePreference
+  /**
+   * The host's session is paused (a stop, its own Pause). Only the handheld
+   * read-aloud drill holds for it; the rest of the applet is unaffected.
+   */
+  paused?: boolean
 }
 
 /**
@@ -142,9 +147,11 @@ const DesktopSession = (): JSX.Element => {
 const KoreanStudySession = ({
   appearance = "inherit",
   surface: preference = "auto",
+  paused,
 }: {
   appearance?: Appearance
   surface?: SurfacePreference
+  paused?: boolean
 } = {}): JSX.Element => {
   const root = useRef<HTMLDivElement>(null)
   const box = useElementBox(root)
@@ -167,7 +174,7 @@ const KoreanStudySession = ({
        * the row past the height the host granted (docs/ui-fit).
        */}
       {surface === "handheld" ? (
-        <HandheldLesson short={isShort(box)} />
+        <HandheldLesson short={isShort(box)} paused={paused} />
       ) : (
         <DesktopSession />
       )}
@@ -186,6 +193,7 @@ export const KoreanStudyPage = ({
   share,
   appearance = "inherit",
   surface = "auto",
+  paused,
 }: KoreanStudyPageProps = {}): JSX.Element => {
   /*
    * The one thing that is legitimately ambient. There is one pair of
@@ -231,7 +239,11 @@ export const KoreanStudyPage = ({
 
   return (
     <SessionConfigProvider value={value}>
-      <KoreanStudySession appearance={appearance} surface={surface} />
+      <KoreanStudySession
+        appearance={appearance}
+        surface={surface}
+        paused={paused}
+      />
     </SessionConfigProvider>
   )
 }

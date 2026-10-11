@@ -161,6 +161,31 @@ describe("useReadAloud", () => {
     expect(records).toEqual([])
   })
 
+  it("holds while the host's session is paused, even with the page shown", async () => {
+    const { options, speech } = harness()
+    const { result, rerender } = renderHook(
+      (paused: boolean) => useReadAloud({ ...options, paused }),
+      { initialProps: false }
+    )
+    act(() => result.current.begin())
+    while (result.current.state.phase.name !== "audio") await advance(50)
+
+    rerender(true)
+    expect(result.current.state.phase).toMatchObject({
+      name: "paused",
+      by: "hidden",
+    })
+    expect(speech.stops).toBeGreaterThan(0)
+    // Back from another app with the session still paused: still held.
+    act(() => setVisibility("hidden"))
+    act(() => setVisibility("visible"))
+    expect(result.current.state.phase.name).toBe("paused")
+
+    rerender(false)
+    expect(result.current.state.phase.name).toBe("glyphs")
+    expect(result.current.state.cursor).toBe(0)
+  })
+
   it("resumes an unfinished set at its next rep", () => {
     const first = harness()
     const { result: before } = renderHook(() => useReadAloud(first.options))

@@ -6,8 +6,9 @@
  * becomes one timer, replacing any other; a `speak` goes to the speech
  * adapter, and the time from the audio starting to its end is reported back
  * as what the learner heard, which sets the echo. Counts and pace go to the
- * host's callbacks, dated by the learner's local day, and a hidden page
- * pauses the rep so it starts over when the page is shown (Prop. 6.4 (i)).
+ * host's callbacks, dated by the learner's local day, and a hidden page or
+ * a paused host session pauses the rep so it starts over when the page is
+ * shown and the session plays (Prop. 6.4 (i)).
  *
  * Nothing starts until `begin`: a phone plays no audio before the learner's
  * first tap, and a drill that talks before being asked is its own way to lose
@@ -54,6 +55,12 @@ export type UseReadAloudOptions = {
   paces?: PaceBook
   /** A set left unfinished in an earlier sitting, resumed at its next rep. */
   resume?: SetProgress | null
+  /**
+   * The host's session is paused (its stop screen, its own Pause): the drill
+   * holds as it does on a hidden page, and its rep starts over once both
+   * are gone.
+   */
+  paused?: boolean
   /** A counted rep or a finished set, and the local day it belongs to. */
   onRecord?: (event: ReadAloudRecordEvent, day: string) => void
   onPace?: (wordId: string, pace: PaceEntry) => void
@@ -318,6 +325,12 @@ function createRunner(
   }
 }
 
+/** One "hidden" for both a hidden page and a paused session: shown needs neither. */
+function holdOrShow(runner: Runner, paused: boolean | undefined): void {
+  if (paused === true || document.visibilityState === "hidden") runner.hide()
+  else runner.show()
+}
+
 /** A learner's action, sent from an event handler, never during render. */
 function send(
   runnerRef: RefObject<Runner | null>,
@@ -344,26 +357,28 @@ export function useReadAloud(options: UseReadAloudOptions): ReadAloudVM {
   const runnerRef = useRef<Runner | null>(null)
   const [started, setStarted] = useState(false)
 
-  // A hidden page interrupts the rep; shown again, it starts over. The same
-  // pair covers an unmount: whatever was running stops, and the set's
-  // progress, current rep included, is what the host last received.
+  // A hidden page or a paused session interrupts the rep; with neither, it
+  // starts over. The same pair covers an unmount: whatever was running
+  // stops, and the set's progress, current rep included, is what the host
+  // last received.
   useEffect(() => {
     const runner = (runnerRef.current ??= createRunner(
       () => latest.current,
       setSnapshot
     ))
-    const onVisibility = (): void => {
-      if (document.visibilityState === "hidden") runner.hide()
-      else runner.show()
-    }
+    const onVisibility = (): void => holdOrShow(runner, latest.current.paused)
     document.addEventListener("visibilitychange", onVisibility)
     // A remount (React's development double mount) picks the rep up again.
-    runner.show()
+    holdOrShow(runner, latest.current.paused)
     return (): void => {
       document.removeEventListener("visibilitychange", onVisibility)
       runner.dispose()
     }
   }, [])
+  const { paused } = options
+  useEffect(() => {
+    if (runnerRef.current) holdOrShow(runnerRef.current, paused)
+  }, [paused])
 
   return {
     state: snapshot.state,

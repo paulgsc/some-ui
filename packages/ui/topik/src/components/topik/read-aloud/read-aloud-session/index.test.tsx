@@ -1,3 +1,4 @@
+import type { JSX } from "react"
 import type { Speaker, SpeechOutcome } from "@some-ui/speech"
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
 import type { ReadAloudSessionProps } from "@topik/components/topik/read-aloud/read-aloud-session"
@@ -199,6 +200,31 @@ describe("ReadAloudSession", () => {
     fireEvent.click(screen.getByRole("button", { name: "Pause" }))
     expect(stepOf()).toBe("paused")
     fireEvent.click(screen.getAllByRole("button", { name: /resume/i })[0]!)
+    expect(stepOf()).toBe("glyphs")
+  })
+
+  it("offers no Resume while the host's session holds it", async () => {
+    const session = (paused: boolean): JSX.Element => (
+      <ReadAloudSession
+        deck={STARTER_DECK}
+        level={1}
+        speech={fakeSpeech()}
+        seedKey={() => "fixed"}
+        paused={paused}
+        onExit={vi.fn()}
+      />
+    )
+    const { rerender } = render(session(false))
+    fireEvent.click(screen.getByRole("button", { name: /start/i }))
+    await runUntil(() => stepOf() === "echo")
+
+    rerender(session(true))
+    expect(stepOf()).toBe("paused")
+    // Its Resume would do nothing: the session's own Resume ends the hold.
+    expect(screen.queryByRole("button", { name: /resume|pause/i })).toBeNull()
+    expect(screen.getByText("Resumes with the session")).toBeDefined()
+
+    rerender(session(false))
     expect(stepOf()).toBe("glyphs")
   })
 

@@ -35,8 +35,16 @@ type RepCardProps = {
   short: boolean
   onStuck: () => void
   onSkip: () => void
-  onResume: () => void
+  /** Absent while the host's session holds the drill: it resumes that way. */
+  onResume?: () => void
 }
+
+/** In place of Resume, while the host's session holds the drill. */
+export const HeldNote = (): JSX.Element => (
+  <p className="text-muted-foreground py-3 text-center text-sm">
+    Resumes with the session
+  </p>
+)
 
 const LABEL: Record<RepCardStep, string> = {
   glyphs: "Read it aloud",
@@ -216,9 +224,13 @@ export const RepCard = ({
 
   const dock =
     step === "paused" ? (
-      <Button className="h-12 gap-2 rounded-2xl" onClick={onResume}>
-        <Play className="size-5" /> Resume
-      </Button>
+      onResume ? (
+        <Button className="h-12 gap-2 rounded-2xl" onClick={onResume}>
+          <Play className="size-5" /> Resume
+        </Button>
+      ) : (
+        <HeldNote />
+      )
     ) : (
       <div className="flex gap-2">
         <Button

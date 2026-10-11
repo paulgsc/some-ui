@@ -28,6 +28,8 @@ type ReadAloudScreenProps = {
   store?: ReadAloudStore
   deck?: ReadAloudDeck
   short?: boolean
+  /** The host's session is paused (`useReadAloud`'s `paused`). */
+  paused?: boolean
   onExit: () => void
   /** Test seam: the clock, which also dates the record. */
   now?: () => number
@@ -39,6 +41,7 @@ export const ReadAloudScreen = ({
   store: given,
   deck = BUNDLED_DECK,
   short = false,
+  paused,
   onExit,
   now = Date.now,
 }: ReadAloudScreenProps): JSX.Element => {
@@ -68,6 +71,7 @@ export const ReadAloudScreen = ({
       now={now}
       record={{ record, today: dayKey(new Date(now())) }}
       short={short}
+      paused={paused}
       onRecord={(event, day) => setRecord(store.count(event, day))}
       onPace={(wordId, pace) => store.savePace(wordId, pace)}
       onProgress={(progress) => store.saveProgress(level, progress)}

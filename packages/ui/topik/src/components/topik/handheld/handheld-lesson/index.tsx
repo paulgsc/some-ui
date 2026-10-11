@@ -62,6 +62,8 @@ import { ChevronLeft, Loader2, Music } from "lucide-react"
 type HandheldLessonProps = {
   /** Landscape phone: two columns, compact chrome. */
   short?: boolean
+  /** The host's session is paused: read-aloud holds (`useReadAloud`). */
+  paused?: boolean
   /** Injected in tests and stories; defaults to `localStorage`. */
   lastDrama?: LastDramaStore
   /** Injected in tests and stories; defaults to `sessionStorage`. */
@@ -78,6 +80,7 @@ type HandheldLessonProps = {
 
 export const HandheldLesson = ({
   short = false,
+  paused,
   lastDrama,
   pastedStore,
   readAloudStore,
@@ -157,6 +160,7 @@ export const HandheldLesson = ({
           speech={speaker}
           store={readAloudStore}
           short={short}
+          paused={paused}
           onExit={() => setReading(false)}
         />
       </div>
