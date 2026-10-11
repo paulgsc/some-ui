@@ -26,7 +26,7 @@
 
 import { readdirSync, readFileSync } from "node:fs"
 import { join, relative, resolve } from "node:path"
-import { gates, workspaceRoots } from "@/build.profiles"
+import { routeGates, workspaceRoots } from "@/build.profiles"
 import { readAudienceWorkspaces } from "@some-ui/vite-config/audience"
 import { QueryClient } from "@tanstack/react-query"
 import type { AnyRouter } from "@tanstack/react-router"
@@ -132,7 +132,8 @@ beforeAll(async () => {
   const routes: Array<{ id: string; fullPath: string }> = Object.values(
     createRouter({ routeTree }).routesById
   )
-  gated = Object.entries(gates).flatMap(([audience, dirs]) =>
+  // The doors are modules, not layouts: src/lib/web-surface's own test.
+  gated = routeGates.flatMap(({ audience, dirs }) =>
     dirs.map((dir) => {
       const routeId = dir.replace(/^src\/routes/, "")
       const children = routes.filter((r) => r.id.startsWith(`${routeId}/`))

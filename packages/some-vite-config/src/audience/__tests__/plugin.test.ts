@@ -148,7 +148,7 @@ async function buildApp(
         profile,
         defaultProfile: "lan",
         workspaceRoots: [join(root, "packages/ui")],
-        gates: { lan: ["src/routes/_lan"], apk: [] },
+        gates: { lan: ["src/routes/_lan"], apk: [], web: [] },
         ...extra,
       }),
       // The bundle re-generates code (renames bindings, re-escapes strings),
@@ -248,7 +248,7 @@ describe("audiencePlugin", { timeout: 30_000 }, () => {
         profile: "lan",
         defaultProfile: "lan",
         workspaceRoots: [join(root, "packages/ui")],
-        gates: { lan: ["src/routes/_lan"], apk: [] },
+        gates: { lan: ["src/routes/_lan"], apk: [], web: [] },
       })
     ).toThrow(/unmarked\/package\.json: "someUi" is missing or invalid/)
   })
@@ -260,7 +260,7 @@ describe("audiencePlugin", { timeout: 30_000 }, () => {
         profile: "vps",
         defaultProfile: "lan",
         workspaceRoots: [join(root, "packages/ui")],
-        gates: { lan: ["src/routes/_lan"], apk: [] },
+        gates: { lan: ["src/routes/_lan"], apk: [], web: [] },
       })
     ).toThrow(/unknown build profile "vps". Known profiles: pages, lan/)
   })

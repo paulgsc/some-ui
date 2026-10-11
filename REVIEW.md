@@ -10,7 +10,7 @@ invariants with an ID (for example `L3`) and four parts: **Claim**, **Falsified 
 **Scope**, **Why not enforced**. See `CLAUDE.md`, "Gray-area invariants: declare them
 falsifiable", for the format. The first full set is the resource-lifetime invariants L1–L8 in
 `extensions/common/GOOD_CITIZEN.md` → "Resource lifetimes: what is enforced, and what is
-not"; the build-audience invariants A1–A3 are in `packages/some-vite-config/AUDIENCES.md`,
+not"; the build-audience invariants A1–A4 are in `packages/some-vite-config/AUDIENCES.md`,
 and some-drama's live-playback invariants LP1–LP3 in `extensions/some-drama/README.md` → "Live
 playback: what is enforced, and what is not"; R1 (coordination in React modules) in
 `docs/monorepo-boundaries.md` → "Inside a React package: the component is not the
@@ -72,7 +72,7 @@ fixed body (release, Changesets and snapshot PRs) carry generated content and ar
 ## The phone is Android only
 
 No finding whose failure reproduces only on iOS, iPadOS or Safari: those platforms are not
-targets, and whatever works there does so by coincidence (`CLAUDE.md`, "Desktop follows
-the APK"). The reverse is a **blocking** finding, since the fix is only deletion: a hunk that adds
+targets, and whatever works there does so by coincidence (`CLAUDE.md`, "The phone and
+the desktop web are separate surfaces"). The reverse is a **blocking** finding, since the fix is only deletion: a hunk that adds
 code, a test, a fallback or a comment for them (a `webkit`-prefixed global Chrome does not
 need, an Apple meta tag, a Safari-version workaround, an iPhone branch).

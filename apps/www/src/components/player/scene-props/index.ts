@@ -1,27 +1,26 @@
-import type { RegistryKey } from "@some-ui/content-registry"
 import type {
   ActiveLifetime,
   PanelIntent,
   UILayoutIntent,
 } from "@some-ui/types"
 
+import type { PanelKey } from "@/lib/playable"
+
 /**
  * Runtime props for the panels that need them, keyed by the registry key that
  * consumes them. Keys absent from the map are panels with nothing to inject.
  */
-export type ScenePropsMap = Partial<
-  Record<RegistryKey, Record<string, unknown>>
->
+export type ScenePropsMap = Partial<Record<PanelKey, Record<string, unknown>>>
 
 /**
- * Build a `ScenePropsMap` with its keys checked against the registry's union,
+ * Build a `ScenePropsMap` with its keys checked against `PanelKey`,
  * so a misspelled panel is a compile error. The `Record<Exclude<…>, never>`
  * intersection does that: `ScenePropsMap` is a weak type (all optional), and
  * TS only reports a weak-type mismatch when *no* key matches, so
  * `{ hangull: …, leetype: … }` would pass on `leetype` alone.
  */
 export function defineSceneProps<T extends ScenePropsMap>(
-  map: T & Record<Exclude<keyof T, RegistryKey>, never>
+  map: T & Record<Exclude<keyof T, PanelKey>, never>
 ): ScenePropsMap {
   return map
 }
@@ -99,6 +98,6 @@ function lookup(
 ): Record<string, unknown> | undefined {
   return Object.hasOwn(props, registryKey)
     ? // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- hasOwn just proved this string is one of the map's keys
-      props[registryKey as RegistryKey]
+      props[registryKey as PanelKey]
     : undefined
 }

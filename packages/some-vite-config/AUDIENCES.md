@@ -15,11 +15,16 @@ a LAN-only page talks to is the server's to guard.
 ## How it works
 
 - **Each `packages/ui/*` workspace declares an audience** in `package.json`:
-  `"someUi": { "audience": "public" | "lan" | "apk" }` (schema: `src/audience/schema.ts`). The field
-  is required. Every profile, manifest and gate is typed against `AUDIENCES`.
+  `"someUi": { "audience": "public" | "lan" | "apk" | "web" }` (schema: `src/audience/schema.ts`).
+  The field is required. Every profile, manifest and gate is typed against `AUDIENCES`.
 - **Each build selects a profile.** `apps/www/build.profiles.ts` lists them (`lan`, the default,
-  carries `public` and `lan`; `pages` carries `public`; `mobile`, the Android app's, carries
-  `public` and `apk`), chosen by `SOME_UI_PROFILE`.
+  carries `public`, `lan` and `web`; `pages` carries `public` and `web`; `mobile`, the Android
+  app's, carries `public` and `apk`), chosen by `SOME_UI_PROFILE`.
+- **The desktop web and the phone are separate surfaces.** `web` and `apk` are mirrors: each
+  holds what one device affords and the other has no counterpart for (Hangul Honeycomb, a
+  keyboard game, is `web`; the soundbite recorder, the phone's microphone, is `apk`). Neither
+  surface is the other fitted to a different screen, so neither profile carries the other's
+  workspaces. `public` is what both play.
 - **`audiencePlugin` stubs what the profile leaves out.** An import of an excluded workspace
   resolves to a module exporting the same names, each a function that throws when called.
   `tsc` still resolves the real package, so the route tree, typed links, search schemas and
@@ -29,6 +34,13 @@ a LAN-only page talks to is the server's to guard.
   `apps/www/src/routes/_dashboard/_lan/`, for `apk`, `_dashboard/_apk/`). Its layout
   (`_lan.tsx`, `_apk.tsx`) calls `requireAudience("lan")` (or `"apk"`) in `beforeLoad`, which turns a visit into the app's ordinary
   not-found in a build without the audience, before a loader or component can reach a stub.
+- **Or behind a door**, where shared code needs a gated workspace without a route of its own
+  (the session player binding a panel, a page every build routes to). A door is a directory in
+  `gates` that is also listed in `doors` (`build.profiles.ts`); today one, `web`'s
+  `apps/www/src/lib/web-surface/`. Its `index.ts` hands the workspace out only where the build
+  carries the audience and something inert elsewhere (A4): Hangul Honeycomb's panel joins the
+  shared registry's panels in a web build, and is absent from the Android app's, which
+  therefore offers no activity that plays it (`apps/www/src/lib/playable`).
 
 ## What is enforced, and what is not
 
@@ -44,7 +56,7 @@ parent's `beforeLoad` runs, a child's `validateSearch` and `params.parse` have a
 and a throw from either is recorded while the parent's not-found still wins. A throw from
 `loaderDeps`, `search.middlewares` or `context` fails matching before the guard runs at all.
 
-**Invariants A1–A3: what the checks above cannot see.** Each is written for review, human or
+**Invariants A1–A4: what the checks above cannot see.** Each is written for review, human or
 bot, one hunk at a time (`REVIEW.md`). Each held on `main` when it was written; a violation
 is a regression, not debt. Each falsifier covers deletions and moves as well as additions.
 
@@ -122,6 +134,35 @@ checked against every existing link. What is left is inside such a file.
   for the cost of one link to not-found. `tsc` accepts the link on purpose (the route tree is
   the same in every profile), and a lint rule would need the route tree, another file (the
   `eslint --cache` problem again).
+
+**A4: A door hands out a gated workspace only behind its guard.**
+
+- _Claim:_ in a door's `index.ts`, every `import()` of a gated workspace or of a module inside
+  the door sits in the true branch of a conditional whose condition is written inline as
+  `import.meta.env.VITE_DEVICE_BACKEND !== "true" && hasAudience("<audience>")` (for `web`),
+  whose false branch loads nothing (an empty record, a component that renders `null`), and the
+  index has no static value import of a gated workspace; and no module outside the door
+  imports one inside it except through its `index.ts`.
+- _Falsified by_ a hunk in a door's `index.ts` that adds such an `import()` or a static value
+  import outside that branch, that deletes, weakens or moves the condition out of line (into a
+  constant, which Rolldown folds only after chunking, so the Android app's build would write the
+  chunk anyway), or that makes the false branch load code; a hunk outside a door that imports
+  a path below its `index.ts` (the build allows it: the importer of the gated workspace is then
+  the door's own module); or a hunk to `apps/www/build.profiles.ts` that adds a directory to
+  `doors` whose `index.ts` does not meet the claim, or to `profileBuildEnv` in
+  `apps/www/build.paths.ts` that sets `VITE_DEVICE_BACKEND` to `"true"` in a profile carrying
+  `web`.
+- _Scope:_ the directories in `doors` (`apps/www/build.profiles.ts`), and imports of them from
+  the rest of `apps/www`. Held when written: `web-surface/index.ts`'s two exports
+  (`WEB_PANELS`, `ExtensionsComb`) both sit behind the condition, and nothing outside the door
+  imports below its index (`rg 'web-surface/' apps/www` finds none).
+- _Why not enforced:_ the effect is checked, not the shape. `web-surface/index.test.tsx` loads
+  the door with and without the flag and the audience and checks each export, and
+  `check:bundle-paths` fails when the door's internals (`web-surface/hangul/**`, an `exclusive`
+  rule) reach the `mobile` output. Neither sees a new export the test does not name until
+  something in the APK binds it. Which branch an `import()` sits in is control flow, beyond a
+  lint rule's reach for the same reasons as A3. The deep-import half is **mechanical; not yet a
+  rule** (a `no-restricted-imports` pattern on `@/lib/web-surface/*`).
 
 ## Paths: what each build ships
 

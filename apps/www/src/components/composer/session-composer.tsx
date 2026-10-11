@@ -3,7 +3,6 @@ import { useRef, useState } from "react"
 import {
   defaultSessionName,
   getActivity,
-  isActivityId,
   sequenceScenes,
   totalDurationOfScenes,
 } from "@some-ui/activity-catalog"
@@ -39,6 +38,7 @@ import {
   useIntentEffect,
 } from "@/lib/intent"
 import { IntentButton } from "@/lib/intent/render"
+import { isOfferedActivityId } from "@/lib/playable"
 import {
   checkSessionDuration,
   describeDurationCheck,
@@ -242,9 +242,10 @@ export const SessionComposer = ({
   const [items, setItems] = useState<Array<ComposerActivity>>(() =>
     existingSession
       ? // A retired activity can't be configured or played, so editing a
-        // session that held one drops it; the next save writes the rest.
+        // session that held one drops it; the next save writes the rest. So
+        // does one this build does not offer (one whose panel it lacks).
         existingSession.activities.flatMap(({ activityId, config }) =>
-          isActivityId(activityId)
+          isOfferedActivityId(activityId)
             ? [{ instanceId: crypto.randomUUID(), activityId, config }]
             : []
         )

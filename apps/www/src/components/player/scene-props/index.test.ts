@@ -190,7 +190,7 @@ describe("defineSceneProps", () => {
   // so the `@ts-expect-error` below is the assertion.
   it("rejects a key outside the registry union at compile time", () => {
     const map = defineSceneProps({
-      // @ts-expect-error -- 'hangull' is not a RegistryKey; removing this
+      // @ts-expect-error -- 'hangull' is not a PanelKey; removing this
       // directive must make `pnpm typecheck` fail, which is the whole point.
       hangull: { words: ["사과"] },
     })

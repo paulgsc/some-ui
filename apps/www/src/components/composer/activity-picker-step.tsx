@@ -1,12 +1,7 @@
 import type { JSX } from "react"
 import { useMemo, useRef } from "react"
 import type { ActivityDefinition, ActivityId } from "@some-ui/activity-catalog"
-import {
-  ACTIVITY_CATALOG,
-  ACTIVITY_IDS,
-  getActivity,
-  searchActivities,
-} from "@some-ui/activity-catalog"
+import { getActivity, searchActivities } from "@some-ui/activity-catalog"
 import { cn } from "@some-ui/core-utils"
 import { useFittedPage } from "@some-ui/react-hooks"
 import {
@@ -19,6 +14,7 @@ import {
 } from "@some-ui/shared"
 import { Plus, X } from "lucide-react"
 
+import { OFFERED_ACTIVITIES } from "@/lib/playable"
 import { ActivityIcon } from "@/components/activity-icon"
 import { ActivityInputHint } from "@/components/activity/activity-input"
 import { ActivityMaturityBadge } from "@/components/activity/activity-maturity"
@@ -36,9 +32,8 @@ import { AudioActivityHint } from "@/components/audio/audio-activity-notice"
 const CATALOGUE_SHARE = "min-h-0 flex-[3]"
 const MANIFEST_SHARE = "min-h-0 flex-[2]"
 
-const CATALOGUE: ReadonlyArray<ActivityDefinition> = ACTIVITY_IDS.map(
-  (id) => ACTIVITY_CATALOG[id]
-)
+/** What this build offers: only activities whose panel it binds. */
+const CATALOGUE: ReadonlyArray<ActivityDefinition> = OFFERED_ACTIVITIES
 
 type PickedActivity = {
   instanceId: string

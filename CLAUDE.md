@@ -137,13 +137,21 @@ the shortest life that works, and nothing recreated leaves its old copy behind.
   retention" sets the default for any upload without `retention-days` and caps any
   explicit value above it. It also sets how long run logs are kept.
 
-## Desktop follows the APK
+## The phone and the desktop web are separate surfaces
 
-The APK is the product. The desktop experience is being rebuilt to mirror it,
-so desktop-only UI is going to churn. Before polishing, migrating or fixing UI,
-check which surface renders it: work on APK and platform-agnostic UI is
-worthwhile, and work on desktop-only UI is usually wasted. Phone and desktop
-split in a few places: `useIsMobile` in `Leetype` (`RoundSession` under 768px
+The APK and the desktop web are orthogonal: each is built for what its device
+affords, and neither is the other fitted onto a different screen. Nothing is
+transposed from desktop to phone or stretched from phone to desktop by default;
+an experience that only makes sense on one (Hangul Honeycomb, a physical-keyboard
+game) belongs to that one alone, and the other build does not ship it. The
+build audiences say this for whole workspaces: `apk` for the phone, `web` for
+the desktop web, `public` for what both play
+(`packages/some-vite-config/AUDIENCES.md`). Shared code reaches a `web`
+workspace only through the web surface's door, `apps/www/src/lib/web-surface`
+(invariant A4), and a build offers exactly the activities whose panel it binds
+(`apps/www/src/lib/playable`). Before polishing, migrating or fixing UI, check
+which surface renders it, and fix it for that surface's device. Phone and
+desktop split in a few places: `useIsMobile` in `Leetype` (`RoundSession` under 768px
 wide, the typing game above), `chooseSurface` in topik (`HandheldLesson` under
 768px wide or 480px tall, `DesktopSession` otherwise), the `lan` audience (not
 in the APK build), and the `_apk` routes. The window-size splits follow the
