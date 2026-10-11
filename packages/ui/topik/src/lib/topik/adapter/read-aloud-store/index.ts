@@ -9,7 +9,7 @@
  * any of them costs exactly that and nothing else (Thm. 7.2), which is why
  * every failure below is silent: eviction, a full quota, a private window, a
  * document an older build wrote. Everything read is parsed, not trusted, and
- * none of it leaves the device.
+ * nothing here sends any of it anywhere (`readAloudPracticeRecord` below).
  */
 
 import { localStorageOrNull } from "@some-ui/core-utils"
@@ -154,3 +154,10 @@ export function createReadAloudStore(
     },
   }
 }
+
+/**
+ * The practice record as kept, for the learner's own export (Def. 7.2,
+ * Rem. 7.5). It names no item and carries no outcome (Def. 6.6).
+ */
+export const readAloudPracticeRecord = (): PracticeRecord =>
+  createReadAloudStore().record()
