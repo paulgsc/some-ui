@@ -41,8 +41,8 @@ name: Extension Release
 # Only release/notes.md carries over from the release branch; every other
 # file there is regenerated from main on each run, so edits to them are lost.
 #
-# Retries: publish_only signs the release commit named by release_sha (it
-# must be on main and carry the release commit message), never main's head.
+# Retries: dispatch publish_only on a branch or tag at the release commit
+# (detect refuses any other commit), never on main once it has moved on.
 #
 # Deliberately NOT changesets: the version is the notes' decision (patch,
 # minor or major, with a stated rationale), and the changelog section is the
@@ -69,13 +69,9 @@ on:
   workflow_dispatch:
     inputs:
       publish_only:
-        description: "Skip the release PR and sign release_sha again (to retry a publish that failed after the release PR merged)"
+        description: "Sign the release commit this run is dispatched on (a branch or tag at it), to retry a publish that failed after the release PR merged"
         type: boolean
         default: false
-      release_sha:
-        description: "With publish_only: the release commit on main to sign"
-        type: string
-        default: ""
 env:
   EXTENSION_NAME: suspender-ledger
   RELEASE_COMMIT_MESSAGE: "chore(release): publish extension suspender-ledger"
@@ -89,7 +85,6 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       release_mode: ${{ steps.detect.outputs.release_mode }}
-      ref: ${{ steps.detect.outputs.ref }}
       package_name: ${{ steps.pkg.outputs.name }}
     steps:
       - uses: actions/checkout@v7
@@ -102,7 +97,6 @@ jobs:
         with:
           event-name: ${{ github.event_name }}
           publish-only: ${{ inputs.publish_only }}
-          release-sha: ${{ inputs.release_sha }}
           commit-message: ${{ github.event.head_commit.message }}
           release-commit-message: ${{ env.RELEASE_COMMIT_MESSAGE }}
           head-sha: ${{ github.sha }}
@@ -214,8 +208,6 @@ jobs:
       matrix: ${{ steps.matrix.outputs.matrix }}
     steps:
       - uses: actions/checkout@v7
-        with:
-          ref: ${{ needs.detect.outputs.ref }}
       - uses: ./.github/actions/nix-setup
       - uses: ./.github/actions/pnpm-cache
       - name: Install dependencies
@@ -255,7 +247,6 @@ jobs:
     secrets: inherit
     with:
       matrix: ${{ needs.build-workspace.outputs.matrix }}
-      ref: ${{ needs.detect.outputs.ref }}
 
   # ── Mark what AMO accepted ────────────────────────────────────────────────
   tag:
@@ -267,8 +258,6 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v7
-        with:
-          ref: ${{ needs.detect.outputs.ref }}
       - name: Tag the release commit
         run: |
           tag="${EXTENSION_NAME}@$(jq -r .version "extensions/${EXTENSION_NAME}/package.json")"

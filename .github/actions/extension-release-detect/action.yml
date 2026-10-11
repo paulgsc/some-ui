@@ -1,15 +1,11 @@
 name: "Extension Release Detect"
-description: "Decide extension-release.yml's release_mode (publish or release-pr) and the commit a publish signs."
+description: "Decide extension-release.yml's release_mode: publish or release-pr."
 inputs:
   event-name:
     description: "github.event_name"
     required: true
   publish-only:
     description: "workflow_dispatch inputs.publish_only (empty when not dispatched)"
-    required: false
-    default: ""
-  release-sha:
-    description: "workflow_dispatch inputs.release_sha: the release commit a publish_only retry signs"
     required: false
     default: ""
   commit-message:
@@ -26,9 +22,6 @@ outputs:
   release_mode:
     description: "One of: publish, release-pr"
     value: ${{ steps.run.outputs.release_mode }}
-  ref:
-    description: "For publish, the commit to build and sign; empty otherwise"
-    value: ${{ steps.run.outputs.ref }}
 runs:
   using: composite
   steps:
@@ -37,7 +30,6 @@ runs:
       env:
         EVENT_NAME: ${{ inputs.event-name }}
         PUBLISH_ONLY: ${{ inputs.publish-only }}
-        RELEASE_SHA: ${{ inputs.release-sha }}
         COMMIT_MESSAGE: ${{ inputs.commit-message }}
         RELEASE_COMMIT_MESSAGE: ${{ inputs.release-commit-message }}
         HEAD_SHA: ${{ inputs.head-sha }}

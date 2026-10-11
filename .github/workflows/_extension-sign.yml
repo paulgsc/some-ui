@@ -10,12 +10,6 @@ on:
       matrix:
         required: true
         type: string
-      # The commit to build and sign. Empty (extension-sign-manual.yml) means
-      # the dispatched ref; extension-release.yml passes its release commit.
-      ref:
-        required: false
-        type: string
-        default: ""
     secrets:
       AMO_JWT_ISSUER:
         required: true
@@ -31,8 +25,6 @@ jobs:
       matrix: ${{ fromJSON(inputs.matrix) }}
     steps:
       - uses: actions/checkout@v7
-        with:
-          ref: ${{ inputs.ref }}
       - uses: ./.github/actions/nix-setup
       - uses: ./.github/actions/pnpm-cache
       - name: Install dependencies
