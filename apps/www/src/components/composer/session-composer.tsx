@@ -38,7 +38,7 @@ import {
   useIntentEffect,
 } from "@/lib/intent"
 import { IntentButton } from "@/lib/intent/render"
-import { isOfferedActivityId } from "@/lib/playable"
+import { isOfferedActivityId, playableScenes } from "@/lib/playable"
 import {
   checkSessionDuration,
   describeDurationCheck,
@@ -263,7 +263,10 @@ export const SessionComposer = ({
   )
   const [advancedScenes, setAdvancedScenes] =
     useState<Array<SceneConfig> | null>(() =>
-      existingSession?.layoutMode === "advanced" ? existingSession.scenes : null
+      existingSession?.layoutMode === "advanced"
+        ? // The same for a stored arrangement's scenes (`playableScenes`).
+          [...playableScenes(existingSession.scenes)]
+        : null
     )
   const [sessionName, setSessionName] = useState(
     () => existingSession?.name ?? ""
