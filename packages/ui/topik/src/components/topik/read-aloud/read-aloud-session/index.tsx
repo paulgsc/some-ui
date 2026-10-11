@@ -21,6 +21,7 @@ import { SetCard } from "@topik/components/topik/read-aloud/set-card"
 import type { UseReadAloudOptions } from "@topik/lib/topik/adapter/hooks/use-read-aloud"
 import { useReadAloud } from "@topik/lib/topik/adapter/hooks/use-read-aloud"
 import type { PracticeRecord } from "@topik/lib/topik/read-aloud/records"
+import { levelShortfall } from "@topik/lib/topik/read-aloud/set-builder"
 import { Pause, Play, X } from "lucide-react"
 
 export type ReadAloudSessionProps = UseReadAloudOptions & {
@@ -62,6 +63,13 @@ export const ReadAloudSession = ({
         <h1 className="min-w-0 flex-1 truncate text-base font-semibold">
           Read aloud
         </h1>
+        {/* The level stays in sight through every rep (Cor. 4.6 (ii)). */}
+        <span
+          data-slot="read-aloud-level"
+          className="bg-primary/15 shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold"
+        >
+          TOPIK {options.level}
+        </span>
         {(running || (paused && onEntry)) && (
           <Button
             variant="ghost"
@@ -106,6 +114,7 @@ export const ReadAloudSession = ({
           level={options.level}
           audio={vm.audio}
           empty={vm.empty}
+          shortfall={levelShortfall(options.deck, options.level)}
           resuming={(options.resume?.queue.length ?? 0) > 0}
           record={record}
           short={short}

@@ -18,6 +18,11 @@ export type SetCardProps = { short: boolean; onStop: () => void } & (
       resuming: boolean
       /** The deck has nothing at or below this level to draw a set from. */
       empty?: boolean
+      /**
+       * How many sentences the deck writes for this level, where lower levels
+       * fill the rest of each set (`levelShortfall`); absent when they don't.
+       */
+      shortfall?: number | null
       /** The practice record and the learner's local day, where one is kept. */
       record?: { record: PracticeRecord; today: string }
       onStart: () => void
@@ -177,8 +182,18 @@ export const SetCard = (props: SetCardProps): JSX.Element => {
           )}
           <p className="text-2xl font-semibold">Read aloud</p>
           <span className="text-muted-foreground text-xs font-medium tracking-wider uppercase">
-            Level {props.level}
+            TOPIK {props.level}
           </span>
+          {!props.empty && props.shortfall != null && (
+            <p
+              data-slot="read-aloud-shortfall"
+              className="text-muted-foreground text-sm leading-relaxed"
+            >
+              {props.shortfall === 0
+                ? `Nothing is written for TOPIK ${props.level} yet, so each set comes from lower levels.`
+                : `Only ${props.shortfall} ${props.shortfall === 1 ? "sentence is" : "sentences are"} written for TOPIK ${props.level} yet, so each set fills up with easier ones.`}
+            </p>
+          )}
           {props.empty ? (
             <p className="text-muted-foreground text-sm leading-relaxed">
               There is nothing at this level to read yet. Choose a lower level,

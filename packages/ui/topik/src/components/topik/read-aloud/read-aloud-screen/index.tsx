@@ -17,10 +17,8 @@ import { ReadAloudSession } from "@topik/components/topik/read-aloud/read-aloud-
 import type { ReadAloudStore } from "@topik/lib/topik/adapter/read-aloud-store"
 import { createReadAloudStore } from "@topik/lib/topik/adapter/read-aloud-store"
 import { BUNDLED_DECK } from "@topik/lib/topik/read-aloud/bundled"
-import type {
-  ReadAloudDeck,
-  ReadAloudLevel,
-} from "@topik/lib/topik/read-aloud/content"
+import type { ReadAloudDeck } from "@topik/lib/topik/read-aloud/content"
+import { readAloudLevelFor } from "@topik/lib/topik/read-aloud/content"
 import { dayKey } from "@topik/lib/topik/read-aloud/records"
 
 type ReadAloudScreenProps = {
@@ -34,10 +32,6 @@ type ReadAloudScreenProps = {
   /** Test seam: the clock, which also dates the record. */
   now?: () => number
 }
-
-/** The drill's level for a TOPIK level: its own, up to its highest. */
-export const readAloudLevelFor = (topikLevel: number): ReadAloudLevel =>
-  topikLevel <= 1 ? 1 : topikLevel === 2 ? 2 : 3
 
 export const ReadAloudScreen = ({
   topikLevel,

@@ -8,6 +8,7 @@ import type { DramaLesson } from "@topik/lib/topik/core/drama"
 import type { FeedCard, Seed } from "@topik/lib/topik/core/feed-card"
 import { cardOf, koreanGenre, seedOf } from "@topik/lib/topik/core/feed-card"
 import { TOPIK_LEVELS } from "@topik/lib/topik/generation"
+import { readAloudLevelFor } from "@topik/lib/topik/read-aloud/content"
 import {
   BookOpenText,
   ChevronRight,
@@ -296,6 +297,14 @@ export const MaterialList = ({
           <span className="block font-semibold">Read aloud</span>
           <span className="text-muted-foreground block text-sm">
             Read words and sentences aloud, then hear them. It runs by itself.
+          </span>
+          <span
+            data-slot="read-aloud-card-level"
+            className="text-muted-foreground mt-1 block text-xs"
+          >
+            {level > readAloudLevelFor(level)
+              ? `TOPIK ${readAloudLevelFor(level)}, the highest it reads`
+              : `TOPIK ${level}`}
           </span>
         </span>
         <ChevronRight className="text-muted-foreground size-5 shrink-0" />

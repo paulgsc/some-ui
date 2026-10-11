@@ -1,10 +1,7 @@
 import type { Speaker, SpeechOutcome } from "@some-ui/speech"
 import { memoryStorage } from "@some-ui/vite-config/vitest/memory-storage"
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
-import {
-  readAloudLevelFor,
-  ReadAloudScreen,
-} from "@topik/components/topik/read-aloud/read-aloud-screen"
+import { ReadAloudScreen } from "@topik/components/topik/read-aloud/read-aloud-screen"
 import { createReadAloudStore } from "@topik/lib/topik/adapter/read-aloud-store"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
@@ -55,12 +52,6 @@ afterEach(() => {
   vi.useRealTimers()
 })
 
-describe("readAloudLevelFor", () => {
-  it("follows the TOPIK level up to the drill's highest", () => {
-    expect([1, 2, 3, 4, 6].map(readAloudLevelFor)).toEqual([1, 2, 3, 3, 3])
-  })
-})
-
 describe("ReadAloudScreen", () => {
   it("records what ran and keeps each word's pace", async () => {
     const storage = memoryStorage()
@@ -99,7 +90,10 @@ describe("ReadAloudScreen", () => {
         onExit={() => undefined}
       />
     )
-    expect(screen.getByText("Level 3")).toBeTruthy()
+    // TOPIK 5 reads the drill's highest level.
+    expect(
+      document.querySelector('[data-slot="read-aloud-level"]')?.textContent
+    ).toBe("TOPIK 3")
     const record = screen.getByLabelText("Your reading aloud")
     expect(record.textContent).toContain("Today1 read · 0 sets · 2 min")
     expect(record.textContent).toContain("In all1 read · 1 set · 2 min")

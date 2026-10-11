@@ -1,5 +1,8 @@
 import type { ParsedDeck } from "@topik/lib/topik/read-aloud/content"
-import { parseReadAloudDeck } from "@topik/lib/topik/read-aloud/content"
+import {
+  parseReadAloudDeck,
+  readAloudLevelFor,
+} from "@topik/lib/topik/read-aloud/content"
 import { describe, expect, it } from "vitest"
 
 type RawWord = { id: string; lemma: string; gloss: string }
@@ -241,5 +244,11 @@ describe("parseReadAloudDeck", () => {
       "line-malformed",
       "line-duplicate",
     ])
+  })
+})
+
+describe("readAloudLevelFor", () => {
+  it("follows the TOPIK level up to the drill's highest", () => {
+    expect([1, 2, 3, 4, 6].map(readAloudLevelFor)).toEqual([1, 2, 3, 3, 3])
   })
 })

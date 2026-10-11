@@ -3,6 +3,7 @@ import type { SetItem } from "@topik/lib/topik/read-aloud/set-builder"
 import {
   buildSet,
   hasThreeAlike,
+  levelShortfall,
 } from "@topik/lib/topik/read-aloud/set-builder"
 import { STARTER_DECK } from "@topik/lib/topik/read-aloud/starter"
 import { describe, expect, it } from "vitest"
@@ -95,5 +96,24 @@ describe("buildSet", () => {
     })
     expect(items).toHaveLength(5)
     expect(items.every((item) => item.kind === "word")).toBe(true)
+  })
+})
+
+describe("levelShortfall", () => {
+  const ownLines = (level: ReadAloudLevel): number =>
+    STARTER_DECK.lines.filter((line) => line.level === level).length
+
+  it("names the level's own sentences when lower levels fill its sets", () => {
+    expect(ownLines(2)).toBeLessThan(4)
+    expect(levelShortfall(STARTER_DECK, 2)).toBe(ownLines(2))
+    expect(levelShortfall(STARTER_DECK, 3)).toBe(ownLines(3))
+  })
+
+  it("is null when the level's own lines fill a set", () => {
+    expect(levelShortfall(STARTER_DECK, 2, ownLines(2))).toBeNull()
+  })
+
+  it("is null when nothing below the level could fill it", () => {
+    expect(levelShortfall(STARTER_DECK, 1, ownLines(1) + 1)).toBeNull()
   })
 })

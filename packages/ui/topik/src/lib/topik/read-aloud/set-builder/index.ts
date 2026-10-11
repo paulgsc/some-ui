@@ -94,6 +94,33 @@ function spread(
   return order
 }
 
+/** The deck's lines a level draws on: its own, and those below it. */
+function linesFor(
+  deck: ReadAloudDeck,
+  level: ReadAloudLevel
+): { atLevel: ReadAloudDeck["lines"]; below: ReadAloudDeck["lines"] } {
+  return {
+    atLevel: deck.lines.filter((line) => line.level === level),
+    below: deck.lines.filter((line) => line.level < level),
+  }
+}
+
+/**
+ * How many sentences the deck writes for the level itself, when that is
+ * fewer than a set draws and lower levels fill the rest (`buildSet`); null
+ * when the level's own lines fill a set, or nothing below could fill it.
+ * The start screen says so (Cor. 4.6 (ii)): a set at a higher level that is
+ * mostly lower-level lines otherwise reads exactly like a lower level.
+ */
+export function levelShortfall(
+  deck: ReadAloudDeck,
+  level: ReadAloudLevel,
+  sentences = DEFAULT_SENTENCES
+): number | null {
+  const { atLevel, below } = linesFor(deck, level)
+  return atLevel.length < sentences && below.length > 0 ? atLevel.length : null
+}
+
 /**
  * Build one set from a deck.
  *
@@ -112,8 +139,7 @@ export function buildSet(
   }: SetOptions
 ): Array<SetItem> {
   const eligible = deck.lines.filter((line) => line.level <= level)
-  const atLevel = eligible.filter((line) => line.level === level)
-  const below = eligible.filter((line) => line.level < level)
+  const { atLevel, below } = linesFor(deck, level)
 
   const sentenceItems: Array<SetItem> = [
     ...shuffledBySeed(atLevel, fnv1a(`${seedKey}:sentences:at`)),
