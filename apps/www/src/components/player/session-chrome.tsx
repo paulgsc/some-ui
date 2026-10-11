@@ -106,7 +106,7 @@ export const SessionChrome = ({
     <>
       {/* The strip: transparent and just tall enough for the trigger, but
           real layout, so nothing below it is painted over. */}
-      <div className="flex min-h-9 shrink-0 items-center justify-end gap-2 px-2 pt-[env(safe-area-inset-top)]">
+      <div className="flex min-h-9 shrink-0 items-center justify-end gap-2 px-2 pt-[calc(env(safe-area-inset-top)+0.5rem)]">
         {/* In the last minutes the nudge's "Wrap up" is the way out. */}
         {isRunning && !isWindingDown(timeRemaining, totalDuration) && (
           <Button
