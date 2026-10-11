@@ -1,6 +1,7 @@
 /**
  * The settings controls for the account: sign out, sign out everywhere, add a
- * passkey on this device, delete the account.
+ * passkey on this device, the AI services connected to it
+ * (`ConnectedServicesSection`), delete the account.
  *
  * A passkey is the only way in (`paulgsc/server` `docs/identity.md`): no email
  * means no recovery, and the safety net is a second passkey, said next to the
@@ -29,6 +30,8 @@ import { DATA_MODE } from "@/lib/data-mode"
 import { useAsyncIntent } from "@/lib/intent"
 import { IntentButton } from "@/lib/intent/render"
 import { passkeysSupported } from "@/lib/passkey"
+
+import { ConnectedServicesSection } from "./connected-services-section"
 
 export const AccountSection = (): JSX.Element => {
   const navigate = useNavigate()
@@ -119,6 +122,9 @@ export const AccountSection = (): JSX.Element => {
               workingLabel="Waiting for your passkey..."
             />
           </div>
+
+          <Separator />
+          <ConnectedServicesSection />
 
           <Separator />
           <div className="space-y-2">

@@ -219,12 +219,24 @@ export type RequestOptions = {
 }
 
 /**
+ * A transport that reads a bodiless `204` as the JSON `null`, for the routes
+ * that answer one (the learner shelf's `DELETE`, `DELETE /oauth/grants/:grant`):
+ * `requestJSON` decodes every answer.
+ */
+export const bodilessAsNull =
+  (transport: FileHostTransport): FileHostTransport =>
+  async (route, init) => {
+    const response = await transport(route, init)
+    return response.status === 204 ? Response.json(null) : response
+  }
+
+/**
  * `fetch`, decode, and turn every failure into one of the three errors above,
  * with one deadline racing the whole operation (transport, status check and
  * body read; see the header, point 3).
  *
- * Every `file_host` route answers with a JSON body except the learner shelf's
- * bodiless `204` `DELETE`, which `lib/shelf-client` handles before here.
+ * Every `file_host` route answers with a JSON body except the bodiless `204`s
+ * above, which their clients read through `bodilessAsNull` before here.
  */
 export async function requestJSON<T>(
   transport: FileHostTransport,
