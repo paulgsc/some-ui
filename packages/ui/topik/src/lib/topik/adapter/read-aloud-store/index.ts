@@ -9,8 +9,7 @@
  * any of them costs exactly that and nothing else (Thm. 7.2), which is why
  * every failure below is silent: eviction, a full quota, a private window, a
  * document an older build wrote. Everything read is parsed, not trusted, and
- * nothing here sends any of it anywhere: the practice record leaves only in
- * the learner's own export (`readAloudPracticeRecord`, Def. 7.2, Rem. 7.5).
+ * nothing here sends any of it anywhere (`readAloudPracticeRecord` below).
  */
 
 import { localStorageOrNull } from "@some-ui/core-utils"

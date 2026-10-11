@@ -72,7 +72,6 @@ export type {
 } from "./lib/topik/read-aloud/content"
 export { STARTER_DECK } from "./lib/topik/read-aloud/starter"
 export { BUNDLED_DECK } from "./lib/topik/read-aloud/bundled"
-/** The read-aloud practice record, for apps/www's export to the learner's agent. */
 export { readAloudPracticeRecord } from "./lib/topik/adapter/read-aloud-store"
 export type { PracticeRecord } from "./lib/topik/read-aloud/records"
 

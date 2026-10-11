@@ -33,7 +33,10 @@ import { sessionsRepository } from "@/lib/tenant/queries"
 type SoundbiteReader = Pick<SoundbiteStore, "list" | "audio">
 
 const READ_ALOUD_PRACTICE =
-  "`readAloudPractice` is the read-aloud drill's practice record: per day, the reps read to the end, the sets finished and the practice they are credited with (a nominal time per rep, not the clock); null if it could not be read."
+  "`readAloudPractice` is the read-aloud drill's practice record: for each of the last 60 days, and in `totals` for all time, the reps read to the end, the sets finished and the practice they are credited with (a nominal time per rep, not the clock); null if the app could not load it."
+
+const STOPS =
+  "`stops` are the times a session was stopped before its end, each with when (`stoppedAt`), how far in (`elapsedMs` of `plannedMs`, in `scene`), `via` a tap or leaving the app, the optional `reason` (`legend` reads it) and where it was given (`reasonFrom`), and `outcome` (open, resumed, done or lapsed, as of `settledAt`). Not every departure is here: leaving for under a minute, a tap taken back, and Android's back button or the app's Home link are not recorded, and only the newest 20 stops are kept, so an older session can show none."
 
 const ABOUT = [
   "Exported from the some-ui study app on the learner's phone, for an agent helping them.",
@@ -41,6 +44,7 @@ const ABOUT = [
   "1. How should the next lesson be shaped, given the sessions, how they went (each session's reflections) and why they stopped early (stops)?",
   "2. Where does the app get in the way on the phone: friction, blockers, anything that kept a session from happening or finishing? Soundbites are the learner speaking, often about exactly that.",
   "Each soundbite's and voice reflection's audio is a separate file, named in its `file`; a soundbite's `context.source` says what the learner tapped to record it.",
+  STOPS,
   READ_ALOUD_PRACTICE,
 ].join("\n")
 
@@ -48,7 +52,7 @@ const ABOUT_REFLECTIONS = [
   "Reflections from the some-ui study app on the learner's phone, about one study session, for an agent helping them.",
   "Each is something the learner said while it was fresh: a typed line, a voice note (its audio is the file named in `file`), or one-tap answers (`legend` reads them).",
   "`atMs` is how far into the session it was said; null means after the session ended.",
-  "`stops` are the times the session was stopped before its end: `via` a tap or leaving the app, `elapsedMs` how far in, `outcome` how it ended, `settledAt` when (`legend` reads `reason`). Leaving for under a minute is not kept.",
+  STOPS,
   READ_ALOUD_PRACTICE,
   "Use them to shape the next session. Once handed off they leave the phone: this file is then the only copy.",
 ].join("\n")
