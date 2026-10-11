@@ -15,6 +15,9 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest"
   },
+  "dependencies": {
+    "@some-ui/core-utils": "workspace:*"
+  },
   "devDependencies": {
     "@some-ui/tsconfig": "workspace:*",
     "@some-ui/vite-config": "workspace:*"

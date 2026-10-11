@@ -243,37 +243,40 @@ declared (checked by reading every call site and by the tests named).
 ### LA7: a reflection reaches no server
 
 - _Claim:_ a session reflection (a typed line, a voice note, the one-tap
-  answers; `lib/session-reflection`) is never sent to `file_host` nor written
-  into anything that is (a session record, a signal, the device backend's
-  database). It leaves the device only through the share sheet
-  (`lib/agent-export`), which the person starts. Two allowlists in
-  `apps/www/eslint.config.js` hold it: the modules that hold or show
-  reflections (`REFLECTION_MODULES`) import from `@/` only what
-  `REFLECTION_MAY_IMPORT` names (from the tenant, only `useSessions`) and
-  nothing from `fetch-kit`; and no module imports a reflection module but
-  those, `REFLECTION_IMPORTERS` and tests (`reflection-voice/budget`, a size,
-  aside).
-- _Falsified by:_ a hunk that adds to `REFLECTION_MAY_IMPORT`, to
-  `REFLECTION_IMPORTERS` or to `allowImportNames` a module that can send, or
-  one whose code passes a reflection to one; that removes or narrows either
-  LA7 block, or moves a module that holds reflections out of
-  `REFLECTION_MODULES`; that adds an `eslint-disable` of
-  `no-restricted-imports` in a file either block covers; or that, in
-  `lib/agent-export` or a module in `REFLECTION_IMPORTERS`, passes a
-  reflection, or anything built from one, to anything but `shareFiles` or a
-  reflection component (the sessions repository is read there for names and
-  dates, never written with one).
+  answers; `lib/session-reflection`), or any value built from one, is never
+  passed to anything that sends to `file_host` or writes what does (a session
+  record, a signal, the device backend's database). It leaves the device only
+  through the share sheet (`lib/agent-export`), which the person starts. Two
+  allowlists in `apps/www/eslint.config.js` bound where one can travel: the
+  modules that hold or show reflections (`REFLECTION_MODULES`) import from `@/`
+  only what `REFLECTION_MAY_IMPORT` names (from the tenant, only
+  `useSessions`) and nothing from `fetch-kit`; and no module imports a
+  reflection module but those, `REFLECTION_IMPORTERS` and tests
+  (`reflection-voice/budget`, a size, aside). An importer may write sessions
+  of its own (the player completes one, the study list deletes them); it
+  never writes one with a reflection.
+- _Falsified by:_ a hunk that removes or narrows either LA7 block (a glob, a
+  pattern, the restated base patterns), moves a module that holds reflections
+  out of `REFLECTION_MODULES`, or adds an `eslint-disable` of
+  `no-restricted-imports` in a file either block covers; a hunk that adds a
+  name to `REFLECTION_MAY_IMPORT`, `REFLECTION_IMPORTERS` or
+  `allowImportNames` (each is a new place a reflection can reach, so read the
+  module it names against the next clause); or a hunk, in `lib/agent-export`
+  or a module either list names, that passes a reflection or a value built
+  from one to a call that sends to `file_host` or writes a session, a signal
+  or the device backend's database.
 - _Scope:_ `apps/www/src`. The way out by the share sheet is LA1's "what a
   learner chooses to send" (below), not a request.
 - _Why not enforced:_ the imports are, by lint (checked when declared by
   adding a banned import to a probe file on each side: each failed, and
-  `budget` passed). What a lint cannot see is what an allowed importer does
-  with a reflection: `lib/agent-export` reads the sessions repository and the
-  reflections, as sharing needs, and the importers that render reflection
-  components also write sessions of their own. Whether a value came from a
-  reflection is data flow, not an import. Held when declared, by reading
-  each: `agent-export` gives reflections to `shareFiles` alone, and the
-  importers only render reflection components or call `sweepOrphanAudio`.
+  `budget` passed). What a lint cannot see is where a value goes once an
+  allowed module has it: `lib/agent-export` reads the sessions repository and
+  the reflections, as sharing needs, and the importers that render reflection
+  components write sessions of their own. That is data flow, not an import.
+  Held when declared, by reading each: `agent-export` gives reflections to
+  `shareFiles` alone and reads the sessions repository only for names and
+  dates, and the importers only render reflection components or call
+  `sweepOrphanAudio`.
 
 ## Not covered, on purpose
 

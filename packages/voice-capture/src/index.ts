@@ -12,3 +12,17 @@ export {
   RECORDING_FAILURE_COPY,
   RecordingError,
 } from "./lib/recorder"
+export type {
+  TakeEffect,
+  TakeLimits,
+  TakePhase,
+  TakeSignal,
+  TakeStep,
+} from "./lib/take"
+export {
+  discardTake,
+  finishTake,
+  openTake,
+  stepTake,
+  takeRunner,
+} from "./lib/take"

@@ -49,15 +49,14 @@ export const DeviceReflectionVoice = ({
   useEffect(() => (): void => voice.leave(), [voice])
 
   const said = note(state)
+  const phase = state.kind === "taking" ? state.phase : null
   const busy =
-    state.kind === "opening" ||
-    state.kind === "finishing" ||
-    state.kind === "saving"
+    state.kind === "saving" || (phase !== null && phase.kind !== "recording")
   if (full && state.kind === "idle" && said === null) return null
 
   return (
     <div className="flex flex-col gap-1.5">
-      {state.kind === "recording" ? (
+      {phase?.kind === "recording" ? (
         <Button
           type="button"
           variant="destructive"
@@ -65,7 +64,7 @@ export const DeviceReflectionVoice = ({
           onClick={voice.stop}
         >
           <Square className="size-4" aria-hidden />
-          Keep it ({formatTimecode(state.elapsedMs)})
+          Keep it ({formatTimecode(phase.elapsed)})
         </Button>
       ) : (
         !full && (
@@ -76,7 +75,7 @@ export const DeviceReflectionVoice = ({
             onClick={() => voice.start(atMs)}
           >
             <Mic className="size-4" aria-hidden />
-            {state.kind === "opening"
+            {phase?.kind === "opening"
               ? "Opening the microphone..."
               : busy
                 ? "Keeping it..."

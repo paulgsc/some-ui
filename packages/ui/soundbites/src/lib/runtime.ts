@@ -11,8 +11,8 @@
  * Each is reached through a narrow function whose results come back as our
  * own events, and nothing here records the state of one of them.
  */
-import type { Recording, StartRecording } from "@some-ui/voice-capture"
-import { RecordingError } from "@some-ui/voice-capture"
+import type { StartRecording } from "@some-ui/voice-capture"
+import { takeRunner } from "@some-ui/voice-capture"
 
 import type {
   SoundbitesEffect,
@@ -82,9 +82,7 @@ export function createSoundbites(
 ): SoundbitesRuntime {
   let state = initialState(options.source)
   let situation: (() => SoundbiteSituation) | null = null
-  let recording: Recording | null = null
   let playback: Playback | null = null
-  let clock: ReturnType<typeof setInterval> | null = null
   const listeners = new Set<() => void>()
 
   const dispatch = (event: SoundbitesEvent): void => {
@@ -96,10 +94,26 @@ export function createSoundbites(
     for (const effect of next.effects) run(effect)
   }
 
-  const stopClock = (): void => {
-    if (clock !== null) clearInterval(clock)
-    clock = null
-  }
+  // The take's own results become this page's events; a kept take is
+  // stamped here with what the app knew as it was handed over.
+  const take = takeRunner(
+    {
+      startRecording: ports.startRecording,
+      now: ports.now,
+      tickMs: TICK_MS,
+    },
+    (signal) =>
+      dispatch(
+        signal.type === "taken"
+          ? {
+              ...signal,
+              id: ports.newId(),
+              at: new Date(ports.now()).toISOString(),
+              situation: readSituation(),
+            }
+          : signal
+      )
+  )
 
   const stopPlayback = (): void => {
     playback?.stop()
@@ -108,60 +122,12 @@ export function createSoundbites(
 
   function run(effect: SoundbitesEffect): void {
     switch (effect.type) {
-      case "openMic": {
-        ports.startRecording().then(
-          (opened) => {
-            recording = opened
-            dispatch({ type: "micOpened", at: ports.now() })
-          },
-          (error: unknown) =>
-            dispatch({
-              type: "micFailed",
-              reason: error instanceof RecordingError ? error.reason : "failed",
-            })
-        )
-        return
-      }
-      case "finishTake": {
-        const finishing = recording
-        recording = null
-        if (finishing === null) {
-          dispatch({ type: "takeFailed" })
-          return
-        }
-        finishing.finish().then(
-          (take) =>
-            dispatch({
-              type: "taken",
-              take,
-              id: ports.newId(),
-              at: new Date(ports.now()).toISOString(),
-              situation: readSituation(),
-            }),
-          () => dispatch({ type: "takeFailed" })
-        )
-        return
-      }
+      case "openMic":
+      case "startClock":
+      case "stopClock":
+      case "finishTake":
       case "discardTake": {
-        recording?.discard()
-        recording = null
-        return
-      }
-      case "startClock": {
-        stopClock()
-        clock = setInterval(
-          () =>
-            dispatch({
-              type: "ticked",
-              now: ports.now(),
-              level: recording?.level() ?? 0,
-            }),
-          TICK_MS
-        )
-        return
-      }
-      case "stopClock": {
-        stopClock()
+        take.run(effect)
         return
       }
       case "save": {

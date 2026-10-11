@@ -1579,6 +1579,10 @@ importers:
         version: 4.10.2
 
   packages/voice-capture:
+    dependencies:
+      '@some-ui/core-utils':
+        specifier: workspace:*
+        version: link:../core-utils
     devDependencies:
       '@some-ui/tsconfig':
         specifier: workspace:*

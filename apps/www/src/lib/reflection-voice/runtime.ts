@@ -3,13 +3,8 @@
  * holds the recording, turns each effect into a call on a port and each
  * result into an event. It decides nothing; `step` does.
  */
-import { assertNever } from "@some-ui/core-utils"
-import type {
-  BlobShelf,
-  Recording,
-  StartRecording,
-} from "@some-ui/voice-capture"
-import { RecordingError, ShelfFullError } from "@some-ui/voice-capture"
+import type { BlobShelf, StartRecording } from "@some-ui/voice-capture"
+import { ShelfFullError, takeRunner } from "@some-ui/voice-capture"
 
 import type { KeepResult, Reflection } from "@/lib/session-reflection"
 
@@ -45,8 +40,6 @@ export function createVoiceNote(
   sessionId: string
 ): VoiceRuntime {
   let state: VoiceState = initialVoice
-  let recording: Recording | null = null
-  let clock: ReturnType<typeof setInterval> | null = null
   const listeners = new Set<() => void>()
 
   const dispatch = (event: VoiceEvent): void => {
@@ -58,10 +51,10 @@ export function createVoiceNote(
     for (const effect of next.effects) run(effect)
   }
 
-  const stopClock = (): void => {
-    if (clock !== null) clearInterval(clock)
-    clock = null
-  }
+  const take = takeRunner(
+    { startRecording: ports.startRecording, now: ports.now, tickMs: TICK_MS },
+    dispatch
+  )
 
   /**
    * The reflection first, so it holds its slot (or says there is none), then
@@ -105,60 +98,8 @@ export function createVoiceNote(
   }
 
   function run(effect: VoiceEffect): void {
-    switch (effect.type) {
-      case "openMic": {
-        ports.startRecording().then(
-          (opened) => {
-            recording?.discard()
-            recording = opened
-            dispatch({ type: "micOpened", at: ports.now() })
-          },
-          (error: unknown) =>
-            dispatch({
-              type: "micFailed",
-              reason: error instanceof RecordingError ? error.reason : "failed",
-            })
-        )
-        return
-      }
-      case "startClock": {
-        stopClock()
-        clock = setInterval(
-          () => dispatch({ type: "ticked", now: ports.now() }),
-          TICK_MS
-        )
-        return
-      }
-      case "stopClock": {
-        stopClock()
-        return
-      }
-      case "finishTake": {
-        const finishing = recording
-        recording = null
-        if (finishing === null) {
-          dispatch({ type: "takeFailed" })
-          return
-        }
-        finishing.finish().then(
-          (take) => dispatch({ type: "taken", take }),
-          () => dispatch({ type: "takeFailed" })
-        )
-        return
-      }
-      case "discardTake": {
-        recording?.discard()
-        recording = null
-        return
-      }
-      case "save": {
-        save(effect)
-        return
-      }
-      default: {
-        assertNever(effect)
-      }
-    }
+    if (effect.type === "save") save(effect)
+    else take.run(effect)
   }
 
   return {
@@ -170,7 +111,7 @@ export function createVoiceNote(
       }
     },
     start: (atMs) => dispatch({ type: "start", atMs }),
-    stop: () => dispatch({ type: "stop", now: ports.now() }),
+    stop: () => dispatch({ type: "stop" }),
     leave: () => dispatch({ type: "left" }),
   }
 }

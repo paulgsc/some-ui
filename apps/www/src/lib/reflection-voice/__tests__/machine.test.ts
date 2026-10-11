@@ -5,8 +5,8 @@ import { describe, expect, it } from "vitest"
 import type { VoiceEvent, VoiceState } from "@/lib/reflection-voice/machine"
 import { initialVoice, step } from "@/lib/reflection-voice/machine"
 
-function take(durationMs: number): Take {
-  return { blob: new Blob(["a"]), mimeType: "audio/webm", durationMs }
+function take(durationMs: number, bytes = "abc"): Take {
+  return { blob: new Blob([bytes]), mimeType: "audio/webm", durationMs }
 }
 
 function run(events: ReadonlyArray<VoiceEvent>): {
@@ -23,13 +23,17 @@ function run(events: ReadonlyArray<VoiceEvent>): {
   return { state, effects }
 }
 
+const recording: ReadonlyArray<VoiceEvent> = [
+  { type: "start", atMs: 252_000 },
+  { type: "micOpened", at: 1_000 },
+]
+
 describe("a voice reflection", () => {
   it("records from the moment the microphone opens and saves what was said, stamped where it started", () => {
     const { state, effects } = run([
-      { type: "start", atMs: 252_000 },
-      { type: "micOpened", at: 1_000 },
-      { type: "ticked", now: 6_000 },
-      { type: "stop", now: 6_100 },
+      ...recording,
+      { type: "ticked", now: 6_000, level: 0 },
+      { type: "stop" },
       { type: "taken", take: take(5_000) },
     ])
     expect(state).toEqual({ kind: "saving" })
@@ -40,42 +44,45 @@ describe("a voice reflection", () => {
       "finishTake",
       "save",
     ])
-    const save = step(
-      { kind: "finishing", atMs: 252_000 },
+    const saved = step(
+      { kind: "taking", phase: { kind: "finishing" }, atMs: 252_000 },
       { type: "taken", take: take(5_000) }
-    ).effects[0]
-    expect(save).toMatchObject({ type: "save", atMs: 252_000 })
+    ).effects
+    expect(saved).toEqual([{ type: "save", take: take(5_000), atMs: 252_000 }])
   })
 
-  it("lets a stray tap go", () => {
-    const { state, effects } = run([
-      { type: "start", atMs: null },
-      { type: "micOpened", at: 1_000 },
-      { type: "ticked", now: 1_400 },
-      { type: "stop", now: 1_500 },
-    ])
-    expect(state).toEqual({ kind: "idle", last: "short" })
-    expect(effects.slice(-2)).toEqual(["stopClock", "discardTake"])
+  it("keeps nothing from a stray tap, or from a take that came back empty", () => {
+    expect(
+      run([...recording, { type: "stop" }, { type: "taken", take: take(400) }])
+        .state
+    ).toEqual({ kind: "idle", last: "short" })
+    expect(
+      run([
+        ...recording,
+        { type: "stop" },
+        { type: "taken", take: take(5_000, "") },
+      ]).state
+    ).toEqual({ kind: "idle", last: "short" })
   })
 
   it("stops itself at the limit and keeps it", () => {
     const { state, effects } = run([
-      { type: "start", atMs: null },
-      { type: "micOpened", at: 0 },
-      { type: "ticked", now: SOUNDBITE_MAX_MS },
+      ...recording,
+      { type: "ticked", now: 1_000 + SOUNDBITE_MAX_MS, level: 0 },
     ])
-    expect(state).toEqual({ kind: "finishing", atMs: null })
+    expect(state).toMatchObject({
+      kind: "taking",
+      phase: { kind: "finishing" },
+    })
     expect(effects.slice(-2)).toEqual(["stopClock", "finishTake"])
   })
 
-  it("keeps a take when the sheet closes mid-sentence, even a short one", () => {
-    const { state } = run([
-      { type: "start", atMs: 10 },
-      { type: "micOpened", at: 0 },
-      { type: "ticked", now: 3_000 },
-      { type: "left" },
-    ])
-    expect(state).toEqual({ kind: "finishing", atMs: 10 })
+  it("keeps a take when the sheet closes mid-sentence", () => {
+    expect(run([...recording, { type: "left" }]).state).toEqual({
+      kind: "taking",
+      phase: { kind: "finishing" },
+      atMs: 252_000,
+    })
   })
 
   it("discards a microphone that opens after the person left", () => {
@@ -94,9 +101,10 @@ describe("a voice reflection", () => {
       { type: "micFailed", reason: "denied" },
     ]).state
     expect(blocked).toEqual({ kind: "blocked", reason: "denied" })
-    expect(step(blocked, { type: "start", atMs: null }).state.kind).toBe(
-      "opening"
-    )
+    expect(step(blocked, { type: "start", atMs: null }).state).toMatchObject({
+      kind: "taking",
+      phase: { kind: "opening" },
+    })
   })
 
   it("reports how the save ended", () => {
