@@ -209,7 +209,7 @@ const StudyCard = ({ now }: { now: Date }): JSX.Element => {
         <Link
           to="/soundbites"
           search={{ say: "sessions" }}
-          className="bg-muted text-muted-foreground hover:text-foreground flex items-center gap-2 self-start rounded-full py-1.5 pr-3.5 pl-2.5 text-sm font-medium"
+          className="bg-muted/40 text-muted-foreground hover:text-foreground flex items-center gap-2 self-start rounded-full py-1.5 pr-3.5 pl-2.5 text-sm font-medium"
         >
           <TalkGlyph aria-hidden className="size-4" />
           Not today? Say why

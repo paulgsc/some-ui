@@ -155,7 +155,7 @@ const RecordButton = ({
         "focus-visible:ring-ring focus-visible:ring-offset-background focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none",
         "disabled:opacity-70",
         recording
-          ? "bg-muted text-foreground"
+          ? "bg-destructive/15 text-foreground ring-destructive ring-[3px] ring-inset"
           : "bg-brand text-brand-foreground active:scale-95"
       )}
       // The input level breathes the button while it listens: proof the
@@ -400,7 +400,7 @@ export const Soundbites = ({
           {/* Only a count that was read: before a read succeeds (or when
               it failed) there is no number to show, and 0 would say empty. */}
           {kept !== null && (
-            <span className="bg-brand/30 text-brand-foreground dark:text-brand rounded-full px-3 py-0.5 text-xs font-bold tabular-nums">
+            <span className="bg-brand text-brand-foreground rounded-full px-3 py-0.5 text-xs font-bold tabular-nums">
               {kept.length} of {SOUNDBITE_LIMIT} kept
             </span>
           )}
@@ -420,7 +420,7 @@ export const Soundbites = ({
         {library.kind === "unreadable" ? (
           <div
             role="alert"
-            className="bg-muted/60 space-y-3 rounded-2xl p-4 text-center text-sm"
+            className="bg-muted/40 space-y-3 rounded-2xl p-4 text-center text-sm"
           >
             <p className="text-muted-foreground">
               Couldn&apos;t read what&apos;s on this phone. If it is full, your
