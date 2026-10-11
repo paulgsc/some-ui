@@ -23,6 +23,7 @@ import type { JSX, ReactNode } from "react"
 import { useEffect, useState, useSyncExternalStore } from "react"
 import { cn } from "@some-ui/core-utils"
 import { Button } from "@some-ui/shared"
+import type { RecordingFailure } from "@some-ui/voice-capture"
 import {
   describeContext,
   formatDuration,
@@ -36,7 +37,6 @@ import {
   SOUNDBITE_LIMIT,
   SOUNDBITE_MAX_MS,
 } from "@soundbites/lib/policy"
-import type { RecordingFailure } from "@soundbites/lib/recorder"
 import type { SoundbitesPorts } from "@soundbites/lib/runtime"
 import { createSoundbites } from "@soundbites/lib/runtime"
 import type { Soundbite, SoundbiteSource } from "@soundbites/lib/types"
@@ -77,23 +77,15 @@ const STARTERS = [
 ]
 
 /**
- * What the page asks for. Every way in but "Talk now" and the wrap is about
- * a session that is not happening; "Talk now" (`capture`) is a comment on
- * anything and the wrap (`wrap`) a summary of a session just done, so they
- * ask for that, and the starters, which are all reasons, stay away.
+ * What the page asks for. Every way in but "Talk now" is about a session
+ * that is not happening; "Talk now" (`capture`) is a comment on anything, so
+ * it asks for that, and the starters, which are all reasons, stay away.
  */
 function askFor(source: SoundbiteSource): {
   title: string
   lede: string
   starters: boolean
 } {
-  if (source === "wrap") {
-    return {
-      title: "What stuck?",
-      lede: "Say what you'll remember from this session, out loud, in a minute or less.",
-      starters: false,
-    }
-  }
   return source === "capture"
     ? {
         title: "Talk now",

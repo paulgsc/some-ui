@@ -5,6 +5,7 @@ import { createRouter, RouterProvider } from "@tanstack/react-router"
 import ReactDOM from "react-dom/client"
 
 import { bootDeviceBackend } from "@/lib/device-backend/boot"
+import { sweepOrphanAudio } from "@/lib/reflection-voice"
 import { releasePushWhenLeavingTheAccount } from "@/lib/study-nudge/leave-account"
 import { ErrorState, NotFound, RoutePending } from "@/components/housekeeping"
 
@@ -30,6 +31,11 @@ import.meta.glob(
 // The device build answers `file_host` in-process; that has to be in place
 // before the app renders and anything issues a request. A no-op elsewhere.
 bootDeviceBackend()
+
+// Voice reflections' audio left behind when the app closed between a
+// reflection going and its audio going. The flag is read inline, so other
+// builds drop the module (src/vite-env.d.ts).
+if (import.meta.env.VITE_DEVICE_BACKEND === "true") sweepOrphanAudio()
 
 // A browser subscribed to push while signed in must not stay subscribed once
 // the learner's data is no longer the account's. No request is made to do it.

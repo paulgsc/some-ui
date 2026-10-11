@@ -28,6 +28,7 @@
       "@wasm-loader/*": ["./packages/wasm-loader/src/*"],
       "@react-hooks/*": ["./packages/react-hooks/src/*"],
       "@speech/*": ["./packages/speech/src/*"],
+      "@voice-capture/*": ["./packages/voice-capture/src/*"],
       "@activity-catalog/*": ["./packages/activity-catalog/src/*"]
     }
   },

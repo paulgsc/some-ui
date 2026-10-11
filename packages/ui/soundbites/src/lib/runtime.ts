@@ -11,6 +11,9 @@
  * Each is reached through a narrow function whose results come back as our
  * own events, and nothing here records the state of one of them.
  */
+import type { Recording, StartRecording } from "@some-ui/voice-capture"
+import { RecordingError } from "@some-ui/voice-capture"
+
 import type {
   SoundbitesEffect,
   SoundbitesEvent,
@@ -19,8 +22,6 @@ import type {
   SoundbitesState,
 } from "./machine"
 import { initialState, step } from "./machine"
-import type { Recording, StartRecording } from "./recorder"
-import { RecordingError } from "./recorder"
 import type { SoundbiteStore } from "./store"
 import { SoundbitesFullError } from "./store"
 import type { SoundbiteSource } from "./types"

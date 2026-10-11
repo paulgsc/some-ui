@@ -24,6 +24,9 @@ import { defineConfig } from "eslint/config"
 const NETWORK_GUARD =
   "Network access goes through createFileHostTransport (lib/file-host-config/client.ts), which refuses to send unless the learner's data authority allows it. See docs/learner-data-authority.md, LA1."
 
+const REFLECTION_GUARD =
+  "Reflections leave the device only through the share sheet (lib/agent-export), never by a server transport or a session record. See docs/learner-data-authority.md, LA7."
+
 export default defineConfig([
   ...appsRecommended,
   ...intentGuardConfig,
@@ -64,6 +67,82 @@ export default defineConfig([
     rules: {
       "no-restricted-globals": "off",
       "no-restricted-properties": "off",
+    },
+  },
+
+  // LA7 (docs/learner-data-authority.md): a reflection reaches no server. The
+  // modules that hold or show reflections import nothing that can send to
+  // `file_host` (the transport, the device backend, the authority, reporting)
+  // and, from the tenant, only `useSessions` to read session names, so a
+  // reflection cannot be written into a session record either; and none of
+  // those modules imports a reflection. The way out is the share sheet
+  // (`lib/agent-export`), which the person starts. The network globals are
+  // LA1's rule above.
+  {
+    files: [
+      "src/lib/session-reflection/**",
+      "src/lib/reflection-voice/**",
+      "src/components/reflection/**",
+    ],
+    ignores: ["src/**/__tests__/**", "src/**/*.test.{ts,tsx}"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          paths: [
+            {
+              name: "@/lib/tenant",
+              allowImportNames: ["useSessions"],
+              message: REFLECTION_GUARD,
+            },
+          ],
+          patterns: [
+            {
+              group: [
+                "@/lib/tenant/*",
+                "@/lib/file-host-config",
+                "@/lib/file-host-config/*",
+                "@/lib/device-backend",
+                "@/lib/device-backend/*",
+                "@/lib/authority",
+                "@/lib/authority/*",
+                "@/lib/study-nudge",
+                "@/lib/study-nudge/*",
+                "@some-ui/fetch-kit",
+                "@some-ui/fetch-kit/*",
+              ],
+              message: REFLECTION_GUARD,
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    files: [
+      "src/lib/tenant/**",
+      "src/lib/file-host-config/**",
+      "src/lib/device-backend/**",
+      "src/lib/authority/**",
+      "src/lib/study-nudge/**",
+    ],
+    ignores: ["src/**/__tests__/**", "src/**/*.test.{ts,tsx}"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              // Every reflection module but `reflection-voice/budget`, which
+              // the storage budget reads for the room their audio needs: a
+              // size, not a reflection.
+              regex:
+                "^@/(lib/(session-reflection|agent-export)|lib/reflection-voice(?!/budget$)|components/reflection)(/|$)",
+              message: REFLECTION_GUARD,
+            },
+          ],
+        },
+      ],
     },
   },
 

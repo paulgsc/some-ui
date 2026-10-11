@@ -7,11 +7,13 @@ import { seedStop, stopRecord } from "@/test-support/session-stop"
 import type { Soundbite } from "@some-ui/soundbites"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
-import { shareAgentExport } from "@/lib/agent-export"
-import { writeReflection } from "@/lib/session-reflection"
+import { shareAgentExport, shareReflections } from "@/lib/agent-export"
+import type { Reflection } from "@/lib/session-reflection"
+import { reflections } from "@/lib/session-reflection"
 
 const written = vi.hoisted(() => new Map<string, string>())
 const share = vi.hoisted(() => vi.fn())
+const removedAudio = vi.hoisted(() => vi.fn())
 
 vi.mock("@capacitor/filesystem", () => ({
   Directory: { Cache: "CACHE" },
@@ -35,10 +37,29 @@ vi.mock("@/lib/tenant/queries", () => ({
   sessionsRepository: {
     list: (): Promise<Array<unknown>> =>
       Promise.resolve([
-        sessionRecord({ id: "s1", status: "completed", layout: undefined }),
+        sessionRecord({
+          id: "s1-0000000000",
+          name: "Morning Drama",
+          status: "completed",
+          completedAt: "2026-10-10T09:00:00.000Z",
+          layout: undefined,
+        }),
       ]),
   },
 }))
+vi.mock("@/lib/reflection-voice", async () => {
+  const { reflections: store } = await import("@/lib/session-reflection")
+  return {
+    reflectionAudio: (): { get: (id: string) => Promise<Blob | null> } => ({
+      get: (id: string): Promise<Blob | null> =>
+        Promise.resolve(id === "v1" ? new Blob(["opus"]) : null),
+    }),
+    letGoReflections: (ids: ReadonlyArray<string>): void => {
+      store.letGo(ids)
+      removedAudio(ids)
+    },
+  }
+})
 
 const bite: Soundbite = {
   id: "b1",
@@ -59,54 +80,132 @@ const soundbites = {
     Promise.resolve(new Blob(["opus"], { type: bite.mimeType })),
 }
 
+function reflection(
+  id: string,
+  sessionId: string,
+  body: Reflection["body"],
+  atMs: number | null = 252_000,
+  createdAt = "2026-10-10T09:00:00.000Z"
+): Reflection {
+  return { id, sessionId, createdAt, atMs, body }
+}
+
+const NOW = (): Date => new Date("2026-10-11T00:00:00Z")
+
 beforeEach(() => {
   // A failure is reported (`reportFailure`); the console line is not under test.
   vi.spyOn(globalThis.console, "error").mockImplementation(() => undefined)
   localStorage.clear()
+  reflections.letGo(reflections.getSnapshot().kept.map((r) => r.id))
   written.clear()
+  removedAudio.mockReset()
   share.mockReset().mockResolvedValue({})
+  reflections.keep(
+    reflection("v1", "s1-0000000000", {
+      kind: "voice",
+      durationMs: 18_000,
+      mimeType: "audio/webm;codecs=opus",
+      bytes: 4,
+    })
+  )
+  reflections.keep(
+    reflection(
+      "t1",
+      "s1-0000000000",
+      { kind: "text", text: "particles" },
+      null,
+      "2026-10-10T09:30:00.000Z"
+    )
+  )
+  reflections.keep(
+    reflection("t2", "gone-session", { kind: "text", text: "orphan" })
+  )
+})
+
+describe("shareReflections", () => {
+  it("shares one file per session named for it, its voice notes beside it, then lets them go", async () => {
+    await expect(shareReflections(["s1-0000000000"], NOW)).resolves.toBe(
+      "shared"
+    )
+
+    const base = "reflections/2026-10-10_morning-drama_s1-00000"
+    expect(share).toHaveBeenCalledWith(
+      expect.objectContaining({
+        files: [
+          `file:///cache/${base}.json`,
+          `file:///cache/${base}_voice-04m12s-v1.webm`,
+        ],
+      })
+    )
+    expect(JSON.parse(written.get(`${base}.json`) ?? "null")).toMatchObject({
+      session: { id: "s1-0000000000", name: "Morning Drama" },
+      reflections: [
+        {
+          id: "v1",
+          kind: "voice",
+          atMs: 252_000,
+          file: "2026-10-10_morning-drama_s1-00000_voice-04m12s-v1.webm",
+        },
+        { id: "t1", kind: "text", text: "particles", atMs: null },
+      ],
+    })
+    expect(reflections.getSnapshot().kept.map((r) => r.id)).toEqual(["t2"])
+    expect(removedAudio).toHaveBeenCalledWith(["t1", "v1"])
+    expect(reflections.getSnapshot().shared).toEqual([
+      { sessionId: "s1-0000000000", sharedAt: NOW().toISOString() },
+    ])
+  })
+
+  it("keeps them when the share sheet is backed out of", async () => {
+    share.mockRejectedValue(new Error("Share canceled"))
+
+    await expect(shareReflections(["s1-0000000000"], NOW)).resolves.toBe(
+      "cancelled"
+    )
+    expect(reflections.getSnapshot().kept).toHaveLength(3)
+  })
 })
 
 describe("shareAgentExport", () => {
-  it("shares context.json and each soundbite's audio, named in the context", async () => {
-    writeReflection("s1", { difficulty: "too-hard" })
+  it("shares context.json with each session's reflections nested, and every recording", async () => {
     seedStop(stopRecord(0, { reason: "focus", outcome: "done" }))
 
-    await shareAgentExport(soundbites, () => new Date("2026-10-07T00:00:00Z"))
+    await shareAgentExport(soundbites, NOW)
 
     expect(share).toHaveBeenCalledWith(
       expect.objectContaining({
         files: [
           "file:///cache/agent-export/context.json",
           "file:///cache/agent-export/soundbite-b1.webm",
+          "file:///cache/agent-export/2026-10-10_morning-drama_s1-00000_voice-04m12s-v1.webm",
         ],
       })
     )
-    expect(written.get("agent-export/soundbite-b1.webm")).toBe(btoa("opus"))
     const context: unknown = JSON.parse(
       written.get("agent-export/context.json") ?? "null"
     )
     expect(context).toMatchObject({
-      exportedAt: "2026-10-07T00:00:00.000Z",
-      sessions: [{ id: "s1", status: "completed" }],
-      reflections: [{ sessionId: "s1", answers: { difficulty: "too-hard" } }],
+      exportedAt: "2026-10-11T00:00:00.000Z",
+      sessions: [
+        {
+          id: "s1-0000000000",
+          reflections: [{ id: "v1" }, { id: "t1", text: "particles" }],
+        },
+      ],
+      reflectionsWithoutSession: [{ sessionId: "gone-session", id: "t2" }],
       stops: [{ sessionId: "session-1", reason: "focus" }],
       soundbites: [{ id: "b1", file: "soundbite-b1.webm" }],
     })
     expect(context).not.toHaveProperty(["sessions", 0, "scenes"])
+    expect(reflections.getSnapshot().kept).toEqual([])
   })
 
-  it("names no file for a soundbite whose audio is gone", async () => {
+  it("names no file for a recording whose audio is gone", async () => {
     await shareAgentExport({
       ...soundbites,
       audio: (): Promise<null> => Promise.resolve(null),
     })
 
-    expect(share).toHaveBeenCalledWith(
-      expect.objectContaining({
-        files: ["file:///cache/agent-export/context.json"],
-      })
-    )
     expect(
       JSON.parse(written.get("agent-export/context.json") ?? "null")
     ).toMatchObject({ soundbites: [{ id: "b1", file: null }] })

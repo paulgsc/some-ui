@@ -1,4 +1,4 @@
-import { RecordingError, startMicRecording } from "@soundbites/lib/recorder"
+import { micRecorder, RecordingError } from "@voice-capture/lib/recorder"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
 /** A microphone stream whose one track records whether it was stopped. */
@@ -14,7 +14,7 @@ afterEach(() => {
   vi.unstubAllGlobals()
 })
 
-describe("startMicRecording", () => {
+describe("micRecorder", () => {
   it("lets go of the microphone when the recorder will not start", async () => {
     const { stream, stop } = fakeStream()
     vi.stubGlobal("isSecureContext", true)
@@ -33,7 +33,7 @@ describe("startMicRecording", () => {
       }
     )
 
-    const started = startMicRecording()
+    const started = micRecorder({ bitsPerSecond: 32_000 })()
 
     await expect(started).rejects.toBeInstanceOf(RecordingError)
     await expect(started).rejects.toMatchObject({ reason: "failed" })

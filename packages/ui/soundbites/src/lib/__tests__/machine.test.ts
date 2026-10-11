@@ -3,6 +3,7 @@
  * The machine alone, in node: no DOM, no React, no ports. The rules each
  * async path would otherwise have to keep are pinned here as transitions.
  */
+import type { Take } from "@some-ui/voice-capture"
 import { bite } from "@soundbites/lib/__tests__/fixture"
 import type {
   SoundbitesEvent,
@@ -10,7 +11,6 @@ import type {
   Step,
 } from "@soundbites/lib/machine"
 import { initialState, NOTICES, step } from "@soundbites/lib/machine"
-import type { Take } from "@soundbites/lib/recorder"
 import { describe, expect, it } from "vitest"
 
 function run(

@@ -115,9 +115,10 @@ The app's database and WebView storage together stay under Android's
 past which Android stops backing the app up without saying so, and that
 backup is the only other copy of the phone's history (`device-backend/storage`).
 There is no size per table. Only the database is checked, against the quota
-less what soundbites can hold at most (their own cap, from
-`@some-ui/soundbites/contract`, which their store refuses to pass), so WebView
-growth never refuses a session. The WebView's other storage (preferences and
+less what soundbites and voice reflections can hold at most (each their own
+cap, from `@some-ui/soundbites/contract` and
+`apps/www/src/lib/reflection-voice/budget.ts`, which their stores refuse to
+pass), so WebView growth never refuses a session. The WebView's other storage (preferences and
 small capped stores) is not counted.
 
 A restore has to be able to open what it brings back, which is why the SQLite
@@ -550,10 +551,8 @@ announced, not sprung:
   min is the orchestrator's `Extend` command, which lengthens whichever scene
   ends last.
 - **The wrap** replaces the bare timing summary: the time played, planned
-  and added; "How did it go?" (worth it, pace, energy: optional, one tap
-  each, the latest 20 sessions' answers kept on this phone,
-  `lib/session-reflection`); **Say what stuck**, a soundbite (`say=wrap`);
-  and **Done**, back to Home. Wrapping up inside the last minutes counts as
+  and added; "How did it go?", the session's reflections (below); and
+  **Done**, back to Home. Wrapping up inside the last minutes counts as
   complete, not "stopped early".
 - **Home** then says **Studied today** ("15 min · Korean", or "2 sessions ·
   33 min") in the success colour and offers **Another round**; "Not today?
@@ -562,6 +561,30 @@ announced, not sprung:
 Not yet: LeetType runs its own session clock from its mount, which +5 min
 does not reach, so a LeetType session extended past its planned end shows
 LeetType's own "Session complete" inside the activity until the session ends.
+
+## Reflections: said while fresh, handed off, not kept
+
+A reflection is one thing said about a session while it is fresh: a voice
+note (**Talk**), a typed line, or the one-tap answers (worth it, pace,
+energy: one set per session, changed in place). **Reflect** sits in the
+strip above the activity for the whole session (beside the controls on a wide
+screen), and the wrap offers the same panel; each reflection carries its
+session's ID and how far into it it was said. The session keeps running
+while the sheet is open, and a take in progress when it closes is kept.
+
+They are for the next session, not an archive. The phone keeps at most 20
+across every session (`REFLECTION_LIMIT`, `lib/session-reflection`); nothing
+is dropped to make room, so at 20 the panel offers only the way out. One
+older than a week reads as **stale**. The study list says how many slots are
+taken and how long the oldest has waited ("To hand off"), and each session's
+card says how many it has, how old, and **Share**. Sharing (one session, or
+all of them, through the share sheet: one file per session named for its date,
+name and ID, each voice note beside it, `lib/agent-export`) takes them off the
+phone and leaves "Reflections shared" on the card; **Let go** removes them
+unshared. A voice reflection's audio is on a shelf of its own
+(`lib/reflection-voice`), counted toward the 20 and never toward the
+soundbites' six. Nothing about a reflection reaches the home server
+(`docs/learner-data-authority.md`, LA7).
 
 ## A session cut short still closes
 
@@ -703,17 +726,19 @@ does not transcribe: it keeps recording audio through the WebView, and two
 recorders cannot reliably share the microphone on Android.
 
 **Getting them off the phone: "Share with an agent".** Below the list, one
-button writes a `context.json` (sessions, end-of-session reflections, stop
+button writes a `context.json` (sessions, each with its reflections, stop
 reasons, each soundbite's metadata, and a note saying what an agent should
 use them for: shaping the next lesson, and finding where the app gets in the
-way) plus each soundbite's audio to the app's cache, then opens Android's
-share sheet, where the person picks where they go (Drive, say).
+way) plus each soundbite's and voice reflection's audio to the app's cache,
+then opens Android's share sheet, where the person picks where they go
+(Drive, say). The reflections shared leave the phone, as above.
 `apps/www/src/lib/agent-export`. A WebView cannot download a blob, so this
 goes through `@capacitor/filesystem` and `@capacitor/share`: neither adds a
 permission or an exported component (their manifests are empty, checked
 2026-10-07 at 8.1.4 and 8.0.3), and the share plugin hands files out through
 the template's `FileProvider`, already in `AndroidManifest.xml`. Not done:
-the home server receiving soundbites itself, and clearing what was shared.
+the home server receiving soundbites itself, and clearing the soundbites that
+were shared.
 
 ## Speech
 

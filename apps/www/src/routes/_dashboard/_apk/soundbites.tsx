@@ -12,16 +12,16 @@ import { sessionsQuery, useSessions } from "@/lib/tenant"
 
 /**
  * `?say=` comes from a tap that already meant "let me talk" (Home's "Not
- * today? Say why", a reminder's "Not today", "Hold to talk", the wrap's "Say
- * what stuck"): the page starts listening at once and records which.
+ * today? Say why", a reminder's "Not today", "Hold to talk"): the page starts
+ * listening at once and records which. A session's own "Say what stuck" is a
+ * reflection now, recorded where the session is (`components/reflection`).
  */
-type SoundbitesSearch = { say?: "sessions" | "reminder" | "capture" | "wrap" }
+type SoundbitesSearch = { say?: "sessions" | "reminder" | "capture" }
 
 const SAY_SOURCES: ReadonlyArray<NonNullable<SoundbitesSearch["say"]>> = [
   "sessions",
   "reminder",
   "capture",
-  "wrap",
 ]
 
 function isSaySource(
@@ -71,8 +71,9 @@ const ShareWithAgent = ({ taking }: { taking: boolean }): JSX.Element => {
   return (
     <section className="space-y-2">
       <p className="text-muted-foreground text-sm">
-        Your sessions, soundbites, session reflections and stop reasons, as
-        files for an agent to read. You pick where they go.
+        Your sessions with their reflections, soundbites and stop reasons, as
+        files for an agent to read. You pick where they go; the reflections then
+        leave the phone.
       </p>
       <IntentButton
         state={share.state}

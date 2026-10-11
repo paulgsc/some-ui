@@ -34,6 +34,8 @@ import {
 } from "@/lib/tenant"
 import { usePagination } from "@/hooks/use-pagination"
 import { PaginationControls } from "@/components/pagination-controls"
+import { HandOffStrip } from "@/components/reflection/hand-off-strip"
+import { SessionReflectionsRow } from "@/components/reflection/session-reflections-row"
 
 const STATUS_LABEL: Record<SessionStatus, string> = {
   draft: "Draft",
@@ -152,6 +154,10 @@ const SessionCard = ({
             <p className="text-muted-foreground mt-1 hidden text-xs sm:block">
               Updated {formatRelativeTime(session.updatedAt)}
             </p>
+            <SessionReflectionsRow
+              sessionId={session.id}
+              finished={session.status === "completed"}
+            />
           </div>
         </div>
         {/* On a phone the actions drop below the details, with "Updated"
@@ -428,6 +434,7 @@ const SessionsList = ({
           onRetry={refreshError.retry}
         />
       )}
+      <HandOffStrip />
       {selectedIds.size > 0 && (
         <BulkActionBar
           selectedIds={selectedIds}

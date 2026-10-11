@@ -36,6 +36,8 @@
  * `MediaRecorder.state`, `Audio.paused` or IndexedDB's state. Those reach us
  * only as events.
  */
+import type { RecordingFailure, Take } from "@some-ui/voice-capture"
+
 import { formatDuration } from "./format"
 import {
   byNewest,
@@ -43,7 +45,6 @@ import {
   SOUNDBITE_MAX_MS,
   SOUNDBITE_MIN_MS,
 } from "./policy"
-import type { RecordingFailure, Take } from "./recorder"
 import type { Soundbite, SoundbiteContext, SoundbiteSource } from "./types"
 
 /** What the app knows when a take is kept, apart from the way in. */

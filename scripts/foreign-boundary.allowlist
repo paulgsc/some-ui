@@ -29,7 +29,7 @@
 1 packages/ui/leetype/src/components/round/generate-round/index.tsx
 1 packages/ui/lesson-crm/src/components/lesson-crm/index.tsx
 1 packages/ui/lesson-crm/src/components/prompt-card/index.tsx
-1 packages/ui/soundbites/src/lib/recorder.ts
 1 packages/ui/soundbites/src/lib/store.ts
 1 packages/ui/topik/src/components/topik/handheld/generate-lesson/index.tsx
 1 packages/ui/wireframes/src/components/youtube/layout-crm/index.tsx
+1 packages/voice-capture/src/lib/recorder.ts

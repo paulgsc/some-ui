@@ -4,7 +4,9 @@
  * runtime meets the browser's own machines, each wrapped so that what comes
  * back is a result, never a state we then claim to know.
  */
-import { startMicRecording } from "./recorder"
+import { micRecorder } from "@some-ui/voice-capture"
+
+import { SOUNDBITE_BITS_PER_SECOND } from "./policy"
 import type { Playback, Player, SoundbitesPorts } from "./runtime"
 import type { SoundbiteStore } from "./store"
 import { indexedDbSoundbiteStore } from "./store"
@@ -55,7 +57,7 @@ export function phoneSoundbiteStore(): SoundbiteStore {
 export function phonePorts(): SoundbitesPorts {
   return {
     store: phoneSoundbiteStore(),
-    startRecording: startMicRecording,
+    startRecording: micRecorder({ bitsPerSecond: SOUNDBITE_BITS_PER_SECOND }),
     player: audioPlayer,
     now: () => Date.now(),
     newId: () => crypto.randomUUID(),

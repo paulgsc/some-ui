@@ -39,6 +39,7 @@ Which authority a build starts in depends on what it can reach (`Backend`):
 | This device's sessions              | stay here                                    | copied only by "Copy to my account", per account, after a confirmation | the same                                   |
 | `/signals`, `/presence/lease`       | never                                        | never                                                                  | sent                                       |
 | Push subscription                   | never                                        | never                                                                  | the account's, on the person's own taps    |
+| Reflections                         | on the device (at most 20), never sent       | never sent (LA7)                                                       | never sent (LA7)                           |
 | Shelf                               | never                                        | the account's, on the person's own taps                                | the same                                   |
 | Speech                              | the browser's own voice                      | the server's speech service                                            | the same                                   |
 | Reminders                           | the client's own policy, while a tab is open | the client's own policy, while a tab is open                           | the server's push, with the browser closed |
@@ -239,6 +240,45 @@ declared (checked by reading every call site and by the tests named).
   test can say is that a new caller chose the right purpose, which is LA1's
   limit too.
 
+### LA7: a reflection reaches no server
+
+- _Claim:_ a session reflection (a typed line, a voice note, the one-tap
+  answers; `lib/session-reflection`) is never sent to `file_host` nor written
+  into anything that is (a session record, a signal, the device backend's
+  database). It leaves the device only through the share sheet
+  (`lib/agent-export`), which the person starts. The modules that hold or show
+  reflections (`lib/session-reflection`, `lib/reflection-voice`,
+  `components/reflection`) import nothing that can send (the transport, the
+  device backend, the authority, reporting, `fetch-kit`) and, from the tenant,
+  only `useSessions`; none of those modules imports a reflection module but
+  `lib/reflection-voice/budget`, a size. Both directions are a lint rule in
+  `apps/www/eslint.config.js`.
+- _Falsified by:_ a hunk that removes or narrows either `no-restricted-imports`
+  block that names LA7 in `apps/www/eslint.config.js` (a path or pattern taken
+  out, a name added to `allowImportNames`, the `budget` exception widened, a
+  `files` glob dropped or a reflection module moved out from under them), or
+  adds an `eslint-disable` of `no-restricted-imports` in a file those blocks
+  cover; that, in `lib/agent-export`, passes a reflection, or anything built
+  from one, to anything but `shareFiles` (the session repository is read for
+  names and dates, never written); or that moves the code that holds
+  reflections to a module neither block covers.
+- _Scope:_ `apps/www/src`. The way out by the share sheet is LA1's "what a
+  learner chooses to send" (below), not a request.
+- _Why not enforced:_ the imports are, by lint, in both directions (checked
+  when declared by adding each banned import to a probe file in each covered
+  directory: every one failed, and `budget` passed). What a lint cannot see is
+  a reflection reaching a sending module through a third module that imports
+  both, or `lib/agent-export` (which reads the sessions repository and the
+  reflections, as sharing needs) handing one to something other than the
+  share sheet: whether a value came from a reflection is data flow, not an
+  import. Held when declared, checked by reading each file outside the blocks
+  that imports both a reflection module and a sending one
+  (`components/player/completion-summary.tsx`, `components/player/live-player.tsx`,
+  `routes/_dashboard/sessions/index.tsx`, `main.tsx`, `lib/agent-export`): the
+  first four only render reflection components or call `sweepOrphanAudio`
+  beside their own session writes, and `agent-export` reads the sessions
+  repository for names and dates and gives reflections to `shareFiles` alone.
+
 ## Not covered, on purpose
 
 - **The shared origin.** On GitHub Pages every project under the same `github.io`
@@ -250,8 +290,9 @@ declared (checked by reading every call site and by the tests named).
   to `file_host`; a user-selected speech provider receives the text it speaks; a
   kept shelf item is stored verbatim; the phone's "Share with an agent"
   (`lib/agent-export`) hands Android's share sheet a file of the device's
-  sessions, reflections, stops and soundbites, and the learner picks where it
-  goes. These are explicit actions on the account path or by the learner, not
-  defaults.
+  sessions, reflections, stops and soundbites, and a session's (or every
+  session's) **Share** hands it that session's reflections, and the learner
+  picks where they go; the reflections shared then leave the phone. These are
+  explicit actions on the account path or by the learner, not defaults.
 - **The server's side.** What `file_host` stores and logs is
   `paulgsc/server` `docs/identity.md`.

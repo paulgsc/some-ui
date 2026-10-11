@@ -107,6 +107,7 @@ const SPEECH_ENTRY = "packages/speech/dist/@some-ui/speech"
 const DEVICE_MODULES = [
   `${SPEECH_ENTRY}/native.es.js`,
   "apps/www/src/lib/agent-export/**",
+  "apps/www/src/lib/reflection-voice/**",
   "apps/www/src/lib/share-files/**",
   "apps/www/src/lib/device-backend/**",
   "apps/www/src/lib/device-speech/**",
@@ -116,6 +117,8 @@ const DEVICE_MODULES = [
   "apps/www/src/lib/study-nudge/schedule.ts",
   "apps/www/src/components/auth/device-*.tsx",
   "apps/www/src/components/settings/device-*.tsx",
+  "apps/www/src/components/reflection/device-*.tsx",
+  "packages/voice-capture/**",
   "node_modules/@capacitor/**",
   "node_modules/@capacitor-community/**",
 ]

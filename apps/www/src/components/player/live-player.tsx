@@ -14,6 +14,7 @@ import { closedPatch } from "@/lib/session-stop"
 import type { SessionRecord } from "@/lib/tenant"
 import { useUpdateSession } from "@/lib/tenant"
 import { SessionAudioNotice } from "@/components/audio/session-audio-notice"
+import { ReflectButton } from "@/components/reflection/reflect-button"
 
 import { CompletionSummary } from "./completion-summary"
 import { NowNextStrip } from "./now-next-strip"
@@ -138,6 +139,7 @@ export const LivePlayer = ({ session }: LivePlayerProps): JSX.Element => {
         {isMobile && (
           <SessionChrome
             key={stop.kind}
+            sessionId={session.id}
             scenes={session.scenes}
             onPlay={() => void start()}
             onGotToGo={stops.tap}
@@ -147,6 +149,13 @@ export const LivePlayer = ({ session }: LivePlayerProps): JSX.Element => {
         {!isMobile && <WindDownNudge className="self-center" />}
         {!isMobile && <NowNextStrip scenes={session.scenes} />}
         {!isMobile && <TransportControls onPlay={() => void start()} />}
+        {!isMobile && (
+          <ReflectButton
+            sessionId={session.id}
+            atMs={currentTime}
+            className="self-center"
+          />
+        )}
       </div>
       {stop.kind === "open" && (
         <StopScreen

@@ -1,5 +1,6 @@
 /**
- * The microphone, as one take at a time.
+ * The microphone, as one take at a time. Used by the soundbites page and by
+ * voice reflections, each passing its own bitrate.
  *
  * In the Android app, `getUserMedia` is the WebView's: Capacitor's
  * `BridgeWebChromeClient` turns its audio-capture request into Android's
@@ -7,8 +8,6 @@
  * declares that permission (apps/mobile). The page must be a secure context,
  * which the app's `https://localhost` is.
  */
-import { SOUNDBITE_BITS_PER_SECOND } from "./policy"
-
 export type RecordingFailure =
   /** The person, or Android settings, said no to the microphone. */
   | "denied"
@@ -44,8 +43,8 @@ export type Recording = {
 export type StartRecording = () => Promise<Recording>
 
 /**
- * Opus in WebM is what Android's WebView records natively. At
- * `SOUNDBITE_BITS_PER_SECOND` a full minute is about a quarter of a megabyte.
+ * Opus in WebM is what Android's WebView records natively. At 32 kbps a full
+ * minute is about a quarter of a megabyte.
  */
 const PREFERRED_TYPES = [
   "audio/webm;codecs=opus",
@@ -104,8 +103,20 @@ function meter(stream: MediaStream): {
   }
 }
 
-/** Starts a take on the device's microphone. */
-export const startMicRecording: StartRecording = async () => {
+/**
+ * Takes on the device's microphone at `bitsPerSecond`: a speech bitrate, not
+ * Chromium's default (about 128 kbps), which would make each take four times
+ * the size. The caller's cap on what it keeps is in the same units.
+ */
+export function micRecorder({
+  bitsPerSecond,
+}: {
+  bitsPerSecond: number
+}): StartRecording {
+  return () => startMicRecording(bitsPerSecond)
+}
+
+async function startMicRecording(bitsPerSecond: number): Promise<Recording> {
   if (
     !window.isSecureContext ||
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- feature detection: lib.dom assumes both exist, an old WebView may have neither
@@ -133,9 +144,7 @@ export const startMicRecording: StartRecording = async () => {
     const mimeType = pickMimeType()
     recorder = new MediaRecorder(stream, {
       ...(mimeType ? { mimeType } : {}),
-      // Speech, not music: Chromium's default (about 128 kbps) would make
-      // each soundbite four times the size.
-      audioBitsPerSecond: SOUNDBITE_BITS_PER_SECOND,
+      audioBitsPerSecond: bitsPerSecond,
     })
   } catch (error) {
     release()
