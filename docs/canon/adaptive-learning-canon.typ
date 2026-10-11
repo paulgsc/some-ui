@@ -80,7 +80,7 @@
     skill
   ]
   #v(1em)
-  #text(size: 9.5pt)[Version 1.16 --- 2026-10-11]
+  #text(size: 9.5pt)[Version 1.17 --- 2026-10-11]
   #v(2cm)
 ]
 
@@ -1081,6 +1081,31 @@ before it can update a belief about $mu$ (Prop. 9.1).
   application does not make itself and cannot prevent, so a surface that
   offers speech says, before the learner first speaks, that the platform
   recognizes it, and typing remains available everywhere speech is.
+]
+
+#remark("3.8", name: "The margin note, retired")[
+  Remark 3.7 is retired: no surface governed here raises a margin note. The
+  host application offers a *session reflection* at every moment of every
+  activity, not only on a surface of artifacts: a typed line, the voice
+  itself, or a few one-tap answers about how the session is going, each
+  stamped with its session and how far into it it was said. A note was that
+  reflection again, inside one activity, with a store, a cap and an expiry of
+  its own, so the learner met two ways to say one thing on one screen.
+  Whatever a note could say ("I cannot tell what this asks", "I do not know
+  this", "this looks wrong") the learner now says as a reflection, in their
+  own words.
+
+  Remark 3.7's reasoning stands for a reflection: it carries no outcome, so
+  it is not an observation (Def. 3.1), and Proposition 3.4 keeps it out of
+  every belief update and every draw. Two consequences differ. A spoken
+  reflection is kept as the recording, on the device, and nothing
+  transcribes it, so Remark 3.7's departure from Remark 7.3 (a platform
+  recognizer that may send the audio to its vendor) is gone with the note.
+  And the prompt the learner copies to their own model (Def. 8.3) no longer
+  carries what they said: a reflection leaves the device only when the
+  learner shares it, through the platform's share sheet, to whoever they
+  choose (Rem. 8.3). Remark 3.3 still permits a prompt to carry such a
+  report; carrying reflections would be a new amendment.
 ]
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -3743,6 +3768,19 @@ tell who was talking without reading. Filed with `packages/ui/topik`'s
 `core/cast` and `cast-figure`, `@some-ui/makjang`'s `gender` and `figure`,
 and `@some-ui/speech`'s `lib/part`, which implement it. Moves the
 front-matter version line.
+
+*v1.17 --- 2026-10-11.* Retires the margin note, as a new item (Remark 3.8)
+rather than a rewrite of Remark 3.7: the round surface raises no note of its
+own, and what a learner wants to say about a round they say as a session
+reflection, which the host offers in every activity. A spoken reflection is
+kept as its recording and transcribed by nothing, so no platform recognizer
+hears the learner; and the generation prompt no longer carries what the
+learner said. Motivated by play on the phone: the round surface showed a
+Note beside the session's own Reflect, two ways to say one thing, and the
+note's speech failed where the phone's recognizer would not listen. Filed
+with `packages/ui/leetype`, which drops `lib/leetype/notes` and its
+composer, and `apps/www`, which drops the phone's recognizer
+(`lib/dictation`) and its plugin. Moves the front-matter version line.
 
 #pagebreak()
 

@@ -98,28 +98,15 @@ change against first:
    loads the engine" true by construction; `components/leetype/index.test.tsx`
    pins it, with a negative control that asserts the wide branch does load it.
 
-## Margin notes: saying where you got stuck
+## Saying where you got stuck: a reflection, not a note
 
-Every round artifact on the phone is somewhere to get stuck, for one of two
-reasons the probe cannot otherwise tell apart: not knowing the answer, or not
-knowing what is being asked. A **Note** button beside the round's tabs opens
-an inline panel on whatever is showing. One tap on a kind (_Not sure what
-it's asking_, _I don't know this_, _This looks wrong_, _Just a thought_)
-saves the note; words are optional and added after, typed or spoken.
-
-- **Not evidence.** Canon Rem. 3.7: a note enters no ledger update and no
-  draw (Prop. 3.4). It goes into the prompt "Make your own" copies, so the
-  learner's model writes the next round against it, and onto the
-  session-complete screen.
-- **On the device, briefly.** At most thirty, for thirty days, in
-  `localStorage` (`lib/leetype/notes/store`).
-- **Text, never audio.** A spoken note is kept as its transcript. The
-  browser's recognizer (`webSpeechDictation`) is used where there is one; the
-  Android app passes the phone's as `dictation`, since a WebView has none.
-  The panel says whose recognizer it is before the learner speaks.
-- **Not the coordinator.** The composer is a state machine
-  (`lib/leetype/notes/composer`) run by a runtime over ports
-  (`lib/leetype/notes/runtime`); `RoundSession` renders its snapshot.
+The round surface has no note of its own (canon Rem. 3.8, retiring
+Rem. 3.7's margin note). What a learner wants to say about a round, before or
+after answering, they say as a session reflection: the host's **Reflect**
+button is one tap away in every activity (`apps/www`'s
+`components/reflection`), stamped with how far into the session it was said,
+and a spoken one is kept as audio, never transcribed. Nothing in this package
+records, transcribes or stores what the learner says.
 
 ## Where the engine ends and this package begins
 

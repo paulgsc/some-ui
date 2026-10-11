@@ -270,10 +270,10 @@ came first and stays: its four laws are the same idea inside one package.
 > True when declared: 12 entries (28 waits) are in the `Grandfathered:`
 > group and one is `Unbounded:` (the native log's own fire-and-forget
 > write), and the check passes. Through the boundary so far: the phone's
-> dictation (`apps/www/src/lib/dictation`) with the browser's
-> (`packages/ui/leetype/src/lib/leetype/notes/dictation`, whose wrapped
-> `new Promise` the count could not have seen), and the phone's database
-> (`apps/www/src/lib/device-backend/capacitor-sqlite`).
+> database (`apps/www/src/lib/device-backend/capacitor-sqlite`) and its share
+> sheet (`apps/www/src/lib/share-files`). The first port through it, the
+> phone's and the browser's dictation for LeetType's margin notes, left with
+> the notes (canon Rem. 3.8).
 
 ## How this is enforced
 

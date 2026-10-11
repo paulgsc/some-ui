@@ -6,7 +6,7 @@ import { useIsMobile } from "@some-ui/react-hooks"
 import { LiveEditOverlay, OrchestratedYouTubeViewport } from "wireframes"
 
 import { useAuthority } from "@/lib/authority"
-import { phoneDictation, runsNatively } from "@/lib/dictation"
+import { runsNatively } from "@/lib/intent/foreign"
 import { AmbientIntentStatus } from "@/lib/intent/render"
 import { loadLeetypeRoundRuns, loadLeetypeRounds } from "@/lib/leetype-content"
 import {
@@ -30,16 +30,15 @@ import { useLiveLayoutEditor } from "./use-live-layout-editor"
 import { withWebOnlyNotes } from "./web-only-note"
 
 /**
- * The Android app's own ports, absent elsewhere: LeetType's margin-note
- * recognizer (src/lib/dictation; elsewhere the package uses the browser's)
- * and the share sheet for the drama's next-scene prompt. Gated on native,
- * not the device build: that build in a desktop browser has only the
- * plugins' web stubs. Neither holds anything until a learner taps.
+ * The Android app's share sheet for the drama's next-scene prompt, absent
+ * elsewhere. Gated on native, not the device build: that build in a desktop
+ * browser has only the plugin's web stub. It holds nothing until a learner
+ * taps.
  */
-const [PHONE_DICTATION, PHONE_SHARE] =
+const PHONE_SHARE =
   import.meta.env.VITE_DEVICE_BACKEND === "true" && runsNatively()
-    ? ([phoneDictation(), shareDramaPrompt] as const)
-    : []
+    ? shareDramaPrompt
+    : undefined
 
 /** What the player renders: the bound panels, and a note for a web one. */
 const PLAYER_PANELS = withWebOnlyNotes(PANELS, WEB_PANEL_KEYS)
@@ -129,8 +128,6 @@ export const SessionViewport = ({
           // Fetched in `server` mode, nothing in `static` (bundled).
           loadRuns: loadLeetypeRoundRuns,
           shelf: shelves?.leetype,
-          // The phone's recognizer on Android, whose WebView has none.
-          dictation: PHONE_DICTATION,
         },
       }),
     [shelves]

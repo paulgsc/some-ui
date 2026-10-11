@@ -64,18 +64,6 @@ type ArtifactSwitcherProps = {
    * `RoundChoices`) survives the move. An id not in `artifacts` is ignored.
    */
   focusId?: ArtifactId
-  /**
-   * A control beside the tabs (or the narrow header's label), given the
-   * artifact showing now: `RoundSession`'s Note button (canon Rem. 3.7),
-   * which raises a note on whatever is current. Rendered once, outside the
-   * tab list, so it is never one of the tabs.
-   */
-  renderHeaderAction?: (current: SwitchableArtifact) => ReactNode
-  /**
-   * Content between the header and the pager, such as the open note: it
-   * pushes the artifact down rather than covering it.
-   */
-  headerPanel?: ReactNode
   className?: string
 }
 
@@ -169,8 +157,6 @@ export const ArtifactSwitcher: FC<ArtifactSwitcherProps> = ({
   roundId,
   ariaLabel,
   focusId,
-  renderHeaderAction,
-  headerPanel,
   className,
 }) => {
   const announceLabel = ariaLabel ?? "Round artifact"
@@ -409,19 +395,7 @@ export const ArtifactSwitcher: FC<ArtifactSwitcherProps> = ({
             <ChevronRight className="size-4" aria-hidden="true" />
           </button>
         </div>
-        {renderHeaderAction !== undefined && (
-          <div
-            className={cn(
-              "flex shrink-0 items-center pl-1",
-              artifacts.length > 1 && "border-b border-border/60 md:border-b-0"
-            )}
-          >
-            {renderHeaderAction(current)}
-          </div>
-        )}
       </div>
-
-      {headerPanel}
 
       {/* Which artifact is current, and where, said in words for a screen
           reader — `aria-live="polite"` so a swipe or a press is announced

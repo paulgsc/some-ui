@@ -19,6 +19,22 @@ export function isMissingPlugin(error: unknown): boolean {
   return code === "UNAVAILABLE" || code === "UNIMPLEMENTED"
 }
 
+/**
+ * Whether this page runs inside the native app, read from the
+ * `window.Capacitor` the native bridge injects before the page loads,
+ * rather than from `@capacitor/core`, which would put the runtime in every
+ * build's main bundle to answer one question.
+ */
+export function runsNatively(host: object = globalThis): boolean {
+  const capacitor: unknown = Reflect.get(host, "Capacitor")
+  if (typeof capacitor !== "object" || capacitor === null) return false
+  const isNative: unknown = Reflect.get(capacitor, "isNativePlatform")
+  return (
+    typeof isNative === "function" &&
+    Reflect.apply(isNative, capacitor, []) === true
+  )
+}
+
 /** A failed `callForeign`, as its port classified it (`mapFileHostError` reads it). */
 export class ForeignCallError extends Error {
   constructor(readonly error: IntentError) {

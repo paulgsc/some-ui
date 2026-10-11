@@ -17,7 +17,6 @@
     "clean": "rimraf .turbo && rimraf node_modules && rimraf android/app/build && rimraf android/build"
   },
   "dependencies": {
-    "@capacitor-community/speech-recognition": "^7.0.1",
     "@capacitor-community/sqlite": "^8.1.1",
     "@capacitor-community/text-to-speech": "^8.0.2",
     "@capacitor/android": "^8.5.2",
