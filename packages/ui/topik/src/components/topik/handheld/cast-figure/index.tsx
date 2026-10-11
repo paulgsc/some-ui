@@ -51,10 +51,10 @@ const ART: Readonly<Record<FigureKey, Art>> = {
         />
         {dots(
           [
-            [14, 34],
-            [34, 34],
+            [15.5, 34.5],
+            [32.5, 34.5],
           ],
-          2.2,
+          2,
           ACCENT
         )}
       </>
