@@ -46,7 +46,7 @@ export type Stop = {
 }
 
 export const PICK_UP_MS = 30 * 60_000
-/** Back within this after leaving the app: a glance, not a stop. */
+/** Back within this after leaving: a glance, not a stop. */
 export const GLANCE_MS = 60_000
 const STOP_LIMIT = 20
 
@@ -86,7 +86,12 @@ export type PathCounts = {
 
 type Path = keyof Omit<PathCounts, "sessionId">
 
-const PATHS = ["opens", "glances", "takenBack", "pickUps"] as const
+const PATHS = [
+  "opens",
+  "glances",
+  "takenBack",
+  "pickUps",
+] as const satisfies ReadonlyArray<Path>
 
 const paths = boundedList(
   "some-ui:session-paths",
@@ -199,7 +204,7 @@ export type StopEffect =
 
 const NONE: StopState = { kind: "none" }
 
-const count = (stop: Stop | { sessionId: string }, path: Path): StopEffect => ({
+const count = (stop: { sessionId: string }, path: Path): StopEffect => ({
   kind: "count",
   sessionId: stop.sessionId,
   path,

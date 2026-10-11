@@ -129,7 +129,8 @@ describe("SessionPlayer: a cached non-null session through a failed refresh is n
     for (const refreshFailed of [true, false]) {
       mockResult = cachedQueryResult(session, refreshFailed, { refetch })
       rerender(<SessionPlayer sessionId="session-1" />)
-      // The same node: a remount would restart the session from scratch.
+      // The same node: a remount would close the session's screen and open
+      // it again.
       expect(screen.getByTestId("live-player-stub")).toBe(player)
     }
   })

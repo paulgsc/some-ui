@@ -37,6 +37,8 @@ export function createStopRuntime(
   now: () => Date = () => new Date()
 ): StopRuntime {
   let state: StopState = { kind: "none" }
+  // Whether this mount took the session over: a finished one never does.
+  let begun = false
   const listeners = new Set<() => void>()
 
   const run = (effect: StopEffect): void => {
@@ -80,13 +82,15 @@ export function createStopRuntime(
       listeners.add(listener)
       return () => listeners.delete(listener)
     },
-    begin: () =>
+    begin: (): void => {
+      begun = true
       dispatch({
         type: "begin",
         sessionId,
         latest: latestStop(sessionId),
         now: now(),
-      }),
+      })
+    },
     tap: () => dispatch(here("tap")),
     pickUp: () => dispatch({ type: "pickUp", now: now() }),
     done: () => dispatch({ type: "done", now: now() }),
@@ -108,9 +112,9 @@ export function createStopRuntime(
         document.removeEventListener("visibilitychange", onVisibility)
         clearInterval(clock)
         // Pauses the app-wide orchestrator too, which would play on unseen.
-        // StrictMode's first cleanup comes after the player's `configure`
-        // has set it back to idle, so no position and nothing kept.
-        if (onPhone) dispatch(here("hidden"))
+        // Only once `begin` ran: not for a finished session replayed, nor in
+        // StrictMode's first cleanup, which comes before it.
+        if (onPhone && begun) dispatch(here("hidden"))
       }
     },
   }

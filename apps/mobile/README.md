@@ -602,7 +602,8 @@ cutting study short can be read over time.
 - **Leaving** mid-session is a stop too, with nothing to tap: the app going
   to the background, or Back or a link in the app closing the session's
   screen. Back within a minute it was a glance, and is forgotten, even after
-  the screen closed: the session goes on from where it was.
+  the screen closed: the session goes on from where it was (playing, even if
+  it had been paused, once the screen had closed).
 - **Within 30 minutes** of the stop the person can **Pick up where you left
   off** (exactly, in the player they left; once reopened, the clock goes on
   from where it stopped, so time played adds up, and the activity starts its
@@ -619,8 +620,9 @@ Home), how it ended (picked up, called done or lapsed) and when, which says
 how long the person was away. Beside the records, each session counts what
 they cannot show: how often its screen opened unfinished, the glances, the
 taps taken back and the pick-ups (the 20 sessions counted most recently). A
-departure the app cannot see, such as a crash while on screen, is in neither,
-and the session starts again from the beginning when reopened. The policy is
+departure the app cannot see, such as a crash while on screen, leaves no stop
+and only one more open, and the session starts again from the beginning when
+reopened. A finished session played again keeps no stop on Back. The policy is
 one pure `step` in `apps/www/src/lib/session-stop`, run by `./runtime`; the
 player only forwards taps, `visibilitychange` and its own closing. The app
 sends them, and the counts, nowhere: they leave the
