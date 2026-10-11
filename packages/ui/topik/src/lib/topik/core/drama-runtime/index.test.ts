@@ -102,6 +102,7 @@ describe("DramaRuntime", () => {
     expect(voice.requests.map(({ request }) => request.beat)).toEqual(["s1-l1"])
     expect(voice.requests[0]?.request).toMatchObject({
       speaker: "chairman",
+      gender: "female",
       text: "앉아. 차 마실래?",
       interrupt: false,
     })
@@ -118,6 +119,8 @@ describe("DramaRuntime", () => {
     expect(voice.requests[0]?.signal.aborted).toBe(true)
     expect(voice.requests[1]?.request).toMatchObject({
       beat: "s1-n1",
+      speaker: null,
+      gender: null,
       interrupt: true,
     })
     voice.requests[1]?.request.onStart?.()

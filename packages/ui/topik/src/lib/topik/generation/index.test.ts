@@ -1,4 +1,5 @@
 import { FEELING_KEYS } from "@some-ui/styles/theme"
+import { FIGURE_KEYS } from "@topik/lib/topik/core/cast"
 import type { LastDrama } from "@topik/lib/topik/core/last-drama"
 import { describe, expect, it } from "vitest"
 
@@ -99,14 +100,15 @@ describe("buildLessonPrompt", () => {
 })
 
 describe("buildTreePrompt", () => {
-  it("lists the app's feeling keys in place of the marker, and appends the request", () => {
+  it("lists the app's figure and feeling keys in place of their markers, and appends the request", () => {
     const prompt = buildTreePrompt({
       level: 3,
       scene: "the gift goes wrong",
       audience: "batch",
     })
     expect(prompt).not.toContain("<!-- feelings -->")
-    for (const key of FEELING_KEYS) {
+    expect(prompt).not.toContain("<!-- figures -->")
+    for (const key of [...FEELING_KEYS, ...FIGURE_KEYS]) {
       expect(prompt).toContain(`| \`${key}\` |`)
     }
     expect(prompt).toContain(

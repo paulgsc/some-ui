@@ -106,6 +106,32 @@ describe("httpSpeech", () => {
     })
     expect(adapter.describe("english").voice).toBe("Onyx")
   })
+
+  it("reads a line's part in the chosen voice when it is that gender, else the catalogue's", async () => {
+    const sent: Array<unknown> = []
+    const adapter = createSpeechAdapter({
+      mode: "server",
+      hosted: { provider: "openai", voiceId: "ko-KR-SunHiNeural" },
+      adapters: { server: httpSpeech },
+      fetchImpl: (_url, init) => {
+        sent.push(JSON.parse(String(init?.body)).voice)
+        return Promise.reject(new Error("no TTS server in tests"))
+      },
+    })
+
+    for (const part of ["female", "male", undefined] as const) {
+      await adapter
+        .speak("앉아.", { language: "korean", part })
+        .catch(() => undefined)
+    }
+    adapter.dispose()
+
+    expect(sent).toEqual([
+      "ko-KR-SunHiNeural",
+      "ko-KR-InJoonNeural",
+      "ko-KR-SunHiNeural",
+    ])
+  })
 })
 
 describe("webSpeech", () => {

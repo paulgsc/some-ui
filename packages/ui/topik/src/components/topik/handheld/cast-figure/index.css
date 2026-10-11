@@ -1,0 +1,114 @@
+/* A cast figure (`index.tsx`): drawn in the colours of the panel it sits in,
+ * the feeling's own inside a feeling panel and the session's elsewhere (the
+ * chosen line), and alive only while its character's line is heard. */
+
+.cast-figure {
+  --cast-figure-fill: var(--feeling-ground, var(--card));
+  --cast-figure-accent: var(--feeling-accent, var(--primary));
+
+  overflow: visible;
+}
+
+.cast-figure .cast-figure-fill {
+  fill: var(--cast-figure-fill);
+}
+
+.cast-figure .cast-figure-accent {
+  fill: var(--cast-figure-accent);
+}
+
+.cast-figure .cast-figure-ink,
+.cast-figure .cast-figure-mouth {
+  fill: currentcolor;
+  stroke: none;
+}
+
+.cast-figure .cast-figure-body,
+.cast-figure .cast-figure-eyes,
+.cast-figure .cast-figure-mouth {
+  transform-box: fill-box;
+}
+
+.cast-figure .cast-figure-body {
+  transform-origin: 50% 100%;
+}
+
+.cast-figure .cast-figure-eyes {
+  animation: cast-figure-blink 5.2s ease-in-out infinite;
+  transform-origin: center;
+}
+
+.cast-figure .cast-figure-mouth {
+  transform: scaleY(0.35);
+  transform-origin: center;
+}
+
+.cast-figure .cast-figure-talk-lines {
+  opacity: 0;
+  stroke: var(--cast-figure-accent);
+}
+
+.cast-figure[data-speaking] .cast-figure-body {
+  animation: cast-figure-bob 0.42s ease-in-out infinite alternate;
+}
+
+.cast-figure[data-speaking] .cast-figure-mouth {
+  animation: cast-figure-talk 0.19s ease-in-out infinite alternate;
+}
+
+.cast-figure[data-speaking] .cast-figure-talk-lines {
+  animation: cast-figure-flicker 0.42s steps(2, jump-none) infinite;
+  opacity: 1;
+}
+
+@keyframes cast-figure-bob {
+  from {
+    transform: translateY(0) scale(1, 1);
+  }
+
+  to {
+    transform: translateY(-1.5px) scale(0.97, 1.04);
+  }
+}
+
+@keyframes cast-figure-talk {
+  from {
+    transform: scaleY(0.35);
+  }
+
+  to {
+    transform: scaleY(1);
+  }
+}
+
+@keyframes cast-figure-flicker {
+  from {
+    opacity: 1;
+  }
+
+  to {
+    opacity: 0.35;
+  }
+}
+
+@keyframes cast-figure-blink {
+  0%,
+  94%,
+  100% {
+    transform: scaleY(1);
+  }
+
+  97% {
+    transform: scaleY(0.1);
+  }
+}
+
+/* Still, a speaker is still marked: the talk lines stay, unmoving. */
+@media (prefers-reduced-motion: reduce) {
+  .cast-figure .cast-figure-eyes,
+  .cast-figure[data-speaking] .cast-figure-body,
+  .cast-figure[data-speaking] .cast-figure-mouth,
+  .cast-figure[data-speaking] .cast-figure-talk-lines {
+    animation: none;
+  }
+}

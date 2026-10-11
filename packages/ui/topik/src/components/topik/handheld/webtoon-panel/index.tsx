@@ -1,4 +1,5 @@
 import type { JSX, ReactNode } from "react"
+import { useMemo } from "react"
 import { assertNever, cn } from "@some-ui/core-utils"
 import type { FeelingKey } from "@some-ui/styles/theme"
 import {
@@ -7,7 +8,10 @@ import {
   FEELING_PANEL_CLASS,
   feelingThemeClass,
 } from "@some-ui/styles/theme"
+import { CastFigure } from "@topik/components/topik/handheld/cast-figure"
 import { FeelingSymbol } from "@topik/components/topik/handheld/feeling-symbol"
+import type { FigureKey } from "@topik/lib/topik/core/cast"
+import { figuresOf } from "@topik/lib/topik/core/cast"
 import type { DramaLesson, Panel, Rung } from "@topik/lib/topik/core/drama"
 import { FEELING_WORDS } from "@topik/lib/topik/core/feeling"
 import { Ear, Volume2 } from "lucide-react"
@@ -52,16 +56,6 @@ const Themed = ({
       {children}
     </section>
   </div>
-)
-
-/** A speaker's initial in a ring, as a webtoon marks who is talking. */
-const Initial = ({ name }: { name: string }): JSX.Element => (
-  <span
-    aria-hidden="true"
-    className="flex size-8 shrink-0 items-center justify-center rounded-full border-2 border-current text-sm font-bold"
-  >
-    {name.slice(0, 1)}
-  </span>
 )
 
 /** Hears a beat again. */
@@ -135,6 +129,8 @@ export const WebtoonPanel = ({
 }: WebtoonPanelProps): JSX.Element | null => {
   const nameOf = (id: string): string =>
     lesson.cast.find((character) => character.id === id)?.name ?? id
+  const figures = useMemo(() => figuresOf(lesson.cast), [lesson.cast])
+  const figureOf = (id: string): FigureKey => figures.get(id) ?? "heart"
 
   switch (panel.kind) {
     case "cover": {
@@ -194,7 +190,11 @@ export const WebtoonPanel = ({
           <span
             className={cn("flex items-center gap-2", pov && "flex-row-reverse")}
           >
-            <Initial name={name} />
+            <CastFigure
+              figure={figureOf(line.speaker)}
+              speaking={speaking === line.id}
+              className="size-12 shrink-0"
+            />
             <span className="text-sm font-semibold">{name}</span>
             <FeelingSymbol
               feeling={panel.feeling}
@@ -274,7 +274,11 @@ export const WebtoonPanel = ({
           className="bg-card text-card-foreground border-primary ml-8 flex flex-col gap-2 rounded-2xl border-4 border-double p-3"
         >
           <span className="flex flex-row-reverse items-center gap-2">
-            <Initial name={nameOf(panel.speaker)} />
+            <CastFigure
+              figure={figureOf(panel.speaker)}
+              speaking={false}
+              className="size-12 shrink-0"
+            />
             <span className="text-sm font-semibold">
               {nameOf(panel.speaker)}
             </span>

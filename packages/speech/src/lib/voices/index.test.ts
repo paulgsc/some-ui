@@ -54,6 +54,32 @@ describe("hostedVoiceFor - the person's choice speaks every line it can", () => 
   })
 })
 
+describe("hostedVoiceFor - a part keeps the person's choice where it can", () => {
+  it("reads a part in the chosen voice when it is the part's gender", () => {
+    const choice = {
+      provider: "openai",
+      voiceId: "ko-KR-InJoonNeural",
+    } as const
+    expect(hostedVoiceFor(choice, "korean", "male")?.id).toBe(
+      "ko-KR-InJoonNeural"
+    )
+  })
+
+  it("reads the other part in the same language's voice of that gender", () => {
+    const chosen = {
+      provider: "openai",
+      voiceId: "ko-KR-InJoonNeural",
+    } as const
+    expect(hostedVoiceFor(chosen, "korean", "female")?.id).toBe(
+      "ko-KR-SunHiNeural"
+    )
+    const none = { provider: "openai", voiceId: null } as const
+    expect(hostedVoiceFor(none, "korean", "male")?.id).toBe(
+      "ko-KR-InJoonNeural"
+    )
+  })
+})
+
 describe("DEFAULT_HOSTED_VOICE", () => {
   it.each(PROVIDERS)(
     "%s: every default is a voice of that provider in that language",

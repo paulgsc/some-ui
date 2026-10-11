@@ -44,6 +44,18 @@ describe("HostedVoiceFields - the voice a lesson is heard in", () => {
     ).toBeDefined()
   })
 
+  it("names the voice a drama reads the other gender in", () => {
+    renderFields({ provider: "openai", voiceId: "ko-KR-InJoonNeural" })
+    expect(
+      screen.getByText("In a drama, women are read by Sun-Hi (Korean Female).")
+    ).toBeDefined()
+    cleanup()
+    renderFields({ provider: "openai", voiceId: null })
+    expect(
+      screen.getByText("In a drama, men are read by In-Joon (Korean Male).")
+    ).toBeDefined()
+  })
+
   it("says so when the provider has no Korean voice at all", () => {
     renderFields({ provider: "google", voiceId: null })
     expect(screen.getByText(/has no Korean voice here/)).toBeDefined()

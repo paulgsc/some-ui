@@ -257,7 +257,7 @@ split, and a maximum depth past which a scene may not split and must resolve.
 
 ```
 Lesson    = { id, level, pov: CharacterId, cast: Character[], root: Scene }
-Character = { id, name, standing, registers, voice?, look? }
+Character = { id, name, standing, registers, voice?, look?, gender?, figure? }
 Scene     = { id, place, feeling, beats: (Line | Narration)[], choice? }
 Line      = { id, speaker: CharacterId, text, gloss, direction? }
 Narration = { id, text, gloss }
@@ -302,7 +302,11 @@ teaching audit of every choice in a tree.
   they stand to the others (`standing`, described text), which register they
   use to whom and receive (`registers`, per pair), and medium-free
   descriptions of voice and look, which the media layer turns into renditions
-  when it can. Lines name a speaker by cast id, never `user`/`assistant`, and
+  when it can. Two fields are closed, for the renderer to read as they are: a
+  `gender` (`female` or `male`), which the voice port reads a character's
+  lines by, and a `figure`, a key from the renderer's vocabulary of cast
+  figures, carried unread like a scene's feeling (see "The cast, voiced and
+  drawn"). Lines name a speaker by cast id, never `user`/`assistant`, and
   `pov` names the character the learner follows.
 - **Beats.** A _line_ has a speaker, its text, its gloss and an optional stage
   direction (how it is said). A _narration_ is a short action or description
@@ -432,19 +436,32 @@ Def. 8.2, Axiom 8.1).
 
 | Port   | Today                                                    | Later                                              | Falls back to   |
 | ------ | -------------------------------------------------------- | -------------------------------------------------- | --------------- |
-| Voice  | The session's chosen Korean voice (`@some-ui/speech`)    | A voice per character, from the cast               | Text only       |
+| Voice  | A woman's or a man's part, from the cast's `gender`      | A voice per character, from the cast               | Text only       |
 | Sound  | A scene's feeling: its tone, then its cry, with sound on | The cry at the feeling's own rate and pitch        | The caption     |
-| Art    | None: options are text                                   | Generated icons, portraits, backdrops in one style | Text labels     |
-| Motion | None                                                     | A character speaking a beat, as video              | Portrait, voice |
+| Art    | A fixed cast figure per character; options are text      | Generated icons, portraits, backdrops in one style | Text labels     |
+| Motion | The speaking character's figure bobs and talks           | A character speaking a beat, as video              | Portrait, voice |
 | Script | One self-contained scene tree per lesson                 | A coherent series with a standing cast             | (authoring)     |
 
-**A voice per character needs a speech API change.** topik speaks through a
-`Speaker` handle (`packages/speech/src/lib/speaker`), which deliberately
-cannot name a voice: the speech session owns the voice the person chose in
-Settings, because topik once overrode it on every line. Per-character voices
-therefore need a change to `@some-ui/speech`'s API, and a decision on how a
-character's voice relates to the one chosen in Settings. Until then every
-character speaks in the chosen voice, and characters are told apart on screen.
+**A voice per part, not per character.** topik speaks through a `Speaker`
+handle (`packages/speech/src/lib/speaker`), which deliberately cannot name a
+voice: the speech session owns the voice the person chose in Settings,
+because topik once overrode it on every line. So a line asks for a _part_
+instead (`@some-ui/speech`'s `lib/part`): the speaker's `gender`, when the
+cast gives one. The session reads it in a way that keeps the person's choice.
+The hosted service reads a part in the person's voice when that voice is the
+part's gender, and otherwise in the catalogue's Korean voice of that gender
+(Sun-Hi and In-Joon on `openai-edge-tts`). The phone's TTS, and the browser's,
+cannot say which of their voices is a woman's, so the person's voice reads
+both parts, each at its own pitch, and the two sound apart whatever that
+voice is. Narration, and a character with no gender, keep the chosen voice
+as it is.
+
+Speech is synthesized as each line plays, not rendered ahead on a server. A
+part is a choice the session makes per line over voices it already has, so a
+tree needs no audio assets and a learner's own pasted tree is voiced as well
+as a served one. Rendering every line ahead would trade that for a voice per
+character, and would put a batch of audio on every tree. That waits for
+"Later", where a cast voice is an asset an authoring job makes.
 
 **Media is not pedagogically neutral.** A picture glosses a noun. A frown on a
 video face is a hint on a register item. By Prop. 9.4's argument, each new
@@ -551,10 +568,11 @@ choice panel are the session's.
   when v ≥ 0.3, falling a semitone when v ≤ −0.3 (with a noise crash when
   a ≥ 0.8 too), otherwise the dun-dun of a reveal, an octave and more below
   the register; then the cry, voiced at rate 0.9 + 0.2·a and pitch
-  1 + 0.12·v. No asset files. The cry's prosody waits on the same
-  `@some-ui/speech` change as per-character voices: a `Speaker` takes no
-  pitch, and its `playbackRate` replaces the rate the person chose rather
-  than scaling it, so the cry is voiced at the session's own.
+  1 + 0.12·v. No asset files. The cry's prosody waits on a
+  `@some-ui/speech` change: a `Speaker` takes no pitch (a line may ask for a
+  part, whose pitch the session picks, and no more), and its `playbackRate`
+  replaces the rate the person chose rather than scaling it, so the cry is
+  voiced at the session's own.
 
 In code, `@some-ui/styles` derives (`src/theme/feeling.ts`, registered as the
 `feeling` scope) and the result reaches CSS generated, not inline:
@@ -565,6 +583,42 @@ CSS expression and topik need not know which session theme is active. A
 panel wears a feeling as a boundary, `feeling feeling-<key>`, which carries
 the tokens and a jagged edge's outline, around a `feeling-panel` element that
 paints them; the cover's boundary adds `feeling-motion`.
+
+### The cast, voiced and drawn
+
+A webtoon marks who is talking with a face beside the bubble. The renderer
+has no portraits, so it draws a _cast figure_ instead: a small mascot, a
+Korean fruit or snack with one prop (a peach with rosy cheeks, a persimmon in
+spectacles, a rice triangle in a suit), from a closed vocabulary drawn at
+build time (`core/cast` for the keys and their words, `cast-figure` for the
+drawings). Nobody reads a face into a peach. What makes it feel alive is that
+it talks only while its character's line is heard: it bobs, its mouth opens
+and shuts, and talk lines flicker beside it. That is the cue a reader follows
+to see who is speaking. Otherwise a figure only blinks now and then, on its
+own beat, the same on every line. With voice muted no line is heard and no
+figure talks; the name beside each line still says who speaks.
+
+- **A costume, not a role.** A figure suggests the kind of part (`elder`,
+  `heir`, `rival`); `standing` says who the character really is. The tree
+  prompt lists the vocabulary from the code, as it lists the feelings, and
+  asks for a different figure for each character.
+- **Every character gets one.** A tree may name a figure per character, and
+  `figuresOf` gives the rest the first ones the cast leaves unused, so a tree
+  that names none still draws its characters apart. A name outside the
+  vocabulary is a teaching-audit warning, not a rejection: the character is
+  drawn as another figure, and nothing else in the drama depends on it.
+- **The panel's colours.** A figure is drawn in the ink, the accent and the
+  ground of the panel it sits in. Inside a feeling panel those are the
+  feeling's own (MK5), and on the chosen line they are the session's.
+- **Fixed per character.** The same drawing, expression and blink on every
+  line, whatever the feeling or the choice. The chosen line shows the point
+  of view's figure, which never talks, since a chosen line is not voiced. Under
+  reduced motion nothing moves, and only the talk lines mark the speaker.
+
+**What the cast reveals.** The figure and the voice part are rendition kinds
+in Prop. 9.4's sense. They say who is speaking, which the speaker's name
+beside every line already says, and nothing about which candidate holds.
+Their canon line is Remark 9.3 (v1.16).
 
 ### Where the anchor goes
 
@@ -874,7 +928,13 @@ Neither needs a better model than exists today.
 - **MKJ-S10: pulling a scene back.** A scene file the learner's agent wrote
   opens from storage through the system picker (see "Pulling a scene
   back").
-- **Later.** Media capabilities (per-character voices, generated art in a
+- **MKJ-S11: the cast, voiced and drawn.** A character's lines are read in a
+  woman's or a man's part, and the character is drawn as a cast figure that
+  moves while their line is heard (see "The cast, voiced and drawn"). The
+  schema gains `gender` and `figure`, the voice request the speaker's
+  `gender`, and `@some-ui/speech` a part a line may ask for. The engine does
+  not change.
+- **Later.** Media capabilities (a voice per character, generated art in a
   fixed style, portraits, video beats) each add assets and a renderer
   capability, plus a canon line, and change neither the story schema nor the
   engine. Longitudinal structure (a standing cast, series, memory across
@@ -891,6 +951,9 @@ dependencies, and the tests named below pass. MK5–MK7 held when declared with
 MKJ-S2: all 40 session theme and feeling pairs clear the floor, the MK6 test
 passes on every route of the tree prompt's worked example, and the anchor and
 the voice are the renderer's only rendition kinds, each with its canon line.
+MK5 and MK7 still hold with MKJ-S11: the cast figure paints only the panel's
+ink, accent and ground, and the figure, its motion and the voice's part each
+have Remark 9.3.
 The module doc comments of `story-audit.ts`, `engine.ts`, `media.ts`, topik's
 `core/tree-audit` and `core/drama`, and `@some-ui/styles`' `feeling.ts` carry
 the one-line summaries.
@@ -997,8 +1060,8 @@ the one-line summaries.
 >   check, or the `--feeling-*` check); that paints text or a mark inside a
 >   feeling panel (`packages/ui/topik`'s `webtoon-panel`) in a colour other
 >   than the panel's own (`--feeling-ink`, `feeling-muted`,
->   `feeling-accent`), such as a `text-muted-foreground` utility; or that
->   deletes, renames or moves `feeling.ts`, `session-roles.ts`, the test or
+>   `feeling-accent`, and `--feeling-ground` as a cast figure's fill), such
+>   as a `text-muted-foreground` utility; or that deletes, renames or moves `feeling.ts`, `session-roles.ts`, the test or
 >   `themes/feeling.css`, which a pure rename shows with no hunk at all.
 > - _Scope:_ `packages/some-styles`' feeling themes, and the feeling panels
 >   in `packages/ui/topik/src/components/topik/handheld/webtoon-panel`.
@@ -1039,17 +1102,21 @@ the one-line summaries.
 >
 > - _Claim:_ every rendition kind a drama renderer presents (today the
 >   feeling anchor, Rem. 9.2, whose kit includes the sound port's tone and
->   cry, and the voice, which is Cor. 4.4's audio rung) has a line in the
->   canon saying what it reveals and why that is acceptable (Prop. 9.4).
+>   cry; the voice, which is Cor. 4.4's audio rung; and the cast figure, its
+>   motion while a line is heard and its idle blink, and the voice's part,
+>   Rem. 9.3) has a line
+>   in the canon saying what it reveals and why that is acceptable
+>   (Prop. 9.4).
 > - _Falsified by_ a hunk that adds a port to `MediaPorts`
 >   (`packages/makjang/src/media.ts`), or a new kind of element to the
 >   anchor or the panels (option art, a portrait, a face on video), that no
 >   canon line names and says what it reveals, whether added in the same
 >   change or already in the canon; or a
 >   hunk to `docs/canon/adaptive-learning-canon.typ` that deletes, moves or
->   rewords Remark 9.2 or Corollary 4.4's audio rung so that it no longer
->   says what the anchor (its tone and cry included) or the voice reveals,
->   or why that is acceptable, or renames or moves that file.
+>   rewords Remark 9.2, Remark 9.3 or Corollary 4.4's audio rung so that it
+>   no longer says what the anchor (its tone and cry included), the cast
+>   figure, the voice's part or the voice reveals, or why that is
+>   acceptable, or renames or moves that file.
 > - _Scope:_ `packages/makjang/src/media.ts` and `packages/ui/topik`'s drama
 >   renderer.
 > - _Why not enforced:_ whether a picture or a face reveals the answer needs

@@ -22,6 +22,7 @@
  */
 
 import type { SpokenLanguage } from "@speech/lib/language"
+import type { VoicePart } from "@speech/lib/part"
 import type { TTSProvider, VoiceConfig } from "@speech/lib/types/tts-types"
 import { BUILTIN_VOICES } from "@speech/lib/types/tts-types"
 
@@ -140,16 +141,28 @@ function assertNever(value: never): never {
 /**
  * The voice that speaks a line in `language`: the chosen voice when it
  * speaks that language, else the language's default, else none. With no
- * `language`, the chosen voice, else English's default.
+ * `language`, the chosen voice, else English's default. With a `part`, that
+ * voice when it is the part's gender, else the provider's first voice of the
+ * part's gender in the same language (`lib/part`). The last fallback, that
+ * voice anyway, is defensive: every catalogue language has both genders.
  */
 export function hostedVoiceFor(
   choice: HostedVoiceChoice,
-  language: SpokenLanguage | undefined
+  language: SpokenLanguage | undefined,
+  part?: VoicePart
 ): VoiceConfig | null {
   const chosen = findVoice(choice.provider, choice.voiceId)
   const wanted = language ?? chosen?.language ?? "english"
-  if (chosen?.language === wanted) return chosen
   const defaults: Readonly<Partial<Record<SpokenLanguage, string>>> =
     DEFAULT_HOSTED_VOICE[choice.provider]
-  return findVoice(choice.provider, defaults[wanted])
+  const voice =
+    chosen?.language === wanted
+      ? chosen
+      : findVoice(choice.provider, defaults[wanted])
+  if (!voice || !part || voice.gender === part) return voice
+  return (
+    hostedVoicesOf(choice.provider).find(
+      (other) => other.language === voice.language && other.gender === part
+    ) ?? voice
+  )
 }

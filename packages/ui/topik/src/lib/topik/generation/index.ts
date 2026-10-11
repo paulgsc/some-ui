@@ -10,6 +10,7 @@
  */
 
 import { FEELING_KEYS } from "@some-ui/styles/theme"
+import { FIGURE_KEYS, FIGURE_WORDS } from "@topik/lib/topik/core/cast"
 import { FEELING_WORDS } from "@topik/lib/topik/core/feeling"
 import type {
   Enjoyed,
@@ -138,27 +139,46 @@ export function buildLessonPrompt(request: LessonRequest): string {
 /** Where the tree prompt takes the feeling vocabulary. */
 const FEELINGS_MARKER = "<!-- feelings -->"
 
-/** The vocabulary as the tree prompt lists it: the app's keys, never a copy. */
-const feelingTable = (): string =>
+/** Where the tree prompt takes the figure vocabulary. */
+const FIGURES_MARKER = "<!-- figures -->"
+
+/** A vocabulary as the tree prompt lists it: the app's keys, never a copy. */
+const vocabularyTable = <K extends string>(
+  headers: readonly [string, string],
+  keys: ReadonlyArray<K>,
+  cells: (key: K) => readonly [string, string]
+): string =>
   [
-    "| Key | Feeling | What it is |",
-    "| --- | ------- | ---------- |",
-    ...FEELING_KEYS.map(
-      (key) =>
-        `| \`${key}\` | ${FEELING_WORDS[key].name} | ${FEELING_WORDS[key].meaning} |`
-    ),
+    `| Key | ${headers.join(" | ")} |`,
+    `| --- | ${headers.map((header) => "-".repeat(header.length)).join(" | ")} |`,
+    ...keys.map((key) => `| \`${key}\` | ${cells(key).join(" | ")} |`),
   ].join("\n")
+
+const feelingTable = (): string =>
+  vocabularyTable(["Feeling", "What it is"], FEELING_KEYS, (key) => [
+    FEELING_WORDS[key].name,
+    FEELING_WORDS[key].meaning,
+  ])
+
+const figureTable = (): string =>
+  vocabularyTable(["Drawn as", "Suits"], FIGURE_KEYS, (key) => [
+    FIGURE_WORDS[key].name,
+    FIGURE_WORDS[key].suits,
+  ])
 
 /**
  * The scene-tree prompt (docs/makjang/README.md, "4. Authoring"), with the
- * feeling vocabulary filled in and this request appended. A tree is one
- * scene, so the request has no conversation count.
+ * figure and feeling vocabularies filled in and this request appended. A tree
+ * is one scene, so the request has no conversation count.
  */
 export function buildTreePrompt(request: TreeRequest): string {
   const last = request.lastDrama?.trim()
   const genres = request.genres ?? []
   return withRequest(
-    TREE_PROMPT.replace(FEELINGS_MARKER, feelingTable()),
+    TREE_PROMPT.replace(FIGURES_MARKER, figureTable()).replace(
+      FEELINGS_MARKER,
+      feelingTable()
+    ),
     request,
     [
       `Genre: ${genres.length > 0 ? genres.join(", ") : "(none picked)"}`,

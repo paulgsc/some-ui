@@ -43,6 +43,8 @@ export function rawTree(): Record<string, unknown> {
         standing: "one's elder",
         registers: { p1: "plain" },
         voice: "low",
+        gender: "male",
+        figure: "elder",
       },
     ],
     root: {

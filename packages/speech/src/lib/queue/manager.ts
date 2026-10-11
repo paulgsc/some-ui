@@ -197,6 +197,7 @@ export class SpeechQueueManager {
           options: {
             language: options.language,
             voice,
+            part: options.part,
             volume: options.volume,
             playbackRate: options.playbackRate,
             onStart: options.onStart,
@@ -458,6 +459,7 @@ export class SpeechQueueManager {
         signal: next.controller.signal,
         language: next.options?.language,
         voice: next.options?.voice,
+        part: next.options?.part,
         volume: next.options?.volume,
         playbackRate: next.options?.playbackRate,
         onStart: next.options?.onStart,

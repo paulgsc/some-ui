@@ -7,7 +7,8 @@
  * here is generic over what a tree contains: no scene, trope, character or
  * item is named, and `text`/`gloss` are "the language being learned" and "the
  * learner's" without saying which. `Check` is the teaching layer's item; this
- * package carries it without reading it, and `feeling` and `art` likewise.
+ * package carries it without reading it, and `feeling`, `figure` and `art`
+ * likewise.
  */
 
 /** Choices between the root and the deepest scene. A scene at it is a leaf. */
@@ -19,6 +20,14 @@ export const MIN_BRANCHES = 2
 export const MAX_BRANCHES = 4
 
 export type CharacterId = string
+
+/**
+ * Whether a character is a woman or a man, as the story has it. A renderer
+ * may voice them by it; one that cannot ignores it.
+ */
+export const GENDERS = ["female", "male"] as const
+
+export type Gender = (typeof GENDERS)[number]
 
 export type Character = {
   id: CharacterId
@@ -33,6 +42,12 @@ export type Character = {
   /** Medium-free descriptions the media layer may render, or ignore. */
   voice?: string
   look?: string
+  gender?: Gender
+  /**
+   * How the renderer draws them, as a key from its own vocabulary of
+   * figures, carried unread like a scene's `feeling`.
+   */
+  figure?: string
 }
 
 export type Line = {

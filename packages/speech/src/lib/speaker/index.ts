@@ -34,7 +34,9 @@
  * Nor can a handle name a voice: the session owns what a person decides
  * about speech, which voice and whether it is muted. TOPIK once named "the
  * first Korean voice" on every line, so the voice chosen in Settings never
- * spoke a lesson.
+ * spoke a lesson. What a line may ask for is a `part` (`lib/part`), a woman's
+ * or a man's, which the session reads in a voice that keeps the person's
+ * choice.
  */
 
 import type {
@@ -49,7 +51,7 @@ export type Urgency = "now" | "next"
 
 export type SayOptions = Pick<
   SpeakOptions,
-  "signal" | "onStart" | "onBoundary" | "volume" | "playbackRate"
+  "signal" | "onStart" | "onBoundary" | "volume" | "playbackRate" | "part"
 > & {
   /** The text's language. The session picks the voice for it. */
   language: SpokenLanguage

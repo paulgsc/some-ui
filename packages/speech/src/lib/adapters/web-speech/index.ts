@@ -41,6 +41,7 @@ import {
   LANGUAGE_TAG,
   spokenLanguageOf,
 } from "@speech/lib/language"
+import { devicePitchFor } from "@speech/lib/part"
 import { createSpeechLedger } from "@speech/lib/promise"
 import { createAbortError } from "@speech/lib/promise/abort"
 
@@ -181,7 +182,10 @@ export function createWebSpeechAdapter(
     const entry = ledger.open()
     const utterance = createUtterance(text)
     utterance.rate = speakOptions.playbackRate ?? playbackRate
-    utterance.pitch = options.pitch ?? DEFAULT_PITCH
+    utterance.pitch = devicePitchFor(
+      options.pitch ?? DEFAULT_PITCH,
+      speakOptions.part
+    )
     utterance.volume = speakOptions.volume ?? volume
     const language = speakOptions.language ?? options.language
     if (language) {

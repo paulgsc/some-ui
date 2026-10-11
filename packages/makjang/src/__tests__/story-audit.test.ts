@@ -60,6 +60,14 @@ describe("auditStory accepts a tree within bounds", () => {
     expect("extra" in audit.lesson.root).toBe(false)
   })
 
+  it("keeps a character's gender and figure, and leaves either out when absent", () => {
+    const audit = auditStory(rawTree())
+    if (!audit.ok) throw new Error(JSON.stringify(audit.findings))
+    const [one, two] = audit.lesson.cast
+    expect(two).toMatchObject({ gender: "male", figure: "elder" })
+    expect(one && ("gender" in one || "figure" in one)).toBe(false)
+  })
+
   it("keeps a register toward a character whose id is `__proto__`", () => {
     const tree = rawTree()
     get(tree, "cast.1").id = "__proto__"
@@ -201,6 +209,18 @@ describe("auditStory rejects a malformed tree whole, by path", () => {
       "cast.1.registers.p2: a register is toward another",
       'pov: "p9" is not in the cast',
       'root.beats.1.speaker: "p8" is not in the cast',
+    ])
+  })
+
+  it("rejects a gender outside the schema's, and a figure that is not text", () => {
+    expect(
+      findingsAfter((tree) => {
+        get(tree, "cast.0").gender = "woman"
+        get(tree, "cast.1").figure = 3
+      })
+    ).toEqual([
+      'cast.0.gender: must be one of "female", "male" when given',
+      "cast.1.figure: must be a string when given",
     ])
   })
 

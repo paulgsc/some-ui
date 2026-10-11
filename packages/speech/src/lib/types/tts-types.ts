@@ -1,5 +1,6 @@
 import type { DeviceVoiceChoice } from "@speech/lib/adapters/types"
 import type { SpokenLanguage } from "@speech/lib/language"
+import type { VoicePart } from "@speech/lib/part"
 
 // TTS Service providers
 export type TTSProvider =
@@ -59,6 +60,8 @@ export type TTSOptions = {
    * sets it (`SpeechQueueManager.preview`).
    */
   readonly voice?: DeviceVoiceChoice
+  /** The part the line is read in (`lib/part`). */
+  readonly part?: VoicePart
   readonly onStart?: () => void
   readonly onEnd?: () => void
   readonly onError?: (error: Error) => void

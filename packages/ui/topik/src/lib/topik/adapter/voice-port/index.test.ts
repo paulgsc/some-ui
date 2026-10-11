@@ -25,8 +25,9 @@ const request = {
   beat: "s1-l1",
   text: "앉아.",
   speaker: "chairman",
+  gender: null,
   interrupt: false,
-}
+} as const
 
 describe("speakerVoice", () => {
   it("is no port at all when nothing can speak", () => {
@@ -45,6 +46,20 @@ describe("speakerVoice", () => {
     ).toEqual([
       ["앉아.", "next"],
       ["앉아.", "now"],
+    ])
+  })
+
+  it("reads a character in their gender's part, and narration in the chosen voice as it is", async () => {
+    const speaker = speakerSaying({ kind: "heard" })
+    const voice = speakerVoice(speaker)!
+    const signal = new AbortController().signal
+    await voice.voice({ ...request, gender: "male" }, signal)
+    await voice.voice({ ...request, gender: "female" }, signal)
+    await voice.voice({ ...request, speaker: null }, signal)
+    expect(speaker.say.mock.calls.map(([, options]) => options.part)).toEqual([
+      "male",
+      "female",
+      undefined,
     ])
   })
 

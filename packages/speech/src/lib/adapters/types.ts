@@ -15,6 +15,7 @@
  */
 
 import type { SpokenLanguage } from "@speech/lib/language"
+import type { VoicePart } from "@speech/lib/part"
 
 export type SpeechAdapterId = "http" | "native" | "web-speech"
 
@@ -86,6 +87,12 @@ export type SpeakOptions = {
    * voices to name ignore it.
    */
   voice?: DeviceVoiceChoice
+  /**
+   * The part the line is read in (`lib/part`): a voice of that gender where
+   * the backend can name one, else the person's voice at the part's pitch.
+   * Absent, the person's voice as it is.
+   */
+  part?: VoicePart
   /** Aborting this rejects the returned promise with an `AbortError`. */
   signal?: AbortSignal
   volume?: number
