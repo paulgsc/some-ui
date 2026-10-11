@@ -271,7 +271,7 @@ export const MaterialList = ({
       <button
         type="button"
         onClick={onCreate}
-        className="border-border flex min-h-16 shrink-0 items-center gap-3 rounded-2xl border border-dashed p-4 text-left"
+        className="bg-muted/60 flex min-h-16 shrink-0 items-center gap-3 rounded-2xl p-4 text-left"
       >
         <Sparkles className="text-muted-foreground size-5 shrink-0" />
         <span className="min-w-0 flex-1">

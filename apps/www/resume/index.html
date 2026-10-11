@@ -12,27 +12,30 @@
          kept in step by hand if the theme boot logic ever changes. -->
     <style>
       html:not([data-theme]) {
-        color-scheme: dark;
+        color-scheme: light;
       }
       html:not([data-theme]) body {
-        background-color: oklch(0.145 0 0);
+        background-color: oklch(0.975 0.022 75);
       }
     </style>
     <script>
       ;(function () {
         try {
           var key = "some-ui.theme"
-          var pref = localStorage.getItem(key) || "system"
+          var pref = localStorage.getItem(key) || "mochi"
           // RETIRED_THEMES in the controller: a retired id opens as its successor.
-          var retired = { "strawberry-moon": "rose-night" }
+          var retired = {
+            "strawberry-moon": "rose-night",
+            "peachy-blossom": "mochi",
+          }
           if (Object.prototype.hasOwnProperty.call(retired, pref))
             pref = retired[pref]
           var map = {
             light: { classes: [], mode: "light" },
             dark: { classes: ["dark"], mode: "dark" },
+            mochi: { classes: ["mochi"], mode: "light" },
             "rose-night": { classes: ["dark", "rose-night"], mode: "dark" },
             "harvest-sky": { classes: ["dark", "harvest-sky"], mode: "dark" },
-            "peachy-blossom": { classes: ["peachy-blossom"], mode: "light" },
           }
           if (pref === "system" || !map[pref]) {
             var dark =
@@ -65,7 +68,7 @@
       content="Résumé for Paul Gathondu, a software engineer building production-oriented services in Rust and TypeScript - backend, platform, and full-stack compositions."
     />
     <meta name="resume-id" content="paul-gathondu-resume" />
-    <meta name="theme-color" content="#101010" />
+    <meta name="theme-color" content="#fff5e7" />
     <link rel="canonical" href="https://paulgsc.github.io/some-ui/resume/" />
 
     <!-- Open Graph -->

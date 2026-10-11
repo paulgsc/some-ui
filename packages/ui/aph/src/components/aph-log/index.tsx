@@ -270,7 +270,7 @@ export const AphLog = ({
           })}
         </div>
       ) : waiting.length === 0 ? (
-        <p className="text-muted-foreground rounded-lg border border-dashed p-4 text-center text-sm">
+        <p className="text-muted-foreground bg-muted/60 rounded-2xl p-4 text-center text-sm">
           Nothing is waiting on their figure.
         </p>
       ) : (

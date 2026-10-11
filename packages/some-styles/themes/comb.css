@@ -136,27 +136,26 @@
     --comb-honey-mid: oklch(66% 0.12 355deg);
     --comb-honey-surface: oklch(76% 0.11 355deg);
     --comb-honey-meniscus: oklch(89% 0.05 330deg);
-    --comb-ink: oklch(17% 0.02 330deg);
+    --comb-ink: oklch(19.5% 0.024 330deg);
   }
 
   /* Harvest Sky: the low June moon, honey (85deg) over its indigo
-     ground (285deg). Real honey, for once. */
+     ground (285deg). */
   .harvest-sky .comb {
     --comb-honey-deep: oklch(52% 0.1 70deg);
     --comb-honey-mid: oklch(70% 0.11 78deg);
     --comb-honey-surface: oklch(81% 0.075 85deg);
     --comb-honey-meniscus: oklch(91% 0.04 90deg);
-    --comb-ink: oklch(17% 0.035 285deg);
+    --comb-ink: oklch(19.5% 0.04 285deg);
   }
 
-  /* Peachy Blossom: coral blossom (28deg, near its --primary) up to ripe
-     peach (its --accent, 65deg). Its dusk variant keeps the same two
-     hues, and this block, coming after dark's, wins there too. */
-  .peachy-blossom .comb {
-    --comb-honey-deep: oklch(56% 0.15 28deg);
-    --comb-honey-mid: oklch(72% 0.16 30deg);
-    --comb-honey-surface: oklch(82% 0.13 60deg);
-    --comb-honey-meniscus: oklch(93% 0.06 70deg);
-    --comb-ink: oklch(28% 0.05 40deg);
+  /* Mochi: real honey on its cream, the mark's own (its --brand,
+     75deg), with cocoa ink. */
+  .mochi .comb {
+    --comb-honey-deep: oklch(55% 0.12 62deg);
+    --comb-honey-mid: oklch(74% 0.14 70deg);
+    --comb-honey-surface: oklch(82% 0.13 75deg);
+    --comb-honey-meniscus: oklch(93% 0.06 80deg);
+    --comb-ink: oklch(33% 0.045 50deg);
   }
 }

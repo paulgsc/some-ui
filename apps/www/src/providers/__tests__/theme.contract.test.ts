@@ -76,10 +76,14 @@ describe.each(ENTRIES)("%s pre-paint script ↔ registry", (file) => {
   })
 
   it("opens a retired theme as the controller does", () => {
-    const match = indexHtml.match(/var retired = (\{[^\n]*\})/)
+    // Prettier wraps the literal once it outgrows a line, trailing comma
+    // and all; JSON.parse takes it once that comma goes.
+    const match = indexHtml.match(/var retired = (\{[\s\S]*?\})/)
     if (!match?.[1])
       throw new Error("retired-theme map not found in index.html")
-    expect(JSON.parse(match[1])).toEqual(RETIRED_THEMES)
+    expect(JSON.parse(match[1].replace(/,(\s*\})/, "$1"))).toEqual(
+      RETIRED_THEMES
+    )
   })
 
   it("paints the default preference's background in the no-JS fallback", () => {

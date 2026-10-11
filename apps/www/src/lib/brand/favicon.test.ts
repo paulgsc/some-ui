@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs"
 import { dirname, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
+import { MOCHI_BODY, MOCHI_FACE } from "@some-ui/shared"
 import { describe, expect, it } from "vitest"
 
 /**
@@ -35,18 +36,15 @@ describe("brand favicon", () => {
     }
   })
 
-  it("keeps the cell spacing that makes it legible at 16px", () => {
-    // At a spacing of 17 the gaps are a third of a pixel at favicon size and
-    // the mark becomes a blob.
-    const svg = readFileSync(resolve(REPO_ROOT, COPIES[0]), "utf8")
-    const offsets = [...svg.matchAll(/translate\((-?[\d.]+) (-?[\d.]+)\)/g)]
-      .map(([, x, y]) => [Number(x), Number(y)] as const)
-      // The outer <g> centres the mark at (32 32); the cells are the rest.
-      .filter(([x, y]) => !(x === 32 && y === 32))
-
-    expect(offsets).toHaveLength(6)
-    for (const [x, y] of offsets) {
-      expect(Math.hypot(x, y)).toBeCloseTo(20, 2)
-    }
+  it.each([
+    ...COPIES,
+    "apps/mobile/android/app/src/main/res/drawable/ic_launcher_foreground.xml",
+    "apps/mobile/android/app/src/main/res/drawable/ic_launcher_monochrome.xml",
+  ])("%s draws the shared mark's body and face", (path) => {
+    // These files cannot import BrandMark, so they copy its path strings;
+    // a retouched mark that misses one shows up here, not on a phone.
+    const contents = readFileSync(resolve(REPO_ROOT, path), "utf8")
+    expect(contents).toContain(MOCHI_BODY)
+    expect(contents).toContain(MOCHI_FACE)
   })
 })

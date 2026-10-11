@@ -26,7 +26,8 @@ import type { AphStore } from "@aph/lib/store"
 import { aphStore } from "@aph/lib/store"
 import { useAph } from "@aph/lib/use-aph"
 import { cn, dayOf } from "@some-ui/core-utils"
-import { Flag, TrendingUp, TriangleAlert } from "lucide-react"
+import { TrendGlyph } from "@some-ui/shared"
+import { Flag, TriangleAlert } from "lucide-react"
 
 type AphTodayCardProps = {
   /** The host's link to the logger, given the button's label. */
@@ -60,17 +61,17 @@ export const AphTodayCard = ({
   return (
     <div
       className={cn(
-        "bg-card flex flex-col gap-2 rounded-xl border p-3",
+        "bg-card border-border/50 flex flex-col gap-3 rounded-2xl border p-4 shadow-sm",
         due !== null &&
-          (missed ? "border-warning/60 border-2" : "border-foreground border-2")
+          (missed ? "border-warning/60 border-2" : "border-primary border-2")
       )}
     >
       <div className="flex items-center gap-3">
-        <span className="bg-muted flex size-10 shrink-0 items-center justify-center rounded-lg">
-          <TrendingUp aria-hidden className="size-5" />
+        <span className="bg-success/15 text-success flex size-12 shrink-0 items-center justify-center rounded-2xl">
+          <TrendGlyph aria-hidden className="size-6" />
         </span>
         <span className="flex min-w-0 flex-1 flex-col">
-          <span className="font-semibold">
+          <span className="font-bold">
             {due === null ? "aph" : `aph · ${due.label}`}
             {missed && (
               <span className="text-warning ml-1.5 text-sm font-medium">
@@ -133,7 +134,7 @@ export const AphTodayEntries = ({
   return (
     <>
       {todays.map((e) => (
-        <li key={e.id} className="flex items-center gap-3 px-3 py-2.5 text-sm">
+        <li key={e.id} className="flex items-center gap-3 px-4 py-3 text-sm">
           <CheckpointMark settings={settings} checkpoint={e.checkpoint} />
           <span className="min-w-0 flex-1">aph {whenOf(settings, e)}</span>
           <Figures entry={e} />

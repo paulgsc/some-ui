@@ -131,7 +131,7 @@ describe("Soundbites", () => {
       mimeType: "audio/webm",
       context: CONTEXT,
     })
-    expect(screen.getByRole("img", { name: "1 of 6 kept" })).toBeVisible()
+    expect(screen.getByText("1 of 6 kept")).toBeVisible()
     expect(screen.getByText("settled")).toBeInTheDocument()
   })
 
@@ -305,7 +305,7 @@ describe("Soundbites", () => {
       "Couldn't read what's on this phone"
     )
     expect(screen.queryByText("Nothing kept yet.")).toBeNull()
-    expect(screen.queryByRole("img", { name: /of 6 kept/ })).toBeNull()
+    expect(screen.queryByText(/of 6 kept/)).toBeNull()
   })
 
   it("keeps the new recording playing when an old play fails late", async () => {
@@ -378,7 +378,7 @@ describe("Soundbites", () => {
     expect(
       await screen.findByText("That one couldn't be deleted. Try again?")
     ).toBeInTheDocument()
-    expect(screen.getByRole("img", { name: "1 of 6 kept" })).toBeVisible()
+    expect(screen.getByText("1 of 6 kept")).toBeVisible()
     confirm.mockRestore()
   })
 
@@ -391,7 +391,7 @@ describe("Soundbites", () => {
         ports={{ store: memory.store, startRecording: fakeMic().start }}
       />
     )
-    await screen.findByRole("img", { name: "2 of 6 kept" })
+    await screen.findByText("2 of 6 kept")
     vi.spyOn(memory.store, "list").mockRejectedValueOnce(new Error("busy"))
 
     const [first] = screen.getAllByRole("button", { name: /^Delete / })
@@ -401,7 +401,7 @@ describe("Soundbites", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "Couldn't read what's on this phone"
     )
-    expect(screen.queryByRole("img", { name: /of 6 kept/ })).toBeNull()
+    expect(screen.queryByText(/of 6 kept/)).toBeNull()
     expect(memory.kept.size).toBe(1)
     confirm.mockRestore()
   })
@@ -448,13 +448,11 @@ describe("Soundbites", () => {
     )
     expect(screen.queryByText("Nothing kept yet.")).not.toBeInTheDocument()
     // No count either: an unread phone has none, and 0 would say empty.
-    expect(screen.queryByRole("img", { name: /of 6 kept/ })).toBeNull()
+    expect(screen.queryByText(/of 6 kept/)).toBeNull()
     expect(screen.queryByText("0/6")).toBeNull()
 
     await tap("Read them again")
-    expect(
-      await screen.findByRole("img", { name: "1 of 6 kept" })
-    ).toBeInTheDocument()
+    expect(await screen.findByText("1 of 6 kept")).toBeInTheDocument()
     expect(screen.queryByRole("alert")).not.toBeInTheDocument()
   })
 
@@ -544,9 +542,7 @@ describe("Soundbites", () => {
     expect(await screen.findByText("Nothing kept yet.")).toBeInTheDocument()
 
     await settle(commit)
-    expect(
-      await screen.findByRole("img", { name: "1 of 6 kept" })
-    ).toBeInTheDocument()
+    expect(await screen.findByText("1 of 6 kept")).toBeInTheDocument()
   })
 
   it("does not open the microphone for a page that mounts hidden, until it shows", async () => {

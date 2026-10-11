@@ -2,6 +2,7 @@ import type { ComponentType, JSX } from "react"
 import { cn } from "@some-ui/core-utils"
 import { useIsMobile } from "@some-ui/react-hooks"
 import {
+  BrandMark,
   Sidebar,
   SidebarContent,
   SidebarGroup,
@@ -29,7 +30,6 @@ import { useIsTerminal } from "@/lib/orchestrator"
 import { useIsDeclaredBounded } from "@/lib/route-bounds"
 import { AudioIndicator } from "@/components/audio/audio-indicator"
 import { AccountUnavailableBanner } from "@/components/auth/account-unavailable-banner"
-import { HexCombMark } from "@/components/brand/hex-comb-mark"
 import { LocIndicator } from "@/components/loc/loc-indicator"
 import { MobileHomeLink, MobileNav } from "@/components/mobile-shell"
 import { DeviceStoragePrompt } from "@/components/settings/device-storage"
@@ -68,8 +68,8 @@ type NavItem = {
 }
 
 const NAV_ITEMS: ReadonlyArray<NavItem> = [
-  // Home gets the mark: the same seven-cell comb as the favicon.
-  { to: "/app", label: "Home", icon: HexCombMark },
+  // Home gets the mark: the same mochi as the favicon.
+  { to: "/app", label: "Home", icon: BrandMark },
   { to: "/sessions", label: "Sessions", icon: ListVideo },
   { to: "/resume", label: "Résumé", icon: FileText },
   { to: "/jobs", label: "Jobs", icon: Briefcase },
@@ -96,7 +96,7 @@ const DashboardSidebarContent = ({
             <SidebarMenuButton asChild size="lg" tooltip="Some UI home">
               <Link to="/" aria-label="Some UI home">
                 <span className="flex size-8 shrink-0 items-center justify-center">
-                  <HexCombMark tone="brand" className="size-6" />
+                  <BrandMark tone="brand" className="size-6" />
                 </span>
                 <span className="text-gradient-accent font-semibold">
                   Some UI

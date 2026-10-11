@@ -172,7 +172,7 @@ export const ActivityPickerStep = ({
           </div>
 
           {visible.length === 0 ? (
-            <p className="text-muted-foreground shrink-0 rounded-md border border-dashed px-3 py-6 text-center text-sm">
+            <p className="text-muted-foreground bg-muted/60 shrink-0 rounded-2xl px-3 py-6 text-center text-sm">
               No activity matches &ldquo;{query.trim()}&rdquo;
             </p>
           ) : (
@@ -319,7 +319,7 @@ export const ActivityPickerStep = ({
       )}
 
       {section === "manifest" && items.length === 0 && (
-        <div className="text-muted-foreground flex flex-col items-start gap-3 rounded-md border border-dashed px-3 py-6 text-sm">
+        <div className="text-muted-foreground bg-muted/60 flex flex-col items-start gap-3 rounded-2xl px-3 py-6 text-sm">
           <p>
             Nothing added yet. Browse the activities and tap one to add it to
             this session.

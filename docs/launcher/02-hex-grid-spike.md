@@ -2,6 +2,10 @@
 
 > Story #857, epic #852. **Decision: no.** Recorded with the reasoning so it
 > is not re-proposed every quarter on brand grounds alone.
+>
+> Since then the brand stopped being a comb: the mark is now a single mochi
+> (`BrandMark` in `@some-ui/shared`), because the comb's gaps read as a
+> cluster of holes. The decision stands, and its brand argument is weaker.
 
 The brand is a comb. It is the favicon, the landing hero, and `HexCombMark`
 in the sidebar. `@some-ui/honeycomb` ships a real `HexGrid`. And the mark is

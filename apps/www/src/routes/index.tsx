@@ -1,10 +1,9 @@
 import type { JSX } from "react"
-import { Card, CardContent } from "@some-ui/shared"
+import { BrandMark, Card, CardContent } from "@some-ui/shared"
 import { createFileRoute, Link } from "@tanstack/react-router"
 import { ArrowRight, FileText, Puzzle, Sparkles } from "lucide-react"
 
 import { useAuthoritySnapshot } from "@/lib/authority"
-import { HexCombMark } from "@/components/brand/hex-comb-mark"
 import { ExtensionsPage } from "@/components/extensions/extensions-page"
 import { ThemeSwitcher } from "@/components/theme-switcher"
 
@@ -78,7 +77,7 @@ const Landing = (): JSX.Element => (
     <div className="mx-auto flex min-h-svh max-w-4xl flex-col justify-center gap-10 px-6 py-16">
       <div className="space-y-3 text-center">
         {/* The mark and wordmark are one unit, so the mark is decorative. */}
-        <HexCombMark tone="brand" className="mx-auto size-12" />
+        <BrandMark tone="brand" className="mx-auto size-12" />
         <p className="text-muted-foreground text-sm font-medium tracking-wide uppercase">
           Some UI
         </p>

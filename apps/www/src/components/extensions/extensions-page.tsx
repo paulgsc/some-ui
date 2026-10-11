@@ -1,9 +1,9 @@
 import { lazy, Suspense } from "react"
 import type { JSX } from "react"
+import { BrandMark, MochiShapes } from "@some-ui/shared"
 import { Link } from "@tanstack/react-router"
 import { ArrowLeft } from "lucide-react"
 
-import { HexCombMark } from "@/components/brand/hex-comb-mark"
 import { ThemeSwitcher } from "@/components/theme-switcher"
 
 /**
@@ -49,9 +49,9 @@ export const ExtensionsPage = ({
         </Link>
       ) : (
         <span className="pointer-events-auto inline-flex items-center gap-2 px-1">
-          {/* `current`, not `brand`: the comb follows the session theme, and
-              a fixed-amber mark would read as a second palette. */}
-          <HexCombMark className="text-muted-foreground size-6" />
+          {/* `brand` is the session theme's own mochi, so it follows the
+              theme as the comb does. */}
+          <BrandMark tone="brand" className="size-6" />
           {/* The wordmark gives way on a phone. */}
           <span className="text-muted-foreground sr-only text-sm font-medium tracking-wide uppercase sm:not-sr-only">
             Some UI
@@ -76,7 +76,7 @@ export const ExtensionsPage = ({
     {/* The comb positions itself absolutely and fills this element, so the
         fallback reserves nothing (a spinner would make the page jump). */}
     <Suspense fallback={null}>
-      <ExtensionsComb />
+      <ExtensionsComb mark={<MochiShapes tone="brand" />} />
     </Suspense>
   </main>
 )

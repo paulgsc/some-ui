@@ -24,34 +24,40 @@
    swatches). Each state colour stays within about 1.3x body text's
    contrast, so nothing outshines what you are reading.
 
-   Measured (WCAG 2.2): muted text >= 4.5:1 on every surface
+   Measured (WCAG 2.2): muted text >= 4.6:1 on every surface
    (background, card, popover, muted, secondary, accent, sidebar);
    every filled-button label (primary, destructive, warning)
-   >= 6.3:1; selected text 5:1.
+   >= 6.3:1; selected text 4.6:1.
 
    `--accent` is shadcn's quiet hover / menu-focus surface, so it
    stays a near-ground tone; the vivid moonlit colour lives in the
    chart and gradient tokens instead.
 
+   Retuned for the mochi shapes: the ground sits at 19.5% rather
+   than 17%, so a tall phone's empty space reads as a room and not
+   a void, and cards stand a clearer 6% above it, since they are
+   lifted surfaces now rather than outlined ones. Corners are
+   1.25rem, the mochi radius.
+
    Pairs with `.dark` (the controller adds both).
    ============================================================ */
 
 .rose-night {
-  --background: oklch(17% 0.02 330deg);
+  --background: oklch(19.5% 0.024 330deg);
   --foreground: oklch(71% 0.025 340deg);
-  --card: oklch(22.5% 0.025 330deg);
+  --card: oklch(25.5% 0.03 330deg);
   --card-foreground: var(--foreground);
-  --popover: oklch(25.5% 0.03 330deg);
+  --popover: oklch(28% 0.032 330deg);
   --popover-foreground: var(--foreground);
 
   /* Strawberry milk */
   --primary: oklch(76% 0.11 355deg);
   --primary-foreground: oklch(20% 0.04 355deg);
-  --secondary: oklch(28.5% 0.03 330deg);
+  --secondary: oklch(31% 0.032 330deg);
   --secondary-foreground: var(--foreground);
-  --muted: oklch(27% 0.025 330deg);
-  --muted-foreground: oklch(66.5% 0.025 330deg);
-  --accent: oklch(29% 0.03 330deg);
+  --muted: oklch(29.5% 0.028 330deg);
+  --muted-foreground: oklch(68.5% 0.025 330deg);
+  --accent: oklch(31.5% 0.032 330deg);
   --accent-foreground: var(--foreground);
 
   /* Coral ember, 37deg off the brand and darker than it */
@@ -62,14 +68,19 @@
   --warning: oklch(78% 0.11 80deg);
   --warning-foreground: oklch(19% 0.04 80deg);
 
+  /* Honey is this theme's warning, so the mochi is strawberry milk: a
+     mark in the warning colour would read as one. */
+  --brand: var(--primary);
+  --brand-foreground: var(--primary-foreground);
+
   /* Sky against the coral: they stay apart under deuteranopia, where
      mint against coral would not, and sky stays clear of the mint of
      success. Removed lines share the coral; their strike-through and
      minus sign tell them from a wrong answer's badge. */
   --diff-add: oklch(75% 0.09 235deg);
   --diff-remove: var(--destructive);
-  --border: oklch(32% 0.025 330deg);
-  --input: oklch(35% 0.03 330deg);
+  --border: oklch(34% 0.028 330deg);
+  --input: oklch(37% 0.032 330deg);
   --ring: var(--primary);
 
   /* One hue per series: rose, iris, mint, honey, sky */
@@ -78,7 +89,7 @@
   --chart-3: oklch(75% 0.1 165deg);
   --chart-4: oklch(78% 0.11 80deg);
   --chart-5: oklch(72% 0.08 235deg);
-  --sidebar: oklch(19% 0.021 330deg);
+  --sidebar: oklch(21.5% 0.024 330deg);
   --sidebar-foreground: oklch(66% 0.025 335deg);
   --sidebar-primary: var(--primary);
   --sidebar-primary-foreground: var(--primary-foreground);
@@ -86,11 +97,11 @@
   --sidebar-accent-foreground: var(--foreground);
   --sidebar-border: var(--border);
   --sidebar-ring: var(--ring);
-  --surface: oklch(20% 0.022 330deg);
+  --surface: oklch(22.5% 0.025 330deg);
   --surface-foreground: var(--muted-foreground);
   --code: var(--surface);
   --code-foreground: var(--surface-foreground);
-  --code-highlight: oklch(28% 0.025 330deg);
+  --code-highlight: oklch(30.5% 0.028 330deg);
   --code-number: oklch(62% 0.025 330deg);
   --selection: color-mix(in oklab, var(--primary) 25%, var(--background));
   --selection-foreground: var(--foreground);
@@ -112,7 +123,7 @@
     oklch(64% 0.025 335deg),
     oklch(56% 0.025 330deg)
   );
-  --radius: 0.75rem;
+  --radius: 1.25rem;
 
   background-color: var(--background);
   color: var(--foreground);

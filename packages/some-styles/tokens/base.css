@@ -55,6 +55,13 @@
   --warning: oklch(52% 0.13 65deg);
   --warning-foreground: oklch(98.5% 0 0deg);
 
+  /* The mochi mark's fill and the ink drawn on it (its face, a label on a
+     brand-filled button). Honey on every theme that has no opinion; a named
+     theme recasts it where honey already means something else there
+     (Rosé Night's warning). A fill only: never text on --background. */
+  --brand: oklch(82% 0.13 75deg);
+  --brand-foreground: oklch(32% 0.05 50deg);
+
   /* Lines a diff adds and removes. Blue and orange rather than green and
      red: green against red collapses into one colour for deuteranopes,
      blue against orange does not (GitHub's colour-blind themes make the
@@ -135,7 +142,7 @@
 
      Substitution happens at computed-value time on the element these are
      declared on. `:root` and the session theme classes (`.dark`,
-     `.peachy-blossom`, …) are the same element — <html> — so a session
+     `.mochi`, …) are the same element — <html> — so a session
      theme's `--primary` is already in effect here and these track it.
      --------------------------------------------------------------- */
   --cdrama-blossom: var(--primary);
@@ -160,7 +167,7 @@
      finds everywhere else, so they track stock shadcn neutral, near-white
      text included. The opinionated "never the sun" palettes, with dimmed
      text and tinted grounds, are the named themes (rose-night.css,
-     harvest-sky.css, peachy-blossom.css). */
+     harvest-sky.css, mochi.css). */
   --foreground: oklch(98.5% 0 0deg);
   --card: oklch(20.5% 0 0deg);
   --card-foreground: var(--foreground);

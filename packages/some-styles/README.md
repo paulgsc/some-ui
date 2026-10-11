@@ -252,12 +252,20 @@ import {
 - **Accent themes** layer a `--primary` palette onto light/dark
   (`.theme-blue .theme-container`).
 - **Session and feature themes** are standalone palettes applied to a boundary
-  element (`.dark`, `.peachy-blossom`, `.scheduler`, `.code`).
+  element (`.dark`, `.mochi`, `.scheduler`, `.code`).
 
 Session themes come in two kinds. `light` and `dark` are vanilla: stock shadcn
 neutral, the familiar look a person finds in any other app. The named themes
-(`rose-night`, `harvest-sky`, `peachy-blossom`) are opinionated, with tinted
-grounds, dimmed text and one hue per role. Palette quality is treated as an
+(`mochi`, `rose-night`, `harvest-sky`) are opinionated, with tinted grounds,
+dimmed text and one hue per role. `mochi` is the brand's own and what a fresh
+install opens in (`DEFAULT_PREFERENCE`); it replaced Peachy Blossom, whose id
+now opens as Mochi.
+
+Every session theme also carries `--brand` / `--brand-foreground`
+(`bg-brand`, `text-brand-foreground`): the mochi mark's fill and the ink drawn
+on it. It is honey unless a theme already means something else by honey, as
+Rosé Night does by its warning, where it takes the theme's own primary. Use it
+for the mark and for the big round brand buttons, never as text. Palette quality is treated as an
 engagement lever, not decoration; see
 [`docs/theme-engagement.md`](../../docs/theme-engagement.md).
 
