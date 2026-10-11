@@ -86,6 +86,17 @@ describe.each(ENTRIES)("%s pre-paint script ↔ registry", (file) => {
     )
   })
 
+  it("opens a missing or unknown preference as the controller's default", () => {
+    // The provider reads both as DEFAULT_PREFERENCE; any other fallback here
+    // paints one theme and then swaps to that one on every load.
+    expect(indexHtml).toContain(
+      `localStorage.getItem(key) || "${DEFAULT_PREFERENCE}"`
+    )
+    expect(indexHtml).toContain(
+      `if (pref !== "system" && !map[pref]) pref = "${DEFAULT_PREFERENCE}"`
+    )
+  })
+
   it("paints the default preference's background in the no-JS fallback", () => {
     // `html:not([data-theme])` must match DEFAULT_PREFERENCE, or the first
     // paint is the flash the script exists to prevent.

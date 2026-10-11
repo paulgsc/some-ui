@@ -51,7 +51,10 @@
             "rose-night": { classes: ["dark", "rose-night"], mode: "dark" },
             "harvest-sky": { classes: ["dark", "harvest-sky"], mode: "dark" },
           }
-          if (pref === "system" || !map[pref]) {
+          // An id the controller would drop opens as its default, as the
+          // provider does: falling to the OS here would flash on every load.
+          if (pref !== "system" && !map[pref]) pref = "mochi"
+          if (pref === "system") {
             var dark =
               window.matchMedia &&
               window.matchMedia("(prefers-color-scheme: dark)").matches
