@@ -7,10 +7,9 @@ import { hasAudience } from "@/lib/build-profile"
 /**
  * The web surface's door (`doors` in build.profiles.ts): the one place
  * outside a gated route that may import a "web"-audience workspace, today
- * `@some-ui/honeycomb`. The desktop web and the Android app are separate
- * surfaces, each built for what its device affords; what only the web has
- * reaches shared code (the session player, the extensions page) through
- * here, and the Android app's build gets nothing.
+ * `@some-ui/honeycomb`. What only the web has reaches shared code (the
+ * session player, the extensions page) through here, and the Android app's
+ * build gets nothing.
  *
  *   A4  every export hands out a gated workspace only behind the guard
  *       below, and something inert otherwise

@@ -132,7 +132,6 @@ beforeAll(async () => {
   const routes: Array<{ id: string; fullPath: string }> = Object.values(
     createRouter({ routeTree }).routesById
   )
-  // The doors are modules, not layouts: src/lib/web-surface's own test.
   gated = routeGates.flatMap(({ audience, dirs }) =>
     dirs.map((dir) => {
       const routeId = dir.replace(/^src\/routes/, "")

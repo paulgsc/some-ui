@@ -14,9 +14,6 @@ import { ThemeSwitcher } from "@/components/theme-switcher"
  * Mounted in two places: `"/"` for a visitor with no session (the front door,
  * so its chrome offers the résumé and sign-in), and `"/extensions"`, the
  * address to share (its chrome is a way back).
- *
- * The comb comes from `@some-ui/honeycomb`, a "web"-audience workspace, so
- * through the web surface's door (`@/lib/web-surface`), lazily.
  */
 
 const CHIP =

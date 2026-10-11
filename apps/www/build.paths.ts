@@ -125,18 +125,16 @@ const DEVICE_MODULES = [
  * audience and no other: elsewhere its layout sends every visit to
  * not-found, and the workspaces its pages render are stubs.
  */
-const gatedRoutes = routeGates
-  .filter(({ dirs }) => dirs.length > 0)
-  .map(({ audience, dirs }) => ({
-    modules: dirs.flatMap((dir) => [
-      `apps/www/${dir}.tsx*`,
-      `apps/www/${dir}/**`,
-    ]),
-    profiles: PROFILES.filter((profile) =>
-      profiles[profile].audiences.some((carried) => carried === audience)
-    ),
-    why: `a route gated to the "${audience}" audience (build.profiles.ts, \`gates\`), which this profile does not carry`,
-  }))
+const gatedRoutes = routeGates.map(({ audience, dirs }) => ({
+  modules: dirs.flatMap((dir) => [
+    `apps/www/${dir}.tsx*`,
+    `apps/www/${dir}/**`,
+  ]),
+  profiles: PROFILES.filter((profile) =>
+    profiles[profile].audiences.some((carried) => carried === audience)
+  ),
+  why: `a route gated to the "${audience}" audience (build.profiles.ts, \`gates\`), which this profile does not carry`,
+}))
 
 type Debt = PathRules<Profile>["debt"][number]
 

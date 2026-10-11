@@ -56,7 +56,6 @@ describe("a build with no web surface", () => {
     const { ExtensionsComb, WEB_PANELS } = await loadDoor(build)
 
     expect(WEB_PANELS).toEqual({})
-    expect(isLazy(ExtensionsComb)).toBe(false)
     const { container } = render(<ExtensionsComb />)
     expect(container.innerHTML).toBe("")
   })

@@ -242,8 +242,7 @@ export const SessionComposer = ({
   const [items, setItems] = useState<Array<ComposerActivity>>(() =>
     existingSession
       ? // A retired activity can't be configured or played, so editing a
-        // session that held one drops it; the next save writes the rest. So
-        // does one this build does not offer (one whose panel it lacks).
+        // session that held one drops it; the next save writes the rest.
         existingSession.activities.flatMap(({ activityId, config }) =>
           isOfferedActivityId(activityId)
             ? [{ instanceId: crypto.randomUUID(), activityId, config }]

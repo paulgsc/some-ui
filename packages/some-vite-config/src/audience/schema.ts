@@ -16,8 +16,7 @@ import { z } from "zod"
  *   microphone, its own storage) and means nothing in a browser tab.
  * - `web`: the web builds only (the home server and Pages) - what a desktop
  *   browser affords (a physical keyboard, a wide window) and the phone has
- *   no counterpart for. The mirror of `apk`: the two surfaces are built for
- *   what each device does well, not fitted onto each other.
+ *   no counterpart for.
  *
  * Adding an audience is adding a string here. Every profile, manifest and
  * gate is typed against this list, so a misspelt one fails `tsc` or the

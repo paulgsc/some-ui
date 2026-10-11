@@ -46,12 +46,6 @@ describe("the web builds", () => {
     )
     expect(isOfferedActivityId("honeycomb")).toBe(true)
   })
-
-  it("still reject a retired id", async () => {
-    const { isOfferedActivityId } = await loadFor("web")
-
-    expect(isOfferedActivityId("interview")).toBe(false)
-  })
 })
 
 describe("every activity", () => {

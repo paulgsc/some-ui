@@ -19,10 +19,6 @@ import type { Plugin } from "vite"
  *   sessions only (`src/lib/app-surface`). Run `vite dev` with
  *   `SOME_UI_PROFILE=mobile` to see `apk` pages in a browser.
  *
- * `web` and `apk` are mirrors: the desktop web and the phone are separate
- * surfaces, each built for what its device affords, so neither profile
- * carries the other's.
- *
  * The variable is in turbo.json's `www#build` env, so profiles never share a
  * cache entry.
  */
@@ -70,14 +66,16 @@ const gates: Readonly<Record<GatedAudience, ReadonlyArray<string>>> = {
   web: [WEB_DOOR],
 }
 
-/** `gates` without the doors: each audience's layout-route directories. */
+/** `gates` without the doors: each audience's layout-route directories, if any. */
 export const routeGates: ReadonlyArray<{
   audience: string
   dirs: ReadonlyArray<string>
-}> = Object.entries(gates).map(([audience, dirs]) => ({
-  audience,
-  dirs: dirs.filter((dir) => !doors.includes(dir)),
-}))
+}> = Object.entries(gates)
+  .map(([audience, dirs]) => ({
+    audience,
+    dirs: dirs.filter((dir) => !doors.includes(dir)),
+  }))
+  .filter(({ dirs }) => dirs.length > 0)
 
 /**
  * www's `audiencePlugin`, shared by vite.config.ts and vitest.config.ts. The

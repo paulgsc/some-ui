@@ -71,8 +71,7 @@ export const SessionViewport = ({
   } = useLiveLayoutEditor(session, activeLifetimes)
 
   // The only layer with write authority over which session is live and
-  // whether the editor needs exclusive control; a panel that cares reads them
-  // (the web surface's Hangul panel, `@/lib/web-surface`).
+  // whether the editor needs exclusive control; a panel that cares reads them.
   useEffect(() => {
     setSessionKey(session.id)
   }, [session.id])
