@@ -176,6 +176,15 @@ export default defineConfig(
       allowedHosts: ["dev.home.maishatu.com"],
       port: 5173,
       strictPort: true,
+      // No other origin may frame these pages: the dev server's half of
+      // nginx.security-headers.conf's X-Frame-Options, for /connect (the OAuth
+      // approval page) as dev.home.maishatu.com: a page that turns one click
+      // into a grant must not sit under someone else's. Caddy passes it
+      // through, and `vite preview` inherits it (`preview.headers`).
+      headers: {
+        "X-Frame-Options": "SAMEORIGIN",
+        "Content-Security-Policy": "frame-ancestors 'self'",
+      },
       // `vite preview` inherits this (its own `preview.proxy` defaults to
       // `server.proxy`), so both dev servers speak.
       proxy: {
