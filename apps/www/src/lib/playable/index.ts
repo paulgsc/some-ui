@@ -70,11 +70,11 @@ function boundPanels(layout: UILayoutIntent): UILayoutIntent {
 }
 
 /**
- * Stored scenes as this build plays them, for an edit of an Advanced
- * arrangement (whose scenes are saved as they are, not rebuilt from the
- * activities `isOfferedActivityId` keeps): panels it does not bind are
+ * Stored scenes as this build plays them: panels it does not bind are
  * dropped, then any scene left with none, and the rest close up behind it.
- * The same array when nothing is dropped.
+ * What the player plays, and what an edit of an Advanced arrangement starts
+ * from (its scenes are saved as they are, not rebuilt from the activities
+ * `isOfferedActivityId` keeps). The same array when nothing is dropped.
  */
 export function playableScenes(
   scenes: ReadonlyArray<SceneConfig>

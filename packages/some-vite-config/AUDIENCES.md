@@ -152,10 +152,13 @@ checked against every existing link. What is left is inside such a file.
   `doors` whose `index.ts` does not meet the claim, or to `profileBuildEnv` in
   `apps/www/build.paths.ts` that sets `VITE_DEVICE_BACKEND` to `"true"` in a profile carrying
   `web`.
-- _Scope:_ the directories in `doors` (`apps/www/build.profiles.ts`), and imports of them from
-  the rest of `apps/www`. Held when written: `web-surface/index.ts`'s two exports
-  (`WEB_PANELS`, `ExtensionsComb`) both sit behind the condition, and nothing outside the door
-  imports below its index (`rg 'web-surface/' apps/www` finds none).
+- _Scope:_ the directories in `doors` (`apps/www/build.profiles.ts`), imports of them from the
+  rest of `apps/www`, `doors` itself, and `profileBuildEnv` in `apps/www/build.paths.ts`. Held
+  when written: `web-surface/index.ts`'s two exports (`WEB_PANELS`, `ExtensionsComb`) both sit
+  behind the condition; no file outside the door imports below its index
+  (`rg -e 'from "@/lib/web-surface/' -e 'import\("@/lib/web-surface/' apps/www` finds none
+  outside it); and `VITE_DEVICE_BACKEND` is `"true"` only in `mobile`, which does not carry
+  `web`.
 - _Why not enforced:_ the effect is checked, not the shape. `web-surface/index.test.tsx` loads
   the door with and without the flag and the audience and checks each export, and
   `check:bundle-paths` fails when the door's internals (`web-surface/hangul/**`, an `exclusive`

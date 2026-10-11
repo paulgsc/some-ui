@@ -5,6 +5,8 @@
  * and two separate returns would remount `SessionViewport` (a Topik lesson
  * went back to its material list). The stub counts its mounts and keeps
  * state; `useIsMobile` is the real one, reading the test viewport.
+ *
+ * And the orchestrator plays only what the build can (`playableScenes`).
  */
 
 import type { JSX } from "react"
@@ -22,12 +24,18 @@ import type { SessionRecord } from "@/lib/tenant"
 import { LivePlayer } from "@/components/player/live-player"
 
 const lifecycle = { mounts: 0, unmounts: 0 }
+const configured = vi.hoisted((): { scenes: Array<unknown> } => ({
+  scenes: [],
+}))
 
 vi.mock("@/lib/orchestrator", async () => {
   const actual =
     await vi.importActual<typeof Orchestrator>("@/lib/orchestrator")
   const store = {
-    configure: (): Promise<void> => Promise.resolve(),
+    configure: (scenes: Array<unknown>): Promise<void> => {
+      configured.scenes = scenes
+      return Promise.resolve()
+    },
     start: (): void => {},
   }
   return {
@@ -74,6 +82,13 @@ vi.mock("@/components/audio/session-audio-notice", () => ({
   SessionAudioNotice: (): null => null,
 }))
 vi.mock("@/lib/tenant", () => ({ useUpdateSession: (): object => ({}) }))
+// Stands in for a build that binds no "unbound" panel.
+vi.mock("@/lib/playable", () => ({
+  playableScenes: (
+    scenes: Array<{ scene_name: string }>
+  ): Array<{ scene_name: string }> =>
+    scenes.filter((scene) => scene.scene_name !== "unbound"),
+}))
 vi.mock("@/lib/intent", () => ({
   useIntent: (): object => ({ state: { status: "idle" }, start: vi.fn() }),
 }))
@@ -138,5 +153,27 @@ describe("LivePlayer across the breakpoint", () => {
     expect(screen.queryByTestId("session-chrome")).toBeNull()
     expect(screen.queryByTestId("now-next")).not.toBeNull()
     expect(screen.queryByTestId("transport")).not.toBeNull()
+  })
+})
+
+describe("LivePlayer's scenes", () => {
+  it("configures the orchestrator with only what this build plays", () => {
+    const scene = (scene_name: string): SessionRecord["scenes"][number] => ({
+      scene_name,
+      duration: 60_000,
+      start_time: 0,
+      ui: [],
+    })
+    setViewport(false)
+    render(
+      <LivePlayer
+        session={{
+          ...fixtureSession(),
+          scenes: [scene("unbound"), scene("bound")],
+        }}
+      />
+    )
+
+    expect(configured.scenes).toEqual([scene("bound")])
   })
 })

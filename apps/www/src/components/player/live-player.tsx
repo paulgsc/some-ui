@@ -1,5 +1,5 @@
 import type { JSX } from "react"
-import { useEffect, useRef } from "react"
+import { useEffect, useMemo, useRef } from "react"
 import { cn } from "@some-ui/core-utils"
 import { useIsMobile } from "@some-ui/react-hooks"
 
@@ -10,6 +10,7 @@ import {
   useOrchestratorClock,
   useOrchestratorStore,
 } from "@/lib/orchestrator"
+import { playableScenes } from "@/lib/playable"
 import { closedPatch } from "@/lib/session-stop"
 import type { SessionRecord } from "@/lib/tenant"
 import { useUpdateSession } from "@/lib/tenant"
@@ -33,7 +34,17 @@ type LivePlayerProps = {
  * Render with `key={session.id}` so each session gets a fresh mount and
  * "configured yet" guard.
  */
-export const LivePlayer = ({ session }: LivePlayerProps): JSX.Element => {
+export const LivePlayer = ({
+  session: stored,
+}: LivePlayerProps): JSX.Element => {
+  // What this build can play of the session: a scene whose panels it does
+  // not bind (Honeycomb's, in the Android app) would run as a blank interval.
+  const session = useMemo((): SessionRecord => {
+    const scenes = playableScenes(stored.scenes)
+    return scenes === stored.scenes
+      ? stored
+      : { ...stored, scenes: [...scenes] }
+  }, [stored])
   const configure = useOrchestratorStore((s) => s.configure)
   const start = useOrchestratorStore((s) => s.start)
   const { state: stop, stops } = useSessionStop(session.id)
