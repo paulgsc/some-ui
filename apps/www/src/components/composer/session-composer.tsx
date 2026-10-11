@@ -3,6 +3,7 @@ import { useRef, useState } from "react"
 import {
   defaultSessionName,
   getActivity,
+  isActivityId,
   sequenceScenes,
   totalDurationOfScenes,
 } from "@some-ui/activity-catalog"
@@ -38,7 +39,6 @@ import {
   useIntentEffect,
 } from "@/lib/intent"
 import { IntentButton } from "@/lib/intent/render"
-import { isOfferedActivityId, playableScenes } from "@/lib/playable"
 import {
   checkSessionDuration,
   describeDurationCheck,
@@ -244,7 +244,7 @@ export const SessionComposer = ({
       ? // A retired activity can't be configured or played, so editing a
         // session that held one drops it; the next save writes the rest.
         existingSession.activities.flatMap(({ activityId, config }) =>
-          isOfferedActivityId(activityId)
+          isActivityId(activityId)
             ? [{ instanceId: crypto.randomUUID(), activityId, config }]
             : []
         )
@@ -263,10 +263,7 @@ export const SessionComposer = ({
   )
   const [advancedScenes, setAdvancedScenes] =
     useState<Array<SceneConfig> | null>(() =>
-      existingSession?.layoutMode === "advanced"
-        ? // The same for a stored arrangement's scenes (`playableScenes`).
-          [...playableScenes(existingSession.scenes)]
-        : null
+      existingSession?.layoutMode === "advanced" ? existingSession.scenes : null
     )
   const [sessionName, setSessionName] = useState(
     () => existingSession?.name ?? ""

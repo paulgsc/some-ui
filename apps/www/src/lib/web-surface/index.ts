@@ -23,7 +23,8 @@ import { hasAudience } from "@/lib/build-profile"
  */
 
 /** The panels only the web surface binds, beside the shared registry's. */
-export type WebPanelKey = "hangul"
+export const WEB_PANEL_KEYS = ["hangul"] as const
+export type WebPanelKey = (typeof WEB_PANEL_KEYS)[number]
 
 export const WEB_PANELS: Partial<ComponentRegistry<WebPanelKey>> =
   import.meta.env.VITE_DEVICE_BACKEND !== "true" && hasAudience("web")

@@ -23,9 +23,11 @@ import {
   loadTopikManifest,
   loadTreeManifest,
 } from "@/lib/topik-content"
+import { WEB_PANEL_KEYS } from "@/lib/web-surface"
 
 import { defineSceneProps, withSceneProps } from "./scene-props"
 import { useLiveLayoutEditor } from "./use-live-layout-editor"
+import { withWebOnlyNotes } from "./web-only-note"
 
 /**
  * The Android app's own ports, absent elsewhere: LeetType's margin-note
@@ -38,6 +40,9 @@ const [PHONE_DICTATION, PHONE_SHARE] =
   import.meta.env.VITE_DEVICE_BACKEND === "true" && runsNatively()
     ? ([phoneDictation(), shareDramaPrompt] as const)
     : []
+
+/** What the player renders: the bound panels, and a note for a web one. */
+const PLAYER_PANELS = withWebOnlyNotes(PANELS, WEB_PANEL_KEYS)
 
 const BIND_OPTIONS = Object.keys(PANELS).map((key) => ({
   value: key,
@@ -152,13 +157,12 @@ export const SessionViewport = ({
         </div>
       ) : (
         <>
-          {/* Typed over the keys every build binds. A web panel, where the
-              build has one, is found like any key a saved scene names: by
-              lookup, rendering nothing where it is unbound. */}
+          {/* Typed over the keys every build binds. A web panel is found
+              like any key a saved scene names: by lookup. */}
           <OrchestratedYouTubeViewport<RegistryKey>
             layoutTree={tree}
             activeLifetimes={renderedLifetimes}
-            componentRegistry={PANELS}
+            componentRegistry={PLAYER_PANELS}
             collapseUnbound={editable ? !editMode : true}
             onLeafResize={onLeafResize}
           />
