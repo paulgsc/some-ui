@@ -181,15 +181,17 @@ export type ShareResult = {
   sent: ReadonlyArray<string>
 }
 
-/** The person says these arrived: they leave the phone. */
+/**
+ * The person says these arrived: they leave the phone, and their sessions
+ * read as shared. If the phone would not store that, they stay unmarked.
+ */
 export function handOff(ids: ReadonlyArray<string>, at = new Date()): void {
   const gone = new Set(ids)
   const sessionIds = reflections
     .getSnapshot()
     .kept.filter((r) => gone.has(r.id))
     .map((r) => r.sessionId)
-  letGoReflections(ids)
-  reflections.markShared(sessionIds, at)
+  if (letGoReflections(ids)) reflections.markShared(sessionIds, at)
 }
 
 /** Shares the reflections of `sessionIds`, one file per session. */

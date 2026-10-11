@@ -169,11 +169,15 @@ export const reflections = {
     )
   },
 
-  /** Removes these for good. A voice note's audio is its module's to remove. */
-  letGo(ids: ReadonlyArray<string>): void {
+  /**
+   * Removes these for good; false if the device would not store that. A
+   * voice note's audio is its module's to remove.
+   */
+  letGo(ids: ReadonlyArray<string>): boolean {
     const gone = new Set(ids)
-    list.remove((r) => gone.has(r.id))
+    const removed = list.remove((r) => gone.has(r.id))
     changed()
+    return removed
   },
 
   /** These sessions' reflections went out through the share sheet. */

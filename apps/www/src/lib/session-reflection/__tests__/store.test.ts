@@ -48,6 +48,7 @@ describe("reflections", () => {
 
   it("says failed when the device does not store a new one, a change or a removal", () => {
     reflections.setAnswers("s1", { difficulty: "too-hard" }, null)
+    const ids = reflections.getSnapshot().kept.map((r) => r.id)
     vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
       throw new DOMException("full", "QuotaExceededError")
     })
@@ -56,6 +57,7 @@ describe("reflections", () => {
       "failed"
     )
     expect(reflections.setAnswers("s1", {}, null)).toBe("failed")
+    expect(reflections.letGo(ids)).toBe(false)
     vi.restoreAllMocks()
     expect(reflections.getSnapshot().kept).toMatchObject([
       { body: { answers: { difficulty: "too-hard" } } },

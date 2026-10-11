@@ -57,9 +57,10 @@ vi.mock("@/lib/reflection-voice", async () => {
           ? Promise.reject(new Error("IndexedDB unavailable"))
           : Promise.resolve(id === "v1" ? new Blob(["opus"]) : null),
     }),
-    letGoReflections: (ids: ReadonlyArray<string>): void => {
-      store.letGo(ids)
+    letGoReflections: (ids: ReadonlyArray<string>): boolean => {
+      if (!store.letGo(ids)) return false
       removedAudio(ids)
+      return true
     },
     isSaving: (): boolean => false,
   }
@@ -164,6 +165,25 @@ describe("shareReflections", () => {
     expect(reflections.getSnapshot().shared).toEqual([
       { sessionId: "s1-0000000000", sharedAt: NOW().toISOString() },
     ])
+  })
+
+  it("marks nothing shared when the phone would not store the hand-off", () => {
+    const setItem = Storage.prototype.setItem
+    vi.spyOn(Storage.prototype, "setItem").mockImplementation(function (
+      this: Storage,
+      key: string,
+      value: string
+    ) {
+      if (key === "some-ui:reflections") throw new DOMException("full")
+      setItem.call(this, key, value)
+    })
+
+    handOff(["v1", "t1"], NOW())
+    vi.restoreAllMocks()
+
+    expect(reflections.getSnapshot().kept).toHaveLength(3)
+    expect(removedAudio).not.toHaveBeenCalled()
+    expect(reflections.getSnapshot().shared).toEqual([])
   })
 
   it("leaves out a voice note whose audio could not be read, so it stays", async () => {

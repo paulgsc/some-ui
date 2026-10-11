@@ -399,6 +399,8 @@ const SessionsList = ({
             onRetry={refreshError.retry}
           />
         )}
+        {/* Reflections outlive a deleted session and still hold slots. */}
+        <HandOffStrip />
         <Card>
           <CardContent className="text-muted-foreground flex flex-col items-center gap-2 py-10 text-center text-sm">
             <Sparkles className="size-6" />

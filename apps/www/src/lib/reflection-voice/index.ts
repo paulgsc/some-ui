@@ -53,14 +53,16 @@ export function phoneVoiceNote(sessionId: string): VoiceRuntime {
 }
 
 /**
- * Lets these go, and their audio with them. Audio that fails to go is left
- * for `sweepOrphanAudio`: once its reflection is gone, nothing names it.
+ * Lets these go, and their audio with them; false, keeping both, if the list
+ * would not store the removal. Audio that fails to go is left for
+ * `sweepOrphanAudio`: once its reflection is gone, nothing names it.
  */
-export function letGoReflections(ids: ReadonlyArray<string>): void {
-  reflections.letGo(ids)
+export function letGoReflections(ids: ReadonlyArray<string>): boolean {
+  if (!reflections.letGo(ids)) return false
   reflectionAudio()
     .remove(ids)
     .catch(() => undefined)
+  return true
 }
 
 /**
