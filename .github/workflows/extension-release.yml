@@ -11,9 +11,11 @@ name: Extension Release
 #     -> release-pr rebuilds the extension from main exactly as the sign job
 #        will, and extensions/scripts/amo-release.mjs compares the build with
 #        the last release AMO accepted (release/release.json at the newest
-#        `suspender-ledger@<version>` tag; main's copy before the first tag):
-#          - same content digest: nothing a reviewer would see changed;
-#            close any open release PR and stop. A lint, type or lockfile
+#        `suspender-ledger@<version>` tag; the bootstrap record before the
+#        first tag):
+#          - same content digest, or the same build as a release merged on
+#            main but not yet tagged (still signing, or awaiting a
+#            publish_only retry): nothing new; close any open release PR and stop. A lint, type or lockfile
 #            change that leaves the bundle byte-identical opens nothing.
 #          - different: write release/evidence.md (permission and content
 #            script deltas, built-file changes, commits since the release)
@@ -195,7 +197,7 @@ jobs:
         run: |
           for pr in $(gh pr list --head "$RELEASE_BRANCH" --state open --json number -q '.[].number'); do
             gh pr close "$pr" --delete-branch \
-              --comment "The build on main is the last release again, so there is nothing to release."
+              --comment "The build on main is the last release, or one already merged and being submitted, so there is nothing new to release."
           done
 
   # ── Build workspace deps for this extension ──────────────────────────────

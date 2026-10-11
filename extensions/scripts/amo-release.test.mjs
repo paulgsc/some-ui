@@ -8,6 +8,7 @@ import { fileURLToPath } from "node:url"
 
 import {
   amoPayload,
+  awaitingSubmission,
   contentDigest,
   fileDelta,
   generatedReviewerBlock,
@@ -173,6 +174,8 @@ test("the branch's notes win unless they are the baseline's own", () => {
   // Malformed ones too, so the PR can say what is wrong with them.
   const malformed = notesText({ version: "v1.3.0" })
   assert.equal(pickNotes(baseline, malformed, tree), malformed)
+  const headerless = "## Version notes\n\n- Edited by hand.\n"
+  assert.equal(pickNotes(baseline, headerless, tree), headerless)
   // A branch left over from the last release names the baseline's version.
   const leftover = notesText({ version: "1.2.3", reviewer: "old" })
   assert.equal(pickNotes(baseline, leftover, tree), tree)
@@ -283,4 +286,18 @@ test("suspender-ledger's committed notes are usable", () => {
     candidate: { content: notes.content },
   })
   assert.deepEqual(problems, [])
+})
+
+test("a merged release that is still being submitted opens no new PR", () => {
+  const baseline = { version: "0.2.1" }
+  const candidate = { content: "sha256:new" }
+  const merged = { version: "0.3.0", content: "sha256:new" }
+  assert.equal(awaitingSubmission(merged, { baseline, candidate }), true)
+  // Main moved on since that release: there is something new to release.
+  const other = { candidate: { content: "sha256:newer" }, baseline }
+  assert.equal(awaitingSubmission(merged, other), false)
+  // Main's record is the baseline itself: nothing is in flight.
+  const released = { version: "0.2.1", content: "sha256:new" }
+  assert.equal(awaitingSubmission(released, { baseline, candidate }), false)
+  assert.equal(awaitingSubmission(undefined, { baseline, candidate }), false)
 })

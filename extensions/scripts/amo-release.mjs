@@ -45,8 +45,9 @@
 // The baseline is release.json at the newest `<name>@<version>` tag, which
 // extension-release.yml pushes only after AMO accepted the upload, so a
 // release commit that was merged but never submitted is not a baseline.
-// Before the first such tag it is main's release.json. --base-ref <ref>
-// overrides that; "." reads the working tree's copy.
+// Before the first such tag it is the bootstrap record (the commit that added
+// release.json). --base-ref <ref> overrides that; "." reads the working
+// tree's copy.
 import { execFileSync } from "node:child_process"
 import crypto from "node:crypto"
 import fs from "node:fs"
@@ -446,7 +447,11 @@ function git(args, opts = {}) {
   })
 }
 
-/** The newest `<name>@<version>` tag, or main before the first one. */
+/**
+ * The newest `<name>@<version>` tag. Before the first one, the commit that
+ * added release.json (its bootstrap record), never main's head: a release
+ * merged there whose submission failed is not a baseline.
+ */
 function defaultBaseRef(extRel) {
   const [newest] = git([
     "tag",
@@ -456,7 +461,18 @@ function defaultBaseRef(extRel) {
   ])
     .split("\n")
     .filter(Boolean)
-  return newest ?? "origin/main"
+  if (newest) return newest
+  const [bootstrap] = git([
+    "log",
+    "--diff-filter=A",
+    "--format=%H",
+    "--reverse",
+    "--",
+    `${extRel}/release/release.json`,
+  ])
+    .split("\n")
+    .filter(Boolean)
+  return bootstrap ?? "origin/main"
 }
 
 function readBaseline(extRel, baseRef = defaultBaseRef(extRel)) {
@@ -739,8 +755,9 @@ function gatherEvidence(extDir, baseRef) {
 
 function evaluate(ev, notesText) {
   const notes = notesText === undefined ? undefined : parseNotes(notesText)
-  if (!notes || !notes.hasHeader) {
-    return { status: "missing", problems: [], notes }
+  if (!notes) return { status: "missing", problems: [], notes }
+  if (!notes.hasHeader) {
+    return { status: "stale", problems: notesProblems(notes, ev), notes }
   }
   // Notes for the baseline itself (what main keeps after a release), or for
   // anything older, are not notes for this candidate. A malformed version
@@ -773,16 +790,31 @@ function isNewer(version, than) {
 
 /**
  * The branch's notes unless they are the baseline's own (left over from the
- * last release): even malformed ones, so the PR says what is wrong with them
- * instead of dropping them.
+ * last release): even malformed or headerless ones, so the PR says what is
+ * wrong with them instead of dropping them.
  */
 export function pickNotes(baseline, branchNotes, treeNotes) {
-  if (branchNotes !== undefined) {
-    const notes = parseNotes(branchNotes)
-    if (notes.hasHeader && notes.version !== baseline.version)
-      return branchNotes
+  if (
+    branchNotes !== undefined &&
+    parseNotes(branchNotes).version !== baseline.version
+  ) {
+    return branchNotes
   }
   return treeNotes
+}
+
+/**
+ * Main's own record names a release newer than the baseline and is this very
+ * build: that release is merged and still signing (its tag not pushed yet), or
+ * its submission failed and wants a publish_only retry. Either way there is
+ * nothing new to open a release PR for.
+ */
+export function awaitingSubmission(mainRecord, { baseline, candidate }) {
+  return (
+    mainRecord !== undefined &&
+    isNewer(mainRecord.version, baseline.version) &&
+    mainRecord.content === candidate.content
+  )
 }
 
 function writeOutputs(outputs) {
@@ -829,9 +861,20 @@ function cmdCheck(extDir, opts) {
   )
 }
 
+function readMainRecord(extRel) {
+  try {
+    return readBaseline(extRel, "HEAD")
+  } catch {
+    return undefined
+  }
+}
+
 function cmdPrepare(extDir, opts) {
   const ev = gatherEvidence(extDir, opts.baseRef)
-  if (ev.candidate.content === ev.baseline.content) {
+  if (
+    ev.candidate.content === ev.baseline.content ||
+    awaitingSubmission(readMainRecord(extDir), ev)
+  ) {
     writeOutputs({
       changed: "false",
       ready: "false",
