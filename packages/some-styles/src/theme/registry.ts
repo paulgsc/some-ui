@@ -127,6 +127,21 @@ export const SESSION_THEMES = [
     },
   },
   {
+    // The brand's own theme and the default for a fresh install
+    // (`DEFAULT_PREFERENCE`). Successor to Peachy Blossom.
+    id: "mochi",
+    label: "Mochi",
+    mode: "light",
+    scope: "session",
+    boundary: { classNames: ["mochi"], dataTheme: "mochi" },
+    selectable: true,
+    swatch: {
+      bg: "oklch(0.975 0.022 75)",
+      fg: "oklch(0.33 0.045 50)",
+      accent: "oklch(0.82 0.13 75)",
+    },
+  },
+  {
     // `dark` rides along so shared `.dark` component styles resolve beside the
     // standalone palette class.
     id: "rose-night",
@@ -139,7 +154,7 @@ export const SESSION_THEMES = [
     },
     selectable: true,
     swatch: {
-      bg: "oklch(0.17 0.02 330)",
+      bg: "oklch(0.195 0.024 330)",
       fg: "oklch(0.71 0.025 340)",
       accent: "oklch(0.76 0.11 355)",
     },
@@ -155,22 +170,9 @@ export const SESSION_THEMES = [
     },
     selectable: true,
     swatch: {
-      bg: "oklch(0.17 0.035 285)",
+      bg: "oklch(0.195 0.04 285)",
       fg: "oklch(0.73 0.03 75)",
-      accent: "oklch(0.7 0.16 355)",
-    },
-  },
-  {
-    id: "peachy-blossom",
-    label: "Peachy Blossom",
-    mode: "light",
-    scope: "session",
-    boundary: { classNames: ["peachy-blossom"], dataTheme: "peachy-blossom" },
-    selectable: true,
-    swatch: {
-      bg: "oklch(0.98 0.02 60)",
-      fg: "oklch(0.34 0.04 40)",
-      accent: "oklch(0.54 0.15 38)",
+      accent: "oklch(0.75 0.13 355)",
     },
   },
 ] as const satisfies ReadonlyArray<SessionTheme>

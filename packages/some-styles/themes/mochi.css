@@ -1,0 +1,101 @@
+/* ============================================================
+   MOCHI THEME — light, a honey mochi on a cream plate
+   ------------------------------------------------------------
+   The default theme, and the brand's own: warm cream ground,
+   cocoa ink (never black on white), and the honey of the mochi
+   mark as --brand. Successor to Peachy Blossom, whose cream and
+   cocoa it keeps; its coral primary is gone.
+     cocoa      45deg  primary: a filled button and text on the
+                       cream, deep enough for both jobs
+     honey      75deg  --brand: the mark and the big round
+                       buttons (quick entry, record), always with
+                       --brand-foreground, never as text
+     raspberry  15deg  destructive, the only red
+     leaf      155deg  success
+     amber      62deg  warning, a state that waits on the person
+   Honey is too light to be text on cream and too light for a
+   cream label, which is why it is --brand and not --primary.
+   Measured (WCAG 2.2): muted text >= 5:1 on every surface
+   (background, card, popover, muted, secondary, accent, sidebar,
+   surface, code highlight); primary as text >= 8.2:1 on background,
+   secondary and accent; filled-button labels (primary, destructive,
+   success, warning) >= 5.4:1; --brand-foreground on --brand 7.2:1;
+   warning, success and destructive as text on background >= 5:1;
+   selected text 9.5:1.
+   ============================================================ */
+.mochi {
+  --background: oklch(97.5% 0.022 75deg);
+  --foreground: oklch(33% 0.045 50deg);
+  --card: oklch(99.5% 0.008 75deg);
+  --card-foreground: var(--foreground);
+  --popover: oklch(99.5% 0.008 75deg);
+  --popover-foreground: var(--foreground);
+
+  /* Cocoa */
+  --primary: oklch(38% 0.055 45deg);
+  --primary-foreground: oklch(97.5% 0.02 75deg);
+  --secondary: oklch(93% 0.038 72deg);
+  --secondary-foreground: var(--foreground);
+  --muted: oklch(94.5% 0.028 72deg);
+  --muted-foreground: oklch(49% 0.045 50deg);
+  --accent: oklch(93% 0.045 78deg);
+  --accent-foreground: var(--foreground);
+
+  /* Raspberry */
+  --destructive: oklch(53% 0.19 15deg);
+  --destructive-foreground: oklch(99% 0.01 15deg);
+  --success: oklch(50% 0.12 155deg);
+  --success-foreground: oklch(99% 0.01 155deg);
+  --warning: oklch(53% 0.14 62deg);
+  --warning-foreground: oklch(99% 0.01 62deg);
+
+  /* Sky against the raspberry: blue against red-orange survives
+     deuteranopia. */
+  --diff-add: oklch(50% 0.13 245deg);
+  --diff-remove: var(--destructive);
+  --border: oklch(90.5% 0.03 72deg);
+  --input: oklch(88% 0.035 72deg);
+  --ring: var(--primary);
+
+  /* Honey, cocoa, leaf, sky, raspberry */
+  --chart-1: oklch(78% 0.14 75deg);
+  --chart-2: oklch(55% 0.07 45deg);
+  --chart-3: oklch(68% 0.12 155deg);
+  --chart-4: oklch(65% 0.11 245deg);
+  --chart-5: oklch(62% 0.17 15deg);
+  --sidebar: oklch(96% 0.025 72deg);
+  --sidebar-foreground: var(--foreground);
+  --sidebar-primary: var(--primary);
+  --sidebar-primary-foreground: var(--primary-foreground);
+  --sidebar-accent: var(--accent);
+  --sidebar-accent-foreground: var(--foreground);
+  --sidebar-border: var(--border);
+  --sidebar-ring: var(--ring);
+  --surface: oklch(96% 0.025 72deg);
+  --surface-foreground: var(--foreground);
+  --code: var(--surface);
+  --code-foreground: var(--surface-foreground);
+  --code-highlight: oklch(92.5% 0.035 72deg);
+  --code-number: oklch(55% 0.045 50deg);
+  --selection: color-mix(in oklab, var(--brand) 40%, var(--background));
+  --selection-foreground: var(--foreground);
+  --gradient-heading: linear-gradient(
+    180deg,
+    oklch(45% 0.07 50deg),
+    oklch(33% 0.045 50deg)
+  );
+  --gradient-accent: linear-gradient(
+    100deg,
+    oklch(45% 0.08 50deg),
+    oklch(52% 0.12 65deg)
+  );
+  --gradient-muted: linear-gradient(
+    180deg,
+    oklch(55% 0.045 50deg),
+    oklch(49% 0.045 50deg)
+  );
+  --radius: 1.25rem;
+
+  background-color: var(--background);
+  color: var(--foreground);
+}

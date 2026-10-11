@@ -13,8 +13,8 @@
     <!-- Pre-paint safety net, ahead of the theme script below: inline CSS
          parses synchronously with zero network/script latency, so even if
          the script is slow, blocked, or JS is disabled, the very first
-         paint is a dark canvas (the --background value .dark already uses,
-         so there's no visible jump once the real theme lands) instead of a
+         paint is the default theme's cream (Mochi's --background, so a
+         fresh install sees no jump once the real theme lands) instead of a
          stark white flashbang. Scoped to :not([data-theme]) so it
          self-destructs the instant the script below sets data-theme — it
          never fights the resolved theme (including a genuine light
@@ -22,10 +22,10 @@
          stops matching, so there's nothing to override. -->
     <style>
       html:not([data-theme]) {
-        color-scheme: dark;
+        color-scheme: light;
       }
       html:not([data-theme]) body {
-        background-color: oklch(0.145 0 0);
+        background-color: oklch(0.975 0.022 75);
       }
     </style>
     <!-- Apply the persisted theme before first paint to avoid a light/dark
@@ -36,17 +36,20 @@
       ;(function () {
         try {
           var key = "some-ui.theme"
-          var pref = localStorage.getItem(key) || "system"
+          var pref = localStorage.getItem(key) || "mochi"
           // RETIRED_THEMES in the controller: a retired id opens as its successor.
-          var retired = { "strawberry-moon": "rose-night" }
+          var retired = {
+            "strawberry-moon": "rose-night",
+            "peachy-blossom": "mochi",
+          }
           if (Object.prototype.hasOwnProperty.call(retired, pref))
             pref = retired[pref]
           var map = {
             light: { classes: [], mode: "light" },
             dark: { classes: ["dark"], mode: "dark" },
+            mochi: { classes: ["mochi"], mode: "light" },
             "rose-night": { classes: ["dark", "rose-night"], mode: "dark" },
             "harvest-sky": { classes: ["dark", "harvest-sky"], mode: "dark" },
-            "peachy-blossom": { classes: ["peachy-blossom"], mode: "light" },
           }
           if (pref === "system" || !map[pref]) {
             var dark =
@@ -71,7 +74,7 @@
       name="description"
       content="Some UI lets you compose and run focused study sessions — pick activities, arrange layouts, and play them back with text-to-speech."
     />
-    <meta name="theme-color" content="#101010" />
+    <meta name="theme-color" content="#fff5e7" />
     <link rel="manifest" href="/manifest.json" />
 
     <!-- Open Graph -->

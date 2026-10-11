@@ -4,7 +4,10 @@ A good palette makes the app more pleasant to be in, and that plausibly makes
 people stay longer and come back. This is a product hypothesis, noted here so it
 is weighed whenever engagement is the goal. It came from living with the themes:
 the redesign that replaced Strawberry Moon with Rosé Night and Harvest Sky made
-the app noticeably more enjoyable to open.
+the app noticeably more enjoyable to open. The Mochi redesign that followed
+(a warm cream default, round filled shapes, and one solid mark with a face in
+place of a cluster of cells whose gaps read as holes) leans on the same
+evidence, Um, Plass et al.'s warm palette and round shapes in particular.
 
 ## What backs it
 
