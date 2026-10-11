@@ -21,8 +21,9 @@
  * subtree under it is dropped, as Remark 4.7 drops an item at load. A
  * feeling outside the vocabulary or a level outside TOPIK's has no smaller
  * piece to drop, so it rejects the tree. A figure outside the vocabulary is
- * only a warning: the character is drawn in one `figuresOf` picks. Findings are reported over the whole
- * tree, a dropped subtree included, so one round of fixes covers everything.
+ * only a warning: the character is drawn in one `figuresOf` picks. Findings
+ * are reported over the whole tree, a dropped subtree included, so one round
+ * of fixes covers everything.
  *
  * Invariants (full text in docs/makjang/README.md, "Invariants"):
  * - MK4: every choice the handheld asks has passed this audit; a rejected

@@ -7,12 +7,13 @@
  * one, which the speech session reads in a woman's or a man's voice that
  * keeps the person's choice in Settings (`@some-ui/speech`'s `lib/part`).
  * Narration, and a character the cast gives no gender, speak in the chosen
- * voice as it is. What
- * became of a line is translated once, here: a muted, failed or ended line
- * was not presented, and the beat stays readable as text. A failed one is
- * also reported (`reportFailure`). A line is
- * audible unless the person muted voice or the device has no Korean voice;
- * one still being checked counts as audible.
+ * voice as it is.
+ *
+ * What became of a line is translated once, here: a muted, failed or ended
+ * line was not presented, and the beat stays readable as text. A failed one
+ * is also reported (`reportFailure`). A line is audible unless the person
+ * muted voice or the device has no Korean voice; one still being checked
+ * counts as audible.
  */
 
 import { reportFailure, toIntentError } from "@some-ui/intent-kit"

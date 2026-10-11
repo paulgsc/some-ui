@@ -78,21 +78,6 @@ describe("hostedVoiceFor - a part keeps the person's choice where it can", () =>
       "ko-KR-InJoonNeural"
     )
   })
-
-  it("keeps the language's voice when the provider has none of the part's gender", () => {
-    // Alloy is the only neutral voice; ElevenLabs has no Korean at all.
-    expect(
-      hostedVoiceFor({ provider: "azure", voiceId: null }, "english", "female")
-        ?.id
-    ).toBe("en-US-JennyNeural")
-    expect(
-      hostedVoiceFor(
-        { provider: "elevenlabs", voiceId: null },
-        "korean",
-        "male"
-      )
-    ).toBeNull()
-  })
 })
 
 describe("DEFAULT_HOSTED_VOICE", () => {

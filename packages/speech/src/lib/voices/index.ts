@@ -19,11 +19,6 @@
  * reports as a failure rather than handing the text to a voice that cannot
  * read it (an English Edge voice given Hangul answers with an HTTP 500).
  * Nothing falls back to "the first voice in the list".
- *
- * A line read in a part (`lib/part`) keeps that rule where it can: the voice
- * above reads it when it is the part's gender, and otherwise the provider's
- * voice of that gender in the same language does. A provider with none reads
- * it in the voice above, so a part never costs a line its voice.
  */
 
 import type { SpokenLanguage } from "@speech/lib/language"
@@ -148,7 +143,8 @@ function assertNever(value: never): never {
  * speaks that language, else the language's default, else none. With no
  * `language`, the chosen voice, else English's default. With a `part`, that
  * voice when it is the part's gender, else the provider's first voice of the
- * part's gender in the same language, else that voice anyway.
+ * part's gender in the same language (`lib/part`). The last fallback, that
+ * voice anyway, is defensive: every catalogue language has both genders.
  */
 export function hostedVoiceFor(
   choice: HostedVoiceChoice,

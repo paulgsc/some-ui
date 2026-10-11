@@ -166,8 +166,8 @@ const figureTable = (): string =>
 
 /**
  * The scene-tree prompt (docs/makjang/README.md, "4. Authoring"), with the
- * figure and feeling vocabularies filled in and this request appended. A tree is one
- * scene, so the request has no conversation count.
+ * figure and feeling vocabularies filled in and this request appended. A tree
+ * is one scene, so the request has no conversation count.
  */
 export function buildTreePrompt(request: TreeRequest): string {
   const last = request.lastDrama?.trim()

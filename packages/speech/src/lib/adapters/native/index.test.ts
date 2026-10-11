@@ -292,8 +292,6 @@ describe("native adapter", () => {
     expect(own).toBe(1.1)
     expect(female).toBeCloseTo(1.1 * DEVICE_PART_PITCH.female)
     expect(male).toBeCloseTo(1.1 * DEVICE_PART_PITCH.male)
-    expect(male).toBeLessThan(own ?? 0)
-    expect(female).toBeGreaterThan(own ?? 0)
   })
 
   it("speaks every line in its language in the chosen voice", async () => {

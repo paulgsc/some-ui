@@ -68,7 +68,7 @@ voice when that voice is the part's gender, and otherwise in the catalogue's
 voice of that gender for the line's language (`hostedVoiceFor`). A device
 synthesizer cannot say which of its voices is a woman's, so their voice reads
 both parts, each at its own pitch (`DEVICE_PART_PITCH`). A line with no part
-is read as it always was.
+is read in the chosen voice at its own pitch.
 
 ```tsx
 speaker?.say("앉아.", { language: "korean", part: "female" })

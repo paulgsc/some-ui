@@ -1,6 +1,6 @@
 /**
  * The webtoon's cast figures: the closed set of characters the renderer can
- * draw (docs/makjang/README.md, "The cast, drawn").
+ * draw (docs/makjang/README.md, "The cast, voiced and drawn").
  *
  * Each figure is a small mascot, a Korean fruit or snack with one prop, drawn
  * at build time (`components/topik/handheld/cast-figure`). It is a costume,
@@ -9,9 +9,7 @@
  * per character (makjang carries `figure` unread, as it carries `feeling`).
  * `figuresOf` gives every character one: the one named when the renderer has
  * it, else the first this cast leaves unused, in `FIGURE_KEYS` order, so a
- * tree that names none still draws its characters apart. A name outside the
- * vocabulary is a warning (`core/tree-audit`), never a rejection: a costume
- * has a smaller piece to drop than a scene's feeling.
+ * tree that names none still draws its characters apart.
  *
  * A figure is fixed per character for the whole lesson: the same drawing on
  * every line, whatever the scene's feeling or the choice, so it says who is
@@ -82,9 +80,8 @@ export const FIGURE_WORDS: Readonly<Record<FigureKey, FigureWords>> = {
 }
 
 /**
- * Every character's figure: the one the tree names when the renderer has
- * it, else the first this cast leaves unused (and once all are used, the
- * vocabulary again from the top). Two characters a tree names alike keep it.
+ * Every character's figure. Once a cast has used them all, the vocabulary
+ * starts again from the top; two characters a tree names alike keep it.
  */
 export function figuresOf(
   cast: ReadonlyArray<Pick<Character, "id" | "figure">>

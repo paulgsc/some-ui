@@ -16,8 +16,8 @@
  *   the device voice's own gender, the two parts then sound apart, which is
  *   what a listener needs in order to follow who is speaking.
  *
- * A line with no part (a narrator, a lesson's single voice) is read exactly
- * as before: the chosen voice, at its own pitch.
+ * A line with no part (a narrator, a lesson's single voice) is read in the
+ * chosen voice, at its own pitch.
  */
 
 export type VoicePart = "female" | "male"

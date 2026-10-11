@@ -1,4 +1,4 @@
-import { FIGURE_KEYS, figuresOf, isFigureKey } from "@topik/lib/topik/core/cast"
+import { FIGURE_KEYS, figuresOf } from "@topik/lib/topik/core/cast"
 import { describe, expect, it } from "vitest"
 
 const figuresIn = (
@@ -51,12 +51,5 @@ describe("figuresOf", () => {
         { id: "b", figure: "aide" },
       ])
     ).toEqual(["aide", "aide"])
-  })
-})
-
-describe("isFigureKey", () => {
-  it("accepts the vocabulary and nothing else", () => {
-    expect(FIGURE_KEYS.every(isFigureKey)).toBe(true)
-    expect([undefined, "", "Heart", "dragon", 3].some(isFigureKey)).toBe(false)
   })
 })

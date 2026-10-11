@@ -25,9 +25,9 @@ export type CharacterId = string
  * Whether a character is a woman or a man, as the story has it. A renderer
  * may voice them by it; one that cannot ignores it.
  */
-export type Gender = "female" | "male"
+export const GENDERS = ["female", "male"] as const
 
-export const GENDERS: ReadonlyArray<Gender> = ["female", "male"]
+export type Gender = (typeof GENDERS)[number]
 
 export type Character = {
   id: CharacterId
