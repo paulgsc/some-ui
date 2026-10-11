@@ -7,7 +7,7 @@
  * - `apps/www/Dockerfile`: the server block the image writes to
  *   conf.d/default.conf (the one `docker run` and the published image serve).
  * - `apps/www/nginx.https.conf`: the compose stack's template, which replaces
- *   that file (one server block, :80; Caddy on the host does TLS).
+ *   that file (one server block, :80).
  * - `apps/www/nginx.security-headers.conf`: the `Referrer-Policy` both include.
  * - `nginx.conf` at the repo root: the TTS front-end, with its own http block
  *   and so its own access log.
@@ -349,11 +349,7 @@ const rootHttp = rootConf.children.filter((block) => block.head === "http")
 describe("the configs are read, not assumed", () => {
   it("finds the server blocks the other checks run over", () => {
     expect(dockerServers, `${DOCKERFILE}: server blocks`).toHaveLength(1)
-    // :80. A second is fine; none means the listener lost its checks.
-    expect(
-      httpsServers.length,
-      `${HTTPS_CONF}: server blocks`
-    ).toBeGreaterThanOrEqual(1)
+    expect(httpsServers, `${HTTPS_CONF}: server blocks`).toHaveLength(1)
     expect(rootHttp, `${ROOT_CONF}: top-level http blocks`).toHaveLength(1)
     expect(
       headersConf.directives.length,

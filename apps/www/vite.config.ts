@@ -169,10 +169,9 @@ export default defineConfig(
     // Docker/nginx and local dev serve it at "/". Unset -> "/" for both.
     base: process.env.VITE_BASE_PATH || "/",
     server: {
-      // Plain HTTP on this machine only. Other devices reach it over HTTPS
-      // as dev.home.maishatu.com, through Caddy (paulgsc/dotfiles,
-      // nixos/subdomains), which also carries the HMR websocket; the Android
-      // dev loop reaches it as http://localhost through `adb reverse`.
+      // Loopback, plain HTTP: Caddy serves it to other devices as
+      // dev.home.maishatu.com, HMR websocket included (docs/study-nudge.md,
+      // "Secure context"); Android's dev loop uses `adb reverse`.
       host: "127.0.0.1",
       allowedHosts: ["dev.home.maishatu.com"],
       port: 5173,

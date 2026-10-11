@@ -1,9 +1,5 @@
-# Serves the built apps/www static bundle as plain HTTP on 127.0.0.1. Other
-# devices reach it over HTTPS as https://www.home.maishatu.com: Caddy on the
-# host (paulgsc/dotfiles, nixos/subdomains) terminates TLS with a publicly
-# trusted certificate and proxies here, so the service worker and
-# notifications behind study nudges see a secure context (docs/study-nudge.md,
-# "Secure context").
+# Serves the built apps/www static bundle as plain HTTP on 127.0.0.1, behind
+# Caddy on the host (docs/study-nudge.md, "Secure context").
 #
 # Serving over HTTPS is also why nginx.tts-proxy.conf is mounted below. The
 # speech backend in infra/compose/tts.yml publishes plain HTTP on :5050 and
@@ -74,9 +70,9 @@ services:
   www:
     image: pgathondu/www:${TAG:-latest}
     container_name: some-ui-www
-    # Loopback only: Caddy on the host is this port's one client, and other
-    # devices come through it over HTTPS. Docker-published ports bypass the
-    # host firewall, so the host IP here is the whole policy.
+    # Loopback only: other devices come through Caddy on the host.
+    # Docker-published ports bypass the host firewall, so the host IP here is
+    # the whole policy.
     ports:
       - "127.0.0.1:${WWW_HTTP_PORT:-5172}:80"
     volumes:

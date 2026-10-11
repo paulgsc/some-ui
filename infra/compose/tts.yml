@@ -6,10 +6,10 @@
 #
 # There are two ways in, and which one a page uses comes down to its scheme:
 #
-#   - Plain-HTTP pages reach nginx below on ${PORT:-5050} of whatever host
-#     serves them. Only this machine's own http://localhost pages can, since
-#     the port is published on 127.0.0.1. apps/www derives exactly that by
-#     default (src/lib/tts-config).
+#   - Plain-HTTP pages, which means only this machine's http://localhost ones
+#     since the port is published on 127.0.0.1, reach nginx below on
+#     ${PORT:-5050}. apps/www derives exactly that by default
+#     (src/lib/tts-config).
 #   - HTTPS pages cannot: this stack terminates no TLS, and an http:// fetch
 #     from an https:// document is mixed content, blocked by the browser
 #     before it is sent. Giving *this* nginx a cert instead would collide
@@ -65,11 +65,8 @@ services:
     image: nginx:alpine
     container_name: openai-edge-tts-proxy
     ports:
-      # Box only. Other devices open the app over HTTPS (Caddy on the host),
-      # which reaches speech through the www container's /api/tts/ proxy
-      # (see the header); `vite dev` proxies to 127.0.0.1 here. Docker-
-      # published ports bypass the host firewall, so the host IP here is the
-      # whole policy.
+      # Loopback only (see the header). Docker-published ports bypass the host
+      # firewall, so the host IP here is the whole policy.
       - "127.0.0.1:${PORT:-5050}:80"
     volumes:
       - ${REPO_ROOT:-.}/nginx.conf:/etc/nginx/nginx.conf:ro
