@@ -1,34 +1,42 @@
 {
-  "version": "0.2.1",
-  "commit": "3984826ee18b3f8bbb03763f58ba9c7f7a4df226",
-  "content": "sha256:218e9f6e76dc0ac5056b5b4613a2d817dfbc04d99fc214a4478ab91cc432f776",
-  "note": "0.2.1 was signed by hand (extension-sign-manual.yml run 29632537815) from 163b0d630cb9c0e2c27bc45078a7942d8677e67f, a branch commit later squash-merged to main as this commit. files are a rebuild of this commit with its own frozen lockfile, not the uploaded xpi. It has no amo payload: its notes were typed into the AMO dashboard.",
-  "baseline": null,
+  "version": "0.3.0",
+  "commit": "79bcf86ec1176f44c1a7f8ad51b6e1234c302e77",
+  "content": "sha256:5e960b366f6a8986ab00868cc0178ba038b986d661aa35cb96f2c2ca4c17e36c",
+  "baseline": {
+    "version": "0.2.1",
+    "commit": "3984826ee18b3f8bbb03763f58ba9c7f7a4df226"
+  },
   "files": {
     "assets/icon-128.png": "12d1fab18e136d96c333a13bc711435c936667a0323aba66507af8b03329a77f",
     "assets/icon-16.png": "ebd24b716f6af4787d578b11b52181bdff19578c900bf214400908d772df08e4",
     "assets/icon-48.png": "16649e61ef4a2c6197834c1934745234df37636be2a32d372ffd906dad9321a0",
-    "manifest.firefox.json": "cea7709256c3b8f2e402104038ec4f02a0e1be5653985c9d08d577683b692520",
-    "manifest.json": "cea7709256c3b8f2e402104038ec4f02a0e1be5653985c9d08d577683b692520",
-    "popup.html": "da6e9fb2288d4b10426510d9a1dde2852c42ba96821f8499bcc81401d22ffedb",
-    "popup.js": "de673079839dc24a13b92b683d876dd5fcf0d8170083ac1e6187ec55877406a8",
-    "resume-veil.js": "556226d476de01c493e69446ebb9e87f69dab15bdc7bd262483085b17865ece7",
-    "styles/popup.css": "864d0459aa5577e6b838254c1cad690f5bb93b6df51d3a3c2704ec4d29364299",
+    "debug.html": "16cd579e293a5f6988138a7825b63e625163bb92daaa58909583b1b61b893a33",
+    "debug.js": "f087b94e1a7c704335a639955f814ad2491df400112abb0b720b342b33b785d5",
+    "manifest.firefox.json": "1b641b43d2e5919ca5b1aab328eada0f4e00cba751ec4794994e96ac4a183b94",
+    "manifest.json": "1b641b43d2e5919ca5b1aab328eada0f4e00cba751ec4794994e96ac4a183b94",
+    "popup.html": "9e35605c4f681cbb1c44e64febfbc13c71522599681b77225d422a792aaea238",
+    "popup.js": "ea165f4bd53b5846cc1a7bd33724bafdb113d8d8b57152b4833d2da7d78f4819",
+    "resume-veil.js": "d177c295aba174a744d633de73f1c953fe70539716e36868d237a49f11cbaa9c",
+    "styles/debug.css": "bb50a46d41264d89a7c76a0576123a4c4705322d2725207a12684eaaa89bfc3d",
+    "styles/popup.css": "5e10167d070b8909e66a87554ac1c54dea2074a68520f004ecc9f1a7a7dc3d7e",
     "watch.js": "76c7f62add1cd261969ea67b8531b69ef2a29f192ad92e66172aee599eee1091",
-    "worker.js": "61101622d22799537b118123a28703d268d7695ac84a2d5eafd03773c30073c4"
+    "worker.js": "b49aaa9b05adbea8995611eff4a16940b5dbd52dddeea40af0312a551cfde527"
   },
   "normalized": {
     "assets/icon-128.png": "12d1fab18e136d96c333a13bc711435c936667a0323aba66507af8b03329a77f",
     "assets/icon-16.png": "ebd24b716f6af4787d578b11b52181bdff19578c900bf214400908d772df08e4",
     "assets/icon-48.png": "16649e61ef4a2c6197834c1934745234df37636be2a32d372ffd906dad9321a0",
+    "debug.html": "16cd579e293a5f6988138a7825b63e625163bb92daaa58909583b1b61b893a33",
+    "debug.js": "f087b94e1a7c704335a639955f814ad2491df400112abb0b720b342b33b785d5",
     "manifest.firefox.json": "dc0d9c0d7147b0e799801d0482a3c6b74d247e35b0c9feb04181f70bc445857e",
     "manifest.json": "dc0d9c0d7147b0e799801d0482a3c6b74d247e35b0c9feb04181f70bc445857e",
-    "popup.html": "da6e9fb2288d4b10426510d9a1dde2852c42ba96821f8499bcc81401d22ffedb",
-    "popup.js": "de673079839dc24a13b92b683d876dd5fcf0d8170083ac1e6187ec55877406a8",
-    "resume-veil.js": "556226d476de01c493e69446ebb9e87f69dab15bdc7bd262483085b17865ece7",
-    "styles/popup.css": "864d0459aa5577e6b838254c1cad690f5bb93b6df51d3a3c2704ec4d29364299",
+    "popup.html": "9e35605c4f681cbb1c44e64febfbc13c71522599681b77225d422a792aaea238",
+    "popup.js": "ea165f4bd53b5846cc1a7bd33724bafdb113d8d8b57152b4833d2da7d78f4819",
+    "resume-veil.js": "d177c295aba174a744d633de73f1c953fe70539716e36868d237a49f11cbaa9c",
+    "styles/debug.css": "bb50a46d41264d89a7c76a0576123a4c4705322d2725207a12684eaaa89bfc3d",
+    "styles/popup.css": "5e10167d070b8909e66a87554ac1c54dea2074a68520f004ecc9f1a7a7dc3d7e",
     "watch.js": "76c7f62add1cd261969ea67b8531b69ef2a29f192ad92e66172aee599eee1091",
-    "worker.js": "61101622d22799537b118123a28703d268d7695ac84a2d5eafd03773c30073c4"
+    "worker.js": "b49aaa9b05adbea8995611eff4a16940b5dbd52dddeea40af0312a551cfde527"
   },
   "manifest": {
     "manifest_version": 3,
@@ -114,5 +122,8 @@
       }
     }
   },
-  "amo": null
+  "amo": {
+    "release_notes": "- Fixed: automatic suspension could stop working. The periodic check is no longer postponed every time the extension wakes up, a page that never answers the pre-suspend check is skipped after 5 seconds instead of stalling every tab behind it, and a suspension the browser reports but does not carry out is now detected and undone.\n- New: when the browser declines to suspend a tab (for example because it is playing audio or holds unsaved input), the toolbar badge counts those tabs and the popup says why.\n- New: a local Diagnostics page (popup → Diagnostics) shows the extension's health, counters and recent suspend decisions, with an \"Export JSON\" button for bug reports. Nothing is sent anywhere.",
+    "approval_notes": "Suspender Ledger suspends background tabs with the browser's native tabs.discard(). There is no suspend page and it never closes a tab. Why it needs *://*/* and each permission, what both content scripts do, and how data is handled are in extensions/suspender-ledger/amo-notes.md in the source archive.\n\nWhat changed since 0.2.1:\n\n1. Reliability (src/worker/modes/number.ts, src/worker/core/discard.ts). The sweep alarm is installed once instead of being re-armed on every worker wake-up, which had postponed it indefinitely. Each pre-suspend page check (scripting.executeScript) has a 5-second deadline; a tab that misses it is skipped, not suspended. A discard the browser reports as done but did not perform is detected with tabs.get and rolled back.\n\n2. Kept-awake feedback (src/worker/core/discard-state.ts, src/popup/). Tabs the browser declined to discard are counted on the toolbar badge and listed by reason in the popup. This state lives in storage.session only.\n\n3. Local diagnostics (debug.html, src/debug/, src/worker/core/observability.ts). A bounded event log in storage.local (500 events, 256 KB) records the extension's own decisions, with tabs identified by origin only, and is shown on an extension page linked from the popup. It leaves the machine only through that page's \"Export JSON\" button, which downloads a file. No network code was added.\n\nThe permission, content script and file comparison below is computed from the 0.2.1 and 0.3.0 builds.\n\n--- Generated from the build, not written by hand ---\nThe uploaded source archive is `git archive` of the release commit (its id is the zip comment), with package.json and pnpm-lock.yaml pruned to what this extension builds from.\nBuild steps: extensions/suspender-ledger/README.build.md. Expected SHA-256 of every dist/ file: extensions/suspender-ledger/release/release.json.\nCompared with 0.2.1 (source at commit 3984826ee18b):\n- Permissions: unchanged (idle, storage, contextMenus, notifications, alarms, scripting, tabs)\n- Optional permissions: unchanged (none)\n- Host permissions: unchanged (*://*/*)\n- Content scripts: unchanged (resume-veil.js at document_start on *://*/*; watch.js at document_idle on *://*/*)\n- Content security policy: unchanged (extension_pages: script-src 'self'; object-src 'self')\n- Web-accessible resources: unchanged (none)\n- Data collection: unchanged ({\"required\":[\"none\"]})\n- Externally connectable: unchanged (not declared)\n- Background: unchanged ({\"scripts\":[\"worker.js\"]})\n- Add-on ID: unchanged (suspender-ledger@paulgsc.com)\n- Built files: added debug.html, debug.js, styles/debug.css; changed popup.html, popup.js, resume-veil.js, styles/popup.css, worker.js; removed none"
+  }
 }
