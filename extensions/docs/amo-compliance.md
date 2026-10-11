@@ -499,7 +499,8 @@ push to main / PR
         ├── lint (ESLint + check:headers)
         ├── test
         ├── build:firefox
-        └── web-ext lint --source-dir dist --self-hosted --warnings-as-errors
+        └── web-ext lint (extensions/scripts/web-ext-lint-gate.mjs: warnings as errors,
+            less the data_collection_permissions min-version pair)
 ```
 
 ### Signing — two paths, both human-gated

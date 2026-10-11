@@ -32,6 +32,7 @@ export const colors = {
   destructive: pair("destructive"),
   success: pair("success"),
   warning: pair("warning"),
+  brand: pair("brand"),
   diff: {
     add: "var(--diff-add)",
     remove: "var(--diff-remove)",

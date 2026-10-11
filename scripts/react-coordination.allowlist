@@ -15,7 +15,6 @@
 # Grandfathered: these coordinated before R1 landed. Debt, not a judgment that
 # each is fine: a count here may only fall (lower it in the same change), and
 # an entry leaves when its module stops awaiting.
-1 apps/www/src/components/extensions/extensions-page.tsx
 1 apps/www/src/components/player/live-player.tsx
 5 apps/www/src/components/settings/account-section.tsx
 3 apps/www/src/components/settings/device-section.tsx

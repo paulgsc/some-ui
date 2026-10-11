@@ -1,12 +1,7 @@
 import type { JSX } from "react"
 import { useMemo, useRef } from "react"
-import type { ActivityDefinition, ActivityId } from "@some-ui/activity-catalog"
-import {
-  ACTIVITY_CATALOG,
-  ACTIVITY_IDS,
-  getActivity,
-  searchActivities,
-} from "@some-ui/activity-catalog"
+import type { ActivityId } from "@some-ui/activity-catalog"
+import { getActivity, searchActivities } from "@some-ui/activity-catalog"
 import { cn } from "@some-ui/core-utils"
 import { useFittedPage } from "@some-ui/react-hooks"
 import {
@@ -19,6 +14,7 @@ import {
 } from "@some-ui/shared"
 import { Plus, X } from "lucide-react"
 
+import { OFFERED_ACTIVITIES as CATALOGUE } from "@/lib/playable"
 import { ActivityIcon } from "@/components/activity-icon"
 import { ActivityInputHint } from "@/components/activity/activity-input"
 import { ActivityMaturityBadge } from "@/components/activity/activity-maturity"
@@ -35,10 +31,6 @@ import { AudioActivityHint } from "@/components/audio/audio-activity-notice"
  */
 const CATALOGUE_SHARE = "min-h-0 flex-[3]"
 const MANIFEST_SHARE = "min-h-0 flex-[2]"
-
-const CATALOGUE: ReadonlyArray<ActivityDefinition> = ACTIVITY_IDS.map(
-  (id) => ACTIVITY_CATALOG[id]
-)
 
 type PickedActivity = {
   instanceId: string
@@ -172,7 +164,7 @@ export const ActivityPickerStep = ({
           </div>
 
           {visible.length === 0 ? (
-            <p className="text-muted-foreground shrink-0 rounded-md border border-dashed px-3 py-6 text-center text-sm">
+            <p className="text-muted-foreground bg-muted/40 shrink-0 rounded-2xl px-3 py-6 text-center text-sm">
               No activity matches &ldquo;{query.trim()}&rdquo;
             </p>
           ) : (
@@ -319,7 +311,7 @@ export const ActivityPickerStep = ({
       )}
 
       {section === "manifest" && items.length === 0 && (
-        <div className="text-muted-foreground flex flex-col items-start gap-3 rounded-md border border-dashed px-3 py-6 text-sm">
+        <div className="text-muted-foreground bg-muted/40 flex flex-col items-start gap-3 rounded-2xl px-3 py-6 text-sm">
           <p>
             Nothing added yet. Browse the activities and tap one to add it to
             this session.

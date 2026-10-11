@@ -1,9 +1,10 @@
 /**
  * Every state the panel-fit sweep mounts (`../panel-fit.spec.ts`), by id.
  *
- * The registry's panels are mounted through `componentRegistry` itself, the
+ * The panels are mounted through `PANELS` itself (`@/lib/playable`), the
  * lazy entries a session binds, with no props beyond the one a session would
- * choose (hangul's mode). The TOPIK quiz stages are mounted through
+ * choose (hangul's mode). This page builds the `lan` profile, so the web
+ * surface's panels are among them. The TOPIK quiz stages are mounted through
  * `QuizPanel` one by one (`PANEL_STAGES` in the spec says why), and the
  * phone's drama through `DramaLesson`, opened at a state by a resume point.
  *
@@ -13,7 +14,6 @@
  */
 
 import type { ComponentProps, JSX } from "react"
-import { componentRegistry } from "@some-ui/content-registry"
 import { HANDHELD_MAX_HEIGHT } from "@some-ui/react-hooks"
 import { SpeechProvider } from "@some-ui/speech"
 import { webSpeech } from "@some-ui/speech/web-speech"
@@ -22,6 +22,8 @@ import { webSpeech } from "@some-ui/speech/web-speech"
 // are reachable through no lazy entry.
 // eslint-disable-next-line lazy-registry/no-eager-registry-import
 import { DramaLesson, intakeTree, lastDramaOf, QuizPanel } from "@some-ui/topik"
+
+import { PANELS } from "@/lib/playable"
 
 type QuizPanelProps = ComponentProps<typeof QuizPanel>
 type Question = QuizPanelProps["questions"][number]
@@ -213,9 +215,10 @@ function dramaStage(
   return DramaStage
 }
 
-const Hangul = componentRegistry.hangul.Component
-const Leetype = componentRegistry.leetype.Component
-const Topik = componentRegistry.topik.Component
+// Unbound, it renders nothing, and the sweep fails on an empty panel.
+const Hangul = PANELS.hangul?.Component ?? ((): null => null)
+const Leetype = PANELS.leetype.Component
+const Topik = PANELS.topik.Component
 
 export const PANEL_FIXTURES = {
   hangul: (): JSX.Element => <Hangul mode="endless" />,

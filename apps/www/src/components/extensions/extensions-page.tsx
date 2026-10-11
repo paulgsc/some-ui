@@ -1,9 +1,10 @@
-import { lazy, Suspense } from "react"
+import { Suspense } from "react"
 import type { JSX } from "react"
+import { BrandMark, MochiShapes } from "@some-ui/shared"
 import { Link } from "@tanstack/react-router"
 import { ArrowLeft } from "lucide-react"
 
-import { HexCombMark } from "@/components/brand/hex-comb-mark"
+import { ExtensionsComb } from "@/lib/web-surface"
 import { ThemeSwitcher } from "@/components/theme-switcher"
 
 /**
@@ -13,15 +14,7 @@ import { ThemeSwitcher } from "@/components/theme-switcher"
  * Mounted in two places: `"/"` for a visitor with no session (the front door,
  * so its chrome offers the résumé and sign-in), and `"/extensions"`, the
  * address to share (its chrome is a way back).
- *
- * The comb comes from `@some-ui/honeycomb` through a dynamic import: a static
- * value import would undo the registry's lazy load for every host
- * (`lazy-registry/no-eager-registry-import`).
  */
-const ExtensionsComb = lazy(async () => {
-  const { ExtensionsComb: Comb } = await import("@some-ui/honeycomb")
-  return { default: Comb }
-})
 
 const CHIP =
   "text-muted-foreground hover:text-foreground bg-background/70 pointer-events-auto inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-sm backdrop-blur transition-colors"
@@ -49,9 +42,9 @@ export const ExtensionsPage = ({
         </Link>
       ) : (
         <span className="pointer-events-auto inline-flex items-center gap-2 px-1">
-          {/* `current`, not `brand`: the comb follows the session theme, and
-              a fixed-amber mark would read as a second palette. */}
-          <HexCombMark className="text-muted-foreground size-6" />
+          {/* `brand` is the session theme's own mochi, so it follows the
+              theme as the comb does. */}
+          <BrandMark tone="brand" className="size-6" />
           {/* The wordmark gives way on a phone. */}
           <span className="text-muted-foreground sr-only text-sm font-medium tracking-wide uppercase sm:not-sr-only">
             Some UI
@@ -76,7 +69,7 @@ export const ExtensionsPage = ({
     {/* The comb positions itself absolutely and fills this element, so the
         fallback reserves nothing (a spinner would make the page jump). */}
     <Suspense fallback={null}>
-      <ExtensionsComb />
+      <ExtensionsComb mark={<MochiShapes tone="brand" />} />
     </Suspense>
   </main>
 )

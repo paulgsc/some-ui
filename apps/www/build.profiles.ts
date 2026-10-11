@@ -11,8 +11,9 @@ import type { Plugin } from "vite"
  * About bundle size, not access.
  *
  * - **`lan`** - the default: `vite dev`, `vite preview` and the Docker image
- *   served on the home network. Carries everything.
- * - **`pages`** - the GitHub Pages build (.github/workflows/pages.yml).
+ *   served on the home network. Carries everything but `apk`.
+ * - **`pages`** - the GitHub Pages build (.github/workflows/pages.yml):
+ *   `public` plus `web`.
  * - **`mobile`** - the Android app (apps/mobile's `build:web`): `public` plus
  *   `apk` (workspaces that need the phone, e.g. the soundbite recorder), and
  *   sessions only (`src/lib/app-surface`). Run `vite dev` with
@@ -29,8 +30,8 @@ import type { Plugin } from "vite"
 export const MOBILE_PROFILE = "mobile"
 
 export const profiles = defineProfiles({
-  lan: { audiences: ["public", "lan"] },
-  pages: { audiences: ["public"] },
+  lan: { audiences: ["public", "lan", "web"] },
+  pages: { audiences: ["public", "web"] },
   [MOBILE_PROFILE]: { audiences: ["public", "apk"] },
 })
 
@@ -40,15 +41,41 @@ export const workspaceRoots = [
 ] as const
 
 /**
- * Where each gated audience's workspaces may be imported from: only routes
- * under `_lan/` (or `_apk/`), whose layout sends a visit to not-found where
- * the audience is stubbed. The build fails on any other import, and
- * `src/routes/__tests__/audience-gates.test.ts` checks the layouts.
+ * The web surface's door: a gate that is a module rather than a route
+ * layout. A door is how shared code (the session player, a page every build
+ * routes to) reaches a gated workspace without a route of its own: it hands
+ * the workspace out only where the build carries its audience, and nothing
+ * where it does not (A4, packages/some-vite-config/AUDIENCES.md).
+ * `src/lib/web-surface/index.test.tsx` checks the door's exports both ways.
  */
-export const gates: Readonly<Record<GatedAudience, ReadonlyArray<string>>> = {
+const WEB_DOOR = "src/lib/web-surface"
+
+/** Every gate in `gates` that is a door, not a layout route. */
+const doors: ReadonlyArray<string> = [WEB_DOOR]
+
+/**
+ * Where each gated audience's workspaces may be imported from: routes under
+ * `_lan/` (or `_apk/`), whose layout sends a visit to not-found where the
+ * audience is stubbed, or a door (`doors`, above). The build fails on any
+ * other import, and `src/routes/__tests__/audience-gates.test.ts` checks the
+ * layouts.
+ */
+const gates: Readonly<Record<GatedAudience, ReadonlyArray<string>>> = {
   lan: ["src/routes/_dashboard/_lan"],
   apk: ["src/routes/_dashboard/_apk"],
+  web: [WEB_DOOR],
 }
+
+/** `gates` without the doors: each audience's layout-route directories, if any. */
+export const routeGates: ReadonlyArray<{
+  audience: string
+  dirs: ReadonlyArray<string>
+}> = Object.entries(gates)
+  .map(([audience, dirs]) => ({
+    audience,
+    dirs: dirs.filter((dir) => !doors.includes(dir)),
+  }))
+  .filter(({ dirs }) => dirs.length > 0)
 
 /**
  * www's `audiencePlugin`, shared by vite.config.ts and vitest.config.ts. The

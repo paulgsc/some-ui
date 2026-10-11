@@ -31,6 +31,18 @@ const prePaintEntrySchema = z.object({
 type PrePaintEntry = z.infer<typeof prePaintEntrySchema>
 
 /**
+ * A JSON-shaped JS object literal (bare keys, maybe trailing commas), parsed,
+ * never evaluated.
+ */
+function parseLiteral(literal: string): unknown {
+  return JSON.parse(
+    literal
+      .replace(/([{,]\s*)([A-Za-z_$][\w$]*)\s*:/g, '$1"$2":')
+      .replace(/,(\s*[}\]])/g, "$1")
+  )
+}
+
+/**
  * The `map` object literal out of the pre-paint script, as a Map so a
  * missing theme reads as `undefined`.
  */
@@ -38,15 +50,9 @@ function prePaintMap(indexHtml: string): Map<string, PrePaintEntry> {
   const match = indexHtml.match(/var map = (\{[\s\S]*?\n {10}\})/)
   if (!match?.[1]) throw new Error("pre-paint theme map not found")
 
-  // JSON-shaped JS (bare keys, maybe trailing commas): parsed, never
-  // evaluated.
-  const json = match[1]
-    .replace(/([{,]\s*)([A-Za-z_$][\w$]*)\s*:/g, '$1"$2":')
-    .replace(/,(\s*[}\]])/g, "$1")
-
   const parsed = z
     .record(z.string(), prePaintEntrySchema)
-    .parse(JSON.parse(json))
+    .parse(parseLiteral(match[1]))
   return new Map(Object.entries(parsed))
 }
 
@@ -76,10 +82,19 @@ describe.each(ENTRIES)("%s pre-paint script ↔ registry", (file) => {
   })
 
   it("opens a retired theme as the controller does", () => {
-    const match = indexHtml.match(/var retired = (\{[^\n]*\})/)
+    const match = indexHtml.match(/var retired = (\{[\s\S]*?\})/)
     if (!match?.[1])
       throw new Error("retired-theme map not found in index.html")
-    expect(JSON.parse(match[1])).toEqual(RETIRED_THEMES)
+    expect(parseLiteral(match[1])).toEqual(RETIRED_THEMES)
+  })
+
+  it("opens a missing or unknown preference as the controller's default", () => {
+    expect(indexHtml).toContain(
+      `localStorage.getItem(key) || "${DEFAULT_PREFERENCE}"`
+    )
+    expect(indexHtml).toContain(
+      `if (pref !== "system" && !map[pref]) pref = "${DEFAULT_PREFERENCE}"`
+    )
   })
 
   it("paints the default preference's background in the no-JS fallback", () => {

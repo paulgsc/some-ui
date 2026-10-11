@@ -118,8 +118,4 @@ jobs:
       - name: Assert classic entries are self-contained
         run: nix develop .#ci --command node extensions/scripts/assert-self-contained.mjs "${{ matrix.extension_path }}/dist"
       - name: web-ext lint
-        run: |
-          nix develop .#ci --command web-ext lint \
-            --source-dir "${{ matrix.extension_path }}/dist" \
-            --self-hosted \
-            --warnings-as-errors
+        run: nix develop .#ci --command node extensions/scripts/web-ext-lint-gate.mjs "${{ matrix.extension_path }}/dist"

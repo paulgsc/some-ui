@@ -27,7 +27,11 @@ export type ThemePreference = SessionThemeId | typeof SYSTEM_PREFERENCE
 const SYSTEM_LIGHT: SessionThemeId = "light"
 const SYSTEM_DARK: SessionThemeId = "dark"
 
-export const DEFAULT_PREFERENCE: ThemePreference = SYSTEM_DARK
+/**
+ * What a fresh install opens in: the brand's own theme, not the OS setting.
+ * `light` and `dark` stay one tap away for anyone who wants the plain look.
+ */
+export const DEFAULT_PREFERENCE: ThemePreference = "mochi"
 
 type StorageLike = Pick<Storage, "getItem" | "setItem">
 
@@ -51,6 +55,7 @@ function safeStorage(): StorageLike | null {
  */
 export const RETIRED_THEMES: Readonly<Record<string, SessionThemeId>> = {
   "strawberry-moon": "rose-night",
+  "peachy-blossom": "mochi",
 }
 
 export function isThemePreference(value: string): value is ThemePreference {

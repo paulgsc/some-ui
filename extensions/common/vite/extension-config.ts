@@ -36,7 +36,7 @@ export type ExtensionConfigOptions = {
   /** Files/dirs copied into `dist/` after the build (manifest overrides, wasm dist). */
   copy?: Array<CopyStep>
   /**
-   * Ship the shared honeycomb brand mark (`extensions/common/brand/`) as
+   * Ship the shared mochi brand mark (`extensions/common/brand/`) as
    * `dist/assets/icon-{16,48,128}.png` — the paths the manifests' `icons` and
    * `action.default_icon` declare — instead of per-extension copies in
    * `public/assets/` (#1420).

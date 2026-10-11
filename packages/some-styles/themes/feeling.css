@@ -102,6 +102,23 @@
     --feeling-outline: none;
   }
 
+  .mochi .feeling-tension {
+    --feeling-accent: oklch(52% 0.102 260deg);
+    --feeling-background: repeating-linear-gradient(
+        90deg,
+        oklch(52% 0.102 260deg / 13.6%) 0 1px,
+        transparent 1px 8px
+      ),
+      oklch(94.04% 0.0024 298.2deg);
+    --feeling-caption-fill: oklch(87% 0.14 260deg);
+    --feeling-caption-halo: oklch(97.5% 0.022 75deg);
+    --feeling-caption-stroke: oklch(22% 0.06 260deg);
+    --feeling-ground: oklch(94.04% 0.0024 298.2deg);
+    --feeling-ink: oklch(33% 0.0279 283.8deg);
+    --feeling-muted: oklch(48% 0.0279 283.8deg);
+    --feeling-outline: none;
+  }
+
   .dark.rose-night .feeling-tension {
     --feeling-accent: oklch(80% 0.102 260deg);
     --feeling-background: repeating-linear-gradient(
@@ -109,13 +126,13 @@
         oklch(80% 0.102 260deg / 13.6%) 0 1px,
         transparent 1px 8px
       ),
-      oklch(24.23% 0.0315 285.1deg);
+      oklch(26% 0.0336 288.5deg);
     --feeling-caption-fill: oklch(87% 0.14 260deg);
-    --feeling-caption-halo: oklch(17% 0.02 330deg);
+    --feeling-caption-halo: oklch(19.5% 0.024 330deg);
     --feeling-caption-stroke: oklch(22% 0.06 260deg);
-    --feeling-ground: oklch(24.23% 0.0315 285.1deg);
+    --feeling-ground: oklch(26% 0.0336 288.5deg);
     --feeling-ink: oklch(71% 0.0488 274.6deg);
-    --feeling-muted: oklch(69.5% 0.0507 273.4deg);
+    --feeling-muted: oklch(71.5% 0.0507 273.4deg);
     --feeling-outline: none;
   }
 
@@ -126,30 +143,13 @@
         oklch(80% 0.102 260deg / 13.6%) 0 1px,
         transparent 1px 8px
       ),
-      oklch(24.23% 0.0474 272.8deg);
+      oklch(26% 0.0509 273.7deg);
     --feeling-caption-fill: oklch(87% 0.14 260deg);
-    --feeling-caption-halo: oklch(17% 0.035 285deg);
+    --feeling-caption-halo: oklch(19.5% 0.04 285deg);
     --feeling-caption-stroke: oklch(22% 0.06 260deg);
-    --feeling-ground: oklch(24.23% 0.0474 272.8deg);
+    --feeling-ground: oklch(26% 0.0509 273.7deg);
     --feeling-ink: oklch(73% 0.0301 262.5deg);
-    --feeling-muted: oklch(70% 0.0613 266.9deg);
-    --feeling-outline: none;
-  }
-
-  .peachy-blossom .feeling-tension {
-    --feeling-accent: oklch(52% 0.102 260deg);
-    --feeling-background: repeating-linear-gradient(
-        90deg,
-        oklch(52% 0.102 260deg / 13.6%) 0 1px,
-        transparent 1px 8px
-      ),
-      oklch(94.43% 0.0068 310.9deg);
-    --feeling-caption-fill: oklch(87% 0.14 260deg);
-    --feeling-caption-halo: oklch(98% 0.02 60deg);
-    --feeling-caption-stroke: oklch(22% 0.06 260deg);
-    --feeling-ground: oklch(94.43% 0.0068 310.9deg);
-    --feeling-ink: oklch(34% 0.0323 283.4deg);
-    --feeling-muted: oklch(49% 0.0323 283.4deg);
+    --feeling-muted: oklch(71% 0.0613 266.9deg);
     --feeling-outline: none;
   }
 
@@ -213,6 +213,23 @@
     --feeling-outline: none;
   }
 
+  .mochi .feeling-rivalry {
+    --feeling-accent: oklch(52% 0.114 300deg);
+    --feeling-background: repeating-linear-gradient(
+        135deg,
+        oklch(52% 0.114 300deg / 15.6%) 0 2px,
+        transparent 2px 11px
+      ),
+      oklch(93.34% 0.0162 346.8deg);
+    --feeling-caption-fill: oklch(87% 0.14 300deg);
+    --feeling-caption-halo: oklch(97.5% 0.022 75deg);
+    --feeling-caption-stroke: oklch(22% 0.06 300deg);
+    --feeling-ground: oklch(93.34% 0.0162 346.8deg);
+    --feeling-ink: oklch(33% 0.0429 329.5deg);
+    --feeling-muted: oklch(47% 0.0429 329.5deg);
+    --feeling-outline: none;
+  }
+
   .dark.rose-night .feeling-rivalry {
     --feeling-accent: oklch(80% 0.114 300deg);
     --feeling-background: repeating-linear-gradient(
@@ -220,13 +237,13 @@
         oklch(80% 0.114 300deg / 15.6%) 0 2px,
         transparent 2px 11px
       ),
-      oklch(24.58% 0.0411 309.8deg);
+      oklch(26.32% 0.0438 311deg);
     --feeling-caption-fill: oklch(87% 0.14 300deg);
-    --feeling-caption-halo: oklch(17% 0.02 330deg);
+    --feeling-caption-halo: oklch(19.5% 0.024 330deg);
     --feeling-caption-stroke: oklch(22% 0.06 300deg);
-    --feeling-ground: oklch(24.58% 0.0411 309.8deg);
-    --feeling-ink: oklch(72% 0.0552 308.4deg);
-    --feeling-muted: oklch(71.5% 0.0562 306.4deg);
+    --feeling-ground: oklch(26.32% 0.0438 311deg);
+    --feeling-ink: oklch(73% 0.0552 308.4deg);
+    --feeling-muted: oklch(72.5% 0.0562 306.4deg);
     --feeling-outline: none;
   }
 
@@ -237,30 +254,13 @@
         oklch(80% 0.114 300deg / 15.6%) 0 2px,
         transparent 2px 11px
       ),
-      oklch(24.58% 0.0524 293.1deg);
+      oklch(26.32% 0.0559 292.6deg);
     --feeling-caption-fill: oklch(87% 0.14 300deg);
-    --feeling-caption-halo: oklch(17% 0.035 285deg);
+    --feeling-caption-halo: oklch(19.5% 0.04 285deg);
     --feeling-caption-stroke: oklch(22% 0.06 300deg);
-    --feeling-ground: oklch(24.58% 0.0524 293.1deg);
+    --feeling-ground: oklch(26.32% 0.0559 292.6deg);
     --feeling-ink: oklch(73% 0.036 317.1deg);
-    --feeling-muted: oklch(71% 0.0621 295.8deg);
-    --feeling-outline: none;
-  }
-
-  .peachy-blossom .feeling-rivalry {
-    --feeling-accent: oklch(52% 0.114 300deg);
-    --feeling-background: repeating-linear-gradient(
-        135deg,
-        oklch(52% 0.114 300deg / 15.6%) 0 2px,
-        transparent 2px 11px
-      ),
-      oklch(93.72% 0.0201 340.6deg);
-    --feeling-caption-fill: oklch(87% 0.14 300deg);
-    --feeling-caption-halo: oklch(98% 0.02 60deg);
-    --feeling-caption-stroke: oklch(22% 0.06 300deg);
-    --feeling-ground: oklch(93.72% 0.0201 340.6deg);
-    --feeling-ink: oklch(34% 0.046 325.4deg);
-    --feeling-muted: oklch(48% 0.046 325.4deg);
+    --feeling-muted: oklch(73% 0.0621 295.8deg);
     --feeling-outline: none;
   }
 
@@ -318,6 +318,23 @@
     --feeling-outline: none;
   }
 
+  .mochi .feeling-chill {
+    --feeling-accent: oklch(52% 0.132 235deg);
+    --feeling-background: radial-gradient(
+          oklch(52% 0.132 235deg / 10%) 1px,
+          transparent 1.6px
+        )
+        0 0 / 16px 16px,
+      oklch(94.46% 0.0154 213.9deg);
+    --feeling-caption-fill: oklch(87% 0.14 235deg);
+    --feeling-caption-halo: oklch(97.5% 0.022 75deg);
+    --feeling-caption-stroke: oklch(22% 0.06 235deg);
+    --feeling-ground: oklch(94.46% 0.0154 213.9deg);
+    --feeling-ink: oklch(33% 0.0227 240deg);
+    --feeling-muted: oklch(49% 0.0227 240deg);
+    --feeling-outline: none;
+  }
+
   .dark.rose-night .feeling-chill {
     --feeling-accent: oklch(80% 0.132 235deg);
     --feeling-background: radial-gradient(
@@ -325,13 +342,13 @@
           transparent 1.6px
         )
         0 0 / 16px 16px,
-      oklch(25.1% 0.0376 256deg);
+      oklch(26.79% 0.0384 259.9deg);
     --feeling-caption-fill: oklch(87% 0.14 235deg);
-    --feeling-caption-halo: oklch(17% 0.02 330deg);
+    --feeling-caption-halo: oklch(19.5% 0.024 330deg);
     --feeling-caption-stroke: oklch(22% 0.06 235deg);
-    --feeling-ground: oklch(25.1% 0.0376 256deg);
+    --feeling-ground: oklch(26.79% 0.0384 259.9deg);
     --feeling-ink: oklch(71% 0.0435 251.1deg);
-    --feeling-muted: oklch(68.5% 0.0456 250.8deg);
+    --feeling-muted: oklch(69.5% 0.0456 250.8deg);
     --feeling-outline: none;
   }
 
@@ -342,30 +359,13 @@
           transparent 1.6px
         )
         0 0 / 16px 16px,
-      oklch(25.1% 0.0546 254.4deg);
+      oklch(26.79% 0.0575 256.1deg);
     --feeling-caption-fill: oklch(87% 0.14 235deg);
-    --feeling-caption-halo: oklch(17% 0.035 285deg);
+    --feeling-caption-halo: oklch(19.5% 0.04 285deg);
     --feeling-caption-stroke: oklch(22% 0.06 235deg);
-    --feeling-ground: oklch(25.1% 0.0546 254.4deg);
+    --feeling-ground: oklch(26.79% 0.0575 256.1deg);
     --feeling-ink: oklch(73% 0.0313 225.6deg);
-    --feeling-muted: oklch(68% 0.0578 248.4deg);
-    --feeling-outline: none;
-  }
-
-  .peachy-blossom .feeling-chill {
-    --feeling-accent: oklch(52% 0.132 235deg);
-    --feeling-background: radial-gradient(
-          oklch(52% 0.132 235deg / 10%) 1px,
-          transparent 1.6px
-        )
-        0 0 / 16px 16px,
-      oklch(94.83% 0.015 230.1deg);
-    --feeling-caption-fill: oklch(87% 0.14 235deg);
-    --feeling-caption-halo: oklch(98% 0.02 60deg);
-    --feeling-caption-stroke: oklch(22% 0.06 235deg);
-    --feeling-ground: oklch(94.83% 0.015 230.1deg);
-    --feeling-ink: oklch(34% 0.0262 246.4deg);
-    --feeling-muted: oklch(50% 0.0262 246.4deg);
+    --feeling-muted: oklch(70% 0.0578 248.4deg);
     --feeling-outline: none;
   }
 
@@ -435,6 +435,23 @@
     --feeling-outline: none;
   }
 
+  .mochi .feeling-cringe {
+    --feeling-accent: oklch(52% 0.096 350deg);
+    --feeling-background: radial-gradient(
+          oklch(52% 0.096 350deg / 12.4%) 1.3px,
+          transparent 1.8px
+        )
+        0 0 / 9px 9px,
+      oklch(94.41% 0.0251 32.9deg);
+    --feeling-caption-fill: oklch(87% 0.14 350deg);
+    --feeling-caption-halo: oklch(97.5% 0.022 75deg);
+    --feeling-caption-stroke: oklch(22% 0.06 350deg);
+    --feeling-ground: oklch(94.41% 0.0251 32.9deg);
+    --feeling-ink: oklch(33% 0.0595 9.1deg);
+    --feeling-muted: oklch(49% 0.0595 9.1deg);
+    --feeling-outline: none;
+  }
+
   .dark.rose-night .feeling-cringe {
     --feeling-accent: oklch(80% 0.096 350deg);
     --feeling-background: radial-gradient(
@@ -442,13 +459,13 @@
           transparent 1.8px
         )
         0 0 / 9px 9px,
-      oklch(24.05% 0.0353 342deg);
+      oklch(25.84% 0.0381 341.1deg);
     --feeling-caption-fill: oklch(87% 0.14 350deg);
-    --feeling-caption-halo: oklch(17% 0.02 330deg);
+    --feeling-caption-halo: oklch(19.5% 0.024 330deg);
     --feeling-caption-stroke: oklch(22% 0.06 350deg);
-    --feeling-ground: oklch(24.05% 0.0353 342deg);
+    --feeling-ground: oklch(25.84% 0.0381 341.1deg);
     --feeling-ink: oklch(71% 0.0574 347.8deg);
-    --feeling-muted: oklch(69.5% 0.0569 345.7deg);
+    --feeling-muted: oklch(70.5% 0.0569 345.7deg);
     --feeling-outline: none;
   }
 
@@ -459,30 +476,13 @@
           transparent 1.8px
         )
         0 0 / 9px 9px,
-      oklch(24.05% 0.0393 314.6deg);
+      oklch(25.84% 0.0425 312.2deg);
     --feeling-caption-fill: oklch(87% 0.14 350deg);
-    --feeling-caption-halo: oklch(17% 0.035 285deg);
+    --feeling-caption-halo: oklch(19.5% 0.04 285deg);
     --feeling-caption-stroke: oklch(22% 0.06 350deg);
-    --feeling-ground: oklch(24.05% 0.0393 314.6deg);
+    --feeling-ground: oklch(25.84% 0.0425 312.2deg);
     --feeling-ink: oklch(73% 0.0487 7.9deg);
-    --feeling-muted: oklch(69% 0.0547 333.2deg);
-    --feeling-outline: none;
-  }
-
-  .peachy-blossom .feeling-cringe {
-    --feeling-accent: oklch(52% 0.096 350deg);
-    --feeling-background: radial-gradient(
-          oklch(52% 0.096 350deg / 12.4%) 1.3px,
-          transparent 1.8px
-        )
-        0 0 / 9px 9px,
-      oklch(94.8% 0.0266 23.4deg);
-    --feeling-caption-fill: oklch(87% 0.14 350deg);
-    --feeling-caption-halo: oklch(98% 0.02 60deg);
-    --feeling-caption-stroke: oklch(22% 0.06 350deg);
-    --feeling-ground: oklch(94.8% 0.0266 23.4deg);
-    --feeling-ink: oklch(34% 0.0598 4.8deg);
-    --feeling-muted: oklch(49% 0.0598 4.8deg);
+    --feeling-muted: oklch(71% 0.0547 333.2deg);
     --feeling-outline: none;
   }
 
@@ -619,6 +619,26 @@
       drop-shadow(0 -2.5px 0 oklch(98.5% 0.045 28deg));
   }
 
+  .mochi .feeling-fury {
+    --feeling-accent: oklch(52% 0.162 28deg);
+    --feeling-background: repeating-conic-gradient(
+        from 0deg at 50% 50%,
+        oklch(52% 0.162 28deg / 17.6%) 0deg 2deg,
+        transparent 2deg 9deg
+      ),
+      oklch(91.79% 0.0542 40deg);
+    --feeling-caption-fill: oklch(87% 0.14 28deg);
+    --feeling-caption-halo: oklch(97.5% 0.022 75deg);
+    --feeling-caption-stroke: oklch(22% 0.06 28deg);
+    --feeling-ground: oklch(91.79% 0.0542 40deg);
+    --feeling-ink: oklch(33% 0.0664 35.3deg);
+    --feeling-muted: oklch(45% 0.0664 35.3deg);
+    --feeling-outline: drop-shadow(2.5px 0 0 oklch(33% 0.0664 35.3deg))
+      drop-shadow(-2.5px 0 0 oklch(33% 0.0664 35.3deg))
+      drop-shadow(0 2.5px 0 oklch(33% 0.0664 35.3deg))
+      drop-shadow(0 -2.5px 0 oklch(33% 0.0664 35.3deg));
+  }
+
   .dark.rose-night .feeling-fury {
     --feeling-accent: oklch(80% 0.162 28deg);
     --feeling-background: repeating-conic-gradient(
@@ -626,17 +646,17 @@
         oklch(80% 0.162 28deg / 17.6%) 0deg 2deg,
         transparent 2deg 9deg
       ),
-      oklch(25.98% 0.0588 17.3deg);
+      oklch(27.58% 0.0606 15.6deg);
     --feeling-caption-fill: oklch(87% 0.14 28deg);
-    --feeling-caption-halo: oklch(17% 0.02 330deg);
+    --feeling-caption-halo: oklch(19.5% 0.024 330deg);
     --feeling-caption-stroke: oklch(22% 0.06 28deg);
-    --feeling-ground: oklch(25.98% 0.0588 17.3deg);
-    --feeling-ink: oklch(73% 0.0542 18.1deg);
-    --feeling-muted: oklch(72.5% 0.0527 16.4deg);
-    --feeling-outline: drop-shadow(2.5px 0 0 oklch(73% 0.0542 18.1deg))
-      drop-shadow(-2.5px 0 0 oklch(73% 0.0542 18.1deg))
-      drop-shadow(0 2.5px 0 oklch(73% 0.0542 18.1deg))
-      drop-shadow(0 -2.5px 0 oklch(73% 0.0542 18.1deg));
+    --feeling-ground: oklch(27.58% 0.0606 15.6deg);
+    --feeling-ink: oklch(74% 0.0542 18.1deg);
+    --feeling-muted: oklch(74.5% 0.0527 16.4deg);
+    --feeling-outline: drop-shadow(2.5px 0 0 oklch(74% 0.0542 18.1deg))
+      drop-shadow(-2.5px 0 0 oklch(74% 0.0542 18.1deg))
+      drop-shadow(0 2.5px 0 oklch(74% 0.0542 18.1deg))
+      drop-shadow(0 -2.5px 0 oklch(74% 0.0542 18.1deg));
   }
 
   .dark.harvest-sky .feeling-fury {
@@ -646,37 +666,17 @@
         oklch(80% 0.162 28deg / 17.6%) 0deg 2deg,
         transparent 2deg 9deg
       ),
-      oklch(25.98% 0.0509 2.5deg);
+      oklch(27.58% 0.0517 359.1deg);
     --feeling-caption-fill: oklch(87% 0.14 28deg);
-    --feeling-caption-halo: oklch(17% 0.035 285deg);
+    --feeling-caption-halo: oklch(19.5% 0.04 285deg);
     --feeling-caption-stroke: oklch(22% 0.06 28deg);
-    --feeling-ground: oklch(25.98% 0.0509 2.5deg);
-    --feeling-ink: oklch(73% 0.0563 39.2deg);
-    --feeling-muted: oklch(73% 0.0445 5.4deg);
-    --feeling-outline: drop-shadow(2.5px 0 0 oklch(73% 0.0563 39.2deg))
-      drop-shadow(-2.5px 0 0 oklch(73% 0.0563 39.2deg))
-      drop-shadow(0 2.5px 0 oklch(73% 0.0563 39.2deg))
-      drop-shadow(0 -2.5px 0 oklch(73% 0.0563 39.2deg));
-  }
-
-  .peachy-blossom .feeling-fury {
-    --feeling-accent: oklch(52% 0.162 28deg);
-    --feeling-background: repeating-conic-gradient(
-        from 0deg at 50% 50%,
-        oklch(52% 0.162 28deg / 17.6%) 0deg 2deg,
-        transparent 2deg 9deg
-      ),
-      oklch(92.14% 0.0549 35.8deg);
-    --feeling-caption-fill: oklch(87% 0.14 28deg);
-    --feeling-caption-halo: oklch(98% 0.02 60deg);
-    --feeling-caption-stroke: oklch(22% 0.06 28deg);
-    --feeling-ground: oklch(92.14% 0.0549 35.8deg);
-    --feeling-ink: oklch(34% 0.0647 31.7deg);
-    --feeling-muted: oklch(45% 0.0647 31.7deg);
-    --feeling-outline: drop-shadow(2.5px 0 0 oklch(34% 0.0647 31.7deg))
-      drop-shadow(-2.5px 0 0 oklch(34% 0.0647 31.7deg))
-      drop-shadow(0 2.5px 0 oklch(34% 0.0647 31.7deg))
-      drop-shadow(0 -2.5px 0 oklch(34% 0.0647 31.7deg));
+    --feeling-ground: oklch(27.58% 0.0517 359.1deg);
+    --feeling-ink: oklch(74% 0.0563 39.2deg);
+    --feeling-muted: oklch(74% 0.0445 5.4deg);
+    --feeling-outline: drop-shadow(2.5px 0 0 oklch(74% 0.0563 39.2deg))
+      drop-shadow(-2.5px 0 0 oklch(74% 0.0563 39.2deg))
+      drop-shadow(0 2.5px 0 oklch(74% 0.0563 39.2deg))
+      drop-shadow(0 -2.5px 0 oklch(74% 0.0563 39.2deg));
   }
 
   @keyframes feeling-twist {
@@ -733,6 +733,23 @@
     --feeling-outline: none;
   }
 
+  .mochi .feeling-twist {
+    --feeling-accent: oklch(80% 0.06 95deg);
+    --feeling-background: repeating-conic-gradient(
+        from 0deg at 50% 50%,
+        oklch(80% 0.06 95deg / 17.2%) 0deg 2deg,
+        transparent 2deg 10deg
+      ),
+      oklch(34.36% 0.0474 56.9deg);
+    --feeling-caption-fill: oklch(87% 0.16 95deg);
+    --feeling-caption-halo: oklch(97.5% 0.022 75deg);
+    --feeling-caption-stroke: oklch(22% 0.06 95deg);
+    --feeling-ground: oklch(34.36% 0.0474 56.9deg);
+    --feeling-ink: oklch(97.5% 0.022 75deg);
+    --feeling-muted: oklch(81.44% 0.0278 63.9deg);
+    --feeling-outline: none;
+  }
+
   .dark.rose-night .feeling-twist {
     --feeling-accent: oklch(42% 0.06 95deg);
     --feeling-background: repeating-conic-gradient(
@@ -742,11 +759,11 @@
       ),
       oklch(69.32% 0.0209 0.3deg);
     --feeling-caption-fill: oklch(87% 0.16 95deg);
-    --feeling-caption-halo: oklch(17% 0.02 330deg);
+    --feeling-caption-halo: oklch(19.5% 0.024 330deg);
     --feeling-caption-stroke: oklch(22% 0.06 95deg);
     --feeling-ground: oklch(69.32% 0.0209 0.3deg);
-    --feeling-ink: oklch(17% 0.02 330deg);
-    --feeling-muted: oklch(27.12% 0.0213 333.3deg);
+    --feeling-ink: oklch(19.5% 0.024 330deg);
+    --feeling-muted: oklch(26.92% 0.0242 332.9deg);
     --feeling-outline: none;
   }
 
@@ -759,28 +776,11 @@
       ),
       oklch(71.16% 0.0352 79.5deg);
     --feeling-caption-fill: oklch(87% 0.16 95deg);
-    --feeling-caption-halo: oklch(17% 0.035 285deg);
+    --feeling-caption-halo: oklch(19.5% 0.04 285deg);
     --feeling-caption-stroke: oklch(22% 0.06 95deg);
     --feeling-ground: oklch(71.16% 0.0352 79.5deg);
-    --feeling-ink: oklch(17% 0.035 285deg);
-    --feeling-muted: oklch(29.68% 0.0184 298.2deg);
-    --feeling-outline: none;
-  }
-
-  .peachy-blossom .feeling-twist {
-    --feeling-accent: oklch(80% 0.06 95deg);
-    --feeling-background: repeating-conic-gradient(
-        from 0deg at 50% 50%,
-        oklch(80% 0.06 95deg / 17.2%) 0deg 2deg,
-        transparent 2deg 10deg
-      ),
-      oklch(35.28% 0.0419 49deg);
-    --feeling-caption-fill: oklch(87% 0.16 95deg);
-    --feeling-caption-halo: oklch(98% 0.02 60deg);
-    --feeling-caption-stroke: oklch(22% 0.06 95deg);
-    --feeling-ground: oklch(35.28% 0.0419 49deg);
-    --feeling-ink: oklch(98% 0.02 60deg);
-    --feeling-muted: oklch(82.08% 0.0252 51.3deg);
+    --feeling-ink: oklch(19.5% 0.04 285deg);
+    --feeling-muted: oklch(29.48% 0.0219 296deg);
     --feeling-outline: none;
   }
 
@@ -853,6 +853,30 @@
     --feeling-outline: none;
   }
 
+  .mochi .feeling-flutter {
+    --feeling-accent: oklch(52% 0.144 345deg);
+    --feeling-background: radial-gradient(
+          circle,
+          oklch(52% 0.144 345deg / 14.4%) 0 3px,
+          transparent 3.5px
+        )
+        0 0 / 26px 26px,
+      radial-gradient(
+          circle,
+          oklch(52% 0.144 345deg / 14.4%) 0 2px,
+          transparent 2.5px
+        )
+        13px 13px / 26px 26px,
+      oklch(93.08% 0.038 9.7deg);
+    --feeling-caption-fill: oklch(87% 0.14 345deg);
+    --feeling-caption-halo: oklch(97.5% 0.022 75deg);
+    --feeling-caption-stroke: oklch(22% 0.06 345deg);
+    --feeling-ground: oklch(93.08% 0.038 9.7deg);
+    --feeling-ink: oklch(33% 0.0582 5.5deg);
+    --feeling-muted: oklch(47% 0.0582 5.5deg);
+    --feeling-outline: none;
+  }
+
   .dark.rose-night .feeling-flutter {
     --feeling-accent: oklch(80% 0.144 345deg);
     --feeling-background: radial-gradient(
@@ -867,13 +891,13 @@
           transparent 2.5px
         )
         13px 13px / 26px 26px,
-      oklch(25.45% 0.0548 341.4deg);
+      oklch(27.11% 0.0574 340.9deg);
     --feeling-caption-fill: oklch(87% 0.14 345deg);
-    --feeling-caption-halo: oklch(17% 0.02 330deg);
+    --feeling-caption-halo: oklch(19.5% 0.024 330deg);
     --feeling-caption-stroke: oklch(22% 0.06 345deg);
-    --feeling-ground: oklch(25.45% 0.0548 341.4deg);
-    --feeling-ink: oklch(71% 0.0575 343.9deg);
-    --feeling-muted: oklch(71.5% 0.0572 341.8deg);
+    --feeling-ground: oklch(27.11% 0.0574 340.9deg);
+    --feeling-ink: oklch(73% 0.0575 343.9deg);
+    --feeling-muted: oklch(72.5% 0.0572 341.8deg);
     --feeling-outline: none;
   }
 
@@ -891,37 +915,13 @@
           transparent 2.5px
         )
         13px 13px / 26px 26px,
-      oklch(25.45% 0.0571 324.4deg);
+      oklch(27.11% 0.0597 322.4deg);
     --feeling-caption-fill: oklch(87% 0.14 345deg);
-    --feeling-caption-halo: oklch(17% 0.035 285deg);
+    --feeling-caption-halo: oklch(19.5% 0.04 285deg);
     --feeling-caption-stroke: oklch(22% 0.06 345deg);
-    --feeling-ground: oklch(25.45% 0.0571 324.4deg);
+    --feeling-ground: oklch(27.11% 0.0597 322.4deg);
     --feeling-ink: oklch(73% 0.0474 3.4deg);
-    --feeling-muted: oklch(71% 0.0558 329.3deg);
-    --feeling-outline: none;
-  }
-
-  .peachy-blossom .feeling-flutter {
-    --feeling-accent: oklch(52% 0.144 345deg);
-    --feeling-background: radial-gradient(
-          circle,
-          oklch(52% 0.144 345deg / 14.4%) 0 3px,
-          transparent 3.5px
-        )
-        0 0 / 26px 26px,
-      radial-gradient(
-          circle,
-          oklch(52% 0.144 345deg / 14.4%) 0 2px,
-          transparent 2.5px
-        )
-        13px 13px / 26px 26px,
-      oklch(93.44% 0.0407 5.1deg);
-    --feeling-caption-fill: oklch(87% 0.14 345deg);
-    --feeling-caption-halo: oklch(98% 0.02 60deg);
-    --feeling-caption-stroke: oklch(22% 0.06 345deg);
-    --feeling-ground: oklch(93.44% 0.0407 5.1deg);
-    --feeling-ink: oklch(34% 0.0588 1.2deg);
-    --feeling-muted: oklch(47% 0.0588 1.2deg);
+    --feeling-muted: oklch(73% 0.0558 329.3deg);
     --feeling-outline: none;
   }
 
@@ -970,39 +970,39 @@
     --feeling-outline: none;
   }
 
+  .mochi .feeling-warmth {
+    --feeling-accent: oklch(52% 0.15 75deg);
+    --feeling-background: oklch(94.22% 0.0528 75deg);
+    --feeling-caption-fill: oklch(87% 0.14 75deg);
+    --feeling-caption-halo: oklch(97.5% 0.022 75deg);
+    --feeling-caption-stroke: oklch(22% 0.06 75deg);
+    --feeling-ground: oklch(94.22% 0.0528 75deg);
+    --feeling-ink: oklch(33% 0.0661 66.7deg);
+    --feeling-muted: oklch(49% 0.0661 66.7deg);
+    --feeling-outline: none;
+  }
+
   .dark.rose-night .feeling-warmth {
     --feeling-accent: oklch(80% 0.15 75deg);
-    --feeling-background: oklch(25.62% 0.0433 58deg);
+    --feeling-background: oklch(27.26% 0.0435 54.6deg);
     --feeling-caption-fill: oklch(87% 0.14 75deg);
-    --feeling-caption-halo: oklch(17% 0.02 330deg);
+    --feeling-caption-halo: oklch(19.5% 0.024 330deg);
     --feeling-caption-stroke: oklch(22% 0.06 75deg);
-    --feeling-ground: oklch(25.62% 0.0433 58deg);
+    --feeling-ground: oklch(27.26% 0.0435 54.6deg);
     --feeling-ink: oklch(71% 0.0456 59.2deg);
-    --feeling-muted: oklch(66.5% 0.0435 58.9deg);
+    --feeling-muted: oklch(68.5% 0.0435 58.9deg);
     --feeling-outline: none;
   }
 
   .dark.harvest-sky .feeling-warmth {
     --feeling-accent: oklch(80% 0.15 75deg);
-    --feeling-background: oklch(25.62% 0.0275 50.4deg);
+    --feeling-background: oklch(27.26% 0.0257 44.4deg);
     --feeling-caption-fill: oklch(87% 0.14 75deg);
-    --feeling-caption-halo: oklch(17% 0.035 285deg);
+    --feeling-caption-halo: oklch(19.5% 0.04 285deg);
     --feeling-caption-stroke: oklch(22% 0.06 75deg);
-    --feeling-ground: oklch(25.62% 0.0275 50.4deg);
+    --feeling-ground: oklch(27.26% 0.0257 44.4deg);
     --feeling-ink: oklch(73% 0.06 75deg);
-    --feeling-muted: oklch(67% 0.0311 58.7deg);
-    --feeling-outline: none;
-  }
-
-  .peachy-blossom .feeling-warmth {
-    --feeling-accent: oklch(52% 0.15 75deg);
-    --feeling-background: oklch(94.58% 0.051 70.8deg);
-    --feeling-caption-fill: oklch(87% 0.14 75deg);
-    --feeling-caption-halo: oklch(98% 0.02 60deg);
-    --feeling-caption-stroke: oklch(22% 0.06 75deg);
-    --feeling-ground: oklch(94.58% 0.051 70.8deg);
-    --feeling-ink: oklch(34% 0.0624 64.4deg);
-    --feeling-muted: oklch(50% 0.0624 64.4deg);
+    --feeling-muted: oklch(70% 0.0311 58.7deg);
     --feeling-outline: none;
   }
 
