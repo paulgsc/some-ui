@@ -2,6 +2,8 @@ import type { JSX } from "react"
 import { cn } from "@some-ui/core-utils"
 import type { FigureKey } from "@topik/lib/topik/core/cast"
 
+import "./index.css"
+
 type Art = {
   /** The silhouette, filled with the panel's ground. */
   body: JSX.Element
