@@ -34,6 +34,14 @@ vi.mock("@capacitor/filesystem", () => ({
   },
 }))
 vi.mock("@capacitor/share", () => ({ Share: { share } }))
+const PRACTICE = vi.hoisted(() => ({
+  version: 1,
+  days: [{ day: "2026-10-10", reps: 30, sets: 3, practiceMs: 270_000 }],
+  totals: { reps: 30, sets: 3, practiceMs: 270_000 },
+}))
+vi.mock("@some-ui/topik", () => ({
+  readAloudPracticeRecord: (): typeof PRACTICE => PRACTICE,
+}))
 vi.mock("@/lib/tenant/queries", () => ({
   sessionsRepository: {
     list: (): Promise<Array<unknown>> =>
@@ -130,6 +138,8 @@ beforeEach(() => {
 
 describe("shareReflections", () => {
   it("shares one file per session named for it, its voice notes beside it, and keeps them until handed off", async () => {
+    seedStop(stopRecord(0, { sessionId: "s1-0000000000", reason: "break" }))
+    seedStop(stopRecord(0, { sessionId: "another-session" }))
     await expect(shareReflections(["s1-0000000000"], NOW)).resolves.toEqual({
       outcome: "shared",
       sent: ["v1", "t1"],
@@ -155,6 +165,8 @@ describe("shareReflections", () => {
         },
         { id: "t1", kind: "text", text: "particles", atMs: null },
       ],
+      stops: [{ sessionId: "s1-0000000000", reason: "break", via: "left" }],
+      readAloudPractice: PRACTICE,
     })
     // Android says "shared" once an app is picked: nothing goes on that.
     expect(reflections.getSnapshot().kept).toHaveLength(3)
@@ -237,6 +249,7 @@ describe("shareAgentExport", () => {
       ],
       reflectionsWithoutSession: [{ sessionId: "gone-session", id: "t2" }],
       stops: [{ sessionId: "session-1", reason: "focus" }],
+      readAloudPractice: PRACTICE,
       soundbites: [{ id: "b1", file: "soundbite-b1.webm" }],
     })
     expect(context).not.toHaveProperty(["sessions", 0, "scenes"])
