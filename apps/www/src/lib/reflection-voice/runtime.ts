@@ -60,7 +60,8 @@ export function createVoiceNote(
    * The reflection first, so it holds its slot (or says there is none), then
    * its audio; audio that cannot be kept takes the reflection back out. In
    * that order, audio on the shelf always has a reflection naming it, and
-   * `sweepOrphanAudio` can never remove a take still being saved.
+   * `sweepOrphans` can never remove a take still being saved. If taking it
+   * back out is refused too, `sweepOrphans` lets it go at the next launch.
    */
   const save = (effect: Extract<VoiceEffect, { type: "save" }>): void => {
     const id = ports.newId()

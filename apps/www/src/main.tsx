@@ -5,7 +5,7 @@ import { createRouter, RouterProvider } from "@tanstack/react-router"
 import ReactDOM from "react-dom/client"
 
 import { bootDeviceBackend } from "@/lib/device-backend/boot"
-import { sweepOrphanAudio } from "@/lib/reflection-voice"
+import { sweepOrphans } from "@/lib/reflection-voice"
 import { releasePushWhenLeavingTheAccount } from "@/lib/study-nudge/leave-account"
 import { ErrorState, NotFound, RoutePending } from "@/components/housekeeping"
 
@@ -32,8 +32,8 @@ import.meta.glob(
 // before the app renders and anything issues a request. A no-op elsewhere.
 bootDeviceBackend()
 
-// Voice reflections' audio whose reflection is gone (`sweepOrphanAudio`).
-if (import.meta.env.VITE_DEVICE_BACKEND === "true") sweepOrphanAudio()
+// Voice reflections and their audio, each without the other (`sweepOrphans`).
+if (import.meta.env.VITE_DEVICE_BACKEND === "true") sweepOrphans()
 
 // A browser subscribed to push while signed in must not stay subscribed once
 // the learner's data is no longer the account's. No request is made to do it.

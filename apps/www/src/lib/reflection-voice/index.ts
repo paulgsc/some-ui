@@ -55,7 +55,7 @@ export function phoneVoiceNote(sessionId: string): VoiceRuntime {
 /**
  * Lets these go, and their audio with them; false, keeping both, if the list
  * would not store the removal. Audio that fails to go is left for
- * `sweepOrphanAudio`: once its reflection is gone, nothing names it.
+ * `sweepOrphans`: once its reflection is gone, nothing names it.
  */
 export function letGoReflections(ids: ReadonlyArray<string>): boolean {
   if (!reflections.letGo(ids)) return false
@@ -66,18 +66,30 @@ export function letGoReflections(ids: ReadonlyArray<string>): boolean {
 }
 
 /**
- * Audio whose reflection is gone (the app closed between the two removals):
- * removed, so the shelf holds only what the list names. Best effort, and
- * nothing waits on it.
+ * Each half without the other, cleared so the shelf and the list agree:
+ * audio no reflection names (the app closed between the two removals), and a
+ * voice reflection whose audio never landed (its save failed, and so did
+ * taking it back out). Best effort, and nothing waits on it.
  */
-export function sweepOrphanAudio(): void {
+export function sweepOrphans(): void {
   const audio = reflectionAudio()
   audio
     .ids()
-    .then((ids) => {
+    .then(async (ids) => {
       // Read after the ids: a reflection kept meanwhile names its audio.
-      const named = new Set(reflections.getSnapshot().kept.map((r) => r.id))
-      return audio.remove(ids.filter((id) => !named.has(id)))
+      const { kept } = reflections.getSnapshot()
+      const named = new Set(kept.map((r) => r.id))
+      const stored = new Set(ids)
+      await audio.remove(ids.filter((id) => !named.has(id)))
+      // Saving now, or saved since the ids were read: not silent. A save
+      // starts with its reflection kept, so one in `kept` is past that.
+      const silent: Array<string> = []
+      for (const r of kept) {
+        if (r.body.kind !== "voice" || stored.has(r.id) || isSaving(r.id))
+          continue
+        if ((await audio.get(r.id)) === null) silent.push(r.id)
+      }
+      if (silent.length > 0) reflections.letGo(silent)
     })
     .catch(() => undefined)
 }

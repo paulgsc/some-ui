@@ -276,7 +276,7 @@ declared (checked by reading every call site and by the tests named).
   Held when declared, by reading each: `agent-export` gives reflections to
   `shareFiles` alone and reads the sessions repository only for names and
   dates, and the importers only render reflection components or call
-  `sweepOrphanAudio`.
+  `sweepOrphans`.
 
 ## Not covered, on purpose
 

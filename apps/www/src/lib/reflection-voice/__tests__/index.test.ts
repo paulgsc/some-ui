@@ -4,21 +4,26 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
-import { letGoReflections } from "@/lib/reflection-voice"
+import { letGoReflections, sweepOrphans } from "@/lib/reflection-voice"
 import { reflections } from "@/lib/session-reflection"
 
 const removeAudio = vi.hoisted(() => vi.fn(() => Promise.resolve()))
+/** The ids on the shelf. */
+const shelved = vi.hoisted(() => new Set<string>())
 
 vi.mock("@some-ui/voice-capture", () => ({
-  blobShelf: (): { remove: typeof removeAudio } => ({ remove: removeAudio }),
+  blobShelf: (): object => ({
+    remove: removeAudio,
+    ids: (): Promise<Array<string>> => Promise.resolve([...shelved]),
+    get: (id: string): Promise<Blob | null> =>
+      Promise.resolve(shelved.has(id) ? new Blob(["opus"]) : null),
+  }),
   micRecorder: vi.fn(),
 }))
 
-beforeEach(() => {
-  localStorage.clear()
-  removeAudio.mockClear()
+function voice(id: string): void {
   reflections.keep({
-    id: "v1",
+    id,
     sessionId: "s1",
     createdAt: "2026-10-10T09:00:00.000Z",
     atMs: 1_000,
@@ -29,6 +34,13 @@ beforeEach(() => {
       bytes: 3,
     },
   })
+}
+
+beforeEach(() => {
+  localStorage.clear()
+  removeAudio.mockClear()
+  shelved.clear()
+  voice("v1")
 })
 
 describe("letGoReflections", () => {
@@ -47,5 +59,18 @@ describe("letGoReflections", () => {
 
     expect(reflections.getSnapshot().kept).toHaveLength(1)
     expect(removeAudio).not.toHaveBeenCalled()
+  })
+})
+
+describe("sweepOrphans", () => {
+  it("removes audio no reflection names, and lets go of a voice note with no audio", async () => {
+    shelved.add("v2").add("stray")
+    voice("v2")
+
+    sweepOrphans()
+    await vi.waitFor(() => {
+      expect(reflections.getSnapshot().kept.map((r) => r.id)).toEqual(["v2"])
+    })
+    expect(removeAudio).toHaveBeenCalledWith(["stray"])
   })
 })
