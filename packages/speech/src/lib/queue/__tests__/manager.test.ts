@@ -363,6 +363,18 @@ describe("SpeechQueueManager - the speaker", () => {
     expect(await line).toEqual({ kind: "heard" })
   })
 
+  it("hands the adapter the part a line is read in", async () => {
+    const { adapter, manager } = setup()
+
+    const line = manager
+      .speakerFor("a")
+      .say("안녕", { language: "korean", part: "male" })
+    await flushAsync()
+    expect(adapter.calls[0]?.options.part).toBe("male")
+    adapter.finish()
+    await line
+  })
+
   it("refuses a line while muted: nothing reaches the adapter", async () => {
     const { adapter, manager } = setup()
     manager.setMuted(true)

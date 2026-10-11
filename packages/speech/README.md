@@ -61,6 +61,19 @@ muted**. TOPIK once held the adapter, named "the first Korean voice" on
 every line and called the adapter directly, so a chosen voice never spoke a
 lesson and mute stopped only the line already playing.
 
+What a line may ask for is a **part** (`lib/part`): `"female"` or
+`"male"`, for a page that voices more than one speaker, such as a drama's
+cast. A part keeps the person's choice. The hosted service reads it in their
+voice when that voice is the part's gender, and otherwise in the catalogue's
+voice of that gender for the line's language (`hostedVoiceFor`). A device
+synthesizer cannot say which of its voices is a woman's, so their voice reads
+both parts, each at its own pitch (`DEVICE_PART_PITCH`). A line with no part
+is read as it always was.
+
+```tsx
+speaker?.say("앉아.", { language: "korean", part: "female" })
+```
+
 The one line that names a voice is Settings' sample of a voice a person is
 choosing between (`useVoicePreview`). It is a request to the session too
 (`SpeechQueueManager.preview`): a `"now"` line through the same queue, so it

@@ -312,6 +312,10 @@ export class DramaRuntime {
     const voice = this.ports.voice
     const beat = beatsOf(this.lesson).get(beatId)
     if (voice === null || beat === undefined) return
+    const speaker = isLine(beat) ? beat.speaker : null
+    const gender =
+      this.lesson.cast.find((character) => character.id === speaker)?.gender ??
+      null
     const line = new AbortController()
     this.line = line
     const current = (): boolean => this.line === line
@@ -322,7 +326,8 @@ export class DramaRuntime {
             {
               beat: beat.id,
               text: beat.text,
-              speaker: isLine(beat) ? beat.speaker : null,
+              speaker,
+              gender,
               interrupt,
               onStart: () => {
                 if (current()) {

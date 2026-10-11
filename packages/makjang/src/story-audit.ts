@@ -4,8 +4,8 @@
  *
  * It checks shape and nothing else. Nothing here knows what the drama is
  * about, which language it is in, or whether a choice is a good item: that is
- * the teaching audit's, in topik. `check`, `feeling` and `art` are carried
- * unread; the audit asks only that a check and a feeling are there.
+ * the teaching audit's, in topik. `check`, `feeling`, `figure` and `art` are
+ * carried unread; the audit asks only that a check and a feeling are there.
  *
  * A tree with any finding is rejected whole. A dropped scene or beat would
  * leave a route that resolves to nothing, or a choice whose answer leads
@@ -24,11 +24,13 @@ import type {
   Beat,
   Character,
   Choice,
+  Gender,
   Lesson,
   Option,
   Scene,
 } from "@makjang/schema"
 import {
+  GENDERS,
   isRecord,
   MAX_BRANCHES,
   MAX_DEPTH,
@@ -86,6 +88,25 @@ function optionalText(
   return undefined
 }
 
+/** An optional gender at `record.gender`: absent, or one of `GENDERS`. */
+function optionalGender(
+  context: Context,
+  record: Record<string, unknown>,
+  path: string
+): Gender | undefined {
+  const value = record.gender
+  if (value === undefined) return undefined
+  const gender = GENDERS.find((known) => known === value)
+  if (gender === undefined) {
+    report(
+      context,
+      at(path, "gender"),
+      `must be one of ${GENDERS.map((known) => `"${known}"`).join(", ")} when given`
+    )
+  }
+  return gender
+}
+
 function uniqueId(
   context: Context,
   record: Record<string, unknown>,
@@ -124,6 +145,8 @@ function auditCharacter(
   const standing = text(context, raw, "standing", path)
   const voice = optionalText(context, raw, "voice", path)
   const look = optionalText(context, raw, "look", path)
+  const gender = optionalGender(context, raw, path)
+  const figure = optionalText(context, raw, "figure", path)
 
   const registers: Array<[string, string]> = []
   const rawRegisters = raw.registers ?? {}
@@ -153,6 +176,8 @@ function auditCharacter(
     registers: Object.fromEntries(registers),
     ...(voice === undefined ? {} : { voice }),
     ...(look === undefined ? {} : { look }),
+    ...(gender === undefined ? {} : { gender }),
+    ...(figure === undefined ? {} : { figure }),
   }
 }
 

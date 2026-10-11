@@ -148,6 +148,22 @@ describe("auditTeaching", () => {
     ])
   })
 
+  it("warns about a figure the renderer does not draw, and still plays the tree", () => {
+    const raw = rawTree()
+    raw.cast = [
+      { id: "p1", name: "One", standing: "s", registers: {}, figure: "dragon" },
+    ]
+    const audit = auditTeaching(lesson(raw))
+    if (!audit.ok) throw new Error("expected a playable tree")
+    expect(audit.findings).toEqual([
+      expect.objectContaining({
+        audit: "teaching",
+        severity: "warning",
+        path: "cast.0.figure",
+      }),
+    ])
+  })
+
   it("rejects a level outside TOPIK's", () => {
     const audit = auditTeaching(lesson({ ...rawTree(), level: 7 }))
     expect(audit.ok).toBe(false)

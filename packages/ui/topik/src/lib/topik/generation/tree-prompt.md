@@ -166,6 +166,12 @@ character (`registers`, keyed by that character's `id`). `pov` names the
 character the learner follows. Lines name their speaker by cast `id`, and the
 app shows speaker names, so a scene can have as many voices as it needs.
 
+Give every character a `gender` (`"female"` or `"male"`): the app reads a
+woman's lines and a man's in different voices. And give each a `figure`, the
+mascot the app draws beside their lines, from **Figures** below; give two
+characters of one drama two different figures, so the learner can tell at a
+glance who is talking.
+
 In every genre: no graphic violence, and the drama's registers sit inside
 the TOPIK level.
 
@@ -187,17 +193,30 @@ Its dialogue lives on exactly what second- and third-order items test:
 
 For the default you may draw on this cast, or invent your own:
 
-- **Chairman Kang** (강 회장님): the family's matriarch. Formal speech,
-  addressed with full honorifics.
-- **Kang Tae-joon** (강태준): her son and heir. Plain speech to his mother
-  only in anger.
-- **Yoon Seo-yeon** (윤서연): his fiancée, from a modest family. Polite
-  speech throughout, and a natural point of view.
-- **Han Min-ji** (한민지): Tae-joon's former fiancée, now a rival. Honeyed
-  politeness with an edge.
-- **Secretary Park** (박 비서): loyal to the chairman. Formal speech.
+- **Chairman Kang** (강 회장님; female, `elder`): the family's matriarch.
+  Formal speech, addressed with full honorifics.
+- **Kang Tae-joon** (강태준; male, `heir`): her son and heir. Plain speech to
+  his mother only in anger.
+- **Yoon Seo-yeon** (윤서연; female, `heart`): his fiancée, from a modest
+  family. Polite speech throughout, and a natural point of view.
+- **Han Min-ji** (한민지; female, `rival`): Tae-joon's former fiancée, now a
+  rival. Honeyed politeness with an edge.
+- **Secretary Park** (박 비서; male, `aide`): loyal to the chairman. Formal
+  speech.
 
 Keep the default romcom: slammed doors, thrown water, whispered secrets.
+
+---
+
+## Figures: one per character
+
+Every character names the **figure** the app draws them as, one of these
+keys: a small mascot, the same on every line they speak, that moves while
+their line is heard. A figure is a costume, not a role: pick the one whose
+kind of part fits, and let `standing` say who they really are. Use only these
+keys:
+
+<!-- figures -->
 
 ---
 
@@ -408,6 +427,8 @@ type Character = {
   name: string // as shown: "윤서연"
   standing: string // how they stand to the others, in English
   registers: Record<string, string> // other character's id → register used to them
+  gender: "female" | "male" // which voice the app reads their lines in
+  figure: string // one key from **Figures**: how the app draws them
   voice?: string // a short description, for a later voice
   look?: string // a short description, for a later portrait
 }
@@ -477,13 +498,17 @@ of the scenes), and about whatever scene the request asks for.
       "id": "seoyeon",
       "name": "윤서연",
       "standing": "Tae-joon's fiancée, meeting his mother at home for the first time",
-      "registers": { "chairman": "polite -요 with honorifics" }
+      "registers": { "chairman": "polite -요 with honorifics" },
+      "gender": "female",
+      "figure": "heart"
     },
     {
       "id": "chairman",
       "name": "강 회장님",
       "standing": "Tae-joon's mother, who has not approved the engagement",
-      "registers": { "seoyeon": "cool 반말" }
+      "registers": { "seoyeon": "cool 반말" },
+      "gender": "female",
+      "figure": "elder"
     }
   ],
   "root": {
@@ -690,6 +715,8 @@ wrong reply `b`.
   ids are unique within their choice.
 - [checkable] Every speaker, `pov` and `registers` key is a cast `id`.
 - [checkable] Every scene's `feeling` is one of the keys in **Feelings**.
+- [checkable] Every `gender` is `"female"` or `"male"`, and every `figure`
+  is one of the keys in **Figures** (another is drawn as some other figure).
 - [checkable] Every check is a `pick-valid` or `odd-one-out` that passes the
   schema, and its candidate ids are exactly its choice's option ids.
 - [checkable] No candidate is a `gloss`; every candidate has a non-blank
@@ -720,5 +747,5 @@ Return **one** ` ```json ` block and nothing else: the lesson object, in
 
 ## Versioning
 
-**`v1.1`.** The prompt the app assembles. The app fills in **Feelings** and
-appends **This request** below.
+**`v1.2`.** The prompt the app assembles. The app fills in **Figures** and
+**Feelings** and appends **This request** below.

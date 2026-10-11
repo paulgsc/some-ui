@@ -51,6 +51,7 @@ import type {
 } from "@speech/lib/adapters/types"
 import type { SpokenLanguage } from "@speech/lib/language"
 import { LANGUAGE_NAME } from "@speech/lib/language"
+import { devicePitchFor } from "@speech/lib/part"
 import { createSpeechLedger } from "@speech/lib/promise"
 import { createAbortError, toError } from "@speech/lib/promise/abort"
 
@@ -343,7 +344,10 @@ export function createNativeSpeechAdapter(
           language,
           voiceId: lineVoiceId(speakOptions.voice, language),
           rate: speakOptions.playbackRate ?? playbackRate,
-          pitch: options.pitch ?? DEFAULT_PITCH,
+          pitch: devicePitchFor(
+            options.pitch ?? DEFAULT_PITCH,
+            speakOptions.part
+          ),
           volume: speakOptions.volume ?? volume,
         })
       } catch (error) {

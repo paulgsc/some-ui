@@ -80,7 +80,7 @@
     skill
   ]
   #v(1em)
-  #text(size: 9.5pt)[Version 1.15 --- 2026-10-09]
+  #text(size: 9.5pt)[Version 1.16 --- 2026-10-11]
   #v(2cm)
 ]
 
@@ -3040,6 +3040,28 @@ estimating a cost.
   reveals and why that is acceptable.
 ]
 
+#remark("9.3", name: "The cast figure and the voice's part are rendition kinds")[
+  The drama unit's renderer draws each character as a *cast figure*, one of a
+  closed set of drawings made at build time, beside their name on every line
+  they speak. The figure moves while that line is heard. It also reads each
+  character's lines in a woman's or a man's *part*, as the cast gives their
+  gender: a voice of that gender where the platform can name one, else the
+  learner's chosen voice at a pitch for the part. Each is a rendition kind,
+  and a valuation change (Proposition 9.4). What both reveal is who is
+  speaking. The speaker's name, beside every line at every rung, already
+  reveals that, so neither changes a choice's $p_"hint"$ by more than the
+  name does. Neither can single out a candidate. A figure and its part are
+  fixed per character for the whole unit: the same drawing and expression
+  whatever the scene's feeling, the line or the choice. The chosen
+  candidate, whichever it is, is shown with the point of view's figure, and
+  that figure never moves, since a chosen line is not voiced. That is
+  acceptable for the reason Remark 9.2's anchor is: it renders what the
+  scene is (who is in it), not whether a candidate holds. A figure whose
+  expression changed with the line, or a part chosen per line rather than
+  per character, would be a further rendition kind, and needs its own line
+  here.
+]
+
 // ═══════════════════════════════════════════════════════════════════════════
 = Grounding Against the Present Source
 // ═══════════════════════════════════════════════════════════════════════════
@@ -3709,6 +3731,17 @@ beside the clipboard on the handheld surface's Android app, as a new item
 (Remark 8.3) amending Corollary 8.3's "clipboard only". Filed with the share
 (MKJ-S8) and ahead of the picker (MKJ-S10). Moves the front-matter version
 line.
+
+*v1.16 --- 2026-10-11.* Admits the cast figure and the voice's part on the
+handheld surface's drama unit, as a new item (Remark 9.3): each character
+drawn as a fixed figure that moves while their line is heard, and their
+lines read in a woman's or a man's part. Both reveal the speaker, which the
+name beside each line already shows. Motivated by play on the phone: with
+one voice and a letter in a ring for every character, the learner could not
+tell who was talking without reading. Filed with `packages/ui/topik`'s
+`core/cast` and `cast-figure`, `@some-ui/makjang`'s `gender` and `figure`,
+and `@some-ui/speech`'s `lib/part`, which implement it. Moves the
+front-matter version line.
 
 #pagebreak()
 

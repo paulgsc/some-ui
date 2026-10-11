@@ -3,6 +3,7 @@ export type {
   Character,
   CharacterId,
   Choice,
+  Gender,
   Lesson,
   Line,
   Narration,
@@ -11,6 +12,7 @@ export type {
   Scene,
 } from "./schema"
 export {
+  GENDERS,
   isLine,
   MAX_BRANCHES,
   MAX_DEPTH,

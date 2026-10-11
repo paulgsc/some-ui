@@ -12,11 +12,12 @@
  * what to present, and a runtime calls the ports.
  *
  * A new kind of port is a new rendition kind, and lands with a canon line
- * saying what it reveals (MK7). The voice is Cor. 4.4's audio rung; the
- * sound is the feeling anchor's tone and cry (Rem. 9.2).
+ * saying what it reveals (MK7). The voice is Cor. 4.4's audio rung, read in
+ * the speaker's part (Rem. 9.3); the sound is the feeling anchor's tone and
+ * cry (Rem. 9.2).
  */
 
-import type { CharacterId } from "@makjang/schema"
+import type { CharacterId, Gender } from "@makjang/schema"
 
 /** How one request to a port ended. A port never throws. */
 export type Presented = "presented" | "unavailable" | "cancelled"
@@ -28,6 +29,12 @@ export type VoiceRequest = {
   text: string
   /** Who says it; `null` for narration. */
   speaker: CharacterId | null
+  /**
+   * The speaker's gender, when the cast gives one: a port that can voice a
+   * woman's and a man's part apart reads it, and one that cannot ignores
+   * it. `null` for narration and for a speaker the cast gives none.
+   */
+  gender: Gender | null
   /**
    * `true` for the learner's own replay, which cuts in on whatever is
    * playing; `false` for a beat the lesson reached, which waits its turn.

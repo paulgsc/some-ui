@@ -2,8 +2,12 @@
  * The drama's voice port over the page's speech session: makjang's
  * `VoicePort` (`media.ts`), adapted from `@some-ui/speech`'s `Speaker`.
  *
- * Every character speaks in the voice the person chose in Settings, since a
- * `Speaker` cannot name one (docs/makjang/README.md, "3. Media"). What
+ * A `Speaker` cannot name a voice (docs/makjang/README.md, "3. Media"), so
+ * a character is voiced in a part instead: their gender, when the cast gives
+ * one, which the speech session reads in a woman's or a man's voice that
+ * keeps the person's choice in Settings (`@some-ui/speech`'s `lib/part`).
+ * Narration, and a character the cast gives no gender, speak in the chosen
+ * voice as it is. What
  * became of a line is translated once, here: a muted, failed or ended line
  * was not presented, and the beat stays readable as text. A failed one is
  * also reported (`reportFailure`). A line is
@@ -52,6 +56,7 @@ export function speakerVoice(speaker: Speaker | null): VoicePort | null {
         urgency: request.interrupt ? "now" : "next",
         signal,
         onStart: request.onStart,
+        ...(request.gender === null ? {} : { part: request.gender }),
       }),
     audible: () =>
       !speaker.muted &&

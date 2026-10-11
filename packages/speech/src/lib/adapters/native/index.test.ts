@@ -10,6 +10,7 @@ import {
   createNativeSpeechAdapter,
   VOICE_MISSING_ERROR_NAME,
 } from "@speech/lib/adapters/native"
+import { DEVICE_PART_PITCH } from "@speech/lib/part"
 import { isAbortError } from "@speech/lib/promise/abort"
 import { createFakeNativeEngine, flushAsync, track } from "@speech/lib/testing"
 import { describe, expect, it, vi } from "vitest"
@@ -268,6 +269,31 @@ describe("native adapter", () => {
     await flushAsync()
 
     expect(fake.stopCount).toBe(3)
+  })
+
+  it("reads each part in the person's voice, at the part's pitch", async () => {
+    const { fake, adapter } = setup(
+      { voices: VOICES },
+      { voiceId: "ko-kr-x-kod-local", pitch: 1.1 }
+    )
+    await flushAsync()
+
+    for (const part of [undefined, "female", "male"] as const) {
+      void adapter.speak("네", { part }).catch(() => undefined)
+      await flushAsync()
+    }
+
+    expect(fake.spoken.map((request) => request.voiceId)).toEqual([
+      "ko-kr-x-kod-local",
+      "ko-kr-x-kod-local",
+      "ko-kr-x-kod-local",
+    ])
+    const [own, female, male] = fake.spoken.map((request) => request.pitch)
+    expect(own).toBe(1.1)
+    expect(female).toBeCloseTo(1.1 * DEVICE_PART_PITCH.female)
+    expect(male).toBeCloseTo(1.1 * DEVICE_PART_PITCH.male)
+    expect(male).toBeLessThan(own ?? 0)
+    expect(female).toBeGreaterThan(own ?? 0)
   })
 
   it("speaks every line in its language in the chosen voice", async () => {

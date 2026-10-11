@@ -13,12 +13,15 @@
  *   first-order item, Prop. 4.2), none repeats another, each has a `why`,
  *   and an odd-one-out's hold the content words of the `source` it names;
  * - no two checks share an id;
- * - every scene names a feeling the renderer has (`core/feeling`).
+ * - every scene names a feeling the renderer has (`core/feeling`);
+ * - a character's `figure`, when named, is one the renderer draws
+ *   (`core/cast`).
  *
  * A choice with an error is not asked: its scene becomes a leaf and the
  * subtree under it is dropped, as Remark 4.7 drops an item at load. A
  * feeling outside the vocabulary or a level outside TOPIK's has no smaller
- * piece to drop, so it rejects the tree. Findings are reported over the whole
+ * piece to drop, so it rejects the tree. A figure outside the vocabulary is
+ * only a warning: the character is drawn in one `figuresOf` picks. Findings are reported over the whole
  * tree, a dropped subtree included, so one round of fixes covers everything.
  *
  * Invariants (full text in docs/makjang/README.md, "Invariants"):
@@ -30,6 +33,7 @@ import type { Lesson, Scene } from "@some-ui/makjang"
 import { FEELING_KEYS, isFeelingKey } from "@some-ui/styles/theme"
 import type { Probe } from "@topik/lib/topik"
 import { GLOSS_RELATION, ProbeSchema } from "@topik/lib/topik"
+import { FIGURE_KEYS, isFigureKey } from "@topik/lib/topik/core/cast"
 import {
   diffUtterance,
   MIN_DIFF_SIMILARITY,
@@ -253,6 +257,14 @@ export function auditTeaching(lesson: Lesson<unknown>): TeachingAudit {
   if (!TOPIK_LEVELS.some((level) => level === lesson.level)) {
     rejectTree(context, "level", `${lesson.level} is not a TOPIK level (1-6)`)
   }
+  lesson.cast.forEach(({ figure }, index) => {
+    if (figure !== undefined && !isFigureKey(figure)) {
+      reporter(context, `cast.${index}.figure`)(
+        "warning",
+        `"${figure}" is not a figure the renderer draws (${FIGURE_KEYS.join(", ")}): this character is drawn as another`
+      )
+    }
+  })
   const root = auditScene(lesson.root, "root", context)
   if (context.rejected) return { ok: false, findings: context.findings }
   if (root.choice === undefined) {

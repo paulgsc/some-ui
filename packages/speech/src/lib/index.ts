@@ -24,6 +24,7 @@ export type {
 } from "./adapters"
 export * from "./hooks"
 export * from "./language"
+export * from "./part"
 export * from "./promise"
 export * from "./promise/abort"
 export * from "./queue"

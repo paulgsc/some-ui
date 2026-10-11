@@ -28,6 +28,7 @@ import {
   DEFAULT_OPENAI_EDGE_ENDPOINT,
 } from "@speech/lib/engine/tts-client"
 import type { SpokenLanguage } from "@speech/lib/language"
+import type { VoicePart } from "@speech/lib/part"
 import { createSpeechLedger } from "@speech/lib/promise"
 import {
   createAbortError,
@@ -44,9 +45,12 @@ export type HttpSpeechAdapterOptions = {
    * The voice for a line in `language` (`hostedVoiceFor` over the person's
    * choice, from the registry). `null` means this service has no voice for
    * that language, and the line fails rather than going to one that cannot
-   * read it.
+   * read it. A `part` asks for a voice of that gender (`lib/part`).
    */
-  voiceFor: (language: SpokenLanguage | undefined) => VoiceConfig | null
+  voiceFor: (
+    language: SpokenLanguage | undefined,
+    part?: VoicePart
+  ) => VoiceConfig | null
   fetchImpl?: FetchImpl
   player?: AudioPlayer
   playerOptions?: AudioPlayerOptions
@@ -86,7 +90,7 @@ export function createHttpSpeechAdapter(
     void entry.promise.catch(() => controller.abort())
 
     const run = async (): Promise<void> => {
-      const voice = options.voiceFor(speakOptions.language)
+      const voice = options.voiceFor(speakOptions.language, speakOptions.part)
       if (!voice) {
         throw new Error(
           `${service.provider} has no voice for ${speakOptions.language ?? "the default language"}`
@@ -181,7 +185,8 @@ export const httpSpeech: SpeechBackend = defineSpeechBackend((config) => {
       format: config.format ?? "mp3",
       timeout: config.timeoutMs,
     },
-    voiceFor: (language) => hostedVoiceFor(hosted, language ?? config.language),
+    voiceFor: (language, part) =>
+      hostedVoiceFor(hosted, language ?? config.language, part),
     fetchImpl: config.fetchImpl,
   })
 })
