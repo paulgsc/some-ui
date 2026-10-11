@@ -266,6 +266,9 @@ malformed-payload cases exercise.
 
 Service workers, `Notification`, and `PushManager` all require a secure
 context. `http://localhost` qualifies; `http://nixos.local` and
-`http://192.168.x.x` do not. The HTTPS dev setup already in `vite.config.ts`
-(the `certs/nixos.local+3.pem` pair) covers this — without it the settings
-section renders an explanation instead of the toggle.
+`http://192.168.x.x` do not. On the LAN the app is served over HTTPS by Caddy
+on the host, with a publicly trusted certificate: `https://www.home.maishatu.com`
+for the Docker build, `https://dev.home.maishatu.com` for `vite dev`
+(paulgsc/dotfiles, `nixos/subdomains`). Opened any other way than those or
+`localhost`, the settings section renders an explanation instead of the
+toggle.

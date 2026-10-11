@@ -238,9 +238,6 @@ How it works, and why each piece is there:
   the device's `localhost` is your machine. Not the LAN address: that is not a
   secure context, and the device backend hashes with `crypto.subtle`, which needs
   one. `localhost` is one even over plain http.
-- `dev:web` sets `SOME_UI_DEV_HTTP=1`. With mkcert certs in `certs/`, `vite`
-  otherwise serves https, and the WebView does not trust mkcert's CA and
-  Capacitor does nothing with a certificate error: a blank screen.
 - `dev:web` pins the same four variables as `build:web` (above), so the dev
   server and the APK agree on the backend, the profile and the base path.
 
