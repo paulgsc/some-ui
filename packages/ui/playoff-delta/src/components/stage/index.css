@@ -59,10 +59,7 @@
     width: 0;
   }
 
-  .pd-seg--done > i {
-    width: 100%;
-  }
-
+  .pd-seg--done > i,
   .pd-seg--now > i {
     width: 100%;
   }
@@ -135,24 +132,26 @@
     overflow: visible;
   }
 
+  /* Each hue leans toward the text color, so light's palest chart slot and
+     dark's deepest still clear 3:1 against the card (about 4.3:1 and 4.9:1). */
   .pd-hue-1 {
-    --tone: var(--chart-1);
+    --tone: color-mix(in oklch, var(--chart-1) 65%, var(--foreground));
   }
 
   .pd-hue-2 {
-    --tone: var(--chart-2);
+    --tone: color-mix(in oklch, var(--chart-2) 65%, var(--foreground));
   }
 
   .pd-hue-3 {
-    --tone: var(--chart-3);
+    --tone: color-mix(in oklch, var(--chart-3) 65%, var(--foreground));
   }
 
   .pd-hue-4 {
-    --tone: var(--chart-4);
+    --tone: color-mix(in oklch, var(--chart-4) 65%, var(--foreground));
   }
 
   .pd-hue-5 {
-    --tone: var(--chart-5);
+    --tone: color-mix(in oklch, var(--chart-5) 65%, var(--foreground));
   }
 
   .pd-tile {

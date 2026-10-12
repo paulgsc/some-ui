@@ -1,5 +1,7 @@
-import type { CSSProperties, JSX } from "react"
+import type { JSX } from "react"
+import { delay as revealDelay } from "@playoff-delta/components/slides/shared"
 import type { Motion, Primitive, SymbolDef } from "@playoff-delta/lib/symbols"
+import { cn } from "@some-ui/core-utils"
 import { assertNever } from "@some-ui/intent-kit"
 
 /** Complete class strings, so a content scan sees every one. */
@@ -30,9 +32,6 @@ const DOT: Readonly<Record<"you" | "team" | "out", string>> = {
   out: "pd-p-out",
 }
 
-const classes = (...names: ReadonlyArray<string | false | undefined>): string =>
-  names.filter(Boolean).join(" ")
-
 const partKey = (p: Primitive): string =>
   p.kind === "line" ? `line-${p.y}` : `${p.kind}-${p.x}-${p.y}`
 
@@ -43,7 +42,7 @@ const Part = ({ p }: { p: Primitive }): JSX.Element => {
     case "out": {
       return (
         <circle
-          className={classes(DOT[p.kind], p.motion && MOTION[p.motion])}
+          className={cn(DOT[p.kind], p.motion && MOTION[p.motion])}
           cx={p.x}
           cy={p.y}
           r={6}
@@ -53,7 +52,7 @@ const Part = ({ p }: { p: Primitive }): JSX.Element => {
     case "win": {
       return (
         <circle
-          className={classes("pd-p-win", p.motion && MOTION[p.motion])}
+          className={cn("pd-p-win", p.motion && MOTION[p.motion])}
           cx={p.x}
           cy={p.y}
           r={3.2}
@@ -122,18 +121,17 @@ export const SymbolGlyph = ({
   viewBox?: string
   className?: string
 }): JSX.Element => {
-  const style: CSSProperties & Record<"--d", string> = { "--d": `${delay}s` }
   return (
     <svg
       aria-hidden="true"
-      className={classes(
+      className={cn(
         "pd-sym",
         HUE[hue],
         loop && "pd-sym--loop",
         tile && "pd-tile",
         className
       )}
-      style={style}
+      style={revealDelay(delay)}
       viewBox={viewBox}
     >
       {parts.map((p) => (

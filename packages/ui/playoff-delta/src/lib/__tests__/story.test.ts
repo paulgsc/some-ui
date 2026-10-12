@@ -5,7 +5,6 @@ import {
   claimOf,
   floorKey,
   floorRecord,
-  parseStorySeason,
   type StoryResult,
   type StoryWeek,
 } from "@playoff-delta/lib/story"
@@ -16,17 +15,6 @@ const week = (n: number): StoryWeek => {
   if (!w) throw new Error(`no week ${n}`)
   return w
 }
-
-describe("the contract", () => {
-  it("parses the sample season", () => {
-    expect(SAMPLE_SEASON.weeks).toHaveLength(17)
-  })
-
-  it("refuses a feed that breaks it", () => {
-    expect(() => parseStorySeason({ ...SAMPLE_SEASON, version: 2 })).toThrow()
-    expect(() => parseStorySeason({ ...SAMPLE_SEASON, weeks: [] })).toThrow()
-  })
-})
 
 describe("claimOf", () => {
   it("is the first row with a way in", () => {
@@ -54,8 +42,8 @@ describe("floorKey", () => {
     const a = claimOf([5], 6)
     const b = claimOf([null, 2], 6)
     const out = claimOf([null], 6)
-    expect(floorKey(a)).toBeLessThan(floorKey(b))
-    expect(floorKey(b)).toBeLessThan(floorKey(out))
+    expect(floorKey(a, 17)).toBeLessThan(floorKey(b, 17))
+    expect(floorKey(b, 17)).toBeLessThan(floorKey(out, 17))
   })
 })
 

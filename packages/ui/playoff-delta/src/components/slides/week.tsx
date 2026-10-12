@@ -9,19 +9,23 @@ import {
   floorKey,
   floorRecord,
   isOpen,
+  nameOf,
+  plural,
+  SEEDS,
+  sinceLabel,
   type StoryClaim,
   type StoryResult,
   type TemplateKey,
 } from "@playoff-delta/lib/story"
 import { symbolFor } from "@playoff-delta/lib/symbols"
 
-import { delay, Kicker, nameOf, Reveal, type SlideProps } from "./shared"
+import { delay, Kicker, Reveal, type SlideProps } from "./shared"
 
 function verdict(c: StoryClaim): { big: string; line: string } {
   if (!c.in) return { big: "Out.", line: "every path is closed" }
   if (c.extraWins === 0)
     return { big: "Still in.", line: `Still in, as high as #${c.seed}` }
-  const wins = `${c.extraWins} more win${c.extraWins > 1 ? "s" : ""}`
+  const wins = plural(c.extraWins, "more win")
   return { big: `${wins}.`, line: `${wins}, then as high as #${c.seed}` }
 }
 
@@ -45,11 +49,11 @@ const Floor = ({
 export const Before = ({ season, week }: SlideProps): JSX.Element => {
   const c = claimOf(week.paths.before, week.paths.winsBefore)
   const open = week.paths.before.flatMap((_, x) =>
-    [1, 2, 3, 4, 5, 6, 7].filter((seed) => isOpen(week.paths.before, x, seed))
+    SEEDS.filter((seed) => isOpen(week.paths.before, x, seed))
   ).length
   return (
     <>
-      <Kicker>After week {week.week - 1}</Kicker>
+      <Kicker>{sinceLabel(week.week)}</Kicker>
       <div>
         <b className="pd-big block">{verdict(c).big}</b>
         <span className="pd-say text-muted-foreground">
@@ -61,7 +65,7 @@ export const Before = ({ season, week }: SlideProps): JSX.Element => {
       <PathGrid paths={week.paths.before} />
       <Floor at={0.9}>
         <span className="pd-mono pd-small text-muted-foreground">
-          {open} open path{open === 1 ? "" : "s"}
+          {plural(open, "open path")}
         </span>
         <b className="pd-mono text-[5.5cqw]">
           floor {floorRecord(c, season.seasonLength)}
@@ -192,7 +196,7 @@ const TemplateCard = ({
   const count = !results.length
     ? "none this week"
     : k === "forced"
-      ? `${results.length} game${results.length > 1 ? "s" : ""}${scored.length ? ` · ${hits} of ${scored.length} that mattered ${s.verb}` : ""}`
+      ? `${plural(results.length, "game")}${scored.length ? ` · ${hits} of ${scored.length} that mattered ${s.verb}` : ""}`
       : `${hits} of ${scored.length} ${s.verb}`
   return (
     <Reveal at={at} className={`pd-card ${tone}`}>
@@ -286,9 +290,9 @@ export const After = ({ season, week }: SlideProps): JSX.Element => {
     ? b.in
       ? "Absorbed."
       : "Still out."
-    : floorKey(a) < floorKey(b)
+    : floorKey(a, season.seasonLength) < floorKey(b, season.seasonLength)
       ? "Better."
-      : floorKey(a) > floorKey(b)
+      : floorKey(a, season.seasonLength) > floorKey(b, season.seasonLength)
         ? "Worse."
         : "Held."
   return (

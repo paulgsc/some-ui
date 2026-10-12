@@ -1,13 +1,14 @@
-import type { CSSProperties, JSX } from "react"
+import type { JSX } from "react"
+import { delay } from "@playoff-delta/components/slides/shared"
 import {
   cellChanges,
   isOpen,
+  plural,
+  SEEDS,
   type CellChange,
   type StoryPaths,
   type StoryWeek,
 } from "@playoff-delta/lib/story"
-
-const SEEDS = [1, 2, 3, 4, 5, 6, 7] as const
 
 /** Complete class strings, so a content scan sees every one. */
 const CELL: Readonly<Record<CellChange, string>> = {
@@ -18,7 +19,7 @@ const CELL: Readonly<Record<CellChange, string>> = {
 }
 
 const rowLabel = (x: number): string =>
-  x === 0 ? "never win again" : `+${x} win${x > 1 ? "s" : ""}`
+  x === 0 ? "never win again" : `+${plural(x, "win")}`
 
 type Row = {
   readonly label: string
@@ -73,19 +74,15 @@ export const PathGrid = ({
         >
           {row.label}
         </span>,
-        ...row.cells.map(({ seed, change }) => {
-          const style: CSSProperties & Record<"--d", string> = {
-            "--d": `${(0.15 + (row.offset + seed) * 0.012).toFixed(3)}s`,
-          }
-          return (
-            <i
-              key={`${row.label}-${seed}`}
-              className={CELL[change]}
-              style={style}
-              aria-label={`${row.label}, seed ${seed}: ${change}`}
-            />
-          )
-        }),
+        ...row.cells.map(({ seed, change }) => (
+          <i
+            key={`${row.label}-${seed}`}
+            role="img"
+            className={CELL[change]}
+            style={delay(0.15 + (row.offset + seed) * 0.012)}
+            aria-label={`${row.label}, seed ${seed}: ${change}`}
+          />
+        )),
       ])}
       {absorbed && week ? (
         <div className="pd-in absolute inset-0 flex flex-col items-center justify-center gap-[1cqw] [--d:1.6s]">

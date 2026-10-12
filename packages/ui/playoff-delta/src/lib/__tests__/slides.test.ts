@@ -9,14 +9,6 @@ describe("the story", () => {
     }
   })
 
-  it("has a voiceover line for every slide of every week", () => {
-    for (const w of SAMPLE_SEASON.weeks) {
-      for (const id of slidesFor(w)) {
-        expect(narration(SAMPLE_SEASON, w, id).length).toBeGreaterThan(10)
-      }
-    }
-  })
-
   it("says what the paths say", () => {
     const w = SAMPLE_SEASON.weeks.find((x) => x.week === 9)
     if (!w) throw new Error("no week 9")

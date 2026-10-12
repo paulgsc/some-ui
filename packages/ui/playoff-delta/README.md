@@ -42,14 +42,11 @@ green went your way, red didn't, ★ moved the paths, ↯ lost from ahead.
 
 ```sh
 pnpm --filter www build
-pnpm --filter www record:playoff-delta -- --week 9 [--theme rose-night] [--out out/playoff-delta]
+pnpm --filter www record:playoff-delta --week 9
 ```
 
-`apps/www/tests/record/playoff-delta.ts` serves the build and records each
-slide at 1080x1920 (`/playoff-delta?week=9&slide=N&record=true`) into its own
-`.webm`, with a still per slide and `voiceover.md` (each slide's line and
-hold). Record against the build, not `vite dev`: the dev tools sit in the
-frame there.
+`apps/www/tests/record/playoff-delta.ts` writes one clip and still per slide
+and `voiceover.md`; its header has the options.
 
 ## Next
 

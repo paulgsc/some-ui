@@ -1,8 +1,9 @@
 import type { JSX } from "react"
 import { SymbolGlyph } from "@playoff-delta/components/symbol"
+import { nameOf } from "@playoff-delta/lib/story"
 import { ALPHABET, SYMBOLS } from "@playoff-delta/lib/symbols"
 
-import { Kicker, nameOf, Reveal, type SlideProps } from "./shared"
+import { Kicker, Reveal, type SlideProps } from "./shared"
 
 export const Hook = (): JSX.Element => {
   return (

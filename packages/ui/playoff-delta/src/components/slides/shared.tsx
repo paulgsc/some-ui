@@ -13,9 +13,6 @@ export const delay = (
   "--d": `${seconds}s`,
 })
 
-export const nameOf = (season: StorySeason, code: string): string =>
-  season.names[code] ?? code
-
 /** A line that rises in after `at` seconds. */
 export const Reveal = ({
   at,

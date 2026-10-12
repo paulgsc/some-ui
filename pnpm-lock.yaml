@@ -1347,6 +1347,9 @@ importers:
 
   packages/ui/playoff-delta:
     dependencies:
+      '@some-ui/core-utils':
+        specifier: workspace:*
+        version: link:../../core-utils
       '@some-ui/intent-kit':
         specifier: workspace:*
         version: link:../../intent-kit

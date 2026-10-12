@@ -6,7 +6,8 @@ import {
   type JSX,
 } from "react"
 import { SLIDES } from "@playoff-delta/components/slides"
-import { initialPlayer, step } from "@playoff-delta/lib/player"
+import { clampSlide, initialPlayer, step } from "@playoff-delta/lib/player"
+import { SAMPLE_SEASON } from "@playoff-delta/lib/sample"
 import {
   HOLD_MS,
   narration,
@@ -67,7 +68,7 @@ const Frame = ({
   at: number
   running: boolean
   fill: boolean
-  /** Record mode: the week's slides, holds and voiceover, for the recorder. */
+  /** Record mode: the week, its slides, holds and voiceover, for the recorder. */
   script?: string
   onBack?: () => void
   onNext?: () => void
@@ -116,10 +117,13 @@ const WeekStory = ({
   onWeekChange?: (week: number) => void
 }): JSX.Element => {
   const ids = useMemo(() => slidesFor(week), [week])
+  const count = ids.length
   const [player, dispatch] = useReducer(
     step,
-    initialPlayer(ids.length, initialSlide)
+    initialPlayer(count, initialSlide)
   )
+  // Recording follows the address; playing follows the player.
+  const at = clampSlide(count, record ? initialSlide : player.slide)
 
   // The one timer: while playing, the current slide holds, then advances.
   useEffect(() => {
@@ -128,7 +132,7 @@ const WeekStory = ({
     const id = ids[slide]
     if (!id) return
     const t = setTimeout(
-      () => dispatch({ type: "elapsed", slide }),
+      () => dispatch({ type: "elapsed", slide, count: ids.length }),
       HOLD_MS[id]
     )
     return (): void => clearTimeout(t)
@@ -137,16 +141,22 @@ const WeekStory = ({
   useEffect(() => {
     if (record) return
     const onKey = (e: KeyboardEvent): void => {
-      if (e.target instanceof HTMLSelectElement) return
+      // A focused control keeps its own keys; Space on a button presses it.
+      if (e.altKey || e.ctrlKey || e.metaKey) return
+      if (
+        e.target instanceof Element &&
+        e.target.closest("button, select, input, textarea, a")
+      )
+        return
       if (e.key === "ArrowRight" || e.key === " ") {
         e.preventDefault()
-        dispatch({ type: "next" })
+        dispatch({ type: "next", count })
       }
       if (e.key === "ArrowLeft") dispatch({ type: "back" })
     }
     window.addEventListener("keydown", onKey)
     return (): void => window.removeEventListener("keydown", onKey)
-  }, [record])
+  }, [record, count])
 
   if (record)
     return (
@@ -154,16 +164,17 @@ const WeekStory = ({
         season={season}
         week={week}
         ids={ids}
-        at={player.slide}
+        at={at}
         running={false}
         fill
-        script={JSON.stringify(
-          ids.map((slide) => ({
+        script={JSON.stringify({
+          week: week.week,
+          slides: ids.map((slide) => ({
             slide,
             holdMs: HOLD_MS[slide],
             line: narration(season, week, slide),
-          }))
-        )}
+          })),
+        })}
       />
     )
 
@@ -192,7 +203,7 @@ const WeekStory = ({
           <button
             type="button"
             className="bg-primary text-primary-foreground rounded-md px-3 py-1 text-sm font-semibold"
-            onClick={() => dispatch({ type: "toggle" })}
+            onClick={() => dispatch({ type: "toggle", count })}
           >
             {player.playing ? "Pause" : "Play"}
           </button>
@@ -203,11 +214,11 @@ const WeekStory = ({
           season={season}
           week={week}
           ids={ids}
-          at={player.slide}
+          at={at}
           running={player.playing}
           fill={false}
           onBack={() => dispatch({ type: "back" })}
-          onNext={() => dispatch({ type: "next" })}
+          onNext={() => dispatch({ type: "next", count })}
         />
       </div>
     </div>
@@ -215,19 +226,20 @@ const WeekStory = ({
 }
 
 /**
- * The story for one team's season, a week at a time, as a 9:16 stage meant to
- * be screen-recorded. `record` renders the one slide `initialSlide` names,
- * filling the viewport, with nothing to press: the recorder sizes the
- * viewport (1080x1920) and captures it.
+ * The story for one team's season (the bundled sample until a real feed is
+ * passed in), a week at a time, as a 9:16 stage meant to be screen-recorded.
+ * `record` renders the one slide `initialSlide` names, filling the viewport,
+ * with nothing to press: the recorder sizes the viewport (1080x1920) and
+ * captures it.
  */
 export const PlayoffDeltaStage = ({
-  season,
+  season = SAMPLE_SEASON,
   week,
   initialSlide = 0,
   record = false,
   onWeekChange,
 }: {
-  season: StorySeason
+  season?: StorySeason
   /** The week to show; the first in the season when absent or unknown. */
   week?: number
   initialSlide?: number

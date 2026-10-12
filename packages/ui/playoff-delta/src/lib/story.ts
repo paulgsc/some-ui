@@ -158,6 +158,20 @@ export type StoryPaths = z.infer<typeof Paths>
 export const parseStorySeason = (data: unknown): StorySeason =>
   StorySeasonSchema.parse(data)
 
+/** The seeds a path can end at, best first. */
+export const SEEDS: ReadonlyArray<number> = [1, 2, 3, 4, 5, 6, 7]
+
+export const nameOf = (season: StorySeason, code: string): string =>
+  season.names[code] ?? code
+
+/** Where last week's paths stand: "After week 8", or "Before week 1". */
+export const sinceLabel = (week: number): string =>
+  week === 1 ? "Before week 1" : `After week ${week - 1}`
+
+/** "1 win", "2 wins". */
+export const plural = (n: number, word: string): string =>
+  `${n} ${word}${n === 1 ? "" : "s"}`
+
 /** The claim a paths row implies: the first x with a way in. */
 export function claimOf(
   paths: ReadonlyArray<number | null>,
@@ -177,7 +191,6 @@ export function floorRecord(c: StoryClaim, seasonLength: number): string {
   return `${w}–${seasonLength - w}`
 }
 
-/** Orders claims: fewer total wins needed, then a better seed. Lower is better. */
 /**
  * A loss from ahead: the loser led, or was the likelier winner at some point.
  * Reads the loser's side only, so it marks a result for whoever lost it.
@@ -187,8 +200,12 @@ export const blewIt = (r: StoryResult): boolean =>
   r.collapse !== undefined &&
   (r.collapse.led || r.collapse.peakWinProbability >= 0.5)
 
-export const floorKey = (c: StoryClaim): number =>
-  c.in ? (c.wins + c.extraWins) * 10 + c.seed : 999
+/**
+ * Orders claims: fewer total wins needed, then a better seed; out sits one
+ * win past a perfect season. Lower is better, and differences scale with wins.
+ */
+export const floorKey = (c: StoryClaim, seasonLength: number): number =>
+  c.in ? (c.wins + c.extraWins) * 10 + c.seed : (seasonLength + 1) * 10
 
 /** Is the cell (x more wins, seed s) an open path? */
 export const isOpen = (
@@ -212,7 +229,7 @@ export function cellChanges(
   const { before, after } = week.paths
   const shift = week.game.won ? 1 : 0
   return after.map((_, x) =>
-    [1, 2, 3, 4, 5, 6, 7].map((s): CellChange => {
+    SEEDS.map((s): CellChange => {
       const now = isOpen(after, x, s)
       const px = x + shift
       const was = px < before.length ? isOpen(before, px, s) : now

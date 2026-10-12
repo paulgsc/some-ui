@@ -2,7 +2,7 @@
  * The story's fixed order of slides for one week, how long each holds when
  * playing on its own, and the voiceover line each one carries. The line is
  * written from the same week data the slide draws, so the narration script
- * and the screen never disagree.
+ * and the screen state the same facts.
  */
 
 import { assertNever } from "@some-ui/intent-kit"
@@ -10,12 +10,15 @@ import { assertNever } from "@some-ui/intent-kit"
 import {
   claimOf,
   floorRecord,
+  nameOf,
+  plural,
+  sinceLabel,
   type StorySeason,
   type StoryWeek,
   type TemplateKey,
 } from "./story"
 
-export const SLIDE_IDS = [
+const SLIDE_IDS = [
   "hook",
   "test",
   "alphabet",
@@ -65,9 +68,6 @@ export const HOW: ReadonlyArray<TemplateKey> = [
   "forced",
 ]
 
-const plural = (n: number, word: string): string =>
-  `${n} ${word}${n === 1 ? "" : "s"}`
-
 function claimLine(
   season: StorySeason,
   paths: ReadonlyArray<number | null>,
@@ -86,8 +86,8 @@ export function narration(
   week: StoryWeek,
   id: SlideId
 ): string {
-  const name = season.names[season.team] ?? season.team
-  const n = (code: string): string => season.names[code] ?? code
+  const name = nameOf(season, season.team)
+  const n = (code: string): string => nameOf(season, code)
   const { record } = week
   switch (id) {
     case "hook": {
@@ -103,7 +103,7 @@ export function narration(
       return "And every week, we watch the same seven things."
     }
     case "before": {
-      return `After week ${week.week - 1}, ${claimLine(season, week.paths.before, week.paths.winsBefore)}.`
+      return `${sinceLabel(week.week)}, ${claimLine(season, week.paths.before, week.paths.winsBefore)}.`
     }
     case "game": {
       return week.game.won

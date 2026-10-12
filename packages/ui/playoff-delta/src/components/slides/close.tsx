@@ -1,11 +1,17 @@
 import type { JSX } from "react"
-import { claimOf, floorRecord, type StoryClaim } from "@playoff-delta/lib/story"
+import {
+  claimOf,
+  floorKey,
+  floorRecord,
+  nameOf,
+  type StoryClaim,
+} from "@playoff-delta/lib/story"
 
-import { delay, Kicker, nameOf, Reveal, type SlideProps } from "./shared"
+import { delay, Kicker, Reveal, type SlideProps } from "./shared"
 
-/** A rival's standing as one number: total wins needed, seed as the tiebreak. */
-const depth = (c: StoryClaim, seasonLength: number): number =>
-  c.in ? c.wins + c.extraWins + c.seed / 10 : seasonLength + 1
+/** A floor as a share of the season; out fills the bar. */
+const barWidth = (c: StoryClaim, seasonLength: number): number =>
+  c.in ? ((c.wins + c.extraWins) / seasonLength) * 100 : 100
 
 export const Rivals = ({ season, week }: SlideProps): JSX.Element => {
   const label = (c: StoryClaim): string =>
@@ -17,9 +23,9 @@ export const Rivals = ({ season, week }: SlideProps): JSX.Element => {
       <h2 className="pd-q">How close to rock bottom?</h2>
       <div className="flex flex-col gap-[3cqw]">
         {week.rivals.map((r, i) => {
-          const b = depth(r.before, season.seasonLength)
-          const a = depth(r.after, season.seasonLength)
-          const w = depth(r.worst, season.seasonLength)
+          const b = floorKey(r.before, season.seasonLength)
+          const a = floorKey(r.after, season.seasonLength)
+          const w = floorKey(r.worst, season.seasonLength)
           const pct =
             w <= b
               ? null
@@ -158,7 +164,6 @@ export const Benchmark = ({ season, week }: SlideProps): JSX.Element => {
       <div className="flex flex-col gap-[3cqw]">
         {rows.map((r, i) => {
           const at = 0.5 + i * 1.1
-          const fw = r.c.in ? r.c.wins + r.c.extraWins : season.seasonLength
           return (
             <Reveal
               key={r.label}
@@ -180,7 +185,7 @@ export const Benchmark = ({ season, week }: SlideProps): JSX.Element => {
                 <i
                   style={{
                     ...delay(at + 0.2),
-                    width: `${(fw / season.seasonLength) * 100}%`,
+                    width: `${barWidth(r.c, season.seasonLength)}%`,
                   }}
                 />
               </div>

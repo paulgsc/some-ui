@@ -31,6 +31,7 @@ describe("/playoff-delta's search", () => {
   it("drops what is not a whole number or the flag", () => {
     expect(read({ week: "nine", slide: "-1", record: "yes" })).toEqual({})
     expect(read({ week: 2.5 })).toEqual({})
+    expect(read({ week: true, slide: "" })).toEqual({})
     expect(read({})).toEqual({})
   })
 })

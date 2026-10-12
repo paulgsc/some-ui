@@ -1,7 +1,1 @@
-export { PlayoffDeltaPage } from "./components/page"
 export { PlayoffDeltaStage } from "./components/stage"
-export { narration, slidesFor, HOLD_MS, SLIDE_IDS } from "./lib/slides"
-export type { SlideId } from "./lib/slides"
-export { parseStorySeason } from "./lib/story"
-export type { StorySeason, StoryWeek } from "./lib/story"
-export { SAMPLE_SEASON } from "./lib/sample"
