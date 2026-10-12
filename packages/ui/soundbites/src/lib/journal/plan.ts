@@ -7,6 +7,10 @@
  * target (the timeline shows the overrun), but never past what the budget
  * leaves once every other cut's take is counted: one take per cut, so a redo
  * gives its own take's time back.
+ *
+ * An episode is a draft on its way to Drive, not an archive: the phone keeps
+ * one, and lets it go once shared, discarded, replaced by another primer, or
+ * left `JOURNAL_IDLE_MS` without a take.
  */
 import { SOUNDBITE_BITS_PER_SECOND } from "@soundbites/lib/policy"
 
@@ -19,6 +23,11 @@ export type JournalPlan = {
   readonly targets: Readonly<Record<string, number>>
   /** ISO 8601, UTC. */
   readonly openedAt: string
+  /**
+   * ISO 8601, UTC: when the primer was opened or a take last kept. The
+   * episode is let go `JOURNAL_IDLE_MS` after it.
+   */
+  readonly touchedAt: string
 }
 
 /** The one take kept for a cut. Its audio is stored beside it by `cutId`. */
@@ -29,6 +38,14 @@ export type JournalTake = {
   readonly durationMs: number
   readonly mimeType: string
   readonly bytes: number
+}
+
+/** How long an episode waits on its next take before it is let go. */
+export const JOURNAL_IDLE_MS = 7 * 86_400_000
+
+/** When `plan` is let go unless a take is kept first, in epoch ms. */
+export function expiresAt(plan: JournalPlan): number {
+  return Date.parse(plan.touchedAt) + JOURNAL_IDLE_MS
 }
 
 /** One tap on a cut's minus or plus. */
@@ -60,7 +77,7 @@ export function nudged(
   return { ...plan.targets, [cutId]: moved }
 }
 
-export type TimelineRow = {
+type TimelineRow = {
   readonly cut: Cut
   /** From 0, in the primer's order. */
   readonly index: number

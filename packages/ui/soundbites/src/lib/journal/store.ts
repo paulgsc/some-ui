@@ -77,7 +77,9 @@ function isPlan(row: unknown): row is JournalPlan {
     "cuts" in row.primer &&
     Array.isArray(row.primer.cuts) &&
     "targets" in row &&
-    typeof row.targets === "object"
+    typeof row.targets === "object" &&
+    "touchedAt" in row &&
+    typeof row.touchedAt === "string"
   )
 }
 
@@ -185,6 +187,8 @@ export function indexedDbJournalStore(): JournalStore {
       }
       tx.objectStore(TAKES).put(take)
       audios.put(audio, take.cutId)
+      // A kept take restarts the episode's idle clock (`JOURNAL_IDLE_MS`).
+      tx.objectStore(PLAN).put({ ...plan, touchedAt: take.recordedAt }, CURRENT)
       await done(tx)
       changed()
     },

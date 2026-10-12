@@ -30,7 +30,7 @@ export const JOURNAL_BUDGET_MAX_MS = 180_000
 export const CUT_TARGET_MIN_MS = 3_000
 
 /** More cuts than this is not a three-minute episode. */
-export const PRIMER_CUTS_MAX = 12
+const PRIMER_CUTS_MAX = 12
 
 export type Cut = {
   readonly id: string

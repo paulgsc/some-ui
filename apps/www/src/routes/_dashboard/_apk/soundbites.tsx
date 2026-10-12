@@ -1,12 +1,14 @@
 import type { JSX } from "react"
+import { cn } from "@some-ui/core-utils"
 import type { SoundbiteSituation, SoundbiteSource } from "@some-ui/soundbites"
-import { phoneSoundbiteStore, Soundbites } from "@some-ui/soundbites"
+import { Journal, phoneSoundbiteStore, Soundbites } from "@some-ui/soundbites"
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
 
 import { handOff, shareAgentExport } from "@/lib/agent-export"
 import { useArrivalKey } from "@/lib/arrival-key"
 import { useAsyncIntent, useIntentEffect } from "@/lib/intent"
 import { IntentButton } from "@/lib/intent/render"
+import { letGoJournal, shareJournal } from "@/lib/journal-share"
 import type { SessionRecord, SessionStatus } from "@/lib/tenant"
 import { sessionsQuery, useSessions } from "@/lib/tenant"
 
@@ -15,7 +17,14 @@ import { sessionsQuery, useSessions } from "@/lib/tenant"
  * today? Say why", a reminder's "Not today", "Hold to talk"): the page starts
  * listening at once and records which.
  */
-type SoundbitesSearch = { say?: "sessions" | "reminder" | "capture" }
+type SoundbitesSearch = {
+  say?: "sessions" | "reminder" | "capture"
+  /**
+   * The Build Journal's voice takes instead of the study soundbites. A `say`
+   * is always a soundbite, so it wins.
+   */
+  tab?: "journal"
+}
 
 const SAY_SOURCES: ReadonlyArray<NonNullable<SoundbitesSearch["say"]>> = [
   "sessions",
@@ -107,8 +116,65 @@ const shareFooter =
     ? (taking: boolean): JSX.Element => <ShareWithAgent taking={taking} />
     : undefined
 
+/**
+ * An episode's takes out through the share sheet, in the primer's order.
+ * Held while a take is in flight, so the files cannot miss it; once the
+ * person says they arrived, the episode leaves the phone.
+ */
+const ShareJournal = ({
+  taking,
+  takes,
+}: {
+  taking: boolean
+  takes: number
+}): JSX.Element => {
+  const share = useAsyncIntent(() => shareJournal(), {
+    presentation: "interactive",
+  })
+  // Android says "shared" once an app is picked, even if the person backs
+  // out of it: the episode leaves the phone only once they say so.
+  useIntentEffect(share.state, (outcome) => {
+    if (outcome !== "shared") return
+    if (
+      confirm(
+        "Did they arrive? OK lets this episode go from the phone; Cancel keeps it here."
+      )
+    )
+      letGoJournal()
+  })
+  return (
+    <section className="space-y-2">
+      <p className="text-muted-foreground text-sm">
+        takes.json and each take&apos;s audio, in the primer&apos;s order. Pick
+        Build Journal/voice/takes in Drive; once they arrive, the episode leaves
+        the phone.
+      </p>
+      <IntentButton
+        state={share.state}
+        onPress={() => share.start(undefined)}
+        disabled={taking || takes === 0}
+        size="sm"
+        idleLabel="Share takes"
+        workingLabel="Preparing..."
+      />
+    </section>
+  )
+}
+
+const journalFooter =
+  import.meta.env.VITE_DEVICE_BACKEND === "true"
+    ? (state: { taking: boolean; takes: number }): JSX.Element => (
+        <ShareJournal {...state} />
+      )
+    : undefined
+
+const TABS = [
+  { tab: undefined, label: "Soundbites" },
+  { tab: "journal", label: "Journal" },
+] as const
+
 const SoundbitesRoute = (): JSX.Element => {
-  const { say } = Route.useSearch()
+  const { say, tab } = Route.useSearch()
   const navigate = useNavigate()
   // Never waited on: the recording starts whether or not the list has
   // loaded, and a soundbite saved before it has notes no sessions.
@@ -120,24 +186,65 @@ const SoundbitesRoute = (): JSX.Element => {
   // clearing below is not a new request, so it never remounts mid-take.
   const arrival = useArrivalKey(isSaySource(say) ? say : undefined)
 
+  const journal = tab === "journal" && !isSaySource(say)
+
   return (
-    <Soundbites
-      key={arrival}
-      source={source}
-      autoStart={source !== "direct"}
-      // Forget the request once honoured, so going back or reloading does
-      // not open the microphone again.
-      onAutoStart={() =>
-        void navigate({ to: "/soundbites", search: {}, replace: true })
-      }
-      situation={() => situationFrom(sessions ?? [])}
-      footer={shareFooter}
-    />
+    <div className="mx-auto flex w-full max-w-md flex-col gap-4">
+      <div
+        role="tablist"
+        aria-label="Voice"
+        className="bg-muted grid grid-cols-2 rounded-full p-1"
+      >
+        {TABS.map((each) => {
+          const selected = (each.tab === "journal") === journal
+          return (
+            <button
+              key={each.label}
+              type="button"
+              role="tab"
+              aria-selected={selected}
+              onClick={() =>
+                void navigate({
+                  to: "/soundbites",
+                  search: each.tab === undefined ? {} : { tab: each.tab },
+                  replace: true,
+                })
+              }
+              className={cn(
+                "focus-visible:ring-ring rounded-full py-2 text-sm font-bold focus-visible:ring-2 focus-visible:outline-none",
+                selected
+                  ? "bg-card text-foreground shadow-sm"
+                  : "text-muted-foreground"
+              )}
+            >
+              {each.label}
+            </button>
+          )
+        })}
+      </div>
+      {journal ? (
+        <Journal footer={journalFooter} />
+      ) : (
+        <Soundbites
+          key={arrival}
+          source={source}
+          autoStart={source !== "direct"}
+          // Forget the request once honoured, so going back or reloading does
+          // not open the microphone again.
+          onAutoStart={() =>
+            void navigate({ to: "/soundbites", search: {}, replace: true })
+          }
+          situation={() => situationFrom(sessions ?? [])}
+          footer={shareFooter}
+        />
+      )}
+    </div>
   )
 }
 
 function validateSearch(search: Record<string, unknown>): SoundbitesSearch {
-  return isSaySource(search.say) ? { say: search.say } : {}
+  if (isSaySource(search.say)) return { say: search.say }
+  return search.tab === "journal" ? { tab: "journal" } : {}
 }
 
 export const Route = createFileRoute("/_dashboard/_apk/soundbites")({
