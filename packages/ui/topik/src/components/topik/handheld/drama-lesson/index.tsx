@@ -228,15 +228,6 @@ export const DramaLesson = ({
       )
     }
     if (at.kind === "end") {
-      const leave = (
-        <Button
-          variant="outline"
-          className="h-12 min-w-0 flex-1 rounded-2xl"
-          onClick={onLeave}
-        >
-          Back to lessons
-        </Button>
-      )
       if (crossing) {
         return (
           <>
@@ -303,8 +294,14 @@ export const DramaLesson = ({
               <Signpost className="size-5" />
               <span lang="ko">갈림길</span>
             </Button>
-            {leave}
           </div>
+          <Button
+            variant="outline"
+            className="h-12 w-full rounded-2xl"
+            onClick={onLeave}
+          >
+            Back to lessons
+          </Button>
         </>
       )
     }
