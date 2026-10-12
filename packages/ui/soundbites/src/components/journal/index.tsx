@@ -25,18 +25,22 @@ import type {
   JournalActivity,
   JournalState,
 } from "@soundbites/lib/journal/machine"
-import { isSettled, isTaking } from "@soundbites/lib/journal/machine"
+import {
+  isSettled,
+  isTaking,
+  JOURNAL_NOTICES,
+} from "@soundbites/lib/journal/machine"
 import type { Timeline } from "@soundbites/lib/journal/plan"
 import {
   capFor,
   expiresAt,
+  isSpent,
   NUDGE_MS,
   timeline,
 } from "@soundbites/lib/journal/plan"
 import type { JournalPorts } from "@soundbites/lib/journal/runtime"
 import { createJournal } from "@soundbites/lib/journal/runtime"
 import { phoneJournalPorts } from "@soundbites/lib/phone"
-import { SOUNDBITE_MIN_MS } from "@soundbites/lib/policy"
 import {
   ChevronDown,
   FolderOpen,
@@ -110,17 +114,23 @@ const Fold = ({
   )
 }
 
+/** A take's fill: recording, past its target, or within it. */
+function barTone(row: Timeline["rows"][number]): string {
+  if (row.live) return "bg-destructive"
+  return row.takenMs !== null && row.takenMs > row.targetMs
+    ? "bg-warning"
+    : "bg-brand"
+}
+
 /** Where each cut sits, its target dashed and its take filled. */
 const Gantt = ({
   line,
   selected,
-  live,
   disabled,
   onSelect,
 }: {
   line: Timeline
   selected: string | null
-  live: { cutId: string; elapsed: number } | null
   disabled: boolean
   onSelect: (cutId: string) => void
 }): JSX.Element => {
@@ -149,10 +159,7 @@ const Gantt = ({
       </div>
       <ol className="space-y-0.5">
         {line.rows.map((row) => {
-          const taken =
-            live?.cutId === row.cut.id
-              ? live.elapsed
-              : (row.take?.durationMs ?? null)
+          const taken = row.takenMs
           const over = taken !== null && taken > row.targetMs
           const current = row.cut.id === selected
           return (
@@ -194,11 +201,7 @@ const Gantt = ({
                     <span
                       className={cn(
                         "absolute inset-y-0 rounded-md",
-                        live?.cutId === row.cut.id
-                          ? "bg-destructive"
-                          : over
-                            ? "bg-warning"
-                            : "bg-brand"
+                        barTone(row)
                       )}
                       style={{
                         left: at(row.startMs),
@@ -220,11 +223,9 @@ const Gantt = ({
 const Strip = ({
   line,
   selected,
-  liveCut,
 }: {
   line: Timeline
   selected: string | null
-  liveCut: string | null
 }): JSX.Element => (
   <span className="mt-1 flex h-2 gap-[3px]" aria-hidden="true">
     {line.rows.map((row) => (
@@ -232,13 +233,9 @@ const Strip = ({
         key={row.cut.id}
         className={cn(
           "block min-w-1.5 rounded-sm",
-          liveCut === row.cut.id
-            ? "bg-destructive"
-            : row.take === null
-              ? "bg-muted ring-border ring-1 ring-inset"
-              : row.take.durationMs > row.targetMs
-                ? "bg-warning"
-                : "bg-brand",
+          row.takenMs === null
+            ? "bg-muted ring-border ring-1 ring-inset"
+            : barTone(row),
           row.cut.id === selected &&
             "outline-primary outline-2 outline-offset-[1.5px]"
         )}
@@ -288,7 +285,7 @@ const CutSheet = ({
   const cap = capFor(state.shelf.plan, state.shelf.takes, row.cut.id)
   const next = line.rows[row.index + 1]
   const playing = activity.kind === "playing" && activity.cutId === row.cut.id
-  const shown = recording?.elapsed ?? row.take?.durationMs ?? 0
+  const shown = row.takenMs ?? 0
   const hint =
     state.notice !== ""
       ? state.notice
@@ -296,8 +293,8 @@ const CutSheet = ({
         ? recording.elapsed > row.targetMs
           ? `Past the target. ${formatDuration(recording.capMs - recording.elapsed)} left in the budget.`
           : `${formatDuration(row.targetMs - recording.elapsed)} to the target · ${formatDuration(recording.capMs - recording.elapsed)} left in the budget`
-        : cap < SOUNDBITE_MIN_MS
-          ? "The budget is spent. Redo a long take shorter to make room."
+        : isSpent(cap)
+          ? JOURNAL_NOTICES.spent
           : row.take !== null
             ? `Kept ${formatDuration(row.take.durationMs)}. Record again to replace it, up to ${formatDuration(cap)}.`
             : `Up to ${formatDuration(cap)} for this take.`
@@ -359,7 +356,7 @@ const CutSheet = ({
         <button
           type="button"
           onClick={onRecord}
-          disabled={busy || (settled && cap < SOUNDBITE_MIN_MS)}
+          disabled={busy || (settled && isSpent(cap))}
           aria-pressed={recording !== null}
           aria-label={
             row.take !== null && settled
@@ -443,7 +440,6 @@ const CutSheet = ({
 }
 
 export const Journal = ({ ports, footer }: JournalProps): JSX.Element => {
-  // The runtime owns the microphone and the store for this mount, made once.
   /* eslint-disable owner-guard/no-mount-snapshot -- the runtime is created once per mount, as the soundbites page's is */
   const [runtime] = useState(() =>
     createJournal({ ...phoneJournalPorts(), ...ports })
@@ -465,14 +461,9 @@ export const Journal = ({ ports, footer }: JournalProps): JSX.Element => {
   const { shelf, activity } = state
   const plan = shelf.kind === "read" ? shelf.plan : null
   const takes = shelf.kind === "read" ? shelf.takes : []
-  const line = plan === null ? null : timeline(plan, takes)
   const recording = activity.kind === "recording" ? activity : null
+  const line = plan === null ? null : timeline(plan, takes, recording)
   const taking = isTaking(activity)
-  const live =
-    recording === null
-      ? null
-      : { cutId: recording.cutId, elapsed: recording.elapsed }
-  const liveCut = taking && "cutId" in activity ? activity.cutId : null
 
   // Nothing to fold away until a primer is open, and a primer that waits
   // on the person, or a file that could not be read, is shown, not hidden.
@@ -499,15 +490,7 @@ export const Journal = ({ ports, footer }: JournalProps): JSX.Element => {
           month: "short",
           day: "numeric",
         })
-  const recordedMs =
-    line === null
-      ? 0
-      : line.recordedMs -
-        (live === null
-          ? 0
-          : (takes.find((take) => take.cutId === live.cutId)?.durationMs ??
-            0)) +
-        (live?.elapsed ?? 0)
+  const recordedMs = line?.recordedMs ?? 0
   const focus = line?.rows.find((row) => row.cut.id === state.selected) ?? null
 
   const discard = (): void => {
@@ -520,7 +503,7 @@ export const Journal = ({ ports, footer }: JournalProps): JSX.Element => {
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-md flex-col gap-2.5">
+    <div className="flex flex-col gap-2.5">
       <Fold
         name="episode"
         open={episodeOpen}
@@ -645,13 +628,7 @@ export const Journal = ({ ports, footer }: JournalProps): JSX.Element => {
                   ? "—"
                   : `${focus.index + 1}. ${focus.cut.artifact}`}
               </span>
-              {!timelineOpen && (
-                <Strip
-                  line={line}
-                  selected={state.selected}
-                  liveCut={liveCut}
-                />
-              )}
+              {!timelineOpen && <Strip line={line} selected={state.selected} />}
             </>
           }
           aside={
@@ -698,7 +675,6 @@ export const Journal = ({ ports, footer }: JournalProps): JSX.Element => {
           <Gantt
             line={line}
             selected={state.selected}
-            live={live}
             disabled={!isSettled(activity)}
             onSelect={(cutId) => dispatch({ type: "cutSelected", cutId })}
           />

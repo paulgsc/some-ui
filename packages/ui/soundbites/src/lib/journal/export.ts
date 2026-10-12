@@ -4,35 +4,21 @@
  * takes' audio named for their place and cut (`01-gap.webm`). The order is
  * the primer's, never the recording's, so a redo lands on its own cut.
  */
+import { extensionOf } from "@some-ui/core-utils"
+
 import type { JournalPlan, JournalTake } from "./plan"
 import { targetOf } from "./plan"
 import type { JournalStore } from "./store"
 
-export type JournalFile = {
+type JournalFile = {
   readonly name: string
   readonly data: string | Blob
 }
 
-/** `audio/webm;codecs=opus` -> `webm`. */
-function extensionOf(mimeType: string): string {
-  return mimeType.split(/[/;]/)[1] ?? "bin"
-}
-
-/** Each kept take's file name, by cut id. */
-export function takeFileNames(
-  plan: JournalPlan,
-  takes: ReadonlyArray<JournalTake>
-): Map<string, string> {
-  const names = new Map<string, string>()
-  plan.primer.cuts.forEach((cut, i) => {
-    const take = takes.find((each) => each.cutId === cut.id)
-    if (take !== undefined)
-      names.set(
-        cut.id,
-        `${String(i + 1).padStart(2, "0")}-${cut.id}.${extensionOf(take.mimeType)}`
-      )
-  })
-  return names
+/** A take's file: its cut's place in the primer, its cut's id, its type. */
+function fileNameOf(plan: JournalPlan, take: JournalTake): string {
+  const place = plan.primer.cuts.findIndex((cut) => cut.id === take.cutId) + 1
+  return `${String(place).padStart(2, "0")}-${take.cutId}.${extensionOf(take.mimeType)}`
 }
 
 /** `takes.json`'s text. */
@@ -42,7 +28,6 @@ export function journalManifest(
   exportedAt: string,
   timeZone: string
 ): string {
-  const names = takeFileNames(plan, takes)
   return JSON.stringify(
     {
       kind: "build-journal-takes",
@@ -64,7 +49,7 @@ export function journalManifest(
             take === undefined
               ? null
               : {
-                  file: names.get(cut.id),
+                  file: fileNameOf(plan, take),
                   recordedAt: take.recordedAt,
                   durationMs: Math.round(take.durationMs),
                   mimeType: take.mimeType,
@@ -96,14 +81,13 @@ export async function journalFiles(
   )
   if (sent.length === 0) return null
   const kept = sent.map((each) => each.take)
-  const names = takeFileNames(plan, kept)
   return [
     {
       name: "takes.json",
       data: journalManifest(plan, kept, exportedAt, timeZone),
     },
     ...sent.map((each) => ({
-      name: names.get(each.take.cutId) ?? `${each.take.cutId}.bin`,
+      name: fileNameOf(plan, each.take),
       data: each.audio,
     })),
   ]

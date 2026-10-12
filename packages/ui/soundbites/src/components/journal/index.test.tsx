@@ -110,15 +110,6 @@ describe("Journal", () => {
     )
   })
 
-  it("says what is wrong with a file that isn't a primer", async () => {
-    setup({ plan: null })
-    await screen.findByText("No primer open")
-    fireEvent.change(screen.getByLabelText(/open a primer from storage/i), {
-      target: { files: [new File(["nope"], "notes.txt")] },
-    })
-    expect(await screen.findByText("That file isn't JSON.")).toBeInTheDocument()
-  })
-
   it("shows when an unshared episode clears", async () => {
     setup({ takes: [take("gap", 9_000)] })
     expect(
@@ -149,7 +140,7 @@ describe("Journal", () => {
     expect(timeline).toHaveAttribute("aria-expanded", "true")
   })
 
-  it("hands the share its take count, holding it while a take is out", async () => {
+  it("hands the share its take count, and holds it while a take is out", async () => {
     const footer = vi.fn(
       ({ taking, takes }: { taking: boolean; takes: number }) => (
         <span>
@@ -160,5 +151,7 @@ describe("Journal", () => {
     setup({ takes: [take("gap", 9_000)], footer })
     fireEvent.click(await screen.findByRole("button", { name: /Share/ }))
     expect(screen.getByText("1 takes")).toBeInTheDocument()
+    fireEvent.click(screen.getByRole("button", { name: "Start talking" }))
+    expect(await screen.findByText("1 takes, taking")).toBeInTheDocument()
   })
 })

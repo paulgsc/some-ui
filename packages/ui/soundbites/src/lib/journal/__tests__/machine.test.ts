@@ -201,6 +201,56 @@ describe("journal machine", () => {
     expect(yes.state.shelf).toMatchObject({ takes: [take("flow", 5_000)] })
   })
 
+  it("counts what a confirmed primer drops when it is confirmed", () => {
+    const state = arrived(plan(), [take("gap", 5_000)])
+    const picked = run(state, { type: "primerPicked", file: new Blob([]) })
+    const asked = run(picked.state, {
+      type: "primerRead",
+      seq: picked.state.pickSeq,
+      text: JSON.stringify({
+        version: 1,
+        title: "Other",
+        cuts: [{ id: "flow", artifact: "A", prompt: "B", targetSec: 10 }],
+      }),
+      at: "2026-10-13T09:00:00.000Z",
+    }).state
+    // A take for another dropped cut lands while the question is open.
+    const meanwhile = run(asked, {
+      type: "listed",
+      seq: asked.readSeq,
+      shelf: { plan: plan(), takes: [take("gap", 5_000), take("next", 4_000)] },
+      now: NOON,
+    }).state
+    const yes = run(meanwhile, { type: "replaceConfirmed" })
+    expect(yes.effects).toEqual([
+      expect.objectContaining({ type: "openPlan", drop: ["gap", "next"] }),
+    ])
+  })
+
+  it("says so when a primer is read while a take is under way", () => {
+    const picked = run(arrived(), {
+      type: "primerPicked",
+      file: new Blob([]),
+    }).state
+    const recording = run(
+      picked,
+      { type: "recordPressed" },
+      { type: "micOpened", at: 0 }
+    ).state
+    const read = run(recording, {
+      type: "primerRead",
+      seq: picked.pickSeq,
+      text: JSON.stringify({
+        version: 1,
+        title: "Other",
+        cuts: [{ id: "flow", artifact: "A", prompt: "B", targetSec: 10 }],
+      }),
+      at: "2026-10-13T09:00:00.000Z",
+    })
+    expect(read.effects).toEqual([])
+    expect(read.state.primerProblem).toBe(JOURNAL_NOTICES.primerMidTake)
+  })
+
   it("says what is wrong with a primer and keeps the episode", () => {
     const state = arrived()
     const picked = run(state, { type: "primerPicked", file: new Blob([]) })

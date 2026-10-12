@@ -39,7 +39,7 @@ import { formatDuration } from "@soundbites/lib/format"
 import { SOUNDBITE_MIN_MS } from "@soundbites/lib/policy"
 
 import type { JournalPlan, JournalTake } from "./plan"
-import { capFor, droppedBy, expiresAt, nudged } from "./plan"
+import { capFor, droppedBy, expiresAt, isSpent, nudged } from "./plan"
 import type { Primer } from "./primer"
 import { readPrimer } from "./primer"
 import type { JournalShelf } from "./store"
@@ -187,6 +187,7 @@ export const JOURNAL_NOTICES = {
   notSaved: "That change couldn't be saved. Try again?",
   notCleared: "The episode couldn't be cleared. Try again?",
   unreadableFile: "That file couldn't be read.",
+  primerMidTake: "Finish the take, then open the primer again.",
   expired: "The last episode was cleared: it went a week without a take.",
   audioMissing: "That take's audio is missing.",
   notPlayable: "That take couldn't be played.",
@@ -253,7 +254,6 @@ function read(state: JournalState): Step {
   return { state: { ...state, readSeq: seq }, effects: [{ type: "read", seq }] }
 }
 
-/** A write is asked for: every read before it is now stale. */
 function write(state: JournalState, effect: JournalEffect): Step {
   return {
     state: { ...state, writing: state.writing + 1, readSeq: state.readSeq + 1 },
@@ -261,7 +261,6 @@ function write(state: JournalState, effect: JournalEffect): Step {
   }
 }
 
-/** A write landed, either way: the last one out reads the shelf again. */
 function landed(state: JournalState): Step {
   const writing = Math.max(0, state.writing - 1)
   const settled = { ...state, writing }
@@ -293,7 +292,6 @@ function openPrimer(
   const plan: JournalPlan = {
     primer,
     targets: {},
-    openedAt: at,
     touchedAt: at,
   }
   const opened = {
@@ -470,6 +468,9 @@ export function step(state: JournalState, event: JournalEvent): Step {
           primerProblem:
             "The phone's takes couldn't be read, so nothing was opened.",
         })
+      // Read while a take is under way: say so, rather than drop the pick.
+      if (!isSettled(activity))
+        return stay({ ...state, primerProblem: JOURNAL_NOTICES.primerMidTake })
       const drops = droppedBy(reading.primer, takes)
       if (drops.length > 0)
         return stay({
@@ -484,8 +485,15 @@ export function step(state: JournalState, event: JournalEvent): Step {
     case "replaceConfirmed": {
       const { pending } = state
       if (pending === null) return stay(state)
+      // Drops counted now, not when asked: a take kept meanwhile for a cut
+      // the new primer lacks goes too.
       return settledOnly(state, (settled) =>
-        openPrimer(settled, pending.primer, pending.drops, pending.at)
+        openPrimer(
+          settled,
+          pending.primer,
+          droppedBy(pending.primer, takes),
+          pending.at
+        )
       )
     }
 
@@ -516,7 +524,7 @@ export function step(state: JournalState, event: JournalEvent): Step {
       if (!isSettled(activity) || plan === null || state.selected === null)
         return stay(state)
       const capMs = capFor(plan, takes, state.selected)
-      if (capMs < SOUNDBITE_MIN_MS)
+      if (isSpent(capMs))
         return stay({ ...state, notice: JOURNAL_NOTICES.spent })
       return {
         state: {
@@ -603,7 +611,6 @@ export function step(state: JournalState, event: JournalEvent): Step {
         recordedAt: event.at,
         durationMs: next.take.durationMs,
         mimeType: next.take.mimeType,
-        bytes: next.take.blob.size,
       }
       return write(state, {
         type: "saveTake",

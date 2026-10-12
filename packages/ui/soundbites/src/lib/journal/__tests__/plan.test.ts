@@ -1,10 +1,8 @@
 import { plan, PRIMER, take } from "@soundbites/lib/journal/__tests__/fixture"
-import { journalManifest, takeFileNames } from "@soundbites/lib/journal/export"
+import { journalManifest } from "@soundbites/lib/journal/export"
 import {
   capFor,
   droppedBy,
-  expiresAt,
-  JOURNAL_IDLE_MS,
   nudged,
   timeline,
 } from "@soundbites/lib/journal/plan"
@@ -71,25 +69,23 @@ describe("droppedBy", () => {
   })
 })
 
-describe("expiresAt", () => {
-  it("is a week after the last touch", () => {
-    const touchedAt = "2026-10-12T12:00:00.000Z"
-    expect(expiresAt(plan({ touchedAt }))).toBe(
-      Date.parse(touchedAt) + JOURNAL_IDLE_MS
-    )
-  })
-})
-
 describe("the export", () => {
   it("names each take for its place and cut, in the primer's order", () => {
-    const names = takeFileNames(plan(), [
-      take("next", 5_000),
-      take("gap", 5_000),
-    ])
-    expect([...names.entries()]).toEqual([
-      ["gap", "01-gap.webm"],
-      ["next", "03-next.webm"],
-    ])
+    const manifest: unknown = JSON.parse(
+      journalManifest(
+        plan(),
+        [take("next", 5_000), take("gap", 5_000)],
+        "2026-10-12T13:00:00.000Z",
+        "UTC"
+      )
+    )
+    expect(manifest).toMatchObject({
+      cuts: [
+        { id: "gap", take: { file: "01-gap.webm" } },
+        { id: "flow", take: null },
+        { id: "next", take: { file: "03-next.webm" } },
+      ],
+    })
   })
 
   it("lists every cut, a missing take as null, with the moved targets", () => {

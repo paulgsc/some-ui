@@ -7,18 +7,16 @@
  * Each rule holds in the transaction that writes, not in the caller: a take
  * is kept only for a cut of the plan in place, and never past
  * `JOURNAL_TAKES_MAX_BYTES`.
- *
- * It does not ask for persistent storage: the soundbites store already asks
- * for this origin, and the grant covers every database in it.
  */
-import { connection, done, result } from "@some-ui/voice-capture"
+import { bytesBesides, connection, done, result } from "@some-ui/voice-capture"
+import { askToKeep } from "@soundbites/lib/store"
 
 import type { JournalPlan, JournalTake } from "./plan"
-import { JOURNAL_TAKES_MAX_BYTES } from "./plan"
+import { inCutOrder, JOURNAL_TAKES_MAX_BYTES } from "./plan"
 
 export type JournalShelf = {
   readonly plan: JournalPlan | null
-  /** In the plan's cut order. */
+  /** The plan's, in its cut order (`inCutOrder`). */
   readonly takes: ReadonlyArray<JournalTake>
 }
 
@@ -104,12 +102,17 @@ export function indexedDbJournalStore(): JournalStore {
   const changed = (): void => {
     for (const listener of listeners) listener()
   }
-  const connect = connection(DB_NAME, DB_VERSION, (db) => {
-    if (!db.objectStoreNames.contains(PLAN)) db.createObjectStore(PLAN)
-    if (!db.objectStoreNames.contains(TAKES))
-      db.createObjectStore(TAKES, { keyPath: "cutId" })
-    if (!db.objectStoreNames.contains(AUDIO)) db.createObjectStore(AUDIO)
-  })
+  const connect = connection(
+    DB_NAME,
+    DB_VERSION,
+    (db) => {
+      if (!db.objectStoreNames.contains(PLAN)) db.createObjectStore(PLAN)
+      if (!db.objectStoreNames.contains(TAKES))
+        db.createObjectStore(TAKES, { keyPath: "cutId" })
+      if (!db.objectStoreNames.contains(AUDIO)) db.createObjectStore(AUDIO)
+    },
+    askToKeep
+  )
 
   return {
     async read(): Promise<JournalShelf> {
@@ -117,13 +120,7 @@ export function indexedDbJournalStore(): JournalStore {
       const plan = await planIn(tx.objectStore(PLAN))
       const rows: Array<unknown> = await result(tx.objectStore(TAKES).getAll())
       const takes = rows.filter(isTake)
-      const order = plan?.primer.cuts.map((cut) => cut.id) ?? []
-      return {
-        plan,
-        takes: takes.sort(
-          (a, b) => order.indexOf(a.cutId) - order.indexOf(b.cutId)
-        ),
-      }
+      return { plan, takes: plan === null ? [] : inCutOrder(plan, takes) }
     },
 
     async audio(cutId): Promise<Blob | null> {
@@ -165,29 +162,20 @@ export function indexedDbJournalStore(): JournalStore {
         "readwrite"
       )
       const audios = tx.objectStore(AUDIO)
-      // Read and check inside the one transaction: a primer opened, or a
-      // take saved, from another instance of the page cannot slip between.
       const plan = await planIn(tx.objectStore(PLAN))
       if (!plan?.primer.cuts.some((cut) => cut.id === take.cutId)) {
         tx.abort()
         throw new JournalStaleError()
       }
-      const keys = await result(audios.getAllKeys())
-      const blobs: Array<unknown> = await result(audios.getAll())
-      const used = blobs.reduce<number>(
-        (sum, each, i) =>
-          keys[i] === take.cutId || !(each instanceof Blob)
-            ? sum
-            : sum + each.size,
-        0
-      )
-      if (used + audio.size > JOURNAL_TAKES_MAX_BYTES) {
+      if (
+        (await bytesBesides(audios, take.cutId)) + audio.size >
+        JOURNAL_TAKES_MAX_BYTES
+      ) {
         tx.abort()
         throw new JournalFullError()
       }
       tx.objectStore(TAKES).put(take)
       audios.put(audio, take.cutId)
-      // A kept take restarts the episode's idle clock (`JOURNAL_IDLE_MS`).
       tx.objectStore(PLAN).put({ ...plan, touchedAt: take.recordedAt }, CURRENT)
       await done(tx)
       changed()

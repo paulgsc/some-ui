@@ -22,6 +22,7 @@ import type {
   SoundbitesState,
 } from "./machine"
 import { initialState, step } from "./machine"
+import { TAKE_TICK_MS } from "./policy"
 import type { SoundbiteStore } from "./store"
 import { SoundbitesFullError } from "./store"
 import type { SoundbiteSource } from "./types"
@@ -74,8 +75,6 @@ export type SoundbitesRuntime = {
   attach: () => () => void
 }
 
-const TICK_MS = 100
-
 export function createSoundbites(
   ports: SoundbitesPorts,
   options: SoundbitesOptions
@@ -100,7 +99,7 @@ export function createSoundbites(
     {
       startRecording: ports.startRecording,
       now: ports.now,
-      tickMs: TICK_MS,
+      tickMs: TAKE_TICK_MS,
     },
     (signal) =>
       dispatch(

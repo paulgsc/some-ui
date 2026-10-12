@@ -15,6 +15,7 @@
  * Phone-only: rendered only in the device build, so no other profile ships it
  * (`build.paths.ts`).
  */
+import { extensionOf } from "@some-ui/core-utils"
 import type { Soundbite, SoundbiteStore } from "@some-ui/soundbites"
 import type { PracticeRecord } from "@some-ui/topik"
 
@@ -69,11 +70,6 @@ const ABOUT_REFLECTIONS = [
   READ_ALOUD_PRACTICE,
   "Use them to shape the next session. Once handed off the reflections leave the phone (the stops, path counts and the practice record stay): this file is then their only copy.",
 ].join("\n")
-
-/** `audio/webm;codecs=opus` -> `webm`. */
-function extensionOf(mimeType: string): string {
-  return mimeType.split(/[/;]/)[1] ?? "bin"
-}
 
 function soundbiteFile(bite: Soundbite): string {
   return `soundbite-${bite.id}.${extensionOf(bite.mimeType)}`

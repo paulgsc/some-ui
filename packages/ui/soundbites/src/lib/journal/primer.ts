@@ -23,7 +23,7 @@
  * names its take's file, so it is short, lowercase and unique.
  */
 
-/** The longest an episode's takes may run in total, for now: three minutes. */
+/** The longest an episode's takes may run in total: three minutes. */
 export const JOURNAL_BUDGET_MAX_MS = 180_000
 
 /** A cut's target is a guide, never under this or over the budget. */

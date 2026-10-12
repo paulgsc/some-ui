@@ -1,5 +1,8 @@
 import type { JournalPlan, JournalTake } from "@soundbites/lib/journal/plan"
-import { JOURNAL_TAKES_MAX_BYTES } from "@soundbites/lib/journal/plan"
+import {
+  inCutOrder,
+  JOURNAL_TAKES_MAX_BYTES,
+} from "@soundbites/lib/journal/plan"
 import type { Primer } from "@soundbites/lib/journal/primer"
 import type { JournalShelf, JournalStore } from "@soundbites/lib/journal/store"
 import {
@@ -32,7 +35,7 @@ export const PRIMER: Primer = {
 
 export function plan(fields: Partial<JournalPlan> = {}): JournalPlan {
   const at = new Date(NOON).toISOString()
-  return { primer: PRIMER, targets: {}, openedAt: at, touchedAt: at, ...fields }
+  return { primer: PRIMER, targets: {}, touchedAt: at, ...fields }
 }
 
 export function take(cutId: string, durationMs: number): JournalTake {
@@ -41,7 +44,6 @@ export function take(cutId: string, durationMs: number): JournalTake {
     recordedAt: new Date(NOON).toISOString(),
     durationMs,
     mimeType: "audio/webm;codecs=opus",
-    bytes: 1_000,
   }
 }
 
@@ -68,15 +70,10 @@ export function memoryJournalStore(
   const changed = (): void => {
     for (const listener of listeners) listener()
   }
-  const state = (): JournalShelf => {
-    const order = current?.primer.cuts.map((cut) => cut.id) ?? []
-    return {
-      plan: current,
-      takes: [...takes.values()].sort(
-        (a, b) => order.indexOf(a.cutId) - order.indexOf(b.cutId)
-      ),
-    }
-  }
+  const state = (): JournalShelf => ({
+    plan: current,
+    takes: current === null ? [] : inCutOrder(current, [...takes.values()]),
+  })
   return {
     state,
     audio,

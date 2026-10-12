@@ -12,7 +12,10 @@
  * one, and lets it go once shared, discarded, replaced by another primer, or
  * left `JOURNAL_IDLE_MS` without a take.
  */
-import { SOUNDBITE_BITS_PER_SECOND } from "@soundbites/lib/policy"
+import {
+  SOUNDBITE_BITS_PER_SECOND,
+  SOUNDBITE_MIN_MS,
+} from "@soundbites/lib/policy"
 
 import type { Cut, Primer } from "./primer"
 import { CUT_TARGET_MIN_MS, JOURNAL_BUDGET_MAX_MS } from "./primer"
@@ -21,8 +24,6 @@ export type JournalPlan = {
   readonly primer: Primer
   /** Targets the person moved, by cut id; any other cut keeps the primer's. */
   readonly targets: Readonly<Record<string, number>>
-  /** ISO 8601, UTC. */
-  readonly openedAt: string
   /**
    * ISO 8601, UTC: when the primer was opened or a take last kept. The
    * episode is let go `JOURNAL_IDLE_MS` after it.
@@ -37,7 +38,6 @@ export type JournalTake = {
   readonly recordedAt: string
   readonly durationMs: number
   readonly mimeType: string
-  readonly bytes: number
 }
 
 /** How long an episode waits on its next take before it is let go. */
@@ -77,6 +77,9 @@ export function nudged(
   return { ...plan.targets, [cutId]: moved }
 }
 
+/** A take under way: it stands in for its cut's kept take until it lands. */
+export type LiveTake = { readonly cutId: string; readonly elapsed: number }
+
 type TimelineRow = {
   readonly cut: Cut
   /** From 0, in the primer's order. */
@@ -85,13 +88,16 @@ type TimelineRow = {
   readonly startMs: number
   readonly targetMs: number
   readonly take: JournalTake | null
+  /** The live take's length while one runs here, else the kept take's. */
+  readonly takenMs: number | null
+  readonly live: boolean
 }
 
 export type Timeline = {
   readonly rows: ReadonlyArray<TimelineRow>
   /** The targets' sum: how long the episode is planned to run. */
   readonly plannedMs: number
-  /** The takes' sum: how much of the budget is spent. */
+  /** The takes' sum, a live one in place of its cut's: the budget spent. */
   readonly recordedMs: number
   readonly budgetMs: number
   /** What the full width of a bar stands for: the budget, or the plan if longer. */
@@ -100,16 +106,19 @@ export type Timeline = {
 
 export function timeline(
   plan: JournalPlan,
-  takes: ReadonlyArray<JournalTake>
+  takes: ReadonlyArray<JournalTake>,
+  live: LiveTake | null = null
 ): Timeline {
   let startMs = 0
   let recordedMs = 0
   const rows = plan.primer.cuts.map((cut, index): TimelineRow => {
     const targetMs = targetOf(plan, cut)
     const take = takes.find((each) => each.cutId === cut.id) ?? null
-    const row = { cut, index, startMs, targetMs, take }
+    const isLive = live?.cutId === cut.id
+    const takenMs = isLive ? live.elapsed : (take?.durationMs ?? null)
+    const row = { cut, index, startMs, targetMs, take, takenMs, live: isLive }
     startMs += targetMs
-    recordedMs += take?.durationMs ?? 0
+    recordedMs += takenMs ?? 0
     return row
   })
   const { budgetMs } = plan.primer
@@ -120,6 +129,25 @@ export function timeline(
     budgetMs,
     scaleMs: Math.max(budgetMs, startMs),
   }
+}
+
+/** Whether a take capped at `capMs` would be too short to keep. */
+export function isSpent(capMs: number): boolean {
+  return capMs < SOUNDBITE_MIN_MS
+}
+
+/**
+ * `takes` that belong to `plan`'s cuts, in its order. A take for a cut the
+ * plan lacks (one a dropped write left behind) is neither shown nor sent.
+ */
+export function inCutOrder(
+  plan: JournalPlan,
+  takes: ReadonlyArray<JournalTake>
+): Array<JournalTake> {
+  const order = plan.primer.cuts.map((cut) => cut.id)
+  return takes
+    .filter((take) => order.includes(take.cutId))
+    .sort((a, b) => order.indexOf(a.cutId) - order.indexOf(b.cutId))
 }
 
 /**

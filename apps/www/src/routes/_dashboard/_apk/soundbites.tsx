@@ -1,7 +1,13 @@
 import type { JSX } from "react"
-import { cn } from "@some-ui/core-utils"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@some-ui/shared"
 import type { SoundbiteSituation, SoundbiteSource } from "@some-ui/soundbites"
-import { Journal, phoneSoundbiteStore, Soundbites } from "@some-ui/soundbites"
+import {
+  Journal,
+  journalFiles,
+  phoneJournalStore,
+  phoneSoundbiteStore,
+  Soundbites,
+} from "@some-ui/soundbites"
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
 
 import { handOff, shareAgentExport } from "@/lib/agent-export"
@@ -117,9 +123,8 @@ const shareFooter =
     : undefined
 
 /**
- * An episode's takes out through the share sheet, in the primer's order.
- * Held while a take is in flight, so the files cannot miss it; once the
- * person says they arrived, the episode leaves the phone.
+ * An episode's takes out through the share sheet, in the primer's order,
+ * held and let go as `ShareWithAgent`'s are.
  */
 const ShareJournal = ({
   taking,
@@ -128,11 +133,15 @@ const ShareJournal = ({
   taking: boolean
   takes: number
 }): JSX.Element => {
-  const share = useAsyncIntent(() => shareJournal(), {
-    presentation: "interactive",
-  })
-  // Android says "shared" once an app is picked, even if the person backs
-  // out of it: the episode leaves the phone only once they say so.
+  const share = useAsyncIntent(
+    () =>
+      shareJournal((exportedAt, timeZone) =>
+        journalFiles(phoneJournalStore(), exportedAt, timeZone)
+      ),
+    {
+      presentation: "interactive",
+    }
+  )
   useIntentEffect(share.state, (outcome) => {
     if (outcome !== "shared") return
     if (
@@ -140,7 +149,7 @@ const ShareJournal = ({
         "Did they arrive? OK lets this episode go from the phone; Cancel keeps it here."
       )
     )
-      letGoJournal()
+      letGoJournal(phoneJournalStore())
   })
   return (
     <section className="space-y-2">
@@ -168,11 +177,6 @@ const journalFooter =
       )
     : undefined
 
-const TABS = [
-  { tab: undefined, label: "Soundbites" },
-  { tab: "journal", label: "Journal" },
-] as const
-
 const SoundbitesRoute = (): JSX.Element => {
   const { say, tab } = Route.useSearch()
   const navigate = useNavigate()
@@ -190,54 +194,43 @@ const SoundbitesRoute = (): JSX.Element => {
 
   return (
     <div className="mx-auto flex w-full max-w-md flex-col gap-4">
-      <div
-        role="tablist"
-        aria-label="Voice"
-        className="bg-muted grid grid-cols-2 rounded-full p-1"
+      <Tabs
+        value={journal ? "journal" : "soundbites"}
+        onValueChange={(value) =>
+          void navigate({
+            to: "/soundbites",
+            search: value === "journal" ? { tab: "journal" } : {},
+            replace: true,
+          })
+        }
+        className="flex flex-col gap-4"
       >
-        {TABS.map((each) => {
-          const selected = (each.tab === "journal") === journal
-          return (
-            <button
-              key={each.label}
-              type="button"
-              role="tab"
-              aria-selected={selected}
-              onClick={() =>
-                void navigate({
-                  to: "/soundbites",
-                  search: each.tab === undefined ? {} : { tab: each.tab },
-                  replace: true,
-                })
-              }
-              className={cn(
-                "focus-visible:ring-ring rounded-full py-2 text-sm font-bold focus-visible:ring-2 focus-visible:outline-none",
-                selected
-                  ? "bg-card text-foreground shadow-sm"
-                  : "text-muted-foreground"
-              )}
-            >
-              {each.label}
-            </button>
-          )
-        })}
-      </div>
-      {journal ? (
-        <Journal footer={journalFooter} />
-      ) : (
-        <Soundbites
-          key={arrival}
-          source={source}
-          autoStart={source !== "direct"}
-          // Forget the request once honoured, so going back or reloading does
-          // not open the microphone again.
-          onAutoStart={() =>
-            void navigate({ to: "/soundbites", search: {}, replace: true })
-          }
-          situation={() => situationFrom(sessions ?? [])}
-          footer={shareFooter}
-        />
-      )}
+        <TabsList className="grid w-full grid-cols-2 rounded-full">
+          <TabsTrigger value="soundbites" className="rounded-full">
+            Soundbites
+          </TabsTrigger>
+          <TabsTrigger value="journal" className="rounded-full">
+            Journal
+          </TabsTrigger>
+        </TabsList>
+        <TabsContent value="soundbites">
+          <Soundbites
+            key={arrival}
+            source={source}
+            autoStart={source !== "direct"}
+            // Forget the request once honoured, so going back or reloading does
+            // not open the microphone again.
+            onAutoStart={() =>
+              void navigate({ to: "/soundbites", search: {}, replace: true })
+            }
+            situation={() => situationFrom(sessions ?? [])}
+            footer={shareFooter}
+          />
+        </TabsContent>
+        <TabsContent value="journal">
+          <Journal footer={journalFooter} />
+        </TabsContent>
+      </Tabs>
     </div>
   )
 }

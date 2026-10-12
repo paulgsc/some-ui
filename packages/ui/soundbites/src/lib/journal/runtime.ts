@@ -6,6 +6,7 @@
  */
 import type { StartRecording } from "@some-ui/voice-capture"
 import { takeRunner } from "@some-ui/voice-capture"
+import { TAKE_TICK_MS } from "@soundbites/lib/policy"
 import type { Playback, Player } from "@soundbites/lib/runtime"
 
 import type {
@@ -38,8 +39,6 @@ export type JournalRuntime = {
   attach: () => () => void
 }
 
-const TICK_MS = 100
-
 function reasonOf(error: unknown): "full" | "stale" | "failed" {
   if (error instanceof JournalFullError) return "full"
   if (error instanceof JournalStaleError) return "stale"
@@ -61,7 +60,11 @@ export function createJournal(ports: JournalPorts): JournalRuntime {
   }
 
   const take = takeRunner(
-    { startRecording: ports.startRecording, now: ports.now, tickMs: TICK_MS },
+    {
+      startRecording: ports.startRecording,
+      now: ports.now,
+      tickMs: TAKE_TICK_MS,
+    },
     (signal) =>
       dispatch(
         signal.type === "taken"
@@ -75,7 +78,6 @@ export function createJournal(ports: JournalPorts): JournalRuntime {
     playback = null
   }
 
-  /** A write's outcome as the machine's event. */
   const settleWrite = (
     kind: "open" | "targets" | "clear",
     written: Promise<void>
