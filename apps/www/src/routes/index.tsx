@@ -1,55 +1,32 @@
 import type { JSX } from "react"
 import { BrandMark, Card, CardContent } from "@some-ui/shared"
 import { createFileRoute, Link } from "@tanstack/react-router"
-import { ArrowRight, FileText, Puzzle, Sparkles } from "lucide-react"
+import { ArrowRight } from "lucide-react"
 
 import { useAuthoritySnapshot } from "@/lib/authority"
+import { destinationsHere, type Destination } from "@/lib/site-map"
 import { ExtensionsPage } from "@/components/extensions/extensions-page"
 import { ThemeSwitcher } from "@/components/theme-switcher"
 
 /**
  * The signed-in visitor's "/": a splash pointing at what this origin hosts
- * (.github/workflows/pages.yml): the app, /resume and /extensions. A visitor with no session gets the extensions tour instead
- * (see `Root`).
+ * (.github/workflows/pages.yml): the catalog's `landing` entries
+ * (`lib/site-map`) this build serves. A visitor with no session gets the
+ * extensions tour instead (see `Root`).
  */
-type Destination = {
-  title: string
-  description: string
-  icon: typeof Sparkles
-  cta: string
-  href: "/app" | "/resume" | "/extensions"
-}
+const CARDS = destinationsHere().flatMap((d) =>
+  d.landing ? [{ ...d, cta: d.landing }] : []
+)
 
-const DESTINATIONS: ReadonlyArray<Destination> = [
-  {
-    title: "Adaptive learning sessions",
-    description:
-      "Compose and run focused study sessions - Hangul Honeycomb, TOPIK practice, and timed code-typing drills.",
-    icon: Sparkles,
-    cta: "Open the app",
-    href: "/app",
-  },
-  {
-    title: "Browser extensions",
-    description:
-      "Five small tools for your browser - what each one does, how far along it is, and what it sends.",
-    icon: Puzzle,
-    cta: "See the five",
-    href: "/extensions",
-  },
-  {
-    title: "Résumé & background",
-    description: "Paul Gathondu's résumé, previewable inline or as a PDF.",
-    icon: FileText,
-    cta: "View résumé",
-    href: "/resume",
-  },
-]
-
-const DestinationCard = (destination: Destination): JSX.Element => {
-  const { title, description, icon: Icon, cta, href } = destination
+const DestinationCard = ({
+  title,
+  blurb,
+  icon: Icon,
+  cta,
+  to,
+}: Destination & { cta: string }): JSX.Element => {
   return (
-    <Link to={href} className="block h-full">
+    <Link to={to} className="block h-full">
       <Card className="hover:border-primary/50 group h-full transition-colors">
         <CardContent className="flex h-full flex-col gap-4 pt-[var(--card-p,1.5rem)]">
           <div className="bg-primary/10 flex size-11 items-center justify-center rounded-full">
@@ -57,7 +34,7 @@ const DestinationCard = (destination: Destination): JSX.Element => {
           </div>
           <div className="min-h-0 flex-1 space-y-1.5">
             <h2 className="font-semibold">{title}</h2>
-            <p className="text-muted-foreground text-sm">{description}</p>
+            <p className="text-muted-foreground text-sm">{blurb}</p>
           </div>
           <span className="text-primary inline-flex items-center gap-1 text-sm font-medium">
             {cta}
@@ -82,12 +59,11 @@ const Landing = (): JSX.Element => (
           Some UI
         </p>
         <h1 className="text-gradient-heading text-3xl font-bold tracking-tight sm:text-4xl">
-          Three projects, one workspace
+          A few projects, one workspace
         </h1>
         <p className="text-muted-foreground mx-auto max-w-xl text-balance">
-          This site hosts an adaptive study app, a set of browser extensions,
-          and a résumé - built and deployed from a single monorepo. Pick a
-          destination below.
+          Everything below is built and deployed from a single monorepo. Pick a
+          destination.
         </p>
         {/* /mission answers why any of it exists: a text link, so it doesn't
             compete with the destinations. */}
@@ -99,9 +75,9 @@ const Landing = (): JSX.Element => (
           <ArrowRight className="size-3.5" aria-hidden />
         </Link>
       </div>
-      <div className="grid gap-4 md:grid-cols-3">
-        {DESTINATIONS.map((destination) => (
-          <DestinationCard key={destination.title} {...destination} />
+      <div className="grid gap-4 sm:grid-cols-2">
+        {CARDS.map((card) => (
+          <DestinationCard key={card.to} {...card} />
         ))}
       </div>
     </div>

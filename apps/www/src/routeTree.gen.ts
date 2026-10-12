@@ -27,7 +27,6 @@ import { Route as DashboardSessionsNewRouteImport } from './routes/_dashboard/se
 import { Route as DashboardSessionsSessionIdRouteImport } from './routes/_dashboard/sessions/$sessionId'
 import { Route as DashboardLanRoundsRouteImport } from './routes/_dashboard/_lan/rounds'
 import { Route as DashboardLanLessonsRouteImport } from './routes/_dashboard/_lan/lessons'
-import { Route as DashboardLanLanRouteImport } from './routes/_dashboard/_lan/lan'
 import { Route as DashboardApkTodayRouteImport } from './routes/_dashboard/_apk/today'
 import { Route as DashboardApkSoundbitesRouteImport } from './routes/_dashboard/_apk/soundbites'
 import { Route as DashboardApkAphRouteImport } from './routes/_dashboard/_apk/aph'
@@ -124,11 +123,6 @@ const DashboardLanLessonsRoute = DashboardLanLessonsRouteImport.update({
   path: '/lessons',
   getParentRoute: () => DashboardLanRoute,
 } as any)
-const DashboardLanLanRoute = DashboardLanLanRouteImport.update({
-  id: '/lan',
-  path: '/lan',
-  getParentRoute: () => DashboardLanRoute,
-} as any)
 const DashboardApkTodayRoute = DashboardApkTodayRouteImport.update({
   id: '/today',
   path: '/today',
@@ -179,7 +173,6 @@ export interface FileRoutesByFullPath {
   '/aph': typeof DashboardApkAphRouteWithChildren
   '/soundbites': typeof DashboardApkSoundbitesRoute
   '/today': typeof DashboardApkTodayRoute
-  '/lan': typeof DashboardLanLanRoute
   '/lessons': typeof DashboardLanLessonsRoute
   '/rounds': typeof DashboardLanRoundsRoute
   '/sessions/$sessionId': typeof DashboardSessionsSessionIdRoute
@@ -203,7 +196,6 @@ export interface FileRoutesByTo {
   '/settings': typeof DashboardSettingsRoute
   '/soundbites': typeof DashboardApkSoundbitesRoute
   '/today': typeof DashboardApkTodayRoute
-  '/lan': typeof DashboardLanLanRoute
   '/lessons': typeof DashboardLanLessonsRoute
   '/rounds': typeof DashboardLanRoundsRoute
   '/sessions/$sessionId': typeof DashboardSessionsSessionIdRoute
@@ -232,7 +224,6 @@ export interface FileRoutesById {
   '/_dashboard/_apk/aph': typeof DashboardApkAphRouteWithChildren
   '/_dashboard/_apk/soundbites': typeof DashboardApkSoundbitesRoute
   '/_dashboard/_apk/today': typeof DashboardApkTodayRoute
-  '/_dashboard/_lan/lan': typeof DashboardLanLanRoute
   '/_dashboard/_lan/lessons': typeof DashboardLanLessonsRoute
   '/_dashboard/_lan/rounds': typeof DashboardLanRoundsRoute
   '/_dashboard/sessions/$sessionId': typeof DashboardSessionsSessionIdRoute
@@ -259,7 +250,6 @@ export interface FileRouteTypes {
     | '/aph'
     | '/soundbites'
     | '/today'
-    | '/lan'
     | '/lessons'
     | '/rounds'
     | '/sessions/$sessionId'
@@ -283,7 +273,6 @@ export interface FileRouteTypes {
     | '/settings'
     | '/soundbites'
     | '/today'
-    | '/lan'
     | '/lessons'
     | '/rounds'
     | '/sessions/$sessionId'
@@ -311,7 +300,6 @@ export interface FileRouteTypes {
     | '/_dashboard/_apk/aph'
     | '/_dashboard/_apk/soundbites'
     | '/_dashboard/_apk/today'
-    | '/_dashboard/_lan/lan'
     | '/_dashboard/_lan/lessons'
     | '/_dashboard/_lan/rounds'
     | '/_dashboard/sessions/$sessionId'
@@ -460,13 +448,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardLanLessonsRouteImport
       parentRoute: typeof DashboardLanRoute
     }
-    '/_dashboard/_lan/lan': {
-      id: '/_dashboard/_lan/lan'
-      path: '/lan'
-      fullPath: '/lan'
-      preLoaderRoute: typeof DashboardLanLanRouteImport
-      parentRoute: typeof DashboardLanRoute
-    }
     '/_dashboard/_apk/today': {
       id: '/_dashboard/_apk/today'
       path: '/today'
@@ -554,13 +535,11 @@ const DashboardApkRouteWithChildren = DashboardApkRoute._addFileChildren(
 )
 
 interface DashboardLanRouteChildren {
-  DashboardLanLanRoute: typeof DashboardLanLanRoute
   DashboardLanLessonsRoute: typeof DashboardLanLessonsRoute
   DashboardLanRoundsRoute: typeof DashboardLanRoundsRoute
 }
 
 const DashboardLanRouteChildren: DashboardLanRouteChildren = {
-  DashboardLanLanRoute: DashboardLanLanRoute,
   DashboardLanLessonsRoute: DashboardLanLessonsRoute,
   DashboardLanRoundsRoute: DashboardLanRoundsRoute,
 }

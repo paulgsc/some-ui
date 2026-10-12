@@ -98,8 +98,10 @@ describe('"/"', () => {
     renderRoot()
     expect(screen.queryByTestId("extensions-page")).toBeNull()
     expect(
-      screen.getByRole("heading", { level: 1, name: /three projects/i })
+      screen.getByRole("heading", { level: 1, name: /one workspace/i })
     ).toBeTruthy()
+    // Vitest builds the `lan` profile, which carries "web".
+    expect(screen.getByText("Playoff Delta")).toBeTruthy()
   })
 
   it("is the destinations landing wherever there is a server to learn against, with no session", () => {
