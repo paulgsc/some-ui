@@ -63,14 +63,18 @@ export function journalManifest(
 }
 
 /**
- * The episode on the phone as files, or null with no take to send. A take
- * whose audio has gone is listed with `take: null`, not sent half.
+ * The episode on the phone as files, and the takes they carry (for
+ * `JournalStore.letGo` once they arrive), or null with no take to send. A
+ * take whose audio has gone is listed with `take: null`, not sent half.
  */
 export async function journalFiles(
   store: JournalStore,
   exportedAt: string,
   timeZone: string
-): Promise<Array<JournalFile> | null> {
+): Promise<{
+  files: Array<JournalFile>
+  sent: Array<JournalTake>
+} | null> {
   const { plan, takes } = await store.read()
   if (plan === null) return null
   const withAudio = await Promise.all(
@@ -81,14 +85,17 @@ export async function journalFiles(
   )
   if (sent.length === 0) return null
   const kept = sent.map((each) => each.take)
-  return [
-    {
-      name: "takes.json",
-      data: journalManifest(plan, kept, exportedAt, timeZone),
-    },
-    ...sent.map((each) => ({
-      name: fileNameOf(plan, each.take),
-      data: each.audio,
-    })),
-  ]
+  return {
+    files: [
+      {
+        name: "takes.json",
+        data: journalManifest(plan, kept, exportedAt, timeZone),
+      },
+      ...sent.map((each) => ({
+        name: fileNameOf(plan, each.take),
+        data: each.audio,
+      })),
+    ],
+    sent: kept,
+  }
 }

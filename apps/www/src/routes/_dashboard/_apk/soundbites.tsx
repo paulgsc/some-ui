@@ -142,14 +142,14 @@ const ShareJournal = ({
       presentation: "interactive",
     }
   )
-  useIntentEffect(share.state, (outcome) => {
+  useIntentEffect(share.state, ({ outcome, sent }) => {
     if (outcome !== "shared") return
     if (
       confirm(
-        "Did they arrive? OK lets this episode go from the phone; Cancel keeps it here."
+        "Did they arrive? OK lets the takes that went out go from the phone; Cancel keeps them here."
       )
     )
-      letGoJournal(phoneJournalStore())
+      letGoJournal(phoneJournalStore(), sent)
   })
   return (
     <section className="space-y-2">

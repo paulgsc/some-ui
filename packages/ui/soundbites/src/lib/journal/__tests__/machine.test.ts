@@ -78,8 +78,37 @@ describe("journal machine", () => {
       level: 0.2,
     })
     // At the cap the take finishes itself and is kept.
-    expect(capped.state.activity).toEqual({ kind: "saving", cutId: "flow" })
+    expect(capped.state.activity).toEqual({
+      kind: "saving",
+      cutId: "flow",
+      capMs: 80_000,
+    })
     expect(capped.effects).toContainEqual({ type: "finishTake" })
+  })
+
+  it("counts a take stopped a tick past its cap as the cap", () => {
+    const saving = run(
+      arrived(plan(), [take("gap", 100_000)]),
+      { type: "recordPressed" },
+      { type: "micOpened", at: 0 },
+      { type: "ticked", now: 80_050, level: 0.2 }
+    ).state
+    expect(saving.activity).toEqual({
+      kind: "saving",
+      cutId: "flow",
+      capMs: 80_000,
+    })
+    const taken = run(saving, {
+      type: "taken",
+      take: spoken(80_090),
+      at: "2026-10-12T12:01:00.000Z",
+    })
+    expect(taken.effects).toContainEqual(
+      expect.objectContaining({
+        type: "saveTake",
+        take: expect.objectContaining({ cutId: "flow", durationMs: 80_000 }),
+      })
+    )
   })
 
   it("refuses a take with the budget spent", () => {
@@ -124,7 +153,11 @@ describe("journal machine", () => {
       { type: "micOpened", at: 0 }
     ).state
     const hidden = run(recording, { type: "hidden" })
-    expect(hidden.state.activity).toEqual({ kind: "saving", cutId: "gap" })
+    expect(hidden.state.activity).toEqual({
+      kind: "saving",
+      cutId: "gap",
+      capMs: 180_000,
+    })
     expect(hidden.effects).toContainEqual({ type: "finishTake" })
   })
 

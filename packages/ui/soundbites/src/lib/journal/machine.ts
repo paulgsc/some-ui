@@ -61,7 +61,7 @@ export type JournalActivity =
       readonly elapsed: number
       readonly level: number
     }
-  | { readonly kind: "saving"; readonly cutId: string }
+  | { readonly kind: "saving"; readonly cutId: string; readonly capMs: number }
 
 export type JournalState = {
   readonly page: "new" | "here" | "left"
@@ -321,7 +321,7 @@ function taking(
   const capMs = "capMs" in activity ? activity.capMs : 0
   const shown: JournalActivity =
     phase.kind === "finishing"
-      ? { kind: "saving", cutId }
+      ? { kind: "saving", cutId, capMs }
       : phase.kind === "opening"
         ? { kind: "opening", cutId, capMs }
         : { ...phase, cutId, capMs }
@@ -593,12 +593,7 @@ export function step(state: JournalState, event: JournalEvent): Step {
 
     case "taken": {
       if (activity.kind !== "saving") return stay(state)
-      // The take's limit was its cap; `saving` no longer carries it, and the
-      // recorder already stopped there, so only the minimum is checked here.
-      const next = stepTake(FINISHING, event, {
-        minMs: SOUNDBITE_MIN_MS,
-        maxMs: Number.POSITIVE_INFINITY,
-      })
+      const next = stepTake(FINISHING, event, limitsOf(activity))
       if (next.kind === "short")
         return stay({
           ...state,
@@ -609,7 +604,9 @@ export function step(state: JournalState, event: JournalEvent): Step {
       const kept: JournalTake = {
         cutId: activity.cutId,
         recordedAt: event.at,
-        durationMs: next.take.durationMs,
+        // The clock stops a take at its cap a tick late at worst; the budget
+        // counts no more than the cap.
+        durationMs: Math.min(next.take.durationMs, activity.capMs),
         mimeType: next.take.mimeType,
       }
       return write(state, {

@@ -36,6 +36,12 @@ export type JournalStore = {
   /** Lets the plan and every take go. */
   clear: () => Promise<void>
   /**
+   * Lets go of the takes in `shared` that are still as they were shared
+   * (same cut, same `recordedAt`), and of the plan once no take is left. A
+   * take recorded or redone since the share stays, with its plan.
+   */
+  letGo: (shared: ReadonlyArray<JournalTake>) => Promise<void>
+  /**
    * Calls `listener` after each write commits, on this page, so a page
    * showing the shelf can re-read it. Returns an unsubscribe.
    */
@@ -189,6 +195,32 @@ export function indexedDbJournalStore(): JournalStore {
       tx.objectStore(PLAN).clear()
       tx.objectStore(TAKES).clear()
       tx.objectStore(AUDIO).clear()
+      await done(tx)
+      changed()
+    },
+
+    async letGo(shared): Promise<void> {
+      const tx = (await connect()).transaction(
+        [PLAN, TAKES, AUDIO],
+        "readwrite"
+      )
+      const takes = tx.objectStore(TAKES)
+      const rows: Array<unknown> = await result(takes.getAll())
+      const left = rows
+        .filter(isTake)
+        .filter(
+          (row) =>
+            !shared.some(
+              (each) =>
+                each.cutId === row.cutId && each.recordedAt === row.recordedAt
+            )
+        )
+      for (const each of shared) {
+        if (left.some((row) => row.cutId === each.cutId)) continue
+        takes.delete(each.cutId)
+        tx.objectStore(AUDIO).delete(each.cutId)
+      }
+      if (left.length === 0) tx.objectStore(PLAN).clear()
       await done(tx)
       changed()
     },

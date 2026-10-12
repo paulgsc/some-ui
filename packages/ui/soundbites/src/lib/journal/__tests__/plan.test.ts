@@ -1,5 +1,10 @@
-import { plan, PRIMER, take } from "@soundbites/lib/journal/__tests__/fixture"
-import { journalManifest } from "@soundbites/lib/journal/export"
+import {
+  memoryJournalStore,
+  plan,
+  PRIMER,
+  take,
+} from "@soundbites/lib/journal/__tests__/fixture"
+import { journalFiles, journalManifest } from "@soundbites/lib/journal/export"
 import {
   capFor,
   droppedBy,
@@ -120,5 +125,23 @@ describe("the export", () => {
         expect.objectContaining({ id: "next", take: null }),
       ],
     })
+  })
+
+  it("hands back the takes it sent, for letting exactly those go", async () => {
+    const memory = memoryJournalStore({
+      plan: plan(),
+      takes: [take("gap", 5_000), take("next", 4_000)],
+    })
+    const out = await journalFiles(
+      memory.store,
+      "2026-10-12T13:00:00.000Z",
+      "UTC"
+    )
+    expect(out?.files.map((file) => file.name)).toEqual([
+      "takes.json",
+      "01-gap.webm",
+      "03-next.webm",
+    ])
+    expect(out?.sent.map((each) => each.cutId)).toEqual(["gap", "next"])
   })
 })

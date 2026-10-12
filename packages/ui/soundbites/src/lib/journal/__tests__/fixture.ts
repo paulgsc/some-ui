@@ -109,6 +109,23 @@ export function memoryJournalStore(
         changed()
         return Promise.resolve()
       },
+      letGo: (shared): Promise<void> => {
+        const left = [...takes.values()].filter(
+          (row) =>
+            !shared.some(
+              (each) =>
+                each.cutId === row.cutId && each.recordedAt === row.recordedAt
+            )
+        )
+        for (const each of shared) {
+          if (left.some((row) => row.cutId === each.cutId)) continue
+          takes.delete(each.cutId)
+          audio.delete(each.cutId)
+        }
+        if (left.length === 0) current = null
+        changed()
+        return Promise.resolve()
+      },
       clear: (): Promise<void> => {
         current = null
         takes.clear()
