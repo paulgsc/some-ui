@@ -122,20 +122,23 @@ export function createJournal(ports: JournalPorts): JournalRuntime {
         return
       }
       case "openPlan": {
-        settleWrite("open", ports.store.open(effect.plan, effect.drop))
+        settleWrite("open", ports.store.open(effect.plan))
         return
       }
       case "setTargets": {
-        settleWrite("targets", ports.store.setTargets(effect.targets))
+        settleWrite(
+          "targets",
+          ports.store.setTargets(effect.targets, effect.episode)
+        )
         return
       }
       case "clear": {
-        settleWrite("clear", ports.store.clear())
+        settleWrite("clear", ports.store.clear(effect.episode))
         return
       }
       case "saveTake": {
         const { take: kept } = effect
-        ports.store.saveTake(kept, effect.audio).then(
+        ports.store.saveTake(kept, effect.audio, effect.episode).then(
           () => dispatch({ type: "takeSaved", take: kept }),
           (error: unknown) =>
             dispatch({

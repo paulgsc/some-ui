@@ -49,19 +49,28 @@ type Shelf =
   | { readonly kind: "unreadable" }
   | ({ readonly kind: "read" } & JournalShelf)
 
+/**
+ * What a take is for, fixed as it opens: its cut, its cap, and the episode
+ * (`openedAt`) it belongs to, which its save names so that a take finishing
+ * after another primer opened is never kept in that one.
+ */
+type TakeFor = {
+  readonly cutId: string
+  readonly capMs: number
+  readonly episode: string
+}
+
 export type JournalActivity =
   | { readonly kind: "idle" }
   | { readonly kind: "playing"; readonly cutId: string; readonly seq: number }
-  | { readonly kind: "opening"; readonly cutId: string; readonly capMs: number }
-  | {
+  | ({ readonly kind: "opening" } & TakeFor)
+  | ({
       readonly kind: "recording"
-      readonly cutId: string
-      readonly capMs: number
       readonly startedAt: number
       readonly elapsed: number
       readonly level: number
-    }
-  | { readonly kind: "saving"; readonly cutId: string; readonly capMs: number }
+    } & TakeFor)
+  | ({ readonly kind: "saving" } & TakeFor)
 
 export type JournalState = {
   readonly page: "new" | "here" | "left"
@@ -151,18 +160,21 @@ export type JournalEffect =
   | { readonly type: "stopClock" }
   | { readonly type: "read"; readonly seq: number }
   | { readonly type: "readFile"; readonly file: Blob; readonly seq: number }
+  // Each write about an episode names it (`openedAt`); the store checks the
+  // name in the write's own transaction.
+  | { readonly type: "openPlan"; readonly plan: JournalPlan }
   | {
-      readonly type: "openPlan"
-      readonly plan: JournalPlan
-      readonly drop: ReadonlyArray<string>
+      readonly type: "setTargets"
+      readonly targets: JournalPlan["targets"]
+      readonly episode: string
     }
-  | { readonly type: "setTargets"; readonly targets: JournalPlan["targets"] }
   | {
       readonly type: "saveTake"
       readonly take: JournalTake
       readonly audio: Blob
+      readonly episode: string
     }
-  | { readonly type: "clear" }
+  | { readonly type: "clear"; readonly episode: string }
   | { readonly type: "loadAudio"; readonly cutId: string; readonly seq: number }
   | {
       readonly type: "startPlayback"
@@ -279,15 +291,13 @@ function withShelf(
   }
 }
 
-function openPrimer(
-  state: JournalState,
-  primer: Primer,
-  drop: ReadonlyArray<string>,
-  at: string
-): Step {
+/** The store drops the takes `primer` has no cut for, in its own write. */
+function openPrimer(state: JournalState, primer: Primer, at: string): Step {
   const takes =
     state.shelf.kind === "read"
-      ? state.shelf.takes.filter((take) => !drop.includes(take.cutId))
+      ? state.shelf.takes.filter((take) =>
+          primer.cuts.some((cut) => cut.id === take.cutId)
+        )
       : []
   const plan: JournalPlan = {
     primer,
@@ -301,44 +311,45 @@ function openPrimer(
     primerProblem: null,
     notice: `Opened "${primer.title}".`,
   }
-  return write(opened, { type: "openPlan", plan, drop })
+  return write(opened, { type: "openPlan", plan })
 }
 
 function finishRecording(state: JournalState): Step {
   if (state.activity.kind !== "recording") return stay(state)
-  const { cutId } = state.activity
   const next = finishTake(state.activity)
-  return next.kind === "taking" ? taking(state, cutId, next) : stay(state)
+  return next.kind === "taking"
+    ? taking(state, takeFor(state.activity), next)
+    : stay(state)
+}
+
+function takeFor(activity: TakeFor): TakeFor {
+  return {
+    cutId: activity.cutId,
+    capMs: activity.capMs,
+    episode: activity.episode,
+  }
 }
 
 /** A take still under way, as the page's activity. */
 function taking(
   state: JournalState,
-  cutId: string,
+  take: TakeFor,
   next: TakeStep & { kind: "taking" }
 ): Step {
   const { phase } = next
-  const { activity } = state
-  const capMs = "capMs" in activity ? activity.capMs : 0
   const shown: JournalActivity =
     phase.kind === "finishing"
-      ? { kind: "saving", cutId, capMs }
+      ? { kind: "saving", ...take }
       : phase.kind === "opening"
-        ? { kind: "opening", cutId, capMs }
-        : { ...phase, cutId, capMs }
+        ? { kind: "opening", ...take }
+        : { ...phase, ...take }
   return { state: { ...state, activity: shown }, effects: next.effects }
 }
 
 const FINISHING: TakePhase = { kind: "finishing" }
 
-function limitsOf(activity: JournalActivity): {
-  minMs: number
-  maxMs: number
-} {
-  return {
-    minMs: SOUNDBITE_MIN_MS,
-    maxMs: "capMs" in activity ? activity.capMs : 0,
-  }
+function limitsOf(take: TakeFor): { minMs: number; maxMs: number } {
+  return { minMs: SOUNDBITE_MIN_MS, maxMs: take.capMs }
 }
 
 function stopPlay(state: JournalState, notice?: string): Step {
@@ -431,7 +442,10 @@ export function step(state: JournalState, event: JournalEvent): Step {
         )
         const stopped =
           activity.kind === "playing" ? stopPlay(cleared) : stay(cleared)
-        const next = write(stopped.state, { type: "clear" })
+        const next = write(stopped.state, {
+          type: "clear",
+          episode: readPlan.openedAt,
+        })
         return {
           state: next.state,
           effects: [...stopped.effects, ...next.effects],
@@ -479,22 +493,15 @@ export function step(state: JournalState, event: JournalEvent): Step {
           pending: { primer: reading.primer, drops, at: event.at },
         })
       return settledOnly(state, (settled) =>
-        openPrimer(settled, reading.primer, [], event.at)
+        openPrimer(settled, reading.primer, event.at)
       )
     }
 
     case "replaceConfirmed": {
       const { pending } = state
       if (pending === null) return stay(state)
-      // Drops counted now, not when asked: a take kept meanwhile for a cut
-      // the new primer lacks goes too.
       return settledOnly(state, (settled) =>
-        openPrimer(
-          settled,
-          pending.primer,
-          droppedBy(pending.primer, takes),
-          pending.at
-        )
+        openPrimer(settled, pending.primer, pending.at)
       )
     }
 
@@ -517,6 +524,7 @@ export function step(state: JournalState, event: JournalEvent): Step {
       return write(withShelf(state, { ...plan, targets }, takes), {
         type: "setTargets",
         targets,
+        episode: plan.openedAt,
       })
     }
 
@@ -530,7 +538,12 @@ export function step(state: JournalState, event: JournalEvent): Step {
       return {
         state: {
           ...state,
-          activity: { kind: "opening", cutId: state.selected, capMs },
+          activity: {
+            kind: "opening",
+            cutId: state.selected,
+            capMs,
+            episode: plan.openedAt,
+          },
           blocked: null,
           notice: "",
         },
@@ -559,7 +572,7 @@ export function step(state: JournalState, event: JournalEvent): Step {
       if (activity.kind !== "recording") return stay(state)
       const next = stepTake(activity, event, limitsOf(activity))
       return next.kind === "taking"
-        ? taking(state, activity.cutId, next)
+        ? taking(state, takeFor(activity), next)
         : stay(state)
     }
 
@@ -577,7 +590,7 @@ export function step(state: JournalState, event: JournalEvent): Step {
         }
       const next = stepTake({ kind: "opening" }, event, limitsOf(activity))
       return next.kind === "taking"
-        ? taking(state, activity.cutId, next)
+        ? taking(state, takeFor(activity), next)
         : stay(state)
     }
 
@@ -614,6 +627,7 @@ export function step(state: JournalState, event: JournalEvent): Step {
         type: "saveTake",
         take: kept,
         audio: next.take.blob,
+        episode: activity.episode,
       })
     }
 
@@ -732,7 +746,7 @@ export function step(state: JournalState, event: JournalEvent): Step {
             null,
             []
           ),
-          { type: "clear" }
+          { type: "clear", episode: plan.openedAt }
         )
       )
     }

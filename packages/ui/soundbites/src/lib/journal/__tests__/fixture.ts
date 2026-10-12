@@ -100,23 +100,28 @@ export function memoryJournalStore(
           }),
         })
       },
-      open: (next, drop): Promise<void> => {
+      open: (next): Promise<void> => {
         current = next
-        for (const id of drop) {
+        for (const id of [...takes.keys()]) {
+          if (next.primer.cuts.some((cut) => cut.id === id)) continue
           takes.delete(id)
           audio.delete(id)
         }
         changed()
         return Promise.resolve()
       },
-      setTargets: (targets): Promise<void> => {
-        if (current === null) return Promise.reject(new JournalStaleError())
+      setTargets: (targets, episode): Promise<void> => {
+        if (current?.openedAt !== episode)
+          return Promise.reject(new JournalStaleError())
         current = { ...current, targets }
         changed()
         return Promise.resolve()
       },
-      saveTake: (kept, blob): Promise<void> => {
-        if (!current?.primer.cuts.some((cut) => cut.id === kept.cutId))
+      saveTake: (kept, blob, episode): Promise<void> => {
+        if (
+          current?.openedAt !== episode ||
+          !current.primer.cuts.some((cut) => cut.id === kept.cutId)
+        )
           return Promise.reject(new JournalStaleError())
         const used = [...audio.entries()]
           .filter(([id]) => id !== kept.cutId)
@@ -147,7 +152,8 @@ export function memoryJournalStore(
         changed()
         return Promise.resolve()
       },
-      clear: (): Promise<void> => {
+      clear: (episode): Promise<void> => {
+        if (current?.openedAt !== episode) return Promise.resolve()
         current = null
         takes.clear()
         audio.clear()

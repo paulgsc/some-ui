@@ -14,6 +14,9 @@ import type { JournalPlan, JournalTake } from "@soundbites/lib/journal/plan"
 import { JOURNAL_IDLE_MS } from "@soundbites/lib/journal/plan"
 import { describe, expect, it } from "vitest"
 
+/** The fixture plan's `openedAt`: the episode its writes name. */
+const EPISODE = new Date(NOON).toISOString()
+
 /** Every event in turn; the state after, and every effect asked for. */
 function run(
   state: JournalState,
@@ -61,6 +64,7 @@ describe("journal machine", () => {
       kind: "opening",
       cutId: "flow",
       capMs: 80_000,
+      episode: EPISODE,
     })
     const recording = run(
       opened.state,
@@ -82,6 +86,7 @@ describe("journal machine", () => {
       kind: "saving",
       cutId: "flow",
       capMs: 80_000,
+      episode: EPISODE,
     })
     expect(capped.effects).toContainEqual({ type: "finishTake" })
   })
@@ -97,6 +102,7 @@ describe("journal machine", () => {
       kind: "saving",
       cutId: "flow",
       capMs: 80_000,
+      episode: EPISODE,
     })
     const taken = run(saving, {
       type: "taken",
@@ -157,6 +163,7 @@ describe("journal machine", () => {
       kind: "saving",
       cutId: "gap",
       capMs: 180_000,
+      episode: EPISODE,
     })
     expect(hidden.effects).toContainEqual({ type: "finishTake" })
   })
@@ -175,7 +182,7 @@ describe("journal machine", () => {
     const staleSeq = reading.state.readSeq
     const moved = run(reading.state, { type: "nudged", deltaMs: 5_000 })
     expect(moved.effects).toEqual([
-      { type: "setTargets", targets: { gap: 35_000 } },
+      { type: "setTargets", targets: { gap: 35_000 }, episode: EPISODE },
     ])
     const stale = run(moved.state, {
       type: "listed",
@@ -207,7 +214,7 @@ describe("journal machine", () => {
     })
     expect(read.state.pending).toBeNull()
     expect(read.effects).toEqual([
-      expect.objectContaining({ type: "openPlan", drop: [] }),
+      expect.objectContaining({ type: "openPlan" }),
     ])
     expect(read.state.selected).toBe("new")
   })
@@ -228,36 +235,32 @@ describe("journal machine", () => {
     expect(read.effects).toEqual([])
     expect(read.state.pending?.drops).toEqual(["gap"])
     const yes = run(read.state, { type: "replaceConfirmed" })
-    expect(yes.effects).toEqual([
-      expect.objectContaining({ type: "openPlan", drop: ["gap"] }),
-    ])
+    expect(yes.effects).toEqual([expect.objectContaining({ type: "openPlan" })])
     expect(yes.state.shelf).toMatchObject({ takes: [take("flow", 5_000)] })
   })
 
-  it("counts what a confirmed primer drops when it is confirmed", () => {
-    const state = arrived(plan(), [take("gap", 5_000)])
-    const picked = run(state, { type: "primerPicked", file: new Blob([]) })
-    const asked = run(picked.state, {
-      type: "primerRead",
-      seq: picked.state.pickSeq,
-      text: JSON.stringify({
-        version: 1,
-        title: "Other",
-        cuts: [{ id: "flow", artifact: "A", prompt: "B", targetSec: 10 }],
-      }),
-      at: "2026-10-13T09:00:00.000Z",
-    }).state
-    // A take for another dropped cut lands while the question is open.
-    const meanwhile = run(asked, {
+  it("names the episode a take began in when it saves, whatever was read since", () => {
+    const recording = run(
+      arrived(),
+      { type: "recordPressed" },
+      { type: "micOpened", at: 0 }
+    ).state
+    // Another instance of the page opened another primer meanwhile.
+    const other = plan({ openedAt: "2026-10-12T12:30:00.000Z" })
+    const reread = run(recording, {
       type: "listed",
-      seq: asked.readSeq,
-      shelf: { plan: plan(), takes: [take("gap", 5_000), take("next", 4_000)] },
+      seq: recording.readSeq,
+      shelf: { plan: other, takes: [] },
       now: NOON,
     }).state
-    const yes = run(meanwhile, { type: "replaceConfirmed" })
-    expect(yes.effects).toEqual([
-      expect.objectContaining({ type: "openPlan", drop: ["gap", "next"] }),
-    ])
+    const saved = run(
+      reread,
+      { type: "recordPressed" },
+      { type: "taken", take: spoken(5_000), at: "2026-10-12T12:31:00.000Z" }
+    )
+    expect(saved.effects).toContainEqual(
+      expect.objectContaining({ type: "saveTake", episode: EPISODE })
+    )
   })
 
   it("says so when a primer is read while a take is under way", () => {
@@ -311,7 +314,10 @@ describe("journal machine", () => {
         now: NOON + JOURNAL_IDLE_MS,
       }
     )
-    expect(stale.effects).toEqual([{ type: "read", seq: 1 }, { type: "clear" }])
+    expect(stale.effects).toEqual([
+      { type: "read", seq: 1 },
+      { type: "clear", episode: EPISODE },
+    ])
     expect(stale.state.shelf).toEqual({ kind: "read", plan: null, takes: [] })
     expect(stale.state.notice).toBe(JOURNAL_NOTICES.expired)
   })
@@ -320,7 +326,7 @@ describe("journal machine", () => {
     const discarded = run(arrived(plan(), [take("gap", 5_000)]), {
       type: "episodeDiscarded",
     })
-    expect(discarded.effects).toEqual([{ type: "clear" }])
+    expect(discarded.effects).toEqual([{ type: "clear", episode: EPISODE }])
     expect(discarded.state.shelf).toEqual({
       kind: "read",
       plan: null,

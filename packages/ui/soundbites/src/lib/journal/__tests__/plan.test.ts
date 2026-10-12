@@ -157,8 +157,35 @@ describe("the export", () => {
       "UTC"
     )
     const later = plan({ openedAt: "2026-10-12T12:30:00.000Z" })
-    await memory.store.open(later, ["gap"])
+    await memory.store.open(later)
     await memory.store.letGo(out?.sent ?? { openedAt: "", takes: [] })
     expect(memory.state().plan).toEqual(later)
+  })
+})
+
+describe("the store's contract (in memory, as the IndexedDB store keeps it)", () => {
+  it("keeps the takes a newly opened plan still has a cut for", async () => {
+    const memory = memoryJournalStore({
+      plan: plan(),
+      takes: [take("gap", 5_000), take("next", 4_000)],
+    })
+    const revised = plan({
+      openedAt: "2026-10-12T12:30:00.000Z",
+      primer: { ...PRIMER, cuts: PRIMER.cuts.slice(1) },
+    })
+    await memory.store.open(revised)
+    expect(memory.state().takes.map((each) => each.cutId)).toEqual(["next"])
+  })
+
+  it("touches nothing of an episode a write does not name", async () => {
+    const memory = memoryJournalStore({
+      plan: plan(),
+      takes: [take("gap", 5_000)],
+    })
+    await memory.store.clear("2026-01-01T00:00:00.000Z")
+    expect(memory.state().plan).not.toBeNull()
+    await expect(
+      memory.store.saveTake(take("flow", 5_000), new Blob(["x"]), "other")
+    ).rejects.toThrow()
   })
 })

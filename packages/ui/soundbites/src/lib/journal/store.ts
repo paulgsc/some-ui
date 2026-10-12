@@ -4,8 +4,9 @@
  * their six places. One plan at a time, one take per cut (a redo replaces
  * it), and the audio beside each take under its cut's id.
  *
- * Each rule holds in the transaction that writes, not in the caller: a take
- * is kept only for a cut of the plan in place, and never past
+ * Each rule holds in the transaction that writes, not in the caller: a write
+ * about an episode names it (`openedAt`) and touches nothing of another, a
+ * take is kept only for a cut of the plan in place, and never past
  * `JOURNAL_TAKES_MAX_BYTES`.
  */
 import { bytesBesides, connection, done, result } from "@some-ui/voice-capture"
@@ -44,18 +45,24 @@ export type JournalStore = {
    */
   snapshot: () => Promise<JournalSnapshot>
   audio: (cutId: string) => Promise<Blob | null>
-  /** Puts `plan` in place of any other, letting go of the takes `drop` names. */
-  open: (plan: JournalPlan, drop: ReadonlyArray<string>) => Promise<void>
-  /** Rejects, keeping nothing, with no plan in place. */
-  setTargets: (targets: JournalPlan["targets"]) => Promise<void>
+  /**
+   * Puts `plan` in place of any other, keeping the takes for cuts it still
+   * has and letting go of the rest.
+   */
+  open: (plan: JournalPlan) => Promise<void>
+  /** Rejects with `JournalStaleError`, keeping nothing, unless `episode` is in place. */
+  setTargets: (
+    targets: JournalPlan["targets"],
+    episode: string
+  ) => Promise<void>
   /**
    * Keeps `take` with its audio in place of its cut's last one. Rejects,
    * keeping nothing, with `JournalFullError` past the cap or
-   * `JournalStaleError` when the plan in place has no such cut.
+   * `JournalStaleError` unless `episode` is in place and has the cut.
    */
-  saveTake: (take: JournalTake, audio: Blob) => Promise<void>
-  /** Lets the plan and every take go. */
-  clear: () => Promise<void>
+  saveTake: (take: JournalTake, audio: Blob, episode: string) => Promise<void>
+  /** Lets the plan and every take go, if `episode` is the one in place. */
+  clear: (episode: string) => Promise<void>
   /**
    * Lets go of the takes `sent` carried that are still as they were sent
    * (same cut, same `recordedAt`), and of the plan once no take is left, if
@@ -178,25 +185,28 @@ export function indexedDbJournalStore(): JournalStore {
       return blob instanceof Blob ? blob : null
     },
 
-    async open(plan, drop): Promise<void> {
+    async open(plan): Promise<void> {
       const tx = (await connect()).transaction(
         [PLAN, TAKES, AUDIO],
         "readwrite"
       )
-      tx.objectStore(PLAN).put(plan, CURRENT)
-      for (const cutId of drop) {
-        tx.objectStore(TAKES).delete(cutId)
+      const takes = tx.objectStore(TAKES)
+      const kept: Array<IDBValidKey> = await result(takes.getAllKeys())
+      for (const cutId of kept) {
+        if (plan.primer.cuts.some((cut) => cut.id === cutId)) continue
+        takes.delete(cutId)
         tx.objectStore(AUDIO).delete(cutId)
       }
+      tx.objectStore(PLAN).put(plan, CURRENT)
       await done(tx)
       changed()
     },
 
-    async setTargets(targets): Promise<void> {
+    async setTargets(targets, episode): Promise<void> {
       const tx = (await connect()).transaction(PLAN, "readwrite")
       const store = tx.objectStore(PLAN)
       const plan = await planIn(store)
-      if (plan === null) {
+      if (plan?.openedAt !== episode) {
         tx.abort()
         throw new JournalStaleError()
       }
@@ -205,14 +215,17 @@ export function indexedDbJournalStore(): JournalStore {
       changed()
     },
 
-    async saveTake(take, audio): Promise<void> {
+    async saveTake(take, audio, episode): Promise<void> {
       const tx = (await connect()).transaction(
         [PLAN, TAKES, AUDIO],
         "readwrite"
       )
       const audios = tx.objectStore(AUDIO)
       const plan = await planIn(tx.objectStore(PLAN))
-      if (!plan?.primer.cuts.some((cut) => cut.id === take.cutId)) {
+      if (
+        plan?.openedAt !== episode ||
+        !plan.primer.cuts.some((cut) => cut.id === take.cutId)
+      ) {
         tx.abort()
         throw new JournalStaleError()
       }
@@ -230,11 +243,17 @@ export function indexedDbJournalStore(): JournalStore {
       changed()
     },
 
-    async clear(): Promise<void> {
+    async clear(episode): Promise<void> {
       const tx = (await connect()).transaction(
         [PLAN, TAKES, AUDIO],
         "readwrite"
       )
+      const plan = await planIn(tx.objectStore(PLAN))
+      if (plan?.openedAt !== episode) {
+        // Another episode opened since this one was read: it stays.
+        tx.abort()
+        return
+      }
       tx.objectStore(PLAN).clear()
       tx.objectStore(TAKES).clear()
       tx.objectStore(AUDIO).clear()
