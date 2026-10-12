@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as PlayoffDeltaRouteImport } from './routes/playoff-delta'
 import { Route as MissionRouteImport } from './routes/mission'
 import { Route as ExtensionsRouteImport } from './routes/extensions'
 import { Route as AuthRouteImport } from './routes/auth'
@@ -35,6 +36,11 @@ import { Route as DashboardApkAphTrendRouteImport } from './routes/_dashboard/_a
 import { Route as DashboardApkAphSettingsRouteImport } from './routes/_dashboard/_apk/aph/settings'
 import { Route as DashboardApkAphHistoryRouteImport } from './routes/_dashboard/_apk/aph/history'
 
+const PlayoffDeltaRoute = PlayoffDeltaRouteImport.update({
+  id: '/playoff-delta',
+  path: '/playoff-delta',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const MissionRoute = MissionRouteImport.update({
   id: '/mission',
   path: '/mission',
@@ -163,6 +169,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/extensions': typeof ExtensionsRoute
+  '/playoff-delta': typeof PlayoffDeltaRoute
   '/mission': typeof MissionRoute
   '/app': typeof DashboardAppRoute
   '/jobs': typeof DashboardJobsRoute
@@ -187,6 +194,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/extensions': typeof ExtensionsRoute
+  '/playoff-delta': typeof PlayoffDeltaRoute
   '/mission': typeof MissionRoute
   '/app': typeof DashboardAppRoute
   '/jobs': typeof DashboardJobsRoute
@@ -212,6 +220,7 @@ export interface FileRoutesById {
   '/_dashboard': typeof DashboardRouteWithChildren
   '/auth': typeof AuthRoute
   '/extensions': typeof ExtensionsRoute
+  '/playoff-delta': typeof PlayoffDeltaRoute
   '/mission': typeof MissionRoute
   '/_dashboard/_apk': typeof DashboardApkRouteWithChildren
   '/_dashboard/_lan': typeof DashboardLanRouteWithChildren
@@ -240,6 +249,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/extensions'
+    | '/playoff-delta'
     | '/mission'
     | '/app'
     | '/jobs'
@@ -264,6 +274,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/extensions'
+    | '/playoff-delta'
     | '/mission'
     | '/app'
     | '/jobs'
@@ -288,6 +299,7 @@ export interface FileRouteTypes {
     | '/_dashboard'
     | '/auth'
     | '/extensions'
+    | '/playoff-delta'
     | '/mission'
     | '/_dashboard/_apk'
     | '/_dashboard/_lan'
@@ -316,11 +328,19 @@ export interface RootRouteChildren {
   DashboardRoute: typeof DashboardRouteWithChildren
   AuthRoute: typeof AuthRoute
   ExtensionsRoute: typeof ExtensionsRoute
+  PlayoffDeltaRoute: typeof PlayoffDeltaRoute
   MissionRoute: typeof MissionRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/playoff-delta': {
+      id: '/playoff-delta'
+      path: '/playoff-delta'
+      fullPath: '/playoff-delta'
+      preLoaderRoute: typeof PlayoffDeltaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/mission': {
       id: '/mission'
       path: '/mission'
@@ -584,6 +604,7 @@ const rootRouteChildren: RootRouteChildren = {
   DashboardRoute: DashboardRouteWithChildren,
   AuthRoute: AuthRoute,
   ExtensionsRoute: ExtensionsRoute,
+  PlayoffDeltaRoute: PlayoffDeltaRoute,
   MissionRoute: MissionRoute,
 }
 export const routeTree = rootRouteImport

@@ -33,6 +33,7 @@ const uiPackages = [
   "honeycomb",
   "leetype",
   "lesson-crm",
+  "playoff-delta",
   "resume",
   "shared",
   "soundbites",

@@ -27,7 +27,8 @@
     "test:intent": "vitest run intent.test",
     "test:e2e": "playwright test --config playwright.config.ts",
     "test:ui-fit": "playwright test --config playwright.config.ts tests/ui-fit",
-    "test:sw": "playwright test --config playwright.config.ts tests/study-nudge"
+    "test:sw": "playwright test --config playwright.config.ts tests/study-nudge",
+    "record:playoff-delta": "tsx tests/record/playoff-delta.ts"
   },
   "dependencies": {
     "@capacitor-community/sqlite": "^8.1.1",
@@ -50,6 +51,7 @@
     "@some-ui/intent-kit": "workspace:*",
     "@some-ui/job-tracker": "workspace:*",
     "@some-ui/lesson-crm": "workspace:*",
+    "@some-ui/playoff-delta": "workspace:*",
     "@some-ui/react-hooks": "workspace:*",
     "@some-ui/resume": "workspace:*",
     "@some-ui/shared": "workspace:*",

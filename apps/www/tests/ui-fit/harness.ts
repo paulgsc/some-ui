@@ -83,17 +83,24 @@ const MIME: Record<string, string> = {
 
 export type StaticSite = { origin: string; close: () => Promise<void> }
 
-/** A static file server for a build directory, on an ephemeral port. */
-export function serve(root: string): Promise<StaticSite> {
+/**
+ * A static file server for a build directory, on an ephemeral port. With
+ * `fallback` (a file under `root`, e.g. "index.html"), a path that names no
+ * file is answered with it, as an app's client-side routes need.
+ */
+export function serve(
+  root: string,
+  { fallback }: { fallback?: string } = {}
+): Promise<StaticSite> {
+  const isFile = (path: string): boolean =>
+    path.startsWith(root) && existsSync(path) && !statSync(path).isDirectory()
   const server: Server = createServer((request, response) => {
     const url = new URL(request.url ?? "/", "http://localhost")
-    const filePath = join(root, decodeURIComponent(url.pathname))
+    const asked = join(root, decodeURIComponent(url.pathname))
+    const filePath =
+      isFile(asked) || fallback === undefined ? asked : join(root, fallback)
 
-    if (
-      !filePath.startsWith(root) ||
-      !existsSync(filePath) ||
-      statSync(filePath).isDirectory()
-    ) {
+    if (!isFile(filePath)) {
       response.writeHead(404).end()
       return
     }

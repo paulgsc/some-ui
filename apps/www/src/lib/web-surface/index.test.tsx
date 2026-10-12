@@ -2,7 +2,8 @@
  * @vitest-environment jsdom
  *
  * The door (A4, packages/some-vite-config/AUDIENCES.md): the web builds get
- * Hangul Honeycomb's panel and the extensions comb, and a build without a web
+ * Hangul Honeycomb's panel, the extensions comb and the Playoff Delta stage,
+ * and a build without a web
  * surface gets something inert in their place. Vitest builds the `lan`
  * profile; the Android app's build is stood in for by its flag, and a
  * profile without "web" by mocking `@/lib/build-profile`.
@@ -39,11 +40,12 @@ const isLazy = (component: unknown): boolean =>
   Reflect.get(component, "$$typeof") === Symbol.for("react.lazy")
 
 describe("a web build", () => {
-  it("binds Hangul Honeycomb's panel and the extensions comb", async () => {
-    const { ExtensionsComb, WEB_PANELS } = await loadDoor()
+  it("binds Hangul Honeycomb's panel, the extensions comb and the Playoff Delta stage", async () => {
+    const { ExtensionsComb, PlayoffDeltaStage, WEB_PANELS } = await loadDoor()
 
     expect(Object.keys(WEB_PANELS)).toEqual(["hangul"])
     expect(isLazy(ExtensionsComb)).toBe(true)
+    expect(isLazy(PlayoffDeltaStage)).toBe(true)
   })
 })
 
@@ -53,10 +55,16 @@ describe("a build with no web surface", () => {
     ["a mobile dev server's (no device flag)", { device: false, web: false }],
     ["the device flag alone", { device: true, web: true }],
   ])("binds nothing in %s", async (_, build) => {
-    const { ExtensionsComb, WEB_PANELS } = await loadDoor(build)
+    const { ExtensionsComb, PlayoffDeltaStage, WEB_PANELS } =
+      await loadDoor(build)
 
     expect(WEB_PANELS).toEqual({})
-    const { container } = render(<ExtensionsComb />)
+    const { container } = render(
+      <>
+        <ExtensionsComb />
+        <PlayoffDeltaStage />
+      </>
+    )
     expect(container.innerHTML).toBe("")
   })
 })
