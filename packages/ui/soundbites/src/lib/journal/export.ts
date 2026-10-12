@@ -8,7 +8,7 @@ import { extensionOf } from "@some-ui/core-utils"
 
 import type { JournalPlan, JournalTake } from "./plan"
 import { targetOf } from "./plan"
-import type { JournalStore } from "./store"
+import type { JournalSent, JournalStore } from "./store"
 
 type JournalFile = {
   readonly name: string
@@ -73,7 +73,7 @@ export async function journalFiles(
   timeZone: string
 ): Promise<{
   files: Array<JournalFile>
-  sent: Array<JournalTake>
+  sent: JournalSent
 } | null> {
   const { plan, takes } = await store.read()
   if (plan === null) return null
@@ -96,6 +96,6 @@ export async function journalFiles(
         data: each.audio,
       })),
     ],
-    sent: kept,
+    sent: { openedAt: plan.openedAt, takes: kept },
   }
 }

@@ -292,6 +292,7 @@ function openPrimer(
   const plan: JournalPlan = {
     primer,
     targets: {},
+    openedAt: at,
     touchedAt: at,
   }
   const opened = {

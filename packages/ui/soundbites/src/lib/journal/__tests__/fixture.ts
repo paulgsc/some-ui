@@ -35,7 +35,13 @@ export const PRIMER: Primer = {
 
 export function plan(fields: Partial<JournalPlan> = {}): JournalPlan {
   const at = new Date(NOON).toISOString()
-  return { primer: PRIMER, targets: {}, touchedAt: at, ...fields }
+  return {
+    primer: PRIMER,
+    targets: {},
+    openedAt: at,
+    touchedAt: at,
+    ...fields,
+  }
 }
 
 export function take(cutId: string, durationMs: number): JournalTake {
@@ -109,20 +115,21 @@ export function memoryJournalStore(
         changed()
         return Promise.resolve()
       },
-      letGo: (shared): Promise<void> => {
+      letGo: (sent): Promise<void> => {
         const left = [...takes.values()].filter(
           (row) =>
-            !shared.some(
+            !sent.takes.some(
               (each) =>
                 each.cutId === row.cutId && each.recordedAt === row.recordedAt
             )
         )
-        for (const each of shared) {
+        for (const each of sent.takes) {
           if (left.some((row) => row.cutId === each.cutId)) continue
           takes.delete(each.cutId)
           audio.delete(each.cutId)
         }
-        if (left.length === 0) current = null
+        if (left.length === 0 && current?.openedAt === sent.openedAt)
+          current = null
         changed()
         return Promise.resolve()
       },

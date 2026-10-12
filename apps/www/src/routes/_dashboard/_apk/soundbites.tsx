@@ -143,7 +143,7 @@ const ShareJournal = ({
     }
   )
   useIntentEffect(share.state, ({ outcome, sent }) => {
-    if (outcome !== "shared") return
+    if (outcome !== "shared" || sent === null) return
     if (
       confirm(
         "Did they arrive? OK lets the takes that went out go from the phone; Cancel keeps them here."

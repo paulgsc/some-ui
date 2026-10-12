@@ -6,19 +6,19 @@
  * say the files arrived, the episode leaves the phone. Phone-only
  * (`build.paths.ts`).
  */
-import type { JournalStore, JournalTake } from "@some-ui/soundbites"
+import type { JournalSent, JournalStore } from "@some-ui/soundbites"
 
 import { foreignValue } from "@/lib/intent/foreign"
 import type { SharedFile } from "@/lib/share-files"
 import { shareFiles } from "@/lib/share-files"
 
 /**
- * `nothing`: no take to send, so the sheet never opened. `sent`: the takes
+ * `nothing`: no take to send, so the sheet never opened. `sent`: the episode and takes
  * that went out, the only ones `letGoJournal` may let go.
  */
 export type JournalShare = {
   outcome: "shared" | "cancelled" | "nothing"
-  sent: ReadonlyArray<JournalTake>
+  sent: JournalSent | null
 }
 
 /**
@@ -32,7 +32,7 @@ export async function shareJournal(
     timeZone: string
   ) => Promise<{
     files: ReadonlyArray<SharedFile>
-    sent: ReadonlyArray<JournalTake>
+    sent: JournalSent
   } | null>,
   now: () => Date = () => new Date()
 ): Promise<JournalShare> {
@@ -40,7 +40,7 @@ export async function shareJournal(
     now().toISOString(),
     Intl.DateTimeFormat().resolvedOptions().timeZone
   )
-  if (written === null) return { outcome: "nothing", sent: [] }
+  if (written === null) return { outcome: "nothing", sent: null }
   const outcome = await foreignValue({
     outcome: shareFiles("journal-takes", "Build Journal takes", written.files),
   })
@@ -49,14 +49,15 @@ export async function shareJournal(
 
 /**
  * The person says the takes arrived: those that went out leave the phone,
- * and the episode with them unless a take was kept since (`letGo`). The
+ * and the episode with them unless a take was kept or a primer opened since
+ * (`letGo`). The
  * Journal tab reads the store again on its own once that lands. Best effort:
  * one that fails leaves the episode on the tab, where "Discard this episode"
  * and the week's expiry still let it go.
  */
 export function letGoJournal(
   store: Pick<JournalStore, "letGo">,
-  sent: ReadonlyArray<JournalTake>
+  sent: JournalSent
 ): void {
   store.letGo(sent).catch(() => undefined)
 }

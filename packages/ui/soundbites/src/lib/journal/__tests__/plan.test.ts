@@ -142,6 +142,23 @@ describe("the export", () => {
       "01-gap.webm",
       "03-next.webm",
     ])
-    expect(out?.sent.map((each) => each.cutId)).toEqual(["gap", "next"])
+    expect(out?.sent.openedAt).toBe(plan().openedAt)
+    expect(out?.sent.takes.map((each) => each.cutId)).toEqual(["gap", "next"])
+  })
+
+  it("lets go of nothing of a primer opened after the share", async () => {
+    const memory = memoryJournalStore({
+      plan: plan(),
+      takes: [take("gap", 5_000)],
+    })
+    const out = await journalFiles(
+      memory.store,
+      "2026-10-12T13:00:00.000Z",
+      "UTC"
+    )
+    const later = plan({ openedAt: "2026-10-12T12:30:00.000Z" })
+    await memory.store.open(later, ["gap"])
+    await memory.store.letGo(out?.sent ?? { openedAt: "", takes: [] })
+    expect(memory.state().plan).toEqual(later)
   })
 })

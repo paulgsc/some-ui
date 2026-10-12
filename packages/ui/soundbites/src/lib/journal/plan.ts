@@ -25,6 +25,11 @@ export type JournalPlan = {
   /** Targets the person moved, by cut id; any other cut keeps the primer's. */
   readonly targets: Readonly<Record<string, number>>
   /**
+   * ISO 8601, UTC: when the primer was opened. It names the episode, so a
+   * share that finishes after another primer opened lets go of nothing of it.
+   */
+  readonly openedAt: string
+  /**
    * ISO 8601, UTC: when the primer was opened or a take last kept. The
    * episode is let go `JOURNAL_IDLE_MS` after it.
    */
