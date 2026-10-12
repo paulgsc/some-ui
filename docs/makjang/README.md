@@ -385,9 +385,8 @@ prompt, the level and an optional scene idea are enough. The one thing that
 crosses lessons is the last session's record (see "The last session, and its
 review"): the last drama's scenes, first tries and review, which steer how
 the next drama fits, and the question its ending stopped on (its `hook`),
-which the next drama may pick up as its next episode. The next lesson still
-needs nothing from the last to be played; the hook is a premise its author
-is offered, as a scene idea is. The app keeps nothing else
+which the next drama may pick up as its next episode, as a scene idea is
+offered. The app keeps nothing else
 between lessons beyond the shelf. The standing cast in today's generator
 prompt can stay as a
 default to draw from, as long as no lesson relies on another.
@@ -862,7 +861,7 @@ it; the only contract is the files. Its canon line is Remark 8.3 (v1.15).
 ### The file contract
 
 The note at the top of every export says: listen first to any voice notes
-the prompt names (`drama-<stamp>.voice-<n>.webm`, beside it), then write the
+the prompt names (`drama-<stamp>.voice-<n>.<ext>`, beside it), then write the
 drama the prompt asks for as one JSON file next to this one, named `drama-<stamp>.json` (the
 export's name with `.prompt.md` replaced by `.json`), holding the bare JSON
 with no code fence.
@@ -888,7 +887,7 @@ level and genre fold away under a line that says what they are.
   draft; another scene starts only once this one is let go, by sharing it
   or by discarding it ("Start a different scene").
 - **They travel with the prompt.** Share writes the prompt and every note
-  beside it, `drama-<stamp>.voice-<n>.webm`, and the request names them
+  beside it, `drama-<stamp>.voice-<n>.<ext>` (the recording's type), and the request names them
   (`Scene, spoken`), so the agent listens before it writes. The clipboard
   cannot carry audio, so a copied prompt goes without them, and the screen
   says so.
@@ -898,7 +897,7 @@ level and genre fold away under a line that says what they are.
 - **Where it runs.** Recording is the Android app's (www's `lib/scene-voice`,
   over `@some-ui/voice-capture`'s voice note, which voice reflections run
   too). Topik holds only the `SceneVoice` port; without it the scene is
-  typed, as before.
+  typed.
 
 ### Pulling a scene back (MKJ-S10)
 

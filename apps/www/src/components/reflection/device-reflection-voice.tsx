@@ -5,19 +5,22 @@
  */
 import type { JSX } from "react"
 import { useEffect, useState, useSyncExternalStore } from "react"
+import { formatTimecode } from "@some-ui/core-utils"
 import { Button } from "@some-ui/shared"
+import type { VoiceNoteOutcome, VoiceNoteState } from "@some-ui/voice-capture"
 import { RECORDING_FAILURE_COPY, VOICE_NOTE_SAID } from "@some-ui/voice-capture"
 import { Mic, Square } from "lucide-react"
 
-import { formatTimecode } from "@/lib/format"
-import type { Outcome, VoiceState } from "@/lib/reflection-voice"
 import { phoneVoiceNote } from "@/lib/reflection-voice"
 
 import { NO_ROOM } from "./copy"
 
-const SAID: Record<Outcome, string> = { ...VOICE_NOTE_SAID, full: NO_ROOM }
+const SAID: Record<VoiceNoteOutcome, string> = {
+  ...VOICE_NOTE_SAID,
+  full: NO_ROOM,
+}
 
-function note(state: VoiceState): string | null {
+function note(state: VoiceNoteState): string | null {
   if (state.kind === "blocked") return RECORDING_FAILURE_COPY[state.reason]
   if (state.kind === "idle" && state.last !== null) return SAID[state.last]
   return null

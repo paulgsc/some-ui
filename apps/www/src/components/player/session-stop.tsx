@@ -1,6 +1,6 @@
 import type { JSX } from "react"
 import { useEffect, useId, useRef, useState } from "react"
-import { cn, formatRelativeTime } from "@some-ui/core-utils"
+import { cn, formatRelativeTime, formatTimecode } from "@some-ui/core-utils"
 import { Button } from "@some-ui/shared"
 import { Link } from "@tanstack/react-router"
 import type { LucideIcon } from "lucide-react"
@@ -17,7 +17,7 @@ import {
 
 import { hasAudience } from "@/lib/build-profile"
 import { useMinuteClock } from "@/lib/clock"
-import { formatDurationMs, formatTimecode } from "@/lib/format"
+import { formatDurationMs } from "@/lib/format"
 import type { Reason, Stop } from "@/lib/session-stop"
 import {
   msSinceStop,

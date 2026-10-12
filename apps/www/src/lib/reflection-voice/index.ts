@@ -4,50 +4,32 @@
  * with their audio. Phone-only (`build.paths.ts`).
  */
 import { SOUNDBITE_BITS_PER_SECOND } from "@some-ui/soundbites/contract"
-import type { BlobShelf } from "@some-ui/voice-capture"
-import { blobShelf, micRecorder } from "@some-ui/voice-capture"
+import type { VoiceNoteRuntime } from "@some-ui/voice-capture"
+import { micRecorder, savingShelf } from "@some-ui/voice-capture"
 
 import { reflections } from "@/lib/session-reflection"
 
 import { REFLECTION_AUDIO_MAX_BYTES } from "./budget"
-import type { VoiceRuntime } from "./runtime"
 import { createVoiceNote } from "./runtime"
 
-export type {
-  VoiceNoteOutcome as Outcome,
-  VoiceNoteState as VoiceState,
-} from "@some-ui/voice-capture"
-export type { VoiceRuntime } from "./runtime"
-
-let shelf: BlobShelf | null = null
-/** Kept voice reflections whose audio is still being written. */
-const saving = new Set<string>()
+const shelf = savingShelf({
+  dbName: "some-ui.reflection-audio",
+  maxBytes: REFLECTION_AUDIO_MAX_BYTES,
+})
 
 /** Whether `id`'s audio is still being written: not ready to share. */
-export function isSaving(id: string): boolean {
-  return saving.has(id)
-}
+export const isSaving = shelf.isSaving
 
-/** One shelf per page load, so its database opens once. */
-export function reflectionAudio(): BlobShelf {
-  shelf ??= blobShelf({
-    dbName: "some-ui.reflection-audio",
-    maxBytes: REFLECTION_AUDIO_MAX_BYTES,
-  })
-  return shelf
-}
+export const reflectionAudio = shelf.shelf
 
-export function phoneVoiceNote(sessionId: string): VoiceRuntime {
+export function phoneVoiceNote(sessionId: string): VoiceNoteRuntime {
   return createVoiceNote(
     {
       startRecording: micRecorder({ bitsPerSecond: SOUNDBITE_BITS_PER_SECOND }),
       audio: reflectionAudio(),
       keep: (reflection) => reflections.keep(reflection),
       letGo: (ids) => reflections.letGo(ids),
-      saving: (id, inFlight) => {
-        if (inFlight) saving.add(id)
-        else saving.delete(id)
-      },
+      saving: shelf.saving,
       now: () => Date.now(),
       newId: () => crypto.randomUUID(),
     },

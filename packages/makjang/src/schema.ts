@@ -64,17 +64,13 @@ export type Line = {
   cue?: string
 }
 
-/** A short action or description, so the learner knows where they are. */
-export type Narration = {
-  id: string
-  text: string
-  gloss: string
-}
-
-export type Beat = Line | Narration
-
 /** A line in the language being learned, with its gloss. */
 export type Glossed = { text: string; gloss: string }
+
+/** A short action or description, so the learner knows where they are. */
+export type Narration = { id: string } & Glossed
+
+export type Beat = Line | Narration
 
 export type Scene<Check> = {
   id: string

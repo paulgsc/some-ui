@@ -44,7 +44,7 @@ export type VoiceNoteEvent =
   | TakeSignal
   | { type: "saved"; outcome: VoiceNoteOutcome }
 
-export type VoiceNoteEffect =
+type VoiceNoteEffect =
   | TakeEffect
   | { type: "save"; take: Take; atMs: number | null }
 

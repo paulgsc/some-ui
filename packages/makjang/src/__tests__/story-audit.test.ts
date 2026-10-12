@@ -106,6 +106,16 @@ describe("auditStory accepts a tree within bounds", () => {
     })
   })
 
+  it("reads a blank title as none, so the place still names the drama", () => {
+    const tree = rawTree()
+    tree.title = " "
+    get(tree, "root").title = ""
+    const audit = auditStory(tree)
+    if (!audit.ok) throw new Error(JSON.stringify(audit.findings))
+    expect(audit.lesson.title).toBeUndefined()
+    expect(audit.lesson.root.title).toBeUndefined()
+  })
+
   it("lets two choices use the same option ids", () => {
     const tree = rawTree()
     get(tree, "root.choice.options.1.child.choice.options.0").id = "a"

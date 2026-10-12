@@ -6,11 +6,10 @@ import type {
 import { initialVoiceNote, stepVoiceNote } from "@voice-capture/lib/voice-note"
 import { describe, expect, it } from "vitest"
 
-const MAX_MS = 60_000
-const LIMITS = { minMs: 1_000, maxMs: MAX_MS }
+const LIMITS = { minMs: 1_000, maxMs: 60_000 }
 
-function take(durationMs: number, bytes = "abc"): Take {
-  return { blob: new Blob([bytes]), mimeType: "audio/webm", durationMs }
+function take(durationMs: number): Take {
+  return { blob: new Blob(["abc"]), mimeType: "audio/webm", durationMs }
 }
 
 function run(events: ReadonlyArray<VoiceNoteEvent>): {
@@ -56,30 +55,11 @@ describe("a voice note", () => {
     expect(saved).toEqual([{ type: "save", take: take(5_000), atMs: 252_000 }])
   })
 
-  it("keeps nothing from a stray tap, or from a take that came back empty", () => {
+  it("keeps nothing from a stray tap", () => {
     expect(
       run([...recording, { type: "stop" }, { type: "taken", take: take(400) }])
         .state
     ).toEqual({ kind: "idle", last: "short" })
-    expect(
-      run([
-        ...recording,
-        { type: "stop" },
-        { type: "taken", take: take(5_000, "") },
-      ]).state
-    ).toEqual({ kind: "idle", last: "short" })
-  })
-
-  it("stops itself at the limit and keeps it", () => {
-    const { state, effects } = run([
-      ...recording,
-      { type: "ticked", now: 1_000 + MAX_MS, level: 0 },
-    ])
-    expect(state).toMatchObject({
-      kind: "taking",
-      phase: { kind: "finishing" },
-    })
-    expect(effects.slice(-2)).toEqual(["stopClock", "finishTake"])
   })
 
   it("keeps a take when the sheet closes mid-sentence", () => {

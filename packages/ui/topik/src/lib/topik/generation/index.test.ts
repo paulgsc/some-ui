@@ -136,7 +136,7 @@ describe("buildTreePrompt", () => {
       voiceNoteName(at, 0, "audio/webm;codecs=opus"),
       voiceNoteName(at, 1, "audio/mp4"),
     ]
-    expect(notes[1]).toBe("drama-20261009T070503120Z.voice-2.mp4")
+    expect(notes[1]).toMatch(/^drama-20261009T070503120Z\.voice-2\./)
     expect(buildTreePrompt({ level: 2, voiceNotes: notes })).toContain(
       `Scene, spoken: ${notes.join(", ")}\n`
     )

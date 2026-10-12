@@ -4,10 +4,6 @@
  * next scene aloud"). Recording is the phone's (www's `lib/scene-voice`, over
  * `@some-ui/voice-capture`), so this is the port only; topik renders its
  * snapshot and forwards taps.
- *
- * The notes are one draft, kept on the device until they reach the
- * learner's drive or are let go: a new scene starts from the open draft,
- * never beside it.
  */
 
 /** A voice note in the draft. */

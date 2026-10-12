@@ -61,10 +61,6 @@ type GenerateLessonProps = {
    */
   kept?: JSX.Element
   share?: FileShare
-  /**
-   * The scene said aloud, where the phone can record it: its voice notes
-   * go to the learner's model with the shared prompt.
-   */
   sceneVoice?: SceneVoice
 }
 
@@ -273,7 +269,6 @@ export const GenerateLesson = ({
 }: GenerateLessonProps): JSX.Element => {
   const voice = useSceneVoice(sceneVoice)
   const notes = voice?.notes ?? []
-  // The share sheet says "shared" once an app is picked, not once it lands.
   const [arrived, setArrived] = useState<ReadonlyArray<string> | null>(null)
   const [level, setLevel] = useState<TopikLevel>(defaultLevel)
   const [scene, setScene] = useState(initialSeed?.scene ?? "")
@@ -312,7 +307,7 @@ export const GenerateLesson = ({
       level,
       scene: scene.trim() || undefined,
       genres,
-      ...(voiceNotes.length > 0 ? { voiceNotes } : {}),
+      voiceNotes,
     })
   const copyPrompt = (): void => void hand(prompt(), "prompt")
   const levelAndGenre = [

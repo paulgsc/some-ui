@@ -2,10 +2,7 @@
  * A voice reflection: `@some-ui/voice-capture`'s voice note, saved as a
  * reflection of its session. It decides nothing but what a save keeps.
  */
-import {
-  SOUNDBITE_MAX_MS,
-  SOUNDBITE_MIN_MS,
-} from "@some-ui/soundbites/contract"
+import { SOUNDBITE_TAKE_LIMITS } from "@some-ui/soundbites/contract"
 import type {
   BlobShelf,
   StartRecording,
@@ -14,9 +11,6 @@ import type {
 import { ShelfFullError, voiceNoteRuntime } from "@some-ui/voice-capture"
 
 import type { KeepResult, Reflection } from "@/lib/session-reflection"
-
-/** A take is a soundbite's length: the soundbites page records to these. */
-const LIMITS = { minMs: SOUNDBITE_MIN_MS, maxMs: SOUNDBITE_MAX_MS }
 
 export type VoicePorts = {
   startRecording: StartRecording
@@ -31,12 +25,10 @@ export type VoicePorts = {
 }
 
 /** `start`'s `atMs` is how far into the session, read as the take starts. */
-export type VoiceRuntime = VoiceNoteRuntime
-
 export function createVoiceNote(
   ports: VoicePorts,
   sessionId: string
-): VoiceRuntime {
+): VoiceNoteRuntime {
   return voiceNoteRuntime(
     {
       startRecording: ports.startRecording,
@@ -81,6 +73,6 @@ export function createVoiceNote(
         )
       },
     },
-    LIMITS
+    SOUNDBITE_TAKE_LIMITS
   )
 }

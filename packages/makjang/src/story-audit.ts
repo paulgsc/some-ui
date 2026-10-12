@@ -76,7 +76,10 @@ function text(
   return undefined
 }
 
-/** An optional string at `record[key]`: absent, or a string. */
+/**
+ * An optional string at `record[key]`: absent, or a string. A blank one is
+ * read as absent, so whatever stands in for it (a title's place) still does.
+ */
 function optionalText(
   context: Context,
   record: Record<string, unknown>,
@@ -84,7 +87,8 @@ function optionalText(
   path: string
 ): string | undefined {
   const value = record[key]
-  if (value === undefined || typeof value === "string") return value
+  if (typeof value === "string") return value.trim() === "" ? undefined : value
+  if (value === undefined) return undefined
   report(context, at(path, key), "must be a string when given")
   return undefined
 }

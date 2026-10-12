@@ -1,7 +1,4 @@
-import {
-  SOUNDBITE_BITS_PER_SECOND,
-  SOUNDBITE_MAX_MS,
-} from "@some-ui/soundbites/contract"
+import { SOUNDBITE_TAKE_MAX_BYTES } from "@some-ui/soundbites/contract"
 
 /** Notes one draft holds: a scene told in five minutes, a minute a take. */
 export const SCENE_NOTES_MAX = 5
@@ -11,5 +8,4 @@ export const SCENE_NOTES_MAX = 5
  * the soundbites' bitrate. The phone's storage budget keeps this free
  * (`lib/device-backend/storage`).
  */
-export const SCENE_AUDIO_MAX_BYTES =
-  SCENE_NOTES_MAX * (SOUNDBITE_MAX_MS / 1000) * (SOUNDBITE_BITS_PER_SECOND / 8)
+export const SCENE_AUDIO_MAX_BYTES = SCENE_NOTES_MAX * SOUNDBITE_TAKE_MAX_BYTES

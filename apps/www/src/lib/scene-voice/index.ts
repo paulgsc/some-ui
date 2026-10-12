@@ -8,8 +8,7 @@ import type { IntentError } from "@some-ui/intent-kit"
 import { reportFailure, toIntentError } from "@some-ui/intent-kit"
 import { SOUNDBITE_BITS_PER_SECOND } from "@some-ui/soundbites/contract"
 import type { FileShare, SceneNote, SceneVoice } from "@some-ui/topik"
-import type { BlobShelf } from "@some-ui/voice-capture"
-import { blobShelf, micRecorder } from "@some-ui/voice-capture"
+import { micRecorder, savingShelf } from "@some-ui/voice-capture"
 
 import { boundedList } from "@/lib/bounded-list"
 import type { SharedFile } from "@/lib/share-files"
@@ -35,30 +34,19 @@ const notes = {
     list.remove(({ id }) => ids.includes(id)),
 }
 
-let shelf: BlobShelf | null = null
-/** Notes whose audio is still being written: not yet listed, not orphans. */
-const saving = new Set<string>()
-
-/** One shelf per page load, so its database opens once. */
-function sceneVoiceAudio(): BlobShelf {
-  shelf ??= blobShelf({
-    dbName: "some-ui.scene-voice",
-    maxBytes: SCENE_AUDIO_MAX_BYTES,
-  })
-  return shelf
-}
+const shelf = savingShelf({
+  dbName: "some-ui.scene-voice",
+  maxBytes: SCENE_AUDIO_MAX_BYTES,
+})
 
 let voice: SceneVoice | null = null
 
 export function phoneSceneVoice(): SceneVoice {
   voice ??= createSceneVoice({
     startRecording: micRecorder({ bitsPerSecond: SOUNDBITE_BITS_PER_SECOND }),
-    audio: sceneVoiceAudio(),
+    audio: shelf.shelf(),
     notes,
-    saving: (id, inFlight) => {
-      if (inFlight) saving.add(id)
-      else saving.delete(id)
-    },
+    saving: shelf.saving,
     now: () => Date.now(),
     newId: () => crypto.randomUUID(),
   })
@@ -72,13 +60,13 @@ export function phoneSceneVoice(): SceneVoice {
  * and nothing waits on it.
  */
 export function sweepSceneVoice(): void {
-  const audio = sceneVoiceAudio()
+  const audio = shelf.shelf()
   audio
     .ids()
     .then(async (stored) => {
       const listed = notes.read().map(({ id }) => id)
       await audio.remove(
-        stored.filter((id) => !listed.includes(id) && !saving.has(id))
+        stored.filter((id) => !listed.includes(id) && !shelf.isSaving(id))
       )
       const silent = listed.filter((id) => !stored.includes(id))
       if (silent.length > 0) phoneSceneVoice().remove(silent)
@@ -106,7 +94,7 @@ export const shareDramaPrompt: FileShare = async ({
     reportFailure({ port: SHARE_PORT, error })
     return { status: "failed", error }
   }
-  const audio = sceneVoiceAudio()
+  const audio = shelf.shelf()
   let blobs: Array<Blob | null>
   try {
     blobs = await Promise.all(named.map(({ id }) => audio.get(id)))

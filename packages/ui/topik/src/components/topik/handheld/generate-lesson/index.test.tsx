@@ -69,7 +69,6 @@ describe("GenerateLesson", () => {
     const writeText = stubClipboard(() => Promise.resolve())
     const onPromptHandedOff = vi.fn()
     const { buildPrompt } = renderGenerate({ onPromptHandedOff })
-    // Level and genre are folded, under a line that says what they are.
     const fold = screen.getByRole("button", { name: /Level and genre/ })
     expect(fold.textContent).toContain("TOPIK 3")
     fireEvent.click(fold)
@@ -88,6 +87,7 @@ describe("GenerateLesson", () => {
       level: 5,
       scene: "the will is read",
       genres: [],
+      voiceNotes: [],
     })
     expect(writeText).toHaveBeenCalledWith(
       "PROMPT tree level=5 scene=the will is read"

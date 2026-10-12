@@ -1,8 +1,7 @@
 import type { JSX } from "react"
-import { cn } from "@some-ui/core-utils"
+import { cn, formatTimecode } from "@some-ui/core-utils"
 import { Button } from "@some-ui/shared"
 
-import { formatTimecode } from "@/lib/format"
 import {
   useIsPaused,
   useIsRunning,

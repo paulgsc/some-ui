@@ -1,7 +1,7 @@
 import type { JSX } from "react"
 import { useEffect } from "react"
 import { AphTodayCard, AphTodayEntries } from "@some-ui/aph"
-import { cn } from "@some-ui/core-utils"
+import { cn, formatTimecode } from "@some-ui/core-utils"
 import {
   BrandMark,
   Button,
@@ -13,7 +13,6 @@ import { createFileRoute, Link } from "@tanstack/react-router"
 import { Check } from "lucide-react"
 
 import { useMinuteClock } from "@/lib/clock"
-import { formatTimecode } from "@/lib/format"
 import { matchQueryOutcome, queryOutcome } from "@/lib/query-outcome"
 import {
   closedPatch,

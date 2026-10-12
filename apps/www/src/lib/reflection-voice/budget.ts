@@ -1,7 +1,4 @@
-import {
-  SOUNDBITE_BITS_PER_SECOND,
-  SOUNDBITE_MAX_MS,
-} from "@some-ui/soundbites/contract"
+import { SOUNDBITE_TAKE_MAX_BYTES } from "@some-ui/soundbites/contract"
 
 import { REFLECTION_LIMIT } from "@/lib/session-reflection/policy"
 
@@ -12,4 +9,4 @@ import { REFLECTION_LIMIT } from "@/lib/session-reflection/policy"
  * storage budget keeps this free (`lib/device-backend/storage`).
  */
 export const REFLECTION_AUDIO_MAX_BYTES =
-  REFLECTION_LIMIT * (SOUNDBITE_MAX_MS / 1000) * (SOUNDBITE_BITS_PER_SECOND / 8)
+  REFLECTION_LIMIT * SOUNDBITE_TAKE_MAX_BYTES

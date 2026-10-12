@@ -67,3 +67,25 @@ export function blobShelf({
     },
   }
 }
+
+/**
+ * A shelf opened at its first use, once per page load, beside the ids whose
+ * audio is still being written: not yet named by the list that keeps them,
+ * so a sweep for orphans must pass them over.
+ */
+export function savingShelf(options: { dbName: string; maxBytes: number }): {
+  shelf: () => BlobShelf
+  saving: (id: string, inFlight: boolean) => void
+  isSaving: (id: string) => boolean
+} {
+  let shelf: BlobShelf | null = null
+  const inFlight = new Set<string>()
+  return {
+    shelf: () => (shelf ??= blobShelf(options)),
+    saving: (id, writing): void => {
+      if (writing) inFlight.add(id)
+      else inFlight.delete(id)
+    },
+    isSaving: (id) => inFlight.has(id),
+  }
+}

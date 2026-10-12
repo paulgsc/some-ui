@@ -30,7 +30,6 @@ export type SessionConfig = {
    */
   treeFeed?: TreeFeed
   share?: FileShare
-  /** Saying the next scene aloud, where the phone can record it. */
   sceneVoice?: SceneVoice
 }
 
