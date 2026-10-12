@@ -135,6 +135,7 @@ export function memoryJournalStore(
         return Promise.resolve()
       },
       letGo: (sent): Promise<void> => {
+        if (current?.openedAt !== sent.openedAt) return Promise.resolve()
         const left = [...takes.values()].filter(
           (row) =>
             !sent.takes.some(
@@ -147,8 +148,7 @@ export function memoryJournalStore(
           takes.delete(each.cutId)
           audio.delete(each.cutId)
         }
-        if (left.length === 0 && current?.openedAt === sent.openedAt)
-          current = null
+        if (left.length === 0) current = null
         changed()
         return Promise.resolve()
       },

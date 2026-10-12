@@ -64,10 +64,10 @@ export type JournalStore = {
   /** Lets the plan and every take go, if `episode` is the one in place. */
   clear: (episode: string) => Promise<void>
   /**
-   * Lets go of the takes `sent` carried that are still as they were sent
-   * (same cut, same `recordedAt`), and of the plan once no take is left, if
-   * it is still the episode sent. A take recorded or redone since, or a
-   * primer opened since, stays.
+   * If the episode `sent` came from is still in place, lets go of the takes
+   * it carried that are still as they were sent (same cut, same
+   * `recordedAt`), and of the plan once no take is left. A take recorded or
+   * redone since stays; with another primer in place, nothing goes.
    */
   letGo: (sent: JournalSent) => Promise<void>
   /**
@@ -267,6 +267,11 @@ export function indexedDbJournalStore(): JournalStore {
         "readwrite"
       )
       const plan = await planIn(tx.objectStore(PLAN))
+      if (plan?.openedAt !== sent.openedAt) {
+        // Another episode is in place: what it kept is its own now.
+        tx.abort()
+        return
+      }
       const takes = tx.objectStore(TAKES)
       const rows: Array<unknown> = await result(takes.getAll())
       const left = rows
@@ -283,8 +288,7 @@ export function indexedDbJournalStore(): JournalStore {
         takes.delete(each.cutId)
         tx.objectStore(AUDIO).delete(each.cutId)
       }
-      if (left.length === 0 && plan?.openedAt === sent.openedAt)
-        tx.objectStore(PLAN).clear()
+      if (left.length === 0) tx.objectStore(PLAN).clear()
       await done(tx)
       changed()
     },

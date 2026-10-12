@@ -177,6 +177,22 @@ describe("the store's contract (in memory, as the IndexedDB store keeps it)", ()
     expect(memory.state().takes.map((each) => each.cutId)).toEqual(["next"])
   })
 
+  it("lets go of nothing a later episode kept from a share's episode", async () => {
+    const memory = memoryJournalStore({
+      plan: plan(),
+      takes: [take("gap", 5_000)],
+    })
+    const out = await journalFiles(
+      memory.store,
+      "2026-10-12T13:00:00.000Z",
+      "UTC"
+    )
+    // A revised primer keeps cut "gap", and with it the take just shared.
+    await memory.store.open(plan({ openedAt: "2026-10-12T12:30:00.000Z" }))
+    await memory.store.letGo(out?.sent ?? { openedAt: "", takes: [] })
+    expect(memory.state().takes.map((each) => each.cutId)).toEqual(["gap"])
+  })
+
   it("touches nothing of an episode a write does not name", async () => {
     const memory = memoryJournalStore({
       plan: plan(),
