@@ -21,7 +21,7 @@ type WebtoonPanelProps = {
   lesson: DramaLesson
   rungOf: (id: string) => Rung
   onReveal: (id: string) => void
-  /** Whether the `why` of `option`, the candidate chosen at `choice`, is open. */
+  /** `whyOpen` over this session. */
   whyOpen: (choice: string, option: string) => boolean
   onWhy: (choice: string, option: string) => void
   /** Lines can be heard: a replay button on each. */

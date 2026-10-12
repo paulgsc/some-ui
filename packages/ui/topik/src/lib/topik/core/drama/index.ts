@@ -60,9 +60,8 @@ export type DramaSession = {
    */
   rungs: Readonly<Record<string, Rung>>
   /**
-   * The candidates whose `why` has been opened this visit, by choice id and
-   * then candidate id: opening one candidate's never opens another's, so a
-   * replay that picks a different line at a choice finds its `why` closed.
+   * The candidates whose `why` has been opened this visit, per choice:
+   * opening one never opens another's.
    */
   whys: Readonly<Record<string, Readonly<Record<string, true>>>>
   /** Whether lines can be heard. Without it the ladder starts at Hangul. */
@@ -112,15 +111,20 @@ export function rungOf(
   return beatsOf(lesson).has(id) ? firstRung(session.audio) : 1
 }
 
+/** The candidates opened at `choice`: an own entry only, any id allowed. */
+const openedAt = (
+  session: DramaSession,
+  choice: string
+): Readonly<Record<string, true>> | undefined =>
+  Object.hasOwn(session.whys, choice) ? session.whys[choice] : undefined
+
 /** Whether the `why` of `option`, chosen at `choice`, is open this visit. */
 export function whyOpen(
   session: DramaSession,
   choice: string,
   option: string
 ): boolean {
-  const opened = Object.hasOwn(session.whys, choice)
-    ? session.whys[choice]
-    : undefined
+  const opened = openedAt(session, choice)
   return opened !== undefined && Object.hasOwn(opened, option)
 }
 
@@ -173,7 +177,7 @@ export function stepSession(
             ...session,
             whys: {
               ...session.whys,
-              [choice]: { ...session.whys[choice], [option]: true },
+              [choice]: { ...openedAt(session, choice), [option]: true },
             },
           },
           effects: [],
