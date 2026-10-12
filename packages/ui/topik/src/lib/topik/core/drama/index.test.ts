@@ -212,8 +212,11 @@ describe("panelsOf", () => {
     ])
   })
 
-  it("names a scene as its moment, not by its place", () => {
-    expect(momentOf(lesson, "s3")).toBe("뭐? 지금 나한테 반말했니?")
+  it("names a scene as its moment, not by its place: its title, else its first words", () => {
+    expect(momentOf(lesson, "s3")).toBe("반말")
+    const untitled = structuredClone(lesson)
+    delete untitled.root.title
+    expect(momentOf(untitled, "s1")).toBe(lesson.root.beats[0]?.text)
     expect(momentOf(lesson, "nowhere")).toBeUndefined()
   })
 })

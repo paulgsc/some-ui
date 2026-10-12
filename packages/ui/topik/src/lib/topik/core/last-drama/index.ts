@@ -13,8 +13,9 @@
 
 import { fnv1a } from "@some-ui/core-utils"
 import type { DramaState } from "@some-ui/makjang"
-import { scenesOf } from "@some-ui/makjang"
+import { sceneAt, scenesOf } from "@some-ui/makjang"
 import type { DramaLesson } from "@topik/lib/topik/core/drama"
+import { titleOf } from "@topik/lib/topik/core/drama"
 import { isCorrectChoice } from "@topik/lib/topik/core/probe"
 
 export const ENJOYED = ["loved", "fine", "not-for-me"] as const
@@ -57,7 +58,7 @@ export type LastDrama = {
    */
   content: string
   level: number
-  /** The root scene's place: the drama's title. */
+  /** The drama's title, else its root scene's place. */
   title: string
   /** Epoch ms of the ending, or of the last review change. */
   at: number
@@ -66,6 +67,11 @@ export type LastDrama = {
   /** The first try at each choice reached on any play, in the tree's order. */
   tries: Array<FirstTry>
   review?: DramaReview
+  /**
+   * The question this play's ending stopped on (the leaf's hook), which the
+   * next episode answers; none when the leaf has none.
+   */
+  hook?: string
 }
 
 const hashes = new WeakMap<DramaLesson, string>()
@@ -101,11 +107,12 @@ export function lastDramaOf(
   const same = isRecordOf(previous, lesson) ? previous : null
   const scenes = scenesOf(lesson.root)
   const reached = new Set(same?.scenes.map(({ id }) => id))
+  const hook = sceneAt(lesson.root, drama.route)?.hook?.text
   return {
     lessonId: lesson.id,
     content: contentOf(lesson),
     level: lesson.level,
-    title: lesson.root.place,
+    title: titleOf(lesson),
     at,
     scenes: scenes
       .filter(
@@ -132,6 +139,7 @@ export function lastDramaOf(
         : []
     }),
     ...(same?.review ? { review: same.review } : {}),
+    ...(hook === undefined ? {} : { hook }),
   }
 }
 

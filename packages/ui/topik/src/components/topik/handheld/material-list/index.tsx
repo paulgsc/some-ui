@@ -5,6 +5,7 @@ import { Button } from "@some-ui/shared"
 import type { TopikMetadata } from "@topik/lib/topik"
 import { useSceneFile } from "@topik/lib/topik/adapter/hooks/use-scene-file"
 import type { DramaLesson } from "@topik/lib/topik/core/drama"
+import { titleOf } from "@topik/lib/topik/core/drama"
 import type { FeedCard, Seed } from "@topik/lib/topik/core/feed-card"
 import { cardOf, koreanGenre, seedOf } from "@topik/lib/topik/core/feed-card"
 import { TOPIK_LEVELS } from "@topik/lib/topik/generation"
@@ -42,6 +43,8 @@ type MaterialListProps = {
   onReload: () => void
   /** Opens the opt-in loop; absent where it isn't offered. */
   onCreate?: () => void
+  /** Voice notes in the open scene draft: writing one's own continues it. */
+  draftNotes?: number
   /**
    * "Keep on this account" for the pasted tree, where the host has a learner
    * shelf; shown under it. Absent, it lasts the session.
@@ -231,6 +234,7 @@ export const MaterialList = ({
   error,
   onReload,
   onCreate,
+  draftNotes = 0,
   keep,
   onReadAloud,
 }: MaterialListProps): JSX.Element => (
@@ -276,10 +280,13 @@ export const MaterialList = ({
       >
         <Sparkles className="text-muted-foreground size-5 shrink-0" />
         <span className="min-w-0 flex-1">
-          <span className="block font-semibold">Write your own drama</span>
+          <span className="block font-semibold">
+            {draftNotes > 0 ? "Continue your scene" : "Write your own drama"}
+          </span>
           <span className="text-muted-foreground block text-sm">
-            Your model writes it from the app&apos;s prompt, and the app checks
-            it. It lasts this session.
+            {draftNotes > 0
+              ? `${draftNotes} voice note${draftNotes === 1 ? "" : "s"} so far. Share them with the prompt, or let the scene go, to start another.`
+              : "Your model writes it from the app's prompt, and the app checks it. It lasts this session."}
           </span>
         </span>
         <ChevronRight className="text-muted-foreground size-5 shrink-0" />
@@ -315,7 +322,7 @@ export const MaterialList = ({
       <section aria-label="Pasted this session" className="flex flex-col gap-2">
         <Heading>Pasted this session</Heading>
         <PastedCard
-          title={pastedTree.lesson.root.place}
+          title={titleOf(pastedTree.lesson)}
           lang="ko"
           details={`Drama · TOPIK ${pastedTree.lesson.level}`}
           onPlay={pastedTree.onPlay}

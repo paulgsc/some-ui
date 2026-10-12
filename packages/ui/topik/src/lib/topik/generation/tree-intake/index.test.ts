@@ -79,7 +79,7 @@ describe("treeEntry", () => {
       })
     ).toEqual({
       key: "first-tea",
-      displayName: lesson.root.place,
+      displayName: "첫 차",
       description: "Tea with the chairman.",
       batchCount: 1,
       totalQuestions: scenes.filter((scene) => scene.choice).length,

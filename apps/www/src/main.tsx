@@ -6,6 +6,7 @@ import ReactDOM from "react-dom/client"
 
 import { bootDeviceBackend } from "@/lib/device-backend/boot"
 import { sweepOrphans } from "@/lib/reflection-voice"
+import { sweepSceneVoice } from "@/lib/scene-voice"
 import { releasePushWhenLeavingTheAccount } from "@/lib/study-nudge/leave-account"
 import { ErrorState, NotFound, RoutePending } from "@/components/housekeeping"
 
@@ -32,8 +33,11 @@ import.meta.glob(
 // before the app renders and anything issues a request. A no-op elsewhere.
 bootDeviceBackend()
 
-// Voice reflections and their audio, each without the other (`sweepOrphans`).
-if (import.meta.env.VITE_DEVICE_BACKEND === "true") sweepOrphans()
+// Voice reflections and scene notes, and their audio, each without the other.
+if (import.meta.env.VITE_DEVICE_BACKEND === "true") {
+  sweepOrphans()
+  sweepSceneVoice()
+}
 
 // A browser subscribed to push while signed in must not stay subscribed once
 // the learner's data is no longer the account's. No request is made to do it.

@@ -1,4 +1,10 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react"
+import type { FileShare } from "@topik/lib/topik/adapter/next-scene-share"
+import type {
+  SceneNote,
+  SceneVoice,
+  SceneVoiceSnapshot,
+} from "@topik/lib/topik/adapter/scene-voice"
 import type { DramaLesson } from "@topik/lib/topik/core/drama"
 import type { TreeRequest } from "@topik/lib/topik/generation"
 import {
@@ -63,6 +69,10 @@ describe("GenerateLesson", () => {
     const writeText = stubClipboard(() => Promise.resolve())
     const onPromptHandedOff = vi.fn()
     const { buildPrompt } = renderGenerate({ onPromptHandedOff })
+    // Level and genre are folded, under a line that says what they are.
+    const fold = screen.getByRole("button", { name: /Level and genre/ })
+    expect(fold.textContent).toContain("TOPIK 3")
+    fireEvent.click(fold)
     expect(
       screen
         .getByRole("radio", { name: "TOPIK 3" })
@@ -126,8 +136,8 @@ describe("GenerateLesson, with a scene tree", () => {
     paste(workedExample())
     click("Read the reply")
     const status = screen.getByRole("status")
-    expect(status.textContent).toMatch(/Drama · TOPIK 2 · 6 scenes/)
-    expect(status.textContent).toMatch(/Every choice will be asked as written/)
+    expect(status.textContent).toMatch(/첫 차 · TOPIK 2/)
+    expect(status.textContent).toMatch(/Ready to play/)
     click(/^Start$/)
     expect(onStartTree).toHaveBeenCalledExactlyOnceWith(workedLesson())
   })
@@ -153,5 +163,79 @@ describe("GenerateLesson, with a scene tree", () => {
     paste("Sorry, I can't help with that.")
     click("Read the reply")
     expect(screen.getByRole("alert").textContent).toMatch(/No scene tree found/)
+  })
+})
+
+describe("GenerateLesson's spoken scene", () => {
+  /** A scene voice holding `notes`, whose `remove` takes them out. */
+  const draftOf = (
+    notes: Array<SceneNote>
+  ): SceneVoice & { remove: Mock<(ids: ReadonlyArray<string>) => void> } => {
+    let snapshot: SceneVoiceSnapshot = {
+      notes,
+      take: { kind: "idle" },
+      said: null,
+      full: false,
+    }
+    const listeners = new Set<() => void>()
+    return {
+      getSnapshot: () => snapshot,
+      subscribe: (listener) => {
+        listeners.add(listener)
+        return () => listeners.delete(listener)
+      },
+      start: vi.fn(),
+      stop: vi.fn(),
+      leave: vi.fn(),
+      remove: vi.fn((ids: ReadonlyArray<string>) => {
+        snapshot = {
+          ...snapshot,
+          notes: snapshot.notes.filter(({ id }) => !ids.includes(id)),
+        }
+        for (const listener of listeners) listener()
+      }),
+    }
+  }
+  const notes = [
+    { id: "n1", durationMs: 42_000 },
+    { id: "n2", durationMs: 9_000 },
+  ]
+
+  it("shares the draft's voice notes with the prompt, named in it, and lets them go once they arrived", async () => {
+    const draft = draftOf(notes)
+    const share = vi.fn<FileShare>(() =>
+      Promise.resolve({ status: "succeeded", value: "shared" })
+    )
+    const { buildPrompt } = renderGenerate({ share, sceneVoice: draft })
+    expect(screen.getByText("Voice note 1 · 0:42")).toBeTruthy()
+    click(/Share the next scene's prompt/)
+    const file = share.mock.calls[0]?.[0]
+    const named = file?.notes ?? []
+    expect(named.map(({ id }) => id)).toEqual(["n1", "n2"])
+    expect(named[0]?.name).toMatch(/^drama-\d{8}T\d{9}Z\.voice-1\.webm$/)
+    expect(file?.name.replace(".prompt.md", "")).toBe(
+      named[0]?.name.replace(".voice-1.webm", "")
+    )
+    expect(buildPrompt).toHaveBeenCalledWith(
+      expect.objectContaining({ voiceNotes: named.map(({ name }) => name) })
+    )
+    // Shared is not arrived: the notes stay until the learner says so.
+    await screen.findByText(/reach your drive/)
+    expect(draft.remove).not.toHaveBeenCalled()
+    click(/Yes, let them go/)
+    expect(draft.remove).toHaveBeenCalledWith(["n1", "n2"])
+  })
+
+  it("opens on the draft left open, and starts another only once it is let go", () => {
+    const draft = draftOf(notes)
+    renderGenerate({ sceneVoice: draft })
+    expect(screen.getAllByRole("listitem")).toHaveLength(2)
+    click(/Start a different scene/)
+    click(/Let this scene go/)
+    expect(draft.remove).toHaveBeenCalledWith(["n1", "n2"])
+    expect(screen.queryByRole("list", { name: "Voice notes" })).toBeNull()
+    expect(
+      screen.getByRole("button", { name: /Describe it aloud/ })
+    ).toBeTruthy()
   })
 })

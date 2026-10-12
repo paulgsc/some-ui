@@ -3,13 +3,29 @@
  * holds the recording, turns each effect into a call on a port and each
  * result into an event. It decides nothing; `step` does.
  */
-import type { BlobShelf, StartRecording } from "@some-ui/voice-capture"
-import { ShelfFullError, takeRunner } from "@some-ui/voice-capture"
+import {
+  SOUNDBITE_MAX_MS,
+  SOUNDBITE_MIN_MS,
+} from "@some-ui/soundbites/contract"
+import type {
+  BlobShelf,
+  VoiceNoteOutcome as Outcome,
+  StartRecording,
+  VoiceNoteEffect as VoiceEffect,
+  VoiceNoteEvent as VoiceEvent,
+  VoiceNoteState as VoiceState,
+} from "@some-ui/voice-capture"
+import {
+  initialVoiceNote,
+  ShelfFullError,
+  stepVoiceNote,
+  takeRunner,
+} from "@some-ui/voice-capture"
 
 import type { KeepResult, Reflection } from "@/lib/session-reflection"
 
-import type { Outcome, VoiceEffect, VoiceEvent, VoiceState } from "./machine"
-import { initialVoice, step } from "./machine"
+/** A take is a soundbite's length: the soundbites page records to these. */
+const LIMITS = { minMs: SOUNDBITE_MIN_MS, maxMs: SOUNDBITE_MAX_MS }
 
 export type VoicePorts = {
   startRecording: StartRecording
@@ -39,11 +55,11 @@ export function createVoiceNote(
   ports: VoicePorts,
   sessionId: string
 ): VoiceRuntime {
-  let state: VoiceState = initialVoice
+  let state: VoiceState = initialVoiceNote
   const listeners = new Set<() => void>()
 
   const dispatch = (event: VoiceEvent): void => {
-    const next = step(state, event)
+    const next = stepVoiceNote(state, event, LIMITS)
     if (next.state !== state) {
       state = next.state
       for (const listener of listeners) listener()

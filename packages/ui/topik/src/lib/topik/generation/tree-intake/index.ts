@@ -7,6 +7,7 @@
 import type { Lesson } from "@some-ui/makjang"
 import { auditStory, scenesOf } from "@some-ui/makjang"
 import type { Probe, TopikMetadata } from "@topik/lib/topik"
+import { titleOf } from "@topik/lib/topik/core/drama"
 import { topikLevelOf } from "@topik/lib/topik/core/lesson-selection"
 import type { TreeFinding } from "@topik/lib/topik/core/tree-audit"
 import { auditTeaching } from "@topik/lib/topik/core/tree-audit"
@@ -83,7 +84,7 @@ export function treeEntry(
   const difficulty = DIFFICULTY_BY_LEVEL[lesson.level]
   return {
     key: form.key,
-    displayName: form.displayName.trim() || lesson.root.place,
+    displayName: form.displayName.trim() || titleOf(lesson),
     description: form.description.trim(),
     batchCount: 1,
     totalQuestions: scenes.filter((scene) => scene.choice).length,

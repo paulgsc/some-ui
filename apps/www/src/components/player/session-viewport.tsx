@@ -15,6 +15,7 @@ import {
   useSceneLifetimes,
 } from "@/lib/orchestrator"
 import { PANELS } from "@/lib/playable"
+import { phoneSceneVoice } from "@/lib/scene-voice"
 import { runsNatively, shareDramaPrompt } from "@/lib/share-files"
 import { createShelfClient } from "@/lib/shelf-client"
 import type { SessionRecord } from "@/lib/tenant"
@@ -36,6 +37,12 @@ import { withWebOnlyNotes } from "./web-only-note"
 const PHONE_SHARE =
   import.meta.env.VITE_DEVICE_BACKEND === "true" && runsNatively()
     ? shareDramaPrompt
+    : undefined
+
+/** The drama's next scene, said aloud: the phone's microphone, gated as above. */
+const PHONE_SCENE_VOICE =
+  import.meta.env.VITE_DEVICE_BACKEND === "true" && runsNatively()
+    ? phoneSceneVoice()
     : undefined
 
 /** What the player renders: the bound panels, and a note for a web one. */
@@ -121,6 +128,7 @@ export const SessionViewport = ({
           loadTreeManifest,
           shelf: shelves?.topik,
           share: PHONE_SHARE,
+          sceneVoice: PHONE_SCENE_VOICE,
           paused,
         },
         leetype: {

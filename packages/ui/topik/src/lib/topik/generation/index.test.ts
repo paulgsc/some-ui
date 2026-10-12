@@ -9,6 +9,7 @@ import {
   lastDramaText,
   LESSON_PROMPT,
   nextSceneFile,
+  voiceNoteName,
 } from "."
 
 const record = (extra: Partial<LastDrama> = {}): LastDrama => ({
@@ -37,6 +38,7 @@ describe("lastDramaText", () => {
     expect(
       lastDramaText(
         record({
+          hook: "회장님은 태준에게 말할까?",
           review: {
             enjoyed: "loved",
             korean: "easier",
@@ -49,6 +51,7 @@ describe("lastDramaText", () => {
       [
         '"회장님 댁 거실", level 2.',
         "Scenes reached: 회장님 댁 거실 (tension), 부엌 (chill).",
+        'It stopped on: "회장님은 태준에게 말할까?"',
         "First tries:",
         '- 서연은 뭐라고 대답할까? -> "응, 마실래.": missed it.',
         'Review: loved it; the Korean next time: easier to follow; more of: 부엌 (chill); what next: "more revenge".',
@@ -125,6 +128,18 @@ describe("buildTreePrompt", () => {
       buildTreePrompt({ level: 2, genres: ["revenge", "office romance"] })
     ).toContain("Genre: revenge, office romance\n")
     expect(buildTreePrompt({ level: 2 })).toContain("Genre: (none picked)")
+  })
+
+  it("names the voice notes a spoken scene came in, and nothing when it was typed", () => {
+    const at = new Date("2026-10-09T07:05:03.120Z")
+    const notes = [voiceNoteName(at, 0), voiceNoteName(at, 1)]
+    expect(notes[1]).toBe("drama-20261009T070503120Z.voice-2.webm")
+    expect(buildTreePrompt({ level: 2, voiceNotes: notes })).toContain(
+      `Scene, spoken: ${notes.join(", ")}\n`
+    )
+    expect(buildTreePrompt({ level: 2, voiceNotes: [] })).not.toContain(
+      "\nScene, spoken:"
+    )
   })
 
   it("carries the learner's last drama, or says this is their first", () => {

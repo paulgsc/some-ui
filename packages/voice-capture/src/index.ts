@@ -26,3 +26,10 @@ export {
   stepTake,
   takeRunner,
 } from "./lib/take"
+export type {
+  VoiceNoteEffect,
+  VoiceNoteEvent,
+  VoiceNoteOutcome,
+  VoiceNoteState,
+} from "./lib/voice-note"
+export { initialVoiceNote, stepVoiceNote } from "./lib/voice-note"

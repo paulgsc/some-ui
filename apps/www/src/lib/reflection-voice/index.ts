@@ -13,7 +13,10 @@ import { REFLECTION_AUDIO_MAX_BYTES } from "./budget"
 import type { VoiceRuntime } from "./runtime"
 import { createVoiceNote } from "./runtime"
 
-export type { Outcome, VoiceState } from "./machine"
+export type {
+  VoiceNoteOutcome as Outcome,
+  VoiceNoteState as VoiceState,
+} from "@some-ui/voice-capture"
 export type { VoiceRuntime } from "./runtime"
 
 let shelf: BlobShelf | null = null

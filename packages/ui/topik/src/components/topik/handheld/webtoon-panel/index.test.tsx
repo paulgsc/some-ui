@@ -1,5 +1,5 @@
 import { isLine } from "@some-ui/makjang"
-import { cleanup, render } from "@testing-library/react"
+import { cleanup, render, screen } from "@testing-library/react"
 import type { Panel } from "@topik/lib/topik/core/drama"
 import { workedLesson } from "@topik/lib/topik/generation/tree-intake/worked-example"
 import { afterEach, describe, expect, it, vi } from "vitest"
@@ -77,5 +77,46 @@ describe("WebtoonPanel's cast figure", () => {
     const figure = renderPanel(chosen, "chosen")
     expect(figure.getAttribute("data-figure")).toBe("heart")
     expect(figure.hasAttribute("data-speaking")).toBe(false)
+  })
+})
+
+describe("WebtoonPanel's script", () => {
+  const draw = (panel: Panel, rung: 1 | 2 = 1): void => {
+    render(
+      <WebtoonPanel
+        panel={panel}
+        lesson={lesson}
+        rungOf={() => rung}
+        onReveal={vi.fn()}
+        whyOpen={() => false}
+        onWhy={vi.fn()}
+        audio={false}
+        speaking={null}
+        onReplay={vi.fn()}
+      />
+    )
+  }
+
+  it("shows a line's Korean cue with the line, not only with its gloss", () => {
+    draw(linePanel)
+    expect(screen.getByText("(고개도 들지 않고)")).toBeTruthy()
+  })
+
+  it("ends a leaf on its hook, the next episode's question, its gloss a tap away", () => {
+    const leaf = lesson.root.choice?.options.find(({ id }) => id === "a")?.child
+    if (leaf?.hook === undefined) throw new Error("the keyed leaf has no hook")
+    const ending: Panel = {
+      kind: "ending",
+      id: "end",
+      scene: leaf,
+      feeling: "twist",
+    }
+    draw(ending)
+    expect(screen.getByText("다음 화 예고")).toBeTruthy()
+    expect(screen.getByText(leaf.hook.text)).toBeTruthy()
+    expect(screen.queryByText(leaf.hook.gloss)).toBeNull()
+    cleanup()
+    draw(ending, 2)
+    expect(screen.getByText(leaf.hook.gloss)).toBeTruthy()
   })
 })

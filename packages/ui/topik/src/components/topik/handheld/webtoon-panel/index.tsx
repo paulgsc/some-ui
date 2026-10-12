@@ -218,7 +218,7 @@ export const WebtoonPanel = ({
               lang="ko"
               className="border-border rounded-full border px-2.5 py-0.5 text-xs font-semibold"
             >
-              {scene.place}
+              {scene.title ?? scene.place}
               {feeling && ` · ${feeling}`}
             </span>
             <span className="bg-border h-px min-w-0 flex-1" />
@@ -333,6 +333,11 @@ export const WebtoonPanel = ({
               className="size-12 shrink-0"
             />
             <span className="text-sm font-semibold">{name}</span>
+            {line.cue && (
+              <span lang="ko" className={cn(mutedIn(feeling), "text-xs")}>
+                ({line.cue})
+              </span>
+            )}
             {feeling && (
               <FeelingSymbol
                 feeling={feeling}
@@ -471,6 +476,8 @@ export const WebtoonPanel = ({
       )
     }
     case "ending": {
+      const { hook } = panel.scene
+      const hookId = `${panel.scene.id}:hook`
       return (
         <Themed
           feeling={panel.feeling}
@@ -487,6 +494,24 @@ export const WebtoonPanel = ({
           <span lang="ko" className="feeling-muted text-xs">
             {panel.scene.place}
           </span>
+          {hook && (
+            // The question this episode stops on: what the next one answers.
+            <button
+              type="button"
+              onClick={() => onReveal(hookId)}
+              className="mt-2 flex w-full flex-col gap-1 rounded-xl border-2 border-current px-3 py-2 text-left"
+            >
+              <span lang="ko" className="feeling-accent text-xs font-black">
+                다음 화 예고
+              </span>
+              <span lang="ko" className="text-lg font-semibold break-keep">
+                {hook.text}
+              </span>
+              {rungOf(hookId) === 2 && (
+                <span className="feeling-muted text-sm">{hook.gloss}</span>
+              )}
+            </button>
+          )}
         </Themed>
       )
     }

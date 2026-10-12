@@ -55,8 +55,13 @@ export type Line = {
   speaker: CharacterId
   text: string
   gloss: string
-  /** How it is said. */
+  /** How it is said, in the learner's language: read beside the gloss. */
   direction?: string
+  /**
+   * How it is said, in the language being learned (a script's stage
+   * direction): read with the line, since it is part of the scene.
+   */
+  cue?: string
 }
 
 /** A short action or description, so the learner knows where they are. */
@@ -68,14 +73,24 @@ export type Narration = {
 
 export type Beat = Line | Narration
 
+/** A line in the language being learned, with its gloss. */
+export type Glossed = { text: string; gloss: string }
+
 export type Scene<Check> = {
   id: string
+  /** The moment's name, as a viewer would point at it ("the phone call"). */
+  title?: string
   place: string
   /** A key of the renderer's feeling vocabulary; carried unread. */
   feeling: string
   beats: Array<Beat>
   /** Absent on a leaf; always absent at `MAX_DEPTH`. */
   choice?: Choice<Check>
+  /**
+   * Only on a leaf: the question the episode stops on, which the next one
+   * answers.
+   */
+  hook?: Glossed
 }
 
 export type Choice<Check> = {
@@ -98,6 +113,8 @@ export type Option<Check> = {
 
 export type Lesson<Check> = {
   id: string
+  /** The drama's title; its root scene's place stands in without one. */
+  title?: string
   level: number
   /** The character the learner follows. */
   pov: CharacterId

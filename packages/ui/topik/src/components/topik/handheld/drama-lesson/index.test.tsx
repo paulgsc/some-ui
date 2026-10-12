@@ -103,6 +103,7 @@ describe("DramaLesson", () => {
     choose("네, 감사합니다.")
     next()
     next()
+    next()
     const review = screen.getByRole("button", { name: /어땠어요/ })
     expect(review.getAttribute("aria-expanded")).toBe("false")
     expect(
@@ -115,7 +116,7 @@ describe("DramaLesson", () => {
     const loved = panel.getByRole("button", { name: /재미있었어요/ })
     fireEvent.click(loved)
     expect(loved.getAttribute("aria-pressed")).toBe("true")
-    fireEvent.click(panel.getByRole("button", { name: /훈훈/ }))
+    fireEvent.click(panel.getByRole("button", { name: /반전/ }))
     expect(last.get()?.review).toEqual({ enjoyed: "loved", more: ["s2"] })
     // Taken back with a second tap.
     fireEvent.click(loved)
@@ -151,6 +152,7 @@ describe("DramaLesson", () => {
       route: ["a"],
       first: { c1: "c" },
     })
+    next()
     next()
     next()
     fireEvent.click(screen.getByRole("button", { name: /갈림길/ }))

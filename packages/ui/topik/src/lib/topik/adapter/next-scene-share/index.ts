@@ -10,12 +10,14 @@
 import type { ForeignOutcome } from "@some-ui/intent-kit"
 
 /**
- * Hands one text file to the share sheet, through `callForeign`, so it
- * never rejects. Backing out is `cancelled`.
+ * Hands one text file to the share sheet, with the scene voice notes it
+ * names beside it (`adapter/scene-voice`, by note id), through
+ * `callForeign`, so it never rejects. Backing out is `cancelled`.
  */
 export type FileShare = (file: {
   name: string
   text: string
+  notes?: ReadonlyArray<{ id: string; name: string }>
 }) => Promise<ForeignOutcome<"shared" | "cancelled">>
 
 export type ShareState =

@@ -1,9 +1,10 @@
 /**
- * One voice reflection, start to kept: the shared take (`@some-ui/voice-capture`,
- * which the soundbites page runs too) and then the save. `step(state, event)`
- * returns the next state and the effects to run, and does nothing else
- * (docs/monorepo-boundaries.md, "Inside a React package: the component is not
- * the coordinator"); `./runtime` runs them.
+ * One voice note, start to kept: the shared take (`./take`) and then the
+ * save, as www's voice reflections and its scene notes both record.
+ * `stepVoiceNote(state, event, limits)` returns the next state and the
+ * effects to run, and does nothing else (docs/monorepo-boundaries.md,
+ * "Inside a React package: the component is not the coordinator"); each
+ * caller's runtime runs them and decides what a save keeps.
  *
  * - **One take at a time.** A second "start" while one is under way changes
  *   nothing.
@@ -13,32 +14,22 @@
  *   it was opening, its arrival is discarded, never recorded.
  */
 import { assertNever } from "@some-ui/core-utils"
-import {
-  SOUNDBITE_MAX_MS,
-  SOUNDBITE_MIN_MS,
-} from "@some-ui/soundbites/contract"
+
+import type { RecordingFailure, Take } from "./recorder"
 import type {
-  RecordingFailure,
-  Take,
   TakeEffect,
+  TakeLimits,
   TakePhase,
   TakeSignal,
   TakeStep,
-} from "@some-ui/voice-capture"
-import {
-  discardTake,
-  finishTake,
-  openTake,
-  stepTake,
-} from "@some-ui/voice-capture"
-
-const LIMITS = { minMs: SOUNDBITE_MIN_MS, maxMs: SOUNDBITE_MAX_MS }
+} from "./take"
+import { discardTake, finishTake, openTake, stepTake } from "./take"
 
 /** How the last take ended, said once beside the button. */
-export type Outcome = "kept" | "short" | "full" | "failed"
+export type VoiceNoteOutcome = "kept" | "short" | "full" | "failed"
 
-export type VoiceState =
-  | { readonly kind: "idle"; readonly last: Outcome | null }
+export type VoiceNoteState =
+  | { readonly kind: "idle"; readonly last: VoiceNoteOutcome | null }
   | { readonly kind: "blocked"; readonly reason: RecordingFailure }
   | {
       readonly kind: "taking"
@@ -47,22 +38,22 @@ export type VoiceState =
     }
   | { readonly kind: "saving" }
 
-export type VoiceEvent =
+export type VoiceNoteEvent =
   | { type: "start"; atMs: number | null }
   | { type: "stop" }
   | { type: "left" }
   | TakeSignal
-  | { type: "saved"; outcome: Outcome }
+  | { type: "saved"; outcome: VoiceNoteOutcome }
 
-export type VoiceEffect =
+export type VoiceNoteEffect =
   | TakeEffect
   | { type: "save"; take: Take; atMs: number | null }
 
-export const initialVoice: VoiceState = { kind: "idle", last: null }
+export const initialVoiceNote: VoiceNoteState = { kind: "idle", last: null }
 
-type Next = { state: VoiceState; effects: ReadonlyArray<VoiceEffect> }
+type Next = { state: VoiceNoteState; effects: ReadonlyArray<VoiceNoteEffect> }
 
-const stay = (state: VoiceState): Next => ({ state, effects: [] })
+const stay = (state: VoiceNoteState): Next => ({ state, effects: [] })
 
 /** Where a take's step leaves the voice reflection. */
 function after(next: TakeStep, atMs: number | null): Next {
@@ -93,7 +84,11 @@ function after(next: TakeStep, atMs: number | null): Next {
   }
 }
 
-export function step(state: VoiceState, event: VoiceEvent): Next {
+export function stepVoiceNote(
+  state: VoiceNoteState,
+  event: VoiceNoteEvent,
+  limits: TakeLimits
+): Next {
   switch (state.kind) {
     case "idle":
     case "blocked": {
@@ -111,7 +106,7 @@ export function step(state: VoiceState, event: VoiceEvent): Next {
           phase.kind === "opening" ? discardTake(phase) : finishTake(phase),
           atMs
         )
-      return after(stepTake(phase, event, LIMITS), atMs)
+      return after(stepTake(phase, event, limits), atMs)
     }
     case "saving": {
       if (event.type === "saved")

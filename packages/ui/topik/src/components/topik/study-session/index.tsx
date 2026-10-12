@@ -38,6 +38,7 @@ import {
   useElementBox,
 } from "@topik/lib/topik/adapter/hooks/use-surface"
 import type { FileShare } from "@topik/lib/topik/adapter/next-scene-share"
+import type { SceneVoice } from "@topik/lib/topik/adapter/scene-voice"
 import { createTreeFeed } from "@topik/lib/topik/adapter/tree-feed"
 
 /** Where the manifest lives when a host doesn't say otherwise. */
@@ -79,6 +80,11 @@ export type KoreanStudyPageProps = {
   shelf?: ShelfPort
   /** The Android app's share sheet (`FileShare`); absent, none is offered. */
   share?: FileShare
+  /**
+   * The Android app's microphone, for saying the next scene aloud
+   * (`SceneVoice`); absent, the scene is typed.
+   */
+  sceneVoice?: SceneVoice
   /**
    * Art direction. `inherit` — the default — renders in whatever theme the
    * host established, so the user's session theme reaches the applet.
@@ -191,6 +197,7 @@ export const KoreanStudyPage = ({
   loadTreeManifest,
   shelf,
   share,
+  sceneVoice,
   appearance = "inherit",
   surface = "auto",
   paused,
@@ -220,6 +227,7 @@ export const KoreanStudyPage = ({
       speaker,
       ...(shelf ? { shelf } : {}),
       ...(share ? { share } : {}),
+      ...(sceneVoice ? { sceneVoice } : {}),
       ...(loadTreeManifest && loadTopik
         ? { treeFeed: createTreeFeed(loadTreeManifest, loadTopik) }
         : {}),
@@ -234,6 +242,7 @@ export const KoreanStudyPage = ({
       speaker,
       shelf,
       share,
+      sceneVoice,
     ]
   )
 

@@ -55,6 +55,7 @@ const LastDramaSchema = z.object({
       next: z.string().max(NEXT_MAX).optional(),
     })
     .optional(),
+  hook: z.string().optional(),
 })
 
 const DocumentSchema = z.object({

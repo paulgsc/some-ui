@@ -80,6 +80,32 @@ describe("auditStory accepts a tree within bounds", () => {
     ])
   })
 
+  it("keeps a drama's and a scene's title, a line's cue and a leaf's hook", () => {
+    const tree = rawTree()
+    tree.title = "첫 차"
+    get(tree, "root").title = "거실"
+    const line = list(tree, "root.beats").find(
+      (beat) => isRecord(beat) && "speaker" in beat
+    )
+    if (!isRecord(line)) throw new Error("the fixture's root has no line")
+    line.cue = "눈을 피하며"
+    get(tree, "root.choice.options.0.child").hook = {
+      text: "다음 주에 다시 와.",
+      gloss: "Come back next week.",
+    }
+    const audit = auditStory(tree)
+    if (!audit.ok) throw new Error(JSON.stringify(audit.findings))
+    expect(audit.lesson.title).toBe("첫 차")
+    expect(audit.lesson.root.title).toBe("거실")
+    expect(audit.lesson.root.beats).toContainEqual(
+      expect.objectContaining({ cue: "눈을 피하며" })
+    )
+    expect(sceneAt(audit.lesson.root, ["a"])?.hook).toEqual({
+      text: "다음 주에 다시 와.",
+      gloss: "Come back next week.",
+    })
+  })
+
   it("lets two choices use the same option ids", () => {
     const tree = rawTree()
     get(tree, "root.choice.options.1.child.choice.options.0").id = "a"
@@ -246,6 +272,20 @@ describe("auditStory rejects a malformed tree whole, by path", () => {
       "root.choice.options.1.child.feeling: must be a non-blank string",
       "root.choice.options.1.child.choice.options.1.child.feeling: is missing",
       "root.choice.options.2.child.beats: is empty: a scene has at least one beat",
+    ])
+  })
+
+  it("rejects a hook on a scene that still has a choice, and a hook that is not glossed text", () => {
+    expect(
+      findingsAfter((tree) => {
+        get(tree, "root").hook = { text: "아직", gloss: "Not yet" }
+        get(tree, "root.choice.options.0.child").hook = "다음 주"
+        get(tree, "root.choice.options.2.child").hook = { text: "끝" }
+      })
+    ).toEqual([
+      "root.choice.options.0.child.hook: a hook must be an object with text and gloss",
+      "root.choice.options.2.child.hook.gloss: is missing",
+      "root.hook: only a leaf has a hook: a scene with a choice has not stopped yet",
     ])
   })
 

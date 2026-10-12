@@ -6,6 +6,7 @@ import type {
   ITopikRepository,
 } from "@topik/lib/topik"
 import type { FileShare } from "@topik/lib/topik/adapter/next-scene-share"
+import type { SceneVoice } from "@topik/lib/topik/adapter/scene-voice"
 import type { TreeFeed } from "@topik/lib/topik/adapter/tree-feed"
 
 export type SessionConfig = {
@@ -29,6 +30,8 @@ export type SessionConfig = {
    */
   treeFeed?: TreeFeed
   share?: FileShare
+  /** Saying the next scene aloud, where the phone can record it. */
+  sceneVoice?: SceneVoice
 }
 
 const SessionConfigContext = createContext<SessionConfig | null>(null)

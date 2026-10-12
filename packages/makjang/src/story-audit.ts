@@ -25,6 +25,7 @@ import type {
   Character,
   Choice,
   Gender,
+  Glossed,
   Lesson,
   Option,
   Scene,
@@ -202,6 +203,7 @@ function auditBeat(
   const speaker = text(context, raw, "speaker", path)
   if (speaker !== undefined) inCast(context, speaker, at(path, "speaker"))
   const direction = optionalText(context, raw, "direction", path)
+  const cue = optionalText(context, raw, "cue", path)
   if (
     id === undefined ||
     beatText === undefined ||
@@ -216,6 +218,7 @@ function auditBeat(
     text: beatText,
     gloss,
     ...(direction === undefined ? {} : { direction }),
+    ...(cue === undefined ? {} : { cue }),
   }
 }
 
@@ -302,6 +305,7 @@ function auditScene(
     return undefined
   }
   const id = uniqueId(context, raw, path)
+  const title = optionalText(context, raw, "title", path)
   const place = text(context, raw, "place", path)
   const feeling = text(context, raw, "feeling", path)
 
@@ -331,16 +335,46 @@ function auditScene(
     }
   }
 
+  const hook = auditHook(context, raw, path)
+  if (hook !== undefined && raw.choice !== undefined) {
+    report(
+      context,
+      at(path, "hook"),
+      "only a leaf has a hook: a scene with a choice has not stopped yet"
+    )
+  }
+
   if (id === undefined || place === undefined || feeling === undefined) {
     return undefined
   }
   return {
     id,
+    ...(title === undefined ? {} : { title }),
     place,
     feeling,
     beats,
     ...(choice === undefined ? {} : { choice }),
+    ...(hook === undefined || choice !== undefined ? {} : { hook }),
   }
+}
+
+/** A scene's optional hook: its line and gloss, both text. */
+function auditHook(
+  context: Context,
+  raw: Record<string, unknown>,
+  path: string
+): Glossed | undefined {
+  if (raw.hook === undefined) return undefined
+  const where = at(path, "hook")
+  if (!isRecord(raw.hook)) {
+    report(context, where, "a hook must be an object with text and gloss")
+    return undefined
+  }
+  const hookText = text(context, raw.hook, "text", where)
+  const gloss = text(context, raw.hook, "gloss", where)
+  return hookText === undefined || gloss === undefined
+    ? undefined
+    : { text: hookText, gloss }
 }
 
 /** Holds `raw` (parsed JSON) to the scene-tree schema. Never throws. */
@@ -354,6 +388,7 @@ export function auditStory(raw: unknown): StoryAudit {
   const context: Context = { findings: [], ids: new Set(), cast: new Set() }
 
   const id = text(context, raw, "id", "")
+  const title = optionalText(context, raw, "title", "")
   const level = raw.level
   if (typeof level !== "number" || !Number.isInteger(level) || level < 1) {
     report(context, "level", "must be a whole number, 1 or more")
@@ -402,5 +437,15 @@ export function auditStory(raw: unknown): StoryAudit {
   ) {
     return { ok: false, findings: context.findings }
   }
-  return { ok: true, lesson: { id, level, pov, cast, root } }
+  return {
+    ok: true,
+    lesson: {
+      id,
+      ...(title === undefined ? {} : { title }),
+      level,
+      pov,
+      cast,
+      root,
+    },
+  }
 }
