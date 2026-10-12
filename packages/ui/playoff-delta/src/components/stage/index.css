@@ -225,8 +225,8 @@
     animation-iteration-count: infinite;
   }
 
-  .pd-m-to-you {
-    animation-name: pd-to-you;
+  .pd-m-to-winner {
+    animation-name: pd-to-winner;
   }
 
   .pd-m-pulse {
@@ -473,7 +473,7 @@
     }
   }
 
-  @keyframes pd-to-you {
+  @keyframes pd-to-winner {
     0%,
     15% {
       opacity: 0;

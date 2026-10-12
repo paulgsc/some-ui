@@ -17,7 +17,7 @@ import {
   type StoryResult,
   type TemplateKey,
 } from "@playoff-delta/lib/story"
-import { symbolFor } from "@playoff-delta/lib/symbols"
+import { GAME_LOST, symbolFor } from "@playoff-delta/lib/symbols"
 
 import { delay, Kicker, Reveal, type SlideProps } from "./shared"
 
@@ -94,7 +94,7 @@ export const Game = ({ season, week }: SlideProps): JSX.Element => {
       >
         <div className="flex items-center gap-[2.5cqw]">
           <SymbolGlyph
-            parts={s.parts}
+            parts={g.won ? s.parts : GAME_LOST}
             hue={s.hue}
             delay={0.1}
             className="size-[10cqw]"
@@ -119,12 +119,12 @@ export const Game = ({ season, week }: SlideProps): JSX.Element => {
           <>
             The cap moves:{" "}
             <b>
-              {wins} → {wins + 1} wins
+              {wins} → {plural(wins + 1, "win")}
             </b>
           </>
         ) : (
           <>
-            The cap stays at <b>{wins} wins</b>
+            The cap stays at <b>{plural(wins, "win")}</b>
           </>
         )}
       </Reveal>

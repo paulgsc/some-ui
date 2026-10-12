@@ -17,7 +17,7 @@ import type { TemplateKey } from "./story"
 
 /** One motion per moving part; the CSS names them `pd-m-<motion>`. */
 export type Motion =
-  | "to-you"
+  | "to-winner"
   | "pulse"
   | "lose"
   | "drop"
@@ -67,7 +67,7 @@ export const SYMBOLS: ReadonlyArray<SymbolDef> = [
     parts: [
       { kind: "team", x: 46, y: 32, motion: "lose" },
       { kind: "you", x: 18, y: 32, motion: "pulse" },
-      { kind: "win", x: 46, y: 32, motion: "to-you" },
+      { kind: "win", x: 46, y: 32, motion: "to-winner" },
     ],
   },
   {
@@ -147,6 +147,13 @@ export const SYMBOLS: ReadonlyArray<SymbolDef> = [
       { kind: "win", x: 32, y: 20, motion: "bounce" },
     ],
   },
+]
+
+/** Your game, lost: the same symbol with the roles swapped. */
+export const GAME_LOST: ReadonlyArray<Primitive> = [
+  { kind: "you", x: 46, y: 32, motion: "lose" },
+  { kind: "team", x: 18, y: 32, motion: "pulse" },
+  { kind: "win", x: 46, y: 32, motion: "to-winner" },
 ]
 
 export function symbolFor(key: SymbolKey): SymbolDef {

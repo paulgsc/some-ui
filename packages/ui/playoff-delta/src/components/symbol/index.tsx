@@ -6,7 +6,7 @@ import { assertNever } from "@some-ui/intent-kit"
 
 /** Complete class strings, so a content scan sees every one. */
 const MOTION: Readonly<Record<Motion, string>> = {
-  "to-you": "pd-m-to-you",
+  "to-winner": "pd-m-to-winner",
   pulse: "pd-m-pulse",
   lose: "pd-m-lose",
   drop: "pd-m-drop",

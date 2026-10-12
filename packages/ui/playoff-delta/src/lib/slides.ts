@@ -143,7 +143,7 @@ export function narration(
     }
     case "benchmark": {
       const low = week.benchmark.lowestBar
-      return `The lowest bar in the league belongs to the ${n(low.team)}: ${low.wins} wins could still get them in.`
+      return `The lowest bar in the league belongs to the ${n(low.team)}: ${plural(low.wins, "win")} could still get them in.`
     }
     case "outro": {
       return "Next week, we ask again."
