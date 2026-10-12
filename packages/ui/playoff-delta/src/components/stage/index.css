@@ -11,8 +11,8 @@
 @layer utilities {
   /* ------------------------------------------------------------ frame */
   .pd-frame {
-    container-type: size;
     aspect-ratio: 9 / 16;
+    container-type: size;
     overflow: hidden;
     position: relative;
     user-select: none;
@@ -131,6 +131,7 @@
   /* ------------------------------------------------------------ symbols */
   .pd-sym {
     --tone: var(--foreground);
+
     overflow: visible;
   }
 
