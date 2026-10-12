@@ -24,7 +24,8 @@
  * - MK4: the lesson here is a `checked` `TreeIntake`'s, never a raw tree.
  * - MK6: no feeling anchor sits on a choice or a chosen line: their panels,
  *   the passed scenes and the notes that quote chosen lines carry no
- *   feeling, nor does the beat that answers a chosen line before the cover.
+ *   feeling, nor does the beat that answers a chosen line, before the cover
+ *   (or, on a one-beat leaf, the ending).
  */
 
 import type {

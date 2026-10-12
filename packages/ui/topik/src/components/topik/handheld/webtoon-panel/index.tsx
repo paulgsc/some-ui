@@ -230,7 +230,7 @@ export const WebtoonPanel = ({
                 {chosen.swallowed && " · 삼킨 말"}:{" "}
               </span>
               <span
-                lang={chosen.candidate.lang === "en" ? "en" : "ko"}
+                lang="ko"
                 className={
                   chosen.swallowed
                     ? "line-through"
@@ -428,7 +428,7 @@ export const WebtoonPanel = ({
             tag={swallowed ? "삼킨 말" : undefined}
           />
           <span
-            lang={candidate.lang === "en" ? "en" : "ko"}
+            lang="ko"
             className={cn(
               "text-right text-lg font-semibold break-keep",
               swallowed && "text-muted-foreground line-through"
@@ -525,7 +525,7 @@ export const WebtoonPanel = ({
                         {note.swallowed && " · 삼킨 말"}:{" "}
                       </span>
                       <span
-                        lang={note.candidate.lang === "en" ? "en" : "ko"}
+                        lang="ko"
                         className={cn(note.swallowed && "line-through")}
                       >
                         {note.candidate.text}

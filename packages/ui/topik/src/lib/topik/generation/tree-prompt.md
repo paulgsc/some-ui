@@ -105,9 +105,9 @@ away for free.
 
 A candidate is never a gloss, not even as a distractor: an English rendering
 of each candidate would spell out the transformation the item tests. The app
-rejects a choice with a `"gloss"` candidate. English prose candidates are
-for situations and explanations only (see **The relations**). Each
-candidate's `why` is shown only after the choice is answered.
+rejects a choice with a `"gloss"` candidate, and, since every candidate is
+shown as a line the point of view says, a choice with any English candidate
+at all. Each candidate's `why` is shown only after the choice is answered.
 
 ---
 
@@ -320,24 +320,22 @@ line and its level call for. What is fixed is the invariant, not a list:
 
 Examples, not a menu:
 
-| level | relation                         | from → to                                               |
-| ----- | -------------------------------- | ------------------------------------------------------- |
-| 1     | `past`                           | 할게요 → 했어요                                         |
-| 1     | `negation`                       | 가요 → 안 가요; 주세요 → 주지 마세요                    |
-| 1     | `question`                       | 할게요 → 할까요?                                        |
-| 2     | `reason: -아서 → -(으)니까`      | 비가 와서 → 비가 오니까                                 |
-| 2     | `condition: -(으)면`             | 시간이 있어요 → 시간이 있으면                           |
-| 3     | `reported speech`                | 바빠요 → 바쁘대요                                       |
-| 3     | `conjecture: -(으)ㄴ/는 것 같다` | 화났어요 → 화난 것 같아요                               |
-| any   | `register`                       | 먹어 → 드세요                                           |
-| any   | `reply`, `situation`             | what the other speaker says back; when the line is said |
+| level | relation                         | from → to                            |
+| ----- | -------------------------------- | ------------------------------------ |
+| 1     | `past`                           | 할게요 → 했어요                      |
+| 1     | `negation`                       | 가요 → 안 가요; 주세요 → 주지 마세요 |
+| 1     | `question`                       | 할게요 → 할까요?                     |
+| 2     | `reason: -아서 → -(으)니까`      | 비가 와서 → 비가 오니까              |
+| 2     | `condition: -(으)면`             | 시간이 있어요 → 시간이 있으면        |
+| 3     | `reported speech`                | 바빠요 → 바쁘대요                    |
+| 3     | `conjecture: -(으)ㄴ/는 것 같다` | 화났어요 → 화난 것 같아요            |
+| any   | `register`                       | 먹어 → 드세요                        |
+| any   | `reply`                          | what the point of view says back     |
 
-`situation` candidates are English prose, and so are explanations of a form:
-set `"lang": "en"` on each. Every other candidate is a Korean utterance.
+Every candidate is a Korean utterance the point of view could say. No
+candidate is English prose (a situation, an explanation of a form): the app
+shows each as her line, and rejects a choice that has one.
 
-- **An explanation candidate** ("It puts the sentence in the past tense")
-  takes the relation its claim is about, and is `valid` when the claim is
-  true of the line.
 - **-겠- is not always future.** 알겠습니다 and 잘 먹겠습니다 are set
   expressions. Don't build a `future` item on them.
 
@@ -363,9 +361,6 @@ said). It follows what the answer transforms, not a table.
   what that mistake causes.
 - This is where third-order items live: which reply fits, which would be
   rude, what she should say back.
-- A `situation` item asks when a line would be said. Its candidates are
-  settings in English, each wrong one plainly wrong, naming who speaks to
-  whom.
 - **Passing words on** (`paraphrase`, a relay): every candidate is what the
   point of view says to the listener, in the register she owes them, with
   the reported speech that makes clear whose words they are (못 온대요, not
@@ -476,11 +471,10 @@ type Choice = {
 
 type ProbeOption = {
   id: string // the option that shows it has the same id
-  text: string // a Korean utterance, or English prose with lang: "en"
+  text: string // a Korean utterance the point of view could say
   relation: string // open: the transformation, in your words; never "gloss"
   valid: boolean
   why: string
-  lang?: "ko" | "en" // default "ko"
 }
 
 type Probe = {

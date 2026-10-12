@@ -263,6 +263,30 @@ describe("auditTeaching", () => {
       'candidate "Go." is a gloss',
     ],
     [
+      "an English prose candidate",
+      pickValid({
+        options: [
+          {
+            id: "a",
+            text: "네, 가요.",
+            relation: "reply",
+            valid: true,
+            why: "w",
+          },
+          {
+            id: "b",
+            text: "At a funeral.",
+            relation: "situation",
+            lang: "en",
+            valid: false,
+            why: "w",
+          },
+          { id: "c", text: "안녕.", relation: "reply", valid: false, why: "w" },
+        ],
+      }),
+      'candidate "At a funeral." is English prose',
+    ],
+    [
       "a candidate with a blank why",
       pickValid({
         options: [

@@ -10,7 +10,8 @@
  *   option shows the candidate with its id;
  * - its candidates (`auditCandidates`): none is an English gloss (canon
  *   v1.13, a choice is about its scene, and a keyed gloss would be a
- *   first-order item, Prop. 4.2), none repeats another, each has a `why`,
+ *   first-order item, Prop. 4.2), none is English prose (each is shown as
+ *   the point of view's line), none repeats another, each has a `why`,
  *   and an odd-one-out's hold the content words of the `source` it names
  *   and all name one relation;
  * - no two checks share an id;
@@ -95,6 +96,12 @@ function auditCandidates(probe: Probe, report: Report): void {
       report(
         "error",
         `candidate ${label} is a gloss: a choice's candidates carry no English rendering, which would spell out what the item tests (canon Prop. 4.2)`
+      )
+    }
+    if (option.lang === "en") {
+      report(
+        "error",
+        `candidate ${label} is English prose: on the phone every candidate is a line the point of view says, so none can be a situation or an explanation`
       )
     }
     if (seen.has(option.text)) {

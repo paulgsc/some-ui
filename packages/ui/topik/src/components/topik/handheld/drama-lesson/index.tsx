@@ -217,10 +217,7 @@ export const DramaLesson = ({
                   dispatch({ type: "choose", option: option.id ?? "" })
                 }
               >
-                <span
-                  lang={option.lang === "en" ? "en" : "ko"}
-                  className="break-keep"
-                >
+                <span lang="ko" className="break-keep">
                   {option.text}
                 </span>
               </Button>

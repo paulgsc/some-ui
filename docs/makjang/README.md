@@ -640,7 +640,9 @@ Their canon line is Remark 9.3 (v1.16).
   its cover: the Korean answers the choice before the feeling does, so the
   feeling adds nothing about the choice just answered that the scene's own
   Korean has not already shown, and a cover cannot play as a verdict on it.
-  The sting waits for the cover the same way.
+  A leaf whose one beat is that answer has no cover: it stops on the beat,
+  and its ending panel is where the feeling first shows. The sting waits
+  for the feeling the same way.
 - **No caption announces an ending mid-route.** A caption is fixed per
   feeling and recurs wherever the feeling does, so none may name a close:
   warmth's is 훈훈한 분위기 (a warm mood), and the drama's end is the leaf's
@@ -1097,12 +1099,13 @@ the one-line summaries.
 >   (`past`, which names a scene's feeling in words but wears none), the
 >   author's notes that quote the chosen lines, the drama review
 >   (`drama-review`, likewise) and the dock's options stay in the session
->   theme, and a child scene's feeling first shows on the cover after the
->   chosen line and the beat that answers it, which wears none.
+>   theme, and a child scene's feeling first shows after the chosen line and
+>   the beat that answers it, which wears none: on its cover, or, on a leaf
+>   whose one beat is that answer, on its ending panel.
 > - _Falsified by_ a hunk that gives the `chosen`, `choice`, `past`, `resume`
 >   or `notes` arm of `Panel` a feeling, or puts the chosen line, or a child
->   scene's first beat, after the cover in `panelsOf`, or gives that first
->   beat its scene's feeling; that draws `Themed`, `FeelingSymbol`,
+>   scene's first beat, after the cover or the ending in `panelsOf`, or gives
+>   that first beat its scene's feeling; that draws `Themed`, `FeelingSymbol`,
 >   `FEELING_WORDS` or a feeling class in the `chosen`, `choice`, `resume` or
 >   `notes` case of `webtoon-panel`, or anything of a feeling but its
 >   `FEELING_WORDS` name in the `past` case; in `drama-lesson`'s dock or in
