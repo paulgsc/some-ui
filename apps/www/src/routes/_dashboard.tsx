@@ -33,6 +33,7 @@ import { AccountUnavailableBanner } from "@/components/auth/account-unavailable-
 import { LocIndicator } from "@/components/loc/loc-indicator"
 import { MobileHomeLink, MobileNav } from "@/components/mobile-shell"
 import { DeviceStoragePrompt } from "@/components/settings/device-storage"
+import { SiteLauncher } from "@/components/site-launcher"
 import { ThemeSwitcher } from "@/components/theme-switcher"
 
 /**
@@ -188,6 +189,12 @@ const DashboardLayout = (): JSX.Element => {
             {/* Lines written lately (`lib/loc-report`); nothing in a build
                 without a snapshot. Before the Settings link `ml-auto` pins. */}
             <LocIndicator />
+            {/* The pages the sidebar does not hold, at the far end. */}
+            {!MOBILE_APP && (
+              <div className="ml-auto">
+                <SiteLauncher />
+              </div>
+            )}
             {MOBILE_APP && (
               <Link
                 to="/settings"

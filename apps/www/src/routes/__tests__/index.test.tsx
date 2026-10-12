@@ -97,9 +97,12 @@ describe('"/"', () => {
     state.session = "signed-in"
     renderRoot()
     expect(screen.queryByTestId("extensions-page")).toBeNull()
+    // Vitest builds the `lan` profile, which carries "web": the Playoff
+    // Delta stage is the fourth destination.
     expect(
-      screen.getByRole("heading", { level: 1, name: /three projects/i })
+      screen.getByRole("heading", { level: 1, name: /four projects/i })
     ).toBeTruthy()
+    expect(screen.getByText("Playoff Delta")).toBeTruthy()
   })
 
   it("is the destinations landing wherever there is a server to learn against, with no session", () => {

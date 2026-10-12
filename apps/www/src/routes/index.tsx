@@ -1,26 +1,30 @@
 import type { JSX } from "react"
 import { BrandMark, Card, CardContent } from "@some-ui/shared"
 import { createFileRoute, Link } from "@tanstack/react-router"
-import { ArrowRight, FileText, Puzzle, Sparkles } from "lucide-react"
+import { ArrowRight, FileText, Puzzle, Sparkles, Trophy } from "lucide-react"
 
 import { useAuthoritySnapshot } from "@/lib/authority"
+import { hasAudience } from "@/lib/build-profile"
 import { ExtensionsPage } from "@/components/extensions/extensions-page"
 import { ThemeSwitcher } from "@/components/theme-switcher"
 
 /**
  * The signed-in visitor's "/": a splash pointing at what this origin hosts
- * (.github/workflows/pages.yml): the app, /resume and /extensions. A visitor with no session gets the extensions tour instead
- * (see `Root`).
+ * (.github/workflows/pages.yml): the app, /extensions, /resume and, in a web
+ * build, /playoff-delta. A visitor with no session gets the extensions tour
+ * instead (see `Root`).
  */
 type Destination = {
   title: string
   description: string
   icon: typeof Sparkles
   cta: string
-  href: "/app" | "/resume" | "/extensions"
+  href: "/app" | "/resume" | "/extensions" | "/playoff-delta"
+  /** How the intro names it, in a list of what the site hosts. */
+  phrase: string
 }
 
-const DESTINATIONS: ReadonlyArray<Destination> = [
+const ALL_DESTINATIONS: ReadonlyArray<Destination> = [
   {
     title: "Adaptive learning sessions",
     description:
@@ -28,6 +32,7 @@ const DESTINATIONS: ReadonlyArray<Destination> = [
     icon: Sparkles,
     cta: "Open the app",
     href: "/app",
+    phrase: "an adaptive study app",
   },
   {
     title: "Browser extensions",
@@ -36,6 +41,16 @@ const DESTINATIONS: ReadonlyArray<Destination> = [
     icon: Puzzle,
     cta: "See the five",
     href: "/extensions",
+    phrase: "a set of browser extensions",
+  },
+  {
+    title: "Playoff Delta",
+    description:
+      "One NFL team's week as a story: how bad can they be, and still make the playoffs?",
+    icon: Trophy,
+    cta: "Watch a week",
+    href: "/playoff-delta",
+    phrase: "a weekly playoff story",
   },
   {
     title: "Résumé & background",
@@ -43,8 +58,30 @@ const DESTINATIONS: ReadonlyArray<Destination> = [
     icon: FileText,
     cta: "View résumé",
     href: "/resume",
+    phrase: "a résumé",
   },
 ]
+
+/** The stage is a "web" workspace, so only a web build offers it. */
+const DESTINATIONS = ALL_DESTINATIONS.filter(
+  (d) => d.href !== "/playoff-delta" || hasAudience("web")
+)
+
+const COUNT_WORD: Readonly<Record<number, string>> = { 3: "Three", 4: "Four" }
+
+/** Complete class strings, so a content scan sees both. */
+const GRID: Readonly<Record<number, string>> = {
+  3: "grid gap-4 md:grid-cols-3",
+  4: "grid gap-4 sm:grid-cols-2",
+}
+
+/** "a, b, and c". */
+function listOf(phrases: ReadonlyArray<string>): string {
+  const last = phrases.at(-1) ?? ""
+  return phrases.length < 2
+    ? last
+    : `${phrases.slice(0, -1).join(", ")}, and ${last}`
+}
 
 const DestinationCard = (destination: Destination): JSX.Element => {
   const { title, description, icon: Icon, cta, href } = destination
@@ -82,12 +119,12 @@ const Landing = (): JSX.Element => (
           Some UI
         </p>
         <h1 className="text-gradient-heading text-3xl font-bold tracking-tight sm:text-4xl">
-          Three projects, one workspace
+          {COUNT_WORD[DESTINATIONS.length] ?? DESTINATIONS.length} projects, one
+          workspace
         </h1>
         <p className="text-muted-foreground mx-auto max-w-xl text-balance">
-          This site hosts an adaptive study app, a set of browser extensions,
-          and a résumé - built and deployed from a single monorepo. Pick a
-          destination below.
+          This site hosts {listOf(DESTINATIONS.map((d) => d.phrase))} - built
+          and deployed from a single monorepo. Pick a destination below.
         </p>
         {/* /mission answers why any of it exists: a text link, so it doesn't
             compete with the destinations. */}
@@ -99,7 +136,7 @@ const Landing = (): JSX.Element => (
           <ArrowRight className="size-3.5" aria-hidden />
         </Link>
       </div>
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className={GRID[DESTINATIONS.length] ?? GRID[3]}>
         {DESTINATIONS.map((destination) => (
           <DestinationCard key={destination.title} {...destination} />
         ))}

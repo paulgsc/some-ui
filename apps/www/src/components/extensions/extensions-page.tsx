@@ -4,6 +4,7 @@ import { BrandMark, MochiShapes } from "@some-ui/shared"
 import { Link } from "@tanstack/react-router"
 import { ArrowLeft } from "lucide-react"
 
+import { hasAudience } from "@/lib/build-profile"
 import { ExtensionsComb } from "@/lib/web-surface"
 import { ThemeSwitcher } from "@/components/theme-switcher"
 
@@ -12,8 +13,8 @@ import { ThemeSwitcher } from "@/components/theme-switcher"
  * no versions, manifests or workflows; progress as a quantity.
  *
  * Mounted in two places: `"/"` for a visitor with no session (the front door,
- * so its chrome offers the résumé and sign-in), and `"/extensions"`, the
- * address to share (its chrome is a way back).
+ * so its chrome offers Playoff Delta, the résumé and sign-in), and
+ * `"/extensions"`, the address to share (its chrome is a way back).
  */
 
 const CHIP =
@@ -54,6 +55,11 @@ export const ExtensionsPage = ({
       <div className="pointer-events-auto ml-auto flex flex-wrap items-center justify-end gap-1.5">
         {chrome === "front" && (
           <>
+            {hasAudience("web") && (
+              <Link to="/playoff-delta" className={CHIP}>
+                Playoff Delta
+              </Link>
+            )}
             <Link to="/resume" className={CHIP}>
               Résumé
             </Link>
