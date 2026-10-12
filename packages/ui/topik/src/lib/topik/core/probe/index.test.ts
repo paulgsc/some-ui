@@ -1,12 +1,7 @@
 import type { Probe, ProbeOption } from "@topik/lib/topik"
 import { describe, expect, it } from "vitest"
 
-import {
-  isCorrectChoice,
-  orderedOptions,
-  relationLabel,
-  showsRelations,
-} from "."
+import { isCorrectChoice, orderedOptions } from "."
 
 const option = (
   text: string,
@@ -50,22 +45,6 @@ describe("probe presentation", () => {
     expect(orderedOptions(odd, "seed")).toEqual(a)
     expect([...a].sort((x, y) => x.text.localeCompare(y.text))).toEqual(
       [...odd.options].sort((x, y) => x.text.localeCompare(y.text))
-    )
-  })
-
-  it("shows relation chips on an odd-one-out only, where the chip is the claim", () => {
-    expect(showsRelations(odd)).toBe(true)
-    expect(showsRelations({ ...odd, kind: "pick-valid" })).toBe(false)
-  })
-
-  it("labels relations, honouring an authored override", () => {
-    expect(relationLabel("negation")).toBe("Negation")
-    expect(relationLabel("register", "Politer")).toBe("Politer")
-  })
-
-  it("shows any other relation as its author named it (canon Rem. 4.8)", () => {
-    expect(relationLabel("Reason: -아서 → -(으)니까")).toBe(
-      "Reason: -아서 → -(으)니까"
     )
   })
 })

@@ -67,25 +67,32 @@ describe("DramaLesson", () => {
     next()
     next()
     expect(slots().at(-1)).toBe("drama-choice")
-    expect(screen.getByText("서연은 뭐라고 대답할까?")).toBeTruthy()
+    expect(screen.getByText("뭐라고 대답하지?")).toBeTruthy()
 
-    // The consequence: the chosen line as Seo-yeon's, then the chill.
+    // The consequence: the chosen line as Seo-yeon's, the answer to it, and
+    // only then the chill. The root stays above, read-only.
     choose("응, 마실래.")
-    expect(slots()).toEqual(["drama-chosen", "drama-cover", "drama-line"])
-    expect(screen.getByText("갑분싸")).toBeTruthy()
+    expect(slots()).toEqual(["drama-past", "drama-chosen", "drama-line"])
     next()
     next()
     choose("죄송합니다, 회장님.")
-    // The repair settles into warmth, and the leaf ends on its panel.
-    expect(screen.getByText("훈훈한 마무리")).toBeTruthy()
     next()
-    // Then the author's notes, quoting each chosen line.
+    // The repair settles into warmth: the one-beat leaf stops on its line,
+    // and its ending wears the feeling, with no cover between.
+    expect(
+      document
+        .querySelector("[data-slot='drama-ending']")
+        ?.closest(".feeling")
+        ?.getAttribute("data-feeling")
+    ).toBe("warmth")
+    // Then the author's notes, folded, telling each choice as what happened.
     expect(slots().slice(-2)).toEqual(["drama-ending", "drama-notes"])
+    fireEvent.click(screen.getByRole("button", { name: /작가의 말/ }))
     const notes = document.querySelector("[data-slot='drama-notes']")!
-    expect(notes.textContent).toMatch(/작가의 말/)
     expect(notes.textContent).toMatch(/응, 마실래\./)
+    expect(notes.textContent).toMatch(/뭐\? 지금 나한테 반말했니\?/)
     expect(notes.textContent).toMatch(/죄송합니다, 회장님\./)
-    expect(screen.getByRole("button", { name: /Play it again/ })).toBeTruthy()
+    expect(screen.getByRole("button", { name: /갈림길/ })).toBeTruthy()
   })
 
   it("offers the review at an ending, collapsed and never in the way, and saves each tap", () => {
@@ -99,8 +106,7 @@ describe("DramaLesson", () => {
     const review = screen.getByRole("button", { name: /어땠어요/ })
     expect(review.getAttribute("aria-expanded")).toBe("false")
     expect(
-      screen.getByRole<HTMLButtonElement>("button", { name: /Play it again/ })
-        .disabled
+      screen.getByRole<HTMLButtonElement>("button", { name: /갈림길/ }).disabled
     ).toBe(false)
     fireEvent.click(review)
     const panel = within(
@@ -128,7 +134,7 @@ describe("DramaLesson", () => {
     expect(previous().disabled).toBe(true)
   })
 
-  it("plays it again from the root, keeping the first choice in the slot", () => {
+  it("chooses again from a crossroads or the root, keeping the first choice in the slot", () => {
     const store = createPastedLessonStore(memoryStorage())
     store.setTree(lesson)
     renderDrama(store.points)
@@ -137,15 +143,19 @@ describe("DramaLesson", () => {
     choose("아니요, 안 앉아요.")
     next()
     next()
-    fireEvent.click(screen.getByRole("button", { name: /Play it again/ }))
-    expect(slots()).toEqual(["drama-cover", "drama-narration"])
-    next()
-    next()
+    fireEvent.click(screen.getByRole("button", { name: /갈림길/ }))
+    fireEvent.click(screen.getByRole("button", { name: /뭐라고 대답하지/ }))
+    expect(slots().at(-1)).toBe("drama-choice")
     choose("네, 감사합니다.")
     expect(store.points.get(lesson.id)).toMatchObject({
       route: ["a"],
       first: { c1: "c" },
     })
+    next()
+    next()
+    fireEvent.click(screen.getByRole("button", { name: /갈림길/ }))
+    fireEvent.click(screen.getByRole("button", { name: /처음부터/ }))
+    expect(slots()).toEqual(["drama-cover", "drama-narration"])
   })
 
   it("climbs a line's ladder on a tap: Hangul, then its gloss", () => {
@@ -161,7 +171,7 @@ describe("DramaLesson", () => {
     next()
     next()
     expect(screen.queryByText(/Which reply fits/)).toBeNull()
-    fireEvent.click(screen.getByText("서연은 뭐라고 대답할까?"))
+    fireEvent.click(screen.getByText("뭐라고 대답하지?"))
     expect(screen.getByText(/Which reply fits/)).toBeTruthy()
     expect(screen.queryByText(/Polite -요/)).toBeNull()
   })
@@ -200,10 +210,12 @@ describe("MK6: no feeling anchor sits on a choice or a chosen line", () => {
       renderDrama(slot(point), recorded(point))
       const scene = sceneAt(lesson.root, route)!
       const unanchored = document.querySelectorAll(
-        "[data-slot='drama-choice'], [data-slot='drama-chosen'], [data-slot='drama-notes'], [data-slot='topik-drama-review'], [role='group'][aria-label='Choose']"
+        "[data-slot='drama-past'], [data-slot='drama-choice'], [data-slot='drama-chosen'], [data-slot='drama-notes'], [data-slot='topik-drama-review'], [role='group'][aria-label='Choose']"
       )
       expect(unanchored.length).toBe(
-        (route.length > 0 ? 1 : 0) +
+        // The scenes passed, and the line that led here.
+        route.length +
+          (route.length > 0 ? 1 : 0) +
           (scene.choice ? 2 : 0) +
           // The notes and the review.
           (route.length > 0 && !scene.choice ? 2 : 0)
@@ -213,14 +225,32 @@ describe("MK6: no feeling anchor sits on a choice or a chosen line", () => {
         expect(node.querySelector(".feeling, .feeling-panel")).toBeNull()
         expect(node.querySelector("[data-slot='feeling-symbol']")).toBeNull()
       }
-      // Everything else of the scene wears its feeling.
-      const anchored = document.querySelectorAll(
-        "[data-slot='drama-cover'], [data-slot='drama-line'], [data-slot='drama-narration'], [data-slot='drama-ending']"
+      // Everything else of the scene wears its feeling, but the beat that
+      // answers the chosen line: the cover comes after it.
+      const anchored = Array.from(
+        document.querySelectorAll(
+          "[data-slot='drama-cover'], [data-slot='drama-line'], [data-slot='drama-narration'], [data-slot='drama-ending']"
+        )
       )
+      // A one-beat leaf stops on its beat: its ending, not a cover, wears it.
+      const stopped =
+        route.length > 0 && !scene.choice && scene.beats.length === 1
       expect(anchored.length).toBe(
-        1 + scene.beats.length + (scene.choice ? 0 : 1)
+        (stopped ? 0 : 1) + scene.beats.length + (scene.choice ? 0 : 1)
       )
-      for (const node of anchored) {
+      const bare = anchored.filter((node) => node.closest(".feeling") === null)
+      expect(bare.length).toBe(route.length > 0 ? 1 : 0)
+      for (const node of bare) {
+        expect(node.querySelector("[data-slot='feeling-symbol']")).toBeNull()
+        expect(
+          node.compareDocumentPosition(
+            document.querySelector(
+              "[data-slot='drama-cover'], [data-slot='drama-ending']"
+            )!
+          ) & Node.DOCUMENT_POSITION_FOLLOWING
+        ).toBeTruthy()
+      }
+      for (const node of anchored.filter((one) => !bare.includes(one))) {
         expect(node.closest(".feeling")?.getAttribute("data-feeling")).toBe(
           scene.feeling
         )
@@ -244,14 +274,20 @@ describe("no screen is framed as an exercise", () => {
       ]
       for (const [index, point] of [opening, pointAt(route)].entries()) {
         renderDrama(slot(point), recorded(point))
-        // The review, opened in full, is held to the same test.
+        // The notes and the review, opened in full, are held to the same test.
+        const notes = screen.queryByRole("button", { name: /작가의 말/ })
+        if (notes) fireEvent.click(notes)
         const review = screen.queryByRole("button", { name: /어땠어요/ })
         if (review) {
           fireEvent.click(review)
           fireEvent.click(screen.getByRole("button", { name: "Show English" }))
         }
         // Opened where the point says, not at the root by fallback.
-        expect(index === 0 ? slots()[0] : slots().at(-1)).toBe(landed[index])
+        // The scenes passed, and a resumed drama's marker, come first.
+        const opened = slots().filter(
+          (slot) => slot !== "drama-past" && slot !== "drama-resume"
+        )
+        expect(index === 0 ? opened[0] : slots().at(-1)).toBe(landed[index])
         const labels = Array.from(
           document.querySelectorAll("[aria-label]"),
           (node) => node.getAttribute("aria-label") ?? ""

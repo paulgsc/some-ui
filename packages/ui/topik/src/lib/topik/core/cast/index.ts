@@ -83,6 +83,12 @@ export const FIGURE_WORDS: Readonly<Record<FigureKey, FigureWords>> = {
  * Every character's figure. Once a cast has used them all, the vocabulary
  * starts again from the top; two characters a tree names alike keep it.
  */
+/** A character's name as shown, by cast id; the id when none is named. */
+export const nameOf = (
+  cast: ReadonlyArray<{ id: string; name: string }>,
+  id: string
+): string => cast.find((character) => character.id === id)?.name ?? id
+
 export function figuresOf(
   cast: ReadonlyArray<Pick<Character, "id" | "figure">>
 ): ReadonlyMap<CharacterId, FigureKey> {

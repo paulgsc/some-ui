@@ -1,6 +1,9 @@
 import type { DramaSession, SessionEvent } from "@topik/lib/topik/core/drama"
 import {
   canGoBack,
+  coverShown,
+  crossroadsOf,
+  momentOf,
   openSession,
   panelsOf,
   rungOf,
@@ -97,15 +100,72 @@ describe("panelsOf", () => {
     ).toEqual(["cover", "narration", "line", "choice"])
   })
 
-  it("puts the chosen line, as the POV's, before the child's cover", () => {
-    const session = play([advance, advance, { type: "choose", option: "b" }])
-    const [chosen, cover] = panelsOf(lesson, session)
-    expect(chosen).toMatchObject({
+  it("opens a child scene on the chosen line, then the answer to it, and only then the cover", () => {
+    const chosen = [advance, advance, { type: "choose", option: "b" } as const]
+    const entered = play(chosen)
+    expect(coverShown(lesson, entered)).toBe(false)
+    const [past, line, answer] = panelsOf(lesson, entered)
+    expect(past).toMatchObject({ kind: "past", chosen: undefined })
+    expect(line).toMatchObject({
       kind: "chosen",
       speaker: "seoyeon",
-      chosen: { choice: "c1", candidate: { id: "b", text: "응, 마실래." } },
+      chosen: {
+        choice: "c1",
+        candidate: { id: "b", text: "응, 마실래." },
+        swallowed: false,
+      },
     })
-    expect(cover).toMatchObject({ kind: "cover", feeling: "chill" })
+    expect(answer).toMatchObject({ kind: "line", id: "s3-l1", feeling: null })
+    expect(coverShown(lesson, play([...chosen, advance]))).toBe(true)
+  })
+
+  it("stops a one-beat leaf on that beat, with no cover before its ending", () => {
+    const repaired = play([
+      advance,
+      advance,
+      { type: "choose", option: "b" },
+      advance,
+      advance,
+      { type: "choose", option: "x" },
+      advance,
+    ])
+    expect(
+      panelsOf(lesson, repaired)
+        .map(({ kind }) => kind)
+        .slice(-4)
+    ).toEqual(["chosen", "line", "ending", "notes"])
+  })
+
+  it("draws an odd-one-out's pick as swallowed, never said", () => {
+    const odd = structuredClone(lesson)
+    if (odd.root.choice) odd.root.choice.check.kind = "odd-one-out"
+    const session = [
+      advance,
+      advance,
+      { type: "choose", option: "b" } as const,
+    ].reduce(
+      (at, event) => stepSession(odd, at, event).session,
+      openSession(odd, true).session
+    )
+    expect(panelsOf(odd, session)[1]).toMatchObject({
+      kind: "chosen",
+      chosen: { swallowed: true },
+    })
+  })
+
+  it("marks where a resumed drama picks up, until it moves", () => {
+    const left = play([advance, advance, { type: "choose", option: "b" }])
+    const resumed = openSession(lesson, true, left.drama).session
+    expect(panelsOf(lesson, resumed).map(({ kind }) => kind)).toContain(
+      "resume"
+    )
+    const moved = stepSession(lesson, resumed, advance).session
+    expect(panelsOf(lesson, moved).map(({ kind }) => kind)).not.toContain(
+      "resume"
+    )
+    expect(
+      openSession(lesson, true, play([advance]).drama).session.resumed
+    ).toBe(false)
   })
 
   it("closes a leaf on its ending, in the leaf's feeling", () => {
@@ -142,6 +202,19 @@ describe("panelsOf", () => {
       ["c1", "b"],
       ["c2", "x"],
     ])
+    // Each told as what happened: what it answered, and what it led to.
+    expect(notes?.kind === "notes" ? notes.notes[1] : undefined).toMatchObject({
+      trigger: { id: "s3-l1" },
+      reaction: { id: "s4-l1" },
+    })
+    expect(crossroadsOf(lesson, session).map(({ depth }) => depth)).toEqual([
+      0, 1,
+    ])
+  })
+
+  it("names a scene as its moment, not by its place", () => {
+    expect(momentOf(lesson, "s3")).toBe("뭐? 지금 나한테 반말했니?")
+    expect(momentOf(lesson, "nowhere")).toBeUndefined()
   })
 })
 

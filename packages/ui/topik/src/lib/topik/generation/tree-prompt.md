@@ -105,9 +105,9 @@ away for free.
 
 A candidate is never a gloss, not even as a distractor: an English rendering
 of each candidate would spell out the transformation the item tests. The app
-rejects a choice with a `"gloss"` candidate. English prose candidates are
-for situations and explanations only (see **The relations**). Each
-candidate's `why` is shown only after the choice is answered.
+rejects a choice with a `"gloss"` candidate, and, since every candidate is
+shown as a line the point of view says, a choice with any English candidate
+at all. Each candidate's `why` is shown only after the choice is answered.
 
 ---
 
@@ -279,8 +279,10 @@ Each level includes everything below it. Record the level as the lesson's
 A choice comes at the end of its scene, after every beat, and may turn on
 any line of the route so far.
 
-- **`prompt`:** what the story asks, in the drama's own voice and in Korean
-  where the level allows ("서연은 뭐라고 대답할까?").
+- **`prompt`:** the point of view's inner voice (속마음) at that moment, in
+  Korean where the level allows: what she asks herself ("뭐라고 대답하지?",
+  "태준 씨한테 말해야 하나?"), never a narrator quizzing about her ("서연은
+  뭐라고 대답할까?").
 - **`check`:** the item, a probe of kind `pick-valid` or `odd-one-out` (see
   **The two kinds**).
 - **`options`:** 2–4, one per candidate of the check. An option's `id` is
@@ -289,9 +291,9 @@ any line of the route so far.
   `art` is optional: a few words describing a picture for the option, which
   the app may show later.
 - **The check's `source`** is the utterance the item is about, usually a
-  line of the scene: the question being replied to, the promise being
-  transformed. It is shown above the candidates, and Korean candidates are
-  diffed against it. An `odd-one-out` must set it. Don't set
+  line of the scene: the question being replied to, the words being passed
+  on. The app does not show it again (the learner has just read it); it
+  records what the item tests. An `odd-one-out` must set it. Don't set
   `anchorMessageId`: a choice is asked at the end of its scene, not after
   one line.
 - **The check's `prompt`** is one short sentence in English that names the
@@ -302,9 +304,10 @@ any line of the route so far.
 ## The relations
 
 A candidate's `relation` names the transformation it claims to be, in your
-words. The learner sees it as the candidate's chip unless `label` overrides
-it. **The set is open**: name whatever transformation the line and its level
-call for. What is fixed is the invariant, not a list:
+words. The app does not show it: the learner sees only the candidate, as a
+line the point of view could say, so every candidate must be judgeable as
+that line, on its own. **The set is open**: name whatever transformation the
+line and its level call for. What is fixed is the invariant, not a list:
 
 1. **Never first order.** An answer is never a translation, and in a scene
    tree no candidate is a `"gloss"` at all.
@@ -315,31 +318,26 @@ call for. What is fixed is the invariant, not a list:
 3. **Commensurate with the level.** The transformation acts on grammar the
    level supports (see **Levels**).
 
-Examples, not a menu. The chip is shown in parentheses where it differs from
-the relation:
+Examples, not a menu:
 
-| level | relation                         | from → to                                               |
-| ----- | -------------------------------- | ------------------------------------------------------- |
-| 1     | `past` (Past tense)              | 할게요 → 했어요                                         |
-| 1     | `negation`                       | 가요 → 안 가요; 주세요 → 주지 마세요                    |
-| 1     | `question`                       | 할게요 → 할까요?                                        |
-| 2     | `reason: -아서 → -(으)니까`      | 비가 와서 → 비가 오니까                                 |
-| 2     | `condition: -(으)면`             | 시간이 있어요 → 시간이 있으면                           |
-| 3     | `reported speech`                | 바빠요 → 바쁘대요                                       |
-| 3     | `conjecture: -(으)ㄴ/는 것 같다` | 화났어요 → 화난 것 같아요                               |
-| any   | `register` (Politeness)          | 먹어 → 드세요                                           |
-| any   | `reply`, `situation`             | what the other speaker says back; when the line is said |
+| level | relation                         | from → to                            |
+| ----- | -------------------------------- | ------------------------------------ |
+| 1     | `past`                           | 할게요 → 했어요                      |
+| 1     | `negation`                       | 가요 → 안 가요; 주세요 → 주지 마세요 |
+| 1     | `question`                       | 할게요 → 할까요?                     |
+| 2     | `reason: -아서 → -(으)니까`      | 비가 와서 → 비가 오니까              |
+| 2     | `condition: -(으)면`             | 시간이 있어요 → 시간이 있으면        |
+| 3     | `reported speech`                | 바빠요 → 바쁘대요                    |
+| 3     | `conjecture: -(으)ㄴ/는 것 같다` | 화났어요 → 화난 것 같아요            |
+| any   | `register`                       | 먹어 → 드세요                        |
+| any   | `reply`                          | what the point of view says back     |
 
-`situation` candidates are English prose, and so are explanations of a form:
-set `"lang": "en"` on each. Every other candidate is a Korean utterance.
+Every candidate is a Korean utterance the point of view could say. No
+candidate is English prose (a situation, an explanation of a form): the app
+shows each as her line, and rejects a choice that has one.
 
-- **An explanation candidate** ("It puts the sentence in the past tense")
-  takes the relation its claim is about, and is `valid` when the claim is
-  true of the line.
 - **-겠- is not always future.** 알겠습니다 and 잘 먹겠습니다 are set
   expressions. Don't build a `future` item on them.
-- **Chips.** A short relation reads well as the chip. For a long one, set
-  `label` to what the learner should see ("More formal").
 
 **`order` is yours to set:** `2` when the transformation acts on structure,
 `3` when it acts on use (a reply, a politeness level, when the line would be
@@ -363,21 +361,34 @@ said). It follows what the answer transforms, not a table.
   what that mistake causes.
 - This is where third-order items live: which reply fits, which would be
   rude, what she should say back.
-- A `situation` item asks when a line would be said. Its candidates are
-  settings in English, each wrong one plainly wrong, naming who speaks to
-  whom.
+- **Passing words on** (`paraphrase`, a relay): every candidate is what the
+  point of view says to the listener, in the register she owes them, with
+  the reported speech that makes clear whose words they are (못 온대요, not
+  못 와요). The wrong ones differ in what they claim (late, not unable;
+  a breakdown, not traffic), so the source must be read to reject them.
 
-### `odd-one-out`: "Which is NOT a valid transformation?"
+### `odd-one-out`: "Which line must she bite back?"
 
-- 3–4 candidates, **exactly one invalid**: the option the story goes on with
-  is the one the learner rightly singles out.
-- Each candidate claims a different relation where possible.
+In the drama this is the line the point of view is about to say and must
+not: the learner picks it, and she swallows it (the app draws it struck out
+in her thoughts, never as speech).
+
+- 3–4 candidates, **exactly one invalid**: the line she must not say. Each
+  candidate is a whole line she could say in this moment, to this listener,
+  and **all name one relation**, what the line is (`apology`, `reply`): the
+  app shows no chip, so candidates that claim different transformations
+  could not be told apart, and such a choice is not asked.
+- **The keyed child** (the invalid one picked) is the scene where she bit it
+  back: its first beat is what she says instead. **Every other child** is
+  the scene where she swallowed a fine line and said the wrong one: its
+  first beat is her saying the invalid line, and the scene is what it
+  causes.
 - **The invalid one must be a real confusion**, not gibberish: 안 on a
   request (안 주세요 for 주지 마세요), a question form that does not exist
-  (할게요?), the wrong honorific direction. And it must be invalid beyond
-  dispute: the answer key is the whole of grading.
-- Korean candidates are shown with their differences from `source`
-  highlighted, so hold the content words fixed.
+  (할게요?), the wrong honorific direction (제가 실수하셨어요). And it must
+  be invalid beyond dispute: the answer key is the whole of grading.
+- Hold the content words fixed across the candidates, so the difference the
+  learner judges is the grammar.
 - Supporting candidates may use forms the scene doesn't, if a learner at
   this level can judge them. The _answer_ must concern grammar the line
   itself uses.
@@ -460,12 +471,10 @@ type Choice = {
 
 type ProbeOption = {
   id: string // the option that shows it has the same id
-  text: string // a Korean utterance, or English prose with lang: "en"
+  text: string // a Korean utterance the point of view could say
   relation: string // open: the transformation, in your words; never "gloss"
-  label?: string // overrides the chip ("More polite")
   valid: boolean
   why: string
-  lang?: "ko" | "en" // default "ko"
 }
 
 type Probe = {
@@ -531,7 +540,7 @@ of the scenes), and about whatever scene the request asks for.
     ],
     "choice": {
       "id": "c1",
-      "prompt": "서연은 뭐라고 대답할까?",
+      "prompt": "뭐라고 대답하지?",
       "check": {
         "id": "c1-reply",
         "kind": "pick-valid",
@@ -606,7 +615,7 @@ of the scenes), and about whatever scene the request asks for.
             ],
             "choice": {
               "id": "c2",
-              "prompt": "서연은 어떻게 사과해야 할까?",
+              "prompt": "어떻게 사과하지?",
               "check": {
                 "id": "c2-apology",
                 "kind": "pick-valid",

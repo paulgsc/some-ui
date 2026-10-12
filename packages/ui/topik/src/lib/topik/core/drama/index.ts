@@ -9,17 +9,23 @@
  * every line's gloss stays one rung away (Rem. 4.12), and the choice's own
  * prompt and the cover's caption are Hangul with their English one tap away.
  *
- * `panelsOf` is what the renderer draws: one panel per beat shown, the
- * scene's cover first, the chosen line before it on a child scene, and the
- * open choice or the ending last. After an ending come the author's notes
- * (작가의 말): each choice the route made, with the line chosen and why it
- * reads as it does - how the scene resolved, never a score. Which panels wear
- * the scene's feeling is decided here, once (MK6).
+ * `panelsOf` is what the renderer draws, top to bottom: each scene the route
+ * passed, read-only, so the route stays the reader's memory as well as the
+ * engine's; then the current scene. A child scene opens on the chosen line,
+ * as the POV says it (or, for an odd-one-out, bites it back), then its first
+ * beat, the other side's answer, and only then its cover: the Korean answers
+ * the choice before the feeling does. The open choice is asked last, or the
+ * ending closes on the leaf's last beat and then the author's notes
+ * (작가의 말), which tell each choice as what happened, its `why` a tap
+ * further - never a score. Which panels wear the scene's feeling is decided
+ * here, once (MK6).
  *
  * Invariants (full text in docs/makjang/README.md, "Invariants"):
  * - MK4: the lesson here is a `checked` `TreeIntake`'s, never a raw tree.
  * - MK6: no feeling anchor sits on a choice or a chosen line: their panels,
- *   and the notes that quote chosen lines, carry no feeling.
+ *   the passed scenes and the notes that quote chosen lines carry no
+ *   feeling, nor does the beat that answers a chosen line, before the cover
+ *   (or, on a one-beat leaf, the ending).
  */
 
 import type {
@@ -43,6 +49,7 @@ import {
 import type { FeelingKey } from "@some-ui/styles/theme"
 import { isFeelingKey } from "@some-ui/styles/theme"
 import type { Probe, ProbeOption } from "@topik/lib/topik"
+import { bitesBack } from "@topik/lib/topik/core/probe"
 
 /** Audio only, Hangul, gloss: canon Cor. 4.4's ladder. */
 export type Rung = 0 | 1 | 2
@@ -66,6 +73,8 @@ export type DramaSession = {
   whys: Readonly<Record<string, Readonly<Record<string, true>>>>
   /** Whether lines can be heard. Without it the ladder starts at Hangul. */
   audio: boolean
+  /** Opened at a kept place past the root, and not moved since. */
+  resumed: boolean
 }
 
 export type SessionEvent =
@@ -95,6 +104,19 @@ export function beatsOf(lesson: DramaLesson): ReadonlyMap<string, Beat> {
     indexed.set(lesson, beats)
   }
   return beats
+}
+
+/**
+ * A scene named as a moment, for the review's chips: its first beat's
+ * words. Two scenes in one place, in one feeling, still differ here.
+ */
+export function momentOf(
+  lesson: DramaLesson,
+  sceneId: string
+): string | undefined {
+  return scenesOf(lesson.root)
+    .find(({ scene: { id } }) => id === sceneId)
+    ?.scene.beats[0]?.text.trim()
 }
 
 /**
@@ -144,6 +166,7 @@ export function openSession(
       rungs: {},
       whys: {},
       audio,
+      resumed: point !== undefined && opened.state.route.length > 0,
     }),
     effects: opened.effects,
   }
@@ -198,7 +221,11 @@ export function stepSession(
   return moved.state === session.drama
     ? { session, effects: moved.effects }
     : {
-        session: readSilently(lesson, { ...session, drama: moved.state }),
+        session: readSilently(lesson, {
+          ...session,
+          drama: moved.state,
+          resumed: false,
+        }),
         effects: moved.effects,
       }
 }
@@ -242,20 +269,43 @@ const currentBeat = (
 /** A candidate a route took: one the route names, so it has an id. */
 type ChosenCandidate = ProbeOption & { id: string }
 
-/** The option chosen to reach the current scene, as the POV says it. */
+/** The option chosen to reach a scene, as the POV says it, or bites back. */
 type ChosenLine = {
   /** The choice it answered. */
   choice: string
   candidate: ChosenCandidate
+  /**
+   * An odd-one-out's pick is the line the POV must not say: it is drawn as
+   * swallowed, never as speech.
+   */
+  swallowed: boolean
 }
 
-/** A choice the route made, as the author's notes give it. */
+/** A choice the route made, told as what happened (the author's notes). */
 type Note = ChosenLine & {
-  /** The choice's prompt, in Korean. */
-  prompt: string
+  /** Where the choice was made: the scene that asked it. */
+  place: string
+  /** The asking scene's last line: what the choice answered. */
+  trigger: Beat | undefined
+  /** The answered scene's first beat: what the choice led to. */
+  reaction: Beat | undefined
 }
 
 export type Panel =
+  /**
+   * A scene the route passed: its beats, and the line that left it, kept
+   * above the current scene and read-only. It names its scene's feeling but
+   * wears none, as the review does (MK6).
+   */
+  | {
+      kind: "past"
+      id: string
+      scene: Scene<Probe>
+      /** The line that led into this scene; none at the root. */
+      chosen: ChosenLine | undefined
+    }
+  /** Where a resumed drama picks up. */
+  | { kind: "resume"; id: string }
   | { kind: "chosen"; id: string; chosen: ChosenLine; speaker: string }
   | {
       kind: "cover"
@@ -263,8 +313,24 @@ export type Panel =
       scene: Scene<Probe>
       feeling: FeelingKey
     }
-  | { kind: "line"; id: string; line: Line; feeling: FeelingKey }
-  | { kind: "narration"; id: string; narration: Narration; feeling: FeelingKey }
+  /**
+   * `feeling` is `null` on the beat that answers a chosen line; `final`
+   * marks a leaf's last beat at its ending.
+   */
+  | {
+      kind: "line"
+      id: string
+      line: Line
+      feeling: FeelingKey | null
+      final: boolean
+    }
+  | {
+      kind: "narration"
+      id: string
+      narration: Narration
+      feeling: FeelingKey | null
+      final: boolean
+    }
   | { kind: "choice"; id: string; scene: Scene<Probe> }
   | {
       kind: "ending"
@@ -286,30 +352,44 @@ const isNamed =
   (option: ProbeOption): option is ChosenCandidate =>
     id !== undefined && option.id === id
 
-/** The line the learner chose that led here; none at the root. */
-function chosenLineOf(
-  lesson: DramaLesson,
-  session: DramaSession
-): ChosenLine | undefined {
-  const { route } = session.drama
-  const last = route[route.length - 1]
-  const choice = sceneAt(lesson.root, route.slice(0, -1))?.choice
-  const candidate = choice?.check.options.find(isNamed(last))
-  if (choice === undefined || candidate === undefined) return undefined
-  return { choice: choice.id, candidate }
+/** A choice the route crossed: the scene that asked it, and its answer. */
+type Crossed = {
+  depth: number
+  asking: Scene<Probe>
+  chosen: ChosenLine
+  /** The scene the answer led to. */
+  answered: Scene<Probe>
 }
 
-/** Every choice on the route, in order, with the option it took. */
-function notesOf(lesson: DramaLesson, session: DramaSession): Array<Note> {
-  const { route } = session.drama
-  return route.flatMap((option, depth): Array<Note> => {
-    const choice = sceneAt(lesson.root, route.slice(0, depth))?.choice
+/** Every choice `route` crossed, root first. */
+function crossedOf(
+  lesson: DramaLesson,
+  route: ReadonlyArray<string>
+): Array<Crossed> {
+  return route.flatMap((option, depth): Array<Crossed> => {
+    const asking = sceneAt(lesson.root, route.slice(0, depth))
+    const choice = asking?.choice
     const candidate = choice?.check.options.find(isNamed(option))
-    return choice && candidate
-      ? [{ choice: choice.id, prompt: choice.prompt, candidate }]
-      : []
+    const answered = choice?.options.find(({ id }) => id === option)?.child
+    if (!asking || !choice || !candidate || !answered) return []
+    return [
+      {
+        depth,
+        asking,
+        answered,
+        chosen: {
+          choice: choice.id,
+          candidate,
+          swallowed: bitesBack(choice.check),
+        },
+      },
+    ]
   })
 }
+
+/** A scene's last line, else its last beat: what its choice answers. */
+const lastLineOf = (scene: Scene<Probe>): Beat | undefined =>
+  scene.beats.filter(isLine).at(-1) ?? scene.beats.at(-1)
 
 /** The beats shown so far in `scene`: up to the current one, or all. */
 function shownBeats(scene: Scene<Probe>, session: DramaSession): Array<Beat> {
@@ -319,46 +399,120 @@ function shownBeats(scene: Scene<Probe>, session: DramaSession): Array<Beat> {
   return scene.beats.slice(0, index + 1)
 }
 
-/** The current scene's panels, top to bottom (MK6). */
+/**
+ * Whether the current scene's feeling is on screen. A child scene's shows,
+ * on its cover or a one-beat leaf's ending, once its first beat, the answer
+ * to the chosen line, has been read: the Korean answers before the feeling
+ * does. The runtime holds the scene's sting to it.
+ */
+export function coverShown(
+  lesson: DramaLesson,
+  session: DramaSession
+): boolean {
+  const { route, at } = session.drama
+  if (route.length === 0 || at.kind !== "beat") return true
+  return sceneOf(lesson, session).beats[0]?.id !== at.id
+}
+
+/**
+ * The route's panels, top to bottom: the scenes it passed, read-only, then
+ * the current scene (MK6).
+ */
 export function panelsOf(
   lesson: DramaLesson,
   session: DramaSession
 ): Array<Panel> {
+  const { route, at } = session.drama
   const scene = sceneOf(lesson, session)
   // The audit rejects a tree whose scene names a feeling the renderer does
   // not have (MK4), so this never falls back in a lesson that plays.
   const feeling: FeelingKey = isFeelingKey(scene.feeling)
     ? scene.feeling
     : "tension"
-  const panels: Array<Panel> = []
-  const chosen = chosenLineOf(lesson, session)
-  if (chosen) {
-    panels.push({
-      kind: "chosen",
-      id: `${chosen.choice}:${chosen.candidate.id}`,
-      chosen,
-      speaker: lesson.pov,
-    })
+  const crossed = crossedOf(lesson, route)
+  const panels: Array<Panel> = crossed.map(({ asking }, depth) => ({
+    kind: "past",
+    id: `${asking.id}:past`,
+    scene: asking,
+    chosen: crossed[depth - 1]?.chosen,
+  }))
+  if (session.resumed && route.length > 0 && at.kind !== "end") {
+    panels.push({ kind: "resume", id: "resume" })
   }
-  panels.push({ kind: "cover", id: `${scene.id}:cover`, scene, feeling })
-  for (const beat of shownBeats(scene, session)) {
-    panels.push(
-      isLine(beat)
-        ? { kind: "line", id: beat.id, line: beat, feeling }
-        : { kind: "narration", id: beat.id, narration: beat, feeling }
-    )
+  const last = scene.beats.at(-1)
+  const beatPanel = (beat: Beat, worn: FeelingKey | null): Panel => {
+    const final = at.kind === "end" && beat === last
+    return isLine(beat)
+      ? { kind: "line", id: beat.id, line: beat, feeling: worn, final }
+      : {
+          kind: "narration",
+          id: beat.id,
+          narration: beat,
+          feeling: worn,
+          final,
+        }
   }
-  const { at } = session.drama
+  const cover: Panel = {
+    kind: "cover",
+    id: `${scene.id}:cover`,
+    scene,
+    feeling,
+  }
+  const [first, ...rest] = shownBeats(scene, session)
+  const chosen = crossed.at(-1)?.chosen
+  if (route.length > 0) {
+    if (chosen) {
+      panels.push({
+        kind: "chosen",
+        id: `${chosen.choice}:${chosen.candidate.id}`,
+        chosen,
+        speaker: lesson.pov,
+      })
+    }
+    if (first) panels.push(beatPanel(first, null))
+    // A leaf whose one beat answered the choice stops on that beat: its
+    // ending panel wears the feeling, with no cover between them.
+    const stopped = at.kind === "end" && scene.beats.length === 1
+    if (coverShown(lesson, session) && !stopped) panels.push(cover)
+    for (const beat of rest) panels.push(beatPanel(beat, feeling))
+  } else {
+    panels.push(cover)
+    for (const beat of [first, ...rest]) {
+      if (beat) panels.push(beatPanel(beat, feeling))
+    }
+  }
   if (at.kind === "choice") {
     panels.push({ kind: "choice", id: `${scene.id}:choice`, scene })
   } else if (at.kind === "end") {
     panels.push({ kind: "ending", id: `${scene.id}:end`, scene, feeling })
-    const notes = notesOf(lesson, session)
+    const notes = crossed.map(
+      ({ asking, chosen: line, answered }): Note => ({
+        ...line,
+        place: asking.place,
+        trigger: lastLineOf(asking),
+        reaction: answered.beats[0],
+      })
+    )
     if (notes.length > 0) {
       panels.push({ kind: "notes", id: `${scene.id}:notes`, notes })
     }
   }
   return panels
+}
+
+/**
+ * The choices the route crossed, as the places a replay may pick up from:
+ * `rewind` to the one at `depth`.
+ */
+export function crossroadsOf(
+  lesson: DramaLesson,
+  session: DramaSession
+): Array<{ depth: number; place: string; prompt: string }> {
+  return crossedOf(lesson, session.drama.route).map(({ depth, asking }) => ({
+    depth,
+    place: asking.place,
+    prompt: asking.choice?.prompt ?? "",
+  }))
 }
 
 /** Whether `back` would move: false at a scene's first beat. */

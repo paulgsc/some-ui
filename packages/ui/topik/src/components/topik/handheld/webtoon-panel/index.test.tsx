@@ -12,7 +12,13 @@ const lesson = workedLesson()
 const line = lesson.root.beats.find(isLine)
 if (line === undefined) throw new Error("the worked example has no line")
 
-const linePanel: Panel = { kind: "line", id: line.id, line, feeling: "tension" }
+const linePanel: Panel = {
+  kind: "line",
+  id: line.id,
+  line,
+  feeling: "tension",
+  final: false,
+}
 
 const renderPanel = (panel: Panel, speaking: string | null): Element => {
   const { container } = render(
@@ -62,7 +68,11 @@ describe("WebtoonPanel's cast figure", () => {
       kind: "chosen",
       id: "chosen",
       speaker: lesson.pov,
-      chosen: { choice: choice.id, candidate: { ...candidate, id } },
+      chosen: {
+        choice: choice.id,
+        candidate: { ...candidate, id },
+        swallowed: false,
+      },
     }
     const figure = renderPanel(chosen, "chosen")
     expect(figure.getAttribute("data-figure")).toBe("heart")

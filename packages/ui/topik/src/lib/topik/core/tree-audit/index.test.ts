@@ -35,21 +35,21 @@ const oddOneOut = (overrides: Raw = {}): Raw => ({
     {
       id: "x",
       text: "카드로 했어요.",
-      relation: "past",
+      relation: "promise",
       valid: true,
       why: "w",
     },
     {
       id: "y",
       text: "카드로 안 할게요.",
-      relation: "negation",
+      relation: "promise",
       valid: true,
       why: "w",
     },
     {
       id: "z",
       text: "카드로 하지 마세요.",
-      relation: "negation",
+      relation: "promise",
       valid: false,
       why: "w",
     },
@@ -263,6 +263,30 @@ describe("auditTeaching", () => {
       'candidate "Go." is a gloss',
     ],
     [
+      "an English prose candidate",
+      pickValid({
+        options: [
+          {
+            id: "a",
+            text: "네, 가요.",
+            relation: "reply",
+            valid: true,
+            why: "w",
+          },
+          {
+            id: "b",
+            text: "At a funeral.",
+            relation: "situation",
+            lang: "en",
+            valid: false,
+            why: "w",
+          },
+          { id: "c", text: "안녕.", relation: "reply", valid: false, why: "w" },
+        ],
+      }),
+      'candidate "At a funeral." is English prose',
+    ],
+    [
       "a candidate with a blank why",
       pickValid({
         options: [
@@ -353,6 +377,28 @@ describe("auditTeaching", () => {
     expect(audit.findings[0]?.message).toContain("names its `source`")
   })
 
+  it("prunes an odd-one-out whose candidates claim different relations: the phone shows no chip to tell them apart", () => {
+    const check = oddOneOut()
+    const options = Array.isArray(check.options) ? [...check.options] : []
+    options[0] = {
+      id: "x",
+      text: "카드로 했어요.",
+      relation: "past",
+      valid: true,
+      why: "w",
+    }
+    const audit = auditTeaching(
+      lesson(
+        rawTree(({ b }) => {
+          withCheck(b, { ...check, options })
+        })
+      )
+    )
+    if (!audit.ok) throw new Error("expected a playable tree")
+    expect(sceneAt(audit.lesson.root, ["b"])?.choice).toBeUndefined()
+    expect(audit.findings[0]?.message).toContain("name 2 relations")
+  })
+
   it("prunes an odd-one-out whose source is blank", () => {
     const audit = auditTeaching(
       lesson(
@@ -406,7 +452,7 @@ describe("auditTeaching", () => {
     options[0] = {
       id: "x",
       text: "현금으로 드렸습니다.",
-      relation: "past",
+      relation: "promise",
       valid: true,
       why: "w",
     }

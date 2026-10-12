@@ -32,7 +32,6 @@ export type {
 export type {
   ConversationBatch,
   Message,
-  MorphismRelation,
   Probe,
   ProbeOption,
   Question,

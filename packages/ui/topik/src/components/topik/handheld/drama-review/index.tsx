@@ -95,10 +95,13 @@ const Question = <Key extends string>({
 export const DramaReview = ({
   record,
   onReview,
+  nameOf,
 }: {
   /** This drama's record: it holds the review, and the scenes reached. */
   record: LastDrama
   onReview: (change: Review) => void
+  /** A scene reached, named as a moment; its place when there is none. */
+  nameOf: (sceneId: string) => string | undefined
 }): JSX.Element => {
   const [english, setEnglish] = useState(false)
   const review = record.review ?? {}
@@ -157,8 +160,10 @@ export const DramaReview = ({
             english={english}
             answers={record.scenes.map(({ id, place, feeling }) => ({
               key: id,
-              ko: place,
-              small: isFeelingKey(feeling) ? FEELING_WORDS[feeling].name : "",
+              ko: nameOf(id) ?? place,
+              small: isFeelingKey(feeling)
+                ? `${FEELING_WORDS[feeling].name} · ${place}`
+                : place,
               smallLang: "ko",
               picked: more.includes(id),
             }))}

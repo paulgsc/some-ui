@@ -398,7 +398,7 @@ describe("HandheldLesson", () => {
       fireEvent.change(screen.getByRole("textbox"), {
         target: { value: "more revenge" },
       })
-      click(/Share the next scene's prompt/)
+      click(/다음 화 쓰기/)
       expect(document.body.textContent).not.toMatch(EXERCISE_FRAMING)
 
       const file = share.mock.calls[0]?.[0]
@@ -450,9 +450,9 @@ describe("HandheldLesson", () => {
         tones: tones.factory,
       })
       const held = await screen.findByText("회장님 댁 거실")
-      expect(screen.queryByRole("button", { name: "Scene sound" })).toBeNull()
+      expect(screen.queryByRole("button", { name: "효과음" })).toBeNull()
       fireEvent.click(held)
-      const toggle = await screen.findByRole("button", { name: "Scene sound" })
+      const toggle = await screen.findByRole("button", { name: "효과음" })
       expect(toggle.getAttribute("aria-pressed")).toBe("false")
       fireEvent.click(toggle)
       expect(control.state()).toBe("on")
@@ -460,7 +460,7 @@ describe("HandheldLesson", () => {
       // Turning it on plays the opening scene's tone, inside that tap.
       expect(tones.made()).toBe(1)
       act(() => control.withdraw())
-      expect(screen.queryByRole("button", { name: "Scene sound" })).toBeNull()
+      expect(screen.queryByRole("button", { name: "효과음" })).toBeNull()
     })
 
     it("has no sound toggle where nothing can play a tone", async () => {
@@ -469,7 +469,7 @@ describe("HandheldLesson", () => {
       renderLesson({ pastedStore: pasted, tones: null })
       fireEvent.click(await screen.findByText("회장님 댁 거실"))
       expect(await screen.findByText("숨 막히는 긴장감")).toBeTruthy()
-      expect(screen.queryByRole("button", { name: "Scene sound" })).toBeNull()
+      expect(screen.queryByRole("button", { name: "효과음" })).toBeNull()
     })
 
     it("hands out the tree prompt with the last drama, and forgets its free text once carried", async () => {

@@ -3,15 +3,15 @@
  *
  * A morphism probe keeps an utterance's content words and varies the
  * structure a relation acts on (adaptive-learning canon Prop. 4.2): 예뻐요
- * against 예뻤어요, 안 예뻐요, 예쁘세요. Highlighting the difference points the
- * learner at *where* the relation acts without saying *whether* it holds, so it
- * is a rendering of the item rather than a hint on its outcome (Cor. 4.5 (i)).
+ * against 예뻤어요, 안 예뻐요, 예쁘세요. The teaching audit measures how much
+ * of an odd-one-out's source a candidate keeps, and warns when it rewrites
+ * more than its relation would (`core/tree-audit`).
  *
  * The unit is the Hangul syllable - one code point per syllable block - which
- * is fine enough to show 뻐 -> 뻤어 and coarse enough to read at a glance.
+ * is fine enough to see 뻐 -> 뻤어 and coarse enough to stay cheap.
  */
 
-export type DiffSegment = {
+type DiffSegment = {
   text: string
   kind: "same" | "added" | "removed"
 }
@@ -27,7 +27,7 @@ const MAX_DIFF_LENGTH = 160
 
 /**
  * Below this two utterances are different sentences - a reply, a paraphrase in
- * other words - and highlighting "everything changed" says nothing.
+ * other words - rather than one sentence transformed.
  */
 export const MIN_DIFF_SIMILARITY = 0.45
 
@@ -96,14 +96,4 @@ export function diffUtterance(
   const total = visible(a) + visible(b)
 
   return { segments, similarity: total === 0 ? 1 : (2 * shared) / total }
-}
-
-/** The diff worth showing for a candidate, or null when it would mislead. */
-export function highlightFor(
-  source: string,
-  candidate: string
-): Array<DiffSegment> | null {
-  if (source.trim() === "" || source === candidate) return null
-  const diff = diffUtterance(source, candidate)
-  return diff.similarity >= MIN_DIFF_SIMILARITY ? diff.segments : null
 }

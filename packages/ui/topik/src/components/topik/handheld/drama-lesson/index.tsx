@@ -4,25 +4,40 @@
  *
  * The component reads the runtime's snapshot and dispatches; the runtime
  * (`core/drama-runtime`, through `useDrama`) owns the voice, the sound and
- * the resume point, and the engine decides where the learner is. The
- * current scene is one strip of panels; its choice is asked in the dock,
- * under the thumb, as large Korean targets with no English gloss
- * (Rem. 4.12). An ending offers the drama review after the author's notes.
+ * the resume point, and the engine decides where the learner is. The route
+ * is one strip of panels, the scenes it passed above the current one; a
+ * choice is asked in the dock, under the thumb, as the point of view's own
+ * lines with no English gloss (Rem. 4.12). An ending offers the drama
+ * review after the author's notes, and in the dock the next scene's way
+ * out, then a crossroads to choose again from.
  */
 
 import type { JSX } from "react"
-import { useEffect, useMemo, useRef } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
+import { cn } from "@some-ui/core-utils"
 import type { SoundPort, VoicePort } from "@some-ui/makjang"
-import { Button } from "@some-ui/shared"
-import { CandidateText } from "@topik/components/topik/handheld/candidate-text"
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+  Button,
+} from "@some-ui/shared"
 import { DramaReview } from "@topik/components/topik/handheld/drama-review"
 import { LadderDock } from "@topik/components/topik/handheld/ladder-dock"
 import { StepLayout } from "@topik/components/topik/handheld/step-layout"
-import { WebtoonPanel } from "@topik/components/topik/handheld/webtoon-panel"
+import {
+  SPEECH_BUBBLE,
+  THOUGHT_BUBBLE,
+  WebtoonPanel,
+} from "@topik/components/topik/handheld/webtoon-panel"
 import { useDrama } from "@topik/lib/topik/adapter/hooks/use-drama"
-import type { DramaLesson as Lesson } from "@topik/lib/topik/core/drama"
+import { nameOf } from "@topik/lib/topik/core/cast"
+import type { DramaLesson as Lesson, Panel } from "@topik/lib/topik/core/drama"
 import {
   canGoBack,
+  crossroadsOf,
+  momentOf,
   panelsOf,
   rungOf,
   sceneOf,
@@ -32,8 +47,8 @@ import type {
   DramaPointStore,
   LastDramaPort,
 } from "@topik/lib/topik/core/drama-runtime"
-import { orderedOptions, showsRelations } from "@topik/lib/topik/core/probe"
-import { ChevronLeft, RotateCcw } from "lucide-react"
+import { bitesBack, orderedOptions } from "@topik/lib/topik/core/probe"
+import { ChevronLeft, RotateCcw, Signpost } from "lucide-react"
 
 type DramaLessonProps = {
   /** A `checked` `TreeIntake`'s lesson (MK4). Remount with a new `key`. */
@@ -43,7 +58,7 @@ type DramaLessonProps = {
   sound: SoundPort | null
   points: DramaPointStore
   last: LastDramaPort
-  /** Shown at an ending, after the review: the next scene's way out. */
+  /** Shown at an ending, first in the dock: the next scene's way out. */
   ending?: JSX.Element
   short: boolean
   onLeave: () => void
@@ -68,11 +83,15 @@ export const DramaLesson = ({
     review,
   } = useDrama(lesson, { voice, sound, points, last })
   const panels = panelsOf(lesson, session)
+  const past = panels.filter(({ kind }) => kind === "past")
+  const present = panels.filter(({ kind }) => kind !== "past")
+  const [crossing, setCrossing] = useState(false)
   const scene = sceneOf(lesson, session)
   const { at } = session.drama
   const rung = (id: string): ReturnType<typeof rungOf> =>
     rungOf(lesson, session, id)
   const reveal = (id: string): void => dispatch({ type: "reveal", id })
+  const povName = nameOf(lesson.cast, lesson.pov)
 
   // Keep the newest panel in view, as a webtoon scrolls.
   const newest = panels[panels.length - 1]?.id
@@ -95,6 +114,21 @@ export const DramaLesson = ({
     [lesson.id, scene.choice]
   )
 
+  const drawn = (panel: Panel): JSX.Element => (
+    <WebtoonPanel
+      key={panel.id}
+      panel={panel}
+      lesson={lesson}
+      rungOf={rung}
+      onReveal={reveal}
+      whyOpen={(choice, option) => whyOpen(session, choice, option)}
+      onWhy={(choice, option) => dispatch({ type: "why", choice, option })}
+      audio={session.audio}
+      speaking={speaking}
+      onReplay={replay}
+    />
+  )
+
   const stage = (
     <div
       data-slot="topik-drama"
@@ -102,24 +136,32 @@ export const DramaLesson = ({
       // widen the strip. The padding keeps a jagged edge's outline inside.
       className="mx-auto flex w-full max-w-md flex-col gap-3 overflow-x-clip px-1"
     >
-      {panels.map((panel) => (
-        <WebtoonPanel
-          key={panel.id}
-          panel={panel}
-          lesson={lesson}
-          rungOf={rung}
-          onReveal={reveal}
-          whyOpen={(choice, option) => whyOpen(session, choice, option)}
-          onWhy={(choice, option) => dispatch({ type: "why", choice, option })}
-          audio={session.audio}
-          speaking={speaking}
-          onReplay={replay}
-        />
-      ))}
-      {at.kind === "end" && record && (
-        <DramaReview record={record} onReview={review} />
+      {past.length > 0 && (
+        <Accordion
+          type="single"
+          collapsible
+          defaultValue="past"
+          data-slot="topik-drama-past"
+          className="bg-secondary text-secondary-foreground border-border rounded-2xl border px-3"
+        >
+          <AccordionItem value="past" className="border-none">
+            <AccordionTrigger className="min-h-11 text-sm font-semibold hover:no-underline">
+              <span lang="ko">지난 이야기</span>
+            </AccordionTrigger>
+            <AccordionContent className="flex flex-col gap-3">
+              {past.map(drawn)}
+            </AccordionContent>
+          </AccordionItem>
+        </Accordion>
       )}
-      {at.kind === "end" && ending}
+      {present.map(drawn)}
+      {at.kind === "end" && record && (
+        <DramaReview
+          record={record}
+          onReview={review}
+          nameOf={(id) => momentOf(lesson, id)}
+        />
+      )}
       <div ref={end} />
     </div>
   )
@@ -141,8 +183,17 @@ export const DramaLesson = ({
       // The engine opens a choice only on a scene that has one.
       const check = scene.choice?.check
       if (check === undefined) return back
+      const swallow = bitesBack(check)
       return (
         <>
+          <div className="flex items-baseline justify-between gap-2 px-1">
+            <span lang="ko" className="text-sm font-semibold">
+              {`${povName} · ${swallow ? "삼킬 말" : "대답"}`}
+            </span>
+            <span className="text-muted-foreground text-xs">
+              {swallow ? "Pick the line to bite back" : "Pick the line"}
+            </span>
+          </div>
           <div
             role="group"
             aria-label="Choose"
@@ -158,16 +209,17 @@ export const DramaLesson = ({
               <Button
                 key={option.id}
                 variant="outline"
-                className="h-auto min-h-14 w-full shrink-0 justify-start rounded-2xl px-4 py-3 text-left text-lg whitespace-normal"
+                className={cn(
+                  "h-auto min-h-14 w-full shrink-0 justify-end px-4 py-3 text-right text-lg whitespace-normal",
+                  swallow ? THOUGHT_BUBBLE : SPEECH_BUBBLE
+                )}
                 onClick={() =>
                   dispatch({ type: "choose", option: option.id ?? "" })
                 }
               >
-                <CandidateText
-                  option={option}
-                  source={check.source ?? ""}
-                  withRelation={showsRelations(check)}
-                />
+                <span lang="ko" className="break-keep">
+                  {option.text}
+                </span>
               </Button>
             ))}
           </div>
@@ -176,24 +228,80 @@ export const DramaLesson = ({
       )
     }
     if (at.kind === "end") {
+      if (crossing) {
+        return (
+          <>
+            <div
+              role="group"
+              aria-label="갈림길"
+              data-scroll-intent="long-form"
+              className={
+                // scroll-intent: long-form — one crossroads per choice the
+                // route made, and the dock is 390px tall held sideways.
+                "flex min-h-0 flex-col gap-2 overflow-y-auto overscroll-contain"
+              }
+            >
+              {crossroadsOf(lesson, session).map(({ depth, place, prompt }) => (
+                <Button
+                  key={depth}
+                  variant="outline"
+                  className="h-auto min-h-14 w-full shrink-0 flex-col items-start gap-0.5 rounded-2xl px-4 py-3 text-left whitespace-normal"
+                  onClick={() => {
+                    setCrossing(false)
+                    dispatch({ type: "rewind", depth })
+                  }}
+                >
+                  <span lang="ko" className="text-muted-foreground text-xs">
+                    {place}
+                  </span>
+                  <span lang="ko" className="break-keep italic">
+                    {prompt}
+                  </span>
+                </Button>
+              ))}
+              <Button
+                variant="secondary"
+                className="h-12 w-full shrink-0 gap-2 rounded-2xl"
+                onClick={() => {
+                  setCrossing(false)
+                  dispatch({ type: "restart" })
+                }}
+              >
+                <RotateCcw className="size-5" />
+                <span lang="ko">처음부터</span>
+              </Button>
+            </div>
+            <Button
+              variant="ghost"
+              className="h-11 rounded-2xl"
+              onClick={() => setCrossing(false)}
+            >
+              Close
+            </Button>
+          </>
+        )
+      }
       return (
         <>
-          <Button
-            className="h-12 w-full gap-2 rounded-2xl"
-            onClick={() => dispatch({ type: "restart" })}
-          >
-            <RotateCcw className="size-5" /> Play it again
-          </Button>
+          {ending}
           <div className="flex gap-2">
             {back}
             <Button
-              variant="outline"
-              className="h-12 min-w-0 flex-1 rounded-2xl"
-              onClick={onLeave}
+              variant={ending ? "outline" : "default"}
+              className="h-12 min-w-0 flex-1 gap-2 rounded-2xl"
+              onClick={() => setCrossing(true)}
             >
-              Back to lessons
+              <Signpost className="size-5" />
+              <span lang="ko">갈림길</span>
             </Button>
           </div>
+          <Button
+            variant="outline"
+            className="h-12 w-full rounded-2xl"
+            onClick={onLeave}
+          >
+            Back to lessons
+          </Button>
         </>
       )
     }

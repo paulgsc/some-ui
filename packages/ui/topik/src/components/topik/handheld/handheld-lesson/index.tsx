@@ -13,6 +13,7 @@ import type { JSX } from "react"
 import { useMemo, useState, useSyncExternalStore } from "react"
 import { cn } from "@some-ui/core-utils"
 import { Button, KeepOnShelf, KeptShelf } from "@some-ui/shared"
+import { CastSheet } from "@topik/components/topik/handheld/cast-sheet"
 import { DramaLesson } from "@topik/components/topik/handheld/drama-lesson"
 import { GenerateLesson } from "@topik/components/topik/handheld/generate-lesson"
 import { MaterialList } from "@topik/components/topik/handheld/material-list"
@@ -57,7 +58,7 @@ import type { DramaPointStore } from "@topik/lib/topik/core/drama-runtime"
 import type { Seed } from "@topik/lib/topik/core/feed-card"
 import { TOPIK_LEVELS } from "@topik/lib/topik/generation"
 import { intakeTree } from "@topik/lib/topik/generation/tree-intake"
-import { ChevronLeft, Loader2, Music } from "lucide-react"
+import { ChevronLeft, Loader2, Music, Users } from "lucide-react"
 
 type HandheldLessonProps = {
   /** Landscape phone: two columns, compact chrome. */
@@ -147,6 +148,7 @@ export const HandheldLesson = ({
   // The read-aloud drill takes the whole screen, header included; leaving it
   // returns to the material list it was opened from.
   const [reading, setReading] = useState(false)
+  const [castOpen, setCastOpen] = useState(false)
 
   if (reading) {
     return (
@@ -212,19 +214,31 @@ export const HandheldLesson = ({
             {title}
           </h1>
         </div>
+        {playing && (
+          <Button
+            variant="ghost"
+            className="h-11 shrink-0 gap-1 px-2"
+            onClick={() => setCastOpen(true)}
+          >
+            <Users className="size-5" />
+            <span lang="ko">등장인물</span>
+          </Button>
+        )}
         {playing && sound && soundState !== "withdrawn" && (
           <Button
             variant={soundState === "on" ? "secondary" : "ghost"}
-            size="icon"
             className={cn(
-              "size-11 shrink-0",
+              "h-11 shrink-0 gap-1 rounded-full px-3",
               soundState === "off" && "text-muted-foreground"
             )}
             aria-pressed={soundState === "on"}
-            aria-label="Scene sound"
             onClick={() => control.set(soundState !== "on")}
           >
             <Music className="size-5" />
+            <span lang="ko">효과음</span>
+            <span lang="ko" aria-hidden="true" className="text-xs">
+              {soundState === "on" ? "켬" : "끔"}
+            </span>
           </Button>
         )}
       </div>
@@ -254,6 +268,8 @@ export const HandheldLesson = ({
             share && (
               <SharePrompt
                 share={share}
+                label="다음 화 쓰기"
+                labelLang="ko"
                 prompt={() => lessonPrompt.prompt({ level: heldLevel })}
                 onShared={lessonPrompt.handedOff}
               />
@@ -363,6 +379,13 @@ export const HandheldLesson = ({
     >
       {header}
       {body}
+      {playing && (
+        <CastSheet
+          lesson={playing}
+          open={castOpen}
+          onOpenChange={setCastOpen}
+        />
+      )}
     </div>
   )
 }

@@ -14,8 +14,13 @@ export const SharePrompt = ({
   share,
   prompt,
   onShared,
+  label = "Share the next scene's prompt",
+  labelLang = "en",
 }: {
   share: FileShare
+  /** The button's words: at a drama's ending, the next episode's. */
+  label?: string
+  labelLang?: "ko" | "en"
   /** Built at the tap, so it carries the record as it is then. */
   prompt: () => string
   /** The prompt reached somewhere the learner chose (canon Rem. 7.4). */
@@ -40,7 +45,7 @@ export const SharePrompt = ({
         ) : (
           <Share2 className="size-5" />
         )}
-        Share the next scene&apos;s prompt
+        <span lang={labelLang}>{label}</span>
       </Button>
       {state.kind === "failed" ? (
         <p className="text-destructive text-sm">{state.summary}</p>
