@@ -22,6 +22,24 @@ export function result<T>(request: IDBRequest<T>): Promise<T> {
 }
 
 /**
+ * The bytes of every blob in `store` but the one under `key`: what stays
+ * when a write under `key` replaces it. Read inside the caller's
+ * transaction, so a cap checked against it holds for that write.
+ */
+export async function bytesBesides(
+  store: IDBObjectStore,
+  key: IDBValidKey
+): Promise<number> {
+  const keys = await result(store.getAllKeys())
+  const kept: Array<unknown> = await result(store.getAll())
+  return kept.reduce<number>(
+    (sum, each, i) =>
+      keys[i] === key || !(each instanceof Blob) ? sum : sum + each.size,
+    0
+  )
+}
+
+/**
  * Opens `name` on first use and keeps it open. A failed open is not kept:
  * the caller offers a retry, which must get a fresh attempt rather than the
  * same rejection.

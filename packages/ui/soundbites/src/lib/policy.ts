@@ -28,6 +28,9 @@ export function fitsMaxBytes(
   return staying.reduce((sum, each) => sum + each, size) <= SOUNDBITES_MAX_BYTES
 }
 
+/** How often a take's clock and level are read while it records. */
+export const TAKE_TICK_MS = 100
+
 /** Shorter than this is a stray double-tap, not something said. */
 export const SOUNDBITE_MIN_MS = 1_000
 

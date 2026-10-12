@@ -65,10 +65,16 @@ async function allKept(meta: IDBObjectStore): Promise<Array<Soundbite>> {
 }
 
 /**
- * The phone's store. Opened on first use and kept open; asks once for
- * persistent storage, so the WebView does not evict the recordings under
- * storage pressure before anyone has listened to them.
+ * Asks once per database for persistent storage, so the WebView does not
+ * evict recordings under storage pressure before anyone has listened to
+ * them. Best effort: a refusal still leaves ordinary (evictable) storage.
  */
+export function askToKeep(): void {
+  if ("storage" in navigator)
+    void navigator.storage.persist().catch(() => false)
+}
+
+/** The phone's store. Opened on first use and kept open. */
 export function indexedDbSoundbiteStore(): SoundbiteStore {
   const listeners = new Set<() => void>()
   const changed = (): void => {
@@ -82,11 +88,7 @@ export function indexedDbSoundbiteStore(): SoundbiteStore {
         db.createObjectStore(META, { keyPath: "id" })
       if (!db.objectStoreNames.contains(AUDIO)) db.createObjectStore(AUDIO)
     },
-    () => {
-      // Best effort: a refusal still leaves ordinary (evictable) storage.
-      if ("storage" in navigator)
-        void navigator.storage.persist().catch(() => false)
-    }
+    askToKeep
   )
 
   return {

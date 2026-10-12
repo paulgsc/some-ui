@@ -4,7 +4,7 @@
  * write. What the audio belongs to, and whether it may be kept at all, is the
  * caller's: the shelf only holds the bytes.
  */
-import { connection, done, result } from "./idb"
+import { bytesBesides, connection, done, result } from "./idb"
 
 export type BlobShelf = {
   /** Rejects with `ShelfFullError`, keeping nothing, past `maxBytes`. */
@@ -39,14 +39,7 @@ export function blobShelf({
     async put(id, blob): Promise<void> {
       const tx = (await connect()).transaction(STORE, "readwrite")
       const blobs = tx.objectStore(STORE)
-      const keys = await result(blobs.getAllKeys())
-      const kept: Array<unknown> = await result(blobs.getAll())
-      const used = kept.reduce<number>(
-        (sum, each, i) =>
-          keys[i] === id || !(each instanceof Blob) ? sum : sum + each.size,
-        0
-      )
-      if (used + blob.size > maxBytes) {
+      if ((await bytesBesides(blobs, id)) + blob.size > maxBytes) {
         tx.abort()
         throw new ShelfFullError()
       }
