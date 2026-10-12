@@ -109,6 +109,7 @@ const DEVICE_MODULES = [
   "apps/www/src/lib/agent-export/**",
   "apps/www/src/lib/journal-share/**",
   "apps/www/src/lib/reflection-voice/**",
+  "apps/www/src/lib/scene-voice/**",
   "apps/www/src/lib/share-files/**",
   "apps/www/src/lib/device-backend/**",
   "apps/www/src/lib/device-speech/**",

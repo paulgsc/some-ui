@@ -1,5 +1,5 @@
 export type { BlobShelf } from "./lib/blob-shelf"
-export { blobShelf, ShelfFullError } from "./lib/blob-shelf"
+export { blobShelf, savingShelf, ShelfFullError } from "./lib/blob-shelf"
 export { bytesBesides, connection, done, result } from "./lib/idb"
 export type {
   Recording,
@@ -26,3 +26,9 @@ export {
   stepTake,
   takeRunner,
 } from "./lib/take"
+export type {
+  VoiceNoteOutcome,
+  VoiceNoteRuntime,
+  VoiceNoteState,
+} from "./lib/voice-note"
+export { VOICE_NOTE_SAID, voiceNoteRuntime } from "./lib/voice-note"

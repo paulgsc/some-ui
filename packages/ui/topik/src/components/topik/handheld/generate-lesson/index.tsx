@@ -1,16 +1,27 @@
 import type { JSX } from "react"
 import { useState } from "react"
 import { cn } from "@some-ui/core-utils"
-import { scenesOf } from "@some-ui/makjang"
-import { Button, Input, Textarea } from "@some-ui/shared"
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+  Button,
+  Input,
+  Textarea,
+} from "@some-ui/shared"
+import { SceneVoiceNotes } from "@topik/components/topik/handheld/scene-voice"
 import { SharePrompt } from "@topik/components/topik/handheld/share-prompt"
 import { StepLayout } from "@topik/components/topik/handheld/step-layout"
 import {
   ToggleChip,
   toggled,
 } from "@topik/components/topik/handheld/toggle-chip"
+import { useSceneVoice } from "@topik/lib/topik/adapter/hooks/use-scene-voice"
 import type { FileShare } from "@topik/lib/topik/adapter/next-scene-share"
+import type { SceneVoice } from "@topik/lib/topik/adapter/scene-voice"
 import type { DramaLesson } from "@topik/lib/topik/core/drama"
+import { titleOf } from "@topik/lib/topik/core/drama"
 import type { Seed } from "@topik/lib/topik/core/feed-card"
 import { GENRES, koreanGenre } from "@topik/lib/topik/core/feed-card"
 import type { DramaRequest, TopikLevel } from "@topik/lib/topik/generation"
@@ -50,6 +61,7 @@ type GenerateLessonProps = {
    */
   kept?: JSX.Element
   share?: FileShare
+  sceneVoice?: SceneVoice
 }
 
 /** Findings shown before "and N more". */
@@ -160,9 +172,7 @@ function verdictOf(
   const { lesson } = intake.status === "checked" ? intake : { lesson: null }
   return {
     kind: intake.status,
-    title: lesson
-      ? `Drama · TOPIK ${lesson.level} · ${scenesOf(lesson.root).length} scenes`
-      : null,
+    title: lesson ? `${titleOf(lesson)} · TOPIK ${lesson.level}` : null,
     summary: treeSummary(intake),
     findings: intake.findings.map(treeFindingRow),
     fixes: treeFixRequest(intake.findings),
@@ -253,9 +263,13 @@ export const GenerateLesson = ({
   short,
   kept,
   share,
+  sceneVoice,
   initialSeed,
   initialReply,
 }: GenerateLessonProps): JSX.Element => {
+  const voice = useSceneVoice(sceneVoice)
+  const notes = voice?.notes ?? []
+  const [arrived, setArrived] = useState<ReadonlyArray<string> | null>(null)
   const [level, setLevel] = useState<TopikLevel>(defaultLevel)
   const [scene, setScene] = useState(initialSeed?.scene ?? "")
   const [genres, setGenres] = useState<Array<string>>(initialSeed?.genres ?? [])
@@ -288,46 +302,123 @@ export const GenerateLesson = ({
     setCopied("prompt")
   }
 
-  const prompt = (): string =>
-    buildPrompt({ level, scene: scene.trim() || undefined, genres })
+  const prompt = (voiceNotes: ReadonlyArray<string> = []): string =>
+    buildPrompt({
+      level,
+      scene: scene.trim() || undefined,
+      genres,
+      voiceNotes,
+    })
   const copyPrompt = (): void => void hand(prompt(), "prompt")
+  const levelAndGenre = [
+    `TOPIK ${level}`,
+    ...genres.map((genre) => koreanGenre(genre) ?? genre),
+  ].join(" · ")
 
   const stage = (
     <div data-slot="topik-generate" className="flex w-full flex-col gap-5">
       <section className="flex flex-col gap-3">
         <h2 className="text-muted-foreground text-xs font-medium tracking-wider uppercase">
-          1 · Ask your model
+          1 · Your scene
         </h2>
-        <RadioRow
-          label="TOPIK level"
-          choices={LEVELS}
-          value={level}
-          onChange={setLevel}
-          className="grid-cols-6"
-        />
-        <GenrePicker
-          brought={initialSeed?.genres ?? []}
-          picked={genres}
-          onPick={setGenres}
-        />
+        {sceneVoice && voice && (
+          <SceneVoiceNotes voice={sceneVoice} snapshot={voice} />
+        )}
         <Input
           aria-label="Scene"
-          placeholder="Scene (optional): the fiancée meets his mother"
+          placeholder={
+            sceneVoice
+              ? "Or a line: the fiancée meets his mother"
+              : "Scene (optional): the fiancée meets his mother"
+          }
           value={scene}
           onChange={(event) => setScene(event.target.value)}
           className="h-11 rounded-xl text-base"
         />
+        <Accordion
+          type="single"
+          collapsible
+          className="border-border rounded-2xl border px-3"
+        >
+          <AccordionItem value="level" className="border-none">
+            <AccordionTrigger className="min-h-11 text-sm hover:no-underline">
+              <span className="flex flex-col items-start gap-0.5 text-left">
+                <span className="font-semibold">Level and genre</span>
+                <span lang="ko" className="text-muted-foreground font-normal">
+                  {levelAndGenre}
+                </span>
+              </span>
+            </AccordionTrigger>
+            <AccordionContent className="flex flex-col gap-3 px-1">
+              <RadioRow
+                label="TOPIK level"
+                choices={LEVELS}
+                value={level}
+                onChange={setLevel}
+                className="grid-cols-6"
+              />
+              <GenrePicker
+                brought={initialSeed?.genres ?? []}
+                picked={genres}
+                onPick={setGenres}
+              />
+            </AccordionContent>
+          </AccordionItem>
+        </Accordion>
+      </section>
+
+      <section className="flex flex-col gap-3">
+        <h2 className="text-muted-foreground text-xs font-medium tracking-wider uppercase">
+          2 · Ask your model
+        </h2>
         <p className="text-muted-foreground text-sm">
           The prompt carries the drama&apos;s rules and how your last one went.
           Paste it into any model, then paste its reply below. The lesson lasts
           this session; your chat with the model keeps it.
+          {notes.length > 0 &&
+            " Your voice notes go with Share, not with a copied prompt."}
         </p>
         {share && (
           <SharePrompt
             share={share}
             prompt={prompt}
-            onShared={(text) => onPromptHandedOff?.(text)}
+            notes={notes}
+            disabled={voice !== null && voice.take.kind !== "idle"}
+            onShared={(text, sent) => {
+              onPromptHandedOff?.(text)
+              if (sent.length > 0) setArrived(sent)
+            }}
           />
+        )}
+        {arrived && sceneVoice && (
+          <div
+            role="group"
+            aria-label="Did they arrive?"
+            className="bg-card border-border flex flex-col gap-2 rounded-2xl border p-3"
+          >
+            <p className="text-sm">
+              Did the prompt and its {arrived.length} voice note
+              {arrived.length === 1 ? "" : "s"} reach your drive?
+            </p>
+            <div className="flex gap-2">
+              <Button
+                className="h-11 min-w-0 flex-1 rounded-xl"
+                onClick={() => {
+                  sceneVoice.remove(arrived)
+                  setArrived(null)
+                }}
+              >
+                Yes, let them go
+              </Button>
+              <Button
+                variant="ghost"
+                className="h-11 min-w-0 flex-1 rounded-xl"
+                onClick={() => setArrived(null)}
+              >
+                Not yet
+              </Button>
+            </div>
+          </div>
         )}
         {manual !== null && (
           <>
@@ -354,7 +445,7 @@ export const GenerateLesson = ({
 
       <section className="flex flex-col gap-3">
         <h2 className="text-muted-foreground text-xs font-medium tracking-wider uppercase">
-          2 · Paste its reply
+          3 · Paste its reply
         </h2>
         <Textarea
           aria-label="Your model's reply"
@@ -367,12 +458,7 @@ export const GenerateLesson = ({
           }}
           className="rounded-xl font-mono text-xs"
         />
-        {verdict && (
-          <VerdictView
-            verdict={verdict}
-            success="Every choice will be asked as written."
-          />
-        )}
+        {verdict && <VerdictView verdict={verdict} success="Ready to play." />}
       </section>
       {kept}
     </div>

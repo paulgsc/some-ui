@@ -23,7 +23,7 @@ describe("lastDramaOf", () => {
       lessonId: lesson.id,
       content: expect.any(String),
       level: lesson.level,
-      title: "회장님 댁 거실",
+      title: "첫 차",
       at: 7,
       scenes: [
         { id: "s1", place: "회장님 댁 거실", feeling: "tension" },
@@ -44,6 +44,7 @@ describe("lastDramaOf", () => {
           answered: true,
         },
       ],
+      hook: "회장님은 오늘 일을 태준에게 말할까?",
     })
   })
 

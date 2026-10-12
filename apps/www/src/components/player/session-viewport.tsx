@@ -15,7 +15,8 @@ import {
   useSceneLifetimes,
 } from "@/lib/orchestrator"
 import { PANELS } from "@/lib/playable"
-import { runsNatively, shareDramaPrompt } from "@/lib/share-files"
+import { phoneSceneVoice, shareDramaPrompt } from "@/lib/scene-voice"
+import { runsNatively } from "@/lib/share-files"
 import { createShelfClient } from "@/lib/shelf-client"
 import type { SessionRecord } from "@/lib/tenant"
 import {
@@ -30,13 +31,14 @@ import { useLiveLayoutEditor } from "./use-live-layout-editor"
 import { withWebOnlyNotes } from "./web-only-note"
 
 /**
- * The drama's share sheet: gated on native, not the device build, since that
- * build in a desktop browser has only the plugin's web stub.
+ * The drama's share sheet and microphone: gated on native, not the device
+ * build, since that build in a desktop browser has only the plugins' web
+ * stubs.
  */
-const PHONE_SHARE =
+const ON_PHONE =
   import.meta.env.VITE_DEVICE_BACKEND === "true" && runsNatively()
-    ? shareDramaPrompt
-    : undefined
+const PHONE_SHARE = ON_PHONE ? shareDramaPrompt : undefined
+const PHONE_SCENE_VOICE = ON_PHONE ? phoneSceneVoice() : undefined
 
 /** What the player renders: the bound panels, and a note for a web one. */
 const PLAYER_PANELS = withWebOnlyNotes(PANELS, WEB_PANEL_KEYS)
@@ -121,6 +123,7 @@ export const SessionViewport = ({
           loadTreeManifest,
           shelf: shelves?.topik,
           share: PHONE_SHARE,
+          sceneVoice: PHONE_SCENE_VOICE,
           paused,
         },
         leetype: {

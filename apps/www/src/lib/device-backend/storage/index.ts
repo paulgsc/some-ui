@@ -8,6 +8,7 @@ import { errorResponse } from "@/lib/device-backend/router"
 import type { SqlDriver } from "@/lib/device-backend/sql"
 import { num, one } from "@/lib/device-backend/sql"
 import { REFLECTION_AUDIO_MAX_BYTES } from "@/lib/reflection-voice/budget"
+import { SCENE_AUDIO_MAX_BYTES } from "@/lib/scene-voice/budget"
 
 export type StorageBudget = {
   quotaBytes: number
@@ -31,7 +32,8 @@ async function webViewBytes(): Promise<number> {
 /** Android Auto Backup's per-app quota (developer.android.com/identity/data/autobackup). */
 export const ANDROID_BACKUP_BUDGET: StorageBudget = {
   quotaBytes: 25 * 1024 * 1024,
-  reservedBytes: SOUNDBITES_MAX_BYTES + REFLECTION_AUDIO_MAX_BYTES,
+  reservedBytes:
+    SOUNDBITES_MAX_BYTES + REFLECTION_AUDIO_MAX_BYTES + SCENE_AUDIO_MAX_BYTES,
 }
 
 /** The database's pages in use: its file size, with `auto_vacuum = FULL`. */

@@ -17,6 +17,7 @@
 
 import type { JSX } from "react"
 import { useState } from "react"
+import { formatTimecode } from "@some-ui/core-utils"
 import {
   Button,
   Separator,
@@ -37,7 +38,6 @@ import {
   Square,
 } from "lucide-react"
 
-import { formatTimecode } from "@/lib/format"
 import {
   useIsPaused,
   useIsRunning,

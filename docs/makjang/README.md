@@ -256,14 +256,29 @@ may split again. The shape borrows from a quadtree: at most four children per
 split, and a maximum depth past which a scene may not split and must resolve.
 
 ```
-Lesson    = { id, level, pov: CharacterId, cast: Character[], root: Scene }
+Lesson    = { id, title?, level, pov: CharacterId, cast: Character[], root: Scene }
 Character = { id, name, standing, registers, voice?, look?, gender?, figure? }
-Scene     = { id, place, feeling, beats: (Line | Narration)[], choice? }
-Line      = { id, speaker: CharacterId, text, gloss, direction? }
+Scene     = { id, title?, place, feeling, beats: (Line | Narration)[], choice?, hook? }
+Line      = { id, speaker: CharacterId, text, gloss, cue?, direction? }
 Narration = { id, text, gloss }
 Choice    = { id, prompt, check: Check, options: Option[2..4] }  // none at MAX_DEPTH
 Option    = { id, art?, child: Scene }  // id = a candidate's id in the check
 ```
+
+Three of these exist for the drama rather than the item:
+
+- **`title`** names the drama, and a scene's names its moment ("우산 아래"),
+  so a learner can point at a scene the way a fan points at "the umbrella
+  scene"; many scenes share a `place`.
+- **`hook`**, on a leaf only (the story audit rejects one on a scene with a
+  choice), is the question the episode stops on, `{ text, gloss }`. The
+  ending shows it as 다음 화 예고, the last session's record keeps the one
+  this play reached, and the next drama's prompt picks it up. "One lesson
+  stands alone" still holds: a lesson needs nothing earlier, but it leaves a
+  reason to come back.
+- **`cue`** is how a line is said in the language being learned (a script's
+  stage direction), shown with the line; `direction` is the same in the
+  learner's language, shown with the gloss.
 
 `text` is in the language being learned and `gloss` in the learner's; neither
 the schema nor the engine knows which languages those are. `Check` is the
@@ -369,7 +384,9 @@ recurring cast, and the generator is given no story from earlier lessons: the
 prompt, the level and an optional scene idea are enough. The one thing that
 crosses lessons is the last session's record (see "The last session, and its
 review"): the last drama's scenes, first tries and review, which steer how
-the next drama fits, never what happens in it. The app keeps nothing else
+the next drama fits, and the question its ending stopped on (its `hook`),
+which the next drama may pick up as its next episode, as a scene idea is
+offered. The app keeps nothing else
 between lessons beyond the shelf. The standing cast in today's generator
 prompt can stay as a
 default to draw from, as long as no lesson relies on another.
@@ -708,8 +725,8 @@ trope, a character). It is capped at 200 characters.
 **Every question works for a learner who did not follow the plot.** None of
 them asks what happened. The second asks how comfortable the learner is, not
 how much they understood, so "about right" at 10% is a complete answer. The
-scene chips name each scene as a moment, by its first beat's words,
-since many scenes share a place and a feeling; what the learner saw on each
+scene chips name each scene as a moment, by its title, else its first
+beat's words, since many scenes share a place and a feeling; what the learner saw on each
 cover (the feeling's name and the place) stays beneath, so a learner who
 read none of the Korean can still point at one.
 
@@ -733,7 +750,7 @@ There is one record on the device, under `topik:last-drama`. It holds:
 - **When** the drama ended, or the review last changed.
 - **The drama:** its id, a hash of its content (a model picks the id, so two
   dramas, or a served one and its reload, can share one), its level, and its
-  place (the root scene's `place`, the drama's title).
+  title (`titleOf`: the lesson's `title`, else the root scene's `place`).
 - **The scenes reached:** every scene any play of this drama reached, with
   its place and its feeling, in the tree's order.
 - **The first tries:** for each choice reached, the choice's Korean, the
@@ -741,6 +758,8 @@ There is one record on the device, under `topik:last-drama`. It holds:
   (`isCorrectChoice`). The text rides along, since the drama will be gone
   when the next prompt is read.
 - **The review**, if any was given.
+- **The hook** the ending stopped on, if its leaf has one (its Korean, cut
+  to 200 characters).
 
 Its rules:
 
@@ -760,7 +779,7 @@ Its rules:
   report. The review never moves it.
 - **The prompt's history.** The tree prompt's `Survey` becomes `Last drama`.
   It carries the record as plain text: the title, the scenes reached and
-  their feelings, each first try, and the review. Its section in `tree-prompt.md`
+  their feelings, the hook, each first try, and the review. Its section in `tree-prompt.md`
   tells the model to weigh the review over the first tries, and never to
   read either as a level.
 - **The survey's key** (`topik:lesson-surveys`) joins the handheld's
@@ -841,8 +860,9 @@ it; the only contract is the files. Its canon line is Remark 8.3 (v1.15).
 
 ### The file contract
 
-The note at the top of every export says: write the drama the prompt asks
-for as one JSON file next to this one, named `drama-<stamp>.json` (the
+The note at the top of every export says: listen first to any voice notes
+the prompt names (`drama-<stamp>.voice-<n>.<ext>`, beside it), then write the
+drama the prompt asks for as one JSON file next to this one, named `drama-<stamp>.json` (the
 export's name with `.prompt.md` replaced by `.json`), holding the bare JSON
 with no code fence.
 So the learner's one-time agent setup is generic. The routine to give an
@@ -851,6 +871,33 @@ connector, say):
 
 > Watch this folder. For each `drama-*.prompt.md` that has no matching
 > `drama-*.json`, follow it, and write that JSON file next to it.
+
+### Describing the next scene aloud
+
+On a phone, the scene a learner wants is often long (what should happen,
+who, how it should feel), and typing it is the worst part of asking for
+one. So "Write your own drama" opens on the scene first, said aloud: tap to
+talk and tap to keep, as a voice reflection is, as many times as it takes
+(up to five notes of a minute each). A typed line stays beside it, and
+level and genre fold away under a line that says what they are.
+
+- **One draft.** The notes are one draft, kept on the device (their audio on
+  its own IndexedDB shelf, their list in `localStorage`) across leaving the
+  screen and closing the app. "Write your own drama" continues the open
+  draft; another scene starts only once this one is let go, by sharing it
+  or by discarding it ("Start a different scene").
+- **They travel with the prompt.** Share writes the prompt and every note
+  beside it, `drama-<stamp>.voice-<n>.<ext>` (the recording's type), and the request names them
+  (`Scene, spoken`), so the agent listens before it writes. The clipboard
+  cannot carry audio, so a copied prompt goes without them, and the screen
+  says so.
+- **They leave once they arrived.** Android reports "shared" as soon as an
+  app is picked, so the screen asks whether they reached the drive, and lets
+  the notes go only on "yes", as reflections do.
+- **Where it runs.** Recording is the Android app's (www's `lib/scene-voice`,
+  over `@some-ui/voice-capture`'s voice note, which voice reflections run
+  too). Topik holds only the `SceneVoice` port; without it the scene is
+  typed.
 
 ### Pulling a scene back (MKJ-S10)
 

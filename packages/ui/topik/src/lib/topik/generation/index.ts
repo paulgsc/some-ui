@@ -9,6 +9,7 @@
  * learner copies, and the lesson comes back the same way (see `parse`).
  */
 
+import { extensionOf } from "@some-ui/core-utils"
 import { FEELING_KEYS } from "@some-ui/styles/theme"
 import { FIGURE_KEYS, FIGURE_WORDS } from "@topik/lib/topik/core/cast"
 import { FEELING_WORDS } from "@topik/lib/topik/core/feeling"
@@ -51,10 +52,18 @@ export type TreeRequest = Omit<LessonRequest, "conversations"> & {
    * calling it anyone's first.
    */
   audience?: "learner" | "batch"
+  /**
+   * The names of the voice notes in which the learner described the scene,
+   * shared beside the prompt (`voiceNoteName`); none when they typed it.
+   */
+  voiceNotes?: ReadonlyArray<string>
 }
 
 /** What the learner asks for: a tree request without its history. */
-export type DramaRequest = Pick<TreeRequest, "level" | "scene" | "genres">
+export type DramaRequest = Pick<
+  TreeRequest,
+  "level" | "scene" | "genres" | "voiceNotes"
+>
 
 export const DEFAULT_CONVERSATIONS = 3
 
@@ -92,6 +101,7 @@ export function lastDramaText(record: LastDrama): string {
   return [
     `"${record.title}", level ${record.level}.`,
     `Scenes reached: ${record.scenes.map(({ id }) => place(id)).join(", ")}.`,
+    ...(record.hook ? [`It stopped on: "${record.hook}"`] : []),
     ...(record.tries.length > 0
       ? [
           "First tries:",
@@ -182,6 +192,9 @@ export function buildTreePrompt(request: TreeRequest): string {
     request,
     [
       `Genre: ${genres.length > 0 ? genres.join(", ") : "(none picked)"}`,
+      ...(request.voiceNotes && request.voiceNotes.length > 0
+        ? [`Scene, spoken: ${request.voiceNotes.join(", ")}`]
+        : []),
       "",
       last
         ? `Last drama:\n${last}`
@@ -202,13 +215,24 @@ export function nextSceneFile(
   prompt: string,
   at: Date
 ): { name: string; text: string } {
-  const stamp = `drama-${at.toISOString().replace(/[-:.]/g, "")}`
+  const stamp = sceneStamp(at)
   return {
     name: `${stamp}.prompt.md`,
     text: [
-      `> **For an agent:** follow the prompt below. Write the drama it asks for as one JSON file next to this one, named \`${stamp}.json\`, holding the bare JSON, not the fenced block **Output** asks for. Write nothing else, and do not change this file.`,
+      `> **For an agent:** follow the prompt below. If it names voice notes (\`Scene, spoken\`), they are the audio files beside this one: listen to them first. Write the drama it asks for as one JSON file next to this one, named \`${stamp}.json\`, holding the bare JSON, not the fenced block **Output** asks for. Write nothing else, and do not change this file.`,
       "",
       prompt,
     ].join("\n"),
   }
 }
+
+/** The name every file of one share starts with. */
+const sceneStamp = (at: Date): string =>
+  `drama-${at.toISOString().replace(/[-:.]/g, "")}`
+
+/** The `index`th voice note shared with the prompt made at `at`. */
+export const voiceNoteName = (
+  at: Date,
+  index: number,
+  mimeType: string
+): string => `${sceneStamp(at)}.voice-${index + 1}.${extensionOf(mimeType)}`

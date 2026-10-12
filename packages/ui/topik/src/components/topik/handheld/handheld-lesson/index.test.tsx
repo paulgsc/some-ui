@@ -134,6 +134,11 @@ const writeYourOwn = async (): Promise<void> => {
   fireEvent.click(await writeYourOwnButton())
 }
 
+/** Opens the new drama's folded level and genre. */
+const openLevelAndGenre = (): void => {
+  fireEvent.click(screen.getByRole("button", { name: /Level and genre/ }))
+}
+
 afterEach(cleanup)
 
 describe("HandheldLesson", () => {
@@ -184,6 +189,7 @@ describe("HandheldLesson", () => {
     expect(level(2)).toBe("true")
     // The prompt is asked at the level held.
     await writeYourOwn()
+    openLevelAndGenre()
     expect(
       screen
         .getByRole("radio", { name: "TOPIK 2" })
@@ -233,9 +239,7 @@ describe("HandheldLesson", () => {
       )
       expect(await screen.findByText("숨 막히는 긴장감")).toBeTruthy()
       expect(load).toHaveBeenCalledWith("first-tea")
-      expect(
-        screen.getByRole("heading", { name: workedLesson().root.place })
-      ).toBeTruthy()
+      expect(screen.getByRole("heading", { name: "첫 차" })).toBeTruthy()
       // Its place is this device's, under its listing's key and its id.
       expect(place).toHaveBeenCalledWith("first-tea/first-tea")
 
@@ -282,6 +286,7 @@ describe("HandheldLesson", () => {
         "value",
         "Seo-yeon's first visit to the chairman's house"
       )
+      openLevelAndGenre()
       const genre = within(screen.getByRole("group", { name: "Genre" }))
       expect(
         genre.getByRole("button", { name: /가족/ }).getAttribute("aria-pressed")
@@ -370,7 +375,7 @@ describe("HandheldLesson", () => {
       })
       expect(held.textContent).toMatch(/Drama · TOPIK 2/)
       expect(held.textContent).toMatch(/until this tab closes/)
-      fireEvent.click(within(held).getByText("회장님 댁 거실"))
+      fireEvent.click(within(held).getByText("첫 차"))
       expect(await screen.findByText("숨 막히는 긴장감")).toBeTruthy()
       click("Back to materials")
       click("Forget this drama")
@@ -388,10 +393,11 @@ describe("HandheldLesson", () => {
         Promise.resolve({ status: "succeeded", value: "shared" })
       )
       renderLesson({ pastedStore: pasted, lastDrama: last, share })
-      fireEvent.click(await screen.findByText("회장님 댁 거실"))
+      fireEvent.click(await screen.findByText("첫 차"))
       click(/Next/)
       click(/Next/)
       click(/네, 감사합니다/)
+      click(/Next/)
       click(/Next/)
       click(/Next/)
       click(/어땠어요/)
@@ -402,7 +408,7 @@ describe("HandheldLesson", () => {
       expect(document.body.textContent).not.toMatch(EXERCISE_FRAMING)
 
       const file = share.mock.calls[0]?.[0]
-      expect(file?.text).toContain('Last drama:\n"회장님 댁 거실", level 2.')
+      expect(file?.text).toContain('Last drama:\n"첫 차", level 2.')
       expect(file?.text).toContain('what next: "more revenge"')
       // Shared is handed off: the free text it carried goes (Rem. 7.4), from
       // the store and from the field on screen.
@@ -449,7 +455,7 @@ describe("HandheldLesson", () => {
         soundControl: control,
         tones: tones.factory,
       })
-      const held = await screen.findByText("회장님 댁 거실")
+      const held = await screen.findByText("첫 차")
       expect(screen.queryByRole("button", { name: "효과음" })).toBeNull()
       fireEvent.click(held)
       const toggle = await screen.findByRole("button", { name: "효과음" })
@@ -467,7 +473,7 @@ describe("HandheldLesson", () => {
       const pasted = createPastedLessonStore(memoryStorage())
       pasted.setTree(workedLesson())
       renderLesson({ pastedStore: pasted, tones: null })
-      fireEvent.click(await screen.findByText("회장님 댁 거실"))
+      fireEvent.click(await screen.findByText("첫 차"))
       expect(await screen.findByText("숨 막히는 긴장감")).toBeTruthy()
       expect(screen.queryByRole("button", { name: "효과음" })).toBeNull()
     })
@@ -481,6 +487,7 @@ describe("HandheldLesson", () => {
       renderLesson({ lastDrama: last })
 
       await writeYourOwn()
+      openLevelAndGenre()
       fireEvent.click(screen.getByRole("radio", { name: "TOPIK 2" }))
       click(/Copy the prompt/)
       await screen.findByText(/Copied/)

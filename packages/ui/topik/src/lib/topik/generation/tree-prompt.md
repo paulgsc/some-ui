@@ -32,17 +32,27 @@ Two things are true at once, and neither may win:
   above it may also resolve without a choice.
 - **The learner sees one route:** at most three scenes and two choices. You
   write every scene of the tree, at most 21, in one reply.
-- **The answer leads the story on.** The option the check's key names (see
-  **The two kinds**) continues the scene as the story hoped. Every other
-  option leads to its **consequence**: what happens because of that choice,
-  in Korean, as more drama, never as a correction. A consequence scene's own
-  choice, if it has one, is the **repair**: calming things down, usually
-  harder, often a question of politeness to an elder.
+- **The answer moves the story forward.** The option the check's key names
+  (see **The two kinds**) leads on into what happens next: a new
+  complication, a reveal, a raised stake, never only a settling. A learner who
+  understands must not get a shorter or blander drama than one who misses.
+  Every other option leads to its **consequence**: what happens because of
+  that choice, in Korean, as more drama, never as a correction. A
+  consequence scene's own choice, if it has one, is the **repair**: calming
+  things down, usually harder, often a question of politeness to an elder.
 - **The route is the memory.** A scene only exists on the route that leads
   to it, so it may rely on everything above it and on nothing from any other
   branch.
-- **One lesson stands alone.** It needs no earlier lesson and leaves nothing
-  for a later one.
+- **One lesson stands alone, and every leaf ends on a hook.** It needs no
+  earlier lesson. But each leaf stops the way an episode does, on an open
+  question (`hook`): the line a viewer would want answered next time ("Will
+  she tell Tae-joon?"), in Korean with its gloss. The app shows it as the
+  next episode's teaser, and the next drama's prompt carries it, so the next
+  episode can pick up there.
+- **Name the drama and its moments.** `title` names the drama ("첫 차"), and
+  each scene's `title` names its moment as a fan would point at it ("우산
+  아래", "엄마야"), in Korean, a few words. Many scenes share a place; no two
+  scenes on a route share a title.
 - **Beats.** In this prompt a _beat_ is one line or one narration. (The
   conversation prompt uses the word for a whole conversation; not here.)
 
@@ -117,10 +127,17 @@ The request at the end of this prompt gives:
 
 - **Level:** the learner's TOPIK level, 1–6.
 - **Scene:** optional, a premise for the scene. Invent one if it is absent.
+- **Scene, spoken:** optional, the voice notes in which the learner
+  described the scene aloud, shared as audio files beside this prompt.
+  Listen to every one before writing: they say what the learner wants to
+  see happen and to feel, at length, and they outweigh the one-line `Scene`.
+  Write the drama in Korean at the level whatever language they spoke in,
+  and never quote them back.
 - **Genre:** the drama's genres, or none picked. A genre sets the kind of
   story, its tropes and its stakes; the rules here hold in every genre.
 - **Last drama:** optional, the last drama the learner played to an ending:
-  what they reached, what they first chose, and what they said about it.
+  what they reached, the question it stopped on, what they first chose, and
+  what they said about it.
 
 ---
 
@@ -151,6 +168,11 @@ sets one. It **steers the next drama within that level**, in two parts:
     its trope, its kind of confrontation.
   - **What next:** their own words on a genre, a trope or a character.
     Follow it when it fits the level and the rules here.
+
+**Where it stopped.** `It stopped on` is the question the last drama's
+ending left open (its leaf's `hook`). Unless the review asks for something
+else, this drama is the next episode: the same cast, picking up that
+question, in a new scene.
 
 When the review is absent, the first tries steer alone. Never quote either
 back in the drama, and never tell the learner a level or a score.
@@ -231,9 +253,13 @@ motion), the same way every time it recurs. Use only these keys:
 - Pick the feeling the scene's Korean already carries. It is shown while the
   scene's choice is open, so it must say no more about the answer than the
   scene does.
-- A consequence usually feels different from the scene above it, and a
-  repaired ending usually settles (`warmth`); that is how a route feels like
-  a drama rather than a list.
+- A consequence usually feels different from the scene above it; that is how
+  a route feels like a drama rather than a list.
+- **The feeling is not a grade.** The learner sees the child's feeling right
+  after choosing, so a keyed child is never `warmth` just because it was
+  right: it carries whatever comes next (`twist`, `rivalry`, `tension`,
+  `flutter`). `warmth` is for an ending that has earned its relief, such as
+  a repair that worked, and even then the leaf still stops on its hook.
 
 ---
 
@@ -261,8 +287,12 @@ Each level includes everything below it. Record the level as the lesson's
 ## Beats
 
 - **A line** is one character speaking: `speaker` (a cast `id`), `text` (the
-  Korean), `gloss` (a natural English translation), and optionally
-  `direction` (how it is said, in English: "without looking up").
+  Korean), `gloss` (a natural English translation), and optionally how it is
+  said: `cue` in Korean, the script's stage direction ("고개도 들지 않고"),
+  which the app shows with the line, and `direction` in English ("without
+  looking up"), shown with the gloss. Put the acting a scene turns on (who
+  will not meet whose eyes) in `cue`, so a learner who stays in Hangul sees
+  it.
 - **A narration** is a short action or description so the learner knows
   where they are: `text` and `gloss`, no speaker.
 - **Korean first.** `text` is Korean in both. Narration is Korean wherever
@@ -427,6 +457,7 @@ in her thoughts, never as speech).
 ```ts
 type Lesson = {
   id: string // kebab-case, names the drama ("first-tea")
+  title: string // the drama's title, in Korean: "첫 차"
   level: 1 | 2 | 3 | 4 | 5 | 6
   pov: string // the cast id the learner follows
   cast: Character[]
@@ -446,10 +477,12 @@ type Character = {
 
 type Scene = {
   id: string
+  title: string // the moment, in Korean, a few words: "우산 아래"
   place: string // where it happens, in Korean where the level allows
   feeling: string // one key from **Feelings**
   beats: Beat[] // at least one
   choice?: Choice // never on a scene two choices below the root
+  hook?: { text: string; gloss: string } // every leaf: the question it stops on; never on a scene with a choice
 }
 
 type Beat =
@@ -458,7 +491,8 @@ type Beat =
       speaker: string
       text: string
       gloss: string
-      direction?: string
+      cue?: string // how it is said, in Korean: "고개도 들지 않고"
+      direction?: string // the same, in English: "without looking up"
     } // a line
   | { id: string; text: string; gloss: string } // a narration
 
@@ -500,6 +534,7 @@ of the scenes), and about whatever scene the request asks for.
 ```json
 {
   "id": "first-tea",
+  "title": "첫 차",
   "level": 2,
   "pov": "seoyeon",
   "cast": [
@@ -522,6 +557,7 @@ of the scenes), and about whatever scene the request asks for.
   ],
   "root": {
     "id": "s1",
+    "title": "첫 방문",
     "place": "회장님 댁 거실",
     "feeling": "tension",
     "beats": [
@@ -535,6 +571,7 @@ of the scenes), and about whatever scene the request asks for.
         "speaker": "chairman",
         "text": "앉아. 차 마실래?",
         "gloss": "Sit. Will you have some tea?",
+        "cue": "고개도 들지 않고",
         "direction": "without looking up"
       }
     ],
@@ -576,8 +613,9 @@ of the scenes), and about whatever scene the request asks for.
           "id": "a",
           "child": {
             "id": "s2",
+            "title": "결혼식 날짜",
             "place": "회장님 댁 거실",
-            "feeling": "warmth",
+            "feeling": "twist",
             "beats": [
               {
                 "id": "s2-l1",
@@ -589,14 +627,27 @@ of the scenes), and about whatever scene the request asks for.
                 "id": "s2-n1",
                 "text": "회장님이 처음으로 웃었다.",
                 "gloss": "The chairman smiles for the first time."
+              },
+              {
+                "id": "s2-l2",
+                "speaker": "chairman",
+                "text": "그런데 태준이가 결혼식 날짜는 말했니?",
+                "gloss": "But has Tae-joon told you the wedding date?",
+                "cue": "찻잔을 내려놓으며",
+                "direction": "setting her cup down"
               }
-            ]
+            ],
+            "hook": {
+              "text": "태준이 숨긴 날짜는 언제일까?",
+              "gloss": "What date has Tae-joon been keeping from her?"
+            }
           }
         },
         {
           "id": "b",
           "child": {
             "id": "s3",
+            "title": "반말",
             "place": "회장님 댁 거실",
             "feeling": "chill",
             "beats": [
@@ -605,6 +656,7 @@ of the scenes), and about whatever scene the request asks for.
                 "speaker": "chairman",
                 "text": "뭐? 지금 나한테 반말했니?",
                 "gloss": "What? Did you just talk down to me?",
+                "cue": "찻잔을 탁 내려놓으며",
                 "direction": "setting her cup down hard"
               },
               {
@@ -644,6 +696,7 @@ of the scenes), and about whatever scene the request asks for.
                   "id": "x",
                   "child": {
                     "id": "s4",
+                    "title": "사과",
                     "place": "회장님 댁 거실",
                     "feeling": "warmth",
                     "beats": [
@@ -653,13 +706,18 @@ of the scenes), and about whatever scene the request asks for.
                         "text": "다음부터 조심해.",
                         "gloss": "Be careful from now on."
                       }
-                    ]
+                    ],
+                    "hook": {
+                      "text": "회장님은 오늘 일을 태준에게 말할까?",
+                      "gloss": "Will the chairman tell Tae-joon about today?"
+                    }
                   }
                 },
                 {
                   "id": "y",
                   "child": {
                     "id": "s5",
+                    "title": "나가!",
                     "place": "회장님 댁 거실",
                     "feeling": "fury",
                     "beats": [
@@ -668,9 +726,14 @@ of the scenes), and about whatever scene the request asks for.
                         "speaker": "chairman",
                         "text": "나가!",
                         "gloss": "Get out!",
+                        "cue": "문을 가리키며",
                         "direction": "pointing at the door"
                       }
-                    ]
+                    ],
+                    "hook": {
+                      "text": "서연은 이 집에 다시 올 수 있을까?",
+                      "gloss": "Can Seo-yeon ever come back to this house?"
+                    }
                   }
                 }
               ]
@@ -681,6 +744,7 @@ of the scenes), and about whatever scene the request asks for.
           "id": "c",
           "child": {
             "id": "s6",
+            "title": "서서 마시는 차",
             "place": "회장님 댁 거실",
             "feeling": "cringe",
             "beats": [
@@ -695,7 +759,11 @@ of the scenes), and about whatever scene the request asks for.
                 "text": "서연의 얼굴이 빨개졌다.",
                 "gloss": "Seo-yeon's face turns red."
               }
-            ]
+            ],
+            "hook": {
+              "text": "회장님의 첫인상, 바꿀 수 있을까?",
+              "gloss": "Can she change the chairman's first impression?"
+            }
           }
         }
       ]
@@ -704,7 +772,9 @@ of the scenes), and about whatever scene the request asks for.
 }
 ```
 
-The wrong replies are wrong for different reasons (register, then what is
+The keyed reply does not settle the scene: it earns a smile and then a
+question that opens the next one. Every leaf stops on its `hook`. The wrong
+replies are wrong for different reasons (register, then what is
 being answered), so each has its own consequence. `b`'s consequence asks the
 repair, a third-order item on the same register the mistake broke. No
 candidate is matched by one word of the line: 마실래 is in the line and in the
@@ -719,6 +789,10 @@ wrong reply `b`.
 
 - [checkable] Every option leads to a scene, every scene has at least one
   beat, and no scene two choices below the root has a choice.
+- [checkable] A `hook` is on a leaf only, with its `text` and `gloss`.
+- [judgment] Every leaf has a `hook`, the drama and every scene a `title`,
+  and the keyed option's child moves the story forward rather than only
+  settling it.
 - [checkable] Every choice has 2–4 options.
 - [checkable] Ids are unique across the tree, checks' ids included; option
   ids are unique within their choice.

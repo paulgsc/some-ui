@@ -4,6 +4,7 @@ export type {
   CharacterId,
   Choice,
   Gender,
+  Glossed,
   Lesson,
   Line,
   Narration,

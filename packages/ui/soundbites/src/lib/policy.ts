@@ -12,13 +12,16 @@ export const SOUNDBITE_MAX_MS = 60_000
 /** The recorder's target bitrate: Opus is clear for a voice at 32 kbps. */
 export const SOUNDBITE_BITS_PER_SECOND = 32_000
 
+/** One full-length take at the target bitrate, for budgeting its storage. */
+export const SOUNDBITE_TAKE_MAX_BYTES =
+  (SOUNDBITE_MAX_MS / 1000) * (SOUNDBITE_BITS_PER_SECOND / 8)
+
 /**
  * The most audio the kept soundbites may hold: six full minutes at the target
  * bitrate. The store refuses a save past it (`fitsMaxBytes`), so an app
  * budgeting its storage can keep exactly this free for them.
  */
-export const SOUNDBITES_MAX_BYTES =
-  SOUNDBITE_LIMIT * (SOUNDBITE_MAX_MS / 1000) * (SOUNDBITE_BITS_PER_SECOND / 8)
+export const SOUNDBITES_MAX_BYTES = SOUNDBITE_LIMIT * SOUNDBITE_TAKE_MAX_BYTES
 
 /** Whether `size` more bytes beside those `staying` keep within the cap. */
 export function fitsMaxBytes(
@@ -33,6 +36,12 @@ export const TAKE_TICK_MS = 100
 
 /** Shorter than this is a stray double-tap, not something said. */
 export const SOUNDBITE_MIN_MS = 1_000
+
+/** A take's bounds, as the voice-capture take reads them. */
+export const SOUNDBITE_TAKE_LIMITS = {
+  minMs: SOUNDBITE_MIN_MS,
+  maxMs: SOUNDBITE_MAX_MS,
+} as const
 
 /** Newest first: the order the page lists them in. */
 export function byNewest(bites: ReadonlyArray<Soundbite>): Array<Soundbite> {

@@ -106,17 +106,23 @@ export function beatsOf(lesson: DramaLesson): ReadonlyMap<string, Beat> {
   return beats
 }
 
+/** The drama's title: its own, else its root scene's place. */
+export const titleOf = (lesson: DramaLesson): string =>
+  lesson.title ?? lesson.root.place
+
 /**
- * A scene named as a moment, for the review's chips: its first beat's
- * words. Two scenes in one place, in one feeling, still differ here.
+ * A scene named as a moment, for the review's chips: its title, else its
+ * first beat's words. Two scenes in one place, in one feeling, still differ
+ * here.
  */
 export function momentOf(
   lesson: DramaLesson,
   sceneId: string
 ): string | undefined {
-  return scenesOf(lesson.root)
-    .find(({ scene: { id } }) => id === sceneId)
-    ?.scene.beats[0]?.text.trim()
+  const scene = scenesOf(lesson.root).find(
+    ({ scene: { id } }) => id === sceneId
+  )?.scene
+  return scene?.title ?? scene?.beats[0]?.text.trim()
 }
 
 /**

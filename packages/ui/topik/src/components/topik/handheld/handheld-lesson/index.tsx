@@ -22,6 +22,7 @@ import { ReadAloudScreen } from "@topik/components/topik/read-aloud/read-aloud-s
 import { useSessionConfig } from "@topik/lib/topik/adapter/context/session-config-context"
 import { useLessonPrompt } from "@topik/lib/topik/adapter/hooks/use-lesson-prompt"
 import { usePastedTree } from "@topik/lib/topik/adapter/hooks/use-pasted-tree"
+import { useSceneVoice } from "@topik/lib/topik/adapter/hooks/use-scene-voice"
 import type { LastDramaStore } from "@topik/lib/topik/adapter/last-drama-store"
 import { createLastDramaStore } from "@topik/lib/topik/adapter/last-drama-store"
 import type { PastedLessonStore } from "@topik/lib/topik/adapter/pasted-lesson"
@@ -54,6 +55,7 @@ import {
 } from "@topik/lib/topik/adapter/tree-feed"
 import { speakerVoice } from "@topik/lib/topik/adapter/voice-port"
 import type { DramaLesson as Tree } from "@topik/lib/topik/core/drama"
+import { titleOf } from "@topik/lib/topik/core/drama"
 import type { DramaPointStore } from "@topik/lib/topik/core/drama-runtime"
 import type { Seed } from "@topik/lib/topik/core/feed-card"
 import { TOPIK_LEVELS } from "@topik/lib/topik/generation"
@@ -99,8 +101,9 @@ export const HandheldLesson = ({
     seed?: Seed
     reply?: string
   } | null>(null)
-  const { speaker, shelf, treeFeed, metadataRepository, share } =
+  const { speaker, shelf, treeFeed, metadataRepository, share, sceneVoice } =
     useSessionConfig()
+  const draft = useSceneVoice(sceneVoice)
   const feed = useTreeFeed(treeFeed)
   // Keys are one namespace, so a tree the lessons' manifest also lists is a
   // lesson: a server from before `?activity=` (paulgsc/server#417) answers
@@ -177,7 +180,7 @@ export const HandheldLesson = ({
   const leave = drama.playing ? drama.leave : leaveServed
 
   const title = playing
-    ? playing.root.place
+    ? titleOf(playing)
     : servedKey !== null
       ? "Loading..."
       : generating
@@ -317,6 +320,7 @@ export const HandheldLesson = ({
           onPromptHandedOff={lessonPrompt.handedOff}
           onStartTree={startTree}
           share={share}
+          sceneVoice={sceneVoice}
           short={short}
           kept={
             shelf ? (
@@ -351,6 +355,7 @@ export const HandheldLesson = ({
         error={feed.isError ? "Couldn't load the dramas." : null}
         onReload={() => void feed.refetch()}
         onCreate={() => setGenerating({})}
+        draftNotes={draft?.notes.length ?? 0}
         keep={
           shelf && drama.tree ? (
             <KeepOnShelf

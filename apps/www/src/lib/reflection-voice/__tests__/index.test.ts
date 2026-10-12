@@ -11,15 +11,22 @@ const removeAudio = vi.hoisted(() => vi.fn(() => Promise.resolve()))
 /** The ids on the shelf. */
 const shelved = vi.hoisted(() => new Set<string>())
 
-vi.mock("@some-ui/voice-capture", () => ({
-  blobShelf: (): object => ({
+vi.mock("@some-ui/voice-capture", () => {
+  const shelf = {
     remove: removeAudio,
     ids: (): Promise<Array<string>> => Promise.resolve([...shelved]),
     get: (id: string): Promise<Blob | null> =>
       Promise.resolve(shelved.has(id) ? new Blob(["opus"]) : null),
-  }),
-  micRecorder: vi.fn(),
-}))
+  }
+  return {
+    savingShelf: (): object => ({
+      shelf: () => shelf,
+      saving: vi.fn(),
+      isSaving: () => false,
+    }),
+    micRecorder: vi.fn(),
+  }
+})
 
 function voice(id: string): void {
   reflections.keep({

@@ -1,10 +1,9 @@
 import type { JSX } from "react"
 import { useState } from "react"
-import { cn } from "@some-ui/core-utils"
+import { cn, formatTimecode } from "@some-ui/core-utils"
 import { Button } from "@some-ui/shared"
 import { NotebookPen } from "lucide-react"
 
-import { formatTimecode } from "@/lib/format"
 import { useReflections } from "@/lib/session-reflection/use-reflections"
 
 import { ReflectPanel } from "./reflect-panel"

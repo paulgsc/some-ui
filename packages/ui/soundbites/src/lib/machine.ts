@@ -52,9 +52,9 @@ import {
 import { formatDuration } from "./format"
 import {
   byNewest,
+  SOUNDBITE_TAKE_LIMITS as LIMITS,
   SOUNDBITE_LIMIT,
   SOUNDBITE_MAX_MS,
-  SOUNDBITE_MIN_MS,
 } from "./policy"
 import type { Soundbite, SoundbiteContext, SoundbiteSource } from "./types"
 
@@ -220,8 +220,6 @@ export function canUseKept(activity: Activity): boolean {
 }
 
 const stay = (state: SoundbitesState): Step => ({ state, effects: [] })
-
-const LIMITS = { minMs: SOUNDBITE_MIN_MS, maxMs: SOUNDBITE_MAX_MS }
 
 /** `saving` waits on the recorder for the take first, then on the store. */
 const FINISHING: TakePhase = { kind: "finishing" }

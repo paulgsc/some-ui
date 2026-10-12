@@ -1,8 +1,8 @@
 import type { JSX } from "react"
+import { formatTimecode } from "@some-ui/core-utils"
 import { Button } from "@some-ui/shared"
 import { Pause, Play, SkipForward, Square } from "lucide-react"
 
-import { formatTimecode } from "@/lib/format"
 import {
   useIsPaused,
   useIsRunning,

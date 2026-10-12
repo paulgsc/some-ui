@@ -1,10 +1,10 @@
 import type { JSX, SubmitEvent } from "react"
 import { useState } from "react"
+import { formatTimecode } from "@some-ui/core-utils"
 import { Button, Input } from "@some-ui/shared"
 import { X } from "lucide-react"
 
 import { useMinuteClock } from "@/lib/clock"
-import { formatTimecode } from "@/lib/format"
 import type { KeepResult, Reflection } from "@/lib/session-reflection"
 import {
   answersOf,
