@@ -5,6 +5,7 @@ import {
   panelsOf,
   rungOf,
   stepSession,
+  whyOpen,
 } from "@topik/lib/topik/core/drama"
 import { workedLesson } from "@topik/lib/topik/generation/tree-intake/worked-example"
 import { describe, expect, it } from "vitest"
@@ -61,9 +62,30 @@ describe("why", () => {
     // A tree may name a beat anything, `c1:why` included.
     const session = play([{ type: "reveal", id: "c1:why" }])
     expect(session.whys).toEqual({})
-    const opened = stepSession(lesson, session, { type: "why", choice: "c1" })
-    expect(opened.session.whys).toEqual({ c1: true })
+    const opened = stepSession(lesson, session, {
+      type: "why",
+      choice: "c1",
+      option: "b",
+    })
+    expect(opened.session.whys).toEqual({ c1: { b: true } })
     expect(rungOf(lesson, opened.session, "c1")).toBe(1)
+  })
+
+  it("opens for the candidate asked about, not every candidate at that choice", () => {
+    const choose = (option: string): Array<SessionEvent> => [
+      advance,
+      advance,
+      { type: "choose", option },
+    ]
+    const restart: SessionEvent = { type: "restart" }
+    const asked: SessionEvent = { type: "why", choice: "c1", option: "b" }
+    expect(whyOpen(play([...choose("b"), asked]), "c1", "b")).toBe(true)
+    // Played again, a different line at the same choice starts closed...
+    const other = play([...choose("b"), asked, restart, ...choose("a")])
+    expect(whyOpen(other, "c1", "a")).toBe(false)
+    // ...while the one asked about stays open for this visit.
+    const again = play([...choose("b"), asked, restart, ...choose("b")])
+    expect(whyOpen(again, "c1", "b")).toBe(true)
   })
 })
 

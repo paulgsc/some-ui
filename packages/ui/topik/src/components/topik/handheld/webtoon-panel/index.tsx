@@ -21,9 +21,9 @@ type WebtoonPanelProps = {
   lesson: DramaLesson
   rungOf: (id: string) => Rung
   onReveal: (id: string) => void
-  /** Whether the chosen candidate's `why` is open at this choice. */
-  whyOpen: (choice: string) => boolean
-  onWhy: (choice: string) => void
+  /** Whether the `why` of `option`, the candidate chosen at `choice`, is open. */
+  whyOpen: (choice: string, option: string) => boolean
+  onWhy: (choice: string, option: string) => void
   /** Lines can be heard: a replay button on each. */
   audio: boolean
   speaking: string | null
@@ -289,14 +289,14 @@ export const WebtoonPanel = ({
           >
             {candidate.text}
           </span>
-          {whyOpen(choice) ? (
+          {whyOpen(choice, candidate.id) ? (
             <span className="text-muted-foreground text-right text-sm">
               {candidate.why}
             </span>
           ) : (
             <button
               type="button"
-              onClick={() => onWhy(choice)}
+              onClick={() => onWhy(choice, candidate.id)}
               className="text-muted-foreground self-end text-sm underline"
             >
               Why?
