@@ -68,22 +68,15 @@ export function journalManifest(
  * take whose audio has gone is listed with `take: null`, not sent half.
  */
 export async function journalFiles(
-  store: JournalStore,
+  store: Pick<JournalStore, "snapshot">,
   exportedAt: string,
   timeZone: string
 ): Promise<{
   files: Array<JournalFile>
   sent: JournalSent
 } | null> {
-  const { plan, takes } = await store.read()
-  if (plan === null) return null
-  const withAudio = await Promise.all(
-    takes.map(async (take) => ({ take, audio: await store.audio(take.cutId) }))
-  )
-  const sent = withAudio.filter(
-    (each): each is { take: JournalTake; audio: Blob } => each.audio !== null
-  )
-  if (sent.length === 0) return null
+  const { plan, takes: sent } = await store.snapshot()
+  if (plan === null || sent.length === 0) return null
   const kept = sent.map((each) => each.take)
   return {
     files: [

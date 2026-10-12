@@ -26,8 +26,23 @@ export type JournalSent = {
   readonly takes: ReadonlyArray<JournalTake>
 }
 
+/** The episode as one transaction saw it: each take with its own audio. */
+export type JournalSnapshot = {
+  readonly plan: JournalPlan | null
+  /** The plan's takes with audio, in its cut order. */
+  readonly takes: ReadonlyArray<{
+    readonly take: JournalTake
+    readonly audio: Blob
+  }>
+}
+
 export type JournalStore = {
   read: () => Promise<JournalShelf>
+  /**
+   * The plan, its takes and their audio, read in one transaction, so no
+   * write can land between a take and its audio (what a share sends).
+   */
+  snapshot: () => Promise<JournalSnapshot>
   audio: (cutId: string) => Promise<Blob | null>
   /** Puts `plan` in place of any other, letting go of the takes `drop` names. */
   open: (plan: JournalPlan, drop: ReadonlyArray<string>) => Promise<void>
@@ -134,6 +149,27 @@ export function indexedDbJournalStore(): JournalStore {
       const rows: Array<unknown> = await result(tx.objectStore(TAKES).getAll())
       const takes = rows.filter(isTake)
       return { plan, takes: plan === null ? [] : inCutOrder(plan, takes) }
+    },
+
+    async snapshot(): Promise<JournalSnapshot> {
+      const tx = (await connect()).transaction([PLAN, TAKES, AUDIO], "readonly")
+      const plan = await planIn(tx.objectStore(PLAN))
+      if (plan === null) return { plan, takes: [] }
+      const rows: Array<unknown> = await result(tx.objectStore(TAKES).getAll())
+      const audios = tx.objectStore(AUDIO)
+      const takes = await Promise.all(
+        inCutOrder(plan, rows.filter(isTake)).map(async (take) => {
+          const blob: unknown = await result(audios.get(take.cutId))
+          return { take, audio: blob instanceof Blob ? blob : null }
+        })
+      )
+      return {
+        plan,
+        takes: takes.filter(
+          (each): each is { take: JournalTake; audio: Blob } =>
+            each.audio !== null
+        ),
+      }
     },
 
     async audio(cutId): Promise<Blob | null> {

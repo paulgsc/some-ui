@@ -4,7 +4,11 @@ import {
   JOURNAL_TAKES_MAX_BYTES,
 } from "@soundbites/lib/journal/plan"
 import type { Primer } from "@soundbites/lib/journal/primer"
-import type { JournalShelf, JournalStore } from "@soundbites/lib/journal/store"
+import type {
+  JournalShelf,
+  JournalSnapshot,
+  JournalStore,
+} from "@soundbites/lib/journal/store"
 import {
   JournalFullError,
   JournalStaleError,
@@ -86,6 +90,16 @@ export function memoryJournalStore(
     store: {
       read: () => Promise.resolve(state()),
       audio: (cutId) => Promise.resolve(audio.get(cutId) ?? null),
+      snapshot: (): Promise<JournalSnapshot> => {
+        const { plan: snapPlan, takes: rows } = state()
+        return Promise.resolve({
+          plan: snapPlan,
+          takes: rows.flatMap((each) => {
+            const blob = audio.get(each.cutId)
+            return blob === undefined ? [] : [{ take: each, audio: blob }]
+          }),
+        })
+      },
       open: (next, drop): Promise<void> => {
         current = next
         for (const id of drop) {
