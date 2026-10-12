@@ -59,8 +59,11 @@ export type DramaSession = {
    * prompt, a scene's cover caption. Ids are unique across a tree.
    */
   rungs: Readonly<Record<string, Rung>>
-  /** Choices whose chosen candidate's `why` has been opened, by choice id. */
-  whys: Readonly<Record<string, true>>
+  /**
+   * The candidates whose `why` has been opened this visit, per choice:
+   * opening one never opens another's.
+   */
+  whys: Readonly<Record<string, Readonly<Record<string, true>>>>
   /** Whether lines can be heard. Without it the ladder starts at Hangul. */
   audio: boolean
 }
@@ -68,8 +71,8 @@ export type DramaSession = {
 export type SessionEvent =
   | DramaEvent
   | { type: "reveal"; id: string }
-  /** Opens the `why` of the candidate chosen at a choice. */
-  | { type: "why"; choice: string }
+  /** Opens the `why` of `option`, the candidate chosen at `choice`. */
+  | { type: "why"; choice: string; option: string }
   /** Whether lines can be heard changed: muted, unmuted, a voice found. */
   | { type: "audible"; audible: boolean }
 
@@ -106,6 +109,23 @@ export function rungOf(
   const reached = session.rungs[id]
   if (reached !== undefined) return reached
   return beatsOf(lesson).has(id) ? firstRung(session.audio) : 1
+}
+
+/** The candidates opened at `choice`: an own entry only, any id allowed. */
+const openedAt = (
+  session: DramaSession,
+  choice: string
+): Readonly<Record<string, true>> | undefined =>
+  Object.hasOwn(session.whys, choice) ? session.whys[choice] : undefined
+
+/** Whether the `why` of `option`, chosen at `choice`, is open this visit. */
+export function whyOpen(
+  session: DramaSession,
+  choice: string,
+  option: string
+): boolean {
+  const opened = openedAt(session, choice)
+  return opened !== undefined && Object.hasOwn(opened, option)
 }
 
 /**
@@ -149,12 +169,16 @@ export function stepSession(
     }
   }
   if (event.type === "why") {
-    return Object.hasOwn(session.whys, event.choice)
+    const { choice, option } = event
+    return whyOpen(session, choice, option)
       ? { session, effects: [] }
       : {
           session: {
             ...session,
-            whys: { ...session.whys, [event.choice]: true },
+            whys: {
+              ...session.whys,
+              [choice]: { ...openedAt(session, choice), [option]: true },
+            },
           },
           effects: [],
         }
@@ -215,11 +239,14 @@ const currentBeat = (
 
 // ── What the renderer draws ─────────────────────────────────────────────────
 
+/** A candidate a route took: one the route names, so it has an id. */
+type ChosenCandidate = ProbeOption & { id: string }
+
 /** The option chosen to reach the current scene, as the POV says it. */
 type ChosenLine = {
   /** The choice it answered. */
   choice: string
-  candidate: ProbeOption
+  candidate: ChosenCandidate
 }
 
 /** A choice the route made, as the author's notes give it. */
@@ -253,6 +280,12 @@ export const sceneOf = (
   session: DramaSession
 ): Scene<Probe> => sceneAt(lesson.root, session.drama.route) ?? lesson.root
 
+/** Matches the candidate whose id is `id`; none when there is no id. */
+const isNamed =
+  (id: string | undefined) =>
+  (option: ProbeOption): option is ChosenCandidate =>
+    id !== undefined && option.id === id
+
 /** The line the learner chose that led here; none at the root. */
 function chosenLineOf(
   lesson: DramaLesson,
@@ -261,7 +294,7 @@ function chosenLineOf(
   const { route } = session.drama
   const last = route[route.length - 1]
   const choice = sceneAt(lesson.root, route.slice(0, -1))?.choice
-  const candidate = choice?.check.options.find(({ id }) => id === last)
+  const candidate = choice?.check.options.find(isNamed(last))
   if (choice === undefined || candidate === undefined) return undefined
   return { choice: choice.id, candidate }
 }
@@ -271,7 +304,7 @@ function notesOf(lesson: DramaLesson, session: DramaSession): Array<Note> {
   const { route } = session.drama
   return route.flatMap((option, depth): Array<Note> => {
     const choice = sceneAt(lesson.root, route.slice(0, depth))?.choice
-    const candidate = choice?.check.options.find(({ id }) => id === option)
+    const candidate = choice?.check.options.find(isNamed(option))
     return choice && candidate
       ? [{ choice: choice.id, prompt: choice.prompt, candidate }]
       : []
@@ -302,7 +335,7 @@ export function panelsOf(
   if (chosen) {
     panels.push({
       kind: "chosen",
-      id: `${chosen.choice}:${chosen.candidate.id ?? ""}`,
+      id: `${chosen.choice}:${chosen.candidate.id}`,
       chosen,
       speaker: lesson.pov,
     })

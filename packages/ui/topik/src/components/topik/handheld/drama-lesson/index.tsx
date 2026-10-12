@@ -26,6 +26,7 @@ import {
   panelsOf,
   rungOf,
   sceneOf,
+  whyOpen,
 } from "@topik/lib/topik/core/drama"
 import type {
   DramaPointStore,
@@ -108,8 +109,8 @@ export const DramaLesson = ({
           lesson={lesson}
           rungOf={rung}
           onReveal={reveal}
-          whyOpen={(choice) => Object.hasOwn(session.whys, choice)}
-          onWhy={(choice) => dispatch({ type: "why", choice })}
+          whyOpen={(choice, option) => whyOpen(session, choice, option)}
+          onWhy={(choice, option) => dispatch({ type: "why", choice, option })}
           audio={session.audio}
           speaking={speaking}
           onReplay={replay}

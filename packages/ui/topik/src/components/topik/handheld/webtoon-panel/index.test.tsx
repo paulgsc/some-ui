@@ -54,14 +54,15 @@ describe("WebtoonPanel's cast figure", () => {
   it("draws the chosen line with the point of view's figure, never speaking", () => {
     const choice = lesson.root.choice
     const candidate = choice?.check.options[0]
-    if (choice === undefined || candidate === undefined) {
+    const id = candidate?.id
+    if (choice === undefined || candidate === undefined || id === undefined) {
       throw new Error("the worked example's root has no choice")
     }
     const chosen: Panel = {
       kind: "chosen",
       id: "chosen",
       speaker: lesson.pov,
-      chosen: { choice: choice.id, candidate },
+      chosen: { choice: choice.id, candidate: { ...candidate, id } },
     }
     const figure = renderPanel(chosen, "chosen")
     expect(figure.getAttribute("data-figure")).toBe("heart")
