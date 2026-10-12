@@ -214,11 +214,15 @@ describe("DramaRuntime", () => {
       runtime.dispatch({ type: "advance" })
       expect(sound.requests).toHaveLength(1)
 
+      // A child scene's answer is heard before its feeling: the sting waits
+      // for the cover, which follows that first beat.
       runtime.dispatch({ type: "choose", option: "b" })
+      expect(sound.requests).toHaveLength(1)
+      expect(beats(voice)).toEqual(["s1-l1", "s1-n1", "s1-l1", "s3-l1"])
+      runtime.dispatch({ type: "advance" })
       expect(sound.requests[1]?.request).toEqual({ feeling: "chill" })
-      expect(beats(voice)).toEqual(["s1-l1", "s1-n1", "s1-l1"])
       await sound.finish(1)
-      expect(beats(voice).at(-1)).toBe("s3-l1")
+      expect(beats(voice).at(-1)).toBe("s3-n1")
     })
 
     it("plays at once when sound is turned on, unless a line is playing", async () => {
@@ -294,16 +298,19 @@ describe("DramaRuntime", () => {
 
       runtime.dispatch({ type: "advance" })
       runtime.dispatch({ type: "choose", option: "b" })
+      runtime.dispatch({ type: "advance" })
       sound.turn(false)
       expect(sound.requests[1]?.signal.aborted).toBe(true)
       // The line that waited for it is said.
       for (let tick = 0; tick < 4; tick += 1) await Promise.resolve()
-      expect(beats(voice).at(-1)).toBe("s3-l1")
+      expect(beats(voice).at(-1)).toBe("s3-n1")
 
       sound.turn(true)
       runtime.dispatch({ type: "advance" })
-      runtime.dispatch({ type: "advance" })
       runtime.dispatch({ type: "choose", option: "y" })
+      runtime.dispatch({ type: "advance" })
+      // The leaf's one beat answered the choice; its cover follows it.
+      await voice.finish(voice.requests.length - 1)
       disconnect()
       expect(sound.requests[2]?.signal.aborted).toBe(true)
     })

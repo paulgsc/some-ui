@@ -22,6 +22,7 @@ const LESSON = lesson()
 const ADVANCE: DramaEvent = { type: "advance" }
 const BACK: DramaEvent = { type: "back" }
 const RESTART: DramaEvent = { type: "restart" }
+const rewind = (depth: number): DramaEvent => ({ type: "rewind", depth })
 const choose = (option: string): DramaEvent => ({ type: "choose", option })
 
 function run(events: Array<DramaEvent>, from = start(LESSON)): Transition {
@@ -153,6 +154,25 @@ describe("step", () => {
     })
   })
 
+  it("rewinds to a choice the route crossed, keeping the first choices, and nowhere else", () => {
+    const end = run(walkTo(["b", "x"]))
+    const rewound = step(LESSON, end.state, rewind(1))
+    expect(rewound.state).toEqual({
+      route: ["b"],
+      at: { kind: "choice" },
+      first: { "c-root": "b", "c-b": "x" },
+    })
+    expect(rewound.effects.map(({ type }) => type)).toEqual([
+      "enter-scene",
+      "persist",
+    ])
+    const replayed = step(LESSON, rewound.state, choose("y"))
+    expect(replayed.state.first).toEqual({ "c-root": "b", "c-b": "x" })
+    for (const depth of [-1, 2, 0.5]) {
+      expect(step(LESSON, end.state, rewind(depth)).state).toBe(end.state)
+    }
+  })
+
   it("reaches the end of every route of the tree", () => {
     const leaves = scenesOf(LESSON.root).filter(
       ({ scene }) => scene.choice === undefined
@@ -176,6 +196,7 @@ describe("MK3: a choice's outcome is its first choice, and an unreached choice h
     fc.constant(ADVANCE),
     fc.constant(BACK),
     fc.constant(RESTART),
+    fc.integer({ min: -1, max: 3 }).map(rewind),
     // Every option id in the tree, and one in none of it.
     fc.constantFrom("a", "b", "c", "x", "y", "zz").map(choose)
   )

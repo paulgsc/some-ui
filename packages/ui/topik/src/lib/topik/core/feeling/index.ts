@@ -93,8 +93,8 @@ export const FEELING_WORDS: Readonly<Record<FeelingKey, FeelingWords>> = {
   warmth: {
     name: "훈훈",
     meaning: "warmth: relief, a reconciliation, things settle well",
-    caption: "훈훈한 마무리",
-    captionGloss: "A heartwarming close",
+    caption: "훈훈한 분위기",
+    captionGloss: "A warm mood settles in",
     cry: "휴, 다행이다.",
     lettering: "휴",
   },

@@ -20,9 +20,10 @@
  *
  * Each visit to a scene owes its sting, the feeling's tone and then its cry
  * (docs/makjang/README.md, "Where the anchor goes"), until it plays or the
- * learner leaves the scene. It plays as soon as the learner has touched the
- * lesson, sound is on and no line is playing: on any touch, when sound is
- * turned on, or when a line ends. A line the lesson reaches waits for it,
+ * learner leaves the scene. It plays as soon as its cover is on screen (a
+ * child scene's follows the beat that answers the chosen line), the learner
+ * has touched the lesson, sound is on and no line is playing: on any touch,
+ * when sound is turned on, or when a line ends. A line the lesson reaches waits for it,
  * and the learner's own replay cuts it off, so it never sounds over a line.
  */
 
@@ -39,7 +40,12 @@ import type {
   DramaSession,
   SessionEvent,
 } from "@topik/lib/topik/core/drama"
-import { beatsOf, openSession, stepSession } from "@topik/lib/topik/core/drama"
+import {
+  beatsOf,
+  coverShown,
+  openSession,
+  stepSession,
+} from "@topik/lib/topik/core/drama"
 import type { DramaReview, LastDrama } from "@topik/lib/topik/core/last-drama"
 import {
   isRecordOf,
@@ -289,7 +295,13 @@ export class DramaRuntime {
   private playOwedSting(): void {
     const sound = this.ports.sound
     const owed = this.owedSting
-    if (sound === null || owed === null || !this.armed || !sound.audible()) {
+    if (
+      sound === null ||
+      owed === null ||
+      !this.armed ||
+      !sound.audible() ||
+      !coverShown(this.lesson, this.snapshot.session)
+    ) {
       return
     }
     this.owedSting = null

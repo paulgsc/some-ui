@@ -391,13 +391,16 @@ not the coordinator") requires and as topik's `core/` already models.
 - **State:** the route (the option ids chosen from the root, which locates
   the current scene), the current beat by id, and the option first chosen at
   each choice reached, keyed by the choice's id.
-- **Events:** advance, go back a beat, choose an option, restart, resume.
-  Going back stops at the start of the current scene and never crosses a
-  choice: crossing one would let the learner choose again, which is a retry,
-  and the check's valuation forbids retries (Cor. 4.4). Restart is a replay
-  of the whole lesson, which Cor. 8.2 expects, not a retry: it returns to the
-  root, the first choices stay as they were, and a choice made again on the
-  replay records nothing new.
+- **Events:** advance, go back a beat, choose an option, restart, rewind,
+  resume. Going back stops at the start of the current scene and never
+  crosses a choice: crossing one would let the learner choose again, which is
+  a retry, and the check's valuation forbids retries (Cor. 4.4). Restart is a
+  replay of the whole lesson, which Cor. 8.2 expects, not a retry: it returns
+  to the root, the first choices stay as they were, and a choice made again on
+  the replay records nothing new. Rewind is the same replay begun at a choice
+  the route already crossed (the ending's crossroads, 갈림길): it reopens
+  that choice with the first choices kept, so it is a shorter way to a
+  restart's state, never a retry.
 - **Recursion is in the content, not the engine.** Entering a child scene is
   pushing an option id onto the route. The engine is the same at every depth
   and never needs to know how deep the tree is.
@@ -525,7 +528,7 @@ anchor is identical wherever it recurs.
 | `fury`    | 분노    | −0.85 | 0.95  | 28  | burst   | slam    | 분노 폭발           | 허, 참!       | 쾅        |
 | `twist`   | 반전    | 0     | 0.90  | 95  | burst   | punch   | 충격 반전           | 헉!           | 두둥      |
 | `flutter` | 설렘    | 0.70  | 0.55  | 345 | petals  | float   | 심쿵                | 어머나~       | 두근      |
-| `warmth`  | 훈훈    | 0.75  | −0.35 | 75  | none    | glow    | 훈훈한 마무리       | 휴, 다행이다. | 휴        |
+| `warmth`  | 훈훈    | 0.75  | −0.35 | 75  | none    | glow    | 훈훈한 분위기       | 휴, 다행이다. | 휴        |
 
 Each feeling also has one symbol, a small inline icon: tension lines,
 a lightning bolt, cold wind, sweat drops, an anger vein, shock lines,
@@ -629,9 +632,16 @@ Their canon line is Remark 9.3 (v1.16).
   edge) and carries its symbol beside the speaker.
 - **A leaf closes on an ending panel** in the same theme.
 - **Never on a choice.** The choice panel and the learner's chosen line stay in
-  the session theme. A child scene's feeling first shows on the cover after the
-  chosen line, so it adds nothing about the choice just answered that the
-  child scene itself does not show.
+  the session theme. A child scene opens on the chosen line, then its first
+  beat, the other side's answer, also in the session theme, and only then
+  its cover: the Korean answers the choice before the feeling does, so the
+  feeling adds nothing about the choice just answered that the scene's own
+  Korean has not already shown, and a cover cannot play as a verdict on it.
+  The sting waits for the cover the same way.
+- **No caption announces an ending mid-route.** A caption is fixed per
+  feeling and recurs wherever the feeling does, so none may name a close:
+  warmth's is 훈훈한 분위기 (a warm mood), and the drama's end is the leaf's
+  ending panel alone.
 
 **What the anchor reveals.** The anchor is a rendition kind in Prop. 9.4's
 sense. A scene's feeling is on screen while that scene's own choice is open
@@ -685,7 +695,7 @@ skipped:
 | --------------------------------------- | ------------------------------------------------------------------------------ | --------------------------------------------------------------- |
 | 재미있었어요? Did you enjoy it?         | 재미있었어요 · 그저 그랬어요 · 별로였어요 (loved it · it was OK · not for me)  | Engagement: more of this, or change it                          |
 | 다음엔 한국어가… Next time, the Korean… | 더 쉬웠으면 · 딱 좋아요 · 더 어려워도 돼요 (easier · about right · stretch me) | How much the learner is comfortable following, within the level |
-| 더 보고 싶은 장면 More of this scene    | One chip per scene reached: its place, and its feeling's name                  | The scene, feeling or trope to amplify                          |
+| 더 보고 싶은 장면 More of this scene    | One chip per scene reached: the moment, with its feeling's name and its place  | The scene, feeling or trope to amplify                          |
 
 A free-text line comes last: 다음엔 어떤 드라마? (what next: a genre, a
 trope, a character). It is capped at 200 characters.
@@ -693,8 +703,10 @@ trope, a character). It is capped at 200 characters.
 **Every question works for a learner who did not follow the plot.** None of
 them asks what happened. The second asks how comfortable the learner is, not
 how much they understood, so "about right" at 10% is a complete answer. The
-scene chips name what the learner saw on each cover (the place and the
-feeling's name), not what was said.
+scene chips name each scene as a moment, by its first beat's opening words,
+since many scenes share a place and a feeling; what the learner saw on each
+cover (the feeling's name and the place) stays beneath, so a learner who
+read none of the Korean can still point at one.
 
 **How it renders:**
 
@@ -754,7 +766,7 @@ Its rules:
 
 - **At the ending, after 작가의 말.** It is a collapsed panel at the foot of
   the strip ("어땠어요? How was it?"), and a tap opens it.
-- **It never gates anything.** "Play it again" and "Back to lessons" stay in
+- **It never gates anything.** The crossroads (갈림길) and "Back to lessons" stay in
   the dock, enabled and unchanged.
 - **Each tap saves at once.** There is no submit, so leaving at any point
   keeps what was given.
@@ -808,9 +820,10 @@ it; the only contract is the files. Its canon line is Remark 8.3 (v1.15).
   last drama folded into its request ("The last session, and its review"),
   under a one-paragraph note for an agent. Nothing else: no raw record, no
   telemetry.
-- **Where it is offered:** at a drama's ending, after the review, and beside
-  "Copy the prompt" when the learner starts a new drama. It never stands in
-  front of "Play it again".
+- **Where it is offered:** at a drama's ending, first in the dock as
+  다음 화 쓰기 (write the next episode), since what happens next is the
+  reason to come back; and beside "Copy the prompt" when the learner starts
+  a new drama.
 - **How:** Android's share sheet, through the host's `FileShare` port, the
   same mechanism soundbites' "Share with an agent" uses. Only the Android app
   injects it; elsewhere the prompt is copied.
@@ -1004,12 +1017,12 @@ the one-line summaries.
 > - _Claim:_ in `packages/makjang/src/engine.ts`, `step` adds an entry to
 >   `DramaState.first` only on a `choose` at an open choice that has none,
 >   for that choice and the option chosen, and otherwise passes it on
->   unchanged: `restart` keeps it, and `advance` and `back` leave it. The one
+>   unchanged: `restart` and `rewind` keep it, and `advance` and `back` leave it. The one
 >   other place `first` is built is `resume`, which takes a stored one whole
 >   or not at all: it keeps every entry of a point that `firstResolves`
 >   accepts and discards the point to the opening otherwise.
 > - _Falsified by_ a hunk to `engine.ts` that writes `first` anywhere else,
->   overwrites or drops an entry, or drops `first` on `restart`; that makes
+>   overwrites or drops an entry, or drops `first` on `restart` or `rewind`; that makes
 >   `resume` keep part of a stored `first`, or weakens `firstResolves`; that
 >   deletes or weakens the MK3 property in
 >   `packages/makjang/src/__tests__/engine.test.ts` (its loop over every
@@ -1077,17 +1090,21 @@ the one-line summaries.
 > - _Claim:_ in `packages/ui/topik`, `panelsOf` (`core/drama`) gives a
 >   feeling only to cover, line, narration and ending panels, and
 >   `webtoon-panel` draws a feeling's theme, symbol or words only for those,
->   so the choice panel, the chosen line, the author's notes that quote the
->   chosen lines, the drama review (`drama-review`, which names a scene's
->   feeling in words but wears none) and the dock's options stay in the
->   session theme, and a child scene's feeling first shows on the cover
->   after the chosen line.
-> - _Falsified by_ a hunk that gives the `chosen`, `choice` or `notes` arm of
->   `Panel` a feeling, or puts the chosen line after the cover in `panelsOf`;
->   that draws `Themed`, `FeelingSymbol`, `FEELING_WORDS` or a feeling class
->   in the `chosen`, `choice` or `notes` case of `webtoon-panel`, in
->   `drama-lesson`'s dock or in the `ladder-dock` it uses; that draws
->   `Themed`, `FeelingSymbol` or a feeling class in `drama-review`; that
+>   so the choice panel, the chosen line, the scenes the route passed
+>   (`past`, which names a scene's feeling in words but wears none), the
+>   author's notes that quote the chosen lines, the drama review
+>   (`drama-review`, likewise) and the dock's options stay in the session
+>   theme, and a child scene's feeling first shows on the cover after the
+>   chosen line and the beat that answers it, which wears none.
+> - _Falsified by_ a hunk that gives the `chosen`, `choice`, `past`, `resume`
+>   or `notes` arm of `Panel` a feeling, or puts the chosen line, or a child
+>   scene's first beat, after the cover in `panelsOf`, or gives that first
+>   beat its scene's feeling; that draws `Themed`, `FeelingSymbol`,
+>   `FEELING_WORDS` or a feeling class in the `chosen`, `choice`, `resume` or
+>   `notes` case of `webtoon-panel`, or anything of a feeling but its
+>   `FEELING_WORDS` name in the `past` case; in `drama-lesson`'s dock or in
+>   the `ladder-dock` it uses; that draws `Themed`, `FeelingSymbol` or a
+>   feeling class in `drama-review`; that
 >   deletes or weakens the MK6 test in
 >   `components/topik/handheld/drama-lesson/index.test.tsx` (its loop over
 >   every scene's route, or its selectors); or that deletes, renames or moves

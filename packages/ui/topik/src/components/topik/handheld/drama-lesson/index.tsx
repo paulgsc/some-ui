@@ -4,17 +4,19 @@
  *
  * The component reads the runtime's snapshot and dispatches; the runtime
  * (`core/drama-runtime`, through `useDrama`) owns the voice, the sound and
- * the resume point, and the engine decides where the learner is. The
- * current scene is one strip of panels; its choice is asked in the dock,
- * under the thumb, as large Korean targets with no English gloss
- * (Rem. 4.12). An ending offers the drama review after the author's notes.
+ * the resume point, and the engine decides where the learner is. The route
+ * is one strip of panels, the scenes it passed above the current one; a
+ * choice is asked in the dock, under the thumb, as the point of view's own
+ * lines with no English gloss (Rem. 4.12). An ending offers the drama
+ * review after the author's notes, and in the dock the next scene's way
+ * out, then a crossroads to choose again from.
  */
 
 import type { JSX } from "react"
-import { useEffect, useMemo, useRef } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
+import { cn } from "@some-ui/core-utils"
 import type { SoundPort, VoicePort } from "@some-ui/makjang"
 import { Button } from "@some-ui/shared"
-import { CandidateText } from "@topik/components/topik/handheld/candidate-text"
 import { DramaReview } from "@topik/components/topik/handheld/drama-review"
 import { LadderDock } from "@topik/components/topik/handheld/ladder-dock"
 import { StepLayout } from "@topik/components/topik/handheld/step-layout"
@@ -23,6 +25,8 @@ import { useDrama } from "@topik/lib/topik/adapter/hooks/use-drama"
 import type { DramaLesson as Lesson } from "@topik/lib/topik/core/drama"
 import {
   canGoBack,
+  crossroadsOf,
+  momentOf,
   panelsOf,
   rungOf,
   sceneOf,
@@ -32,8 +36,8 @@ import type {
   DramaPointStore,
   LastDramaPort,
 } from "@topik/lib/topik/core/drama-runtime"
-import { orderedOptions, showsRelations } from "@topik/lib/topik/core/probe"
-import { ChevronLeft, RotateCcw } from "lucide-react"
+import { orderedOptions } from "@topik/lib/topik/core/probe"
+import { ChevronLeft, RotateCcw, Signpost } from "lucide-react"
 
 type DramaLessonProps = {
   /** A `checked` `TreeIntake`'s lesson (MK4). Remount with a new `key`. */
@@ -43,7 +47,7 @@ type DramaLessonProps = {
   sound: SoundPort | null
   points: DramaPointStore
   last: LastDramaPort
-  /** Shown at an ending, after the review: the next scene's way out. */
+  /** Shown at an ending, first in the dock: the next scene's way out. */
   ending?: JSX.Element
   short: boolean
   onLeave: () => void
@@ -68,11 +72,19 @@ export const DramaLesson = ({
     review,
   } = useDrama(lesson, { voice, sound, points, last })
   const panels = panelsOf(lesson, session)
+  // The scenes the route passed can be folded away; they stay in the engine.
+  const [pastOpen, setPastOpen] = useState(true)
+  const hasPast = panels.some(({ kind }) => kind === "past")
+  const shown = pastOpen ? panels : panels.filter(({ kind }) => kind !== "past")
+  // At an ending, the dock offers the crossroads instead of the way out.
+  const [crossing, setCrossing] = useState(false)
   const scene = sceneOf(lesson, session)
   const { at } = session.drama
   const rung = (id: string): ReturnType<typeof rungOf> =>
     rungOf(lesson, session, id)
   const reveal = (id: string): void => dispatch({ type: "reveal", id })
+  const povName =
+    lesson.cast.find(({ id }) => id === lesson.pov)?.name ?? lesson.pov
 
   // Keep the newest panel in view, as a webtoon scrolls.
   const newest = panels[panels.length - 1]?.id
@@ -102,7 +114,22 @@ export const DramaLesson = ({
       // widen the strip. The padding keeps a jagged edge's outline inside.
       className="mx-auto flex w-full max-w-md flex-col gap-3 overflow-x-clip px-1"
     >
-      {panels.map((panel) => (
+      {hasPast && (
+        <button
+          type="button"
+          aria-expanded={pastOpen}
+          onClick={() => setPastOpen(!pastOpen)}
+          className="bg-secondary text-secondary-foreground border-border flex min-h-11 items-center justify-between rounded-2xl border px-4 text-sm"
+        >
+          <span lang="ko" className="font-semibold">
+            지난 이야기
+          </span>
+          <span lang="ko" className="text-muted-foreground">
+            {pastOpen ? "접기" : "펼치기"}
+          </span>
+        </button>
+      )}
+      {shown.map((panel) => (
         <WebtoonPanel
           key={panel.id}
           panel={panel}
@@ -117,9 +144,12 @@ export const DramaLesson = ({
         />
       ))}
       {at.kind === "end" && record && (
-        <DramaReview record={record} onReview={review} />
+        <DramaReview
+          record={record}
+          onReview={review}
+          nameOf={(id) => momentOf(lesson, id)}
+        />
       )}
-      {at.kind === "end" && ending}
       <div ref={end} />
     </div>
   )
@@ -141,8 +171,18 @@ export const DramaLesson = ({
       // The engine opens a choice only on a scene that has one.
       const check = scene.choice?.check
       if (check === undefined) return back
+      // An odd-one-out's pick is the line she bites back: drawn as a thought.
+      const swallow = check.kind === "odd-one-out"
       return (
         <>
+          <div className="flex items-baseline justify-between gap-2 px-1">
+            <span lang="ko" className="text-sm font-semibold">
+              {`${povName} · ${swallow ? "삼킬 말" : "대답"}`}
+            </span>
+            <span className="text-muted-foreground text-xs">
+              {swallow ? "Pick the line to bite back" : "Pick the line"}
+            </span>
+          </div>
           <div
             role="group"
             aria-label="Choose"
@@ -158,16 +198,22 @@ export const DramaLesson = ({
               <Button
                 key={option.id}
                 variant="outline"
-                className="h-auto min-h-14 w-full shrink-0 justify-start rounded-2xl px-4 py-3 text-left text-lg whitespace-normal"
+                className={cn(
+                  "h-auto min-h-14 w-full shrink-0 justify-end px-4 py-3 text-right text-lg whitespace-normal",
+                  swallow
+                    ? "border-muted-foreground rounded-3xl border-2 border-dashed"
+                    : "border-primary rounded-2xl rounded-br-sm border-2"
+                )}
                 onClick={() =>
                   dispatch({ type: "choose", option: option.id ?? "" })
                 }
               >
-                <CandidateText
-                  option={option}
-                  source={check.source ?? ""}
-                  withRelation={showsRelations(check)}
-                />
+                <span
+                  lang={option.lang === "en" ? "en" : "ko"}
+                  className="break-keep"
+                >
+                  {option.text}
+                </span>
               </Button>
             ))}
           </div>
@@ -176,23 +222,84 @@ export const DramaLesson = ({
       )
     }
     if (at.kind === "end") {
+      const leave = (
+        <Button
+          variant="outline"
+          className="h-12 min-w-0 flex-1 rounded-2xl"
+          onClick={onLeave}
+        >
+          Back to lessons
+        </Button>
+      )
+      if (crossing) {
+        // Choosing again from a choice the route crossed: the first choice
+        // stays recorded, as on a replay from the root (MK3).
+        return (
+          <>
+            <div
+              role="group"
+              aria-label="갈림길"
+              data-scroll-intent="long-form"
+              className={
+                // scroll-intent: long-form — one crossroads per choice the
+                // route made, and the dock is 390px tall held sideways.
+                "flex min-h-0 flex-col gap-2 overflow-y-auto overscroll-contain"
+              }
+            >
+              {crossroadsOf(lesson, session).map(({ depth, place, prompt }) => (
+                <Button
+                  key={depth}
+                  variant="outline"
+                  className="h-auto min-h-14 w-full shrink-0 flex-col items-start gap-0.5 rounded-2xl px-4 py-3 text-left whitespace-normal"
+                  onClick={() => {
+                    setCrossing(false)
+                    dispatch({ type: "rewind", depth })
+                  }}
+                >
+                  <span lang="ko" className="text-muted-foreground text-xs">
+                    {place}
+                  </span>
+                  <span lang="ko" className="break-keep italic">
+                    {prompt}
+                  </span>
+                </Button>
+              ))}
+              <Button
+                variant="secondary"
+                className="h-12 w-full shrink-0 gap-2 rounded-2xl"
+                onClick={() => {
+                  setCrossing(false)
+                  dispatch({ type: "restart" })
+                }}
+              >
+                <RotateCcw className="size-5" />
+                <span lang="ko">처음부터</span>
+              </Button>
+            </div>
+            <Button
+              variant="ghost"
+              className="h-11 rounded-2xl"
+              onClick={() => setCrossing(false)}
+            >
+              Close
+            </Button>
+          </>
+        )
+      }
       return (
         <>
-          <Button
-            className="h-12 w-full gap-2 rounded-2xl"
-            onClick={() => dispatch({ type: "restart" })}
-          >
-            <RotateCcw className="size-5" /> Play it again
-          </Button>
+          {ending}
           <div className="flex gap-2">
             {back}
             <Button
-              variant="outline"
-              className="h-12 min-w-0 flex-1 rounded-2xl"
-              onClick={onLeave}
+              variant={ending ? "outline" : "default"}
+              className="h-12 min-w-0 flex-1 gap-2 rounded-2xl"
+              onClick={() => setCrossing(true)}
             >
-              Back to lessons
+              <Signpost className="size-5" />
+              <span lang="ko">갈림길</span>
             </Button>
+            {leave}
           </div>
         </>
       )

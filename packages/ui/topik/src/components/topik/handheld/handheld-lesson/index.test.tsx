@@ -398,7 +398,7 @@ describe("HandheldLesson", () => {
       fireEvent.change(screen.getByRole("textbox"), {
         target: { value: "more revenge" },
       })
-      click(/Share the next scene's prompt/)
+      click(/다음 화 쓰기/)
       expect(document.body.textContent).not.toMatch(EXERCISE_FRAMING)
 
       const file = share.mock.calls[0]?.[0]

@@ -11,8 +11,9 @@
  * - Back stops at the current scene's first beat and never crosses a choice:
  *   crossing one would let the learner choose again, a retry, which the
  *   check's valuation forbids (canon Cor. 4.4).
- * - Restart replays the lesson from the root (Cor. 8.2). The first choices
- *   stay, and a choice made again on the replay records nothing new.
+ * - Restart replays the lesson from the root (Cor. 8.2), and rewind from a
+ *   choice the route already crossed. The first choices stay, and a choice
+ *   made again on the replay records nothing new.
  * - A resume point is resolved by identity and discarded to the root when any
  *   part of it no longer resolves (Thm. 1.1).
  *
@@ -20,7 +21,7 @@
  * - MK1: this module imports only makjang's own schema: no media, no topik
  *   (`no-restricted-imports` in this workspace's eslint.config.js).
  * - MK3: `first[c]` is the option first chosen at choice `c`, kept across
- *   restarts, and a choice never presented has no entry (the property test in
+ *   restarts and rewinds, and a choice never presented has no entry (the property test in
  *   `__tests__/engine.test.ts`).
  */
 
@@ -47,6 +48,8 @@ export type DramaEvent =
   | { type: "back" }
   | { type: "choose"; option: string }
   | { type: "restart" }
+  /** Back to the choice `depth` choices into the route, open again. */
+  | { type: "rewind"; depth: number }
 
 export type DramaEffect =
   /** Show this scene: its place, wrapped in its feeling. */
@@ -188,6 +191,28 @@ export function step<Check>(
         first: state.first,
       }
       return { state: moved, effects: [...opening.effects, persist(moved)] }
+    }
+    case "rewind": {
+      const { depth } = event
+      if (
+        !Number.isInteger(depth) ||
+        depth < 0 ||
+        depth >= state.route.length
+      ) {
+        return unchanged(state)
+      }
+      const route = state.route.slice(0, depth)
+      const crossed = sceneAt(lesson.root, route)
+      if (crossed?.choice === undefined) return unchanged(state)
+      const moved: DramaState = {
+        route,
+        at: { kind: "choice" },
+        first: state.first,
+      }
+      return {
+        state: moved,
+        effects: [enterScene(crossed), persist(moved)],
+      }
     }
     default: {
       return unreachable(event)

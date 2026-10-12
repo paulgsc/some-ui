@@ -64,7 +64,7 @@ const QuestionSchema = z.object({
  * thing the lesson must refuse is a probe whose answer is a translation
  * (Prop. 4.2).
  */
-export type MorphismRelation = string
+type MorphismRelation = string
 
 export const GLOSS_RELATION = "gloss"
 
