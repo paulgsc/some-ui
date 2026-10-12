@@ -20,7 +20,7 @@ import {
 import { CastFigure } from "@topik/components/topik/handheld/cast-figure"
 import { FeelingSymbol } from "@topik/components/topik/handheld/feeling-symbol"
 import type { FigureKey } from "@topik/lib/topik/core/cast"
-import { figuresOf } from "@topik/lib/topik/core/cast"
+import { nameOf as castName, figuresOf } from "@topik/lib/topik/core/cast"
 import type { DramaLesson, Panel, Rung } from "@topik/lib/topik/core/drama"
 import { FEELING_WORDS } from "@topik/lib/topik/core/feeling"
 import { Ear, Volume2 } from "lucide-react"
@@ -147,11 +147,15 @@ const Ladder = ({
     </span>
   )
 
-/** Muted text in a panel: the feeling's own, else the session's (MK5). */
 const mutedIn = (feeling: FeelingKey | null): string =>
   feeling === null ? "text-muted-foreground" : "feeling-muted"
 
-/** A small Korean label beside the point of view's figure. */
+/** The point of view's own line, said aloud, or bitten back in thought. */
+export const SPEECH_BUBBLE = "border-primary rounded-2xl rounded-br-sm border-2"
+export const THOUGHT_BUBBLE =
+  "border-muted-foreground rounded-3xl border-2 border-dashed"
+
+/** The point of view's figure, and a Korean label beside it. */
 const PovRow = ({
   figure,
   name,
@@ -187,11 +191,9 @@ export const WebtoonPanel = ({
   speaking,
   onReplay,
 }: WebtoonPanelProps): JSX.Element | null => {
-  const nameOf = (id: string): string =>
-    lesson.cast.find((character) => character.id === id)?.name ?? id
+  const nameOf = (id: string): string => castName(lesson.cast, id)
   const figures = useMemo(() => figuresOf(lesson.cast), [lesson.cast])
   const figureOf = (id: string): FigureKey => figures.get(id) ?? "heart"
-  /** A beat as one compact line: who, then what. */
   const said = (beat: Beat | undefined): string =>
     beat === undefined
       ? ""
@@ -201,7 +203,6 @@ export const WebtoonPanel = ({
 
   switch (panel.kind) {
     case "past": {
-      // Read-only and in the session theme: it names its feeling, wears none.
       const { scene, chosen } = panel
       const feeling = isFeelingKey(scene.feeling)
         ? FEELING_WORDS[scene.feeling].name
@@ -223,16 +224,21 @@ export const WebtoonPanel = ({
             <span className="bg-border h-px min-w-0 flex-1" />
           </span>
           {chosen && (
-            <span
-              lang={chosen.candidate.lang === "en" ? "en" : "ko"}
-              className={cn(
-                "self-end text-right break-keep",
-                chosen.swallowed
-                  ? "line-through"
-                  : "text-foreground font-semibold"
-              )}
-            >
-              {nameOf(lesson.pov)}: {chosen.candidate.text}
+            <span className="self-end text-right break-keep">
+              <span lang="ko">
+                {nameOf(lesson.pov)}
+                {chosen.swallowed && " · 삼킨 말"}:{" "}
+              </span>
+              <span
+                lang={chosen.candidate.lang === "en" ? "en" : "ko"}
+                className={
+                  chosen.swallowed
+                    ? "line-through"
+                    : "text-foreground font-semibold"
+                }
+              >
+                {chosen.candidate.text}
+              </span>
             </span>
           )}
           {scene.beats.map((beat) => (
@@ -406,18 +412,14 @@ export const WebtoonPanel = ({
       )
     }
     case "chosen": {
-      // Her own line, in the session theme (MK6): a speech bubble, or, for
-      // an odd-one-out, the line she bit back.
       const { candidate, swallowed } = panel.chosen
       return (
         <section
           data-slot="drama-chosen"
           data-swallowed={swallowed || undefined}
           className={cn(
-            "bg-card text-card-foreground ml-8 flex flex-col gap-2 p-3",
-            swallowed
-              ? "border-muted-foreground rounded-3xl border-2 border-dashed bg-transparent"
-              : "border-primary rounded-2xl rounded-br-sm border-2"
+            "text-card-foreground ml-8 flex flex-col gap-2 p-3",
+            swallowed ? THOUGHT_BUBBLE : cn("bg-card", SPEECH_BUBBLE)
           )}
         >
           <PovRow
@@ -438,7 +440,6 @@ export const WebtoonPanel = ({
       )
     }
     case "choice": {
-      // The point of view's inner voice asks it, in the session theme (MK6).
       const { choice } = panel.scene
       if (choice === undefined) return null
       const rung = rungOf(choice.id)
@@ -490,7 +491,6 @@ export const WebtoonPanel = ({
       )
     }
     case "notes": {
-      // The session's own theme: the notes quote the lines chosen (MK6).
       // Folded, so the drama, not its notes, is the last thing on screen.
       return (
         <Accordion
@@ -519,16 +519,17 @@ export const WebtoonPanel = ({
                     <span lang="ko" className="text-sm break-keep">
                       {said(note.trigger)}
                     </span>
-                    <span
-                      lang={note.candidate.lang === "en" ? "en" : "ko"}
-                      className={cn(
-                        "font-semibold break-keep",
-                        note.swallowed && "line-through"
-                      )}
-                    >
-                      {nameOf(lesson.pov)}
-                      {note.swallowed ? " · 삼킨 말" : ""}:{" "}
-                      {note.candidate.text}
+                    <span className="font-semibold break-keep">
+                      <span lang="ko">
+                        {nameOf(lesson.pov)}
+                        {note.swallowed && " · 삼킨 말"}:{" "}
+                      </span>
+                      <span
+                        lang={note.candidate.lang === "en" ? "en" : "ko"}
+                        className={cn(note.swallowed && "line-through")}
+                      >
+                        {note.candidate.text}
+                      </span>
                     </span>
                     <span lang="ko" className="text-sm break-keep">
                       → {said(note.reaction)}

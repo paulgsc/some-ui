@@ -67,21 +67,24 @@ describe("DramaLesson", () => {
     next()
     next()
     expect(slots().at(-1)).toBe("drama-choice")
-    expect(screen.getByText("서연은 뭐라고 대답할까?")).toBeTruthy()
+    expect(screen.getByText("뭐라고 대답하지?")).toBeTruthy()
 
     // The consequence: the chosen line as Seo-yeon's, the answer to it, and
     // only then the chill. The root stays above, read-only.
     choose("응, 마실래.")
     expect(slots()).toEqual(["drama-past", "drama-chosen", "drama-line"])
-    expect(screen.queryByText("갑분싸")).toBeNull()
     next()
-    expect(screen.getByText("갑분싸")).toBeTruthy()
     next()
-    expect(screen.getByText("윤서연 · 대답")).toBeTruthy()
     choose("죄송합니다, 회장님.")
     next()
-    // The repair settles into warmth, and the leaf ends on its panel.
-    expect(screen.getByText("훈훈한 분위기")).toBeTruthy()
+    // The repair settles into warmth: the one-beat leaf stops on its line,
+    // and its ending wears the feeling, with no cover between.
+    expect(
+      document
+        .querySelector("[data-slot='drama-ending']")
+        ?.closest(".feeling")
+        ?.getAttribute("data-feeling")
+    ).toBe("warmth")
     // Then the author's notes, folded, telling each choice as what happened.
     expect(slots().slice(-2)).toEqual(["drama-ending", "drama-notes"])
     fireEvent.click(screen.getByRole("button", { name: /작가의 말/ }))
@@ -141,9 +144,7 @@ describe("DramaLesson", () => {
     next()
     next()
     fireEvent.click(screen.getByRole("button", { name: /갈림길/ }))
-    fireEvent.click(
-      screen.getByRole("button", { name: /서연은 뭐라고 대답할까/ })
-    )
+    fireEvent.click(screen.getByRole("button", { name: /뭐라고 대답하지/ }))
     expect(slots().at(-1)).toBe("drama-choice")
     choose("네, 감사합니다.")
     expect(store.points.get(lesson.id)).toMatchObject({
@@ -170,7 +171,7 @@ describe("DramaLesson", () => {
     next()
     next()
     expect(screen.queryByText(/Which reply fits/)).toBeNull()
-    fireEvent.click(screen.getByText("서연은 뭐라고 대답할까?"))
+    fireEvent.click(screen.getByText("뭐라고 대답하지?"))
     expect(screen.getByText(/Which reply fits/)).toBeTruthy()
     expect(screen.queryByText(/Polite -요/)).toBeNull()
   })
@@ -231,8 +232,11 @@ describe("MK6: no feeling anchor sits on a choice or a chosen line", () => {
           "[data-slot='drama-cover'], [data-slot='drama-line'], [data-slot='drama-narration'], [data-slot='drama-ending']"
         )
       )
+      // A one-beat leaf stops on its beat: its ending, not a cover, wears it.
+      const stopped =
+        route.length > 0 && !scene.choice && scene.beats.length === 1
       expect(anchored.length).toBe(
-        1 + scene.beats.length + (scene.choice ? 0 : 1)
+        (stopped ? 0 : 1) + scene.beats.length + (scene.choice ? 0 : 1)
       )
       const bare = anchored.filter((node) => node.closest(".feeling") === null)
       expect(bare.length).toBe(route.length > 0 ? 1 : 0)
@@ -240,7 +244,9 @@ describe("MK6: no feeling anchor sits on a choice or a chosen line", () => {
         expect(node.querySelector("[data-slot='feeling-symbol']")).toBeNull()
         expect(
           node.compareDocumentPosition(
-            document.querySelector("[data-slot='drama-cover']")!
+            document.querySelector(
+              "[data-slot='drama-cover'], [data-slot='drama-ending']"
+            )!
           ) & Node.DOCUMENT_POSITION_FOLLOWING
         ).toBeTruthy()
       }

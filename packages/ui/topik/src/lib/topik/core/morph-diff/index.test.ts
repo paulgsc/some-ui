@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 
-import { diffUtterance, highlightFor } from "."
+import { diffUtterance } from "."
 
 const render = (
   segments: ReturnType<typeof diffUtterance>["segments"]
@@ -36,22 +36,5 @@ describe("diffUtterance", () => {
   it("scores similarity on visible syllables", () => {
     expect(diffUtterance("abc", "abc").similarity).toBe(1)
     expect(diffUtterance("가나", "다라").similarity).toBe(0)
-  })
-})
-
-describe("highlightFor", () => {
-  it("highlights a morphological variant", () => {
-    expect(highlightFor("카드로 할게요.", "카드로 안 할게요.")).not.toBeNull()
-  })
-
-  it("declines to highlight a different sentence, an empty source, or no change", () => {
-    expect(
-      highlightFor(
-        "어서 오세요. 뭐 드릴까요?",
-        "아이스 아메리카노 한 잔 주세요."
-      )
-    ).toBeNull()
-    expect(highlightFor("", "카드로 할게요.")).toBeNull()
-    expect(highlightFor("카드로 할게요.", "카드로 할게요.")).toBeNull()
   })
 })

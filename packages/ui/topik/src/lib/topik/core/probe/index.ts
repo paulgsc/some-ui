@@ -22,6 +22,12 @@ export function orderedOptions(
 }
 
 /**
+ * Whether the probe's pick is a line the point of view bites back: an
+ * odd-one-out's answer is the one line she must not say.
+ */
+export const bitesBack = (probe: Probe): boolean => probe.kind === "odd-one-out"
+
+/**
  * Whether choosing `option` answers the probe: the one invalid candidate of
  * an odd-one-out, or the one valid candidate of a pick-valid.
  */

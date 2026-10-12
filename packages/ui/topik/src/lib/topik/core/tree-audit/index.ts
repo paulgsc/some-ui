@@ -11,7 +11,8 @@
  * - its candidates (`auditCandidates`): none is an English gloss (canon
  *   v1.13, a choice is about its scene, and a keyed gloss would be a
  *   first-order item, Prop. 4.2), none repeats another, each has a `why`,
- *   and an odd-one-out's hold the content words of the `source` it names;
+ *   and an odd-one-out's hold the content words of the `source` it names
+ *   and all name one relation;
  * - no two checks share an id;
  * - every scene names a feeling the renderer has (`core/feeling`);
  * - a character's `figure`, when named, is one the renderer draws
@@ -74,6 +75,19 @@ const normalize = (text: string): string => text.replace(/[\s.,!~…'"]+/g, "")
  */
 function auditCandidates(probe: Probe, report: Report): void {
   const source = probe.source ?? ""
+  // The phone shows an odd-one-out's candidates as lines the point of view
+  // could say, with no chip naming what each claims. Candidates that claim
+  // different relations ("past", "negation") can only be told apart by the
+  // chip, so without one the item is a guess.
+  const relations = new Set(
+    probe.options.map(({ relation }) => relation.trim().toLowerCase())
+  )
+  if (probe.kind === "odd-one-out" && relations.size > 1) {
+    report(
+      "error",
+      `an odd-one-out's candidates name ${relations.size} relations: on the phone each is a line she could say, shown with no chip, so they all name one (what the line is: "apology", "reply")`
+    )
+  }
   const seen = new Set<string>()
   for (const option of probe.options) {
     const label = `"${option.text}"`
@@ -108,7 +122,7 @@ function auditCandidates(probe: Probe, report: Report): void {
       if (similarity < MIN_DIFF_SIMILARITY) {
         report(
           "warning",
-          `candidate ${label} rewrites more than "${option.relation}" transforms (similarity ${similarity.toFixed(2)}): hold the content words fixed (canon Prop. 4.2); its diff will not be shown`
+          `candidate ${label} rewrites more than "${option.relation}" transforms (similarity ${similarity.toFixed(2)}): hold the content words fixed (canon Prop. 4.2)`
         )
       }
     }

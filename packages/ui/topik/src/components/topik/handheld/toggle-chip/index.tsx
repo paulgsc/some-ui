@@ -26,11 +26,14 @@ export const ToggleChip = ({
     aria-pressed={picked}
     onClick={onToggle}
     className={cn(
-      "border-border flex min-h-12 flex-col items-start justify-center rounded-2xl border px-3 py-2 text-left",
+      "border-border flex min-h-12 max-w-full flex-col items-start justify-center rounded-2xl border px-3 py-2 text-left",
       picked && "bg-primary text-primary-foreground border-primary"
     )}
   >
-    <span lang={small === undefined ? undefined : "ko"} className="break-keep">
+    <span
+      lang={small === undefined ? undefined : "ko"}
+      className="line-clamp-2 break-keep"
+    >
       {ko}
     </span>
     {small && (

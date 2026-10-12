@@ -283,7 +283,10 @@ teaching audit of every choice in a tree.
   targets.
 - **Which option is the answer is the check's to say, not the option's.**
   Each option is one of the check's candidates, and the check's answer key decides which one the item wants (in an odd-one-out it
-  is the invalid one). The option the key names leads the story on. Every
+  is the invalid one: on the phone, the line the point of view bites back,
+  drawn struck out in thought, never as speech; with no chip to tell
+  claimed relations apart, the teaching audit asks one only when all its
+  candidates name one relation). The option the key names leads the story on. Every
   other option's child is its consequence: the mother-in-law receiving the
   wrong gift, in Korean. A consequence's own choice, if it has one, is the
   repair (calm her down), usually harder and usually third-order, since
@@ -703,7 +706,7 @@ trope, a character). It is capped at 200 characters.
 **Every question works for a learner who did not follow the plot.** None of
 them asks what happened. The second asks how comfortable the learner is, not
 how much they understood, so "about right" at 10% is a complete answer. The
-scene chips name each scene as a moment, by its first beat's opening words,
+scene chips name each scene as a moment, by its first beat's words,
 since many scenes share a place and a feeling; what the learner saw on each
 cover (the feeling's name and the place) stays beneath, so a learner who
 read none of the Korean can still point at one.

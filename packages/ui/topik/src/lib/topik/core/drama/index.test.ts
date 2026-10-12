@@ -115,18 +115,25 @@ describe("panelsOf", () => {
         swallowed: false,
       },
     })
-    // The answer wears no feeling: the cover has not shown it yet.
     expect(answer).toMatchObject({ kind: "line", id: "s3-l1", feeling: null })
-    const read = play([...chosen, advance])
-    expect(coverShown(lesson, read)).toBe(true)
-    expect(panelsOf(lesson, read).map(({ kind }) => kind)).toEqual([
-      "past",
-      "chosen",
-      "line",
-      "cover",
-      "narration",
+    expect(coverShown(lesson, play([...chosen, advance]))).toBe(true)
+  })
+
+  it("stops a one-beat leaf on that beat, with no cover before its ending", () => {
+    const repaired = play([
+      advance,
+      advance,
+      { type: "choose", option: "b" },
+      advance,
+      advance,
+      { type: "choose", option: "x" },
+      advance,
     ])
-    expect(panelsOf(lesson, read)[3]).toMatchObject({ feeling: "chill" })
+    expect(
+      panelsOf(lesson, repaired)
+        .map(({ kind }) => kind)
+        .slice(-4)
+    ).toEqual(["chosen", "line", "ending", "notes"])
   })
 
   it("draws an odd-one-out's pick as swallowed, never said", () => {
@@ -205,10 +212,8 @@ describe("panelsOf", () => {
     ])
   })
 
-  it("names a scene as its moment, cut short, not by its place", () => {
+  it("names a scene as its moment, not by its place", () => {
     expect(momentOf(lesson, "s3")).toBe("뭐? 지금 나한테 반말했니?")
-    const opening = momentOf(lesson, "s1") ?? ""
-    expect(Array.from(opening).length).toBeLessThanOrEqual(18)
     expect(momentOf(lesson, "nowhere")).toBeUndefined()
   })
 })

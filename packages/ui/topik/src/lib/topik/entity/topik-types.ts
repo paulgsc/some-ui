@@ -78,8 +78,6 @@ export type ProbeOption = {
   /** The candidate: an utterance, or a situation/meaning described in prose. */
   text: string
   relation: MorphismRelation
-  /** Overrides the chip, which is otherwise the relation's own name. */
-  label?: string
   /**
    * The answer key, authored. In an odd-one-out: whether `text` really
    * stands in `relation` to the source. In a pick-valid: whether it is the
@@ -89,7 +87,7 @@ export type ProbeOption = {
   valid: boolean
   /** One line on why it does or doesn't - the whole of the feedback. */
   why: string
-  /** "ko" gets a diff against the source; "en" is prose. Default "ko". */
+  /** "ko" is an utterance; "en" is prose. Default "ko". */
   lang?: "ko" | "en"
 }
 
@@ -119,7 +117,6 @@ const ProbeOptionSchema = z.object({
   id: z.string().trim().min(1).optional(),
   text: z.string().min(1),
   relation: z.string().trim().min(1),
-  label: z.string().optional(),
   valid: z.boolean(),
   why: z.string(),
   lang: z.enum(["ko", "en"]).optional(),

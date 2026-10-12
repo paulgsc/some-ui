@@ -7,7 +7,6 @@
  * can answer all of it.
  *
  * In the session theme: it names each scene's feeling, but wears none (MK6).
- * A scene's chip is the moment, not the place: many scenes share a place.
  * Questions are Hangul, with their English one tap away; answers show their
  * English small beneath, since they are not items.
  */

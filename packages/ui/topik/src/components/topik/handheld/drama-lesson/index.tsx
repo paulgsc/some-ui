@@ -16,13 +16,24 @@ import type { JSX } from "react"
 import { useEffect, useMemo, useRef, useState } from "react"
 import { cn } from "@some-ui/core-utils"
 import type { SoundPort, VoicePort } from "@some-ui/makjang"
-import { Button } from "@some-ui/shared"
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+  Button,
+} from "@some-ui/shared"
 import { DramaReview } from "@topik/components/topik/handheld/drama-review"
 import { LadderDock } from "@topik/components/topik/handheld/ladder-dock"
 import { StepLayout } from "@topik/components/topik/handheld/step-layout"
-import { WebtoonPanel } from "@topik/components/topik/handheld/webtoon-panel"
+import {
+  SPEECH_BUBBLE,
+  THOUGHT_BUBBLE,
+  WebtoonPanel,
+} from "@topik/components/topik/handheld/webtoon-panel"
 import { useDrama } from "@topik/lib/topik/adapter/hooks/use-drama"
-import type { DramaLesson as Lesson } from "@topik/lib/topik/core/drama"
+import { nameOf } from "@topik/lib/topik/core/cast"
+import type { DramaLesson as Lesson, Panel } from "@topik/lib/topik/core/drama"
 import {
   canGoBack,
   crossroadsOf,
@@ -36,7 +47,7 @@ import type {
   DramaPointStore,
   LastDramaPort,
 } from "@topik/lib/topik/core/drama-runtime"
-import { orderedOptions } from "@topik/lib/topik/core/probe"
+import { bitesBack, orderedOptions } from "@topik/lib/topik/core/probe"
 import { ChevronLeft, RotateCcw, Signpost } from "lucide-react"
 
 type DramaLessonProps = {
@@ -72,19 +83,15 @@ export const DramaLesson = ({
     review,
   } = useDrama(lesson, { voice, sound, points, last })
   const panels = panelsOf(lesson, session)
-  // The scenes the route passed can be folded away; they stay in the engine.
-  const [pastOpen, setPastOpen] = useState(true)
-  const hasPast = panels.some(({ kind }) => kind === "past")
-  const shown = pastOpen ? panels : panels.filter(({ kind }) => kind !== "past")
-  // At an ending, the dock offers the crossroads instead of the way out.
+  const past = panels.filter(({ kind }) => kind === "past")
+  const present = panels.filter(({ kind }) => kind !== "past")
   const [crossing, setCrossing] = useState(false)
   const scene = sceneOf(lesson, session)
   const { at } = session.drama
   const rung = (id: string): ReturnType<typeof rungOf> =>
     rungOf(lesson, session, id)
   const reveal = (id: string): void => dispatch({ type: "reveal", id })
-  const povName =
-    lesson.cast.find(({ id }) => id === lesson.pov)?.name ?? lesson.pov
+  const povName = nameOf(lesson.cast, lesson.pov)
 
   // Keep the newest panel in view, as a webtoon scrolls.
   const newest = panels[panels.length - 1]?.id
@@ -107,6 +114,21 @@ export const DramaLesson = ({
     [lesson.id, scene.choice]
   )
 
+  const drawn = (panel: Panel): JSX.Element => (
+    <WebtoonPanel
+      key={panel.id}
+      panel={panel}
+      lesson={lesson}
+      rungOf={rung}
+      onReveal={reveal}
+      whyOpen={(choice, option) => whyOpen(session, choice, option)}
+      onWhy={(choice, option) => dispatch({ type: "why", choice, option })}
+      audio={session.audio}
+      speaking={speaking}
+      onReplay={replay}
+    />
+  )
+
   const stage = (
     <div
       data-slot="topik-drama"
@@ -114,35 +136,25 @@ export const DramaLesson = ({
       // widen the strip. The padding keeps a jagged edge's outline inside.
       className="mx-auto flex w-full max-w-md flex-col gap-3 overflow-x-clip px-1"
     >
-      {hasPast && (
-        <button
-          type="button"
-          aria-expanded={pastOpen}
-          onClick={() => setPastOpen(!pastOpen)}
-          className="bg-secondary text-secondary-foreground border-border flex min-h-11 items-center justify-between rounded-2xl border px-4 text-sm"
+      {past.length > 0 && (
+        <Accordion
+          type="single"
+          collapsible
+          defaultValue="past"
+          data-slot="topik-drama-past"
+          className="bg-secondary text-secondary-foreground border-border rounded-2xl border px-3"
         >
-          <span lang="ko" className="font-semibold">
-            지난 이야기
-          </span>
-          <span lang="ko" className="text-muted-foreground">
-            {pastOpen ? "접기" : "펼치기"}
-          </span>
-        </button>
+          <AccordionItem value="past" className="border-none">
+            <AccordionTrigger className="min-h-11 text-sm font-semibold hover:no-underline">
+              <span lang="ko">지난 이야기</span>
+            </AccordionTrigger>
+            <AccordionContent className="flex flex-col gap-3">
+              {past.map(drawn)}
+            </AccordionContent>
+          </AccordionItem>
+        </Accordion>
       )}
-      {shown.map((panel) => (
-        <WebtoonPanel
-          key={panel.id}
-          panel={panel}
-          lesson={lesson}
-          rungOf={rung}
-          onReveal={reveal}
-          whyOpen={(choice, option) => whyOpen(session, choice, option)}
-          onWhy={(choice, option) => dispatch({ type: "why", choice, option })}
-          audio={session.audio}
-          speaking={speaking}
-          onReplay={replay}
-        />
-      ))}
+      {present.map(drawn)}
       {at.kind === "end" && record && (
         <DramaReview
           record={record}
@@ -171,8 +183,7 @@ export const DramaLesson = ({
       // The engine opens a choice only on a scene that has one.
       const check = scene.choice?.check
       if (check === undefined) return back
-      // An odd-one-out's pick is the line she bites back: drawn as a thought.
-      const swallow = check.kind === "odd-one-out"
+      const swallow = bitesBack(check)
       return (
         <>
           <div className="flex items-baseline justify-between gap-2 px-1">
@@ -200,9 +211,7 @@ export const DramaLesson = ({
                 variant="outline"
                 className={cn(
                   "h-auto min-h-14 w-full shrink-0 justify-end px-4 py-3 text-right text-lg whitespace-normal",
-                  swallow
-                    ? "border-muted-foreground rounded-3xl border-2 border-dashed"
-                    : "border-primary rounded-2xl rounded-br-sm border-2"
+                  swallow ? THOUGHT_BUBBLE : SPEECH_BUBBLE
                 )}
                 onClick={() =>
                   dispatch({ type: "choose", option: option.id ?? "" })
@@ -232,8 +241,6 @@ export const DramaLesson = ({
         </Button>
       )
       if (crossing) {
-        // Choosing again from a choice the route crossed: the first choice
-        // stays recorded, as on a replay from the root (MK3).
         return (
           <>
             <div

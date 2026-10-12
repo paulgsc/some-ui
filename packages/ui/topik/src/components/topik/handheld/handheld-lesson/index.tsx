@@ -232,12 +232,12 @@ export const HandheldLesson = ({
               soundState === "off" && "text-muted-foreground"
             )}
             aria-pressed={soundState === "on"}
-            aria-label="Scene sound"
             onClick={() => control.set(soundState !== "on")}
           >
             <Music className="size-5" />
-            <span lang="ko" aria-hidden="true">
-              {soundState === "on" ? "효과음 켬" : "효과음 끔"}
+            <span lang="ko">효과음</span>
+            <span lang="ko" aria-hidden="true" className="text-xs">
+              {soundState === "on" ? "켬" : "끔"}
             </span>
           </Button>
         )}
