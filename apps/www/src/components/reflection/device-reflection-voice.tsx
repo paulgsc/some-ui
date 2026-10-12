@@ -6,7 +6,7 @@
 import type { JSX } from "react"
 import { useEffect, useState, useSyncExternalStore } from "react"
 import { Button } from "@some-ui/shared"
-import { RECORDING_FAILURE_COPY } from "@some-ui/voice-capture"
+import { RECORDING_FAILURE_COPY, VOICE_NOTE_SAID } from "@some-ui/voice-capture"
 import { Mic, Square } from "lucide-react"
 
 import { formatTimecode } from "@/lib/format"
@@ -15,12 +15,7 @@ import { phoneVoiceNote } from "@/lib/reflection-voice"
 
 import { NO_ROOM } from "./copy"
 
-const SAID: Record<Outcome, string> = {
-  kept: "Kept.",
-  short: "Too short to keep. Tap, talk, then tap again.",
-  full: NO_ROOM,
-  failed: "Couldn't keep that one. Try again.",
-}
+const SAID: Record<Outcome, string> = { ...VOICE_NOTE_SAID, full: NO_ROOM }
 
 function note(state: VoiceState): string | null {
   if (state.kind === "blocked") return RECORDING_FAILURE_COPY[state.reason]

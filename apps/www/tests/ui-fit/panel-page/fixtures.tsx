@@ -21,7 +21,13 @@ import { webSpeech } from "@some-ui/speech/web-speech"
 // eager edge the rule guards against costs nothing here, and the quiz stages
 // are reachable through no lazy entry.
 // eslint-disable-next-line lazy-registry/no-eager-registry-import
-import { DramaLesson, intakeTree, lastDramaOf, QuizPanel } from "@some-ui/topik"
+import {
+  DramaLesson,
+  intakeTree,
+  lastDramaOf,
+  QuizPanel,
+  SharePrompt,
+} from "@some-ui/topik"
 
 import { PANELS } from "@/lib/playable"
 
@@ -206,6 +212,16 @@ function dramaStage(
             save: noop,
             subscribe: () => noop,
           }}
+          // The phone offers the next episode's share first in the dock.
+          ending={
+            <SharePrompt
+              share={() => new Promise(noop)}
+              label="다음 화 쓰기"
+              labelLang="ko"
+              prompt={() => ""}
+              onShared={noop}
+            />
+          }
           short={short}
           onLeave={noop}
         />

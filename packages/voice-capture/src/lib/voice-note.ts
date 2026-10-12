@@ -1,10 +1,9 @@
 /**
  * One voice note, start to kept: the shared take (`./take`) and then the
- * save, as www's voice reflections and its scene notes both record.
- * `stepVoiceNote(state, event, limits)` returns the next state and the
+ * save. `stepVoiceNote(state, event, limits)` returns the next state and the
  * effects to run, and does nothing else (docs/monorepo-boundaries.md,
- * "Inside a React package: the component is not the coordinator"); each
- * caller's runtime runs them and decides what a save keeps.
+ * "Inside a React package: the component is not the coordinator");
+ * `voiceNoteRuntime` runs them, and its caller decides what a save keeps.
  *
  * - **One take at a time.** A second "start" while one is under way changes
  *   nothing.
@@ -15,7 +14,7 @@
  */
 import { assertNever } from "@some-ui/core-utils"
 
-import type { RecordingFailure, Take } from "./recorder"
+import type { RecordingFailure, StartRecording, Take } from "./recorder"
 import type {
   TakeEffect,
   TakeLimits,
@@ -23,7 +22,7 @@ import type {
   TakeSignal,
   TakeStep,
 } from "./take"
-import { discardTake, finishTake, openTake, stepTake } from "./take"
+import { discardTake, finishTake, openTake, stepTake, takeRunner } from "./take"
 
 /** How the last take ended, said once beside the button. */
 export type VoiceNoteOutcome = "kept" | "short" | "full" | "failed"
@@ -55,7 +54,7 @@ type Next = { state: VoiceNoteState; effects: ReadonlyArray<VoiceNoteEffect> }
 
 const stay = (state: VoiceNoteState): Next => ({ state, effects: [] })
 
-/** Where a take's step leaves the voice reflection. */
+/** Where a take's step leaves the voice note. */
 function after(next: TakeStep, atMs: number | null): Next {
   const { effects } = next
   switch (next.kind) {
@@ -116,5 +115,83 @@ export function stepVoiceNote(
     default: {
       return assertNever(state)
     }
+  }
+}
+
+/** How a take ended, in a sentence said once beside the button. */
+export const VOICE_NOTE_SAID: Readonly<Record<VoiceNoteOutcome, string>> = {
+  kept: "Kept.",
+  short: "Too short to keep. Tap, talk, then tap again.",
+  full: "There's no room for another voice note.",
+  failed: "Couldn't keep that one. Try again.",
+}
+
+export type VoiceNoteRuntime = {
+  getSnapshot: () => VoiceNoteState
+  subscribe: (listener: () => void) => () => void
+  /** `atMs`: where in what is being noted the take starts, if anywhere. */
+  start: (atMs: number | null) => void
+  stop: () => void
+  /** The screen closed: a take under way is kept. */
+  leave: () => void
+}
+
+const TICK_MS = 200
+
+/**
+ * Runs `stepVoiceNote` against the microphone and the clock: holds the
+ * recording, turns each effect into a call on a port and each result into an
+ * event. It decides nothing, and leaves the save to `save`, which says how
+ * it ended.
+ */
+export function voiceNoteRuntime(
+  ports: {
+    startRecording: StartRecording
+    /** Milliseconds since the epoch. */
+    now: () => number
+    save: (
+      take: Take,
+      atMs: number | null,
+      saved: (outcome: VoiceNoteOutcome) => void
+    ) => void
+  },
+  limits: TakeLimits
+): VoiceNoteRuntime {
+  let state: VoiceNoteState = initialVoiceNote
+  const listeners = new Set<() => void>()
+
+  const dispatch = (event: VoiceNoteEvent): void => {
+    const next = stepVoiceNote(state, event, limits)
+    if (next.state !== state) {
+      state = next.state
+      for (const listener of listeners) listener()
+    }
+    for (const effect of next.effects) {
+      if (effect.type === "save") {
+        ports.save(effect.take, effect.atMs, (outcome) =>
+          dispatch({ type: "saved", outcome })
+        )
+      } else {
+        take.run(effect)
+      }
+    }
+  }
+
+  const take = takeRunner(
+    { startRecording: ports.startRecording, now: ports.now, tickMs: TICK_MS },
+    dispatch
+  )
+
+  return {
+    getSnapshot: () => state,
+    subscribe(listener): () => void {
+      listeners.add(listener)
+      return (): void => {
+        listeners.delete(listener)
+      }
+    },
+    start: (atMs) => dispatch({ type: "start", atMs }),
+    stop: () => dispatch({ type: "stop" }),
+    leave: () => dispatch({ type: "left" }),
   }
 }

@@ -495,13 +495,12 @@ export const WebtoonPanel = ({
             {panel.scene.place}
           </span>
           {hook && (
-            // The question this episode stops on: what the next one answers.
             <button
               type="button"
               onClick={() => onReveal(hookId)}
               className="mt-2 flex w-full flex-col gap-1 rounded-xl border-2 border-current px-3 py-2 text-left"
             >
-              <span lang="ko" className="feeling-accent text-xs font-black">
+              <span lang="ko" className="text-xs font-black">
                 다음 화 예고
               </span>
               <span lang="ko" className="text-lg font-semibold break-keep">

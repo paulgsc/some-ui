@@ -27,6 +27,9 @@ export type KoreanNext = (typeof KOREAN)[number]
 
 export const NEXT_MAX = 200
 
+/** A hook is one line; the record keeps no more of a longer one. */
+export const HOOK_MAX = 200
+
 export type DramaReview = {
   enjoyed?: Enjoyed
   korean?: KoreanNext
@@ -107,7 +110,7 @@ export function lastDramaOf(
   const same = isRecordOf(previous, lesson) ? previous : null
   const scenes = scenesOf(lesson.root)
   const reached = new Set(same?.scenes.map(({ id }) => id))
-  const hook = sceneAt(lesson.root, drama.route)?.hook?.text
+  const hook = sceneAt(lesson.root, drama.route)?.hook?.text.slice(0, HOOK_MAX)
   return {
     lessonId: lesson.id,
     content: contentOf(lesson),

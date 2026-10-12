@@ -30,6 +30,12 @@ export type {
   VoiceNoteEffect,
   VoiceNoteEvent,
   VoiceNoteOutcome,
+  VoiceNoteRuntime,
   VoiceNoteState,
 } from "./lib/voice-note"
-export { initialVoiceNote, stepVoiceNote } from "./lib/voice-note"
+export {
+  initialVoiceNote,
+  stepVoiceNote,
+  VOICE_NOTE_SAID,
+  voiceNoteRuntime,
+} from "./lib/voice-note"

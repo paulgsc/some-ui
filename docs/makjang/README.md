@@ -726,8 +726,8 @@ trope, a character). It is capped at 200 characters.
 **Every question works for a learner who did not follow the plot.** None of
 them asks what happened. The second asks how comfortable the learner is, not
 how much they understood, so "about right" at 10% is a complete answer. The
-scene chips name each scene as a moment, by its first beat's words,
-since many scenes share a place and a feeling; what the learner saw on each
+scene chips name each scene as a moment, by its title, else its first
+beat's words, since many scenes share a place and a feeling; what the learner saw on each
 cover (the feeling's name and the place) stays beneath, so a learner who
 read none of the Korean can still point at one.
 
@@ -751,7 +751,7 @@ There is one record on the device, under `topik:last-drama`. It holds:
 - **When** the drama ended, or the review last changed.
 - **The drama:** its id, a hash of its content (a model picks the id, so two
   dramas, or a served one and its reload, can share one), its level, and its
-  place (the root scene's `place`, the drama's title).
+  title (`titleOf`: the lesson's `title`, else the root scene's `place`).
 - **The scenes reached:** every scene any play of this drama reached, with
   its place and its feeling, in the tree's order.
 - **The first tries:** for each choice reached, the choice's Korean, the
@@ -759,6 +759,8 @@ There is one record on the device, under `topik:last-drama`. It holds:
   (`isCorrectChoice`). The text rides along, since the drama will be gone
   when the next prompt is read.
 - **The review**, if any was given.
+- **The hook** the ending stopped on, if its leaf has one (its Korean, cut
+  to 200 characters).
 
 Its rules:
 
@@ -778,7 +780,7 @@ Its rules:
   report. The review never moves it.
 - **The prompt's history.** The tree prompt's `Survey` becomes `Last drama`.
   It carries the record as plain text: the title, the scenes reached and
-  their feelings, each first try, and the review. Its section in `tree-prompt.md`
+  their feelings, the hook, each first try, and the review. Its section in `tree-prompt.md`
   tells the model to weigh the review over the first tries, and never to
   read either as a level.
 - **The survey's key** (`topik:lesson-surveys`) joins the handheld's

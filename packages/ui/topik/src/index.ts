@@ -81,9 +81,10 @@ export { QuizPanel } from "./components/topik/quiz-panel"
 /**
  * The phone's drama by state; apps/www's panel-fit page mounts it at a beat,
  * an open choice and an ending, through a resume point, and the record that
- * ending leaves, so it shows its review.
+ * ending leaves, so it shows its review, with the share an ending offers.
  */
 export { DramaLesson } from "./components/topik/handheld/drama-lesson"
+export { SharePrompt } from "./components/topik/handheld/share-prompt"
 export { lastDramaOf } from "./lib/topik/core/last-drama"
 export type { FileShare } from "./lib/topik/adapter/next-scene-share"
 export type {

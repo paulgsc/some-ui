@@ -4,38 +4,35 @@
  * per page load, so the draft and a take under way outlive the screen that
  * shows them. Phone-only (`build.paths.ts`).
  */
+import type { IntentError } from "@some-ui/intent-kit"
+import { reportFailure, toIntentError } from "@some-ui/intent-kit"
 import { SOUNDBITE_BITS_PER_SECOND } from "@some-ui/soundbites/contract"
-import type { SceneVoice } from "@some-ui/topik"
+import type { FileShare, SceneNote, SceneVoice } from "@some-ui/topik"
 import type { BlobShelf } from "@some-ui/voice-capture"
 import { blobShelf, micRecorder } from "@some-ui/voice-capture"
 
 import { boundedList } from "@/lib/bounded-list"
+import type { SharedFile } from "@/lib/share-files"
+import { shareFiles } from "@/lib/share-files"
 
-import type { StoredNote } from "./runtime"
-import { createSceneVoice, SCENE_NOTES_MAX } from "./runtime"
+import { SCENE_AUDIO_MAX_BYTES, SCENE_NOTES_MAX } from "./budget"
+import { createSceneVoice } from "./runtime"
 
-/** A minute a note at the recorder's rate, with room to spare. */
-const SCENE_AUDIO_MAX_BYTES = SCENE_NOTES_MAX * 60 * 8000
-
-const isNote = (value: unknown): value is StoredNote =>
+const isNote = (value: unknown): value is SceneNote =>
   typeof value === "object" &&
   value !== null &&
   typeof Reflect.get(value, "id") === "string" &&
   typeof Reflect.get(value, "durationMs") === "number" &&
   typeof Reflect.get(value, "mimeType") === "string"
 
-/** Built at first use, so a build that never records holds nothing of it. */
-let list: ReturnType<typeof boundedList<StoredNote>> | null = null
-const stored = (): ReturnType<typeof boundedList<StoredNote>> =>
-  (list ??= boundedList("some-ui:scene-voice", SCENE_NOTES_MAX, isNote))
+const list = boundedList("some-ui:scene-voice", SCENE_NOTES_MAX, isNote)
 
 /** The draft's notes, oldest first (the list keeps the newest first). */
 const notes = {
-  read: (): Array<StoredNote> => stored().read().reverse(),
-  add: (note: StoredNote): boolean =>
-    stored().put(note, ({ id }) => id === note.id),
+  read: (): Array<SceneNote> => list.read().reverse(),
+  add: (note: SceneNote): boolean => list.put(note, ({ id }) => id === note.id),
   remove: (ids: ReadonlyArray<string>): boolean =>
-    stored().remove(({ id }) => ids.includes(id)),
+    list.remove(({ id }) => ids.includes(id)),
 }
 
 let shelf: BlobShelf | null = null
@@ -68,18 +65,11 @@ export function phoneSceneVoice(): SceneVoice {
   return voice
 }
 
-/** The draft's audio, by note id, or null for a note whose audio is gone. */
-export async function sceneNoteAudio(
-  ids: ReadonlyArray<string>
-): Promise<Array<Blob | null>> {
-  const audio = sceneVoiceAudio()
-  return Promise.all(ids.map((id) => audio.get(id)))
-}
-
 /**
  * Each half without the other: audio no note names (the app closed between
- * writing it and listing it), and a note whose audio never landed. Best
- * effort, and nothing waits on it.
+ * writing it and listing it), and a note whose audio never landed, let go
+ * through the runtime so a screen showing the draft sees it go. Best effort,
+ * and nothing waits on it.
  */
 export function sweepSceneVoice(): void {
   const audio = sceneVoiceAudio()
@@ -91,7 +81,43 @@ export function sweepSceneVoice(): void {
         stored.filter((id) => !listed.includes(id) && !saving.has(id))
       )
       const silent = listed.filter((id) => !stored.includes(id))
-      if (silent.length > 0) notes.remove(silent)
+      if (silent.length > 0) phoneSceneVoice().remove(silent)
     })
     .catch(() => undefined)
+}
+
+const SHARE_PORT = "scene voice (share)"
+
+/**
+ * The drama's next-scene prompt, as topik's `FileShare` port, with the
+ * scene's voice notes it names beside it. A note whose audio cannot be read
+ * fails the share, so the prompt never names a file that does not arrive.
+ */
+export const shareDramaPrompt: FileShare = async ({
+  name,
+  text,
+  notes: named = [],
+}) => {
+  const failed = (cause: unknown): Awaited<ReturnType<FileShare>> => {
+    const error: IntentError = {
+      ...toIntentError(cause),
+      summary: "A voice note couldn't be read. Let it go and share again.",
+    }
+    reportFailure({ port: SHARE_PORT, error })
+    return { status: "failed", error }
+  }
+  const audio = sceneVoiceAudio()
+  let blobs: Array<Blob | null>
+  try {
+    blobs = await Promise.all(named.map(({ id }) => audio.get(id)))
+  } catch (error) {
+    return failed(error)
+  }
+  const files: Array<SharedFile> = [{ name, data: text }]
+  for (const [index, note] of named.entries()) {
+    const blob = blobs[index]
+    if (!blob) return failed(new Error(`no audio for voice note ${note.id}`))
+    files.push({ name: note.name, data: blob })
+  }
+  return shareFiles("drama-prompt", "The next scene's prompt", files)
 }

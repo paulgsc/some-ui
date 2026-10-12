@@ -8,12 +8,10 @@ import {
   callForeign,
   ForeignDeadlineError,
   reportFailure,
-  toIntentError,
 } from "@some-ui/intent-kit"
 import type { FileShare } from "@some-ui/topik"
 
 import { isMissingPlugin } from "@/lib/intent/foreign"
-import { sceneNoteAudio } from "@/lib/scene-voice"
 
 /** Writing the files: a few megabytes at most (`SOUNDBITES_MAX_BYTES`). */
 const WRITE_DEADLINE_MS = 60_000
@@ -150,36 +148,4 @@ export function runsNatively(host: object = globalThis): boolean {
     typeof isNative === "function" &&
     Reflect.apply(isNative, capacitor, []) === true
   )
-}
-
-/**
- * The drama's next-scene prompt, as topik's `FileShare` port, with the
- * scene's voice notes it names beside it. A note whose audio cannot be read
- * fails the share, so the prompt never names a file that does not arrive.
- */
-export const shareDramaPrompt: FileShare = async ({
-  name,
-  text,
-  notes = [],
-}) => {
-  const failed = (cause: unknown): Awaited<ReturnType<FileShare>> => ({
-    status: "failed",
-    error: {
-      ...toIntentError(cause),
-      summary: "A voice note couldn't be read. Let it go and share again.",
-    },
-  })
-  let audio: Array<Blob | null>
-  try {
-    audio = await sceneNoteAudio(notes.map(({ id }) => id))
-  } catch (error) {
-    return failed(error)
-  }
-  const files: Array<SharedFile> = [{ name, data: text }]
-  for (const [index, note] of notes.entries()) {
-    const blob = audio[index]
-    if (!blob) return failed(new Error(`no audio for voice note ${note.id}`))
-    files.push({ name: note.name, data: blob })
-  }
-  return shareFiles("drama-prompt", "The next scene's prompt", files)
 }

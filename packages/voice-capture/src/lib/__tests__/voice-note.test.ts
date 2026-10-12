@@ -6,8 +6,8 @@ import type {
 import { initialVoiceNote, stepVoiceNote } from "@voice-capture/lib/voice-note"
 import { describe, expect, it } from "vitest"
 
-const SOUNDBITE_MAX_MS = 60_000
-const LIMITS = { minMs: 1_000, maxMs: SOUNDBITE_MAX_MS }
+const MAX_MS = 60_000
+const LIMITS = { minMs: 1_000, maxMs: MAX_MS }
 
 function take(durationMs: number, bytes = "abc"): Take {
   return { blob: new Blob([bytes]), mimeType: "audio/webm", durationMs }
@@ -32,7 +32,7 @@ const recording: ReadonlyArray<VoiceNoteEvent> = [
   { type: "micOpened", at: 1_000 },
 ]
 
-describe("a voice reflection", () => {
+describe("a voice note", () => {
   it("records from the moment the microphone opens and saves what was said, stamped where it started", () => {
     const { state, effects } = run([
       ...recording,
@@ -73,7 +73,7 @@ describe("a voice reflection", () => {
   it("stops itself at the limit and keeps it", () => {
     const { state, effects } = run([
       ...recording,
-      { type: "ticked", now: 1_000 + SOUNDBITE_MAX_MS, level: 0 },
+      { type: "ticked", now: 1_000 + MAX_MS, level: 0 },
     ])
     expect(state).toMatchObject({
       kind: "taking",

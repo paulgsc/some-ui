@@ -273,8 +273,7 @@ export const GenerateLesson = ({
 }: GenerateLessonProps): JSX.Element => {
   const voice = useSceneVoice(sceneVoice)
   const notes = voice?.notes ?? []
-  // Shared with voice notes: asked whether they arrived before they go,
-  // since the share sheet says "shared" as soon as an app is picked.
+  // The share sheet says "shared" once an app is picked, not once it lands.
   const [arrived, setArrived] = useState<ReadonlyArray<string> | null>(null)
   const [level, setLevel] = useState<TopikLevel>(defaultLevel)
   const [scene, setScene] = useState(initialSeed?.scene ?? "")
@@ -389,6 +388,7 @@ export const GenerateLesson = ({
             share={share}
             prompt={prompt}
             notes={notes}
+            disabled={voice !== null && voice.take.kind !== "idle"}
             onShared={(text, sent) => {
               onPromptHandedOff?.(text)
               if (sent.length > 0) setArrived(sent)
@@ -397,7 +397,8 @@ export const GenerateLesson = ({
         )}
         {arrived && sceneVoice && (
           <div
-            role="status"
+            role="group"
+            aria-label="Did they arrive?"
             className="bg-card border-border flex flex-col gap-2 rounded-2xl border p-3"
           >
             <p className="text-sm">

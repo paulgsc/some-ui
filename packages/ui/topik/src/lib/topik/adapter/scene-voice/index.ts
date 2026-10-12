@@ -11,7 +11,7 @@
  */
 
 /** A voice note in the draft. */
-export type SceneNote = { id: string; durationMs: number }
+export type SceneNote = { id: string; durationMs: number; mimeType: string }
 
 export type SceneVoiceSnapshot = {
   /** The draft's notes, oldest first. */

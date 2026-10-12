@@ -18,8 +18,11 @@ export const SharePrompt = ({
   onShared,
   label = "Share the next scene's prompt",
   labelLang = "en",
+  disabled = false,
 }: {
   share: FileShare
+  /** Not yet: a voice note is still being taken. */
+  disabled?: boolean
   /** The button's words: at a drama's ending, the next episode's. */
   label?: string
   labelLang?: "ko" | "en"
@@ -40,9 +43,9 @@ export const SharePrompt = ({
   if (state.kind === "withdrawn") return null
   const tap = (): void => {
     const at = new Date()
-    const named = notes.map(({ id }, index) => ({
+    const named = notes.map(({ id, mimeType }, index) => ({
       id,
-      name: voiceNoteName(at, index),
+      name: voiceNoteName(at, index, mimeType),
     }))
     const text = prompt(named.map(({ name }) => name))
     start({ ...nextSceneFile(text, at), notes: named }, () =>
@@ -57,7 +60,7 @@ export const SharePrompt = ({
       <Button
         variant="outline"
         className="h-12 w-full gap-2 rounded-2xl"
-        disabled={state.kind === "sharing"}
+        disabled={disabled || state.kind === "sharing"}
         onClick={tap}
       >
         {state.kind === "shared" ? (

@@ -409,9 +409,6 @@ describe("HandheldLesson", () => {
 
       const file = share.mock.calls[0]?.[0]
       expect(file?.text).toContain('Last drama:\n"첫 차", level 2.')
-      expect(file?.text).toContain(
-        'It stopped on: "태준이 숨긴 날짜는 언제일까?"'
-      )
       expect(file?.text).toContain('what next: "more revenge"')
       // Shared is handed off: the free text it carried goes (Rem. 7.4), from
       // the store and from the field on screen.

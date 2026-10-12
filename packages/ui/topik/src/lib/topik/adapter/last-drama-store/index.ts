@@ -19,6 +19,7 @@ import type { LastDramaPort } from "@topik/lib/topik/core/drama-runtime"
 import type { LastDrama } from "@topik/lib/topik/core/last-drama"
 import {
   ENJOYED,
+  HOOK_MAX,
   KOREAN,
   NEXT_MAX,
   withReview,
@@ -55,7 +56,7 @@ const LastDramaSchema = z.object({
       next: z.string().max(NEXT_MAX).optional(),
     })
     .optional(),
-  hook: z.string().optional(),
+  hook: z.string().max(HOOK_MAX).optional(),
 })
 
 const DocumentSchema = z.object({

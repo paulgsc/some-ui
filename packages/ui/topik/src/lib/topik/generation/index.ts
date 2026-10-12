@@ -9,6 +9,7 @@
  * learner copies, and the lesson comes back the same way (see `parse`).
  */
 
+import { extensionOf } from "@some-ui/core-utils"
 import { FEELING_KEYS } from "@some-ui/styles/theme"
 import { FIGURE_KEYS, FIGURE_WORDS } from "@topik/lib/topik/core/cast"
 import { FEELING_WORDS } from "@topik/lib/topik/core/feeling"
@@ -230,5 +231,8 @@ const sceneStamp = (at: Date): string =>
   `drama-${at.toISOString().replace(/[-:.]/g, "")}`
 
 /** The `index`th voice note shared with the prompt made at `at`. */
-export const voiceNoteName = (at: Date, index: number): string =>
-  `${sceneStamp(at)}.voice-${index + 1}.webm`
+export const voiceNoteName = (
+  at: Date,
+  index: number,
+  mimeType: string
+): string => `${sceneStamp(at)}.voice-${index + 1}.${extensionOf(mimeType)}`

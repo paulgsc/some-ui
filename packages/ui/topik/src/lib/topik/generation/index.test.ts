@@ -132,8 +132,11 @@ describe("buildTreePrompt", () => {
 
   it("names the voice notes a spoken scene came in, and nothing when it was typed", () => {
     const at = new Date("2026-10-09T07:05:03.120Z")
-    const notes = [voiceNoteName(at, 0), voiceNoteName(at, 1)]
-    expect(notes[1]).toBe("drama-20261009T070503120Z.voice-2.webm")
+    const notes = [
+      voiceNoteName(at, 0, "audio/webm;codecs=opus"),
+      voiceNoteName(at, 1, "audio/mp4"),
+    ]
+    expect(notes[1]).toBe("drama-20261009T070503120Z.voice-2.mp4")
     expect(buildTreePrompt({ level: 2, voiceNotes: notes })).toContain(
       `Scene, spoken: ${notes.join(", ")}\n`
     )

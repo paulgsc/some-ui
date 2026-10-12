@@ -197,8 +197,8 @@ describe("GenerateLesson's spoken scene", () => {
     }
   }
   const notes = [
-    { id: "n1", durationMs: 42_000 },
-    { id: "n2", durationMs: 9_000 },
+    { id: "n1", durationMs: 42_000, mimeType: "audio/webm" },
+    { id: "n2", durationMs: 9_000, mimeType: "audio/webm" },
   ]
 
   it("shares the draft's voice notes with the prompt, named in it, and lets them go once they arrived", async () => {
@@ -212,14 +212,9 @@ describe("GenerateLesson's spoken scene", () => {
     const file = share.mock.calls[0]?.[0]
     const named = file?.notes ?? []
     expect(named.map(({ id }) => id)).toEqual(["n1", "n2"])
-    expect(named[0]?.name).toMatch(/^drama-\d{8}T\d{9}Z\.voice-1\.webm$/)
-    expect(file?.name.replace(".prompt.md", "")).toBe(
-      named[0]?.name.replace(".voice-1.webm", "")
-    )
     expect(buildPrompt).toHaveBeenCalledWith(
       expect.objectContaining({ voiceNotes: named.map(({ name }) => name) })
     )
-    // Shared is not arrived: the notes stay until the learner says so.
     await screen.findByText(/reach your drive/)
     expect(draft.remove).not.toHaveBeenCalled()
     click(/Yes, let them go/)

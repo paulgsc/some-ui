@@ -354,7 +354,7 @@ function auditScene(
     feeling,
     beats,
     ...(choice === undefined ? {} : { choice }),
-    ...(hook === undefined || choice !== undefined ? {} : { hook }),
+    ...(hook === undefined ? {} : { hook }),
   }
 }
 

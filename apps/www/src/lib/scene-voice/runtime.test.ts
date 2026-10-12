@@ -1,9 +1,11 @@
+import type { SceneNote } from "@some-ui/topik"
 import type { BlobShelf, Recording } from "@some-ui/voice-capture"
 import { ShelfFullError } from "@some-ui/voice-capture"
 import { describe, expect, it, vi } from "vitest"
 
-import type { SceneVoicePorts, StoredNote } from "@/lib/scene-voice/runtime"
-import { createSceneVoice, SCENE_NOTES_MAX } from "@/lib/scene-voice/runtime"
+import { SCENE_NOTES_MAX } from "@/lib/scene-voice/budget"
+import type { SceneVoicePorts } from "@/lib/scene-voice/runtime"
+import { createSceneVoice } from "@/lib/scene-voice/runtime"
 
 function recording(durationMs: number): Recording {
   return {
@@ -20,8 +22,8 @@ function recording(durationMs: number): Recording {
 
 function ports(
   overrides: Partial<SceneVoicePorts> = {},
-  listed: Array<StoredNote> = []
-): SceneVoicePorts & { listed: Array<StoredNote>; audio: BlobShelf } {
+  listed: Array<SceneNote> = []
+): SceneVoicePorts & { listed: Array<SceneNote>; audio: BlobShelf } {
   const audio: BlobShelf = {
     put: vi.fn(() => Promise.resolve()),
     get: () => Promise.resolve(null),
@@ -84,13 +86,25 @@ describe("createSceneVoice", () => {
     })
   })
 
-  it("lets notes go with their audio, so a new scene starts empty", async () => {
+  it("lets notes go with their audio, and the last take's word with them", async () => {
     const p = ports()
     const voice = createSceneVoice(p)
     await talk(voice)
     voice.remove(["n1"])
     expect(p.audio.remove).toHaveBeenCalledWith(["n1"])
-    expect(voice.getSnapshot().notes).toEqual([])
+    expect(voice.getSnapshot()).toMatchObject({ notes: [], said: null })
+  })
+
+  it("says the draft is full once the last note it holds is kept", async () => {
+    const kept = Array.from({ length: SCENE_NOTES_MAX - 1 }, (_, index) => ({
+      id: `kept-${index}`,
+      durationMs: 1_000,
+      mimeType: "audio/webm",
+    }))
+    const voice = createSceneVoice(ports({}, kept))
+    await talk(voice)
+    expect(voice.getSnapshot().full).toBe(true)
+    expect(voice.getSnapshot().said).toContain("let one go")
   })
 
   it("opens on the draft already kept, and starts no take once it is full", () => {
