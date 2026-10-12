@@ -1,0 +1,644 @@
+/* The playoff-delta story stage: the 9:16 frame, its slide reveals, the symbol
+   algebra's paint and motions, and the paths grid. Authored CSS rather than
+   utilities because most of it is SVG paint and keyframes; layout and type
+   stay in the components' utilities.
+
+   Sizes are container units of the frame (cqw), so a slide reads the same in a
+   400px preview and at 1080x1920 for recording. Every colour is a semantic
+   token (or a theme's --chart-N); this file names no colour literal. Every
+   motion is off under prefers-reduced-motion at the bottom. */
+
+@layer utilities {
+  /* ------------------------------------------------------------ frame */
+  .pd-frame {
+    container-type: size;
+    aspect-ratio: 9 / 16;
+    overflow: hidden;
+    position: relative;
+    user-select: none;
+  }
+
+  .pd-frame--fill {
+    aspect-ratio: auto;
+    height: 100dvh;
+    width: 100vw;
+  }
+
+  .pd-slide {
+    display: flex;
+    flex-direction: column;
+    gap: 3.6cqw;
+    inset: 0;
+    padding: 13cqw 6cqw 6cqw;
+    position: absolute;
+  }
+
+  .pd-segs {
+    display: flex;
+    gap: 1cqw;
+    left: 3.5cqw;
+    position: absolute;
+    right: 3.5cqw;
+    top: 3.5cqw;
+    z-index: 2;
+  }
+
+  .pd-seg {
+    background: var(--muted);
+    border-radius: 1cqw;
+    flex: 1;
+    height: 0.8cqw;
+    overflow: hidden;
+  }
+
+  .pd-seg > i {
+    background: var(--foreground);
+    display: block;
+    height: 100%;
+    opacity: 0.6;
+    width: 0;
+  }
+
+  .pd-seg--done > i {
+    width: 100%;
+  }
+
+  .pd-seg--now > i {
+    width: 100%;
+  }
+
+  .pd-seg--run > i {
+    animation: pd-fill var(--pd-hold, 4.5s) linear forwards;
+  }
+
+  .pd-meta {
+    color: var(--muted-foreground);
+    display: flex;
+    font-family: var(--font-mono);
+    font-size: 2.8cqw;
+    justify-content: space-between;
+    left: 4cqw;
+    letter-spacing: 0.08em;
+    position: absolute;
+    right: 4cqw;
+    top: 7cqw;
+    z-index: 2;
+  }
+
+  /* ------------------------------------------------------------ type */
+  .pd-kicker {
+    color: var(--muted-foreground);
+    font-family: var(--font-mono);
+    font-size: 3cqw;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  .pd-q {
+    font-size: 8cqw;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    line-height: 1.12;
+    text-wrap: balance;
+  }
+
+  .pd-big {
+    font-size: 13cqw;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    line-height: 1;
+  }
+
+  .pd-say {
+    font-size: 4.4cqw;
+    line-height: 1.35;
+  }
+
+  .pd-small {
+    font-size: 3.4cqw;
+  }
+
+  .pd-mono {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* A reveal: rises in after --d; at rest it is visible. */
+  .pd-in {
+    animation: pd-rise 0.45s var(--d, 0s) ease-out both;
+  }
+
+  /* ------------------------------------------------------------ symbols */
+  .pd-sym {
+    --tone: var(--foreground);
+    overflow: visible;
+  }
+
+  .pd-hue-1 {
+    --tone: var(--chart-1);
+  }
+
+  .pd-hue-2 {
+    --tone: var(--chart-2);
+  }
+
+  .pd-hue-3 {
+    --tone: var(--chart-3);
+  }
+
+  .pd-hue-4 {
+    --tone: var(--chart-4);
+  }
+
+  .pd-hue-5 {
+    --tone: var(--chart-5);
+  }
+
+  .pd-tile {
+    background: color-mix(in oklab, var(--tone) 16%, transparent);
+    border-radius: calc(var(--radius) - 2px);
+  }
+
+  .pd-sym * {
+    transform-box: fill-box;
+    transform-origin: center;
+  }
+
+  .pd-p-you {
+    fill: var(--foreground);
+  }
+
+  .pd-p-team {
+    fill: var(--card);
+    stroke: var(--tone);
+    stroke-width: 2.4;
+  }
+
+  .pd-p-out {
+    fill: none;
+    stroke: var(--muted-foreground);
+    stroke-dasharray: 3 3;
+    stroke-width: 2;
+  }
+
+  .pd-p-ring {
+    fill: none;
+    opacity: 0.7;
+    stroke: var(--tone);
+    stroke-width: 1.4;
+  }
+
+  .pd-p-division {
+    fill: none;
+    stroke: var(--muted-foreground);
+    stroke-width: 1.6;
+  }
+
+  .pd-p-conference {
+    fill: none;
+    stroke: var(--muted-foreground);
+    stroke-dasharray: 5 4;
+    stroke-width: 1.4;
+  }
+
+  .pd-p-win {
+    fill: var(--tone);
+  }
+
+  .pd-p-line {
+    stroke: var(--muted-foreground);
+    stroke-dasharray: 2 3;
+    stroke-width: 1;
+  }
+
+  /* One pass where a symbol is used; forever where it is introduced. */
+  .pd-sym [class*="pd-m-"] {
+    animation-delay: calc(var(--d, 0s) + 0.3s);
+    animation-duration: 2.4s;
+    animation-fill-mode: both;
+    animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .pd-sym--loop [class*="pd-m-"] {
+    animation-delay: 0s;
+    animation-duration: 3.2s;
+    animation-iteration-count: infinite;
+  }
+
+  .pd-m-to-you {
+    animation-name: pd-to-you;
+  }
+
+  .pd-m-pulse {
+    animation-name: pd-pulse;
+  }
+
+  .pd-m-lose {
+    animation-name: pd-lose;
+  }
+
+  .pd-m-drop {
+    animation-name: pd-drop;
+  }
+
+  .pd-m-fly-out {
+    animation-name: pd-fly-out;
+  }
+
+  .pd-m-fall {
+    animation-name: pd-fall;
+  }
+
+  .pd-m-export {
+    animation-name: pd-export;
+  }
+
+  .pd-m-waste {
+    animation-name: pd-waste;
+  }
+
+  .pd-m-bounce {
+    animation-name: pd-bounce;
+  }
+
+  /* ------------------------------------------------------------ results */
+  .pd-chip {
+    animation: pd-rise 0.35s var(--d, 0s) ease-out both;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    color: var(--muted-foreground);
+    display: inline-flex;
+    font-size: 3.2cqw;
+    gap: 1.2cqw;
+    padding: 0.7cqw 2cqw;
+  }
+
+  .pd-chip b {
+    color: var(--foreground);
+  }
+
+  .pd-chip--hit {
+    background: color-mix(in oklab, var(--success) 12%, transparent);
+    border-color: color-mix(in oklab, var(--success) 60%, transparent);
+  }
+
+  .pd-chip--miss {
+    background: color-mix(in oklab, var(--destructive) 9%, transparent);
+    border-color: color-mix(in oklab, var(--destructive) 55%, transparent);
+  }
+
+  .pd-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    display: flex;
+    flex-direction: column;
+    gap: 2cqw;
+    padding: 2.6cqw 3cqw;
+  }
+
+  .pd-card--all {
+    border-color: color-mix(in oklab, var(--success) 55%, transparent);
+  }
+
+  .pd-card--zero {
+    border-color: color-mix(in oklab, var(--destructive) 45%, transparent);
+  }
+
+  .pd-card--none {
+    border-style: dashed;
+    opacity: 0.6;
+  }
+
+  /* ------------------------------------------------------------ paths grid */
+  .pd-grid {
+    align-items: center;
+    display: grid;
+    gap: 1.3cqw;
+    grid-template-columns: auto repeat(7, minmax(0, 1fr));
+    position: relative;
+  }
+
+  .pd-cell {
+    aspect-ratio: 1;
+    border-radius: calc(var(--radius) - 4px);
+    box-shadow: inset 0 0 0 1px var(--border);
+    display: block;
+    position: relative;
+  }
+
+  .pd-cell--open {
+    animation: pd-pop 0.35s var(--d, 0s) both;
+    background: var(--success);
+    box-shadow: none;
+  }
+
+  .pd-cell--opened {
+    animation: pd-bloom 0.9s calc(var(--d, 0s) + 0.6s) both;
+    background: var(--success);
+    box-shadow: 0 0 0 0.5cqw
+      color-mix(in oklab, var(--success) 45%, transparent);
+  }
+
+  .pd-cell--pruned {
+    animation: pd-prune 1s calc(var(--d, 0s) + 0.5s) both;
+  }
+
+  .pd-cell--pruned::after {
+    animation: pd-show 0.3s calc(var(--d, 0s) + 1.1s) both;
+    background: linear-gradient(
+      45deg,
+      transparent 45%,
+      var(--destructive) 45%,
+      var(--destructive) 55%,
+      transparent 55%
+    );
+    content: "";
+    inset: 22%;
+    position: absolute;
+  }
+
+  .pd-grid--absorbed .pd-cell {
+    animation: none;
+    background: transparent;
+    opacity: 0.4;
+  }
+
+  .pd-grid--absorbed .pd-cell--pruned {
+    opacity: 1;
+  }
+
+  /* ------------------------------------------------------------ bars */
+  .pd-bar {
+    background: var(--muted);
+    border-radius: 1cqw;
+    height: 2cqw;
+    overflow: hidden;
+  }
+
+  .pd-bar > i {
+    animation: pd-grow 0.8s var(--d, 0s) cubic-bezier(0.2, 0.8, 0.2, 1) both;
+    background: var(--success);
+    display: block;
+    height: 100%;
+    transform-origin: left;
+  }
+
+  .pd-bar--neutral > i {
+    background: var(--muted-foreground);
+  }
+
+  /* ------------------------------------------------------------ keyframes */
+  @keyframes pd-fill {
+    from {
+      width: 0;
+    }
+
+    to {
+      width: 100%;
+    }
+  }
+
+  @keyframes pd-rise {
+    from {
+      opacity: 0;
+      transform: translateY(1.5cqw);
+    }
+
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  @keyframes pd-pop {
+    from {
+      opacity: 0;
+      transform: scale(0.3);
+    }
+
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  @keyframes pd-bloom {
+    0% {
+      opacity: 0;
+      transform: scale(0.2);
+    }
+
+    60% {
+      opacity: 1;
+      transform: scale(1.15);
+    }
+
+    100% {
+      transform: none;
+    }
+  }
+
+  @keyframes pd-prune {
+    0% {
+      background: var(--success);
+    }
+
+    60% {
+      background: color-mix(in oklab, var(--destructive) 70%, transparent);
+    }
+
+    100% {
+      background: transparent;
+    }
+  }
+
+  @keyframes pd-show {
+    from {
+      opacity: 0;
+    }
+
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes pd-grow {
+    from {
+      transform: scaleX(0);
+    }
+
+    to {
+      transform: none;
+    }
+  }
+
+  @keyframes pd-to-you {
+    0%,
+    15% {
+      opacity: 0;
+      transform: none;
+    }
+
+    25% {
+      opacity: 1;
+    }
+
+    70%,
+    100% {
+      opacity: 1;
+      transform: translateX(-28px);
+    }
+  }
+
+  @keyframes pd-pulse {
+    0%,
+    65% {
+      transform: none;
+    }
+
+    78% {
+      transform: scale(1.35);
+    }
+
+    90%,
+    100% {
+      transform: none;
+    }
+  }
+
+  @keyframes pd-lose {
+    0%,
+    30% {
+      opacity: 1;
+    }
+
+    70%,
+    100% {
+      opacity: 0.3;
+    }
+  }
+
+  @keyframes pd-drop {
+    0%,
+    20% {
+      opacity: 1;
+      transform: none;
+    }
+
+    70%,
+    100% {
+      opacity: 0.3;
+      transform: translateY(16px);
+    }
+  }
+
+  @keyframes pd-fly-out {
+    0%,
+    20% {
+      opacity: 0;
+      transform: none;
+    }
+
+    30% {
+      opacity: 1;
+    }
+
+    80% {
+      opacity: 1;
+      transform: translate(26px, -30px);
+    }
+
+    100% {
+      opacity: 0;
+      transform: translate(26px, -30px);
+    }
+  }
+
+  @keyframes pd-fall {
+    0%,
+    20% {
+      opacity: 1;
+      transform: none;
+    }
+
+    70%,
+    100% {
+      opacity: 0.45;
+      transform: translateY(30px);
+    }
+  }
+
+  @keyframes pd-export {
+    0%,
+    15% {
+      opacity: 0;
+      transform: none;
+    }
+
+    25% {
+      opacity: 1;
+    }
+
+    75%,
+    100% {
+      opacity: 1;
+      transform: translateX(32px);
+    }
+  }
+
+  @keyframes pd-waste {
+    0%,
+    15% {
+      opacity: 0;
+      transform: none;
+    }
+
+    25% {
+      opacity: 1;
+    }
+
+    65% {
+      opacity: 1;
+      transform: translateX(-28px);
+    }
+
+    100% {
+      opacity: 0;
+      transform: translateX(-28px) scale(0.2);
+    }
+  }
+
+  @keyframes pd-bounce {
+    0% {
+      opacity: 0;
+      transform: none;
+    }
+
+    15% {
+      opacity: 1;
+    }
+
+    35% {
+      transform: translate(-12px, 16px);
+    }
+
+    55% {
+      transform: translate(12px, 10px);
+    }
+
+    75%,
+    100% {
+      transform: translate(12px, 16px);
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pd-frame *,
+  .pd-frame *::after {
+    animation-delay: 0s !important;
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}

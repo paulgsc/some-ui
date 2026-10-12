@@ -1,0 +1,20 @@
+{
+  "extends": "@some-ui/tsconfig/rollupconfig.json",
+  "compilerOptions": {
+    "declarationDir": "./",
+    "rootDir": ".",
+    "outDir": "./dist",
+    "paths": {
+      "@playoff-delta/*": ["./src/*"]
+    }
+  },
+  "include": [
+    "src",
+    "src/**/*.json",
+    "scripts",
+    "vite.config.ts",
+    "vitest.config.ts",
+    "vitest.setup.ts"
+  ],
+  "exclude": ["node_modules", "build", "dist"]
+}

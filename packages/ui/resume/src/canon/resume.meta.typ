@@ -331,7 +331,7 @@ backs should be cut, not kept and re-justified.
 
 == Counts
 
-*43 workspace packages, 5 browser extensions* --- counted 2026-10-11 by
+*44 workspace packages, 5 browser extensions* --- counted 2026-10-12 by
 `scripts/check-claims.mjs`, which walks the globs in `pnpm-workspace.yaml`
 (`packages/ui/*`, `apps/*`, `docs/canon`, `extensions/**`, `packages/*`,
 `crates/*`) for a `package.json`, the same method `pnpm -r list --depth -1`
@@ -343,7 +343,10 @@ catches build scripts): `some-censor`, `some-drama`, `some-filter`,
 `filter-classifier`, `docs`, and `scripts` are excluded — shared code and a
 test corpus, not shipped extensions.
 
-The package count is 42 -> 43 on 2026-10-11, when `packages/voice-capture`
+The package count is 43 -> 44 on 2026-10-12, when `packages/ui/playoff-delta`
+(`@some-ui/playoff-delta`, the weekly vlog's story stage, a web-only
+recording surface over a JSON contract) landed. Before that it was
+42 -> 43 on 2026-10-11, when `packages/voice-capture`
 (`@some-ui/voice-capture`, the phone's microphone recorder moved out of
 `packages/ui/soundbites` so voice reflections could share it) landed. Before
 that it was 41 -> 42 on 2026-10-08, when `packages/makjang`

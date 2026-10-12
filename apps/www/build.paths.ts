@@ -277,6 +277,7 @@ export const paths: PathRules<Profile> = definePaths<Profile>({
       "index.tsx*",
       "mission.tsx*",
       "extensions.tsx*",
+      "playoff-delta.tsx*",
       "_dashboard/app.tsx*",
       "_dashboard/jobs.tsx*",
       "_dashboard/profile.tsx*",

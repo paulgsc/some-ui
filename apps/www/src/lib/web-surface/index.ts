@@ -7,7 +7,7 @@ import { hasAudience } from "@/lib/build-profile"
 /**
  * The web surface's door (`doors` in build.profiles.ts): the one place
  * outside a gated route that may import a "web"-audience workspace, today
- * `@some-ui/honeycomb`. What only the web has reaches shared code (the
+ * `@some-ui/honeycomb` and `@some-ui/playoff-delta`. What only the web has reaches shared code (the
  * session player, the extensions page) through here, and the Android app's
  * build gets nothing.
  *
@@ -43,4 +43,21 @@ export const ExtensionsComb: ComponentType<{ mark?: ReactNode }> =
   import.meta.env.VITE_DEVICE_BACKEND !== "true" && hasAudience("web")
     ? lazyWithPreload(() => import("@some-ui/honeycomb"), "ExtensionsComb")
         .Component
+    : Nothing
+
+/**
+ * The Playoff Delta story stage (a desktop recording stage for the weekly
+ * vlog); nothing where the build has no web surface.
+ */
+export const PlayoffDeltaPage: ComponentType<{
+  week?: number
+  slide?: number
+  record?: boolean
+  onWeekChange?: (week: number) => void
+}> =
+  import.meta.env.VITE_DEVICE_BACKEND !== "true" && hasAudience("web")
+    ? lazyWithPreload(
+        () => import("@some-ui/playoff-delta"),
+        "PlayoffDeltaPage"
+      ).Component
     : Nothing
