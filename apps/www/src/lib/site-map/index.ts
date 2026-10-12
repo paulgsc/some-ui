@@ -33,6 +33,12 @@ export type Destination = {
 
 export type DestinationGroup = "home-network" | "showcase"
 
+/** Every group's heading; a new group does not typecheck without one. */
+export const GROUP_TITLE: Readonly<Record<DestinationGroup, string>> = {
+  "home-network": "Home network",
+  showcase: "Around the site",
+}
+
 const DESTINATIONS: ReadonlyArray<Destination> = [
   {
     to: "/lessons",

@@ -1,5 +1,6 @@
 import type { JSX } from "react"
 import { BrandMark, Card, CardContent } from "@some-ui/shared"
+import type { Audience } from "@some-ui/vite-config/audience"
 import { createFileRoute, Link } from "@tanstack/react-router"
 import { ArrowRight, FileText, Puzzle, Sparkles, Trophy } from "lucide-react"
 
@@ -20,8 +21,8 @@ type Destination = {
   icon: typeof Sparkles
   cta: string
   href: "/app" | "/resume" | "/extensions" | "/playoff-delta"
-  /** How the intro names it, in a list of what the site hosts. */
-  phrase: string
+  /** The audience whose build serves it. */
+  audience: Audience
 }
 
 const ALL_DESTINATIONS: ReadonlyArray<Destination> = [
@@ -32,7 +33,7 @@ const ALL_DESTINATIONS: ReadonlyArray<Destination> = [
     icon: Sparkles,
     cta: "Open the app",
     href: "/app",
-    phrase: "an adaptive study app",
+    audience: "public",
   },
   {
     title: "Browser extensions",
@@ -41,7 +42,7 @@ const ALL_DESTINATIONS: ReadonlyArray<Destination> = [
     icon: Puzzle,
     cta: "See the five",
     href: "/extensions",
-    phrase: "a set of browser extensions",
+    audience: "public",
   },
   {
     title: "Playoff Delta",
@@ -50,7 +51,7 @@ const ALL_DESTINATIONS: ReadonlyArray<Destination> = [
     icon: Trophy,
     cta: "Watch a week",
     href: "/playoff-delta",
-    phrase: "a weekly playoff story",
+    audience: "web",
   },
   {
     title: "Résumé & background",
@@ -58,30 +59,11 @@ const ALL_DESTINATIONS: ReadonlyArray<Destination> = [
     icon: FileText,
     cta: "View résumé",
     href: "/resume",
-    phrase: "a résumé",
+    audience: "public",
   },
 ]
 
-/** The stage is a "web" workspace, so only a web build offers it. */
-const DESTINATIONS = ALL_DESTINATIONS.filter(
-  (d) => d.href !== "/playoff-delta" || hasAudience("web")
-)
-
-const COUNT_WORD: Readonly<Record<number, string>> = { 3: "Three", 4: "Four" }
-
-/** Complete class strings, so a content scan sees both. */
-const GRID: Readonly<Record<number, string>> = {
-  3: "grid gap-4 md:grid-cols-3",
-  4: "grid gap-4 sm:grid-cols-2",
-}
-
-/** "a, b, and c". */
-function listOf(phrases: ReadonlyArray<string>): string {
-  const last = phrases.at(-1) ?? ""
-  return phrases.length < 2
-    ? last
-    : `${phrases.slice(0, -1).join(", ")}, and ${last}`
-}
+const DESTINATIONS = ALL_DESTINATIONS.filter((d) => hasAudience(d.audience))
 
 const DestinationCard = (destination: Destination): JSX.Element => {
   const { title, description, icon: Icon, cta, href } = destination
@@ -119,12 +101,11 @@ const Landing = (): JSX.Element => (
           Some UI
         </p>
         <h1 className="text-gradient-heading text-3xl font-bold tracking-tight sm:text-4xl">
-          {COUNT_WORD[DESTINATIONS.length] ?? DESTINATIONS.length} projects, one
-          workspace
+          A few projects, one workspace
         </h1>
         <p className="text-muted-foreground mx-auto max-w-xl text-balance">
-          This site hosts {listOf(DESTINATIONS.map((d) => d.phrase))} - built
-          and deployed from a single monorepo. Pick a destination below.
+          Everything below is built and deployed from a single monorepo. Pick a
+          destination.
         </p>
         {/* /mission answers why any of it exists: a text link, so it doesn't
             compete with the destinations. */}
@@ -136,7 +117,7 @@ const Landing = (): JSX.Element => (
           <ArrowRight className="size-3.5" aria-hidden />
         </Link>
       </div>
-      <div className={GRID[DESTINATIONS.length] ?? GRID[3]}>
+      <div className="grid gap-4 sm:grid-cols-2">
         {DESTINATIONS.map((destination) => (
           <DestinationCard key={destination.title} {...destination} />
         ))}

@@ -189,12 +189,7 @@ const DashboardLayout = (): JSX.Element => {
             {/* Lines written lately (`lib/loc-report`); nothing in a build
                 without a snapshot. Before the Settings link `ml-auto` pins. */}
             <LocIndicator />
-            {/* The pages the sidebar does not hold, at the far end. */}
-            {!MOBILE_APP && (
-              <div className="ml-auto">
-                <SiteLauncher />
-              </div>
-            )}
+            <SiteLauncher />
             {MOBILE_APP && (
               <Link
                 to="/settings"

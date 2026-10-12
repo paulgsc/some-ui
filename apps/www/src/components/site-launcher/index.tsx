@@ -10,12 +10,7 @@ import { Link } from "@tanstack/react-router"
 import { LayoutGrid, Lock } from "lucide-react"
 
 import { useAuthority } from "@/lib/authority"
-import { destinationsHere, type DestinationGroup } from "@/lib/site-map"
-
-const GROUPS: ReadonlyArray<{ key: DestinationGroup; title: string }> = [
-  { key: "home-network", title: "Home network" },
-  { key: "showcase", title: "Around the site" },
-]
+import { destinationsHere, GROUP_TITLE } from "@/lib/site-map"
 
 /**
  * The way to the pages the sidebar does not hold (`lib/site-map`): a grid
@@ -23,6 +18,9 @@ const GROUPS: ReadonlyArray<{ key: DestinationGroup; title: string }> = [
  * dashboard page without lengthening the navigation. A LAN tool says when
  * it needs a passkey first, since its route sends a signed-out visit to sign
  * in. Nothing renders where the build serves none of them.
+ *
+ *   A3  it links only to `destinationsHere()`, which drops a page whose
+ *       audience the build lacks (packages/some-vite-config/AUDIENCES.md)
  */
 export const SiteLauncher = (): JSX.Element | null => {
   const [open, setOpen] = useState(false)
@@ -30,21 +28,23 @@ export const SiteLauncher = (): JSX.Element | null => {
   const destinations = destinationsHere()
   if (destinations.length === 0) return null
 
-  const groups = GROUPS.map((group) => ({
-    ...group,
-    items: destinations.filter((d) => d.group === group.key),
-  })).filter((group) => group.items.length > 0)
+  // Groups in the order their first destination comes.
+  const groups = [...new Set(destinations.map((d) => d.group))].map((key) => ({
+    key,
+    title: GROUP_TITLE[key],
+    items: destinations.filter((d) => d.group === key),
+  }))
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button variant="ghost" size="sm" className="gap-2">
+        <Button variant="ghost" size="sm" className="ml-auto gap-2">
           <LayoutGrid className="size-4" aria-hidden />
-          <span className="hidden sm:inline">Explore</span>
-          <span className="sr-only sm:hidden">Explore the site</span>
+          <span className="sr-only sm:not-sr-only">Explore</span>
         </Button>
       </PopoverTrigger>
       <PopoverContent
+        aria-label="Explore the site"
         align="end"
         className="w-[min(24rem,calc(100vw-2rem))] space-y-4 p-3"
       >
@@ -72,7 +72,13 @@ export const SiteLauncher = (): JSX.Element | null => {
                       onClick={() => setOpen(false)}
                       className="hover:bg-accent hover:border-primary/40 focus-visible:ring-ring flex h-full flex-col gap-2 rounded-lg border p-3 transition-colors focus-visible:ring-2 focus-visible:outline-none"
                     >
-                      <span className="flex items-center justify-between">
+                      {/* Read in DOM order: name, blurb, then the passkey
+                          note; the icon row is drawn first. */}
+                      <span className="text-sm font-medium">{d.title}</span>
+                      <span className="text-muted-foreground text-xs leading-snug">
+                        {d.blurb}
+                      </span>
+                      <span className="order-first flex items-center justify-between">
                         <span className="bg-primary/10 text-primary flex size-8 items-center justify-center rounded-md">
                           <Icon className="size-4" aria-hidden />
                         </span>
@@ -80,12 +86,9 @@ export const SiteLauncher = (): JSX.Element | null => {
                           <span className="text-muted-foreground inline-flex items-center gap-1 text-[11px]">
                             <Lock className="size-3" aria-hidden />
                             Passkey
+                            <span className="sr-only"> needed to open</span>
                           </span>
                         )}
-                      </span>
-                      <span className="text-sm font-medium">{d.title}</span>
-                      <span className="text-muted-foreground text-xs leading-snug">
-                        {d.blurb}
                       </span>
                     </Link>
                   </li>
