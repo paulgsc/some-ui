@@ -1034,11 +1034,11 @@ importers:
         specifier: 8.5.23
         version: 8.5.23
       tailwindcss:
-        specifier: 4.1.12
-        version: 4.1.12
+        specifier: 4.3.3
+        version: 4.3.3
       tailwindcss-animate:
         specifier: 1.0.7
-        version: 1.0.7(tailwindcss@4.1.12)
+        version: 1.0.7(tailwindcss@4.3.3)
     devDependencies:
       '@some-ui/tsconfig':
         specifier: workspace:*
@@ -15380,9 +15380,9 @@ snapshots:
 
   tailwind-merge@3.6.0: {}
 
-  tailwindcss-animate@1.0.7(tailwindcss@4.1.12):
+  tailwindcss-animate@1.0.7(tailwindcss@4.3.3):
     dependencies:
-      tailwindcss: 4.1.12
+      tailwindcss: 4.3.3
 
   tailwindcss@4.1.12: {}
 
