@@ -13,7 +13,8 @@ import { useAuthority } from "@/lib/authority"
 import { destinationsHere, GROUP_TITLE } from "@/lib/site-map"
 
 /**
- * The way to the pages the sidebar does not hold (`lib/site-map`): a grid
+ * The way to the pages the sidebar does not hold (`lib/site-map`'s
+ * `launcher` entries): a grid
  * of tiles behind one header button, so they are a click away from every
  * dashboard page without lengthening the navigation. A LAN tool says when
  * it needs a passkey first, since its route sends a signed-out visit to sign
@@ -25,7 +26,9 @@ import { destinationsHere, GROUP_TITLE } from "@/lib/site-map"
 export const SiteLauncher = (): JSX.Element | null => {
   const [open, setOpen] = useState(false)
   const { kind } = useAuthority()
-  const destinations = destinationsHere()
+  const destinations = destinationsHere().flatMap((d) =>
+    d.launcher ? [{ ...d, group: d.launcher }] : []
+  )
   if (destinations.length === 0) return null
 
   // Groups in the order their first destination comes.

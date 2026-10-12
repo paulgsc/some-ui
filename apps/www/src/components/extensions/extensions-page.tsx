@@ -4,7 +4,7 @@ import { BrandMark, MochiShapes } from "@some-ui/shared"
 import { Link } from "@tanstack/react-router"
 import { ArrowLeft } from "lucide-react"
 
-import { hasAudience } from "@/lib/build-profile"
+import { destinationsHere } from "@/lib/site-map"
 import { ExtensionsComb } from "@/lib/web-surface"
 import { ThemeSwitcher } from "@/components/theme-switcher"
 
@@ -19,6 +19,11 @@ import { ThemeSwitcher } from "@/components/theme-switcher"
 
 const CHIP =
   "text-muted-foreground hover:text-foreground bg-background/70 pointer-events-auto inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-sm backdrop-blur transition-colors"
+
+/** The build serves the stage (`lib/site-map`), so the front door names it. */
+const OFFERS_PLAYOFF_DELTA = destinationsHere().some(
+  (d) => d.to === "/playoff-delta"
+)
 
 type ExtensionsPageProps = {
   /**
@@ -55,7 +60,7 @@ export const ExtensionsPage = ({
       <div className="pointer-events-auto ml-auto flex flex-wrap items-center justify-end gap-1.5">
         {chrome === "front" && (
           <>
-            {hasAudience("web") && (
+            {OFFERS_PLAYOFF_DELTA && (
               <Link to="/playoff-delta" className={CHIP}>
                 Playoff Delta
               </Link>

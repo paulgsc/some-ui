@@ -1,74 +1,32 @@
 import type { JSX } from "react"
 import { BrandMark, Card, CardContent } from "@some-ui/shared"
-import type { Audience } from "@some-ui/vite-config/audience"
 import { createFileRoute, Link } from "@tanstack/react-router"
-import { ArrowRight, FileText, Puzzle, Sparkles, Trophy } from "lucide-react"
+import { ArrowRight } from "lucide-react"
 
 import { useAuthoritySnapshot } from "@/lib/authority"
-import { hasAudience } from "@/lib/build-profile"
+import { destinationsHere, type Destination } from "@/lib/site-map"
 import { ExtensionsPage } from "@/components/extensions/extensions-page"
 import { ThemeSwitcher } from "@/components/theme-switcher"
 
 /**
  * The signed-in visitor's "/": a splash pointing at what this origin hosts
- * (.github/workflows/pages.yml): the app, /extensions, /resume and, in a web
- * build, /playoff-delta. A visitor with no session gets the extensions tour
- * instead (see `Root`).
+ * (.github/workflows/pages.yml): the catalog's `landing` entries
+ * (`lib/site-map`) this build serves. A visitor with no session gets the
+ * extensions tour instead (see `Root`).
  */
-type Destination = {
-  title: string
-  description: string
-  icon: typeof Sparkles
-  cta: string
-  href: "/app" | "/resume" | "/extensions" | "/playoff-delta"
-  /** The audience whose build serves it. */
-  audience: Audience
-}
+const CARDS = destinationsHere().flatMap((d) =>
+  d.landing ? [{ ...d, cta: d.landing }] : []
+)
 
-const ALL_DESTINATIONS: ReadonlyArray<Destination> = [
-  {
-    title: "Adaptive learning sessions",
-    description:
-      "Compose and run focused study sessions - Hangul Honeycomb, TOPIK practice, and timed code-typing drills.",
-    icon: Sparkles,
-    cta: "Open the app",
-    href: "/app",
-    audience: "public",
-  },
-  {
-    title: "Browser extensions",
-    description:
-      "Five small tools for your browser - what each one does, how far along it is, and what it sends.",
-    icon: Puzzle,
-    cta: "See the five",
-    href: "/extensions",
-    audience: "public",
-  },
-  {
-    title: "Playoff Delta",
-    description:
-      "One NFL team's week as a story: how bad can they be, and still make the playoffs?",
-    icon: Trophy,
-    cta: "Watch a week",
-    href: "/playoff-delta",
-    audience: "web",
-  },
-  {
-    title: "Résumé & background",
-    description: "Paul Gathondu's résumé, previewable inline or as a PDF.",
-    icon: FileText,
-    cta: "View résumé",
-    href: "/resume",
-    audience: "public",
-  },
-]
-
-const DESTINATIONS = ALL_DESTINATIONS.filter((d) => hasAudience(d.audience))
-
-const DestinationCard = (destination: Destination): JSX.Element => {
-  const { title, description, icon: Icon, cta, href } = destination
+const DestinationCard = ({
+  title,
+  blurb,
+  icon: Icon,
+  cta,
+  to,
+}: Destination & { cta: string }): JSX.Element => {
   return (
-    <Link to={href} className="block h-full">
+    <Link to={to} className="block h-full">
       <Card className="hover:border-primary/50 group h-full transition-colors">
         <CardContent className="flex h-full flex-col gap-4 pt-[var(--card-p,1.5rem)]">
           <div className="bg-primary/10 flex size-11 items-center justify-center rounded-full">
@@ -76,7 +34,7 @@ const DestinationCard = (destination: Destination): JSX.Element => {
           </div>
           <div className="min-h-0 flex-1 space-y-1.5">
             <h2 className="font-semibold">{title}</h2>
-            <p className="text-muted-foreground text-sm">{description}</p>
+            <p className="text-muted-foreground text-sm">{blurb}</p>
           </div>
           <span className="text-primary inline-flex items-center gap-1 text-sm font-medium">
             {cta}
@@ -118,8 +76,8 @@ const Landing = (): JSX.Element => (
         </Link>
       </div>
       <div className="grid gap-4 sm:grid-cols-2">
-        {DESTINATIONS.map((destination) => (
-          <DestinationCard key={destination.title} {...destination} />
+        {CARDS.map((card) => (
+          <DestinationCard key={card.to} {...card} />
         ))}
       </div>
     </div>
