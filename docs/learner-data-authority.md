@@ -170,20 +170,18 @@ declared (checked by reading every call site and by the tests named).
 
 ### LA4: a corpus read carries no credentials
 
-- _Claim:_ a `createDataSource` for lessons, rounds, runs, vocab or the Playoff
-  Delta season passes `PUBLIC_READ` in its `fetchOptions`, so `credentials` is
-  `"omit"`.
-- _Falsified by:_ a hunk that adds a `createDataSource` in `apps/www/src/lib/*-content`,
-  `hangul-vocab` or `web-surface/playoff-delta` without `fetchOptions: PUBLIC_READ`
-  (or spreading it), or that changes `PUBLIC_READ.credentials`.
-- _Scope:_ `apps/www/src/lib/{topik-content,leetype-content,hangul-vocab}` and
-  `apps/www/src/lib/web-surface/playoff-delta`.
+- _Claim:_ a `createDataSource` for lessons, rounds, runs or vocab passes
+  `PUBLIC_READ` in its `fetchOptions`, so `credentials` is `"omit"`.
+- _Falsified by:_ a hunk that adds a `createDataSource` in `apps/www/src/lib/*-content`
+  or `hangul-vocab` without `fetchOptions: PUBLIC_READ` (or spreading it), or that
+  changes `PUBLIC_READ.credentials`.
+- _Scope:_ `apps/www/src/lib/{topik-content,leetype-content,hangul-vocab}`.
 - _Why not enforced:_ a test observes the wire for leetype
   (`leetype-content/index.test.ts`, "reads the corpus with no credentials"), and
   `lib/serving-privacy/__tests__/egress-choke-points.test.ts` parses `apps/www/src`
   and fails on a `createDataSource` call without `PUBLIC_READ`, and on a data source
-  missing from its list of four. What it cannot see is a corpus read made another
-  way (a package's own `fetch`), which is LA1's scope note.
+  outside the three named directories being unlisted. What it cannot see is a
+  corpus read made another way (a package's own `fetch`), which is LA1's scope note.
 
 ### LA5: the Pages build cannot reach another origin
 
