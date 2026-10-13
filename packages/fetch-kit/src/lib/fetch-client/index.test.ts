@@ -57,6 +57,18 @@ describe("content-type branching", () => {
     expect(result).toBe("hello")
   })
 
+  it("parses JSON served as text when asked to read it as JSON", async () => {
+    fetchMock.mockResolvedValue(textResponse('{"foo":"bar"}'))
+    const client = createFetchClient()
+
+    const result = await client.get<{ foo: string }>(
+      new URL("https://raw.test/data.json"),
+      { responseAs: "json" }
+    )
+
+    expect(result).toEqual({ foo: "bar" })
+  })
+
   it("falls back to blob for other content types", async () => {
     fetchMock.mockResolvedValue(blobResponse())
     const client = createFetchClient()
@@ -64,6 +76,29 @@ describe("content-type branching", () => {
     const result = await client.get(new URL("https://api.test/data"))
 
     expect(result).toBeInstanceOf(Blob)
+  })
+})
+
+describe("request headers", () => {
+  const sent = (): Record<string, string> => {
+    const init = fetchMock.mock.calls[0]?.[1]
+    // The client always builds headers as a plain record.
+    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+    return (init?.headers ?? {}) as Record<string, string>
+  }
+
+  it("sends no Content-Type on a request with no body, so a cross-origin GET needs no preflight", async () => {
+    fetchMock.mockResolvedValue(jsonResponse({}))
+    await createFetchClient().get(new URL("https://raw.test/data.json"))
+
+    expect(sent()).not.toHaveProperty("Content-Type")
+  })
+
+  it("still describes a JSON body", async () => {
+    fetchMock.mockResolvedValue(jsonResponse({}))
+    await createFetchClient().post(new URL("https://api.test/data"), { a: 1 })
+
+    expect(sent()["Content-Type"]).toBe("application/json")
   })
 })
 

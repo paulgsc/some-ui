@@ -137,7 +137,8 @@ const StoryWeekSchema = z.object({
   }),
 })
 
-const StorySeasonSchema = z.object({
+/** A whole season: the shape a feed must have. */
+export const StorySeasonSchema = z.object({
   version: z.literal(1),
   /** Shown on screen: "Invented season", "2025". */
   label: z.string(),

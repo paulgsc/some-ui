@@ -16,6 +16,12 @@ export type FetchOptions<TBody = unknown> = {
     delay: number
     backoffFactor?: number
   }
+  /**
+   * How to read the body. By default the response's `content-type` decides
+   * (JSON, text, else a blob); `"json"` parses it as JSON whatever it says,
+   * for hosts that serve a `.json` file as `text/plain` (GitHub's raw files).
+   */
+  responseAs?: "json"
 }
 
 export type FetchClient = {
@@ -112,12 +118,13 @@ export const createFetchClient = (
 
   async function processResponse<T>(
     response: Response,
-    schema?: z.ZodType<T>
+    schema?: z.ZodType<T>,
+    responseAs?: "json"
   ): Promise<T> {
     const contentType = response.headers.get("content-type")
     let data: unknown
 
-    if (contentType?.includes("application/json")) {
+    if (responseAs === "json" || contentType?.includes("application/json")) {
       data = await response.json()
     } else if (contentType?.includes("text/")) {
       data = await response.text()
@@ -158,7 +165,7 @@ export const createFetchClient = (
     schema?: z.ZodType<T>,
     retryCount = 0
   ): Promise<T> {
-    const { timeout, retry, ...restOptions } = fetchOptions
+    const { timeout, retry, responseAs, ...restOptions } = fetchOptions
 
     const controller = new AbortController()
     const timeoutId = setTimeout(
@@ -182,7 +189,11 @@ export const createFetchClient = (
 
       // Let the platform set Content-Type (and the multipart boundary) for
       // structured bodies; forcing application/json here would break them.
+      // With no body there is nothing to describe, and on a cross-origin GET
+      // the header alone would force a CORS preflight that a static host
+      // (GitHub's raw files) answers with an error.
       if (
+        body === undefined ||
         body instanceof FormData ||
         body instanceof URLSearchParams ||
         body instanceof Blob ||
@@ -198,7 +209,7 @@ export const createFetchClient = (
         body,
       })
 
-      return await processResponse(response, schema)
+      return await processResponse(response, schema, responseAs)
     } catch (error) {
       if (error instanceof ApiError) {
         throw error

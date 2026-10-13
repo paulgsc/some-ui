@@ -48,12 +48,13 @@ export const ExtensionsComb: ComponentType<{ mark?: ReactNode }> =
 
 /**
  * The Playoff Delta story stage (a desktop recording stage for the weekly
- * vlog); nothing where the build has no web surface.
+ * vlog), playing this season's real numbers (`./playoff-delta`); nothing
+ * where the build has no web surface.
  */
 export const PlayoffDeltaStage: ComponentType<ComponentProps<typeof Stage>> =
   import.meta.env.VITE_DEVICE_BACKEND !== "true" && hasAudience("web")
     ? lazyWithPreload(
-        () => import("@some-ui/playoff-delta"),
-        "PlayoffDeltaStage"
+        () => import("./playoff-delta/stage"),
+        "PlayoffDeltaLiveStage"
       ).Component
     : Nothing
