@@ -37,6 +37,8 @@ type MaterialListProps = {
   onSeed: (seed: Seed) => void
   /** A scene file's text, picked from storage; absent, not offered. */
   onSceneText?: (text: string) => void
+  /** Shown under the picker; absent, nothing. */
+  sceneFileHint?: string
   /** The feed is loading, or failed to load (`error`). */
   loading: boolean
   error: string | null
@@ -126,12 +128,15 @@ const Card = ({
  */
 const OpenScene = ({
   onText,
+  hint,
 }: {
   onText: (text: string) => void
+  hint?: string
 }): JSX.Element => {
   const { state, open } = useSceneFile()
   const name = useId()
   const about = useId()
+  const where = useId()
   return (
     <label className="bg-card border-border focus-within:ring-ring relative flex min-h-16 shrink-0 cursor-pointer items-center gap-3 rounded-2xl border p-4 text-left focus-within:ring-2">
       <FolderOpen className="text-primary size-6 shrink-0" />
@@ -155,12 +160,17 @@ const OpenScene = ({
               ? "Opening..."
               : "A drama your model or agent saved, from your drive or this phone."}
         </span>
+        {hint && (
+          <span id={where} className="text-muted-foreground block text-xs">
+            {hint}
+          </span>
+        )}
       </span>
       <input
         type="file"
         // Named by the title alone; the hint or the read's state describes it.
         aria-labelledby={name}
-        aria-describedby={about}
+        aria-describedby={hint ? `${about} ${where}` : about}
         className="sr-only"
         onChange={(event) => {
           const file = event.currentTarget.files?.[0]
@@ -230,6 +240,7 @@ export const MaterialList = ({
   onPlay,
   onSeed,
   onSceneText,
+  sceneFileHint,
   loading,
   error,
   onReload,
@@ -333,7 +344,7 @@ export const MaterialList = ({
       </section>
     )}
 
-    {onSceneText && <OpenScene onText={onSceneText} />}
+    {onSceneText && <OpenScene onText={onSceneText} hint={sceneFileHint} />}
 
     {dramas.length > 0 && (
       <section aria-label="Dramas" className="flex flex-col gap-2">

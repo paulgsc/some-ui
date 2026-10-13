@@ -31,6 +31,7 @@ export type SessionConfig = {
   treeFeed?: TreeFeed
   share?: FileShare
   sceneVoice?: SceneVoice
+  sceneFileHint?: string
 }
 
 const SessionConfigContext = createContext<SessionConfig | null>(null)

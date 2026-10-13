@@ -86,6 +86,11 @@ export type KoreanStudyPageProps = {
    */
   sceneVoice?: SceneVoice
   /**
+   * Where the learner's scene files wait, named by the host and shown on
+   * "Open a scene from storage"; absent, none is named.
+   */
+  sceneFileHint?: string
+  /**
    * Art direction. `inherit` — the default — renders in whatever theme the
    * host established, so the user's session theme reaches the applet.
    * `appearance="topik"` is the self-contained study surface: `.topik`
@@ -198,6 +203,7 @@ export const KoreanStudyPage = ({
   shelf,
   share,
   sceneVoice,
+  sceneFileHint,
   appearance = "inherit",
   surface = "auto",
   paused,
@@ -228,6 +234,7 @@ export const KoreanStudyPage = ({
       ...(shelf ? { shelf } : {}),
       ...(share ? { share } : {}),
       ...(sceneVoice ? { sceneVoice } : {}),
+      ...(sceneFileHint ? { sceneFileHint } : {}),
       ...(loadTreeManifest && loadTopik
         ? { treeFeed: createTreeFeed(loadTreeManifest, loadTopik) }
         : {}),
@@ -243,6 +250,7 @@ export const KoreanStudyPage = ({
       shelf,
       share,
       sceneVoice,
+      sceneFileHint,
     ]
   )
 

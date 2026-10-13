@@ -54,6 +54,7 @@ type RenderOptions = {
   treeFeed?: TreeFeed
   servedPoints?: ReturnType<typeof createServedPointStore>
   share?: FileShare
+  sceneFileHint?: string
 }
 
 function renderLesson({
@@ -68,6 +69,7 @@ function renderLesson({
   treeFeed,
   servedPoints = createServedPointStore(memoryStorage()),
   share,
+  sceneFileHint,
 }: RenderOptions = {}): void {
   const tree = (): JSX.Element => (
     <QueryClientProvider client={client}>
@@ -78,6 +80,7 @@ function renderLesson({
           speaker,
           ...(treeFeed ? { treeFeed } : {}),
           ...(share ? { share } : {}),
+          ...(sceneFileHint ? { sceneFileHint } : {}),
         }}
       >
         <HandheldLesson
@@ -443,6 +446,13 @@ describe("HandheldLesson", () => {
       })
       expect(reply).toHaveProperty("value", "not a drama")
       expect(screen.getByRole("alert")).toBeTruthy()
+    })
+
+    it("names where scene files wait on the picker, when the host says", async () => {
+      renderLesson({ sceneFileHint: "In Drive, look in Dramas › requests" })
+      expect(
+        await screen.findByLabelText(/Open a scene from storage/)
+      ).toHaveAccessibleDescription(/In Drive, look in Dramas › requests/)
     })
 
     it("offers the drama's sound in the header, off until turned on", async () => {

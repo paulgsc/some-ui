@@ -1,7 +1,8 @@
 /**
  * The owner's Drive filing, as a sidecar on the share sheet: when a share's
- * sheet opens, a toast names the Drive folder its files belong in, by the
- * Drive's own SOP (the Doc "README — Drive SOP"; `.claude/skills/drive-sop`).
+ * sheet opens, a toast names the Drive folder its files belong in, and
+ * `lookIn` names where a file the person picks back waits, by the Drive's own
+ * SOP (the Doc "README — Drive SOP"; `.claude/skills/drive-sop`).
  * It renames nothing: the files name each other (`context.json` its
  * soundbites, a drama prompt its voice notes, `takes.json` its takes), and
  * the SOP files them under the names the app gives.
@@ -15,6 +16,9 @@ import { toast } from "sonner"
 
 import type { ShareSidecar } from "@/lib/share-files"
 
+/** Where an agent answers a drama prompt, beside it. */
+const DRAMA_REQUESTS = "Dramas › requests"
+
 /**
  * Each share's folder, by the `dir` it shares from (`shareFiles`'s first
  * argument), given the local day it is shared; its test checks every `dir`.
@@ -27,7 +31,15 @@ export const DRIVE_FOLDERS: Readonly<
   // next export's files carry the same names.
   "agent-export": (day) => `Study ledger › study-context › ${day} (new folder)`,
   "journal-takes": () => "Build Journal › voice › takes",
-  "drama-prompt": () => "Dramas › requests",
+  "drama-prompt": () => DRAMA_REQUESTS,
+}
+
+/**
+ * Where each kind of file the person picks back waits, by the kind
+ * `lookIn` is asked for; its test checks every kind.
+ */
+export const DRIVE_LOOK_IN: Readonly<Partial<Record<string, string>>> = {
+  "drama-tree": DRAMA_REQUESTS,
 }
 
 /** Where `dir`'s files go in Drive when shared at `at`; none for an unfiled `dir`. */
@@ -63,6 +75,10 @@ export function driveFiling(
       if (folder === undefined) return
       const id = notice.show("In Drive, save to", folder)
       return () => notice.dismiss(id)
+    },
+    lookIn: (kind): string | undefined => {
+      const folder = DRIVE_LOOK_IN[kind]
+      return folder === undefined ? undefined : `In Drive, look in ${folder}`
     },
   }
 }

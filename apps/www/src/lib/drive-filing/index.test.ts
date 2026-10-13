@@ -3,22 +3,28 @@ import { join } from "node:path"
 import { fileURLToPath } from "node:url"
 import { describe, expect, it, vi } from "vitest"
 
-import { DRIVE_FOLDERS, driveFiling, driveFolder } from "@/lib/drive-filing"
+import {
+  DRIVE_FOLDERS,
+  DRIVE_LOOK_IN,
+  driveFiling,
+  driveFolder,
+} from "@/lib/drive-filing"
 
-/** Every `dir` www shares from: `shareFiles("<dir>"` in its source. */
-function sharedDirs(): Set<string> {
+/** The first argument of every `<call>("<arg>"` in www's source. */
+function callArgs(call: string): Set<string> {
   const src = fileURLToPath(new URL("../..", import.meta.url))
   const files = readdirSync(src, { recursive: true, encoding: "utf8" }).filter(
     (file) => /\.tsx?$/.test(file) && !/\.test\.tsx?$/.test(file)
   )
-  const dirs = new Set<string>()
+  const pattern = new RegExp(`\\b${call}\\(\\s*"([^"]+)"`, "g")
+  const args = new Set<string>()
   for (const file of files) {
     const text = readFileSync(join(src, file), "utf8")
-    for (const [, dir] of text.matchAll(/shareFiles\(\s*"([^"]+)"/g)) {
-      dirs.add(dir)
+    for (const [, arg] of text.matchAll(pattern)) {
+      args.add(arg)
     }
   }
-  return dirs
+  return args
 }
 
 describe("driveFolder", () => {
@@ -29,7 +35,11 @@ describe("driveFolder", () => {
   })
 
   it("names a folder for every share the app makes, and for nothing else", () => {
-    expect(new Set(Object.keys(DRIVE_FOLDERS))).toEqual(sharedDirs())
+    expect(new Set(Object.keys(DRIVE_FOLDERS))).toEqual(callArgs("shareFiles"))
+  })
+
+  it("names where to look for every kind the app asks about, and for nothing else", () => {
+    expect(new Set(Object.keys(DRIVE_LOOK_IN))).toEqual(callArgs("lookIn"))
   })
 })
 
@@ -49,5 +59,13 @@ describe("driveFiling", () => {
 
     expect(sidecar.opening("elsewhere")).toBeUndefined()
     expect(notice.show).toHaveBeenCalledOnce()
+  })
+
+  it("says where a picked file waits, and nothing for a kind it doesn't file", () => {
+    const sidecar = driveFiling()
+    expect(sidecar.lookIn?.("drama-tree")).toBe(
+      "In Drive, look in Dramas › requests"
+    )
+    expect(sidecar.lookIn?.("elsewhere")).toBeUndefined()
   })
 })

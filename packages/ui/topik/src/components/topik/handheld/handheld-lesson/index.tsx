@@ -101,8 +101,15 @@ export const HandheldLesson = ({
     seed?: Seed
     reply?: string
   } | null>(null)
-  const { speaker, shelf, treeFeed, metadataRepository, share, sceneVoice } =
-    useSessionConfig()
+  const {
+    speaker,
+    shelf,
+    treeFeed,
+    metadataRepository,
+    share,
+    sceneVoice,
+    sceneFileHint,
+  } = useSessionConfig()
   const draft = useSceneVoice(sceneVoice)
   const feed = useTreeFeed(treeFeed)
   // Keys are one namespace, so a tree the lessons' manifest also lists is a
@@ -351,6 +358,7 @@ export const HandheldLesson = ({
         onPlay={setServedKey}
         onSeed={(seed) => setGenerating({ seed })}
         onSceneText={openSceneText}
+        sceneFileHint={sceneFileHint}
         loading={!feed.isError && (feed.isLoading || lessons.isLoading)}
         error={feed.isError ? "Couldn't load the dramas." : null}
         onReload={() => void feed.refetch()}
