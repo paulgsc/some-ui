@@ -37,6 +37,8 @@ type MaterialListProps = {
   onSeed: (seed: Seed) => void
   /** A scene file's text, picked from storage; absent, not offered. */
   onSceneText?: (text: string) => void
+  /** Where those files wait, as the host names it (`SessionConfig`). */
+  sceneFileHint?: string
   /** The feed is loading, or failed to load (`error`). */
   loading: boolean
   error: string | null
@@ -126,8 +128,10 @@ const Card = ({
  */
 const OpenScene = ({
   onText,
+  hint,
 }: {
   onText: (text: string) => void
+  hint?: string
 }): JSX.Element => {
   const { state, open } = useSceneFile()
   const name = useId()
@@ -155,6 +159,9 @@ const OpenScene = ({
               ? "Opening..."
               : "A drama your model or agent saved, from your drive or this phone."}
         </span>
+        {hint && (
+          <span className="text-muted-foreground block text-xs">{hint}</span>
+        )}
       </span>
       <input
         type="file"
@@ -230,6 +237,7 @@ export const MaterialList = ({
   onPlay,
   onSeed,
   onSceneText,
+  sceneFileHint,
   loading,
   error,
   onReload,
@@ -333,7 +341,7 @@ export const MaterialList = ({
       </section>
     )}
 
-    {onSceneText && <OpenScene onText={onSceneText} />}
+    {onSceneText && <OpenScene onText={onSceneText} hint={sceneFileHint} />}
 
     {dramas.length > 0 && (
       <section aria-label="Dramas" className="flex flex-col gap-2">

@@ -63,16 +63,29 @@ type Files = ReadonlyArray<SharedFile>
 
 /**
  * Something the host hangs beside the share sheet, told when a share's sheet
- * opens; what `opening` returns runs once that sheet settles. It cannot change
- * the share, and one that throws is ignored. With none installed, shares are
- * the same.
+ * opens; what `opening` returns runs once that sheet settles. `lookIn` names
+ * where a kind of file the person picks back usually waits. It cannot change
+ * a share, and one that throws is ignored. With none installed, shares are
+ * the same and nothing is named.
  */
-export type ShareSidecar = { opening: (dir: string) => (() => void) | void }
+export type ShareSidecar = {
+  opening: (dir: string) => (() => void) | void
+  lookIn?: (kind: string) => string | undefined
+}
 
 let sidecar: ShareSidecar | undefined
 
 export function installShareSidecar(next: ShareSidecar | undefined): void {
   sidecar = next
+}
+
+/** Where the sidecar says files of `kind` wait; none without one. */
+export function lookIn(kind: string): string | undefined {
+  try {
+    return sidecar?.lookIn?.(kind)
+  } catch {
+    return undefined
+  }
 }
 
 /** Tells the sidecar `dir`'s sheet is opening; returns its settle, never throwing. */

@@ -30,6 +30,15 @@ export const DRIVE_FOLDERS: Readonly<
   "drama-prompt": () => "Dramas › requests",
 }
 
+/**
+ * Where each kind of file the person picks back waits, by the kind
+ * `lookIn` is asked for; its test checks every kind.
+ */
+export const DRIVE_LOOK_IN: Readonly<Partial<Record<string, string>>> = {
+  // An agent writes the drama beside its prompt (`drama-prompt` above).
+  "drama-tree": "Dramas › requests",
+}
+
 /** Where `dir`'s files go in Drive when shared at `at`; none for an unfiled `dir`. */
 export function driveFolder(dir: string, at: Date): string | undefined {
   return DRIVE_FOLDERS[dir]?.(dayOf(at))
@@ -63,6 +72,10 @@ export function driveFiling(
       if (folder === undefined) return
       const id = notice.show("In Drive, save to", folder)
       return () => notice.dismiss(id)
+    },
+    lookIn: (kind): string | undefined => {
+      const folder = DRIVE_LOOK_IN[kind]
+      return folder === undefined ? undefined : `In Drive, look in ${folder}`
     },
   }
 }

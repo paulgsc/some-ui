@@ -16,7 +16,7 @@ import {
 } from "@/lib/orchestrator"
 import { PANELS } from "@/lib/playable"
 import { phoneSceneVoice, shareDramaPrompt } from "@/lib/scene-voice"
-import { runsNatively } from "@/lib/share-files"
+import { lookIn, runsNatively } from "@/lib/share-files"
 import { createShelfClient } from "@/lib/shelf-client"
 import type { SessionRecord } from "@/lib/tenant"
 import {
@@ -128,6 +128,7 @@ export const SessionViewport = ({
           shelf: shelves?.topik,
           share: PHONE_SHARE,
           sceneVoice: PHONE_SCENE_VOICE,
+          sceneFileHint: ON_PHONE ? lookIn("drama-tree") : undefined,
           paused,
         },
         leetype: {

@@ -902,7 +902,9 @@ level and genre fold away under a line that says what they are.
 ### Pulling a scene back (MKJ-S10)
 
 - **Where:** "Open a scene from storage" on the start screen, beside the
-  cards.
+  cards. Under it, the card may name where the learner's scene files wait
+  (`sceneFileHint`, a plain string from the host). Topik knows no folder; the
+  Android app names the one its owner's Drive SOP keeps them in.
 - **How:** a plain `<input type="file">`. The Android app's WebView answers
   it with the system picker (`BridgeWebChromeClient.onShowFileChooser`), and
   the learner's drive appears there as a document provider. So there is no
