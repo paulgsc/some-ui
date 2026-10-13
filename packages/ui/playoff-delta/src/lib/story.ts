@@ -2,8 +2,9 @@
  * The data contract: one regular-season week, from one team's point of view,
  * already computed. This package only renders it. Whatever produces it (a
  * server engine, a weekly job) owns the math: the paths, the flips that moved
- * them, the rivals' worst cases. `parseStorySeason` is the one door data comes
- * in through, so a malformed feed fails here rather than mid-render.
+ * them, the rivals' worst cases. `StorySeasonSchema` is the one door data comes
+ * in through (`parseStorySeason` for bare data), so a malformed feed fails
+ * there rather than mid-render.
  *
  * Vocabulary:
  * - a "path" is a way into the playoffs: win x more games and get in as seed
@@ -137,7 +138,6 @@ const StoryWeekSchema = z.object({
   }),
 })
 
-/** A whole season: the shape a feed must have. */
 export const StorySeasonSchema = z.object({
   version: z.literal(1),
   /** Shown on screen: "Invented season", "2025". */

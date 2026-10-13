@@ -189,9 +189,8 @@ export const createFetchClient = (
 
       // Let the platform set Content-Type (and the multipart boundary) for
       // structured bodies; forcing application/json here would break them.
-      // With no body there is nothing to describe, and on a cross-origin GET
-      // the header alone would force a CORS preflight that a static host
-      // (GitHub's raw files) answers with an error.
+      // With no body there is nothing to describe, and the header alone
+      // makes a cross-origin GET preflight.
       if (
         body === undefined ||
         body instanceof FormData ||

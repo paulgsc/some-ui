@@ -13,8 +13,8 @@ left) close them for good.
 ## What this package is, and is not
 
 It renders. It does not compute. The paths, the results that moved them,
-and the rivals' worst cases come in as one JSON season, parsed through
-`parseStorySeason` (`src/lib/story.ts`, the contract), and a malformed
+and the rivals' worst cases come in as one JSON season, validated by
+`StorySeasonSchema` (`src/lib/story.ts`, the contract), and a malformed
 feed fails there rather than mid-render. Where no season is given, the stage
 plays `src/fixtures/invented-season.json`: an invented
 17-week season, generated with the same formula schedule, so the numbers are
