@@ -37,6 +37,8 @@ export type UseAsyncIntentResult<TVariables, TData> = {
   readonly presentation: IntentPresentation
   readonly start: (variables: TVariables) => void
   readonly reset: () => void
+  /** Counts `start`/`retry` calls; see `use-intent.ts`'s identical field. */
+  readonly attempt: number
 }
 
 type LocalState<TVariables, TData> =
@@ -59,6 +61,7 @@ export function useAsyncIntent<TVariables, TData>(
   const [local, setLocal] = useState<LocalState<TVariables, TData>>({
     status: "idle",
   })
+  const [attempt, setAttempt] = useState(0)
 
   const fnRef = useRef(fn)
   useEffect(() => {
@@ -72,6 +75,7 @@ export function useAsyncIntent<TVariables, TData>(
   const run = useCallback((variables: TVariables): void => {
     if (dispatchingRef.current) return
     dispatchingRef.current = true
+    setAttempt((n) => n + 1)
     setLocal({ status: "working" })
     fnRef.current(variables).then(
       (value) => {
@@ -116,5 +120,11 @@ export function useAsyncIntent<TVariables, TData>(
     }
   })()
 
-  return { state, presentation: options.presentation, start: run, reset }
+  return {
+    state,
+    presentation: options.presentation,
+    start: run,
+    reset,
+    attempt,
+  }
 }

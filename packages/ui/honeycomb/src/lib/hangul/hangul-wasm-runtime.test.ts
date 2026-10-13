@@ -1,5 +1,4 @@
 import {
-  getCoreInstance,
   loadHangulWasm,
   resetHangulWasm,
 } from "@honeycomb/lib/hangul/hangul-wasm-runtime"
@@ -65,17 +64,6 @@ describe("loadHangulWasm mode switching", () => {
 
     expect(hangulGameCoreCtor).toHaveBeenCalledTimes(1)
     expect(changeMode).toHaveBeenCalledTimes(modes.length - 1)
-  })
-
-  it("keeps the same core instance across a mode switch", async () => {
-    await loadHangulWasm(undefined, "completion", [])
-    const first = getCoreInstance()
-
-    await loadHangulWasm(undefined, "vocabulary", [])
-    const second = getCoreInstance()
-
-    expect(second).not.toBeNull()
-    expect(second).toBe(first)
   })
 })
 

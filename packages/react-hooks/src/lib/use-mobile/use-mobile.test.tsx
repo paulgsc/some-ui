@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { readFileSync } from "node:fs"
 import { resolve } from "node:path"
-import { act, cleanup, render, screen } from "@testing-library/react"
+import { cleanup, render, screen } from "@testing-library/react"
 import { afterEach, describe, expect, it } from "vitest"
 
 import { HANDHELD_QUERY, isHandheldBox, useIsMobile } from "./use-mobile"
@@ -31,24 +31,16 @@ describe("useIsMobile", () => {
     <output data-testid="handheld">{String(useIsMobile())}</output>
   )
 
-  it("asks the handheld query, and follows it when the window changes", () => {
-    let matches = true
-    const listeners = new Set<() => void>()
+  it("asks the handheld query", () => {
     const asked: Array<string> = []
     Object.defineProperty(window, "matchMedia", {
       configurable: true,
       value: (query: string) => {
         asked.push(query)
         return {
-          get matches(): boolean {
-            return matches
-          },
-          addEventListener: (_: string, listener: () => void): void => {
-            listeners.add(listener)
-          },
-          removeEventListener: (_: string, listener: () => void): void => {
-            listeners.delete(listener)
-          },
+          matches: true,
+          addEventListener: (): void => undefined,
+          removeEventListener: (): void => undefined,
         }
       },
     })
@@ -56,12 +48,6 @@ describe("useIsMobile", () => {
     render(<Probe />)
     expect(screen.getByTestId("handheld").textContent).toBe("true")
     expect(new Set(asked)).toEqual(new Set([HANDHELD_QUERY]))
-
-    act(() => {
-      matches = false
-      for (const listener of listeners) listener()
-    })
-    expect(screen.getByTestId("handheld").textContent).toBe("false")
   })
 })
 

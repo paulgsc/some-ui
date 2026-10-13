@@ -67,7 +67,6 @@ export const test = base.extend<ScopeRegistryFixtures>({
     const dir = fs.mkdtempSync(
       path.join(os.tmpdir(), "sw-scope-registry-video-")
     )
-    // eslint-disable-next-line react-hooks/rules-of-hooks
     await use(dir)
     fs.rmSync(dir, { recursive: true, force: true })
   },
@@ -98,7 +97,6 @@ export const test = base.extend<ScopeRegistryFixtures>({
       recordVideo: { dir: videoDir, size: HARNESS_VIEWPORT },
     })
 
-    // eslint-disable-next-line react-hooks/rules-of-hooks
     await use(context)
     await context.close()
     await browser.close()
@@ -107,7 +105,6 @@ export const test = base.extend<ScopeRegistryFixtures>({
   harness: async ({ context }, use) => {
     const openedPages: Array<Page> = []
 
-    // eslint-disable-next-line react-hooks/rules-of-hooks
     await use({
       async goto(name: string) {
         const page = await context.newPage()

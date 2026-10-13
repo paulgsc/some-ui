@@ -39,8 +39,8 @@
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
     "lucide-react": "catalog:",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
     "tailwind-merge": "^2.4.0"
   },
   "dependencies": {
@@ -64,8 +64,8 @@
   "devDependencies": {
     "@some-ui/tsconfig": "workspace:*",
     "eslint-import-resolver-typescript": "4.4.5",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0"
   },
   "repository": {
     "type": "git",

@@ -66,7 +66,7 @@ const ProfileForm = ({ profile }: { profile: UserProfile }): JSX.Element => {
 
   const isDirty = JSON.stringify(profile) !== JSON.stringify(draft)
 
-  useIntentEffect(saveIntent.state, () => {
+  useIntentEffect(saveIntent, () => {
     toast("Profile saved")
   })
 

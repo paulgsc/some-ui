@@ -33,17 +33,20 @@ const press = (key: string): void => {
   fireEvent.keyDown(screen.getByPlaceholderText(/search materials/i), { key })
 }
 
-describe("OmniSearchInput - auto-highlight", () => {
-  it("highlights the first item on mount when nothing is highlighted yet", () => {
-    const onHighlight = vi.fn()
-    render(input({ onHighlight }))
-    expect(onHighlight).toHaveBeenCalledWith("topik-0")
+describe("OmniSearchInput - the highlighted item", () => {
+  it("is the first item when nothing is highlighted yet", () => {
+    const onSelect = vi.fn()
+    render(input({ onSelect }))
+    press("Enter")
+    expect(onSelect).toHaveBeenCalledWith("topik-0")
   })
 
-  it("does not override an existing highlight", () => {
-    const onHighlight = vi.fn()
-    render(input({ onHighlight, highlightedKey: "topik-1" }))
-    expect(onHighlight).not.toHaveBeenCalled()
+  it("falls back to the first visible item when the filter hides it", () => {
+    const onSelect = vi.fn()
+    const visible = makeItems(3).slice(1)
+    render(input({ onSelect, items: visible, highlightedKey: "topik-0" }))
+    press("Enter")
+    expect(onSelect).toHaveBeenCalledWith("topik-1")
   })
 })
 

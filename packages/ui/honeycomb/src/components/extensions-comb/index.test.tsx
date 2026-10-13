@@ -54,14 +54,11 @@ function combCells(size: number): Array<HexRenderData> {
 
 beforeEach(() => {
   vi.mocked(useHexgridWasm).mockReturnValue({
+    radius: 1,
+    hexSize: 140,
     isLoading: false,
     error: null,
-    validationWarning: null,
     hexCells: combCells(140),
-    regenerate: vi.fn(),
-    hexGridRef: { current: null },
-    setHexCells: vi.fn(),
-    getRadius: () => 1,
   })
 })
 

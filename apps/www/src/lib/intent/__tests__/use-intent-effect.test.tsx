@@ -26,7 +26,7 @@ describe("useIntentEffect", () => {
         const intent = useIntent(useMutation({ mutationFn }), {
           presentation: "interactive",
         })
-        useIntentEffect(intent.state, onSucceeded)
+        useIntentEffect(intent, onSucceeded)
         return intent
       },
       { wrapper }
@@ -42,9 +42,8 @@ describe("useIntentEffect", () => {
     expect(onSucceeded).toHaveBeenCalledWith("created:session-a")
 
     // Re-rendering while still succeeded (the parent component re-rendering
-    // for an unrelated reason, say) must not re-fire the effect - this is
-    // the whole point of comparing the carried value rather than the
-    // Intent's own object identity, which is fresh every render.
+    // for an unrelated reason, say) must not re-fire the effect: the Intent
+    // object is fresh every render, the attempt is not.
     rerender()
     rerender()
     expect(onSucceeded).toHaveBeenCalledTimes(1)
@@ -62,7 +61,7 @@ describe("useIntentEffect", () => {
         const intent = useIntent(useMutation({ mutationFn }), {
           presentation: "interactive",
         })
-        useIntentEffect(intent.state, onSucceeded)
+        useIntentEffect(intent, onSucceeded)
         return intent
       },
       { wrapper }
@@ -93,7 +92,7 @@ describe("useIntentEffect", () => {
         const intent = useIntent(useMutation({ mutationFn }), {
           presentation: "interactive",
         })
-        useIntentEffect(intent.state, onSucceeded)
+        useIntentEffect(intent, onSucceeded)
         return intent
       },
       { wrapper }
@@ -118,5 +117,40 @@ describe("useIntentEffect", () => {
     })
     expect(onSucceeded).toHaveBeenNthCalledWith(1, "created:first")
     expect(onSucceeded).toHaveBeenNthCalledWith(2, "created:second")
+  })
+
+  it("fires for each success of a mutation that resolves to nothing", async () => {
+    // A delete succeeds with `undefined` every time; the bulk bar stays
+    // mounted between two of them, with no reset() in between.
+    const wrapper = queryClientWrapper()
+    const onSucceeded = vi.fn()
+    const mutationFn = vi.fn(
+      (_id: string): Promise<void> => Promise.resolve(undefined)
+    )
+
+    const { result } = renderHook(
+      () => {
+        const intent = useIntent(useMutation({ mutationFn }), {
+          presentation: "interactive",
+        })
+        useIntentEffect(intent, onSucceeded)
+        return intent
+      },
+      { wrapper }
+    )
+
+    act(() => {
+      result.current.start("a")
+    })
+    await waitFor(() => {
+      expect(onSucceeded).toHaveBeenCalledTimes(1)
+    })
+
+    act(() => {
+      result.current.start("b")
+    })
+    await waitFor(() => {
+      expect(onSucceeded).toHaveBeenCalledTimes(2)
+    })
   })
 })

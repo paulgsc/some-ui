@@ -41,7 +41,7 @@ function useSaveAndPlayChain(
   })
   // Activate starts once create succeeds, via useIntentEffect rather than a
   // render-phase side effect.
-  useIntentEffect(create.state, (createdSessionId) => {
+  useIntentEffect(create, (createdSessionId) => {
     activate.start(createdSessionId)
   })
 

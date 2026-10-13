@@ -51,7 +51,6 @@ export const test = base.extend<Gate0Fixtures>({
   // eslint-disable-next-line no-empty-pattern
   videoDir: async ({}, use) => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "sw-gate0-video-"))
-    // eslint-disable-next-line react-hooks/rules-of-hooks
     await use(dir)
     fs.rmSync(dir, { recursive: true, force: true })
   },
@@ -88,7 +87,6 @@ export const test = base.extend<Gate0Fixtures>({
       ],
     })
 
-    // eslint-disable-next-line react-hooks/rules-of-hooks
     await use(context)
     await context.close()
     fs.rmSync(userDataDir, { recursive: true, force: true })
@@ -99,7 +97,6 @@ export const test = base.extend<Gate0Fixtures>({
     // has recorded, so the catch below absorbs already-closed ones.
     const openedPages: Array<Page> = []
 
-    // eslint-disable-next-line react-hooks/rules-of-hooks
     await use({
       async goto(name: string) {
         const page = await context.newPage()

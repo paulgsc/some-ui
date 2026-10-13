@@ -1,3 +1,4 @@
+import { Profiler } from "react"
 import { resetWasm } from "@leetype/lib/leetype/leetype-wasm-loader"
 import type { Exercise } from "@leetype/types/exercise"
 import type { CompletedSessionStats } from "@leetype/types/leetype"
@@ -11,9 +12,8 @@ import { TypingSession } from "."
 // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- a stand-in for the wasm exports table, which the loader awaits but never reads
 const INIT_OUTPUT = {} as Awaited<ReturnType<typeof wasmInit>>
 
-// Pins **the runner advances exactly once per completed step**: advancing
-// re-runs the completion effect while the snapshot still shows the previous
-// step, which unguarded would skip every other step. The engine is faked so
+// Pins **each completed step is handled exactly once**: banked, fed into the
+// baseline and advanced past, the last step included. The engine is faked so
 // completion is deterministic: press the characters a step owes and it
 // reports `isComplete`.
 
@@ -50,8 +50,8 @@ type Snapshot = {
 let progression: "advance" | "repeat" | "escape"
 /** Every source the fake was handed, in order — the record under test. */
 let sourcesSeen: Array<string>
-/** `Snapshot.assisted` for every step: `0` except in "the assistance seam". */
-let assistedOverride: number
+/** `Snapshot.assisted` per source: none except in "the assistance seam". */
+let assistedBySource: Record<string, number>
 
 vi.mock("@some-ui/leetype-wasm", () => {
   class TypingGame {
@@ -85,7 +85,7 @@ vi.mock("@some-ui/leetype-wasm", () => {
         runCount: 3,
         manualRevealActive: false,
         manualRevealFraction: 0,
-        assisted: assistedOverride,
+        assisted: assistedBySource[this.source] ?? 0,
         elapsedTime: 10,
         sessionElapsedTime: 30,
         totalErrors: 0,
@@ -166,7 +166,12 @@ vi.mock("@some-ui/leetype-wasm", () => {
       return this.outcome()
     }
     complete_chunk(): unknown {
-      return this.outcome()
+      return {
+        accepted: true,
+        rejection: undefined,
+        chunk: { charsTyped: this.cursor, errors: 0, elapsedTime: 10 },
+        snapshot: this.readSnapshot(),
+      }
     }
     start_next_chunk(source: string): unknown {
       this.source = source
@@ -278,10 +283,13 @@ async function startSession(
   return input
 }
 
-/** Types all three steps of `EXERCISE`, then waits for the results card. */
-async function completeExercise(input: HTMLElement): Promise<void> {
+/** Types all three steps of `EXERCISE` (or of `stepLength` each), then waits for the results card. */
+async function completeExercise(
+  input: HTMLElement,
+  stepLength = 3
+): Promise<void> {
   for (let step = 0; step < 3; step++) {
-    typeStep(input, 3)
+    typeStep(input, stepLength)
     await waitFor(() =>
       expect(sourcesSeen.length).toBeGreaterThanOrEqual(step + 1)
     )
@@ -295,7 +303,7 @@ beforeEach(async () => {
   localStorage.clear()
   progression = "advance"
   sourcesSeen = []
-  assistedOverride = 0
+  assistedBySource = {}
   resetWasm()
   const wasmStub = await import("@some-ui/leetype-wasm")
   vi.mocked(wasmStub.default)
@@ -326,6 +334,23 @@ describe("the step hand-off", () => {
 
     // The engine said "repeat"; `readProgression` does not consult it.
     expect(sourcesSeen).toEqual(["aaa", "bbb"])
+  })
+
+  it("feeds each finished step into the stored baseline exactly once, the last included", async () => {
+    // Long enough that each step yields a sample (`sampleFromStep`).
+    const long: Exercise = {
+      id: "long",
+      title: "Three long steps",
+      steps: ["a", "b", "c"].map((char, index) =>
+        stepOf(`l${index}`, index, char.repeat(40))
+      ),
+    }
+    await completeExercise(await startSession({ exercise: long }), 40)
+    const stored: unknown = JSON.parse(
+      localStorage.getItem("leetyping_progress") ?? "null"
+    )
+    // Seeded with 3 samples; one blend per step.
+    expect(stored).toMatchObject({ baseline: { samples: 6 } })
   })
 
   it("reports the sequence once it runs out of steps", async () => {
@@ -419,17 +444,65 @@ describe("the warm-up", () => {
   })
 })
 
+describe("the session term", () => {
+  it("does not re-render the session while the term runs", async () => {
+    seedBaseline()
+    const onRender = vi.fn()
+    render(
+      <Profiler id="session" onRender={onRender}>
+        <TypingSession exercise={EXERCISE} />
+      </Profiler>
+    )
+    await screen.findByRole("button", { name: /begin/i })
+    onRender.mockClear()
+    await new Promise((resolve) => setTimeout(resolve, 600))
+    expect(onRender).not.toHaveBeenCalled()
+  })
+
+  it("ends the session at the deadline with the steps completed so far", async () => {
+    const onSessionComplete = vi.fn<(stats: CompletedSessionStats) => void>()
+    const input = await startSession({
+      exercise: EXERCISE,
+      sessionDurationMs: 1000,
+      onSessionComplete,
+    })
+    typeStep(input, 3)
+    await screen.findByText("Step 1.")
+    await screen.findByText(/Exercise complete/i, {}, { timeout: 3000 })
+    expect(onSessionComplete).toHaveBeenCalledTimes(1)
+    expect(onSessionComplete.mock.calls[0]?.[0]).toMatchObject({
+      stepsCompleted: 1,
+    })
+  })
+
+  it("ends at Begin when the term ran out before it", async () => {
+    const onSessionComplete = vi.fn()
+    seedBaseline()
+    render(
+      <TypingSession
+        exercise={EXERCISE}
+        sessionDurationMs={0}
+        onSessionComplete={onSessionComplete}
+      />
+    )
+    fireEvent.click(await screen.findByRole("button", { name: /begin/i }))
+    await screen.findByText(/Exercise complete/i)
+    expect(onSessionComplete).toHaveBeenCalledTimes(1)
+  })
+})
+
 describe("the assistance seam (LTY-SEAM S2)", () => {
-  it("carries a nonzero assisted count through to CompletedSessionStats.assistance", async () => {
-    // Every other test keeps `assisted` at 0, the value a dropped pipeline
-    // (Snapshot.assisted -> assistanceRef -> assistance) would also give.
-    assistedOverride = 1
+  it("banks each step's assisted share once into CompletedSessionStats.assistance", async () => {
+    // Only the last step is assisted (3 of 3), so the mean over three steps
+    // is 1/3 exactly when each step is banked once. A dropped pipeline
+    // (Snapshot.assisted -> assistanceRef -> assistance) would give 0.
+    assistedBySource = { ccc: 3 }
     const onSessionComplete = vi.fn<(stats: CompletedSessionStats) => void>()
     await completeExercise(
       await startSession({ exercise: EXERCISE, onSessionComplete })
     )
     expect(onSessionComplete).toHaveBeenCalledTimes(1)
     const stats = onSessionComplete.mock.calls[0]?.[0]
-    expect(stats?.assistance).toBeGreaterThan(0)
+    expect(stats?.assistance).toBeCloseTo(1 / 3)
   })
 })

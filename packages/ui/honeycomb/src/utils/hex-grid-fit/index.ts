@@ -1,8 +1,6 @@
 import { assertNever } from "@honeycomb/utils/error"
 
-export type HexGridFitStrategy = "shrink-only" | "shrink-then-reduce"
-
-type HexGridFitStatus = "fit" | "shrunk" | "reduced-radius" | "impossible"
+type HexGridFitStatus = "fit" | "shrunk" | "impossible"
 
 export type ViewportSize = {
   width: number
@@ -18,26 +16,13 @@ export type HexGridFitRequest = {
   preferredHexSize: number
   /**
    * Smallest on-screen hex circumradius (px) still considered legible.
-   * Below this, cells are either dropped (radius reduction) or the grid is
-   * reported as impossible to render, rather than shrunk further.
+   * Below this, the grid is reported as impossible to render rather than
+   * shrunk further.
    * @default 18
    */
   minHexSize?: number
   /** Space to reserve on every edge before fitting, in px. @default 0 */
   padding?: number
-  /**
-   * `"shrink-only"` never changes `requestedRadius` — only how large the
-   * grid is drawn. Use this whenever cell ids carry meaning beyond
-   * rendering (e.g. game state keyed by cell id), since a smaller radius
-   * makes outer-ring cells disappear entirely.
-   *
-   * `"shrink-then-reduce"` drops to smaller canonical radii once shrinking
-   * alone can no longer keep cells legible. Safe only when the caller
-   * doesn't depend on a specific fixed set of cell ids.
-   *
-   * @default "shrink-only"
-   */
-  strategy?: HexGridFitStrategy
 }
 
 export type HexGridFitResult = {
@@ -91,19 +76,13 @@ function maxHexSizeForRadius(radius: number, available: ViewportSize): number {
   return Math.min(available.width / unit.width, available.height / unit.height)
 }
 
-function fitWarning(
-  status: HexGridFitStatus,
-  radius: number
-): string | undefined {
+function fitWarning(status: HexGridFitStatus): string | undefined {
   switch (status) {
     case "fit": {
       return undefined
     }
     case "shrunk": {
       return "Grid scaled down to fit the available space."
-    }
-    case "reduced-radius": {
-      return `Grid reduced to radius ${radius} to fit the available space.`
     }
     case "impossible": {
       return undefined
@@ -115,9 +94,10 @@ function fitWarning(
 }
 
 /**
- * Negotiates a hex grid radius/size that fits inside `viewport` (#760): try
- * the preferred size, shrink it down to `minHexSize`, then (only if
- * `strategy` allows) drop to smaller radii, else report `"impossible"`.
+ * Negotiates a hex grid size that fits inside `viewport` (#760): try the
+ * preferred size, shrink it down to `minHexSize`, else report
+ * `"impossible"`. The radius never changes: game state is keyed by cell id,
+ * and a smaller radius would drop the outer ring.
  *
  * Pure function: no DOM, no ResizeObserver, no WASM, no React.
  */
@@ -127,40 +107,31 @@ export function fitHexGrid({
   preferredHexSize,
   minHexSize = DEFAULT_MIN_HEX_SIZE,
   padding = DEFAULT_PADDING,
-  strategy = "shrink-only",
 }: HexGridFitRequest): HexGridFitResult {
   const available: ViewportSize = {
     width: Math.max(0, viewport.width - padding * 2),
     height: Math.max(0, viewport.height - padding * 2),
   }
 
-  const safeRequestedRadius = Math.max(0, Math.floor(requestedRadius))
-  const minRadius = strategy === "shrink-then-reduce" ? 0 : safeRequestedRadius
+  const radius = Math.max(0, Math.floor(requestedRadius))
+  const maxSize = maxHexSizeForRadius(radius, available)
 
-  for (let radius = safeRequestedRadius; radius >= minRadius; radius--) {
-    const maxSize = maxHexSizeForRadius(radius, available)
-    if (maxSize < minHexSize) continue
-
+  if (maxSize >= minHexSize) {
     const status: HexGridFitStatus =
-      radius !== safeRequestedRadius
-        ? "reduced-radius"
-        : maxSize >= preferredHexSize
-          ? "fit"
-          : "shrunk"
-
+      maxSize >= preferredHexSize ? "fit" : "shrunk"
     return {
       radius,
       hexSize: preferredHexSize,
       status,
       canFit: true,
-      warning: fitWarning(status, radius),
+      warning: fitWarning(status),
       bounds: measureHexGridBounds(radius, preferredHexSize),
     }
   }
 
-  const bounds = measureHexGridBounds(minRadius, minHexSize)
+  const bounds = measureHexGridBounds(radius, minHexSize)
   return {
-    radius: minRadius,
+    radius,
     hexSize: minHexSize,
     status: "impossible",
     canFit: false,

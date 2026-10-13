@@ -1,5 +1,5 @@
 import type { FC } from "react"
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { ArtifactSwitcher } from "@leetype/components/round/artifact-switcher"
 import type {
   ArtifactId,
@@ -14,6 +14,7 @@ import { RoundChoices } from "@leetype/components/round/round-choices"
 import { RoundFeedback } from "@leetype/components/round/round-feedback"
 import { RoundOutcome } from "@leetype/components/round/round-outcome"
 import { SourcePanel } from "@leetype/components/round/source-panel"
+import { useSessionDeadline } from "@leetype/hooks/leetype/use-session-deadline"
 import { buildRoundPrompt } from "@leetype/lib/leetype/generation"
 import type { Ledger } from "@leetype/lib/leetype/ledger"
 import { mergeLedgers, recordObservations } from "@leetype/lib/leetype/ledger"
@@ -321,35 +322,14 @@ export const RoundSession: FC<RoundSessionProps> = ({
   /** When the term ran out, or null while the session is on. */
   const [finishedAt, setFinishedAt] = useState<number | null>(null)
   const finished = finishedAt !== null
-  const [sessionClockMs, setSessionClockMs] = useState(0)
-  const [sessionGeneration, setSessionGeneration] = useState(0)
-  const onSessionCompleteRef = useRef(onSessionComplete)
-  useEffect(() => {
-    onSessionCompleteRef.current = onSessionComplete
-  }, [onSessionComplete])
-
-  useEffect(() => {
-    // Anchored at mount: the orchestrator removes this scene at its own
-    // `start_time + duration`.
-    const startedAt = performance.now()
-    const update = (): void => {
-      setSessionClockMs(
-        Math.min(performance.now() - startedAt, sessionDurationMs)
-      )
+  const { restart: restartDeadline } = useSessionDeadline(
+    sessionDurationMs,
+    () => {
+      if (finished) return
+      setFinishedAt(Date.now())
+      onSessionComplete?.()
     }
-    update()
-    const timer = window.setInterval(update, 250)
-    return (): void => window.clearInterval(timer)
-  }, [sessionDurationMs, sessionGeneration])
-
-  useEffect(() => {
-    if (finished || sessionClockMs < sessionDurationMs) return
-    // The term running out is an external fact the orchestrator's clock
-    // owns, so the effect only reports it.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setFinishedAt(Date.now())
-    onSessionCompleteRef.current?.()
-  }, [finished, sessionClockMs, sessionDurationMs])
+  )
 
   const drawn = useMemo(
     () =>
@@ -491,8 +471,7 @@ export const RoundSession: FC<RoundSessionProps> = ({
   // round (the session store's) carry over.
   const handleRestart = useCallback((): void => {
     setFinishedAt(null)
-    setSessionClockMs(0)
-    setSessionGeneration((generation) => generation + 1)
+    restartDeadline()
     setProgress(FRESH)
     setPlayed(0)
     setDrawBasis({ ledger, now: Date.now() })
@@ -500,7 +479,7 @@ export const RoundSession: FC<RoundSessionProps> = ({
     setRecent([])
     setOwn(store.get())
     setGenerating(false)
-  }, [store, ledger])
+  }, [store, ledger, restartDeadline])
 
   const summary = useMemo(
     () =>

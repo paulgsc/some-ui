@@ -139,7 +139,6 @@ export const test = base.extend<FilterFixtures & { page: Page }>({
       ],
     })
 
-    // eslint-disable-next-line react-hooks/rules-of-hooks
     await use(context)
     await context.close()
     fs.rmSync(userDataDir, { recursive: true, force: true })
@@ -147,7 +146,6 @@ export const test = base.extend<FilterFixtures & { page: Page }>({
 
   page: async ({ context }, use) => {
     const page = context.pages()[0] ?? (await context.newPage())
-    // eslint-disable-next-line react-hooks/rules-of-hooks
     await use(page)
   },
 
@@ -157,7 +155,6 @@ export const test = base.extend<FilterFixtures & { page: Page }>({
     // it ("Target page, context or browser has been closed").
     const openedPages: Array<Page> = []
 
-    // eslint-disable-next-line react-hooks/rules-of-hooks
     await use({
       async goto(name: string) {
         const page = await context.newPage()

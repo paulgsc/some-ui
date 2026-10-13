@@ -76,12 +76,16 @@ export const SessionViewport = ({
 
   // The only layer with write authority over which session is live and
   // whether the editor needs exclusive control; a panel that cares reads them.
+  // Released on unmount: with no viewport, no session is live and nothing
+  // holds the editor.
   useEffect(() => {
     setSessionKey(session.id)
+    return (): void => setSessionKey(null)
   }, [session.id])
 
   useEffect(() => {
     setSuspended(editMode)
+    return (): void => setSuspended(false)
   }, [editMode])
 
   // The learner shelf (paulgsc/server#387): only while the data is the

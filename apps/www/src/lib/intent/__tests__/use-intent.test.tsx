@@ -184,7 +184,7 @@ describe("useIntent", () => {
     expect(result.current.presentation).toBe("ambient")
   })
 
-  it("does not expose a raw status or isPending - only `state` and `presentation` are on the result", () => {
+  it("does not expose a raw status or isPending - only `state`, `presentation` and an opaque `attempt` are on the result", () => {
     const wrapper = queryClientWrapper()
     // eslint-disable-next-line @typescript-eslint/require-await -- mutationFn's contract is Promise<T>; async is the plainest way to satisfy it for a stub with nothing to actually await.
     const mutationFn = vi.fn(async () => "done")
@@ -196,6 +196,7 @@ describe("useIntent", () => {
     )
 
     expect(Object.keys(result.current).sort()).toEqual([
+      "attempt",
       "presentation",
       "reset",
       "start",

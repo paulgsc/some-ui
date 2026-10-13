@@ -81,7 +81,7 @@ const SettingsForm = ({
   const isDirty = JSON.stringify(settings) !== JSON.stringify(draft)
 
   // One save intent and no navigation, so no `activeAction`-style gating.
-  useIntentEffect(saveIntent.state, () => {
+  useIntentEffect(saveIntent, () => {
     toast("Settings saved")
   })
 
