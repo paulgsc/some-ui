@@ -182,6 +182,11 @@ export const paths: PathRules<Profile> = definePaths<Profile>({
       why: "the hosted voice, which needs the TTS service only the home server runs: Pages has none, and the Android app speaks with the phone's engine (src/providers/tts.tsx)",
     },
     {
+      modules: ["apps/www/src/lib/web-surface/playoff-delta/**"],
+      profiles: ["lan", "pages"],
+      why: "the Playoff Delta stage's live season, a desktop recording stage for the vlog: only the web door (src/lib/web-surface) binds it, and not in the Android app's build",
+    },
+    {
       modules: ["apps/www/src/lib/web-surface/hangul/**"],
       profiles: ["lan", "pages"],
       why: "Hangul Honeycomb's panel, a desktop keyboard game the phone has no counterpart for: only the web door (src/lib/web-surface) binds it, and not in the Android app's build",
@@ -238,6 +243,11 @@ export const paths: PathRules<Profile> = definePaths<Profile>({
         `${SPEECH_ENTRY}/web-speech.es.js`,
       ],
       why: "the home server speaks through these (src/providers/tts.tsx); a build without them is silent",
+    },
+    {
+      profile: "lan",
+      modules: ["apps/www/src/lib/web-surface/playoff-delta/stage.tsx"],
+      why: "the stage records the real season through this; without it /playoff-delta renders nothing. Also what keeps its `exclusive` rule from passing by matching nothing",
     },
     {
       profile: "lan",
