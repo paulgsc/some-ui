@@ -132,8 +132,6 @@ export const HangulHexGrid = ({
   // is dismissed do those cells go away and the next word spawn.
   const [missedWord, setMissedWord] = useState<MissedWord | null>(null)
   // The grid's own hex-geometry WASM is separate from the game engine's.
-  // Loaded here rather than inside HexGrid so a fatal grid failure stops the
-  // loop, audio and timer in the same render that shows it.
   const grid = useHexgridWasm({
     cellCount: HANGUL_GRID_CELL_COUNT,
     hexSize: 70,

@@ -74,13 +74,10 @@ type Loaded = {
 export async function buildHexgrid(
   radius: number,
   hexSize: number
-): Promise<{ hexGrid: WasmHexGrid; cells: Array<HexRenderData> }> {
+): Promise<Array<HexRenderData>> {
   await initializeWasm()
   const hexGrid = new WasmHexGrid(radius, hexSize)
-  const result = hexGrid.get_all_cells_render_data()
-  const cells = HexGridSchema.parse(result)
-
-  return { hexGrid, cells }
+  return HexGridSchema.parse(hexGrid.get_all_cells_render_data())
 }
 
 export function useHexgridWasm({
@@ -100,7 +97,7 @@ export function useHexgridWasm({
 
     let active = true
     buildHexgrid(radius, hexSize).then(
-      ({ cells }) => {
+      (cells) => {
         if (active) setLoaded({ radius, hexSize, error: null, cells })
       },
       (err: unknown) => {

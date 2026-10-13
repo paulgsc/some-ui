@@ -12,11 +12,7 @@ type Entry = {
 }
 type Callback = (entries: Array<Entry>) => void
 
-/**
- * jsdom has no ResizeObserver. `fire(..., true)` can deliver to a
- * disconnected observer, modelling a notification already queued as an
- * unmount's cleanup runs.
- */
+/** jsdom has no ResizeObserver. */
 class FakeResizeObserver {
   static instances: Array<FakeResizeObserver> = []
   private disconnected = false
@@ -30,8 +26,8 @@ class FakeResizeObserver {
     this.disconnected = true
   }
 
-  fire(width: number, height: number, force = false): void {
-    if (this.disconnected && !force) return
+  fire(width: number, height: number): void {
+    if (this.disconnected) return
     this.cb([
       {
         contentRect: { width, height },
@@ -113,38 +109,16 @@ describe("useResizeObserver: remount correctness (fast-check)", () => {
   })
 })
 
-describe("useResizeObserver: post-unmount callback guard", () => {
-  // A notification queued as the component unmounts must not reach either
-  // reporting path (state or `onResize`).
-
-  it("does not call setSize (observable via onSize never firing again) after unmount", () => {
-    let lastSize: { width?: number; height?: number } = {}
-    const onSize = vi.fn((s: { width?: number; height?: number }) => {
-      lastSize = s
-    })
-    const { unmount } = render(<Probe onSize={onSize} />)
-    const observer = FakeResizeObserver.instances[0]!
-
-    unmount()
-    onSize.mockClear()
-    const sizeAtUnmount = lastSize
-
-    act(() => observer.fire(999, 999, true))
-
-    expect(onSize).not.toHaveBeenCalled()
-    expect(lastSize).toEqual(sizeAtUnmount)
-  })
-
-  it("does not call onResize after unmount", () => {
+describe("useResizeObserver: onResize", () => {
+  it("reports each new size through onResize", () => {
     const onResize = vi.fn()
-    const { unmount } = render(<ProbeWithCallback onResize={onResize} />)
+    render(<ProbeWithCallback onResize={onResize} />)
     const observer = FakeResizeObserver.instances[0]!
 
-    unmount()
-    onResize.mockClear()
+    act(() => observer.fire(120, 40))
+    act(() => observer.fire(120, 40))
 
-    act(() => observer.fire(999, 999, true))
-
-    expect(onResize).not.toHaveBeenCalled()
+    expect(onResize).toHaveBeenCalledTimes(1)
+    expect(onResize).toHaveBeenCalledWith({ width: 120, height: 40 })
   })
 })

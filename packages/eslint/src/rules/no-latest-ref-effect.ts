@@ -1,5 +1,7 @@
 import type { Rule, Scope } from "eslint"
 
+import { hookName, within } from "./react-hook-ast.js"
+
 /* eslint-disable @typescript-eslint/no-explicit-any -- ESTree shapes not modeled precisely by @types/eslint's Node union */
 
 /**
@@ -10,9 +12,9 @@ import type { Rule, Scope } from "eslint"
  * effect. https://react.dev/reference/react/useEffectEvent
  *
  * Reported: an assignment `ref.current = value` in an effect whose body is
- * nothing but such assignments, when `ref` is a `useRef` of the same
- * component or hook, is written nowhere else, and is read only as
- * `ref.current` inside other effects' callbacks. A ref read anywhere else
+ * nothing but such assignments, when `ref` is declared by a `useRef` call,
+ * is written nowhere else, and is read only as `ref.current` inside other
+ * effects' callbacks. A ref read anywhere else
  * (an event handler, a `useCallback`, a returned API, passed to a function)
  * is not reported: an Effect Event may only be called from an effect, so
  * there the ref is still the tool.
@@ -21,21 +23,6 @@ import type { Rule, Scope } from "eslint"
 const EFFECT_HOOKS = new Set(["useEffect", "useLayoutEffect"])
 
 type Node = any
-
-function hookName(callee: Node): string | null {
-  let name: unknown = null
-  if (callee.type === "Identifier") name = callee.name
-  if (
-    callee.type === "MemberExpression" &&
-    !callee.computed &&
-    callee.object.type === "Identifier" &&
-    callee.object.name === "React" &&
-    callee.property.type === "Identifier"
-  ) {
-    name = callee.property.name
-  }
-  return typeof name === "string" ? name : null
-}
 
 function effectCallback(node: Node): Rule.Node | null {
   if (node.type !== "CallExpression") return null
@@ -47,7 +34,7 @@ function effectCallback(node: Node): Rule.Node | null {
     : null
 }
 
-/** The statements an effect callback runs, or null for a non-block body we don't model. */
+/** The statements an effect callback runs; an expression body counts as one. */
 function bodyStatements(callback: Node): Array<Node> {
   const body: Node = callback.body
   if (body.type !== "BlockStatement") {
@@ -73,12 +60,6 @@ function currentAssignment(statement: Node): Node | null {
     return null
   }
   return expr
-}
-
-function within(inner: Node, outer: Node): boolean {
-  const [a, b] = inner.range ?? [0, 0]
-  const [c, d] = outer.range ?? [0, 0]
-  return a >= c && b <= d
 }
 
 function isUseRefInit(variable: Scope.Variable): boolean {

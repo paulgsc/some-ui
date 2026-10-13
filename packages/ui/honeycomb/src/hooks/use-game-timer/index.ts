@@ -37,9 +37,7 @@ export function useGameTimer({
   // Track if timer has been started
   const hasStartedRef = useRef(false)
 
-  /**
-   * Start timer exactly once per initialization
-   */
+  // Starts the bridge's timer once per mount.
   useEffect(() => {
     if (!gameBridge || !isInitialized || hasStartedRef.current) return
 

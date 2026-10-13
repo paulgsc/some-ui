@@ -19,8 +19,7 @@ export function useIntentEffect<T, TStep extends string = never>(
   const succeed = useEffectEvent(onSucceeded)
   const { state, attempt } = intent
 
-  // No dependency array: `state` is a fresh object every render; the attempt
-  // comparison makes this fire once per success.
+  // No dependency array: see the header.
   useEffect(() => {
     matchIntent(state, {
       idle: () => undefined,

@@ -97,8 +97,6 @@ export const HexGrid = <T = unknown,>({
 
   const { radius, hexSize, hexCells, isLoading, error } = grid
 
-  // "shrink-only": the cells are the caller's, built at `radius`, so the fit
-  // may draw them smaller but never drop a ring.
   const fit = useMemo((): HexGridFitResult | null => {
     if (!hasMeasured) return null
     return fitHexGrid({
@@ -107,7 +105,6 @@ export const HexGrid = <T = unknown,>({
       preferredHexSize: hexSize,
       minHexSize,
       padding,
-      strategy: "shrink-only",
     })
   }, [hasMeasured, width, height, radius, hexSize, minHexSize, padding])
 
@@ -115,10 +112,8 @@ export const HexGrid = <T = unknown,>({
   useEffect(() => {
     if (!fit || !notifyFit) return
 
-    if (fit.status === "shrunk" || fit.status === "reduced-radius") {
-      const notify =
-        fit.status === "reduced-radius" ? toast.warning : toast.info
-      notify(fit.warning, { id: HEXGRID_FIT_TOAST_ID })
+    if (fit.status === "shrunk") {
+      toast.info(fit.warning, { id: HEXGRID_FIT_TOAST_ID })
     } else {
       toast.dismiss(HEXGRID_FIT_TOAST_ID)
     }

@@ -68,9 +68,7 @@ export function useResizeObserver<T extends Element = Element>(
   useEffect(() => {
     if (typeof window === "undefined" || !("ResizeObserver" in window)) return
 
-    let live = true
     const observer = new ResizeObserver(([entry]) => {
-      if (!live) return
       const boxProp =
         box === "border-box"
           ? "borderBoxSize"
@@ -95,7 +93,6 @@ export function useResizeObserver<T extends Element = Element>(
     if (ref.current !== null) observer.observe(ref.current, { box })
 
     return (): void => {
-      live = false
       observer.disconnect()
     }
   }, [box, ref])

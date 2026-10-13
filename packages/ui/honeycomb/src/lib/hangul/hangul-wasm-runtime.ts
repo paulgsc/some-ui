@@ -8,7 +8,6 @@ import {
   GameConfigSchema,
   WasmGameBridge,
 } from "@honeycomb/lib/hangul/wasm-game-bridge"
-import type { HangulGameCore } from "@some-ui/hangul-game-core"
 import { createWasmLoader } from "@some-ui/wasm-loader"
 
 // Set immediately before load()/preload() so an importModule() that starts
@@ -17,7 +16,6 @@ import { createWasmLoader } from "@some-ui/wasm-loader"
 let pendingConfig: Partial<GameConfig> | undefined
 let pendingMode: GameMode = "completion"
 let pendingWordPool: Array<ChallengeSeed> = []
-let coreInstance: HangulGameCore | null = null
 
 // What the loaded core holds (set on construction and by changeMode).
 // loadHangulWasm() diffs each against the caller's explicit values to detect
@@ -45,7 +43,6 @@ const loader = createWasmLoader<WasmGameBridge>({
       pendingMode,
       pendingWordPool
     )
-    coreInstance = core
     loadedMode = pendingMode
     hasConstructedCore = true
     return new WasmGameBridge(core, pendingMode)
@@ -56,9 +53,6 @@ const loader = createWasmLoader<WasmGameBridge>({
 // Runtime getters
 export function getLastError(): Error | null {
   return loader.getLastError()
-}
-export function getCoreInstance(): HangulGameCore | null {
-  return coreInstance
 }
 
 /**
@@ -108,7 +102,6 @@ export async function loadHangulWasm(
  */
 export function resetHangulWasm(): void {
   loader.reset()
-  coreInstance = null
   loadedMode = null
   loadedSessionKey = undefined
   hasConstructedCore = false

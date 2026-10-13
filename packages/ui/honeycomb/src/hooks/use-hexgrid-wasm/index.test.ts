@@ -62,10 +62,7 @@ describe("buildHexgrid", () => {
   })
 
   it("returns validated cells", async () => {
-    const result = await buildHexgrid(2, 10)
-
-    expect(result.cells).toEqual(validCells)
-    expect(result.hexGrid).toBeDefined()
+    expect(await buildHexgrid(2, 10)).toEqual(validCells)
   })
 
   it("propagates wasm initialization failures", async () => {

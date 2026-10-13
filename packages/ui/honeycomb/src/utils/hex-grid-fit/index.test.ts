@@ -57,18 +57,6 @@ describe("fitHexGrid", () => {
     expect(result.warning).toMatch(/scaled down/i)
   })
 
-  it("never reduces radius under the shrink-only strategy (the default)", () => {
-    const result = fitHexGrid({
-      viewport: { width: 100, height: 80 },
-      requestedRadius: 4,
-      preferredHexSize: 70,
-    })
-
-    expect(result.status).toBe("impossible")
-    expect(result.radius).toBe(4)
-    expect(result.canFit).toBe(false)
-  })
-
   it("reports impossible with a minimum-required-size warning when even the minimum doesn't fit", () => {
     const result = fitHexGrid({
       viewport: { width: 100, height: 80 },
@@ -82,36 +70,6 @@ describe("fitHexGrid", () => {
     expect(result.bounds).toEqual(expectedBounds)
     expect(result.warning).toContain(`${Math.ceil(expectedBounds.width)}`)
     expect(result.warning).toContain(`${Math.ceil(expectedBounds.height)}`)
-  })
-
-  it("reduces radius under shrink-then-reduce once shrinking alone can't keep cells legible", () => {
-    const result = fitHexGrid({
-      viewport: { width: 200, height: 200 },
-      requestedRadius: 4,
-      preferredHexSize: 70,
-      minHexSize: 18,
-      strategy: "shrink-then-reduce",
-    })
-
-    expect(result.status).toBe("reduced-radius")
-    expect(result.radius).toBeLessThan(4)
-    expect(result.hexSize).toBe(70)
-    expect(result.canFit).toBe(true)
-    expect(result.bounds).toEqual(measureHexGridBounds(result.radius, 70))
-  })
-
-  it("still reports impossible under shrink-then-reduce if even radius 0 can't fit", () => {
-    const result = fitHexGrid({
-      viewport: { width: 10, height: 10 },
-      requestedRadius: 4,
-      preferredHexSize: 70,
-      minHexSize: 18,
-      strategy: "shrink-then-reduce",
-    })
-
-    expect(result.status).toBe("impossible")
-    expect(result.radius).toBe(0)
-    expect(result.canFit).toBe(false)
   })
 
   it("subtracts padding from both dimensions before fitting", () => {

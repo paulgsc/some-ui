@@ -51,7 +51,6 @@ describe("react.config — rule severities for .tsx files", () => {
     ["react-hooks/exhaustive-deps", "error"],
     ["react-hooks/rules-of-hooks", "error"],
     ["effect-guard/no-latest-ref-effect", "error"],
-    // "You Might Not Need an Effect", at error; no-event-handler is too noisy.
     ["react-you-might-not-need-an-effect/no-derived-state", "error"],
     ["react-you-might-not-need-an-effect/no-chain-state-updates", "error"],
     ["react-you-might-not-need-an-effect/no-pass-data-to-parent", "error"],

@@ -36,7 +36,7 @@ export type UseHangulGameWasmReturn = {
   gameBridge: WasmGameBridge | null
 }
 
-/** What a load was for: a change to any of these is a new load. */
+/** The inputs a load ran with, and its error. */
 type Settled = {
   mode: GameMode
   sessionKey: string | undefined

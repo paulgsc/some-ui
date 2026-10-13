@@ -12,7 +12,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 vi.mock("@honeycomb/lib/hangul/hangul-wasm-runtime", () => ({
   loadHangulWasm: vi.fn(),
   getLastError: vi.fn(),
-  getCoreInstance: vi.fn(),
 }))
 
 /**
