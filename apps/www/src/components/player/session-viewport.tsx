@@ -128,6 +128,7 @@ export const SessionViewport = ({
           shelf: shelves?.topik,
           share: PHONE_SHARE,
           sceneVoice: PHONE_SCENE_VOICE,
+          // Read at render: main.tsx installs the sidecar after imports run.
           sceneFileHint: ON_PHONE ? lookIn("drama-tree") : undefined,
           paused,
         },

@@ -450,10 +450,9 @@ describe("HandheldLesson", () => {
 
     it("names where scene files wait on the picker, when the host says", async () => {
       renderLesson({ sceneFileHint: "In Drive, look in Dramas › requests" })
-      const picker = await screen.findByLabelText(/Open a scene from storage/)
-      expect(picker.closest("label")?.textContent).toContain(
-        "In Drive, look in Dramas › requests"
-      )
+      expect(
+        await screen.findByLabelText(/Open a scene from storage/)
+      ).toHaveAccessibleDescription(/In Drive, look in Dramas › requests/)
     })
 
     it("offers the drama's sound in the header, off until turned on", async () => {

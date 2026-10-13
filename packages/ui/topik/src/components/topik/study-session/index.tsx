@@ -86,8 +86,8 @@ export type KoreanStudyPageProps = {
    */
   sceneVoice?: SceneVoice
   /**
-   * Where the learner's scene files wait ("In Drive: …"), named by the host
-   * and shown on "Open a scene from storage"; absent, none is named.
+   * Where the learner's scene files wait, named by the host and shown on
+   * "Open a scene from storage"; absent, none is named.
    */
   sceneFileHint?: string
   /**

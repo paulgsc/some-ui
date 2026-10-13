@@ -31,7 +31,6 @@ export type SessionConfig = {
   treeFeed?: TreeFeed
   share?: FileShare
   sceneVoice?: SceneVoice
-  /** Where the host says the learner's scene files wait, shown on the picker. */
   sceneFileHint?: string
 }
 

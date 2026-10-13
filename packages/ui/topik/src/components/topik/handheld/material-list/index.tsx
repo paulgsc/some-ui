@@ -37,7 +37,7 @@ type MaterialListProps = {
   onSeed: (seed: Seed) => void
   /** A scene file's text, picked from storage; absent, not offered. */
   onSceneText?: (text: string) => void
-  /** Where those files wait, as the host names it (`SessionConfig`). */
+  /** Shown under the picker; absent, nothing. */
   sceneFileHint?: string
   /** The feed is loading, or failed to load (`error`). */
   loading: boolean
@@ -136,6 +136,7 @@ const OpenScene = ({
   const { state, open } = useSceneFile()
   const name = useId()
   const about = useId()
+  const where = useId()
   return (
     <label className="bg-card border-border focus-within:ring-ring relative flex min-h-16 shrink-0 cursor-pointer items-center gap-3 rounded-2xl border p-4 text-left focus-within:ring-2">
       <FolderOpen className="text-primary size-6 shrink-0" />
@@ -160,14 +161,16 @@ const OpenScene = ({
               : "A drama your model or agent saved, from your drive or this phone."}
         </span>
         {hint && (
-          <span className="text-muted-foreground block text-xs">{hint}</span>
+          <span id={where} className="text-muted-foreground block text-xs">
+            {hint}
+          </span>
         )}
       </span>
       <input
         type="file"
         // Named by the title alone; the hint or the read's state describes it.
         aria-labelledby={name}
-        aria-describedby={about}
+        aria-describedby={hint ? `${about} ${where}` : about}
         className="sr-only"
         onChange={(event) => {
           const file = event.currentTarget.files?.[0]

@@ -79,7 +79,7 @@ export function installShareSidecar(next: ShareSidecar | undefined): void {
   sidecar = next
 }
 
-/** Where the sidecar says files of `kind` wait; none without one. */
+/** What the sidecar names for `kind`. */
 export function lookIn(kind: string): string | undefined {
   try {
     return sidecar?.lookIn?.(kind)

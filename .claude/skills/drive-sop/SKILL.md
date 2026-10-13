@@ -34,8 +34,8 @@ folders, so deleting it and its install removes it whole. Keep the two in step:
 - **A share added or renamed** (`shareFiles("<dir>"` in `apps/www`) needs its folder in
   `DRIVE_FOLDERS`, and a `lookIn("<kind>"` its entry in `DRIVE_LOOK_IN`. The module's test
   fails until each has one.
-- **A folder moved in the SOP** moves in `DRIVE_FOLDERS` in the same change, and the
-  reverse.
+- **A folder moved in the SOP** moves in `DRIVE_FOLDERS` and `DRIVE_LOOK_IN` in the same
+  change, and the reverse.
 
 Don't change the tree on your own. A new kind of data gets a section in the SOP doc first,
 and only then a folder. That edit is the owner's or the change's author's to make, so name
