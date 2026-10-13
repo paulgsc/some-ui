@@ -185,6 +185,7 @@ describe("LA4: a corpus read carries no credentials", () => {
       "lib/leetype-content/index.ts",
       "lib/topik-content/index.ts",
       "lib/web-surface/hangul/vocab.ts",
+      "lib/web-surface/playoff-delta/stage.tsx",
     ])
   })
 })
