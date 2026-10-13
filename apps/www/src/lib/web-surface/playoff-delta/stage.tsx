@@ -28,7 +28,7 @@ export type LiveStageProps = Omit<
  * - **Pages:** no request; plays the bundled invented season.
  * - **Elsewhere:** renders nothing until the file answers, so a recording
  *   never opens on the wrong numbers; on failure, falls back to the invented
- *   season.
+ *   season, except in record mode, which stays blank.
  */
 export const PlayoffDeltaLiveStage = (
   props: LiveStageProps
@@ -41,5 +41,9 @@ export const PlayoffDeltaLiveStage = (
     { enabled: FETCHES_CONTENT, retry: 1 }
   )
   if (FETCHES_CONTENT && isPending) return null
+  // A recording never falls back: with no frame, the recorder fails instead
+  // of writing clips of the invented season.
+  if (FETCHES_CONTENT && props.record === true && data === undefined)
+    return null
   return <PlayoffDeltaStage season={data} {...props} />
 }

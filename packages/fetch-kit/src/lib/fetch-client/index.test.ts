@@ -69,6 +69,15 @@ describe("content-type branching", () => {
     expect(result).toEqual({ foo: "bar" })
   })
 
+  it("reads JSON when the client's defaults ask for it", async () => {
+    fetchMock.mockResolvedValue(textResponse('{"foo":"bar"}'))
+    const client = createFetchClient({ responseAs: "json" })
+
+    const result = await client.get(new URL("https://raw.test/data.json"))
+
+    expect(result).toEqual({ foo: "bar" })
+  })
+
   it("keeps a non-JSON error's status when asked to read JSON", async () => {
     fetchMock.mockResolvedValue(textResponse("404: Not Found", 404))
     const client = createFetchClient()

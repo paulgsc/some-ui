@@ -170,7 +170,12 @@ export const createFetchClient = (
     schema?: z.ZodType<T>,
     retryCount = 0
   ): Promise<T> {
-    const { timeout, retry, responseAs, ...restOptions } = fetchOptions
+    const {
+      timeout,
+      retry,
+      responseAs = options.responseAs,
+      ...restOptions
+    } = fetchOptions
 
     const controller = new AbortController()
     const timeoutId = setTimeout(
