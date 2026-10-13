@@ -2,7 +2,7 @@
  * @vitest-environment jsdom
  */
 
-import { beforeEach, describe, expect, it, vi } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import {
   installShareSidecar,
@@ -23,6 +23,10 @@ beforeEach(() => {
   // A failure is reported (`reportFailure`); the console line is not under test.
   vi.spyOn(globalThis.console, "error").mockImplementation(() => undefined)
   share.mockReset().mockResolvedValue({})
+})
+
+afterEach(() => {
+  installShareSidecar(undefined)
 })
 
 describe("shareFiles", () => {
@@ -102,7 +106,6 @@ describe("shareFiles", () => {
     await expect(shareFiles("out", "t", [])).resolves.toMatchObject({
       value: "shared",
     })
-    installShareSidecar(undefined)
   })
 })
 

@@ -17,8 +17,7 @@ import type { ShareSidecar } from "@/lib/share-files"
 
 /**
  * Each share's folder, by the `dir` it shares from (`shareFiles`'s first
- * argument), given the local day it is shared. Kept in step with the SOP's
- * tree, and with every `dir` the app shares from (this module's test).
+ * argument), given the local day it is shared; its test checks every `dir`.
  */
 export const DRIVE_FOLDERS: Readonly<
   Partial<Record<string, (day: string) => string>>

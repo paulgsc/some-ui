@@ -39,8 +39,6 @@ bootDeviceBackend()
 if (import.meta.env.VITE_DEVICE_BACKEND === "true") {
   sweepOrphans()
   sweepSceneVoice()
-  // The owner's Drive filing beside every share sheet: a sidecar, removed by
-  // deleting this line and lib/drive-filing.
   installShareSidecar(driveFiling())
 }
 

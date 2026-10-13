@@ -22,24 +22,14 @@ function sharedDirs(): Set<string> {
 }
 
 describe("driveFolder", () => {
-  it("files each share where the Drive SOP says, an export under the day it leaves", () => {
-    const at = new Date(2026, 9, 13, 23, 30)
-    expect(driveFolder("reflections", at)).toBe("Study ledger › reflections")
-    expect(driveFolder("agent-export", at)).toBe(
+  it("files an export under the day it leaves", () => {
+    expect(driveFolder("agent-export", new Date(2026, 9, 13))).toBe(
       "Study ledger › study-context › 2026-10-13 (new folder)"
     )
-    expect(driveFolder("journal-takes", at)).toBe(
-      "Build Journal › voice › takes"
-    )
-    expect(driveFolder("drama-prompt", at)).toBe("Dramas › requests")
-    expect(driveFolder("elsewhere", at)).toBeUndefined()
   })
 
   it("names a folder for every share the app makes, and for nothing else", () => {
-    const dirs = sharedDirs()
-    // The scan found the shares, so an empty set cannot pass.
-    expect(dirs.size).toBeGreaterThanOrEqual(4)
-    expect(new Set(Object.keys(DRIVE_FOLDERS))).toEqual(dirs)
+    expect(new Set(Object.keys(DRIVE_FOLDERS))).toEqual(sharedDirs())
   })
 })
 

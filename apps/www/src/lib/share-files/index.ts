@@ -64,14 +64,13 @@ type Files = ReadonlyArray<SharedFile>
 /**
  * Something the host hangs beside the share sheet, told when a share's sheet
  * opens; what `opening` returns runs once that sheet settles. It cannot change
- * the share, and one that throws is ignored. The phone installs the owner's
- * Drive filing (`lib/drive-filing`); with none installed, shares are the same.
+ * the share, and one that throws is ignored. With none installed, shares are
+ * the same.
  */
 export type ShareSidecar = { opening: (dir: string) => (() => void) | void }
 
 let sidecar: ShareSidecar | undefined
 
-/** Replaces the sidecar; `undefined` removes it. */
 export function installShareSidecar(next: ShareSidecar | undefined): void {
   sidecar = next
 }
@@ -84,7 +83,7 @@ function sidecarOpening(dir: string): () => void {
       try {
         settle?.()
       } catch {
-        // A sidecar's failure is its own; the share already settled.
+        return
       }
     }
   } catch {

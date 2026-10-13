@@ -27,7 +27,7 @@ What it settles, so you know it's worth the read:
 
 The phone names each share's folder as its sheet opens: `apps/www/src/lib/drive-filing`, a
 sidecar installed in `main.tsx` that holds the SOP's folders by the share's `dir`
-(`DRIVE_FOLDERS`). It is the only code that knows the SOP, so deleting it and its install
+(`DRIVE_FOLDERS`). It is the only code that names where a share is filed, so deleting it and its install
 removes it whole. Keep the two in step:
 
 - **A share added or renamed** (`shareFiles("<dir>"` in `apps/www`) needs its folder in

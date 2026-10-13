@@ -2,8 +2,8 @@
  * A Build Journal episode's takes, out through Android's share sheet:
  * `takes.json` and each take's audio, in the primer's order, for the agent
  * that splices the video (`@some-ui/soundbites`, `journalFiles`). The person
- * picks where they go (Drive's `Build Journal/voice/takes`), and once they
- * say the files arrived, the episode leaves the phone. Phone-only
+ * picks where they go (Drive, say), and once they say the files arrived, the
+ * episode leaves the phone. Phone-only
  * (`build.paths.ts`).
  */
 import type { JournalSent, JournalStore } from "@some-ui/soundbites"
