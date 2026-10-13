@@ -96,21 +96,18 @@ export const test = base.extend<MujikFixtures & { page: Page }>({
       ],
     })
 
-    // eslint-disable-next-line react-hooks/rules-of-hooks
     await use(context)
     await context.close()
   },
 
   page: async ({ context }, use) => {
     const page = context.pages()[0] ?? (await context.newPage())
-    // eslint-disable-next-line react-hooks/rules-of-hooks
     await use(page)
   },
 
   fixture: async ({ context }, use) => {
     const openedPages: Array<Page> = []
 
-    // eslint-disable-next-line react-hooks/rules-of-hooks
     await use({
       async goto(name: string) {
         const page = await context.newPage()

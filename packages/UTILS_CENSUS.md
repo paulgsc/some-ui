@@ -7,18 +7,18 @@ recounted against its real consumers and moved to the workspace the
 [Doctrine](./SHARED_WORKSPACE_DOCTRINE.md) points at; the rest of this file
 is history.
 
-| Export(s)                                                                                                                                         | Went to                                              | Why                                                               |
-| ------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- | ----------------------------------------------------------------- |
-| `cn`, string/date/array/stats helpers (already re-exported from there)                                                                            | `@some-ui/core-utils`                                | many consumers                                                    |
-| `assertNever`                                                                                                                                     | `@some-ui/core-utils`                                | 4 consumers (www, leetype, shared, topik)                         |
-| `useIsMobile`, `HANDHELD_*`, `isHandheldBox`, `useFittedPage`, `FittedPage`, `useResizeObserver` (+ internal `useIsMounted`), `useShowOnScrollUp` | `@some-ui/react-hooks` (`packages/react-hooks`, new) | ≥2 consumers each                                                 |
-| orchestrator store, session-context store, `useMockOrchestrator` + its engine                                                                     | `apps/www/src/lib/orchestrator`                      | www only (§2 de-hoist)                                            |
-| `useEditModeHotkey`, `useLocalStorage`, `useRecursiveLibrary`                                                                                     | `apps/www/src/hooks`                                 | www only                                                          |
-| `HttpFileDiscovery`, `HttpJsonLoader`, `FileDiscovery`, `ResourceLoader`                                                                          | `@some-ui/fetch-kit`                                 | www only, but they call `fetch`, which LA1 bars in `apps/www/src` |
-| `lazyWithPreload`                                                                                                                                 | `packages/some-content-registry`                     | its only consumer                                                 |
-| `renderRegistryComponent`, `ComponentEnhancer`                                                                                                    | `packages/ui/wireframes`                             | its only consumer                                                 |
-| `useMeasureRect`                                                                                                                                  | deleted                                              | no consumer                                                       |
-| `useOrchestrator` (and with it `@some-ui/ws`)                                                                                                     | deleted                                              | its one caller was a Storybook decorator, also deleted            |
+| Export(s)                                                                                                             | Went to                                              | Why                                                               |
+| --------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- | ----------------------------------------------------------------- |
+| `cn`, string/date/array/stats helpers (already re-exported from there)                                                | `@some-ui/core-utils`                                | many consumers                                                    |
+| `assertNever`                                                                                                         | `@some-ui/core-utils`                                | 4 consumers (www, leetype, shared, topik)                         |
+| `useIsMobile`, `HANDHELD_*`, `isHandheldBox`, `useFittedPage`, `FittedPage`, `useResizeObserver`, `useShowOnScrollUp` | `@some-ui/react-hooks` (`packages/react-hooks`, new) | ≥2 consumers each                                                 |
+| orchestrator store, session-context store, `useMockOrchestrator` + its engine                                         | `apps/www/src/lib/orchestrator`                      | www only (§2 de-hoist)                                            |
+| `useEditModeHotkey`, `useLocalStorage`, `useRecursiveLibrary`                                                         | `apps/www/src/hooks`                                 | www only                                                          |
+| `HttpFileDiscovery`, `HttpJsonLoader`, `FileDiscovery`, `ResourceLoader`                                              | `@some-ui/fetch-kit`                                 | www only, but they call `fetch`, which LA1 bars in `apps/www/src` |
+| `lazyWithPreload`                                                                                                     | `packages/some-content-registry`                     | its only consumer                                                 |
+| `renderRegistryComponent`, `ComponentEnhancer`                                                                        | `packages/ui/wireframes`                             | its only consumer                                                 |
+| `useMeasureRect`                                                                                                      | deleted                                              | no consumer                                                       |
+| `useOrchestrator` (and with it `@some-ui/ws`)                                                                         | deleted                                              | its one caller was a Storybook decorator, also deleted            |
 
 > **Superseded counts (2026-10-02).** This is a dated snapshot. Workspaces it
 > counts as consumers have since been deleted: `nfl`, `attributions` and
@@ -37,8 +37,9 @@ is history.
 > `useContainerRect` (§2), `hasErrors`/`formatLibraryError` (§9),
 > `preloadRegistryComponents`/`hasRegistryKey` (§10), and `useMode`,
 > `selectProgress`, `selectConnectionStatus` (§6a), plus `createEventBus` (§12,
-> its last consumer was `packages/ui/dice-card`). `useIsMounted` stays
-> internal to `useResizeObserver` only. Rows below that name them are history.
+> its last consumer was `packages/ui/dice-card`). `useIsMounted` is gone too:
+> `useResizeObserver` reports through `useEffectEvent`. Rows below that name
+> them are history.
 
 > Evidence base for UTL-FOUND S2 (#521). Every hoist/keep/de-hoist decision
 > in this milestone is scored against this table via the

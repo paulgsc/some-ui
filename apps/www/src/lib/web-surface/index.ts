@@ -1,9 +1,10 @@
-import type { ComponentProps, ComponentType, ReactNode } from "react"
+import type { ComponentType, ReactNode } from "react"
 import { lazyWithPreload } from "@some-ui/content-registry/registry/lazy-with-preload"
-import type { PlayoffDeltaStage as Stage } from "@some-ui/playoff-delta"
 import type { ComponentRegistry } from "@some-ui/types"
 
 import { hasAudience } from "@/lib/build-profile"
+
+import type { LiveStageProps } from "./playoff-delta/stage"
 
 /**
  * The web surface's door (`doors` in build.profiles.ts): the one place
@@ -48,12 +49,13 @@ export const ExtensionsComb: ComponentType<{ mark?: ReactNode }> =
 
 /**
  * The Playoff Delta story stage (a desktop recording stage for the weekly
- * vlog); nothing where the build has no web surface.
+ * vlog), playing this season's real numbers (`./playoff-delta`); nothing
+ * where the build has no web surface.
  */
-export const PlayoffDeltaStage: ComponentType<ComponentProps<typeof Stage>> =
+export const PlayoffDeltaStage: ComponentType<LiveStageProps> =
   import.meta.env.VITE_DEVICE_BACKEND !== "true" && hasAudience("web")
     ? lazyWithPreload(
-        () => import("@some-ui/playoff-delta"),
-        "PlayoffDeltaStage"
+        () => import("./playoff-delta/stage"),
+        "PlayoffDeltaLiveStage"
       ).Component
     : Nothing

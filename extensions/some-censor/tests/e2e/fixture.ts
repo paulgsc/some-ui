@@ -170,19 +170,16 @@ export const test = base.extend<BoyoFixtures & { page: Page }>({
       /* eslint-enable @typescript-eslint/no-explicit-any, @typescript-eslint/consistent-type-assertions, @typescript-eslint/no-unsafe-argument */
     )
 
-    // eslint-disable-next-line react-hooks/rules-of-hooks
     await use(context)
     await context.close()
   },
 
   page: async ({ context }, use) => {
     const page = context.pages()[0] ?? (await context.newPage())
-    // eslint-disable-next-line react-hooks/rules-of-hooks
     await use(page)
   },
 
   fixture: async ({ context }, use) => {
-    // eslint-disable-next-line react-hooks/rules-of-hooks
     await use({
       async goto(name = "yt-home") {
         const page = await context.newPage()

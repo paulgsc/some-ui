@@ -1,5 +1,5 @@
 import type { JSX } from "react"
-import { useEffect, useRef } from "react"
+import { useEffect, useEffectEvent, useRef } from "react"
 import { cn } from "@some-ui/core-utils"
 import { useIsMobile } from "@some-ui/react-hooks"
 
@@ -50,11 +50,6 @@ export const LivePlayer = ({ session }: LivePlayerProps): JSX.Element => {
 
   const hasConfiguredRef = useRef(false)
   const hasWrittenBackRef = useRef(false)
-  const latestTimeRef = useRef(currentTime)
-
-  useEffect(() => {
-    latestTimeRef.current = currentTime
-  }, [currentTime])
 
   useEffect(() => {
     if (hasConfiguredRef.current) return
@@ -68,11 +63,7 @@ export const LivePlayer = ({ session }: LivePlayerProps): JSX.Element => {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- runs exactly once per mount; caller remounts this component per session id via key
   }, [])
 
-  useEffect(() => {
-    if (!isTerminal) {
-      hasWrittenBackRef.current = false
-      return
-    }
+  const writeBack = useEffectEvent((): void => {
     if (hasWrittenBackRef.current || session.status === "completed") return
     hasWrittenBackRef.current = true
 
@@ -84,11 +75,18 @@ export const LivePlayer = ({ session }: LivePlayerProps): JSX.Element => {
         : {
             status: "completed",
             completedAt: new Date().toISOString(),
-            finalElapsedMs: latestTimeRef.current,
+            finalElapsedMs: currentTime,
           },
     })
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- `completeSessionIntent.start` is stable per useIntent's own useCallback; `completeSessionIntent` itself is a fresh object every render and would defeat `hasWrittenBackRef`'s guard for no benefit if included here.
-  }, [isTerminal, session.id, session.status, completeSessionIntent.start])
+  })
+
+  useEffect(() => {
+    if (!isTerminal) {
+      hasWrittenBackRef.current = false
+      return
+    }
+    writeBack()
+  }, [isTerminal])
 
   if (isTerminal) {
     const completedSession: SessionRecord =

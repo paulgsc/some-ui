@@ -1,4 +1,4 @@
-import { useSyncExternalStore } from "react"
+import { useMediaQuery } from "@react-hooks/lib/use-media-query"
 
 /**
  * The workspace's one definition of a handheld window: either axis compact,
@@ -24,21 +24,9 @@ export function isHandheldBox({
   return width < HANDHELD_MAX_WIDTH || height < HANDHELD_MAX_HEIGHT
 }
 
-function subscribe(onChange: () => void): () => void {
-  const mql = window.matchMedia(HANDHELD_QUERY)
-  mql.addEventListener("change", onChange)
-  return (): void => mql.removeEventListener("change", onChange)
-}
-
-function snapshot(): boolean {
-  return window.matchMedia(HANDHELD_QUERY).matches
-}
-
 /**
- * Whether the window is handheld (`HANDHELD_QUERY`, above).
- *
- * Read with `useSyncExternalStore`, so the first render is already right.
- * The server snapshot is `false` (desktop degrades more gracefully).
+ * Whether the window is handheld (`HANDHELD_QUERY`, above). On the server,
+ * `false`: desktop degrades more gracefully.
  *
  * The answer can change mid-task (a resize across `md`), so a caller must not
  * let its branch move stateful children in the tree: a moved child remounts
@@ -47,5 +35,5 @@ function snapshot(): boolean {
  *
  */
 export function useIsMobile(): boolean {
-  return useSyncExternalStore(subscribe, snapshot, () => false)
+  return useMediaQuery(HANDHELD_QUERY)
 }

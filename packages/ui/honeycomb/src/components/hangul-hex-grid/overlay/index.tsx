@@ -21,6 +21,7 @@ import { useGameAudio } from "@honeycomb/hooks/use-game-audio"
 import { useGameLoop } from "@honeycomb/hooks/use-game-loop"
 import { useGameTimer } from "@honeycomb/hooks/use-game-timer"
 import { useHangulGameWasm } from "@honeycomb/hooks/use-hangul-wasm"
+import { useHexgridWasm } from "@honeycomb/hooks/use-hexgrid-wasm"
 import { useKeyboardInput } from "@honeycomb/hooks/use-keyboard-input"
 import { usePromptEscalation } from "@honeycomb/hooks/use-prompt-escalation"
 import type { DifficultyPreset } from "@honeycomb/lib/hangul/difficulty-presets"
@@ -85,8 +86,8 @@ export const HangulHexGrid = ({
   suspended = false,
   words = HANGUL_WORDS,
 }: HangulHexGridProps): JSX.Element => {
-  // Memoized so useHangulGameWasm's [mode, config, wordPool]-keyed
-  // initialize() stays stable.
+  // Memoized: useHangulGameWasm loads again whenever config or wordPool
+  // changes identity.
   const config = useMemo(
     () => resolveDifficultyConfig(difficulty),
     [difficulty]
@@ -130,20 +131,15 @@ export const HangulHexGrid = ({
   // missed) and the debrief panel explains what was missed, and only once it
   // is dismissed do those cells go away and the next word spawn.
   const [missedWord, setMissedWord] = useState<MissedWord | null>(null)
-  // The grid's own hex-geometry WASM (via HexGrid) is separate from the game
-  // engine's; HexGrid's onStatusChange lets a fatal grid failure stop the
-  // loop, audio and timer instead of running blind.
-  const [gridError, setGridError] = useState<string | null>(null)
+  // The grid's own hex-geometry WASM is separate from the game engine's.
+  const grid = useHexgridWasm({
+    cellCount: HANGUL_GRID_CELL_COUNT,
+    hexSize: 70,
+  })
+  const gridError = grid.error
   const isGridFatal = gridError !== null
-  const handleGridStatusChange = useCallback(
-    (status: { isLoading: boolean; error: string | null }) => {
-      setGridError(status.error)
-    },
-    []
-  )
 
   const { isLoading, error, gameBridge, isInitialized } = useHangulGameWasm({
-    autoStart: true,
     mode,
     config,
     wordPool,
@@ -330,16 +326,10 @@ export const HangulHexGrid = ({
         <main className="size-full absolute">
           <div className="size-full relative">
             <HexGrid
-              cellCount={HANGUL_GRID_CELL_COUNT}
-              hexSize={70}
+              grid={grid}
               viewBoxFactor={1.2}
               cellContent={cellContent}
               backgroundOpacity={0.8}
-              // "shrink-only" is required: engine cell ids come from
-              // HANGUL_GRID_RADIUS (see wasm-game-bridge), and a smaller radius
-              // would render different ids than the game spawns into.
-              fitStrategy="shrink-only"
-              onStatusChange={handleGridStatusChange}
               className="[&_g:first-of-type_path]:stroke-white/30 [&_g:first-of-type_path]:stroke-[2]"
               renderCell={(cell, centerX, centerY, cellWidth, hexPath) => {
                 const { id, content } = cell

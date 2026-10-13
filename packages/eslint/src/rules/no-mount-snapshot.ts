@@ -1,5 +1,7 @@
 import type { Rule, Scope } from "eslint"
 
+import { hookName, within } from "./react-hook-ast.js"
+
 // ESTree shapes aren't narrowed cleanly by @types/eslint's Node union.
 
 /* eslint-disable @typescript-eslint/no-explicit-any -- ESTree shapes not modeled precisely by @types/eslint's Node union, see comment above */
@@ -36,22 +38,6 @@ const READ_ONCE_NAME = /^(initial|default)[A-Z]/
 const COMPONENT_WRAPPERS = new Set(["memo", "forwardRef"])
 
 type Node = any
-
-/** `useState`, or `React.useState`, as the name of the hook called. */
-function hookName(callee: Node): string | null {
-  let name: unknown = null
-  if (callee.type === "Identifier") name = callee.name
-  if (
-    callee.type === "MemberExpression" &&
-    !callee.computed &&
-    callee.object.type === "Identifier" &&
-    callee.object.name === "React" &&
-    callee.property.type === "Identifier"
-  ) {
-    name = callee.property.name
-  }
-  return typeof name === "string" ? name : null
-}
 
 /** The name a function is known by: its own, or the variable it's assigned to. */
 function functionName(fn: Node): string | null {
@@ -96,12 +82,6 @@ function owningFunction(node: Node): Rule.Node | null {
     }
   }
   return null
-}
-
-function within(inner: Node, outer: Node): boolean {
-  const [a, b] = inner.range ?? [0, 0]
-  const [c, d] = outer.range ?? [0, 0]
-  return a >= c && b <= d
 }
 
 /** The arguments that only seed the state: read once, at mount. */

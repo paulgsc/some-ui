@@ -108,7 +108,7 @@ export const ExerciseCard: FC<ExerciseCardProps> = ({
   const canType = gameState === "playing"
   const hint = rejection ? REJECTION_HINT[rejection] : undefined
   const diff = typingBlockOf(step)?.diff
-  // Memoized on `step`: the session clock re-renders every 250ms, and
+  // Memoized on `step`: the engine tick re-renders every 250ms, and
   // PromptPanel keys its derived rows on this reference to tell "the prompt
   // changed" from "a tick happened".
   //

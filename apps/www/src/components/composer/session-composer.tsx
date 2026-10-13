@@ -198,7 +198,7 @@ export const SessionComposer = ({
   // the mid-chain trigger for "Save & Play" (activate). `activeAction` says
   // which. Each terminal navigation replaces the composer's history entry: a
   // saved composer is spent, so back (Android's, on the phone) skips it.
-  useIntentEffect(createIntent.state, (session) => {
+  useIntentEffect(createIntent, (session) => {
     if (activeAction === "draft") {
       toast("Session saved as draft")
       void navigate({ to: "/sessions", replace: true })
@@ -212,7 +212,7 @@ export const SessionComposer = ({
 
   // Terminal navigation, fired here because useIntent doesn't re-expose
   // TanStack's per-call onSuccess (see its header).
-  useIntentEffect(updateIntent.state, (session) => {
+  useIntentEffect(updateIntent, (session) => {
     if (activeAction === "draft") {
       toast("Draft updated")
       void navigate({ to: "/sessions", replace: true })

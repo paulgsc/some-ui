@@ -18,11 +18,15 @@
  */
 
 import type { JSX } from "react"
-import { useEffect, useMemo, useRef } from "react"
+import { useEffect, useEffectEvent, useMemo, useState } from "react"
 import { useSpeechSession } from "@speech/components/speech-provider"
 import { useQueueStore } from "@speech/lib/hooks/use-queue-store"
 import type { SpeechQueueState } from "@speech/lib/queue"
-import type { SpeechNotifier, SpeechStatus } from "@speech/lib/status"
+import type {
+  SpeechNotice,
+  SpeechNotifier,
+  SpeechStatus,
+} from "@speech/lib/status"
 import {
   createSpeechAnnouncer,
   deriveSpeechStatus,
@@ -72,11 +76,10 @@ export const SpeechStatusAnnouncer = ({
   // One announcer per session. It holds "what this person has already been
   // told", which is exactly the state that must not reset on re-render -
   // and must not survive into the next session either.
-  const announcerRef = useRef(createSpeechAnnouncer())
-  const notifyRef = useRef(notify)
-  useEffect(() => {
-    notifyRef.current = notify
-  }, [notify])
+  const [announcer] = useState(createSpeechAnnouncer)
+  const announce = useEffectEvent((notice: SpeechNotice): void => {
+    notify?.(notice)
+  })
 
   // `status` changes identity only when it changes value, so this runs on
   // transitions. It would be correct either way: `observe` is idempotent
@@ -84,9 +87,9 @@ export const SpeechStatusAnnouncer = ({
   // announced. The dedup lives in the machine, where it is property-tested,
   // never in a dependency array.
   useEffect(() => {
-    const notice = announcerRef.current.observe(status)
-    if (notice) notifyRef.current?.(notice)
-  }, [status])
+    const notice = announcer.observe(status)
+    if (notice) announce(notice)
+  }, [announcer, status])
 
   return (
     <div

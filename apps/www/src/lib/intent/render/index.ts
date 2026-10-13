@@ -8,7 +8,7 @@
  *
  * **Bulk: one intent, selection preserved.** `deleteMany`/`updateStatusMany`
  * are single batch requests, so one `useIntent` and the same `IntentButton`
- * cover them. Clearing the selection goes in `useIntentEffect(state,
+ * cover them. Clearing the selection goes in `useIntentEffect(intent,
  * onClearSelection)`, so a failure leaves the selection for a one-click retry.
  */
 

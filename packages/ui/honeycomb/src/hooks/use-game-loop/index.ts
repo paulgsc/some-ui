@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from "react"
+import { useEffect, useEffectEvent } from "react"
 import type { AudioEvent } from "@honeycomb/hooks/use-game-audio"
 import type {
   GameStats,
@@ -56,63 +56,13 @@ export const useGameLoop = ({
   setMissCount,
   onWordMissed,
 }: UseGameLoopProps): void => {
-  const spawnTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const updateTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-
-  const gameBridgeRef = useRef(gameBridge)
-  const isPausedRef = useRef(isPaused)
-  const setActiveCharactersRef = useRef(setActiveCharacters)
-  const setStatsRef = useRef(setStats)
-  const setTimingParamsRef = useRef(setTimingParams)
-  const playSoundRef = useRef(playSound)
-  const onBoardFullRef = useRef(onBoardFull)
-  const setWordProgressRef = useRef(setWordProgress)
-  const setMissCountRef = useRef(setMissCount)
-  const wordProgressRef = useRef(wordProgress)
-  const onWordMissedRef = useRef(onWordMissed)
-
-  useEffect(() => {
-    gameBridgeRef.current = gameBridge
-  }, [gameBridge])
-  useEffect(() => {
-    isPausedRef.current = isPaused
-  }, [isPaused])
-  useEffect(() => {
-    setActiveCharactersRef.current = setActiveCharacters
-  }, [setActiveCharacters])
-  useEffect(() => {
-    setStatsRef.current = setStats
-  }, [setStats])
-  useEffect(() => {
-    setTimingParamsRef.current = setTimingParams
-  }, [setTimingParams])
-  useEffect(() => {
-    playSoundRef.current = playSound
-  }, [playSound])
-  useEffect(() => {
-    onBoardFullRef.current = onBoardFull
-  }, [onBoardFull])
-  useEffect(() => {
-    setWordProgressRef.current = setWordProgress
-  }, [setWordProgress])
-  useEffect(() => {
-    setMissCountRef.current = setMissCount
-  }, [setMissCount])
-  useEffect(() => {
-    wordProgressRef.current = wordProgress
-  }, [wordProgress])
-  useEffect(() => {
-    onWordMissedRef.current = onWordMissed
-  }, [onWordMissed])
-
-  const spawnCharacter = useCallback(() => {
-    const bridge = gameBridgeRef.current
-    if (!bridge) return
-
+  // Effect Events: the timers below read the latest committed props through
+  // these (wordProgress for the spawn gate included) without restarting.
+  const spawnCharacter = useEffectEvent((bridge: WasmGameBridge) => {
     // A word challenge is a queue of one: wait for the tracked word to
     // resolve. Single-jamo play never sets wordProgress and spawns
     // concurrently.
-    if (wordProgressRef.current) return
+    if (wordProgress) return
 
     const events = bridge.spawnCharacter()
 
@@ -123,10 +73,10 @@ export const useGameLoop = ({
           const chars = bridge.createDisplayCharacters(event.spawnResult)
 
           if (event.spawnResult.playSpawnSound) {
-            playSoundRef.current("character_spawn")
+            playSound("character_spawn")
           }
 
-          setActiveCharactersRef.current((prev) => {
+          setActiveCharacters((prev) => {
             const next = new Map(prev)
             chars.forEach((char) => {
               next.set(char.cellId, { ...char, timeRemaining: 1 })
@@ -137,26 +87,26 @@ export const useGameLoop = ({
           // Track a new word challenge, for the Prompt Station and the
           // queue-gate above. Single-jamo spawns are not tracked.
           if (event.spawnResult.answerGlyphs.length > 1) {
-            setWordProgressRef.current?.({
+            setWordProgress?.({
               cellIds: event.spawnResult.cellIds,
               answerGlyphs: event.spawnResult.answerGlyphs,
               cursor: 0,
             })
-            setMissCountRef.current?.(0)
+            setMissCount?.(0)
           }
 
           const timing = bridge.getTimingParams()
-          setTimingParamsRef.current(timing)
+          setTimingParams(timing)
           break
         }
 
         case "boardFull": {
-          onBoardFullRef.current?.()
+          onBoardFull?.()
           break
         }
         case "difficultyChanged": {
-          playSoundRef.current("difficulty_increase")
-          setTimingParamsRef.current(bridge.getTimingParams())
+          playSound("difficulty_increase")
+          setTimingParams(bridge.getTimingParams())
           break
         }
 
@@ -179,12 +129,9 @@ export const useGameLoop = ({
         }
       }
     })
-  }, [])
+  })
 
-  const updateCharacters = useCallback(() => {
-    const bridge = gameBridgeRef.current
-    if (!bridge) return
-
+  const updateCharacters = useEffectEvent((bridge: WasmGameBridge) => {
     const events = bridge.checkExpired()
     const now = Date.now()
     const currentWindow = bridge.getCurrentTimeWindow()
@@ -193,9 +140,9 @@ export const useGameLoop = ({
       const { type: t } = event
       switch (t) {
         case "charactersExpired": {
-          if (event.count > 0) playSoundRef.current("character_expire")
+          if (event.count > 0) playSound("character_expire")
 
-          const tracked = wordProgressRef.current
+          const tracked = wordProgress
           const trackedExpired =
             tracked?.cellIds.some((id) => event.cellIds.includes(id)) ?? false
           // A tracked word that expired unfinished goes to the host to
@@ -211,7 +158,7 @@ export const useGameLoop = ({
                 }
               : null
 
-          setActiveCharactersRef.current((prev) => {
+          setActiveCharacters((prev) => {
             const next = new Map(prev)
             event.cellIds.forEach((id) => {
               if (missedWord?.cellIds.includes(id)) {
@@ -230,22 +177,22 @@ export const useGameLoop = ({
           // Clearing the tracked word releases the spawn queue-gate; a
           // debrief re-gates by pausing the loop while it is up.
           if (trackedExpired) {
-            setWordProgressRef.current?.(null)
+            setWordProgress?.(null)
           }
           if (missedWord) {
-            onWordMissedRef.current?.(missedWord)
+            onWordMissed?.(missedWord)
           }
           break
         }
         case "statsUpdated": {
-          setStatsRef.current({
+          setStats({
             ...event.stats,
             accuracy: calculateAccuracy(event.stats),
           })
           break
         }
         case "difficultyChanged": {
-          setTimingParamsRef.current(bridge.getTimingParams())
+          setTimingParams(bridge.getTimingParams())
           break
         }
         case "characterSpawned":
@@ -270,7 +217,7 @@ export const useGameLoop = ({
     // (revealed_at_ms + answerKeys.length * currentWindow; canon Thm. 7.2,
     // ADR 0003 §2(a)).
 
-    setActiveCharactersRef.current((prev) => {
+    setActiveCharacters((prev) => {
       const next = new Map(prev)
       next.forEach((char, cellId) => {
         // Solved cells are locked in; missed ones are frozen at 0 for the
@@ -287,25 +234,29 @@ export const useGameLoop = ({
     })
 
     bridge.updateStatus()
-  }, [])
+  })
 
   useEffect(() => {
-    if (!isInitialized || !gameBridge || isPaused) return
+    if (!isInitialized || !gameBridge || isPaused) return undefined
 
-    const spawnInterval = gameBridge.getTimingParams().spawnIntervalMs
-    spawnTimerRef.current = setInterval(() => {
-      if (!isPausedRef.current) spawnCharacter()
-    }, spawnInterval)
+    // Rescheduled from the bridge each time, so a difficulty change (which
+    // shortens spawnIntervalMs) takes effect from the next spawn.
+    let spawnTimer: ReturnType<typeof setTimeout>
+    const scheduleSpawn = (): void => {
+      spawnTimer = setTimeout(() => {
+        spawnCharacter(gameBridge)
+        scheduleSpawn()
+      }, gameBridge.getTimingParams().spawnIntervalMs)
+    }
+    scheduleSpawn()
 
-    updateTimerRef.current = setInterval(() => {
-      if (!isPausedRef.current) updateCharacters()
-    }, 50)
+    const updateTimer = setInterval(() => updateCharacters(gameBridge), 50)
 
     return (): void => {
-      if (spawnTimerRef.current) clearInterval(spawnTimerRef.current)
-      if (updateTimerRef.current) clearInterval(updateTimerRef.current)
+      clearTimeout(spawnTimer)
+      clearInterval(updateTimer)
     }
-  }, [isInitialized, gameBridge, spawnCharacter, updateCharacters, isPaused])
+  }, [isInitialized, gameBridge, isPaused])
 }
 
 function calculateAccuracy(stats: GameStats): number {

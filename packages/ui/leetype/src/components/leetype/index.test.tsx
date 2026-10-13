@@ -243,8 +243,8 @@ describe("Leetype", () => {
       })
       expect(screen.getByText("Round 1")).toBeInTheDocument()
 
-      // About 300ms remain; two 250ms ticks end the session only if the
-      // 700ms spent loading was subtracted.
+      // About 300ms remain; 500ms more ends the session only if the 700ms
+      // spent loading was subtracted.
       act(() => {
         vi.advanceTimersByTime(500)
       })

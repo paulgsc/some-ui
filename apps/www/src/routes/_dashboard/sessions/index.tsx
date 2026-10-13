@@ -292,8 +292,8 @@ const BulkActionBar = ({
 
   // Decoupled from `.start()` (`lib/intent/render/index.ts`): a *successful*
   // batch clears the selection, once.
-  useIntentEffect(deleteManyIntent.state, onClearSelection)
-  useIntentEffect(updateStatusManyIntent.state, onClearSelection)
+  useIntentEffect(deleteManyIntent, onClearSelection)
+  useIntentEffect(updateStatusManyIntent, onClearSelection)
 
   const handleDeleteSelected = (): void => {
     if (

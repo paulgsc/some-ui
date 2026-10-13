@@ -50,6 +50,11 @@ describe("react.config — rule severities for .tsx files", () => {
     // Escalated from the plugin's default warn.
     ["react-hooks/exhaustive-deps", "error"],
     ["react-hooks/rules-of-hooks", "error"],
+    ["effect-guard/no-latest-ref-effect", "error"],
+    ["react-you-might-not-need-an-effect/no-derived-state", "error"],
+    ["react-you-might-not-need-an-effect/no-chain-state-updates", "error"],
+    ["react-you-might-not-need-an-effect/no-pass-data-to-parent", "error"],
+    ["react-you-might-not-need-an-effect/no-event-handler", "off"],
     ["jsx-a11y/alt-text", "error"],
     ["jsx-a11y/aria-props", "error"],
     ["jsx-a11y/aria-proptypes", "error"],

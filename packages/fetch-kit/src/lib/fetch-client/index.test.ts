@@ -57,6 +57,39 @@ describe("content-type branching", () => {
     expect(result).toBe("hello")
   })
 
+  it("parses JSON served as text when asked to read it as JSON", async () => {
+    fetchMock.mockResolvedValue(textResponse('{"foo":"bar"}'))
+    const client = createFetchClient()
+
+    const result = await client.get<{ foo: string }>(
+      new URL("https://raw.test/data.json"),
+      { responseAs: "json" }
+    )
+
+    expect(result).toEqual({ foo: "bar" })
+  })
+
+  it("reads JSON when the client's defaults ask for it", async () => {
+    fetchMock.mockResolvedValue(textResponse('{"foo":"bar"}'))
+    const client = createFetchClient({ responseAs: "json" })
+
+    const result = await client.get(new URL("https://raw.test/data.json"))
+
+    expect(result).toEqual({ foo: "bar" })
+  })
+
+  it("keeps a non-JSON error's status when asked to read JSON", async () => {
+    fetchMock.mockResolvedValue(textResponse("404: Not Found", 404))
+    const client = createFetchClient()
+
+    const error = await client
+      .get(new URL("https://raw.test/data.json"), { responseAs: "json" })
+      .catch((e: unknown) => e)
+
+    expect(error).toBeInstanceOf(ApiError)
+    expect(error).toMatchObject({ status: 404, data: "404: Not Found" })
+  })
+
   it("falls back to blob for other content types", async () => {
     fetchMock.mockResolvedValue(blobResponse())
     const client = createFetchClient()
@@ -64,6 +97,25 @@ describe("content-type branching", () => {
     const result = await client.get(new URL("https://api.test/data"))
 
     expect(result).toBeInstanceOf(Blob)
+  })
+})
+
+describe("request headers", () => {
+  const contentType = (): string | null =>
+    new Headers(fetchMock.mock.calls[0]?.[1]?.headers).get("Content-Type")
+
+  it("sends no Content-Type on a request with no body, so a cross-origin GET needs no preflight", async () => {
+    fetchMock.mockResolvedValue(jsonResponse({}))
+    await createFetchClient().get(new URL("https://raw.test/data.json"))
+
+    expect(contentType()).toBeNull()
+  })
+
+  it("still describes a JSON body", async () => {
+    fetchMock.mockResolvedValue(jsonResponse({}))
+    await createFetchClient().post(new URL("https://api.test/data"), { a: 1 })
+
+    expect(contentType()).toBe("application/json")
   })
 })
 

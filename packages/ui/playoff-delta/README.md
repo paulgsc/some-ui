@@ -13,12 +13,18 @@ left) close them for good.
 ## What this package is, and is not
 
 It renders. It does not compute. The paths, the results that moved them,
-and the rivals' worst cases come in as one JSON season, parsed through
-`parseStorySeason` (`src/lib/story.ts`, the contract), and a malformed
-feed fails there rather than mid-render. Until a real pipeline publishes a
-season, the stage plays `src/fixtures/invented-season.json`: an invented
+and the rivals' worst cases come in as one JSON season, validated by
+`StorySeasonSchema` (`src/lib/story.ts`, the contract), and a malformed
+feed fails there rather than mid-render. Where no season is given, the stage
+plays `src/fixtures/invented-season.json`: an invented
 17-week season, generated with the same formula schedule, so the numbers are
 consistent but not real.
+
+The real season comes from `paulgsc/server`'s `playoff-delta` job
+(`crates/playoff_delta`), which a weekly workflow in `paulgsc/testing` runs
+on ESPN's scoreboards and commits as `playoff-delta/<season>/<team>.json`.
+`apps/www` fetches that file (`lib/web-surface/playoff-delta`) and validates
+it with `StorySeasonSchema` before handing it to the stage.
 
 ## The story
 
@@ -50,9 +56,6 @@ and `voiceover.md`; its header has the options.
 
 ## Next
 
-- **Real numbers.** A deterministic job (server side or scheduled) that
-  ingests results and emits this contract. Keep the math in code: an agent
-  may fetch or check results, but not produce the paths.
 - **Lost from ahead.** The contract already takes a result's
   `collapse: { peakWinProbability, led }`, and a card marks a loss from a
   winning position (↯). It needs a feed with in-game win probability; the

@@ -25,8 +25,8 @@
 3 apps/www/src/routes/auth.tsx
 1 packages/fetch-kit/src/lib/query-hooks/index.ts
 3 packages/ui/honeycomb/src/hooks/use-game-audio.ts
-3 packages/ui/honeycomb/src/hooks/use-hangul-wasm/index.ts
-3 packages/ui/honeycomb/src/hooks/use-hexgrid-wasm/index.ts
+2 packages/ui/honeycomb/src/hooks/use-hangul-wasm/index.ts
+2 packages/ui/honeycomb/src/hooks/use-hexgrid-wasm/index.ts
 1 packages/ui/leetype/src/components/leetype/index.tsx
 2 packages/ui/leetype/src/components/round/generate-round/index.tsx
 1 packages/ui/leetype/src/components/round/round-session/index.tsx

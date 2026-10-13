@@ -62,10 +62,7 @@ describe("buildHexgrid", () => {
   })
 
   it("returns validated cells", async () => {
-    const result = await buildHexgrid(2, 10)
-
-    expect(result.cells).toEqual(validCells)
-    expect(result.hexGrid).toBeDefined()
+    expect(await buildHexgrid(2, 10)).toEqual(validCells)
   })
 
   it("propagates wasm initialization failures", async () => {
@@ -101,7 +98,7 @@ describe("useHexgridWasm", () => {
     expect(result.current.hexCells).toEqual(validCells)
   })
 
-  it("calculates radius from the supplied cell count via public contract", () => {
+  it("builds at the radius for the supplied cell count", async () => {
     const { result } = renderHook(() =>
       useHexgridWasm({
         cellCount: 42,
@@ -109,8 +106,11 @@ describe("useHexgridWasm", () => {
       })
     )
 
-    expect(result.current.getRadius()).toBe(2)
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+
     expect(getHexagonalGridRadiusForCellCount).toHaveBeenCalledWith(42)
+    expect(WasmHexGrid).toHaveBeenCalledWith(2, 10)
+    expect(result.current).toMatchObject({ radius: 2, hexSize: 10 })
   })
 
   it("rejects invalid input before creating the wasm grid", async () => {
@@ -140,25 +140,6 @@ describe("useHexgridWasm", () => {
 
     expect(result.current.error).toBeNull()
     expect(WasmHexGrid).toHaveBeenCalledWith(0, 10)
-  })
-
-  it("regenerates the grid cleanly on explicit execution calls", async () => {
-    const { result } = renderHook(() =>
-      useHexgridWasm({
-        cellCount: 7,
-        hexSize: 10,
-      })
-    )
-
-    await waitFor(() => expect(result.current.isLoading).toBe(false))
-
-    expect(WasmHexGrid).toHaveBeenCalledTimes(1)
-
-    await act(async () => {
-      await result.current.regenerate()
-    })
-
-    expect(WasmHexGrid).toHaveBeenCalledTimes(2)
   })
 
   it("surfaces invalid wasm output structures gracefully", async () => {
@@ -195,20 +176,34 @@ describe("useHexgridWasm", () => {
     expect(result.current.error).toBe("wasm failed")
   })
 
-  it("clears the mutable grid reference container on component unmount", async () => {
-    const { result, unmount } = renderHook(() =>
-      useHexgridWasm({
-        cellCount: 7,
-        hexSize: 10,
-      })
-    )
+  it("ignores a load that finishes after its size was superseded", async () => {
+    let finishFirst = (): void => {}
+    vi.mocked(initializeWasm)
+      .mockImplementationOnce(
+        () =>
+          new Promise<void>((resolve) => {
+            finishFirst = resolve
+          })
+      )
+      .mockResolvedValue(undefined)
+    // eslint-disable-next-line prefer-arrow-callback -- must be `new`-able, see beforeEach above
+    vi.mocked(WasmHexGrid).mockImplementation(function (_radius, size) {
+      return createMockHexGrid([{ id: `hex_${size}`, points: [] }])
+    })
 
+    const { result, rerender } = renderHook(
+      ({ hexSize }: { hexSize: number }) =>
+        useHexgridWasm({ cellCount: 7, hexSize }),
+      { initialProps: { hexSize: 10 } }
+    )
+    rerender({ hexSize: 20 })
     await waitFor(() => expect(result.current.isLoading).toBe(false))
 
-    expect(result.current.hexGridRef.current).not.toBeNull()
+    await act(async () => {
+      finishFirst()
+      await Promise.resolve()
+    })
 
-    unmount()
-
-    expect(result.current.hexGridRef.current).toBeNull()
+    expect(result.current.hexCells).toEqual([{ id: "hex_20", points: [] }])
   })
 })

@@ -154,40 +154,31 @@ describe("terminal callbacks", () => {
   })
 })
 
-describe("reset on re-initialization", () => {
-  it("allows the timer to start again after isInitialized cycles false -> true", () => {
-    const bridge = createFakeBridge()
-    const { rerender } = renderTimer({
-      gameBridge: bridge,
-      isInitialized: true,
-    })
-    expect(bridge.startTimer).toHaveBeenCalledTimes(1)
-
-    rerender({ gameBridge: bridge, isInitialized: false })
-    rerender({ gameBridge: bridge, isInitialized: true })
-
-    expect(bridge.startTimer).toHaveBeenCalledTimes(2)
-  })
-
-  it("allows terminal callbacks to fire again after a reset", () => {
+describe("consecutive games", () => {
+  // The overlay's reset clears the bridge's status (null) and starts the
+  // next game on the same bridge; isInitialized never changes.
+  it("fires the terminal callback once per game", () => {
     const bridge = createFakeBridge(makeStatus())
     const onComplete = vi.fn()
-    const { rerender } = renderTimer({
+    const onTimeout = vi.fn()
+    renderTimer({
       gameBridge: bridge,
       isInitialized: true,
       onComplete,
+      onTimeout,
     })
 
     act(() => bridge.setStatus(makeStatus({ isComplete: true })))
     expect(onComplete).toHaveBeenCalledTimes(1)
 
-    rerender({ gameBridge: bridge, isInitialized: false, onComplete })
+    act(() => bridge.setStatus(null))
     act(() => bridge.setStatus(makeStatus()))
-    rerender({ gameBridge: bridge, isInitialized: true, onComplete })
-
     act(() => bridge.setStatus(makeStatus({ isComplete: true })))
-
     expect(onComplete).toHaveBeenCalledTimes(2)
+
+    act(() => bridge.setStatus(null))
+    act(() => bridge.setStatus(makeStatus({ isTimedOut: true })))
+    expect(onTimeout).toHaveBeenCalledTimes(1)
   })
 })
 
