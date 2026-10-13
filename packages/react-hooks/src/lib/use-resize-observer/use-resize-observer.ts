@@ -20,8 +20,13 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-import { useEffect, useRef, useState, type RefObject } from "react"
-import { useIsMounted } from "@react-hooks/lib/use-is-mounted"
+import {
+  useEffect,
+  useEffectEvent,
+  useRef,
+  useState,
+  type RefObject,
+} from "react"
 
 type Size = {
   width: number | undefined
@@ -51,20 +56,21 @@ export function useResizeObserver<T extends Element = Element>(
 ): Size {
   const { ref, box = "content-box" } = options
   const [{ width, height }, setSize] = useState<Size>(initialSize)
-  const isMounted = useIsMounted()
   const previousSize = useRef<Size>({ ...initialSize })
-  const onResize = useRef<((size: Size) => void) | undefined>(undefined)
-  // Latest `onResize` for the observer without making it a dependency;
-  // written in an effect, not during render, per react-hooks/refs.
-
-  useEffect(() => {
-    onResize.current = options.onResize
+  const report = useEffectEvent((size: Size): void => {
+    if (options.onResize) {
+      options.onResize(size)
+    } else {
+      setSize(size)
+    }
   })
 
   useEffect(() => {
     if (typeof window === "undefined" || !("ResizeObserver" in window)) return
 
+    let live = true
     const observer = new ResizeObserver(([entry]) => {
+      if (!live) return
       const boxProp =
         box === "border-box"
           ? "borderBoxSize"
@@ -79,25 +85,20 @@ export function useResizeObserver<T extends Element = Element>(
         previousSize.current.width !== newWidth ||
         previousSize.current.height !== newHeight
 
-      if (hasChanged && isMounted()) {
-        const newSize: Size = { width: newWidth, height: newHeight }
+      if (hasChanged) {
         previousSize.current.width = newWidth
         previousSize.current.height = newHeight
-
-        if (onResize.current) {
-          onResize.current(newSize)
-        } else {
-          setSize(newSize)
-        }
+        report({ width: newWidth, height: newHeight })
       }
     })
 
     if (ref.current !== null) observer.observe(ref.current, { box })
 
     return (): void => {
+      live = false
       observer.disconnect()
     }
-  }, [box, ref, isMounted])
+  }, [box, ref])
 
   return { width, height }
 }

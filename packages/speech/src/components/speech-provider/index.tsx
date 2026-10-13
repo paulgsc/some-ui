@@ -133,7 +133,7 @@ export const SpeechProvider = ({
      * every discarded render pass, with no cleanup to dispose it. The one
      * extra commit this costs is what `fallback` renders.
      */
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- see above
+    // eslint-disable-next-line react-hooks/set-state-in-effect, react-you-might-not-need-an-effect/no-external-store-subscription -- see above
     setSession({ adapter, manager })
 
     return (): void => {

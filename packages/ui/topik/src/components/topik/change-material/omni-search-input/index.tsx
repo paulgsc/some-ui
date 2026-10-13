@@ -1,5 +1,5 @@
 import type { JSX } from "react"
-import { useCallback, useEffect, useRef } from "react"
+import { useCallback, useRef } from "react"
 import { cn } from "@some-ui/core-utils"
 import { Input } from "@some-ui/shared"
 import type { TopikMetadata } from "@topik/lib/topik"
@@ -26,20 +26,16 @@ export const OmniSearchInput = ({
 }: OmniSearchInputProps): JSX.Element => {
   const inputRef = useRef<HTMLInputElement>(null)
 
-  // Auto-highlight first item when list changes
-  useEffect(() => {
-    const [firstItem] = items
-
-    if (firstItem && !highlightedKey) {
-      onHighlight(firstItem.key)
-    }
-  }, [items, highlightedKey, onHighlight])
+  // A highlight the filter has hidden falls back to the first visible item.
+  const activeKey = items.some((i) => i.key === highlightedKey)
+    ? highlightedKey
+    : items[0]?.key
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLInputElement>) => {
       if (items.length === 0) return
 
-      const currentIndex = items.findIndex((i) => i.key === highlightedKey)
+      const currentIndex = items.findIndex((i) => i.key === activeKey)
       const len = items.length
 
       if (e.key === "ArrowDown") {
@@ -50,12 +46,12 @@ export const OmniSearchInput = ({
         e.preventDefault()
         const prevItem = items[(currentIndex - 1 + len) % len]
         if (prevItem) onHighlight(prevItem.key)
-      } else if (e.key === "Enter" && highlightedKey) {
+      } else if (e.key === "Enter" && activeKey) {
         e.preventDefault()
-        onSelect(highlightedKey)
+        onSelect(activeKey)
       }
     },
-    [items, highlightedKey, onHighlight, onSelect]
+    [items, activeKey, onHighlight, onSelect]
   )
 
   return (

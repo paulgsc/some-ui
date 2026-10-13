@@ -1,6 +1,7 @@
 import type { JSX, MouseEvent } from "react"
 import { useEffect, useState } from "react"
 import { useTheme } from "@/providers/theme"
+import { useMediaQuery } from "@some-ui/react-hooks"
 import { resumeData, ResumeDocument } from "@some-ui/resume"
 import {
   Button,
@@ -39,21 +40,6 @@ const MOBILE_PREVIEW_QUERY = "(max-width: 767px)"
 // A phone held sideways. `pointer: coarse` is what keeps a merely short
 // desktop window out of this branch; height alone would catch both.
 const TOUCH_LANDSCAPE_QUERY = "(max-height: 500px) and (pointer: coarse)"
-
-function useMediaQuery(query: string): boolean {
-  const [matches, setMatches] = useState(() =>
-    // eslint-disable-next-line owner-guard/no-mount-snapshot -- the first paint's answer; the effect below re-reads it whenever `query` changes
-    typeof window === "undefined" ? false : window.matchMedia(query).matches
-  )
-  useEffect(() => {
-    const list = window.matchMedia(query)
-    const update = (): void => setMatches(list.matches)
-    update()
-    list.addEventListener("change", update)
-    return (): void => list.removeEventListener("change", update)
-  }, [query])
-  return matches
-}
 
 function isResumeComposition(value: string | null): value is ResumeComposition {
   return RESUME_COMPOSITIONS.some(({ id }) => id === value)

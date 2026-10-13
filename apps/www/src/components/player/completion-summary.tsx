@@ -51,7 +51,7 @@ export const CompletionSummary = ({
 
   // Replay hands the player a fresh draft copy and drops them into the
   // composer's Configure step, where everything is still editable.
-  useIntentEffect(replayIntent.state, (copy) => {
+  useIntentEffect(replayIntent, (copy) => {
     void navigate({ to: "/sessions/new", search: { edit: copy.id } })
   })
 

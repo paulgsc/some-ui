@@ -35,7 +35,7 @@ export const DeviceShareReflections = ({
   const share = useAsyncIntent(() => shareReflections(sessionIds), {
     presentation: "interactive",
   })
-  useIntentEffect(share.state, ({ outcome, sent }) => {
+  useIntentEffect(share, ({ outcome, sent }) => {
     if (outcome !== "shared" || sent.length === 0) return
     if (
       confirm(

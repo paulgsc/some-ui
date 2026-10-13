@@ -50,18 +50,14 @@ export const DeviceStorageSummary = (): JSX.Element | null => {
 const finishedOn = (stamp: string): string =>
   new Date(stamp).toLocaleDateString()
 
-/**
- * One offer per refusal: keyed by the session it names, so each gets a fresh
- * intent (a delete's success value is always `undefined`, which
- * `useIntentEffect` would otherwise see only once).
- */
+/** One offer per refusal: keyed by the session it names. */
 const RemoveOffer = ({
   session,
 }: {
   session: RemovableSession
 }): JSX.Element => {
   const remove = useIntent(useDeleteSession(), { presentation: "interactive" })
-  useIntentEffect(remove.state, () => void deviceStorage.settle())
+  useIntentEffect(remove, () => void deviceStorage.settle())
   return (
     <>
       <p>

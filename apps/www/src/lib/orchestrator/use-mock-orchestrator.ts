@@ -12,8 +12,6 @@ import { useOrchestratorStore } from "./orchestrator-store"
 
 export type UseMockOrchestratorConfig = {
   stream_id: string
-  onSceneChange?: (from: string | null, to: string | null) => void
-  onError?: (error: Event | Error) => void
   /** How often the simulated clock advances, in ms. Defaults to 100ms. */
   tickIntervalMs?: number
 }
@@ -28,8 +26,6 @@ export type UseMockOrchestratorConfig = {
  */
 export function useMockOrchestrator({
   stream_id,
-  onSceneChange,
-  onError,
   tickIntervalMs = 100,
 }: UseMockOrchestratorConfig): void {
   const { _setState, _setConnectionStatus, _setCommandSender, _setError } =
@@ -37,27 +33,10 @@ export function useMockOrchestrator({
 
   const engineRef = useRef<EngineState>(createEngineState())
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
-  const prevSceneRef = useRef<string | null>(null)
-  const callbacksRef = useRef({ onSceneChange, onError })
-
-  useEffect(() => {
-    callbacksRef.current = { onSceneChange, onError }
-  }, [onSceneChange, onError])
 
   useEffect(() => {
     const emit = (): void => {
-      const next = buildOrchestratorState(engineRef.current)
-      const prev = prevSceneRef.current
-      const curr = next.current_active_scene
-
-      _setState(next)
-
-      if (prev !== curr) {
-        prevSceneRef.current = curr
-        queueMicrotask(() => {
-          callbacksRef.current.onSceneChange?.(prev, curr)
-        })
-      }
+      _setState(buildOrchestratorState(engineRef.current))
     }
 
     const stopTicking = (): void => {

@@ -56,6 +56,8 @@ export type UseIntentResult<TVariables, TData, TStep extends string = never> = {
   readonly start: (variables: TVariables) => void
   /** Returns the intent to `idle` (see header, "Double-terminal"). */
   readonly reset: () => void
+  /** Changes with each `start`/`retry`, so a repeat success is a new one. */
+  readonly attempt: number
 }
 
 /**
@@ -67,7 +69,13 @@ export function useIntent<TVariables, TData, TStep extends string = never>(
   options: UseIntentOptions
 ): UseIntentResult<TVariables, TData, TStep> {
   const mapError = options.mapError ?? mapFileHostError
-  const { mutate, status, variables, reset: mutationReset } = mutation
+  const {
+    mutate,
+    status,
+    variables,
+    reset: mutationReset,
+    submittedAt,
+  } = mutation
 
   // See this module's header, "Thundering-herd guard".
   const dispatchingRef = useRef(false)
@@ -121,5 +129,11 @@ export function useIntent<TVariables, TData, TStep extends string = never>(
     }
   })()
 
-  return { state, presentation: options.presentation, start, reset }
+  return {
+    state,
+    presentation: options.presentation,
+    start,
+    reset,
+    attempt: submittedAt,
+  }
 }

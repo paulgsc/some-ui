@@ -5,6 +5,7 @@ import {
   useContext,
   useEffect,
   useState,
+  useSyncExternalStore,
 } from "react"
 import type { SessionTheme, ThemePreference } from "@some-ui/styles/theme"
 import {
@@ -13,7 +14,6 @@ import {
   prefersDark,
   readStoredPreference,
   resolveTheme,
-  SYSTEM_PREFERENCE,
   watchSystem,
   writeStoredPreference,
 } from "@some-ui/styles/theme"
@@ -45,18 +45,13 @@ export const ThemeProvider = ({
 }): JSX.Element => {
   const [preference, setPreferenceState] =
     useState<ThemePreference>(initialPreference)
-  const [systemDark, setSystemDark] = useState<boolean>(prefersDark)
+  // Followed whatever the preference, so choosing "system" applies the OS
+  // setting as it is now.
+  const systemDark = useSyncExternalStore(watchSystem, prefersDark, () => false)
 
-  // Apply whenever the preference or (for "system") the OS setting changes.
   useEffect(() => {
     applyPreference(document.documentElement, preference, systemDark)
   }, [preference, systemDark])
-
-  // Only track the OS setting while the user is on "system".
-  useEffect(() => {
-    if (preference !== SYSTEM_PREFERENCE) return
-    return watchSystem(setSystemDark)
-  }, [preference])
 
   const setPreference = useCallback((next: ThemePreference): void => {
     writeStoredPreference(next)
