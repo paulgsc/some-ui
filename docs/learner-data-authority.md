@@ -173,9 +173,9 @@ declared (checked by reading every call site and by the tests named).
 - _Claim:_ a `createDataSource` for lessons, rounds, runs, vocab or the Playoff
   Delta season passes `PUBLIC_READ` in its `fetchOptions`, so `credentials` is
   `"omit"`.
-- _Falsified by:_ a hunk that adds a `createDataSource` in `apps/www/src/lib/*-content`
-  or `hangul-vocab` without `fetchOptions: PUBLIC_READ` (or spreading it), or that
-  changes `PUBLIC_READ.credentials`.
+- _Falsified by:_ a hunk that adds a `createDataSource` in `apps/www/src/lib/*-content`,
+  `hangul-vocab` or `web-surface/playoff-delta` without `fetchOptions: PUBLIC_READ`
+  (or spreading it), or that changes `PUBLIC_READ.credentials`.
 - _Scope:_ `apps/www/src/lib/{topik-content,leetype-content,hangul-vocab}` and
   `apps/www/src/lib/web-surface/playoff-delta`.
 - _Why not enforced:_ a test observes the wire for leetype
