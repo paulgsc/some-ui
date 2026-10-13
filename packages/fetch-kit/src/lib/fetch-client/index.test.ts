@@ -69,6 +69,18 @@ describe("content-type branching", () => {
     expect(result).toEqual({ foo: "bar" })
   })
 
+  it("keeps a non-JSON error's status when asked to read JSON", async () => {
+    fetchMock.mockResolvedValue(textResponse("404: Not Found", 404))
+    const client = createFetchClient()
+
+    const error = await client
+      .get(new URL("https://raw.test/data.json"), { responseAs: "json" })
+      .catch((e: unknown) => e)
+
+    expect(error).toBeInstanceOf(ApiError)
+    expect(error).toMatchObject({ status: 404, data: "404: Not Found" })
+  })
+
   it("falls back to blob for other content types", async () => {
     fetchMock.mockResolvedValue(blobResponse())
     const client = createFetchClient()

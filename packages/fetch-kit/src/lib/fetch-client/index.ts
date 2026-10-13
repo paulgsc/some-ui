@@ -124,7 +124,12 @@ export const createFetchClient = (
     const contentType = response.headers.get("content-type")
     let data: unknown
 
-    if (responseAs === "json" || contentType?.includes("application/json")) {
+    // An error body keeps the content-type branching: a host's plain-text
+    // 404 is not JSON, and its status must still reach the ApiError.
+    if (
+      (responseAs === "json" && response.ok) ||
+      contentType?.includes("application/json")
+    ) {
       data = await response.json()
     } else if (contentType?.includes("text/")) {
       data = await response.text()
