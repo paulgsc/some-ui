@@ -34,6 +34,7 @@
 import { execFileSync } from "node:child_process"
 import { existsSync } from "node:fs"
 import { basename, join } from "node:path"
+import { fileURLToPath } from "node:url"
 
 import { outDir } from "./typst.mjs"
 
@@ -119,7 +120,9 @@ function excerpt(line) {
   return line.text.length > 48 ? `${line.text.slice(0, 48)}…` : line.text
 }
 
-function checkDocument(pdfFile, label) {
+// Throws unless no two adjacent lines of `pdfFile` collide. The message quotes
+// the offending lines, so scripts/serve.mjs reports it without the detail.
+export function checkDocument(pdfFile, label) {
   if (!existsSync(pdfFile)) throw new Error(`Missing generated PDF: ${pdfFile}`)
   const lines = readLines(pdfFile)
   const offences = []
@@ -165,12 +168,14 @@ function checkDocument(pdfFile, label) {
   )
 }
 
-for (const template of templates) {
-  for (const variant of variants) {
-    const stem =
-      template === DEFAULT_TEMPLATE
-        ? `resume-${variant}`
-        : `resume-${variant}-${template}`
-    checkDocument(join(outDir, `${stem}.pdf`), `${variant} / ${template}`)
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  for (const template of templates) {
+    for (const variant of variants) {
+      const stem =
+        template === DEFAULT_TEMPLATE
+          ? `resume-${variant}`
+          : `resume-${variant}-${template}`
+      checkDocument(join(outDir, `${stem}.pdf`), `${variant} / ${template}`)
+    }
   }
 }

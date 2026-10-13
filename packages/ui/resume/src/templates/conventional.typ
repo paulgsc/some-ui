@@ -42,7 +42,7 @@
         spacing: HEADING-GAP,
         text(size: 1.9em, weight: "bold", fill: theme.ink)[#profile.name],
         text(size: 1.0em, fill: theme.muted)[#profile.title — #comp.label],
-        contact-line(theme, profile, sep: "·", phone: personal.phone),
+        contact-line(theme, profile, sep: "·", pii: ctx.pii),
       ),
       [
         #section-head(theme)[Summary]

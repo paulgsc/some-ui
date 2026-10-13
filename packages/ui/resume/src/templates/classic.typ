@@ -44,7 +44,7 @@
         text(size: 1.02em, fill: theme.muted)[
           #profile.title #h(0.4em)|#h(0.4em) #comp.label
         ],
-        contact-line(theme, profile, sep: "|", phone: personal.phone),
+        contact-line(theme, profile, sep: "|", pii: ctx.pii),
       )),
       [
         #section-head(theme)[Summary]

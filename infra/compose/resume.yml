@@ -1,0 +1,47 @@
+# The LAN résumé render service: packages/ui/resume/scripts/serve.mjs, which
+# compiles an ATS résumé with contact details (PII) supplied per request. See
+# that file's header for what it promises about the PII.
+#
+# Reachable from the home network only, and only through the www container:
+# no port is published, not even on 127.0.0.1. apps/www's nginx proxies the
+# same-origin /api/resume/ path to it over some-ui-network
+# (apps/www/nginx.resume-proxy.conf), and the only page that calls it is the
+# LAN build's /resume-build.
+#
+# Built here from the package rather than pulled: it is one person's tool,
+# not a release, so nothing publishes an image. Rebuild it after changing the
+# résumé's content or templates:
+#
+#   docker compose up -d --build resume-render
+#
+# REPO_ROOT must be exported first, for the reason infra/compose/www.yml gives.
+services:
+  resume-render:
+    build:
+      context: ${REPO_ROOT:-.}/packages/ui/resume
+    image: some-ui/resume-render:local
+    container_name: resume-render
+    expose:
+      - "3100"
+    # The PDF with PII is written under /tmp, so /tmp is memory, and nothing
+    # else in the container is writable.
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - some-ui-network
+    restart: unless-stopped
+    mem_limit: 1G
+    cpus: 2.0
+    pids_limit: 64
+    # The service logs one line per request (method, path, status, time,
+    # variant, template), never a body. Bounded like every other container.
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

@@ -8,14 +8,15 @@
 //   theme     which palette the layout draws with
 //   font      which pinned family it sets
 //
-// These are the same four knobs the eventual server-side renderer takes per
-// request. Keeping them as inputs — rather than as separate source files per
-// combination — is what makes the static build and a dynamic renderer able to
-// share one template set.
+// These are the same four knobs the LAN render service (scripts/serve.mjs)
+// takes per request. Keeping them as inputs — rather than as separate source
+// files per combination — is what lets the static build and that renderer
+// share one template set. A fifth, `pii`, is read below.
 #import "data/resume.typ": resume-compositions, resume-engagement, resume-highlights, resume-profile, resume-repositories, resume-toolbox
 #import "data/personal.typ": personal
 #import "theme/index.typ": resolve-font, resolve-theme
 #import "lib/fit.typ": assert-one-page
+#import "lib/pii.typ": read-pii
 #import "templates/rail.typ"
 #import "templates/classic.typ"
 #import "templates/compact.typ"
@@ -36,6 +37,9 @@
 #let template-name = sys.inputs.at("template", default: "rail")
 #let theme-name = sys.inputs.at("theme", default: "teal")
 #let font-name = sys.inputs.at("font", default: "lato")
+// Contact details that must never be committed (src/lib/pii.typ). Read only by
+// the ATS templates, and deliberately absent from `<resume-export>` below.
+#let pii = read-pii(sys.inputs.at("pii", default: none), template-name)
 
 #assert(
   variant in resume-compositions,
@@ -59,6 +63,7 @@
 #(chosen.render)((
   profile: resume-profile,
   personal: personal,
+  pii: pii,
   composition: resume-compositions.at(variant),
   highlights: resume-highlights.at(variant),
   toolbox: resume-toolbox.at(variant),

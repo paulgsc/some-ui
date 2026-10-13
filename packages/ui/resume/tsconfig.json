@@ -8,6 +8,6 @@
       "@resume/*": ["./src/react/*"]
     }
   },
-  "include": ["src"],
+  "include": ["src", "src/pii/envelope.json"],
   "exclude": ["node_modules", "build", "dist"]
 }

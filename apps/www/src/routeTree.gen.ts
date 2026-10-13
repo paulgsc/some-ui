@@ -26,6 +26,7 @@ import { Route as DashboardSessionsIndexRouteImport } from './routes/_dashboard/
 import { Route as DashboardSessionsNewRouteImport } from './routes/_dashboard/sessions/new'
 import { Route as DashboardSessionsSessionIdRouteImport } from './routes/_dashboard/sessions/$sessionId'
 import { Route as DashboardLanRoundsRouteImport } from './routes/_dashboard/_lan/rounds'
+import { Route as DashboardLanResumeBuildRouteImport } from './routes/_dashboard/_lan/resume-build'
 import { Route as DashboardLanLessonsRouteImport } from './routes/_dashboard/_lan/lessons'
 import { Route as DashboardApkTodayRouteImport } from './routes/_dashboard/_apk/today'
 import { Route as DashboardApkSoundbitesRouteImport } from './routes/_dashboard/_apk/soundbites'
@@ -118,6 +119,11 @@ const DashboardLanRoundsRoute = DashboardLanRoundsRouteImport.update({
   path: '/rounds',
   getParentRoute: () => DashboardLanRoute,
 } as any)
+const DashboardLanResumeBuildRoute = DashboardLanResumeBuildRouteImport.update({
+  id: '/resume-build',
+  path: '/resume-build',
+  getParentRoute: () => DashboardLanRoute,
+} as any)
 const DashboardLanLessonsRoute = DashboardLanLessonsRouteImport.update({
   id: '/lessons',
   path: '/lessons',
@@ -175,6 +181,7 @@ export interface FileRoutesByFullPath {
   '/today': typeof DashboardApkTodayRoute
   '/lessons': typeof DashboardLanLessonsRoute
   '/rounds': typeof DashboardLanRoundsRoute
+  '/resume-build': typeof DashboardLanResumeBuildRoute
   '/sessions/$sessionId': typeof DashboardSessionsSessionIdRoute
   '/sessions/new': typeof DashboardSessionsNewRoute
   '/sessions/': typeof DashboardSessionsIndexRoute
@@ -198,6 +205,7 @@ export interface FileRoutesByTo {
   '/today': typeof DashboardApkTodayRoute
   '/lessons': typeof DashboardLanLessonsRoute
   '/rounds': typeof DashboardLanRoundsRoute
+  '/resume-build': typeof DashboardLanResumeBuildRoute
   '/sessions/$sessionId': typeof DashboardSessionsSessionIdRoute
   '/sessions/new': typeof DashboardSessionsNewRoute
   '/sessions': typeof DashboardSessionsIndexRoute
@@ -226,6 +234,7 @@ export interface FileRoutesById {
   '/_dashboard/_apk/today': typeof DashboardApkTodayRoute
   '/_dashboard/_lan/lessons': typeof DashboardLanLessonsRoute
   '/_dashboard/_lan/rounds': typeof DashboardLanRoundsRoute
+  '/_dashboard/_lan/resume-build': typeof DashboardLanResumeBuildRoute
   '/_dashboard/sessions/$sessionId': typeof DashboardSessionsSessionIdRoute
   '/_dashboard/sessions/new': typeof DashboardSessionsNewRoute
   '/_dashboard/sessions/': typeof DashboardSessionsIndexRoute
@@ -252,6 +261,7 @@ export interface FileRouteTypes {
     | '/today'
     | '/lessons'
     | '/rounds'
+    | '/resume-build'
     | '/sessions/$sessionId'
     | '/sessions/new'
     | '/sessions/'
@@ -275,6 +285,7 @@ export interface FileRouteTypes {
     | '/today'
     | '/lessons'
     | '/rounds'
+    | '/resume-build'
     | '/sessions/$sessionId'
     | '/sessions/new'
     | '/sessions'
@@ -302,6 +313,7 @@ export interface FileRouteTypes {
     | '/_dashboard/_apk/today'
     | '/_dashboard/_lan/lessons'
     | '/_dashboard/_lan/rounds'
+    | '/_dashboard/_lan/resume-build'
     | '/_dashboard/sessions/$sessionId'
     | '/_dashboard/sessions/new'
     | '/_dashboard/sessions/'
@@ -441,6 +453,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardLanRoundsRouteImport
       parentRoute: typeof DashboardLanRoute
     }
+    '/_dashboard/_lan/resume-build': {
+      id: '/_dashboard/_lan/resume-build'
+      path: '/resume-build'
+      fullPath: '/resume-build'
+      preLoaderRoute: typeof DashboardLanResumeBuildRouteImport
+      parentRoute: typeof DashboardLanRoute
+    }
     '/_dashboard/_lan/lessons': {
       id: '/_dashboard/_lan/lessons'
       path: '/lessons'
@@ -537,11 +556,13 @@ const DashboardApkRouteWithChildren = DashboardApkRoute._addFileChildren(
 interface DashboardLanRouteChildren {
   DashboardLanLessonsRoute: typeof DashboardLanLessonsRoute
   DashboardLanRoundsRoute: typeof DashboardLanRoundsRoute
+  DashboardLanResumeBuildRoute: typeof DashboardLanResumeBuildRoute
 }
 
 const DashboardLanRouteChildren: DashboardLanRouteChildren = {
   DashboardLanLessonsRoute: DashboardLanLessonsRoute,
   DashboardLanRoundsRoute: DashboardLanRoundsRoute,
+  DashboardLanResumeBuildRoute: DashboardLanResumeBuildRoute,
 }
 
 const DashboardLanRouteWithChildren = DashboardLanRoute._addFileChildren(

@@ -12,6 +12,7 @@ import {
   existsSync,
   mkdirSync,
   mkdtempSync,
+  readFileSync,
   rmSync,
   writeFileSync,
 } from "node:fs"
@@ -42,6 +43,13 @@ export const templates = [
   "safe",
   "conventional",
 ]
+// What PII a build may take and which templates render it (src/lib/pii.typ).
+// The others (rail, compact) are the portfolio layouts the website links.
+export const piiEnvelope = JSON.parse(
+  readFileSync(join(packageDir, "src", "pii", "envelope.json"), "utf8")
+)
+export const piiTemplates = piiEnvelope.templates
+
 // The template whose output also claims the unsuffixed filenames that
 // apps/www/scripts/sync-resume.mjs copies into the site.
 export const DEFAULT_TEMPLATE = "rail"
@@ -133,8 +141,11 @@ export function baseArgs(fontPath) {
   ]
 }
 
-export function inputArgs({ variant, template, theme, font }) {
+// `pii`, when given, is an object of src/pii/envelope.json's fields. It goes
+// in as one JSON string, which src/lib/pii.typ decodes and checks.
+export function inputArgs({ variant, template, theme, font, pii }) {
   return [
+    ...(pii === undefined ? [] : ["--input", `pii=${JSON.stringify(pii)}`]),
     "--input",
     `variant=${variant}`,
     "--input",

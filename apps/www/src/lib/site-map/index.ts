@@ -31,6 +31,7 @@ export type Destination = {
     | "/mission"
     | "/lessons"
     | "/rounds"
+    | "/resume-build"
   readonly title: string
   readonly blurb: string
   readonly icon: LucideIcon
@@ -67,6 +68,15 @@ const DESTINATIONS: ReadonlyArray<Destination> = [
     title: "Rounds",
     blurb: "The LeetType rounds every learner plays.",
     icon: Keyboard,
+    audience: "lan",
+    launcher: "home-network",
+  },
+  {
+    to: "/resume-build",
+    title: "Résumé with contact details",
+    blurb:
+      "An ATS résumé built with the phone number and address left out of git.",
+    icon: FileText,
     audience: "lan",
     launcher: "home-network",
   },

@@ -46,9 +46,10 @@ a typst `--input`, not a source edit:
 | `theme`    | `teal`, `slate`, `ink`                                          |
 | `font`     | `lato`, `pt-serif`                                              |
 
-Those four are the same knobs a server-side renderer would take per request,
-which is the point: the static build and a dynamic renderer can share one
-template set rather than diverging.
+Those four are the same knobs the LAN render service takes per request
+(below), which is the point: the static build and the dynamic renderer share
+one template set rather than diverging. A fifth input, `pii`, carries contact
+details that are never committed.
 
 ### Templates
 
@@ -104,6 +105,47 @@ placeholder but a false statement waiting to be sent to an employer.
 
 Templates render a section only when its list is non-empty, and the fitting pass
 redistributes the space, so filling these in later costs nothing structurally.
+
+### Contact details (PII) and the LAN render service
+
+A phone number, a LinkedIn URL, a street address or a different email never
+belong in this repository, so none is in `src/data`. They are the `pii` input:
+one JSON object, decoded and checked by `src/lib/pii.typ` against
+`src/pii/envelope.json`, which says what each field may hold (length and
+pattern) and which templates render them. Only the ATS templates (`classic`,
+`vanilla`, `safe`, `conventional`) do; `rail` and `compact`, whose PDFs the
+website links, refuse the input, and `<resume-export>` never carries it.
+
+```sh
+typst compile src/main.typ out.pdf --root . --font-path <pinned fonts> \
+  --ignore-system-fonts --input template=classic --input theme=ink \
+  --input font=pt-serif --input 'pii={"phone":"+1 (510) 555-0134"}'
+```
+
+The usual way in is the render service, `scripts/serve.mjs` (`pnpm serve`):
+`POST /render` with `{ variant, template, pii }` returns the PDF. It runs the
+same pinned typst and fonts as the build, and runs `check-ats.mjs` (requiring
+every supplied field on the page) and `check-layout.mjs` on every render before
+returning it. The PDF is written to a temporary directory that is removed before
+the response ends, and nothing it logs or returns carries a value: the checks
+in `pii.typ` name a field and its limit, not what was sent.
+
+It is reachable from the home network only. `infra/compose/resume.yml` builds
+this directory's `Dockerfile` on the box and publishes no port; `apps/www`'s
+nginx proxies `/api/resume/` to it, and the LAN build's résumé builder page
+(`apps/www/src/routes/_dashboard/_lan/`) is the form that calls it, through
+`renderResume` (`src/pii/render-client.ts`). In `vite dev`, run `pnpm serve` on
+the host instead.
+
+`pnpm build` proves the layouts the service can be asked for:
+`scripts/fixtures/faux-pii.json` holds every field at once, each at its
+envelope maximum in the widest glyphs its pattern allows, and every PII
+template × variant is compiled with it and run through the ATS and layout
+checks. The faux PDFs go to a temporary directory, never `documents/`. Each
+contact item is boxed (`contact-line` in `src/lib/parts.typ`), so a narrower
+value can only wrap onto as many lines as the widest one, or fewer. The fit
+ladder (`src/lib/fit.typ`) reaches below its old 0.82 floor only for these
+builds: the extra lines did not fit `backend/classic` at 0.82.
 
 ### ATS checking
 
@@ -254,9 +296,10 @@ recompilation while editing.
 
 ## Out of scope for now
 
-- In-browser (WASM) compilation / live preview without a rebuild.
+- In-browser (WASM) compilation / live preview without a rebuild. The LAN
+  render service above compiles on demand instead, with the same typst and
+  fonts as CI, which a browser build of typst could not promise.
 - Arbitrary bullet-level mixing. The selectable unit is intentionally a complete
   composition so every PDF remains a coherent argument.
-- Client-side selection of template/theme/font against a live renderer. The four
-  inputs above are the seam that work will attach to; today they are resolved at
-  build time.
+- Selecting theme and font against the live renderer. The service takes a
+  variant and an ATS template, and uses that template's own theme and font.

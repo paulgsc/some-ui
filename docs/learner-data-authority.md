@@ -95,8 +95,9 @@ declared (checked by reading every call site and by the tests named).
   to `isCorpusRead` in `tests/local-mode/no-egress.spec.ts` a route that carries
   a learner's state.
 - _Scope:_ `apps/www/src`. Not covered: a package under `packages/` that makes
-  its own requests (`speech`, `ws`, `fetch-kit` corpus reads), which are listed
-  above and carry no learner state by their own contracts.
+  its own requests (`speech`, `ws`, `fetch-kit` corpus reads, and `resume`'s
+  `renderResume`, which sends the owner's own contact details to the LAN
+  résumé service), which carry no learner state by their own contracts.
 - _Why not enforced:_ the globals are, by lint
   (`apps/www/eslint.config.js`), and the lint's exemption list and the absence of
   a disable are pinned by `lib/serving-privacy/__tests__/egress-choke-points.test.ts`.
