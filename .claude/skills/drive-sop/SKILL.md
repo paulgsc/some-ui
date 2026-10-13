@@ -25,7 +25,16 @@ What it settles, so you know it's worth the read:
 - **Load-bearing names** that code finds by exact title (`Build Journal/voice/primers`,
   `Build Journal/voice/takes`, `some-ui jobs`). Never rename them.
 
+The phone names each share's folder as its sheet opens: `apps/www/src/lib/drive-filing`, a
+sidecar installed in `main.tsx` that holds the SOP's folders by the share's `dir`
+(`DRIVE_FOLDERS`). It is the only code that knows the SOP, so deleting it and its install
+removes it whole. Keep the two in step:
+
+- **A share added or renamed** (`shareFiles("<dir>"` in `apps/www`) needs its folder in
+  `DRIVE_FOLDERS`. The module's test fails until it has one.
+- **A folder moved in the SOP** moves in `DRIVE_FOLDERS` in the same change, and the
+  reverse.
+
 Don't change the tree on your own. A new kind of data gets a section in the SOP doc first,
-and only then a folder. When the code adds or changes a share (`shareFiles(` in `apps/www`),
-the doc's section for it changes too. That edit is the owner's or the change's author's to make,
-so name it in the PR.
+and only then a folder. That edit is the owner's or the change's author's to make, so name
+it in the PR.

@@ -4,7 +4,11 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
-import { runsNatively, shareFiles } from "@/lib/share-files"
+import {
+  installShareSidecar,
+  runsNatively,
+  shareFiles,
+} from "@/lib/share-files"
 
 const share = vi.hoisted(() => vi.fn())
 
@@ -64,6 +68,41 @@ describe("shareFiles", () => {
     await expect(first).resolves.toMatchObject({ value: "shared" })
     await expect(second).resolves.toMatchObject({ value: "shared" })
     expect(share).toHaveBeenCalledTimes(2)
+  })
+
+  it("tells the sidecar when a sheet opens and when it settles, and shares the same when the sidecar throws", async () => {
+    const events: Array<string> = []
+    let close: () => void = () => undefined
+    share.mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          close = resolve
+        })
+    )
+    installShareSidecar({
+      opening: (dir) => {
+        events.push(`open ${dir}`)
+        return (): void => {
+          events.push(`settle ${dir}`)
+        }
+      },
+    })
+    const shared = shareFiles("out", "t", [])
+    await vi.waitFor(() => expect(share).toHaveBeenCalledOnce())
+    expect(events).toEqual(["open out"])
+    close()
+    await expect(shared).resolves.toMatchObject({ value: "shared" })
+    await vi.waitFor(() => expect(events).toEqual(["open out", "settle out"]))
+
+    installShareSidecar({
+      opening: () => {
+        throw new Error("sidecar")
+      },
+    })
+    await expect(shareFiles("out", "t", [])).resolves.toMatchObject({
+      value: "shared",
+    })
+    installShareSidecar(undefined)
   })
 })
 

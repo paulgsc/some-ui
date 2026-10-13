@@ -154,9 +154,8 @@ const ShareJournal = ({
   return (
     <section className="space-y-2">
       <p className="text-muted-foreground text-sm">
-        takes.json and each take&apos;s audio, in the primer&apos;s order. Pick
-        Build Journal/voice/takes in Drive; once they arrive, the episode leaves
-        the phone.
+        takes.json and each take&apos;s audio, in the primer&apos;s order. You
+        pick where they go; once they arrive, the episode leaves the phone.
       </p>
       <IntentButton
         state={share.state}

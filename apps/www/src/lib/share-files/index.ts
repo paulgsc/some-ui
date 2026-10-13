@@ -61,6 +61,37 @@ export type SharedFile = { name: string; data: string | Blob }
 
 type Files = ReadonlyArray<SharedFile>
 
+/**
+ * Something the host hangs beside the share sheet, told when a share's sheet
+ * opens; what `opening` returns runs once that sheet settles. It cannot change
+ * the share, and one that throws is ignored. The phone installs the owner's
+ * Drive filing (`lib/drive-filing`); with none installed, shares are the same.
+ */
+export type ShareSidecar = { opening: (dir: string) => (() => void) | void }
+
+let sidecar: ShareSidecar | undefined
+
+/** Replaces the sidecar; `undefined` removes it. */
+export function installShareSidecar(next: ShareSidecar | undefined): void {
+  sidecar = next
+}
+
+/** Tells the sidecar `dir`'s sheet is opening; returns its settle, never throwing. */
+function sidecarOpening(dir: string): () => void {
+  try {
+    const settle = sidecar?.opening(dir)
+    return () => {
+      try {
+        settle?.()
+      } catch {
+        // A sidecar's failure is its own; the share already settled.
+      }
+    }
+  } catch {
+    return () => undefined
+  }
+}
+
 /** The share last started in each `dir`, settled or not. */
 const sharing = new Map<string, Promise<unknown>>()
 
@@ -116,7 +147,8 @@ async function writeAndShare(
   }).outcome
   if (written.status !== "succeeded") return written
 
-  return callForeign({
+  const settle = sidecarOpening(dir)
+  const shared = callForeign({
     port: PORT,
     deadlineMs: SHARE_DEADLINE_MS,
     start: async (): Promise<"shared" | "cancelled"> => {
@@ -132,6 +164,8 @@ async function writeAndShare(
       }
     },
   }).outcome
+  void shared.finally(settle)
+  return shared
 }
 
 /**
