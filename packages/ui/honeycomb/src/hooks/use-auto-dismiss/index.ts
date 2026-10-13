@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useEffectEvent, useState } from "react"
 
 const TICK_MS = 100
 
@@ -34,43 +34,37 @@ export function useAutoDismiss({
   onElapsed,
 }: UseAutoDismissOptions): UseAutoDismissResult {
   const [elapsedMs, setElapsedMs] = useState(0)
-  const onElapsedRef = useRef(onElapsed)
   const [wasActive, setWasActive] = useState(active)
-  // Per-activation id, so "already fired" latches per run: a re-render before
-  // teardown must not fire twice, but the next run must. Written only in an
-  // effect.
-  const [runId, setRunId] = useState(0)
-  const firedRunRef = useRef<number | null>(null)
-
-  useEffect(() => {
-    onElapsedRef.current = onElapsed
-  }, [onElapsed])
 
   // Reset elapsed time during render when `active` flips: an effect would
-  // let one paint through with the old value, enough on a fast re-activation
-  // to fire the callback instantly.
-
+  // let one paint through with the old value.
   if (wasActive !== active) {
     setWasActive(active)
     setElapsedMs(0)
-    setRunId((id) => id + 1)
   }
 
-  useEffect((): (() => void) | undefined => {
-    if (!active || paused) return undefined
+  // One tick of the run's clock; null once it has fired. Reads `paused`,
+  // `durationMs` and `onElapsed` as they are now without restarting the run.
+  const tick = useEffectEvent((elapsed: number): number | null => {
+    if (paused) return elapsed
+    const next = elapsed + TICK_MS
+    setElapsedMs(next)
+    if (next < durationMs) return next
+    onElapsed()
+    return null
+  })
 
+  useEffect((): (() => void) | undefined => {
+    if (!active) return undefined
+
+    let elapsed = 0
     const id = setInterval(() => {
-      setElapsedMs((prev) => prev + TICK_MS)
+      const next = tick(elapsed)
+      if (next === null) clearInterval(id)
+      else elapsed = next
     }, TICK_MS)
     return () => clearInterval(id)
-  }, [active, paused])
-
-  useEffect(() => {
-    if (!active || elapsedMs < durationMs) return
-    if (firedRunRef.current === runId) return
-    firedRunRef.current = runId
-    onElapsedRef.current()
-  }, [active, elapsedMs, durationMs, runId])
+  }, [active])
 
   const remainingMs = Math.max(0, durationMs - elapsedMs)
 

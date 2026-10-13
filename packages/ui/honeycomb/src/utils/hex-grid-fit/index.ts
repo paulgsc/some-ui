@@ -1,6 +1,6 @@
 import { assertNever } from "@honeycomb/utils/error"
 
-export type HexGridFitStrategy = "shrink-only" | "shrink-then-reduce"
+type HexGridFitStrategy = "shrink-only" | "shrink-then-reduce"
 
 type HexGridFitStatus = "fit" | "shrunk" | "reduced-radius" | "impossible"
 

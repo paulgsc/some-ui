@@ -1,5 +1,4 @@
-import type { Dispatch, RefObject, SetStateAction } from "react"
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useEffect, useState } from "react"
 import type { HexRenderData } from "@honeycomb/types/hex-grid"
 import { getHexagonalGridRadiusForCellCount } from "@honeycomb/utils/hexagon-math"
 import { initializeWasm } from "@honeycomb/utils/wasm-init"
@@ -50,15 +49,22 @@ type Options = {
   hexSize: number
 }
 
-type ReturnOptions = {
+/** A grid's geometry as `HexGrid` renders it, and the load that produced it. */
+export type HexGridGeometry = {
+  /** The radius and hex circumradius (px) the cells were requested at. */
+  radius: number
+  hexSize: number
   isLoading: boolean
   error: string | null
-  validationWarning: string | null
+  /** The last cells that loaded; kept while a new size loads or fails. */
   hexCells: Array<HexRenderData>
-  regenerate: () => Promise<void>
-  hexGridRef: RefObject<WasmHexGrid | null>
-  setHexCells: Dispatch<SetStateAction<Array<HexRenderData>>>
-  getRadius: () => number
+}
+
+type Loaded = {
+  radius: number
+  hexSize: number
+  error: string | null
+  cells: Array<HexRenderData>
 }
 
 /**
@@ -77,70 +83,52 @@ export async function buildHexgrid(
   return { hexGrid, cells }
 }
 
-export function useHexgridWasm({ cellCount, hexSize }: Options): ReturnOptions {
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [hexCells, setHexCells] = useState<Array<HexRenderData>>([])
-  const [validationWarning, setValidationWarning] = useState<string | null>(
-    null
-  )
+export function useHexgridWasm({
+  cellCount,
+  hexSize,
+}: Options): HexGridGeometry {
+  const radius = getHexagonalGridRadiusForCellCount(cellCount ?? 1)
+  const parsed = HexgridInputSchema.safeParse({ radius, hexSize })
+  const inputError = parsed.success
+    ? null
+    : z.treeifyError(parsed.error).errors.join(", ")
 
-  const hexGridRef = useRef<WasmHexGrid | null>(null)
+  const [loaded, setLoaded] = useState<Loaded | null>(null)
 
-  const getRadius = useCallback(() => {
-    return getHexagonalGridRadiusForCellCount(cellCount ?? 1)
-  }, [cellCount])
+  useEffect((): (() => void) | undefined => {
+    if (inputError !== null) return undefined
 
-  const regenerate = useCallback(async () => {
-    const radius = getRadius()
-
-    const parsed = HexgridInputSchema.safeParse({ radius, hexSize })
-    if (!parsed.success) {
-      const tree = z.treeifyError(parsed.error)
-      setError(tree.errors.join(", "))
-      return
-    }
-
-    setIsLoading(true)
-    setError(null)
-    setValidationWarning(null)
-
-    try {
-      const { hexGrid, cells } = await buildHexgrid(radius, hexSize)
-      hexGridRef.current = hexGrid
-      setHexCells(cells)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Unknown error")
-      hexGridRef.current = null
-    } finally {
-      setIsLoading(false)
-    }
-  }, [getRadius, hexSize])
-
-  useEffect(() => {
     let active = true
-
-    const initialize = async (): Promise<void> => {
-      if (!active) return
-      await regenerate()
-    }
-
-    void initialize()
-
+    buildHexgrid(radius, hexSize).then(
+      ({ cells }) => {
+        if (active) setLoaded({ radius, hexSize, error: null, cells })
+      },
+      (err: unknown) => {
+        if (!active) return
+        const error = err instanceof Error ? err.message : "Unknown error"
+        setLoaded((prev) => ({
+          radius,
+          hexSize,
+          error,
+          cells: prev?.cells ?? [],
+        }))
+      }
+    )
     return (): void => {
       active = false
-      hexGridRef.current = null
     }
-  }, [regenerate])
+  }, [radius, hexSize, inputError])
 
+  const hexCells = loaded?.cells ?? []
+  if (inputError !== null) {
+    return { radius, hexSize, isLoading: false, error: inputError, hexCells }
+  }
+  const isCurrent = loaded?.radius === radius && loaded.hexSize === hexSize
   return {
-    isLoading,
-    error,
+    radius,
+    hexSize,
+    isLoading: !isCurrent,
+    error: isCurrent ? loaded.error : null,
     hexCells,
-    validationWarning,
-    regenerate,
-    hexGridRef,
-    setHexCells,
-    getRadius,
   }
 }

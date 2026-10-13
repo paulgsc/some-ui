@@ -29,8 +29,8 @@ beforeEach(() => {
   vi.mocked(getLastError).mockReset()
 })
 
-describe("autoStart", () => {
-  it("initializes automatically on mount when autoStart is true (default)", async () => {
+describe("initial load", () => {
+  it("initializes on mount", async () => {
     const bridge = { id: "bridge-1" }
     vi.mocked(loadHangulWasm).mockResolvedValue(asWasmGameBridge(bridge))
 
@@ -51,51 +51,18 @@ describe("autoStart", () => {
     expect(result.current.error).toBeNull()
   })
 
-  it("does not initialize automatically when autoStart is false", async () => {
-    const { result } = renderHook(() =>
-      useHangulGameWasm({ mode: "completion", autoStart: false })
-    )
-
-    await act(async () => {
-      await Promise.resolve()
-    })
-
-    expect(loadHangulWasm).not.toHaveBeenCalled()
-    expect(result.current.isInitialized).toBe(false)
-  })
-})
-
-describe("manual initialize", () => {
-  it("initializes when called manually", async () => {
-    const bridge = { id: "bridge-2" }
+  it("initializes under StrictMode's mount, unmount and remount", async () => {
+    const bridge = { id: "strict-bridge" }
     vi.mocked(loadHangulWasm).mockResolvedValue(asWasmGameBridge(bridge))
 
-    const { result } = renderHook(() =>
-      useHangulGameWasm({ mode: "endless", autoStart: false })
+    const { result } = renderHook(
+      () => useHangulGameWasm({ mode: "completion" }),
+      { reactStrictMode: true }
     )
 
-    await act(async () => {
-      await result.current.initialize()
-    })
-
-    expect(result.current.isInitialized).toBe(true)
+    await waitFor(() => expect(result.current.isInitialized).toBe(true))
     expect(result.current.gameBridge).toBe(bridge)
-  })
-
-  it("does not re-initialize once already initialized", async () => {
-    const bridge = { id: "bridge-3" }
-    vi.mocked(loadHangulWasm).mockResolvedValue(asWasmGameBridge(bridge))
-
-    const { result } = renderHook(() =>
-      useHangulGameWasm({ mode: "endless", autoStart: false })
-    )
-
-    await act(async () => {
-      await result.current.initialize()
-      await result.current.initialize()
-    })
-
-    expect(loadHangulWasm).toHaveBeenCalledTimes(1)
+    expect(result.current.isLoading).toBe(false)
   })
 })
 
@@ -139,6 +106,34 @@ describe("mode switching", () => {
       HANGUL_WORD_POOL,
       nextProps.sessionKey
     )
+  })
+
+  it("keeps the newer mode's bridge when the older load finishes last", async () => {
+    const firstBridge = { id: "first-bridge" }
+    const secondBridge = { id: "second-bridge" }
+    let finishFirst = (): void => {}
+    vi.mocked(loadHangulWasm)
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            finishFirst = (): void => resolve(asWasmGameBridge(firstBridge))
+          })
+      )
+      .mockResolvedValueOnce(asWasmGameBridge(secondBridge))
+
+    const { result, rerender } = renderHook(
+      (props: UseHangulGameWasmOptions) => useHangulGameWasm(props),
+      { initialProps: { mode: "completion" } }
+    )
+    rerender({ mode: "vocabulary" })
+    await waitFor(() => expect(result.current.gameBridge).toBe(secondBridge))
+
+    await act(async () => {
+      finishFirst()
+      await Promise.resolve()
+    })
+
+    expect(result.current.gameBridge).toBe(secondBridge)
   })
 
   it("forwards a given sessionKey on initial mount", async () => {

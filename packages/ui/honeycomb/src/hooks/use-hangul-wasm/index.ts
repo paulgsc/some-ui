@@ -1,7 +1,6 @@
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useEffect, useState } from "react"
 import { HANGUL_WORD_POOL } from "@honeycomb/data"
 import {
-  getCoreInstance,
   getLastError,
   loadHangulWasm,
 } from "@honeycomb/lib/hangul/hangul-wasm-runtime"
@@ -13,8 +12,12 @@ import type {
 } from "@honeycomb/lib/hangul/wasm-game-bridge"
 
 export type UseHangulGameWasmOptions = {
+  /**
+   * Read when the page's one engine is first built (loadHangulWasm). The core
+   * has no config setter, so a later change, e.g. a new difficulty, does not
+   * reach a page whose engine already exists.
+   */
   config?: Partial<GameConfig>
-  autoStart?: boolean
   mode: GameMode
   /**
    * Word pool for "vocabulary"/"vocabulary-endless" modes; ignored by every
@@ -31,8 +34,14 @@ export type UseHangulGameWasmReturn = {
   isInitialized: boolean
   error: string | null
   gameBridge: WasmGameBridge | null
-  wasmCore: typeof getCoreInstance | null
-  initialize: () => Promise<void>
+}
+
+/** What a load was for: a change to any of these is a new load. */
+type Settled = {
+  mode: GameMode
+  sessionKey: string | undefined
+  wordPool: Array<ChallengeSeed>
+  error: string | null
 }
 
 /**
@@ -57,86 +66,46 @@ async function loadGameSystem(
 export function useHangulGameWasm({
   config,
   mode,
-  autoStart = true,
   wordPool = HANGUL_WORD_POOL,
   sessionKey,
 }: UseHangulGameWasmOptions): UseHangulGameWasmReturn {
-  const [isLoading, setIsLoading] = useState(false)
-  const [isInitialized, setIsInitialized] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  // The last bridge that loaded, kept while a mode/session/pool switch loads.
   const [bridge, setBridge] = useState<WasmGameBridge | null>(null)
+  const [settled, setSettled] = useState<Settled | null>(null)
 
-  const initializedRef = useRef(false)
-  // What this instance last initialized against. A rerender with a new mode
-  // or sessionKey (either alone) forces a fresh initialize() past
-  // initializedRef's guard.
-  const loadedModeRef = useRef<GameMode | null>(null)
-  const loadedSessionKeyRef = useRef<string | undefined>(undefined)
-  // The vocabulary the engine was built with, so a pool that arrives after
-  // mount (apps/www fetches it) is not discarded. Compared by identity: a
-  // caller must not build its pool inline every render.
-  const loadedWordPoolRef = useRef<Array<ChallengeSeed> | null>(null)
-
-  const initialize = useCallback(async (): Promise<void> => {
-    if (
-      initializedRef.current &&
-      loadedModeRef.current === mode &&
-      loadedSessionKeyRef.current === sessionKey &&
-      loadedWordPoolRef.current === wordPool
-    ) {
-      return
-    }
-
-    setIsLoading(true)
-    setError(null)
-
-    try {
-      const instance = await loadGameSystem(mode, config, wordPool, sessionKey)
-      setBridge(instance)
-      setIsInitialized(true)
-      initializedRef.current = true
-      loadedModeRef.current = mode
-      loadedSessionKeyRef.current = sessionKey
-      loadedWordPoolRef.current = wordPool
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err))
-    } finally {
-      setIsLoading(false)
-    }
-  }, [mode, config, wordPool, sessionKey])
-
-  // autoStart, and the mode/session/word-pool switch path: a change to any
-  // re-creates `initialize` and re-runs this effect. A mid-session vocabulary
-  // swap therefore resets the engine, score and streak included.
-  useEffect(() => {
+  // A change to mode, sessionKey or wordPool (compared by identity: a caller
+  // must not build its pool inline every render) loads again, which resets
+  // the engine, score and streak included. `active` is checked after the
+  // await, so a superseded load never lands over a newer one.
+  useEffect((): (() => void) => {
     let active = true
-
-    const triggerAutoStart = async (): Promise<void> => {
-      if (autoStart && active) {
-        await initialize()
+    loadGameSystem(mode, config, wordPool, sessionKey).then(
+      (instance) => {
+        if (!active) return
+        setBridge(instance)
+        setSettled({ mode, sessionKey, wordPool, error: null })
+      },
+      (err: unknown) => {
+        if (!active) return
+        const error = err instanceof Error ? err.message : String(err)
+        setSettled({ mode, sessionKey, wordPool, error })
       }
-    }
-
-    void triggerAutoStart()
-
+    )
     return (): void => {
       active = false
     }
-  }, [autoStart, initialize])
+  }, [mode, config, wordPool, sessionKey])
 
-  useEffect(() => {
-    return (): void => {
-      setBridge(null)
-      initializedRef.current = false
-    }
-  }, [])
+  const isCurrent =
+    settled !== null &&
+    settled.mode === mode &&
+    settled.sessionKey === sessionKey &&
+    settled.wordPool === wordPool
 
   return {
-    isLoading,
-    isInitialized,
-    error,
+    isLoading: !isCurrent,
+    isInitialized: bridge !== null,
+    error: isCurrent ? settled.error : null,
     gameBridge: bridge,
-    wasmCore: getCoreInstance,
-    initialize,
   }
 }

@@ -74,6 +74,22 @@ describe("usePromptEscalation", () => {
     expect(result.current).toBe("icon-tts-hangul")
   })
 
+  it("starts a new word back at the icon tier, before its first tick", () => {
+    const firstSpawn = Date.now()
+    const { result, rerender } = renderHook(
+      (props: { spawnedAt: number }) =>
+        usePromptEscalation({ active: true, missCount: 0, ...props }),
+      { initialProps: { spawnedAt: firstSpawn } }
+    )
+
+    vi.advanceTimersByTime(6250)
+    rerender({ spawnedAt: firstSpawn })
+    expect(result.current).toBe("icon-tts-hangul")
+
+    rerender({ spawnedAt: Date.now() })
+    expect(result.current).toBe("icon")
+  })
+
   it("resets to idle once the tracked challenge is no longer active", () => {
     const initialProps: { active: boolean; spawnedAt: number | undefined } = {
       active: true,

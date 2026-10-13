@@ -1,4 +1,4 @@
-import { useEffect, useRef, useSyncExternalStore } from "react"
+import { useEffect, useEffectEvent, useRef, useSyncExternalStore } from "react"
 import type {
   GameStatus,
   WasmGameBridge,
@@ -37,9 +37,6 @@ export function useGameTimer({
   // Track if timer has been started
   const hasStartedRef = useRef(false)
 
-  // Track if terminal callbacks have fired
-  const terminalFiredRef = useRef(false)
-
   /**
    * Start timer exactly once per initialization
    */
@@ -50,34 +47,25 @@ export function useGameTimer({
     hasStartedRef.current = true
   }, [gameBridge, isInitialized])
 
-  /**
-   * Handle terminal states (complete/timeout)
-   * Fire callbacks only once
-   */
+  const onTerminal = useEffectEvent((status: GameStatus) => {
+    if (status.isComplete) onComplete?.(status)
+    else onTimeout?.(status)
+  })
+
+  // Fires on each non-terminal -> terminal edge, at the bridge's own
+  // notification: a reset (null status) re-arms it for the next game.
   useEffect(() => {
-    if (!gameStatus || terminalFiredRef.current) return
+    if (!gameBridge) return undefined
+    let wasTerminal = isTerminal(gameBridge.getStatusSnapshot())
+    return gameBridge.subscribeToStatus(() => {
+      const status = gameBridge.getStatusSnapshot()
+      const terminal = isTerminal(status)
+      if (status && terminal && !wasTerminal) onTerminal(status)
+      wasTerminal = terminal
+    })
+  }, [gameBridge])
 
-    if (gameStatus.isComplete) {
-      terminalFiredRef.current = true
-      onComplete?.(gameStatus)
-    } else if (gameStatus.isTimedOut) {
-      terminalFiredRef.current = true
-      onTimeout?.(gameStatus)
-    }
-  }, [gameStatus, onComplete, onTimeout])
-
-  /**
-   * Reset terminal flag when game resets
-   */
-  useEffect(() => {
-    if (!isInitialized) {
-      terminalFiredRef.current = false
-      hasStartedRef.current = false
-    }
-  }, [isInitialized])
-
-  const isGameOver =
-    !!gameStatus && (gameStatus.isComplete || gameStatus.isTimedOut)
+  const isGameOver = isTerminal(gameStatus)
 
   return {
     gameStatus,
@@ -85,4 +73,8 @@ export function useGameTimer({
     timeRemainingMs: gameStatus?.timeRemainingMs ?? 0,
     progress: gameStatus?.progress,
   }
+}
+
+function isTerminal(status: GameStatus | null): boolean {
+  return !!status && (status.isComplete || status.isTimedOut)
 }

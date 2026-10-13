@@ -32,21 +32,24 @@ export function usePromptEscalation({
   missCount,
 }: UsePromptEscalationProps): HintTier {
   // Written only in the interval callback: `Date.now()` is impure, so not
-  // during render or in the effect body.
-
-  const [elapsedMs, setElapsedMs] = useState(0)
+  // during render or in the effect body. Keyed by the spawn it was measured
+  // for, so a new word starts from zero rather than at the last one's tier.
+  const [elapsed, setElapsed] = useState<{ at: number; ms: number } | null>(
+    null
+  )
 
   useEffect((): (() => void) | undefined => {
     if (!active || spawnedAt === undefined) {
       return undefined
     }
     const id = setInterval(() => {
-      setElapsedMs(Date.now() - spawnedAt)
+      setElapsed({ at: spawnedAt, ms: Date.now() - spawnedAt })
     }, TICK_MS)
     return () => clearInterval(id)
   }, [active, spawnedAt])
 
   if (!active || spawnedAt === undefined) return "idle"
+  const elapsedMs = elapsed?.at === spawnedAt ? elapsed.ms : 0
 
   if (
     missCount >= SPELLING_MISS_THRESHOLD ||

@@ -209,7 +209,26 @@ describe("interval wiring", () => {
     expect(props.gameBridge!.spawnCharacter).toHaveBeenCalledTimes(1)
   })
 
-  it("stops spawning once isPaused flips true, without tearing down the interval", () => {
+  it("follows a spawn interval the engine shortens mid-run", () => {
+    const props = createBaseProps()
+    let spawnIntervalMs = 1000
+    props.gameBridge!.getTimingParams = vi.fn(() => ({
+      spawnIntervalMs,
+      characterLifetimeMs: 3000,
+      showRomanization: true,
+    }))
+    // As a difficultyChanged on that spawn would.
+    props.gameBridge!.spawnCharacter = vi.fn(() => {
+      spawnIntervalMs = 500
+      return []
+    })
+    renderLoop(props)
+
+    vi.advanceTimersByTime(2000)
+    expect(props.gameBridge!.spawnCharacter).toHaveBeenCalledTimes(3)
+  })
+
+  it("stops spawning once isPaused flips true", () => {
     const props = createBaseProps()
     const { rerender } = renderRerenderable(props)
     rerender({ ...props, isPaused: true })

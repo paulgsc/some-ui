@@ -6,12 +6,10 @@ type GridErrorOverlayProps = {
 
 /**
  * Shown when the honeycomb grid's own hex-geometry WASM module (a separate
- * concern from the game engine's WASM module - see HexGrid's onStatusChange)
- * fails to load: the grid itself renders its own inline error in its place,
- * but nothing outside it would otherwise know gameplay should stop too.
- * Unlike PauseOverlay, this is not user-dismissable - there is nothing to
- * "resume" until the underlying load failure resolves on its own (e.g. a
- * viewport/prop change that re-triggers HexGrid's regenerate()).
+ * concern from the game engine's WASM module - see HangulHexGrid's
+ * useHexgridWasm) fails to load: the grid renders its own inline error in its
+ * place, and this says why gameplay stopped too. Unlike PauseOverlay, this is
+ * not user-dismissable - there is nothing to "resume" from a failed load.
  */
 export const GridErrorOverlay = ({
   error,

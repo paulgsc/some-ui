@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef } from "react"
 import type { JSX, ReactNode } from "react"
-import { useHexgridWasm } from "@honeycomb/hooks/use-hexgrid-wasm"
+import type { HexGridGeometry } from "@honeycomb/hooks/use-hexgrid-wasm"
 import type {
   HexCellData,
   HexPoint,
@@ -8,20 +8,19 @@ import type {
 } from "@honeycomb/types/hex-grid"
 import type {
   HexGridFitResult,
-  HexGridFitStrategy,
   ViewportSize,
 } from "@honeycomb/utils/hex-grid-fit"
 import { fitHexGrid } from "@honeycomb/utils/hex-grid-fit"
-import {
-  getCellCountForHexagonalGridRadius,
-  getHexagonalGridRadiusForCellCount,
-} from "@honeycomb/utils/hexagon-math"
 import { useResizeObserver } from "@some-ui/react-hooks"
 import { toast } from "sonner"
 
 export type HexGridProps<T = unknown> = {
-  cellCount: number
-  hexSize: number
+  /**
+   * The cells to draw, from the caller's `useHexgridWasm`, so a caller that
+   * must stop on a failed load (a game loop, audio, timers) reads `error`
+   * where it already holds it.
+   */
+  grid: HexGridGeometry
   viewBoxFactor?: number
   className?: string
   cellContent?: Array<{
@@ -43,23 +42,6 @@ export type HexGridProps<T = unknown> = {
   minHexSize?: number
   /** Space to reserve on every edge before fitting, in px. @default 16 */
   padding?: number
-  /**
-   * How to react when the requested grid no longer fits; see
-   * `HexGridFitStrategy`.
-   * @default "shrink-only"
-   */
-  fitStrategy?: HexGridFitStrategy
-  /** Called whenever the layout negotiation result changes. */
-  onFitChange?: (fit: HexGridFitResult) => void
-  /**
-   * Called when the geometry WASM's loading/error status changes, so a parent
-   * running a game loop, audio or timers can stop on a fatal load failure.
-   */
-
-  onStatusChange?: (status: {
-    isLoading: boolean
-    error: string | null
-  }) => void
   /**
    * Whether a shrunk or reduced fit announces itself with a toast. Leave it on
    * for a board whose cells a player has to read at a size they chose; turn it
@@ -95,17 +77,13 @@ const ImpossibleNotice = ({
 
 export const HexGrid = <T = unknown,>({
   className = "",
-  cellCount,
-  hexSize,
+  grid,
   viewBoxFactor = 1,
   cellContent = [],
   renderCell,
   backgroundOpacity = 0.15,
   minHexSize = 18,
   padding = 16,
-  fitStrategy = "shrink-only",
-  onFitChange,
-  onStatusChange,
   notifyFit = true,
   fallback = (
     <div className="flex h-full w-full items-center justify-center text-gray-400">
@@ -117,36 +95,25 @@ export const HexGrid = <T = unknown,>({
   const { width, height } = useResizeObserver({ ref: measureRef })
   const hasMeasured = width !== undefined && height !== undefined
 
-  const requestedRadius = useMemo(
-    () => getHexagonalGridRadiusForCellCount(cellCount),
-    [cellCount]
-  )
+  const { radius, hexSize, hexCells, isLoading, error } = grid
 
+  // "shrink-only": the cells are the caller's, built at `radius`, so the fit
+  // may draw them smaller but never drop a ring.
   const fit = useMemo((): HexGridFitResult | null => {
     if (!hasMeasured) return null
     return fitHexGrid({
       viewport: { width, height },
-      requestedRadius,
+      requestedRadius: radius,
       preferredHexSize: hexSize,
       minHexSize,
       padding,
-      strategy: fitStrategy,
+      strategy: "shrink-only",
     })
-  }, [
-    hasMeasured,
-    width,
-    height,
-    requestedRadius,
-    hexSize,
-    minHexSize,
-    padding,
-    fitStrategy,
-  ])
+  }, [hasMeasured, width, height, radius, hexSize, minHexSize, padding])
 
+  // The toast is outside React; this keeps it in step with the fit.
   useEffect(() => {
-    if (!fit) return
-    onFitChange?.(fit)
-    if (!notifyFit) return
+    if (!fit || !notifyFit) return
 
     if (fit.status === "shrunk" || fit.status === "reduced-radius") {
       const notify =
@@ -155,23 +122,7 @@ export const HexGrid = <T = unknown,>({
     } else {
       toast.dismiss(HEXGRID_FIT_TOAST_ID)
     }
-  }, [fit, onFitChange, notifyFit])
-
-  const effectiveRadius = fit?.radius ?? requestedRadius
-  const effectiveHexSize = fit?.hexSize ?? hexSize
-  const effectiveCellCount = useMemo(
-    () => getCellCountForHexagonalGridRadius(effectiveRadius),
-    [effectiveRadius]
-  )
-
-  const { hexCells, isLoading, error } = useHexgridWasm({
-    cellCount: effectiveCellCount,
-    hexSize: effectiveHexSize,
-  })
-
-  useEffect(() => {
-    onStatusChange?.({ isLoading, error })
-  }, [isLoading, error, onStatusChange])
+  }, [fit, notifyFit])
 
   const pointsToPath = useCallback((points: Array<HexPoint>): string => {
     const first = points[0]

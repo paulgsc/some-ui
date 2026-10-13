@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState } from "react"
 import type { CSSProperties, JSX, KeyboardEvent, ReactNode } from "react"
 import { HexGrid } from "@honeycomb/components/hex-grid"
+import { useHexgridWasm } from "@honeycomb/hooks/use-hexgrid-wasm"
 import type { HexPoint } from "@honeycomb/types/hex-grid"
 import { assertNever } from "@honeycomb/utils/error"
 import { cn } from "@some-ui/core-utils"
@@ -716,6 +717,7 @@ export const ExtensionsComb = ({
   const rootRef = useRef<HTMLDivElement>(null)
   const stageRef = useRef<HTMLDivElement>(null)
   const frame = useCombFrame(rootRef, stageRef)
+  const grid = useHexgridWasm({ cellCount: 7, hexSize: HEX })
 
   const subject =
     view.subject === null ? null : (EXTENSIONS[view.subject] ?? null)
@@ -759,8 +761,7 @@ export const ExtensionsComb = ({
       <div className="xcomb-layout">
         <div ref={stageRef} className="xcomb-stage">
           <HexGrid
-            cellCount={7}
-            hexSize={HEX}
+            grid={grid}
             viewBoxFactor={VIEWBOX_FACTOR}
             padding={0}
             minHexSize={1}

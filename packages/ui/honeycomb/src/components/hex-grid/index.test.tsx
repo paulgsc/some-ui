@@ -1,12 +1,8 @@
 import { HexGrid } from "@honeycomb/components/hex-grid"
-import { useHexgridWasm } from "@honeycomb/hooks/use-hexgrid-wasm"
+import type { HexGridGeometry } from "@honeycomb/hooks/use-hexgrid-wasm"
 import { render } from "@testing-library/react"
 import { toast } from "sonner"
 import { beforeEach, describe, expect, it, vi } from "vitest"
-
-vi.mock("@honeycomb/hooks/use-hexgrid-wasm", () => ({
-  useHexgridWasm: vi.fn(),
-}))
 
 vi.mock("sonner", () => ({
   toast: { info: vi.fn(), warning: vi.fn(), dismiss: vi.fn() },
@@ -19,84 +15,27 @@ vi.mock("@some-ui/react-hooks", () => ({
   }),
 }))
 
-function mockUseHexgridWasm(
-  overrides: Partial<ReturnType<typeof useHexgridWasm>> = {}
-): void {
-  vi.mocked(useHexgridWasm).mockReturnValue({
+function grid(overrides: Partial<HexGridGeometry> = {}): HexGridGeometry {
+  return {
+    radius: 1,
+    hexSize: 40,
     isLoading: false,
     error: null,
-    validationWarning: null,
     hexCells: [],
-    regenerate: vi.fn(),
-    hexGridRef: { current: null },
-    setHexCells: vi.fn(),
-    getRadius: () => 1,
     ...overrides,
-  })
+  }
 }
 
 beforeEach(() => {
-  vi.mocked(useHexgridWasm).mockReset()
   vi.mocked(toast.info).mockReset()
 })
 
-describe("HexGrid onStatusChange", () => {
-  // onStatusChange lets a parent running a game loop stop on a fatal load.
-  it("reports the underlying wasm hook's loading/error status", () => {
-    mockUseHexgridWasm({ isLoading: true, error: null })
-    const onStatusChange = vi.fn()
-
-    render(
-      <HexGrid cellCount={7} hexSize={40} onStatusChange={onStatusChange} />
+describe("HexGrid load status", () => {
+  it("renders the grid's load error in its place", () => {
+    const { container } = render(
+      <HexGrid grid={grid({ error: "WASM init failed" })} />
     )
-
-    expect(onStatusChange).toHaveBeenCalledWith({
-      isLoading: true,
-      error: null,
-    })
-  })
-
-  it("reports a fatal error", () => {
-    mockUseHexgridWasm({ isLoading: false, error: "WASM init failed" })
-    const onStatusChange = vi.fn()
-
-    render(
-      <HexGrid cellCount={7} hexSize={40} onStatusChange={onStatusChange} />
-    )
-
-    expect(onStatusChange).toHaveBeenLastCalledWith({
-      isLoading: false,
-      error: "WASM init failed",
-    })
-  })
-
-  it("reports recovery back to a healthy status", () => {
-    mockUseHexgridWasm({ isLoading: false, error: "WASM init failed" })
-    const onStatusChange = vi.fn()
-
-    const { rerender } = render(
-      <HexGrid cellCount={7} hexSize={40} onStatusChange={onStatusChange} />
-    )
-    expect(onStatusChange).toHaveBeenLastCalledWith({
-      isLoading: false,
-      error: "WASM init failed",
-    })
-
-    mockUseHexgridWasm({ isLoading: false, error: null })
-    rerender(
-      <HexGrid cellCount={7} hexSize={40} onStatusChange={onStatusChange} />
-    )
-
-    expect(onStatusChange).toHaveBeenLastCalledWith({
-      isLoading: false,
-      error: null,
-    })
-  })
-
-  it("does not throw when onStatusChange is omitted", () => {
-    mockUseHexgridWasm({ isLoading: false, error: "WASM init failed" })
-
-    expect(() => render(<HexGrid cellCount={7} hexSize={40} />)).not.toThrow()
+    expect(container.textContent).toContain("WASM init failed")
   })
 })
 
@@ -104,40 +43,25 @@ describe("HexGrid fit notices", () => {
   // The mocked box is 400x400; a radius-1 grid at hexSize 200 needs ~1039x1000
   // at natural size, so it has to shrink to fit.
   it("toasts a shrunk fit by default", () => {
-    mockUseHexgridWasm()
-    render(<HexGrid cellCount={7} hexSize={200} />)
+    render(<HexGrid grid={grid({ hexSize: 200 })} />)
     expect(toast.info).toHaveBeenCalledTimes(1)
   })
 
-  it("stays quiet with notifyFit={false}, but still reports the fit", () => {
-    mockUseHexgridWasm()
-    const onFitChange = vi.fn()
-    render(
-      <HexGrid
-        cellCount={7}
-        hexSize={200}
-        notifyFit={false}
-        onFitChange={onFitChange}
-      />
-    )
+  it("stays quiet with notifyFit={false}", () => {
+    render(<HexGrid grid={grid({ hexSize: 200 })} notifyFit={false} />)
     expect(toast.info).not.toHaveBeenCalled()
-    expect(onFitChange).toHaveBeenCalledWith(
-      expect.objectContaining({ status: "shrunk" })
-    )
   })
 })
 
 describe("HexGrid loading fallback", () => {
   it("renders the default loading line", () => {
-    mockUseHexgridWasm({ isLoading: true })
-    const { container } = render(<HexGrid cellCount={7} hexSize={40} />)
+    const { container } = render(<HexGrid grid={grid({ isLoading: true })} />)
     expect(container.textContent).toContain("Loading hexagon grid")
   })
 
   it("renders nothing but its box with fallback={null}", () => {
-    mockUseHexgridWasm({ isLoading: true })
     const { container } = render(
-      <HexGrid cellCount={7} hexSize={40} fallback={null} />
+      <HexGrid grid={grid({ isLoading: true })} fallback={null} />
     )
     expect(container.textContent).toBe("")
   })
@@ -145,25 +69,25 @@ describe("HexGrid loading fallback", () => {
 
 describe("HexGrid cell theme", () => {
   it("puts theme.className on the cell path", () => {
-    mockUseHexgridWasm({
-      hexCells: [
-        {
-          id: "hex_0_0_0",
-          points: [
-            { x: 0, y: -10 },
-            { x: 8.66, y: -5 },
-            { x: 8.66, y: 5 },
-            { x: 0, y: 10 },
-            { x: -8.66, y: 5 },
-            { x: -8.66, y: -5 },
-          ],
-        },
-      ],
-    })
     const { container } = render(
       <HexGrid
-        cellCount={1}
-        hexSize={10}
+        grid={grid({
+          radius: 0,
+          hexSize: 10,
+          hexCells: [
+            {
+              id: "hex_0_0_0",
+              points: [
+                { x: 0, y: -10 },
+                { x: 8.66, y: -5 },
+                { x: 8.66, y: 5 },
+                { x: 0, y: 10 },
+                { x: -8.66, y: 5 },
+                { x: -8.66, y: -5 },
+              ],
+            },
+          ],
+        })}
         cellContent={[
           { id: "hex_0_0_0", content: { data: {}, theme: { className: "x" } } },
         ]}
