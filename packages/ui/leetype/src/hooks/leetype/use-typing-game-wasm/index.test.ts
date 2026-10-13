@@ -1,5 +1,5 @@
 import { resetWasm } from "@leetype/lib/leetype/leetype-wasm-loader"
-import type { GameState } from "@leetype/types/leetype"
+import type { Outcome } from "@leetype/types/leetype"
 import type { default as wasmInit } from "@some-ui/leetype-wasm"
 import type { RenderHookResult } from "@testing-library/react"
 import { act, renderHook, waitFor } from "@testing-library/react"
@@ -160,7 +160,13 @@ vi.mock("@some-ui/leetype-wasm", () => {
       return this.record("reset_game", now)
     }
     complete_chunk(now: number): unknown {
-      return this.record("complete_chunk", now)
+      this.record("complete_chunk", now)
+      return {
+        accepted: true,
+        rejection: undefined,
+        chunk: { charsTyped: 3, errors: 0, elapsedTime: 1 },
+        snapshot: { ...SNAPSHOT, ...snapshotOverride },
+      }
     }
     start_next_chunk(source: string, now: number): unknown {
       return this.record("start_next_chunk", source, now)
@@ -192,17 +198,13 @@ vi.mock("@some-ui/leetype-wasm", () => {
   }
 })
 
-function baseProps(overrides: { gameState?: GameState } = {}): {
-  targetCode: string
-  gameState: GameState
-  stepKey: string
-  onComplete: Mock
-} {
+type Props = Parameters<typeof useTypingGame>[0]
+
+function baseProps(overrides: Partial<Props> = {}): Props {
   return {
     targetCode: "const x = 1",
     gameState: "playing",
     stepKey: "step-0",
-    onComplete: vi.fn(),
     ...overrides,
   }
 }
@@ -278,20 +280,35 @@ describe("lazy init", () => {
     expect(result.current.snapshot.cursorDisplay).toBe(0)
   })
 
-  it("keeps the same game instance across re-renders when maxConsecutiveErrors is unchanged", async () => {
+  it("keeps the same game instance across a step change", async () => {
     const props = baseProps()
-    const { result, rerender } = renderHook(
-      (p: ReturnType<typeof baseProps>) => useTypingGame(p),
-      { initialProps: props }
-    )
+    const { result, rerender } = renderHook((p: Props) => useTypingGame(p), {
+      initialProps: props,
+    })
 
     await waitFor(() => expect(result.current.isLoading).toBe(false))
     expect(instances).toHaveLength(1)
 
-    rerender({ ...props, onComplete: vi.fn() })
-    rerender({ ...props, onComplete: vi.fn() })
+    rerender({ ...props, stepKey: "step-1", targetCode: "let y = 2" })
 
     expect(instances).toHaveLength(1)
+    const swapped = instances[0]?.calls.find(
+      (call) => call.method === "start_next_chunk"
+    )
+    expect(swapped?.args[0]).toBe("let y = 2")
+  })
+
+  it("replays the same step when only the attempt moves", async () => {
+    const props = baseProps()
+    const { result, rerender } = renderHook((p: Props) => useTypingGame(p), {
+      initialProps: props,
+    })
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+
+    rerender({ ...props, attempt: 1 })
+
+    expect(methodsOf(instances[0])).toContain("retry_chunk")
+    expect(methodsOf(instances[0])).not.toContain("start_next_chunk")
   })
 })
 
@@ -350,6 +367,28 @@ describe("keystroke commands", () => {
     })
 
     expect(methodsOf(instances[0])).not.toContain("toggle_reveal")
+  })
+})
+
+describe("step completion", () => {
+  it("folds a finished step into the totals once, and reports it on the keystroke that finished it", async () => {
+    const { result } = await renderLoaded()
+    snapshotOverride = { isComplete: true }
+
+    let finishing: Outcome | null = null
+    let after: Outcome | null = null
+    act(() => {
+      finishing = result.current.press("c")
+      // Folded by the command itself, not by an effect after the render.
+      expect(methodsOf(instances[0])).toContain("complete_chunk")
+      after = result.current.press("d")
+    })
+
+    expect(
+      methodsOf(instances[0]).filter((method) => method === "complete_chunk")
+    ).toHaveLength(1)
+    expect(finishing).toMatchObject({ chunk: { charsTyped: 3 } })
+    expect(after).toMatchObject({ chunk: null })
   })
 })
 

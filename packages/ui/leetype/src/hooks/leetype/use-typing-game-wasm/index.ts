@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useRef, useState } from "react"
+import {
+  useCallback,
+  useEffect,
+  useEffectEvent,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react"
 import type { Baseline } from "@leetype/lib/leetype/baseline-store"
 import {
   loadWasm,
@@ -54,7 +61,6 @@ type UseTypingGameProps = {
    * the session clock and the totals with it.
    */
   initialBaseline?: Baseline
-  onComplete?: () => void
   maxConsecutiveErrors?: number
 }
 
@@ -80,7 +86,12 @@ type GameView = {
 type UseTypingGameReturn = GameView & {
   /** Why the last keystroke was refused, if it was. */
   rejection: Rejection | null
-  press: (key: string) => void
+  /**
+   * One keystroke, or `null` when nothing is playing. The keystroke that
+   * finishes the step also folds it into the session totals, and its
+   * outcome carries that fold's `chunk`; every other outcome's is `null`.
+   */
+  press: (key: string) => Outcome | null
   backspace: () => void
   reset: () => void
   start: () => void
@@ -102,17 +113,6 @@ type UseTypingGameReturn = GameView & {
    * gated on how fast it was typed.
    */
   readProgression: () => Progression
-  /**
-   * Which `stepKey#attempt` the engine is *currently* compiled for.
-   *
-   * The caller needs this to tell a live snapshot from a stale one. React
-   * commits a state update at the end of an effect pass, so between "the
-   * runner moved on" and "the engine was told" there is one render where the
-   * snapshot still describes the finished step — and a caller that acted on
-   * it would act twice. Comparing this against what it asked for is the
-   * whole guard.
-   */
-  activeStep: string | null
   /**
    * Re-derive every threshold from a fresh sample. A command to the engine,
    * which is the external system this hook exists to wrap.
@@ -167,6 +167,48 @@ const EMPTY_VIEW: GameView = {
   snapshot: EMPTY_SNAPSHOT,
 }
 
+/** Everything the hook renders from, published together. */
+type EngineState = {
+  view: GameView
+  rejection: Rejection | null
+  isLoading: boolean
+  error: Error | null
+}
+
+type EngineStore = {
+  subscribe: (listener: () => void) => () => void
+  read: () => EngineState
+  publish: (next: Partial<EngineState>) => void
+}
+
+/**
+ * What the engine last produced, as a store React reads with
+ * `useSyncExternalStore`: the engine changes on commands, timers and step
+ * changes, not on renders, so its state is published from where it changes.
+ */
+function createEngineStore(): EngineStore {
+  let current: EngineState = {
+    view: EMPTY_VIEW,
+    rejection: null,
+    isLoading: true,
+    error: null,
+  }
+  const listeners = new Set<() => void>()
+  return {
+    subscribe: (listener): (() => void) => {
+      listeners.add(listener)
+      return (): void => {
+        listeners.delete(listener)
+      }
+    },
+    read: (): EngineState => current,
+    publish: (next): void => {
+      current = { ...current, ...next }
+      listeners.forEach((listener) => listener())
+    },
+  }
+}
+
 /** Read the whole render-facing view out of one engine state. */
 function readView(game: TypedTypingGameType, now: number): GameView {
   return {
@@ -201,31 +243,36 @@ export function useTypingGame({
   stepKey,
   attempt = 0,
   initialBaseline,
-  onComplete,
   maxConsecutiveErrors = 3,
 }: UseTypingGameProps): UseTypingGameReturn {
   const gameRef = useRef<TypedTypingGameType | null>(null)
+  /** Whether the step in flight has been folded into the totals. */
   const completedRef = useRef(false)
-  /** The step the engine is compiled for, mirrored for the effect below. */
+  /** The `stepKey#attempt` the engine is compiled for. */
   const activeStepRef = useRef<string | null>(null)
   /** The previous step's identity, to tell a repeat from an advance. */
   const previousKeyRef = useRef<string | null>(null)
 
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<Error | null>(null)
-  const [view, setView] = useState<GameView>(EMPTY_VIEW)
-  const [rejection, setRejection] = useState<Rejection | null>(null)
-  const [activeStep, setActiveStep] = useState<string | null>(null)
+  const [store] = useState(createEngineStore)
+  const { view, rejection, isLoading, error } = useSyncExternalStore(
+    store.subscribe,
+    store.read,
+    store.read
+  )
 
-  // Latest-ref: the mount effect below only wants these values *at
-  // construction time* — it must not re-run (and reload wasm) whenever the
-  // step changes, since the effects below already handle those.
-  const targetCodeRef = useRef(targetCode)
-  const baselineRef = useRef(initialBaseline)
-  const initialTokenRef = useRef(tokenOf(stepKey, attempt))
-  useEffect(() => {
-    targetCodeRef.current = targetCode
-    baselineRef.current = initialBaseline
+  // Reads the step and baseline current when the wasm finishes loading,
+  // without making either a reason to reload it: a later step reaches the
+  // engine through the step effect below, a later baseline via `calibrate`.
+  const construct = useEffectEvent((): TypedTypingGameType => {
+    const game = new TypedTypingGame(
+      targetCode,
+      maxConsecutiveErrors,
+      initialBaseline?.wpm,
+      initialBaseline?.dispersion
+    )
+    activeStepRef.current = tokenOf(stepKey, attempt)
+    previousKeyRef.current = stepKey
+    return game
   })
 
   useEffect(() => {
@@ -233,30 +280,21 @@ export function useTypingGame({
 
     void (async (): Promise<void> => {
       try {
-        setIsLoading(true)
-        setError(null)
+        store.publish({ isLoading: true, error: null })
 
         await loadWasm()
         if (!aliveRef.current) return
 
-        const game = new TypedTypingGame(
-          targetCodeRef.current,
-          maxConsecutiveErrors,
-          baselineRef.current?.wpm,
-          baselineRef.current?.dispersion
-        )
+        const game = construct()
         gameRef.current = game
         completedRef.current = false
-        activeStepRef.current = initialTokenRef.current
-        previousKeyRef.current = initialTokenRef.current.split("#")[0] ?? null
-
-        setActiveStep(initialTokenRef.current)
-        setView(readView(game, Date.now()))
-        setIsLoading(false)
+        store.publish({ view: readView(game, Date.now()), isLoading: false })
       } catch (e) {
         if (!aliveRef.current) return
-        setError(e instanceof Error ? e : new Error("WASM init failed"))
-        setIsLoading(false)
+        store.publish({
+          error: e instanceof Error ? e : new Error("WASM init failed"),
+          isLoading: false,
+        })
       }
     })()
 
@@ -265,8 +303,9 @@ export function useTypingGame({
       gameRef.current?.free()
       gameRef.current = null
     }
-  }, [maxConsecutiveErrors])
+  }, [store, maxConsecutiveErrors])
 
+  // Tells the engine which step is in flight: it holds one at a time.
   useEffect(() => {
     const game = gameRef.current
     if (!game || !targetCode || isLoading) return
@@ -289,41 +328,46 @@ export function useTypingGame({
       activeStepRef.current = token
       previousKeyRef.current = stepKey
       completedRef.current = false
-
-      // Reacting to a prop change by resyncing local UI state to match the
-      // engine's new step — the imperative call above can't move to render
-      // (it must run exactly once per change), so this can't be
-      // restructured as a render-time adjustment.
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setActiveStep(token)
-      setView(readView(game, Date.now()))
-      setRejection(null)
+      store.publish({ view: readView(game, Date.now()), rejection: null })
     } catch (e) {
-      setError(e instanceof Error ? e : new Error("Step transition failed"))
+      store.publish({
+        error: e instanceof Error ? e : new Error("Step transition failed"),
+      })
     }
-  }, [targetCode, stepKey, attempt, isLoading])
+  }, [store, targetCode, stepKey, attempt, isLoading])
 
   /**
-   * Run one engine command and republish what it produced. The engine hands
+   * Run one engine command and publish what it produced. The engine hands
    * back the outcome and the fresh snapshot together, so there is no window
-   * where the caret and the highlighting disagree.
+   * where the caret and the highlighting disagree. The command that finishes
+   * the step folds it into the totals here, once.
    */
   const dispatch = useCallback(
-    (command: (game: TypedTypingGameType, now: number) => Outcome): void => {
+    (
+      command: (game: TypedTypingGameType, now: number) => Outcome
+    ): Outcome | null => {
       const game = gameRef.current
-      if (!game) return
+      if (!game) return null
 
       const outcome = command(game, Date.now())
-      setRejection(outcome.rejection)
-      setView((previous) => refreshView(previous, game))
+      let result = outcome
+      if (outcome.snapshot.isComplete && !completedRef.current) {
+        completedRef.current = true
+        result = { ...outcome, chunk: game.completeChunk(Date.now()).chunk }
+      }
+      store.publish({
+        view: refreshView(store.read().view, game),
+        rejection: outcome.rejection,
+      })
+      return result
     },
-    []
+    [store]
   )
 
   const press = useCallback(
-    (key: string): void => {
-      if (gameState !== "playing") return
-      dispatch((game, now) => game.press(key, now))
+    (key: string): Outcome | null => {
+      if (gameState !== "playing") return null
+      return dispatch((game, now) => game.press(key, now))
     },
     [dispatch, gameState]
   )
@@ -376,17 +420,6 @@ export function useTypingGame({
     }
   }, [gameState, isComplete, isLoading, dispatch])
 
-  useEffect(() => {
-    if (completedRef.current || gameState !== "playing" || !isComplete) return
-
-    const game = gameRef.current
-    if (!game) return
-
-    completedRef.current = true
-    game.completeChunk(Date.now())
-    onComplete?.()
-  }, [isComplete, gameState, onComplete])
-
   return {
     ...view,
     rejection,
@@ -397,7 +430,6 @@ export function useTypingGame({
     onDismiss,
     toggleReveal,
     readProgression,
-    activeStep,
     calibrate,
     isLoading,
     error,

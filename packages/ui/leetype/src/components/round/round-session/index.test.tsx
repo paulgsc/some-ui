@@ -1,5 +1,5 @@
 import type { ComponentProps } from "react"
-import { act } from "react"
+import { act, Profiler } from "react"
 import { RoundSession } from "@leetype/components/round/round-session"
 import { AUTHORED_ROUNDS } from "@leetype/lib/leetype/authored-rounds"
 import type { Ledger } from "@leetype/lib/leetype/ledger"
@@ -94,7 +94,13 @@ function renderRound(
 /** Runs `body` with the session clock faked, restoring real timers after. */
 function withFakeClock(body: () => void): void {
   vi.useFakeTimers({
-    toFake: ["setInterval", "clearInterval", "performance"],
+    toFake: [
+      "setTimeout",
+      "clearTimeout",
+      "setInterval",
+      "clearInterval",
+      "performance",
+    ],
   })
   try {
     body()
@@ -229,6 +235,29 @@ describe("RoundSession", () => {
       expect(screen.getByText("1 round played")).toBeInTheDocument()
       fireEvent.click(screen.getByRole("button", { name: "Restart" }))
       expect(screen.getByText("Round 1")).toBeInTheDocument()
+    })
+  })
+
+  it("does not re-render while the term runs", () => {
+    withFakeClock(() => {
+      const onRender = vi.fn()
+      render(
+        <Profiler id="round" onRender={onRender}>
+          <RoundSession
+            rounds={[COUNT_PRESENT]}
+            sessionSeed={3}
+            pastedStore={memoryStore()}
+            sessionDurationMs={1000}
+          />
+        </Profiler>
+      )
+      onRender.mockClear()
+      act(() => {
+        vi.advanceTimersByTime(900)
+      })
+      expect(onRender).not.toHaveBeenCalled()
+      endSession()
+      expect(screen.getByText("Session complete")).toBeInTheDocument()
     })
   })
 
