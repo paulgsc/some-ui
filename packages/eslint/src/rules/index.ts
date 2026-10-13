@@ -20,3 +20,4 @@ export {
   noStructuralPaletteColor,
   noThemeBoundary,
 } from "./theme-protocol.js"
+export { noLatestRefEffect } from "./no-latest-ref-effect.js"

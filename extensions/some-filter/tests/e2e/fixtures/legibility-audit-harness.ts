@@ -35,7 +35,6 @@ declare global {
 export const legibilityAuditTest = base.extend<{ scriptContent: string }>({
   // eslint-disable-next-line no-empty-pattern
   scriptContent: async ({}, use) => {
-    // eslint-disable-next-line react-hooks/rules-of-hooks
     await use(await legibilityAuditScript())
   },
 })

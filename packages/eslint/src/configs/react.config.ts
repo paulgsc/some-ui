@@ -2,14 +2,24 @@
 // recommended configs: both still call context methods removed in ESLint v10.
 import path from "node:path"
 import { fixupConfigRules } from "@eslint/compat"
+import { noLatestRefEffect } from "@eslint/rules/index.js"
 import { createTypeScriptImportResolver } from "eslint-import-resolver-typescript"
 import importPlugin from "eslint-plugin-import-x"
 import jsxA11yPlugin from "eslint-plugin-jsx-a11y"
 import reactPlugin from "eslint-plugin-react"
 import reactHooksPlugin from "eslint-plugin-react-hooks"
+import effectsPlugin from "eslint-plugin-react-you-might-not-need-an-effect"
 import { defineConfig } from "eslint/config"
 
 const files = ["**/*.{mdx,js,jsx,ts,tsx}"]
+
+/** `no-latest-ref-effect`: see the rule's header. */
+export const effectGuardPlugin = {
+  meta: { name: "effect-guard", version: "0.0.1" },
+  rules: {
+    "no-latest-ref-effect": noLatestRefEffect,
+  },
+}
 
 /**
  * Two selectors: a plain string literal (`import("../foo")`) and a template
@@ -76,10 +86,23 @@ export default defineConfig([
     { files, ...reactPlugin.configs.flat.recommended },
     { files, ...reactHooksPlugin.configs.flat.recommended },
   ]),
+  // "You Might Not Need an Effect" (react.dev/learn/you-might-not-need-an-effect)
+  // as lint. no-event-handler is off: it reads any effect keyed on a prop as an
+  // event handler, which here is mostly focus(), timers and audio cues that
+  // really are synchronization.
+  {
+    files,
+    plugins: effectsPlugin.configs.strict.plugins,
+    rules: {
+      ...effectsPlugin.configs.strict.rules,
+      "react-you-might-not-need-an-effect/no-event-handler": "off",
+    },
+  },
   {
     files,
     plugins: {
       import: importPlugin,
+      "effect-guard": effectGuardPlugin,
     },
     settings: {
       react: {
@@ -152,6 +175,7 @@ export default defineConfig([
       // ── React Hooks rules ────────────────────────────────────────────────
       // exhaustive-deps at error level — warnings get ignored in large codebases
       "react-hooks/exhaustive-deps": "error",
+      "effect-guard/no-latest-ref-effect": "error",
 
       // ── Accessibility rules ──────────────────────────────────────────────
       "jsx-a11y/alt-text": [
