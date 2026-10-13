@@ -5,8 +5,10 @@ import { createRouter, RouterProvider } from "@tanstack/react-router"
 import ReactDOM from "react-dom/client"
 
 import { bootDeviceBackend } from "@/lib/device-backend/boot"
+import { driveFiling } from "@/lib/drive-filing"
 import { sweepOrphans } from "@/lib/reflection-voice"
 import { sweepSceneVoice } from "@/lib/scene-voice"
+import { installShareSidecar } from "@/lib/share-files"
 import { releasePushWhenLeavingTheAccount } from "@/lib/study-nudge/leave-account"
 import { ErrorState, NotFound, RoutePending } from "@/components/housekeeping"
 
@@ -37,6 +39,7 @@ bootDeviceBackend()
 if (import.meta.env.VITE_DEVICE_BACKEND === "true") {
   sweepOrphans()
   sweepSceneVoice()
+  installShareSidecar(driveFiling())
 }
 
 // A browser subscribed to push while signed in must not stay subscribed once
