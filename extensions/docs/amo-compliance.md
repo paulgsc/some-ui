@@ -140,8 +140,10 @@ looks at the diff.
 or a reviewed, human-merged release PR (extension-release.yml — see §10). Only reinstate either
 path for an extension once a compliance audit confirms the build is clean.
 
-**Status:** `suspender-ledger` has passed AMO review (0.2.1, approved 2026-08-26) and is the one
-extension currently opted into `extension-release.yml`'s automated release PR — see §10. Signing
+**Status:** `suspender-ledger` has passed AMO review twice: 0.2.1 (approved 2026-08-26) and
+0.3.0 (submitted 2026-10-11 by `extension-release.yml`, approved by Mozilla's add-on reviewers;
+the signed 0.3.0 is the build in daily use). It is the one extension currently opted into
+`extension-release.yml`'s automated release PR — see §10. Signing
 still requires a human to merge that PR; nothing publishes unreviewed. Every other extension in
 this workspace remains manual-only (`extension-sign-manual.yml`, gated by the
 `compliance_confirmed` checkbox) until its own A+B footguns are resolved and it's added to that

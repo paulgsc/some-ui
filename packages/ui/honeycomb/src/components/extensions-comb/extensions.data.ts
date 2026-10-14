@@ -33,12 +33,17 @@ export const STAGE_LABEL: Readonly<Record<Stage, string>> = {
   ready: "Ready",
 }
 
-/** The caption at L2 · stage. One per step, not one per extension. */
+/**
+ * The caption at L2 · stage. One per step, not one per extension. `ready`
+ * names Mozilla because the only extension there is Firefox-only; reword it
+ * when one that ships elsewhere joins it.
+ */
 export const STAGE_LINE: Readonly<Record<Stage, string>> = {
   idea: "On the bench. It runs, and it is clearly not finished.",
   building: "Being built. The idea is proven; the edges are not.",
   testing: "In testing. In daily use while the last rough parts get fixed.",
-  ready: "Ready. Finished, reviewed, and installable today.",
+  ready:
+    "Ready. Reviewed and approved by Mozilla's add-on team, and in daily use.",
 }
 
 /** Which miniature plays in the L1 top register. One per extension, no text. */
@@ -105,11 +110,12 @@ export const EXTENSIONS: ReadonlyArray<ExtensionDefinition> = [
     id: "suspender-ledger",
     name: "Suspender Ledger",
     line: "Idle tabs go quiet and give their memory back. Click one and it is there again.",
-    // Not `ready`: the manifest ships it as "(Beta)", and it is signed on
-    // AMO's unlisted channel, which has no review — so "finished, reviewed"
-    // would overclaim. In daily use, which is what `testing` says.
-    level: 0.8,
-    stage: "testing",
+    // `ready`: approved in Mozilla's AMO review (extensions/docs/
+    // amo-compliance.md, A4's Status), and the signed build is the one in
+    // daily use. The manifest's "(Beta)" is a name it has not yet dropped,
+    // not a stage.
+    level: 1,
+    stage: "ready",
     firefox: true,
     chrome: false,
     reach: "everywhere",
