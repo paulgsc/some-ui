@@ -64,6 +64,7 @@ describe("the site launcher", () => {
     expect(openTiles()).toEqual([
       "/lessons",
       "/rounds",
+      "/resume-build",
       "/playoff-delta",
       "/extensions",
       "/mission",
@@ -75,7 +76,7 @@ describe("the site launcher", () => {
     const signedOut = await load({ audiences: ["public", "lan", "web"] })
     render(<signedOut.SiteLauncher />)
     openTiles()
-    expect(screen.getAllByText("Passkey")).toHaveLength(2)
+    expect(screen.getAllByText("Passkey")).toHaveLength(3)
     cleanup()
 
     const signedIn = await load({
