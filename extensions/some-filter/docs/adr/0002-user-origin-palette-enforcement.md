@@ -562,3 +562,35 @@ document:
   blackout per YouTube navigation under the flag. `yt-navigate-finish`
   re-confirms and raises the veil only if the sheet has gone. A bfcache
   `pageshow` runs the same confirm step.
+
+### 8.7 The veil is bounded in both engines
+
+§8.6 bounds the veil for the sheet only. The classifier, which is the default
+engine, held it with no bound: a thrown start, a `FAILED_HELD` round, a storage
+read that never settles, a content script that never runs, or a parser blocked
+before `document_end` each left a viewport-wide dark veil up for good. Canon
+Definition D.6 (custody liveness) now bounds every custody hold, and this
+section applies it to the veil.
+
+- **The bound.** `VEIL_MAX_HOLD_MS` is 2.5 s of visible time per engagement.
+  It is §8.6's liveness bound, so neither engine can black out a page for
+  longer than the other. It is above the measured hold on a 22,500-element
+  page (1.9 s from navigation), so a healthy page never reaches it.
+- **Two clocks.** `prepaint-start.js` times the `document_start` veil itself,
+  so the bound holds even if `content.js` never runs. `enablePrepaint()` starts
+  a clock each time the veil goes up, and `disablePrepaint()` stops it.
+  Raising a veil that is already up does not restart the clock. A hidden
+  document starts its clock when it is first shown.
+- **Abandoned, not exonerated.** At the bound the veil comes down onto
+  whatever is rendered. The registry keeps its `HELD`/`RESOLVING`/`FAILED_HELD`
+  value, so a later round resolves the document as usual. The release is
+  counted (`veil_abandoned`), recorded as an error, and `CoverageHeld` reports
+  the uncovered page. A thrown start releases the veil immediately the same
+  way.
+- **No repair raises it again.** Until a round resolves the page, the
+  coverage watchdog's dark-desync repair does not re-raise an abandoned veil;
+  it would otherwise hold it for good, one bound at a time. A navigation or a
+  state change raises a new veil with its own clock.
+- **Off tabs get no veil.** `prepaint-start.js` reads the same per-tab
+  `sessionStorage` cache as `content.ts` and puts up no veil when it says
+  `off`.

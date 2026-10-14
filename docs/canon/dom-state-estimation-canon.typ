@@ -1563,6 +1563,9 @@ each of the following against Axioms 3.1--3.5:
   first $"Safe"_T$ disjunct), and an argument that it is *boundary-crossing*
   (Definition D.5) --- it does not leak native pixels through an unheld
   descendant scope while only the parent's own direct content is masked.
+- *Custody liveness:* the driver's $T_max$ (Definition D.6), where each
+  engagement of the custody primitive starts its clock, and the instrument
+  that records an abandonment as a coverage violation.
 - *Unsupported-latent-scope disclosure:* which categories of rendering scope
   this driver cannot discover at all --- a closed shadow root, a
   cross-origin frame's own document, `<canvas>` content, a browser/UA shadow
@@ -1965,6 +1968,45 @@ already-covered ancestor is available (Corollary D.3.1).
   is a visual admission controller sitting *before* the existing Sensor
   $->$ Estimator $->$ Adapter $->$ Actuator loop that $Phi$ already governs,
   not a redefinition of any of its stages.
+]
+
+#definition("D.6", name: "Custody liveness")[
+  Definition D.5's first $"Safe"_T$ disjunct is bounded in time. Fix
+  $T_max > 0$. A conforming custodian *abandons* a scope whose custody
+  primitive has stayed engaged for $T_max$ of visible time: the clock starts
+  when the primitive is engaged, or when the document is first visible if it
+  is hidden then, and re-affirming an engaged primitive does not restart it.
+  Abandonment
+  + physically releases the primitive;
+  + writes no transition to $kappa$: the scope keeps its $"HELD"$,
+    $"RESOLVING"$ or $"FAILED_HELD"$ value, so no $pi$ is fabricated and an
+    abandonment is never an exoneration;
+  + leaves $"Safe"_T (r, t)$ false, since the first disjunct is no longer
+    realized and no other disjunct holds, so $Phi_"scope"$ is violated from
+    that round until a later transition engages a primitive or resolves the
+    scope; the custodian records it as a coverage violation;
+  + happens at most once per engagement;
+  + is not undone by the custodian's own repairs: until the scope next
+    resolves, no repair re-engages its primitive over the same unresolved
+    state. A new trigger (a navigation, a change of target) engages a new
+    primitive with its own clock.
+  The primitive engaged at bootstrap (Definition D.2) carries its own clock,
+  independent of whether the session that would resolve it ever runs.
+]
+
+#remark("D.5", name: "Liveness over zero-leak, by declaration")[
+  Definition D.5 alone calls a scope held forever safe; Remark D.3's null
+  adapter holds every scope forever. For a primitive that occludes the
+  viewport, an unbounded hold is a broken page whatever $Phi_"scope"$ says.
+  Definition D.6 gives up zero-leak after $T_max$ in exchange for liveness,
+  and keeps the trade visible: an abandoned scope is a recorded
+  $Phi_"scope"$ failure, never a satisfied invariant. This is §10's "no
+  assumed settlement time" applied to custody: $T_max$ bounds how long the
+  observer waits before giving custody up, it is never read as evidence that
+  the hypothesis is complete, and a later round resolves the scope exactly
+  as it would have without the abandonment. Theorem D.3's conclusion holds
+  on every round with no abandoned scope; Remark D.3 now describes $kappa$,
+  not the presentation.
 ]
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -2436,6 +2478,19 @@ solely as a source-code commit message; it must be reflected in this file.
   accordingly. The registry/state-machine *implementation* is explicitly
   out of scope for this amendment --- SF-RG's own job --- as is re-deriving
   the unrelated leetype canon.
+- *v1.5 → v1.6* (2026-10-14). A *major* amendment, following the v1.4 → v1.5
+  precedent of extending "D.2 · Rendering-scope custody" without touching
+  §2--§3: it adds Definition D.6 (custody liveness) and Remark D.5.
+  Motivation: `some-filter`'s document veil, a viewport-wide custody
+  primitive, could stay engaged indefinitely (a thrown start, a storage read
+  that never settles, a content script that never runs, a parser blocked
+  before `document_end`), and Definition D.5 counted that as safe.
+  `some-filter`'s $T_max$ is 2.5 s (`VEIL_MAX_HOLD_MS`), the bound its
+  enforcement engine already used. Re-derived: Theorem D.3 holds on every
+  round with no abandoned scope; Theorem D.1 and Corollary D.1.1 hold up to
+  the bootstrap primitive's own $T_max$; Theorems 5.1, 6.1, 7.1, 7.2 and C.1
+  quantify over $KK$ or the channel and are untouched. No existing item was
+  weakened in its own text or renumbered; §8.3 gained one checklist item.
 
 // ═══════════════════════════════════════════════════════════════════════════
 #heading(level: 1, numbering: none)[Appendix A --- Glossary]
