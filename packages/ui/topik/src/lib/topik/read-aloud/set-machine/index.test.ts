@@ -582,3 +582,135 @@ describe("the sitting bound (Rem. 4.10)", () => {
     expect(progressOf(host.state)?.queue).toHaveLength(3)
   })
 })
+
+describe("the grammar lens", () => {
+  // 한 잔 주세요: which word is the action?
+  const LENSED: SetItem = {
+    kind: "sentence",
+    key: "s:one-cup",
+    lineId: "one-cup",
+    text: "한 잔 주세요.",
+    syllables: 5,
+    wordIds: [],
+    lens: { kind: "role", role: "action", word: 2 },
+  }
+  const ACTION = { kind: "word", word: 2 } as const
+  const WRONG = { kind: "word", word: 0 } as const
+
+  /** Begin a set whose first entry is the lensed sentence, at its turn. */
+  const atTurn = (items: Array<SetItem> = [LENSED, JUSEYO]): Host => {
+    const host = new Host()
+    host.begin(items)
+    host.step()
+    expect(host.state.phase.name).toBe("turn")
+    return host
+  }
+
+  const answer = (host: Host, value: typeof ACTION | typeof WRONG): void => {
+    host.send({ type: "answer", at: host.now, answer: value })
+  }
+
+  it("takes an answer before the gloss, without changing the step", () => {
+    const host = atTurn()
+    const seq = host.state.seq
+    answer(host, ACTION)
+    expect(host.state.answer).toEqual(ACTION)
+    expect(host.state.seq).toBe(seq)
+    host.step()
+    answer(host, WRONG)
+    expect(host.state.phase.name).toBe("audio")
+    expect(host.state.answer).toEqual(WRONG)
+  })
+
+  it("takes the same answer again as taking it back", () => {
+    const host = atTurn()
+    answer(host, ACTION)
+    answer(host, ACTION)
+    expect(host.state.answer).toBeNull()
+  })
+
+  it("takes no answer at the gloss, where the answer is shown", () => {
+    const host = atTurn()
+    while (host.state.phase.name !== "gloss") host.step()
+    answer(host, ACTION)
+    expect(host.state.answer).toBeNull()
+  })
+
+  it("takes no answer for an item without a lens, or of the wrong kind", () => {
+    const plain = atTurn([ONE_CUP, JUSEYO])
+    answer(plain, ACTION)
+    expect(plain.state.answer).toBeNull()
+    const lensed = atTurn()
+    lensed.send({
+      type: "answer",
+      at: lensed.now,
+      answer: { kind: "tense", tense: "past" },
+    })
+    expect(lensed.state.answer).toBeNull()
+  })
+
+  it("tallies a rep that ran to the end, found or not, and clears the answer", () => {
+    const found = atTurn()
+    answer(found, ACTION)
+    found.finishEntry()
+    expect(found.state.lensed).toEqual({ asked: 1, found: 1 })
+    expect(found.state.answer).toBeNull()
+
+    const missed = atTurn()
+    answer(missed, WRONG)
+    missed.finishEntry()
+    expect(missed.state.lensed).toEqual({ asked: 1, found: 0 })
+
+    const unanswered = atTurn()
+    unanswered.finishEntry()
+    expect(unanswered.state.lensed).toEqual({ asked: 1, found: 0 })
+  })
+
+  it("tallies nothing for a skipped rep", () => {
+    const host = atTurn()
+    answer(host, ACTION)
+    host.send({ type: "skip", at: host.now })
+    expect(host.state.lensed).toEqual({ asked: 0, found: 0 })
+    expect(host.state.answer).toBeNull()
+  })
+
+  it("moves no pace and no count: a set runs the same answered or not", () => {
+    const run = (answered: boolean): Array<SetEffect> => {
+      const host = atTurn([JUSEYO, LENSED, KEOPI])
+      host.finishEntry()
+      host.step()
+      if (answered) answer(host, ACTION)
+      host.run()
+      return host.effects
+    }
+    expect(run(true)).toEqual(run(false))
+  })
+
+  it("keeps the answer through a pause, as it keeps a stuck report", () => {
+    const host = atTurn()
+    answer(host, ACTION)
+    host.send({ type: "pause", at: host.now })
+    host.send({ type: "resume", at: host.now })
+    expect(host.state.phase.name).toBe("glyphs")
+    expect(host.state.answer).toEqual(ACTION)
+  })
+
+  it("tallies afresh when a set resumes from storage", () => {
+    const host = atTurn([LENSED, JUSEYO, KEOPI])
+    answer(host, ACTION)
+    host.finishEntry()
+    const progress = progressOf(host.state)
+    expect(progress && "lensed" in progress).toBe(false)
+    const resumed = new Host()
+    if (progress) {
+      resumed.send({
+        type: "begin-set",
+        at: 0,
+        level: 1,
+        progress,
+        paces: SEEN,
+      })
+    }
+    expect(resumed.state.lensed).toEqual({ asked: 0, found: 0 })
+  })
+})

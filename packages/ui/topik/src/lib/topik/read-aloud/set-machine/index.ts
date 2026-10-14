@@ -25,6 +25,11 @@
  * - Pace (Cor. 4.6 (iii)): a word's factor moves when the word runs to the
  *   end as a rep or a return, and at no other time. A sentence has none: its
  *   turn is fixed by the level (Cor. 4.6 (ii)).
+ * - The grammar lens (`read-aloud/lens`): a sentence drawn with one takes an
+ *   answer at any step before its gloss, where the answer is shown either
+ *   way. An answer changes no step, no pace and no count; a rep that runs to
+ *   the end adds its lens to the set's tally, for the summary, and a rep cut
+ *   short adds nothing, as with counting.
  * - The sitting (Rem. 4.10): once thirty minutes have passed, nothing new
  *   begins - no rep, no introduction, no summary, no set. What is showing
  *   finishes first; a rep is never cut short by the bound. The set in
@@ -38,6 +43,12 @@
 import { assertNever } from "@some-ui/core-utils"
 import type { Urgency } from "@some-ui/speech"
 import type { ReadAloudLevel } from "@topik/lib/topik/read-aloud/content"
+import type { LensAnswer } from "@topik/lib/topik/read-aloud/lens"
+import {
+  answers,
+  lensOutcome,
+  sameAnswer,
+} from "@topik/lib/topik/read-aloud/lens"
 import type { PaceBook, PaceEntry } from "@topik/lib/topik/read-aloud/records"
 import type { SetItem } from "@topik/lib/topik/read-aloud/set-builder"
 import {
@@ -67,6 +78,9 @@ import {
 export type EntryRole = "rep" | "return" | "introduction"
 
 export type QueueEntry = { item: SetItem; role: EntryRole }
+
+/** A set's grammar lenses: those its counted reps carried, and those found. */
+export type LensTally = { asked: number; found: number }
 
 /** A set as it can be stored and resumed: what is left of it. */
 export type SetProgress = {
@@ -113,6 +127,16 @@ export type SetMachineState = {
   reported: boolean
   /** Reps counted in this set: what the summary shows. */
   counted: number
+  /**
+   * The learner's answer to the entry's lens, if any. Like `reported`, it is
+   * cleared only on moving to the next entry; it is not stored with the set.
+   */
+  answer: LensAnswer | null
+  /**
+   * The set's lens tally, for its summary. An outcome, so it is never stored
+   * with the set (Def. 6.6): a set resumed in a later sitting tallies afresh.
+   */
+  lensed: LensTally
   paces: PaceBook
   /** When the sitting began; null before the first set. */
   sittingStartedAt: number | null
@@ -159,6 +183,8 @@ export type SetEvent =
   | { type: "elapsed"; at: number; seq: number }
   | { type: "spoken"; at: number; seq: number; heardMs: number }
   | { type: "stuck"; at: number }
+  /** An answer to the entry's lens; the same answer again takes it back. */
+  | { type: "answer"; at: number; answer: LensAnswer }
   | { type: "skip"; at: number }
   | { type: "pause"; at: number }
   | { type: "resume"; at: number }
@@ -180,6 +206,8 @@ const RETURN_GAP = 3
 const INTRODUCTION_GAP = 2
 
 // HELPERS
+
+const NO_LENSES: LensTally = { asked: 0, found: 0 }
 
 const REP_STEPS: ReadonlySet<string> = new Set<RepStep>([
   "glyphs",
@@ -206,6 +234,8 @@ export function createSetMachine(level: ReadAloudLevel): SetMachineState {
     returns: {},
     reported: false,
     counted: 0,
+    answer: null,
+    lensed: NO_LENSES,
     paces: {},
     sittingStartedAt: null,
   }
@@ -365,7 +395,7 @@ function advance(
   effects: Array<SetEffect>
 ): SetTransition {
   const moved = startEntry(
-    { ...state, cursor: state.cursor + 1, reported: false },
+    { ...state, cursor: state.cursor + 1, reported: false, answer: null },
     at
   )
   return { state: moved.state, effects: [...effects, ...moved.effects] }
@@ -423,6 +453,16 @@ function completeRep(
       creditMs: nominalRepMs(item.kind, item.syllables, state.level),
     })
     next = { ...next, counted: next.counted + 1 }
+    if (item.kind === "sentence" && item.lens) {
+      const found = lensOutcome(item.lens, state.answer) === "found"
+      next = {
+        ...next,
+        lensed: {
+          asked: next.lensed.asked + 1,
+          found: next.lensed.found + (found ? 1 : 0),
+        },
+      }
+    }
   }
 
   if (item.kind === "word") {
@@ -633,6 +673,8 @@ export function setMachineReducer(
           cursor: 0,
           counted: event.progress.counted,
           reported: event.progress.reported,
+          answer: null,
+          lensed: NO_LENSES,
           paces: event.paces,
           sittingStartedAt: state.sittingStartedAt ?? event.at,
         },
@@ -678,6 +720,20 @@ export function setMachineReducer(
         return startAudio(reported, entry, "now")
       }
       return { state: reported, effects: [] }
+    }
+
+    case "answer": {
+      const entry = currentEntry(state)
+      const lens = entry?.item.kind === "sentence" ? entry.item.lens : undefined
+      // Before the gloss, which shows the answer; and only the kind it asks.
+      const open = REP_STEPS.has(phase.name) && phase.name !== "gloss"
+      if (!lens || !open || !answers(lens, event.answer)) return unchanged
+      const same =
+        state.answer !== null && sameAnswer(state.answer, event.answer)
+      return {
+        state: { ...state, answer: same ? null : event.answer },
+        effects: [],
+      }
     }
 
     case "skip": {

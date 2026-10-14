@@ -9,6 +9,10 @@
  * particular, a word's pace factor is pacing and nothing more (Cor. 4.6
  * (iii)), and no word is drawn more often for having been reported stuck.
  *
+ * Drawn with lenses, each sentence also carries the grammar lens its line
+ * supports for this set (`read-aloud/lens`), drawn from the same seed; that
+ * too selects nothing.
+ *
  * Everything here is deterministic in its seed key, like the drama's option
  * order: a set can always be rebuilt from its key.
  */
@@ -18,6 +22,8 @@ import type {
   ReadAloudDeck,
   ReadAloudLevel,
 } from "@topik/lib/topik/read-aloud/content"
+import type { Lens } from "@topik/lib/topik/read-aloud/lens"
+import { pickLens } from "@topik/lib/topik/read-aloud/lens"
 import { syllablesOf } from "@topik/lib/topik/read-aloud/timing"
 
 type WordItem = {
@@ -41,6 +47,8 @@ type SentenceItem = {
   syllables: number
   /** Def. 4.8's `K_e`: every word the line is authored with. */
   wordIds: Array<string>
+  /** The question this sentence asks in its set, when drawn with lenses. */
+  lens?: Lens
 }
 
 export type SetItem = WordItem | SentenceItem
@@ -52,6 +60,8 @@ export type SetOptions = {
   seedKey: string
   words?: number
   sentences?: number
+  /** Give each sentence a grammar lens, where its line supports one. */
+  lenses?: boolean
 }
 
 const DEFAULT_WORDS = 6
@@ -126,6 +136,7 @@ export function buildSet(
     seedKey,
     words = DEFAULT_WORDS,
     sentences = DEFAULT_SENTENCES,
+    lenses = false,
   }: SetOptions
 ): Array<SetItem> {
   const eligible = deck.lines.filter((line) => line.level <= level)
@@ -137,14 +148,18 @@ export function buildSet(
     ...shuffledBySeed(below, fnv1a(`${seedKey}:sentences:below`)),
   ]
     .slice(0, Math.max(0, sentences))
-    .map((line) => ({
-      kind: "sentence",
-      key: `s:${line.id}`,
-      lineId: line.id,
-      text: line.korean,
-      syllables: syllablesOf(line.korean),
-      wordIds: [...new Set(line.words.map((word) => word.wordId))],
-    }))
+    .map((line) => {
+      const lens = lenses ? pickLens(line, seedKey) : null
+      return {
+        kind: "sentence",
+        key: `s:${line.id}`,
+        lineId: line.id,
+        text: line.korean,
+        syllables: syllablesOf(line.korean),
+        wordIds: [...new Set(line.words.map((word) => word.wordId))],
+        ...(lens ? { lens } : {}),
+      }
+    })
 
   const forms = eligible.flatMap((line) =>
     line.words.map((occurrence) => ({ line, occurrence }))

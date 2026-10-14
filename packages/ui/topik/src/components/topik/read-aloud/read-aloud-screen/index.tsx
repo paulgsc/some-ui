@@ -60,6 +60,7 @@ export const ReadAloudScreen = ({
   })
   const [record, setRecord] = useState(loaded.record)
   const { store } = loaded
+  const [lenses, setLenses] = useState(() => store.lenses())
 
   return (
     <ReadAloudSession
@@ -75,6 +76,11 @@ export const ReadAloudScreen = ({
       onRecord={(event, day) => setRecord(store.count(event, day))}
       onPace={(wordId, pace) => store.savePace(wordId, pace)}
       onProgress={(progress) => store.saveProgress(level, progress)}
+      lenses={lenses}
+      onLenses={(on) => {
+        setLenses(on)
+        store.saveLenses(on)
+      }}
       onExit={onExit}
     />
   )

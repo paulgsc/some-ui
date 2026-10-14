@@ -25,6 +25,7 @@ import type {
   ReadAloudDeck,
   ReadAloudLevel,
 } from "@topik/lib/topik/read-aloud/content"
+import type { LensAnswer } from "@topik/lib/topik/read-aloud/lens"
 import type { PaceBook, PaceEntry } from "@topik/lib/topik/read-aloud/records"
 import { dayKey } from "@topik/lib/topik/read-aloud/records"
 import { buildSet } from "@topik/lib/topik/read-aloud/set-builder"
@@ -55,6 +56,11 @@ export type UseReadAloudOptions = {
   paces?: PaceBook
   /** A set left unfinished in an earlier sitting, resumed at its next rep. */
   resume?: SetProgress | null
+  /**
+   * Draw each new set with grammar lenses. Read when a set is drawn, so a
+   * set keeps what it was drawn with, a resumed one included.
+   */
+  lenses?: boolean
   /**
    * The host's session is paused (its stop screen, its own Pause): the rep
    * pauses, nothing the learner taps starts it, and it starts over once the
@@ -92,6 +98,8 @@ export type ReadAloudVM = {
   /** No set can be drawn: the deck has nothing at or below this level. */
   empty: boolean
   begin: () => void
+  /** Answer the entry's lens; the same answer again takes it back. */
+  answer: (answer: LensAnswer) => void
   stuck: () => void
   skip: () => void
   pause: () => void
@@ -149,10 +157,11 @@ function createRunner(
   }
 
   const drawSet = (): void => {
-    const { deck, level, seedKey } = options()
+    const { deck, level, seedKey, lenses } = options()
     const items = buildSet(deck, {
       level,
       seedKey: seedKey?.() ?? `${now()}`,
+      lenses,
     })
     if (items.length === 0) {
       // Nothing at or below this level: say so rather than wait for a set
@@ -406,6 +415,11 @@ export function useReadAloud(options: UseReadAloudOptions): ReadAloudVM {
       setStarted(true)
       runner.begin()
       holdOrShow(runner, latest.current.paused)
+    },
+    // Starts nothing and stops nothing, so the hold need not be applied again.
+    answer: (answer): void => {
+      const runner = runnerRef.current
+      runner?.dispatch({ type: "answer", at: runner.now(), answer })
     },
     stuck: (): void => send(runnerRef, latest.current.paused, "stuck"),
     skip: (): void => send(runnerRef, latest.current.paused, "skip"),

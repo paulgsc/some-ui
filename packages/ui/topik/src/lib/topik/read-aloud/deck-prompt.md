@@ -10,7 +10,9 @@ The drill does not quiz. It never asks what anything means; it shows the
 meaning last. What it needs from you is Korean that is natural at its level,
 words named consistently, and three facts about every written form that no
 program can reliably work out on its own: which word it is, where its stem
-ends, and how it is actually pronounced.
+ends, and how it is actually pronounced. Where the form shows them, give two
+more: the grammatical role a written word plays, and the line's tense. The
+drill's grammar lens asks the learner to find them while reading aloud.
 
 ---
 
@@ -34,12 +36,14 @@ every word it uses, in reading order, as that word is written in the line.
     level: 1 | 2 | 3
     korean: string // the sentence, with its punctuation
     english: string // a natural translation, not word by word
+    tense?: "past" | "present" | "future" // see the rules
     words: Array<{
       wordId: string // a word id from `words`
       surface: string // the form exactly as written in `korean`: 드릴까요
       stemEnd: number // how many syllables of `surface` belong to the stem
       pronunciation?: string // only when it differs from `surface`
       sense?: string // what this form means here, when the gloss is not enough
+      role?: string // one of the roles below, only where the form shows it
     }>
   }>
 }
@@ -108,6 +112,28 @@ around a new word easier than the word itself.
 meaning (주다: give). When a form means something the gloss does not say
 (주세요: please give me), give `sense`. Keep both short.
 
+**`role` and `tense` come from the form, and are optional.** Give a written
+word a `role` only when its particle or ending shows it:
+
+| `role`       | The learner is asked | Shown by                                        |
+| ------------ | -------------------- | ----------------------------------------------- |
+| `subject`    | 누가                 | 이/가: 고양이가                                 |
+| `topic`      | 은 · 는              | 은/는: 형은                                     |
+| `object`     | 무엇을               | 을/를: 빵을                                     |
+| `place`      | 어디서               | 에서: 도서관에서                                |
+| `goal`       | 어디에               | 에, where to or where something is: 학교에      |
+| `time`       | 언제                 | 에 after a time (아침에), or a time word (오늘) |
+| `means`      | 무엇으로             | (으)로: 버스로                                  |
+| `company`    | 누구와               | 와/과/하고 meaning "with": 친구와 먹어요        |
+| `describing` | 어때요               | a describing verb: 커요, 좋아요                 |
+| `action`     | 뭐 해요              | an action verb: 먹어요, 가요                    |
+
+Leave `role` out when the form does not settle it: 와 meaning "and"
+(아버지와 어머니가), a noun with no particle (아메리카노 한 잔), an adverb.
+Give a line `tense` only when it is one statement or question whose form
+shows the tense: not for a request (주세요), not for two sentences, and not
+where form and meaning part (내일 만나요 is present in form).
+
 ## Before you answer
 
 Check each line against these, and fix it rather than explaining:
@@ -119,10 +145,12 @@ Check each line against these, and fix it rather than explaining:
 4. Every `pronunciation` has the same number of syllables as its `surface`,
    and differs from it.
 5. Levels match the length and grammar table.
+6. Every `role` is shown by its word's own form, and every `tense` by the
+   form of the line's last verb.
 
 The app checks these too. A line, word or occurrence that fails is dropped,
-and a pronunciation that does not line up is ignored, so an error costs
-material, not the deck.
+and a pronunciation, role or tense that does not line up is ignored, so an
+error costs material, not the deck.
 
 ## Output
 
@@ -137,6 +165,7 @@ after it, no comments, no trailing commas.
   "level": 1,
   "korean": "사천오백 원입니다.",
   "english": "That's 4,500 won.",
+  "tense": "present",
   "words": [
     {
       "wordId": "sacheon-obaek",

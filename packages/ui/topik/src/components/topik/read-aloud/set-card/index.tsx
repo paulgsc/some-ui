@@ -1,10 +1,11 @@
 import type { JSX } from "react"
-import { useEffect, useState } from "react"
-import { Button } from "@some-ui/shared"
+import { useEffect, useId, useState } from "react"
+import { Button, Switch } from "@some-ui/shared"
 import { StepLayout } from "@topik/components/topik/handheld/step-layout"
 import { PracticeRecordView } from "@topik/components/topik/read-aloud/practice-record"
 import type { ReadAloudLevel } from "@topik/lib/topik/read-aloud/content"
 import type { PracticeRecord } from "@topik/lib/topik/read-aloud/records"
+import type { LensTally } from "@topik/lib/topik/read-aloud/set-machine"
 import { SUMMARY_MS } from "@topik/lib/topik/read-aloud/timing"
 import { BookOpenText, Play, VolumeX } from "lucide-react"
 
@@ -22,12 +23,16 @@ export type SetCardProps = { short: boolean; onStop: () => void } & (
       shortfall: number | null
       /** The practice record and the learner's local day, where one is kept. */
       record?: { record: PracticeRecord; today: string }
+      /** Whether sets are drawn with grammar lenses, where that is offered. */
+      lenses?: { on: boolean; onChange: (on: boolean) => void }
       onStart: () => void
     }
   | {
       kind: "summary"
       /** Reps of this set that ran to the end (Prop. 6.4). */
       counted: number
+      /** The lenses those reps carried, and how many were found. */
+      lensed: LensTally
       /** Restarts the countdown when it changes. */
       runKey: number
       onNext: () => void
@@ -53,12 +58,14 @@ function useCountdown(ms: number, runKey: number): number {
 
 const Summary = ({
   counted,
+  lensed,
   runKey,
   short,
   onNext,
   onStop,
 }: {
   counted: number
+  lensed: LensTally
   runKey: number
   short: boolean
   onNext: () => void
@@ -77,6 +84,14 @@ const Summary = ({
             Set done
           </span>
           <p className="text-2xl font-semibold">{counted} read aloud</p>
+          {lensed.asked > 0 && (
+            <p
+              data-slot="read-aloud-lensed"
+              className="text-muted-foreground text-base"
+            >
+              Found {lensed.found} of {lensed.asked} with the lens
+            </p>
+          )}
         </div>
       }
       dock={
@@ -104,11 +119,13 @@ const Summary = ({
  */
 export const SetCard = (props: SetCardProps): JSX.Element => {
   const { short, onStop } = props
+  const lensesId = useId()
 
   if (props.kind === "summary") {
     return (
       <Summary
         counted={props.counted}
+        lensed={props.lensed}
         runKey={props.runKey}
         short={short}
         onNext={props.onNext}
@@ -203,6 +220,28 @@ export const SetCard = (props: SetCardProps): JSX.Element => {
               Read-aloud plays every item after you read it, and this device has
               no voice to play it with.
             </p>
+          )}
+          {props.audio && !props.empty && props.lenses && (
+            <div className="bg-muted/50 flex w-full items-center gap-3 rounded-2xl p-3 text-left">
+              <div className="min-w-0 flex-1">
+                <label htmlFor={lensesId} className="block font-semibold">
+                  Grammar lens
+                </label>
+                <p
+                  id={`${lensesId}-about`}
+                  className="text-muted-foreground text-sm leading-snug"
+                >
+                  Each sentence asks one thing: who, what, where, when, or which
+                  tense. Tap your answer; nothing waits for it.
+                </p>
+              </div>
+              <Switch
+                id={lensesId}
+                aria-describedby={`${lensesId}-about`}
+                checked={props.lenses.on}
+                onCheckedChange={props.lenses.onChange}
+              />
+            </div>
           )}
           {props.record && (
             <PracticeRecordView

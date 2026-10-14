@@ -11,12 +11,18 @@
  * authored here too: where a written form's stem ends, and how it is
  * pronounced when that differs from its spelling (Cor. 4.6 (iv)).
  *
+ * An occurrence may also name its grammatical role, and a line its tense:
+ * what the grammar lens asks the learner to find (`read-aloud/lens`). Both
+ * are optional; a line without them is read as before.
+ *
  * Content is checked at load, not trusted (Prop. 8.1, Thm. 8.2). A malformed
  * word, line or occurrence is dropped and reported, never the whole deck. A
  * line whose occurrences do not account for every word in it is dropped as
  * incomplete, since a sentence rep examines all of its words. A pronunciation
  * that does not align with its spelling is dropped on its own, and the
- * occurrence is shown without the substitution (Cor. 4.6 (iv)).
+ * occurrence is shown without the substitution (Cor. 4.6 (iv)). An unknown
+ * role or tense is dropped the same way: the occurrence or line is kept
+ * without it.
  * Only a deck whose outer shape is wrong fails, and the caller falls back to
  * the bundled starter deck.
  *
@@ -47,6 +53,39 @@ export type ReadAloudWord = {
   gloss: string
 }
 
+/**
+ * What a written word does in its line, named by the Korean question it
+ * answers, which is also what the lens shows the learner:
+ *
+ * - `subject` 누가: marked 이/가
+ * - `topic` 은·는: marked 은/는
+ * - `object` 무엇을: marked 을/를
+ * - `place` 어디서: where something is done, marked 에서
+ * - `goal` 어디에: where to, or where something is, marked 에
+ * - `time` 언제: when, marked 에 or a time word on its own (오늘, 매일)
+ * - `means` 무엇으로: by what, marked (으)로
+ * - `company` 누구와: with whom, marked 와/과/하고 (not "and")
+ * - `describing` 어때요: a describing verb (커요, 좋아요)
+ * - `action` 뭐 해요: an action verb (먹어요, 가요)
+ */
+export const GRAMMAR_ROLES = [
+  "subject",
+  "topic",
+  "object",
+  "place",
+  "goal",
+  "time",
+  "means",
+  "company",
+  "describing",
+  "action",
+] as const
+export type GrammarRole = (typeof GRAMMAR_ROLES)[number]
+
+/** A line's tense, read from the form of its last predicate. */
+export const TENSES = ["past", "present", "future"] as const
+export type Tense = (typeof TENSES)[number]
+
 /** One word as it is written in one line. */
 export type WordOccurrence = {
   wordId: string
@@ -69,6 +108,12 @@ export type WordOccurrence = {
   pronunciation?: string
   /** What this form means here, when the dictionary gloss is not enough. */
   sense?: string
+  /**
+   * What the form does in this line. Given only where a learner can tell it
+   * from the form itself: 친구와 in 친구와 먹어요 is `company`, but 아버지와 in
+   * 아버지와 어머니가 is "and", and has none.
+   */
+  role?: GrammarRole
 }
 
 export type ReadAloudLine = {
@@ -78,6 +123,12 @@ export type ReadAloudLine = {
   english: string
   /** Every word the line is authored with, in reading order. */
   words: Array<WordOccurrence>
+  /**
+   * The tense its form shows, for a line that is one statement or question.
+   * Absent for a request (주세요), for two sentences, and where the form and
+   * the meaning part (내일 만나요 is present in form, future in meaning).
+   */
+  tense?: Tense
 }
 
 export type ReadAloudDeck = {
@@ -99,6 +150,8 @@ export type ContentFindingKind =
   | "pronunciation-redundant"
   | "line-incomplete"
   | "line-without-words"
+  | "role-unknown"
+  | "tense-unknown"
 
 /** Something dropped at load, and why. */
 export type ContentFinding = {
@@ -132,6 +185,7 @@ const OccurrenceSchema = z.object({
   stemEnd: z.number().int().min(1),
   pronunciation: z.string().optional(),
   sense: z.string().trim().min(1).optional(),
+  role: z.string().optional(),
 })
 
 const LineSchema = z.object({
@@ -140,6 +194,7 @@ const LineSchema = z.object({
   korean: z.string().trim().min(1),
   english: z.string().trim().min(1),
   words: z.array(z.unknown()),
+  tense: z.string().optional(),
 })
 
 const DeckSchema = z.object({
@@ -156,6 +211,28 @@ const summarise = (error: z.ZodError): string =>
     .join("; ")
 
 // PARSE
+
+const isRole = (value: string): value is GrammarRole =>
+  GRAMMAR_ROLES.some((role) => role === value)
+
+const isTense = (value: string): value is Tense =>
+  TENSES.some((tense) => tense === value)
+
+/** An occurrence whose role, if any, is known: an unknown one is dropped. */
+function withKnownRole(
+  { role, ...rest }: z.infer<typeof OccurrenceSchema>,
+  where: string,
+  findings: Array<ContentFinding>
+): WordOccurrence {
+  if (role === undefined) return rest
+  if (isRole(role)) return { ...rest, role }
+  findings.push({
+    kind: "role-unknown",
+    where,
+    detail: `"${role}" is not a grammatical role; the occurrence is kept without it`,
+  })
+  return rest
+}
 
 /**
  * Check an occurrence against the line it sits in and the words the deck
@@ -294,7 +371,7 @@ export function parseReadAloudDeck(raw: unknown): ParsedDeck {
       })
       return
     }
-    const line = parsed.data
+    const { tense: rawTense, ...line } = parsed.data
     if (lineIds.has(line.id)) {
       findings.push({
         kind: "line-duplicate",
@@ -322,7 +399,12 @@ export function parseReadAloudDeck(raw: unknown): ParsedDeck {
         })
         return []
       }
-      const kept = auditOccurrence(shaped.data, audit, wordIds, findings)
+      const known = withKnownRole(
+        shaped.data,
+        `${line.id}/${shaped.data.surface}`,
+        findings
+      )
+      const kept = auditOccurrence(known, audit, wordIds, findings)
       return kept ? [kept] : []
     })
 
@@ -343,7 +425,16 @@ export function parseReadAloudDeck(raw: unknown): ParsedDeck {
       })
       return
     }
-    lines.push({ ...line, words: occurrences })
+    if (rawTense !== undefined && !isTense(rawTense)) {
+      findings.push({
+        kind: "tense-unknown",
+        where: line.id,
+        detail: `"${rawTense}" is not a tense; the line is kept without it`,
+      })
+    }
+    const tense =
+      rawTense !== undefined && isTense(rawTense) ? { tense: rawTense } : {}
+    lines.push({ ...line, words: occurrences, ...tense })
   })
 
   return {
