@@ -101,7 +101,7 @@ export type CoreFact =
       readonly kind: "shape.unknown"
       readonly tag: string
       readonly surface: BoyoSurface
-      readonly reason: UnknownShapeReason | "degraded"
+      readonly reason: UnknownShapeReason
       readonly shape: ShapeConfidence
     }
   // ── Facts the Sensor reports about the DOM (never Core) ───────────────

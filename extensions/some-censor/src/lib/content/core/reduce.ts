@@ -8,7 +8,8 @@
  * typed over their legal sources, `project()` is exhaustive); what this
  * module adds is the *orchestration*, as data in, data out.
  *
- * Invariants:
+ * Design properties, pinned by `core.test.ts` (labels for citation, not
+ * declared review invariants):
  *
  *   R1 — Phase gate. Nothing but `start` does anything while idle (M1).
  *   R2 — One card per artifact. `observed` for a key already held folds the
@@ -28,12 +29,13 @@
  *        makes that cheap, and it is what keeps "what Core believes" and
  *        "what the page shows" from drifting.
  *   R6 — Unknown shape is a state (B4). A card the table could not place is
- *        still a card — masked, like every other — and the miss is counted.
+ *        still a card, masked like every other; each `unknown-shape` token
+ *        (one per element the Sensor could not place) is counted.
  *
- * The parenthesised M-, C- and Entry- IDs are kept so their citations
+ * The parenthesised M-, C- and Entry- labels are kept so their citations
  * resolve: M1, M2, M3 and M6 are R1, R2, R3 and R4 as stated, Entry-2 is
- * R4's `version` check, and C1–C4 are `controller.ts`'s. One more applies
- * here as its own rule:
+ * R4's `version` check, and C1–C4 are `controller.ts`'s. One more property
+ * applies here:
  *
  *   Entry-4 — A card's channel may arrive late. A card observed without one
  *             is provisional, masked on its video id alone; an observation
@@ -469,28 +471,10 @@ function adopt(
       channelId: observation.channelId,
     })
   }
-  let next = setCard(
+  const next = setCard(
     { ...state, nextGeneration: state.nextGeneration + 1 },
     card
   )
-  if (observation.shape === "unknown") {
-    next = {
-      ...next,
-      unknownShapes: {
-        ...next.unknownShapes,
-        degraded: next.unknownShapes.degraded + 1,
-      },
-    }
-    actions.push(
-      record({
-        kind: "shape.unknown",
-        tag: observation.renderer,
-        surface: observation.surface,
-        reason: "degraded",
-        shape: "unknown",
-      })
-    )
-  }
   return { state: next, actions }
 }
 

@@ -9,7 +9,9 @@
  * the title hook's result, a timer firing, a click on a veil — go back to
  * Core as `Input`s through `inbox`, never as calls into it.
  *
- * Invariants. The parenthesised D-numbers are the veil ledger's IDs, kept so
+ * Design properties, pinned by `actuator.test.ts` (labels for citation, not
+ * declared review invariants). The parenthesised D-numbers are the veil
+ * ledger's labels, kept so
  * citations elsewhere resolve; D5 is also stated in `veil.ts`, and D6 is
  * nested custody: an element inside an anchor that matches a pre-mask rule
  * of its own gets `data-boyo` so the occluder releases it, and no veil.

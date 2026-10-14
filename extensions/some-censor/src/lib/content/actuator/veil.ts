@@ -2,7 +2,7 @@
  * The veil's subtree (BC4): its render and its chip
  * builders, as functions over a veil element the Actuator owns.
  *
- * Invariants:
+ * Design property (a label for citation, not a declared review invariant):
  *
  *   D5 — No class names here. Every class string comes from veil-styles.ts,
  *        which is the only file UnoCSS scans; a literal written here would

@@ -6,7 +6,8 @@
  * waiting for `ytd-app`, answering the background's enable/disable and
  * whitelist broadcasts, and the keybindings.
  *
- * Lifecycle invariants, kept here and cited elsewhere:
+ * Lifecycle properties, labelled here because they are cited elsewhere;
+ * pinned by `runtime/runtime.test.ts`, not declared review invariants:
  *
  *   C1 — Start is idempotent. `_start()` returns while the runtime is
  *        running, and `Runtime.start()` returns while Core's phase is

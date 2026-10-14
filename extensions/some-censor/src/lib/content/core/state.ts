@@ -90,9 +90,7 @@ export type CoreState = {
    */
   readonly nextGeneration: number
   /** B4's staleness signal, per session: how often the table had no answer. */
-  readonly unknownShapes: Readonly<
-    Record<UnknownShapeReason | "degraded", number>
-  >
+  readonly unknownShapes: Readonly<Record<UnknownShapeReason, number>>
 }
 
 export const EMPTY_UNKNOWN_SHAPES: CoreState["unknownShapes"] = {
@@ -100,7 +98,6 @@ export const EMPTY_UNKNOWN_SHAPES: CoreState["unknownShapes"] = {
   "tag-unseen": 0,
   "nested-without-outer": 0,
   "unexpected-outer": 0,
-  degraded: 0,
 }
 
 /** The state before any session — what `start` folds over. */

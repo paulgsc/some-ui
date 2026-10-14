@@ -19,9 +19,8 @@
  *     context, a mutation's enclosing card, the fallback wrapper), never
  *     a loop over ancestors.
  *   - Unknown shape is a state (B4). A card the table cannot place is
- *     still observed (with `shape: "unknown"`, which Core counts at
- *     adoption), and one with no extractable id is queued and reported
- *     once as `unknown-shape`.
+ *     still observed (with `shape: "unknown"`), queued if it has no id yet,
+ *     and reported once per element as `unknown-shape`.
  *   - Identity is per element, keys are per artifact. A recycle emits
  *     `gone` for the old key only once no element carries it.
  *   - The retry loop terminates. Every queued element is under the
@@ -42,6 +41,7 @@ import {
   extractTitle,
   tryExtract,
 } from "@censor/lib/content/extract/index"
+import type { UnknownShapeReason } from "@censor/lib/content/layout/lookup"
 import type { LayoutTable } from "@censor/lib/content/layout/schema"
 import type { BoyoSurface } from "@censor/lib/content/layout/surface"
 import {
@@ -115,6 +115,8 @@ export function createSensor(ports: SensorPorts): Sensor {
   const channelPending = new Map<HTMLElement, number>()
   /** Cards whose channel budget is spent: not re-sampled again this session. */
   let channelAbandoned = new WeakSet<HTMLElement>()
+  /** Elements already reported as `unknown-shape` this session. */
+  let unknownReported = new WeakSet<HTMLElement>()
   /**
    * The last observation emitted per element, serialized. The retry loop's
    * `scan()` re-offers every card on the page every 500 ms while anything is
@@ -191,15 +193,7 @@ export function createSensor(ports: SensorPorts): Sensor {
       if (queue.enqueue(el, now)) {
         const tag = el.tagName.toLowerCase()
         ports.onFact({ kind: "mount.queued", tag })
-        if (cls.shape === "unknown") {
-          ports.emit({
-            kind: "unknown-shape",
-            tag,
-            surface: ports.surface(),
-            reason: cls.reason,
-            t: now,
-          })
-        }
+        if (cls.shape === "unknown") reportUnknown(el, cls.reason, now)
         ensureRetryLoop()
       }
       return
@@ -222,6 +216,9 @@ export function createSensor(ports: SensorPorts): Sensor {
       }
       return
     }
+    // Per element, not per key: a second carrier of a video Core already
+    // holds is as much a miss of the table as the first.
+    if (cls.shape === "unknown") reportUnknown(el, cls.reason, now)
     if (rec.kind === "recycled") {
       // The channel budget belonged to the previous video.
       channelPending.delete(el)
@@ -272,6 +269,22 @@ export function createSensor(ports: SensorPorts): Sensor {
       return
     lastEmitted.set(el, { serialized, observation })
     ports.emit({ kind: "observed", key: rec.key, observation, t: now })
+  }
+
+  function reportUnknown(
+    el: HTMLElement,
+    reason: UnknownShapeReason,
+    now: number
+  ): void {
+    if (unknownReported.has(el)) return
+    unknownReported.add(el)
+    ports.emit({
+      kind: "unknown-shape",
+      tag: el.tagName.toLowerCase(),
+      surface: ports.surface(),
+      reason,
+      t: now,
+    })
   }
 
   /**
@@ -467,6 +480,7 @@ export function createSensor(ports: SensorPorts): Sensor {
     queue.clear()
     channelPending.clear()
     channelAbandoned = new WeakSet()
+    unknownReported = new WeakSet()
     lastEmitted.clear()
     if (retryTimer !== null) {
       clearInterval(retryTimer)

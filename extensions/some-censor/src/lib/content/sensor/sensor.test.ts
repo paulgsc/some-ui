@@ -185,6 +185,22 @@ describe("observing cards", () => {
     )
   })
 
+  it("reports each unplaceable element once, including a second carrier of a held video", async () => {
+    document.body.appendChild(cell("held"))
+    await tick()
+    const compact = document.createElement("ytd-compact-video-renderer")
+    compact.appendChild(lockup("held"))
+    document.body.appendChild(compact)
+    document.body.appendChild(document.createElement("yt-lockup-view-model"))
+    await tick(3)
+    const reported = tokens.filter((t) => t.kind === "unknown-shape")
+    expect(reported.map((t) => t.kind === "unknown-shape" && t.tag)).toContain(
+      "yt-lockup-view-model"
+    )
+    const tags = reported.map((t) => t.kind === "unknown-shape" && t.tag)
+    expect(new Set(tags).size, "once per element").toBe(tags.length)
+  })
+
   it("reports an unplaceable card with no id as unknown-shape once, and queues it", async () => {
     const row = document.createElement("ytd-playlist-video-renderer")
     document.body.appendChild(row)

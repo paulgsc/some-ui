@@ -348,12 +348,12 @@ describe("adoption (R2, R6)", () => {
       unknownShape(3),
     ])
     expect(viewOf(state), "still masked, like every card").toBe("masked")
-    expect(state.unknownShapes).toMatchObject({ degraded: 1, "tag-unseen": 2 })
+    expect(state.unknownShapes).toMatchObject({ "tag-unseen": 2 })
     expect(
       kinds(actions).filter((k) => k === "record:shape.unknown")
-    ).toHaveLength(3)
+    ).toHaveLength(2)
     const navigated = reduce(state, nav(2, 4))
-    expect(navigated.state.unknownShapes.degraded, "per session").toBe(0)
+    expect(navigated.state.unknownShapes["tag-unseen"], "per session").toBe(0)
   })
 
   it("forgets a card that is gone", () => {
