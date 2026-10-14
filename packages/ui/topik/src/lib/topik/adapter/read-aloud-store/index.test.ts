@@ -145,8 +145,8 @@ describe("the read-aloud store", () => {
           : entry
       ),
     }
-    store.saveProgress(1, lensed)
-    expect(store.progress(1)).toEqual(lensed)
+    store.saveProgress(1, "bundled", lensed)
+    expect(store.progress(1, "bundled")).toEqual(lensed)
   })
 
   it("keeps grammar lenses off until turned on", () => {
