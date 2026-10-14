@@ -183,10 +183,10 @@ when declared:
 > **RP2: the service logs no request text and returns none.**
 >
 > - _Claim:_ a render through `scripts/serve.mjs` logs only method, path,
->   status, time and the allow-listed variant and template: `assertAtsText`
->   and `checkDocument` return their counts rather than logging them. A
->   refusal's message names fields, limits and allowed values, and never
->   contains text from the request, a key included.
+>   status, time and the allow-listed variant and template; `assertAtsText`,
+>   `checkDocument` and `pdftotext` write nothing to the console. A refusal's
+>   message names fields, limits and allowed values, and never contains text
+>   from the request, a key included.
 > - _Falsified by_ a hunk in `serve.mjs` that logs the body, a `pii` value or
 >   key, or typst's stderr; that builds a `Refusal` from request text; that
 >   passes on a typst assertion or check message other than `pii.typ`'s, the
