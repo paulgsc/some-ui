@@ -108,10 +108,9 @@ for persistence, sign and install the `.xpi` (below).
 Firefox only persists an extension across restarts if it is signed. For a
 private, unlisted add-on, signing goes through AMO with
 `--channel=unlisted`: no public listing, and a signed `.xpi` comes back
-within minutes. Unlisted is not unreviewed: Mozilla's reviewers can review
-any version after signing, and both 0.2.1 and 0.3.0 were reviewed and
-approved. Releases are signed by `extension-release.yml`; the steps below
-are the manual, local path.
+within minutes. Unlisted is not unreviewed (see Status above and
+[§1](../docs/amo-compliance.md#1-how-amo-reviews-unlisted-add-ons)); the
+steps below are the manual, local path.
 
 1. Get AMO API credentials:
    https://addons.mozilla.org/en-US/developers/addon/api/key/

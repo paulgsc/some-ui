@@ -110,10 +110,10 @@ export const EXTENSIONS: ReadonlyArray<ExtensionDefinition> = [
     id: "suspender-ledger",
     name: "Suspender Ledger",
     line: "Idle tabs go quiet and give their memory back. Click one and it is there again.",
-    // `ready`, and the one full cell: Mozilla's add-on reviewers approved it
-    // (0.2.1, then 0.3.0; see extensions/docs/amo-compliance.md), and the
-    // signed build is the one in daily use. It is signed on AMO's unlisted
-    // channel, so there is no public listing to link to.
+    // `ready`: approved in Mozilla's AMO review (extensions/docs/
+    // amo-compliance.md, A4's Status), and the signed build is the one in
+    // daily use. The manifest's "(Beta)" is a name it has not yet dropped,
+    // not a stage.
     level: 1,
     stage: "ready",
     firefox: true,

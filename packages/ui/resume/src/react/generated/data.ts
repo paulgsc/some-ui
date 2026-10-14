@@ -170,7 +170,7 @@ export const resumeData: Record<ResumeVariant, ResumeData> = {
         "bullets": [
           "Implemented change-scoped GitHub Actions on Turbo/Cargo dependency graphs so lint, typecheck, and test run only against changed packages and their transitive dependents, backed by a full-repo nightly sweep.",
           "Built Docker image build/publish pipelines for the web and server images, SQLx offline-query preparation, and Changesets-driven versioning across the workspace.",
-          "Built a human-gated extension release pipeline that binds Mozilla Add-ons (AMO) reviewer notes to the content digest of the build they describe, validates field limits, synchronizes manifest/package versions, and refuses to sign an artifact that differs from the reviewed record; its first release target, a Firefox tab suspender, passed AMO review."
+          "Built a human-gated extension release pipeline that binds Mozilla Add-ons (AMO) reviewer notes to the content digest of the build they describe, validates field limits, synchronizes manifest/package versions, and refuses to sign an artifact that differs from the reviewed record; the Firefox tab suspender it releases passed AMO review."
         ]
       }
     ],
@@ -297,7 +297,7 @@ export const resumeData: Record<ResumeVariant, ResumeData> = {
         "premise": "A browser is host to code it did not author, so an extension's own UI and state must stay provably isolated from the page around it.",
         "bullets": [
           "Shipped a Firefox MV3 tab suspender approved in Mozilla Add-ons (AMO) review: idle tabs release their memory through the browser's native discard and keep their place and history, and no code path closes a tab.",
-          "Built typed popup/worker/content protocols and MV3 service-worker bundles across five Firefox/Chromium extensions, with platform shims isolating browser-specific APIs.",
+          "Built typed popup/worker/content protocols and MV3 service-worker bundles across the monorepo's Firefox/Chromium extensions, with platform shims isolating browser-specific APIs.",
           "Modeled UI and resolver states as exhaustive discriminated unions so illegal transitions fail at compile time rather than at runtime.",
           "Built a post-actuation contrast-closure pass that remeasures computed foreground/background colors against WCAG AA's 4.5:1 floor, selects a hue-preserving foreground repair, realizes it across document and open Shadow DOM scopes, and rechecks hover/focus color changes after interaction settles.",
           "Built a typed lifecycle for document and open-Shadow-DOM scopes, browser-verified in Chromium for late-root discovery, coverage of unresolved content, and self-healing after host-page mutation, plus a per-scope generation counter, unit-tested, that rejects stale asynchronous completions."
@@ -317,7 +317,7 @@ export const resumeData: Record<ResumeVariant, ResumeData> = {
         "body": "One pure-Rust learning engine compiled to WASM and consumed by hex-grid, TOPIK exam-prep, and typing-drill React web applications on a shared platform."
       },
       {
-        "title": "Five browser extensions, one AMO-approved",
+        "title": "AMO-approved browser extension",
         "body": "Typed popup/worker/content protocols and MV3 service-worker bundles; the tab suspender passed Mozilla Add-ons (AMO) review and is in daily use."
       },
       {

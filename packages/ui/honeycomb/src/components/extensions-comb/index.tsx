@@ -498,10 +498,9 @@ const RIDE_PATH = `M-64 0 ${RIDE_BEATS.map((b) => `L${b.x} ${b.y}`).join(" ")}`
 const RIDE_PEAK = RIDE_BEATS[RIDE_BEATS.length - 1] ?? { x: 0, y: 0, r: 0 }
 
 /**
- * Suspender Ledger's four tabs, top to bottom, by what happens to each in the
- * loop: the tab you are on, the one suspended and brought back, the one
- * suspended, and the one playing sound. Each class binds its own keyframes in
- * `index.css`.
+ * Suspender Ledger's four tabs, top to bottom: the one you are on, the one
+ * suspended and brought back, the one suspended, and the one playing sound
+ * (its bars mark it). `index.css` animates the middle two.
  */
 const SUSPEND_TABS = [
   "xcomb-mini-tab-active",
@@ -518,11 +517,7 @@ const SUSPEND_TABS = [
 const Mini = ({ kind }: { kind: Mechanism }): JSX.Element => {
   switch (kind) {
     case "tabs": {
-      // Suspender Ledger's whole flow on one 8s timeline (`index.css`): the
-      // tab you are on stays lit; two background tabs go idle and dim, one
-      // after the other, and the memory gauge drops with each; the tab
-      // playing sound is checked and left awake; a tap on a suspended tab
-      // brings it back behind a brief dark veil, and the gauge refills.
+      // The flow and its timing are described in `index.css`.
       return (
         <g aria-hidden>
           {SUSPEND_TABS.map((role, k) => (

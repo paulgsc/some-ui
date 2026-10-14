@@ -418,12 +418,14 @@
   @keyframes xcomb-tab-back {
     0%,
     14% {
+      fill: var(--comb-honey-surface);
       opacity: 1;
       transform: scaleX(1);
     }
 
     22%,
     54% {
+      fill: var(--comb-honey-surface);
       opacity: 0.18;
       transform: scaleX(0.8);
     }
