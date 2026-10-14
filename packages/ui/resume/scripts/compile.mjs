@@ -8,18 +8,17 @@ import { execFileSync, spawn, spawnSync } from "node:child_process"
 import {
   copyFileSync,
   mkdirSync,
-  mkdtempSync,
   readFileSync,
   rmSync,
   writeFileSync,
 } from "node:fs"
-import { tmpdir } from "node:os"
 import { join } from "node:path"
 
 import { assertAtsText } from "./check-ats.mjs"
 import { checkDocument } from "./check-layout.mjs"
 import {
   baseArgs,
+  compileWithPii,
   DEFAULT_TEMPLATE,
   inputArgs,
   outDir,
@@ -117,14 +116,15 @@ function verify() {
 // compiled once per variant with scripts/fixtures/faux-pii.json: every field
 // at once, each at its envelope maximum in the widest glyphs its pattern
 // allows. Those PDFs must still be one page and pass the same ATS and layout
-// checks, with each faux field on the page. They go to a temporary directory,
-// never documents/, so faux PII is never published.
+// checks, with each faux field on the page. They are compiled exactly as
+// scripts/serve.mjs compiles (`compileWithPii`) and checked in memory, so they
+// never reach documents/ or any other file.
 //
 // This is what lets scripts/serve.mjs promise a layout before it compiles
 // one: a contact item is boxed (src/lib/parts.typ), so a shorter or narrower
 // value can only take as many lines as the widest one, or fewer. The service
 // still runs the checks on every real render.
-function verifyPii(typstBin, fontPath, { extractor }) {
+async function verifyPii(typstBin, fontPath, { extractor }) {
   const pii = JSON.parse(
     readFileSync(
       join(packageDir, "scripts", "fixtures", "faux-pii.json"),
@@ -140,35 +140,22 @@ function verifyPii(typstBin, fontPath, { extractor }) {
       )
     }
   }
-  const dir = mkdtempSync(join(tmpdir(), "resume-pii-"))
-  try {
-    for (const template of piiTemplates) {
-      for (const variant of variants) {
-        const pdf = join(dir, `${variant}-${template}.pdf`)
-        const result = spawnSync(
-          typstBin,
-          [
-            "compile",
-            sourceFile,
-            pdf,
-            ...baseArgs(fontPath),
-            ...inputArgs({ variant, template, ...presentation[template], pii }),
-          ],
-          { stdio: "inherit" }
-        )
-        if (result.status !== 0) {
-          throw new Error(
-            `typst failed on ${variant} / ${template} with faux PII ` +
-              `(exit ${result.status ?? result.signal})`
-          )
-        }
-        if (!extractor) continue
-        assertAtsText(pdf, { variant, template, pii, transcriptDir: null })
-        checkDocument(pdf, `${variant} / ${template} with faux PII`)
+  for (const template of piiTemplates) {
+    for (const variant of variants) {
+      const label = `${variant} / ${template} with faux PII`
+      const result = await compileWithPii(
+        { bin: typstBin, fontPath },
+        { variant, template, ...presentation[template], pii }
+      )
+      if (!result.ok) {
+        // Faux values, so typst's diagnostics are safe to print here.
+        process.stderr.write(result.stderr)
+        throw new Error(`typst failed on ${label}`)
       }
+      if (!extractor) continue
+      assertAtsText(result.pdf, { variant, template, pii, transcriptDir: null })
+      checkDocument(result.pdf, label)
     }
-  } finally {
-    rmSync(dir, { recursive: true, force: true })
   }
 }
 
@@ -219,7 +206,7 @@ async function main() {
 
   try {
     renderAll(typstBin, fontPath)
-    verifyPii(typstBin, fontPath, verify())
+    await verifyPii(typstBin, fontPath, verify())
   } catch (err) {
     rmSync(outDir, { recursive: true, force: true })
     // eslint-disable-next-line no-console

@@ -115,14 +115,18 @@ const MIN_WORDS = 180
 // consumes and the only one of the two where a heading reliably starts its own
 // line. A left-hand rail, for instance, prefixes every `-layout` line of the
 // main column with sidebar text.
-function extract(pdfFile, { layout = false } = {}) {
+// `pdf` is a path, or the PDF's bytes, which go in on stdin (`-`) so a PDF
+// with PII is never written to a file to be read.
+function extract(pdf, { layout = false } = {}) {
+  const source = typeof pdf === "string" ? pdf : "-"
   const args = layout
-    ? ["-layout", "-enc", "UTF-8", pdfFile, "-"]
-    : ["-enc", "UTF-8", pdfFile, "-"]
+    ? ["-layout", "-enc", "UTF-8", source, "-"]
+    : ["-enc", "UTF-8", source, "-"]
   try {
     return execFileSync(extractor, args, {
       encoding: "utf8",
       maxBuffer: 32 * 1024 * 1024,
+      ...(typeof pdf === "string" ? {} : { input: pdf }),
     })
   } catch (error) {
     if (error.code === "ENOENT") {
@@ -137,20 +141,24 @@ function extract(pdfFile, { layout = false } = {}) {
 }
 
 /**
- * Throws unless `pdfFile` passes. `pii` is the build's contact fields, if any;
+ * Throws unless `pdf` (a path, or the PDF's bytes) passes. `pii` is the
+ * build's contact fields, if any;
  * a failure names a missing one by its field, never its value, because
  * scripts/serve.mjs returns these messages to the page. `transcriptDir: null`
  * writes no `.ats.txt`.
  */
 export function assertAtsText(
-  pdfFile,
+  pdf,
   { variant, template, pii = {}, transcriptDir = outDir }
 ) {
-  if (!existsSync(pdfFile)) throw new Error(`Missing generated PDF: ${pdfFile}`)
+  if (typeof pdf === "string" && !existsSync(pdf)) {
+    throw new Error(`Missing generated PDF: ${pdf}`)
+  }
   const label = variants[variant]
-  const name = basename(pdfFile)
-  const text = extract(pdfFile)
-  const transcript = extract(pdfFile, { layout: true })
+  const name =
+    typeof pdf === "string" ? basename(pdf) : `${variant} / ${template}`
+  const text = extract(pdf)
+  const transcript = extract(pdf, { layout: true })
   const normalized = text.replace(/\s+/g, " ").trim()
   const folded = normalized.toLocaleLowerCase("en")
   const has = (term) => folded.includes(term.toLocaleLowerCase("en"))

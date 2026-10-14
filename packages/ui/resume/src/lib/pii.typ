@@ -1,13 +1,12 @@
 // Contact details that are personal (PII), supplied per build and never
 // committed.
 //
-// They arrive as one JSON object in the `pii` typst input:
-//
-//   typst compile src/main.typ out.pdf --input 'pii={"phone":"+1 510 555 0134"}'
-//
-// scripts/serve.mjs, the LAN render service, is how apps/www passes them in;
-// a local CLI build takes the same input. Absent, every field is `none` and
-// the documents are the public ones that ship.
+// They never arrive as a typst `--input`: an input is a process argument,
+// readable by anything that can list processes. src/resume.typ's
+// `render-resume` takes them as a value, and the only callers that pass any
+// write that value into a program typst reads from stdin (`piiProgram` in
+// scripts/typst.mjs): scripts/serve.mjs, the LAN render service, and the
+// build's faux-PII pass. src/main.typ, the public build, passes `none`.
 //
 // src/pii/envelope.json is the one statement of what each field may hold
 // (`fields`) and which templates render them (`templates`). It
@@ -19,16 +18,17 @@
 //
 // Where the fields render: only the contact line of the templates the
 // envelope's `templates` lists, the ATS ones. rail and compact never take
-// them, and nor does the `<resume-export>` metadata in src/main.typ that feeds
+// them, and nor does the `<resume-export>` metadata in src/resume.typ that feeds
 // the public web view.
 
 #let pii-envelope = json("../pii/envelope.json")
 #let envelope = pii-envelope.fields
 
-// Decodes and checks the `pii` input for `template`. Returns a dictionary
-// with every envelope field present, each a string or `none`.
-#let read-pii(raw, template) = {
-  let given = if raw == none { (:) } else { json(bytes(raw)) }
+// Checks `given` (a dictionary, or `none` for no PII) for `template`.
+// Returns a dictionary with every envelope field present, each a string or
+// `none`.
+#let read-pii(given, template) = {
+  if given == none { given = (:) }
   assert(
     type(given) == dictionary,
     message: "pii: expected a JSON object of contact fields",

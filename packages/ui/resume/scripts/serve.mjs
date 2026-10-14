@@ -2,12 +2,14 @@
 // The LAN résumé render service: compiles one ATS document with contact
 // details (PII) supplied per request, and returns the PDF.
 //
-// The PII never reaches git, the public site or the static build. It arrives
-// in the request body, goes to typst as the `pii` input (src/lib/pii.typ,
-// which checks it against src/pii/envelope.json), and the PDF is written to a
-// temporary directory that is removed before the response finishes. Nothing
-// here logs a request body, a typst diagnostic or a check's detail, any of
-// which can carry a value.
+// The PII never reaches git, the public site or the static build, and never
+// leaves memory and pipes here: it arrives in the request body, goes to typst
+// inside the program typst reads on stdin (`compileWithPii`, scripts/typst.mjs;
+// src/lib/pii.typ checks it against src/pii/envelope.json), the PDF comes back
+// on typst's stdout, and the checks hand it to `pdftotext` on stdin. No process
+// argument, environment variable or file ever holds a value. Nothing here
+// logs a request body, a typst diagnostic or a check's detail, any of which
+// can carry one.
 //
 // It runs the same pinned typst, the same SHA-pinned fonts and the same
 // Poppler checks as `pnpm build`, so what it returns is held to exactly the
@@ -22,21 +24,15 @@
 //
 //   POST /render  {"variant","template","pii":{...}}  -> application/pdf
 //   GET  /health                                       -> 200
-import { execFile } from "node:child_process"
-import { mkdtemp, readFile, rm } from "node:fs/promises"
 import { createServer } from "node:http"
-import { tmpdir } from "node:os"
-import { join } from "node:path"
 
 import { assertAtsText } from "./check-ats.mjs"
 import { checkDocument } from "./check-layout.mjs"
 import {
-  baseArgs,
-  inputArgs,
+  compileWithPii,
   piiTemplates,
   presentation,
   resolveTypst,
-  sourceFile,
   variants,
 } from "./typst.mjs"
 
@@ -99,17 +95,6 @@ function parseRequest(text) {
   return { variant, template, pii }
 }
 
-function compile(typst, args) {
-  return new Promise((resolve) => {
-    execFile(
-      typst.bin,
-      args,
-      { timeout: COMPILE_TIMEOUT_MS, maxBuffer: 1024 * 1024 },
-      (error, _stdout, stderr) => resolve({ error, stderr: String(stderr) })
-    )
-  })
-}
-
 // typst prints `error: assertion failed: <message>` for a failed `assert`.
 // Only the two kinds whose messages are known to carry no value are passed
 // on: src/lib/pii.typ's field checks, and src/lib/fit.typ's one-page check.
@@ -127,46 +112,36 @@ function refusalFromTypst(stderr) {
 }
 
 async function render(typst, { variant, template, pii }) {
-  // Under a tmpfs in the container (infra/compose/resume.yml), so the PDF
-  // with PII is never written to a disk.
-  const dir = await mkdtemp(join(tmpdir(), "resume-render-"))
+  const result = await compileWithPii(
+    typst,
+    { variant, template, ...presentation[template], pii },
+    { timeoutMs: COMPILE_TIMEOUT_MS }
+  )
+  if (!result.ok) throw refusalFromTypst(result.stderr)
+  // The values the ATS check expects, as src/lib/pii.typ normalises them.
+  const supplied = Object.fromEntries(
+    Object.entries(pii)
+      .map(([field, value]) => [field, value.trim()])
+      .filter(([, value]) => value !== "")
+  )
   try {
-    const pdf = join(dir, "resume.pdf")
-    const { error, stderr } = await compile(typst, [
-      "compile",
-      sourceFile,
-      pdf,
-      ...baseArgs(typst.fontPath),
-      ...inputArgs({ variant, template, ...presentation[template], pii }),
-    ])
-    if (error) throw refusalFromTypst(stderr)
-    // The values the ATS check expects, as src/lib/pii.typ normalises them.
-    const supplied = Object.fromEntries(
-      Object.entries(pii)
-        .map(([field, value]) => [field, value.trim()])
-        .filter(([, value]) => value !== "")
-    )
-    try {
-      // Its messages name a missing PII field, never the value.
-      assertAtsText(pdf, {
-        variant,
-        template,
-        pii: supplied,
-        transcriptDir: null,
-      })
-    } catch (failure) {
-      throw new Refusal(500, `ATS check failed: ${failure.message}`)
-    }
-    try {
-      checkDocument(pdf, `${variant} / ${template}`)
-    } catch {
-      // Its message quotes the colliding lines, which may be the contact line.
-      throw new Refusal(500, "Layout check failed: two lines collide.")
-    }
-    return await readFile(pdf)
-  } finally {
-    await rm(dir, { recursive: true, force: true })
+    // Its messages name a missing PII field, never the value.
+    assertAtsText(result.pdf, {
+      variant,
+      template,
+      pii: supplied,
+      transcriptDir: null,
+    })
+  } catch (failure) {
+    throw new Refusal(500, `ATS check failed: ${failure.message}`)
   }
+  try {
+    checkDocument(result.pdf, `${variant} / ${template}`)
+  } catch {
+    // Its message quotes the colliding lines, which may be the contact line.
+    throw new Refusal(500, "Layout check failed: two lines collide.")
+  }
+  return result.pdf
 }
 
 async function main() {

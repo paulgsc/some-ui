@@ -73,12 +73,15 @@ function decode(text) {
   return text.replace(/&(?:amp|lt|gt|quot|#39|apos);/g, (e) => ENTITIES[e])
 }
 
-function readLines(pdfFile) {
+// `pdf` is a path, or the PDF's bytes, which go in on stdin (`-`).
+function readLines(pdf) {
   let xml
   try {
-    xml = execFileSync(extractor, ["-bbox-layout", pdfFile, "-"], {
+    const source = typeof pdf === "string" ? pdf : "-"
+    xml = execFileSync(extractor, ["-bbox-layout", source, "-"], {
       encoding: "utf8",
       maxBuffer: 32 * 1024 * 1024,
+      ...(typeof pdf === "string" ? {} : { input: pdf }),
     })
   } catch (error) {
     if (error.code === "ENOENT") {
@@ -120,11 +123,14 @@ function excerpt(line) {
   return line.text.length > 48 ? `${line.text.slice(0, 48)}…` : line.text
 }
 
-// Throws unless no two adjacent lines of `pdfFile` collide. The message quotes
+// Throws unless no two adjacent lines of `pdf` (a path, or the PDF's bytes)
+// collide. The message quotes
 // the offending lines, so scripts/serve.mjs reports it without the detail.
-export function checkDocument(pdfFile, label) {
-  if (!existsSync(pdfFile)) throw new Error(`Missing generated PDF: ${pdfFile}`)
-  const lines = readLines(pdfFile)
+export function checkDocument(pdf, label) {
+  if (typeof pdf === "string" && !existsSync(pdf)) {
+    throw new Error(`Missing generated PDF: ${pdf}`)
+  }
+  const lines = readLines(pdf)
   const offences = []
   let checked = 0
 
@@ -155,7 +161,7 @@ export function checkDocument(pdfFile, label) {
       )
       .join("\n")
     throw new Error(
-      `${basename(pdfFile)} sets ${offences.length} line pair(s) tighter than ` +
+      `${typeof pdf === "string" ? basename(pdf) : label} sets ${offences.length} line pair(s) tighter than ` +
         `the ${MIN_GAP_RATIO} floor:\n${detail}\n` +
         `  Widen the relevant gap in src/lib/parts.typ (STACK-GAP / ` +
         `HEADING-GAP) or the template's own par/list spacing.`

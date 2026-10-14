@@ -32,12 +32,15 @@ erases the underlying work or creates a random assortment of bullets.
 src/data/resume.typ      (evidence distilled from paulgsc/{server,some-ui})
 src/data/personal.typ    (facts that exist outside those repos — see below)
               ↓ imported by
+src/resume.typ           (render-resume: the document as a function)
+              ↓ called by
 src/main.typ  --variant/--template/--theme/--font-->
               documents/resume-{backend,platform,fullstack}[-{classic,compact,vanilla,safe,conventional}].{pdf,svg}
 ```
 
-`src/main.typ` is the only entry point. Everything about a rendered document is
-a typst `--input`, not a source edit:
+`src/main.typ` is the public build's entry point, and the only one the build
+and `typst watch` use. Everything about a public document is a typst `--input`,
+not a source edit:
 
 | input      | values                                                          |
 | ---------- | --------------------------------------------------------------- |
@@ -48,8 +51,8 @@ a typst `--input`, not a source edit:
 
 Those four are the same knobs the LAN render service takes per request
 (below), which is the point: the static build and the dynamic renderer share
-one template set rather than diverging. A fifth input, `pii`, carries contact
-details that are never committed.
+one template set rather than diverging (`src/resume.typ`). The service also
+takes contact details that are never committed, but never as an input (below).
 
 ### Templates
 
@@ -109,26 +112,28 @@ redistributes the space, so filling these in later costs nothing structurally.
 ### Contact details (PII) and the LAN render service
 
 A phone number, a LinkedIn URL, a street address or a different email never
-belong in this repository, so none is in `src/data`. They are the `pii` input:
-one JSON object, decoded and checked by `src/lib/pii.typ` against
-`src/pii/envelope.json`, which says what each field may hold (length and
-pattern) and which templates render them. Only the ATS templates (`classic`,
-`vanilla`, `safe`, `conventional`) do; `rail` and `compact`, whose PDFs the
-website links, refuse the input, and `<resume-export>` never carries it.
+belong in this repository, so none is in `src/data`. `src/resume.typ`'s
+`render-resume` takes them as a value, which `src/lib/pii.typ` checks against
+`src/pii/envelope.json`: what each field may hold (length and pattern) and
+which templates render them. Only the ATS templates (`classic`, `vanilla`,
+`safe`, `conventional`) do; `rail` and `compact`, whose PDFs the website links,
+refuse PII, and `<resume-export>` never carries it.
 
-```sh
-typst compile src/main.typ out.pdf --root . --font-path <pinned fonts> \
-  --ignore-system-fonts --input template=classic --input theme=ink \
-  --input font=pt-serif --input 'pii={"phone":"+1 (510) 555-0134"}'
-```
+PII is never a typst `--input`. An input is a process argument, which anything
+that can list processes can read. `src/main.typ`, the public build's entry,
+passes none. `compileWithPii` (`scripts/typst.mjs`) is the one way in: it writes
+the arguments into a two-line program as the bytes of their JSON, which typst
+reads on stdin, and it takes the PDF back from typst's stdout. The checks hand
+that PDF to `pdftotext` on stdin as well. No process argument, environment
+variable or file ever holds a value.
 
-The usual way in is the render service, `scripts/serve.mjs` (`pnpm serve`):
+The way in is the render service, `scripts/serve.mjs` (`pnpm serve`):
 `POST /render` with `{ variant, template, pii }` returns the PDF. It runs the
 same pinned typst and fonts as the build, and runs `check-ats.mjs` (requiring
 every supplied field on the page) and `check-layout.mjs` on every render before
-returning it. The PDF is written to a temporary directory that is removed before
-the response ends, and nothing it logs or returns carries a value: the checks
-in `pii.typ` name a field and its limit, not what was sent.
+returning it. Nothing it logs or returns carries a value: the checks in
+`pii.typ` name a field and its limit, not what was sent. Its container has no
+writable path at all.
 
 It is reachable from the home network only. `infra/compose/resume.yml` builds
 this directory's `Dockerfile` on the box and publishes no port; `apps/www`'s
@@ -140,8 +145,9 @@ the host instead.
 `pnpm build` proves the layouts the service can be asked for:
 `scripts/fixtures/faux-pii.json` holds every field at once, each at its
 envelope maximum in the widest glyphs its pattern allows, and every PII
-template × variant is compiled with it and run through the ATS and layout
-checks. The faux PDFs go to a temporary directory, never `documents/`. Each
+template × variant is compiled with it through `compileWithPii`, the service's
+own path, and run through the ATS and layout checks in memory, so the faux
+PDFs never reach `documents/` or any other file. Each
 contact item is boxed (`contact-line` in `src/lib/parts.typ`), so a narrower
 value can only wrap onto as many lines as the widest one, or fewer. The fit
 ladder (`src/lib/fit.typ`) reaches below its old 0.82 floor only for these
@@ -199,7 +205,7 @@ references per document — so it was a 1.1 MB _picture_ of a résumé, marked
 anyone who could not see it. That transcript was a second copy of the content
 and had already drifted from this package.
 
-So the text is derived instead. `src/main.typ` attaches the composition to the
+So the text is derived instead. `src/resume.typ` attaches the composition to the
 document it just laid out as `<resume-export>` metadata; `scripts/export-data.mjs`
 reads it back with `typst query` and writes `src/react/generated/data.ts`
 (~7 KB per variant), which `src/react/resume-document.tsx` renders as ordinary

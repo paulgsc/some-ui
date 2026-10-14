@@ -24,9 +24,8 @@
   location: "Berkeley, CA",
 
   // No phone number, LinkedIn URL or street address here, ever: this file
-  // is committed and public. Those are supplied per build as the `pii` input
-  // (src/lib/pii.typ), which the LAN render service (scripts/serve.mjs)
-  // passes and which a local CLI build can pass the same way.
+  // is committed and public. Those are supplied per build, and only through
+  // the LAN render service (scripts/serve.mjs; src/lib/pii.typ says how).
 
   // Real and true (per the candidate's own non-engineering résumé), but not
   // wired into any template's render() yet: whether it is worth a line

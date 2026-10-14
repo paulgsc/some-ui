@@ -23,11 +23,10 @@ services:
     container_name: resume-render
     expose:
       - "3100"
-    # The PDF with PII is written under /tmp, so /tmp is memory, and nothing
-    # else in the container is writable.
+    # Nothing in the container is writable, /tmp included: a render keeps the
+    # PII and its PDF in memory and pipes (scripts/serve.mjs), so it has
+    # nothing to write.
     read_only: true
-    tmpfs:
-      - /tmp
     cap_drop:
       - ALL
     security_opt:
