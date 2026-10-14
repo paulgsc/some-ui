@@ -16,13 +16,11 @@ export default defineConfig(
   {
     // ── Charter §2: Logic ≠ Presentation ≠ Effects ──────────────────────────
     // This workspace's whole design rests on the claim that the state machine
-    // is pure — fsm.ts F1–F4 and record.ts V1 are written as invariants about
-    // exactly that, and DomHandle's docstring calls itself "the ONLY class
-    // permitted to touch the DOM". Until now nothing checked it. These four
+    // is pure: fsm.ts F1–F4 are invariants about exactly that, and the
+    // Actuator is the only module permitted to write the vendor DOM. These
     // are the files that must stay testable without a DOM:
     //
     //   fsm.ts          transitions + the render projection
-    //   record.ts       the pure identity record (V1: "zero DOM imports")
     //   selectors.ts    the card catalogue, also read by the stylesheet test
     //   veil-styles.ts  class strings; it names elements it must not touch
     //   layout/**       the layout table, its schema, its instrument and its
@@ -30,16 +28,13 @@ export default defineConfig(
     //                   root it is handed, the way selectors.ts's
     //                   occludedElements() does
     //   core/**         the reducer, its events, actions and state (BC3,
-    //                   #1436) — the enforcement gap that let
-    //                   video-manager.ts violate the contract silently must
-    //                   not reopen here
+    //                   #1436)
     //
     // extract/ is deliberately *not* here: it reads a DOM subtree, but only
     // through the element handed to it, never through a global — which is the
     // distinction the rule draws and the reason its functions are pure.
     files: [
       "src/lib/content/fsm.ts",
-      "src/lib/content/record.ts",
       "src/lib/content/selectors.ts",
       "src/lib/content/veil-styles.ts",
       "src/lib/content/layout/**/*.ts",
@@ -69,7 +64,7 @@ export default defineConfig(
   {
     // ── Charter §4: one prefix, declared once ───────────────────────────────
     // some-censor's prefix is `boyo`, and it is load-bearing rather than
-    // cosmetic: the pre-mask occluder, the event delegation in events.ts, the
+    // cosmetic: the pre-mask occluder, the Actuator's gesture delegation, the
     // reduced-motion rule in styles/content.css and the e2e suite all key off
     // `boyo-*` / `data-boyo*`. A class or data attribute that escapes the
     // namespace is invisible to all four.
@@ -83,7 +78,7 @@ export default defineConfig(
         {
           prefix: "boyo",
           allowlist: [
-            // Set by YouTube, read by us — the hydration signal the observer
+            // Set by YouTube, read by us — the hydration signal the Sensor
             // watches. Renaming it is not ours to do.
             "data-video-id",
           ],

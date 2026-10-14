@@ -21,9 +21,6 @@ export type TitleData = {
   readonly translated: boolean
 }
 
-/** Committed interactions, as emitted by the ClickGate and the whitelist path. */
-export type FsmEvent = "CLICK" | "DBLCLICK" | "WHITELIST"
-
 /**
  * Accent of the hint pill. Semantic, not a colour: the FSM projects a tone and
  * `veil-styles.ts` decides what indigo, violet or mint means for it. Lives here

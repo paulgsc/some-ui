@@ -5,33 +5,28 @@ the `@some-extension/transport` kernel.
 
 ## Architecture at a glance
 
-**Target architecture, landing in stages — not yet the shipped runtime.**
-Of the four stages below (Boundary Contract #1433, tracked as #1434–#1437),
-three exist today as tested modules under
-`src/lib/content/{layout,core,actuator}/`: the Layout table and Core reducer
-are pure, and the Actuator is deliberately not (BC4, #1437 — it is the one
-module allowed to touch the DOM or call `browser.*`). The Sensor (BC2,
-#1435) has not landed; see
-[`src/lib/content/layout/README.md`](./src/lib/content/layout/README.md) for
-its status. The shipped
-entry point (`src/content/content.ts` → `Controller` → `VideoManager`) does
-not yet call `classifyShape`, `reduce`, or `createActuator` —
-`VideoManager`/`DomHandle` still do the observing and writing this pipeline
-is meant to replace.
+The content script runs four stages (Boundary Contract #1433, BC1–BC5):
+`src/content/content.ts` → `Controller` (lifecycle: enable/disable, whitelist
+broadcasts, keybindings) → `runtime/runtime.ts`, which folds every token and
+input through Core and hands the resulting actions to the Actuator. The
+Layout table and Core are pure; the Sensor turns the vendor DOM into the
+tokens Core sees, and the Actuator is the only writer to it and the only
+sender of the whitelist messages.
 
 Four stages, each owning exactly one concern, in a straight line from
-observation to write, once wired:
+observation to write:
 
 1. **Layout table** (`src/lib/content/layout/`) — a versioned, checked-in
    description of how YouTube's card DOM is shaped on each surface, built by
    crawling real (or fixture) pages rather than hand-written. It carries a
    schema version, so a reader can tell "this table is stale" apart from
    "this table's schema is one I do not understand."
-2. **Typed observations** — the not-yet-landed Sensor will classify a freshly
-   seen node against the layout table (`layout/lookup.ts`'s `classifyShape`,
-   which already exists) and hand the Core a typed `Observation`. A node the
-   table cannot place comes back as an explicit `unknown` classification
-   rather than an exception.
+2. **Sensor** (`src/lib/content/sensor/`) — wraps the mutation observer and
+   navigation, classifies each observed node against the layout table
+   (`layout/lookup.ts`'s `classifyShape`), keeps element ↔ card identity and
+   the retry queue, and emits tokens Core consumes. A node the table cannot
+   place is observed with `shape: "unknown"` and counted
+   (`layout.unknown_shape`), never thrown or skipped.
 3. **Core reducer** (`src/lib/content/core/`) — a pure, total
    `reduce(state, event) → { state, actions }`: no DOM, `browser.*`, clock,
    or randomness anywhere under `core/`. Every card's generation (and, where
@@ -40,8 +35,9 @@ observation to write, once wired:
    and recorded as `stale.discarded`. A superseded reveal timer, or any
    answer for a card that has already unmounted, is discarded silently
    instead — that gap is real, not documentation slack.
-4. **Actuator** (`src/lib/content/actuator/`) — the sole module that writes
-   to the vendor DOM or calls `browser.*`. It only executes the actions Core
+4. **Actuator** (`src/lib/content/actuator/`) — the only writer to the
+   vendor DOM and the only sender of the whitelist messages (`IS_WHITELISTED`,
+   `ADD_WHITELIST`). It only executes the actions Core
    named; answers to what it does (a whitelist verdict, a title transform, a
    timer, a click) return to Core as inputs, never as calls back into it.
 

@@ -6,45 +6,44 @@
  *
  * As in some-filter's `coverage-observability.ts`, state lives in a content
  * script, so concurrently open tabs would clobber one shared `storage.local`
- * key. Each page load gets its own key ({@link sessionStorageKey}) plus an
- * entry in a small capped index ({@link readIndex}/{@link touchIndex}) so a
- * debug page (OBS2) can pick a recording.
+ * key. Each page load gets its own key ({@link sessionStorageKey}) plus its
+ * own index key ({@link touchIndex}) so a debug page (OBS2) can pick a
+ * recording, listed and bounded by {@link compactIndex}.
  *
- * `VideoManager`'s `_session` ordinal is recorded as *event data*, not used
- * as the key:
+ * Core's `session` ordinal is recorded as *event data*, not used as the key:
  *
  *   1. `mkSession()` is per content-script instance, so two YouTube tabs both
  *      mint session 1 and would share a key.
- *   2. `Controller` C2 mints a fresh session on every `yt-navigate-finish`. A
- *      recorder per ordinal would cycle the 20-entry index within minutes and
- *      discard the date corpus.
+ *   2. The Sensor mints a fresh session on every (debounced)
+ *      `yt-navigate-finish`. A recorder per ordinal would cycle the 20-entry
+ *      index within minutes and discard the date corpus.
  *
- * One recorder spans those teardown/restart cycles; every boundary is still
- * on the timeline as a `session.start`/`session.reset` pair carrying the
- * ordinal.
+ * One recorder spans those sessions; every boundary is still on the timeline
+ * as a `session.start`/`session.reset` pair carrying the ordinal.
  *
  * ## What it records about dates, and why that is not a disclosure
  *
  * `H2` (`docs/quarantine-capsule.md`) treats an upload date as nonsemantic,
  * so the raw string is recorded verbatim, giving QC2 (#1384) an observed
  * corpus. Nothing else extraction touches is recorded: no title, channel
- * name, thumbnail or href. {@link recordUploadDate} reads only the element's
- * tag name.
+ * name, thumbnail or href; the renderer is its tag name.
  *
  * Distinct raw forms are also deduplicated into a `dates.<surface>` snapshot:
  * the ring buffer sheds oldest events under its byte budget, but metrics and
  * snapshots are never shed, so the corpus survives a long session.
  */
 
-import { ext } from "@censor/platform/content"
 import {
+  createSessionIndex,
   extensionStoragePersistence,
   memoryPersistence,
   Recorder,
+  type Compaction,
   type Invariant,
   type InvariantOutcome,
   type JsonValue,
   type ObservabilityPersistence,
+  type SessionIndex,
 } from "@some-extension/common/observability"
 
 import type { ViewState } from "./fsm"
@@ -60,18 +59,18 @@ import { surfaceOf } from "./layout/surface"
  * and tests and the OBS2 debug page can enumerate it at runtime.
  */
 export const BOYO_EVENT_KINDS = [
-  // Lifecycle. `session.start`/`session.reset` carry VideoManager's own
-  // `_session` ordinal as their subject — see this module's header.
+  // Lifecycle. `session.start`/`session.reset` carry Core's own
+  // `session` ordinal as their subject — see this module's header.
   "session.start",
   "session.reset",
   "navigation.finish",
   "mutation.batch",
-  // Mount pipeline, one kind per outcome `VideoManager.upsert()` can reach.
+  // Mount pipeline, one kind per outcome an observation can reach.
   "mount.resolved",
   "mount.provisional",
   "mount.unresolved",
   "mount.rejected",
-  /** A promotion discarded post-await because `el` was recycled (M6). */
+  /** An async answer discarded because its card moved on (Core's R4). */
   "mount.stale_discarded",
   /**
    * An id change on a mounted element *not* treated as a recycle, because the
@@ -96,6 +95,12 @@ export const BOYO_EVENT_KINDS = [
   // Date extraction — the corpus QC2 (#1384) depends on.
   "date.observed",
   "date.absent",
+  /**
+   * A catalogue node the layout table could not place (BC2, #1435; B4). The
+   * table's staleness signal — see layout/README.md for the recrawl cadence
+   * keyed to it. Subject is the reason; detail carries tag and surface.
+   */
+  "layout.unknown_shape",
   // Invariant transitions, mirroring some-filter's violated/recovered pair.
   "invariant.violated",
   "invariant.recovered",
@@ -136,21 +141,25 @@ type BoyoCounter =
   | "dates_observed"
   | "dates_absent"
   | "invariant_violations"
+  /** `layout.unknown_shape` events, per session: the recrawl trigger. */
+  | "unknown_shapes"
   /**
    * How many times the invariants were actually evaluated.
    *
    * Without it a `status: "healthy"` export is ambiguous between "checked, and
-   * fine" and "never got to check": `sampleHealth()` only rides VideoManager's
-   * cadences, so a quiet page can legitimately evaluate nothing.
+   * fine" and "never got to check": `sampleHealth()` runs when the runtime
+   * starts, on a throttled mutation batch, and from the occlusion and stall
+   * watches only while they see something, so a quiet page can legitimately
+   * go long stretches evaluating nothing.
    */
   | "health_samples"
 
 type BoyoAggregate =
   /** Candidate elements in one observer batch — mutation pressure per batch. */
   | "mutation_batch_candidates"
-  /** `_unresolved.size` sampled whenever the health cadence fires. */
+  /** The Sensor's unresolved-queue depth, sampled whenever health is. */
   | "unresolved_depth"
-  /** `_channelPending.size`, sampled alongside it. */
+  /** Cards the Sensor holds awaiting a channel, sampled alongside it. */
   | "channel_pending_depth"
   /**
    * Per-keystroke skipped count for a bulk advance. An aggregate because the
@@ -188,11 +197,12 @@ export { surfaceOf } from "./layout/surface"
 // ── Invariants ───────────────────────────────────────────────────────────────
 
 /**
- * How long an element may sit inside `_promote()`'s re-entrancy guard before
- * {@link boyoInvariants}' `PromotionGuardClears` calls it stuck.
+ * How long a card's `IS_WHITELISTED` round trip may stay unsettled (Core's
+ * `channel.kind === "pending"`) before {@link boyoInvariants}'
+ * `PromotionGuardClears` calls it stuck.
  *
- * Generous on purpose: the guarded region is one `IS_WHITELISTED` round trip
- * to the background worker, which is milliseconds when the worker is alive and
+ * Generous on purpose: the wait is one `IS_WHITELISTED` round trip to the
+ * background worker, which is milliseconds when the worker is alive and
  * seconds at worst when MV3 has to respawn it to answer. Thirty seconds is
  * past any of that, and a promise that has not settled by then is not slow —
  * it is never going to settle.
@@ -208,11 +218,11 @@ export const PROMOTION_STALL_MS = 30_000
  */
 export const RESOLVE_GRACE_MS = 2_000
 
-/** One element waiting in a `VideoManager` queue, as the invariants see it. */
-export type QueuedCard = {
-  /** `elementKey()`'s output (unresolved) or `c:<videoId>` (channel pending). */
+/** One element waiting in the Sensor's queue, as the invariants see it. */
+type QueuedCard = {
+  /** `t:<tag>` (unresolved) or `c:<tag>` (channel pending): never content. */
   readonly key: string
-  /** When the shared attempt budget started for this key. */
+  /** When this element's budget started. */
   readonly firstSeenAt: number
   /** `isVideoCard(el)` right now — the pre-mask rule's own predicate. */
   readonly videoShaped: boolean
@@ -241,54 +251,43 @@ export type OccludedCard = {
 /**
  * What one bulk advance-to-title keystroke actually covered.
  *
- * The command iterates `_byVideo`, which holds only promoted entries; every
- * other population on the page is outside its reach. This is the denominator.
+ * The command advances the cards Core holds; every other population on the
+ * page is outside its reach. This is the denominator.
  *
- * The buckets are disjoint: `advanced + alreadyPast + detached` is the
- * registry size at keypress time, and the three non-registry fields partition
- * the rest of the page. They are separate because their causes differ:
+ * The buckets are disjoint: `advanced + alreadyPast` is the number of cards
+ * Core held at keypress time, and the two other fields partition the rest of
+ * the occluded page. They are separate because their causes differ:
  * `unresolved` is often legitimately non-zero on a live feed, while
  * `occludedUntracked` (orphans, #1421) should trend to zero.
  */
 export type BulkAdvanceCoverage = {
-  /** Registry entries moved from masked/meta to title by this keystroke. */
+  /** Cards moved from masked/meta to title by this keystroke. */
   readonly advanced: number
-  /** Registry entries already at or past title — covered, nothing to do. */
+  /** Cards already at or past title — covered, nothing to do. */
   readonly alreadyPast: number
-  /** Registry entries whose element has left the DOM; skipped. */
-  readonly detached: number
   /**
-   * Occluded cards waiting in `_unresolved` — hidden, and mid-resolution.
-   * Not `_unresolved.size`, which also holds non-cards the premask `:has()`
-   * guard leaves visible (see VideoManager._coverageCensus).
+   * Occluded elements in the Sensor's retry queue — hidden, and
+   * mid-resolution. Not the queue's size, which also holds non-cards the
+   * premask `:has()` guard leaves visible.
    */
   readonly unresolved: number
   /**
-   * Occluded cards inside `_promote()`'s guard — hidden, and mid-mount. Its
-   * own bucket because `_promote()` dequeues before awaiting
-   * `IS_WHITELISTED`, so a healthy card is briefly in neither `_unresolved`
-   * nor the registry.
-   */
-  readonly promoting: number
-  /**
-   * Occluded cards in no queue and no guard (rejected non-video renderers,
-   * orphans). Nothing is coming for these.
+   * Occluded elements the Sensor holds nothing for (rejected non-video
+   * renderers, orphans). Nothing is coming for these.
    */
   readonly occludedUntracked: number
   /**
-   * How many of `advanced + alreadyPast` were still awaiting channel backfill.
-   * Shows that a `_channelPending` card is covered, not skipped:
-   * `_promoteProvisional()` puts it in `_byVideo` *and* queues the backfill.
+   * How many of `advanced + alreadyPast` had no channel yet. Shows that a
+   * card awaiting its channel is covered, not skipped.
    */
   readonly channelPending: number
 }
 
-/** One element currently inside `_promote()`'s re-entrancy guard. */
-export type PromotingCard = {
+/** One card whose `IS_WHITELISTED` round trip has not settled. */
+type PromotingCard = {
   /**
-   * The videoId this promotion is for — not `elementKey()`'s output, unlike
-   * {@link QueuedCard}: it is already in hand (no extra DOM read), and a stuck
-   * promotion is diagnosed by which video never mounted.
+   * The card's key (its videoId) — unlike {@link QueuedCard}'s tag: a stuck
+   * whitelist check is diagnosed by which video it was for.
    */
   readonly key: string
   readonly startedAt: number
@@ -296,7 +295,7 @@ export type PromotingCard = {
 
 /**
  * Everything {@link boyoInvariants} needs, gathered once per health sample by
- * `VideoManager` reading its own live queues. Pure data, so every check below
+ * the runtime reading the Sensor's queues and Core's state. Pure data, so every check below
  * is unit-testable with a plain object and no DOM.
  */
 export type BoyoContext = {
@@ -323,7 +322,7 @@ export const boyoInvariants: ReadonlyArray<Invariant<BoyoContext>> = [
   {
     name: "OccludedCardResolves",
     description:
-      "No video-shaped element sits in the unresolved queue past RESOLVE_BUDGET_MS. retryUnresolved() used to exempt video-shaped elements from the budget on the assumption that such an element 'cannot spin either, being video-shaped means it has a watch or shorts href, which is the very thing extractVideoId reads' — an assumption that failed for the one tag isVideoCard() accepted unconditionally (#1422). The budget now binds every queued element, so a violation here means the budget itself has stopped being applied; a video-shaped element rejected at budget and still occluded is OccluderReleases's to report.",
+      "No video-shaped element sits in the Sensor's unresolved queue past RESOLVE_BUDGET_MS. Being video-shaped does not guarantee extraction succeeds (isVideoCard() accepts several tags without checking for a video link, #1422), so the budget binds every queued element, video-shaped or not. A violation here means the budget itself has stopped being applied; a video-shaped element rejected at budget and still occluded is OccluderReleases's to report.",
     check: (ctx): InvariantOutcome => {
       if (ctx.phase !== "running") return { ok: "unknown" }
       const deadline = ctx.resolveBudgetMs + RESOLVE_GRACE_MS
@@ -342,7 +341,7 @@ export const boyoInvariants: ReadonlyArray<Invariant<BoyoContext>> = [
   {
     name: "OccluderReleases",
     description:
-      "No element sits under the static pre-mask occluder, without data-boyo, past OCCLUSION_GRACE_MS. Unlike every other check here this reads the DOM rather than VideoManager's bookkeeping, because the failures it exists for are precisely the ones that leave an element in no queue, no registry and no guard — where a bookkeeping check has nothing to look at and reports healthy while the page is visibly broken (#1421). The occluder is lifted by exactly one thing, the content script writing data-boyo; an element it is still hiding after the resolution budget has passed is one nothing is coming back for, and it is inert as well as blurred because that rule sets pointer-events: none.",
+      "No element sits under the static pre-mask occluder, without data-boyo, past OCCLUSION_GRACE_MS. Unlike every other check here this reads the DOM rather than the pipeline's bookkeeping, because the failures it exists for are precisely the ones that leave an element in no queue and held by no card — where a bookkeeping check has nothing to look at and reports healthy while the page is visibly broken (#1421). The occluder is lifted by exactly one thing, the content script writing data-boyo; an element it is still hiding after the resolution budget has passed is one nothing is coming back for, and it is inert as well as blurred because that rule sets pointer-events: none.",
     check: (ctx): InvariantOutcome => {
       if (ctx.phase !== "running") return { ok: "unknown" }
       const stranded = ctx.occluded.filter(
@@ -364,7 +363,7 @@ export const boyoInvariants: ReadonlyArray<Invariant<BoyoContext>> = [
   {
     name: "PromotionGuardClears",
     description:
-      "No element has been inside _promote()'s _promoting re-entrancy guard longer than PROMOTION_STALL_MS. The guard is released in a finally block, so it clears on both settle paths of the IS_WHITELISTED round trip — but a promise that never settles at all never runs that finally, and every later _promote() for that element then returns at the guard for the life of the session, leaving the card occluded by the pre-mask rule with nothing coming to lift it.",
+      "No card's IS_WHITELISTED round trip has stayed unsettled (Core's channel.kind === \"pending\") longer than PROMOTION_STALL_MS. Either settle path, a verdict or a failure, comes back to Core as an input and ends the wait — but a promise that never settles at all sends neither, and the card stays pending for the life of the session, never learning that its channel is whitelisted.",
     check: (ctx): InvariantOutcome => {
       if (ctx.phase !== "running") return { ok: "unknown" }
       const stalled = ctx.promoting.filter(
@@ -383,12 +382,10 @@ export const boyoInvariants: ReadonlyArray<Invariant<BoyoContext>> = [
 // ── Storage keys and the session index ───────────────────────────────────────
 
 const SESSION_KEY_PREFIX = "bc.observability.session."
-/** Exported so a test can simulate a competing tab writing the same key. */
-export const INDEX_KEY = "bc.observability.index.v1"
-const MAX_INDEX_ENTRIES = 20
+const SESSION_KEY_SUFFIX = ".v1"
 
 export function sessionStorageKey(sessionId: string): string {
-  return `${SESSION_KEY_PREFIX}${sessionId}.v1`
+  return `${SESSION_KEY_PREFIX}${sessionId}${SESSION_KEY_SUFFIX}`
 }
 
 /**
@@ -402,7 +399,7 @@ export type IndexEntry = {
   sessionId: string
   origin: string
   surface: BoyoSurface
-  /** VideoManager's session ordinal as of the last index touch. */
+  /** Core's session ordinal as of the last index touch. */
   sessionOrdinal: number
   updatedAt: number
 }
@@ -418,122 +415,38 @@ function isIndexEntry(value: unknown): value is IndexEntry {
   )
 }
 
-/** The debug page's session picker. Sorted most-recently-updated first. */
-export async function readIndex(): Promise<Array<IndexEntry>> {
-  try {
-    const raw: unknown = await ext.storage.local.get(INDEX_KEY)
-    const value: unknown =
-      raw !== null && typeof raw === "object"
-        ? Reflect.get(raw, INDEX_KEY)
-        : undefined
-    if (!Array.isArray(value)) return []
-    return value.filter(isIndexEntry).sort((a, b) => b.updatedAt - a.updatedAt)
-  } catch {
-    return []
-  }
-}
-
 /**
- * Index writes, serialized within this tab.
- *
- * {@link touchIndex} is a read-modify-write over one shared array, so two
- * overlapping calls could drop each other's entry. Chaining removes that race
- * within this tab. Between tabs `storage.local` offers no compare-and-set, so
- * `touchIndex` also reads back and re-applies once.
+ * One index key per recording, so a tab never writes a key another tab writes
+ * (`storage.local` has no compare-and-set). See `createSessionIndex`.
  */
-let _indexWrites: Promise<void> = Promise.resolve()
+const index: SessionIndex<IndexEntry> = createSessionIndex({
+  namespace: "bc.observability",
+  payload: { prefix: SESSION_KEY_PREFIX, suffix: SESSION_KEY_SUFFIX },
+  isEntry: isIndexEntry,
+})
 
-function serializeIndexWrite(op: () => Promise<void>): Promise<void> {
-  const next = _indexWrites.then(op, op)
-  _indexWrites = next.catch(() => undefined)
-  return next
+/** This recording's index key. Exported for the debug page's tests. */
+export function indexStorageKey(sessionId: string): string {
+  return index.indexKey(sessionId)
 }
 
 /**
- * Delete one recording's persisted bundle.
- *
- * Eviction from the index must take the payload with it: every page load
- * mints a new key, so unlisted bundles would accumulate in `storage.local`
- * without bound.
- */
-async function dropRecording(sessionId: string): Promise<void> {
-  try {
-    await ext.storage.local.remove(sessionStorageKey(sessionId))
-  } catch {
-    // Best-effort.
-  }
-}
-
-/**
- * Publish (or refresh) this recording's index entry, evicting the oldest past
- * the cap — payload and all.
+ * Publish (or refresh) this recording's index entry: one write of one key.
  *
  * Best-effort throughout: diagnostics degrading must never affect masking, so
  * every failure is swallowed.
  */
-export async function touchIndex(entry: IndexEntry): Promise<void> {
-  return serializeIndexWrite(async () => {
-    try {
-      const existing = await readIndex()
-      const next = capIndex(entry, existing)
-      await ext.storage.local.set({ [INDEX_KEY]: next })
-
-      await dropEvicted(existing, next)
-
-      // Cross-tab reconciliation: another tab's concurrent write can have
-      // dropped this entry. One read-back and re-apply keeps this recording
-      // listable without pretending to be a lock; a second clobber in the same
-      // instant is left to the next touch.
-      const after = await readIndex()
-      if (!after.some((e) => e.sessionId === entry.sessionId)) {
-        // Re-applying at capacity evicts somebody too, so shed payloads here
-        // as well.
-        const reconciled = capIndex(entry, after)
-        await ext.storage.local.set({ [INDEX_KEY]: reconciled })
-        await dropEvicted(after, reconciled)
-      }
-    } catch {
-      // Best-effort.
-    }
-  })
+export function touchIndex(entry: IndexEntry): Promise<void> {
+  return index.touch(entry)
 }
 
-/** Delete the bundle of every recording present in `before` but not in `after`. */
-async function dropEvicted(
-  before: ReadonlyArray<IndexEntry>,
-  after: ReadonlyArray<IndexEntry>
-): Promise<void> {
-  const kept = new Set(after.map((e) => e.sessionId))
-  for (const evicted of before) {
-    if (!kept.has(evicted.sessionId)) await dropRecording(evicted.sessionId)
-  }
-}
-
-/** `entry` first, everything else by recency, truncated to the cap. */
-function capIndex(
-  entry: IndexEntry,
-  existing: ReadonlyArray<IndexEntry>
-): Array<IndexEntry> {
-  return [entry, ...existing.filter((e) => e.sessionId !== entry.sessionId)]
-    .sort((a, b) => b.updatedAt - a.updatedAt)
-    .slice(0, MAX_INDEX_ENTRIES)
-}
-
-/** Forget one recording entirely — its index entry and its stored bundle. */
-export async function removeFromIndex(sessionId: string): Promise<void> {
-  return serializeIndexWrite(async () => {
-    try {
-      const existing = await readIndex()
-      await ext.storage.local.set({
-        [INDEX_KEY]: existing.filter((e) => e.sessionId !== sessionId),
-      })
-    } catch {
-      // Best-effort.
-    }
-    // Outside the try on purpose: the payload is the larger of the two, so it
-    // is dropped even when rewriting the index itself failed.
-    await dropRecording(sessionId)
-  })
+/**
+ * List the recordings, enforce the cap and sweep what nothing lists: the
+ * debug page's session picker. Every page load mints a new bundle key, so
+ * without the sweep unlisted bundles would accumulate without bound.
+ */
+export function compactIndex(): Promise<Compaction<IndexEntry>> {
+  return index.compact()
 }
 
 // ── The recorder ─────────────────────────────────────────────────────────────
@@ -571,7 +484,7 @@ function defaultPersistence(sessionId: string): ObservabilityPersistence {
 
 /**
  * One recorder per content-script instance — see this module's header for why
- * that scope, and not one per `VideoManager` session ordinal, is correct.
+ * that scope, and not one per session ordinal, is correct.
  */
 export function createBoyoRecorder(
   sessionId: string,
@@ -597,9 +510,10 @@ export function createBoyoRecorder(
 /**
  * How often {@link BoyoObservability.sampleHealth} is allowed to run.
  *
- * Running every invariant plus a `storage.local` index touch on the 500 ms
- * retry loop would cost more than the thing observed (Charter §8). The
- * invariants concern states lasting tens of seconds, so 10 s loses nothing.
+ * `Health.tick()` asks on every mutation batch, and running every invariant
+ * plus a `storage.local` index touch that often would cost more than the
+ * thing observed (Charter §8). The invariants concern states lasting tens of
+ * seconds, so 10 s loses nothing.
  */
 export const HEALTH_SAMPLE_INTERVAL_MS = 10_000
 
@@ -637,6 +551,7 @@ export class BoyoObservability {
   private readonly _violated = new Set<string>()
   private _lastHealthAt = 0
   private _ordinal = 0
+  private _compacted = false
 
   constructor(sessionId: string, recorder: BoyoRecorder) {
     this.sessionId = sessionId
@@ -733,7 +648,7 @@ export class BoyoObservability {
     this.recorder.count("cards_rejected")
   }
 
-  /** A post-await bail in `_promote()` — the element was recycled (M6). */
+  /** Core discarded a whitelist answer or title transform as stale (R4). */
   staleDiscarded(videoId: string): void {
     this.recorder.record({
       kind: "mount.stale_discarded",
@@ -770,11 +685,7 @@ export class BoyoObservability {
    * a card-identity leak (#1382).
    */
   bulkAdvance(coverage: BulkAdvanceCoverage): void {
-    const skipped =
-      coverage.detached +
-      coverage.unresolved +
-      coverage.promoting +
-      coverage.occludedUntracked
+    const skipped = coverage.unresolved + coverage.occludedUntracked
     this.recorder.record({
       kind: "command.advance_all",
       severity: "info",
@@ -801,6 +712,15 @@ export class BoyoObservability {
       severity: "debug",
     })
     this.recorder.count("channels_abandoned")
+  }
+
+  unknownShape(tag: string, surface: BoyoSurface, reason: string): void {
+    this.recorder.record({
+      kind: "layout.unknown_shape",
+      subject: reason,
+      detail: { tag, surface },
+    })
+    this.recorder.count("unknown_shapes")
   }
 
   entryState(kind: ViewState["kind"], videoId: string): void {
@@ -953,13 +873,20 @@ export class BoyoObservability {
   }
 
   private _touchIndex(now: number): void {
-    void touchIndex({
+    const touched = touchIndex({
       sessionId: this.sessionId,
       origin: typeof location === "undefined" ? "" : location.origin,
       surface: currentSurface(),
       sessionOrdinal: this._ordinal,
       updatedAt: now,
     })
+    // Once per recording, after this one is listed: compacting first would
+    // evict an older recording to make room for one it cannot see yet. Only
+    // where cheap; see `createSessionIndex`.
+    if (!this._compacted) {
+      this._compacted = true
+      void touched.then(() => index.compactIfCheap())
+    }
   }
 }
 
@@ -974,7 +901,7 @@ let _live: BoyoObservability | null = null
 /**
  * Begin this content-script instance's recording. Idempotent — a second call
  * returns the live recording rather than orphaning the first one's storage
- * key, which matters because `Controller` can re-enter setup (C1/C3).
+ * key, which matters because `Controller` can re-enter setup (C1, C3).
  */
 export function startObservability(
   persistence?: ObservabilityPersistence
@@ -992,8 +919,8 @@ export function startObservability(
   // window would leave the OBS2 picker an entry whose bundle was never
   // written.
   //
-  // `flush()`, deliberately, where some-filter's handler calls `dispose()` and
-  // `removeFromIndex()`:
+  // `flush()`, deliberately, where some-filter's handler disposes the recorder
+  // and, on a real unload, forgets the session:
   //
   //   - `pagehide` also fires for a document entering the back-forward cache,
   //     which comes back alive; a disposed recorder would silently ignore
@@ -1021,15 +948,6 @@ export function stopObservability(): void {
 }
 
 /**
- * Record one date-extraction attempt against the live recording, deriving the
- * surface from the location and the renderer from the element's tag name —
- * and reading nothing else off the element.
- */
-export function recordUploadDate(raw: string | null, el: HTMLElement): void {
-  _live?.uploadDate(raw, currentSurface(), el.tagName.toLowerCase())
-}
-
-/**
  * Longest a recorded `subject` may be.
  *
  * `Recorder.record()` clamps `detail` and **not** `subject`, so an unbounded
@@ -1038,18 +956,13 @@ export function recordUploadDate(raw: string | null, el: HTMLElement): void {
 const MAX_SUBJECT_CHARS = 64
 
 /**
- * Reduce one of `elementKey()`'s queue keys to something safe to persist.
+ * Reduce a queue key to something safe to persist: a diagnostics bundle must
+ * not carry a URL (#1382).
  *
- * `elementKey()` falls back to `h:${a.href}`, a complete absolute URL (query
- * string and all), for exactly the renderers `mount.unresolved` fires on. A
- * diagnostics bundle must not carry that (#1382).
- *
- * The key's only job on the timeline is to correlate one element's
- * `mount.unresolved` with its later `mount.rejected`, which needs stability,
- * not legibility. So an `h:` key keeps its prefix and surrenders everything
- * after it to a hash. Other shapes (`v:` a videoId, which mount events
- * already record as their own subject; `p:TAG:index`; `r:` a nonce) carry no
- * URL and are kept readable, bounded.
+ * The runtime's queue keys are `t:<tag>` (`runtime/facts.ts`), which carry no
+ * card content and are kept readable, bounded. An `h:` key would be a complete
+ * absolute URL, query string and all, so it keeps its prefix and surrenders
+ * everything after it to a hash — stable, not legible.
  */
 export function redactQueueKey(key: string): string {
   const sep = key.indexOf(":")

@@ -4,6 +4,12 @@
 > losing history. A TypeScript port of [auto-tab-discard](https://github.com/rNeomy/auto-tab-discard)
 > v3, rebuilt for the Manifest V3 background-script model.
 
+**Status:** approved by Mozilla's add-on reviewers on AMO (0.2.1, then
+0.3.0) and in daily use. It is signed on AMO's unlisted channel, so there is
+no public listing; releases go through the human-merged release PR in
+[`extension-release.yml`](../../.github/workflows/extension-release.yml)
+(see [AMO compliance §10](../docs/amo-compliance.md#10-cicd-pipeline)).
+
 ---
 
 ## Overview
@@ -101,8 +107,10 @@ for persistence, sign and install the `.xpi` (below).
 
 Firefox only persists an extension across restarts if it is signed. For a
 private, unlisted add-on, signing goes through AMO with
-`--channel=unlisted`: no public listing and no review queue — just a
-cryptographically signed `.xpi` returned within minutes.
+`--channel=unlisted`: no public listing, and a signed `.xpi` comes back
+within minutes. Unlisted is not unreviewed (see Status above and
+[§1](../docs/amo-compliance.md#1-how-amo-reviews-unlisted-add-ons)); the
+steps below are the manual, local path.
 
 1. Get AMO API credentials:
    https://addons.mozilla.org/en-US/developers/addon/api/key/

@@ -1,7 +1,7 @@
 /**
  * The canonical catalogue of YouTube card elements that BOYO tracks.
  *
- * Shared between observer.ts, video-manager.ts, events.ts and — via
+ * Shared between the Sensor, the Actuator's gesture delegation and — via
  * `PREMASK_SELECTORS` — the static occluder rules in `styles/content.css`,
  * which are the only thing hiding a card between paint and the content
  * script taking ownership. If the two lists disagree, a card type only in the
@@ -108,7 +108,7 @@ export const VIDEO_SELECTORS: ReadonlyArray<string> = CARD_SELECTORS.map(
  *
  * Deliberately unguarded: it is a cheap superset used to *find* candidates.
  * {@link isVideoCard} applies the guard, so a polymorphic lockup is matched
- * here but rejected before it can enter the manager's registry.
+ * here but rejected before the Sensor adopts it as a card.
  */
 export const SEL = VIDEO_SELECTORS.join(",")
 
@@ -138,9 +138,16 @@ export const PREMASK_SELECTORS: ReadonlyArray<string> = CARD_SELECTORS.map(
  * modern engine they never apply and the guarded rule above is the only one.
  */
 export const PREMASK_FALLBACK_SELECTORS: ReadonlyArray<string> =
-  CARD_SELECTORS.filter((s) => s.unguardedFallback === true).map(
-    ({ tag }) => `${tag}:not([data-boyo])`
+  unguardedFallbackTags().map((tag) => `${tag}:not([data-boyo])`)
+
+/** The tags with {@link CardSelector.unguardedFallback}, comma-joined. */
+export const FALLBACK_TAGS: string = unguardedFallbackTags().join(",")
+
+function unguardedFallbackTags(): ReadonlyArray<string> {
+  return CARD_SELECTORS.filter((s) => s.unguardedFallback === true).map(
+    ({ tag }) => tag
   )
+}
 
 /**
  * What the engine rendering `root` can parse, as far as the pre-mask rules

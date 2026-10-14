@@ -384,7 +384,7 @@ test("T9: dblclick reveals a masked card directly, and the veil is gone", async 
   )
   expect(snap.entries["vid_bbb222"]?.viewKind).toBe("revealed")
 
-  // removeVeil animates the veil out (see DomHandle._animateRemoveVeil); give
+  // removeVeil animates the veil out (see the Actuator's veil exit); give
   // it room to finish rather than the 600ms fallback timeout it races.
   await page.waitForTimeout(700)
 
@@ -407,9 +407,10 @@ type Occlusion = {
 test("T10: a revealed renderer repointed at a new video re-masks, and is never inert", async ({
   fixture,
 }) => {
-  // Two things at once, both driven through observer.ts's signal (1) — an
-  // attribute mutation on an element matching SEL — so this exercises the real
-  // production path rather than whatever the retry loop happens to be doing.
+  // Two things at once, both driven through the Sensor's attribute signal — a
+  // `data-video-id` mutation on an element matching SEL — so this exercises
+  // the real production path rather than whatever the retry loop happens to be
+  // doing.
   //
   // 1. The QD1 half: a renderer whose authoritative data-video-id has moved on
   //    is a different artifact, however much of the old one is still lying
@@ -475,13 +476,13 @@ test("T11: a revealed href-only lockup survives preview-anchor churn", async ({
   // `pointer-events: none`. T10 cannot cover this: it writes a contradictory
   // authoritative id, which is decisive, so it always takes the recycle path.
   //
-  // The reconciliation that re-upserts a mounted lockup here is the retry
-  // loop's scan() — observer.ts has no signal for "a descendant anchor
-  // changed" (see the round-1 review). That is a real production path, but it
-  // only runs while a queue is non-empty, so this test **asserts** that
-  // precondition rather than assuming it: the fixture's channel lockup cannot
-  // resolve and holds `unresolved` above zero for its ~10s budget. Without
-  // this assertion the test could go quietly vacuous if the fixture changed.
+  // Two Sensor paths re-observe the mounted lockup here: the mutation handler
+  // (a childList mutation inside a card re-observes that card) and the retry
+  // loop's scan(). The loop only runs while a queue is non-empty, so this test
+  // **asserts** that precondition rather than assuming it: the fixture's
+  // channel lockup cannot resolve and holds `unresolved` above zero for its
+  // ~10s budget. Without this assertion the test could go quietly vacuous if
+  // the fixture changed.
   const page = await fixture.goto("yt-home")
 
   await fixture.pollDebug(page, (d) => "lock_aaa" in d.entries, {

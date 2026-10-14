@@ -441,9 +441,9 @@
          * YouTube REUSES the existing ytd-rich-item-renderer elements in place:
          * it rewrites their href/title/channel rather than removing and
          * recreating them. Old elements stay CONNECTED, so prune() alone cannot
-         * clear stale view state — only a session bump (controller teardown on
-         * yt-navigate-finish) does. This is the scenario the old innerHTML-wipe
-         * fixture could not reproduce.
+         * clear stale view state — only a session bump (Core's answer to the
+         * Sensor's nav token on yt-navigate-finish) does. An innerHTML wipe
+         * would not reproduce this.
          */
         simulateNavigation(label = "Gaming") {
           const grid = document.getElementById("primary")
@@ -668,9 +668,10 @@
          * does, by writing its authoritative data-video-id, while leaving the
          * previous video's anchor in the subtree.
          *
-         * This is observer.ts's signal (1) — an attribute mutation on an
-         * element matching SEL — so it drives the real production path rather
-         * than relying on the retry loop's scan() happening to still be alive.
+         * This is the Sensor's attribute signal — a data-video-id mutation on
+         * an element matching SEL — so it drives the real production path
+         * rather than relying on the retry loop's scan() happening to still be
+         * alive.
          */
         repointRenderer(videoId, newId) {
           const el = window.__FIXTURE__.cardEl(videoId)

@@ -1,14 +1,14 @@
 /**
  * Extracted — output contract of the extract layer.
  *
- * Invariants enforced here:
+ * Design properties, enforced by the types and pinned by `extract.test.ts`
+ * (labels for citation, not declared review invariants):
  *
  *   E1 — Partiality is explicit in the type, not in runtime null-checks scattered
  *        across callers.  The discriminant `kind` is the single authoritative signal.
  *
- *   E2 — FullyExtracted is the ONLY input accepted by resolve().  The compiler
- *        rejects RawExtracted at the resolve boundary, making it impossible to
- *        call resolve() on an unhydrated element.
+ *   E2 — Only FullyExtracted carries a ChannelId, so a caller that needs one
+ *        must narrow on `kind` first.
  *
  *   E3 — Fields inside FullyExtracted are `string`, not `string | null`.
  *        The narrowing from null to non-null happens exactly once, in tryExtract,
@@ -16,11 +16,11 @@
  *
  *   E4 — VideoOnlyExtracted is a distinct, intermediate variant: videoId is
  *        guaranteed non-null but channelId is still pending.  It is sufficient
- *        to MASK a card (masking + registry keying need only videoId) but NOT
- *        sufficient to construct a VideoRecord (makeRecord still demands
- *        FullyExtracted — V2 is untouched).  This is what lets a card mount
- *        masked on the fast path while channel-id hydrates late, instead of
- *        being parked indefinitely in the unresolved queue.
+ *        to MASK a card (masking and keying need only videoId) but NOT a
+ *        complete observation: Core mounts it with its channel unknown and
+ *        the Sensor re-observes it until one arrives.  This is what lets a
+ *        card mount masked on the fast path while channel-id hydrates late,
+ *        instead of being parked indefinitely in the unresolved queue.
  */
 
 import type { ChannelId, VideoId } from "@censor/types/ids"
@@ -31,13 +31,13 @@ type RawExtracted = {
   readonly channelId: string | null
 }
 
-export type VideoOnlyExtracted = {
+type VideoOnlyExtracted = {
   readonly kind: "video-only"
   readonly videoId: VideoId // guaranteed non-null by construction
   readonly channelId: null // not yet hydrated — backfilled by retry loop
 }
 
-export type FullyExtracted = {
+type FullyExtracted = {
   readonly kind: "full"
   readonly videoId: VideoId // guaranteed non-null by construction
   readonly channelId: ChannelId // guaranteed non-null by construction

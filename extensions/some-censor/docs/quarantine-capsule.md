@@ -32,10 +32,11 @@ workspace. Filing it as a canon would dilute what "canon" means here.
 It is nevertheless **governing**: sections below carry hand-assigned numbers
 (`QD1`–`QD10`, `QM0`–`QM4`, `QA1`–`QA4`) for the same reason the canons do, so
 source comments and commit messages can cite them and the citations survive
-reshuffles. The `Q` prefix is deliberate: `src/lib/content/dom-handle.ts`
-already defines its own unrelated `D1`–`D5`, and `video-manager.ts` its own
-`M1`–`M5` — a bare "see D3" or "M2" would resolve to whichever ledger the
-reader happened to be looking at. A behavioural change to this extension that
+reshuffles. The `Q` prefix is deliberate: the Actuator and Sensor cite the
+veil's own unrelated `D1`–`D6` (restated in `actuator/actuator.ts`), and Core
+the card pipeline's `M1`–`M3` and `M6` (restated in `core/reduce.ts`) — a bare
+"see D3" or "M2" would resolve to whichever ledger the reader happened to be
+looking at. A behavioural change to this extension that
 contradicts a `QD` number is a proposal to amend this document — make the
 amendment in the same change or say the doctrine is missing a result.
 
@@ -125,7 +126,7 @@ belonging to an unadmitted artifact may become legible without an explicit
 disclosure act by the user.
 
 _Status: holds._ This is the invariant the pre-mask occluder in
-`src/styles/content.css` and the veil in `src/lib/content/dom-handle.ts`
+`src/styles/content.css` and the veil in `src/lib/content/actuator/veil.ts`
 already enforce, and it is the one thing in the workspace that must never be
 traded for comfort. Everything below is built **above** this line, never by
 weakening it.
@@ -182,8 +183,8 @@ the moment announcing itself in the one field the extension had decided was
 safe to echo. The presentation layer receives a class and a day count; it never
 receives the string they were derived from.
 
-_Status: violated, already._ `appendMetaChip()` in `src/lib/content/dom-handle.ts`
-(line 202) builds `[duration, uploadDate].filter(Boolean).join(" · ")` into the
+_Status: violated, already._ `appendMetaChip()` in
+`src/lib/content/actuator/veil.ts` builds `[duration, uploadDate].filter(Boolean).join(" · ")` into the
 metadata sub-line, and it runs on the very first disclosure step (the `"meta"`
 case, before `"title"`) — not only after a bulk advance. The raw extracted
 string, including whatever the extraction fallback returns for a live badge,
@@ -411,9 +412,9 @@ section is a behavioural change; it is a statement of distance.
 | ---------------------------------------------- | -------------------------------------------------------- | -------- |
 | Every card, at every age, can reach `revealed` | `fsm.ts` — the `ViewState` union has no maturity axis    | QD2      |
 | `uploadDate` is an unparsed raw string         | `extract/meta.ts`                                        | QD3      |
-| Raw `uploadDate` already reaches the DOM       | `dom-handle.ts:202` (`appendMetaChip`)                   | QD4      |
+| Raw `uploadDate` already reaches the DOM       | `actuator/veil.ts` (`appendMetaChip`)                    | QD4      |
 | Whitelist is a permanent, channel-wide bypass  | `fsm.ts:applyWhitelist`, `CHANNEL_WHITELISTED` broadcast | QD5, QA2 |
-| Bulk advance ignores eligibility               | `commands.ts` → `VideoManager.advanceAllToTitle`         | QD6      |
+| Bulk advance ignores eligibility               | `commands.ts` → Core's `advance-all-to-title` command    | QD6      |
 | No surface-level concealment                   | veil is per-renderer throughout                          | QD8      |
 | No interior                                    | the extension has no non-YouTube surface at all          | QD9      |
 | Manifest copy describes the mechanism          | `public/manifest.json` `description`                     | §0       |

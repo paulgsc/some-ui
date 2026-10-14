@@ -66,7 +66,7 @@ export type CardState = {
   /**
    * Bumped on every view change within an incarnation. A title transform or
    * the whitelist reveal timer carries the version it was issued under and is
-   * discarded if the card has moved on — `VideoEntry`'s Entry-2, as data.
+   * discarded if the card has moved on (Entry-2, R4).
    * Meaningful only together with `generation`: two incarnations both count
    * from zero.
    */
@@ -90,9 +90,7 @@ export type CoreState = {
    */
   readonly nextGeneration: number
   /** B4's staleness signal, per session: how often the table had no answer. */
-  readonly unknownShapes: Readonly<
-    Record<UnknownShapeReason | "degraded", number>
-  >
+  readonly unknownShapes: Readonly<Record<UnknownShapeReason, number>>
 }
 
 export const EMPTY_UNKNOWN_SHAPES: CoreState["unknownShapes"] = {
@@ -100,7 +98,6 @@ export const EMPTY_UNKNOWN_SHAPES: CoreState["unknownShapes"] = {
   "tag-unseen": 0,
   "nested-without-outer": 0,
   "unexpected-outer": 0,
-  degraded: 0,
 }
 
 /** The state before any session — what `start` folds over. */
