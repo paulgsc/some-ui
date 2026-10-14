@@ -112,7 +112,8 @@ function extract(pdf, { layout = false } = {}) {
 /**
  * Throws unless `pdf` (a path, or the PDF's bytes) passes. `pii` is the
  * build's contact fields, if any; a missing one is named by its field (RP2).
- * `transcriptDir: null` writes no `.ats.txt`.
+ * `transcriptDir: null` writes no `.ats.txt`. Returns the word count, and
+ * logs nothing.
  */
 export function assertAtsText(
   pdf,
@@ -208,6 +209,11 @@ export function assertAtsText(
       `${transcript.trim()}\n`
     )
   }
+  return { words }
+}
+
+// The caller logs: a word count from a PDF with PII derives from it (RP2).
+function logPassed(variant, template, { words }) {
   // eslint-disable-next-line no-console
   console.log(
     `[resume] ATS text check passed: ${variant} / ${template} (${words} words)`
@@ -217,10 +223,14 @@ export function assertAtsText(
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   for (const template of templates) {
     for (const variant of Object.keys(variants)) {
-      assertAtsText(join(outDir, `${stemFor(variant, template)}.pdf`), {
+      logPassed(
         variant,
         template,
-      })
+        assertAtsText(join(outDir, `${stemFor(variant, template)}.pdf`), {
+          variant,
+          template,
+        })
+      )
     }
   }
 }

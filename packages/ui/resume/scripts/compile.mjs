@@ -152,6 +152,8 @@ async function verifyPii(typstBin, fontPath, { extractor }) {
       if (!extractor) continue
       assertAtsText(result.pdf, { variant, template, pii, transcriptDir: null })
       checkDocument(result.pdf, label)
+      // eslint-disable-next-line no-console
+      console.log(`[resume] ATS and layout checks passed: ${label}`)
     }
   }
 }

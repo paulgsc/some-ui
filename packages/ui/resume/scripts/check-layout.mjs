@@ -93,7 +93,8 @@ function excerpt(line) {
 }
 
 // Throws unless no two adjacent lines of `pdf` (a path, or the PDF's bytes)
-// collide. The message quotes the offending lines.
+// collide. The message quotes the offending lines. Returns how many pairs it
+// checked, and logs nothing: that count derives from the PDF (RP2).
 export function checkDocument(pdf, label) {
   if (typeof pdf === "string" && !existsSync(pdf)) {
     throw new Error(`Missing generated PDF: ${pdf}`)
@@ -136,18 +137,20 @@ export function checkDocument(pdf, label) {
     )
   }
 
-  // eslint-disable-next-line no-console
-  console.log(
-    `[resume] layout check passed: ${label} (${checked} adjacent line pairs)`
-  )
+  return { checked }
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   for (const template of templates) {
     for (const variant of variants) {
-      checkDocument(
+      const label = `${variant} / ${template}`
+      const { checked } = checkDocument(
         join(outDir, `${stemFor(variant, template)}.pdf`),
-        `${variant} / ${template}`
+        label
+      )
+      // eslint-disable-next-line no-console
+      console.log(
+        `[resume] layout check passed: ${label} (${checked} adjacent line pairs)`
       )
     }
   }

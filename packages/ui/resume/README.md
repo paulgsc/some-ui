@@ -182,10 +182,11 @@ when declared:
 >
 > **RP2: the service logs no request text and returns none.**
 >
-> - _Claim:_ `scripts/serve.mjs` logs only method, path, status, time and the
->   allow-listed variant and template. A refusal's message names fields,
->   limits and allowed values, and never contains text from the request, a
->   key included.
+> - _Claim:_ a render through `scripts/serve.mjs` logs only method, path,
+>   status, time and the allow-listed variant and template: `assertAtsText`
+>   and `checkDocument` return their counts rather than logging them. A
+>   refusal's message names fields, limits and allowed values, and never
+>   contains text from the request, a key included.
 > - _Falsified by_ a hunk in `serve.mjs` that logs the body, a `pii` value or
 >   key, or typst's stderr; that builds a `Refusal` from request text; that
 >   passes on a typst assertion or check message other than `pii.typ`'s, the
@@ -194,9 +195,11 @@ when declared:
 >   Or a hunk in `src/lib/pii.typ` or `scripts/check-ats.mjs` that adds,
 >   edits or deletes any part of an assertion or `assertAtsText` message so it
 >   can contain a value, including by dropping the field-name substitution for
->   a missing PII term.
-> - _Scope:_ `scripts/serve.mjs`, and the messages of `src/lib/pii.typ` and
->   `assertAtsText` that it passes on.
+>   a missing PII term; or one in `scripts/check-ats.mjs`,
+>   `scripts/check-layout.mjs` or `scripts/pdftotext.mjs` that makes
+>   `assertAtsText`, `checkDocument` or `pdftotext` write to the console.
+> - _Scope:_ `scripts/serve.mjs`; the messages of `src/lib/pii.typ` and
+>   `assertAtsText` that it passes on; and the check functions it calls.
 > - _Why not enforced:_ whether a string derives from the request is
 >   dataflow, which no lint here traces.
 
