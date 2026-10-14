@@ -235,6 +235,43 @@ describe("parseReadAloudDeck", () => {
     expect(parsed.lines[0]?.words[0]?.pronunciation).toBe("워님니다")
   })
 
+  it("keeps a known role and tense", () => {
+    const { deck: parsed, findings } = parsedOrThrow(
+      deck({
+        lines: [
+          {
+            ...ONE_CUP,
+            tense: "present",
+            words: [HAN, JAN, { ...ONE_CUP.words[2], role: "action" }],
+          },
+        ],
+      })
+    )
+    expect(findings).toEqual([])
+    expect(parsed.lines[0]?.tense).toBe("present")
+    expect(parsed.lines[0]?.words[2]?.role).toBe("action")
+  })
+
+  it("keeps the occurrence and the line without an unknown role or tense", () => {
+    const { deck: parsed, findings } = parsedOrThrow(
+      deck({
+        lines: [
+          {
+            ...ONE_CUP,
+            tense: 3,
+            words: [HAN, JAN, { ...ONE_CUP.words[2], role: "verb" }],
+          },
+        ],
+      })
+    )
+    expect(findings.map((f) => f.kind)).toEqual([
+      "role-unknown",
+      "tense-unknown",
+    ])
+    expect(parsed.lines[0]).not.toHaveProperty("tense")
+    expect(parsed.lines[0]?.words[2]).toEqual(ONE_CUP.words[2])
+  })
+
   it("drops a malformed or duplicate line and keeps the rest", () => {
     const { deck: parsed, findings } = parsedOrThrow(
       deck({ lines: [ONE_CUP, { ...ONE_CUP, level: 4 }, ONE_CUP] })

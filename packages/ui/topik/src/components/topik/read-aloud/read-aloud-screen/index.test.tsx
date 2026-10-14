@@ -53,6 +53,35 @@ afterEach(() => {
 })
 
 describe("ReadAloudScreen", () => {
+  it("runs a set with grammar lenses hands-free, and remembers the choice", async () => {
+    const storage = memoryStorage()
+    render(
+      <ReadAloudScreen
+        topikLevel={1}
+        speech={fakeSpeech()}
+        store={createReadAloudStore(storage)}
+        onExit={() => undefined}
+      />
+    )
+    fireEvent.click(screen.getByRole("switch"))
+    expect(createReadAloudStore(storage).lenses()).toBe(true)
+    fireEvent.click(screen.getByRole("button", { name: /start/i }))
+    let lensesSeen = 0
+    for (let tick = 0; tick < 2000; tick += 1) {
+      if (document.querySelector('[data-slot="read-aloud-summary"]')) break
+      if (document.querySelector('[data-slot="read-aloud-lens"]')) {
+        lensesSeen += 1
+      }
+      await advance(200)
+    }
+    expect(lensesSeen).toBeGreaterThan(0)
+    // Nothing was answered, and every rep still ran to the end.
+    expect(
+      document.querySelector('[data-slot="read-aloud-lensed"]')?.textContent
+    ).toMatch(/^Found 0 of [1-9]\d* with the lens$/)
+    expect(createReadAloudStore(storage).record().totals.reps).toBe(10)
+  })
+
   it("records what ran and keeps each word's pace", async () => {
     const storage = memoryStorage()
     const store = createReadAloudStore(storage)

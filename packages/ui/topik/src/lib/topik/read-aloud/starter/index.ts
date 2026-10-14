@@ -91,6 +91,7 @@ export const STARTER_DECK: ReadAloudDeck = {
         {
           wordId: "oda",
           surface: "오세요",
+          role: "action",
           stemEnd: 1,
           sense: "please come (polite)",
         },
@@ -98,6 +99,7 @@ export const STARTER_DECK: ReadAloudDeck = {
         {
           wordId: "deurida",
           surface: "드릴까요",
+          role: "action",
           stemEnd: 2,
           sense: "shall I give you? (humble)",
         },
@@ -121,6 +123,7 @@ export const STARTER_DECK: ReadAloudDeck = {
         {
           wordId: "juda",
           surface: "주세요",
+          role: "action",
           stemEnd: 1,
           sense: "please give me",
         },
@@ -131,20 +134,29 @@ export const STARTER_DECK: ReadAloudDeck = {
       level: 1,
       korean: "여기서 드시고 가세요?",
       english: "Is that for here?",
+      tense: "present",
       words: [
         {
           wordId: "yeogi",
           surface: "여기서",
+          role: "place",
           stemEnd: 2,
           sense: "here (at this place)",
         },
         {
           wordId: "deusida",
           surface: "드시고",
+          role: "action",
           stemEnd: 2,
           sense: "eat, and then",
         },
-        { wordId: "gada", surface: "가세요", stemEnd: 1, sense: "go (polite)" },
+        {
+          wordId: "gada",
+          surface: "가세요",
+          role: "action",
+          stemEnd: 1,
+          sense: "go (polite)",
+        },
       ],
     },
     {
@@ -173,6 +185,7 @@ export const STARTER_DECK: ReadAloudDeck = {
       level: 1,
       korean: "사천오백 원입니다.",
       english: "That's 4,500 won.",
+      tense: "present",
       words: [
         {
           wordId: "sacheon-obaek",
@@ -195,10 +208,17 @@ export const STARTER_DECK: ReadAloudDeck = {
       korean: "카드로 할게요. 감사합니다.",
       english: "I'll pay by card. Thank you.",
       words: [
-        { wordId: "kadeu", surface: "카드로", stemEnd: 2, sense: "by card" },
+        {
+          wordId: "kadeu",
+          surface: "카드로",
+          role: "means",
+          stemEnd: 2,
+          sense: "by card",
+        },
         {
           wordId: "hada",
           surface: "할게요",
+          role: "action",
           stemEnd: 1,
           pronunciation: "할께요",
           sense: "I'll do (it)",
@@ -217,15 +237,17 @@ export const STARTER_DECK: ReadAloudDeck = {
       level: 1,
       korean: "저는 아침마다 커피를 한 잔 마셔요.",
       english: "I drink a cup of coffee every morning.",
+      tense: "present",
       words: [
-        { wordId: "jeo", surface: "저는", stemEnd: 1 },
+        { wordId: "jeo", surface: "저는", role: "topic", stemEnd: 1 },
         {
           wordId: "achim",
           surface: "아침마다",
+          role: "time",
           stemEnd: 2,
           sense: "every morning",
         },
-        { wordId: "keopi", surface: "커피를", stemEnd: 2 },
+        { wordId: "keopi", surface: "커피를", role: "object", stemEnd: 2 },
         {
           wordId: "hana",
           surface: "한",
@@ -236,6 +258,7 @@ export const STARTER_DECK: ReadAloudDeck = {
         {
           wordId: "masida",
           surface: "마셔요",
+          role: "action",
           stemEnd: 2,
           sense: "drink (polite)",
         },
@@ -247,10 +270,12 @@ export const STARTER_DECK: ReadAloudDeck = {
       korean: "주말에 친구하고 같이 시장에 가서 과일을 샀어요.",
       english:
         "At the weekend I went to the market with a friend and bought fruit.",
+      tense: "past",
       words: [
         {
           wordId: "jumal",
           surface: "주말에",
+          role: "time",
           stemEnd: 2,
           pronunciation: "주마레",
           sense: "at the weekend",
@@ -258,6 +283,7 @@ export const STARTER_DECK: ReadAloudDeck = {
         {
           wordId: "chingu",
           surface: "친구하고",
+          role: "company",
           stemEnd: 2,
           sense: "with a friend",
         },
@@ -265,19 +291,28 @@ export const STARTER_DECK: ReadAloudDeck = {
         {
           wordId: "sijang",
           surface: "시장에",
+          role: "goal",
           stemEnd: 2,
           sense: "to the market",
         },
-        { wordId: "gada", surface: "가서", stemEnd: 1, sense: "go, and then" },
+        {
+          wordId: "gada",
+          surface: "가서",
+          role: "action",
+          stemEnd: 1,
+          sense: "go, and then",
+        },
         {
           wordId: "gwail",
           surface: "과일을",
+          role: "object",
           stemEnd: 2,
           pronunciation: "과이를",
         },
         {
           wordId: "sada",
           surface: "샀어요",
+          role: "action",
           stemEnd: 1,
           pronunciation: "사써요",
           sense: "bought",
@@ -289,11 +324,13 @@ export const STARTER_DECK: ReadAloudDeck = {
       level: 2,
       korean: "비가 와서 오늘은 집에서 영화를 볼 거예요.",
       english: "It's raining, so today I'm going to watch a movie at home.",
+      tense: "future",
       words: [
-        { wordId: "bi", surface: "비가", stemEnd: 1 },
+        { wordId: "bi", surface: "비가", role: "subject", stemEnd: 1 },
         {
           wordId: "oda",
           surface: "와서",
+          role: "action",
           stemEnd: 1,
           sense: "comes (of rain: falls), so",
         },
@@ -306,12 +343,19 @@ export const STARTER_DECK: ReadAloudDeck = {
         {
           wordId: "jip",
           surface: "집에서",
+          role: "place",
           stemEnd: 1,
           pronunciation: "지베서",
           sense: "at home",
         },
-        { wordId: "yeonghwa", surface: "영화를", stemEnd: 2 },
-        { wordId: "boda", surface: "볼", stemEnd: 1, sense: "watch (future)" },
+        { wordId: "yeonghwa", surface: "영화를", role: "object", stemEnd: 2 },
+        {
+          wordId: "boda",
+          surface: "볼",
+          role: "action",
+          stemEnd: 1,
+          sense: "watch (future)",
+        },
         {
           wordId: "geot",
           surface: "거예요",
@@ -327,8 +371,9 @@ export const STARTER_DECK: ReadAloudDeck = {
       korean: "요즘 날씨가 추워져서 따뜻한 옷을 입고 다니는 사람이 많아졌어요.",
       english:
         "It's got cold lately, so more people are going around in warm clothes.",
+      tense: "past",
       words: [
-        { wordId: "yojeum", surface: "요즘", stemEnd: 2 },
+        { wordId: "yojeum", surface: "요즘", role: "time", stemEnd: 2 },
         { wordId: "nalssi", surface: "날씨가", stemEnd: 2 },
         {
           wordId: "chuwojida",
@@ -344,7 +389,13 @@ export const STARTER_DECK: ReadAloudDeck = {
           pronunciation: "따뜨탄",
           sense: "warm (describing a noun)",
         },
-        { wordId: "ot", surface: "옷을", stemEnd: 1, pronunciation: "오슬" },
+        {
+          wordId: "ot",
+          surface: "옷을",
+          role: "object",
+          stemEnd: 1,
+          pronunciation: "오슬",
+        },
         {
           wordId: "ipda",
           surface: "입고",
