@@ -190,6 +190,7 @@ describe("a grammar lens", () => {
     expect(Array.from(ending, (el) => el.textContent)).toEqual(["를"])
     expect(ending[0]?.className).toContain("text-orange")
     expect(flagged("missed")).toEqual(["아침마다"])
+    expect(screen.getByText("Missed. what is acted on: 커피를")).toBeTruthy()
     expect(
       document
         .querySelector("[data-slot=read-aloud-lens]")
@@ -214,7 +215,7 @@ describe("a grammar lens", () => {
     cleanup()
 
     card(lens, "gloss", { kind: "tense", tense: "present" })
-    expect(screen.getByText("The tense: present")).toBeTruthy()
+    expect(screen.getByText("Found. The tense: present: 마셔요")).toBeTruthy()
     expect(flagged("answer")).toEqual(["마셔요"])
     expect(
       screen.getByRole("button", { name: "present" }).hasAttribute("disabled")

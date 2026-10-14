@@ -190,17 +190,28 @@ const Timeline = ({
   </svg>
 )
 
+const SPOKEN_OUTCOME: Record<LensOutcome, string> = {
+  found: "Found. ",
+  missed: "Missed. ",
+  unanswered: "",
+}
+
 /**
  * What the lens asks, above the line; at the gloss, its answer. Before the
  * gloss a tense lens names no tense, since its colour would give it away.
+ * At the gloss a screen reader hears the outcome and the answer's words,
+ * which the line shows only by colour and strike-through.
  */
 export const LensBadge = ({
   lens,
   outcome,
+  answer,
 }: {
   lens: Lens
   /** Null until the gloss shows the answer. */
   outcome: LensOutcome | null
+  /** The words the answer is shown on, as written. */
+  answer: string
 }): JSX.Element => {
   const shown = outcome !== null
   const look =
@@ -210,12 +221,14 @@ export const LensBadge = ({
         ? TENSE_LOOK[lens.tense]
         : null
   const label = look?.label ?? TENSE_QUESTION
-  const spoken =
+  const asked =
     lens.kind === "role"
       ? `Find ${ROLE_LOOK[lens.role].spoken}`
-      : look
-        ? `The tense: ${look.spoken}`
-        : "Which tense?"
+      : "Which tense?"
+  const spoken =
+    outcome === null || !look
+      ? asked
+      : `${SPOKEN_OUTCOME[outcome]}${lens.kind === "role" ? look.spoken : `The tense: ${look.spoken}`}: ${answer}`
   const Icon = lens.kind === "role" ? ROLE_LOOK[lens.role].Icon : null
   return (
     <span
@@ -242,7 +255,9 @@ export const LensBadge = ({
       <span lang="ko" aria-hidden="true">
         {label}
       </span>
-      <span className="sr-only">{spoken}</span>
+      <span className="sr-only" aria-live="polite">
+        {spoken}
+      </span>
       {outcome === "found" && <Check className="size-5" aria-hidden="true" />}
     </span>
   )

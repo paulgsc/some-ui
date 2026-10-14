@@ -199,6 +199,8 @@ export const RepCard = ({
       : lens
         ? TENSE_LOOK[lens.tense]
         : null
+  const lineWords = lineOf(deck, item.lineId)?.words ?? []
+  const answerWords = lens ? lensWords(lens, lineWords.length) : []
   const glyphLens: GlyphLens | undefined = lens && {
     pick:
       lens.kind === "role" && open
@@ -210,10 +212,7 @@ export const RepCard = ({
     shown:
       shown && look
         ? {
-            words: lensWords(
-              lens,
-              lineOf(deck, item.lineId)?.words.length ?? 0
-            ),
+            words: answerWords,
             frame: cn(look.tint, look.ring),
             ending: look.text,
             missed:
@@ -235,7 +234,15 @@ export const RepCard = ({
         weather?.card
       )}
     >
-      {lens && <LensBadge lens={lens} outcome={outcome} />}
+      {lens && (
+        <LensBadge
+          lens={lens}
+          outcome={outcome}
+          answer={answerWords
+            .map((word) => lineWords[word]?.surface ?? "")
+            .join(" ")}
+        />
+      )}
 
       <span
         aria-live="polite"
