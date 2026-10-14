@@ -270,6 +270,12 @@ export function createSessionIndex<E extends IndexedEntry>(
       .filter((e) => !payloads.has(e.sessionId) && e.updatedAt < cutoff)
       .map((e) => e.sessionId)
     const orphanCandidates = [...payloads].filter((id) => !listed.has(id))
+    // Every entry that could fall past the cap: a live tab may touch its key
+    // after the survey, and eviction must rank it by that touch, not the
+    // one the survey saw.
+    const atRisk = entries
+      .slice(Math.max(0, cap - unflushedCandidates.length))
+      .map((e) => e.sessionId)
 
     const unavailable = (e: unknown): Compaction<E> => {
       const dropped = new Set(unflushedCandidates)
@@ -280,11 +286,12 @@ export function createSessionIndex<E extends IndexedEntry>(
       }
     }
 
-    // Re-check what the enumeration said was absent: a tab may have touched
-    // its index key or flushed its payload since.
+    // Re-check what the enumeration said was absent, and what it would
+    // evict: a tab may have touched its index key or flushed its payload since.
     let recheck: Record<string, unknown>
     try {
       recheck = await read(area, [
+        ...atRisk.map(indexKey),
         ...orphanCandidates.map(indexKey),
         ...malformed.map(indexKey),
         ...unflushedCandidates.map(payloadKey),
@@ -303,7 +310,16 @@ export function createSessionIndex<E extends IndexedEntry>(
     ]
 
     const dropped = new Set(unflushed)
-    const live = entries.filter((e) => !dropped.has(e.sessionId))
+    const reread = new Set(atRisk)
+    const live = entries
+      .filter((e) => !dropped.has(e.sessionId))
+      .flatMap((e): Array<E> => {
+        if (!reread.has(e.sessionId)) return [e]
+        const current = recheck[indexKey(e.sessionId)]
+        // Gone since the survey: another tab removed it, so it is not ours to evict.
+        return isEntry(current) ? [current] : []
+      })
+      .sort(byRecency)
     const kept = live.slice(0, cap)
     const evicted = live.slice(cap).map((e) => e.sessionId)
     const doomed = [

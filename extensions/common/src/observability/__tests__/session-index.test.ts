@@ -157,6 +157,35 @@ describe("compact", () => {
     expect(result.failure?.stage).toBe("survey")
   })
 
+  it("does not evict a session that touched its key after the survey", async () => {
+    let holdOnce = true
+    let index: ReturnType<typeof newIndex> | undefined
+    const fake = fakeStorage({
+      hold: (key) => {
+        if (!holdOnce || key !== index?.indexKey("s0")) return false
+        holdOnce = false
+        return true
+      },
+    })
+    index = newIndex(fake)
+    for (let i = 0; i < 4; i++)
+      await record(fake, index, `s${String(i)}`, NOW + i)
+
+    const compacting = index.compact()
+    await vi.waitFor(() => {
+      expect(fake.held).toHaveLength(1)
+    })
+    // The survey read s0 as the oldest; it flushes and touches meanwhile.
+    await index.touch(entry("s0", NOW + 10))
+    fake.held[0]?.release()
+    const result = await compacting
+
+    expect(result.evicted).toEqual(["s1"])
+    expect(ids(result.entries)).toEqual(["s0", "s3", "s2"])
+    expect(fake.store.has(index.indexKey("s0"))).toBe(true)
+    expect(fake.store.has(index.payloadKey("s0"))).toBe(true)
+  })
+
   it("does not sweep a payload whose index key landed after the enumeration", async () => {
     let holdOnce = true
     const fake = fakeStorage({
