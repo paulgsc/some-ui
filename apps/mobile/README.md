@@ -164,8 +164,9 @@ Android backs up.
   content hashes their runs were recorded against, so the runs show offline.
 - **TOPIK:** lessons are not in either repository. They exist only in the home
   server's database, so the phone gets them by a **sync from home** (below).
-  Before the first sync, TOPIK offers the bundled read-aloud decks, plus any
-  lesson you paste and keep on the shelf.
+  Before the first sync, TOPIK offers any lesson you paste and keep on the
+  shelf. Read-aloud ships no words: it reads the word sets you add from
+  storage (`packages/some-content/prompts/read-aloud-generator`).
 
 ## Build
 

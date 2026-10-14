@@ -82,16 +82,18 @@ describe("the read-aloud store", () => {
     store.saveProgress(2, "everyday-2", PROGRESS)
     expect(store.progress(2, "everyday-2")).toEqual(PROGRESS)
     expect(store.progress(1, "everyday-2")).toBeNull()
-    expect(store.progress(2, "bundled")).toBeNull()
+    expect(store.progress(2, ":all")).toBeNull()
     store.saveProgress(2, "everyday-2", null)
     expect(store.progress(2, "everyday-2")).toBeNull()
 
-    // What a build before added sets wrote was drawn from the bundled deck.
+    // What a build before added sets wrote was drawn from a deck compiled
+    // in, which no deck now is.
     storage.map.set(
       READ_ALOUD_STORAGE_KEYS.progress,
       JSON.stringify({ version: 1, level: 2, progress: PROGRESS })
     )
-    expect(store.progress(2, "bundled")).toEqual(PROGRESS)
+    expect(store.progress(2, ":all")).toBeNull()
+    expect(store.progress(2, "starter")).toBeNull()
   })
 
   it("keeps the added word sets, and drops one that no longer parses", () => {
@@ -145,8 +147,8 @@ describe("the read-aloud store", () => {
           : entry
       ),
     }
-    store.saveProgress(1, "bundled", lensed)
-    expect(store.progress(1, "bundled")).toEqual(lensed)
+    store.saveProgress(1, ":all", lensed)
+    expect(store.progress(1, ":all")).toEqual(lensed)
   })
 
   it("keeps grammar lenses off until turned on", () => {
@@ -173,17 +175,17 @@ describe("the read-aloud store", () => {
     const store = createReadAloudStore(storage)
     expect(store.paces()).toEqual({})
     expect(store.record()).toEqual(emptyRecord())
-    expect(store.progress(2, "bundled")).toBeNull()
+    expect(store.progress(2, ":all")).toBeNull()
   })
 
   it("runs without storage, and survives storage that throws", () => {
     for (const storage of [null, refusing]) {
       const store = createReadAloudStore(storage)
       store.savePace("juda", { factor: 1, seen: 1 })
-      store.saveProgress(1, "bundled", PROGRESS)
+      store.saveProgress(1, ":all", PROGRESS)
       store.saveSets([])
       expect(store.paces()).toEqual({})
-      expect(store.progress(1, "bundled")).toBeNull()
+      expect(store.progress(1, ":all")).toBeNull()
       expect(store.sets()).toEqual([])
       expect(store.count({ type: "set" }, "2026-09-28").totals.sets).toBe(1)
     }

@@ -196,5 +196,5 @@ after it, no comments, no trailing commas.
 }
 ```
 
-The bundled starter deck (`src/lib/topik/read-aloud/starter`) is a complete,
-checked example of the whole format.
+The starter set (`packages/some-content/prompts/read-aloud-generator/sets/starter.json`
+in this repo) is a complete, checked example of the whole format.

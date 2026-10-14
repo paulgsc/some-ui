@@ -1,8 +1,8 @@
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { RepCard } from "@topik/components/topik/read-aloud/rep-card"
 import type { Lens, LensAnswer } from "@topik/lib/topik/read-aloud/lens"
+import { STARTER_SET } from "@topik/lib/topik/read-aloud/repo-sets"
 import type { SetItem } from "@topik/lib/topik/read-aloud/set-builder"
-import { STARTER_DECK } from "@topik/lib/topik/read-aloud/starter"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 const JAN: SetItem = {
@@ -34,7 +34,7 @@ describe("RepCard's mark", () => {
   it("keeps a one-syllable word marked for its whole turn", () => {
     render(
       <RepCard
-        deck={STARTER_DECK}
+        deck={STARTER_SET}
         entry={{ item: JAN, role: "rep" }}
         step="turn"
         stepMs={3000}
@@ -59,7 +59,7 @@ describe("RepCard's mark", () => {
 
   it("waits for the sound before marking the audio", () => {
     const props = {
-      deck: STARTER_DECK,
+      deck: STARTER_SET,
       entry: { item: JAN, role: "rep" as const },
       step: "audio" as const,
       stepMs: null,
@@ -93,7 +93,7 @@ describe("a sentence's mark", () => {
     }
     render(
       <RepCard
-        deck={STARTER_DECK}
+        deck={STARTER_SET}
         entry={{ item: oneCup, role: "rep" }}
         step="turn"
         stepMs={5000}
@@ -142,7 +142,7 @@ describe("a grammar lens", () => {
   ): void => {
     render(
       <RepCard
-        deck={STARTER_DECK}
+        deck={STARTER_SET}
         entry={{ item: coffee(lens), role: "rep" }}
         step={step}
         stepMs={5000}

@@ -5,8 +5,8 @@ import type {
   UseReadAloudOptions,
 } from "@topik/lib/topik/adapter/hooks/use-read-aloud"
 import { useReadAloud } from "@topik/lib/topik/adapter/hooks/use-read-aloud"
+import { STARTER_SET } from "@topik/lib/topik/read-aloud/repo-sets"
 import type { SetProgress } from "@topik/lib/topik/read-aloud/set-machine"
-import { STARTER_DECK } from "@topik/lib/topik/read-aloud/starter"
 import {
   audioWaitMs,
   echoMs,
@@ -68,7 +68,7 @@ function harness(overrides: Partial<UseReadAloudOptions> = {}): Harness {
     paces,
     progress,
     options: {
-      deck: STARTER_DECK,
+      deck: STARTER_SET,
       level: 1,
       speech,
       seedKey: () => "fixed",
@@ -293,8 +293,8 @@ describe("useReadAloud", () => {
   it("says so when the deck has nothing at or below the level", () => {
     const { options } = harness({
       deck: {
-        ...STARTER_DECK,
-        lines: STARTER_DECK.lines.filter((line) => line.level === 3),
+        ...STARTER_SET,
+        lines: STARTER_SET.lines.filter((line) => line.level === 3),
       },
     })
     const { result } = renderHook(() => useReadAloud(options))

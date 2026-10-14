@@ -3,7 +3,21 @@ import { memoryStorage } from "@some-ui/vite-config/vitest/memory-storage"
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { ReadAloudScreen } from "@topik/components/topik/read-aloud/read-aloud-screen"
 import { createReadAloudStore } from "@topik/lib/topik/adapter/read-aloud-store"
+import { resolveSets } from "@topik/lib/topik/read-aloud/added-sets"
+import {
+  LEVEL_ONE_SET,
+  STARTER_SET,
+} from "@topik/lib/topik/read-aloud/repo-sets"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+
+/** The repo's sets, both added: what read-aloud reads on a learner's phone. */
+const DECK = resolveSets(
+  [STARTER_SET, LEVEL_ONE_SET].map((deck) => ({
+    deck,
+    addedAt: "",
+    openedAt: null,
+  }))
+).all
 
 function fakeSpeech(): Speaker {
   return {
@@ -59,6 +73,7 @@ describe("ReadAloudScreen", () => {
       <ReadAloudScreen
         topikLevel={1}
         speech={fakeSpeech()}
+        deck={DECK}
         store={createReadAloudStore(storage)}
         onExit={() => undefined}
       />
@@ -89,6 +104,7 @@ describe("ReadAloudScreen", () => {
       <ReadAloudScreen
         topikLevel={1}
         speech={fakeSpeech()}
+        deck={DECK}
         store={store}
         onExit={() => undefined}
       />
@@ -104,7 +120,7 @@ describe("ReadAloudScreen", () => {
     expect(saved.record().days.map((day) => day.day)).toEqual(["2026-09-28"])
     expect(Object.keys(saved.paces()).length).toBeGreaterThan(0)
     // The set finished, so there is nothing to resume.
-    expect(saved.progress(1, "bundled")).toBeNull()
+    expect(saved.progress(1, DECK.id)).toBeNull()
   })
 
   it("shows the record on its start screen", () => {
@@ -115,6 +131,7 @@ describe("ReadAloudScreen", () => {
       <ReadAloudScreen
         topikLevel={5}
         speech={fakeSpeech()}
+        deck={DECK}
         store={store}
         onExit={() => undefined}
       />
@@ -133,6 +150,7 @@ describe("ReadAloudScreen", () => {
       <ReadAloudScreen
         topikLevel={2}
         speech={fakeSpeech()}
+        deck={DECK}
         store={createReadAloudStore(storage)}
         onExit={() => undefined}
       />
@@ -151,6 +169,7 @@ describe("ReadAloudScreen", () => {
       <ReadAloudScreen
         topikLevel={2}
         speech={fakeSpeech()}
+        deck={DECK}
         store={createReadAloudStore(storage)}
         onExit={() => undefined}
       />

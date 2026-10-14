@@ -8,9 +8,9 @@
  * operator's served trees (`adapter/tree-feed`), which only this renderer
  * lists. It plays scene trees only: conversation files stay the desktop's.
  *
- * Read-aloud reads the bundled deck and every word set the learner added
- * from storage (`read-aloud/added-sets`). A set not opened yet waits under
- * "Ready for you", above everything else, and opens on its own words.
+ * Read-aloud reads only the word sets the learner added from storage
+ * (`read-aloud/added-sets`): none is compiled in. A set not opened yet waits
+ * under "Ready for you", above everything else, and opens on its own words.
  */
 
 import type { JSX } from "react"
@@ -73,8 +73,8 @@ import {
   readySets,
   resolveSets,
   setLevel,
+  wordsLeaving,
 } from "@topik/lib/topik/read-aloud/added-sets"
-import { BUNDLED_DECK } from "@topik/lib/topik/read-aloud/bundled"
 import { ChevronLeft, Loader2, Music, Users } from "lucide-react"
 
 type HandheldLessonProps = {
@@ -177,19 +177,28 @@ export const HandheldLesson = ({
   // The word sets added from storage, read once and written through.
   const [readAloud] = useState(() => readAloudStore ?? createReadAloudStore())
   const [added, setAdded] = useState(() => readAloud.sets())
-  const resolved = useMemo(() => resolveSets(BUNDLED_DECK, added), [added])
+  const resolved = useMemo(() => resolveSets(added), [added])
   const [setNote, setSetNote] = useState<StorageNote | null>(null)
   const keepSets = (next: typeof added): void => {
     readAloud.saveSets(next)
     setAdded(next)
   }
   const openSetText = (text: string): void => {
-    const intake = intakeSet(text, BUNDLED_DECK, added)
+    const intake = intakeSet(text, added)
     if (!intake.ok) {
       setSetNote({ tone: "problem", text: intake.error })
       return
     }
-    keepSets(addSet(added, intake.deck, now().toISOString()))
+    const next = addSet(added, intake.deck, now().toISOString())
+    // A set picked again may name fewer words; theirs are the only paces
+    // that go (Rem. 7.5).
+    const leaving = wordsLeaving(added, next)
+    if (leaving.size > 0) {
+      readAloud.prunePaces(
+        Object.keys(readAloud.paces()).filter((id) => !leaving.has(id))
+      )
+    }
+    keepSets(next)
     setSetNote({
       tone: "done",
       text:
@@ -220,7 +229,6 @@ export const HandheldLesson = ({
           speech={speaker}
           store={readAloud}
           deck={deck}
-          vocabulary={resolved.all.words.map((word) => word.id)}
           short={short}
           paused={paused}
           onExit={() => setReading(null)}

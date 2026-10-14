@@ -54,7 +54,7 @@ type MaterialListProps = {
   keep?: JSX.Element
   /** Opens the read-aloud drill; absent where it isn't offered. */
   onReadAloud?: () => void
-  /** How many word sets the phone has added to read-aloud's own. */
+  /** How many word sets the phone holds: read-aloud's every word. */
   addedSets?: number
   /**
    * Word sets added and not opened yet, newest first: "Ready for you", above
@@ -382,7 +382,7 @@ export const MaterialList = ({
     {onReadAloud && onSetText && (
       <OpenFromStorage
         title="Open new words from storage"
-        offer="A word set your agent saved, from your drive or this phone. It adds to read-aloud's own."
+        offer="A word set your agent saved, from your drive or this phone."
         onText={onSetText}
         hint={setFileHint}
         note={setNote}
@@ -410,7 +410,24 @@ export const MaterialList = ({
       </button>
     )}
 
-    {onReadAloud && (
+    {onReadAloud && addedSets === 0 && (
+      // Nothing is compiled in: with no set added there is nothing to read,
+      // and the card says where words come from instead of opening empty.
+      <div
+        data-slot="read-aloud-empty"
+        className="bg-card border-border flex min-h-16 shrink-0 items-center gap-3 rounded-2xl border p-4"
+      >
+        <BookOpenText className="text-muted-foreground size-6 shrink-0" />
+        <span className="min-w-0 flex-1">
+          <span className="block font-semibold">Read aloud</span>
+          <span className="text-muted-foreground block text-sm">
+            Nothing to read yet. Open new words from storage, above.
+          </span>
+        </span>
+      </div>
+    )}
+
+    {onReadAloud && addedSets > 0 && (
       <button
         type="button"
         onClick={onReadAloud}
@@ -429,8 +446,7 @@ export const MaterialList = ({
             {level > readAloudLevelFor(level)
               ? `TOPIK ${readAloudLevelFor(level)}, the highest it reads`
               : `TOPIK ${level}`}
-            {addedSets > 0 &&
-              ` · ${addedSets} word set${addedSets === 1 ? "" : "s"} added`}
+            {` · ${addedSets} word set${addedSets === 1 ? "" : "s"}`}
           </span>
         </span>
         <ChevronRight className="text-muted-foreground size-5 shrink-0" />

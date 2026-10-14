@@ -4,7 +4,7 @@ import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
 import type { ReadAloudSessionProps } from "@topik/components/topik/read-aloud/read-aloud-session"
 import { ReadAloudSession } from "@topik/components/topik/read-aloud/read-aloud-session"
 import type { ReadAloudRecordEvent } from "@topik/lib/topik/adapter/hooks/use-read-aloud"
-import { STARTER_DECK } from "@topik/lib/topik/read-aloud/starter"
+import { STARTER_SET } from "@topik/lib/topik/read-aloud/repo-sets"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 const SPOKEN_MS = 800
@@ -41,7 +41,7 @@ function renderSession(overrides: Partial<ReadAloudSessionProps> = {}): {
   const onExit = vi.fn()
   render(
     <ReadAloudSession
-      deck={STARTER_DECK}
+      deck={STARTER_SET}
       level={1}
       speech={fakeSpeech()}
       seedKey={() => "fixed"}
@@ -114,8 +114,8 @@ describe("ReadAloudSession", () => {
   it("says so, and offers a way back, when the level has nothing to read", () => {
     const { onExit } = renderSession({
       deck: {
-        ...STARTER_DECK,
-        lines: STARTER_DECK.lines.filter((line) => line.level === 3),
+        ...STARTER_SET,
+        lines: STARTER_SET.lines.filter((line) => line.level === 3),
       },
     })
     fireEvent.click(screen.getByRole("button", { name: /start/i }))
@@ -206,7 +206,7 @@ describe("ReadAloudSession", () => {
   it("offers no Resume while the host's session holds it", async () => {
     const session = (paused: boolean): JSX.Element => (
       <ReadAloudSession
-        deck={STARTER_DECK}
+        deck={STARTER_SET}
         level={1}
         speech={fakeSpeech()}
         seedKey={() => "fixed"}

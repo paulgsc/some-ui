@@ -36,6 +36,10 @@ import {
   workedExample,
   workedLesson,
 } from "@topik/lib/topik/generation/tree-intake/worked-example"
+import {
+  LEVEL_ONE_SET,
+  STARTER_SET,
+} from "@topik/lib/topik/read-aloud/repo-sets"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
 import { HandheldLesson } from "."
@@ -166,12 +170,31 @@ describe("HandheldLesson", () => {
     expect(screen.queryByRole("button", { name: /Read aloud/ })).toBeNull()
   })
 
-  it("opens the read-aloud drill at the level held, and comes back", async () => {
+  it("has nothing to read aloud until a word set is added, and says where words come from", async () => {
     renderLesson({
       speaker: voice(() => Promise.resolve({ kind: "heard" })),
       readAloudStore: createReadAloudStore(memoryStorage()),
     })
+    await writeYourOwnButton()
+    expect(screen.queryByRole("button", { name: /Read aloud/ })).toBeNull()
+    expect(
+      document.querySelector('[data-slot="read-aloud-empty"]')?.textContent
+    ).toContain("Nothing to read yet. Open new words from storage")
+    expect(screen.getByLabelText(/Open new words from storage/)).toBeTruthy()
+  })
+
+  it("opens the read-aloud drill at the level held, and comes back", async () => {
+    const store = createReadAloudStore(memoryStorage())
+    store.saveSets([
+      { deck: STARTER_SET, addedAt: "", openedAt: "" },
+      { deck: LEVEL_ONE_SET, addedAt: "", openedAt: "" },
+    ])
+    renderLesson({
+      speaker: voice(() => Promise.resolve({ kind: "heard" })),
+      readAloudStore: store,
+    })
     const card = await screen.findByRole("button", { name: /Read aloud/ })
+    expect(card.textContent).toContain("2 word sets")
     fireEvent.click(screen.getByRole("radio", { name: "TOPIK 5" }))
     expect(card.textContent).toContain("TOPIK 3, the highest it reads")
     fireEvent.click(card)
@@ -249,8 +272,66 @@ describe("HandheldLesson", () => {
 
     click("Back")
     const card = await screen.findByRole("button", { name: /Read aloud/ })
-    expect(card.textContent).toContain("1 word set added")
+    expect(card.textContent).toContain("1 word set")
     expect(screen.queryByRole("button", { name: /^2 words New/ })).toBeNull()
+  })
+
+  it("keeps the paces of words no set names yet, and lets go only what a set picked again drops", async () => {
+    const store = createReadAloudStore(memoryStorage())
+    // Paces from before the decks left the bundle: one starter word, one
+    // level-one word the starter set does not name.
+    const starterWord = STARTER_SET.words[0]?.id ?? ""
+    const levelOneWord =
+      LEVEL_ONE_SET.words.find(
+        ({ id }) => !STARTER_SET.words.some((word) => word.id === id)
+      )?.id ?? ""
+    store.savePace(starterWord, { factor: 1, seen: 3 })
+    store.savePace(levelOneWord, { factor: 1, seen: 3 })
+    renderLesson({
+      speaker: voice(() => Promise.resolve({ kind: "heard" })),
+      readAloudStore: store,
+    })
+    // Found again each time: leaving the drill mounts the list anew.
+    const pick = async (deck: object): Promise<void> => {
+      fireEvent.change(
+        await screen.findByLabelText(/Open new words from storage/),
+        {
+          target: {
+            files: [
+              {
+                size: 1,
+                text: (): Promise<string> =>
+                  Promise.resolve(
+                    JSON.stringify({ schemaVersion: 1, ...deck })
+                  ),
+              },
+            ],
+          },
+        }
+      )
+    }
+
+    // The starter set alone, read and left: the level-one word keeps its
+    // pace until its own set comes back.
+    await pick(STARTER_SET)
+    await screen.findByText(/^Added /)
+    fireEvent.click(await screen.findByRole("button", { name: /Read aloud/ }))
+    click("Back")
+    expect(Object.keys(store.paces()).sort()).toEqual(
+      [starterWord, levelOneWord].sort()
+    )
+
+    // The starter set picked again without its first word: that pace goes.
+    await pick({
+      ...STARTER_SET,
+      words: STARTER_SET.words.filter(({ id }) => id !== starterWord),
+      lines: STARTER_SET.lines.filter((line) =>
+        line.words.every(({ wordId }) => wordId !== starterWord)
+      ),
+    })
+    await vi.waitFor(() =>
+      expect(Object.keys(store.paces())).toEqual([levelOneWord])
+    )
   })
 
   it("holds the level of the last drama until the learner chooses another", async () => {

@@ -51,10 +51,10 @@ export type { LessonFormat, TopikLevel } from "./lib/topik/generation"
 export { ConversationPreview } from "./components/topik/conversation-preview"
 
 /**
- * Read-aloud content (canon Def. 4.8, Cor. 4.6): the deck format, its
- * load-time check, and the bundled starter deck. Public so a host can load a
- * served or generated deck and fall back to the starter when it fails to
- * parse (canon Thm. 8.2).
+ * Read-aloud content (canon Def. 4.8, Cor. 4.6): the deck format and its
+ * load-time check. Public so a host or a script can check a served or
+ * generated deck (canon Thm. 8.2). No deck is compiled in: the learner adds
+ * every one from storage.
  */
 export {
   parseReadAloudDeck,
@@ -70,8 +70,6 @@ export type {
   ReadAloudWord,
   WordOccurrence,
 } from "./lib/topik/read-aloud/content"
-export { STARTER_DECK } from "./lib/topik/read-aloud/starter"
-export { BUNDLED_DECK } from "./lib/topik/read-aloud/bundled"
 export { readAloudPracticeRecord } from "./lib/topik/adapter/read-aloud-store"
 export type { PracticeRecord } from "./lib/topik/read-aloud/records"
 

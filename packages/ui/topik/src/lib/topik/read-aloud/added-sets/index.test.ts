@@ -2,14 +2,14 @@ import type { AddedSet } from "@topik/lib/topik/read-aloud/added-sets"
 import {
   ADDED_SET_LIMIT,
   addSet,
-  BUNDLED_DECK_ID,
+  ALL_SETS_ID,
   intakeSet,
   openSet,
   readySets,
   resolveSets,
   setLevel,
+  wordsLeaving,
 } from "@topik/lib/topik/read-aloud/added-sets"
-import { BUNDLED_DECK } from "@topik/lib/topik/read-aloud/bundled"
 import type {
   ReadAloudDeck,
   ReadAloudLine,
@@ -23,10 +23,10 @@ const line = (
   level: ReadAloudLine["level"] = 1
 ): ReadAloudLine => ({ id, level, korean, english: id, words })
 
-/** The floor: 주다 and 커피, as the bundled deck names them. */
-const BASE: ReadAloudDeck = {
-  id: BUNDLED_DECK_ID,
-  title: "Base",
+/** The first set added: 주다 and 커피. */
+const CAFE: ReadAloudDeck = {
+  id: "cafe",
+  title: "Cafe",
   words: [
     { id: "juda", lemma: "주다", gloss: "give" },
     { id: "keopi", lemma: "커피", gloss: "coffee" },
@@ -75,14 +75,14 @@ const file = (deck: ReadAloudDeck): string =>
 
 describe("resolveSets", () => {
   it("adds a set's new words to the one vocabulary and files its lines under it", () => {
-    const { all, sets } = resolveSets(BASE, [added(PLANS)])
+    const { all, sets } = resolveSets([added(CAFE), added(PLANS)])
     expect(all.words.map((word) => word.id)).toEqual([
       "juda",
       "keopi",
       "yaksok",
     ])
     expect(all.lines.map((each) => each.id)).toEqual([
-      "coffee",
+      "cafe.coffee",
       "plans-2.line-1",
     ])
     expect(sets.get("plans-2")?.lines.map((each) => each.id)).toEqual([
@@ -92,9 +92,9 @@ describe("resolveSets", () => {
 
   it("never lets two sets' lines collide", () => {
     const other = { ...PLANS, id: "plans-3" }
-    const { all } = resolveSets(BASE, [added(PLANS), added(other)])
+    const { all } = resolveSets([added(CAFE), added(PLANS), added(other)])
     expect(all.lines.map((each) => each.id)).toEqual([
-      "coffee",
+      "cafe.coffee",
       "plans-2.line-1",
       "plans-3.line-1",
     ])
@@ -114,15 +114,37 @@ describe("resolveSets", () => {
         ]),
       ],
     }
-    const { all, sets } = resolveSets(BASE, [added(clash)])
+    const { all, sets } = resolveSets([added(CAFE), added(clash)])
     expect(all.words.find((word) => word.id === "keopi")?.lemma).toBe("커피")
     expect(sets.get("plans-2")?.lines.map((each) => each.id)).toEqual([
       "plans-2.line-1",
     ])
   })
 
-  it("names the bundled deck's id, which no set may take", () => {
-    expect(BUNDLED_DECK.id).toBe(BUNDLED_DECK_ID)
+  it("reads every set as one deck no set's id can name", () => {
+    const { all } = resolveSets([])
+    expect(all).toMatchObject({ id: ALL_SETS_ID, words: [], lines: [] })
+    expect(intakeSet(file({ ...PLANS, id: ALL_SETS_ID }), [])).toMatchObject({
+      ok: false,
+    })
+  })
+
+  it("names the words a set picked again no longer names, and no others", () => {
+    const shorter: ReadAloudDeck = {
+      ...PLANS,
+      words: PLANS.words.filter((word) => word.id !== "yaksok"),
+      lines: [
+        line("line-2", "주세요.", [
+          { wordId: "juda", surface: "주세요", stemEnd: 1 },
+        ]),
+      ],
+    }
+    const before = [added(CAFE), added(PLANS)]
+    expect([...wordsLeaving(before, addSet(before, shorter, "b"))]).toEqual([
+      "yaksok",
+    ])
+    // A word no set names yet is not the set's to take with it.
+    expect(wordsLeaving([], [added(CAFE)]).size).toBe(0)
   })
 })
 
@@ -132,27 +154,22 @@ describe("intakeSet", () => {
       ...PLANS,
       lines: [...PLANS.lines, line("line-2", "약속이", [])],
     }
-    const intake = intakeSet(
-      `\`\`\`json\n${file(withBadLine)}\n\`\`\``,
-      BASE,
-      []
-    )
+    const intake = intakeSet(`\`\`\`json\n${file(withBadLine)}\n\`\`\``, [
+      added(CAFE),
+    ])
     expect(intake).toMatchObject({ ok: true, dropped: 1 })
     expect(intake.ok && intake.deck.from).toBe(PLANS.from)
   })
 
   it("refuses what is not a readable set", () => {
-    expect(intakeSet("hello", BASE, [])).toEqual({
+    expect(intakeSet("hello", [added(CAFE)])).toEqual({
       ok: false,
       error: "That file isn't a word set.",
     })
     expect(
-      intakeSet(file({ ...PLANS, id: BUNDLED_DECK_ID }), BASE, [])
-    ).toMatchObject({
-      ok: false,
-    })
-    expect(
-      intakeSet(file({ ...PLANS, lines: [line("x", "약속이", [])] }), BASE, [])
+      intakeSet(file({ ...PLANS, lines: [line("x", "약속이", [])] }), [
+        added(CAFE),
+      ])
     ).toEqual({ ok: false, error: "No line in that word set can be read." })
   })
 
@@ -160,10 +177,8 @@ describe("intakeSet", () => {
     const full = Array.from({ length: ADDED_SET_LIMIT }, (_, index) =>
       added({ ...PLANS, id: `set-${index}` })
     )
-    expect(intakeSet(file(PLANS), BASE, full)).toMatchObject({ ok: false })
-    expect(
-      intakeSet(file({ ...PLANS, id: "set-0" }), BASE, full)
-    ).toMatchObject({
+    expect(intakeSet(file(PLANS), full)).toMatchObject({ ok: false })
+    expect(intakeSet(file({ ...PLANS, id: "set-0" }), full)).toMatchObject({
       ok: true,
     })
   })
@@ -193,6 +208,6 @@ describe("the kept list", () => {
 
   it("reads a set at its highest line's level", () => {
     expect(setLevel(PLANS)).toBe(2)
-    expect(setLevel(BASE)).toBe(1)
+    expect(setLevel(CAFE)).toBe(1)
   })
 })

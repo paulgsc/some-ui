@@ -20,7 +20,6 @@ import { localStorageOrNull } from "@some-ui/core-utils"
 import type { StorageLike } from "@topik/lib/topik/adapter/storage"
 import type { AddedSet } from "@topik/lib/topik/read-aloud/added-sets"
 import {
-  BUNDLED_DECK_ID,
   parseAddedSets,
   storedSet,
 } from "@topik/lib/topik/read-aloud/added-sets"
@@ -113,8 +112,11 @@ const ItemSchema = z.discriminatedUnion("kind", [
 const ProgressDocumentSchema = z.object({
   version: z.literal(1),
   level: z.union([z.literal(1), z.literal(2), z.literal(3)]),
-  /** Absent in what builds before added sets wrote: the bundled deck's. */
-  deck: z.string().min(1).default(BUNDLED_DECK_ID),
+  /**
+   * Absent in what builds before added sets wrote, whose deck was compiled
+   * in: no deck now is that one, so such a set is never resumed.
+   */
+  deck: z.string().min(1).optional(),
   progress: z.object({
     queue: z
       .array(

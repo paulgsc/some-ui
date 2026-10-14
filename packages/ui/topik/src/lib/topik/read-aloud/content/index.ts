@@ -23,8 +23,8 @@
  * occurrence is shown without the substitution (Cor. 4.6 (iv)). An unknown
  * role or tense is dropped the same way: the occurrence or line is kept
  * without it.
- * Only a deck whose outer shape is wrong fails, and the caller falls back to
- * the bundled starter deck.
+ * Only a deck whose outer shape is wrong fails, and the caller refuses it
+ * whole (`added-sets`).
  *
  * This is deliberately not `@some-ui/honeycomb`'s `WordEntry`. That format is
  * a typing challenge (a QWERTY key per jamo, an icon); this one is a reading
@@ -137,7 +137,7 @@ export type ReadAloudDeck = {
   /**
    * What the deck answers, in the learner's terms: `your note on Oct 13:
    * "move to level two"`. Written by whoever made a deck for this learner
-   * (`added-sets`); the bundled deck has none.
+   * (`added-sets`); a deck written for anyone has none.
    */
   from?: string
   words: Array<ReadAloudWord>

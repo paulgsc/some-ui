@@ -1,7 +1,9 @@
 /**
- * Word sets added on the phone: decks an agent wrote for this learner,
- * picked from storage and kept beside the bundled deck, which is only the
- * floor (adaptive-learning canon Def. 1.3, Cor. 4.6 (iii), Rem. 7.5).
+ * Word sets added on the phone: every word read-aloud reads comes from one,
+ * a deck picked from storage and kept on the device. Nothing is compiled in;
+ * the sets this repo keeps (`packages/some-content/prompts/read-aloud-
+ * generator/sets`) reach the phone the same way an agent's do
+ * (adaptive-learning canon Def. 1.3, Cor. 4.6 (iii), Rem. 7.5).
  *
  * A word is one concept wherever it is read, so an added set's words join
  * the one vocabulary by id: a word the phone already names keeps its pace.
@@ -23,8 +25,8 @@ import type {
 import { parseReadAloudDeck } from "@topik/lib/topik/read-aloud/content"
 import { z } from "zod"
 
-/** The bundled deck's id, which no added set may take. */
-export const BUNDLED_DECK_ID = "bundled"
+/** "Read aloud": every set as one deck. Not kebab-case, so no set's id. */
+export const ALL_SETS_ID = ":all"
 
 /** How many sets the phone keeps: far above a year of them, a few hundred KB. */
 export const ADDED_SET_LIMIT = 50
@@ -82,24 +84,20 @@ function withoutConflicts(
 }
 
 export type ResolvedSets = {
-  /** The bundled deck and every set, as one vocabulary: "Read aloud". */
+  /** Every set as one vocabulary: "Read aloud". */
   all: ReadAloudDeck
   /** Each set as the drill reads it on its own, by the set's id. */
   sets: ReadonlyMap<string, ReadAloudDeck>
 }
 
 /**
- * The bundled deck and the added sets, oldest first, as the drill reads
- * them. A set's words are judged against the bundled deck's and every
- * earlier set's.
+ * The added sets, oldest first, as the drill reads them. A set's words are
+ * judged against every earlier set's.
  */
-export function resolveSets(
-  base: ReadAloudDeck,
-  added: ReadonlyArray<AddedSet>
-): ResolvedSets {
-  const known = new Map(base.words.map((word) => [word.id, word.lemma]))
-  const words = [...base.words]
-  const lines = [...base.lines]
+export function resolveSets(added: ReadonlyArray<AddedSet>): ResolvedSets {
+  const known = new Map<string, string>()
+  const words: ReadAloudDeck["words"] = []
+  const lines: ReadAloudDeck["lines"] = []
   const sets = new Map<string, ReadAloudDeck>()
   for (const { deck } of added) {
     const kept = filed(withoutConflicts(deck, known))
@@ -111,7 +109,27 @@ export function resolveSets(
     lines.push(...kept.lines)
     sets.set(deck.id, kept)
   }
-  return { all: { ...base, words, lines }, sets }
+  return {
+    all: { id: ALL_SETS_ID, title: "Every word set", words, lines },
+    sets,
+  }
+}
+
+/**
+ * The words `before` names and `after` does not: a set picked again that
+ * dropped them. Their paces go with them (Rem. 7.5); nothing else prunes the
+ * pace book, so a word no set names yet keeps its pace until one does.
+ */
+export function wordsLeaving(
+  before: ReadonlyArray<AddedSet>,
+  after: ReadonlyArray<AddedSet>
+): Set<string> {
+  const kept = new Set(resolveSets(after).all.words.map((word) => word.id))
+  return new Set(
+    resolveSets(before)
+      .all.words.map((word) => word.id)
+      .filter((id) => !kept.has(id))
+  )
 }
 
 const isDeck = (value: unknown): boolean =>
@@ -124,7 +142,6 @@ const isDeck = (value: unknown): boolean =>
  */
 export function intakeSet(
   text: string,
-  base: ReadAloudDeck,
   added: ReadonlyArray<AddedSet>
 ): SetIntake {
   const raw = jsonValues(text).find(isDeck)
@@ -136,9 +153,6 @@ export function intakeSet(
     return { ok: false, error: "That word set can't be read." }
   }
   const { deck } = parsed
-  if (deck.id === BUNDLED_DECK_ID) {
-    return { ok: false, error: "That word set's id is taken by the app's own." }
-  }
   const replacing = added.some((set) => set.deck.id === deck.id)
   if (!replacing && added.length >= ADDED_SET_LIMIT) {
     return {
@@ -147,7 +161,7 @@ export function intakeSet(
     }
   }
   const others = added.filter((set) => set.deck.id !== deck.id)
-  const kept = resolveSets(base, [
+  const kept = resolveSets([
     ...others,
     { deck, addedAt: "", openedAt: null },
   ]).sets.get(deck.id)
@@ -213,7 +227,7 @@ export function parseAddedSets(raw: unknown): Array<AddedSet> {
     const stored = StoredSetSchema.safeParse(entry)
     if (!stored.success) return []
     const parsed = parseReadAloudDeck(stored.data.deck)
-    if (!parsed.ok || parsed.deck.id === BUNDLED_DECK_ID) return []
+    if (!parsed.ok) return []
     return [
       {
         deck: parsed.deck,
