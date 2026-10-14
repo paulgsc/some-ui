@@ -233,6 +233,8 @@ export const SetCard = (props: SetCardProps): JSX.Element => {
                 >
                   Each sentence asks one thing: who, what, where, when, or which
                   tense. Tap your answer; nothing waits for it.
+                  {props.resuming &&
+                    " The set you continue keeps how it was drawn; this applies from the next one."}
                 </p>
               </div>
               <Switch

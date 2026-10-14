@@ -43,6 +43,8 @@ type RepCardProps = {
   reported: boolean
   /** The learner's answer to the entry's lens, if it carries one. */
   answer: LensAnswer | null
+  /** The gloss has shown the lens's answer: it stays shown, and closed. */
+  revealed: boolean
   onAnswer: (answer: LensAnswer) => void
   /** Whether this step's audio has started playing. */
   playing: boolean
@@ -159,6 +161,7 @@ export const RepCard = ({
   stepKey,
   reported,
   answer,
+  revealed,
   onAnswer,
   playing,
   short,
@@ -185,7 +188,7 @@ export const RepCard = ({
   const metered = (step === "turn" || step === "echo") && stepMs !== null
 
   const lens = item.kind === "sentence" ? item.lens : undefined
-  const shown = step === "gloss"
+  const shown = step === "gloss" || revealed
   const open = !shown && !introduction && step !== "paused"
   const outcome = lens && shown ? lensOutcome(lens, answer) : null
   const weather =

@@ -222,7 +222,6 @@ export const LensBadge = ({
       data-slot="read-aloud-lens"
       data-lens={lens.kind === "role" ? lens.role : "tense"}
       data-outcome={outcome ?? undefined}
-      aria-label={spoken}
       className={cn(
         "inline-flex items-center gap-2 rounded-full border-2 px-3 py-1.5 text-base font-bold",
         look
@@ -243,6 +242,7 @@ export const LensBadge = ({
       <span lang="ko" aria-hidden="true">
         {label}
       </span>
+      <span className="sr-only">{spoken}</span>
       {outcome === "found" && <Check className="size-5" aria-hidden="true" />}
     </span>
   )

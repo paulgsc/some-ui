@@ -182,6 +182,7 @@ export const ReadAloudSession = ({
         stepKey={state.seq}
         reported={state.reported}
         answer={state.answer}
+        revealed={state.revealed}
         onAnswer={vm.answer}
         playing={vm.playing === state.seq}
         short={short}

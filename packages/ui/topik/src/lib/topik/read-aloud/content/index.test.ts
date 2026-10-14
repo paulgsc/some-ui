@@ -258,7 +258,7 @@ describe("parseReadAloudDeck", () => {
         lines: [
           {
             ...ONE_CUP,
-            tense: "pluperfect",
+            tense: 3,
             words: [HAN, JAN, { ...ONE_CUP.words[2], role: "verb" }],
           },
         ],

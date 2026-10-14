@@ -27,7 +27,7 @@
  *   turn is fixed by the level (Cor. 4.6 (ii)).
  * - The grammar lens (`read-aloud/lens`): a sentence drawn with one takes an
  *   answer at any step before its gloss, where the answer is shown either
- *   way. An answer changes no step, no pace and no count; a rep that runs to
+ *   way, and none after it, even once a pause restarts the rep. An answer changes no step, no pace and no count; a rep that runs to
  *   the end adds its lens to the set's tally, for the summary, and a rep cut
  *   short adds nothing, as with counting.
  * - The sitting (Rem. 4.10): once thirty minutes have passed, nothing new
@@ -133,6 +133,11 @@ export type SetMachineState = {
    */
   answer: LensAnswer | null
   /**
+   * Whether the entry's gloss has shown its lens's answer. From then on the
+   * answer is closed, a rep restarted after a pause included.
+   */
+  revealed: boolean
+  /**
    * The set's lens tally, for its summary. An outcome, so it is never stored
    * with the set (Def. 6.6): a set resumed in a later sitting tallies afresh.
    */
@@ -235,6 +240,7 @@ export function createSetMachine(level: ReadAloudLevel): SetMachineState {
     reported: false,
     counted: 0,
     answer: null,
+    revealed: false,
     lensed: NO_LENSES,
     paces: {},
     sittingStartedAt: null,
@@ -395,7 +401,13 @@ function advance(
   effects: Array<SetEffect>
 ): SetTransition {
   const moved = startEntry(
-    { ...state, cursor: state.cursor + 1, reported: false, answer: null },
+    {
+      ...state,
+      cursor: state.cursor + 1,
+      reported: false,
+      answer: null,
+      revealed: false,
+    },
     at
   )
   return { state: moved.state, effects: [...effects, ...moved.effects] }
@@ -559,7 +571,7 @@ function onElapsed(state: SetMachineState, at: number): SetTransition {
     }
     case "echo": {
       if (!entry) return { state, effects: [] }
-      const next = enter(state, { name: "gloss" })
+      const next = enter({ ...state, revealed: true }, { name: "gloss" })
       return {
         state: next,
         effects: [
@@ -674,6 +686,7 @@ export function setMachineReducer(
           counted: event.progress.counted,
           reported: event.progress.reported,
           answer: null,
+          revealed: false,
           lensed: NO_LENSES,
           paces: event.paces,
           sittingStartedAt: state.sittingStartedAt ?? event.at,
@@ -725,7 +738,7 @@ export function setMachineReducer(
     case "answer": {
       const entry = currentEntry(state)
       const lens = entry?.item.kind === "sentence" ? entry.item.lens : undefined
-      const open = REP_STEPS.has(phase.name) && phase.name !== "gloss"
+      const open = REP_STEPS.has(phase.name) && !state.revealed
       if (!lens || !open || !answers(lens, event.answer)) return unchanged
       const same =
         state.answer !== null && sameAnswer(state.answer, event.answer)

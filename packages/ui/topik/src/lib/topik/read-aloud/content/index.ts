@@ -185,7 +185,7 @@ const OccurrenceSchema = z.object({
   stemEnd: z.number().int().min(1),
   pronunciation: z.string().optional(),
   sense: z.string().trim().min(1).optional(),
-  role: z.string().optional(),
+  role: z.unknown().optional(),
 })
 
 const LineSchema = z.object({
@@ -194,7 +194,7 @@ const LineSchema = z.object({
   korean: z.string().trim().min(1),
   english: z.string().trim().min(1),
   words: z.array(z.unknown()),
-  tense: z.string().optional(),
+  tense: z.unknown().optional(),
 })
 
 const DeckSchema = z.object({
@@ -225,11 +225,11 @@ function withKnownRole(
   findings: Array<ContentFinding>
 ): WordOccurrence {
   if (role === undefined) return rest
-  if (isRole(role)) return { ...rest, role }
+  if (typeof role === "string" && isRole(role)) return { ...rest, role }
   findings.push({
     kind: "role-unknown",
     where,
-    detail: `"${role}" is not a grammatical role; the occurrence is kept without it`,
+    detail: `${JSON.stringify(role)} is not a grammatical role; the occurrence is kept without it`,
   })
   return rest
 }
@@ -427,12 +427,13 @@ export function parseReadAloudDeck(raw: unknown): ParsedDeck {
     }
     let tense: { tense?: Tense } = {}
     if (rawTense !== undefined) {
-      if (isTense(rawTense)) tense = { tense: rawTense }
-      else {
+      if (typeof rawTense === "string" && isTense(rawTense)) {
+        tense = { tense: rawTense }
+      } else {
         findings.push({
           kind: "tense-unknown",
           where: line.id,
-          detail: `"${rawTense}" is not a tense; the line is kept without it`,
+          detail: `${JSON.stringify(rawTense)} is not a tense; the line is kept without it`,
         })
       }
     }

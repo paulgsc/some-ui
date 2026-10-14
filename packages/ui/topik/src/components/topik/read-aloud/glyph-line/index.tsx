@@ -70,7 +70,7 @@ export const GlyphLine = ({
   short,
   lens,
 }: GlyphLineProps): JSX.Element => {
-  const cells = glyphCells(deck, item, mode)
+  const cells = glyphCells(deck, item, mode, lens?.shown?.words)
   const word = item.kind === "word"
   const pick = lens?.pick
   const shown = lens?.shown

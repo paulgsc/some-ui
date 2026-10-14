@@ -266,7 +266,7 @@ export const LEVEL_ONE_LINES: Array<ReadAloudLine> = [
     tense: "present",
     words: [
       { wordId: "abeoji", surface: "아버지와", stemEnd: 3 },
-      { wordId: "eomeoni", surface: "어머니가", role: "subject", stemEnd: 3 },
+      { wordId: "eomeoni", surface: "어머니가", stemEnd: 3 },
       {
         wordId: "itda",
         surface: "있어요",
@@ -303,7 +303,7 @@ export const LEVEL_ONE_LINES: Array<ReadAloudLine> = [
     words: [
       { wordId: "achim", surface: "아침", stemEnd: 2 },
       { wordId: "ilgop", surface: "일곱", stemEnd: 2 },
-      { wordId: "si", surface: "시에", role: "time", stemEnd: 1 },
+      { wordId: "si", surface: "시에", stemEnd: 1 },
       {
         wordId: "ireonada",
         surface: "일어나요",
@@ -732,7 +732,7 @@ export const LEVEL_ONE_LINES: Array<ReadAloudLine> = [
         stemEnd: 2,
         pronunciation: "약꾸기",
       },
-      { wordId: "eodi", surface: "어디에", role: "goal", stemEnd: 2 },
+      { wordId: "eodi", surface: "어디에", stemEnd: 2 },
       {
         wordId: "itda",
         surface: "있어요",

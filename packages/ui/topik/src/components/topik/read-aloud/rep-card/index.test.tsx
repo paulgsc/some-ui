@@ -41,6 +41,7 @@ describe("RepCard's mark", () => {
         stepKey={7}
         reported={false}
         answer={null}
+        revealed={false}
         onAnswer={noop}
         playing={false}
         short={false}
@@ -65,6 +66,7 @@ describe("RepCard's mark", () => {
       stepKey: 8,
       reported: false,
       answer: null,
+      revealed: false,
       onAnswer: noop,
       short: false,
       onStuck: noop,
@@ -98,6 +100,7 @@ describe("a sentence's mark", () => {
         stepKey={9}
         reported={false}
         answer={null}
+        revealed={false}
         onAnswer={noop}
         playing={false}
         short={false}
@@ -146,6 +149,7 @@ describe("a grammar lens", () => {
         stepKey={3}
         reported={false}
         answer={answer}
+        revealed={false}
         onAnswer={onAnswer}
         playing={false}
         short={false}
@@ -164,9 +168,11 @@ describe("a grammar lens", () => {
   it("asks a role in Korean and takes a word of the line as the answer", () => {
     const onAnswer = vi.fn()
     card({ kind: "role", role: "object", word: 2 }, "turn", null, onAnswer)
-    expect(screen.getByLabelText("Find what is acted on").textContent).toBe(
-      "무엇을"
-    )
+    expect(screen.getByText("Find what is acted on")).toBeTruthy()
+    expect(
+      document.querySelector("[data-slot=read-aloud-lens] [lang=ko]")
+        ?.textContent
+    ).toBe("무엇을")
     fireEvent.click(screen.getByRole("button", { name: "커피를" }))
     expect(onAnswer).toHaveBeenCalledWith({ kind: "word", word: 2 })
     expect(screen.queryByRole("button", { name: "past" })).toBeNull()
@@ -179,6 +185,10 @@ describe("a grammar lens", () => {
     })
     expect(screen.queryByRole("button", { name: "커피를" })).toBeNull()
     expect(flagged("answer")).toEqual(["커피를"])
+    // The particle is what the role is read from: it takes the lens's hue.
+    const ending = document.querySelectorAll("[data-answer] [data-ending]")
+    expect(Array.from(ending, (el) => el.textContent)).toEqual(["를"])
+    expect(ending[0]?.className).toContain("text-orange")
     expect(flagged("missed")).toEqual(["아침마다"])
     expect(
       document
@@ -197,14 +207,14 @@ describe("a grammar lens", () => {
     const onAnswer = vi.fn()
     const lens: Lens = { kind: "tense", tense: "present", from: 5 }
     card(lens, "turn", null, onAnswer)
-    expect(screen.getByLabelText("Which tense?")).toBeTruthy()
+    expect(screen.getByText("Which tense?")).toBeTruthy()
     expect(screen.queryAllByRole("button", { name: "마셔요" })).toEqual([])
     fireEvent.click(screen.getByRole("button", { name: "past" }))
     expect(onAnswer).toHaveBeenCalledWith({ kind: "tense", tense: "past" })
     cleanup()
 
     card(lens, "gloss", { kind: "tense", tense: "present" })
-    expect(screen.getByLabelText("The tense: present")).toBeTruthy()
+    expect(screen.getByText("The tense: present")).toBeTruthy()
     expect(flagged("answer")).toEqual(["마셔요"])
     expect(
       screen.getByRole("button", { name: "present" }).hasAttribute("disabled")

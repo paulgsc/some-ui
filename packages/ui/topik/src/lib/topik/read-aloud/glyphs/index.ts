@@ -75,11 +75,16 @@ function occurrencesOf(
   ]
 }
 
-/** An item's cells, drawn in the given mode. */
+/**
+ * An item's cells, drawn in the given mode. At the gloss a word is divided
+ * at its stem; a sentence is not, since its gloss is the basket, except the
+ * words in `divide`: those showing a grammar lens's answer.
+ */
 export function glyphCells(
   deck: ReadAloudDeck,
   item: SetItem,
-  mode: GlyphMode
+  mode: GlyphMode,
+  divide: ReadonlyArray<number> = []
 ): Array<GlyphCell> {
   const occurrences = occurrencesOf(item, lineOf(deck, item.lineId))
   const cells: Array<GlyphCell> = []
@@ -108,7 +113,7 @@ export function glyphCells(
         syllable,
         ending:
           mode === "divided" &&
-          item.kind === "word" &&
+          (item.kind === "word" || divide.includes(word)) &&
           occurrence !== undefined &&
           index >= occurrence.stemEnd,
       })

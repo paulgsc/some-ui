@@ -636,6 +636,17 @@ describe("the grammar lens", () => {
     expect(host.state.answer).toBeNull()
   })
 
+  it("takes no answer once the gloss has shown it, even after a pause", () => {
+    const host = atTurn()
+    while (host.state.phase.name !== "gloss") host.step()
+    host.send({ type: "pause", at: host.now })
+    host.send({ type: "resume", at: host.now })
+    expect(host.state.phase.name).toBe("glyphs")
+    expect(host.state.revealed).toBe(true)
+    answer(host, ACTION)
+    expect(host.state.answer).toBeNull()
+  })
+
   it("takes no answer for an item without a lens, or of the wrong kind", () => {
     const plain = atTurn([ONE_CUP, JUSEYO])
     answer(plain, ACTION)
