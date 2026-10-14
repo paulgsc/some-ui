@@ -3,18 +3,17 @@ import {
   BOYO_EVENT_KINDS,
   boyoInvariants,
   BoyoObservability,
+  compactIndex,
   createBoyoRecorder,
   HEALTH_SAMPLE_INTERVAL_MS,
-  INDEX_KEY,
+  indexStorageKey,
   MAX_DATE_FORMS_PER_SURFACE,
   MAX_RAW_DATE_CHARS,
   MAX_SNAPSHOT_BYTES,
   observability,
   OCCLUSION_GRACE_MS,
   PROMOTION_STALL_MS,
-  readIndex,
   redactQueueKey,
-  removeFromIndex,
   RESOLVE_GRACE_MS,
   sessionStorageKey,
   startObservability,
@@ -23,6 +22,7 @@ import {
   touchIndex,
   type BoyoContext,
   type BoyoEventKind,
+  type IndexEntry,
 } from "@censor/lib/content/observability"
 import { isVideoCard } from "@censor/lib/content/selectors"
 import { RESOLVE_BUDGET_MS } from "@censor/lib/content/sensor/queue"
@@ -34,6 +34,10 @@ import {
   type JsonValue,
   type ObservabilityEvent,
 } from "@some-extension/common/observability"
+import {
+  fakeStorage,
+  type FakeStorageOptions,
+} from "@some-extension/common/testing"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
 /**
@@ -872,36 +876,23 @@ describe("startObservability — one recording per content-script instance", () 
   })
 })
 
-// ── The session index (what the OBS2 picker reads) ───────────────────────────
+// ── The session index (this adapter's wiring; the index is tested in common) ──
 
 /**
- * The vitest setup stubs `browser` with a `runtime` only, and `ext` captured
- * that object at import time — so the area is installed onto it rather than
- * re-stubbing the global, which `ext` would no longer be looking at.
+ * The vitest setup stubs `browser` with a `runtime` only, and `ext` is that
+ * same object, so the area is installed onto it, where the index's default
+ * `storage.local` resolver finds it.
  */
 function installFakeStorage(
-  /** Fires after each write, so a test can simulate a competing tab. */
-  onSet?: (key: string) => void
+  options: FakeStorageOptions = {}
 ): Map<string, unknown> {
-  const store = new Map<string, unknown>()
-  Reflect.set(ext, "storage", {
-    local: {
-      get: (key: string): Promise<Record<string, unknown>> =>
-        Promise.resolve(store.has(key) ? { [key]: store.get(key) } : {}),
-      set: (items: Record<string, unknown>): Promise<void> => {
-        for (const [k, v] of Object.entries(items)) {
-          store.set(k, v)
-          onSet?.(k)
-        }
-        return Promise.resolve()
-      },
-      remove: (key: string): Promise<void> => {
-        store.delete(key)
-        return Promise.resolve()
-      },
-    },
-  })
-  return store
+  const fake = fakeStorage(options)
+  Reflect.set(ext, "storage", { local: fake.area })
+  return fake.store
+}
+
+async function listed(): Promise<Array<IndexEntry>> {
+  return [...(await compactIndex()).entries]
 }
 
 describe("the session index", () => {
@@ -910,10 +901,10 @@ describe("the session index", () => {
     const obs = newObservability()
     obs.sessionStart(3)
     await vi.waitFor(async () => {
-      expect(await readIndex()).toHaveLength(1)
+      expect(await listed()).toHaveLength(1)
     })
 
-    const [entry] = await readIndex()
+    const [entry] = await listed()
     expect(entry?.sessionId).toBe("test-session")
     expect(entry?.sessionOrdinal).toBe(3)
   })
@@ -924,10 +915,10 @@ describe("the session index", () => {
     const obs = newObservability()
     obs.sessionStart(1)
     await vi.waitFor(async () => {
-      expect(await readIndex()).toHaveLength(1)
+      expect(await listed()).toHaveLength(1)
     })
 
-    const entries = await readIndex()
+    const entries = await listed()
     expect(JSON.stringify(entries)).not.toContain("Never Gonna Give You Up")
     // Pins the shape, so a field added later has to be a deliberate choice
     // rather than something that quietly rides along into the picker.
@@ -937,141 +928,30 @@ describe("the session index", () => {
     )
   })
 
-  it("refreshes an existing session's entry in place rather than accumulating one per sample", async () => {
-    installFakeStorage()
-    const obs = newObservability()
-    obs.sessionStart(1)
-    await vi.waitFor(async () => {
-      expect(await readIndex()).toHaveLength(1)
-    })
-    await obs.sampleHealth(baseContext({ now: NOW }))
-    await vi.waitFor(async () => {
-      expect((await readIndex())[0]?.updatedAt).toBe(NOW)
-    })
-    expect(await readIndex()).toHaveLength(1)
-  })
-
-  it("drops an entry on request, and survives a storage area that is not there at all", async () => {
-    installFakeStorage()
-    const obs = newObservability()
-    obs.sessionStart(1)
-    await vi.waitFor(async () => {
-      expect(await readIndex()).toHaveLength(1)
-    })
-    await removeFromIndex("test-session")
-    expect(await readIndex()).toEqual([])
-
-    Reflect.deleteProperty(ext, "storage")
-    expect(await readIndex()).toEqual([])
-    await expect(removeFromIndex("test-session")).resolves.toBeUndefined()
-  })
-})
-
-describe("the index cap does not orphan payloads", () => {
-  /** An indexed recording: its index entry plus its persisted bundle. */
-  async function record(store: Map<string, unknown>, i: number): Promise<void> {
-    store.set(sessionStorageKey(`s${String(i)}`), { version: 1, events: [] })
-    await touchIndex({
-      sessionId: `s${String(i)}`,
-      origin: "https://www.youtube.com",
-      surface: "home",
-      sessionOrdinal: 1,
-      updatedAt: NOW + i,
-    })
-  }
-
-  it("deletes the stored bundle of an entry the cap evicts — every page load mints a new key, so leaving them behind grows storage without bound", async () => {
-    const store = installFakeStorage()
-    for (let i = 0; i < 21; i++) await record(store, i)
-
-    expect(await readIndex()).toHaveLength(20)
-    // s0 is the oldest and the one pushed out by the 21st.
-    expect((await readIndex()).map((e) => e.sessionId)).not.toContain("s0")
-    expect(store.has(sessionStorageKey("s0"))).toBe(false)
-    expect(store.has(sessionStorageKey("s20"))).toBe(true)
-
-    // Nothing but the index key and the 20 live bundles is left behind.
-    expect(store.size).toBe(21)
-  })
-
-  it("also sheds payloads on the reconciliation write, which evicts too when the index is already at capacity", async () => {
-    let store: Map<string, unknown> | undefined
-    let clobbered = false
-    store = installFakeStorage((key) => {
-      if (key !== INDEX_KEY || clobbered) return
-      clobbered = true
-      // A competing tab writes a full index of its own, without our entry —
-      // so our read-back re-applies at capacity and must evict somebody.
-      store?.set(
-        INDEX_KEY,
-        Array.from({ length: 20 }, (_unused, i) => ({
-          sessionId: `other${String(i)}`,
-          origin: "https://www.youtube.com",
-          surface: "home",
-          sessionOrdinal: 1,
-          updatedAt: NOW + 100 + i,
-        }))
-      )
-    })
+  it("compacts once per recording where getKeys() exists, after its first touch — so a session starting on a full index evicts the oldest recording, never itself", async () => {
+    const store = installFakeStorage({ getKeys: true })
     for (let i = 0; i < 20; i++) {
-      store.set(sessionStorageKey(`other${String(i)}`), { version: 1 })
+      const id = `s${String(i)}`
+      store.set(sessionStorageKey(id), { version: 1, events: [] })
+      await touchIndex({
+        sessionId: id,
+        origin: "https://www.youtube.com",
+        surface: "home",
+        sessionOrdinal: 1,
+        updatedAt: NOW + i,
+      })
     }
 
-    await touchIndex({
-      sessionId: "mine",
-      origin: "https://www.youtube.com",
-      surface: "home",
-      sessionOrdinal: 1,
-      updatedAt: NOW + 1000,
-    })
-
-    expect(clobbered).toBe(true)
-    const index = await readIndex()
-    expect(index).toHaveLength(20)
-    expect(index.map((e) => e.sessionId)).toContain("mine")
-    // other0 is the oldest of the competing tab's entries, so re-applying
-    // ours at capacity pushed it out — its bundle must go with it.
-    expect(index.map((e) => e.sessionId)).not.toContain("other0")
-    expect(store.has(sessionStorageKey("other0"))).toBe(false)
-    expect(store.has(sessionStorageKey("other1"))).toBe(true)
-  })
-
-  it("re-lists a live recording that a competing tab evicted, on its next touch — the cap bounds indexed recordings, and an evicted tab that is still running restores itself", async () => {
-    const store = installFakeStorage()
     const obs = newObservability()
+    obs.sessionStart(1)
 
-    await touchIndex({
-      sessionId: obs.sessionId,
-      origin: "https://www.youtube.com",
-      surface: "home",
-      sessionOrdinal: 1,
-      updatedAt: NOW,
+    // Observed through storage, not compactIndex(), which would compact too.
+    await vi.waitFor(() => {
+      expect(store.has(sessionStorageKey("s0"))).toBe(false)
     })
-    expect((await readIndex()).map((e) => e.sessionId)).toContain(obs.sessionId)
-
-    // Another tab evicts us and our bundle is deleted with the entry.
-    for (let i = 0; i < 20; i++) await record(store, i)
-    expect((await readIndex()).map((e) => e.sessionId)).not.toContain(
-      obs.sessionId
-    )
-
-    // Our recorder is still live, so its next health sample re-lists it.
-    await obs.sampleHealth(baseContext({ now: NOW + 5000 }))
-    await vi.waitFor(async () => {
-      expect((await readIndex()).map((e) => e.sessionId)).toContain(
-        obs.sessionId
-      )
-    })
-  })
-
-  it("takes the bundle with it when a recording is removed outright", async () => {
-    const store = installFakeStorage()
-    await record(store, 1)
+    expect(store.has(indexStorageKey("s0"))).toBe(false)
+    expect(store.has(indexStorageKey(obs.sessionId))).toBe(true)
     expect(store.has(sessionStorageKey("s1"))).toBe(true)
-
-    await removeFromIndex("s1")
-    expect(await readIndex()).toEqual([])
-    expect(store.has(sessionStorageKey("s1"))).toBe(false)
   })
 })
 
@@ -1109,64 +989,6 @@ describe("the corpus snapshot survives the recorder's own clamp", () => {
     expect(Array.isArray(snapshot)).toBe(true)
     expect(snapshot).toHaveLength(MAX_DATE_FORMS_PER_SURFACE)
     expect(obs.dateForms("home")).toHaveLength(MAX_DATE_FORMS_PER_SURFACE)
-  })
-})
-
-describe("concurrent index writes", () => {
-  it("re-applies its own entry when a competing tab's write dropped it", async () => {
-    let store: Map<string, unknown> | undefined
-    let clobbered = false
-    store = installFakeStorage((key) => {
-      // The other tab read the same `existing` we did and wrote after us,
-      // carrying only its own entry.
-      if (key !== INDEX_KEY || clobbered) return
-      clobbered = true
-      store?.set(INDEX_KEY, [
-        {
-          sessionId: "other-tab",
-          origin: "https://www.youtube.com",
-          surface: "watch",
-          sessionOrdinal: 1,
-          updatedAt: NOW,
-        },
-      ])
-    })
-
-    await touchIndex({
-      sessionId: "mine",
-      origin: "https://www.youtube.com",
-      surface: "home",
-      sessionOrdinal: 1,
-      updatedAt: NOW + 1,
-    })
-
-    expect(clobbered).toBe(true)
-    const ids = (await readIndex()).map((e) => e.sessionId)
-    expect(ids).toContain("mine")
-    expect(ids).toContain("other-tab")
-  })
-
-  it("serializes this tab's own overlapping writes, so neither drops the other", async () => {
-    installFakeStorage()
-    await Promise.all(
-      Array.from({ length: 5 }, async (_unused, i) =>
-        touchIndex({
-          sessionId: `s${String(i)}`,
-          origin: "https://www.youtube.com",
-          surface: "home",
-          sessionOrdinal: 1,
-          updatedAt: NOW + i,
-        })
-      )
-    )
-
-    expect((await readIndex()).map((e) => e.sessionId).sort()).toEqual([
-      "s0",
-      "s1",
-      "s2",
-      "s3",
-      "s4",
-    ])
   })
 })
 

@@ -6,9 +6,9 @@
  *
  * As in some-filter's `coverage-observability.ts`, state lives in a content
  * script, so concurrently open tabs would clobber one shared `storage.local`
- * key. Each page load gets its own key ({@link sessionStorageKey}) plus an
- * entry in a small capped index ({@link readIndex}/{@link touchIndex}) so a
- * debug page (OBS2) can pick a recording.
+ * key. Each page load gets its own key ({@link sessionStorageKey}) plus its
+ * own index key ({@link touchIndex}) so a debug page (OBS2) can pick a
+ * recording, listed and bounded by {@link compactIndex}.
  *
  * Core's `session` ordinal is recorded as *event data*, not used as the key:
  *
@@ -33,15 +33,17 @@
  * snapshots are never shed, so the corpus survives a long session.
  */
 
-import { ext } from "@censor/platform/content"
 import {
+  createSessionIndex,
   extensionStoragePersistence,
   memoryPersistence,
   Recorder,
+  type Compaction,
   type Invariant,
   type InvariantOutcome,
   type JsonValue,
   type ObservabilityPersistence,
+  type SessionIndex,
 } from "@some-extension/common/observability"
 
 import type { ViewState } from "./fsm"
@@ -380,12 +382,10 @@ export const boyoInvariants: ReadonlyArray<Invariant<BoyoContext>> = [
 // ── Storage keys and the session index ───────────────────────────────────────
 
 const SESSION_KEY_PREFIX = "bc.observability.session."
-/** Exported so a test can simulate a competing tab writing the same key. */
-export const INDEX_KEY = "bc.observability.index.v1"
-const MAX_INDEX_ENTRIES = 20
+const SESSION_KEY_SUFFIX = ".v1"
 
 export function sessionStorageKey(sessionId: string): string {
-  return `${SESSION_KEY_PREFIX}${sessionId}.v1`
+  return `${SESSION_KEY_PREFIX}${sessionId}${SESSION_KEY_SUFFIX}`
 }
 
 /**
@@ -415,122 +415,38 @@ function isIndexEntry(value: unknown): value is IndexEntry {
   )
 }
 
-/** The debug page's session picker. Sorted most-recently-updated first. */
-export async function readIndex(): Promise<Array<IndexEntry>> {
-  try {
-    const raw: unknown = await ext.storage.local.get(INDEX_KEY)
-    const value: unknown =
-      raw !== null && typeof raw === "object"
-        ? Reflect.get(raw, INDEX_KEY)
-        : undefined
-    if (!Array.isArray(value)) return []
-    return value.filter(isIndexEntry).sort((a, b) => b.updatedAt - a.updatedAt)
-  } catch {
-    return []
-  }
-}
-
 /**
- * Index writes, serialized within this tab.
- *
- * {@link touchIndex} is a read-modify-write over one shared array, so two
- * overlapping calls could drop each other's entry. Chaining removes that race
- * within this tab. Between tabs `storage.local` offers no compare-and-set, so
- * `touchIndex` also reads back and re-applies once.
+ * One index key per recording, so a tab never writes a key another tab writes
+ * (`storage.local` has no compare-and-set). See `createSessionIndex`.
  */
-let _indexWrites: Promise<void> = Promise.resolve()
+const index: SessionIndex<IndexEntry> = createSessionIndex({
+  namespace: "bc.observability",
+  payload: { prefix: SESSION_KEY_PREFIX, suffix: SESSION_KEY_SUFFIX },
+  isEntry: isIndexEntry,
+})
 
-function serializeIndexWrite(op: () => Promise<void>): Promise<void> {
-  const next = _indexWrites.then(op, op)
-  _indexWrites = next.catch(() => undefined)
-  return next
+/** This recording's index key. Exported for the debug page's tests. */
+export function indexStorageKey(sessionId: string): string {
+  return index.indexKey(sessionId)
 }
 
 /**
- * Delete one recording's persisted bundle.
- *
- * Eviction from the index must take the payload with it: every page load
- * mints a new key, so unlisted bundles would accumulate in `storage.local`
- * without bound.
- */
-async function dropRecording(sessionId: string): Promise<void> {
-  try {
-    await ext.storage.local.remove(sessionStorageKey(sessionId))
-  } catch {
-    // Best-effort.
-  }
-}
-
-/**
- * Publish (or refresh) this recording's index entry, evicting the oldest past
- * the cap — payload and all.
+ * Publish (or refresh) this recording's index entry: one write of one key.
  *
  * Best-effort throughout: diagnostics degrading must never affect masking, so
  * every failure is swallowed.
  */
-export async function touchIndex(entry: IndexEntry): Promise<void> {
-  return serializeIndexWrite(async () => {
-    try {
-      const existing = await readIndex()
-      const next = capIndex(entry, existing)
-      await ext.storage.local.set({ [INDEX_KEY]: next })
-
-      await dropEvicted(existing, next)
-
-      // Cross-tab reconciliation: another tab's concurrent write can have
-      // dropped this entry. One read-back and re-apply keeps this recording
-      // listable without pretending to be a lock; a second clobber in the same
-      // instant is left to the next touch.
-      const after = await readIndex()
-      if (!after.some((e) => e.sessionId === entry.sessionId)) {
-        // Re-applying at capacity evicts somebody too, so shed payloads here
-        // as well.
-        const reconciled = capIndex(entry, after)
-        await ext.storage.local.set({ [INDEX_KEY]: reconciled })
-        await dropEvicted(after, reconciled)
-      }
-    } catch {
-      // Best-effort.
-    }
-  })
+export function touchIndex(entry: IndexEntry): Promise<void> {
+  return index.touch(entry)
 }
 
-/** Delete the bundle of every recording present in `before` but not in `after`. */
-async function dropEvicted(
-  before: ReadonlyArray<IndexEntry>,
-  after: ReadonlyArray<IndexEntry>
-): Promise<void> {
-  const kept = new Set(after.map((e) => e.sessionId))
-  for (const evicted of before) {
-    if (!kept.has(evicted.sessionId)) await dropRecording(evicted.sessionId)
-  }
-}
-
-/** `entry` first, everything else by recency, truncated to the cap. */
-function capIndex(
-  entry: IndexEntry,
-  existing: ReadonlyArray<IndexEntry>
-): Array<IndexEntry> {
-  return [entry, ...existing.filter((e) => e.sessionId !== entry.sessionId)]
-    .sort((a, b) => b.updatedAt - a.updatedAt)
-    .slice(0, MAX_INDEX_ENTRIES)
-}
-
-/** Forget one recording entirely — its index entry and its stored bundle. */
-export async function removeFromIndex(sessionId: string): Promise<void> {
-  return serializeIndexWrite(async () => {
-    try {
-      const existing = await readIndex()
-      await ext.storage.local.set({
-        [INDEX_KEY]: existing.filter((e) => e.sessionId !== sessionId),
-      })
-    } catch {
-      // Best-effort.
-    }
-    // Outside the try on purpose: the payload is the larger of the two, so it
-    // is dropped even when rewriting the index itself failed.
-    await dropRecording(sessionId)
-  })
+/**
+ * List the recordings, enforce the cap and sweep what nothing lists: the
+ * debug page's session picker. Every page load mints a new bundle key, so
+ * without the sweep unlisted bundles would accumulate without bound.
+ */
+export function compactIndex(): Promise<Compaction<IndexEntry>> {
+  return index.compact()
 }
 
 // ── The recorder ─────────────────────────────────────────────────────────────
@@ -635,6 +551,7 @@ export class BoyoObservability {
   private readonly _violated = new Set<string>()
   private _lastHealthAt = 0
   private _ordinal = 0
+  private _compacted = false
 
   constructor(sessionId: string, recorder: BoyoRecorder) {
     this.sessionId = sessionId
@@ -956,13 +873,20 @@ export class BoyoObservability {
   }
 
   private _touchIndex(now: number): void {
-    void touchIndex({
+    const touched = touchIndex({
       sessionId: this.sessionId,
       origin: typeof location === "undefined" ? "" : location.origin,
       surface: currentSurface(),
       sessionOrdinal: this._ordinal,
       updatedAt: now,
     })
+    // Once per recording, after this one is listed: compacting first would
+    // evict an older recording to make room for one it cannot see yet. Only
+    // where cheap; see `createSessionIndex`.
+    if (!this._compacted) {
+      this._compacted = true
+      void touched.then(() => index.compactIfCheap())
+    }
   }
 }
 
@@ -995,8 +919,8 @@ export function startObservability(
   // window would leave the OBS2 picker an entry whose bundle was never
   // written.
   //
-  // `flush()`, deliberately, where some-filter's handler calls `dispose()` and
-  // `removeFromIndex()`:
+  // `flush()`, deliberately, where some-filter's handler disposes the recorder
+  // and, on a real unload, forgets the session:
   //
   //   - `pagehide` also fires for a document entering the back-forward cache,
   //     which comes back alive; a disposed recorder would silently ignore

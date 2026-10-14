@@ -32,8 +32,8 @@
  * (a same-document SPA navigation keeps it, which is the window a nav flash
  * needs observing in). One shared `storage.local` key would let concurrent
  * tabs clobber each other's ring buffer, so each session gets its own key
- * (`sessionStorageKey`) and a small capped index (`readIndex`/`touchIndex`)
- * lets the debug page pick one.
+ * (`sessionStorageKey`) and one index key per session (`createIndexPublisher`) lets
+ * the debug page pick one.
  */
 
 import { VEIL_STYLE } from "@filter/adapter/custody-primitive"
@@ -47,16 +47,18 @@ import {
   DARK_THEME_ATTR,
   DARK_THEME_STYLE_ID,
 } from "@filter/lib/content/theme-apply"
-import { ext } from "@filter/platform/content"
 import type { TabState } from "@filter/types/tab"
 import {
+  createSessionIndex,
   extensionStoragePersistence,
   memoryPersistence,
   Recorder,
+  type Compaction,
   type Invariant,
   type InvariantOutcome,
   type JsonValue,
   type ObservabilityPersistence,
+  type SessionIndex,
 } from "@some-extension/common/observability"
 
 export type CoverageEventKind =
@@ -437,11 +439,10 @@ export const scopeCoverageInvariants: ReadonlyArray<
 // ── The recorder ─────────────────────────────────────────────────────────────
 
 const SESSION_KEY_PREFIX = "sf.observability.session."
-const INDEX_KEY = "sf.observability.index.v1"
-const MAX_INDEX_ENTRIES = 20
+const SESSION_KEY_SUFFIX = ".v1"
 
 export function sessionStorageKey(sessionId: string): string {
-  return `${SESSION_KEY_PREFIX}${sessionId}.v1`
+  return `${SESSION_KEY_PREFIX}${sessionId}${SESSION_KEY_SUFFIX}`
 }
 
 export type IndexEntry = {
@@ -463,47 +464,75 @@ function isIndexEntry(value: unknown): value is IndexEntry {
   )
 }
 
-/** The debug page's session picker. Sorted most-recently-updated first. */
-export async function readIndex(): Promise<Array<IndexEntry>> {
-  try {
-    const raw: unknown = await ext.storage.local.get(INDEX_KEY)
-    const value: unknown =
-      raw !== null && typeof raw === "object"
-        ? Reflect.get(raw, INDEX_KEY)
-        : undefined
-    if (!Array.isArray(value)) return []
-    return value.filter(isIndexEntry).sort((a, b) => b.updatedAt - a.updatedAt)
-  } catch {
-    return []
-  }
+/**
+ * One index key per session, so a tab never writes a key another tab writes
+ * (`storage.local` has no compare-and-set). See `createSessionIndex`.
+ */
+const index: SessionIndex<IndexEntry> = createSessionIndex({
+  namespace: "sf.observability",
+  payload: { prefix: SESSION_KEY_PREFIX, suffix: SESSION_KEY_SUFFIX },
+  isEntry: isIndexEntry,
+})
+
+/** This session's index key. Exported for the debug page's tests. */
+export function indexStorageKey(sessionId: string): string {
+  return index.indexKey(sessionId)
 }
 
 /**
- * Publish (or refresh) this session's index entry. Best-effort — a storage
- * failure here must not affect theming, so every call site swallows it.
+ * List the sessions, enforce the cap and sweep what nothing lists. The debug
+ * page's session picker.
  */
-export async function touchIndex(entry: IndexEntry): Promise<void> {
-  try {
-    const existing = await readIndex()
-    const next = [
-      entry,
-      ...existing.filter((e) => e.sessionId !== entry.sessionId),
-    ]
-      .sort((a, b) => b.updatedAt - a.updatedAt)
-      .slice(0, MAX_INDEX_ENTRIES)
-    await ext.storage.local.set({ [INDEX_KEY]: next })
-  } catch {
-    // Best-effort — diagnostics degrading must never affect theming.
-  }
+export function compactIndex(): Promise<Compaction<IndexEntry>> {
+  return index.compact()
 }
 
-export async function removeFromIndex(sessionId: string): Promise<void> {
-  try {
-    const existing = await readIndex()
-    const next = existing.filter((e) => e.sessionId !== sessionId)
-    await ext.storage.local.set({ [INDEX_KEY]: next })
-  } catch {
-    // Best-effort.
+/**
+ * This page load's index entry, from first touch to `pagehide`.
+ *
+ * Touched on every flush (so a long-lived tab stays listed however many
+ * loads happen elsewhere) and on every state change; compacted once, after
+ * the first touch, where that is cheap (see `createSessionIndex`).
+ */
+export type IndexPublisher = {
+  touch(): void
+  /**
+   * `pagehide`: dispose the recorder, which flushes it, and stop touching.
+   * A real unload also forgets the session, index key and bundle; a bfcache
+   * entry keeps both, since the page may be shown again and the recording
+   * is still worth reading.
+   */
+  retire(recorder: CoverageRecorder, persisted: boolean): void
+}
+
+export function createIndexPublisher(
+  sessionId: string,
+  describe: () => Pick<IndexEntry, "origin" | "title" | "tabState">
+): IndexPublisher {
+  let compacted = false
+  let retired = false
+  return {
+    touch(): void {
+      if (retired) return
+      const touched = index.touch({
+        ...describe(),
+        sessionId,
+        updatedAt: Date.now(),
+      })
+      // After this session is listed: compacting first would evict an older
+      // session to make room for one it cannot see yet.
+      if (!compacted) {
+        compacted = true
+        void touched.then(() => index.compactIfCheap())
+      }
+    },
+    retire(recorder: CoverageRecorder, persisted: boolean): void {
+      retired = true
+      // Both writes are issued now, flush first: on a real unload nothing
+      // after this handler is guaranteed to run.
+      void recorder.dispose()
+      if (!persisted) void index.remove(sessionId)
+    },
   }
 }
 
@@ -514,14 +543,28 @@ export type CoverageRecorder = Recorder<
   CoverageContext
 >
 
-/** One recorder per content-script instance (per real page load; see the header). */
+/**
+ * One recorder per content-script instance (per real page load; see the
+ * header). `onFlushed` runs after each write of the bundle.
+ */
 export function createCoverageRecorder(
   sessionId: string,
-  persist: boolean
+  persist: boolean,
+  onFlushed?: () => void
 ): CoverageRecorder {
-  const persistence: ObservabilityPersistence = persist
+  const port: ObservabilityPersistence = persist
     ? extensionStoragePersistence({ key: sessionStorageKey(sessionId) })
     : memoryPersistence()
+  const persistence: ObservabilityPersistence =
+    onFlushed === undefined
+      ? port
+      : {
+          ...port,
+          save: async (state): Promise<void> => {
+            await port.save(state)
+            onFlushed()
+          },
+        }
 
   return new Recorder<
     CoverageEventKind,

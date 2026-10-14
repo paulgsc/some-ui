@@ -22,8 +22,8 @@ import {
   type ContrastContext,
 } from "@filter/lib/content/contrast-observability"
 import {
+  compactIndex,
   coverageInvariants,
-  readIndex,
   sessionStorageKey,
   type CoverageContext,
   type IndexEntry,
@@ -32,6 +32,7 @@ import {
 import type { ScopeCoverageSnapshot } from "@filter/lib/content/coverage-watchdog"
 import { ext } from "@filter/platform/content"
 import {
+  createSessionLoader,
   runInvariants,
   scoreHealth,
   type HealthReport,
@@ -48,11 +49,7 @@ type Bundle = PersistedState
 /** Current view filter. Reset whenever the selected session changes. */
 type Filter = { kind: string; subject: string }
 
-let sessions: Array<IndexEntry> = []
-let selectedSessionId: string | undefined
 let filter: Filter = { kind: "", subject: "" }
-let bundle: Bundle | undefined
-let loadError: string | undefined
 
 function isBundle(value: unknown): value is Bundle {
   return (
@@ -201,6 +198,7 @@ function el<K extends keyof HTMLElementTagNameMap>(
 // ── Sections ─────────────────────────────────────────────────────────────────
 
 function pickerSection(): HTMLElement {
+  const { sessions, selectedSessionId } = loader
   const select = el("select")
   if (sessions.length === 0) {
     select.appendChild(new Option("no open sessions", ""))
@@ -213,13 +211,12 @@ function pickerSection(): HTMLElement {
     select.value = selectedSessionId ?? sessions[0]?.sessionId ?? ""
   }
   select.addEventListener("change", () => {
-    selectedSessionId = select.value || undefined
     filter = { kind: "", subject: "" }
-    void load()
+    void loader.select(select.value || undefined)
   })
 
   const refresh = el("button", { text: "Refresh sessions" })
-  refresh.addEventListener("click", () => void loadSessions(true))
+  refresh.addEventListener("click", () => void loader.load(true))
 
   const section = el("section")
   section.append(
@@ -587,14 +584,14 @@ function header(
       class: "sf-sub",
       text: b
         ? `${b.namespace} · ${b.events.length} event(s) retained`
-        : sessions.length === 0
+        : loader.sessions.length === 0
           ? "No sessions recorded yet — open a page with the extension active, then refresh."
           : "Pick a session above.",
     })
   )
 
   const refresh = el("button", { text: "Refresh" })
-  refresh.addEventListener("click", () => void load())
+  refresh.addEventListener("click", () => void loader.load())
   const actions = el("div", { class: "sf-actions" }, [refresh])
 
   if (b && health && contrastHealth) {
@@ -613,31 +610,36 @@ async function render(): Promise<void> {
   if (!root) return
   root.replaceChildren()
 
-  const health = bundle ? await computeHealth(bundle) : undefined
-  const contrastHealth = bundle
-    ? await computeContrastHealth(bundle)
+  // Read live after each await, never captured once: a render overtaken by
+  // a session switch must not paint the old session's bundle.
+  const health = loader.bundle ? await computeHealth(loader.bundle) : undefined
+  const contrastHealth = loader.bundle
+    ? await computeContrastHealth(loader.bundle)
     : undefined
-  root.appendChild(header(bundle, health, contrastHealth))
+  root.appendChild(header(loader.bundle, health, contrastHealth))
   root.appendChild(pickerSection())
 
-  if (loadError !== undefined) {
+  if (loader.loadError !== undefined) {
     const section = el("section")
     section.append(
       el("h2", { text: "Unavailable" }),
-      el("div", { class: "sf-empty bad", text: loadError })
+      el("div", { class: "sf-empty bad", text: loader.loadError })
     )
     root.appendChild(section)
     return
   }
 
+  const bundle = loader.bundle
   if (!bundle || !health || !contrastHealth) {
     root.appendChild(
       el("div", {
         class: "sf-empty",
         text:
-          sessions.length === 0
+          loader.sessions.length === 0
             ? "Nothing to show yet."
-            : "Loading diagnostics…",
+            : loader.settled
+              ? "No recording stored for this session — it may have closed before its first write."
+              : "Loading diagnostics…",
       })
     )
     return
@@ -656,25 +658,10 @@ async function render(): Promise<void> {
   )
 }
 
-async function loadSessions(pickMostRecent: boolean): Promise<void> {
-  sessions = await readIndex()
-  if (pickMostRecent || selectedSessionId === undefined) {
-    selectedSessionId = sessions[0]?.sessionId
-  } else if (!sessions.some((s) => s.sessionId === selectedSessionId)) {
-    selectedSessionId = sessions[0]?.sessionId
-  }
-}
+const loader = createSessionLoader<IndexEntry, Bundle>({
+  list: compactIndex,
+  loadBundle,
+  render,
+})
 
-async function load(): Promise<void> {
-  loadError = undefined
-  try {
-    await loadSessions(false)
-    bundle = selectedSessionId ? await loadBundle(selectedSessionId) : undefined
-    await render()
-  } catch (e) {
-    loadError = e instanceof Error ? e.message : String(e)
-    await render()
-  }
-}
-
-void load()
+void loader.load()

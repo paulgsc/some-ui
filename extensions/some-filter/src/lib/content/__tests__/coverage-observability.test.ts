@@ -4,10 +4,17 @@ import {
 } from "@filter/adapter/custody-primitive"
 import type { ScopeStateKind } from "@filter/adapter/scope-registry"
 import {
+  compactIndex,
   coverageInvariants,
+  createCoverageRecorder,
+  createIndexPublisher,
+  indexStorageKey,
   scopeArtifactPresent,
   scopeCoverageInvariants,
+  sessionStorageKey,
   type CoverageContext,
+  type CoverageRecorder,
+  type IndexPublisher,
   type ScopeCoverageContext,
   type ScopeCoverageEntry,
 } from "@filter/lib/content/coverage-observability"
@@ -19,7 +26,9 @@ import {
   DARK_THEME_ATTR,
   DARK_THEME_STYLE_ID,
 } from "@filter/lib/content/theme-apply"
+import { ext } from "@filter/platform/content"
 import type { InvariantOutcome } from "@some-extension/common/observability"
+import { fakeStorage } from "@some-extension/common/testing"
 import { afterEach, describe, expect, it } from "vitest"
 
 type SyncCheck<C> = {
@@ -492,5 +501,104 @@ describe("ScopeCoverageHeld — generalizes CoverageHeld to every live registere
       scopeIds: ["s1", "s2"],
       kinds: ["HELD", "COMMITTED"],
     })
+  })
+})
+
+// ── The session index ───────────────────────────────────────────────────────
+//
+// `createSessionIndex` is tested in common; this covers this adapter's
+// wiring: the touch on every flush, and the `pagehide` path.
+
+/**
+ * `ext` is the `browser` global the vitest setup stubs, so the area is
+ * installed onto it, where the index's default `storage.local` resolver and
+ * the recorder's persistence both find it.
+ */
+function installFakeStorage(): Map<string, unknown> {
+  const fake = fakeStorage()
+  Reflect.set(ext, "storage", { local: fake.area })
+  return fake.store
+}
+
+/** A persisted recorder whose flushes touch its index entry, as content.ts wires it. */
+function recording(sessionId: string): {
+  recorder: CoverageRecorder
+  publisher: IndexPublisher
+} {
+  const publisher = createIndexPublisher(sessionId, () => ({
+    origin: "https://example.com",
+    title: "A page",
+    tabState: "auto",
+  }))
+  const recorder = createCoverageRecorder(sessionId, true, () => {
+    publisher.touch()
+  })
+  return { recorder, publisher }
+}
+
+const drain = (): Promise<void> =>
+  new Promise((resolve) => {
+    setTimeout(resolve, 0)
+  })
+
+afterEach(() => {
+  Reflect.deleteProperty(ext, "storage")
+})
+
+describe("the session index", () => {
+  it("touches the entry on every flush, so a tab evicted while live is listed again by its next write", async () => {
+    const store = installFakeStorage()
+    const { recorder } = recording("s1")
+
+    recorder.record({ kind: "session.start" })
+    await recorder.flush()
+    await drain()
+    expect(store.get(indexStorageKey("s1"))).toMatchObject({
+      sessionId: "s1",
+      title: "A page",
+      tabState: "auto",
+    })
+
+    store.delete(indexStorageKey("s1"))
+    await recorder.flush()
+    await drain()
+    expect(store.has(indexStorageKey("s1"))).toBe(true)
+    expect((await compactIndex()).entries.map((e) => e.sessionId)).toEqual([
+      "s1",
+    ])
+  })
+
+  it("keeps the recording through a bfcache pagehide, and stops touching it", async () => {
+    const store = installFakeStorage()
+    const { recorder, publisher } = recording("s1")
+    publisher.touch()
+    await drain()
+    const listedEntry = store.get(indexStorageKey("s1"))
+
+    publisher.retire(recorder, true)
+    await drain()
+
+    expect(store.has(sessionStorageKey("s1"))).toBe(true)
+    expect(store.get(indexStorageKey("s1"))).toBe(listedEntry)
+
+    // Restored from the bfcache, the page changes state again.
+    store.delete(indexStorageKey("s1"))
+    publisher.touch()
+    await drain()
+    expect(store.has(indexStorageKey("s1"))).toBe(false)
+  })
+
+  it("forgets the session, bundle included, on a real unload — and its last flush does not re-list it", async () => {
+    const store = installFakeStorage()
+    const { recorder, publisher } = recording("s1")
+    recorder.record({ kind: "session.start" })
+    publisher.touch()
+    await drain()
+
+    publisher.retire(recorder, false)
+    await drain()
+
+    expect(store.has(sessionStorageKey("s1"))).toBe(false)
+    expect(store.has(indexStorageKey("s1"))).toBe(false)
   })
 })

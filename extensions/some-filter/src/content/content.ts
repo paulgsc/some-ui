@@ -28,8 +28,7 @@ import {
 } from "@filter/lib/content/contrast-observability"
 import {
   createCoverageRecorder,
-  removeFromIndex,
-  touchIndex,
+  createIndexPublisher,
   type CoverageRecorder,
 } from "@filter/lib/content/coverage-observability"
 import {
@@ -194,9 +193,15 @@ function safeRandomUUID(): string {
 // Constructed before the scope registry: `registryObserver` is a
 // construction-time parameter of `createScopeRegistry()`.
 const observabilitySessionId = safeRandomUUID()
+const observabilityIndex = createIndexPublisher(observabilitySessionId, () => ({
+  origin: location.origin,
+  title: document.title,
+  tabState: currentState,
+}))
 const observabilityRecorder: CoverageRecorder = createCoverageRecorder(
   observabilitySessionId,
-  true
+  true,
+  () => observabilityIndex.touch()
 )
 
 // The contrastHealth axis (see contrast-observability.ts's header). Two
@@ -314,16 +319,6 @@ const coverageWatchdog: CoverageWatchdog = createCoverageWatchdog(
   () => (enforcing && currentState === "auto" ? DEFAULT_SWATCH_ID : null)
 )
 
-function touchObservabilityIndex(): void {
-  void touchIndex({
-    sessionId: observabilitySessionId,
-    origin: location.origin,
-    title: document.title,
-    tabState: currentState,
-    updatedAt: Date.now(),
-  })
-}
-
 /** Defers auto mode's first round while the tab is hidden — see `visibility-gate.ts`. */
 const visibilityGate = createVisibilityGate()
 
@@ -338,7 +333,7 @@ function applyState(state: TabState): void {
     kind: "state.changed",
     detail: { from: previous, to: state },
   })
-  touchObservabilityIndex()
+  observabilityIndex.touch()
 
   // Set before coverageWatchdog.observe(): its first call after "off" checks
   // synchronously against a DOM actuation hasn't touched yet. The try/finally
@@ -819,9 +814,10 @@ function init(): void {
     void runEnforcementRound(stateGeneration)
   })
 
-  // Real navigation away (or tab close): flush and drop the index entry so
-  // the debug page's picker does not accumulate dead sessions. Best-effort.
-  window.addEventListener("pagehide", () => {
+  // Flush and stop publishing. A real unload (or tab close) also drops the
+  // index entry and its bundle, so the debug page's picker does not
+  // accumulate dead sessions; a bfcache entry keeps both. Best-effort.
+  window.addEventListener("pagehide", (event) => {
     // The visibility gate is deliberately NOT cancelled. On a real unload the
     // listener dies anyway; on a bfcache pagehide, a tab never yet shown
     // would lose its only startup callback and stay behind the opaque veil
@@ -831,8 +827,7 @@ function init(): void {
     // A bfcache pagehide keeps this context alive, and the 250ms scope poll
     // would keep walking the registry with the recorder disposed.
     scopeCoverageWatchdog.teardown()
-    void observabilityRecorder.dispose()
-    void removeFromIndex(observabilitySessionId)
+    observabilityIndex.retire(observabilityRecorder, event.persisted)
   })
 }
 
