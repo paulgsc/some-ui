@@ -11,7 +11,9 @@
  *
  * Deliberately narrow: only auto mode's decide/realize outcome (and the
  * enforcement handshake) routes through the registry, so a thrown round
- * holds the veil instead of reading as "nothing to apply". Legacy/off and
+ * holds the veil instead of reading as "nothing to apply" — for at most
+ * `VEIL_MAX_HOLD_MS`, after which it is abandoned (canon Definition D.6),
+ * not exonerated. Legacy/off and
  * the `yt-navigate-*`/`pagehide` handlers still touch the veil directly.
  *
  * Every caller touching the veil from outside the registry must call
@@ -36,9 +38,11 @@
  */
 
 import {
+  abandonPrepaint,
   COMMIT_FALLBACK_MS,
   disablePrepaint,
   enablePrepaint,
+  type VeilAbandonReason,
 } from "@filter/lib/content/prepaint"
 import type { Epoch } from "@some-extension/transport/session/epoch"
 
@@ -228,6 +232,17 @@ export type DocumentScopeCustodian = {
    * DOM no-op. See the header.
    */
   reengage(contentEpoch: Epoch): void
+
+  /**
+   * Canon Definition D.6's abandonment, for a start that threw: releases the
+   * veil now without a registry transition. `r_0` keeps its held value, so
+   * this is never an exoneration and a later round resolves it as usual.
+   * `prepaint.ts` reports it to its abandon handler. Returns whether a veil
+   * was up; a second call releases and records nothing. The
+   * `VEIL_MAX_HOLD_MS` bound takes the same path on its own, which is what
+   * releases a `FAILED_HELD` document.
+   */
+  abandon(reason: VeilAbandonReason): boolean
 }
 
 export function createDocumentScopeCustodian(
@@ -270,6 +285,10 @@ export function createDocumentScopeCustodian(
     reengage(contentEpoch: Epoch): void {
       registry.reRegister(DOCUMENT_SCOPE_ID, contentEpoch)
       lastSignature = null
+    },
+
+    abandon(reason: VeilAbandonReason): boolean {
+      return abandonPrepaint(reason)
     },
   }
 

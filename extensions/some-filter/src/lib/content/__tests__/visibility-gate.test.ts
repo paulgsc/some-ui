@@ -1,4 +1,7 @@
-import { createVisibilityGate } from "@filter/lib/content/visibility-gate"
+import {
+  afterVisibleFor,
+  createVisibilityGate,
+} from "@filter/lib/content/visibility-gate"
 import type { VisibilitySource } from "@filter/lib/content/visibility-gate"
 import { describe, expect, it, vi, type Mock } from "vitest"
 
@@ -174,5 +177,59 @@ describe("createVisibilityGate", () => {
 
       expect(gate.pending).toBe(false)
     })
+  })
+})
+
+describe("afterVisibleFor", () => {
+  it("runs after the delay when the document is already visible", () => {
+    vi.useFakeTimers()
+    try {
+      const fn = vi.fn()
+      afterVisibleFor(1000, fn, fakeDocument("visible").source)
+      vi.advanceTimersByTime(999)
+      expect(fn).not.toHaveBeenCalled()
+      vi.advanceTimersByTime(1)
+      expect(fn).toHaveBeenCalledTimes(1)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it("starts the clock only when a hidden document is first shown, once", () => {
+    vi.useFakeTimers()
+    try {
+      const fn = vi.fn()
+      const doc = fakeDocument("hidden")
+      afterVisibleFor(1000, fn, doc.source)
+      vi.advanceTimersByTime(5000)
+      expect(fn).not.toHaveBeenCalled()
+
+      doc.show()
+      expect(doc.listeners).toBe(0)
+      doc.hide()
+      doc.show()
+      vi.advanceTimersByTime(1000)
+      expect(fn).toHaveBeenCalledTimes(1)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it("cancel stops both a running clock and a pending wait", () => {
+    vi.useFakeTimers()
+    try {
+      const running = vi.fn()
+      afterVisibleFor(1000, running, fakeDocument("visible").source)()
+      const waiting = vi.fn()
+      const doc = fakeDocument("hidden")
+      afterVisibleFor(1000, waiting, doc.source)()
+      expect(doc.listeners).toBe(0)
+      doc.show()
+      vi.advanceTimersByTime(2000)
+      expect(running).not.toHaveBeenCalled()
+      expect(waiting).not.toHaveBeenCalled()
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })

@@ -36,6 +36,7 @@ import {
 } from "@filter/lib/content/color"
 import type { ContrastSourceReport } from "@filter/lib/content/contrast-observability"
 import { rgbaToCss } from "@filter/lib/content/modify-colors"
+import { wasRemovedByUs } from "@filter/lib/content/own-removal"
 import { PREPAINT_DIRTY_CLASS } from "@filter/lib/content/prepaint"
 import {
   DARK_THEME_ATTR,
@@ -684,18 +685,17 @@ export function isSelfAuthored(record: MutationRecord): boolean {
   if (isExtensionAuthored(record.target)) return true
 
   if (record.type === "childList") {
-    // Removal of an extension-owned node is deliberately *not* treated as
-    // self-authored, even though this module is one of the things that
-    // removes them. Remark 7.2's whole point is that "our node is gone" is
-    // ambiguous between "we took it down" and "the vendor did" — and the
-    // second case is the one that must be repaired, so the ambiguity has to
-    // resolve toward reacting. Reacting to our own teardown costs exactly
-    // one extra round and cannot loop: the round that follows re-derives
-    // the same verdict and, finding nothing left to remove, writes nothing.
-    if (record.removedNodes.length > 0) return false
+    // "Our node is gone" is ambiguous between "we took it down" and "the
+    // vendor did" (Remark 7.2), and the second case must be repaired. So a
+    // removal is ours only when the exact node went through
+    // `removeOwnNode()`; any other removal, of our nodes included, reacts.
+    // Reading every removal as vendor evidence cost a second full round
+    // after each first pass (the veil's own teardown).
+    const removed = [...record.removedNodes]
+    if (!removed.every(wasRemovedByUs)) return false
 
     const added = [...record.addedNodes]
-    return added.length > 0 && added.every(isExtensionAuthored)
+    return added.length + removed.length > 0 && added.every(isExtensionAuthored)
   }
 
   return isDirtyClassToggle(record)

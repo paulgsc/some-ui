@@ -19,6 +19,7 @@
 
 import { DEFAULT_SWATCH_ID } from "@filter/adapter/swatches"
 import { createDocumentEnforcementDeps } from "@filter/lib/content/enforcement-dom"
+import { readEnforcementFlag } from "@filter/lib/content/enforcement-flag"
 import { createEnforcementQueue } from "@filter/lib/content/enforcement-handshake"
 import {
   isExtensionMessage,
@@ -28,8 +29,6 @@ import { disablePrepaint, enablePrepaint } from "@filter/lib/content/prepaint"
 import { DEFAULT_TAB_STATE, nextTabState } from "@filter/lib/tab-state"
 import { ext } from "@filter/platform/content"
 import type { TabState } from "@filter/types/tab"
-
-const ENFORCEMENT_FLAG_KEY = "enforcementSheetEnabled"
 
 function isSubframe(): boolean {
   try {
@@ -81,13 +80,7 @@ function apply(next: TabState): void {
 }
 
 async function start(): Promise<void> {
-  let flag = false
-  try {
-    const data = await ext.storage.local.get([ENFORCEMENT_FLAG_KEY])
-    flag = data[ENFORCEMENT_FLAG_KEY] === true
-  } catch {
-    // Unreadable is off.
-  }
+  const flag = await readEnforcementFlag((keys) => ext.storage.local.get(keys))
   if (!flag) {
     // The registration outlived the flag (it is unregistered on the next
     // storage change). Nothing to enforce.

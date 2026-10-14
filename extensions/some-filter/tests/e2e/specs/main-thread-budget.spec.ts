@@ -20,11 +20,19 @@
  * statically by the declarative-cost tests in `theme-apply.test.ts`.
  */
 
+import { VEIL_MAX_HOLD_MS } from "@filter/lib/content/prepaint"
 import { expect, test, waitForClassification } from "@filter/playwright/fixture"
 import type { Page } from "@playwright/test"
 
 declare global {
   var __swLongTasks: Array<number>
+  var __swFirstPass:
+    | {
+        longTasks: Array<number>
+        rounds: number
+        veilGoneAt: number | null
+      }
+    | undefined
 }
 
 /**
@@ -211,5 +219,87 @@ test.describe("main-thread budget", () => {
       `churn blocked ${Math.round(budget.totalMs)}ms across ${budget.tasks} long tasks`
     ).toBeLessThan(MAX_TOTAL_BLOCKING_MS)
     expect(budget.maxMs).toBeLessThan(MAX_SINGLE_TASK_MS)
+  })
+
+  /**
+   * The first pass on a large page. What this change guarantees is asserted:
+   * the veil is down within its bound, and a static page gets one round, not
+   * a second one set off by the veil's own teardown. How long the first pass
+   * blocks is reported, not yet asserted: it is one synchronous task until it
+   * is time-sliced.
+   */
+  test("a 20,000-element static page: the veil lifts within its bound and one round runs", async ({
+    context,
+  }) => {
+    const rows = 2_222
+    const cells = Array.from(
+      { length: rows },
+      (_, i) =>
+        `<div class="row"${i % 7 === 0 ? ' style="background:#eef0f0"' : ""}><span>cell ${i}</span><a href="#">link</a><span style="color:rgb(${i % 90},40,40)">detail</span><b>x</b><i>y</i><em>z</em><p>para</p><code>c</code></div>`
+    ).join("")
+    const url = "https://main-thread-budget.test/first-pass.html"
+    await context.route(url, (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: "text/html",
+        body: `<!doctype html><html><head><title>big</title><style>body{background:#fff;color:#111}</style></head><body><div><div><div><div>${cells}</div></div></div></div></body></html>`,
+      })
+    )
+
+    const page = await context.newPage()
+    await page.addInitScript((veilId: string) => {
+      const probe: NonNullable<typeof globalThis.__swFirstPass> = {
+        longTasks: [],
+        rounds: 0,
+        veilGoneAt: null,
+      }
+      globalThis.__swFirstPass = probe
+      new PerformanceObserver((list) => {
+        for (const entry of list.getEntries()) {
+          probe.longTasks.push(Math.round(entry.duration))
+        }
+      }).observe({ type: "longtask", buffered: true })
+      document.addEventListener(
+        "DOMContentLoaded",
+        () => {
+          // content.ts writes data-sw-theme-applied once per round (onFire),
+          // and an unchanged value still queues a record.
+          new MutationObserver((records) => {
+            probe.rounds += records.length
+          }).observe(document.body, {
+            attributes: true,
+            attributeFilter: ["data-sw-theme-applied"],
+          })
+          new MutationObserver(() => {
+            if (
+              probe.veilGoneAt === null &&
+              document.getElementById(veilId) === null
+            ) {
+              probe.veilGoneAt = Math.round(performance.now())
+            }
+          }).observe(document.documentElement, { childList: true })
+        },
+        { once: true }
+      )
+    }, "__sw_prepaint_veil")
+    await page.bringToFront()
+    await page.goto(url)
+    await waitForClassification(page, 15_000)
+    await page.waitForTimeout(3_000)
+
+    const probe = await page.evaluate(() => globalThis.__swFirstPass)
+    if (probe === undefined) throw new Error("probe not installed")
+    const report =
+      `veil down at ${String(probe.veilGoneAt ?? "never")} ms; ` +
+      `long tasks ${JSON.stringify(probe.longTasks)} ms; rounds ${String(probe.rounds)}`
+    test.info().annotations.push({ type: "first-pass", description: report })
+    console.log(`[first-pass] ${report}`)
+
+    expect(probe.veilGoneAt).not.toBeNull()
+    expect(probe.veilGoneAt ?? Infinity).toBeLessThanOrEqual(
+      VEIL_MAX_HOLD_MS + 500
+    )
+    expect(probe.rounds).toBe(1)
+    await page.close()
   })
 })

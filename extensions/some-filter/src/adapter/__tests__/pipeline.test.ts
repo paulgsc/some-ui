@@ -10,7 +10,14 @@ import {
   withVendorColorsVisible,
 } from "@filter/adapter/pipeline"
 import { SWATCHES } from "@filter/adapter/swatches"
-import { PREPAINT_DIRTY_CLASS } from "@filter/lib/content/prepaint"
+import { removeOwnNode } from "@filter/lib/content/own-removal"
+import {
+  disablePrepaint,
+  enablePrepaint,
+  PREPAINT_DIRTY_CLASS,
+  PREPAINT_VEIL_ID,
+  withPrepaintSuppressed,
+} from "@filter/lib/content/prepaint"
 import { DARK_THEME_ATTR } from "@filter/lib/content/theme-apply"
 import { createSessionLifecycle } from "@some-extension/transport/session/lifecycle"
 import { afterEach, describe, expect, it, vi } from "vitest"
@@ -816,6 +823,37 @@ describe("isSelfAuthored", () => {
     expect(records.some((record) => !isSelfAuthored(record))).toBe(true)
   })
 
+  it("recognises the removal of the exact node this extension removed through removeOwnNode()", async () => {
+    const own = document.createElement("style")
+    own.setAttribute("data-my-ext", "")
+    document.head.appendChild(own)
+
+    const records = await recordsFrom(() => removeOwnNode(own), {
+      childList: true,
+      subtree: true,
+    })
+
+    expect(records.length).toBeGreaterThan(0)
+    expect(records.every(isSelfAuthored)).toBe(true)
+  })
+
+  it("does not recognise a vendor removal of a node that is not ours, batched with one of ours", async () => {
+    const own = document.createElement("style")
+    own.setAttribute("data-my-ext", "")
+    const vendor = document.createElement("div")
+    document.body.append(own, vendor)
+
+    const records = await recordsFrom(
+      () => {
+        removeOwnNode(own)
+        vendor.remove()
+      },
+      { childList: true, subtree: true }
+    )
+
+    expect(records.some((record) => !isSelfAuthored(record))).toBe(true)
+  })
+
   it("recognises the veil's sw-dirty toggle alongside unrelated vendor classes", async () => {
     document.documentElement.className = "vendor-a vendor-b"
 
@@ -1139,5 +1177,62 @@ describe("realizeForegroundRepairs — why the rule above exists", () => {
 
     far.remove()
     elsewhere.remove()
+  })
+})
+
+describe("createContentSession — its own teardown schedules no round", () => {
+  // Every first pass used to cost a second full round on a static page: the
+  // veil's removal at commit, and the transition freeze's, read as vendor
+  // evidence. Measured on a 22,500-element page: 1.4 s each.
+  async function roundsAfter(act: () => void): Promise<number> {
+    vi.useFakeTimers()
+    try {
+      document.body.innerHTML = '<div style="background: white">text</div>'
+      enablePrepaint()
+      let fireCount = 0
+      const contentSession = createContentSession(
+        SWATCHES.default,
+        createSessionLifecycle(),
+        () => {
+          fireCount += 1
+        }
+      )
+      contentSession.observe()
+      withPrepaintSuppressed(() => {
+        contentSession.rescan()
+      })
+      // The first pass's own writes (freeze added and removed, theme sheets,
+      // tags) schedule nothing beyond rescan()'s own round.
+      await Promise.resolve()
+      await Promise.resolve()
+      vi.advanceTimersByTime(100)
+      expect(fireCount).toBe(1)
+      fireCount = 0
+
+      act()
+      await Promise.resolve()
+      await Promise.resolve()
+      vi.advanceTimersByTime(100)
+      contentSession.teardown()
+      return fireCount
+    } finally {
+      vi.useRealTimers()
+    }
+  }
+
+  it("the first pass's own writes, the veil's teardown, and the freeze's removal fire nothing", async () => {
+    expect(
+      await roundsAfter(() => {
+        disablePrepaint()
+      })
+    ).toBe(0)
+  })
+
+  it("a vendor removing the veil still schedules a round (Remark 7.2)", async () => {
+    expect(
+      await roundsAfter(() => {
+        document.getElementById(PREPAINT_VEIL_ID)?.remove()
+      })
+    ).toBe(1)
   })
 })

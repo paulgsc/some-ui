@@ -89,6 +89,8 @@ export type CoverageEventKind =
   | "enforcement.confirmed"
   | "enforcement.timeout"
   | "enforcement.removed"
+  /** Canon Definition D.6: the veil was released unresolved (`VeilAbandonReason`). */
+  | "veil.abandoned"
 
 export type CoverageCounter =
   | "sessions_started"
@@ -114,6 +116,8 @@ export type CoverageCounter =
   | "scope_stale_resolves_discarded"
   /** The liveness bound released the veil onto the native page. */
   | "enforcement_timeout"
+  /** The veil was abandoned at its bound or after a thrown start (Definition D.6). */
+  | "veil_abandoned"
 
 export type CoverageAggregate =
   | "violation_duration_ms"

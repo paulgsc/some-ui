@@ -93,3 +93,44 @@ export function createVisibilityGate(
     },
   }
 }
+
+/**
+ * Runs `fn` once `ms` of visible time has passed: now if the document is
+ * visible, else from the moment it is first shown. Returns a cancel.
+ *
+ * The clock does not pause when the tab is hidden again: it bounds how long
+ * something the user has seen may last, not how long they keep looking.
+ * Canon Definition D.6's clock (see `prepaint.ts`'s `VEIL_MAX_HOLD_MS`).
+ */
+export function afterVisibleFor(
+  ms: number,
+  fn: () => void,
+  source: VisibilitySource = document
+): () => void {
+  let timer: ReturnType<typeof setTimeout> | null = null
+
+  const start = (): void => {
+    timer = setTimeout(() => {
+      timer = null
+      fn()
+    }, ms)
+  }
+
+  const onVisible = (): void => {
+    if (source.visibilityState === "hidden") return
+    source.removeEventListener("visibilitychange", onVisible)
+    start()
+  }
+
+  if (source.visibilityState !== "hidden") {
+    start()
+  } else {
+    source.addEventListener("visibilitychange", onVisible)
+  }
+
+  return (): void => {
+    source.removeEventListener("visibilitychange", onVisible)
+    if (timer !== null) clearTimeout(timer)
+    timer = null
+  }
+}

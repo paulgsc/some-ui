@@ -12,6 +12,8 @@ import {
 import {
   isPrepaintActive,
   PREPAINT_VEIL_ID,
+  setVeilAbandonHandler,
+  VEIL_MAX_HOLD_MS,
 } from "@filter/lib/content/prepaint"
 import { afterEach, describe, expect, it, vi, type Mock } from "vitest"
 
@@ -367,5 +369,49 @@ describe("createDocumentScopeCustodian — reportEnforcement", () => {
 
     expect(custodian.registry.stateOf(DOCUMENT_SCOPE_ID)).toBe(committed)
     expect(veil()).toBeNull()
+  })
+})
+
+describe("abandon() — canon Definition D.6", () => {
+  afterEach(() => {
+    setVeilAbandonHandler(null)
+    vi.useRealTimers()
+  })
+
+  it("a FAILED_HELD document is abandoned at VEIL_MAX_HOLD_MS: the veil comes down, the registry is not exonerated, and it is reported once", () => {
+    vi.useFakeTimers()
+    const reasons: Array<string> = []
+    setVeilAbandonHandler((reason) => reasons.push(reason))
+    const custodian = registeredCustodian()
+    custodian.reportPipelineOutcome(ERROR_OUTCOME)
+
+    vi.advanceTimersByTime(VEIL_MAX_HOLD_MS - 1)
+    expect(isPrepaintActive()).toBe(true)
+    vi.advanceTimersByTime(1)
+
+    expect(isPrepaintActive()).toBe(false)
+    expect(custodian.registry.stateOf(DOCUMENT_SCOPE_ID)?.kind).toBe(
+      "FAILED_HELD"
+    )
+    vi.advanceTimersByTime(VEIL_MAX_HOLD_MS * 2)
+    expect(reasons).toEqual(["veil-deadline"])
+  })
+
+  it("abandon() releases once, leaves the registry held, and a later verdict still resolves", async () => {
+    const reasons: Array<string> = []
+    setVeilAbandonHandler((reason) => reasons.push(reason))
+    const custodian = registeredCustodian()
+
+    expect(custodian.abandon("auto-start-threw")).toBe(true)
+    expect(custodian.abandon("auto-start-threw")).toBe(false)
+    expect(veil()).toBeNull()
+    expect(custodian.registry.stateOf(DOCUMENT_SCOPE_ID)?.kind).toBe("HELD")
+    expect(reasons).toEqual(["auto-start-threw"])
+
+    custodian.reportPipelineOutcome(OK_COMMITTED)
+    await flushCommit()
+    expect(custodian.registry.stateOf(DOCUMENT_SCOPE_ID)?.kind).toBe(
+      "COMMITTED"
+    )
   })
 })

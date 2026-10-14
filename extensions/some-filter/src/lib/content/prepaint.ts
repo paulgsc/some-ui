@@ -22,11 +22,21 @@
  *   enablePrepaint()  → adds sw-dirty + creates veil element
  *   disablePrepaint() → removes sw-dirty first (prevents self-healing observer
  *                       from re-creating) then removes veil element
+ *
+ * Bounded (canon Definition D.6, ADR 0002 §8.7)
+ * ─────────────────────────────────────────────
+ * Every engagement lasts at most `VEIL_MAX_HOLD_MS` of visible time. Past it
+ * the veil is abandoned: released onto whatever is rendered, reported to the
+ * abandon handler, and never read as an exoneration. prepaint-start.js times
+ * the `document_start` veil itself, so the bound holds even when this module
+ * never loads.
  */
 
 import { parseColor } from "./color"
 import { rgbaToCss } from "./modify-colors"
+import { removeOwnNode } from "./own-removal"
 import { counterInvertColor, detectVendorInvert } from "./vendor-filter"
+import { afterVisibleFor } from "./visibility-gate"
 
 export const PREPAINT_VEIL_ID = "__sw_prepaint_veil"
 
@@ -43,6 +53,55 @@ const DIRTY_CLASS = PREPAINT_DIRTY_CLASS
 // Matches --sw-bg-0 (SWATCHES.default.bg0) and prepaint.css's dirty-canvas
 // colour — the veil's uncompensated dark fill.
 const VEIL_BG = "#171c25"
+
+/**
+ * The longest one engagement of the veil may last, in visible time (canon
+ * Definition D.6's `T_max`). The same 2.5 s as the enforcement handshake's
+ * liveness bound (`ENFORCEMENT_LIVENESS_MS`), so neither engine blacks out a
+ * page for longer than the other.
+ *
+ * `public/prepaint-start.js` cannot import this and carries the same
+ * literal; `prepaint-start.test.ts` pins the two equal.
+ */
+export const VEIL_MAX_HOLD_MS = 2_500
+
+/** Why a veil was abandoned rather than resolved. */
+export type VeilAbandonReason =
+  | "veil-deadline"
+  | "prepaint-deadline"
+  | "init-threw"
+  | "auto-start-threw"
+
+let abandonHandler: ((reason: VeilAbandonReason) => void) | null = null
+
+/** Called once per abandonment. One handler: content.ts records it. */
+export function setVeilAbandonHandler(
+  handler: ((reason: VeilAbandonReason) => void) | null
+): void {
+  abandonHandler = handler
+}
+
+/**
+ * True from an abandonment until the veil is next released on purpose
+ * (`disablePrepaint()`: a commit, an exoneration, off). While true, a repair
+ * must not raise the veil again over the same unresolved page: the
+ * coverage watchdog's dark-desync repair would otherwise raise it, wait out
+ * the bound, and raise it again, for good (canon Definition D.6).
+ */
+let abandoned = false
+
+/** See `abandoned`: whether a self-initiated repair may raise the veil. */
+export function isPrepaintAbandoned(): boolean {
+  return abandoned
+}
+
+/** Cancels the running engagement's clock; `null` while the veil is down. */
+let cancelDeadline: (() => void) | null = null
+
+function stopDeadline(): void {
+  cancelDeadline?.()
+  cancelDeadline = null
+}
 
 function getVeil(): HTMLElement | null {
   return document.getElementById(PREPAINT_VEIL_ID)
@@ -134,6 +193,18 @@ export function enablePrepaint(): void {
   // call that finds the veil *already* up racing a pending teardown.
   commitToken += 1
 
+  // A new engagement starts the clock; re-affirming one already up does
+  // not, or a page that keeps re-raising (a nav-start per route) would
+  // never reach the bound. Up without a clock is the document_start veil,
+  // which prepaint-start.js times on its own; it gets one here too.
+  if (!isPrepaintActive() || cancelDeadline === null) {
+    stopDeadline()
+    cancelDeadline = afterVisibleFor(VEIL_MAX_HOLD_MS, () => {
+      cancelDeadline = null
+      abandonPrepaint("veil-deadline")
+    })
+  }
+
   // `classList.add`/`remove` re-set the `class` attribute (queuing a
   // MutationRecord) even when the token set is unchanged. The Sensor watches
   // `class` on <html>, so an unguarded no-op would feed a self-sustaining
@@ -180,6 +251,8 @@ export function enablePrepaint(): void {
  * this intentional teardown.
  */
 export function disablePrepaint(): void {
+  stopDeadline()
+  abandoned = false
   // Remove dirty class first — the self-healing observer checks it to tell
   // intentional teardown from vendor removal. Guarded like enablePrepaint():
   // an already-down veil must produce zero DOM writes (#831).
@@ -194,7 +267,35 @@ export function disablePrepaint(): void {
   } catch {
     // not open / unsupported — removal below still tears it down
   }
-  veil.remove()
+  removeOwnNode(veil)
+}
+
+/**
+ * Canon Definition D.6's abandonment: takes the veil down without resolving
+ * anything. The registry keeps its held value, so this is never an
+ * exoneration; the handler records it. Returns whether a veil was up, so a
+ * second call for the same engagement records nothing.
+ */
+export function abandonPrepaint(reason: VeilAbandonReason): boolean {
+  if (!isPrepaintActive()) {
+    stopDeadline()
+    return false
+  }
+  disablePrepaint()
+  abandoned = true
+  abandonHandler?.(reason)
+  return true
+}
+
+/**
+ * Adopts an abandonment `prepaint-start.js` already carried out on its own
+ * clock: the veil is down, so this only stops this module's clock, blocks
+ * repairs the same way, and reports it.
+ */
+export function adoptPrepaintStartAbandonment(): void {
+  stopDeadline()
+  abandoned = true
+  abandonHandler?.("prepaint-deadline")
 }
 
 /** The transition/animation freeze, shared with the enforcement handshake (`enforcement-dom.ts`). */
@@ -211,7 +312,10 @@ export function withPrepaintSuppressed<T>(fn: () => T): T {
   const freeze = document.createElement("style")
   freeze.setAttribute("data-my-ext", "")
   freeze.textContent = TRANSITION_FREEZE_CSS
-  document.head.appendChild(freeze)
+  // A page can remove <head> (the type says it cannot); a throw here held
+  // the veil up (ADR 0002 §8.7).
+  const parent = document.querySelector("head") ?? document.documentElement
+  parent.appendChild(freeze)
 
   // Force a synchronous style + layout flush so the freeze applies before
   // fn() reads computed styles.
@@ -220,7 +324,7 @@ export function withPrepaintSuppressed<T>(fn: () => T): T {
   try {
     return fn()
   } finally {
-    freeze.remove()
+    removeOwnNode(freeze)
   }
 }
 

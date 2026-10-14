@@ -70,6 +70,7 @@ import {
 } from "./coverage-observability"
 import {
   enablePrepaint,
+  isPrepaintAbandoned,
   PREPAINT_DIRTY_CLASS,
   PREPAINT_VEIL_ID,
 } from "./prepaint"
@@ -171,11 +172,15 @@ function readEnforcedCanvas(
  * with no invert() — trading a gap for a flash.
  *
  * Returns whether it re-armed the veil, so the caller can reconcile the
- * registry it bypassed.
+ * registry it bypassed. Never re-arms an abandoned veil (`isPrepaintAbandoned`).
  */
 function repairDarkDesync(ctx: CoverageContext): boolean {
   if (ctx.tabState !== "auto") return false
   if (!ctx.darkThemeActive || ctx.darkStyleActive) return false
+  // An abandoned veil stays down until a round resolves the page: raising
+  // it again here would hold it for good, one bound at a time (Definition
+  // D.6). The violation is still recorded.
+  if (isPrepaintAbandoned()) return false
   enablePrepaint()
   return true
 }

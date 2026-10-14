@@ -39,6 +39,7 @@ import {
   type ScopeCoverageWatchdog,
 } from "@filter/lib/content/coverage-watchdog"
 import { createDocumentEnforcementDeps } from "@filter/lib/content/enforcement-dom"
+import { readEnforcementFlag } from "@filter/lib/content/enforcement-flag"
 import {
   createEnforcementQueue,
   sheetPresent,
@@ -49,9 +50,12 @@ import {
   isGetTabFilterStateResponse,
 } from "@filter/lib/content/guard"
 import {
+  adoptPrepaintStartAbandonment,
   disablePrepaint,
   enablePrepaint,
+  setVeilAbandonHandler,
   withPrepaintSuppressed,
+  type VeilAbandonReason,
 } from "@filter/lib/content/prepaint"
 import { applyTheme, restoreVendor } from "@filter/lib/content/theme-apply"
 import { createVisibilityGate } from "@filter/lib/content/visibility-gate"
@@ -133,8 +137,6 @@ let deferredShadowContrast = false
 // shadow-scope theming, and the classifier's scan would read erased colours.
 // See `lib/content/enforcement-handshake.ts`.
 
-const ENFORCEMENT_FLAG_KEY = "enforcementSheetEnabled"
-
 /** True while this tab is in auto with the flag on: the sheet decides. */
 let enforcing = false
 /**
@@ -156,15 +158,6 @@ const enforcementQueue = createEnforcementQueue(
   enforcementDeps,
   DEFAULT_SWATCH_ID
 )
-
-async function readEnforcementFlag(): Promise<boolean> {
-  try {
-    const data = await ext.storage.local.get([ENFORCEMENT_FLAG_KEY])
-    return data[ENFORCEMENT_FLAG_KEY] === true
-  } catch {
-    return false
-  }
-}
 
 // The content session's epoch source (Definition 5.4). Reset on every
 // SPA-navigation re-patch (Theorem D.1(a)); a refresh re-initializes the
@@ -313,6 +306,27 @@ const coverageWatchdog: CoverageWatchdog = createCoverageWatchdog(
   () => documentScope.reengage(sessionLifecycle.epoch),
   () => (enforcing && currentState === "auto" ? DEFAULT_SWATCH_ID : null)
 )
+
+// Canon Definition D.6: an abandoned veil is a recorded failure, not a
+// healthy page. prepaint-start.js reports its own deadline through the
+// global hook below, since it cannot import this module.
+function recordVeilAbandoned(reason: VeilAbandonReason): void {
+  observabilityRecorder.count("veil_abandoned")
+  observabilityRecorder.record({
+    kind: "veil.abandoned",
+    severity: "error",
+    detail: { reason, tabState: currentState },
+  })
+  coverageWatchdog.check("veil-abandoned")
+}
+setVeilAbandonHandler(recordVeilAbandoned)
+
+declare global {
+  /** Set by prepaint-start.js once its own deadline released the veil. */
+  var __swPrepaintExpired: boolean | undefined
+  /** Called by prepaint-start.js when its deadline releases the veil. */
+  var __swOnPrepaintExpired: (() => void) | undefined
+}
 
 function touchObservabilityIndex(): void {
   void touchIndex({
@@ -512,20 +526,24 @@ function runAutoTheme(): void {
   // Which engine owns this tab: one storage read under the veil; a later
   // applyState() supersedes this entry while it is pending.
   const generation = stateGeneration
-  void readEnforcementFlag().then((flag) => {
-    if (generation !== stateGeneration || currentState !== "auto") return
-    try {
-      if (flag) {
-        enforcing = true
-        void runEnforcementRound(generation)
-      } else {
-        runClassifier()
+  void readEnforcementFlag((keys) => ext.storage.local.get(keys)).then(
+    (flag) => {
+      if (generation !== stateGeneration || currentState !== "auto") return
+      try {
+        if (flag) {
+          enforcing = true
+          void runEnforcementRound(generation)
+        } else {
+          runClassifier()
+        }
+      } catch (error) {
+        // eslint-disable-next-line no-console
+        console.error("[some-filter] auto mode failed to start:", error)
+        // Nothing is left to resolve the veil (ADR 0002 §8.7).
+        documentScope.abandon("auto-start-threw")
       }
-    } catch (error) {
-      // eslint-disable-next-line no-console
-      console.error("[some-filter] auto mode failed to start:", error)
     }
-  })
+  )
 }
 
 /**
@@ -690,6 +708,12 @@ function updateDebugAttrs(): void {
 function init(): void {
   // For the debug page's session picker and e2e assertions.
   document.body.dataset.swObservabilitySession = observabilitySessionId
+
+  // An expiry before this script ran is adopted now; a later one calls in.
+  if (globalThis.__swPrepaintExpired === true) {
+    adoptPrepaintStartAbandonment()
+  }
+  globalThis.__swOnPrepaintExpired = adoptPrepaintStartAbandonment
 
   documentScope.registerDocument(sessionLifecycle.epoch)
 
@@ -891,10 +915,10 @@ function bootInit(): void {
   try {
     init()
   } catch (error) {
-    // A throw here would otherwise leave the veil up forever with the failure
-    // visible nowhere.
     // eslint-disable-next-line no-console
     console.error("[some-filter] content init() threw:", error)
+    // Nothing is left to resolve the veil (ADR 0002 §8.7).
+    documentScope.abandon("init-threw")
   }
 }
 

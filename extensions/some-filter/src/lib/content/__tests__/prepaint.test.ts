@@ -1,13 +1,19 @@
 import {
+  abandonPrepaint,
+  adoptPrepaintStartAbandonment,
   commitVisualState,
   disablePrepaint,
   enablePrepaint,
+  isPrepaintAbandoned,
   PREPAINT_VEIL_ID,
+  setVeilAbandonHandler,
+  VEIL_MAX_HOLD_MS,
   withPrepaintSuppressed,
 } from "@filter/lib/content/prepaint"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
 afterEach(() => {
+  disablePrepaint()
   veil()?.remove()
   document.documentElement.classList.remove("sw-dirty")
   document.head.querySelectorAll("style").forEach((el) => el.remove())
@@ -337,5 +343,147 @@ describe("withPrepaintSuppressed", () => {
     expect(veilPresentDuringFn).toBe(true)
     // and it is still present after — teardown is the caller's job
     expect(veil()).not.toBeNull()
+  })
+})
+
+describe("the bound on one engagement (canon Definition D.6)", () => {
+  function recordAbandons(): Array<string> {
+    const reasons: Array<string> = []
+    setVeilAbandonHandler((reason) => reasons.push(reason))
+    return reasons
+  }
+
+  afterEach(() => {
+    setVeilAbandonHandler(null)
+  })
+
+  it("abandons the veil at VEIL_MAX_HOLD_MS, not before, and reports it once", () => {
+    withFakeTimers(() => {
+      const reasons = recordAbandons()
+      enablePrepaint()
+      vi.advanceTimersByTime(VEIL_MAX_HOLD_MS - 1)
+      expect(veil()).not.toBeNull()
+      vi.advanceTimersByTime(1)
+      expect(veil()).toBeNull()
+      expect(dirty()).toBe(false)
+      vi.advanceTimersByTime(VEIL_MAX_HOLD_MS * 2)
+      expect(reasons).toEqual(["veil-deadline"])
+    })
+  })
+
+  it("re-raising a veil that is already up does not restart its clock", () => {
+    withFakeTimers(() => {
+      enablePrepaint()
+      vi.advanceTimersByTime(VEIL_MAX_HOLD_MS - 100)
+      enablePrepaint()
+      vi.advanceTimersByTime(100)
+      expect(veil()).toBeNull()
+    })
+  })
+
+  it("a veil raised again after a release gets a fresh clock", () => {
+    withFakeTimers(() => {
+      enablePrepaint()
+      vi.advanceTimersByTime(VEIL_MAX_HOLD_MS - 100)
+      disablePrepaint()
+      enablePrepaint()
+      vi.advanceTimersByTime(100)
+      expect(veil()).not.toBeNull()
+      vi.advanceTimersByTime(VEIL_MAX_HOLD_MS - 100)
+      expect(veil()).toBeNull()
+    })
+  })
+
+  it("a veil found up without a clock (prepaint-start.js's) gets one", () => {
+    withFakeTimers(() => {
+      // As prepaint-start.js leaves it: up, with no clock in this module.
+      document.documentElement.classList.add("sw-dirty")
+      const existing = document.createElement("div")
+      existing.id = PREPAINT_VEIL_ID
+      document.documentElement.appendChild(existing)
+
+      enablePrepaint()
+      vi.advanceTimersByTime(VEIL_MAX_HOLD_MS)
+      expect(veil()).toBeNull()
+    })
+  })
+
+  it("a release before the bound cancels the clock", () => {
+    withFakeTimers(() => {
+      const reasons = recordAbandons()
+      enablePrepaint()
+      disablePrepaint()
+      vi.advanceTimersByTime(VEIL_MAX_HOLD_MS * 2)
+      expect(reasons).toEqual([])
+    })
+  })
+
+  it("starts a hidden document's clock when it is first shown", () => {
+    let state: DocumentVisibilityState = "hidden"
+    Object.defineProperty(document, "visibilityState", {
+      configurable: true,
+      get: () => state,
+    })
+    try {
+      withFakeTimers(() => {
+        enablePrepaint()
+        vi.advanceTimersByTime(VEIL_MAX_HOLD_MS * 4)
+        expect(veil()).not.toBeNull()
+
+        state = "visible"
+        document.dispatchEvent(new Event("visibilitychange"))
+        vi.advanceTimersByTime(VEIL_MAX_HOLD_MS - 1)
+        expect(veil()).not.toBeNull()
+        vi.advanceTimersByTime(1)
+        expect(veil()).toBeNull()
+      })
+    } finally {
+      Reflect.deleteProperty(document, "visibilityState")
+    }
+  })
+
+  it("abandonPrepaint() releases once: a second call records nothing", () => {
+    const reasons = recordAbandons()
+    enablePrepaint()
+    expect(abandonPrepaint("init-threw")).toBe(true)
+    expect(abandonPrepaint("init-threw")).toBe(false)
+    expect(veil()).toBeNull()
+    expect(reasons).toEqual(["init-threw"])
+  })
+
+  it("an abandonment blocks repairs until the next deliberate release", () => {
+    enablePrepaint()
+    abandonPrepaint("veil-deadline")
+    expect(isPrepaintAbandoned()).toBe(true)
+    enablePrepaint()
+    expect(isPrepaintAbandoned()).toBe(true)
+    disablePrepaint()
+    expect(isPrepaintAbandoned()).toBe(false)
+  })
+
+  it("adopts prepaint-start.js's own expiry: reports it once and stops this module's clock", () => {
+    withFakeTimers(() => {
+      const reasons = recordAbandons()
+      enablePrepaint()
+      // prepaint-start.js took its veil down on its own clock.
+      veil()?.remove()
+      document.documentElement.classList.remove("sw-dirty")
+      adoptPrepaintStartAbandonment()
+
+      vi.advanceTimersByTime(VEIL_MAX_HOLD_MS * 2)
+      expect(reasons).toEqual(["prepaint-deadline"])
+      expect(isPrepaintAbandoned()).toBe(true)
+    })
+  })
+
+  it("withPrepaintSuppressed() still runs on a page whose <head> was removed", () => {
+    const head = document.head
+    head.remove()
+    try {
+      expect(withPrepaintSuppressed(() => 7)).toBe(7)
+      expect(document.querySelectorAll("style")).toHaveLength(0)
+    } finally {
+      document.documentElement.prepend(head)
+    }
   })
 })

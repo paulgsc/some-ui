@@ -1,4 +1,5 @@
-import { beforeEach, vi } from "vitest"
+import { disablePrepaint } from "@filter/lib/content/prepaint"
+import { afterEach, beforeEach, vi } from "vitest"
 
 // Synchronous rAF so commitVisualState's double-rAF resolves in tests.
 vi.stubGlobal("requestAnimationFrame", (cb: FrameRequestCallback): number => {
@@ -22,4 +23,10 @@ beforeEach(() => {
   document.body.removeAttribute("style")
   document.head.innerHTML = ""
   document.body.innerHTML = ""
+})
+
+// enablePrepaint() starts a real VEIL_MAX_HOLD_MS clock (ADR 0002 §8.7); one
+// left running would fire into a later test, or after the environment is gone.
+afterEach(() => {
+  disablePrepaint()
 })

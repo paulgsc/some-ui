@@ -59,6 +59,7 @@ import type {
   ContrastPairRecord,
 } from "@filter/lib/content/contrast-observability"
 import { rgbaToCss } from "@filter/lib/content/modify-colors"
+import { removeOwnNode } from "@filter/lib/content/own-removal"
 
 import { isHTMLElementNode } from "./actuator"
 
@@ -253,13 +254,15 @@ let supportsPseudoElementStyle: boolean | undefined
 function pseudoElementStyleIsSupported(): boolean {
   if (supportsPseudoElementStyle === undefined) {
     const host = document.createElement("sw-legibility-pseudo-probe-host")
+    // Ours on the way in and out, so neither edge schedules a round.
+    host.setAttribute("data-my-ext", "")
     const shadow = host.attachShadow({ mode: "closed" })
     const probe = document.createElement("sw-legibility-pseudo-probe")
     shadow.appendChild(probe)
     document.documentElement.appendChild(host)
     supportsPseudoElementStyle =
       getComputedStyle(probe, "::before").content === "none"
-    host.remove()
+    removeOwnNode(host)
   }
   return supportsPseudoElementStyle
 }

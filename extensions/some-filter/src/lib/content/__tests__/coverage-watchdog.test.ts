@@ -17,7 +17,12 @@ import {
   type CoverageWatchdog,
   type ScopeCoverageWatchdog,
 } from "@filter/lib/content/coverage-watchdog"
-import { PREPAINT_VEIL_ID } from "@filter/lib/content/prepaint"
+import {
+  abandonPrepaint,
+  disablePrepaint,
+  enablePrepaint,
+  PREPAINT_VEIL_ID,
+} from "@filter/lib/content/prepaint"
 import {
   DARK_THEME_ATTR,
   DARK_THEME_STYLE_ID,
@@ -105,6 +110,35 @@ describe("coverage watchdog — dark-signal desync repair", () => {
 
     expect(veil()).not.toBeNull()
     expect(document.documentElement.classList.contains("sw-dirty")).toBe(true)
+    watchdog.teardown()
+  })
+
+  it("does not re-arm a veil abandoned at its bound: that would hold it for good, one bound at a time (Definition D.6)", async () => {
+    enablePrepaint()
+    abandonPrepaint("veil-deadline")
+    // A failed round left data-sw-dark without its sheet.
+    document.documentElement.setAttribute(DARK_THEME_ATTR, "")
+    const { recorder, watchdog } = await startWatchdog("auto")
+    await flushMicrotasks()
+
+    expect(veil()).toBeNull()
+    // Still recorded: the page is uncovered.
+    const events = recorder.events().map((event) => event.kind)
+    expect(events).toContain("dark.signal_mismatch")
+    watchdog.teardown()
+  })
+
+  it("re-arms again once a later release has resolved the page", async () => {
+    enablePrepaint()
+    abandonPrepaint("veil-deadline")
+    disablePrepaint()
+    installDarkTheme()
+    const { watchdog } = await startWatchdog("auto")
+
+    document.getElementById(DARK_THEME_STYLE_ID)?.remove()
+    await flushMicrotasks()
+
+    expect(veil()).not.toBeNull()
     watchdog.teardown()
   })
 
