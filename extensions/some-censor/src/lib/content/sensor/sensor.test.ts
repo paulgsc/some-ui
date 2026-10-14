@@ -164,7 +164,7 @@ describe("observing cards", () => {
     ).toBe("YTD-RICH-ITEM-RENDERER")
   })
 
-  it("keeps a card the table cannot place, announced once per element (S2)", async () => {
+  it("keeps a card the table cannot place, announced once per element", async () => {
     // A plain-tag compact renderer is a card in its own right, so both it and
     // the lockup inside carry the key; the lockup's context is one the home
     // crawl never recorded.
@@ -206,7 +206,7 @@ describe("observing cards", () => {
   })
 })
 
-describe("the retry queue (S4)", () => {
+describe("the retry queue", () => {
   it("queues a shell, adopts it when it hydrates, and stops the loop", async () => {
     const shell = document.createElement("yt-lockup-view-model")
     document.body.appendChild(shell)
@@ -288,7 +288,7 @@ describe("the retry queue (S4)", () => {
   })
 })
 
-describe("identity (S3)", () => {
+describe("identity", () => {
   it("treats a preview anchor ahead of the card's own as churn, not a recycle", async () => {
     const el = lockup("real")
     document.body.appendChild(el)
@@ -331,6 +331,25 @@ describe("identity (S3)", () => {
     a.setAttribute("data-video-id", "other")
     await tick()
     expect(tokens.filter((t) => t.kind === "gone")).toEqual([])
+    expect(sensor.custodyOf(K("dup")).map((t) => t.el)).toEqual([b])
+  })
+
+  it("re-announces a key when one of its carriers stops being a card", async () => {
+    const a = cell("dup")
+    const b = lockup("dup")
+    document.body.append(a, b)
+    await tick()
+    tokens = []
+    // The cell now wraps another card: a container, no longer this card.
+    a.replaceChildren(lockup("x"))
+    await tick()
+    expect(tokens.filter((t) => t.kind === "gone")).toEqual([])
+    const dup = tokens.filter(
+      (t) => t.kind === "observed" && t.key === K("dup")
+    )
+    expect(
+      dup.map((t) => t.kind === "observed" && t.observation.renderer)
+    ).toEqual(["yt-lockup-view-model"])
     expect(sensor.custodyOf(K("dup")).map((t) => t.el)).toEqual([b])
   })
 

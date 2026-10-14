@@ -10,24 +10,25 @@
  * event through it — mutation-derived (`observed`, `gone`,
  * `unknown-shape`) and `nav` (B5).
  *
- * Invariants:
+ * Design properties (not declared review invariants; the behavioural ones
+ * are pinned by `sensor.test.ts`):
  *
- *   S1 — Structure is looked up, not discovered (B3). What a node is comes
- *        from the catalogue predicate and the layout table; the only walks
- *        are single `closest()` calls (the enclosing card for the table's
- *        context, a mutation's enclosing card, the fallback wrapper), never
- *        a loop over ancestors.
- *   S2 — Unknown shape is a state (B4). A card the table cannot place is
- *        still observed (with `shape: "unknown"`, which Core counts at
- *        adoption), and one with no extractable id is queued and reported
- *        once as `unknown-shape`.
- *   S3 — Identity is per element, keys are per artifact. A recycle emits
- *        `gone` for the old key only once no element carries it.
- *   S4 — The retry loop terminates. Every queued element is under the
- *        budget; rejection is sticky against `scan()` and revocable on
- *        extraction (#1422).
- *   S5 — Observation is total on what it sees: `observe()` is what a scan,
- *        a mutation batch, a retry tick and a gesture refresh all call.
+ *   - Structure is looked up, not discovered (B3). What a node is comes
+ *     from the catalogue predicate and the layout table; the only walks
+ *     are single `closest()` calls (the enclosing card for the table's
+ *     context, a mutation's enclosing card, the fallback wrapper), never
+ *     a loop over ancestors.
+ *   - Unknown shape is a state (B4). A card the table cannot place is
+ *     still observed (with `shape: "unknown"`, which Core counts at
+ *     adoption), and one with no extractable id is queued and reported
+ *     once as `unknown-shape`.
+ *   - Identity is per element, keys are per artifact. A recycle emits
+ *     `gone` for the old key only once no element carries it.
+ *   - The retry loop terminates. Every queued element is under the
+ *     budget; rejection is sticky against `scan()` and revocable on
+ *     extraction (#1422).
+ *   - Observation is total on what it sees: `observe()` is what a scan,
+ *     a mutation batch, a retry tick and a gesture refresh all call.
  */
 
 import type { CustodyTarget } from "@censor/lib/content/actuator/bound"
@@ -146,7 +147,7 @@ export function createSensor(ports: SensorPorts): Sensor {
     }
   }
 
-  /** S5: one path for every element the Sensor is ever handed. */
+  /** One path for every element the Sensor is ever handed. */
   function observe(el: HTMLElement): void {
     if (!running) return
     const now = ports.clock()
@@ -246,14 +247,27 @@ export function createSensor(ports: SensorPorts): Sensor {
     ports.emit({ kind: "observed", key: rec.key, observation, t: now })
   }
 
-  /** `el` stopped being a card: release its custody, and say so if its key is gone. */
+  /**
+   * `el` stopped being a card: release its custody. A key nothing carries is
+   * gone; a key another element still carries is re-announced, because the
+   * Actuator drops an element's stamp and veil only on a render of its key.
+   */
   function releaseElement(el: HTMLElement, now: number): void {
     lastEmitted.delete(el)
     channelPending.delete(el)
     channelAbandoned.delete(el)
     const released = identity.release(el)
-    if (released?.gone) {
+    if (released === null) return
+    if (released.gone) {
       ports.emit({ kind: "gone", key: released.key, t: now })
+      return
+    }
+    const survivor = identity
+      .custodyOf(released.key)
+      .find((t) => t.role === "anchor" && t.el.isConnected)
+    if (survivor !== undefined) {
+      lastEmitted.delete(survivor.el)
+      observe(survivor.el)
     }
   }
 
