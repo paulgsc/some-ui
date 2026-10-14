@@ -50,7 +50,7 @@ const HANGUL = /^[가-힣]/
 const byId = <T extends { id: string }>(items: Array<T>): Map<string, T> =>
   new Map(items.map((item) => [item.id, item]))
 
-function lineOf(
+export function lineOf(
   deck: ReadAloudDeck,
   lineId: string
 ): ReadAloudLine | undefined {

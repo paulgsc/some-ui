@@ -13,7 +13,7 @@
  *
  * An occurrence may also name its grammatical role, and a line its tense:
  * what the grammar lens asks the learner to find (`read-aloud/lens`). Both
- * are optional; a line without them is read as before.
+ * are optional.
  *
  * Content is checked at load, not trusted (Prop. 8.1, Thm. 8.2). A malformed
  * word, line or occurrence is dropped and reported, never the whole deck. A
@@ -425,15 +425,17 @@ export function parseReadAloudDeck(raw: unknown): ParsedDeck {
       })
       return
     }
-    if (rawTense !== undefined && !isTense(rawTense)) {
-      findings.push({
-        kind: "tense-unknown",
-        where: line.id,
-        detail: `"${rawTense}" is not a tense; the line is kept without it`,
-      })
+    let tense: { tense?: Tense } = {}
+    if (rawTense !== undefined) {
+      if (isTense(rawTense)) tense = { tense: rawTense }
+      else {
+        findings.push({
+          kind: "tense-unknown",
+          where: line.id,
+          detail: `"${rawTense}" is not a tense; the line is kept without it`,
+        })
+      }
     }
-    const tense =
-      rawTense !== undefined && isTense(rawTense) ? { tense: rawTense } : {}
     lines.push({ ...line, words: occurrences, ...tense })
   })
 

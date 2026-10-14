@@ -57,7 +57,6 @@ describe("BUNDLED_DECK", () => {
   })
 
   it("marks each role with the particle that shows it", () => {
-    // What a learner sees: a role is given only where its form shows it.
     const ENDINGS: Partial<Record<GrammarRole, RegExp>> = {
       subject: /[이가]$/,
       topic: /[은는]$/,

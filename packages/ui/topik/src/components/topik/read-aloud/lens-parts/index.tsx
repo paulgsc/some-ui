@@ -209,15 +209,12 @@ export const LensBadge = ({
       : shown
         ? TENSE_LOOK[lens.tense]
         : null
-  const label =
-    lens.kind === "role"
-      ? ROLE_LOOK[lens.role].label
-      : (look?.label ?? TENSE_QUESTION)
+  const label = look?.label ?? TENSE_QUESTION
   const spoken =
     lens.kind === "role"
       ? `Find ${ROLE_LOOK[lens.role].spoken}`
-      : shown
-        ? `The tense: ${TENSE_LOOK[lens.tense].spoken}`
+      : look
+        ? `The tense: ${look.spoken}`
         : "Which tense?"
   const Icon = lens.kind === "role" ? ROLE_LOOK[lens.role].Icon : null
   return (

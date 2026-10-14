@@ -20,9 +20,7 @@
  * Words the starter deck already names (저, 친구, 마시다 …) are named there,
  * not here; the bundled deck joins the two.
  *
- * Roles and tenses are given as `content` defines them: a role only where
- * the form shows it (아버지와 어머니가 is "and", so 아버지와 has none), and a
- * tense only where form and meaning agree (내일 만나요 has none).
+ * Roles and tenses follow `content`'s rules for them.
  */
 
 import type {

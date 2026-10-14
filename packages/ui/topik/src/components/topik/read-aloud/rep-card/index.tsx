@@ -16,6 +16,7 @@ import type { ReadAloudDeck } from "@topik/lib/topik/read-aloud/content"
 import type { GlyphMode } from "@topik/lib/topik/read-aloud/glyphs"
 import {
   glossOf,
+  lineOf,
   markAt,
   markWeights,
 } from "@topik/lib/topik/read-aloud/glyphs"
@@ -51,10 +52,6 @@ type RepCardProps = {
   /** Absent while the host's session holds the drill: it resumes that way. */
   onResume?: () => void
 }
-
-/** How many written words a line has: its occurrences (`parseReadAloudDeck`). */
-const writtenWords = (deck: ReadAloudDeck, lineId: string): number =>
-  deck.lines.find((line) => line.id === lineId)?.words.length ?? 0
 
 /** In place of Resume, while the host's session holds the drill. */
 export const HeldNote = (): JSX.Element => (
@@ -210,7 +207,10 @@ export const RepCard = ({
     shown:
       shown && look
         ? {
-            words: lensWords(lens, writtenWords(deck, item.lineId)),
+            words: lensWords(
+              lens,
+              lineOf(deck, item.lineId)?.words.length ?? 0
+            ),
             frame: cn(look.tint, look.ring),
             ending: look.text,
             missed:

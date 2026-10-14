@@ -725,7 +725,6 @@ export function setMachineReducer(
     case "answer": {
       const entry = currentEntry(state)
       const lens = entry?.item.kind === "sentence" ? entry.item.lens : undefined
-      // Before the gloss, which shows the answer; and only the kind it asks.
       const open = REP_STEPS.has(phase.name) && phase.name !== "gloss"
       if (!lens || !open || !answers(lens, event.answer)) return unchanged
       const same =

@@ -15,7 +15,7 @@
  * set's summary.
  */
 
-import { fnv1a } from "@some-ui/core-utils"
+import { fnv1a, unitIntervalBySeed } from "@some-ui/core-utils"
 import type {
   GrammarRole,
   ReadAloudLine,
@@ -79,7 +79,8 @@ export function lensesOf(line: ReadAloudLine): Array<Lens> {
 export function pickLens(line: ReadAloudLine, seedKey: string): Lens | null {
   const lenses = lensesOf(line)
   if (lenses.length === 0) return null
-  return lenses[fnv1a(`${seedKey}:lens:${line.id}`) % lenses.length] ?? null
+  const draw = unitIntervalBySeed(fnv1a(`${seedKey}:lens:${line.id}`))
+  return lenses[Math.floor(draw * lenses.length)] ?? null
 }
 
 /** Whether an answer is the kind a lens asks for: a word, or a tense. */

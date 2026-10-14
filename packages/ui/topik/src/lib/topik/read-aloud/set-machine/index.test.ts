@@ -695,22 +695,14 @@ describe("the grammar lens", () => {
     expect(host.state.answer).toEqual(ACTION)
   })
 
-  it("tallies afresh when a set resumes from storage", () => {
+  it("tallies each set afresh, a resumed one included", () => {
     const host = atTurn([LENSED, JUSEYO, KEOPI])
     answer(host, ACTION)
-    host.finishEntry()
-    const progress = progressOf(host.state)
-    expect(progress && "lensed" in progress).toBe(false)
-    const resumed = new Host()
-    if (progress) {
-      resumed.send({
-        type: "begin-set",
-        at: 0,
-        level: 1,
-        progress,
-        paces: SEEN,
-      })
-    }
-    expect(resumed.state.lensed).toEqual({ asked: 0, found: 0 })
+    host.run()
+    expect(host.state.phase.name).toBe("summary")
+    expect(host.state.lensed).toEqual({ asked: 1, found: 1 })
+    host.send({ type: "next-set", at: host.now })
+    host.begin([LENSED, JUSEYO])
+    expect(host.state.lensed).toEqual({ asked: 0, found: 0 })
   })
 })

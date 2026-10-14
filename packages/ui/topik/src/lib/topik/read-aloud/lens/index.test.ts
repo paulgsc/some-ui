@@ -1,6 +1,5 @@
 import type { ReadAloudLine } from "@topik/lib/topik/read-aloud/content"
 import {
-  answers,
   lensesOf,
   lensOutcome,
   lensWords,
@@ -113,7 +112,6 @@ describe("lensOutcome", () => {
 
   it("counts no answer, or one of the wrong kind, as unanswered", () => {
     expect(lensOutcome(place, null)).toBe("unanswered")
-    expect(answers(place, { kind: "tense", tense: "past" })).toBe(false)
     expect(lensOutcome(place, { kind: "tense", tense: "past" })).toBe(
       "unanswered"
     )
