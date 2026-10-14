@@ -544,6 +544,12 @@ const Mini = ({ kind }: { kind: Mechanism }): JSX.Element => {
             />
           ))}
           <circle cx={-34} cy={-15} r={8} className="xcomb-mini-tap" />
+          <circle
+            cx={-34}
+            cy={9}
+            r={8}
+            className="xcomb-mini-tap xcomb-mini-tap-again"
+          />
           <rect
             x={42}
             y={-46}

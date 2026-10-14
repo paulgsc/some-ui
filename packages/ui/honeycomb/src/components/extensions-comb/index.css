@@ -374,7 +374,9 @@
      gauge drops a step with each. The bottom tab is playing sound, so the
      check before a suspend leaves it awake. At 54% a tap lands on the second
      tab: the dark veil covers its reload (58%) and it is back, lit (66%),
-     with its memory. The third stays suspended until the loop starts over. */
+     with its memory. At 80% a second tap brings the third back the same way
+     (84% veil, 90% lit), so the loop ends where it began and no tab ever
+     wakes without being activated. */
   .xcomb-mini-tab {
     fill: var(--comb-honey-surface);
     transform-origin: left center;
@@ -403,6 +405,10 @@
     stroke: var(--comb-honey-meniscus);
     stroke-width: 2.5px;
     transform-origin: center;
+  }
+
+  .xcomb-mini-tap-again {
+    animation-name: xcomb-tap-again;
   }
 
   .xcomb-mini-gauge {
@@ -447,17 +453,27 @@
   @keyframes xcomb-tab-idle {
     0%,
     28% {
+      fill: var(--comb-honey-surface);
       opacity: 1;
       transform: scaleX(1);
     }
 
     36%,
-    90% {
+    80% {
+      fill: var(--comb-honey-surface);
       opacity: 0.18;
       transform: scaleX(0.8);
     }
 
+    84% {
+      fill: var(--comb-mini-dark);
+      opacity: 1;
+      transform: scaleX(1);
+    }
+
+    90%,
     100% {
+      fill: var(--comb-honey-surface);
       opacity: 1;
       transform: scaleX(1);
     }
@@ -482,6 +498,25 @@
     }
   }
 
+  @keyframes xcomb-tap-again {
+    0%,
+    76% {
+      opacity: 0;
+      transform: scale(0.4);
+    }
+
+    80% {
+      opacity: 1;
+      transform: scale(1);
+    }
+
+    88%,
+    100% {
+      opacity: 0;
+      transform: scale(1.7);
+    }
+  }
+
   @keyframes xcomb-mem {
     0%,
     14% {
@@ -499,10 +534,11 @@
     }
 
     66%,
-    90% {
+    84% {
       transform: scaleY(0.72);
     }
 
+    90%,
     100% {
       transform: scaleY(1);
     }
