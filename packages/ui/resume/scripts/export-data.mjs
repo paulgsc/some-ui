@@ -4,7 +4,7 @@
 //
 // apps/www needs the résumé as *text*: a PDF does not render inline on mobile
 // browsers, and Typst's SVG export has no text at all. `typst query` reads the
-// `<resume-export>` metadata src/main.typ attaches to the laid-out document,
+// `<resume-export>` metadata src/resume.typ attaches to the laid-out document,
 // so the web view and the PDF cannot describe different résumés.
 
 //
@@ -66,7 +66,7 @@ function assertShape(variant, data) {
   if (missing.length) {
     throw new Error(
       `${variant}: <resume-export> is missing ${missing.join(", ")}. ` +
-        `Update the metadata block in src/main.typ.`
+        `Update the metadata block in src/resume.typ.`
     )
   }
   const missingProfile = REQUIRED_PROFILE_KEYS.filter(

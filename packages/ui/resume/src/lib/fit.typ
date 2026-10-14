@@ -17,7 +17,9 @@
 // fails the build. Silently swallowing the overflow inside a fixed-height box
 // would let a broken résumé pass as a one-page document.
 
-#let scale-ladder(lo: 0.82, hi: 1.14, steps: 17) = {
+// Steps of 0.02. Only builds with PII reach 0.80 and 0.78: backend/classic
+// needs them for the extra contact lines.
+#let scale-ladder(lo: 0.78, hi: 1.14, steps: 19) = {
   range(steps).map(i => hi - (hi - lo) * i / (steps - 1))
 }
 

@@ -23,23 +23,9 @@
   // Shown under the header when set, e.g. "Indianapolis, Indiana".
   location: "Berkeley, CA",
 
-  // Left empty deliberately, same reasoning as every other field in this
-  // file: a real phone number belongs in git history and a public
-  // repository's diff even less than it belongs in a rendered PDF. Fill
-  // this in locally, on your own machine, only when you're about to
-  // generate a specific application's PDF — and don't commit that change.
-  //
-  // Submission-only once set: rendered by the ATS-submission templates
-  // (classic, safe, vanilla, conventional — see their
-  // `contact-line(..., phone: ...)` call), never by the portfolio
-  // templates (rail, compact) whose PDFs are embedded and linked directly
-  // on the public website, and never exposed via the `<resume-export>`
-  // metadata block in src/main.typ that feeds the public web viewer.
-  phone: none,
-
-  // Not currently used by any template — see below. Kept here so the fact is
-  // recorded once rather than re-typed per application.
-  linkedin: none,
+  // No phone number, LinkedIn URL or street address here, ever: this file
+  // is committed and public. Those are supplied per build, and only through
+  // the LAN render service (scripts/serve.mjs; src/lib/pii.typ says how).
 
   // Real and true (per the candidate's own non-engineering résumé), but not
   // wired into any template's render() yet: whether it is worth a line

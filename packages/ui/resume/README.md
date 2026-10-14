@@ -32,12 +32,15 @@ erases the underlying work or creates a random assortment of bullets.
 src/data/resume.typ      (evidence distilled from paulgsc/{server,some-ui})
 src/data/personal.typ    (facts that exist outside those repos — see below)
               ↓ imported by
+src/resume.typ           (render-resume: the document as a function)
+              ↓ called by
 src/main.typ  --variant/--template/--theme/--font-->
               documents/resume-{backend,platform,fullstack}[-{classic,compact,vanilla,safe,conventional}].{pdf,svg}
 ```
 
-`src/main.typ` is the only entry point. Everything about a rendered document is
-a typst `--input`, not a source edit:
+`src/main.typ` is the public build's entry point, and the only one the build
+and `typst watch` use. Everything about a public document is a typst `--input`,
+not a source edit:
 
 | input      | values                                                          |
 | ---------- | --------------------------------------------------------------- |
@@ -46,9 +49,10 @@ a typst `--input`, not a source edit:
 | `theme`    | `teal`, `slate`, `ink`                                          |
 | `font`     | `lato`, `pt-serif`                                              |
 
-Those four are the same knobs a server-side renderer would take per request,
-which is the point: the static build and a dynamic renderer can share one
-template set rather than diverging.
+The static build and the LAN render service (below) share one template set
+rather than diverging: both call `src/resume.typ`. The service takes a variant
+and an ATS template, uses that template's own theme and font, and adds contact
+details that are never committed, never as an input.
 
 ### Templates
 
@@ -105,6 +109,100 @@ placeholder but a false statement waiting to be sent to an employer.
 Templates render a section only when its list is non-empty, and the fitting pass
 redistributes the space, so filling these in later costs nothing structurally.
 
+### Contact details (PII) and the LAN render service
+
+A phone number, a LinkedIn URL, a street address or a different email never
+belong in this repository, so none is in `src/data`. `src/resume.typ`'s
+`render-resume` takes them as a value, which `src/lib/pii.typ` checks against
+`src/pii/envelope.json`: what each field may hold (length and pattern) and
+which templates render them. Only the ATS templates (`classic`, `vanilla`,
+`safe`, `conventional`) do; `rail` and `compact`, whose PDFs the website links,
+refuse PII, and `<resume-export>` never carries it.
+
+PII is never a typst `--input`. An input is a process argument, which anything
+that can list processes can read. `src/main.typ`, the public build's entry,
+passes none. `compileWithPii` (`scripts/typst.mjs`) is the one way in: it writes
+the arguments into a two-line program as the bytes of their JSON, which typst
+reads on stdin, and it takes the PDF back from typst's stdout. The checks hand
+that PDF to `pdftotext` on stdin as well. No process argument, environment
+variable or file ever holds a value.
+
+The way in is the render service, `scripts/serve.mjs` (`pnpm serve`):
+`POST /render` with `{ variant, template, pii }` returns the PDF. It runs the
+same pinned typst and fonts as the build, and runs `check-ats.mjs` (requiring
+every supplied field on the page) and `check-layout.mjs` on every render before
+returning it. Nothing it logs or returns carries a value: the checks in
+`pii.typ` name a field and its limit, not what was sent. Its container has no
+writable path at all.
+
+It is reachable from the home network only. `infra/compose/resume.yml` builds
+this directory's `Dockerfile` on the box and publishes no port; `apps/www`'s
+nginx proxies `/api/resume/` to it, and the LAN build's résumé builder page
+(`apps/www/src/routes/_dashboard/_lan/`) is the form that calls it, through
+`renderResume` (`src/pii/render-client.ts`). In `vite dev`, run `pnpm serve` on
+the host instead.
+
+`pnpm build` proves every layout the service can be asked for, with
+worst-case faux PII (`verifyPii` in `scripts/compile.mjs`).
+
+#### Scope and limits: one author's LAN tool, not a pattern
+
+This is built for exactly one user, the author, on the home network. It has no
+authentication, no rate limit and no isolation between requests. It writes a
+typst program from request data and runs Poppler on the result before
+answering. All of that is acceptable here and none of it is a design to copy:
+a service with other users, or one reachable from the internet, would embed
+typst as a library and need real auth. Do not cite this one as precedent.
+
+What the PII handling protects is narrow. These details go out on every
+application the résumé is sent with, into forms and systems we don't control
+that may keep, share or sell them, so in practice they are public. The goal is
+only that they never enter this repository, its public site or its static
+build, and that the box keeps no copy (no argument, file or log). It is not
+secrecy.
+
+Two claims a review checks (`CLAUDE.md`, "Gray-area invariants"); both held
+when declared:
+
+> **RP1: PII reaches typst only through `compileWithPii`.**
+>
+> - _Claim:_ a PII value is never in a typst `--input`, a process argument, an
+>   environment variable or a file. It is passed only as the stdin program
+>   `compileWithPii` (`scripts/typst.mjs`) writes, and `src/main.typ` passes
+>   `pii: none`.
+> - _Falsified by_ a hunk in `scripts/` or `src/` that adds `pii` to
+>   `inputArgs` or to any spawn's arguments or environment, writes a request
+>   body or a PDF built with PII to disk, calls `render-resume` with PII from
+>   anywhere else, or makes `main.typ` pass anything but `none`.
+> - _Scope:_ `packages/ui/resume/scripts`, `packages/ui/resume/src`.
+> - _Why not enforced:_ mechanical, not yet a rule. A test can record the
+>   argv and environment of shimmed `typst`/`pdftotext` binaries during a
+>   render (done by hand when RP1 was declared). It needs typst, fonts and
+>   Poppler, and this package has no test runner.
+>
+> **RP2: the service logs no request text and returns none.**
+>
+> - _Claim:_ a render through `scripts/serve.mjs` logs only method, path,
+>   status, time and the allow-listed variant and template; `assertAtsText`,
+>   `checkDocument` and `pdftotext` write nothing to the console. A refusal's
+>   message names fields, limits and allowed values, and never contains text
+>   from the request, a key included.
+> - _Falsified by_ a hunk in `serve.mjs` that logs the body, a `pii` value or
+>   key, or typst's stderr; that builds a `Refusal` from request text; that
+>   passes on a typst assertion or check message other than `pii.typ`'s, the
+>   one-page check's and `assertAtsText`'s; or that deletes, weakens or moves
+>   after the compile its unknown-key guard (`pii.typ` names an unknown key).
+>   Or a hunk in `src/lib/pii.typ` or `scripts/check-ats.mjs` that adds,
+>   edits or deletes any part of an assertion or `assertAtsText` message so it
+>   can contain a value, including by dropping the field-name substitution for
+>   a missing PII term; or one in `scripts/check-ats.mjs`,
+>   `scripts/check-layout.mjs` or `scripts/pdftotext.mjs` that makes
+>   `assertAtsText`, `checkDocument` or `pdftotext` write to the console.
+> - _Scope:_ `scripts/serve.mjs`; the messages of `src/lib/pii.typ` and
+>   `assertAtsText` that it passes on; and the check functions it calls.
+> - _Why not enforced:_ whether a string derives from the request is
+>   dataflow, which no lint here traces.
+
 ### ATS checking
 
 `pnpm build` compiles all eighteen (variant × template) documents and then runs
@@ -157,7 +255,7 @@ references per document — so it was a 1.1 MB _picture_ of a résumé, marked
 anyone who could not see it. That transcript was a second copy of the content
 and had already drifted from this package.
 
-So the text is derived instead. `src/main.typ` attaches the composition to the
+So the text is derived instead. `src/resume.typ` attaches the composition to the
 document it just laid out as `<resume-export>` metadata; `scripts/export-data.mjs`
 reads it back with `typst query` and writes `src/react/generated/data.ts`
 (~7 KB per variant), which `src/react/resume-document.tsx` renders as ordinary
@@ -254,9 +352,10 @@ recompilation while editing.
 
 ## Out of scope for now
 
-- In-browser (WASM) compilation / live preview without a rebuild.
+- In-browser (WASM) compilation / live preview without a rebuild. The LAN
+  render service above compiles on demand instead, with the same typst and
+  fonts as CI, which a browser build of typst could not promise.
 - Arbitrary bullet-level mixing. The selectable unit is intentionally a complete
   composition so every PDF remains a coherent argument.
-- Client-side selection of template/theme/font against a live renderer. The four
-  inputs above are the seam that work will attach to; today they are resolved at
-  build time.
+- Selecting theme and font against the live renderer. The service takes a
+  variant and an ATS template, and uses that template's own theme and font.

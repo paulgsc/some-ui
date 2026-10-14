@@ -147,28 +147,24 @@
   )
 ]
 
-// `phone` defaults to `none` and is deliberately opt-in per call site,
-// rather than read off `profile` the way email/github/portfolio are: it
-// lives in src/data/personal.typ (not resume-profile) precisely so a
-// caller can choose to include it. Only the ATS-submission templates
-// (classic, safe, vanilla, conventional) pass it — the portfolio templates
-// (rail, compact, via name-block below) do not, because their PDFs are the
-// ones embedded and linked directly on the public website. See
-// personal.typ's `phone` field comment for the public/submission split
-// this implements.
-#let contact-line(theme, profile, sep: "·", phone: none) = text(
-  size: 0.86em, fill: theme.muted,
-)[
-  #profile.email
-  #h(0.4em)#sep#h(0.4em) #profile.github
-  #h(0.4em)#sep#h(0.4em) #profile.portfolio
-  #if profile.location != none [
-    #h(0.4em)#sep#h(0.4em) #profile.location
-  ]
-  #if phone != none [
-    #h(0.4em)#sep#h(0.4em) #phone
-  ]
-]
+// `pii` is src/lib/pii.typ's `read-pii` result, passed only by the templates
+// that render PII (name-block below never does). The email override replaces
+// the public address, the street address replaces the city, and LinkedIn and
+// the phone number go at the end. Each
+// item is boxed so that, when the extra fields wrap the line, the break falls
+// between items and never inside one.
+#let contact-line(theme, profile, sep: "·", pii: none) = {
+  let pick(key, fallback) = if pii == none or pii.at(key) == none { fallback } else { pii.at(key) }
+  let items = (
+    pick("email", profile.email),
+    profile.github,
+    profile.portfolio,
+    pick("address", profile.location),
+    pick("linkedin", none),
+    pick("phone", none),
+  ).filter(item => item != none)
+  text(size: 0.86em, fill: theme.muted, items.map(box).join([ #h(0.4em)#sep#h(0.4em) ]))
+}
 
 #let name-block(theme, profile, focus, size: 2.1em) = stack(
   dir: ttb,

@@ -1,0 +1,4 @@
+# The image takes src/ and scripts/ only (see Dockerfile).
+*
+!scripts
+!src

@@ -13,26 +13,11 @@ import {
 import { createFileRoute } from "@tanstack/react-router"
 import { Download, Layers3, LayoutTemplate } from "lucide-react"
 
-// Order is a presentation decision and belongs here; the labels are résumé
-// content and come from resumeData, so the selector and document agree.
-const RESUME_ORDER = ["backend", "platform", "fullstack"] as const
-type ResumeComposition = (typeof RESUME_ORDER)[number]
-const RESUME_COMPOSITIONS: ReadonlyArray<{
-  id: ResumeComposition
-  label: string
-}> = RESUME_ORDER.map((id) => ({ id, label: resumeData[id].label }))
+import type { ResumeComposition } from "@/lib/resume-options"
+import { RESUME_COMPOSITIONS, RESUME_TEMPLATES } from "@/lib/resume-options"
+
 const RESUME_COMPOSITION_KEY = "some-ui:resume-composition"
 
-// The *layout* axis, independent of composition (packages/ui/resume/README.md,
-// Templates). Labels are UI copy, so they belong here, not in @some-ui/resume.
-const RESUME_TEMPLATES = [
-  { id: "rail", label: "Rail (portfolio)" },
-  { id: "classic", label: "Classic (single column)" },
-  { id: "compact", label: "Compact" },
-  { id: "vanilla", label: "Vanilla (plain ATS)" },
-  { id: "safe", label: "Safe (ATS)" },
-  { id: "conventional", label: "Conventional (traditional)" },
-] as const
 type ResumeTemplate = (typeof RESUME_TEMPLATES)[number]["id"]
 const DEFAULT_TEMPLATE: ResumeTemplate = "rail"
 const RESUME_TEMPLATE_KEY = "some-ui:resume-template"

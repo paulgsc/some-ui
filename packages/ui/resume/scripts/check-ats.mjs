@@ -12,35 +12,27 @@
 // regressions we control: image-only output, broken glyph maps, missing
 // contact details, missing section landmarks, dropped qualifications, and
 // scrambled primary-section order.
-import { execFileSync } from "node:child_process"
 import { existsSync, writeFileSync } from "node:fs"
 import { basename, join } from "node:path"
+import { fileURLToPath } from "node:url"
 
-import { outDir } from "./typst.mjs"
+import { pdftotext } from "./pdftotext.mjs"
+import { outDir, stemFor, templates } from "./typst.mjs"
 
-const extractor = process.env.PDFTOTEXT_BIN ?? "pdftotext"
-
+// Each variant's focus label, which every PDF must expose.
 const variants = {
   backend: "Backend & event-driven systems",
   platform: "Developer platform & release engineering",
   fullstack: "Full-stack web & product engineering",
 }
-const templates = [
-  "rail",
-  "classic",
-  "compact",
-  "vanilla",
-  "safe",
-  "conventional",
-]
-const DEFAULT_TEMPLATE = "rail"
-
-// Identity facts, matched anywhere in the extracted text.
-const requiredText = [
-  "Paul Gathondu",
-  "paulgathondudev@gmail.com",
-  "github.com/paulgsc",
-]
+// Identity facts, matched anywhere in the extracted text. A build with PII
+// (src/lib/pii.typ) also requires each supplied field, and its email
+// replaces this one.
+const identity = {
+  name: "Paul Gathondu",
+  email: "paulgathondudev@gmail.com",
+  github: "github.com/paulgsc",
+}
 
 // Section landmarks, in the order an ATS should encounter them. These are
 // matched as headings — anchored to the start of a line, in the upper case the
@@ -112,37 +104,43 @@ const MIN_WORDS = 180
 // consumes and the only one of the two where a heading reliably starts its own
 // line. A left-hand rail, for instance, prefixes every `-layout` line of the
 // main column with sidebar text.
-function extract(pdfFile, { layout = false } = {}) {
-  const args = layout
-    ? ["-layout", "-enc", "UTF-8", pdfFile, "-"]
-    : ["-enc", "UTF-8", pdfFile, "-"]
-  try {
-    return execFileSync(extractor, args, {
-      encoding: "utf8",
-      maxBuffer: 32 * 1024 * 1024,
-    })
-  } catch (error) {
-    if (error.code === "ENOENT") {
-      throw new Error(
-        "ATS check requires `pdftotext` (Poppler). It is provided by the " +
-          "repo's nix CI shell; outside nix, install poppler-utils or set " +
-          "PDFTOTEXT_BIN to a compatible executable."
-      )
-    }
-    throw error
-  }
+function extract(pdf, { layout = false } = {}) {
+  const flags = layout ? ["-layout", "-enc", "UTF-8"] : ["-enc", "UTF-8"]
+  return pdftotext(flags, pdf, "ATS")
 }
 
-function assertAtsText(pdfFile, variant, template, label) {
-  if (!existsSync(pdfFile)) throw new Error(`Missing generated PDF: ${pdfFile}`)
-  const name = basename(pdfFile)
-  const text = extract(pdfFile)
-  const transcript = extract(pdfFile, { layout: true })
+/**
+ * Throws unless `pdf` (a path, or the PDF's bytes) passes. `pii` is the
+ * build's contact fields, if any; a missing one is named by its field (RP2).
+ * `transcriptDir: null` writes no `.ats.txt`. Returns the word count, and
+ * logs nothing.
+ */
+export function assertAtsText(
+  pdf,
+  { variant, template, pii = {}, transcriptDir = outDir }
+) {
+  if (typeof pdf === "string" && !existsSync(pdf)) {
+    throw new Error(`Missing generated PDF: ${pdf}`)
+  }
+  const label = variants[variant]
+  const name =
+    typeof pdf === "string" ? basename(pdf) : `${variant} / ${template}`
+  const text = extract(pdf)
+  const transcript = extract(pdf, { layout: true })
   const normalized = text.replace(/\s+/g, " ").trim()
   const folded = normalized.toLocaleLowerCase("en")
   const has = (term) => folded.includes(term.toLocaleLowerCase("en"))
 
-  const missing = [...requiredText, label].filter((term) => !has(term))
+  const expected = [
+    ...Object.entries({ ...identity, ...pii }).map(([field, term]) => ({
+      term,
+      name: field in pii ? field : term,
+    })),
+    { term: label, name: label },
+  ]
+  const missing = expected
+    .filter(({ term }) => !has(term))
+    .map(({ name }) => name)
   if (missing.length) {
     throw new Error(
       `${name} has no extractable text for: ${missing.join(", ")}`
@@ -205,23 +203,34 @@ function assertAtsText(pdfFile, variant, template, label) {
     )
   }
 
-  const stem =
-    template === DEFAULT_TEMPLATE
-      ? `resume-${variant}`
-      : `resume-${variant}-${template}`
-  writeFileSync(join(outDir, `${stem}.ats.txt`), `${transcript.trim()}\n`)
+  if (transcriptDir !== null) {
+    writeFileSync(
+      join(transcriptDir, `${stemFor(variant, template)}.ats.txt`),
+      `${transcript.trim()}\n`
+    )
+  }
+  return { words }
+}
+
+// The caller logs: a word count from a PDF with PII derives from it (RP2).
+function logPassed(variant, template, { words }) {
   // eslint-disable-next-line no-console
   console.log(
     `[resume] ATS text check passed: ${variant} / ${template} (${words} words)`
   )
 }
 
-for (const template of templates) {
-  for (const [variant, label] of Object.entries(variants)) {
-    const stem =
-      template === DEFAULT_TEMPLATE
-        ? `resume-${variant}`
-        : `resume-${variant}-${template}`
-    assertAtsText(join(outDir, `${stem}.pdf`), variant, template, label)
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  for (const template of templates) {
+    for (const variant of Object.keys(variants)) {
+      logPassed(
+        variant,
+        template,
+        assertAtsText(join(outDir, `${stemFor(variant, template)}.pdf`), {
+          variant,
+          template,
+        })
+      )
+    }
   }
 }

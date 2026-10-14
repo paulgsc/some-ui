@@ -31,30 +31,18 @@
 // What this cannot do: judge whether spacing looks *good*. It is a floor, not
 // a designer. It catches cramming and collision, which is the failure mode
 // that actually ships unnoticed.
-import { execFileSync } from "node:child_process"
 import { existsSync } from "node:fs"
 import { basename, join } from "node:path"
+import { fileURLToPath } from "node:url"
 
-import { outDir } from "./typst.mjs"
-
-const extractor = process.env.PDFTOTEXT_BIN ?? "pdftotext"
+import { pdftotext } from "./pdftotext.mjs"
+import { outDir, stemFor, templates, variants } from "./typst.mjs"
 
 const MIN_GAP_RATIO = -0.05
 // Two lines belong to the same column when they overlap horizontally by more
 // than half the narrower one. This is what keeps a rail line from being
 // compared against a main-column line that merely happens to sit near it.
 const COLUMN_OVERLAP = 0.5
-
-const variants = ["backend", "platform", "fullstack"]
-const templates = [
-  "rail",
-  "classic",
-  "compact",
-  "vanilla",
-  "safe",
-  "conventional",
-]
-const DEFAULT_TEMPLATE = "rail"
 
 const LINE_RE =
   /<line xMin="([\d.]+)" yMin="([\d.]+)" xMax="([\d.]+)" yMax="([\d.]+)">([\s\S]*?)<\/line>/g
@@ -72,23 +60,8 @@ function decode(text) {
   return text.replace(/&(?:amp|lt|gt|quot|#39|apos);/g, (e) => ENTITIES[e])
 }
 
-function readLines(pdfFile) {
-  let xml
-  try {
-    xml = execFileSync(extractor, ["-bbox-layout", pdfFile, "-"], {
-      encoding: "utf8",
-      maxBuffer: 32 * 1024 * 1024,
-    })
-  } catch (error) {
-    if (error.code === "ENOENT") {
-      throw new Error(
-        "Layout check requires `pdftotext` (Poppler). It is provided by the " +
-          "repo's nix shells; outside nix, install poppler-utils or set " +
-          "PDFTOTEXT_BIN to a compatible executable."
-      )
-    }
-    throw error
-  }
+function readLines(pdf) {
+  const xml = pdftotext(["-bbox-layout"], pdf, "layout")
 
   const lines = []
   for (const match of xml.matchAll(LINE_RE)) {
@@ -119,9 +92,14 @@ function excerpt(line) {
   return line.text.length > 48 ? `${line.text.slice(0, 48)}…` : line.text
 }
 
-function checkDocument(pdfFile, label) {
-  if (!existsSync(pdfFile)) throw new Error(`Missing generated PDF: ${pdfFile}`)
-  const lines = readLines(pdfFile)
+// Throws unless no two adjacent lines of `pdf` (a path, or the PDF's bytes)
+// collide. The message quotes the offending lines. Returns how many pairs it
+// checked, and logs nothing: that count derives from the PDF (RP2).
+export function checkDocument(pdf, label) {
+  if (typeof pdf === "string" && !existsSync(pdf)) {
+    throw new Error(`Missing generated PDF: ${pdf}`)
+  }
+  const lines = readLines(pdf)
   const offences = []
   let checked = 0
 
@@ -152,25 +130,28 @@ function checkDocument(pdfFile, label) {
       )
       .join("\n")
     throw new Error(
-      `${basename(pdfFile)} sets ${offences.length} line pair(s) tighter than ` +
+      `${typeof pdf === "string" ? basename(pdf) : label} sets ${offences.length} line pair(s) tighter than ` +
         `the ${MIN_GAP_RATIO} floor:\n${detail}\n` +
         `  Widen the relevant gap in src/lib/parts.typ (STACK-GAP / ` +
         `HEADING-GAP) or the template's own par/list spacing.`
     )
   }
 
-  // eslint-disable-next-line no-console
-  console.log(
-    `[resume] layout check passed: ${label} (${checked} adjacent line pairs)`
-  )
+  return { checked }
 }
 
-for (const template of templates) {
-  for (const variant of variants) {
-    const stem =
-      template === DEFAULT_TEMPLATE
-        ? `resume-${variant}`
-        : `resume-${variant}-${template}`
-    checkDocument(join(outDir, `${stem}.pdf`), `${variant} / ${template}`)
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  for (const template of templates) {
+    for (const variant of variants) {
+      const label = `${variant} / ${template}`
+      const { checked } = checkDocument(
+        join(outDir, `${stemFor(variant, template)}.pdf`),
+        label
+      )
+      // eslint-disable-next-line no-console
+      console.log(
+        `[resume] layout check passed: ${label} (${checked} adjacent line pairs)`
+      )
+    }
   }
 }

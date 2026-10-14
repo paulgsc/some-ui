@@ -3,4 +3,5 @@ x-environment: &root-env
 include:
   - path: ./infra/compose/base.yml
   - path: ./infra/compose/tts.yml
+  - path: ./infra/compose/resume.yml
   - path: ./infra/compose/www.yml

@@ -5,15 +5,26 @@
 // Binary and font resolution live in scripts/typst.mjs - see that file for why
 // neither is taken from the host.
 import { execFileSync, spawn, spawnSync } from "node:child_process"
-import { copyFileSync, mkdirSync, rmSync, writeFileSync } from "node:fs"
+import {
+  copyFileSync,
+  mkdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs"
 import { join } from "node:path"
 
+import { assertAtsText } from "./check-ats.mjs"
+import { checkDocument } from "./check-layout.mjs"
 import {
   baseArgs,
+  compileWithPii,
   DEFAULT_TEMPLATE,
   inputArgs,
   outDir,
   packageDir,
+  piiEnvelope,
+  piiTemplates,
   presentation,
   resolveTypst,
   sourceFile,
@@ -79,7 +90,8 @@ function renderAll(typstBin, fontPath) {
 // claims check reads source data only and always runs.
 function verify() {
   const checks = ["check-claims.mjs", ...EXTRACTOR_CHECKS]
-  if (!extractorAvailable()) {
+  const extractor = extractorAvailable()
+  if (!extractor) {
     const message =
       "`pdftotext` (Poppler) is not installed, so the ATS and layout checks " +
       "cannot read the rendered PDFs back. Install poppler-utils or set " +
@@ -96,6 +108,53 @@ function verify() {
     execFileSync(process.execPath, [join(packageDir, "scripts", check)], {
       stdio: "inherit",
     })
+  }
+  return { extractor }
+}
+
+// The PII layouts. Every template that renders PII (src/lib/pii.typ) is
+// compiled once per variant with scripts/fixtures/faux-pii.json: every field
+// at once, each at its envelope maximum in the widest glyphs its pattern
+// allows. Those PDFs must still be one page and pass the same ATS and layout
+// checks, with each faux field on the page. They are compiled exactly as
+// scripts/serve.mjs compiles (`compileWithPii`) and checked in memory, so they
+// never reach documents/ or any other file. A narrower value can only take
+// fewer lines (`contact-line`, src/lib/parts.typ), so this covers every
+// value the envelope admits.
+async function verifyPii(typstBin, fontPath, { extractor }) {
+  const pii = JSON.parse(
+    readFileSync(
+      join(packageDir, "scripts", "fixtures", "faux-pii.json"),
+      "utf8"
+    )
+  )
+  for (const [field, rule] of Object.entries(piiEnvelope.fields)) {
+    if ([...(pii[field] ?? "")].length !== rule.maxLength) {
+      throw new Error(
+        `scripts/fixtures/faux-pii.json's ${field} must be exactly ` +
+          `${rule.maxLength} characters, src/pii/envelope.json's maximum, ` +
+          "or it no longer proves the widest layout."
+      )
+    }
+  }
+  for (const template of piiTemplates) {
+    for (const variant of variants) {
+      const label = `${variant} / ${template} with faux PII`
+      const result = await compileWithPii(
+        { bin: typstBin, fontPath },
+        { variant, template, ...presentation[template], pii }
+      )
+      if (!result.ok) {
+        // Faux values, so typst's diagnostics are safe to print here.
+        process.stderr.write(result.stderr)
+        throw new Error(`typst failed on ${label}`)
+      }
+      if (!extractor) continue
+      assertAtsText(result.pdf, { variant, template, pii, transcriptDir: null })
+      checkDocument(result.pdf, label)
+      // eslint-disable-next-line no-console
+      console.log(`[resume] ATS and layout checks passed: ${label}`)
+    }
   }
 }
 
@@ -146,7 +205,7 @@ async function main() {
 
   try {
     renderAll(typstBin, fontPath)
-    verify()
+    await verifyPii(typstBin, fontPath, verify())
   } catch (err) {
     rmSync(outDir, { recursive: true, force: true })
     // eslint-disable-next-line no-console

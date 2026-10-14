@@ -78,6 +78,7 @@ services:
     volumes:
       - ${REPO_ROOT:-.}/apps/www/nginx.https.conf:/etc/nginx/templates/default.conf.template:ro
       - ${REPO_ROOT:-.}/apps/www/nginx.tts-proxy.conf:/etc/nginx/tts-proxy.conf:ro
+      - ${REPO_ROOT:-.}/apps/www/nginx.resume-proxy.conf:/etc/nginx/resume-proxy.conf:ro
       - ${WWW_SFX_ASSETS_PATH:-${REPO_ROOT:-.}/packages/some-content/public/sfx}:/usr/share/nginx/html/sfx:ro
       - ${WWW_HANGUL_ASSETS_PATH:-${REPO_ROOT:-.}/packages/some-content/public/hangul}:/usr/share/nginx/html/hangul:ro
     networks:

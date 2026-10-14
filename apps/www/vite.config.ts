@@ -36,6 +36,14 @@ const analyze = process.env.WWW_ANALYZE === "1"
 
 const ttsProxyTarget = process.env.TTS_PROXY_TARGET || "http://127.0.0.1:5050"
 
+// The dev/preview counterpart of apps/www/nginx.resume-proxy.conf, for the
+// LAN /resume-build page. The container publishes no port, so in dev run the
+// service on the host instead: `node packages/ui/resume/scripts/serve.mjs`
+// (port 3100, or PORT).
+const RESUME_PROXY_PATH = "/api/resume"
+const resumeProxyTarget =
+  process.env.RESUME_PROXY_TARGET || "http://127.0.0.1:3100"
+
 // The same trick for the same reason, one port over: file_host (paulgsc/server)
 // serves plain HTTP on 3000 and terminates no TLS, so an https:// page cannot
 // fetch it directly - mixed content, blocked before the request leaves the
@@ -203,6 +211,12 @@ export default defineConfig(
               )
             })
           },
+        },
+        [RESUME_PROXY_PATH]: {
+          target: resumeProxyTarget,
+          changeOrigin: true,
+          rewrite: (path): string =>
+            path.replace(new RegExp(`^${RESUME_PROXY_PATH}`), ""),
         },
         [FILE_HOST_PROXY_PATH]: {
           target: fileHostProxyTarget,

@@ -9,6 +9,7 @@
   "scripts": {
     "build": "node scripts/compile.mjs && pnpm export:data && tsc -p tsconfig.build.json && vite build",
     "watch": "node scripts/compile.mjs --watch",
+    "serve": "node scripts/serve.mjs",
     "watch:lint": "eslint --watch --cache --fix \"**/*.{js,mjs,ts,tsx}\"",
     "clean": "rimraf .turbo && rimraf node_modules && rimraf .eslintcache && pnpm clean:build",
     "clean:build": "rimraf ./dist ./documents ./tsconfig.build.tsbuildinfo",

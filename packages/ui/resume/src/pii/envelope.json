@@ -1,0 +1,29 @@
+{
+  "templates": ["classic", "vanilla", "safe", "conventional"],
+  "fields": {
+    "phone": {
+      "label": "Phone",
+      "maxLength": 20,
+      "pattern": "^\\+?[0-9][0-9 ().-]*[0-9]$",
+      "example": "+1 (510) 555-0134"
+    },
+    "email": {
+      "label": "Email",
+      "maxLength": 48,
+      "pattern": "^[^\\s@|·]+@[^\\s@|·]+\\.[A-Za-z]{2,}$",
+      "example": "name@example.com"
+    },
+    "linkedin": {
+      "label": "LinkedIn",
+      "maxLength": 60,
+      "pattern": "^linkedin\\.com/in/[A-Za-z0-9_-]+$",
+      "example": "linkedin.com/in/your-handle"
+    },
+    "address": {
+      "label": "Address",
+      "maxLength": 64,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9 ,.#'/-]*$",
+      "example": "1234 Example St, Berkeley, CA 94704"
+    }
+  }
+}
