@@ -15,9 +15,12 @@
  * differs from the spelling, within the written word, by a standard rule:
  * liaison (책을 → 채글), tensing (학교에 → 학꾜에, 먹기 → 먹끼),
  * aspiration (백화점에서 → 배콰저메서) and a silent ㅎ (좋아요 → 조아요).
- * Changes across a space are not written. Words the starter deck
- * already names (저, 친구, 마시다 …) are named there, not here; the bundled
- * deck joins the two.
+ * Changes across a space are not written, except -ㄹ 거예요's tensing
+ * (볼 거예요 → 볼 꺼예요), which the starter deck and the deck prompt write.
+ * Words the starter deck already names (저, 친구, 마시다 …) are named there,
+ * not here; the bundled deck joins the two.
+ *
+ * Roles and tenses follow `content`'s rules for them.
  */
 
 import type {
@@ -164,7 +167,7 @@ export const LEVEL_ONE_LINES: Array<ReadAloudLine> = [
         stemEnd: 3,
         sense: "hello (polite)",
       },
-      { wordId: "jeo", surface: "저는", stemEnd: 1 },
+      { wordId: "jeo", surface: "저는", role: "topic", stemEnd: 1 },
       {
         wordId: "haksaeng",
         surface: "학생이에요",
@@ -179,10 +182,12 @@ export const LEVEL_ONE_LINES: Array<ReadAloudLine> = [
     level: 1,
     korean: "이름이 뭐예요?",
     english: "What's your name?",
+    tense: "present",
     words: [
       {
         wordId: "ireum",
         surface: "이름이",
+        role: "subject",
         stemEnd: 2,
         pronunciation: "이르미",
       },
@@ -194,8 +199,9 @@ export const LEVEL_ONE_LINES: Array<ReadAloudLine> = [
     level: 1,
     korean: "저는 미국 사람이에요.",
     english: "I'm American.",
+    tense: "present",
     words: [
-      { wordId: "jeo", surface: "저는", stemEnd: 1 },
+      { wordId: "jeo", surface: "저는", role: "topic", stemEnd: 1 },
       { wordId: "miguk", surface: "미국", stemEnd: 2 },
       {
         wordId: "saram",
@@ -211,14 +217,16 @@ export const LEVEL_ONE_LINES: Array<ReadAloudLine> = [
     level: 1,
     korean: "한국어를 공부해요.",
     english: "I study Korean.",
+    tense: "present",
     words: [
       {
         wordId: "hangugeo",
         surface: "한국어를",
+        role: "object",
         stemEnd: 3,
         pronunciation: "한구거를",
       },
-      { wordId: "gongbuhada", surface: "공부해요", stemEnd: 3 },
+      { wordId: "gongbuhada", surface: "공부해요", role: "action", stemEnd: 3 },
     ],
   },
   {
@@ -226,11 +234,13 @@ export const LEVEL_ONE_LINES: Array<ReadAloudLine> = [
     level: 1,
     korean: "우리 가족은 네 명이에요.",
     english: "There are four of us in my family.",
+    tense: "present",
     words: [
       { wordId: "uri", surface: "우리", stemEnd: 2 },
       {
         wordId: "gajok",
         surface: "가족은",
+        role: "topic",
         stemEnd: 2,
         pronunciation: "가조근",
       },
@@ -253,6 +263,7 @@ export const LEVEL_ONE_LINES: Array<ReadAloudLine> = [
     level: 1,
     korean: "아버지와 어머니가 있어요.",
     english: "I have a father and a mother.",
+    tense: "present",
     words: [
       { wordId: "abeoji", surface: "아버지와", stemEnd: 3 },
       { wordId: "eomeoni", surface: "어머니가", stemEnd: 3 },
@@ -270,10 +281,17 @@ export const LEVEL_ONE_LINES: Array<ReadAloudLine> = [
     level: 1,
     korean: "형은 키가 커요.",
     english: "My older brother is tall.",
+    tense: "present",
     words: [
-      { wordId: "hyeong", surface: "형은", stemEnd: 1 },
-      { wordId: "ki", surface: "키가", stemEnd: 1 },
-      { wordId: "keuda", surface: "커요", stemEnd: 1, sense: "is tall" },
+      { wordId: "hyeong", surface: "형은", role: "topic", stemEnd: 1 },
+      { wordId: "ki", surface: "키가", role: "subject", stemEnd: 1 },
+      {
+        wordId: "keuda",
+        surface: "커요",
+        role: "describing",
+        stemEnd: 1,
+        sense: "is tall",
+      },
     ],
   },
   {
@@ -281,6 +299,7 @@ export const LEVEL_ONE_LINES: Array<ReadAloudLine> = [
     level: 1,
     korean: "아침 일곱 시에 일어나요.",
     english: "I get up at seven in the morning.",
+    tense: "present",
     words: [
       { wordId: "achim", surface: "아침", stemEnd: 2 },
       { wordId: "ilgop", surface: "일곱", stemEnd: 2 },
@@ -288,6 +307,7 @@ export const LEVEL_ONE_LINES: Array<ReadAloudLine> = [
       {
         wordId: "ireonada",
         surface: "일어나요",
+        role: "action",
         stemEnd: 3,
         pronunciation: "이러나요",
       },
@@ -298,17 +318,20 @@ export const LEVEL_ONE_LINES: Array<ReadAloudLine> = [
     level: 1,
     korean: "아침에 빵을 먹어요.",
     english: "I eat bread in the morning.",
+    tense: "present",
     words: [
       {
         wordId: "achim",
         surface: "아침에",
+        role: "time",
         stemEnd: 2,
         pronunciation: "아치메",
       },
-      { wordId: "ppang", surface: "빵을", stemEnd: 1 },
+      { wordId: "ppang", surface: "빵을", role: "object", stemEnd: 1 },
       {
         wordId: "meokda",
         surface: "먹어요",
+        role: "action",
         stemEnd: 1,
         pronunciation: "머거요",
       },
@@ -319,10 +342,17 @@ export const LEVEL_ONE_LINES: Array<ReadAloudLine> = [
     level: 1,
     korean: "물을 많이 마셔요.",
     english: "I drink a lot of water.",
+    tense: "present",
     words: [
-      { wordId: "mul", surface: "물을", stemEnd: 1, pronunciation: "무를" },
+      {
+        wordId: "mul",
+        surface: "물을",
+        role: "object",
+        stemEnd: 1,
+        pronunciation: "무를",
+      },
       { wordId: "mani", surface: "많이", stemEnd: 2, pronunciation: "마니" },
-      { wordId: "masida", surface: "마셔요", stemEnd: 2 },
+      { wordId: "masida", surface: "마셔요", role: "action", stemEnd: 2 },
     ],
   },
   {
@@ -330,15 +360,23 @@ export const LEVEL_ONE_LINES: Array<ReadAloudLine> = [
     level: 1,
     korean: "학교에 버스로 가요.",
     english: "I go to school by bus.",
+    tense: "present",
     words: [
       {
         wordId: "hakgyo",
         surface: "학교에",
+        role: "goal",
         stemEnd: 2,
         pronunciation: "학꾜에",
       },
-      { wordId: "beoseu", surface: "버스로", stemEnd: 2, sense: "by bus" },
-      { wordId: "gada", surface: "가요", stemEnd: 1 },
+      {
+        wordId: "beoseu",
+        surface: "버스로",
+        role: "means",
+        stemEnd: 2,
+        sense: "by bus",
+      },
+      { wordId: "gada", surface: "가요", role: "action", stemEnd: 1 },
     ],
   },
   {
@@ -346,14 +384,21 @@ export const LEVEL_ONE_LINES: Array<ReadAloudLine> = [
     level: 1,
     korean: "선생님이 친절해요.",
     english: "The teacher is kind.",
+    tense: "present",
     words: [
       {
         wordId: "seonsaengnim",
         surface: "선생님이",
+        role: "subject",
         stemEnd: 3,
         pronunciation: "선생니미",
       },
-      { wordId: "chinjeolhada", surface: "친절해요", stemEnd: 3 },
+      {
+        wordId: "chinjeolhada",
+        surface: "친절해요",
+        role: "describing",
+        stemEnd: 3,
+      },
     ],
   },
   {
@@ -361,17 +406,26 @@ export const LEVEL_ONE_LINES: Array<ReadAloudLine> = [
     level: 1,
     korean: "교실에 책이 많아요.",
     english: "There are a lot of books in the classroom.",
+    tense: "present",
     words: [
       {
         wordId: "gyosil",
         surface: "교실에",
+        role: "goal",
         stemEnd: 2,
         pronunciation: "교시레",
       },
-      { wordId: "chaek", surface: "책이", stemEnd: 1, pronunciation: "채기" },
+      {
+        wordId: "chaek",
+        surface: "책이",
+        role: "subject",
+        stemEnd: 1,
+        pronunciation: "채기",
+      },
       {
         wordId: "manta",
         surface: "많아요",
+        role: "describing",
         stemEnd: 1,
         pronunciation: "마나요",
       },
@@ -382,20 +436,23 @@ export const LEVEL_ONE_LINES: Array<ReadAloudLine> = [
     level: 1,
     korean: "저녁에 숙제를 해요.",
     english: "I do my homework in the evening.",
+    tense: "present",
     words: [
       {
         wordId: "jeonyeok",
         surface: "저녁에",
+        role: "time",
         stemEnd: 2,
         pronunciation: "저녀게",
       },
       {
         wordId: "sukje",
         surface: "숙제를",
+        role: "object",
         stemEnd: 2,
         pronunciation: "숙쩨를",
       },
-      { wordId: "hada", surface: "해요", stemEnd: 1 },
+      { wordId: "hada", surface: "해요", role: "action", stemEnd: 1 },
     ],
   },
   {
@@ -403,17 +460,26 @@ export const LEVEL_ONE_LINES: Array<ReadAloudLine> = [
     level: 1,
     korean: "도서관에서 책을 읽어요.",
     english: "I read books at the library.",
+    tense: "present",
     words: [
       {
         wordId: "doseogwan",
         surface: "도서관에서",
+        role: "place",
         stemEnd: 3,
         pronunciation: "도서과네서",
       },
-      { wordId: "chaek", surface: "책을", stemEnd: 1, pronunciation: "채글" },
+      {
+        wordId: "chaek",
+        surface: "책을",
+        role: "object",
+        stemEnd: 1,
+        pronunciation: "채글",
+      },
       {
         wordId: "ikda",
         surface: "읽어요",
+        role: "action",
         stemEnd: 1,
         pronunciation: "일거요",
       },
@@ -424,17 +490,20 @@ export const LEVEL_ONE_LINES: Array<ReadAloudLine> = [
     level: 1,
     korean: "친구와 점심을 먹어요.",
     english: "I have lunch with a friend.",
+    tense: "present",
     words: [
-      { wordId: "chingu", surface: "친구와", stemEnd: 2 },
+      { wordId: "chingu", surface: "친구와", role: "company", stemEnd: 2 },
       {
         wordId: "jeomsim",
         surface: "점심을",
+        role: "object",
         stemEnd: 2,
         pronunciation: "점시믈",
       },
       {
         wordId: "meokda",
         surface: "먹어요",
+        role: "action",
         stemEnd: 1,
         pronunciation: "머거요",
       },
@@ -445,10 +514,17 @@ export const LEVEL_ONE_LINES: Array<ReadAloudLine> = [
     level: 1,
     korean: "김치가 조금 매워요.",
     english: "The kimchi is a little spicy.",
+    tense: "present",
     words: [
-      { wordId: "gimchi", surface: "김치가", stemEnd: 2 },
+      { wordId: "gimchi", surface: "김치가", role: "subject", stemEnd: 2 },
       { wordId: "jogeum", surface: "조금", stemEnd: 2 },
-      { wordId: "maepda", surface: "매워요", stemEnd: 2, sense: "is spicy" },
+      {
+        wordId: "maepda",
+        surface: "매워요",
+        role: "describing",
+        stemEnd: 2,
+        sense: "is spicy",
+      },
     ],
   },
   {
@@ -456,8 +532,9 @@ export const LEVEL_ONE_LINES: Array<ReadAloudLine> = [
     level: 1,
     korean: "사과가 얼마예요?",
     english: "How much are the apples?",
+    tense: "present",
     words: [
-      { wordId: "sagwa", surface: "사과가", stemEnd: 2 },
+      { wordId: "sagwa", surface: "사과가", role: "subject", stemEnd: 2 },
       {
         wordId: "eolma",
         surface: "얼마예요",
@@ -471,10 +548,11 @@ export const LEVEL_ONE_LINES: Array<ReadAloudLine> = [
     level: 1,
     korean: "가게에서 우유를 사요.",
     english: "I buy milk at the shop.",
+    tense: "present",
     words: [
-      { wordId: "gage", surface: "가게에서", stemEnd: 2 },
-      { wordId: "uyu", surface: "우유를", stemEnd: 2 },
-      { wordId: "sada", surface: "사요", stemEnd: 1 },
+      { wordId: "gage", surface: "가게에서", role: "place", stemEnd: 2 },
+      { wordId: "uyu", surface: "우유를", role: "object", stemEnd: 2 },
+      { wordId: "sada", surface: "사요", role: "action", stemEnd: 1 },
     ],
   },
   {
@@ -482,12 +560,14 @@ export const LEVEL_ONE_LINES: Array<ReadAloudLine> = [
     level: 1,
     korean: "오늘 날씨가 좋아요.",
     english: "The weather is nice today.",
+    tense: "present",
     words: [
-      { wordId: "oneul", surface: "오늘", stemEnd: 2 },
-      { wordId: "nalssi", surface: "날씨가", stemEnd: 2 },
+      { wordId: "oneul", surface: "오늘", role: "time", stemEnd: 2 },
+      { wordId: "nalssi", surface: "날씨가", role: "subject", stemEnd: 2 },
       {
         wordId: "jota",
         surface: "좋아요",
+        role: "describing",
         stemEnd: 1,
         pronunciation: "조아요",
       },
@@ -498,16 +578,30 @@ export const LEVEL_ONE_LINES: Array<ReadAloudLine> = [
     level: 1,
     korean: "비가 와서 우산을 써요.",
     english: "It's raining, so I use an umbrella.",
+    tense: "present",
     words: [
-      { wordId: "bi", surface: "비가", stemEnd: 1 },
-      { wordId: "oda", surface: "와서", stemEnd: 1, sense: "comes, so" },
+      { wordId: "bi", surface: "비가", role: "subject", stemEnd: 1 },
+      {
+        wordId: "oda",
+        surface: "와서",
+        role: "action",
+        stemEnd: 1,
+        sense: "comes, so",
+      },
       {
         wordId: "usan",
         surface: "우산을",
+        role: "object",
         stemEnd: 2,
         pronunciation: "우사늘",
       },
-      { wordId: "sseuda", surface: "써요", stemEnd: 1, sense: "use" },
+      {
+        wordId: "sseuda",
+        surface: "써요",
+        role: "action",
+        stemEnd: 1,
+        sense: "use",
+      },
     ],
   },
   {
@@ -515,14 +609,22 @@ export const LEVEL_ONE_LINES: Array<ReadAloudLine> = [
     level: 1,
     korean: "겨울은 추워요.",
     english: "Winter is cold.",
+    tense: "present",
     words: [
       {
         wordId: "gyeoul",
         surface: "겨울은",
+        role: "topic",
         stemEnd: 2,
         pronunciation: "겨우른",
       },
-      { wordId: "chupda", surface: "추워요", stemEnd: 2, sense: "is cold" },
+      {
+        wordId: "chupda",
+        surface: "추워요",
+        role: "describing",
+        stemEnd: 2,
+        sense: "is cold",
+      },
     ],
   },
   {
@@ -530,15 +632,17 @@ export const LEVEL_ONE_LINES: Array<ReadAloudLine> = [
     level: 1,
     korean: "여름에는 바다에 가요.",
     english: "In summer I go to the sea.",
+    tense: "present",
     words: [
       {
         wordId: "yeoreum",
         surface: "여름에는",
+        role: "time",
         stemEnd: 2,
         pronunciation: "여르메는",
       },
-      { wordId: "bada", surface: "바다에", stemEnd: 2 },
-      { wordId: "gada", surface: "가요", stemEnd: 1 },
+      { wordId: "bada", surface: "바다에", role: "goal", stemEnd: 2 },
+      { wordId: "gada", surface: "가요", role: "action", stemEnd: 1 },
     ],
   },
   {
@@ -546,15 +650,23 @@ export const LEVEL_ONE_LINES: Array<ReadAloudLine> = [
     level: 1,
     korean: "주말에 집에서 쉬어요.",
     english: "I rest at home on the weekend.",
+    tense: "present",
     words: [
       {
         wordId: "jumal",
         surface: "주말에",
+        role: "time",
         stemEnd: 2,
         pronunciation: "주마레",
       },
-      { wordId: "jip", surface: "집에서", stemEnd: 1, pronunciation: "지베서" },
-      { wordId: "swida", surface: "쉬어요", stemEnd: 1 },
+      {
+        wordId: "jip",
+        surface: "집에서",
+        role: "place",
+        stemEnd: 1,
+        pronunciation: "지베서",
+      },
+      { wordId: "swida", surface: "쉬어요", role: "action", stemEnd: 1 },
     ],
   },
   {
@@ -562,20 +674,23 @@ export const LEVEL_ONE_LINES: Array<ReadAloudLine> = [
     level: 1,
     korean: "일요일에 공원에서 운동해요.",
     english: "On Sunday I exercise in the park.",
+    tense: "present",
     words: [
       {
         wordId: "iryoil",
         surface: "일요일에",
+        role: "time",
         stemEnd: 3,
         pronunciation: "이료이레",
       },
       {
         wordId: "gongwon",
         surface: "공원에서",
+        role: "place",
         stemEnd: 2,
         pronunciation: "공워네서",
       },
-      { wordId: "undonghada", surface: "운동해요", stemEnd: 3 },
+      { wordId: "undonghada", surface: "운동해요", role: "action", stemEnd: 3 },
     ],
   },
   {
@@ -583,16 +698,24 @@ export const LEVEL_ONE_LINES: Array<ReadAloudLine> = [
     level: 1,
     korean: "머리가 아파서 병원에 가요.",
     english: "My head hurts, so I go to the hospital.",
+    tense: "present",
     words: [
-      { wordId: "meori", surface: "머리가", stemEnd: 2 },
-      { wordId: "apeuda", surface: "아파서", stemEnd: 2, sense: "hurts, so" },
+      { wordId: "meori", surface: "머리가", role: "subject", stemEnd: 2 },
+      {
+        wordId: "apeuda",
+        surface: "아파서",
+        role: "describing",
+        stemEnd: 2,
+        sense: "hurts, so",
+      },
       {
         wordId: "byeongwon",
         surface: "병원에",
+        role: "goal",
         stemEnd: 2,
         pronunciation: "병워네",
       },
-      { wordId: "gada", surface: "가요", stemEnd: 1 },
+      { wordId: "gada", surface: "가요", role: "action", stemEnd: 1 },
     ],
   },
   {
@@ -600,10 +723,12 @@ export const LEVEL_ONE_LINES: Array<ReadAloudLine> = [
     level: 1,
     korean: "약국이 어디에 있어요?",
     english: "Where is the pharmacy?",
+    tense: "present",
     words: [
       {
         wordId: "yakguk",
         surface: "약국이",
+        role: "subject",
         stemEnd: 2,
         pronunciation: "약꾸기",
       },
@@ -622,12 +747,14 @@ export const LEVEL_ONE_LINES: Array<ReadAloudLine> = [
     level: 1,
     korean: "은행은 우체국 옆에 있어요.",
     english: "The bank is next to the post office.",
+    tense: "present",
     words: [
-      { wordId: "eunhaeng", surface: "은행은", stemEnd: 2 },
+      { wordId: "eunhaeng", surface: "은행은", role: "topic", stemEnd: 2 },
       { wordId: "ucheguk", surface: "우체국", stemEnd: 3 },
       {
         wordId: "yeop",
         surface: "옆에",
+        role: "goal",
         stemEnd: 1,
         pronunciation: "여페",
         sense: "next to",
@@ -646,16 +773,18 @@ export const LEVEL_ONE_LINES: Array<ReadAloudLine> = [
     level: 1,
     korean: "역까지 걸어서 가요.",
     english: "I walk to the station.",
+    tense: "present",
     words: [
       { wordId: "yeok", surface: "역까지", stemEnd: 1 },
       {
         wordId: "geotda",
         surface: "걸어서",
+        role: "action",
         stemEnd: 1,
         pronunciation: "거러서",
         sense: "on foot",
       },
-      { wordId: "gada", surface: "가요", stemEnd: 1 },
+      { wordId: "gada", surface: "가요", role: "action", stemEnd: 1 },
     ],
   },
   {
@@ -663,8 +792,9 @@ export const LEVEL_ONE_LINES: Array<ReadAloudLine> = [
     level: 1,
     korean: "지금 몇 시예요?",
     english: "What time is it now?",
+    tense: "present",
     words: [
-      { wordId: "jigeum", surface: "지금", stemEnd: 2 },
+      { wordId: "jigeum", surface: "지금", role: "time", stemEnd: 2 },
       { wordId: "myeot", surface: "몇", stemEnd: 1 },
       { wordId: "si", surface: "시예요", stemEnd: 1, sense: "o'clock is it" },
     ],
@@ -674,17 +804,26 @@ export const LEVEL_ONE_LINES: Array<ReadAloudLine> = [
     level: 1,
     korean: "백화점에서 옷을 샀어요.",
     english: "I bought clothes at the department store.",
+    tense: "past",
     words: [
       {
         wordId: "baekhwajeom",
         surface: "백화점에서",
+        role: "place",
         stemEnd: 3,
         pronunciation: "배콰저메서",
       },
-      { wordId: "ot", surface: "옷을", stemEnd: 1, pronunciation: "오슬" },
+      {
+        wordId: "ot",
+        surface: "옷을",
+        role: "object",
+        stemEnd: 1,
+        pronunciation: "오슬",
+      },
       {
         wordId: "sada",
         surface: "샀어요",
+        role: "action",
         stemEnd: 1,
         pronunciation: "사써요",
         sense: "bought",
@@ -696,11 +835,13 @@ export const LEVEL_ONE_LINES: Array<ReadAloudLine> = [
     level: 1,
     korean: "이 신발은 너무 작아요.",
     english: "These shoes are too small.",
+    tense: "present",
     words: [
       { wordId: "i", surface: "이", stemEnd: 1 },
       {
         wordId: "sinbal",
         surface: "신발은",
+        role: "topic",
         stemEnd: 2,
         pronunciation: "신바른",
       },
@@ -708,6 +849,7 @@ export const LEVEL_ONE_LINES: Array<ReadAloudLine> = [
       {
         wordId: "jakda",
         surface: "작아요",
+        role: "describing",
         stemEnd: 1,
         pronunciation: "자가요",
         sense: "are small",
@@ -719,10 +861,12 @@ export const LEVEL_ONE_LINES: Array<ReadAloudLine> = [
     level: 1,
     korean: "저녁에 어머니께 전화해요.",
     english: "I call my mother in the evening.",
+    tense: "present",
     words: [
       {
         wordId: "jeonyeok",
         surface: "저녁에",
+        role: "time",
         stemEnd: 2,
         pronunciation: "저녀게",
       },
@@ -732,7 +876,12 @@ export const LEVEL_ONE_LINES: Array<ReadAloudLine> = [
         stemEnd: 3,
         sense: "to (my) mother",
       },
-      { wordId: "jeonhwahada", surface: "전화해요", stemEnd: 3 },
+      {
+        wordId: "jeonhwahada",
+        surface: "전화해요",
+        role: "action",
+        stemEnd: 3,
+      },
     ],
   },
   {
@@ -740,12 +889,14 @@ export const LEVEL_ONE_LINES: Array<ReadAloudLine> = [
     level: 1,
     korean: "저는 커피를 좋아해요.",
     english: "I like coffee.",
+    tense: "present",
     words: [
-      { wordId: "jeo", surface: "저는", stemEnd: 1 },
-      { wordId: "keopi", surface: "커피를", stemEnd: 2 },
+      { wordId: "jeo", surface: "저는", role: "topic", stemEnd: 1 },
+      { wordId: "keopi", surface: "커피를", role: "object", stemEnd: 2 },
       {
         wordId: "joahada",
         surface: "좋아해요",
+        role: "action",
         stemEnd: 3,
         pronunciation: "조아해요",
       },
@@ -756,10 +907,11 @@ export const LEVEL_ONE_LINES: Array<ReadAloudLine> = [
     level: 1,
     korean: "차는 안 마셔요.",
     english: "I don't drink tea.",
+    tense: "present",
     words: [
-      { wordId: "cha", surface: "차는", stemEnd: 1 },
+      { wordId: "cha", surface: "차는", role: "topic", stemEnd: 1 },
       { wordId: "an", surface: "안", stemEnd: 1 },
-      { wordId: "masida", surface: "마셔요", stemEnd: 2 },
+      { wordId: "masida", surface: "마셔요", role: "action", stemEnd: 2 },
     ],
   },
   {
@@ -767,12 +919,14 @@ export const LEVEL_ONE_LINES: Array<ReadAloudLine> = [
     level: 1,
     korean: "강아지가 정말 귀여워요.",
     english: "The puppy is really cute.",
+    tense: "present",
     words: [
-      { wordId: "gangaji", surface: "강아지가", stemEnd: 3 },
+      { wordId: "gangaji", surface: "강아지가", role: "subject", stemEnd: 3 },
       { wordId: "jeongmal", surface: "정말", stemEnd: 2 },
       {
         wordId: "gwiyeopda",
         surface: "귀여워요",
+        role: "describing",
         stemEnd: 3,
         sense: "is cute",
       },
@@ -783,10 +937,11 @@ export const LEVEL_ONE_LINES: Array<ReadAloudLine> = [
     level: 1,
     korean: "고양이가 소파에서 자요.",
     english: "The cat sleeps on the sofa.",
+    tense: "present",
     words: [
-      { wordId: "goyangi", surface: "고양이가", stemEnd: 3 },
-      { wordId: "sopa", surface: "소파에서", stemEnd: 2 },
-      { wordId: "jada", surface: "자요", stemEnd: 1 },
+      { wordId: "goyangi", surface: "고양이가", role: "subject", stemEnd: 3 },
+      { wordId: "sopa", surface: "소파에서", role: "place", stemEnd: 2 },
+      { wordId: "jada", surface: "자요", role: "action", stemEnd: 1 },
     ],
   },
   {
@@ -794,15 +949,17 @@ export const LEVEL_ONE_LINES: Array<ReadAloudLine> = [
     level: 1,
     korean: "피곤해서 일찍 자요.",
     english: "I'm tired, so I go to bed early.",
+    tense: "present",
     words: [
       {
         wordId: "pigonhada",
         surface: "피곤해서",
+        role: "describing",
         stemEnd: 3,
         sense: "tired, so",
       },
       { wordId: "iljjik", surface: "일찍", stemEnd: 2 },
-      { wordId: "jada", surface: "자요", stemEnd: 1 },
+      { wordId: "jada", surface: "자요", role: "action", stemEnd: 1 },
     ],
   },
   {
@@ -810,17 +967,20 @@ export const LEVEL_ONE_LINES: Array<ReadAloudLine> = [
     level: 1,
     korean: "매일 음악을 들어요.",
     english: "I listen to music every day.",
+    tense: "present",
     words: [
-      { wordId: "maeil", surface: "매일", stemEnd: 2 },
+      { wordId: "maeil", surface: "매일", role: "time", stemEnd: 2 },
       {
         wordId: "eumak",
         surface: "음악을",
+        role: "object",
         stemEnd: 2,
         pronunciation: "으마글",
       },
       {
         wordId: "deutda",
         surface: "들어요",
+        role: "action",
         stemEnd: 1,
         pronunciation: "드러요",
       },
@@ -831,17 +991,20 @@ export const LEVEL_ONE_LINES: Array<ReadAloudLine> = [
     level: 1,
     korean: "여기에서 사진을 찍어요.",
     english: "I take photos here.",
+    tense: "present",
     words: [
-      { wordId: "yeogi", surface: "여기에서", stemEnd: 2 },
+      { wordId: "yeogi", surface: "여기에서", role: "place", stemEnd: 2 },
       {
         wordId: "sajin",
         surface: "사진을",
+        role: "object",
         stemEnd: 2,
         pronunciation: "사지늘",
       },
       {
         wordId: "jjikda",
         surface: "찍어요",
+        role: "action",
         stemEnd: 1,
         pronunciation: "찌거요",
       },
@@ -852,8 +1015,9 @@ export const LEVEL_ONE_LINES: Array<ReadAloudLine> = [
     level: 1,
     korean: "동생은 고등학생이에요.",
     english: "My younger sibling is a high school student.",
+    tense: "present",
     words: [
-      { wordId: "dongsaeng", surface: "동생은", stemEnd: 2 },
+      { wordId: "dongsaeng", surface: "동생은", role: "topic", stemEnd: 2 },
       {
         wordId: "godeunghaksaeng",
         surface: "고등학생이에요",
@@ -868,10 +1032,12 @@ export const LEVEL_ONE_LINES: Array<ReadAloudLine> = [
     level: 1,
     korean: "오늘은 제 생일이에요.",
     english: "Today is my birthday.",
+    tense: "present",
     words: [
       {
         wordId: "oneul",
         surface: "오늘은",
+        role: "topic",
         stemEnd: 2,
         pronunciation: "오느른",
       },
@@ -911,6 +1077,7 @@ export const LEVEL_ONE_LINES: Array<ReadAloudLine> = [
     level: 1,
     korean: "늦어서 미안해요.",
     english: "Sorry I'm late.",
+    tense: "present",
     words: [
       {
         wordId: "neutda",
@@ -919,7 +1086,12 @@ export const LEVEL_ONE_LINES: Array<ReadAloudLine> = [
         pronunciation: "느저서",
         sense: "late, so",
       },
-      { wordId: "mianhada", surface: "미안해요", stemEnd: 3 },
+      {
+        wordId: "mianhada",
+        surface: "미안해요",
+        role: "describing",
+        stemEnd: 3,
+      },
     ],
   },
   {
@@ -927,6 +1099,7 @@ export const LEVEL_ONE_LINES: Array<ReadAloudLine> = [
     level: 1,
     korean: "월요일부터 금요일까지 일해요.",
     english: "I work from Monday to Friday.",
+    tense: "present",
     words: [
       {
         wordId: "woryoil",
@@ -940,7 +1113,7 @@ export const LEVEL_ONE_LINES: Array<ReadAloudLine> = [
         stemEnd: 3,
         pronunciation: "그묘일까지",
       },
-      { wordId: "ilhada", surface: "일해요", stemEnd: 2 },
+      { wordId: "ilhada", surface: "일해요", role: "action", stemEnd: 2 },
     ],
   },
   {
@@ -948,17 +1121,20 @@ export const LEVEL_ONE_LINES: Array<ReadAloudLine> = [
     level: 1,
     korean: "한국 음식을 좋아해요.",
     english: "I like Korean food.",
+    tense: "present",
     words: [
       { wordId: "hanguk", surface: "한국", stemEnd: 2 },
       {
         wordId: "eumsik",
         surface: "음식을",
+        role: "object",
         stemEnd: 2,
         pronunciation: "음시글",
       },
       {
         wordId: "joahada",
         surface: "좋아해요",
+        role: "action",
         stemEnd: 3,
         pronunciation: "조아해요",
       },
@@ -969,11 +1145,13 @@ export const LEVEL_ONE_LINES: Array<ReadAloudLine> = [
     level: 1,
     korean: "배가 고파요.",
     english: "I'm hungry.",
+    tense: "present",
     words: [
-      { wordId: "bae", surface: "배가", stemEnd: 1 },
+      { wordId: "bae", surface: "배가", role: "subject", stemEnd: 1 },
       {
         wordId: "gopeuda",
         surface: "고파요",
+        role: "describing",
         stemEnd: 2,
         sense: "(my stomach) is hungry",
       },
@@ -985,12 +1163,25 @@ export const LEVEL_ONE_LINES: Array<ReadAloudLine> = [
     korean: "목이 말라요. 물 주세요.",
     english: "I'm thirsty. Water, please.",
     words: [
-      { wordId: "mok", surface: "목이", stemEnd: 1, pronunciation: "모기" },
-      { wordId: "mareuda", surface: "말라요", stemEnd: 2, sense: "is dry" },
+      {
+        wordId: "mok",
+        surface: "목이",
+        role: "subject",
+        stemEnd: 1,
+        pronunciation: "모기",
+      },
+      {
+        wordId: "mareuda",
+        surface: "말라요",
+        role: "describing",
+        stemEnd: 2,
+        sense: "is dry",
+      },
       { wordId: "mul", surface: "물", stemEnd: 1 },
       {
         wordId: "juda",
         surface: "주세요",
+        role: "action",
         stemEnd: 1,
         sense: "please give me",
       },
@@ -1001,10 +1192,17 @@ export const LEVEL_ONE_LINES: Array<ReadAloudLine> = [
     level: 1,
     korean: "우리 집은 크지 않아요.",
     english: "Our house isn't big.",
+    tense: "present",
     words: [
       { wordId: "uri", surface: "우리", stemEnd: 2 },
-      { wordId: "jip", surface: "집은", stemEnd: 1, pronunciation: "지븐" },
-      { wordId: "keuda", surface: "크지", stemEnd: 1 },
+      {
+        wordId: "jip",
+        surface: "집은",
+        role: "topic",
+        stemEnd: 1,
+        pronunciation: "지븐",
+      },
+      { wordId: "keuda", surface: "크지", role: "describing", stemEnd: 1 },
       {
         wordId: "anta",
         surface: "않아요",
@@ -1019,9 +1217,15 @@ export const LEVEL_ONE_LINES: Array<ReadAloudLine> = [
     level: 1,
     korean: "방을 청소해요.",
     english: "I clean my room.",
+    tense: "present",
     words: [
-      { wordId: "bang", surface: "방을", stemEnd: 1 },
-      { wordId: "cheongsohada", surface: "청소해요", stemEnd: 3 },
+      { wordId: "bang", surface: "방을", role: "object", stemEnd: 1 },
+      {
+        wordId: "cheongsohada",
+        surface: "청소해요",
+        role: "action",
+        stemEnd: 3,
+      },
     ],
   },
   {
@@ -1033,10 +1237,17 @@ export const LEVEL_ONE_LINES: Array<ReadAloudLine> = [
       {
         wordId: "changmun",
         surface: "창문을",
+        role: "object",
         stemEnd: 2,
         pronunciation: "창무늘",
       },
-      { wordId: "yeolda", surface: "열어", stemEnd: 1, pronunciation: "여러" },
+      {
+        wordId: "yeolda",
+        surface: "열어",
+        role: "action",
+        stemEnd: 1,
+        pronunciation: "여러",
+      },
       {
         wordId: "juda",
         surface: "주세요",
@@ -1050,11 +1261,19 @@ export const LEVEL_ONE_LINES: Array<ReadAloudLine> = [
     level: 1,
     korean: "문을 닫아요.",
     english: "I close the door.",
+    tense: "present",
     words: [
-      { wordId: "mun", surface: "문을", stemEnd: 1, pronunciation: "무늘" },
+      {
+        wordId: "mun",
+        surface: "문을",
+        role: "object",
+        stemEnd: 1,
+        pronunciation: "무늘",
+      },
       {
         wordId: "datda",
         surface: "닫아요",
+        role: "action",
         stemEnd: 1,
         pronunciation: "다다요",
       },
@@ -1065,6 +1284,7 @@ export const LEVEL_ONE_LINES: Array<ReadAloudLine> = [
     level: 1,
     korean: "밥 먹기 전에 손을 씻어요.",
     english: "I wash my hands before I eat.",
+    tense: "present",
     words: [
       { wordId: "bap", surface: "밥", stemEnd: 1 },
       {
@@ -1077,14 +1297,22 @@ export const LEVEL_ONE_LINES: Array<ReadAloudLine> = [
       {
         wordId: "jeon",
         surface: "전에",
+        role: "time",
         stemEnd: 1,
         pronunciation: "저네",
         sense: "before",
       },
-      { wordId: "son", surface: "손을", stemEnd: 1, pronunciation: "소늘" },
+      {
+        wordId: "son",
+        surface: "손을",
+        role: "object",
+        stemEnd: 1,
+        pronunciation: "소늘",
+      },
       {
         wordId: "ssitda",
         surface: "씻어요",
+        role: "action",
         stemEnd: 1,
         pronunciation: "씨서요",
       },
@@ -1100,6 +1328,7 @@ export const LEVEL_ONE_LINES: Array<ReadAloudLine> = [
       {
         wordId: "anda",
         surface: "앉으세요",
+        role: "action",
         stemEnd: 1,
         pronunciation: "안즈세요",
         sense: "please sit",
@@ -1111,15 +1340,17 @@ export const LEVEL_ONE_LINES: Array<ReadAloudLine> = [
     level: 1,
     korean: "아침마다 샤워를 해요.",
     english: "I shower every morning.",
+    tense: "present",
     words: [
       {
         wordId: "achim",
         surface: "아침마다",
+        role: "time",
         stemEnd: 2,
         sense: "every morning",
       },
-      { wordId: "syawo", surface: "샤워를", stemEnd: 2 },
-      { wordId: "hada", surface: "해요", stemEnd: 1 },
+      { wordId: "syawo", surface: "샤워를", role: "object", stemEnd: 2 },
+      { wordId: "hada", surface: "해요", role: "action", stemEnd: 1 },
     ],
   },
   {
@@ -1127,10 +1358,12 @@ export const LEVEL_ONE_LINES: Array<ReadAloudLine> = [
     level: 1,
     korean: "한국어는 조금 어려워요.",
     english: "Korean is a little difficult.",
+    tense: "present",
     words: [
       {
         wordId: "hangugeo",
         surface: "한국어는",
+        role: "topic",
         stemEnd: 3,
         pronunciation: "한구거는",
       },
@@ -1138,6 +1371,7 @@ export const LEVEL_ONE_LINES: Array<ReadAloudLine> = [
       {
         wordId: "eoryeopda",
         surface: "어려워요",
+        role: "describing",
         stemEnd: 3,
         sense: "is difficult",
       },
@@ -1149,9 +1383,9 @@ export const LEVEL_ONE_LINES: Array<ReadAloudLine> = [
     korean: "내일 친구를 만나요.",
     english: "I'm meeting a friend tomorrow.",
     words: [
-      { wordId: "naeil", surface: "내일", stemEnd: 2 },
-      { wordId: "chingu", surface: "친구를", stemEnd: 2 },
-      { wordId: "mannada", surface: "만나요", stemEnd: 2 },
+      { wordId: "naeil", surface: "내일", role: "time", stemEnd: 2 },
+      { wordId: "chingu", surface: "친구를", role: "object", stemEnd: 2 },
+      { wordId: "mannada", surface: "만나요", role: "action", stemEnd: 2 },
     ],
   },
   {
@@ -1159,12 +1393,14 @@ export const LEVEL_ONE_LINES: Array<ReadAloudLine> = [
     level: 1,
     korean: "어제는 정말 바빴어요.",
     english: "I was really busy yesterday.",
+    tense: "past",
     words: [
       { wordId: "eoje", surface: "어제는", stemEnd: 2 },
       { wordId: "jeongmal", surface: "정말", stemEnd: 2 },
       {
         wordId: "bappeuda",
         surface: "바빴어요",
+        role: "describing",
         stemEnd: 2,
         pronunciation: "바빠써요",
         sense: "was busy",
@@ -1176,12 +1412,14 @@ export const LEVEL_ONE_LINES: Array<ReadAloudLine> = [
     level: 1,
     korean: "새 자동차를 샀어요.",
     english: "I bought a new car.",
+    tense: "past",
     words: [
       { wordId: "sae", surface: "새", stemEnd: 1 },
-      { wordId: "jadongcha", surface: "자동차를", stemEnd: 3 },
+      { wordId: "jadongcha", surface: "자동차를", role: "object", stemEnd: 3 },
       {
         wordId: "sada",
         surface: "샀어요",
+        role: "action",
         stemEnd: 1,
         pronunciation: "사써요",
         sense: "bought",
@@ -1193,9 +1431,256 @@ export const LEVEL_ONE_LINES: Array<ReadAloudLine> = [
     level: 1,
     korean: "편지를 써요.",
     english: "I write a letter.",
+    tense: "present",
     words: [
-      { wordId: "pyeonji", surface: "편지를", stemEnd: 2 },
-      { wordId: "sseuda", surface: "써요", stemEnd: 1, sense: "write" },
+      { wordId: "pyeonji", surface: "편지를", role: "object", stemEnd: 2 },
+      {
+        wordId: "sseuda",
+        surface: "써요",
+        role: "action",
+        stemEnd: 1,
+        sense: "write",
+      },
+    ],
+  },
+  // Past and future forms of lines above, so the tense lens meets each
+  // tense often enough to be a question rather than a formality.
+  {
+    id: "met-friend-yesterday",
+    level: 1,
+    korean: "어제 친구를 만났어요.",
+    english: "I met a friend yesterday.",
+    tense: "past",
+    words: [
+      { wordId: "eoje", surface: "어제", role: "time", stemEnd: 2 },
+      { wordId: "chingu", surface: "친구를", role: "object", stemEnd: 2 },
+      {
+        wordId: "mannada",
+        surface: "만났어요",
+        role: "action",
+        stemEnd: 2,
+        pronunciation: "만나써요",
+        sense: "met",
+      },
+    ],
+  },
+  {
+    id: "library-read-yesterday",
+    level: 1,
+    korean: "어제 도서관에서 책을 읽었어요.",
+    english: "I read a book at the library yesterday.",
+    tense: "past",
+    words: [
+      { wordId: "eoje", surface: "어제", role: "time", stemEnd: 2 },
+      {
+        wordId: "doseogwan",
+        surface: "도서관에서",
+        role: "place",
+        stemEnd: 3,
+        pronunciation: "도서과네서",
+      },
+      {
+        wordId: "chaek",
+        surface: "책을",
+        role: "object",
+        stemEnd: 1,
+        pronunciation: "채글",
+      },
+      {
+        wordId: "ikda",
+        surface: "읽었어요",
+        role: "action",
+        stemEnd: 1,
+        pronunciation: "일거써요",
+        sense: "read (past)",
+      },
+    ],
+  },
+  {
+    id: "breakfast-bread-ate",
+    level: 1,
+    korean: "아침에 빵을 먹었어요.",
+    english: "I ate bread in the morning.",
+    tense: "past",
+    words: [
+      {
+        wordId: "achim",
+        surface: "아침에",
+        role: "time",
+        stemEnd: 2,
+        pronunciation: "아치메",
+      },
+      { wordId: "ppang", surface: "빵을", role: "object", stemEnd: 1 },
+      {
+        wordId: "meokda",
+        surface: "먹었어요",
+        role: "action",
+        stemEnd: 1,
+        pronunciation: "머거써요",
+        sense: "ate",
+      },
+    ],
+  },
+  {
+    id: "weekend-rested",
+    level: 1,
+    korean: "주말에 집에서 쉬었어요.",
+    english: "I rested at home at the weekend.",
+    tense: "past",
+    words: [
+      {
+        wordId: "jumal",
+        surface: "주말에",
+        role: "time",
+        stemEnd: 2,
+        pronunciation: "주마레",
+      },
+      {
+        wordId: "jip",
+        surface: "집에서",
+        role: "place",
+        stemEnd: 1,
+        pronunciation: "지베서",
+      },
+      {
+        wordId: "swida",
+        surface: "쉬었어요",
+        role: "action",
+        stemEnd: 1,
+        pronunciation: "쉬어써요",
+        sense: "rested",
+      },
+    ],
+  },
+  {
+    id: "movie-tomorrow",
+    level: 1,
+    korean: "내일 영화를 볼 거예요.",
+    english: "I'm going to watch a movie tomorrow.",
+    tense: "future",
+    words: [
+      { wordId: "naeil", surface: "내일", role: "time", stemEnd: 2 },
+      { wordId: "yeonghwa", surface: "영화를", role: "object", stemEnd: 2 },
+      {
+        wordId: "boda",
+        surface: "볼",
+        role: "action",
+        stemEnd: 1,
+        sense: "watch (future)",
+      },
+      {
+        wordId: "geot",
+        surface: "거예요",
+        stemEnd: 1,
+        pronunciation: "꺼예요",
+        sense: "(-ㄹ 거예요) will",
+      },
+    ],
+  },
+  {
+    id: "sea-weekend-will",
+    level: 1,
+    korean: "주말에 바다에 갈 거예요.",
+    english: "I'm going to go to the sea at the weekend.",
+    tense: "future",
+    words: [
+      {
+        wordId: "jumal",
+        surface: "주말에",
+        role: "time",
+        stemEnd: 2,
+        pronunciation: "주마레",
+      },
+      { wordId: "bada", surface: "바다에", role: "goal", stemEnd: 2 },
+      {
+        wordId: "gada",
+        surface: "갈",
+        role: "action",
+        stemEnd: 1,
+        sense: "go (future)",
+      },
+      {
+        wordId: "geot",
+        surface: "거예요",
+        stemEnd: 1,
+        pronunciation: "꺼예요",
+        sense: "(-ㄹ 거예요) will",
+      },
+    ],
+  },
+  {
+    id: "school-bus-tomorrow",
+    level: 1,
+    korean: "내일 학교에 버스로 갈 거예요.",
+    english: "Tomorrow I'll go to school by bus.",
+    tense: "future",
+    words: [
+      { wordId: "naeil", surface: "내일", role: "time", stemEnd: 2 },
+      {
+        wordId: "hakgyo",
+        surface: "학교에",
+        role: "goal",
+        stemEnd: 2,
+        pronunciation: "학꾜에",
+      },
+      {
+        wordId: "beoseu",
+        surface: "버스로",
+        role: "means",
+        stemEnd: 2,
+        sense: "by bus",
+      },
+      {
+        wordId: "gada",
+        surface: "갈",
+        role: "action",
+        stemEnd: 1,
+        sense: "go (future)",
+      },
+      {
+        wordId: "geot",
+        surface: "거예요",
+        stemEnd: 1,
+        pronunciation: "꺼예요",
+        sense: "(-ㄹ 거예요) will",
+      },
+    ],
+  },
+  {
+    id: "homework-evening-will",
+    level: 1,
+    korean: "저녁에 숙제를 할 거예요.",
+    english: "I'm going to do my homework this evening.",
+    tense: "future",
+    words: [
+      {
+        wordId: "jeonyeok",
+        surface: "저녁에",
+        role: "time",
+        stemEnd: 2,
+        pronunciation: "저녀게",
+      },
+      {
+        wordId: "sukje",
+        surface: "숙제를",
+        role: "object",
+        stemEnd: 2,
+        pronunciation: "숙쩨를",
+      },
+      {
+        wordId: "hada",
+        surface: "할",
+        role: "action",
+        stemEnd: 1,
+        sense: "do (future)",
+      },
+      {
+        wordId: "geot",
+        surface: "거예요",
+        stemEnd: 1,
+        pronunciation: "꺼예요",
+        sense: "(-ㄹ 거예요) will",
+      },
     ],
   },
 ]

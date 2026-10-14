@@ -1,12 +1,13 @@
 /**
  * What the read-aloud drill keeps on the device between sittings: each
- * word's pace, the practice record, the set left unfinished, and the word
- * sets added from storage (adaptive-learning canon Cor. 4.6 (iii), Def. 6.6,
- * Rem. 4.10, Rem. 7.5).
+ * word's pace, the practice record, the set left unfinished, whether sets
+ * are drawn with grammar lenses, and the word sets added from storage
+ * (adaptive-learning canon Cor. 4.6 (iii), Def. 6.6, Rem. 4.10, Rem. 7.5).
  *
  * The added sets are content, kept so the learner need not pick them again;
- * losing them costs the picking. The other three sit outside the belief
- * envelope. The pace book is pacing and
+ * losing them costs the picking. The other four sit outside the belief
+ * envelope. A set's lenses are kept with it, as content; how they were
+ * answered is not. The pace book is pacing and
  * nothing more; the record is a count shown to the learner; the unfinished
  * set is a place in content, like the handheld lesson's resume point. Losing
  * any of them costs exactly that and nothing else (Thm. 7.2), which is why
@@ -24,6 +25,7 @@ import {
   storedSet,
 } from "@topik/lib/topik/read-aloud/added-sets"
 import type { ReadAloudLevel } from "@topik/lib/topik/read-aloud/content"
+import { GRAMMAR_ROLES, TENSES } from "@topik/lib/topik/read-aloud/content"
 import type {
   PaceBook,
   PaceEntry,
@@ -44,6 +46,7 @@ export const READ_ALOUD_STORAGE_KEYS = {
   record: "topik:read-aloud-record",
   progress: "topik:read-aloud-progress",
   sets: "topik:read-aloud-sets",
+  lenses: "topik:read-aloud-lenses",
 } as const
 
 /** A counted rep or a finished set, as the drill reports it. */
@@ -70,9 +73,22 @@ export type ReadAloudStore = {
   /** The word sets added from storage, oldest first. */
   sets: () => Array<AddedSet>
   saveSets: (sets: ReadonlyArray<AddedSet>) => void
+  /** Whether new sets are drawn with grammar lenses; off until turned on. */
+  lenses: () => boolean
+  saveLenses: (on: boolean) => void
 }
 
 const Id = z.string().min(1)
+const Index = z.number().int().min(0)
+
+const LensSchema = z.discriminatedUnion("kind", [
+  z.object({
+    kind: z.literal("role"),
+    role: z.enum(GRAMMAR_ROLES),
+    word: Index,
+  }),
+  z.object({ kind: z.literal("tense"), tense: z.enum(TENSES), from: Index }),
+])
 
 const ItemSchema = z.discriminatedUnion("kind", [
   z.object({
@@ -90,6 +106,7 @@ const ItemSchema = z.discriminatedUnion("kind", [
     text: z.string().min(1),
     syllables: z.number().int().min(0),
     wordIds: z.array(Id),
+    lens: LensSchema.optional(),
   }),
 ])
 
@@ -181,6 +198,10 @@ export function createReadAloudStore(
       parseAddedSets(read(READ_ALOUD_STORAGE_KEYS.sets)),
     saveSets: (sets): void => {
       write(READ_ALOUD_STORAGE_KEYS.sets, sets.map(storedSet))
+    },
+    lenses: (): boolean => read(READ_ALOUD_STORAGE_KEYS.lenses) === true,
+    saveLenses: (on): void => {
+      write(READ_ALOUD_STORAGE_KEYS.lenses, on)
     },
   }
 }

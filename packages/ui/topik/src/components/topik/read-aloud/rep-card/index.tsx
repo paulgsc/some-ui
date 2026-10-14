@@ -3,14 +3,25 @@ import { useEffect, useRef, useState } from "react"
 import { cn } from "@some-ui/core-utils"
 import { Button } from "@some-ui/shared"
 import { StepLayout } from "@topik/components/topik/handheld/step-layout"
+import type { GlyphLens } from "@topik/components/topik/read-aloud/glyph-line"
 import { GlyphLine } from "@topik/components/topik/read-aloud/glyph-line"
+import {
+  LensBadge,
+  PickHint,
+  ROLE_LOOK,
+  TENSE_LOOK,
+  TenseChoices,
+} from "@topik/components/topik/read-aloud/lens-parts"
 import type { ReadAloudDeck } from "@topik/lib/topik/read-aloud/content"
 import type { GlyphMode } from "@topik/lib/topik/read-aloud/glyphs"
 import {
   glossOf,
+  lineOf,
   markAt,
   markWeights,
 } from "@topik/lib/topik/read-aloud/glyphs"
+import type { LensAnswer } from "@topik/lib/topik/read-aloud/lens"
+import { lensOutcome, lensWords } from "@topik/lib/topik/read-aloud/lens"
 import type {
   IntroductionStep,
   QueueEntry,
@@ -30,6 +41,11 @@ type RepCardProps = {
   stepKey: number
   /** Whether the learner has reported this entry stuck. */
   reported: boolean
+  /** The learner's answer to the entry's lens, if it carries one. */
+  answer: LensAnswer | null
+  /** The gloss has shown the lens's answer: it stays shown, and closed. */
+  revealed: boolean
+  onAnswer: (answer: LensAnswer) => void
   /** Whether this step's audio has started playing. */
   playing: boolean
   short: boolean
@@ -131,6 +147,11 @@ const Meter = ({ ms, runKey }: { ms: number; runKey: number }): JSX.Element => {
  * the gloss. The only controls are the two the canon names - report stuck,
  * which plays the audio at once, and skip - and neither is needed for a set
  * to run hands-free.
+ *
+ * A sentence drawn with a grammar lens (`read-aloud/lens`) also asks its
+ * question above the line, and takes an answer until the gloss: a word of
+ * the line for a role, one of three tenses for a tense. The gloss shows the
+ * answer whether or not one came, and tints the card with the tense.
  */
 export const RepCard = ({
   deck,
@@ -139,6 +160,9 @@ export const RepCard = ({
   stepMs,
   stepKey,
   reported,
+  answer,
+  revealed,
+  onAnswer,
   playing,
   short,
   onStuck,
@@ -163,13 +187,63 @@ export const RepCard = ({
   const gloss = step === "gloss" || introduction ? glossOf(deck, item) : null
   const metered = (step === "turn" || step === "echo") && stepMs !== null
 
+  const lens = item.kind === "sentence" ? item.lens : undefined
+  const shown = step === "gloss" || revealed
+  const open = !shown && !introduction && step !== "paused"
+  const outcome = lens && shown ? lensOutcome(lens, answer) : null
+  const weather =
+    lens?.kind === "tense" && shown ? TENSE_LOOK[lens.tense] : null
+  const look =
+    lens?.kind === "role"
+      ? ROLE_LOOK[lens.role]
+      : lens
+        ? TENSE_LOOK[lens.tense]
+        : null
+  const lineWords = lineOf(deck, item.lineId)?.words ?? []
+  const answerWords = lens ? lensWords(lens, lineWords.length) : []
+  const glyphLens: GlyphLens | undefined = lens && {
+    pick:
+      lens.kind === "role" && open
+        ? {
+            picked: answer?.kind === "word" ? answer.word : null,
+            onPick: (word) => onAnswer({ kind: "word", word }),
+          }
+        : undefined,
+    shown:
+      shown && look
+        ? {
+            words: answerWords,
+            frame: cn(look.tint, look.ring),
+            ending: look.text,
+            missed:
+              outcome === "missed" && answer?.kind === "word"
+                ? answer.word
+                : null,
+          }
+        : undefined,
+  }
+
   const stage = (
     <div
       data-slot="read-aloud-rep"
       data-step={step}
       data-kind={item.kind}
-      className="flex w-full max-w-md flex-col items-center gap-4 text-center"
+      className={cn(
+        "flex w-full max-w-md flex-col items-center gap-4 text-center",
+        lens && "rounded-3xl px-3 py-5 transition-colors duration-700",
+        weather?.card
+      )}
     >
+      {lens && (
+        <LensBadge
+          lens={lens}
+          outcome={outcome}
+          answer={answerWords
+            .map((word) => lineWords[word]?.surface ?? "")
+            .join(" ")}
+        />
+      )}
+
       <span
         aria-live="polite"
         className="text-muted-foreground min-h-4 text-xs font-medium tracking-wider uppercase"
@@ -183,6 +257,7 @@ export const RepCard = ({
         mode={MODE[step]}
         mark={mark}
         short={short}
+        lens={glyphLens}
       />
 
       {metered && <Meter ms={stepMs} runKey={stepKey} />}
@@ -232,27 +307,37 @@ export const RepCard = ({
         <HeldNote />
       )
     ) : (
-      <div className="flex gap-2">
-        <Button
-          variant="secondary"
-          className={cn(
-            "h-14 min-w-0 flex-1 gap-2 rounded-2xl text-base",
-            reported && "ring-primary ring-2"
-          )}
-          onClick={onStuck}
-          disabled={introduction}
-          aria-pressed={reported}
-        >
-          <Hand className="size-5" /> Stuck
-        </Button>
-        <Button
-          variant="ghost"
-          className="h-14 gap-2 rounded-2xl px-4"
-          onClick={onSkip}
-        >
-          <SkipForward className="size-5" /> Skip
-        </Button>
-      </div>
+      <>
+        {lens?.kind === "role" && open && <PickHint picked={answer !== null} />}
+        {lens?.kind === "tense" && (
+          <TenseChoices
+            picked={answer?.kind === "tense" ? answer.tense : null}
+            shown={shown ? lens.tense : null}
+            onPick={(tense) => onAnswer({ kind: "tense", tense })}
+          />
+        )}
+        <div className="flex gap-2">
+          <Button
+            variant="secondary"
+            className={cn(
+              "h-14 min-w-0 flex-1 gap-2 rounded-2xl text-base",
+              reported && "ring-primary ring-2"
+            )}
+            onClick={onStuck}
+            disabled={introduction}
+            aria-pressed={reported}
+          >
+            <Hand className="size-5" /> Stuck
+          </Button>
+          <Button
+            variant="ghost"
+            className="h-14 gap-2 rounded-2xl px-4"
+            onClick={onSkip}
+          >
+            <SkipForward className="size-5" /> Skip
+          </Button>
+        </div>
+      </>
     )
 
   return (

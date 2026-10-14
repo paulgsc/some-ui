@@ -1,5 +1,7 @@
 import { BUNDLED_DECK } from "@topik/lib/topik/read-aloud/bundled"
+import type { GrammarRole } from "@topik/lib/topik/read-aloud/content"
 import { parseReadAloudDeck } from "@topik/lib/topik/read-aloud/content"
+import { lensesOf } from "@topik/lib/topik/read-aloud/lens"
 import {
   LEVEL_ONE_LINES,
   LEVEL_ONE_WORDS,
@@ -51,6 +53,37 @@ describe("BUNDLED_DECK", () => {
         expect(word.pronunciation).not.toBe(word.surface)
         expect(word.pronunciation).toHaveLength(word.surface.length)
       }
+    }
+  })
+
+  it("marks each role with the particle that shows it", () => {
+    const ENDINGS: Partial<Record<GrammarRole, RegExp>> = {
+      subject: /[이가]$/,
+      topic: /[은는]$/,
+      object: /[을를]$/,
+      place: /에서$|여기서$/,
+      goal: /[^서]에$/,
+      means: /로$/,
+      company: /(와|과|하고)$/,
+    }
+    const wrong = BUNDLED_DECK.lines.flatMap((line) =>
+      line.words.flatMap(({ role, surface }) => {
+        const ending = role === undefined ? undefined : ENDINGS[role]
+        return role !== undefined && ending && !ending.test(surface)
+          ? [`${line.id}/${surface}: ${role}`]
+          : []
+      })
+    )
+    expect(wrong).toEqual([])
+  })
+
+  it("gives most level-one lines a lens, and every tense often enough to ask", () => {
+    const lines = BUNDLED_DECK.lines.filter((line) => line.level === 1)
+    const lensed = lines.filter((line) => lensesOf(line).length > 0)
+    expect(lensed.length / lines.length).toBeGreaterThan(0.8)
+    for (const tense of ["past", "present", "future"] as const) {
+      const count = lines.filter((line) => line.tense === tense).length
+      expect(count, tense).toBeGreaterThanOrEqual(4)
     }
   })
 

@@ -1,4 +1,5 @@
 import type { ReadAloudLevel } from "@topik/lib/topik/read-aloud/content"
+import { pickLens } from "@topik/lib/topik/read-aloud/lens"
 import type { SetItem } from "@topik/lib/topik/read-aloud/set-builder"
 import {
   buildSet,
@@ -16,6 +17,27 @@ const keys = (items: Array<SetItem>): Array<string> =>
   items.map((item) => item.key)
 
 describe("buildSet", () => {
+  it("gives each sentence its line's lens only when drawn with lenses", () => {
+    const plain = buildSet(STARTER_DECK, { level: 2, seedKey: "lens" })
+    const lensed = buildSet(STARTER_DECK, {
+      level: 2,
+      seedKey: "lens",
+      lenses: true,
+    })
+    expect(keys(lensed)).toEqual(keys(plain))
+    expect(plain.some((item) => "lens" in item)).toBe(false)
+    for (const item of lensed) {
+      if (item.kind === "word") {
+        expect(item).not.toHaveProperty("lens")
+        continue
+      }
+      const line = STARTER_DECK.lines.find(({ id }) => id === item.lineId)
+      const lens = line ? pickLens(line, "lens") : null
+      if (lens) expect(item.lens).toEqual(lens)
+      else expect(item).not.toHaveProperty("lens")
+    }
+  })
+
   it("never presents three items of one kind in a row (Cor. 4.6 (i))", () => {
     for (const level of LEVELS) {
       for (const seedKey of SEEDS) {

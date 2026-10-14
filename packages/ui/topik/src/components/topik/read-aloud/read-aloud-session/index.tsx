@@ -29,12 +29,15 @@ export type ReadAloudSessionProps = UseReadAloudOptions & {
   short?: boolean
   /** The practice record to show on the start screen, and today's key. */
   record?: { record: PracticeRecord; today: string }
+  /** Turn grammar lenses on or off; the start screen offers it when given. */
+  onLenses?: (on: boolean) => void
   onExit: () => void
 }
 
 export const ReadAloudSession = ({
   short = false,
   record,
+  onLenses,
   onExit,
   ...options
 }: ReadAloudSessionProps): JSX.Element => {
@@ -119,6 +122,9 @@ export const ReadAloudSession = ({
           shortfall={levelShortfall(options.deck, options.level)}
           resuming={(options.resume?.queue.length ?? 0) > 0}
           record={record}
+          lenses={
+            onLenses && { on: options.lenses ?? false, onChange: onLenses }
+          }
           short={short}
           onStart={vm.begin}
           onStop={onExit}
@@ -130,6 +136,7 @@ export const ReadAloudSession = ({
         <SetCard
           kind="summary"
           counted={state.counted}
+          lensed={state.lensed}
           runKey={state.seq}
           short={short}
           onNext={vm.nextSet}
@@ -174,6 +181,9 @@ export const ReadAloudSession = ({
         stepMs={vm.step?.seq === state.seq ? vm.step.ms : null}
         stepKey={state.seq}
         reported={state.reported}
+        answer={state.answer}
+        revealed={state.revealed}
+        onAnswer={vm.answer}
         playing={vm.playing === state.seq}
         short={short}
         onStuck={vm.stuck}
