@@ -32,6 +32,7 @@ import {
 import type { ScopeCoverageSnapshot } from "@filter/lib/content/coverage-watchdog"
 import { ext } from "@filter/platform/content"
 import {
+  createSessionLoader,
   runInvariants,
   scoreHealth,
   type HealthReport,
@@ -48,21 +49,7 @@ type Bundle = PersistedState
 /** Current view filter. Reset whenever the selected session changes. */
 type Filter = { kind: string; subject: string }
 
-let sessions: Array<IndexEntry> = []
-let selectedSessionId: string | undefined
 let filter: Filter = { kind: "", subject: "" }
-let bundle: Bundle | undefined
-/**
- * Which session `bundle` actually came from.
- *
- * Without it the rendered bundle and the picker's selection could disagree
- * across the storage read, and Export would write the previous session's
- * file under the new one's name.
- */
-let loadedSessionId: string | undefined
-/** Guards against two loads landing out of order; see {@link load}. */
-let loadToken = 0
-let loadError: string | undefined
 
 function isBundle(value: unknown): value is Bundle {
   return (
@@ -211,6 +198,7 @@ function el<K extends keyof HTMLElementTagNameMap>(
 // ── Sections ─────────────────────────────────────────────────────────────────
 
 function pickerSection(): HTMLElement {
+  const { sessions, selectedSessionId } = loader
   const select = el("select")
   if (sessions.length === 0) {
     select.appendChild(new Option("no open sessions", ""))
@@ -223,17 +211,12 @@ function pickerSection(): HTMLElement {
     select.value = selectedSessionId ?? sessions[0]?.sessionId ?? ""
   }
   select.addEventListener("change", () => {
-    selectedSessionId = select.value || undefined
     filter = { kind: "", subject: "" }
-    // Drop the old session's bundle before the read starts, so there is no
-    // window in which Export would write the wrong file.
-    clearLoadedBundle()
-    void render()
-    void load()
+    void loader.select(select.value || undefined)
   })
 
   const refresh = el("button", { text: "Refresh sessions" })
-  refresh.addEventListener("click", () => void load(true))
+  refresh.addEventListener("click", () => void loader.load(true))
 
   const section = el("section")
   section.append(
@@ -601,14 +584,14 @@ function header(
       class: "sf-sub",
       text: b
         ? `${b.namespace} · ${b.events.length} event(s) retained`
-        : sessions.length === 0
+        : loader.sessions.length === 0
           ? "No sessions recorded yet — open a page with the extension active, then refresh."
           : "Pick a session above.",
     })
   )
 
   const refresh = el("button", { text: "Refresh" })
-  refresh.addEventListener("click", () => void load())
+  refresh.addEventListener("click", () => void loader.load())
   const actions = el("div", { class: "sf-actions" }, [refresh])
 
   if (b && health && contrastHealth) {
@@ -627,31 +610,36 @@ async function render(): Promise<void> {
   if (!root) return
   root.replaceChildren()
 
-  const health = bundle ? await computeHealth(bundle) : undefined
-  const contrastHealth = bundle
-    ? await computeContrastHealth(bundle)
+  // Read live after each await, never captured once: a render overtaken by
+  // a session switch must not paint the old session's bundle.
+  const health = loader.bundle ? await computeHealth(loader.bundle) : undefined
+  const contrastHealth = loader.bundle
+    ? await computeContrastHealth(loader.bundle)
     : undefined
-  root.appendChild(header(bundle, health, contrastHealth))
+  root.appendChild(header(loader.bundle, health, contrastHealth))
   root.appendChild(pickerSection())
 
-  if (loadError !== undefined) {
+  if (loader.loadError !== undefined) {
     const section = el("section")
     section.append(
       el("h2", { text: "Unavailable" }),
-      el("div", { class: "sf-empty bad", text: loadError })
+      el("div", { class: "sf-empty bad", text: loader.loadError })
     )
     root.appendChild(section)
     return
   }
 
+  const bundle = loader.bundle
   if (!bundle || !health || !contrastHealth) {
     root.appendChild(
       el("div", {
         class: "sf-empty",
         text:
-          sessions.length === 0
+          loader.sessions.length === 0
             ? "Nothing to show yet."
-            : "Loading diagnostics…",
+            : loader.settled
+              ? "No recording stored for this session — it may have closed before its first write."
+              : "Loading diagnostics…",
       })
     )
     return
@@ -670,78 +658,10 @@ async function render(): Promise<void> {
   )
 }
 
-function clearLoadedBundle(): void {
-  bundle = undefined
-  loadedSessionId = undefined
-}
+const loader = createSessionLoader<IndexEntry, Bundle>({
+  list: compactIndex,
+  loadBundle,
+  render,
+})
 
-/**
- * Which session to show, given a freshly read index. Pure, and that is the
- * point: computed first and committed only after {@link load}'s token check,
- * so a superseded load cannot reset the selection the user has since made.
- */
-function nextSelection(
-  index: ReadonlyArray<IndexEntry>,
-  pickMostRecent: boolean,
-  current: string | undefined
-): string | undefined {
-  if (
-    pickMostRecent ||
-    current === undefined ||
-    !index.some((s) => s.sessionId === current)
-  ) {
-    return index[0]?.sessionId
-  }
-  return current
-}
-
-/**
- * Refresh the session list and the selected session's bundle.
- *
- * `pickMostRecent` forces the newest recording to be selected, which is what
- * "Refresh sessions" means; the header's own "Refresh" leaves the selection
- * alone.
- *
- * Two loads can be in flight at once — a fast double-change of the picker is
- * enough — and their storage reads are not obliged to settle in the order
- * they started. So `loadToken` gates not just every render but **every write
- * to module state**: a superseded load must leave `sessions`,
- * `selectedSessionId`, `bundle` and `loadError` exactly as it found them. The
- * rule this function keeps is that nothing module-scoped is assigned between
- * an `await` and the token check that follows it.
- */
-async function load(pickMostRecent = false): Promise<void> {
-  const token = ++loadToken
-  // Repaint away a stale "Unavailable" panel (render() returns early while
-  // loadError is set), but only then: an unconditional render would flash
-  // the page on every refresh.
-  const hadError = loadError !== undefined
-  loadError = undefined
-  if (hadError) await render()
-  try {
-    // Compact rather than list: the one place a whole-area enumeration is
-    // paid once, by a person who asked, so it also sweeps orphaned bundles.
-    const { entries: index } = await compactIndex()
-    if (token !== loadToken) return
-    sessions = [...index]
-    selectedSessionId = nextSelection(index, pickMostRecent, selectedSessionId)
-    if (selectedSessionId !== loadedSessionId) {
-      clearLoadedBundle()
-      await render()
-      if (token !== loadToken) return
-    }
-    const next = selectedSessionId
-      ? await loadBundle(selectedSessionId)
-      : undefined
-    if (token !== loadToken) return
-    bundle = next
-    loadedSessionId = selectedSessionId
-    await render()
-  } catch (e) {
-    if (token !== loadToken) return
-    loadError = e instanceof Error ? e.message : String(e)
-    await render()
-  }
-}
-
-void load()
+void loader.load()

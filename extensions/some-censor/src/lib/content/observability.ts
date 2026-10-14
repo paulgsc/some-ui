@@ -8,7 +8,7 @@
  * script, so concurrently open tabs would clobber one shared `storage.local`
  * key. Each page load gets its own key ({@link sessionStorageKey}) plus its
  * own index key ({@link touchIndex}) so a debug page (OBS2) can pick a
- * recording ({@link readIndex}), bounded by {@link compactIndex}.
+ * recording, listed and bounded by {@link compactIndex}.
  *
  * Core's `session` ordinal is recorded as *event data*, not used as the key:
  *
@@ -33,14 +33,12 @@
  * snapshots are never shed, so the corpus survives a long session.
  */
 
-import { ext } from "@censor/platform/content"
 import {
   createSessionIndex,
   extensionStoragePersistence,
   memoryPersistence,
   Recorder,
   type Compaction,
-  type IndexAreaLike,
   type Invariant,
   type InvariantOutcome,
   type JsonValue,
@@ -385,22 +383,9 @@ export const boyoInvariants: ReadonlyArray<Invariant<BoyoContext>> = [
 
 const SESSION_KEY_PREFIX = "bc.observability.session."
 const SESSION_KEY_SUFFIX = ".v1"
-const INDEX_NAMESPACE = "bc.observability"
-/**
- * The legacy shared-array index, migrated to per-session keys on the first
- * enumeration. Exported so a test can stage that migration.
- */
-export const LEGACY_INDEX_KEY = `${INDEX_NAMESPACE}.index.v1`
 
 export function sessionStorageKey(sessionId: string): string {
   return `${SESSION_KEY_PREFIX}${sessionId}${SESSION_KEY_SUFFIX}`
-}
-
-/** The inverse of {@link sessionStorageKey}, for the orphan sweep. */
-function sessionOfStorageKey(key: string): string | undefined {
-  if (!key.startsWith(SESSION_KEY_PREFIX) || !key.endsWith(SESSION_KEY_SUFFIX))
-    return undefined
-  return key.slice(SESSION_KEY_PREFIX.length, -SESSION_KEY_SUFFIX.length)
 }
 
 /**
@@ -430,48 +415,19 @@ function isIndexEntry(value: unknown): value is IndexEntry {
   )
 }
 
-function isStorageArea(value: unknown): value is IndexAreaLike {
-  if (value === null || typeof value !== "object") return false
-  return (
-    typeof Reflect.get(value, "get") === "function" &&
-    typeof Reflect.get(value, "set") === "function" &&
-    typeof Reflect.get(value, "remove") === "function"
-  )
-}
-
-/**
- * `ext.storage.local`, resolved per call: the platform stub tests install has
- * no storage area until a test gives it one, and a real one can be absent
- * too. Absent, every index operation is a no-op.
- */
-function storageArea(): IndexAreaLike | undefined {
-  const storage: unknown = Reflect.get(ext, "storage")
-  const local: unknown =
-    storage !== null && typeof storage === "object"
-      ? Reflect.get(storage, "local")
-      : undefined
-  return isStorageArea(local) ? local : undefined
-}
-
 /**
  * One index key per recording, so a tab never writes a key another tab writes
  * (`storage.local` has no compare-and-set). See `createSessionIndex`.
  */
 const index: SessionIndex<IndexEntry> = createSessionIndex({
-  namespace: INDEX_NAMESPACE,
-  payload: { key: sessionStorageKey, sessionId: sessionOfStorageKey },
+  namespace: "bc.observability",
+  payload: { prefix: SESSION_KEY_PREFIX, suffix: SESSION_KEY_SUFFIX },
   isEntry: isIndexEntry,
-  area: storageArea,
 })
 
 /** This recording's index key. Exported for the debug page's tests. */
 export function indexStorageKey(sessionId: string): string {
   return index.indexKey(sessionId)
-}
-
-/** The debug page's session picker. Sorted most-recently-updated first. */
-export function readIndex(): Promise<Array<IndexEntry>> {
-  return index.list()
 }
 
 /**
@@ -485,24 +441,12 @@ export function touchIndex(entry: IndexEntry): Promise<void> {
 }
 
 /**
- * Enforce the cap and sweep orphaned bundles.
- *
- * Eviction from the index must take the payload with it, and a payload with
- * no index key (a recording evicted while live that flushed again) is swept:
- * every page load mints a new key, so unlisted bundles would accumulate in
- * `storage.local` without bound.
- *
- * Runs once per recording, after its first index touch, and from the debug
- * page. Not on every touch: on an engine without `storage.local.getKeys()`
- * the enumeration reads every bundle.
+ * List the recordings, enforce the cap and sweep what nothing lists: the
+ * debug page's session picker. Every page load mints a new bundle key, so
+ * without the sweep unlisted bundles would accumulate without bound.
  */
 export function compactIndex(): Promise<Compaction<IndexEntry>> {
   return index.compact()
-}
-
-/** Forget one recording entirely — its index entry and its stored bundle. */
-export function removeFromIndex(sessionId: string): Promise<void> {
-  return index.remove(sessionId)
 }
 
 // ── The recorder ─────────────────────────────────────────────────────────────
@@ -937,10 +881,11 @@ export class BoyoObservability {
       updatedAt: now,
     })
     // Once per recording, after this one is listed: compacting first would
-    // evict an older recording to make room for one it cannot see yet.
+    // evict an older recording to make room for one it cannot see yet. Only
+    // where cheap; see `createSessionIndex`.
     if (!this._compacted) {
       this._compacted = true
-      void touched.then(() => compactIndex())
+      void touched.then(() => index.compactIfCheap())
     }
   }
 }
@@ -974,8 +919,8 @@ export function startObservability(
   // window would leave the OBS2 picker an entry whose bundle was never
   // written.
   //
-  // `flush()`, deliberately, where some-filter's handler calls `dispose()` and
-  // `removeFromIndex()`:
+  // `flush()`, deliberately, where some-filter's handler disposes the recorder
+  // and, on a real unload, forgets the session:
   //
   //   - `pagehide` also fires for a document entering the back-forward cache,
   //     which comes back alive; a disposed recorder would silently ignore

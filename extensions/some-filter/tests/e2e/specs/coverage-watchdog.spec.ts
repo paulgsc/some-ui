@@ -202,8 +202,10 @@ test.describe("debug.html renders the session a violation was recorded against",
     const debugPage = await context.newPage()
     await debugPage.goto(`chrome-extension://${extensionId}/debug.html`)
 
+    // The page paints the picker before the bundle lands, so wait for the
+    // health checks themselves, not just any section.
     await debugPage.waitForFunction(
-      () => document.querySelectorAll("section").length > 0,
+      () => document.querySelectorAll("ul.sf-checks li").length > 0,
       undefined,
       { timeout: 5_000, polling: 100 }
     )

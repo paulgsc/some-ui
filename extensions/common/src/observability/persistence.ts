@@ -103,8 +103,30 @@ export function extensionStoragePersistence(
 }
 
 function defaultArea(): StorageAreaLike {
-  // eslint-disable-next-line no-restricted-globals -- `browser` is absent on Chrome; this port is used by both engines
-  const api: unknown = typeof browser === "undefined" ? chrome : browser
+  const area = storageLocal()
+  if (area === undefined) {
+    throw new Error("extensionStoragePersistence: no storage.local available")
+  }
+  return area
+}
+
+function isStorageArea(value: unknown): value is StorageAreaLike {
+  if (value === null || typeof value !== "object") return false
+  return (
+    typeof Reflect.get(value, "get") === "function" &&
+    typeof Reflect.get(value, "set") === "function" &&
+    typeof Reflect.get(value, "remove") === "function"
+  )
+}
+
+/**
+ * `storage.local` of whichever WebExtension global exists (`browser`, else
+ * `chrome`), resolved per call: in a test it exists only once one is
+ * installed, and a real one can be absent too. Undefined when there is none.
+ */
+export function storageLocal(): StorageAreaLike | undefined {
+  const browserApi: unknown = Reflect.get(globalThis, "browser")
+  const api: unknown = browserApi ?? Reflect.get(globalThis, "chrome")
   const storage: unknown =
     api !== null && typeof api === "object"
       ? Reflect.get(api, "storage")
@@ -113,11 +135,7 @@ function defaultArea(): StorageAreaLike {
     storage !== null && typeof storage === "object"
       ? Reflect.get(storage, "local")
       : undefined
-  if (local === null || typeof local !== "object") {
-    throw new Error("extensionStoragePersistence: no storage.local available")
-  }
-  // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- narrowed structurally above
-  return local as StorageAreaLike
+  return isStorageArea(local) ? local : undefined
 }
 
 /**

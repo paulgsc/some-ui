@@ -6,16 +6,15 @@ import type { ScopeStateKind } from "@filter/adapter/scope-registry"
 import {
   compactIndex,
   coverageInvariants,
+  createCoverageRecorder,
+  createIndexPublisher,
   indexStorageKey,
-  LEGACY_INDEX_KEY,
-  readIndex,
-  removeFromIndex,
   scopeArtifactPresent,
   scopeCoverageInvariants,
   sessionStorageKey,
-  touchIndex,
   type CoverageContext,
-  type IndexEntry,
+  type CoverageRecorder,
+  type IndexPublisher,
   type ScopeCoverageContext,
   type ScopeCoverageEntry,
 } from "@filter/lib/content/coverage-observability"
@@ -29,6 +28,7 @@ import {
 } from "@filter/lib/content/theme-apply"
 import { ext } from "@filter/platform/content"
 import type { InvariantOutcome } from "@some-extension/common/observability"
+import { fakeStorage } from "@some-extension/common/testing"
 import { afterEach, describe, expect, it } from "vitest"
 
 type SyncCheck<C> = {
@@ -506,122 +506,99 @@ describe("ScopeCoverageHeld — generalizes CoverageHeld to every live registere
 
 // ── The session index ───────────────────────────────────────────────────────
 //
-// `createSessionIndex` is exercised in depth by some-censor's suite; this
-// covers this adapter's wiring of it, the cap, and the `pagehide` path.
+// `createSessionIndex` is tested in common; this covers this adapter's
+// wiring: the touch on every flush, and the `pagehide` path.
 
-const NOW = 1_700_000_000_000
-
+/**
+ * `ext` is the `browser` global the vitest setup stubs, so the area is
+ * installed onto it, where the index's default `storage.local` resolver and
+ * the recorder's persistence both find it.
+ */
 function installFakeStorage(): Map<string, unknown> {
-  const store = new Map<string, unknown>()
-  const asList = (keys: string | Array<string> | null): Array<string> =>
-    keys === null ? [...store.keys()] : typeof keys === "string" ? [keys] : keys
-  Reflect.set(ext, "storage", {
-    local: {
-      get: (
-        keys: string | Array<string> | null
-      ): Promise<Record<string, unknown>> => {
-        const out: Record<string, unknown> = {}
-        for (const k of asList(keys)) if (store.has(k)) out[k] = store.get(k)
-        return Promise.resolve(out)
-      },
-      set: (items: Record<string, unknown>): Promise<void> => {
-        for (const [k, v] of Object.entries(items)) store.set(k, v)
-        return Promise.resolve()
-      },
-      remove: (keys: string | Array<string>): Promise<void> => {
-        for (const k of asList(keys)) store.delete(k)
-        return Promise.resolve()
-      },
-    },
-  })
-  return store
+  const fake = fakeStorage()
+  Reflect.set(ext, "storage", { local: fake.area })
+  return fake.store
 }
 
-function entry(sessionId: string, updatedAt: number): IndexEntry {
-  return {
-    sessionId,
+/** A persisted recorder whose flushes touch its index entry, as content.ts wires it. */
+function recording(sessionId: string): {
+  recorder: CoverageRecorder
+  publisher: IndexPublisher
+} {
+  const publisher = createIndexPublisher(sessionId, () => ({
     origin: "https://example.com",
     title: "A page",
     tabState: "auto",
-    updatedAt,
-  }
+  }))
+  const recorder = createCoverageRecorder(sessionId, true, () => {
+    publisher.touch()
+  })
+  return { recorder, publisher }
 }
 
-/** An indexed session: its index entry plus its persisted bundle. */
-async function record(store: Map<string, unknown>, i: number): Promise<void> {
-  store.set(sessionStorageKey(`s${String(i)}`), { version: 1, events: [] })
-  await touchIndex(entry(`s${String(i)}`, NOW + i))
-}
+const drain = (): Promise<void> =>
+  new Promise((resolve) => {
+    setTimeout(resolve, 0)
+  })
 
 afterEach(() => {
   Reflect.deleteProperty(ext, "storage")
 })
 
 describe("the session index", () => {
-  it("lists what each tab published under its own key, newest first", async () => {
+  it("touches the entry on every flush, so a tab evicted while live is listed again by its next write", async () => {
     const store = installFakeStorage()
-    await record(store, 1)
-    await record(store, 2)
+    const { recorder } = recording("s1")
 
-    expect((await readIndex()).map((e) => e.sessionId)).toEqual(["s2", "s1"])
-    expect(store.has(indexStorageKey("s1"))).toBe(true)
-    expect(store.has(LEGACY_INDEX_KEY)).toBe(false)
-  })
-
-  it("removes a session's bundle together with its entry", async () => {
-    const store = installFakeStorage()
-    await record(store, 1)
-    expect(store.has(sessionStorageKey("s1"))).toBe(true)
-
-    await removeFromIndex("s1")
-    expect(await readIndex()).toEqual([])
-    expect(store.has(sessionStorageKey("s1"))).toBe(false)
-    expect(store.size).toBe(0)
-  })
-
-  it("deletes the bundle of a session the cap evicts, not only its entry", async () => {
-    const store = installFakeStorage()
-    for (let i = 0; i < 21; i++) await record(store, i)
-
-    const { evicted } = await compactIndex()
-    expect(evicted).toEqual(["s0"])
-    expect(store.has(sessionStorageKey("s0"))).toBe(false)
-    expect(store.has(sessionStorageKey("s1"))).toBe(true)
-    expect(await readIndex()).toHaveLength(20)
-    expect(store.size).toBe(40)
-  })
-
-  it("sweeps a bundle whose index key is gone", async () => {
-    const store = installFakeStorage()
-    await record(store, 1)
-    store.set(sessionStorageKey("ghost"), { version: 1, events: [] })
-
-    const { orphaned } = await compactIndex()
-    expect(orphaned).toEqual(["ghost"])
-    expect(store.has(sessionStorageKey("ghost"))).toBe(false)
-    expect(store.has(sessionStorageKey("s1"))).toBe(true)
-  })
-
-  it("migrates the shared v1 array once, carrying only entries whose bundle still exists", async () => {
-    const store = installFakeStorage()
-    store.set(LEGACY_INDEX_KEY, [entry("kept", NOW + 1), entry("gone", NOW)])
-    store.set(sessionStorageKey("kept"), { version: 1, events: [] })
-
-    expect((await readIndex()).map((e) => e.sessionId)).toEqual(["kept"])
-    expect(store.has(LEGACY_INDEX_KEY)).toBe(false)
-    expect(store.has(indexStorageKey("kept"))).toBe(true)
-    expect(store.has(indexStorageKey("gone"))).toBe(false)
-  })
-
-  it("survives a storage area that is not there at all", async () => {
-    Reflect.deleteProperty(ext, "storage")
-    expect(await readIndex()).toEqual([])
-    await expect(touchIndex(entry("s1", NOW))).resolves.toBeUndefined()
-    await expect(removeFromIndex("s1")).resolves.toBeUndefined()
-    await expect(compactIndex()).resolves.toEqual({
-      entries: [],
-      evicted: [],
-      orphaned: [],
+    recorder.record({ kind: "session.start" })
+    await recorder.flush()
+    await drain()
+    expect(store.get(indexStorageKey("s1"))).toMatchObject({
+      sessionId: "s1",
+      title: "A page",
+      tabState: "auto",
     })
+
+    store.delete(indexStorageKey("s1"))
+    await recorder.flush()
+    await drain()
+    expect(store.has(indexStorageKey("s1"))).toBe(true)
+    expect((await compactIndex()).entries.map((e) => e.sessionId)).toEqual([
+      "s1",
+    ])
+  })
+
+  it("keeps the recording through a bfcache pagehide, and stops touching it", async () => {
+    const store = installFakeStorage()
+    const { recorder, publisher } = recording("s1")
+    publisher.touch()
+    await drain()
+    const listedEntry = store.get(indexStorageKey("s1"))
+
+    publisher.retire(recorder, true)
+    await drain()
+
+    expect(store.has(sessionStorageKey("s1"))).toBe(true)
+    expect(store.get(indexStorageKey("s1"))).toBe(listedEntry)
+
+    // Restored from the bfcache, the page changes state again.
+    store.delete(indexStorageKey("s1"))
+    publisher.touch()
+    await drain()
+    expect(store.has(indexStorageKey("s1"))).toBe(false)
+  })
+
+  it("forgets the session, bundle included, on a real unload — and its last flush does not re-list it", async () => {
+    const store = installFakeStorage()
+    const { recorder, publisher } = recording("s1")
+    recorder.record({ kind: "session.start" })
+    publisher.touch()
+    await drain()
+
+    publisher.retire(recorder, false)
+    await drain()
+
+    expect(store.has(sessionStorageKey("s1"))).toBe(false)
+    expect(store.has(indexStorageKey("s1"))).toBe(false)
   })
 })

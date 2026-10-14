@@ -10,30 +10,33 @@
  * ## The layout
  *
  *     <namespace>.index.<sessionId>.v2   one small entry per session
- *     <payload key>                      the recording itself (the adapter's)
+ *     <prefix><sessionId><suffix>        the recording itself (the payload)
  *
  * A tab only ever writes its own index key, so no write can lose another
  * tab's. Everything that needs the whole index — listing, the cap, and the
- * orphan sweep — enumerates keys instead. That enumeration is the one cost of
- * the layout, and it is kept off the recording path: {@link SessionIndex.touch}
- * is a single `set`; {@link SessionIndex.compact} runs once per session start
- * and from the debug page, where a human asked for it. Where the engine has
- * `storage.local.getKeys()` (Chromium 130+, Firefox 135+) enumeration returns
- * key names alone; elsewhere it falls back to `get(null)`, which returns every
- * payload too — the fallback is why compaction is rare, not per-touch.
+ * orphan sweep — enumerates keys instead, in {@link SessionIndex.compact}.
+ * Where the engine has `storage.local.getKeys()` (Chrome 130+, Firefox 143+)
+ * enumeration returns key names alone; elsewhere it falls back to
+ * `get(null)`, which clones every payload too. So the recording path calls
+ * {@link SessionIndex.compactIfCheap}, which compacts only where `getKeys()`
+ * exists; on older engines the cap and the sweep are enforced when a debug
+ * page opens (it calls `compact`), not before.
  *
- * ## Eviction is something a session can observe about itself
+ * ## What compaction restores
  *
- * The cap deletes an evicted session's index key *and* its payload. A session
- * evicted while still live simply rewrites its own key on its next touch and
- * its payload on its next flush, and is listed again; its payload written in
- * between, with no index key beside it, is an orphan the next compaction
- * sweeps. So the invariant compaction restores is: every payload has an index
- * key, and at most `cap` index keys exist. Neither is assumed to hold between
- * compactions, and nothing depends on it.
+ * Every payload has an index entry, at most `cap` entries exist, and every
+ * index key holds a valid entry whose payload was written within
+ * `unflushedGraceMs`. None of it is assumed between compactions: a session
+ * evicted while live rewrites its own key on its next touch and its payload
+ * on its next flush, and is listed again.
+ *
+ * Compaction works from one enumeration, which another tab can overtake. So
+ * a deletion that depends on a key being *absent* (an orphaned payload, an
+ * entry with no payload) is re-checked against storage right before the
+ * removal, and the legacy migration re-enumerates once it has run.
  */
 
-import type { StorageAreaLike } from "./persistence"
+import { storageLocal, type StorageAreaLike } from "./persistence"
 
 /** The minimum an index entry carries: identity and recency. */
 export type IndexedEntry = {
@@ -43,7 +46,7 @@ export type IndexedEntry = {
 
 /**
  * {@link StorageAreaLike} plus the optional key enumeration newer engines
- * expose. The port feature-detects it per call.
+ * expose. The index feature-detects it per call.
  */
 export type IndexAreaLike = StorageAreaLike & {
   getKeys?(): Promise<Array<string>>
@@ -56,56 +59,115 @@ export type SessionIndexOptions<E extends IndexedEntry> = {
    * `<namespace>.index.v1` is migrated on first enumeration.
    */
   readonly namespace: string
-  /** The payload key of a session, and its inverse over an arbitrary key. */
-  readonly payload: {
-    readonly key: (sessionId: string) => string
-    readonly sessionId: (key: string) => string | undefined
-  }
+  /** A session's payload key is `<prefix><sessionId><suffix>`. */
+  readonly payload: { readonly prefix: string; readonly suffix: string }
   readonly isEntry: (value: unknown) => value is E
   /**
-   * Resolved on every operation rather than captured once: the area may not
-   * exist yet when the adapter module loads (tests), or at all. Absent, every
-   * operation is a no-op that reports nothing.
+   * Resolved on every operation. Defaults to the WebExtension global's
+   * `storage.local`. Absent, every operation is a no-op that reports nothing.
    */
-  readonly area: () => IndexAreaLike | undefined
+  readonly area?: () => IndexAreaLike | undefined
   /** Most recent entries kept by {@link SessionIndex.compact}. */
   readonly cap?: number
+  /**
+   * How long an entry may be listed with no payload before compaction drops
+   * it: a tab killed before its first flush. Far longer than any recorder's
+   * flush debounce, since a background tab's timers can be throttled to one
+   * a minute.
+   */
+  readonly unflushedGraceMs?: number
+  readonly now?: () => number
+}
+
+/** What compaction could not do, and at which step. */
+export type CompactionFailure = {
+  /**
+   * `"survey"`: enumeration failed, so nothing is known and `entries` is
+   * empty. `"removal"`: the listing stands, but nothing was deleted.
+   */
+  readonly stage: "survey" | "removal"
+  readonly message: string
 }
 
 export type Compaction<E> = {
-  /** What the index holds after compaction, newest first. */
+  /** The listed sessions after compaction, newest first, at most `cap`. */
   readonly entries: ReadonlyArray<E>
   /** Sessions past the cap: index key and payload deleted. */
   readonly evicted: ReadonlyArray<string>
-  /** Payloads with no index key: deleted. */
+  /** Payloads no entry lists: deleted. */
   readonly orphaned: ReadonlyArray<string>
+  /**
+   * Index keys deleted on their own: a value that is not an entry, or an
+   * entry with no payload past `unflushedGraceMs`.
+   */
+  readonly discarded: ReadonlyArray<string>
+  /**
+   * Set when a step failed. On a removal failure, `evicted`, `orphaned` and
+   * `discarded` are empty, since they report deletions and none happened.
+   */
+  readonly failure?: CompactionFailure
 }
 
 export type SessionIndex<E extends IndexedEntry> = {
   indexKey(sessionId: string): string
+  payloadKey(sessionId: string): string
+  /** The legacy shared-array key, migrated on first enumeration. */
+  readonly legacyKey: string
   /** Publish or refresh one entry. One `set` of one key; never reads. */
   touch(entry: E): Promise<void>
   /** Forget a session: its index key and its payload. */
   remove(sessionId: string): Promise<void>
-  /** Every listed session, newest first, at most `cap`. Never throws. */
-  list(): Promise<Array<E>>
-  /** Enforce the cap and sweep orphaned payloads. Never throws. */
+  /** List, enforce the cap and sweep. Never throws; see `failure`. */
   compact(): Promise<Compaction<E>>
+  /** {@link compact}, only where the engine enumerates key names alone. */
+  compactIfCheap(): Promise<void>
 }
 
 const DEFAULT_INDEX_CAP = 20
+const DEFAULT_UNFLUSHED_GRACE_MS = 5 * 60_000
 
-const NOTHING: Compaction<never> = { entries: [], evicted: [], orphaned: [] }
+const NOTHING: Compaction<never> = {
+  entries: [],
+  evicted: [],
+  orphaned: [],
+  discarded: [],
+}
+
+function messageOf(e: unknown): string {
+  return e instanceof Error ? e.message : String(e)
+}
 
 export function createSessionIndex<E extends IndexedEntry>(
   options: SessionIndexOptions<E>
 ): SessionIndex<E> {
-  const { namespace, payload, isEntry, cap = DEFAULT_INDEX_CAP } = options
+  const {
+    namespace,
+    payload,
+    isEntry,
+    cap = DEFAULT_INDEX_CAP,
+    unflushedGraceMs = DEFAULT_UNFLUSHED_GRACE_MS,
+    now = Date.now,
+  } = options
+  const resolveArea: () => IndexAreaLike | undefined =
+    options.area ?? storageLocal
   const prefix = `${namespace}.index.`
   const suffix = ".v2"
   const legacyKey = `${namespace}.index.v1`
   const indexKey = (sessionId: string): string =>
     `${prefix}${sessionId}${suffix}`
+  const payloadKey = (sessionId: string): string =>
+    `${payload.prefix}${sessionId}${payload.suffix}`
+
+  const between = (
+    key: string,
+    head: string,
+    tail: string
+  ): string | undefined =>
+    key.length > head.length + tail.length &&
+    key.startsWith(head) &&
+    key.endsWith(tail)
+      ? key.slice(head.length, key.length - tail.length)
+      : undefined
 
   const byRecency = (a: E, b: E): number => b.updatedAt - a.updatedAt
 
@@ -117,19 +179,19 @@ export function createSessionIndex<E extends IndexedEntry>(
       : []
   }
 
-  async function readEntries(
+  async function read(
     area: IndexAreaLike,
     keys: ReadonlyArray<string>
-  ): Promise<Array<E>> {
-    if (keys.length === 0) return []
+  ): Promise<Record<string, unknown>> {
+    if (keys.length === 0) return {}
     const raw: unknown = await area.get([...keys])
-    if (raw === null || typeof raw !== "object") return []
-    const entries: Array<E> = []
+    const out: Record<string, unknown> = {}
+    if (raw === null || typeof raw !== "object") return out
     for (const key of keys) {
       const value: unknown = Reflect.get(raw, key)
-      if (isEntry(value)) entries.push(value)
+      if (value !== undefined) out[key] = value
     }
-    return entries
+    return out
   }
 
   /**
@@ -140,18 +202,13 @@ export function createSessionIndex<E extends IndexedEntry>(
   async function migrateLegacy(
     area: IndexAreaLike,
     keys: ReadonlyArray<string>
-  ): Promise<Array<E>> {
-    if (!keys.includes(legacyKey)) return []
-    const raw: unknown = await area.get(legacyKey)
-    const value: unknown =
-      raw !== null && typeof raw === "object"
-        ? Reflect.get(raw, legacyKey)
-        : undefined
+  ): Promise<void> {
+    const value = (await read(area, [legacyKey]))[legacyKey]
     const present = new Set(keys)
     const carried: Array<E> = Array.isArray(value)
       ? value
           .filter(isEntry)
-          .filter((e) => present.has(payload.key(e.sessionId)))
+          .filter((e) => present.has(payloadKey(e.sessionId)))
       : []
     if (carried.length > 0) {
       const items: Record<string, unknown> = {}
@@ -159,34 +216,116 @@ export function createSessionIndex<E extends IndexedEntry>(
       await area.set(items)
     }
     await area.remove(legacyKey)
-    return carried
   }
 
-  /** One enumeration serving both `list` and `compact`. */
-  async function survey(area: IndexAreaLike): Promise<{
+  type Survey = {
+    /** Every valid entry, newest first. */
     entries: Array<E>
-    payloads: Array<string>
-  }> {
-    const keys = await allKeys(area)
-    const migrated = await migrateLegacy(area, keys)
-    const stored = await readEntries(
-      area,
-      keys.filter((k) => k.startsWith(prefix) && k.endsWith(suffix))
+    /** Sessions whose index key holds something that is not an entry. */
+    malformed: Array<string>
+    /** Sessions with a payload. */
+    payloads: Set<string>
+  }
+
+  async function survey(area: IndexAreaLike): Promise<Survey> {
+    let keys = await allKeys(area)
+    if (keys.includes(legacyKey)) {
+      await migrateLegacy(area, keys)
+      // Another tab may have migrated first, so this tab's enumeration can
+      // predate the per-session keys: without re-reading, every payload
+      // would look orphaned.
+      keys = await allKeys(area)
+    }
+    const indexed = new Map<string, string>()
+    const payloads = new Set<string>()
+    for (const key of keys) {
+      const listed = between(key, prefix, suffix)
+      if (listed !== undefined) indexed.set(key, listed)
+      const stored = between(key, payload.prefix, payload.suffix)
+      if (stored !== undefined) payloads.add(stored)
+    }
+    const values = await read(area, [...indexed.keys()])
+    const entries: Array<E> = []
+    const malformed: Array<string> = []
+    for (const [key, sessionId] of indexed) {
+      if (!(key in values)) continue
+      const value = values[key]
+      if (isEntry(value)) entries.push(value)
+      else malformed.push(sessionId)
+    }
+    return { entries: entries.sort(byRecency), malformed, payloads }
+  }
+
+  async function compact(area: IndexAreaLike): Promise<Compaction<E>> {
+    let surveyed: Survey
+    try {
+      surveyed = await survey(area)
+    } catch (e) {
+      return { ...NOTHING, failure: { stage: "survey", message: messageOf(e) } }
+    }
+    const { entries, malformed, payloads } = surveyed
+    const listed = new Set(entries.map((e) => e.sessionId))
+    const cutoff = now() - unflushedGraceMs
+    const unflushedCandidates = entries
+      .filter((e) => !payloads.has(e.sessionId) && e.updatedAt < cutoff)
+      .map((e) => e.sessionId)
+    const orphanCandidates = [...payloads].filter((id) => !listed.has(id))
+
+    const unavailable = (e: unknown): Compaction<E> => {
+      const dropped = new Set(unflushedCandidates)
+      return {
+        ...NOTHING,
+        entries: entries.filter((x) => !dropped.has(x.sessionId)).slice(0, cap),
+        failure: { stage: "removal", message: messageOf(e) },
+      }
+    }
+
+    // Re-check what the enumeration said was absent: a tab may have touched
+    // its index key or flushed its payload since.
+    let recheck: Record<string, unknown>
+    try {
+      recheck = await read(area, [
+        ...orphanCandidates.map(indexKey),
+        ...malformed.map(indexKey),
+        ...unflushedCandidates.map(payloadKey),
+      ])
+    } catch (e) {
+      return unavailable(e)
+    }
+    const nowListed = (id: string): boolean => isEntry(recheck[indexKey(id)])
+    const orphaned = orphanCandidates.filter((id) => !nowListed(id))
+    const unflushed = unflushedCandidates.filter(
+      (id) => !(payloadKey(id) in recheck)
     )
-    const seen = new Set(stored.map((e) => e.sessionId))
-    const entries = [
-      ...stored,
-      ...migrated.filter((e) => !seen.has(e.sessionId)),
-    ].sort(byRecency)
-    const payloads = keys.filter((k) => payload.sessionId(k) !== undefined)
-    return { entries, payloads }
+    const discarded = [
+      ...malformed.filter((id) => !nowListed(id)),
+      ...unflushed,
+    ]
+
+    const dropped = new Set(unflushed)
+    const live = entries.filter((e) => !dropped.has(e.sessionId))
+    const kept = live.slice(0, cap)
+    const evicted = live.slice(cap).map((e) => e.sessionId)
+    const doomed = [
+      ...evicted.flatMap((id) => [indexKey(id), payloadKey(id)]),
+      ...orphaned.map(payloadKey),
+      ...discarded.map(indexKey),
+    ]
+    try {
+      if (doomed.length > 0) await area.remove(doomed)
+    } catch (e) {
+      return unavailable(e)
+    }
+    return { entries: kept, evicted, orphaned, discarded }
   }
 
   return {
     indexKey,
+    payloadKey,
+    legacyKey,
 
     async touch(entry: E): Promise<void> {
-      const area = options.area()
+      const area = resolveArea()
       if (area === undefined) return
       try {
         await area.set({ [indexKey(entry.sessionId)]: entry })
@@ -196,53 +335,24 @@ export function createSessionIndex<E extends IndexedEntry>(
     },
 
     async remove(sessionId: string): Promise<void> {
-      const area = options.area()
+      const area = resolveArea()
       if (area === undefined) return
       try {
-        await area.remove([indexKey(sessionId), payload.key(sessionId)])
+        await area.remove([indexKey(sessionId), payloadKey(sessionId)])
       } catch {
         // Best-effort.
       }
     },
 
-    async list(): Promise<Array<E>> {
-      const area = options.area()
-      if (area === undefined) return []
-      try {
-        const { entries } = await survey(area)
-        return entries.slice(0, cap)
-      } catch {
-        return []
-      }
+    async compact(): Promise<Compaction<E>> {
+      const area = resolveArea()
+      return area === undefined ? NOTHING : compact(area)
     },
 
-    async compact(): Promise<Compaction<E>> {
-      const area = options.area()
-      if (area === undefined) return NOTHING
-      try {
-        const { entries, payloads } = await survey(area)
-        const kept = entries.slice(0, cap)
-        const listed = new Set(kept.map((e) => e.sessionId))
-        const evicted = entries.slice(cap).map((e) => e.sessionId)
-        const orphaned: Array<string> = []
-        for (const key of payloads) {
-          const sessionId = payload.sessionId(key)
-          if (sessionId !== undefined && !listed.has(sessionId)) {
-            // Past the cap, or listed by nothing at all: either way the
-            // payload goes. An evicted session's payload is counted under
-            // `evicted`, not here.
-            if (!evicted.includes(sessionId)) orphaned.push(sessionId)
-          }
-        }
-        const doomed = [
-          ...evicted.flatMap((id) => [indexKey(id), payload.key(id)]),
-          ...orphaned.map((id) => payload.key(id)),
-        ]
-        if (doomed.length > 0) await area.remove(doomed)
-        return { entries: kept, evicted, orphaned }
-      } catch {
-        return NOTHING
-      }
+    async compactIfCheap(): Promise<void> {
+      const area = resolveArea()
+      if (typeof area?.getKeys !== "function") return
+      await compact(area)
     },
   }
 }

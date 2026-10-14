@@ -32,11 +32,12 @@ import {
   type IndexEntry,
 } from "@censor/lib/content/observability"
 import { ext } from "@censor/platform/content"
-import type {
-  InvariantResult,
-  JsonValue,
-  ObservabilityEvent,
-  PersistedState,
+import {
+  createSessionLoader,
+  type InvariantResult,
+  type JsonValue,
+  type ObservabilityEvent,
+  type PersistedState,
 } from "@some-extension/common/observability"
 
 import "./debug.css"
@@ -64,21 +65,7 @@ export type RecordedHealth = {
 /** Current view filter. Reset whenever the selected session changes. */
 type Filter = { kind: string }
 
-let sessions: Array<IndexEntry> = []
-let selectedSessionId: string | undefined
 let filter: Filter = { kind: "" }
-let bundle: Bundle | undefined
-/**
- * Which session `bundle` actually came from.
- *
- * Without it the rendered bundle and the picker's selection could disagree
- * across the storage read, and Export would write the previous session's
- * file under the new one's name: a mislabelled corpus.
- */
-let loadedSessionId: string | undefined
-/** Guards against two loads landing out of order; see {@link load}. */
-let loadToken = 0
-let loadError: string | undefined
 
 function isBundle(value: unknown): value is Bundle {
   return (
@@ -212,6 +199,7 @@ function el<K extends keyof HTMLElementTagNameMap>(
  * which on YouTube is the video title (#1382).
  */
 function pickerSection(): HTMLElement {
+  const { sessions, selectedSessionId } = loader
   const select = el("select")
   if (sessions.length === 0) {
     select.appendChild(new Option("no recorded sessions", ""))
@@ -227,17 +215,12 @@ function pickerSection(): HTMLElement {
     select.value = selectedSessionId ?? sessions[0]?.sessionId ?? ""
   }
   select.addEventListener("change", () => {
-    selectedSessionId = select.value || undefined
     filter = { kind: "" }
-    // Drop the old session's bundle before the read starts, so there is no
-    // window in which Export would write the wrong file.
-    clearLoadedBundle()
-    render()
-    void load()
+    void loader.select(select.value || undefined)
   })
 
   const refresh = el("button", { text: "Refresh sessions" })
-  refresh.addEventListener("click", () => void load(true))
+  refresh.addEventListener("click", () => void loader.load(true))
 
   const section = el("section")
   section.append(
@@ -588,14 +571,14 @@ function header(b: Bundle | undefined): HTMLElement {
       class: "bc-sub",
       text: b
         ? `${b.namespace} · ${String(b.events.length)} event(s) retained`
-        : sessions.length === 0
+        : loader.sessions.length === 0
           ? "No sessions recorded yet — open YouTube with the extension active, then refresh."
           : "Pick a session above.",
     })
   )
 
   const refresh = el("button", { text: "Refresh" })
-  refresh.addEventListener("click", () => void load())
+  refresh.addEventListener("click", () => void loader.load())
   const actions = el("div", { class: "bc-actions" }, [refresh])
 
   if (b) {
@@ -612,6 +595,7 @@ function render(): void {
   if (!root) return
   root.replaceChildren()
 
+  const { bundle, loadError } = loader
   root.appendChild(header(bundle))
   root.appendChild(pickerSection())
 
@@ -630,9 +614,11 @@ function render(): void {
       el("div", {
         class: "bc-empty",
         text:
-          sessions.length === 0
+          loader.sessions.length === 0
             ? "Nothing to show yet."
-            : "Loading diagnostics…",
+            : loader.settled
+              ? "No recording stored for this session — it may have closed before its first write."
+              : "Loading diagnostics…",
       })
     )
     return
@@ -653,77 +639,10 @@ function render(): void {
   )
 }
 
-function clearLoadedBundle(): void {
-  bundle = undefined
-  loadedSessionId = undefined
-}
+const loader = createSessionLoader<IndexEntry, Bundle>({
+  list: compactIndex,
+  loadBundle,
+  render,
+})
 
-/**
- * Which session to show, given a freshly read index. Pure, so {@link load}
- * can commit the candidate only after its token check: a superseded load
- * must not reset the selection.
- */
-function nextSelection(
-  index: ReadonlyArray<IndexEntry>,
-  pickMostRecent: boolean,
-  current: string | undefined
-): string | undefined {
-  if (
-    pickMostRecent ||
-    current === undefined ||
-    !index.some((s) => s.sessionId === current)
-  ) {
-    return index[0]?.sessionId
-  }
-  return current
-}
-
-/**
- * Refresh the session list and the selected session's bundle.
- *
- * `pickMostRecent` forces the newest recording to be selected, which is what
- * "Refresh sessions" means; the header's own "Refresh" leaves the selection
- * alone.
- *
- * Two loads can be in flight at once — a fast double-change of the picker is
- * enough — and their storage reads are not obliged to settle in the order
- * they started. So `loadToken` gates not just every render but **every write
- * to module state**: a superseded load must leave `sessions`,
- * `selectedSessionId`, `bundle` and `loadError` exactly as it found them. The
- * rule this function keeps is that nothing module-scoped is assigned between
- * an `await` and the token check that follows it.
- */
-async function load(pickMostRecent = false): Promise<void> {
-  const token = ++loadToken
-  // Repaint away a stale "Unavailable" panel (render() returns early while
-  // loadError is set), but only then: an unconditional render would flash
-  // the page on every refresh.
-  const hadError = loadError !== undefined
-  loadError = undefined
-  if (hadError) render()
-  try {
-    // Compact rather than list: the one place a whole-area enumeration is
-    // paid once, by a person who asked, so it also sweeps orphaned bundles.
-    const { entries: index } = await compactIndex()
-    if (token !== loadToken) return
-    sessions = [...index]
-    selectedSessionId = nextSelection(index, pickMostRecent, selectedSessionId)
-    if (selectedSessionId !== loadedSessionId) {
-      clearLoadedBundle()
-      render()
-    }
-    const next = selectedSessionId
-      ? await loadBundle(selectedSessionId)
-      : undefined
-    if (token !== loadToken) return
-    bundle = next
-    loadedSessionId = selectedSessionId
-    render()
-  } catch (e) {
-    if (token !== loadToken) return
-    loadError = e instanceof Error ? e.message : String(e)
-    render()
-  }
-}
-
-void load()
+void loader.load()
