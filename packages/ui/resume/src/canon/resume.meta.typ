@@ -94,7 +94,22 @@ backs should be cut, not kept and re-justified.
   `src/lib/platform/firefox.ts` is the platform shim.
 - *Signed release gate* --- `sign:firefox` (`web-ext`, AMO unlisted
   channel), behind `typecheck`, `test` (Vitest), `lint:js`, `lint:ext`, and
-  `check:headers` (MPL headers on ported files).
+  `check:headers` (MPL headers on ported files). Releases now go through
+  `.github/workflows/extension-release.yml`, whose human-merged release PR
+  carries notes bound by `extensions/scripts/amo-release.mjs` to the build's
+  content digest; the sign job refuses a `dist/` that differs from
+  `release/release.json`.
+- *Approved in AMO review* --- the résumé's "approved in Mozilla Add-ons
+  (AMO) review" / "passed AMO review". Mozilla's reviewers approved 0.2.1
+  (2026-08-26) and 0.3.0 (submitted 2026-10-11, tag
+  `suspender-ledger@0.3.0`); the approval itself is on AMO's developer
+  dashboard, not in the repository, and the owner confirmed it on
+  2026-10-14. `extensions/docs/amo-compliance.md` (A-section *Status*)
+  records it. "Unlisted" is not "unreviewed": the channel signs at once, and
+  a reviewer can still review any version, which is what happened here. It
+  is the only extension so far with an approval; the others sign manually
+  behind `extension-sign-manual.yml`'s compliance checkbox, so the résumé
+  claims the approval for the suspender alone.
 
 == some-censor
 

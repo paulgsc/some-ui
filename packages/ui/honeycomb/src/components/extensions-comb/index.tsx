@@ -498,6 +498,19 @@ const RIDE_PATH = `M-64 0 ${RIDE_BEATS.map((b) => `L${b.x} ${b.y}`).join(" ")}`
 const RIDE_PEAK = RIDE_BEATS[RIDE_BEATS.length - 1] ?? { x: 0, y: 0, r: 0 }
 
 /**
+ * Suspender Ledger's four tabs, top to bottom, by what happens to each in the
+ * loop: the tab you are on, the one suspended and brought back, the one
+ * suspended, and the one playing sound. Each class binds its own keyframes in
+ * `index.css`.
+ */
+const SUSPEND_TABS = [
+  "xcomb-mini-tab-active",
+  "xcomb-mini-tab-back",
+  "xcomb-mini-tab-idle",
+  "xcomb-mini-tab-sound",
+] as const
+
+/**
  * The L1 mechanism register: a looping diagram of what the tool does, with no
  * words at all, drawn in SVG. Keyframes live in `index.css` and every one of
  * them stops under `prefers-reduced-motion`.
@@ -505,20 +518,53 @@ const RIDE_PEAK = RIDE_BEATS[RIDE_BEATS.length - 1] ?? { x: 0, y: 0, r: 0 }
 const Mini = ({ kind }: { kind: Mechanism }): JSX.Element => {
   switch (kind) {
     case "tabs": {
+      // Suspender Ledger's whole flow on one 8s timeline (`index.css`): the
+      // tab you are on stays lit; two background tabs go idle and dim, one
+      // after the other, and the memory gauge drops with each; the tab
+      // playing sound is checked and left awake; a tap on a suspended tab
+      // brings it back behind a brief dark veil, and the gauge refills.
       return (
         <g aria-hidden>
-          {[0, 1, 2, 3].map((k) => (
+          {SUSPEND_TABS.map((role, k) => (
             <rect
-              key={k}
+              key={role}
               x={-58}
               y={-46 + k * 24}
-              width={116}
+              width={88}
               height={14}
               rx={4}
-              className="xcomb-mini-tab"
-              style={{ animationDelay: `${k * 0.5}s` }}
+              className={cn("xcomb-mini-tab", role)}
             />
           ))}
+          {[0, 1].map((k) => (
+            <rect
+              key={k}
+              x={16 + k * 6}
+              y={27}
+              width={3}
+              height={10}
+              rx={1.5}
+              className="xcomb-mini-bar xcomb-mini-sound"
+              style={{ animationDuration: `${(0.8 + k * 0.3).toFixed(2)}s` }}
+            />
+          ))}
+          <circle cx={-34} cy={-15} r={8} className="xcomb-mini-tap" />
+          <rect
+            x={42}
+            y={-46}
+            width={16}
+            height={86}
+            rx={5}
+            className="xcomb-mini-gauge"
+          />
+          <rect
+            x={45}
+            y={-43}
+            width={10}
+            height={80}
+            rx={3}
+            className="xcomb-mini-mem"
+          />
         </g>
       )
     }
