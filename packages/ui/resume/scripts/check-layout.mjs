@@ -31,31 +31,18 @@
 // What this cannot do: judge whether spacing looks *good*. It is a floor, not
 // a designer. It catches cramming and collision, which is the failure mode
 // that actually ships unnoticed.
-import { execFileSync } from "node:child_process"
 import { existsSync } from "node:fs"
 import { basename, join } from "node:path"
 import { fileURLToPath } from "node:url"
 
-import { outDir } from "./typst.mjs"
-
-const extractor = process.env.PDFTOTEXT_BIN ?? "pdftotext"
+import { pdftotext } from "./pdftotext.mjs"
+import { outDir, stemFor, templates, variants } from "./typst.mjs"
 
 const MIN_GAP_RATIO = -0.05
 // Two lines belong to the same column when they overlap horizontally by more
 // than half the narrower one. This is what keeps a rail line from being
 // compared against a main-column line that merely happens to sit near it.
 const COLUMN_OVERLAP = 0.5
-
-const variants = ["backend", "platform", "fullstack"]
-const templates = [
-  "rail",
-  "classic",
-  "compact",
-  "vanilla",
-  "safe",
-  "conventional",
-]
-const DEFAULT_TEMPLATE = "rail"
 
 const LINE_RE =
   /<line xMin="([\d.]+)" yMin="([\d.]+)" xMax="([\d.]+)" yMax="([\d.]+)">([\s\S]*?)<\/line>/g
@@ -73,26 +60,8 @@ function decode(text) {
   return text.replace(/&(?:amp|lt|gt|quot|#39|apos);/g, (e) => ENTITIES[e])
 }
 
-// `pdf` is a path, or the PDF's bytes, which go in on stdin (`-`).
 function readLines(pdf) {
-  let xml
-  try {
-    const source = typeof pdf === "string" ? pdf : "-"
-    xml = execFileSync(extractor, ["-bbox-layout", source, "-"], {
-      encoding: "utf8",
-      maxBuffer: 32 * 1024 * 1024,
-      ...(typeof pdf === "string" ? {} : { input: pdf }),
-    })
-  } catch (error) {
-    if (error.code === "ENOENT") {
-      throw new Error(
-        "Layout check requires `pdftotext` (Poppler). It is provided by the " +
-          "repo's nix shells; outside nix, install poppler-utils or set " +
-          "PDFTOTEXT_BIN to a compatible executable."
-      )
-    }
-    throw error
-  }
+  const xml = pdftotext(["-bbox-layout"], pdf, "layout")
 
   const lines = []
   for (const match of xml.matchAll(LINE_RE)) {
@@ -124,8 +93,7 @@ function excerpt(line) {
 }
 
 // Throws unless no two adjacent lines of `pdf` (a path, or the PDF's bytes)
-// collide. The message quotes
-// the offending lines, so scripts/serve.mjs reports it without the detail.
+// collide. The message quotes the offending lines.
 export function checkDocument(pdf, label) {
   if (typeof pdf === "string" && !existsSync(pdf)) {
     throw new Error(`Missing generated PDF: ${pdf}`)
@@ -177,11 +145,10 @@ export function checkDocument(pdf, label) {
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   for (const template of templates) {
     for (const variant of variants) {
-      const stem =
-        template === DEFAULT_TEMPLATE
-          ? `resume-${variant}`
-          : `resume-${variant}-${template}`
-      checkDocument(join(outDir, `${stem}.pdf`), `${variant} / ${template}`)
+      checkDocument(
+        join(outDir, `${stemFor(variant, template)}.pdf`),
+        `${variant} / ${template}`
+      )
     }
   }
 }

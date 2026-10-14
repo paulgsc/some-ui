@@ -1,26 +1,23 @@
+import type { ResumeRenderOutcome, ResumeRenderRequest } from "@some-ui/resume"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
-import type {
-  RenderOutcome,
-  ResumeBuildRequest,
-  ResumeBuildRuntime,
-} from "@/lib/resume-build"
-import { createResumeBuild, serviceRender, step } from "@/lib/resume-build"
+import type { ResumeBuildRuntime } from "@/lib/resume-build"
+import { createResumeBuild, serviceRender } from "@/lib/resume-build"
 
-const request: ResumeBuildRequest = {
+const request: ResumeRenderRequest = {
   variant: "backend",
   template: "classic",
   pii: { phone: "+1 (510) 555-0134" },
 }
 
 function deferred(): {
-  promise: Promise<RenderOutcome>
-  resolve: (outcome: RenderOutcome) => void
+  promise: Promise<ResumeRenderOutcome>
+  resolve: (outcome: ResumeRenderOutcome) => void
   reject: (error: unknown) => void
 } {
-  let resolve!: (outcome: RenderOutcome) => void
+  let resolve!: (outcome: ResumeRenderOutcome) => void
   let reject!: (error: unknown) => void
-  const promise = new Promise<RenderOutcome>((res, rej) => {
+  const promise = new Promise<ResumeRenderOutcome>((res, rej) => {
     resolve = res
     reject = rej
   })
@@ -59,30 +56,10 @@ function harness(): Harness {
   return { runtime, pending, created, revoked }
 }
 
-const pdf = (): RenderOutcome => ({
+const pdf = (): ResumeRenderOutcome => ({
   kind: "pdf",
   pdf: new Blob(["%PDF"]),
   filename: "resume-backend-classic.pdf",
-})
-
-describe("step", () => {
-  it("moves to whatever the latest event says, from any state", () => {
-    const ready = { status: "ready", url: "blob:0", filename: "a.pdf" } as const
-    expect(step(ready, { type: "started" })).toEqual({ status: "rendering" })
-    expect(
-      step({ status: "idle" }, { type: "refused", message: "no" })
-    ).toEqual({ status: "refused", message: "no" })
-    expect(
-      step(
-        { status: "rendering" },
-        {
-          type: "rendered",
-          url: "blob:1",
-          filename: "b.pdf",
-        }
-      )
-    ).toEqual({ status: "ready", url: "blob:1", filename: "b.pdf" })
-  })
 })
 
 describe("createResumeBuild", () => {

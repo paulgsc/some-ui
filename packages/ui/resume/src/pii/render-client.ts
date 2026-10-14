@@ -1,9 +1,6 @@
 // The client half of scripts/serve.mjs: one POST with the request, the PDF or
-// the service's reason back. Here rather than in apps/www because the service
-// is this package's, and because apps/www/src makes no request of its own
-// outside its choke points (docs/learner-data-authority.md, LA1, which lists
-// this one with the other packages that do). What it sends is the owner's
-// contact details, not a learner's state.
+// the service's reason back. In this package because apps/www/src makes no
+// request outside its choke points (docs/learner-data-authority.md, LA1).
 import type { Pii } from "./index"
 
 export type ResumeRenderRequest = {

@@ -12,30 +12,19 @@
 // regressions we control: image-only output, broken glyph maps, missing
 // contact details, missing section landmarks, dropped qualifications, and
 // scrambled primary-section order.
-import { execFileSync } from "node:child_process"
 import { existsSync, writeFileSync } from "node:fs"
 import { basename, join } from "node:path"
 import { fileURLToPath } from "node:url"
 
-import { outDir } from "./typst.mjs"
+import { pdftotext } from "./pdftotext.mjs"
+import { outDir, stemFor, templates } from "./typst.mjs"
 
-const extractor = process.env.PDFTOTEXT_BIN ?? "pdftotext"
-
+// Each variant's focus label, which every PDF must expose.
 const variants = {
   backend: "Backend & event-driven systems",
   platform: "Developer platform & release engineering",
   fullstack: "Full-stack web & product engineering",
 }
-const templates = [
-  "rail",
-  "classic",
-  "compact",
-  "vanilla",
-  "safe",
-  "conventional",
-]
-const DEFAULT_TEMPLATE = "rail"
-
 // Identity facts, matched anywhere in the extracted text. A build with PII
 // (src/lib/pii.typ) also requires each supplied field, and its email
 // replaces this one.
@@ -115,37 +104,15 @@ const MIN_WORDS = 180
 // consumes and the only one of the two where a heading reliably starts its own
 // line. A left-hand rail, for instance, prefixes every `-layout` line of the
 // main column with sidebar text.
-// `pdf` is a path, or the PDF's bytes, which go in on stdin (`-`) so a PDF
-// with PII is never written to a file to be read.
 function extract(pdf, { layout = false } = {}) {
-  const source = typeof pdf === "string" ? pdf : "-"
-  const args = layout
-    ? ["-layout", "-enc", "UTF-8", source, "-"]
-    : ["-enc", "UTF-8", source, "-"]
-  try {
-    return execFileSync(extractor, args, {
-      encoding: "utf8",
-      maxBuffer: 32 * 1024 * 1024,
-      ...(typeof pdf === "string" ? {} : { input: pdf }),
-    })
-  } catch (error) {
-    if (error.code === "ENOENT") {
-      throw new Error(
-        "ATS check requires `pdftotext` (Poppler). It is provided by the " +
-          "repo's nix CI shell; outside nix, install poppler-utils or set " +
-          "PDFTOTEXT_BIN to a compatible executable."
-      )
-    }
-    throw error
-  }
+  const flags = layout ? ["-layout", "-enc", "UTF-8"] : ["-enc", "UTF-8"]
+  return pdftotext(flags, pdf, "ATS")
 }
 
 /**
  * Throws unless `pdf` (a path, or the PDF's bytes) passes. `pii` is the
- * build's contact fields, if any;
- * a failure names a missing one by its field, never its value, because
- * scripts/serve.mjs returns these messages to the page. `transcriptDir: null`
- * writes no `.ats.txt`.
+ * build's contact fields, if any; a missing one is named by its field (RP2).
+ * `transcriptDir: null` writes no `.ats.txt`.
  */
 export function assertAtsText(
   pdf,
@@ -236,12 +203,8 @@ export function assertAtsText(
   }
 
   if (transcriptDir !== null) {
-    const stem =
-      template === DEFAULT_TEMPLATE
-        ? `resume-${variant}`
-        : `resume-${variant}-${template}`
     writeFileSync(
-      join(transcriptDir, `${stem}.ats.txt`),
+      join(transcriptDir, `${stemFor(variant, template)}.ats.txt`),
       `${transcript.trim()}\n`
     )
   }
@@ -254,11 +217,10 @@ export function assertAtsText(
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   for (const template of templates) {
     for (const variant of Object.keys(variants)) {
-      const stem =
-        template === DEFAULT_TEMPLATE
-          ? `resume-${variant}`
-          : `resume-${variant}-${template}`
-      assertAtsText(join(outDir, `${stem}.pdf`), { variant, template })
+      assertAtsText(join(outDir, `${stemFor(variant, template)}.pdf`), {
+        variant,
+        template,
+      })
     }
   }
 }

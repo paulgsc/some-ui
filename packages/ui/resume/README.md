@@ -49,10 +49,10 @@ not a source edit:
 | `theme`    | `teal`, `slate`, `ink`                                          |
 | `font`     | `lato`, `pt-serif`                                              |
 
-Those four are the same knobs the LAN render service takes per request
-(below), which is the point: the static build and the dynamic renderer share
-one template set rather than diverging (`src/resume.typ`). The service also
-takes contact details that are never committed, but never as an input (below).
+The static build and the LAN render service (below) share one template set
+rather than diverging: both call `src/resume.typ`. The service takes a variant
+and an ATS template, uses that template's own theme and font, and adds contact
+details that are never committed, never as an input.
 
 ### Templates
 
@@ -142,16 +142,8 @@ nginx proxies `/api/resume/` to it, and the LAN build's résumé builder page
 `renderResume` (`src/pii/render-client.ts`). In `vite dev`, run `pnpm serve` on
 the host instead.
 
-`pnpm build` proves the layouts the service can be asked for:
-`scripts/fixtures/faux-pii.json` holds every field at once, each at its
-envelope maximum in the widest glyphs its pattern allows, and every PII
-template × variant is compiled with it through `compileWithPii`, the service's
-own path, and run through the ATS and layout checks in memory, so the faux
-PDFs never reach `documents/` or any other file. Each
-contact item is boxed (`contact-line` in `src/lib/parts.typ`), so a narrower
-value can only wrap onto as many lines as the widest one, or fewer. The fit
-ladder (`src/lib/fit.typ`) reaches below its old 0.82 floor only for these
-builds: the extra lines did not fit `backend/classic` at 0.82.
+`pnpm build` proves every layout the service can be asked for, with
+worst-case faux PII (`verifyPii` in `scripts/compile.mjs`).
 
 #### Scope and limits: one author's LAN tool, not a pattern
 

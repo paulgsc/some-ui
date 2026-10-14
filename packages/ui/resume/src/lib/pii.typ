@@ -1,9 +1,8 @@
 // Contact details that are personal (PII), supplied per build and never
 // committed.
 //
-// Never a typst `--input` (a process argument): src/resume.typ takes them as
-// a value, passed only through `compileWithPii`'s stdin program, and
-// src/main.typ passes `none` (RP1, README.md "Scope and limits").
+// Never a typst `--input`: only `compileWithPii`'s stdin program passes them
+// (RP1, README.md "Scope and limits").
 //
 // src/pii/envelope.json is the one statement of what each field may hold
 // (`fields`) and which templates render them (`templates`). It

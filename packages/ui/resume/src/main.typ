@@ -8,11 +8,9 @@
 //   theme     which palette the layout draws with
 //   font      which pinned family it sets
 //
-// These are the same four knobs the LAN render service (scripts/serve.mjs)
-// takes per request. Keeping them as inputs — rather than as separate source
-// files per combination — is what lets the static build and that renderer
-// share one template set: both call src/resume.typ. This entry takes no PII;
-// the service passes it another way (see that file).
+// Keeping them as inputs, rather than a source file per combination, is what
+// lets the static build and the LAN render service share one template set:
+// both call src/resume.typ. This entry never takes PII (RP1).
 #import "resume.typ": render-resume
 
 #render-resume((

@@ -118,12 +118,9 @@ function verify() {
 // allows. Those PDFs must still be one page and pass the same ATS and layout
 // checks, with each faux field on the page. They are compiled exactly as
 // scripts/serve.mjs compiles (`compileWithPii`) and checked in memory, so they
-// never reach documents/ or any other file.
-//
-// This is what lets scripts/serve.mjs promise a layout before it compiles
-// one: a contact item is boxed (src/lib/parts.typ), so a shorter or narrower
-// value can only take as many lines as the widest one, or fewer. The service
-// still runs the checks on every real render.
+// never reach documents/ or any other file. A narrower value can only take
+// fewer lines (`contact-line`, src/lib/parts.typ), so this covers every
+// value the envelope admits.
 async function verifyPii(typstBin, fontPath, { extractor }) {
   const pii = JSON.parse(
     readFileSync(

@@ -17,10 +17,8 @@
 // fails the build. Silently swallowing the overflow inside a fixed-height box
 // would let a broken résumé pass as a one-page document.
 
-// Steps of 0.02. The two lowest (0.80, 0.78) were added below the original
-// 0.82 floor for builds with PII (src/lib/pii.typ): extra contact fields can
-// wrap the contact line onto two more lines, which backend/classic, already at
-// 0.82, had no room for. No document without PII reaches them.
+// Steps of 0.02. Only builds with PII reach 0.80 and 0.78: backend/classic
+// needs them for the extra contact lines.
 #let scale-ladder(lo: 0.78, hi: 1.14, steps: 19) = {
   range(steps).map(i => hi - (hi - lo) * i / (steps - 1))
 }

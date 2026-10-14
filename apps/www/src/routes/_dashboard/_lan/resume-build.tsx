@@ -1,12 +1,7 @@
 import type { JSX, SubmitEvent } from "react"
 import { useEffect, useState, useSyncExternalStore } from "react"
 import type { Pii } from "@some-ui/resume"
-import {
-  PII_FIELD_NAMES,
-  PII_FIELDS,
-  PII_TEMPLATES,
-  resumeData,
-} from "@some-ui/resume"
+import { PII_FIELD_NAMES, PII_FIELDS, PII_TEMPLATES } from "@some-ui/resume"
 import {
   Alert,
   AlertDescription,
@@ -29,12 +24,8 @@ import { Download, FileText, LoaderCircle } from "lucide-react"
 
 import type { ResumeBuildRuntime } from "@/lib/resume-build"
 import { createResumeBuild, serviceRender } from "@/lib/resume-build"
-import { RESUME_TEMPLATES } from "@/lib/resume-templates"
+import { RESUME_COMPOSITIONS, RESUME_TEMPLATES } from "@/lib/resume-options"
 
-const COMPOSITIONS = Object.entries(resumeData).map(([id, data]) => ({
-  id,
-  label: data.label,
-}))
 const TEMPLATES = PII_TEMPLATES.map((id) => ({
   id,
   label: RESUME_TEMPLATES.find((template) => template.id === id)?.label ?? id,
@@ -54,15 +45,10 @@ const createRuntime = (): ResumeBuildRuntime =>
   })
 
 /**
- * Builds an ATS résumé with contact details that are never committed: phone,
- * LinkedIn, a street address, a different email. The home network's résumé
- * service compiles it with the same pinned typst, fonts and checks as the
- * published documents (`packages/ui/resume/scripts/serve.mjs`); this page only
- * collects the fields and shows the PDF. LAN only because only the LAN
- * deployment proxies `/api/resume/` to that service.
- *
- * The fields live in this form until the page goes away. Autofill is off so
- * the browser does not keep them either.
+ * Builds an ATS résumé with contact details that are never committed, on the
+ * home network's résumé service (`packages/ui/resume/scripts/serve.mjs`). LAN
+ * only because only the LAN deployment proxies `/api/resume/` to it. Autofill
+ * is off so the browser keeps no copy of the fields.
  */
 const ResumeBuildRoute = (): JSX.Element => {
   const [runtime] = useState(createRuntime)
@@ -74,8 +60,8 @@ const ResumeBuildRoute = (): JSX.Element => {
   )
   const state = useSyncExternalStore(runtime.subscribe, runtime.getSnapshot)
 
-  const [variant, setVariant] = useState(COMPOSITIONS[0]?.id ?? "backend")
-  const [template, setTemplate] = useState(TEMPLATES[0]?.id ?? "classic")
+  const [variant, setVariant] = useState<string>("backend")
+  const [template, setTemplate] = useState<string>("classic")
   const [pii, setPii] = useState<Pii>({})
 
   const submit = (event: SubmitEvent<HTMLFormElement>): void => {
@@ -109,7 +95,7 @@ const ResumeBuildRoute = (): JSX.Element => {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {COMPOSITIONS.map((option) => (
+                {RESUME_COMPOSITIONS.map((option) => (
                   <SelectItem key={option.id} value={option.id}>
                     {option.label}
                   </SelectItem>

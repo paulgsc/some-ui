@@ -13,16 +13,9 @@ import {
 import { createFileRoute } from "@tanstack/react-router"
 import { Download, Layers3, LayoutTemplate } from "lucide-react"
 
-import { RESUME_TEMPLATES } from "@/lib/resume-templates"
+import type { ResumeComposition } from "@/lib/resume-options"
+import { RESUME_COMPOSITIONS, RESUME_TEMPLATES } from "@/lib/resume-options"
 
-// Order is a presentation decision and belongs here; the labels are résumé
-// content and come from resumeData, so the selector and document agree.
-const RESUME_ORDER = ["backend", "platform", "fullstack"] as const
-type ResumeComposition = (typeof RESUME_ORDER)[number]
-const RESUME_COMPOSITIONS: ReadonlyArray<{
-  id: ResumeComposition
-  label: string
-}> = RESUME_ORDER.map((id) => ({ id, label: resumeData[id].label }))
 const RESUME_COMPOSITION_KEY = "some-ui:resume-composition"
 
 type ResumeTemplate = (typeof RESUME_TEMPLATES)[number]["id"]

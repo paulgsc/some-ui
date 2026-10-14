@@ -147,12 +147,10 @@
   )
 ]
 
-// `pii` is src/lib/pii.typ's `read-pii` result, and is opt-in per call site:
-// only the ATS-submission templates (classic, safe, vanilla, conventional)
-// pass it. The portfolio templates (rail, compact, via name-block below) do
-// not, because their PDFs are the ones embedded and linked on the public
-// website. The email override replaces the public address, the street address
-// replaces the city, and LinkedIn and the phone number go at the end. Each
+// `pii` is src/lib/pii.typ's `read-pii` result, passed only by the templates
+// that render PII (name-block below never does). The email override replaces
+// the public address, the street address replaces the city, and LinkedIn and
+// the phone number go at the end. Each
 // item is boxed so that, when the extra fields wrap the line, the break falls
 // between items and never inside one.
 #let contact-line(theme, profile, sep: "·", pii: none) = {

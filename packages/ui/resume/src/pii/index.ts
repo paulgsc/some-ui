@@ -1,8 +1,6 @@
-// The contact details (PII) a résumé build may take, the templates that
-// render them, and the client for the LAN render service that builds with
-// them. envelope.json is the one source: src/lib/pii.typ checks every build
-// against it, scripts/serve.mjs offers its templates, and apps/www's
-// /resume-build page labels and bounds its inputs from it.
+// The contact details (PII) a résumé build may take and the templates that
+// render them (envelope.json, enforced by src/lib/pii.typ), and the client
+// for the LAN render service that builds with them.
 import envelope from "./envelope.json"
 
 // Spelled out rather than derived from the JSON, so the emitted declarations

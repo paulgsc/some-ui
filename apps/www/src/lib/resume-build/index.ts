@@ -4,10 +4,9 @@
  * same-origin `/api/resume/` proxy, with `@some-ui/resume`'s client), for the
  * LAN résumé builder page.
  *
- * The PII lives in the page's form and in the one request that carries it;
- * nothing here stores, logs or reports it. The PDF comes back as an object URL
- * the runtime owns: it is revoked when a newer build replaces it or the page
- * goes away.
+ * The PII lives only in the page's form and the one request that carries
+ * it. The PDF is an object URL the runtime owns, revoked when a newer build
+ * replaces it or the page goes away.
  *
  * R1 (docs/monorepo-boundaries.md): `step` is the state, the runtime owns the
  * request and the URL and drops a render a newer one superseded, and the
@@ -17,13 +16,10 @@ import { assertNever } from "@some-ui/core-utils"
 import type { ResumeRenderOutcome, ResumeRenderRequest } from "@some-ui/resume"
 import { renderResume } from "@some-ui/resume"
 
-export type ResumeBuildRequest = ResumeRenderRequest
-export type RenderOutcome = ResumeRenderOutcome
-
 export type RenderPort = (
-  request: ResumeBuildRequest,
+  request: ResumeRenderRequest,
   signal: AbortSignal
-) => Promise<RenderOutcome>
+) => Promise<ResumeRenderOutcome>
 
 /** The home network's service, through this origin's `/api/resume/` proxy. */
 export const serviceRender: RenderPort = (request, signal) =>
@@ -48,7 +44,7 @@ type ResumeBuildEvent =
     }
   | { readonly type: "refused"; readonly message: string }
 
-export function step(
+function step(
   _state: ResumeBuildState,
   event: ResumeBuildEvent
 ): ResumeBuildState {
@@ -77,7 +73,7 @@ export type ResumeBuildRuntime = {
   readonly getSnapshot: () => ResumeBuildState
   readonly subscribe: (listener: () => void) => () => void
   /** Starts a render, superseding any in flight. Never rejects. */
-  readonly build: (request: ResumeBuildRequest) => void
+  readonly build: (request: ResumeRenderRequest) => void
   readonly dispose: () => void
 }
 

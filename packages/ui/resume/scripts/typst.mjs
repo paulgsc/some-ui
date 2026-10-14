@@ -44,7 +44,6 @@ export const templates = [
   "conventional",
 ]
 // What PII a build may take and which templates render it (src/lib/pii.typ).
-// The others (rail, compact) are the portfolio layouts the website links.
 export const piiEnvelope = JSON.parse(
   readFileSync(join(packageDir, "src", "pii", "envelope.json"), "utf8")
 )
@@ -141,9 +140,7 @@ export function baseArgs(fontPath) {
   ]
 }
 
-// The public build's inputs. PII is never one: an input is a process
-// argument, which anything that can list processes can read. See
-// `compileWithPii`.
+// The public build's inputs. Never PII (RP1).
 export function inputArgs({ variant, template, theme, font }) {
   return [
     "--input",
@@ -172,11 +169,9 @@ function piiProgram(args) {
 
 /**
  * Compiles one résumé with PII and returns the PDF's bytes, or typst's
- * diagnostics if it failed (RP1, README.md "Scope and limits"; generating
- * a program from request data is fine for the author's LAN tool only). The program goes in on stdin and the PDF comes
- * back on stdout: the PII is never a process argument, an environment
- * variable or a file. Shared by scripts/serve.mjs and the build's faux-PII
- * pass, so the build proves the exact path the service takes.
+ * diagnostics if it failed: the program in on stdin, the PDF out on stdout
+ * (RP1). Shared by scripts/serve.mjs and the build's faux-PII pass, so the
+ * build proves the service's exact path.
  *
  * `args` is { variant, template, theme, font, pii }.
  */

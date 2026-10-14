@@ -1,14 +1,9 @@
 // The résumé as one function of its inputs, so every entry point builds the
 // same document:
 //
-//   src/main.typ         the public build: the four knobs as typst `--input`s,
-//                        and never any PII.
-//   a program on stdin   scripts/serve.mjs and the build's faux-PII pass
-//                        (scripts/typst.mjs, `piiProgram`): the knobs and the
-//                        PII as one JSON value written into the program, which
-//                        typst reads from a pipe and whose PDF goes back on
-//                        another. So PII never reaches a process argument, a
-//                        file or a typst input.
+//   src/main.typ         the public build: the four knobs as typst `--input`s
+//                        and no PII.
+//   a program on stdin   `compileWithPii` (scripts/typst.mjs), with PII (RP1).
 //
 // `args` is (variant, template, theme, font, pii), `pii` a dictionary of
 // src/pii/envelope.json's fields or `none`.
@@ -38,8 +33,7 @@
   let template-name = args.template
   let theme-name = args.theme
   let font-name = args.font
-  // Contact details that must never be committed (src/lib/pii.typ). Read only
-  // by the ATS templates, and deliberately absent from `<resume-export>` below.
+  // Never in `<resume-export>` below (src/lib/pii.typ).
   let pii = read-pii(args.at("pii", default: none), template-name)
 
   assert(

@@ -2,25 +2,11 @@
 // The LAN résumé render service: compiles one ATS document with contact
 // details (PII) supplied per request, and returns the PDF.
 //
-// One author's tool on the home network: no auth, one request at a time, not a
-// pattern for a real service. The PII is public once it is on an application;
-// what this keeps is that git, the site and this box never hold a copy. See
-// README.md, "Scope and limits", for both, and for:
+// One author's LAN tool, not a pattern: README.md, "Scope and limits".
 //
 //   RP1  PII reaches typst only through `compileWithPii` (stdin in, stdout
 //        out), never as an argument, environment variable or file.
 //   RP2  nothing logged or refused contains request text, keys included.
-//
-// It runs the same pinned typst, the same SHA-pinned fonts and the same
-// Poppler checks as `pnpm build`, so what it returns is held to exactly the
-// rules the published documents are: one page, the ATS text check (with every
-// supplied field on the page) and the line-collision check. The build already
-// proves the widest PII layout (scripts/fixtures/faux-pii.json); these are run
-// again here on the real one.
-//
-// Reachable only on the home network: infra/compose/resume.yml publishes no
-// port, and apps/www's nginx proxies /api/resume/ to it (nginx.resume-proxy.conf)
-// for the LAN build's /resume-build page.
 //
 //   POST /render  {"variant","template","pii":{...}}  -> application/pdf
 //   GET  /health                                       -> 200
@@ -85,21 +71,13 @@ function parseRequest(text) {
       `Unknown template: expected ${piiTemplates.join(", ")}.`
     )
   }
-  if (typeof pii !== "object" || pii === null || Array.isArray(pii)) {
-    throw new Refusal(422, "pii: expected an object of contact fields.")
-  }
-  // A key is the client's text too, so a refusal names the allowed fields,
-  // never the key it got (RP2).
+  // src/lib/pii.typ checks the shape and every value. This only keeps a key,
+  // which is the client's text too, out of its message (RP2).
   const fields = Object.keys(piiEnvelope.fields)
-  for (const [field, value] of Object.entries(pii)) {
-    if (!fields.includes(field) || typeof value !== "string") {
-      throw new Refusal(
-        422,
-        `pii: expected text in ${fields.join(", ")} and nothing else.`
-      )
-    }
+  if (Object.keys(pii ?? {}).some((key) => !fields.includes(key))) {
+    throw new Refusal(422, `pii: expected only ${fields.join(", ")}.`)
   }
-  return { variant, template, pii }
+  return { variant, template, pii: pii ?? {} }
 }
 
 // typst prints `error: assertion failed: <message>` for a failed `assert`.
@@ -198,7 +176,6 @@ async function main() {
           200,
           {
             "Content-Type": "application/pdf",
-            "Content-Disposition": `attachment; filename="resume-${job.variant}-${job.template}.pdf"`,
           },
           pdf,
           { variant: job.variant, template: job.template }

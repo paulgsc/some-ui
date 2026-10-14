@@ -9,9 +9,8 @@
 # (apps/www/nginx.resume-proxy.conf), and the only page that calls it is the
 # LAN build's /resume-build.
 #
-# Built here from the package rather than pulled: it is one person's tool,
-# not a release, so nothing publishes an image. Rebuild it after changing the
-# résumé's content or templates:
+# Built here from the package; nothing publishes an image. Rebuild it after
+# changing the résumé's content or templates:
 #
 #   docker compose up -d --build resume-render
 #
@@ -38,8 +37,7 @@ services:
     mem_limit: 1G
     cpus: 2.0
     pids_limit: 64
-    # The service logs one line per request (method, path, status, time,
-    # variant, template), never a body. Bounded like every other container.
+    # Bounded like every other container.
     logging:
       driver: json-file
       options:
