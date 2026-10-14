@@ -37,10 +37,11 @@ function buildTabRow(
     )
   }
 
-  // Favicon logic
+  // Only an inline favicon is shown: loading a remote one would tell its host
+  // that this tab is open, and the extension makes no network requests.
   const favicon = document.createElement("div")
   favicon.className = "tab-row__favicon"
-  if (tab.favIconUrl) {
+  if (tab.favIconUrl.startsWith("data:image/")) {
     const img = document.createElement("img")
     img.src = tab.favIconUrl
     img.width = 14

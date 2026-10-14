@@ -1,5 +1,3 @@
-@import "https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap";
-
 /* ── Tokens ──────────────────────────────────────────────────────────────── */
 
 :root {
@@ -30,8 +28,9 @@
   --radius-sm: 4px;
   --radius-md: 6px;
   --radius-lg: 10px;
-  --font-mono: "IBM Plex Mono", monospace;
-  --font-sans: "IBM Plex Sans", sans-serif;
+  /* Installed fonts only: the extension makes no network requests. */
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+  --font-sans: "IBM Plex Sans", system-ui, sans-serif;
 }
 
 /* ── Reset ───────────────────────────────────────────────────────────────── */

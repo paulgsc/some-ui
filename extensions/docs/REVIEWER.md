@@ -10,7 +10,7 @@
 
 | Extension                             | MV  | `host_permissions`    | `permissions`                                                               | `data_collection` |
 | ------------------------------------- | --- | --------------------- | --------------------------------------------------------------------------- | ----------------- |
-| [some-filter](#some-filter)           | 3   | `<all_urls>`          | `activeTab` `storage` `tabs`                                                | `none`            |
+| [some-filter](#some-filter)           | 3   | `<all_urls>`          | `activeTab` `storage` `tabs` `contextMenus` `scripting`                     | `none`            |
 | [suspender-ledger](#suspender-ledger) | 3   | `*://*/*`             | `idle` `storage` `contextMenus` `notifications` `alarms` `scripting` `tabs` | `none`            |
 | [some-censor](#some-censor)           | 3   | `*://*.youtube.com/*` | `storage`                                                                   | `none`            |
 | [some-mujik](#some-mujik)             | 3   | `<all_urls>`          | `activeTab` `storage` `tabs`                                                | `none`            |
@@ -27,15 +27,18 @@
 
 ## some-filter
 
-**What it does:** Injects a CSS luminance/colour-temperature filter on any page
-the user visits. The user can toggle and configure it per-tab via the popup.
+**What it does:** Darkens and recolours any page the user visits by injecting
+CSS, decided from the page's computed colours. The user can toggle and
+configure it per tab via the popup, the context menu or a shortcut.
 
 **Why `<all_urls>`:** The filter must apply to every page the user browses. There
 is no predefined origin list — narrowing it would silently stop the filter from
 working on most sites.
 
-**Data collected:** None. All processing (luminance detection, CSS injection) runs
-locally inside the content script. No network requests are made.
+**Data collected:** None. Settings, per-tab state and a local diagnostics log
+live in `storage.local`; nothing leaves the device. No network requests are
+made: no remote fonts, scripts or images (remote favicons included), and no
+telemetry.
 
 → [Host-permission justification](../some-filter/amo-notes.md)
 
