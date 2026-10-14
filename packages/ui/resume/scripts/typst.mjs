@@ -172,7 +172,8 @@ function piiProgram(args) {
 
 /**
  * Compiles one résumé with PII and returns the PDF's bytes, or typst's
- * diagnostics if it failed. The program goes in on stdin and the PDF comes
+ * diagnostics if it failed (RP1, README.md "Scope and limits"; generating
+ * a program from request data is fine for the author's LAN tool only). The program goes in on stdin and the PDF comes
  * back on stdout: the PII is never a process argument, an environment
  * variable or a file. Shared by scripts/serve.mjs and the build's faux-PII
  * pass, so the build proves the exact path the service takes.

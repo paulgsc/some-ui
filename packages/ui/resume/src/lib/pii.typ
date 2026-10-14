@@ -1,12 +1,9 @@
 // Contact details that are personal (PII), supplied per build and never
 // committed.
 //
-// They never arrive as a typst `--input`: an input is a process argument,
-// readable by anything that can list processes. src/resume.typ's
-// `render-resume` takes them as a value, and the only callers that pass any
-// write that value into a program typst reads from stdin (`piiProgram` in
-// scripts/typst.mjs): scripts/serve.mjs, the LAN render service, and the
-// build's faux-PII pass. src/main.typ, the public build, passes `none`.
+// Never a typst `--input` (a process argument): src/resume.typ takes them as
+// a value, passed only through `compileWithPii`'s stdin program, and
+// src/main.typ passes `none` (RP1, README.md "Scope and limits").
 //
 // src/pii/envelope.json is the one statement of what each field may hold
 // (`fields`) and which templates render them (`templates`). It

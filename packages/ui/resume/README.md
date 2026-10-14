@@ -153,6 +153,56 @@ value can only wrap onto as many lines as the widest one, or fewer. The fit
 ladder (`src/lib/fit.typ`) reaches below its old 0.82 floor only for these
 builds: the extra lines did not fit `backend/classic` at 0.82.
 
+#### Scope and limits: one author's LAN tool, not a pattern
+
+This is built for exactly one user, the author, on the home network. It has no
+authentication, no rate limit and no isolation between requests. It writes a
+typst program from request data and runs Poppler on the result before
+answering. All of that is acceptable here and none of it is a design to copy:
+a service with other users, or one reachable from the internet, would embed
+typst as a library and need real auth. Do not cite this one as precedent.
+
+What the PII handling protects is narrow. These details go out on every
+application the résumé is sent with, into forms and systems we don't control
+that may keep, share or sell them, so in practice they are public. The goal is
+only that they never enter this repository, its public site or its static
+build, and that the box keeps no copy (no argument, file or log). It is not
+secrecy.
+
+Two claims a review checks (`CLAUDE.md`, "Gray-area invariants"); both held
+when declared:
+
+> **RP1: PII reaches typst only through `compileWithPii`.**
+>
+> - _Claim:_ a PII value is never in a typst `--input`, a process argument, an
+>   environment variable or a file. It is passed only as the stdin program
+>   `compileWithPii` (`scripts/typst.mjs`) writes, and `src/main.typ` passes
+>   `pii: none`.
+> - _Falsified by_ a hunk in `scripts/` or `src/` that adds `pii` to
+>   `inputArgs` or to any spawn's arguments or environment, writes a request
+>   body or a PDF built with PII to disk, calls `render-resume` with PII from
+>   anywhere else, or makes `main.typ` pass anything but `none`.
+> - _Scope:_ `packages/ui/resume/scripts`, `packages/ui/resume/src`.
+> - _Why not enforced:_ mechanical, not yet a rule. A test can record the
+>   argv and environment of shimmed `typst`/`pdftotext` binaries during a
+>   render (done by hand when RP1 was declared). It needs typst, fonts and
+>   Poppler, and this package has no test runner.
+>
+> **RP2: the service logs no request text and returns none.**
+>
+> - _Claim:_ `scripts/serve.mjs` logs only method, path, status, time and the
+>   allow-listed variant and template. A refusal's message names fields,
+>   limits and allowed values, and never contains text from the request, a
+>   key included.
+> - _Falsified by_ a hunk in `serve.mjs` that logs the body, a `pii` value or
+>   key, or typst's stderr; that builds a `Refusal` from request text; or that
+>   passes on a typst assertion or check message other than `pii.typ`'s, the
+>   one-page check's and `assertAtsText`'s.
+> - _Scope:_ `scripts/serve.mjs`, and the messages of `src/lib/pii.typ` and
+>   `assertAtsText` that it passes on.
+> - _Why not enforced:_ whether a string derives from the request is
+>   dataflow, which no lint here traces.
+
 ### ATS checking
 
 `pnpm build` compiles all eighteen (variant × template) documents and then runs

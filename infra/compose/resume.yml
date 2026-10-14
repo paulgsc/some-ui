@@ -1,6 +1,7 @@
 # The LAN résumé render service: packages/ui/resume/scripts/serve.mjs, which
-# compiles an ATS résumé with contact details (PII) supplied per request. See
-# that file's header for what it promises about the PII.
+# compiles an ATS résumé with contact details (PII) supplied per request. One
+# author's tool with no auth, not a pattern: packages/ui/resume/README.md,
+# "Scope and limits".
 #
 # Reachable from the home network only, and only through the www container:
 # no port is published, not even on 127.0.0.1. apps/www's nginx proxies the

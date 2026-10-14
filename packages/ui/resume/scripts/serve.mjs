@@ -2,14 +2,14 @@
 // The LAN résumé render service: compiles one ATS document with contact
 // details (PII) supplied per request, and returns the PDF.
 //
-// The PII never reaches git, the public site or the static build, and never
-// leaves memory and pipes here: it arrives in the request body, goes to typst
-// inside the program typst reads on stdin (`compileWithPii`, scripts/typst.mjs;
-// src/lib/pii.typ checks it against src/pii/envelope.json), the PDF comes back
-// on typst's stdout, and the checks hand it to `pdftotext` on stdin. No process
-// argument, environment variable or file ever holds a value. Nothing here
-// logs a request body, a typst diagnostic or a check's detail, any of which
-// can carry one.
+// One author's tool on the home network: no auth, one request at a time, not a
+// pattern for a real service. The PII is public once it is on an application;
+// what this keeps is that git, the site and this box never hold a copy. See
+// README.md, "Scope and limits", for both, and for:
+//
+//   RP1  PII reaches typst only through `compileWithPii` (stdin in, stdout
+//        out), never as an argument, environment variable or file.
+//   RP2  nothing logged or refused contains request text, keys included.
 //
 // It runs the same pinned typst, the same SHA-pinned fonts and the same
 // Poppler checks as `pnpm build`, so what it returns is held to exactly the
@@ -30,6 +30,7 @@ import { assertAtsText } from "./check-ats.mjs"
 import { checkDocument } from "./check-layout.mjs"
 import {
   compileWithPii,
+  piiEnvelope,
   piiTemplates,
   presentation,
   resolveTypst,
@@ -87,9 +88,15 @@ function parseRequest(text) {
   if (typeof pii !== "object" || pii === null || Array.isArray(pii)) {
     throw new Refusal(422, "pii: expected an object of contact fields.")
   }
+  // A key is the client's text too, so a refusal names the allowed fields,
+  // never the key it got (RP2).
+  const fields = Object.keys(piiEnvelope.fields)
   for (const [field, value] of Object.entries(pii)) {
-    if (typeof value !== "string") {
-      throw new Refusal(422, `pii.${field}: expected text.`)
+    if (!fields.includes(field) || typeof value !== "string") {
+      throw new Refusal(
+        422,
+        `pii: expected text in ${fields.join(", ")} and nothing else.`
+      )
     }
   }
   return { variant, template, pii }
