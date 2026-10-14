@@ -138,9 +138,16 @@ export const PREMASK_SELECTORS: ReadonlyArray<string> = CARD_SELECTORS.map(
  * modern engine they never apply and the guarded rule above is the only one.
  */
 export const PREMASK_FALLBACK_SELECTORS: ReadonlyArray<string> =
-  CARD_SELECTORS.filter((s) => s.unguardedFallback === true).map(
-    ({ tag }) => `${tag}:not([data-boyo])`
+  unguardedFallbackTags().map((tag) => `${tag}:not([data-boyo])`)
+
+/** The tags with {@link CardSelector.unguardedFallback}, comma-joined. */
+export const FALLBACK_TAGS: string = unguardedFallbackTags().join(",")
+
+function unguardedFallbackTags(): ReadonlyArray<string> {
+  return CARD_SELECTORS.filter((s) => s.unguardedFallback === true).map(
+    ({ tag }) => tag
   )
+}
 
 /**
  * What the engine rendering `root` can parse, as far as the pre-mask rules

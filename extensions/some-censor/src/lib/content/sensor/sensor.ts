@@ -12,13 +12,15 @@
  *
  * Invariants:
  *
- *   S1 — Structure is looked up, not discovered (B3). The one structural
- *        walk is `classify.ts`'s single `closest()`; nothing here walks
- *        ancestors in a loop or scans a subtree to decide what a node is.
+ *   S1 — Structure is looked up, not discovered (B3). What a node is comes
+ *        from the catalogue predicate and the layout table; the only walks
+ *        are single `closest()` calls (the enclosing card for the table's
+ *        context, a mutation's enclosing card, the fallback wrapper), never
+ *        a loop over ancestors.
  *   S2 — Unknown shape is a state (B4). A card the table cannot place is
- *        still observed (with `shape: "unknown"`), and a catalogue node that
- *        is neither a card nor a shell but that the table could not place
- *        either is reported as `unknown-shape`. Both are counted.
+ *        still observed (with `shape: "unknown"`, which Core counts at
+ *        adoption), and one with no extractable id is queued and reported
+ *        once as `unknown-shape`.
  *   S3 — Identity is per element, keys are per artifact. A recycle emits
  *        `gone` for the old key only once no element carries it.
  *   S4 — The retry loop terminates. Every queued element is under the
@@ -42,9 +44,9 @@ import {
 import type { LayoutTable } from "@censor/lib/content/layout/schema"
 import type { BoyoSurface } from "@censor/lib/content/layout/surface"
 import {
-  CARD_SELECTORS,
   classifyCard,
   detectOccluderEngine,
+  FALLBACK_TAGS,
   occludedElements,
   SEL,
 } from "@censor/lib/content/selectors"
@@ -106,14 +108,17 @@ export function createSensor(ports: SensorPorts): Sensor {
   /** Cards observed without a channel: re-sampled under the budget. */
   const channelPending = new Map<HTMLElement, number>()
   /** Cards whose channel budget is spent: not re-sampled again this session. */
-  const channelAbandoned = new Set<HTMLElement>()
+  let channelAbandoned = new WeakSet<HTMLElement>()
   /**
-   * The last observation emitted per key, serialized. The retry loop's
+   * The last observation emitted per element, serialized. The retry loop's
    * `scan()` re-offers every card on the page every 500 ms while anything is
-   * queued; a card whose evidence has not changed is not re-announced, so
-   * Core (and the Actuator's diff behind it) see one token per real change.
+   * queued; an element whose evidence has not changed is not re-announced,
+   * so Core (and the Actuator's diff behind it) see one token per real
+   * change. Per element, not per key: two elements showing one video (a
+   * feed card and a sidebar card) would otherwise each differ from the
+   * other's last token and re-announce on every tick.
    */
-  const lastEmitted = new Map<CardKey, string>()
+  const lastEmitted = new Map<HTMLElement, string>()
   let observer: MutationObserver | null = null
   let retryTimer: ReturnType<typeof setInterval> | null = null
   let navDebounce: ReturnType<typeof setTimeout> | null = null
@@ -150,7 +155,6 @@ export function createSensor(ports: SensorPorts): Sensor {
     if (cls.kind === "not-card") {
       // A container, or not ours. Whatever it carried as a card is over.
       queue.dequeue(el)
-      channelPending.delete(el)
       releaseElement(el, now)
       return
     }
@@ -166,12 +170,24 @@ export function createSensor(ports: SensorPorts): Sensor {
 
     const extracted = tryExtract(el)
     if (extracted.kind === "raw") {
-      // Video-shaped (a watch href is there) but nothing parseable in it:
-      // queued like a shell, and rejected at budget like one. It stays under
-      // the occluder afterwards — the fail-closed answer, and
-      // `OccluderReleases`'s to report (#1422).
+      // Card-shaped but with no parseable video id: queued like a shell, and
+      // rejected at budget like one. It stays under the occluder afterwards,
+      // the fail-closed answer, and `OccluderReleases`'s to report (#1422).
       releaseElement(el, now)
-      if (queue.enqueue(el, now)) ensureRetryLoop()
+      if (queue.enqueue(el, now)) {
+        const tag = el.tagName.toLowerCase()
+        ports.onFact({ kind: "mount.queued", tag })
+        if (cls.shape === "unknown") {
+          ports.emit({
+            kind: "unknown-shape",
+            tag,
+            surface: ports.surface(),
+            reason: cls.reason,
+            t: now,
+          })
+        }
+        ensureRetryLoop()
+      }
       return
     }
 
@@ -179,17 +195,17 @@ export function createSensor(ports: SensorPorts): Sensor {
     queue.revive(el)
     const rec = identity.reconcile(el, extracted.videoId)
     if (rec.kind === "churn") {
+      // Kept its key, and nothing about the artifact changed.
       ports.onFact({ kind: "churn.ignored", videoId: keyVideoId(rec.key) })
-      // Re-observed under the key it kept; custody is re-asserted by Core's
-      // render, and nothing about the artifact changed.
       return
     }
-    if (rec.kind === "recycled" && rec.previousGone) {
-      lastEmitted.delete(rec.previous)
-      ports.emit({ kind: "gone", key: rec.previous, t: now })
-    }
     if (rec.kind === "recycled") {
-      ports.onFact({ kind: "recycled", videoId: keyVideoId(rec.key) })
+      // The channel budget belonged to the previous video.
+      channelPending.delete(el)
+      channelAbandoned.delete(el)
+      if (rec.previousGone) {
+        ports.emit({ kind: "gone", key: rec.previous, t: now })
+      }
     }
 
     if (extracted.kind === "video-only") {
@@ -204,22 +220,17 @@ export function createSensor(ports: SensorPorts): Sensor {
 
     // On an engine without `:has()`, the fallback rule occludes an
     // enclosing rich-item unconditionally; that wrapper is nested custody
-    // of this card so the stamp releases it (D6, #1504's round-2 finding).
+    // of this card so the stamp releases it (D6, #1504).
+    let custodyChanged = false
     if (!engine.hasSelector) {
       const wrapper = el.parentElement?.closest(FALLBACK_TAGS)
       if (wrapper instanceof HTMLElement && classifyCard(wrapper) !== "card") {
-        identity.addNested(rec.key, wrapper)
+        const nested = identity.addNested(rec.key, wrapper)
+        custodyChanged = nested.changed
+        if (nested.released?.gone) {
+          ports.emit({ kind: "gone", key: nested.released.key, t: now })
+        }
       }
-    }
-
-    if (cls.shape === "unknown") {
-      ports.onFact({
-        kind: "shape.unknown",
-        tag: el.tagName.toLowerCase(),
-        surface: ports.surface(),
-        reason: cls.reason,
-        shape: "unknown",
-      })
     }
 
     const observation = observationOf(
@@ -229,16 +240,19 @@ export function createSensor(ports: SensorPorts): Sensor {
       cls.shape
     )
     const serialized = JSON.stringify(observation)
-    if (rec.kind === "same" && lastEmitted.get(rec.key) === serialized) return
-    lastEmitted.set(rec.key, serialized)
+    // A new nested wrapper is only stamped by the render a token causes.
+    if (!custodyChanged && lastEmitted.get(el) === serialized) return
+    lastEmitted.set(el, serialized)
     ports.emit({ kind: "observed", key: rec.key, observation, t: now })
   }
 
   /** `el` stopped being a card: release its custody, and say so if its key is gone. */
   function releaseElement(el: HTMLElement, now: number): void {
+    lastEmitted.delete(el)
+    channelPending.delete(el)
+    channelAbandoned.delete(el)
     const released = identity.release(el)
     if (released?.gone) {
-      lastEmitted.delete(released.key)
       ports.emit({ kind: "gone", key: released.key, t: now })
     }
   }
@@ -312,8 +326,8 @@ export function createSensor(ports: SensorPorts): Sensor {
   function ensureRetryLoop(): void {
     if (retryTimer !== null || !running) return
     // Lifetime: stopped by maybeStopRetryLoop() once nothing is queued, and
-    // by stop(). Not tied to visibility — the same exemption VideoManager's
-    // loop carried, for the same reason (this extension's own call).
+    // by stop(). Not tied to visibility: every entry is under a wall-clock
+    // budget, so the loop ends on its own in a hidden tab too.
     // eslint-disable-next-line extension-charter/require-named-lifetime -- lifetime stated above
     retryTimer = setInterval(() => {
       try {
@@ -339,7 +353,7 @@ export function createSensor(ports: SensorPorts): Sensor {
     const candidates = new Set<HTMLElement>()
     // Cards whose subtree changed go first: a cell recycled into a lockup
     // for the same video must release its key before the lockup asks for
-    // it (#1504, round 4).
+    // it (#1504).
     const enclosing = new Set<HTMLElement>()
     let removed = false
 
@@ -411,7 +425,7 @@ export function createSensor(ports: SensorPorts): Sensor {
     identity.clear()
     queue.clear()
     channelPending.clear()
-    channelAbandoned.clear()
+    channelAbandoned = new WeakSet()
     lastEmitted.clear()
     if (retryTimer !== null) {
       clearInterval(retryTimer)
@@ -482,8 +496,3 @@ export function createSensor(ports: SensorPorts): Sensor {
     },
   }
 }
-
-/** The tags whose fallback rule occludes them unconditionally without `:has()`. */
-const FALLBACK_TAGS = CARD_SELECTORS.filter((s) => s.unguardedFallback === true)
-  .map((s) => s.tag)
-  .join(",")

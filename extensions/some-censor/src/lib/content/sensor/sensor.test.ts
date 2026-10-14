@@ -67,14 +67,8 @@ function observedKeys(): Array<string> {
   return tokens.filter((t) => t.kind === "observed").map((t) => t.key)
 }
 
-beforeEach(() => {
-  vi.useFakeTimers()
-  document.body.innerHTML = ""
-  tokens = []
-  facts = []
-  now = 10_000
-  sessions = 0
-  sensor = createSensor({
+function startSensor(): Sensor {
+  const s = createSensor({
     doc: document,
     win: window,
     table: TABLE,
@@ -84,7 +78,35 @@ beforeEach(() => {
     emit: (t) => tokens.push(t),
     onFact: (f) => facts.push(f),
   })
-  sensor.start()
+  s.start()
+  return s
+}
+
+/** Restart the Sensor on an engine that cannot parse `:has()` (D6). */
+function restartWithoutHas(): () => void {
+  sensor.stop()
+  const native = document.querySelector.bind(document)
+  Object.defineProperty(document, "querySelector", {
+    configurable: true,
+    value: (sel: string): Element | null => {
+      if (sel === ":has(a)") throw new SyntaxError("unsupported")
+      return native(sel)
+    },
+  })
+  sensor = startSensor()
+  return () => {
+    Reflect.deleteProperty(document, "querySelector")
+  }
+}
+
+beforeEach(() => {
+  vi.useFakeTimers()
+  document.body.innerHTML = ""
+  tokens = []
+  facts = []
+  now = 10_000
+  sessions = 0
+  sensor = startSensor()
 })
 
 afterEach(() => {
@@ -93,26 +115,7 @@ afterEach(() => {
 })
 
 describe("classifyNode", () => {
-  it("answers card / shell / not-card from the catalogue, and known / unknown from the table", () => {
-    const known = cell("a")
-    document.body.appendChild(known)
-    expect(classifyNode(known, "home", TABLE)).toEqual({
-      kind: "card",
-      shape: "known",
-    })
-
-    const shell = document.createElement("yt-lockup-view-model")
-    expect(classifyNode(shell, "home", TABLE)).toEqual({ kind: "shell" })
-
-    const wrapper = document.createElement("ytd-rich-item-renderer")
-    wrapper.appendChild(lockup("b"))
-    document.body.appendChild(wrapper)
-    expect(classifyNode(wrapper, "home", TABLE)).toEqual({ kind: "not-card" })
-    expect(classifyNode(document.createElement("div"), "home", TABLE)).toEqual({
-      kind: "not-card",
-    })
-
-    // A lockup nested where the table never saw one nested.
+  it("confirms the table's context against the DOM: an outer card it never recorded is unknown", () => {
     const compact = document.createElement("ytd-compact-video-renderer")
     const inner = lockup("c")
     compact.appendChild(inner)
@@ -121,14 +124,6 @@ describe("classifyNode", () => {
       kind: "card",
       shape: "unknown",
       reason: "unexpected-outer",
-    })
-    // A tag the fixture crawl never saw on this surface.
-    const playlistRow = document.createElement("ytd-playlist-video-renderer")
-    document.body.appendChild(playlistRow)
-    expect(classifyNode(playlistRow, "home", TABLE)).toEqual({
-      kind: "card",
-      shape: "unknown",
-      reason: "tag-unseen",
     })
   })
 })
@@ -169,23 +164,45 @@ describe("observing cards", () => {
     ).toBe("YTD-RICH-ITEM-RENDERER")
   })
 
-  it("keeps a card the table cannot place, and counts the miss (S2)", () => {
+  it("keeps a card the table cannot place, announced once per element (S2)", async () => {
+    // A plain-tag compact renderer is a card in its own right, so both it and
+    // the lockup inside carry the key; the lockup's context is one the home
+    // crawl never recorded.
     const compact = document.createElement("ytd-compact-video-renderer")
-    const inner = lockup("odd")
-    compact.appendChild(inner)
+    compact.appendChild(lockup("odd"))
     document.body.appendChild(compact)
-    // The compact renderer is a container now (it contains a card); the
-    // lockup is the card, in a context the home crawl never recorded.
-    sensor.scan()
-    const odd = tokens.find((t) => t.kind === "observed" && t.key === K("odd"))
-    expect(odd?.kind === "observed" && odd.observation.shape).toBe("unknown")
+    // Something queued keeps the retry loop, and its scan, alive.
+    document.body.appendChild(document.createElement("yt-lockup-view-model"))
+    await tick(4)
+    const odd = tokens.filter(
+      (t) => t.kind === "observed" && t.key === K("odd")
+    )
+    expect(
+      odd.map((t) => t.kind === "observed" && t.observation.renderer)
+    ).toEqual(["ytd-compact-video-renderer", "yt-lockup-view-model"])
+    expect(odd[1]?.kind === "observed" && odd[1].observation.shape).toBe(
+      "unknown"
+    )
+  })
+
+  it("reports an unplaceable card with no id as unknown-shape once, and queues it", async () => {
+    const row = document.createElement("ytd-playlist-video-renderer")
+    document.body.appendChild(row)
+    await tick(3)
+    expect(tokens.filter((t) => t.kind === "unknown-shape")).toEqual([
+      {
+        kind: "unknown-shape",
+        tag: "ytd-playlist-video-renderer",
+        surface: "home",
+        reason: "tag-unseen",
+        t: expect.any(Number),
+      },
+    ])
     expect(facts).toContainEqual({
-      kind: "shape.unknown",
-      tag: "yt-lockup-view-model",
-      surface: "home",
-      reason: "unexpected-outer",
-      shape: "unknown",
+      kind: "mount.queued",
+      tag: "ytd-playlist-video-renderer",
     })
+    expect(sensor.census().unresolved).toHaveLength(1)
   })
 })
 
@@ -258,6 +275,17 @@ describe("the retry queue (S4)", () => {
     expect(facts).toContainEqual({ kind: "channel.abandoned", videoId: "s" })
     expect(tokens.filter((t) => t.kind === "gone")).toEqual([])
   })
+
+  it("starts a fresh channel budget for the video a pending card is recycled to", async () => {
+    const el = shorts("s")
+    document.body.appendChild(el)
+    await tick(RESOLVE_BUDGET_MS / RETRY_INTERVAL_MS + 2)
+    expect(sensor.census().channelPending).toBe(0)
+
+    el.replaceChildren(...lockup("b", null).childNodes)
+    await tick()
+    expect(sensor.census().channelPending).toBe(1)
+  })
 })
 
 describe("identity (S3)", () => {
@@ -292,8 +320,14 @@ describe("identity (S3)", () => {
     const a = cell("dup")
     const b = lockup("dup")
     document.body.append(a, b)
-    await tick()
+    // Something queued keeps the retry loop, and its scan, alive.
+    document.body.appendChild(document.createElement("yt-lockup-view-model"))
+    await tick(4)
     expect(sensor.custodyOf(K("dup")).map((t) => t.el)).toEqual([a, b])
+    expect(
+      observedKeys().filter((k) => k === K("dup")),
+      "two elements on one key each announce once, not on every tick"
+    ).toHaveLength(2)
     a.setAttribute("data-video-id", "other")
     await tick()
     expect(tokens.filter((t) => t.kind === "gone")).toEqual([])
@@ -357,17 +391,64 @@ describe("navigation (B5)", () => {
 })
 
 describe("census", () => {
-  it("reports what the occluder hides and which of it nothing holds", async () => {
+  it("counts an occluded element the Sensor gave up on as untracked", async () => {
     document.body.appendChild(cell("held"))
-    await tick()
-    const stray = cell("stray")
-    document.body.appendChild(stray)
-    // Observed by the mutation batch, so it is tracked; a card nothing ever
-    // handed over has to be simulated by stopping first.
-    await tick()
-    expect(sensor.census().occludedUntracked).toBe(0)
-    sensor.stop()
-    expect(sensor.running).toBe(false)
+    // A plain tag is occluded unconditionally; with no id it is rejected at
+    // budget and left under the occluder, which is what OccluderReleases
+    // must be able to see.
+    const stranded = document.createElement("ytd-compact-video-renderer")
+    document.body.appendChild(stranded)
+    await tick(RESOLVE_BUDGET_MS / RETRY_INTERVAL_MS + 2)
+    const census = sensor.census()
+    expect(census.occluded).toContain(stranded)
+    expect(census.occludedUntracked).toBe(1)
+  })
+})
+
+describe("the fallback engine (D6)", () => {
+  it("emits gone for a key whose last carrier was a wrapper handed to another card", async () => {
+    const restore = restartWithoutHas()
+    try {
+      const wrapper = document.createElement("ytd-rich-item-renderer")
+      const inner = lockup("A")
+      wrapper.appendChild(inner)
+      document.body.appendChild(wrapper)
+      await tick()
+      expect(sensor.custodyOf(K("A")).map((t) => t.role)).toEqual([
+        "anchor",
+        "nested",
+      ])
+
+      inner.replaceChildren(...lockup("B").childNodes)
+      await tick()
+      expect(tokens.filter((t) => t.kind === "gone").map((t) => t.key)).toEqual(
+        [K("A")]
+      )
+      expect(sensor.custodyOf(K("B")).map((t) => t.role)).toEqual([
+        "anchor",
+        "nested",
+      ])
+    } finally {
+      restore()
+    }
+  })
+
+  it("makes a nested wrapper the anchor once it is the card itself", async () => {
+    const restore = restartWithoutHas()
+    try {
+      const wrapper = document.createElement("ytd-rich-item-renderer")
+      wrapper.appendChild(lockup("A"))
+      document.body.appendChild(wrapper)
+      await tick()
+
+      wrapper.replaceChildren(...cell("A").childNodes)
+      await tick()
+      expect(sensor.custodyOf(K("A"))).toEqual([
+        { el: wrapper, role: "anchor" },
+      ])
+    } finally {
+      restore()
+    }
   })
 })
 

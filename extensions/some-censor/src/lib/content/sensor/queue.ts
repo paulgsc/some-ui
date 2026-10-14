@@ -1,14 +1,13 @@
 /**
- * The polling channel (BC2, #1435) — canon Definition 3.3's $S_"poll"$, as
- * `VideoManager`'s unresolved queue and budget were, now the Sensor's.
+ * The polling channel (BC2, #1435): canon Definition 3.3's $S_"poll"$.
  *
  * A catalogue element with no extractable id yet — a lockup YouTube has not
  * filled in, a channel or playlist tile that never will be, an ad cell — is
  * re-sampled on every mutation batch and on a 500 ms tick until it resolves
  * or its wall-clock budget runs out (#973, #1422). Giving up is sticky
  * (`scan()` re-offers every element on the page, and a rejected one must
- * not restart its budget) and revocable (`recheck()` revives an element the
- * moment extraction would succeed). Cards mounted without a channel are
+ * not restart its budget) and revocable (the Sensor's `recheckRejected()`
+ * revives an element the moment extraction would succeed). Cards mounted without a channel are
  * re-observed the same way so the channel can arrive late (Entry-4).
  */
 
@@ -18,7 +17,7 @@ export const RESOLVE_BUDGET_MS = 10_000
 /** The tick between re-samples while anything is queued. */
 export const RETRY_INTERVAL_MS = 500
 
-export type QueueEntry = {
+type QueueEntry = {
   readonly el: HTMLElement
   readonly firstSeenAt: number
 }
@@ -30,7 +29,6 @@ export type RetryQueue = {
   /** Spend `el`'s budget: dequeued and rejected until `revive()`. */
   reject(el: HTMLElement): void
   revive(el: HTMLElement): void
-  isRejected(el: HTMLElement): boolean
   has(el: HTMLElement): boolean
   spent(el: HTMLElement, now: number): boolean
   entries(): ReadonlyArray<QueueEntry>
@@ -42,7 +40,8 @@ export type RetryQueue = {
 export function createRetryQueue(budgetMs = RESOLVE_BUDGET_MS): RetryQueue {
   const queued = new Map<HTMLElement, number>()
   // Strong refs so `rejected()` can be iterated; bounded by the non-card
-  // tiles on one page, pruned as they disconnect, cleared on navigation.
+  // tiles on one page. The Sensor revives disconnected ones; cleared on
+  // navigation.
   const rejectedSet = new Set<HTMLElement>()
 
   return {
@@ -61,9 +60,6 @@ export function createRetryQueue(budgetMs = RESOLVE_BUDGET_MS): RetryQueue {
     },
     revive(el: HTMLElement): void {
       rejectedSet.delete(el)
-    },
-    isRejected(el: HTMLElement): boolean {
-      return rejectedSet.has(el)
     },
     has(el: HTMLElement): boolean {
       return queued.has(el)

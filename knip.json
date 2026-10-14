@@ -50,7 +50,7 @@
         "src/popup/popup.ts",
         "src/lib/platform/**/api.*.ts",
         "src/lib/content/actuator/index.ts",
-        "src/lib/content/sensor/index.ts",
+        "src/lib/content/sensor/sensor.ts",
         "scripts/setup-test-profile.mjs"
       ],
       "ignoreDependencies": ["@unocss/cli"]

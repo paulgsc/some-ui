@@ -110,7 +110,6 @@ export type CoreFact =
   | { readonly kind: "mount.rejected"; readonly tag: string }
   /** An id change ruled vendor churn rather than a recycle (#1423). */
   | { readonly kind: "churn.ignored"; readonly videoId: VideoId }
-  | { readonly kind: "recycled"; readonly videoId: VideoId }
   | { readonly kind: "channel.abandoned"; readonly videoId: VideoId }
   /**
    * A raw date run observed for a card — the QC2 corpus. Emitted at adoption

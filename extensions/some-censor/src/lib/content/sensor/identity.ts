@@ -21,7 +21,7 @@ import { cardKey, keyVideoId } from "@censor/lib/content/core/keys"
 import { representsVideo } from "@censor/lib/content/extract/index"
 import type { VideoId } from "@censor/types/ids"
 
-export type Reconciliation =
+type Reconciliation =
   /** First sighting of this element as a card. */
   | { readonly kind: "new"; readonly key: CardKey }
   /** Same element, same card. */
@@ -41,15 +41,23 @@ export type Reconciliation =
       readonly previousGone: boolean
     }
 
+type Released = { key: CardKey; gone: boolean }
+
+type NestedResult = { changed: boolean; released: Released | null }
+
 export type Identity = {
   /** Reconcile `el` against the videoId just extracted from it. */
   reconcile(el: HTMLElement, videoId: VideoId): Reconciliation
   /** `el` no longer carries a card. Returns the key it carried, if it is now carried by nothing. */
-  release(el: HTMLElement): { key: CardKey; gone: boolean } | null
+  release(el: HTMLElement): Released | null
   /** The elements currently carrying `key`, anchors first. */
   custodyOf(key: CardKey): ReadonlyArray<CustodyTarget>
-  /** Add an element as nested custody of `key` (no veil; stamp only). */
-  addNested(key: CardKey, el: HTMLElement): void
+  /**
+   * Add an element as nested custody of `key` (no veil; stamp only). Returns
+   * whether custody changed, and the key `el` was taken from if that key is
+   * now carried by nothing.
+   */
+  addNested(key: CardKey, el: HTMLElement): NestedResult
   /** The key an element carries, if any. */
   keyOf(el: HTMLElement): CardKey | null
   /** Every key with at least one element. */
@@ -61,8 +69,8 @@ export type Identity = {
 export function createIdentity(): Identity {
   // A Map, not a WeakMap, so `clear()` can actually forget: a navigation must
   // not let a reused element answer "same card" out of a session that no
-  // longer exists (the trap `_elToVid` set in #1427's review). Bounded by the
-  // cards on the page; entries leave with `release()` and on every clear.
+  // longer exists. Bounded by the cards on the page; entries leave with
+  // `release()` and on every clear.
   const elToKey = new Map<HTMLElement, CardKey>()
   const keyToEls = new Map<CardKey, Map<HTMLElement, CustodyRole>>()
 
@@ -76,7 +84,7 @@ export function createIdentity(): Identity {
     elToKey.set(el, key)
   }
 
-  function detach(el: HTMLElement): { key: CardKey; gone: boolean } | null {
+  function detach(el: HTMLElement): Released | null {
     const key = elToKey.get(el)
     if (key === undefined) return null
     elToKey.delete(el)
@@ -97,8 +105,10 @@ export function createIdentity(): Identity {
       }
       if (previous === key) {
         // Re-assert custody in case the key's set was dropped without this
-        // element hearing of it; a nested stamp is never demoted here.
-        if (!keyToEls.get(key)?.has(el)) attach(key, el, "anchor")
+        // element hearing of it. A nested wrapper extraction now reads as the
+        // card itself (its inner card is gone) becomes the anchor, or the
+        // card would be stamped with no veil.
+        if (keyToEls.get(key)?.get(el) !== "anchor") attach(key, el, "anchor")
         return { kind: "same", key }
       }
       // A different id came out of extraction. Corollary 4.1.1: compare it
@@ -117,7 +127,7 @@ export function createIdentity(): Identity {
       }
     },
 
-    release(el: HTMLElement): { key: CardKey; gone: boolean } | null {
+    release(el: HTMLElement): Released | null {
       return detach(el)
     },
 
@@ -132,11 +142,12 @@ export function createIdentity(): Identity {
       return [...anchors, ...nested]
     },
 
-    addNested(key: CardKey, el: HTMLElement): void {
+    addNested(key: CardKey, el: HTMLElement): NestedResult {
       const existing = elToKey.get(el)
-      if (existing === key) return
-      if (existing !== undefined) detach(el)
+      if (existing === key) return { changed: false, released: null }
+      const released = existing === undefined ? null : detach(el)
       attach(key, el, "nested")
+      return { changed: true, released }
     },
 
     keyOf(el: HTMLElement): CardKey | null {

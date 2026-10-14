@@ -10,17 +10,11 @@
  *      condition the pre-mask stylesheet spells, so what the Sensor adopts
  *      and what the occluder hides cannot disagree.
  *   2. *Does the layout table know this shape?* — `classifyShape` over
- *      (surface, tag, card verdict, enclosing tag). The table decides what
- *      the relationship *means*; the Sensor merely confirms the relationship
- *      with one bounded `closest()` against the **whole** catalogue from the
- *      parent — never only the parents the table declares, which would hide
- *      a parent YouTube adds after the crawl (#1505's own review). That is
- *      the only structural walk in the runtime path, it is one call deep,
- *      and it exists so the table can be told when it is wrong
- *      (`unexpected-outer`, `nested-without-outer`): a Sensor that trusted
- *      the table blindly could never detect the drift #1434's recrawl
- *      cadence is keyed to. The verdict from (1) travels with the question,
- *      so the table is never asked to place an ad slot or a container.
+ *      (surface, tag, card verdict, enclosing tag); see `layout/lookup.ts`.
+ *      The enclosing tag comes from one `closest()` against the whole
+ *      catalogue, never only the parents the table declares, so a parent
+ *      YouTube adds after the crawl reads as `unexpected-outer` instead of
+ *      being hidden.
  *
  * Pure with respect to everything but the node it is handed.
  */
