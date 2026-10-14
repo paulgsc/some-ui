@@ -54,6 +54,7 @@ import fs from "node:fs"
 import path from "node:path"
 import { pathToFileURL } from "node:url"
 
+import { ROOT_BUILD_INPUTS, workspaceClosure } from "./source-closure.mjs"
 import { withVersion } from "./sync-manifest-version.mjs"
 
 // AMO's limit for both fields (addons-server versions/models.py).
@@ -506,45 +507,6 @@ function readBaseline(extRel, baseRef = defaultBaseRef(extRel)) {
   return JSON.parse(raw)
 }
 
-/** Workspace directories the extension builds from, itself included. */
-function workspaceClosure(extRel) {
-  const byName = new Map()
-  for (const root of ["extensions", "packages"]) {
-    for (const entry of fs.readdirSync(root, { withFileTypes: true })) {
-      const pkgPath = path.join(root, entry.name, "package.json")
-      if (entry.isDirectory() && fs.existsSync(pkgPath)) {
-        byName.set(
-          JSON.parse(fs.readFileSync(pkgPath, "utf8")).name,
-          path.join(root, entry.name)
-        )
-      }
-    }
-  }
-  const dirs = new Set([extRel])
-  const queue = [extRel]
-  while (queue.length > 0) {
-    const dir = queue.shift()
-    const pkg = JSON.parse(
-      fs.readFileSync(path.join(dir, "package.json"), "utf8")
-    )
-    for (const [name, spec] of Object.entries({
-      ...pkg.dependencies,
-      ...pkg.devDependencies,
-    })) {
-      const depDir = byName.get(name)
-      if (
-        String(spec).startsWith("workspace:") &&
-        depDir &&
-        !dirs.has(depDir)
-      ) {
-        dirs.add(depDir)
-        queue.push(depDir)
-      }
-    }
-  }
-  return [...dirs]
-}
-
 const NOT_TESTS = [
   ":(exclude,glob)**/__tests__/**",
   ":(exclude,glob)**/*.test.*",
@@ -554,7 +516,8 @@ const NOT_TESTS = [
 /** Commits since the baseline that touched anything the build reads. */
 function commitsSince(extRel, baseCommit) {
   const scope = [
-    ...workspaceClosure(extRel),
+    ...workspaceClosure(extRel).dirs,
+    ...ROOT_BUILD_INPUTS,
     "pnpm-lock.yaml",
     "package.json",
     ...NOT_TESTS,

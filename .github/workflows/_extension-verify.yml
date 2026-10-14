@@ -119,3 +119,12 @@ jobs:
         run: nix develop .#ci --command node extensions/scripts/assert-self-contained.mjs "${{ matrix.extension_path }}/dist"
       - name: web-ext lint
         run: nix develop .#ci --command node extensions/scripts/web-ext-lint-gate.mjs "${{ matrix.extension_path }}/dist"
+      # ── AMO source archive builds ──────────────────────────────────────
+      # Packages the source archive _extension-sign.yml submits, follows its
+      # README.build.md in an empty directory, and fails unless that build is
+      # byte-identical to the in-tree one. Skips extensions not submitted to
+      # AMO (no amo-notes.md).
+      - name: Build the AMO source archive as a reviewer would
+        run: nix develop .#ci --command bash extensions/scripts/verify-source-archive.sh "${{ matrix.extension_path }}"
+        env:
+          HUSKY: 0

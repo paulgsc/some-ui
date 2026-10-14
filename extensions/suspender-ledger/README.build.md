@@ -10,19 +10,21 @@ clean machine, using only the public npm registry. The archive is
 ```
 /
 ├── extensions/
-│   ├── common/             # shared extension code (bundled into this extension)
-│   ├── docs/               # AMO reviewer gateway and compliance notes
-│   └── suspender-ledger/   # this extension: source, README.build.md,
-│                           # amo-notes.md, release/ (notes and file hashes)
-├── packages/
-│   ├── eslint/             # shared ESLint config (workspace devDependency)
-│   ├── some-styles/        # shared styles (other extensions use it; unused here)
-│   └── tsconfig/           # shared TypeScript config (workspace devDependency)
+│   ├── suspender-ledger/   # this extension: source, README.build.md,
+│   │                       # amo-notes.md, release/ (notes and file hashes)
+│   └── docs/               # AMO reviewer gateway and compliance notes
+├── extensions/…, packages/… # every workspace package this extension depends
+│                           # on, directly or transitively, at its repo path
 ├── package.json            # root workspace manifest, pruned to this archive
 ├── pnpm-workspace.yaml     # monorepo workspace layout
 ├── pnpm-lock.yaml          # pinned dependency versions, pruned to match
+├── .npmrc                  # pnpm install settings
+├── .nvmrc                  # the Node.js version the submitted build used
+├── postcss.config.mjs      # PostCSS config Vite applies to the extension's CSS
 └── tsconfig.json
 ```
+
+`unzip -l` on the archive lists exactly what it holds.
 
 ## Reviewer notes
 
@@ -33,10 +35,17 @@ in the repository.
 
 ## Prerequisites
 
-| Tool    | Version                                                        |
-| ------- | -------------------------------------------------------------- |
-| Node.js | 22 or newer                                                    |
-| pnpm    | 12.9.0 (pinned by `packageManager`; `corepack enable` uses it) |
+| Tool    | Version                                                |
+| ------- | ------------------------------------------------------ |
+| Node.js | the version in `.nvmrc` (`nvm install` reads it)       |
+| pnpm    | the version in `package.json`'s `packageManager` field |
+
+From the archive root:
+
+```sh
+nvm install
+npm install -g "pnpm@$(node -p "require('./package.json').packageManager.split('@')[1]")"
+```
 
 ## Steps
 
@@ -63,7 +72,10 @@ find . -type f | sort | xargs sha256sum
 
 Every hash should equal the one `release.json` gives for that path (without
 the leading `./`). The release workflow refuses to submit a build for which
-they differ.
+they differ, and CI builds this archive by following the Steps above
+(`extensions/scripts/verify-source-archive.sh`) on every pull request that
+changes the extension, failing unless the result matches the extension's own
+build.
 
 ## Notes
 

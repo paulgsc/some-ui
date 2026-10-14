@@ -49,7 +49,16 @@ export function emitUnocss(builds: Array<UnocssBuild>): Plugin {
           "-o",
           out,
         ]
-        execFileSync(bin, args, { cwd: root, stdio: "inherit" })
+        // CI set everywhere, so the stylesheet is the same wherever it is
+        // built. Without it the CLI prefixes each concatenated `.css` with
+        // `/* Source: <absolute path> */`, so an AMO reviewer's build of the
+        // source archive (no CI) differed from the submitted one (built in
+        // CI) and named the build machine's directories.
+        execFileSync(bin, args, {
+          cwd: root,
+          stdio: "inherit",
+          env: { ...process.env, CI: process.env.CI || "true" },
+        })
       }
     },
   }

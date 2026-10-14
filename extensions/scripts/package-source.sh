@@ -7,50 +7,55 @@ set -euo pipefail
 EXTENSION_DIR="${1:-$(pwd)}"
 EXTENSION_DIR="$(cd "$EXTENSION_DIR" && pwd)"
 REPO_ROOT="$(git -C "$EXTENSION_DIR" rev-parse --show-toplevel)"
-EXT_RELPATH="$(realpath --relative-to="$REPO_ROOT" "$EXTENSION_DIR")"
 VERSION="$(node -p "require('$EXTENSION_DIR/package.json').version")"
 GIT_SHA="$(git -C "$REPO_ROOT" rev-parse HEAD)"
 ARCHIVE="$EXTENSION_DIR/artifacts/source-$VERSION.zip"
 
 mkdir -p "$EXTENSION_DIR/artifacts"
 
-# git archive only includes tracked files — naturally excludes node_modules, dist, .env*
-#
-# Include the workspace context needed by `pnpm install --frozen-lockfile`:
-#   - The target extension directory
-#   - extensions/common: shared extension utilities
-#   - packages/eslint + packages/tsconfig + packages/some-styles: workspace devDeps extensions use
-#   - Root config + lockfile: pnpm-workspace.yaml pins monorepo layout; pnpm-lock.yaml
-#     pins exact dep versions; tsconfig.json is referenced by extension tsconfig extends chains
+# What to archive: the extension's workspace dependency closure as pnpm
+# resolves it, and the repo-root files its install and build read (both from
+# source-closure.mjs, which says why neither is a list here), plus the
+# reviewer docs. package.json and pnpm-lock.yaml are spliced in pruned, below.
+# git archive only includes tracked files, so node_modules, dist and .env*
+# never reach it.
+CLOSURE_JSON="$(node "$REPO_ROOT/extensions/scripts/source-closure.mjs" "$EXTENSION_DIR")"
+closure_field() {
+  node -e '
+    const value = JSON.parse(process.argv[1])[process.argv[2]];
+    for (const item of value) console.log(item);
+  ' "$CLOSURE_JSON" "$1"
+}
+mapfile -t WORKSPACE_DIRS < <(closure_field dirs)
+mapfile -t ROOT_FILES < <(closure_field rootFiles)
+ARCHIVE_ONLY_DEPS="$(node -e '
+  console.log(JSON.stringify(JSON.parse(process.argv[1]).pruneRootDeps))
+' "$CLOSURE_JSON")"
+
 git -C "$REPO_ROOT" archive --format=zip HEAD \
-  "$EXT_RELPATH/" \
-  extensions/common/ \
+  "${WORKSPACE_DIRS[@]/%//}" \
+  "${ROOT_FILES[@]}" \
   extensions/docs/ \
-  packages/eslint/ \
-  packages/tsconfig/ \
-  packages/some-styles/ \
-  pnpm-workspace.yaml \
   pnpm-lock.yaml \
-  tsconfig.json \
   -o "$ARCHIVE"
 
-# Root package.json can list devDependencies used by repo-wide tooling that
-# isn't part of this minimal bundle (a `workspace:*` package whose source is
-# not archived here, say). `git archive` above deliberately
-# omits package.json so we can splice in a pruned copy instead of the real
-# one: keeping those entries
-# would make `pnpm install --frozen-lockfile` fail inside the extracted
-# archive with an unresolvable `workspace:*` reference.
+# Root package.json lists workspace devDependencies used by repo-wide tooling
+# (@some-ui/eslint-kit, say) that may sit outside this extension's closure.
+# `git archive` above deliberately omits package.json so we can splice in a
+# pruned copy instead of the real one: keeping those entries would make
+# `pnpm install --frozen-lockfile` fail inside the extracted archive with an
+# unresolvable `workspace:*` reference.
 PRUNED_PKG_JSON="$(mktemp)"
-ARCHIVE_ONLY_DEPS='["rollup"]'
-node -e "
-  const fs = require('fs');
-  const pkg = JSON.parse(fs.readFileSync('$REPO_ROOT/package.json', 'utf8'));
-  for (const dep of $ARCHIVE_ONLY_DEPS) {
+node -e '
+  const fs = require("fs");
+  const [src, dst, prune] = process.argv.slice(1);
+  const pkg = JSON.parse(fs.readFileSync(src, "utf8"));
+  for (const dep of JSON.parse(prune)) {
+    delete pkg.dependencies?.[dep];
     delete pkg.devDependencies?.[dep];
   }
-  fs.writeFileSync('$PRUNED_PKG_JSON', JSON.stringify(pkg, null, 2) + '\n');
-"
+  fs.writeFileSync(dst, JSON.stringify(pkg, null, 2) + "\n");
+' "$REPO_ROOT/package.json" "$PRUNED_PKG_JSON" "$ARCHIVE_ONLY_DEPS"
 (cd "$(dirname "$PRUNED_PKG_JSON")" && cp "$PRUNED_PKG_JSON" package.json && zip -q "$ARCHIVE" package.json && rm -f package.json)
 rm -f "$PRUNED_PKG_JSON"
 

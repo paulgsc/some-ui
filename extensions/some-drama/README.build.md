@@ -1,36 +1,47 @@
 # Build Instructions — @some-extension/drama
 
-These instructions allow an AMO reviewer to reproduce the exact `dist/` output
-from this source archive on a clean machine using only public package registries.
+These instructions reproduce the submitted `dist/` from this source archive on a
+clean machine, using only the public npm registry. The archive is
+`git archive` of the release commit (its id is the zip comment), assembled by
+`extensions/scripts/package-source.sh`.
 
 ## Archive Layout
 
 ```
 /
 ├── extensions/
-│   ├── common/          # shared extension utilities
-│   └── some-drama/          # this extension (source + README.build.md)
-├── packages/
-│   ├── eslint/          # shared ESLint config (workspace devDep)
-│   └── tsconfig/        # shared TypeScript config (workspace devDep)
-├── package.json         # root workspace manifest
-├── pnpm-workspace.yaml  # monorepo workspace layout
-├── pnpm-lock.yaml       # pinned dependency versions
-├── tsconfig.json
-└── tsconfig.build.json
+│   ├── some-drama/         # this extension: source, README.build.md
+│   └── docs/               # AMO reviewer gateway and compliance notes
+├── extensions/…, packages/… # every workspace package this extension depends
+│                           # on, directly or transitively, at its repo path
+├── package.json            # root workspace manifest, pruned to this archive
+├── pnpm-workspace.yaml     # monorepo workspace layout
+├── pnpm-lock.yaml          # pinned dependency versions, pruned to match
+├── .npmrc                  # pnpm install settings
+├── .nvmrc                  # the Node.js version the submitted build used
+├── postcss.config.mjs      # PostCSS config Vite applies to the extension's CSS
+└── tsconfig.json
 ```
+
+`unzip -l` on the archive lists exactly what it holds.
+
+## Reviewer notes
+
+[`extensions/docs/REVIEWER.md`](../docs/REVIEWER.md) is the reviewer gateway
+for every extension in the repository.
 
 ## Prerequisites
 
-| Tool    | Version    |
-| ------- | ---------- |
-| Node.js | ≥ 20 (LTS) |
-| pnpm    | ≥ 9        |
+| Tool    | Version                                                |
+| ------- | ------------------------------------------------------ |
+| Node.js | the version in `.nvmrc` (`nvm install` reads it)       |
+| pnpm    | the version in `package.json`'s `packageManager` field |
 
-Install pnpm if not present:
+From the archive root:
 
 ```sh
-npm install -g pnpm
+nvm install
+npm install -g "pnpm@$(node -p "require('./package.json').packageManager.split('@')[1]")"
 ```
 
 ## Steps
@@ -44,15 +55,16 @@ pnpm install --frozen-lockfile
 pnpm --filter "@some-extension/drama" build
 ```
 
-The `dist/` directory produced by step 2 corresponds exactly to the
-`dist/` submitted with this version.
+`extensions/some-drama/dist/` is then the submitted build, byte for byte.
 
 ## Verification
 
 ```sh
-# Compare checksums of the build output against the submitted dist/:
-find dist -type f | sort | xargs sha256sum
+cd extensions/some-drama/dist
+find . -type f | sort | xargs sha256sum
 ```
+
+Each hash should equal the SHA-256 of the same file in the submitted package.
 
 ## Notes
 
