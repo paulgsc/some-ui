@@ -193,12 +193,13 @@ describe("observing cards", () => {
     document.body.appendChild(compact)
     document.body.appendChild(document.createElement("yt-lockup-view-model"))
     await tick(3)
-    const reported = tokens.filter((t) => t.kind === "unknown-shape")
-    expect(reported.map((t) => t.kind === "unknown-shape" && t.tag)).toContain(
-      "yt-lockup-view-model"
+    const tags = tokens.flatMap((t) =>
+      t.kind === "unknown-shape" ? [t.tag] : []
     )
-    const tags = reported.map((t) => t.kind === "unknown-shape" && t.tag)
-    expect(new Set(tags).size, "once per element").toBe(tags.length)
+    expect(
+      tags.filter((tag) => tag === "yt-lockup-view-model"),
+      "the nested lockup, once across every tick"
+    ).toHaveLength(1)
   })
 
   it("reports an unplaceable card with no id as unknown-shape once, and queues it", async () => {
