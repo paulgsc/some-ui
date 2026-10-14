@@ -1,14 +1,19 @@
 /**
  * The whole pipeline in one document (BC5, #1438): Sensor → Core →
  * Actuator, through jsdom's real MutationObserver, with a stub background.
- * These are the scenarios the retired manager's suite proved one class at a
- * time — #1422, #1426, the recycle/churn split, navigation — re-run against
- * the architecture that replaced it, so the cutover is parity plus the
- * structural fix rather than a redefinition of "fixed".
+ * #1422, #1426, the recycle/churn split, navigation, vendor churn, and the
+ * health cadence and bulk coverage the flight recorder reports.
  */
 
 import type { CoreFact } from "@censor/lib/content/core/actions"
 import { WHITELIST_REVEAL_DELAY_MS } from "@censor/lib/content/core/actions"
+import type { BoyoObservability } from "@censor/lib/content/observability"
+import {
+  OCCLUSION_GRACE_MS,
+  PROMOTION_STALL_MS,
+  startObservability,
+  stopObservability,
+} from "@censor/lib/content/observability"
 import { occludedElements } from "@censor/lib/content/selectors"
 import {
   RESOLVE_BUDGET_MS,
@@ -17,6 +22,7 @@ import {
 import { NAV_DEBOUNCE_MS } from "@censor/lib/content/sensor/sensor"
 import type { BgRequest } from "@censor/types/messages"
 import type { SessionId } from "@some-extension/common"
+import { memoryPersistence } from "@some-extension/common/observability"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import type { Runtime } from "./runtime"
@@ -28,6 +34,7 @@ let whitelisted: Set<string>
 let sent: Array<BgRequest>
 let now: number
 let sessions: number
+let hangWhitelist: boolean
 
 // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
 const session = (n: number): SessionId => n as unknown as SessionId
@@ -54,6 +61,15 @@ async function tick(n = 1): Promise<void> {
   for (let i = 0; i < n; i += 1) {
     now += RETRY_INTERVAL_MS
     await vi.advanceTimersByTimeAsync(RETRY_INTERVAL_MS)
+  }
+}
+
+/** Let `ms` pass on both the timers and the runtime's clock, a second at a time. */
+async function wait(ms: number): Promise<void> {
+  for (let left = ms; left > 0; left -= 1_000) {
+    const step = Math.min(1_000, left)
+    now += step
+    await vi.advanceTimersByTimeAsync(step)
   }
 }
 
@@ -85,6 +101,7 @@ beforeEach(() => {
   sent = []
   now = 100_000
   sessions = 0
+  hangWhitelist = false
   runtime = createRuntime({
     doc: document,
     win: window,
@@ -93,6 +110,7 @@ beforeEach(() => {
     sendMessage: (msg) => {
       sent.push(msg)
       if (msg.type === "IS_WHITELISTED") {
+        if (hangWhitelist) return new Promise(() => undefined)
         return Promise.resolve({
           ok: true,
           whitelisted: whitelisted.has(msg.channelId),
@@ -281,6 +299,113 @@ describe("identity across vendor churn (#1423, #980)", () => {
     expect(veil(inner)).not.toBeNull()
     expect(el.hasAttribute("data-boyo")).toBe(false)
     expect(veil(el)).toBeNull()
+  })
+})
+
+describe("vendor churn that takes the veil with it", () => {
+  it("puts back the veil the vendor removed from a masked card", async () => {
+    const el = cell("v")
+    document.body.appendChild(el)
+    await tick()
+    veil(el)?.remove()
+    await tick()
+    expect(el.dataset["boyo"]).toBe("0")
+    expect(veil(el), "fails closed, not open").not.toBeNull()
+  })
+
+  it("puts it back when the same change also displaced the card's id", async () => {
+    const el = lockup("kept")
+    document.body.appendChild(el)
+    await tick()
+    const preview = document.createElement("a")
+    preview.setAttribute("href", "/watch?v=preview")
+    el.prepend(preview)
+    veil(el)?.remove()
+    await tick()
+    expect(entry("kept")?.view.kind).toBe("masked")
+    expect(veil(el)).not.toBeNull()
+  })
+})
+
+describe("health and coverage, recorded", () => {
+  let obs: BoyoObservability
+
+  beforeEach(() => {
+    obs = startObservability(memoryPersistence())
+  })
+  afterEach(() => {
+    stopObservability()
+  })
+
+  const violations = (): Array<unknown> =>
+    obs.recorder
+      .events()
+      .filter((e) => e.kind === "invariant.violated")
+      .map((e) => e.subject)
+
+  function coverage(): unknown {
+    return obs.recorder
+      .events()
+      .filter((e) => e.kind === "command.advance_all")
+      .at(-1)?.detail
+  }
+
+  /** Video-shaped, so occluded; no parseable id, so never adopted. */
+  function unparseableCard(): HTMLElement {
+    const el = document.createElement("ytd-rich-item-renderer")
+    el.innerHTML = '<a id="video-title" href="/watch?list=PL_only">t</a>'
+    return el
+  }
+
+  it("reports a card left under the occluder that nothing holds (OccluderReleases)", async () => {
+    const el = unparseableCard()
+    document.body.appendChild(el)
+    await tick(RESOLVE_BUDGET_MS / RETRY_INTERVAL_MS + 2)
+    await wait(OCCLUSION_GRACE_MS * 3)
+    expect(el.hasAttribute("data-boyo"), "precondition: stranded").toBe(false)
+    expect(violations()).toContain("OccluderReleases")
+  })
+
+  it("does not sample a page with nothing occluded, and does sample one with something", async () => {
+    document.body.appendChild(cell("clean"))
+    await tick()
+    const before = obs.recorder.metrics.counter("health_samples")
+    await wait(OCCLUSION_GRACE_MS * 8)
+    expect(obs.recorder.metrics.counter("health_samples")).toBe(before)
+
+    document.body.appendChild(unparseableCard())
+    await wait(OCCLUSION_GRACE_MS * 8)
+    expect(obs.recorder.metrics.counter("health_samples")).toBeGreaterThan(
+      before
+    )
+  })
+
+  it("reports a whitelist round trip that never settles, on a quiet page (PromotionGuardClears)", async () => {
+    hangWhitelist = true
+    document.body.appendChild(cell("hangs"))
+    await tick()
+    expect(violations()).toEqual([])
+    await wait(PROMOTION_STALL_MS * 2)
+    expect(violations()).toContain("PromotionGuardClears")
+  })
+
+  it("records what a bulk advance covered, counting a queued card once", async () => {
+    document.body.append(cell("x"), cell("y"))
+    await tick()
+    document.body.appendChild(unparseableCard())
+    await tick()
+    runtime.dispatch({
+      kind: "command",
+      command: "advance-all-to-title",
+      t: now,
+    })
+    expect(coverage()).toMatchObject({
+      advanced: 2,
+      alreadyPast: 0,
+      unresolved: 1,
+      occludedUntracked: 0,
+      skipped: 1,
+    })
   })
 })
 

@@ -247,44 +247,34 @@ export type OccludedCard = {
 /**
  * What one bulk advance-to-title keystroke actually covered.
  *
- * The command iterates `_byVideo`, which holds only promoted entries; every
- * other population on the page is outside its reach. This is the denominator.
+ * The command advances the cards Core holds; every other population on the
+ * page is outside its reach. This is the denominator.
  *
- * The buckets are disjoint: `advanced + alreadyPast + detached` is the
- * registry size at keypress time, and the three non-registry fields partition
- * the rest of the page. They are separate because their causes differ:
+ * The buckets are disjoint: `advanced + alreadyPast` is the number of cards
+ * Core held at keypress time, and the two other fields partition the rest of
+ * the occluded page. They are separate because their causes differ:
  * `unresolved` is often legitimately non-zero on a live feed, while
  * `occludedUntracked` (orphans, #1421) should trend to zero.
  */
 export type BulkAdvanceCoverage = {
-  /** Registry entries moved from masked/meta to title by this keystroke. */
+  /** Cards moved from masked/meta to title by this keystroke. */
   readonly advanced: number
-  /** Registry entries already at or past title — covered, nothing to do. */
+  /** Cards already at or past title — covered, nothing to do. */
   readonly alreadyPast: number
-  /** Registry entries whose element has left the DOM; skipped. */
-  readonly detached: number
   /**
-   * Occluded cards waiting in `_unresolved` — hidden, and mid-resolution.
-   * Not `_unresolved.size`, which also holds non-cards the premask `:has()`
-   * guard leaves visible (see VideoManager._coverageCensus).
+   * Occluded elements in the Sensor's retry queue — hidden, and
+   * mid-resolution. Not the queue's size, which also holds non-cards the
+   * premask `:has()` guard leaves visible.
    */
   readonly unresolved: number
   /**
-   * Occluded cards inside `_promote()`'s guard — hidden, and mid-mount. Its
-   * own bucket because `_promote()` dequeues before awaiting
-   * `IS_WHITELISTED`, so a healthy card is briefly in neither `_unresolved`
-   * nor the registry.
-   */
-  readonly promoting: number
-  /**
-   * Occluded cards in no queue and no guard (rejected non-video renderers,
-   * orphans). Nothing is coming for these.
+   * Occluded elements the Sensor holds nothing for (rejected non-video
+   * renderers, orphans). Nothing is coming for these.
    */
   readonly occludedUntracked: number
   /**
-   * How many of `advanced + alreadyPast` were still awaiting channel backfill.
-   * Shows that a `_channelPending` card is covered, not skipped:
-   * `_promoteProvisional()` puts it in `_byVideo` *and* queues the backfill.
+   * How many of `advanced + alreadyPast` had no channel yet. Shows that a
+   * card awaiting its channel is covered, not skipped.
    */
   readonly channelPending: number
 }
@@ -776,11 +766,7 @@ export class BoyoObservability {
    * a card-identity leak (#1382).
    */
   bulkAdvance(coverage: BulkAdvanceCoverage): void {
-    const skipped =
-      coverage.detached +
-      coverage.unresolved +
-      coverage.promoting +
-      coverage.occludedUntracked
+    const skipped = coverage.unresolved + coverage.occludedUntracked
     this.recorder.record({
       kind: "command.advance_all",
       severity: "info",

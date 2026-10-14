@@ -66,6 +66,8 @@ export class Controller {
   }
 
   private _stop(): void {
+    this._appWaiter?.disconnect()
+    this._appWaiter = null
     this._disposeKeyBindings?.()
     this._disposeKeyBindings = null
     this._runtime.stop()

@@ -252,7 +252,7 @@ describe("the retry queue", () => {
     document.body.appendChild(el)
     await tick()
     expect(observedKeys()).toEqual([K("nochan")])
-    expect(sensor.census().channelPending).toBe(1)
+    expect(sensor.census().channelPending).toHaveLength(1)
 
     el.insertAdjacentHTML(
       "beforeend",
@@ -265,13 +265,13 @@ describe("the retry queue", () => {
     expect(last?.kind === "observed" && last.observation.channelId).toBe(
       "@Late"
     )
-    expect(sensor.census().channelPending).toBe(0)
+    expect(sensor.census().channelPending).toHaveLength(0)
   })
 
   it("gives up on a channel that never arrives, keeping the card", async () => {
     document.body.appendChild(shorts("s"))
     await tick(RESOLVE_BUDGET_MS / RETRY_INTERVAL_MS + 2)
-    expect(sensor.census().channelPending).toBe(0)
+    expect(sensor.census().channelPending).toHaveLength(0)
     expect(facts).toContainEqual({ kind: "channel.abandoned", videoId: "s" })
     expect(tokens.filter((t) => t.kind === "gone")).toEqual([])
   })
@@ -280,11 +280,11 @@ describe("the retry queue", () => {
     const el = shorts("s")
     document.body.appendChild(el)
     await tick(RESOLVE_BUDGET_MS / RETRY_INTERVAL_MS + 2)
-    expect(sensor.census().channelPending).toBe(0)
+    expect(sensor.census().channelPending).toHaveLength(0)
 
     el.replaceChildren(...lockup("b", null).childNodes)
     await tick()
-    expect(sensor.census().channelPending).toBe(1)
+    expect(sensor.census().channelPending).toHaveLength(1)
   })
 })
 

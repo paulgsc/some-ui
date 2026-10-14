@@ -170,9 +170,7 @@ describe("the event union", () => {
     obs.bulkAdvance({
       advanced: 1,
       alreadyPast: 0,
-      detached: 0,
       unresolved: 0,
-      promoting: 0,
       occludedUntracked: 0,
       channelPending: 0,
     })
@@ -486,9 +484,7 @@ describe("bulkAdvance — the coverage a keystroke actually had", () => {
   const clean = {
     advanced: 3,
     alreadyPast: 2,
-    detached: 0,
     unresolved: 0,
-    promoting: 0,
     occludedUntracked: 0,
     channelPending: 0,
   }
@@ -511,17 +507,15 @@ describe("bulkAdvance — the coverage a keystroke actually had", () => {
     const obs = newObservability()
     obs.bulkAdvance({
       ...clean,
-      detached: 1,
       unresolved: 4,
-      promoting: 1,
       occludedUntracked: 2,
     })
 
     const event = obs.recorder
       .events()
       .find((e) => e.kind === "command.advance_all")
-    expect(event?.detail).toMatchObject({ skipped: 8 })
-    expect(obs.recorder.metrics.counter("bulk_advance_skipped")).toBe(8)
+    expect(event?.detail).toMatchObject({ skipped: 6 })
+    expect(obs.recorder.metrics.counter("bulk_advance_skipped")).toBe(6)
     expect(obs.recorder.metrics.counter("bulk_advance_advanced")).toBe(3)
   })
 
@@ -558,9 +552,7 @@ describe("bulkAdvance — the coverage a keystroke actually had", () => {
       "advanced",
       "alreadyPast",
       "channelPending",
-      "detached",
       "occludedUntracked",
-      "promoting",
       "skipped",
       "unresolved",
     ])

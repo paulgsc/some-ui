@@ -794,7 +794,7 @@ describe("advance-all-to-title", () => {
     const setup: Array<CoreEvent> = [
       started,
       seenA,
-      seen(2, {}, "vid_b"),
+      seen(2, { channelId: null }, "vid_b"),
       click(3, K2),
       seen(4, {}, "vid_c"),
       dblclick(5, K3),
@@ -818,7 +818,8 @@ describe("advance-all-to-title", () => {
         (a) => a.kind === "record" && a.fact.kind === "bulk.advance"
       )
     ).toMatchObject({
-      fact: { advanced: 2, alreadyPast: 1, channelPending: 3 },
+      // Only vid_b has no channel yet; a pending whitelist answer is not it.
+      fact: { advanced: 2, alreadyPast: 1, channelPending: 1 },
     })
   })
 })

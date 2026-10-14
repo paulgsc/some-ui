@@ -40,8 +40,6 @@ export type Health = {
   sessionStarted(): void
   /** Core state changed; re-arm the stall watch if anything is pending. */
   stateChanged(): void
-  /** Build the context the invariants evaluate — also the bulk-advance census. */
-  context(): BoyoContext
   stop(): void
 }
 
@@ -52,10 +50,13 @@ export function createHealth(ports: HealthPorts): Health {
   let occludedLastReading = false
   let running = false
 
-  function occlusionCensus(now: number): Array<OccludedCard> {
+  function occlusionCensus(
+    now: number,
+    occluded: ReadonlyArray<HTMLElement>
+  ): Array<OccludedCard> {
     const live = new Set<HTMLElement>()
     const out: Array<OccludedCard> = []
-    for (const el of ports.census().occluded) {
+    for (const el of occluded) {
       live.add(el)
       let since = occludedSince.get(el)
       if (since === undefined) {
@@ -83,20 +84,18 @@ export function createHealth(ports: HealthPorts): Health {
         firstSeenAt,
         videoShaped: classifyCard(el) === "card",
       })),
-      channelPending: [...state.cards.values()]
-        .filter((c) => c.channel.kind === "unknown")
-        .map((c) => ({
-          key: `c:${c.key}`,
-          firstSeenAt: c.firstSeenAt,
-          videoShaped: false,
-        })),
+      channelPending: census.channelPending.map(({ el, firstSeenAt }) => ({
+        key: `c:${el.tagName.toLowerCase()}`,
+        firstSeenAt,
+        videoShaped: false,
+      })),
       promoting: [...state.cards.values()]
         .filter((c) => c.channel.kind === "pending")
         .map((c) => ({
           key: c.key,
           startedAt: c.channel.kind === "pending" ? c.channel.since : now,
         })),
-      occluded: occlusionCensus(now),
+      occluded: occlusionCensus(now, census.occluded),
     }
   }
 
@@ -106,7 +105,8 @@ export function createHealth(ports: HealthPorts): Health {
   }
 
   function reading(force: boolean): void {
-    const occluded = occlusionCensus(ports.clock()).length > 0
+    const occluded =
+      occlusionCensus(ports.clock(), ports.census().occluded).length > 0
     const was = occludedLastReading
     occludedLastReading = occluded
     if (!force && !occluded && !was) return
@@ -158,7 +158,6 @@ export function createHealth(ports: HealthPorts): Health {
       )
       if (pending) armStallWatch()
     },
-    context,
     stop(): void {
       running = false
       if (occlusionWatch !== null) clearTimeout(occlusionWatch)

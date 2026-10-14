@@ -639,7 +639,7 @@ function advanceAll(state: CoreState): Step {
     } else {
       alreadyPast += 1
     }
-    if (card.channel.kind === "pending") channelPending += 1
+    if (card.channel.kind === "unknown") channelPending += 1
   }
   actions.push(
     record({ kind: "bulk.advance", advanced, alreadyPast, channelPending })

@@ -80,7 +80,10 @@ export type SensorCensus = {
     readonly firstSeenAt: number
   }>
   /** Cards observed without a channel, still being re-sampled for one. */
-  readonly channelPending: number
+  readonly channelPending: ReadonlyArray<{
+    readonly el: HTMLElement
+    readonly firstSeenAt: number
+  }>
   /** What the static occluder is hiding right now. */
   readonly occluded: ReadonlyArray<HTMLElement>
   /** Which of those the Sensor holds nothing for. */
@@ -99,6 +102,8 @@ export type Sensor = {
   /** The elements carrying `key`, for the runtime to bind. */
   custodyOf(key: CardKey): ReadonlyArray<CustodyTarget>
   census(): SensorCensus
+  /** How many elements are queued; O(1), unlike {@link census}. */
+  readonly queued: number
   readonly running: boolean
 }
 
@@ -119,7 +124,10 @@ export function createSensor(ports: SensorPorts): Sensor {
    * feed card and a sidebar card) would otherwise each differ from the
    * other's last token and re-announce on every tick.
    */
-  const lastEmitted = new Map<HTMLElement, string>()
+  const lastEmitted = new Map<
+    HTMLElement,
+    { readonly serialized: string; readonly observation: Observation }
+  >()
   let observer: MutationObserver | null = null
   let retryTimer: ReturnType<typeof setInterval> | null = null
   let navDebounce: ReturnType<typeof setTimeout> | null = null
@@ -147,8 +155,13 @@ export function createSensor(ports: SensorPorts): Sensor {
     }
   }
 
-  /** One path for every element the Sensor is ever handed. */
-  function observe(el: HTMLElement): void {
+  /**
+   * One path for every element the Sensor is ever handed. `force` re-announces
+   * the card even when its evidence is unchanged: its subtree changed, and
+   * only a render (which Core sends on every observation) puts back a veil
+   * the vendor removed with it.
+   */
+  function observe(el: HTMLElement, force = false): void {
     if (!running) return
     const now = ports.clock()
     const cls = classifyNode(el, ports.surface(), ports.table)
@@ -198,6 +211,15 @@ export function createSensor(ports: SensorPorts): Sensor {
     if (rec.kind === "churn") {
       // Kept its key, and nothing about the artifact changed.
       ports.onFact({ kind: "churn.ignored", videoId: keyVideoId(rec.key) })
+      const last = lastEmitted.get(el)
+      if (force && last !== undefined) {
+        ports.emit({
+          kind: "observed",
+          key: rec.key,
+          observation: last.observation,
+          t: now,
+        })
+      }
       return
     }
     if (rec.kind === "recycled") {
@@ -242,8 +264,13 @@ export function createSensor(ports: SensorPorts): Sensor {
     )
     const serialized = JSON.stringify(observation)
     // A new nested wrapper is only stamped by the render a token causes.
-    if (!custodyChanged && lastEmitted.get(el) === serialized) return
-    lastEmitted.set(el, serialized)
+    if (
+      !force &&
+      !custodyChanged &&
+      lastEmitted.get(el)?.serialized === serialized
+    )
+      return
+    lastEmitted.set(el, { serialized, observation })
     ports.emit({ kind: "observed", key: rec.key, observation, t: now })
   }
 
@@ -396,7 +423,7 @@ export function createSensor(ports: SensorPorts): Sensor {
       }
     }
 
-    enclosing.forEach(observe)
+    enclosing.forEach((el) => observe(el, true))
     candidates.forEach((el) => {
       if (!enclosing.has(el)) observe(el)
     })
@@ -449,7 +476,7 @@ export function createSensor(ports: SensorPorts): Sensor {
 
   function scan(): void {
     if (!running) return
-    ports.doc.querySelectorAll<HTMLElement>(SEL).forEach(observe)
+    ports.doc.querySelectorAll<HTMLElement>(SEL).forEach((el) => observe(el))
   }
 
   return {
@@ -499,10 +526,17 @@ export function createSensor(ports: SensorPorts): Sensor {
       }
       return {
         unresolved: queue.entries(),
-        channelPending: channelPending.size,
+        channelPending: [...channelPending].map(([el, firstSeenAt]) => ({
+          el,
+          firstSeenAt,
+        })),
         occluded,
         occludedUntracked: untracked,
       }
+    },
+
+    get queued(): number {
+      return queue.size
     },
 
     get running(): boolean {

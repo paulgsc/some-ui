@@ -82,6 +82,7 @@ export function createRuntime(ports: RuntimePorts): Runtime {
   let state: CoreState = initialState(mintSession())
   let actuator: Actuator | null = null
   let health: Health | null = null
+  let firstScan: number | null = null
 
   const sensorInstance = createSensor({
     doc: ports.doc,
@@ -134,20 +135,10 @@ export function createRuntime(ports: RuntimePorts): Runtime {
       const queued = new Set(census.unresolved.map((q) => q.el))
       let unresolved = 0
       for (const el of census.occluded) if (queued.has(el)) unresolved += 1
-      let detached = 0
-      for (const card of state.cards.values()) {
-        const custody = sensorInstance.custodyOf(card.key)
-        if (custody.length > 0 && custody.every((t) => !t.el.isConnected))
-          detached += 1
-      }
       obs.bulkAdvance({
         advanced: fact.advanced,
         alreadyPast: fact.alreadyPast,
-        detached,
         unresolved,
-        // A card is rendered the instant it is observed; nothing is ever
-        // "mid-mount" under the occluder any more.
-        promoting: 0,
         occludedUntracked: census.occludedUntracked,
         channelPending: fact.channelPending,
       })
@@ -172,7 +163,7 @@ export function createRuntime(ports: RuntimePorts): Runtime {
       return state.cards.size
     },
     get unresolvedSize() {
-      return sensorInstance.census().unresolved.length
+      return sensorInstance.queued
     },
     get sessionOrdinal() {
       return state.session
@@ -221,7 +212,11 @@ export function createRuntime(ports: RuntimePorts): Runtime {
       sensorInstance.start()
       health.sessionStarted()
       if (typeof ports.win.requestAnimationFrame === "function") {
-        ports.win.requestAnimationFrame(() => sensorInstance.scan())
+        // Lifetime: cancelled by stop().
+        firstScan = ports.win.requestAnimationFrame(() => {
+          firstScan = null
+          sensorInstance.scan()
+        })
       } else {
         sensorInstance.scan()
       }
@@ -229,6 +224,8 @@ export function createRuntime(ports: RuntimePorts): Runtime {
 
     stop(): void {
       if (state.phase !== "running") return
+      if (firstScan !== null) ports.win.cancelAnimationFrame(firstScan)
+      firstScan = null
       sensorInstance.stop()
       dispatch({ kind: "stop", t: clock() })
       health?.stop()
