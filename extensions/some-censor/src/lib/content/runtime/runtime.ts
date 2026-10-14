@@ -150,7 +150,10 @@ export function createRuntime(ports: RuntimePorts): Runtime {
     state = step.state
     const bound = bind(step.actions)
     if (bound.length > 0) actuator?.realize(bound)
-    health?.stateChanged()
+    // A navigation is a new session (C2): occlusion ages from the page before
+    // it must not count against the page after it.
+    if (event.kind === "nav") health?.sessionStarted()
+    else health?.stateChanged()
     publish()
   }
 

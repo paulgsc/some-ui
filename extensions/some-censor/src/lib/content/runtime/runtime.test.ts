@@ -380,6 +380,18 @@ describe("health and coverage, recorded", () => {
     )
   })
 
+  it("does not carry an occlusion's age across a navigation", async () => {
+    const el = unparseableCard()
+    document.body.appendChild(el)
+    await wait(OCCLUSION_GRACE_MS * 1.5)
+    window.dispatchEvent(new Event("yt-navigate-finish"))
+    await wait(OCCLUSION_GRACE_MS * 0.8)
+    expect(el.hasAttribute("data-boyo"), "precondition: still occluded").toBe(
+      false
+    )
+    expect(violations()).not.toContain("OccluderReleases")
+  })
+
   it("reports a whitelist round trip that never settles, on a quiet page (PromotionGuardClears)", async () => {
     hangWhitelist = true
     document.body.appendChild(cell("hangs"))
