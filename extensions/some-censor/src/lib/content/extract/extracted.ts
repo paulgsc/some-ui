@@ -1,7 +1,8 @@
 /**
  * Extracted — output contract of the extract layer.
  *
- * Invariants enforced here:
+ * Design properties, enforced by the types and pinned by `extract.test.ts`
+ * (labels for citation, not declared review invariants):
  *
  *   E1 — Partiality is explicit in the type, not in runtime null-checks scattered
  *        across callers.  The discriminant `kind` is the single authoritative signal.

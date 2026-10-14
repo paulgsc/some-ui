@@ -1,7 +1,8 @@
 /**
  * extract/index.ts — the single entry point for the extract layer.
  *
- * Invariants enforced here:
+ * Design properties, enforced by the types and pinned by `extract.test.ts`
+ * (labels for citation, not declared review invariants):
  *
  *   E1 — Determinism: tryExtract(el) depends only on el's current DOM subtree.
  *        No global state, no closures over mutable variables.
