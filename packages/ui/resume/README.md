@@ -187,9 +187,14 @@ when declared:
 >   limits and allowed values, and never contains text from the request, a
 >   key included.
 > - _Falsified by_ a hunk in `serve.mjs` that logs the body, a `pii` value or
->   key, or typst's stderr; that builds a `Refusal` from request text; or that
+>   key, or typst's stderr; that builds a `Refusal` from request text; that
 >   passes on a typst assertion or check message other than `pii.typ`'s, the
->   one-page check's and `assertAtsText`'s.
+>   one-page check's and `assertAtsText`'s; or that deletes, weakens or moves
+>   after the compile its unknown-key guard (`pii.typ` names an unknown key).
+>   Or a hunk in `src/lib/pii.typ` or `scripts/check-ats.mjs` that adds,
+>   edits or deletes any part of an assertion or `assertAtsText` message so it
+>   can contain a value, including by dropping the field-name substitution for
+>   a missing PII term.
 > - _Scope:_ `scripts/serve.mjs`, and the messages of `src/lib/pii.typ` and
 >   `assertAtsText` that it passes on.
 > - _Why not enforced:_ whether a string derives from the request is
