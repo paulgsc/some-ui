@@ -28,13 +28,13 @@ export type CustodyTarget = {
 }
 
 /** A `render` or `unmount`, with its targets. */
-export type BoundCardAction = {
+type BoundCardAction = {
   readonly action: Extract<Action, { kind: "render" | "unmount" }>
   readonly targets: ReadonlyArray<CustodyTarget>
 }
 
 /** Every other action carries everything it needs already. */
-export type BoundOtherAction = {
+type BoundOtherAction = {
   readonly action: Exclude<Action, { kind: "render" | "unmount" }>
 }
 

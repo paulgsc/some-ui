@@ -101,9 +101,16 @@ export type CoreFact =
       readonly kind: "shape.unknown"
       readonly tag: string
       readonly surface: BoyoSurface
-      readonly reason: UnknownShapeReason | "degraded"
+      readonly reason: UnknownShapeReason
       readonly shape: ShapeConfidence
     }
+  // ── Facts the Sensor reports about the DOM (never Core) ───────────────
+  | { readonly kind: "mutation.batch"; readonly candidates: number }
+  | { readonly kind: "mount.queued"; readonly tag: string }
+  | { readonly kind: "mount.rejected"; readonly tag: string }
+  /** An id change ruled vendor churn rather than a recycle (#1423). */
+  | { readonly kind: "churn.ignored"; readonly videoId: VideoId }
+  | { readonly kind: "channel.abandoned"; readonly videoId: VideoId }
   /**
    * A raw date run observed for a card — the QC2 corpus. Emitted at adoption
    * and whenever a later observation supplies a new date (YouTube hydrates the

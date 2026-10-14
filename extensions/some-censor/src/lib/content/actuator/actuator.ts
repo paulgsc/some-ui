@@ -2,15 +2,19 @@
  * The Actuator (BC4) — Boundary Contract B7: the only writer.
  *
  * `realize(actions)` executes what Core named and decides nothing. It is
- * the one module in the new architecture that mutates VendorDOM (stamps,
- * veils, the anchoring position) or calls `browser.*` (the whitelist
- * messages) — every such write lives here or in a file this module owns
- * (`veil.ts`, `gestures.ts`). Answers to the effects it performs — the
- * background's whitelist verdict, the title hook's result, a timer firing,
- * a click on a veil — go back to Core as `Input`s through `inbox`, never as
- * calls into it.
+ * the one module that mutates VendorDOM (stamps, veils, the anchoring
+ * position) or sends the whitelist messages to the background — every such
+ * write lives here or in a file this module owns (`veil.ts`, `gestures.ts`).
+ * Answers to the effects it performs — the background's whitelist verdict,
+ * the title hook's result, a timer firing, a click on a veil — go back to
+ * Core as `Input`s through `inbox`, never as calls into it.
  *
- * Invariants, carried over from `dom-handle.ts` where they apply:
+ * Design properties, pinned by `actuator.test.ts` (labels for citation, not
+ * declared review invariants). The parenthesised D-numbers are the veil
+ * ledger's labels, kept so
+ * citations elsewhere resolve; D5 is also stated in `veil.ts`, and D6 is
+ * nested custody: an element inside an anchor that matches a pre-mask rule
+ * of its own gets `data-boyo` so the occluder releases it, and no veil.
  *
  *   A1 — Anchoring (D1). An anchor gets `position: relative` if it was
  *        static, so the veil's `inset: 0` binds to the card; the inline
@@ -22,9 +26,10 @@
  *   A3 — Idempotent (D2). Realizing the same actions
  *        twice leaves the same DOM: a render whose model and targets are
  *        unchanged re-asserts the stamps and touches nothing else.
- *   A4 — Full cleanup (D3). `unmount` leaves every element it stamped as it
- *        was before — stamps, veil, a veil still animating out, and the
- *        anchoring position; `dispose` does so for everything at once.
+ *   A4 — Full cleanup (D3, D4). `unmount` leaves every element it stamped
+ *        as it was before — stamps, veil, a veil still animating out, and
+ *        the anchoring position — and drops the key's record; `dispose` does
+ *        so for everything at once.
  *   A5 — Custody is accounted for here, once (D6). Which elements carry which
  *        key's stamp is one map in
  *        this module; a render diffs its targets against it and strips the

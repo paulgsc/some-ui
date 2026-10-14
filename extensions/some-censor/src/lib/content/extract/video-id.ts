@@ -36,12 +36,13 @@ export function extractVideoId(el: HTMLElement): VideoId | null {
  *
  * The question {@link extractVideoId} cannot answer. Extraction reports *an*
  * identity — the first one in document order — which is enough to mount a card
- * and useless for deciding whether a card the manager already mounted is still
- * the same card.
+ * and useless for deciding whether a card the Sensor already holds is still the
+ * same card.
  *
- * `VideoManager` needs that second question because its only recycle signal is
- * "the extracted id differs from the one stamped on the element", and two very
- * different things produce it:
+ * The Sensor's identity reconciliation (`sensor/identity.ts`) needs that second
+ * question because its only recycle signal is "the extracted id differs from
+ * the key the element is held under", and two very different things produce
+ * it:
  *
  *   - the scroll virtualizer handed this DOM node to a **different** feed item,
  *     where re-masking is mandatory (the node now shows another video); and
@@ -60,19 +61,19 @@ export function extractVideoId(el: HTMLElement): VideoId | null {
 export function representsVideo(el: HTMLElement, videoId: VideoId): boolean {
   // `data-video-id` is the renderer's own statement of which artifact it is,
   // and YouTube sets it only after hydrating the subtree — which is why
-  // extractVideoId reads it first and why observer.ts watches it as its
+  // extractVideoId reads it first and why the Sensor watches it as its
   // hydration signal. So when it is present it is decisive in BOTH
   // directions: a descendant anchor may not make the element represent
   // something its own id contradicts.
   //
   // Returning `true` on a stale descendant link would classify a genuine
-  // recycle as churn and keep the old entry, `revealed` included: a QD1 leak.
+  // recycle as churn and keep the old card, `revealed` included: a QD1 leak.
   // Wrong in the withholding direction costs a re-mask; wrong in this one
   // costs the whole point of the extension.
   const authoritative = el.getAttribute("data-video-id")
   if (authoritative) return authoritative === videoId
 
-  // No authoritative id — the Lit-era lockups never set one (see observer.ts).
+  // No authoritative id — the Lit-era lockups never set one.
   // Anchor membership is the only evidence available for those, and it is
   // exactly the case the churn/recycle split was added for.
   for (const a of el.querySelectorAll<HTMLAnchorElement>(ANCHOR_SELECTOR)) {

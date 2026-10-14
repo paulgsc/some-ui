@@ -25,7 +25,7 @@ import {
   type BoyoEventKind,
 } from "@censor/lib/content/observability"
 import { isVideoCard } from "@censor/lib/content/selectors"
-import { RESOLVE_BUDGET_MS } from "@censor/lib/content/video-manager"
+import { RESOLVE_BUDGET_MS } from "@censor/lib/content/sensor/queue"
 import { ext } from "@censor/platform/content"
 import {
   memoryPersistence,
@@ -170,9 +170,7 @@ describe("the event union", () => {
     obs.bulkAdvance({
       advanced: 1,
       alreadyPast: 0,
-      detached: 0,
       unresolved: 0,
-      promoting: 0,
       occludedUntracked: 0,
       channelPending: 0,
     })
@@ -183,6 +181,7 @@ describe("the event union", () => {
     obs.entryState("whitelisted", "vid-a")
     obs.uploadDate("3 days ago", "home", "ytd-rich-item-renderer")
     obs.uploadDate(null, "home", "ytm-shorts-lockup-view-model")
+    obs.unknownShape("yt-lockup-view-model", "search", "tag-unseen")
 
     // The two invariant kinds are transitions, so they need a violation and
     // then a recovery to be reachable at all.
@@ -213,7 +212,7 @@ describe("the event union", () => {
 // ── OccludedCardResolves ─────────────────────────────────────────────────────
 
 describe("OccludedCardResolves — the budget exemption, checked rather than assumed", () => {
-  it("is unknown while idle: an empty queue proves nothing about a manager that is not running", () => {
+  it("is unknown while idle: an empty queue proves nothing about a runtime that is not running", () => {
     expect(check(OccludedCardResolves, baseContext({ phase: "idle" }))).toEqual(
       { ok: "unknown" }
     )
@@ -291,9 +290,9 @@ describe("OccludedCardResolves — the failure mode it exists for is reachable",
     expect(isVideoCard(el)).toBe(true)
     expect(tryExtract(el).kind).toBe("raw")
 
-    // Which is exactly the state retryUnresolved() exempts from the budget, so
-    // it stays queued and stays blurred — and is the state this invariant
-    // reports rather than leaving silent.
+    // So it stays queued and blurred until the budget rejects it; still queued
+    // past the budget, it is the state this invariant reports rather than
+    // leaving silent.
     const ctx = baseContext({
       unresolved: [
         {
@@ -386,7 +385,7 @@ describe("OccluderReleases — the DOM-truth check the bookkeeping cannot make",
     })
   })
 
-  it("is un-evaluable rather than clean while the manager is idle", () => {
+  it("is un-evaluable rather than clean while the runtime is idle", () => {
     // Between teardown and the next session every card is legitimately
     // unadopted. Reporting that as a violation would make every navigation
     // look like a breakage; reporting it as `ok` would be a lie.
@@ -485,9 +484,7 @@ describe("bulkAdvance — the coverage a keystroke actually had", () => {
   const clean = {
     advanced: 3,
     alreadyPast: 2,
-    detached: 0,
     unresolved: 0,
-    promoting: 0,
     occludedUntracked: 0,
     channelPending: 0,
   }
@@ -510,17 +507,15 @@ describe("bulkAdvance — the coverage a keystroke actually had", () => {
     const obs = newObservability()
     obs.bulkAdvance({
       ...clean,
-      detached: 1,
       unresolved: 4,
-      promoting: 1,
       occludedUntracked: 2,
     })
 
     const event = obs.recorder
       .events()
       .find((e) => e.kind === "command.advance_all")
-    expect(event?.detail).toMatchObject({ skipped: 8 })
-    expect(obs.recorder.metrics.counter("bulk_advance_skipped")).toBe(8)
+    expect(event?.detail).toMatchObject({ skipped: 6 })
+    expect(obs.recorder.metrics.counter("bulk_advance_skipped")).toBe(6)
     expect(obs.recorder.metrics.counter("bulk_advance_advanced")).toBe(3)
   })
 
@@ -557,9 +552,7 @@ describe("bulkAdvance — the coverage a keystroke actually had", () => {
       "advanced",
       "alreadyPast",
       "channelPending",
-      "detached",
       "occludedUntracked",
-      "promoting",
       "skipped",
       "unresolved",
     ])
@@ -668,7 +661,7 @@ describe("uploadDate — the corpus mechanism QC2 depends on", () => {
 })
 
 describe("queue keys never carry a URL into the bundle", () => {
-  it("replaces an href key's URL with a stable bounded label — elementKey() emits a complete absolute URL for exactly the elements mount.unresolved fires on", () => {
+  it("replaces an href key's URL with a stable bounded label", () => {
     const key = "h:https://www.youtube.com/feed/watch_later?list=PLabc&si=xyz"
     const redacted = redactQueueKey(key)
 

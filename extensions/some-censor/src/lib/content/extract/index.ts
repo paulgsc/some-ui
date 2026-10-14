@@ -1,7 +1,8 @@
 /**
  * extract/index.ts — the single entry point for the extract layer.
  *
- * Invariants enforced here:
+ * Design properties, enforced by the types and pinned by `extract.test.ts`
+ * (labels for citation, not declared review invariants):
  *
  *   E1 — Determinism: tryExtract(el) depends only on el's current DOM subtree.
  *        No global state, no closures over mutable variables.
@@ -15,7 +16,7 @@
  *        callers from composing partial extraction themselves and bypassing E2.
  *
  *   E4 — Three-way classification:
- *          full       — both ids present; can construct a VideoRecord.
+ *          full       — both ids present; a complete observation.
  *          video-only — videoId present, channelId absent; can MASK now,
  *                       channel backfilled later by the retry loop.
  *          raw        — videoId absent; nothing actionable yet.
@@ -33,15 +34,14 @@ import { extractVideoId } from "./video-id"
  *
  * E3 exists so a caller cannot compose partial extraction and bypass E2's
  * three-way classification. `representsVideo` cannot: it is a predicate over
- * an id the caller already holds, and it yields no material a `VideoRecord`
+ * an id the caller already holds, and it yields no material an observation
  * could be built from. It answers "is this still the same card", which
  * `tryExtract` structurally cannot — see its own doc comment.
  */
 export { representsVideo } from "./video-id"
 
 export { extractTitle } from "./title"
-export { extractMeta, extractUploadDate } from "./meta"
-export type { FullyExtracted, VideoOnlyExtracted } from "./extracted"
+export { extractMeta } from "./meta"
 
 export function tryExtract(el: HTMLElement): Extracted {
   const videoId = extractVideoId(el)

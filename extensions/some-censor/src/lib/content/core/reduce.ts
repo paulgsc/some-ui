@@ -4,12 +4,12 @@
  * Pure and total. Every branch below is a function of the state it is given
  * and the event it is handed — no clock, no randomness, no session counter,
  * no DOM, no browser call (Boundary Contract B6, B8). The disclosure ladder
- * is `fsm.ts`'s, ported as-is (F1–F4 still hold: every view carries its
- * session, transitions are typed over their legal sources, `project()` is
- * exhaustive); what this module adds is the *orchestration*, as data in, data
- * out.
+ * is `fsm.ts`'s (F1–F4 hold: every view carries its session, transitions are
+ * typed over their legal sources, `project()` is exhaustive); what this
+ * module adds is the *orchestration*, as data in, data out.
  *
- * Invariants:
+ * Design properties, pinned by `core.test.ts` (labels for citation, not
+ * declared review invariants):
  *
  *   R1 — Phase gate. Nothing but `start` does anything while idle (M1).
  *   R2 — One card per artifact. `observed` for a key already held folds the
@@ -20,16 +20,28 @@
  *        incarnation (`generation`, unique across adoptions of a key) and,
  *        where the view matters, its `version`; an answer whose generation is
  *        not the card's, or whose version has moved on, is discarded and
- *        recorded as stale (Entry-2, M6 — as data rather than tokens on a
- *        WeakMap). Key and channel alone would let a re-observed key take its
- *        predecessor's whitelist answer, and a version restarting at zero
- *        would let a predecessor's transform or timer through.
+ *        recorded as stale (Entry-2, M6). Key and channel alone would let a
+ *        re-observed key take its predecessor's whitelist answer, and a
+ *        version restarting at zero would let a predecessor's transform or
+ *        timer through.
  *   R5 — Every state change renders. A card's view or channel changing
  *        always emits `render` for it; the Actuator's idempotence is what
  *        makes that cheap, and it is what keeps "what Core believes" and
  *        "what the page shows" from drifting.
  *   R6 — Unknown shape is a state (B4). A card the table could not place is
- *        still a card — masked, like every other — and the miss is counted.
+ *        still a card, masked like every other; each `unknown-shape` token
+ *        (one per element the Sensor could not place) is counted.
+ *
+ * The parenthesised M-, C- and Entry- labels are kept so their citations
+ * resolve: M1, M2, M3 and M6 are R1, R2, R3 and R4 as stated, Entry-2 is
+ * R4's `version` check, and C1–C4 are `controller.ts`'s. One more property
+ * applies here:
+ *
+ *   Entry-4 — A card's channel may arrive late. A card observed without one
+ *             is provisional, masked on its video id alone; an observation
+ *             that supplies or changes the channel asks the whitelist afresh.
+ *             A late verdict whitelists only a still-masked card, and a view
+ *             the user climbed to is never taken back.
  */
 
 import type { MetaData, ViewState } from "@censor/lib/content/fsm"
@@ -285,7 +297,7 @@ export function reduce(state: CoreState, event: CoreEvent): Step {
       if (card === undefined) return none(state)
       const channelId = channelIdOf(card)
       // A provisional card has no channel to persist; the request is a
-      // no-op rather than a write of the empty sentinel (record.ts V2).
+      // no-op rather than a write with no channel id.
       if (channelId === null) return none(state)
       const local = whitelistLocally(state, channelId)
       return {
@@ -459,28 +471,10 @@ function adopt(
       channelId: observation.channelId,
     })
   }
-  let next = setCard(
+  const next = setCard(
     { ...state, nextGeneration: state.nextGeneration + 1 },
     card
   )
-  if (observation.shape === "unknown") {
-    next = {
-      ...next,
-      unknownShapes: {
-        ...next.unknownShapes,
-        degraded: next.unknownShapes.degraded + 1,
-      },
-    }
-    actions.push(
-      record({
-        kind: "shape.unknown",
-        tag: observation.renderer,
-        surface: observation.surface,
-        reason: "degraded",
-        shape: "unknown",
-      })
-    )
-  }
   return { state: next, actions }
 }
 
@@ -584,9 +578,9 @@ function reobserve(
   }
 
   // R5: re-render on every observation. The view's meta/title are snapshots
-  // taken at click time (parity with the former entry), so a re-observation
-  // does not rewrite them; the render is for custody — a re-observed card may
-  // have gained or lost elements, and the Actuator re-derives targets.
+  // taken at click time, so a re-observation does not rewrite them; the
+  // render is for custody — a re-observed card may have gained or lost
+  // elements, and the Actuator re-derives targets.
   actions.push(render(next))
   return { state: setCard(state, next), actions }
 }
@@ -639,7 +633,7 @@ function advanceAll(state: CoreState): Step {
     } else {
       alreadyPast += 1
     }
-    if (card.channel.kind === "pending") channelPending += 1
+    if (card.channel.kind === "unknown") channelPending += 1
   }
   actions.push(
     record({ kind: "bulk.advance", advanced, alreadyPast, channelPending })
