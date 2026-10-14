@@ -66,7 +66,7 @@ export type CardState = {
   /**
    * Bumped on every view change within an incarnation. A title transform or
    * the whitelist reveal timer carries the version it was issued under and is
-   * discarded if the card has moved on — the former entry's Entry-2, as data.
+   * discarded if the card has moved on (Entry-2, R4).
    * Meaningful only together with `generation`: two incarnations both count
    * from zero.
    */

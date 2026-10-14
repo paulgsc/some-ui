@@ -4,10 +4,21 @@
  * What is left once the Sensor owns observation and navigation, Core owns
  * every decision and the Actuator owns every write: starting the recording,
  * waiting for `ytd-app`, answering the background's enable/disable and
- * whitelist broadcasts, and the keybindings. Invariants C1 (idempotent
- * start) and C3 (a second start is a no-op, not duplicate state) are the
- * runtime's; C2 (navigation is a full teardown of every card) is Core's R3,
- * answering the `nav` token the Sensor emits after its C4 debounce.
+ * whitelist broadcasts, and the keybindings.
+ *
+ * Lifecycle invariants, kept here and cited elsewhere:
+ *
+ *   C1 — Start is idempotent. `_start()` returns while the runtime is
+ *        running, and `Runtime.start()` returns while Core's phase is
+ *        `running`.
+ *   C2 — Navigation is a full teardown. Core answers the Sensor's `nav`
+ *        token by unmounting and forgetting every card and adopting the new
+ *        session (R3). Chip and feed swaps reuse elements in place, so
+ *        anything less would leave their old views showing.
+ *   C3 — A second start is a no-op, not duplicate state: one Sensor, one
+ *        Actuator, one set of key bindings.
+ *   C4 — Navigation is debounced. The Sensor coalesces a burst of
+ *        `yt-navigate-finish` into one `nav` (`NAV_DEBOUNCE_MS`).
  */
 
 import { ext } from "@censor/platform/content"

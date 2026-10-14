@@ -32,8 +32,9 @@ workspace. Filing it as a canon would dilute what "canon" means here.
 It is nevertheless **governing**: sections below carry hand-assigned numbers
 (`QD1`–`QD10`, `QM0`–`QM4`, `QA1`–`QA4`) for the same reason the canons do, so
 source comments and commit messages can cite them and the citations survive
-reshuffles. The `Q` prefix is deliberate: the Actuator and Core still cite
-the veil's own unrelated `D1`–`D5` and the card pipeline's `M1`–`M5` — a bare
+reshuffles. The `Q` prefix is deliberate: the Actuator and Sensor cite the
+veil's own unrelated `D1`–`D6` (restated in `actuator/actuator.ts`), and Core
+the card pipeline's `M1`–`M3` and `M6` (restated in `core/reduce.ts`) — a bare
 "see D3" or "M2" would resolve to whichever ledger the reader happened to be
 looking at. A behavioural change to this extension that
 contradicts a `QD` number is a proposal to amend this document — make the

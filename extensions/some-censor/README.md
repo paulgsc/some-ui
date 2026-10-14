@@ -9,8 +9,9 @@ The content script runs four stages (Boundary Contract #1433, BC1–BC5):
 `src/content/content.ts` → `Controller` (lifecycle: enable/disable, whitelist
 broadcasts, keybindings) → `runtime/runtime.ts`, which folds every token and
 input through Core and hands the resulting actions to the Actuator. The
-Layout table and Core are pure; the Sensor is the only reader of the vendor
-DOM and the Actuator the only writer to it or caller of `browser.*`.
+Layout table and Core are pure; the Sensor turns the vendor DOM into the
+tokens Core sees, and the Actuator is the only writer to it and the only
+sender of the whitelist messages.
 
 Four stages, each owning exactly one concern, in a straight line from
 observation to write:
@@ -34,8 +35,9 @@ observation to write:
    and recorded as `stale.discarded`. A superseded reveal timer, or any
    answer for a card that has already unmounted, is discarded silently
    instead — that gap is real, not documentation slack.
-4. **Actuator** (`src/lib/content/actuator/`) — the sole module that writes
-   to the vendor DOM or calls `browser.*`. It only executes the actions Core
+4. **Actuator** (`src/lib/content/actuator/`) — the only writer to the
+   vendor DOM and the only sender of the whitelist messages (`IS_WHITELISTED`,
+   `ADD_WHITELIST`). It only executes the actions Core
    named; answers to what it does (a whitelist verdict, a title transform, a
    timer, a click) return to Core as inputs, never as calls back into it.
 

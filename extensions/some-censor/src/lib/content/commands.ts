@@ -25,7 +25,7 @@ type CensorCommandId = "advance-all-to-title"
 /**
  * Single source of truth for censor's keyboard shortcuts.
  *
- * Default (preserved byte-for-byte from the former local module):
+ * Default:
  *   Ctrl+Shift+Period (Windows/Linux) — the commons matcher maps the `ctrl`
  *   slot onto ⌘ on macOS, so one binding works cross-platform.
  */

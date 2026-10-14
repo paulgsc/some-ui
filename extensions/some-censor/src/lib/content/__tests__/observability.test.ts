@@ -212,7 +212,7 @@ describe("the event union", () => {
 // ── OccludedCardResolves ─────────────────────────────────────────────────────
 
 describe("OccludedCardResolves — the budget exemption, checked rather than assumed", () => {
-  it("is unknown while idle: an empty queue proves nothing about a manager that is not running", () => {
+  it("is unknown while idle: an empty queue proves nothing about a runtime that is not running", () => {
     expect(check(OccludedCardResolves, baseContext({ phase: "idle" }))).toEqual(
       { ok: "unknown" }
     )
@@ -290,9 +290,9 @@ describe("OccludedCardResolves — the failure mode it exists for is reachable",
     expect(isVideoCard(el)).toBe(true)
     expect(tryExtract(el).kind).toBe("raw")
 
-    // Which is exactly the state retryUnresolved() exempts from the budget, so
-    // it stays queued and stays blurred — and is the state this invariant
-    // reports rather than leaving silent.
+    // So it stays queued and blurred until the budget rejects it; still queued
+    // past the budget, it is the state this invariant reports rather than
+    // leaving silent.
     const ctx = baseContext({
       unresolved: [
         {
@@ -385,7 +385,7 @@ describe("OccluderReleases — the DOM-truth check the bookkeeping cannot make",
     })
   })
 
-  it("is un-evaluable rather than clean while the manager is idle", () => {
+  it("is un-evaluable rather than clean while the runtime is idle", () => {
     // Between teardown and the next session every card is legitimately
     // unadopted. Reporting that as a violation would make every navigation
     // look like a breakage; reporting it as `ok` would be a lie.
@@ -661,7 +661,7 @@ describe("uploadDate — the corpus mechanism QC2 depends on", () => {
 })
 
 describe("queue keys never carry a URL into the bundle", () => {
-  it("replaces an href key's URL with a stable bounded label — elementKey() emits a complete absolute URL for exactly the elements mount.unresolved fires on", () => {
+  it("replaces an href key's URL with a stable bounded label", () => {
     const key = "h:https://www.youtube.com/feed/watch_later?list=PLabc&si=xyz"
     const redacted = redactQueueKey(key)
 

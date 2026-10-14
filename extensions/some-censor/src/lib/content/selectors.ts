@@ -108,7 +108,7 @@ export const VIDEO_SELECTORS: ReadonlyArray<string> = CARD_SELECTORS.map(
  *
  * Deliberately unguarded: it is a cheap superset used to *find* candidates.
  * {@link isVideoCard} applies the guard, so a polymorphic lockup is matched
- * here but rejected before it can enter the manager's registry.
+ * here but rejected before the Sensor adopts it as a card.
  */
 export const SEL = VIDEO_SELECTORS.join(",")
 

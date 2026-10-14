@@ -17,8 +17,8 @@ export default defineConfig(
     // ── Charter §2: Logic ≠ Presentation ≠ Effects ──────────────────────────
     // This workspace's whole design rests on the claim that the state machine
     // is pure: fsm.ts F1–F4 are invariants about exactly that, and the
-    // Actuator is the only module permitted to touch the DOM. These are the
-    // files that must stay testable without a DOM:
+    // Actuator is the only module permitted to write the vendor DOM. These
+    // are the files that must stay testable without a DOM:
     //
     //   fsm.ts          transitions + the render projection
     //   selectors.ts    the card catalogue, also read by the stylesheet test
@@ -64,7 +64,7 @@ export default defineConfig(
   {
     // ── Charter §4: one prefix, declared once ───────────────────────────────
     // some-censor's prefix is `boyo`, and it is load-bearing rather than
-    // cosmetic: the pre-mask occluder, the event delegation in events.ts, the
+    // cosmetic: the pre-mask occluder, the Actuator's gesture delegation, the
     // reduced-motion rule in styles/content.css and the e2e suite all key off
     // `boyo-*` / `data-boyo*`. A class or data attribute that escapes the
     // namespace is invisible to all four.
@@ -78,7 +78,7 @@ export default defineConfig(
         {
           prefix: "boyo",
           allowlist: [
-            // Set by YouTube, read by us — the hydration signal the observer
+            // Set by YouTube, read by us — the hydration signal the Sensor
             // watches. Renaming it is not ours to do.
             "data-video-id",
           ],

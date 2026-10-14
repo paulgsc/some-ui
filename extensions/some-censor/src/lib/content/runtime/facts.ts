@@ -3,8 +3,7 @@
  *
  * Core and the Sensor describe what happened as `CoreFact` values (B6);
  * this is the one place those values become calls on `BoyoObservability`.
- * A fact with no recorder live is dropped, exactly as every
- * `observability()?.…` call site used to.
+ * A fact with no recorder live is dropped.
  */
 
 import type { CoreFact } from "@censor/lib/content/core/actions"

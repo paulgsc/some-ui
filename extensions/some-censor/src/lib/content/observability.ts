@@ -14,13 +14,12 @@
  *
  *   1. `mkSession()` is per content-script instance, so two YouTube tabs both
  *      mint session 1 and would share a key.
- *   2. `Controller` C2 mints a fresh session on every `yt-navigate-finish`. A
- *      recorder per ordinal would cycle the 20-entry index within minutes and
- *      discard the date corpus.
+ *   2. The Sensor mints a fresh session on every (debounced)
+ *      `yt-navigate-finish`. A recorder per ordinal would cycle the 20-entry
+ *      index within minutes and discard the date corpus.
  *
- * One recorder spans those teardown/restart cycles; every boundary is still
- * on the timeline as a `session.start`/`session.reset` pair carrying the
- * ordinal.
+ * One recorder spans those sessions; every boundary is still on the timeline
+ * as a `session.start`/`session.reset` pair carrying the ordinal.
  *
  * ## What it records about dates, and why that is not a disclosure
  *
@@ -59,7 +58,7 @@ import { surfaceOf } from "./layout/surface"
  */
 export const BOYO_EVENT_KINDS = [
   // Lifecycle. `session.start`/`session.reset` carry Core's own
-  // `_session` ordinal as their subject — see this module's header.
+  // `session` ordinal as their subject — see this module's header.
   "session.start",
   "session.reset",
   "navigation.finish",
@@ -69,7 +68,7 @@ export const BOYO_EVENT_KINDS = [
   "mount.provisional",
   "mount.unresolved",
   "mount.rejected",
-  /** A promotion discarded post-await because `el` was recycled (M6). */
+  /** An async answer discarded because its card moved on (Core's R4). */
   "mount.stale_discarded",
   /**
    * An id change on a mounted element *not* treated as a recycle, because the
@@ -146,17 +145,19 @@ type BoyoCounter =
    * How many times the invariants were actually evaluated.
    *
    * Without it a `status: "healthy"` export is ambiguous between "checked, and
-   * fine" and "never got to check": `sampleHealth()` only rides the retry loop
-   * and the stall watch, so a quiet page can legitimately evaluate nothing.
+   * fine" and "never got to check": `sampleHealth()` runs when the runtime
+   * starts, on a throttled mutation batch, and from the occlusion and stall
+   * watches only while they see something, so a quiet page can legitimately
+   * go long stretches evaluating nothing.
    */
   | "health_samples"
 
 type BoyoAggregate =
   /** Candidate elements in one observer batch — mutation pressure per batch. */
   | "mutation_batch_candidates"
-  /** `_unresolved.size` sampled whenever the health cadence fires. */
+  /** The Sensor's unresolved-queue depth, sampled whenever health is. */
   | "unresolved_depth"
-  /** `_channelPending.size`, sampled alongside it. */
+  /** Cards the Sensor holds awaiting a channel, sampled alongside it. */
   | "channel_pending_depth"
   /**
    * Per-keystroke skipped count for a bulk advance. An aggregate because the
@@ -194,11 +195,12 @@ export { surfaceOf } from "./layout/surface"
 // ── Invariants ───────────────────────────────────────────────────────────────
 
 /**
- * How long an element may sit inside `_promote()`'s re-entrancy guard before
- * {@link boyoInvariants}' `PromotionGuardClears` calls it stuck.
+ * How long a card's `IS_WHITELISTED` round trip may stay unsettled (Core's
+ * `channel.kind === "pending"`) before {@link boyoInvariants}'
+ * `PromotionGuardClears` calls it stuck.
  *
- * Generous on purpose: the guarded region is one `IS_WHITELISTED` round trip
- * to the background worker, which is milliseconds when the worker is alive and
+ * Generous on purpose: the wait is one `IS_WHITELISTED` round trip to the
+ * background worker, which is milliseconds when the worker is alive and
  * seconds at worst when MV3 has to respawn it to answer. Thirty seconds is
  * past any of that, and a promise that has not settled by then is not slow —
  * it is never going to settle.
@@ -216,9 +218,9 @@ export const RESOLVE_GRACE_MS = 2_000
 
 /** One element waiting in the Sensor's queue, as the invariants see it. */
 type QueuedCard = {
-  /** `elementKey()`'s output (unresolved) or `c:<videoId>` (channel pending). */
+  /** `t:<tag>` (unresolved) or `c:<tag>` (channel pending): never content. */
   readonly key: string
-  /** When the shared attempt budget started for this key. */
+  /** When this element's budget started. */
   readonly firstSeenAt: number
   /** `isVideoCard(el)` right now — the pre-mask rule's own predicate. */
   readonly videoShaped: boolean
@@ -279,12 +281,11 @@ export type BulkAdvanceCoverage = {
   readonly channelPending: number
 }
 
-/** One element currently inside `_promote()`'s re-entrancy guard. */
+/** One card whose `IS_WHITELISTED` round trip has not settled. */
 type PromotingCard = {
   /**
-   * The videoId this promotion is for — not `elementKey()`'s output, unlike
-   * {@link QueuedCard}: it is already in hand (no extra DOM read), and a stuck
-   * promotion is diagnosed by which video never mounted.
+   * The card's key (its videoId) — unlike {@link QueuedCard}'s tag: a stuck
+   * whitelist check is diagnosed by which video it was for.
    */
   readonly key: string
   readonly startedAt: number
@@ -319,7 +320,7 @@ export const boyoInvariants: ReadonlyArray<Invariant<BoyoContext>> = [
   {
     name: "OccludedCardResolves",
     description:
-      "No video-shaped element sits in the unresolved queue past RESOLVE_BUDGET_MS. retryUnresolved() used to exempt video-shaped elements from the budget on the assumption that such an element 'cannot spin either, being video-shaped means it has a watch or shorts href, which is the very thing extractVideoId reads' — an assumption that failed for the one tag isVideoCard() accepted unconditionally (#1422). The budget now binds every queued element, so a violation here means the budget itself has stopped being applied; a video-shaped element rejected at budget and still occluded is OccluderReleases's to report.",
+      "No video-shaped element sits in the Sensor's unresolved queue past RESOLVE_BUDGET_MS. Being video-shaped does not guarantee extraction succeeds (isVideoCard() accepts several tags without checking for a video link, #1422), so the budget binds every queued element, video-shaped or not. A violation here means the budget itself has stopped being applied; a video-shaped element rejected at budget and still occluded is OccluderReleases's to report.",
     check: (ctx): InvariantOutcome => {
       if (ctx.phase !== "running") return { ok: "unknown" }
       const deadline = ctx.resolveBudgetMs + RESOLVE_GRACE_MS
@@ -338,7 +339,7 @@ export const boyoInvariants: ReadonlyArray<Invariant<BoyoContext>> = [
   {
     name: "OccluderReleases",
     description:
-      "No element sits under the static pre-mask occluder, without data-boyo, past OCCLUSION_GRACE_MS. Unlike every other check here this reads the DOM rather than the pipeline's bookkeeping, because the failures it exists for are precisely the ones that leave an element in no queue, no registry and no guard — where a bookkeeping check has nothing to look at and reports healthy while the page is visibly broken (#1421). The occluder is lifted by exactly one thing, the content script writing data-boyo; an element it is still hiding after the resolution budget has passed is one nothing is coming back for, and it is inert as well as blurred because that rule sets pointer-events: none.",
+      "No element sits under the static pre-mask occluder, without data-boyo, past OCCLUSION_GRACE_MS. Unlike every other check here this reads the DOM rather than the pipeline's bookkeeping, because the failures it exists for are precisely the ones that leave an element in no queue and held by no card — where a bookkeeping check has nothing to look at and reports healthy while the page is visibly broken (#1421). The occluder is lifted by exactly one thing, the content script writing data-boyo; an element it is still hiding after the resolution budget has passed is one nothing is coming back for, and it is inert as well as blurred because that rule sets pointer-events: none.",
     check: (ctx): InvariantOutcome => {
       if (ctx.phase !== "running") return { ok: "unknown" }
       const stranded = ctx.occluded.filter(
@@ -360,7 +361,7 @@ export const boyoInvariants: ReadonlyArray<Invariant<BoyoContext>> = [
   {
     name: "PromotionGuardClears",
     description:
-      "No element has been inside _promote()'s _promoting re-entrancy guard longer than PROMOTION_STALL_MS. The guard is released in a finally block, so it clears on both settle paths of the IS_WHITELISTED round trip — but a promise that never settles at all never runs that finally, and every later _promote() for that element then returns at the guard for the life of the session, leaving the card occluded by the pre-mask rule with nothing coming to lift it.",
+      "No card's IS_WHITELISTED round trip has stayed unsettled (Core's channel.kind === \"pending\") longer than PROMOTION_STALL_MS. Either settle path, a verdict or a failure, comes back to Core as an input and ends the wait — but a promise that never settles at all sends neither, and the card stays pending for the life of the session, never learning that its channel is whitelisted.",
     check: (ctx): InvariantOutcome => {
       if (ctx.phase !== "running") return { ok: "unknown" }
       const stalled = ctx.promoting.filter(
@@ -593,9 +594,10 @@ export function createBoyoRecorder(
 /**
  * How often {@link BoyoObservability.sampleHealth} is allowed to run.
  *
- * Running every invariant plus a `storage.local` index touch on the Sensor's
- * 500 ms retry loop would cost more than the thing observed (Charter §8). The
- * invariants concern states lasting tens of seconds, so 10 s loses nothing.
+ * `Health.tick()` asks on every mutation batch, and running every invariant
+ * plus a `storage.local` index touch that often would cost more than the
+ * thing observed (Charter §8). The invariants concern states lasting tens of
+ * seconds, so 10 s loses nothing.
  */
 export const HEALTH_SAMPLE_INTERVAL_MS = 10_000
 
@@ -729,7 +731,7 @@ export class BoyoObservability {
     this.recorder.count("cards_rejected")
   }
 
-  /** A post-await bail in `_promote()` — the element was recycled (M6). */
+  /** Core discarded a whitelist answer or title transform as stale (R4). */
   staleDiscarded(videoId: string): void {
     this.recorder.record({
       kind: "mount.stale_discarded",
@@ -975,7 +977,7 @@ let _live: BoyoObservability | null = null
 /**
  * Begin this content-script instance's recording. Idempotent — a second call
  * returns the live recording rather than orphaning the first one's storage
- * key, which matters because `Controller` can re-enter setup (C1/C3).
+ * key, which matters because `Controller` can re-enter setup (C1, C3).
  */
 export function startObservability(
   persistence?: ObservabilityPersistence
@@ -1030,18 +1032,13 @@ export function stopObservability(): void {
 const MAX_SUBJECT_CHARS = 64
 
 /**
- * Reduce one of `elementKey()`'s queue keys to something safe to persist.
+ * Reduce a queue key to something safe to persist: a diagnostics bundle must
+ * not carry a URL (#1382).
  *
- * `elementKey()` falls back to `h:${a.href}`, a complete absolute URL (query
- * string and all), for exactly the renderers `mount.unresolved` fires on. A
- * diagnostics bundle must not carry that (#1382).
- *
- * The key's only job on the timeline is to correlate one element's
- * `mount.unresolved` with its later `mount.rejected`, which needs stability,
- * not legibility. So an `h:` key keeps its prefix and surrenders everything
- * after it to a hash. Other shapes (`v:` a videoId, which mount events
- * already record as their own subject; `p:TAG:index`; `r:` a nonce) carry no
- * URL and are kept readable, bounded.
+ * The runtime's queue keys are `t:<tag>` (`runtime/facts.ts`), which carry no
+ * card content and are kept readable, bounded. An `h:` key would be a complete
+ * absolute URL, query string and all, so it keeps its prefix and surrenders
+ * everything after it to a hash — stable, not legible.
  */
 export function redactQueueKey(key: string): string {
   const sep = key.indexOf(":")

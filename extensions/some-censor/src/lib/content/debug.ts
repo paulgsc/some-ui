@@ -57,7 +57,7 @@ export function notifyNavigation(): void {
   _publish()
 }
 
-/** Force a snapshot publish (e.g. after upsert/prune). */
+/** Force a snapshot publish (e.g. after a Sensor fact). */
 export function publish(): void {
   _publish()
 }

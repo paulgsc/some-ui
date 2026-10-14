@@ -1,12 +1,11 @@
 /**
- * Gesture delegation (BC4) — `events.ts`, re-homed.
+ * Gesture delegation (BC4).
  *
  * One capture-phase listener per event type on the document. A click that
  * lands on a veil walks up to the anchor the Actuator stamped
  * (`data-boyo-vid` — a self-tag, Definition 7.3: the Actuator reading what
  * it wrote, never the vendor's markup) and becomes an `Input` for Core.
- * Single versus double click is decided by a `ClickGate` per card, exactly
- * as the former per-card entry decided it.
+ * Single versus double click is decided by a `ClickGate` per card.
  *
  * Owned by the Actuator rather than the Sensor because the veil is the
  * Actuator's node: a gesture on it is the extension's own artifact

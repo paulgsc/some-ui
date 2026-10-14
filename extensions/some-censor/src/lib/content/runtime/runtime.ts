@@ -10,13 +10,12 @@
  *     `unmount` (the Sensor knows which elements carry a key; Core cannot),
  *     and hands the bound actions to the Actuator;
  *   - a gesture re-observes its card first, so Core decides on the evidence
- *     the page shows *now* (parity with the former per-card entry extracting at click
- *     time) rather than at first sight;
+ *     the page shows at click time rather than at first sight;
  *   - facts go to the flight recorder; the bulk-advance fact is completed
  *     with the DOM census only the Sensor can take (#1424);
  *   - the debug layer reads Core's state and the Sensor's census.
  *
- * Lifecycle (Controller's C1–C4, restated): `start()` is idempotent, `stop()`
+ * Lifecycle (`controller.ts`'s C1–C4): `start()` is idempotent, `stop()`
  * is total, navigation is a `nav` token the Sensor emits after a debounce
  * and Core answers by forgetting every card (R3).
  */

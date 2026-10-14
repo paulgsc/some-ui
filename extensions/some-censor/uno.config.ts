@@ -19,7 +19,7 @@ import { defineSomeUiConfig } from "@some-ui/styles/config"
  * it has to grow every time someone names a variable `panel`.
  *
  * Here every class string the extension can put in the DOM lives in exactly one
- * module — `src/lib/content/veil-styles.ts` — and `dom-handle.ts` may only
+ * module — `src/lib/content/veil-styles.ts` — and the Actuator may only
  * consume it. Scanning that one file plus the irreducible raw CSS keeps the
  * output to the utilities the veil actually declares. The narrow scan is also
  * what keeps the idiom honest: a class name written anywhere else simply will

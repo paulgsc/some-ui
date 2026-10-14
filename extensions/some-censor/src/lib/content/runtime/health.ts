@@ -1,16 +1,15 @@
 /**
- * The health cadence (BC5, #1438) — what the former manager did for the
- * invariants in `observability.ts`, over the new pipeline's state.
+ * The health cadence (BC5, #1438): when the invariants in `observability.ts`
+ * are sampled, and the context they are sampled over.
  *
- * Three things fed the invariants: the queue census (the Sensor's now), the
- * cards mid-mount (Core's `pending` channels now: a card is rendered the
- * instant it is observed, so the only thing that can stall is the whitelist
- * round trip), and what the occluder is hiding with nothing coming for it
- * (the Sensor's `census().occluded`, timestamped here so a card legitimately
- * mid-adoption is not called stranded). The schedule is the one the
- * `#1425` review settled on: a standing occlusion watch at
- * `OCCLUSION_GRACE_MS`, a stall watch while anything is pending, and a
- * throttled sample on every mutation batch.
+ * Three things feed the invariants: the Sensor's queue census, the cards
+ * whose whitelist round trip is pending in Core (a card is rendered the
+ * instant it is observed, so that round trip is the only thing that can
+ * stall), and what the occluder is hiding with nothing coming for it (the
+ * Sensor's `census().occluded`, timestamped here so a card legitimately
+ * mid-adoption is not called stranded). A sample is taken when the runtime
+ * starts, on a throttled mutation batch, by a standing occlusion watch at
+ * `OCCLUSION_GRACE_MS`, and by a stall watch while anything is pending.
  */
 
 import type { CoreState } from "@censor/lib/content/core/state"
@@ -36,7 +35,7 @@ export type HealthPorts = {
 export type Health = {
   /** A mutation batch happened; sample if the throttle allows. */
   tick(): void
-  /** A session started: take a reading now (see `_occlusionReading`). */
+  /** A session started: take a reading now (`reading(true)`). */
   sessionStarted(): void
   /** Core state changed; re-arm the stall watch if anything is pending. */
   stateChanged(): void
