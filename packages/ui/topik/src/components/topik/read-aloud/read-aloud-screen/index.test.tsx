@@ -75,7 +75,7 @@ describe("ReadAloudScreen", () => {
     expect(saved.record().days.map((day) => day.day)).toEqual(["2026-09-28"])
     expect(Object.keys(saved.paces()).length).toBeGreaterThan(0)
     // The set finished, so there is nothing to resume.
-    expect(saved.progress(1)).toBeNull()
+    expect(saved.progress(1, "bundled")).toBeNull()
   })
 
   it("shows the record on its start screen", () => {

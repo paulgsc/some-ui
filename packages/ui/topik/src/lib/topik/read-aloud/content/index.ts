@@ -83,6 +83,12 @@ export type ReadAloudLine = {
 export type ReadAloudDeck = {
   id: string
   title: string
+  /**
+   * What the deck answers, in the learner's terms: `your note on Oct 13:
+   * "move to level two"`. Written by whoever made a deck for this learner
+   * (`added-sets`); the bundled deck has none.
+   */
+  from?: string
   words: Array<ReadAloudWord>
   lines: Array<ReadAloudLine>
 }
@@ -146,6 +152,7 @@ const DeckSchema = z.object({
   schemaVersion: z.literal(1),
   id: IdSchema,
   title: z.string().trim().min(1),
+  from: z.string().trim().min(1).max(200).optional(),
   words: z.array(z.unknown()),
   lines: z.array(z.unknown()),
 })
@@ -348,7 +355,13 @@ export function parseReadAloudDeck(raw: unknown): ParsedDeck {
 
   return {
     ok: true,
-    deck: { id: outer.data.id, title: outer.data.title, words, lines },
+    deck: {
+      id: outer.data.id,
+      title: outer.data.title,
+      ...(outer.data.from === undefined ? {} : { from: outer.data.from }),
+      words,
+      lines,
+    },
     findings,
   }
 }

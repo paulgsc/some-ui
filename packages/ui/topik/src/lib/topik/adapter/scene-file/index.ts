@@ -1,10 +1,11 @@
 /**
- * A scene the learner picked from storage (docs/makjang/README.md, "Pulling
- * a scene back"): the file the platform's picker handed over, read as text.
+ * A file the learner picked from storage: a scene (docs/makjang/README.md,
+ * "Pulling a scene back") or a word set (`read-aloud/added-sets`), as the
+ * platform's picker handed it over, read as text.
  * On Android the WebView answers `<input type="file">` with the system
  * picker, where the learner's drive is a document provider, so there is no
- * plugin and no permission here. What the text holds is the tree intake's to
- * judge, exactly as a paste.
+ * plugin and no permission here. What the text holds is for the tree intake
+ * to judge, exactly as a paste, or for the set intake.
  *
  * The read waits on a document provider, which answers when it likes, so it
  * runs inside `callForeign` (F1). The runtime holds the one read in flight:
@@ -24,7 +25,7 @@ import {
   reportFailure,
 } from "@some-ui/intent-kit"
 
-/** Far above any scene tree, far below a photo or a video. */
+/** Far above any scene tree or word set, far below a photo or a video. */
 export const SCENE_FILE_MAX_BYTES = 1_000_000
 
 /** A drive file is fetched on read; a phone on a slow line takes a while. */
@@ -76,7 +77,7 @@ export class SceneFileRuntime {
     if (file.size > SCENE_FILE_MAX_BYTES) {
       this.set({
         kind: "failed",
-        summary: "That file is too large to be a scene.",
+        summary: "That file is too large to open.",
       })
       return
     }

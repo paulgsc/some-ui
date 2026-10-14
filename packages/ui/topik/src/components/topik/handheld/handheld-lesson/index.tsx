@@ -7,6 +7,10 @@
  * scenes' sound in the header: one the learner pasted or kept, or one of the
  * operator's served trees (`adapter/tree-feed`), which only this renderer
  * lists. It plays scene trees only: conversation files stay the desktop's.
+ *
+ * Read-aloud reads the bundled deck and every word set the learner added
+ * from storage (`read-aloud/added-sets`). A set not opened yet waits under
+ * "Ready for you", above everything else, and opens on its own words.
  */
 
 import type { JSX } from "react"
@@ -16,6 +20,7 @@ import { Button, KeepOnShelf, KeptShelf } from "@some-ui/shared"
 import { CastSheet } from "@topik/components/topik/handheld/cast-sheet"
 import { DramaLesson } from "@topik/components/topik/handheld/drama-lesson"
 import { GenerateLesson } from "@topik/components/topik/handheld/generate-lesson"
+import type { StorageNote } from "@topik/components/topik/handheld/material-list"
 import { MaterialList } from "@topik/components/topik/handheld/material-list"
 import { SharePrompt } from "@topik/components/topik/handheld/share-prompt"
 import { ReadAloudScreen } from "@topik/components/topik/read-aloud/read-aloud-screen"
@@ -32,6 +37,7 @@ import {
   treeOfDocument,
 } from "@topik/lib/topik/adapter/pasted-lesson"
 import type { ReadAloudStore } from "@topik/lib/topik/adapter/read-aloud-store"
+import { createReadAloudStore } from "@topik/lib/topik/adapter/read-aloud-store"
 import { useTopikManifest } from "@topik/lib/topik/adapter/server/topik-metadata-queries"
 import {
   useServedTree,
@@ -60,6 +66,15 @@ import type { DramaPointStore } from "@topik/lib/topik/core/drama-runtime"
 import type { Seed } from "@topik/lib/topik/core/feed-card"
 import { TOPIK_LEVELS } from "@topik/lib/topik/generation"
 import { intakeTree } from "@topik/lib/topik/generation/tree-intake"
+import {
+  addSet,
+  intakeSet,
+  openSet,
+  readySets,
+  resolveSets,
+  setLevel,
+} from "@topik/lib/topik/read-aloud/added-sets"
+import { BUNDLED_DECK } from "@topik/lib/topik/read-aloud/bundled"
 import { ChevronLeft, Loader2, Music, Users } from "lucide-react"
 
 type HandheldLessonProps = {
@@ -79,6 +94,8 @@ type HandheldLessonProps = {
   tones?: ToneContextFactory | null
   /** Injected in tests; defaults to `localStorage`. */
   servedPoints?: DramaPointStore
+  /** Injected in tests: the clock that dates an added set. */
+  now?: () => Date
 }
 
 export const HandheldLesson = ({
@@ -90,6 +107,7 @@ export const HandheldLesson = ({
   soundControl,
   tones,
   servedPoints,
+  now = (): Date => new Date(),
 }: HandheldLessonProps): JSX.Element => {
   const [held] = useState(() => pastedStore ?? createPastedLessonStore())
   const drama = usePastedTree(held)
@@ -109,6 +127,7 @@ export const HandheldLesson = ({
     share,
     sceneVoice,
     sceneFileHint,
+    wordSetHint,
   } = useSessionConfig()
   const draft = useSceneVoice(sceneVoice)
   const feed = useTreeFeed(treeFeed)
@@ -155,12 +174,40 @@ export const HandheldLesson = ({
     }
   }
   const leaveServed = (): void => setServedKey(null)
+  // The word sets added from storage, read once and written through.
+  const [readAloud] = useState(() => readAloudStore ?? createReadAloudStore())
+  const [added, setAdded] = useState(() => readAloud.sets())
+  const resolved = useMemo(() => resolveSets(BUNDLED_DECK, added), [added])
+  const [setNote, setSetNote] = useState<StorageNote | null>(null)
+  const keepSets = (next: typeof added): void => {
+    readAloud.saveSets(next)
+    setAdded(next)
+  }
+  const openSetText = (text: string): void => {
+    const intake = intakeSet(text, BUNDLED_DECK, added)
+    if (!intake.ok) {
+      setSetNote({ tone: "problem", text: intake.error })
+      return
+    }
+    keepSets(addSet(added, intake.deck, now().toISOString()))
+    setSetNote({
+      tone: "done",
+      text:
+        intake.dropped > 0
+          ? `Added "${intake.deck.title}". ${intake.dropped} line${intake.dropped === 1 ? "" : "s"} couldn't be read.`
+          : `Added "${intake.deck.title}".`,
+    })
+  }
   // The read-aloud drill takes the whole screen, header included; leaving it
-  // returns to the material list it was opened from.
-  const [reading, setReading] = useState(false)
+  // returns to the material list it was opened from. `set` is the added set
+  // it reads on its own, or null for every word the phone has.
+  const [reading, setReading] = useState<{ set: string | null } | null>(null)
   const [castOpen, setCastOpen] = useState(false)
 
   if (reading) {
+    const own =
+      reading.set === null ? undefined : resolved.sets.get(reading.set)
+    const deck = own ?? resolved.all
     return (
       <div
         data-slot="topik-handheld"
@@ -168,12 +215,15 @@ export const HandheldLesson = ({
         className="flex size-full min-h-0 flex-col"
       >
         <ReadAloudScreen
-          topikLevel={lessonPrompt.level}
+          key={deck.id}
+          topikLevel={own ? setLevel(own) : lessonPrompt.level}
           speech={speaker}
-          store={readAloudStore}
+          store={readAloud}
+          deck={deck}
+          vocabulary={resolved.all.words.map((word) => word.id)}
           short={short}
           paused={paused}
-          onExit={() => setReading(false)}
+          onExit={() => setReading(null)}
         />
       </div>
     )
@@ -378,8 +428,32 @@ export const HandheldLesson = ({
         // Read-aloud's audio is the rep: with no voice here it is not
         // offered at all (canon Cor. 4.6).
         onReadAloud={
-          speaker?.available === true ? (): void => setReading(true) : undefined
+          speaker?.available === true
+            ? (): void => setReading({ set: null })
+            : undefined
         }
+        addedSets={added.length}
+        readySets={readySets(added).flatMap(({ deck }) => {
+          const own = resolved.sets.get(deck.id)
+          return own
+            ? [
+                {
+                  id: deck.id,
+                  title: deck.title,
+                  words: own.words.length,
+                  level: setLevel(own),
+                  ...(deck.from === undefined ? {} : { from: deck.from }),
+                },
+              ]
+            : []
+        })}
+        onOpenSet={(id) => {
+          keepSets(openSet(added, id, now().toISOString()))
+          setReading({ set: id })
+        }}
+        onSetText={openSetText}
+        setFileHint={wordSetHint}
+        setNote={setNote}
       />
     )
   })()

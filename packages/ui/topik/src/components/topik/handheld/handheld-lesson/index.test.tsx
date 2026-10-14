@@ -55,6 +55,7 @@ type RenderOptions = {
   servedPoints?: ReturnType<typeof createServedPointStore>
   share?: FileShare
   sceneFileHint?: string
+  wordSetHint?: string
 }
 
 function renderLesson({
@@ -70,6 +71,7 @@ function renderLesson({
   servedPoints = createServedPointStore(memoryStorage()),
   share,
   sceneFileHint,
+  wordSetHint,
 }: RenderOptions = {}): void {
   const tree = (): JSX.Element => (
     <QueryClientProvider client={client}>
@@ -81,6 +83,7 @@ function renderLesson({
           ...(treeFeed ? { treeFeed } : {}),
           ...(share ? { share } : {}),
           ...(sceneFileHint ? { sceneFileHint } : {}),
+          ...(wordSetHint ? { wordSetHint } : {}),
         }}
       >
         <HandheldLesson
@@ -90,6 +93,7 @@ function renderLesson({
           soundControl={soundControl}
           tones={tones}
           servedPoints={servedPoints}
+          now={(): Date => new Date("2026-10-14T06:00:00.000Z")}
         />
       </SessionConfigProvider>
     </QueryClientProvider>
@@ -178,6 +182,75 @@ describe("HandheldLesson", () => {
     expect(screen.getByLabelText("Your reading aloud")).toBeTruthy()
     click("Back")
     expect(await writeYourOwnButton()).toBeTruthy()
+  })
+
+  it("adds a word set from storage: it waits at the top, says what it answers, and opens on its own words", async () => {
+    const store = createReadAloudStore(memoryStorage())
+    renderLesson({
+      speaker: voice(() => Promise.resolve({ kind: "heard" })),
+      readAloudStore: store,
+      wordSetHint: "In Drive, look in Read aloud › sets",
+    })
+    const picker = await screen.findByLabelText(/Open new words from storage/)
+    expect(picker).toHaveAccessibleDescription(
+      /In Drive, look in Read aloud › sets/
+    )
+    // jsdom's File has no `text()`; the phone's does.
+    const pick = (text: string): void => {
+      fireEvent.change(picker, {
+        target: {
+          files: [
+            { size: 1, text: (): Promise<string> => Promise.resolve(text) },
+          ],
+        },
+      })
+    }
+
+    pick("not a word set")
+    expect(await screen.findByText("That file isn't a word set.")).toBeTruthy()
+
+    pick(
+      JSON.stringify({
+        schemaVersion: 1,
+        id: "plans-2",
+        title: "Plans",
+        from: 'your note on Oct 13: "move to level two"',
+        words: [
+          { id: "yaksok", lemma: "약속", gloss: "plans" },
+          { id: "chingu", lemma: "친구", gloss: "friend" },
+        ],
+        lines: [
+          {
+            id: "plans",
+            level: 2,
+            korean: "친구 약속",
+            english: "Plans with a friend",
+            words: [
+              { wordId: "chingu", surface: "친구", stemEnd: 2 },
+              { wordId: "yaksok", surface: "약속", stemEnd: 2 },
+            ],
+          },
+        ],
+      })
+    )
+    expect(await screen.findByText('Added "Plans".')).toBeTruthy()
+    const ready = screen.getByRole("button", { name: /^2 words New/ })
+    expect(ready.textContent).toContain("TOPIK 2 · Plans")
+    expect(ready.textContent).toContain(
+      'From your note on Oct 13: "move to level two"'
+    )
+    expect(store.sets().map((set) => set.deck.id)).toEqual(["plans-2"])
+
+    fireEvent.click(ready)
+    expect(
+      document.querySelector('[data-slot="read-aloud-level"]')?.textContent
+    ).toBe("TOPIK 2")
+    expect(store.sets()[0]?.openedAt).toBe("2026-10-14T06:00:00.000Z")
+
+    click("Back")
+    const card = await screen.findByRole("button", { name: /Read aloud/ })
+    expect(card.textContent).toContain("1 word set added")
+    expect(screen.queryByRole("button", { name: /^2 words New/ })).toBeNull()
   })
 
   it("holds the level of the last drama until the learner chooses another", async () => {

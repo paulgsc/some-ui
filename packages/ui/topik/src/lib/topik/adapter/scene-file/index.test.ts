@@ -59,7 +59,7 @@ describe("SceneFileRuntime", () => {
     expect(read).not.toHaveBeenCalled()
   })
 
-  it("says why a read failed, and refuses a file too large to be a scene", async () => {
+  it("says why a read failed, and refuses a file too large to open", async () => {
     vi.spyOn(globalThis.console, "error").mockImplementation(() => undefined)
     const runtime = new SceneFileRuntime()
     const file = slow("x")

@@ -4,10 +4,13 @@
  * on the device (adaptive-learning canon Cor. 4.6 (iii), Def. 6.6,
  * Rem. 4.10, Rem. 7.5).
  *
- * The deck is the bundled one: the starter lines and the level-one lines.
- * The drill's level follows the one the learner holds on the material list,
- * capped at the drill's highest (TOPIK 3), since that is where its
- * vocabulary stops.
+ * The deck is the bundled one with every added set (`added-sets`), or one
+ * added set on its own. The drill's level is the one the host passes:
+ * the level held on the material list, or the set's own, capped at the
+ * drill's highest (TOPIK 3), since that is where its vocabulary stops.
+ *
+ * Paces are kept for `vocabulary`, every word the phone names, not only the
+ * deck drawn from: one set read on its own leaves the others' paces alone.
  */
 
 import type { JSX } from "react"
@@ -27,6 +30,8 @@ type ReadAloudScreenProps = {
   speech: Speaker | null
   store?: ReadAloudStore
   deck?: ReadAloudDeck
+  /** Every word the phone names; defaults to `deck`'s. */
+  vocabulary?: ReadonlyArray<string>
   short?: boolean
   /** The host's session is paused (`useReadAloud`'s `paused`). */
   paused?: boolean
@@ -40,6 +45,7 @@ export const ReadAloudScreen = ({
   speech,
   store: given,
   deck = BUNDLED_DECK,
+  vocabulary,
   short = false,
   paused,
   onExit,
@@ -50,11 +56,11 @@ export const ReadAloudScreen = ({
   // tap, and the unfinished set is only a starting point.
   const [loaded] = useState(() => {
     const store = given ?? createReadAloudStore()
-    store.prunePaces(deck.words.map((word) => word.id))
+    store.prunePaces(vocabulary ?? deck.words.map((word) => word.id))
     return {
       store,
       paces: store.paces(),
-      resume: store.progress(level),
+      resume: store.progress(level, deck.id),
       record: store.record(),
     }
   })
@@ -74,7 +80,7 @@ export const ReadAloudScreen = ({
       paused={paused}
       onRecord={(event, day) => setRecord(store.count(event, day))}
       onPace={(wordId, pace) => store.savePace(wordId, pace)}
-      onProgress={(progress) => store.saveProgress(level, progress)}
+      onProgress={(progress) => store.saveProgress(level, deck.id, progress)}
       onExit={onExit}
     />
   )

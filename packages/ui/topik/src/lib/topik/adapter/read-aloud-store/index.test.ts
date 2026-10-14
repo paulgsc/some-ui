@@ -4,6 +4,7 @@ import {
   READ_ALOUD_STORAGE_KEYS,
 } from "@topik/lib/topik/adapter/read-aloud-store"
 import type { StorageLike } from "@topik/lib/topik/adapter/storage"
+import { storedSet } from "@topik/lib/topik/read-aloud/added-sets"
 import { emptyRecord } from "@topik/lib/topik/read-aloud/records"
 import type { SetProgress } from "@topik/lib/topik/read-aloud/set-machine"
 import { describe, expect, it } from "vitest"
@@ -75,13 +76,57 @@ describe("the read-aloud store", () => {
     expect(createReadAloudStore(storage).record()).toEqual(after)
   })
 
-  it("resumes an unfinished set at its own level only", () => {
-    const store = createReadAloudStore(memoryStorage())
-    store.saveProgress(2, PROGRESS)
-    expect(store.progress(2)).toEqual(PROGRESS)
-    expect(store.progress(1)).toBeNull()
-    store.saveProgress(2, null)
-    expect(store.progress(2)).toBeNull()
+  it("resumes an unfinished set at its own level, from its own deck, only", () => {
+    const storage = memoryStorage()
+    const store = createReadAloudStore(storage)
+    store.saveProgress(2, "everyday-2", PROGRESS)
+    expect(store.progress(2, "everyday-2")).toEqual(PROGRESS)
+    expect(store.progress(1, "everyday-2")).toBeNull()
+    expect(store.progress(2, "bundled")).toBeNull()
+    store.saveProgress(2, "everyday-2", null)
+    expect(store.progress(2, "everyday-2")).toBeNull()
+
+    // What a build before added sets wrote was drawn from the bundled deck.
+    storage.map.set(
+      READ_ALOUD_STORAGE_KEYS.progress,
+      JSON.stringify({ version: 1, level: 2, progress: PROGRESS })
+    )
+    expect(store.progress(2, "bundled")).toEqual(PROGRESS)
+  })
+
+  it("keeps the added word sets, and drops one that no longer parses", () => {
+    const storage = memoryStorage()
+    const store = createReadAloudStore(storage)
+    const set = {
+      deck: {
+        id: "everyday-2",
+        title: "Everyday",
+        from: 'your note on Oct 13: "level two"',
+        words: [{ id: "juda", lemma: "주다", gloss: "give" }],
+        lines: [
+          {
+            id: "give",
+            level: 2 as const,
+            korean: "주세요.",
+            english: "Please give it to me.",
+            words: [{ wordId: "juda", surface: "주세요", stemEnd: 1 }],
+          },
+        ],
+      },
+      addedAt: "2026-10-14T06:00:00.000Z",
+      openedAt: null,
+    }
+    store.saveSets([set])
+    expect(createReadAloudStore(storage).sets()).toEqual([set])
+
+    storage.map.set(
+      READ_ALOUD_STORAGE_KEYS.sets,
+      JSON.stringify([
+        { deck: { id: "broken" }, addedAt: "x", openedAt: null },
+        storedSet(set),
+      ])
+    )
+    expect(store.sets()).toEqual([set])
   })
 
   it("discards what it cannot parse", () => {
@@ -99,16 +144,18 @@ describe("the read-aloud store", () => {
     const store = createReadAloudStore(storage)
     expect(store.paces()).toEqual({})
     expect(store.record()).toEqual(emptyRecord())
-    expect(store.progress(2)).toBeNull()
+    expect(store.progress(2, "bundled")).toBeNull()
   })
 
   it("runs without storage, and survives storage that throws", () => {
     for (const storage of [null, refusing]) {
       const store = createReadAloudStore(storage)
       store.savePace("juda", { factor: 1, seen: 1 })
-      store.saveProgress(1, PROGRESS)
+      store.saveProgress(1, "bundled", PROGRESS)
+      store.saveSets([])
       expect(store.paces()).toEqual({})
-      expect(store.progress(1)).toBeNull()
+      expect(store.progress(1, "bundled")).toBeNull()
+      expect(store.sets()).toEqual([])
       expect(store.count({ type: "set" }, "2026-09-28").totals.sets).toBe(1)
     }
   })

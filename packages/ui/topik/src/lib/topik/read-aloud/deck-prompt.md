@@ -24,6 +24,7 @@ every word it uses, in reading order, as that word is written in the line.
   schemaVersion: 1
   id: string // kebab-case ASCII, e.g. "everyday-2"
   title: string // short, human-readable
+  from?: string // what this deck answers, in the learner's terms (below)
   words: Array<{
     id: string // kebab-case ASCII, stable, e.g. "deurida"
     lemma: string // the dictionary form, in Hangul: 드리다
@@ -107,6 +108,17 @@ around a new word easier than the word itself.
 **`sense` is for inflected meaning.** The word's `gloss` is its dictionary
 meaning (주다: give). When a form means something the gloss does not say
 (주세요: please give me), give `sense`. Keep both short.
+
+**`from` says what the deck answers.** When you write a deck for one
+learner, in answer to something they said or did, name it the way they would
+recognise it, in under 200 characters: `your note on Oct 13: "move to level
+two"`, or `your session on Oct 13`. The phone shows it on the deck's card as
+"From …". Leave it out of a deck written for anyone.
+
+**Ids name the word, across decks.** A deck added on the phone joins the
+words it already has: a word whose `id` the phone knows keeps its pace, so
+reuse an id only for the same dictionary form. A deck that names a known id
+with a different `lemma` loses that word and every line written with it.
 
 ## Before you answer
 
