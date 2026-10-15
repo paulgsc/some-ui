@@ -283,10 +283,10 @@ describe("the home link", () => {
       record: JSON.stringify({ base: HOME.base, token: "t" }),
     })
     await home.link.load()
-    const outcome = await home.link.send(async (put) => {
-      await put("/shelf/topik/a", "{}")
+    const outcome = await home.link.send(async (send) => {
+      await send("PUT", "/shelf/topik/a", "{}")
       home.hide()
-      await put("/shelf/topik/b", "{}")
+      await send("PUT", "/shelf/topik/b", "{}")
       return "finished"
     })
     expect(outcome).toEqual({ kind: "stopped" })
@@ -304,8 +304,8 @@ describe("the home link", () => {
   it("sends nothing while unpaired", async () => {
     const home = setup()
     await home.link.load()
-    const outcome = await home.link.send(async (put) => {
-      await put("/shelf/topik/a", "{}")
+    const outcome = await home.link.send(async (send) => {
+      await send("PUT", "/shelf/topik/a", "{}")
       return "finished"
     })
     expect(outcome).toBeNull()

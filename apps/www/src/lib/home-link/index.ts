@@ -1,6 +1,7 @@
 /**
- * The phone's link to its home server: pairing, unpairing and the sync, one
- * at a time, each started by a tap (LA8, docs/learner-data-authority.md).
+ * The phone's link to its home server: pairing, unpairing, the sync, the
+ * shelf send and the sessions copy, one at a time, each started by a tap
+ * (LA8, docs/learner-data-authority.md).
  * Phone-only (`build.paths.ts`).
  */
 import { useSyncExternalStore } from "react"

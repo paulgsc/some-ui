@@ -24,6 +24,12 @@ import {
   useHomeLink,
 } from "@/lib/home-link"
 import { remember, remembered } from "@/lib/home-link/remembered"
+import {
+  copySessionsHome,
+  lastCopy,
+  sessionsOnPhone,
+} from "@/lib/home-link/sessions"
+import type { ToSend } from "@/lib/home-link/shelf"
 import { keptOnPhone, lastSend, sendShelfTo } from "@/lib/home-link/shelf"
 import type { SyncResult } from "@/lib/home-link/sync"
 import { lastSync, syncLessonsFrom } from "@/lib/home-link/sync"
@@ -177,31 +183,49 @@ const StopButton = ({ stopping }: { stopping: boolean }): JSX.Element => (
   </Button>
 )
 
-/** Send shelf to home: count, a confirm naming the count and the host, then Send (LA8). */
-const ShelfSend = ({
-  base,
+/** What one confirmed send says and does; see `ConfirmedSend`. */
+type SendSpec = {
+  /** The first button: it only counts, on this phone. */
+  readonly open: string
+  readonly count: () => Promise<ToSend>
+  /** The confirm, naming what `count` found and the host. */
+  readonly ask: (what: string) => string
+  readonly go: (total: number) => string
+  readonly none: string
+  readonly busy: string
+  readonly run: () => Promise<SyncResult>
+  readonly lastLabel: string
+  readonly last: () => string
+}
+
+/**
+ * A send to home in three taps' worth of steps (LA8): count what is here,
+ * a confirm naming that count and the host, then the one button that sends,
+ * with Stop while it runs.
+ */
+const ConfirmedSend = ({
+  spec,
   state,
 }: {
-  base: string
+  spec: SendSpec
   state: HomeLinkState
 }): JSX.Element => {
-  const host = hostOf(base)
   const { activity } = state
-  const count = useAsyncIntent((_: undefined) => keptOnPhone(), {
+  const count = useAsyncIntent((_: undefined) => spec.count(), {
     presentation: "interactive",
   })
-  const send = useAsyncIntent((_: undefined) => sendShelfTo(base), {
+  const run = useAsyncIntent((_: undefined) => spec.run(), {
     presentation: "interactive",
   })
-  useIntentEffect(send, say)
+  useIntentEffect(run, say)
   const asking = count.state.status === "succeeded" ? count.state.value : null
-  const sent = lastSend()
+  const last = spec.last()
 
   return (
     <div className="space-y-2">
-      {activity.kind === "sending" ? (
+      {run.state.status === "working" && activity.kind === "sending" ? (
         <div className="flex flex-wrap items-center gap-2" role="status">
-          <p className="text-sm">Sending your shelf to {host}...</p>
+          <p className="text-sm">{spec.busy}</p>
           <StopButton stopping={activity.stopping} />
         </div>
       ) : asking === null ? (
@@ -211,12 +235,12 @@ const ShelfSend = ({
           disabled={activity.kind !== "idle"}
           variant="outline"
           size="sm"
-          idleLabel={`Send shelf to ${host}...`}
+          idleLabel={spec.open}
           workingLabel="Counting..."
         />
       ) : asking.total === 0 ? (
         <div className="flex flex-wrap items-center gap-2" role="status">
-          <p className="text-sm">Nothing is kept on this phone to send.</p>
+          <p className="text-sm">{spec.none}</p>
           <Button
             type="button"
             variant="ghost"
@@ -228,21 +252,17 @@ const ShelfSend = ({
         </div>
       ) : (
         <div className="space-y-2">
-          <p className="text-sm break-words">
-            Send {asking.total} kept item{asking.total === 1 ? "" : "s"} (
-            {asking.parts}) to {host}? One with the same name there is replaced;
-            nothing there is deleted.
-          </p>
+          <p className="text-sm break-words">{spec.ask(asking.what)}</p>
           <div className="flex flex-wrap gap-2">
             <IntentButton
-              state={send.state}
+              state={run.state}
               onPress={() => {
                 count.reset()
-                send.start(undefined)
+                run.start(undefined)
               }}
               disabled={activity.kind !== "idle"}
               size="sm"
-              idleLabel={`Send ${asking.total}`}
+              idleLabel={spec.go(asking.total)}
               workingLabel="Sending..."
             />
             <Button
@@ -256,13 +276,44 @@ const ShelfSend = ({
           </div>
         </div>
       )}
-      {sent === "" ? null : (
+      {last === "" ? null : (
         <p className="text-muted-foreground text-xs break-all">
-          Last shelf send: {sent}
+          {spec.lastLabel}: {last}
         </p>
       )}
     </div>
   )
+}
+
+/** The paired block's sends: the shelf, then the sessions. */
+function sendsTo(base: string): ReadonlyArray<SendSpec> {
+  const host = hostOf(base)
+  return [
+    {
+      open: `Send shelf to ${host}...`,
+      count: keptOnPhone,
+      ask: (what) =>
+        `Send ${what} to ${host}? One with the same name there is replaced; nothing there is deleted.`,
+      go: (total) => `Send ${total}`,
+      none: "Nothing is kept on this phone to send.",
+      busy: `Sending your shelf to ${host}...`,
+      run: () => sendShelfTo(base),
+      lastLabel: "Last shelf send",
+      last: lastSend,
+    },
+    {
+      open: `Copy sessions to ${host}...`,
+      count: sessionsOnPhone,
+      ask: (what) =>
+        `Copy ${what} to ${host}? Each goes once, as its plan, status and times; reflections stay here. A copy can't be removed from this phone.`,
+      go: (total) => `Copy ${total}`,
+      none: "No sessions on this phone to copy.",
+      busy: `Copying sessions to ${host}...`,
+      run: () => copySessionsHome(base),
+      lastLabel: "Last sessions copy",
+      last: lastCopy,
+    },
+  ]
 }
 
 export const DeviceSection = (): JSX.Element => {
@@ -363,7 +414,11 @@ export const DeviceSection = (): JSX.Element => {
               Nothing is sent unless you tap below.
             </p>
             {confirmingUnpair ? null : (
-              <ShelfSend base={paired.base} state={state} />
+              <>
+                {sendsTo(paired.base).map((spec) => (
+                  <ConfirmedSend key={spec.open} spec={spec} state={state} />
+                ))}
+              </>
             )}
           </>
         ) : (

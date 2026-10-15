@@ -227,9 +227,11 @@ function networkGlobalUses(path: string, text: string): Array<string> {
 /**
  * LA2: where the transfer of device sessions to the account may be started.
  * Each name is called from exactly one place: the button's action, through its
- * hook, through the one function that copies.
+ * hook, through the one function that copies. The phone's copy to its paired
+ * home has its own entry, called only by the Home server block's (LA8).
  */
 const TRANSFER_CALLERS: Record<string, string> = {
+  copySessionsTo: "lib/home-link/sessions.ts",
   useCopyDeviceSessions: "components/settings/data-home-section.tsx",
   copyDeviceSessionsAndRefresh: "lib/tenant/hooks.ts",
   copyDeviceSessions: "lib/tenant/sessions-transfer/index.ts",

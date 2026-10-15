@@ -18,7 +18,7 @@ import { SyncStoppedError } from "@/lib/device-backend/home-sync"
 import { hostOf } from "./address"
 import { homeLink } from "./index"
 import { remember, remembered } from "./remembered"
-import type { HomePut } from "./runtime"
+import type { HomeSend } from "./runtime"
 import type { SyncResult } from "./sync"
 
 const LAST_SEND_KEY = "some-ui.device.last-shelf-send.v1"
@@ -27,18 +27,22 @@ const NAMES: Record<string, string> = { topik: "TOPIK", leetype: "Leetype" }
 
 const nameOf = (activity: string): string => NAMES[activity] ?? activity
 
-/** What a send would carry, for its confirm. */
-export type ShelfCount = { total: number; parts: string }
+/** What a send or copy would carry, for its confirm: "2 kept items (…)". */
+export type ToSend = { total: number; what: string }
 
 /** Reads the phone's own shelf; sends nothing. */
-export async function keptOnPhone(): Promise<ShelfCount> {
+export async function keptOnPhone(): Promise<ToSend> {
   const { context } = await deviceBackend()
   const items = await everyKept(context.db)
   const by = new Map<string, number>()
   for (const { activity } of items)
     by.set(activity, (by.get(activity) ?? 0) + 1)
   const parts = [...by].map(([activity, n]) => `${n} ${nameOf(activity)}`)
-  return { total: items.length, parts: parts.join(", ") }
+  const total = items.length
+  return {
+    total,
+    what: `${total} kept item${total === 1 ? "" : "s"} (${parts.join(", ")})`,
+  }
 }
 
 /** How a send went, item by item; filled as it goes, so a stop keeps it. */
@@ -71,17 +75,18 @@ export function emptyReport(): SendReport {
   }
 }
 
-/** Sends `items` through `put`, once each, into `report`. */
+/** PUTs `items` through `send`, once each, into `report`. */
 export async function sendKept(
   items: ReadonlyArray<Kept>,
-  put: HomePut,
+  send: HomeSend,
   report: SendReport
 ): Promise<void> {
   for (const item of items) {
     let status: number
     let body: string
     try {
-      ;({ status, body } = await put(
+      ;({ status, body } = await send(
+        "PUT",
         `/shelf/${item.activity}/${encodeURIComponent(item.key)}`,
         item.body
       ))
@@ -164,7 +169,9 @@ export async function sendShelfTo(base: string): Promise<SyncResult> {
     const { context } = await deviceBackend()
     const items = await everyKept(context.db)
     const total = items.length
-    const outcome = await homeLink().send((put) => sendKept(items, put, report))
+    const outcome = await homeLink().send((send) =>
+      sendKept(items, send, report)
+    )
     if (outcome === null) return { ok: false, line: "" }
     const line =
       outcome.kind === "stopped"

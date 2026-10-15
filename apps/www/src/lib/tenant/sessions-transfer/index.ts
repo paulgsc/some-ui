@@ -4,7 +4,8 @@
  * Nothing moves unless a person pressed a button that named what would be
  * sent and where (`components/settings`): invariant LA2
  * (`docs/learner-data-authority.md`) says only `copyDeviceSessions` starts a
- * transfer, and only that button's action calls it. A copy cannot be taken
+ * transfer, and only that button's action calls it; on the Android app,
+ * `copySessionsTo`, behind the Home server block's confirm (LA8). A copy cannot be taken
  * back (the server mints the ids and nothing here deletes remotely).
  *
  * **Per account.** The browser never learns an account's id, so the receipt
@@ -144,16 +145,21 @@ function sameContent(a: SessionRecord, b: SessionRecord): boolean {
 }
 
 /**
- * What the account does and does not already hold of the device's sessions.
- * Asks the account about each session this browser has copied before, and,
- * only for one whose create went unanswered, for its list of sessions.
+ * What the account does and does not already hold of the device's sessions
+ * (`local`: this browser's, unless the phone passes its own). Asks the
+ * account about each session this device has copied before, and, only for
+ * one whose create went unanswered, for its list of sessions.
  */
 export async function planTransfer(
   remote: SessionsStore,
   storage: StorageAdapter,
-  isCurrent: () => boolean = () => true
+  isCurrent: () => boolean = () => true,
+  local: ReadonlyArray<SessionRecord> = readJSON<Array<SessionRecord>>(
+    storage,
+    STORAGE_KEY,
+    []
+  )
 ): Promise<TransferPlan> {
-  const local = readJSON<Array<SessionRecord>>(storage, STORAGE_KEY, [])
   const receipt = readReceipt(storage)
   const create: Array<SessionRecord> = []
   const finish: Array<{ session: SessionRecord; remoteId: string }> = []
@@ -378,6 +384,37 @@ export async function copyDeviceSessions(
       return { kind: "stale", copied: 0 }
     throw error
   }
+}
+
+/** A copy's end, and how many the account already held. */
+export type CopyResult = {
+  readonly outcome: Exclude<
+    TransferOutcome,
+    { kind: "not-on-account" } | { kind: "busy" } | { kind: "stale" }
+  >
+  readonly alreadyThere: number
+}
+
+/**
+ * Copy the Android app's own sessions (`local`) into the account `remote`
+ * answers for: its paired home. Call it from one place, the Home server
+ * block's confirmed copy (`lib/home-link/sessions`, LA2 and LA8). The plan
+ * and receipt are the browser's, so a second press sends nothing new. No
+ * lock and no authority: the phone's link runs one thing at a time, and the
+ * pairing is the account.
+ */
+export async function copySessionsTo(
+  local: ReadonlyArray<SessionRecord>,
+  remote: SessionsStore,
+  storage: StorageAdapter = browserLocalStorage
+): Promise<CopyResult> {
+  const plan = await planTransfer(remote, storage, () => true, local)
+  const outcome = await runTransfer(plan, remote, storage)
+  // Neither arm is reachable without an authority or a lock.
+  if (outcome.kind === "stale" || outcome.kind === "busy") {
+    throw new Error(`a phone copy cannot be ${outcome.kind}`)
+  }
+  return { outcome, alreadyThere: plan.alreadyThere }
 }
 
 /** What the person is told, said by the screen in its own words. */

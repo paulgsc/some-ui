@@ -34,7 +34,7 @@ const TIMEOUT_MS = 10_000
 export type HomeAnswer = { status: number; body: string }
 
 export type HomeCall = {
-  method: "GET" | "POST" | "PUT" | "DELETE"
+  method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE"
   url: string
   /** The pairing's session token, sent as `Authorization: Bearer`. */
   token?: string
