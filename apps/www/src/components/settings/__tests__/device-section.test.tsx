@@ -53,6 +53,24 @@ vi.mock("@/lib/device-backend/handlers/shelf", () => ({
       { activity: "leetype", key: "b", body: "{}" },
     ]),
 }))
+vi.mock("@/lib/tenant/queries", () => ({
+  sessionsRepository: {
+    list: (): Promise<Array<object>> =>
+      Promise.resolve([
+        {
+          id: "s1",
+          name: "Korean review",
+          status: "scheduled",
+          activities: [],
+          scenes: [],
+          layoutMode: "basic",
+          totalDurationMs: 600_000,
+          createdAt: "2026-10-14T09:00:00.000Z",
+          updatedAt: "2026-10-14T09:00:00.000Z",
+        },
+      ]),
+  },
+}))
 vi.mock("@/components/settings/device-storage", () => ({
   DeviceStorageSummary: (): null => null,
 }))
@@ -169,5 +187,27 @@ describe("DeviceSection's Home server block", () => {
     await press(/send shelf to home.example/i)
     await press(/^send 2$/i)
     expect(home.sent).toHaveLength(2)
+  })
+
+  it("copies sessions only after a confirm that names the count and the host", async () => {
+    home.record = JSON.stringify({
+      base: "https://home.example/api/v1",
+      token: "t",
+    })
+    await open()
+    await press(/copy sessions to home.example/i)
+    expect(home.sent).toEqual([])
+    expect(screen.getByText(/copy 1 session to home.example\?/i)).toBeTruthy()
+
+    await press(/^cancel$/i)
+    expect(home.sent).toEqual([])
+
+    await press(/copy sessions to home.example/i)
+    await press(/^copy 1$/i)
+    expect(home.sent[0]).toMatchObject({
+      method: "POST",
+      url: "https://home.example/api/v1/sessions",
+      token: "t",
+    })
   })
 })

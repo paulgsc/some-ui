@@ -439,7 +439,8 @@ In the `CLAUDE.md` "Gray-area invariants" shape.
 >   `packages/voice-capture/src/lib/recorder.ts`, the soundbites page
 >   `apps/www/src/routes/_dashboard/_apk/soundbites.tsx` and
 >   `apps/www/src/lib/reflection-voice/`; the
->   sync from home, the home-server pairing and the shelf send (`INTERNET`,
+>   sync from home, the home-server pairing, the shelf send and the sessions
+>   copy (`INTERNET`,
 >   `usesCleartextTraffic`), `apps/www/src/lib/device-backend/home-sync/`,
 >   `apps/www/src/lib/home-link/` and their Settings block
 >   `apps/www/src/components/settings/device-section.tsx`; study nudges
@@ -530,6 +531,15 @@ nothing there is deleted, and nothing comes back to the phone. A full shelf
 there, or a refused item, is counted and said; home no longer knowing the
 phone, or no answer, ends the send; nothing is retried. **Stop**, or the app
 going to the background, ends it before the next item.
+
+**Copy sessions to host...** works the same way: it counts the sessions on
+this phone, the confirm names that count and the host, and only its **Copy**
+sends. Each session goes once, as its record (plan, status and times); its
+reflections, stops and soundbites stay on the phone (`docs/learner-data-authority.md`,
+LA7). A second copy sends nothing new: the phone keeps a receipt of what home
+made, and asks home only whether it still holds those. Nothing there is
+deleted, a copy cannot be taken back from the phone, and **Stop** ends it
+before the next session, to carry on with the next copy.
 
 The sync goes through Capacitor's native HTTP (`device-backend/native-http`).
 The app's page is `https://localhost`, so a browser `fetch` to

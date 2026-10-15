@@ -283,10 +283,10 @@ describe("the home link", () => {
       record: JSON.stringify({ base: HOME.base, token: "t" }),
     })
     await home.link.load()
-    const outcome = await home.link.send(async (put) => {
-      await put("/shelf/topik/a", "{}")
+    const outcome = await home.link.send(async (send) => {
+      await send("PUT", "/shelf/topik/a", "{}")
       home.hide()
-      await put("/shelf/topik/b", "{}")
+      await send("PUT", "/shelf/topik/b", "{}")
       return "finished"
     })
     expect(outcome).toEqual({ kind: "stopped" })
@@ -301,11 +301,57 @@ describe("the home link", () => {
     expect(home.link.getSnapshot().activity.kind).toBe("idle")
   })
 
+  it("keeps what a run reports when it resolves after Stop", async () => {
+    const home = setup({
+      record: JSON.stringify({ base: HOME.base, token: "t" }),
+    })
+    await home.link.load()
+    const outcome = await home.link.send(async (send) => {
+      await send("POST", "/sessions", "{}")
+      home.link.stop()
+      // A copy that caught the stop and kept count of what it did.
+      await send("POST", "/sessions", "{}").catch(() => undefined)
+      return "copied 1"
+    })
+    expect(outcome).toEqual({ kind: "done", value: "copied 1" })
+    expect(home.sent).toHaveLength(1)
+  })
+
+  it("stays busy until a request its run gave up on has settled", async () => {
+    let settle: (answer: HomeAnswer) => void = () => undefined
+    const home = setup({
+      record: JSON.stringify({ base: HOME.base, token: "t" }),
+      answer: () =>
+        new Promise<HomeAnswer>((resolve) => {
+          settle = resolve
+        }),
+    })
+    await home.link.load()
+    let ended = false
+    const sending = home.link
+      .send((send) => {
+        // A caller whose own deadline fired first.
+        void send("POST", "/sessions", "{}")
+        return Promise.resolve("gave up")
+      })
+      .then((outcome) => {
+        ended = true
+        return outcome
+      })
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(ended).toBe(false)
+    expect(home.link.getSnapshot().activity.kind).toBe("sending")
+
+    settle({ status: 201, body: "{}" })
+    await expect(sending).resolves.toEqual({ kind: "done", value: "gave up" })
+    expect(home.link.getSnapshot().activity.kind).toBe("idle")
+  })
+
   it("sends nothing while unpaired", async () => {
     const home = setup()
     await home.link.load()
-    const outcome = await home.link.send(async (put) => {
-      await put("/shelf/topik/a", "{}")
+    const outcome = await home.link.send(async (send) => {
+      await send("PUT", "/shelf/topik/a", "{}")
       return "finished"
     })
     expect(outcome).toBeNull()

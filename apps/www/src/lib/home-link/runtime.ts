@@ -12,14 +12,14 @@
  * - **No retry.** A failed request is said once and left; the next tap is
  *   the next try.
  * - **Stop, and the background, end a sync or a send** after the request
- *   in flight: the `get` or `put` it is handed refuses to send once
- *   stopped.
+ *   in flight: the `get` or `send` it is handed refuses to send once
+ *   stopped. A run is over only once every request it started has settled.
  * - **Unpair forgets the credential on the phone** whether or not home was
  *   told, and says which; a phone that could not forget it stays paired and
  *   says so.
  * - **The credential goes only to the paired base, over https,** never on a
  *   sync read (`native-http` refuses a credentialed `http:` request): a
- *   send's `put` takes a path, and the base is the one stored with the
+ *   send's `send` takes a path, and the base is the one stored with the
  *   token.
  */
 import { isRecord, stringFieldOf } from "@/lib/device-backend/common"
@@ -84,10 +84,14 @@ function thrownFailureOf(error: unknown): PairFailure {
 }
 
 /**
- * A PUT of `body` (sent as these bytes) to `path` under the paired base,
- * with the pairing's key. Refuses before sending once stopped.
+ * A credentialed request to `path` under the paired base, with `body` sent
+ * as these bytes. Refuses before sending once stopped.
  */
-export type HomePut = (path: string, body: string) => Promise<HomeAnswer>
+export type HomeSend = (
+  method: "GET" | "POST" | "PUT" | "PATCH",
+  path: string,
+  body?: string
+) => Promise<HomeAnswer>
 
 type SyncOutcome<T> =
   | { readonly kind: "done"; readonly value: T }
@@ -107,10 +111,12 @@ export type HomeLink = {
    */
   sync: <T>(run: (get: HomeGet) => Promise<T>) => Promise<SyncOutcome<T> | null>
   /**
-   * Runs `run` with a `put` to the paired home; `null` when unpaired or
+   * Runs `run` with a `send` to the paired home; `null` when unpaired or
    * busy.
    */
-  send: <T>(run: (put: HomePut) => Promise<T>) => Promise<SyncOutcome<T> | null>
+  send: <T>(
+    run: (send: HomeSend) => Promise<T>
+  ) => Promise<SyncOutcome<T> | null>
   stop: () => void
 }
 
@@ -138,7 +144,21 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
     (state.activity.kind === "syncing" || state.activity.kind === "sending") &&
     state.activity.stopping
 
-  /** Shared by `sync` and `send`. */
+  // Every request a sync or send started, until it settles: a caller can
+  // give up on one (requestJSON's own deadline) that the native call still
+  // completes, and the next tap must not race it.
+  const inFlight = new Set<Promise<void>>()
+  const track = (request: Promise<HomeAnswer>): Promise<HomeAnswer> => {
+    const settled = request.then(
+      () => undefined,
+      () => undefined
+    )
+    inFlight.add(settled)
+    void settled.then(() => inFlight.delete(settled))
+    return request
+  }
+
+  /** Shared by `sync` and `send`; ends once its requests have settled. */
   const work = async <T>(
     pressed: HomeLinkEvent,
     run: () => Promise<T>
@@ -149,12 +169,16 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
     const unsubscribe = ports.onHidden(() => dispatch({ type: "stopPressed" }))
     try {
       const value = await run()
-      return stopped() ? { kind: "stopped" } : { kind: "done", value }
+      // A run that resolves either finished or kept its own progress (a
+      // copy stopped part way); only one that rejects with the stop ended
+      // with nothing to say.
+      return { kind: "done", value }
     } catch (error) {
       if (error instanceof SyncStoppedError) return { kind: "stopped" }
       throw error
     } finally {
       unsubscribe()
+      await Promise.all(inFlight)
       dispatch({ type: "workEnded" })
     }
   }
@@ -262,28 +286,32 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
     sync<T>(run: (get: HomeGet) => Promise<T>): Promise<SyncOutcome<T> | null> {
       const get: HomeGet = (url) => {
         if (stopped()) return Promise.reject(new SyncStoppedError())
-        return ports.request({ method: "GET", url })
+        return track(ports.request({ method: "GET", url }))
       }
       return work({ type: "syncPressed" }, () => run(get))
     },
 
-    send<T>(run: (put: HomePut) => Promise<T>): Promise<SyncOutcome<T> | null> {
+    send<T>(
+      run: (send: HomeSend) => Promise<T>
+    ): Promise<SyncOutcome<T> | null> {
       return work({ type: "sendPressed" }, async () => {
         const pairing = await readPairing()
         if (pairing === null) throw new Error("this phone's pairing is gone")
-        const put: HomePut = (path, body) => {
+        const send: HomeSend = (method, path, body) => {
           if (stopped()) return Promise.reject(new SyncStoppedError())
           if (!path.startsWith("/")) {
             return Promise.reject(new Error(`not a path: ${path}`))
           }
-          return ports.request({
-            method: "PUT",
-            url: `${pairing.base}${path}`,
-            token: pairing.token,
-            body,
-          })
+          return track(
+            ports.request({
+              method,
+              url: `${pairing.base}${path}`,
+              token: pairing.token,
+              ...(body === undefined ? {} : { body }),
+            })
+          )
         }
-        return run(put)
+        return run(send)
       })
     },
 
