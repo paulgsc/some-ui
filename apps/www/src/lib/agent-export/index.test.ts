@@ -17,6 +17,10 @@ import type { Reflection } from "@/lib/session-reflection"
 import { reflections } from "@/lib/session-reflection"
 import { storeEffect } from "@/lib/session-stop"
 
+/** Shaped like the device backend's IDs, whose prefix every session shares. */
+const SESSION_ID = vi.hoisted(
+  () => "session-7f3a91c2-0000-4000-8000-000000000000"
+)
 const written = vi.hoisted(() => new Map<string, string>())
 const share = vi.hoisted(() => vi.fn())
 const removedAudio = vi.hoisted(() => vi.fn())
@@ -53,7 +57,7 @@ vi.mock("@/lib/tenant/queries", () => ({
     list: (): Promise<Array<unknown>> =>
       Promise.resolve([
         sessionRecord({
-          id: "s1-0000000000",
+          id: SESSION_ID,
           name: "Morning Drama",
           status: "completed",
           completedAt: "2026-10-10T09:00:00.000Z",
@@ -121,7 +125,7 @@ beforeEach(() => {
   audioRead.fails = false
   share.mockReset().mockResolvedValue({})
   reflections.keep(
-    reflection("v1", "s1-0000000000", {
+    reflection("v1", SESSION_ID, {
       kind: "voice",
       durationMs: 18_000,
       mimeType: "audio/webm;codecs=opus",
@@ -131,7 +135,7 @@ beforeEach(() => {
   reflections.keep(
     reflection(
       "t1",
-      "s1-0000000000",
+      SESSION_ID,
       { kind: "text", text: "particles" },
       null,
       "2026-10-10T09:30:00.000Z"
@@ -144,15 +148,15 @@ beforeEach(() => {
 
 describe("shareReflections", () => {
   it("shares one file per session named for it, its voice notes beside it, and keeps them until handed off", async () => {
-    seedStop(stopRecord(0, { sessionId: "s1-0000000000", reason: "break" }))
+    seedStop(stopRecord(0, { sessionId: SESSION_ID, reason: "break" }))
     seedStop(stopRecord(0, { sessionId: "another-session" }))
-    storeEffect({ kind: "count", sessionId: "s1-0000000000", path: "glances" })
-    await expect(shareReflections(["s1-0000000000"], NOW)).resolves.toEqual({
+    storeEffect({ kind: "count", sessionId: SESSION_ID, path: "glances" })
+    await expect(shareReflections([SESSION_ID], NOW)).resolves.toEqual({
       outcome: "shared",
       sent: ["v1", "t1"],
     })
 
-    const base = "reflections/2026-10-10_morning-drama_s1-00000"
+    const base = "reflections/2026-10-10_morning-drama_7f3a91c2"
     expect(share).toHaveBeenCalledWith(
       expect.objectContaining({
         files: [
@@ -162,17 +166,17 @@ describe("shareReflections", () => {
       })
     )
     expect(JSON.parse(written.get(`${base}.json`) ?? "null")).toMatchObject({
-      session: { id: "s1-0000000000", name: "Morning Drama" },
+      session: { id: SESSION_ID, name: "Morning Drama" },
       reflections: [
         {
           id: "v1",
           kind: "voice",
           atMs: 252_000,
-          file: "2026-10-10_morning-drama_s1-00000_voice-04m12s-v1.webm",
+          file: "2026-10-10_morning-drama_7f3a91c2_voice-04m12s-v1.webm",
         },
         { id: "t1", kind: "text", text: "particles", atMs: null },
       ],
-      stops: [{ sessionId: "s1-0000000000", reason: "break", via: "left" }],
+      stops: [{ sessionId: SESSION_ID, reason: "break", via: "left" }],
       paths: { glances: 1, opens: 0 },
       readAloudPractice: PRACTICE,
     })
@@ -183,7 +187,7 @@ describe("shareReflections", () => {
     expect(reflections.getSnapshot().kept.map((r) => r.id)).toEqual(["t2"])
     expect(removedAudio).toHaveBeenCalledWith(["v1", "t1"])
     expect(reflections.getSnapshot().shared).toEqual([
-      { sessionId: "s1-0000000000", sharedAt: NOW().toISOString() },
+      { sessionId: SESSION_ID, sharedAt: NOW().toISOString() },
     ])
   })
 
@@ -209,12 +213,12 @@ describe("shareReflections", () => {
   it("leaves out a voice note whose audio could not be read, so it stays", async () => {
     audioRead.fails = true
 
-    const { sent } = await shareReflections(["s1-0000000000"], NOW)
+    const { sent } = await shareReflections([SESSION_ID], NOW)
 
     expect(sent).toEqual(["t1"])
     expect(
       JSON.parse(
-        written.get("reflections/2026-10-10_morning-drama_s1-00000.json") ??
+        written.get("reflections/2026-10-10_morning-drama_7f3a91c2.json") ??
           "null"
       )
     ).toMatchObject({ reflections: [{ id: "t1" }] })
@@ -223,16 +227,16 @@ describe("shareReflections", () => {
   it("says cancelled when the share sheet is backed out of", async () => {
     share.mockRejectedValue(new Error("Share canceled"))
 
-    await expect(
-      shareReflections(["s1-0000000000"], NOW)
-    ).resolves.toMatchObject({ outcome: "cancelled" })
+    await expect(shareReflections([SESSION_ID], NOW)).resolves.toMatchObject({
+      outcome: "cancelled",
+    })
   })
 })
 
 describe("shareAgentExport", () => {
   it("shares context.json with each session's reflections nested, and every recording, keeping them until handed off", async () => {
     seedStop(stopRecord(0, { reason: "focus", outcome: "done" }))
-    storeEffect({ kind: "count", sessionId: "s1-0000000000", path: "opens" })
+    storeEffect({ kind: "count", sessionId: SESSION_ID, path: "opens" })
     storeEffect({ kind: "count", sessionId: "gone-session", path: "glances" })
 
     const result = await shareAgentExport(soundbites, NOW)
@@ -243,7 +247,7 @@ describe("shareAgentExport", () => {
         files: [
           "file:///cache/agent-export/context.json",
           "file:///cache/agent-export/soundbite-b1.webm",
-          "file:///cache/agent-export/2026-10-10_morning-drama_s1-00000_voice-04m12s-v1.webm",
+          "file:///cache/agent-export/2026-10-10_morning-drama_7f3a91c2_voice-04m12s-v1.webm",
         ],
       })
     )
@@ -254,7 +258,7 @@ describe("shareAgentExport", () => {
       exportedAt: "2026-10-11T00:00:00.000Z",
       sessions: [
         {
-          id: "s1-0000000000",
+          id: SESSION_ID,
           reflections: [{ id: "v1" }, { id: "t1", text: "particles" }],
           paths: { opens: 1 },
         },

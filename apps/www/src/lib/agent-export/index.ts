@@ -86,7 +86,11 @@ function summary(
   return rest
 }
 
-/** `2026-10-10_morning-drama_s-7f3a91`: findable in a folder of them. */
+/**
+ * `2026-10-10_morning-drama_7f3a91c2`: findable in a folder of them, and one
+ * per session even when two sessions share a day and a name. Session IDs are
+ * `session-<uuid>`, so the eight characters come from after the prefix.
+ */
 function reflectionsBase(
   sessionId: string,
   session: SessionRecord | undefined,
@@ -102,7 +106,7 @@ function reflectionsBase(
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-|-$/g, "")
     .slice(0, 40)
-  return `${date}_${name || "session"}_${sessionId.slice(0, 8)}`
+  return `${date}_${name || "session"}_${sessionId.replace(/^session-/, "").slice(0, 8)}`
 }
 
 /** A voice note's file, named for where in the session it was said. */
