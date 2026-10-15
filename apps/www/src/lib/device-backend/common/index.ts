@@ -37,6 +37,17 @@ export function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value)
 }
 
+/** `field` of the JSON object in `body`, when it is a string; else `null`. */
+export function stringFieldOf(body: string, field: string): string | null {
+  try {
+    const parsed: unknown = JSON.parse(body)
+    const found = isRecord(parsed) ? parsed[field] : undefined
+    return typeof found === "string" ? found : null
+  } catch {
+    return null
+  }
+}
+
 /** Each value's string `field`, skipping a value without one. */
 export function stringsAt(
   values: ReadonlyArray<unknown>,

@@ -288,7 +288,9 @@ declared (checked by reading every call site and by the tests named).
   (`components/settings/device-section.tsx`, the one module outside
   `lib/home-link` that calls it):
   the sync (published lessons and rounds, read with no credential), pairing
-  (the code only) and unpairing. Nothing is sent when the app or Settings
+  (the code only), unpairing, and sending the shelf (after a confirm that
+  names how many items and the host: one PUT per item kept on this phone,
+  its bytes as kept, nothing deleted there and nothing read back). Nothing is sent when the app or Settings
   opens, on resume, on a timer or on a network change: making the runtime and
   `load` read only the phone's own record. There is no retry; a sync ends at
   Stop, or when the app goes to the background, before its next request.
@@ -310,7 +312,10 @@ declared (checked by reading every call site and by the tests named).
   a press handler in the Home server block or a module that block calls; one
   that sends from `createHomeLink`, `load`, a `useEffect`, a timer, a
   `visibilitychange` or `online` listener; one that retries a failed home
-  request, or queues one for later; one that deletes or weakens the
+  request, or queues one for later; one that lets the shelf send start
+  without its confirm, drops the count or the host from that confirm, or
+  sends anything but `everyKept`'s items (or a method other than `PUT`) on
+  a send's `put`; one that deletes or weakens the
   `onHidden` subscription in the runtime's `sync`, the `stopPressed` it
   dispatches, the `stopped()` check in the `get` it hands out, or
   `onHidden`'s stop of a sync that starts already hidden
@@ -341,11 +346,13 @@ declared (checked by reading every call site and by the tests named).
   site in that block is a tap: a lint rule cannot
   tell a press handler from an effect that reaches it through a helper.
   Held when declared, by reading every caller (`device-section.tsx` alone
-  calls `pair`, `unpair`, `stop` and, through `lib/home-link/sync`, `sync`,
-  each from a button's `onPress` or `onClick`) and by
-  `lib/home-link/__tests__/runtime.test.ts` and
+  calls `pair`, `unpair`, `stop` and, through `lib/home-link/sync` and
+  `lib/home-link/shelf`, `sync` and `send`, each from a button's `onPress`
+  or `onClick`) and by `lib/home-link/__tests__/runtime.test.ts`,
+  `lib/home-link/__tests__/shelf.test.ts` and
   `components/settings/__tests__/device-section.test.tsx` (opening Settings,
-  paired or not, sends nothing; unpairing takes a second press).
+  paired or not, sends nothing; unpairing and the shelf send each take a
+  second press).
 
 ## Not covered, on purpose
 
@@ -362,7 +369,7 @@ declared (checked by reading every call site and by the tests named).
   session's) **Share** hands it that session's reflections, and the learner
   picks where they go; the reflections (and, from the whole export, the
   soundbites) shared then leave the phone. The phone's Home server block
-  syncs, pairs and unpairs on a tap (LA8). These are explicit actions on
+  syncs, pairs, unpairs and sends the shelf on a tap (LA8). These are explicit actions on
   the account path or by the learner, not defaults.
 - **The server's side.** What `file_host` stores and logs is
   `paulgsc/server` `docs/identity.md`.

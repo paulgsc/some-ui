@@ -38,7 +38,11 @@ export type HomeCall = {
   url: string
   /** The pairing's session token, sent as `Authorization: Bearer`. */
   token?: string
-  /** Sent as JSON. */
+  /**
+   * Sent as JSON: an object serialised, a string as its own bytes (the
+   * plugin writes a string `data` unchanged, so a kept shelf body arrives
+   * byte for byte and home's content hash matches the phone's).
+   */
   body?: unknown
 }
 

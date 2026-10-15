@@ -22,7 +22,7 @@ import {
   unprocessable,
   verbatim,
 } from "@/lib/device-backend/router"
-import type { SqlRow } from "@/lib/device-backend/sql"
+import type { SqlDriver, SqlRow } from "@/lib/device-backend/sql"
 import { one, text } from "@/lib/device-backend/sql"
 import { budgetedAnswer } from "@/lib/device-backend/storage"
 
@@ -67,6 +67,22 @@ function entry(row: SqlRow): Record<string, string> {
     contentHash: text(row, "content_hash"),
     savedAt: text(row, "saved_at"),
   }
+}
+
+/** A kept item, whole: what the phone's "Send shelf to home" sends. */
+export type Kept = { activity: string; key: string; body: string }
+
+/** Every item kept on this phone, in a stable order. Reads only. */
+export async function everyKept(db: SqlDriver): Promise<Array<Kept>> {
+  const rows = await db.all(
+    "SELECT activity_id, key, body FROM learner_shelf WHERE subject_id = ? ORDER BY activity_id, saved_at, key",
+    [DEVICE_SUBJECT]
+  )
+  return rows.map((row) => ({
+    activity: text(row, "activity_id"),
+    key: text(row, "key"),
+    body: text(row, "body"),
+  }))
 }
 
 export const shelfRoutes: ReadonlyArray<DeviceRoute> = [

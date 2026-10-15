@@ -439,7 +439,7 @@ In the `CLAUDE.md` "Gray-area invariants" shape.
 >   `packages/voice-capture/src/lib/recorder.ts`, the soundbites page
 >   `apps/www/src/routes/_dashboard/_apk/soundbites.tsx` and
 >   `apps/www/src/lib/reflection-voice/`; the
->   sync from home and the home-server pairing (`INTERNET`,
+>   sync from home, the home-server pairing and the shelf send (`INTERNET`,
 >   `usesCleartextTraffic`), `apps/www/src/lib/device-backend/home-sync/`,
 >   `apps/www/src/lib/home-link/` and their Settings block
 >   `apps/www/src/components/settings/device-section.tsx`; study nudges
@@ -521,6 +521,15 @@ an Android Keystore key and keeps out of every backup and device transfer
 asks once more, tells home if it can, and forgets the token on the phone
 either way. Signing out everywhere on the computer ends a phone's session too.
 The server side is `paulgsc/server` `docs/identity.md`, "Pairing a phone".
+
+**Send shelf to host...**, once paired, counts what is kept on this phone's
+shelf (reading only the phone) and asks once more, naming that count and the
+host. Only its **Send** sends: one PUT per item, the item's bytes as kept,
+with the pairing's token. An item with the same name there is replaced;
+nothing there is deleted, and nothing comes back to the phone. A full shelf
+there, or a refused item, is counted and said; home no longer knowing the
+phone, or no answer, ends the send; nothing is retried. **Stop**, or the app
+going to the background, ends it before the next item.
 
 The sync goes through Capacitor's native HTTP (`device-backend/native-http`).
 The app's page is `https://localhost`, so a browser `fetch` to

@@ -3,9 +3,10 @@
  * and the one thing it is doing, if any. `step` is pure; `./runtime` runs
  * the ports and feeds their results back as events.
  *
- * One operation at a time, by structure: pairing, unpairing and a sync are
- * arms of `activity`, and `step` refuses to start one while another runs. A
- * result for an operation that is no longer the current one is dropped.
+ * One operation at a time, by structure: pairing, unpairing, a sync and a
+ * send are arms of `activity`, and `step` refuses to start one while
+ * another runs. A result for an operation that is no longer the current
+ * one is dropped.
  */
 import { assertNever } from "@some-ui/core-utils"
 
@@ -45,7 +46,10 @@ type Activity =
   | { readonly kind: "idle" }
   | { readonly kind: "pairing"; readonly base: string }
   | { readonly kind: "unpairing" }
+  /** Reading published content from home, with no credential. */
   | { readonly kind: "syncing"; readonly stopping: boolean }
+  /** Sending what this phone holds to the paired home, with its key. */
+  | { readonly kind: "sending"; readonly stopping: boolean }
 
 export type HomeLinkState = {
   readonly link: Link
@@ -69,8 +73,10 @@ export type HomeLinkEvent =
   | { readonly type: "unpaired"; readonly told: boolean }
   | { readonly type: "unpairFailed" }
   | { readonly type: "syncPressed" }
+  | { readonly type: "sendPressed" }
   | { readonly type: "stopPressed" }
-  | { readonly type: "syncEnded" }
+  /** The sync or send in flight ended, finished or stopped. */
+  | { readonly type: "workEnded" }
 
 export const INITIAL: HomeLinkState = {
   link: { kind: "reading" },
@@ -147,12 +153,18 @@ export function step(
       if (link.kind === "reading" || activity.kind !== "idle") return state
       return { ...state, activity: { kind: "syncing", stopping: false } }
     }
-    case "stopPressed": {
-      if (activity.kind !== "syncing") return state
-      return { ...state, activity: { kind: "syncing", stopping: true } }
+    case "sendPressed": {
+      if (link.kind !== "paired" || activity.kind !== "idle") return state
+      return { ...state, activity: { kind: "sending", stopping: false } }
     }
-    case "syncEnded": {
-      if (activity.kind !== "syncing") return state
+    case "stopPressed": {
+      if (activity.kind !== "syncing" && activity.kind !== "sending")
+        return state
+      return { ...state, activity: { kind: activity.kind, stopping: true } }
+    }
+    case "workEnded": {
+      if (activity.kind !== "syncing" && activity.kind !== "sending")
+        return state
       return { ...state, activity: idle }
     }
     default: {
