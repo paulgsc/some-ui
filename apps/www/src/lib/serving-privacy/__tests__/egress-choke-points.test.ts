@@ -10,12 +10,19 @@
  *   `WebSocket`, `EventSource` and `navigator.sendBeacon`; this also pins the
  *   files that `eslint-disable` it, and the config's exemption list.
  *
+ * - **LA8: the phone reaches its home server through one module, and one
+ *   block.** Native HTTP (`CapacitorHttp`) is not a browser global, so
+ *   `no-restricted-globals` cannot see it, and `no-restricted-imports`
+ *   misses a dynamic `import()` and `Capacitor.Plugins.CapacitorHttp`: only
+ *   `lib/device-backend/native-http` may name it, only `lib/home-link` may
+ *   call that module, and only the Home server block may call `lib/home-link`.
+ *
  * The last group feeds the checks known-bad sources, so a check that stopped
  * looking cannot stay green.
  */
 
 import { readdirSync, readFileSync } from "node:fs"
-import { dirname, join, relative, resolve } from "node:path"
+import { dirname, join, posix, relative, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 import ts from "typescript"
 import { describe, expect, it } from "vitest"
@@ -28,6 +35,97 @@ const NETWORK_EXEMPT = new Set([
   "lib/file-host-config/client.ts",
   "lib/device-backend/interceptor/index.ts",
 ])
+
+/** LA8: the one module that may reach the home server over native HTTP. */
+const NATIVE_HTTP = "lib/device-backend/native-http/index.ts"
+
+/** LA8: who may call the native-HTTP module, and who may call the link. */
+const NATIVE_HTTP_CALLERS = new Set(["lib/home-link/index.ts"])
+const HOME_LINK_CALLERS = new Set(["components/settings/device-section.tsx"])
+
+/** Every mention of `CapacitorHttp` in `text`: an import, a member, a string. */
+function nativeHttpUses(path: string, text: string): Array<string> {
+  const found: Array<string> = []
+  const file = parse(path, text)
+  walk(file, (node) => {
+    if (
+      (ts.isIdentifier(node) && node.text === "CapacitorHttp") ||
+      (ts.isStringLiteralLike(node) && node.text.includes("CapacitorHttp"))
+    ) {
+      const { line } = file.getLineAndCharacterOfPosition(node.getStart(file))
+      found.push(
+        `${path}:${String(line + 1)} names CapacitorHttp outside ${NATIVE_HTTP} (LA8)`
+      )
+    }
+  })
+  return found
+}
+
+/** Is this import or re-export one that brings in only types? */
+function typeOnly(node: ts.ImportDeclaration | ts.ExportDeclaration): boolean {
+  if (ts.isExportDeclaration(node)) return node.isTypeOnly
+  const clause = node.importClause
+  if (clause === undefined) return false
+  if (clause.isTypeOnly) return true
+  const bindings = clause.namedBindings
+  return (
+    clause.name === undefined &&
+    bindings !== undefined &&
+    ts.isNamedImports(bindings) &&
+    bindings.elements.every((element) => element.isTypeOnly)
+  )
+}
+
+/**
+ * The `src`-relative module a specifier names, however it is spelt (`@/`,
+ * `./`, a trailing `/index` or extension); `null` for a package.
+ */
+function moduleOf(from: string, specifier: string): string | null {
+  let path: string
+  if (specifier.startsWith("@/")) path = specifier.slice(2)
+  else if (specifier.startsWith(".")) {
+    path = posix.join(posix.dirname(from), specifier)
+  } else return null
+  return path
+    .replace(/\.[cm]?[jt]sx?$/, "")
+    .replace(/\/+$/, "")
+    .replace(/\/index$/, "")
+}
+
+/** Every value import, re-export or `import()` of a module `matches` names. */
+function valueImportsOf(
+  path: string,
+  text: string,
+  matches: (specifier: string) => boolean
+): Array<string> {
+  const found: Array<string> = []
+  const file = parse(path, text)
+  walk(file, (node) => {
+    let specifier: ts.Expression | undefined
+    if (
+      (ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) &&
+      !typeOnly(node)
+    ) {
+      specifier = node.moduleSpecifier
+    } else if (
+      ts.isCallExpression(node) &&
+      node.expression.kind === ts.SyntaxKind.ImportKeyword
+    ) {
+      specifier = node.arguments[0]
+    }
+    if (specifier === undefined || !ts.isStringLiteralLike(specifier)) return
+    const module = moduleOf(path, specifier.text)
+    if (module !== null && matches(module)) {
+      found.push(`${path} imports ${specifier.text}`)
+    }
+  })
+  return found
+}
+
+const isNativeHttp = (module: string): boolean =>
+  module === "lib/device-backend/native-http"
+const isHomeLink = (module: string): boolean =>
+  module === "lib/home-link" || module.startsWith("lib/home-link/")
 
 function isTestFile(path: string): boolean {
   return (
@@ -253,6 +351,46 @@ describe("LA2: the transfer to the account starts from one button", () => {
   })
 })
 
+describe("LA8: the phone reaches home through one module", () => {
+  const sources = sourceFiles().filter((f) => !isTestFile(f))
+  const read = (f: string): string => readFileSync(join(SRC, f), "utf8")
+
+  it("names CapacitorHttp nowhere else", () => {
+    const problems = sources
+      .filter((f) => f !== NATIVE_HTTP)
+      .flatMap((f) => nativeHttpUses(f, read(f)))
+    expect(problems).toEqual([])
+  })
+
+  it("calls native-http only from the link, and the link only from the Home server block", () => {
+    const outsideLink = sources.filter((f) => !f.startsWith("lib/home-link/"))
+    expect(
+      sources
+        .filter((f) => !NATIVE_HTTP_CALLERS.has(f))
+        .flatMap((f) => valueImportsOf(f, read(f), isNativeHttp))
+    ).toEqual([])
+    expect(
+      outsideLink
+        .filter((f) => !HOME_LINK_CALLERS.has(f))
+        .flatMap((f) => valueImportsOf(f, read(f), isHomeLink))
+    ).toEqual([])
+  })
+
+  it("still finds what it is meant to guard", () => {
+    expect(
+      nativeHttpUses(NATIVE_HTTP, read(NATIVE_HTTP)).length
+    ).toBeGreaterThan(0)
+    for (const caller of NATIVE_HTTP_CALLERS) {
+      expect(valueImportsOf(caller, read(caller), isNativeHttp)).toHaveLength(1)
+    }
+    for (const caller of HOME_LINK_CALLERS) {
+      expect(
+        valueImportsOf(caller, read(caller), isHomeLink).length
+      ).toBeGreaterThan(0)
+    }
+  })
+})
+
 describe("the checks themselves", () => {
   it("flags a data source with no PUBLIC_READ, in any call shape", () => {
     expect(
@@ -296,6 +434,43 @@ describe("the checks themselves", () => {
     ).toEqual([])
     expect(
       transferCallProblems("x.ts", "const copy = copyDeviceSessions")
+    ).toEqual([])
+  })
+
+  it("flags CapacitorHttp however it is reached, and a value import of the guarded modules", () => {
+    expect(
+      nativeHttpUses(
+        "x.ts",
+        'import { Capacitor } from "@capacitor/core"; Capacitor.Plugins.CapacitorHttp; Capacitor.Plugins["CapacitorHttp"]'
+      )
+    ).toHaveLength(2)
+    expect(
+      valueImportsOf(
+        "x.ts",
+        'import { homeLink } from "@/lib/home-link"; export { syncLessonsFrom } from "@/lib/home-link/sync"; void import("@/lib/home-link/runtime")',
+        isHomeLink
+      )
+    ).toHaveLength(3)
+    expect(
+      valueImportsOf(
+        "lib/device-backend/x.ts",
+        'import { homeRequest } from "./native-http"; export * from "@/lib/device-backend/native-http/index.ts"; void import("./native-http/")',
+        isNativeHttp
+      )
+    ).toHaveLength(3)
+    expect(
+      valueImportsOf(
+        "lib/x.ts",
+        'import { homeLink } from "./home-link"',
+        isHomeLink
+      )
+    ).toHaveLength(1)
+    expect(
+      valueImportsOf(
+        "x.ts",
+        'import type { HomeCall } from "@/lib/device-backend/native-http"; import { type HomeAnswer } from "@/lib/device-backend/native-http"; import { x } from "@/lib/device-backend/native-http-other"',
+        isNativeHttp
+      )
     ).toEqual([])
   })
 

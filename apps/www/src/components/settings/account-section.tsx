@@ -1,10 +1,16 @@
 /**
  * The settings controls for the account: sign out, sign out everywhere, add a
- * passkey on this device, delete the account.
+ * passkey on this device, pair a phone, delete the account.
  *
  * A passkey is the only way in (`paulgsc/server` `docs/identity.md`): no email
  * means no recovery, and the safety net is a second passkey, said next to the
  * button that adds one.
+ *
+ * Pairing shows a one-time code and the address to type with it on the
+ * phone; the phone itself sends nothing until it is tapped there (LA8). No
+ * list of paired phones: the server keeps no record of which session is a
+ * phone (`paulgsc/server` `docs/identity.md`), so a lost one is unpaired by
+ * signing out everywhere.
  *
  * Deleting takes two presses (the second button appears after the first): the
  * server deletes everything under the account's ID; logs and backups are not
@@ -23,9 +29,11 @@ import {
   describeAuthError,
   signOut,
   signOutEverywhere,
+  startPairing,
 } from "@/lib/auth"
 import { ACCOUNT_KEEPS } from "@/lib/auth/account-keeps"
 import { DATA_MODE } from "@/lib/data-mode"
+import { absoluteFileHostBase } from "@/lib/file-host-config"
 import { useAsyncIntent } from "@/lib/intent"
 import { IntentButton } from "@/lib/intent/render"
 import { passkeysSupported } from "@/lib/passkey"
@@ -46,7 +54,9 @@ export const AccountSection = (): JSX.Element => {
   )
   const everywhereIntent = useAsyncIntent(
     (_: undefined) =>
-      signOutEverywhere().then(leaveTo("Signed out on every device.")),
+      signOutEverywhere().then(
+        leaveTo("Signed out on every device, paired phones included.")
+      ),
     { presentation: "interactive" }
   )
   const deleteIntent = useAsyncIntent(
@@ -54,6 +64,15 @@ export const AccountSection = (): JSX.Element => {
       deleteAccount().then(leaveTo("Your account and its data are deleted.")),
     { presentation: "interactive" }
   )
+  const pairIntent = useAsyncIntent((_: undefined) => startPairing(), {
+    presentation: "interactive",
+  })
+  const pairing =
+    pairIntent.state.status === "succeeded" ? pairIntent.state.value : null
+  // The phone pairs over https only (LA8): a code it could not use is not
+  // offered.
+  const pairAt = absoluteFileHostBase()
+  const pairable = pairAt?.startsWith("https:") ?? false
   const addIntent = useAsyncIntent(
     (_: undefined) =>
       addPasskey().then(
@@ -117,6 +136,49 @@ export const AccountSection = (): JSX.Element => {
               disabled={!passkeysSupported()}
               idleLabel="Add a passkey on this device"
               workingLabel="Waiting for your passkey..."
+            />
+          </div>
+
+          <Separator />
+          <div className="space-y-2" aria-labelledby="phones-heading">
+            <Label id="phones-heading">Phones</Label>
+            <p className="text-muted-foreground text-sm">
+              A paired phone sends here only when you tap it to, and names this
+              server first. To unpair a lost phone, sign out everywhere.
+            </p>
+            {pairAt !== undefined && !pairable ? (
+              <p className="text-muted-foreground text-xs break-all">
+                Phones pair over https only, and this server is at {pairAt}.
+              </p>
+            ) : null}
+            {pairing ? (
+              <div className="space-y-1" role="status">
+                <p className="text-sm">Code for your phone</p>
+                <p className="font-mono text-2xl tracking-widest select-all">
+                  {pairing.code.slice(0, 4)} {pairing.code.slice(4)}
+                </p>
+                <p className="text-muted-foreground text-xs break-all">
+                  On the phone: Settings, This phone, Pair, with{" "}
+                  <span className="select-all">{pairAt}</span>
+                </p>
+                <p className="text-muted-foreground text-xs">
+                  Works once, until{" "}
+                  {new Date(pairing.expiresAt).toLocaleTimeString([], {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                  .
+                </p>
+              </div>
+            ) : null}
+            <IntentButton
+              state={pairIntent.state}
+              onPress={() => pairIntent.start(undefined)}
+              variant="outline"
+              size="sm"
+              disabled={!pairable}
+              idleLabel={pairing ? "Get a new code" : "Pair a phone"}
+              workingLabel="Getting a code..."
             />
           </div>
 

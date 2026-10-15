@@ -121,8 +121,9 @@ const VoicePicker = ({
         </p>
       ) : null}
       <p className="text-muted-foreground text-sm">
-        Lessons are read aloud by this phone&apos;s own text-to-speech, so
-        nothing is sent anywhere. Voices that need internet go silent offline.
+        Lessons are read aloud by this phone&apos;s own text-to-speech. Voices
+        that need internet send the text they read to your phone&apos;s speech
+        provider, and go silent offline.
       </p>
     </div>
   )

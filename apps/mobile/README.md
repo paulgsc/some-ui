@@ -391,13 +391,13 @@ Android Lint (gated once `policy.json` sets `lint.gate`).
 Where the app knowingly differs from what Play would expect. A future
 submission starts from this list, not from an audit.
 
-| ID  | Departure                                                   | Why                                                                                                                         | Undo before Play                                                |
-| --- | ----------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
-| PD1 | _Retired 2026-09-30:_ the phone installs the release build. | Was: the phone installed the debuggable debug build.                                                                        | Done.                                                           |
-| PD2 | `usesCleartextTraffic="true"`                               | The sync from home is plain http to a LAN address the person types. A network security config cannot name it ahead of time. | Sync over https, or a network security config naming the host.  |
-| PD3 | `allowBackup="true"`, with no backup rules                  | Backup is how the phone's history would survive a new phone.                                                                | Add `dataExtractionRules` saying what is backed up.             |
-| PD4 | _Retired 2026-09-30:_ `targetSdk` 36, on Capacitor 8.       | Was: `targetSdk` 35 on Capacitor 7, below Play's 36.                                                                        | Done. `minSdk` is now 24 (Android 7).                           |
-| PD5 | arm64 only (`abiFilters`)                                   | Keeps SQLCipher's other ABIs out of a sideloaded APK.                                                                       | Nothing for Play itself; 32-bit phones would not be offered it. |
+| ID  | Departure                                                   | Why                                                                                                                                                                                                                                                                | Undo before Play                                                   |
+| --- | ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------ |
+| PD1 | _Retired 2026-09-30:_ the phone installs the release build. | Was: the phone installed the debuggable debug build.                                                                                                                                                                                                               | Done.                                                              |
+| PD2 | `usesCleartextTraffic="true"`                               | The unpaired sync from home is plain http to a LAN address the person types (published content, no credential). A network security config cannot name it ahead of time. Anything carrying the pairing's credential is https only, refused in code (`native-http`). | Pair, so the sync reads the paired https host; then drop the flag. |
+| PD3 | `allowBackup="true"`; the rules exclude only the pairing    | Backup is how the phone's history would survive a new phone. `backup_rules.xml` and `data_extraction_rules.xml` keep the home-server pairing out of backups and device transfer.                                                                                   | Decide what else is backed up, in those two files.                 |
+| PD4 | _Retired 2026-09-30:_ `targetSdk` 36, on Capacitor 8.       | Was: `targetSdk` 35 on Capacitor 7, below Play's 36.                                                                                                                                                                                                               | Done. `minSdk` is now 24 (Android 7).                              |
+| PD5 | arm64 only (`abiFilters`)                                   | Keeps SQLCipher's other ABIs out of a sideloaded APK.                                                                                                                                                                                                              | Nothing for Play itself; 32-bit phones would not be offered it.    |
 
 `policy.json` records PD2 and PD3 as the flags' expected values, so changing
 either fails the review until the entry changes too.
@@ -439,8 +439,9 @@ In the `CLAUDE.md` "Gray-area invariants" shape.
 >   `packages/voice-capture/src/lib/recorder.ts`, the soundbites page
 >   `apps/www/src/routes/_dashboard/_apk/soundbites.tsx` and
 >   `apps/www/src/lib/reflection-voice/`; the
->   sync from home (`INTERNET`, `usesCleartextTraffic`),
->   `apps/www/src/lib/device-backend/home-sync/` and its Settings entry
+>   sync from home and the home-server pairing (`INTERNET`,
+>   `usesCleartextTraffic`), `apps/www/src/lib/device-backend/home-sync/`,
+>   `apps/www/src/lib/home-link/` and their Settings block
 >   `apps/www/src/components/settings/device-section.tsx`; study nudges
 >   (`POST_NOTIFICATIONS`), `apps/www/src/lib/study-nudge/native.ts`; the
 >   phone's SQLite history (`allowBackup`),
@@ -486,12 +487,17 @@ sdkmanager "platform-tools" "platforms;android-36" "build-tools;36.0.0"
 The Claude Code sandbox cannot install it (`dl.google.com` is outside its
 egress policy), which is why CI builds the APK.
 
-## Sync from home
+## Sync from home, and pairing
 
-**Settings → This phone** has one field and one button. The field takes the
-home server's address, for example `192.168.1.10:3000`. **Sync lessons from
-home**, pressed while on the home network, copies two things into the
-phone's database:
+**Settings → This phone → Home server** is the one place on the phone that
+sends anything to the home server, and only on a tap there
+(`docs/learner-data-authority.md`, LA8). Opening Settings, resuming the app or
+being paired sends nothing; there is no retry and no background work.
+
+Unpaired, it has an address field (for example `192.168.1.10:3000`) and
+**Sync lessons from home**. Paired, it shows **Paired · host** with **Unpair**,
+and the sync reads from the paired host. **Sync lessons from home**, pressed
+while on the home network, copies two things into the phone's database:
 
 - every listed TOPIK lesson;
 - any Leetype round whose content hash differs from the one the phone holds,
@@ -499,8 +505,22 @@ phone's database:
 
 A lesson or round home no longer lists is deleted. A lesson that merely
 failed to download is kept, and one that would not fit is skipped. Only published content
-moves, and only home → phone. Sessions and the shelf stay where they were
-made.
+moves, and only home → phone, with no credential. **Stop** ends a running sync
+after the request in flight, and so does the app going to the background;
+what was copied stays. Sessions and the shelf stay where they were made.
+
+**Pairing** lets the phone act for the person's account on the home server,
+which it cannot do with a passkey (its page is `https://localhost`, another
+site). On the computer, **Settings → Account → Pair a phone** shows a code
+(8 characters, once, for 10 minutes) and the address to type with it. On the
+phone, **Pair...** takes that `https://` address (never `http://`) and the
+code; the button names the host, and the tap sends only the code. Home answers
+with a session token, which the app's own `HomeCredential` plugin seals with
+an Android Keystore key and keeps out of every backup and device transfer
+(`res/xml/backup_rules.xml`, `res/xml/data_extraction_rules.xml`). **Unpair**
+asks once more, tells home if it can, and forgets the token on the phone
+either way. Signing out everywhere on the computer ends a phone's session too.
+The server side is `paulgsc/server` `docs/identity.md`, "Pairing a phone".
 
 The sync goes through Capacitor's native HTTP (`device-backend/native-http`).
 The app's page is `https://localhost`, so a browser `fetch` to

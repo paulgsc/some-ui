@@ -84,6 +84,16 @@ export function resolveFileHostBase(): string | undefined {
 }
 
 /**
+ * The base as a whole URL, for a person to type on their phone when pairing
+ * it: a same-origin proxy path resolved against this page.
+ */
+export function absoluteFileHostBase(): string | undefined {
+  const base = resolveFileHostBase()
+  if (base === undefined) return undefined
+  return new URL(base, window.location.href).href.replace(/\/+$/, "")
+}
+
+/**
  * Join the base with a route, tolerating a trailing slash on either side:
  * `//sessions` is a confusing 404 on `file_host`.
  */

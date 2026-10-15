@@ -279,6 +279,74 @@ declared (checked by reading every call site and by the tests named).
   dates, and the importers only render reflection components or call
   `sweepOrphans`.
 
+### LA8: the phone reaches its home server only when tapped, and says where
+
+- _Claim:_ in the Android app, every request to the home server goes through
+  `lib/device-backend/native-http` (the one module that names
+  `CapacitorHttp`), which only `lib/home-link` calls, and is started by a tap
+  in the Home server block of Settings
+  (`components/settings/device-section.tsx`, the one module outside
+  `lib/home-link` that calls it):
+  the sync (published lessons and rounds, read with no credential), pairing
+  (the code only) and unpairing. Nothing is sent when the app or Settings
+  opens, on resume, on a timer or on a network change: making the runtime and
+  `load` read only the phone's own record. There is no retry; a sync ends at
+  Stop, or when the app goes to the background, before its next request.
+  The pairing's credential is sent only to the base stored with it, over
+  `https:` (`homeRequest` refuses a credentialed `http:` URL), and never on
+  a sync read; no redirect is followed. Unpairing forgets it on the phone whether or
+  not home could be told, and says which. The pair button names the host
+  before it is pressed, and every send names it. The credential is stored
+  only by `HomeCredentialPlugin`, sealed by the Android Keystore, kept out of
+  every backup and device-to-device transfer (`res/xml/backup_rules.xml`,
+  `res/xml/data_extraction_rules.xml`, both named by the manifest), and
+  deleted on a read, with its key, only when it cannot be read and the
+  Keystore does not mark the fault as one that may pass (Android 13+).
+- _Falsified by:_ a hunk that removes, narrows or widens the allowlists of
+  the LA8 checks in
+  `lib/serving-privacy/__tests__/egress-choke-points.test.ts` (who may name
+  `CapacitorHttp`, call `native-http`, call `lib/home-link`); one that calls
+  a `homeLink()` method that sends (`pair`, `unpair`, `sync`) from anywhere but
+  a press handler in the Home server block or a module that block calls; one
+  that sends from `createHomeLink`, `load`, a `useEffect`, a timer, a
+  `visibilitychange` or `online` listener; one that retries a failed home
+  request, or queues one for later; one that deletes or weakens the
+  `onHidden` subscription in the runtime's `sync`, the `stopPressed` it
+  dispatches, the `stopped()` check in the `get` it hands out, or
+  `onHidden`'s stop of a sync that starts already hidden
+  (`lib/home-link/visibility.ts`); one that passes `token` on a sync's
+  `get`, or with a URL not built from the stored pairing's `base` (or, in
+  `pair`, the address being paired); one that removes `homeRequest`'s
+  `https:` check or its `disableRedirects`;
+  one that lets `unpair` keep the credential when the request fails, or
+  report the phone unpaired when forgetting it failed; one that
+  removes the host from the pair button or the paired line; one that writes
+  the pairing record anywhere but `HomeCredentialPlugin`, or stores it there
+  unencrypted; one that makes `HomeCredentialPlugin` delete the record or
+  its key (`forgetKey`) anywhere but `read`'s `Lost` branch and `write`'s
+  retry after a failure `mayPass` refuses; one that adds a `Lost` throw in
+  `decrypt`, or widens a catch that becomes one, without consulting
+  `mayPass`, removes a `mayPass` check `decrypt` makes, moves loading the
+  Keystore inside such a catch, narrows `mayPass`, or makes `storedKey`
+  throw `UnrecoverableKeyException` for anything but an entry that is not
+  a secret key; or one that
+  removes or narrows an `<exclude>` in either backup rule file, removes
+  `android:fullBackupContent` or `android:dataExtractionRules` from the
+  manifest, or renames `HomeCredentialPlugin.PREFS` without them.
+- _Scope:_ `apps/www/src` (the phone build), `apps/mobile/android`.
+- _Why not enforced:_ who may reach home is, by test (`egress-choke-points`:
+  `CapacitorHttp` named only in `native-http`, which only
+  `lib/home-link/index.ts` imports as a value, and `lib/home-link` imported
+  only by the Home server block). What a test cannot say is that a call
+  site in that block is a tap: a lint rule cannot
+  tell a press handler from an effect that reaches it through a helper.
+  Held when declared, by reading every caller (`device-section.tsx` alone
+  calls `pair`, `unpair`, `stop` and, through `lib/home-link/sync`, `sync`,
+  each from a button's `onPress` or `onClick`) and by
+  `lib/home-link/__tests__/runtime.test.ts` and
+  `components/settings/__tests__/device-section.test.tsx` (opening Settings,
+  paired or not, sends nothing; unpairing takes a second press).
+
 ## Not covered, on purpose
 
 - **The shared origin.** On GitHub Pages every project under the same `github.io`
@@ -293,7 +361,8 @@ declared (checked by reading every call site and by the tests named).
   sessions, reflections, stops and soundbites, and a session's (or every
   session's) **Share** hands it that session's reflections, and the learner
   picks where they go; the reflections (and, from the whole export, the
-  soundbites) shared then leave the phone. These are
-  explicit actions on the account path or by the learner, not defaults.
+  soundbites) shared then leave the phone. The phone's Home server block
+  syncs, pairs and unpairs on a tap (LA8). These are explicit actions on
+  the account path or by the learner, not defaults.
 - **The server's side.** What `file_host` stores and logs is
   `paulgsc/server` `docs/identity.md`.

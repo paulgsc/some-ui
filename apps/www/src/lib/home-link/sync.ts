@@ -1,0 +1,89 @@
+/**
+ * The sync from home as one call for the Home server block: through the
+ * link's stoppable `get`, with what happened said in a line. Published
+ * lessons and rounds only, read with no credential (LA8).
+ */
+import { deviceBackend } from "@/lib/device-backend/boot"
+import type { SyncReport } from "@/lib/device-backend/home-sync"
+import {
+  HomeUnreachableError,
+  syncFromHome,
+} from "@/lib/device-backend/home-sync"
+import { DeviceStorageError } from "@/lib/device-backend/sql"
+import { deviceStorage } from "@/lib/device-backend/storage-view"
+
+import { hostOf } from "./address"
+import { homeLink } from "./index"
+import { remember, remembered } from "./remembered"
+
+const LAST_SYNC_KEY = "some-ui.device.last-sync.v1"
+
+export function lastSync(): string {
+  return remembered(LAST_SYNC_KEY)
+}
+
+function describe(report: SyncReport): string {
+  const { lessons, trees, rounds, failed } = report
+  const parts = [
+    `${lessons.listed} TOPIK lesson${lessons.listed === 1 ? "" : "s"} (${lessons.added} new, ${lessons.updated} updated)`,
+    `${trees.listed} drama${trees.listed === 1 ? "" : "s"} (${trees.added} new, ${trees.updated} updated)`,
+    `${rounds.added + rounds.updated} Leetype round${rounds.added + rounds.updated === 1 ? "" : "s"} refreshed`,
+  ]
+  const removed = lessons.removed + trees.removed + rounds.removed
+  if (removed > 0) parts.push(`${removed} home no longer lists removed`)
+  const skipped = lessons.skipped + trees.skipped + rounds.skipped
+  if (skipped > 0) parts.push(`${skipped} not added: this phone is full`)
+  if (failed.length > 0) parts.push(`${failed.length} could not be fetched`)
+  return parts.join(" · ")
+}
+
+/** A sync's end, in the words the block shows. */
+export type SyncResult = {
+  readonly ok: boolean
+  readonly line: string
+}
+
+/**
+ * Syncs from `base` (an API base), then calls `refresh` once anything may
+ * have changed, so the app re-reads what it shows whether or not the page
+ * that started the sync is still open. Never throws: a failure is a line.
+ */
+export async function syncLessonsFrom(
+  base: string,
+  refresh: () => unknown
+): Promise<SyncResult> {
+  const host = hostOf(base)
+  try {
+    const { context } = await deviceBackend()
+    const outcome = await homeLink().sync((get) =>
+      syncFromHome(context.db, base, get)
+    )
+    void deviceStorage.refresh()
+    if (outcome === null) return { ok: false, line: "" }
+    refresh()
+    if (outcome.kind === "stopped") {
+      return {
+        ok: true,
+        line: `Stopped. What came from ${host} before that stays on this phone.`,
+      }
+    }
+    const line = describe(outcome.value)
+    remember(
+      LAST_SYNC_KEY,
+      `${new Date().toLocaleString()} · ${host} · ${line}`
+    )
+    return { ok: true, line }
+  } catch (error) {
+    // The phone's own storage says so in its words (reported, with the
+    // plugin's, to the native log); anything else names the error.
+    return {
+      ok: false,
+      line:
+        error instanceof HomeUnreachableError
+          ? `Couldn't reach ${host}. Are you on the home network?`
+          : error instanceof DeviceStorageError
+            ? `Sync failed: ${error.error.summary}`
+            : `Sync failed: ${String(error)}`,
+    }
+  }
+}

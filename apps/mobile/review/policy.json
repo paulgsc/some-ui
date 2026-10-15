@@ -17,7 +17,7 @@
 
   "permissions": {
     "android.permission.INTERNET": {
-      "reason": "The sync from home (Settings -> This phone) fetches lessons from the LAN file_host."
+      "reason": "The Home server block (Settings -> This phone; www lib/home-link, LA8): the sync from home fetches lessons from the LAN file_host, and pairing and unpairing reach the person's own home server, each on a tap."
     },
     "android.permission.RECORD_AUDIO": {
       "reason": "Soundbites (Sessions -> Say why): the person records, on the phone, why a session did not happen. The WebView's getUserMedia, asked for by Capacitor's BridgeWebChromeClient on the first tap to talk. Voice reflections (Reflect, in any session) record the same way, as audio kept on the phone (apps/www src/lib/reflection-voice)."
@@ -73,12 +73,12 @@
     "usesCleartextTraffic": {
       "expect": true,
       "departure": "PD2",
-      "reason": "The home file_host is plain http on a LAN address the person types, which a network security config cannot name ahead of time."
+      "reason": "The unpaired sync from home reads published content, with no credential, from a plain-http LAN address the person types, which a network security config cannot name ahead of time. The pairing's credential is sent over https only (www lib/device-backend/native-http)."
     },
     "allowBackup": {
       "expect": true,
       "departure": "PD3",
-      "reason": "Android backup is how the phone's SQLite history would survive a new phone."
+      "reason": "Android backup is how the phone's SQLite history would survive a new phone. The home-server pairing is excluded (res/xml/backup_rules.xml, res/xml/data_extraction_rules.xml)."
     }
   },
 

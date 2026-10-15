@@ -19,6 +19,7 @@ import {
   homeApiBase,
   HomeUnreachableError,
   syncFromHome,
+  SyncStoppedError,
 } from "@/lib/device-backend/home-sync"
 import type { DeviceBackend } from "@/lib/device-backend/interceptor"
 import { createDeviceFetch } from "@/lib/device-backend/interceptor"
@@ -226,6 +227,20 @@ describe("syncFromHome", () => {
     await expect(
       syncFromHome(storageGone, HOME, verbatimGet, () => NOW)
     ).rejects.toBe(failing)
+  })
+
+  it("stops when the person does, rather than counting the rest as not fetched", async () => {
+    // Stop is pressed once the listings are in: the next request is refused.
+    let reads = 0
+    const stoppedGet: HomeGet = (url) => {
+      reads += 1
+      return reads > 3
+        ? Promise.reject(new SyncStoppedError())
+        : verbatimGet(url)
+    }
+    await expect(
+      syncFromHome(phoneDb, HOME, stoppedGet, () => NOW)
+    ).rejects.toBeInstanceOf(SyncStoppedError)
   })
 
   it("removes nothing when the rounds listing fails after the lessons'", async () => {

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- API 31 and later: all but the pairing (HomeCredentialPlugin.PREFS); README PD3. -->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="sharedpref" path="home_credential.xml" />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="sharedpref" path="home_credential.xml" />
+    </device-transfer>
+</data-extraction-rules>

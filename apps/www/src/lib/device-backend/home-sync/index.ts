@@ -8,10 +8,11 @@
  * learner's own history would need a merge rule. Every route read here is
  * uncredentialed on the server, so no sign-in is needed.
  *
- * `get` is injected: the app passes Capacitor's native HTTP (`native-http`),
- * which reaches a plain-`http:` LAN address from the WebView's `https:` page
- * (a `fetch` would be mixed content). Tests pass a second device backend
- * standing in for home, which passes the server's own contracts.
+ * `get` is injected: the app passes `lib/home-link`'s stoppable `get`, over
+ * Capacitor's native HTTP (`native-http`), which reaches a plain-`http:` LAN
+ * address from the WebView's `https:` page (a `fetch` would be mixed
+ * content). Tests pass a second device backend standing in for home, which
+ * passes the server's own contracts.
  */
 import { isRecord, stringsAt } from "@/lib/device-backend/common"
 import type { LessonEntry } from "@/lib/device-backend/content-store"
@@ -56,6 +57,28 @@ export type SyncReport = {
   rounds: Tally & { runs: number }
   /** Items home listed but would not hand over, by key or id. */
   failed: Array<string>
+}
+
+/**
+ * The person stopped the sync (`lib/home-link`): thrown by the `get` they
+ * stopped, before it sends, and never counted as an item that failed. What
+ * was copied before it stays.
+ */
+export class SyncStoppedError extends Error {
+  constructor() {
+    super("the sync was stopped")
+    this.name = "SyncStoppedError"
+  }
+}
+
+/**
+ * The phone's storage failing, or the person stopping, is not one item's
+ * failure: the sync stops and says so.
+ */
+function endsTheSync(error: unknown): boolean {
+  return (
+    error instanceof DeviceStorageError || error instanceof SyncStoppedError
+  )
 }
 
 export class HomeUnreachableError extends Error {
@@ -109,6 +132,7 @@ async function getJson(
   try {
     answer = await get(`${base}${route}`)
   } catch (cause) {
+    if (cause instanceof SyncStoppedError) throw cause
     throw new HomeUnreachableError(base, { cause })
   }
   if (answer.status !== 200) {
@@ -175,8 +199,7 @@ async function syncLessons(
       if (outcome === "inserted") tally.added += 1
       if (outcome === "updated") tally.updated += 1
     } catch (error) {
-      // The phone's storage failing is not this item's: stop and say so.
-      if (error instanceof DeviceStorageError) throw error
+      if (endsTheSync(error)) throw error
       if (error instanceof OverBudgetError) tally.skipped += 1
       else failed.push(entry.key)
     }
@@ -268,8 +291,7 @@ export async function syncFromHome(
         report.rounds.runs += await upsertRuns(store, runs.body, now())
       }
     } catch (error) {
-      // The phone's storage failing is not this item's: stop and say so.
-      if (error instanceof DeviceStorageError) throw error
+      if (endsTheSync(error)) throw error
       if (error instanceof OverBudgetError) report.rounds.skipped += 1
       else report.failed.push(listing.id)
     }
