@@ -11,18 +11,11 @@ import { nativeCredential } from "./credential"
 import type { HomeLinkState } from "./model"
 import type { HomeLink } from "./runtime"
 import { createHomeLink } from "./runtime"
+import { onHidden } from "./visibility"
 
 export { hostOf, pairingAddress, typedCode } from "./address"
 export type { HomeLinkState, PairFailure, UnpairedNote } from "./model"
 export type { HomeLink } from "./runtime"
-
-function onHidden(listener: () => void): () => void {
-  const changed = (): void => {
-    if (document.visibilityState === "hidden") listener()
-  }
-  document.addEventListener("visibilitychange", changed)
-  return () => document.removeEventListener("visibilitychange", changed)
-}
 
 let link: HomeLink | null = null
 

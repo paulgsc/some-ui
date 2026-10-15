@@ -23,6 +23,7 @@ export type PairFailure =
   | "bad-code"
   | "too-many"
   | "not-set-up"
+  | "not-home"
   | "not-kept"
   | "other"
 
@@ -30,7 +31,12 @@ type Link =
   /** The phone's own record is being read: no request to home. */
   | { readonly kind: "reading" }
   | { readonly kind: "unpaired"; readonly note: UnpairedNote | null }
-  | { readonly kind: "paired"; readonly base: string }
+  | {
+      readonly kind: "paired"
+      readonly base: string
+      /** The last Unpair could not forget the key on the phone. */
+      readonly notForgotten: boolean
+    }
 
 type Activity =
   | { readonly kind: "idle" }
@@ -41,8 +47,11 @@ type Activity =
 export type HomeLinkState = {
   readonly link: Link
   readonly activity: Activity
-  /** The last pairing attempt's failure, until the next attempt. */
-  readonly pairFailure: PairFailure | null
+  /** The last pairing attempt's failure and its host, until the next attempt. */
+  readonly pairFailure: {
+    readonly failure: PairFailure
+    readonly base: string
+  } | null
 }
 
 export type HomeLinkEvent =
@@ -55,6 +64,8 @@ export type HomeLinkEvent =
   | { readonly type: "pairFailed"; readonly failure: PairFailure }
   | { readonly type: "unpairPressed" }
   | { readonly type: "unpaired"; readonly told: boolean }
+  /** The phone could not forget the key: it is still paired, and says so. */
+  | { readonly type: "unpairFailed" }
   | { readonly type: "syncPressed" }
   | { readonly type: "stopPressed" }
   | { readonly type: "syncEnded" }
@@ -87,7 +98,7 @@ export function step(
             ? { kind: "unpaired", note: null }
             : found === "lost"
               ? { kind: "unpaired", note: "lost" }
-              : { kind: "paired", base: found.base },
+              : { kind: "paired", base: found.base, notForgotten: false },
       }
     }
     case "pairPressed": {
@@ -102,14 +113,18 @@ export function step(
       if (activity.kind !== "pairing" || activity.base !== event.base)
         return state
       return {
-        link: { kind: "paired", base: event.base },
+        link: { kind: "paired", base: event.base, notForgotten: false },
         activity: idle,
         pairFailure: null,
       }
     }
     case "pairFailed": {
       if (activity.kind !== "pairing") return state
-      return { ...state, activity: idle, pairFailure: event.failure }
+      return {
+        ...state,
+        activity: idle,
+        pairFailure: { failure: event.failure, base: activity.base },
+      }
     }
     case "unpairPressed": {
       if (link.kind !== "paired" || activity.kind !== "idle") return state
@@ -125,6 +140,10 @@ export function step(
         activity: idle,
         pairFailure: null,
       }
+    }
+    case "unpairFailed": {
+      if (activity.kind !== "unpairing" || link.kind !== "paired") return state
+      return { ...state, link: { ...link, notForgotten: true }, activity: idle }
     }
     case "syncPressed": {
       if (link.kind === "reading" || activity.kind !== "idle") return state

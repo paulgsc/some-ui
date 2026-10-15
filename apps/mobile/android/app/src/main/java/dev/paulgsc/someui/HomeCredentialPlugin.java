@@ -3,6 +3,7 @@ package dev.paulgsc.someui;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.security.keystore.KeyGenParameterSpec;
+import android.security.keystore.KeyPermanentlyInvalidatedException;
 import android.security.keystore.KeyProperties;
 import android.util.Base64;
 import com.getcapacitor.JSObject;
@@ -12,6 +13,7 @@ import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
 import java.nio.charset.StandardCharsets;
 import java.security.KeyStore;
+import javax.crypto.AEADBadTagException;
 import javax.crypto.Cipher;
 import javax.crypto.KeyGenerator;
 import javax.crypto.SecretKey;
@@ -24,8 +26,10 @@ import javax.crypto.spec.GCMParameterSpec;
  * cannot leave it, and stored in its own preferences file, which
  * res/xml/backup_rules.xml and res/xml/data_extraction_rules.xml keep out of
  * every backup and device-to-device transfer. A record whose key did not
- * survive (a restore that slipped past those rules, a Keystore reset) reads
- * as `lost` and is deleted, never as an error the page has to handle.
+ * survive (a restore that slipped past those rules, a Keystore reset), or
+ * that no longer opens with it, reads as `lost` and is deleted. Any other
+ * failure to read (a Keystore that is busy, say) rejects and keeps the
+ * record: deleting it then would unpair the phone for a passing fault.
  *
  * Nothing here sends anything: www reads the record when the person taps
  * something that sends, and forgets it when they unpair.
@@ -41,6 +45,7 @@ public class HomeCredentialPlugin extends Plugin {
     private static final String KEYSTORE = "AndroidKeyStore";
     private static final String TRANSFORMATION = "AES/GCM/NoPadding";
     private static final int TAG_BITS = 128;
+    private static final int GCM_IV_BYTES = 12;
 
     @PluginMethod
     public void read(PluginCall call) {
@@ -56,10 +61,13 @@ public class HomeCredentialPlugin extends Plugin {
         try {
             result.put("record", decrypt(stored));
             result.put("lost", false);
-        } catch (Exception unreadable) {
+        } catch (Lost | AEADBadTagException | KeyPermanentlyInvalidatedException | IllegalArgumentException lost) {
             prefs.edit().remove(RECORD).commit();
             result.put("record", null);
             result.put("lost", true);
+        } catch (Exception failed) {
+            call.reject("the pairing could not be read", failed);
+            return;
         }
         call.resolve(result);
     }
@@ -84,7 +92,10 @@ public class HomeCredentialPlugin extends Plugin {
 
     @PluginMethod
     public void clear(PluginCall call) {
-        prefs().edit().remove(RECORD).commit();
+        if (!prefs().edit().remove(RECORD).commit()) {
+            call.reject("the pairing could not be forgotten");
+            return;
+        }
         call.resolve();
     }
 
@@ -112,6 +123,13 @@ public class HomeCredentialPlugin extends Plugin {
         return generator.generateKey();
     }
 
+    /** A record that can never be read again: its key is gone, or it is not one. */
+    private static final class Lost extends Exception {
+        Lost(String why) {
+            super(why);
+        }
+    }
+
     /** `iv:ciphertext`, each Base64; the Keystore picks the IV. */
     private static String encrypt(String plain) throws Exception {
         Cipher cipher = Cipher.getInstance(TRANSFORMATION);
@@ -122,12 +140,13 @@ public class HomeCredentialPlugin extends Plugin {
 
     private static String decrypt(String stored) throws Exception {
         int split = stored.indexOf(':');
-        if (split < 0) throw new IllegalArgumentException("not a sealed record");
+        if (split < 0) throw new Lost("not a sealed record");
         byte[] iv = Base64.decode(stored.substring(0, split), Base64.NO_WRAP);
         byte[] sealed = Base64.decode(stored.substring(split + 1), Base64.NO_WRAP);
+        if (iv.length != GCM_IV_BYTES) throw new Lost("not a sealed record");
         KeyStore keyStore = KeyStore.getInstance(KEYSTORE);
         keyStore.load(null);
-        if (!keyStore.containsAlias(KEY_ALIAS)) throw new IllegalStateException("the key did not survive");
+        if (!keyStore.containsAlias(KEY_ALIAS)) throw new Lost("the key did not survive");
         SecretKey key = ((KeyStore.SecretKeyEntry) keyStore.getEntry(KEY_ALIAS, null)).getSecretKey();
         Cipher cipher = Cipher.getInstance(TRANSFORMATION);
         cipher.init(Cipher.DECRYPT_MODE, key, new GCMParameterSpec(TAG_BITS, iv));

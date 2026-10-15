@@ -61,13 +61,13 @@ const NOTES: Record<UnpairedNote, string> = {
   unpaired: "Unpaired.",
   "unpaired-offline":
     "Unpaired on this phone. Home couldn't be reached, so it still holds this phone's key until it expires: sign out everywhere on your computer to end it now.",
-  lost: "This phone's pairing didn't survive a restore. Pair again.",
+  lost: "This phone's pairing didn't survive a restore. Pair again; to end the old one, sign out everywhere on your computer.",
 }
 
 function failureLine(failure: PairFailure, host: string): string {
   switch (failure) {
     case "unreachable": {
-      return `Couldn't reach ${host}. Are you on the home network? Nothing was sent.`
+      return `Couldn't reach ${host}. Are you on the home network?`
     }
     case "untrusted": {
       return `This phone doesn't trust ${host}'s certificate. Nothing was sent.`
@@ -76,10 +76,13 @@ function failureLine(failure: PairFailure, host: string): string {
       return "That code didn't work. Codes work once, for 10 minutes. Get a new one on your computer."
     }
     case "too-many": {
-      return "Too many tries. Get a new code on your computer."
+      return "Too many tries. Wait a minute and try again."
     }
     case "not-set-up": {
       return `${host} can't pair phones: passkey sign-in isn't set up there.`
+    }
+    case "not-home": {
+      return `${host} doesn't answer as a home server. Check the address your computer shows.`
     }
     case "not-kept": {
       return "This phone couldn't keep the pairing. Get a new code and try again."
@@ -142,9 +145,12 @@ const PairForm = ({
         value={code}
         onChange={(event) => setCode(event.target.value)}
       />
-      {state.pairFailure && target ? (
+      {state.pairFailure ? (
         <p className="text-destructive text-xs" role="status">
-          {failureLine(state.pairFailure, target.host)}
+          {failureLine(
+            state.pairFailure.failure,
+            hostOf(state.pairFailure.base)
+          )}
         </p>
       ) : null}
       <div className="flex flex-wrap gap-2">
@@ -162,9 +168,7 @@ const PairForm = ({
           Cancel
         </Button>
       </div>
-      <p className="text-muted-foreground text-xs">
-        Sends only this code. Nothing else leaves the phone until you tap send.
-      </p>
+      <p className="text-muted-foreground text-xs">Sends only this code.</p>
     </div>
   )
 }
@@ -173,7 +177,6 @@ export const DeviceSection = (): JSX.Element => {
   const queryClient = useQueryClient()
   const state = useHomeLink()
   const [address, setAddress] = useState(rememberedAddress)
-  const [synced, setSynced] = useState(lastSync)
   const [pairOpen, setPairOpen] = useState(false)
   const [confirmingUnpair, setConfirmingUnpair] = useState(false)
 
@@ -184,20 +187,20 @@ export const DeviceSection = (): JSX.Element => {
   const host = paired ? hostOf(paired.base) : typedHost(typed)
   const syncing = activity.kind === "syncing"
 
-  const sync = useAsyncIntent((from: string) => syncLessonsFrom(from), {
-    presentation: "interactive",
-  })
+  // The queries are re-read by the sync itself, so leaving Settings while
+  // it runs still refreshes them; only the toast needs this page.
+  const sync = useAsyncIntent(
+    (from: string) =>
+      syncLessonsFrom(from, () => queryClient.invalidateQueries()),
+    { presentation: "interactive" }
+  )
   useIntentEffect(sync, (result) => {
     if (result.line === "") return
-    if (result.ok) {
-      toast.success(result.line)
-      setSynced(lastSync())
-    } else {
-      toast.error(result.line)
-    }
-    // What the catalogue and rounds queries hold is now stale.
-    if (result.changed) void queryClient.invalidateQueries()
+    if (result.ok) toast.success(result.line)
+    else toast.error(result.line)
   })
+  // Kept in storage by the sync; read where it is shown, never copied.
+  const synced = lastSync()
   const unpair = useAsyncIntent((_: undefined) => homeLink().unpair(), {
     presentation: "interactive",
   })
@@ -265,6 +268,12 @@ export const DeviceSection = (): JSX.Element => {
                 </div>
               </div>
             ) : null}
+            {paired.notForgotten ? (
+              <p className="text-destructive text-xs" role="status">
+                This phone couldn&apos;t forget its key, so it is still paired.
+                Try Unpair again.
+              </p>
+            ) : null}
             <p className="text-muted-foreground text-xs">
               Nothing is sent unless you tap below.
             </p>
@@ -312,7 +321,11 @@ export const DeviceSection = (): JSX.Element => {
                 if (!paired) rememberAddress(typed)
                 sync.start(base)
               }}
-              disabled={base === null || activity.kind !== "idle"}
+              disabled={
+                base === null ||
+                link.kind === "reading" ||
+                activity.kind !== "idle"
+              }
               variant="outline"
               size="sm"
               idleLabel="Sync lessons from home"

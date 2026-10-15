@@ -5,6 +5,7 @@
  * it (Crockford base32: case, spaces and dashes ignored, `I`/`L` as `1`,
  * `O` as `0`).
  */
+import { homeApiBase } from "@/lib/device-backend/home-sync"
 
 /** Where the phone is paired to: the API base, and the host to show. */
 export type HomeAddress = { base: string; host: string }
@@ -13,12 +14,12 @@ export type AddressProblem = "empty" | "not-https" | "invalid"
 
 /**
  * `file-host.home.example`, `https://host/api/file-host`, or a full
- * `.../api/v1`, as the API base. Never `http:`.
+ * `.../api/v1`, as the API base (`homeApiBase`, the sync's own reading).
+ * Never `http:`.
  */
 export function pairingAddress(input: string): HomeAddress | AddressProblem {
   const typed = input.trim()
   if (typed === "") return "empty"
-  if (/^http:\/\//i.test(typed)) return "not-https"
   let url: URL
   try {
     url = new URL(
@@ -27,10 +28,8 @@ export function pairingAddress(input: string): HomeAddress | AddressProblem {
   } catch {
     return "invalid"
   }
-  if (url.protocol !== "https:" || url.hostname === "") return "not-https"
-  const path = url.pathname.replace(/\/+$/, "")
-  const base = `${url.origin}${path.endsWith("/api/v1") ? path : `${path}/api/v1`}`
-  return { base, host: url.host }
+  if (url.protocol !== "https:") return "not-https"
+  return { base: homeApiBase(`${url.origin}${url.pathname}`), host: url.host }
 }
 
 /** The host of a stored base, for every line that says where data goes. */

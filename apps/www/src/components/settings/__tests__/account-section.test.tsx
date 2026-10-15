@@ -11,8 +11,14 @@ import { afterEach, describe, expect, it, vi } from "vitest"
 const calls = vi.hoisted(() => {
   const auth: Array<string> = []
   const navigated: Array<unknown> = []
-  return { auth, navigated }
+  const server = { base: "https://home.example/api/file-host" }
+  return { auth, navigated, server }
 })
+
+vi.mock("@/lib/file-host-config", async (importOriginal) => ({
+  ...(await importOriginal<object>()),
+  absoluteFileHostBase: (): string => calls.server.base,
+}))
 
 vi.mock("@tanstack/react-router", () => ({
   useNavigate:
@@ -55,6 +61,7 @@ afterEach(() => {
   cleanup()
   calls.auth.length = 0
   calls.navigated.length = 0
+  calls.server.base = "https://home.example/api/file-host"
 })
 
 async function press(name: RegExp): Promise<void> {
@@ -113,8 +120,18 @@ describe("AccountSection", () => {
     await press(/pair a phone/i)
     expect(calls.auth).toEqual(["startPairing"])
     expect(screen.getByText("K7QF 2M9X")).toBeTruthy()
+    expect(screen.getByText("https://home.example/api/file-host")).toBeTruthy()
     expect(screen.getByText(/works once, until/i)).toBeTruthy()
     expect(screen.getByRole("button", { name: /get a new code/i })).toBeTruthy()
+  })
+
+  it("offers no code for a server the phone cannot pair with over https", () => {
+    calls.server.base = "http://192.168.1.10:3000"
+    render(<AccountSection />)
+    expect(screen.getByText(/phones pair over https only/i)).toBeTruthy()
+    expect(
+      screen.getByRole("button", { name: /pair a phone/i })
+    ).toHaveProperty("disabled", true)
   })
 
   it.each([

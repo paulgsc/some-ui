@@ -40,15 +40,21 @@ function describe(report: SyncReport): string {
   return parts.join(" · ")
 }
 
-/** A sync's end, in the words the block shows. `changed`: re-read the app's queries. */
+/** A sync's end, in the words the block shows. */
 export type SyncResult = {
   readonly ok: boolean
   readonly line: string
-  readonly changed: boolean
 }
 
-/** Syncs from `base` (an API base). Never throws: a failure is a line. */
-export async function syncLessonsFrom(base: string): Promise<SyncResult> {
+/**
+ * Syncs from `base` (an API base), then calls `refresh` once anything may
+ * have changed, so the app re-reads what it shows whether or not the page
+ * that started the sync is still open. Never throws: a failure is a line.
+ */
+export async function syncLessonsFrom(
+  base: string,
+  refresh: () => unknown
+): Promise<SyncResult> {
   const host = hostOf(base)
   try {
     const { context } = await deviceBackend()
@@ -56,12 +62,12 @@ export async function syncLessonsFrom(base: string): Promise<SyncResult> {
       syncFromHome(context.db, base, get)
     )
     void deviceStorage.refresh()
-    if (outcome === null) return { ok: false, line: "", changed: false }
+    if (outcome === null) return { ok: false, line: "" }
+    refresh()
     if (outcome.kind === "stopped") {
       return {
         ok: true,
         line: `Stopped. What came from ${host} before that stays on this phone.`,
-        changed: true,
       }
     }
     const line = describe(outcome.value)
@@ -73,7 +79,7 @@ export async function syncLessonsFrom(base: string): Promise<SyncResult> {
     } catch {
       // Not remembered; the sync itself still happened.
     }
-    return { ok: true, line, changed: true }
+    return { ok: true, line }
   } catch (error) {
     // The phone's own storage says so in its words (reported, with the
     // plugin's, to the native log); anything else names the error.
@@ -85,7 +91,6 @@ export async function syncLessonsFrom(base: string): Promise<SyncResult> {
           : error instanceof DeviceStorageError
             ? `Sync failed: ${error.error.summary}`
             : `Sync failed: ${String(error)}`,
-      changed: false,
     }
   }
 }

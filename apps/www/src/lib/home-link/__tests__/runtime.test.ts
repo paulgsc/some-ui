@@ -17,6 +17,7 @@ type Options = {
   lost?: boolean
   answer?: (call: HomeCall) => HomeAnswer | Promise<HomeAnswer>
   write?: CredentialPort["write"]
+  clear?: CredentialPort["clear"]
 }
 
 type Home = {
@@ -39,10 +40,12 @@ function setup(options: Options = {}): Home {
         record = next
         return Promise.resolve()
       }),
-    clear: (): Promise<void> => {
-      record = null
-      return Promise.resolve()
-    },
+    clear:
+      options.clear ??
+      ((): Promise<void> => {
+        record = null
+        return Promise.resolve()
+      }),
   }
   const link = createHomeLink({
     credential,
@@ -76,6 +79,7 @@ describe("the home link", () => {
     expect(paired.link.getSnapshot().link).toEqual({
       kind: "paired",
       base: HOME.base,
+      notForgotten: false,
     })
     expect(paired.sent).toEqual([])
 
@@ -115,6 +119,9 @@ describe("the home link", () => {
     const cases: Array<[Options, string]> = [
       [{ answer: () => ({ status: 422, body: "{}" }) }, "bad-code"],
       [{ answer: () => ({ status: 429, body: "{}" }) }, "too-many"],
+      [{ answer: () => ({ status: 503, body: "{}" }) }, "not-set-up"],
+      [{ answer: () => ({ status: 404, body: "" }) }, "not-home"],
+      [{ answer: () => ({ status: 200, body: "<html>" }) }, "other"],
       [
         {
           answer: () =>
@@ -127,13 +134,6 @@ describe("the home link", () => {
         "untrusted",
       ],
       [{ answer: () => Promise.reject(new Error("timeout")) }, "unreachable"],
-      [
-        {
-          answer: () => ({ status: 200, body: '{"token":"t"}' }),
-          write: () => Promise.reject(new Error("keystore")),
-        },
-        "not-kept",
-      ],
     ]
     for (const [options, failure] of cases) {
       const home = setup(options)
@@ -142,10 +142,28 @@ describe("the home link", () => {
       expect(home.link.getSnapshot(), failure).toMatchObject({
         link: { kind: "unpaired" },
         activity: { kind: "idle" },
-        pairFailure: failure,
+        pairFailure: { failure, base: HOME.base },
       })
       expect(home.sent, failure).toHaveLength(1)
     }
+  })
+
+  it("ends the session home made when the phone cannot keep it", async () => {
+    const home = setup({
+      answer: () => ({ status: 200, body: '{"token":"t"}' }),
+      write: () => Promise.reject(new Error("keystore")),
+    })
+    await home.link.load()
+    await home.link.pair(HOME, "K7QF2M9X")
+    expect(home.link.getSnapshot()).toMatchObject({
+      link: { kind: "unpaired" },
+      pairFailure: { failure: "not-kept", base: HOME.base },
+    })
+    expect(home.sent.map((call) => call.url)).toEqual([
+      `${HOME.base}/auth/pairing/finish`,
+      `${HOME.base}/auth/sign-out`,
+    ])
+    expect(home.sent[1]).toMatchObject({ token: "t" })
   })
 
   it("never pairs to an http address", async () => {
@@ -156,7 +174,7 @@ describe("the home link", () => {
       "K7QF2M9X"
     )
     expect(home.sent).toEqual([])
-    expect(home.link.getSnapshot().pairFailure).toBe("unreachable")
+    expect(home.link.getSnapshot().pairFailure?.failure).toBe("other")
   })
 
   it("unpairs with the token, and forgets it on the phone even when home can't be told", async () => {
@@ -188,6 +206,20 @@ describe("the home link", () => {
     expect(offline.link.getSnapshot().link).toEqual({
       kind: "unpaired",
       note: "unpaired-offline",
+    })
+  })
+
+  it("stays paired, and says so, when the phone cannot forget the token", async () => {
+    const home = setup({
+      record: JSON.stringify({ base: HOME.base, token: "t" }),
+      clear: () => Promise.reject(new Error("disk")),
+    })
+    await home.link.load()
+    await home.link.unpair()
+    expect(home.record()).not.toBeNull()
+    expect(home.link.getSnapshot()).toMatchObject({
+      link: { kind: "paired", base: HOME.base, notForgotten: true },
+      activity: { kind: "idle" },
     })
   })
 

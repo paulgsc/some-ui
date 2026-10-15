@@ -259,7 +259,6 @@ async function leave(path: string, init: RequestInit = POST): Promise<void> {
 /** End this browser's session. */
 export const signOut = (): Promise<void> => leave("/auth/sign-out")
 
-/** End every session this account holds, on every device. */
 /** A code for the phone to type, and when it stops working (ms since the epoch). */
 export type PairingCode = { code: string; expiresAt: number }
 
@@ -277,6 +276,7 @@ export function startPairing(): Promise<PairingCode> {
     : Promise.reject(new Error("this build has no server to pair a phone to"))
 }
 
+/** End every session this account holds, on every device. */
 export const signOutEverywhere = (): Promise<void> =>
   leave("/auth/sign-out-everywhere")
 

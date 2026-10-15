@@ -71,7 +71,8 @@ async function open(): Promise<void> {
 async function press(name: RegExp): Promise<void> {
   await act(async () => {
     fireEvent.click(screen.getByRole("button", { name }))
-    await Promise.resolve()
+    // Long enough for the runtime's chain of port calls to finish.
+    await new Promise((resolve) => setTimeout(resolve, 0))
   })
 }
 
@@ -115,7 +116,7 @@ describe("DeviceSection's Home server block", () => {
     expect(home.sent).toEqual([])
   })
 
-  it("unpairs only on the second press", async () => {
+  it("unpairs only on the second press, with one request to the paired server", async () => {
     home.record = JSON.stringify({
       base: "https://home.example/api/v1",
       token: "t",
@@ -128,5 +129,17 @@ describe("DeviceSection's Home server block", () => {
     await press(/^keep$/i)
     expect(home.sent).toEqual([])
     expect(screen.getByText("Paired · home.example")).toBeTruthy()
+
+    await press(/^unpair$/i)
+    await press(/^yes, unpair$/i)
+    expect(home.sent).toEqual([
+      {
+        method: "POST",
+        url: "https://home.example/api/v1/auth/sign-out",
+        token: "t",
+      },
+    ])
+    expect(home.record).toBeNull()
+    expect(screen.getByText("Unpaired.")).toBeTruthy()
   })
 })

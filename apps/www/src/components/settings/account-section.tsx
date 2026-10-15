@@ -69,6 +69,10 @@ export const AccountSection = (): JSX.Element => {
   })
   const pairing =
     pairIntent.state.status === "succeeded" ? pairIntent.state.value : null
+  // The phone pairs over https only (LA8): a code it could not use is not
+  // offered.
+  const pairAt = absoluteFileHostBase()
+  const pairable = pairAt?.startsWith("https:") ?? false
   const addIntent = useAsyncIntent(
     (_: undefined) =>
       addPasskey().then(
@@ -139,9 +143,14 @@ export const AccountSection = (): JSX.Element => {
           <div className="space-y-2" aria-labelledby="phones-heading">
             <Label id="phones-heading">Phones</Label>
             <p className="text-muted-foreground text-sm">
-              Pair your phone so it can send here, each time you tap send on it.
-              To unpair a lost phone, sign out everywhere.
+              A paired phone sends here only when you tap it to, and names this
+              server first. To unpair a lost phone, sign out everywhere.
             </p>
+            {pairAt !== undefined && !pairable ? (
+              <p className="text-muted-foreground text-xs break-all">
+                Phones pair over https only, and this server is at {pairAt}.
+              </p>
+            ) : null}
             {pairing ? (
               <div className="space-y-1" role="status">
                 <p className="text-sm">Code for your phone</p>
@@ -150,7 +159,7 @@ export const AccountSection = (): JSX.Element => {
                 </p>
                 <p className="text-muted-foreground text-xs break-all">
                   On the phone: Settings, This phone, Pair, with{" "}
-                  <span className="select-all">{absoluteFileHostBase()}</span>
+                  <span className="select-all">{pairAt}</span>
                 </p>
                 <p className="text-muted-foreground text-xs">
                   Works once, until{" "}
@@ -167,6 +176,7 @@ export const AccountSection = (): JSX.Element => {
               onPress={() => pairIntent.start(undefined)}
               variant="outline"
               size="sm"
+              disabled={!pairable}
               idleLabel={pairing ? "Get a new code" : "Pair a phone"}
               workingLabel="Getting a code..."
             />

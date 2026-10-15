@@ -8,10 +8,11 @@
  * learner's own history would need a merge rule. Every route read here is
  * uncredentialed on the server, so no sign-in is needed.
  *
- * `get` is injected: the app passes Capacitor's native HTTP (`native-http`),
- * which reaches a plain-`http:` LAN address from the WebView's `https:` page
- * (a `fetch` would be mixed content). Tests pass a second device backend
- * standing in for home, which passes the server's own contracts.
+ * `get` is injected: the app passes `lib/home-link`'s stoppable `get`, over
+ * Capacitor's native HTTP (`native-http`), which reaches a plain-`http:` LAN
+ * address from the WebView's `https:` page (a `fetch` would be mixed
+ * content). Tests pass a second device backend standing in for home, which
+ * passes the server's own contracts.
  */
 import { isRecord, stringsAt } from "@/lib/device-backend/common"
 import type { LessonEntry } from "@/lib/device-backend/content-store"

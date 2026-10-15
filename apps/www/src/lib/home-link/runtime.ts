@@ -13,11 +13,13 @@
  *   the next try.
  * - **Stop, and the background, end a sync** after the request in flight:
  *   the `get` a sync is handed refuses to send once stopped.
- * - **Unpair always forgets the credential on the phone,** and says whether
- *   home was told.
+ * - **Unpair forgets the credential on the phone** whether or not home was
+ *   told, and says which; a phone that could not forget it stays paired and
+ *   says so.
  * - **The credential goes only to the paired base, over https,** never on a
  *   sync read (`native-http` refuses a credentialed `http:` request).
  */
+import { isRecord } from "@/lib/device-backend/common"
 import type { HomeGet } from "@/lib/device-backend/home-sync"
 import { SyncStoppedError } from "@/lib/device-backend/home-sync"
 import type { HomeAnswer, HomeCall } from "@/lib/device-backend/native-http"
@@ -36,15 +38,14 @@ export type CredentialPort = {
 export type HomeLinkPorts = {
   credential: CredentialPort
   request: (call: HomeCall) => Promise<HomeAnswer>
-  /** Calls `listener` when the app goes to the background; returns an unsubscribe. */
+  /**
+   * Calls `listener` when the app goes to the background, and at once if it
+   * already is; returns an unsubscribe.
+   */
   onHidden: (listener: () => void) => () => void
 }
 
 type Pairing = { base: string; token: string }
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null
-}
 
 function parsePairing(record: string): Pairing | null {
   try {
@@ -59,20 +60,36 @@ function parsePairing(record: string): Pairing | null {
   }
 }
 
-/** What a failed pairing request says, from its status or what threw. */
-function pairFailureOf(answer: HomeAnswer | unknown): PairFailure {
-  if (isRecord(answer) && typeof answer.status === "number") {
-    if (answer.status === 422) return "bad-code"
-    if (answer.status === 429) return "too-many"
-    if (answer.status === 503) return "not-set-up"
-    return "other"
-  }
-  const words = [answer, isRecord(answer) ? answer.cause : undefined]
+/** What a pairing answer other than 200 says. */
+function refusalOf(status: number): PairFailure {
+  if (status === 422) return "bad-code"
+  if (status === 429) return "too-many"
+  if (status === 503) return "not-set-up"
+  // A www host without the proxy path, say: nothing there pairs.
+  if (status === 404 || status === 405) return "not-home"
+  return "other"
+}
+
+/** What a pairing request that threw says: TLS refused, or no answer. */
+function thrownFailureOf(error: unknown): PairFailure {
+  const words = [error, isRecord(error) ? error.cause : undefined]
     .map(String)
     .join(" ")
   return /SSL|certif|CertPath|trust anchor/i.test(words)
     ? "untrusted"
     : "unreachable"
+}
+
+/** The token in a 200's body, or `null` when it holds none. */
+function tokenOf(body: string): string | null {
+  try {
+    const parsed: unknown = JSON.parse(body)
+    return isRecord(parsed) && typeof parsed.token === "string"
+      ? parsed.token
+      : null
+  } catch {
+    return null
+  }
 }
 
 type SyncOutcome<T> =
@@ -112,6 +129,39 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
     return record === null ? null : parsePairing(record)
   }
 
+  /** One pairing request, and the token kept; why not, when it was not. */
+  const finishPairing = async (
+    base: string,
+    code: string
+  ): Promise<PairFailure | null> => {
+    // `pairingAddress` refuses http; this is the runtime's own guard.
+    if (new URL(base).protocol !== "https:") return "other"
+    let answer: HomeAnswer
+    try {
+      answer = await ports.request({
+        method: "POST",
+        url: `${base}/auth/pairing/finish`,
+        body: { code },
+      })
+    } catch (error) {
+      return thrownFailureOf(error)
+    }
+    if (answer.status !== 200) return refusalOf(answer.status)
+    const token = tokenOf(answer.body)
+    if (token === null) return "other"
+    try {
+      await ports.credential.write(JSON.stringify({ base, token }))
+    } catch {
+      // Home made a session this phone cannot keep: end it, in the same
+      // tap, rather than leave it to expire.
+      await ports
+        .request({ method: "POST", url: `${base}/auth/sign-out`, token })
+        .catch(() => undefined)
+      return "not-kept"
+    }
+    return null
+  }
+
   return {
     getSnapshot: (): HomeLinkState => state,
 
@@ -142,33 +192,7 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
       dispatch({ type: "pairPressed", base: address.base })
       if (state === before) return
       const { base } = address
-      let failure: PairFailure | null = null
-      try {
-        if (new URL(base).protocol !== "https:") throw new Error("not https")
-        const answer = await ports.request({
-          method: "POST",
-          url: `${base}/auth/pairing/finish`,
-          body: { code },
-        })
-        if (answer.status !== 200) {
-          failure = pairFailureOf(answer)
-        } else {
-          const parsed: unknown = JSON.parse(answer.body)
-          if (!isRecord(parsed) || typeof parsed.token !== "string") {
-            failure = "other"
-          } else {
-            try {
-              await ports.credential.write(
-                JSON.stringify({ base, token: parsed.token })
-              )
-            } catch {
-              failure = "not-kept"
-            }
-          }
-        }
-      } catch (error) {
-        failure = pairFailureOf(error)
-      }
+      const failure = await finishPairing(base, code)
       dispatch(
         failure === null
           ? { type: "paired", base }
@@ -194,8 +218,14 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
       } catch {
         told = false
       }
-      // Forgotten on the phone whether or not home heard (LA8).
-      await ports.credential.clear().catch(() => undefined)
+      // Forgotten on the phone whether or not home heard (LA8); a phone
+      // that could not forget it says so rather than claiming it did.
+      try {
+        await ports.credential.clear()
+      } catch {
+        dispatch({ type: "unpairFailed" })
+        return
+      }
       dispatch({ type: "unpaired", told })
     },
 
