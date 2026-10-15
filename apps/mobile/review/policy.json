@@ -17,7 +17,7 @@
 
   "permissions": {
     "android.permission.INTERNET": {
-      "reason": "The Home server block (Settings -> This phone; www lib/home-link, LA8): the sync from home fetches lessons from the LAN file_host, and pairing and unpairing reach the person's own home server, each on a tap."
+      "reason": "The Home server block (Settings -> This phone; www lib/home-link, LA8): the sync from home fetches lessons from the LAN file_host, and pairing, unpairing and sending the shelf (after a confirm naming the count and the host) reach the person's own home server, each on a tap."
     },
     "android.permission.RECORD_AUDIO": {
       "reason": "Soundbites (Sessions -> Say why): the person records, on the phone, why a session did not happen. The WebView's getUserMedia, asked for by Capacitor's BridgeWebChromeClient on the first tap to talk. Voice reflections (Reflect, in any session) record the same way, as audio kept on the phone (apps/www src/lib/reflection-voice)."

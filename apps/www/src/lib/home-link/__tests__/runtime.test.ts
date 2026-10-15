@@ -278,6 +278,40 @@ describe("the home link", () => {
     }
   })
 
+  it("sends with the key only to the paired base, and stops like a sync", async () => {
+    const home = setup({
+      record: JSON.stringify({ base: HOME.base, token: "t" }),
+    })
+    await home.link.load()
+    const outcome = await home.link.send(async (put) => {
+      await put("/shelf/topik/a", "{}")
+      home.hide()
+      await put("/shelf/topik/b", "{}")
+      return "finished"
+    })
+    expect(outcome).toEqual({ kind: "stopped" })
+    expect(home.sent).toEqual([
+      {
+        method: "PUT",
+        url: `${HOME.base}/shelf/topik/a`,
+        token: "t",
+        body: "{}",
+      },
+    ])
+    expect(home.link.getSnapshot().activity.kind).toBe("idle")
+  })
+
+  it("sends nothing while unpaired", async () => {
+    const home = setup()
+    await home.link.load()
+    const outcome = await home.link.send(async (put) => {
+      await put("/shelf/topik/a", "{}")
+      return "finished"
+    })
+    expect(outcome).toBeNull()
+    expect(home.sent).toEqual([])
+  })
+
   it("does one thing at a time", async () => {
     const home = setup()
     await home.link.load()

@@ -24,6 +24,7 @@ import {
   useHomeLink,
 } from "@/lib/home-link"
 import { remember, remembered } from "@/lib/home-link/remembered"
+import { keptOnPhone, lastSend, sendShelfTo } from "@/lib/home-link/shelf"
 import { lastSync, syncLessonsFrom } from "@/lib/home-link/sync"
 import { useAsyncIntent, useIntentEffect } from "@/lib/intent"
 import { IntentButton } from "@/lib/intent/render"
@@ -156,6 +157,110 @@ const PairForm = ({
   )
 }
 
+/**
+ * Send shelf to home: a tap counts what is kept here (reading only this
+ * phone), the confirm names that count and the host, and only its Send
+ * sends. One PUT per item, no retry.
+ */
+const ShelfSend = ({
+  base,
+  state,
+}: {
+  base: string
+  state: HomeLinkState
+}): JSX.Element => {
+  const host = hostOf(base)
+  const { activity } = state
+  const count = useAsyncIntent((_: undefined) => keptOnPhone(), {
+    presentation: "interactive",
+  })
+  const send = useAsyncIntent((_: undefined) => sendShelfTo(base), {
+    presentation: "interactive",
+  })
+  useIntentEffect(send, (result) => {
+    if (result.line === "") return
+    if (result.ok) toast.success(result.line)
+    else toast.error(result.line)
+  })
+  const asking = count.state.status === "succeeded" ? count.state.value : null
+  const sent = lastSend()
+
+  return (
+    <div className="space-y-2">
+      {activity.kind === "sending" ? (
+        <div className="flex flex-wrap items-center gap-2" role="status">
+          <p className="text-sm">Sending your shelf to {host}...</p>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={activity.stopping}
+            onClick={() => homeLink().stop()}
+          >
+            {activity.stopping ? "Stopping..." : "Stop"}
+          </Button>
+        </div>
+      ) : asking === null ? (
+        <IntentButton
+          state={count.state}
+          onPress={() => count.start(undefined)}
+          disabled={activity.kind !== "idle"}
+          variant="outline"
+          size="sm"
+          idleLabel={`Send shelf to ${host}...`}
+          workingLabel="Counting..."
+        />
+      ) : asking.total === 0 ? (
+        <div className="flex flex-wrap items-center gap-2" role="status">
+          <p className="text-sm">Nothing is kept on this phone to send.</p>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => count.reset()}
+          >
+            OK
+          </Button>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          <p className="text-sm break-words">
+            Send {asking.total} kept item{asking.total === 1 ? "" : "s"} (
+            {asking.parts}) to {host}? One with the same name there is replaced;
+            nothing there is deleted.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <IntentButton
+              state={send.state}
+              onPress={() => {
+                count.reset()
+                send.start(undefined)
+              }}
+              disabled={activity.kind !== "idle"}
+              size="sm"
+              idleLabel={`Send ${asking.total}`}
+              workingLabel="Sending..."
+            />
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => count.reset()}
+            >
+              Cancel
+            </Button>
+          </div>
+        </div>
+      )}
+      {sent === "" ? null : (
+        <p className="text-muted-foreground text-xs break-all">
+          Last shelf send: {sent}
+        </p>
+      )}
+    </div>
+  )
+}
+
 export const DeviceSection = (): JSX.Element => {
   const queryClient = useQueryClient()
   const state = useHomeLink()
@@ -257,6 +362,9 @@ export const DeviceSection = (): JSX.Element => {
             <p className="text-muted-foreground text-xs">
               Nothing is sent unless you tap below.
             </p>
+            {confirmingUnpair ? null : (
+              <ShelfSend base={paired.base} state={state} />
+            )}
           </>
         ) : (
           <>

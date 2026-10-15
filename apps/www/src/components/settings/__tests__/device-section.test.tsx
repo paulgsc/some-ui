@@ -3,7 +3,7 @@
  *
  * LA8 on the phone's Settings: opening it reads only the phone's own pairing
  * and sends nothing; the destination is named before any tap that sends;
- * unpairing takes a second, deliberate press.
+ * unpairing and sending the shelf each take a second, deliberate press.
  */
 
 import type { ReactNode } from "react"
@@ -39,6 +39,19 @@ vi.mock("@/lib/home-link/credential", () => ({
       return Promise.resolve()
     },
   },
+}))
+vi.mock("@/lib/device-backend/boot", () => ({
+  deviceBackend: (): Promise<{ context: { db: object } }> =>
+    Promise.resolve({ context: { db: {} } }),
+}))
+vi.mock("@/lib/device-backend/handlers/shelf", () => ({
+  everyKept: (): Promise<
+    Array<{ activity: string; key: string; body: string }>
+  > =>
+    Promise.resolve([
+      { activity: "topik", key: "a", body: '{"a":1}' },
+      { activity: "leetype", key: "b", body: "{}" },
+    ]),
 }))
 vi.mock("@/components/settings/device-storage", () => ({
   DeviceStorageSummary: (): null => null,
@@ -134,5 +147,40 @@ describe("DeviceSection's Home server block", () => {
     await press(/^yes, unpair$/i)
     expect(home.sent).toHaveLength(1)
     expect(screen.getByText("Unpaired.")).toBeTruthy()
+  })
+
+  it("sends the shelf only after a confirm that names the count and the host", async () => {
+    home.record = JSON.stringify({
+      base: "https://home.example/api/v1",
+      token: "t",
+    })
+    await open()
+    await press(/send shelf to home.example/i)
+    expect(home.sent).toEqual([])
+    expect(
+      screen.getByText(
+        /send 2 kept items \(1 TOPIK, 1 Leetype\) to home.example\?/i
+      )
+    ).toBeTruthy()
+
+    await press(/^cancel$/i)
+    expect(home.sent).toEqual([])
+
+    await press(/send shelf to home.example/i)
+    await press(/^send 2$/i)
+    expect(home.sent).toEqual([
+      {
+        method: "PUT",
+        url: "https://home.example/api/v1/shelf/topik/a",
+        token: "t",
+        body: '{"a":1}',
+      },
+      {
+        method: "PUT",
+        url: "https://home.example/api/v1/shelf/leetype/b",
+        token: "t",
+        body: "{}",
+      },
+    ])
   })
 })

@@ -1,6 +1,7 @@
 /**
  * What the Home server block keeps on this phone between visits: the typed
- * address and the last sync's line. Empty, or not kept, when storage refuses.
+ * address and the last sync's and shelf send's lines. Empty, or not kept,
+ * when storage refuses.
  */
 import { localStorageOrNull } from "@some-ui/core-utils"
 

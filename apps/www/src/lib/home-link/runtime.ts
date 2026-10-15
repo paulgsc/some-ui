@@ -11,13 +11,16 @@
  *   on a timer, on resume or on a network change.
  * - **No retry.** A failed request is said once and left; the next tap is
  *   the next try.
- * - **Stop, and the background, end a sync** after the request in flight:
- *   the `get` a sync is handed refuses to send once stopped.
+ * - **Stop, and the background, end a sync or a send** after the request
+ *   in flight: the `get` or `put` it is handed refuses to send once
+ *   stopped.
  * - **Unpair forgets the credential on the phone** whether or not home was
  *   told, and says which; a phone that could not forget it stays paired and
  *   says so.
  * - **The credential goes only to the paired base, over https,** never on a
- *   sync read (`native-http` refuses a credentialed `http:` request).
+ *   sync read (`native-http` refuses a credentialed `http:` request): a
+ *   send's `put` takes a path, and the base is the one stored with the
+ *   token.
  */
 import { isRecord } from "@/lib/device-backend/common"
 import type { HomeGet } from "@/lib/device-backend/home-sync"
@@ -92,6 +95,12 @@ function tokenOf(body: string): string | null {
   }
 }
 
+/**
+ * A PUT of `body` (sent as these bytes) to `path` under the paired base,
+ * with the pairing's key. Refuses before sending once stopped.
+ */
+export type HomePut = (path: string, body: string) => Promise<HomeAnswer>
+
 type SyncOutcome<T> =
   | { readonly kind: "done"; readonly value: T }
   | { readonly kind: "stopped" }
@@ -109,6 +118,11 @@ export type HomeLink = {
    * content only.
    */
   sync: <T>(run: (get: HomeGet) => Promise<T>) => Promise<SyncOutcome<T> | null>
+  /**
+   * Runs `run` with a `put` to the paired home, which stops as a sync's
+   * `get` does. `null` when the phone is not paired or is busy.
+   */
+  send: <T>(run: (put: HomePut) => Promise<T>) => Promise<SyncOutcome<T> | null>
   stop: () => void
 }
 
@@ -130,6 +144,34 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
   const readPairing = async (): Promise<Pairing | null> => {
     const { record } = await ports.credential.read()
     return record === null ? null : parsePairing(record)
+  }
+
+  const stopped = (): boolean =>
+    (state.activity.kind === "syncing" || state.activity.kind === "sending") &&
+    state.activity.stopping
+
+  /**
+   * A sync or send: started by `pressed`, stopped by Stop or the
+   * background, ended however `run` ends.
+   */
+  const work = async <T>(
+    pressed: HomeLinkEvent,
+    run: () => Promise<T>
+  ): Promise<SyncOutcome<T> | null> => {
+    const before = state
+    dispatch(pressed)
+    if (state === before) return null
+    const unsubscribe = ports.onHidden(() => dispatch({ type: "stopPressed" }))
+    try {
+      const value = await run()
+      return stopped() ? { kind: "stopped" } : { kind: "done", value }
+    } catch (error) {
+      if (error instanceof SyncStoppedError) return { kind: "stopped" }
+      throw error
+    } finally {
+      unsubscribe()
+      dispatch({ type: "workEnded" })
+    }
   }
 
   /** One pairing request, and the token kept; why not, when it was not. */
@@ -232,31 +274,32 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
       dispatch({ type: "unpaired", told })
     },
 
-    async sync<T>(
-      run: (get: HomeGet) => Promise<T>
-    ): Promise<SyncOutcome<T> | null> {
-      const before = state
-      dispatch({ type: "syncPressed" })
-      if (state === before) return null
-      const stopped = (): boolean =>
-        state.activity.kind === "syncing" && state.activity.stopping
-      const unsubscribe = ports.onHidden(() =>
-        dispatch({ type: "stopPressed" })
-      )
+    sync<T>(run: (get: HomeGet) => Promise<T>): Promise<SyncOutcome<T> | null> {
       const get: HomeGet = (url) => {
         if (stopped()) return Promise.reject(new SyncStoppedError())
         return ports.request({ method: "GET", url })
       }
-      try {
-        const value = await run(get)
-        return stopped() ? { kind: "stopped" } : { kind: "done", value }
-      } catch (error) {
-        if (error instanceof SyncStoppedError) return { kind: "stopped" }
-        throw error
-      } finally {
-        unsubscribe()
-        dispatch({ type: "syncEnded" })
-      }
+      return work({ type: "syncPressed" }, () => run(get))
+    },
+
+    send<T>(run: (put: HomePut) => Promise<T>): Promise<SyncOutcome<T> | null> {
+      return work({ type: "sendPressed" }, async () => {
+        const pairing = await readPairing()
+        if (pairing === null) throw new Error("this phone's pairing is gone")
+        const put: HomePut = (path, body) => {
+          if (stopped()) return Promise.reject(new SyncStoppedError())
+          if (!path.startsWith("/")) {
+            return Promise.reject(new Error(`not a path: ${path}`))
+          }
+          return ports.request({
+            method: "PUT",
+            url: `${pairing.base}${path}`,
+            token: pairing.token,
+            body,
+          })
+        }
+        return run(put)
+      })
     },
 
     stop(): void {
