@@ -251,7 +251,7 @@ export function handOffExport(
   { sent, soundbites }: Sent,
   at = new Date()
 ): void {
-  handOff(sent, at)
+  if (sent.length > 0) handOff(sent, at)
   if (soundbites.length > 0) store.remove(soundbites).catch(() => undefined)
 }
 

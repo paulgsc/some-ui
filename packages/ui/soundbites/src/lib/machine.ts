@@ -487,6 +487,8 @@ export function step(state: SoundbitesState, event: SoundbitesEvent): Step {
       return stay({
         ...state,
         library: { kind: "read", kept },
+        // A pick let go elsewhere (a share's hand-off, say) is no pick.
+        choice: kept.some((b) => b.id === state.choice) ? state.choice : null,
         keptNote: null,
         notice:
           note === null

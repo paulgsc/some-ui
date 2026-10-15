@@ -281,7 +281,8 @@ describe("shareAgentExport", () => {
     expect(result).toMatchObject({ sent: [], soundbites: ["b1"] })
 
     const remove = vi.fn(() => Promise.reject(new Error("busy")))
-    expect(() => handOffExport({ remove }, result, NOW())).not.toThrow()
+    // A refused remove is swallowed: vitest fails the run on an unhandled one.
+    handOffExport({ remove }, result, NOW())
     expect(remove).toHaveBeenCalledWith(["b1"])
   })
 

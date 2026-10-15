@@ -23,11 +23,7 @@ export type SoundbiteStore = {
    * `SoundbitesFullError`, keeping nothing, past `SOUNDBITES_MAX_BYTES`.
    */
   save: (bite: Soundbite, audio: Blob, replace: string | null) => Promise<void>
-  /**
-   * Lets go of each of `ids` still kept, in one transaction: a delete tapped
-   * on the list, or the soundbites a share sent once they arrived. An ID no
-   * longer kept is skipped.
-   */
+  /** Lets go of each of `ids` still kept, in one transaction. */
   remove: (ids: ReadonlyArray<string>) => Promise<void>
   /**
    * Calls `listener` after each save or remove commits, on this page, so a
