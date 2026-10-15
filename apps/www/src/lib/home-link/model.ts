@@ -6,7 +6,7 @@
  * One operation at a time, by structure: pairing, unpairing, a sync and a
  * send are arms of `activity`, and `step` refuses to start one while
  * another runs. A result for an operation that is no longer the current
- * one is dropped. A sync and a send both stop on Stop or the background.
+ * one is dropped.
  */
 import { assertNever } from "@some-ui/core-utils"
 

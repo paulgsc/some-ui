@@ -22,7 +22,7 @@
  *   send's `put` takes a path, and the base is the one stored with the
  *   token.
  */
-import { isRecord } from "@/lib/device-backend/common"
+import { isRecord, stringFieldOf } from "@/lib/device-backend/common"
 import type { HomeGet } from "@/lib/device-backend/home-sync"
 import { SyncStoppedError } from "@/lib/device-backend/home-sync"
 import type { HomeAnswer, HomeCall } from "@/lib/device-backend/native-http"
@@ -83,18 +83,6 @@ function thrownFailureOf(error: unknown): PairFailure {
     : "unreachable"
 }
 
-/** The token in a 200's body, or `null` when it holds none. */
-function tokenOf(body: string): string | null {
-  try {
-    const parsed: unknown = JSON.parse(body)
-    return isRecord(parsed) && typeof parsed.token === "string"
-      ? parsed.token
-      : null
-  } catch {
-    return null
-  }
-}
-
 /**
  * A PUT of `body` (sent as these bytes) to `path` under the paired base,
  * with the pairing's key. Refuses before sending once stopped.
@@ -119,8 +107,8 @@ export type HomeLink = {
    */
   sync: <T>(run: (get: HomeGet) => Promise<T>) => Promise<SyncOutcome<T> | null>
   /**
-   * Runs `run` with a `put` to the paired home, which stops as a sync's
-   * `get` does. `null` when the phone is not paired or is busy.
+   * Runs `run` with a `put` to the paired home; `null` when unpaired or
+   * busy.
    */
   send: <T>(run: (put: HomePut) => Promise<T>) => Promise<SyncOutcome<T> | null>
   stop: () => void
@@ -150,10 +138,7 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
     (state.activity.kind === "syncing" || state.activity.kind === "sending") &&
     state.activity.stopping
 
-  /**
-   * A sync or send: started by `pressed`, stopped by Stop or the
-   * background, ended however `run` ends.
-   */
+  /** Shared by `sync` and `send`. */
   const work = async <T>(
     pressed: HomeLinkEvent,
     run: () => Promise<T>
@@ -192,7 +177,7 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
       return thrownFailureOf(error)
     }
     if (answer.status !== 200) return refusalOf(answer.status)
-    const token = tokenOf(answer.body)
+    const token = stringFieldOf(answer.body, "token")
     if (token === null) return "other"
     try {
       await ports.credential.write(JSON.stringify({ base, token }))

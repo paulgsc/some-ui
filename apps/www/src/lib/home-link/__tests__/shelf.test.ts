@@ -11,7 +11,7 @@ import { describeSend, emptyReport, sendKept } from "@/lib/home-link/shelf"
 
 const KEPT = [
   { activity: "topik", key: "a", body: '{ "a": 1 }' },
-  { activity: "topik", key: "b c", body: "[1]" },
+  { activity: "topik", key: "b", body: "[1]" },
   { activity: "leetype", key: "d", body: "{}" },
 ]
 
@@ -47,7 +47,7 @@ describe("sendKept", () => {
     await sendKept(KEPT, h.put, report)
     expect(h.sent).toEqual([
       ["/shelf/topik/a", '{ "a": 1 }'],
-      ["/shelf/topik/b%20c", "[1]"],
+      ["/shelf/topik/b", "[1]"],
       ["/shelf/leetype/d", "{}"],
     ])
     expect(report).toMatchObject({

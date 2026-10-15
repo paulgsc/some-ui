@@ -10,7 +10,7 @@
  * the background, ends it before the next item.
  */
 import { deviceBackend } from "@/lib/device-backend/boot"
-import { isRecord } from "@/lib/device-backend/common"
+import { stringFieldOf } from "@/lib/device-backend/common"
 import type { Kept } from "@/lib/device-backend/handlers/shelf"
 import { everyKept } from "@/lib/device-backend/handlers/shelf"
 import { SyncStoppedError } from "@/lib/device-backend/home-sync"
@@ -71,21 +71,7 @@ export function emptyReport(): SendReport {
   }
 }
 
-function changeOf(body: string): string | null {
-  try {
-    const parsed: unknown = JSON.parse(body)
-    return isRecord(parsed) && typeof parsed.change === "string"
-      ? parsed.change
-      : null
-  } catch {
-    return null
-  }
-}
-
-/**
- * Sends `items` through `put`, once each, into `report`. Ends early on a
- * `401` or no answer; a stop rejects with `SyncStoppedError`.
- */
+/** Sends `items` through `put`, once each, into `report`. */
 export async function sendKept(
   items: ReadonlyArray<Kept>,
   put: HomePut,
@@ -116,7 +102,7 @@ export async function sendKept(
       report.refused += 1
       continue
     }
-    const change = status === 200 ? changeOf(body) : null
+    const change = status === 200 ? stringFieldOf(body, "change") : null
     if (change === "kept") report.kept += 1
     else if (change === "replaced") report.replaced += 1
     else if (change === "unchanged") report.unchanged += 1
@@ -160,7 +146,7 @@ export function describeSend(
   return parts.join(" ")
 }
 
-/** "time · host · what happened" for the last send, or "". */
+/** "time · what happened" for the last send, or "". */
 export function lastSend(): string {
   return remembered(LAST_SEND_KEY)
 }

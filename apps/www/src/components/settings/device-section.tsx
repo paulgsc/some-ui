@@ -25,6 +25,7 @@ import {
 } from "@/lib/home-link"
 import { remember, remembered } from "@/lib/home-link/remembered"
 import { keptOnPhone, lastSend, sendShelfTo } from "@/lib/home-link/shelf"
+import type { SyncResult } from "@/lib/home-link/sync"
 import { lastSync, syncLessonsFrom } from "@/lib/home-link/sync"
 import { useAsyncIntent, useIntentEffect } from "@/lib/intent"
 import { IntentButton } from "@/lib/intent/render"
@@ -157,11 +158,26 @@ const PairForm = ({
   )
 }
 
-/**
- * Send shelf to home: a tap counts what is kept here (reading only this
- * phone), the confirm names that count and the host, and only its Send
- * sends. One PUT per item, no retry.
- */
+/** A sync's or send's end, said once. */
+const say = (result: SyncResult): void => {
+  if (result.line === "") return
+  if (result.ok) toast.success(result.line)
+  else toast.error(result.line)
+}
+
+const StopButton = ({ stopping }: { stopping: boolean }): JSX.Element => (
+  <Button
+    type="button"
+    variant="outline"
+    size="sm"
+    disabled={stopping}
+    onClick={() => homeLink().stop()}
+  >
+    {stopping ? "Stopping..." : "Stop"}
+  </Button>
+)
+
+/** Send shelf to home: count, a confirm naming the count and the host, then Send (LA8). */
 const ShelfSend = ({
   base,
   state,
@@ -177,11 +193,7 @@ const ShelfSend = ({
   const send = useAsyncIntent((_: undefined) => sendShelfTo(base), {
     presentation: "interactive",
   })
-  useIntentEffect(send, (result) => {
-    if (result.line === "") return
-    if (result.ok) toast.success(result.line)
-    else toast.error(result.line)
-  })
+  useIntentEffect(send, say)
   const asking = count.state.status === "succeeded" ? count.state.value : null
   const sent = lastSend()
 
@@ -190,15 +202,7 @@ const ShelfSend = ({
       {activity.kind === "sending" ? (
         <div className="flex flex-wrap items-center gap-2" role="status">
           <p className="text-sm">Sending your shelf to {host}...</p>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            disabled={activity.stopping}
-            onClick={() => homeLink().stop()}
-          >
-            {activity.stopping ? "Stopping..." : "Stop"}
-          </Button>
+          <StopButton stopping={activity.stopping} />
         </div>
       ) : asking === null ? (
         <IntentButton
@@ -280,11 +284,7 @@ export const DeviceSection = (): JSX.Element => {
       syncLessonsFrom(from, () => queryClient.invalidateQueries()),
     { presentation: "interactive" }
   )
-  useIntentEffect(sync, (result) => {
-    if (result.line === "") return
-    if (result.ok) toast.success(result.line)
-    else toast.error(result.line)
-  })
+  useIntentEffect(sync, say)
   const synced = lastSync()
   const unpair = useAsyncIntent((_: undefined) => homeLink().unpair(), {
     presentation: "interactive",
@@ -392,15 +392,7 @@ export const DeviceSection = (): JSX.Element => {
 
         <div className="flex flex-wrap gap-2">
           {syncing ? (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              disabled={activity.stopping}
-              onClick={() => homeLink().stop()}
-            >
-              {activity.stopping ? "Stopping..." : "Stop"}
-            </Button>
+            <StopButton stopping={activity.stopping} />
           ) : (
             <IntentButton
               state={sync.state}
