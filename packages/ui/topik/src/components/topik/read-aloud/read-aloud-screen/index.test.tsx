@@ -3,21 +3,8 @@ import { memoryStorage } from "@some-ui/vite-config/vitest/memory-storage"
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { ReadAloudScreen } from "@topik/components/topik/read-aloud/read-aloud-screen"
 import { createReadAloudStore } from "@topik/lib/topik/adapter/read-aloud-store"
-import { resolveSets } from "@topik/lib/topik/read-aloud/added-sets"
-import {
-  LEVEL_ONE_SET,
-  STARTER_SET,
-} from "@topik/lib/topik/read-aloud/repo-sets"
+import { REPO_SETS as DECK } from "@topik/lib/topik/read-aloud/repo-sets"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
-
-/** The repo's sets, both added: what read-aloud reads on a learner's phone. */
-const DECK = resolveSets(
-  [STARTER_SET, LEVEL_ONE_SET].map((deck) => ({
-    deck,
-    addedAt: "",
-    openedAt: null,
-  }))
-).all
 
 function fakeSpeech(): Speaker {
   return {

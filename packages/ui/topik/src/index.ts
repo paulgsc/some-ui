@@ -53,8 +53,7 @@ export { ConversationPreview } from "./components/topik/conversation-preview"
 /**
  * Read-aloud content (canon Def. 4.8, Cor. 4.6): the deck format and its
  * load-time check. Public so a host or a script can check a served or
- * generated deck (canon Thm. 8.2). No deck is compiled in: the learner adds
- * every one from storage.
+ * generated deck (canon Thm. 8.2).
  */
 export {
   parseReadAloudDeck,

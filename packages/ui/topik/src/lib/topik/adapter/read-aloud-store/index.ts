@@ -180,8 +180,6 @@ export function createReadAloudStore(
       const parsed = ProgressDocumentSchema.safeParse(
         read(READ_ALOUD_STORAGE_KEYS.progress)
       )
-      // A set drawn for another level, or from another deck, is not this
-      // one's to resume.
       return parsed.success &&
         parsed.data.level === level &&
         parsed.data.deck === deckId

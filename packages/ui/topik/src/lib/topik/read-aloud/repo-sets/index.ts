@@ -1,8 +1,7 @@
 /**
  * The word sets this repo keeps, read from disk for tests: the starter and
- * level-one decks that were once compiled into the app, now JSON in
- * `packages/some-content/prompts/read-aloud-generator/sets`, which the
- * learner adds from storage like any agent's set.
+ * level-one sets in `packages/some-content/prompts/read-aloud-generator/sets`,
+ * which the learner adds from storage like any agent's set.
  *
  * Tests only. Nothing the app imports reaches this module, so the JSON never
  * enters the bundle; the files are the sets' reviewed source, not a fallback.
@@ -10,6 +9,7 @@
 
 import { existsSync, readFileSync } from "node:fs"
 import { dirname, join } from "node:path"
+import { resolveSets } from "@topik/lib/topik/read-aloud/added-sets"
 import type { ReadAloudDeck } from "@topik/lib/topik/read-aloud/content"
 import { parseReadAloudDeck } from "@topik/lib/topik/read-aloud/content"
 
@@ -49,3 +49,12 @@ export const STARTER_SET: ReadAloudDeck = parsed("starter")
 
 /** Level one, with roles and tenses throughout: the lens tests' material. */
 export const LEVEL_ONE_SET: ReadAloudDeck = parsed("level-one")
+
+/** Both sets added, starter first: what read-aloud reads on the owner's phone. */
+export const REPO_SETS: ReadAloudDeck = resolveSets(
+  [STARTER_SET, LEVEL_ONE_SET].map((deck) => ({
+    deck,
+    addedAt: "",
+    openedAt: null,
+  }))
+).all

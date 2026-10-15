@@ -68,12 +68,9 @@ repo:
 > to its voice notes. Write a read-aloud deck from `deck-prompt.md` in
 > `@some-ui/topik` (`src/lib/topik/read-aloud`): at the level the learner
 > asked for, or else the level they studied at; 12 or so lines, on what the
-> note mentions, or everyday life when it mentions nothing; `from` naming
-> the note in the learner's words, or the session's date. Give each word a
-> `role` and each line a `tense` where the form shows one. Do not reuse a
-> word id from `sets/` or an earlier set in `Read aloud/sets` unless it is
-> the same dictionary form. Check it with `parseReadAloudDeck` and fix every
-> finding, then upload it.
+> note mentions, or everyday life when it mentions nothing. The words it
+> already has are those in `sets/` and in `Read aloud/sets`. Check it with
+> `parseReadAloudDeck` and fix every finding, then upload it.
 
 ## Not the hex game's format
 

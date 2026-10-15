@@ -138,6 +138,19 @@ const click = (name: string | RegExp): void => {
   fireEvent.click(screen.getByRole("button", { name }))
 }
 
+/** Picks a file on the card `label` names. jsdom's File has no `text()`; the phone's does. */
+const pickFile = async (
+  label: RegExp,
+  text: () => Promise<string>,
+  size = 1
+): Promise<void> => {
+  fireEvent.change(await screen.findByLabelText(label), {
+    target: { files: [{ size, text }] },
+  })
+}
+
+const NEW_WORDS = /Open new words from storage/
+
 const writeYourOwnButton = (): Promise<HTMLElement> =>
   screen.findByRole("button", { name: /Write your own drama/ })
 
@@ -214,25 +227,16 @@ describe("HandheldLesson", () => {
       readAloudStore: store,
       wordSetHint: "In Drive, look in Read aloud › sets",
     })
-    const picker = await screen.findByLabelText(/Open new words from storage/)
-    expect(picker).toHaveAccessibleDescription(
+    expect(await screen.findByLabelText(NEW_WORDS)).toHaveAccessibleDescription(
       /In Drive, look in Read aloud › sets/
     )
-    // jsdom's File has no `text()`; the phone's does.
-    const pick = (text: string): void => {
-      fireEvent.change(picker, {
-        target: {
-          files: [
-            { size: 1, text: (): Promise<string> => Promise.resolve(text) },
-          ],
-        },
-      })
-    }
+    const pick = (text: string): Promise<void> =>
+      pickFile(NEW_WORDS, () => Promise.resolve(text))
 
-    pick("not a word set")
+    await pick("not a word set")
     expect(await screen.findByText("That file isn't a word set.")).toBeTruthy()
 
-    pick(
+    await pick(
       JSON.stringify({
         schemaVersion: 1,
         id: "plans-2",
@@ -278,8 +282,7 @@ describe("HandheldLesson", () => {
 
   it("keeps the paces of words no set names yet, and lets go only what a set picked again drops", async () => {
     const store = createReadAloudStore(memoryStorage())
-    // Paces from before the decks left the bundle: one starter word, one
-    // level-one word the starter set does not name.
+    // One starter word, and one level-one word the starter set does not name.
     const starterWord = STARTER_SET.words[0]?.id ?? ""
     const levelOneWord =
       LEVEL_ONE_SET.words.find(
@@ -291,25 +294,10 @@ describe("HandheldLesson", () => {
       speaker: voice(() => Promise.resolve({ kind: "heard" })),
       readAloudStore: store,
     })
-    // Found again each time: leaving the drill mounts the list anew.
-    const pick = async (deck: object): Promise<void> => {
-      fireEvent.change(
-        await screen.findByLabelText(/Open new words from storage/),
-        {
-          target: {
-            files: [
-              {
-                size: 1,
-                text: (): Promise<string> =>
-                  Promise.resolve(
-                    JSON.stringify({ schemaVersion: 1, ...deck })
-                  ),
-              },
-            ],
-          },
-        }
+    const pick = (deck: object): Promise<void> =>
+      pickFile(NEW_WORDS, () =>
+        Promise.resolve(JSON.stringify({ schemaVersion: 1, ...deck }))
       )
-    }
 
     // The starter set alone, read and left: the level-one word keeps its
     // pace until its own set comes back.
@@ -575,16 +563,8 @@ describe("HandheldLesson", () => {
 
     it("opens a scene from storage: a tree plays, and anything else is judged like a paste (MKJ-S10)", async () => {
       renderLesson()
-      // jsdom's File has no `text()`; the phone's does.
-      const pick = async (
-        text: () => Promise<string>,
-        size = 1
-      ): Promise<void> => {
-        fireEvent.change(
-          await screen.findByLabelText(/Open a scene from storage/),
-          { target: { files: [{ size, text }] } }
-        )
-      }
+      const pick = (text: () => Promise<string>): Promise<void> =>
+        pickFile(/Open a scene from storage/, text)
       await pick(() => Promise.resolve(workedExample()))
       expect(await screen.findByText("숨 막히는 긴장감")).toBeTruthy()
 

@@ -8,8 +8,8 @@
  * operator's served trees (`adapter/tree-feed`), which only this renderer
  * lists. It plays scene trees only: conversation files stay the desktop's.
  *
- * Read-aloud reads only the word sets the learner added from storage
- * (`read-aloud/added-sets`): none is compiled in. A set not opened yet waits
+ * Read-aloud reads the word sets the learner added from storage
+ * (`read-aloud/added-sets`). A set not opened yet waits
  * under "Ready for you", above everything else, and opens on its own words.
  */
 
@@ -174,7 +174,6 @@ export const HandheldLesson = ({
     }
   }
   const leaveServed = (): void => setServedKey(null)
-  // The word sets added from storage, read once and written through.
   const [readAloud] = useState(() => readAloudStore ?? createReadAloudStore())
   const [added, setAdded] = useState(() => readAloud.sets())
   const resolved = useMemo(() => resolveSets(added), [added])
@@ -190,8 +189,6 @@ export const HandheldLesson = ({
       return
     }
     const next = addSet(added, intake.deck, now().toISOString())
-    // A set picked again may name fewer words; theirs are the only paces
-    // that go (Rem. 7.5).
     const leaving = wordsLeaving(added, next)
     if (leaving.size > 0) {
       readAloud.prunePaces(

@@ -21,6 +21,7 @@ import { fnv1a, shuffledBySeed } from "@some-ui/core-utils"
 import type {
   ReadAloudDeck,
   ReadAloudLevel,
+  ReadAloudLine,
 } from "@topik/lib/topik/read-aloud/content"
 import type { Lens } from "@topik/lib/topik/read-aloud/lens"
 import { pickLens } from "@topik/lib/topik/read-aloud/lens"
@@ -121,6 +122,11 @@ export function levelShortfall(
   return own < sentences && below ? own : null
 }
 
+/** Def. 4.8's `K_e` for a line: every word it is written with, once each. */
+const sentenceWordIds = (line: ReadAloudLine): Array<string> => [
+  ...new Set(line.words.map((word) => word.wordId)),
+]
+
 /**
  * Build one set from a deck.
  *
@@ -156,7 +162,7 @@ export function buildSet(
         lineId: line.id,
         text: line.korean,
         syllables: syllablesOf(line.korean),
-        wordIds: [...new Set(line.words.map((word) => word.wordId))],
+        wordIds: sentenceWordIds(line),
         ...(lens ? { lens } : {}),
       }
     })
@@ -210,7 +216,7 @@ export function drawnFrom(
           occurrence.wordId === item.wordId && occurrence.surface === item.text
       )
     }
-    const wordIds = [...new Set(line.words.map((word) => word.wordId))]
+    const wordIds = sentenceWordIds(line)
     return (
       line.korean === item.text &&
       wordIds.length === item.wordIds.length &&

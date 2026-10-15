@@ -411,8 +411,6 @@ export const MaterialList = ({
     )}
 
     {onReadAloud && addedSets === 0 && (
-      // Nothing is compiled in: with no set added there is nothing to read,
-      // and the card says where words come from instead of opening empty.
       <div
         data-slot="read-aloud-empty"
         className="bg-card border-border flex min-h-16 shrink-0 items-center gap-3 rounded-2xl border p-4"

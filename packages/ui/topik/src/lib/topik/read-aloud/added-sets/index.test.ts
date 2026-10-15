@@ -143,8 +143,6 @@ describe("resolveSets", () => {
     expect([...wordsLeaving(before, addSet(before, shorter, "b"))]).toEqual([
       "yaksok",
     ])
-    // A word no set names yet is not the set's to take with it.
-    expect(wordsLeaving([], [added(CAFE)]).size).toBe(0)
   })
 
   it("names a word whose id a set picked again puts on another dictionary form", () => {

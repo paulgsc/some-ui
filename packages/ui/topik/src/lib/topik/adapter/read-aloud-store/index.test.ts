@@ -86,8 +86,7 @@ describe("the read-aloud store", () => {
     store.saveProgress(2, "everyday-2", null)
     expect(store.progress(2, "everyday-2")).toBeNull()
 
-    // What a build before added sets wrote was drawn from a deck compiled
-    // in, which no deck now is.
+    // Progress saved without a deck's id never resumes.
     storage.map.set(
       READ_ALOUD_STORAGE_KEYS.progress,
       JSON.stringify({ version: 1, level: 2, progress: PROGRESS })
