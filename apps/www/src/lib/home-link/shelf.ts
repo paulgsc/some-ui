@@ -120,7 +120,9 @@ export function describeSend(
   host: string,
   total: number
 ): string {
-  if (report.unreachable && report.sent === 0) {
+  const answered =
+    report.sent + report.refused + report.other + report.full.size > 0
+  if (report.unreachable && !answered) {
     return `Couldn't reach ${host}. Are you on the home network? Nothing was sent.`
   }
   const parts = [
@@ -166,7 +168,7 @@ export async function sendShelfTo(base: string): Promise<SyncResult> {
     if (outcome === null) return { ok: false, line: "" }
     const line =
       outcome.kind === "stopped"
-        ? `Stopped. ${report.sent} of ${total} sent to ${host} before that.`
+        ? `Stopped. ${describeSend(report, host, total)}`
         : describeSend(report, host, total)
     remember(LAST_SEND_KEY, `${new Date().toLocaleString()} · ${line}`)
     const clean =

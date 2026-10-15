@@ -93,6 +93,15 @@ describe("sendKept", () => {
     )
   })
 
+  it("says what home answered before the connection was lost", async () => {
+    const h = home([{ status: 409, body: "" }, new Error("timeout")])
+    const report = emptyReport()
+    await sendKept(KEPT, h.put, report)
+    expect(describeSend(report, "home.example", 3)).toBe(
+      "Sent 0 of 3 to home.example: 0 new, 0 replaced, 0 already there. 1 didn't fit: the TOPIK shelf on home.example is full. Lost home.example there, so nothing more was sent."
+    )
+  })
+
   it("lets a stop through, with what was sent before it", async () => {
     const h = home([changed("kept"), new SyncStoppedError()])
     const report = emptyReport()
