@@ -13,7 +13,7 @@
  *   the next try.
  * - **Stop, and the background, end a sync or a send** after the request
  *   in flight: the `get` or `send` it is handed refuses to send once
- *   stopped.
+ *   stopped. A run is over only once every request it started has settled.
  * - **Unpair forgets the credential on the phone** whether or not home was
  *   told, and says which; a phone that could not forget it stays paired and
  *   says so.
