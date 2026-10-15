@@ -16,6 +16,8 @@ export type UnpairedNote =
   | "unpaired-offline"
   /** The pairing's record could not be read back (a restore, say). */
   | "lost"
+  /** The record is there, but the phone could not read it just now. */
+  | "unreadable"
 
 export type PairFailure =
   | "unreachable"
@@ -57,7 +59,7 @@ export type HomeLinkState = {
 export type HomeLinkEvent =
   | {
       readonly type: "read"
-      readonly found: { readonly base: string } | "lost" | null
+      readonly found: { readonly base: string } | "lost" | "unreadable" | null
     }
   | { readonly type: "pairPressed"; readonly base: string }
   | { readonly type: "paired"; readonly base: string }
@@ -96,8 +98,8 @@ export function step(
         link:
           found === null
             ? { kind: "unpaired", note: null }
-            : found === "lost"
-              ? { kind: "unpaired", note: "lost" }
+            : typeof found === "string"
+              ? { kind: "unpaired", note: found }
               : { kind: "paired", base: found.base, notForgotten: false },
       }
     }

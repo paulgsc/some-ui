@@ -321,9 +321,10 @@ declared (checked by reading every call site and by the tests named).
   report the phone unpaired when forgetting it failed; one that
   removes the host from the pair button or the paired line; one that writes
   the pairing record anywhere but `HomeCredentialPlugin`, or stores it there
-  unencrypted; one that widens the failures `HomeCredentialPlugin.read`
-  deletes the record on beyond `Lost`, `AEADBadTagException`,
-  `KeyPermanentlyInvalidatedException` and a malformed record; or one that
+  unencrypted; one that makes `HomeCredentialPlugin.read` delete the record
+  on anything but `Lost`, or that throws `Lost` (or widens a catch that
+  becomes one, in `decrypt`) for a failure that can pass, such as loading
+  the Keystore or a `ProviderException`; or one that
   removes or narrows an `<exclude>` in either backup rule file, removes
   `android:fullBackupContent` or `android:dataExtractionRules` from the
   manifest, or renames `HomeCredentialPlugin.PREFS` without them.

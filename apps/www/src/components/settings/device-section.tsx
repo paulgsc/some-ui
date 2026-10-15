@@ -62,6 +62,8 @@ const NOTES: Record<UnpairedNote, string> = {
   "unpaired-offline":
     "Unpaired on this phone. Home couldn't be reached, so it still holds this phone's key until it expires: sign out everywhere on your computer to end it now.",
   lost: "This phone's pairing didn't survive a restore. Pair again; to end the old one, sign out everywhere on your computer.",
+  unreadable:
+    "This phone couldn't read its pairing just now. Restart the app to try again; pairing again replaces it.",
 }
 
 function failureLine(failure: PairFailure, host: string): string {

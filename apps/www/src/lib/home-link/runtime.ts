@@ -115,6 +115,9 @@ export type HomeLink = {
 export function createHomeLink(ports: HomeLinkPorts): HomeLink {
   let state = INITIAL
   let loading: Promise<void> | null = null
+  // An Unpair that told home but could not forget the token: the retry
+  // finds home no longer holds it, or finds no record left to send.
+  let toldBefore = false
   const listeners = new Set<() => void>()
 
   const dispatch = (event: HomeLinkEvent): void => {
@@ -181,8 +184,9 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
             found: pairing ? { base: pairing.base } : lost ? "lost" : null,
           })
         },
-        // A phone that cannot read its record is not paired; nothing is sent.
-        () => dispatch({ type: "read", found: null })
+        // A phone that cannot read its record just now is not paired, and
+        // says so; nothing is sent.
+        () => dispatch({ type: "read", found: "unreadable" })
       )
       return loading
     },
@@ -213,19 +217,25 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
             url: `${pairing.base}/auth/sign-out`,
             token: pairing.token,
           })
-          told = answer.status >= 200 && answer.status < 300
+          // 401: home holds no such session any more, which is the point.
+          told =
+            (answer.status >= 200 && answer.status < 300) ||
+            answer.status === 401
         }
       } catch {
         told = false
       }
+      told ||= toldBefore
       // Forgotten on the phone whether or not home heard (LA8); a phone
       // that could not forget it says so rather than claiming it did.
       try {
         await ports.credential.clear()
       } catch {
+        toldBefore = told
         dispatch({ type: "unpairFailed" })
         return
       }
+      toldBefore = false
       dispatch({ type: "unpaired", told })
     },
 

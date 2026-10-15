@@ -21,7 +21,7 @@
  */
 
 import { readdirSync, readFileSync } from "node:fs"
-import { dirname, join, relative, resolve } from "node:path"
+import { dirname, join, posix, relative, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 import ts from "typescript"
 import { describe, expect, it } from "vitest"
@@ -75,6 +75,22 @@ function typeOnly(node: ts.ImportDeclaration | ts.ExportDeclaration): boolean {
   )
 }
 
+/**
+ * The `src`-relative module a specifier names, however it is spelt (`@/`,
+ * `./`, a trailing `/index` or extension); `null` for a package.
+ */
+function moduleOf(from: string, specifier: string): string | null {
+  let path: string
+  if (specifier.startsWith("@/")) path = specifier.slice(2)
+  else if (specifier.startsWith(".")) {
+    path = posix.join(posix.dirname(from), specifier)
+  } else return null
+  return path
+    .replace(/\.[cm]?[jt]sx?$/, "")
+    .replace(/\/+$/, "")
+    .replace(/\/index$/, "")
+}
+
 /** Every value import, re-export or `import()` of a module `matches` names. */
 function valueImportsOf(
   path: string,
@@ -96,21 +112,19 @@ function valueImportsOf(
     ) {
       specifier = node.arguments[0]
     }
-    if (
-      specifier !== undefined &&
-      ts.isStringLiteralLike(specifier) &&
-      matches(specifier.text)
-    ) {
+    if (specifier === undefined || !ts.isStringLiteralLike(specifier)) return
+    const module = moduleOf(path, specifier.text)
+    if (module !== null && matches(module)) {
       found.push(`${path} imports ${specifier.text}`)
     }
   })
   return found
 }
 
-const isNativeHttp = (specifier: string): boolean =>
-  specifier === "@/lib/device-backend/native-http"
-const isHomeLink = (specifier: string): boolean =>
-  /^@\/lib\/home-link(\/|$)/.test(specifier)
+const isNativeHttp = (module: string): boolean =>
+  module === "lib/device-backend/native-http"
+const isHomeLink = (module: string): boolean =>
+  module === "lib/home-link" || module.startsWith("lib/home-link/")
 
 function isTestFile(path: string): boolean {
   return (
@@ -438,8 +452,22 @@ describe("the checks themselves", () => {
     ).toHaveLength(3)
     expect(
       valueImportsOf(
+        "lib/device-backend/x.ts",
+        'import { homeRequest } from "./native-http"; export * from "@/lib/device-backend/native-http/index.ts"; void import("./native-http/")',
+        isNativeHttp
+      )
+    ).toHaveLength(3)
+    expect(
+      valueImportsOf(
+        "lib/x.ts",
+        'import { homeLink } from "./home-link"',
+        isHomeLink
+      )
+    ).toHaveLength(1)
+    expect(
+      valueImportsOf(
         "x.ts",
-        'import type { HomeCall } from "@/lib/device-backend/native-http"; import { type HomeAnswer } from "@/lib/device-backend/native-http"',
+        'import type { HomeCall } from "@/lib/device-backend/native-http"; import { type HomeAnswer } from "@/lib/device-backend/native-http"; import { x } from "@/lib/device-backend/native-http-other"',
         isNativeHttp
       )
     ).toEqual([])

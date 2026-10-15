@@ -3,7 +3,6 @@ package dev.paulgsc.someui;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.security.keystore.KeyGenParameterSpec;
-import android.security.keystore.KeyPermanentlyInvalidatedException;
 import android.security.keystore.KeyProperties;
 import android.util.Base64;
 import com.getcapacitor.JSObject;
@@ -12,8 +11,8 @@ import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
 import java.nio.charset.StandardCharsets;
+import java.security.GeneralSecurityException;
 import java.security.KeyStore;
-import javax.crypto.AEADBadTagException;
 import javax.crypto.Cipher;
 import javax.crypto.KeyGenerator;
 import javax.crypto.SecretKey;
@@ -25,11 +24,16 @@ import javax.crypto.spec.GCMParameterSpec;
  * record. Encrypted with an AES key that lives in the Android Keystore and
  * cannot leave it, and stored in its own preferences file, which
  * res/xml/backup_rules.xml and res/xml/data_extraction_rules.xml keep out of
- * every backup and device-to-device transfer. A record whose key did not
- * survive (a restore that slipped past those rules, a Keystore reset), or
- * that no longer opens with it, reads as `lost` and is deleted. Any other
- * failure to read (a Keystore that is busy, say) rejects and keeps the
- * record: deleting it then would unpair the phone for a passing fault.
+ * every backup and device-to-device transfer.
+ *
+ * A record that can never be read again reads as `lost`, and it and its key
+ * are deleted, so the next pairing starts with a fresh key: the record is
+ * not one, its key did not survive (a restore that slipped past those
+ * rules, a Keystore reset), or the key no longer opens it. Only `decrypt`
+ * says which, by throwing `Lost`, and only for those. A Keystore that
+ * cannot be loaded, or that fails an operation it may pass next time
+ * (`ProviderException`), rejects and keeps both: deleting them then would
+ * unpair the phone for a passing fault.
  *
  * Nothing here sends anything: www reads the record when the person taps
  * something that sends, and forgets it when they unpair.
@@ -61,8 +65,9 @@ public class HomeCredentialPlugin extends Plugin {
         try {
             result.put("record", decrypt(stored));
             result.put("lost", false);
-        } catch (Lost | AEADBadTagException | KeyPermanentlyInvalidatedException | IllegalArgumentException lost) {
+        } catch (Lost lost) {
             prefs.edit().remove(RECORD).commit();
+            forgetKey();
             result.put("record", null);
             result.put("lost", true);
         } catch (Exception failed) {
@@ -79,15 +84,26 @@ public class HomeCredentialPlugin extends Plugin {
             call.reject("record is required");
             return;
         }
+        String sealed;
         try {
-            if (!prefs().edit().putString(RECORD, encrypt(record)).commit()) {
-                call.reject("the pairing could not be saved");
+            sealed = encrypt(record);
+        } catch (Exception broken) {
+            // The record is replaced either way, so the old key is worth
+            // nothing: a key that cannot seal (reset under it, say) is
+            // dropped and the write tried once more with a new one.
+            try {
+                forgetKey();
+                sealed = encrypt(record);
+            } catch (Exception failed) {
+                call.reject("the pairing could not be encrypted", failed);
                 return;
             }
-            call.resolve();
-        } catch (Exception failed) {
-            call.reject("the pairing could not be encrypted", failed);
         }
+        if (!prefs().edit().putString(RECORD, sealed).commit()) {
+            call.reject("the pairing could not be saved");
+            return;
+        }
+        call.resolve();
     }
 
     @PluginMethod
@@ -104,6 +120,17 @@ public class HomeCredentialPlugin extends Plugin {
     // is told they are (LA8), not some time after.
     private SharedPreferences prefs() {
         return getContext().getSharedPreferences(PREFS, Context.MODE_PRIVATE);
+    }
+
+    /** Best effort: a key left behind is replaced by the next write anyway. */
+    private static void forgetKey() {
+        try {
+            KeyStore keyStore = KeyStore.getInstance(KEYSTORE);
+            keyStore.load(null);
+            keyStore.deleteEntry(KEY_ALIAS);
+        } catch (Exception ignored) {
+            // Nothing sealed with it can be read; write() retries without it.
+        }
     }
 
     private static SecretKey key() throws Exception {
@@ -123,10 +150,10 @@ public class HomeCredentialPlugin extends Plugin {
         return generator.generateKey();
     }
 
-    /** A record that can never be read again: its key is gone, or it is not one. */
+    /** A record that can never be read again: see the class comment. */
     private static final class Lost extends Exception {
-        Lost(String why) {
-            super(why);
+        Lost(String why, Throwable cause) {
+            super(why, cause);
         }
     }
 
@@ -138,18 +165,46 @@ public class HomeCredentialPlugin extends Plugin {
         return Base64.encodeToString(cipher.getIV(), Base64.NO_WRAP) + ":" + Base64.encodeToString(sealed, Base64.NO_WRAP);
     }
 
+    /**
+     * In three steps, so a failure says whether it can pass. Loading the
+     * Keystore can (it propagates); the record's shape, the key's entry and
+     * the cipher's verdict cannot (`Lost`).
+     */
     private static String decrypt(String stored) throws Exception {
         int split = stored.indexOf(':');
-        if (split < 0) throw new Lost("not a sealed record");
-        byte[] iv = Base64.decode(stored.substring(0, split), Base64.NO_WRAP);
-        byte[] sealed = Base64.decode(stored.substring(split + 1), Base64.NO_WRAP);
-        if (iv.length != GCM_IV_BYTES) throw new Lost("not a sealed record");
+        byte[] iv;
+        byte[] sealed;
+        try {
+            if (split < 0) throw new IllegalArgumentException("no separator");
+            iv = Base64.decode(stored.substring(0, split), Base64.NO_WRAP);
+            sealed = Base64.decode(stored.substring(split + 1), Base64.NO_WRAP);
+        } catch (IllegalArgumentException malformed) {
+            throw new Lost("not a sealed record", malformed);
+        }
+        if (iv.length != GCM_IV_BYTES) throw new Lost("not a sealed record", null);
+
         KeyStore keyStore = KeyStore.getInstance(KEYSTORE);
         keyStore.load(null);
-        if (!keyStore.containsAlias(KEY_ALIAS)) throw new Lost("the key did not survive");
-        SecretKey key = ((KeyStore.SecretKeyEntry) keyStore.getEntry(KEY_ALIAS, null)).getSecretKey();
+
+        SecretKey key;
+        try {
+            if (!keyStore.containsAlias(KEY_ALIAS)) throw new Lost("the key did not survive", null);
+            KeyStore.Entry entry = keyStore.getEntry(KEY_ALIAS, null);
+            if (!(entry instanceof KeyStore.SecretKeyEntry)) throw new Lost("the key did not survive", null);
+            key = ((KeyStore.SecretKeyEntry) entry).getSecretKey();
+        } catch (GeneralSecurityException unrecoverable) {
+            throw new Lost("the key did not survive", unrecoverable);
+        }
+
         Cipher cipher = Cipher.getInstance(TRANSFORMATION);
-        cipher.init(Cipher.DECRYPT_MODE, key, new GCMParameterSpec(TAG_BITS, iv));
-        return new String(cipher.doFinal(sealed), StandardCharsets.UTF_8);
+        try {
+            cipher.init(Cipher.DECRYPT_MODE, key, new GCMParameterSpec(TAG_BITS, iv));
+            return new String(cipher.doFinal(sealed), StandardCharsets.UTF_8);
+        } catch (GeneralSecurityException refused) {
+            // A key the Keystore invalidated, or a record it does not open:
+            // KeyPermanentlyInvalidatedException, InvalidKeyException,
+            // AEADBadTagException, IllegalBlockSizeException.
+            throw new Lost("the key no longer opens the record", refused);
+        }
     }
 }

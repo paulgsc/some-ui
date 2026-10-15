@@ -18,6 +18,7 @@ type Options = {
   answer?: (call: HomeCall) => HomeAnswer | Promise<HomeAnswer>
   write?: CredentialPort["write"]
   clear?: CredentialPort["clear"]
+  read?: CredentialPort["read"]
 }
 
 type Home = {
@@ -32,8 +33,10 @@ function setup(options: Options = {}): Home {
   const sent: Array<HomeCall> = []
   let hide: () => void = () => undefined
   const credential: CredentialPort = {
-    read: (): Promise<{ record: string | null; lost: boolean }> =>
-      Promise.resolve({ record, lost: options.lost ?? false }),
+    read:
+      options.read ??
+      ((): Promise<{ record: string | null; lost: boolean }> =>
+        Promise.resolve({ record, lost: options.lost ?? false })),
     write:
       options.write ??
       ((next): Promise<void> => {
@@ -89,6 +92,16 @@ describe("the home link", () => {
       kind: "unpaired",
       note: "lost",
     })
+
+    const unreadable = setup({
+      read: () => Promise.reject(new Error("keystore busy")),
+    })
+    await unreadable.link.load()
+    expect(unreadable.link.getSnapshot().link).toEqual({
+      kind: "unpaired",
+      note: "unreadable",
+    })
+    expect(unreadable.sent).toEqual([])
   })
 
   it("pairs with one request carrying only the code, and keeps the token it is given", async () => {
@@ -220,6 +233,30 @@ describe("the home link", () => {
     expect(home.link.getSnapshot()).toMatchObject({
       link: { kind: "paired", base: HOME.base, notForgotten: true },
       activity: { kind: "idle" },
+    })
+  })
+
+  it("remembers that home was told when the retry finds the session already gone", async () => {
+    let clears = 0
+    let record: string | null = JSON.stringify({ base: HOME.base, token: "t" })
+    const home = setup({
+      read: () => Promise.resolve({ record, lost: false }),
+      // Home ends the session on the first Unpair; the retry's token is dead.
+      answer: () => ({ status: clears === 0 ? 200 : 401, body: "" }),
+      clear: (): Promise<void> => {
+        clears += 1
+        if (clears === 1) return Promise.reject(new Error("disk"))
+        record = null
+        return Promise.resolve()
+      },
+    })
+    await home.link.load()
+    await home.link.unpair()
+    await home.link.unpair()
+    expect(home.sent).toHaveLength(2)
+    expect(home.link.getSnapshot().link).toEqual({
+      kind: "unpaired",
+      note: "unpaired",
     })
   })
 
