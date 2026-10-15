@@ -88,6 +88,9 @@ public class HomeCredentialPlugin extends Plugin {
         call.resolve();
     }
 
+    // commit(), not apply(), throughout (Lint's ApplySharedPref): unpairing
+    // and a dropped unreadable record must be gone from disk before the page
+    // is told they are (LA8), not some time after.
     private SharedPreferences prefs() {
         return getContext().getSharedPreferences(PREFS, Context.MODE_PRIVATE);
     }
