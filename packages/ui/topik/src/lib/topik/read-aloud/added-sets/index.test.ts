@@ -190,6 +190,51 @@ describe("intakeSet", () => {
     ).toEqual({ ok: false, error: "No line in that word set can be read." })
   })
 
+  it("refuses a set picked again that would leave another with nothing to read", () => {
+    // `keopi` is CAFE's 커피 and CLASH's 코피; CAFE comes first, so CLASH's
+    // line on it is dropped and it reads only its own. ONLY_KEOPI reads 커피.
+    const CLASH: ReadAloudDeck = {
+      id: "clash",
+      title: "Clash",
+      words: [
+        { id: "keopi", lemma: "코피", gloss: "nosebleed" },
+        { id: "yaksok", lemma: "약속", gloss: "plans" },
+      ],
+      lines: [
+        line("nose", "코피", [
+          { wordId: "keopi", surface: "코피", stemEnd: 2 },
+        ]),
+        line("plans", "약속", [
+          { wordId: "yaksok", surface: "약속", stemEnd: 2 },
+        ]),
+      ],
+    }
+    const ONLY_KEOPI: ReadAloudDeck = {
+      id: "only-keopi",
+      title: "Only coffee",
+      words: [{ id: "keopi", lemma: "커피", gloss: "coffee" }],
+      lines: [
+        line("cup", "커피", [{ wordId: "keopi", surface: "커피", stemEnd: 2 }]),
+      ],
+    }
+    const kept = [added(CAFE), added(CLASH), added(ONLY_KEOPI)]
+    // CAFE again without 커피: CLASH's 코피 would win, emptying ONLY_KEOPI.
+    const withoutCoffee: ReadAloudDeck = {
+      ...CAFE,
+      words: CAFE.words.filter((word) => word.id !== "keopi"),
+      lines: [
+        line("give", "주세요", [
+          { wordId: "juda", surface: "주세요", stemEnd: 1 },
+        ]),
+      ],
+    }
+    expect(intakeSet(file(withoutCoffee), kept)).toEqual({
+      ok: false,
+      error: 'That word set would leave "Only coffee" with nothing to read.',
+    })
+    expect(intakeSet(file(CAFE), kept)).toMatchObject({ ok: true })
+  })
+
   it("keeps at most the limit, but a set picked again replaces its copy", () => {
     const full = Array.from({ length: ADDED_SET_LIMIT }, (_, index) =>
       added({ ...PLANS, id: `set-${index}` })
@@ -216,7 +261,7 @@ describe("the kept list", () => {
     expect(readySets(sets).map((set) => set.deck.id)).toEqual(["later"])
 
     sets = addSet(sets, PLANS, "e")
-    expect(sets.map((set) => set.deck.id)).toEqual(["later", "plans-2"])
+    expect(sets.map((set) => set.deck.id)).toEqual(["plans-2", "later"])
     expect(readySets(sets).map((set) => set.deck.id)).toEqual([
       "plans-2",
       "later",

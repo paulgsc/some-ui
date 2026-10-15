@@ -145,33 +145,59 @@ describe("drawnFrom", () => {
   const items = buildSet(STARTER_SET, { level: 3, seedKey: "kept" })
 
   it("holds for a set drawn from the deck as it stands", () => {
-    expect(drawnFrom(items, STARTER_SET)).toBe(true)
+    expect(drawnFrom(items, STARTER_SET, 3)).toBe(true)
   })
 
   it("fails once a line the set drew is gone or reads differently", () => {
     const drawn = items[0]?.lineId
     expect(
-      drawnFrom(items, {
-        ...STARTER_SET,
-        lines: STARTER_SET.lines.filter((line) => line.id !== drawn),
-      })
+      drawnFrom(
+        items,
+        {
+          ...STARTER_SET,
+          lines: STARTER_SET.lines.filter((line) => line.id !== drawn),
+        },
+        3
+      )
     ).toBe(false)
     expect(
-      drawnFrom(items, {
-        ...STARTER_SET,
-        lines: STARTER_SET.lines.map((line) =>
-          line.id === drawn
-            ? {
-                ...line,
-                korean: `${line.korean} `,
-                words: line.words.map((word) => ({
-                  ...word,
-                  surface: `${word.surface}요`,
-                })),
-              }
-            : line
-        ),
-      })
+      drawnFrom(
+        items,
+        {
+          ...STARTER_SET,
+          lines: STARTER_SET.lines.map((line) =>
+            line.id === drawn
+              ? {
+                  ...line,
+                  korean: `${line.korean} `,
+                  words: line.words.map((word) => ({
+                    ...word,
+                    surface: `${word.surface}요`,
+                  })),
+                }
+              : line
+          ),
+        },
+        3
+      )
+    ).toBe(false)
+  })
+
+  it("fails once a line the set drew sits above the level it resumes at", () => {
+    const levelOne = buildSet(STARTER_SET, { level: 1, seedKey: "kept" })
+    const drawn = levelOne[0]?.lineId
+    expect(drawnFrom(levelOne, STARTER_SET, 1)).toBe(true)
+    expect(
+      drawnFrom(
+        levelOne,
+        {
+          ...STARTER_SET,
+          lines: STARTER_SET.lines.map((line) =>
+            line.id === drawn ? { ...line, level: 2 } : line
+          ),
+        },
+        1
+      )
     ).toBe(false)
   })
 
@@ -184,22 +210,26 @@ describe("drawnFrom", () => {
     const asked = lensed.find(
       (item) => item.kind === "sentence" && item.lens !== undefined
     )
-    expect(drawnFrom(lensed, STARTER_SET)).toBe(true)
+    expect(drawnFrom(lensed, STARTER_SET, 3)).toBe(true)
     expect(
-      drawnFrom(lensed, {
-        ...STARTER_SET,
-        lines: STARTER_SET.lines.map((line) =>
-          line.id === asked?.lineId
-            ? {
-                id: line.id,
-                level: line.level,
-                korean: line.korean,
-                english: line.english,
-                words: line.words.map(({ role: _role, ...word }) => word),
-              }
-            : line
-        ),
-      })
+      drawnFrom(
+        lensed,
+        {
+          ...STARTER_SET,
+          lines: STARTER_SET.lines.map((line) =>
+            line.id === asked?.lineId
+              ? {
+                  id: line.id,
+                  level: line.level,
+                  korean: line.korean,
+                  english: line.english,
+                  words: line.words.map(({ role: _role, ...word }) => word),
+                }
+              : line
+          ),
+        },
+        3
+      )
     ).toBe(false)
   })
 })

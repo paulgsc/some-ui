@@ -164,13 +164,21 @@ export function intakeSet(
       error: `This phone keeps ${ADDED_SET_LIMIT} word sets, and has ${added.length}.`,
     }
   }
-  const others = added.filter((set) => set.deck.id !== deck.id)
-  const kept = resolveSets([
-    ...others,
-    { deck, addedAt: "", openedAt: null },
-  ]).sets.get(deck.id)
+  const after = resolveSets(addSet(added, deck, "")).sets
+  const kept = after.get(deck.id)
   if (kept === undefined || kept.lines.length === 0) {
     return { ok: false, error: "No line in that word set can be read." }
+  }
+  // A set picked again can drop a word another set's lines were judged by.
+  const emptied = added.find(
+    (set) =>
+      set.deck.id !== deck.id && after.get(set.deck.id)?.lines.length === 0
+  )
+  if (emptied !== undefined) {
+    return {
+      ok: false,
+      error: `That word set would leave "${emptied.deck.title}" with nothing to read.`,
+    }
   }
   const authored =
     isRecord(raw) && Array.isArray(raw.lines)
@@ -180,18 +188,19 @@ export function intakeSet(
 }
 
 /**
- * `added` with `deck` in it, newest last. A set picked again under the same
- * id replaces the one kept and reads as new.
+ * `added` with `deck` in it. A new set goes last; a set picked again under
+ * the same id replaces the one kept in its place, so which set's word wins a
+ * clash does not move, and reads as new.
  */
 export function addSet(
   added: ReadonlyArray<AddedSet>,
   deck: ReadAloudDeck,
   at: string
 ): Array<AddedSet> {
-  return [
-    ...added.filter((set) => set.deck.id !== deck.id),
-    { deck, addedAt: at, openedAt: null },
-  ]
+  const fresh: AddedSet = { deck, addedAt: at, openedAt: null }
+  return added.some((set) => set.deck.id === deck.id)
+    ? added.map((set) => (set.deck.id === deck.id ? fresh : set))
+    : [...added, fresh]
 }
 
 /** `added` with the set `id` marked opened, the first time only. */
@@ -205,9 +214,11 @@ export function openSet(
   )
 }
 
-/** The sets not opened yet, newest first: "Ready for you". */
+/** The sets not opened yet, most recently added first: "Ready for you". */
 export const readySets = (added: ReadonlyArray<AddedSet>): Array<AddedSet> =>
-  added.filter((set) => set.openedAt === null).reverse()
+  added
+    .filter((set) => set.openedAt === null)
+    .sort((a, b) => b.addedAt.localeCompare(a.addedAt))
 
 const StoredSetSchema = z.object({
   deck: z.unknown(),

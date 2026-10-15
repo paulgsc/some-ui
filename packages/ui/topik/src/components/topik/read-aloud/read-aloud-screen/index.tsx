@@ -61,7 +61,8 @@ export const ReadAloudScreen = ({
         kept &&
         drawnFrom(
           kept.queue.map((entry) => entry.item),
-          deck
+          deck,
+          level
         )
           ? kept
           : null,

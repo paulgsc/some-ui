@@ -203,19 +203,20 @@ export function buildSet(
 }
 
 /**
- * Whether every item still reads as `deck` writes it, a sentence's lens
- * included. A set drawn from an earlier copy of a deck (one picked again
+ * Whether every item still reads as `deck` writes it at `level`, a
+ * sentence's lens included. A set drawn from an earlier copy of a deck (one picked again
  * since, with lines or their roles and tenses changed) is not resumed: its
  * items would show, or ask, what the deck no longer says.
  */
 export function drawnFrom(
   items: ReadonlyArray<SetItem>,
-  deck: ReadAloudDeck
+  deck: ReadAloudDeck,
+  level: ReadAloudLevel
 ): boolean {
   const lines = new Map(deck.lines.map((line) => [line.id, line]))
   return items.every((item) => {
     const line = lines.get(item.lineId)
-    if (line === undefined) return false
+    if (line === undefined || line.level > level) return false
     if (item.kind === "word") {
       return line.words.some(
         (occurrence) =>
