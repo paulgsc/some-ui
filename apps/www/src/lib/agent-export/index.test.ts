@@ -8,7 +8,6 @@ import type { Soundbite } from "@some-ui/soundbites"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 import {
-  goingOut,
   handOff,
   handOffExport,
   shareAgentExport,
@@ -269,7 +268,6 @@ describe("shareAgentExport", () => {
     expect(context).not.toHaveProperty(["sessions", 0, "scenes"])
     expect(sent).toEqual(["t2", "v1", "t1"])
     expect(result.soundbites).toEqual(["b1"])
-    expect(goingOut(result)).toBe("3 reflections and 1 soundbite")
 
     const remove = vi.fn(() => Promise.resolve())
     handOffExport({ remove }, result, NOW())
@@ -280,15 +278,11 @@ describe("shareAgentExport", () => {
   it("hands off soundbites alone when no reflection went out", async () => {
     reflections.letGo(["v1", "t1", "t2"])
     const result = await shareAgentExport(soundbites, NOW)
-    expect(goingOut(result)).toBe("1 soundbite")
+    expect(result).toMatchObject({ sent: [], soundbites: ["b1"] })
 
     const remove = vi.fn(() => Promise.reject(new Error("busy")))
     expect(() => handOffExport({ remove }, result, NOW())).not.toThrow()
     expect(remove).toHaveBeenCalledWith(["b1"])
-  })
-
-  it("has nothing to hand off when nothing went out", () => {
-    expect(goingOut({ sent: [], soundbites: [] })).toBe("")
   })
 
   it("names no file for a recording whose audio is gone", async () => {

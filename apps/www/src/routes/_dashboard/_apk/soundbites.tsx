@@ -10,13 +10,14 @@ import {
 } from "@some-ui/soundbites"
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
 
-import { goingOut, handOffExport, shareAgentExport } from "@/lib/agent-export"
+import { handOffExport, shareAgentExport } from "@/lib/agent-export"
 import { useArrivalKey } from "@/lib/arrival-key"
 import { useAsyncIntent, useIntentEffect } from "@/lib/intent"
 import { IntentButton } from "@/lib/intent/render"
 import { letGoJournal, shareJournal } from "@/lib/journal-share"
 import type { SessionRecord, SessionStatus } from "@/lib/tenant"
 import { sessionsQuery, useSessions } from "@/lib/tenant"
+import { goingOut } from "@/components/reflection/copy"
 
 /**
  * `?say=` comes from a tap that already meant "let me talk" (Home's "Not
@@ -86,7 +87,7 @@ const ShareWithAgent = ({ taking }: { taking: boolean }): JSX.Element => {
   // out of it: the reflections and soundbites leave the phone only once they
   // say so.
   useIntentEffect(share, (result) => {
-    const going = goingOut(result)
+    const going = goingOut(result.sent.length, result.soundbites.length)
     if (result.outcome !== "shared" || going === "") return
     if (
       confirm(

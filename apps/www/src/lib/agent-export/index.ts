@@ -240,23 +240,6 @@ export function handOff(ids: ReadonlyArray<string>, at = new Date()): void {
   if (letGoReflections(ids)) reflections.markShared(sessionIds, at)
 }
 
-function counted(n: number, noun: string): string {
-  return `${n} ${noun}${n === 1 ? "" : "s"}`
-}
-
-/**
- * What `handOffExport` would let go, as "2 reflections and 1 soundbite";
- * empty when nothing went out that the phone would let go.
- */
-export function goingOut({ sent, soundbites }: Sent): string {
-  return [
-    sent.length > 0 ? counted(sent.length, "reflection") : null,
-    soundbites.length > 0 ? counted(soundbites.length, "soundbite") : null,
-  ]
-    .filter((part) => part !== null)
-    .join(" and ")
-}
-
 /**
  * The person says the whole export arrived: its reflections leave the phone
  * (`handOff`), and so do the soundbites that went out; one recorded since
