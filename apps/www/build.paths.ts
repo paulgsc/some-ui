@@ -108,6 +108,7 @@ const DEVICE_MODULES = [
   `${SPEECH_ENTRY}/native.es.js`,
   "apps/www/src/lib/agent-export/**",
   "apps/www/src/lib/drive-filing/**",
+  "apps/www/src/lib/home-link/**",
   "apps/www/src/lib/journal-share/**",
   "apps/www/src/lib/reflection-voice/**",
   "apps/www/src/lib/scene-voice/**",

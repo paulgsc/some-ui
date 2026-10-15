@@ -1,98 +1,206 @@
 /**
  * The Android app's stand-in for the account section: what is on this phone,
- * and a sync from home for TOPIK lessons (and newer Leetype rounds). No
- * account controls: the device is always signed in, locked by the phone. The
- * home address is a per-phone convenience in `localStorage`.
+ * and the Home server block, the one place on the phone that sends anything
+ * to the home server (LA8, docs/learner-data-authority.md).
+ *
+ * Every hop is a tap here, and names where it goes: the sync (published
+ * lessons and rounds, read with no credential), pairing (the code only) and
+ * unpairing. Nothing runs when the page opens, on resume or on a timer; a
+ * running sync has Stop, and ends when the app goes to the background
+ * (`lib/home-link`, which owns the work; this component only shows it).
  */
 
 import type { JSX } from "react"
 import { useState } from "react"
-import { Input, Label } from "@some-ui/shared"
+import { Button, Input, Label } from "@some-ui/shared"
 import { useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 
-import { deviceBackend } from "@/lib/device-backend/boot"
-import type { SyncReport } from "@/lib/device-backend/home-sync"
+import { homeApiBase } from "@/lib/device-backend/home-sync"
+import type { HomeLinkState, PairFailure, UnpairedNote } from "@/lib/home-link"
 import {
-  homeApiBase,
-  HomeUnreachableError,
-  syncFromHome,
-} from "@/lib/device-backend/home-sync"
-import { nativeHomeGet } from "@/lib/device-backend/native-http"
-import { DeviceStorageError } from "@/lib/device-backend/sql"
-import { deviceStorage } from "@/lib/device-backend/storage-view"
-import { useAsyncIntent } from "@/lib/intent"
+  homeLink,
+  hostOf,
+  pairingAddress,
+  typedCode,
+  useHomeLink,
+} from "@/lib/home-link"
+import { lastSync, syncLessonsFrom } from "@/lib/home-link/sync"
+import { useAsyncIntent, useIntentEffect } from "@/lib/intent"
 import { IntentButton } from "@/lib/intent/render"
 import { DeviceStorageSummary } from "@/components/settings/device-storage"
 
 const HOME_KEY = "some-ui.device.home-server.v1"
-const LAST_SYNC_KEY = "some-ui.device.last-sync.v1"
 
-function remembered(key: string): string {
+function rememberedAddress(): string {
   try {
-    return window.localStorage.getItem(key) ?? ""
+    return window.localStorage.getItem(HOME_KEY) ?? ""
   } catch {
     return ""
   }
 }
 
-function remember(key: string, value: string): void {
+function rememberAddress(value: string): void {
   try {
-    window.localStorage.setItem(key, value)
+    window.localStorage.setItem(HOME_KEY, value)
   } catch {
-    // Not remembered; the sync itself still happened.
+    // Not remembered; it is typed again next time.
   }
 }
 
-function describe(report: SyncReport): string {
-  const { lessons, trees, rounds, failed } = report
-  const parts = [
-    `${lessons.listed} TOPIK lesson${lessons.listed === 1 ? "" : "s"} (${lessons.added} new, ${lessons.updated} updated)`,
-    `${trees.listed} drama${trees.listed === 1 ? "" : "s"} (${trees.added} new, ${trees.updated} updated)`,
-    `${rounds.added + rounds.updated} Leetype round${rounds.added + rounds.updated === 1 ? "" : "s"} refreshed`,
-  ]
-  const removed = lessons.removed + trees.removed + rounds.removed
-  if (removed > 0) parts.push(`${removed} home no longer lists removed`)
-  const skipped = lessons.skipped + trees.skipped + rounds.skipped
-  if (skipped > 0) parts.push(`${skipped} not added: this phone is full`)
-  if (failed.length > 0) parts.push(`${failed.length} could not be fetched`)
-  return parts.join(" · ")
+/** A bare address as its host, for "Reads from"; `null` when it is not one. */
+function typedHost(address: string): string | null {
+  try {
+    return hostOf(homeApiBase(address))
+  } catch {
+    return null
+  }
+}
+
+const NOTES: Record<UnpairedNote, string> = {
+  unpaired: "Unpaired.",
+  "unpaired-offline":
+    "Unpaired on this phone. Home couldn't be reached, so it still holds this phone's key until it expires: sign out everywhere on your computer to end it now.",
+  lost: "This phone's pairing didn't survive a restore. Pair again.",
+}
+
+function failureLine(failure: PairFailure, host: string): string {
+  switch (failure) {
+    case "unreachable": {
+      return `Couldn't reach ${host}. Are you on the home network? Nothing was sent.`
+    }
+    case "untrusted": {
+      return `This phone doesn't trust ${host}'s certificate. Nothing was sent.`
+    }
+    case "bad-code": {
+      return "That code didn't work. Codes work once, for 10 minutes. Get a new one on your computer."
+    }
+    case "too-many": {
+      return "Too many tries. Get a new code on your computer."
+    }
+    case "not-set-up": {
+      return `${host} can't pair phones: passkey sign-in isn't set up there.`
+    }
+    case "not-kept": {
+      return "This phone couldn't keep the pairing. Get a new code and try again."
+    }
+    case "other": {
+      return "Pairing failed. Get a new code and try again."
+    }
+    default: {
+      throw new Error(
+        `unhandled pairing failure: ${String(failure satisfies never)}`
+      )
+    }
+  }
+}
+
+/** The pairing form: an https address and the code from the computer. */
+const PairForm = ({
+  state,
+  onCancel,
+}: {
+  state: HomeLinkState
+  onCancel: () => void
+}): JSX.Element => {
+  const [address, setAddress] = useState("")
+  const [code, setCode] = useState("")
+  const read = pairingAddress(address)
+  const target = typeof read === "string" ? null : read
+  const typed = typedCode(code)
+  const pairing = state.activity.kind === "pairing"
+  const pair = useAsyncIntent(
+    (variables: { target: NonNullable<typeof target>; code: string }) =>
+      homeLink().pair(variables.target, variables.code),
+    { presentation: "interactive" }
+  )
+
+  return (
+    <div className="space-y-2 rounded-md border p-3">
+      <Label htmlFor="pair-address">Home server address</Label>
+      <Input
+        id="pair-address"
+        inputMode="url"
+        autoCapitalize="off"
+        autoCorrect="off"
+        placeholder="https://file-host.home.example"
+        value={address}
+        onChange={(event) => setAddress(event.target.value)}
+      />
+      {read === "not-https" ? (
+        <p className="text-destructive text-xs">
+          Pairing needs an https:// address.
+        </p>
+      ) : null}
+      <Label htmlFor="pair-code">Code from your computer</Label>
+      <Input
+        id="pair-code"
+        autoCapitalize="characters"
+        autoCorrect="off"
+        autoComplete="one-time-code"
+        placeholder="K7QF 2M9X"
+        value={code}
+        onChange={(event) => setCode(event.target.value)}
+      />
+      {state.pairFailure && target ? (
+        <p className="text-destructive text-xs" role="status">
+          {failureLine(state.pairFailure, target.host)}
+        </p>
+      ) : null}
+      <div className="flex flex-wrap gap-2">
+        <IntentButton
+          state={pair.state}
+          onPress={() => {
+            if (target && typed) pair.start({ target, code: typed })
+          }}
+          disabled={!target || !typed || pairing}
+          size="sm"
+          idleLabel={target ? `Pair with ${target.host}` : "Pair"}
+          workingLabel="Pairing..."
+        />
+        <Button type="button" variant="ghost" size="sm" onClick={onCancel}>
+          Cancel
+        </Button>
+      </div>
+      <p className="text-muted-foreground text-xs">
+        Sends only this code. Nothing else leaves the phone until you tap send.
+      </p>
+    </div>
+  )
 }
 
 export const DeviceSection = (): JSX.Element => {
   const queryClient = useQueryClient()
-  const [home, setHome] = useState(() => remembered(HOME_KEY))
-  const [lastSync, setLastSync] = useState(() => remembered(LAST_SYNC_KEY))
+  const state = useHomeLink()
+  const [address, setAddress] = useState(rememberedAddress)
+  const [synced, setSynced] = useState(lastSync)
+  const [pairOpen, setPairOpen] = useState(false)
+  const [confirmingUnpair, setConfirmingUnpair] = useState(false)
 
-  const syncIntent = useAsyncIntent(
-    async (address: string): Promise<void> => {
-      try {
-        const { context } = await deviceBackend()
-        const report = await syncFromHome(context.db, address, nativeHomeGet)
-        void deviceStorage.refresh()
-        remember(HOME_KEY, address)
-        const summary = `${new Date().toLocaleString()} - ${describe(report)}`
-        remember(LAST_SYNC_KEY, summary)
-        setLastSync(summary)
-        // What the catalogue and rounds queries hold is now stale.
-        await queryClient.invalidateQueries()
-        toast.success(describe(report))
-      } catch (error) {
-        // The phone's own storage says so in its words (reported, with the
-        // plugin's, to the native log); anything else names the error.
-        toast.error(
-          error instanceof HomeUnreachableError
-            ? `Couldn't reach ${error.base}. Are you on the home network?`
-            : error instanceof DeviceStorageError
-              ? `Sync failed: ${error.error.summary}`
-              : `Sync failed: ${String(error)}`
-        )
-      }
-    },
-    { presentation: "interactive" }
-  )
+  const { link, activity } = state
+  const paired = link.kind === "paired" ? link : null
+  const typed = address.trim()
+  const base = paired ? paired.base : typed === "" ? null : homeApiBase(typed)
+  const host = paired ? hostOf(paired.base) : typedHost(typed)
+  const syncing = activity.kind === "syncing"
 
-  const address = home.trim()
+  const sync = useAsyncIntent((from: string) => syncLessonsFrom(from), {
+    presentation: "interactive",
+  })
+  useIntentEffect(sync, (result) => {
+    if (result.line === "") return
+    if (result.ok) {
+      toast.success(result.line)
+      setSynced(lastSync())
+    } else {
+      toast.error(result.line)
+    }
+    // What the catalogue and rounds queries hold is now stale.
+    if (result.changed) void queryClient.invalidateQueries()
+  })
+  const unpair = useAsyncIntent((_: undefined) => homeLink().unpair(), {
+    presentation: "interactive",
+  })
 
   return (
     <section className="space-y-4" aria-labelledby="device-heading">
@@ -107,36 +215,131 @@ export const DeviceSection = (): JSX.Element => {
 
       <DeviceStorageSummary />
 
-      <div className="space-y-2">
-        <Label htmlFor="home-server">Home server</Label>
-        <Input
-          id="home-server"
-          inputMode="url"
-          autoCapitalize="off"
-          autoCorrect="off"
-          placeholder="192.168.1.10:3000"
-          value={home}
-          onChange={(event) => setHome(event.target.value)}
-        />
-        {address === "" ? null : (
-          <p className="text-muted-foreground text-xs">
-            Reads {homeApiBase(address)}
+      <div className="space-y-2" aria-labelledby="home-heading">
+        <Label id="home-heading" htmlFor="home-server">
+          Home server
+        </Label>
+        {paired ? (
+          <>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="text-sm break-all">Paired · {host}</p>
+              {confirmingUnpair ? null : (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={activity.kind !== "idle"}
+                  onClick={() => setConfirmingUnpair(true)}
+                >
+                  Unpair
+                </Button>
+              )}
+            </div>
+            {confirmingUnpair ? (
+              <div className="space-y-2">
+                <p className="text-sm">
+                  Unpair from {host}? This phone forgets its key and can&apos;t
+                  send there until you pair again. Nothing already sent is
+                  deleted.
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <IntentButton
+                    state={unpair.state}
+                    onPress={() => {
+                      setConfirmingUnpair(false)
+                      unpair.start(undefined)
+                    }}
+                    variant="destructive"
+                    size="sm"
+                    idleLabel="Yes, unpair"
+                    workingLabel="Unpairing..."
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setConfirmingUnpair(false)}
+                  >
+                    Keep
+                  </Button>
+                </div>
+              </div>
+            ) : null}
+            <p className="text-muted-foreground text-xs">
+              Nothing is sent unless you tap below.
+            </p>
+          </>
+        ) : (
+          <>
+            <Input
+              id="home-server"
+              inputMode="url"
+              autoCapitalize="off"
+              autoCorrect="off"
+              placeholder="192.168.1.10:3000"
+              value={address}
+              onChange={(event) => setAddress(event.target.value)}
+            />
+            {host === null ? null : (
+              <p className="text-muted-foreground text-xs break-all">
+                Reads from {host}
+              </p>
+            )}
+            {link.kind === "unpaired" && link.note !== null ? (
+              <p className="text-muted-foreground text-xs" role="status">
+                {NOTES[link.note]}
+              </p>
+            ) : null}
+          </>
+        )}
+
+        <div className="flex flex-wrap gap-2">
+          {syncing ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={activity.stopping}
+              onClick={() => homeLink().stop()}
+            >
+              {activity.stopping ? "Stopping..." : "Stop"}
+            </Button>
+          ) : (
+            <IntentButton
+              state={sync.state}
+              onPress={() => {
+                if (base === null) return
+                if (!paired) rememberAddress(typed)
+                sync.start(base)
+              }}
+              disabled={base === null || activity.kind !== "idle"}
+              variant="outline"
+              size="sm"
+              idleLabel="Sync lessons from home"
+              workingLabel="Syncing..."
+            />
+          )}
+          {paired || pairOpen ? null : (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={link.kind !== "unpaired" || activity.kind !== "idle"}
+              onClick={() => setPairOpen(true)}
+            >
+              Pair...
+            </Button>
+          )}
+        </div>
+        {synced === "" ? null : (
+          <p className="text-muted-foreground text-xs break-all">
+            Last sync: {synced}
           </p>
         )}
+        {pairOpen && !paired ? (
+          <PairForm state={state} onCancel={() => setPairOpen(false)} />
+        ) : null}
       </div>
-
-      <IntentButton
-        state={syncIntent.state}
-        onPress={() => syncIntent.start(address)}
-        disabled={address === ""}
-        variant="outline"
-        size="sm"
-        idleLabel="Sync lessons from home"
-        workingLabel="Syncing..."
-      />
-      {lastSync === "" ? null : (
-        <p className="text-muted-foreground text-xs">Last sync: {lastSync}</p>
-      )}
     </section>
   )
 }

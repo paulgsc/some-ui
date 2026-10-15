@@ -41,6 +41,10 @@ vi.mock("@/lib/auth", async (importOriginal) => ({
     calls.auth.push("addPasskey")
     return Promise.resolve()
   },
+  startPairing: (): Promise<{ code: string; expiresAt: number }> => {
+    calls.auth.push("startPairing")
+    return Promise.resolve({ code: "K7QF2M9X", expiresAt: 1_700_000_000_000 })
+  },
 }))
 
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
@@ -99,6 +103,18 @@ describe("AccountSection", () => {
     await press(/yes, delete my account/i)
     expect(calls.auth).toEqual(["deleteAccount"])
     expect(calls.navigated).toEqual([{ to: "/auth" }])
+  })
+
+  it("pairs a phone only when asked, showing the code and the address to type with it", async () => {
+    render(<AccountSection />)
+    expect(calls.auth).toEqual([])
+    expect(screen.queryByText(/code for your phone/i)).toBeNull()
+
+    await press(/pair a phone/i)
+    expect(calls.auth).toEqual(["startPairing"])
+    expect(screen.getByText("K7QF 2M9X")).toBeTruthy()
+    expect(screen.getByText(/works once, until/i)).toBeTruthy()
+    expect(screen.getByRole("button", { name: /get a new code/i })).toBeTruthy()
   })
 
   it.each([

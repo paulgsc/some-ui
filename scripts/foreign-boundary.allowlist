@@ -29,7 +29,6 @@
 # judgment that each is fine. A count here may only fall (lower it in the
 # same change), and an entry leaves when its file stops waiting outside the
 # boundary.
-1 apps/www/src/lib/device-backend/native-http/index.ts
 1 apps/www/src/lib/device-backend/storage/index.ts
 6 apps/www/src/lib/device-speech/native.ts
 7 apps/www/src/lib/study-nudge/native.ts

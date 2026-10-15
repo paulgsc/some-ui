@@ -260,6 +260,23 @@ async function leave(path: string, init: RequestInit = POST): Promise<void> {
 export const signOut = (): Promise<void> => leave("/auth/sign-out")
 
 /** End every session this account holds, on every device. */
+/** A code for the phone to type, and when it stops working (ms since the epoch). */
+export type PairingCode = { code: string; expiresAt: number }
+
+/**
+ * Ask for a one-time code that pairs a phone to this account
+ * (`paulgsc/server` `docs/identity.md`, "Pairing a phone"). It carries no
+ * learner state, so it goes as a ceremony does; the server takes it from a
+ * browser's passkey session only. The phone sends nothing until its own
+ * Home server block is tapped (LA8).
+ */
+export function startPairing(): Promise<PairingCode> {
+  const transport = transportOrNull()
+  return transport
+    ? requestJSON<PairingCode>(transport, "/auth/pairing/start", POST)
+    : Promise.reject(new Error("this build has no server to pair a phone to"))
+}
+
 export const signOutEverywhere = (): Promise<void> =>
   leave("/auth/sign-out-everywhere")
 

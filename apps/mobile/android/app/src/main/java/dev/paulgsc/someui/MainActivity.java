@@ -14,6 +14,7 @@ public class MainActivity extends BridgeActivity {
         // npm-installed ones are found from capacitor.plugins.json.
         registerPlugin(VoiceDataPlugin.class);
         registerPlugin(NativeLogPlugin.class);
+        registerPlugin(HomeCredentialPlugin.class);
         super.onCreate(savedInstanceState);
 
         // Back (the button or the edge swipe) walks the app's own history,

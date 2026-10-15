@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android 12 (API 31) and later: cloud backup and device-to-device
+     transfer keep everything the app keeps (README "Play readiness", PD3)
+     except the home-server pairing (HomeCredentialPlugin.PREFS), a credential
+     that must not reach a backup or a new phone. backup_rules.xml says the
+     same for API 30 and earlier. -->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="sharedpref" path="home_credential.xml" />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="sharedpref" path="home_credential.xml" />
+    </device-transfer>
+</data-extraction-rules>

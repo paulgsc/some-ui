@@ -17,7 +17,6 @@
 # an entry leaves when its module stops awaiting.
 1 apps/www/src/components/player/live-player.tsx
 5 apps/www/src/components/settings/account-section.tsx
-3 apps/www/src/components/settings/device-section.tsx
 7 apps/www/src/components/settings/study-nudge-section.tsx
 15 apps/www/src/lib/auth/session.ts
 1 apps/www/src/lib/intent/use-async-intent.ts

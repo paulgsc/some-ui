@@ -10,6 +10,10 @@
  *   `WebSocket`, `EventSource` and `navigator.sendBeacon`; this also pins the
  *   files that `eslint-disable` it, and the config's exemption list.
  *
+ * - **LA8: the phone reaches its home server through one module.** Native
+ *   HTTP (`CapacitorHttp`) is not a browser global, so the lint rule cannot
+ *   see it; only `lib/device-backend/native-http` may import it.
+ *
  * The last group feeds the checks known-bad sources, so a check that stopped
  * looking cannot stay green.
  */
@@ -28,6 +32,25 @@ const NETWORK_EXEMPT = new Set([
   "lib/file-host-config/client.ts",
   "lib/device-backend/interceptor/index.ts",
 ])
+
+/** LA8: the one module that may reach the home server over native HTTP. */
+const NATIVE_HTTP = "lib/device-backend/native-http/index.ts"
+
+/** Every import of `CapacitorHttp` from `@capacitor/core` in `text`. */
+function nativeHttpImports(path: string, text: string): Array<string> {
+  const found: Array<string> = []
+  const file = parse(path, text)
+  for (const node of file.statements) {
+    if (
+      ts.isImportDeclaration(node) &&
+      node.moduleSpecifier.getText(file).includes("@capacitor/core") &&
+      /\bCapacitorHttp\b/.test(node.getText(file))
+    ) {
+      found.push(`${path} imports CapacitorHttp outside ${NATIVE_HTTP} (LA8)`)
+    }
+  }
+  return found
+}
 
 function isTestFile(path: string): boolean {
   return (
@@ -250,6 +273,24 @@ describe("LA2: the transfer to the account starts from one button", () => {
         file
       ).toEqual([])
     }
+  })
+})
+
+describe("LA8: the phone reaches home through one module", () => {
+  it("imports CapacitorHttp nowhere else", () => {
+    const problems = sourceFiles()
+      .filter((f) => !isTestFile(f) && f !== NATIVE_HTTP)
+      .flatMap((f) => nativeHttpImports(f, readFileSync(join(SRC, f), "utf8")))
+    expect(problems).toEqual([])
+  })
+
+  it("still finds the import it is meant to guard", () => {
+    expect(
+      nativeHttpImports(
+        NATIVE_HTTP,
+        readFileSync(join(SRC, NATIVE_HTTP), "utf8")
+      )
+    ).toHaveLength(1)
   })
 })
 
