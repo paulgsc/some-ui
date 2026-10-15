@@ -91,6 +91,11 @@ export type KoreanStudyPageProps = {
    */
   sceneFileHint?: string
   /**
+   * Where the learner's word sets wait, named by the host and shown on
+   * "Open new words from storage"; absent, none is named.
+   */
+  wordSetHint?: string
+  /**
    * Art direction. `inherit` — the default — renders in whatever theme the
    * host established, so the user's session theme reaches the applet.
    * `appearance="topik"` is the self-contained study surface: `.topik`
@@ -204,6 +209,7 @@ export const KoreanStudyPage = ({
   share,
   sceneVoice,
   sceneFileHint,
+  wordSetHint,
   appearance = "inherit",
   surface = "auto",
   paused,
@@ -235,6 +241,7 @@ export const KoreanStudyPage = ({
       ...(share ? { share } : {}),
       ...(sceneVoice ? { sceneVoice } : {}),
       ...(sceneFileHint ? { sceneFileHint } : {}),
+      ...(wordSetHint ? { wordSetHint } : {}),
       ...(loadTreeManifest && loadTopik
         ? { treeFeed: createTreeFeed(loadTreeManifest, loadTopik) }
         : {}),
@@ -251,6 +258,7 @@ export const KoreanStudyPage = ({
       share,
       sceneVoice,
       sceneFileHint,
+      wordSetHint,
     ]
   )
 

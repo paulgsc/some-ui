@@ -36,6 +36,10 @@ import {
   workedExample,
   workedLesson,
 } from "@topik/lib/topik/generation/tree-intake/worked-example"
+import {
+  LEVEL_ONE_SET,
+  STARTER_SET,
+} from "@topik/lib/topik/read-aloud/repo-sets"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
 import { HandheldLesson } from "."
@@ -55,6 +59,7 @@ type RenderOptions = {
   servedPoints?: ReturnType<typeof createServedPointStore>
   share?: FileShare
   sceneFileHint?: string
+  wordSetHint?: string
 }
 
 function renderLesson({
@@ -70,6 +75,7 @@ function renderLesson({
   servedPoints = createServedPointStore(memoryStorage()),
   share,
   sceneFileHint,
+  wordSetHint,
 }: RenderOptions = {}): void {
   const tree = (): JSX.Element => (
     <QueryClientProvider client={client}>
@@ -81,6 +87,7 @@ function renderLesson({
           ...(treeFeed ? { treeFeed } : {}),
           ...(share ? { share } : {}),
           ...(sceneFileHint ? { sceneFileHint } : {}),
+          ...(wordSetHint ? { wordSetHint } : {}),
         }}
       >
         <HandheldLesson
@@ -90,6 +97,7 @@ function renderLesson({
           soundControl={soundControl}
           tones={tones}
           servedPoints={servedPoints}
+          now={(): Date => new Date("2026-10-14T06:00:00.000Z")}
         />
       </SessionConfigProvider>
     </QueryClientProvider>
@@ -130,6 +138,19 @@ const click = (name: string | RegExp): void => {
   fireEvent.click(screen.getByRole("button", { name }))
 }
 
+/** Picks a file on the card `label` names. jsdom's File has no `text()`; the phone's does. */
+const pickFile = async (
+  label: RegExp,
+  text: () => Promise<string>,
+  size = 1
+): Promise<void> => {
+  fireEvent.change(await screen.findByLabelText(label), {
+    target: { files: [{ size, text }] },
+  })
+}
+
+const NEW_WORDS = /Open new words from storage/
+
 const writeYourOwnButton = (): Promise<HTMLElement> =>
   screen.findByRole("button", { name: /Write your own drama/ })
 
@@ -162,12 +183,31 @@ describe("HandheldLesson", () => {
     expect(screen.queryByRole("button", { name: /Read aloud/ })).toBeNull()
   })
 
-  it("opens the read-aloud drill at the level held, and comes back", async () => {
+  it("has nothing to read aloud until a word set is added, and says where words come from", async () => {
     renderLesson({
       speaker: voice(() => Promise.resolve({ kind: "heard" })),
       readAloudStore: createReadAloudStore(memoryStorage()),
     })
+    await writeYourOwnButton()
+    expect(screen.queryByRole("button", { name: /Read aloud/ })).toBeNull()
+    expect(
+      document.querySelector('[data-slot="read-aloud-empty"]')?.textContent
+    ).toContain("Nothing to read yet. Open new words from storage")
+    expect(screen.getByLabelText(/Open new words from storage/)).toBeTruthy()
+  })
+
+  it("opens the read-aloud drill at the level held, and comes back", async () => {
+    const store = createReadAloudStore(memoryStorage())
+    store.saveSets([
+      { deck: STARTER_SET, addedAt: "", openedAt: "" },
+      { deck: LEVEL_ONE_SET, addedAt: "", openedAt: "" },
+    ])
+    renderLesson({
+      speaker: voice(() => Promise.resolve({ kind: "heard" })),
+      readAloudStore: store,
+    })
     const card = await screen.findByRole("button", { name: /Read aloud/ })
+    expect(card.textContent).toContain("2 word sets")
     fireEvent.click(screen.getByRole("radio", { name: "TOPIK 5" }))
     expect(card.textContent).toContain("TOPIK 3, the highest it reads")
     fireEvent.click(card)
@@ -178,6 +218,108 @@ describe("HandheldLesson", () => {
     expect(screen.getByLabelText("Your reading aloud")).toBeTruthy()
     click("Back")
     expect(await writeYourOwnButton()).toBeTruthy()
+  })
+
+  it("adds a word set from storage: it waits at the top, says what it answers, and opens on its own words", async () => {
+    const store = createReadAloudStore(memoryStorage())
+    renderLesson({
+      speaker: voice(() => Promise.resolve({ kind: "heard" })),
+      readAloudStore: store,
+      wordSetHint: "In Drive, look in Read aloud › sets",
+    })
+    expect(await screen.findByLabelText(NEW_WORDS)).toHaveAccessibleDescription(
+      /In Drive, look in Read aloud › sets/
+    )
+    const pick = (text: string): Promise<void> =>
+      pickFile(NEW_WORDS, () => Promise.resolve(text))
+
+    await pick("not a word set")
+    expect(await screen.findByText("That file isn't a word set.")).toBeTruthy()
+
+    await pick(
+      JSON.stringify({
+        schemaVersion: 1,
+        id: "plans-2",
+        title: "Plans",
+        from: 'your note on Oct 13: "move to level two"',
+        words: [
+          { id: "yaksok", lemma: "약속", gloss: "plans" },
+          { id: "chingu", lemma: "친구", gloss: "friend" },
+        ],
+        lines: [
+          {
+            id: "plans",
+            level: 2,
+            korean: "친구 약속",
+            english: "Plans with a friend",
+            words: [
+              { wordId: "chingu", surface: "친구", stemEnd: 2 },
+              { wordId: "yaksok", surface: "약속", stemEnd: 2 },
+            ],
+          },
+        ],
+      })
+    )
+    expect(await screen.findByText('Added "Plans".')).toBeTruthy()
+    const ready = screen.getByRole("button", { name: /^2 words New/ })
+    expect(ready.textContent).toContain("TOPIK 2 · Plans")
+    expect(ready.textContent).toContain(
+      'From your note on Oct 13: "move to level two"'
+    )
+    expect(store.sets().map((set) => set.deck.id)).toEqual(["plans-2"])
+
+    fireEvent.click(ready)
+    expect(
+      document.querySelector('[data-slot="read-aloud-level"]')?.textContent
+    ).toBe("TOPIK 2")
+    expect(store.sets()[0]?.openedAt).toBe("2026-10-14T06:00:00.000Z")
+
+    click("Back")
+    const card = await screen.findByRole("button", { name: /Read aloud/ })
+    expect(card.textContent).toContain("1 word set")
+    expect(screen.queryByRole("button", { name: /^2 words New/ })).toBeNull()
+  })
+
+  it("keeps the paces of words no set names yet, and lets go only what a set picked again drops", async () => {
+    const store = createReadAloudStore(memoryStorage())
+    // One starter word, and one level-one word the starter set does not name.
+    const starterWord = STARTER_SET.words[0]?.id ?? ""
+    const levelOneWord =
+      LEVEL_ONE_SET.words.find(
+        ({ id }) => !STARTER_SET.words.some((word) => word.id === id)
+      )?.id ?? ""
+    store.savePace(starterWord, { factor: 1, seen: 3 })
+    store.savePace(levelOneWord, { factor: 1, seen: 3 })
+    renderLesson({
+      speaker: voice(() => Promise.resolve({ kind: "heard" })),
+      readAloudStore: store,
+    })
+    const pick = (deck: object): Promise<void> =>
+      pickFile(NEW_WORDS, () =>
+        Promise.resolve(JSON.stringify({ schemaVersion: 1, ...deck }))
+      )
+
+    // The starter set alone, read and left: the level-one word keeps its
+    // pace until its own set comes back.
+    await pick(STARTER_SET)
+    await screen.findByText(/^Added /)
+    fireEvent.click(await screen.findByRole("button", { name: /Read aloud/ }))
+    click("Back")
+    expect(Object.keys(store.paces()).sort()).toEqual(
+      [starterWord, levelOneWord].sort()
+    )
+
+    // The starter set picked again without its first word: that pace goes.
+    await pick({
+      ...STARTER_SET,
+      words: STARTER_SET.words.filter(({ id }) => id !== starterWord),
+      lines: STARTER_SET.lines.filter((line) =>
+        line.words.every(({ wordId }) => wordId !== starterWord)
+      ),
+    })
+    await vi.waitFor(() =>
+      expect(Object.keys(store.paces())).toEqual([levelOneWord])
+    )
   })
 
   it("holds the level of the last drama until the learner chooses another", async () => {
@@ -421,16 +563,8 @@ describe("HandheldLesson", () => {
 
     it("opens a scene from storage: a tree plays, and anything else is judged like a paste (MKJ-S10)", async () => {
       renderLesson()
-      // jsdom's File has no `text()`; the phone's does.
-      const pick = async (
-        text: () => Promise<string>,
-        size = 1
-      ): Promise<void> => {
-        fireEvent.change(
-          await screen.findByLabelText(/Open a scene from storage/),
-          { target: { files: [{ size, text }] } }
-        )
-      }
+      const pick = (text: () => Promise<string>): Promise<void> =>
+        pickFile(/Open a scene from storage/, text)
       await pick(() => Promise.resolve(workedExample()))
       expect(await screen.findByText("숨 막히는 긴장감")).toBeTruthy()
 

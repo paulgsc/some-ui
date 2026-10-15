@@ -40,6 +40,8 @@ export const DRIVE_FOLDERS: Readonly<
  */
 export const DRIVE_LOOK_IN: Readonly<Partial<Record<string, string>>> = {
   "drama-tree": DRAMA_REQUESTS,
+  // An agent writes read-aloud's word sets here from the reflections.
+  "word-set": "Read aloud › sets",
 }
 
 /** Where `dir`'s files go in Drive when shared at `at`; none for an unfiled `dir`. */

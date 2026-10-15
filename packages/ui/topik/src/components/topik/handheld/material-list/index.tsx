@@ -54,7 +54,34 @@ type MaterialListProps = {
   keep?: JSX.Element
   /** Opens the read-aloud drill; absent where it isn't offered. */
   onReadAloud?: () => void
+  /** How many word sets the phone holds: read-aloud's every word. */
+  addedSets?: number
+  /**
+   * Word sets added and not opened yet, newest first: "Ready for you", above
+   * everything else. Offered with read-aloud only.
+   */
+  readySets?: Array<ReadyCard>
+  onOpenSet?: (id: string) => void
+  /** A word set file's text, picked from storage; absent, not offered. */
+  onSetText?: (text: string) => void
+  /** Shown under the word set picker; absent, nothing. */
+  setFileHint?: string
+  /** What came of the last word set picked, until the next. */
+  setNote?: StorageNote | null
 }
+
+/** An added word set, as its card shows it. */
+type ReadyCard = {
+  id: string
+  title: string
+  words: number
+  level: number
+  /** What the set answers, in the learner's terms (`ReadAloudDeck.from`). */
+  from?: string
+}
+
+/** A pick's outcome, shown on its card in place of what the card offers. */
+export type StorageNote = { tone: "done" | "problem"; text: string }
 
 const Heading = ({ children }: { children: string }): JSX.Element => (
   <h2 className="text-muted-foreground px-1 pt-2 text-xs font-medium tracking-wider uppercase">
@@ -123,42 +150,55 @@ const Card = ({
 )
 
 /**
- * "Open a scene from storage": the system picker, then the file's text. Its
- * read is this card's, so leaving the list lets it go.
+ * "Open … from storage": the system picker, then the file's text. Its read
+ * is this card's, so leaving the list lets it go. What the text holds is the
+ * caller's to judge, and `note` says what came of it.
  */
-const OpenScene = ({
+const OpenFromStorage = ({
+  title,
+  offer,
   onText,
   hint,
+  note = null,
 }: {
+  title: string
+  /** What the card offers, while nothing is reading and nothing to note. */
+  offer: string
   onText: (text: string) => void
   hint?: string
+  note?: StorageNote | null
 }): JSX.Element => {
   const { state, open } = useSceneFile()
   const name = useId()
   const about = useId()
   const where = useId()
+  const problem =
+    state.kind === "failed"
+      ? state.summary
+      : state.kind === "idle" && note?.tone === "problem"
+        ? note.text
+        : null
   return (
     <label className="bg-card border-border focus-within:ring-ring relative flex min-h-16 shrink-0 cursor-pointer items-center gap-3 rounded-2xl border p-4 text-left focus-within:ring-2">
       <FolderOpen className="text-primary size-6 shrink-0" />
       <span className="min-w-0 flex-1">
         <span id={name} className="block font-semibold">
-          Open a scene from storage
+          {title}
         </span>
         <span
           id={about}
           aria-live="polite"
           className={cn(
             "block text-sm",
-            state.kind === "failed"
-              ? "text-destructive"
-              : "text-muted-foreground"
+            problem ? "text-destructive" : "text-muted-foreground"
           )}
         >
-          {state.kind === "failed"
-            ? state.summary
-            : state.kind === "reading"
+          {problem ??
+            (state.kind === "reading"
               ? "Opening..."
-              : "A drama your model or agent saved, from your drive or this phone."}
+              : note?.tone === "done"
+                ? note.text
+                : offer)}
         </span>
         {hint && (
           <span id={where} className="text-muted-foreground block text-xs">
@@ -182,6 +222,45 @@ const OpenScene = ({
     </label>
   )
 }
+
+/** An added word set not opened yet: what it is, and what it answers. */
+const ReadyCardButton = ({
+  card,
+  onOpen,
+}: {
+  card: ReadyCard
+  onOpen: (id: string) => void
+}): JSX.Element => (
+  <li>
+    <button
+      type="button"
+      onClick={() => onOpen(card.id)}
+      className="bg-primary/10 border-primary/30 flex min-h-16 w-full items-center gap-3 rounded-2xl border p-4 text-left"
+    >
+      <BookOpenText className="text-primary size-6 shrink-0" />
+      <span className="min-w-0 flex-1">
+        <span className="block font-semibold">
+          {`${card.words} word${card.words === 1 ? "" : "s"}`}
+          <span className="text-primary ml-2 text-xs font-bold tracking-wider uppercase">
+            New
+          </span>
+        </span>
+        <span className="text-muted-foreground block text-sm">
+          {`TOPIK ${card.level} · ${card.title}`}
+        </span>
+        {card.from && (
+          <span
+            data-slot="ready-set-from"
+            className="text-muted-foreground block text-xs"
+          >
+            {`From ${card.from}`}
+          </span>
+        )}
+      </span>
+      <ChevronRight className="text-muted-foreground size-5 shrink-0" />
+    </button>
+  </li>
+)
 
 /** The tree pasted this session: it plays, and it can be let go. */
 const PastedCard = ({
@@ -248,6 +327,12 @@ export const MaterialList = ({
   draftNotes = 0,
   keep,
   onReadAloud,
+  addedSets = 0,
+  readySets = [],
+  onOpenSet,
+  onSetText,
+  setFileHint,
+  setNote,
 }: MaterialListProps): JSX.Element => (
   <div
     data-slot="topik-material-list"
@@ -283,6 +368,27 @@ export const MaterialList = ({
       ))}
     </div>
 
+    {onReadAloud && onOpenSet && readySets.length > 0 && (
+      <section aria-label="Ready for you" className="flex flex-col gap-2">
+        <Heading>Ready for you</Heading>
+        <ul className="flex flex-col gap-2">
+          {readySets.map((card) => (
+            <ReadyCardButton key={card.id} card={card} onOpen={onOpenSet} />
+          ))}
+        </ul>
+      </section>
+    )}
+
+    {onReadAloud && onSetText && (
+      <OpenFromStorage
+        title="Open new words from storage"
+        offer="A word set your agent saved, from your drive or this phone."
+        onText={onSetText}
+        hint={setFileHint}
+        note={setNote}
+      />
+    )}
+
     {onCreate && (
       <button
         type="button"
@@ -304,7 +410,22 @@ export const MaterialList = ({
       </button>
     )}
 
-    {onReadAloud && (
+    {onReadAloud && addedSets === 0 && (
+      <div
+        data-slot="read-aloud-empty"
+        className="bg-card border-border flex min-h-16 shrink-0 items-center gap-3 rounded-2xl border p-4"
+      >
+        <BookOpenText className="text-muted-foreground size-6 shrink-0" />
+        <span className="min-w-0 flex-1">
+          <span className="block font-semibold">Read aloud</span>
+          <span className="text-muted-foreground block text-sm">
+            Nothing to read yet. Open new words from storage, above.
+          </span>
+        </span>
+      </div>
+    )}
+
+    {onReadAloud && addedSets > 0 && (
       <button
         type="button"
         onClick={onReadAloud}
@@ -323,6 +444,7 @@ export const MaterialList = ({
             {level > readAloudLevelFor(level)
               ? `TOPIK ${readAloudLevelFor(level)}, the highest it reads`
               : `TOPIK ${level}`}
+            {` · ${addedSets} word set${addedSets === 1 ? "" : "s"}`}
           </span>
         </span>
         <ChevronRight className="text-muted-foreground size-5 shrink-0" />
@@ -344,7 +466,14 @@ export const MaterialList = ({
       </section>
     )}
 
-    {onSceneText && <OpenScene onText={onSceneText} hint={sceneFileHint} />}
+    {onSceneText && (
+      <OpenFromStorage
+        title="Open a scene from storage"
+        offer="A drama your model or agent saved, from your drive or this phone."
+        onText={onSceneText}
+        hint={sceneFileHint}
+      />
+    )}
 
     {dramas.length > 0 && (
       <section aria-label="Dramas" className="flex flex-col gap-2">

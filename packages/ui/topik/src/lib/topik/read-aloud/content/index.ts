@@ -23,8 +23,8 @@
  * occurrence is shown without the substitution (Cor. 4.6 (iv)). An unknown
  * role or tense is dropped the same way: the occurrence or line is kept
  * without it.
- * Only a deck whose outer shape is wrong fails, and the caller falls back to
- * the bundled starter deck.
+ * Only a deck whose outer shape is wrong fails, and the caller refuses it
+ * whole (`added-sets`).
  *
  * This is deliberately not `@some-ui/honeycomb`'s `WordEntry`. That format is
  * a typing challenge (a QWERTY key per jamo, an icon); this one is a reading
@@ -134,6 +134,12 @@ export type ReadAloudLine = {
 export type ReadAloudDeck = {
   id: string
   title: string
+  /**
+   * What the deck answers, in the learner's terms: `your note on Oct 13:
+   * "move to level two"`. Written by whoever made a deck for this learner
+   * (`added-sets`); a deck written for anyone has none.
+   */
+  from?: string
   words: Array<ReadAloudWord>
   lines: Array<ReadAloudLine>
 }
@@ -201,6 +207,7 @@ const DeckSchema = z.object({
   schemaVersion: z.literal(1),
   id: IdSchema,
   title: z.string().trim().min(1),
+  from: z.string().trim().min(1).max(200).optional(),
   words: z.array(z.unknown()),
   lines: z.array(z.unknown()),
 })
@@ -442,7 +449,13 @@ export function parseReadAloudDeck(raw: unknown): ParsedDeck {
 
   return {
     ok: true,
-    deck: { id: outer.data.id, title: outer.data.title, words, lines },
+    deck: {
+      id: outer.data.id,
+      title: outer.data.title,
+      ...(outer.data.from === undefined ? {} : { from: outer.data.from }),
+      words,
+      lines,
+    },
     findings,
   }
 }

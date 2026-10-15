@@ -4,10 +4,13 @@
  * on the device (adaptive-learning canon Cor. 4.6 (iii), Def. 6.6,
  * Rem. 4.10, Rem. 7.5).
  *
- * The deck is the bundled one: the starter lines and the level-one lines.
- * The drill's level follows the one the learner holds on the material list,
- * capped at the drill's highest (TOPIK 3), since that is where its
- * vocabulary stops.
+ * The deck is every added set as one (`added-sets`), or one added set on
+ * its own. The drill's level is the one the host passes: the level held on
+ * the material list, or the set's own, capped at the drill's highest
+ * (TOPIK 3), since that is where its vocabulary stops.
+ *
+ * Opening it prunes no pace: a word the deck drawn from does not name may be
+ * another set's, or one not added again yet (`added-sets`, `wordsLeaving`).
  */
 
 import type { JSX } from "react"
@@ -16,17 +19,17 @@ import type { Speaker } from "@some-ui/speech"
 import { ReadAloudSession } from "@topik/components/topik/read-aloud/read-aloud-session"
 import type { ReadAloudStore } from "@topik/lib/topik/adapter/read-aloud-store"
 import { createReadAloudStore } from "@topik/lib/topik/adapter/read-aloud-store"
-import { BUNDLED_DECK } from "@topik/lib/topik/read-aloud/bundled"
 import type { ReadAloudDeck } from "@topik/lib/topik/read-aloud/content"
 import { readAloudLevelFor } from "@topik/lib/topik/read-aloud/content"
 import { dayKey } from "@topik/lib/topik/read-aloud/records"
+import { drawnFrom } from "@topik/lib/topik/read-aloud/set-builder"
 
 type ReadAloudScreenProps = {
   /** The TOPIK level held on the material list, one to six. */
   topikLevel: number
   speech: Speaker | null
   store?: ReadAloudStore
-  deck?: ReadAloudDeck
+  deck: ReadAloudDeck
   short?: boolean
   /** The host's session is paused (`useReadAloud`'s `paused`). */
   paused?: boolean
@@ -39,7 +42,7 @@ export const ReadAloudScreen = ({
   topikLevel,
   speech,
   store: given,
-  deck = BUNDLED_DECK,
+  deck,
   short = false,
   paused,
   onExit,
@@ -50,11 +53,19 @@ export const ReadAloudScreen = ({
   // tap, and the unfinished set is only a starting point.
   const [loaded] = useState(() => {
     const store = given ?? createReadAloudStore()
-    store.prunePaces(deck.words.map((word) => word.id))
+    const kept = store.progress(level, deck.id)
     return {
       store,
       paces: store.paces(),
-      resume: store.progress(level),
+      resume:
+        kept &&
+        drawnFrom(
+          kept.queue.map((entry) => entry.item),
+          deck,
+          level
+        )
+          ? kept
+          : null,
       record: store.record(),
     }
   })
@@ -75,7 +86,7 @@ export const ReadAloudScreen = ({
       paused={paused}
       onRecord={(event, day) => setRecord(store.count(event, day))}
       onPace={(wordId, pace) => store.savePace(wordId, pace)}
-      onProgress={(progress) => store.saveProgress(level, progress)}
+      onProgress={(progress) => store.saveProgress(level, deck.id, progress)}
       lenses={lenses}
       onLenses={(on) => {
         setLenses(on)

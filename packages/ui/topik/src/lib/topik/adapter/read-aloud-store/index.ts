@@ -1,11 +1,13 @@
 /**
  * What the read-aloud drill keeps on the device between sittings: each
- * word's pace, the practice record, the set left unfinished, and whether
- * sets are drawn with grammar lenses (adaptive-learning canon Cor. 4.6 (iii),
- * Def. 6.6, Rem. 4.10, Rem. 7.5).
+ * word's pace, the practice record, the set left unfinished, whether sets
+ * are drawn with grammar lenses, and the word sets added from storage
+ * (adaptive-learning canon Cor. 4.6 (iii), Def. 6.6, Rem. 4.10, Rem. 7.5).
  *
- * All four sit outside the belief envelope. A set's lenses are kept with it,
- * as content; how they were answered is not. The pace book is pacing and
+ * The added sets are content, kept so the learner need not pick them again;
+ * losing them costs the picking. The other four sit outside the belief
+ * envelope. A set's lenses are kept with it, as content; how they were
+ * answered is not. The pace book is pacing and
  * nothing more; the record is a count shown to the learner; the unfinished
  * set is a place in content, like the handheld lesson's resume point. Losing
  * any of them costs exactly that and nothing else (Thm. 7.2), which is why
@@ -16,6 +18,11 @@
 
 import { localStorageOrNull } from "@some-ui/core-utils"
 import type { StorageLike } from "@topik/lib/topik/adapter/storage"
+import type { AddedSet } from "@topik/lib/topik/read-aloud/added-sets"
+import {
+  parseAddedSets,
+  storedSet,
+} from "@topik/lib/topik/read-aloud/added-sets"
 import type { ReadAloudLevel } from "@topik/lib/topik/read-aloud/content"
 import { GRAMMAR_ROLES, TENSES } from "@topik/lib/topik/read-aloud/content"
 import type {
@@ -37,6 +44,7 @@ export const READ_ALOUD_STORAGE_KEYS = {
   paces: "topik:read-aloud-paces",
   record: "topik:read-aloud-record",
   progress: "topik:read-aloud-progress",
+  sets: "topik:read-aloud-sets",
   lenses: "topik:read-aloud-lenses",
 } as const
 
@@ -51,9 +59,19 @@ export type ReadAloudStore = {
   record: () => PracticeRecord
   /** Add a count to the record and return the record as it now stands. */
   count: (event: ReadAloudCount, day: string) => PracticeRecord
-  /** The set left unfinished at this level, or null. */
-  progress: (level: ReadAloudLevel) => SetProgress | null
-  saveProgress: (level: ReadAloudLevel, progress: SetProgress | null) => void
+  /**
+   * The set left unfinished at this level, drawn from the deck `deckId`, or
+   * null. One is kept at a time: a set drawn from another deck replaces it.
+   */
+  progress: (level: ReadAloudLevel, deckId: string) => SetProgress | null
+  saveProgress: (
+    level: ReadAloudLevel,
+    deckId: string,
+    progress: SetProgress | null
+  ) => void
+  /** The word sets added from storage, oldest first. */
+  sets: () => Array<AddedSet>
+  saveSets: (sets: ReadonlyArray<AddedSet>) => void
   /** Whether new sets are drawn with grammar lenses; off until turned on. */
   lenses: () => boolean
   saveLenses: (on: boolean) => void
@@ -94,6 +112,11 @@ const ItemSchema = z.discriminatedUnion("kind", [
 const ProgressDocumentSchema = z.object({
   version: z.literal(1),
   level: z.union([z.literal(1), z.literal(2), z.literal(3)]),
+  /**
+   * Absent in what builds before added sets wrote, whose deck was compiled
+   * in: no deck now is that one, so such a set is never resumed.
+   */
+  deck: z.string().min(1).optional(),
   progress: z.object({
     queue: z
       .array(
@@ -153,22 +176,28 @@ export function createReadAloudStore(
       write(READ_ALOUD_STORAGE_KEYS.record, next)
       return next
     },
-    progress: (level): SetProgress | null => {
+    progress: (level, deckId): SetProgress | null => {
       const parsed = ProgressDocumentSchema.safeParse(
         read(READ_ALOUD_STORAGE_KEYS.progress)
       )
-      // A set drawn for another level is not this level's to resume.
-      return parsed.success && parsed.data.level === level
+      return parsed.success &&
+        parsed.data.level === level &&
+        parsed.data.deck === deckId
         ? parsed.data.progress
         : null
     },
-    saveProgress: (level, progress): void => {
+    saveProgress: (level, deckId, progress): void => {
       write(
         READ_ALOUD_STORAGE_KEYS.progress,
         progress && progress.queue.length > 0
-          ? { version: 1, level, progress }
+          ? { version: 1, level, deck: deckId, progress }
           : null
       )
+    },
+    sets: (): Array<AddedSet> =>
+      parseAddedSets(read(READ_ALOUD_STORAGE_KEYS.sets)),
+    saveSets: (sets): void => {
+      write(READ_ALOUD_STORAGE_KEYS.sets, sets.map(storedSet))
     },
     lenses: (): boolean => read(READ_ALOUD_STORAGE_KEYS.lenses) === true,
     saveLenses: (on): void => {

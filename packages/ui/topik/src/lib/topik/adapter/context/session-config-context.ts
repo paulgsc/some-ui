@@ -32,6 +32,7 @@ export type SessionConfig = {
   share?: FileShare
   sceneVoice?: SceneVoice
   sceneFileHint?: string
+  wordSetHint?: string
 }
 
 const SessionConfigContext = createContext<SessionConfig | null>(null)

@@ -21,9 +21,10 @@ import { fnv1a, shuffledBySeed } from "@some-ui/core-utils"
 import type {
   ReadAloudDeck,
   ReadAloudLevel,
+  ReadAloudLine,
 } from "@topik/lib/topik/read-aloud/content"
 import type { Lens } from "@topik/lib/topik/read-aloud/lens"
-import { pickLens } from "@topik/lib/topik/read-aloud/lens"
+import { lensesOf, pickLens } from "@topik/lib/topik/read-aloud/lens"
 import { syllablesOf } from "@topik/lib/topik/read-aloud/timing"
 
 type WordItem = {
@@ -121,6 +122,16 @@ export function levelShortfall(
   return own < sentences && below ? own : null
 }
 
+const sameLens = (a: Lens, b: Lens): boolean =>
+  a.kind === "role"
+    ? b.kind === "role" && a.role === b.role && a.word === b.word
+    : b.kind === "tense" && a.tense === b.tense && a.from === b.from
+
+/** Def. 4.8's `K_e` for a line: every word it is written with, once each. */
+const sentenceWordIds = (line: ReadAloudLine): Array<string> => [
+  ...new Set(line.words.map((word) => word.wordId)),
+]
+
 /**
  * Build one set from a deck.
  *
@@ -156,7 +167,7 @@ export function buildSet(
         lineId: line.id,
         text: line.korean,
         syllables: syllablesOf(line.korean),
-        wordIds: [...new Set(line.words.map((word) => word.wordId))],
+        wordIds: sentenceWordIds(line),
         ...(lens ? { lens } : {}),
       }
     })
@@ -189,4 +200,37 @@ export function buildSet(
     if (!hasThreeAlike(order)) return order
   }
   return spread(wordItems, sentenceItems)
+}
+
+/**
+ * Whether every item still reads as `deck` writes it at `level`, a
+ * sentence's lens included. A set drawn from an earlier copy of a deck (one picked again
+ * since, with lines or their roles and tenses changed) is not resumed: its
+ * items would show, or ask, what the deck no longer says.
+ */
+export function drawnFrom(
+  items: ReadonlyArray<SetItem>,
+  deck: ReadAloudDeck,
+  level: ReadAloudLevel
+): boolean {
+  const lines = new Map(deck.lines.map((line) => [line.id, line]))
+  return items.every((item) => {
+    const line = lines.get(item.lineId)
+    if (line === undefined || line.level > level) return false
+    if (item.kind === "word") {
+      return line.words.some(
+        (occurrence) =>
+          occurrence.wordId === item.wordId && occurrence.surface === item.text
+      )
+    }
+    const wordIds = sentenceWordIds(line)
+    const { lens } = item
+    return (
+      line.korean === item.text &&
+      wordIds.length === item.wordIds.length &&
+      wordIds.every((id, index) => item.wordIds[index] === id) &&
+      (lens === undefined ||
+        lensesOf(line).some((each) => sameLens(each, lens)))
+    )
+  })
 }

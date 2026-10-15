@@ -3,6 +3,7 @@ import { memoryStorage } from "@some-ui/vite-config/vitest/memory-storage"
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { ReadAloudScreen } from "@topik/components/topik/read-aloud/read-aloud-screen"
 import { createReadAloudStore } from "@topik/lib/topik/adapter/read-aloud-store"
+import { REPO_SETS as DECK } from "@topik/lib/topik/read-aloud/repo-sets"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 function fakeSpeech(): Speaker {
@@ -59,6 +60,7 @@ describe("ReadAloudScreen", () => {
       <ReadAloudScreen
         topikLevel={1}
         speech={fakeSpeech()}
+        deck={DECK}
         store={createReadAloudStore(storage)}
         onExit={() => undefined}
       />
@@ -89,6 +91,7 @@ describe("ReadAloudScreen", () => {
       <ReadAloudScreen
         topikLevel={1}
         speech={fakeSpeech()}
+        deck={DECK}
         store={store}
         onExit={() => undefined}
       />
@@ -104,7 +107,7 @@ describe("ReadAloudScreen", () => {
     expect(saved.record().days.map((day) => day.day)).toEqual(["2026-09-28"])
     expect(Object.keys(saved.paces()).length).toBeGreaterThan(0)
     // The set finished, so there is nothing to resume.
-    expect(saved.progress(1)).toBeNull()
+    expect(saved.progress(1, DECK.id)).toBeNull()
   })
 
   it("shows the record on its start screen", () => {
@@ -115,6 +118,7 @@ describe("ReadAloudScreen", () => {
       <ReadAloudScreen
         topikLevel={5}
         speech={fakeSpeech()}
+        deck={DECK}
         store={store}
         onExit={() => undefined}
       />
@@ -133,6 +137,7 @@ describe("ReadAloudScreen", () => {
       <ReadAloudScreen
         topikLevel={2}
         speech={fakeSpeech()}
+        deck={DECK}
         store={createReadAloudStore(storage)}
         onExit={() => undefined}
       />
@@ -151,11 +156,45 @@ describe("ReadAloudScreen", () => {
       <ReadAloudScreen
         topikLevel={2}
         speech={fakeSpeech()}
+        deck={DECK}
         store={createReadAloudStore(storage)}
         onExit={() => undefined}
       />
     )
     fireEvent.click(screen.getByRole("button", { name: /continue/i }))
     expect(glyphs()).toBe(secondItem)
+  })
+
+  it("starts afresh when the unfinished set was drawn from an earlier copy of the deck", () => {
+    const store = createReadAloudStore(memoryStorage())
+    store.saveProgress(2, DECK.id, {
+      queue: [
+        {
+          role: "rep",
+          item: {
+            kind: "word",
+            key: "w:gone:없어요",
+            wordId: "gone",
+            text: "없어요",
+            lineId: "a-line-since-replaced",
+            syllables: 3,
+          },
+        },
+      ],
+      returns: {},
+      counted: 1,
+      reported: false,
+    })
+    render(
+      <ReadAloudScreen
+        topikLevel={2}
+        speech={fakeSpeech()}
+        deck={DECK}
+        store={store}
+        onExit={() => undefined}
+      />
+    )
+    expect(screen.queryByRole("button", { name: /continue/i })).toBeNull()
+    expect(screen.getByRole("button", { name: /start/i })).toBeTruthy()
   })
 })

@@ -130,6 +130,7 @@ export const SessionViewport = ({
           sceneVoice: PHONE_SCENE_VOICE,
           // Read at render: main.tsx installs the sidecar after imports run.
           sceneFileHint: ON_PHONE ? lookIn("drama-tree") : undefined,
+          wordSetHint: ON_PHONE ? lookIn("word-set") : undefined,
           paused,
         },
         leetype: {
