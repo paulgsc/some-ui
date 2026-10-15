@@ -10,13 +10,14 @@ import {
 } from "@some-ui/soundbites"
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
 
-import { handOff, shareAgentExport } from "@/lib/agent-export"
+import { handOffExport, shareAgentExport } from "@/lib/agent-export"
 import { useArrivalKey } from "@/lib/arrival-key"
 import { useAsyncIntent, useIntentEffect } from "@/lib/intent"
 import { IntentButton } from "@/lib/intent/render"
 import { letGoJournal, shareJournal } from "@/lib/journal-share"
 import type { SessionRecord, SessionStatus } from "@/lib/tenant"
 import { sessionsQuery, useSessions } from "@/lib/tenant"
+import { goingOut } from "@/components/reflection/copy"
 
 /**
  * `?say=` comes from a tap that already meant "let me talk" (Home's "Not
@@ -83,22 +84,24 @@ const ShareWithAgent = ({ taking }: { taking: boolean }): JSX.Element => {
     presentation: "interactive",
   })
   // Android says "shared" once an app is picked, even if the person backs
-  // out of it: the reflections leave the phone only once they say so.
-  useIntentEffect(share, ({ outcome, sent }) => {
-    if (outcome !== "shared" || sent.length === 0) return
+  // out of it: the reflections and soundbites leave the phone only once they
+  // say so.
+  useIntentEffect(share, (result) => {
+    const going = goingOut(result.sent.length, result.soundbites.length)
+    if (result.outcome !== "shared" || going === "") return
     if (
       confirm(
-        `Did they arrive? OK lets the ${sent.length} reflections go from this phone; Cancel keeps them here.`
+        `Did they arrive? OK lets the ${going} go from this phone; Cancel keeps them here.`
       )
     )
-      handOff(sent)
+      handOffExport(phoneSoundbiteStore(), result)
   })
   return (
     <section className="space-y-2">
       <p className="text-muted-foreground text-sm">
         Your sessions with their reflections, soundbites and stop reasons, as
         files for an agent to read. You pick where they go; once they arrive,
-        the reflections leave the phone.
+        the reflections and soundbites leave the phone.
       </p>
       <IntentButton
         state={share.state}

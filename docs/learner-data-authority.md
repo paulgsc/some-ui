@@ -292,7 +292,8 @@ declared (checked by reading every call site and by the tests named).
   (`lib/agent-export`) hands Android's share sheet a file of the device's
   sessions, reflections, stops and soundbites, and a session's (or every
   session's) **Share** hands it that session's reflections, and the learner
-  picks where they go; the reflections shared then leave the phone. These are
+  picks where they go; the reflections (and, from the whole export, the
+  soundbites) shared then leave the phone. These are
   explicit actions on the account path or by the learner, not defaults.
 - **The server's side.** What `file_host` stores and logs is
   `paulgsc/server` `docs/identity.md`.

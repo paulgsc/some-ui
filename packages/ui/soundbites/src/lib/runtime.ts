@@ -176,7 +176,7 @@ export function createSoundbites(
       }
       case "remove": {
         const { id } = effect
-        ports.store.remove(id).then(
+        ports.store.remove([id]).then(
           () => dispatch({ type: "removed", id }),
           () => dispatch({ type: "removeFailed" })
         )

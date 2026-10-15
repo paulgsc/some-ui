@@ -313,6 +313,16 @@ describe("step", () => {
     )
   })
 
+  it("forgets a pick the list no longer holds", () => {
+    const picked = step(here(), { type: "replacePicked", id: "a" }).state
+    const reread = run(
+      picked,
+      { type: "storeChanged" },
+      { type: "listed", seq: 2, kept: [bite("b", 10)] }
+    ).state
+    expect(reread.choice).toBe(null)
+  })
+
   it("does not delete while recording, and stops a recording it deletes from playing", () => {
     expect(
       step(recording(), { type: "deleteConfirmed", id: "a" }).effects

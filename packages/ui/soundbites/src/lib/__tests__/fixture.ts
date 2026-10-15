@@ -50,8 +50,8 @@ export function memoryStore(initial: ReadonlyArray<Soundbite> = []): {
         changed()
         return Promise.resolve()
       },
-      remove: (id): Promise<void> => {
-        kept.delete(id)
+      remove: (ids): Promise<void> => {
+        for (const id of ids) kept.delete(id)
         changed()
         return Promise.resolve()
       },

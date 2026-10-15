@@ -10,7 +10,9 @@
  * session named for it with that session's stops and path counts and the
  * practice record, each voice note beside its file. Either way, the
  * reflections that went out leave the phone once the person says they arrived
- * (`handOff`): they are for the agent to act on, not for the phone to keep.
+ * (`handOff`), and with the whole export so do its soundbites
+ * (`handOffExport`): they are for the agent to act on, not for the phone to
+ * keep.
  *
  * Phone-only: rendered only in the device build, so no other profile ships it
  * (`build.paths.ts`).
@@ -39,6 +41,7 @@ import type { SessionRecord } from "@/lib/tenant"
 import { sessionsRepository } from "@/lib/tenant/queries"
 
 type SoundbiteReader = Pick<SoundbiteStore, "list" | "audio">
+type SoundbiteRemover = Pick<SoundbiteStore, "remove">
 
 const READ_ALOUD_PRACTICE =
   "`readAloudPractice` is the read-aloud drill's practice record: for each of the 60 most recent days that had any (a day without practice has no entry, and an old day stays until 60 newer ones replace it), and in `totals` for all time, the reps read to the end, the sets finished and the practice they are credited with (a nominal time per rep, not the clock). All zeros means nothing was recorded or the stored record could not be read, which the app cannot tell apart; null means the app could not load the drill at all."
@@ -215,6 +218,16 @@ export type ShareResult = {
 }
 
 /**
+ * What the whole export put in front of the share sheet: `soundbites` are
+ * those that went out, the only ones `handOffExport` may let go.
+ */
+export type AgentExportResult = ShareResult & {
+  soundbites: ReadonlyArray<string>
+}
+
+type Sent = Pick<AgentExportResult, "sent" | "soundbites">
+
+/**
  * The person says these arrived: they leave the phone, and their sessions
  * read as shared. If the phone would not store that, they stay unmarked.
  */
@@ -225,6 +238,21 @@ export function handOff(ids: ReadonlyArray<string>, at = new Date()): void {
     .kept.filter((r) => gone.has(r.id))
     .map((r) => r.sessionId)
   if (letGoReflections(ids)) reflections.markShared(sessionIds, at)
+}
+
+/**
+ * The person says the whole export arrived: its reflections leave the phone
+ * (`handOff`), and so do the soundbites that went out; one recorded since
+ * stays. Best effort: soundbites the store would not let go stay on the
+ * list, where each one's delete still lets it go.
+ */
+export function handOffExport(
+  store: SoundbiteRemover,
+  { sent, soundbites }: Sent,
+  at = new Date()
+): void {
+  if (sent.length > 0) handOff(sent, at)
+  if (soundbites.length > 0) store.remove(soundbites).catch(() => undefined)
 }
 
 /** Shares the reflections of `sessionIds`, one file per session. */
@@ -275,7 +303,7 @@ export async function shareReflections(
 export async function shareAgentExport(
   soundbites: SoundbiteReader,
   now: () => Date = () => new Date()
-): Promise<ShareResult> {
+): Promise<AgentExportResult> {
   const audio = new Map<string, Blob>()
   const bites = await soundbites.list()
   for (const bite of bites) {
@@ -331,5 +359,7 @@ export async function shareAgentExport(
       ...files,
     ]),
   })
-  return { outcome, sent }
+  // Every bite listed went out: its audio beside it, or `file: null` for
+  // audio already gone, which leaves nothing on the phone worth keeping.
+  return { outcome, sent, soundbites: bites.map((bite) => bite.id) }
 }
