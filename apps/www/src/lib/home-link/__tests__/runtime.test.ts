@@ -317,6 +317,36 @@ describe("the home link", () => {
     expect(home.sent).toHaveLength(1)
   })
 
+  it("stays busy until a request its run gave up on has settled", async () => {
+    let settle: (answer: HomeAnswer) => void = () => undefined
+    const home = setup({
+      record: JSON.stringify({ base: HOME.base, token: "t" }),
+      answer: () =>
+        new Promise<HomeAnswer>((resolve) => {
+          settle = resolve
+        }),
+    })
+    await home.link.load()
+    let ended = false
+    const sending = home.link
+      .send((send) => {
+        // A caller whose own deadline fired first.
+        void send("POST", "/sessions", "{}")
+        return Promise.resolve("gave up")
+      })
+      .then((outcome) => {
+        ended = true
+        return outcome
+      })
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(ended).toBe(false)
+    expect(home.link.getSnapshot().activity.kind).toBe("sending")
+
+    settle({ status: 201, body: "{}" })
+    await expect(sending).resolves.toEqual({ kind: "done", value: "gave up" })
+    expect(home.link.getSnapshot().activity.kind).toBe("idle")
+  })
+
   it("sends nothing while unpaired", async () => {
     const home = setup()
     await home.link.load()

@@ -144,7 +144,21 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
     (state.activity.kind === "syncing" || state.activity.kind === "sending") &&
     state.activity.stopping
 
-  /** Shared by `sync` and `send`. */
+  // Every request a sync or send started, until it settles: a caller can
+  // give up on one (requestJSON's own deadline) that the native call still
+  // completes, and the next tap must not race it.
+  const inFlight = new Set<Promise<void>>()
+  const track = (request: Promise<HomeAnswer>): Promise<HomeAnswer> => {
+    const settled = request.then(
+      () => undefined,
+      () => undefined
+    )
+    inFlight.add(settled)
+    void settled.then(() => inFlight.delete(settled))
+    return request
+  }
+
+  /** Shared by `sync` and `send`; ends once its requests have settled. */
   const work = async <T>(
     pressed: HomeLinkEvent,
     run: () => Promise<T>
@@ -164,6 +178,7 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
       throw error
     } finally {
       unsubscribe()
+      await Promise.all(inFlight)
       dispatch({ type: "workEnded" })
     }
   }
@@ -271,7 +286,7 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
     sync<T>(run: (get: HomeGet) => Promise<T>): Promise<SyncOutcome<T> | null> {
       const get: HomeGet = (url) => {
         if (stopped()) return Promise.reject(new SyncStoppedError())
-        return ports.request({ method: "GET", url })
+        return track(ports.request({ method: "GET", url }))
       }
       return work({ type: "syncPressed" }, () => run(get))
     },
@@ -287,12 +302,14 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
           if (!path.startsWith("/")) {
             return Promise.reject(new Error(`not a path: ${path}`))
           }
-          return ports.request({
-            method,
-            url: `${pairing.base}${path}`,
-            token: pairing.token,
-            ...(body === undefined ? {} : { body }),
-          })
+          return track(
+            ports.request({
+              method,
+              url: `${pairing.base}${path}`,
+              token: pairing.token,
+              ...(body === undefined ? {} : { body }),
+            })
+          )
         }
         return run(send)
       })

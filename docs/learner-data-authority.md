@@ -150,9 +150,16 @@ declared (checked by reading every call site and by the tests named).
   in `copyDeviceSessions`, or moves `planTransfer` or `runTransfer` out of the
   function it runs, so that either happens outside the lock; one that makes the
   lock grant on a lease it has not read back, or stop renewing a lease while a
-  transfer runs (`lib/tenant/transfer-lock`); or one that has `runTransfer` write
+  transfer runs (`lib/tenant/transfer-lock`); one that has `runTransfer` write
   a receipt it read before the first send instead of reading it again for every
-  write (the `write` helper).
+  write (the `write` helper); one that removes or bypasses what keeps a copy
+  single: `planTransfer`'s check of each recorded copy (`remote.get`) or its
+  adoption of an unconfirmed attempt, or `runTransfer`'s receipt writes around
+  a create (`attempting` before it, `remember` after it, `answeredNo` on a
+  refusal); or one that makes `copySessionsTo` stop calling `planTransfer`
+  and then `runTransfer` once each, hand them a storage other than the
+  receipt's (`browserLocalStorage` by default), or create or update a session
+  outside them.
 - _Scope:_ `apps/www/src`.
 - _Why not enforced:_ the callers are pinned by
   `lib/serving-privacy/__tests__/egress-choke-points.test.ts` (each name is
@@ -306,7 +313,7 @@ declared (checked by reading every call site and by the tests named).
   opens, on resume, on a timer or on a network change: making the runtime and
   `load` read only the phone's own record. There is no retry; a sync, a send
   or a copy ends at Stop, or when the app goes to the background, before its
-  next request.
+  next request, and is over only once every request it started has settled.
   The pairing's credential is sent only to the base stored with it, over
   `https:` (`homeRequest` refuses a credentialed `http:` URL), and never on
   a sync read; no redirect is followed. Unpairing forgets it on the phone whether or
@@ -332,7 +339,11 @@ declared (checked by reading every call site and by the tests named).
   or the host from it, passes `copySessionsTo` anything but session records
   (a reflection, a stop or a soundbite: LA7), or lets `homeTransport` send a
   method other than `GET`, `POST` or `PATCH`, or hand a `401` to
-  `requestJSON` (the app's own sign-out); one that deletes or weakens the
+  `requestJSON` (the app's own sign-out); one that sends a session's create
+  or patch other than through `copySessionsTo` (which LA2 keeps to one of
+  each per session); one that lets the runtime's `work` end before every
+  request it started has settled (`inFlight`, `track`), so a second tap could
+  race a create still on its way; one that deletes or weakens the
   `onHidden` subscription in the runtime's `sync`, the `stopPressed` it
   dispatches, the `stopped()` check in the `get` it hands out, or
   `onHidden`'s stop of a sync that starts already hidden
