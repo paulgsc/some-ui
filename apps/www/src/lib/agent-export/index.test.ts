@@ -7,7 +7,13 @@ import { seedStop, stopRecord } from "@/test-support/session-stop"
 import type { Soundbite } from "@some-ui/soundbites"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
-import { handOff, shareAgentExport, shareReflections } from "@/lib/agent-export"
+import {
+  goingOut,
+  handOff,
+  handOffExport,
+  shareAgentExport,
+  shareReflections,
+} from "@/lib/agent-export"
 import type { Reflection } from "@/lib/session-reflection"
 import { reflections } from "@/lib/session-reflection"
 import { storeEffect } from "@/lib/session-stop"
@@ -225,12 +231,13 @@ describe("shareReflections", () => {
 })
 
 describe("shareAgentExport", () => {
-  it("shares context.json with each session's reflections nested, and every recording", async () => {
+  it("shares context.json with each session's reflections nested, and every recording, keeping them until handed off", async () => {
     seedStop(stopRecord(0, { reason: "focus", outcome: "done" }))
     storeEffect({ kind: "count", sessionId: "s1-0000000000", path: "opens" })
     storeEffect({ kind: "count", sessionId: "gone-session", path: "glances" })
 
-    const { sent } = await shareAgentExport(soundbites, NOW)
+    const result = await shareAgentExport(soundbites, NOW)
+    const { sent } = result
 
     expect(share).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -261,6 +268,27 @@ describe("shareAgentExport", () => {
     })
     expect(context).not.toHaveProperty(["sessions", 0, "scenes"])
     expect(sent).toEqual(["t2", "v1", "t1"])
+    expect(result.soundbites).toEqual(["b1"])
+    expect(goingOut(result)).toBe("3 reflections and 1 soundbite")
+
+    const remove = vi.fn(() => Promise.resolve())
+    handOffExport({ remove }, result, NOW())
+    expect(reflections.getSnapshot().kept).toEqual([])
+    expect(remove).toHaveBeenCalledWith(["b1"])
+  })
+
+  it("hands off soundbites alone when no reflection went out", async () => {
+    reflections.letGo(["v1", "t1", "t2"])
+    const result = await shareAgentExport(soundbites, NOW)
+    expect(goingOut(result)).toBe("1 soundbite")
+
+    const remove = vi.fn(() => Promise.reject(new Error("busy")))
+    expect(() => handOffExport({ remove }, result, NOW())).not.toThrow()
+    expect(remove).toHaveBeenCalledWith(["b1"])
+  })
+
+  it("has nothing to hand off when nothing went out", () => {
+    expect(goingOut({ sent: [], soundbites: [] })).toBe("")
   })
 
   it("names no file for a recording whose audio is gone", async () => {

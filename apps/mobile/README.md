@@ -735,15 +735,15 @@ note saying what an agent should
 use them for: shaping the next lesson, and finding where the app gets in the
 way) plus each soundbite's and voice reflection's audio to the app's cache,
 then opens Android's share sheet, where the person picks where they go
-(Drive, say). Once the person says they arrived, the reflections shared
-leave the phone, as above.
+(Drive, say). Once the person says they arrived, the reflections and
+soundbites shared leave the phone, reflections as above; a soundbite recorded
+since stays.
 `apps/www/src/lib/agent-export`. A WebView cannot download a blob, so this
 goes through `@capacitor/filesystem` and `@capacitor/share`: neither adds a
 permission or an exported component (their manifests are empty, checked
 2026-10-07 at 8.1.4 and 8.0.3), and the share plugin hands files out through
 the template's `FileProvider`, already in `AndroidManifest.xml`. Not done:
-the home server receiving soundbites itself, and clearing the soundbites that
-were shared.
+the home server receiving soundbites itself.
 
 ## Speech
 

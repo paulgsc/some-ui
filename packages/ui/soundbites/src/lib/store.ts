@@ -23,7 +23,12 @@ export type SoundbiteStore = {
    * `SoundbitesFullError`, keeping nothing, past `SOUNDBITES_MAX_BYTES`.
    */
   save: (bite: Soundbite, audio: Blob, replace: string | null) => Promise<void>
-  remove: (id: string) => Promise<void>
+  /**
+   * Lets go of each of `ids` still kept, in one transaction: a delete tapped
+   * on the list, or the soundbites a share sent once they arrived. An ID no
+   * longer kept is skipped.
+   */
+  remove: (ids: ReadonlyArray<string>) => Promise<void>
   /**
    * Calls `listener` after each save or remove commits, on this page, so a
    * page showing the list can re-read it. Returns an unsubscribe.
@@ -133,10 +138,12 @@ export function indexedDbSoundbiteStore(): SoundbiteStore {
       changed()
     },
 
-    async remove(id): Promise<void> {
+    async remove(ids): Promise<void> {
       const tx = (await connect()).transaction([META, AUDIO], "readwrite")
-      tx.objectStore(META).delete(id)
-      tx.objectStore(AUDIO).delete(id)
+      for (const id of ids) {
+        tx.objectStore(META).delete(id)
+        tx.objectStore(AUDIO).delete(id)
+      }
       await done(tx)
       changed()
     },
