@@ -4,8 +4,7 @@
  * Nothing moves unless a person pressed a button that named what would be
  * sent and where (`components/settings`): invariant LA2
  * (`docs/learner-data-authority.md`) says only `copyDeviceSessions` starts a
- * transfer, and only that button's action calls it; on the Android app,
- * `copySessionsTo`, behind the Home server block's confirm (LA8). A copy cannot be taken
+ * transfer, and only that button's action calls it. A copy cannot be taken
  * back (the server mints the ids and nothing here deletes remotely).
  *
  * **Per account.** The browser never learns an account's id, so the receipt
@@ -410,7 +409,6 @@ export async function copySessionsTo(
 ): Promise<CopyResult> {
   const plan = await planTransfer(remote, storage, () => true, local)
   const outcome = await runTransfer(plan, remote, storage)
-  // Neither arm is reachable without an authority or a lock.
   if (outcome.kind === "stale" || outcome.kind === "busy") {
     throw new Error(`a phone copy cannot be ${outcome.kind}`)
   }

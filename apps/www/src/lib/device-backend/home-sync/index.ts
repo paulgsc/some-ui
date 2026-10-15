@@ -61,7 +61,7 @@ export type SyncReport = {
 
 /**
  * The person stopped the sync (`lib/home-link`): thrown by the `get` they
- * stopped (or a send's `put`), before it sends, and never counted as an
+ * stopped (or a send's `send`), before it sends, and never counted as an
  * item that failed. What was copied before it stays.
  */
 export class SyncStoppedError extends Error {

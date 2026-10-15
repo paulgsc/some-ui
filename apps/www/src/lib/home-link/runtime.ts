@@ -155,7 +155,10 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
     const unsubscribe = ports.onHidden(() => dispatch({ type: "stopPressed" }))
     try {
       const value = await run()
-      return stopped() ? { kind: "stopped" } : { kind: "done", value }
+      // A run that resolves either finished or kept its own progress (a
+      // copy stopped part way); only one that rejects with the stop ended
+      // with nothing to say.
+      return { kind: "done", value }
     } catch (error) {
       if (error instanceof SyncStoppedError) return { kind: "stopped" }
       throw error

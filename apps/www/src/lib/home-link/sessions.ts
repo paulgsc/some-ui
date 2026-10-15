@@ -5,11 +5,7 @@
  * (canon Rem. 7.6 (a)); reflections, stops and soundbites stay on the phone
  * (LA7). One way: home is asked only what the copy needs to skip what it
  * already holds, nothing there is deleted, and a copy cannot be taken back
- * from here.
- *
- * The plan and receipt are `lib/tenant/sessions-transfer`'s, so a second
- * press copies nothing new, and a create whose answer was lost is found
- * before another is sent.
+ * from here. The plan and receipt are `lib/tenant/sessions-transfer`'s.
  */
 import { SyncStoppedError } from "@/lib/device-backend/home-sync"
 import type { FileHostTransport } from "@/lib/file-host-config/client"
@@ -55,19 +51,16 @@ export function homeTransport(send: HomeSend): FileHostTransport {
   }
 }
 
-/** Does `error`, or anything it was caused by, pass `is`? */
-function causedBy(error: unknown, is: (cause: Error) => boolean): boolean {
-  let at: unknown = error
-  while (at instanceof Error) {
-    if (is(at)) return true
-    at = at.cause
-  }
-  return false
+/** `error` is a `kind`, or `requestJSON`'s wrapping of one. */
+function causedBy(
+  error: unknown,
+  kind: new (...args: Array<never>) => Error
+): boolean {
+  if (error instanceof kind) return true
+  return error instanceof Error && error.cause instanceof kind
 }
 
-const stopped = (cause: Error): boolean => cause instanceof SyncStoppedError
-const forgotten = (cause: Error): boolean =>
-  cause instanceof HomeForgotPhoneError
+const STOPPED_EARLY = "Stopped before anything was copied."
 
 const sessions = (n: number): string => `${n} session${n === 1 ? "" : "s"}`
 
@@ -87,10 +80,10 @@ export function describeCopy(result: CopyResult, host: string): string {
   }
   const { copied, remaining, error } = outcome
   const sent = `Copied ${sessions(copied)} to ${host}; ${remaining} not yet.`
-  if (causedBy(error, stopped)) {
+  if (causedBy(error, SyncStoppedError)) {
     return `Stopped. ${sent} Copy again to carry on.${there}`
   }
-  if (causedBy(error, forgotten)) {
+  if (causedBy(error, HomeForgotPhoneError)) {
     return `${sent} ${host} no longer knows this phone: unpair, then pair again.${there}`
   }
   return `${sent} Lost ${host} there; copy again to carry on.${there}`
@@ -123,7 +116,7 @@ export async function copySessionsHome(base: string): Promise<SyncResult> {
     if (outcome === null) return { ok: false, line: "" }
     const line =
       outcome.kind === "stopped"
-        ? "Stopped before anything was copied."
+        ? STOPPED_EARLY
         : describeCopy(outcome.value, host)
     remember(LAST_COPY_KEY, `${new Date().toLocaleString()} · ${line}`)
     return {
@@ -132,10 +125,10 @@ export async function copySessionsHome(base: string): Promise<SyncResult> {
     }
   } catch (error) {
     // Asking home what it holds failed before anything was copied.
-    const line = causedBy(error, forgotten)
+    const line = causedBy(error, HomeForgotPhoneError)
       ? `${host} no longer knows this phone: unpair, then pair again.`
-      : causedBy(error, stopped)
-        ? "Stopped before anything was copied."
+      : causedBy(error, SyncStoppedError)
+        ? STOPPED_EARLY
         : `Couldn't reach ${host}. Are you on the home network? Nothing was copied.`
     return { ok: false, line }
   }

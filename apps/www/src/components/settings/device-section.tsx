@@ -285,7 +285,6 @@ const ConfirmedSend = ({
   )
 }
 
-/** The paired block's sends: the shelf, then the sessions. */
 function sendsTo(base: string): ReadonlyArray<SendSpec> {
   const host = hostOf(base)
   return [

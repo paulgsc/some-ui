@@ -301,6 +301,22 @@ describe("the home link", () => {
     expect(home.link.getSnapshot().activity.kind).toBe("idle")
   })
 
+  it("keeps what a run reports when it resolves after Stop", async () => {
+    const home = setup({
+      record: JSON.stringify({ base: HOME.base, token: "t" }),
+    })
+    await home.link.load()
+    const outcome = await home.link.send(async (send) => {
+      await send("POST", "/sessions", "{}")
+      home.link.stop()
+      // A copy that caught the stop and kept count of what it did.
+      await send("POST", "/sessions", "{}").catch(() => undefined)
+      return "copied 1"
+    })
+    expect(outcome).toEqual({ kind: "done", value: "copied 1" })
+    expect(home.sent).toHaveLength(1)
+  })
+
   it("sends nothing while unpaired", async () => {
     const home = setup()
     await home.link.load()
