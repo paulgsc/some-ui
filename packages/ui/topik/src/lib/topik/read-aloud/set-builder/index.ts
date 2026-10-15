@@ -24,7 +24,7 @@ import type {
   ReadAloudLine,
 } from "@topik/lib/topik/read-aloud/content"
 import type { Lens } from "@topik/lib/topik/read-aloud/lens"
-import { pickLens } from "@topik/lib/topik/read-aloud/lens"
+import { lensesOf, pickLens } from "@topik/lib/topik/read-aloud/lens"
 import { syllablesOf } from "@topik/lib/topik/read-aloud/timing"
 
 type WordItem = {
@@ -122,6 +122,11 @@ export function levelShortfall(
   return own < sentences && below ? own : null
 }
 
+const sameLens = (a: Lens, b: Lens): boolean =>
+  a.kind === "role"
+    ? b.kind === "role" && a.role === b.role && a.word === b.word
+    : b.kind === "tense" && a.tense === b.tense && a.from === b.from
+
 /** Def. 4.8's `K_e` for a line: every word it is written with, once each. */
 const sentenceWordIds = (line: ReadAloudLine): Array<string> => [
   ...new Set(line.words.map((word) => word.wordId)),
@@ -198,9 +203,10 @@ export function buildSet(
 }
 
 /**
- * Whether every item still reads as `deck` writes it. A set drawn from an
- * earlier copy of a deck (one picked again since, with lines changed or
- * gone) is not resumed: its items would show what the deck no longer says.
+ * Whether every item still reads as `deck` writes it, a sentence's lens
+ * included. A set drawn from an earlier copy of a deck (one picked again
+ * since, with lines or their roles and tenses changed) is not resumed: its
+ * items would show, or ask, what the deck no longer says.
  */
 export function drawnFrom(
   items: ReadonlyArray<SetItem>,
@@ -217,10 +223,13 @@ export function drawnFrom(
       )
     }
     const wordIds = sentenceWordIds(line)
+    const { lens } = item
     return (
       line.korean === item.text &&
       wordIds.length === item.wordIds.length &&
-      wordIds.every((id, index) => item.wordIds[index] === id)
+      wordIds.every((id, index) => item.wordIds[index] === id) &&
+      (lens === undefined ||
+        lensesOf(line).some((each) => sameLens(each, lens)))
     )
   })
 }

@@ -174,4 +174,32 @@ describe("drawnFrom", () => {
       })
     ).toBe(false)
   })
+
+  it("fails once a sentence's line no longer supports the lens it was drawn with", () => {
+    const lensed = buildSet(STARTER_SET, {
+      level: 3,
+      seedKey: "kept",
+      lenses: true,
+    })
+    const asked = lensed.find(
+      (item) => item.kind === "sentence" && item.lens !== undefined
+    )
+    expect(drawnFrom(lensed, STARTER_SET)).toBe(true)
+    expect(
+      drawnFrom(lensed, {
+        ...STARTER_SET,
+        lines: STARTER_SET.lines.map((line) =>
+          line.id === asked?.lineId
+            ? {
+                id: line.id,
+                level: line.level,
+                korean: line.korean,
+                english: line.english,
+                words: line.words.map(({ role: _role, ...word }) => word),
+              }
+            : line
+        ),
+      })
+    ).toBe(false)
+  })
 })
