@@ -5,14 +5,14 @@
  * (canon Rem. 7.6 (a)); reflections, stops and soundbites stay on the phone
  * (LA7). One way: home is asked only what the copy needs to skip what it
  * already holds, nothing there is deleted, and a copy cannot be taken back
- * from here. The plan and receipt are `lib/tenant/sessions-transfer`'s.
+ * from here. The plan and receipt are `lib/tenant/sessions-copy`'s.
  */
 import { SyncStoppedError } from "@/lib/device-backend/home-sync"
 import type { FileHostTransport } from "@/lib/file-host-config/client"
 import { createHttpSessionsRepository } from "@/lib/tenant/http-sessions-repository"
 import { sessionsRepository } from "@/lib/tenant/queries"
-import type { CopyResult } from "@/lib/tenant/sessions-transfer"
-import { copySessionsTo } from "@/lib/tenant/sessions-transfer"
+import type { CopyResult } from "@/lib/tenant/sessions-copy"
+import { copySessionsTo } from "@/lib/tenant/sessions-copy"
 
 import { hostOf } from "./address"
 import { homeLink } from "./index"

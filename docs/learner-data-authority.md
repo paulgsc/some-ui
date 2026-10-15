@@ -123,7 +123,8 @@ declared (checked by reading every call site and by the tests named).
   whose answer was lost is recorded before it is sent and, on the next press,
   looked for in the account (a session with the same name, layout, activities
   and scenes that no receipt entry claims) and adopted rather than repeated.
-  On the Android app the copy to its paired home is `copySessionsTo`, called
+  On the Android app the copy to its paired home is `copySessionsTo`
+  (`lib/tenant/sessions-copy`, which the phone build may carry), called
   only from `lib/home-link/sessions` behind the Home server block's confirm
   (LA8), with the same plan and receipt, no lock (the phone's link runs one
   thing at a time) and no authority (the pairing is the account).
@@ -137,12 +138,14 @@ declared (checked by reading every call site and by the tests named).
   from storage for every write, so a lock that did fail could not overwrite
   another tab's entries.
 - _Falsified by:_ a hunk that makes a ceremony function, `markSignedIn`, or the
-  sessions backend import `sessions-transfer` or call
+  sessions backend import `sessions-transfer` or `sessions-copy`, or call
   `createHttpSessionsRepository`'s `create`/`update` with data from
   `createSessionsRepository`; one that calls `copySessionsTo`,
   `copyDeviceSessions`,
   `copyDeviceSessionsAndRefresh`, `useCopyDeviceSessions`, `planTransfer` or
-  `runTransfer` from anywhere but the file that owns that step; one that lets
+  `runTransfer` from anywhere but the files that own that step (the plan and
+  the run are `lib/tenant/sessions-copy`'s, called by the browser's transfer
+  and the phone's copy alone); one that lets
   the button act on its first press; one that removes the `withTransferLock` call
   in `copyDeviceSessions`, or moves `planTransfer` or `runTransfer` out of the
   function it runs, so that either happens outside the lock; one that makes the

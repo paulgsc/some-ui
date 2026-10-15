@@ -11,6 +11,7 @@ import { beforeEach, describe, expect, it } from "vitest"
 
 import { authority } from "@/lib/authority"
 import { FileHostResponseError } from "@/lib/file-host-config/client"
+import { planTransfer, runTransfer } from "@/lib/tenant/sessions-copy"
 import type {
   CreateSessionInput,
   SessionsStore,
@@ -22,9 +23,7 @@ import {
 } from "@/lib/tenant/sessions-repository"
 import {
   copyDeviceSessions,
-  planTransfer,
   previewDeviceTransfer,
-  runTransfer,
 } from "@/lib/tenant/sessions-transfer"
 import type { StorageAdapter } from "@/lib/tenant/storage"
 import {

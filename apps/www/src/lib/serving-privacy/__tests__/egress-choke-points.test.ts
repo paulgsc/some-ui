@@ -226,17 +226,24 @@ function networkGlobalUses(path: string, text: string): Array<string> {
 
 /**
  * LA2: where the transfer of device sessions to the account may be started.
- * Each name is called from exactly one place: the button's action, through its
- * hook, through the one function that copies. The phone's copy to its paired
- * home has its own entry, called only by the Home server block's (LA8).
+ * Each name is called only from the files listed: the button's action,
+ * through its hook, through the one function that copies; and the phone's
+ * copy to its paired home, called only by the Home server block's (LA8).
+ * The plan and the run are called by those two copies alone.
  */
-const TRANSFER_CALLERS: Record<string, string> = {
-  copySessionsTo: "lib/home-link/sessions.ts",
-  useCopyDeviceSessions: "components/settings/data-home-section.tsx",
-  copyDeviceSessionsAndRefresh: "lib/tenant/hooks.ts",
-  copyDeviceSessions: "lib/tenant/sessions-transfer/index.ts",
-  planTransfer: "lib/tenant/sessions-transfer/index.ts",
-  runTransfer: "lib/tenant/sessions-transfer/index.ts",
+const TRANSFER_CALLERS: Record<string, ReadonlyArray<string>> = {
+  copySessionsTo: ["lib/home-link/sessions.ts"],
+  useCopyDeviceSessions: ["components/settings/data-home-section.tsx"],
+  copyDeviceSessionsAndRefresh: ["lib/tenant/hooks.ts"],
+  copyDeviceSessions: ["lib/tenant/sessions-transfer/index.ts"],
+  planTransfer: [
+    "lib/tenant/sessions-transfer/index.ts",
+    "lib/tenant/sessions-copy/index.ts",
+  ],
+  runTransfer: [
+    "lib/tenant/sessions-transfer/index.ts",
+    "lib/tenant/sessions-copy/index.ts",
+  ],
 }
 
 function transferCalls(path: string, text: string): Array<string> {
@@ -258,10 +265,10 @@ function transferCalls(path: string, text: string): Array<string> {
 
 function transferCallProblems(path: string, text: string): Array<string> {
   return transferCalls(path, text)
-    .filter((name) => TRANSFER_CALLERS[name] !== path)
+    .filter((name) => !(TRANSFER_CALLERS[name] ?? []).includes(path))
     .map(
       (name) =>
-        `${path} calls ${name}, which only ${TRANSFER_CALLERS[name]} may (LA2)`
+        `${path} calls ${name}, which only ${(TRANSFER_CALLERS[name] ?? []).join(" and ")} may (LA2)`
     )
 }
 
@@ -329,9 +336,14 @@ describe("LA2: the transfer to the account starts from one button", () => {
   })
 
   it("still finds each of those calls where it is expected", () => {
-    for (const [name, owner] of Object.entries(TRANSFER_CALLERS)) {
-      const calls = transferCalls(owner, readFileSync(join(SRC, owner), "utf8"))
-      expect(calls, `${owner} should call ${name}`).toContain(name)
+    for (const [name, owners] of Object.entries(TRANSFER_CALLERS)) {
+      for (const owner of owners) {
+        const calls = transferCalls(
+          owner,
+          readFileSync(join(SRC, owner), "utf8")
+        )
+        expect(calls, `${owner} should call ${name}`).toContain(name)
+      }
     }
   })
 
@@ -346,7 +358,9 @@ describe("LA2: the transfer to the account starts from one button", () => {
         .filter(ts.isImportDeclaration)
         .map((node) => node.moduleSpecifier.getText(source))
       expect(
-        imports.filter((specifier) => /sessions-transfer/.test(specifier)),
+        imports.filter((specifier) =>
+          /sessions-(transfer|copy)/.test(specifier)
+        ),
         file
       ).toEqual([])
     }
