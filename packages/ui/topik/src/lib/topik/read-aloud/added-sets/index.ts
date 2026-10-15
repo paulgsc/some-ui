@@ -116,19 +116,23 @@ export function resolveSets(added: ReadonlyArray<AddedSet>): ResolvedSets {
 }
 
 /**
- * The words `before` names and `after` does not: a set picked again that
- * dropped them. Their paces go with them (Rem. 7.5); nothing else prunes the
- * pace book, so a word no set names yet keeps its pace until one does.
+ * The words `before` names and `after` does not, or names under another
+ * dictionary form: a set picked again that dropped them, or that put its id
+ * on a different word. Their paces go with them (Rem. 7.5); nothing else
+ * prunes the pace book, so a word no set names yet keeps its pace until one
+ * does.
  */
 export function wordsLeaving(
   before: ReadonlyArray<AddedSet>,
   after: ReadonlyArray<AddedSet>
 ): Set<string> {
-  const kept = new Set(resolveSets(after).all.words.map((word) => word.id))
+  const kept = new Map(
+    resolveSets(after).all.words.map((word) => [word.id, word.lemma])
+  )
   return new Set(
     resolveSets(before)
-      .all.words.map((word) => word.id)
-      .filter((id) => !kept.has(id))
+      .all.words.filter((word) => kept.get(word.id) !== word.lemma)
+      .map((word) => word.id)
   )
 }
 

@@ -22,6 +22,7 @@ import { createReadAloudStore } from "@topik/lib/topik/adapter/read-aloud-store"
 import type { ReadAloudDeck } from "@topik/lib/topik/read-aloud/content"
 import { readAloudLevelFor } from "@topik/lib/topik/read-aloud/content"
 import { dayKey } from "@topik/lib/topik/read-aloud/records"
+import { drawnFrom } from "@topik/lib/topik/read-aloud/set-builder"
 
 type ReadAloudScreenProps = {
   /** The TOPIK level held on the material list, one to six. */
@@ -52,10 +53,18 @@ export const ReadAloudScreen = ({
   // tap, and the unfinished set is only a starting point.
   const [loaded] = useState(() => {
     const store = given ?? createReadAloudStore()
+    const kept = store.progress(level, deck.id)
     return {
       store,
       paces: store.paces(),
-      resume: store.progress(level, deck.id),
+      resume:
+        kept &&
+        drawnFrom(
+          kept.queue.map((entry) => entry.item),
+          deck
+        )
+          ? kept
+          : null,
       record: store.record(),
     }
   })

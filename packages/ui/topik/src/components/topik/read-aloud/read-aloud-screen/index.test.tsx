@@ -177,4 +177,37 @@ describe("ReadAloudScreen", () => {
     fireEvent.click(screen.getByRole("button", { name: /continue/i }))
     expect(glyphs()).toBe(secondItem)
   })
+
+  it("starts afresh when the unfinished set was drawn from an earlier copy of the deck", () => {
+    const store = createReadAloudStore(memoryStorage())
+    store.saveProgress(2, DECK.id, {
+      queue: [
+        {
+          role: "rep",
+          item: {
+            kind: "word",
+            key: "w:gone:없어요",
+            wordId: "gone",
+            text: "없어요",
+            lineId: "a-line-since-replaced",
+            syllables: 3,
+          },
+        },
+      ],
+      returns: {},
+      counted: 1,
+      reported: false,
+    })
+    render(
+      <ReadAloudScreen
+        topikLevel={2}
+        speech={fakeSpeech()}
+        deck={DECK}
+        store={store}
+        onExit={() => undefined}
+      />
+    )
+    expect(screen.queryByRole("button", { name: /continue/i })).toBeNull()
+    expect(screen.getByRole("button", { name: /start/i })).toBeTruthy()
+  })
 })

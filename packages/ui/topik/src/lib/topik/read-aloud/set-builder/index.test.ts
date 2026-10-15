@@ -4,6 +4,7 @@ import { STARTER_SET } from "@topik/lib/topik/read-aloud/repo-sets"
 import type { SetItem } from "@topik/lib/topik/read-aloud/set-builder"
 import {
   buildSet,
+  drawnFrom,
   hasThreeAlike,
   levelShortfall,
 } from "@topik/lib/topik/read-aloud/set-builder"
@@ -137,5 +138,40 @@ describe("levelShortfall", () => {
 
   it("is null when nothing below the level could fill it", () => {
     expect(levelShortfall(STARTER_SET, 1, ownLines(1) + 1)).toBeNull()
+  })
+})
+
+describe("drawnFrom", () => {
+  const items = buildSet(STARTER_SET, { level: 3, seedKey: "kept" })
+
+  it("holds for a set drawn from the deck as it stands", () => {
+    expect(drawnFrom(items, STARTER_SET)).toBe(true)
+  })
+
+  it("fails once a line the set drew is gone or reads differently", () => {
+    const drawn = items[0]?.lineId
+    expect(
+      drawnFrom(items, {
+        ...STARTER_SET,
+        lines: STARTER_SET.lines.filter((line) => line.id !== drawn),
+      })
+    ).toBe(false)
+    expect(
+      drawnFrom(items, {
+        ...STARTER_SET,
+        lines: STARTER_SET.lines.map((line) =>
+          line.id === drawn
+            ? {
+                ...line,
+                korean: `${line.korean} `,
+                words: line.words.map((word) => ({
+                  ...word,
+                  surface: `${word.surface}요`,
+                })),
+              }
+            : line
+        ),
+      })
+    ).toBe(false)
   })
 })

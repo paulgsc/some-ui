@@ -146,6 +146,25 @@ describe("resolveSets", () => {
     // A word no set names yet is not the set's to take with it.
     expect(wordsLeaving([], [added(CAFE)]).size).toBe(0)
   })
+
+  it("names a word whose id a set picked again puts on another dictionary form", () => {
+    const renamed: ReadAloudDeck = {
+      ...PLANS,
+      words: PLANS.words.map((word) =>
+        word.id === "yaksok" ? { ...word, lemma: "약" } : word
+      ),
+      lines: [
+        line("line-1", "약 주세요.", [
+          { wordId: "yaksok", surface: "약", stemEnd: 1 },
+          { wordId: "juda", surface: "주세요", stemEnd: 1 },
+        ]),
+      ],
+    }
+    const before = [added(CAFE), added(PLANS)]
+    expect([...wordsLeaving(before, addSet(before, renamed, "b"))]).toEqual([
+      "yaksok",
+    ])
+  })
 })
 
 describe("intakeSet", () => {

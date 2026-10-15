@@ -190,3 +190,31 @@ export function buildSet(
   }
   return spread(wordItems, sentenceItems)
 }
+
+/**
+ * Whether every item still reads as `deck` writes it. A set drawn from an
+ * earlier copy of a deck (one picked again since, with lines changed or
+ * gone) is not resumed: its items would show what the deck no longer says.
+ */
+export function drawnFrom(
+  items: ReadonlyArray<SetItem>,
+  deck: ReadAloudDeck
+): boolean {
+  const lines = new Map(deck.lines.map((line) => [line.id, line]))
+  return items.every((item) => {
+    const line = lines.get(item.lineId)
+    if (line === undefined) return false
+    if (item.kind === "word") {
+      return line.words.some(
+        (occurrence) =>
+          occurrence.wordId === item.wordId && occurrence.surface === item.text
+      )
+    }
+    const wordIds = [...new Set(line.words.map((word) => word.wordId))]
+    return (
+      line.korean === item.text &&
+      wordIds.length === item.wordIds.length &&
+      wordIds.every((id, index) => item.wordIds[index] === id)
+    )
+  })
+}
