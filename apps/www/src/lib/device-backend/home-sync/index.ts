@@ -71,6 +71,16 @@ export class SyncStoppedError extends Error {
   }
 }
 
+/**
+ * The phone's storage failing, or the person stopping, is not one item's
+ * failure: the sync stops and says so.
+ */
+function endsTheSync(error: unknown): boolean {
+  return (
+    error instanceof DeviceStorageError || error instanceof SyncStoppedError
+  )
+}
+
 export class HomeUnreachableError extends Error {
   constructor(
     readonly base: string,
@@ -189,13 +199,7 @@ async function syncLessons(
       if (outcome === "inserted") tally.added += 1
       if (outcome === "updated") tally.updated += 1
     } catch (error) {
-      // The phone's storage failing, or the person stopping, is not this
-      // item's: stop and say so.
-      if (
-        error instanceof DeviceStorageError ||
-        error instanceof SyncStoppedError
-      )
-        throw error
+      if (endsTheSync(error)) throw error
       if (error instanceof OverBudgetError) tally.skipped += 1
       else failed.push(entry.key)
     }
@@ -287,13 +291,7 @@ export async function syncFromHome(
         report.rounds.runs += await upsertRuns(store, runs.body, now())
       }
     } catch (error) {
-      // The phone's storage failing, or the person stopping, is not this
-      // item's: stop and say so.
-      if (
-        error instanceof DeviceStorageError ||
-        error instanceof SyncStoppedError
-      )
-        throw error
+      if (endsTheSync(error)) throw error
       if (error instanceof OverBudgetError) report.rounds.skipped += 1
       else report.failed.push(listing.id)
     }

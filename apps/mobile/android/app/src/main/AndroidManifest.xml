@@ -38,10 +38,7 @@
          14 denies it by default to everything else. -->
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" tools:node="remove" />
 
-    <!-- Auto Backup stays on (README "Play readiness", PD3), but the two rule
-         files keep the home-server pairing (HomeCredentialPlugin) out of every
-         backup and device-to-device transfer: fullBackupContent up to API 30,
-         dataExtractionRules from API 31 (minSdk is 24, so both). -->
+    <!-- Backup: README "Play readiness", PD3. -->
     <application
         android:allowBackup="true"
         android:fullBackupContent="@xml/backup_rules"
@@ -57,10 +54,8 @@
              address (http://<lan-ip>:3000), which Android refuses to reach from
              targetSdk 28 on unless allowed here. A network security config
              cannot scope this to "private addresses"; it takes named hosts, and
-             the LAN address is whatever the person types. Anything that carries
-             the pairing's credential is https only, refused in code
-             (www lib/device-backend/native-http). Everything else the app loads
-             is its own bundle, over https. -->
+             the LAN address is whatever the person types. Everything else the
+             app loads is its own bundle, over https. -->
 
         <activity
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|smallestScreenSize|screenLayout|uiMode|navigation|density"

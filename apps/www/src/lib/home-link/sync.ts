@@ -14,15 +14,12 @@ import { deviceStorage } from "@/lib/device-backend/storage-view"
 
 import { hostOf } from "./address"
 import { homeLink } from "./index"
+import { remember, remembered } from "./remembered"
 
 const LAST_SYNC_KEY = "some-ui.device.last-sync.v1"
 
 export function lastSync(): string {
-  try {
-    return window.localStorage.getItem(LAST_SYNC_KEY) ?? ""
-  } catch {
-    return ""
-  }
+  return remembered(LAST_SYNC_KEY)
 }
 
 function describe(report: SyncReport): string {
@@ -71,14 +68,10 @@ export async function syncLessonsFrom(
       }
     }
     const line = describe(outcome.value)
-    try {
-      window.localStorage.setItem(
-        LAST_SYNC_KEY,
-        `${new Date().toLocaleString()} · ${host} · ${line}`
-      )
-    } catch {
-      // Not remembered; the sync itself still happened.
-    }
+    remember(
+      LAST_SYNC_KEY,
+      `${new Date().toLocaleString()} · ${host} · ${line}`
+    )
     return { ok: true, line }
   } catch (error) {
     // The phone's own storage says so in its words (reported, with the

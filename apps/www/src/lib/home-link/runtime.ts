@@ -184,8 +184,6 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
             found: pairing ? { base: pairing.base } : lost ? "lost" : null,
           })
         },
-        // A phone that cannot read its record just now is not paired, and
-        // says so; nothing is sent.
         () => dispatch({ type: "read", found: "unreadable" })
       )
       return loading
@@ -217,17 +215,12 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
             url: `${pairing.base}/auth/sign-out`,
             token: pairing.token,
           })
-          // 401: home holds no such session any more, which is the point.
-          told =
-            (answer.status >= 200 && answer.status < 300) ||
-            answer.status === 401
+          told = answer.status >= 200 && answer.status < 300
         }
       } catch {
         told = false
       }
       told ||= toldBefore
-      // Forgotten on the phone whether or not home heard (LA8); a phone
-      // that could not forget it says so rather than claiming it did.
       try {
         await ports.credential.clear()
       } catch {

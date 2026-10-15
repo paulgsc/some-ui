@@ -3,15 +3,13 @@
  * and the Home server block, the one place on the phone that sends anything
  * to the home server (LA8, docs/learner-data-authority.md).
  *
- * Every hop is a tap here, and names where it goes: the sync (published
- * lessons and rounds, read with no credential), pairing (the code only) and
- * unpairing. Nothing runs when the page opens, on resume or on a timer; a
- * running sync has Stop, and ends when the app goes to the background
- * (`lib/home-link`, which owns the work; this component only shows it).
+ * Every hop is a tap here, and names where it goes (LA8); `lib/home-link`
+ * owns the work, and this component only shows it.
  */
 
 import type { JSX } from "react"
 import { useState } from "react"
+import { assertNever } from "@some-ui/core-utils"
 import { Button, Input, Label } from "@some-ui/shared"
 import { useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
@@ -25,28 +23,13 @@ import {
   typedCode,
   useHomeLink,
 } from "@/lib/home-link"
+import { remember, remembered } from "@/lib/home-link/remembered"
 import { lastSync, syncLessonsFrom } from "@/lib/home-link/sync"
 import { useAsyncIntent, useIntentEffect } from "@/lib/intent"
 import { IntentButton } from "@/lib/intent/render"
 import { DeviceStorageSummary } from "@/components/settings/device-storage"
 
 const HOME_KEY = "some-ui.device.home-server.v1"
-
-function rememberedAddress(): string {
-  try {
-    return window.localStorage.getItem(HOME_KEY) ?? ""
-  } catch {
-    return ""
-  }
-}
-
-function rememberAddress(value: string): void {
-  try {
-    window.localStorage.setItem(HOME_KEY, value)
-  } catch {
-    // Not remembered; it is typed again next time.
-  }
-}
 
 /** A bare address as its host, for "Reads from"; `null` when it is not one. */
 function typedHost(address: string): string | null {
@@ -63,7 +46,7 @@ const NOTES: Record<UnpairedNote, string> = {
     "Unpaired on this phone. Home couldn't be reached, so it still holds this phone's key until it expires: sign out everywhere on your computer to end it now.",
   lost: "This phone's pairing didn't survive a restore. Pair again; to end the old one, sign out everywhere on your computer.",
   unreadable:
-    "This phone couldn't read its pairing just now. Restart the app to try again; pairing again replaces it.",
+    "This phone couldn't read its pairing just now. Restart the app to try again. Pairing again replaces it; to end the old one, sign out everywhere on your computer.",
 }
 
 function failureLine(failure: PairFailure, host: string): string {
@@ -93,9 +76,7 @@ function failureLine(failure: PairFailure, host: string): string {
       return "Pairing failed. Get a new code and try again."
     }
     default: {
-      throw new Error(
-        `unhandled pairing failure: ${String(failure satisfies never)}`
-      )
+      return assertNever(failure)
     }
   }
 }
@@ -178,7 +159,7 @@ const PairForm = ({
 export const DeviceSection = (): JSX.Element => {
   const queryClient = useQueryClient()
   const state = useHomeLink()
-  const [address, setAddress] = useState(rememberedAddress)
+  const [address, setAddress] = useState(() => remembered(HOME_KEY))
   const [pairOpen, setPairOpen] = useState(false)
   const [confirmingUnpair, setConfirmingUnpair] = useState(false)
 
@@ -189,8 +170,6 @@ export const DeviceSection = (): JSX.Element => {
   const host = paired ? hostOf(paired.base) : typedHost(typed)
   const syncing = activity.kind === "syncing"
 
-  // The queries are re-read by the sync itself, so leaving Settings while
-  // it runs still refreshes them; only the toast needs this page.
   const sync = useAsyncIntent(
     (from: string) =>
       syncLessonsFrom(from, () => queryClient.invalidateQueries()),
@@ -201,7 +180,6 @@ export const DeviceSection = (): JSX.Element => {
     if (result.ok) toast.success(result.line)
     else toast.error(result.line)
   })
-  // Kept in storage by the sync; read where it is shown, never copied.
   const synced = lastSync()
   const unpair = useAsyncIntent((_: undefined) => homeLink().unpair(), {
     presentation: "interactive",
@@ -320,7 +298,7 @@ export const DeviceSection = (): JSX.Element => {
               state={sync.state}
               onPress={() => {
                 if (base === null) return
-                if (!paired) rememberAddress(typed)
+                if (!paired) remember(HOME_KEY, typed)
                 sync.start(base)
               }}
               disabled={

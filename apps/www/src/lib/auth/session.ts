@@ -266,8 +266,7 @@ export type PairingCode = { code: string; expiresAt: number }
  * Ask for a one-time code that pairs a phone to this account
  * (`paulgsc/server` `docs/identity.md`, "Pairing a phone"). It carries no
  * learner state, so it goes as a ceremony does; the server takes it from a
- * browser's passkey session only. The phone sends nothing until its own
- * Home server block is tapped (LA8).
+ * browser's passkey session only.
  */
 export function startPairing(): Promise<PairingCode> {
   const transport = transportOrNull()

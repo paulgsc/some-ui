@@ -236,24 +236,21 @@ describe("the home link", () => {
     })
   })
 
-  it("remembers that home was told when the retry finds the session already gone", async () => {
-    let clears = 0
+  it("remembers that home was told when a retry finds nothing left to send", async () => {
     let record: string | null = JSON.stringify({ base: HOME.base, token: "t" })
     const home = setup({
       read: () => Promise.resolve({ record, lost: false }),
-      // Home ends the session on the first Unpair; the retry's token is dead.
-      answer: () => ({ status: clears === 0 ? 200 : 401, body: "" }),
+      // The first clear's answer is lost, though the record did go.
       clear: (): Promise<void> => {
-        clears += 1
-        if (clears === 1) return Promise.reject(new Error("disk"))
+        const first = record !== null
         record = null
-        return Promise.resolve()
+        return first ? Promise.reject(new Error("deadline")) : Promise.resolve()
       },
     })
     await home.link.load()
     await home.link.unpair()
     await home.link.unpair()
-    expect(home.sent).toHaveLength(2)
+    expect(home.sent).toHaveLength(1)
     expect(home.link.getSnapshot().link).toEqual({
       kind: "unpaired",
       note: "unpaired",

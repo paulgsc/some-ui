@@ -11,10 +11,11 @@
  *   files that `eslint-disable` it, and the config's exemption list.
  *
  * - **LA8: the phone reaches its home server through one module, and one
- *   block.** Native HTTP (`CapacitorHttp`) is not a browser global, so the
- *   lint rule cannot see it: only `lib/device-backend/native-http` may name
- *   it, only `lib/home-link` may call that module, and only the Home server
- *   block may call `lib/home-link`.
+ *   block.** Native HTTP (`CapacitorHttp`) is not a browser global, so
+ *   `no-restricted-globals` cannot see it, and `no-restricted-imports`
+ *   misses a dynamic `import()` and `Capacitor.Plugins.CapacitorHttp`: only
+ *   `lib/device-backend/native-http` may name it, only `lib/home-link` may
+ *   call that module, and only the Home server block may call `lib/home-link`.
  *
  * The last group feeds the checks known-bad sources, so a check that stopped
  * looking cannot stay green.

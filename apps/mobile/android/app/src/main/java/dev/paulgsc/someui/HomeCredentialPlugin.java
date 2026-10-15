@@ -2,6 +2,7 @@ package dev.paulgsc.someui;
 
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.os.Build;
 import android.security.keystore.KeyGenParameterSpec;
 import android.security.keystore.KeyProperties;
 import android.util.Base64;
@@ -11,9 +12,14 @@ import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
 import java.nio.charset.StandardCharsets;
-import java.security.GeneralSecurityException;
+import java.security.InvalidAlgorithmParameterException;
+import java.security.InvalidKeyException;
 import java.security.KeyStore;
+import java.security.UnrecoverableEntryException;
+import java.security.UnrecoverableKeyException;
+import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
+import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.KeyGenerator;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.GCMParameterSpec;
@@ -29,14 +35,13 @@ import javax.crypto.spec.GCMParameterSpec;
  * A record that can never be read again reads as `lost`, and it and its key
  * are deleted, so the next pairing starts with a fresh key: the record is
  * not one, its key did not survive (a restore that slipped past those
- * rules, a Keystore reset), or the key no longer opens it. Only `decrypt`
- * says which, by throwing `Lost`, and only for those. A Keystore that
- * cannot be loaded, or that fails an operation it may pass next time
- * (`ProviderException`), rejects and keeps both: deleting them then would
- * unpair the phone for a passing fault.
- *
- * Nothing here sends anything: www reads the record when the person taps
- * something that sends, and forgets it when they unpair.
+ * rules, a Keystore reset), or the key no longer opens it. `decrypt` says
+ * which, by throwing `Lost`. The Keystore folds its own faults into the same
+ * exception types, so a failure `mayPass` names (Android 13+ says which are
+ * transient or a system error), or loading the Keystore at all, rejects and
+ * keeps both: deleting them then would unpair the phone for a passing fault.
+ * Before Android 13 the Keystore cannot tell them apart, and such a fault
+ * reads as `lost`, which the page says.
  */
 @CapacitorPlugin(name = "HomeCredential")
 public class HomeCredentialPlugin extends Plugin {
@@ -88,9 +93,13 @@ public class HomeCredentialPlugin extends Plugin {
         try {
             sealed = encrypt(record);
         } catch (Exception broken) {
-            // The record is replaced either way, so the old key is worth
-            // nothing: a key that cannot seal (reset under it, say) is
-            // dropped and the write tried once more with a new one.
+            // A key that cannot seal (reset under it, say) is dropped and the
+            // write tried once more with a new one. A fault that may pass
+            // keeps it: a record still stored may yet open with it.
+            if (mayPass(broken)) {
+                call.reject("the pairing could not be encrypted", broken);
+                return;
+            }
             try {
                 forgetKey();
                 sealed = encrypt(record);
@@ -122,23 +131,54 @@ public class HomeCredentialPlugin extends Plugin {
         return getContext().getSharedPreferences(PREFS, Context.MODE_PRIVATE);
     }
 
-    /** Best effort: a key left behind is replaced by the next write anyway. */
-    private static void forgetKey() {
-        try {
-            KeyStore keyStore = KeyStore.getInstance(KEYSTORE);
-            keyStore.load(null);
-            keyStore.deleteEntry(KEY_ALIAS);
-        } catch (Exception ignored) {
-            // Nothing sealed with it can be read; write() retries without it.
+    /** A record that can never be read again: see the class comment. */
+    private static final class Lost extends Exception {
+
+        Lost(String why, Throwable cause) {
+            super(why, cause);
         }
     }
 
-    private static SecretKey key() throws Exception {
+    /** Android 13+ marks a Keystore fault that may pass; see the class comment. */
+    private static boolean mayPass(Throwable error) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return false;
+        for (Throwable at = error; at != null; at = at.getCause()) {
+            if (at instanceof android.security.KeyStoreException) {
+                android.security.KeyStoreException keystore = (android.security.KeyStoreException) at;
+                return keystore.isTransientFailure() || keystore.isSystemError();
+            }
+        }
+        return false;
+    }
+
+    private static KeyStore keyStore() throws Exception {
         KeyStore keyStore = KeyStore.getInstance(KEYSTORE);
         keyStore.load(null);
-        if (keyStore.containsAlias(KEY_ALIAS)) {
-            return ((KeyStore.SecretKeyEntry) keyStore.getEntry(KEY_ALIAS, null)).getSecretKey();
+        return keyStore;
+    }
+
+    /** Best effort: a key left behind is replaced by the next write anyway. */
+    private static void forgetKey() {
+        try {
+            keyStore().deleteEntry(KEY_ALIAS);
+        } catch (Exception ignored) {
+            // write() makes a new one once this one cannot seal.
         }
+    }
+
+    /** The stored key, or `null` when there is none. */
+    private static SecretKey storedKey(KeyStore keyStore) throws Exception {
+        if (!keyStore.containsAlias(KEY_ALIAS)) return null;
+        KeyStore.Entry entry = keyStore.getEntry(KEY_ALIAS, null);
+        if (!(entry instanceof KeyStore.SecretKeyEntry)) {
+            throw new UnrecoverableKeyException("not a secret key entry");
+        }
+        return ((KeyStore.SecretKeyEntry) entry).getSecretKey();
+    }
+
+    private static SecretKey key() throws Exception {
+        SecretKey stored = storedKey(keyStore());
+        if (stored != null) return stored;
         KeyGenerator generator = KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_AES, KEYSTORE);
         generator.init(
             new KeyGenParameterSpec.Builder(KEY_ALIAS, KeyProperties.PURPOSE_ENCRYPT | KeyProperties.PURPOSE_DECRYPT)
@@ -150,13 +190,6 @@ public class HomeCredentialPlugin extends Plugin {
         return generator.generateKey();
     }
 
-    /** A record that can never be read again: see the class comment. */
-    private static final class Lost extends Exception {
-        Lost(String why, Throwable cause) {
-            super(why, cause);
-        }
-    }
-
     /** `iv:ciphertext`, each Base64; the Keystore picks the IV. */
     private static String encrypt(String plain) throws Exception {
         Cipher cipher = Cipher.getInstance(TRANSFORMATION);
@@ -165,11 +198,6 @@ public class HomeCredentialPlugin extends Plugin {
         return Base64.encodeToString(cipher.getIV(), Base64.NO_WRAP) + ":" + Base64.encodeToString(sealed, Base64.NO_WRAP);
     }
 
-    /**
-     * In three steps, so a failure says whether it can pass. Loading the
-     * Keystore can (it propagates); the record's shape, the key's entry and
-     * the cipher's verdict cannot (`Lost`).
-     */
     private static String decrypt(String stored) throws Exception {
         int split = stored.indexOf(':');
         byte[] iv;
@@ -183,27 +211,29 @@ public class HomeCredentialPlugin extends Plugin {
         }
         if (iv.length != GCM_IV_BYTES) throw new Lost("not a sealed record", null);
 
-        KeyStore keyStore = KeyStore.getInstance(KEYSTORE);
-        keyStore.load(null);
-
+        KeyStore keyStore = keyStore();
         SecretKey key;
         try {
-            if (!keyStore.containsAlias(KEY_ALIAS)) throw new Lost("the key did not survive", null);
-            KeyStore.Entry entry = keyStore.getEntry(KEY_ALIAS, null);
-            if (!(entry instanceof KeyStore.SecretKeyEntry)) throw new Lost("the key did not survive", null);
-            key = ((KeyStore.SecretKeyEntry) entry).getSecretKey();
-        } catch (GeneralSecurityException unrecoverable) {
+            key = storedKey(keyStore);
+        } catch (UnrecoverableEntryException unrecoverable) {
+            if (mayPass(unrecoverable)) throw unrecoverable;
             throw new Lost("the key did not survive", unrecoverable);
         }
+        if (key == null) throw new Lost("the key did not survive", null);
 
         Cipher cipher = Cipher.getInstance(TRANSFORMATION);
         try {
             cipher.init(Cipher.DECRYPT_MODE, key, new GCMParameterSpec(TAG_BITS, iv));
             return new String(cipher.doFinal(sealed), StandardCharsets.UTF_8);
-        } catch (GeneralSecurityException refused) {
-            // A key the Keystore invalidated, or a record it does not open:
-            // KeyPermanentlyInvalidatedException, InvalidKeyException,
-            // AEADBadTagException, IllegalBlockSizeException.
+        } catch (
+            InvalidKeyException
+            | InvalidAlgorithmParameterException
+            | BadPaddingException
+            | IllegalBlockSizeException refused
+        ) {
+            // KeyPermanentlyInvalidatedException is an InvalidKeyException,
+            // AEADBadTagException a BadPaddingException.
+            if (mayPass(refused)) throw refused;
             throw new Lost("the key no longer opens the record", refused);
         }
     }

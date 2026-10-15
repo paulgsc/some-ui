@@ -7,6 +7,7 @@
  * arms of `activity`, and `step` refuses to start one while another runs. A
  * result for an operation that is no longer the current one is dropped.
  */
+import { assertNever } from "@some-ui/core-utils"
 
 /** Why the phone is not paired, said once beside the block. */
 export type UnpairedNote =
@@ -66,7 +67,6 @@ export type HomeLinkEvent =
   | { readonly type: "pairFailed"; readonly failure: PairFailure }
   | { readonly type: "unpairPressed" }
   | { readonly type: "unpaired"; readonly told: boolean }
-  /** The phone could not forget the key: it is still paired, and says so. */
   | { readonly type: "unpairFailed" }
   | { readonly type: "syncPressed" }
   | { readonly type: "stopPressed" }
@@ -79,10 +79,6 @@ export const INITIAL: HomeLinkState = {
 }
 
 const idle = { kind: "idle" } as const
-
-function assertNever(value: never): never {
-  throw new Error(`unhandled home-link event: ${JSON.stringify(value)}`)
-}
 
 export function step(
   state: HomeLinkState,

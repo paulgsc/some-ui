@@ -300,7 +300,8 @@ declared (checked by reading every call site and by the tests named).
   only by `HomeCredentialPlugin`, sealed by the Android Keystore, kept out of
   every backup and device-to-device transfer (`res/xml/backup_rules.xml`,
   `res/xml/data_extraction_rules.xml`, both named by the manifest), and
-  deleted on a read only when it can never be read again.
+  deleted on a read, with its key, only when it cannot be read and the
+  Keystore does not mark the fault as one that may pass (Android 13+).
 - _Falsified by:_ a hunk that removes, narrows or widens the allowlists of
   the LA8 checks in
   `lib/serving-privacy/__tests__/egress-choke-points.test.ts` (who may name
@@ -321,10 +322,12 @@ declared (checked by reading every call site and by the tests named).
   report the phone unpaired when forgetting it failed; one that
   removes the host from the pair button or the paired line; one that writes
   the pairing record anywhere but `HomeCredentialPlugin`, or stores it there
-  unencrypted; one that makes `HomeCredentialPlugin.read` delete the record
-  on anything but `Lost`, or that throws `Lost` (or widens a catch that
-  becomes one, in `decrypt`) for a failure that can pass, such as loading
-  the Keystore or a `ProviderException`; or one that
+  unencrypted; one that makes `HomeCredentialPlugin` delete the record or
+  its key (`forgetKey`) anywhere but `read`'s `Lost` branch and `write`'s
+  retry after a failure `mayPass` refuses; one that adds a `Lost` throw in
+  `decrypt`, or widens a catch that becomes one, without consulting
+  `mayPass`, moves loading the Keystore inside such a catch, or narrows
+  `mayPass`; or one that
   removes or narrows an `<exclude>` in either backup rule file, removes
   `android:fullBackupContent` or `android:dataExtractionRules` from the
   manifest, or renames `HomeCredentialPlugin.PREFS` without them.
