@@ -12,10 +12,9 @@ import type { HomeLinkState } from "./model"
 import type { HomeLink } from "./runtime"
 import { createHomeLink } from "./runtime"
 
-export type { AddressProblem, HomeAddress } from "./address"
 export { hostOf, pairingAddress, typedCode } from "./address"
 export type { HomeLinkState, PairFailure, UnpairedNote } from "./model"
-export type { HomeLink, SyncOutcome } from "./runtime"
+export type { HomeLink } from "./runtime"
 
 function onHidden(listener: () => void): () => void {
   const changed = (): void => {

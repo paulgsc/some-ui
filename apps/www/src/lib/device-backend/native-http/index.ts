@@ -26,7 +26,6 @@ import {
   reportFailure,
 } from "@some-ui/intent-kit"
 
-import type { HomeGet } from "@/lib/device-backend/home-sync"
 import { foreignValue, isMissingPlugin } from "@/lib/intent/foreign"
 
 /** Long enough for a slow LAN; short enough to say "unreachable" promptly. */
@@ -44,7 +43,7 @@ export type HomeCall = {
 }
 
 /** A credentialed request to a URL that is not `https:`. Nothing was sent. */
-export class InsecureHomeError extends Error {
+class InsecureHomeError extends Error {
   constructor() {
     super("the home server's credential is sent over https only")
     this.name = "InsecureHomeError"
@@ -110,7 +109,3 @@ export async function homeRequest(call: HomeCall): Promise<HomeAnswer> {
     body: typeof data === "string" ? data : JSON.stringify(data),
   }
 }
-
-/** The sync's reads: no credential, ever (LA8). */
-export const nativeHomeGet: HomeGet = (url) =>
-  homeRequest({ method: "GET", url })

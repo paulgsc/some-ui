@@ -75,7 +75,7 @@ function pairFailureOf(answer: HomeAnswer | unknown): PairFailure {
     : "unreachable"
 }
 
-export type SyncOutcome<T> =
+type SyncOutcome<T> =
   | { readonly kind: "done"; readonly value: T }
   | { readonly kind: "stopped" }
 

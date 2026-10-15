@@ -26,13 +26,13 @@ export type PairFailure =
   | "not-kept"
   | "other"
 
-export type Link =
+type Link =
   /** The phone's own record is being read: no request to home. */
   | { readonly kind: "reading" }
   | { readonly kind: "unpaired"; readonly note: UnpairedNote | null }
   | { readonly kind: "paired"; readonly base: string }
 
-export type Activity =
+type Activity =
   | { readonly kind: "idle" }
   | { readonly kind: "pairing"; readonly base: string }
   | { readonly kind: "unpairing" }
