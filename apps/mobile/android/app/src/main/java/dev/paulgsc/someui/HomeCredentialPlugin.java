@@ -41,7 +41,7 @@ import javax.crypto.spec.GCMParameterSpec;
  * transient or a system error), or loading the Keystore at all, rejects and
  * keeps both: deleting them then would unpair the phone for a passing fault.
  * Before Android 13 the Keystore cannot tell them apart, and such a fault
- * reads as `lost`, which the page says.
+ * reads as `lost` too: the page then asks for a new pairing.
  */
 @CapacitorPlugin(name = "HomeCredential")
 public class HomeCredentialPlugin extends Plugin {

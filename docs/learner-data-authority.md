@@ -326,8 +326,10 @@ declared (checked by reading every call site and by the tests named).
   its key (`forgetKey`) anywhere but `read`'s `Lost` branch and `write`'s
   retry after a failure `mayPass` refuses; one that adds a `Lost` throw in
   `decrypt`, or widens a catch that becomes one, without consulting
-  `mayPass`, moves loading the Keystore inside such a catch, or narrows
-  `mayPass`; or one that
+  `mayPass`, removes a `mayPass` check `decrypt` makes, moves loading the
+  Keystore inside such a catch, narrows `mayPass`, or makes `storedKey`
+  throw `UnrecoverableKeyException` for anything but an entry that is not
+  a secret key; or one that
   removes or narrows an `<exclude>` in either backup rule file, removes
   `android:fullBackupContent` or `android:dataExtractionRules` from the
   manifest, or renames `HomeCredentialPlugin.PREFS` without them.
