@@ -6,6 +6,8 @@ export type ServerRoute =
   | "/api/v1/activities"
   | "/api/v1/activities/:id"
   | "/api/v1/auth/account"
+  | "/api/v1/auth/pairing/finish"
+  | "/api/v1/auth/pairing/start"
   | "/api/v1/auth/passkeys/finish"
   | "/api/v1/auth/passkeys/start"
   | "/api/v1/auth/register/finish"

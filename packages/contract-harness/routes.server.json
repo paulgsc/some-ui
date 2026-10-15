@@ -26,6 +26,20 @@
     },
     {
       "method": "POST",
+      "path": "/auth/pairing/finish",
+      "full_path": "/api/v1/auth/pairing/finish",
+      "versioned": true,
+      "module": "auth"
+    },
+    {
+      "method": "POST",
+      "path": "/auth/pairing/start",
+      "full_path": "/api/v1/auth/pairing/start",
+      "versioned": true,
+      "module": "auth"
+    },
+    {
+      "method": "POST",
       "path": "/auth/passkeys/finish",
       "full_path": "/api/v1/auth/passkeys/finish",
       "versioned": true,
