@@ -313,9 +313,7 @@ declared (checked by reading every call site and by the tests named).
   (`mayLeavePhone`: completed, not today's) and confirm it holds it exactly
   as the phone does (`confirmHeld`); the phone then lets go of its own copy
   of those alone, each unchanged since it was read, and nothing on home is
-  deleted), and reading home's sessions to browse them (`sessionsOnHome`,
-  one `GET /sessions` per tap; searching, filtering and scrolling them in
-  `device-home-sessions.tsx` send nothing). Nothing is sent when the app or Settings
+  deleted). Nothing is sent when the app or Settings
   opens, on resume, on a timer or on a network change: making the runtime and
   `load` read only the phone's own record. There is no retry; a sync, a send
   or a copy ends at Stop, or when the app goes to the background, before its
@@ -351,8 +349,7 @@ declared (checked by reading every call site and by the tests named).
   `confirmHeld` did not report held, that `mayLeavePhone` refuses, or that
   changed since it was read (`letGoHeld`), or that drops the freeing from
   the copy's confirm; one that makes `confirmHeld` write, or compare less
-  than everything a copy carries (`sameRecord`); one that reads home from
-  `device-home-sessions.tsx`, or on a scroll, a search or a filter; one that lets the runtime's `work` end before every
+  than everything a copy carries (`sameRecord`); one that lets the runtime's `work` end before every
   request it started has settled (`inFlight`, `track`), so a second tap could
   race a create still on its way; one that deletes or weakens the
   `onHidden` subscription in the runtime's `sync`, the `stopPressed` it
@@ -394,8 +391,7 @@ declared (checked by reading every call site and by the tests named).
   could not be asked about stay) and
   `components/settings/__tests__/device-section.test.tsx` (opening Settings,
   paired or not, sends nothing; unpairing, the shelf send and the sessions
-  copy each take a second press; browsing reads once per tap, and searching
-  or filtering sends nothing).
+  copy each take a second press).
 
 ## Not covered, on purpose
 

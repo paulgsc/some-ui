@@ -35,24 +35,15 @@ function useDeviceStorage(): DeviceStorageView | null {
 export const DeviceStorageSummary = (): JSX.Element | null => {
   const view = useDeviceStorage()
   if (view === null) return null
-  const { databaseBytes, webViewBytes, reservedBytes, quotaBytes } = view.use
+  const { databaseBytes, webViewBytes, quotaBytes } = view.use
   return (
     <div className="space-y-1">
       <p className="text-sm">
-        Using about {formatSize(databaseBytes + webViewBytes)} of{" "}
-        {formatSize(quotaBytes)}, with {formatSize(reservedBytes)} kept free for
-        soundbites
+        Using {formatSize(databaseBytes + webViewBytes)} of{" "}
+        {formatSize(quotaBytes)}
       </p>
       <p className="text-muted-foreground text-xs">
-        Android backs this app up only while it stays under{" "}
-        {formatSize(quotaBytes)}. When it&apos;s full, a new save waits until
-        you choose something to remove.
-      </p>
-      <p className="text-muted-foreground text-xs">
-        Nothing leaves this phone unless you send it. Sending is how you keep it
-        from filling up: once your home server confirms it holds your finished
-        sessions, or you confirm an archive of them arrived, their space here is
-        freed.
+        Copy or archive finished sessions to free up space.
       </p>
     </div>
   )
@@ -72,10 +63,8 @@ const RemoveOffer = ({
   return (
     <>
       <p>
-        Remove your oldest finished session, “{session.name}” (finished{" "}
-        {finishedOn(session.finishedAt)}), then try again? Unless you copied it
-        to your home server or archived it, it will be gone. Copying or
-        archiving finished sessions frees their space without losing them.
+        Remove “{session.name}” (finished {finishedOn(session.finishedAt)}) to
+        make room? It&apos;s gone unless you copied or archived it.
       </p>
       <div className="flex gap-2">
         <IntentButton
@@ -108,14 +97,11 @@ export const DeviceStoragePrompt = (): JSX.Element | null => {
       {full === null ? null : (
         <Alert>
           <HardDrive className="size-4" />
-          <AlertTitle>This phone is full, so that wasn&apos;t saved</AlertTitle>
+          <AlertTitle>Phone full. Not saved.</AlertTitle>
           <AlertDescription className="space-y-2">
             {full.removable === null ? (
               <>
-                <p>
-                  Everything on it is from today or unfinished. Delete a session
-                  you no longer need, then try again.
-                </p>
+                <p>Delete a session you don&apos;t need, then try again.</p>
                 <Button
                   size="sm"
                   variant="outline"
@@ -177,14 +163,14 @@ export const DeviceArchive = (): JSX.Element | null => {
     if (outcome !== "shared" || sent.length === 0) return
     if (
       confirm(
-        `Did the archive arrive? OK lets the ${sessions(sent.length)} in it go from this phone; Cancel keeps them here.`
+        `Did the file arrive? OK clears ${sessions(sent.length)} from this phone.`
       )
     )
       letGo.start(sent)
   })
   useIntentEffect(letGo, (left) => {
     void queryClient.invalidateQueries()
-    if (left > 0) toast.success(`${sessions(left)} left this phone.`)
+    if (left > 0) toast.success(`Cleared ${sessions(left)} from this phone.`)
   })
   if (finished.length === 0) return null
   return (
@@ -194,13 +180,11 @@ export const DeviceArchive = (): JSX.Element | null => {
         onPress={() => share.start(undefined)}
         variant="outline"
         size="sm"
-        idleLabel={`Archive ${sessions(finished.length)}...`}
+        idleLabel={`Archive ${sessions(finished.length)}`}
         workingLabel="Preparing..."
       />
       <p className="text-muted-foreground text-xs">
-        One file of their plans, statuses and times, sent where you pick (Drive,
-        say). Once you confirm it arrived, they leave this phone; unfinished
-        sessions and today&apos;s stay. Reflections have their own share.
+        Save them to a file (Drive, say), then clear them here.
       </p>
     </div>
   )

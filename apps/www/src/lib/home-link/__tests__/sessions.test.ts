@@ -236,7 +236,7 @@ describe("letting the phone's copies go once home holds them", () => {
 
     expect(result).toEqual({
       ok: true,
-      line: "Copied 3 sessions to home.example. home.example holds 1 session that has now left this phone.",
+      line: "Copied 3 sessions to home.example. Cleared 1 from this phone.",
     })
     expect(phone.sessions.map((s) => s.id)).toEqual(["b", "c"])
     expect(refreshed).toBe(1)
@@ -260,7 +260,7 @@ describe("letting the phone's copies go once home holds them", () => {
     ]
     const result = await copySessionsHome(BASE, () => undefined, NOW)
     expect(result.line).toBe(
-      "Copied 0 sessions to home.example. 1 session was already there. 1 session changed since it was copied and stays here."
+      "home.example is up to date. 1 kept: edited since copied."
     )
     expect(phone.sessions.map((s) => s.id)).toEqual(["a"])
   })

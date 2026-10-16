@@ -12,8 +12,6 @@
  * phone; unfinished sessions and today's stay, and so does any session home
  * does not hold as it is here. The plan and receipt are
  * `lib/tenant/sessions-copy`'s.
- *
- * `sessionsOnHome` reads home's sessions for browsing, on its own tap.
  */
 import { mayLeavePhone } from "@/lib/device-backend/handlers/sessions"
 import { SyncStoppedError } from "@/lib/device-backend/home-sync"
@@ -79,42 +77,29 @@ const STOPPED_EARLY = "Stopped before anything was copied."
 
 const sessions = (n: number): string => `${n} session${n === 1 ? "" : "s"}`
 
-/**
- * What a copy would consider, for its confirm: every session, and how many
- * of them could leave the phone once home holds them. Reads only this phone.
- */
-export async function sessionsOnPhone(now = new Date()): Promise<ToSend> {
-  const local = await sessionsRepository.list()
-  const total = local.length
-  const leaving = local.filter((s) => mayLeavePhone(s, now)).length
-  return {
-    total,
-    what:
-      leaving === 0
-        ? sessions(total)
-        : `${sessions(total)} (${leaving} finished before today)`,
-  }
+/** What a copy would consider, for its confirm. Reads only this phone. */
+export async function sessionsOnPhone(): Promise<ToSend> {
+  const total = (await sessionsRepository.list()).length
+  return { total, what: sessions(total) }
 }
 
 /** The copy's end in the block's words. */
 export function describeCopy(result: CopyResult, host: string): string {
-  const { outcome, alreadyThere } = result
-  const there =
-    alreadyThere > 0
-      ? ` ${sessions(alreadyThere)} ${alreadyThere === 1 ? "was" : "were"} already there.`
-      : ""
+  const { outcome } = result
   if (outcome.kind === "copied") {
-    return `Copied ${sessions(outcome.copied)} to ${host}.${there}`
+    return outcome.copied === 0
+      ? `${host} is up to date.`
+      : `Copied ${sessions(outcome.copied)} to ${host}.`
   }
   const { copied, remaining, error } = outcome
   const sent = `Copied ${sessions(copied)} to ${host}; ${remaining} not yet.`
   if (causedBy(error, SyncStoppedError)) {
-    return `Stopped. ${sent} Copy again to carry on.${there}`
+    return `Stopped. ${sent} Copy again to carry on.`
   }
   if (causedBy(error, HomeForgotPhoneError)) {
-    return `${sent} ${host} no longer knows this phone: unpair, then pair again.${there}`
+    return `${sent} ${host} no longer knows this phone: unpair, then pair again.`
   }
-  return `${sent} Lost ${host} there; copy again to carry on.${there}`
+  return `${sent} Lost ${host} there; copy again to carry on.`
 }
 
 /** "time · what happened" for the last copy, or "". */
@@ -123,21 +108,11 @@ export function lastCopy(): string {
 }
 
 /** What letting go of home's confirmed copies did, in the block's words. */
-export function describeFreed(
-  report: HeldReport,
-  freed: number,
-  host: string
-): string {
+export function describeFreed(report: HeldReport, freed: number): string {
   const parts: Array<string> = []
-  if (freed > 0) {
-    parts.push(
-      `${host} holds ${sessions(freed)} that ${freed === 1 ? "has" : "have"} now left this phone.`
-    )
-  }
+  if (freed > 0) parts.push(`Cleared ${freed} from this phone.`)
   if (report.differs.length > 0) {
-    parts.push(
-      `${sessions(report.differs.length)} changed since ${report.differs.length === 1 ? "it was" : "they were"} copied and stay${report.differs.length === 1 ? "s" : ""} here.`
-    )
+    parts.push(`${report.differs.length} kept: edited since copied.`)
   }
   return parts.join(" ")
 }
@@ -198,13 +173,13 @@ export async function copySessionsHome(
     let freedLine = ""
     try {
       const freed = await letGoHeld(report.held, local)
-      freedLine = describeFreed(report, freed, host)
+      freedLine = describeFreed(report, freed)
       if (freed > 0) {
         refresh()
         void deviceStorage.refresh()
       }
     } catch (error) {
-      freedLine = `${host} holds them, but this phone couldn't let its copies go: ${String(error)}`
+      freedLine = `Couldn't clear them from this phone: ${String(error)}`
     }
     const copyLine =
       outcome.kind === "stopped"
@@ -224,33 +199,5 @@ export async function copySessionsHome(
         ? STOPPED_EARLY
         : `Couldn't reach ${host}. Are you on the home network? Nothing was copied.`
     return { ok: false, line }
-  }
-}
-
-/** Home's sessions, for browsing, or why they could not be read. */
-export type OnHome =
-  | { readonly ok: true; readonly sessions: ReadonlyArray<SessionRecord> }
-  | { readonly ok: false; readonly line: string }
-
-/**
- * Reads the paired home's sessions (`GET /sessions`), once, on a tap. Never
- * throws: a failure is a line.
- */
-export async function sessionsOnHome(base: string): Promise<OnHome> {
-  const host = hostOf(base)
-  try {
-    const outcome = await homeLink().send((send) =>
-      createHttpSessionsRepository(homeTransport(send)).list()
-    )
-    if (outcome === null) return { ok: false, line: "" }
-    if (outcome.kind === "stopped") return { ok: false, line: "Stopped." }
-    return { ok: true, sessions: outcome.value }
-  } catch (error) {
-    return {
-      ok: false,
-      line: causedBy(error, HomeForgotPhoneError)
-        ? `${host} no longer knows this phone: unpair, then pair again.`
-        : `Couldn't reach ${host}. Are you on the home network?`,
-    }
   }
 }

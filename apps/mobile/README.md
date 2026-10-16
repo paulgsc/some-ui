@@ -155,6 +155,12 @@ storage failure (`launch/launch-test.sh`).
   says the file arrived (the phone cannot look inside Drive). Unfinished
   sessions and today's always stay, since the study card and the nudge read
   them.
+- **Sending is archiving.** A finished session's record is context for an
+  agent shaping the next lesson, not something the person reads back: the
+  app is for studying, not a dashboard of it. So nothing that left the
+  phone is listed, fetched or restored here. Reflections are meant to be
+  made during a session and shared soon after, while the session is still
+  on the phone.
 - **Published content follows its source.** A sync deletes the lessons and
   rounds home stopped listing, records a retired bundled round so the next
   start does not restore it, and skips what would not fit. The seed deletes
@@ -557,14 +563,7 @@ confirm says so before the tap. A session changed since it was copied
 stays, and the line says how many. A stop, or home not answering, leaves the
 rest for the next copy.
 
-**Browse sessions on host**, once paired, reads home's sessions
-(`GET /sessions`) on that tap, and lists them newest first, a page at a time
-as the list scrolls, with a search by name and a finished / not finished
-filter. All of that works on the list in hand: only the button reads home
-again. Home answers the whole list at once (it has no paging), so a very
-long history is read in one request.
-
-**Archive finished sessions...**, in the This phone block, is the way to
+**Archive finished sessions**, in the This phone block, is the way to
 make room without a home server. It shares one file
 (`sessions-<day>.json`, every finished session's full record) through
 Android's share sheet, so the person picks where it goes (Drive, say:
@@ -862,8 +861,9 @@ offline, in any language whose voice data is installed (#1625):
 
 ## Not done yet
 
-- **Nothing syncs back.** A session that left the phone can be browsed on
-  home but not brought back, and an archive cannot be imported. Two
-  histories of one person's sessions need a merge rule first.
+- **Nothing syncs back, on purpose.** A session that left the phone is not
+  brought back, and an archive is not imported: a finished session's record
+  is for an agent to read when it shapes the next lesson, not for the phone
+  to show again.
 - **Nothing here has run on a phone yet.** CI proves the APK builds. Every
   test runs the backend's SQL in Node's SQLite, not through the native bridge.

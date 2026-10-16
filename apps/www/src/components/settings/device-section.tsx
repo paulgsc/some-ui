@@ -27,7 +27,6 @@ import { remember, remembered } from "@/lib/home-link/remembered"
 import {
   copySessionsHome,
   lastCopy,
-  sessionsOnHome,
   sessionsOnPhone,
 } from "@/lib/home-link/sessions"
 import type { ToSend } from "@/lib/home-link/shelf"
@@ -36,7 +35,6 @@ import type { SyncResult } from "@/lib/home-link/sync"
 import { lastSync, syncLessonsFrom } from "@/lib/home-link/sync"
 import { useAsyncIntent, useIntentEffect } from "@/lib/intent"
 import { IntentButton } from "@/lib/intent/render"
-import { HomeSessions } from "@/components/settings/device-home-sessions"
 import {
   DeviceArchive,
   DeviceStorageSummary,
@@ -312,57 +310,15 @@ function sendsTo(
       open: `Copy sessions to ${host}...`,
       count: sessionsOnPhone,
       ask: (what) =>
-        `Copy ${what} to ${host}? Each goes once, as its plan, status and times; reflections stay here. Then each finished session ${host} confirms it holds leaves this phone, to free its space; unfinished ones and today's stay. A copy can't be removed from this phone.`,
+        `Copy ${what} to ${host}? Finished ones are cleared from this phone once they're there.`,
       go: (total) => `Copy ${total}`,
       none: "No sessions on this phone to copy.",
       busy: `Copying sessions to ${host}...`,
       run: () => copySessionsHome(base, refresh),
-      lastLabel: "Last sessions copy",
+      lastLabel: "Last copy",
       last: lastCopy,
     },
   ]
-}
-
-/**
- * Home's sessions, read on a tap and browsed here; reading again is another
- * tap (LA8).
- */
-const BrowseHome = ({
-  base,
-  state,
-}: {
-  base: string
-  state: HomeLinkState
-}): JSX.Element => {
-  const host = hostOf(base)
-  const read = useAsyncIntent((_: undefined) => sessionsOnHome(base), {
-    presentation: "interactive",
-  })
-  useIntentEffect(read, (result) => {
-    if (!result.ok && result.line !== "") toast.error(result.line)
-  })
-  const held =
-    read.state.status === "succeeded" && read.state.value.ok
-      ? read.state.value.sessions
-      : null
-  return (
-    <div className="space-y-2">
-      <IntentButton
-        state={read.state}
-        onPress={() => read.start(undefined)}
-        disabled={state.activity.kind !== "idle"}
-        variant="outline"
-        size="sm"
-        idleLabel={
-          held === null
-            ? `Browse sessions on ${host}`
-            : `Read ${host}'s sessions again`
-        }
-        workingLabel="Reading..."
-      />
-      {held === null ? null : <HomeSessions sessions={held} host={host} />}
-    </div>
-  )
 }
 
 export const DeviceSection = (): JSX.Element => {
@@ -395,9 +351,8 @@ export const DeviceSection = (): JSX.Element => {
       <div className="space-y-1">
         <Label id="device-heading">This phone</Label>
         <p className="text-muted-foreground text-sm">
-          Everything you do here is saved on this phone and works with no
-          network. TOPIK lessons come from your home server: sync while
-          you&apos;re on the home network, and they stay here for later.
+          Saved on this phone, and works offline. Lessons sync from your home
+          server.
         </p>
       </div>
 
@@ -470,7 +425,6 @@ export const DeviceSection = (): JSX.Element => {
                 ).map((spec) => (
                   <ConfirmedSend key={spec.open} spec={spec} state={state} />
                 ))}
-                <BrowseHome base={paired.base} state={state} />
               </>
             )}
           </>
