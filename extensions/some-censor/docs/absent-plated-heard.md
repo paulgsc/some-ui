@@ -68,11 +68,10 @@ Removed on every surface, the lane included:
 | View counts                  | Card metadata rows, search results, the watch page's info row   |
 | Like counts                  | Beside the like button (the button stays)                       |
 | Subscriber counts            | Under the channel name; channel pages                           |
-| Comment counts               | With the comments section, which the watch page drops anyway    |
 | "Watching now", live viewers | Watch page and cards                                            |
 | Most replayed                | The heat graph over the seek bar                                |
 | Badges                       | "#N on Trending", "New", the verified tick                      |
-| Comments                     | The whole section, under every video                            |
+| Comments and their counts    | The whole section, under every video                            |
 | Age                          | "6 years ago", "Streamed …", the upload date in the description |
 
 ## 6. The lane (`QD15`)

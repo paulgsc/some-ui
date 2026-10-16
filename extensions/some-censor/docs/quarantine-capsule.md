@@ -254,7 +254,7 @@ This is why [`absent-plated-heard.md`](./absent-plated-heard.md) forbids the
 padlock, the progress bar, the green check and every count, and why a held card
 is absent rather than drawn at all (`QD11`).
 
-_Status: violated._ The ladder's hints and progress rail present every sealed
+_Status: violated._ The ladder's hints and progress rail present every veiled
 card as a pending step. #1803.
 
 ---
@@ -373,7 +373,7 @@ _Status: absent._ #1804.
 
 ### QD13 — The face is a deliberate act
 
-An admitted video's real thumbnail is shown only on its own watch page, after a
+A plated video's real thumbnail is shown only on its own watch page, after a
 continuous 3-second hold on a control that offers it, for that view only. It is
 never offered on a feed, never remembered, and never rewarded.
 
@@ -428,7 +428,8 @@ page offers a disclosure step, a trust decision or a verdict.
 `H3` already said judgement does not scale; the ladder contradicted it, and
 the owner confirmed it from use: deciding card by card was "a chore", and "not
 rewarding … if you don't like the card that you did all that work for".
-Supersedes `QD10` and the "airlock" in §7.
+Amends `QD5`; supersedes `QD10`, `QA2`, `QA3`, §6's delayed subscription and
+the "airlock" in §7.
 
 _Status: absent._ The ladder is live. #1803, #1807.
 
@@ -438,7 +439,7 @@ _Status: absent._ The ladder is live. #1803, #1807.
 
 The extension adds no copy, clock or count to youtube.com, with two
 exceptions. A held watch page reads "Not here." with a Back button and a tab
-title that is not the video's. An admitted video's watch page carries the face
+title that is not the video's. A plated video's watch page carries the face
 control (`QD13`), labelled with what it does and nothing more.
 
 A tool that narrates itself ("in here it is 2025", "24 held") makes its
@@ -452,7 +453,7 @@ reveal") are on-page copy. #1803.
 ### One preference, four derived bands
 
 The user configures **one** number: the **temporal boundary** `B` — the age at
-which an artifact is admitted, and so plated (`QD12`). Every
+which an artifact is admitted by distance. Every
 band is derived from `B`, so the model reads the same whether `B` is ninety
 days or five years, and there is no configuration surface with five
 independently wrong thresholds on it.
@@ -473,9 +474,10 @@ to promise.
 | `QM3` | **Seasoned**   | `B ≤ age < 3 · B`   | Boundary satisfied. Eligible for staged inspection.        |
 | `QM4` | **Archival**   | `age ≥ 3 · B`       | Substantially detached from the present.                   |
 
-The bands remain the estimator's vocabulary, but none is drawn. On the page
-there are two outcomes: `QM0`–`QM2` are absent (`QD11`), and `QM3`–`QM4` are
-plated (`QD12`). "Staged inspection" in the `QM3` row is superseded by `QD16`.
+The bands remain the estimator's vocabulary, but none is drawn. On the page,
+`QM0`–`QM2` are absent (`QD11`), and `QM3`–`QM4` are plated (`QD12`), unless
+the card is live, a premiere or a Short (absent) or in the lane (whole,
+`QD15`). "Staged inspection" in the `QM3` row is superseded by `QD16`.
 
 Suggested initial `B`: **1 year**. It is large enough that the discourse a
 video was attached to has been replaced, and small enough that the archive
@@ -558,7 +560,7 @@ section is a behavioural change; it is a statement of distance.
   swaps one occluder for another rather than passing through a legible state,
   is the foundation QD1 names. Do not touch it. Under `QD11` it still guards
   every card until the card is classified; what changes is only what follows
-  handover: absence or a plate, not a veil.
+  handover: absence, a plate, or (in the lane) the card whole, not a veil.
 - **Age is already a first-class field.** The upload date is extracted
   alongside channel and duration, so admission is computable when a card is
   first resolved, before anything is shown.
