@@ -8,12 +8,12 @@
 
 ## Quick-reference: permissions at a glance
 
-| Extension                             | MV  | `host_permissions`    | `permissions`                                                               | `data_collection` |
-| ------------------------------------- | --- | --------------------- | --------------------------------------------------------------------------- | ----------------- |
-| [some-filter](#some-filter)           | 3   | `<all_urls>`          | `activeTab` `storage` `tabs`                                                | `none`            |
-| [suspender-ledger](#suspender-ledger) | 3   | `*://*/*`             | `idle` `storage` `contextMenus` `notifications` `alarms` `scripting` `tabs` | `none`            |
-| [some-censor](#some-censor)           | 3   | `*://*.youtube.com/*` | `storage`                                                                   | `none`            |
-| [some-mujik](#some-mujik)             | 3   | `<all_urls>`          | `activeTab` `storage` `tabs`                                                | `none`            |
+| Extension                             | MV  | `host_permissions`      | `permissions`                                                               | `data_collection` |
+| ------------------------------------- | --- | ----------------------- | --------------------------------------------------------------------------- | ----------------- |
+| [some-filter](#some-filter)           | 3   | `<all_urls>`            | `activeTab` `storage` `tabs`                                                | `none`            |
+| [suspender-ledger](#suspender-ledger) | 3   | `*://*/*`               | `idle` `storage` `contextMenus` `notifications` `alarms` `scripting` `tabs` | `none`            |
+| [some-censor](#some-censor)           | 3   | `*://www.youtube.com/*` | `storage`                                                                   | `none`            |
+| [some-mujik](#some-mujik)             | 3   | `<all_urls>`            | `activeTab` `storage` `tabs`                                                | `none`            |
 
 ---
 
@@ -81,8 +81,9 @@ identified by origin only. It leaves the machine only if the user clicks
 **What it does:** Progressively masks YouTube video cards until the user explicitly
 reveals them, preventing algorithmic recommendation noise.
 
-**Why `*://*.youtube.com/*`:** The extension operates exclusively on YouTube.
-Host permissions are intentionally narrow — no other origin is needed.
+**Why `*://www.youtube.com/*`:** The extension operates exclusively on
+www.youtube.com. No other origin is needed, including other YouTube subdomains
+(m., music., studio.), whose pages its layout table does not describe.
 
 **Data collected:** None. Whitelist entries (channel IDs) and the enabled flag are
 persisted in `browser.storage.local` only. A development-only localhost API client

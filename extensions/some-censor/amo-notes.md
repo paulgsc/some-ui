@@ -1,9 +1,10 @@
 # AMO Notes to Reviewers — BOYO Content Censor
 
-## Host Permissions: `*://*.youtube.com/*`
+## Host Permissions: `*://www.youtube.com/*`
 
-The extension operates exclusively on YouTube. Host permissions are intentionally
-narrow — no other origin is ever accessed. The content script, background worker,
+The extension operates exclusively on www.youtube.com. Host permissions are
+intentionally narrow: no other origin, including other YouTube subdomains
+(m., music., studio.), is ever accessed. The content script, background worker,
 and popup all communicate within the `youtube.com` boundary.
 
 ## Network Fetch: development-only
