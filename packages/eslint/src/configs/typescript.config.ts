@@ -10,6 +10,14 @@ const unusedVarsOptions = {
   argsIgnorePattern: "^_",
 } as const
 
+// The core rules `eslintRecommended` switches off on TS files because the
+// compiler reports them, at their `@eslint/js` recommended settings.
+const compilerOwnedCoreRules = Object.fromEntries(
+  Object.entries(eslint.configs.recommended.rules).filter(([rule]) =>
+    Object.hasOwn(tseslint.configs.eslintRecommended.rules ?? {}, rule)
+  )
+)
+
 export default defineConfig(
   // Every file, JS included. On TS files `eslintRecommended` (below) turns
   // off the core rules the compiler already enforces, `no-undef` among them;
@@ -172,6 +180,8 @@ export default defineConfig(
   // mismatches that make them impossible to type-check with the project's
   // tsconfig. Disabling type-aware parsing avoids "not found by project
   // service" errors without requiring these files to be in tsconfig.json.
+  // Most packages' tsconfig covers only src/, so no compiler checks these
+  // either: the core rules handed to the compiler come back.
   {
     files: [
       "**/vitest.config.{ts,js}",
@@ -180,5 +190,6 @@ export default defineConfig(
       "**/vite.config.*.{ts,js}",
     ],
     extends: [tseslint.configs.disableTypeChecked],
+    rules: compilerOwnedCoreRules,
   }
 )
