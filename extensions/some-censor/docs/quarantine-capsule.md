@@ -30,7 +30,7 @@ attention; no observation of YouTube can refute it, and it governs exactly one
 workspace. Filing it as a canon would dilute what "canon" means here.
 
 It is nevertheless **governing**: sections below carry hand-assigned numbers
-(`QD1`–`QD10`, `QM0`–`QM4`, `QA1`–`QA4`) for the same reason the canons do, so
+(`QD1`–`QD17`, `QM0`–`QM4`, `QA1`–`QA5`) for the same reason the canons do, so
 source comments and commit messages can cite them and the citations survive
 reshuffles. The `Q` prefix is deliberate: the Actuator and Sensor cite the
 veil's own unrelated `D1`–`D6` (restated in `actuator/actuator.ts`), and Core
@@ -99,23 +99,29 @@ archive.
 **Supporting.**
 
 - **Inspect without contact.** I can learn a card's source, length and age
-  without seeing its thumbnail or its title.
+  without seeing its thumbnail or its title. _Superseded by `QD12`, `QD14` and
+  `QD16`:_ there is no inspection step. An admitted card shows its title,
+  source and length on a plate; a held card shows nothing; no card shows an
+  age.
 - **Let time do the filtering.** Material coupled to the present is
   categorically ineligible for disclosure, not merely expensive to disclose. I
   do not have to decide; it is not yet admissible.
 - **Fail closed on ignorance.** When the extension cannot establish a card's
   age, the card stays sealed. Unknown is never treated as old.
 - **Live in an interior.** I can consume admitted material without standing in
-  front of the external feed to do it.
+  front of the external feed to do it. _Superseded by `QD11`:_ once held
+  material is absent rather than covered, youtube.com itself is the interior.
 - **End with nothing having entered.** A session in which I revealed nothing
   is a _successful_ session, and the interface should not read as a failure
   state.
 
 ## 4. The doctrine
 
-Ten results. Each carries where it stands against the current implementation,
-because a doctrine whose status is undocumented becomes folklore within a
-release.
+Seventeen results. Each carries where it stands against the current
+implementation, because a doctrine whose status is undocumented becomes
+folklore within a release. `QD11`–`QD17` were added on 2026-10-16 (epic
+#1799) after the owner rejected the medallion grammar; what they look like on
+the page is [`absent-plated-heard.md`](./absent-plated-heard.md).
 
 ---
 
@@ -192,6 +198,10 @@ a premiere notice, or an unparsed locale, is already reaching the DOM today.
 This is not a future risk to guard against; it is the workspace's current
 behavior, and the gap table in §7 lists it accordingly.
 
+_Amended by `QD14`:_ the permission above to display a derived age is
+withdrawn. No age, raw or derived, is displayed on any surface. The raw-string
+prohibition stands unchanged.
+
 ---
 
 ### QD5 — Time outranks provenance
@@ -235,9 +245,9 @@ A session in which nothing was revealed is a success and must read as one. The
 interface may not present sealed material as a pending task, a backlog, or a
 reward awaiting unlock. Nothing counts down toward a payoff.
 
-This is why the visual grammar in [`decay-rings.md`](./decay-rings.md) forbids
-the padlock, the progress bar and the green check, and why maturity is drawn as
-sediment rather than as loading.
+This is why [`absent-plated-heard.md`](./absent-plated-heard.md) forbids the
+padlock, the progress bar, the green check and every count, and why a held card
+is absent rather than drawn at all (`QD11`).
 
 ---
 
@@ -256,6 +266,11 @@ the correct rendering of "there is nothing here for you today."
 _Status: absent._ The veil is applied per renderer; there is no surface-level
 construct at all.
 
+_Superseded in part by `QD11`._ The distance this result asks for stands. Its
+rendering does not: "one quiet statement" is withdrawn, because any statement
+about held material keeps the present in the room. A region with nothing
+admissible renders nothing.
+
 ---
 
 ### QD9 — The capsule needs an interior
@@ -269,6 +284,10 @@ _Status: absent, and deliberately last among the original nine._ QD9 is the
 largest of them and the one most likely to grow a second product inside this
 one. It is recorded so the story is complete, and explicitly deferred behind
 QD2/QD3 — the boundary is worth building before the room behind it.
+
+_Superseded by `QD11`._ The owner chose youtube.com itself over a second
+surface ("it's always youtube.com"). With held material absent and admitted
+material plated, the page is the interior; no reading room is built.
 
 ---
 
@@ -301,6 +320,117 @@ eligibility (see the gap table in §7); the ladder currently starts
 unconditionally at `meta` for every card, which is the same root cause as
 `QD4`'s violation above.
 
+_Superseded by `QD12` and `QD16`._ There is no metadata step: an admitted card
+shows its title, channel name and duration on a plate, with no disclosure act.
+The risk this result named is recorded rather than resolved. A channel's
+current display name is a carrier (`H1`); the owner accepted showing it as
+text on admitted cards (2026-10-16), and its visual branding, the avatar, is
+plated.
+
+---
+
+### QD11 — Absent
+
+A held card (`QM0`–`QM2`, not admitted by `QD15`) is not on the page. It
+leaves layout and the accessibility tree; nothing stands in its place, and
+nothing counts, summarizes or mentions it.
+
+The owner's test, after living with the extension: what made a session bad was
+having _seen_ things. A covered card is still something seen — a shape, a
+slot, an invitation — and a count of covered cards is the present reported
+second-hand.
+
+_Status: absent._ Every held card is veiled in place today. #1803.
+
+---
+
+### QD12 — The plate
+
+An admitted card's thumbnail is replaced by a plate drawn only from the video
+id and the duration, and its channel image by a disc drawn from the channel id.
+The card shows its title, channel name and duration, and nothing else
+(`QD14`).
+
+A thumbnail packs the most context into the fewest pixels: a face, a caption in
+huge type, an arrow, the week's news. The owner already chooses from words, so
+the thumbnail has no job left. The plate is the card's finished state, not a
+cover waiting to be lifted.
+
+_Status: absent._ #1804.
+
+---
+
+### QD13 — The face is a deliberate act
+
+An admitted video's real thumbnail is shown only on its own watch page, after a
+continuous 3-second hold on a control that offers it, for that view only. It is
+never offered on a feed, never remembered, and never rewarded.
+
+This is friction in the opposite place from the old ladder. The ladder put work
+between the owner and the _video_, so every bad card cost effort. The hold puts
+work only between the owner and the _thumbnail_, which nothing needs.
+
+_Status: absent._ #1805.
+
+---
+
+### QD14 — No crowd, no age
+
+No number that measures other people — views, likes, subscribers, comment
+counts, live viewers, trending rank, the most-replayed graph — and no age, raw
+or derived, is shown on any surface, in any state, the lane included. Amends
+`QD4`.
+
+Each of these reports on a culture outside the rock. None informs a choice the
+owner makes.
+
+_Status: absent._ #1802.
+
+---
+
+### QD15 — Opacity is a second way in
+
+Music whose title is mostly in a script the owner has declared they listen to
+but don't read is admitted whole, whatever its age, unless it is live, a
+premiere or a Short. The script is counted, never interpreted (§8).
+
+`H2` makes age a classifier of _coupling to the present_. Music whose words do
+not reach the listener has no coupling to measure: the owner consumes K-drama
+and C-drama soundtracks "as an artifact". This is not a bypass of `QD2`; it is
+the same quantity measured a second way. The rule describes the owner as they
+are, and does not anticipate them learning these scripts.
+
+_Status: absent._ #1806.
+
+---
+
+### QD16 — Decide once
+
+The owner's judgement is exercised on two settings — the boundary `B`, and the
+scripts they listen to but don't read — and nowhere else. No card, channel or
+page offers a disclosure step, a trust decision or a verdict.
+
+`H3` already said judgement does not scale; the ladder contradicted it, and
+the owner confirmed it from use: deciding card by card was "a chore", and "not
+rewarding … if you don't like the card that you did all that work for".
+Supersedes `QD10` and the "airlock" in §7.
+
+_Status: absent._ The ladder is live. #1803, #1807.
+
+---
+
+### QD17 — Quiet
+
+The extension adds no copy, clock or count to youtube.com. The one exception is
+a held watch page, which reads "Not here." with a Back button and a tab title
+that is not the video's.
+
+A tool that narrates itself ("in here it is 2025", "24 held") makes its
+mechanism the thing on screen; the owner found that inauthentic.
+
+_Status: violated._ The ladder's hints ("Click to preview", "Double-click to
+reveal") are on-page copy. #1803.
+
 ## 5. The temporal model
 
 ### One preference, four derived bands
@@ -312,7 +442,7 @@ days or five years, and there is no configuration surface with five
 independently wrong thresholds on it.
 
 This is a statement of the _model_, not a claim that a production path to
-store `B` exists today. It does not: `#1386` (`QC4`) establishes that
+store `B` exists today. It does not (#1807 builds one): `#1386` (`QC4`) established that
 `browser.storage.local` holds only `apiBaseUrl`, that every settings row sits
 behind an `ApiClient` no shipping build can reach, and that
 `_assertDev()` throws on `import.meta.env.PROD`. Whether `B` persists and
@@ -326,6 +456,10 @@ to promise.
 | `QM2` | **Cooling**    | `0.1 · B ≤ age < B` | In quarantine. Temporal distance accumulating.             |
 | `QM3` | **Seasoned**   | `B ≤ age < 3 · B`   | Boundary satisfied. Eligible for staged inspection.        |
 | `QM4` | **Archival**   | `age ≥ 3 · B`       | Substantially detached from the present.                   |
+
+The bands remain the estimator's vocabulary, but none is drawn. On the page
+there are two outcomes: `QM0`–`QM2` are absent (`QD11`), and `QM3`–`QM4` are
+plated (`QD12`). "Staged inspection" in the `QM3` row is superseded by `QD16`.
 
 Suggested initial `B`: **1 year**. It is large enough that the discourse a
 video was attached to has been replaced, and small enough that the archive
@@ -364,6 +498,7 @@ mistake the current whitelist makes.
 | `QA2` | **Identity trust**     | This channel is genuinely who it claims to be. Provenance, not admission.                                                                                                                                                                                                                                                                                                                                                                                                            |
 | `QA3` | **Delayed source**     | This channel's uploads become admissible after `B` (or a per-source `B`) — never before it.                                                                                                                                                                                                                                                                                                                                                                                          |
 | `QA4` | **Boundary exemption** | **Rejected.** Listed only to be ruled out: a channel's uploads skipping the boundary entirely is exactly what `QD2` forbids, however it is framed at the UI.                                                                                                                                                                                                                                                                                                                         |
+| `QA5` | **Opacity**            | Music whose title is mostly in a script the owner listens to but doesn't read is admitted whole, at any age, unless live, a premiere or a Short (`QD15`). Unlike `QA4` it is not keyed on a source: it measures the same coupling `B` does, by another route.                                                                                                                                                                                                                        |
 
 `QD2` says material newer than the boundary is ineligible "regardless of its
 source, its subject, or how much the user wants to see it in the moment." That
@@ -394,7 +529,9 @@ section is a behavioural change; it is a statement of distance.
 - **The airlock is right.** Metadata before title, title before card, thumbnail
   never previewed, is exactly correct under H1 — the ladder was never the
   problem. Under QD2 it survives unchanged; it simply becomes reachable only by
-  `QM3`/`QM4` cards.
+  `QM3`/`QM4` cards. _Superseded by `QD16`:_ the ladder was the problem after
+  all, as a cost rather than a leak (`H3`). It is deleted; admitted cards are
+  plated with no disclosure act.
 - **The occluder is right.** The static pre-mask, and the rule that handover
   swaps one occluder for another rather than passing through a legible state,
   is the foundation QD1 names. Do not touch it.
@@ -408,16 +545,20 @@ section is a behavioural change; it is a statement of distance.
 
 ### What contradicts it
 
-| gap                                            | where                                                    | doctrine |
-| ---------------------------------------------- | -------------------------------------------------------- | -------- |
-| Every card, at every age, can reach `revealed` | `fsm.ts` — the `ViewState` union has no maturity axis    | QD2      |
-| `uploadDate` is an unparsed raw string         | `extract/meta.ts`                                        | QD3      |
-| Raw `uploadDate` already reaches the DOM       | `actuator/veil.ts` (`appendMetaChip`)                    | QD4      |
-| Whitelist is a permanent, channel-wide bypass  | `fsm.ts:applyWhitelist`, `CHANNEL_WHITELISTED` broadcast | QD5, QA2 |
-| Bulk advance ignores eligibility               | `commands.ts` → Core's `advance-all-to-title` command    | QD6      |
-| No surface-level concealment                   | veil is per-renderer throughout                          | QD8      |
-| No interior                                    | the extension has no non-YouTube surface at all          | QD9      |
-| Manifest copy describes the mechanism          | `public/manifest.json` `description`                     | §0       |
+| gap                                            | where                                                    | doctrine   |
+| ---------------------------------------------- | -------------------------------------------------------- | ---------- |
+| Every card, at every age, can reach `revealed` | `fsm.ts` — the `ViewState` union has no maturity axis    | QD2        |
+| `uploadDate` is an unparsed raw string         | `extract/meta.ts`                                        | QD3        |
+| Raw `uploadDate` already reaches the DOM       | `actuator/veil.ts` (`appendMetaChip`)                    | QD4        |
+| Whitelist is a permanent, channel-wide bypass  | `fsm.ts:applyWhitelist`, `CHANNEL_WHITELISTED` broadcast | QD5, QA2   |
+| Bulk advance ignores eligibility               | `commands.ts` → Core's `advance-all-to-title` command    | QD6        |
+| No surface-level concealment                   | veil is per-renderer throughout                          | QD8        |
+| No interior                                    | the extension has no non-YouTube surface at all          | QD9        |
+| Manifest copy describes the mechanism          | `public/manifest.json` `description`                     | §0         |
+| Held cards are veiled in place, not absent     | `actuator/veil.ts`, `content.css` pre-mask               | QD11       |
+| Admitted cards would show real thumbnails      | nothing replaces a thumbnail or avatar                   | QD12       |
+| No crowd number or age is removed              | vendor metadata rows render untouched                    | QD14       |
+| The ladder and its hints are on the page       | `fsm.ts:project()`, `actuator/gestures.ts`               | QD16, QD17 |
 
 ### Extraction hazards a maturity estimator will meet
 
@@ -443,8 +584,8 @@ it can be parsed with certainty.
   to imprecision the same way it applies to absence: classify from the
   **youngest (most present-coupled) plausible reading** of the interval, and
   do not advance an artifact past `B` or `3 · B` until even that reading has
-  crossed it. Age notation (§6 of `decay-rings.md`) should reflect the same
-  imprecision rather than presenting a false-precision day count.
+  crossed it. No age is displayed (`QD14`), so the imprecision matters only to
+  the admission decision, never to presentation.
 - Age changes while the page is open, but monotonicity is conditional, not
   automatic. Maturity may advance one-directionally
   (`QM1 → QM2 → QM3 → QM4`) only while three preconditions all hold: the
@@ -490,9 +631,15 @@ value of stating a story is that it can be found to be the wrong story.
   everything is unverified is indistinguishable from an extension that hides
   YouTube, which is a `hosts` file and not this.
 - **QD7 is wrong** if the sealed states become the thing the user looks at —
-  if even a bare age reads as a waiting room. `decay-rings.md` §6 rejects a
-  default countdown for exactly this reason; the falsifier is the user
-  checking on cards regardless.
+  if even a bare age reads as a waiting room. `QD11` and `QD14` remove held
+  cards and every age from the page for exactly this reason; the falsifier is
+  the user checking on cards regardless.
+- **QD13 is wrong** if the owner holds for faces routinely. Then the plate is
+  standing between them and something they use to choose, and the answer is to
+  revisit `QD12`, not to shorten the hold.
+- **QD15 is wrong** if the lane becomes how the present arrives: a current
+  event reaching the owner through a soundtrack's title, thumbnail or channel.
+  Then opacity is narrower than `H2` assumed, and the lane's signals tighten.
 - **The whole story is wrong** if `B` keeps getting lowered in practice. A
   boundary that erodes under use is a boundary the user does not actually
   want, and the honest response is to record that rather than to add a
@@ -513,6 +660,6 @@ value of stating a story is that it can be found to be the wrong story.
 
 ---
 
-**See also:** [`decay-rings.md`](./decay-rings.md) — the visual grammar for
-maturity, and the rule that keeps it from colliding with the disclosure ladder
-already on screen.
+**See also:** [`absent-plated-heard.md`](./absent-plated-heard.md) — what
+`QD11`–`QD17` look like on youtube.com, and the design review that settled
+them.

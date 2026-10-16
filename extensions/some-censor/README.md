@@ -45,12 +45,12 @@ observation to write:
 >
 > - [`docs/quarantine-capsule.md`](./docs/quarantine-capsule.md) — _The
 >   Quarantine Capsule_ — what the masking is **for**: the hazard model, the
->   temporal-boundary doctrine (`QD1`–`QD10`), the maturity classes
+>   temporal-boundary doctrine (`QD1`–`QD17`), the maturity classes
 >   (`QM0`–`QM4`), and an honest map of where the implementation currently
 >   contradicts them
-> - [`docs/decay-rings.md`](./docs/decay-rings.md) — the visual grammar for
->   maturity, and the rule that keeps it from colliding with the disclosure
->   ladder already on screen
+> - [`docs/absent-plated-heard.md`](./docs/absent-plated-heard.md) — what the
+>   extension looks like on youtube.com: every video absent, plated or heard,
+>   and the design review that settled it (epic #1799)
 >
 > The canon below governs how this extension **observes** an unsettled vendor
 > DOM; the story governs what it **does** with what it sees. The two answer
