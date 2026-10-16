@@ -11,15 +11,19 @@ const unusedVarsOptions = {
 } as const
 
 // The core rules `eslintRecommended` switches off on TS files because the
-// compiler reports them, at their `@eslint/js` recommended settings. Not
-// no-redeclare or no-dupe-class-members: both report TypeScript overloads
-// (the TS block uses @typescript-eslint/no-redeclare instead).
-const overloadBlindRules = new Set(["no-redeclare", "no-dupe-class-members"])
+// compiler reports them, at their `@eslint/js` recommended settings. Not the
+// three that cannot see TypeScript declarations: they report overloads and
+// type-only globals (NodeJS.ProcessEnv, JSX.Element).
+const typeBlindRules = new Set([
+  "no-redeclare",
+  "no-dupe-class-members",
+  "no-undef",
+])
 const compilerOwnedCoreRules = Object.fromEntries(
   Object.entries(eslint.configs.recommended.rules).filter(
     ([rule]) =>
       Object.hasOwn(tseslint.configs.eslintRecommended.rules ?? {}, rule) &&
-      !overloadBlindRules.has(rule)
+      !typeBlindRules.has(rule)
   )
 )
 
@@ -186,7 +190,8 @@ export default defineConfig(
   // tsconfig. Disabling type-aware parsing avoids "not found by project
   // service" errors without requiring these files to be in tsconfig.json.
   // Most packages' tsconfig covers only src/, so no compiler checks these
-  // either: the core rules handed to the compiler come back.
+  // either: the compiler-owned core rules that understand TypeScript come
+  // back, with the TS-aware duplicate-member check.
   {
     files: [
       "**/vitest.config.{ts,js}",
@@ -195,6 +200,9 @@ export default defineConfig(
       "**/vite.config.*.{ts,js}",
     ],
     extends: [tseslint.configs.disableTypeChecked],
-    rules: compilerOwnedCoreRules,
+    rules: {
+      ...compilerOwnedCoreRules,
+      "@typescript-eslint/no-dupe-class-members": "error",
+    },
   }
 )
