@@ -182,7 +182,8 @@ empty values, in several languages. All of those are `Unverified`, and
 
 _Status: holds in the estimator._ `src/lib/content/maturity/maturity.ts` maps
 every form it cannot read with certainty to `unverified` (`QM0`). Nothing
-consults it yet; #1803 makes it decide what is shown.
+gates on it yet; only the diagnostics record its estimate. #1803 makes it
+decide what is shown.
 
 _Amended by `QD15`:_ opacity admits without age evidence, so a lane video is
 shown whole even when its age is unknown. Everywhere else, unknown still means
@@ -205,7 +206,8 @@ receives the string they were derived from.
 _Status: holds._ The presentable `MetaData` has no date field, so the
 metadata chip in `src/lib/content/actuator/veil.ts` cannot render one; the raw
 string stays in the observation as evidence (#1384). A type-level test in
-`maturity/maturity.test.ts` pins it.
+`maturity/maturity.test.ts` pins it. The one place the raw string is shown is
+the owner's own diagnostics page (OBS1), which is not a youtube.com surface.
 
 _Amended by `QD14`:_ the permission above to display a derived age is
 withdrawn. No age, raw or derived, is displayed on any surface. The raw-string
@@ -575,7 +577,7 @@ section is a behavioural change; it is a statement of distance.
 - **Age is already a first-class field.** The upload date is extracted
   alongside channel and duration, so admission is computable when a card is
   first resolved, before anything is shown.
-- **Reading is not disclosing.** `extractMeta` is a pure DOM read
+- **Reading is not disclosing.** `extractUploadDate` is a pure DOM read
   (`src/lib/content/extract/meta.ts`); calling it at resolve time to compute
   maturity discloses nothing. This is what makes a maturity gate cheap: no new
   observation is required, only an earlier one.

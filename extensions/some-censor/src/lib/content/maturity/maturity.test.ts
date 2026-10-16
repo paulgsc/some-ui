@@ -8,19 +8,23 @@ const NOW = Date.UTC(2026, 9, 16)
 
 describe("estimate", () => {
   it.each<[string, number]>([
+    // Half a unit below the stated count, in the unit's shortest length.
     ["5 seconds ago", 0],
     ["1 hour ago", 0],
     ["Streamed 2 hours ago", 0],
-    ["3 days ago", 3],
-    ["3 days ago", 3],
-    ["1 week ago", 7],
-    ["2 weeks ago", 14],
-    ["1 month ago", 28],
-    ["11 months ago", 308],
-    ["1 year ago", 365],
-    ["Premiered 3 years ago", 1095],
-    ["Streamed live 2 years ago", 730],
-    ["6 years ago", 2190],
+    ["Streamed live 3 hours ago", 0],
+    ["3 days ago", 2],
+    ["3\u00a0days ago", 2],
+    ["3\u202fdays ago", 2],
+    ["1 week ago", 3],
+    ["2 weeks ago", 10],
+    ["1 month ago", 14],
+    ["11 months ago", 294],
+    ["1 year ago", 182],
+    ["2 years ago", 547],
+    ["Premiered 3 years ago", 912],
+    ["Streamed live 2 years ago", 547],
+    ["6 years ago", 2007],
     // 2024-01-06T12:00Z, the last instant Jan 5 exists anywhere, to NOW.
     ["Jan 5, 2024", 1013],
     ["Premiered on Jan 5, 2024", 1013],
@@ -60,6 +64,9 @@ describe("estimate", () => {
       "Foo 5, 2024",
       "3 days",
       "3 days ago · 1.2M views",
+      "watching",
+      // A plain date after today: a misread or a wrong clock.
+      "Dec 20, 2026",
     ]
     for (const raw of unsupported) {
       expect(estimate(raw, NOW), String(raw)).toEqual({ kind: "unverified" })
@@ -88,14 +95,20 @@ describe("classify", () => {
   })
 
   it("admits a bucket only once its youngest reading has crossed the boundary", () => {
-    expect(classify(estimate("11 months ago", NOW), B)).toBe("QM2")
-    expect(classify(estimate("1 year ago", NOW), B)).toBe("QM3")
+    expect(classify(estimate("1 year ago", NOW), B)).toBe("QM2")
+    expect(classify(estimate("2 years ago", NOW), B)).toBe("QM3")
+  })
+
+  it("holds everything when the boundary is missing or corrupt", () => {
+    for (const bad of [Number.NaN, 0, -365, Number.POSITIVE_INFINITY]) {
+      expect(classify(aged(10_000), bad)).toBe("QM0")
+    }
   })
 })
 
 describe("the presentable metadata", () => {
   it("cannot carry a raw date into a veil (QD4)", () => {
-    expectTypeOf<MetaData>().not.toHaveProperty("uploadDate")
+    expectTypeOf<keyof MetaData>().toEqualTypeOf<"channelName" | "duration">()
     expectTypeOf<
       Extract<VeilContent, { kind: "meta" }>["meta"]
     >().toEqualTypeOf<MetaData>()

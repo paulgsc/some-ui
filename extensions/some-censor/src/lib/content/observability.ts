@@ -49,12 +49,7 @@ import {
 import type { ViewState } from "./fsm"
 import type { BoyoSurface } from "./layout/surface"
 import { surfaceOf } from "./layout/surface"
-import {
-  classify,
-  DEFAULT_BOUNDARY_DAYS,
-  estimate,
-  PARSER,
-} from "./maturity/maturity"
+import { estimate, PARSER } from "./maturity/maturity"
 
 // ── Vocabulary ───────────────────────────────────────────────────────────────
 
@@ -767,12 +762,12 @@ export class BoyoObservability {
     this.recorder.record({
       kind: "date.observed",
       subject: surface,
-      // The estimator's class beside the raw form, so an export shows which
-      // forms the parser holds and the corpus can correct it (#1384).
+      // What the parser made of the form, independent of any boundary, so an
+      // export shows which forms it holds as unverified (#1384).
       detail: {
         raw,
         renderer,
-        maturity: classify(estimate(raw, Date.now()), DEFAULT_BOUNDARY_DAYS),
+        estimate: estimate(raw, Date.now()),
         parser: PARSER,
       },
     })

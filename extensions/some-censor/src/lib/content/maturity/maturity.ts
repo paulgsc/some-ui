@@ -8,18 +8,17 @@
  * `unverified`, never guessed (QD3), so a narrower parser holds more cards
  * rather than admitting a wrong one.
  *
- * A relative date names a bucket, not a point, and YouTube truncates: "1 year
- * ago" covers ages from one year up to two. The estimate keeps the youngest
- * reading of the bucket, in the shortest calendar length of its unit (a
- * month is 28 days, a year 365), so imprecision can only hold a card longer
- * (doctrine §7, "youngest plausible reading"). The truncation is an
- * assumption about YouTube's formatter; the diagnostics export (#1396) banks
- * each raw form with its class, which is how the corpus can contradict it.
+ * A relative date names a bucket, not a point, and nothing here proves whether
+ * YouTube truncates or rounds: under rounding "1 year ago" can mean six months.
+ * The estimate keeps the youngest reading either way, half a unit below the
+ * stated count in the shortest calendar length of the unit (a month is 28
+ * days, a year 365), so imprecision can only hold a card longer (doctrine §7,
+ * "youngest plausible reading").
  */
 
 import { assertNever } from "@some-extension/common"
 
-/** Which grammar produced an estimate. Recorded with every diagnostic class. */
+/** Which grammar produced an estimate. Recorded with every banked date form. */
 export const PARSER = "en-v1"
 
 /** The boundary when the owner has not chosen one (#1807): one year. */
@@ -98,7 +97,7 @@ export function estimate(raw: string | null, now: number): Estimate {
     const days = UNIT_DAYS.get(unit)
     // The regex admits only listed units; the guard is for the type checker.
     if (days === undefined) return { kind: "unverified" }
-    return { kind: "aged", minDays: Number(count) * days }
+    return { kind: "aged", minDays: Math.floor((Number(count) - 0.5) * days) }
   }
 
   const absolute = ABSOLUTE.exec(text)
@@ -121,9 +120,10 @@ function fromCalendarDate(match: RegExpExecArray, now: number): Estimate {
   const start = Date.UTC(y, month, d)
   // Reject dates the calendar rolled over ("Feb 31" → Mar 3).
   if (new Date(start).getUTCDate() !== d) return { kind: "unverified" }
+  // A plain date after today is a misread or a wrong clock, not a schedule:
+  // a scheduled date only ever arrives with a "Premieres" prefix.
+  if (start > now) return { kind: "unverified" }
   const latest = start + DAY_MS + 12 * 3_600_000
-  // A plain past date within that slack is today's upload, not a scheduled
-  // one: a future date only ever arrives with a "Premieres" prefix.
   return {
     kind: "aged",
     minDays: Math.max(0, Math.floor((now - latest) / DAY_MS)),
@@ -132,6 +132,9 @@ function fromCalendarDate(match: RegExpExecArray, now: number): Estimate {
 
 /** Doctrine §5: one boundary `B`, four bands derived from it. */
 export function classify(e: Estimate, boundaryDays: number): MaturityClass {
+  // A missing or corrupt boundary fails every comparison below, which would
+  // read as QM4: hold instead.
+  if (!Number.isFinite(boundaryDays) || boundaryDays <= 0) return "QM0"
   const { kind } = e
   switch (kind) {
     case "unverified": {
