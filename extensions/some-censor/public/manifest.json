@@ -6,7 +6,7 @@
 
   "permissions": ["storage", "contextMenus"],
 
-  "host_permissions": ["*://*.youtube.com/*"],
+  "host_permissions": ["*://www.youtube.com/*"],
 
   "background": {
     "service_worker": "background.js",
@@ -15,7 +15,7 @@
 
   "content_scripts": [
     {
-      "matches": ["*://*.youtube.com/*"],
+      "matches": ["*://www.youtube.com/*"],
       "js": ["content.js"],
       "css": ["styles/content.css"],
       "run_at": "document_end"
