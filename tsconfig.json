@@ -1,6 +1,6 @@
 {
-  // The repo-level scripts in scripts/, which belong to no workspace. Node
-  // runs them through type stripping; this only typechecks them, along with
+  // The repo-level scripts in scripts/, which belong to no workspace and run
+  // under Node's type stripping or tsx. This only typechecks them, along with
   // the workspace sources they import by relative path.
   "compilerOptions": {
     "target": "ES2023",

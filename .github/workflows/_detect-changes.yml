@@ -55,6 +55,8 @@ jobs:
               - 'pnpm-lock.yaml'
               - '.nvmrc'
               - 'tsconfig*.json'
+              # The repo-level scripts, typechecked by the root tsconfig.json.
+              - 'scripts/**/*.ts'
               # The panel-fit page's HTML entry, which the globs above miss.
               - 'apps/www/tests/ui-fit/panel-page/**'
               # Read by @some-ui/resume's check-claims.mjs, which fails on a

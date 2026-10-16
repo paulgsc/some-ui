@@ -262,8 +262,7 @@ export function assertDeclarationSettings(
 /**
  * The directory `paths` targets are relative to: the tsconfig that declared
  * `paths` (which may be an extended one). The parser records it as
- * `pathsBasePath`, an internal field it has set since TypeScript 4.1. No
- * tsconfig here sets `baseUrl`, which TypeScript 6 deprecates.
+ * `pathsBasePath`, an internal field it has set since TypeScript 4.1.
  */
 function pathsBaseOf(
   compilerOptions: ts.CompilerOptions,

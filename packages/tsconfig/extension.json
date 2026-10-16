@@ -6,9 +6,7 @@
   // config's directory, not this one's.
   "extends": "./rollupconfig.json",
   "compilerOptions": {
-    // Next to the extending config, not in the outDir inherited from base.json
-    // (which resolves into packages/tsconfig/dist and is shared by every
-    // package on that chain, #1522).
+    // Next to the extending config, not in its dist/, which is what ships.
     "tsBuildInfoFile": "${configDir}/tsconfig.tsbuildinfo",
     "allowImportingTsExtensions": true,
     "isolatedModules": true
