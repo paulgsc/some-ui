@@ -6,6 +6,12 @@ updates:
     schedule:
       interval: "weekly"
       day: "monday"
+    # TypeScript 7 drops the ts.* compiler API (declarations.ts and the
+    # eslint-kit guards use it), and typescript-eslint supports only <6.1.
+    # Lift this when both move.
+    ignore:
+      - dependency-name: "typescript"
+        versions: [">=7"]
     groups:
       wasm-crates:
         patterns:

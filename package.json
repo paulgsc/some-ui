@@ -25,6 +25,7 @@
     "lint:js": "scripts/with-limits.sh turbo run lint:js",
     "lint:style": "scripts/with-limits.sh stylelint \"**/*.css\" --allow-empty-input --cache --cache-location node_modules/.cache/.stylelintcache --ignore-path .prettierignore",
     "typecheck": "scripts/with-limits.sh turbo run typecheck",
+    "typecheck:scripts": "tsc -p tsconfig.json",
     "prettier": "turbo prettier",
     "knip": "knip --no-progress --reporter compact",
     "check:bundle-paths": "scripts/with-limits.sh turbo run check:bundle-paths --filter=www",
@@ -75,7 +76,7 @@
     "stylelint-config-standard": "40.0.0",
     "stylelint-order": "8.1.2",
     "tsx": "^4.19.2",
-    "typescript": "^5.7.3",
+    "typescript": "catalog:",
     "typescript-language-server": "4.3.3",
     "vite": "^8.3.2",
     "vitest": "^5.0.3"

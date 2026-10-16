@@ -87,6 +87,9 @@ catalog:
   tailwindcss: 4.3.3
   "@tailwindcss/postcss": 4.3.3
   "@tailwindcss/vite": 4.3.3
+  # 6.0 is the newest typescript-eslint supports (<6.1). 7.0 also drops the
+  # ts.* compiler API that declarations.ts and the eslint-kit guards use.
+  typescript: 6.0.3
 # `pnpm add` writes exact versions. pnpm 12 ignores this in .npmrc.
 saveExact: true
 allowBuilds:

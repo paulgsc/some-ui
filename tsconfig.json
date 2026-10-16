@@ -1,45 +1,19 @@
 {
-  "extends": "./packages/tsconfig/base.json",
+  // The repo-level scripts in scripts/, which belong to no workspace. Node
+  // runs them through type stripping; this only typechecks them, along with
+  // the workspace sources they import by relative path.
   "compilerOptions": {
-    "types": ["@types/node"],
-    "allowImportingTsExtensions": true,
-    "declaration": true,
-    "declarationMap": true,
-    "module": "Node16",
-    "moduleResolution": "node16",
-    "pretty": true,
-    "sourceMap": true,
+    "target": "ES2023",
     "lib": ["ES2023"],
-    "target": "ES2022",
-    "paths": {
-      "@shared/*": ["./packages/ui/shared/src/*"],
-      "@leetype/*": ["./packages/ui/leetype/src/*"],
-      "@topik/*": ["./packages/ui/topik/src/*"],
-      "@honeycomb/*": ["./packages/ui/honeycomb/src/*"],
-      "@nfl/*": ["./packages/ui/nfl/src/*"],
-      "@types-utils/*": ["./packages/types/src/*"],
-      "@wireframes/*": ["./packages/ui/wireframes/src/*"],
-      "@attributions/*": ["./packages/ui/attributions/src/*"],
-      "@mujik/*": ["./extensions/some-mujik/src/*"],
-      "@filter/*": ["./extensions/some-filter/src/*"],
-      "@censor/*": ["./extensions/some-censor/src/*"],
-      "@suspender/*": ["./extensions/suspender-ledger/src/*"],
-      "@some-ui/content/*": ["./packages/some-content/src/*"],
-      "@wasm-loader/*": ["./packages/wasm-loader/src/*"],
-      "@react-hooks/*": ["./packages/react-hooks/src/*"],
-      "@speech/*": ["./packages/speech/src/*"],
-      "@voice-capture/*": ["./packages/voice-capture/src/*"],
-      "@activity-catalog/*": ["./packages/activity-catalog/src/*"]
-    }
+    "module": "preserve",
+    "moduleResolution": "bundler",
+    "types": ["node"],
+    "strict": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "allowImportingTsExtensions": true,
+    "erasableSyntaxOnly": true,
+    "verbatimModuleSyntax": true
   },
-  "include": [
-    "eslint/",
-    "eslint.config.js",
-    "eslint.config-deprecated.mjs",
-    "scripts",
-    "next.config.mjs",
-    "prettier.config.cjs",
-    "tailwind.config.ts",
-    "vitest.config.ts"
-  ]
+  "include": ["scripts/**/*.ts"]
 }
