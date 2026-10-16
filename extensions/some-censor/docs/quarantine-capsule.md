@@ -76,7 +76,7 @@ branding is a carrier, and a description snippet is a carrier. There is no
 about now. This is the one exploitable structural property: a video's _age_
 correlates strongly with its distance from the discourse, and age is
 **nonsemantic** — it can be read, computed on, and displayed without any of the
-card's meaning crossing the boundary. Age is not a classifier of content. It is
+card's meaning crossing the boundary (under `QD14` it is never displayed). Age is not a classifier of content. It is
 a classifier of _coupling to the present_, which is the actual threat.
 
 **H3 — Judgement does not scale, and exercising it is itself a cost.** A
@@ -120,8 +120,8 @@ archive.
 Seventeen results. Each carries where it stands against the current
 implementation, because a doctrine whose status is undocumented becomes
 folklore within a release. `QD11`–`QD17` were added on 2026-10-16 (epic
-#1799) after the owner rejected the medallion grammar; what they look like on
-the page is [`absent-plated-heard.md`](./absent-plated-heard.md).
+#1799). Where earlier results say a card is _sealed_ or _held_, under `QD11`
+it is absent.
 
 ---
 
@@ -175,6 +175,8 @@ receive view counts, live badges, premiere notices, membership strings and
 empty values, in several languages. All of those are `Unverified`, and
 `Unverified` is sealed.
 
+_Status: absent._ No estimator exists; `uploadDate` is never parsed. #1384.
+
 ---
 
 ### QD4 — Age is nonsemantic; the raw string is not
@@ -215,6 +217,9 @@ The temporal boundary therefore applies **through** the whitelist. Channel
 trust may make a card's identity certain, or shorten its boundary, but it does
 not exempt a card from having one.
 
+_Amended by `QD16`:_ there is no channel trust at all. The whitelist is deleted
+(#1807), and every source has the same boundary.
+
 _Status: violated._ `applyWhitelist` in `src/lib/content/fsm.ts` accepts any
 state and yields `Whitelisted`, which is a permanent bypass, and the
 `CHANNEL_WHITELISTED` broadcast lifts every card from that channel at once —
@@ -248,6 +253,9 @@ reward awaiting unlock. Nothing counts down toward a payoff.
 This is why [`absent-plated-heard.md`](./absent-plated-heard.md) forbids the
 padlock, the progress bar, the green check and every count, and why a held card
 is absent rather than drawn at all (`QD11`).
+
+_Status: violated._ The ladder's hints and progress rail present every sealed
+card as a pending step. #1803.
 
 ---
 
@@ -331,9 +339,12 @@ plated.
 
 ### QD11 — Absent
 
-A held card (`QM0`–`QM2`, not admitted by `QD15`) is not on the page. It
-leaves layout and the accessibility tree; nothing stands in its place, and
-nothing counts, summarizes or mentions it.
+A held card is not on the page. It leaves layout and the accessibility tree;
+nothing stands in its place, and nothing counts, summarizes or mentions it. A
+card is held when it is `QM0`–`QM2`, live, a premiere or a Short, unless
+`QD15` admits it. Nothing navigates to a held video on the owner's behalf:
+autoplay stops before one. Supersedes `QD8`'s quiet statement, `QD9`, and the
+interior bullet in §3.
 
 The owner's test, after living with the extension: what made a session bad was
 having _seen_ things. A covered card is still something seen — a shape, a
@@ -376,8 +387,9 @@ _Status: absent._ #1805.
 
 ### QD14 — No crowd, no age
 
-No number that measures other people — views, likes, subscribers, comment
-counts, live viewers, trending rank, the most-replayed graph — and no age, raw
+Nothing that reports on other people — a count of views, likes, subscribers,
+comments or live viewers, a trending rank, the most-replayed graph, a status
+badge such as the verified tick, or the comments themselves — and no age, raw
 or derived, is shown on any surface, in any state, the lane included. Amends
 `QD4`.
 
@@ -392,7 +404,9 @@ _Status: absent._ #1802.
 
 Music whose title is mostly in a script the owner has declared they listen to
 but don't read is admitted whole, whatever its age, unless it is live, a
-premiere or a Short. The script is counted, never interpreted (§8).
+premiere or a Short. The script is counted, never interpreted (§8). The owner
+sets this per language, so marking Chinese admits Han-script titles, which
+includes Japanese titles written mostly in kanji; that overlap is accepted.
 
 `H2` makes age a classifier of _coupling to the present_. Music whose words do
 not reach the listener has no coupling to measure: the owner consumes K-drama
@@ -407,7 +421,8 @@ _Status: absent._ #1806.
 ### QD16 — Decide once
 
 The owner's judgement is exercised on two settings — the boundary `B`, and the
-scripts they listen to but don't read — and nowhere else. No card, channel or
+scripts they listen to but don't read — and nowhere else, besides switching
+the extension on or off. No card, channel or
 page offers a disclosure step, a trust decision or a verdict.
 
 `H3` already said judgement does not scale; the ladder contradicted it, and
@@ -421,9 +436,10 @@ _Status: absent._ The ladder is live. #1803, #1807.
 
 ### QD17 — Quiet
 
-The extension adds no copy, clock or count to youtube.com. The one exception is
-a held watch page, which reads "Not here." with a Back button and a tab title
-that is not the video's.
+The extension adds no copy, clock or count to youtube.com, with two
+exceptions. A held watch page reads "Not here." with a Back button and a tab
+title that is not the video's. An admitted video's watch page carries the face
+control (`QD13`), labelled with what it does and nothing more.
 
 A tool that narrates itself ("in here it is 2025", "24 held") makes its
 mechanism the thing on screen; the owner found that inauthentic.
@@ -436,7 +452,7 @@ reveal") are on-page copy. #1803.
 ### One preference, four derived bands
 
 The user configures **one** number: the **temporal boundary** `B` — the age at
-which an artifact becomes eligible for the existing disclosure ladder. Every
+which an artifact is admitted, and so plated (`QD12`). Every
 band is derived from `B`, so the model reads the same whether `B` is ninety
 days or five years, and there is no configuration surface with five
 independently wrong thresholds on it.
@@ -485,7 +501,8 @@ canon's observe/estimate/plan/act factorization rather than beside it: the
 extract layer observes, a pure classifier estimates, and the estimate carries
 its own bottom element (`QM0`) so that "no estimate" is representable rather
 than approximated by a wrong one. `Unverified` is not an error state. It is a
-valid and common result, and the interface must not render it as a failure.
+valid and common result, and the interface must not render it as a failure:
+under `QD11` it renders nothing at all.
 
 ## 6. Admission — the two axes
 
@@ -495,8 +512,8 @@ mistake the current whitelist makes.
 | id    | primitive              | meaning                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
 | ----- | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `QA1` | **Artifact clearance** | This one video's `QM3`/`QM4` status is not re-litigated by an ordinary re-estimate — age only grows under §7's stable-identity/evidence/clock preconditions, so a valid estimate never reclassifies downward on its own. `QA1` grants no protection beyond that: if §7's fail-closed rule fires (identity, evidence, or clock invalidated), the artifact reverts to `QM0` like any other invalidated estimate, and `QA1` cannot keep a `QM1`/`QM2` artifact disclosable — see below. |
-| `QA2` | **Identity trust**     | This channel is genuinely who it claims to be. Provenance, not admission.                                                                                                                                                                                                                                                                                                                                                                                                            |
-| `QA3` | **Delayed source**     | This channel's uploads become admissible after `B` (or a per-source `B`) — never before it.                                                                                                                                                                                                                                                                                                                                                                                          |
+| `QA2` | **Identity trust**     | This channel is genuinely who it claims to be. Provenance, not admission. _Superseded by `QD16`:_ no trust decision exists.                                                                                                                                                                                                                                                                                                                                                          |
+| `QA3` | **Delayed source**     | This channel's uploads become admissible after `B` (or a per-source `B`) — never before it. _Superseded by `QD16`:_ there are no per-source settings; not planned.                                                                                                                                                                                                                                                                                                                   |
 | `QA4` | **Boundary exemption** | **Rejected.** Listed only to be ruled out: a channel's uploads skipping the boundary entirely is exactly what `QD2` forbids, however it is framed at the UI.                                                                                                                                                                                                                                                                                                                         |
 | `QA5` | **Opacity**            | Music whose title is mostly in a script the owner listens to but doesn't read is admitted whole, at any age, unless live, a premiere or a Short (`QD15`). Unlike `QA4` it is not keyed on a source: it measures the same coupling `B` does, by another route.                                                                                                                                                                                                                        |
 
@@ -519,6 +536,11 @@ their work a year late. That is what living under a rock actually looks like,
 and it is a considerably more pleasant thing to be offered than a permanent
 trust decision made in a right-click menu.
 
+_Superseded by `QD16`._ The owner chose no per-source decisions at all: the
+whitelist is deleted and no delayed subscription is built. `QA5` is the one
+admission primitive added since, and it is keyed on a title's script, not on a
+source.
+
 ## 7. Where the implementation stands
 
 An honest map, so the next patch has somewhere to attach. Nothing in this
@@ -534,10 +556,12 @@ section is a behavioural change; it is a statement of distance.
   plated with no disclosure act.
 - **The occluder is right.** The static pre-mask, and the rule that handover
   swaps one occluder for another rather than passing through a legible state,
-  is the foundation QD1 names. Do not touch it.
-- **Age is already a first-class, pre-title field.** `MetaData.uploadDate` is
-  extracted alongside channel and duration, one full disclosure step _before_
-  the title — the tier separation the story needs already exists.
+  is the foundation QD1 names. Do not touch it. Under `QD11` it still guards
+  every card until the card is classified; what changes is only what follows
+  handover: absence or a plate, not a veil.
+- **Age is already a first-class field.** The upload date is extracted
+  alongside channel and duration, so admission is computable when a card is
+  first resolved, before anything is shown.
 - **Reading is not disclosing.** `extractMeta` is a pure DOM read
   (`src/lib/content/extract/meta.ts`); calling it at resolve time to compute
   maturity discloses nothing. This is what makes a maturity gate cheap: no new
@@ -553,9 +577,8 @@ section is a behavioural change; it is a statement of distance.
 | Whitelist is a permanent, channel-wide bypass  | `fsm.ts:applyWhitelist`, `CHANNEL_WHITELISTED` broadcast | QD5, QA2   |
 | Bulk advance ignores eligibility               | `commands.ts` → Core's `advance-all-to-title` command    | QD6        |
 | No surface-level concealment                   | veil is per-renderer throughout                          | QD8        |
-| No interior                                    | the extension has no non-YouTube surface at all          | QD9        |
 | Manifest copy describes the mechanism          | `public/manifest.json` `description`                     | §0         |
-| Held cards are veiled in place, not absent     | `actuator/veil.ts`, `content.css` pre-mask               | QD11       |
+| Held cards are veiled in place, not absent     | `actuator/veil.ts` (the veil after handover)             | QD11       |
 | Admitted cards would show real thumbnails      | nothing replaces a thumbnail or avatar                   | QD12       |
 | No crowd number or age is removed              | vendor metadata rows render untouched                    | QD14       |
 | The ladder and its hints are on the page       | `fsm.ts:project()`, `actuator/gestures.ts`               | QD16, QD17 |
