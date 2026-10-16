@@ -5,7 +5,6 @@
   "type": "module",
   "description": "Generic, zero-runtime-dependency wasm module load/init/singleton primitive. Ships as plain TypeScript source (no bundler-specific build) so it can be path-imported by packages/* and extensions/* alike - see packages/README.md and extensions/common/GOOD_CITIZEN.md's Class-A shared-import doctrine.",
   "scripts": {
-    "watch:lint": "eslint --watch --cache --fix \"**/*.{js,mjs,ts,tsx}\"",
     "clean": "rimraf .turbo && rimraf node_modules && rimraf .eslintcache && rimraf tsconfig.tsbuildinfo",
     "knip": "knip --directory \"$(git rev-parse --show-toplevel)\" --workspace \"$(git rev-parse --show-prefix | sed 's:/*$::')\"",
     "lint": "pnpm lint:js && pnpm prettier && pnpm typecheck",

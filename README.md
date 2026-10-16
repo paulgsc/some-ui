@@ -112,13 +112,10 @@ npm install -g pnpm
 
 pnpm install
 
-# Prefer a scoped command over the root `pnpm dev` (currently broken; see
-# the "Work on one workspace" note below).
 pnpm --filter www dev
 ```
 
-Filtered commands like the one above are the faster, quieter choice when
-working on one project, and they don't depend on the root `dev` script.
+There is no root `dev` script: run each workspace's own, filtered as above.
 
 ## Common workflows
 

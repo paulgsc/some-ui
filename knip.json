@@ -17,11 +17,7 @@
   },
   "workspaces": {
     ".": {
-      "entry": [
-        "scripts/audit-node-licenses.mjs",
-        "scripts/fix-gen.ts",
-        "extensions/scripts/*.mjs"
-      ],
+      "entry": ["scripts/audit-node-licenses.mjs", "extensions/scripts/*.mjs"],
       "ignoreDependencies": ["@changesets/cli", "typescript-language-server"],
       "ignoreBinaries": ["web-ext"]
     },

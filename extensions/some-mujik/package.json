@@ -17,8 +17,7 @@
     "package:source": "bash ../scripts/package-source.sh",
     "prettier": "prettier \"**/*.{js,mjs,ts,tsx,md,mdx,json,yml,css}\" --ignore-path $(git rev-parse --show-toplevel)/.prettierignore --check --cache",
     "test": "vitest",
-    "typecheck": "tsc --noEmit",
-    "watch:lint": "eslint --watch --cache --fix \"**/*.{js,mjs,ts,tsx}\""
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@some-extension/common": "workspace:*"
