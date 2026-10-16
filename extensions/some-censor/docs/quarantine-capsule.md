@@ -153,6 +153,11 @@ not eligible yet_. The difference is whether curiosity has a path.
 _Status: absent._ Today every card, of every age, has a path to `revealed` in
 three interactions.
 
+_Amended by `QD15`:_ "regardless of its subject" admits one exception. Music
+whose title is mostly in a script the owner listens to but doesn't read is
+admitted whole at any age, because its coupling to the present, the quantity
+this result bounds by age, is already zero.
+
 ---
 
 ### QD3 — Unknown means outside
@@ -411,7 +416,8 @@ includes Japanese titles written mostly in kanji; that overlap is accepted.
 `H2` makes age a classifier of _coupling to the present_. Music whose words do
 not reach the listener has no coupling to measure: the owner consumes K-drama
 and C-drama soundtracks "as an artifact". This is not a bypass of `QD2`; it is
-the same quantity measured a second way. The rule describes the owner as they
+the same quantity measured a second way, and it amends `QD2`'s "regardless of
+its subject" to say so. The rule describes the owner as they
 are, and does not anticipate them learning these scripts.
 
 _Status: absent._ #1806.
@@ -422,8 +428,10 @@ _Status: absent._ #1806.
 
 The owner's judgement is exercised on two settings — the boundary `B`, and the
 scripts they listen to but don't read — and nowhere else, besides switching
-the extension on or off. No card, channel or
-page offers a disclosure step, a trust decision or a verdict.
+the extension on or off. No card, channel or page offers a disclosure step, a
+trust decision or a verdict. The one exception is `QD13`'s face control, which
+shows only the thumbnail of a video already admitted and plated, and decides
+nothing about admission.
 
 `H3` already said judgement does not scale; the ladder contradicted it, and
 the owner confirmed it from use: deciding card by card was "a chore", and "not
