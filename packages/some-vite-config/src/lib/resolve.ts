@@ -1,25 +1,12 @@
-import { resolve } from "path"
-
 import type { ViteConfigOptions } from "@/types/index.js"
 
-export function createResolveConfig(
-  options: ViteConfigOptions,
-  packageRoot: string
-): { alias: Record<string, string>; tsconfigPaths: boolean } {
-  const { alias = {}, packageName } = options
-
-  // Create default alias based on package name
-  const defaultAlias = {
-    [`@${packageName}`]: resolve(packageRoot, "src"),
-  }
-
+export function createResolveConfig(options: ViteConfigOptions): {
+  alias: Record<string, string>
+  tsconfigPaths: boolean
+} {
   return {
-    alias: {
-      ...defaultAlias,
-      ...alias,
-    },
+    alias: options.alias ?? {},
     // Native tsconfig "paths" resolution (Vite 8+).
-
     tsconfigPaths: true,
   }
 }

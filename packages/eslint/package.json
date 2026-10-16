@@ -5,18 +5,16 @@
   "description": "Strict ESLint flat config kit for some-ui and related repos",
   "type": "module",
   "main": "./dist/esm/index.js",
-  "types": "index.ts",
+  "types": "./dist/esm/index.d.ts",
   "exports": {
     ".": {
-      "import": "./dist/esm/index.js",
-      "require": "./dist/cjs/index.js"
+      "import": "./dist/esm/index.js"
     }
   },
   "files": [
     "dist"
   ],
   "scripts": {
-    "build:cjs": "tsc -b tsconfig.cjs.build.json && tsc-alias -p tsconfig.cjs.build.json",
     "build": "tsc -b tsconfig.esm.build.json && tsc-alias -p tsconfig.esm.build.json",
     "check-dist": "if [ ! -d dist ]; then pnpm run build; fi",
     "clean": "rimraf .turbo && rimraf node_modules && rimraf .eslintcache && pnpm clean:build",

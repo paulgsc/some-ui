@@ -70,7 +70,6 @@ async function expectAllRead(): Promise<void> {
 
 afterEach(() => {
   vi.resetModules()
-  vi.clearAllMocks()
   kind = "pending"
 })
 

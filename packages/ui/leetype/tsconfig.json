@@ -11,8 +11,7 @@
       "@leetype-corpus/*": ["./corpus/*"],
       // The wasm package is consumed as a workspace crate whose dist/ only
       // exists after a wasm-pack build, so tsc resolves the hand-written
-      // stub instead — the same mapping tsconfig.eslint.json uses, hoisted
-      // here so `tsc --noEmit` doesn't depend on a built crate.
+      // stub instead, so `tsc --noEmit` doesn't depend on a built crate.
       // Note this mapping has no wildcard, so it is an *exact* match:
       // "@some-ui/leetype-wasm/dist/leetype_wasm" still resolves normally,
       // through node_modules, to the declarations wasm-pack actually
@@ -35,8 +34,7 @@
     "scripts",
     "vite.config.ts",
     "vitest.config.ts",
-    "vitest.setup.ts",
-    "vitest.setup.test.ts"
+    "vitest.setup.ts"
   ],
   "exclude": ["node_modules", "build", "dist"]
 }

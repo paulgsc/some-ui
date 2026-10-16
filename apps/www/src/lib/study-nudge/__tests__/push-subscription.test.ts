@@ -122,7 +122,7 @@ function fakeRegistration(existing: FakeSubscription | null = null): {
 }
 
 /** `nudgesSupported()` checks `window`, which some Vitest versions keep
- * apart from `globalThis` (vitest.setup.ts), so both are stubbed. */
+ * apart from `globalThis`, so both are stubbed. */
 function supportNudges(permission: NotificationPermission = "granted"): void {
   const values = {
     Notification: {

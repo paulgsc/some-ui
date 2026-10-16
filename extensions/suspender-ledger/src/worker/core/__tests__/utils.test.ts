@@ -7,7 +7,6 @@ import { log, match, query } from "@suspender/worker/core/utils"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
 afterEach(() => {
-  vi.clearAllMocks()
   prefs.log = false
 })
 

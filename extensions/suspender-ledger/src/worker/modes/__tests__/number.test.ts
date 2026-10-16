@@ -38,7 +38,6 @@ beforeEach(() => {
   // Any test that installs fake timers must not be able to leak them into the
   // next one, even if it fails before its own cleanup runs.
   vi.useRealTimers()
-  vi.clearAllMocks()
   discard.count = 0
   discard.time = 0
   discard.tabs.length = 0

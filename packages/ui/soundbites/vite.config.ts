@@ -8,7 +8,4 @@ export default createViteConfig({
   alias: {
     "@soundbites": resolve(import.meta.dirname, "src"),
   },
-  tsConfigPaths: {
-    projects: [resolve(import.meta.dirname, "tsconfig.build.json")],
-  },
 })

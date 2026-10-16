@@ -62,7 +62,6 @@ export default createViteConfig({
   packageName: "@some-ui/<x>",
   libraryName: "<PascalCaseLibraryName>",
   alias: { "@<x>": resolve(__dirname, "src") },
-  tsConfigPaths: { projects: [resolve(__dirname, "tsconfig.build.json")] },
 })
 ```
 

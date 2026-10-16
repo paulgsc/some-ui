@@ -13,9 +13,6 @@ export default defineConfig({
   plugins: [buildAudiencePlugin({ checkGates: false })],
   test: {
     include: ["src/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}"],
-    // Repairs `localStorage` where the runtime's own shadows jsdom's (see the
-    // file's header).
-    setupFiles: ["./vitest.setup.ts"],
   },
   resolve: {
     alias: {

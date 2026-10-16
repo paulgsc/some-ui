@@ -20,7 +20,6 @@ function fireVisibilityChange(): void {
 }
 
 beforeEach(() => {
-  vi.clearAllMocks()
   document.body.innerHTML = ""
   // a submit clears the dirty-input latch the same way a real form would.
   window.dispatchEvent(new Event("submit"))

@@ -38,7 +38,6 @@ const countLeadingPrefixes = (title: string, prefix: string): number => {
 }
 
 beforeEach(() => {
-  vi.clearAllMocks()
   discard.count = 0
   discard.time = 0
   discard.tabs.length = 0

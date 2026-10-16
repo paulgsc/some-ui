@@ -60,7 +60,6 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup()
-  vi.clearAllMocks()
   localStorage.clear()
   visibility = "visible"
 })

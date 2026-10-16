@@ -1,7 +1,7 @@
 import fs from "node:fs"
 import { resolve } from "node:path"
 import { createStylePlugins } from "@some-ui/styles/styles-build/dev-config"
-import { TanStackRouterVite } from "@tanstack/router-plugin/vite"
+import { tanstackRouter } from "@tanstack/router-plugin/vite"
 import viteReact from "@vitejs/plugin-react"
 import type { HtmlTagDescriptor, Plugin, UserConfig } from "vite"
 import { defineConfig, loadEnv } from "vite"
@@ -30,10 +30,6 @@ import styleContext from "./style.context.ts"
 // TTS_PROXY_TARGET covers a PORT other than 5050 in .env, or a backend
 // running somewhere other than this machine.
 const TTS_PROXY_PATH = "/api/tts"
-// Set by scripts/analyze-bundle.js: the analyze build keeps sourcemaps and the
-// gzip report that the default build skips.
-const analyze = process.env.WWW_ANALYZE === "1"
-
 const ttsProxyTarget = process.env.TTS_PROXY_TARGET || "http://127.0.0.1:5050"
 
 // The dev/preview counterpart of apps/www/nginx.resume-proxy.conf, for the
@@ -256,7 +252,7 @@ export default defineConfig(
       // utilities + the shared design layer are generated exactly once, from an
       // explicit @source set, instead of once per package. See #636.
       ...createStylePlugins(styleContext),
-      TanStackRouterVite({
+      tanstackRouter({
         autoCodeSplitting: true,
         // src/routes/ is the routing tree: every filename in it is a route
         // path. Tests live in a `__tests__/` directory per #1471, and this
@@ -339,14 +335,11 @@ export default defineConfig(
         // undoing the route splitting `autoCodeSplitting: true` had just done.
         // Letting Rolldown chunk from the real import graph cut critical-path
         // JS from ~340 KB to ~161 KB gzip and moved FCP 3.3s -> 2.3s. Reach
-        // for `advancedChunks` (Rolldown's grouping API) if this ever needs
-        // manual grouping again — and match on package *boundaries*, not
-        // substrings of the resolved path.
-        // Production builds strip console calls (build.minify.ts). Not in
-        // the analyze build: this object is spread over Vite's own `minify`
-        // setting, so it would override the `minify: false` that scripts/
-        // analyze-bundle.js passes to keep its chunks unminified.
-        output: analyze ? {} : { minify: RELEASE_MINIFY },
+        // for `output.codeSplitting` (Rolldown's grouping API) if this ever
+        // needs manual grouping again — and match on package *boundaries*,
+        // not substrings of the resolved path.
+        // Production builds strip console calls (build.minify.ts).
+        output: { minify: RELEASE_MINIFY },
         // Tree shaking options
         treeshake: {
           // Every module is treated as side-effect free, so an import that
@@ -370,14 +363,8 @@ export default defineConfig(
           annotations: true,
         },
       },
-      // Sourcemaps and the gzip column are for `pnpm build:analyze`, which
-      // sets WWW_ANALYZE before building (scripts/analyze-bundle.js). The
-      // default build — CI, the Pages deploy, the Docker image — pays for
-      // neither: the maps were ~4x the code they describe, ~120 of them, and
-      // nothing that ships reads them; reportCompressedSize gzips every chunk
-      // only to print a column (#1449).
-      sourcemap: analyze,
-      reportCompressedSize: analyze,
+      // reportCompressedSize gzips every chunk only to print a column (#1449).
+      reportCompressedSize: false,
       // Vite 8's default minifier (oxc), not terser: terser's renderChunk was
       // most of the plugin time in every build (#1449). `drop_console` moves
       // with it as oxc's `dropConsole` — set through `rolldownOptions.output`
@@ -386,13 +373,5 @@ export default defineConfig(
       // Chunk size warnings
       chunkSizeWarningLimit: 1000,
     },
-    // No `esbuild` block. Vite 8 transforms with oxc, not esbuild, and
-    // ignores this key outright — the build printed "Both esbuild and oxc
-    // options were set. oxc options will be used and esbuild options will be
-    // ignored" on every run. `treeShaking: true` was also already the default,
-    // and `keepNames: true` kept function names through mangling in every
-    // shipped build — bytes users download for the analyzer's sake, when the
-    // analyze build's sourcemaps already give it real names — so nothing here
-    // was doing work worth keeping.
   })
 )

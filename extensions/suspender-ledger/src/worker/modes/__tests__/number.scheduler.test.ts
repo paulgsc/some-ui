@@ -13,7 +13,7 @@
  */
 
 import { number } from "@suspender/worker/modes/number"
-import { beforeEach, describe, expect, it, vi } from "vitest"
+import { describe, expect, it, vi } from "vitest"
 
 type AlarmShape = {
   name: string
@@ -31,10 +31,6 @@ function withExistingAlarm(alarm: AlarmShape | undefined): void {
   vi.mocked(chrome.alarms.get).mockImplementation((() =>
     Promise.resolve(alarm)) as never)
 }
-
-beforeEach(() => {
-  vi.clearAllMocks()
-})
 
 describe("number.install — scheduler idempotency", () => {
   it("creates the sweep alarm when none exists", async () => {

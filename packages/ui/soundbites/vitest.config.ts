@@ -5,5 +5,4 @@ export default defineDomTest({
   alias: { "@soundbites": path.resolve(import.meta.dirname, "./src") },
   setupFiles: ["./vitest.setup.ts"],
   passWithNoTests: true,
-  optimizeTestingLibrary: true,
 })

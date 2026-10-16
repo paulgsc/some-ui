@@ -8,5 +8,4 @@ export default defineDomTest({
     "@honeycomb": path.resolve(import.meta.dirname, "./src"),
   },
   setupFiles: ["./vitest.setup.ts"],
-  optimizeTestingLibrary: true,
 })

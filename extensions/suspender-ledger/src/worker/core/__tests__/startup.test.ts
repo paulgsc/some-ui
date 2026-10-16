@@ -11,7 +11,6 @@ const flush = (): Promise<void> =>
   new Promise((resolve) => setTimeout(resolve, 0))
 
 beforeEach(() => {
-  vi.clearAllMocks()
   vi.mocked(chrome.storage.local.get).mockImplementation(
     (_keys: unknown, cb: GetCb) => cb({})
   )

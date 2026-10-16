@@ -73,7 +73,6 @@ afterEach(() => {
   cleanup()
   fake.state.voices = { installed: false, voices: [] }
   fake.state.muted = false
-  vi.clearAllMocks()
 })
 
 describe("DeviceVoiceField", () => {

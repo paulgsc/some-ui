@@ -22,11 +22,8 @@
         "scripts/fix-gen.ts",
         "extensions/scripts/*.mjs"
       ],
-      "ignoreDependencies": [
-        "@changesets/cli",
-        "typescript-language-server",
-        "typescript-transform-paths"
-      ]
+      "ignoreDependencies": ["@changesets/cli", "typescript-language-server"],
+      "ignoreBinaries": ["web-ext"]
     },
     "apps/mobile": {
       "ignoreDependencies": [

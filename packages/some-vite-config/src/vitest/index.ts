@@ -44,8 +44,6 @@ type DomTestPresetOptions = TestPresetOptions & {
    * `@some-ui/vite-config/vitest/setup` (src/vitest/vitest.setup.ts).
    */
   setupFiles?: Array<string>
-  /** Pre-bundle `@testing-library/react` (`deps.optimizer.client.include`). */
-  optimizeTestingLibrary?: boolean
 }
 
 /** React components and hooks: jsdom, the React plugin, vitest's globals. */
@@ -54,7 +52,6 @@ export function defineDomTest({
   include = DEFAULT_INCLUDE,
   passWithNoTests,
   setupFiles,
-  optimizeTestingLibrary = false,
 }: DomTestPresetOptions = {}): ViteUserConfig {
   return {
     plugins: [react()],
@@ -64,15 +61,6 @@ export function defineDomTest({
       ...(setupFiles === undefined ? {} : { setupFiles }),
       include,
       ...(passWithNoTests === undefined ? {} : { passWithNoTests }),
-      ...(optimizeTestingLibrary
-        ? {
-            deps: {
-              optimizer: {
-                client: { include: ["@testing-library/react"] },
-              },
-            },
-          }
-        : {}),
     },
     ...(alias === undefined ? {} : { resolve: { alias } }),
   }

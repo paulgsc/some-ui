@@ -30,7 +30,6 @@ const settleDiscard = (id: number | undefined): chrome.tabs.Tab => {
 }
 
 beforeEach(() => {
-  vi.clearAllMocks()
   discard.count = 0
   discard.time = 0
   discard.tabs.length = 0
