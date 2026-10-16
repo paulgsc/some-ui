@@ -40,9 +40,8 @@ export function cssFilePath(realPackageName: string): string {
 /**
  * Pure: derives the build-output package.json fields from the vite options.
  * No filesystem access, no logging - safe to call from anywhere, including
- * static-analysis tooling. The filesystem write lives in ./write.ts, which
- * also says whether the build emitted a stylesheet: most packages have no
- * CSS, and a `style` field or `./style.css` export would point at nothing.
+ * static-analysis tooling. The filesystem write lives in ./write.ts. Most
+ * packages have no CSS, so `style` and `./style.css` follow `emitsCss`.
  */
 export function generatePackageJsonFields(
   options: ViteConfigOptions,
@@ -55,11 +54,8 @@ export function generatePackageJsonFields(
 
   const hasESM = formats.includes("es")
   const hasCJS = formats.includes("cjs")
-  const hasUMD = formats.includes("umd")
   const cssFileName = cssFilePath(realPackageName)
 
-  // Generate file paths
-  const distFiles: Array<string> = []
   const exports: Record<string, PackageJsonExportTarget> = {}
 
   // Every entry the build emits gets the same conditions, keyed by its
@@ -73,33 +69,22 @@ export function generatePackageJsonFields(
         require: `./dist/${name}.cjs.js`,
         default: `./dist/${name}.es.js`,
       }
-      distFiles.push(
-        `dist/${name}.es.js`,
-        `dist/${name}.cjs.js`,
-        `dist/${name}.d.ts`
-      )
     } else if (hasESM) {
       exports[entry.subpath] = {
         types: `./dist/${name}.d.ts`,
         import: `./dist/${name}.es.js`,
         default: `./dist/${name}.es.js`,
       }
-      distFiles.push(`dist/${name}.es.js`, `dist/${name}.d.ts`)
     } else if (hasCJS) {
       exports[entry.subpath] = {
         types: `./dist/${name}.d.ts`,
         require: `./dist/${name}.cjs.js`,
         default: `./dist/${name}.cjs.js`,
       }
-      distFiles.push(`dist/${name}.cjs.js`, `dist/${name}.d.ts`)
     }
     if (emitsCss && entry.subpath === "." && (hasESM || hasCJS)) {
       exports["./style.css"] = `./${cssFileName}`
     }
-  }
-
-  if (hasUMD) {
-    distFiles.push(`dist/${packageName}.umd.js`)
   }
 
   return {
