@@ -12,7 +12,8 @@ const unusedVarsOptions = {
 
 export default defineConfig(
   // Every file, JS included. On TS files `eslintRecommended` (below) turns
-  // off the core rules the compiler already enforces, `no-undef` among them.
+  // off the core rules the compiler already enforces, `no-undef` among them;
+  // `no-unreachable` only while the tsconfig keeps allowUnreachableCode false.
   eslint.configs.recommended,
   {
     files: ["**/*.{js,mjs,cjs}"],

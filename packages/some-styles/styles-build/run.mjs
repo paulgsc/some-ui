@@ -31,7 +31,8 @@ try {
   throw new Error(
     `some-styles-build: could not load style.context.ts in ${root}\n${
       error instanceof Error ? error.message : String(error)
-    }`
+    }`,
+    { cause: error }
   )
 }
 
