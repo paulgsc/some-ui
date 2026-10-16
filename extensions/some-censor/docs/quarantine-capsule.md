@@ -180,7 +180,9 @@ receive view counts, live badges, premiere notices, membership strings and
 empty values, in several languages. All of those are `Unverified`, and
 `Unverified` is sealed.
 
-_Status: absent._ No estimator exists; `uploadDate` is never parsed. #1384.
+_Status: holds in the estimator._ `src/lib/content/maturity/maturity.ts` maps
+every form it cannot read with certainty to `unverified` (`QM0`). Nothing
+consults it yet; #1803 makes it decide what is shown.
 
 _Amended by `QD15`:_ opacity admits without age evidence, so a lane video is
 shown whole even when its age is unknown. Everywhere else, unknown still means
@@ -200,14 +202,10 @@ the moment announcing itself in the one field the extension had decided was
 safe to echo. The presentation layer receives a class and a day count; it never
 receives the string they were derived from.
 
-_Status: violated, already._ `appendMetaChip()` in
-`src/lib/content/actuator/veil.ts` builds `[duration, uploadDate].filter(Boolean).join(" · ")` into the
-metadata sub-line, and it runs on the very first disclosure step (the `"meta"`
-case, before `"title"`) — not only after a bulk advance. The raw extracted
-string, including whatever the extraction fallback returns for a live badge,
-a premiere notice, or an unparsed locale, is already reaching the DOM today.
-This is not a future risk to guard against; it is the workspace's current
-behavior, and the gap table in §7 lists it accordingly.
+_Status: holds._ The presentable `MetaData` has no date field, so the
+metadata chip in `src/lib/content/actuator/veil.ts` cannot render one; the raw
+string stays in the observation as evidence (#1384). A type-level test in
+`maturity/maturity.test.ts` pins it.
 
 _Amended by `QD14`:_ the permission above to display a derived age is
 withdrawn. No age, raw or derived, is displayed on any surface. The raw-string
@@ -587,8 +585,6 @@ section is a behavioural change; it is a statement of distance.
 | gap                                            | where                                                    | doctrine   |
 | ---------------------------------------------- | -------------------------------------------------------- | ---------- |
 | Every card, at every age, can reach `revealed` | `fsm.ts` — the `ViewState` union has no maturity axis    | QD2        |
-| `uploadDate` is an unparsed raw string         | `extract/meta.ts`                                        | QD3        |
-| Raw `uploadDate` already reaches the DOM       | `actuator/veil.ts` (`appendMetaChip`)                    | QD4        |
 | Whitelist is a permanent, channel-wide bypass  | `fsm.ts:applyWhitelist`, `CHANNEL_WHITELISTED` broadcast | QD5, QA2   |
 | Bulk advance ignores eligibility               | `commands.ts` → Core's `advance-all-to-title` command    | QD6        |
 | No surface-level concealment                   | veil is per-renderer throughout                          | QD8        |
