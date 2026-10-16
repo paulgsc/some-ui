@@ -4,11 +4,10 @@
  * The original code is licensed under the MIT License.
  */
 
-// These are all the custom `@` (at) rules that we use within our custom PostCSS plugins
+// The Tailwind v4 at-rules our CSS uses (`@tailwindcss/vite` in www, the
+// some-styles build's own `@tailwindcss/postcss` call); stylelint does not know them
 const CUSTOM_AT_RULES = [
-  // Tailwind-specific at-rules
   "apply",
-  "layer",
   "variant",
   "utility",
   "theme",
