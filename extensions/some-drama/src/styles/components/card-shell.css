@@ -4,7 +4,6 @@
    ────────────────────────────────────────────────────────────────────────── */
 
 .dc-card {
-  -webkit-backdrop-filter: var(--dc-blur);
   backdrop-filter: var(--dc-blur);
 
   /* Solid dark background with warm tint — visible on any dark page */
