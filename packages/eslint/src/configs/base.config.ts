@@ -1,6 +1,4 @@
 import prettier from "eslint-config-prettier"
-import prettierPlugin from "eslint-plugin-prettier"
-import unusedImports from "eslint-plugin-unused-imports"
 import { defineConfig } from "eslint/config"
 import globals from "globals"
 
@@ -20,12 +18,6 @@ export const parentRelativeImportPattern = {
 
 export default defineConfig(
   prettier,
-  {
-    plugins: {
-      prettier: prettierPlugin,
-      "unused-imports": unusedImports,
-    },
-  },
   {
     ignores: [
       "**/jest.config.js",

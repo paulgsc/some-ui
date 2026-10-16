@@ -3,7 +3,23 @@ import typescriptParser from "@typescript-eslint/parser"
 import { defineConfig } from "eslint/config"
 import tseslint from "typescript-eslint"
 
+const unusedVarsOptions = {
+  vars: "all",
+  caughtErrors: "all",
+  varsIgnorePattern: "^_",
+  argsIgnorePattern: "^_",
+} as const
+
 export default defineConfig(
+  // Every file, JS included. On TS files `eslintRecommended` (below) turns
+  // off the core rules the compiler already enforces, `no-undef` among them.
+  eslint.configs.recommended,
+  {
+    files: ["**/*.{js,mjs,cjs}"],
+    rules: {
+      "no-unused-vars": ["error", unusedVarsOptions],
+    },
+  },
   {
     files: ["**/*.{ts,tsx,cts,mts}"],
     plugins: {
@@ -12,38 +28,14 @@ export default defineConfig(
     languageOptions: {
       parser: typescriptParser,
       parserOptions: {
-        // projectService replaces `project: true` — uses TS language service
-        // for faster, more accurate type-aware linting in monorepos (stable TS-ESLint v8+)
         projectService: true,
-        tsconfigRootDir: import.meta.dirname,
-        allowAutomaticSingleRunInference: true,
-        ecmaFeatures: {
-          jsx: true,
-        },
-        cacheLifetime: {
-          glob: "Infinity",
-        },
-        warnOnUnsupportedTypeScriptVersion: false,
-      },
-      globals: {
-        React: "readonly",
       },
     },
-    extends: [eslint.configs.recommended],
+    extends: [tseslint.configs.eslintRecommended],
     rules: {
-      "no-mixed-operators": "off",
-
       // ── Unused vars ──────────────────────────────────────────────────────
       "no-unused-vars": "off",
-      "@typescript-eslint/no-unused-vars": [
-        "error",
-        {
-          vars: "all",
-          caughtErrors: "all",
-          varsIgnorePattern: "^_",
-          argsIgnorePattern: "^_",
-        },
-      ],
+      "@typescript-eslint/no-unused-vars": ["error", unusedVarsOptions],
       "@typescript-eslint/no-unused-expressions": "error",
 
       // ── Redeclaration ────────────────────────────────────────────────────
@@ -51,9 +43,8 @@ export default defineConfig(
       // overload signature as a redeclaration of the implementation - which
       // is not a mistake, it is the only way to write an overloaded function.
       // The typescript-eslint version understands overloads and declaration
-      // merging, and is the documented replacement. Same swap as
-      // `no-unused-vars` above.
-      "no-redeclare": "off",
+      // merging, and is the documented replacement (`eslintRecommended`
+      // turns the core rule off).
       "@typescript-eslint/no-redeclare": "error",
 
       // ── Imports / types ──────────────────────────────────────────────────
@@ -163,20 +154,6 @@ export default defineConfig(
 
       // ── Class / constructor ──────────────────────────────────────────────
       "@typescript-eslint/no-useless-constructor": "error",
-    },
-  },
-
-  // ── JS files: disable type-checked rules ──────────────────────────────────
-  {
-    files: ["**/*.js"],
-    extends: [tseslint.configs.disableTypeChecked],
-    rules: {
-      "@typescript-eslint/explicit-function-return-type": "off",
-      "@typescript-eslint/no-deprecated": "off",
-      "@typescript-eslint/no-floating-promises": "off",
-      "@typescript-eslint/no-misused-promises": "off",
-      "@typescript-eslint/await-thenable": "off",
-      "@typescript-eslint/require-await": "off",
     },
   },
 

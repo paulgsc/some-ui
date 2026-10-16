@@ -1,7 +1,4 @@
 import { uiRecommended } from "@some-ui/eslint-kit"
-import tseslint from "typescript-eslint"
+import { defineConfig } from "eslint/config"
 
-export default tseslint.config(...uiRecommended, {
-  files: ["vite.config.ts"],
-  extends: [tseslint.configs.disableTypeChecked],
-})
+export default defineConfig([...uiRecommended])

@@ -8,8 +8,6 @@ packages:
   - crates/*
 overrides:
   "@types/react": ^19.0.4
-  "@eslint/core": 0.17.0
-  "@eslint/config-helpers": 0.4.2
   ws: ^8.21.1
   # fx-runner (via web-ext) pins shell-quote 1.7.3, which Dependabot cannot
   # bump; <= 1.8.3 is GHSA-affected (quote() leaves newlines in .op). One
