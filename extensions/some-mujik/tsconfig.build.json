@@ -1,8 +1,6 @@
 {
   "compilerOptions": {
-    // Next to this config, not in the outDir inherited from
-    // @some-ui/tsconfig (which resolves into packages/tsconfig/dist and is
-    // shared by every package on that chain, #1522).
+    // Next to this config, not in its dist/, which is what ships.
     "tsBuildInfoFile": "./tsconfig.build.tsbuildinfo",
     "jsx": "react-jsx"
   },

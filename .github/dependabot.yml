@@ -6,6 +6,11 @@ updates:
     schedule:
       interval: "weekly"
       day: "monday"
+    # Held below what typescript-eslint supports; the reason is on the
+    # catalog entry in pnpm-workspace.yaml.
+    ignore:
+      - dependency-name: "typescript"
+        versions: [">=6.1"]
     groups:
       wasm-crates:
         patterns:

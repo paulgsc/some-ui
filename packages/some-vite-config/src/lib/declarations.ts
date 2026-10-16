@@ -260,10 +260,9 @@ export function assertDeclarationSettings(
 }
 
 /**
- * The directory `paths` targets are relative to: `baseUrl` when set, else the
- * tsconfig that declared `paths` (which may be an extended one). The parser
- * records the latter as `pathsBasePath`, an internal field it has set since
- * TypeScript 4.1.
+ * The directory `paths` targets are relative to: the tsconfig that declared
+ * `paths` (which may be an extended one). The parser records it as
+ * `pathsBasePath`, an internal field it has set since TypeScript 4.1.
  */
 function pathsBaseOf(
   compilerOptions: ts.CompilerOptions,
@@ -271,7 +270,6 @@ function pathsBaseOf(
 ): string {
   // CompilerOptions' index signature reaches the internal field untyped.
   const pathsBasePath = compilerOptions["pathsBasePath"]
-  if (compilerOptions.baseUrl !== undefined) return compilerOptions.baseUrl
   return typeof pathsBasePath === "string" ? pathsBasePath : dirname(configFile)
 }
 

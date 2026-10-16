@@ -1,6 +1,7 @@
 {
   "extends": "@some-ui/tsconfig/rollupconfig.json",
   "compilerOptions": {
+    "types": ["node"],
     "declarationDir": "./",
     "composite": true,
     "rootDir": "./src",

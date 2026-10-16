@@ -32,7 +32,7 @@
     "eslint": ">=10.0.0"
   },
   "dependencies": {
-    "typescript": "^5.7.3"
+    "typescript": "catalog:"
   },
   "devDependencies": {
     "@eslint/compat": "2.1.1",
