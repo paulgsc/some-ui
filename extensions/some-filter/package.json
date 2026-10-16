@@ -9,20 +9,10 @@
   "devDependencies": {
     "@some-ui/tsconfig": "workspace:*",
     "@some-ui/eslint-kit": "workspace:*",
-    "@types/firefox-webext-browser": "^120.0.4",
+    "@types/firefox-webext-browser": "143.0.1",
     "vite": "^8.3.2"
   },
   "exports": {
-    ".": {
-      "import": {
-        "default": "./dist/esm/some-ui-utils.esm.js",
-        "types": "./dist/esm/index.d.ts"
-      },
-      "require": {
-        "default": "./dist/cjs/some-ui-utils.cjs.js",
-        "types": "./dist/cjs/index.d.ts"
-      }
-    },
     "./adapter/swatches": {
       "types": "./src/adapter/swatches/index.ts",
       "import": "./src/adapter/swatches/index.ts"
@@ -33,18 +23,9 @@
     },
     "./package.json": "./package.json"
   },
-  "files": [
-    "some-ui-utils*",
-    "./dist/src/**/*",
-    "index.d.ts",
-    "./dist/esm/**/*",
-    "./dist/cjs/**/*"
-  ],
   "homepage": "https://pgdev.maishatu.com/?tab=github",
   "keywords": [],
   "license": "MIT",
-  "main": "./dist/some-ui-utils.umd.js",
-  "module": "./dist/esm/some-ui-utils.esm.js",
   "name": "@some-extension/filter",
   "private": true,
   "repository": {
@@ -55,12 +36,12 @@
     "build": "vite build --configLoader runner",
     "build:chromium": "vite build --mode chromium --configLoader runner",
     "build:firefox": "vite build --mode firefox --configLoader runner",
-    "clean": "rimraf .turbo && rimraf node_modules && rimraf .eslintcache && pnpm clean:build",
-    "clean:build": "rimraf ./dist ./tsconfig.tsbuildinfo",
+    "clean": "rm -rf .turbo node_modules .eslintcache && pnpm clean:build",
+    "clean:build": "rm -rf ./dist ./tsconfig.tsbuildinfo",
     "dev": "vite --configLoader runner",
     "knip": "knip --directory \"$(git rev-parse --show-toplevel)\" --workspace \"$(git rev-parse --show-prefix | sed 's:/*$::')\"",
     "lint": "pnpm lint:js && pnpm prettier && pnpm typecheck",
-    "lint:js": "cross-env NODE_OPTIONS='--max_old_space_size=4096' eslint \"**/*.{js,mjs,ts,tsx}\" --cache",
+    "lint:js": "NODE_OPTIONS='--max_old_space_size=4096' eslint \"**/*.{js,mjs,ts,tsx}\" --cache",
     "package:source": "bash ../scripts/package-source.sh",
     "prettier": "prettier . --ignore-path $(git rev-parse --show-toplevel)/.prettierignore --check --cache",
     "prettier:fix": "prettier . --write",
@@ -74,7 +55,5 @@
   },
   "sideEffects": false,
   "type": "module",
-  "types": "index.d.ts",
-  "unpkg": "some-ui-utils.umd.js",
   "version": "1.1.0"
 }

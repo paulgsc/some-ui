@@ -14,8 +14,7 @@
       "types": "./dist/@some-ui/activity-catalog.d.ts",
       "import": "./dist/@some-ui/activity-catalog.es.js",
       "default": "./dist/@some-ui/activity-catalog.es.js"
-    },
-    "./style.css": "./dist/activity-catalog.css"
+    }
   },
   "files": [
     "dist"
@@ -36,8 +35,8 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json && vite build",
-    "clean": "rimraf .turbo && rimraf node_modules && rimraf .eslintcache && pnpm clean:build",
-    "clean:build": "rimraf ./dist ./tsconfig.build.tsbuildinfo ./tsconfig.tsbuildinfo",
+    "clean": "rm -rf .turbo node_modules .eslintcache && pnpm clean:build",
+    "clean:build": "rm -rf ./dist ./tsconfig.build.tsbuildinfo ./tsconfig.tsbuildinfo",
     "knip": "knip --directory \"$(git rev-parse --show-toplevel)\" --workspace \"$(git rev-parse --show-prefix | sed 's:/*$::')\"",
     "lint": "pnpm lint:js && pnpm prettier && pnpm typecheck",
     "lint:js": "eslint \"**/*.{js,mjs,ts,tsx}\" --cache",
@@ -48,7 +47,6 @@
   "type": "module",
   "types": "./dist/@some-ui/activity-catalog.d.ts",
   "version": "0.0.1",
-  "style": "./dist/activity-catalog.css",
   "sideEffects": [
     "*.css"
   ]

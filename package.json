@@ -13,8 +13,8 @@
     "url": "https://github.com/paulgsc/some-ui"
   },
   "scripts": {
-    "clean": "turbo clean && turbo daemon stop && rimraf dist && rimraf .turbo && rimraf .rollup.cache && rimraf node_modules",
-    "clean:build": "turbo clean:build && turbo daemon stop && rimraf dist",
+    "clean": "turbo clean && turbo daemon stop && rm -rf dist .turbo .rollup.cache node_modules",
+    "clean:build": "turbo clean:build && turbo daemon stop && rm -rf dist",
     "build": "scripts/with-limits.sh turbo run build --filter='!./crates/*'",
     "build:crates": "scripts/with-limits.sh turbo run build --filter='./crates/*'",
     "build:unsafe": "turbo run build --filter='!./crates/*'",
@@ -60,7 +60,6 @@
     "@types/node": "^26.0.1",
     "@types/react": "^19.0.4",
     "@types/react-dom": "^19.0.2",
-    "cross-env": "^10.1.0",
     "es-module-lexer": "3.0.2",
     "eslint": "^10.12.0",
     "happy-dom": "20.10.6",
@@ -71,17 +70,14 @@
     "prettier": "3.4.2",
     "react": "19.2.8",
     "react-dom": "19.2.8",
-    "rimraf": "6.0.1",
     "stylelint": "17.16.0",
     "stylelint-config-standard": "40.0.0",
     "stylelint-order": "8.1.2",
     "tsx": "^4.19.2",
+    "turbo": "^2.10.8",
     "typescript": "catalog:",
     "typescript-language-server": "4.3.3",
     "vite": "^8.3.2",
     "vitest": "^5.0.3"
-  },
-  "dependencies": {
-    "turbo": "^2.10.8"
   }
 }

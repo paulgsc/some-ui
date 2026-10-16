@@ -4,7 +4,7 @@ import { resolve } from "path"
 import type { ViteConfigOptions } from "@/types/index.js"
 import { resolveEntryPath } from "@/lib/build-config.js"
 
-import { generatePackageJsonFields } from "./generate.js"
+import { cssFilePath, generatePackageJsonFields } from "./generate.js"
 
 /**
  * Refuses to touch a package.json that does not belong to the package being
@@ -86,14 +86,24 @@ export function updatePackageJson(
         ? existingPackageJson.name
         : options.packageName
 
-    // Generate new fields
-    const newFields = generatePackageJsonFields(options, realPackageName)
+    // Runs after the bundle is written, so the stylesheet is on disk if the
+    // build emitted one. (An explicit syncPackageJson reads the last build.)
+    const emitsCss = existsSync(
+      resolve(packageRoot, cssFilePath(realPackageName))
+    )
+    const newFields = generatePackageJsonFields(options, {
+      realPackageName,
+      emitsCss,
+    })
 
     // Merge with existing package.json, new fields take precedence - but an
     // undefined newField (e.g. `type` when the package isn't ESM-only) must
     // not overwrite an existing value, so it's omitted rather than spread.
+    // `style` is the exception: it is this generator's to remove when the
+    // build has no stylesheet. `unpkg` pointed at a UMD build nothing makes.
+    const { style: _style, unpkg: _unpkg, ...kept } = existingPackageJson
     const updatedPackageJson: Record<string, unknown> = {
-      ...existingPackageJson,
+      ...kept,
       ...omitUndefined(newFields),
     }
 

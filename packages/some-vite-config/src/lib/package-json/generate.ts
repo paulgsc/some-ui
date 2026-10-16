@@ -32,21 +32,31 @@ function cssBaseName(realPackageName: string): string {
   return parts[parts.length - 1] ?? realPackageName
 }
 
+/** Where the build writes the package's stylesheet, if it writes one. */
+export function cssFilePath(realPackageName: string): string {
+  return `dist/${cssBaseName(realPackageName)}.css`
+}
+
 /**
  * Pure: derives the build-output package.json fields from the vite options.
  * No filesystem access, no logging - safe to call from anywhere, including
- * static-analysis tooling. The filesystem write lives in ./write.ts.
+ * static-analysis tooling. The filesystem write lives in ./write.ts, which
+ * also says whether the build emitted a stylesheet: most packages have no
+ * CSS, and a `style` field or `./style.css` export would point at nothing.
  */
 export function generatePackageJsonFields(
   options: ViteConfigOptions,
-  realPackageName: string = options.packageName
+  {
+    realPackageName = options.packageName,
+    emitsCss,
+  }: { realPackageName?: string; emitsCss: boolean }
 ): PackageJsonFields {
   const { packageName, formats = DEFAULT_FORMATS } = options
 
   const hasESM = formats.includes("es")
   const hasCJS = formats.includes("cjs")
   const hasUMD = formats.includes("umd")
-  const cssFileName = `dist/${cssBaseName(realPackageName)}.css`
+  const cssFileName = cssFilePath(realPackageName)
 
   // Generate file paths
   const distFiles: Array<string> = []
@@ -83,7 +93,7 @@ export function generatePackageJsonFields(
       }
       distFiles.push(`dist/${name}.cjs.js`, `dist/${name}.d.ts`)
     }
-    if (entry.subpath === "." && (hasESM || hasCJS)) {
+    if (emitsCss && entry.subpath === "." && (hasESM || hasCJS)) {
       exports["./style.css"] = `./${cssFileName}`
     }
   }
@@ -100,7 +110,7 @@ export function generatePackageJsonFields(
         : undefined,
     module: hasESM ? `./dist/${packageName}.es.js` : undefined,
     types: `./dist/${packageName}.d.ts`,
-    style: `./${cssFileName}`,
+    style: emitsCss ? `./${cssFileName}` : undefined,
     exports: Object.keys(exports).length > 0 ? exports : undefined,
     files: ["dist"],
     type: hasESM && !hasCJS ? "module" : undefined,
