@@ -29,22 +29,6 @@
       "cache": true,
       "env": ["SOME_UI_PRUNED_WORKSPACE", "SOME_UI_PROFILE"]
     },
-    "build:docs": {
-      "cache": true,
-      "outputs": [".contentlayer/**"]
-    },
-    "watch:build": {
-      "dependsOn": ["^build", "^build:docs"],
-      "cache": false,
-      "persistent": true
-    },
-    "watch:lint": {
-      "persistent": true,
-      "cache": false
-    },
-    "type-check": {
-      "cache": false
-    },
     "lint": {
       "cache": false
     },
@@ -62,10 +46,6 @@
       "cache": false,
       "outputs": []
     },
-    "lint:fix": {
-      "cache": false,
-      "outputs": []
-    },
     "lint:js": {
       "dependsOn": ["^build", "@some-ui/eslint-kit#build"],
       "cache": false,
@@ -76,21 +56,11 @@
       "cache": false,
       "outputs": []
     },
-    "lint:md": {
-      "cache": false,
-      "outputs": []
-    },
     "prettier": {
       "cache": false
     },
     "typecheck": {
       "dependsOn": ["^build"]
-    },
-    "check": {
-      "cache": false
-    },
-    "check-file": {
-      "cache": false
     },
     "test": {
       "cache": false,
@@ -101,20 +71,8 @@
         "LD_LIBRARY_PATH"
       ]
     },
-    "test:invariants": {
-      "dependsOn": ["^build"],
-      "inputs": ["tests/browser-invariants/**", "playwright.config.ts"],
-      "outputs": ["playwright-report/**", "test-results/**"],
-      "cache": false,
-      "passThroughEnv": [
-        "PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH",
-        "PLAYWRIGHT_BROWSERS_PATH",
-        "PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD",
-        "LD_LIBRARY_PATH"
-      ]
-    },
     "test:e2e": {
-      "dependsOn": ["build", "^test:invariants"],
+      "dependsOn": ["build"],
       "inputs": ["src/**", "tests/**", "playwright.config.ts"],
       "outputs": ["playwright-report/**", "test-results/**"],
       "cache": false,

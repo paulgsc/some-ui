@@ -2,8 +2,8 @@
  * Browser API runtime invariants.
  *
  * These tests pin assumptions that ALL extension workspaces make about the
- * browser API. They are agnostic to any specific extension and must pass
- * before any extension's E2E suite runs (see turbo.json `test:e2e` → `^test:invariants`).
+ * browser API. They are agnostic to any specific extension, and run from
+ * @some-extension/common's `test` script.
  *
  * Philosophy:
  *   TypeScript type declarations describe INTENDED behaviour. This suite

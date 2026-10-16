@@ -11,4 +11,4 @@ if [ "${CLAUDE_CODE_REMOTE:-}" = "true" ]; then
   exit 0
 fi
 
-pnpm dlx lint-staged --concurrent false
+pnpm exec lint-staged --concurrent false

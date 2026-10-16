@@ -8,7 +8,6 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json && vite build",
-    "watch:lint": "eslint --watch --cache --fix \"**/*.{js,mjs,ts,tsx}\"",
     "clean": "rimraf .turbo && rimraf node_modules && rimraf .eslintcache && pnpm clean:build",
     "clean:build": "rimraf ./dist ./tsconfig.build.tsbuildinfo ./tsconfig.tsbuildinfo",
     "generate:proposition-register": "tsx scripts/generate-proposition-register.ts",

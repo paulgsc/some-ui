@@ -122,7 +122,7 @@ jobs:
       PACKAGE_NAME: ${{ needs.detect.outputs.package_name }}
       # Job-wide, not only on the install: a later `pnpm` call re-runs the
       # root `prepare` script, which installs the git hooks, and the
-      # pre-commit and pre-push hooks need a pnpm that is only on PATH inside
+      # pre-commit and commit-msg hooks need a pnpm that is only on PATH inside
       # `nix develop`. With HUSKY=0 husky neither installs nor runs them, so
       # create-pull-request's commit and push go through.
       HUSKY: "0"

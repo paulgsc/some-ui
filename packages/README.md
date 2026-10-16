@@ -28,7 +28,7 @@ new package against these two rather than an arbitrary sibling.
   `dependencies`. Get this wrong and you get duplicate-React or
   duplicate-store bugs at the consumer, not at build time.
 - **Scripts** (names matter — see §4 on turbo): `build`,
-  `watch:build`, `watch:lint`, `clean`, `clean:build`, `lint`, `lint:js`,
+  `clean`, `clean:build`, `lint`, `lint:js`,
   `prettier`, `typecheck`. Add `test` if the package ships tests.
 - **`sideEffects`:** `["*.css"]` if the package ships a stylesheet, `false`
   otherwise — required for consumers' bundlers to tree-shake the package.
@@ -73,7 +73,7 @@ export default createViteConfig({
   treats as the source of truth for "what does this package export."
 - **Turbo needs no per-package registration.** `turbo.json` at the repo
   root defines tasks by _name_ (`build`, `lint`, `typecheck`, `test`,
-  `clean`, `watch:build`, `watch:lint`, ...) with `dependsOn: ["^build"]`
+  `clean`, ...) with `dependsOn: ["^build"]`
   graph edges. Any workspace that defines a same-named script in its
   `package.json` is automatically picked up — the scaffold only has to
   match the script names in §1, not touch `turbo.json` itself. Only add a

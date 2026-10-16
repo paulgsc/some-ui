@@ -16,8 +16,7 @@ from this source archive on a clean machine using only public package registries
 ├── package.json         # root workspace manifest
 ├── pnpm-workspace.yaml  # monorepo workspace layout
 ├── pnpm-lock.yaml       # pinned dependency versions
-├── tsconfig.json
-└── tsconfig.build.json
+└── tsconfig.json
 ```
 
 ## Prerequisites
