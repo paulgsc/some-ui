@@ -11,10 +11,15 @@ const unusedVarsOptions = {
 } as const
 
 // The core rules `eslintRecommended` switches off on TS files because the
-// compiler reports them, at their `@eslint/js` recommended settings.
+// compiler reports them, at their `@eslint/js` recommended settings. Not
+// no-redeclare or no-dupe-class-members: both report TypeScript overloads
+// (the TS block uses @typescript-eslint/no-redeclare instead).
+const overloadBlindRules = new Set(["no-redeclare", "no-dupe-class-members"])
 const compilerOwnedCoreRules = Object.fromEntries(
-  Object.entries(eslint.configs.recommended.rules).filter(([rule]) =>
-    Object.hasOwn(tseslint.configs.eslintRecommended.rules ?? {}, rule)
+  Object.entries(eslint.configs.recommended.rules).filter(
+    ([rule]) =>
+      Object.hasOwn(tseslint.configs.eslintRecommended.rules ?? {}, rule) &&
+      !overloadBlindRules.has(rule)
   )
 )
 
