@@ -22,9 +22,9 @@ const mockAlarmsApi = {
 }
 
 const mockStorageApi = {
-  local: { get: vi.fn(), set: vi.fn() },
-  sync: { get: vi.fn(), set: vi.fn() },
-  session: { get: vi.fn(), set: vi.fn() },
+  local: { get: vi.fn(), set: vi.fn(), remove: vi.fn() },
+  sync: { get: vi.fn(), set: vi.fn(), remove: vi.fn() },
+  session: { get: vi.fn(), set: vi.fn(), remove: vi.fn() },
   onChanged: { addListener: vi.fn(), removeListener: vi.fn() },
 }
 
