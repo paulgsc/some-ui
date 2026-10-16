@@ -24,7 +24,6 @@ const session = mkSession()
 const META = {
   channelName: "Some Channel",
   duration: "12:34",
-  uploadDate: "2 days ago",
 } as const
 
 const STATES: ReadonlyArray<ViewState> = [

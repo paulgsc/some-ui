@@ -24,7 +24,7 @@ const MASKED: RenderModel = project({ kind: "masked", session: sessionOf(1) })
 const META: RenderModel = project({
   kind: "meta",
   session: sessionOf(1),
-  meta: { channelName: "Chan", duration: "1:23", uploadDate: "3 days ago" },
+  meta: { channelName: "Chan", duration: "1:23" },
 })
 const REVEALED: RenderModel = project({
   kind: "revealed",
@@ -162,7 +162,7 @@ describe("render", () => {
     actuator.realize([render(K, META, [{ el, role: "anchor" }])])
     expect(el.dataset["boyo"]).toBe("1")
     expect(veilOf(el)?.textContent).toContain("Chan")
-    expect(veilOf(el)?.textContent).toContain("1:23 · 3 days ago")
+    expect(veilOf(el)?.textContent).toContain("1:23")
     expect(el.querySelectorAll(".boyo-veil")).toHaveLength(1)
   })
 

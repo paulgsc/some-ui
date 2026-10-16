@@ -10,10 +10,14 @@
  * payloads live here: what the extract layer produces, with no session.
  */
 
+/**
+ * What a card may present about itself before its title. Deliberately no date:
+ * the raw upload string is evidence (`core/observation.ts`), never something a
+ * veil may render (QD4, #1384).
+ */
 export type MetaData = {
   readonly channelName: string | null
   readonly duration: string | null
-  readonly uploadDate: string | null
 }
 
 export type TitleData = {

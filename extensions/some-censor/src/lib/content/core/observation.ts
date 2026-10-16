@@ -3,12 +3,10 @@
  * record, as opposed to anything presentable.
  *
  * Raw vendor text lives here and only here: `uploadDate` in particular is
- * the string exactly as YouTube rendered it, kept because the observability
- * corpus records it and because `project()` still renders it for
- * parity. #1384 (QC2) is the story that makes a raw date structurally unable
- * to reach the render model; this type is the observation half of that
- * split, so QC2 becomes a change to what `project()` may read, not a new
- * boundary.
+ * the string exactly as YouTube rendered it. It is evidence for the maturity
+ * estimate (`maturity/maturity.ts`) and the observability corpus, and it
+ * cannot reach a veil: the presentable `MetaData` has no date field (QD4,
+ * #1384).
  */
 
 import type { BoyoSurface } from "@censor/lib/content/layout/surface"

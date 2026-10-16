@@ -49,6 +49,7 @@ import {
 import type { ViewState } from "./fsm"
 import type { BoyoSurface } from "./layout/surface"
 import { surfaceOf } from "./layout/surface"
+import { estimate, PARSER } from "./maturity/maturity"
 
 // ── Vocabulary ───────────────────────────────────────────────────────────────
 
@@ -761,7 +762,14 @@ export class BoyoObservability {
     this.recorder.record({
       kind: "date.observed",
       subject: surface,
-      detail: { raw, renderer },
+      // What the parser made of the form, independent of any boundary, so an
+      // export shows which forms it holds as unverified (#1384).
+      detail: {
+        raw,
+        renderer,
+        estimate: estimate(raw, Date.now()),
+        parser: PARSER,
+      },
     })
     // Snapshots are never shed by the persistence byte budget, unlike events —
     // so this is the copy of the corpus that survives a long browsing session.
