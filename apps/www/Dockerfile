@@ -85,7 +85,14 @@ ENV PATH="/root/.rustup/toolchains/stable-x86_64-unknown-linux-musl/bin:${PATH}"
 #
 RUN rustup target add wasm32-unknown-unknown
 
-RUN cargo install wasm-pack
+#
+# --locked: use the dependency versions wasm-pack was released with. Unlocked,
+# cargo re-resolves ~270 transitive crates on every image build and fails when
+# one is yanked (zip 2.x, via binary-install: "failed to select a version for
+# the requirement `zip = "^2.1.3"`"); a yanked version a lockfile already
+# names is still used.
+#
+RUN cargo install wasm-pack --locked
 
 #
 # Restore installed dependencies
