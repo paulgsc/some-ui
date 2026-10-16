@@ -115,8 +115,6 @@ pnpm install
 pnpm --filter www dev
 ```
 
-There is no root `dev` script: run each workspace's own, filtered as above.
-
 ## Common workflows
 
 ### Work on one workspace

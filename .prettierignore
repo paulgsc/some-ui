@@ -152,7 +152,6 @@ temp/
 *.tmp
 
 # Misc generated/deployment
-.fix
 certs/*
 *.log
 

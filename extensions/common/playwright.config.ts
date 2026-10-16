@@ -4,7 +4,7 @@
  * Scope: headless Chromium only — no extension loading.
  * Purpose: assert that browser API behaviour at runtime matches the compile-time
  * assumptions baked into all extension workspaces. These tests are CI-portable
- * and must pass before any extension's test:e2e suite runs (turbo dependency).
+ * and run from this workspace's `test` script.
  *
  * Key decisions:
  *   1. Headless Chromium via the standard `devices["Desktop Chrome"]` project.
