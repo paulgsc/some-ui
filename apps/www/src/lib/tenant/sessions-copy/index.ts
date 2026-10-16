@@ -23,7 +23,9 @@
  * identical session the account already held: that costs a copy, never makes
  * a duplicate.
  *
- * Nothing is deleted locally.
+ * Nothing here deletes, locally or remotely. `confirmHeld` only reads: it
+ * says which device sessions the account holds exactly as the device does,
+ * so the phone's caller can let its own copies go (`lib/home-link/sessions`).
  */
 
 import { StaleAuthorityError } from "@/lib/authority"
@@ -317,4 +319,75 @@ export async function copySessionsTo(
     throw new Error(`a phone copy cannot be ${outcome.kind}`)
   }
   return { outcome, alreadyThere: plan.alreadyThere }
+}
+
+/**
+ * What `confirmHeld` found, filled as it goes so a stop keeps what it had
+ * already confirmed.
+ */
+export type HeldReport = {
+  /** Device sessions the account holds exactly as the device does. */
+  held: Array<string>
+  /** Copied, but the account's copy no longer matches the device's. */
+  differs: Array<string>
+  /** No complete copy the account still holds. */
+  notThere: Array<string>
+}
+
+export function emptyHeldReport(): HeldReport {
+  return { held: [], differs: [], notThere: [] }
+}
+
+/** The same instant, however each side spells it; or both absent. */
+function sameStamp(
+  a: string | null | undefined,
+  b: string | null | undefined
+): boolean {
+  if (a == null || b == null) return a == null && b == null
+  return Date.parse(a) === Date.parse(b)
+}
+
+/** Everything a copy carries: its content and what `restoration` restores. */
+function sameRecord(device: SessionRecord, account: SessionRecord): boolean {
+  return (
+    sameContent(device, account) &&
+    device.status === account.status &&
+    device.totalDurationMs === account.totalDurationMs &&
+    (device.finalElapsedMs ?? null) === (account.finalElapsedMs ?? null) &&
+    canonical(device.layout) === canonical(account.layout) &&
+    sameStamp(device.startedAt, account.startedAt) &&
+    sameStamp(device.completedAt, account.completedAt)
+  )
+}
+
+/**
+ * Which of `local` the account `remote` holds as the device does now: a
+ * complete copy in the receipt, read back (`GET /sessions/:id`) and
+ * matching. Reads only. Throws what a read throws, with `report` holding
+ * what was confirmed before it.
+ */
+export async function confirmHeld(
+  local: ReadonlyArray<SessionRecord>,
+  remote: SessionsStore,
+  report: HeldReport,
+  storage: StorageAdapter = browserLocalStorage
+): Promise<void> {
+  const receipt = readReceipt(storage)
+  for (const session of local) {
+    const copies = (receipt[session.id] ?? []).filter(
+      (copy): copy is Copy & { remoteId: string } =>
+        copy.complete && copy.remoteId !== null
+    )
+    let verdict: "held" | "differs" | "notThere" = "notThere"
+    for (const copy of copies) {
+      const there = await remote.get(copy.remoteId)
+      if (there === null) continue
+      if (sameRecord(session, there)) {
+        verdict = "held"
+        break
+      }
+      verdict = "differs"
+    }
+    report[verdict].push(session.id)
+  }
 }

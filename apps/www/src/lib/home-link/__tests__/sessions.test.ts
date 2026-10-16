@@ -2,11 +2,13 @@
  * The phone's copy of its sessions to its paired home (LA8): only session
  * records, once each, through the link's `send`; a second copy sends
  * nothing new; a `401` is the pairing's, never the app's sign-out; a stop
- * keeps what was copied and says so. Home is a second device backend, which
- * answers `/sessions` as `file_host` does.
+ * keeps what was copied and says so. After a copy, the finished sessions
+ * home holds exactly as the phone does leave the phone, and nothing else
+ * does. Home is a second device backend, which answers `/sessions` as
+ * `file_host` does.
  */
 import { openNodeSqlite } from "@/test-support/node-sqlite-driver"
-import { beforeEach, describe, expect, it } from "vitest"
+import { beforeEach, describe, expect, it, vi } from "vitest"
 
 import { openDeviceBackend } from "@/lib/device-backend/backend"
 import { SyncStoppedError } from "@/lib/device-backend/home-sync"
@@ -14,14 +16,78 @@ import type { DeviceBackend } from "@/lib/device-backend/interceptor"
 import { createDeviceFetch } from "@/lib/device-backend/interceptor"
 import type { HomeAnswer } from "@/lib/device-backend/native-http"
 import type { HomeSend } from "@/lib/home-link/runtime"
-import { describeCopy, homeTransport } from "@/lib/home-link/sessions"
+import {
+  copySessionsHome,
+  describeCopy,
+  homeTransport,
+} from "@/lib/home-link/sessions"
 import { createHttpSessionsRepository } from "@/lib/tenant/http-sessions-repository"
 import { copySessionsTo } from "@/lib/tenant/sessions-copy"
+import type * as TenantStorage from "@/lib/tenant/storage"
 import type { StorageAdapter } from "@/lib/tenant/storage"
 import { createInMemoryStorage } from "@/lib/tenant/storage"
 import type { SessionRecord } from "@/lib/tenant/types"
 
 const BASE = "https://home.example/api/v1"
+
+/**
+ * What the copy from Settings reaches through module state: the link (its
+ * `send` is the test's), the phone's own sessions, and the receipt.
+ */
+type Phone = {
+  sessions: Array<SessionRecord>
+  send: HomeSend | null
+  receipt: StorageAdapter | null
+}
+
+const phone = vi.hoisted(
+  (): Phone => ({ sessions: [], send: null, receipt: null })
+)
+
+vi.mock("@/lib/home-link/index", () => ({
+  homeLink: (): {
+    send: <T>(
+      run: (send: HomeSend) => Promise<T>
+    ) => Promise<{ kind: "done"; value: T }>
+  } => ({
+    send: async <T>(
+      run: (send: HomeSend) => Promise<T>
+    ): Promise<{ kind: "done"; value: T }> => {
+      if (phone.send === null) throw new Error("no send")
+      return { kind: "done", value: await run(phone.send) }
+    },
+  }),
+}))
+vi.mock("@/lib/tenant/queries", () => ({
+  sessionsRepository: {
+    list: (): Promise<Array<SessionRecord>> =>
+      Promise.resolve([...phone.sessions]),
+    removeMany: (ids: ReadonlyArray<string>): Promise<void> => {
+      phone.sessions = phone.sessions.filter((s) => !ids.includes(s.id))
+      return Promise.resolve()
+    },
+  },
+}))
+vi.mock("@/lib/device-backend/storage-view", () => ({
+  deviceStorage: { refresh: (): Promise<void> => Promise.resolve() },
+}))
+vi.mock("@/lib/tenant/storage", async (actual) => {
+  const real = await actual<typeof TenantStorage>()
+  const current = (): StorageAdapter => {
+    if (phone.receipt === null) throw new Error("no receipt")
+    return phone.receipt
+  }
+  const browserLocalStorage: StorageAdapter = {
+    getItem: (key) => current().getItem(key),
+    setItem: (key, value) => {
+      current().setItem(key, value)
+    },
+    removeItem: (key) => {
+      current().removeItem(key)
+    },
+  }
+  return { ...real, browserLocalStorage }
+})
 
 let home: DeviceBackend
 let receipt: StorageAdapter
@@ -33,6 +99,9 @@ beforeEach(async () => {
   )
   receipt = createInMemoryStorage()
   sent = []
+  phone.sessions = []
+  phone.send = send
+  phone.receipt = receipt
 })
 
 const homeFetch = (): typeof fetch =>
@@ -140,5 +209,70 @@ describe("copying the phone's sessions home", () => {
       homeTransport(send)("/sessions/a", { method: "DELETE" })
     ).rejects.toThrow("a sessions copy does not DELETE")
     expect(sent).toEqual([])
+  })
+})
+
+describe("letting the phone's copies go once home holds them", () => {
+  const NOW = new Date("2026-10-15T10:00:00Z")
+  const today = (id: string): SessionRecord => ({
+    ...onPhone(id, "completed"),
+    completedAt: new Date(NOW.getTime() - 60_000).toISOString(),
+  })
+
+  it("lets go of finished sessions home holds, and keeps unfinished and today's", async () => {
+    phone.sessions = [
+      onPhone("a", "completed"),
+      onPhone("b", "scheduled"),
+      today("c"),
+    ]
+    let refreshed = 0
+    const result = await copySessionsHome(
+      BASE,
+      (): void => {
+        refreshed += 1
+      },
+      NOW
+    )
+
+    expect(result).toEqual({
+      ok: true,
+      line: "Copied 3 sessions to home.example. home.example holds 1 session that has now left this phone.",
+    })
+    expect(phone.sessions.map((s) => s.id)).toEqual(["b", "c"])
+    expect(refreshed).toBe(1)
+    // What left the phone is still on home, as it was.
+    const there = await createHttpSessionsRepository(homeTransport(send)).list()
+    expect(there.find((s) => s.name === "Session a")).toMatchObject({
+      status: "completed",
+      completedAt: "2026-10-14T09:10:00.000Z",
+    })
+  })
+
+  it("keeps a session that changed since it was copied", async () => {
+    phone.sessions = [onPhone("a", "completed")]
+    await copy(phone.sessions)
+    phone.sessions = [
+      {
+        ...onPhone("a", "completed"),
+        name: "Renamed",
+        updatedAt: "2026-10-14T12:00:00.000Z",
+      },
+    ]
+    const result = await copySessionsHome(BASE, () => undefined, NOW)
+    expect(result.line).toBe(
+      "Copied 0 sessions to home.example. 1 session was already there. 1 session changed since it was copied and stays here."
+    )
+    expect(phone.sessions.map((s) => s.id)).toEqual(["a"])
+  })
+
+  it("keeps everything when home can't be read back", async () => {
+    phone.sessions = [onPhone("a", "completed")]
+    phone.send = (method, path, body): Promise<HomeAnswer> =>
+      method === "GET" && path !== "/sessions"
+        ? Promise.reject(new SyncStoppedError())
+        : send(method, path, body)
+    const result = await copySessionsHome(BASE, () => undefined, NOW)
+    expect(result.line).toBe("Copied 1 session to home.example.")
+    expect(phone.sessions.map((s) => s.id)).toEqual(["a"])
   })
 })

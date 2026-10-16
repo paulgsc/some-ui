@@ -29,6 +29,7 @@ import type { SqlDriver, SqlRow, SqlValue } from "@/lib/device-backend/sql"
 import { num, numOrNull, one, text, textOrNull } from "@/lib/device-backend/sql"
 import { budgetedAnswer } from "@/lib/device-backend/storage"
 import { touchedToday } from "@/lib/study-nudge"
+import type { SessionRecord } from "@/lib/tenant/types"
 
 const STATUSES = ["draft", "scheduled", "active", "paused", "completed"]
 const LAYOUT_MODES = ["basic", "advanced"]
@@ -179,6 +180,18 @@ function layoutField(body: Record<string, unknown>): string | null | undefined {
 export type RemovableSession = { id: string; name: string; finishedAt: string }
 
 /**
+ * Whether the phone may let its copy of `session` go, to make room or once
+ * home or an archive holds it: finished, and not one the study card and
+ * nudge read as studied today. Unfinished work always stays.
+ */
+export function mayLeavePhone(
+  session: Pick<SessionRecord, "status" | "startedAt" | "completedAt">,
+  now: Date
+): boolean {
+  return session.status === "completed" && !touchedToday(session, now)
+}
+
+/**
  * The session the app offers to remove when the phone is full: the oldest
  * finished one that is not `spare`, and never one the study card and nudge
  * read as studied today.
@@ -200,7 +213,11 @@ export async function oldestRemovable(
       completedAt: textOrNull(row, "completed_at") ?? undefined,
       finishedAt: textOrNull(row, "completed_at") ?? text(row, "updated_at"),
     }))
-    .filter((row) => row.id !== spare && !touchedToday(row, new Date(nowMs)))
+    .filter(
+      (row) =>
+        row.id !== spare &&
+        mayLeavePhone({ ...row, status: "completed" }, new Date(nowMs))
+    )
     .sort((a, b) => Date.parse(a.finishedAt) - Date.parse(b.finishedAt))
   const oldest = removable.at(0)
   return oldest === undefined

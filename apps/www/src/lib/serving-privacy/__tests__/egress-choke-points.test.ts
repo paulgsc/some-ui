@@ -233,6 +233,8 @@ function networkGlobalUses(path: string, text: string): Array<string> {
  */
 const TRANSFER_CALLERS: Record<string, ReadonlyArray<string>> = {
   copySessionsTo: ["lib/home-link/sessions.ts"],
+  // What decides which phone sessions home holds, so they may leave it.
+  confirmHeld: ["lib/home-link/sessions.ts"],
   useCopyDeviceSessions: ["components/settings/data-home-section.tsx"],
   copyDeviceSessionsAndRefresh: ["lib/tenant/hooks.ts"],
   copyDeviceSessions: ["lib/tenant/sessions-transfer/index.ts"],

@@ -112,6 +112,7 @@ const DEVICE_MODULES = [
   "apps/www/src/lib/journal-share/**",
   "apps/www/src/lib/reflection-voice/**",
   "apps/www/src/lib/scene-voice/**",
+  "apps/www/src/lib/session-archive/**",
   "apps/www/src/lib/share-files/**",
   "apps/www/src/lib/device-backend/**",
   "apps/www/src/lib/device-speech/**",
@@ -192,6 +193,11 @@ export const paths: PathRules<Profile> = definePaths<Profile>({
       modules: ["apps/www/src/lib/web-surface/hangul/**"],
       profiles: ["lan", "pages"],
       why: "Hangul Honeycomb's panel, a desktop keyboard game the phone has no counterpart for: only the web door (src/lib/web-surface) binds it, and not in the Android app's build",
+    },
+    {
+      modules: ["apps/www/src/lib/tenant/session-search.ts"],
+      profiles: [MOBILE_PROFILE],
+      why: "searching a list of sessions in hand, read only by the Android app's browse of its home server's sessions (src/components/settings/device-home-sessions.tsx)",
     },
     {
       modules: DEVICE_MODULES,

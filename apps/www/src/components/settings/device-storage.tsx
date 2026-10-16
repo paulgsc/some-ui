@@ -7,14 +7,19 @@ import type { JSX } from "react"
 import { useEffect, useSyncExternalStore } from "react"
 import { formatSize } from "@some-ui/core-utils"
 import { Alert, AlertDescription, AlertTitle, Button } from "@some-ui/shared"
+import { useQueryClient } from "@tanstack/react-query"
 import { HardDrive } from "lucide-react"
+import { toast } from "sonner"
 
 import type { RemovableSession } from "@/lib/device-backend/handlers/sessions"
+import { mayLeavePhone } from "@/lib/device-backend/handlers/sessions"
 import type { DeviceStorageView } from "@/lib/device-backend/storage-view"
 import { deviceStorage } from "@/lib/device-backend/storage-view"
-import { useIntent, useIntentEffect } from "@/lib/intent"
+import { useAsyncIntent, useIntent, useIntentEffect } from "@/lib/intent"
 import { IntentButton } from "@/lib/intent/render"
-import { useDeleteSession } from "@/lib/tenant"
+import type { Archived } from "@/lib/session-archive"
+import { letGoArchived, shareArchive } from "@/lib/session-archive"
+import { useDeleteSession, useSessions } from "@/lib/tenant"
 
 function useDeviceStorage(): DeviceStorageView | null {
   const view = useSyncExternalStore(
@@ -43,6 +48,12 @@ export const DeviceStorageSummary = (): JSX.Element | null => {
         {formatSize(quotaBytes)}. When it&apos;s full, a new save waits until
         you choose something to remove.
       </p>
+      <p className="text-muted-foreground text-xs">
+        Nothing leaves this phone unless you send it. Sending is how you keep it
+        from filling up: once your home server confirms it holds your finished
+        sessions, or you confirm an archive of them arrived, their space here is
+        freed.
+      </p>
     </div>
   )
 }
@@ -62,8 +73,9 @@ const RemoveOffer = ({
     <>
       <p>
         Remove your oldest finished session, “{session.name}” (finished{" "}
-        {finishedOn(session.finishedAt)}), then try again? Sessions aren&apos;t
-        synced anywhere yet, so it will be gone.
+        {finishedOn(session.finishedAt)}), then try again? Unless you copied it
+        to your home server or archived it, it will be gone. Copying or
+        archiving finished sessions frees their space without losing them.
       </p>
       <div className="flex gap-2">
         <IntentButton
@@ -137,6 +149,59 @@ export const DeviceStoragePrompt = (): JSX.Element | null => {
           </AlertDescription>
         </Alert>
       )}
+    </div>
+  )
+}
+
+const sessions = (n: number): string =>
+  `${n} finished session${n === 1 ? "" : "s"}`
+
+/**
+ * The finished sessions out through the share sheet as one file (Drive,
+ * say), for someone without a home server (`lib/session-archive`). Android
+ * says "shared" once an app is picked, even if the person backs out of it,
+ * so the sessions leave the phone only once they say the file arrived.
+ */
+export const DeviceArchive = (): JSX.Element | null => {
+  const queryClient = useQueryClient()
+  const { data } = useSessions()
+  const finished = (data ?? []).filter((s) => mayLeavePhone(s, new Date()))
+  const share = useAsyncIntent((_: undefined) => shareArchive(), {
+    presentation: "interactive",
+  })
+  const letGo = useAsyncIntent(
+    (sent: ReadonlyArray<Archived>) => letGoArchived(sent),
+    { presentation: "interactive" }
+  )
+  useIntentEffect(share, ({ outcome, sent }) => {
+    if (outcome !== "shared" || sent.length === 0) return
+    if (
+      confirm(
+        `Did the archive arrive? OK lets the ${sessions(sent.length)} in it go from this phone; Cancel keeps them here.`
+      )
+    )
+      letGo.start(sent)
+  })
+  useIntentEffect(letGo, (left) => {
+    void queryClient.invalidateQueries()
+    if (left > 0) toast.success(`${sessions(left)} left this phone.`)
+  })
+  if (finished.length === 0) return null
+  return (
+    <div className="space-y-1">
+      <IntentButton
+        state={share.state}
+        onPress={() => share.start(undefined)}
+        variant="outline"
+        size="sm"
+        idleLabel={`Archive ${sessions(finished.length)}...`}
+        workingLabel="Preparing..."
+      />
+      <p className="text-muted-foreground text-xs">
+        One file of their plans, statuses and times, sent where you pick (Drive,
+        say). Once you confirm it arrived, they leave this phone; unfinished
+        sessions and today&apos;s stay. Reflections have their own share.
+      </p>
     </div>
   )
 }

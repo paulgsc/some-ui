@@ -144,8 +144,17 @@ storage failure (`launch/launch-test.sh`).
 - **Nothing the person made is deleted without their yes.** A session save
   or shelf keep that would cross the budget is refused. The app then names
   the oldest finished session (never today's or an unfinished one) and
-  removes it only if the person agrees. Sessions sync nowhere yet, so a
-  removed one is gone: that it hurts is the signal sessions need a server.
+  removes it only if the person agrees. Unless it was copied home or
+  archived, a removed one is gone.
+- **Sending is how the phone makes room, and it is always the person's
+  act.** The app is client first: nothing leaves the phone by default, and
+  nothing requires a server. What sending buys is that the phone can let
+  go. A finished session (completed, not today's: `mayLeavePhone`) leaves
+  the phone once a destination holds it: home, when **Copy sessions** reads
+  it back and finds it as the phone has it; an archive, when the person
+  says the file arrived (the phone cannot look inside Drive). Unfinished
+  sessions and today's always stay, since the study card and the nudge read
+  them.
 - **Published content follows its source.** A sync deletes the lessons and
   rounds home stopped listing, records a retired bundled round so the next
   start does not restore it, and skips what would not fit. The seed deletes
@@ -541,6 +550,29 @@ made, and asks home only whether it still holds those. Nothing there is
 deleted, a copy cannot be taken back from the phone, and **Stop** ends it
 before the next session, to carry on with the next copy.
 
+Then the copy frees the phone. For each finished session, home is asked for
+its copy (`GET /sessions/:id`, `confirmHeld`), and only one home holds
+exactly as the phone does (plan, status, times) leaves the phone; the
+confirm says so before the tap. A session changed since it was copied
+stays, and the line says how many. A stop, or home not answering, leaves the
+rest for the next copy.
+
+**Browse sessions on host**, once paired, reads home's sessions
+(`GET /sessions`) on that tap, and lists them newest first, a page at a time
+as the list scrolls, with a search by name and a finished / not finished
+filter. All of that works on the list in hand: only the button reads home
+again. Home answers the whole list at once (it has no paging), so a very
+long history is read in one request.
+
+**Archive finished sessions...**, in the This phone block, is the way to
+make room without a home server. It shares one file
+(`sessions-<day>.json`, every finished session's full record) through
+Android's share sheet, so the person picks where it goes (Drive, say:
+`Study ledger › sessions`). Android says "shared" once an app is picked,
+even if the person backs out, so the sessions leave the phone only once the
+person says the file arrived, and only those unchanged since. Reflections
+keep their own share (**Share with an agent**).
+
 The sync goes through Capacitor's native HTTP (`device-backend/native-http`).
 The app's page is `https://localhost`, so a browser `fetch` to
 `http://<lan-ip>:3000` is blocked as mixed content, and the server's CORS
@@ -830,7 +862,8 @@ offline, in any language whose voice data is installed (#1625):
 
 ## Not done yet
 
-- **Nothing syncs back.** A session recorded on the phone stays on the
-  phone. Two histories of one person's sessions need a merge rule first.
+- **Nothing syncs back.** A session that left the phone can be browsed on
+  home but not brought back, and an archive cannot be imported. Two
+  histories of one person's sessions need a merge rule first.
 - **Nothing here has run on a phone yet.** CI proves the APK builds. Every
   test runs the backend's SQL in Node's SQLite, not through the native bridge.

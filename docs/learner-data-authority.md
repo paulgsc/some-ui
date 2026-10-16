@@ -30,19 +30,19 @@ Which authority a build starts in depends on what it can reach (`Backend`):
 
 ## What leaves the device
 
-|                                     | Learning on the device                       | On the account, reporting off                                                                                                     | On the account, reporting on               |
-| ----------------------------------- | -------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------ |
-| Sessions, settings, profile         | `localStorage`, never sent                   | sessions go to `file_host`                                                                                                        | the same                                   |
-| Session probe (`GET /auth/session`) | never made                                   | at boot, only because the account was chosen                                                                                      | the same                                   |
-| Passkey ceremonies                  | only when the person starts one              | the same                                                                                                                          | the same                                   |
-| Lesson, round and vocab reads       | made, **without credentials**                | made, without credentials                                                                                                         | the same                                   |
-| This device's sessions              | stay here                                    | copied only by "Copy to my account", per account, after a confirmation; the phone's, to its paired home, by "Copy sessions" (LA8) | the same                                   |
-| `/signals`, `/presence/lease`       | never                                        | never                                                                                                                             | sent                                       |
-| Push subscription                   | never                                        | never                                                                                                                             | the account's, on the person's own taps    |
-| Reflections                         | on the device (at most 20), never sent       | never sent (LA7)                                                                                                                  | never sent (LA7)                           |
-| Shelf                               | never                                        | the account's, on the person's own taps                                                                                           | the same                                   |
-| Speech                              | the browser's own voice                      | the server's speech service                                                                                                       | the same                                   |
-| Reminders                           | the client's own policy, while a tab is open | the client's own policy, while a tab is open                                                                                      | the server's push, with the browser closed |
+|                                     | Learning on the device                       | On the account, reporting off                                                                                                                                                                | On the account, reporting on               |
+| ----------------------------------- | -------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------ |
+| Sessions, settings, profile         | `localStorage`, never sent                   | sessions go to `file_host`                                                                                                                                                                   | the same                                   |
+| Session probe (`GET /auth/session`) | never made                                   | at boot, only because the account was chosen                                                                                                                                                 | the same                                   |
+| Passkey ceremonies                  | only when the person starts one              | the same                                                                                                                                                                                     | the same                                   |
+| Lesson, round and vocab reads       | made, **without credentials**                | made, without credentials                                                                                                                                                                    | the same                                   |
+| This device's sessions              | stay here                                    | copied only by "Copy to my account", per account, after a confirmation; the phone's, to its paired home, by "Copy sessions", which then frees the finished ones home confirms it holds (LA8) | the same                                   |
+| `/signals`, `/presence/lease`       | never                                        | never                                                                                                                                                                                        | sent                                       |
+| Push subscription                   | never                                        | never                                                                                                                                                                                        | the account's, on the person's own taps    |
+| Reflections                         | on the device (at most 20), never sent       | never sent (LA7)                                                                                                                                                                             | never sent (LA7)                           |
+| Shelf                               | never                                        | the account's, on the person's own taps                                                                                                                                                      | the same                                   |
+| Speech                              | the browser's own voice                      | the server's speech service                                                                                                                                                                  | the same                                   |
+| Reminders                           | the client's own policy, while a tab is open | the client's own policy, while a tab is open                                                                                                                                                 | the server's push, with the browser closed |
 
 A returning account user whose server cannot be reached at boot (a timeout, a
 5xx, a refused connection) stays on the account, and its calls fail where they
@@ -308,8 +308,14 @@ declared (checked by reading every call site and by the tests named).
   its bytes as kept, nothing deleted there and nothing read back), and
   copying the phone's sessions (after a confirm that names how many and the
   host: each session's record, its plan, status and times, created once and
-  restored with one patch; home is read only to skip what it already holds,
-  and nothing there is deleted). Nothing is sent when the app or Settings
+  restored with one patch; home is read only to skip what it already holds
+  and, once the copy has run, to read back each finished session
+  (`mayLeavePhone`: completed, not today's) and confirm it holds it exactly
+  as the phone does (`confirmHeld`); the phone then lets go of its own copy
+  of those alone, each unchanged since it was read, and nothing on home is
+  deleted), and reading home's sessions to browse them (`sessionsOnHome`,
+  one `GET /sessions` per tap; searching, filtering and scrolling them in
+  `device-home-sessions.tsx` send nothing). Nothing is sent when the app or Settings
   opens, on resume, on a timer or on a network change: making the runtime and
   `load` read only the phone's own record. There is no retry; a sync, a send
   or a copy ends at Stop, or when the app goes to the background, before its
@@ -341,7 +347,12 @@ declared (checked by reading every call site and by the tests named).
   method other than `GET`, `POST` or `PATCH`, or hand a `401` to
   `requestJSON` (the app's own sign-out); one that sends a session's create
   or patch other than through `copySessionsTo` (which LA2 keeps to one of
-  each per session); one that lets the runtime's `work` end before every
+  each per session); one that lets the copy remove a phone session that
+  `confirmHeld` did not report held, that `mayLeavePhone` refuses, or that
+  changed since it was read (`letGoHeld`), or that drops the freeing from
+  the copy's confirm; one that makes `confirmHeld` write, or compare less
+  than everything a copy carries (`sameRecord`); one that reads home from
+  `device-home-sessions.tsx`, or on a scroll, a search or a filter; one that lets the runtime's `work` end before every
   request it started has settled (`inFlight`, `track`), so a second tap could
   race a create still on its way; one that deletes or weakens the
   `onHidden` subscription in the runtime's `sync`, the `stopPressed` it
@@ -378,10 +389,13 @@ declared (checked by reading every call site and by the tests named).
   `lib/home-link/shelf` and `lib/home-link/sessions`, `sync` and `send`,
   each from a button's `onPress` or `onClick`) and by
   `lib/home-link/__tests__/runtime.test.ts`, `shelf.test.ts`,
-  `sessions.test.ts` and
+  `sessions.test.ts` (a finished session leaves the phone only once home
+  holds it as it is; an unfinished one, today's, a changed one and one home
+  could not be asked about stay) and
   `components/settings/__tests__/device-section.test.tsx` (opening Settings,
   paired or not, sends nothing; unpairing, the shelf send and the sessions
-  copy each take a second press).
+  copy each take a second press; browsing reads once per tap, and searching
+  or filtering sends nothing).
 
 ## Not covered, on purpose
 
@@ -397,7 +411,10 @@ declared (checked by reading every call site and by the tests named).
   sessions, reflections, stops and soundbites, and a session's (or every
   session's) **Share** hands it that session's reflections, and the learner
   picks where they go; the reflections (and, from the whole export, the
-  soundbites) shared then leave the phone. The phone's Home server block
+  soundbites) shared then leave the phone. "Archive finished sessions"
+  (`lib/session-archive`) hands the share sheet one file of the finished
+  sessions' records, and they leave the phone once the learner says it
+  arrived. The phone's Home server block
   syncs, pairs, unpairs, sends the shelf and copies sessions on a tap (LA8). These are explicit actions on
   the account path or by the learner, not defaults.
 - **The server's side.** What `file_host` stores and logs is
