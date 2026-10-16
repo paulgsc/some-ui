@@ -4,8 +4,7 @@
  * The original code is licensed under the MIT License.
  */
 
-// The Tailwind v4 at-rules our CSS uses (`@tailwindcss/vite` in www, the
-// some-styles build's own `@tailwindcss/postcss` call); stylelint does not know them
+// Tailwind v4 at-rules stylelint does not know
 const CUSTOM_AT_RULES = [
   "apply",
   "variant",
@@ -33,12 +32,12 @@ export default {
     "selector-id-pattern": null,
     // Allow Tailwind-based CSS Rules
     "at-rule-no-unknown": [true, { ignoreAtRules: CUSTOM_AT_RULES }],
-    // Tailwind's `@apply` takes utility names and `@utility` bodies nest with
-    // `&`; stylelint reads both as plain CSS.
-    "at-rule-prelude-no-invalid": [true, { ignoreAtRules: CUSTOM_AT_RULES }],
+    // `@apply` takes utility names and `@utility` bodies nest with `&`;
+    // stylelint reads both as plain CSS. `media` is the recommended default.
+    "at-rule-prelude-no-invalid": [true, { ignoreAtRules: ["media", "apply"] }],
     "nesting-selector-no-missing-scoping-root": [
       true,
-      { ignoreAtRules: CUSTOM_AT_RULES },
+      { ignoreAtRules: ["utility"] },
     ],
     // Allow the Global CSS Selector
     "selector-pseudo-class-no-unknown": [

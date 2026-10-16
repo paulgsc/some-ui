@@ -83,8 +83,7 @@ catalog:
   "@radix-ui/react-switch": ^1.1.2
   "@radix-ui/react-tabs": 1.1.21
   "@radix-ui/react-tooltip": ^1.2.16
-  # One Tailwind engine: a stale @tailwindcss/postcss pin used to install a
-  # second, older tailwindcss for some-styles' compile path and tests.
+  # Bump together: some-styles (postcss) and www (vite) share one tailwindcss.
   tailwindcss: 4.3.3
   "@tailwindcss/postcss": 4.3.3
   "@tailwindcss/vite": 4.3.3
