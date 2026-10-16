@@ -191,7 +191,7 @@ export default defineConfig(
   // service" errors without requiring these files to be in tsconfig.json.
   // Most packages' tsconfig covers only src/, so no compiler checks these
   // either: the compiler-owned core rules that understand TypeScript come
-  // back, with the TS-aware duplicate-member check.
+  // back.
   {
     files: [
       "**/vitest.config.{ts,js}",
@@ -200,8 +200,18 @@ export default defineConfig(
       "**/vite.config.*.{ts,js}",
     ],
     extends: [tseslint.configs.disableTypeChecked],
+    rules: compilerOwnedCoreRules,
+  },
+  // The TS-aware stand-in for core no-dupe-class-members, on the TS configs
+  // only: the plugin is not loaded for .js files.
+  {
+    files: [
+      "**/vitest.config.ts",
+      "**/vitest.config.*.ts",
+      "**/vite.config.ts",
+      "**/vite.config.*.ts",
+    ],
     rules: {
-      ...compilerOwnedCoreRules,
       "@typescript-eslint/no-dupe-class-members": "error",
     },
   }
