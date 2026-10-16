@@ -121,8 +121,6 @@ function fakeRegistration(existing: FakeSubscription | null = null): {
   return { registration, subscribeCalls }
 }
 
-/** `nudgesSupported()` checks `window`, which some Vitest versions keep
- * apart from `globalThis`, so both are stubbed. */
 function supportNudges(permission: NotificationPermission = "granted"): void {
   const values = {
     Notification: {
@@ -133,13 +131,6 @@ function supportNudges(permission: NotificationPermission = "granted"): void {
   }
   for (const [name, value] of Object.entries(values)) {
     vi.stubGlobal(name, value)
-    if (!Object.is(window, globalThis)) {
-      Object.defineProperty(window, name, {
-        value,
-        writable: true,
-        configurable: true,
-      })
-    }
   }
   Object.defineProperty(navigator, "serviceWorker", {
     value: {},

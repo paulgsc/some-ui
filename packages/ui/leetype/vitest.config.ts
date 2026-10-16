@@ -17,7 +17,6 @@ export default defineDomTest({
       "./src/types/wasm/leetype-wasm.d.ts"
     ),
   },
-  // Stubs scrollIntoView, which jsdom lacks.
   setupFiles: ["./vitest.setup.ts"],
   passWithNoTests: true,
 })

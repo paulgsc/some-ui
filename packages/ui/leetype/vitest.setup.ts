@@ -1,6 +1,4 @@
-import "@testing-library/jest-dom/vitest"
-
-import { afterEach, vi } from "vitest"
+import "@some-ui/vite-config/vitest/setup"
 
 /**
  * jsdom has no `Element.prototype.scrollIntoView`, which `TypingViewport`
@@ -19,7 +17,3 @@ if (
     },
   })
 }
-
-afterEach(() => {
-  vi.useRealTimers()
-})
