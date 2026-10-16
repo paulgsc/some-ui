@@ -15,7 +15,12 @@
 
 import { describe, expect, it } from "vitest"
 
-import { extractMeta, extractTitle, tryExtract } from "./index"
+import {
+  extractMeta,
+  extractTitle,
+  extractUploadDate,
+  tryExtract,
+} from "./index"
 
 function make(tag: string, html: string): HTMLElement {
   const el = document.createElement(tag)
@@ -129,19 +134,20 @@ describe("extractTitle", () => {
 })
 
 describe("extractMeta", () => {
-  it("reads all three fields off a Polymer renderer", () => {
+  it("reads the channel and duration off a Polymer renderer", () => {
     expect(extractMeta(make("ytd-rich-item-renderer", POLYMER))).toEqual({
       channelName: "LowLevelLearning",
       duration: "12:34",
-      uploadDate: "3 days ago",
     })
+    expect(extractUploadDate(make("ytd-rich-item-renderer", POLYMER))).toBe(
+      "3 days ago"
+    )
   })
 
-  it("reads all three fields off a lockup", () => {
+  it("reads the channel and duration off a lockup", () => {
     expect(extractMeta(make("yt-lockup-view-model", LOCKUP))).toEqual({
       channelName: "Lockups Channel",
       duration: "10:11",
-      uploadDate: "2 weeks ago",
     })
   })
 
@@ -149,7 +155,7 @@ describe("extractMeta", () => {
     // Both are `…__metadata-text` spans in the same row. Picking the first
     // would put "890K views" where the date belongs — and view counts are
     // exactly the popularity signal this extension exists to withhold.
-    expect(extractMeta(make("yt-lockup-view-model", LOCKUP)).uploadDate).toBe(
+    expect(extractUploadDate(make("yt-lockup-view-model", LOCKUP))).toBe(
       "2 weeks ago"
     )
   })
@@ -176,7 +182,9 @@ describe("extractMeta", () => {
     expect(extractMeta(make("yt-lockup-view-model", SHORTS_LOCKUP))).toEqual({
       channelName: null,
       duration: null,
-      uploadDate: null,
     })
+    expect(extractUploadDate(make("yt-lockup-view-model", SHORTS_LOCKUP))).toBe(
+      null
+    )
   })
 })

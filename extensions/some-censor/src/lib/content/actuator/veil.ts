@@ -16,7 +16,11 @@
  * so the flex column lays them out without absolute positioning.
  */
 
-import type { RenderModel, VeilContent } from "@censor/lib/content/fsm"
+import type {
+  MetaData,
+  RenderModel,
+  VeilContent,
+} from "@censor/lib/content/fsm"
 import {
   hintClass,
   META,
@@ -82,30 +86,26 @@ function appendContent(
 }
 
 /**
- * The channel chip, with the duration · date sub-line beneath it.
+ * The channel chip, with the duration beneath it. Never a date (QD4).
  *
- * The sub-line is always built; `META_SUB` hides it below a 220px card rather
- * than this code deciding. Keeping the decision in CSS means it responds to
- * the card's real width without this module measuring anything.
+ * The sub-line is built whenever there is a duration; `META_SUB` hides it
+ * below a 220px card rather than this code deciding. Keeping the decision in
+ * CSS means it responds to the card's real width without this module
+ * measuring anything.
  */
 function appendMetaChip(
   doc: Document,
   veil: HTMLElement,
-  meta: {
-    channelName: string | null
-    duration: string | null
-    uploadDate: string | null
-  },
+  meta: MetaData,
   chipClass: string
 ): void {
-  const { channelName, duration, uploadDate } = meta
+  const { channelName, duration } = meta
   if (!channelName) return
 
   const chip = node(doc, "div", chipClass)
   chip.appendChild(node(doc, "div", META_CHANNEL, channelName))
 
-  const sub = [duration, uploadDate].filter(Boolean).join(" · ")
-  if (sub) chip.appendChild(node(doc, "div", META_SUB, sub))
+  if (duration) chip.appendChild(node(doc, "div", META_SUB, duration))
 
   veil.appendChild(chip)
 }

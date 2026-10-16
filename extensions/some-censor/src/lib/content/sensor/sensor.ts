@@ -39,6 +39,7 @@ import type { Observation } from "@censor/lib/content/core/observation"
 import {
   extractMeta,
   extractTitle,
+  extractUploadDate,
   tryExtract,
 } from "@censor/lib/content/extract/index"
 import type { UnknownShapeReason } from "@censor/lib/content/layout/lookup"
@@ -150,7 +151,7 @@ export function createSensor(ports: SensorPorts): Sensor {
       channelName: meta.channelName,
       title: extractTitle(el),
       duration: meta.duration,
-      uploadDate: meta.uploadDate,
+      uploadDate: extractUploadDate(el),
       surface: ports.surface(),
       renderer: el.tagName.toLowerCase(),
       shape,

@@ -2,7 +2,7 @@ import { FIELD_SELECTORS, LOCKUP_TEXT } from "@censor/lib/content/layout/fields"
 import type { MetaData } from "@censor/types/states"
 
 /**
- * Extract channel name, duration, and upload date from a renderer element.
+ * Extract channel name and duration from a renderer element.
  * All fields nullable — caller decides what to show when absent.
  *
  * The selectors live in `layout/fields.ts`, shared with the layout crawler's
@@ -31,12 +31,11 @@ function firstText(
 /**
  * The raw upload-date run, exactly as YouTube rendered it.
  *
- * Split out of {@link extractMeta} so the observability layer can bank the
- * raw string (OBS1) without re-deriving these two selectors, and
- * without paying for the channel-name and duration lookups it must not record
- * anyway. Still pure (E1): the caller decides what to do with the string.
+ * Kept apart from {@link extractMeta} because it is evidence, not
+ * presentation: it goes into the observation and the maturity estimate, and
+ * never into anything a veil renders (QD4). Still pure (E1).
  */
-function extractUploadDate(el: HTMLElement): string | null {
+export function extractUploadDate(el: HTMLElement): string | null {
   const [polymer] = FIELD_SELECTORS.uploadDate
   return (
     (polymer === undefined ? null : text(el, polymer)) ?? lockupUploadDate(el)
@@ -47,14 +46,14 @@ export function extractMeta(el: HTMLElement): MetaData {
   return {
     channelName: firstText(el, FIELD_SELECTORS.channelName),
     duration: firstText(el, FIELD_SELECTORS.duration),
-    uploadDate: extractUploadDate(el),
   }
 }
 
 /**
  * A lockup's second metadata row reads "1.2M views · 3 days ago" as separate
- * text runs. The age is the last of them; the count is not worth showing on a
- * card whose entire purpose is to withhold signal about how popular it is.
+ * text runs, and the age is usually the last of them. Positional, so low
+ * confidence: on a row with no date the last run is the view count, which the
+ * estimator does not recognize and holds as unverified (#1384).
  */
 function lockupUploadDate(el: HTMLElement): string | null {
   const runs = el.querySelectorAll(`span${LOCKUP_TEXT}`)

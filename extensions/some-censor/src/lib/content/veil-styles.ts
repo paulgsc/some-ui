@@ -24,7 +24,7 @@
  *
  *   base      — a slider tile or a shorts card. Reduced meta: channel only,
  *               truncated; title clamped to two lines; the tightest type.
- *   `@[220px]` — a normal compact/sidebar card. The duration · date sub-line
+ *   `@[220px]` — a normal compact/sidebar card. The duration sub-line
  *               appears; title gets a third line.
  *   `@[340px]` — a full home-feed or search card. The original design.
  *

@@ -97,7 +97,6 @@ function metaOf(o: Observation): MetaData {
   return {
     channelName: o.channelName,
     duration: o.duration,
-    uploadDate: o.uploadDate,
   }
 }
 

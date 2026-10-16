@@ -590,6 +590,8 @@ describe("uploadDate — the corpus mechanism QC2 depends on", () => {
     expect(event?.detail).toEqual({
       raw: "Streamed 2 hours ago",
       renderer: "ytd-compact-video-renderer",
+      maturity: "QM1",
+      parser: "en-v1",
     })
   })
 

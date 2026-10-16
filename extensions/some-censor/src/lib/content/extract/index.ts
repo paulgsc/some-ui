@@ -41,7 +41,7 @@ import { extractVideoId } from "./video-id"
 export { representsVideo } from "./video-id"
 
 export { extractTitle } from "./title"
-export { extractMeta } from "./meta"
+export { extractMeta, extractUploadDate } from "./meta"
 
 export function tryExtract(el: HTMLElement): Extracted {
   const videoId = extractVideoId(el)
