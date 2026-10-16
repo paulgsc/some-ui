@@ -11,7 +11,6 @@
   --dc-beat-hue: 340;
   --dc-beat-decay: 2500ms;
 
-  -webkit-backdrop-filter: var(--dc-blur);
   backdrop-filter: var(--dc-blur);
   background: hsl(var(--dc-hue-2) calc(25% * var(--dc-sat)) 15% / 95%);
   border: 1.5px solid hsl(var(--dc-beat-hue) 50% 55% / 70%);

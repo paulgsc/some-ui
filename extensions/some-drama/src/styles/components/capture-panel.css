@@ -28,7 +28,6 @@
 }
 
 .dc-capture-inner {
-  -webkit-backdrop-filter: var(--dc-blur);
   backdrop-filter: var(--dc-blur);
 
   /* Solid dark background */

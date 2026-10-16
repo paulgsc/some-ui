@@ -201,7 +201,7 @@ table.bc-corpus td {
 table.bc-events td.detail {
   color: var(--bc-muted);
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
 .bc-filter {

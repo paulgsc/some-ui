@@ -5,7 +5,6 @@
 
 .dc-title-pill {
   animation: dc-float-gentle 5s ease-in-out infinite;
-  -webkit-backdrop-filter: var(--dc-blur);
   backdrop-filter: var(--dc-blur);
 
   /* Solid dark background with warm undertone */

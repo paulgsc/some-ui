@@ -9,10 +9,6 @@ const CUSTOM_AT_RULES = [
   // Tailwind-specific at-rules
   "apply",
   "layer",
-  "responsive",
-  "screen",
-  "tailwind",
-  "variants",
   "variant",
   "utility",
   "theme",
@@ -30,7 +26,7 @@ const CUSTOM_AT_RULES = [
 //
 export default {
   extends: ["stylelint-config-standard"],
-  plugins: ["stylelint-order", "stylelint-selector-bem-pattern"],
+  plugins: ["stylelint-order"],
   rules: {
     // Enforces Element Class Names to be camelCase
     "selector-class-pattern": null,
@@ -38,6 +34,13 @@ export default {
     "selector-id-pattern": null,
     // Allow Tailwind-based CSS Rules
     "at-rule-no-unknown": [true, { ignoreAtRules: CUSTOM_AT_RULES }],
+    // Tailwind's `@apply` takes utility names and `@utility` bodies nest with
+    // `&`; stylelint reads both as plain CSS.
+    "at-rule-prelude-no-invalid": [true, { ignoreAtRules: CUSTOM_AT_RULES }],
+    "nesting-selector-no-missing-scoping-root": [
+      true,
+      { ignoreAtRules: CUSTOM_AT_RULES },
+    ],
     // Allow the Global CSS Selector
     "selector-pseudo-class-no-unknown": [
       true,
@@ -50,23 +53,12 @@ export default {
     "media-feature-range-notation": "prefix",
     // Adopts the import notation from `postcss-import`
     "import-notation": "string",
-    // stylelint-config-standard turns this on, but it is wrong for this repo
-    // on both counts.
-    //
-    // Correctness: the autofix only strips the prefix, it does not merge the
-    // declaration with the unprefixed one that usually sits next to it. On
-    // `.dc-title-pill` it turned
-    //     backdrop-filter: var(--dc-blur);
-    //     -webkit-backdrop-filter: var(--dc-blur);
-    // into the same declaration twice.
-    //
-    // Coverage: the premise of the rule is that autoprefixer re-adds whatever
-    // it removes. It does for background-clip, user-select and appearance, but
-    // not for backdrop-filter — unprefixed backdrop-filter only shipped in
-    // Safari 18, and `-webkit-backdrop-filter` is what makes every glass
-    // surface in umag/makjang render on anything older. Deleting the twelve
-    // hand-written prefixes still in the tree would be a silent visual
-    // regression on Safari and iOS, not a cleanup.
-    "property-no-vendor-prefix": null,
+    // Chrome 111-119 still needs this prefix (Vite's default build target is
+    // Chrome 111, and the APK runs on whatever WebView the phone has):
+    // unprefixed background-clip: text arrived in Chrome 120.
+    "property-no-vendor-prefix": [
+      true,
+      { ignoreProperties: ["-webkit-background-clip"] },
+    ],
   },
 }

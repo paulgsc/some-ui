@@ -58,7 +58,7 @@
     "@some-ui/types": "workspace:*",
     "@some-ui/vite-config": "workspace:*",
     "@some-ui/voice-capture": "workspace:*",
-    "@tailwindcss/vite": "^4.3.3",
+    "@tailwindcss/vite": "catalog:",
     "@tanstack/react-devtools": "^0.2.2",
     "@tanstack/react-query": "^5.101.1",
     "@tanstack/react-router": "^1.130.2",
