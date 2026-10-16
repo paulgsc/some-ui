@@ -182,6 +182,10 @@ empty values, in several languages. All of those are `Unverified`, and
 
 _Status: absent._ No estimator exists; `uploadDate` is never parsed. #1384.
 
+_Amended by `QD15`:_ opacity admits without age evidence, so a lane video is
+shown whole even when its age is unknown. Everywhere else, unknown still means
+outside.
+
 ---
 
 ### QD4 — Age is nonsemantic; the raw string is not
@@ -362,8 +366,8 @@ _Status: absent._ Every held card is veiled in place today. #1803.
 
 ### QD12 — The plate
 
-An admitted card's thumbnail is replaced by a plate drawn only from the video
-id and the duration, and its channel image by a disc drawn from the channel id.
+A card admitted by distance has its thumbnail replaced by a plate drawn only
+from the video id and the duration, and its channel image by a disc drawn from the channel id.
 The card shows its title, channel name and duration, and nothing else
 (`QD14`).
 
@@ -417,7 +421,8 @@ includes Japanese titles written mostly in kanji; that overlap is accepted.
 not reach the listener has no coupling to measure: the owner consumes K-drama
 and C-drama soundtracks "as an artifact". This is not a bypass of `QD2`; it is
 the same quantity measured a second way, and it amends `QD2`'s "regardless of
-its subject" to say so. The rule describes the owner as they
+its subject" and `QD3`'s "unknown means outside" to say so. Lane videos keep
+their real thumbnails; `QD12` applies only to videos admitted by distance. The rule describes the owner as they
 are, and does not anticipate them learning these scripts.
 
 _Status: absent._ #1806.
