@@ -60,7 +60,9 @@ export async function download(url) {
           ? err.message
           : `Failed to download ${url}: ${describe(err)}`
       if (attempt >= ATTEMPTS) {
-        throw new Error(`${reason} (gave up after ${attempt} attempts)`)
+        throw new Error(`${reason} (gave up after ${attempt} attempts)`, {
+          cause: err,
+        })
       }
       const wait = BACKOFF_MS * 2 ** (attempt - 1)
       // eslint-disable-next-line no-console

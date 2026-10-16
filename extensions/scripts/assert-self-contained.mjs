@@ -22,7 +22,7 @@
 //
 // Usage: node extensions/scripts/assert-self-contained.mjs <extension-dist-dir> [--baseline <file>]
 /* eslint-disable no-console, no-process-exit -- CLI gate: reports on stderr and CI reads its exit code. */
-import { existsSync, readdirSync, readFileSync } from "node:fs"
+import { existsSync, readFileSync } from "node:fs"
 import { basename, dirname, join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 import { init, parse } from "es-module-lexer"

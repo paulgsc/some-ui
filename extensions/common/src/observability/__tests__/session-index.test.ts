@@ -159,15 +159,14 @@ describe("compact", () => {
 
   it("does not evict a session that touched its key after the survey", async () => {
     let holdOnce = true
-    let index: ReturnType<typeof newIndex> | undefined
     const fake = fakeStorage({
       hold: (key) => {
-        if (!holdOnce || key !== index?.indexKey("s0")) return false
+        if (!holdOnce || key !== index.indexKey("s0")) return false
         holdOnce = false
         return true
       },
     })
-    index = newIndex(fake)
+    const index = newIndex(fake)
     for (let i = 0; i < 4; i++)
       await record(fake, index, `s${String(i)}`, NOW + i)
 
