@@ -17,8 +17,6 @@ export default defineDomTest({
       "./src/types/wasm/leetype-wasm.d.ts"
     ),
   },
-  // Repairs Web Storage and stubs scrollIntoView before the shared cleanup.
   setupFiles: ["./vitest.setup.ts"],
   passWithNoTests: true,
-  optimizeTestingLibrary: true,
 })

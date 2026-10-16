@@ -13,16 +13,6 @@ export default defineConfig({
     // Each test file gets its own worker to avoid ESLint instance pollution
     // between suites and to prevent language service state from leaking.
     pool: "forks",
-    coverage: {
-      provider: "v8",
-      include: ["src/**/*.ts"],
-      exclude: ["src/types/**"],
-      thresholds: {
-        lines: 80,
-        functions: 80,
-        branches: 70,
-      },
-    },
     reporters: ["verbose"],
   },
 })

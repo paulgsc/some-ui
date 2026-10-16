@@ -5,5 +5,4 @@ export default defineDomTest({
   alias: { "@lesson-crm": path.resolve(import.meta.dirname, "./src") },
   setupFiles: ["./vitest.setup.ts"],
   passWithNoTests: true,
-  optimizeTestingLibrary: true,
 })

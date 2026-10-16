@@ -7,7 +7,4 @@ export default createViteConfig({
   alias: {
     "@topik": resolve(import.meta.dirname, "src"),
   },
-  tsConfigPaths: {
-    projects: [resolve(import.meta.dirname, "tsconfig.build.json")],
-  },
 })

@@ -78,7 +78,6 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup()
-  vi.clearAllMocks()
 })
 
 describe("SessionViewport on a phone", () => {

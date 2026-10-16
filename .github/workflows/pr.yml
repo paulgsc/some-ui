@@ -474,7 +474,7 @@ jobs:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/nix-setup
       - name: Check test layout
-        run: nix develop .#ci --command node --no-warnings scripts/check-test-layout.ts
+        run: nix develop .#ci --command node scripts/check-test-layout.ts
 
   # ── React coordination (repo-wide) ─────────────────────────────────────
   # R1 (docs/monorepo-boundaries.md, "Inside a React package"): every React
@@ -494,11 +494,11 @@ jobs:
       - name: Install the eslint kit
         run: nix develop .#ci --command pnpm install --frozen-lockfile --prefer-offline --filter @some-ui/eslint-kit
       - name: Check React coordination
-        run: nix develop .#ci --command node --no-warnings scripts/check-react-coordination.ts
+        run: nix develop .#ci --command node scripts/check-react-coordination.ts
       # F1 (docs/monorepo-boundaries.md, "A port translates: the foreign
       # boundary"): the same kind of count, over waits on foreign APIs.
       - name: Check the foreign boundary
-        run: nix develop .#ci --command node --no-warnings scripts/check-foreign-boundary.ts
+        run: nix develop .#ci --command node scripts/check-foreign-boundary.ts
 
   # ── Workflow guards (repo-wide) ────────────────────────────────────────
   # Artifact retention (CLAUDE.md "Workflow storage") and the RS1 fingerprint
@@ -512,7 +512,7 @@ jobs:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/nix-setup
       - name: Check workflows
-        run: nix develop .#ci --command node --no-warnings scripts/check-workflows.ts
+        run: nix develop .#ci --command node scripts/check-workflows.ts
 
   # ── Toolchain pins (repo-wide) ─────────────────────────────────────────
   # scripts/sync-toolchain.sh --check. No `changes` gate: either side can move

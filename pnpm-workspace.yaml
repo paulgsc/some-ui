@@ -85,11 +85,11 @@ catalog:
   "@radix-ui/react-switch": ^1.1.2
   "@radix-ui/react-tabs": 1.1.21
   "@radix-ui/react-tooltip": ^1.2.16
+# `pnpm add` writes exact versions. pnpm 12 ignores this in .npmrc.
+saveExact: true
 allowBuilds:
-  '@swc/core': true
   '@tailwindcss/oxide': true
   esbuild: true
-  spawn-sync: true
   unrs-resolver: true
 
 # Recorded explicitly only to work around pnpm/pnpm#12337, a regression in

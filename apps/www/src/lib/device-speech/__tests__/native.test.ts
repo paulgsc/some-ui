@@ -84,7 +84,6 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.useRealTimers()
-  vi.clearAllMocks()
 })
 
 describe("the phone's engine at a cold start", () => {

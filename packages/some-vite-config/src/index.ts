@@ -59,13 +59,8 @@ export function createViteConfig(
         ? [createPackageJsonPlugin(options, packageRoot)]
         : []),
     ],
-    resolve: createResolveConfig(options, packageRoot),
-    // esbuild: {
-    //   // This removes console.log and debugger statements
-    //   // drop: ["console", "debugger"],
-    // },
+    resolve: createResolveConfig(options),
     build: {
-      minify: true, // Ensure minification is on so esbuild drops the logs
       ...createBuildConfig(options, packageRoot),
       rolldownOptions: createRollupOptions(options, externalDeps),
     },
@@ -80,18 +75,6 @@ export function createViteConfig(
   }
 
   return defineConfig(config)
-}
-
-// Convenience function for common React library setup
-export function createReactLibConfig(
-  options: Omit<ViteConfigOptions, "libraryName"> & { libraryName?: string }
-): UserConfig {
-  return createViteConfig({
-    ...options,
-    libraryName:
-      options.libraryName ||
-      `${options.packageName.replace(/[-_]/g, "")}Library`,
-  })
 }
 
 /**

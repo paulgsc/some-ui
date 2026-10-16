@@ -14,7 +14,6 @@ import {
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 beforeEach(() => {
-  vi.clearAllMocks()
   skipped.clear()
   vi.mocked(chrome.storage.session.get).mockImplementation(
     (_keys: unknown, cb: (items: Record<string, unknown>) => void) => cb({})

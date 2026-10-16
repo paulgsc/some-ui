@@ -14,7 +14,6 @@ import { afterEach, describe, expect, it, vi } from "vitest"
 type GetCb = (items: Record<string, unknown>) => void
 
 afterEach(() => {
-  vi.clearAllMocks()
   // restore live prefs to a known baseline between tests
   Object.assign(prefs, defaults)
 })

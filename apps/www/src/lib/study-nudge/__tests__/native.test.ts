@@ -51,8 +51,6 @@ const NUDGE = {
 }
 
 describe("scheduleNativeNudge", () => {
-  beforeEach(() => vi.clearAllMocks())
-
   it("schedules the nudge as an inexact alarm", async () => {
     await scheduleNativeNudge({
       at: new Date(2026, 8, 30, 14, 0, 0),
@@ -73,7 +71,6 @@ describe("scheduleNativeNudge", () => {
 
 describe("reconcileNativeNudge", () => {
   beforeEach(() => {
-    vi.clearAllMocks()
     window.localStorage.clear()
   })
 
@@ -95,8 +92,6 @@ describe("reconcileNativeNudge", () => {
 })
 
 describe("showNativeTestNudge", () => {
-  beforeEach(() => vi.clearAllMocks())
-
   it("shows now, under its own id, without touching the real nudge", async () => {
     await expect(showNativeTestNudge(NUDGE.decision)).resolves.toBe(true)
     expect(plugin.cancel).not.toHaveBeenCalled()
@@ -115,7 +110,6 @@ describe("showNativeTestNudge", () => {
 })
 
 describe('the nudge\'s "Not today" button', () => {
-  beforeEach(() => vi.clearAllMocks())
   afterEach(() => {
     build.apk = false
   })

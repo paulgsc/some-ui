@@ -21,13 +21,6 @@ export type ViteConfigOptions = {
   /** Additional external dependencies */
   additionalExternals?: Array<string>
   /**
-   * @deprecated No longer used - tsconfig paths are now resolved natively
-   * via Vite's `resolve.tsconfigPaths` (see createResolveConfig), which
-   * replaced the vite-tsconfig-paths plugin. Kept as an accepted (ignored)
-   * field so existing call sites don't need to update in this pass.
-   */
-  tsConfigPaths?: Record<"projects", Array<string>>
-  /**
    * Build formats to generate. Defaults to ESM only: every library here is
    * `"type": "module"` and private, and nothing in the workspace loads one
    * with `require()`. Each extra format is another full bundle pass.

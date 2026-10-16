@@ -6,10 +6,6 @@
     "declaration": true,
     "noEmit": true,
     "allowImportingTsExtensions": null,
-    "moduleResolution": "Bundler",
-    "plugins": [
-      { "transform": "typescript-transform-paths" },
-      { "transform": "typescript-transform-paths", "afterDeclarations": true }
-    ]
+    "moduleResolution": "Bundler"
   }
 }

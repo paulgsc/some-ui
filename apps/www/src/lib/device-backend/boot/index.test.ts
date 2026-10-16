@@ -4,7 +4,7 @@
  * is kept, so every request says the same true thing at once; any other is
  * forgotten, so "Try again" opens again.
  */
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import { afterEach, describe, expect, it, vi } from "vitest"
 
 import type { DeviceBackend } from "@/lib/device-backend/interceptor"
 import type * as Sql from "@/lib/device-backend/sql"
@@ -53,10 +53,6 @@ async function boot(): Promise<Fresh> {
 }
 
 describe("deviceBackend", () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
   it("opens once, with the native log installed first and told when it opened", async () => {
     const order: Array<string> = []
     mocks.installNativeLog.mockImplementation(() => order.push("log"))

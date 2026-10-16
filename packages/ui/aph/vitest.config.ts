@@ -5,5 +5,4 @@ export default defineDomTest({
   alias: { "@aph": path.resolve(import.meta.dirname, "./src") },
   setupFiles: ["./vitest.setup.ts"],
   passWithNoTests: true,
-  optimizeTestingLibrary: true,
 })

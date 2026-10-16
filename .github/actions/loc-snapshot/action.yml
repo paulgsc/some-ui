@@ -68,6 +68,6 @@ runs:
     - name: Write the snapshot
       shell: bash
       run: |
-        nix develop .#extension --command node --no-warnings scripts/loc-snapshot.ts \
+        nix develop .#extension --command node scripts/loc-snapshot.ts \
           --repo "some-ui=$RUNNER_TEMP/loc-some-ui" \
           --repo "server=$RUNNER_TEMP/loc-server"

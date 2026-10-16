@@ -7,7 +7,4 @@ export default createViteConfig({
   alias: {
     "@lesson-crm": resolve(import.meta.dirname, "src"),
   },
-  tsConfigPaths: {
-    projects: [resolve(import.meta.dirname, "tsconfig.build.json")],
-  },
 })
