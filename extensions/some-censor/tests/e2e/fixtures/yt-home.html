@@ -253,35 +253,40 @@
         </div>
       </yt-lockup-view-model>
 
+      <!--
+        The camelCase spelling youtube.com serves as of 2026-10-17, from a live
+        capture: the age is compact on screen and long in its aria-label.
+      -->
       <yt-lockup-view-model id="slider-card-2">
-        <a class="yt-lockup-view-model__content-image" href="/watch?v=lock_bbb">
+        <a class="ytLockupViewModelContentImage" href="/watch?v=lock_bbb">
           <span class="lockup-thumb"></span>
+          <yt-thumbnail-badge-view-model class="ytThumbnailBadgeViewModelHost">
+            <badge-shape class="ytBadgeShapeHost">
+              <div class="ytBadgeShapeText">4:02</div>
+            </badge-shape>
+          </yt-thumbnail-badge-view-model>
         </a>
-        <div class="ytThumbnailOverlayBadgeViewModelHost">
-          <div class="badge-shape-wiz__text">4:02</div>
-        </div>
-        <div class="yt-lockup-metadata-view-model__metadata">
-          <h3>
-            <a
-              class="yt-lockup-metadata-view-model__title"
-              href="/watch?v=lock_bbb"
-            >
+        <div class="ytLockupMetadataViewModelTextContainer">
+          <h3 class="ytLockupMetadataViewModelHeadingReset">
+            <a class="ytLockupMetadataViewModelTitle" href="/watch?v=lock_bbb">
               <span role="text">Short Title</span>
             </a>
           </h3>
-          <div class="yt-content-metadata-view-model__metadata-row">
-            <a
-              class="yt-content-metadata-view-model__metadata-text"
-              href="/@AnotherChannel"
-              >AnotherChannel</a
+          <div class="ytContentMetadataViewModelMetadataRow" role="group">
+            <span class="ytContentMetadataViewModelMetadataText"
+              ><span><a href="/@AnotherChannel">AnotherChannel</a></span></span
             >
           </div>
-          <div class="yt-content-metadata-view-model__metadata-row">
-            <span class="yt-content-metadata-view-model__metadata-text"
-              >12K views</span
+          <div class="ytContentMetadataViewModelMetadataRow" role="group">
+            <span
+              class="ytContentMetadataViewModelMetadataText"
+              aria-label="12 thousand views"
+              >12K</span
             >
-            <span class="yt-content-metadata-view-model__metadata-text"
-              >1 hour ago</span
+            <span
+              class="ytContentMetadataViewModelMetadataText ytContentMetadataViewModelMetadataTextLastPart"
+              aria-label="1 hour ago"
+              >1h ago</span
             >
           </div>
         </div>
