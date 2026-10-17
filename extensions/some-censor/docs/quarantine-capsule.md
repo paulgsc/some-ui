@@ -426,7 +426,10 @@ its subject" and `QD3`'s "unknown means outside" to say so. Lane videos keep
 their real thumbnails; `QD12` applies only to videos admitted by distance. The rule describes the owner as they
 are, and does not anticipate them learning these scripts.
 
-_Status: absent._ #1806.
+_Status: absent._ #1806. _Pending amendment:_ the owner decided on
+2026-10-17 (recorded on #1806) that being music alone admits a video, unless
+it is live, a premiere or a Short; the title-script rule and the per-language
+setting are dropped. #1806 rewrites this result when it builds the lane.
 
 ---
 

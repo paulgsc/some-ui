@@ -169,6 +169,22 @@ describe("boundary changes", () => {
       expect.stringMatching(/1 year6 months$/),
     ])
   })
+
+  it("rereads the log on Refresh", async () => {
+    const { store } = installFakeStorage()
+    await mountPage()
+    await vi.waitFor(() => {
+      expect(document.body.textContent).toContain("has not changed")
+    })
+    store.set(BOUNDARY_CHANGES_KEY, [{ at: NOW, from: "1y", to: "2y" }])
+    const refresh = [...document.querySelectorAll("button")].find(
+      (b) => b.textContent === "Refresh"
+    )
+    refresh?.click()
+    await vi.waitFor(() => {
+      expect(document.body.textContent).toContain("2 years")
+    })
+  })
 })
 
 describe("the picker", () => {

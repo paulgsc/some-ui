@@ -639,7 +639,10 @@ function header(b: Bundle | undefined): HTMLElement {
   )
 
   const refresh = el("button", { text: "Refresh" })
-  refresh.addEventListener("click", () => void loader.load())
+  refresh.addEventListener("click", () => {
+    void loader.load()
+    void loadBoundaryChanges()
+  })
   const actions = el("div", { class: "bc-actions" }, [refresh])
 
   if (b) {

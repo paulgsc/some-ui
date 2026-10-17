@@ -73,8 +73,9 @@
    PRE-MASK OCCLUSION — SAFETY INVARIANT, NOT DECORATION
    ------------------------------------------------------------
    This is the most important rule in the file. It is the static-CSS
-   guarantee that a card is OCCLUDED from the instant it paints until the
-   content script proves it has taken ownership by writing data-boyo.
+   guarantee that, while switched on, a card is OCCLUDED from the instant it
+   paints until the content script proves it has taken ownership by writing
+   data-boyo.
 
    The JS handover can fail open-endedly: the content script may never load,
    may throw during bootstrap, or may never resolve this particular card. In

@@ -81,6 +81,8 @@ test("S1: the boundary re-decides an open tab, stamp to stamp", async ({
   await popup.getByRole("button", { name: "1 year" }).click()
   await fixture.pollDebug(page, (d) => d.entries[MOVES]?.viewKind === "plated")
 
+  expect(await fixture.fixtureCall(page, "dataBoyoFor", MOVES)).toBe("plated")
+
   const replaced = await replacedStamps(page)
   expect(replaced.length).toBeGreaterThan(0)
   expect(replaced.every((v) => v === "absent" || v === "plated")).toBe(true)

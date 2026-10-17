@@ -263,7 +263,8 @@ export function detectOccluderEngine(root: ParentNode): OccluderEngine {
 }
 
 /**
- * Every element the static occluder is hiding *right now*, on this engine.
+ * Every element the static occluder is hiding *right now*, on this engine,
+ * while switched on (the runtime is stopped while off).
  *
  * With `:has()` available, the condition is the guarded one: a card per
  * {@link classifyCard} — the same three-way condition {@link PREMASK_SELECTORS}

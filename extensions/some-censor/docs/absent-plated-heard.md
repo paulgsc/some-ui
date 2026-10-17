@@ -89,6 +89,10 @@ Admitted whole only when all three hold:
 The setting is per language and the rule counts scripts, so 中文 and 日本語
 share Han (`QD15`).
 
+_Pending amendment (#1806):_ the owner dropped rule 2 and its setting on
+2026-10-17, so being music, and not live, a premiere or a Short, will be
+enough. #1806 rewrites this section with `QD15`.
+
 ## 7. Decide once (`QD16`)
 
 The popup holds the only choices:

@@ -13,6 +13,7 @@ import { afterEach, expect, it, vi } from "vitest"
 
 afterEach(() => {
   Reflect.deleteProperty(ext, "storage")
+  Reflect.deleteProperty(ext.runtime, "getURL")
 })
 
 it("builds two quick clicks on each other, logging each change", async () => {
