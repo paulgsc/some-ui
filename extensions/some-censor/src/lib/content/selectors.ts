@@ -185,20 +185,24 @@ const SHELF_SELECTORS: ReadonlyArray<string> = [
 /**
  * The element a shelf holds each tile in, per surface (home, channel,
  * search). A slot whose child is not a catalogue tag holds a tile no content
- * script takes: a post, a channel tile.
+ * script takes: a post, a channel tile. A home cell that is itself the card
+ * is stamped, and its stamp decides instead.
  */
 const SHELF_ITEM_SLOTS = [
-  "ytd-rich-item-renderer > #content",
+  "ytd-rich-item-renderer:not([data-boyo]) > #content",
   "yt-horizontal-list-renderer #items",
   ".ytGridShelfViewModelGridShelfItem",
 ].join(", ")
 
 /**
  * What keeps a shelf on screen: a card that is not absent, whether plated or
- * not adopted yet, or a tile that never will be adopted. An unstamped
+ * not adopted yet, or a tile in one of {@link SHELF_ITEM_SLOTS}. An unstamped
  * {@link CardSelector.wrapsCards} tag is left out, because it may only be the
  * wrapper around an absent card. That leaves one early collapse: a wrapper
  * tag that is itself a pending card. It hides, and comes back once plated.
+ * And one header over nothing: a home post whose attached video is absent.
+ * Its cell is hidden, but the post still holds the shelf, and telling the
+ * two apart would need a `:has()` inside a `:has()`.
  */
 const SHELF_LIVE_SELECTOR = [
   '[data-boyo]:not([data-boyo="absent"])',

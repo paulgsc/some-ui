@@ -203,6 +203,14 @@ describe("the stylesheet and the catalogue agree", () => {
       ),
       "a slot holding a post"
     ).toBe(false)
+    second.setAttribute("data-boyo", "absent")
+    expect(
+      collapses(
+        '<div id="content"><ytd-rich-grid-media></ytd-rich-grid-media></div>'
+      ),
+      "a cell that is itself the card: its stamp decides"
+    ).toBe(true)
+    second.removeAttribute("data-boyo")
     second.remove()
     shelf.querySelector("[data-boyo]")?.setAttribute("data-boyo", "plated")
     expect(shelf.matches(rule), "no absent card at all").toBe(false)

@@ -358,6 +358,7 @@ ytd-rich-item-renderer:has([data-boyo="absent"]) {
    holds a shelf open and which element each surface needs gone; asserted
    one-for-one by selectors.test.ts, one rule per selector (QC0).
    ---------------------------------------------------------- */
+
 ytd-rich-section-renderer:has([data-boyo="absent"]):not(
     :has(
       [data-boyo]:not([data-boyo="absent"]),
@@ -373,7 +374,7 @@ ytd-rich-section-renderer:has([data-boyo="absent"]):not(
           ytd-structured-description-video-lockup-renderer
         ):not([data-boyo="absent"]),
       :is(
-          ytd-rich-item-renderer > #content,
+          ytd-rich-item-renderer:not([data-boyo]) > #content,
           yt-horizontal-list-renderer #items,
           .ytGridShelfViewModelGridShelfItem
         )
@@ -410,7 +411,7 @@ grid-shelf-view-model:has([data-boyo="absent"]):not(
           ytd-structured-description-video-lockup-renderer
         ):not([data-boyo="absent"]),
       :is(
-          ytd-rich-item-renderer > #content,
+          ytd-rich-item-renderer:not([data-boyo]) > #content,
           yt-horizontal-list-renderer #items,
           .ytGridShelfViewModelGridShelfItem
         )
@@ -449,7 +450,7 @@ ytd-item-section-renderer:has(
           ytd-structured-description-video-lockup-renderer
         ):not([data-boyo="absent"]),
       :is(
-          ytd-rich-item-renderer > #content,
+          ytd-rich-item-renderer:not([data-boyo]) > #content,
           yt-horizontal-list-renderer #items,
           .ytGridShelfViewModelGridShelfItem
         )
@@ -488,7 +489,7 @@ ytd-item-section-renderer:has(> #contents > ytd-shelf-renderer:only-child):has(
           ytd-structured-description-video-lockup-renderer
         ):not([data-boyo="absent"]),
       :is(
-          ytd-rich-item-renderer > #content,
+          ytd-rich-item-renderer:not([data-boyo]) > #content,
           yt-horizontal-list-renderer #items,
           .ytGridShelfViewModelGridShelfItem
         )

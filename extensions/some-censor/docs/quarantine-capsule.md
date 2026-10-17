@@ -358,7 +358,8 @@ _Status: holds on feeds (#1803, #1846)._ A held card is out of layout and the
 accessibility tree, and so is a home-feed grid cell around one, and a shelf
 whose every card is held, in the containers captured so far (home's rich
 section, search's grid shelf, a channel page's shelf section). Gaps remain:
-a shelf in any other container keeps its header; a video-shaped element the
+a shelf in any other container keeps its header, and so does one whose only
+other tile is a post with an absent video attached; a video-shaped element the
 Sensor cannot resolve stays blurred in place under the occluder
 (`OccluderReleases` reports it); and a held video's watch page, and autoplay
 into one (#1805).
