@@ -1,0 +1,81 @@
+name: Needs Spike
+# Temporary (epic #1615). pages.yml's dispatch and pull_request runs will
+# skip a new `approve` job that build -> assemble -> deploy hang off. This
+# checks how a skipped job two `needs` levels up treats jobs below it: chain
+# E spells `!cancelled()` and an explicit result check on every level, chain I
+# relies on the implicit success() as assemble and deploy do today. Runs only
+# on this spike branch; deleted in the next commit. env-check reads the three
+# environments' protection rules with the run's token, to see whether an
+# approval job can verify its own environment still requires a reviewer.
+on:
+  push:
+    branches: [ccr-325c2503-rtgfe0]
+permissions: {}
+jobs:
+  approve-e:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo never
+  build-e:
+    needs: approve-e
+    if: ${{ !cancelled() && needs.approve-e.result == 'skipped' }}
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo build-e
+  assemble-e:
+    needs: build-e
+    if: ${{ !cancelled() && needs.build-e.result == 'success' }}
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo assemble-e
+  deploy-e:
+    needs: assemble-e
+    if: ${{ !cancelled() && needs.assemble-e.result == 'success' }}
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo deploy-e
+  approve-i:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo never
+  build-i:
+    needs: approve-i
+    if: ${{ !cancelled() && needs.approve-i.result == 'skipped' }}
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo build-i
+  assemble-i:
+    needs: build-i
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo assemble-i
+  deploy-i:
+    needs: assemble-i
+    if: needs.assemble-i.result == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo deploy-i
+  env-check:
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      deployments: read
+    steps:
+      - name: Read environment protection rules
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          for env in approval-spike pages-release mobile-release; do
+            echo "== $env (run token)"
+            gh api "repos/$GITHUB_REPOSITORY/environments/$env" \
+              --jq '{rules: [.protection_rules[] | {type, reviewers: [.reviewers[]?.reviewer.login], prevent_self_review}], branch_policy: .deployment_branch_policy}' || true
+            echo "== $env (anonymous)"
+            curl -fsS "https://api.github.com/repos/$GITHUB_REPOSITORY/environments/$env" |
+              jq -c '{rules: [.protection_rules[] | {type, reviewers: [.reviewers[]?.reviewer.login]}], branch_policy: .deployment_branch_policy}' || true
+          done
+          echo "== branch policies of pages-release / mobile-release"
+          for env in pages-release mobile-release; do
+            gh api "repos/$GITHUB_REPOSITORY/environments/$env/deployment-branch-policies" --jq "\"$env: \" + ([.branch_policies[] | .name + \" (\" + .type + \")\"] | join(\", \"))" || true
+          done
