@@ -1,0 +1,20 @@
+name: Approval Plumbing Spike
+# Temporary (#1859): calls _environment-approval.yml for approval-spike, which
+# currently has no required reviewer, so the guard must fail the run. Runs
+# only on this branch; removed in the next commit.
+on:
+  push:
+    branches: [ccr-325c2503-rtgfe0]
+permissions: {}
+jobs:
+  approve:
+    uses: ./.github/workflows/_environment-approval.yml
+    with:
+      environment: approval-spike
+    permissions:
+      actions: read
+  after:
+    needs: approve
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "must not run when the guard fails"

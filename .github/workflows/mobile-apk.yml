@@ -32,6 +32,7 @@ on:
       - "pnpm-lock.yaml"
       - ".github/workflows/mobile-apk.yml"
       - ".github/workflows/_mobile-review.yml"
+      - ".github/workflows/_environment-approval.yml"
       - ".github/actions/**"
 
 # No workflow-level concurrency: cancelling in progress there would let a
@@ -49,29 +50,11 @@ permissions:
 jobs:
   approve:
     name: Approve APK build
-    runs-on: ubuntu-latest
-    environment: mobile-release
-    concurrency:
-      group: mobile-apk-approve
-      cancel-in-progress: true
+    uses: ./.github/workflows/_environment-approval.yml
+    with:
+      environment: mobile-release
     permissions:
       actions: read
-    steps:
-      # The approval is a repo setting, not code. If mobile-release loses its
-      # required reviewer, or is deleted and this job's reference re-creates
-      # it unprotected, GitHub runs this job at once and nothing else fails:
-      # every push would build unapproved. So check the setting itself.
-      - name: Check mobile-release still requires a reviewer
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          reviewers=$(gh api "repos/$GITHUB_REPOSITORY/environments/mobile-release" \
-            --jq '[.protection_rules[] | select(.type == "required_reviewers")] | length')
-          if [ "$reviewers" -lt 1 ]; then
-            echo "::error::mobile-release has no required reviewer, so nobody approved this build. Add one under Settings > Environments, then re-run."
-            exit 1
-          fi
-          echo "Approved: building ${GITHUB_SHA}."
 
   apk:
     name: Build APK

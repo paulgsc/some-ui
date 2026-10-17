@@ -33,6 +33,7 @@ on:
       - "packages/**"
       - "pnpm-lock.yaml"
       - ".github/workflows/pages.yml"
+      - ".github/workflows/_environment-approval.yml"
       - ".github/actions/**"
   pull_request:
     branches: [main]
@@ -57,37 +58,18 @@ permissions:
 # would deploy the older commit. Each job below takes its own group instead.
 jobs:
   # ── Approve the deploy ──────────────────────────────────────────────────
-  # Waits on the pages-release environment's required reviewer (see header).
-  # Only on push: a pull request builds a preview and deploys nothing, and a
-  # workflow_dispatch is itself the request to deploy.
+  # Waits on the pages-release environment's required reviewer (see header
+  # and _environment-approval.yml). Only on push: a pull request builds a
+  # preview and deploys nothing, and a workflow_dispatch is itself the
+  # request to deploy.
   approve:
     name: Approve Pages deploy
     if: github.event_name == 'push'
-    runs-on: ubuntu-latest
-    environment: pages-release
-    # A newer push cancels a run still waiting here, so the one you can
-    # approve is always main's newest.
-    concurrency:
-      group: pages-approve
-      cancel-in-progress: true
+    uses: ./.github/workflows/_environment-approval.yml
+    with:
+      environment: pages-release
     permissions:
       actions: read
-    steps:
-      # The approval is a repo setting, not code. If pages-release loses its
-      # required reviewer, or is deleted and this job's reference re-creates
-      # it unprotected, GitHub runs this job at once and nothing else fails:
-      # every push would deploy unapproved. So check the setting itself.
-      - name: Check pages-release still requires a reviewer
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          reviewers=$(gh api "repos/$GITHUB_REPOSITORY/environments/pages-release" \
-            --jq '[.protection_rules[] | select(.type == "required_reviewers")] | length')
-          if [ "$reviewers" -lt 1 ]; then
-            echo "::error::pages-release has no required reviewer, so nobody approved this deploy. Add one under Settings > Environments, then re-run."
-            exit 1
-          fi
-          echo "Approved: deploying ${GITHUB_SHA}."
 
   # ── Build the tanstack app ───────────────────────────────────────────────
   build-www:
@@ -100,6 +82,13 @@ jobs:
     # builds the preview.
     if: ${{ !cancelled() && (github.event_name != 'push' || needs.approve.result == 'success') }}
     runs-on: ubuntu-latest
+    # One build per ref at a time. A newer queued build replacing an older
+    # queued one (the default `queue: single`) is intended here and in
+    # pages-deploy: the site holds one deployment, approvals arrive in push
+    # order because only main's newest run can be waiting, so the newest
+    # request is a superset of the one it replaces and the last request wins.
+    # `queue: max` would ship every superseded commit, in an order GitHub
+    # does not guarantee, so an older commit could land over a newer one.
     concurrency:
       group: pages-build-${{ github.ref }}
       cancel-in-progress: false
@@ -229,7 +218,8 @@ jobs:
       needs.assemble.result == 'success' &&
       (github.event_name == 'push' || github.event_name == 'workflow_dispatch') &&
       github.ref == 'refs/heads/main'
-    # One deploy at a time; one that has started always finishes.
+    # One deploy at a time; one that has started always finishes, and a
+    # newer queued deploy replaces an older queued one (see build-www).
     concurrency:
       group: pages-deploy
       cancel-in-progress: false
