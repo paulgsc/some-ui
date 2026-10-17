@@ -781,9 +781,9 @@
         ],
         "situations": {
           "options": [
-            "Introducing yourself",
-            "Asking someone what they do",
-            "Ordering at a café"
+            "Answering a question about yourself",
+            "Answering a question about someone else",
+            "Asking the same question back"
           ],
           "intended": 0
         }
@@ -959,9 +959,9 @@
         ],
         "situations": {
           "options": [
-            "Describing someone in your family",
-            "Asking how tall someone is",
-            "Buying clothes a size up"
+            "Describing what a family member looks like",
+            "Describing how a family member is feeling",
+            "Describing what a family member does for work"
           ],
           "intended": 0
         }
@@ -1013,9 +1013,9 @@
         ],
         "situations": {
           "options": [
-            "Describing your usual daily routine",
-            "Asking someone to set an alarm",
-            "Explaining why you were late this once"
+            "Giving the hour of a daily habit",
+            "Giving the place of a daily habit",
+            "Giving the reason for a daily habit"
           ],
           "intended": 0
         }
@@ -1331,11 +1331,11 @@
         ],
         "situations": {
           "options": [
-            "Ordering a side dish",
-            "Commenting on food you are eating",
-            "Saying you are full"
+            "Describing how something tastes",
+            "Describing how much something costs",
+            "Describing where something comes from"
           ],
-          "intended": 1
+          "intended": 0
         }
       }
     },
@@ -1530,9 +1530,9 @@
         ],
         "situations": {
           "options": [
-            "Talking about the seasons",
-            "Asking for a blanket",
-            "Saying you caught a cold"
+            "Describing what a season is like",
+            "Describing what you do in a season",
+            "Describing when a season starts"
           ],
           "intended": 0
         }
@@ -1799,11 +1799,11 @@
         ],
         "situations": {
           "options": [
-            "Asking what time it opens",
-            "Asking for directions",
-            "Asking for medicine"
+            "Asking for directions to a place",
+            "Asking when a place opens",
+            "Asking what a place sells"
           ],
-          "intended": 1
+          "intended": 0
         }
       }
     },
@@ -2126,9 +2126,9 @@
         ],
         "situations": {
           "options": [
-            "Reacting to someone's pet",
-            "Asking if dogs are allowed",
-            "Saying you are allergic"
+            "Reacting to an animal you can see",
+            "Asking whose animal it is",
+            "Asking what an animal eats"
           ],
           "intended": 0
         }
@@ -2783,11 +2783,11 @@
         ],
         "situations": {
           "options": [
-            "Signing up for a class",
-            "Saying how your studies are going",
-            "Buying a dictionary"
+            "Saying how a course is going",
+            "Saying how long a course lasts",
+            "Saying where a course is held"
           ],
-          "intended": 1
+          "intended": 0
         }
       }
     },

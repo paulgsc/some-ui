@@ -112,7 +112,7 @@ describe("the repo's sets, both added", () => {
     ): Array<RegExp> =>
       [...glosses]
         .flatMap((text) => text.split(/[;,/()]| or /))
-        .map((part) => part.trim().replace(/^to /, ""))
+        .map((part) => part.trim().replace(/^(to|be) /, ""))
         .filter((part) => part.length >= shortest)
         .map((part) => new RegExp(`\\b${escape(part)}`, "i"))
     // Short glosses ("go", "what") are also words of the grammar's English.
