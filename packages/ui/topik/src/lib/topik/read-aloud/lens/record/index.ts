@@ -65,6 +65,8 @@ export type LensRecordEntry = {
     floor: number | null
   } | null
   situation: { chosen: string | null; intended: boolean | null } | null
+  /** The learner's takes of the line (Rem. 4.16), as counts, never audio. */
+  take: { count: number; lastMs: number; heardFirst: boolean } | null
 }
 
 /** Rem. 4.17's threshold for the item as it was shown. */
@@ -131,11 +133,13 @@ export function recordEntry(
     closedAt,
     audio,
     earlier,
+    take,
   }: {
     session: string
     closedAt: number
     audio: boolean
     earlier: ReadonlyArray<LensRecordEntry>
+    take: LensRecordEntry["take"]
   }
 ): LensRecordEntry {
   const { shape } = item
@@ -204,6 +208,7 @@ export function recordEntry(
               : outcome.situation.chosen === situations?.intended,
         }
       : null,
+    take,
   }
 }
 

@@ -32,6 +32,7 @@ const entry = (
   racing: false,
   stepDown: null,
   situation: null,
+  take: null,
   ...overrides,
 })
 
@@ -115,14 +116,30 @@ describe("the lens record store", () => {
 
   it("neither exports nor lets go an entry with a field it does not know", () => {
     const storage = memoryStorage()
-    const newer = { ...entry(NOW), take: { count: 1 } }
+    const newer = { ...entry(NOW), mood: "calm" }
+    const nested = {
+      ...entry(NOW, { line: "nested" }),
+      take: { count: 1, lastMs: 2_000, heardFirst: false, pitch: 3 },
+    }
     storage.map.set(
       LENS_RECORD_KEY,
-      JSON.stringify({ version: 1, entries: [newer] })
+      JSON.stringify({ version: 1, entries: [newer, nested] })
     )
     expect(lensRecordForExport(storage).entries).toEqual([])
     expect(letGoLensRecord([entry(NOW)], storage)).toBe(0)
-    expect(storage.map.get(LENS_RECORD_KEY)).toContain('"take"')
+    expect(
+      letGoLensRecord(
+        [
+          {
+            ...entry(NOW, { line: "nested" }),
+            take: { count: 1, lastMs: 2_000, heardFirst: false },
+          },
+        ],
+        storage
+      )
+    ).toBe(0)
+    expect(storage.map.get(LENS_RECORD_KEY)).toContain('"mood"')
+    expect(storage.map.get(LENS_RECORD_KEY)).toContain('"pitch"')
   })
 
   it("keeps what it cannot parse, and writes over no record it cannot read", () => {

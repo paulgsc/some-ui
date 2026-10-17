@@ -80,7 +80,7 @@
     skill
   ]
   #v(1em)
-  #text(size: 9.5pt)[Version 1.19 --- 2026-10-17]
+  #text(size: 9.5pt)[Version 1.20 --- 2026-10-17]
   #v(2cm)
 ]
 
@@ -1877,9 +1877,11 @@ rather than as *data*, and the remedy is to exhibit the data.
   the device only as Remark 4.18's record does. The record keeps what can be
   said of a take without listening to it: how many were made, how long the
   last ran, and whether the learner heard $b$ first. A take is never
-  required. Takes are bounded on their own (Rem. 7.5): at most forty, the
-  most recent, each at most thirty seconds, each expiring after thirty days;
-  losing one costs the learner that recording and nothing else (Thm. 7.2).
+  required. Takes are bounded on their own (Rem. 7.5): at most forty, each at
+  most thirty seconds. None expires and none is evicted: a take leaves the
+  device only once the learner says an export carrying it arrived, and at
+  the bound a new take is refused, with a line saying how to make room.
+  Losing one costs the learner that recording and nothing else (Thm. 7.2).
 ]
 
 #remark("4.17", name: "Time to answer, and racing")[
@@ -4017,6 +4019,13 @@ history is never lost unseen, and their choice to free it only after a
 confirmed copy (\#1839), as the phone's session archive and reflections
 already do. Filed with `packages/ui/topik`'s record store and `apps/www`'s
 study-context export. Moves the front-matter version line.
+
+*v1.20 --- 2026-10-17.* Amends Remark 4.16's bound as v1.19 amended
+Remark 4.18's: at most forty takes, none expiring and none evicted, each
+leaving the device only once the learner says an export carrying it arrived;
+at the bound a new take is refused. Motivated by the same direction of the
+owner's (\#1839). Filed with `packages/ui/topik`'s take row and `apps/www`'s
+take store and study-context export. Moves the front-matter version line.
 
 #pagebreak()
 

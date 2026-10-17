@@ -6,17 +6,15 @@
  * snapshot and forwards taps.
  */
 
+import type { VoiceTake } from "@topik/lib/topik/adapter/voice-take"
+
 /** A voice note in the draft. */
 export type SceneNote = { id: string; durationMs: number; mimeType: string }
 
 export type SceneVoiceSnapshot = {
   /** The draft's notes, oldest first. */
   notes: ReadonlyArray<SceneNote>
-  take:
-    | { kind: "idle" }
-    | { kind: "opening" }
-    | { kind: "recording"; elapsedMs: number }
-    | { kind: "keeping" }
+  take: VoiceTake
   /** Said once beside the button: how the last take ended, or why none can. */
   said: string | null
   /** No more notes fit the draft: a new take cannot start. */

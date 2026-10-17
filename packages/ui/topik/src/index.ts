@@ -75,6 +75,10 @@ export {
   letGoLensRecord,
   lensRecordForExport,
 } from "./lib/topik/adapter/lens-record-store"
+export type {
+  LensTakes,
+  LensTakeSnapshot,
+} from "./lib/topik/adapter/lens-takes"
 export type { PracticeRecord } from "./lib/topik/read-aloud/records"
 
 /** The quiz pane by stage; apps/www's panel-fit page mounts each stage directly. */

@@ -1,4 +1,9 @@
-import type { Recording, StartRecording, Take } from "@some-ui/voice-capture"
+import type {
+  Playback,
+  Recording,
+  StartRecording,
+  Take,
+} from "@some-ui/voice-capture"
 import type { JournalProps } from "@soundbites/components/journal"
 import { Journal } from "@soundbites/components/journal"
 import {
@@ -7,7 +12,6 @@ import {
   take,
 } from "@soundbites/lib/journal/__tests__/fixture"
 import type { JournalPlan, JournalTake } from "@soundbites/lib/journal/plan"
-import type { Playback } from "@soundbites/lib/runtime"
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import type { Mock } from "vitest"
 import { describe, expect, it, vi } from "vitest"

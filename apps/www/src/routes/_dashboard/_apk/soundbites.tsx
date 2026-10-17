@@ -72,11 +72,12 @@ const ShareWithAgent = ({ taking }: { taking: boolean }): JSX.Element => {
   })
   const { ask, sheet } = useConfirmSheet()
   useIntentEffect(share, (result) => {
-    const going = goingOut(
-      result.sent.length,
-      result.soundbites.length,
-      result.lens.length
-    )
+    const going = goingOut({
+      reflections: result.sent.length,
+      soundbites: result.soundbites.length,
+      lensAnswers: result.lens.length,
+      lensTakes: result.takes.length,
+    })
     if (result.outcome !== "shared" || going === "") return
     ask(
       arrived(`the ${going}`, "Keep them here", () =>
@@ -88,9 +89,9 @@ const ShareWithAgent = ({ taking }: { taking: boolean }): JSX.Element => {
     <section className="space-y-2">
       <p className="text-muted-foreground text-sm">
         Your sessions with their reflections, soundbites, stop reasons and
-        grammar-lens answers, as files for an agent to read. You pick where they
-        go; once they arrive, the reflections, soundbites and answers leave the
-        phone.
+        grammar-lens answers and takes, as files for an agent to read. You pick
+        where they go; once they arrive, all but the sessions and stop reasons
+        leave the phone.
       </p>
       <IntentButton
         state={share.state}

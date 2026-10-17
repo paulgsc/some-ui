@@ -50,10 +50,44 @@ const LENS = vi.hoisted(() => ({
   sessions: [{ session: "2026-10-10T08:00:00.000Z", racing: false }],
 }))
 const letGoLensRecord = vi.hoisted(() => vi.fn(() => 1))
+/** Which lens store each export read, in order. */
+const lensReads = vi.hoisted((): Array<string> => [])
 vi.mock("@some-ui/topik", () => ({
   readAloudPracticeRecord: (): typeof PRACTICE => PRACTICE,
-  lensRecordForExport: (): typeof LENS => LENS,
+  lensRecordForExport: (): typeof LENS => {
+    lensReads.push("record")
+    return LENS
+  },
   letGoLensRecord,
+}))
+const TAKE = {
+  line: "school-bus",
+  takenAt: 1_760_000_000_000,
+  durationMs: 2_500,
+  mimeType: "audio/webm",
+}
+const letGoLensTakes = vi.hoisted(() => vi.fn())
+vi.mock("@/lib/lens-takes", () => ({
+  letGoLensTakes,
+  lensTakesForExport: (): Promise<Array<unknown>> => {
+    lensReads.push("takes")
+    return Promise.resolve([
+      {
+        take: { ...TAKE, id: "take-one-aaaa" },
+        audio: new Blob(["opus"]),
+        read: true,
+      },
+      { take: { ...TAKE, id: "take-two-bbbb" }, audio: null, read: true },
+      // The shelf failed: listed without a file, and never let go.
+      { take: { ...TAKE, id: "take-three-cc" }, audio: null, read: false },
+      // A long line id: its file name is cut short, its entry keeps it whole.
+      {
+        take: { ...TAKE, line: "x".repeat(300), id: "take-four-dddd" },
+        audio: new Blob(["opus"]),
+        read: true,
+      },
+    ])
+  },
 }))
 vi.mock("@/lib/tenant/queries", () => ({
   sessionsRepository: {
@@ -250,6 +284,8 @@ describe("shareAgentExport", () => {
         files: [
           "file:///cache/agent-export/context.json",
           "file:///cache/agent-export/soundbite-b1.webm",
+          "file:///cache/agent-export/lens-take-school-bus-take-one.webm",
+          `file:///cache/agent-export/lens-take-${"x".repeat(48)}-take-fou.webm`,
           "file:///cache/agent-export/2026-10-10_morning-drama_s1-00000_voice-04m12s-v1.webm",
         ],
       })
@@ -271,17 +307,40 @@ describe("shareAgentExport", () => {
       stops: [{ sessionId: "session-1", reason: "focus" }],
       readAloudPractice: PRACTICE,
       grammarLens: LENS,
+      // A take whose audio could not be read is listed without a file.
+      lensTakes: [
+        { id: "take-one-aaaa", file: "lens-take-school-bus-take-one.webm" },
+        { id: "take-two-bbbb", file: null },
+        { id: "take-three-cc", file: null },
+        {
+          id: "take-four-dddd",
+          line: "x".repeat(300),
+          file: `lens-take-${"x".repeat(48)}-take-fou.webm`,
+        },
+      ],
       soundbites: [{ id: "b1", file: "soundbite-b1.webm" }],
     })
     expect(context).not.toHaveProperty(["sessions", 0, "scenes"])
     expect(sent).toEqual(["t2", "v1", "t1"])
     expect(result.soundbites).toEqual(["b1"])
     expect(result.lens).toEqual(LENS.entries)
+    expect(result.takes).toEqual([
+      "take-one-aaaa",
+      "take-two-bbbb",
+      "take-four-dddd",
+    ])
+    // The record first: a take kept in between stays with its rewritten entry.
+    expect(lensReads.slice(-2)).toEqual(["record", "takes"])
 
     const remove = vi.fn(() => Promise.resolve())
     handOffExport({ remove }, result, NOW())
     expect(reflections.getSnapshot().kept).toEqual([])
     expect(remove).toHaveBeenCalledWith(["b1"])
+    expect(letGoLensTakes).toHaveBeenCalledWith([
+      "take-one-aaaa",
+      "take-two-bbbb",
+      "take-four-dddd",
+    ])
     await vi.waitFor(() => {
       expect(letGoLensRecord).toHaveBeenCalledWith(LENS.entries)
     })
