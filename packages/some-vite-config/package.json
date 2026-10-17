@@ -28,18 +28,18 @@
     "test": "vitest"
   },
   "dependencies": {
-    "@vitejs/plugin-react": "^6.1.1",
+    "@vitejs/plugin-react": "^6.1.2",
     "typescript": "catalog:",
-    "vite": "^8.3.2",
+    "vite": "^8.3.4",
     "zod": "catalog:"
   },
   "devDependencies": {
     "@some-ui/tsconfig": "workspace:*",
     "tsc-alias": "^1.9.7",
-    "vitest": "^5.0.3"
+    "vitest": "^5.0.4"
   },
   "peerDependencies": {
-    "vite": "^8.3.2"
+    "vite": "^8.3.4"
   },
   "exports": {
     ".": {
