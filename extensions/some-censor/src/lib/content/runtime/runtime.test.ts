@@ -2,15 +2,13 @@
  * The whole pipeline in one document (BC5, #1438): Sensor → Core →
  * Actuator, through jsdom's real MutationObserver, with a stub background.
  * #1422, #1426, the recycle/churn split, navigation, vendor churn, and the
- * health cadence and bulk coverage the flight recorder reports.
+ * health cadence the flight recorder reports.
  */
 
 import type { CoreFact } from "@censor/lib/content/core/actions"
-import { WHITELIST_REVEAL_DELAY_MS } from "@censor/lib/content/core/actions"
 import type { BoyoObservability } from "@censor/lib/content/observability"
 import {
   OCCLUSION_GRACE_MS,
-  PROMOTION_STALL_MS,
   startObservability,
   stopObservability,
 } from "@censor/lib/content/observability"
@@ -20,7 +18,6 @@ import {
   RETRY_INTERVAL_MS,
 } from "@censor/lib/content/sensor/queue"
 import { NAV_DEBOUNCE_MS } from "@censor/lib/content/sensor/sensor"
-import type { BgRequest } from "@censor/types/messages"
 import type { SessionId } from "@some-extension/common"
 import { memoryPersistence } from "@some-extension/common/observability"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
@@ -30,21 +27,21 @@ import { createRuntime } from "./runtime"
 
 let runtime: Runtime
 let facts: Array<CoreFact>
-let whitelisted: Set<string>
-let sent: Array<BgRequest>
 let now: number
 let sessions: number
-let hangWhitelist: boolean
 
 // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
 const session = (n: number): SessionId => n as unknown as SessionId
 
-function cell(videoId: string, channel = "Chan"): HTMLElement {
+/** Old enough to plate under the default boundary. */
+const OLD = "6 years ago"
+
+function cell(videoId: string, channel = "Chan", age = OLD): HTMLElement {
   const el = document.createElement("ytd-rich-item-renderer")
   el.innerHTML = `<a id="video-title" href="/watch?v=${videoId}">Title ${videoId}</a>
     <ytd-channel-name><yt-formatted-string>${channel}</yt-formatted-string></ytd-channel-name>
     <a href="/@${channel}"></a>
-    <div id="metadata-line"><span>1 view</span><span>2 days ago</span></div>`
+    <div id="metadata-line"><span>1 view</span><span>${age}</span></div>`
   return el
 }
 
@@ -53,7 +50,8 @@ function lockup(videoId: string): HTMLElement {
   el.innerHTML = `
     <a class="yt-lockup-view-model__content-image" href="/watch?v=${videoId}"></a>
     <h3><a class="yt-lockup-metadata-view-model__title" href="/watch?v=${videoId}"><span>Lock ${videoId}</span></a></h3>
-    <a class="yt-content-metadata-view-model__metadata-text" href="/@Chan">Chan</a>`
+    <a class="yt-content-metadata-view-model__metadata-text" href="/@Chan">Chan</a>
+    <span class="yt-content-metadata-view-model__metadata-text">${OLD}</span>`
   return el
 }
 
@@ -77,15 +75,6 @@ function veil(el: HTMLElement): HTMLElement | null {
   return el.querySelector(":scope > .boyo-veil")
 }
 
-function clickVeil(
-  el: HTMLElement,
-  type: "click" | "dblclick" = "click"
-): void {
-  veil(el)?.dispatchEvent(
-    new MouseEvent(type, { bubbles: true, cancelable: true })
-  )
-}
-
 function entry(videoId: string): ReturnType<Runtime["state"]["cards"]["get"]> {
   for (const card of runtime.state.cards.values()) {
     if (card.observation.videoId === videoId) return card
@@ -97,28 +86,13 @@ beforeEach(() => {
   vi.useFakeTimers()
   document.body.innerHTML = "<ytd-app></ytd-app>"
   facts = []
-  whitelisted = new Set()
-  sent = []
   now = 100_000
   sessions = 0
-  hangWhitelist = false
   runtime = createRuntime({
     doc: document,
     win: window,
     clock: () => now,
     mintSession: () => session(++sessions),
-    sendMessage: (msg) => {
-      sent.push(msg)
-      if (msg.type === "IS_WHITELISTED") {
-        if (hangWhitelist) return new Promise(() => undefined)
-        return Promise.resolve({
-          ok: true,
-          whitelisted: whitelisted.has(msg.channelId),
-        })
-      }
-      return Promise.resolve({ ok: true })
-    },
-    confirmWhitelist: () => true,
     onFact: (f) => facts.push(f),
   })
   runtime.start()
@@ -130,23 +104,18 @@ afterEach(() => {
 })
 
 describe("adoption", () => {
-  it("masks every card a scan finds, and asks the background about each channel", async () => {
+  it("plates every old card a scan finds", async () => {
     document.body.append(cell("a"), cell("b", "Other"), lockup("c"))
     runtime.scan()
     await tick()
     for (const id of ["a", "b", "c"]) {
-      expect(entry(id)?.view.kind, id).toBe("masked")
+      expect(entry(id)?.view.kind, id).toBe("plated")
     }
     for (const el of document.querySelectorAll<HTMLElement>("[data-boyo]")) {
-      expect(el.dataset["boyo"]).toBe("0")
+      expect(el.dataset["boyo"]).toBe("plated")
       expect(veil(el)).not.toBeNull()
     }
-    expect(sent.filter((m) => m.type === "IS_WHITELISTED")).toHaveLength(3)
-    expect(entry("a")?.channel).toEqual({
-      kind: "known",
-      channelId: "@Chan",
-      whitelisted: false,
-    })
+    expect(entry("a")?.observation.channelId).toBe("@Chan")
     expect(facts.filter((f) => f.kind === "mount.resolved")).toHaveLength(3)
   })
 
@@ -155,8 +124,8 @@ describe("adoption", () => {
     const late = cell("late")
     document.body.appendChild(late)
     await tick()
-    expect(late.dataset["boyo"]).toBe("0")
-    expect(entry("late")?.view.kind).toBe("masked")
+    expect(late.dataset["boyo"]).toBe("plated")
+    expect(entry("late")?.view.kind).toBe("plated")
   })
 
   it("holds one card for a nested pair, on the lockup, and releases the cell (#1426)", async () => {
@@ -166,7 +135,7 @@ describe("adoption", () => {
     document.body.appendChild(outer)
     await tick()
     expect(runtime.state.cards.size).toBe(1)
-    expect(inner.dataset["boyo"]).toBe("0")
+    expect(inner.dataset["boyo"]).toBe("plated")
     expect(veil(inner)).not.toBeNull()
     expect(outer.hasAttribute("data-boyo")).toBe(false)
     expect(occludedElements(document)).not.toContain(outer)
@@ -191,98 +160,62 @@ describe("adoption", () => {
   })
 })
 
-describe("the disclosure ladder, on the evidence the page shows now", () => {
-  it("climbs masked → meta → title → revealed through real veil events", async () => {
-    const el = cell("ladder")
+describe("evidence decides (#1803)", () => {
+  it("takes a card too young to show out of layout, with no veil", async () => {
+    const el = cell("fresh", "Chan", "2 days ago")
     document.body.appendChild(el)
     await tick()
-    // Evidence changes after adoption; the click must see it.
-    el.querySelector("yt-formatted-string")!.textContent = "Renamed"
-
-    clickVeil(el)
-    await vi.advanceTimersByTimeAsync(400)
-    expect(entry("ladder")?.view.kind).toBe("meta")
-    expect(el.dataset["boyo"]).toBe("1")
-    expect(veil(el)?.textContent).toContain("Renamed")
-
-    clickVeil(el)
-    await vi.advanceTimersByTimeAsync(400)
-    expect(entry("ladder")?.view.kind).toBe("title")
-    expect(el.dataset["boyo"]).toBe("2")
-    expect(veil(el)?.textContent).toContain("Title ladder")
-
-    clickVeil(el, "dblclick")
-    await vi.advanceTimersByTimeAsync(700)
-    expect(entry("ladder")?.view.kind).toBe("revealed")
-    expect(el.dataset["boyo"]).toBe("3")
-    expect(veil(el), "the veil left the DOM").toBeNull()
-  })
-
-  it("tints a whitelisted channel's card, then reveals it", async () => {
-    whitelisted.add("@Chan")
-    const el = cell("wl")
-    document.body.appendChild(el)
-    await tick()
-    expect(entry("wl")?.view.kind).toBe("whitelisted")
-    expect(el.dataset["boyo"]).toBe("wl")
-    await vi.advanceTimersByTimeAsync(WHITELIST_REVEAL_DELAY_MS + 700)
-    expect(entry("wl")?.view.kind).toBe("revealed")
+    expect(entry("fresh")?.view.kind).toBe("absent")
+    expect(el.dataset["boyo"]).toBe("absent")
     expect(veil(el)).toBeNull()
   })
 
-  it("advances every card below title on the command, and reports coverage", async () => {
-    document.body.append(cell("x"), cell("y"))
+  it("holds a card until its date hydrates in place, then plates it", async () => {
+    const el = cell("late-date", "Chan", "")
+    const text = document.createTextNode("")
+    el.querySelector("#metadata-line span:nth-child(2)")!.appendChild(text)
+    document.body.appendChild(el)
     await tick()
-    clickVeil(document.querySelector("[data-boyo-vid=x]")!, "dblclick")
-    await tick()
-    runtime.dispatch({
-      kind: "command",
-      command: "advance-all-to-title",
-      t: now,
-    })
-    expect(entry("x")?.view.kind, "already past").toBe("revealed")
-    expect(entry("y")?.view.kind).toBe("title")
-    expect(facts.find((f) => f.kind === "bulk.advance")).toMatchObject({
-      advanced: 1,
-      alreadyPast: 1,
-    })
+    expect(entry("late-date")?.view.kind).toBe("absent")
+    // A text node's data changing is no mutation the observer is subscribed
+    // to; the date budget's re-reads are what find it.
+    text.data = OLD
+    await tick(2)
+    expect(entry("late-date")?.view.kind).toBe("plated")
+    expect(veil(el)).not.toBeNull()
   })
 })
 
 describe("identity across vendor churn (#1423, #980)", () => {
-  it("re-masks a renderer repointed at a new video, and never leaves it inert", async () => {
+  it("re-decides a renderer repointed at a new video, and never leaves it inert", async () => {
     const el = cell("old")
     document.body.appendChild(el)
     await tick()
-    clickVeil(el, "dblclick")
-    await tick()
-    expect(entry("old")?.view.kind).toBe("revealed")
+    expect(entry("old")?.view.kind).toBe("plated")
 
     el.setAttribute("data-video-id", "new")
     await tick()
     expect(entry("old")).toBeUndefined()
-    expect(entry("new")?.view.kind).toBe("masked")
-    expect(el.dataset["boyo"]).toBe("0")
+    expect(entry("new")?.view.kind).toBe("plated")
+    expect(el.dataset["boyo"]).toBe("plated")
     expect(el.dataset["boyoVid"]).toBe("new")
     expect(veil(el)).not.toBeNull()
   })
 
-  it("keeps a revealed lockup revealed when a preview anchor displaces its id", async () => {
+  it("keeps a lockup's card when a preview anchor displaces its id", async () => {
     const el = lockup("stable")
     document.body.appendChild(el)
     // Something queued keeps the retry loop's scan alive, as on a real feed.
     document.body.appendChild(document.createElement("yt-lockup-view-model"))
     await tick()
-    clickVeil(el, "dblclick")
-    await tick()
-    expect(entry("stable")?.view.kind).toBe("revealed")
+    expect(entry("stable")?.view.kind).toBe("plated")
 
     const preview = document.createElement("a")
     preview.setAttribute("href", "/watch?v=preview")
     el.prepend(preview)
     await tick(4)
-    expect(entry("stable")?.view.kind, "not revoked").toBe("revealed")
-    expect(el.dataset["boyo"]).toBe("3")
+    expect(entry("stable")?.view.kind, "the same card").toBe("plated")
+    expect(el.dataset["boyo"]).toBe("plated")
     expect(entry("preview")).toBeUndefined()
     expect(facts.some((f) => f.kind === "churn.ignored")).toBe(true)
   })
@@ -295,7 +228,7 @@ describe("identity across vendor churn (#1423, #980)", () => {
     el.replaceChildren(inner)
     await tick()
     expect(runtime.state.cards.size).toBe(1)
-    expect(inner.dataset["boyo"]).toBe("0")
+    expect(inner.dataset["boyo"]).toBe("plated")
     expect(veil(inner)).not.toBeNull()
     expect(el.hasAttribute("data-boyo")).toBe(false)
     expect(veil(el)).toBeNull()
@@ -303,13 +236,13 @@ describe("identity across vendor churn (#1423, #980)", () => {
 })
 
 describe("vendor churn that takes the veil with it", () => {
-  it("puts back the veil the vendor removed from a masked card", async () => {
+  it("puts back the veil the vendor removed from a plated card", async () => {
     const el = cell("v")
     document.body.appendChild(el)
     await tick()
     veil(el)?.remove()
     await tick()
-    expect(el.dataset["boyo"]).toBe("0")
+    expect(el.dataset["boyo"]).toBe("plated")
     expect(veil(el), "fails closed, not open").not.toBeNull()
   })
 
@@ -322,7 +255,7 @@ describe("vendor churn that takes the veil with it", () => {
     el.prepend(preview)
     veil(el)?.remove()
     await tick()
-    expect(entry("kept")?.view.kind).toBe("masked")
+    expect(entry("kept")?.view.kind).toBe("plated")
     expect(veil(el)).not.toBeNull()
   })
 })
@@ -342,13 +275,6 @@ describe("health and coverage, recorded", () => {
       .events()
       .filter((e) => e.kind === "invariant.violated")
       .map((e) => e.subject)
-
-  function coverage(): unknown {
-    return obs.recorder
-      .events()
-      .filter((e) => e.kind === "command.advance_all")
-      .at(-1)?.detail
-  }
 
   /** Video-shaped, so occluded; no parseable id, so never adopted. */
   function unparseableCard(): HTMLElement {
@@ -391,34 +317,6 @@ describe("health and coverage, recorded", () => {
     )
     expect(violations()).not.toContain("OccluderReleases")
   })
-
-  it("reports a whitelist round trip that never settles, on a quiet page (PromotionGuardClears)", async () => {
-    hangWhitelist = true
-    document.body.appendChild(cell("hangs"))
-    await tick()
-    expect(violations()).toEqual([])
-    await wait(PROMOTION_STALL_MS * 2)
-    expect(violations()).toContain("PromotionGuardClears")
-  })
-
-  it("records what a bulk advance covered, counting a queued card once", async () => {
-    document.body.append(cell("x"), cell("y"))
-    await tick()
-    document.body.appendChild(unparseableCard())
-    await tick()
-    runtime.dispatch({
-      kind: "command",
-      command: "advance-all-to-title",
-      t: now,
-    })
-    expect(coverage()).toMatchObject({
-      advanced: 2,
-      alreadyPast: 0,
-      unresolved: 1,
-      occludedUntracked: 0,
-      skipped: 1,
-    })
-  })
 })
 
 describe("lifecycle", () => {
@@ -426,9 +324,7 @@ describe("lifecycle", () => {
     const a = cell("before")
     document.body.appendChild(a)
     await tick()
-    clickVeil(a)
-    await vi.advanceTimersByTimeAsync(400)
-    expect(entry("before")?.view.kind).toBe("meta")
+    expect(entry("before")?.view.kind).toBe("plated")
     const sessionBefore = runtime.state.session
 
     // A chip navigation reuses the element in place with new content.
@@ -439,8 +335,8 @@ describe("lifecycle", () => {
 
     expect(runtime.state.session).toBeGreaterThan(sessionBefore)
     expect(entry("before")).toBeUndefined()
-    expect(entry("after")?.view.kind).toBe("masked")
-    expect(a.dataset["boyo"]).toBe("0")
+    expect(entry("after")?.view.kind).toBe("plated")
+    expect(a.dataset["boyo"]).toBe("plated")
     expect(a.querySelectorAll(".boyo-veil")).toHaveLength(1)
   })
 
@@ -459,7 +355,7 @@ describe("lifecycle", () => {
     runtime.scan()
     await tick()
     expect(runtime.running).toBe(true)
-    expect(el.dataset["boyo"]).toBe("0")
+    expect(el.dataset["boyo"]).toBe("plated")
     expect(runtime.state.cards.size).toBe(1)
   })
 
@@ -476,7 +372,7 @@ describe("lifecycle", () => {
     expect(snap?.entries["d1"]).toMatchObject({
       videoId: "d1",
       channelId: "@Chan",
-      viewKind: "masked",
+      viewKind: "plated",
       isConnected: true,
     })
     expect(snap?.sessionOrdinal).toBe(runtime.state.session)

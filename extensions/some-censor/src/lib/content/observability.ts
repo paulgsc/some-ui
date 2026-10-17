@@ -71,28 +71,18 @@ export const BOYO_EVENT_KINDS = [
   "mount.provisional",
   "mount.unresolved",
   "mount.rejected",
-  /** An async answer discarded because its card moved on (Core's R4). */
-  "mount.stale_discarded",
   /**
    * An id change on a mounted element *not* treated as a recycle, because the
    * element still advertises the artifact we mounted. The discrimination is a
-   * heuristic against a vendor DOM, so a wrongly re-masked or wrongly revealed
-   * card is diagnosed by whether this fired.
+   * heuristic against a vendor DOM, so a card wrongly torn down or wrongly
+   * kept is diagnosed by whether this fired.
    */
   "mount.churn_ignored",
   "channel.backfilled",
   "channel.abandoned",
-  /**
-   * One bulk advance-to-title keystroke, with what it covered. The detail
-   * (the denominator), not the count, is the diagnostic.
-   */
-  "command.advance_all",
   // Per-card FSM state, one kind per `ViewState["kind"]` (see ENTRY_EVENT).
-  "entry.masked",
-  "entry.meta",
-  "entry.title",
-  "entry.revealed",
-  "entry.whitelisted",
+  "entry.absent",
+  "entry.plated",
   // Date extraction — the corpus QC2 (#1384) depends on.
   "date.observed",
   "date.absent",
@@ -117,27 +107,12 @@ type BoyoCounter =
   | "mounts_provisional"
   | "cards_queued_unresolved"
   | "cards_rejected"
-  | "stale_promotions_discarded"
   /** Id changes ruled vendor churn rather than a recycle. */
   | "churn_ignored"
   | "channels_backfilled"
   | "channels_abandoned"
-  /** Bulk advance-to-title keystrokes handled while running. */
-  | "bulk_advances"
-  /** Cards those keystrokes moved from masked/meta to title. */
-  | "bulk_advance_advanced"
-  /**
-   * Cards they did not act on and could not have: detached, or hidden by the
-   * occluder while mid-resolution, mid-mount, or untracked. Deliberately
-   * excludes cards already at or past title, which are covered rather than
-   * skipped, and tiles the occluder never hid, which were never cards to miss.
-   */
-  | "bulk_advance_skipped"
-  | "entries_masked"
-  | "entries_meta"
-  | "entries_title"
-  | "entries_revealed"
-  | "entries_whitelisted"
+  | "entries_absent"
+  | "entries_plated"
   /** Every sighting, including repeats of a form already in the corpus. */
   | "dates_observed"
   | "dates_absent"
@@ -162,12 +137,6 @@ type BoyoAggregate =
   | "unresolved_depth"
   /** Cards the Sensor holds awaiting a channel, sampled alongside it. */
   | "channel_pending_depth"
-  /**
-   * Per-keystroke skipped count for a bulk advance. An aggregate because the
-   * shape is the finding: a stable fraction missed on every press looks the
-   * same as one bad press in a running total.
-   */
-  | "bulk_advance_skipped_per_command"
 
 /**
  * One kind per FSM state, as a total map rather than a partial one: a new
@@ -175,19 +144,13 @@ type BoyoAggregate =
  * unrecorded transition.
  */
 const ENTRY_EVENT: Readonly<Record<ViewState["kind"], BoyoEventKind>> = {
-  masked: "entry.masked",
-  meta: "entry.meta",
-  title: "entry.title",
-  revealed: "entry.revealed",
-  whitelisted: "entry.whitelisted",
+  absent: "entry.absent",
+  plated: "entry.plated",
 }
 
 const ENTRY_COUNTER: Readonly<Record<ViewState["kind"], BoyoCounter>> = {
-  masked: "entries_masked",
-  meta: "entries_meta",
-  title: "entries_title",
-  revealed: "entries_revealed",
-  whitelisted: "entries_whitelisted",
+  absent: "entries_absent",
+  plated: "entries_plated",
 }
 
 // ── Surfaces ─────────────────────────────────────────────────────────────────
@@ -196,19 +159,6 @@ export type { BoyoSurface } from "./layout/surface"
 export { surfaceOf } from "./layout/surface"
 
 // ── Invariants ───────────────────────────────────────────────────────────────
-
-/**
- * How long a card's `IS_WHITELISTED` round trip may stay unsettled (Core's
- * `channel.kind === "pending"`) before {@link boyoInvariants}'
- * `PromotionGuardClears` calls it stuck.
- *
- * Generous on purpose: the wait is one `IS_WHITELISTED` round trip to the
- * background worker, which is milliseconds when the worker is alive and
- * seconds at worst when MV3 has to respawn it to answer. Thirty seconds is
- * past any of that, and a promise that has not settled by then is not slow —
- * it is never going to settle.
- */
-export const PROMOTION_STALL_MS = 30_000
 
 /**
  * Grace added to `RESOLVE_BUDGET_MS` before `OccludedCardResolves` reports a
@@ -250,51 +200,6 @@ export type OccludedCard = {
 }
 
 /**
- * What one bulk advance-to-title keystroke actually covered.
- *
- * The command advances the cards Core holds; every other population on the
- * page is outside its reach. This is the denominator.
- *
- * The buckets are disjoint: `advanced + alreadyPast` is the number of cards
- * Core held at keypress time, and the two other fields partition the rest of
- * the occluded page. They are separate because their causes differ:
- * `unresolved` is often legitimately non-zero on a live feed, while
- * `occludedUntracked` (orphans, #1421) should trend to zero.
- */
-export type BulkAdvanceCoverage = {
-  /** Cards moved from masked/meta to title by this keystroke. */
-  readonly advanced: number
-  /** Cards already at or past title — covered, nothing to do. */
-  readonly alreadyPast: number
-  /**
-   * Occluded elements in the Sensor's retry queue — hidden, and
-   * mid-resolution. Not the queue's size, which also holds non-cards the
-   * premask `:has()` guard leaves visible.
-   */
-  readonly unresolved: number
-  /**
-   * Occluded elements the Sensor holds nothing for (rejected non-video
-   * renderers, orphans). Nothing is coming for these.
-   */
-  readonly occludedUntracked: number
-  /**
-   * How many of `advanced + alreadyPast` had no channel yet. Shows that a
-   * card awaiting its channel is covered, not skipped.
-   */
-  readonly channelPending: number
-}
-
-/** One card whose `IS_WHITELISTED` round trip has not settled. */
-type PromotingCard = {
-  /**
-   * The card's key (its videoId) — unlike {@link QueuedCard}'s tag: a stuck
-   * whitelist check is diagnosed by which video it was for.
-   */
-  readonly key: string
-  readonly startedAt: number
-}
-
-/**
  * Everything {@link boyoInvariants} needs, gathered once per health sample by
  * the runtime reading the Sensor's queues and Core's state. Pure data, so every check below
  * is unit-testable with a plain object and no DOM.
@@ -306,7 +211,6 @@ export type BoyoContext = {
   readonly resolveBudgetMs: number
   readonly unresolved: ReadonlyArray<QueuedCard>
   readonly channelPending: ReadonlyArray<QueuedCard>
-  readonly promoting: ReadonlyArray<PromotingCard>
   /**
    * Read from the DOM, not from any queue — see `OccluderReleases`. The only
    * field that can see what the bookkeeping cannot.
@@ -359,23 +263,6 @@ export const boyoInvariants: ReadonlyArray<Invariant<BoyoContext>> = [
         longestMs: Math.max(...stranded.map((c) => ctx.now - c.sinceAt)),
         graceMs: OCCLUSION_GRACE_MS,
       })
-    },
-  },
-  {
-    name: "PromotionGuardClears",
-    description:
-      "No card's IS_WHITELISTED round trip has stayed unsettled (Core's channel.kind === \"pending\") longer than PROMOTION_STALL_MS. Either settle path, a verdict or a failure, comes back to Core as an input and ends the wait — but a promise that never settles at all sends neither, and the card stays pending for the life of the session, never learning that its channel is whitelisted.",
-    check: (ctx): InvariantOutcome => {
-      if (ctx.phase !== "running") return { ok: "unknown" }
-      const stalled = ctx.promoting.filter(
-        (p) => ctx.now - p.startedAt >= PROMOTION_STALL_MS
-      )
-      return stalled.length === 0
-        ? { ok: true }
-        : violated({
-            keys: stalled.map((p) => p.key),
-            heldMs: stalled.map((p) => ctx.now - p.startedAt),
-          })
     },
   },
 ]
@@ -649,20 +536,10 @@ export class BoyoObservability {
     this.recorder.count("cards_rejected")
   }
 
-  /** Core discarded a whitelist answer or title transform as stale (R4). */
-  staleDiscarded(videoId: string): void {
-    this.recorder.record({
-      kind: "mount.stale_discarded",
-      subject: videoId,
-      severity: "warn",
-    })
-    this.recorder.count("stale_promotions_discarded")
-  }
-
   /**
    * An id change ruled vendor churn rather than a recycle.
    *
-   * `debug` severity: a hover preview fires it on every revealed card; it is
+   * `debug` severity: a hover preview can fire it on every card; it is
    * the *absence* of a matching mount/entry event afterwards that would
    * indicate something wrong.
    */
@@ -673,32 +550,6 @@ export class BoyoObservability {
       severity: "debug",
     })
     this.recorder.count("churn_ignored")
-  }
-
-  /**
-   * One bulk advance-to-title keystroke and what it covered.
-   *
-   * `info` rather than `debug`: it fires once per deliberate user action, and
-   * an export taken after a keypress must say what the keypress did (the
-   * default export filter drops `debug`).
-   *
-   * No `subject`: a keystroke is not about one card, and naming one would be
-   * a card-identity leak (#1382).
-   */
-  bulkAdvance(coverage: BulkAdvanceCoverage): void {
-    const skipped = coverage.unresolved + coverage.occludedUntracked
-    this.recorder.record({
-      kind: "command.advance_all",
-      severity: "info",
-      detail: { ...coverage, skipped },
-    })
-    this.recorder.count("bulk_advances")
-    if (coverage.advanced > 0) {
-      this.recorder.count("bulk_advance_advanced", coverage.advanced)
-    }
-    if (skipped > 0) this.recorder.count("bulk_advance_skipped", skipped)
-    // Observed at zero too: dropping clean presses would bias the aggregate.
-    this.recorder.observe("bulk_advance_skipped_per_command", skipped)
   }
 
   channelBackfilled(videoId: string): void {
@@ -874,7 +725,6 @@ export class BoyoObservability {
       unresolved: ctx.unresolved.length,
       unresolvedVideoShaped: ctx.unresolved.filter((c) => c.videoShaped).length,
       channelPending: ctx.channelPending.length,
-      promoting: ctx.promoting.length,
     })
 
     this._touchIndex(ctx.now)

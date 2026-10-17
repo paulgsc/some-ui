@@ -74,3 +74,22 @@ function lockupUploadDate(el: HTMLElement): string | null {
   if (last === undefined) return null
   return (last.getAttribute("aria-label") ?? last.textContent).trim() || null
 }
+
+/** The catalogue tags that only ever render a Short. */
+const SHORTS_TAGS = new Set([
+  "ytd-reel-item-renderer",
+  "ytm-shorts-lockup-view-model",
+  "ytm-shorts-lockup-view-model-v2",
+])
+
+/**
+ * Is `el` a Short? A Shorts renderer, or any card linking to `/shorts/`: a
+ * search result renders a Short in the ordinary video renderer. Over-holding
+ * is the safe direction (QD3), so one Shorts link is enough.
+ */
+export function extractIsShort(el: HTMLElement): boolean {
+  return (
+    SHORTS_TAGS.has(el.tagName.toLowerCase()) ||
+    el.querySelector('a[href*="/shorts/"]') !== null
+  )
+}

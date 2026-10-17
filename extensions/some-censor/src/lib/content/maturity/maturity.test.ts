@@ -1,4 +1,5 @@
-import type { MetaData, VeilContent } from "@censor/lib/content/fsm"
+import type { RenderModel } from "@censor/lib/content/fsm"
+import type { MetaData } from "@censor/types/states"
 import { describe, expect, expectTypeOf, it } from "vitest"
 
 import type { Estimate } from "./maturity"
@@ -109,8 +110,6 @@ describe("classify", () => {
 describe("the presentable metadata", () => {
   it("cannot carry a raw date into a veil (QD4)", () => {
     expectTypeOf<keyof MetaData>().toEqualTypeOf<"channelName" | "duration">()
-    expectTypeOf<
-      Extract<VeilContent, { kind: "meta" }>["meta"]
-    >().toEqualTypeOf<MetaData>()
+    expectTypeOf<keyof RenderModel>().toEqualTypeOf<"dataBoyo" | "veil">()
   })
 })

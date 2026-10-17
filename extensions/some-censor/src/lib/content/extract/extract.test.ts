@@ -16,6 +16,7 @@
 import { describe, expect, it } from "vitest"
 
 import {
+  extractIsShort,
   extractMeta,
   extractTitle,
   extractUploadDate,
@@ -135,7 +136,7 @@ describe("tryExtract", () => {
   it("resolves a shorts lockup as video-only", () => {
     // A shorts card exposes no channel at all. It must still mask — masking
     // only ever needed the videoId — and it must not claim a channel it does
-    // not have, because that value feeds channel whitelisting.
+    // not have.
     const out = tryExtract(
       make("ytm-shorts-lockup-view-model-v2", SHORTS_LOCKUP)
     )
@@ -315,5 +316,19 @@ describe("extractMeta", () => {
     expect(extractUploadDate(make("yt-lockup-view-model", SHORTS_LOCKUP))).toBe(
       null
     )
+  })
+})
+
+describe("extractIsShort", () => {
+  it("knows a Shorts renderer, and any card linking to /shorts/", () => {
+    expect(extractIsShort(make("ytm-shorts-lockup-view-model-v2", ""))).toBe(
+      true
+    )
+    expect(
+      extractIsShort(
+        make("ytd-video-renderer", '<a id="thumbnail" href="/shorts/s_1"></a>')
+      )
+    ).toBe(true)
+    expect(extractIsShort(make("ytd-rich-item-renderer", POLYMER))).toBe(false)
   })
 })

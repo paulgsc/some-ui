@@ -17,7 +17,7 @@
  *
  *   E4 — Three-way classification:
  *          full       — both ids present; a complete observation.
- *          video-only — videoId present, channelId absent; can MASK now,
+ *          video-only — videoId present, channelId absent; decided now,
  *                       channel backfilled later by the retry loop.
  *          raw        — videoId absent; nothing actionable yet.
  *        The video-only rung matters because real YouTube cards routinely
@@ -41,7 +41,7 @@ import { extractVideoId } from "./video-id"
 export { representsVideo } from "./video-id"
 
 export { extractTitle } from "./title"
-export { extractMeta, extractUploadDate } from "./meta"
+export { extractIsShort, extractMeta, extractUploadDate } from "./meta"
 
 export function tryExtract(el: HTMLElement): Extracted {
   const videoId = extractVideoId(el)

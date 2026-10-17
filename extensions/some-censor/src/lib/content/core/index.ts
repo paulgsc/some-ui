@@ -9,7 +9,6 @@
  */
 
 export type { Action } from "./actions"
-export { WHITELIST_REVEAL_DELAY_MS } from "./actions"
 export type { CoreEvent } from "./events"
 export { cardKey } from "./keys"
 export type { Observation } from "./observation"

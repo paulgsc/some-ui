@@ -13,7 +13,7 @@ import type { Action } from "@censor/lib/content/core/actions"
 
 /** How one element takes part in a card. */
 export type CustodyRole =
-  /** Carries the veil, the `data-boyo-vid` stamp and the click target. */
+  /** Carries the veil and the `data-boyo-vid` stamp. */
   | "anchor"
   /**
    * Inside an anchor and matching a pre-mask rule of its own (a grid cell
@@ -27,15 +27,11 @@ export type CustodyTarget = {
   readonly role: CustodyRole
 }
 
-/** A `render` or `unmount`, with its targets. */
-type BoundCardAction = {
+/**
+ * A `render` or `unmount`, with its targets: the only actions the Actuator
+ * receives, since the runtime forwards `record` facts itself.
+ */
+export type BoundAction = {
   readonly action: Extract<Action, { kind: "render" | "unmount" }>
   readonly targets: ReadonlyArray<CustodyTarget>
 }
-
-/** Every other action carries everything it needs already. */
-type BoundOtherAction = {
-  readonly action: Exclude<Action, { kind: "render" | "unmount" }>
-}
-
-export type BoundAction = BoundCardAction | BoundOtherAction
