@@ -9,7 +9,7 @@
  *
  * some-filter's page recomputes its `HealthReport` from the persisted context;
  * its invariants are time-independent. some-censor's are not:
- * `OccludedCardResolves` and `PromotionGuardClears` compare `now` against a
+ * `OccludedCardResolves` and `OccluderReleases` compare `now` against a
  * start time, so re-running them against a session that ended an hour ago
  * would report every card mid-queue at teardown as stuck. OBS1 records the
  * verdict *at the moment it was true*, and this page renders it with the age
@@ -377,12 +377,10 @@ const COUNTER_ORDER = [
   "mounts_provisional",
   "cards_queued_unresolved",
   "cards_rejected",
-  "stale_promotions_discarded",
   "channels_backfilled",
   "channels_abandoned",
-  "bulk_advances",
-  "bulk_advance_advanced",
-  "bulk_advance_skipped",
+  "entries_absent",
+  "entries_plated",
   "dates_observed",
   "dates_absent",
   "invariant_violations",

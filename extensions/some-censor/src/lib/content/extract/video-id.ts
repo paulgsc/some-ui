@@ -45,12 +45,11 @@ export function extractVideoId(el: HTMLElement): VideoId | null {
  * it:
  *
  *   - the scroll virtualizer handed this DOM node to a **different** feed item,
- *     where re-masking is mandatory (the node now shows another video); and
+ *     which must be decided afresh (the node now shows another video); and
  *   - the **same** feed item's subtree churned under us — a hover preview
  *     injecting its own anchors, lazy hydration, a metadata row swapped by an
- *     experiment — where re-masking silently revokes the user's own disclosure
- *     and, worse, drops the card back under the static occluder's
- *     `pointer-events: none`.
+ *     experiment — where tearing the card down drops it back under the static
+ *     occluder's `pointer-events: none`.
  *
  * Membership separates them with evidence rather than a guess: if the artifact
  * that was mounted is still reachable from this element, the element has not
@@ -67,9 +66,10 @@ export function representsVideo(el: HTMLElement, videoId: VideoId): boolean {
   // something its own id contradicts.
   //
   // Returning `true` on a stale descendant link would classify a genuine
-  // recycle as churn and keep the old card, `revealed` included: a QD1 leak.
-  // Wrong in the withholding direction costs a re-mask; wrong in this one
-  // costs the whole point of the extension.
+  // recycle as churn and keep the old card's view, `plated` included, for a
+  // video that may be absent: a QD1 leak. Wrong in the withholding direction
+  // costs a re-decision; wrong in this one costs the whole point of the
+  // extension.
   const authoritative = el.getAttribute("data-video-id")
   if (authoritative) return authoritative === videoId
 

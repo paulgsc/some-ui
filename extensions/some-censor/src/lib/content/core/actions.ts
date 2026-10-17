@@ -10,13 +10,10 @@
 import type { RenderModel, ViewState } from "@censor/lib/content/fsm"
 import type { UnknownShapeReason } from "@censor/lib/content/layout/lookup"
 import type { BoyoSurface } from "@censor/lib/content/layout/surface"
-import type { ChannelId, VideoId } from "@censor/types/ids"
+import type { VideoId } from "@censor/types/ids"
 
 import type { CardKey } from "./keys"
 import type { ShapeConfidence } from "./observation"
-
-/** How long a whitelisted card shows its tint before revealing itself. */
-export const WHITELIST_REVEAL_DELAY_MS = 1800
 
 export type Action =
   /**
@@ -31,42 +28,6 @@ export type Action =
     }
   /** Strip everything the extension put on the elements carrying `key`. */
   | { readonly kind: "unmount"; readonly key: CardKey }
-  /**
-   * Ask the background whether `channelId` is whitelisted; answer as an
-   * Input, echoing `generation` so the answer lands on the incarnation that
-   * asked and on no later one.
-   */
-  | {
-      readonly kind: "query-whitelist"
-      readonly key: CardKey
-      readonly generation: number
-      /** The lookup's ordinal within the incarnation; echoed by the answer. */
-      readonly query: number
-      readonly channelId: ChannelId
-    }
-  /** Persist a whitelist entry in the background. */
-  | {
-      readonly kind: "persist-whitelist"
-      readonly channelId: ChannelId
-      readonly channelName: string
-    }
-  /** Run the optional title-transform hook; answer as an Input. */
-  | {
-      readonly kind: "transform-title"
-      readonly key: CardKey
-      readonly generation: number
-      readonly version: number
-      readonly text: string
-      readonly channelId: ChannelId | null
-    }
-  /** Fire a `timer` Input after `delayMs`, carrying `generation` and `version` back. */
-  | {
-      readonly kind: "schedule"
-      readonly key: CardKey
-      readonly generation: number
-      readonly version: number
-      readonly delayMs: number
-    }
   /** A fact for the flight recorder; the runtime forwards it. */
   | { readonly kind: "record"; readonly fact: CoreFact }
 
@@ -89,14 +50,6 @@ export type CoreFact =
       readonly state: ViewState["kind"]
     }
   | { readonly kind: "channel.backfilled"; readonly videoId: VideoId }
-  /** A whitelist answer or a title transform arrived for a superseded version. */
-  | { readonly kind: "stale.discarded"; readonly videoId: VideoId }
-  | {
-      readonly kind: "bulk.advance"
-      readonly advanced: number
-      readonly alreadyPast: number
-      readonly channelPending: number
-    }
   | {
       readonly kind: "shape.unknown"
       readonly tag: string

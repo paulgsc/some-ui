@@ -14,23 +14,35 @@
  * (`…__metadata-row` gains modifiers) and reorders the rows between
  * surfaces, so `:first-child` / `:nth-child()` written against one shelf
  * silently returns the wrong row on another.
+ *
+ * Lockups come in two class spellings, BEM and camelCase, and the lockup
+ * selectors here name both.
  */
 
-/** The class every metadata text run in a Lit lockup carries. */
-export const LOCKUP_TEXT =
-  '[class*="yt-content-metadata-view-model__metadata-text"]'
+/**
+ * The lockup metadata runs an upload date can be read from, one per spelling.
+ * A camelCase run counts only when it carries an `aria-label`, which the view
+ * count and the age do in their long form ("8 days ago" for an "8d ago") and
+ * a plain-text channel run does not.
+ * `extract/meta.ts` reads them as one list, in document order.
+ */
+export const LOCKUP_DATE_RUNS = [
+  'span[class*="yt-content-metadata-view-model__metadata-text"]',
+  'span[class*="ytContentMetadataViewModelMetadataText"][aria-label]',
+] as const
 
 export type CardField = "title" | "channelName" | "duration" | "uploadDate"
 
 /**
  * Selectors in priority order. The first one that yields non-empty text wins
- * at extraction time; the fingerprint records every one that matched.
+ * at extraction time, except the lockup dates (see `uploadDate` below); the
+ * fingerprint records every one that matched.
  */
 export const FIELD_SELECTORS: Readonly<
   Record<CardField, ReadonlyArray<string>>
 > = {
   // Ordered most-specific first. The `yt-*-view-model` entries are the Lit-era
-  // lockups: their title is an anchor carrying a BEM-ish class
+  // lockups: their title is an anchor carrying a BEM or camelCase class
   // rather than the `#video-title` id the Polymer renderers use.
   title: [
     "#video-title",
@@ -47,16 +59,18 @@ export const FIELD_SELECTORS: Readonly<
     "ytd-channel-name yt-formatted-string",
     "#channel-name yt-formatted-string",
     // The channel is the metadata run that is a link; view counts and dates
-    // are plain text.
-    `a${LOCKUP_TEXT}`,
+    // are plain text. The BEM run can be the link; the camelCase run wraps one.
+    'a[class*="yt-content-metadata-view-model__metadata-text"]',
+    '[class*="ytContentMetadataViewModelMetadataText"] a',
   ],
   duration: [
     "span.ytd-thumbnail-overlay-time-status-renderer",
     '[class*="ThumbnailOverlayBadgeViewModel"] [class*="badge-shape"]',
+    '[class*="ytThumbnailBadgeViewModelHost"] [class*="ytBadgeShapeText"]',
   ],
   // The Polymer metadata line is "views · date" as two spans. The lockup case
-  // is positional — the *last* text run of the metadata row — and is spelled
-  // by `extract/meta.ts`'s `lockupUploadDate()` rather than as a selector, so
-  // it is recorded here under its own name for the fingerprint's benefit.
-  uploadDate: ["#metadata-line span:nth-child(2)", `span${LOCKUP_TEXT}`],
+  // is positional — the *last* run, of either spelling — and is read by
+  // `extract/meta.ts`'s `lockupUploadDate()`; its runs are listed here so the
+  // fingerprint records them.
+  uploadDate: ["#metadata-line span:nth-child(2)", ...LOCKUP_DATE_RUNS],
 }

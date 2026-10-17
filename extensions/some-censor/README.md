@@ -6,12 +6,11 @@ the `@some-extension/transport` kernel.
 ## Architecture at a glance
 
 The content script runs four stages (Boundary Contract #1433, BC1–BC5):
-`src/content/content.ts` → `Controller` (lifecycle: enable/disable, whitelist
-broadcasts, keybindings) → `runtime/runtime.ts`, which folds every token and
-input through Core and hands the resulting actions to the Actuator. The
-Layout table and Core are pure; the Sensor turns the vendor DOM into the
-tokens Core sees, and the Actuator is the only writer to it and the only
-sender of the whitelist messages.
+`src/content/content.ts` → `Controller` (lifecycle: enable/disable) →
+`runtime/runtime.ts`, which folds every token through Core and hands the
+resulting actions to the Actuator. The Layout table and Core are pure; the
+Sensor turns the vendor DOM into the tokens Core sees, and the Actuator is the
+only writer to it.
 
 Four stages, each owning exactly one concern, in a straight line from
 observation to write:
@@ -29,17 +28,13 @@ observation to write:
    (`layout.unknown_shape`), never thrown or skipped.
 3. **Core reducer** (`src/lib/content/core/`) — a pure, total
    `reduce(state, event) → { state, actions }`: no DOM, `browser.*`, clock,
-   or randomness anywhere under `core/`. Every card's generation (and, where
-   the view matters, its version) correlates the async requests it issues; a
-   whitelist or title-transform answer that no longer matches is discarded
-   and recorded as `stale.discarded`. A superseded reveal timer, or any
-   answer for a card that has already unmounted, is discarded silently
-   instead — that gap is real, not documentation slack.
+   or randomness anywhere under `core/`. A card's view is decided by its
+   evidence alone (`fsm.ts`'s `decide`, over the maturity estimate): absent,
+   or plated when it is old enough. No gesture is an input (#1803).
 4. **Actuator** (`src/lib/content/actuator/`) — the only writer to the
-   vendor DOM and the only sender of the whitelist messages (`IS_WHITELISTED`,
-   `ADD_WHITELIST`). It only executes the actions Core
-   named; answers to what it does (a whitelist verdict, a title transform, a
-   timer, a click) return to Core as inputs, never as calls back into it.
+   vendor DOM. It only executes the actions Core named: the `data-boyo`
+   stamp (`absent` is `display: none` in `styles/content.css`) and the veil
+   over a plated card.
 
 > [!IMPORTANT] > **Story-governed as well as canon-governed — read both before editing this package.**
 >

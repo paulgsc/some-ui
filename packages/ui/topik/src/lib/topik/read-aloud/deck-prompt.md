@@ -14,6 +14,13 @@ ends, and how it is actually pronounced. Where the form shows them, give two
 more: the grammatical role a written word plays, and the line's tense. The
 drill's grammar lens asks the learner to find them while reading aloud.
 
+A line may also carry a **lens**: what the app's grammar-lens session needs to
+ask about it. That session never reads aloud on a clock and never shows what a
+line means. It shows a cue line, then this line, and asks the learner to spot
+or choose the form a learner is known to get wrong there. It needs material
+only an author can write: the cue, the wrong forms and the situations. See
+**The lens**.
+
 ---
 
 ## The deck
@@ -46,6 +53,24 @@ every word it uses, in reading order, as that word is written in the line.
       sense?: string // what this form means here, when the gloss is not enough
       role?: string // one of the roles below, only where the form shows it
     }>
+    lens?: {
+      cue?: {
+        korean: string // the line shown or heard first: 어제 뭐 했어요?
+        hearable?: boolean // false when it is too long to give as audio alone
+      }
+      misforms: Array<{
+        word: number // which written word it replaces: an index into `words`
+        surface: string // the wrong form, one run of Hangul: 만나요
+        mistake: string // a mistake id from the catalogue below
+        instead?: string // what this form does instead; never a translation
+        decides?: Array<number> // the line's other words that make it wrong
+        cueDecides?: Array<string> // the cue's words that make it wrong
+      }>
+      situations?: {
+        options: [string, string, string] // when someone would say this line
+        intended: 0 | 1 | 2 // which option is the author's
+      }
+    }
   }>
 }
 ```
@@ -146,6 +171,67 @@ Give a line `tense` only when it is one statement or question whose form
 shows the tense: not for a request (주세요), not for two sentences, and not
 where form and meaning part (내일 만나요 is present in form).
 
+## The lens
+
+Give a lens to the lines where a learner could plausibly go wrong in one
+written word, and only there. A lens needs at least one misform; the cue and
+the situations are optional.
+
+**`misforms` are mistakes learners actually make, written in.** A misform
+replaces one written word of the line with the form a learner is known to
+write there, and names the mistake from this catalogue:
+
+| `mistake`            | The mistake                           | Example                  |
+| -------------------- | ------------------------------------- | ------------------------ |
+| `e-for-eseo`         | 에 where 에서 belongs                 | 도서관에 읽어요          |
+| `eseo-for-e`         | 에서 where 에 belongs                 | 학교에서 가요 (going to) |
+| `eseo-after-time`    | 에서 after a time                     | 일곱 시에서 일어나요     |
+| `object-for-subject` | 을/를 with 좋다, 있다, 없다, 필요하다 | 날씨를 좋아요            |
+| `tense-mismatch`     | Tense that ignores the question       | 어제 뭐 했어요? → 만나요 |
+| `progressive-now`    | -고 있어요 for a moment in the past   | 그때 먹고 있어요         |
+| `b-irregular`        | ㅂ-irregular conjugated as regular    | 덥어요, 맵어요           |
+| `d-irregular`        | ㄷ-irregular conjugated as regular    | 듣어요, 걷어요           |
+| `reu-irregular`      | 르-irregular conjugated as regular    | 모르어요                 |
+| `eu-kept`            | 으 kept before -아요/-어요            | 바쁘어요, 크어요         |
+| `vowel-harmony`      | -아요 and -어요 swapped               | 닫어요, 먹아요           |
+| `honorific-self`     | -(으)세요 about yourself              | 저는 학생이세요          |
+
+A misform must be wrong in this line, and only an author can know that:
+학교에서 가요 is a misform when the line says where you are going, but
+부산에서 가요 is right when you set off from Busan. Never write a misform that
+is also good Korean in the line, given its cue. Give the word's other wrong
+forms as more misforms on the same `word`. `instead` says what the wrong form
+does, in terms of grammar and in the line's own Korean words, for a learner
+who picked it ("With 가요, 에서 marks 학교 as where you set off from"; "사요 is
+present; the cue's 했어요 is past"), never what the sentence means in English,
+nor an English word for any word in it ("읽어요 is done there", not "reading is
+done there"; "a span from 아침", not "from the morning").
+Leave `instead` out only where the wrong form is not a word at all (춥어요).
+Name in a misform's `decides` the line's other words that make it wrong
+(가요 decides 학교에), and in its `cueDecides` the cue's words that do
+(어제 and 했어요 decide 만났어요). Each misform names its own: the verb that
+decides a particle has nothing to do with a wrong tense in the same line.
+
+**`cue` is what the line answers or follows.** Often its words decide the
+form (어제 뭐 했어요? decides that 만났어요 is past); otherwise it gives the
+line a setting, and decides nothing. Choose it so that every misform stays
+wrong: after 보통 어떻게 가요?, 학교에서 버스로 가요 (from school) is good
+Korean, so a cue that asks where someone is going is needed for 학교에서 to be
+a misform; 뭐 해요? does not, since it leaves 에서 its own sense. Never give
+away the answer: a cue that asks 어디에 가요? spells the 에 the learner must
+choose, so ask 어디 가요? instead, and where the choice is between 에 and 에서,
+spell neither in any of the cue's words (주말에, 오후에). Set
+`hearable: false` on a cue longer than about fifteen syllables.
+
+**`situations` are when someone would say the line,** never what it means,
+and they name none of its words in English. Three, in English, one of them
+the author's (`intended`), the other two answering the same cue differently,
+so that only what the line says tells them apart. After 어제 뭐 했어요?, the
+line 친구를 만났어요 is "Saying you saw someone you know", beside "Saying you
+stayed home alone" and "Saying you worked late"; not "Recounting something
+that is already over", which the cue's own tense picks, and not "Telling
+someone you met a friend", which translates the line.
+
 ## Before you answer
 
 Check each line against these, and fix it rather than explaining:
@@ -159,10 +245,16 @@ Check each line against these, and fix it rather than explaining:
 5. Levels match the length and grammar table.
 6. Every `role` is shown by its word's own form, and every `tense` by the
    form of the line's last verb.
+7. Every misform names a catalogue `mistake`, replaces one written word, is
+   one run of Hangul, differs from the word as written, and is wrong in this
+   line given its cue.
+8. No cue contains the line's word that a misform replaces, or any misform,
+   or spells the particle the learner must choose in another word.
 
-The app checks these too. A line, word or occurrence that fails is dropped,
-and a pronunciation, role or tense that does not line up is ignored, so an
-error costs material, not the deck.
+The app checks these too, except whether a misform is wrong in its line and
+whether a cue spells a particle in another word, which only you can. A line, word or occurrence that fails is dropped,
+and a pronunciation, role, tense or lens part that does not line up is
+ignored, so an error costs material, not the deck.
 
 ## Output
 

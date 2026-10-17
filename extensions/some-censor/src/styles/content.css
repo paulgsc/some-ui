@@ -7,27 +7,20 @@
    that cannot be expressed as a class on our own element:
 
      1. Design tokens. The utilities reference these by name
-        (`text-[rgb(var(--boyo-ink))]`), so the ramp stays one edit.
-     2. The pre-mask occluder — rules that target *vendor* elements,
-        which we do not construct and must not add classes to.
-     3. Keyframes, which are @-rules rather than declarations.
+        (`bg-[rgb(var(--boyo-glass)/86%)]`), so the ramp stays one edit.
+     2. The pre-mask occluder and the absent rule — rules that target
+        *vendor* elements, which we do not construct and must not add
+        classes to.
 
-   State machine, driven by data-boyo on the renderer element:
-     "0" masked   "1" meta   "2" title   "3" revealed   "wl" whitelisted
+   A card's view, stamped as data-boyo on the renderer element:
+     "absent" not rendered      "plated" shown behind the veil
    ============================================================ */
 
 :root {
   /* UnoCSS spacing scale — normally emitted by preflight, which a content
      script must not ship (it would repaint YouTube). */
   --spacing: 0.25rem;
-  --boyo-ink: 232 234 240; /* near-white text          */
-  --boyo-dim: 168 176 196; /* muted captions           */
   --boyo-glass: 15 15 18; /* veil base (matches yt)   */
-  --boyo-indigo: 129 140 248; /* meta accent              */
-  --boyo-violet: 167 139 250; /* title accent             */
-  --boyo-mint: 52 211 153; /* whitelist accent         */
-  --boyo-ease: cubic-bezier(0.22, 0.61, 0.36, 1);
-  --boyo-font: "Roboto", "SF Pro Text", system-ui, sans-serif;
 
   /* ── Firefox 112 baseline ────────────────────────────────────────────
      UnoCSS emits colors as
@@ -49,13 +42,13 @@
      makes them resolve everywhere; @property still registers them where
      it is supported, so nothing is lost on modern engines.
 
-     Only the nine variables the generated sheet reads with no inline
-     `var(--x, fallback)` and never assigns are listed — the rest carry
-     their own fallback. Because nothing assigns these, ordinary
-     inheritance cannot leak one element's value to another the way it
-     could for a variable a utility sets per-element. styles.test.ts
-     regenerates the stylesheet and fails if either of those stops
-     holding, or if a new unbacked variable appears.
+     Only the variables the generated sheet reads with no inline
+     `var(--x, fallback)` and never assigns are listed — today one,
+     `--un-bg-opacity`. Because nothing assigns it, ordinary inheritance
+     cannot leak one element's value to another the way it could for a
+     variable a utility sets per-element. styles.test.ts regenerates the
+     stylesheet and fails if either of those stops holding, or if a new
+     unbacked variable appears.
 
      ── :has() baseline (#1390 / QC0) ────────────────────────────────
      The same 112 floor also predates `:has()`. Firefox shipped `:has()`
@@ -74,23 +67,6 @@
      `ytd-rich-item-renderer`, moved behind the guard in #1422 and gets an
      explicit `@supports not selector(:has(a))` fallback below instead. */
   --un-bg-opacity: 100%;
-  --un-border-opacity: 100%;
-  --un-inset-ring-shadow: 0 0 #0000;
-  --un-inset-shadow: 0 0 #0000;
-  --un-outline-opacity: 100%;
-  --un-outline-style: solid;
-  --un-ring-offset-shadow: 0 0 #0000;
-  --un-ring-shadow: 0 0 #0000;
-  --un-text-opacity: 100%;
-
-  /* Read bare by the `transition` utility. Every call site here also sets an
-     explicit duration and easing, so the fallback is never reached today — but
-     that is a coincidence of the current class strings, not a property of the
-     stylesheet, and an unbacked var() is one edit away from being live. */
-  --default-transition-duration: 150ms;
-  /* stylelint-disable-next-line custom-property-pattern -- the name is
-     UnoCSS's, emitted camelCase; matching it exactly is the whole point. */
-  --default-transition-timingFunction: cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* ============================================================
@@ -108,8 +84,9 @@
    Therefore this MUST be a true occluder, not a "pending" affordance. The
    blur radius and brightness floor are deliberately strong enough that the
    thumbnail content is unreadable. When JS does take over, [data-boyo]
-   replaces this with the glass veil — an equal-or-stronger occlusion — so the
-   handover is never a reveal, only a swap between two occluding layers.
+   hands the card to one of two states, and neither is legible: absent, which
+   takes it out of layout altogether, or plated, behind the glass veil — an
+   equal-or-stronger occlusion. The handover is never a reveal.
 
    DO NOT soften this into a legible dim. A readable pre-mask state exposes the
    card during the (possibly infinite) gap before JS resolves it, which defeats
@@ -332,11 +309,10 @@ ytd-structured-description-video-lockup-renderer:has(
 /* ----------------------------------------------------------
    HANDOVER + POSITION CONTEXT
 
-   Once JS has taken ownership (data-boyo present) the veil occludes
-   instead, so the static filter is lifted and the veil's own backdrop
-   becomes what the user sees. The same rule establishes the local
-   stacking context the veil anchors to, which is what keeps it over the
-   card and never over a real YouTube dialog.
+   Once JS has taken ownership (data-boyo present) the card is absent or
+   veiled instead, so the static filter is lifted. The same rule
+   establishes the local stacking context the veil anchors to, which is
+   what keeps it over the card and never over a real YouTube dialog.
 
    Targets vendor elements, so it cannot be a utility class: we do not
    own these nodes and adding classes to them would be a mutation of the
@@ -352,61 +328,24 @@ ytd-structured-description-video-lockup-renderer:has(
 }
 
 /* ----------------------------------------------------------
-   BOX MODEL — the one line of preflight a content script may ship.
+   ABSENT (QD11)
 
-   UnoCSS's preflight normally sets `box-sizing: border-box` globally, and
-   the utility scale assumes it: `w-full` plus `p-2` plus a 1px border is a
-   box that fits its parent only under border-box. We cannot ship that
-   preflight — it would restyle YouTube — so the same rule is scoped to the
-   veil's own subtree, which contains nothing but nodes this extension
-   built.
-
-   Without it the meta chip painted ~5px past the edge of a 168px card,
-   which is #973's overflow returning by a different route than the
-   `min-width` that originally caused it.
+   A card the evidence does not admit is not rendered: out of layout, and
+   out of the accessibility tree, so neither the eye nor the Tab key can
+   reach its links. A stamp the stylesheet keys on rather than an inline
+   style, which the vendor's own scripts could overwrite. Removing the stamp
+   (the Actuator's unmount) undoes it.
    ---------------------------------------------------------- */
-.boyo-veil,
-.boyo-veil * {
-  box-sizing: border-box;
+[data-boyo="absent"] {
+  display: none !important;
 }
 
-/* ----------------------------------------------------------
-   MOTION — @keyframes are @-rules, not declarations, so they
-   stay here; the utilities reference them by name via
-   `animate-[boyo-rise_…]`.
-   ---------------------------------------------------------- */
-
-@keyframes boyo-rise {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes boyo-thaw {
-  to {
-    backdrop-filter: blur(0);
-    opacity: 0;
-  }
-}
-
-@keyframes boyo-fade {
-  to {
-    opacity: 0;
-  }
-}
-
-/* The reduced-motion contract has to reach *every* BOYO node regardless of
-   which utilities it happens to carry, so it is written once against the
-   namespace rather than repeated as a variant on each class. */
-@media (prefers-reduced-motion: reduce) {
-  [class*="boyo-"] {
-    animation: none !important;
-    transition: none !important;
-  }
+/* The home feed's grid cell wraps its card (a lockup) without being one, so
+   on an engine with `:has()` it carries no stamp of its own: the cell would
+   keep its width and margins around a card that is gone. An engine without
+   `:has()` stamps the cell as the card's nested custody instead, which the
+   rule above already covers. A cell wrapping more than one card (a post with
+   an attached video) goes with any absent one: it hides more, never less. */
+ytd-rich-item-renderer:has([data-boyo="absent"]) {
+  display: none !important;
 }

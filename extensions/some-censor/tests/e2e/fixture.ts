@@ -44,7 +44,7 @@ type BoyoDebug = {
     {
       videoId: string
       channelId: string
-      viewKind: "masked" | "meta" | "title" | "revealed" | "whitelisted"
+      viewKind: "absent" | "plated"
       isConnected: boolean
     }
   >
@@ -152,11 +152,8 @@ export const test = base.extend<BoyoFixtures & { page: Page }>({
             runtime: {
               // eslint-disable-next-line @typescript-eslint/require-await
               sendMessage: async (msg: any): Promise<unknown> => {
-                if (msg.type === "IS_WHITELISTED")
-                  return { ok: true, whitelisted: false }
                 if (msg.type === "GET_ENABLED")
                   return { ok: true, enabled: true }
-                if (msg.type === "ADD_WHITELIST") return { ok: true }
                 return { ok: true }
               },
               onMessage: {
