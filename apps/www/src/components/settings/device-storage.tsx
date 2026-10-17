@@ -5,16 +5,27 @@
  */
 import type { JSX } from "react"
 import { useEffect, useSyncExternalStore } from "react"
-import { formatSize } from "@some-ui/core-utils"
-import { Alert, AlertDescription, AlertTitle, Button } from "@some-ui/shared"
+import { counted, formatSize } from "@some-ui/core-utils"
+import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+  Button,
+  useConfirmSheet,
+} from "@some-ui/shared"
+import { useQueryClient } from "@tanstack/react-query"
 import { HardDrive } from "lucide-react"
+import { toast } from "sonner"
 
 import type { RemovableSession } from "@/lib/device-backend/handlers/sessions"
+import { mayLeavePhone } from "@/lib/device-backend/handlers/sessions"
 import type { DeviceStorageView } from "@/lib/device-backend/storage-view"
 import { deviceStorage } from "@/lib/device-backend/storage-view"
-import { useIntent, useIntentEffect } from "@/lib/intent"
+import { useAsyncIntent, useIntent, useIntentEffect } from "@/lib/intent"
 import { IntentButton } from "@/lib/intent/render"
-import { useDeleteSession } from "@/lib/tenant"
+import type { SessionAsOf } from "@/lib/session-archive"
+import { letGoUnchanged, shareArchive } from "@/lib/session-archive"
+import { useDeleteSession, useSessions } from "@/lib/tenant"
 
 function useDeviceStorage(): DeviceStorageView | null {
   const view = useSyncExternalStore(
@@ -30,18 +41,15 @@ function useDeviceStorage(): DeviceStorageView | null {
 export const DeviceStorageSummary = (): JSX.Element | null => {
   const view = useDeviceStorage()
   if (view === null) return null
-  const { databaseBytes, webViewBytes, reservedBytes, quotaBytes } = view.use
+  const { databaseBytes, webViewBytes, quotaBytes } = view.use
   return (
     <div className="space-y-1">
       <p className="text-sm">
-        Using about {formatSize(databaseBytes + webViewBytes)} of{" "}
-        {formatSize(quotaBytes)}, with {formatSize(reservedBytes)} kept free for
-        soundbites
+        Using {formatSize(databaseBytes + webViewBytes)} of{" "}
+        {formatSize(quotaBytes)}
       </p>
       <p className="text-muted-foreground text-xs">
-        Android backs this app up only while it stays under{" "}
-        {formatSize(quotaBytes)}. When it&apos;s full, a new save waits until
-        you choose something to remove.
+        Copy or archive finished sessions to free up space.
       </p>
     </div>
   )
@@ -61,9 +69,8 @@ const RemoveOffer = ({
   return (
     <>
       <p>
-        Remove your oldest finished session, “{session.name}” (finished{" "}
-        {finishedOn(session.finishedAt)}), then try again? Sessions aren&apos;t
-        synced anywhere yet, so it will be gone.
+        Remove “{session.name}” (finished {finishedOn(session.finishedAt)}) to
+        make room? It&apos;s gone unless you copied or archived it.
       </p>
       <div className="flex gap-2">
         <IntentButton
@@ -96,14 +103,11 @@ export const DeviceStoragePrompt = (): JSX.Element | null => {
       {full === null ? null : (
         <Alert>
           <HardDrive className="size-4" />
-          <AlertTitle>This phone is full, so that wasn&apos;t saved</AlertTitle>
+          <AlertTitle>Phone full. Not saved.</AlertTitle>
           <AlertDescription className="space-y-2">
             {full.removable === null ? (
               <>
-                <p>
-                  Everything on it is from today or unfinished. Delete a session
-                  you no longer need, then try again.
-                </p>
+                <p>Delete a session you don&apos;t need, then try again.</p>
                 <Button
                   size="sm"
                   variant="outline"
@@ -137,6 +141,56 @@ export const DeviceStoragePrompt = (): JSX.Element | null => {
           </AlertDescription>
         </Alert>
       )}
+    </div>
+  )
+}
+
+const sessions = (n: number): string => counted(n, "finished session")
+
+/** Settings' "Archive finished sessions" (`lib/session-archive`). */
+export const DeviceArchive = (): JSX.Element | null => {
+  const queryClient = useQueryClient()
+  const { data } = useSessions()
+  const finished = (data ?? []).filter((s) => mayLeavePhone(s, new Date()))
+  const share = useAsyncIntent((_: undefined) => shareArchive(), {
+    presentation: "interactive",
+  })
+  const letGo = useAsyncIntent(
+    (sent: ReadonlyArray<SessionAsOf>) => letGoUnchanged(sent),
+    { presentation: "interactive" }
+  )
+  const { ask, sheet } = useConfirmSheet()
+  useIntentEffect(share, ({ outcome, sent }) => {
+    if (outcome !== "shared" || sent.length === 0) return
+    // `arrived` (components/reflection/copy) says the same of reflections,
+    // but a reflection module stays out of reach here (LA7).
+    ask({
+      title: "Did it arrive?",
+      description: `Once it has, ${sessions(sent.length)} can leave this phone.`,
+      confirm: "It arrived: let them go",
+      keep: "Keep them here",
+      onConfirm: () => letGo.start(sent),
+    })
+  })
+  useIntentEffect(letGo, (left) => {
+    void queryClient.invalidateQueries()
+    if (left > 0) toast.success(`Cleared ${sessions(left)} from this phone.`)
+  })
+  if (finished.length === 0) return null
+  return (
+    <div className="space-y-1">
+      <IntentButton
+        state={share.state}
+        onPress={() => share.start(undefined)}
+        variant="outline"
+        size="sm"
+        idleLabel={`Archive ${sessions(finished.length)}`}
+        workingLabel="Preparing..."
+      />
+      <p className="text-muted-foreground text-xs">
+        Save them to a file (Drive, say), then clear them here.
+      </p>
+      {sheet}
     </div>
   )
 }

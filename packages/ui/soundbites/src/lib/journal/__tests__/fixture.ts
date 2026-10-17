@@ -1,8 +1,5 @@
 import type { JournalPlan, JournalTake } from "@soundbites/lib/journal/plan"
-import {
-  inCutOrder,
-  JOURNAL_TAKES_MAX_BYTES,
-} from "@soundbites/lib/journal/plan"
+import { inCutOrder } from "@soundbites/lib/journal/plan"
 import type { Primer } from "@soundbites/lib/journal/primer"
 import type {
   JournalShelf,
@@ -13,6 +10,7 @@ import {
   JournalFullError,
   JournalStaleError,
 } from "@soundbites/lib/journal/store"
+import { JOURNAL_TAKES_MAX_BYTES } from "@soundbites/lib/policy"
 
 /** 2026-10-12 12:00 UTC, in epoch ms. */
 export const NOON = Date.UTC(2026, 9, 12, 12)

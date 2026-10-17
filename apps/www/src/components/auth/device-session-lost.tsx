@@ -2,7 +2,7 @@ import type { JSX } from "react"
 import { cn } from "@some-ui/core-utils"
 import { Button } from "@some-ui/shared"
 
-import { MOBILE_HOME } from "@/lib/app-surface"
+import { MOBILE_ENTRY } from "@/lib/app-surface"
 import { enterAccount } from "@/lib/auth/enter"
 
 /**
@@ -20,7 +20,7 @@ import { enterAccount } from "@/lib/auth/enter"
  * and with it go `lib/passkey` and the ceremonies (build.paths.ts).
  */
 export const DeviceSessionLost = ({
-  redirect = MOBILE_HOME,
+  redirect = MOBILE_ENTRY,
 }: {
   redirect?: string
 }): JSX.Element => (

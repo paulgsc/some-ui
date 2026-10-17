@@ -14,10 +14,24 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
   Skeleton,
+  useConfirmSheet,
 } from "@some-ui/shared"
 import { createFileRoute, Link } from "@tanstack/react-router"
-import { Copy, Pencil, Play, Sparkles, Trash2, X } from "lucide-react"
+import {
+  Copy,
+  MoreHorizontal,
+  Pencil,
+  Play,
+  Plus,
+  Sparkles,
+  Trash2,
+  X,
+} from "lucide-react"
 
 import { MOBILE_APP } from "@/lib/build-profile"
 import { useIntent, useIntentEffect } from "@/lib/intent"
@@ -51,6 +65,27 @@ function badgeVariantFor(
   if (status === "active") return "default"
   if (status === "paused" || status === "scheduled") return "secondary"
   return "outline"
+}
+
+/**
+ * One tag per activity config (summarizeConfig), so two drafts of one
+ * activity are told apart. A retired activity has nothing left to summarize.
+ * The key is the position: the same activity can repeat within a session.
+ */
+function activityTags(
+  session: SessionRecord
+): ReadonlyArray<{ key: string; name: string; summary: string }> {
+  return session.activities.flatMap((sessionActivity, index) => {
+    const activity = findActivity(sessionActivity.activityId)
+    if (!activity) return []
+    return [
+      {
+        key: `${sessionActivity.activityId}-${index}`,
+        name: activity.name,
+        summary: summarizeConfig(activity, sessionActivity.config),
+      },
+    ]
+  })
 }
 
 const SessionsSkeleton = (): JSX.Element => (
@@ -131,25 +166,16 @@ const SessionCard = ({
                 {STATUS_LABEL[session.status]}
               </Badge>
             </div>
-            {/* One tag per activity config (summarizeConfig), so two drafts
-                  of one activity are distinguishable. */}
             <div className="mt-1 flex flex-wrap items-center gap-1.5">
-              {session.activities.map((sessionActivity, index) => {
-                const activity = findActivity(sessionActivity.activityId)
-                // A retired activity has nothing left to summarize.
-                if (!activity) return null
-                return (
-                  <Badge
-                    // eslint-disable-next-line react/no-array-index-key -- position within one session's fixed activity list is a stable identity here; the same activityId can repeat within a session
-                    key={`${sessionActivity.activityId}-${index}`}
-                    variant="outline"
-                    className="text-muted-foreground max-w-full truncate font-normal"
-                  >
-                    {activity.name}:{" "}
-                    {summarizeConfig(activity, sessionActivity.config)}
-                  </Badge>
-                )
-              })}
+              {activityTags(session).map((tag) => (
+                <Badge
+                  key={tag.key}
+                  variant="outline"
+                  className="text-muted-foreground max-w-full truncate font-normal"
+                >
+                  {tag.name}: {tag.summary}
+                </Badge>
+              ))}
             </div>
             <p className="text-muted-foreground mt-1 hidden text-xs sm:block">
               Updated {formatRelativeTime(session.updatedAt)}
@@ -193,6 +219,128 @@ const SessionCard = ({
   )
 }
 
+/**
+ * The phone's row (lib/wings, Practice's Study tab): the whole row opens the
+ * session, and what is done less often (duplicate, let go) is under ⋯. No
+ * multi-select or bulk status: that is the desktop's, where a mouse and a
+ * wide screen make it cheap.
+ */
+const PhoneSessionRow = ({
+  session,
+}: {
+  session: SessionRecord
+}): JSX.Element => {
+  const [menuOpen, setMenuOpen] = useState(false)
+  const { ask, sheet } = useConfirmSheet()
+  const deleteIntent = useIntent(useDeleteSession(), {
+    presentation: "interactive",
+  })
+  const duplicateIntent = useIntent(useDuplicateSession(), {
+    presentation: "interactive",
+  })
+  // The activity's name too once there are two.
+  const configs = activityTags(session)
+    .map((tag) =>
+      session.activities.length > 1
+        ? `${tag.name} · ${tag.summary}`
+        : tag.summary
+    )
+    .join(", ")
+  const body = (
+    <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+      <span className="flex items-center gap-2">
+        <span className="truncate font-semibold">{session.name}</span>
+        {session.status !== "draft" && (
+          <Badge variant={badgeVariantFor(session.status)}>
+            {STATUS_LABEL[session.status]}
+          </Badge>
+        )}
+      </span>
+      <span className="text-muted-foreground truncate text-sm">{configs}</span>
+    </span>
+  )
+  const opens = "flex min-w-0 flex-1 items-center gap-3"
+  return (
+    <Card>
+      <CardContent className="flex flex-col gap-2 py-3 pr-2">
+        <div className="flex items-center gap-2">
+          {session.status === "draft" ? (
+            <Link
+              to="/sessions/new"
+              search={{ edit: session.id }}
+              className={opens}
+            >
+              {body}
+            </Link>
+          ) : (
+            <Link
+              to="/sessions/$sessionId"
+              params={{ sessionId: session.id }}
+              className={opens}
+            >
+              {body}
+            </Link>
+          )}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-11 shrink-0"
+            aria-label={`More for ${session.name}`}
+            onClick={() => setMenuOpen(true)}
+          >
+            <MoreHorizontal className="size-5" />
+          </Button>
+        </div>
+        <SessionReflectionsRow
+          sessionId={session.id}
+          name={session.name}
+          finished={session.status === "completed"}
+        />
+        {failureOf(deleteIntent.state)}
+        {failureOf(duplicateIntent.state)}
+      </CardContent>
+      <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
+        <SheetContent side="bottom" className="rounded-t-3xl px-3 pt-6 pb-6">
+          <SheetHeader className="px-3 text-left">
+            <SheetTitle>{session.name}</SheetTitle>
+          </SheetHeader>
+          <div className="mt-3 flex flex-col">
+            <Button
+              variant="ghost"
+              className="h-12 justify-start gap-3 text-base"
+              disabled={isIntentPending(duplicateIntent.state)}
+              onClick={() => {
+                setMenuOpen(false)
+                duplicateIntent.start(session.id)
+              }}
+            >
+              <Copy className="size-5" aria-hidden />
+              Duplicate
+            </Button>
+            <Button
+              variant="ghost"
+              className="text-destructive hover:text-destructive h-12 justify-start gap-3 text-base"
+              onClick={() => {
+                setMenuOpen(false)
+                ask({
+                  title: "Let this session go?",
+                  description: `"${session.name}" leaves this phone, and can't be brought back.`,
+                  confirm: "Let it go",
+                  onConfirm: () => deleteIntent.start(session.id),
+                })
+              }}
+            >
+              <Trash2 className="size-5" aria-hidden />
+              Let it go
+            </Button>
+          </div>
+        </SheetContent>
+      </Sheet>
+      {sheet}
+    </Card>
+  )
+}
+
 /** Sessions per page, per section - each section (In progress/Drafts/Completed) paginates independently. */
 const SESSIONS_PAGE_SIZE = 10
 
@@ -214,19 +362,34 @@ const SessionSection = ({
 
   return (
     <section className="space-y-3">
-      <h2 className="text-lg font-semibold">
-        {title}{" "}
-        <span className="text-muted-foreground">({sessions.length})</span>
+      <h2
+        className={
+          MOBILE_APP
+            ? "text-muted-foreground text-sm font-medium"
+            : "text-lg font-semibold"
+        }
+      >
+        {title}
+        {!MOBILE_APP && (
+          <>
+            {" "}
+            <span className="text-muted-foreground">({sessions.length})</span>
+          </>
+        )}
       </h2>
       <div className="space-y-2">
-        {pageItems.map((session) => (
-          <SessionCard
-            key={session.id}
-            session={session}
-            isSelected={selectedIds.has(session.id)}
-            onToggleSelected={onToggleSelected}
-          />
-        ))}
+        {pageItems.map((session) =>
+          MOBILE_APP ? (
+            <PhoneSessionRow key={session.id} session={session} />
+          ) : (
+            <SessionCard
+              key={session.id}
+              session={session}
+              isSelected={selectedIds.has(session.id)}
+              onToggleSelected={onToggleSelected}
+            />
+          )
+        )}
       </div>
       <PaginationControls
         currentPage={currentPage}
@@ -259,11 +422,10 @@ function isIntentPending<T>(state: Intent<T>): boolean {
 }
 
 /** Named, not an inline arrow, for `react/no-unstable-nested-components`.
- * Status changes fire from a `Select`, with no button to retry through, so
- * `IntentFailure`'s own retry control is rendered directly. */
-function bulkStatusChangeFailure(
-  state: Intent<Array<SessionRecord>>
-): JSX.Element | null {
+ * For an action with no button of its own to retry through (a status change
+ * fires from a `Select`; the phone's row acts from a sheet that has closed),
+ * so `IntentFailure`'s own retry control is rendered directly. */
+function failureOf<T>(state: Intent<T>): JSX.Element | null {
   return matchIntent(state, {
     idle: () => null,
     working: () => null,
@@ -352,7 +514,7 @@ const BulkActionBar = ({
           Clear selection
         </Button>
       </div>
-      {bulkStatusChangeFailure(updateStatusManyIntent.state)}
+      {failureOf(updateStatusManyIntent.state)}
     </div>
   )
 }
@@ -428,7 +590,7 @@ const SessionsList = ({
   const completed = byRecency.filter((s) => s.status === "completed")
 
   return (
-    <div className="max-w-3xl space-y-8">
+    <div className={MOBILE_APP ? "max-w-3xl space-y-5" : "max-w-3xl space-y-8"}>
       {/* A cached list stays on screen through a failed refresh
             (query-outcome's header); this banner says so. */}
       {refreshError && (
@@ -436,6 +598,17 @@ const SessionsList = ({
           error={refreshError.error}
           onRetry={refreshError.retry}
         />
+      )}
+      {MOBILE_APP && (
+        <div className="flex items-center justify-between gap-3">
+          <h1 className="text-2xl font-bold tracking-tight">Study</h1>
+          <Button asChild className="h-11 rounded-2xl px-4">
+            <Link to="/sessions/new">
+              <Plus className="mr-1 size-4" />
+              New
+            </Link>
+          </Button>
+        </div>
       )}
       <HandOffStrip />
       {selectedIds.size > 0 && (

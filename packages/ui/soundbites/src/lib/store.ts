@@ -8,7 +8,13 @@
  * server has no route for them, and audio is the one thing that database
  * would hold as large opaque values for no query to read.
  */
-import { connection, done, result } from "@some-ui/voice-capture"
+import {
+  bytesOf,
+  connection,
+  done,
+  result,
+  withRoom,
+} from "@some-ui/voice-capture"
 
 import { byNewest, displacedBy, fitsMaxBytes, SOUNDBITE_LIMIT } from "./policy"
 import type { Soundbite } from "./types"
@@ -20,7 +26,8 @@ export type SoundbiteStore = {
   /**
    * Keeps `bite` with its audio. When the phone already holds the limit, it
    * replaces `replace` if that is still kept, else the oldest. Rejects with
-   * `SoundbitesFullError`, keeping nothing, past `SOUNDBITES_MAX_BYTES`.
+   * `SoundbitesFullError`, keeping nothing, past `SOUNDBITES_MAX_BYTES` or
+   * the device's room.
    */
   save: (bite: Soundbite, audio: Blob, replace: string | null) => Promise<void>
   /** Lets go of each of `ids` still kept, in one transaction. */
@@ -105,32 +112,55 @@ export function indexedDbSoundbiteStore(): SoundbiteStore {
     },
 
     async save(bite, audio, replace): Promise<void> {
-      const tx = (await connect()).transaction([META, AUDIO], "readwrite")
-      const meta = tx.objectStore(META)
-      const audios = tx.objectStore(AUDIO)
-      // Read and evict inside the one transaction: the cap holds even if two
-      // saves overlap (a second tab of the WebView, say).
-      const kept = await allKept(meta)
-      const displaced = displacedBy(kept, replace, SOUNDBITE_LIMIT)
-      const staying = await Promise.all(
-        kept
-          .filter((each) => !displaced.includes(each.id))
-          .map(async (each) => {
-            const blob: unknown = await result(audios.get(each.id))
-            return blob instanceof Blob ? blob.size : 0
-          })
+      const db = await connect()
+      const leaving = displacedBy(
+        await allKept(db.transaction(META, "readonly").objectStore(META)),
+        replace,
+        SOUNDBITE_LIMIT
       )
-      if (!fitsMaxBytes(staying, audio.size)) {
-        tx.abort()
-        throw new SoundbitesFullError()
-      }
-      for (const id of displaced) {
-        meta.delete(id)
-        audios.delete(id)
-      }
-      meta.put(bite)
-      audios.put(audio, bite.id)
-      await done(tx)
+      const freed = await bytesOf(db, AUDIO, leaving)
+      await withRoom(
+        audio.size - freed,
+        async (claim): Promise<void> => {
+          const tx = db.transaction([META, AUDIO], "readwrite")
+          const meta = tx.objectStore(META)
+          const audios = tx.objectStore(AUDIO)
+          // Read and evict inside the one transaction: the cap holds even if two
+          // saves overlap (a second tab of the WebView, say).
+          const kept = await allKept(meta)
+          const displaced = displacedBy(kept, replace, SOUNDBITE_LIMIT)
+          const staying = await Promise.all(
+            kept
+              .filter((each) => !displaced.includes(each.id))
+              .map(async (each) => {
+                const blob: unknown = await result(audios.get(each.id))
+                return blob instanceof Blob ? blob.size : 0
+              })
+          )
+          const displacing = await Promise.all(
+            displaced.map(async (id) => {
+              const blob: unknown = await result(audios.get(id))
+              return blob instanceof Blob ? blob.size : 0
+            })
+          )
+          const frees = displacing.reduce((sum, size) => sum + size, 0)
+          if (
+            !fitsMaxBytes(staying, audio.size) ||
+            audio.size - frees > claim
+          ) {
+            tx.abort()
+            throw new SoundbitesFullError()
+          }
+          for (const id of displaced) {
+            meta.delete(id)
+            audios.delete(id)
+          }
+          meta.put(bite)
+          audios.put(audio, bite.id)
+          await done(tx)
+        },
+        () => new SoundbitesFullError()
+      )
       changed()
     },
 

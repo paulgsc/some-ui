@@ -2,14 +2,12 @@
  * The health cadence (BC5, #1438): when the invariants in `observability.ts`
  * are sampled, and the context they are sampled over.
  *
- * Three things feed the invariants: the Sensor's queue census, the cards
- * whose whitelist round trip is pending in Core (a card is rendered the
- * instant it is observed, so that round trip is the only thing that can
- * stall), and what the occluder is hiding with nothing coming for it (the
- * Sensor's `census().occluded`, timestamped here so a card legitimately
- * mid-adoption is not called stranded). A sample is taken when the runtime
- * starts, on a throttled mutation batch, by a standing occlusion watch at
- * `OCCLUSION_GRACE_MS`, and by a stall watch while anything is pending.
+ * Two things feed the invariants: the Sensor's queue census, and what the
+ * occluder is hiding with nothing coming for it (the Sensor's
+ * `census().occluded`, timestamped here so a card legitimately mid-adoption
+ * is not called stranded). A sample is taken when the runtime starts, on a
+ * throttled mutation batch, and by a standing occlusion watch at
+ * `OCCLUSION_GRACE_MS`.
  */
 
 import type { CoreState } from "@censor/lib/content/core/state"
@@ -20,7 +18,6 @@ import type {
 import {
   observability,
   OCCLUSION_GRACE_MS,
-  PROMOTION_STALL_MS,
 } from "@censor/lib/content/observability"
 import { classifyCard } from "@censor/lib/content/selectors"
 import { RESOLVE_BUDGET_MS } from "@censor/lib/content/sensor/queue"
@@ -37,15 +34,12 @@ export type Health = {
   tick(): void
   /** A session started: take a reading now (`reading(true)`). */
   sessionStarted(): void
-  /** Core state changed; re-arm the stall watch if anything is pending. */
-  stateChanged(): void
   stop(): void
 }
 
 export function createHealth(ports: HealthPorts): Health {
   const occludedSince = new Map<HTMLElement, number>()
   let occlusionWatch: ReturnType<typeof setTimeout> | null = null
-  let stallWatch: ReturnType<typeof setTimeout> | null = null
   let occludedLastReading = false
   let running = false
 
@@ -88,12 +82,6 @@ export function createHealth(ports: HealthPorts): Health {
         firstSeenAt,
         videoShaped: false,
       })),
-      promoting: [...state.cards.values()]
-        .filter((c) => c.channel.kind === "pending")
-        .map((c) => ({
-          key: c.key,
-          startedAt: c.channel.kind === "pending" ? c.channel.since : now,
-        })),
       occluded: occlusionCensus(now, census.occluded),
     }
   }
@@ -122,19 +110,6 @@ export function createHealth(ports: HealthPorts): Health {
     }, OCCLUSION_GRACE_MS)
   }
 
-  function armStallWatch(): void {
-    if (stallWatch !== null || !running) return
-    stallWatch = setTimeout(() => {
-      stallWatch = null
-      const pending = [...ports.state().cards.values()].some(
-        (c) => c.channel.kind === "pending"
-      )
-      if (!pending) return
-      sample()
-      armStallWatch()
-    }, PROMOTION_STALL_MS)
-  }
-
   return {
     tick(): void {
       const obs = observability()
@@ -150,19 +125,10 @@ export function createHealth(ports: HealthPorts): Health {
       armOcclusionWatch()
       reading(true)
     },
-    stateChanged(): void {
-      if (!running) return
-      const pending = [...ports.state().cards.values()].some(
-        (c) => c.channel.kind === "pending"
-      )
-      if (pending) armStallWatch()
-    },
     stop(): void {
       running = false
       if (occlusionWatch !== null) clearTimeout(occlusionWatch)
-      if (stallWatch !== null) clearTimeout(stallWatch)
       occlusionWatch = null
-      stallWatch = null
       occludedSince.clear()
       occludedLastReading = false
     },

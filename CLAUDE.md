@@ -22,9 +22,10 @@ There are two users:
 
 What follows from them:
 
-- **Published by default.** The code is public, and the apps ship through public channels
-  (Pages, AMO, Google Play, YouTube). "For me" names the audience; exposure is a separate
-  question. Keep every public channel and its upkeep (the APK's Play readiness in
+- **Published by default.** The code is public, and the apps ship through public channels:
+  Pages, AMO and YouTube today. The APK is sideloaded today and headed for Google Play as a
+  free personal hobby app. "For me" names the audience; exposure is a separate question.
+  Keep every public channel and its upkeep (the APK's Play readiness in
   `apps/mobile/README.md`, say) even when only the owner uses the thing.
 - **Private only where the data is personal.** What serves A and holds PII stays on the
   home network (the `lan` audience, behind the passkey) and on the owner's own devices.
@@ -35,7 +36,15 @@ What follows from them:
   interaction rather than all at once. The extensions comb is the model
   (`packages/ui/honeycomb/src/components/extensions-comb/extensions.data.ts`).
 - **One screen, two readings.** Where the owner and a viewer can reach the same screen, it
-  should say which of them is looking.
+  says which of them is looking: `components/provenance-strip.tsx` under the web header
+  tells the owner what a wing publishes and keeps, and tells a viewer it is sample data.
+- **A viewer tries, and nothing is kept.** The Pages build is the viewer's (`VIEWER_BUILD`,
+  `apps/www/src/lib/data-mode`). There the page's `localStorage` and `sessionStorage` are
+  in-memory copies (`apps/www/src/lib/demo/viewer-storage.ts`, imported first by
+  `main.tsx`), which `apps/www/src/lib/demo` seeds with sample drafts: a mock demo, where
+  every store, the activity packages' included, works as usual and a reload starts over.
+  A person's records may not bypass them (no IndexedDB, Cache Storage or cookie holding
+  them on the Pages build); a convenience, such as the sidebar's open/closed cookie, may.
 - **Say what it is.** In copy anyone reads (pages, READMEs, store listings, release
   notes), describe each thing by what it is and does, plus its honest limits. Skip foils
   and put-downs ("not another X", "not just a Y"): an affirmative definition says it all.
@@ -52,11 +61,6 @@ What follows from them:
   store in `packages/ui/soundbites`, the "let it go" steps), so an append-only claim would
   be false on landing. Declaring it, with a tag at each discard site, waits on the owner's
   call about those sites.
-
-**Open (the owner's call; ask, don't settle it):** whether some features need a mock
-demonstration surface (seeded data, nothing kept) where a video is not enough. Related: a
-Pages visitor can use the study screens today, with data kept in their own browser, which
-"read-only" may change. Seed data for Pages: `apps/www/src/lib/data-mode`.
 
 `/mission` (`apps/www/src/routes/mission.tsx`) says the same to the viewer.
 
@@ -484,11 +488,12 @@ never "sounds like good practice."
 :app:assembleRelease`. Maven Central can answer 429 mid-download; that is rate limiting,
   so retry. Separately, vitest and every www Playwright suite run the `lan` or `pages`
   build profile, never `mobile`: `MOBILE_APP` and `hasAudience("apk")` are false there, so
-  an APK-only branch (the bottom bar, the header's Home link) is rendered by no test unless
-  that test mocks `@/lib/build-profile` itself. `main`'s launch test does start the APK and
-  drive it with a monkey (`apps/mobile/launch/launch-test.sh`), but with `--pct-syskeys 0`:
-  it never presses back, so the back handling in `MainActivity` (the app has no
-  `@capacitor/app`) is reached by no test at all.
+  an APK-only branch (the wing bar, the header's way out, the foyer) is rendered by no test
+  unless that test mocks `@/lib/build-profile` itself. `main`'s launch test does start the
+  APK, each wing's launcher icon, and a monkey (`apps/mobile/launch/launch-test.sh`), but the
+  monkey runs with `--pct-syskeys 0`: back is pressed exactly once, at a wing entered by its
+  icon, so the rest of `MainActivity`'s back handling (the app has no `@capacitor/app`) is
+  reached by no test.
 - **Run `git diff --cached --stat` before every commit, not only `git status`.** Run it
   after staging (`git add`) — plain `git diff --stat` only shows the unstaged worktree, so
   it can miss binary corruption in content that's already staged and about to be committed.

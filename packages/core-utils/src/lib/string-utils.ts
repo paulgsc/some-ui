@@ -1,3 +1,8 @@
+/** `1 session`, `3 sessions`: a count with its noun, plural past one. */
+export function counted(n: number, noun: string): string {
+  return `${n} ${noun}${n === 1 ? "" : "s"}`
+}
+
 /** "12.4 KB": a byte count as a person reads it. */
 export function formatSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`

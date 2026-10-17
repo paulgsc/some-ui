@@ -1,120 +1,86 @@
 /**
- * The projection, now that it carries what the stylesheet used to.
+ * The whole machine: `decide()` over a card's evidence, and the projection.
  *
- * Moving the hint copy and the progress rail out of `::before`/`::after`
- * `content:` rules and into `project()` means a missing state is a missing
- * pill rather than a missing CSS rule. The compiler catches an unhandled
- * variant; these cover what it cannot — that the copy is actually there, that
- * the rail only ever moves forwards, and that the veil's role matches the
- * state it is projected from.
+ * The estimator's grammar is `maturity.test.ts`'s; these pin how its bands
+ * become a view, and that every way of not knowing is absent.
  */
 
 import type { ViewState } from "@censor/lib/content/fsm"
-import {
-  applyClick,
-  applyDblClick,
-  applyReset,
-  project,
-} from "@censor/lib/content/fsm"
+import { decide, project } from "@censor/lib/content/fsm"
+import { DEFAULT_BOUNDARY_DAYS } from "@censor/lib/content/maturity/maturity"
 import { mkSession } from "@some-extension/common"
 import { describe, expect, it } from "vitest"
 
 const session = mkSession()
+const NOW = Date.UTC(2026, 9, 16)
 
-const META = {
-  channelName: "Some Channel",
-  duration: "12:34",
-} as const
+function view(
+  uploadDate: string | null,
+  short = false,
+  boundaryDays = DEFAULT_BOUNDARY_DAYS
+): ViewState["kind"] {
+  return decide({ uploadDate, short }, NOW, boundaryDays, session).kind
+}
 
-const STATES: ReadonlyArray<ViewState> = [
-  { kind: "masked", session },
-  { kind: "meta", session, meta: META },
-  {
-    kind: "title",
-    session,
-    meta: META,
-    title: { text: "A title", translated: false },
-  },
-  { kind: "revealed", session },
-  { kind: "whitelisted", session },
-]
-
-describe("every state projects a complete presentation", () => {
-  it("gives every state that keeps a veil a hint to show", () => {
-    for (const state of STATES) {
-      const model = project(state)
-      if (model.removeVeil) continue
-      expect(model.hint, `${state.kind} must project a hint`).not.toBeNull()
-      expect(
-        model.hint?.label.length,
-        `${state.kind} hint copy`
-      ).toBeGreaterThan(0)
-    }
+describe("decide", () => {
+  it("plates a card at least the boundary old (QM3, QM4)", () => {
+    expect(view("2 years ago")).toBe("plated")
+    expect(view("10 years ago")).toBe("plated")
+    expect(view("Jan 5, 2019")).toBe("plated")
   })
 
-  it("projects no hint for the state whose veil is leaving", () => {
-    const model = project({ kind: "revealed", session })
-    expect(model.removeVeil).toBe(true)
-    expect(model.hint).toBeNull()
+  it("holds a card younger than the boundary (QM1, QM2)", () => {
+    expect(view("3 days ago")).toBe("absent")
+    expect(view("11 months ago")).toBe("absent")
   })
 
-  it("keeps the copy click-honest", () => {
-    // Every step of this FSM is a click; the pill must not promise a hover
-    // affordance the machine does not implement.
-    for (const state of STATES) {
-      const label = project(state).hint?.label.toLowerCase()
-      if (!label) continue
-      expect(label, `${state.kind}: "${label}"`).not.toContain("hover")
-    }
+  it("reads the band against the boundary it is given", () => {
+    expect(view("11 months ago", false, 182)).toBe("plated")
   })
 
-  it("matches the veil's tone to whether it is still occluding", () => {
-    expect(project({ kind: "masked", session }).veilTone).toBe("occluding")
-    expect(project({ kind: "meta", session, meta: META }).veilTone).toBe(
-      "occluding"
-    )
-    expect(project({ kind: "whitelisted", session }).veilTone).toBe(
-      "whitelisted"
-    )
-  })
-})
-
-describe("the rail reads the disclosure ladder", () => {
-  it("advances with each click and never goes backwards", () => {
-    const masked = applyReset(session)
-    const meta = applyClick(masked, META)
-    const title = applyClick(meta, "A title")
-
-    expect(project(masked).rail).toBe(0)
-    expect(project(meta).rail).toBe(1)
-    expect(project(title).rail).toBe(2)
+  it("holds a card whose age it cannot prove (QM0)", () => {
+    expect(view(null)).toBe("absent")
+    expect(view("")).toBe("absent")
+    expect(view("1.2M views")).toBe("absent")
+    expect(view("8d ago")).toBe("absent")
   })
 
-  it("stays full through the reveal", () => {
-    const title = applyClick(applyClick(applyReset(session), META), "A title")
-    expect(project(applyDblClick(title)).rail).toBe(2)
+  it("holds live and upcoming cards (present)", () => {
+    expect(view("12K watching")).toBe("absent")
+    expect(view("Premieres Dec 1, 2026")).toBe("absent")
   })
 
-  it("reads empty for a card that was never progressed", () => {
-    // Whitelisted is not "finished", it is "exempt" — a full rail would claim
-    // the user disclosed the card themselves.
-    expect(project({ kind: "whitelisted", session }).rail).toBe(0)
+  it("holds every Short, whatever its date", () => {
+    expect(view("10 years ago", true)).toBe("absent")
   })
-})
 
-describe("data-boyo stays the stylesheet's contract", () => {
-  it("keeps the values content.css and the e2e suite key off", () => {
-    expect(project({ kind: "masked", session }).dataBoyo).toBe("0")
-    expect(project({ kind: "meta", session, meta: META }).dataBoyo).toBe("1")
+  it("keeps the session it is given (F1)", () => {
     expect(
-      project({
-        kind: "title",
-        session,
-        meta: META,
-        title: { text: "t", translated: false },
-      }).dataBoyo
-    ).toBe("2")
-    expect(project({ kind: "revealed", session }).dataBoyo).toBe("3")
-    expect(project({ kind: "whitelisted", session }).dataBoyo).toBe("wl")
+      decide(
+        { uploadDate: null, short: false },
+        NOW,
+        DEFAULT_BOUNDARY_DAYS,
+        session
+      )
+    ).toEqual({
+      kind: "absent",
+      session,
+    })
+  })
+})
+
+describe("project", () => {
+  it("stamps absent and puts no veil on what is not rendered", () => {
+    expect(project({ kind: "absent", session })).toEqual({
+      dataBoyo: "absent",
+      veil: false,
+    })
+  })
+
+  it("veils a plated card until the plate replaces it", () => {
+    expect(project({ kind: "plated", session })).toEqual({
+      dataBoyo: "plated",
+      veil: true,
+    })
   })
 })

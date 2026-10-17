@@ -14,13 +14,15 @@ import com.getcapacitor.annotation.CapacitorPlugin;
  * the person wrote. This logs only what www sends it (apps/www
  * src/lib/native-log): a reported failure with its cause, and the device
  * storage opening, which the launch test reads (launch/launch-test.sh).
+ * MainActivity writes one line of its own under the same tag, "wing
+ * entered: <id>", on each entry through an icon, which the test also reads.
  *
  *   adb logcat -s SomeUI
  */
 @CapacitorPlugin(name = "NativeLog")
 public class NativeLogPlugin extends Plugin {
 
-    private static final String TAG = "SomeUI";
+    static final String TAG = "SomeUI";
 
     @PluginMethod
     public void write(PluginCall call) {

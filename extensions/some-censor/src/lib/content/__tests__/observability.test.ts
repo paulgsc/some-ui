@@ -12,7 +12,6 @@ import {
   MAX_SNAPSHOT_BYTES,
   observability,
   OCCLUSION_GRACE_MS,
-  PROMOTION_STALL_MS,
   redactQueueKey,
   RESOLVE_GRACE_MS,
   sessionStorageKey,
@@ -31,7 +30,6 @@ import {
   memoryPersistence,
   Recorder,
   type InvariantOutcome,
-  type JsonValue,
   type ObservabilityEvent,
 } from "@some-extension/common/observability"
 import {
@@ -39,24 +37,6 @@ import {
   type FakeStorageOptions,
 } from "@some-extension/common/testing"
 import { afterEach, describe, expect, it, vi } from "vitest"
-
-/**
- * The numeric fields of an event detail, as a plain record.
- *
- * `detail` is a `JsonValue`, so it may be a primitive or an array; this
- * narrows it without an assertion, and dropping non-numeric values is what
- * lets a test assert that a detail carries counts and nothing else (#1382).
- */
-function numericDetail(detail: JsonValue | undefined): Record<string, number> {
-  if (detail === null || typeof detail !== "object" || Array.isArray(detail)) {
-    return {}
-  }
-  const out: Record<string, number> = {}
-  for (const [key, value] of Object.entries(detail)) {
-    if (typeof value === "number") out[key] = value
-  }
-  return out
-}
 
 // ── Harness ──────────────────────────────────────────────────────────────────
 
@@ -81,12 +61,11 @@ function check(
 }
 
 const OccludedCardResolves = findInvariant("OccludedCardResolves")
-const PromotionGuardClears = findInvariant("PromotionGuardClears")
 const OccluderReleases = findInvariant("OccluderReleases")
 
 const NOW = 1_700_000_000_000
 
-/** Nothing queued, nothing promoting, running — each test varies one thing. */
+/** Nothing queued, nothing occluded, running — each test varies one thing. */
 function baseContext(overrides: Partial<BoyoContext> = {}): BoyoContext {
   return {
     now: NOW,
@@ -94,7 +73,6 @@ function baseContext(overrides: Partial<BoyoContext> = {}): BoyoContext {
     resolveBudgetMs: RESOLVE_BUDGET_MS,
     unresolved: [],
     channelPending: [],
-    promoting: [],
     occluded: [],
     ...overrides,
   }
@@ -167,22 +145,11 @@ describe("the event union", () => {
     obs.mountProvisional("vid-b")
     obs.queued("h:https://youtube.com/watch?v=vid-c")
     obs.rejected("h:https://youtube.com/watch?v=vid-c")
-    obs.staleDiscarded("vid-d")
     obs.churnIgnored("vid-a")
     obs.channelBackfilled("vid-b")
     obs.channelAbandoned("vid-e")
-    obs.bulkAdvance({
-      advanced: 1,
-      alreadyPast: 0,
-      unresolved: 0,
-      occludedUntracked: 0,
-      channelPending: 0,
-    })
-    obs.entryState("masked", "vid-a")
-    obs.entryState("meta", "vid-a")
-    obs.entryState("title", "vid-a")
-    obs.entryState("revealed", "vid-a")
-    obs.entryState("whitelisted", "vid-a")
+    obs.entryState("absent", "vid-a")
+    obs.entryState("plated", "vid-a")
     obs.uploadDate("3 days ago", "home", "ytd-rich-item-renderer")
     obs.uploadDate(null, "home", "ytm-shorts-lockup-view-model")
     obs.unknownShape("yt-lockup-view-model", "search", "tag-unseen")
@@ -191,7 +158,9 @@ describe("the event union", () => {
     // then a recovery to be reachable at all.
     const stuck = baseContext({
       now: NOW,
-      promoting: [{ key: "p:1", startedAt: NOW - PROMOTION_STALL_MS }],
+      occluded: [
+        { tag: "ytd-rich-item-renderer", sinceAt: NOW - OCCLUSION_GRACE_MS },
+      ],
     })
     await obs.sampleHealth(stuck)
     await obs.sampleHealth(
@@ -321,8 +290,6 @@ describe("OccludedCardResolves — the failure mode it exists for is reachable",
   })
 })
 
-// ── PromotionGuardClears ─────────────────────────────────────────────────────
-
 describe("OccluderReleases — the DOM-truth check the bookkeeping cannot make", () => {
   // Every other invariant reads a queue, so a failure that leaves an element
   // in no queue at all is invisible to them.
@@ -404,39 +371,6 @@ describe("OccluderReleases — the DOM-truth check the bookkeeping cannot make",
   })
 })
 
-describe("PromotionGuardClears — an element that never leaves _promoting", () => {
-  it("is unknown while idle", () => {
-    expect(check(PromotionGuardClears, baseContext({ phase: "idle" }))).toEqual(
-      { ok: "unknown" }
-    )
-  })
-
-  it("holds when nothing is in flight", () => {
-    expect(check(PromotionGuardClears, baseContext())).toEqual({ ok: true })
-  })
-
-  it("holds for a promotion that is merely slow — an MV3 worker respawn is seconds, not tens of them", () => {
-    const ctx = baseContext({
-      promoting: [{ key: "v:abc", startedAt: NOW - 5_000 }],
-    })
-    expect(check(PromotionGuardClears, ctx)).toEqual({ ok: true })
-  })
-
-  it("is violated once a promotion has held the guard past PROMOTION_STALL_MS, and names it", () => {
-    const held = PROMOTION_STALL_MS + 1_000
-    const ctx = baseContext({
-      promoting: [
-        { key: "v:fine", startedAt: NOW - 10 },
-        { key: "v:hung", startedAt: NOW - held },
-      ],
-    })
-    expect(check(PromotionGuardClears, ctx)).toEqual({
-      ok: false,
-      details: { keys: ["v:hung"], heldMs: [held] },
-    })
-  })
-})
-
 describe("mutationBatch — the observer's firehose, bounded", () => {
   it("records an event for a batch that turned up a card", () => {
     const obs = newObservability()
@@ -483,87 +417,6 @@ describe("the health throttle is per session, not per content script", () => {
     expect(obs.shouldSampleHealth(NOW + 1)).toBe(true)
   })
 })
-
-describe("bulkAdvance — the coverage a keystroke actually had", () => {
-  const clean = {
-    advanced: 3,
-    alreadyPast: 2,
-    unresolved: 0,
-    occludedUntracked: 0,
-    channelPending: 0,
-  }
-
-  it("does not count a card already at title as skipped", () => {
-    const obs = newObservability()
-    obs.bulkAdvance(clean)
-
-    const event = obs.recorder
-      .events()
-      .find((e) => e.kind === "command.advance_all")
-    // The distinction the whole story turns on: "covered, nothing to do" is
-    // not "missed". Folding the two would make every second press of an
-    // idempotent command look like a regression.
-    expect(event?.detail).toMatchObject({ alreadyPast: 2, skipped: 0 })
-    expect(obs.recorder.metrics.counter("bulk_advance_skipped")).toBe(0)
-  })
-
-  it("sums the genuinely-uncovered populations into skipped", () => {
-    const obs = newObservability()
-    obs.bulkAdvance({
-      ...clean,
-      unresolved: 4,
-      occludedUntracked: 2,
-    })
-
-    const event = obs.recorder
-      .events()
-      .find((e) => e.kind === "command.advance_all")
-    expect(event?.detail).toMatchObject({ skipped: 6 })
-    expect(obs.recorder.metrics.counter("bulk_advance_skipped")).toBe(6)
-    expect(obs.recorder.metrics.counter("bulk_advance_advanced")).toBe(3)
-  })
-
-  it("folds a clean press into the distribution too", () => {
-    const obs = newObservability()
-    obs.bulkAdvance(clean)
-    obs.bulkAdvance({ ...clean, unresolved: 6 })
-
-    // Dropping the zeroes would bias the aggregate toward exactly the presses
-    // the story is about: "missed 6 once out of two presses" and "misses 6
-    // every press" would read identically.
-    expect(
-      Reflect.get(
-        Object(obs.recorder.metrics.snapshot().aggregates),
-        "bulk_advance_skipped_per_command"
-      )
-    ).toEqual({ count: 2, sum: 6, min: 0, max: 6, last: 6 })
-  })
-
-  it("names no card, because a keystroke is not about one", () => {
-    const obs = newObservability()
-    obs.bulkAdvance({ ...clean, unresolved: 1 })
-
-    const event = obs.recorder
-      .events()
-      .find((e) => e.kind === "command.advance_all")
-    expect(event?.subject).toBeUndefined()
-    // Counts only, and nothing else: every field of BulkAdvanceCoverage plus
-    // the derived `skipped`, all numeric. That the detail survives a
-    // numbers-only filter unchanged is what makes the event structurally
-    // incapable of carrying a videoId, href or title (#1382) — a stronger
-    // guarantee than checking that this particular call happened not to.
-    expect(Object.keys(numericDetail(event?.detail)).sort()).toEqual([
-      "advanced",
-      "alreadyPast",
-      "channelPending",
-      "occludedUntracked",
-      "skipped",
-      "unresolved",
-    ])
-  })
-})
-
-// ── The date corpus ──────────────────────────────────────────────────────────
 
 describe("uploadDate — the corpus mechanism QC2 depends on", () => {
   it("banks a distinct raw form once, but counts every sighting", () => {
@@ -726,7 +579,12 @@ describe("sampleHealth — transitions, not levels", () => {
   const stalled = (now: number): BoyoContext =>
     baseContext({
       now,
-      promoting: [{ key: "v:hung", startedAt: now - PROMOTION_STALL_MS * 2 }],
+      occluded: [
+        {
+          tag: "ytd-rich-item-renderer",
+          sinceAt: now - OCCLUSION_GRACE_MS * 2,
+        },
+      ],
     })
 
   it("records a violation once, not once per sample, while it persists", async () => {
@@ -748,7 +606,7 @@ describe("sampleHealth — transitions, not levels", () => {
       .events()
       .find((e) => e.kind === "invariant.violated")
     expect(violated?.severity).toBe("error")
-    expect(violated?.subject).toBe("PromotionGuardClears")
+    expect(violated?.subject).toBe("OccluderReleases")
   })
 
   it("records the recovery when the invariant holds again", async () => {
@@ -762,7 +620,7 @@ describe("sampleHealth — transitions, not levels", () => {
     expect(
       obs.recorder.events().find((e) => e.kind === "invariant.recovered")
         ?.subject
-    ).toBe("PromotionGuardClears")
+    ).toBe("OccluderReleases")
   })
 
   it("neither opens nor closes a violation on an unknown outcome — an un-evaluable check is not evidence either way", async () => {
@@ -792,7 +650,6 @@ describe("sampleHealth — transitions, not levels", () => {
       unresolved: 2,
       unresolvedVideoShaped: 1,
       channelPending: 1,
-      promoting: 0,
     })
     expect(Reflect.get(Object(snapshots["health"]), "status")).toBe("healthy")
     expect(obs.recorder.metrics.counter("dates_observed")).toBe(0)

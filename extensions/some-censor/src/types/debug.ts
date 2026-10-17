@@ -1,3 +1,5 @@
+import type { ViewState } from "@censor/lib/content/fsm"
+
 export type BoyoDebugSnapshot = {
   /** Monotonic counter — increments on every publish() call. */
   readonly tick: number
@@ -53,6 +55,6 @@ export type BoyoDebugSnapshotWire = {
 export type EntryDebugInfo = {
   readonly videoId: string
   readonly channelId: string
-  readonly viewKind: "masked" | "meta" | "title" | "revealed" | "whitelisted"
+  readonly viewKind: ViewState["kind"]
   readonly isConnected: boolean
 }

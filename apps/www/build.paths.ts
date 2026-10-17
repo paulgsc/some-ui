@@ -92,6 +92,7 @@ export const MOBILE_ROUTE_FILES = [
   "apps/www/src/routes/_dashboard.tsx*",
   "apps/www/src/routes/_dashboard/_apk.tsx*",
   "apps/www/src/routes/_dashboard/_apk/**",
+  "apps/www/src/routes/_dashboard/practice/settings.tsx*",
   "apps/www/src/routes/_dashboard/sessions/**",
   "apps/www/src/routes/_dashboard/settings.tsx*",
   "apps/www/src/routes/auth.tsx*",
@@ -112,6 +113,7 @@ const DEVICE_MODULES = [
   "apps/www/src/lib/journal-share/**",
   "apps/www/src/lib/reflection-voice/**",
   "apps/www/src/lib/scene-voice/**",
+  "apps/www/src/lib/session-archive/**",
   "apps/www/src/lib/share-files/**",
   "apps/www/src/lib/device-backend/**",
   "apps/www/src/lib/device-speech/**",
@@ -175,6 +177,11 @@ export const paths: PathRules<Profile> = definePaths<Profile>({
       why: "the web builds' voice, the browser's own synthesizer: the Android app speaks only with the phone's engine (src/providers/tts.tsx)",
     },
     {
+      modules: ["apps/www/src/lib/demo/**"],
+      profiles: ["pages"],
+      why: "a viewer's sample drafts (CLAUDE.md, two mandates): only the Pages build is a viewer's, and the owner's builds keep to their own records",
+    },
+    {
       modules: [
         `${SPEECH_ENTRY}/http.es.js`,
         "apps/www/src/lib/tts-config/**",
@@ -192,6 +199,11 @@ export const paths: PathRules<Profile> = definePaths<Profile>({
       modules: ["apps/www/src/lib/web-surface/hangul/**"],
       profiles: ["lan", "pages"],
       why: "Hangul Honeycomb's panel, a desktop keyboard game the phone has no counterpart for: only the web door (src/lib/web-surface) binds it, and not in the Android app's build",
+    },
+    {
+      modules: ["apps/www/src/components/reflection/copy.ts"],
+      profiles: [MOBILE_PROFILE],
+      why: "the phone's hand-off wording (`arrived`, `goingOut`), after a share only the Android app makes; the web's reflection screens count with `@some-ui/core-utils`",
     },
     {
       modules: DEVICE_MODULES,
@@ -266,6 +278,11 @@ export const paths: PathRules<Profile> = definePaths<Profile>({
       modules: [`${SPEECH_ENTRY}/web-speech.es.js`],
       why: "Pages speaks through this (src/providers/tts.tsx); a build without it is silent",
     },
+    {
+      profile: "pages",
+      modules: ["apps/www/src/lib/demo/index.ts"],
+      why: "a viewer starts from these sample drafts (src/main.tsx); without them the demo opens empty. Also what keeps its `exclusive` rule from passing by matching nothing",
+    },
   ],
   // Every profile builds one route tree, shared by design until now
   // (AUDIENCES.md, "Build audiences"): a route off a profile's path ships
@@ -293,7 +310,6 @@ export const paths: PathRules<Profile> = definePaths<Profile>({
       "extensions.tsx*",
       "playoff-delta.tsx*",
       "_dashboard/app.tsx*",
-      "_dashboard/jobs.tsx*",
       "_dashboard/profile.tsx*",
       "_dashboard/resume.tsx*",
     ].map(

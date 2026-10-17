@@ -10,7 +10,6 @@ import {
   floorRecord,
   isOpen,
   nameOf,
-  plural,
   SEEDS,
   sinceLabel,
   type StoryClaim,
@@ -18,6 +17,7 @@ import {
   type TemplateKey,
 } from "@playoff-delta/lib/story"
 import { GAME_LOST, symbolFor } from "@playoff-delta/lib/symbols"
+import { counted } from "@some-ui/core-utils"
 
 import { delay, Kicker, Reveal, type SlideProps } from "./shared"
 
@@ -25,7 +25,7 @@ function verdict(c: StoryClaim): { big: string; line: string } {
   if (!c.in) return { big: "Out.", line: "every path is closed" }
   if (c.extraWins === 0)
     return { big: "Still in.", line: `Still in, as high as #${c.seed}` }
-  const wins = plural(c.extraWins, "more win")
+  const wins = counted(c.extraWins, "more win")
   return { big: `${wins}.`, line: `${wins}, then as high as #${c.seed}` }
 }
 
@@ -65,7 +65,7 @@ export const Before = ({ season, week }: SlideProps): JSX.Element => {
       <PathGrid paths={week.paths.before} />
       <Floor at={0.9}>
         <span className="pd-mono pd-small text-muted-foreground">
-          {plural(open, "open path")}
+          {counted(open, "open path")}
         </span>
         <b className="pd-mono text-[5.5cqw]">
           floor {floorRecord(c, season.seasonLength)}
@@ -119,12 +119,12 @@ export const Game = ({ season, week }: SlideProps): JSX.Element => {
           <>
             The cap moves:{" "}
             <b>
-              {wins} → {plural(wins + 1, "win")}
+              {wins} → {counted(wins + 1, "win")}
             </b>
           </>
         ) : (
           <>
-            The cap stays at <b>{plural(wins, "win")}</b>
+            The cap stays at <b>{counted(wins, "win")}</b>
           </>
         )}
       </Reveal>
@@ -196,7 +196,7 @@ const TemplateCard = ({
   const count = !results.length
     ? "none this week"
     : k === "forced"
-      ? `${plural(results.length, "game")}${scored.length ? ` · ${hits} of ${scored.length} that mattered ${s.verb}` : ""}`
+      ? `${counted(results.length, "game")}${scored.length ? ` · ${hits} of ${scored.length} that mattered ${s.verb}` : ""}`
       : `${hits} of ${scored.length} ${s.verb}`
   return (
     <Reveal at={at} className={`pd-card ${tone}`}>

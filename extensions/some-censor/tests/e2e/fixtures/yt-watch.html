@@ -58,8 +58,9 @@
     BOYO watch-page fixture.
 
     Reproduces issue #4: the right-hand "up next" sidebar uses
-    ytd-compact-video-renderer elements. These must be masked just like home
-    feed cards. The sidebar hydrates slightly after the player, so the
+    ytd-compact-video-renderer elements. These are decided just like home
+    feed cards: two carry an old date and are plated, and the third carries
+    none and is absent. The sidebar hydrates slightly after the player, so the
     observer/scan path must pick it up under the CURRENT session — which only
     works if navigation correctly tears down and restarts (issue #2).
 
@@ -81,6 +82,9 @@
                 <yt-formatted-string>TypeTheory</yt-formatted-string>
               </ytd-channel-name>
               <a href="/channel/UCside001">TypeTheory</a>
+              <div id="metadata-line">
+                <span>1M views</span><span>4 years ago</span>
+              </div>
             </div>
           </ytd-compact-video-renderer>
 
@@ -94,6 +98,9 @@
                 <yt-formatted-string>RegexWizard</yt-formatted-string>
               </ytd-channel-name>
               <a href="/@RegexWizard">RegexWizard</a>
+              <div id="metadata-line">
+                <span>1M views</span><span>9 years ago</span>
+              </div>
             </div>
           </ytd-compact-video-renderer>
 

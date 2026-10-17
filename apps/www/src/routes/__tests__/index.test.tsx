@@ -93,13 +93,16 @@ describe('"/"', () => {
     expect(screen.queryByRole("heading", { level: 1 })).toBeNull()
   })
 
-  it("is the destinations landing on the public site once the demo is open", () => {
+  it("is the foyer on the public site once the demo is open", () => {
     state.session = "signed-in"
     renderRoot()
     expect(screen.queryByTestId("extensions-page")).toBeNull()
     expect(
-      screen.getByRole("heading", { level: 1, name: /one workspace/i })
+      screen.getByRole("heading", { level: 1, name: "Where to?" })
     ).toBeTruthy()
+    expect(
+      screen.getByRole("link", { name: /^Practice/ }).getAttribute("href")
+    ).toBe("/app")
     // Vitest builds the `lan` profile, which carries "web".
     expect(screen.getByText("Playoff Delta")).toBeTruthy()
   })

@@ -169,10 +169,6 @@ export const nameOf = (season: StorySeason, code: string): string =>
 export const sinceLabel = (week: number): string =>
   week === 1 ? "Before week 1" : `After week ${week - 1}`
 
-/** "1 win", "2 wins". */
-export const plural = (n: number, word: string): string =>
-  `${n} ${word}${n === 1 ? "" : "s"}`
-
 /** The claim a paths row implies: the first x with a way in. */
 export function claimOf(
   paths: ReadonlyArray<number | null>,

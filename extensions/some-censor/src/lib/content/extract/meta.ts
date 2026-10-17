@@ -1,4 +1,7 @@
-import { FIELD_SELECTORS, LOCKUP_TEXT } from "@censor/lib/content/layout/fields"
+import {
+  FIELD_SELECTORS,
+  LOCKUP_DATE_RUNS,
+} from "@censor/lib/content/layout/fields"
 import type { MetaData } from "@censor/types/states"
 
 /**
@@ -51,12 +54,42 @@ export function extractMeta(el: HTMLElement): MetaData {
 
 /**
  * A lockup's second metadata row reads "1.2M views · 3 days ago" as separate
- * text runs, and the age is usually the last of them. Positional, so low
+ * runs, and the age is usually the last of them. Positional, so low
  * confidence: on a row with no date the last run is the view count, which the
  * estimator does not recognize and holds as unverified (#1384).
+ *
+ * A run holding a link, or held by one, is never read: that is the channel,
+ * and YouTube places its row before or after the date's. Read as a date, a
+ * channel named like an age ("10 years ago") would admit a fresh video.
+ *
+ * The camelCase run is read by its `aria-label` ("8 days ago"), not its compact
+ * text ("8d ago"): the estimator knows the long form, and a compact "5m"
+ * cannot say whether it means minutes or months.
  */
 function lockupUploadDate(el: HTMLElement): string | null {
-  const runs = el.querySelectorAll(`span${LOCKUP_TEXT}`)
+  const runs = [...el.querySelectorAll(LOCKUP_DATE_RUNS.join(", "))].filter(
+    (run) => run.querySelector("a") === null && run.closest("a") === null
+  )
   const last = runs[runs.length - 1]
-  return last?.textContent.trim() || null
+  if (last === undefined) return null
+  return (last.getAttribute("aria-label") ?? last.textContent).trim() || null
+}
+
+/** The catalogue tags that only ever render a Short. */
+const SHORTS_TAGS = new Set([
+  "ytd-reel-item-renderer",
+  "ytm-shorts-lockup-view-model",
+  "ytm-shorts-lockup-view-model-v2",
+])
+
+/**
+ * Is `el` a Short? A Shorts renderer, or any card linking to `/shorts/`: a
+ * search result renders a Short in the ordinary video renderer. Over-holding
+ * is the safe direction (QD3), so one Shorts link is enough.
+ */
+export function extractIsShort(el: HTMLElement): boolean {
+  return (
+    SHORTS_TAGS.has(el.tagName.toLowerCase()) ||
+    el.querySelector('a[href*="/shorts/"]') !== null
+  )
 }

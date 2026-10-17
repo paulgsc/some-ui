@@ -32,6 +32,7 @@ export const DRIVE_FOLDERS: Readonly<
   "agent-export": (day) => `Study ledger › study-context › ${day} (new folder)`,
   "journal-takes": () => "Build Journal › voice › takes",
   "drama-prompt": () => DRAMA_REQUESTS,
+  "session-archive": () => "Study ledger › sessions",
 }
 
 /**

@@ -1,56 +1,114 @@
-/* Popup styling — deliberately minimal: this page is currently just a
- * header and the "Diagnostics" entry point (see popup.ts), not the
- * whitelist/enabled controls `@censor/types/messages` already models.
- * Tokens mirror `../debug/debug.css`'s `bc-` prefix. */
+/* Popup styling, after prototype D (see popup.ts). */
 
 :root {
   color-scheme: dark;
 
-  --bc-bg: #1a1a1a;
-  --bc-fg: #e0e0e0;
-  --bc-muted: #8a8a8a;
-  --bc-border: rgb(255 255 255 / 8%);
+  --bc-bg: #1c1f1d;
+  --bc-fg: #e2e5de;
+  --bc-muted: #959e97;
+  --bc-border: #2f3531;
+  --bc-accent: #cfa253;
+  --bc-mono: ui-monospace, "SFMono-Regular", menlo, monospace;
 }
 
 #app {
-  width: 240px;
+  display: grid;
+  gap: 16px;
+  padding: 16px;
+  width: 288px;
 }
 
 .popup__header {
   align-items: center;
   display: flex;
-  gap: 8px;
-  padding: 12px;
+  justify-content: space-between;
 }
 
-.popup__logo {
-  display: block;
-  flex: none;
-}
-
-.popup__title {
-  font-size: 14px;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-}
-
-.popup__tagline {
+.popup__name {
   color: var(--bc-muted);
-  font-size: 12px;
-  margin: 0;
-  padding: 0 12px 12px;
+  font: 500 12px/1 var(--bc-mono);
+  letter-spacing: 0.1em;
+}
+
+.popup__switch {
+  background: var(--bc-accent);
+  border: 0;
+  border-radius: 10px;
+  cursor: pointer;
+  height: 20px;
+  position: relative;
+  width: 34px;
+}
+
+.popup__switch::after {
+  background: var(--bc-bg);
+  border-radius: 50%;
+  content: "";
+  height: 14px;
+  position: absolute;
+  right: 3px;
+  top: 3px;
+  width: 14px;
+}
+
+.popup__switch[aria-checked="false"] {
+  background: var(--bc-border);
+}
+
+.popup__switch[aria-checked="false"]::after {
+  right: 17px;
+}
+
+.popup__question {
+  display: grid;
+  gap: 8px;
+}
+
+.popup__label {
+  font-size: 13.5px;
+  font-weight: 500;
+  line-height: 1.3;
+}
+
+.popup__segments {
+  border: 1px solid var(--bc-border);
+  border-radius: 3px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  overflow: hidden;
+}
+
+.popup__segments button {
+  background: transparent;
+  border: 0;
+  color: var(--bc-muted);
+  cursor: pointer;
+  font: 500 12px var(--bc-mono);
+  padding: 8px 0;
+}
+
+.popup__segments button + button {
+  border-left: 1px solid var(--bc-border);
+}
+
+.popup__segments button[aria-pressed="true"] {
+  background: var(--bc-accent);
+  color: var(--bc-bg);
+}
+
+:focus-visible {
+  outline: 2px solid var(--bc-accent);
+  outline-offset: 2px;
 }
 
 .popup__footer {
-  border-top: 1px solid var(--bc-border);
   margin: 0;
-  padding: 8px 12px;
   text-align: right;
 }
 
 .popup__diagnostics {
   color: var(--bc-muted);
-  font-size: 11px;
+  font: 400 11.5px/1.4 var(--bc-mono);
   text-decoration: none;
 }
 

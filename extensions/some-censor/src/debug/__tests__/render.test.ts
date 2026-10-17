@@ -15,6 +15,7 @@ import {
   sessionStorageKey,
   type IndexEntry,
 } from "@censor/lib/content/observability"
+import { BOUNDARY_CHANGES_KEY } from "@censor/lib/settings/settings"
 import { ext } from "@censor/platform/content"
 import {
   fakeStorage,
@@ -144,6 +145,45 @@ describe("the diagnostics page", () => {
     expect(label).toContain("https://www.youtube.com")
     expect(label).toContain("home")
     expect(label).toContain("session 4")
+  })
+})
+
+describe("boundary changes", () => {
+  it("lists every logged change, newest first, with no session recorded", async () => {
+    const { store } = installFakeStorage()
+    store.set(BOUNDARY_CHANGES_KEY, [
+      { at: NOW, from: "1y", to: "6mo" },
+      { at: NOW + 1000, from: "6mo", to: "2y" },
+    ])
+
+    await mountPage()
+    await vi.waitFor(() => {
+      expect(document.body.textContent).toContain("Boundary changes")
+      expect(
+        document.querySelectorAll("table.bc-events tbody tr")
+      ).toHaveLength(2)
+    })
+    const rows = [...document.querySelectorAll("table.bc-events tbody tr")]
+    expect(rows.map((r) => r.textContent)).toEqual([
+      expect.stringMatching(/6 months2 years$/),
+      expect.stringMatching(/1 year6 months$/),
+    ])
+  })
+
+  it("rereads the log on Refresh", async () => {
+    const { store } = installFakeStorage()
+    await mountPage()
+    await vi.waitFor(() => {
+      expect(document.body.textContent).toContain("has not changed")
+    })
+    store.set(BOUNDARY_CHANGES_KEY, [{ at: NOW, from: "1y", to: "2y" }])
+    const refresh = [...document.querySelectorAll("button")].find(
+      (b) => b.textContent === "Refresh"
+    )
+    refresh?.click()
+    await vi.waitFor(() => {
+      expect(document.body.textContent).toContain("2 years")
+    })
   })
 })
 
