@@ -38,6 +38,24 @@ observation to write:
    stamp (`absent` is `display: none` in `styles/content.css`) and the veil
    over a plated card.
 
+## Browsers
+
+Firefox is the product. The default `build` is the Firefox build: it is the one
+CI checks with `web-ext lint`, and the one an AMO release is built from.
+
+The Chromium build (`build:chromium`, `public/manifest.json`,
+`src/lib/platform/*/api.chrome.ts`) exists only so Playwright can run the e2e
+suite: Playwright has no supported way to load an unsigned extension into
+Firefox and drive it (`tests/e2e/global-setup.ts`). It is never shipped, so a
+gap that shows only in Chrome, such as the tab context menu Chrome does not
+offer extensions, is not a bug.
+
+The e2e suite (`pnpm test:e2e`) runs locally, not in CI. Its specs wait on real
+time (poll timeouts of 4–6 s, retry-budget waits near 11 s, three fixed
+sleeps), so they are tuned to a developer machine, and a green run says
+nothing about Firefox. Run it before pushing a change to the content script,
+the popup or the stylesheet.
+
 > [!IMPORTANT] > **Story-governed as well as canon-governed — read both before editing this package.**
 >
 > - [`docs/quarantine-capsule.md`](./docs/quarantine-capsule.md) — _The
