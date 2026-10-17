@@ -418,7 +418,8 @@ a run is asked for:
 
 - _Claim:_ in `lib/home-link/aph.ts`, `ask` runs only at a moment its person
   is using aph: from `watchAph`, which only `useAphHome` starts, for as long
-  as aph's strip is mounted, on the strip mounting, an edit on this phone,
+  as aph's strip is mounted, on the strip mounting, the switch to home (the
+  opt-in's second press) or an edit on this phone,
   the app coming back to the foreground, the network coming back, the phone
   being paired, or the link freeing up after turning a run away; or from
   `askAph`, which the strip calls only from its button's `onClick`. Each

@@ -113,13 +113,20 @@ function fakeStore(initial: AphWhere): AphStore & { kept: number } {
   return store
 }
 
-async function show(store: AphStore): Promise<{ exchanges: number }> {
+/**
+ * Renders the strip over `store`. Its exchange asks home once, which the
+ * mocked home never answers, unless `reaches`: then it syncs at once.
+ */
+async function show(
+  store: AphStore,
+  reaches = false
+): Promise<{ exchanges: number }> {
   const seen = { exchanges: 0 }
   const aph: AphKeeping = {
     store,
     exchange: async (_store: AphStore, send: HomeCall): Promise<Exchanged> => {
       seen.exchanges += 1
-      await send("GET", "/record")
+      if (!reaches) await send("GET", "/record")
       return { kind: "synced" }
     },
   }
@@ -151,7 +158,8 @@ describe("where aph is kept", () => {
   it("names the host and the count before the second press keeps it on home", async () => {
     paired()
     const store = fakeStore({ kind: "device" })
-    const seen = await show(store)
+    // A run that syncs is the one a second ask would follow with another.
+    const seen = await show(store, true)
     fireEvent.click(
       screen.getByRole("button", { name: "Keep on home.example..." })
     )
@@ -165,7 +173,7 @@ describe("where aph is kept", () => {
       fireEvent.click(
         screen.getByRole("button", { name: "Keep on home.example" })
       )
-      await Promise.resolve()
+      await new Promise((resolve) => setTimeout(resolve, 0))
     })
     expect(store.kept).toBe(1)
     expect(seen.exchanges).toBe(1)
