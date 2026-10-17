@@ -5,9 +5,9 @@ name: Pages
 # GitHub Pages serves exactly one live deployment per repo, and
 # actions/deploy-pages replaces the *entire* artifact on every run - it
 # can't merge with whatever a separate workflow deployed earlier. So
-# anything else this site serves has to be built here and assembled into
-# the one tree the assemble job uploads; a second workflow deploying to
-# Pages would silently wipe out this one's last-deployed content.
+# anything else this site serves has to be built here, into the one tree
+# build-www uploads; a second workflow deploying to Pages would silently
+# wipe out this one's last-deployed content.
 #
 # A plain `push: branches: [main]` trigger would also mean every merge to
 # main rebuilds and redeploys the whole site, even though several PRs often
@@ -72,7 +72,7 @@ jobs:
     needs: approve
     # `approve` is skipped on pull_request and workflow_dispatch, and a job a
     # skipped one sits above is itself skipped unless its `if` says
-    # otherwise, so this one and the two below it spell out `!cancelled()`.
+    # otherwise, so this one and deploy spell out `!cancelled()`.
     # pull_request runs only when its paths above matched, so it always
     # builds the preview.
     if: ${{ !cancelled() && (github.event_name != 'push' || needs.approve.result == 'success') }}
@@ -172,45 +172,31 @@ jobs:
         # link on a client-side route 404s without this. Serving the same
         # shell from 404.html lets the router take over from the URL.
         run: cp apps/www/dist/index.html apps/www/dist/404.html
-      - name: Upload www build artifact
-        uses: actions/upload-artifact@v7
-        with:
-          name: www-dist
-          path: apps/www/dist
-          if-no-files-found: error
-          retention-days: 1
-  # ── Assemble the site and upload the single Pages artifact ──────────────
-  assemble:
-    name: Assemble Pages site
-    needs: [build-www]
-    if: ${{ !cancelled() && needs.build-www.result == 'success' }}
-    runs-on: ubuntu-latest
-    steps:
-      - name: Download www build
-        uses: actions/download-artifact@v8
-        with:
-          name: www-dist
-          path: site
-      # Read only by `deploy`, in this same run. 1 is also the action's own
-      # default; it is spelled out so the retention check need not know that.
-      - name: Upload combined Pages artifact
+      # Uploaded here, inside this job's concurrency group, so a run's
+      # deploy queues as soon as its own build ends while the next approved
+      # run's build is only starting: concurrency does not order jobs, so a
+      # separate hop between the two would let an older deploy start after
+      # a newer one. Read only by `deploy`, in this same run. 1 is also the
+      # action's own default; it is spelled out so the retention check need
+      # not know that.
+      - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v5
         with:
-          path: ./site
+          path: apps/www/dist
           retention-days: 1
   # ── Deploy ────────────────────────────────────────────────────────────────
   deploy:
     name: Deploy to GitHub Pages
     runs-on: ubuntu-latest
-    needs: assemble
+    needs: build-www
     # Only deploy from main, on an approved push or a workflow_dispatch -
     # never on pull requests, whose builds are previews. The explicit
-    # needs.assemble.result check matters here, not just event/ref: a
+    # needs.build-www.result check matters here, not just event/ref: a
     # skipped upstream job doesn't reliably skip a job with its own custom
-    # `if`, so this can't just rely on assemble having been skipped.
+    # `if`, so this can't just rely on build-www having been skipped.
     if: >
       !cancelled() &&
-      needs.assemble.result == 'success' &&
+      needs.build-www.result == 'success' &&
       (github.event_name == 'push' || github.event_name == 'workflow_dispatch') &&
       github.ref == 'refs/heads/main'
     # Same queueing as build-www, for the same reason.
