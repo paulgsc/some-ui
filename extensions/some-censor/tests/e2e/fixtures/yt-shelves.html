@@ -1,0 +1,1860 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>BOYO Fixture — Shelves</title>
+    <!--
+      Shelves on three surfaces, trimmed from real youtube.com DOM saved on
+      2026-10-17 (#1846): a signed-in home page (ytd-rich-section-renderer),
+      a search (grid-shelf-view-model) and a channel home tab
+      (ytd-item-section-renderer around ytd-reel-shelf-renderer /
+      ytd-shelf-renderer). Titles, channels and ids are placeholders.
+      Shorts carry no date and are absent; a lockup dated "9 years ago" is
+      plated; the channel tile (/@handle_tile) is a lockup with its video
+      links swapped for a channel link, the shape a channel lockup has.
+    -->
+    <style>
+      body {
+        background: #0f0f0f;
+        color: #fff;
+        font-family: "Roboto", sans-serif;
+        margin: 0;
+        padding: 20px;
+      }
+      ytd-rich-section-renderer,
+      ytd-item-section-renderer,
+      grid-shelf-view-model,
+      ytd-video-renderer,
+      yt-lockup-view-model,
+      ytm-shorts-lockup-view-model,
+      ytd-rich-item-renderer {
+        display: block;
+        min-height: 40px;
+      }
+      ytd-item-section-renderer {
+        border-bottom: 1px solid #333;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- The content script starts once ytd-app exists (controller.ts). -->
+    <ytd-app></ytd-app>
+    <ytd-section-list-renderer>
+      <div id="contents">
+        <ytd-rich-section-renderer id="home-shorts">
+          <div id="content">
+            <ytd-rich-shelf-renderer elements-per-row="6" is-shorts="">
+              <div id="dismissible">
+                <div id="rich-shelf-header-container">
+                  <div id="rich-shelf-header">
+                    <h2>
+                      <yt-img-shadow
+                        id="avatar"
+                        class="no-transition"
+                        hidden=""
+                      ></yt-img-shadow>
+                      <div id="title-container">
+                        <div id="title-text">
+                          <span id="title"> Shorts </span>
+                          <ytd-badge-supported-renderer
+                            id="featured-badge"
+                            hidden=""
+                          ></ytd-badge-supported-renderer>
+                        </div>
+                        <div id="subtitle-text">
+                          <ytd-badge-supported-renderer
+                            id="paygated-featured-badge"
+                            hidden=""
+                          >
+                            <yt-badge-supported-renderer></yt-badge-supported-renderer>
+                          </ytd-badge-supported-renderer>
+                          <yt-formatted-string id="subtitle">
+                            <yt-attributed-string></yt-attributed-string>
+                          </yt-formatted-string>
+                        </div>
+                      </div>
+                    </h2>
+                    <div id="menu-container">
+                      <div class="cta-button-container" hidden="">
+                        <ytd-button-renderer
+                          class="cta-button"
+                        ></ytd-button-renderer>
+                      </div>
+                      <div id="menu"></div>
+                      <yt-button-view-model
+                        id="previous-button"
+                      ></yt-button-view-model>
+                      <yt-button-view-model
+                        id="next-button"
+                      ></yt-button-view-model>
+                    </div>
+                  </div>
+                  <div id="cta-bottom-button-container" hidden="">
+                    <ytd-button-renderer
+                      class="cta-button"
+                    ></ytd-button-renderer>
+                  </div>
+                </div>
+                <div id="contents-container">
+                  <div id="contents">
+                    <ytd-rich-item-renderer
+                      items-per-row="4"
+                      lockup="true"
+                      is-shelf-item=""
+                      is-in-first-column=""
+                    >
+                      <div id="content">
+                        <ytm-shorts-lockup-view-model-v2
+                          class="shortsLockupViewModelHost"
+                        >
+                          <ytm-shorts-lockup-view-model
+                            class="shortsLockupViewModelHost"
+                          >
+                            <a
+                              href="/shorts/sh_home01"
+                              class="shortsLockupViewModelHostEndpoint reel-item-endpoint"
+                              aria-hidden="true"
+                            >
+                              <div
+                                class="shortsLockupViewModelHostThumbnailParentContainer shortsLockupViewModelHostThumbnailParentContainerRounded"
+                              >
+                                <yt-thumbnail-view-model
+                                  class="ytThumbnailViewModelHost ytThumbnailViewModelAspectRatio2By3 ytThumbnailViewModelMedium"
+                                ></yt-thumbnail-view-model>
+                              </div>
+                              <yt-badge-view-model
+                                class="ytBadgeViewModelHost shortsLockupViewModelHostBadge"
+                              ></yt-badge-view-model>
+                            </a>
+                            <div
+                              class="shortsLockupViewModelHostOutsideMetadata shortsLockupViewModelHostMetadataRounded shortsLockupViewModelHostOutsideMetadataHasMenu"
+                            >
+                              <div>
+                                <h3
+                                  class="shortsLockupViewModelHostMetadataTitle shortsLockupViewModelHostOutsideMetadataTitle"
+                                >
+                                  <a
+                                    href="/shorts/sh_home01"
+                                    class="shortsLockupViewModelHostEndpoint shortsLockupViewModelHostOutsideMetadataEndpoint"
+                                    title="Short title"
+                                  >
+                                    <span
+                                      class="ytAttributedStringHost ytAttributedStringWhiteSpacePreWrap"
+                                      role="text"
+                                    >
+                                      Short title
+                                    </span>
+                                  </a>
+                                </h3>
+                                <div
+                                  class="shortsLockupViewModelHostOutsideMetadataSubhead shortsLockupViewModelHostMetadataSubhead"
+                                >
+                                  <span
+                                    class="ytAttributedStringHost ytAttributedStringWhiteSpacePreWrap"
+                                    role="text"
+                                  >
+                                    566K views
+                                  </span>
+                                </div>
+                              </div>
+                              <div
+                                class="shortsLockupViewModelHostOutsideMetadataMenu shortsLockupViewModelHostShowOverPlayer image-overlay-text"
+                              ></div>
+                            </div>
+                          </ytm-shorts-lockup-view-model>
+                        </ytm-shorts-lockup-view-model-v2>
+                      </div>
+                    </ytd-rich-item-renderer>
+                    <ytd-rich-item-renderer
+                      items-per-row="4"
+                      lockup="true"
+                      is-shelf-item=""
+                    >
+                      <div id="content">
+                        <ytm-shorts-lockup-view-model-v2
+                          class="shortsLockupViewModelHost"
+                        >
+                          <ytm-shorts-lockup-view-model
+                            class="shortsLockupViewModelHost"
+                          >
+                            <a
+                              href="/shorts/sh_home02"
+                              class="shortsLockupViewModelHostEndpoint reel-item-endpoint"
+                              aria-hidden="true"
+                            >
+                              <div
+                                class="shortsLockupViewModelHostThumbnailParentContainer shortsLockupViewModelHostThumbnailParentContainerRounded"
+                              >
+                                <yt-thumbnail-view-model
+                                  class="ytThumbnailViewModelHost ytThumbnailViewModelAspectRatio2By3 ytThumbnailViewModelMedium"
+                                >
+                                  <div class="ytThumbnailViewModelImage">
+                                    <img
+                                      class="ytCoreImageHost ytCoreImageFillParentHeight ytCoreImageFillParentWidth ytCoreImageContentModeScaleAspectFill"
+                                    />
+                                  </div>
+                                </yt-thumbnail-view-model>
+                              </div>
+                            </a>
+                            <div
+                              class="shortsLockupViewModelHostOutsideMetadata shortsLockupViewModelHostMetadataRounded shortsLockupViewModelHostOutsideMetadataHasMenu"
+                            >
+                              <div>
+                                <h3
+                                  class="shortsLockupViewModelHostMetadataTitle shortsLockupViewModelHostOutsideMetadataTitle"
+                                >
+                                  <a
+                                    href="/shorts/sh_home02"
+                                    class="shortsLockupViewModelHostEndpoint shortsLockupViewModelHostOutsideMetadataEndpoint"
+                                    title="Short title"
+                                  >
+                                    <span
+                                      class="ytAttributedStringHost ytAttributedStringWhiteSpacePreWrap"
+                                      role="text"
+                                    >
+                                      Short title
+                                    </span>
+                                  </a>
+                                </h3>
+                                <div
+                                  class="shortsLockupViewModelHostOutsideMetadataSubhead shortsLockupViewModelHostMetadataSubhead"
+                                >
+                                  <span
+                                    class="ytAttributedStringHost ytAttributedStringWhiteSpacePreWrap"
+                                    role="text"
+                                  >
+                                    30M views
+                                  </span>
+                                </div>
+                              </div>
+                              <div
+                                class="shortsLockupViewModelHostOutsideMetadataMenu shortsLockupViewModelHostShowOverPlayer image-overlay-text"
+                              ></div>
+                            </div>
+                          </ytm-shorts-lockup-view-model>
+                        </ytm-shorts-lockup-view-model-v2>
+                      </div>
+                    </ytd-rich-item-renderer>
+                  </div>
+                </div>
+                <div class="button-container" hidden="">
+                  <ytd-button-renderer
+                    class="expand-collapse-button"
+                  ></ytd-button-renderer>
+                </div>
+                <div class="button-container" hidden="">
+                  <ytd-button-renderer
+                    class="expand-collapse-button"
+                  ></ytd-button-renderer>
+                </div>
+              </div>
+              <div id="dismissed"></div>
+            </ytd-rich-shelf-renderer>
+          </div>
+        </ytd-rich-section-renderer>
+        <ytd-rich-section-renderer id="home-mixed">
+          <div id="content">
+            <ytd-rich-shelf-renderer elements-per-row="6" is-shorts="">
+              <div id="dismissible">
+                <div id="rich-shelf-header-container">
+                  <div id="rich-shelf-header">
+                    <h2>
+                      <yt-img-shadow
+                        id="avatar"
+                        class="no-transition"
+                        hidden=""
+                      >
+                        <img id="img" />
+                      </yt-img-shadow>
+                      <div id="title-container">
+                        <div id="title-text">
+                          <span id="title"> Shorts </span>
+                          <ytd-badge-supported-renderer
+                            id="featured-badge"
+                            hidden=""
+                          >
+                            <yt-badge-supported-renderer></yt-badge-supported-renderer>
+                          </ytd-badge-supported-renderer>
+                        </div>
+                        <div id="subtitle-text">
+                          <ytd-badge-supported-renderer
+                            id="paygated-featured-badge"
+                            hidden=""
+                          >
+                            <yt-badge-supported-renderer></yt-badge-supported-renderer>
+                          </ytd-badge-supported-renderer>
+                          <yt-formatted-string id="subtitle">
+                            <yt-attributed-string></yt-attributed-string>
+                          </yt-formatted-string>
+                        </div>
+                      </div>
+                    </h2>
+                    <div id="menu-container">
+                      <div class="cta-button-container" hidden="">
+                        <ytd-button-renderer
+                          class="cta-button"
+                        ></ytd-button-renderer>
+                      </div>
+                      <div id="menu"></div>
+                      <yt-button-view-model
+                        id="previous-button"
+                      ></yt-button-view-model>
+                      <yt-button-view-model
+                        id="next-button"
+                      ></yt-button-view-model>
+                    </div>
+                  </div>
+                  <div id="cta-bottom-button-container" hidden="">
+                    <ytd-button-renderer
+                      class="cta-button"
+                    ></ytd-button-renderer>
+                  </div>
+                </div>
+                <div id="contents-container">
+                  <div id="contents">
+                    <ytd-rich-item-renderer
+                      items-per-row="4"
+                      lockup="true"
+                      is-shelf-item=""
+                      is-in-first-column=""
+                    >
+                      <div id="content">
+                        <ytm-shorts-lockup-view-model-v2
+                          class="shortsLockupViewModelHost"
+                        >
+                          <ytm-shorts-lockup-view-model
+                            class="shortsLockupViewModelHost"
+                          >
+                            <a
+                              href="/shorts/sh_home03"
+                              class="shortsLockupViewModelHostEndpoint reel-item-endpoint"
+                              aria-hidden="true"
+                            >
+                              <div
+                                class="shortsLockupViewModelHostThumbnailParentContainer shortsLockupViewModelHostThumbnailParentContainerRounded"
+                              >
+                                <yt-thumbnail-view-model
+                                  class="ytThumbnailViewModelHost ytThumbnailViewModelAspectRatio2By3 ytThumbnailViewModelMedium"
+                                >
+                                  <div class="ytThumbnailViewModelImage">
+                                    <img
+                                      class="ytCoreImageHost ytCoreImageFillParentHeight ytCoreImageFillParentWidth ytCoreImageContentModeScaleAspectFill"
+                                    />
+                                  </div>
+                                </yt-thumbnail-view-model>
+                              </div>
+                              <yt-badge-view-model
+                                class="ytBadgeViewModelHost shortsLockupViewModelHostBadge"
+                              >
+                                <badge-shape
+                                  class="ytBadgeShapeHost ytBadgeShapeThumbnailDefault ytBadgeShapeThumbnailBadge ytBadgeShapeModern ytBadgeShapeTypography"
+                                  role="img"
+                                  aria-label="New"
+                                >
+                                  <div
+                                    class="ytBadgeShapeText"
+                                    aria-hidden="true"
+                                  >
+                                    New
+                                  </div>
+                                </badge-shape>
+                              </yt-badge-view-model>
+                            </a>
+                            <div
+                              class="shortsLockupViewModelHostOutsideMetadata shortsLockupViewModelHostMetadataRounded shortsLockupViewModelHostOutsideMetadataHasMenu"
+                            >
+                              <div>
+                                <h3
+                                  class="shortsLockupViewModelHostMetadataTitle shortsLockupViewModelHostOutsideMetadataTitle"
+                                >
+                                  <a
+                                    href="/shorts/sh_home03"
+                                    class="shortsLockupViewModelHostEndpoint shortsLockupViewModelHostOutsideMetadataEndpoint"
+                                    title="Short title"
+                                  >
+                                    <span
+                                      class="ytAttributedStringHost ytAttributedStringWhiteSpacePreWrap"
+                                      role="text"
+                                    >
+                                      Short title
+                                    </span>
+                                  </a>
+                                </h3>
+                                <div
+                                  class="shortsLockupViewModelHostOutsideMetadataSubhead shortsLockupViewModelHostMetadataSubhead"
+                                >
+                                  <span
+                                    class="ytAttributedStringHost ytAttributedStringWhiteSpacePreWrap"
+                                    role="text"
+                                  >
+                                    566K views
+                                  </span>
+                                </div>
+                              </div>
+                              <div
+                                class="shortsLockupViewModelHostOutsideMetadataMenu shortsLockupViewModelHostShowOverPlayer image-overlay-text"
+                              ></div>
+                            </div>
+                          </ytm-shorts-lockup-view-model>
+                        </ytm-shorts-lockup-view-model-v2>
+                      </div>
+                    </ytd-rich-item-renderer>
+
+                    <ytd-rich-item-renderer
+                      items-per-row="4"
+                      lockup="true"
+                      rendered-from-rich-grid=""
+                    >
+                      <div id="content">
+                        <yt-lockup-view-model
+                          class="ytd-rich-item-renderer lockup ytLockupViewModelWrapper"
+                        >
+                          <div
+                            class="ytLockupViewModelHost ytLockupViewModelVertical content-id-vid_old001 ytLockupViewModelRichGridLegacyMargin ytLockupViewModelFlexNone"
+                          >
+                            <a
+                              href="/watch?v=vid_old001"
+                              class="ytLockupViewModelContentImage"
+                              aria-hidden="true"
+                            >
+                              <yt-thumbnail-view-model
+                                class="ytThumbnailViewModelHost ytThumbnailViewModelAspectRatio16By9 ytThumbnailViewModelLarge"
+                              >
+                                <div class="ytThumbnailViewModelImage">
+                                  <img
+                                    class="ytCoreImageHost ytCoreImageFillParentHeight ytCoreImageFillParentWidth ytCoreImageContentModeScaleAspectFill"
+                                  />
+                                </div>
+                                <yt-thumbnail-bottom-overlay-view-model
+                                  class="ytThumbnailBottomOverlayViewModelHost"
+                                >
+                                  <yt-thumbnail-overlay-progress-bar-view-model
+                                    class="ytThumbnailOverlayProgressBarHost ytThumbnailOverlayProgressBarHostLarge"
+                                  >
+                                    <div
+                                      class="ytThumbnailOverlayProgressBarHostWatchedProgressBar ytThumbnailOverlayProgressBarHostUseLegacyBar"
+                                    >
+                                      <div
+                                        class="ytThumbnailOverlayProgressBarHostWatchedProgressBarSegment"
+                                      ></div>
+                                    </div>
+                                  </yt-thumbnail-overlay-progress-bar-view-model>
+                                  <div
+                                    class="ytThumbnailBottomOverlayViewModelBadgeContainer ytThumbnailBottomOverlayViewModelBadgeContainerLarge"
+                                  >
+                                    <yt-thumbnail-badge-view-model
+                                      class="ytThumbnailBadgeViewModelHost ytThumbnailBottomOverlayViewModelBadge"
+                                    >
+                                      <badge-shape
+                                        class="ytBadgeShapeHost ytBadgeShapeThumbnailDefault ytBadgeShapeThumbnailBadge ytBadgeShapeModern ytBadgeShapeTypography"
+                                        role="img"
+                                        aria-label="19 minutes, 51 seconds"
+                                      >
+                                        <div
+                                          class="ytBadgeShapeText"
+                                          aria-hidden="true"
+                                        >
+                                          19:51
+                                        </div>
+                                      </badge-shape>
+                                    </yt-thumbnail-badge-view-model>
+                                  </div>
+                                </yt-thumbnail-bottom-overlay-view-model>
+                              </yt-thumbnail-view-model>
+                            </a>
+                            <div class="ytLockupViewModelMetadata">
+                              <yt-lockup-metadata-view-model
+                                class="ytLockupMetadataViewModelHost ytLockupMetadataViewModelVertical ytLockupMetadataViewModelStandard ytLockupMetadataViewModelRichGridLegacyTypography ytLockupMetadataViewModelHasMenuButton"
+                              >
+                                <div class="ytLockupMetadataViewModelAvatar">
+                                  <yt-decorated-avatar-view-model
+                                    class="ytDecoratedAvatarViewModelHost"
+                                  >
+                                    <yt-avatar-shape></yt-avatar-shape>
+                                  </yt-decorated-avatar-view-model>
+                                </div>
+                                <div
+                                  class="ytLockupMetadataViewModelTextContainer"
+                                >
+                                  <h3
+                                    class="ytLockupMetadataViewModelHeadingReset"
+                                    title="Video title"
+                                    aria-label="Video title"
+                                  >
+                                    <a
+                                      href="/watch?v=vid_old001"
+                                      class="ytLockupMetadataViewModelTitle"
+                                      aria-label="Video title 19 minutes"
+                                    >
+                                      <span
+                                        class="ytAttributedStringHost ytAttributedStringWhiteSpacePreWrap"
+                                        dir="auto"
+                                        role="text"
+                                      >
+                                        Video title
+                                      </span>
+                                    </a>
+                                  </h3>
+                                  <div
+                                    class="ytLockupMetadataViewModelMetadata"
+                                  >
+                                    <yt-content-metadata-view-model
+                                      class="ytContentMetadataViewModelHost ytContentMetadataViewModelMediumText"
+                                    >
+                                      <div
+                                        class="ytContentMetadataViewModelMetadataRow"
+                                        role="group"
+                                      >
+                                        <span
+                                          class="ytAttributedStringHost ytContentMetadataViewModelMetadataText ytAttributedStringWhiteSpacePreWrap ytAttributedStringLinkInheritColor"
+                                          dir="auto"
+                                        >
+                                          <span dir="auto">
+                                            <a
+                                              class="ytAttributedStringLink ytAttributedStringLinkCallToActionColor ytAttributedStringLinkInheritColor"
+                                              href="/@handle_aaa111"
+                                            >
+                                              Channel A
+                                            </a>
+                                          </span>
+                                        </span>
+                                        <span
+                                          aria-hidden="true"
+                                          class="ytContentMetadataViewModelDelimiter"
+                                        ></span>
+                                        <span
+                                          class="ytIconWrapperHost ytContentMetadataViewModelLeadingIcon"
+                                        >
+                                          <span
+                                            class="yt-icon-shape ytSpecIconShapeHost"
+                                          >
+                                            <div></div>
+                                          </span>
+                                        </span>
+                                        <span
+                                          class="ytAttributedStringHost ytContentMetadataViewModelMetadataText ytAttributedStringWhiteSpacePreWrap ytAttributedStringLinkInheritColor"
+                                          dir="auto"
+                                          aria-label="51 thousand views"
+                                          role="text"
+                                        >
+                                          51K
+                                        </span>
+                                        <span
+                                          aria-hidden="true"
+                                          class="ytContentMetadataViewModelDelimiter"
+                                        ></span>
+                                        <span
+                                          class="ytAttributedStringHost ytContentMetadataViewModelMetadataText ytContentMetadataViewModelMetadataTextLastPart ytAttributedStringWhiteSpacePreWrap ytAttributedStringLinkInheritColor"
+                                          dir="auto"
+                                          aria-label="9 years ago"
+                                          role="text"
+                                        >
+                                          9 years ago
+                                        </span>
+                                      </div>
+                                    </yt-content-metadata-view-model>
+                                  </div>
+                                </div>
+                                <div
+                                  class="ytLockupMetadataViewModelMenuButton"
+                                ></div>
+                              </yt-lockup-metadata-view-model>
+                            </div>
+                          </div>
+                        </yt-lockup-view-model>
+                      </div>
+                    </ytd-rich-item-renderer>
+                  </div>
+                </div>
+                <div class="button-container" hidden="">
+                  <ytd-button-renderer
+                    class="expand-collapse-button"
+                  ></ytd-button-renderer>
+                </div>
+                <div class="button-container" hidden="">
+                  <ytd-button-renderer
+                    class="expand-collapse-button"
+                  ></ytd-button-renderer>
+                </div>
+              </div>
+              <div id="dismissed"></div>
+            </ytd-rich-shelf-renderer>
+          </div>
+        </ytd-rich-section-renderer>
+        <ytd-rich-section-renderer id="home-tile">
+          <div id="content">
+            <ytd-rich-shelf-renderer elements-per-row="6" is-shorts="">
+              <div id="dismissible">
+                <div id="rich-shelf-header-container">
+                  <div id="rich-shelf-header">
+                    <h2>
+                      <yt-img-shadow
+                        id="avatar"
+                        class="no-transition"
+                        hidden=""
+                      >
+                        <img id="img" />
+                      </yt-img-shadow>
+                      <div id="title-container">
+                        <div id="title-text">
+                          <span id="title"> Shorts </span>
+                          <ytd-badge-supported-renderer
+                            id="featured-badge"
+                            hidden=""
+                          >
+                            <yt-badge-supported-renderer></yt-badge-supported-renderer>
+                          </ytd-badge-supported-renderer>
+                        </div>
+                        <div id="subtitle-text">
+                          <ytd-badge-supported-renderer
+                            id="paygated-featured-badge"
+                            hidden=""
+                          >
+                            <yt-badge-supported-renderer></yt-badge-supported-renderer>
+                          </ytd-badge-supported-renderer>
+                          <yt-formatted-string id="subtitle">
+                            <yt-attributed-string></yt-attributed-string>
+                          </yt-formatted-string>
+                        </div>
+                      </div>
+                    </h2>
+                    <div id="menu-container">
+                      <div class="cta-button-container" hidden="">
+                        <ytd-button-renderer
+                          class="cta-button"
+                        ></ytd-button-renderer>
+                      </div>
+                      <div id="menu"></div>
+                      <yt-button-view-model
+                        id="previous-button"
+                      ></yt-button-view-model>
+                      <yt-button-view-model
+                        id="next-button"
+                      ></yt-button-view-model>
+                    </div>
+                  </div>
+                  <div id="cta-bottom-button-container" hidden="">
+                    <ytd-button-renderer
+                      class="cta-button"
+                    ></ytd-button-renderer>
+                  </div>
+                </div>
+                <div id="contents-container">
+                  <div id="contents">
+                    <ytd-rich-item-renderer
+                      items-per-row="4"
+                      lockup="true"
+                      is-shelf-item=""
+                      is-in-first-column=""
+                    >
+                      <div id="content">
+                        <ytm-shorts-lockup-view-model-v2
+                          class="shortsLockupViewModelHost"
+                        >
+                          <ytm-shorts-lockup-view-model
+                            class="shortsLockupViewModelHost"
+                          >
+                            <a
+                              href="/shorts/sh_home05"
+                              class="shortsLockupViewModelHostEndpoint reel-item-endpoint"
+                              aria-hidden="true"
+                            >
+                              <div
+                                class="shortsLockupViewModelHostThumbnailParentContainer shortsLockupViewModelHostThumbnailParentContainerRounded"
+                              >
+                                <yt-thumbnail-view-model
+                                  class="ytThumbnailViewModelHost ytThumbnailViewModelAspectRatio2By3 ytThumbnailViewModelMedium"
+                                >
+                                  <div class="ytThumbnailViewModelImage">
+                                    <img
+                                      class="ytCoreImageHost ytCoreImageFillParentHeight ytCoreImageFillParentWidth ytCoreImageContentModeScaleAspectFill"
+                                    />
+                                  </div>
+                                </yt-thumbnail-view-model>
+                              </div>
+                              <yt-badge-view-model
+                                class="ytBadgeViewModelHost shortsLockupViewModelHostBadge"
+                              >
+                                <badge-shape
+                                  class="ytBadgeShapeHost ytBadgeShapeThumbnailDefault ytBadgeShapeThumbnailBadge ytBadgeShapeModern ytBadgeShapeTypography"
+                                  role="img"
+                                  aria-label="New"
+                                >
+                                  <div
+                                    class="ytBadgeShapeText"
+                                    aria-hidden="true"
+                                  >
+                                    New
+                                  </div>
+                                </badge-shape>
+                              </yt-badge-view-model>
+                            </a>
+                            <div
+                              class="shortsLockupViewModelHostOutsideMetadata shortsLockupViewModelHostMetadataRounded shortsLockupViewModelHostOutsideMetadataHasMenu"
+                            >
+                              <div>
+                                <h3
+                                  class="shortsLockupViewModelHostMetadataTitle shortsLockupViewModelHostOutsideMetadataTitle"
+                                >
+                                  <a
+                                    href="/shorts/sh_home05"
+                                    class="shortsLockupViewModelHostEndpoint shortsLockupViewModelHostOutsideMetadataEndpoint"
+                                    title="Short title"
+                                  >
+                                    <span
+                                      class="ytAttributedStringHost ytAttributedStringWhiteSpacePreWrap"
+                                      role="text"
+                                    >
+                                      Short title
+                                    </span>
+                                  </a>
+                                </h3>
+                                <div
+                                  class="shortsLockupViewModelHostOutsideMetadataSubhead shortsLockupViewModelHostMetadataSubhead"
+                                >
+                                  <span
+                                    class="ytAttributedStringHost ytAttributedStringWhiteSpacePreWrap"
+                                    role="text"
+                                  >
+                                    566K views
+                                  </span>
+                                </div>
+                              </div>
+                              <div
+                                class="shortsLockupViewModelHostOutsideMetadataMenu shortsLockupViewModelHostShowOverPlayer image-overlay-text"
+                              ></div>
+                            </div>
+                          </ytm-shorts-lockup-view-model>
+                        </ytm-shorts-lockup-view-model-v2>
+                      </div>
+                    </ytd-rich-item-renderer>
+
+                    <ytd-rich-item-renderer
+                      items-per-row="4"
+                      lockup="true"
+                      rendered-from-rich-grid=""
+                    >
+                      <div id="content">
+                        <yt-lockup-view-model
+                          class="ytd-rich-item-renderer lockup ytLockupViewModelWrapper"
+                        >
+                          <div
+                            class="ytLockupViewModelHost ytLockupViewModelVertical content-id-UC_tile ytLockupViewModelRichGridLegacyMargin ytLockupViewModelFlexNone"
+                          >
+                            <a
+                              href="/@handle_tile"
+                              class="ytLockupViewModelContentImage"
+                              aria-hidden="true"
+                            >
+                              <yt-thumbnail-view-model
+                                class="ytThumbnailViewModelHost ytThumbnailViewModelAspectRatio16By9 ytThumbnailViewModelLarge"
+                              >
+                                <div class="ytThumbnailViewModelImage">
+                                  <img
+                                    class="ytCoreImageHost ytCoreImageFillParentHeight ytCoreImageFillParentWidth ytCoreImageContentModeScaleAspectFill"
+                                  />
+                                </div>
+                                <yt-thumbnail-bottom-overlay-view-model
+                                  class="ytThumbnailBottomOverlayViewModelHost"
+                                >
+                                  <yt-thumbnail-overlay-progress-bar-view-model
+                                    class="ytThumbnailOverlayProgressBarHost ytThumbnailOverlayProgressBarHostLarge"
+                                  >
+                                    <div
+                                      class="ytThumbnailOverlayProgressBarHostWatchedProgressBar ytThumbnailOverlayProgressBarHostUseLegacyBar"
+                                    >
+                                      <div
+                                        class="ytThumbnailOverlayProgressBarHostWatchedProgressBarSegment"
+                                      ></div>
+                                    </div>
+                                  </yt-thumbnail-overlay-progress-bar-view-model>
+                                  <div
+                                    class="ytThumbnailBottomOverlayViewModelBadgeContainer ytThumbnailBottomOverlayViewModelBadgeContainerLarge"
+                                  >
+                                    <yt-thumbnail-badge-view-model
+                                      class="ytThumbnailBadgeViewModelHost ytThumbnailBottomOverlayViewModelBadge"
+                                    >
+                                      <badge-shape
+                                        class="ytBadgeShapeHost ytBadgeShapeThumbnailDefault ytBadgeShapeThumbnailBadge ytBadgeShapeModern ytBadgeShapeTypography"
+                                        role="img"
+                                        aria-label="19 minutes, 51 seconds"
+                                      >
+                                        <div
+                                          class="ytBadgeShapeText"
+                                          aria-hidden="true"
+                                        >
+                                          19:51
+                                        </div>
+                                      </badge-shape>
+                                    </yt-thumbnail-badge-view-model>
+                                  </div>
+                                </yt-thumbnail-bottom-overlay-view-model>
+                              </yt-thumbnail-view-model>
+                            </a>
+                            <div class="ytLockupViewModelMetadata">
+                              <yt-lockup-metadata-view-model
+                                class="ytLockupMetadataViewModelHost ytLockupMetadataViewModelVertical ytLockupMetadataViewModelStandard ytLockupMetadataViewModelRichGridLegacyTypography ytLockupMetadataViewModelHasMenuButton"
+                              >
+                                <div class="ytLockupMetadataViewModelAvatar">
+                                  <yt-decorated-avatar-view-model
+                                    class="ytDecoratedAvatarViewModelHost"
+                                  >
+                                    <yt-avatar-shape>
+                                      <div
+                                        class="ytSpecAvatarShapeHost ytSpecAvatarShapeButton ytSpecAvatarShapeButtonMedium ytSpecAvatarShapeTappable"
+                                        aria-label="Go to channel Channel A"
+                                        role="button"
+                                      >
+                                        <div>
+                                          <div
+                                            class="ytSpecAvatarShapeAvatarSizeMedium"
+                                          >
+                                            <img
+                                              class="ytCoreImageHost ytSpecAvatarShapeImage ytCoreImageFillParentHeight ytCoreImageFillParentWidth ytCoreImageContentModeScaleToFill"
+                                            />
+                                            <div
+                                              class="ytSpecAvatarShapeImageOverlays ytSpecAvatarShapeImage"
+                                            ></div>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </yt-avatar-shape>
+                                  </yt-decorated-avatar-view-model>
+                                </div>
+                                <div
+                                  class="ytLockupMetadataViewModelTextContainer"
+                                >
+                                  <h3
+                                    class="ytLockupMetadataViewModelHeadingReset"
+                                    title="Video title"
+                                    aria-label="Video title"
+                                  >
+                                    <a
+                                      href="/@handle_tile"
+                                      class="ytLockupMetadataViewModelTitle"
+                                      aria-label="Video title 19 minutes"
+                                    >
+                                      <span
+                                        class="ytAttributedStringHost ytAttributedStringWhiteSpacePreWrap"
+                                        dir="auto"
+                                        role="text"
+                                      >
+                                        Video title
+                                      </span>
+                                    </a>
+                                  </h3>
+                                  <div
+                                    class="ytLockupMetadataViewModelMetadata"
+                                  >
+                                    <yt-content-metadata-view-model
+                                      class="ytContentMetadataViewModelHost ytContentMetadataViewModelMediumText"
+                                    >
+                                      <div
+                                        class="ytContentMetadataViewModelMetadataRow"
+                                        role="group"
+                                      >
+                                        <span
+                                          class="ytAttributedStringHost ytContentMetadataViewModelMetadataText ytAttributedStringWhiteSpacePreWrap ytAttributedStringLinkInheritColor"
+                                          dir="auto"
+                                        >
+                                          <span dir="auto">
+                                            <a
+                                              class="ytAttributedStringLink ytAttributedStringLinkCallToActionColor ytAttributedStringLinkInheritColor"
+                                              href="/@handle_aaa111"
+                                            >
+                                              Channel A
+                                            </a>
+                                          </span>
+                                        </span>
+                                        <span
+                                          aria-hidden="true"
+                                          class="ytContentMetadataViewModelDelimiter"
+                                        ></span>
+                                        <span
+                                          class="ytIconWrapperHost ytContentMetadataViewModelLeadingIcon"
+                                        >
+                                          <span
+                                            class="yt-icon-shape ytSpecIconShapeHost"
+                                          >
+                                            <div></div>
+                                          </span>
+                                        </span>
+                                        <span
+                                          aria-hidden="true"
+                                          class="ytContentMetadataViewModelDelimiter"
+                                        ></span>
+                                      </div>
+                                    </yt-content-metadata-view-model>
+                                  </div>
+                                </div>
+                                <div
+                                  class="ytLockupMetadataViewModelMenuButton"
+                                ></div>
+                              </yt-lockup-metadata-view-model>
+                            </div>
+                          </div>
+                        </yt-lockup-view-model>
+                      </div>
+                    </ytd-rich-item-renderer>
+                  </div>
+                </div>
+                <div class="button-container" hidden="">
+                  <ytd-button-renderer
+                    class="expand-collapse-button"
+                  ></ytd-button-renderer>
+                </div>
+                <div class="button-container" hidden="">
+                  <ytd-button-renderer
+                    class="expand-collapse-button"
+                  ></ytd-button-renderer>
+                </div>
+              </div>
+              <div id="dismissed"></div>
+            </ytd-rich-shelf-renderer>
+          </div>
+        </ytd-rich-section-renderer>
+        <ytd-item-section-renderer id="search-section">
+          <div id="contents">
+            <ytd-video-renderer id="search-before" lockup="true">
+              <a id="video-title" href="/watch?v=vid_srch_a"
+                >Search result vid_srch_a</a
+              >
+              <ytd-channel-name
+                ><yt-formatted-string
+                  >Channel B</yt-formatted-string
+                ></ytd-channel-name
+              >
+              <a href="/@handle_bbb222">Channel B</a>
+              <div id="metadata-line">
+                <span>120K views</span><span>8 years ago</span>
+              </div>
+            </ytd-video-renderer>
+            <grid-shelf-view-model
+              id="search-shorts"
+              class="ytGridShelfViewModelHost ytd-item-section-renderer grid-shelf-with-top-margin ytGridShelfViewModelHostHasBottomButton"
+            >
+              <yt-section-header-view-model
+                class="ytSectionHeaderViewModelHost"
+              >
+                <yt-shelf-header-layout
+                  class="ytShelfHeaderLayoutHost ytShelfHeaderLayoutDisableHorizontalPadding"
+                >
+                  <div class="ytShelfHeaderLayoutHeaderRow">
+                    <div class="ytShelfHeaderLayoutLeadingImage">
+                      <span
+                        class="ytIconWrapperHost ytSectionHeaderViewModelLeadingImage"
+                        role="img"
+                        aria-label=""
+                        aria-hidden="true"
+                      ></span>
+                    </div>
+                    <div class="ytShelfHeaderLayoutLabelContainer">
+                      <div class="ytShelfHeaderLayoutTitleRow">
+                        <h2
+                          class="ytShelfHeaderLayoutTitle ytShelfHeaderLayoutTitleTypography"
+                        >
+                          <span
+                            class="ytAttributedStringHost ytAttributedStringWhiteSpacePreWrap ytAttributedStringLinkInheritColor"
+                            role="text"
+                          >
+                            Shorts
+                          </span>
+                        </h2>
+                      </div>
+                    </div>
+                  </div>
+                </yt-shelf-header-layout>
+              </yt-section-header-view-model>
+              <div>
+                <div
+                  class="ytGridShelfViewModelGridShelfRow ytd-item-section-renderer grid-shelf-with-top-margin"
+                >
+                  <div class="ytGridShelfViewModelGridShelfItem">
+                    <ytm-shorts-lockup-view-model-v2
+                      class="shortsLockupViewModelHost"
+                    >
+                      <ytm-shorts-lockup-view-model
+                        class="shortsLockupViewModelHost"
+                      >
+                        <a
+                          href="/shorts/sh_srch01"
+                          class="shortsLockupViewModelHostEndpoint reel-item-endpoint"
+                          aria-hidden="true"
+                        >
+                          <div
+                            class="shortsLockupViewModelHostThumbnailParentContainer shortsLockupViewModelHostThumbnailParentContainerRounded"
+                          >
+                            <yt-thumbnail-view-model
+                              class="ytThumbnailViewModelHost ytThumbnailViewModelAspectRatio2By3 ytThumbnailViewModelMedium"
+                            >
+                              <div class="ytThumbnailViewModelImage"></div>
+                            </yt-thumbnail-view-model>
+                          </div>
+                        </a>
+                        <div
+                          class="shortsLockupViewModelHostOutsideMetadata shortsLockupViewModelHostMetadataRounded shortsLockupViewModelHostOutsideMetadataHasMenu"
+                        >
+                          <div>
+                            <h3
+                              class="shortsLockupViewModelHostMetadataTitle shortsLockupViewModelHostOutsideMetadataTitle"
+                            >
+                              <a
+                                href="/shorts/sh_srch01"
+                                class="shortsLockupViewModelHostEndpoint shortsLockupViewModelHostOutsideMetadataEndpoint"
+                                title="Short title A"
+                              >
+                                <span
+                                  class="ytAttributedStringHost ytAttributedStringWhiteSpacePreWrap"
+                                  role="text"
+                                >
+                                  Short title A
+                                </span>
+                              </a>
+                            </h3>
+                            <div
+                              class="shortsLockupViewModelHostOutsideMetadataSubhead shortsLockupViewModelHostMetadataSubhead"
+                            >
+                              <span
+                                class="ytAttributedStringHost ytAttributedStringWhiteSpacePreWrap"
+                                role="text"
+                              >
+                                60M views
+                              </span>
+                            </div>
+                          </div>
+                          <div
+                            class="shortsLockupViewModelHostOutsideMetadataMenu shortsLockupViewModelHostShowOverPlayer image-overlay-text"
+                          ></div>
+                        </div>
+                      </ytm-shorts-lockup-view-model>
+                    </ytm-shorts-lockup-view-model-v2>
+                  </div>
+                  <div class="ytGridShelfViewModelGridShelfItem">
+                    <ytm-shorts-lockup-view-model-v2
+                      class="shortsLockupViewModelHost"
+                    >
+                      <ytm-shorts-lockup-view-model
+                        class="shortsLockupViewModelHost"
+                      >
+                        <a
+                          href="/shorts/sh_srch02"
+                          class="shortsLockupViewModelHostEndpoint reel-item-endpoint"
+                          aria-hidden="true"
+                        >
+                          <div
+                            class="shortsLockupViewModelHostThumbnailParentContainer shortsLockupViewModelHostThumbnailParentContainerRounded"
+                          >
+                            <yt-thumbnail-view-model
+                              class="ytThumbnailViewModelHost ytThumbnailViewModelAspectRatio2By3 ytThumbnailViewModelMedium"
+                            ></yt-thumbnail-view-model>
+                          </div>
+                        </a>
+                        <div
+                          class="shortsLockupViewModelHostOutsideMetadata shortsLockupViewModelHostMetadataRounded shortsLockupViewModelHostOutsideMetadataHasMenu"
+                        >
+                          <div>
+                            <h3
+                              class="shortsLockupViewModelHostMetadataTitle shortsLockupViewModelHostOutsideMetadataTitle"
+                            >
+                              <a
+                                href="/shorts/sh_srch02"
+                                class="shortsLockupViewModelHostEndpoint shortsLockupViewModelHostOutsideMetadataEndpoint"
+                                title="Short title B"
+                              >
+                                <span
+                                  class="ytAttributedStringHost ytAttributedStringWhiteSpacePreWrap"
+                                  role="text"
+                                >
+                                  Short title B
+                                </span>
+                              </a>
+                            </h3>
+                          </div>
+                        </div>
+                      </ytm-shorts-lockup-view-model>
+                    </ytm-shorts-lockup-view-model-v2>
+                  </div>
+                </div>
+                <div
+                  class="ytGridShelfViewModelGridShelfRow ytd-item-section-renderer grid-shelf-with-top-margin"
+                >
+                  <div class="ytGridShelfViewModelGridShelfItem">
+                    <ytm-shorts-lockup-view-model-v2
+                      class="shortsLockupViewModelHost"
+                    >
+                      <ytm-shorts-lockup-view-model
+                        class="shortsLockupViewModelHost"
+                      >
+                        <a
+                          href="/shorts/sh_srch03"
+                          class="shortsLockupViewModelHostEndpoint reel-item-endpoint"
+                          aria-hidden="true"
+                        >
+                          <div
+                            class="shortsLockupViewModelHostThumbnailParentContainer shortsLockupViewModelHostThumbnailParentContainerRounded"
+                          >
+                            <yt-thumbnail-view-model
+                              class="ytThumbnailViewModelHost ytThumbnailViewModelAspectRatio2By3 ytThumbnailViewModelMedium"
+                            ></yt-thumbnail-view-model>
+                          </div>
+                          <yt-badge-view-model
+                            class="ytBadgeViewModelHost shortsLockupViewModelHostBadge"
+                          >
+                            <badge-shape
+                              class="ytBadgeShapeHost ytBadgeShapeThumbnailDefault ytBadgeShapeThumbnailBadge ytBadgeShapeModern ytBadgeShapeTypography"
+                              role="img"
+                              aria-label="New"
+                            >
+                              <div class="ytBadgeShapeText" aria-hidden="true">
+                                New
+                              </div>
+                            </badge-shape>
+                          </yt-badge-view-model>
+                        </a>
+                        <div
+                          class="shortsLockupViewModelHostOutsideMetadata shortsLockupViewModelHostMetadataRounded shortsLockupViewModelHostOutsideMetadataHasMenu"
+                        >
+                          <div>
+                            <h3
+                              class="shortsLockupViewModelHostMetadataTitle shortsLockupViewModelHostOutsideMetadataTitle"
+                            >
+                              <a
+                                href="/shorts/sh_srch03"
+                                class="shortsLockupViewModelHostEndpoint shortsLockupViewModelHostOutsideMetadataEndpoint"
+                                title="Short title C"
+                              >
+                                <span
+                                  class="ytAttributedStringHost ytAttributedStringWhiteSpacePreWrap"
+                                  role="text"
+                                >
+                                  Short title C
+                                </span>
+                              </a>
+                            </h3>
+                          </div>
+                        </div>
+                      </ytm-shorts-lockup-view-model>
+                    </ytm-shorts-lockup-view-model-v2>
+                  </div>
+                </div>
+              </div>
+              <div class="ytGridShelfViewModelGridShelfBottomButtonContainer">
+                <div>
+                  <button-view-model class="ytSpecButtonViewModelHost">
+                    <button
+                      class="ytSpecButtonShapeNextHost ytSpecButtonShapeNextOutline ytSpecButtonShapeNextMono ytSpecButtonShapeNextSizeM ytSpecButtonShapeNextIconTrailing ytSpecButtonShapeNextEnableBackdropFilterExperiment ytSpecButtonShapeNextMainstageIconSize ytSpecButtonShapeNextMainstagePadding"
+                      title=""
+                    >
+                      <div
+                        class="ytSpecButtonShapeNextButtonTextContent ytSpecButtonShapeNextElevatedContent"
+                      >
+                        Show more
+                      </div>
+                    </button>
+                  </button-view-model>
+                </div>
+              </div>
+            </grid-shelf-view-model>
+            <ytd-video-renderer id="search-after" lockup="true">
+              <a id="video-title" href="/watch?v=vid_srch_b"
+                >Search result vid_srch_b</a
+              >
+              <ytd-channel-name
+                ><yt-formatted-string
+                  >Channel B</yt-formatted-string
+                ></ytd-channel-name
+              >
+              <a href="/@handle_bbb222">Channel B</a>
+              <div id="metadata-line">
+                <span>120K views</span><span>8 years ago</span>
+              </div>
+            </ytd-video-renderer>
+          </div>
+        </ytd-item-section-renderer>
+        <ytd-item-section-renderer id="channel-shorts" page-subtype="channels">
+          <div id="header"></div>
+          <div id="spinner-container"></div>
+          <div id="contents">
+            <ytd-reel-shelf-renderer>
+              <div id="header">
+                <div id="image-container"></div>
+                <div id="title-container">
+                  <h2>
+                    <div id="title-text">
+                      <yt-formatted-string id="title">
+                        Shorts
+                      </yt-formatted-string>
+                      <span id="title-superscript"></span>
+                    </div>
+                    <div id="subtitle-text">
+                      <yt-formatted-string id="subtitle">
+                        <yt-attributed-string></yt-attributed-string>
+                      </yt-formatted-string>
+                    </div>
+                  </h2>
+                </div>
+                <div id="menu"></div>
+              </div>
+              <div id="contents">
+                <yt-horizontal-list-renderer>
+                  <div id="left-arrow"></div>
+                  <div id="scroll-outer-container">
+                    <div id="scroll-container">
+                      <div id="items">
+                        <ytm-shorts-lockup-view-model-v2
+                          class="shortsLockupViewModelHost yt-horizontal-list-renderer"
+                        >
+                          <ytm-shorts-lockup-view-model
+                            class="shortsLockupViewModelHost yt-horizontal-list-renderer"
+                          >
+                            <a
+                              href="/shorts/sh_chan01"
+                              class="shortsLockupViewModelHostEndpoint reel-item-endpoint"
+                              aria-hidden="true"
+                            >
+                              <div
+                                class="shortsLockupViewModelHostThumbnailParentContainer shortsLockupViewModelHostThumbnailParentContainerRounded"
+                              >
+                                <yt-thumbnail-view-model
+                                  class="ytThumbnailViewModelHost ytThumbnailViewModelAspectRatio2By3 ytThumbnailViewModelMedium"
+                                >
+                                  <div class="ytThumbnailViewModelImage"></div>
+                                </yt-thumbnail-view-model>
+                              </div>
+                            </a>
+                            <div
+                              class="shortsLockupViewModelHostOutsideMetadata shortsLockupViewModelHostMetadataRounded shortsLockupViewModelHostOutsideMetadataHasMenu"
+                            >
+                              <div>
+                                <h3
+                                  class="shortsLockupViewModelHostMetadataTitle shortsLockupViewModelHostOutsideMetadataTitle"
+                                >
+                                  <a
+                                    href="/shorts/sh_chan01"
+                                    class="shortsLockupViewModelHostEndpoint shortsLockupViewModelHostOutsideMetadataEndpoint"
+                                    title="Short title A"
+                                  >
+                                    <span
+                                      class="ytAttributedStringHost ytAttributedStringWhiteSpacePreWrap"
+                                      role="text"
+                                    >
+                                      Short title A
+                                    </span>
+                                  </a>
+                                </h3>
+                                <div
+                                  class="shortsLockupViewModelHostOutsideMetadataSubhead shortsLockupViewModelHostMetadataSubhead"
+                                >
+                                  <span
+                                    class="ytAttributedStringHost ytAttributedStringWhiteSpacePreWrap"
+                                    role="text"
+                                  >
+                                    8.1M views
+                                  </span>
+                                </div>
+                              </div>
+                              <div
+                                class="shortsLockupViewModelHostOutsideMetadataMenu shortsLockupViewModelHostShowOverPlayer image-overlay-text"
+                              ></div>
+                            </div>
+                          </ytm-shorts-lockup-view-model>
+                        </ytm-shorts-lockup-view-model-v2>
+                        <ytm-shorts-lockup-view-model-v2
+                          class="shortsLockupViewModelHost yt-horizontal-list-renderer"
+                        >
+                          <ytm-shorts-lockup-view-model
+                            class="shortsLockupViewModelHost yt-horizontal-list-renderer"
+                          >
+                            <a
+                              href="/shorts/sh_chan02"
+                              class="shortsLockupViewModelHostEndpoint reel-item-endpoint"
+                              aria-hidden="true"
+                            >
+                              <div
+                                class="shortsLockupViewModelHostThumbnailParentContainer shortsLockupViewModelHostThumbnailParentContainerRounded"
+                              >
+                                <yt-thumbnail-view-model
+                                  class="ytThumbnailViewModelHost ytThumbnailViewModelAspectRatio2By3 ytThumbnailViewModelMedium"
+                                ></yt-thumbnail-view-model>
+                              </div>
+                            </a>
+                            <div
+                              class="shortsLockupViewModelHostOutsideMetadata shortsLockupViewModelHostMetadataRounded shortsLockupViewModelHostOutsideMetadataHasMenu"
+                            >
+                              <div>
+                                <h3
+                                  class="shortsLockupViewModelHostMetadataTitle shortsLockupViewModelHostOutsideMetadataTitle"
+                                >
+                                  <a
+                                    href="/shorts/sh_chan02"
+                                    class="shortsLockupViewModelHostEndpoint shortsLockupViewModelHostOutsideMetadataEndpoint"
+                                    title="Short title B"
+                                  >
+                                    <span
+                                      class="ytAttributedStringHost ytAttributedStringWhiteSpacePreWrap"
+                                      role="text"
+                                    >
+                                      Short title B
+                                    </span>
+                                  </a>
+                                </h3>
+                              </div>
+                            </div>
+                          </ytm-shorts-lockup-view-model>
+                        </ytm-shorts-lockup-view-model-v2>
+                        <ytm-shorts-lockup-view-model-v2
+                          class="shortsLockupViewModelHost yt-horizontal-list-renderer"
+                        >
+                          <ytm-shorts-lockup-view-model
+                            class="shortsLockupViewModelHost yt-horizontal-list-renderer"
+                          >
+                            <a
+                              href="/shorts/sh_chan03"
+                              class="shortsLockupViewModelHostEndpoint reel-item-endpoint"
+                              aria-hidden="true"
+                            >
+                              <div
+                                class="shortsLockupViewModelHostThumbnailParentContainer shortsLockupViewModelHostThumbnailParentContainerRounded"
+                              >
+                                <yt-thumbnail-view-model
+                                  class="ytThumbnailViewModelHost ytThumbnailViewModelAspectRatio2By3 ytThumbnailViewModelMedium"
+                                ></yt-thumbnail-view-model>
+                              </div>
+                            </a>
+                            <div
+                              class="shortsLockupViewModelHostOutsideMetadata shortsLockupViewModelHostMetadataRounded shortsLockupViewModelHostOutsideMetadataHasMenu"
+                            >
+                              <div>
+                                <h3
+                                  class="shortsLockupViewModelHostMetadataTitle shortsLockupViewModelHostOutsideMetadataTitle"
+                                >
+                                  <a
+                                    href="/shorts/sh_chan03"
+                                    class="shortsLockupViewModelHostEndpoint shortsLockupViewModelHostOutsideMetadataEndpoint"
+                                    title="Short title C"
+                                  >
+                                    <span
+                                      class="ytAttributedStringHost ytAttributedStringWhiteSpacePreWrap"
+                                      role="text"
+                                    >
+                                      Short title C
+                                    </span>
+                                  </a>
+                                </h3>
+                              </div>
+                            </div>
+                          </ytm-shorts-lockup-view-model>
+                        </ytm-shorts-lockup-view-model-v2>
+                      </div>
+                    </div>
+                  </div>
+                  <div id="right-arrow"></div>
+                </yt-horizontal-list-renderer>
+              </div>
+            </ytd-reel-shelf-renderer>
+          </div>
+          <div id="continuations"></div>
+        </ytd-item-section-renderer>
+        <ytd-item-section-renderer
+          id="channel-playlist"
+          page-subtype="channels"
+        >
+          <div id="header"></div>
+          <div id="spinner-container"></div>
+          <div id="contents">
+            <ytd-shelf-renderer>
+              <div id="dismissible">
+                <div class="grid-subheader">
+                  <div id="title-container">
+                    <h2>
+                      <div id="image-container">
+                        <a
+                          class="yt-simple-endpoint"
+                          aria-hidden="true"
+                          href="/playlist?list=PL_aaa111"
+                          title="Playlist shelf title"
+                        ></a>
+                        <div id="title-text">
+                          <a
+                            class="yt-simple-endpoint"
+                            href="/playlist?list=PL_aaa111"
+                          >
+                            <span id="title"> Playlist shelf title </span>
+                          </a>
+                        </div>
+                      </div>
+                      <div id="play-button">
+                        <ytd-button-renderer>
+                          <yt-button-shape>
+                            <a
+                              href="/watch?v=vid_pl001&amp;list=PL_aaa111"
+                              class="ytSpecButtonShapeNextHost ytSpecButtonShapeNextText ytSpecButtonShapeNextMono ytSpecButtonShapeNextSizeM ytSpecButtonShapeNextIconLeading ytSpecButtonShapeNextEnableBackdropFilterExperiment ytSpecButtonShapeNextMainstageIconSize ytSpecButtonShapeNextMainstagePadding"
+                              aria-label="Play all"
+                            >
+                              <div
+                                class="ytSpecButtonShapeNextButtonTextContent ytSpecButtonShapeNextElevatedContent"
+                              >
+                                <span
+                                  class="ytAttributedStringHost ytAttributedStringWhiteSpaceNoWrap"
+                                  role="text"
+                                >
+                                  Play all
+                                </span>
+                              </div>
+                            </a>
+                          </yt-button-shape>
+                        </ytd-button-renderer>
+                      </div>
+                    </h2>
+                    <div id="spacer"></div>
+                    <div id="subscribe-button"></div>
+                    <div id="menu"></div>
+                  </div>
+                  <yt-formatted-string id="subtitle" class="can-be-empty">
+                    Playlist description
+                  </yt-formatted-string>
+                </div>
+                <div id="contents">
+                  <yt-horizontal-list-renderer>
+                    <div id="left-arrow"></div>
+                    <div id="scroll-outer-container">
+                      <div id="scroll-container">
+                        <div id="items">
+                          <yt-lockup-view-model
+                            class="yt-horizontal-list-renderer lockup ytLockupViewModelWrapper"
+                          >
+                            <div
+                              class="ytLockupViewModelHost ytLockupViewModelVertical content-id-vid_pl001 ytLockupViewModelCompact ytLockupViewModelUpdatedCompactPadding ytLockupViewModelFlexNone"
+                            >
+                              <a
+                                href="/watch?v=vid_pl001"
+                                class="ytLockupViewModelContentImage"
+                                aria-hidden="true"
+                              >
+                                <yt-thumbnail-view-model
+                                  class="ytThumbnailViewModelHost ytThumbnailViewModelAspectRatio16By9 ytThumbnailViewModelMedium"
+                                >
+                                  <div class="ytThumbnailViewModelImage"></div>
+                                </yt-thumbnail-view-model>
+                              </a>
+                              <div class="ytLockupViewModelMetadata">
+                                <yt-lockup-metadata-view-model
+                                  class="ytLockupMetadataViewModelHost ytLockupMetadataViewModelVertical ytLockupMetadataViewModelCompact ytLockupMetadataViewModelHasMenuButton"
+                                >
+                                  <div
+                                    class="ytLockupMetadataViewModelAvatar"
+                                  ></div>
+                                  <div
+                                    class="ytLockupMetadataViewModelTextContainer"
+                                  >
+                                    <h3
+                                      class="ytLockupMetadataViewModelHeadingReset"
+                                      title="Video title A"
+                                      aria-label="Video title A"
+                                    >
+                                      <a
+                                        href="/watch?v=vid_pl001"
+                                        class="ytLockupMetadataViewModelTitle"
+                                        aria-label="Video title A 4 minutes, 54 seconds"
+                                      >
+                                        <span
+                                          class="ytAttributedStringHost ytAttributedStringWhiteSpacePreWrap"
+                                          dir="auto"
+                                          role="text"
+                                        >
+                                          Video title A
+                                        </span>
+                                      </a>
+                                    </h3>
+                                    <div
+                                      class="ytLockupMetadataViewModelMetadata"
+                                    >
+                                      <yt-content-metadata-view-model
+                                        class="ytContentMetadataViewModelHost"
+                                      >
+                                        <div
+                                          class="ytContentMetadataViewModelMetadataRow"
+                                          role="group"
+                                        >
+                                          <span
+                                            class="ytAttributedStringHost ytContentMetadataViewModelMetadataText ytContentMetadataViewModelMetadataTextLastPart ytAttributedStringWhiteSpacePreWrap ytAttributedStringLinkInheritColor"
+                                            dir="auto"
+                                          >
+                                            <span dir="auto">
+                                              <a
+                                                class="ytAttributedStringLink ytAttributedStringLinkCallToActionColor ytAttributedStringLinkInheritColor"
+                                                href="/@handle_aaa111"
+                                              >
+                                                Channel A
+                                              </a>
+                                            </span>
+                                          </span>
+                                        </div>
+                                      </yt-content-metadata-view-model>
+                                    </div>
+                                  </div>
+                                  <div
+                                    class="ytLockupMetadataViewModelMenuButton"
+                                  ></div>
+                                </yt-lockup-metadata-view-model>
+                              </div>
+                            </div>
+                          </yt-lockup-view-model>
+                          <yt-lockup-view-model
+                            class="yt-horizontal-list-renderer lockup ytLockupViewModelWrapper"
+                          >
+                            <div
+                              class="ytLockupViewModelHost ytLockupViewModelVertical content-id-vid_pl002 ytLockupViewModelCompact ytLockupViewModelUpdatedCompactPadding ytLockupViewModelFlexNone"
+                            >
+                              <a
+                                href="/watch?v=vid_pl002"
+                                class="ytLockupViewModelContentImage"
+                                aria-hidden="true"
+                              >
+                                <yt-thumbnail-view-model
+                                  class="ytThumbnailViewModelHost ytThumbnailViewModelAspectRatio16By9 ytThumbnailViewModelMedium"
+                                ></yt-thumbnail-view-model>
+                              </a>
+                              <div class="ytLockupViewModelMetadata">
+                                <yt-lockup-metadata-view-model
+                                  class="ytLockupMetadataViewModelHost ytLockupMetadataViewModelVertical ytLockupMetadataViewModelCompact ytLockupMetadataViewModelHasMenuButton"
+                                >
+                                  <div
+                                    class="ytLockupMetadataViewModelTextContainer"
+                                  >
+                                    <h3
+                                      class="ytLockupMetadataViewModelHeadingReset"
+                                      title="Video title B"
+                                      aria-label="Video title B"
+                                    >
+                                      <a
+                                        href="/watch?v=vid_pl002"
+                                        class="ytLockupMetadataViewModelTitle"
+                                        aria-label="Video title B 3 minutes, 21 seconds"
+                                      >
+                                        <span
+                                          class="ytAttributedStringHost ytAttributedStringWhiteSpacePreWrap"
+                                          dir="auto"
+                                          role="text"
+                                        >
+                                          Video title B
+                                        </span>
+                                      </a>
+                                    </h3>
+                                  </div>
+                                </yt-lockup-metadata-view-model>
+                              </div>
+                            </div>
+                          </yt-lockup-view-model>
+                        </div>
+                      </div>
+                    </div>
+                    <div id="right-arrow"></div>
+                  </yt-horizontal-list-renderer>
+                </div>
+              </div>
+              <div id="dismissed"></div>
+            </ytd-shelf-renderer>
+          </div>
+          <div id="continuations"></div>
+        </ytd-item-section-renderer>
+        <ytd-item-section-renderer id="channel-kept" page-subtype="channels">
+          <div id="header"></div>
+          <div id="spinner-container"></div>
+          <div id="contents">
+            <ytd-shelf-renderer>
+              <div id="dismissible">
+                <div class="grid-subheader">
+                  <div id="title-container">
+                    <h2>
+                      <div id="image-container">
+                        <a
+                          class="yt-simple-endpoint"
+                          aria-hidden="true"
+                          href="/playlist?list=PL_bbb222"
+                          title="Playlist shelf title"
+                        ></a>
+                        <div id="title-text">
+                          <a
+                            class="yt-simple-endpoint"
+                            href="/playlist?list=PL_bbb222"
+                          >
+                            <span id="title"> Playlist shelf title </span>
+                          </a>
+                        </div>
+                      </div>
+                      <div id="play-button">
+                        <ytd-button-renderer>
+                          <yt-button-shape>
+                            <a
+                              href="/watch?v=vid_pl101&amp;list=PL_bbb222"
+                              class="ytSpecButtonShapeNextHost ytSpecButtonShapeNextText ytSpecButtonShapeNextMono ytSpecButtonShapeNextSizeM ytSpecButtonShapeNextIconLeading ytSpecButtonShapeNextEnableBackdropFilterExperiment ytSpecButtonShapeNextMainstageIconSize ytSpecButtonShapeNextMainstagePadding"
+                              aria-label="Play all"
+                            >
+                              <div
+                                class="ytSpecButtonShapeNextButtonTextContent ytSpecButtonShapeNextElevatedContent"
+                              >
+                                <span
+                                  class="ytAttributedStringHost ytAttributedStringWhiteSpaceNoWrap"
+                                  role="text"
+                                >
+                                  Play all
+                                </span>
+                              </div>
+                            </a>
+                          </yt-button-shape>
+                        </ytd-button-renderer>
+                      </div>
+                    </h2>
+                    <div id="spacer"></div>
+                    <div id="subscribe-button"></div>
+                    <div id="menu"></div>
+                  </div>
+                  <yt-formatted-string id="subtitle" class="can-be-empty">
+                    Playlist description
+                  </yt-formatted-string>
+                </div>
+                <div id="contents">
+                  <yt-horizontal-list-renderer>
+                    <div id="left-arrow"></div>
+                    <div id="scroll-outer-container">
+                      <div id="scroll-container">
+                        <div id="items">
+                          <yt-lockup-view-model
+                            class="ytd-rich-item-renderer lockup ytLockupViewModelWrapper"
+                          >
+                            <div
+                              class="ytLockupViewModelHost ytLockupViewModelVertical content-id-vid_old002 ytLockupViewModelRichGridLegacyMargin ytLockupViewModelFlexNone"
+                            >
+                              <a
+                                href="/watch?v=vid_old002"
+                                class="ytLockupViewModelContentImage"
+                                aria-hidden="true"
+                              >
+                                <yt-thumbnail-view-model
+                                  class="ytThumbnailViewModelHost ytThumbnailViewModelAspectRatio16By9 ytThumbnailViewModelLarge"
+                                >
+                                  <div class="ytThumbnailViewModelImage">
+                                    <img
+                                      class="ytCoreImageHost ytCoreImageFillParentHeight ytCoreImageFillParentWidth ytCoreImageContentModeScaleAspectFill"
+                                    />
+                                  </div>
+                                  <yt-thumbnail-bottom-overlay-view-model
+                                    class="ytThumbnailBottomOverlayViewModelHost"
+                                  >
+                                    <yt-thumbnail-overlay-progress-bar-view-model
+                                      class="ytThumbnailOverlayProgressBarHost ytThumbnailOverlayProgressBarHostLarge"
+                                    >
+                                      <div
+                                        class="ytThumbnailOverlayProgressBarHostWatchedProgressBar ytThumbnailOverlayProgressBarHostUseLegacyBar"
+                                      >
+                                        <div
+                                          class="ytThumbnailOverlayProgressBarHostWatchedProgressBarSegment"
+                                        ></div>
+                                      </div>
+                                    </yt-thumbnail-overlay-progress-bar-view-model>
+                                    <div
+                                      class="ytThumbnailBottomOverlayViewModelBadgeContainer ytThumbnailBottomOverlayViewModelBadgeContainerLarge"
+                                    >
+                                      <yt-thumbnail-badge-view-model
+                                        class="ytThumbnailBadgeViewModelHost ytThumbnailBottomOverlayViewModelBadge"
+                                      >
+                                        <badge-shape
+                                          class="ytBadgeShapeHost ytBadgeShapeThumbnailDefault ytBadgeShapeThumbnailBadge ytBadgeShapeModern ytBadgeShapeTypography"
+                                          role="img"
+                                          aria-label="19 minutes, 51 seconds"
+                                        >
+                                          <div
+                                            class="ytBadgeShapeText"
+                                            aria-hidden="true"
+                                          >
+                                            19:51
+                                          </div>
+                                        </badge-shape>
+                                      </yt-thumbnail-badge-view-model>
+                                    </div>
+                                  </yt-thumbnail-bottom-overlay-view-model>
+                                </yt-thumbnail-view-model>
+                              </a>
+                              <div class="ytLockupViewModelMetadata">
+                                <yt-lockup-metadata-view-model
+                                  class="ytLockupMetadataViewModelHost ytLockupMetadataViewModelVertical ytLockupMetadataViewModelStandard ytLockupMetadataViewModelRichGridLegacyTypography ytLockupMetadataViewModelHasMenuButton"
+                                >
+                                  <div class="ytLockupMetadataViewModelAvatar">
+                                    <yt-decorated-avatar-view-model
+                                      class="ytDecoratedAvatarViewModelHost"
+                                    >
+                                      <yt-avatar-shape>
+                                        <div
+                                          class="ytSpecAvatarShapeHost ytSpecAvatarShapeButton ytSpecAvatarShapeButtonMedium ytSpecAvatarShapeTappable"
+                                          aria-label="Go to channel Channel A"
+                                          role="button"
+                                        >
+                                          <div>
+                                            <div
+                                              class="ytSpecAvatarShapeAvatarSizeMedium"
+                                            >
+                                              <img
+                                                class="ytCoreImageHost ytSpecAvatarShapeImage ytCoreImageFillParentHeight ytCoreImageFillParentWidth ytCoreImageContentModeScaleToFill"
+                                              />
+                                              <div
+                                                class="ytSpecAvatarShapeImageOverlays ytSpecAvatarShapeImage"
+                                              ></div>
+                                            </div>
+                                          </div>
+                                        </div>
+                                      </yt-avatar-shape>
+                                    </yt-decorated-avatar-view-model>
+                                  </div>
+                                  <div
+                                    class="ytLockupMetadataViewModelTextContainer"
+                                  >
+                                    <h3
+                                      class="ytLockupMetadataViewModelHeadingReset"
+                                      title="Video title"
+                                      aria-label="Video title"
+                                    >
+                                      <a
+                                        href="/watch?v=vid_old002"
+                                        class="ytLockupMetadataViewModelTitle"
+                                        aria-label="Video title 19 minutes"
+                                      >
+                                        <span
+                                          class="ytAttributedStringHost ytAttributedStringWhiteSpacePreWrap"
+                                          dir="auto"
+                                          role="text"
+                                        >
+                                          Video title
+                                        </span>
+                                      </a>
+                                    </h3>
+                                    <div
+                                      class="ytLockupMetadataViewModelMetadata"
+                                    >
+                                      <yt-content-metadata-view-model
+                                        class="ytContentMetadataViewModelHost ytContentMetadataViewModelMediumText"
+                                      >
+                                        <div
+                                          class="ytContentMetadataViewModelMetadataRow"
+                                          role="group"
+                                        >
+                                          <span
+                                            class="ytAttributedStringHost ytContentMetadataViewModelMetadataText ytAttributedStringWhiteSpacePreWrap ytAttributedStringLinkInheritColor"
+                                            dir="auto"
+                                          >
+                                            <span dir="auto">
+                                              <a
+                                                class="ytAttributedStringLink ytAttributedStringLinkCallToActionColor ytAttributedStringLinkInheritColor"
+                                                href="/@handle_aaa111"
+                                              >
+                                                Channel A
+                                              </a>
+                                            </span>
+                                          </span>
+                                          <span
+                                            aria-hidden="true"
+                                            class="ytContentMetadataViewModelDelimiter"
+                                          ></span>
+                                          <span
+                                            class="ytIconWrapperHost ytContentMetadataViewModelLeadingIcon"
+                                          >
+                                            <span
+                                              class="yt-icon-shape ytSpecIconShapeHost"
+                                            >
+                                              <div></div>
+                                            </span>
+                                          </span>
+                                          <span
+                                            class="ytAttributedStringHost ytContentMetadataViewModelMetadataText ytAttributedStringWhiteSpacePreWrap ytAttributedStringLinkInheritColor"
+                                            dir="auto"
+                                            aria-label="51 thousand views"
+                                            role="text"
+                                          >
+                                            51K
+                                          </span>
+                                          <span
+                                            aria-hidden="true"
+                                            class="ytContentMetadataViewModelDelimiter"
+                                          ></span>
+                                          <span
+                                            class="ytAttributedStringHost ytContentMetadataViewModelMetadataText ytContentMetadataViewModelMetadataTextLastPart ytAttributedStringWhiteSpacePreWrap ytAttributedStringLinkInheritColor"
+                                            dir="auto"
+                                            aria-label="9 years ago"
+                                            role="text"
+                                          >
+                                            9 years ago
+                                          </span>
+                                        </div>
+                                      </yt-content-metadata-view-model>
+                                    </div>
+                                  </div>
+                                  <div
+                                    class="ytLockupMetadataViewModelMenuButton"
+                                  ></div>
+                                </yt-lockup-metadata-view-model>
+                              </div>
+                            </div>
+                          </yt-lockup-view-model>
+                          <yt-lockup-view-model
+                            class="yt-horizontal-list-renderer lockup ytLockupViewModelWrapper"
+                          >
+                            <div
+                              class="ytLockupViewModelHost ytLockupViewModelVertical content-id-vid_pl102 ytLockupViewModelCompact ytLockupViewModelUpdatedCompactPadding ytLockupViewModelFlexNone"
+                            >
+                              <a
+                                href="/watch?v=vid_pl102"
+                                class="ytLockupViewModelContentImage"
+                                aria-hidden="true"
+                              >
+                                <yt-thumbnail-view-model
+                                  class="ytThumbnailViewModelHost ytThumbnailViewModelAspectRatio16By9 ytThumbnailViewModelMedium"
+                                ></yt-thumbnail-view-model>
+                              </a>
+                              <div class="ytLockupViewModelMetadata">
+                                <yt-lockup-metadata-view-model
+                                  class="ytLockupMetadataViewModelHost ytLockupMetadataViewModelVertical ytLockupMetadataViewModelCompact ytLockupMetadataViewModelHasMenuButton"
+                                >
+                                  <div
+                                    class="ytLockupMetadataViewModelTextContainer"
+                                  >
+                                    <h3
+                                      class="ytLockupMetadataViewModelHeadingReset"
+                                      title="Video title B"
+                                      aria-label="Video title B"
+                                    >
+                                      <a
+                                        href="/watch?v=vid_pl102"
+                                        class="ytLockupMetadataViewModelTitle"
+                                        aria-label="Video title B 3 minutes, 21 seconds"
+                                      >
+                                        <span
+                                          class="ytAttributedStringHost ytAttributedStringWhiteSpacePreWrap"
+                                          dir="auto"
+                                          role="text"
+                                        >
+                                          Video title B
+                                        </span>
+                                      </a>
+                                    </h3>
+                                  </div>
+                                </yt-lockup-metadata-view-model>
+                              </div>
+                            </div>
+                          </yt-lockup-view-model>
+                        </div>
+                      </div>
+                    </div>
+                    <div id="right-arrow"></div>
+                  </yt-horizontal-list-renderer>
+                </div>
+              </div>
+              <div id="dismissed"></div>
+            </ytd-shelf-renderer>
+          </div>
+          <div id="continuations"></div>
+        </ytd-item-section-renderer>
+      </div>
+    </ytd-section-list-renderer>
+  </body>
+</html>

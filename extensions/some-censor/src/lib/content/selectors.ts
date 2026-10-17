@@ -61,6 +61,14 @@ export type CardSelector = {
    * ever release (L2).
    */
   readonly unguardedFallback?: boolean
+  /**
+   * `true` when YouTube renders this tag *around* another catalogue card as
+   * well as on its own: the home feed's grid cell, and the outer of the two
+   * Shorts revisions, which today wraps the inner one. Unstamped, such an
+   * element says nothing about whether a card inside it is still pending, so
+   * {@link SHELF_COLLAPSE_SELECTORS} does not count it as one.
+   */
+  readonly wrapsCards?: boolean
 }
 
 /** Anchor shapes that identify an element as pointing at a watchable video. */
@@ -84,13 +92,18 @@ export const CARD_SELECTORS: ReadonlyArray<CardSelector> = [
     tag: "ytd-rich-item-renderer",
     requiresVideoLink: true,
     unguardedFallback: true,
+    wrapsCards: true,
   },
   // The unified Lit-era card behind the upcoming-feed slider, watch-next and
   // search.
   { tag: "yt-lockup-view-model", requiresVideoLink: true },
   // Shorts shelves. Two tags because YouTube ships both revisions concurrently.
   { tag: "ytm-shorts-lockup-view-model", requiresVideoLink: true },
-  { tag: "ytm-shorts-lockup-view-model-v2", requiresVideoLink: true },
+  {
+    tag: "ytm-shorts-lockup-view-model-v2",
+    requiresVideoLink: true,
+    wrapsCards: true,
+  },
   // Video lockups inside a watch page's structured description.
   {
     tag: "ytd-structured-description-video-lockup-renderer",
@@ -148,6 +161,52 @@ function unguardedFallbackTags(): ReadonlyArray<string> {
     ({ tag }) => tag
   )
 }
+
+/**
+ * A shelf: a row of cards under a header, which YouTube renders as one unit.
+ * When every card in it is absent, the header would be left over a gap, the
+ * "slot left where something was" QD11 forbids (#1846). Each entry is the
+ * element that has to go for no header and no gap to remain, per surface:
+ *
+ *   - Home: the grid's section around a `ytd-rich-shelf-renderer`.
+ *   - Search: `grid-shelf-view-model` itself. It is one result among the
+ *     others in a shared item section, and carries its own margins.
+ *   - Channel home: the item section that holds only the shelf. It draws the
+ *     separator line, so hiding the shelf alone would leave a doubled one.
+ */
+const SHELF_SELECTORS: ReadonlyArray<string> = [
+  "ytd-rich-section-renderer",
+  "grid-shelf-view-model",
+  "ytd-item-section-renderer:has(> #contents > ytd-reel-shelf-renderer:only-child)",
+  "ytd-item-section-renderer:has(> #contents > ytd-shelf-renderer:only-child)",
+]
+
+/**
+ * What keeps a shelf on screen: a card that is not absent, whether plated or
+ * not adopted yet, or a lockup that never will be (a channel tile). A
+ * {@link CardSelector.wrapsCards} tag is left out, because unstamped it may
+ * only be the wrapper around an absent card; a stamp on it still counts.
+ */
+const SHELF_LIVE_SELECTOR = [
+  '[data-boyo]:not([data-boyo="absent"])',
+  `:is(${CARD_SELECTORS.filter((s) => s.wrapsCards !== true)
+    .map(({ tag }) => tag)
+    .join(", ")}):not([data-boyo="absent"])`,
+].join(", ")
+
+/**
+ * The exact selector text of each shelf-collapse rule in `content.css`, one
+ * rule per entry for the same reason as {@link PREMASK_SELECTORS}. A shelf
+ * collapses once it holds an absent card and nothing in
+ * {@link SHELF_LIVE_SELECTOR}: never before its first card is decided, and
+ * never over a plated card or a non-video tile. On an engine without `:has()`
+ * every one of these is dropped, and the header stays, as it did before.
+ */
+export const SHELF_COLLAPSE_SELECTORS: ReadonlyArray<string> =
+  SHELF_SELECTORS.map(
+    (shelf) =>
+      `${shelf}:has([data-boyo="absent"]):not(:has(${SHELF_LIVE_SELECTOR}))`
+  )
 
 /**
  * What the engine rendering `root` can parse, as far as the pre-mask rules

@@ -23,6 +23,7 @@ import {
   PREMASK_FALLBACK_SELECTORS,
   PREMASK_SELECTORS,
   SEL,
+  SHELF_COLLAPSE_SELECTORS,
   VIDEO_SELECTORS,
 } from "@censor/lib/content/selectors"
 import { describe, expect, it } from "vitest"
@@ -113,6 +114,40 @@ function topLevelCommaCount(selector: string): number {
   return count
 }
 
+/**
+ * Every rule's selector in `css`, comments removed. Selectors inside an
+ * at-rule block come back with the at-rule's prelude prefixed, so a shelf
+ * rule moved under `@supports` cannot pass as a top-level one.
+ */
+function ruleSelectors(css: string): Array<string> {
+  const text = css.replace(/\/\*[\s\S]*?\*\//g, "")
+  const out: Array<string> = []
+  const stack: Array<string> = []
+  let start = 0
+  for (let i = 0; i < text.length; i += 1) {
+    if (text[i] === "{") {
+      stack.push(text.slice(start, i).trim())
+      start = i + 1
+    } else if (text[i] === "}") {
+      const prelude = stack.pop()
+      if (prelude !== undefined && !text.slice(start, i).includes("{")) {
+        out.push([...stack, prelude].join(" "))
+      }
+      start = i + 1
+    } else if (text[i] === ";" && stack.length > 0) {
+      start = i + 1
+    }
+  }
+  return out
+}
+
+/** The shelf-collapse rules, found by the condition only they carry. */
+function shelfRulesFromCss(): Array<string> {
+  return ruleSelectors(CSS).filter((r) =>
+    normalize(r).includes(':has([data-boyo="absent"]):not(')
+  )
+}
+
 describe("the stylesheet and the catalogue agree", () => {
   it("occludes exactly the tags the content script adopts, one rule per tag", () => {
     expect(premaskRulesFromCss().map(normalize)).toEqual(
@@ -135,6 +170,78 @@ describe("the stylesheet and the catalogue agree", () => {
         ":has("
       )
     }
+  })
+
+  it("collapses exactly the catalogued shelves, one rule per shelf", () => {
+    expect(shelfRulesFromCss().map(normalize)).toEqual(
+      SHELF_COLLAPSE_SELECTORS.map(normalize)
+    )
+    for (const rule of shelfRulesFromCss()) {
+      expect(topLevelCommaCount(rule), rule).toBe(0)
+    }
+  })
+
+  it("keeps a shelf whose cards are plated, pending, or not videos at all", () => {
+    // jsdom parses the shelf rules, unlike the pre-mask ones, so the
+    // condition can be checked here; shelves.spec.ts renders it.
+    const shelf = document.createElement("ytd-rich-section-renderer")
+    shelf.innerHTML = `
+      <ytd-rich-item-renderer><ytm-shorts-lockup-view-model-v2>
+        <ytm-shorts-lockup-view-model data-boyo="absent"><a href="/shorts/s1"></a></ytm-shorts-lockup-view-model>
+      </ytm-shorts-lockup-view-model-v2></ytd-rich-item-renderer>
+      <ytd-rich-item-renderer id="second"></ytd-rich-item-renderer>`
+    document.body.appendChild(shelf)
+    const [rule] = SHELF_COLLAPSE_SELECTORS
+    const second = shelf.querySelector("#second")
+    if (rule === undefined || second === null) throw new Error("fixture")
+    const collapses = (inner: string): boolean => {
+      second.innerHTML = inner
+      return shelf.matches(rule)
+    }
+
+    expect(collapses(""), "every card absent: the wrappers do not count").toBe(
+      true
+    )
+    expect(
+      collapses(
+        '<yt-lockup-view-model data-boyo="plated"></yt-lockup-view-model>'
+      ),
+      "a plated card"
+    ).toBe(false)
+    expect(
+      collapses(
+        '<yt-lockup-view-model><a href="/watch?v=p1"></a></yt-lockup-view-model>'
+      ),
+      "a card not adopted yet"
+    ).toBe(false)
+    expect(
+      collapses(
+        '<yt-lockup-view-model><a href="/@channel"></a></yt-lockup-view-model>'
+      ),
+      "a channel tile"
+    ).toBe(false)
+    second.remove()
+    shelf.querySelector("[data-boyo]")?.setAttribute("data-boyo", "plated")
+    expect(shelf.matches(rule), "no absent card at all").toBe(false)
+    shelf.remove()
+  })
+
+  it("collapses a channel section only when the shelf is all it holds", () => {
+    const section = document.createElement("ytd-item-section-renderer")
+    section.innerHTML = `<div id="contents"><ytd-reel-shelf-renderer>
+      <ytm-shorts-lockup-view-model data-boyo="absent"><a href="/shorts/s1"></a></ytm-shorts-lockup-view-model>
+    </ytd-reel-shelf-renderer></div>`
+    document.body.appendChild(section)
+    const matches = (): boolean =>
+      SHELF_COLLAPSE_SELECTORS.some((rule) => section.matches(rule))
+    expect(matches()).toBe(true)
+    // A search page's item section holds every result, one shelf among them:
+    // that section is never the thing to hide.
+    section
+      .querySelector("#contents")
+      ?.append(document.createElement("ytd-channel-renderer"))
+    expect(matches()).toBe(false)
+    section.remove()
   })
 
   it("never shares one rule's declarations across more than one selector", () => {
