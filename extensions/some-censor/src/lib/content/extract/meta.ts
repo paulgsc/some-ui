@@ -53,7 +53,7 @@ export function extractMeta(el: HTMLElement): MetaData {
   }
 }
 
-/** The channel's display name. Also `channel-id.ts`'s last resort. */
+/** The channel's display name. */
 export function channelName(el: HTMLElement): string | null {
   return firstText(
     el,
@@ -108,7 +108,7 @@ export function extractIsShort(el: HTMLElement): boolean {
 /**
  * A lockup for a list rather than one video. Every one in the 2026-10-17
  * captures is a Mix, whose metadata run is an artist list ("A, B and more"),
- * not a channel. Its "Mix" badge is kept out of the duration by `fields.ts`.
+ * not a channel.
  */
 function isCollection(el: HTMLElement): boolean {
   return el.querySelector("yt-collection-thumbnail-view-model") !== null

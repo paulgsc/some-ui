@@ -10,7 +10,8 @@ import { channelName } from "./meta"
  *   - UCxxx...  (channel ID)
  *   - @handle   (handle)
  *
- * Falls back to the display name (`meta.ts`) if no href pattern matches.
+ * Falls back to the display name (`meta.ts`), less stable than an href, if no
+ * href pattern matches.
  */
 export function extractChannelId(el: HTMLElement): ChannelId | null {
   for (const a of el.querySelectorAll<HTMLAnchorElement>("a")) {
@@ -21,9 +22,6 @@ export function extractChannelId(el: HTMLElement): ChannelId | null {
     if (parsed !== null) return parsed
   }
 
-  // Fallback: the visible channel name (less stable but better than null).
-  // A watch-rail lockup and a playlist-panel row carry no channel link at
-  // all, only the name.
   const name = channelName(el)
   return name ? asChannelId(name) : null
 }

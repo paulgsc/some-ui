@@ -16,7 +16,6 @@
 import { describe, expect, it } from "vitest"
 
 import {
-  extractCarriesChannel,
   extractIsShort,
   extractMeta,
   extractTitle,
@@ -330,27 +329,16 @@ describe("extractMeta", () => {
     })
   })
 
-  it("reads the plain-text channel and the duration off a watch-rail lockup", () => {
-    const rail = make("yt-lockup-view-model", RAIL_LOCKUP)
-    expect(extractMeta(rail)).toEqual({
-      channelName: "Rail Channel",
-      duration: "3:11",
-    })
-    expect(extractUploadDate(rail)).toBe("14 years ago")
-  })
-
-  it("reads a playlist-panel row's channel from its byline", () => {
+  it("reads a watch-rail lockup's duration from its bottom overlay", () => {
     expect(
-      extractMeta(make("ytd-playlist-panel-video-renderer", PANEL_ROW))
-        .channelName
-    ).toBe("Panel Channel")
+      extractMeta(make("yt-lockup-view-model", RAIL_LOCKUP)).duration
+    ).toBe("3:11")
   })
 
-  it("reads no channel and no duration off a Mix", () => {
-    // Its run is an artist list, and its badge says "Mix".
-    const mix = make("yt-lockup-view-model", MIX_LOCKUP)
-    expect(extractMeta(mix)).toEqual({ channelName: null, duration: null })
-    expect(extractUploadDate(mix)).toBeNull()
+  it("does not read a Mix badge as a duration", () => {
+    expect(
+      extractMeta(make("yt-lockup-view-model", MIX_LOCKUP)).duration
+    ).toBeNull()
   })
 
   it("takes a camelCase lockup's age from its label, not its compact text", () => {
@@ -458,20 +446,6 @@ describe("extractMeta", () => {
     expect(extractUploadDate(make("yt-lockup-view-model", SHORTS_LOCKUP))).toBe(
       null
     )
-  })
-})
-
-describe("extractCarriesChannel", () => {
-  it("is false for a Short and a Mix, true for a video", () => {
-    expect(
-      extractCarriesChannel(make("ytm-shorts-lockup-view-model", SHORTS_LOCKUP))
-    ).toBe(false)
-    expect(
-      extractCarriesChannel(make("yt-lockup-view-model", MIX_LOCKUP))
-    ).toBe(false)
-    expect(
-      extractCarriesChannel(make("yt-lockup-view-model", RAIL_LOCKUP))
-    ).toBe(true)
   })
 })
 

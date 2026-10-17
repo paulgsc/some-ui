@@ -95,16 +95,16 @@ describe("the checked-in table", () => {
     expectInSync(CHECKED_IN)
   })
 
-  it("records a lockup nested in a grid cell", () => {
+  it("records a lockup nested in a grid cell, and a Short in its -v2 wrapper", () => {
     const home = CHECKED_IN.surfaces.home
     expect(home).toBeDefined()
-    expect(
+    const nested = (tag: string, outer: string): boolean | undefined =>
       home?.shapes.some(
-        (s) =>
-          s.tag === "yt-lockup-view-model" &&
-          s.role === "nested" &&
-          s.outer === "ytd-rich-item-renderer"
+        (s) => s.tag === tag && s.role === "nested" && s.outer === outer
       )
+    expect(nested("yt-lockup-view-model", "ytd-rich-item-renderer")).toBe(true)
+    expect(
+      nested("ytm-shorts-lockup-view-model", "ytm-shorts-lockup-view-model-v2")
     ).toBe(true)
   })
 
@@ -303,16 +303,6 @@ describe("classifyShape", () => {
     expect(classify("home", "ytd-ad-slot-renderer", null, "none")).toEqual({
       kind: "not-card",
     })
-  })
-
-  it("places a Short inside its -v2 wrapper, as home serves every Short (#1848)", () => {
-    expect(
-      classify(
-        "home",
-        "ytm-shorts-lockup-view-model",
-        "ytm-shorts-lockup-view-model-v2"
-      )
-    ).toEqual({ kind: "nested", outer: "ytm-shorts-lockup-view-model-v2" })
   })
 
   it("says unknown, with a reason, rather than guessing", () => {

@@ -154,10 +154,7 @@ export function createSensor(ports: SensorPorts): Sensor {
 
   // ── Observation ────────────────────────────────────────────────────────
 
-  /**
-   * The surface `el` is on: the page shown's, unless `el` sits in the page
-   * an SPA navigation left hidden in the document.
-   */
+  /** `ports.surface()`, unless `el` is under a hidden page (`HIDDEN_PAGE_SELECTOR`). */
   function cardSurface(el: HTMLElement): BoyoSurface {
     const page = el.closest(HIDDEN_PAGE_SELECTOR)
     return page === null
@@ -172,7 +169,8 @@ export function createSensor(ports: SensorPorts): Sensor {
     el: HTMLElement,
     videoId: Observation["videoId"],
     channelId: Observation["channelId"],
-    shape: Observation["shape"]
+    shape: Observation["shape"],
+    surface: BoyoSurface
   ): Observation {
     const meta = extractMeta(el)
     return {
@@ -183,7 +181,7 @@ export function createSensor(ports: SensorPorts): Sensor {
       duration: meta.duration,
       uploadDate: extractUploadDate(el),
       short: extractIsShort(el),
-      surface: cardSurface(el),
+      surface,
       renderer: el.tagName.toLowerCase(),
       shape,
     }
@@ -198,7 +196,8 @@ export function createSensor(ports: SensorPorts): Sensor {
   function observe(el: HTMLElement, force = false): void {
     if (!running) return
     const now = ports.clock()
-    const cls = classifyNode(el, cardSurface(el), ports.table)
+    const surface = cardSurface(el)
+    const cls = classifyNode(el, surface, ports.table)
 
     if (cls.kind === "not-card") {
       // A container, or not ours. Whatever it carried as a card is over.
@@ -225,7 +224,7 @@ export function createSensor(ports: SensorPorts): Sensor {
       if (queue.enqueue(el, now)) {
         const tag = el.tagName.toLowerCase()
         ports.onFact({ kind: "mount.queued", tag })
-        if (cls.shape === "unknown") reportUnknown(el, cls.reason, now)
+        if (cls.shape === "unknown") reportUnknown(el, cls.reason, now, surface)
         ensureRetryLoop()
       }
       return
@@ -250,7 +249,7 @@ export function createSensor(ports: SensorPorts): Sensor {
     }
     // Per element, not per key: a second carrier of a video Core already
     // holds is as much a miss of the table as the first.
-    if (cls.shape === "unknown") reportUnknown(el, cls.reason, now)
+    if (cls.shape === "unknown") reportUnknown(el, cls.reason, now, surface)
     if (rec.kind === "recycled") {
       // The channel budget belonged to the previous video.
       channelPending.delete(el)
@@ -295,7 +294,8 @@ export function createSensor(ports: SensorPorts): Sensor {
       el,
       extracted.videoId,
       extracted.channelId,
-      cls.shape
+      cls.shape,
+      surface
     )
     if (observation.uploadDate || observation.short) {
       datePending.delete(el)
@@ -318,14 +318,15 @@ export function createSensor(ports: SensorPorts): Sensor {
   function reportUnknown(
     el: HTMLElement,
     reason: UnknownShapeReason,
-    now: number
+    now: number,
+    surface: BoyoSurface
   ): void {
     if (unknownReported.has(el)) return
     unknownReported.add(el)
     ports.emit({
       kind: "unknown-shape",
       tag: el.tagName.toLowerCase(),
-      surface: cardSurface(el),
+      surface,
       reason,
       t: now,
     })

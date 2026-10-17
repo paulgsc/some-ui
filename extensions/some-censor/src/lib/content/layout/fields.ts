@@ -31,11 +31,7 @@ export const LOCKUP_DATE_RUNS = [
   'span[class*="ytContentMetadataViewModelMetadataText"][aria-label]',
 ] as const
 
-/**
- * The watch rail's plain-text channel run. The view count and the age carry an
- * `aria-label` and it does not. A Mix's run under the same class is an artist
- * list, so `extract/meta.ts` skips this one on a collection.
- */
+/** The watch rail's plain-text channel run. `extract/meta.ts` skips it on a collection. */
 export const PLAIN_CHANNEL_RUN =
   'span[class*="ytContentMetadataViewModelMetadataText"]:not([aria-label])'
 
