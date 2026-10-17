@@ -203,7 +203,9 @@ is also good Korean in the line, given its cue. Give the word's other wrong
 forms as more misforms on the same `word`. `instead` says what the wrong form
 does, in terms of grammar and in the line's own Korean words, for a learner
 who picked it ("With 가요, 에서 marks 학교 as where you set off from"; "사요 is
-present; the cue's 했어요 is past"), never what the sentence means in English.
+present; the cue's 했어요 is past"), never what the sentence means in English,
+nor an English word for any word in it ("읽어요 is done there", not "reading is
+done there"; "a span from 아침", not "from the morning").
 Leave `instead` out only where the wrong form is not a word at all (춥어요).
 Name in a misform's `decides` the line's other words that make it wrong
 (가요 decides 학교에), and in its `cueDecides` the cue's words that do

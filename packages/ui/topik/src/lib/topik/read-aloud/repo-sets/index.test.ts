@@ -101,6 +101,23 @@ describe("the repo's sets, both added", () => {
     expect(misformed.length).toBeGreaterThanOrEqual(16)
   })
 
+  it("say what a misform does without an English word for any word (Cor. 4.8 (i))", () => {
+    // Short glosses ("go", "what") are also words of the grammar's English.
+    const glosses = REPO_SETS.words
+      .map((word) => word.gloss)
+      .filter((gloss) => gloss.length >= 6)
+    for (const line of REPO_SETS.lines) {
+      for (const misform of line.lens?.misforms ?? []) {
+        for (const gloss of glosses) {
+          const word = gloss.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+          expect(misform.instead ?? "").not.toMatch(
+            new RegExp(`\\b${word}\\b`, "i")
+          )
+        }
+      }
+    }
+  })
+
   it("draw level-one sets without three alike in a row", () => {
     for (let seed = 0; seed < 100; seed += 1) {
       const items = buildSet(REPO_SETS, { level: 1, seedKey: `s${seed}` })

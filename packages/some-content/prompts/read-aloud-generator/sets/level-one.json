@@ -1249,7 +1249,7 @@
             "word": 0,
             "surface": "도서관에",
             "mistake": "e-for-eseo",
-            "instead": "With 읽어요, 에 marks 도서관 as where you go or where something is; reading is done there, which takes 에서.",
+            "instead": "With 읽어요, 에 marks 도서관 as where you go or where something is; 읽어요 is done there, which takes 에서.",
             "decides": [2]
           }
         ],
@@ -1395,7 +1395,7 @@
             "word": 0,
             "surface": "가게에",
             "mistake": "e-for-eseo",
-            "instead": "With 사요, 에 marks 가게 as where you go or where something is; buying is done there, which takes 에서.",
+            "instead": "With 사요, 에 marks 가게 as where you go or where something is; 사요 is done there, which takes 에서.",
             "decides": [2]
           }
         ],
@@ -1625,7 +1625,7 @@
             "word": 1,
             "surface": "집에",
             "mistake": "e-for-eseo",
-            "instead": "With 쉬어요, 에 marks 집 as where you go or where something is; resting is done there, which takes 에서.",
+            "instead": "With 쉬어요, 에 marks 집 as where you go or where something is; 쉬어요 is done there, which takes 에서.",
             "decides": [2]
           }
         ],
@@ -1676,14 +1676,14 @@
             "word": 0,
             "surface": "일요일에서",
             "mistake": "eseo-after-time",
-            "instead": "A weekday takes 에; 에서 would start a span from Sunday.",
+            "instead": "A weekday takes 에; 에서 would start a span from 일요일.",
             "cueDecides": ["언제"]
           },
           {
             "word": 1,
             "surface": "공원에",
             "mistake": "e-for-eseo",
-            "instead": "With 운동해요, 에 marks 공원 as where you go or where something is; exercising is done there, which takes 에서.",
+            "instead": "With 운동해요, 에 marks 공원 as where you go or where something is; 운동해요 is done there, which takes 에서.",
             "decides": [2]
           }
         ],
@@ -1956,7 +1956,7 @@
             "word": 0,
             "surface": "백화점에",
             "mistake": "e-for-eseo",
-            "instead": "With 샀어요, 에 marks 백화점 as where you go or where something is; buying is done there, which takes 에서.",
+            "instead": "With 샀어요, 에 marks 백화점 as where you go or where something is; 샀어요 is done there, which takes 에서.",
             "decides": [2]
           },
           {
@@ -2169,7 +2169,7 @@
             "word": 1,
             "surface": "소파에",
             "mistake": "e-for-eseo",
-            "instead": "With 자요, 에 marks 소파 as where you go or where something is; sleeping is done there, which takes 에서.",
+            "instead": "With 자요, 에 marks 소파 as where you go or where something is; 자요 is done there, which takes 에서.",
             "decides": [2]
           }
         ],
@@ -2293,7 +2293,7 @@
             "word": 0,
             "surface": "여기에",
             "mistake": "e-for-eseo",
-            "instead": "With 찍어요, 에 marks 여기 as where you go or where something is; taking photos is done there, which takes 에서.",
+            "instead": "With 찍어요, 에 marks 여기 as where you go or where something is; 찍어요 is done there, which takes 에서.",
             "decides": [2]
           }
         ],
@@ -3059,7 +3059,7 @@
             "word": 0,
             "surface": "아침에서",
             "mistake": "eseo-after-time",
-            "instead": "A part of the day takes 에; 에서 would start a span from the morning."
+            "instead": "A part of the day takes 에; 에서 would start a span from 아침."
           }
         ],
         "situations": {
@@ -3118,7 +3118,7 @@
             "word": 1,
             "surface": "집에",
             "mistake": "e-for-eseo",
-            "instead": "With 쉬었어요, 에 marks 집 as where you go or where something is; resting is done there, which takes 에서.",
+            "instead": "With 쉬었어요, 에 marks 집 as where you go or where something is; 쉬었어요 is done there, which takes 에서.",
             "decides": [2]
           }
         ],
