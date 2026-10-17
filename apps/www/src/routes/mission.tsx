@@ -2,11 +2,11 @@ import type { JSX } from "react"
 import { createFileRoute, Link } from "@tanstack/react-router"
 import {
   ArrowLeft,
-  Ban,
   Brain,
   Contrast,
   EyeOff,
   Fingerprint,
+  Hand,
   HardDrive,
   KeyRound,
   Ruler,
@@ -22,9 +22,10 @@ import { ThemeSwitcher } from "@/components/theme-switcher"
  * for its one user, published read-only for everyone else) and then the
  * positions the projects take (a browser is an operating system, exposure
  * should be opt-in, visual comfort is measurable, a curriculum should adapt).
- * Not a blog: each position is one refusal, one claim and one mechanism, held
- * to `packages/ui/resume/resume.typ`'s rule that a premise is immediately
- * cashed out in its mechanism.
+ * Each position is one claim and one mechanism, held to
+ * `packages/ui/resume/resume.typ`'s rule that a premise is immediately cashed
+ * out in its mechanism. Copy says what each thing is and does (CLAUDE.md,
+ * "Say what it is"): no foils, no "not another X".
  */
 
 type Mandate = { term: string; gloss: string }
@@ -45,8 +46,6 @@ const MANDATES: ReadonlyArray<Mandate> = [
 type Position = {
   /** Display ordinal. Not derived from the array index — it's typeset. */
   ordinal: string
-  /** The thing this project is constantly mistaken for. */
-  foil: string
   /** What it actually is. */
   claim: string
   /** How the claim is made true in code — the part that keeps this honest. */
@@ -59,37 +58,33 @@ type Position = {
 const POSITIONS: ReadonlyArray<Position> = [
   {
     ordinal: "01",
-    foil: "Not another tab suspender.",
     claim: "A virtual-memory subsystem for the browser.",
     mechanism:
-      "A browser used as an operating system holds hundreds of tabs that are long-lived workspaces, not pages. So suspension is virtualization, not cleanup: memory is reclaimed while the tab keeps its strip position, its history entry, and its identity. There is no code path that closes a tab — reversibility is structural, not intended.",
+      "A browser used as an operating system holds hundreds of tabs that are long-lived workspaces. Suspension virtualizes them: memory is reclaimed while each tab keeps its strip position, its history entry and its identity. Every suspended tab stays open, so reversibility is built into the structure.",
     artifact: "suspender-ledger",
     icon: HardDrive,
   },
   {
     ordinal: "02",
-    foil: "Not an ad blocker.",
     claim: "An attention firewall.",
     mechanism:
-      "Recommendation surfaces are engineered to maximize exposure. Inverting that means nothing earns attention by default — every recommendation begins hidden and surrenders exactly one layer at a time, through a state machine whose illegal transitions are compile errors. Searching for something should never require being exposed to everything around it.",
+      "Every recommendation starts hidden and opens one layer at a time, when asked, through a state machine whose illegal transitions are compile errors. A search shows what was searched for, and attention goes only where it is given.",
     artifact: "some-censor",
     icon: EyeOff,
   },
   {
     ordinal: "03",
-    foil: "Not a dark mode.",
     claim: "A rendering layer for the readable web.",
     mechanism:
-      "Every site ships its own contrast and palette, forcing the eye to re-adapt on each navigation. Visual comfort is treated as a measurable property of what a page actually renders, scored against a corpus of human-labeled fixtures — so a visual regression is something you can fail a build on, not something you argue about.",
+      "Pages render with one consistent contrast and palette, so the eye settles once. Visual comfort is a measured property of what a page actually renders, scored against a corpus of human-labeled fixtures, so a visual regression fails the build like any other bug.",
     artifact: "some-filter",
     icon: Contrast,
   },
   {
     ordinal: "04",
-    foil: "Not educational games.",
     claim: "An engine that estimates what a learner knows.",
     mechanism:
-      "Fixed curricula make the learner adapt to the software. Inverting that makes the software responsible for inferring a hidden knowledge state from every interaction and choosing the next experience that teaches the most — adapting the modality, not just the difficulty. The games are not the product; they are the measurement instruments.",
+      "The software adapts to the learner: it infers a hidden knowledge state from every interaction and chooses the next experience that teaches the most, adapting the modality as well as the difficulty. The games are its measurement instruments.",
     artifact: "hangul-game-core · honeycomb",
     icon: Brain,
   },
@@ -104,32 +99,31 @@ type Principle = {
 const PRINCIPLES: ReadonlyArray<Principle> = [
   {
     term: "Own the critical path",
-    gloss:
-      "Anything load-bearing enough to lose your state is too important to rent from a closed-source vendor.",
+    gloss: "Whatever holds your state runs on software you own and can read.",
     icon: KeyRound,
   },
   {
-    term: "Default deny",
+    term: "Grant by intent",
     gloss:
-      "Nothing earns attention, memory, or visibility automatically. Access is granted by intent.",
-    icon: Ban,
+      "Attention, memory and visibility are given on purpose, one request at a time.",
+    icon: Hand,
   },
   {
     term: "Preserve identity",
     gloss:
-      "Reclaiming a resource must never destroy the thing holding it. Eviction is not deletion.",
+      "Reclaiming a resource keeps the thing holding it intact: an evicted tab is still that tab.",
     icon: Fingerprint,
   },
   {
     term: "Local-first",
     gloss:
-      "The work happens on the client, under the user's control, with no service to depend on or outlive.",
+      "The work happens on your own device, under your control, for as long as you keep it.",
     icon: WifiOff,
   },
   {
-    term: "Measure, don't assert",
+    term: "Measure it",
     gloss:
-      "Comfort, learning, and reliability get metrics and labeled corpora — not opinions in a review thread.",
+      "Comfort, learning and reliability get metrics and labeled corpora, checked like code.",
     icon: Ruler,
   },
   {
@@ -143,7 +137,7 @@ const PRINCIPLES: ReadonlyArray<Principle> = [
 type Figure = { value: string; label: string }
 
 /**
- * Counted, not estimated: packages and extensions as
+ * Counted from the repo: packages and extensions as
  * `packages/ui/resume/scripts/check-claims.mjs` counts them (its
  * EXPECTED_PACKAGE_COUNT and EXPECTED_EXTENSION_COUNT), canons as the
  * `docs/canon/*.typ` files. Recount here when those change.
@@ -157,7 +151,6 @@ const FIGURES: ReadonlyArray<Figure> = [
 
 const PositionRow = ({
   ordinal,
-  foil,
   claim,
   mechanism,
   artifact,
@@ -174,9 +167,6 @@ const PositionRow = ({
     </div>
 
     <div className="space-y-5">
-      <p className="text-muted-foreground/70 text-base font-medium line-through decoration-1 md:text-lg">
-        {foil}
-      </p>
       <h3 className="text-gradient-heading max-w-3xl text-3xl leading-[1.1] font-bold tracking-tight text-balance md:text-5xl">
         {claim}
       </h3>
@@ -217,8 +207,7 @@ const Mission = (): JSX.Element => (
         <p className="text-muted-foreground mt-8 max-w-2xl text-lg leading-relaxed text-pretty md:text-xl">
           Everything here is something I use every day: how I learn Korean, how
           I browse, the football numbers I care about, what I’m building next.
-          It’s a snapshot of real, live work, not a demo put together to be
-          shown.
+          It’s a snapshot of real, live work, published as it happens.
         </p>
         <p className="text-muted-foreground/80 mt-5 max-w-2xl leading-relaxed text-pretty">
           You’re seeing it read-only. The code is all public; my own data stays
@@ -266,7 +255,8 @@ const Mission = (): JSX.Element => (
           The tools that mediate a working day (the browser holding your state,
           the feed spending your attention, the surface straining your eyes, the
           software claiming to teach you) arrive with defaults chosen by someone
-          else. Four of these tools start by reversing one.
+          else. Four of these tools each take one of those defaults and set it
+          on purpose.
         </p>
         {POSITIONS.map((position) => (
           <PositionRow key={position.ordinal} {...position} />
@@ -277,12 +267,11 @@ const Mission = (): JSX.Element => (
       <section className="border-border/60 border-t py-20 md:py-28">
         <div className="border-primary/40 border-l-2 pl-6 md:pl-10">
           <p className="max-w-3xl text-2xl leading-snug font-semibold tracking-tight text-balance md:text-3xl">
-            Each of these begins by refusing a default, and none of them stops
-            there.
+            Each of these starts from a default worth changing and carries the
+            change all the way into code.
           </p>
           <p className="text-muted-foreground mt-6 max-w-2xl leading-relaxed text-pretty">
-            A position that cannot be cashed out in a mechanism is just taste.
-            So every claim above is load-bearing somewhere in the tree: an
+            Every claim above is load-bearing somewhere in the tree: an
             invariant that makes the bad state unconstructible, a type that
             turns a mistake into a compile error, a corpus that turns a
             preference into a test.
