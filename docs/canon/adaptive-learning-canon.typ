@@ -1801,11 +1801,13 @@ rather than as *data*, and the remedy is to exhibit the data.
   $p_"response" = "selection"$, observed;
   $p_"direction" = "judgement"$ (Def. 4.9);
   $p_"hint" = "none"$;
-  $p_"pressure" = "none"$ within the screen bound below: nothing counts down,
-  and an item unanswered when its screen's bound is reached closes as
-  *expired* (Def. 3.1);
-  $p_"scored" = "true"$ --- right or wrong is shown at once and the set's
-  summary counts both, by catalogue entry; $p_"credited" = "false"$;
+  $p_"pressure" = "soft"$, the deadline at two minutes: nothing counts down
+  on screen, and an item unanswered when it is reached closes as *expired*
+  (Def. 3.1);
+  $p_"scored" = "true"$ --- right or wrong is shown at once, and the set's
+  summary counts both under every catalogue entry the item showed: each
+  misform a pick offered, the one a judge put in place, and, apart from
+  them, judges shown as authored, which show none; $p_"credited" = "false"$;
   $p_"retry" = "forbidden"$; $p_"repeat" = "none"$;
   $p_"reveal" = "explanation"$ --- the authored form, the catalogue rule,
   the word of $a$ or $b$ that decided it, and for a missed pick what the
@@ -1886,7 +1888,8 @@ rather than as *data*, and the remedy is to exhibit the data.
 #remark("4.18", name: "The grammar-lens record")[
   The outcomes of Corollary 4.8 and Remarks 4.15--4.17 are kept as one
   record: per item, its identity, the cue's modality, the answer and whether
-  it was right or expired, the catalogue entry it showed, the time to answer
+  it was right or expired, the catalogue entries it showed and the one
+  chosen, if a misform was, the time to answer
   and whether it was rushed, the step-down's questions, answers and last
   rung, the situation chosen, and the take's counts; per session, whether it
   was racing. They are observations (Def. 3.1); the surface keeps no belief,
@@ -3677,13 +3680,16 @@ would cost.
 
 + *The catalogue is not the learner's.* Definition 4.9's misforms are drawn
   from mistakes learners are known to make, and the catalogue that names
-  them is authored, not observed in this learner. If the record shows a
-  misform almost never chosen, the item it sits in asks whether the learner
-  can spot a mistake they would not make, and its outcome measures
-  attention, not form. Cost: misforms are weighted by what this learner
-  chose, or drawn from their own writing elsewhere, and Definition 4.9's
-  "known to make" is narrowed to the learner. Detectable from Remark 4.18's
-  record, by whoever reads the export.
+  them is authored, not observed in this learner. The surface sees only
+  recognition: which authored forms the learner chose. If the record shows a
+  misform almost never chosen, its item asks the learner to recognise a form
+  they already recognise, and its outcome measures attention rather than
+  form; whether they would write that misform is not something selection can
+  show. Cost: misforms are weighted toward those this learner chooses, or
+  drawn from a production observation of their own writing that this surface
+  does not make, and Definition 4.9's "known to make" is narrowed
+  accordingly. Detectable from Remark 4.18's record, by whoever reads the
+  export.
 
 + *The items sit above the learner.* If the step-down reaches its lowest rung
   on most misses, every miss says the same thing: the line was out of reach,
@@ -3974,8 +3980,8 @@ line.
 *v1.18 --- 2026-10-17.* Admits a grammar-lens session beside read-aloud on
 the same start screen, as new items: the grammar-lens item, whose wrong
 candidates are authored misforms naming a mistake catalogue, with
-$p_"direction"$ gaining *judgement* (Def. 4.9); its valuation, untimed,
-shown, never credited, with no gloss and no voiced misform (Cor. 4.8); a
+$p_"direction"$ gaining *judgement* (Def. 4.9); its valuation, with a soft
+two-minute deadline and nothing counting down, shown, never credited, with no gloss and no voiced misform (Cor. 4.8); a
 sealed step-down after a miss and a situation check after alternate right
 answers (Rem. 4.15); the learner's own take (Rem. 4.16); time to answer with
 rushed and racing flags nothing acts on (Rem. 4.17); and a bounded record
