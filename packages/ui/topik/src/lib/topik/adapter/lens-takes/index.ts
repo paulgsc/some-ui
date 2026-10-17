@@ -11,8 +11,13 @@ export type LensTakeSnapshot = {
   take: VoiceTake
   /** Said once beside the button: how the last take ended, or why none can. */
   said: string | null
-  /** The last take kept since the last `reset`. */
+  /** The last take kept since the last `reset`: the one "Mine" plays. */
   last: { id: string; durationMs: number } | null
+  /**
+   * The last take kept, whatever item it was started on: a take cut off by
+   * leaving lands after `reset`, and the record still counts it.
+   */
+  kept: { id: string; durationMs: number } | null
   /** The last take is playing back. */
   playing: boolean
   /** No new take can be kept until the takes are shared (Rem. 4.16). */

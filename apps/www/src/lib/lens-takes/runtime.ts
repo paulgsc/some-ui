@@ -9,7 +9,8 @@
  *   arrived.
  * - **The last take is the item's.** `reset` forgets it, so the next item
  *   starts with none; a take still being kept when that happens is kept, but
- *   is not the next item's last.
+ *   is not the next item's last. `kept` names every take kept, for the
+ *   record to count on the item it was started on.
  */
 import { SOUNDBITE_MIN_MS } from "@some-ui/soundbites/contract"
 import type { LensTakes, LensTakeSnapshot } from "@some-ui/topik"
@@ -65,6 +66,7 @@ export type PhoneLensTakes = LensTakes & {
 export function createLensTakes(ports: LensTakesPorts): PhoneLensTakes {
   const listeners = new Set<() => void>()
   let last: LensTakeSnapshot["last"] = null
+  let kept: LensTakeSnapshot["kept"] = null
   let playback: Playback | null = null
   // Bumped by every play, stop and reset: a read that lands after is stale.
   let playRequest = 0
@@ -102,7 +104,8 @@ export function createLensTakes(ports: LensTakesPorts): PhoneLensTakes {
               durationMs,
               mimeType: take.mimeType,
             })
-            if (listed && forItem === item) last = { id, durationMs }
+            if (listed) kept = { id, durationMs }
+            if (listed && forItem === item) last = kept
             return listed
           },
           saved
@@ -118,6 +121,7 @@ export function createLensTakes(ports: LensTakesPorts): PhoneLensTakes {
       take: takeView(state),
       said: voiceNoteSaid(state, quiet),
       last,
+      kept,
       playing: playback !== null,
       full: full(),
     }

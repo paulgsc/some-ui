@@ -173,7 +173,7 @@ export const LensSession = ({
                 snapshot: take,
                 onStart: vm.startTake,
                 onStop: takes.stop,
-                onPlay: takes.playLast,
+                onPlay: vm.playTake,
               }
             : undefined
         }

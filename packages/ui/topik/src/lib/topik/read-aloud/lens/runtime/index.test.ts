@@ -42,24 +42,35 @@ function fakeSpeech(outcome: SpeechOutcome = { kind: "heard" }): FakeSpeech {
   return speech
 }
 
-/** A take port whose take runs until stopped, then is kept at 2 s. */
+/**
+ * A take port whose take runs until stopped, then is kept at 2 s. A reset
+ * mid-take leaves it being kept, for `land` to finish later; `short` ends
+ * one with nothing kept.
+ */
 function fakeTakes(): LensTakes & {
   stops: number
   tick: (elapsedMs: number) => void
-  keeping: () => void
+  land: (durationMs: number) => void
+  short: () => void
 } {
   let snapshot: LensTakeSnapshot = {
     take: { kind: "idle" },
     said: null,
     last: null,
+    kept: null,
     playing: false,
     full: false,
   }
   const listeners = new Set<() => void>()
-  let kept = 0
+  let count = 0
   const set = (next: Partial<LensTakeSnapshot>): void => {
     snapshot = { ...snapshot, ...next }
     for (const listener of listeners) listener()
+  }
+  const keep = (durationMs: number, mine: boolean): void => {
+    count += 1
+    const kept = { id: `k${count}`, durationMs }
+    set({ take: { kind: "idle" }, kept, ...(mine ? { last: kept } : {}) })
   }
   const port = {
     stops: 0,
@@ -71,18 +82,22 @@ function fakeTakes(): LensTakes & {
     start: (): void => set({ take: { kind: "recording", elapsedMs: 0 } }),
     stop: (): void => {
       port.stops += 1
-      if (snapshot.take.kind !== "recording") return
-      kept += 1
-      set({
-        take: { kind: "idle" },
-        last: { id: `k${kept}`, durationMs: 2000 },
-      })
+      if (snapshot.playing) set({ playing: false })
+      if (snapshot.take.kind === "recording") keep(2000, true)
     },
-    playLast: (): void => undefined,
-    reset: (): void => set({ take: { kind: "idle" }, last: null }),
+    playLast: (): void => set({ playing: true }),
+    reset: (): void =>
+      set({
+        take:
+          snapshot.take.kind === "recording"
+            ? { kind: "keeping" }
+            : snapshot.take,
+        last: null,
+      }),
     tick: (elapsedMs: number): void =>
       set({ take: { kind: "recording", elapsedMs } }),
-    keeping: (): void => set({ take: { kind: "keeping" } }),
+    land: (durationMs: number): void => keep(durationMs, false),
+    short: (): void => set({ take: { kind: "idle" } }),
   }
   return port
 }
@@ -357,7 +372,6 @@ describe("createLensRuntime", () => {
     const speech = fakeSpeech()
     const takes = fakeTakes()
     const { runtime, last, entries } = harness(speech, takes)
-    const detach = runtime.attach()
     runtime.begin()
     runtime.dispatch({
       type: "answer",
@@ -384,33 +398,13 @@ describe("createLensRuntime", () => {
       lastMs: 2000,
       heardFirst: false,
     })
-    detach()
   })
 
-  it("counts a take still under way when the learner leaves", () => {
+  it("counts a take the learner left mid-way on its item, once it is kept", () => {
     const takes = fakeTakes()
     const { runtime, last, entries } = harness(fakeSpeech(), takes)
-    const detach = runtime.attach()
     runtime.begin()
-    runtime.dispatch({
-      type: "answer",
-      at: runtime.now(),
-      answer: firstAnswer(last()),
-    })
-    if (last().state.phase.name === "step-down") {
-      runtime.dispatch({ type: "skip-probes", at: runtime.now() })
-    }
-    runtime.startTake()
-    runtime.dispose()
-    expect(entries.at(-1)?.take).toMatchObject({ count: 1 })
-    detach()
-  })
-
-  it("counts a take being kept when the learner leaves, at the length it ran", () => {
-    const takes = fakeTakes()
-    const { runtime, last, entries } = harness(fakeSpeech(), takes)
-    const detach = runtime.attach()
-    runtime.begin()
+    const line = currentItem(last().state)?.lineId
     runtime.dispatch({
       type: "answer",
       at: runtime.now(),
@@ -421,9 +415,63 @@ describe("createLensRuntime", () => {
     }
     runtime.startTake()
     takes.tick(3_200)
-    takes.keeping()
     runtime.dispose()
-    expect(entries.at(-1)?.take).toMatchObject({ count: 1, lastMs: 3_200 })
-    detach()
+    expect(entries.at(-1)).toMatchObject({ line, take: null })
+    // Kept after the session closed: the entry is written again with it.
+    takes.land(3_200)
+    expect(entries.at(-1)).toMatchObject({
+      line,
+      take: { count: 1, lastMs: 3_200 },
+    })
+  })
+
+  it("counts no take that was not kept, and asks about hearing at the first kept", () => {
+    const takes = fakeTakes()
+    const { runtime, last, entries } = harness(fakeSpeech(), takes)
+    runtime.begin()
+    runtime.dispatch({
+      type: "answer",
+      at: runtime.now(),
+      answer: firstAnswer(last()),
+    })
+    if (last().state.phase.name === "step-down") {
+      runtime.dispatch({ type: "skip-probes", at: runtime.now() })
+    }
+    // Too short to keep, before B was heard.
+    runtime.startTake()
+    takes.short()
+    runtime.hearLine()
+    runtime.startTake()
+    takes.stop()
+    runtime.dispatch({ type: "next", at: runtime.now() })
+    expect(entries.at(-1)?.take).toEqual({
+      count: 1,
+      lastMs: 2000,
+      heardFirst: true,
+    })
+  })
+
+  it("never plays the take and the speech at once", () => {
+    const speech = fakeSpeech()
+    const stop = vi.spyOn(speech, "stop")
+    const takes = fakeTakes()
+    const { runtime, last } = harness(speech, takes)
+    runtime.begin()
+    runtime.dispatch({
+      type: "answer",
+      at: runtime.now(),
+      answer: firstAnswer(last()),
+    })
+    if (last().state.phase.name === "step-down") {
+      runtime.dispatch({ type: "skip-probes", at: runtime.now() })
+    }
+    runtime.startTake()
+    takes.stop()
+    stop.mockClear()
+    runtime.playTake()
+    expect(stop).toHaveBeenCalled()
+    expect(takes.getSnapshot().playing).toBe(true)
+    runtime.hearLine()
+    expect(takes.getSnapshot().playing).toBe(false)
   })
 })

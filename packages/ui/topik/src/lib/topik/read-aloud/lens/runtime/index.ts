@@ -64,12 +64,15 @@ export type LensSnapshot = {
   cueRead: boolean
 }
 
+/** An item's takes as the record counts them (Rem. 4.16). */
+type ItemTakes = { count: number; lastMs: number; heardFirst: boolean }
+
 export type LensRuntime = {
   dispatch: (event: LensEvent) => void
-  /** Follows the takes while mounted; returns the detach. */
-  attach: () => () => void
   /** Starts a take of the current item's line, during its reveal. */
   startTake: () => void
+  /** Plays the item's last take back, the speech stopped first. */
+  playTake: () => void
   begin: () => void
   hearCue: () => void
   hearLine: () => void
@@ -105,18 +108,10 @@ export function createLensRuntime(
   /** The session's entries so far, by set and index: what `racing` reads. */
   const kept = new Map<string, LensRecordEntry>()
   let set = 0
-  /** Per item of the set: the takes kept, and whether its line was heard. */
-  let takes = new Map<
-    number,
-    { count: number; lastMs: number; heardFirst: boolean }
-  >()
+  /** Per item of the set: the takes kept. */
+  let takes = new Map<number, ItemTakes>()
   /** Items whose line was heard. */
   let lineHeard = new Set<number>()
-  /** Whether the line had been heard when each item's first take began. */
-  let heardAtFirst = new Map<number, boolean>()
-  let lastTake: string | null = null
-  /** How long the take under way ran, last seen: a take being kept says not. */
-  let takeMs = 0
 
   const now = (): number => options().now?.() ?? Date.now()
   const publish = (): void => {
@@ -179,29 +174,15 @@ export function createLensRuntime(
       })
   }
 
+  /** A playback of the learner's take stops before speech starts. */
+  const stopPlayback = (): void => {
+    const port = options().takes
+    if (port?.getSnapshot().playing) port.stop()
+  }
+
   /** A take is opening, recording or being kept. */
   const taking = (): boolean =>
     (options().takes?.getSnapshot().take.kind ?? "idle") !== "idle"
-
-  /**
-   * The item's takes for the record, a take still under way among them: one
-   * cut off by leaving or hiding is kept after this entry is written, and
-   * would land on no item.
-   */
-  const takenAt = (
-    index: number
-  ): { count: number; lastMs: number; heardFirst: boolean } | null => {
-    const made = takes.get(index) ?? null
-    const take = options().takes?.getSnapshot().take
-    const under = take?.kind === "recording" || take?.kind === "keeping"
-    if (!take || !under || index !== state.cursor) return made
-    return {
-      count: (made?.count ?? 0) + 1,
-      lastMs: take.kind === "recording" ? take.elapsedMs : takeMs,
-      heardFirst:
-        made?.heardFirst ?? heardAtFirst.get(index) ?? lineHeard.has(index),
-    }
-  }
 
   const keep = (index: number, at: number): void => {
     const item = state.items[index]
@@ -217,15 +198,76 @@ export function createLensRuntime(
       closedAt: at,
       audio: heard.has(item),
       earlier,
-      take: takenAt(index),
+      take: takes.get(index) ?? null,
     })
     kept.set(key, entry)
+    write(entry)
+  }
+
+  const write = (entry: LensRecordEntry): void => {
     try {
-      record(entry)
+      options().record?.(entry)
     } catch {
       // The record is the export's, and losing an entry costs nothing more
       // (Thm. 7.2): the session goes on.
     }
+  }
+
+  /**
+   * A take of item `index` of set `forSet` was kept: it counts there, and an
+   * entry already written for that item (it was left, or hidden, while the
+   * take was being kept) is written again with it.
+   */
+  const landed = (
+    forSet: number,
+    index: number,
+    lastMs: number,
+    heardFirst: boolean
+  ): void => {
+    const key = `${forSet}:${index}`
+    const entry = kept.get(key)
+    const current = forSet === set
+    const before = current ? (takes.get(index) ?? null) : (entry?.take ?? null)
+    const after: ItemTakes = {
+      count: (before?.count ?? 0) + 1,
+      lastMs,
+      heardFirst: before?.heardFirst ?? heardFirst,
+    }
+    if (current) takes.set(index, after)
+    if (entry) {
+      const again = { ...entry, take: after }
+      kept.set(key, again)
+      write(again)
+    }
+  }
+
+  /**
+   * Follows one take from its start to its end, outside React, so a take
+   * the learner left mid-way still lands on the item it was started on.
+   * Whether the line was heard is read when recording begins; the take
+   * counts only once kept (not too short, not refused, not failed).
+   */
+  const follow = (port: LensTakes, index: number): (() => void) => {
+    const forSet = set
+    const before = port.getSnapshot().kept?.id ?? null
+    let heardFirst: boolean | null = null
+    let started = false
+    const unsubscribe = port.subscribe(() => {
+      const { take, kept: landedTake } = port.getSnapshot()
+      if (take.kind === "recording" && heardFirst === null) {
+        heardFirst = forSet === set && lineHeard.has(index)
+      }
+      if (take.kind !== "idle") {
+        started = true
+        return
+      }
+      if (!started) return
+      unsubscribe()
+      if (landedTake && landedTake.id !== before && heardFirst !== null) {
+        landed(forSet, index, landedTake.durationMs, heardFirst)
+      }
+    })
+    return unsubscribe
   }
 
   const drawSet = (): void => {
@@ -242,7 +284,6 @@ export function createLensRuntime(
     set += 1
     takes = new Map()
     lineHeard = new Set()
-    heardAtFirst = new Map()
     session ||= new Date(now()).toISOString()
     dispatch({ type: "begin", at: now(), items })
   }
@@ -300,51 +341,39 @@ export function createLensRuntime(
     },
     hearCue: (): void => {
       const cue = currentItem(state)?.cue
-      if (cue && !taking()) say(cue.korean, "cue")
+      if (!cue || taking()) return
+      stopPlayback()
+      say(cue.korean, "cue")
     },
     hearLine: (): void => {
       const item = currentItem(state)
       // The line as authored, and only once its reveal shows it so; never
       // into a take under way.
       if (!item || state.phase.name !== "reveal" || taking()) return
+      stopPlayback()
       say(item.korean, "line")
-    },
-    attach: (): (() => void) => {
-      const port = options().takes
-      if (!port) return () => undefined
-      return port.subscribe(() => {
-        const { take } = port.getSnapshot()
-        if (take.kind === "recording") takeMs = take.elapsedMs
-        const kept = port.getSnapshot().last
-        if (!kept || kept.id === lastTake) return
-        lastTake = kept.id
-        const index = state.cursor
-        const before = takes.get(index)
-        takes.set(index, {
-          count: (before?.count ?? 0) + 1,
-          lastMs: kept.durationMs,
-          heardFirst:
-            before?.heardFirst ??
-            heardAtFirst.get(index) ??
-            lineHeard.has(index),
-        })
-      })
     },
     startTake: (): void => {
       const item = currentItem(state)
-      if (item && state.phase.name === "reveal") {
-        stopSpeech()
-        publish()
-        if (!heardAtFirst.has(state.cursor)) {
-          heardAtFirst.set(state.cursor, lineHeard.has(state.cursor))
-        }
-        options().takes?.start(item.lineId)
-      }
+      const port = options().takes
+      if (!item || !port || state.phase.name !== "reveal") return
+      stopSpeech()
+      publish()
+      const unfollow = follow(port, state.cursor)
+      port.start(item.lineId)
+      // Refused at once (full, or a take already under way): nothing to follow.
+      if (port.getSnapshot().take.kind === "idle") unfollow()
+    },
+    playTake: (): void => {
+      if (taking()) return
+      stopSpeech()
+      publish()
+      options().takes?.playLast()
     },
     hide: (): void => {
       clearTimer()
-      // The app may be closed while hidden: keep what was answered, a take
-      // under way counted while its length is known.
+      // The app may be closed while hidden: keep what was answered. A take
+      // under way is written into it again once kept (`follow`).
       keep(state.cursor, now())
       // No microphone or playback in the background; a take is kept.
       options().takes?.stop()

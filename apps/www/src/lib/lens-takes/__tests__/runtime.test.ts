@@ -116,6 +116,8 @@ describe("createLensTakes", () => {
     await settle()
     expect(p.listed.map(({ id }) => id)).toEqual(["t2", "t1"])
     expect(takes.getSnapshot().last).toBeNull()
+    // Still named as kept, for the record to count on its own item.
+    expect(takes.getSnapshot().kept).toEqual({ id: "t2", durationMs: 4_000 })
   })
 
   it("refuses a take past forty, evicting none, until shared takes are let go", async () => {

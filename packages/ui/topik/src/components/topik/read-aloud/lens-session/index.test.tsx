@@ -23,6 +23,7 @@ function fakeTakes(
     take: { kind: "idle" },
     said: null,
     last: null,
+    kept: null,
     playing: false,
     full: false,
     ...initial,
@@ -45,10 +46,8 @@ function fakeTakes(
       set({ take: { kind: "recording", elapsedMs: 0 } })
     },
     stop: (): void => {
-      set({
-        take: { kind: "idle" },
-        last: { id: `take-${started.length}`, durationMs: 2_500 },
-      })
+      const kept = { id: `take-${started.length}`, durationMs: 2_500 }
+      set({ take: { kind: "idle" }, last: kept, kept })
     },
     playLast: () => undefined,
     reset: () => set({ take: { kind: "idle" }, last: null }),
