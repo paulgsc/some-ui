@@ -41,6 +41,7 @@ Which authority a build starts in depends on what it can reach (`Backend`):
 | Push subscription                   | never                                        | never                                                                                                                                                                                       | the account's, on the person's own taps    |
 | Reflections                         | on the device (at most 20), never sent       | never sent (LA7)                                                                                                                                                                            | never sent (LA7)                           |
 | Shelf                               | never                                        | the account's, on the person's own taps                                                                                                                                                     | the same                                   |
+| aph (the phone's)                   | on the phone, never sent                     | once its person keeps it on home, on the paired home, synced while aph is open; the phone keeps only what home has not confirmed (LA9)                                                      | the same                                   |
 | Speech                              | the browser's own voice                      | the server's speech service                                                                                                                                                                 | the same                                   |
 | Reminders                           | the client's own policy, while a tab is open | the client's own policy, while a tab is open                                                                                                                                                | the server's push, with the browser closed |
 
@@ -298,10 +299,10 @@ declared (checked by reading every call site and by the tests named).
 
 - _Claim:_ in the Android app, every request to the home server goes through
   `lib/device-backend/native-http` (the one module that names
-  `CapacitorHttp`), which only `lib/home-link` calls, and is started by a tap
+  `CapacitorHttp`), which only `lib/home-link` calls, and, but for aph kept
+  on home (LA9, the one other caller of `lib/home-link`), is started by a tap
   in the Home server block of Settings
-  (`components/settings/device-section.tsx`, the one module outside
-  `lib/home-link` that calls it):
+  (`components/settings/device-section.tsx`):
   the sync (published lessons and rounds, read with no credential), pairing
   (the code only), unpairing, and the send to home (`lib/home-link/send`,
   after one confirm that names how many sessions and kept items and the
@@ -314,11 +315,12 @@ declared (checked by reading every call site and by the tests named).
   lets go of its own copy of those alone, each unchanged since it was read;
   then one PUT per item kept on this phone's shelf, its bytes as kept,
   nothing read back and the item kept on the phone. Nothing on home is
-  deleted. Nothing is sent when the app or Settings
+  deleted. Outside LA9, nothing is sent when the app or Settings
   opens, on resume, on a timer or on a network change: making the runtime and
-  `load` read only the phone's own record. There is no retry; a sync, a send
-  or a copy ends at Stop, or when the app goes to the background, before its
-  next request, and is over only once every request it started has settled.
+  `load` read only the phone's own record. There is no retry; a sync, a send,
+  a copy or aph's keeping ends at Stop, or when the app goes to the
+  background, before its next request, and is over only once every request
+  it started has settled.
   The pairing's credential is sent only to the base stored with it, over
   `https:` (`homeRequest` refuses a credentialed `http:` URL), and never on
   a sync read; no redirect is followed. Unpairing forgets it on the phone whether or
@@ -335,9 +337,10 @@ declared (checked by reading every call site and by the tests named).
   `CapacitorHttp`, call `native-http`, call `lib/home-link`); one that calls
   a `homeLink()` method that sends (`pair`, `unpair`, `sync`, `send`) from anywhere but
   a press handler in the Home server block or a module that block calls; one
-  that sends from `createHomeLink`, `load`, a `useEffect`, a timer, a
-  `visibilitychange` or `online` listener; one that retries a failed home
-  request, or queues one for later; one that lets the send start without
+  that calls its `keep` from anywhere but `lib/home-link/aph.ts` (LA9); one
+  that sends from `createHomeLink`, `load`, or, outside `lib/home-link/aph.ts`,
+  a `useEffect`, a timer, a `visibilitychange` or `online` listener; one that
+  retries a failed home request, or queues one for later, outside LA9; one that lets the send start without
   its confirm, or drops a count or the host from that confirm; one that
   sends shelf items other than `everyKept`'s, or with a method other than
   `PUT`; one that passes `copySessionsTo` anything but session records
@@ -361,7 +364,7 @@ declared (checked by reading every call site and by the tests named).
   (`sameRecord`); one that lets the runtime's `work` end before every
   request it started has settled (`inFlight`, `track`), so a second tap could
   race a create still on its way; one that deletes or weakens the
-  `onHidden` subscription in the runtime's `sync`, the `stopPressed` it
+  `onHidden` subscription in the runtime's `work`, the `stopPressed` it
   dispatches, the `stopped()` check in the `get` it hands out, or
   `onHidden`'s stop of a sync that starts already hidden
   (`lib/home-link/visibility.ts`); one that passes `token` on a sync's
@@ -401,6 +404,43 @@ declared (checked by reading every call site and by the tests named).
   `components/settings/__tests__/device-section.test.tsx` (opening Settings,
   paired or not, sends nothing; unpairing and the send each take a second
   press).
+
+### LA9: aph is sent home only while its person is using it
+
+What aph may send home, and what the phone may let go of, is enforced by
+test: who reaches the link and its `keep` lane (`egress-choke-points`), the
+requests an exchange makes and that an entry leaves the phone only once home
+answers with it unchanged (`packages/ui/aph/src/lib/__tests__/sync.test.ts`,
+`home.test.ts`), one run at a time and the opt-in's two presses
+(`lib/home-link/__tests__/aph.test.ts`,
+`components/aph/device-keep-on-home.test.tsx`). What no test can say is when
+a run is asked for:
+
+- _Claim:_ in `lib/home-link/aph.ts`, `ask` runs only at a moment its person
+  is using aph: from `watchAph`, which only `useAphHome` starts, for as long
+  as aph's strip is mounted, on the strip mounting, the switch to home (the
+  opt-in's second press) or an edit on this phone,
+  the app coming back to the foreground, the network coming back, the phone
+  being paired, or the link freeing up after turning a run away; or from
+  `askAph`, which the strip calls only from its button's `onClick`. Each
+  asks only when aph is kept on home and the document is visible. Nothing
+  asks on a timer.
+- _Falsified by:_ a hunk to `lib/home-link/aph.ts` that adds a listener,
+  subscription, timer or call site that reaches `ask`, removes `ask`'s check
+  that aph is kept on home or that the document is visible, or calls
+  `watchAph` from anywhere but `useAphHome`'s effect, or makes
+  `keepAphOnHome` do more than switch the store; or a hunk to
+  `components/aph/device-keep-on-home.tsx` that calls `keepAphOnHome` or
+  `askAph` other than from a button's `onClick`, or lets the first press of
+  the opt-in keep aph on home.
+- _Scope:_ `apps/www/src/lib/home-link/aph.ts`,
+  `apps/www/src/components/aph/device-keep-on-home.tsx`.
+- _Why not enforced:_ whether a moment is one where the person is using aph
+  is a reading of intent: a test sees a listener, not why it is there, and a
+  lint rule cannot tell a press handler from an effect that reaches it
+  through a helper. Held when declared, by reading every call: `ask` is
+  called in `watchAph`'s three listeners and its first ask, and in `askAph`;
+  `askAph` and `keepAphOnHome` are called only from the strip's `onClick`s.
 
 ## Not covered, on purpose
 

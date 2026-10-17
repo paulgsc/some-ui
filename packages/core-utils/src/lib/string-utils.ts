@@ -1,6 +1,9 @@
-/** `1 session`, `3 sessions`: a count with its noun, plural past one. */
-export function counted(n: number, noun: string): string {
-  return `${n} ${noun}${n === 1 ? "" : "s"}`
+/**
+ * `1 session`, `3 sessions`: a count with its noun, plural past one; an
+ * irregular plural is passed (`counted(n, "entry", "entries")`).
+ */
+export function counted(n: number, noun: string, plural = `${noun}s`): string {
+  return `${n} ${n === 1 ? noun : plural}`
 }
 
 /** "12.4 KB": a byte count as a person reads it. */
