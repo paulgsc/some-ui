@@ -17,11 +17,7 @@
  * they went with the ladder.
  */
 
-import {
-  classify,
-  DEFAULT_BOUNDARY_DAYS,
-  estimate,
-} from "@censor/lib/content/maturity/maturity"
+import { classify, estimate } from "@censor/lib/content/maturity/maturity"
 import type { SessionId } from "@some-extension/common"
 import { assertNever } from "@some-extension/common"
 
@@ -48,25 +44,21 @@ type Evidence = {
 }
 
 /**
- * The view a card's evidence earns at `now`.
+ * The view a card's evidence earns at `now`, under the owner's boundary.
  *
  * Plated only when the estimator places it at QM3 or QM4. Everything else is
  * absent: no date, a date the grammar cannot read, a live or upcoming card,
  * anything younger than the boundary, and every Short. Missing or
  * invalidated evidence therefore fails closed (doctrine §7).
- *
- * The boundary is the default until the owner can set one (#1807).
  */
 export function decide(
   evidence: Evidence,
   now: number,
+  boundaryDays: number,
   session: SessionId
 ): ViewState {
   if (evidence.short) return { kind: "absent", session }
-  const band = classify(
-    estimate(evidence.uploadDate, now),
-    DEFAULT_BOUNDARY_DAYS
-  )
+  const band = classify(estimate(evidence.uploadDate, now), boundaryDays)
   return band === "QM3" || band === "QM4"
     ? { kind: "plated", session }
     : { kind: "absent", session }

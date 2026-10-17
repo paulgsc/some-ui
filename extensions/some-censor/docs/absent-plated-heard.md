@@ -9,7 +9,7 @@
 
 Every video on www.youtube.com is in exactly one of three states. The state is
 a pure function of evidence (the video's estimated age, its title's script, its
-music signals) and two settings. No gesture changes it (`QD16`).
+music signals) and one setting, the boundary. No gesture changes it (`QD16`).
 
 | The video is                                                           | On feeds and search                                                                           | On its watch page                                                                                    | Its real thumbnail                                              |
 | ---------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
@@ -94,12 +94,17 @@ share Han (`QD15`).
 The popup holds the only choices:
 
 - **Show videos older than:** 6 months, 1 year (default), 2 years.
-- **Languages I listen to but don't read:** 한국어, 中文, 日本語.
 - An on/off switch, and Diagnostics.
 
-No counts, no history, no trusted channels, no "always show thumbnails"
-switch, no plate picker. Changing the boundary is recorded quietly in
-Diagnostics (the doctrine's §9 falsifier needs it) and never prompted about.
+No counts, no history, no trusted channels, no languages setting (the owner
+dropped it on 2026-10-17: being music alone admits a video to the lane), no
+"always show thumbnails" switch, no plate picker. Changing the boundary is
+recorded quietly in Diagnostics (the doctrine's §9 falsifier needs it) and
+never prompted about.
+
+_Status: holds (#1807)._ The settings are one `storage.local` record, read
+by the content script at start and on every change, so an open tab follows
+the popup without a reload. Unreadable storage yields the defaults.
 
 ## 8. Never on youtube.com
 

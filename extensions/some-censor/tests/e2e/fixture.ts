@@ -24,6 +24,7 @@ import {
   chromium,
   type BrowserContext,
   type Page,
+  type Worker,
 } from "@playwright/test"
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -84,10 +85,19 @@ async function pollDebug(
   )
 }
 
+/** The extension's service worker, once it has registered. */
+async function extensionWorker(context: BrowserContext): Promise<Worker> {
+  return (
+    context.serviceWorkers()[0] ?? (await context.waitForEvent("serviceworker"))
+  )
+}
+
 // ── Fixture types ─────────────────────────────────────────────────────────────
 
 type BoyoFixtures = {
   context: BrowserContext
+  /** The host of the extension's own pages, for `chrome-extension://<id>/`. */
+  extensionId: string
   fixture: {
     goto(name?: string): Promise<Page>
     pollDebug(
@@ -136,8 +146,6 @@ export const test = base.extend<BoyoFixtures & { page: Page }>({
       ],
     })
 
-    // Stub browser.runtime for fixture page-level JS.
-    // The content script uses the real extension API injected by Chromium.
     await context.addInitScript(
       /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/consistent-type-assertions, @typescript-eslint/no-unsafe-argument */
       () => {
@@ -146,29 +154,23 @@ export const test = base.extend<BoyoFixtures & { page: Page }>({
             e.detail
           ) as typeof window.__BOYO_DEBUG__
         })
-
-        if (!(window as any).chrome?.runtime?.sendMessage) {
-          ;(window as any).chrome = {
-            runtime: {
-              // eslint-disable-next-line @typescript-eslint/require-await
-              sendMessage: async (msg: any): Promise<unknown> => {
-                if (msg.type === "GET_ENABLED")
-                  return { ok: true, enabled: true }
-                return { ok: true }
-              },
-              onMessage: {
-                addListener: (): void => {},
-                removeListener: (): void => {},
-              },
-            },
-          }
-        }
       }
       /* eslint-enable @typescript-eslint/no-explicit-any, @typescript-eslint/consistent-type-assertions, @typescript-eslint/no-unsafe-argument */
     )
 
+    // The profile outlives a test, and so would a setting one test changed.
+    const worker = await extensionWorker(context)
+    await worker.evaluate(() =>
+      // eslint-disable-next-line no-restricted-globals -- Chromium's worker has no `browser`
+      chrome.storage.local.remove(["settings", "boundaryChanges"])
+    )
+
     await use(context)
     await context.close()
+  },
+
+  extensionId: async ({ context }, use) => {
+    await use(new URL((await extensionWorker(context)).url()).host)
   },
 
   page: async ({ context }, use) => {

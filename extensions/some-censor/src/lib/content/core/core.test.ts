@@ -9,6 +9,7 @@
 
 import { readdirSync, readFileSync } from "node:fs"
 import { resolve } from "node:path"
+import { DEFAULT_BOUNDARY_DAYS } from "@censor/lib/content/maturity/maturity"
 import { asChannelId, asVideoId } from "@censor/types/ids"
 import type { SessionId } from "@some-extension/common"
 import { describe, expect, it } from "vitest"
@@ -59,7 +60,14 @@ function fold(
 const K = cardKey(asVideoId("vid_a"))
 const OLD = "6 years ago"
 
-const started: CoreEvent = { kind: "start", session: session(1), t: 0 }
+const B = DEFAULT_BOUNDARY_DAYS
+
+const started: CoreEvent = {
+  kind: "start",
+  session: session(1),
+  boundaryDays: B,
+  t: 0,
+}
 
 /** `videoId`'s card observed at `t`, with `overrides` on the default observation. */
 function seen(
@@ -140,6 +148,7 @@ describe("replay determinism (B8)", () => {
     seen(2, { channelId: null, channelName: null, uploadDate: OLD }, "vid_b"),
     seen(3, { uploadDate: OLD }),
     seen(4, {}, "vid_b"),
+    { kind: "boundary", days: 2 * B, t: 5 },
     unknownShape(5),
     nav(2, 6),
     seenA,
@@ -195,6 +204,7 @@ describe("lifecycle (R1, R3)", () => {
     const again = reduce(first.state, {
       kind: "start",
       session: session(9),
+      boundaryDays: B,
       t: 9,
     })
     expect(again.actions).toEqual([])
@@ -322,12 +332,14 @@ describe("evidence alone decides (R7)", () => {
     expect(viewOf(later.state)).toBe("plated")
   })
 
-  it("lets no input change a card's view", () => {
+  it("lets no input but the boundary change a card's view", () => {
     // Every Input kind, by name: a new one fails to compile here until it
-    // says what it does to a held card.
+    // says what it does to a held card. These two cards are on the same side
+    // of every boundary the popup offers.
     const inputs: { [K in Input["kind"]]: Extract<Input, { kind: K }> } = {
-      start: { kind: "start", session: session(5), t: 3 },
+      start: { kind: "start", session: session(5), boundaryDays: B, t: 3 },
       stop: { kind: "stop", t: 3 },
+      boundary: { kind: "boundary", days: 2 * B, t: 3 },
     }
     for (const uploadDate of [OLD, "3 days ago"]) {
       const { state } = fold([started, seen(1, { uploadDate })])
@@ -339,6 +351,45 @@ describe("evidence alone decides (R7)", () => {
         ).toBe(true)
       }
     }
+  })
+})
+
+describe("the boundary (R7, #1807)", () => {
+  const TWO_YEARS = "2 years ago"
+  const boundary = (days: number, t = 5): CoreEvent => ({
+    kind: "boundary",
+    days,
+    t,
+  })
+
+  it("re-decides a card in place, straight from one stamp to the other", () => {
+    const { state } = fold([started, seen(1, { uploadDate: TWO_YEARS })])
+    expect(viewOf(state)).toBe("plated")
+    const raised = reduce(state, boundary(2 * B))
+    expect(viewOf(raised.state)).toBe("absent")
+    expect(kinds(raised.actions)).toEqual(["render", "record:entry.state"])
+    const lowered = reduce(raised.state, boundary(B))
+    expect(viewOf(lowered.state)).toBe("plated")
+    expect(kinds(lowered.actions)).toEqual(["render", "record:entry.state"])
+  })
+
+  it("touches no card whose view stays", () => {
+    const { state } = fold([started, seenA, seen(1, { uploadDate: OLD }, "b")])
+    expect(reduce(state, boundary(2 * B)).actions).toEqual([])
+  })
+
+  it("decides later observations, and the next start, under the new value", () => {
+    const { state } = fold([
+      started,
+      boundary(2 * B),
+      seen(6, { uploadDate: TWO_YEARS }),
+    ])
+    expect(viewOf(state)).toBe("absent")
+    const restarted = fold([
+      { kind: "start", session: session(2), boundaryDays: 2 * B, t: 0 },
+      seen(1, { uploadDate: TWO_YEARS }),
+    ])
+    expect(viewOf(restarted.state)).toBe("absent")
   })
 })
 

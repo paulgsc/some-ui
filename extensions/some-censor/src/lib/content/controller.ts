@@ -3,8 +3,9 @@
  *
  * What is left once the Sensor owns observation and navigation, Core owns
  * every decision and the Actuator owns every write: starting the recording,
- * waiting for `ytd-app`, and answering the background's enable/disable
- * broadcast.
+ * waiting for `ytd-app`, and following the owner's settings in
+ * `storage.local` (#1807): the on/off switch starts and stops the runtime,
+ * and the boundary goes to Core, before the first start and on every change.
  *
  * Lifecycle properties, labelled here because they are cited elsewhere;
  * pinned by `runtime/runtime.test.ts`, not declared review invariants:
@@ -22,6 +23,13 @@
  *        `yt-navigate-finish` into one `nav` (`NAV_DEBOUNCE_MS`).
  */
 
+import type { Settings } from "@censor/lib/settings/settings"
+import {
+  boundaryDays,
+  DEFAULT_SETTINGS,
+  parseSettings,
+  SETTINGS_KEY,
+} from "@censor/lib/settings/settings"
 import { ext } from "@censor/platform/content"
 
 import { startObservability } from "./observability"
@@ -41,28 +49,37 @@ export class Controller {
     // record into it and deliberately *not* restarted per session — see
     // observability.ts's header for why that scope is the right one.
     startObservability()
-    this._listenBroadcasts()
-    this._bootstrap()
+    this._followSettings()
   }
 
-  // ── Bootstrap ─────────────────────────────────────────────────────────────
+  // ── Settings ──────────────────────────────────────────────────────────────
 
-  private _bootstrap(): void {
-    ext.runtime
-      .sendMessage({ type: "GET_ENABLED" })
-      .then((r: unknown) => {
-        // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-        const resp = r as { ok?: boolean; enabled?: boolean } | null
-        const enabled =
-          resp?.ok === true && typeof resp.enabled === "boolean"
-            ? resp.enabled
-            : true
-        if (enabled) this._waitForApp()
+  /**
+   * Read the settings once and follow every change. A change that lands
+   * before the first read resolves is newer than it, so the read is then
+   * dropped; a failed read applies the defaults.
+   */
+  private _followSettings(): void {
+    let changed = false
+    // Lifetime: the content script's own; the page's unload ends it.
+    ext.storage.onChanged.addListener((changes, area) => {
+      if (area !== "local" || !(SETTINGS_KEY in changes)) return
+      changed = true
+      this._apply(parseSettings(changes[SETTINGS_KEY].newValue))
+    })
+    void ext.storage.local
+      .get(SETTINGS_KEY)
+      .then((stored) => parseSettings(stored[SETTINGS_KEY]))
+      .catch(() => DEFAULT_SETTINGS)
+      .then((settings) => {
+        if (!changed) this._apply(settings)
       })
-      .catch(() => {
-        // Degraded: proceed as enabled (safe default)
-        this._waitForApp()
-      })
+  }
+
+  private _apply(settings: Settings): void {
+    this._runtime.setBoundary(boundaryDays(settings.boundary))
+    if (settings.enabled) this._waitForApp()
+    else this._stop()
   }
 
   private _start(): void {
@@ -79,6 +96,7 @@ export class Controller {
   // ── DOM bootstrap ─────────────────────────────────────────────────────────
 
   private _waitForApp(): void {
+    if (this._appWaiter !== null) return
     if (document.querySelector("ytd-app")) {
       this._start()
       return
@@ -93,18 +111,6 @@ export class Controller {
     this._appWaiter.observe(document.documentElement, {
       childList: true,
       subtree: true,
-    })
-  }
-
-  // ── Background messages ───────────────────────────────────────────────────
-
-  private _listenBroadcasts(): void {
-    ext.runtime.onMessage.addListener((msg: unknown) => {
-      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-      const m = msg as { type?: string; enabled?: boolean }
-      if (m.type !== "ENABLED_CHANGED") return
-      if (m.enabled) this._start()
-      else this._stop()
     })
   }
 }
