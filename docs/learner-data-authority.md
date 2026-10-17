@@ -421,13 +421,14 @@ a run is asked for:
   as aph's strip is mounted, on the strip mounting, an edit on this phone,
   the app coming back to the foreground, the network coming back, the phone
   being paired, or the link freeing up after turning a run away; or from
-  `keepAphOnHome` and `askAph`, which the strip calls only from its buttons'
-  `onClick`. Each asks only when aph is kept on home and the document is
-  visible. Nothing asks on a timer.
+  `askAph`, which the strip calls only from its button's `onClick`. Each
+  asks only when aph is kept on home and the document is visible. Nothing
+  asks on a timer.
 - _Falsified by:_ a hunk to `lib/home-link/aph.ts` that adds a listener,
   subscription, timer or call site that reaches `ask`, removes `ask`'s check
   that aph is kept on home or that the document is visible, or calls
-  `watchAph` from anywhere but `useAphHome`'s effect; or a hunk to
+  `watchAph` from anywhere but `useAphHome`'s effect, or makes
+  `keepAphOnHome` do more than switch the store; or a hunk to
   `components/aph/device-keep-on-home.tsx` that calls `keepAphOnHome` or
   `askAph` other than from a button's `onClick`, or lets the first press of
   the opt-in keep aph on home.
@@ -437,9 +438,8 @@ a run is asked for:
   is a reading of intent: a test sees a listener, not why it is there, and a
   lint rule cannot tell a press handler from an effect that reaches it
   through a helper. Held when declared, by reading every call: `ask` is
-  called in `watchAph`'s three listeners and its first ask, and in
-  `keepAphOnHome` and `askAph`; those two are called only from the strip's
-  `onClick`s.
+  called in `watchAph`'s three listeners and its first ask, and in `askAph`;
+  `askAph` and `keepAphOnHome` are called only from the strip's `onClick`s.
 
 ## Not covered, on purpose
 

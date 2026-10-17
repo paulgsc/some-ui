@@ -112,13 +112,12 @@ export function useAphHome(aph: AphKeeping): AphHomeState {
 }
 
 /**
- * The opt-in's second press: aph is kept on home from now on, and the first
- * run is asked for. False when the phone would not keep the switch.
+ * The opt-in's second press: aph is kept on home from now on. The switch is
+ * a change to the store, so the strip's watch asks for the first run.
+ * False when the phone would not keep the switch.
  */
 export function keepAphOnHome(aph: AphKeeping): boolean {
-  if (!aph.store.keepOnHome()) return false
-  ask(aph, document)
-  return true
+  return aph.store.keepOnHome()
 }
 
 /** "Try now": asks for a run, as any other moment above would. */
