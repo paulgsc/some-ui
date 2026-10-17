@@ -194,7 +194,7 @@ the shortest life that works, and nothing recreated leaves its old copy behind.
   - The Pages deployment, npm packages, AMO submissions and the `paulgsc/www` Docker Hub
     image are the point of their workflows and are meant to last. Nothing prunes old
     Docker Hub tags; that is Docker Hub's storage, not this repo's.
-  - Bot branches (`release/pages`, `changeset-release/*`, `bot/server-route-snapshot`,
+  - Bot branches (`changeset-release/*`, `bot/server-route-snapshot`,
     `bot/flake-update`) are opened with `create-pull-request`'s `delete-branch: true`,
     so each deletes itself once `main` carries its content.
 - **Repo setting, not code:** Settings → Actions → General → "Artifact and log
@@ -477,9 +477,10 @@ never "sounds like good practice."
   which survives both: `adb logcat -s SomeUI`.
 - **Nothing on a PR builds or launches the Android app.** `mobile-apk.yml` (Gradle
   compile, R8 release build, Android Lint, the Play review, and an emulator launch test)
-  runs only on pushes to `main`, so a Java error in `apps/mobile/android`, an R8 break or a
+  runs only on pushes to `main`, and builds only once someone approves that run (the
+  `mobile-release` environment), so a Java error in `apps/mobile/android`, an R8 break or a
   Lint error (the review gates on errors, `lint.gate` in `apps/mobile/review/policy.json`;
-  warnings stay report-only) first appears after merge, on a green PR. Build it here before
+  warnings stay report-only) first appears after merge and approval, on a green PR. Build it here before
   pushing any change under `apps/mobile/android`: dl.google.com is reachable, so unzip
   Google's `commandlinetools` into the scratchpad, `sdkmanager --sdk_root=<dir>
 "platforms;android-36" "build-tools;36.0.0"`, then `pnpm exec cap sync android` from

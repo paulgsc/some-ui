@@ -9,6 +9,12 @@ name: Mobile APK
 # `main` when that branch landed; pull requests do not build it (pr.yml still
 # lints, typechecks and tests the www code it carries).
 #
+# A push does not build on its own: its run waits in the `approve` job on the
+# `mobile-release` environment's required reviewer, and only approving it
+# builds an APK, from that run's commit. Nothing consumes a version from this
+# workflow (versionCode is the run number), so no release PR or version bump
+# is involved (epic #1615, Decision 1).
+#
 # Why CI builds it rather than a laptop or the agent sandbox: Gradle needs the
 # Android SDK (`compileSdkVersion` in apps/mobile/android/variables.gradle),
 # which `ubuntu-latest` ships preinstalled at $ANDROID_HOME. The Claude Code
@@ -24,11 +30,13 @@ on:
       - "pnpm-lock.yaml"
       - ".github/workflows/mobile-apk.yml"
       - ".github/workflows/_mobile-review.yml"
+      - ".github/workflows/_environment-approval.yml"
       - ".github/actions/**"
 
-concurrency:
-  group: mobile-apk-${{ github.ref }}
-  cancel-in-progress: true
+# No workflow-level concurrency: cancelling in progress there would let a
+# newer push kill a build someone approved, and queueing there would leave a
+# newer push behind a run still waiting for approval. Only `approve` takes a
+# group.
 
 permissions:
   contents: read
@@ -37,8 +45,17 @@ permissions:
   actions: write
 
 jobs:
+  approve:
+    name: Approve APK build
+    uses: ./.github/workflows/_environment-approval.yml
+    with:
+      environment: mobile-release
+    permissions:
+      actions: read
+
   apk:
     name: Build APK
+    needs: approve
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -286,7 +303,9 @@ jobs:
   # retained APK to check versionCode only ever rises, and after the launch
   # test, so an APK that will not open never replaces one that does; and
   # never after a failed or cancelled run, which leaves the previous APK in
-  # place.
+  # place. Older means an earlier run (run IDs only rise): two approved
+  # builds can overlap, and the older one's prune must not delete the newer
+  # one's APK.
   prune:
     name: Delete older APK artifacts
     needs: [apk, review, launch]
@@ -299,7 +318,7 @@ jobs:
           gh api --paginate "repos/$GITHUB_REPOSITORY/actions/artifacts?per_page=100" \
             --jq ".artifacts[]
                   | select(.name | startswith(\"some-ui-apk-\"))
-                  | select(.workflow_run.id != $GITHUB_RUN_ID)
+                  | select(.workflow_run.id < $GITHUB_RUN_ID)
                   | select(.expired | not)
                   | .id" |
           while read -r id; do
