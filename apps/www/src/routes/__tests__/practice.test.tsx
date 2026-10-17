@@ -1,8 +1,9 @@
 /**
  * @vitest-environment jsdom
  *
- * Home's study card must not read a failed sessions read as "nothing in
- * progress" and offer Start over a session that is only unreadable.
+ * Practice's Home: its study card must not read a failed sessions read as
+ * "nothing in progress" and offer Start over a session that is only
+ * unreadable.
  */
 
 import { fakeQueryResult, withQueryClient } from "@/test-support/query-client"
@@ -44,15 +45,8 @@ vi.mock(
   }
 )
 
-// An "apk" workspace, stubbed in the test build's profile; its cards are
-// tested in @some-ui/aph, and only the study card is under test here.
-vi.mock("@some-ui/aph", () => ({
-  AphTodayCard: (): null => null,
-  AphTodayEntries: (): null => null,
-}))
-
-const { Route } = await import("@/routes/_dashboard/_apk/today")
-const TodayRoute = routeComponent(Route)
+const { Route } = await import("@/routes/_dashboard/_apk/practice/index")
+const PracticeHome = routeComponent(Route)
 
 afterEach(() => {
   cleanup()
@@ -67,10 +61,10 @@ function renderWith(
   fields: Parameters<typeof fakeQueryResult<Sessions>>[0]
 ): void {
   mockResult = fakeQueryResult<Sessions>({ refetch, ...fields })
-  render(withQueryClient(<TodayRoute />))
+  render(withQueryClient(<PracticeHome />))
 }
 
-describe("Home's study card", () => {
+describe("Practice's study card", () => {
   it("says the sessions could not be read, and retries, rather than offering Start", () => {
     renderWith({ data: undefined, isError: true, error: new Error("offline") })
 

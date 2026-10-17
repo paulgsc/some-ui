@@ -354,7 +354,10 @@ catches build scripts): `some-censor`, `some-drama`, `some-filter`,
 `filter-classifier`, `docs`, and `scripts` are excluded — shared code and a
 test corpus, not shipped extensions.
 
-The package count is 43 -> 44 on 2026-10-12, when `packages/ui/playoff-delta`
+The package count is 44 -> 43 on 2026-10-17: `packages/job-tracker`
+(`@some-ui/job-tracker`, the web app's local job queue) was deleted with its
+`/jobs` page; the story behind it moved on. Before that it was 43 -> 44 on
+2026-10-12, when `packages/ui/playoff-delta`
 (`@some-ui/playoff-delta`, the weekly vlog's story stage, a web-only
 recording surface over a JSON contract) landed. Before that it was
 42 -> 43 on 2026-10-11, when `packages/voice-capture`

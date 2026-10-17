@@ -22,16 +22,21 @@ import {
   Outlet,
   useRouterState,
 } from "@tanstack/react-router"
-import { Briefcase, FileText, ListVideo, Settings, User } from "lucide-react"
+import { FileText, ListVideo, Settings, User } from "lucide-react"
 
 import { authority } from "@/lib/authority"
 import { MOBILE_APP } from "@/lib/build-profile"
 import { useIsTerminal } from "@/lib/orchestrator"
 import { useIsDeclaredBounded } from "@/lib/route-bounds"
+import { wingOf } from "@/lib/wings"
 import { AudioIndicator } from "@/components/audio/audio-indicator"
 import { AccountUnavailableBanner } from "@/components/auth/account-unavailable-banner"
 import { LocIndicator } from "@/components/loc/loc-indicator"
-import { MobileHomeLink, MobileNav } from "@/components/mobile-shell"
+import {
+  MobileNav,
+  MobileSettingsLink,
+  MobileWayOut,
+} from "@/components/mobile-shell"
 import { DeviceStoragePrompt } from "@/components/settings/device-storage"
 import { SiteLauncher } from "@/components/site-launcher"
 import { ThemeSwitcher } from "@/components/theme-switcher"
@@ -61,7 +66,7 @@ function isComposerPath(pathname: string): boolean {
 
 /** The web app's sidebar. The Android app has its own bar (`MobileNav`). */
 type NavItem = {
-  to: "/app" | "/sessions" | "/resume" | "/jobs" | "/profile" | "/settings"
+  to: "/app" | "/sessions" | "/resume" | "/profile" | "/settings"
   label: string
   // Widened from `typeof Home` so the brand mark sits alongside the lucide
   // glyphs; the sidebar's `[&>svg]:size-4` sizes both.
@@ -72,7 +77,6 @@ const NAV_ITEMS: ReadonlyArray<NavItem> = [
   { to: "/app", label: "Home", icon: BrandMark },
   { to: "/sessions", label: "Sessions", icon: ListVideo },
   { to: "/resume", label: "Résumé", icon: FileText },
-  { to: "/jobs", label: "Jobs", icon: Briefcase },
   { to: "/profile", label: "Profile", icon: User },
   { to: "/settings", label: "Settings", icon: Settings },
 ]
@@ -142,6 +146,7 @@ const DashboardLayout = (): JSX.Element => {
   const pathname = useRouterState({
     select: (state) => state.location.pathname,
   })
+  const wing = wingOf(pathname)
   const isViewportRoute = isViewportPath(pathname)
   const isMobile = useIsMobile()
   const isTerminal = useIsTerminal()
@@ -179,26 +184,25 @@ const DashboardLayout = (): JSX.Element => {
         {!bareViewport && (
           <header className="flex h-14 shrink-0 items-center gap-2 border-b px-4">
             {!MOBILE_APP && <SidebarTrigger />}
-            {/* Where the bottom bar steps aside, the header holds the way
-                home, so the composer can be left without finishing it. */}
-            {MOBILE_APP && isBoundedRoute && <MobileHomeLink />}
-            <ThemeSwitcher />
-            {/* Layer 1 of audio disclosure: a standing indicator of what this
-                app may play, and where first-use notices point back to. */}
-            <AudioIndicator />
-            {/* Lines written lately (`lib/loc-report`); nothing in a build
-                without a snapshot. Before the Settings link `ml-auto` pins. */}
-            <LocIndicator />
-            <SiteLauncher />
+            {/* The phone's way out: back to the wing's Home where the bar
+                steps aside, so the composer can be left without finishing
+                it; otherwise to the foyer, to choose another wing. */}
             {MOBILE_APP && (
-              <Link
-                to="/settings"
-                aria-label="Settings"
-                className="hover:bg-accent ml-auto flex size-10 items-center justify-center rounded-md"
-              >
-                <Settings className="size-5" />
-              </Link>
+              <MobileWayOut pathname={pathname} bounded={isBoundedRoute} />
             )}
+            {/* On the phone the theme is the front desk's (Settings). */}
+            {!MOBILE_APP && <ThemeSwitcher />}
+            {/* Layer 1 of audio disclosure: a standing indicator of what this
+                app may play, and where first-use notices point back to. On
+                the phone only Practice plays anything. */}
+            {(!MOBILE_APP || wing?.id === "practice") && <AudioIndicator />}
+            {/* Lines written lately (`lib/loc-report`); nothing in a build
+                without a snapshot. On the phone it is Studio's: what gets
+                made about the build. Before the Settings link `ml-auto`
+                pins. */}
+            {(!MOBILE_APP || wing?.id === "studio") && <LocIndicator />}
+            <SiteLauncher />
+            {MOBILE_APP && <MobileSettingsLink pathname={pathname} />}
           </header>
         )}
         {!bareViewport && <AccountUnavailableBanner />}

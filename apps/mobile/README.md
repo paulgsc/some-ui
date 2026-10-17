@@ -12,42 +12,66 @@ handler is www's, and so is the backend (`apps/www/src/lib/device-backend`).
 > Status: **beta, on `main`.** It grew on a mobile staging branch until the
 > release APK had been used on a phone, then landed; iteration continues here.
 
-## What the app carries: a Home and its daily tools
+## What the app carries: a foyer and its wings
 
-The phone opens on its own **Home** (`/today`): what each daily tool needs
-from me right now, and what today has held so far. The tools hang off it,
-one tab each in the bar along the bottom:
+The app is several visits, not one: studying, my own tracking, and making
+the Build Journal. Each is a **wing** (www `src/lib/wings`): its own Home, its
+own rooms and settings, and nothing of another wing's on the screen.
 
-- **Study**: sessions - the list, the composer and the player;
-- **Bites**: the soundbites (below);
-- **aph**: logging aph and reconciling it (below).
+- The plain app icon opens the **foyer** (`/foyer`), "Where to?": each
+  wing's name and what it is for, and nothing of what is inside. No "due",
+  no counts, no "missed": a status line primes the visit with what was not
+  done before it starts.
+- Each wing also has **its own launcher icon** (an `<activity-alias>` per
+  wing, below), which skips the foyer. Drag the icons into one home-screen
+  folder for one tap per wing; Android lets no app make the folder itself,
+  and a widget cannot go in one.
 
-The + in the middle of the bar is a shortcut into those same tools ("Talk
-now", aph's mine or theirs, a new session), never a place of its own.
+The wings:
+
+- **Practice** (`/practice`): what is open or was finished today, and "Not
+  today? Say why". Its bar holds **Home**, **Study** (sessions: the list, the
+  composer and the player) and **Bites** (the soundbites, below). Its gear
+  opens its own settings (`/practice/settings`): the voice and the study
+  reminders.
+- **Self** (`/aph`): logging aph and reconciling it (below). One room, so no
+  bar: aph's own strip (Log, History, Trend, Settings) is its navigation.
+- **Studio** (`/journal`): the Build Journal's voice takes. One room.
+
+Outside every wing is the **front desk** (`/settings`, the gear on the
+foyer): this phone (the sync from home, pairing, storage) and the theme.
 Nothing else www routes to is here: the landing page, the web's Home, the
-résumé, jobs, profile, the extensions tour and the LAN tools are the web
-app's.
-**Settings** stays, behind the gear in the header, because on the phone it
-is the phone's own page: the sync from home, study reminders and the voice.
+résumé, profile, the extensions tour and the LAN tools are the web app's.
 
-How that is enforced (www `src/lib/app-surface`):
+How that is enforced (www `src/lib/app-surface`, `src/lib/wings`):
 
 - `build:web` selects the `mobile` profile (`apps/www/build.profiles.ts`),
   which sets `MOBILE_APP` in the bundle.
-- `MOBILE_SURFACE` is an **allowlist**: `/today`, `/sessions`, `/soundbites`,
-  `/aph` and `/settings`, typed against the route tree. (Also `/auth`, which the phone never shows since it
-  is always signed in: should a device route ever answer 401, the account
-  banner links there, and in this build it offers a reload, not a sign-in.) The root route redirects any other path to
-  `/today` before its own guards run, so the app opens on Home,
-  and a page added to www later stays off the phone until someone lists it.
-- There is no sidebar: the bottom bar (`src/components/mobile-shell`) links
-  the tools, and steps aside on the two bounded screens (the player and the
-  composer), where the header holds a Home link instead. "Start something
-  new" goes to the composer rather than the web Home's launcher.
+- `MOBILE_SURFACE` is an **allowlist**: `/foyer`, `/practice`, `/sessions`,
+  `/soundbites`, `/aph`, `/journal` and `/settings`, typed against the route
+  tree. (Also `/auth`, which the phone never shows since it is always signed
+  in: should a device route ever answer 401, the account banner links there,
+  and in this build it offers a reload, not a sign-in.) The root route
+  redirects any other path to the foyer before its own guards run, and a
+  page added to www later stays off the phone until someone lists it.
+- Every route belongs to exactly one wing's room, the foyer or the front
+  desk (`routes/__tests__/wings.test.ts` checks the real route tree), and
+  the bar shows only the current wing's rooms.
+- There is no sidebar. The header names the wing and leads to the foyer;
+  on the two bounded screens (the player and the composer), where the bar
+  steps aside, it leads back to the wing's Home instead.
 - Android's back (the button or the edge swipe) walks the app's history, and
-  leaves the app from Home or from a page with nothing behind it
-  (`MainActivity`). The app does not
-  carry `@capacitor/app`, without which back would close it from any page.
+  **ends where you entered**: it leaves the app from the root you came in by
+  (a wing's Home, through its icon, or the foyer, through the plain icon), or
+  from a page with nothing behind it (`MainActivity`). The app does not carry
+  `@capacitor/app`, without which back would close it from any page.
+- A wing's icon tapped while the app is open sends `someui:wing` to the page,
+  which navigates (www `lib/wings/entry.ts`) rather than reloading, so a
+  recording or a database write in flight is not cut off. The plain icon
+  tapped while open resumes where you were. The icon-to-root table is
+  `MainActivity`'s, fixed, never read from the intent;
+  `routes/__tests__/mobile-surface.test.ts` checks it, the manifest's aliases
+  and `policy.json` against www on every PR.
 - The build leaves out the résumé's PDFs and its `/resume/` document, and the
   web-push service worker `sw.js` (www `build.paths.ts`, `offPathPublicFiles`).
 
@@ -276,8 +300,12 @@ The debug APK is still built, for the review only (`mobile-review-<sha>`).
 
 **Launch test.** Before a run counts as green, its release APK is installed
 and started in an API 36 emulator, then driven by a short seeded monkey run
-(`launch/launch-test.sh`). A dead process, a crash, an ANR or a monkey run
-that did not finish fails the run, and the older APK is then kept. Since the
+(`launch/launch-test.sh`). It starts the plain icon, then each wing's icon
+(found from the installed package, and each must log `wing entered: <id>`),
+and presses back at a wing entered by its icon, which must leave the app. A
+dead process, a crash, an ANR, a missing wing line, a back that does not
+leave or a monkey run that did not finish fails the run, and the older APK is
+then kept. Since the
 release build is R8-shrunk, this is what catches a class it stripped that
 something needed by name. It cannot see a WebView that loads blank, which
 does not crash: `launched.png` in the `mobile-launch-<sha>` artifact is the
@@ -437,7 +465,8 @@ In the `CLAUDE.md` "Gray-area invariants" shape.
 >   features, and their code: soundbites and voice reflections
 >   (`RECORD_AUDIO`, `MODIFY_AUDIO_SETTINGS`), the recorder they share in
 >   `packages/voice-capture/src/lib/recorder.ts`, the soundbites page
->   `apps/www/src/routes/_dashboard/_apk/soundbites.tsx` and
+>   `apps/www/src/routes/_dashboard/_apk/soundbites.tsx`, the Build Journal
+>   `apps/www/src/routes/_dashboard/_apk/journal.tsx` and
 >   `apps/www/src/lib/reflection-voice/`; the
 >   sync from home, the home-server pairing, the shelf send and the sessions
 >   copy (`INTERNET`,
@@ -448,7 +477,10 @@ In the `CLAUDE.md` "Gray-area invariants" shape.
 >   phone's SQLite history (`allowBackup`),
 >   `apps/www/src/lib/device-backend/capacitor-sqlite/`; the launcher
 >   activity (`MainActivity`), `MainActivity.java` and its launcher
->   intent-filter in `android/app/src/main/AndroidManifest.xml`.
+>   intent-filter in `android/app/src/main/AndroidManifest.xml`; the wings'
+>   launcher icons (`WingPractice`, `WingSelf`, `WingStudio`), their
+>   `<activity-alias>` entries in that manifest, `MainActivity`'s wing table
+>   and `apps/www/src/lib/wings/`.
 > - _Scope:_ `apps/mobile/review/policy.json`, the code listed above, and
 >   those library declarations.
 > - _Why not enforced:_ the review enforces that a reason exists, and that
@@ -471,6 +503,9 @@ also www's `manifest.json` `theme_color`).
   cuts the face out of the body.
 - **Android 7:** `mipmap-*/ic_launcher{,_round}.png`, rendered from the same
   geometry. Re-render them if the mark changes.
+- **Wings:** each wing's icon is the same mark on its own colour
+  (`values/wings.xml`; `mipmap-anydpi-v26/ic_wing_*.xml`, with the same
+  monochrome layer). Android 7 shows the plain icon for each.
 - **Splash:** the same background and mark, as `drawable/splash.xml` before
   Android 12 and through the `windowSplashScreen*` items in
   `values/styles.xml` from 12 on. Capacitor's stock splash images are gone.
@@ -485,8 +520,10 @@ export ANDROID_HOME="$HOME/Android/Sdk"
 sdkmanager "platform-tools" "platforms;android-36" "build-tools;36.0.0"
 ```
 
-The Claude Code sandbox cannot install it (`dl.google.com` is outside its
-egress policy), which is why CI builds the APK.
+The Claude Code sandbox can: `dl.google.com` is reachable, so the repo's
+CLAUDE.md recipe (`commandlinetools` into a scratch directory, then
+`sdkmanager`) builds and lints the release APK before a push. Nothing on a PR
+builds it.
 
 ## Sync from home, and pairing
 
@@ -592,9 +629,9 @@ announced, not sprung:
   ends last.
 - **The wrap** replaces the bare timing summary: the time played, planned
   and added; "How did it go?", the session's reflections (below); and
-  **Done**, back to Home. Wrapping up inside the last minutes counts as
+  **Done**, back to Practice's Home. Wrapping up inside the last minutes counts as
   complete, not "stopped early".
-- **Home** then says **Studied today** ("15 min · Korean", or "2 sessions ·
+- **Practice's Home** then says **Studied today** ("15 min · Korean", or "2 sessions ·
   33 min") in the success colour and offers **Another round**; "Not today?
   Say why" steps aside. A session still open keeps **Resume** first.
 
@@ -649,14 +686,14 @@ cutting study short can be read over time.
   from where it stopped, so time played adds up, and the activity starts its
   content again) or **Call it done**.
 - **Past 30 minutes**, whether the stop screen is still up, the app is
-  reopened or Home is, the session closes as it stood, dated when it
+  reopened or Practice's Home is, the session closes as it stood, dated when it
   stopped, and counts toward **Studied today**; a close whose write failed is
-  retried. Home asks once, optionally, why the latest finished session was
+  retried. Practice's Home asks once, optionally, why the latest finished session was
   cut short, and its wrap reads "12 min, banked".
 
 A record keeps when it stopped, how far in and in which scene, a tap or
 leaving, the reason and where it was given (the stop, the return, the wrap or
-Home), how it ended (picked up, called done or lapsed) and when, which says
+Practice's Home), how it ended (picked up, called done or lapsed) and when, which says
 how long the person was away. Beside the records, each session counts what
 they cannot show: how often its screen opened unfinished, the glances, the
 taps taken back and the pick-ups (the 20 sessions counted most recently). A
@@ -718,7 +755,7 @@ happen; these recordings are how the app finds out when it was.
 
 **Getting there is one tap, and the tap starts listening.**
 
-- **Home → Study → Not today? Say why** (the screen the app opens on).
+- **Practice → Not today? Say why** (Practice's Home).
 - A study reminder's **Not today: say why** button. A reminder that is not
   going to be followed is when the reason is freshest, so the answer is one
   tap from the notification instead of a dismissal.
@@ -728,9 +765,7 @@ Tap again to keep it. There is nothing to type, choose or confirm, and a
 row of sentence starters ("Too tired", "No time today", "The app got in the
 way" …) is there for the moment the mind goes blank.
 
-**Talk now** in the + sheet opens it listening too, for a comment rather
-than a reason (`say=capture`), and so does a finished session's **Say what
-stuck**, for a summary (`say=wrap`). **Bites** in the bottom bar opens the same
+**Bites** in Practice's bar opens the same
 page without listening: the way to play back or delete what is kept, with
 no live microphone.
 

@@ -170,25 +170,6 @@ export function dueCheckpoint(
 }
 
 /**
- * Whether a checkpoint's window has closed. Home still offers it, since a
- * late figure beats none, but says it was missed rather than calling it due.
- */
-export function isMissed(checkpoint: Checkpoint, minutes: number): boolean {
-  return minutes > checkpoint.minutes + WINDOW_MINUTES
-}
-
-/** The next checkpoint still to come today, or null when the day is done. */
-export function nextCheckpoint(
-  settings: AphSettings,
-  minutes: number
-): Checkpoint | null {
-  return (
-    settings.checkpoints.find((c) => c.minutes - WINDOW_MINUTES > minutes) ??
-    null
-  )
-}
-
-/**
  * Entries that still want their figure, newest first: the latest day, and
  * within it the latest checkpoint, so a report arriving at noon lands on
  * noon unless I pick another.
@@ -200,21 +181,6 @@ export function awaitingTheirs(
   return entries
     .filter((e) => reconcile(settings, e).status === "awaiting")
     .sort(byLatest(settings))
-}
-
-/** Entries waiting on my call (`review`) or disputed (`flagged`). */
-export function needsAttention(
-  settings: AphSettings,
-  entries: ReadonlyArray<Entry>
-): { review: number; flagged: number } {
-  let review = 0
-  let flagged = 0
-  for (const e of entries) {
-    const { status } = reconcile(settings, e)
-    if (status === "review") review += 1
-    if (status === "flagged") flagged += 1
-  }
-  return { review, flagged }
 }
 
 /** Within a day: checkpoints in order, others after (stable among those). */

@@ -33,7 +33,6 @@ const LOCAL_ROUTES = [
   "/sessions/new",
   "/settings",
   "/profile",
-  "/jobs",
   "/extensions",
   "/mission",
   "/auth",

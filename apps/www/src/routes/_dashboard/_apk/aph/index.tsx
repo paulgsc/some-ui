@@ -1,7 +1,6 @@
 import type { JSX } from "react"
 import type { Side } from "@some-ui/aph"
 import { AphLog } from "@some-ui/aph"
-import { dayOf } from "@some-ui/core-utils"
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
 
 import { useMinuteClock } from "@/lib/clock"
@@ -27,17 +26,9 @@ const LogRoute = (): JSX.Element => {
       initialSide={side}
       initialTarget={entry ?? null}
       initialDay={day ?? null}
-      onSaved={(saved, savedSide) =>
-        // By what was saved, not what was asked for: the form can switch.
-        // Mine for today came from Home's "due" card; theirs, and a day I
-        // missed, mostly from History, which lists it.
-        void navigate({
-          to:
-            savedSide === "theirs" || saved.day !== dayOf(now)
-              ? "/aph/history"
-              : "/today",
-        })
-      }
+      // To History, which lists what was just saved. aph is Self's Home
+      // (lib/wings), so there is no other Home to go back to.
+      onSaved={() => void navigate({ to: "/aph/history" })}
     />
   )
 }

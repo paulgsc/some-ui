@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The wings' launcher labels and icon plates (AndroidManifest.xml's
+         activity-alias entries, mipmap-anydpi-v26/ic_wing_*.xml). Each wing's
+         icon is the app's own mochi on its own colour, so a folder of them
+         still reads as one app, and the label tells them apart. Labels stay
+         short: about ten characters show untruncated on a launcher grid. -->
+    <string name="wing_practice">Practice</string>
+    <string name="wing_self">Self</string>
+    <string name="wing_studio">Studio</string>
+
+    <color name="wing_practice_background">#2F6FB3</color>
+    <color name="wing_self_background">#A8456B</color>
+    <color name="wing_studio_background">#7A5AB8</color>
+
+    <!-- Before Android 8 (API 26) there are no adaptive icons: there, each
+         wing shows the app's own icon (its PNG mipmaps), and only the label
+         tells them apart. mipmap-anydpi-v26/ic_wing_*.xml from 26 on. -->
+    <item name="ic_wing_practice" type="mipmap">@mipmap/ic_launcher</item>
+    <item name="ic_wing_self" type="mipmap">@mipmap/ic_launcher</item>
+    <item name="ic_wing_studio" type="mipmap">@mipmap/ic_launcher</item>
+</resources>
