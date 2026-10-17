@@ -51,8 +51,8 @@ gap that shows only in Chrome, such as the tab context menu Chrome does not
 offer extensions, is not a bug.
 
 The e2e suite (`pnpm test:e2e`) runs locally, not in CI. Its specs wait on real
-time (poll timeouts of 4–6 s, retry-budget waits near 11 s, three fixed
-sleeps), so they are tuned to a developer machine. A green run covers the code
+time (poll timeouts from 4 to 15 s, 8 s by default, and three fixed sleeps),
+so they are tuned to a developer machine. A green run covers the code
 Firefox shares (the content script, the popup and the stylesheet), not the
 Firefox manifest, its platform adapters or how Firefox renders the page. Run it
 before pushing a change to the content script, the popup or the stylesheet.
