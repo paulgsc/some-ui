@@ -1,4 +1,5 @@
 import type { JSX } from "react"
+import { useConfirmSheet } from "@some-ui/shared"
 import type { SoundbiteSituation, SoundbiteSource } from "@some-ui/soundbites"
 import { phoneSoundbiteStore, Soundbites } from "@some-ui/soundbites"
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
@@ -72,15 +73,17 @@ const ShareWithAgent = ({ taking }: { taking: boolean }): JSX.Element => {
   // Android says "shared" once an app is picked, even if the person backs
   // out of it: the reflections and soundbites leave the phone only once they
   // say so.
+  const { ask, sheet } = useConfirmSheet()
   useIntentEffect(share, (result) => {
     const going = goingOut(result.sent.length, result.soundbites.length)
     if (result.outcome !== "shared" || going === "") return
-    if (
-      confirm(
-        `Did they arrive? OK lets the ${going} go from this phone; Cancel keeps them here.`
-      )
-    )
-      handOffExport(phoneSoundbiteStore(), result)
+    ask({
+      title: "Did they arrive?",
+      description: `Once they have, the ${going} can leave this phone.`,
+      confirm: "They arrived: let them go",
+      keep: "Keep them here",
+      onConfirm: () => handOffExport(phoneSoundbiteStore(), result),
+    })
   })
   return (
     <section className="space-y-2">
@@ -98,6 +101,7 @@ const ShareWithAgent = ({ taking }: { taking: boolean }): JSX.Element => {
         idleLabel="Share with an agent"
         workingLabel="Preparing..."
       />
+      {sheet}
     </section>
   )
 }

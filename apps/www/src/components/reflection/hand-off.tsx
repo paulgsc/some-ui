@@ -1,5 +1,5 @@
 import type { JSX } from "react"
-import { Badge, Button } from "@some-ui/shared"
+import { Badge, Button, useConfirmSheet } from "@some-ui/shared"
 import { Trash2 } from "lucide-react"
 
 import { useMinuteClock } from "@/lib/clock"
@@ -19,17 +19,17 @@ export const HandOff = (): JSX.Element | null => {
   const { kept } = useReflections()
   const now = useMinuteClock().getTime()
   const { data: sessions } = useSessions()
+  const { ask, sheet } = useConfirmSheet()
   const groups = bySession(kept, now)
   if (groups.length === 0) return null
 
-  const confirmLetGo = (name: string, ids: ReadonlyArray<string>): void => {
-    if (
-      confirm(
-        `Let go of ${counted(ids.length)} from "${name}"? They won't be shared, and can't be brought back.`
-      )
-    )
-      letGo(ids)
-  }
+  const confirmLetGo = (name: string, ids: ReadonlyArray<string>): void =>
+    ask({
+      title: `Let go of ${counted(ids.length)}?`,
+      description: `From "${name}". They won't be shared, and can't be brought back.`,
+      confirm: "Let go",
+      onConfirm: () => letGo(ids),
+    })
 
   return (
     <div className="flex flex-col gap-2">
@@ -87,6 +87,7 @@ export const HandOff = (): JSX.Element | null => {
           className="h-11 w-full"
         />
       )}
+      {sheet}
     </div>
   )
 }

@@ -8,6 +8,7 @@
  */
 import type { JSX, ReactNode } from "react"
 import type { ButtonProps } from "@some-ui/shared"
+import { useConfirmSheet } from "@some-ui/shared"
 import { Share2 } from "lucide-react"
 
 import { handOff, shareReflections } from "@/lib/agent-export"
@@ -35,30 +36,35 @@ export const DeviceShareReflections = ({
   const share = useAsyncIntent(() => shareReflections(sessionIds), {
     presentation: "interactive",
   })
+  const { ask, sheet } = useConfirmSheet()
   useIntentEffect(share, ({ outcome, sent }) => {
     if (outcome !== "shared" || sent.length === 0) return
-    if (
-      confirm(
-        `Did they arrive? OK lets ${counted(sent.length)} go from this phone; Cancel keeps them here to share again.`
-      )
-    )
-      handOff(sent)
+    ask({
+      title: "Did they arrive?",
+      description: `Once they have, ${counted(sent.length)} can leave this phone.`,
+      confirm: "They arrived: let them go",
+      keep: "Keep them to share again",
+      onConfirm: () => handOff(sent),
+    })
   })
   return (
-    <IntentButton
-      state={share.state}
-      onPress={() => share.start(undefined)}
-      size={size}
-      variant={variant}
-      className={className}
-      title={title}
-      idleLabel={
-        <>
-          <Share2 className="mr-1.5 size-3.5" aria-hidden />
-          {label}
-        </>
-      }
-      workingLabel="Preparing..."
-    />
+    <>
+      <IntentButton
+        state={share.state}
+        onPress={() => share.start(undefined)}
+        size={size}
+        variant={variant}
+        className={className}
+        title={title}
+        idleLabel={
+          <>
+            <Share2 className="mr-1.5 size-3.5" aria-hidden />
+            {label}
+          </>
+        }
+        workingLabel="Preparing..."
+      />
+      {sheet}
+    </>
   )
 }

@@ -1,4 +1,5 @@
 import type { JSX } from "react"
+import { useConfirmSheet } from "@some-ui/shared"
 import { Journal, journalFiles, phoneJournalStore } from "@some-ui/soundbites"
 import { createFileRoute } from "@tanstack/react-router"
 
@@ -26,14 +27,17 @@ const ShareJournal = ({
       presentation: "interactive",
     }
   )
+  const { ask, sheet } = useConfirmSheet()
   useIntentEffect(share, ({ outcome, sent }) => {
     if (outcome !== "shared" || sent === null) return
-    if (
-      confirm(
-        "Did they arrive? OK lets the takes that went out go from the phone; Cancel keeps them here."
-      )
-    )
-      letGoJournal(phoneJournalStore(), sent)
+    ask({
+      title: "Did they arrive?",
+      description:
+        "Once they have, the takes that went out can leave the phone.",
+      confirm: "They arrived: let them go",
+      keep: "Keep them here",
+      onConfirm: () => letGoJournal(phoneJournalStore(), sent),
+    })
   })
   return (
     <section className="space-y-2">
@@ -49,6 +53,7 @@ const ShareJournal = ({
         idleLabel="Share takes"
         workingLabel="Preparing..."
       />
+      {sheet}
     </section>
   )
 }
