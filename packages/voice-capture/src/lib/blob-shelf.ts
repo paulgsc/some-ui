@@ -45,10 +45,15 @@ export function blobShelf({
       const freed = await bytesOf(await connect(), STORE, [id])
       await withRoom(
         blob.size - freed,
-        async (): Promise<void> => {
+        async (claim): Promise<void> => {
           const tx = (await connect()).transaction(STORE, "readwrite")
           const blobs = tx.objectStore(STORE)
-          if ((await bytesBesides(blobs, id)) + blob.size > maxBytes) {
+          const replaced: unknown = await result(blobs.get(id))
+          const frees = replaced instanceof Blob ? replaced.size : 0
+          if (
+            blob.size - frees > claim ||
+            (await bytesBesides(blobs, id)) + blob.size > maxBytes
+          ) {
             tx.abort()
             throw new ShelfFullError()
           }

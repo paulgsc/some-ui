@@ -29,9 +29,20 @@ describe("withRoom", () => {
       )
     ).rejects.toThrow("full")
     expect(wrote).toBe(false)
-    // A write that frees more than it adds grows nothing.
-    await withRoom(-50, () => Promise.resolve(), full)
-    expect(asked).toEqual([100, 101, 0])
+    expect(asked).toEqual([100, 101])
+  })
+
+  it("runs a write that grows nothing without asking, even on a full device", async () => {
+    let asked = 0
+    setStorageRoom(() => {
+      asked += 1
+      return Promise.resolve(false)
+    })
+    const claims: Array<number> = []
+    await withRoom(-50, (claim) => Promise.resolve(claims.push(claim)), full)
+    await withRoom(0, (claim) => Promise.resolve(claims.push(claim)), full)
+    expect(claims).toEqual([0, 0])
+    expect(asked).toBe(0)
   })
 
   it("counts what overlapping writes claimed, until each settles", async () => {

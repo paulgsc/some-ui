@@ -121,7 +121,7 @@ export function indexedDbSoundbiteStore(): SoundbiteStore {
       const freed = await bytesOf(db, AUDIO, leaving)
       await withRoom(
         audio.size - freed,
-        async (): Promise<void> => {
+        async (claim): Promise<void> => {
           const tx = db.transaction([META, AUDIO], "readwrite")
           const meta = tx.objectStore(META)
           const audios = tx.objectStore(AUDIO)
@@ -137,8 +137,6 @@ export function indexedDbSoundbiteStore(): SoundbiteStore {
                 return blob instanceof Blob ? blob.size : 0
               })
           )
-          // Another save that landed first can leave a smaller bite to
-          // displace than the room was claimed for: refuse, never overshoot.
           const displacing = await Promise.all(
             displaced.map(async (id) => {
               const blob: unknown = await result(audios.get(id))
@@ -146,7 +144,10 @@ export function indexedDbSoundbiteStore(): SoundbiteStore {
             })
           )
           const frees = displacing.reduce((sum, size) => sum + size, 0)
-          if (!fitsMaxBytes(staying, audio.size) || frees < freed) {
+          if (
+            !fitsMaxBytes(staying, audio.size) ||
+            audio.size - frees > claim
+          ) {
             tx.abort()
             throw new SoundbitesFullError()
           }

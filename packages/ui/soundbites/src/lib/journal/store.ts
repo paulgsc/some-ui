@@ -229,9 +229,11 @@ export function indexedDbJournalStore(): JournalStore {
       const freed = await bytesOf(db, AUDIO, [take.cutId])
       await withRoom(
         audio.size - freed,
-        async (): Promise<void> => {
+        async (claim): Promise<void> => {
           const tx = db.transaction([PLAN, TAKES, AUDIO], "readwrite")
           const audios = tx.objectStore(AUDIO)
+          const replaced: unknown = await result(audios.get(take.cutId))
+          const frees = replaced instanceof Blob ? replaced.size : 0
           const plan = await planIn(tx.objectStore(PLAN))
           if (
             plan?.openedAt !== episode ||
@@ -241,8 +243,9 @@ export function indexedDbJournalStore(): JournalStore {
             throw new JournalStaleError()
           }
           if (
+            audio.size - frees > claim ||
             (await bytesBesides(audios, take.cutId)) + audio.size >
-            JOURNAL_TAKES_MAX_BYTES
+              JOURNAL_TAKES_MAX_BYTES
           ) {
             tx.abort()
             throw new JournalFullError()
