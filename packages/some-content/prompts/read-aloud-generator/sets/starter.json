@@ -602,9 +602,9 @@
         ],
         "situations": {
           "options": [
-            "Saying who came along and what you came back with",
-            "Saying you went alone and bought nothing",
-            "Saying you went alone just to look around"
+            "Answering that you went out for groceries, with company",
+            "Answering that you went to see a doctor",
+            "Answering that you went to the office"
           ],
           "intended": 0
         }
@@ -680,9 +680,9 @@
         ],
         "situations": {
           "options": [
-            "Saying the day's plans changed because of the weather",
-            "Saying the day's plans are to go out and about",
-            "Saying the day's plans are not decided yet"
+            "Saying you will stay in because of the weather",
+            "Saying you will go out for a hike",
+            "Saying you will go in to work"
           ],
           "intended": 0
         }
