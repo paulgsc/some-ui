@@ -176,6 +176,11 @@ export const paths: PathRules<Profile> = definePaths<Profile>({
       why: "the web builds' voice, the browser's own synthesizer: the Android app speaks only with the phone's engine (src/providers/tts.tsx)",
     },
     {
+      modules: ["apps/www/src/lib/demo/**"],
+      profiles: ["pages"],
+      why: "a viewer's sample drafts (CLAUDE.md, two mandates): only the Pages build is a viewer's, and the owner's builds keep to their own records",
+    },
+    {
       modules: [
         `${SPEECH_ENTRY}/http.es.js`,
         "apps/www/src/lib/tts-config/**",
@@ -266,6 +271,11 @@ export const paths: PathRules<Profile> = definePaths<Profile>({
       profile: "pages",
       modules: [`${SPEECH_ENTRY}/web-speech.es.js`],
       why: "Pages speaks through this (src/providers/tts.tsx); a build without it is silent",
+    },
+    {
+      profile: "pages",
+      modules: ["apps/www/src/lib/demo/index.ts"],
+      why: "a viewer starts from these sample drafts (src/main.tsx); without them the demo opens empty. Also what keeps its `exclusive` rule from passing by matching nothing",
     },
   ],
   // Every profile builds one route tree, shared by design until now
