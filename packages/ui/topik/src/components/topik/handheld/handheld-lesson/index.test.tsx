@@ -37,6 +37,7 @@ import {
   workedLesson,
 } from "@topik/lib/topik/generation/tree-intake/worked-example"
 import {
+  LEVEL_ONE_LENS_SET,
   LEVEL_ONE_SET,
   STARTER_SET,
 } from "@topik/lib/topik/read-aloud/repo-sets"
@@ -280,6 +281,26 @@ describe("HandheldLesson", () => {
     expect(screen.queryByRole("button", { name: /^2 words New/ })).toBeNull()
   })
 
+  it("says what a set is for and where it takes place, and opens a lens set on the lens", async () => {
+    renderLesson({
+      speaker: voice(() => Promise.resolve({ kind: "heard" })),
+      readAloudStore: createReadAloudStore(memoryStorage()),
+    })
+    await pickFile(NEW_WORDS, () =>
+      Promise.resolve(
+        JSON.stringify({ schemaVersion: 1, ...LEVEL_ONE_LENS_SET })
+      )
+    )
+    const ready = await screen.findByRole("button", { name: /^27 lines New/ })
+    expect(ready.textContent).toContain(
+      "TOPIK 1 · Grammar lens · 일상 · Level one"
+    )
+    expect(ready.textContent).toContain(LEVEL_ONE_LENS_SET.context?.premise)
+
+    fireEvent.click(ready)
+    expect(document.querySelector('[data-slot="lens-card"]')).not.toBeNull()
+  })
+
   it("keeps the paces of words no set names yet, and lets go only what a set picked again drops", async () => {
     const store = createReadAloudStore(memoryStorage())
     // One starter word, and one level-one word the starter set does not name.
@@ -303,7 +324,7 @@ describe("HandheldLesson", () => {
     // pace until its own set comes back.
     await pick(STARTER_SET)
     await screen.findByText(/^Added /)
-    fireEvent.click(await screen.findByRole("button", { name: /Read aloud/ }))
+    fireEvent.click(await screen.findByRole("button", { name: /^Read aloud/ }))
     click("Back")
     expect(Object.keys(store.paces()).sort()).toEqual(
       [starterWord, levelOneWord].sort()

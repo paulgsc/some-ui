@@ -7,13 +7,13 @@ import {
   graded,
   lensLines,
 } from "@topik/lib/topik/read-aloud/lens/items"
-import { REPO_SETS } from "@topik/lib/topik/read-aloud/repo-sets"
+import { REPO_LENS } from "@topik/lib/topik/read-aloud/repo-sets"
 import { describe, expect, it } from "vitest"
 
 const SEEDS = Array.from({ length: 40 }, (_, n) => `seed-${n}`)
 
 const lineOfItem = (item: LensItem): ReadAloudLine => {
-  const line = lineOf(REPO_SETS, item.lineId)
+  const line = lineOf(REPO_LENS, item.lineId)
   if (!line) throw new Error(`no line ${item.lineId}`)
   return line
 }
@@ -21,7 +21,7 @@ const lineOfItem = (item: LensItem): ReadAloudLine => {
 describe("buildLensSet", () => {
   it("asks only about lines with an authored misform (Def. 4.9)", () => {
     for (const seedKey of SEEDS) {
-      const items = buildLensSet(REPO_SETS, { level: 1, seedKey })
+      const items = buildLensSet(REPO_LENS, { level: 1, seedKey })
       expect(items).toHaveLength(8)
       for (const item of items) {
         expect(lineOfItem(item).lens?.misforms.length).toBeGreaterThan(0)
@@ -31,20 +31,20 @@ describe("buildLensSet", () => {
 
   it("always shows at least one judge as authored (Cor. 4.8 (iii))", () => {
     for (const seedKey of SEEDS) {
-      const items = buildLensSet(REPO_SETS, { level: 1, seedKey })
+      const items = buildLensSet(REPO_LENS, { level: 1, seedKey })
       const asAuthored = items.filter(
         ({ shape }) => shape.kind === "judge" && shape.misform === null
       )
       expect(asAuthored.length).toBeGreaterThanOrEqual(1)
       expect(items.some(({ shape }) => shape.kind === "pick")).toBe(true)
     }
-    const one = buildLensSet(REPO_SETS, { level: 1, seedKey: "x", size: 1 })
+    const one = buildLensSet(REPO_LENS, { level: 1, seedKey: "x", size: 1 })
     expect(one[0]?.shape).toEqual({ kind: "judge", misform: null })
   })
 
   it("offers a pick the word as written against its authored misforms only", () => {
     for (const seedKey of SEEDS) {
-      for (const item of buildLensSet(REPO_SETS, { level: 1, seedKey })) {
+      for (const item of buildLensSet(REPO_LENS, { level: 1, seedKey })) {
         const { shape } = item
         if (shape.kind !== "pick") continue
         const authored = lineOfItem(item).lens?.misforms.filter(
@@ -66,7 +66,7 @@ describe("buildLensSet", () => {
 
   it("marks only the deciders of the misforms an item shows", () => {
     for (const seedKey of SEEDS) {
-      for (const item of buildLensSet(REPO_SETS, { level: 1, seedKey })) {
+      for (const item of buildLensSet(REPO_LENS, { level: 1, seedKey })) {
         const misforms = lineOfItem(item).lens?.misforms ?? []
         const { shape } = item
         const shown =
@@ -91,7 +91,7 @@ describe("buildLensSet", () => {
 
   it("asks the step-down only below the item, uniquely, at most three", () => {
     for (const seedKey of SEEDS) {
-      for (const item of buildLensSet(REPO_SETS, { level: 1, seedKey })) {
+      for (const item of buildLensSet(REPO_LENS, { level: 1, seedKey })) {
         expect(item.probes.length).toBeLessThanOrEqual(3)
         const rungs = item.probes.map((probe) => probe.rung)
         expect(rungs).toEqual([...rungs].sort((a, b) => b - a))
@@ -108,7 +108,7 @@ describe("buildLensSet", () => {
 
   it("never shows or asks about the word the item asked, in the step-down (Rem. 4.15)", () => {
     for (const seedKey of SEEDS) {
-      for (const item of buildLensSet(REPO_SETS, { level: 1, seedKey })) {
+      for (const item of buildLensSet(REPO_LENS, { level: 1, seedKey })) {
         const asks = askedWord(item)
         if (asks === null) continue
         const asked = item.words[asks]
@@ -124,14 +124,14 @@ describe("buildLensSet", () => {
   })
 
   it("never splits a word with no ending, which has no right cut", () => {
-    const [line] = lensLines(REPO_SETS, 1)
+    const [line] = lensLines(REPO_LENS, 1)
     if (!line) throw new Error("no lens line")
     const words = line.words.map((word, index) =>
       index === 0
         ? { ...word, surface: "우체국", stemEnd: 3 }
         : { ...word, stemEnd: 99 }
     )
-    const deck = { ...REPO_SETS, lines: [{ ...line, words }] }
+    const deck = { ...REPO_LENS, lines: [{ ...line, words }] }
     for (const seedKey of SEEDS) {
       for (const item of buildLensSet(deck, { level: 1, seedKey })) {
         expect(item.probes.some((probe) => probe.kind === "split")).toBe(false)
@@ -140,8 +140,8 @@ describe("buildLensSet", () => {
   })
 
   it("draws the same set from the same key, a long cue never as audio alone", () => {
-    const first = buildLensSet(REPO_SETS, { level: 1, seedKey: "same" })
-    expect(buildLensSet(REPO_SETS, { level: 1, seedKey: "same" })).toEqual(
+    const first = buildLensSet(REPO_LENS, { level: 1, seedKey: "same" })
+    expect(buildLensSet(REPO_LENS, { level: 1, seedKey: "same" })).toEqual(
       first
     )
     for (const item of first) {
@@ -153,8 +153,8 @@ describe("buildLensSet", () => {
 
   it("is empty for a deck with nothing to ask at the level", () => {
     const plain = {
-      ...REPO_SETS,
-      lines: REPO_SETS.lines.map(({ lens: _lens, ...line }) => line),
+      ...REPO_LENS,
+      lines: REPO_LENS.lines.map(({ lens: _lens, ...line }) => line),
     }
     expect(buildLensSet(plain, { level: 3, seedKey: "x" })).toEqual([])
   })
@@ -162,7 +162,7 @@ describe("buildLensSet", () => {
 
 describe("graded", () => {
   const items = SEEDS.flatMap((seedKey) =>
-    buildLensSet(REPO_SETS, { level: 1, seedKey })
+    buildLensSet(REPO_LENS, { level: 1, seedKey })
   )
 
   it("takes the word as written for a pick, and names the misform chosen", () => {

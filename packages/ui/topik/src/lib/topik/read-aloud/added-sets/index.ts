@@ -84,8 +84,13 @@ function withoutConflicts(
 }
 
 export type ResolvedSets = {
-  /** Every set as one vocabulary: "Read aloud". */
+  /**
+   * Every set as one vocabulary, read aloud: "Read aloud". Its lines are
+   * every set's but a lens set's, which are there to be asked about.
+   */
   all: ReadAloudDeck
+  /** Every line with a lens, from lens sets and sets serving both. */
+  lens: ReadAloudDeck
   /** Each set as the drill reads it on its own, by the set's id. */
   sets: ReadonlyMap<string, ReadAloudDeck>
 }
@@ -98,6 +103,7 @@ export function resolveSets(added: ReadonlyArray<AddedSet>): ResolvedSets {
   const known = new Map<string, string>()
   const words: ReadAloudDeck["words"] = []
   const lines: ReadAloudDeck["lines"] = []
+  const lensLines: ReadAloudDeck["lines"] = []
   const sets = new Map<string, ReadAloudDeck>()
   for (const { deck } of added) {
     const kept = filed(withoutConflicts(deck, known))
@@ -106,11 +112,19 @@ export function resolveSets(added: ReadonlyArray<AddedSet>): ResolvedSets {
       known.set(word.id, word.lemma)
       words.push(word)
     }
-    lines.push(...kept.lines)
+    if (kept.practice !== "lens") lines.push(...kept.lines)
+    lensLines.push(...kept.lines.filter((line) => line.lens !== undefined))
     sets.set(deck.id, kept)
   }
   return {
     all: { id: ALL_SETS_ID, title: "Every word set", words, lines },
+    lens: {
+      id: ALL_SETS_ID,
+      title: "Every word set",
+      practice: "lens",
+      words,
+      lines: lensLines,
+    },
     sets,
   }
 }

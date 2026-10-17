@@ -4,9 +4,12 @@ import {
   READ_ALOUD_LEVELS,
 } from "@topik/lib/topik/read-aloud/content"
 import {
+  LEVEL_ONE_LENS_SET,
   LEVEL_ONE_SET,
   rawSet,
+  REPO_LENS,
   REPO_SETS,
+  STARTER_LENS_SET,
   STARTER_SET,
 } from "@topik/lib/topik/read-aloud/repo-sets"
 import {
@@ -16,8 +19,10 @@ import {
 import { describe, expect, it } from "vitest"
 
 describe.each([
-  ["starter", STARTER_SET],
-  ["level-one", LEVEL_ONE_SET],
+  ["starter.read-aloud", STARTER_SET],
+  ["level-one.read-aloud", LEVEL_ONE_SET],
+  ["starter.lens", STARTER_LENS_SET],
+  ["level-one.lens", LEVEL_ONE_LENS_SET],
 ] as const)("%s.json", (name, deck) => {
   const result = parseReadAloudDeck(rawSet(name))
 
@@ -35,6 +40,16 @@ describe.each([
 
   it("is written for anyone, so says it answers no one", () => {
     expect(deck.from).toBeUndefined()
+  })
+
+  it("says its practice and its context, and keeps lenses only for the lens", () => {
+    expect(deck.practice).toBe(name.endsWith(".lens") ? "lens" : "read-aloud")
+    expect(deck.context?.genre).toBe("everyday")
+    expect(
+      deck.lines.every(
+        (line) => (line.lens !== undefined) === (deck.practice === "lens")
+      )
+    ).toBe(true)
   })
 })
 
@@ -97,7 +112,7 @@ describe("the repo's sets, both added", () => {
   })
 
   it("give the grammar lens enough lines for a full set at level one", () => {
-    const misformed = REPO_SETS.lines.filter(
+    const misformed = REPO_LENS.lines.filter(
       (line) => line.level === 1 && line.lens !== undefined
     )
     expect(misformed.length).toBeGreaterThanOrEqual(16)
@@ -119,7 +134,7 @@ describe("the repo's sets, both added", () => {
         .map((part) => new RegExp(`\\b${escape(part)}`, "i"))
     // Short glosses ("go", "what") are also words of the grammar's English.
     const anyWord = meanings(gloss.values(), 6)
-    for (const line of REPO_SETS.lines) {
+    for (const line of REPO_LENS.lines) {
       const { lens } = line
       if (!lens) continue
       const own = meanings(

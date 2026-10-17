@@ -6,9 +6,12 @@
  * grammar-lens session (`lens-session`, Cor. 4.8), a start of its own.
  *
  * The deck is every added set as one (`added-sets`), or one added set on
- * its own. The drill's level is the one the host passes: the level held on
- * the material list, or the set's own, capped at the drill's highest
- * (TOPIK 3), since that is where its vocabulary stops.
+ * its own. A set offers its own practice only: a lens set opens on the
+ * grammar lens, and a read-aloud set offers no lens. Every set as one
+ * offers both, the lens asking about `lensDeck`'s lines. The drill's level
+ * is the one the host passes: the level held on the material list, or the
+ * set's own, capped at the drill's highest (TOPIK 3), since that is where
+ * its vocabulary stops.
  *
  * Opening it prunes no pace: a word the deck drawn from does not name may be
  * another set's, or one not added again yet (`added-sets`, `wordsLeaving`).
@@ -39,6 +42,8 @@ type ReadAloudScreenProps = {
   /** The learner's takes in the grammar lens (Rem. 4.16); absent, none. */
   lensTakes?: LensTakes
   deck: ReadAloudDeck
+  /** What the grammar lens asks about; `deck` when absent. */
+  lensDeck?: ReadAloudDeck
   short?: boolean
   /** The host's session is paused (`useReadAloud`'s `paused`). */
   paused?: boolean
@@ -54,6 +59,7 @@ export const ReadAloudScreen = ({
   lensRecord,
   lensTakes,
   deck,
+  lensDeck = deck,
   short = false,
   paused,
   onExit,
@@ -84,10 +90,10 @@ export const ReadAloudScreen = ({
   const { store } = loaded
   const [practice, setPractice] = useState<"read-aloud" | "lens">("read-aloud")
 
-  if (practice === "lens") {
+  if (practice === "lens" || deck.practice === "lens") {
     return (
       <LensSession
-        deck={deck}
+        deck={lensDeck}
         level={level}
         speech={speech}
         short={short}
@@ -96,7 +102,9 @@ export const ReadAloudScreen = ({
         record={lensRecord?.add}
         recordFull={lensRecord?.full}
         takes={lensTakes}
-        onExit={() => setPractice("read-aloud")}
+        {...(deck.practice === "lens"
+          ? { onExit, exitLabel: "Stop the grammar lens" }
+          : { onExit: () => setPractice("read-aloud") })}
       />
     )
   }
@@ -115,11 +123,15 @@ export const ReadAloudScreen = ({
       onRecord={(event, day) => setRecord(store.count(event, day))}
       onPace={(wordId, pace) => store.savePace(wordId, pace)}
       onProgress={(progress) => store.saveProgress(level, deck.id, progress)}
-      lens={{
-        available: lensLines(deck, level).length > 0,
-        full: lensRecord?.full() ?? false,
-        onStart: () => setPractice("lens"),
-      }}
+      lens={
+        deck.practice === "read-aloud"
+          ? undefined
+          : {
+              available: lensLines(lensDeck, level).length > 0,
+              full: lensRecord?.full() ?? false,
+              onStart: () => setPractice("lens"),
+            }
+      }
       onExit={onExit}
     />
   )

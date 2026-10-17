@@ -233,6 +233,7 @@ export const HandheldLesson = ({
           lensRecord={recordsLens ? lensRecord : undefined}
           lensTakes={lensTakes}
           deck={deck}
+          lensDeck={own ?? resolved.lens}
           short={short}
           paused={paused}
           onExit={() => setReading(null)}
@@ -453,8 +454,15 @@ export const HandheldLesson = ({
                   id: deck.id,
                   title: deck.title,
                   words: own.words.length,
+                  lines: own.lines.length,
                   level: setLevel(own),
                   ...(deck.from === undefined ? {} : { from: deck.from }),
+                  ...(deck.practice === undefined
+                    ? {}
+                    : { practice: deck.practice }),
+                  ...(deck.context === undefined
+                    ? {}
+                    : { context: deck.context }),
                 },
               ]
             : []

@@ -14,12 +14,18 @@ ends, and how it is actually pronounced. Where the form shows them, give two
 more: the grammatical role a written word plays, and the line's tense. The
 grammar lens asks the learner to find them after a missed question.
 
-A line may also carry a **lens**: what the app's grammar-lens session needs to
-ask about it. That session never reads aloud on a clock and never shows what a
-line means. It shows a cue line, then this line, and asks the learner to spot
-or choose the form a learner is known to get wrong there. It needs material
-only an author can write: the cue, the wrong forms and the situations. See
-**The lens**.
+A deck is written for one of two practices, and says which. A **read-aloud**
+deck is the drill above. A **lens** deck is for the app's grammar-lens
+session, and every one of its lines carries a **lens**: what that session
+needs to ask about the line. That session never reads aloud on a clock and
+never shows what a line means. It shows a cue line, then this line, and asks
+the learner to spot or choose the form a learner is known to get wrong there.
+It needs material only an author can write: the cue, the wrong forms and the
+situations. See **The lens**.
+
+Every deck is also set in a **context**: a genre, a K-drama's or everyday
+life's, and a premise in a sentence, so the learner knows where its lines take
+place before reading one. See **The context**.
 
 ---
 
@@ -34,6 +40,11 @@ every word it uses, in reading order, as that word is written in the line.
   id: string // kebab-case ASCII, e.g. "everyday-2"
   title: string // short, human-readable
   from?: string // what this deck answers, in the learner's terms (below)
+  practice: "read-aloud" | "lens" // what the deck is for (below)
+  context: {
+    genre: string // one of the genres below: "romance", "everyday"
+    premise: string // where the lines take place, in one English sentence
+  }
   words: Array<{
     id: string // kebab-case ASCII, stable, e.g. "deurida"
     lemma: string // the dictionary form, in Hangul: 드리다
@@ -53,7 +64,7 @@ every word it uses, in reading order, as that word is written in the line.
       sense?: string // what this form means here, when the gloss is not enough
       role?: string // one of the roles below, only where the form shows it
     }>
-    lens?: {
+    lens?: { // every line of a lens deck; never in a read-aloud deck
       cue?: {
         korean: string // the line shown or heard first: 어제 뭐 했어요?
         hearable?: boolean // false when it is too long to give as audio alone
@@ -76,6 +87,35 @@ every word it uses, in reading order, as that word is written in the line.
 ```
 
 ## The rules
+
+**A deck is one practice.** `practice: "read-aloud"` for the drill, whose
+lines carry no `lens`; `practice: "lens"` for the grammar lens, whose every
+line carries one. The app drops a lens from a read-aloud deck's line, and
+drops a lens deck's line that has none, so write each deck for its practice
+from the start: a lens deck's lines are the ones a learner can go wrong in.
+A deck with no `practice` is read as one written before decks had one.
+
+**The context sets the scene, for every line.** Choose `genre` from this list
+and write every line as something said or seen in the premise:
+
+| `genre`      | Korean | Lines take place in                    |
+| ------------ | ------ | -------------------------------------- |
+| `makjang`    | 막장   | a melodrama of secrets and betrayals   |
+| `revenge`    | 복수   | a revenge drama                        |
+| `romance`    | 로맨스 | a romance                              |
+| `family`     | 가족   | a family drama                         |
+| `office`     | 오피스 | an office drama                        |
+| `historical` | 사극   | a period drama, in modern Korean       |
+| `thriller`   | 스릴러 | a thriller                             |
+| `comedy`     | 코미디 | a comedy                               |
+| `everyday`   | 일상   | ordinary life, with no drama around it |
+
+The `premise` is one English sentence under 200 characters that a learner
+reads on the deck's card before opening it: "Two coworkers stuck late at the
+office find out they live on the same street." Keep the lines' grammar and
+vocabulary at their level whatever the genre: a period drama's lines are
+modern Korean, and a thriller's are as plain as a café's. The `title` names
+the scene in a few words ("Late at the office").
 
 **Ids are identity.** A word's `id` is chosen once and never derived from how
 it is displayed. Use its romanised dictionary form (`deurida`, `saram`), and
@@ -173,9 +213,11 @@ where form and meaning part (내일 만나요 is present in form).
 
 ## The lens
 
-Give a lens to the lines where a learner could plausibly go wrong in one
-written word, and only there. A lens needs at least one misform; the cue and
-the situations are optional.
+Every line of a lens deck carries a lens, so write a lens deck's lines where a
+learner could plausibly go wrong in one written word: a place with 에 or 에서,
+a past-tense answer to a past question, an irregular verb, 좋다 or 있다 with a
+subject. Never force a misform onto a line where it would not be wrong. A lens
+needs at least one misform; the cue and the situations are optional.
 
 **`misforms` are mistakes learners actually make, written in.** A misform
 replaces one written word of the line with the form a learner is known to
@@ -250,9 +292,14 @@ Check each line against these, and fix it rather than explaining:
    line given its cue.
 8. No cue contains the line's word that a misform replaces, or any misform,
    or spells the particle the learner must choose in another word.
+9. `practice` is set; a lens deck's every line has a lens, and a read-aloud
+   deck's none.
+10. `context.genre` is one of the genres above, and every line belongs in
+    `context.premise`.
 
 The app checks these too, except whether a misform is wrong in its line and
-whether a cue spells a particle in another word, which only you can. A line, word or occurrence that fails is dropped,
+whether a cue spells a particle in another word, which only you can. A line,
+word or occurrence that fails is dropped,
 and a pronunciation, role, tense or lens part that does not line up is
 ignored, so an error costs material, not the deck.
 
@@ -288,5 +335,6 @@ after it, no comments, no trailing commas.
 }
 ```
 
-The starter set (`packages/some-content/prompts/read-aloud-generator/sets/starter.json`
-in this repo) is a complete, checked example of the whole format.
+The starter sets (`packages/some-content/prompts/read-aloud-generator/sets/`
+`starter.read-aloud.json` and `starter.lens.json` in this repo) are complete,
+checked examples of the whole format, one of each practice.

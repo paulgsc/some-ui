@@ -6,7 +6,7 @@ import type {
 } from "@topik/lib/topik/adapter/lens-takes"
 import type { LensRecordEntry } from "@topik/lib/topik/read-aloud/lens/record"
 import { MISTAKES } from "@topik/lib/topik/read-aloud/mistakes"
-import { REPO_SETS } from "@topik/lib/topik/read-aloud/repo-sets"
+import { REPO_LENS } from "@topik/lib/topik/read-aloud/repo-sets"
 import { MAX_SCREEN_MS } from "@topik/lib/topik/read-aloud/timing"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
@@ -75,7 +75,7 @@ describe("LensSession", () => {
   it("runs a set to its summary with no English meaning on any screen (Cor. 4.8 (i))", () => {
     render(
       <LensSession
-        deck={REPO_SETS}
+        deck={REPO_LENS}
         level={1}
         speech={null}
         seedKey={() => "session"}
@@ -87,9 +87,9 @@ describe("LensSession", () => {
     // those of six letters or more are looked for, and not in the
     // catalogue's rules, which are English grammar ("before a vowel").
     const english = [
-      ...REPO_SETS.lines.map((line) => line.english),
-      ...REPO_SETS.words.map((word) => word.gloss),
-      ...REPO_SETS.lines.flatMap((line) =>
+      ...REPO_LENS.lines.map((line) => line.english),
+      ...REPO_LENS.words.map((word) => word.gloss),
+      ...REPO_LENS.lines.flatMap((line) =>
         line.words.flatMap((word) => (word.sense ? [word.sense] : []))
       ),
     ].filter((meaning) => meaning.length >= 6)
@@ -112,7 +112,7 @@ describe("LensSession", () => {
   it("says at the summary when the record keeps no new answers (Rem. 4.18)", () => {
     render(
       <LensSession
-        deck={REPO_SETS}
+        deck={REPO_LENS}
         level={1}
         speech={null}
         seedKey={() => "full"}
@@ -131,7 +131,7 @@ describe("LensSession", () => {
   it("reads every cue where nothing can speak", () => {
     render(
       <LensSession
-        deck={REPO_SETS}
+        deck={REPO_LENS}
         level={1}
         speech={null}
         seedKey={() => "cues"}
@@ -158,7 +158,7 @@ describe("LensSession", () => {
   it("shows the line as answered through the step-down, never the form as written (Rem. 4.15)", () => {
     render(
       <LensSession
-        deck={REPO_SETS}
+        deck={REPO_LENS}
         level={1}
         speech={null}
         seedKey={() => "step-down"}
@@ -207,7 +207,7 @@ describe("LensSession", () => {
     vi.useFakeTimers()
     render(
       <LensSession
-        deck={REPO_SETS}
+        deck={REPO_LENS}
         level={1}
         speech={null}
         paused
@@ -230,7 +230,7 @@ describe("LensSession", () => {
     const onExit = vi.fn()
     render(
       <LensSession
-        deck={REPO_SETS}
+        deck={REPO_LENS}
         level={1}
         speech={null}
         seedKey={() => "exit"}
@@ -250,7 +250,7 @@ describe("LensSession", () => {
     const entries: Array<LensRecordEntry> = []
     render(
       <LensSession
-        deck={REPO_SETS}
+        deck={REPO_LENS}
         level={1}
         speech={null}
         seedKey={() => "takes"}
@@ -293,7 +293,7 @@ describe("LensSession", () => {
     const takes = fakeTakes({ full: true })
     render(
       <LensSession
-        deck={REPO_SETS}
+        deck={REPO_LENS}
         level={1}
         speech={null}
         seedKey={() => "takes"}

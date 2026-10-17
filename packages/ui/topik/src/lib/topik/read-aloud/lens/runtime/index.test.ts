@@ -14,7 +14,7 @@ import type {
   LensSnapshot,
 } from "@topik/lib/topik/read-aloud/lens/runtime"
 import { createLensRuntime } from "@topik/lib/topik/read-aloud/lens/runtime"
-import { REPO_SETS } from "@topik/lib/topik/read-aloud/repo-sets"
+import { REPO_LENS } from "@topik/lib/topik/read-aloud/repo-sets"
 import { MAX_SCREEN_MS } from "@topik/lib/topik/read-aloud/timing"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
@@ -116,7 +116,7 @@ function harness(
   const runtime = createLensRuntime(
     {
       current: {
-        deck: REPO_SETS,
+        deck: REPO_LENS,
         level: 1,
         speech,
         onExit: (): void => undefined,

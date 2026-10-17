@@ -9,7 +9,14 @@ import { titleOf } from "@topik/lib/topik/core/drama"
 import type { FeedCard, Seed } from "@topik/lib/topik/core/feed-card"
 import { cardOf, koreanGenre, seedOf } from "@topik/lib/topik/core/feed-card"
 import { TOPIK_LEVELS } from "@topik/lib/topik/generation"
-import { readAloudLevelFor } from "@topik/lib/topik/read-aloud/content"
+import type {
+  SetContext,
+  SetPractice,
+} from "@topik/lib/topik/read-aloud/content"
+import {
+  readAloudLevelFor,
+  setGenreKo,
+} from "@topik/lib/topik/read-aloud/content"
 import {
   BookOpenText,
   ChevronRight,
@@ -75,10 +82,36 @@ type ReadyCard = {
   id: string
   title: string
   words: number
+  lines: number
   level: number
   /** What the set answers, in the learner's terms (`ReadAloudDeck.from`). */
   from?: string
+  /** Absent on a set serving both. */
+  practice?: SetPractice
+  context?: SetContext
 }
+
+const PRACTICE_LABEL: Record<SetPractice, string> = {
+  "read-aloud": "Read aloud",
+  lens: "Grammar lens",
+}
+
+/** What a set holds: a lens set's lines, any other set's words. */
+const sizeOf = (card: ReadyCard): string =>
+  card.practice === "lens"
+    ? `${card.lines} line${card.lines === 1 ? "" : "s"}`
+    : `${card.words} word${card.words === 1 ? "" : "s"}`
+
+/** TOPIK 2 · Grammar lens · 로맨스 · its title. */
+const setLineOf = (card: ReadyCard): string =>
+  [
+    `TOPIK ${card.level}`,
+    card.practice && PRACTICE_LABEL[card.practice],
+    card.context && setGenreKo(card.context.genre),
+    card.title,
+  ]
+    .filter(Boolean)
+    .join(" · ")
 
 /** A pick's outcome, shown on its card in place of what the card offers. */
 export type StorageNote = { tone: "done" | "problem"; text: string }
@@ -240,14 +273,22 @@ const ReadyCardButton = ({
       <BookOpenText className="text-primary size-6 shrink-0" />
       <span className="min-w-0 flex-1">
         <span className="block font-semibold">
-          {`${card.words} word${card.words === 1 ? "" : "s"}`}
+          {sizeOf(card)}
           <span className="text-primary ml-2 text-xs font-bold tracking-wider uppercase">
             New
           </span>
         </span>
         <span className="text-muted-foreground block text-sm">
-          {`TOPIK ${card.level} · ${card.title}`}
+          {setLineOf(card)}
         </span>
+        {card.context && (
+          <span
+            data-slot="ready-set-premise"
+            className="text-muted-foreground block text-xs"
+          >
+            {card.context.premise}
+          </span>
+        )}
         {card.from && (
           <span
             data-slot="ready-set-from"

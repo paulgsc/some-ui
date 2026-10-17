@@ -29,6 +29,8 @@ export type LensSessionProps = UseLensSessionOptions & {
   short?: boolean
   /** The record keeps no new entry until it is shared (Rem. 4.18). */
   recordFull?: () => boolean
+  /** What leaving returns to: read-aloud's start screen, unless said. */
+  exitLabel?: string
 }
 
 /** The set's tally under its headline, by catalogue entry. */
@@ -81,6 +83,7 @@ const SummaryDetail = ({
 export const LensSession = ({
   short = false,
   recordFull,
+  exitLabel = "Back to read-aloud",
   ...options
 }: LensSessionProps): JSX.Element => {
   const vm = useLensSession(options)
@@ -101,7 +104,7 @@ export const LensSession = ({
       level={options.level}
       short={short}
       exit={{
-        label: "Back to read-aloud",
+        label: exitLabel,
         icon: <ArrowLeft className="size-6" />,
         onClick: options.onExit,
       }}
