@@ -7,12 +7,22 @@
 
 import { afterEach, describe, expect, it, vi } from "vitest"
 
-import { owns, ROOMS, tabsOf, wingOf, WINGS } from "@/lib/wings"
+import {
+  navOf,
+  owns,
+  ROOMS,
+  tabsOf,
+  webWingsHere,
+  wingOf,
+  WINGS,
+} from "@/lib/wings"
 
 let carriesApk = true
+let carriesLan = false
 
 vi.mock("@/lib/build-profile", () => ({
-  hasAudience: (audience: string): boolean => audience === "apk" && carriesApk,
+  hasAudience: (audience: string): boolean =>
+    (audience === "apk" && carriesApk) || (audience === "lan" && carriesLan),
 }))
 
 const { ENTRY_ROOTS, entryRoot, listenForWingEntry } = await import(
@@ -21,6 +31,7 @@ const { ENTRY_ROOTS, entryRoot, listenForWingEntry } = await import(
 
 afterEach(() => {
   carriesApk = true
+  carriesLan = false
 })
 
 describe("owns", () => {
@@ -56,7 +67,35 @@ describe("wings", () => {
       if (wing.home !== null) expect(wingOf(wing.home)?.id).toBe(wing.id)
       if (wing.settings !== null)
         expect(wingOf(wing.settings)?.id).toBe(wing.id)
+      if (wing.web !== null) expect(wingOf(wing.web.home)?.id).toBe(wing.id)
     }
+  })
+
+  it("offers the web foyer the home network's wing only where the build carries it", () => {
+    expect(webWingsHere().map((wing) => wing.id)).toEqual([
+      "practice",
+      "studio",
+    ])
+    carriesLan = true
+    expect(webWingsHere().map((wing) => wing.id)).toEqual([
+      "practice",
+      "studio",
+      "operate",
+    ])
+  })
+
+  it("lists only a wing's own rooms in its web sidebar", () => {
+    expect(navOf("practice").map((room) => room.nav)).toEqual([
+      "Home",
+      "Sessions",
+      "Profile",
+    ])
+    expect(navOf("operate").map((room) => room.nav)).toEqual([
+      "Lessons",
+      "Rounds",
+      "Résumé build",
+    ])
+    expect(navOf("self")).toEqual([])
   })
 
   it("lists only a wing's own rooms as its tabs", () => {

@@ -20,10 +20,8 @@ import {
 import { createFileRoute } from "@tanstack/react-router"
 
 import { MOBILE_APP } from "@/lib/build-profile"
-import { settingsQuery } from "@/lib/tenant"
 import { DataHomeSection } from "@/components/settings/data-home-section"
 import { DeviceSection } from "@/components/settings/device-section"
-import { StudySettings } from "@/components/settings/study-settings"
 
 /** "System" plus every selectable palette from the shared design system. */
 const THEME_OPTIONS: ReadonlyArray<{ value: string; label: string }> = [
@@ -83,22 +81,24 @@ const AccountCard = (): JSX.Element => (
 /**
  * The front desk (lib/wings): what belongs to no wing. The theme, and the
  * account on the web or this phone's own controls on the Android app. The
- * study settings are Practice's: on the phone Practice's own settings page,
- * here on the web until the web has wings too.
+ * study settings are Practice's own (`/practice/settings`) on both.
  */
 const SettingsRoute = (): JSX.Element => (
   <div className="max-w-xl space-y-4">
-    {!MOBILE_APP && <StudySettings />}
+    {!MOBILE_APP && (
+      <div className="space-y-1">
+        <h1 className="text-2xl font-semibold tracking-tight">Front desk</h1>
+        <p className="text-muted-foreground text-sm">
+          What belongs to no wing: the theme and the account. Study settings are
+          in Practice.
+        </p>
+      </div>
+    )}
     <ThemeCard />
     <AccountCard />
   </div>
 )
 
 export const Route = createFileRoute("/_dashboard/settings")({
-  // See `sessions/$sessionId.tsx`'s loader for why this is a non-awaited
-  // prefetch and not `ensureQueryData`: a head start, never a gate.
-  loader: ({ context }) => {
-    void context.queryClient.prefetchQuery(settingsQuery)
-  },
   component: SettingsRoute,
 })

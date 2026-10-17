@@ -47,7 +47,7 @@ const TabLink = ({
       to={to}
       aria-current={active ? "page" : undefined}
       className={cn(
-        "flex min-w-0 flex-1 flex-col items-center gap-0.5 py-2 text-xs",
+        "flex min-w-0 flex-1 flex-col items-center gap-0.5 py-2 text-xs rail:w-full rail:flex-none",
         active
           ? "text-foreground font-bold"
           : "text-muted-foreground font-medium"
@@ -67,6 +67,20 @@ const TabLink = ({
 }
 
 /**
+ * The tabs of the bar at `pathname`: its wing's rooms on this surface, or none
+ * where the bar would hold fewer than two. The shell asks too, to make room
+ * for the bar where it is a rail (`rail:`).
+ */
+export function barOf(pathname: string): ReadonlyArray<Room & { tab: string }> {
+  if (!hasAudience("apk")) return []
+  const wing = wingOf(pathname)
+  const tabs = wing
+    ? tabsOf(wing.id).filter((room) => room.roots.every(isOnMobileSurface))
+    : []
+  return tabs.length < 2 ? [] : tabs
+}
+
+/**
  * The current wing's bar. A wing of one room (Self, Studio) has none: its
  * room's own views are the only navigation it needs. Outside every wing (the
  * foyer, the front desk) there is no bar either.
@@ -76,18 +90,15 @@ export const MobileNav = ({
 }: {
   pathname: string
 }): JSX.Element | null => {
-  if (!hasAudience("apk")) return null
+  const tabs = barOf(pathname)
+  if (tabs.length === 0) return null
   const wing = wingOf(pathname)
-  const tabs = wing
-    ? tabsOf(wing.id).filter((room) => room.roots.every(isOnMobileSurface))
-    : []
-  if (tabs.length < 2) return null
   return (
     // Floating: the page runs on under it, so the screen ends in the room
     // and not at a line.
     <nav
       aria-label={wing?.name}
-      className="bg-card border-border/50 sticky bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-10 mx-3 mb-[max(0.75rem,env(safe-area-inset-bottom))] flex h-[4.5rem] shrink-0 items-center rounded-[1.75rem] border px-1 shadow-lg"
+      className="bg-card border-border/50 sticky bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-10 mx-3 mb-[max(0.75rem,env(safe-area-inset-bottom))] flex h-[4.5rem] shrink-0 items-center rounded-[1.75rem] border px-1 shadow-lg rail:fixed rail:top-3 rail:bottom-3 rail:left-3 rail:m-0 rail:h-auto rail:w-[5.25rem] rail:flex-col rail:justify-center rail:gap-3 rail:px-0 rail:py-3"
     >
       {tabs.map((room) => (
         <TabLink key={room.id} room={room} pathname={pathname} />

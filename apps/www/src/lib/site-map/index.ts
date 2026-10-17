@@ -44,6 +44,16 @@ export type Destination = {
   readonly launcher?: DestinationGroup
   /** Its call to action as a landing card; absent for no card. */
   readonly landing?: string
+  /**
+   * Where it is published, as the home network's foyer lists it under
+   * "Published from here". Absent for a page only the home network serves.
+   */
+  readonly channel?: string
+  /**
+   * A short demo video's YouTube id. A demo shows only where one exists, and
+   * loads only when asked (`components/demo-link`).
+   */
+  readonly demo?: string
 }
 
 export type DestinationGroup = "home-network" | "showcase"
@@ -88,6 +98,7 @@ const DESTINATIONS: ReadonlyArray<Destination> = [
     icon: Sparkles,
     audience: "public",
     landing: "Open the app",
+    channel: "Pages",
   },
   {
     to: "/playoff-delta",
@@ -98,6 +109,7 @@ const DESTINATIONS: ReadonlyArray<Destination> = [
     audience: "web",
     launcher: "showcase",
     landing: "Watch a week",
+    channel: "Pages",
   },
   {
     to: "/extensions",
@@ -107,6 +119,7 @@ const DESTINATIONS: ReadonlyArray<Destination> = [
     audience: "public",
     launcher: "showcase",
     landing: "See the five",
+    channel: "Pages · addons.mozilla.org",
   },
   {
     to: "/resume",
@@ -115,6 +128,7 @@ const DESTINATIONS: ReadonlyArray<Destination> = [
     icon: FileText,
     audience: "public",
     landing: "View résumé",
+    channel: "Pages",
   },
   {
     to: "/mission",

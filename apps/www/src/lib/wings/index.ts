@@ -32,6 +32,18 @@ export type Wing = {
   home: Path | null
   /** The wing's own settings, or null when it has none. */
   settings: Path | null
+  /**
+   * The wing on the desktop web: its Home and what you come in for there,
+   * which differ from the phone's (Studio records the Playoff Delta stage on
+   * the desktop, voice takes on the phone). Null where the web has none.
+   */
+  web: { home: Path; job: string; lanOnly?: true } | null
+  /**
+   * What the wing publishes and what it keeps, as the strip under the web
+   * header says it to the owner (CLAUDE.md, "two mandates"). Absent where the
+   * web shows no strip.
+   */
+  exposure?: { published: string; private: string }
 }
 
 export type Room = {
@@ -41,6 +53,8 @@ export type Room = {
   roots: ReadonlyArray<Path>
   /** Its label in its wing's bar on the phone, when it has a tab there. */
   tab?: string
+  /** Its label in its wing's sidebar on the desktop web, when it has one there. */
+  nav?: string
 }
 
 export const WINGS: ReadonlyArray<Wing> = [
@@ -50,6 +64,14 @@ export const WINGS: ReadonlyArray<Wing> = [
     job: "Study, reflect, and pick up where you left off",
     home: "/practice",
     settings: "/practice/settings",
+    web: {
+      home: "/app",
+      job: "Study, reflect, and pick up where you left off",
+    },
+    exposure: {
+      published: "these study screens, on Pages",
+      private: "your sessions and reflections, kept on this server",
+    },
   },
   {
     id: "self",
@@ -57,6 +79,7 @@ export const WINGS: ReadonlyArray<Wing> = [
     job: "aph, and what is yours alone",
     home: "/aph",
     settings: "/aph/settings",
+    web: null,
   },
   {
     id: "studio",
@@ -64,6 +87,10 @@ export const WINGS: ReadonlyArray<Wing> = [
     job: "Voice takes for the next Build Journal episode",
     home: "/journal",
     settings: null,
+    web: {
+      home: "/playoff-delta",
+      job: "Record what gets published: the Playoff Delta stage",
+    },
   },
   {
     id: "operate",
@@ -71,29 +98,47 @@ export const WINGS: ReadonlyArray<Wing> = [
     job: "Lessons and rounds for every learner",
     home: null,
     settings: null,
+    web: {
+      home: "/lessons",
+      job: "Make what gets published: lessons, rounds, the résumé",
+      lanOnly: true,
+    },
   },
   {
     id: "public",
     name: "Public",
-    job: "What a visitor without an account sees",
+    job: "The published front: what anyone can see",
     home: null,
     settings: null,
+    web: null,
   },
 ]
 
 export const ROOMS: ReadonlyArray<Room> = [
   { id: "practice-home", wing: "practice", roots: ["/practice"], tab: "Home" },
-  { id: "sessions", wing: "practice", roots: ["/sessions"], tab: "Study" },
+  { id: "dashboard", wing: "practice", roots: ["/app"], nav: "Home" },
+  {
+    id: "sessions",
+    wing: "practice",
+    roots: ["/sessions"],
+    tab: "Study",
+    nav: "Sessions",
+  },
   { id: "soundbites", wing: "practice", roots: ["/soundbites"], tab: "Bites" },
-  { id: "dashboard", wing: "practice", roots: ["/app"] },
-  { id: "profile", wing: "practice", roots: ["/profile"] },
+  { id: "profile", wing: "practice", roots: ["/profile"], nav: "Profile" },
   { id: "aph", wing: "self", roots: ["/aph"] },
   { id: "journal", wing: "studio", roots: ["/journal"] },
   { id: "playoff-delta", wing: "studio", roots: ["/playoff-delta"] },
-  { id: "lesson-crm", wing: "operate", roots: ["/lessons", "/rounds"] },
-  { id: "resume-build", wing: "operate", roots: ["/resume-build"] },
+  { id: "lessons", wing: "operate", roots: ["/lessons"], nav: "Lessons" },
+  { id: "rounds", wing: "operate", roots: ["/rounds"], nav: "Rounds" },
+  {
+    id: "resume-build",
+    wing: "operate",
+    roots: ["/resume-build"],
+    nav: "Résumé build",
+  },
   { id: "landing", wing: "public", roots: ["/", "/mission", "/extensions"] },
-  { id: "resume", wing: "public", roots: ["/resume"] },
+  { id: "resume", wing: "public", roots: ["/resume"], nav: "Résumé" },
 ]
 
 /** Where a wing is chosen: the phone's plain icon opens here. */
@@ -129,5 +174,31 @@ export function tabsOf(wing: WingId): ReadonlyArray<Room & { tab: string }> {
   return ROOMS.filter(
     (room): room is Room & { tab: string } =>
       room.wing === wing && room.tab !== undefined
+  )
+}
+
+/**
+ * The wings the desktop web's foyer offers in this build: each with a web
+ * Home, and the home network's own only where this build carries it (A3,
+ * packages/some-vite-config/AUDIENCES.md).
+ */
+export function webWingsHere(): ReadonlyArray<
+  Wing & { web: NonNullable<Wing["web"]> }
+> {
+  return WINGS.filter(
+    (wing): wing is Wing & { web: NonNullable<Wing["web"]> } =>
+      wing.web !== null && (wing.web.lanOnly !== true || hasAudience("lan"))
+  )
+}
+
+/**
+ * A wing's rooms in its sidebar on the desktop web, in registry order. Only a
+ * page of that wing shows the sidebar, so a home-network room is listed only
+ * where its own page already rendered.
+ */
+export function navOf(wing: WingId): ReadonlyArray<Room & { nav: string }> {
+  return ROOMS.filter(
+    (room): room is Room & { nav: string } =>
+      room.wing === wing && room.nav !== undefined
   )
 }

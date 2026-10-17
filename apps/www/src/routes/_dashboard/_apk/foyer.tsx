@@ -1,19 +1,11 @@
 import type { JSX } from "react"
-import { BrandMark, StudyGlyph, TalkGlyph, TrendGlyph } from "@some-ui/shared"
+import { BrandMark } from "@some-ui/shared"
 import { createFileRoute, Link } from "@tanstack/react-router"
 import { ChevronRight } from "lucide-react"
 
 import { isOnMobileSurface } from "@/lib/app-surface"
-import type { WingId } from "@/lib/wings"
 import { WINGS } from "@/lib/wings"
-
-const GLYPHS: Record<WingId, typeof StudyGlyph | undefined> = {
-  practice: StudyGlyph,
-  self: TrendGlyph,
-  studio: TalkGlyph,
-  operate: undefined,
-  public: undefined,
-}
+import { WING_GLYPHS } from "@/components/wing-glyph"
 
 /**
  * Where a wing is chosen (lib/wings): the phone's plain icon opens here, and
@@ -36,7 +28,7 @@ const Foyer = (): JSX.Element => {
       </header>
       <nav aria-label="Wings" className="flex flex-col gap-3">
         {wings.map((wing) => {
-          const Glyph = GLYPHS[wing.id]
+          const Glyph = WING_GLYPHS[wing.id]
           return (
             <Link
               key={wing.id}

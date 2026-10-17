@@ -75,7 +75,7 @@ vi.mock("@/components/settings/study-nudge-section", () => ({
   ),
 }))
 
-const { Route } = await import("@/routes/_dashboard/settings")
+const { Route } = await import("@/routes/_dashboard/practice/settings")
 const SettingsRoute = routeComponent(Route)
 
 beforeEach(() => {

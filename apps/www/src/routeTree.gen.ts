@@ -28,6 +28,7 @@ import { Route as DashboardApkSoundbitesRouteImport } from './routes/_dashboard/
 import { Route as DashboardLanLessonsRouteImport } from './routes/_dashboard/_lan/lessons'
 import { Route as DashboardLanResumeBuildRouteImport } from './routes/_dashboard/_lan/resume-build'
 import { Route as DashboardLanRoundsRouteImport } from './routes/_dashboard/_lan/rounds'
+import { Route as DashboardPracticeSettingsRouteImport } from './routes/_dashboard/practice/settings'
 import { Route as DashboardSessionsIndexRouteImport } from './routes/_dashboard/sessions/index'
 import { Route as DashboardSessionsSessionIdRouteImport } from './routes/_dashboard/sessions/$sessionId'
 import { Route as DashboardSessionsNewRouteImport } from './routes/_dashboard/sessions/new'
@@ -36,7 +37,6 @@ import { Route as DashboardApkAphHistoryRouteImport } from './routes/_dashboard/
 import { Route as DashboardApkAphSettingsRouteImport } from './routes/_dashboard/_apk/aph/settings'
 import { Route as DashboardApkAphTrendRouteImport } from './routes/_dashboard/_apk/aph/trend'
 import { Route as DashboardApkPracticeIndexRouteImport } from './routes/_dashboard/_apk/practice/index'
-import { Route as DashboardApkPracticeSettingsRouteImport } from './routes/_dashboard/_apk/practice/settings'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -130,6 +130,12 @@ const DashboardLanRoundsRoute = DashboardLanRoundsRouteImport.update({
   path: '/rounds',
   getParentRoute: () => DashboardLanRoute,
 } as any)
+const DashboardPracticeSettingsRoute =
+  DashboardPracticeSettingsRouteImport.update({
+    id: '/practice/settings',
+    path: '/practice/settings',
+    getParentRoute: () => DashboardRoute,
+  } as any)
 const DashboardSessionsIndexRoute = DashboardSessionsIndexRouteImport.update({
   id: '/sessions/',
   path: '/sessions/',
@@ -172,12 +178,6 @@ const DashboardApkPracticeIndexRoute =
     path: '/practice/',
     getParentRoute: () => DashboardApkRoute,
   } as any)
-const DashboardApkPracticeSettingsRoute =
-  DashboardApkPracticeSettingsRouteImport.update({
-    id: '/practice/settings',
-    path: '/practice/settings',
-    getParentRoute: () => DashboardApkRoute,
-  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -196,13 +196,13 @@ export interface FileRoutesByFullPath {
   '/lessons': typeof DashboardLanLessonsRoute
   '/resume-build': typeof DashboardLanResumeBuildRoute
   '/rounds': typeof DashboardLanRoundsRoute
+  '/practice/settings': typeof DashboardPracticeSettingsRoute
   '/sessions/$sessionId': typeof DashboardSessionsSessionIdRoute
   '/sessions/new': typeof DashboardSessionsNewRoute
   '/sessions/': typeof DashboardSessionsIndexRoute
   '/aph/history': typeof DashboardApkAphHistoryRoute
   '/aph/settings': typeof DashboardApkAphSettingsRoute
   '/aph/trend': typeof DashboardApkAphTrendRoute
-  '/practice/settings': typeof DashboardApkPracticeSettingsRoute
   '/aph/': typeof DashboardApkAphIndexRoute
   '/practice/': typeof DashboardApkPracticeIndexRoute
 }
@@ -222,13 +222,13 @@ export interface FileRoutesByTo {
   '/lessons': typeof DashboardLanLessonsRoute
   '/resume-build': typeof DashboardLanResumeBuildRoute
   '/rounds': typeof DashboardLanRoundsRoute
+  '/practice/settings': typeof DashboardPracticeSettingsRoute
   '/sessions/$sessionId': typeof DashboardSessionsSessionIdRoute
   '/sessions/new': typeof DashboardSessionsNewRoute
   '/sessions': typeof DashboardSessionsIndexRoute
   '/aph/history': typeof DashboardApkAphHistoryRoute
   '/aph/settings': typeof DashboardApkAphSettingsRoute
   '/aph/trend': typeof DashboardApkAphTrendRoute
-  '/practice/settings': typeof DashboardApkPracticeSettingsRoute
   '/aph': typeof DashboardApkAphIndexRoute
   '/practice': typeof DashboardApkPracticeIndexRoute
 }
@@ -253,13 +253,13 @@ export interface FileRoutesById {
   '/_dashboard/_lan/lessons': typeof DashboardLanLessonsRoute
   '/_dashboard/_lan/resume-build': typeof DashboardLanResumeBuildRoute
   '/_dashboard/_lan/rounds': typeof DashboardLanRoundsRoute
+  '/_dashboard/practice/settings': typeof DashboardPracticeSettingsRoute
   '/_dashboard/sessions/$sessionId': typeof DashboardSessionsSessionIdRoute
   '/_dashboard/sessions/new': typeof DashboardSessionsNewRoute
   '/_dashboard/sessions/': typeof DashboardSessionsIndexRoute
   '/_dashboard/_apk/aph/history': typeof DashboardApkAphHistoryRoute
   '/_dashboard/_apk/aph/settings': typeof DashboardApkAphSettingsRoute
   '/_dashboard/_apk/aph/trend': typeof DashboardApkAphTrendRoute
-  '/_dashboard/_apk/practice/settings': typeof DashboardApkPracticeSettingsRoute
   '/_dashboard/_apk/aph/': typeof DashboardApkAphIndexRoute
   '/_dashboard/_apk/practice/': typeof DashboardApkPracticeIndexRoute
 }
@@ -282,13 +282,13 @@ export interface FileRouteTypes {
     | '/lessons'
     | '/resume-build'
     | '/rounds'
+    | '/practice/settings'
     | '/sessions/$sessionId'
     | '/sessions/new'
     | '/sessions/'
     | '/aph/history'
     | '/aph/settings'
     | '/aph/trend'
-    | '/practice/settings'
     | '/aph/'
     | '/practice/'
   fileRoutesByTo: FileRoutesByTo
@@ -308,13 +308,13 @@ export interface FileRouteTypes {
     | '/lessons'
     | '/resume-build'
     | '/rounds'
+    | '/practice/settings'
     | '/sessions/$sessionId'
     | '/sessions/new'
     | '/sessions'
     | '/aph/history'
     | '/aph/settings'
     | '/aph/trend'
-    | '/practice/settings'
     | '/aph'
     | '/practice'
   id:
@@ -338,13 +338,13 @@ export interface FileRouteTypes {
     | '/_dashboard/_lan/lessons'
     | '/_dashboard/_lan/resume-build'
     | '/_dashboard/_lan/rounds'
+    | '/_dashboard/practice/settings'
     | '/_dashboard/sessions/$sessionId'
     | '/_dashboard/sessions/new'
     | '/_dashboard/sessions/'
     | '/_dashboard/_apk/aph/history'
     | '/_dashboard/_apk/aph/settings'
     | '/_dashboard/_apk/aph/trend'
-    | '/_dashboard/_apk/practice/settings'
     | '/_dashboard/_apk/aph/'
     | '/_dashboard/_apk/practice/'
   fileRoutesById: FileRoutesById
@@ -493,6 +493,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardLanRoundsRouteImport
       parentRoute: typeof DashboardLanRoute
     }
+    '/_dashboard/practice/settings': {
+      id: '/_dashboard/practice/settings'
+      path: '/practice/settings'
+      fullPath: '/practice/settings'
+      preLoaderRoute: typeof DashboardPracticeSettingsRouteImport
+      parentRoute: typeof DashboardRoute
+    }
     '/_dashboard/sessions/': {
       id: '/_dashboard/sessions/'
       path: '/sessions'
@@ -549,13 +556,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardApkPracticeIndexRouteImport
       parentRoute: typeof DashboardApkRoute
     }
-    '/_dashboard/_apk/practice/settings': {
-      id: '/_dashboard/_apk/practice/settings'
-      path: '/practice/settings'
-      fullPath: '/practice/settings'
-      preLoaderRoute: typeof DashboardApkPracticeSettingsRouteImport
-      parentRoute: typeof DashboardApkRoute
-    }
   }
 }
 
@@ -582,7 +582,6 @@ interface DashboardApkRouteChildren {
   DashboardApkFoyerRoute: typeof DashboardApkFoyerRoute
   DashboardApkJournalRoute: typeof DashboardApkJournalRoute
   DashboardApkSoundbitesRoute: typeof DashboardApkSoundbitesRoute
-  DashboardApkPracticeSettingsRoute: typeof DashboardApkPracticeSettingsRoute
   DashboardApkPracticeIndexRoute: typeof DashboardApkPracticeIndexRoute
 }
 
@@ -591,7 +590,6 @@ const DashboardApkRouteChildren: DashboardApkRouteChildren = {
   DashboardApkFoyerRoute: DashboardApkFoyerRoute,
   DashboardApkJournalRoute: DashboardApkJournalRoute,
   DashboardApkSoundbitesRoute: DashboardApkSoundbitesRoute,
-  DashboardApkPracticeSettingsRoute: DashboardApkPracticeSettingsRoute,
   DashboardApkPracticeIndexRoute: DashboardApkPracticeIndexRoute,
 }
 
@@ -622,6 +620,7 @@ interface DashboardRouteChildren {
   DashboardProfileRoute: typeof DashboardProfileRoute
   DashboardResumeRoute: typeof DashboardResumeRoute
   DashboardSettingsRoute: typeof DashboardSettingsRoute
+  DashboardPracticeSettingsRoute: typeof DashboardPracticeSettingsRoute
   DashboardSessionsSessionIdRoute: typeof DashboardSessionsSessionIdRoute
   DashboardSessionsNewRoute: typeof DashboardSessionsNewRoute
   DashboardSessionsIndexRoute: typeof DashboardSessionsIndexRoute
@@ -634,6 +633,7 @@ const DashboardRouteChildren: DashboardRouteChildren = {
   DashboardProfileRoute: DashboardProfileRoute,
   DashboardResumeRoute: DashboardResumeRoute,
   DashboardSettingsRoute: DashboardSettingsRoute,
+  DashboardPracticeSettingsRoute: DashboardPracticeSettingsRoute,
   DashboardSessionsSessionIdRoute: DashboardSessionsSessionIdRoute,
   DashboardSessionsNewRoute: DashboardSessionsNewRoute,
   DashboardSessionsIndexRoute: DashboardSessionsIndexRoute,

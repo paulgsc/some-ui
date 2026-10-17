@@ -75,8 +75,8 @@ describe("route loaders prefetch what their components read", () => {
     ])
   })
 
-  it("/settings warms the settings query", async () => {
-    const { Route } = await import("@/routes/_dashboard/settings")
+  it("/practice/settings warms the settings query", async () => {
+    const { Route } = await import("@/routes/_dashboard/practice/settings")
 
     expect(keysPrefetchedBy(Route.options.loader)).toStrictEqual([
       settingsQuery.queryKey,

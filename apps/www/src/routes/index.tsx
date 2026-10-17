@@ -1,22 +1,24 @@
-import type { JSX } from "react"
+import type { ComponentType, JSX } from "react"
+import type { FileRoutesByTo } from "@/routeTree.gen"
 import { BrandMark, Card, CardContent } from "@some-ui/shared"
 import { createFileRoute, Link } from "@tanstack/react-router"
-import { ArrowRight } from "lucide-react"
+import { ArrowRight, Globe, Lock, Settings, Sparkles } from "lucide-react"
 
 import { useAuthoritySnapshot } from "@/lib/authority"
-import { destinationsHere, type Destination } from "@/lib/site-map"
+import type { Destination } from "@/lib/site-map"
+import { destinationsHere } from "@/lib/site-map"
+import { webWingsHere } from "@/lib/wings"
+import { DemoLink } from "@/components/demo-link"
 import { ExtensionsPage } from "@/components/extensions/extensions-page"
 import { ThemeSwitcher } from "@/components/theme-switcher"
+import { WING_GLYPHS } from "@/components/wing-glyph"
 
 /**
- * The signed-in visitor's "/": a splash pointing at what this origin hosts
- * (.github/workflows/pages.yml): the catalog's `landing` entries
- * (`lib/site-map`) this build serves. A visitor with no session gets the
- * extensions tour instead (see `Root`).
+ * The owner's "/" on the home network: the web's foyer. First the wings to go
+ * into (lib/wings), then what is published from here, each with its channel
+ * (`lib/site-map`). A visitor with no session gets the extensions tour
+ * instead (see `Root`).
  */
-const CARDS = destinationsHere().flatMap((d) =>
-  d.landing ? [{ ...d, cta: d.landing }] : []
-)
 
 const DestinationCard = ({
   title,
@@ -24,7 +26,13 @@ const DestinationCard = ({
   icon: Icon,
   cta,
   to,
-}: Destination & { cta: string }): JSX.Element => {
+}: {
+  to: keyof FileRoutesByTo
+  title: string
+  blurb: string
+  icon: ComponentType<{ className?: string; "aria-hidden"?: boolean }>
+  cta: string
+}): JSX.Element => {
   return (
     <Link to={to} className="block h-full">
       <Card className="hover:border-primary/50 group h-full transition-colors">
@@ -46,40 +54,90 @@ const DestinationCard = ({
   )
 }
 
+/**
+ * What "Published from here" lists: the destinations this build serves that
+ * are published somewhere, each with its channel and, where one exists, a
+ * demo.
+ */
+const PUBLISHED = destinationsHere().filter(
+  (d): d is Destination & { channel: string } => d.channel !== undefined
+)
+
 const Landing = (): JSX.Element => (
   <main className="bg-background text-foreground relative min-h-svh">
-    <div className="absolute top-4 right-4">
+    <div className="absolute top-4 right-4 flex items-center gap-1">
+      <Link
+        to="/settings"
+        aria-label="Front desk"
+        className="text-muted-foreground hover:text-foreground inline-flex size-9 items-center justify-center rounded-md"
+      >
+        <Settings className="size-5" aria-hidden />
+      </Link>
       <ThemeSwitcher />
     </div>
     <div className="mx-auto flex min-h-svh max-w-4xl flex-col justify-center gap-10 px-6 py-16">
-      <div className="space-y-3 text-center">
-        {/* The mark and wordmark are one unit, so the mark is decorative. */}
-        <BrandMark tone="brand" className="mx-auto size-12" />
-        <p className="text-muted-foreground text-sm font-medium tracking-wide uppercase">
-          Some UI
-        </p>
+      <div className="flex items-center gap-3">
+        <BrandMark tone="brand" className="size-12" />
         <h1 className="text-gradient-heading text-3xl font-bold tracking-tight sm:text-4xl">
-          A few projects, one workspace
+          Where to?
         </h1>
-        <p className="text-muted-foreground mx-auto max-w-xl text-balance">
-          Everything below is built and deployed from a single monorepo. Pick a
-          destination.
-        </p>
-        {/* /mission answers why any of it exists: a text link, so it doesn't
-            compete with the destinations. */}
-        <Link
-          to="/mission"
-          className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-sm underline-offset-4 transition-colors hover:underline"
-        >
-          Why this exists
-          <ArrowRight className="size-3.5" aria-hidden />
-        </Link>
       </div>
-      <div className="grid gap-4 sm:grid-cols-2">
-        {CARDS.map((card) => (
-          <DestinationCard key={card.to} {...card} />
+      <nav aria-label="Wings" className="grid gap-4 sm:grid-cols-3">
+        {webWingsHere().map((wing) => (
+          <div key={wing.id} className="relative">
+            <DestinationCard
+              to={wing.web.home}
+              title={wing.name}
+              blurb={wing.web.job}
+              icon={WING_GLYPHS[wing.id] ?? Sparkles}
+              cta="Go in"
+            />
+            {wing.web.lanOnly && (
+              <span className="bg-foreground text-background absolute top-4 right-4 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium">
+                <Lock className="size-3" aria-hidden />
+                Home network
+              </span>
+            )}
+          </div>
         ))}
-      </div>
+      </nav>
+      <section aria-labelledby="published" className="space-y-3">
+        <div className="flex items-baseline justify-between gap-3">
+          <h2
+            id="published"
+            className="text-muted-foreground text-sm font-medium tracking-wide uppercase"
+          >
+            Published from here
+          </h2>
+          <Link
+            to="/mission"
+            className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-sm underline-offset-4 hover:underline"
+          >
+            Why this exists
+            <ArrowRight className="size-3.5" aria-hidden />
+          </Link>
+        </div>
+        <ul className="bg-card divide-border/60 divide-y rounded-2xl border">
+          {PUBLISHED.map(({ to, title, blurb, icon: Icon, channel, demo }) => (
+            <li key={to} className="flex items-center gap-3 px-5 py-3.5">
+              <Link to={to} className="flex min-w-0 flex-1 items-center gap-4">
+                <Icon className="text-primary size-5 shrink-0" aria-hidden />
+                <span className="min-w-0">
+                  <span className="font-medium">{title}</span>
+                  <span className="text-muted-foreground block text-sm">
+                    {blurb}
+                  </span>
+                </span>
+              </Link>
+              {demo && <DemoLink youtubeId={demo} title={title} />}
+              <span className="text-muted-foreground inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs">
+                <Globe className="size-3" aria-hidden />
+                {channel}
+              </span>
+            </li>
+          ))}
+        </ul>
+      </section>
     </div>
   </main>
 )

@@ -33,6 +33,17 @@
   }
 }
 
+/*
+ * A phone held sideways: landscape and shorter than 480px (`handheld`'s
+ * height half). The phone's wing bar becomes a rail here, since along the
+ * bottom it would take a third of the height.
+ */
+@custom-variant rail {
+  @media (orientation: landscape) and (max-height: 479px) {
+    @slot;
+  }
+}
+
 @theme inline {
   --breakpoint-3xl: 1600px;
   --breakpoint-4xl: 2000px;
