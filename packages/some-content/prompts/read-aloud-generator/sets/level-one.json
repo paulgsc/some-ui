@@ -781,9 +781,9 @@
         ],
         "situations": {
           "options": [
-            "Answering a question about yourself",
-            "Answering a question about someone else",
-            "Asking the same question back"
+            "Saying you are still studying",
+            "Saying you work at a company",
+            "Saying you are looking for work"
           ],
           "intended": 0
         }
@@ -1013,9 +1013,9 @@
         ],
         "situations": {
           "options": [
-            "Giving the hour of a daily habit",
-            "Giving the place of a daily habit",
-            "Giving the reason for a daily habit"
+            "Saying you start the day early",
+            "Saying you start the day late",
+            "Saying you start the day at noon"
           ],
           "intended": 0
         }
@@ -1122,9 +1122,9 @@
         ],
         "situations": {
           "options": [
-            "Describing your usual commute",
-            "Asking a driver where to get off",
-            "Saying you missed your ride"
+            "Saying you ride to class each day",
+            "Saying you walk to class each day",
+            "Saying you drive to work each day"
           ],
           "intended": 0
         }
@@ -1255,9 +1255,9 @@
         ],
         "situations": {
           "options": [
-            "Describing your usual afternoon routine",
-            "Asking for directions to a building",
-            "Paying a late fee"
+            "Saying you stay somewhere quiet after class",
+            "Saying you go straight home after class",
+            "Saying you meet friends after class"
           ],
           "intended": 0
         }
@@ -1331,9 +1331,9 @@
         ],
         "situations": {
           "options": [
-            "Describing how something tastes",
-            "Describing how much something costs",
-            "Describing where something comes from"
+            "Answering that a taste is a bit strong",
+            "Answering that a taste is far too strong to eat",
+            "Answering that a taste is sweet"
           ],
           "intended": 0
         }
@@ -1401,9 +1401,9 @@
         ],
         "situations": {
           "options": [
-            "Saying where you will run an errand",
-            "Asking how much something costs",
-            "Saying a place has shut for the day"
+            "Saying you will pick up groceries later",
+            "Saying you will see a film later",
+            "Saying you will take a nap later"
           ],
           "intended": 0
         }
@@ -1451,9 +1451,9 @@
         ],
         "situations": {
           "options": [
-            "Making small talk outdoors",
-            "Checking a forecast for next week",
-            "Complaining about a storm"
+            "Saying it is a pleasant day",
+            "Saying it is a gloomy day",
+            "Saying it is a stormy day"
           ],
           "intended": 0
         }
@@ -1530,9 +1530,9 @@
         ],
         "situations": {
           "options": [
-            "Describing what a season is like",
-            "Describing what you do in a season",
-            "Describing when a season starts"
+            "Warning someone to bundle up for a season",
+            "Telling someone a season is pleasantly warm",
+            "Telling someone a season is mostly rainy"
           ],
           "intended": 0
         }
@@ -1581,9 +1581,9 @@
         ],
         "situations": {
           "options": [
-            "Telling someone where you usually head each year",
-            "Describing what you do once you arrive somewhere",
-            "Saying where you went last year"
+            "Saying you head for the coast",
+            "Saying you head for the mountains",
+            "Saying you stay in the city"
           ],
           "intended": 0
         }
@@ -1632,9 +1632,9 @@
         ],
         "situations": {
           "options": [
-            "Describing what you usually do, and where",
-            "Saying where you are heading now",
-            "Saying what you did last time"
+            "Saying you take it easy indoors",
+            "Saying you go hiking",
+            "Saying you work extra shifts"
           ],
           "intended": 0
         }
@@ -1690,9 +1690,9 @@
         ],
         "situations": {
           "options": [
-            "Describing a weekly habit and where you keep it",
-            "Asking how to get somewhere",
-            "Signing up for a class"
+            "Saying you keep fit outdoors once a week",
+            "Saying you keep fit indoors every day",
+            "Saying you have no time to keep fit"
           ],
           "intended": 0
         }
@@ -1752,9 +1752,9 @@
         ],
         "situations": {
           "options": [
-            "Leaving work in the middle of the day",
-            "Making an appointment for next week",
-            "Visiting a relative"
+            "Leaving early to see a doctor",
+            "Leaving early to pick up a child",
+            "Leaving early to catch a train"
           ],
           "intended": 0
         }
@@ -1855,7 +1855,11 @@
           }
         ],
         "situations": {
-          "options": ["Giving directions", "Paying a bill", "Mailing a letter"],
+          "options": [
+            "Placing a building beside another one",
+            "Saying a building is far away",
+            "Saying a building has closed down"
+          ],
           "intended": 0
         }
       }
@@ -1966,9 +1970,9 @@
         ],
         "situations": {
           "options": [
-            "Recounting an errand that is already done",
-            "Asking for directions to a building",
-            "Asking to exchange something"
+            "Saying you picked out something to wear",
+            "Saying you saw a film",
+            "Saying you stayed in all day"
           ],
           "intended": 0
         }
@@ -2248,9 +2252,9 @@
         ],
         "situations": {
           "options": [
-            "Talking about a habit",
-            "Asking someone to be quieter",
-            "Buying concert tickets"
+            "Saying you have songs on all the time",
+            "Saying you go running all the time",
+            "Saying you cook all the time"
           ],
           "intended": 0
         }
@@ -2486,9 +2490,9 @@
         ],
         "situations": {
           "options": [
-            "Agreeing it is time for a meal",
-            "Saying you feel unwell",
-            "Ordering dessert"
+            "Agreeing because you are ready to eat",
+            "Declining because you already ate",
+            "Declining because you are too busy"
           ],
           "intended": 0
         }
@@ -2783,9 +2787,9 @@
         ],
         "situations": {
           "options": [
-            "Saying how a course is going",
-            "Saying how long a course lasts",
-            "Saying where a course is held"
+            "Admitting a course is a struggle at times",
+            "Boasting that a course is easy",
+            "Complaining that a course is boring"
           ],
           "intended": 0
         }
@@ -2864,9 +2868,9 @@
         ],
         "situations": {
           "options": [
-            "Giving a reason about a day that is over",
-            "Giving a reason about today",
-            "Giving a reason about tomorrow"
+            "Saying you had too much on",
+            "Saying you forgot",
+            "Saying your phone broke"
           ],
           "intended": 0
         }
@@ -2966,9 +2970,9 @@
         ],
         "situations": {
           "options": [
-            "Recounting something that is already over",
-            "Describing plans for later today",
-            "Describing what is happening now"
+            "Saying you saw someone you know",
+            "Saying you stayed home alone",
+            "Saying you worked late"
           ],
           "intended": 0
         }
@@ -3061,9 +3065,9 @@
         ],
         "situations": {
           "options": [
-            "Answering a question about earlier today",
-            "Ordering at a counter",
-            "Offering someone something"
+            "Saying yes, and what you had",
+            "Saying no, you skipped it",
+            "Saying not yet, but soon"
           ],
           "intended": 0
         }
@@ -3121,9 +3125,9 @@
         ],
         "situations": {
           "options": [
-            "Recounting time that is already over",
-            "Making plans for later",
-            "Saying where you are heading now"
+            "Saying you took it easy indoors",
+            "Saying you went on a trip",
+            "Saying you worked the whole time"
           ],
           "intended": 0
         }

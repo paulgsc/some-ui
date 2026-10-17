@@ -224,13 +224,13 @@ spell neither in any of the cue's words (주말에, 오후에). Set
 `hearable: false` on a cue longer than about fifteen syllables.
 
 **`situations` are when someone would say the line,** never what it means,
-and they name none of its words in English: "Recounting something that is
-already over", not "Telling someone you met a friend". Three, in English, one
-of them the author's (`intended`), the other two in the cue's setting but not
-when someone would say this line, so that only what the line says tells them
-apart: its tense, its place, who did it. Describe the setting, not the cue:
-"Explaining why you missed a call" restates a cue that asks why, so it
-answers the check from the cue alone.
+and they name none of its words in English. Three, in English, one of them
+the author's (`intended`), the other two answering the same cue differently,
+so that only what the line says tells them apart. After 어제 뭐 했어요?, the
+line 친구를 만났어요 is "Saying you saw someone you know", beside "Saying you
+stayed home alone" and "Saying you worked late"; not "Recounting something
+that is already over", which the cue's own tense picks, and not "Telling
+someone you met a friend", which translates the line.
 
 ## Before you answer
 
