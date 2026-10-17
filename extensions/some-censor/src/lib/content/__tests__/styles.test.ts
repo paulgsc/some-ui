@@ -34,26 +34,12 @@ const RAW_CSS = readFileSync(
 )
 
 /**
- * Every class string the module can produce.
- *
- * Enumerated by hand rather than reflected out of the module: reflection needs
- * an `any` cast to call the two builder functions, and it silently produces the
- * literal string "undefined" when a function is handed the wrong argument kind.
- * The completeness test below fails if a new export appears, so the explicit
+ * Every class string the module can produce. Enumerated by hand; the
+ * completeness test below fails if a new export appears, so the explicit
  * list cannot quietly fall behind.
  */
 function allTokens(): Array<string> {
-  const lists: Array<string> = [
-    ...Object.values(styles.VEIL),
-    ...Object.values(styles.META),
-    ...Object.values(styles.TITLE),
-    styles.META_CHANNEL,
-    styles.META_SUB,
-    styles.TITLE_LANG,
-    ...(["idle", "meta", "title", "whitelist"] as const).map(styles.hintClass),
-    ...([0, 1, 2] as const).map(styles.railClass),
-  ]
-  return [...new Set(lists.flatMap((l) => l.split(/\s+/)).filter(Boolean))]
+  return styles.VEIL.split(/\s+/).filter(Boolean)
 }
 
 const VEIL_STYLES_SRC = readFileSync(
@@ -178,28 +164,7 @@ describe("the utilities mean what they read as", () => {
   it("enumerates every export veil-styles.ts provides", () => {
     // allTokens() is hand-written, so a new export would be styled in the
     // product and invisible to every assertion here.
-    expect(Object.keys(styles).sort()).toEqual([
-      "META",
-      "META_CHANNEL",
-      "META_SUB",
-      "TITLE",
-      "TITLE_LANG",
-      "VEIL",
-      "hintClass",
-      "railClass",
-    ])
-  })
-
-  it("gives line-height a ratio, not a slice of the spacing scale", () => {
-    // leading-1.5 → calc(var(--spacing) * 1.5) → 6px. leading-[1.5] → 1.5.
-    const lineHeights = Array.from(
-      generated.matchAll(/line-height:\s*([^;}]+)/g),
-      (m) => m[1]?.trim() ?? ""
-    )
-    expect(lineHeights.length, "the veil sets line-height").toBeGreaterThan(0)
-    for (const value of lineHeights) {
-      expect(value, `line-height: ${value}`).not.toContain("--spacing")
-    }
+    expect(Object.keys(styles).sort()).toEqual(["VEIL"])
   })
 
   it("emits a rule for every class the module declares", () => {
@@ -214,26 +179,13 @@ describe("the utilities mean what they read as", () => {
       )
     )
     // Namespace classes are identity hooks, not utilities; nothing generates
-    // them, and `group` is only a marker for a variant on a descendant.
-    const utilities = allTokens().filter(
-      (t) => !t.startsWith("boyo-") && t !== "group"
-    )
+    // them.
+    const utilities = allTokens().filter((t) => !t.startsWith("boyo-"))
     expect(utilities.filter((t) => !emitted.has(t))).toEqual([])
   })
 })
 
 describe("the sheet stays safe to ship into a vendor page", () => {
-  it("resets the box model only inside the veil", () => {
-    // The utilities assume border-box, which normally comes from preflight —
-    // and preflight is exactly what a content script must not ship.
-    expect(RAW_CSS).toContain("box-sizing: border-box")
-    for (const match of RAW_CSS.matchAll(/([^{}]+)\{[^}]*box-sizing[^}]*\}/g)) {
-      expect(match[1], "box-sizing must be scoped to .boyo-veil").toContain(
-        ".boyo-veil"
-      )
-    }
-  })
-
   it("ships no global element reset", () => {
     // A bare `*`, `html` or `body` rule would restyle YouTube.
     const selectors = Array.from(

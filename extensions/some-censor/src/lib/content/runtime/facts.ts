@@ -59,17 +59,8 @@ export function recordFact(fact: CoreFact): void {
       obs.channelAbandoned(fact.videoId)
       break
     }
-    case "stale.discarded": {
-      obs.staleDiscarded(fact.videoId)
-      break
-    }
     case "churn.ignored": {
       obs.churnIgnored(fact.videoId)
-      break
-    }
-    case "bulk.advance": {
-      // Completed by the runtime, which adds the DOM census the Sensor owns
-      // (see runtime.ts); recorded there, not here.
       break
     }
     case "shape.unknown": {

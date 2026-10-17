@@ -1,7 +1,7 @@
 /**
  * The canonical catalogue of YouTube card elements that BOYO tracks.
  *
- * Shared between the Sensor, the Actuator's gesture delegation and — via
+ * Shared between the Sensor and — via
  * `PREMASK_SELECTORS` — the static occluder rules in `styles/content.css`,
  * which are the only thing hiding a card between paint and the content
  * script taking ownership. If the two lists disagree, a card type only in the

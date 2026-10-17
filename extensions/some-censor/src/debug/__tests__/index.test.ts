@@ -140,7 +140,7 @@ describe("exportShape — what lands in the downloaded file", () => {
         status: "degraded",
         recentErrors: 0,
         generatedAt: NOW,
-        invariants: [{ name: "PromotionGuardClears", status, details: null }],
+        invariants: [{ name: "OccluderReleases", status, details: null }],
       }
       expect(exportShape(bundle({ health: h })).health?.score).toBe(50)
     }

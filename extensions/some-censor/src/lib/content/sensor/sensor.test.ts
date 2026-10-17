@@ -45,7 +45,8 @@ function lockup(videoId: string, channel: string | null = "Chan"): HTMLElement {
   el.innerHTML = `
     <a class="yt-lockup-view-model__content-image" href="/watch?v=${videoId}"></a>
     <h3><a class="yt-lockup-metadata-view-model__title" href="/watch?v=${videoId}"><span>Lock ${videoId}</span></a></h3>
-    ${channel === null ? "" : `<a class="yt-content-metadata-view-model__metadata-text" href="/@${channel}">${channel}</a>`}`
+    ${channel === null ? "" : `<a class="yt-content-metadata-view-model__metadata-text" href="/@${channel}">${channel}</a>`}
+    <span class="yt-content-metadata-view-model__metadata-text">2 days ago</span>`
   return el
 }
 
@@ -139,6 +140,7 @@ describe("observing cards", () => {
       channelId: "@Chan",
       title: "Title a",
       uploadDate: "2 days ago",
+      short: false,
       surface: "home",
       renderer: "ytd-rich-item-renderer",
       shape: "known",
@@ -148,6 +150,7 @@ describe("observing cards", () => {
       c?.kind === "observed" && c.observation.channelId,
       "a short has no channel"
     ).toBeNull()
+    expect(c?.kind === "observed" && c.observation.short).toBe(true)
   })
 
   it("sees an inserted card through the observer, and a card nested in an inserted cell", async () => {
@@ -239,6 +242,16 @@ describe("the retry queue", () => {
       vi.getTimerCount(),
       "no retry interval survives an empty queue"
     ).toBe(0)
+  })
+
+  it("keeps the retry loop alive for a card with no date, then lets it stop", async () => {
+    const el = cell("undated")
+    el.querySelector("#metadata-line span:nth-child(2)")!.textContent = ""
+    document.body.appendChild(el)
+    await tick()
+    expect(vi.getTimerCount(), "kept alive for the date").toBe(1)
+    await tick(RESOLVE_BUDGET_MS / RETRY_INTERVAL_MS + 2)
+    expect(vi.getTimerCount(), "budget spent, loop stopped").toBe(0)
   })
 
   it("rejects a shell at budget, stickily, and revives it on extraction", async () => {
@@ -397,16 +410,6 @@ describe("identity", () => {
     document.body.appendChild(document.createElement("yt-lockup-view-model"))
     await tick(5)
     expect(observedKeys().filter((k) => k === K("quiet"))).toHaveLength(1)
-  })
-
-  it("re-observes a card on refresh, reading the evidence now", async () => {
-    const el = cell("fresh")
-    document.body.appendChild(el)
-    await tick()
-    el.querySelector("#video-title")!.textContent = "Renamed"
-    sensor.refresh(K("fresh"))
-    const last = tokens.filter((t) => t.kind === "observed").at(-1)
-    expect(last?.kind === "observed" && last.observation.title).toBe("Renamed")
   })
 })
 
