@@ -61,6 +61,8 @@ describe("LensSession", () => {
     }
     expect(document.querySelector('[data-slot="lens-summary"]')).not.toBeNull()
     expect(screen.getByText(/^\d of 8 right$/)).toBeTruthy()
+    // Nothing counts down, though the summary ends in two minutes.
+    expect(screen.getByRole("button", { name: /^next set$/i })).toBeTruthy()
   })
 
   it("reads every cue where nothing can speak", () => {

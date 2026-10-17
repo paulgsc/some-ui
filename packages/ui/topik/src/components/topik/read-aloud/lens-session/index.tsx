@@ -105,7 +105,9 @@ export const LensSession = ({
           kind="summary"
           headline={`${summary.right} of ${summary.answered} right`}
           detail={<SummaryDetail summary={summary} />}
-          runKey={state.seq}
+          // The summary waits out its two minutes and then ends the session;
+          // nothing counts down (Cor. 4.8).
+          runKey={null}
           short={short}
           onNext={vm.nextSet}
           onStop={options.onExit}

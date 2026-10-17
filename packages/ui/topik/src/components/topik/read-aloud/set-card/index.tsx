@@ -36,8 +36,11 @@ export type SetCardProps = { short: boolean; onStop: () => void } & (
       headline: string
       /** More of it, below the headline; the summary then scrolls. */
       detail?: ReactNode
-      /** Restarts the countdown when it changes. */
-      runKey: number
+      /**
+       * Restarts the countdown to the next set when it changes; null shows
+       * none, for a summary that does not move on by itself.
+       */
+      runKey: number | null
       onNext: () => void
     }
   | {
@@ -74,12 +77,12 @@ const Summary = ({
 }: {
   headline: string
   detail: ReactNode
-  runKey: number
+  runKey: number | null
   short: boolean
   onNext: () => void
   onStop: () => void
 }): JSX.Element => {
-  const seconds = useCountdown(SUMMARY_MS, runKey)
+  const seconds = useCountdown(SUMMARY_MS, runKey ?? 0)
   return (
     <StepLayout
       short={short}
@@ -99,7 +102,10 @@ const Summary = ({
       dock={
         <>
           <Button className="h-12 gap-2 rounded-2xl" onClick={onNext}>
-            Next set <span className="tabular-nums opacity-70">{seconds}</span>
+            Next set{" "}
+            {runKey !== null && (
+              <span className="tabular-nums opacity-70">{seconds}</span>
+            )}
           </Button>
           <Button variant="ghost" className="h-12 rounded-2xl" onClick={onStop}>
             Stop
