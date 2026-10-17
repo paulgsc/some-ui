@@ -359,6 +359,29 @@ describe("parseReadAloudDeck, a line's lens (Def. 4.9)", () => {
     )
   })
 
+  it("indexes the authored words, past an occurrence that was dropped", () => {
+    const stray = { wordId: "nope", surface: "잔", stemEnd: 1 }
+    const { deck: parsed } = parsedOrThrow(
+      deck({
+        lines: [
+          {
+            ...ONE_CUP,
+            words: [stray, ...ONE_CUP.words],
+            lens: {
+              misforms: [
+                { ...MISFORM, word: 3, decides: [2], cueDecides: [] },
+                { ...MISFORM, surface: "줘아요", word: 3, decides: [0] },
+              ],
+            },
+          },
+        ],
+      })
+    )
+    expect(parsed.lines[0]?.lens?.misforms).toEqual([
+      { ...MISFORM, word: 2, decides: [1], cueDecides: [] },
+    ])
+  })
+
   it("drops a cue that holds the word a misform replaces, or a misform", () => {
     for (const korean of ["주세요?", "주아요?"]) {
       const { deck: parsed, findings } = parsedOrThrow(

@@ -333,9 +333,15 @@ function withKnownRole(
 function auditLens(
   raw: unknown,
   lineId: string,
-  occurrences: ReadonlyArray<WordOccurrence>,
+  authored: ReadonlyArray<WordOccurrence | null>,
   findings: Array<ContentFinding>
 ): LineLens | null {
+  // Where each authored word sits among those kept; null for one dropped.
+  let next = 0
+  const keptAt = authored.map((occurrence) =>
+    occurrence === null ? null : next++
+  )
+  const kept = authored.filter((occurrence) => occurrence !== null)
   const where = `${lineId}/lens`
   const dropped = (kind: ContentFindingKind, detail: string): null => {
     findings.push({ kind, where, detail })
@@ -373,15 +379,16 @@ function auditLens(
       continue
     }
     const { mistake, ...misform } = parsed.data
-    const written = occurrences[misform.word]
+    const written = authored[misform.word]
+    const at = keptAt[misform.word]
     const strayWord = misform.decides.find(
-      (index) => index === misform.word || index >= occurrences.length
+      (index) => index === misform.word || keptAt[index] == null
     )
     const strayCue = misform.cueDecides.find((word) => !cueRuns.includes(word))
-    if (written === undefined) {
+    if (written == null || at == null) {
       dropped(
         "misform-malformed",
-        `word ${misform.word} is not one of the line's words`
+        `word ${misform.word} is not one of the line's kept words`
       )
     } else if (misform.surface === written.surface) {
       dropped(
@@ -410,7 +417,12 @@ function auditLens(
         `"${misform.surface}": ${strayCue} is not a word of the cue`
       )
     } else {
-      misforms.push({ ...misform, mistake })
+      misforms.push({
+        ...misform,
+        word: at,
+        decides: misform.decides.flatMap((index) => keptAt[index] ?? []),
+        mistake,
+      })
     }
   }
 
@@ -418,7 +430,7 @@ function auditLens(
   // answer away: 학교에 가요? spells the 학교에 the learner must choose.
   if (cue) {
     const answers = new Set(
-      misforms.flatMap((m) => [m.surface, occurrences[m.word]?.surface])
+      misforms.flatMap((m) => [m.surface, kept[m.word]?.surface])
     )
     const telling = cueRuns.filter((run) => answers.has(run))
     if (telling.length > 0) {
@@ -606,7 +618,9 @@ export function parseReadAloudDeck(raw: unknown): ParsedDeck {
       covered: runs.map(() => false),
       next: 0,
     }
-    const occurrences = line.words.flatMap((rawOccurrence, position) => {
+    // Each authored occurrence as kept, or null where it was dropped: a
+    // lens indexes the authored list.
+    const authored = line.words.map((rawOccurrence, position) => {
       const shaped = OccurrenceSchema.safeParse(rawOccurrence)
       if (!shaped.success) {
         findings.push({
@@ -614,16 +628,16 @@ export function parseReadAloudDeck(raw: unknown): ParsedDeck {
           where: `${line.id}/words[${position}]`,
           detail: summarise(shaped.error),
         })
-        return []
+        return null
       }
       const known = withKnownRole(
         shaped.data,
         `${line.id}/${shaped.data.surface}`,
         findings
       )
-      const kept = auditOccurrence(known, audit, wordIds, findings)
-      return kept ? [kept] : []
+      return auditOccurrence(known, audit, wordIds, findings)
     })
+    const occurrences = authored.filter((kept) => kept !== null)
 
     const missing = runs.filter((_, index) => !audit.covered[index])
     if (missing.length > 0) {
@@ -657,7 +671,7 @@ export function parseReadAloudDeck(raw: unknown): ParsedDeck {
     const lens =
       rawLens === undefined
         ? null
-        : auditLens(rawLens, line.id, occurrences, findings)
+        : auditLens(rawLens, line.id, authored, findings)
     lines.push({
       ...line,
       words: occurrences,
