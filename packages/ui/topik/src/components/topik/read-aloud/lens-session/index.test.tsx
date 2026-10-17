@@ -65,6 +65,25 @@ describe("LensSession", () => {
     expect(screen.getByRole("button", { name: /^next set$/i })).toBeTruthy()
   })
 
+  it("says at the summary when the record keeps no new answers (Rem. 4.18)", () => {
+    render(
+      <LensSession
+        deck={REPO_SETS}
+        level={1}
+        speech={null}
+        seedKey={() => "full"}
+        recordFull={() => true}
+        onExit={() => undefined}
+      />
+    )
+    for (let step = 0; step < 60; step += 1) {
+      if (document.querySelector('[data-slot="lens-summary"]')) break
+      expect(screen.queryByText(/record is full/i)).toBeNull()
+      answerCard()
+    }
+    expect(screen.getByText(/record is full/i)).toBeTruthy()
+  })
+
   it("reads every cue where nothing can speak", () => {
     render(
       <LensSession

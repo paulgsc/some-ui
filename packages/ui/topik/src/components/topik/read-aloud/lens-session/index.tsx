@@ -22,13 +22,17 @@ import { ArrowLeft } from "lucide-react"
 
 export type LensSessionProps = UseLensSessionOptions & {
   short?: boolean
+  /** The record keeps no new entry until it is shared (Rem. 4.18). */
+  recordFull?: () => boolean
 }
 
 /** The set's tally under its headline, by catalogue entry. */
 const SummaryDetail = ({
   summary,
+  full,
 }: {
   summary: ReturnType<typeof lensSummary>
+  full: boolean
 }): JSX.Element => {
   return (
     <div
@@ -59,12 +63,19 @@ const SummaryDetail = ({
           {summary.asWritten.answered}
         </p>
       )}
+      {full && (
+        <p className="text-warning text-sm">
+          The record is full and keeps no new answers. Share your study context
+          with an agent to make room.
+        </p>
+      )}
     </div>
   )
 }
 
 export const LensSession = ({
   short = false,
+  recordFull,
   ...options
 }: LensSessionProps): JSX.Element => {
   const vm = useLensSession(options)
@@ -104,7 +115,9 @@ export const LensSession = ({
         <SetCard
           kind="summary"
           headline={`${summary.right} of ${summary.answered} right`}
-          detail={<SummaryDetail summary={summary} />}
+          detail={
+            <SummaryDetail summary={summary} full={recordFull?.() ?? false} />
+          }
           // The summary waits out its two minutes and then ends the session;
           // nothing counts down (Cor. 4.8).
           runKey={null}

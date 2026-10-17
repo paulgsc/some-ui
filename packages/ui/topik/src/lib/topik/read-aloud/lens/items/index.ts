@@ -72,6 +72,7 @@ export type LensItem = {
   /** Stable within a deck and a set: `l:<lineId>`. */
   key: string
   lineId: string
+  level: ReadAloudLevel
   cue: {
     korean: string
     segments: Array<LineSegment>
@@ -355,6 +356,7 @@ function itemOf(
   return {
     key: `l:${line.id}`,
     lineId: line.id,
+    level: line.level,
     cue,
     korean: line.korean,
     segments: segmentsOf(line.korean),

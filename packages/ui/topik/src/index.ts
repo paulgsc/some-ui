@@ -70,6 +70,11 @@ export type {
   WordOccurrence,
 } from "./lib/topik/read-aloud/content"
 export { readAloudPracticeRecord } from "./lib/topik/adapter/read-aloud-store"
+export type { LensRecordExport } from "./lib/topik/adapter/lens-record-store"
+export {
+  letGoLensRecord,
+  lensRecordForExport,
+} from "./lib/topik/adapter/lens-record-store"
 export type { PracticeRecord } from "./lib/topik/read-aloud/records"
 
 /** The quiz pane by stage; apps/www's panel-fit page mounts each stage directly. */

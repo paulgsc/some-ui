@@ -24,10 +24,11 @@ export type SetCardProps = { short: boolean; onStop: () => void } & (
       record?: { record: PracticeRecord; today: string }
       /**
        * The grammar-lens session, a start of its own (Cor. 4.8), where the
-       * host offers it, and whether any line at or below this level has
-       * something for it to ask.
+       * host offers it, whether any line at or below this level has
+       * something for it to ask, and whether its record keeps no new answers
+       * (Rem. 4.18).
        */
-      lens?: { available: boolean; onStart: () => void }
+      lens?: { available: boolean; full?: boolean; onStart: () => void }
       onStart: () => void
     }
   | {
@@ -236,6 +237,12 @@ export const SetCard = (props: SetCardProps): JSX.Element => {
               {props.lens.available
                 ? "Grammar lens: spot the form a learner gets wrong, one line at a time. Nothing counts down."
                 : "Grammar lens needs lines written with likely mistakes, and this set has none at this level yet."}
+            </p>
+          )}
+          {props.lens?.available && props.lens.full && (
+            <p className="text-warning text-sm leading-relaxed">
+              The grammar-lens record is full and keeps no new answers. Share
+              your study context with an agent to make room.
             </p>
           )}
           {props.record && (

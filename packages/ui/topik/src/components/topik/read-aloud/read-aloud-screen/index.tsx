@@ -19,6 +19,7 @@ import { useState } from "react"
 import type { Speaker } from "@some-ui/speech"
 import { LensSession } from "@topik/components/topik/read-aloud/lens-session"
 import { ReadAloudSession } from "@topik/components/topik/read-aloud/read-aloud-session"
+import type { LensRecordStore } from "@topik/lib/topik/adapter/lens-record-store"
 import type { ReadAloudStore } from "@topik/lib/topik/adapter/read-aloud-store"
 import { createReadAloudStore } from "@topik/lib/topik/adapter/read-aloud-store"
 import type { ReadAloudDeck } from "@topik/lib/topik/read-aloud/content"
@@ -32,6 +33,8 @@ type ReadAloudScreenProps = {
   topikLevel: number
   speech: Speaker | null
   store?: ReadAloudStore
+  /** Where the grammar lens's record is kept; absent, nothing is (Rem. 4.18). */
+  lensRecord?: LensRecordStore
   deck: ReadAloudDeck
   short?: boolean
   /** The host's session is paused (`useReadAloud`'s `paused`). */
@@ -45,6 +48,7 @@ export const ReadAloudScreen = ({
   topikLevel,
   speech,
   store: given,
+  lensRecord,
   deck,
   short = false,
   paused,
@@ -85,6 +89,8 @@ export const ReadAloudScreen = ({
         short={short}
         paused={paused}
         now={now}
+        record={lensRecord?.add}
+        recordFull={lensRecord?.full}
         onExit={() => setPractice("read-aloud")}
       />
     )
@@ -106,6 +112,7 @@ export const ReadAloudScreen = ({
       onProgress={(progress) => store.saveProgress(level, deck.id, progress)}
       lens={{
         available: lensLines(deck, level).length > 0,
+        full: lensRecord?.full() ?? false,
         onStart: () => setPractice("lens"),
       }}
       onExit={onExit}

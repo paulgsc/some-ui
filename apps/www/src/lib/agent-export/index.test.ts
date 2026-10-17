@@ -45,8 +45,15 @@ const PRACTICE = vi.hoisted(() => ({
   days: [{ day: "2026-10-10", reps: 30, sets: 3, practiceMs: 270_000 }],
   totals: { reps: 30, sets: 3, practiceMs: 270_000 },
 }))
+const LENS = vi.hoisted(() => ({
+  entries: [{ session: "2026-10-10T08:00:00.000Z", line: "school-bus" }],
+  sessions: [{ session: "2026-10-10T08:00:00.000Z", racing: false }],
+}))
+const letGoLensRecord = vi.hoisted(() => vi.fn(() => 1))
 vi.mock("@some-ui/topik", () => ({
   readAloudPracticeRecord: (): typeof PRACTICE => PRACTICE,
+  lensRecordForExport: (): typeof LENS => LENS,
+  letGoLensRecord,
 }))
 vi.mock("@/lib/tenant/queries", () => ({
   sessionsRepository: {
@@ -263,16 +270,21 @@ describe("shareAgentExport", () => {
       pathsWithoutSession: [{ sessionId: "gone-session", glances: 1 }],
       stops: [{ sessionId: "session-1", reason: "focus" }],
       readAloudPractice: PRACTICE,
+      grammarLens: LENS,
       soundbites: [{ id: "b1", file: "soundbite-b1.webm" }],
     })
     expect(context).not.toHaveProperty(["sessions", 0, "scenes"])
     expect(sent).toEqual(["t2", "v1", "t1"])
     expect(result.soundbites).toEqual(["b1"])
+    expect(result.lens).toEqual(LENS.entries)
 
     const remove = vi.fn(() => Promise.resolve())
     handOffExport({ remove }, result, NOW())
     expect(reflections.getSnapshot().kept).toEqual([])
     expect(remove).toHaveBeenCalledWith(["b1"])
+    await vi.waitFor(() => {
+      expect(letGoLensRecord).toHaveBeenCalledWith(LENS.entries)
+    })
   })
 
   it("hands off soundbites alone when no reflection went out", async () => {

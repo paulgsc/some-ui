@@ -33,6 +33,11 @@ export type SessionConfig = {
   sceneVoice?: SceneVoice
   sceneFileHint?: string
   wordSetHint?: string
+  /**
+   * The Android app keeps the grammar lens's record for its study-context
+   * export (adaptive-learning canon Rem. 4.18); absent, nothing is kept.
+   */
+  recordsLens?: boolean
 }
 
 const SessionConfigContext = createContext<SessionConfig | null>(null)

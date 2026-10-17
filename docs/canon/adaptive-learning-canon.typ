@@ -80,7 +80,7 @@
     skill
   ]
   #v(1em)
-  #text(size: 9.5pt)[Version 1.18 --- 2026-10-17]
+  #text(size: 9.5pt)[Version 1.19 --- 2026-10-17]
   #v(2cm)
 ]
 
@@ -1913,11 +1913,14 @@ rather than as *data*, and the remedy is to exhibit the data.
   catalogue entries, cues and rungs fit this learner, which is input to the
   next deck's authoring, class IV (Def. 8.1), and never to belief. The record
   is kept only where that export exists (the phone app); elsewhere nothing is
-  recorded. It is a record outside the envelope (Rem. 7.5), at most three
-  hundred items, the most recent, each expiring after thirty days; it stays
-  on the device (Rem. 7.3), and losing it costs the next export its
-  grammar-lens section and nothing else (Thm. 7.2), so a write that fails is
-  swallowed (Prop. 7.2).
+  recorded. It is a record outside the envelope (Rem. 7.5), at most a
+  thousand items, and since it is the learner's history, none expires and
+  none is evicted: an item leaves the device only once the learner says an
+  export carrying it arrived, and only if it is unchanged since. At the bound
+  a new item is not kept, and the session's summary says so until an export
+  makes room. It stays on the device until then (Rem. 7.3), and losing it
+  costs the next export its grammar-lens section and nothing else
+  (Thm. 7.2), so a write that fails is swallowed (Prop. 7.2).
 ]
 
 #remark("4.19", name: "A question on a read-aloud rep, withdrawn")[
@@ -4004,6 +4007,16 @@ their request for the two practices as separate starts (\#1839). Filed
 ahead of `packages/ui/topik`'s deck schema (the cue, misforms and
 situations), the read-aloud renderer's removal of the question and its
 toggle, and the grammar-lens session. Moves the front-matter version line.
+
+*v1.19 --- 2026-10-17.* Amends Remark 4.18's bound: the grammar-lens
+record keeps at most a thousand items, none expiring and none evicted, and
+an item leaves the device only once the learner says an export carrying it
+arrived, unchanged since; at the bound a new item is not kept, and the
+summary says so. Motivated by the owner's direction that the learner's
+history is never lost unseen, and their choice to free it only after a
+confirmed copy (\#1839), as the phone's session archive and reflections
+already do. Filed with `packages/ui/topik`'s record store and `apps/www`'s
+study-context export. Moves the front-matter version line.
 
 #pagebreak()
 

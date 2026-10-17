@@ -1,7 +1,7 @@
 /**
  * Runs the grammar-lens machine (`lens/machine`) over its ports: one timer,
- * the speech adapter, and the host's exit (adaptive-learning canon
- * Cor. 4.8, Rem. 4.10). React reads its snapshot and sends it the
+ * the speech adapter, the record, and the host's exit (adaptive-learning
+ * canon Cor. 4.8, Rem. 4.10, Rem. 4.18). React reads its snapshot and sends it the
  * learner's taps (`useLensSession`); everything with a lifetime is here.
  *
  * Speech is asked only for an item's cue and for its line as authored, so a
@@ -29,6 +29,8 @@ import {
   currentItem,
   lensReducer,
 } from "@topik/lib/topik/read-aloud/lens/machine"
+import type { LensRecordEntry } from "@topik/lib/topik/read-aloud/lens/record"
+import { recordEntry } from "@topik/lib/topik/read-aloud/lens/record"
 import { serialDispatch } from "@topik/lib/topik/read-aloud/serial-dispatch"
 
 export type LensRuntimeOptions = {
@@ -37,6 +39,13 @@ export type LensRuntimeOptions = {
   speech: Speaker | null
   /** The summary's two minutes ran out, or there was no set to draw. */
   onExit: () => void
+  /**
+   * Keep an answered item's entry (Rem. 4.18): when it closes, and before,
+   * when the page is hidden or the session left, since the app may not come
+   * back. A later entry for the same item replaces it. Absent where the host
+   * has no export to carry the record, and then nothing is kept.
+   */
+  record?: (entry: LensRecordEntry) => void
   /** Test seams: the clock, and the key each new set is drawn with. */
   now?: () => number
   seedKey?: () => string
@@ -79,6 +88,11 @@ export function createLensRuntime(
   let unheard: LensItem | null = null
   let timer: ReturnType<typeof setTimeout> | null = null
   let utterance: AbortController | null = null
+  /** When the session began, which names it in the record. */
+  let session = ""
+  /** The session's entries so far, by set and index: what `racing` reads. */
+  const kept = new Map<string, LensRecordEntry>()
+  let set = 0
 
   const now = (): number => options().now?.() ?? Date.now()
   const publish = (): void => {
@@ -133,6 +147,30 @@ export function createLensRuntime(
       })
   }
 
+  const keep = (index: number, at: number): void => {
+    const item = state.items[index]
+    const outcome = state.outcomes[index]
+    const { record, speech } = options()
+    if (!record || !item || outcome?.answeredAt == null) return
+    const key = `${set}:${index}`
+    const earlier = [...kept].flatMap(([other, entry]) =>
+      other === key ? [] : [entry]
+    )
+    const entry = recordEntry(item, outcome, {
+      session,
+      closedAt: at,
+      audio: speech?.available === true && unheard !== item,
+      earlier,
+    })
+    kept.set(key, entry)
+    try {
+      record(entry)
+    } catch {
+      // The record is the export's, and losing an entry costs nothing more
+      // (Thm. 7.2): the session goes on.
+    }
+  }
+
   const drawSet = (): void => {
     const { deck, level, seedKey } = options()
     const items = buildLensSet(deck, {
@@ -144,6 +182,8 @@ export function createLensRuntime(
       options().onExit()
       return
     }
+    set += 1
+    session ||= new Date(now()).toISOString()
     dispatch({ type: "begin", at: now(), items })
   }
 
@@ -160,6 +200,10 @@ export function createLensRuntime(
       }
       case "speak-cue": {
         say(effect.text, "cue")
+        return
+      }
+      case "closed": {
+        keep(effect.index, effect.at)
         return
       }
       case "stop-speech": {
@@ -204,12 +248,16 @@ export function createLensRuntime(
     },
     hide: (): void => {
       clearTimer()
+      // The app may be closed while hidden: keep what was answered.
+      keep(state.cursor, now())
       dispatch({ type: "hidden", at: now() })
     },
     hold: (): void => dispatch({ type: "held", at: now() }),
     show: (): void => dispatch({ type: "shown", at: now() }),
     dispose: (): void => {
-      // A remount (React's development double mount) shows it again.
+      // Left with an item answered: it closes here. A remount (React's
+      // development double mount) shows it again.
+      keep(state.cursor, now())
       dispatch({ type: "hidden", at: now() })
       clearTimer()
       stopSpeech()
