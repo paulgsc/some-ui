@@ -126,6 +126,15 @@ export const VIDEO_SELECTORS: ReadonlyArray<string> = CARD_SELECTORS.map(
 export const SEL = VIDEO_SELECTORS.join(",")
 
 /**
+ * Set on `<html>` only while the owner has switched the extension off
+ * (#1807). Every pre-mask rule is keyed to its absence, so the switch lifts
+ * the pre-mask and a content script that never runs leaves it on.
+ */
+export const SWITCHED_OFF_ATTRIBUTE = "data-boyo-off"
+
+const WHILE_ON = `:root:not([${SWITCHED_OFF_ATTRIBUTE}])`
+
+/**
  * The exact selector text each pre-mask rule must use — one entry per tag,
  * one CSS rule per entry.
  *
@@ -140,8 +149,8 @@ export const SEL = VIDEO_SELECTORS.join(",")
 export const PREMASK_SELECTORS: ReadonlyArray<string> = CARD_SELECTORS.map(
   ({ tag, requiresVideoLink }) =>
     requiresVideoLink
-      ? `${tag}:has(${VIDEO_LINK_SELECTOR}):not(:has(${SEL}), [data-boyo])`
-      : `${tag}:not([data-boyo])`
+      ? `${WHILE_ON} ${tag}:has(${VIDEO_LINK_SELECTOR}):not(:has(${SEL}), [data-boyo])`
+      : `${WHILE_ON} ${tag}:not([data-boyo])`
 )
 
 /**
@@ -151,7 +160,7 @@ export const PREMASK_SELECTORS: ReadonlyArray<string> = CARD_SELECTORS.map(
  * modern engine they never apply and the guarded rule above is the only one.
  */
 export const PREMASK_FALLBACK_SELECTORS: ReadonlyArray<string> =
-  unguardedFallbackTags().map((tag) => `${tag}:not([data-boyo])`)
+  unguardedFallbackTags().map((tag) => `${WHILE_ON} ${tag}:not([data-boyo])`)
 
 /** The tags with {@link CardSelector.unguardedFallback}, comma-joined. */
 export const FALLBACK_TAGS: string = unguardedFallbackTags().join(",")

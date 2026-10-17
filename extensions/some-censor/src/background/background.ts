@@ -1,9 +1,7 @@
 /**
  * BOYO — background bundle entry point.
  *
- * Its one job is the "Open diagnostics" tab context-menu item. Settings live
- * in `storage.local`, written by the popup and read by the content script
- * directly (`lib/settings`), so nothing here relays messages.
+ * Its one job is the "Open diagnostics" tab context-menu item.
  *
  * Runtime isolation: no imports from src/content/ or src/popup/ at runtime.
  */

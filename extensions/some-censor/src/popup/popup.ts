@@ -1,11 +1,9 @@
 /**
  * Popup (`popup.html`), built to prototype D (`QD16`, #1807): the on/off
- * switch, "Show videos older than", and the Diagnostics link
- * (`@some-extension/common`'s `diagnosticsLink`, as in the sibling popups).
- * No counts and no history.
+ * switch, "Show videos older than", and the Diagnostics link.
  *
  * `storage.local` is the only state: a click writes the settings, and the
- * popup renders from `storage.onChanged`, so what it shows is what the
+ * popup renders from {@link followSettings}, so what it shows is what the
  * content script applies.
  */
 import type { Settings } from "@censor/lib/settings/settings"
@@ -13,6 +11,7 @@ import {
   BOUNDARIES,
   BOUNDARY_CHANGES_KEY,
   BOUNDARY_LABEL,
+  followSettings,
   parseSettings,
   SETTINGS_KEY,
   settingsWrite,
@@ -22,12 +21,24 @@ import { diagnosticsLink } from "@some-extension/common/lib/diagnostics"
 
 import "./popup.css"
 
-async function save(next: Settings): Promise<void> {
-  const stored = await ext.storage.local.get([
-    SETTINGS_KEY,
-    BOUNDARY_CHANGES_KEY,
-  ])
-  await ext.storage.local.set(settingsWrite(stored, next, Date.now()))
+let saving: Promise<void> = Promise.resolve()
+
+/**
+ * Apply `change` to what is stored, one save at a time: two quick clicks each
+ * build on the other's write, and neither drops a log entry.
+ */
+function save(change: (stored: Settings) => Settings): void {
+  saving = saving
+    .then(async () => {
+      const stored = await ext.storage.local.get([
+        SETTINGS_KEY,
+        BOUNDARY_CHANGES_KEY,
+      ])
+      const next = change(parseSettings(stored[SETTINGS_KEY]))
+      await ext.storage.local.set(settingsWrite(stored, next, Date.now()))
+    })
+    // A failed save leaves storage, and so the popup, as it was.
+    .catch(() => undefined)
 }
 
 function header(settings: Settings): HTMLElement {
@@ -45,7 +56,7 @@ function header(settings: Settings): HTMLElement {
   toggle.setAttribute("aria-checked", String(settings.enabled))
   toggle.setAttribute("aria-label", "On")
   toggle.addEventListener("click", () => {
-    void save({ ...settings, enabled: !settings.enabled })
+    save((stored) => ({ ...stored, enabled: !stored.enabled }))
   })
 
   el.append(name, toggle)
@@ -71,7 +82,7 @@ function boundaryChoice(settings: Settings): HTMLElement {
     option.textContent = BOUNDARY_LABEL[boundary]
     option.setAttribute("aria-pressed", String(boundary === settings.boundary))
     option.addEventListener("click", () => {
-      void save({ ...settings, boundary })
+      save((stored) => ({ ...stored, boundary }))
     })
     group.appendChild(option)
   }
@@ -94,12 +105,4 @@ function render(settings: Settings): void {
   )
 }
 
-// Lifetime: the popup document's own; closing the popup ends it.
-ext.storage.onChanged.addListener((changes, area) => {
-  if (area === "local" && SETTINGS_KEY in changes)
-    render(parseSettings(changes[SETTINGS_KEY].newValue))
-})
-
-void ext.storage.local
-  .get(SETTINGS_KEY)
-  .then((stored) => render(parseSettings(stored[SETTINGS_KEY])))
+followSettings(ext.storage, render)

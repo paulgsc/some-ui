@@ -535,9 +535,8 @@ function timelineSection(b: Bundle, rerender: () => void): HTMLElement {
 }
 
 /**
- * Every boundary change the popup logged, newest first: the record the
- * doctrine's §9 falsifier ("`B` keeps getting lowered") is read from. It
- * spans every session, so it does not follow the picker.
+ * Every boundary change the popup logged, newest first. It spans every
+ * session, so it does not follow the picker.
  */
 function boundarySection(
   changes: ReadonlyArray<BoundaryChange> | null | undefined

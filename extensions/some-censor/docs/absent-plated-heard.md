@@ -104,7 +104,9 @@ never prompted about.
 
 _Status: holds (#1807)._ The settings are one `storage.local` record, read
 by the content script at start and on every change, so an open tab follows
-the popup without a reload. Unreadable storage yields the defaults.
+the popup without a reload. Unreadable storage yields the defaults. Off is
+plain YouTube: the content script stops and lifts the pre-mask, and a content
+script that never runs leaves it on.
 
 ## 8. Never on youtube.com
 

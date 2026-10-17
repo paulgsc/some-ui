@@ -3,9 +3,8 @@
  *
  * What is left once the Sensor owns observation and navigation, Core owns
  * every decision and the Actuator owns every write: starting the recording,
- * waiting for `ytd-app`, and following the owner's settings in
- * `storage.local` (#1807): the on/off switch starts and stops the runtime,
- * and the boundary goes to Core, before the first start and on every change.
+ * waiting for `ytd-app`, and following the owner's settings (`lib/settings`,
+ * #1807).
  *
  * Lifecycle properties, labelled here because they are cited elsewhere;
  * pinned by `runtime/runtime.test.ts`, not declared review invariants:
@@ -24,14 +23,10 @@
  */
 
 import type { Settings } from "@censor/lib/settings/settings"
-import {
-  boundaryDays,
-  DEFAULT_SETTINGS,
-  parseSettings,
-  SETTINGS_KEY,
-} from "@censor/lib/settings/settings"
+import { boundaryDays, followSettings } from "@censor/lib/settings/settings"
 import { ext } from "@censor/platform/content"
 
+import { setSwitchedOff } from "./actuator/index"
 import { startObservability } from "./observability"
 import type { Runtime } from "./runtime/runtime"
 import { createRuntime } from "./runtime/runtime"
@@ -49,37 +44,21 @@ export class Controller {
     // record into it and deliberately *not* restarted per session — see
     // observability.ts's header for why that scope is the right one.
     startObservability()
-    this._followSettings()
+    followSettings(ext.storage, (settings) => this._apply(settings))
   }
 
   // ── Settings ──────────────────────────────────────────────────────────────
 
-  /**
-   * Read the settings once and follow every change. A change that lands
-   * before the first read resolves is newer than it, so the read is then
-   * dropped; a failed read applies the defaults.
-   */
-  private _followSettings(): void {
-    let changed = false
-    // Lifetime: the content script's own; the page's unload ends it.
-    ext.storage.onChanged.addListener((changes, area) => {
-      if (area !== "local" || !(SETTINGS_KEY in changes)) return
-      changed = true
-      this._apply(parseSettings(changes[SETTINGS_KEY].newValue))
-    })
-    void ext.storage.local
-      .get(SETTINGS_KEY)
-      .then((stored) => parseSettings(stored[SETTINGS_KEY]))
-      .catch(() => DEFAULT_SETTINGS)
-      .then((settings) => {
-        if (!changed) this._apply(settings)
-      })
-  }
-
+  /** Off stops the runtime and lifts the pre-mask, in one task. */
   private _apply(settings: Settings): void {
     this._runtime.setBoundary(boundaryDays(settings.boundary))
-    if (settings.enabled) this._waitForApp()
-    else this._stop()
+    if (settings.enabled) {
+      setSwitchedOff(document, false)
+      this._waitForApp()
+    } else {
+      this._stop()
+      setSwitchedOff(document, true)
+    }
   }
 
   private _start(): void {

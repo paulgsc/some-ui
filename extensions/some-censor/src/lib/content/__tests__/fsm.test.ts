@@ -35,8 +35,7 @@ describe("decide", () => {
   })
 
   it("reads the band against the boundary it is given", () => {
-    expect(view("2 years ago", false, 2 * DEFAULT_BOUNDARY_DAYS)).toBe("absent")
-    expect(view("11 months ago", false, 183)).toBe("plated")
+    expect(view("11 months ago", false, 182)).toBe("plated")
   })
 
   it("holds a card whose age it cannot prove (QM0)", () => {

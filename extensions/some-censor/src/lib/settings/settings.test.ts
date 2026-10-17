@@ -1,7 +1,10 @@
+import { classify, estimate } from "@censor/lib/content/maturity/maturity"
 import { describe, expect, it } from "vitest"
 
 import {
+  BOUNDARIES,
   BOUNDARY_CHANGES_KEY,
+  boundaryDays,
   DEFAULT_SETTINGS,
   parseBoundaryChanges,
   parseSettings,
@@ -26,7 +29,7 @@ describe("parseSettings", () => {
     )
   })
 
-  it("defaults each unreadable field on its own, never to a wider one", () => {
+  it("defaults each unreadable field on its own", () => {
     expect(parseSettings({ v: 1, boundary: 30, enabled: false })).toEqual({
       boundary: "1y",
       enabled: false,
@@ -67,5 +70,29 @@ describe("settingsWrite", () => {
     expect(parseBoundaryChanges(next[BOUNDARY_CHANGES_KEY])).toEqual([
       { at: 3, from: "1y", to: "2y" },
     ])
+  })
+})
+
+describe("boundaryDays", () => {
+  it("never plates a younger label while holding an older one", () => {
+    // Youngest first. The estimator reads each label's youngest age, so
+    // "1 year ago" (182 days) reads younger than "11 months ago" (294).
+    const labels = [
+      "6 months ago",
+      "7 months ago",
+      "8 months ago",
+      "11 months ago",
+      "1 year ago",
+      "2 years ago",
+      "3 years ago",
+    ]
+    for (const b of BOUNDARIES) {
+      const plated = labels.map((label) => {
+        const band = classify(estimate(label, 0), boundaryDays(b))
+        return band === "QM3" || band === "QM4"
+      })
+      const first = plated.indexOf(true)
+      expect(plated.slice(first).every(Boolean), b).toBe(true)
+    }
   })
 })

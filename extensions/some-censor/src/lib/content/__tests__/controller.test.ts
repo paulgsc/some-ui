@@ -14,21 +14,29 @@ import {
 } from "@some-extension/common/testing"
 import { afterEach, beforeEach, expect, it, vi } from "vitest"
 
-type Changes = Record<string, { newValue?: unknown }>
-type Listener = (changes: Changes, area: string) => void
+type Listener = (
+  changes: Record<string, { newValue?: unknown }>,
+  area: string
+) => void
 
+/** A fake `storage` whose writes notify `onChanged`, as the browser's do. */
 function install(
   options: FakeStorageOptions = {}
 ): FakeStorage & { change: (value: unknown) => void } {
-  const fake = fakeStorage(options)
   const listeners: Array<Listener> = []
+  const fake = fakeStorage({
+    ...options,
+    onSet: (key) => {
+      for (const l of listeners)
+        l({ [key]: { newValue: fake.store.get(key) } }, "local")
+    },
+  })
   Reflect.set(ext, "storage", {
     local: fake.area,
     onChanged: { addListener: (l: Listener) => listeners.push(l) },
   })
   const change = (value: unknown): void => {
-    for (const l of listeners)
-      l({ [SETTINGS_KEY]: { newValue: value } }, "local")
+    void fake.area.set({ [SETTINGS_KEY]: value })
   }
   return { ...fake, change }
 }
@@ -59,6 +67,7 @@ function recordingRuntime(): { runtime: Runtime; calls: Array<string> } {
 
 beforeEach(() => {
   document.body.innerHTML = "<ytd-app></ytd-app>"
+  document.documentElement.removeAttribute("data-boyo-off")
 })
 
 afterEach(() => {
@@ -88,7 +97,7 @@ it("drops a first read that a change overtook", async () => {
   change({ v: 1, boundary: "6mo", enabled: false })
   held[0]?.release()
   await new Promise((resolve) => setTimeout(resolve, 0))
-  expect(calls).toEqual(["boundary:183", "stop"])
+  expect(calls).toEqual(["boundary:182", "stop"])
 })
 
 it("follows the switch and the boundary after start", async () => {
@@ -96,10 +105,15 @@ it("follows the switch and the boundary after start", async () => {
   const { runtime, calls } = recordingRuntime()
   new Controller(runtime).init()
   await vi.waitFor(() => expect(calls).toContain("start"))
+  const switchedOff = (): boolean =>
+    document.documentElement.hasAttribute("data-boyo-off")
+  expect(switchedOff()).toBe(false)
   change({ v: 1, boundary: "6mo", enabled: false })
+  expect(switchedOff()).toBe(true)
   change(undefined)
+  expect(switchedOff()).toBe(false)
   expect(calls.slice(2)).toEqual([
-    "boundary:183",
+    "boundary:182",
     "stop",
     "boundary:365",
     "start",

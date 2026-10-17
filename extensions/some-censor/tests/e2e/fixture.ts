@@ -20,6 +20,10 @@
 import path from "path"
 import { fileURLToPath } from "url"
 import {
+  BOUNDARY_CHANGES_KEY,
+  SETTINGS_KEY,
+} from "@censor/lib/settings/settings"
+import {
   test as base,
   chromium,
   type BrowserContext,
@@ -160,9 +164,11 @@ export const test = base.extend<BoyoFixtures & { page: Page }>({
 
     // The profile outlives a test, and so would a setting one test changed.
     const worker = await extensionWorker(context)
-    await worker.evaluate(() =>
-      // eslint-disable-next-line no-restricted-globals -- Chromium's worker has no `browser`
-      chrome.storage.local.remove(["settings", "boundaryChanges"])
+    await worker.evaluate(
+      (keys) =>
+        // eslint-disable-next-line no-restricted-globals -- Chromium's worker has no `browser`
+        chrome.storage.local.remove(keys),
+      [SETTINGS_KEY, BOUNDARY_CHANGES_KEY]
     )
 
     await use(context)

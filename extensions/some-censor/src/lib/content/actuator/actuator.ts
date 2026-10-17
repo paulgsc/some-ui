@@ -4,7 +4,8 @@
  * `realize(actions)` executes what Core named and decides nothing. It is
  * the one module that mutates VendorDOM (stamps, veils, the anchoring
  * position); every such write lives here or in a file this module owns
- * (`veil.ts`). Nothing it does produces an input for Core.
+ * (`veil.ts`, and `switch.ts` for the page-wide off switch). Nothing it does
+ * produces an input for Core.
  *
  * Design properties, pinned by `actuator.test.ts` (labels for citation, not
  * declared review invariants). The parenthesised D-numbers are the veil

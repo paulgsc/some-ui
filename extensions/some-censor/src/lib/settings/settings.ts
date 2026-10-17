@@ -2,11 +2,9 @@
  * The owner's settings (`QD16`, #1807): the boundary `B` and the on/off
  * switch, in `storage.local`.
  *
- * The popup is the only writer. The content script reads the record at start
- * and follows `storage.onChanged`; nothing goes through the background.
- * Anything unreadable parses to the default for that field, and every
- * default is the narrowest choice (on, one year), so a bad record never
- * admits more than a fresh install does.
+ * The popup is the only writer; the popup and the content script both read
+ * through {@link followSettings}. An unreadable field parses to its default,
+ * so a bad record never admits more than a fresh install does.
  *
  * Every boundary change is appended to `boundaryChanges`, which only the
  * Diagnostics page reads: the doctrine's §9 falsifier is "`B` keeps getting
@@ -14,6 +12,7 @@
  */
 
 import { DEFAULT_BOUNDARY_DAYS } from "@censor/lib/content/maturity/maturity"
+import { isRecord } from "@some-extension/common"
 
 export const SETTINGS_KEY = "settings"
 export const BOUNDARY_CHANGES_KEY = "boundaryChanges"
@@ -27,9 +26,13 @@ export const BOUNDARY_LABEL: Readonly<Record<Boundary, string>> = {
   "2y": "2 years",
 }
 
-/** Half a 365-day year, rounded up so the boundary errs late. */
+/**
+ * Half of `DEFAULT_BOUNDARY_DAYS`, rounded down: the estimator reads
+ * "1 year ago" as 182 days, so a longer 6 months would hold it while
+ * plating "8 months ago".
+ */
 const BOUNDARY_DAYS: Readonly<Record<Boundary, number>> = {
-  "6mo": 183,
+  "6mo": 182,
   "1y": DEFAULT_BOUNDARY_DAYS,
   "2y": 2 * DEFAULT_BOUNDARY_DAYS,
 }
@@ -60,10 +63,8 @@ function isBoundary(value: unknown): value is Boundary {
 
 /** A record from any build, or none, as settings this build can apply. */
 export function parseSettings(raw: unknown): Settings {
-  if (raw === null || typeof raw !== "object" || Reflect.get(raw, "v") !== 1)
-    return DEFAULT_SETTINGS
-  const boundary: unknown = Reflect.get(raw, "boundary")
-  const enabled: unknown = Reflect.get(raw, "enabled")
+  if (!isRecord(raw) || raw["v"] !== 1) return DEFAULT_SETTINGS
+  const { boundary, enabled } = raw
   return {
     boundary: isBoundary(boundary) ? boundary : DEFAULT_SETTINGS.boundary,
     enabled: typeof enabled === "boolean" ? enabled : DEFAULT_SETTINGS.enabled,
@@ -75,11 +76,10 @@ export function parseBoundaryChanges(raw: unknown): Array<BoundaryChange> {
   if (!Array.isArray(raw)) return []
   return raw.filter(
     (e: unknown): e is BoundaryChange =>
-      e !== null &&
-      typeof e === "object" &&
-      typeof Reflect.get(e, "at") === "number" &&
-      isBoundary(Reflect.get(e, "from")) &&
-      isBoundary(Reflect.get(e, "to"))
+      isRecord(e) &&
+      typeof e["at"] === "number" &&
+      isBoundary(e["from"]) &&
+      isBoundary(e["to"])
   )
 }
 
@@ -106,4 +106,43 @@ export function settingsWrite(
         ? [change]
         : [log, change],
   }
+}
+
+/** The slice of `browser.storage` the settings are read through. */
+type SettingsStorage = {
+  readonly local: { get(key: string): Promise<Record<string, unknown>> }
+  readonly onChanged: {
+    addListener(
+      listener: (
+        changes: Record<string, { newValue?: unknown }>,
+        area: string
+      ) => void
+    ): void
+  }
+}
+
+/**
+ * Hand `apply` the stored settings, then every change. A change that lands
+ * before the first read resolves is newer than it, so that read is dropped;
+ * a failed read applies the defaults.
+ */
+export function followSettings(
+  storage: SettingsStorage,
+  apply: (settings: Settings) => void
+): void {
+  let changed = false
+  // Lifetime: the calling document's own; unloading it ends the listener.
+  storage.onChanged.addListener((changes, area) => {
+    const change = changes[SETTINGS_KEY]
+    if (area !== "local" || change === undefined) return
+    changed = true
+    apply(parseSettings(change.newValue))
+  })
+  void storage.local
+    .get(SETTINGS_KEY)
+    .then((stored) => parseSettings(stored[SETTINGS_KEY]))
+    .catch(() => DEFAULT_SETTINGS)
+    .then((settings) => {
+      if (!changed) apply(settings)
+    })
 }
