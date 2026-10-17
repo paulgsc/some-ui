@@ -1,8 +1,8 @@
 name: Environment Approval
 # The human "yes" in front of a deploy or build: one job that waits on an
-# Environment's required reviewer and does nothing else. Called by pages.yml
-# (pages-release) and mobile-apk.yml (mobile-release) before they build, so
-# a push nobody approves costs nothing (epic #1615, Decision 1).
+# Environment's required reviewer and does nothing else. Callers put it
+# before they build, so a push nobody approves costs nothing (epic #1615,
+# Decision 1).
 #
 # A newer call for the same environment cancels one still waiting here, so
 # the run that can be approved is always the newest. Once approved, the job

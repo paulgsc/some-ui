@@ -11,9 +11,7 @@ name: Mobile APK
 #
 # A push does not build on its own: its run waits in the `approve` job on the
 # `mobile-release` environment's required reviewer, and only approving it
-# builds an APK, from that run's commit. A newer push cancels a run still
-# waiting there, so the run you can approve is always main's newest, while an
-# approved build always finishes. Nothing consumes a version from this
+# builds an APK, from that run's commit. Nothing consumes a version from this
 # workflow (versionCode is the run number), so no release PR or version bump
 # is involved (epic #1615, Decision 1).
 #
@@ -38,8 +36,7 @@ on:
 # No workflow-level concurrency: cancelling in progress there would let a
 # newer push kill a build someone approved, and queueing there would leave a
 # newer push behind a run still waiting for approval. Only `approve` takes a
-# group. Two approved builds can therefore overlap, which is why the review
-# and prune compare only with older runs' APKs.
+# group.
 
 permissions:
   contents: read
