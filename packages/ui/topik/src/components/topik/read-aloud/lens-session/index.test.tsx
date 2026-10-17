@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react"
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { LensSession } from "@topik/components/topik/read-aloud/lens-session"
 import { MISTAKES } from "@topik/lib/topik/read-aloud/mistakes"
 import { REPO_SETS } from "@topik/lib/topik/read-aloud/repo-sets"
@@ -103,29 +103,63 @@ describe("LensSession", () => {
       />
     )
     let checked = 0
+    let picked = 0
     for (let step = 0; step < 80; step += 1) {
       const card = document.querySelector('[data-slot="lens-card"]')
       if (!card) break
       if (card.getAttribute("data-phase") === "item") {
-        // A wrong answer: a misform when picking, "Looks right" otherwise.
+        // A wrong answer: a misform when picking, at times, and "Looks
+        // right" otherwise.
         const pick = Array.from(document.querySelectorAll("button[lang=ko]"))
         const fine = screen.queryByRole("button", { name: "Looks right" })
         const line = document.querySelector('[data-slot="lens-line"]')
+        const open = line?.querySelector('[data-slot="lens-open"]')?.textContent
+        // Which candidate is wrong is not on screen, so the choice varies;
+        // the seed is fixed, and `picked` checks some pick is missed. Its
+        // open word then shows the form chosen.
+        const tap = pick[(step + 1) % Math.max(pick.length, 1)]
+        const chosen = tap?.textContent
+        const answered =
+          !fine && open && chosen ? `${open.trimEnd()}${chosen}` : null
         const before = line?.textContent ?? ""
-        fireEvent.click(fine ?? pick[0] ?? document.body)
+        fireEvent.click(fine ?? tap ?? document.body)
         if (card.getAttribute("data-phase") === "step-down") {
           checked += 1
           expect(screen.getByText(/not this one/i)).toBeTruthy()
           expect(
             document.querySelector('[data-slot="lens-line"]')?.textContent
-          ).toBe(before)
+          ).toBe(open && answered ? before.replace(open, answered) : before)
+          if (answered) picked += 1
           expect(document.querySelector('[data-slot="lens-reveal"]')).toBeNull()
         }
         continue
       }
       answerCard()
     }
-    expect(checked).toBeGreaterThan(0)
+    expect(checked).toBeGreaterThan(picked)
+    expect(picked).toBeGreaterThan(0)
+  })
+
+  it("holds a sitting begun while the host session is paused", () => {
+    vi.useFakeTimers()
+    render(
+      <LensSession
+        deck={REPO_SETS}
+        level={1}
+        speech={null}
+        paused
+        seedKey={() => "held"}
+        onExit={() => undefined}
+      />
+    )
+    expect(screen.getByText("Paused")).toBeTruthy()
+    // Held two minutes on screen, the sitting ends (Rem. 4.10).
+    act(() => {
+      vi.advanceTimersByTime(MAX_SCREEN_MS)
+    })
+    fireEvent.click(screen.getByRole("button", { name: /keep going/i }))
+    expect(screen.getByText("Paused")).toBeTruthy()
+    expect(document.querySelector('[data-slot="lens-card"]')).toBeNull()
   })
 
   it("ends when the summary's two minutes run out", () => {

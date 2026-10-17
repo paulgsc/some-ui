@@ -285,9 +285,26 @@ export const LensCard = ({
             answer?.kind === "pick"
               ? shape.candidates[answer.candidate]
               : undefined
+          // The step-down shows the form chosen, unmarked; the authored form
+          // waits for the reveal.
+          if (chosen && !revealed) {
+            return (
+              <span
+                key={segment.key}
+                data-slot="lens-open"
+                className="border-muted-foreground border-b-2 border-dashed"
+              >
+                {chosen.surface}
+              </span>
+            )
+          }
           if (!revealed) {
             return (
-              <span key={segment.key} className="whitespace-nowrap">
+              <span
+                key={segment.key}
+                data-slot="lens-open"
+                className="whitespace-nowrap"
+              >
                 {shape.prefix}
                 <span className="border-muted-foreground text-muted-foreground inline-block min-w-[2em] border-b-2 border-dashed text-center">
                   {" "}

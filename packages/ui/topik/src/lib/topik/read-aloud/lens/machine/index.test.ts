@@ -217,7 +217,7 @@ describe("the grammar-lens machine", () => {
     host.expire()
     expect(host.state).toMatchObject({
       cursor: 0,
-      phase: { name: "sitting-over" },
+      phase: { name: "sitting-over", resume: null },
     })
     host.send({ type: "start-sitting" })
     expect(host.state).toMatchObject({ cursor: 0, phase: { name: "item" } })
@@ -230,10 +230,29 @@ describe("the grammar-lens machine", () => {
     host.now = SITTING_MS
     host.send({ type: "hidden" })
     expect(host.state).toMatchObject({
-      cursor: 1,
-      phase: { name: "sitting-over" },
+      cursor: 0,
+      phase: { name: "sitting-over", resume: { name: "reveal" } },
     })
-    expect(currentOutcome({ ...host.state, cursor: 0 })?.right).toBe(true)
+    expect(currentOutcome(host.state)?.right).toBe(true)
+    host.send({ type: "start-sitting" })
+    expect(host.state).toMatchObject({ cursor: 0, phase: { name: "reveal" } })
+  })
+
+  it("resumes a step-down a held pause cut off, and begins an unanswered item again", () => {
+    const host = new Host()
+    host.begin([PICK, PICK])
+    host.send({ type: "answer", answer: WRONG })
+    host.send({ type: "held" })
+    host.expire()
+    expect(host.state.phase).toEqual({
+      name: "sitting-over",
+      resume: { name: "step-down", step: 0 },
+    })
+    host.send({ type: "start-sitting" })
+    expect(host.state).toMatchObject({
+      cursor: 0,
+      phase: { name: "step-down", step: 0 },
+    })
   })
 
   it("finishes the item showing at thirty minutes, then begins nothing new", () => {

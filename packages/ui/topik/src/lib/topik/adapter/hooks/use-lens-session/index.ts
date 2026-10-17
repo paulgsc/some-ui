@@ -6,7 +6,7 @@
  */
 
 import { useEffect, useLayoutEffect, useRef, useState } from "react"
-import { useHeld } from "@topik/lib/topik/adapter/hooks/use-held"
+import { holdOrShow, useHeld } from "@topik/lib/topik/adapter/hooks/use-held"
 import type { LensAnswer } from "@topik/lib/topik/read-aloud/lens/items"
 import type { LensTap } from "@topik/lib/topik/read-aloud/lens/machine"
 import { createLensMachine } from "@topik/lib/topik/read-aloud/lens/machine"
@@ -62,9 +62,13 @@ export function useLensSession(options: UseLensSessionOptions): LensSessionVM {
   }, [])
   useHeld(runtimeRef, options.paused)
 
+  // A tap can begin a screen (a new sitting or set) under a hold the screen
+  // before ignored, so the hold is applied again, as read-aloud's taps do.
   const send = (event: LensTap): void => {
     const runtime = runtimeRef.current
-    runtime?.dispatch({ ...event, at: runtime.now() })
+    if (!runtime) return
+    runtime.dispatch({ ...event, at: runtime.now() })
+    holdOrShow(runtime, latest.current.paused)
   }
 
   return {

@@ -22,8 +22,9 @@
  *   screen is a screen like any other and, left two minutes, ends the
  *   sitting. When neither holds, the screen gets its two minutes again.
  * - After thirty minutes nothing new begins, neither an item nor a summary,
- *   and a pause ends the sitting: the rest waits for `start-sitting`. An item
- *   already answered is kept, and the sitting resumes after it.
+ *   and a pause ends the sitting: the rest waits for `start-sitting`. An
+ *   answered item's step-down or reveal resumes with the next sitting; an
+ *   item not yet answered begins again.
  */
 
 import { assertNever } from "@some-ui/core-utils"
@@ -55,7 +56,11 @@ export type LensPhase =
       by: "hidden" | "session"
       resume: PausablePhase
     }
-  | { name: "sitting-over" }
+  | {
+      name: "sitting-over"
+      /** An answered item's step-down or reveal, which the next sitting resumes. */
+      resume: FollowUp | null
+    }
 
 type StepDownEnd = "right" | "ran-out" | "skipped" | "expired"
 
@@ -164,26 +169,36 @@ function enter(
 const sittingOver = (state: LensState, at: number): boolean =>
   state.sittingStartedAt !== null && at - state.sittingStartedAt >= SITTING_MS
 
+/** The screens that finish an answered item (Cor. 4.8). */
+type FollowUp = Extract<PausablePhase, { name: "step-down" | "reveal" }>
+
+const followUp = (phase: PausablePhase): FollowUp | null =>
+  phase.name === "step-down" || phase.name === "reveal" ? phase : null
+
 /**
- * The sitting ends: a pause or a timer running stops, and an item answered
- * is kept, so the next sitting resumes after it.
+ * The sitting ends: a pause or a timer running stops. An answered item's
+ * step-down or reveal, `interrupted`, is where the next sitting resumes; an
+ * item not yet answered begins again.
  */
-function endSitting(state: LensState): LensTransition {
-  const outcome = currentOutcome(state)
-  const answered = outcome?.answer != null || outcome?.expired === true
+function endSitting(
+  state: LensState,
+  interrupted: PausablePhase | null
+): LensTransition {
   return {
     state: {
       ...state,
       seq: state.seq + 1,
-      cursor: answered ? state.cursor + 1 : state.cursor,
-      phase: { name: "sitting-over" },
+      phase: {
+        name: "sitting-over",
+        resume: interrupted && followUp(interrupted),
+      },
     },
     effects: [{ type: "stop-speech" }],
   }
 }
 
 function startItem(state: LensState, at: number): LensTransition {
-  if (sittingOver(state, at)) return endSitting(state)
+  if (sittingOver(state, at)) return endSitting(state, null)
   const item = currentItem(state)
   if (!item) return enter(state, { name: "summary" }, [{ type: "stop-speech" }])
   const heard = item.cue && item.cue.modality !== "glyph"
@@ -290,7 +305,7 @@ function onElapsed(state: LensState, at: number): LensTransition {
     }
     case "paused": {
       // Only a pause on screen waits (Rem. 4.10).
-      return endSitting(state)
+      return endSitting(state, phase.resume)
     }
     case "idle":
     case "sitting-over": {
@@ -335,7 +350,7 @@ function pauseWith(
 ): LensTransition {
   const { phase } = state
   if (!pausable(phase)) return { state, effects: [] }
-  if (sittingOver(state, at)) return endSitting(state)
+  if (sittingOver(state, at)) return endSitting(state, phase)
   return pausedAs(state, { name: "paused", by, resume: phase }, [
     { type: "stop-speech" },
   ])
@@ -345,7 +360,7 @@ function pauseWith(
 function resumed(state: LensState, at: number): LensTransition {
   const { phase } = state
   if (phase.name !== "paused") return { state, effects: [] }
-  if (sittingOver(state, at)) return endSitting(state)
+  if (sittingOver(state, at)) return endSitting(state, phase.resume)
   return enter(state, phase.resume)
 }
 
@@ -403,7 +418,11 @@ export function lensReducer(
       if (phase.name !== "summary") return unchanged
       if (sittingOver(state, event.at)) {
         return {
-          state: { ...state, phase: { name: "sitting-over" }, items: [] },
+          state: {
+            ...state,
+            phase: { name: "sitting-over", resume: null },
+            items: [],
+          },
           effects: [],
         }
       }
@@ -418,7 +437,9 @@ export function lensReducer(
       if (phase.name !== "paused") return pauseWith(state, by, event.at)
       if (phase.by === by) return unchanged
       // The same pause, on or off the screen.
-      if (sittingOver(state, event.at)) return endSitting(state)
+      if (sittingOver(state, event.at)) {
+        return endSitting(state, phase.resume)
+      }
       return pausedAs(state, { ...phase, by })
     }
     case "shown": {
@@ -427,6 +448,7 @@ export function lensReducer(
     case "start-sitting": {
       if (phase.name !== "sitting-over") return unchanged
       const fresh = { ...state, sittingStartedAt: event.at }
+      if (phase.resume) return enter(fresh, phase.resume)
       return fresh.items.length > 0
         ? startItem(fresh, event.at)
         : requestSet(fresh)

@@ -118,7 +118,7 @@ export const LensSession = ({
       return (
         <SetCard
           kind="sitting-over"
-          note="Keep going picks up at the next item. A set you leave is not picked up again."
+          note="Keep going picks up where this sitting stopped. A set you leave is not picked up again."
           short={short}
           onContinue={vm.startSitting}
           onStop={options.onExit}
