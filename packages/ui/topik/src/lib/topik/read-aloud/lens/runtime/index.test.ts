@@ -250,6 +250,38 @@ describe("createLensRuntime", () => {
     expect(new Set(entries.map((e) => e.session)).size).toBe(1)
   })
 
+  it("records a cue as read when the answer came before speech began it", () => {
+    // Speech that never starts: the answer lands first and cuts the cue off.
+    const speech: Speaker = {
+      ...fakeSpeech(),
+      say: (_text, options): Promise<SpeechOutcome> =>
+        new Promise((resolve) => {
+          options.signal?.addEventListener("abort", () => {
+            resolve({ kind: "cancelled" })
+          })
+        }),
+    }
+    const { runtime, last, entries } = harness(speech)
+    runtime.begin()
+    // On to a cue drawn to be heard.
+    while ((currentItem(last().state)?.cue?.modality ?? "glyph") === "glyph") {
+      const at = runtime.now()
+      runtime.dispatch({ type: "answer", at, answer: firstAnswer(last()) })
+      if (last().state.phase.name === "step-down") {
+        runtime.dispatch({ type: "skip-probes", at })
+      }
+      runtime.dispatch({ type: "next", at })
+    }
+    const line = currentItem(last().state)?.lineId
+    const at = runtime.now()
+    runtime.dispatch({ type: "answer", at, answer: firstAnswer(last()) })
+    if (last().state.phase.name === "step-down") {
+      runtime.dispatch({ type: "skip-probes", at })
+    }
+    runtime.dispatch({ type: "next", at })
+    expect(entries.find((e) => e.line === line)?.cue).toBe("glyph")
+  })
+
   it("records a cue it could not voice as read", async () => {
     const { runtime, last, entries } = harness(fakeSpeech({ kind: "muted" }))
     runtime.begin()

@@ -86,6 +86,11 @@ export function createLensRuntime(
   let playing: LensPlaying = null
   /** The item whose cue could not be heard. */
   let unheard: LensItem | null = null
+  /**
+   * Items whose cue speech began saying before the answer, and did not then
+   * lose (muted, failed, cut off by the speaker): the record's heard cues.
+   */
+  const heard = new WeakSet<LensItem>()
   let timer: ReturnType<typeof setTimeout> | null = null
   let utterance: AbortController | null = null
   /** When the session began, which names it in the record. */
@@ -130,6 +135,10 @@ export function createLensRuntime(
         signal: controller.signal,
         onStart: () => {
           if (utterance !== controller) return
+          // Heard before the answer: a cue replayed after it gave nothing.
+          if (which === "cue" && item && state.phase.name === "item") {
+            heard.add(item)
+          }
           playing = which
           publish()
         },
@@ -142,7 +151,10 @@ export function createLensRuntime(
           outcome.kind === "muted" ||
           outcome.kind === "failed" ||
           outcome.kind === "ended"
-        if (which === "cue" && lost) unheard = item
+        if (which === "cue" && lost) {
+          unheard = item
+          if (item) heard.delete(item)
+        }
         publish()
       })
   }
@@ -150,7 +162,7 @@ export function createLensRuntime(
   const keep = (index: number, at: number): void => {
     const item = state.items[index]
     const outcome = state.outcomes[index]
-    const { record, speech } = options()
+    const { record } = options()
     if (!record || !item || outcome?.answeredAt == null) return
     const key = `${set}:${index}`
     const earlier = [...kept].flatMap(([other, entry]) =>
@@ -159,7 +171,7 @@ export function createLensRuntime(
     const entry = recordEntry(item, outcome, {
       session,
       closedAt: at,
-      audio: speech?.available === true && unheard !== item,
+      audio: heard.has(item),
       earlier,
     })
     kept.set(key, entry)

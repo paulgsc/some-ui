@@ -120,8 +120,8 @@ function askedOf(
 }
 
 /**
- * The entry for an item, closed or left. `audio`: whether its cue could be
- * heard. `earlier`: its session's entries before it, for `racing`.
+ * The entry for an item, closed or left. `audio`: whether its cue was heard,
+ * speech having begun to say it; a cue never voiced was read. `earlier`: its session's entries before it, for `racing`.
  */
 export function recordEntry(
   item: LensItem,
