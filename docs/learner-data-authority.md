@@ -351,9 +351,12 @@ declared (checked by reading every call site and by the tests named).
   changed since it was read (`letGoUnchanged`), or that drops the freeing from
   the send's confirm; one that widens `mayLeavePhone` (in
   `lib/device-backend/handlers/sessions`) to pass a session that is not
-  completed or that was started or finished today, or deletes or weakens
-  `letGoUnchanged`'s `updatedAt` check (in `lib/session-archive`), each of
-  which lets the send remove what the claim keeps; one that makes
+  completed or that was started or finished today, or that deletes,
+  renames or moves it, or replaces a call to it with a condition of its
+  own, without the same test at every site that picks what may leave; one
+  that deletes or weakens `removeUnchanged`'s `updated_at` match (in the
+  same file), or lets `letGoUnchanged` (`lib/session-archive`) delete by
+  any other route; each lets the send remove what the claim keeps; one that makes
   `confirmHeld` write, or compare less than everything a copy carries
   (`sameRecord`); one that lets the runtime's `work` end before every
   request it started has settled (`inFlight`, `track`), so a second tap could

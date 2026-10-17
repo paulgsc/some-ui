@@ -137,7 +137,16 @@ export function indexedDbSoundbiteStore(): SoundbiteStore {
                 return blob instanceof Blob ? blob.size : 0
               })
           )
-          if (!fitsMaxBytes(staying, audio.size)) {
+          // Another save that landed first can leave a smaller bite to
+          // displace than the room was claimed for: refuse, never overshoot.
+          const displacing = await Promise.all(
+            displaced.map(async (id) => {
+              const blob: unknown = await result(audios.get(id))
+              return blob instanceof Blob ? blob.size : 0
+            })
+          )
+          const frees = displacing.reduce((sum, size) => sum + size, 0)
+          if (!fitsMaxBytes(staying, audio.size) || frees < freed) {
             tx.abort()
             throw new SoundbitesFullError()
           }

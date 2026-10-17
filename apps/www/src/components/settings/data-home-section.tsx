@@ -19,6 +19,7 @@
 
 import type { JSX } from "react"
 import { useState } from "react"
+import { counted } from "@some-ui/core-utils"
 import { Button, Label, Separator } from "@some-ui/shared"
 import { useNavigate } from "@tanstack/react-router"
 import { toast } from "sonner"
@@ -30,8 +31,7 @@ import { useCopyDeviceSessions, useTransferPreview } from "@/lib/tenant"
 
 import { AccountSection } from "./account-section"
 
-const plural = (n: number): string =>
-  n === 1 ? "1 session" : `${String(n)} sessions`
+const plural = (n: number): string => counted(n, "session")
 
 const OnThisDevice = (): JSX.Element => {
   const navigate = useNavigate()

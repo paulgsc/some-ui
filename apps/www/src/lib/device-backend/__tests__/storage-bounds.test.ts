@@ -12,7 +12,10 @@ import {
   removeRoundsExcept,
   upsertRound,
 } from "@/lib/device-backend/content-store"
-import { oldestRemovable } from "@/lib/device-backend/handlers/sessions"
+import {
+  oldestRemovable,
+  removeUnchanged,
+} from "@/lib/device-backend/handlers/sessions"
 import type { DeviceBackend } from "@/lib/device-backend/interceptor"
 import type { SqlDriver } from "@/lib/device-backend/sql"
 import { num, one } from "@/lib/device-backend/sql"
@@ -134,6 +137,23 @@ describe("sessions at the budget", () => {
     await expect(oldestRemovable(db, NOW)).resolves.toMatchObject({
       name: "oldest",
     })
+  })
+
+  it("removes only a session still exactly as the destination got it", async () => {
+    const kept = await create("kept")
+    const gone = await create("gone")
+    const stamps = await db.all("SELECT id, updated_at FROM sessions")
+    const asOf = stamps.map((row) => ({
+      id: String(row.id),
+      updatedAt: String(row.updated_at),
+    }))
+    // `kept` was saved again after the destination got its copy.
+    const stale = asOf.map((s) =>
+      s.id === kept ? { ...s, updatedAt: "2020-01-01T00:00:00Z" } : s
+    )
+    await expect(removeUnchanged(db, stale)).resolves.toBe(1)
+    expect(await names()).toEqual(["kept"])
+    expect(gone).not.toBe(kept)
   })
 
   it("runs FULL auto-vacuum, a database made before it included", async () => {

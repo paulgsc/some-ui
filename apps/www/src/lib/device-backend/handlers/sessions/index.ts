@@ -180,6 +180,28 @@ function layoutField(body: Record<string, unknown>): string | null | undefined {
 export type RemovableSession = { id: string; name: string; finishedAt: string }
 
 /**
+ * Deletes each of `asOf` that is still exactly as it was then, by `id` and
+ * `updatedAt` in one statement each, all in one transaction: a session saved
+ * since is kept, however late that save lands. Returns how many went.
+ */
+export async function removeUnchanged(
+  db: SqlDriver,
+  asOf: ReadonlyArray<Pick<SessionRecord, "id" | "updatedAt">>
+): Promise<number> {
+  return db.transaction(async () => {
+    let removed = 0
+    for (const { id, updatedAt } of asOf) {
+      const { changes } = await db.run(
+        "DELETE FROM sessions WHERE subject_id = ? AND id = ? AND updated_at = ?",
+        [DEVICE_SUBJECT, id, updatedAt]
+      )
+      if (changes > 0) removed += 1
+    }
+    return removed
+  })
+}
+
+/**
  * Whether the phone may let its copy of `session` go, to make room or once
  * home or an archive holds it: finished, and not one the study card and
  * nudge read as studied today. Unfinished work always stays.

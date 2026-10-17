@@ -6,6 +6,7 @@
 import { sessionRecord } from "@/test-support/session-record"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
+import type * as SessionHandlers from "@/lib/device-backend/handlers/sessions"
 import { letGoUnchanged, shareArchive } from "@/lib/session-archive"
 import type { SessionRecord } from "@/lib/tenant/types"
 
@@ -35,10 +36,24 @@ vi.mock("@/lib/tenant/queries", () => ({
   sessionsRepository: {
     list: (): Promise<Array<SessionRecord>> =>
       Promise.resolve([...phone.sessions]),
-    removeMany: (ids: ReadonlyArray<string>): Promise<void> => {
-      phone.sessions = phone.sessions.filter((s) => !ids.includes(s.id))
-      return Promise.resolve()
-    },
+  },
+}))
+vi.mock("@/lib/device-backend/boot", () => ({
+  deviceBackend: (): Promise<{ context: { db: object } }> =>
+    Promise.resolve({ context: { db: {} } }),
+}))
+vi.mock("@/lib/device-backend/handlers/sessions", async (actual) => ({
+  ...(await actual<typeof SessionHandlers>()),
+  // The phone's own sessions are this file's list, not a database.
+  removeUnchanged: (
+    _db: unknown,
+    asOf: ReadonlyArray<{ id: string; updatedAt: string }>
+  ): Promise<number> => {
+    const gone = phone.sessions.filter((s) =>
+      asOf.some((a) => a.id === s.id && a.updatedAt === s.updatedAt)
+    )
+    phone.sessions = phone.sessions.filter((s) => !gone.includes(s))
+    return Promise.resolve(gone.length)
   },
 }))
 vi.mock("@/lib/device-backend/storage-view", () => ({

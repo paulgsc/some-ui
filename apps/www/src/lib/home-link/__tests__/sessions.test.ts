@@ -11,6 +11,7 @@ import { openNodeSqlite } from "@/test-support/node-sqlite-driver"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 import { openDeviceBackend } from "@/lib/device-backend/backend"
+import type * as SessionHandlers from "@/lib/device-backend/handlers/sessions"
 import type * as ShelfHandlers from "@/lib/device-backend/handlers/shelf"
 import { SyncStoppedError } from "@/lib/device-backend/home-sync"
 import type { DeviceBackend } from "@/lib/device-backend/interceptor"
@@ -64,10 +65,6 @@ vi.mock("@/lib/tenant/queries", () => ({
   sessionsRepository: {
     list: (): Promise<Array<SessionRecord>> =>
       Promise.resolve([...phone.sessions]),
-    removeMany: (ids: ReadonlyArray<string>): Promise<void> => {
-      phone.sessions = phone.sessions.filter((s) => !ids.includes(s.id))
-      return Promise.resolve()
-    },
   },
 }))
 vi.mock("@/lib/device-backend/boot", () => ({
@@ -78,6 +75,20 @@ vi.mock("@/lib/device-backend/handlers/shelf", async (actual) => ({
   ...(await actual<typeof ShelfHandlers>()),
   // The phone keeps nothing on its shelf here: this file is about sessions.
   everyKept: (): Promise<Array<never>> => Promise.resolve([]),
+}))
+vi.mock("@/lib/device-backend/handlers/sessions", async (actual) => ({
+  ...(await actual<typeof SessionHandlers>()),
+  // The phone's own sessions are this file's list, not a database.
+  removeUnchanged: (
+    _db: unknown,
+    asOf: ReadonlyArray<{ id: string; updatedAt: string }>
+  ): Promise<number> => {
+    const gone = phone.sessions.filter((s) =>
+      asOf.some((a) => a.id === s.id && a.updatedAt === s.updatedAt)
+    )
+    phone.sessions = phone.sessions.filter((s) => !gone.includes(s))
+    return Promise.resolve(gone.length)
+  },
 }))
 vi.mock("@/lib/device-backend/storage-view", () => ({
   deviceStorage: { refresh: (): Promise<void> => Promise.resolve() },

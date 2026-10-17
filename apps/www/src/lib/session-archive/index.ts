@@ -15,7 +15,11 @@
  */
 import { dayOf } from "@some-ui/core-utils"
 
-import { mayLeavePhone } from "@/lib/device-backend/handlers/sessions"
+import { deviceBackend } from "@/lib/device-backend/boot"
+import {
+  mayLeavePhone,
+  removeUnchanged,
+} from "@/lib/device-backend/handlers/sessions"
 import { deviceStorage } from "@/lib/device-backend/storage-view"
 import { foreignValue } from "@/lib/intent/foreign"
 import { shareFiles } from "@/lib/share-files"
@@ -88,13 +92,9 @@ export async function shareArchive(
 export async function letGoUnchanged(
   held: ReadonlyArray<SessionAsOf>
 ): Promise<number> {
-  const asOf = new Map(held.map((s) => [s.id, s.updatedAt]))
-  const unchanged = (await sessionsRepository.list())
-    .filter((s) => asOf.get(s.id) === s.updatedAt)
-    .map((s) => s.id)
-  if (unchanged.length > 0) {
-    await sessionsRepository.removeMany(unchanged)
-    void deviceStorage.refresh()
-  }
-  return unchanged.length
+  if (held.length === 0) return 0
+  const { context } = await deviceBackend()
+  const left = await removeUnchanged(context.db, held)
+  if (left > 0) void deviceStorage.refresh()
+  return left
 }
