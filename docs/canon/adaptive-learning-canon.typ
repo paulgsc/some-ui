@@ -1757,52 +1757,60 @@ rather than as *data*, and the remedy is to exhibit the data.
 ]
 
 #definition("4.9", name: "Grammar-lens item")[
-  A *grammar-lens item* is a morphism probe (Def. 4.6) of order two
-  (Def. 4.7) over a pair of authored lines $(a, b)$: the *cue* $a$, which
-  sets what $b$ must be --- a question, a time, a verb that takes one
-  particle and not another --- and the *response line* $b$. Its relation is
-  well-formedness of $b$ given $a$ (Rem. 4.8 lets it be named so), and its
-  candidates are $b$ as authored and *misforms* of $b$: $b$ with one written
-  word replaced by a form a learner is known to write there, each naming one
-  entry of an authored *mistake catalogue* (an identifier, a one-line rule,
-  and where the mistake comes from). An item takes one of two shapes. A
-  *pick* shows $b$ with one word's particle or ending left open and offers
-  the authored form against that word's misforms. A *judge* shows $b$ whole,
-  either as authored or with exactly one misform in place, and asks for the
-  word that is wrong or for "looks right". Its objective is discrimination,
-  its direction recognition, and its concept the catalogue entry, by
-  identifier (Def. 1.3); the cue may be absent where $b$ itself decides.
+  A *grammar-lens item* is a morphism probe (Def. 4.6) over a pair of
+  authored lines $(a, b)$: the *cue* $a$, which sets what $b$ must be --- a
+  question, a time, a verb that takes one particle and not another --- and
+  the *response line* $b$. Its relation is well-formedness of $b$ given $a$,
+  or of $b$ alone where $b$ itself decides and the cue is absent (Rem. 4.8
+  lets it be named so), and its order, two or three (Def. 4.7), is authored
+  with it: a tense that ignores the cue's question fails a felicitous reply.
+  Its candidates are $b$ as authored and *misforms* of $b$: $b$ with one
+  written word replaced by a form a learner is known to write there, each
+  naming one entry of an authored *mistake catalogue* (an identifier, a
+  one-line rule, and where the mistake comes from). An item takes one of two
+  shapes. A *pick* shows $b$ with one word's particle or ending left open
+  and offers the authored form against that word's misforms. A *judge* shows
+  $b$ whole, either as authored or with exactly one misform in place, and
+  asks for the word that is wrong or for "looks right". Its objective is
+  discrimination, and its concepts are the catalogue entries its line's
+  misforms name, by identifier (Def. 1.3); a line with no misform yields only
+  judges shown as authored, and they examine no entry. Its direction is a new
+  value of $p_"direction"$, *judgement* (a written form to whether it is well
+  formed), a new value of an existing dimension, which Theorem 4.1 says is
+  cheap.
 
-  Candidates are authored with the line and graded by lookup (Rem. 4.7). A
-  misform is not generated at runtime, not even by exchanging one particle
-  for another on authored role data: 부산에서 가요 is well formed (setting off
-  from Busan), so the exchange that makes 편의점에 일해요 a misform makes it
-  valid, and only an author can tell the two apart.
+  Misforms are authored, never generated (Rem. 4.7): 부산에서 가요 is well
+  formed (setting off from Busan), so the swap that makes 편의점에 일해요 a
+  misform would make it valid.
 ]
 
 #corollary("4.8", name: "The grammar-lens valuation, declared")[
-  The grammar-lens renderer of `packages/ui/topik` delivers Definition 4.9's
-  item at one declared valuation, in its own session: the read-aloud start
-  screen offers a read-aloud session and a grammar-lens session as two
-  starts, and neither session's sets ever hold the other's items. The
-  valuation:
-  $p_"modality"$ of the cue drawn per item from glyph, audio, or both, among
-  those the item allows (an author may withhold audio alone from a long
-  cue), uniformly from the set's seed, so the draw selects nothing
-  (Rem. 4.9); $b$ is always glyphs, and where no speech adapter is present
-  the cue is glyphs and the session is still offered;
+  The grammar-lens renderer of `packages/ui/topik` (capability set per
+  Definition 9.3: $p_"response" = "selection"$, the cue's modality within
+  ${"glyph", "audio"}$, and the session budget of Remark 4.10) delivers
+  Definition 4.9's item at one declared valuation, in its own session: the
+  read-aloud start screen offers a read-aloud session and a grammar-lens
+  session as two starts, and neither session's sets ever hold the other's
+  items. The valuation:
+  $p_"modality"$ of the cue one of ${"glyph"}$, ${"audio"}$ and
+  ${"glyph", "audio"}$, drawn per item among those the item allows (an
+  author may withhold audio alone from a long cue), uniformly from the
+  set's seed, so the draw selects nothing (Rem. 4.9); $b$ is always glyphs,
+  and where no speech adapter is present the cue is glyphs and the session
+  is still offered;
   $p_"response" = "selection"$, observed;
-  $p_"direction" = "recognition"$;
+  $p_"direction" = "judgement"$ (Def. 4.9);
   $p_"hint" = "none"$;
-  $p_"pressure" = "none"$ --- nothing is timed, and each screen is bounded
-  as Remark 4.10 bounds every read-aloud screen: an item unanswered at two
-  minutes closes with no outcome;
+  $p_"pressure" = "none"$ within the screen bound below: nothing counts down,
+  and an item unanswered when its screen's bound is reached closes as
+  *expired* (Def. 3.1);
   $p_"scored" = "true"$ --- right or wrong is shown at once and the set's
   summary counts both, by catalogue entry; $p_"credited" = "false"$;
   $p_"retry" = "forbidden"$; $p_"repeat" = "none"$;
   $p_"reveal" = "explanation"$ --- the authored form, the catalogue rule,
   the word of $a$ or $b$ that decided it, and for a missed pick what the
-  chosen form does instead.
+  chosen form does instead; after a miss, once the step-down of
+  Remark 4.15 has ended.
 
   Three decisions are named.
   (i) *No meaning is given.* The surface shows no gloss of $a$ or $b$, before
@@ -1818,93 +1826,98 @@ rather than as *data*, and the remedy is to exhibit the data.
   the learner must sometimes give and the item asks for a judgement rather
   than a search.
 
-  The session is bounded like the read-aloud session: a set is a fixed number
-  of items closed by its summary, and Remark 4.10's thirty minutes, after
-  which nothing new begins, governs a sitting of either.
+  A set is a fixed number of items closed by its summary, and the budget is
+  Remark 4.10's, stated over every screen this session shows --- an item, its
+  reveal, each step-down question, the situation check, a take and the
+  summary --- each bounded at two minutes, and a sitting of either session
+  ends as Remark 4.10 says. Grammar-lens items enter no practice record
+  (Def. 6.6).
 ]
 
 #remark("4.15", name: "The step-down and the situation check, sealed")[
-  Two checks follow an outcome, and neither shows its own. After a miss, the
-  *step-down* asks easier questions about the same $b$, one at a time, each
-  on a lower rung of a fixed ladder --- name the line's tense, find its
+  Two checks follow an outcome, and both are *sealed*: no answer to them is
+  marked right or wrong, and nothing on the device reads one. After a miss,
+  the *step-down* asks easier questions about the same $b$, one at a time,
+  each on a lower rung of a fixed ladder --- name the line's tense, find its
   subject or object, find where a word's particle starts, find its verb ---
   and ends at the first one answered rightly, when the ladder runs out, or
-  when the learner skips; it asks at most three. After every other right
-  answer, an optional *situation check* asks when someone would say $b$: a
+  when the learner skips; it asks at most three. Its flow does disclose each
+  answer, since it moves on after a wrong one and stops after a right one;
+  what it withholds is any marking and the explanation. After alternate right
+  answers, an optional *situation check* asks when someone would say $b$: a
   third-order probe (Def. 4.7) whose candidates are situations of use,
-  authored with the line. A situation is not a gloss (Rem. 4.8 (i)), but it
+  authored with the line, and whose choice is acknowledged and nothing more.
+  A situation is not a gloss (Def. 4.6 keeps the two relations apart), but it
   is the one place the learner's own language reaches the surface, and it is
   kept to that.
 
   Both are graded by lookup on authored data: the step-down on each word's
   role, its stem's end and the line's tense, offering a question only where
-  its answer is unique in $b$; the situation check on its authored candidate.
-  Neither result is shown: the step-down moves to its next question or
-  closes with thanks, and a situation chosen is acknowledged and nothing
-  more. The step-down's own reveal waits until it ends, since an explanation
-  shown first would answer it (Prop. 3.1). Both are uncredited, unscored and
-  skippable, and their outcomes, the step-down's last rung reached above
-  all, are observations (Def. 3.1) that Remark 4.18's record carries and
-  nothing on the device reads. They are sealed in issue \#1568's sense,
-  per item rather than per story, and because nothing on the device acts on
-  them, that issue's question of what may order the next item does not
-  arise here.
+  its answer is unique in $b$; the situation check on its authored
+  candidate. After a miss, the item's reveal (Cor. 4.8) waits until its
+  step-down ends, since an explanation shown first would answer it
+  (Prop. 3.1). Both are uncredited, unscored and skippable; Remark 4.18 keeps
+  their outcomes, the step-down's last rung above all.
 ]
 
 #remark("4.16", name: "A take of one's own reading")[
   After the reveal the learner may record themselves reading $b$ as
-  authored, before or after hearing it. The take is the learner's own
-  material, like a spoken reflection (Rem. 3.8): it stays on the device as
-  the recording, nothing transcribes or grades it, it carries no outcome,
-  and it leaves only inside the export the learner shares (Rem. 8.3). The
-  record keeps what can be said of a take without listening to it: how many
-  were made, how long the last ran, and whether the learner heard $b$ first.
-  Definition 4.8's unobserved spoken response is untouched: the take
-  belongs to this item, not to a read-aloud rep, and is never required.
-  Takes are bounded by count, the most recent kept, and losing one costs the
-  learner that recording and nothing else (Thm. 7.2).
+  authored, before or after hearing it. The take is kept as Remark 3.8 keeps
+  a spoken reflection, graded by nothing, carrying no outcome, and it leaves
+  the device only as Remark 4.18's record does. The record keeps what can be
+  said of a take without listening to it: how many were made, how long the
+  last ran, and whether the learner heard $b$ first. A take is never
+  required. Takes are bounded on their own (Rem. 7.5): at most forty, the
+  most recent, each at most thirty seconds, each expiring after thirty days;
+  losing one costs the learner that recording and nothing else (Thm. 7.2).
 ]
 
 #remark("4.17", name: "Time to answer, and racing")[
   The time from an item's appearing to its answer is recorded. An answer is
-  *rushed* when it came sooner than reading $b$, and $a$ when it was shown,
-  at twice the level's read-aloud rate (Cor. 4.6 (ii)); a session is
-  *racing* once three of its last five answers were rushed, and stays so.
-  Neither is shown, neither gates or moves anything, and neither enters the
-  summary, so no way through a set is paid or charged for its speed
-  (Prop. 6.4 (ii)). They are for whoever reads the record, who may weigh a
-  racing session's outcomes less.
+  *rushed* when it came sooner than the time to read $b$ aloud, and $a$ when
+  $a$ was shown as glyphs, at twice the level's rate (Cor. 4.6 (ii)); a
+  session is *racing* once three of its last five answers were rushed, and
+  stays so. Neither is shown, neither gates or moves anything, and neither
+  enters the summary, so no way through a set is paid or charged for its
+  speed (in the sense of Proposition 6.4 and its clause (iii)). They are for
+  whoever reads the record, who may weigh a racing session's outcomes less.
 ]
 
 #remark("4.18", name: "The grammar-lens record")[
   The outcomes of Corollary 4.8 and Remarks 4.15--4.17 are kept as one
   record: per item, its identity, the cue's modality, the answer and whether
-  it was right, the catalogue entry it showed, the time to answer and
-  whether it was rushed, the step-down's questions, answers and last rung,
-  the situation chosen, and the take's counts; per session, whether it was
-  racing. They are observations (Def. 3.1), and as for Remark 4.14 (ii) the
-  surface keeps no belief, so no update consumes them and the application
-  draws no inference from them. They reach the learner's own agent only
-  inside the study-context export the learner shares, as text: input to
-  content generation, class IV (Def. 8.1), which is where the next deck's
-  misforms and cues are chosen. It is a record outside the envelope
-  (Rem. 7.5), bounded by item count with the most recent kept, expiring
-  after thirty days; it stays on the device (Rem. 7.3), and losing it costs
-  the next export its grammar-lens section and nothing else (Thm. 7.2), so a
-  write that fails is swallowed (Prop. 7.2).
+  it was right or expired, the catalogue entry it showed, the time to answer
+  and whether it was rushed, the step-down's questions, answers and last
+  rung, the situation chosen, and the take's counts; per session, whether it
+  was racing. They are observations (Def. 3.1); the surface keeps no belief,
+  so no update consumes them, and the application draws no inference from
+  them. They reach the learner's own agent only inside the study-context
+  export, a file the learner hands to the share sheet as Remark 8.3 allows
+  and in which Remark 3.8's reflections already leave, as text, with the
+  takes beside it. That extends Remark 4.14 (ii) from first choices to
+  per-item outcomes, because the items are drawn from a fixed, authored
+  catalogue: what an item's outcome supports is an inference about which
+  catalogue entries, cues and rungs fit this learner, which is input to the
+  next deck's authoring, class IV (Def. 8.1), and never to belief. The record
+  is kept only where that export exists (the phone app); elsewhere nothing is
+  recorded. It is a record outside the envelope (Rem. 7.5), at most three
+  hundred items, the most recent, each expiring after thirty days; it stays
+  on the device (Rem. 7.3), and losing it costs the next export its
+  grammar-lens section and nothing else (Thm. 7.2), so a write that fails is
+  swallowed (Prop. 7.2).
 ]
 
 #remark("4.19", name: "A question on a read-aloud rep, withdrawn")[
   `packages/ui/topik` gave a read-aloud sentence a grammar question while its
-  ladder ran (\#1791), argued from Remark 4.9 and Proposition 6.4: the
-  question was drawn uniformly, waited for nothing, and moved no count. That
-  argument holds and the question is still withdrawn. On a clocked ladder it
-  competed with the turn: the learner reported reading aloud, working out
-  what was asked and finding the word all inside a turn sized for reading
-  alone, the reveal arriving before the question was understood, and the
-  question being answered from the same line it was read on. Corollary 4.6
-  is as filed: a read-aloud set asks nothing. What the question reached for
-  is Definition 4.9's, in a session of its own (Cor. 4.8).
+  ladder ran (\#1791), with no amendment: it asked on a rep, which
+  Corollary 4.6 says nothing does, and its set summary showed a found-of-asked
+  tally, against Corollary 4.6's $p_"scored" = "false"$. It moved neither a
+  word's pace nor the practice record. It is withdrawn, and Corollary 4.6 is
+  restored as filed: a read-aloud set asks nothing. On a clocked turn the
+  question competed with reading aloud, and its reveal came before it was
+  understood (the owner, \#1839). What it asked survives as Remark 4.15's
+  step-down; what it reached for is Definition 4.9's, in a session of its own
+  (Cor. 4.8).
 ]
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -3444,9 +3457,9 @@ is added. It is filed ahead of the source it describes.
   [A second session beside read-aloud, started on its own (Cor. 4.8): pairs
    of authored lines, misforms drawn from an authored mistake catalogue
    (Def. 4.9), outcomes shown and never credited, sealed checks after them
-   (Rem. 4.15). The read-aloud renderer loses the question it carried on a
-   sentence (Rem. 4.19) and is otherwise as TPK-READ describes it. O3 still
-   does not exist for either to write into.],
+   (Rem. 4.15). The read-aloud renderer is to lose the question it carries
+   on a sentence, and its toggle (Rem. 4.19), and is otherwise as TPK-READ
+   describes it. O3 still does not exist for either to write into.],
 )
 
 #heading(level: 2)[The unreconciled duplication]
@@ -3665,14 +3678,18 @@ would cost.
 + *The catalogue is not the learner's.* Definition 4.9's misforms are drawn
   from mistakes learners are known to make, and the catalogue that names
   them is authored, not observed in this learner. If the record shows a
-  misform almost never chosen, the item it sits in is asking whether the
-  learner can spot a mistake they would not make, and its outcome measures
-  attention, not form. If instead the step-down reaches its lowest rung on
-  most misses, the items sit above the learner and every miss says the same
-  thing. Cost: misforms are re-drawn from this learner's own record, or the
-  items move down the ladder, and Definition 4.9's "known to make" becomes
-  "seen this learner make". Detectable from Remark 4.18's record, by whoever
-  reads the export.
+  misform almost never chosen, the item it sits in asks whether the learner
+  can spot a mistake they would not make, and its outcome measures
+  attention, not form. Cost: misforms are weighted by what this learner
+  chose, or drawn from their own writing elsewhere, and Definition 4.9's
+  "known to make" is narrowed to the learner. Detectable from Remark 4.18's
+  record, by whoever reads the export.
+
++ *The items sit above the learner.* If the step-down reaches its lowest rung
+  on most misses, every miss says the same thing: the line was out of reach,
+  and which misform was chosen carries nothing. Cost: grammar-lens items are
+  drawn from lines below the learner's level, or the ladder gains lower
+  rungs. Detectable from the step-down's last rung in Remark 4.18's record.
 
 // ═══════════════════════════════════════════════════════════════════════════
 = Amendment Protocol
@@ -3955,26 +3972,22 @@ drops the phone's recognizer and its plugin. Moves the front-matter version
 line.
 
 *v1.18 --- 2026-10-17.* Admits a grammar-lens session beside read-aloud on
-the same start screen, as new items. Defines the grammar-lens item
-(Def. 4.9): a second-order probe over an authored cue and response line,
-whose wrong candidates are authored misforms naming an authored mistake
-catalogue, never generated at runtime (Rem. 4.7), in a pick and a judge
-shape. Declares its valuation (Cor. 4.8): untimed, outcome shown and never
-credited, the explanation as the reveal, no gloss at any point, a misform
-never voiced, and some judges right as written. Seals two checks after an
-outcome (Rem. 4.15): a step-down to easier questions on the same line after
-a miss, and an optional situation check after a right answer. Admits a take
-of the learner's own reading, kept on the device (Rem. 4.16), and records
-time to answer with a rushed and a racing flag that nothing shows or acts on
-(Rem. 4.17). Keeps the outcomes as a bounded record that reaches only the
-learner's own agent, in the export they share (Rem. 4.18). Withdraws the
-question a read-aloud sentence carried while its ladder ran (Rem. 4.19).
-Adds a TPK-LENS row to §10 and a falsifier to §12. Motivated by play on the
-phone: the question on a clocked rep was hard to use, and the owner asked for
-the two practices as separate, purposeful starts. Filed ahead of
-`packages/ui/topik`'s deck schema, which gains the cue, misforms and
-situations, and its grammar-lens session. Moves the front-matter version
-line.
+the same start screen, as new items: the grammar-lens item, whose wrong
+candidates are authored misforms naming a mistake catalogue, with
+$p_"direction"$ gaining *judgement* (Def. 4.9); its valuation, untimed,
+shown, never credited, with no gloss and no voiced misform (Cor. 4.8); a
+sealed step-down after a miss and a situation check after alternate right
+answers (Rem. 4.15); the learner's own take (Rem. 4.16); time to answer with
+rushed and racing flags nothing acts on (Rem. 4.17); and a bounded record
+that reaches only the learner's own agent, extending Remark 4.14 (ii) to
+per-item outcomes (Rem. 4.18). Withdraws the question \#1791 put on a
+read-aloud rep without an amendment, restoring Corollary 4.6 (Rem. 4.19).
+Adds a TPK-LENS row to §10 and two falsifiers to §12. Motivated by the
+owner's report that the question on a clocked rep was hard to use, and
+their request for the two practices as separate starts (\#1839). Filed
+ahead of `packages/ui/topik`'s deck schema (the cue, misforms and
+situations), the read-aloud renderer's removal of the question and its
+toggle, and the grammar-lens session. Moves the front-matter version line.
 
 #pagebreak()
 
