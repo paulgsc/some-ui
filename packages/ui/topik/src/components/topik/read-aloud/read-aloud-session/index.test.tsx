@@ -99,7 +99,7 @@ describe("ReadAloudSession", () => {
   it("keeps the level in sight, and says when lower levels fill its sets", () => {
     renderSession({ level: 2 })
     expect(levelChip()).toBe("TOPIK 2")
-    expect(shortfall()).toMatch(/^Only 2 sentences are written for TOPIK 2/)
+    expect(shortfall()).toMatch(/^Only 3 sentences are written for TOPIK 2/)
     fireEvent.click(screen.getByRole("button", { name: /start/i }))
     expect(stepOf()).toBe("glyphs")
     expect(levelChip()).toBe("TOPIK 2")
