@@ -7,7 +7,7 @@
 import type { AphSettings, Entry } from "@aph/lib/model"
 import type { AphStore } from "@aph/lib/store"
 import { createAphStore } from "@aph/lib/store"
-import { readEntry, readSettings } from "@aph/lib/stored"
+import { EntrySchema, SettingsSchema } from "@aph/lib/stored"
 import type { HomeCall } from "@aph/lib/sync"
 import { exchangeWithHome } from "@aph/lib/sync"
 import { memoryStorage } from "@some-ui/vite-config/vitest/memory-storage"
@@ -84,7 +84,7 @@ function fakeHome(
       return answer(200, { settings, entries: [...held.values()] })
     }
     if (path === "/aph/settings") {
-      settings = readSettings(JSON.parse(body ?? "null"))
+      settings = SettingsSchema.parse(JSON.parse(body ?? "null"))
       return answer(200, { change: "kept", settings })
     }
     const id = decodeURIComponent(path.replace("/aph/entries/", ""))
@@ -93,8 +93,7 @@ function fakeHome(
         error: { details: { labels: ["another entry already stands plain"] } },
       })
     }
-    const sent = readEntry(JSON.parse(body ?? "null"))
-    if (sent === null) return answer(422, { error: { details: {} } })
+    const sent = EntrySchema.parse(JSON.parse(body ?? "null"))
     held.set(id, sent)
     return answer(200, { change: "kept", entry: sent })
   }

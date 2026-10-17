@@ -3,7 +3,7 @@
  * docs/learner-data-authority.md): kept on this phone only, with the offer
  * to keep it on home; or kept on home, with what is synced and what still
  * waits here. Phone-only (`build.paths.ts`); the route hands in aph's store
- * and exchange, since only aph's screens may import `@some-ui/aph`.
+ * and exchange (`AphKeeping`).
  */
 import type { JSX } from "react"
 import { useState, useSyncExternalStore } from "react"
@@ -107,12 +107,7 @@ const TONE: Record<Line["tone"], string> = {
 
 const ICON = { ok: CircleCheck, wait: RefreshCw, off: CloudOff } as const
 
-/**
- * Where aph is kept, said on every view (LA9). On this phone only, it offers
- * keeping it on home: a first press names what goes and where, the second
- * keeps it there from then on. Kept on home, it says what is synced and what
- * still waits here.
- */
+/** The first press names what goes and where; the second keeps it there. */
 export const DeviceKeepOnHome = ({ aph }: { aph: AphKeeping }): JSX.Element => {
   const where = useSyncExternalStore(aph.store.subscribe, aph.store.where)
   const link = useHomeLink()

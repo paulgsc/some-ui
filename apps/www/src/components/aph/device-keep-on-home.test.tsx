@@ -7,8 +7,8 @@
  * on home, it says what still waits on the phone.
  */
 
-import type { ReactNode } from "react"
 import type { AphStore, AphWhere, Exchanged, HomeCall } from "@some-ui/aph"
+import type * as ReactRouterModule from "@tanstack/react-router"
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
@@ -38,11 +38,13 @@ vi.mock("@/lib/home-link/credential", () => ({
     clear: (): Promise<void> => Promise.resolve(),
   },
 }))
-vi.mock("@tanstack/react-router", () => ({
-  Link: ({ children }: { children: ReactNode }): ReactNode => (
-    <a href="/settings">{children}</a>
-  ),
-}))
+vi.mock(
+  "@tanstack/react-router",
+  async (importOriginal): Promise<typeof ReactRouterModule> => {
+    const { withPlainLink } = await import("@/test-support/router-stubs")
+    return withPlainLink(await importOriginal<typeof ReactRouterModule>())
+  }
+)
 
 afterEach(() => {
   cleanup()
@@ -117,7 +119,7 @@ async function show(store: AphStore): Promise<{ exchanges: number }> {
     store,
     exchange: async (_store: AphStore, send: HomeCall): Promise<Exchanged> => {
       seen.exchanges += 1
-      await send("GET", "/aph")
+      await send("GET", "/record")
       return { kind: "synced" }
     },
   }

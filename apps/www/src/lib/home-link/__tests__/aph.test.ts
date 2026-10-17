@@ -11,6 +11,7 @@ import type { AphHomeState } from "@/lib/home-link/aph-model"
 import { INITIAL_APH, stepAph } from "@/lib/home-link/aph-model"
 import type { AphHome, AphHomePorts } from "@/lib/home-link/aph-runtime"
 import { createAphHome } from "@/lib/home-link/aph-runtime"
+import { INITIAL, step } from "@/lib/home-link/model"
 import type { HomeLink, HomeSend } from "@/lib/home-link/runtime"
 
 const send: HomeSend = () => Promise.resolve({ status: 200, body: "" })
@@ -120,5 +121,20 @@ describe("stepAph", () => {
     expect(
       stepAph(again, { type: "ran", run: { kind: "unreachable", at: 1 } })
     ).toMatchObject({ running: false, again: false })
+  })
+})
+
+describe("the link's keep lane", () => {
+  it("starts only when paired and idle", () => {
+    const paired = step(INITIAL, {
+      type: "read",
+      found: { base: "https://home.example/api/v1" },
+    })
+    const keeping = step(paired, { type: "keepStarted" })
+    expect(keeping.activity).toEqual({ kind: "keeping", stopping: false })
+    expect(step(keeping, { type: "sendPressed" })).toBe(keeping)
+    expect(step(keeping, { type: "keepStarted" })).toBe(keeping)
+    const unpaired = step(INITIAL, { type: "read", found: null })
+    expect(step(unpaired, { type: "keepStarted" })).toBe(unpaired)
   })
 })

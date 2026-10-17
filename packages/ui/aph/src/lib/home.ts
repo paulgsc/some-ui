@@ -205,20 +205,3 @@ export function shown(
   }
   return { settings, entries, hidden }
 }
-
-/**
- * What the screens show before home has been read this launch: the settings
- * and the pending entries, every one that keeps the whole valid.
- */
-export function shownAlone(record: HomeRecord): {
-  settings: AphSettings
-  entries: Array<Entry>
-} {
-  const entries: Array<Entry> = []
-  for (const e of record.pending) {
-    if (violations(record.settings, [...entries, e]).length === 0) {
-      entries.push(e)
-    }
-  }
-  return { settings: record.settings, entries }
-}

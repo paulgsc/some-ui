@@ -7,23 +7,20 @@
  * another is wanted once it ends, so a burst of edits is one more run, not
  * one each.
  */
+import type { Exchanged } from "@some-ui/aph"
 import { assertNever } from "@some-ui/core-utils"
 
-/** How one run ended. */
+/** How one run ended: as its exchange did, or before one could. */
 export type AphRun =
-  /** Everything sendable sent, and home's record read and shown. */
+  | Exclude<Exchanged, { kind: "synced" }>
   | { readonly kind: "synced"; readonly at: number }
   /** Home did not answer: what is waiting stays on this phone. */
   | { readonly kind: "unreachable"; readonly at: number }
   /** Stopped (Stop, or the app went to the background) part way. */
   | { readonly kind: "stopped" }
-  /** Home answered `401`: it no longer knows this phone. */
-  | { readonly kind: "forgotten" }
   /** The link was doing something else (a tap in Settings). */
   | { readonly kind: "busy" }
   | { readonly kind: "unpaired" }
-  /** Home answered something else, said in words. */
-  | { readonly kind: "failed"; readonly why: string }
 
 export type AphHomeState = {
   readonly running: boolean

@@ -405,61 +405,41 @@ declared (checked by reading every call site and by the tests named).
   paired or not, sends nothing; unpairing and the send each take a second
   press).
 
-### LA9: aph reaches home only once its person opted in, and only while it is open
+### LA9: aph is sent home only while its person is using it
 
-- _Claim:_ in the Android app, aph's record (packages/ui/aph) reaches the
-  paired home only after its person chose to keep it there, by the second
-  press of the strip on aph's screens (`components/aph/device-keep-on-home.tsx`,
-  `keepAphOnHome`), whose first names the host and how many entries go; and
-  then only through the link's `keep`, which only `lib/home-link/aph.ts`
-  calls (its runtime, `aph-runtime.ts`, through the port it is handed), and only with the requests of `@some-ui/aph`'s `exchangeWithHome`:
-  `PUT /aph/settings`, one `PUT /aph/entries/:id` per entry waiting on the
-  phone, and `GET /aph`. A run is asked for (`ask`) only while that strip is
-  mounted (`watchAph`, `useAphHome`), only when aph is kept on home, and only
-  with the app in front: when aph opens, when it is changed on this phone,
-  when the app comes back to the foreground, when the network comes back,
-  when the phone is paired, when the link frees up after turning a run away,
-  and on "Try now". Never on a timer, and one run at a time (`stepAph`). The
-  phone keeps the settings and what home has not confirmed (the outbox,
-  `HomeRecord`); it lets go of an entry only when home answered with the same
-  entry, field for field, still unchanged on the phone (`afterSend`,
-  `sameEntry`), and removes the device record only after the home record
-  carrying all of it is written (`keepOnHome`). Home keeps every revision
-  and deletes none (paulgsc/server docs/identity.md, invariant 15).
-- _Falsified by:_ a hunk that calls the link's `keep` outside
-  `lib/home-link/aph.ts` and `aph-runtime.ts`, or passes it a run other than the exchange handed in
-  by `AphKeeping`; one that makes `exchangeWithHome` (`packages/ui/aph/src/lib/sync.ts`)
-  send another path or method, or anything but the outbox's settings and
-  entries; one that removes `ask`'s check that aph is kept on home or that the
-  document is visible, or adds a `setTimeout`, `setInterval` or other timer to
-  `lib/home-link/aph*.ts`; one that calls `keepAphOnHome` from anywhere but a
-  press handler, or lets the strip's first press keep on home, or drops the
-  host or the count from the confirm; one that lets `afterSend`
-  (`packages/ui/aph/src/lib/home.ts`) drop a pending entry no held entry
-  matches by `sameEntry`, makes `sameEntry` compare fewer fields than an
-  `Entry` carries, or lets the store drop an entry from the outbox by any
-  other route; one that lets `keepOnHome` call `forgetDeviceRecord` without a
-  `writeHome` that succeeded first; or one that removes or widens the LA8
-  allowlists in `lib/serving-privacy/__tests__/egress-choke-points.test.ts`
-  that name the strip.
-- _Scope:_ `apps/www/src/lib/home-link/aph*.ts`,
-  `apps/www/src/components/aph/device-keep-on-home.tsx`,
-  `apps/www/src/routes/_dashboard/_apk/aph.tsx`, and
-  `packages/ui/aph/src/lib/{home,store,stored,sync}.ts`.
-- _Why not enforced:_ who may reach `lib/home-link`, and that only those two
-  files call `keep`, are, by test (`egress-choke-points`).
-  What no test can say is that each moment `watchAph` asks at
-  is one where the person is using aph: a test sees the listener, not why it
-  is there. What a run sends and lets go of is pinned by
-  `packages/ui/aph/src/lib/__tests__/sync.test.ts` (a refused entry, no
-  answer, a stop part way and a forgotten phone each keep everything home did
-  not confirm) and `home.test.ts` (the device record goes only after the
-  home record is kept; a change made after a send stays waiting); one run at a
-  time by `lib/home-link/__tests__/aph.test.ts`. Held when declared, by
-  reading every caller: `keep` is called in `lib/home-link/aph.ts` alone
-  (and through its port, in `aph-runtime.ts`'s `once`),
-  `keepAphOnHome` and `askAph` from the strip's `onClick`s alone, and `ask`
-  from `watchAph`'s listeners and those two.
+What aph may send home, and what the phone may let go of, is enforced by
+test: who reaches the link and its `keep` lane (`egress-choke-points`), the
+requests an exchange makes and that an entry leaves the phone only once home
+answers with it unchanged (`packages/ui/aph/src/lib/__tests__/sync.test.ts`,
+`home.test.ts`), one run at a time and the opt-in's two presses
+(`lib/home-link/__tests__/aph.test.ts`,
+`components/aph/device-keep-on-home.test.tsx`). What no test can say is when
+a run is asked for:
+
+- _Claim:_ in `lib/home-link/aph.ts`, `ask` runs only at a moment its person
+  is using aph: from `watchAph`, which only `useAphHome` starts, for as long
+  as aph's strip is mounted, on the strip mounting, an edit on this phone,
+  the app coming back to the foreground, the network coming back, the phone
+  being paired, or the link freeing up after turning a run away; or from
+  `keepAphOnHome` and `askAph`, which the strip calls only from its buttons'
+  `onClick`. Each asks only when aph is kept on home and the document is
+  visible. Nothing asks on a timer.
+- _Falsified by:_ a hunk to `lib/home-link/aph.ts` that adds a listener,
+  subscription, timer or call site that reaches `ask`, removes `ask`'s check
+  that aph is kept on home or that the document is visible, or calls
+  `watchAph` from anywhere but `useAphHome`'s effect; or a hunk to
+  `components/aph/device-keep-on-home.tsx` that calls `keepAphOnHome` or
+  `askAph` other than from a button's `onClick`, or lets the first press of
+  the opt-in keep aph on home.
+- _Scope:_ `apps/www/src/lib/home-link/aph.ts`,
+  `apps/www/src/components/aph/device-keep-on-home.tsx`.
+- _Why not enforced:_ whether a moment is one where the person is using aph
+  is a reading of intent: a test sees a listener, not why it is there, and a
+  lint rule cannot tell a press handler from an effect that reaches it
+  through a helper. Held when declared, by reading every call: `ask` is
+  called in `watchAph`'s three listeners and its first ask, and in
+  `keepAphOnHome` and `askAph`; those two are called only from the strip's
+  `onClick`s.
 
 ## Not covered, on purpose
 

@@ -119,10 +119,7 @@ export type HomeLink = {
   send: <T>(
     run: (send: HomeSend) => Promise<T>
   ) => Promise<SyncOutcome<T> | null>
-  /**
-   * As `send`, for aph's keeping on home (LA9): called by
-   * `lib/home-link/aph` alone, never for anything but aph.
-   */
+  /** As `send`, for aph kept on home (LA9). */
   keep: <T>(
     run: (send: HomeSend) => Promise<T>
   ) => Promise<SyncOutcome<T> | null>

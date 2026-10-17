@@ -84,23 +84,20 @@ function watchAph(
     paired = nowPaired
     idle = nowIdle
   }
-  const onVisible = (): void => {
-    ask(aph, doc)
-  }
-  const onOnline = (): void => {
+  const onBack = (): void => {
     ask(aph, doc)
   }
 
   const unsubscribeStore = aph.store.subscribe(onStore)
   const unsubscribeLink = link.subscribe(onLink)
-  doc.addEventListener("visibilitychange", onVisible)
-  win.addEventListener("online", onOnline)
+  doc.addEventListener("visibilitychange", onBack)
+  win.addEventListener("online", onBack)
   ask(aph, doc)
   return () => {
     unsubscribeStore()
     unsubscribeLink()
-    doc.removeEventListener("visibilitychange", onVisible)
-    win.removeEventListener("online", onOnline)
+    doc.removeEventListener("visibilitychange", onBack)
+    win.removeEventListener("online", onBack)
   }
 }
 

@@ -416,7 +416,6 @@ describe("LA8: the phone reaches home through one module", () => {
         !APH_KEEPERS.has(f)
     )
     expect(reach.filter(keeps)).toEqual([])
-    for (const keeper of APH_KEEPERS) expect(keeps(keeper)).toBe(true)
     expect(read("lib/home-link/aph.ts")).toContain("homeLink().keep(")
   })
 

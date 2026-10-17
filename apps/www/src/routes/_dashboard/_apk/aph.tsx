@@ -17,7 +17,6 @@ const VIEWS = [
   { to: "/aph/settings", label: "Settings", exact: false },
 ] as const
 
-/** What the home link runs aph's keeping with: its store and exchange. */
 const APH: AphKeeping = { store: aphStore, exchange: exchangeWithHome }
 
 const AphLayout = (): JSX.Element => (

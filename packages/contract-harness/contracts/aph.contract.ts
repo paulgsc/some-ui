@@ -4,7 +4,7 @@
  * (`packages/ui/aph/src/lib/sync.ts` calls these through the app's home
  * link).
  *
- * Hand-written: `AphRecordSchema` is the outline of what `readHeld` in
+ * Hand-written: `AphRecordSchema` is the outline of what `HeldSchema` in
  * `packages/ui/aph/src/lib/stored.ts` takes, checked by hand against the
  * server's `aph_repo::Record` (`settings`, or null before the phone first
  * sends them, and every entry's standing revision). That reader holds each

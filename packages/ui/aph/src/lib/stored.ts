@@ -49,7 +49,7 @@ const CheckpointSchema = z.object({
   goal: z.number(),
 })
 
-const SettingsSchema: z.ZodType<AphSettings> = z.object({
+export const SettingsSchema: z.ZodType<AphSettings> = z.object({
   checkpoints: z.array(CheckpointSchema),
   labels: z.array(z.string()),
   step: z.number(),
@@ -59,7 +59,7 @@ const SettingsSchema: z.ZodType<AphSettings> = z.object({
   since: z.string(),
 })
 
-const EntrySchema: z.ZodType<Entry> = z.object({
+export const EntrySchema: z.ZodType<Entry> = z.object({
   id: z.string(),
   day: z.string(),
   checkpoint: z.string().nullable(),
@@ -244,25 +244,8 @@ export function forgetDeviceRecord(storage: AphStorage): boolean {
   }
 }
 
-const HeldSchema = z.object({
+/** Home's `GET /aph` answer. */
+export const HeldSchema: z.ZodType<HomeHeld> = z.object({
   settings: SettingsSchema.nullable(),
   entries: z.array(EntrySchema),
 })
-
-/** Home's `GET /aph` answer, or null when it is not one. */
-export function readHeld(json: unknown): HomeHeld | null {
-  const read = HeldSchema.safeParse(json)
-  return read.success ? read.data : null
-}
-
-/** An entry as home answered it, or null when it is not one. */
-export function readEntry(json: unknown): Entry | null {
-  const read = EntrySchema.safeParse(json)
-  return read.success ? read.data : null
-}
-
-/** The settings as home answered them, or null when they are not. */
-export function readSettings(json: unknown): AphSettings | null {
-  const read = SettingsSchema.safeParse(json)
-  return read.success ? read.data : null
-}

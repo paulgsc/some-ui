@@ -30,7 +30,6 @@ import {
   recordChange,
   sameSettings,
   shown,
-  shownAlone,
   startHome,
   unsentCount,
 } from "./home"
@@ -109,6 +108,9 @@ export function createAphStore(
   let record: HomeRecord | null = null
   let writable = true
   let state: AphState
+  let pulled = false
+  let hidden = 0
+  let edits = 0
   if (storage !== null && (home?.kind === "kept" || home?.kind === "moved")) {
     record =
       home.kind === "kept"
@@ -120,7 +122,10 @@ export function createAphStore(
             refused: [],
           }
     if (home.kind === "moved") writable = writeHome(storage, record)
-    state = shownAlone(record)
+    // Before home is read, the outbox alone: home's view of an empty record.
+    const alone = shown(record, { settings: null, entries: [] })
+    state = { settings: record.settings, entries: alone?.entries ?? [] }
+    hidden = alone?.hidden ?? 0
   } else {
     const opened = storage === null ? null : openStored(storage)
     state = opened?.kind === "kept" ? opened.state : initial
@@ -129,9 +134,6 @@ export function createAphStore(
       writeStored(storage, state)
     }
   }
-  let pulled = false
-  let hidden = 0
-  let edits = 0
 
   const whereOf = (): AphWhere =>
     record === null
@@ -185,8 +187,6 @@ export function createAphStore(
       if (storage === null || !writable) return false
       const next = startHome(state.settings, state.entries)
       if (!writeHome(storage, next)) return false
-      // Carried whole by the home record now, which wins on opening even if
-      // this fails.
       forgetDeviceRecord(storage)
       record = next
       edits += 1

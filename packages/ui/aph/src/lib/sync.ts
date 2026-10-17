@@ -20,10 +20,11 @@
  * ends: a throw part way (a stop, no answer) keeps what home already
  * confirmed, and everything else waiting.
  */
+import { z } from "zod"
+
 import type { Receipt } from "./home"
-import type { Entry } from "./model"
 import type { AphStore } from "./store"
-import { readEntry, readHeld, readSettings } from "./stored"
+import { EntrySchema, HeldSchema, SettingsSchema } from "./stored"
 
 /** A credentialed request to the paired home, at `path` under its API base. */
 export type HomeCall = (
@@ -41,28 +42,27 @@ export type Exchanged =
   /** Home answered something else, said in words. */
   | { readonly kind: "failed"; readonly why: string }
 
-function jsonOf(text: string): unknown {
+const EntryAnswer = z.object({ entry: EntrySchema })
+const SettingsAnswer = z.object({ settings: SettingsSchema })
+const Refusal = z.object({
+  error: z.object({ details: z.record(z.string(), z.array(z.string())) }),
+})
+
+/** `text` as `schema` reads it, or null. */
+function readAs<T>(schema: z.ZodType<T>, text: string): T | null {
   try {
-    return JSON.parse(text)
+    const read = schema.safeParse(JSON.parse(text))
+    return read.success ? read.data : null
   } catch {
     return null
   }
 }
 
-function isObject(json: unknown): json is Record<string, unknown> {
-  return typeof json === "object" && json !== null && !Array.isArray(json)
-}
-
-function fieldOf(json: unknown, key: string): unknown {
-  return isObject(json) ? json[key] : undefined
-}
-
 /** A `422`'s reasons, as "field why; field why". */
 function refusalOf(body: string): string {
-  const details = fieldOf(fieldOf(jsonOf(body), "error"), "details")
-  if (!isObject(details)) return "refused"
+  const details = readAs(Refusal, body)?.error.details ?? {}
   const reasons = Object.entries(details).flatMap(([field, whys]) =>
-    Array.isArray(whys) ? whys.map((why) => `${field} ${String(why)}`) : []
+    whys.map((why) => `${field} ${why}`)
   )
   return reasons.length > 0 ? reasons.join("; ") : "refused"
 }
@@ -71,10 +71,10 @@ function unexpected(what: string, status: number): Exchanged {
   return { kind: "failed", why: `${what}: home answered ${status}` }
 }
 
+type Mutable<T> = { -readonly [K in keyof T]: T[K] }
+/** A `Receipt`, filled in as an exchange goes. */
 type Learned = {
-  settings: Receipt["settings"]
-  held: Array<Entry>
-  refused: Array<{ entry: Entry; why: string }>
+  -readonly [K in keyof Receipt]: Mutable<Receipt[K]>
 }
 
 async function exchange(
@@ -98,7 +98,7 @@ async function exchange(
         why: `home refused the settings: ${refusalOf(answer.body)}`,
       }
     }
-    const settings = readSettings(fieldOf(jsonOf(answer.body), "settings"))
+    const settings = readAs(SettingsAnswer, answer.body)?.settings ?? null
     if (answer.status !== 200 || settings === null) {
       return unexpected("the settings", answer.status)
     }
@@ -116,7 +116,7 @@ async function exchange(
       learned.refused.push({ entry, why: refusalOf(answer.body) })
       continue
     }
-    const held = readEntry(fieldOf(jsonOf(answer.body), "entry"))
+    const held = readAs(EntryAnswer, answer.body)?.entry ?? null
     if (answer.status !== 200 || held === null) {
       return unexpected("an entry", answer.status)
     }
@@ -125,7 +125,7 @@ async function exchange(
 
   const answer = await send("GET", "/aph")
   if (answer.status === 401) return { kind: "forgotten" }
-  const record = readHeld(jsonOf(answer.body))
+  const record = readAs(HeldSchema, answer.body)
   if (answer.status !== 200 || record === null) {
     return unexpected("the record", answer.status)
   }
@@ -140,10 +140,7 @@ async function exchange(
   return { kind: "synced" }
 }
 
-/**
- * Steps 1 to 3 through `send`. Throws what `send` throws (a stop, a request
- * with no answer), after handing the store what home confirmed before it.
- */
+/** Steps 1 to 3 through `send`. Throws what `send` throws. */
 export async function exchangeWithHome(
   store: AphStore,
   send: HomeCall

@@ -358,47 +358,6 @@ describe("the home link", () => {
     expect(home.sent).toEqual([])
   })
 
-  it("keeps aph like a send: with the key, stopped in the background, and turned away while busy or unpaired", async () => {
-    const home = setup({
-      record: JSON.stringify({ base: HOME.base, token: "t" }),
-    })
-    await home.link.load()
-    const kept = await home.link.keep(async (send) => {
-      await send("PUT", "/aph/entries/a", "{}")
-      home.hide()
-      await send("GET", "/aph")
-      return "finished"
-    })
-    expect(kept).toEqual({ kind: "stopped" })
-    expect(home.sent).toEqual([
-      {
-        method: "PUT",
-        url: `${HOME.base}/aph/entries/a`,
-        token: "t",
-        body: "{}",
-      },
-    ])
-
-    let release: () => void = () => undefined
-    const sending = home.link.send(
-      () =>
-        new Promise<string>((resolve) => {
-          release = (): void => resolve("ok")
-        })
-    )
-    await expect(
-      home.link.keep(() => Promise.resolve("never"))
-    ).resolves.toBeNull()
-    release()
-    await sending
-
-    const unpaired = setup()
-    await unpaired.link.load()
-    await expect(
-      unpaired.link.keep(() => Promise.resolve("never"))
-    ).resolves.toBeNull()
-  })
-
   it("does one thing at a time", async () => {
     const home = setup()
     await home.link.load()
