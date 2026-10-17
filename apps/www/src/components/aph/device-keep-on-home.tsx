@@ -14,7 +14,7 @@ import { Link } from "@tanstack/react-router"
 import { CircleCheck, CloudOff, RefreshCw, Smartphone } from "lucide-react"
 
 import type { HomeLinkState } from "@/lib/home-link"
-import { hostOf, useHomeLink } from "@/lib/home-link"
+import { homeLink, hostOf, useHomeLink } from "@/lib/home-link"
 import type { AphHomeState, AphKeeping } from "@/lib/home-link/aph"
 import { askAph, keepAphOnHome, useAphHome } from "@/lib/home-link/aph"
 
@@ -25,7 +25,7 @@ type Line = {
   text: string
   /** Details under it: refusals, hidden entries. */
   more: Array<string>
-  action: "keep" | "pair" | "retry" | null
+  action: "pair" | "retry" | "stop" | null
 }
 
 /** What the strip says, from where aph is kept, the link, and the last run. */
@@ -62,7 +62,12 @@ function lineOf(
     }
   }
   if (run.running) {
-    return { tone: "wait", text: `Syncing with ${host}...`, more, action: null }
+    return {
+      tone: "wait",
+      text: `Syncing with ${host}...`,
+      more,
+      action: "stop",
+    }
   }
   if (last?.kind === "forgotten") {
     return {
@@ -206,7 +211,18 @@ export const DeviceKeepOnHome = ({ aph }: { aph: AphKeeping }): JSX.Element => {
           )}
         />
         <span className="min-w-0 flex-1 break-words">{line.text}</span>
-        {line.action === "retry" ? (
+        {line.action === "stop" && link.activity.kind === "keeping" ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-7 px-2"
+            disabled={link.activity.stopping}
+            onClick={() => homeLink().stop()}
+          >
+            {link.activity.stopping ? "Stopping..." : "Stop"}
+          </Button>
+        ) : line.action === "retry" ? (
           <Button
             type="button"
             variant="ghost"

@@ -191,4 +191,47 @@ describe("where aph is kept", () => {
     ).toBeTruthy()
     expect(screen.getByRole("button", { name: "Try now" })).toBeTruthy()
   })
+
+  it("offers Stop while a run is under way, and stops it", async () => {
+    paired()
+    const store = fakeStore({ kind: "device" })
+    let release: () => void = () => undefined
+    const seen = { stopped: false }
+    const aph: AphKeeping = {
+      store,
+      exchange: async (_store, send): Promise<Exchanged> => {
+        await new Promise<void>((resolve) => {
+          release = resolve
+        })
+        await send("GET", "/record").catch(() => {
+          seen.stopped = true
+        })
+        return { kind: "synced" }
+      },
+    }
+    const { DeviceKeepOnHome } = await import(
+      "@/components/aph/device-keep-on-home"
+    )
+    render(<DeviceKeepOnHome aph={aph} />)
+    await act(async () => {
+      await Promise.resolve()
+    })
+    fireEvent.click(
+      screen.getByRole("button", { name: "Keep on home.example..." })
+    )
+    await act(async () => {
+      fireEvent.click(
+        screen.getByRole("button", { name: "Keep on home.example" })
+      )
+      await new Promise((resolve) => setTimeout(resolve, 0))
+    })
+    fireEvent.click(await screen.findByRole("button", { name: "Stop" }))
+    expect(screen.getByRole("button", { name: "Stopping..." })).toBeTruthy()
+    await act(async () => {
+      release()
+      await new Promise((resolve) => setTimeout(resolve, 0))
+    })
+    expect(seen.stopped).toBe(true)
+    expect(home.sent).toEqual([])
+  })
 })
