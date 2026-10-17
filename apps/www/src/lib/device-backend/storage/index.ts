@@ -85,8 +85,12 @@ export async function budgeted<T>(
   db: SqlDriver,
   budget: StorageBudget,
   write: () => Promise<T>,
-  besides: () => Promise<number> = async () =>
-    (await webViewBytes()) + claimedRoom()
+  besides: () => Promise<number> = async () => {
+    // Read before the estimate: a write that commits while it is measured
+    // releases its claim, and the estimate may predate its bytes.
+    const claimed = claimedRoom()
+    return (await webViewBytes()) + claimed
+  }
 ): Promise<T> {
   return db.transaction(async () => {
     const before = await databaseBytes(db)

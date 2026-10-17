@@ -5,7 +5,8 @@
  * at what the database holds, so the bound is reached with a few rows.
  */
 import { openNodeSqlite } from "@/test-support/node-sqlite-driver"
-import { beforeEach, describe, expect, it } from "vitest"
+import { withRoom } from "@some-ui/voice-capture"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import { openDeviceBackend } from "@/lib/device-backend/backend"
 import {
@@ -43,6 +44,10 @@ const budget: StorageBudget = {
     return quota
   },
 }
+
+afterEach(() => {
+  vi.unstubAllGlobals()
+})
 
 beforeEach(async () => {
   quota = Number.POSITIVE_INFINITY
@@ -193,6 +198,36 @@ describe("one budget, shared with the WebView's storage", () => {
     await expect(fitsBesides(db, budget, 600, audio(500))).resolves.toBe(false)
     stop()
     expect(spared).toEqual([null])
+  })
+
+  it("counts an audio write that settles while the WebView is measured", async () => {
+    await db.exec("CREATE TABLE grow (x TEXT)")
+    quota = (await databaseBytes(db)) + 200_000
+    let settle: () => void = () => undefined
+    const audioWrite = withRoom(
+      200_000,
+      () =>
+        new Promise<void>((resolve) => {
+          settle = resolve
+        }),
+      () => new Error("full")
+    )
+    vi.stubGlobal("navigator", {
+      storage: {
+        estimate: async (): Promise<StorageEstimate> => {
+          settle()
+          await audioWrite
+          // Measured before the audio write's bytes landed.
+          return { usage: 0 }
+        },
+      },
+    })
+    await Promise.resolve()
+    await expect(
+      budgeted(db, budget, async () => {
+        await db.run("INSERT INTO grow VALUES (?)", [BULK])
+      })
+    ).rejects.toBeInstanceOf(OverBudgetError)
   })
 })
 
