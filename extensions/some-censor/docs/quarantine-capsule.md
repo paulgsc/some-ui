@@ -356,10 +356,12 @@ second-hand.
 
 _Status: holds on feeds (#1803, #1846)._ A held card is out of layout and the
 accessibility tree, and so is a home-feed grid cell around one, and a shelf
-on home, search or a channel page whose every card is held. Gaps remain: a
-video-shaped element the Sensor cannot resolve stays blurred in place under
-the occluder (`OccluderReleases` reports it); and a held video's watch page, and
-autoplay into one (#1805).
+whose every card is held, in the containers captured so far (home's rich
+section, search's grid shelf, a channel page's shelf section). Gaps remain:
+a shelf in any other container keeps its header; a video-shaped element the
+Sensor cannot resolve stays blurred in place under the occluder
+(`OccluderReleases` reports it); and a held video's watch page, and autoplay
+into one (#1805).
 
 ---
 
@@ -589,6 +591,7 @@ section is a behavioural change; it is a statement of distance.
 | No surface-level concealment                                   | veil is per-renderer throughout                           | QD8      |
 | Manifest copy describes the mechanism                          | `public/manifest.json` `description`, the popup's tagline | §0       |
 | A held video's watch page still plays                          | nothing handles the watch page itself (#1805)             | QD11     |
+| A shelf elsewhere keeps its header                             | a container `SHELF_SELECTORS` does not name               | QD11     |
 | Plated cards are veiled whole: title, channel and duration too | `actuator/veil.ts`, until the plate (#1804)               | QD12     |
 | No crowd number or age is removed                              | vendor metadata rows render untouched                     | QD14     |
 

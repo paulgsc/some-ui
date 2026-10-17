@@ -351,18 +351,12 @@ ytd-rich-item-renderer:has([data-boyo="absent"]) {
 }
 
 /* ----------------------------------------------------------
-   SHELVES (QD11, #1846)
+   SHELVES (QD11)
 
-   A shelf is a row of cards under a header. Once every card in it is
-   absent, the header would stand over nothing, so the shelf goes too. It
-   stays while any card in it is plated or not yet adopted, or while it holds
-   a tile no content script takes (a channel lockup): it collapses on the
-   stamps alone, never on reading a card.
-
-   Derived from SHELF_COLLAPSE_SELECTORS in lib/content/selectors.ts, which
-   says which element each surface needs gone, and asserted one-for-one by
-   selectors.test.ts. One rule per selector, as above (#1390). An engine
-   without :has() drops all of them and keeps the header.
+   A shelf whose cards are all absent goes with them. Derived from
+   SHELF_COLLAPSE_SELECTORS in lib/content/selectors.ts, which says what
+   holds a shelf open and which element each surface needs gone; asserted
+   one-for-one by selectors.test.ts, one rule per selector (QC0).
    ---------------------------------------------------------- */
 ytd-rich-section-renderer:has([data-boyo="absent"]):not(
     :has(
@@ -377,7 +371,25 @@ ytd-rich-section-renderer:has([data-boyo="absent"]):not(
           yt-lockup-view-model,
           ytm-shorts-lockup-view-model,
           ytd-structured-description-video-lockup-renderer
-        ):not([data-boyo="absent"])
+        ):not([data-boyo="absent"]),
+      :is(
+          ytd-rich-item-renderer > #content,
+          yt-horizontal-list-renderer #items,
+          .ytGridShelfViewModelGridShelfItem
+        )
+        > :not(
+          ytd-video-renderer,
+          ytd-grid-video-renderer,
+          ytd-compact-video-renderer,
+          ytd-playlist-panel-video-renderer,
+          ytd-playlist-video-renderer,
+          ytd-reel-item-renderer,
+          ytd-rich-item-renderer,
+          yt-lockup-view-model,
+          ytm-shorts-lockup-view-model,
+          ytm-shorts-lockup-view-model-v2,
+          ytd-structured-description-video-lockup-renderer
+        )
     )
   ) {
   display: none !important;
@@ -396,7 +408,25 @@ grid-shelf-view-model:has([data-boyo="absent"]):not(
           yt-lockup-view-model,
           ytm-shorts-lockup-view-model,
           ytd-structured-description-video-lockup-renderer
-        ):not([data-boyo="absent"])
+        ):not([data-boyo="absent"]),
+      :is(
+          ytd-rich-item-renderer > #content,
+          yt-horizontal-list-renderer #items,
+          .ytGridShelfViewModelGridShelfItem
+        )
+        > :not(
+          ytd-video-renderer,
+          ytd-grid-video-renderer,
+          ytd-compact-video-renderer,
+          ytd-playlist-panel-video-renderer,
+          ytd-playlist-video-renderer,
+          ytd-reel-item-renderer,
+          ytd-rich-item-renderer,
+          yt-lockup-view-model,
+          ytm-shorts-lockup-view-model,
+          ytm-shorts-lockup-view-model-v2,
+          ytd-structured-description-video-lockup-renderer
+        )
     )
   ) {
   display: none !important;
@@ -417,7 +447,25 @@ ytd-item-section-renderer:has(
           yt-lockup-view-model,
           ytm-shorts-lockup-view-model,
           ytd-structured-description-video-lockup-renderer
-        ):not([data-boyo="absent"])
+        ):not([data-boyo="absent"]),
+      :is(
+          ytd-rich-item-renderer > #content,
+          yt-horizontal-list-renderer #items,
+          .ytGridShelfViewModelGridShelfItem
+        )
+        > :not(
+          ytd-video-renderer,
+          ytd-grid-video-renderer,
+          ytd-compact-video-renderer,
+          ytd-playlist-panel-video-renderer,
+          ytd-playlist-video-renderer,
+          ytd-reel-item-renderer,
+          ytd-rich-item-renderer,
+          yt-lockup-view-model,
+          ytm-shorts-lockup-view-model,
+          ytm-shorts-lockup-view-model-v2,
+          ytd-structured-description-video-lockup-renderer
+        )
     )
   ) {
   display: none !important;
@@ -438,7 +486,25 @@ ytd-item-section-renderer:has(> #contents > ytd-shelf-renderer:only-child):has(
           yt-lockup-view-model,
           ytm-shorts-lockup-view-model,
           ytd-structured-description-video-lockup-renderer
-        ):not([data-boyo="absent"])
+        ):not([data-boyo="absent"]),
+      :is(
+          ytd-rich-item-renderer > #content,
+          yt-horizontal-list-renderer #items,
+          .ytGridShelfViewModelGridShelfItem
+        )
+        > :not(
+          ytd-video-renderer,
+          ytd-grid-video-renderer,
+          ytd-compact-video-renderer,
+          ytd-playlist-panel-video-renderer,
+          ytd-playlist-video-renderer,
+          ytd-reel-item-renderer,
+          ytd-rich-item-renderer,
+          yt-lockup-view-model,
+          ytm-shorts-lockup-view-model,
+          ytm-shorts-lockup-view-model-v2,
+          ytd-structured-description-video-lockup-renderer
+        )
     )
   ) {
   display: none !important;

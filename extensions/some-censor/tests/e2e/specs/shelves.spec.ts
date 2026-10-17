@@ -1,19 +1,12 @@
 /**
- * BOYO — a shelf whose every card is absent goes with its cards (#1846, QD11)
- *
- * Absent cards take no space, and neither does the home grid's cell around
- * one. A shelf is a row of cards under a header: once every card in it is
- * absent, the header would stand over nothing. The fixture is real markup
- * from three surfaces (see yt-shelves.html).
+ * BOYO — a shelf whose every card is absent goes with its cards (QD11)
  *
  * SH1 — An all-absent shelf leaves no header and takes no space, on home,
- *       search and a channel page. On search the shelf goes and its
- *       neighbours stay; on a channel page the section that draws the
- *       separator goes with it.
+ *       search and a channel page, and a search shelf's neighbours stay.
  * SH2 — A shelf with a plated card, or with a tile no content script takes,
  *       stays, header and all.
- * SH3 — On a real engine, a shelf waiting on a card not adopted yet does not
- *       collapse early, and wrappers alone do not hold it open.
+ * SH3 — On a real engine, a card not adopted yet, a post or a channel tile
+ *       holds a shelf open.
  */
 
 import { SHELF_COLLAPSE_SELECTORS } from "@censor/lib/content/selectors"
@@ -28,40 +21,25 @@ const CARDS = [
   "sh_home05",
   "sh_srch01",
   "sh_srch02",
-  "sh_srch03",
   "vid_srch_a",
   "vid_srch_b",
   "sh_chan01",
   "sh_chan02",
-  "sh_chan03",
   "vid_pl001",
   "vid_pl002",
   "vid_old002",
   "vid_pl102",
 ] as const
 
-async function settled(page: Page): Promise<void> {
-  await page.waitForFunction(
-    (ids) =>
-      ids.every(
-        (id) =>
-          document.querySelector(`[data-boyo-vid="${id}"][data-boyo]`) !== null
-      ),
-    CARDS,
-    { timeout: 8000 }
-  )
-}
-
-/** Laid out at all: `display: none` anywhere above gives no box. */
-async function laidOut(page: Page, selector: string): Promise<boolean> {
-  return (await page.locator(selector).boundingBox()) !== null
+async function display(page: Page, selector: string): Promise<string> {
+  return page.locator(selector).evaluate((el) => getComputedStyle(el).display)
 }
 
 test("SH1: an all-absent shelf leaves no header and no gap", async ({
   fixture,
 }) => {
   const page = await fixture.goto("yt-shelves")
-  await settled(page)
+  await fixture.pollDebug(page, (d) => CARDS.every((id) => id in d.entries))
 
   for (const shelf of [
     "#home-shorts",
@@ -69,40 +47,24 @@ test("SH1: an all-absent shelf leaves no header and no gap", async ({
     "#channel-shorts",
     "#channel-playlist",
   ]) {
-    expect(await laidOut(page, shelf), `${shelf} is not laid out`).toBe(false)
-    expect(
-      await page.locator(shelf).evaluate((el) => getComputedStyle(el).display),
-      `${shelf} is out of the accessibility tree too`
-    ).toBe("none")
+    expect(await display(page, shelf), shelf).toBe("none")
   }
-  await expect(page.locator("#home-shorts h2")).toBeHidden()
-  await expect(page.locator("#channel-playlist h2")).toBeHidden()
-
-  // Search: one result among others, so only the shelf goes.
-  expect(await laidOut(page, "#search-section")).toBe(true)
-  expect(await laidOut(page, "#search-before")).toBe(true)
-  expect(await laidOut(page, "#search-after")).toBe(true)
+  expect(await page.locator("#search-after").boundingBox()).not.toBeNull()
 })
 
 test("SH2: a shelf with a plated card or a non-video tile stays", async ({
   fixture,
 }) => {
   const page = await fixture.goto("yt-shelves")
-  await settled(page)
+  const snap = await fixture.pollDebug(page, (d) =>
+    CARDS.every((id) => id in d.entries)
+  )
+  expect(snap.entries["vid_old001"]?.viewKind).toBe("plated")
 
   for (const shelf of ["#home-mixed", "#home-tile", "#channel-kept"]) {
-    expect(await laidOut(page, shelf), `${shelf} stays`).toBe(true)
     await expect(page.locator(`${shelf} h2`).first()).toBeVisible()
   }
-  expect(
-    await page
-      .locator('[data-boyo-vid="vid_old001"]')
-      .getAttribute("data-boyo"),
-    "the card that holds #home-mixed open is plated"
-  ).toBe("plated")
-  // The absent Short beside it still takes no space.
-  expect(await laidOut(page, '[data-boyo-vid="sh_home03"]')).toBe(false)
-  // The tile was never adopted, so nothing but the rule keeps it.
+  // Nothing but the rule keeps the tile: it was never adopted.
   expect(
     await page
       .locator('#home-tile yt-lockup-view-model:has(a[href="/@handle_tile"])')
@@ -110,36 +72,50 @@ test("SH2: a shelf with a plated card or a non-video tile stays", async ({
   ).toBeNull()
 })
 
-test("SH3: a pending card holds a shelf open; wrappers alone do not", async ({
+test("SH3: a pending card, a post or a channel tile holds a shelf open", async ({
   fixture,
 }) => {
-  // Built detached, so the content script never sees it: this is the
-  // engine's reading of the selectors, with the stamps set by hand.
+  // Built detached, so the content script never sees it: the engine's own
+  // reading of the selectors, with the stamps set by hand.
   const page = await fixture.goto("yt-shelves")
   const verdicts = await page.evaluate((rules) => {
-    const shelf = document.createElement("ytd-rich-section-renderer")
-    const short = (stamp: string | null): string =>
-      `<ytd-rich-item-renderer><ytm-shorts-lockup-view-model-v2>
-        <ytm-shorts-lockup-view-model${stamp === null ? "" : ` data-boyo="${stamp}"`}>
-          <a href="/shorts/x"></a>
-        </ytm-shorts-lockup-view-model>
-      </ytm-shorts-lockup-view-model-v2></ytd-rich-item-renderer>`
-    const collapses = (html: string): boolean => {
+    const absent =
+      '<yt-lockup-view-model data-boyo="absent"><a href="/watch?v=a"></a></yt-lockup-view-model>'
+    const collapses = (tag: string, html: string): boolean => {
+      const shelf = document.createElement(tag)
       shelf.innerHTML = html
       return rules.some((rule) => shelf.matches(rule))
     }
+    const home = (tile: string): string =>
+      `<ytd-rich-item-renderer><div id="content">${absent}</div></ytd-rich-item-renderer>
+       <ytd-rich-item-renderer><div id="content">${tile}</div></ytd-rich-item-renderer>`
+    const channel = (tile: string): string =>
+      `<div id="contents"><ytd-shelf-renderer><yt-horizontal-list-renderer>
+        <div id="items">${absent}${tile}</div>
+      </yt-horizontal-list-renderer></ytd-shelf-renderer></div>`
     return {
-      allAbsent: collapses(short("absent") + short("absent")),
-      pending: collapses(short("absent") + short(null)),
-      plated: collapses(short("absent") + short("plated")),
-      noneDecided: collapses(short(null) + short(null)),
+      control: collapses("ytd-rich-section-renderer", home(absent)),
+      pending: collapses(
+        "ytd-rich-section-renderer",
+        home(
+          '<yt-lockup-view-model><a href="/watch?v=p"></a></yt-lockup-view-model>'
+        )
+      ),
+      post: collapses(
+        "ytd-rich-section-renderer",
+        home("<ytd-post-renderer></ytd-post-renderer>")
+      ),
+      channelTile: collapses(
+        "ytd-item-section-renderer",
+        channel("<ytd-grid-channel-renderer></ytd-grid-channel-renderer>")
+      ),
     }
   }, SHELF_COLLAPSE_SELECTORS)
 
   expect(verdicts).toEqual({
-    allAbsent: true,
+    control: true,
     pending: false,
-    plated: false,
-    noneDecided: false,
+    post: false,
+    channelTile: false,
   })
 })

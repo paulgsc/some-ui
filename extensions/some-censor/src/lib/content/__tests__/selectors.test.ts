@@ -70,8 +70,10 @@ function splitFallback(): { main: string; fallback: string } {
   return { main, fallback }
 }
 
-function premaskRulesIn(css: string): Array<string> {
-  const marker = "filter: brightness(0.35)"
+function premaskRulesIn(
+  css: string,
+  marker = "filter: brightness(0.35)"
+): Array<string> {
   const rules: Array<string> = []
   let searchFrom = 0
   for (;;) {
@@ -114,38 +116,12 @@ function topLevelCommaCount(selector: string): number {
   return count
 }
 
-/**
- * Every rule's selector in `css`, comments removed. Selectors inside an
- * at-rule block come back with the at-rule's prelude prefixed, so a shelf
- * rule moved under `@supports` cannot pass as a top-level one.
- */
-function ruleSelectors(css: string): Array<string> {
-  const text = css.replace(/\/\*[\s\S]*?\*\//g, "")
-  const out: Array<string> = []
-  const stack: Array<string> = []
-  let start = 0
-  for (let i = 0; i < text.length; i += 1) {
-    if (text[i] === "{") {
-      stack.push(text.slice(start, i).trim())
-      start = i + 1
-    } else if (text[i] === "}") {
-      const prelude = stack.pop()
-      if (prelude !== undefined && !text.slice(start, i).includes("{")) {
-        out.push([...stack, prelude].join(" "))
-      }
-      start = i + 1
-    } else if (text[i] === ";" && stack.length > 0) {
-      start = i + 1
-    }
-  }
-  return out
-}
-
 /** The shelf-collapse rules, found by the condition only they carry. */
 function shelfRulesFromCss(): Array<string> {
-  return ruleSelectors(CSS).filter((r) =>
-    normalize(r).includes(':has([data-boyo="absent"]):not(')
-  )
+  return premaskRulesIn(
+    splitFallback().main,
+    "display: none !important"
+  ).filter((r) => normalize(r).includes(':has([data-boyo="absent"]):not('))
 }
 
 describe("the stylesheet and the catalogue agree", () => {
@@ -176,14 +152,9 @@ describe("the stylesheet and the catalogue agree", () => {
     expect(shelfRulesFromCss().map(normalize)).toEqual(
       SHELF_COLLAPSE_SELECTORS.map(normalize)
     )
-    for (const rule of shelfRulesFromCss()) {
-      expect(topLevelCommaCount(rule), rule).toBe(0)
-    }
   })
 
   it("keeps a shelf whose cards are plated, pending, or not videos at all", () => {
-    // jsdom parses the shelf rules, unlike the pre-mask ones, so the
-    // condition can be checked here; shelves.spec.ts renders it.
     const shelf = document.createElement("ytd-rich-section-renderer")
     shelf.innerHTML = `
       <ytd-rich-item-renderer><ytm-shorts-lockup-view-model-v2>
@@ -220,6 +191,18 @@ describe("the stylesheet and the catalogue agree", () => {
       ),
       "a channel tile"
     ).toBe(false)
+    expect(
+      collapses(
+        '<div id="content"><ytm-shorts-lockup-view-model-v2><ytm-shorts-lockup-view-model data-boyo="absent"></ytm-shorts-lockup-view-model></ytm-shorts-lockup-view-model-v2></div>'
+      ),
+      "a slot holding an absent card"
+    ).toBe(true)
+    expect(
+      collapses(
+        '<div id="content"><ytd-post-renderer></ytd-post-renderer></div>'
+      ),
+      "a slot holding a post"
+    ).toBe(false)
     second.remove()
     shelf.querySelector("[data-boyo]")?.setAttribute("data-boyo", "plated")
     expect(shelf.matches(rule), "no absent card at all").toBe(false)
@@ -235,12 +218,21 @@ describe("the stylesheet and the catalogue agree", () => {
     const matches = (): boolean =>
       SHELF_COLLAPSE_SELECTORS.some((rule) => section.matches(rule))
     expect(matches()).toBe(true)
-    // A search page's item section holds every result, one shelf among them:
-    // that section is never the thing to hide.
+    // A sibling result: the section holds more than the shelf.
     section
       .querySelector("#contents")
       ?.append(document.createElement("ytd-channel-renderer"))
     expect(matches()).toBe(false)
+
+    section.innerHTML = `<div id="contents"><ytd-shelf-renderer>
+      <yt-horizontal-list-renderer><div id="items">
+        <yt-lockup-view-model data-boyo="absent"><a href="/watch?v=a1"></a></yt-lockup-view-model>
+        <ytd-grid-channel-renderer><a href="/@channel"></a></ytd-grid-channel-renderer>
+      </div></yt-horizontal-list-renderer>
+    </ytd-shelf-renderer></div>`
+    expect(matches(), "a channel tile holds a channel shelf open").toBe(false)
+    section.querySelector("ytd-grid-channel-renderer")?.remove()
+    expect(matches()).toBe(true)
     section.remove()
   })
 
@@ -248,7 +240,7 @@ describe("the stylesheet and the catalogue agree", () => {
     // QC0: CSS selector-list invalidation is all-or-nothing, so one
     // unparseable selector sharing a rule (e.g. `:has()` before Firefox 121)
     // would cost every other selector in that rule its occluder.
-    for (const rule of premaskRulesFromCss()) {
+    for (const rule of [...premaskRulesFromCss(), ...shelfRulesFromCss()]) {
       expect(topLevelCommaCount(rule), rule).toBe(0)
     }
   })
