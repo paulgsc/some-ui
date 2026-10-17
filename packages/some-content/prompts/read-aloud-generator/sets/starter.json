@@ -905,9 +905,9 @@
         ],
         "situations": {
           "options": [
-            "Inviting someone to dinner",
-            "Answering a friend who could not reach you",
-            "Apologizing for arriving late"
+            "Saying what you are doing right now",
+            "Saying what you were doing at a moment that has passed",
+            "Saying what you plan to do this evening"
           ],
           "intended": 1
         }
