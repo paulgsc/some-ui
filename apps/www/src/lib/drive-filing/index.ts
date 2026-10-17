@@ -32,7 +32,6 @@ export const DRIVE_FOLDERS: Readonly<
   "agent-export": (day) => `Study ledger › study-context › ${day} (new folder)`,
   "journal-takes": () => "Build Journal › voice › takes",
   "drama-prompt": () => DRAMA_REQUESTS,
-  // Finished sessions that left the phone: this file is their only copy.
   "session-archive": () => "Study ledger › sessions",
 }
 

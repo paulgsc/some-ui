@@ -1,9 +1,5 @@
+import { counted } from "@some-ui/core-utils"
 import type { ConfirmRequest } from "@some-ui/shared"
-
-/** `1 reflection`, `3 reflections`, `2 soundbites`. */
-export function counted(n: number, noun = "reflection"): string {
-  return `${n} ${noun}${n === 1 ? "" : "s"}`
-}
 
 /**
  * What the whole export's hand-off lets go, as "2 reflections and 1
@@ -11,7 +7,7 @@ export function counted(n: number, noun = "reflection"): string {
  */
 export function goingOut(reflections: number, soundbites: number): string {
   return [
-    reflections > 0 ? counted(reflections) : null,
+    reflections > 0 ? counted(reflections, "reflection") : null,
     soundbites > 0 ? counted(soundbites, "soundbite") : null,
   ]
     .filter((part) => part !== null)

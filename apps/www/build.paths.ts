@@ -201,6 +201,11 @@ export const paths: PathRules<Profile> = definePaths<Profile>({
       why: "Hangul Honeycomb's panel, a desktop keyboard game the phone has no counterpart for: only the web door (src/lib/web-surface) binds it, and not in the Android app's build",
     },
     {
+      modules: ["apps/www/src/components/reflection/copy.ts"],
+      profiles: [MOBILE_PROFILE],
+      why: "the phone's hand-off wording (`arrived`, `goingOut`), after a share only the Android app makes; the web's reflection screens count with `@some-ui/core-utils`",
+    },
+    {
       modules: DEVICE_MODULES,
       profiles: [MOBILE_PROFILE],
       why: "native-only code, which runs only in the Android app (src/lib/device-backend, src/vite-env.d.ts on VITE_DEVICE_BACKEND)",

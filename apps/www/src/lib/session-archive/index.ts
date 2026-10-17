@@ -6,7 +6,7 @@
  * anywhere. Android says "shared" once an app is picked, even if the person
  * then backs out, and the phone cannot look inside Drive, so the sessions
  * leave the phone only once the person says the file arrived
- * (`letGoArchived`), and only those unchanged since they went out.
+ * (`letGoUnchanged`), and only those unchanged since they went out.
  *
  * Only session records go, as a copy home carries them; reflections, stops
  * and soundbites have their own share (`lib/agent-export`, LA7).
@@ -25,12 +25,12 @@ import type { SessionRecord } from "@/lib/tenant/types"
 const ABOUT =
   "Finished study sessions archived from the some-ui app on the learner's phone, as the phone stored them: each session's plan (`activities`, `scenes`, `layout`), status and times. Once the learner confirmed this file arrived, these sessions left the phone: this file is their only copy unless they were also copied to a home server."
 
-/** A session as it went out: what `letGoArchived` checks is unchanged. */
-export type Archived = { readonly id: string; readonly updatedAt: string }
+/** A session as a destination got it: what `letGoUnchanged` checks. */
+export type SessionAsOf = { readonly id: string; readonly updatedAt: string }
 
 export type ArchiveResult = {
   readonly outcome: "shared" | "cancelled"
-  readonly sent: ReadonlyArray<Archived>
+  readonly sent: ReadonlyArray<SessionAsOf>
 }
 
 /** The sessions an archive would carry. Reads only this phone. */
@@ -81,15 +81,16 @@ export async function shareArchive(
 }
 
 /**
- * The person says the archive arrived: the sessions in it leave the phone,
- * each only if it is unchanged since it went out. Returns how many left.
+ * Lets go of the phone's copy of each of `held`, a destination (home, or an
+ * archive the person says arrived) now holds, only if it is unchanged since
+ * the destination got it. Returns how many left.
  */
-export async function letGoArchived(
-  sent: ReadonlyArray<Archived>
+export async function letGoUnchanged(
+  held: ReadonlyArray<SessionAsOf>
 ): Promise<number> {
-  const asSent = new Map(sent.map((s) => [s.id, s.updatedAt]))
+  const asOf = new Map(held.map((s) => [s.id, s.updatedAt]))
   const unchanged = (await sessionsRepository.list())
-    .filter((s) => asSent.get(s.id) === s.updatedAt)
+    .filter((s) => asOf.get(s.id) === s.updatedAt)
     .map((s) => s.id)
   if (unchanged.length > 0) {
     await sessionsRepository.removeMany(unchanged)

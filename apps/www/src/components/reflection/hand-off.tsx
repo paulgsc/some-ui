@@ -1,4 +1,5 @@
 import type { JSX } from "react"
+import { counted } from "@some-ui/core-utils"
 import { Badge, Button, useConfirmSheet } from "@some-ui/shared"
 import { Trash2 } from "lucide-react"
 
@@ -7,7 +8,6 @@ import { bySession, describeAge } from "@/lib/session-reflection"
 import { useReflections } from "@/lib/session-reflection/use-reflections"
 import { useSessions } from "@/lib/tenant"
 
-import { counted } from "./copy"
 import { DeviceShareReflections } from "./device-share-reflections"
 import { letGo } from "./let-go"
 
@@ -26,7 +26,7 @@ export const HandOff = (): JSX.Element | null => {
   // The phone asks in a sheet; the desktop web keeps the browser's dialog
   // (CLAUDE.md, "The phone and the desktop web are separate surfaces").
   const confirmLetGo = (name: string, ids: ReadonlyArray<string>): void => {
-    const what = `${counted(ids.length)} from "${name}"`
+    const what = `${counted(ids.length, "reflection")} from "${name}"`
     if (import.meta.env.VITE_DEVICE_BACKEND !== "true") {
       if (
         confirm(
@@ -37,7 +37,7 @@ export const HandOff = (): JSX.Element | null => {
       return
     }
     ask({
-      title: `Let go of ${counted(ids.length)}?`,
+      title: `Let go of ${counted(ids.length, "reflection")}?`,
       description: `From "${name}". They won't be shared, and can't be brought back.`,
       confirm: "Let go",
       onConfirm: () => letGo(ids),
@@ -60,7 +60,7 @@ export const HandOff = (): JSX.Element | null => {
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-medium">{name}</p>
                 <p className="text-muted-foreground flex items-center gap-1.5 text-xs">
-                  {counted(group.reflections.length)} ·{" "}
+                  {counted(group.reflections.length, "reflection")} ·{" "}
                   {describeAge(group.oldestMs)} old
                   {group.stale && <Badge variant="secondary">stale</Badge>}
                 </p>

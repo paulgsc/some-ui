@@ -224,7 +224,6 @@ export function indexedDbJournalStore(): JournalStore {
     },
 
     async saveTake(take, audio, episode): Promise<void> {
-      // Before the transaction: it would close while another store is read.
       if (!(await fitsRoom(audio.size))) throw new JournalFullError()
       const tx = (await connect()).transaction(
         [PLAN, TAKES, AUDIO],

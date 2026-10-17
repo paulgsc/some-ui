@@ -7,6 +7,7 @@
  * arrived, and only then do they leave the phone (`handOff`).
  */
 import type { JSX, ReactNode } from "react"
+import { counted } from "@some-ui/core-utils"
 import type { ButtonProps } from "@some-ui/shared"
 import { useConfirmSheet } from "@some-ui/shared"
 import { Share2 } from "lucide-react"
@@ -15,7 +16,7 @@ import { handOff, shareReflections } from "@/lib/agent-export"
 import { useAsyncIntent, useIntentEffect } from "@/lib/intent"
 import { IntentButton } from "@/lib/intent/render"
 
-import { arrived, counted } from "./copy"
+import { arrived } from "./copy"
 
 export const DeviceShareReflections = ({
   sessionIds,
@@ -40,8 +41,10 @@ export const DeviceShareReflections = ({
   useIntentEffect(share, ({ outcome, sent }) => {
     if (outcome !== "shared" || sent.length === 0) return
     ask(
-      arrived(counted(sent.length), "Keep them to share again", () =>
-        handOff(sent)
+      arrived(
+        counted(sent.length, "reflection"),
+        "Keep them to share again",
+        () => handOff(sent)
       )
     )
   })

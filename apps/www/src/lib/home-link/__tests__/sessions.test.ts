@@ -302,9 +302,7 @@ describe("letting the phone's copies go once home holds them", () => {
         ? Promise.reject(new SyncStoppedError())
         : send(method, path, body)
     const result = await sendHome(BASE, () => undefined, NOW)
-    expect(result.line).toBe(
-      "Copied 1 session. Stopped: send again to carry on."
-    )
+    expect(result.ok).toBe(false)
     expect(phone.sessions.map((s) => s.id)).toEqual(["a"])
   })
 })

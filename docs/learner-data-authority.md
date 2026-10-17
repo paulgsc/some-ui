@@ -348,9 +348,14 @@ declared (checked by reading every call site and by the tests named).
   create per session, and patches only to finish a copy or bring it up to
   date); one that lets the send remove a phone session that
   `confirmHeld` did not report held, that `mayLeavePhone` refuses, or that
-  changed since it was read (`letGoHeld`), or that drops the freeing from
-  the send's confirm; one that makes `confirmHeld` write, or compare less
-  than everything a copy carries (`sameRecord`); one that lets the runtime's `work` end before every
+  changed since it was read (`letGoUnchanged`), or that drops the freeing from
+  the send's confirm; one that widens `mayLeavePhone` (in
+  `lib/device-backend/handlers/sessions`) to pass a session that is not
+  completed or that was started or finished today, or deletes or weakens
+  `letGoUnchanged`'s `updatedAt` check (in `lib/session-archive`), each of
+  which lets the send remove what the claim keeps; one that makes
+  `confirmHeld` write, or compare less than everything a copy carries
+  (`sameRecord`); one that lets the runtime's `work` end before every
   request it started has settled (`inFlight`, `track`), so a second tap could
   race a create still on its way; one that deletes or weakens the
   `onHidden` subscription in the runtime's `sync`, the `stopPressed` it

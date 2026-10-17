@@ -106,7 +106,6 @@ export function indexedDbSoundbiteStore(): SoundbiteStore {
     },
 
     async save(bite, audio, replace): Promise<void> {
-      // Before the transaction: it would close while another store is read.
       if (!(await fitsRoom(audio.size))) throw new SoundbitesFullError()
       const tx = (await connect()).transaction([META, AUDIO], "readwrite")
       const meta = tx.objectStore(META)

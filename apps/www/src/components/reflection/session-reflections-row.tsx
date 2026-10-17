@@ -1,5 +1,5 @@
 import type { JSX } from "react"
-import { formatRelativeTime } from "@some-ui/core-utils"
+import { counted, formatRelativeTime } from "@some-ui/core-utils"
 import { Badge } from "@some-ui/shared"
 import { Check, NotebookPen } from "lucide-react"
 
@@ -7,7 +7,6 @@ import { useMinuteClock } from "@/lib/clock"
 import { bySession, describeAge } from "@/lib/session-reflection"
 import { useReflections } from "@/lib/session-reflection/use-reflections"
 
-import { counted } from "./copy"
 import { DeviceShareReflections } from "./device-share-reflections"
 
 /**
@@ -38,8 +37,8 @@ export const SessionReflectionsRow = ({
       <div className="bg-primary/5 mt-2 flex items-center gap-2 rounded-lg px-2.5 py-1.5">
         <NotebookPen className="text-primary size-4 shrink-0" aria-hidden />
         <span className="min-w-0 flex-1 truncate text-sm">
-          {counted(group.reflections.length)} · {describeAge(group.oldestMs)}{" "}
-          old
+          {counted(group.reflections.length, "reflection")} ·{" "}
+          {describeAge(group.oldestMs)} old
         </span>
         {group.stale && <Badge variant="secondary">stale</Badge>}
         {import.meta.env.VITE_DEVICE_BACKEND === "true" && (

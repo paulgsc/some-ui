@@ -2,13 +2,13 @@
  * The phone's storage budget and the rule that keeps it (apps/mobile/README.md,
  * "What the phone keeps").
  *
- * **One budget, measured, never reserved.** What the phone holds is its
+ * **One budget, measured.** What the phone holds is its
  * database plus the WebView's own storage (every audio store: soundbites,
  * voice reflections, scene notes, journal takes, and any store added later),
  * each counted as it is. A save on either side that would take the total
  * past the quota is refused: the database's by `budgeted`, an audio store's
  * by the room it asks (`fitsRoom` in `@some-ui/voice-capture`, installed by
- * `roomOn`). So a new store reserves nothing; it only asks.
+ * `roomOn`).
  */
 import { setStorageRoom } from "@some-ui/voice-capture"
 

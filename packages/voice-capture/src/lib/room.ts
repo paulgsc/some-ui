@@ -18,6 +18,10 @@ export function setStorageRoom(check: StorageRoom): void {
   room = check
 }
 
+/**
+ * Ask before opening the write's IndexedDB transaction: one left waiting on
+ * this while another store is read auto-commits.
+ */
 export async function fitsRoom(bytes: number): Promise<boolean> {
   try {
     return await room(bytes)

@@ -6,7 +6,7 @@
 import { sessionRecord } from "@/test-support/session-record"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
-import { letGoArchived, shareArchive } from "@/lib/session-archive"
+import { letGoUnchanged, shareArchive } from "@/lib/session-archive"
 import type { SessionRecord } from "@/lib/tenant/types"
 
 type Shared = {
@@ -89,14 +89,14 @@ describe("archiving finished sessions", () => {
     phone.sessions = phone.sessions.map((s) =>
       s.id === "old" ? s : { ...s, updatedAt: "2026-10-15T11:00:00.000Z" }
     )
-    expect(await letGoArchived(sent)).toBe(1)
+    expect(await letGoUnchanged(sent)).toBe(1)
     expect(phone.sessions.map((s) => s.id)).toEqual(["today", "open"])
 
     // Changed after it went out: the archive no longer holds it as it is.
     phone.sessions = [
       { ...phone.sessions[0], id: "old", updatedAt: "2026-10-15T12:00:00Z" },
     ]
-    expect(await letGoArchived(sent)).toBe(0)
+    expect(await letGoUnchanged(sent)).toBe(0)
     expect(phone.sessions).toHaveLength(1)
   })
 

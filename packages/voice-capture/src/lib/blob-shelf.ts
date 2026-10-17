@@ -42,7 +42,6 @@ export function blobShelf({
 
   return {
     async put(id, blob): Promise<void> {
-      // Before the transaction: it would close while another store is read.
       if (!(await fitsRoom(blob.size))) throw new ShelfFullError()
       const tx = (await connect()).transaction(STORE, "readwrite")
       const blobs = tx.objectStore(STORE)

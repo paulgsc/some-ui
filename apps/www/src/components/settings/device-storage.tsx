@@ -5,8 +5,14 @@
  */
 import type { JSX } from "react"
 import { useEffect, useSyncExternalStore } from "react"
-import { formatSize } from "@some-ui/core-utils"
-import { Alert, AlertDescription, AlertTitle, Button } from "@some-ui/shared"
+import { counted, formatSize } from "@some-ui/core-utils"
+import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+  Button,
+  useConfirmSheet,
+} from "@some-ui/shared"
 import { useQueryClient } from "@tanstack/react-query"
 import { HardDrive } from "lucide-react"
 import { toast } from "sonner"
@@ -17,8 +23,8 @@ import type { DeviceStorageView } from "@/lib/device-backend/storage-view"
 import { deviceStorage } from "@/lib/device-backend/storage-view"
 import { useAsyncIntent, useIntent, useIntentEffect } from "@/lib/intent"
 import { IntentButton } from "@/lib/intent/render"
-import type { Archived } from "@/lib/session-archive"
-import { letGoArchived, shareArchive } from "@/lib/session-archive"
+import type { SessionAsOf } from "@/lib/session-archive"
+import { letGoUnchanged, shareArchive } from "@/lib/session-archive"
 import { useDeleteSession, useSessions } from "@/lib/tenant"
 
 function useDeviceStorage(): DeviceStorageView | null {
@@ -139,15 +145,9 @@ export const DeviceStoragePrompt = (): JSX.Element | null => {
   )
 }
 
-const sessions = (n: number): string =>
-  `${n} finished session${n === 1 ? "" : "s"}`
+const sessions = (n: number): string => counted(n, "finished session")
 
-/**
- * The finished sessions out through the share sheet as one file (Drive,
- * say), for someone without a home server (`lib/session-archive`). Android
- * says "shared" once an app is picked, even if the person backs out of it,
- * so the sessions leave the phone only once they say the file arrived.
- */
+/** Settings' "Archive finished sessions" (`lib/session-archive`). */
 export const DeviceArchive = (): JSX.Element | null => {
   const queryClient = useQueryClient()
   const { data } = useSessions()
@@ -156,17 +156,21 @@ export const DeviceArchive = (): JSX.Element | null => {
     presentation: "interactive",
   })
   const letGo = useAsyncIntent(
-    (sent: ReadonlyArray<Archived>) => letGoArchived(sent),
+    (sent: ReadonlyArray<SessionAsOf>) => letGoUnchanged(sent),
     { presentation: "interactive" }
   )
+  const { ask, sheet } = useConfirmSheet()
   useIntentEffect(share, ({ outcome, sent }) => {
     if (outcome !== "shared" || sent.length === 0) return
-    if (
-      confirm(
-        `Did the file arrive? OK clears ${sessions(sent.length)} from this phone.`
-      )
-    )
-      letGo.start(sent)
+    // `arrived` (components/reflection/copy) says the same of reflections,
+    // but a reflection module stays out of reach here (LA7).
+    ask({
+      title: "Did it arrive?",
+      description: `Once it has, ${sessions(sent.length)} can leave this phone.`,
+      confirm: "It arrived: let them go",
+      keep: "Keep them here",
+      onConfirm: () => letGo.start(sent),
+    })
   })
   useIntentEffect(letGo, (left) => {
     void queryClient.invalidateQueries()
@@ -186,6 +190,7 @@ export const DeviceArchive = (): JSX.Element | null => {
       <p className="text-muted-foreground text-xs">
         Save them to a file (Drive, say), then clear them here.
       </p>
+      {sheet}
     </div>
   )
 }

@@ -5,12 +5,14 @@
  * (`./shelf`, which stay). One run, so one Stop ends both, and one line says
  * how it went.
  */
+import { counted } from "@some-ui/core-utils"
+
 import { deviceBackend } from "@/lib/device-backend/boot"
 import { mayLeavePhone } from "@/lib/device-backend/handlers/sessions"
 import type { Kept } from "@/lib/device-backend/handlers/shelf"
 import { everyKept } from "@/lib/device-backend/handlers/shelf"
 import { SyncStoppedError } from "@/lib/device-backend/home-sync"
-import { deviceStorage } from "@/lib/device-backend/storage-view"
+import { letGoUnchanged } from "@/lib/session-archive"
 import { sessionsRepository } from "@/lib/tenant/queries"
 import type { CopyResult, HeldReport } from "@/lib/tenant/sessions-copy"
 import { emptyHeldReport } from "@/lib/tenant/sessions-copy"
@@ -19,36 +21,37 @@ import type { SessionRecord } from "@/lib/tenant/types"
 import { hostOf } from "./address"
 import { homeLink } from "./index"
 import { remember, remembered } from "./remembered"
-import {
-  causedBy,
-  copyAndConfirm,
-  HomeForgotPhoneError,
-  letGoHeld,
-} from "./sessions"
+import { causedBy, copyAndConfirm, HomeForgotPhoneError } from "./sessions"
 import type { SendReport } from "./shelf"
 import { emptyReport, sendKept } from "./shelf"
 import type { SyncResult } from "./sync"
 
 const LAST_SEND_KEY = "some-ui.device.last-send.v1"
 
-const counted = (n: number, one: string, many: string): string =>
-  `${n} ${n === 1 ? one : many}`
-const sessions = (n: number): string => counted(n, "session", "sessions")
-const items = (n: number): string => counted(n, "kept item", "kept items")
+const sessions = (n: number): string => counted(n, "session")
+const items = (n: number): string => counted(n, "kept item")
+
+/** What a send would carry. Reads only this phone. */
+async function readPhone(): Promise<{
+  local: Array<SessionRecord>
+  kept: Array<Kept>
+}> {
+  const local = await sessionsRepository.list()
+  const { context } = await deviceBackend()
+  return { local, kept: await everyKept(context.db) }
+}
 
 /** What a send would carry, for its confirm: its total, in words. */
 export type ToSend = { total: number; what: string }
 
 /** What a send would carry, for its confirm. Reads only this phone. */
 export async function onPhone(): Promise<ToSend> {
-  const local = (await sessionsRepository.list()).length
-  const { context } = await deviceBackend()
-  const kept = (await everyKept(context.db)).length
+  const { local, kept } = await readPhone()
   const what = [
-    ...(local > 0 ? [sessions(local)] : []),
-    ...(kept > 0 ? [items(kept)] : []),
+    ...(local.length > 0 ? [sessions(local.length)] : []),
+    ...(kept.length > 0 ? [items(kept.length)] : []),
   ].join(" and ")
-  return { total: local + kept, what }
+  return { total: local.length + kept.length, what }
 }
 
 /** How one send went, for its line. */
@@ -131,9 +134,7 @@ export async function sendHome(
   let local: Array<SessionRecord>
   let kept: Array<Kept>
   try {
-    local = await sessionsRepository.list()
-    const { context } = await deviceBackend()
-    kept = await everyKept(context.db)
+    ;({ local, kept } = await readPhone())
   } catch (error) {
     return { ok: false, line: `Couldn't read this phone: ${String(error)}` }
   }
@@ -161,11 +162,8 @@ export async function sendHome(
   let freed = 0
   let freeing = ""
   try {
-    freed = await letGoHeld(held.held, local)
-    if (freed > 0) {
-      refresh()
-      void deviceStorage.refresh()
-    }
+    freed = await letGoUnchanged(local.filter((s) => held.held.includes(s.id)))
+    if (freed > 0) refresh()
   } catch (error) {
     freeing = ` Couldn't clear them from this phone: ${String(error)}`
   }

@@ -28,9 +28,7 @@
  * identical session the account already held: that costs a copy, never makes
  * a duplicate.
  *
- * Nothing here deletes, locally or remotely. `confirmHeld` only reads: it
- * says which device sessions the account holds exactly as the device does,
- * so the phone's caller can let its own copies go (`lib/home-link/sessions`).
+ * Nothing here deletes, locally or remotely.
  */
 
 import { StaleAuthorityError } from "@/lib/authority"
@@ -160,7 +158,6 @@ export async function planTransfer(
       const there = await remote.get(copy.remoteId)
       if (there === null) continue
       if (copy.complete) {
-        // Changed on the device since: one patch brings the copy up to date.
         if (sameRecord(session, there)) complete = true
         else unfinished = copy.remoteId
         break
