@@ -1895,8 +1895,8 @@ rather than as *data*, and the remedy is to exhibit the data.
 
 #remark("4.18", name: "The grammar-lens record")[
   The outcomes of Corollary 4.8 and Remarks 4.15--4.17 are kept as one
-  record: per item, its identity, the cue's modality, the answer and whether
-  it was right or expired, the catalogue entries it showed and the one
+  record: per item, its identity, when it closed, the cue's modality, the
+  answer and whether it was right or expired, the catalogue entries it showed and the one
   chosen, if a misform was, the time to answer
   and whether it was rushed, the step-down's questions, answers and last
   rung, the situation chosen, and the take's count, last length and whether
