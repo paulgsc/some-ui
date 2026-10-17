@@ -15,30 +15,22 @@
  * surfaces, so `:first-child` / `:nth-child()` written against one shelf
  * silently returns the wrong row on another.
  *
- * The lockups come in two class spellings, and every lockup selector names
- * both. The BEM one (`yt-content-metadata-view-model__metadata-text`) is what
- * the e2e fixtures were first written against; youtube.com served the
- * camelCase one (`ytContentMetadataViewModelMetadataText`) by 2026-10-17, when
- * an export of the owner's diagnostics showed no lockup yielding a date, and a
- * headless capture of a channel page showed why. Which one a browser gets is
- * the vendor's choice, so neither is dropped.
+ * Lockups come in two class spellings, BEM and camelCase, and the lockup
+ * selectors here name both.
  */
 
-/** The class every metadata text run in a Lit lockup carries, per spelling. */
-const LOCKUP_TEXT_CLASSES = [
-  "yt-content-metadata-view-model__metadata-text",
-  "ytContentMetadataViewModelMetadataText",
-] as const
+/** A BEM lockup's metadata text run; its channel run is an `<a>` instead. */
+const BEM_TEXT_RUN =
+  'span[class*="yt-content-metadata-view-model__metadata-text"]'
 
 /**
- * Every metadata text run in a lockup, as one selector list, so
- * `querySelectorAll` returns the runs of either spelling in document order.
- * The camelCase run is a `span` that may wrap a link; the BEM run is either
- * that `span` or the link itself.
+ * A camelCase lockup's labelled metadata run. The view count and the age carry
+ * an `aria-label` in their long form; the channel run, also a `span` of this
+ * class, carries none, so it can never be read as the date whatever the row
+ * order or the channel's name.
  */
-export const LOCKUP_TEXT_RUNS = LOCKUP_TEXT_CLASSES.map(
-  (c) => `span[class*="${c}"]`
-).join(", ")
+const CAMEL_LABELLED_RUN =
+  'span[class*="ytContentMetadataViewModelMetadataText"][aria-label]'
 
 export type CardField = "title" | "channelName" | "duration" | "uploadDate"
 
@@ -60,7 +52,6 @@ export const FIELD_SELECTORS: Readonly<
     // Matched on a class *prefix* because YouTube appends modifiers
     // (`…__title--small`) and versions the host class.
     '[class*="lockup-metadata-view-model__title"]',
-    '[class*="ytLockupMetadataViewModelTitle"]',
     '[class*="shortsLockupViewModelHostMetadataTitle"]',
     "h3 a",
   ],
@@ -70,18 +61,20 @@ export const FIELD_SELECTORS: Readonly<
     // The channel is the metadata run that is a link; view counts and dates
     // are plain text. The BEM run is the link; the camelCase run wraps one.
     'a[class*="yt-content-metadata-view-model__metadata-text"]',
-    '[class*="ytContentMetadataViewModelMetadataText"] a[href^="/@"]',
-    '[class*="ytContentMetadataViewModelMetadataText"] a[href^="/channel/"]',
+    '[class*="ytContentMetadataViewModelMetadataText"] a',
   ],
   duration: [
     "span.ytd-thumbnail-overlay-time-status-renderer",
     '[class*="ThumbnailOverlayBadgeViewModel"] [class*="badge-shape"]',
-    // camelCase: the badge sits in a bottom overlay, and its text is a class.
     '[class*="ytThumbnailBadgeViewModelHost"] [class*="ytBadgeShapeText"]',
   ],
-  // The Polymer metadata line is "views · date" as two spans. The lockup case
-  // is positional — the *last* text run of the metadata row — and is spelled
-  // by `extract/meta.ts`'s `lockupUploadDate()` rather than as a selector, so
-  // it is recorded here under its own name for the fingerprint's benefit.
-  uploadDate: ["#metadata-line span:nth-child(2)", LOCKUP_TEXT_RUNS],
+  // The Polymer metadata line is "views · date" as two spans. The lockup cases
+  // are positional — the *last* matching run — and are spelled by
+  // `extract/meta.ts`'s `lockupUploadDate()` rather than as selectors, so
+  // they are recorded here under their own names for the fingerprint.
+  uploadDate: [
+    "#metadata-line span:nth-child(2)",
+    BEM_TEXT_RUN,
+    CAMEL_LABELLED_RUN,
+  ],
 }

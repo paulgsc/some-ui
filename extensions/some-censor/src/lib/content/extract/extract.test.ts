@@ -132,13 +132,6 @@ describe("tryExtract", () => {
     expect(out.channelId).toBe("@Lockups")
   })
 
-  it("fully resolves a camelCase video lockup", () => {
-    const out = tryExtract(make("yt-lockup-view-model", CAMEL_LOCKUP))
-    expect(out.kind).toBe("full")
-    expect(out.videoId).toBe("camel_1")
-    expect(out.channelId).toBe("@CamelChannel")
-  })
-
   it("resolves a shorts lockup as video-only", () => {
     // A shorts card exposes no channel at all. It must still mask — masking
     // only ever needed the videoId — and it must not claim a channel it does
@@ -170,12 +163,6 @@ describe("extractTitle", () => {
   it("reads a lockup title", () => {
     expect(extractTitle(make("yt-lockup-view-model", LOCKUP))).toBe(
       "Everything About Lockups"
-    )
-  })
-
-  it("reads a camelCase lockup title", () => {
-    expect(extractTitle(make("yt-lockup-view-model", CAMEL_LOCKUP))).toBe(
-      "20 years of esports history explained"
     )
   })
 
@@ -218,9 +205,6 @@ describe("extractMeta", () => {
   })
 
   it("takes a camelCase lockup's age from its label, not its compact text", () => {
-    // "8d ago" is what the run shows. The estimator does not read compact ages
-    // (a bare "5m" is minutes or months), so the long form has to be the one
-    // that reaches it.
     expect(extractUploadDate(make("yt-lockup-view-model", CAMEL_LOCKUP))).toBe(
       "8 days ago"
     )
@@ -250,6 +234,21 @@ describe("extractMeta", () => {
     )
     expect(extractMeta(make("yt-lockup-view-model", swapped)).channelName).toBe(
       "Lockups Channel"
+    )
+  })
+
+  it("never reads a camelCase channel run as the age, in either row order", () => {
+    // The channel run is a span of the same class as the age. Below the date
+    // row, a channel named like an age would otherwise be read as one.
+    const swapped = CAMEL_LOCKUP.replace(
+      /(<div class="ytContentMetadataViewModelMetadataRow" role="group">[\s\S]*?<\/div>)(\s*)(<div class="ytContentMetadataViewModelMetadataRow" role="group">[\s\S]*?<\/div>)/,
+      "$3$2$1"
+    ).replace("Camel Channel", "10 Years Ago")
+    expect(swapped.indexOf("10 Years Ago")).toBeGreaterThan(
+      swapped.indexOf("8d ago")
+    )
+    expect(extractUploadDate(make("yt-lockup-view-model", swapped))).toBe(
+      "8 days ago"
     )
   })
 

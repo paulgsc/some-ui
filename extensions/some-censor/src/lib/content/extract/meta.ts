@@ -1,7 +1,4 @@
-import {
-  FIELD_SELECTORS,
-  LOCKUP_TEXT_RUNS,
-} from "@censor/lib/content/layout/fields"
+import { FIELD_SELECTORS } from "@censor/lib/content/layout/fields"
 import type { MetaData } from "@censor/types/states"
 
 /**
@@ -39,9 +36,11 @@ function firstText(
  * never into anything a veil renders (QD4). Still pure (E1).
  */
 export function extractUploadDate(el: HTMLElement): string | null {
-  const [polymer] = FIELD_SELECTORS.uploadDate
+  const [polymer, bem, camel] = FIELD_SELECTORS.uploadDate
   return (
-    (polymer === undefined ? null : text(el, polymer)) ?? lockupUploadDate(el)
+    (polymer === undefined ? null : text(el, polymer)) ??
+    lastRun(el, camel, (run) => run.getAttribute("aria-label")) ??
+    lastRun(el, bem, (run) => run.textContent)
   )
 }
 
@@ -54,20 +53,21 @@ export function extractMeta(el: HTMLElement): MetaData {
 
 /**
  * A lockup's second metadata row reads "1.2M views · 3 days ago" as separate
- * text runs, and the age is usually the last of them. Positional, so low
+ * runs, and the age is usually the last of them. Positional, so low
  * confidence: on a row with no date the last run is the view count, which the
  * estimator does not recognize and holds as unverified (#1384).
  *
- * The camelCase lockup shows a compact age ("8d ago") and spells it out in the
- * run's `aria-label` ("8 days ago"). The label is read first: the estimator
- * knows the long form, and a compact "5m" cannot say whether it means minutes
- * or months, which is the difference between held and admitted.
+ * The camelCase run shows a compact age ("8d ago") and is read by its
+ * `aria-label` ("8 days ago") instead: the estimator knows the long form, and
+ * a compact "5m" cannot say whether it means minutes or months.
  */
-function lockupUploadDate(el: HTMLElement): string | null {
-  const runs = el.querySelectorAll(LOCKUP_TEXT_RUNS)
+function lastRun(
+  el: HTMLElement,
+  selector: string | undefined,
+  read: (run: Element) => string | null
+): string | null {
+  if (selector === undefined) return null
+  const runs = el.querySelectorAll(selector)
   const last = runs[runs.length - 1]
-  if (last === undefined) return null
-  return (
-    last.getAttribute("aria-label")?.trim() || last.textContent.trim() || null
-  )
+  return (last === undefined ? null : read(last)?.trim()) || null
 }
