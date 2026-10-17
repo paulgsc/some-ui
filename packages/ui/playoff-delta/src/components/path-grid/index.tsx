@@ -3,12 +3,12 @@ import { delay } from "@playoff-delta/components/slides/shared"
 import {
   cellChanges,
   isOpen,
-  plural,
   SEEDS,
   type CellChange,
   type StoryPaths,
   type StoryWeek,
 } from "@playoff-delta/lib/story"
+import { counted } from "@some-ui/core-utils"
 
 /** Complete class strings, so a content scan sees every one. */
 const CELL: Readonly<Record<CellChange, string>> = {
@@ -19,7 +19,7 @@ const CELL: Readonly<Record<CellChange, string>> = {
 }
 
 const rowLabel = (x: number): string =>
-  x === 0 ? "never win again" : `+${plural(x, "win")}`
+  x === 0 ? "never win again" : `+${counted(x, "win")}`
 
 type Row = {
   readonly label: string

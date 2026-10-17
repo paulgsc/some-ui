@@ -113,6 +113,7 @@ const DEVICE_MODULES = [
   "apps/www/src/lib/journal-share/**",
   "apps/www/src/lib/reflection-voice/**",
   "apps/www/src/lib/scene-voice/**",
+  "apps/www/src/lib/session-archive/**",
   "apps/www/src/lib/share-files/**",
   "apps/www/src/lib/device-backend/**",
   "apps/www/src/lib/device-speech/**",
@@ -198,6 +199,11 @@ export const paths: PathRules<Profile> = definePaths<Profile>({
       modules: ["apps/www/src/lib/web-surface/hangul/**"],
       profiles: ["lan", "pages"],
       why: "Hangul Honeycomb's panel, a desktop keyboard game the phone has no counterpart for: only the web door (src/lib/web-surface) binds it, and not in the Android app's build",
+    },
+    {
+      modules: ["apps/www/src/components/reflection/copy.ts"],
+      profiles: [MOBILE_PROFILE],
+      why: "the phone's hand-off wording (`arrived`, `goingOut`), after a share only the Android app makes; the web's reflection screens count with `@some-ui/core-utils`",
     },
     {
       modules: DEVICE_MODULES,

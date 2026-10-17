@@ -9,8 +9,13 @@
  * **Per account.** The device never learns an account's id, so the receipt
  * records the ids minted for each device session's copies, and asks the
  * account in use: `GET /sessions/:id` answers 404 for another account's
- * session. A second press for one account copies nothing; a press under
+ * session. A second press for one account copies nothing new; a press under
  * another account copies again.
+ *
+ * **Kept current.** A copy is made once, but a session can move on after it
+ * (planned when copied, finished later; renamed). A press that finds the
+ * account's copy no longer matching the device patches it to match, so the
+ * account never keeps a stale one and the phone can let its own go.
  *
  * **Resumable.** There is no import endpoint: a copy is a create then a patch.
  * The receipt is written after each (`complete: false`, then `true`), so a
@@ -23,7 +28,7 @@
  * identical session the account already held: that costs a copy, never makes
  * a duplicate.
  *
- * Nothing is deleted locally.
+ * Nothing here deletes, locally or remotely.
  */
 
 import { StaleAuthorityError } from "@/lib/authority"
@@ -59,7 +64,10 @@ function readReceipt(storage: StorageAdapter): Receipt {
 export type TransferPlan = {
   /** On the device and nowhere in this account yet. */
   readonly create: ReadonlyArray<SessionRecord>
-  /** Started in this account by an earlier try and never finished. */
+  /**
+   * Started in this account by an earlier try and never finished, or
+   * finished and changed on the device since: one patch each.
+   */
   readonly finish: ReadonlyArray<{
     readonly session: SessionRecord
     readonly remoteId: string
@@ -147,9 +155,11 @@ export async function planTransfer(
         unconfirmed = true
         continue
       }
-      if ((await remote.get(copy.remoteId)) === null) continue
+      const there = await remote.get(copy.remoteId)
+      if (there === null) continue
       if (copy.complete) {
-        complete = true
+        if (sameRecord(session, there)) complete = true
+        else unfinished = copy.remoteId
         break
       }
       unfinished ??= copy.remoteId
@@ -172,6 +182,19 @@ export async function planTransfer(
     else create.push(session)
   }
   return { create, finish, alreadyThere }
+}
+
+/** Everything a copy carries, for a copy that may not hold it yet. */
+function caughtUp(
+  session: SessionRecord
+): Parameters<SessionsStore["update"]>[1] {
+  return {
+    name: session.name,
+    activities: session.activities,
+    scenes: session.scenes,
+    layoutMode: session.layoutMode,
+    ...restoration(session),
+  }
 }
 
 /** Restores everything `create` is not allowed to accept, in one patch. */
@@ -247,10 +270,11 @@ export async function runTransfer(
 
   const steps: Array<() => Promise<void>> = [
     ...plan.finish.map(({ session, remoteId }) => async (): Promise<void> => {
-      // Adopted from the account's list, or left unfinished by an earlier try:
-      // it is this device session's copy from here on.
+      // Adopted from the account's list, left unfinished by an earlier try,
+      // or changed on the device since: it is this device session's copy
+      // from here on, and now holds what the device does.
       remember(session.id, { remoteId, complete: false })
-      await remote.update(remoteId, restoration(session))
+      await remote.update(remoteId, caughtUp(session))
       remember(session.id, { remoteId, complete: true })
     }),
     ...plan.create.map((session) => async (): Promise<void> => {
@@ -317,4 +341,75 @@ export async function copySessionsTo(
     throw new Error(`a phone copy cannot be ${outcome.kind}`)
   }
   return { outcome, alreadyThere: plan.alreadyThere }
+}
+
+/**
+ * What `confirmHeld` found, filled as it goes so a stop keeps what it had
+ * already confirmed.
+ */
+export type HeldReport = {
+  /** Device sessions the account holds exactly as the device does. */
+  held: Array<string>
+  /** Copied, but the account's copy no longer matches the device's. */
+  differs: Array<string>
+  /** No complete copy the account still holds. */
+  notThere: Array<string>
+}
+
+export function emptyHeldReport(): HeldReport {
+  return { held: [], differs: [], notThere: [] }
+}
+
+/** The same instant, however each side spells it; or both absent. */
+function sameStamp(
+  a: string | null | undefined,
+  b: string | null | undefined
+): boolean {
+  if (a == null || b == null) return a == null && b == null
+  return Date.parse(a) === Date.parse(b)
+}
+
+/** Everything a copy carries: its content and what `restoration` restores. */
+function sameRecord(device: SessionRecord, account: SessionRecord): boolean {
+  return (
+    sameContent(device, account) &&
+    device.status === account.status &&
+    device.totalDurationMs === account.totalDurationMs &&
+    (device.finalElapsedMs ?? null) === (account.finalElapsedMs ?? null) &&
+    canonical(device.layout) === canonical(account.layout) &&
+    sameStamp(device.startedAt, account.startedAt) &&
+    sameStamp(device.completedAt, account.completedAt)
+  )
+}
+
+/**
+ * Which of `local` the account `remote` holds as the device does now: a
+ * complete copy in the receipt, read back (`GET /sessions/:id`) and
+ * matching. Reads only. Throws what a read throws, with `report` holding
+ * what was confirmed before it.
+ */
+export async function confirmHeld(
+  local: ReadonlyArray<SessionRecord>,
+  remote: SessionsStore,
+  report: HeldReport,
+  storage: StorageAdapter = browserLocalStorage
+): Promise<void> {
+  const receipt = readReceipt(storage)
+  for (const session of local) {
+    const copies = (receipt[session.id] ?? []).filter(
+      (copy): copy is Copy & { remoteId: string } =>
+        copy.complete && copy.remoteId !== null
+    )
+    let verdict: "held" | "differs" | "notThere" = "notThere"
+    for (const copy of copies) {
+      const there = await remote.get(copy.remoteId)
+      if (there === null) continue
+      if (sameRecord(session, there)) {
+        verdict = "held"
+        break
+      }
+      verdict = "differs"
+    }
+    report[verdict].push(session.id)
+  }
 }

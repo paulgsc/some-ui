@@ -5,13 +5,13 @@
  * and the screen state the same facts.
  */
 
+import { counted } from "@some-ui/core-utils"
 import { assertNever } from "@some-ui/intent-kit"
 
 import {
   claimOf,
   floorRecord,
   nameOf,
-  plural,
   sinceLabel,
   type StorySeason,
   type StoryWeek,
@@ -77,7 +77,7 @@ function claimLine(
   if (!c.in) return "every path is closed"
   if (c.extraWins === 0)
     return `even if they never win again, they're in, as high as the number ${c.seed} seed`
-  return `they need ${plural(c.extraWins, "more win")}, then as high as the number ${c.seed} seed. That's a ${floorRecord(c, season.seasonLength)} team`
+  return `they need ${counted(c.extraWins, "more win")}, then as high as the number ${c.seed} seed. That's a ${floorRecord(c, season.seasonLength)} team`
 }
 
 /** The voiceover line for one slide. */
@@ -122,7 +122,7 @@ export function narration(
     case "how": {
       const exp = week.templates.exported
       const out = exp.filter((r) => r.yourWay).length
-      return `${plural(out, "conference team")} lost to the other conference, ${plural(week.templates.spoilers.filter((r) => r.yourWay).length, "spoiler")}, and ${plural(week.templates.forced.length, "forced game")}.`
+      return `${counted(out, "conference team")} lost to the other conference, ${counted(week.templates.spoilers.filter((r) => r.yourWay).length, "spoiler")}, and ${counted(week.templates.forced.length, "forced game")}.`
     }
     case "after": {
       return `After week ${week.week}, ${claimLine(season, week.paths.after, week.paths.winsAfter)}.`
@@ -143,7 +143,7 @@ export function narration(
     }
     case "benchmark": {
       const low = week.benchmark.lowestBar
-      return `The lowest bar in the league belongs to the ${n(low.team)}: ${plural(low.wins, "win")} could still get them in.`
+      return `The lowest bar in the league belongs to the ${n(low.team)}: ${counted(low.wins, "win")} could still get them in.`
     }
     case "outro": {
       return "Next week, we ask again."

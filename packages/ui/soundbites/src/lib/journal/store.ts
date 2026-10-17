@@ -9,7 +9,14 @@
  * take is kept only for a cut of the plan in place, and never past
  * `JOURNAL_TAKES_MAX_BYTES`.
  */
-import { bytesBesides, connection, done, result } from "@some-ui/voice-capture"
+import {
+  bytesBesides,
+  bytesOf,
+  connection,
+  done,
+  result,
+  withRoom,
+} from "@some-ui/voice-capture"
 import { JOURNAL_TAKES_MAX_BYTES } from "@soundbites/lib/policy"
 import { askToKeep } from "@soundbites/lib/store"
 
@@ -58,7 +65,8 @@ export type JournalStore = {
   ) => Promise<void>
   /**
    * Keeps `take` with its audio in place of its cut's last one. Rejects,
-   * keeping nothing, with `JournalFullError` past the cap or
+   * keeping nothing, with `JournalFullError` past the cap or the device's
+   * room, or
    * `JournalStaleError` unless `episode` is in place and has the cut.
    */
   saveTake: (take: JournalTake, audio: Blob, episode: string) => Promise<void>
@@ -217,30 +225,41 @@ export function indexedDbJournalStore(): JournalStore {
     },
 
     async saveTake(take, audio, episode): Promise<void> {
-      const tx = (await connect()).transaction(
-        [PLAN, TAKES, AUDIO],
-        "readwrite"
+      const db = await connect()
+      const freed = await bytesOf(db, AUDIO, [take.cutId])
+      await withRoom(
+        audio.size - freed,
+        async (claim): Promise<void> => {
+          const tx = db.transaction([PLAN, TAKES, AUDIO], "readwrite")
+          const audios = tx.objectStore(AUDIO)
+          const replaced: unknown = await result(audios.get(take.cutId))
+          const frees = replaced instanceof Blob ? replaced.size : 0
+          const plan = await planIn(tx.objectStore(PLAN))
+          if (
+            plan?.openedAt !== episode ||
+            !plan.primer.cuts.some((cut) => cut.id === take.cutId)
+          ) {
+            tx.abort()
+            throw new JournalStaleError()
+          }
+          if (
+            audio.size - frees > claim ||
+            (await bytesBesides(audios, take.cutId)) + audio.size >
+              JOURNAL_TAKES_MAX_BYTES
+          ) {
+            tx.abort()
+            throw new JournalFullError()
+          }
+          tx.objectStore(TAKES).put(take)
+          audios.put(audio, take.cutId)
+          tx.objectStore(PLAN).put(
+            { ...plan, touchedAt: take.recordedAt },
+            CURRENT
+          )
+          await done(tx)
+        },
+        () => new JournalFullError()
       )
-      const audios = tx.objectStore(AUDIO)
-      const plan = await planIn(tx.objectStore(PLAN))
-      if (
-        plan?.openedAt !== episode ||
-        !plan.primer.cuts.some((cut) => cut.id === take.cutId)
-      ) {
-        tx.abort()
-        throw new JournalStaleError()
-      }
-      if (
-        (await bytesBesides(audios, take.cutId)) + audio.size >
-        JOURNAL_TAKES_MAX_BYTES
-      ) {
-        tx.abort()
-        throw new JournalFullError()
-      }
-      tx.objectStore(TAKES).put(take)
-      audios.put(audio, take.cutId)
-      tx.objectStore(PLAN).put({ ...plan, touchedAt: take.recordedAt }, CURRENT)
-      await done(tx)
       changed()
     },
 

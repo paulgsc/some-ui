@@ -5,22 +5,29 @@
  * at what the database holds, so the bound is reached with a few rows.
  */
 import { openNodeSqlite } from "@/test-support/node-sqlite-driver"
-import { beforeEach, describe, expect, it } from "vitest"
+import { withRoom } from "@some-ui/voice-capture"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import { openDeviceBackend } from "@/lib/device-backend/backend"
 import {
   removeRoundsExcept,
   upsertRound,
 } from "@/lib/device-backend/content-store"
-import { oldestRemovable } from "@/lib/device-backend/handlers/sessions"
+import {
+  oldestRemovable,
+  removeUnchanged,
+} from "@/lib/device-backend/handlers/sessions"
 import type { DeviceBackend } from "@/lib/device-backend/interceptor"
 import type { SqlDriver } from "@/lib/device-backend/sql"
 import { num, one } from "@/lib/device-backend/sql"
 import type { StorageBudget } from "@/lib/device-backend/storage"
 import {
+  budgeted,
   databaseBytes,
   dismissPruneNotice,
+  fitsBesides,
   onSaveRefused,
+  OverBudgetError,
   readPruneNotice,
 } from "@/lib/device-backend/storage"
 
@@ -36,8 +43,11 @@ const budget: StorageBudget = {
   get quotaBytes() {
     return quota
   },
-  reservedBytes: 0,
 }
+
+afterEach(() => {
+  vi.unstubAllGlobals()
+})
 
 beforeEach(async () => {
   quota = Number.POSITIVE_INFINITY
@@ -134,6 +144,23 @@ describe("sessions at the budget", () => {
     })
   })
 
+  it("removes only a session still exactly as the destination got it", async () => {
+    const kept = await create("kept")
+    const gone = await create("gone")
+    const stamps = await db.all("SELECT id, updated_at FROM sessions")
+    const asOf = stamps.map((row) => ({
+      id: String(row.id),
+      updatedAt: String(row.updated_at),
+    }))
+    // `kept` was saved again after the destination got its copy.
+    const stale = asOf.map((s) =>
+      s.id === kept ? { ...s, updatedAt: "2020-01-01T00:00:00Z" } : s
+    )
+    await expect(removeUnchanged(db, stale)).resolves.toBe(1)
+    expect(await names()).toEqual(["kept"])
+    expect(gone).not.toBe(kept)
+  })
+
   it("runs FULL auto-vacuum, a database made before it included", async () => {
     const mode = async (): Promise<number> => {
       const row = await one(db, "PRAGMA auto_vacuum")
@@ -145,6 +172,62 @@ describe("sessions at the budget", () => {
     expect(await mode()).toBe(0)
     backend = await openDeviceBackend(db, () => NOW, budget)
     expect(await mode()).toBe(1)
+  })
+})
+
+describe("one budget, shared with the WebView's storage", () => {
+  const audio = (bytes: number) => (): Promise<number> => Promise.resolve(bytes)
+
+  it("counts what the audio stores hold against a save, and reserves nothing", async () => {
+    await db.exec("CREATE TABLE grow (x TEXT)")
+    const write = async (): Promise<void> => {
+      await db.run("INSERT INTO grow VALUES (?)", [BULK + BULK])
+    }
+    quota = (await databaseBytes(db)) + 200_000
+    await expect(budgeted(db, budget, write, audio(0))).resolves.toBeUndefined()
+    await expect(
+      budgeted(db, budget, write, audio(200_000))
+    ).rejects.toBeInstanceOf(OverBudgetError)
+  })
+
+  it("lets an audio write through while it fits, and asks to make room when not", async () => {
+    quota = (await databaseBytes(db)) + 1_000
+    const spared: Array<string | null> = []
+    const stop = onSaveRefused((spare) => spared.push(spare))
+    await expect(fitsBesides(db, budget, 600, audio(300))).resolves.toBe(true)
+    await expect(fitsBesides(db, budget, 600, audio(500))).resolves.toBe(false)
+    stop()
+    expect(spared).toEqual([null])
+  })
+
+  it("counts an audio write that settles while the WebView is measured", async () => {
+    await db.exec("CREATE TABLE grow (x TEXT)")
+    quota = (await databaseBytes(db)) + 200_000
+    let settle: () => void = () => undefined
+    const audioWrite = withRoom(
+      200_000,
+      () =>
+        new Promise<void>((resolve) => {
+          settle = resolve
+        }),
+      () => new Error("full")
+    )
+    vi.stubGlobal("navigator", {
+      storage: {
+        estimate: async (): Promise<StorageEstimate> => {
+          settle()
+          await audioWrite
+          // Measured before the audio write's bytes landed.
+          return { usage: 0 }
+        },
+      },
+    })
+    await Promise.resolve()
+    await expect(
+      budgeted(db, budget, async () => {
+        await db.run("INSERT INTO grow VALUES (?)", [BULK])
+      })
+    ).rejects.toBeInstanceOf(OverBudgetError)
   })
 })
 
