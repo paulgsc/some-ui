@@ -1,5 +1,65 @@
 # CLAUDE.md
 
+## What this repository is: two mandates
+
+Read this first. It answers the product questions the rest of this file doesn't.
+
+This is one person's working toolkit (studying, tracking, making, watching) run as real
+software, and every surface in it answers to two mandates at once:
+
+- **A: it works.** Build applications that materially achieve their goal in the owner's own
+  workflow. This is the owner's working mind on a screen, used every day.
+- **B: it reads.** Make each of them legible as an artifact any third party can take in,
+  read-only, at whatever level of sophistication they bring: an organic snapshot of real,
+  live work, shown as it happens.
+
+There are two users:
+
+- **The owner:** the only one who signs in and the only one ever online. Uses, maintains
+  and consumes all of it.
+- **The viewer** (the owner's word is "voyeur"): anyone else. Observes, read-only, and
+  never sees the owner's data. The aim is that they understand what they see.
+
+What follows from them:
+
+- **Published by default.** The code is public, and the apps ship through public channels
+  (Pages, AMO, Google Play, YouTube). "For me" names the audience; exposure is a separate
+  question. Keep every public channel and its upkeep (the APK's Play readiness in
+  `apps/mobile/README.md`, say) even when only the owner uses the thing.
+- **Private only where the data is personal.** What serves A and holds PII stays on the
+  home network (the `lan` audience, behind the passkey) and on the owner's own devices.
+- **A comes first, and B shows A as it is.** Legibility effort goes to what really drives
+  the workflow, and every surface does what it appears to do.
+- **A way in for every reader.** Something anyone can take in (a short demo video), the
+  live screens for the curious, the source for the technical, each disclosed by
+  interaction rather than all at once. The extensions comb is the model
+  (`packages/ui/honeycomb/src/components/extensions-comb/extensions.data.ts`).
+- **One screen, two readings.** Where the owner and a viewer can reach the same screen, it
+  should say which of them is looking.
+- **Say what it is.** In copy anyone reads (pages, READMEs, store listings, release
+  notes), describe each thing by what it is and does, plus its honest limits. Skip foils
+  and put-downs ("not another X", "not just a Y"): an affirmative definition says it all.
+  The voice is plain and first-person, with no pitch and no promise of support.
+- **Never lose the record.** Because A is real use, the data it leaves (study sessions,
+  reflections, typing rounds, voice takes) is also the evidence of growth over time:
+  struggling to read a sentence at the first beta, finishing sessions much later. That
+  record exists only if the history survives, so treat the owner's history as
+  append-only. Before adding anything that discards or rewrites it (a cap that evicts old
+  entries, pruning, a migration that drops or reshapes data, a "let it go" that deletes for
+  good), give it a durable copy first, or ask. This is the
+  owner's direction, not yet a declared invariant: today's code still discards history (a
+  session delete, the `reflection-voice` and `scene-voice` budgets, the Build Journal takes
+  store in `packages/ui/soundbites`, the "let it go" steps), so an append-only claim would
+  be false on landing. Declaring it, with a tag at each discard site, waits on the owner's
+  call about those sites.
+
+**Open (the owner's call; ask, don't settle it):** whether some features need a mock
+demonstration surface (seeded data, nothing kept) where a video is not enough. Related: a
+Pages visitor can use the study screens today, with data kept in their own browser, which
+"read-only" may change. Seed data for Pages: `apps/www/src/lib/data-mode`.
+
+`/mission` (`apps/www/src/routes/mission.tsx`) says the same to the viewer.
+
 ## Pre-commit verification (Claude Code Remote)
 
 `.husky/pre-commit` skips its `lint-staged` step when `CLAUDE_CODE_REMOTE=true` — for a

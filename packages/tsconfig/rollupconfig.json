@@ -5,7 +5,6 @@
   "compilerOptions": {
     "declaration": true,
     "noEmit": true,
-    "allowImportingTsExtensions": null,
-    "moduleResolution": "Bundler"
+    "allowImportingTsExtensions": null
   }
 }

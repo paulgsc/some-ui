@@ -5,16 +5,16 @@
   "type": "module",
   "description": "Capacitor shell that packages www as a sideloadable Android APK, answering its own file_host routes from on-device SQLite",
   "scripts": {
-    "build:web": "cross-env VITE_DEVICE_BACKEND=true VITE_STATIC_DATA=false VITE_BASE_PATH=/ SOME_UI_PROFILE=mobile turbo run build --filter=www",
+    "build:web": "VITE_DEVICE_BACKEND=true VITE_STATIC_DATA=false VITE_BASE_PATH=/ SOME_UI_PROFILE=mobile turbo run build --filter=www",
     "knip": "knip --directory \"$(git rev-parse --show-toplevel)\" --workspace \"$(git rev-parse --show-prefix | sed 's:/*$::')\"",
     "sync": "cap sync android",
     "bundle": "pnpm build:web && pnpm sync",
-    "dev:web": "cross-env VITE_DEVICE_BACKEND=true VITE_STATIC_DATA=false VITE_BASE_PATH=/ SOME_UI_PROFILE=mobile pnpm --filter www exec vite",
-    "dev:android": "cross-env SOME_UI_LIVE_RELOAD=1 cap run android --live-reload --host localhost --port 5173 --forwardPorts 5173:5173",
+    "dev:web": "VITE_DEVICE_BACKEND=true VITE_STATIC_DATA=false VITE_BASE_PATH=/ SOME_UI_PROFILE=mobile pnpm --filter www exec vite",
+    "dev:android": "SOME_UI_LIVE_RELOAD=1 cap run android --live-reload --host localhost --port 5173 --forwardPorts 5173:5173",
     "apk": "pnpm bundle && cd android && ./gradlew assembleDebug",
     "open": "cap open android",
     "typecheck": "tsc --noEmit",
-    "clean": "rimraf .turbo && rimraf node_modules && rimraf android/app/build && rimraf android/build"
+    "clean": "rm -rf .turbo node_modules android/app/build android/build"
   },
   "dependencies": {
     "@capacitor-community/sqlite": "^8.1.1",
@@ -28,8 +28,6 @@
   "devDependencies": {
     "@capacitor/cli": "^8.5.2",
     "@some-ui/tsconfig": "workspace:*",
-    "cross-env": "^10.1.0",
-    "rimraf": "6.0.1",
-    "typescript": "^5.7.3"
+    "typescript": "catalog:"
   }
 }

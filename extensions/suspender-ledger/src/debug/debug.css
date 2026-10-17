@@ -180,7 +180,7 @@ table.sl-events td {
 table.sl-events td.detail {
   color: var(--sl-muted);
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
 .sl-filter {

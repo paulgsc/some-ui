@@ -200,7 +200,7 @@ table.sf-scopes td {
 table.sf-events td.detail {
   color: var(--sf-muted);
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
 .sf-filter {

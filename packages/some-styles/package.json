@@ -31,8 +31,8 @@
   "scripts": {
     "build:css": "unocss \"examples/**/*.{html,ts,tsx}\" --config uno.config.ts --out-file dist/some-ui.css",
     "generate:feelings": "tsx scripts/write-feeling-css.ts && prettier --write themes/feeling.css",
-    "clean": "rimraf .turbo && rimraf node_modules && rimraf .eslintcache && pnpm clean:build",
-    "clean:build": "rimraf ./dist ./tsconfig.tsbuildinfo",
+    "clean": "rm -rf .turbo node_modules .eslintcache && pnpm clean:build",
+    "clean:build": "rm -rf ./dist ./tsconfig.tsbuildinfo",
     "knip": "knip --directory \"$(git rev-parse --show-toplevel)\" --workspace \"$(git rev-parse --show-prefix | sed 's:/*$::')\"",
     "lint": "pnpm prettier && pnpm typecheck",
     "prettier": "prettier \"**/*.{js,mjs,ts,tsx,md,mdx,json,yml,css}\" --ignore-path $(git rev-parse --show-toplevel)/.prettierignore --check --cache",
@@ -40,20 +40,20 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@tailwindcss/postcss": "4.1.12",
+    "@tailwindcss/postcss": "catalog:",
     "jiti": "2.7.0",
     "postcss": "8.5.23",
-    "tailwindcss": "4.3.3",
+    "tailwindcss": "catalog:",
     "tailwindcss-animate": "1.0.7"
   },
   "peerDependencies": {
-    "@tailwindcss/vite": "^4.0.0",
+    "@tailwindcss/vite": "catalog:",
     "unocss": "^66.0.0",
     "vite": "^8.0.0"
   },
   "devDependencies": {
     "@some-ui/tsconfig": "workspace:*",
-    "@tailwindcss/vite": "4.3.3",
+    "@tailwindcss/vite": "catalog:",
     "@types/node": "^26.0.1",
     "@unocss/cli": "^66.8.1",
     "unocss": "^66.0.0",

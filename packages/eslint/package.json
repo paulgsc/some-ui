@@ -17,8 +17,8 @@
   "scripts": {
     "build": "tsc -b tsconfig.esm.build.json && tsc-alias -p tsconfig.esm.build.json",
     "check-dist": "if [ ! -d dist ]; then pnpm run build; fi",
-    "clean": "rimraf .turbo && rimraf node_modules && rimraf .eslintcache && pnpm clean:build",
-    "clean:build": "rimraf ./dist ./tsconfig.tsbuildinfo",
+    "clean": "rm -rf .turbo node_modules .eslintcache && pnpm clean:build",
+    "clean:build": "rm -rf ./dist ./tsconfig.tsbuildinfo",
     "gen:fixtures": "tsx scripts/gen-ts-lint-fixtures.ts",
     "knip": "knip --directory \"$(git rev-parse --show-toplevel)\" --workspace \"$(git rev-parse --show-prefix | sed 's:/*$::')\"",
     "lint": "pnpm lint:js && pnpm prettier && pnpm typecheck",
@@ -29,10 +29,10 @@
     "test:watch": "vitest"
   },
   "peerDependencies": {
-    "eslint": ">=9.22.0"
+    "eslint": ">=10.0.0"
   },
   "dependencies": {
-    "typescript": "^5.7.3"
+    "typescript": "catalog:"
   },
   "devDependencies": {
     "@eslint/compat": "2.1.1",
@@ -41,7 +41,6 @@
     "@types/eslint-plugin-jsx-a11y": "6.10.0",
     "@types/estree": "1.0.9",
     "@types/node": "^26.0.1",
-    "@typescript-eslint/eslint-plugin": "8.71.0",
     "@typescript-eslint/parser": "8.71.0",
     "@typescript-eslint/utils": "^8.71.0",
     "eslint": "10.12.0",
@@ -49,11 +48,10 @@
     "eslint-import-resolver-typescript": "4.4.5",
     "eslint-plugin-import-x": "4.17.1",
     "eslint-plugin-jsx-a11y": "6.10.2",
-    "eslint-plugin-prettier": "5.5.6",
     "eslint-plugin-react": "7.37.5",
     "eslint-plugin-react-hooks": "7.1.1",
     "eslint-plugin-react-you-might-not-need-an-effect": "1.0.2",
-    "eslint-plugin-unused-imports": "4.4.1",
+    "globals": "17.13.0",
     "tsc-alias": "^1.9.7",
     "typescript-eslint": "8.71.0",
     "vitest": "^5.0.3"

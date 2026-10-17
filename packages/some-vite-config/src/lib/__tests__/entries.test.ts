@@ -86,23 +86,36 @@ describe("createBuildConfig", () => {
 
 describe("generatePackageJsonFields", () => {
   it("exports each subpath with its own types, beside the main entry", () => {
-    const { exports } = generatePackageJsonFields({
-      packageName: "@some-ui/speech",
-      entries: { native: "src/native.ts" },
-    })
+    const { exports, style } = generatePackageJsonFields(
+      {
+        packageName: "@some-ui/speech",
+        entries: { native: "src/native.ts" },
+      },
+      { emitsCss: false }
+    )
 
+    expect(style).toBeUndefined()
     expect(exports).toEqual({
       ".": {
         types: "./dist/@some-ui/speech.d.ts",
         import: "./dist/@some-ui/speech.es.js",
         default: "./dist/@some-ui/speech.es.js",
       },
-      "./style.css": "./dist/speech.css",
       "./native": {
         types: "./dist/@some-ui/speech/native.d.ts",
         import: "./dist/@some-ui/speech/native.es.js",
         default: "./dist/@some-ui/speech/native.es.js",
       },
     })
+  })
+
+  it("exports the stylesheet only when the build emitted one", () => {
+    const { exports, style } = generatePackageJsonFields(
+      { packageName: "some-ui-auth" },
+      { realPackageName: "@some-ui/auth", emitsCss: true }
+    )
+
+    expect(style).toBe("./dist/auth.css")
+    expect(exports?.["./style.css"]).toBe("./dist/auth.css")
   })
 })

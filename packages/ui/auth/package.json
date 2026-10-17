@@ -8,11 +8,11 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json && vite build",
-    "clean": "rimraf .turbo && rimraf node_modules && rimraf .eslintcache && pnpm clean:build",
-    "clean:build": "rimraf ./dist ./tsconfig.build.tsbuildinfo ./tsconfig.tsbuildinfo",
+    "clean": "rm -rf .turbo node_modules .eslintcache && pnpm clean:build",
+    "clean:build": "rm -rf ./dist ./tsconfig.build.tsbuildinfo ./tsconfig.tsbuildinfo",
     "knip": "knip --directory \"$(git rev-parse --show-toplevel)\" --workspace \"$(git rev-parse --show-prefix | sed 's:/*$::')\"",
     "lint": "pnpm lint:js && pnpm prettier && pnpm typecheck",
-    "lint:js": "cross-env NODE_OPTIONS='--max_old_space_size=4096' eslint \"**/*.{js,mjs,ts,tsx}\" --cache",
+    "lint:js": "NODE_OPTIONS='--max_old_space_size=4096' eslint \"**/*.{js,mjs,ts,tsx}\" --cache",
     "prettier": "prettier \"**/*.{js,mjs,ts,tsx,md,mdx,json,yml,css}\" --ignore-path $(git rev-parse --show-toplevel)/.prettierignore --check --cache",
     "typecheck": "tsc --noEmit"
   },
@@ -29,8 +29,7 @@
   "devDependencies": {
     "@some-ui/tsconfig": "workspace:*",
     "@some-ui/vite-config": "workspace:*",
-    "@some-ui/eslint-kit": "workspace:*",
-    "eslint-import-resolver-typescript": "4.4.5"
+    "@some-ui/eslint-kit": "workspace:*"
   },
   "repository": {
     "type": "git",
@@ -51,7 +50,6 @@
   "main": "./dist/some-ui-auth.es.js",
   "module": "./dist/some-ui-auth.es.js",
   "types": "./dist/some-ui-auth.d.ts",
-  "style": "./dist/auth.css",
   "exports": {
     ".": {
       "types": "./dist/some-ui-auth.d.ts",
@@ -59,5 +57,6 @@
       "default": "./dist/some-ui-auth.es.js"
     },
     "./style.css": "./dist/auth.css"
-  }
+  },
+  "style": "./dist/auth.css"
 }

@@ -32,24 +32,30 @@ function cssBaseName(realPackageName: string): string {
   return parts[parts.length - 1] ?? realPackageName
 }
 
+/** Where the build writes the package's stylesheet, if it writes one. */
+export function cssFilePath(realPackageName: string): string {
+  return `dist/${cssBaseName(realPackageName)}.css`
+}
+
 /**
  * Pure: derives the build-output package.json fields from the vite options.
  * No filesystem access, no logging - safe to call from anywhere, including
- * static-analysis tooling. The filesystem write lives in ./write.ts.
+ * static-analysis tooling. The filesystem write lives in ./write.ts. Most
+ * packages have no CSS, so `style` and `./style.css` follow `emitsCss`.
  */
 export function generatePackageJsonFields(
   options: ViteConfigOptions,
-  realPackageName: string = options.packageName
+  {
+    realPackageName = options.packageName,
+    emitsCss,
+  }: { realPackageName?: string; emitsCss: boolean }
 ): PackageJsonFields {
   const { packageName, formats = DEFAULT_FORMATS } = options
 
   const hasESM = formats.includes("es")
   const hasCJS = formats.includes("cjs")
-  const hasUMD = formats.includes("umd")
-  const cssFileName = `dist/${cssBaseName(realPackageName)}.css`
+  const cssFileName = cssFilePath(realPackageName)
 
-  // Generate file paths
-  const distFiles: Array<string> = []
   const exports: Record<string, PackageJsonExportTarget> = {}
 
   // Every entry the build emits gets the same conditions, keyed by its
@@ -63,33 +69,22 @@ export function generatePackageJsonFields(
         require: `./dist/${name}.cjs.js`,
         default: `./dist/${name}.es.js`,
       }
-      distFiles.push(
-        `dist/${name}.es.js`,
-        `dist/${name}.cjs.js`,
-        `dist/${name}.d.ts`
-      )
     } else if (hasESM) {
       exports[entry.subpath] = {
         types: `./dist/${name}.d.ts`,
         import: `./dist/${name}.es.js`,
         default: `./dist/${name}.es.js`,
       }
-      distFiles.push(`dist/${name}.es.js`, `dist/${name}.d.ts`)
     } else if (hasCJS) {
       exports[entry.subpath] = {
         types: `./dist/${name}.d.ts`,
         require: `./dist/${name}.cjs.js`,
         default: `./dist/${name}.cjs.js`,
       }
-      distFiles.push(`dist/${name}.cjs.js`, `dist/${name}.d.ts`)
     }
-    if (entry.subpath === "." && (hasESM || hasCJS)) {
+    if (emitsCss && entry.subpath === "." && (hasESM || hasCJS)) {
       exports["./style.css"] = `./${cssFileName}`
     }
-  }
-
-  if (hasUMD) {
-    distFiles.push(`dist/${packageName}.umd.js`)
   }
 
   return {
@@ -100,7 +95,7 @@ export function generatePackageJsonFields(
         : undefined,
     module: hasESM ? `./dist/${packageName}.es.js` : undefined,
     types: `./dist/${packageName}.d.ts`,
-    style: `./${cssFileName}`,
+    style: emitsCss ? `./${cssFileName}` : undefined,
     exports: Object.keys(exports).length > 0 ? exports : undefined,
     files: ["dist"],
     type: hasESM && !hasCJS ? "module" : undefined,

@@ -20,8 +20,8 @@
     "@some-ui/eslint-kit": "workspace:*"
   },
   "scripts": {
-    "clean": "rimraf .turbo && rimraf node_modules && rimraf .eslintcache && pnpm clean:build",
-    "clean:build": "rimraf ./tests/e2e/harness/dist ./tsconfig.tsbuildinfo",
+    "clean": "rm -rf .turbo node_modules .eslintcache && pnpm clean:build",
+    "clean:build": "rm -rf ./tests/e2e/harness/dist ./tsconfig.tsbuildinfo",
     "eye-score:merge": "node scripts/merge-eye-score.mjs",
     "knip": "knip --directory \"$(git rev-parse --show-toplevel)\" --workspace \"$(git rev-parse --show-prefix | sed 's:/*$::')\"",
     "lint": "pnpm lint:js && pnpm prettier && pnpm typecheck",

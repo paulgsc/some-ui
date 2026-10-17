@@ -101,10 +101,13 @@ describe("enablePrepaint", () => {
 
 describe("veil filter compensation", () => {
   const stubRegime = (el: HTMLElement, inTopLayer: boolean): void => {
-    el.matches = (selector: string): boolean =>
-      selector === ":popover-open"
-        ? inTopLayer
-        : Element.prototype.matches.call(el, selector)
+    Object.defineProperty(el, "matches", {
+      configurable: true,
+      value: (selector: string): boolean =>
+        selector === ":popover-open"
+          ? inTopLayer
+          : Element.prototype.matches.call(el, selector),
+    })
   }
 
   it("counter-inverts against a vendor filter in the filtered regime", () => {

@@ -17,7 +17,8 @@ export function pdftotext(flags, pdf, check) {
       throw new Error(
         `The ${check} check requires \`pdftotext\` (Poppler). It is provided ` +
           "by the repo's nix shells; outside nix, install poppler-utils or " +
-          "set PDFTOTEXT_BIN to a compatible executable."
+          "set PDFTOTEXT_BIN to a compatible executable.",
+        { cause: error }
       )
     }
     throw error

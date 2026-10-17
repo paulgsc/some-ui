@@ -7,7 +7,9 @@ in `src/lib/topik/read-aloud/content`; complete, checked examples are the
 sets in [`sets/`](sets/). This file keeps only what is for developers.
 
 The format is governed by the adaptive-learning canon: the read-aloud rep and
-its valuation (Def. 4.8, Cor. 4.6), and concept identity (Def. 1.3).
+its valuation (Def. 4.8, Cor. 4.6), concept identity (Def. 1.3), and, for a
+line's optional `lens`, the grammar-lens item and its mistake catalogue
+(Def. 4.9, Cor. 4.8; the catalogue is `src/lib/topik/read-aloud/mistakes`).
 
 ## Using it
 
@@ -36,9 +38,11 @@ read-aloud says there is nothing to read yet.
 
 [`sets/`](sets/) holds the two decks the app once shipped, as set files:
 `starter.json` (every level, a few lines each) and `level-one.json` (level
-one, with roles and tenses throughout). Copy them to the Drive folder below
-and add them on the phone like any other set. A word keeps its id across
-them, so a learner's pace for it comes back when its set is added again.
+one, with roles and tenses throughout). Both carry grammar-lens material on
+the lines where a learner could go wrong in one word. Copy them to the Drive
+folder below and add them on the phone like any other set. A word keeps its
+id across them, so a learner's pace for it comes back when its set is added
+again.
 Nothing in the app imports these files; topik's tests read them from disk
 (`src/lib/topik/read-aloud/repo-sets`), which is where their content checks
 run. Edit them here, check them with those tests, and copy them again.

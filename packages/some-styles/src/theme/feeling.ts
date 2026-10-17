@@ -225,7 +225,8 @@ function clear(
   const away = luminance(grounds[0] ?? color) > 0.18 ? -0.01 : 0.01
   const short = (c: Oklch): boolean =>
     grounds.some((ground) => contrastRatio(c, ground) < floor)
-  let [l, c, h] = color
+  const [start, c, h] = color
+  let l = start
   for (let i = 0; i < 100 && short([l, c, h]); i++) {
     l = Math.min(1, Math.max(0, l + away))
   }

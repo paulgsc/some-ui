@@ -35,7 +35,7 @@ export const speechReducer: Reducer<SpeechQueueState, SpeechAction> = (
 
       // Insert into queue in priority order
       const newItems = [...state.items]
-      let idx = newItems.findIndex((i) => i.priority < newItem.priority)
+      const idx = newItems.findIndex((i) => i.priority < newItem.priority)
       if (idx === -1) newItems.push(newItem)
       else newItems.splice(idx, 0, newItem)
 

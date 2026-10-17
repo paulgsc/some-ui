@@ -60,7 +60,9 @@ for (const name of ["parent.lock", ".parentlock"]) {
   const p = join(PROFILE, name)
   try {
     rmSync(p, { force: true })
-  } catch {}
+  } catch {
+    // A lock still held means Firefox is running; it says so itself.
+  }
 }
 
 console.log("Firefox will open. When it does:")
