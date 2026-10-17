@@ -38,6 +38,13 @@ What follows from them:
 - **One screen, two readings.** Where the owner and a viewer can reach the same screen, it
   should say which of them is looking.
 - **No marketing voice:** no onboarding, no pitch, no promise of support.
+- **Never lose the record.** Because A is real use, the data it leaves (study sessions,
+  reflections, typing rounds, voice takes) is also the evidence of growth over time:
+  struggling to read a sentence at the first beta, finishing sessions much later. Showing
+  that is not built yet, but it can only ever be built if the history survives. So treat
+  the owner's history as append-only. Before adding anything that discards or rewrites it
+  (a cap that evicts old entries, pruning, a migration that drops or reshapes data, a
+  "let it go" that deletes for good), give it a durable copy first, or ask.
 
 **Open (the owner's call; ask, don't settle it):** whether some features need a mock
 demonstration surface (seeded data, nothing kept) where a video is not enough. Related: a
