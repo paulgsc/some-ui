@@ -130,6 +130,7 @@ export const HandheldLesson = ({
     sceneFileHint,
     wordSetHint,
     recordsLens,
+    lensTakes,
   } = useSessionConfig()
   const draft = useSceneVoice(sceneVoice)
   const feed = useTreeFeed(treeFeed)
@@ -230,6 +231,7 @@ export const HandheldLesson = ({
           speech={speaker}
           store={readAloud}
           lensRecord={recordsLens ? lensRecord : undefined}
+          lensTakes={lensTakes}
           deck={deck}
           short={short}
           paused={paused}

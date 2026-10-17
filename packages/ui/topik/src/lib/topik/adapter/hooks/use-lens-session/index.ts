@@ -34,6 +34,7 @@ export type LensSessionVM = LensSnapshot & {
   startSitting: () => void
   hearCue: () => void
   hearLine: () => void
+  startTake: () => void
 }
 
 export function useLensSession(options: UseLensSessionOptions): LensSessionVM {
@@ -56,7 +57,9 @@ export function useLensSession(options: UseLensSessionOptions): LensSessionVM {
     ))
     // A remount finds the set begun, and only shows it again.
     runtime.begin()
+    const detach = runtime.attach()
     return (): void => {
+      detach()
       runtime.dispose()
     }
   }, [])
@@ -83,5 +86,6 @@ export function useLensSession(options: UseLensSessionOptions): LensSessionVM {
     startSitting: (): void => send({ type: "start-sitting" }),
     hearCue: (): void => runtimeRef.current?.hearCue(),
     hearLine: (): void => runtimeRef.current?.hearLine(),
+    startTake: (): void => runtimeRef.current?.startTake(),
   }
 }

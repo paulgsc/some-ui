@@ -1,4 +1,8 @@
 import type { Speaker, SpeechOutcome } from "@some-ui/speech"
+import type {
+  LensTakes,
+  LensTakeSnapshot,
+} from "@topik/lib/topik/adapter/lens-takes"
 import type { LensAnswer } from "@topik/lib/topik/read-aloud/lens/items"
 import {
   currentItem,
@@ -38,7 +42,48 @@ function fakeSpeech(outcome: SpeechOutcome = { kind: "heard" }): FakeSpeech {
   return speech
 }
 
-function harness(speech: Speaker): {
+/** A take port whose take runs until stopped, then is kept at 2 s. */
+function fakeTakes(): LensTakes & { stops: number } {
+  let snapshot: LensTakeSnapshot = {
+    take: { kind: "idle" },
+    said: null,
+    last: null,
+    playing: false,
+    full: false,
+  }
+  const listeners = new Set<() => void>()
+  let kept = 0
+  const set = (next: Partial<LensTakeSnapshot>): void => {
+    snapshot = { ...snapshot, ...next }
+    for (const listener of listeners) listener()
+  }
+  const port = {
+    stops: 0,
+    getSnapshot: (): LensTakeSnapshot => snapshot,
+    subscribe: (listener: () => void): (() => void) => {
+      listeners.add(listener)
+      return () => listeners.delete(listener)
+    },
+    start: (): void => set({ take: { kind: "recording", elapsedMs: 0 } }),
+    stop: (): void => {
+      port.stops += 1
+      if (snapshot.take.kind !== "recording") return
+      kept += 1
+      set({
+        take: { kind: "idle" },
+        last: { id: `k${kept}`, durationMs: 2000 },
+      })
+    },
+    playLast: (): void => undefined,
+    reset: (): void => set({ take: { kind: "idle" }, last: null }),
+  }
+  return port
+}
+
+function harness(
+  speech: Speaker,
+  takes?: LensTakes
+): {
   runtime: LensRuntime
   last: () => LensSnapshot
   entries: Array<LensRecordEntry>
@@ -57,6 +102,7 @@ function harness(speech: Speaker): {
         record: (entry): void => {
           entries.push(entry)
         },
+        takes,
       },
     },
     (next): void => {
@@ -298,5 +344,58 @@ describe("createLensRuntime", () => {
     const cued = entries.filter((e) => e.cue !== null)
     expect(cued.length).toBeGreaterThan(0)
     for (const entry of cued) expect(entry.cue).toBe("glyph")
+  })
+
+  it("stops a take when hidden, voices nothing into one, and asks whether B was heard before the first", () => {
+    const speech = fakeSpeech()
+    const takes = fakeTakes()
+    const { runtime, last, entries } = harness(speech, takes)
+    const detach = runtime.attach()
+    runtime.begin()
+    runtime.dispatch({
+      type: "answer",
+      at: runtime.now(),
+      answer: firstAnswer(last()),
+    })
+    if (last().state.phase.name === "step-down") {
+      runtime.dispatch({ type: "skip-probes", at: runtime.now() })
+    }
+    const said = speech.said.length
+    runtime.startTake()
+    runtime.hearLine()
+    expect(speech.said).toHaveLength(said)
+    runtime.hide()
+    expect(takes.getSnapshot().take.kind).toBe("idle")
+    runtime.show()
+    // Heard only after the first take: the first was not after hearing.
+    runtime.hearLine()
+    runtime.startTake()
+    takes.stop()
+    runtime.dispatch({ type: "next", at: runtime.now() })
+    expect(entries.at(-1)?.take).toEqual({
+      count: 2,
+      lastMs: 2000,
+      heardFirst: false,
+    })
+    detach()
+  })
+
+  it("counts a take still under way when the learner leaves", () => {
+    const takes = fakeTakes()
+    const { runtime, last, entries } = harness(fakeSpeech(), takes)
+    const detach = runtime.attach()
+    runtime.begin()
+    runtime.dispatch({
+      type: "answer",
+      at: runtime.now(),
+      answer: firstAnswer(last()),
+    })
+    if (last().state.phase.name === "step-down") {
+      runtime.dispatch({ type: "skip-probes", at: runtime.now() })
+    }
+    runtime.startTake()
+    runtime.dispose()
+    expect(entries.at(-1)?.take).toMatchObject({ count: 1 })
+    detach()
   })
 })

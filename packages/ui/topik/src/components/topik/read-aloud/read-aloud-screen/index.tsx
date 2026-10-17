@@ -20,6 +20,7 @@ import type { Speaker } from "@some-ui/speech"
 import { LensSession } from "@topik/components/topik/read-aloud/lens-session"
 import { ReadAloudSession } from "@topik/components/topik/read-aloud/read-aloud-session"
 import type { LensRecordStore } from "@topik/lib/topik/adapter/lens-record-store"
+import type { LensTakes } from "@topik/lib/topik/adapter/lens-takes"
 import type { ReadAloudStore } from "@topik/lib/topik/adapter/read-aloud-store"
 import { createReadAloudStore } from "@topik/lib/topik/adapter/read-aloud-store"
 import type { ReadAloudDeck } from "@topik/lib/topik/read-aloud/content"
@@ -35,6 +36,8 @@ type ReadAloudScreenProps = {
   store?: ReadAloudStore
   /** Where the grammar lens's record is kept; absent, nothing is (Rem. 4.18). */
   lensRecord?: LensRecordStore
+  /** The learner's takes in the grammar lens (Rem. 4.16); absent, none. */
+  lensTakes?: LensTakes
   deck: ReadAloudDeck
   short?: boolean
   /** The host's session is paused (`useReadAloud`'s `paused`). */
@@ -49,6 +52,7 @@ export const ReadAloudScreen = ({
   speech,
   store: given,
   lensRecord,
+  lensTakes,
   deck,
   short = false,
   paused,
@@ -91,6 +95,7 @@ export const ReadAloudScreen = ({
         now={now}
         record={lensRecord?.add}
         recordFull={lensRecord?.full}
+        takes={lensTakes}
         onExit={() => setPractice("read-aloud")}
       />
     )

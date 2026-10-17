@@ -12,6 +12,7 @@
 
 import { assertNever } from "@some-ui/core-utils"
 import type { Speaker } from "@some-ui/speech"
+import type { LensTakes } from "@topik/lib/topik/adapter/lens-takes"
 import { SPOKEN_LANGUAGE } from "@topik/lib/topik/core/spoken-language"
 import type {
   ReadAloudDeck,
@@ -46,6 +47,8 @@ export type LensRuntimeOptions = {
    * has no export to carry the record, and then nothing is kept.
    */
   record?: (entry: LensRecordEntry) => void
+  /** The learner's takes (Rem. 4.16); absent, none is offered. */
+  takes?: LensTakes
   /** Test seams: the clock, and the key each new set is drawn with. */
   now?: () => number
   seedKey?: () => string
@@ -63,6 +66,10 @@ export type LensSnapshot = {
 
 export type LensRuntime = {
   dispatch: (event: LensEvent) => void
+  /** Follows the takes while mounted; returns the detach. */
+  attach: () => () => void
+  /** Starts a take of the current item's line, during its reveal. */
+  startTake: () => void
   begin: () => void
   hearCue: () => void
   hearLine: () => void
@@ -98,6 +105,16 @@ export function createLensRuntime(
   /** The session's entries so far, by set and index: what `racing` reads. */
   const kept = new Map<string, LensRecordEntry>()
   let set = 0
+  /** Per item of the set: the takes kept, and whether its line was heard. */
+  let takes = new Map<
+    number,
+    { count: number; lastMs: number; heardFirst: boolean }
+  >()
+  /** Items whose line was heard. */
+  let lineHeard = new Set<number>()
+  /** Whether the line had been heard when each item's first take began. */
+  let heardAtFirst = new Map<number, boolean>()
+  let lastTake: string | null = null
 
   const now = (): number => options().now?.() ?? Date.now()
   const publish = (): void => {
@@ -140,6 +157,7 @@ export function createLensRuntime(
             heard.add(item)
           }
           playing = which
+          if (which === "line") lineHeard.add(state.cursor)
           publish()
         },
       })
@@ -159,6 +177,30 @@ export function createLensRuntime(
       })
   }
 
+  /** A take is opening, recording or being kept. */
+  const taking = (): boolean =>
+    (options().takes?.getSnapshot().take.kind ?? "idle") !== "idle"
+
+  /**
+   * The item's takes for the record, a take still under way among them: one
+   * cut off by leaving or hiding is kept after this entry is written, and
+   * would land on no item.
+   */
+  const takenAt = (
+    index: number
+  ): { count: number; lastMs: number; heardFirst: boolean } | null => {
+    const made = takes.get(index) ?? null
+    const take = options().takes?.getSnapshot().take
+    const under = take?.kind === "recording" || take?.kind === "keeping"
+    if (!take || !under || index !== state.cursor) return made
+    return {
+      count: (made?.count ?? 0) + 1,
+      lastMs: take.kind === "recording" ? take.elapsedMs : (made?.lastMs ?? 0),
+      heardFirst:
+        made?.heardFirst ?? heardAtFirst.get(index) ?? lineHeard.has(index),
+    }
+  }
+
   const keep = (index: number, at: number): void => {
     const item = state.items[index]
     const outcome = state.outcomes[index]
@@ -173,6 +215,7 @@ export function createLensRuntime(
       closedAt: at,
       audio: heard.has(item),
       earlier,
+      take: takenAt(index),
     })
     kept.set(key, entry)
     try {
@@ -195,6 +238,9 @@ export function createLensRuntime(
       return
     }
     set += 1
+    takes = new Map()
+    lineHeard = new Set()
+    heardAtFirst = new Map()
     session ||= new Date(now()).toISOString()
     dispatch({ type: "begin", at: now(), items })
   }
@@ -216,6 +262,7 @@ export function createLensRuntime(
       }
       case "closed": {
         keep(effect.index, effect.at)
+        options().takes?.reset()
         return
       }
       case "stop-speech": {
@@ -251,25 +298,64 @@ export function createLensRuntime(
     },
     hearCue: (): void => {
       const cue = currentItem(state)?.cue
-      if (cue) say(cue.korean, "cue")
+      if (cue && !taking()) say(cue.korean, "cue")
     },
     hearLine: (): void => {
       const item = currentItem(state)
-      // The line as authored, and only once its reveal shows it so.
-      if (item && state.phase.name === "reveal") say(item.korean, "line")
+      // The line as authored, and only once its reveal shows it so; never
+      // into a take under way.
+      if (!item || state.phase.name !== "reveal" || taking()) return
+      say(item.korean, "line")
+    },
+    attach: (): (() => void) => {
+      const port = options().takes
+      if (!port) return () => undefined
+      return port.subscribe(() => {
+        const kept = port.getSnapshot().last
+        if (!kept || kept.id === lastTake) return
+        lastTake = kept.id
+        const index = state.cursor
+        const before = takes.get(index)
+        takes.set(index, {
+          count: (before?.count ?? 0) + 1,
+          lastMs: kept.durationMs,
+          heardFirst:
+            before?.heardFirst ??
+            heardAtFirst.get(index) ??
+            lineHeard.has(index),
+        })
+      })
+    },
+    startTake: (): void => {
+      const item = currentItem(state)
+      if (item && state.phase.name === "reveal") {
+        stopSpeech()
+        publish()
+        if (!heardAtFirst.has(state.cursor)) {
+          heardAtFirst.set(state.cursor, lineHeard.has(state.cursor))
+        }
+        options().takes?.start(item.lineId)
+      }
     },
     hide: (): void => {
       clearTimer()
-      // The app may be closed while hidden: keep what was answered.
+      // The app may be closed while hidden: keep what was answered, a take
+      // under way counted while its length is known.
       keep(state.cursor, now())
+      // No microphone or playback in the background; a take is kept.
+      options().takes?.stop()
       dispatch({ type: "hidden", at: now() })
     },
-    hold: (): void => dispatch({ type: "held", at: now() }),
+    hold: (): void => {
+      options().takes?.stop()
+      dispatch({ type: "held", at: now() })
+    },
     show: (): void => dispatch({ type: "shown", at: now() }),
     dispose: (): void => {
       // Left with an item answered: it closes here. A remount (React's
       // development double mount) shows it again.
       keep(state.cursor, now())
+      options().takes?.reset()
       dispatch({ type: "hidden", at: now() })
       clearTimer()
       stopSpeech()

@@ -1,5 +1,10 @@
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { LensSession } from "@topik/components/topik/read-aloud/lens-session"
+import type {
+  LensTakes,
+  LensTakeSnapshot,
+} from "@topik/lib/topik/adapter/lens-takes"
+import type { LensRecordEntry } from "@topik/lib/topik/read-aloud/lens/record"
 import { MISTAKES } from "@topik/lib/topik/read-aloud/mistakes"
 import { REPO_SETS } from "@topik/lib/topik/read-aloud/repo-sets"
 import { MAX_SCREEN_MS } from "@topik/lib/topik/read-aloud/timing"
@@ -9,6 +14,46 @@ afterEach(() => {
   cleanup()
   vi.useRealTimers()
 })
+
+/** A port that keeps a 2.5 s take whenever one is stopped. */
+function fakeTakes(
+  initial: Partial<LensTakeSnapshot> = {}
+): LensTakes & { started: Array<string> } {
+  let snapshot: LensTakeSnapshot = {
+    take: { kind: "idle" },
+    said: null,
+    last: null,
+    playing: false,
+    full: false,
+    ...initial,
+  }
+  const listeners = new Set<() => void>()
+  const set = (next: Partial<LensTakeSnapshot>): void => {
+    snapshot = { ...snapshot, ...next }
+    for (const listener of listeners) listener()
+  }
+  const started: Array<string> = []
+  return {
+    started,
+    getSnapshot: () => snapshot,
+    subscribe: (listener) => {
+      listeners.add(listener)
+      return () => listeners.delete(listener)
+    },
+    start: (line): void => {
+      started.push(line)
+      set({ take: { kind: "recording", elapsedMs: 0 } })
+    },
+    stop: (): void => {
+      set({
+        take: { kind: "idle" },
+        last: { id: `take-${started.length}`, durationMs: 2_500 },
+      })
+    },
+    playLast: () => undefined,
+    reset: () => set({ take: { kind: "idle" }, last: null }),
+  }
+}
 
 /** Answer whatever the card asks, the first way it offers. */
 function answerCard(): void {
@@ -199,5 +244,73 @@ describe("LensSession", () => {
     }
     vi.advanceTimersByTime(MAX_SCREEN_MS)
     expect(onExit).toHaveBeenCalledOnce()
+  })
+
+  it("offers a take on the reveal, and records how many were kept, never the audio", () => {
+    const takes = fakeTakes()
+    const entries: Array<LensRecordEntry> = []
+    render(
+      <LensSession
+        deck={REPO_SETS}
+        level={1}
+        speech={null}
+        seedKey={() => "takes"}
+        onExit={() => undefined}
+        takes={takes}
+        record={(entry) => entries.push(entry)}
+      />
+    )
+    expect(
+      screen.queryByRole("button", { name: /record yourself/i })
+    ).toBeNull()
+    while (
+      document
+        .querySelector('[data-slot="lens-card"]')
+        ?.getAttribute("data-phase") !== "reveal"
+    ) {
+      answerCard()
+    }
+    act(() => {
+      fireEvent.click(screen.getByRole("button", { name: /record yourself/i }))
+    })
+    expect(screen.getByRole("button", { name: /stop/i })).toBeTruthy()
+    act(() => {
+      fireEvent.click(screen.getByRole("button", { name: /stop/i }))
+    })
+    expect(screen.getByRole("button", { name: /mine 2\.5s/i })).toBeTruthy()
+    fireEvent.click(screen.getByRole("button", { name: /^again$/i }))
+    fireEvent.click(screen.getByRole("button", { name: /stop/i }))
+    answerCard()
+    expect(takes.started).toHaveLength(2)
+    expect(entries).toHaveLength(1)
+    expect(entries[0]).toMatchObject({
+      line: takes.started[0],
+      take: { count: 2, lastMs: 2_500, heardFirst: false },
+    })
+    expect(screen.queryByRole("button", { name: /mine/i })).toBeNull()
+  })
+
+  it("offers no take once the takes are full, and says how to make room (Rem. 4.16)", () => {
+    const takes = fakeTakes({ full: true })
+    render(
+      <LensSession
+        deck={REPO_SETS}
+        level={1}
+        speech={null}
+        seedKey={() => "takes"}
+        onExit={() => undefined}
+        takes={takes}
+      />
+    )
+    while (
+      document
+        .querySelector('[data-slot="lens-card"]')
+        ?.getAttribute("data-phase") !== "reveal"
+    ) {
+      answerCard()
+    }
+    const button = screen.getByRole("button", { name: /no room for a take/i })
+    expect(button.hasAttribute("disabled")).toBe(true)
+    expect(screen.getByRole("status").textContent).toMatch(/make room/i)
   })
 })

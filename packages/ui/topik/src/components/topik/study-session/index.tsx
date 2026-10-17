@@ -37,6 +37,7 @@ import {
   isShort,
   useElementBox,
 } from "@topik/lib/topik/adapter/hooks/use-surface"
+import type { LensTakes } from "@topik/lib/topik/adapter/lens-takes"
 import type { FileShare } from "@topik/lib/topik/adapter/next-scene-share"
 import type { SceneVoice } from "@topik/lib/topik/adapter/scene-voice"
 import { createTreeFeed } from "@topik/lib/topik/adapter/tree-feed"
@@ -100,6 +101,11 @@ export type KoreanStudyPageProps = {
    * export (adaptive-learning canon Rem. 4.18); absent, nothing is kept.
    */
   recordsLens?: boolean
+  /**
+   * The Android app's microphone, for the grammar lens's takes
+   * (`LensTakes`, Rem. 4.16); absent, none is offered.
+   */
+  lensTakes?: LensTakes
   /**
    * Art direction. `inherit` — the default — renders in whatever theme the
    * host established, so the user's session theme reaches the applet.
@@ -216,6 +222,7 @@ export const KoreanStudyPage = ({
   sceneFileHint,
   wordSetHint,
   recordsLens,
+  lensTakes,
   appearance = "inherit",
   surface = "auto",
   paused,
@@ -249,6 +256,7 @@ export const KoreanStudyPage = ({
       ...(sceneFileHint ? { sceneFileHint } : {}),
       ...(wordSetHint ? { wordSetHint } : {}),
       ...(recordsLens ? { recordsLens } : {}),
+      ...(lensTakes ? { lensTakes } : {}),
       ...(loadTreeManifest && loadTopik
         ? { treeFeed: createTreeFeed(loadTreeManifest, loadTopik) }
         : {}),
@@ -267,6 +275,7 @@ export const KoreanStudyPage = ({
       sceneFileHint,
       wordSetHint,
       recordsLens,
+      lensTakes,
     ]
   )
 

@@ -22,6 +22,8 @@ import type { Soundbite, SoundbiteStore } from "@some-ui/soundbites"
 import type { LensRecordExport, PracticeRecord } from "@some-ui/topik"
 
 import { foreignValue } from "@/lib/intent/foreign"
+import type { LensTake } from "@/lib/lens-takes"
+import { lensTakesForExport, letGoLensTakes } from "@/lib/lens-takes"
 import {
   isSaving,
   letGoReflections,
@@ -52,8 +54,12 @@ const GRAMMAR_LENS = [
   '`cue` is how the line it answered was given: "glyph" read (also a cue meant to be heard that could not be), "audio" heard, "both", or null for none. `answer` is the form picked, the word tapped as it was shown, or "looks right"; `shown` names the mistake-catalogue entries the item showed, `chosen` the one picked if the learner fell for it, and `expired` an item left unanswered for two minutes.',
   "`answerMs` is the time from its showing to its answer, its pauses left out, and `rushed` whether that was faster than reading the line, and the cue when it was read, at twice the level's rate. `racing` means three of five answers in the session were rushed by then; it stays so, and `grammarLens.sessions` says it per session. Weigh a racing session's entries less.",
   'After a miss, `stepDown` lists easier questions on the same line, each with its `rung` (4 tense, 3 subject or object, 2 where the ending starts, 1 the verb), `kind`, the `word` it named if any, the `answer` as text (a word, a cut such as 가|요, or a tense) and whether it was right; `end` says how it stopped ("right", "ran-out", "skipped", "expired", or "left" when the session ended during it) and `floor` the rung that came right first (0 when it ran out, else null). `situation` is the optional "when would someone say this" pick and whether it matched the author\'s.',
+  "`take` is the learner's recordings of the line after its reveal (`lensTakes`): how many were kept, the last one's length (`lastMs`), and whether they heard the line before the first (`heardFirst`); null when they made none.",
   "Use it to choose the next deck's misforms, cues and level. Null means the app could not load the record; no entries, that the phone held none it could read.",
 ].join(" ")
+
+const LENS_TAKES =
+  "`lensTakes` are the learner's own recordings of a grammar-lens line read aloud, made after its reveal, newest first: which `line`, when (`takenAt`, ms since the epoch), how long, and the audio as the file named in `file` (null: the audio could not be read). Nothing graded them. At most 40 are kept on the phone, each at most 30 seconds; once the learner confirms this file arrived, the takes in it leave the phone, so this file is their only copy. Listen for how the line is read, beside its `grammarLens` entries. Null means the app could not read them."
 
 const STOPS =
   '`stops` are the times a session was stopped before its end, each with when (`stoppedAt`), how far in (`elapsedMs` of `plannedMs`, in `scene`), `via` a tap on "Got to go" or leaving (`left`: the app went to the background, or Android\'s back button or a link in the app closed the session\'s screen), the optional `reason` (`legend` reads it) and where it was given (`reasonFrom`), and `outcome` (open, resumed, done or lapsed, as of `settledAt`). Not every departure is a stop: one the learner was back from within a minute (a glance), and a tap taken back before leaving ("Oops, keep going"), are deleted, and `paths` counts them instead. Only the newest 20 stops are kept, so an older session can show none.'
@@ -72,6 +78,7 @@ const ABOUT = [
   "A deleted session's counts, still on the phone, are in `pathsWithoutSession`.",
   READ_ALOUD_PRACTICE,
   GRAMMAR_LENS,
+  LENS_TAKES,
 ].join("\n")
 
 const ABOUT_REFLECTIONS = [
@@ -86,6 +93,10 @@ const ABOUT_REFLECTIONS = [
 
 function soundbiteFile(bite: Soundbite): string {
   return `soundbite-${bite.id}.${extensionOf(bite.mimeType)}`
+}
+
+function lensTakeFile(take: LensTake): string {
+  return `lens-take-${take.line}-${take.id.slice(0, 8)}.${extensionOf(take.mimeType)}`
 }
 
 /** Without `scenes` and `layout`: playback wiring, not what was studied. */
@@ -212,6 +223,19 @@ async function readAloudPractice(): Promise<PracticeRecord | null> {
   }
 }
 
+/** The learner's takes of lens lines, with their audio; null if unreadable. */
+async function lensTakes(): Promise<Array<{
+  take: LensTake
+  audio: Blob | null
+  read: boolean
+}> | null> {
+  try {
+    return await lensTakesForExport()
+  } catch {
+    return null
+  }
+}
+
 /** The grammar lens's record, loaded as the practice record is; null if it can't be. */
 async function grammarLens(): Promise<LensRecordExport | null> {
   try {
@@ -239,15 +263,16 @@ export type ShareResult = {
 
 /**
  * What the whole export put in front of the share sheet: `soundbites` are
- * those that went out, and `lens` the grammar-lens entries, the only ones
- * `handOffExport` may let go.
+ * those that went out, `lens` the grammar-lens entries and `takes` the
+ * grammar-lens takes, the only ones `handOffExport` may let go.
  */
 export type AgentExportResult = ShareResult & {
   soundbites: ReadonlyArray<string>
   lens: LensRecordExport["entries"]
+  takes: ReadonlyArray<string>
 }
 
-type Sent = Pick<AgentExportResult, "sent" | "soundbites" | "lens">
+type Sent = Pick<AgentExportResult, "sent" | "soundbites" | "lens" | "takes">
 
 /**
  * The person says these arrived: they leave the phone, and their sessions
@@ -264,18 +289,19 @@ export function handOff(ids: ReadonlyArray<string>, at = new Date()): void {
 
 /**
  * The person says the whole export arrived: its reflections leave the phone
- * (`handOff`), and so do the soundbites and grammar-lens entries that went
- * out; one recorded or changed since stays. Best effort: soundbites the store
+ * (`handOff`), and so do the soundbites, grammar-lens entries and takes that
+ * went out; one recorded or changed since stays. Best effort: soundbites the store
  * would not let go stay on the list, where each one's delete still lets it
  * go, and entries stay in the record for the next export.
  */
 export function handOffExport(
   store: SoundbiteRemover,
-  { sent, soundbites, lens }: Sent,
+  { sent, soundbites, lens, takes }: Sent,
   at = new Date()
 ): void {
   if (sent.length > 0) handOff(sent, at)
   if (soundbites.length > 0) store.remove(soundbites).catch(() => undefined)
+  if (takes.length > 0) letGoLensTakes(takes)
   if (lens.length > 0) {
     import("@some-ui/topik")
       .then(({ letGoLensRecord }) => letGoLensRecord(lens))
@@ -339,6 +365,7 @@ export async function shareAgentExport(
     if (blob) audio.set(bite.id, blob)
   }
   const sessions = await sessionsRepository.list()
+  const takes = await lensTakes()
   const exportedAt = now().toISOString()
   const lens = await grammarLens()
   const { bySession, files, sent } = await writeOut(
@@ -370,6 +397,11 @@ export async function shareAgentExport(
       stops: allStops(),
       readAloudPractice: await readAloudPractice(),
       grammarLens: lens,
+      lensTakes:
+        takes?.map(({ take, audio: blob }) => ({
+          ...take,
+          file: blob ? lensTakeFile(take) : null,
+        })) ?? null,
       // `file: null`: its audio could not be read (removed since listed).
       soundbites: bites.map((bite) => ({
         ...bite,
@@ -386,6 +418,9 @@ export async function shareAgentExport(
         const blob = audio.get(bite.id)
         return blob ? [{ name: soundbiteFile(bite), data: blob }] : []
       }),
+      ...(takes ?? []).flatMap(({ take, audio: blob }) =>
+        blob ? [{ name: lensTakeFile(take), data: blob }] : []
+      ),
       ...files,
     ]),
   })
@@ -396,5 +431,8 @@ export async function shareAgentExport(
     sent,
     soundbites: bites.map((bite) => bite.id),
     lens: lens?.entries ?? [],
+    // Likewise every take listed: its audio beside it, or none left to keep;
+    // never one whose audio could not be read, which may still be there.
+    takes: (takes ?? []).flatMap(({ take, read }) => (read ? [take.id] : [])),
   }
 }

@@ -4,42 +4,15 @@
  * runtime meets the browser's own machines, each wrapped so that what comes
  * back is a result, never a state we then claim to know.
  */
-import { micRecorder } from "@some-ui/voice-capture"
+import { audioPlayer, micRecorder } from "@some-ui/voice-capture"
 
 import type { JournalPorts } from "./journal/runtime"
 import type { JournalStore } from "./journal/store"
 import { indexedDbJournalStore } from "./journal/store"
 import { SOUNDBITE_BITS_PER_SECOND } from "./policy"
-import type { Playback, Player, SoundbitesPorts } from "./runtime"
+import type { SoundbitesPorts } from "./runtime"
 import type { SoundbiteStore } from "./store"
 import { indexedDbSoundbiteStore } from "./store"
-
-/**
- * Plays through an `Audio` element. `ended` settles once, whichever comes
- * first: the audio ending, `play()` failing, or `stop()`. The object URL is
- * released then too.
- */
-const audioPlayer: Player = {
-  play(audio): Playback {
-    const url = URL.createObjectURL(audio)
-    const element = new Audio(url)
-    let settle: () => void = () => undefined
-    const ended = new Promise<void>((resolve) => {
-      settle = resolve
-    })
-    let done = false
-    const stop = (): void => {
-      if (done) return
-      done = true
-      element.pause()
-      URL.revokeObjectURL(url)
-      settle()
-    }
-    element.onended = stop
-    element.play().catch(stop)
-    return { ended, stop }
-  },
-}
 
 function onPageVisibility(listener: (hidden: boolean) => void): () => void {
   const onChange = (): void => listener(document.visibilityState === "hidden")

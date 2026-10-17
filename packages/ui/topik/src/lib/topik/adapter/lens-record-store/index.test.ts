@@ -32,6 +32,7 @@ const entry = (
   racing: false,
   stepDown: null,
   situation: null,
+  take: null,
   ...overrides,
 })
 

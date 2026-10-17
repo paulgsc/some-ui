@@ -4,10 +4,9 @@
  * a port and each result into an event. It decides nothing; which result
  * still counts and what the page shows are `step`'s.
  */
-import type { StartRecording } from "@some-ui/voice-capture"
+import type { Playback, Player, StartRecording } from "@some-ui/voice-capture"
 import { takeRunner } from "@some-ui/voice-capture"
 import { TAKE_TICK_MS } from "@soundbites/lib/policy"
-import type { Playback, Player } from "@soundbites/lib/runtime"
 
 import type {
   JournalEffect,

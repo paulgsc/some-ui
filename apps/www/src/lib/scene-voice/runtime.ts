@@ -14,10 +14,10 @@ import type {
   VoiceNoteState,
 } from "@some-ui/voice-capture"
 import {
-  RECORDING_FAILURE_COPY,
-  ShelfFullError,
-  VOICE_NOTE_SAID,
+  shelveTake,
+  takeView,
   voiceNoteRuntime,
+  voiceNoteSaid,
 } from "@some-ui/voice-capture"
 
 import { SCENE_NOTES_MAX } from "./budget"
@@ -49,25 +49,9 @@ function snapshotOf(
   quiet: boolean
 ): SceneVoiceSnapshot {
   const full = notes.length >= SCENE_NOTES_MAX
-  const take: SceneVoiceSnapshot["take"] =
-    state.kind === "saving"
-      ? { kind: "keeping" }
-      : state.kind !== "taking"
-        ? { kind: "idle" }
-        : state.phase.kind === "opening"
-          ? { kind: "opening" }
-          : state.phase.kind === "recording"
-            ? { kind: "recording", elapsedMs: state.phase.elapsed }
-            : { kind: "keeping" }
   const said =
-    state.kind === "blocked"
-      ? RECORDING_FAILURE_COPY[state.reason]
-      : full
-        ? FULL
-        : state.kind === "idle" && state.last !== null && !quiet
-          ? VOICE_NOTE_SAID[state.last]
-          : null
-  return { notes, take, said, full }
+    state.kind !== "blocked" && full ? FULL : voiceNoteSaid(state, quiet)
+  return { notes, take: takeView(state), said, full }
 }
 
 export function createSceneVoice(ports: SceneVoicePorts): SceneVoice {
@@ -78,30 +62,15 @@ export function createSceneVoice(ports: SceneVoicePorts): SceneVoice {
     {
       startRecording: ports.startRecording,
       now: ports.now,
-      /**
-       * The audio first, then its entry, so an entry always has its audio;
-       * an entry that cannot be kept takes the audio back out
-       * (`sweepSceneVoice` clears what that misses).
-       */
+      // `sweepSceneVoice` clears what a failed listing leaves.
       save: (take, _atMs, saved) => {
         const id = ports.newId()
-        ports.saving(id, true)
-        ports.audio.put(id, take.blob).then(
-          () => {
-            ports.saving(id, false)
-            const listed = ports.notes.add({
-              id,
-              durationMs: Math.round(take.durationMs),
-              mimeType: take.mimeType,
-            })
-            if (!listed) ports.audio.remove([id]).catch(() => undefined)
-            saved(listed ? "kept" : "failed")
-          },
-          (error: unknown) => {
-            ports.saving(id, false)
-            saved(error instanceof ShelfFullError ? "full" : "failed")
-          }
-        )
+        const entry = {
+          id,
+          durationMs: Math.round(take.durationMs),
+          mimeType: take.mimeType,
+        }
+        shelveTake(ports, id, take, () => ports.notes.add(entry), saved)
       },
     },
     LIMITS

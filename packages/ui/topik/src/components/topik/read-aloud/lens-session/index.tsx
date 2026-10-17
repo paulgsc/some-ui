@@ -5,6 +5,7 @@
  */
 
 import type { JSX } from "react"
+import { useSyncExternalStore } from "react"
 import { StepLayout } from "@topik/components/topik/handheld/step-layout"
 import { LensCard } from "@topik/components/topik/read-aloud/lens-card"
 import { HeldNote } from "@topik/components/topik/read-aloud/rep-card"
@@ -12,6 +13,7 @@ import { SessionHeader } from "@topik/components/topik/read-aloud/session-header
 import { SetCard } from "@topik/components/topik/read-aloud/set-card"
 import type { UseLensSessionOptions } from "@topik/lib/topik/adapter/hooks/use-lens-session"
 import { useLensSession } from "@topik/lib/topik/adapter/hooks/use-lens-session"
+import type { LensTakeSnapshot } from "@topik/lib/topik/adapter/lens-takes"
 import {
   currentItem,
   currentOutcome,
@@ -19,6 +21,9 @@ import {
 } from "@topik/lib/topik/read-aloud/lens/machine"
 import { MISTAKES } from "@topik/lib/topik/read-aloud/mistakes"
 import { ArrowLeft } from "lucide-react"
+
+const noSubscription = (): (() => void) => () => undefined
+const noTake = (): LensTakeSnapshot | null => null
 
 export type LensSessionProps = UseLensSessionOptions & {
   short?: boolean
@@ -84,6 +89,11 @@ export const LensSession = ({
   // A hidden page keeps the card it paused mounted, for when it is shown.
   const showing = phase.name === "paused" ? phase.resume : phase
   const item = currentItem(state)
+  const { takes } = options
+  const take = useSyncExternalStore(
+    takes?.subscribe ?? noSubscription,
+    takes?.getSnapshot ?? noTake
+  )
 
   const header = (
     <SessionHeader
@@ -157,6 +167,16 @@ export const LensSession = ({
         onNext={vm.next}
         onHearCue={vm.hearCue}
         onHearLine={vm.hearLine}
+        take={
+          takes && take
+            ? {
+                snapshot: take,
+                onStart: vm.startTake,
+                onStop: takes.stop,
+                onPlay: takes.playLast,
+              }
+            : undefined
+        }
       />
     )
   })()
