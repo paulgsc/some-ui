@@ -18,12 +18,29 @@ import { ThemeSwitcher } from "@/components/theme-switcher"
 
 /**
  * The "why" behind this workspace, as a page: "/" says *what* is deployed;
- * this states the positions the projects take (a browser is an operating
- * system, exposure should be opt-in, visual comfort is measurable, a
- * curriculum should adapt). Not a blog: each position is one refusal, one
- * claim and one mechanism, held to `packages/ui/resume/resume.typ`'s rule
- * that a premise is immediately cashed out in its mechanism.
+ * this says what it is (the two mandates in `CLAUDE.md`: a toolkit that works
+ * for its one user, published read-only for everyone else) and then the
+ * positions the projects take (a browser is an operating system, exposure
+ * should be opt-in, visual comfort is measurable, a curriculum should adapt).
+ * Not a blog: each position is one refusal, one claim and one mechanism, held
+ * to `packages/ui/resume/resume.typ`'s rule that a premise is immediately
+ * cashed out in its mechanism.
  */
+
+type Mandate = { term: string; gloss: string }
+
+const MANDATES: ReadonlyArray<Mandate> = [
+  {
+    term: "It works.",
+    gloss:
+      "Each tool exists because I use it: to study, to track, to make, to watch. It has to do its job in my own day first.",
+  },
+  {
+    term: "It reads.",
+    gloss:
+      "Each tool is also published as it is, read-only, so anyone can see what it does and how, whatever they bring to it.",
+  },
+]
 
 type Position = {
   /** Display ordinal. Not derived from the array index — it's typeset. */
@@ -125,10 +142,16 @@ const PRINCIPLES: ReadonlyArray<Principle> = [
 
 type Figure = { value: string; label: string }
 
+/**
+ * Counted, not estimated: packages and extensions as
+ * `packages/ui/resume/scripts/check-claims.mjs` counts them (its
+ * EXPECTED_PACKAGE_COUNT and EXPECTED_EXTENSION_COUNT), canons as the
+ * `docs/canon/*.typ` files. Recount here when those change.
+ */
 const FIGURES: ReadonlyArray<Figure> = [
-  { value: "58", label: "workspace packages" },
-  { value: "6", label: "browser extensions" },
-  { value: "3", label: "formal canons" },
+  { value: "44", label: "workspace packages" },
+  { value: "5", label: "browser extensions" },
+  { value: "4", label: "formal canons" },
   { value: "1", label: "engineer" },
 ]
 
@@ -189,28 +212,62 @@ const Mission = (): JSX.Element => (
           Some UI — Mission
         </p>
         <h1 className="text-gradient-heading mt-6 text-5xl leading-[1.05] font-bold tracking-tight text-balance sm:text-6xl md:text-7xl">
-          Own the software you depend on.
+          My working toolkit, published as I use it.
         </h1>
         <p className="text-muted-foreground mt-8 max-w-2xl text-lg leading-relaxed text-pretty md:text-xl">
-          The tools that mediate a working day — the browser holding your state,
-          the feed spending your attention, the surface straining your eyes, the
-          software claiming to teach you — arrive with defaults chosen by
-          someone else. Every one of those defaults is reversible.
+          Everything here is something I use every day: how I learn Korean, how
+          I browse, the football numbers I care about, what I’m building next.
+          It’s a snapshot of real, live work, not a demo put together to be
+          shown.
         </p>
         <p className="text-muted-foreground/80 mt-5 max-w-2xl leading-relaxed text-pretty">
-          This workspace is four such reversals, built and operated as
-          production software rather than as arguments.
+          You’re seeing it read-only. The code is all public; my own data stays
+          on my home network and my devices.
         </p>
       </header>
 
+      {/* ── The two mandates ───────────────────────────────────────────── */}
+      <section
+        aria-labelledby="mandates-heading"
+        className="border-border/60 border-t py-16 md:py-20"
+      >
+        <h2
+          id="mandates-heading"
+          className="text-muted-foreground text-xs font-medium tracking-[0.2em] uppercase"
+        >
+          Two mandates
+        </h2>
+        <dl className="mt-10 grid gap-x-10 gap-y-10 sm:grid-cols-2">
+          {MANDATES.map(({ term, gloss }) => (
+            <div key={term} className="space-y-3">
+              <dt className="text-gradient-heading text-3xl font-bold tracking-tight md:text-4xl">
+                {term}
+              </dt>
+              <dd className="text-muted-foreground max-w-md leading-relaxed">
+                {gloss}
+              </dd>
+            </div>
+          ))}
+        </dl>
+      </section>
+
       {/* ── The four positions ─────────────────────────────────────────── */}
-      <section aria-labelledby="positions-heading" className="pb-8">
+      <section
+        aria-labelledby="positions-heading"
+        className="border-border/60 border-t pt-16 pb-8 md:pt-20"
+      >
         <h2
           id="positions-heading"
-          className="text-muted-foreground pb-2 text-xs font-medium tracking-[0.2em] uppercase"
+          className="text-muted-foreground text-xs font-medium tracking-[0.2em] uppercase"
         >
           Positions
         </h2>
+        <p className="text-muted-foreground mt-6 max-w-2xl pb-6 leading-relaxed text-pretty">
+          The tools that mediate a working day (the browser holding your state,
+          the feed spending your attention, the surface straining your eyes, the
+          software claiming to teach you) arrive with defaults chosen by someone
+          else. Four of these tools start by reversing one.
+        </p>
         {POSITIONS.map((position) => (
           <PositionRow key={position.ordinal} {...position} />
         ))}

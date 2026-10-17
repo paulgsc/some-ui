@@ -1,5 +1,51 @@
 # CLAUDE.md
 
+## What this repository is: two mandates
+
+Read this first. It answers the product questions the rest of this file doesn't.
+
+This is one person's working toolkit (studying, tracking, making, watching) run as real
+software, and every surface in it answers to two mandates at once:
+
+- **A: it works.** Build applications that materially achieve their goal in the owner's own
+  workflow. This is the owner's working mind on a screen, used every day, not a showcase.
+- **B: it reads.** Make each of them legible as an artifact any third party can take in,
+  read-only, at whatever level of sophistication they bring. Not a product: an organic
+  snapshot of real, live work, never a scripted demo or a pitch.
+
+There are two users:
+
+- **The owner:** the only one who signs in and the only one ever online. Uses, maintains
+  and consumes all of it.
+- **The viewer** (the owner's word is "voyeur"): anyone else. Observes, read-only, and
+  never sees the owner's data. The source is public, so a viewer could rebuild any of it;
+  serving that is not the goal.
+
+What follows from them:
+
+- **Published by default.** The code is public, and the apps ship through public channels
+  (Pages, AMO, Google Play, YouTube). "For me" names the audience, not the exposure: never
+  drop a public channel or its upkeep (the APK's Play readiness in `apps/mobile/README.md`,
+  say) because only the owner uses the thing.
+- **Private only where the data is personal.** What serves A and holds PII stays on the
+  home network (the `lan` audience, behind the passkey) and on the owner's own devices.
+- **A comes first, and B never fakes A.** Legibility effort goes to what really drives the
+  workflow, and no surface pretends to do something it does not.
+- **A way in for every reader.** Something anyone can take in (a short demo video), the
+  live screens for the curious, the source for the technical, each disclosed by
+  interaction rather than all at once. The extensions comb is the model
+  (`packages/ui/honeycomb/src/components/extensions-comb/extensions.data.ts`).
+- **One screen, two readings.** Where the owner and a viewer can reach the same screen, it
+  should say which of them is looking.
+- **No marketing voice:** no onboarding, no pitch, no promise of support.
+
+**Open (the owner's call; ask, don't settle it):** whether some features need a mock
+demonstration surface (seeded data, nothing kept) where a video is not enough. Related: a
+Pages visitor can use the study screens today, with data kept in their own browser, which
+"read-only" may change. Pages already runs on bundled seed data (`apps/www/src/lib/data-mode`).
+
+`/mission` (`apps/www/src/routes/mission.tsx`) says the same to the viewer.
+
 ## Pre-commit verification (Claude Code Remote)
 
 `.husky/pre-commit` skips its `lint-staged` step when `CLAUDE_CODE_REMOTE=true` — for a
