@@ -23,8 +23,7 @@ export type ConfirmRequest = {
 
 /**
  * A question before something that cannot be undone, as a sheet from the
- * bottom of the phone in the app's own theme, where `window.confirm` showed
- * the WebView's grey box with OK and Cancel. `ask` opens it; render `sheet`
+ * bottom of the phone in the app's own theme. `ask` opens it; render `sheet`
  * once, anywhere in the component. A yes runs `onConfirm` and closes it.
  */
 export function useConfirmSheet(): {

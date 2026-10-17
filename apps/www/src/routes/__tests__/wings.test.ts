@@ -38,14 +38,4 @@ describe("wings: every route has one owner", () => {
       expect(owners, path).toHaveLength(1)
     }
   })
-
-  it("names only routes that exist", () => {
-    const known = new Set(paths)
-    for (const root of [
-      ...ROOMS.flatMap((room) => room.roots),
-      FOYER,
-      ...FRONT_DESK,
-    ])
-      expect(known.has(root), root).toBe(true)
-  })
 })

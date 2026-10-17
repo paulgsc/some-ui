@@ -10,6 +10,7 @@ import {
 } from "@some-ui/shared"
 import { toast } from "sonner"
 
+import { DATA_MODE } from "@/lib/data-mode"
 import { useIntent, useIntentEffect } from "@/lib/intent"
 import { IntentButton, IntentFailure } from "@/lib/intent/render"
 import { matchQueryOutcome, queryOutcome } from "@/lib/query-outcome"
@@ -20,10 +21,8 @@ import { HostedVoiceFields } from "@/components/settings/hosted-voice-fields"
 import { StudyNudgeSection } from "@/components/settings/study-nudge-section"
 
 /**
- * The fields this form edits, and only those. The settings record also holds
- * what the header's audio menu writes straight through
- * (`lib/audio-preferences`); a draft of the whole record saved it back as it
- * was when the form opened, undoing a change made in that menu meanwhile.
+ * The fields this form edits; the rest of the record is the header's audio
+ * menu's (`lib/audio-preferences`).
  */
 type StudyFields = Pick<
   UserSettings,
@@ -84,7 +83,7 @@ const StudySettingsForm = ({
             value={draft.deviceVoiceId}
             onChange={(deviceVoiceId) => setDraft({ ...draft, deviceVoiceId })}
           />
-        ) : import.meta.env.VITE_STATIC_DATA === "true" ? null : (
+        ) : DATA_MODE === "static" ? null : (
           <HostedVoiceFields
             value={draft.ttsVoice}
             onChange={(ttsVoice) => setDraft({ ...draft, ttsVoice })}
@@ -111,9 +110,8 @@ const StudySettingsForm = ({
 }
 
 /**
- * Practice's settings (lib/wings): the voice and the study reminders. On the
- * phone they are Practice's own page; the web's Settings carries them until
- * the web has wings too.
+ * Practice's settings (lib/wings): the voice and the study reminders, at
+ * `/practice/settings` on both surfaces.
  */
 export const StudySettings = (): JSX.Element => {
   const outcome = queryOutcome(useSettings())

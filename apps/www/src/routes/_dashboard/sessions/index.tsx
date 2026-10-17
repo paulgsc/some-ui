@@ -67,6 +67,27 @@ function badgeVariantFor(
   return "outline"
 }
 
+/**
+ * One tag per activity config (summarizeConfig), so two drafts of one
+ * activity are told apart. A retired activity has nothing left to summarize.
+ * The key is the position: the same activity can repeat within a session.
+ */
+function activityTags(
+  session: SessionRecord
+): ReadonlyArray<{ key: string; name: string; summary: string }> {
+  return session.activities.flatMap((sessionActivity, index) => {
+    const activity = findActivity(sessionActivity.activityId)
+    if (!activity) return []
+    return [
+      {
+        key: `${sessionActivity.activityId}-${index}`,
+        name: activity.name,
+        summary: summarizeConfig(activity, sessionActivity.config),
+      },
+    ]
+  })
+}
+
 const SessionsSkeleton = (): JSX.Element => (
   <div className="space-y-3">
     <Skeleton className="h-20 w-full" />
@@ -145,25 +166,16 @@ const SessionCard = ({
                 {STATUS_LABEL[session.status]}
               </Badge>
             </div>
-            {/* One tag per activity config (summarizeConfig), so two drafts
-                  of one activity are distinguishable. */}
             <div className="mt-1 flex flex-wrap items-center gap-1.5">
-              {session.activities.map((sessionActivity, index) => {
-                const activity = findActivity(sessionActivity.activityId)
-                // A retired activity has nothing left to summarize.
-                if (!activity) return null
-                return (
-                  <Badge
-                    // eslint-disable-next-line react/no-array-index-key -- position within one session's fixed activity list is a stable identity here; the same activityId can repeat within a session
-                    key={`${sessionActivity.activityId}-${index}`}
-                    variant="outline"
-                    className="text-muted-foreground max-w-full truncate font-normal"
-                  >
-                    {activity.name}:{" "}
-                    {summarizeConfig(activity, sessionActivity.config)}
-                  </Badge>
-                )
-              })}
+              {activityTags(session).map((tag) => (
+                <Badge
+                  key={tag.key}
+                  variant="outline"
+                  className="text-muted-foreground max-w-full truncate font-normal"
+                >
+                  {tag.name}: {tag.summary}
+                </Badge>
+              ))}
             </div>
             <p className="text-muted-foreground mt-1 hidden text-xs sm:block">
               Updated {formatRelativeTime(session.updatedAt)}
@@ -226,19 +238,13 @@ const PhoneSessionRow = ({
   const duplicateIntent = useIntent(useDuplicateSession(), {
     presentation: "interactive",
   })
-  // One tag per activity config, as on the desktop card, so two drafts of
-  // one activity are told apart; the activity's name too once there are two.
-  const configs = session.activities
-    .flatMap((sessionActivity) => {
-      const activity = findActivity(sessionActivity.activityId)
-      if (!activity) return []
-      const summary = summarizeConfig(activity, sessionActivity.config)
-      return [
-        session.activities.length > 1
-          ? `${activity.name} · ${summary}`
-          : summary,
-      ]
-    })
+  // The activity's name too once there are two.
+  const configs = activityTags(session)
+    .map((tag) =>
+      session.activities.length > 1
+        ? `${tag.name} · ${tag.summary}`
+        : tag.summary
+    )
     .join(", ")
   const body = (
     <span className="flex min-w-0 flex-1 flex-col gap-0.5">

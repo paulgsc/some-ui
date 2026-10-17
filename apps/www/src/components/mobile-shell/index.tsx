@@ -17,19 +17,13 @@ import { ChevronLeft, Settings } from "lucide-react"
 import { isOnMobileSurface } from "@/lib/app-surface"
 import { hasAudience } from "@/lib/build-profile"
 import type { Room } from "@/lib/wings"
-import { FOYER, tabsOf, wingOf } from "@/lib/wings"
+import { FOYER, owns, tabsOf, wingOf } from "@/lib/wings"
 
 /** Each tab's glyph, by room; a room without one gets no icon. */
 const GLYPHS: Partial<Record<string, ComponentType<{ className?: string }>>> = {
   "practice-home": HomeGlyph,
   sessions: StudyGlyph,
   soundbites: TalkGlyph,
-}
-
-function isActive(room: Room, pathname: string): boolean {
-  return room.roots.some(
-    (root) => pathname === root || pathname.startsWith(`${root}/`)
-  )
 }
 
 const TabLink = ({
@@ -39,7 +33,7 @@ const TabLink = ({
   room: Room & { tab: string }
   pathname: string
 }): JSX.Element => {
-  const active = isActive(room, pathname)
+  const active = room.roots.some((root) => owns(root, pathname))
   const Glyph = GLYPHS[room.id]
   const [to] = room.roots
   return (
@@ -72,7 +66,6 @@ const TabLink = ({
  * for the bar where it is a rail (`rail:`).
  */
 export function barOf(pathname: string): ReadonlyArray<Room & { tab: string }> {
-  if (!hasAudience("apk")) return []
   const wing = wingOf(pathname)
   const tabs = wing
     ? tabsOf(wing.id).filter((room) => room.roots.every(isOnMobileSurface))

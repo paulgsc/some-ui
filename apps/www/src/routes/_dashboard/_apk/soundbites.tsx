@@ -10,7 +10,7 @@ import { useAsyncIntent, useIntentEffect } from "@/lib/intent"
 import { IntentButton } from "@/lib/intent/render"
 import type { SessionRecord, SessionStatus } from "@/lib/tenant"
 import { sessionsQuery, useSessions } from "@/lib/tenant"
-import { goingOut } from "@/components/reflection/copy"
+import { arrived, goingOut } from "@/components/reflection/copy"
 
 /**
  * `?say=` comes from a tap that already meant "let me talk" (Practice's "Not
@@ -70,20 +70,15 @@ const ShareWithAgent = ({ taking }: { taking: boolean }): JSX.Element => {
   const share = useAsyncIntent(() => shareAgentExport(phoneSoundbiteStore()), {
     presentation: "interactive",
   })
-  // Android says "shared" once an app is picked, even if the person backs
-  // out of it: the reflections and soundbites leave the phone only once they
-  // say so.
   const { ask, sheet } = useConfirmSheet()
   useIntentEffect(share, (result) => {
     const going = goingOut(result.sent.length, result.soundbites.length)
     if (result.outcome !== "shared" || going === "") return
-    ask({
-      title: "Did they arrive?",
-      description: `Once they have, the ${going} can leave this phone.`,
-      confirm: "They arrived: let them go",
-      keep: "Keep them here",
-      onConfirm: () => handOffExport(phoneSoundbiteStore(), result),
-    })
+    ask(
+      arrived(`the ${going}`, "Keep them here", () =>
+        handOffExport(phoneSoundbiteStore(), result)
+      )
+    )
   })
   return (
     <section className="space-y-2">

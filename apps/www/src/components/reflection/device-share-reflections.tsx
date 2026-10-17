@@ -15,7 +15,7 @@ import { handOff, shareReflections } from "@/lib/agent-export"
 import { useAsyncIntent, useIntentEffect } from "@/lib/intent"
 import { IntentButton } from "@/lib/intent/render"
 
-import { counted } from "./copy"
+import { arrived, counted } from "./copy"
 
 export const DeviceShareReflections = ({
   sessionIds,
@@ -39,13 +39,11 @@ export const DeviceShareReflections = ({
   const { ask, sheet } = useConfirmSheet()
   useIntentEffect(share, ({ outcome, sent }) => {
     if (outcome !== "shared" || sent.length === 0) return
-    ask({
-      title: "Did they arrive?",
-      description: `Once they have, ${counted(sent.length)} can leave this phone.`,
-      confirm: "They arrived: let them go",
-      keep: "Keep them to share again",
-      onConfirm: () => handOff(sent),
-    })
+    ask(
+      arrived(counted(sent.length), "Keep them to share again", () =>
+        handOff(sent)
+      )
+    )
   })
   return (
     <>

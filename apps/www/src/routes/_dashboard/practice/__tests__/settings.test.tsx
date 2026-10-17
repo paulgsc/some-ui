@@ -2,8 +2,7 @@
  * @vitest-environment jsdom
  *
  * Settings' save button (`useIntent`/`IntentButton`), on Practice's settings
- * (`components/settings/study-settings`), which the web's Settings carries.
- * Settings persist through
+ * (`components/settings/study-settings`). Settings persist through
  * `SettingsRepository` straight to `localStorage`, so writes are observed and
  * failures injected by spying on `SettingsRepository.prototype.save`; there
  * is no `fetch` to sabotage. A non-`FileHost*Error` maps to

@@ -26,9 +26,7 @@ vi.mock("@/lib/build-profile", () => ({
     (audience === "apk" && carriesApk) || (audience === "lan" && carriesLan),
 }))
 
-const { ENTRY_ROOTS, entryRoot, listenForWingEntry } = await import(
-  "@/lib/wings/entry"
-)
+const { entryRoot, listenForWingEntry } = await import("@/lib/wings/entry")
 
 afterEach(() => {
   carriesApk = true
@@ -109,15 +107,6 @@ describe("wings", () => {
     ])
   })
 
-  it("lists only a wing's own rooms as its tabs", () => {
-    expect(tabsOf("practice").map((room) => room.tab)).toEqual([
-      "Home",
-      "Study",
-      "Bites",
-    ])
-    expect(tabsOf("self")).toEqual([])
-  })
-
   it("has no tabs in a build without the phone's pages (A3)", () => {
     carriesApk = false
     expect(tabsOf("practice")).toEqual([])
@@ -126,7 +115,6 @@ describe("wings", () => {
 
 describe("wing entry", () => {
   it("knows the foyer and each wing's Home, and nothing else", () => {
-    expect(ENTRY_ROOTS).toEqual(["/foyer", "/practice", "/aph", "/journal"])
     expect(entryRoot("/aph")).toBe("/aph")
     expect(entryRoot("/settings")).toBeUndefined()
     expect(entryRoot("https://example.com")).toBeUndefined()

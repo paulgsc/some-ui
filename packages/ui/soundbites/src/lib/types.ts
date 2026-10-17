@@ -12,8 +12,8 @@ export type SoundbiteSource =
   /** The "Not today" action on a study reminder notification. */
   | "reminder"
   /**
-   * "Talk now" in the phone's former + sheet: a comment, not a reason. Kept
-   * so older takes still read.
+   * A comment, not a reason. No longer recorded; kept so older takes still
+   * read.
    */
   | "capture"
   /**

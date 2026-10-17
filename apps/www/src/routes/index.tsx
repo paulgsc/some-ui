@@ -13,13 +13,6 @@ import { ExtensionsPage } from "@/components/extensions/extensions-page"
 import { ThemeSwitcher } from "@/components/theme-switcher"
 import { WING_GLYPHS } from "@/components/wing-glyph"
 
-/**
- * The owner's "/" on the home network: the web's foyer. First the wings to go
- * into (lib/wings), then what is published from here, each with its channel
- * (`lib/site-map`). A visitor with no session gets the extensions tour
- * instead (see `Root`).
- */
-
 const DestinationCard = ({
   title,
   blurb,
@@ -63,6 +56,12 @@ const PUBLISHED = destinationsHere().filter(
   (d): d is Destination & { channel: string } => d.channel !== undefined
 )
 
+/**
+ * The owner's "/" on the home network: the web's foyer. First the wings to go
+ * into (lib/wings), then what is published from here, each with its channel
+ * (`lib/site-map`). A visitor with no session gets the extensions tour
+ * instead (see `Root`).
+ */
 const Landing = (): JSX.Element => (
   <main className="bg-background text-foreground relative min-h-svh">
     <div className="absolute top-4 right-4 flex items-center gap-1">

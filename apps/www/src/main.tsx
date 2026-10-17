@@ -73,9 +73,7 @@ const router = createRouter({
   defaultPendingComponent: RoutePending,
 })
 
-// A wing's launcher icon tapped while the Android app is open navigates here
-// rather than reloading (lib/wings/entry). Before render, so it is in place
-// before the page finishes loading.
+// A wing's launcher icon tapped while the Android app is open (lib/wings/entry).
 listenForWingEntry((to) => void router.navigate({ to }))
 
 const rootElement = document.getElementById("app")
