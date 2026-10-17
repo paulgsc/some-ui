@@ -8,7 +8,7 @@
  * server has no route for them, and audio is the one thing that database
  * would hold as large opaque values for no query to read.
  */
-import { connection, done, result } from "@some-ui/voice-capture"
+import { connection, done, fitsRoom, result } from "@some-ui/voice-capture"
 
 import { byNewest, displacedBy, fitsMaxBytes, SOUNDBITE_LIMIT } from "./policy"
 import type { Soundbite } from "./types"
@@ -20,7 +20,8 @@ export type SoundbiteStore = {
   /**
    * Keeps `bite` with its audio. When the phone already holds the limit, it
    * replaces `replace` if that is still kept, else the oldest. Rejects with
-   * `SoundbitesFullError`, keeping nothing, past `SOUNDBITES_MAX_BYTES`.
+   * `SoundbitesFullError`, keeping nothing, past `SOUNDBITES_MAX_BYTES` or
+   * the device's room.
    */
   save: (bite: Soundbite, audio: Blob, replace: string | null) => Promise<void>
   /** Lets go of each of `ids` still kept, in one transaction. */
@@ -105,6 +106,8 @@ export function indexedDbSoundbiteStore(): SoundbiteStore {
     },
 
     async save(bite, audio, replace): Promise<void> {
+      // Before the transaction: it would close while another store is read.
+      if (!(await fitsRoom(audio.size))) throw new SoundbitesFullError()
       const tx = (await connect()).transaction([META, AUDIO], "readwrite")
       const meta = tx.objectStore(META)
       const audios = tx.objectStore(AUDIO)

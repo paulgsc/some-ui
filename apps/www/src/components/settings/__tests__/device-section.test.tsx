@@ -3,7 +3,7 @@
  *
  * LA8 on the phone's Settings: opening it reads only the phone's own pairing
  * and sends nothing; the destination is named before any tap that sends;
- * unpairing and sending the shelf each take a second, deliberate press.
+ * unpairing and sending each take a second, deliberate press.
  */
 
 import type { ReactNode } from "react"
@@ -168,46 +168,25 @@ describe("DeviceSection's Home server block", () => {
     expect(screen.getByText("Unpaired.")).toBeTruthy()
   })
 
-  it("sends the shelf only after a confirm that names the count and the host", async () => {
+  it("sends only after a confirm that names what and the host", async () => {
     home.record = JSON.stringify({
       base: "https://home.example/api/v1",
       token: "t",
     })
     await open()
-    await press(/send shelf to home.example/i)
+    await press(/send to home.example/i)
     expect(home.sent).toEqual([])
     expect(
       screen.getByText(
-        /send 2 kept items \(1 TOPIK, 1 Leetype\) to home.example\?/i
+        /send 1 session and 2 kept items to home.example\? finished sessions are cleared from this phone/i
       )
     ).toBeTruthy()
 
     await press(/^cancel$/i)
     expect(home.sent).toEqual([])
 
-    await press(/send shelf to home.example/i)
-    await press(/^send 2$/i)
-    expect(home.sent).toHaveLength(2)
-  })
-
-  it("copies sessions only after a confirm that names the count and the host", async () => {
-    home.record = JSON.stringify({
-      base: "https://home.example/api/v1",
-      token: "t",
-    })
-    await open()
-    await press(/copy sessions to home.example/i)
-    expect(home.sent).toEqual([])
-    expect(screen.getByText(/copy 1 session to home.example\?/i)).toBeTruthy()
-    expect(
-      screen.getByText(/finished ones are cleared from this phone/i)
-    ).toBeTruthy()
-
-    await press(/^cancel$/i)
-    expect(home.sent).toEqual([])
-
-    await press(/copy sessions to home.example/i)
-    await press(/^copy 1$/i)
+    await press(/send to home.example/i)
+    await press(/^send 3$/i)
     expect(home.sent[0]).toMatchObject({
       method: "POST",
       url: "https://home.example/api/v1/sessions",

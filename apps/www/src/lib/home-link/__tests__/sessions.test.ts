@@ -11,14 +11,16 @@ import { openNodeSqlite } from "@/test-support/node-sqlite-driver"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 import { openDeviceBackend } from "@/lib/device-backend/backend"
+import type * as ShelfHandlers from "@/lib/device-backend/handlers/shelf"
 import { SyncStoppedError } from "@/lib/device-backend/home-sync"
 import type { DeviceBackend } from "@/lib/device-backend/interceptor"
 import { createDeviceFetch } from "@/lib/device-backend/interceptor"
 import type { HomeAnswer } from "@/lib/device-backend/native-http"
 import type { HomeSend } from "@/lib/home-link/runtime"
+import { sendHome } from "@/lib/home-link/send"
 import {
-  copySessionsHome,
-  describeCopy,
+  causedBy,
+  HomeForgotPhoneError,
   homeTransport,
 } from "@/lib/home-link/sessions"
 import { createHttpSessionsRepository } from "@/lib/tenant/http-sessions-repository"
@@ -67,6 +69,15 @@ vi.mock("@/lib/tenant/queries", () => ({
       return Promise.resolve()
     },
   },
+}))
+vi.mock("@/lib/device-backend/boot", () => ({
+  deviceBackend: (): Promise<{ context: { db: object } }> =>
+    Promise.resolve({ context: { db: {} } }),
+}))
+vi.mock("@/lib/device-backend/handlers/shelf", async (actual) => ({
+  ...(await actual<typeof ShelfHandlers>()),
+  // The phone keeps nothing on its shelf here: this file is about sessions.
+  everyKept: (): Promise<Array<never>> => Promise.resolve([]),
 }))
 vi.mock("@/lib/device-backend/storage-view", () => ({
   deviceStorage: { refresh: (): Promise<void> => Promise.resolve() },
@@ -161,10 +172,6 @@ describe("copying the phone's sessions home", () => {
       outcome: { kind: "copied", copied: 2 },
       alreadyThere: 0,
     })
-    expect(describeCopy(first, "home.example")).toBe(
-      "Copied 2 sessions to home.example."
-    )
-
     const there = await createHttpSessionsRepository(homeTransport(send)).list()
     expect(there).toHaveLength(2)
     expect(there.find((s) => s.name === "Session a")).toMatchObject({
@@ -184,9 +191,9 @@ describe("copying the phone's sessions home", () => {
         : send(method, path, body)
     const result = await copy([onPhone("a", "scheduled")], forgotten)
     expect(result.outcome.kind).toBe("partial")
-    expect(describeCopy(result, "home.example")).toContain(
-      "home.example no longer knows this phone"
-    )
+    const error =
+      result.outcome.kind === "partial" ? result.outcome.error : null
+    expect(causedBy(error, HomeForgotPhoneError)).toBe(true)
   })
 
   it("says what was copied before a stop", async () => {
@@ -199,9 +206,11 @@ describe("copying the phone's sessions home", () => {
     }
     const local = [onPhone("a", "scheduled"), onPhone("b", "scheduled")]
     const stopped = await copy(local, stopping)
-    expect(describeCopy(stopped, "home.example")).toBe(
-      "Stopped. Copied 1 session to home.example; 1 not yet. Copy again to carry on."
-    )
+    expect(stopped.outcome).toMatchObject({
+      kind: "partial",
+      copied: 1,
+      remaining: 1,
+    })
   })
 
   it("refuses a method a copy never needs", async () => {
@@ -226,7 +235,7 @@ describe("letting the phone's copies go once home holds them", () => {
       today("c"),
     ]
     let refreshed = 0
-    const result = await copySessionsHome(
+    const result = await sendHome(
       BASE,
       (): void => {
         refreshed += 1
@@ -236,7 +245,7 @@ describe("letting the phone's copies go once home holds them", () => {
 
     expect(result).toEqual({
       ok: true,
-      line: "Copied 3 sessions to home.example. Cleared 1 from this phone.",
+      line: "Copied 3 sessions. Cleared 1 from this phone.",
     })
     expect(phone.sessions.map((s) => s.id)).toEqual(["b", "c"])
     expect(refreshed).toBe(1)
@@ -248,7 +257,29 @@ describe("letting the phone's copies go once home holds them", () => {
     })
   })
 
-  it("keeps a session that changed since it was copied", async () => {
+  it("brings home's copy up to date when a session moved on, then lets it go", async () => {
+    // Copied while it was only planned, and finished on the phone since.
+    phone.sessions = [onPhone("a", "scheduled")]
+    await sendHome(BASE, () => undefined, NOW)
+    expect(phone.sessions.map((s) => s.id)).toEqual(["a"])
+
+    phone.sessions = [
+      { ...onPhone("a", "completed"), updatedAt: "2026-10-14T09:10:00.000Z" },
+    ]
+    sent = []
+    const result = await sendHome(BASE, () => undefined, NOW)
+    expect(result.line).toBe("Copied 1 session. Cleared 1 from this phone.")
+    expect(sent.filter((call) => call.startsWith("POST "))).toEqual([])
+    expect(phone.sessions).toEqual([])
+    const there = await createHttpSessionsRepository(homeTransport(send)).list()
+    expect(there).toHaveLength(1)
+    expect(there[0]).toMatchObject({
+      status: "completed",
+      completedAt: "2026-10-14T09:10:00.000Z",
+    })
+  })
+
+  it("brings a renamed copy up to date too", async () => {
     phone.sessions = [onPhone("a", "completed")]
     await copy(phone.sessions)
     phone.sessions = [
@@ -258,11 +289,10 @@ describe("letting the phone's copies go once home holds them", () => {
         updatedAt: "2026-10-14T12:00:00.000Z",
       },
     ]
-    const result = await copySessionsHome(BASE, () => undefined, NOW)
-    expect(result.line).toBe(
-      "home.example is up to date. 1 kept: edited since copied."
-    )
-    expect(phone.sessions.map((s) => s.id)).toEqual(["a"])
+    await sendHome(BASE, () => undefined, NOW)
+    expect(phone.sessions).toEqual([])
+    const there = await createHttpSessionsRepository(homeTransport(send)).list()
+    expect(there.map((s) => s.name)).toEqual(["Renamed"])
   })
 
   it("keeps everything when home can't be read back", async () => {
@@ -271,8 +301,10 @@ describe("letting the phone's copies go once home holds them", () => {
       method === "GET" && path !== "/sessions"
         ? Promise.reject(new SyncStoppedError())
         : send(method, path, body)
-    const result = await copySessionsHome(BASE, () => undefined, NOW)
-    expect(result.line).toBe("Copied 1 session to home.example.")
+    const result = await sendHome(BASE, () => undefined, NOW)
+    expect(result.line).toBe(
+      "Copied 1 session. Stopped: send again to carry on."
+    )
     expect(phone.sessions.map((s) => s.id)).toEqual(["a"])
   })
 })

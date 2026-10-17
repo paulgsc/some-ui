@@ -1,13 +1,18 @@
 /**
  * Audio kept on the phone by id, in its own IndexedDB database, refusing a
  * write that would take it past `maxBytes` in the same transaction as the
- * write. What the audio belongs to, and whether it may be kept at all, is the
- * caller's: the shelf only holds the bytes.
+ * write, or past the device's room (`./room`). What the audio belongs to,
+ * and whether it may be kept at all, is the caller's: the shelf only holds
+ * the bytes.
  */
 import { bytesBesides, connection, done, result } from "./idb"
+import { fitsRoom } from "./room"
 
 export type BlobShelf = {
-  /** Rejects with `ShelfFullError`, keeping nothing, past `maxBytes`. */
+  /**
+   * Rejects with `ShelfFullError`, keeping nothing, past `maxBytes` or the
+   * device's room.
+   */
   put: (id: string, blob: Blob) => Promise<void>
   get: (id: string) => Promise<Blob | null>
   remove: (ids: ReadonlyArray<string>) => Promise<void>
@@ -37,6 +42,8 @@ export function blobShelf({
 
   return {
     async put(id, blob): Promise<void> {
+      // Before the transaction: it would close while another store is read.
+      if (!(await fitsRoom(blob.size))) throw new ShelfFullError()
       const tx = (await connect()).transaction(STORE, "readwrite")
       const blobs = tx.objectStore(STORE)
       if ((await bytesBesides(blobs, id)) + blob.size > maxBytes) {

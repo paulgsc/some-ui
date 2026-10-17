@@ -1,22 +1,24 @@
 /**
  * The phone's storage budget and the rule that keeps it (apps/mobile/README.md,
  * "What the phone keeps").
+ *
+ * **One budget, measured, never reserved.** What the phone holds is its
+ * database plus the WebView's own storage (every audio store: soundbites,
+ * voice reflections, scene notes, journal takes, and any store added later),
+ * each counted as it is. A save on either side that would take the total
+ * past the quota is refused: the database's by `budgeted`, an audio store's
+ * by the room it asks (`fitsRoom` in `@some-ui/voice-capture`, installed by
+ * `roomOn`). So a new store reserves nothing; it only asks.
  */
-import { SOUNDBITES_MAX_BYTES } from "@some-ui/soundbites/contract"
+import { setStorageRoom } from "@some-ui/voice-capture"
 
 import { errorResponse } from "@/lib/device-backend/router"
 import type { SqlDriver } from "@/lib/device-backend/sql"
 import { num, one } from "@/lib/device-backend/sql"
-import { REFLECTION_AUDIO_MAX_BYTES } from "@/lib/reflection-voice/budget"
-import { SCENE_AUDIO_MAX_BYTES } from "@/lib/scene-voice/budget"
 
 export type StorageBudget = {
+  /** Everything the phone holds, database and WebView storage together. */
   quotaBytes: number
-  /**
-   * Kept free for WebView storage (the soundbites' cap and voice
-   * reflections'); only the database is measured.
-   */
-  reservedBytes: number
 }
 
 /** An estimate (browsers round it); `0` where there is no `navigator.storage`. */
@@ -32,8 +34,6 @@ async function webViewBytes(): Promise<number> {
 /** Android Auto Backup's per-app quota (developer.android.com/identity/data/autobackup). */
 export const ANDROID_BACKUP_BUDGET: StorageBudget = {
   quotaBytes: 25 * 1024 * 1024,
-  reservedBytes:
-    SOUNDBITES_MAX_BYTES + REFLECTION_AUDIO_MAX_BYTES + SCENE_AUDIO_MAX_BYTES,
 }
 
 /** The database's pages in use: its file size, with `auto_vacuum = FULL`. */
@@ -62,6 +62,10 @@ export async function storageUse(
   }
 }
 
+/** `spare`: the session the refused save was about, never offered for removal. */
+type RefusalListener = (spare: string | null) => void
+const refusals = new Set<RefusalListener>()
+
 export class OverBudgetError extends Error {
   constructor() {
     super(
@@ -73,23 +77,50 @@ export class OverBudgetError extends Error {
 
 /**
  * `write` in one transaction, rolled back with `OverBudgetError` if it grew
- * the database past the budget less its reserve. A write that grew nothing
- * (a rename, a status change) always goes through: refusing it frees nothing.
+ * the database past what the WebView's storage leaves of the budget. A write
+ * that grew nothing (a rename, a status change) always goes through:
+ * refusing it frees nothing.
  */
 export async function budgeted<T>(
   db: SqlDriver,
   budget: StorageBudget,
-  write: () => Promise<T>
+  write: () => Promise<T>,
+  besides: () => Promise<number> = webViewBytes
 ): Promise<T> {
   return db.transaction(async () => {
     const before = await databaseBytes(db)
     const value = await write()
     const after = await databaseBytes(db)
-    if (after > before && after + budget.reservedBytes > budget.quotaBytes) {
+    if (after > before && after + (await besides()) > budget.quotaBytes) {
       throw new OverBudgetError()
     }
     return value
   })
+}
+
+/**
+ * Whether `bytes` more of WebView storage fit beside the database and what
+ * the WebView already holds; a refusal asks the person to make room, as a
+ * refused database save does.
+ */
+export async function fitsBesides(
+  db: SqlDriver,
+  budget: StorageBudget,
+  bytes: number,
+  besides: () => Promise<number> = webViewBytes
+): Promise<boolean> {
+  const held = (await databaseBytes(db)) + (await besides())
+  if (held + bytes <= budget.quotaBytes) return true
+  for (const listener of refusals) listener(null)
+  return false
+}
+
+/** Makes every audio store's write ask this budget (`fitsRoom`). */
+export function roomOn(
+  db: () => Promise<SqlDriver>,
+  budget: StorageBudget
+): void {
+  setStorageRoom(async (bytes) => fitsBesides(await db(), budget, bytes))
 }
 
 /** `db` with every transaction `budgeted`: for callers that own theirs. */
@@ -120,10 +151,6 @@ export async function budgetedAnswer(
     })
   }
 }
-
-/** `spare`: the session the refused save was about, never offered for removal. */
-type RefusalListener = (spare: string | null) => void
-const refusals = new Set<RefusalListener>()
 
 export function onSaveRefused(listener: RefusalListener): () => void {
   refusals.add(listener)

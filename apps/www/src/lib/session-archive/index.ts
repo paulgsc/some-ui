@@ -34,14 +34,14 @@ export type ArchiveResult = {
 }
 
 /** The sessions an archive would carry. Reads only this phone. */
-export async function finishedOnPhone(
+async function finishedOnPhone(
   now = new Date()
 ): Promise<Array<SessionRecord>> {
   return (await sessionsRepository.list()).filter((s) => mayLeavePhone(s, now))
 }
 
 /** The archive's file: findable by day in a folder of them. */
-export function archiveFile(
+function archiveFile(
   sessions: ReadonlyArray<SessionRecord>,
   at: Date
 ): { name: string; data: string } {

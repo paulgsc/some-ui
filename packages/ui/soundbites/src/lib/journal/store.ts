@@ -9,7 +9,13 @@
  * take is kept only for a cut of the plan in place, and never past
  * `JOURNAL_TAKES_MAX_BYTES`.
  */
-import { bytesBesides, connection, done, result } from "@some-ui/voice-capture"
+import {
+  bytesBesides,
+  connection,
+  done,
+  fitsRoom,
+  result,
+} from "@some-ui/voice-capture"
 import { askToKeep } from "@soundbites/lib/store"
 
 import type { JournalPlan, JournalTake } from "./plan"
@@ -57,7 +63,8 @@ export type JournalStore = {
   ) => Promise<void>
   /**
    * Keeps `take` with its audio in place of its cut's last one. Rejects,
-   * keeping nothing, with `JournalFullError` past the cap or
+   * keeping nothing, with `JournalFullError` past the cap or the device's
+   * room, or
    * `JournalStaleError` unless `episode` is in place and has the cut.
    */
   saveTake: (take: JournalTake, audio: Blob, episode: string) => Promise<void>
@@ -216,6 +223,8 @@ export function indexedDbJournalStore(): JournalStore {
     },
 
     async saveTake(take, audio, episode): Promise<void> {
+      // Before the transaction: it would close while another store is read.
+      if (!(await fitsRoom(audio.size))) throw new JournalFullError()
       const tx = (await connect()).transaction(
         [PLAN, TAKES, AUDIO],
         "readwrite"

@@ -9,8 +9,13 @@
  * **Per account.** The device never learns an account's id, so the receipt
  * records the ids minted for each device session's copies, and asks the
  * account in use: `GET /sessions/:id` answers 404 for another account's
- * session. A second press for one account copies nothing; a press under
+ * session. A second press for one account copies nothing new; a press under
  * another account copies again.
+ *
+ * **Kept current.** A copy is made once, but a session can move on after it
+ * (planned when copied, finished later; renamed). A press that finds the
+ * account's copy no longer matching the device patches it to match, so the
+ * account never keeps a stale one and the phone can let its own go.
  *
  * **Resumable.** There is no import endpoint: a copy is a create then a patch.
  * The receipt is written after each (`complete: false`, then `true`), so a
@@ -61,7 +66,10 @@ function readReceipt(storage: StorageAdapter): Receipt {
 export type TransferPlan = {
   /** On the device and nowhere in this account yet. */
   readonly create: ReadonlyArray<SessionRecord>
-  /** Started in this account by an earlier try and never finished. */
+  /**
+   * Started in this account by an earlier try and never finished, or
+   * finished and changed on the device since: one patch each.
+   */
   readonly finish: ReadonlyArray<{
     readonly session: SessionRecord
     readonly remoteId: string
@@ -149,9 +157,12 @@ export async function planTransfer(
         unconfirmed = true
         continue
       }
-      if ((await remote.get(copy.remoteId)) === null) continue
+      const there = await remote.get(copy.remoteId)
+      if (there === null) continue
       if (copy.complete) {
-        complete = true
+        // Changed on the device since: one patch brings the copy up to date.
+        if (sameRecord(session, there)) complete = true
+        else unfinished = copy.remoteId
         break
       }
       unfinished ??= copy.remoteId
@@ -174,6 +185,19 @@ export async function planTransfer(
     else create.push(session)
   }
   return { create, finish, alreadyThere }
+}
+
+/** Everything a copy carries, for a copy that may not hold it yet. */
+function caughtUp(
+  session: SessionRecord
+): Parameters<SessionsStore["update"]>[1] {
+  return {
+    name: session.name,
+    activities: session.activities,
+    scenes: session.scenes,
+    layoutMode: session.layoutMode,
+    ...restoration(session),
+  }
 }
 
 /** Restores everything `create` is not allowed to accept, in one patch. */
@@ -249,10 +273,11 @@ export async function runTransfer(
 
   const steps: Array<() => Promise<void>> = [
     ...plan.finish.map(({ session, remoteId }) => async (): Promise<void> => {
-      // Adopted from the account's list, or left unfinished by an earlier try:
-      // it is this device session's copy from here on.
+      // Adopted from the account's list, left unfinished by an earlier try,
+      // or changed on the device since: it is this device session's copy
+      // from here on, and now holds what the device does.
       remember(session.id, { remoteId, complete: false })
-      await remote.update(remoteId, restoration(session))
+      await remote.update(remoteId, caughtUp(session))
       remember(session.id, { remoteId, complete: true })
     }),
     ...plan.create.map((session) => async (): Promise<void> => {

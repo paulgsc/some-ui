@@ -114,12 +114,16 @@ The app's database and WebView storage together stay under Android's
 [25 MB backup quota](https://developer.android.com/identity/data/autobackup),
 past which Android stops backing the app up without saying so, and that
 backup is the only other copy of the phone's history (`device-backend/storage`).
-There is no size per table. Only the database is checked, against the quota
-less what soundbites and voice reflections can hold at most (each their own
-cap, from `@some-ui/soundbites/contract` and
-`apps/www/src/lib/reflection-voice/budget.ts`, which their stores refuse to
-pass), so WebView growth never refuses a session. The WebView's other storage (preferences and
-small capped stores) is not counted.
+It is one budget, measured, never reserved: the database plus everything
+the WebView holds (`navigator.storage.estimate()`: soundbites, voice
+reflections, scene notes, journal takes, and any audio store added later),
+each counted as it is. A database save that would take the total past the
+quota is refused (`budgeted`), and so is an audio write: every audio store
+asks the same budget before it writes (`fitsRoom` in
+`@some-ui/voice-capture`, installed at boot by `roomOn`). A store keeps its
+own cap besides, which is its own rule: no store keeps space free for
+itself, so a new one costs nothing until it holds something. There is no
+size per table.
 
 A restore has to be able to open what it brings back, which is why the SQLite
 plugin's unused encryption is off (`capacitor.config.ts` says why; the review
@@ -150,7 +154,7 @@ storage failure (`launch/launch-test.sh`).
   act.** The app is client first: nothing leaves the phone by default, and
   nothing requires a server. What sending buys is that the phone can let
   go. A finished session (completed, not today's: `mayLeavePhone`) leaves
-  the phone once a destination holds it: home, when **Copy sessions** reads
+  the phone once a destination holds it: home, when **Send to host** reads
   it back and finds it as the phone has it; an archive, when the person
   says the file arrived (the phone cannot look inside Drive). Unfinished
   sessions and today's always stay, since the study card and the nudge read
@@ -454,8 +458,8 @@ In the `CLAUDE.md` "Gray-area invariants" shape.
 >   `packages/voice-capture/src/lib/recorder.ts`, the soundbites page
 >   `apps/www/src/routes/_dashboard/_apk/soundbites.tsx` and
 >   `apps/www/src/lib/reflection-voice/`; the
->   sync from home, the home-server pairing, the shelf send and the sessions
->   copy (`INTERNET`,
+>   sync from home, the home-server pairing and the send to home
+>   (`INTERNET`,
 >   `usesCleartextTraffic`), `apps/www/src/lib/device-backend/home-sync/`,
 >   `apps/www/src/lib/home-link/` and their Settings block
 >   `apps/www/src/components/settings/device-section.tsx`; study nudges
@@ -538,30 +542,25 @@ asks once more, tells home if it can, and forgets the token on the phone
 either way. Signing out everywhere on the computer ends a phone's session too.
 The server side is `paulgsc/server` `docs/identity.md`, "Pairing a phone".
 
-**Send shelf to host...**, once paired, counts what is kept on this phone's
-shelf (reading only the phone) and asks once more, naming that count and the
-host. Only its **Send** sends: one PUT per item, the item's bytes as kept,
-with the pairing's token. An item with the same name there is replaced;
-nothing there is deleted, and nothing comes back to the phone. A full shelf
-there, or a refused item, is counted and said; home no longer knowing the
-phone, or no answer, ends the send; nothing is retried. **Stop**, or the app
-going to the background, ends it before the next item.
+**Send to host...**, once paired, counts what this phone would send: its
+sessions and the items kept on its shelf (reading only the phone). The
+confirm names those counts and the host, and only its **Send** sends. One
+run, so one **Stop** (or the app going to the background) ends all of it
+before the next request; nothing is retried.
 
-**Copy sessions to host...** works the same way: it counts the sessions on
-this phone, the confirm names that count and the host, and only its **Copy**
-sends. Each session goes once, as its record (plan, status and times); its
-reflections, stops and soundbites stay on the phone (`docs/learner-data-authority.md`,
-LA7). A second copy sends nothing new: the phone keeps a receipt of what home
-made, and asks home only whether it still holds those. Nothing there is
-deleted, a copy cannot be taken back from the phone, and **Stop** ends it
-before the next session, to carry on with the next copy.
+- **Sessions** go as their records (plan, status and times); their
+  reflections, stops and soundbites stay on the phone
+  (`docs/learner-data-authority.md`, LA7). Each is created on home once, and
+  the phone keeps a receipt of what home made. A session that moved on since
+  its copy (planned when copied, finished later; renamed) has home's copy
+  patched to match. Then each finished session (`mayLeavePhone`) is read
+  back from home (`confirmHeld`), and those home holds exactly as the phone
+  does leave the phone: sending is archiving. Nothing on home is deleted.
+- **Kept items** go one PUT each, their bytes as kept; one with the same
+  name there is replaced. They stay on the phone: they are for studying
+  again. A full shelf there, or a refused item, is counted and said.
 
-Then the copy frees the phone. For each finished session, home is asked for
-its copy (`GET /sessions/:id`, `confirmHeld`), and only one home holds
-exactly as the phone does (plan, status, times) leaves the phone; the
-confirm says so before the tap. A session changed since it was copied
-stays, and the line says how many. A stop, or home not answering, leaves the
-rest for the next copy.
+Home no longer knowing the phone, or no answer, ends the send there.
 
 **Archive finished sessions**, in the This phone block, is the way to
 make room without a home server. It shares one file

@@ -18,9 +18,12 @@ import type { SqlDriver } from "@/lib/device-backend/sql"
 import { num, one } from "@/lib/device-backend/sql"
 import type { StorageBudget } from "@/lib/device-backend/storage"
 import {
+  budgeted,
   databaseBytes,
   dismissPruneNotice,
+  fitsBesides,
   onSaveRefused,
+  OverBudgetError,
   readPruneNotice,
 } from "@/lib/device-backend/storage"
 
@@ -36,7 +39,6 @@ const budget: StorageBudget = {
   get quotaBytes() {
     return quota
   },
-  reservedBytes: 0,
 }
 
 beforeEach(async () => {
@@ -145,6 +147,32 @@ describe("sessions at the budget", () => {
     expect(await mode()).toBe(0)
     backend = await openDeviceBackend(db, () => NOW, budget)
     expect(await mode()).toBe(1)
+  })
+})
+
+describe("one budget, shared with the WebView's storage", () => {
+  const audio = (bytes: number) => (): Promise<number> => Promise.resolve(bytes)
+
+  it("counts what the audio stores hold against a save, and reserves nothing", async () => {
+    await db.exec("CREATE TABLE grow (x TEXT)")
+    const write = async (): Promise<void> => {
+      await db.run("INSERT INTO grow VALUES (?)", [BULK + BULK])
+    }
+    quota = (await databaseBytes(db)) + 200_000
+    await expect(budgeted(db, budget, write, audio(0))).resolves.toBeUndefined()
+    await expect(
+      budgeted(db, budget, write, audio(200_000))
+    ).rejects.toBeInstanceOf(OverBudgetError)
+  })
+
+  it("lets an audio write through while it fits, and asks to make room when not", async () => {
+    quota = (await databaseBytes(db)) + 1_000
+    const spared: Array<string | null> = []
+    const stop = onSaveRefused((spare) => spared.push(spare))
+    await expect(fitsBesides(db, budget, 600, audio(300))).resolves.toBe(true)
+    await expect(fitsBesides(db, budget, 600, audio(500))).resolves.toBe(false)
+    stop()
+    expect(spared).toEqual([null])
   })
 })
 

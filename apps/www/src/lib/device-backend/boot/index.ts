@@ -85,6 +85,14 @@ export function bootDeviceBackend(): void {
   void import("@/lib/native-log").then(({ installNativeLog }) =>
     installNativeLog()
   )
+  // Every audio store's write asks the one budget the database keeps.
+  void import("@/lib/device-backend/storage").then(
+    ({ ANDROID_BACKUP_BUDGET, roomOn }) =>
+      roomOn(
+        async () => (await deviceBackend()).context.db,
+        ANDROID_BACKUP_BUDGET
+      )
+  )
   const base = deviceFileHostBase()
   if (base === undefined) return
   installDeviceFetch(base, deviceBackend)
