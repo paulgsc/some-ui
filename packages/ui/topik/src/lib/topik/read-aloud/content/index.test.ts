@@ -284,6 +284,115 @@ describe("parseReadAloudDeck", () => {
   })
 })
 
+describe("parseReadAloudDeck, a line's lens (Def. 4.9)", () => {
+  const SITUATIONS = {
+    options: ["Ordering at a café", "Asking the time", "Saying goodbye"],
+    intended: 0,
+  }
+  // 주아요: -아요 after a stem whose last vowel is ㅜ.
+  const MISFORM = {
+    word: 2,
+    surface: "주아요",
+    mistake: "vowel-harmony",
+    instead: "x",
+    decides: [1],
+    cueDecides: ["드릴까요"],
+  }
+  const LENS = {
+    cue: { korean: "뭐 드릴까요?" },
+    misforms: [MISFORM],
+    situations: SITUATIONS,
+  }
+  const withLens = (lens: unknown): Record<string, unknown> =>
+    deck({ lines: [{ ...ONE_CUP, lens }] })
+
+  it("keeps a well-formed lens, the cue audible unless said otherwise", () => {
+    const { deck: parsed, findings } = parsedOrThrow(withLens(LENS))
+    expect(findings).toEqual([])
+    expect(parsed.lines[0]?.lens).toEqual({
+      ...LENS,
+      cue: { korean: "뭐 드릴까요?", hearable: true },
+    })
+  })
+
+  it("drops each malformed part and keeps the rest", () => {
+    const { deck: parsed, findings } = parsedOrThrow(
+      withLens({
+        cue: { korean: "" },
+        misforms: [
+          { ...MISFORM, word: 7 },
+          { ...MISFORM, surface: "주세요" },
+          { ...MISFORM, mistake: "no-such-mistake" },
+          { ...MISFORM, surface: "줘요 " },
+          { ...MISFORM, decides: [2] },
+          { ...MISFORM, cueDecides: ["커피"] },
+          { word: 2, surface: "주아요", mistake: "vowel-harmony" },
+          { word: 2, surface: "주아요", mistake: "eu-kept" },
+        ],
+        situations: { ...SITUATIONS, options: ["a", "a", "b"] },
+      })
+    )
+    expect(parsed.lines[0]?.lens).toEqual({
+      misforms: [
+        {
+          word: 2,
+          surface: "주아요",
+          mistake: "vowel-harmony",
+          decides: [],
+          cueDecides: [],
+        },
+      ],
+    })
+    expect(findings.map((f) => f.kind)).toEqual([
+      "lens-malformed",
+      "misform-malformed",
+      "misform-malformed",
+      "misform-unknown-mistake",
+      "misform-malformed",
+      "misform-malformed",
+      "misform-malformed",
+      "misform-malformed",
+      "lens-malformed",
+    ])
+    expect(new Set(findings.map((f) => f.where))).toEqual(
+      new Set(["one-cup/lens"])
+    )
+  })
+
+  it("drops a cue that holds the word a misform replaces, or a misform", () => {
+    for (const korean of ["주세요?", "주아요?"]) {
+      const { deck: parsed, findings } = parsedOrThrow(
+        withLens({
+          ...LENS,
+          cue: { korean },
+          misforms: [{ ...MISFORM, cueDecides: [] }],
+        })
+      )
+      expect(parsed.lines[0]?.lens).not.toHaveProperty("cue")
+      expect(findings.map((f) => f.detail)).toEqual([
+        `cue: ${korean.slice(0, -1)} gives the answer away`,
+      ])
+    }
+  })
+
+  it("keeps a cue and situations past misforms that are not a list, but no lens without a misform", () => {
+    const { deck: parsed, findings } = parsedOrThrow(
+      withLens({ ...LENS, misforms: "no" })
+    )
+    expect(parsed.lines[0]).not.toHaveProperty("lens")
+    expect(findings.map((f) => f.detail)).toEqual([
+      "misforms is not a list",
+      "no misform; a lens asks nothing without one",
+    ])
+    for (const lens of [[], {}]) {
+      const empty = parsedOrThrow(withLens(lens))
+      expect(empty.deck.lines[0]).not.toHaveProperty("lens")
+      expect(empty.deck.lines[0]?.words).toHaveLength(3)
+      expect(empty.findings.map((f) => f.kind)).toEqual(["lens-malformed"])
+    }
+  })
+})
+
 describe("readAloudLevelFor", () => {
   it("follows the TOPIK level up to the drill's highest", () => {
     expect([1, 2, 3, 4, 6].map(readAloudLevelFor)).toEqual([1, 2, 3, 3, 3])

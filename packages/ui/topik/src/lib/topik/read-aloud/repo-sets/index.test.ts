@@ -94,6 +94,13 @@ describe("the repo's sets, both added", () => {
     }
   })
 
+  it("give the grammar lens enough lines for a full set at level one", () => {
+    const misformed = REPO_SETS.lines.filter(
+      (line) => line.level === 1 && line.lens !== undefined
+    )
+    expect(misformed.length).toBeGreaterThanOrEqual(16)
+  })
+
   it("draw level-one sets without three alike in a row", () => {
     for (let seed = 0; seed < 100; seed += 1) {
       const items = buildSet(REPO_SETS, { level: 1, seedKey: `s${seed}` })

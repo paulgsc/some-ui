@@ -277,6 +277,26 @@
       "id": "manta",
       "lemma": "많다",
       "gloss": "be many, a lot"
+    },
+    {
+      "id": "geuttae",
+      "lemma": "그때",
+      "gloss": "then, at that time"
+    },
+    {
+      "id": "bap",
+      "lemma": "밥",
+      "gloss": "rice, a meal"
+    },
+    {
+      "id": "meokda",
+      "lemma": "먹다",
+      "gloss": "eat"
+    },
+    {
+      "id": "itda",
+      "lemma": "있다",
+      "gloss": "be there, have"
     }
   ],
   "lines": [
@@ -558,7 +578,36 @@
           "pronunciation": "사써요",
           "sense": "bought"
         }
-      ]
+      ],
+      "lens": {
+        "cue": {
+          "korean": "주말에 뭐 했어요?"
+        },
+        "misforms": [
+          {
+            "word": 3,
+            "surface": "시장에서",
+            "mistake": "eseo-for-e",
+            "instead": "With 가서, 에서 marks 시장 as where you set off from.",
+            "decides": [4]
+          },
+          {
+            "word": 6,
+            "surface": "사요",
+            "mistake": "tense-mismatch",
+            "instead": "사요 is present; the cue's 했어요 is past.",
+            "cueDecides": ["했어요"]
+          }
+        ],
+        "situations": {
+          "options": [
+            "Telling someone about your weekend",
+            "Asking where the market is",
+            "Haggling over fruit"
+          ],
+          "intended": 0
+        }
+      }
     },
     {
       "id": "rainy-movie",
@@ -614,7 +663,29 @@
           "pronunciation": "꺼예요",
           "sense": "(-ㄹ 거예요) will"
         }
-      ]
+      ],
+      "lens": {
+        "cue": {
+          "korean": "오늘 뭐 할 거예요?"
+        },
+        "misforms": [
+          {
+            "word": 3,
+            "surface": "집에",
+            "mistake": "e-for-eseo",
+            "instead": "With 볼, 에 marks 집 as where you go or where something is; watching is done there, which takes 에서.",
+            "decides": [5]
+          }
+        ],
+        "situations": {
+          "options": [
+            "Recommending a film",
+            "Saying your plans for today",
+            "Booking cinema tickets"
+          ],
+          "intended": 1
+        }
+      }
     },
     {
       "id": "cold-weather",
@@ -681,7 +752,24 @@
           "pronunciation": "마나저써요",
           "sense": "have become many"
         }
-      ]
+      ],
+      "lens": {
+        "misforms": [
+          {
+            "word": 2,
+            "surface": "춥어져서",
+            "mistake": "b-irregular"
+          }
+        ],
+        "situations": {
+          "options": [
+            "Shopping for a winter coat",
+            "Talking about how the season is changing",
+            "Saying a room is too warm"
+          ],
+          "intended": 1
+        }
+      }
     },
     {
       "id": "new-restaurant",
@@ -764,6 +852,66 @@
           "sense": "there are many"
         }
       ]
+    },
+    {
+      "id": "missed-call",
+      "level": 2,
+      "korean": "그때 밥을 먹고 있었어요.",
+      "english": "I was eating then.",
+      "tense": "past",
+      "words": [
+        {
+          "wordId": "geuttae",
+          "surface": "그때",
+          "stemEnd": 2,
+          "role": "time"
+        },
+        {
+          "wordId": "bap",
+          "surface": "밥을",
+          "stemEnd": 1,
+          "pronunciation": "바블",
+          "role": "object"
+        },
+        {
+          "wordId": "meokda",
+          "surface": "먹고",
+          "stemEnd": 1,
+          "pronunciation": "먹꼬",
+          "role": "action"
+        },
+        {
+          "wordId": "itda",
+          "surface": "있었어요",
+          "stemEnd": 1,
+          "pronunciation": "이써써요",
+          "sense": "(-고 있었어요) was …ing"
+        }
+      ],
+      "lens": {
+        "cue": {
+          "korean": "어제 저녁 일곱 시에 전화했는데 왜 안 받았어요?",
+          "hearable": false
+        },
+        "misforms": [
+          {
+            "word": 3,
+            "surface": "있어요",
+            "mistake": "progressive-now",
+            "instead": "-고 있어요 is going on now; 그때 and the cue's 어제 저녁 are past.",
+            "decides": [0],
+            "cueDecides": ["어제", "저녁"]
+          }
+        ],
+        "situations": {
+          "options": [
+            "Inviting someone to dinner",
+            "Answering a friend who could not reach you",
+            "Apologizing for arriving late"
+          ],
+          "intended": 1
+        }
+      }
     }
   ]
 }

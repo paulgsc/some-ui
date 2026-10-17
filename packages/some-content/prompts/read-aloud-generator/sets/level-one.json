@@ -765,7 +765,29 @@
           "pronunciation": "학쌩이에요",
           "sense": "am a student"
         }
-      ]
+      ],
+      "lens": {
+        "cue": {
+          "korean": "무슨 일을 하세요?"
+        },
+        "misforms": [
+          {
+            "word": 2,
+            "surface": "학생이세요",
+            "mistake": "honorific-self",
+            "instead": "-세요 honours someone else, and 저는 says the line is about the speaker.",
+            "decides": [1]
+          }
+        ],
+        "situations": {
+          "options": [
+            "Introducing yourself",
+            "Asking someone what they do",
+            "Ordering at a café"
+          ],
+          "intended": 0
+        }
+      }
     },
     {
       "id": "intro-name",
@@ -923,7 +945,27 @@
           "stemEnd": 1,
           "sense": "is tall"
         }
-      ]
+      ],
+      "lens": {
+        "cue": {
+          "korean": "형은 어때요?"
+        },
+        "misforms": [
+          {
+            "word": 2,
+            "surface": "크어요",
+            "mistake": "eu-kept"
+          }
+        ],
+        "situations": {
+          "options": [
+            "Describing someone in your family",
+            "Asking how tall someone is",
+            "Buying clothes a size up"
+          ],
+          "intended": 0
+        }
+      }
     },
     {
       "id": "morning-wake",
@@ -954,7 +996,30 @@
           "stemEnd": 3,
           "pronunciation": "이러나요"
         }
-      ]
+      ],
+      "lens": {
+        "cue": {
+          "korean": "보통 언제 일어나요?"
+        },
+        "misforms": [
+          {
+            "word": 2,
+            "surface": "시에서",
+            "mistake": "eseo-after-time",
+            "instead": "With a clock time, 에서 starts a span (일곱 시에서 여덟 시 사이); one moment takes 에.",
+            "decides": [1],
+            "cueDecides": ["언제"]
+          }
+        ],
+        "situations": {
+          "options": [
+            "Setting an alarm for someone",
+            "Saying when you get up",
+            "Saying you overslept"
+          ],
+          "intended": 1
+        }
+      }
     },
     {
       "id": "breakfast-bread",
@@ -1040,7 +1105,30 @@
           "role": "action",
           "stemEnd": 1
         }
-      ]
+      ],
+      "lens": {
+        "cue": {
+          "korean": "아침에 어디 가요?"
+        },
+        "misforms": [
+          {
+            "word": 0,
+            "surface": "학교에서",
+            "mistake": "eseo-for-e",
+            "instead": "With 가요, 에서 marks 학교 as where you set off from.",
+            "decides": [2],
+            "cueDecides": ["어디"]
+          }
+        ],
+        "situations": {
+          "options": [
+            "Asking which bus to take",
+            "Saying you missed the bus",
+            "Saying how you get to school"
+          ],
+          "intended": 2
+        }
+      }
     },
     {
       "id": "teacher-kind",
@@ -1151,7 +1239,29 @@
           "stemEnd": 1,
           "pronunciation": "일거요"
         }
-      ]
+      ],
+      "lens": {
+        "cue": {
+          "korean": "오후에 뭐 해요?"
+        },
+        "misforms": [
+          {
+            "word": 0,
+            "surface": "도서관에",
+            "mistake": "e-for-eseo",
+            "instead": "With 읽어요, 에 marks 도서관 as where you go or where something is; reading is done there, which takes 에서.",
+            "decides": [2]
+          }
+        ],
+        "situations": {
+          "options": [
+            "Saying where you usually read",
+            "Asking where the library is",
+            "Returning a book"
+          ],
+          "intended": 0
+        }
+      }
     },
     {
       "id": "lunch-friend",
@@ -1207,7 +1317,27 @@
           "stemEnd": 2,
           "sense": "is spicy"
         }
-      ]
+      ],
+      "lens": {
+        "cue": {
+          "korean": "김치 맛이 어때요?"
+        },
+        "misforms": [
+          {
+            "word": 2,
+            "surface": "맵어요",
+            "mistake": "b-irregular"
+          }
+        ],
+        "situations": {
+          "options": [
+            "Ordering a side dish",
+            "Commenting on food you are eating",
+            "Saying you are full"
+          ],
+          "intended": 1
+        }
+      }
     },
     {
       "id": "apple-price",
@@ -1255,7 +1385,29 @@
           "role": "action",
           "stemEnd": 1
         }
-      ]
+      ],
+      "lens": {
+        "cue": {
+          "korean": "이따가 뭐 해요?"
+        },
+        "misforms": [
+          {
+            "word": 0,
+            "surface": "가게에",
+            "mistake": "e-for-eseo",
+            "instead": "With 사요, 에 marks 가게 as where you go or where something is; buying is done there, which takes 에서.",
+            "decides": [2]
+          }
+        ],
+        "situations": {
+          "options": [
+            "Asking the price of milk",
+            "Saying the shop is closed",
+            "Saying where you buy something"
+          ],
+          "intended": 2
+        }
+      }
     },
     {
       "id": "weather-nice",
@@ -1283,7 +1435,29 @@
           "stemEnd": 1,
           "pronunciation": "조아요"
         }
-      ]
+      ],
+      "lens": {
+        "cue": {
+          "korean": "오늘 날씨 어때요?"
+        },
+        "misforms": [
+          {
+            "word": 1,
+            "surface": "날씨를",
+            "mistake": "object-for-subject",
+            "instead": "좋아요 takes 이/가 on what is good; 를 would make 날씨 something acted on.",
+            "decides": [2]
+          }
+        ],
+        "situations": {
+          "options": [
+            "Small talk about the weather",
+            "Checking tomorrow's forecast",
+            "Complaining about the rain"
+          ],
+          "intended": 0
+        }
+      }
     },
     {
       "id": "rain-umbrella",
@@ -1342,7 +1516,27 @@
           "stemEnd": 2,
           "sense": "is cold"
         }
-      ]
+      ],
+      "lens": {
+        "cue": {
+          "korean": "한국 겨울은 어때요?"
+        },
+        "misforms": [
+          {
+            "word": 1,
+            "surface": "춥어요",
+            "mistake": "b-irregular"
+          }
+        ],
+        "situations": {
+          "options": [
+            "Talking about the seasons",
+            "Asking for a blanket",
+            "Saying you caught a cold"
+          ],
+          "intended": 0
+        }
+      }
     },
     {
       "id": "summer-sea",
@@ -1370,7 +1564,29 @@
           "role": "action",
           "stemEnd": 1
         }
-      ]
+      ],
+      "lens": {
+        "cue": {
+          "korean": "여름에 보통 뭐 해요?"
+        },
+        "misforms": [
+          {
+            "word": 1,
+            "surface": "바다에서",
+            "mistake": "eseo-for-e",
+            "instead": "With 가요, 에서 marks 바다 as where you set off from.",
+            "decides": [2]
+          }
+        ],
+        "situations": {
+          "options": [
+            "Booking a hotel by the sea",
+            "Saying what you usually do in summer",
+            "Saying the water is too cold"
+          ],
+          "intended": 1
+        }
+      }
     },
     {
       "id": "weekend-rest",
@@ -1399,7 +1615,29 @@
           "role": "action",
           "stemEnd": 1
         }
-      ]
+      ],
+      "lens": {
+        "cue": {
+          "korean": "주말에 뭐 해요?"
+        },
+        "misforms": [
+          {
+            "word": 1,
+            "surface": "집에",
+            "mistake": "e-for-eseo",
+            "instead": "With 쉬어요, 에 marks 집 as where you go or where something is; resting is done there, which takes 에서.",
+            "decides": [2]
+          }
+        ],
+        "situations": {
+          "options": [
+            "Inviting a friend over",
+            "Saying you are ill at home",
+            "Saying how you spend weekends"
+          ],
+          "intended": 2
+        }
+      }
     },
     {
       "id": "sunday-park",
@@ -1428,7 +1666,36 @@
           "role": "action",
           "stemEnd": 3
         }
-      ]
+      ],
+      "lens": {
+        "cue": {
+          "korean": "언제 운동해요?"
+        },
+        "misforms": [
+          {
+            "word": 0,
+            "surface": "일요일에서",
+            "mistake": "eseo-after-time",
+            "instead": "A weekday takes 에; 에서 would start a span from Sunday.",
+            "cueDecides": ["언제"]
+          },
+          {
+            "word": 1,
+            "surface": "공원에",
+            "mistake": "e-for-eseo",
+            "instead": "With 운동해요, 에 marks 공원 as where you go or where something is; exercising is done there, which takes 에서.",
+            "decides": [2]
+          }
+        ],
+        "situations": {
+          "options": [
+            "Saying when and where you exercise",
+            "Asking the way to the park",
+            "Joining a gym"
+          ],
+          "intended": 0
+        }
+      }
     },
     {
       "id": "headache-hospital",
@@ -1463,7 +1730,34 @@
           "role": "action",
           "stemEnd": 1
         }
-      ]
+      ],
+      "lens": {
+        "cue": {
+          "korean": "왜 일찍 가요?"
+        },
+        "misforms": [
+          {
+            "word": 2,
+            "surface": "병원에서",
+            "mistake": "eseo-for-e",
+            "instead": "With 가요, 에서 marks 병원 as where you set off from.",
+            "decides": [3]
+          },
+          {
+            "word": 1,
+            "surface": "아프어서",
+            "mistake": "eu-kept"
+          }
+        ],
+        "situations": {
+          "options": [
+            "Making a doctor's appointment",
+            "Leaving work in the middle of the day",
+            "Visiting a friend in hospital"
+          ],
+          "intended": 1
+        }
+      }
     },
     {
       "id": "pharmacy-where",
@@ -1491,7 +1785,26 @@
           "pronunciation": "이써요",
           "sense": "is it"
         }
-      ]
+      ],
+      "lens": {
+        "misforms": [
+          {
+            "word": 1,
+            "surface": "어디에서",
+            "mistake": "eseo-for-e",
+            "instead": "With 있어요, 에서 would mark where something is done, not where it is.",
+            "decides": [2]
+          }
+        ],
+        "situations": {
+          "options": [
+            "Asking what time it opens",
+            "Asking for directions",
+            "Asking for medicine"
+          ],
+          "intended": 1
+        }
+      }
     },
     {
       "id": "bank-post-office",
@@ -1526,7 +1839,29 @@
           "pronunciation": "이써요",
           "sense": "is"
         }
-      ]
+      ],
+      "lens": {
+        "cue": {
+          "korean": "은행 어디 있어요?"
+        },
+        "misforms": [
+          {
+            "word": 2,
+            "surface": "옆에서",
+            "mistake": "eseo-for-e",
+            "instead": "With 있어요, 에서 would mark where something is done, not where it is.",
+            "decides": [3]
+          }
+        ],
+        "situations": {
+          "options": [
+            "Opening a bank account",
+            "Sending a parcel",
+            "Giving directions"
+          ],
+          "intended": 2
+        }
+      }
     },
     {
       "id": "station-walk",
@@ -1611,7 +1946,36 @@
           "pronunciation": "사써요",
           "sense": "bought"
         }
-      ]
+      ],
+      "lens": {
+        "cue": {
+          "korean": "어제 뭐 했어요?"
+        },
+        "misforms": [
+          {
+            "word": 0,
+            "surface": "백화점에",
+            "mistake": "e-for-eseo",
+            "instead": "With 샀어요, 에 marks 백화점 as where you go or where something is; buying is done there, which takes 에서.",
+            "decides": [2]
+          },
+          {
+            "word": 2,
+            "surface": "사요",
+            "mistake": "tense-mismatch",
+            "instead": "사요 is present; the cue's 어제 and 했어요 are past.",
+            "cueDecides": ["어제", "했어요"]
+          }
+        ],
+        "situations": {
+          "options": [
+            "Asking where the department store is",
+            "Saying what you bought yesterday",
+            "Returning clothes"
+          ],
+          "intended": 1
+        }
+      }
     },
     {
       "id": "shoes-small",
@@ -1754,7 +2118,24 @@
           "stemEnd": 3,
           "sense": "is cute"
         }
-      ]
+      ],
+      "lens": {
+        "misforms": [
+          {
+            "word": 2,
+            "surface": "귀엽어요",
+            "mistake": "b-irregular"
+          }
+        ],
+        "situations": {
+          "options": [
+            "Reacting to someone's pet",
+            "Asking if dogs are allowed",
+            "Saying you are allergic"
+          ],
+          "intended": 0
+        }
+      }
     },
     {
       "id": "cat-sofa",
@@ -1781,7 +2162,26 @@
           "role": "action",
           "stemEnd": 1
         }
-      ]
+      ],
+      "lens": {
+        "misforms": [
+          {
+            "word": 1,
+            "surface": "소파에",
+            "mistake": "e-for-eseo",
+            "instead": "With 자요, 에 marks 소파 as where you go or where something is; sleeping is done there, which takes 에서.",
+            "decides": [2]
+          }
+        ],
+        "situations": {
+          "options": [
+            "Saying where your cat is sleeping",
+            "Buying a new sofa",
+            "Booking a vet appointment"
+          ],
+          "intended": 0
+        }
+      }
     },
     {
       "id": "tired-early",
@@ -1837,7 +2237,27 @@
           "stemEnd": 1,
           "pronunciation": "드러요"
         }
-      ]
+      ],
+      "lens": {
+        "cue": {
+          "korean": "보통 뭐 해요?"
+        },
+        "misforms": [
+          {
+            "word": 2,
+            "surface": "듣어요",
+            "mistake": "d-irregular"
+          }
+        ],
+        "situations": {
+          "options": [
+            "Asking someone to turn the music down",
+            "Talking about a daily habit",
+            "Buying concert tickets"
+          ],
+          "intended": 1
+        }
+      }
     },
     {
       "id": "photo-here",
@@ -1866,7 +2286,26 @@
           "stemEnd": 1,
           "pronunciation": "찌거요"
         }
-      ]
+      ],
+      "lens": {
+        "misforms": [
+          {
+            "word": 0,
+            "surface": "여기에",
+            "mistake": "e-for-eseo",
+            "instead": "With 찍어요, 에 marks 여기 as where you go or where something is; taking photos is done there, which takes 에서.",
+            "decides": [2]
+          }
+        ],
+        "situations": {
+          "options": [
+            "Asking if photos are allowed",
+            "Saying where you take photos",
+            "Printing photos"
+          ],
+          "intended": 1
+        }
+      }
     },
     {
       "id": "sibling-school",
@@ -2036,7 +2475,27 @@
           "stemEnd": 2,
           "sense": "(my stomach) is hungry"
         }
-      ]
+      ],
+      "lens": {
+        "cue": {
+          "korean": "점심 먹을까요?"
+        },
+        "misforms": [
+          {
+            "word": 1,
+            "surface": "고프어요",
+            "mistake": "eu-kept"
+          }
+        ],
+        "situations": {
+          "options": [
+            "Saying your stomach hurts",
+            "Ordering dessert",
+            "Agreeing it is time to eat"
+          ],
+          "intended": 2
+        }
+      }
     },
     {
       "id": "thirsty",
@@ -2176,7 +2635,24 @@
           "stemEnd": 1,
           "pronunciation": "다다요"
         }
-      ]
+      ],
+      "lens": {
+        "misforms": [
+          {
+            "word": 1,
+            "surface": "닫어요",
+            "mistake": "vowel-harmony"
+          }
+        ],
+        "situations": {
+          "options": [
+            "Saying what you are doing as you leave a room",
+            "Asking someone to open the door",
+            "Saying the shop is closed"
+          ],
+          "intended": 0
+        }
+      }
     },
     {
       "id": "wash-hands",
@@ -2296,7 +2772,27 @@
           "stemEnd": 3,
           "sense": "is difficult"
         }
-      ]
+      ],
+      "lens": {
+        "cue": {
+          "korean": "한국어 공부는 어때요?"
+        },
+        "misforms": [
+          {
+            "word": 2,
+            "surface": "어렵어요",
+            "mistake": "b-irregular"
+          }
+        ],
+        "situations": {
+          "options": [
+            "Signing up for a class",
+            "Saying how your studies are going",
+            "Buying a dictionary"
+          ],
+          "intended": 1
+        }
+      }
     },
     {
       "id": "meet-tomorrow",
@@ -2349,7 +2845,35 @@
           "pronunciation": "바빠써요",
           "sense": "was busy"
         }
-      ]
+      ],
+      "lens": {
+        "cue": {
+          "korean": "어제 왜 전화 안 했어요?"
+        },
+        "misforms": [
+          {
+            "word": 2,
+            "surface": "바쁘었어요",
+            "mistake": "eu-kept"
+          },
+          {
+            "word": 2,
+            "surface": "바빠요",
+            "mistake": "tense-mismatch",
+            "instead": "바빠요 is present; 어제는 and the cue's 했어요 are past.",
+            "decides": [0],
+            "cueDecides": ["어제", "했어요"]
+          }
+        ],
+        "situations": {
+          "options": [
+            "Apologising to a friend for not getting in touch",
+            "Asking for help with work",
+            "Saying you have free time"
+          ],
+          "intended": 0
+        }
+      }
     },
     {
       "id": "new-car",
@@ -2428,7 +2952,30 @@
           "pronunciation": "만나써요",
           "sense": "met"
         }
-      ]
+      ],
+      "lens": {
+        "cue": {
+          "korean": "어제 뭐 했어요?"
+        },
+        "misforms": [
+          {
+            "word": 2,
+            "surface": "만나요",
+            "mistake": "tense-mismatch",
+            "instead": "만나요 is present; 어제 and the cue's 했어요 are past.",
+            "decides": [0],
+            "cueDecides": ["어제", "했어요"]
+          }
+        ],
+        "situations": {
+          "options": [
+            "Making plans with a friend",
+            "Telling someone what you did yesterday",
+            "Introducing a friend"
+          ],
+          "intended": 1
+        }
+      }
     },
     {
       "id": "library-read-yesterday",
@@ -2495,7 +3042,35 @@
           "pronunciation": "머거써요",
           "sense": "ate"
         }
-      ]
+      ],
+      "lens": {
+        "cue": {
+          "korean": "아침 식사 했어요?"
+        },
+        "misforms": [
+          {
+            "word": 2,
+            "surface": "먹어요",
+            "mistake": "tense-mismatch",
+            "instead": "먹어요 is present; the cue's 했어요 is past.",
+            "cueDecides": ["했어요"]
+          },
+          {
+            "word": 0,
+            "surface": "아침에서",
+            "mistake": "eseo-after-time",
+            "instead": "A part of the day takes 에; 에서 would start a span from the morning."
+          }
+        ],
+        "situations": {
+          "options": [
+            "Answering whether you have eaten",
+            "Ordering breakfast",
+            "Offering someone food"
+          ],
+          "intended": 0
+        }
+      }
     },
     {
       "id": "weekend-rested",
@@ -2526,7 +3101,36 @@
           "pronunciation": "쉬어써요",
           "sense": "rested"
         }
-      ]
+      ],
+      "lens": {
+        "cue": {
+          "korean": "주말에 뭐 했어요?"
+        },
+        "misforms": [
+          {
+            "word": 2,
+            "surface": "쉬어요",
+            "mistake": "tense-mismatch",
+            "instead": "쉬어요 is present; the cue's 했어요 is past.",
+            "cueDecides": ["했어요"]
+          },
+          {
+            "word": 1,
+            "surface": "집에",
+            "mistake": "e-for-eseo",
+            "instead": "With 쉬었어요, 에 marks 집 as where you go or where something is; resting is done there, which takes 에서.",
+            "decides": [2]
+          }
+        ],
+        "situations": {
+          "options": [
+            "Inviting a friend for next weekend",
+            "Telling someone how your weekend went",
+            "Saying you worked all weekend"
+          ],
+          "intended": 1
+        }
+      }
     },
     {
       "id": "movie-tomorrow",
