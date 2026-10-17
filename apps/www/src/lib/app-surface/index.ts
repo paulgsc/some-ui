@@ -63,7 +63,7 @@ export function isOnMobileSurface(pathname: string): boolean {
  * `check:bundle-paths` fails on any other route file that reaches it.
  */
 export function keepToMobileSurface(pathname: string): void {
-  if (MOBILE_APP && !isOnMobileSurface(pathname)) {
+  if (MOBILE_APP && hasAudience("apk") && !isOnMobileSurface(pathname)) {
     throw redirect({ to: MOBILE_ENTRY, replace: true })
   }
 }
