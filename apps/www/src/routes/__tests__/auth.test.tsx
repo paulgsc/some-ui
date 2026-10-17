@@ -107,7 +107,7 @@ describe("/auth in the Android app, which has no sign-in", () => {
     expect(screen.queryByText(/passkey/i)).toBeNull()
   })
 
-  it("reloads into where the person was, or the phone's Home", () => {
+  it("reloads into where the person was, or the phone's foyer", () => {
     search = { redirect: "/sessions" }
     renderAuth()
     fireEvent.click(screen.getByRole("button", { name: "Reload" }))
@@ -117,7 +117,7 @@ describe("/auth in the Android app, which has no sign-in", () => {
     fireEvent.click(screen.getByRole("button", { name: "Reload" }))
     expect(entered).toEqual([
       { href: "/sessions", mode: "server" },
-      { href: "/today", mode: "server" },
+      { href: "/foyer", mode: "server" },
     ])
   })
 })

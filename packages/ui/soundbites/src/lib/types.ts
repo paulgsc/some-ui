@@ -11,7 +11,10 @@ export type SoundbiteSource =
   | "sessions"
   /** The "Not today" action on a study reminder notification. */
   | "reminder"
-  /** "Hold to talk" in Home's + sheet: a comment, not a reason. */
+  /**
+   * "Talk now" in the phone's former + sheet: a comment, not a reason. Kept
+   * so older takes still read.
+   */
   | "capture"
   /**
    * "Say what stuck" on a finished session's wrap, before that became one of

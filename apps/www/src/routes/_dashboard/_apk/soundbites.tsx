@@ -1,42 +1,28 @@
 import type { JSX } from "react"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@some-ui/shared"
 import type { SoundbiteSituation, SoundbiteSource } from "@some-ui/soundbites"
-import {
-  Journal,
-  journalFiles,
-  phoneJournalStore,
-  phoneSoundbiteStore,
-  Soundbites,
-} from "@some-ui/soundbites"
+import { phoneSoundbiteStore, Soundbites } from "@some-ui/soundbites"
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
 
 import { handOffExport, shareAgentExport } from "@/lib/agent-export"
 import { useArrivalKey } from "@/lib/arrival-key"
 import { useAsyncIntent, useIntentEffect } from "@/lib/intent"
 import { IntentButton } from "@/lib/intent/render"
-import { letGoJournal, shareJournal } from "@/lib/journal-share"
 import type { SessionRecord, SessionStatus } from "@/lib/tenant"
 import { sessionsQuery, useSessions } from "@/lib/tenant"
 import { goingOut } from "@/components/reflection/copy"
 
 /**
- * `?say=` comes from a tap that already meant "let me talk" (Home's "Not
- * today? Say why", a reminder's "Not today", "Hold to talk"): the page starts
- * listening at once and records which.
+ * `?say=` comes from a tap that already meant "let me talk" (Practice's "Not
+ * today? Say why", a reminder's "Not today"): the page starts listening at
+ * once and records which.
  */
 type SoundbitesSearch = {
-  say?: "sessions" | "reminder" | "capture"
-  /**
-   * The Build Journal's voice takes instead of the study soundbites. A `say`
-   * is always a soundbite, so it wins.
-   */
-  tab?: "journal"
+  say?: "sessions" | "reminder"
 }
 
 const SAY_SOURCES: ReadonlyArray<NonNullable<SoundbitesSearch["say"]>> = [
   "sessions",
   "reminder",
-  "capture",
 ]
 
 function isSaySource(
@@ -125,62 +111,8 @@ const shareFooter =
     ? (taking: boolean): JSX.Element => <ShareWithAgent taking={taking} />
     : undefined
 
-/**
- * An episode's takes out through the share sheet, in the primer's order,
- * held and let go as `ShareWithAgent`'s are.
- */
-const ShareJournal = ({
-  taking,
-  takes,
-}: {
-  taking: boolean
-  takes: number
-}): JSX.Element => {
-  const share = useAsyncIntent(
-    () =>
-      shareJournal((exportedAt, timeZone) =>
-        journalFiles(phoneJournalStore(), exportedAt, timeZone)
-      ),
-    {
-      presentation: "interactive",
-    }
-  )
-  useIntentEffect(share, ({ outcome, sent }) => {
-    if (outcome !== "shared" || sent === null) return
-    if (
-      confirm(
-        "Did they arrive? OK lets the takes that went out go from the phone; Cancel keeps them here."
-      )
-    )
-      letGoJournal(phoneJournalStore(), sent)
-  })
-  return (
-    <section className="space-y-2">
-      <p className="text-muted-foreground text-sm">
-        takes.json and each take&apos;s audio, in the primer&apos;s order. You
-        pick where they go; once they arrive, the episode leaves the phone.
-      </p>
-      <IntentButton
-        state={share.state}
-        onPress={() => share.start(undefined)}
-        disabled={taking || takes === 0}
-        size="sm"
-        idleLabel="Share takes"
-        workingLabel="Preparing..."
-      />
-    </section>
-  )
-}
-
-const journalFooter =
-  import.meta.env.VITE_DEVICE_BACKEND === "true"
-    ? (state: { taking: boolean; takes: number }): JSX.Element => (
-        <ShareJournal {...state} />
-      )
-    : undefined
-
 const SoundbitesRoute = (): JSX.Element => {
-  const { say, tab } = Route.useSearch()
+  const { say } = Route.useSearch()
   const navigate = useNavigate()
   // Never waited on: the recording starts whether or not the list has
   // loaded, and a soundbite saved before it has notes no sessions.
@@ -192,54 +124,26 @@ const SoundbitesRoute = (): JSX.Element => {
   // clearing below is not a new request, so it never remounts mid-take.
   const arrival = useArrivalKey(isSaySource(say) ? say : undefined)
 
-  const journal = tab === "journal" && !isSaySource(say)
-
   return (
     <div className="mx-auto flex w-full max-w-md flex-col gap-4">
-      <Tabs
-        value={journal ? "journal" : "soundbites"}
-        onValueChange={(value) =>
-          void navigate({
-            to: "/soundbites",
-            search: value === "journal" ? { tab: "journal" } : {},
-            replace: true,
-          })
+      <Soundbites
+        key={arrival}
+        source={source}
+        autoStart={source !== "direct"}
+        // Forget the request once honoured, so going back or reloading does
+        // not open the microphone again.
+        onAutoStart={() =>
+          void navigate({ to: "/soundbites", search: {}, replace: true })
         }
-        className="flex flex-col gap-4"
-      >
-        <TabsList className="grid w-full grid-cols-2 rounded-full">
-          <TabsTrigger value="soundbites" className="rounded-full">
-            Soundbites
-          </TabsTrigger>
-          <TabsTrigger value="journal" className="rounded-full">
-            Journal
-          </TabsTrigger>
-        </TabsList>
-        <TabsContent value="soundbites">
-          <Soundbites
-            key={arrival}
-            source={source}
-            autoStart={source !== "direct"}
-            // Forget the request once honoured, so going back or reloading does
-            // not open the microphone again.
-            onAutoStart={() =>
-              void navigate({ to: "/soundbites", search: {}, replace: true })
-            }
-            situation={() => situationFrom(sessions ?? [])}
-            footer={shareFooter}
-          />
-        </TabsContent>
-        <TabsContent value="journal">
-          <Journal footer={journalFooter} />
-        </TabsContent>
-      </Tabs>
+        situation={() => situationFrom(sessions ?? [])}
+        footer={shareFooter}
+      />
     </div>
   )
 }
 
 function validateSearch(search: Record<string, unknown>): SoundbitesSearch {
-  if (isSaySource(search.say)) return { say: search.say }
-  return search.tab === "journal" ? { tab: "journal" } : {}
+  return isSaySource(search.say) ? { say: search.say } : {}
 }
 
 export const Route = createFileRoute("/_dashboard/_apk/soundbites")({

@@ -433,9 +433,6 @@ importers:
       '@some-ui/intent-kit':
         specifier: workspace:*
         version: link:../../packages/intent-kit
-      '@some-ui/job-tracker':
-        specifier: workspace:*
-        version: link:../../packages/job-tracker
       '@some-ui/lesson-crm':
         specifier: workspace:*
         version: link:../../packages/ui/lesson-crm
@@ -893,15 +890,6 @@ importers:
       fast-check:
         specifier: ^4.10.2
         version: 4.10.2
-
-  packages/job-tracker:
-    devDependencies:
-      '@some-ui/tsconfig':
-        specifier: workspace:*
-        version: link:../tsconfig
-      '@some-ui/vite-config':
-        specifier: workspace:*
-        version: link:../some-vite-config
 
   packages/makjang:
     devDependencies:

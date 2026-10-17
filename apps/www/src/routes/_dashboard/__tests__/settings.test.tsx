@@ -1,7 +1,9 @@
 /**
  * @vitest-environment jsdom
  *
- * Settings' save button (`useIntent`/`IntentButton`). Settings persist through
+ * Settings' save button (`useIntent`/`IntentButton`), on Practice's settings
+ * (`components/settings/study-settings`), which the web's Settings carries.
+ * Settings persist through
  * `SettingsRepository` straight to `localStorage`, so writes are observed and
  * failures injected by spying on `SettingsRepository.prototype.save`; there
  * is no `fetch` to sabotage. A non-`FileHost*Error` maps to
@@ -16,6 +18,7 @@ import {
 } from "@/test-support/file-host-sabotage"
 import { withQueryClient } from "@/test-support/query-client"
 import { routeComponent } from "@/test-support/router-stubs"
+import { QueryClient } from "@tanstack/react-query"
 import {
   act,
   cleanup,
@@ -35,6 +38,10 @@ import {
 } from "vitest"
 
 import { markSignedIn } from "@/lib/auth"
+import type { NudgePreferences } from "@/lib/study-nudge"
+import { DEFAULT_NUDGE_PREFERENCES } from "@/lib/study-nudge"
+import type { UserSettings } from "@/lib/tenant"
+import { settingsKey } from "@/lib/tenant"
 import { SettingsRepository } from "@/lib/tenant/settings-repository"
 
 const toastSpy = vi.fn()
@@ -48,8 +55,24 @@ vi.mock("sonner", () => ({
   },
 }))
 
+// The one edit these tests make: the reminders on or off.
 vi.mock("@/components/settings/study-nudge-section", () => ({
-  StudyNudgeSection: (): JSX.Element => <div data-testid="study-nudge-stub" />,
+  StudyNudgeSection: ({
+    preferences,
+    onChange,
+  }: {
+    preferences: NudgePreferences
+    onChange: (next: NudgePreferences) => void
+  }): JSX.Element => (
+    <button
+      type="button"
+      onClick={() =>
+        onChange({ ...preferences, enabled: !preferences.enabled })
+      }
+    >
+      Toggle reminders
+    </button>
+  ),
 }))
 
 const { Route } = await import("@/routes/_dashboard/settings")
@@ -71,24 +94,28 @@ afterAll(() => {
   saveSettingsSpy.mockRestore()
 })
 
-/** Renders the loaded form, edits the session length, returns Save. */
-async function editLength(value: string): Promise<HTMLElement> {
+/** Renders the loaded form, toggles the reminders, returns Save. */
+async function editReminders(
+  client: QueryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+  })
+): Promise<HTMLElement> {
   render(
     withQueryClient(
       <ThemeProvider>
         <SettingsRoute />
-      </ThemeProvider>
+      </ThemeProvider>,
+      client
     )
   )
   await screen.findByText("Settings")
-  const input = await screen.findByLabelText(/default session length/i)
-  fireEvent.change(input, { target: { value } })
+  fireEvent.click(await screen.findByText("Toggle reminders"))
   return screen.getByRole("button", { name: /save changes/i })
 }
 
 describe("settings: save button", () => {
   it("double-clicking Save issues exactly one write (thundering-herd regression)", async () => {
-    const save = await editLength("25")
+    const save = await editReminders()
 
     act(() => {
       fireEvent.click(save)
@@ -101,7 +128,7 @@ describe("settings: save button", () => {
   })
 
   it("saves, toasts, and the button disables again without a further edit", async () => {
-    const save = await editLength("30")
+    const save = await editReminders()
     expect(save.hasAttribute("disabled")).toBe(false)
 
     act(() => {
@@ -122,7 +149,7 @@ describe("settings: save button", () => {
 describe("settings: save button, repository write fails", () => {
   it("tells the person the save failed, with a retry control (unknown errors are always retryable)", async () => {
     saveSettingsSpy.mockRejectedValueOnce(new Error("localStorage write boom"))
-    const save = await editLength("25")
+    const save = await editReminders()
 
     // eslint-disable-next-line @typescript-eslint/require-await -- act's async form is what flushes the microtask-queued mutation state update; see test-support/file-host-sabotage.ts's header.
     await act(async () => {
@@ -131,5 +158,42 @@ describe("settings: save button, repository write fails", () => {
 
     await expectSomeFailureAffordance(document.body)
     expectRetryAffordanceTracksRetryable(document.body, true)
+  })
+})
+
+describe("settings: save keeps what it does not edit", () => {
+  it("does not undo an audio change made in the header while the form was open", async () => {
+    const client = new QueryClient({
+      defaultOptions: {
+        queries: { retry: false },
+        mutations: { retry: false },
+      },
+    })
+    const save = await editReminders(client)
+
+    // The header's audio menu writes straight through to the same record
+    // (lib/audio-preferences), after the form opened.
+    client.setQueryData<UserSettings>(settingsKey, (current) =>
+      current
+        ? {
+            ...current,
+            audio: { ...current.audio, speech: { enabled: false, volume: 1 } },
+          }
+        : current
+    )
+    // The cache tells its readers on the next task, as a person's later tap
+    // would find it.
+    await act(() => new Promise((resolve) => setTimeout(resolve, 0)))
+    act(() => {
+      fireEvent.click(save)
+    })
+
+    await waitFor(() => {
+      expect(saveSettingsSpy).toHaveBeenCalledTimes(1)
+    })
+    const saved = saveSettingsSpy.mock.calls[0]?.[0]
+    expect(saved.audio.speech.enabled).toBe(false)
+    // And the form's own edit goes with it.
+    expect(saved.notifications.enabled).toBe(!DEFAULT_NUDGE_PREFERENCES.enabled)
   })
 })

@@ -1,6 +1,5 @@
 import type { JSX } from "react"
 import { useEffect } from "react"
-import { AphTodayCard, AphTodayEntries } from "@some-ui/aph"
 import { cn, formatTimecode } from "@some-ui/core-utils"
 import {
   BrandMark,
@@ -32,12 +31,10 @@ import {
 import { StopReasons } from "@/components/player/session-stop"
 
 /**
- * Home: the Android app's front door, where each daily tool shows what it
- * needs from me right now. A tool earns one card here, plus its rows in
- * "Today so far"; anything more belongs on its own screen, a tab away.
- *
- * Each tool's card is its own (aph's comes from `@some-ui/aph`, which owns
- * what "due" means); Home only lays them out and supplies the links.
+ * Practice's Home: where studying picks up. What is open, what was finished
+ * today, and a way to say why not; nothing from another wing (lib/wings).
+ * Opened from the foyer, from Practice's own launcher icon, and from the
+ * player when a session ends.
  */
 
 type StudyStatus =
@@ -93,7 +90,7 @@ const StudyCard = ({ now }: { now: Date }): JSX.Element => {
     status.kind === "ready" && status.open === null && status.today.length > 0
 
   // An open session stopped past its window closes here, as it stood, and
-  // a close whose write failed is retried each minute Home is open.
+  // a close whose write failed is retried each minute this Home is open.
   const openId = status.kind === "ready" ? (status.open?.id ?? null) : null
   const openStop = openId === null ? null : latestStop(openId)
   const stopped = openStop?.outcome === "open" ? openStop : null
@@ -254,9 +251,9 @@ const Hills = (): JSX.Element => (
   </svg>
 )
 
-const TodayRoute = (): JSX.Element => {
-  // Moves while Home stays open, so a checkpoint turns due, then missed, and
-  // the date turns over, without leaving the page.
+const PracticeHome = (): JSX.Element => {
+  // Moves while the page stays open, so a stop's pick-up window closes and
+  // the date turns over without leaving it.
   const now = useMinuteClock()
 
   return (
@@ -266,62 +263,24 @@ const TodayRoute = (): JSX.Element => {
         <BrandMark tone="brand" className="size-12 shrink-0" />
         <span className="flex flex-col">
           <span className="text-muted-foreground text-sm font-semibold">
-            {now.toLocaleDateString("en-US", { weekday: "long" })}
-          </span>
-          <h1 className="text-2xl font-bold tracking-tight">
             {now.toLocaleDateString("en-US", {
+              weekday: "long",
               month: "short",
               day: "numeric",
             })}
-          </h1>
+          </span>
+          <h1 className="text-2xl font-bold tracking-tight">Practice</h1>
         </span>
       </header>
 
-      <section aria-labelledby="home-now" className="flex flex-col gap-3">
-        <h2 id="home-now" className="text-lg font-bold">
-          Now
-        </h2>
-        <AphTodayCard
-          now={now}
-          renderLog={(label) => (
-            <Button asChild size="sm">
-              <Link to="/aph">{label}</Link>
-            </Button>
-          )}
-          renderReview={(children) => (
-            <Link
-              to="/aph/history"
-              className="self-start underline-offset-4 hover:underline"
-            >
-              {children}
-            </Link>
-          )}
-        />
-        <StudyCard now={now} />
-      </section>
-
-      <section aria-labelledby="home-today" className="flex flex-col gap-3">
-        <h2 id="home-today" className="text-lg font-bold">
-          Today so far
-        </h2>
-        <ul className="bg-card border-border/50 divide-border/50 divide-y rounded-2xl border shadow-sm">
-          <AphTodayEntries
-            now={now}
-            empty={
-              <li className="text-muted-foreground px-3 py-2.5 text-sm">
-                Nothing logged yet today
-              </li>
-            }
-          />
-        </ul>
-      </section>
+      <StudyCard now={now} />
     </div>
   )
 }
 
-export const Route = createFileRoute("/_dashboard/_apk/today")({
+export const Route = createFileRoute("/_dashboard/_apk/practice/")({
   loader: ({ context }) => {
     void context.queryClient.prefetchQuery(sessionsQuery)
   },
-  component: TodayRoute,
+  component: PracticeHome,
 })

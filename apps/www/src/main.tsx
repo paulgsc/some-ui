@@ -10,6 +10,7 @@ import { sweepOrphans } from "@/lib/reflection-voice"
 import { sweepSceneVoice } from "@/lib/scene-voice"
 import { installShareSidecar } from "@/lib/share-files"
 import { releasePushWhenLeavingTheAccount } from "@/lib/study-nudge/leave-account"
+import { listenForWingEntry } from "@/lib/wings/entry"
 import { ErrorState, NotFound, RoutePending } from "@/components/housekeeping"
 
 import { routeTree } from "./routeTree.gen"
@@ -63,6 +64,11 @@ const router = createRouter({
   defaultErrorComponent: ErrorState,
   defaultPendingComponent: RoutePending,
 })
+
+// A wing's launcher icon tapped while the Android app is open navigates here
+// rather than reloading (lib/wings/entry). Before render, so it is in place
+// before the page finishes loading.
+listenForWingEntry((to) => void router.navigate({ to }))
 
 const rootElement = document.getElementById("app")
 if (rootElement && !rootElement.innerHTML) {
