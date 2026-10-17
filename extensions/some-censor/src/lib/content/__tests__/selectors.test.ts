@@ -23,6 +23,7 @@ import {
   PREMASK_FALLBACK_SELECTORS,
   PREMASK_SELECTORS,
   SEL,
+  SHELF_COLLAPSE_SELECTORS,
   VIDEO_SELECTORS,
 } from "@censor/lib/content/selectors"
 import { describe, expect, it } from "vitest"
@@ -69,8 +70,10 @@ function splitFallback(): { main: string; fallback: string } {
   return { main, fallback }
 }
 
-function premaskRulesIn(css: string): Array<string> {
-  const marker = "filter: brightness(0.35)"
+function premaskRulesIn(
+  css: string,
+  marker = "filter: brightness(0.35)"
+): Array<string> {
   const rules: Array<string> = []
   let searchFrom = 0
   for (;;) {
@@ -113,6 +116,14 @@ function topLevelCommaCount(selector: string): number {
   return count
 }
 
+/** The shelf-collapse rules, found by the condition only they carry. */
+function shelfRulesFromCss(): Array<string> {
+  return premaskRulesIn(
+    splitFallback().main,
+    "display: none !important"
+  ).filter((r) => normalize(r).includes(':has([data-boyo="absent"]):not('))
+}
+
 describe("the stylesheet and the catalogue agree", () => {
   it("occludes exactly the tags the content script adopts, one rule per tag", () => {
     expect(premaskRulesFromCss().map(normalize)).toEqual(
@@ -137,11 +148,107 @@ describe("the stylesheet and the catalogue agree", () => {
     }
   })
 
+  it("collapses exactly the catalogued shelves, one rule per shelf", () => {
+    expect(shelfRulesFromCss().map(normalize)).toEqual(
+      SHELF_COLLAPSE_SELECTORS.map(normalize)
+    )
+  })
+
+  it("keeps a shelf whose cards are plated, pending, or not videos at all", () => {
+    const shelf = document.createElement("ytd-rich-section-renderer")
+    shelf.innerHTML = `
+      <ytd-rich-item-renderer><ytm-shorts-lockup-view-model-v2>
+        <ytm-shorts-lockup-view-model data-boyo="absent"><a href="/shorts/s1"></a></ytm-shorts-lockup-view-model>
+      </ytm-shorts-lockup-view-model-v2></ytd-rich-item-renderer>
+      <ytd-rich-item-renderer id="second"></ytd-rich-item-renderer>`
+    document.body.appendChild(shelf)
+    const [rule] = SHELF_COLLAPSE_SELECTORS
+    const second = shelf.querySelector("#second")
+    if (rule === undefined || second === null) throw new Error("fixture")
+    const collapses = (inner: string): boolean => {
+      second.innerHTML = inner
+      return shelf.matches(rule)
+    }
+
+    expect(collapses(""), "every card absent: the wrappers do not count").toBe(
+      true
+    )
+    expect(
+      collapses(
+        '<yt-lockup-view-model data-boyo="plated"></yt-lockup-view-model>'
+      ),
+      "a plated card"
+    ).toBe(false)
+    expect(
+      collapses(
+        '<yt-lockup-view-model><a href="/watch?v=p1"></a></yt-lockup-view-model>'
+      ),
+      "a card not adopted yet"
+    ).toBe(false)
+    expect(
+      collapses(
+        '<yt-lockup-view-model><a href="/@channel"></a></yt-lockup-view-model>'
+      ),
+      "a channel tile"
+    ).toBe(false)
+    expect(
+      collapses(
+        '<div id="content"><ytm-shorts-lockup-view-model-v2><ytm-shorts-lockup-view-model data-boyo="absent"></ytm-shorts-lockup-view-model></ytm-shorts-lockup-view-model-v2></div>'
+      ),
+      "a slot holding an absent card"
+    ).toBe(true)
+    expect(
+      collapses(
+        '<div id="content"><ytd-post-renderer></ytd-post-renderer></div>'
+      ),
+      "a slot holding a post"
+    ).toBe(false)
+    second.setAttribute("data-boyo", "absent")
+    expect(
+      collapses(
+        '<div id="content"><ytd-rich-grid-media></ytd-rich-grid-media></div>'
+      ),
+      "a cell that is itself the card: its stamp decides"
+    ).toBe(true)
+    second.removeAttribute("data-boyo")
+    second.remove()
+    shelf.querySelector("[data-boyo]")?.setAttribute("data-boyo", "plated")
+    expect(shelf.matches(rule), "no absent card at all").toBe(false)
+    shelf.remove()
+  })
+
+  it("collapses a channel section only when the shelf is all it holds", () => {
+    const section = document.createElement("ytd-item-section-renderer")
+    section.innerHTML = `<div id="contents"><ytd-reel-shelf-renderer>
+      <ytm-shorts-lockup-view-model data-boyo="absent"><a href="/shorts/s1"></a></ytm-shorts-lockup-view-model>
+    </ytd-reel-shelf-renderer></div>`
+    document.body.appendChild(section)
+    const matches = (): boolean =>
+      SHELF_COLLAPSE_SELECTORS.some((rule) => section.matches(rule))
+    expect(matches()).toBe(true)
+    // A sibling result: the section holds more than the shelf.
+    section
+      .querySelector("#contents")
+      ?.append(document.createElement("ytd-channel-renderer"))
+    expect(matches()).toBe(false)
+
+    section.innerHTML = `<div id="contents"><ytd-shelf-renderer>
+      <yt-horizontal-list-renderer><div id="items">
+        <yt-lockup-view-model data-boyo="absent"><a href="/watch?v=a1"></a></yt-lockup-view-model>
+        <ytd-grid-channel-renderer><a href="/@channel"></a></ytd-grid-channel-renderer>
+      </div></yt-horizontal-list-renderer>
+    </ytd-shelf-renderer></div>`
+    expect(matches(), "a channel tile holds a channel shelf open").toBe(false)
+    section.querySelector("ytd-grid-channel-renderer")?.remove()
+    expect(matches()).toBe(true)
+    section.remove()
+  })
+
   it("never shares one rule's declarations across more than one selector", () => {
     // QC0: CSS selector-list invalidation is all-or-nothing, so one
     // unparseable selector sharing a rule (e.g. `:has()` before Firefox 121)
     // would cost every other selector in that rule its occluder.
-    for (const rule of premaskRulesFromCss()) {
+    for (const rule of [...premaskRulesFromCss(), ...shelfRulesFromCss()]) {
       expect(topLevelCommaCount(rule), rule).toBe(0)
     }
   })
