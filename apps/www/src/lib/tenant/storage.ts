@@ -19,15 +19,23 @@ export const browserLocalStorage: StorageAdapter = {
   },
 }
 
-export function createInMemoryStorage(): StorageAdapter {
-  const store = new Map<string, string>()
+/** A `Storage` that lives as long as the page (or the test). */
+export function createInMemoryStorage(): Storage {
+  const items = new Map<string, string>()
   return {
-    getItem: (key): string | null => store.get(key) ?? null,
+    get length(): number {
+      return items.size
+    },
+    key: (index) => [...items.keys()][index] ?? null,
+    getItem: (key) => items.get(key) ?? null,
     setItem: (key, value): void => {
-      store.set(key, value)
+      items.set(key, String(value))
     },
     removeItem: (key): void => {
-      store.delete(key)
+      items.delete(key)
+    },
+    clear: (): void => {
+      items.clear()
     },
   }
 }

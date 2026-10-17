@@ -23,8 +23,6 @@ export const DEFAULT_SETTINGS: UserSettings = {
   deviceVoiceId: "",
   audio: DEFAULT_AUDIO_PREFERENCES,
   notifications: DEFAULT_NUDGE_PREFERENCES,
-  defaultSessionDurationMinutes: 10,
-  defaultLayoutTree: "study",
 }
 
 /** The two strings `ttsVoice` replaced, still in blobs saved before it. */

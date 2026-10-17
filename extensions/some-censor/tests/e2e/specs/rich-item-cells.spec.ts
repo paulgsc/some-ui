@@ -11,7 +11,7 @@
  *      O1 must not open a window where a real card paints unoccluded.
  * O3 — The non-video cell does not keep the retry loop alive.
  * O4 — A cell that *contains* a card is a wrapper, not a card: the lockup
- *      inside is masked, the cell is neither adopted nor occluded.
+ *      inside is plated, the cell is neither adopted nor occluded.
  * O5 — The stylesheet's pre-mask condition and `classifyCard()` agree on
  *      every catalogue element, on a real engine — the unit suite cannot
  *      check this, because jsdom cannot parse `:not(:has())`.
@@ -23,6 +23,8 @@
  *      lockup becomes the card.
  * O9 — The same, when the lockup carries the *same* video as the cell did:
  *      the cell's entry must not be repaired in place of adopting the lockup.
+ * O10 — A cell whose lockup is absent takes no space either: no tile, and
+ *      nothing in its place (QD11).
  */
 
 import {
@@ -120,7 +122,7 @@ test("O4: a cell wrapping a lockup is released, and the lockup is the card", asy
       timeout: 5000,
     }
   )
-  expect(snap.entries["lock_nested"]?.viewKind).toBe("masked")
+  expect(snap.entries["lock_nested"]?.viewKind).toBe("plated")
 
   const adopted = await page.evaluate(() => ({
     inner: document.getElementById("nested-inner")?.getAttribute("data-boyo"),
@@ -132,7 +134,7 @@ test("O4: a cell wrapping a lockup is released, and the lockup is the card", asy
       .getElementById("nested-outer")
       ?.querySelectorAll(".boyo-veil").length,
   }))
-  expect(adopted.inner, "the lockup is the card").toBe("0")
+  expect(adopted.inner, "the lockup is the card").toBe("plated")
   expect(adopted.outer, "the cell is not adopted").toBe(false)
   expect(adopted.innerVeils, "exactly one veil, on the lockup").toBe(1)
   expect(adopted.outerVeils, "and none anywhere else in the cell").toBe(1)
@@ -216,7 +218,7 @@ test("O6: a cell inserted with its lockup already inside is handled by the obser
   const snap = await fixture.pollDebug(page, (d) => "lock_late" in d.entries, {
     timeout: 5000,
   })
-  expect(snap.entries["lock_late"]?.viewKind).toBe("masked")
+  expect(snap.entries["lock_late"]?.viewKind).toBe("plated")
   expect(
     await fixture.fixtureCall<boolean>(page, "isMaskedById", "late-cell-inner"),
     "the lockup is the card"
@@ -289,7 +291,7 @@ test("O8: an adopted cell wrapped around a lockup in place is retired, and the l
     (d) => "lock_wrapped" in d.entries && !("vid_bbb222" in d.entries),
     { timeout: 5000 }
   )
-  expect(snap.entries["lock_wrapped"]?.viewKind).toBe("masked")
+  expect(snap.entries["lock_wrapped"]?.viewKind).toBe("plated")
 
   const shape = await page.evaluate(() => {
     const inner = document.getElementById("wrapped-inner")
@@ -304,7 +306,7 @@ test("O8: an adopted cell wrapped around a lockup in place is retired, and the l
     }
   })
   expect(shape).not.toBeNull()
-  expect(shape?.innerStamp, "the lockup is masked").toBe("0")
+  expect(shape?.innerStamp, "the lockup is plated").toBe("plated")
   expect(shape?.innerVeils).toBe(1)
   expect(shape?.outerStamped, "the cell's stamp is retired").toBe(false)
   expect(shape?.outerOwnVeils, "and its veil is gone").toBe(0)
@@ -331,7 +333,8 @@ test("O9: a cell wrapped around a lockup for the same video hands the card to th
   // the rendered stamps can.
   await page.waitForFunction(
     () =>
-      document.getElementById("same-inner")?.getAttribute("data-boyo") === "0",
+      document.getElementById("same-inner")?.getAttribute("data-boyo") ===
+      "plated",
     undefined,
     { timeout: 5000 }
   )
@@ -353,4 +356,33 @@ test("O9: a cell wrapped around a lockup for the same video hands the card to th
   expect(shape?.outerStamped, "the cell's stamp is retired").toBe(false)
   expect(shape?.outerOwnVeils).toBe(0)
   expect(shape?.outerBlurred).toBe(false)
+})
+
+test("O10: a cell whose lockup is absent takes no space", async ({
+  fixture,
+}) => {
+  const page = await fixture.goto("yt-home")
+  await fixture.pollDebug(page, (d) => "lock_nested" in d.entries, {
+    timeout: 5000,
+  })
+
+  await fixture.fixtureCall<boolean>(
+    page,
+    "appendNestedCell",
+    "lock_fresh",
+    "fresh-cell",
+    "3 days ago"
+  )
+  const snap = await fixture.pollDebug(page, (d) => "lock_fresh" in d.entries, {
+    timeout: 5000,
+  })
+  expect(snap.entries["lock_fresh"]?.viewKind).toBe("absent")
+  expect(
+    await page.locator("#fresh-cell").boundingBox(),
+    "the cell is not laid out"
+  ).toBeNull()
+  expect(
+    await page.locator("#nested-outer").boundingBox(),
+    "a cell whose card is plated still is"
+  ).not.toBeNull()
 })

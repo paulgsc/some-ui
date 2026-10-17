@@ -182,7 +182,7 @@ export const CompletionSummary = ({
           />
           {phone ? (
             <Button asChild>
-              <Link to="/today">Done</Link>
+              <Link to="/practice">Done</Link>
             </Button>
           ) : (
             <Button asChild variant="outline">

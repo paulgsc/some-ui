@@ -16,10 +16,11 @@ import {
   fitsRoom,
   result,
 } from "@some-ui/voice-capture"
+import { JOURNAL_TAKES_MAX_BYTES } from "@soundbites/lib/policy"
 import { askToKeep } from "@soundbites/lib/store"
 
 import type { JournalPlan, JournalTake } from "./plan"
-import { inCutOrder, JOURNAL_TAKES_MAX_BYTES } from "./plan"
+import { inCutOrder } from "./plan"
 
 export type JournalShelf = {
   readonly plan: JournalPlan | null

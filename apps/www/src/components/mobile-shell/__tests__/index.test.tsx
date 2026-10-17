@@ -1,14 +1,14 @@
 /**
  * @vitest-environment jsdom
  *
- * Where the bottom bar steps aside (the composer), the header's Home link is
- * the visible way out: without it, the composer could only be left by
- * finishing it. And Android's back, which changes the page under the + sheet,
- * must not leave the sheet open over a page it was not opened on.
+ * The shell by wing (lib/wings): the bar holds the current wing's rooms and
+ * none of another's; where it steps aside (the composer), the header leads
+ * back to the wing's Home, without which the composer could only be left by
+ * finishing it; elsewhere the header leads to the foyer.
  */
 
 import type * as ReactRouterModule from "@tanstack/react-router"
-import { cleanup, fireEvent, render, screen } from "@testing-library/react"
+import { cleanup, render, screen } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
 import type * as BuildProfileModule from "@/lib/build-profile"
@@ -31,42 +31,91 @@ vi.mock(
   }
 )
 
-const { MobileHomeLink, MobileNav } = await import("@/components/mobile-shell")
+const { MobileNav, MobileSettingsLink, MobileWayOut } = await import(
+  "@/components/mobile-shell"
+)
 
 afterEach(() => {
   cleanup()
   carriesApk = true
 })
 
-describe("MobileHomeLink", () => {
-  it("links to the phone's Home", () => {
-    render(<MobileHomeLink />)
+/** Where a rendered link points: the stub `Link` keeps `to` as an attribute. */
+function targetOf(text: string): string | null | undefined {
+  return screen.getByText(text).closest("a")?.getAttribute("to")
+}
 
-    // The stub `Link` is an `<a>` with no href, so no "link" role to query.
-    expect(screen.getByText("Home").closest("a")?.getAttribute("to")).toBe(
-      "/today"
+describe("MobileNav", () => {
+  it("holds Practice's rooms and nothing of another wing", () => {
+    render(<MobileNav pathname="/sessions" />)
+
+    expect(targetOf("Home")).toBe("/practice")
+    expect(targetOf("Study")).toBe("/sessions")
+    expect(targetOf("Bites")).toBe("/soundbites")
+    expect(screen.queryByText("aph")).toBeNull()
+    expect(
+      screen.getByText("Study").closest("a")?.getAttribute("aria-current")
+    ).toBe("page")
+  })
+
+  it("has no bar in a wing of one room, or outside every wing", () => {
+    for (const pathname of ["/aph", "/journal", "/foyer", "/settings"]) {
+      const { container } = render(<MobileNav pathname={pathname} />)
+      expect(container.querySelector("nav"), pathname).toBeNull()
+      cleanup()
+    }
+  })
+})
+
+describe("MobileWayOut", () => {
+  it("leads back to the wing's Home where the bar steps aside", () => {
+    render(<MobileWayOut pathname="/sessions/new" bounded />)
+
+    expect(targetOf("Practice")).toBe("/practice")
+  })
+
+  it("leads to the foyer elsewhere, and is absent on the foyer itself", () => {
+    render(<MobileWayOut pathname="/aph/history" bounded={false} />)
+    expect(
+      screen.getByLabelText("Self: choose another wing").getAttribute("to")
+    ).toBe("/foyer")
+    cleanup()
+
+    const { container } = render(
+      <MobileWayOut pathname="/foyer" bounded={false} />
     )
+    expect(container.querySelector("a")).toBeNull()
   })
 
   it("renders nothing in a build without the phone's pages (A3)", () => {
     carriesApk = false
-    render(<MobileHomeLink />)
+    const { container } = render(
+      <MobileWayOut pathname="/sessions/new" bounded />
+    )
 
-    expect(screen.queryByText("Home")).toBeNull()
+    expect(container.querySelector("a")).toBeNull()
   })
 })
 
-describe("MobileNav's + sheet", () => {
-  it("closes when the page under it changes, and stays closed on return", () => {
-    const { rerender } = render(<MobileNav pathname="/today" />)
-    fireEvent.click(screen.getByRole("button", { name: "Quick entry" }))
-    expect(screen.getByRole("dialog")).toBeTruthy()
+describe("MobileSettingsLink", () => {
+  it("opens the wing's own settings, or the front desk from the foyer", () => {
+    render(<MobileSettingsLink pathname="/practice" />)
+    expect(screen.getByLabelText("Practice settings").getAttribute("to")).toBe(
+      "/practice/settings"
+    )
+    cleanup()
 
-    // Android's back, with the sheet open.
-    rerender(<MobileNav pathname="/sessions" />)
-    expect(screen.queryByRole("dialog")).toBeNull()
+    render(<MobileSettingsLink pathname="/foyer" />)
+    expect(screen.getByLabelText("Settings").getAttribute("to")).toBe(
+      "/settings"
+    )
+  })
 
-    rerender(<MobileNav pathname="/today" />)
-    expect(screen.queryByRole("dialog")).toBeNull()
+  it("is absent where a wing has no settings, and on the page it opens", () => {
+    for (const pathname of ["/journal", "/practice/settings", "/settings"]) {
+      const { container } = render(<MobileSettingsLink pathname={pathname} />)
+      expect(container.querySelector("a"), pathname).toBeNull()
+      cleanup()
+    }
   })
 })

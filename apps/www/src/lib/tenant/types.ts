@@ -1,8 +1,4 @@
-import type {
-  LayoutTreeId,
-  SessionActivity,
-  TopikLevel,
-} from "@some-ui/activity-catalog"
+import type { SessionActivity, TopikLevel } from "@some-ui/activity-catalog"
 import type { HostedVoiceChoice } from "@some-ui/speech"
 import type { SceneConfig, SlotId } from "@some-ui/types"
 import type { LayoutNode } from "wireframes"
@@ -39,8 +35,6 @@ export type UserSettings = {
   audio: AudioPreferences
   /** When this app may interrupt to say a session is waiting. */
   notifications: NudgePreferences
-  defaultSessionDurationMinutes: number
-  defaultLayoutTree: LayoutTreeId
 }
 
 export type SessionStatus =

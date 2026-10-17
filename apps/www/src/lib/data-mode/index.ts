@@ -19,3 +19,11 @@ export const DATA_MODE: RuntimeMode =
 
 /** True when this build fetches its content rather than using bundled seeds. */
 export const FETCHES_CONTENT = DATA_MODE === "server"
+
+/**
+ * Whoever opens this build is a viewer, not the owner (CLAUDE.md, "two
+ * mandates"): only the owner signs in, on the home network or the phone, and
+ * the Pages build has neither. A viewer sees the owner's tools read-only, on
+ * sample data that nothing keeps (`lib/demo`).
+ */
+export const VIEWER_BUILD = DATA_MODE === "static"

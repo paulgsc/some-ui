@@ -7,27 +7,29 @@
  * href-only cards and in-place element reuse so the tests can actually fail
  * when the extension is broken.
  *
- * T1 — href-only cards resolve and mask (no data-video-id fast path).
- * T2 — a card with a late-hydrating channel masks immediately on videoId,
- *      then backfills its channel.
+ * T1 — href-only cards resolve and are plated (no data-video-id fast path).
+ * T2 — a card with a late-hydrating channel is plated immediately on
+ *      videoId, then backfills its channel.
  * T3 — chip/SPA navigation that REUSES elements clears stale view state.
- * T4 — recycled elements (data-video-id mutation) get fresh masked state.
- * T5 — click progression masked → meta → title.
+ * T4 — recycled elements (data-video-id mutation) are decided afresh.
+ * T5 — no gesture changes a card (#1803).
  * T6 — sessionOrdinal never decreases.
- * T7 — watch-page sidebar (compact renderers) is masked.
+ * T7 — watch-page sidebar (compact renderers) is decided like the feed.
  * T8 — navigation BUMPS the session (the fix for stale state).
- * T9 — dblclick reveals from any state, and the veil stops taking clicks.
- * T10 — a revealed renderer repointed at a new video re-masks (QD1).
- * T11 — a revealed href-only lockup survives preview-anchor churn.
+ * T9 — an absent card is out of layout, out of the accessibility tree and
+ *      out of the Tab order.
+ * T10 — a renderer repointed at a new video is decided afresh (QD1).
+ * T11 — an href-only lockup's card survives preview-anchor churn.
+ * T12 — a plated card's veil covers all of it.
  */
 
 import { expect, test } from "@censor/playwright/fixture"
 
 // ─────────────────────────────────────────────────────────────────────────────
-// T1: href-only resolution + masking
+// T1: href-only resolution
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("T1: href-only cards (no data-video-id) all mask within 5s", async ({
+test("T1: href-only cards (no data-video-id) are all plated within 5s", async ({
   fixture,
 }) => {
   const page = await fixture.goto("yt-home")
@@ -44,7 +46,7 @@ test("T1: href-only cards (no data-video-id) all mask within 5s", async ({
     const entry = snap.entries[id]
     expect(entry, `entry for ${id} should exist`).toBeDefined()
     if (entry === undefined) throw new Error(`missing entry: ${id}`)
-    expect(entry.viewKind, `${id} should be masked`).toBe("masked")
+    expect(entry.viewKind, `${id} should be plated`).toBe("plated")
     expect(entry.isConnected, `${id} should be connected`).toBe(true)
   }
 
@@ -54,7 +56,7 @@ test("T1: href-only cards (no data-video-id) all mask within 5s", async ({
       "dataBoyoFor",
       id
     )
-    expect(dataBoyo, `data-boyo for ${id}`).toBe("0")
+    expect(dataBoyo, `data-boyo for ${id}`).toBe("plated")
   }
 })
 
@@ -62,21 +64,21 @@ test("T1: href-only cards (no data-video-id) all mask within 5s", async ({
 // T2: video-only mount + channel backfill
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("T2: card with no channel anchor masks immediately, then backfills channel", async ({
+test("T2: card with no channel anchor is plated immediately, then backfills channel", async ({
   fixture,
 }) => {
   const page = await fixture.goto("yt-home")
 
   // Card 4 has a watch href but NO channel anchor at load. It must still mask.
-  const masked = await fixture.pollDebug(
+  const adopted = await fixture.pollDebug(
     page,
     (d) => "vid_ddd444" in d.entries,
     { timeout: 5000 }
   )
-  const entry = masked.entries["vid_ddd444"]
+  const entry = adopted.entries["vid_ddd444"]
   expect(entry, "video-only card should mount").toBeDefined()
   if (entry === undefined) throw new Error("missing vid_ddd444")
-  expect(entry.viewKind, "should be masked on videoId alone").toBe("masked")
+  expect(entry.viewKind, "should be plated on videoId alone").toBe("plated")
 
   // Channel id is provisionally empty until backfill.
   expect(
@@ -98,15 +100,15 @@ test("T2: card with no channel anchor masks immediately, then backfills channel"
     { timeout: 5000 }
   )
   expect(backfilled.entries["vid_ddd444"]?.channelId).toBeTruthy()
-  // Still masked — backfill must not advance the view.
-  expect(backfilled.entries["vid_ddd444"]?.viewKind).toBe("masked")
+  // Still plated — a channel arriving does not move the view.
+  expect(backfilled.entries["vid_ddd444"]?.viewKind).toBe("plated")
 })
 
 // ─────────────────────────────────────────────────────────────────────────────
 // T3: navigation clears stale view state (the core bug)
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("T3: progressed card is reset to masked after element-reuse navigation", async ({
+test("T3: element-reuse navigation forgets the old cards and decides the new ones", async ({
   fixture,
 }) => {
   const page = await fixture.goto("yt-home")
@@ -114,27 +116,6 @@ test("T3: progressed card is reset to masked after element-reuse navigation", as
   await fixture.pollDebug(page, (d) => "vid_aaa111" in d.entries, {
     timeout: 5000,
   })
-
-  // Advance a card to title (two clicks) so it has non-masked stale state.
-  for (let i = 0; i < 2; i++) {
-    await page.evaluate(() => {
-      const el = [...document.querySelectorAll("ytd-rich-item-renderer")].find(
-        (n) => n.getAttribute("data-boyo-vid") === "vid_aaa111"
-      )
-      const veil = el?.querySelector(".boyo-veil")
-      if (!(veil instanceof HTMLElement)) throw new Error("veil not found")
-      veil.dispatchEvent(
-        new MouseEvent("click", { bubbles: true, cancelable: true })
-      )
-    })
-    await page.waitForTimeout(400) // clear the dblclick gate window
-  }
-
-  await fixture.pollDebug(
-    page,
-    (d) => d.entries["vid_aaa111"]?.viewKind === "title",
-    { timeout: 3000 }
-  )
 
   // Navigate via element-REUSE (old elements stay connected).
   await fixture.fixtureCall(page, "simulateNavigation", "Gaming")
@@ -146,12 +127,11 @@ test("T3: progressed card is reset to masked after element-reuse navigation", as
     { timeout: 6000 }
   )
 
-  // New feed cards masked...
   for (const id of newIds) {
-    expect(snap.entries[id]?.viewKind, `${id} should be masked`).toBe("masked")
+    expect(snap.entries[id]?.viewKind, `${id} should be plated`).toBe("plated")
   }
-  // ...and the stale title-state card is GONE (its element was reused under a
-  // new identity, and the session bump destroyed the old entry).
+  // The old card is GONE: its element was reused under a new identity, and the
+  // session bump destroyed the old entry.
   expect(
     snap.entries["vid_aaa111"],
     "stale card should not survive navigation"
@@ -162,29 +142,12 @@ test("T3: progressed card is reset to masked after element-reuse navigation", as
 // T4: recycled element handling
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("T4: recycled element receives fresh masked state", async ({
-  fixture,
-}) => {
+test("T4: a recycled element is decided afresh", async ({ fixture }) => {
   const page = await fixture.goto("yt-home")
 
   await fixture.pollDebug(page, (d) => "vid_aaa111" in d.entries, {
     timeout: 5000,
   })
-
-  await page.evaluate(() => {
-    const el = [...document.querySelectorAll("ytd-rich-item-renderer")].find(
-      (n) => n.getAttribute("data-boyo-vid") === "vid_aaa111"
-    )
-    const veil = el?.querySelector(".boyo-veil")
-    if (!(veil instanceof HTMLElement)) throw new Error("veil not found")
-    veil.click()
-  })
-
-  await fixture.pollDebug(
-    page,
-    (d) => d.entries["vid_aaa111"]?.viewKind === "meta",
-    { timeout: 3000 }
-  )
 
   await fixture.fixtureCall(
     page,
@@ -198,62 +161,43 @@ test("T4: recycled element receives fresh masked state", async ({
     (d) => "vid_recycled999" in d.entries,
     { timeout: 4000 }
   )
-  expect(snap.entries["vid_recycled999"]?.viewKind).toBe("masked")
+  expect(snap.entries["vid_recycled999"]?.viewKind).toBe("plated")
   expect(snap.entries["vid_aaa111"]).toBeUndefined()
 })
 
 // ─────────────────────────────────────────────────────────────────────────────
-// T5: click progression
+// T5: gestures are not inputs
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("T5: clicking advances masked → meta → title", async ({ fixture }) => {
+test("T5: a click, a double click or a context menu changes nothing", async ({
+  fixture,
+}) => {
   const page = await fixture.goto("yt-home")
 
   await fixture.pollDebug(page, (d) => "vid_bbb222" in d.entries, {
     timeout: 5000,
   })
 
-  const clickCard = (): Promise<void> =>
-    page.evaluate(() => {
-      const el = [...document.querySelectorAll("ytd-rich-item-renderer")].find(
-        (n) => n.getAttribute("data-boyo-vid") === "vid_bbb222"
-      )
+  for (const type of ["click", "dblclick", "contextmenu"]) {
+    await page.evaluate((eventType) => {
+      const el = document.querySelector('[data-boyo-vid="vid_bbb222"]')
       const veil = el?.querySelector(".boyo-veil")
       if (!(veil instanceof HTMLElement)) throw new Error("veil not found")
       veil.dispatchEvent(
-        new MouseEvent("click", { bubbles: true, cancelable: true })
+        new MouseEvent(eventType, { bubbles: true, cancelable: true })
       )
-    })
+    }, type)
+  }
+  await page.waitForTimeout(600)
 
-  await clickCard()
-  await fixture.pollDebug(
-    page,
-    (d) => d.entries["vid_bbb222"]?.viewKind === "meta",
-    { timeout: 3000 }
-  )
-  // Meta chip should actually be in the DOM.
-  const metaBoyo = await fixture.fixtureCall<string | null>(
-    page,
-    "dataBoyoFor",
-    "vid_bbb222"
-  )
-  expect(metaBoyo).toBe("1")
-
-  await page.waitForTimeout(400) // clear dblclick gate
-  await clickCard()
-  const snap = await fixture.pollDebug(
-    page,
-    (d) => d.entries["vid_bbb222"]?.viewKind === "title",
-    { timeout: 3000 }
-  )
-  expect(snap.entries["vid_bbb222"]?.viewKind).toBe("title")
-
-  const dataBoyo = await fixture.fixtureCall<string | null>(
-    page,
-    "dataBoyoFor",
-    "vid_bbb222"
-  )
-  expect(dataBoyo).toBe("2")
+  const snap = await fixture.readDebug(page)
+  expect(snap?.entries["vid_bbb222"]?.viewKind).toBe("plated")
+  expect(
+    await fixture.fixtureCall<string | null>(page, "dataBoyoFor", "vid_bbb222")
+  ).toBe("plated")
+  expect(
+    await fixture.fixtureCall<boolean>(page, "hasVeil", "vid_bbb222")
+  ).toBe(true)
 })
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -301,35 +245,37 @@ test("T6: sessionOrdinal never decreases", async ({ fixture }) => {
 // T7: watch-page sidebar masking (issue #4)
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("T7: watch-page sidebar compact renderers are masked", async ({
+test("T7: watch-page sidebar compact renderers are decided like the feed", async ({
   fixture,
 }) => {
   const page = await fixture.goto("yt-watch")
 
-  const sidebarIds = ["vid_side001", "vid_side002", "vid_side003"]
+  const dated = ["vid_side001", "vid_side002"]
+  const undated = "vid_side003"
 
   const snap = await fixture.pollDebug(
     page,
-    (d) => d.phase === "running" && sidebarIds.every((id) => id in d.entries),
+    (d) =>
+      d.phase === "running" &&
+      [...dated, undated].every((id) => id in d.entries),
     { timeout: 5000 }
   )
 
-  for (const id of sidebarIds) {
-    expect(snap.entries[id]?.viewKind, `sidebar ${id} should mask`).toBe(
-      "masked"
-    )
+  for (const id of dated) {
+    expect(snap.entries[id]?.viewKind, `sidebar ${id} is old`).toBe("plated")
+    expect(
+      await fixture.fixtureCall<string | null>(page, "dataBoyoFor", id),
+      `data-boyo for sidebar ${id}`
+    ).toBe("plated")
+    expect(
+      await fixture.fixtureCall<boolean>(page, "hasVeil", id),
+      `veil for sidebar ${id}`
+    ).toBe(true)
   }
-
-  for (const id of sidebarIds) {
-    const dataBoyo = await fixture.fixtureCall<string | null>(
-      page,
-      "dataBoyoFor",
-      id
-    )
-    expect(dataBoyo, `data-boyo for sidebar ${id}`).toBe("0")
-    const hasVeil = await fixture.fixtureCall<boolean>(page, "hasVeil", id)
-    expect(hasVeil, `veil for sidebar ${id}`).toBe(true)
-  }
+  expect(
+    snap.entries[undated]?.viewKind,
+    "a sidebar card with no date is held"
+  ).toBe("absent")
 })
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -363,35 +309,80 @@ test("T8: yt-navigate-finish increments sessionOrdinal", async ({
 })
 
 // ─────────────────────────────────────────────────────────────────────────────
-// T9: dblclick reveal — untested by T5, which only exercises single clicks
+// T9: absent is gone, plated is covered (#1803)
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("T9: dblclick reveals a masked card directly, and the veil is gone", async ({
+test("T9: an absent card is out of layout, the accessibility tree and the Tab order", async ({
   fixture,
 }) => {
   const page = await fixture.goto("yt-home")
-
-  await fixture.pollDebug(page, (d) => "vid_bbb222" in d.entries, {
+  await fixture.pollDebug(page, (d) => "vid_aaa111" in d.entries, {
     timeout: 5000,
   })
 
-  await fixture.fixtureCall<boolean>(page, "dblclickVeil", "vid_bbb222")
-
+  // A card too young to show, inserted like an infinite-scroll batch.
+  await page.evaluate(() => {
+    const el = document.createElement("ytd-rich-item-renderer")
+    el.id = "fresh-card"
+    el.innerHTML = `
+      <div class="thumbnail"></div>
+      <a id="video-title" href="/watch?v=vid_fresh01">A Fresh Video</a>
+      <ytd-channel-name><yt-formatted-string>Now</yt-formatted-string></ytd-channel-name>
+      <a href="/@Now">Now</a>
+      <div id="metadata-line"><span>9 views</span><span>3 days ago</span></div>`
+    document.getElementById("primary")?.appendChild(el)
+  })
   const snap = await fixture.pollDebug(
     page,
-    (d) => d.entries["vid_bbb222"]?.viewKind === "revealed",
-    { timeout: 3000 }
+    (d) => "vid_fresh01" in d.entries,
+    { timeout: 5000 }
   )
-  expect(snap.entries["vid_bbb222"]?.viewKind).toBe("revealed")
+  expect(snap.entries["vid_fresh01"]?.viewKind).toBe("absent")
 
-  // removeVeil animates the veil out (see the Actuator's veil exit); give
-  // it room to finish rather than the 600ms fallback timeout it races.
-  await page.waitForTimeout(700)
+  const fresh = page.locator("#fresh-card")
+  expect(await fresh.getAttribute("data-boyo")).toBe("absent")
+  expect(await fresh.boundingBox(), "not laid out").toBeNull()
+  await expect(
+    page.getByRole("link", { name: "A Fresh Video" }),
+    "not in the accessibility tree"
+  ).toHaveCount(0)
 
+  // Walk the whole Tab order: none of its links is ever focused.
+  const reached = new Set<string>()
+  await page.locator("body").focus()
+  for (let i = 0; i < 40; i++) {
+    await page.keyboard.press("Tab")
+    const href = await page.evaluate(
+      () => document.activeElement?.getAttribute("href") ?? ""
+    )
+    reached.add(href)
+  }
+  expect([...reached].some((h) => h.includes("vid_fresh01"))).toBe(false)
   expect(
-    await fixture.fixtureCall<boolean>(page, "hasVeil", "vid_bbb222"),
-    "the veil must actually leave the DOM, not just the FSM"
-  ).toBe(false)
+    [...reached].some((h) => h.includes("vid_aaa111")),
+    "precondition: the walk does reach a plated card's link"
+  ).toBe(true)
+})
+
+test("T12: a plated card's veil covers the whole card", async ({ fixture }) => {
+  const page = await fixture.goto("yt-home")
+  await fixture.pollDebug(page, (d) => "vid_aaa111" in d.entries, {
+    timeout: 5000,
+  })
+  const boxes = await page.evaluate(() => {
+    const el = document.querySelector('[data-boyo-vid="vid_aaa111"]')
+    const veil = el?.querySelector(":scope > .boyo-veil")
+    if (!el || !veil) return null
+    const a = el.getBoundingClientRect()
+    const b = veil.getBoundingClientRect()
+    return [a.left, a.top, a.width, a.height, b.left, b.top, b.width, b.height]
+  })
+  expect(boxes).not.toBeNull()
+  const [cl, ct, cw, ch, vl, vt, vw, vh] = boxes ?? []
+  expect(vl).toBeCloseTo(cl ?? NaN, 0)
+  expect(vt).toBeCloseTo(ct ?? NaN, 0)
+  expect(vw).toBeCloseTo(cw ?? NaN, 0)
+  expect(vh).toBeCloseTo(ch ?? NaN, 0)
 })
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -404,31 +395,23 @@ type Occlusion = {
   dataBoyo: string | null
 }
 
-test("T10: a revealed renderer repointed at a new video re-masks, and is never inert", async ({
+test("T10: a renderer repointed at a new video is decided afresh, and is never inert", async ({
   fixture,
 }) => {
-  // Two things at once, both driven through the Sensor's attribute signal — a
-  // `data-video-id` mutation on an element matching SEL — so this exercises
-  // the real production path rather than whatever the retry loop happens to be
-  // doing.
+  // Driven through the Sensor's attribute signal — a `data-video-id`
+  // mutation on an element matching SEL — so this exercises the real
+  // production path rather than whatever the retry loop happens to be doing.
   //
   // 1. The QD1 half: a renderer whose authoritative data-video-id has moved on
   //    is a different artifact, however much of the old one is still lying
-  //    around in its subtree. It must NOT inherit the old card's `revealed`.
-  // 2. Re-masking must not route through the bare static occluder, which
+  //    around in its subtree, and is decided on its own evidence.
+  // 2. The swap must not route through the bare static occluder, which
   //    takes no pointer events (blurred *and* unclickable).
   const page = await fixture.goto("yt-home")
 
   await fixture.pollDebug(page, (d) => "vid_bbb222" in d.entries, {
     timeout: 5000,
   })
-
-  await fixture.fixtureCall<boolean>(page, "dblclickVeil", "vid_bbb222")
-  await fixture.pollDebug(
-    page,
-    (d) => d.entries["vid_bbb222"]?.viewKind === "revealed",
-    { timeout: 3000 }
-  )
 
   // The card's own /watch?v=vid_bbb222 anchor stays exactly where it was.
   await fixture.fixtureCall<boolean>(
@@ -444,13 +427,10 @@ test("T10: a revealed renderer repointed at a new video re-masks, and is never i
     { timeout: 5000 }
   )
 
-  expect(
-    snap.entries["vid_repointed"]?.viewKind,
-    "the new artifact is masked — it never inherits the old card's disclosure"
-  ).toBe("masked")
+  expect(snap.entries["vid_repointed"]?.viewKind).toBe("plated")
   expect(
     snap.entries["vid_bbb222"],
-    "and the old entry is gone, not left revealed on a card showing something else"
+    "and the old entry is gone, not left on a card showing something else"
   ).toBeUndefined()
 
   const after = await fixture.fixtureCall<Occlusion | null>(
@@ -458,23 +438,23 @@ test("T10: a revealed renderer repointed at a new video re-masks, and is never i
     "isOccludedByIdFor",
     "vid_repointed"
   )
-  expect(after?.dataBoyo, "custody is held throughout the swap").toBe("0")
+  expect(after?.dataBoyo, "custody is held throughout the swap").toBe("plated")
   expect(after?.blurred, "not handed back to the static occluder").toBe(false)
   expect(
     after?.pointerEvents,
-    "and still takes clicks — the inert state being ruled out"
+    "and still takes pointer events — the inert state being ruled out"
   ).not.toBe("none")
 })
 
-test("T11: a revealed href-only lockup survives preview-anchor churn", async ({
+test("T11: an href-only lockup's card survives preview-anchor churn", async ({
   fixture,
 }) => {
   // A Lit lockup has no authoritative `data-video-id`, so anchor membership is the
   // only evidence there is. A preview anchor landing ahead of the card's own
-  // changes what extraction answers, and re-masking on that would revoke the
-  // user's disclosure and drop the card under the occluder's
-  // `pointer-events: none`. T10 cannot cover this: it writes a contradictory
-  // authoritative id, which is decisive, so it always takes the recycle path.
+  // changes what extraction answers, and treating that as a recycle would drop
+  // the card under the occluder's `pointer-events: none`. T10 cannot cover
+  // this: it writes a contradictory authoritative id, which is decisive, so it
+  // always takes the recycle path.
   //
   // Two Sensor paths re-observe the mounted lockup here: the mutation handler
   // (a childList mutation inside a card re-observes that card) and the retry
@@ -485,19 +465,14 @@ test("T11: a revealed href-only lockup survives preview-anchor churn", async ({
   // the fixture changed.
   const page = await fixture.goto("yt-home")
 
-  await fixture.pollDebug(page, (d) => "lock_aaa" in d.entries, {
-    timeout: 5000,
-  })
-
-  await fixture.fixtureCall<boolean>(page, "dblclickVeil", "lock_aaa")
-  const revealed = await fixture.pollDebug(
+  const before = await fixture.pollDebug(
     page,
-    (d) => d.entries["lock_aaa"]?.viewKind === "revealed",
-    { timeout: 3000 }
+    (d) => d.entries["lock_aaa"]?.viewKind === "plated",
+    { timeout: 5000 }
   )
 
   expect(
-    revealed.unresolved,
+    before.unresolved,
     "precondition: a queue is non-empty, so the retry loop's scan() is live and will reconcile"
   ).toBeGreaterThan(0)
 
@@ -517,43 +492,17 @@ test("T11: a revealed href-only lockup survives preview-anchor churn", async ({
     "isOccludedByIdFor",
     "lock_aaa"
   )
-  expect(after?.dataBoyo, "custody is kept through the churn").toBe("3")
+  expect(after?.dataBoyo, "custody is kept through the churn").toBe("plated")
   expect(after?.blurred, "not handed back to the static occluder").toBe(false)
   expect(
     after?.pointerEvents,
-    "and still takes clicks — the inert state being ruled out"
+    "and still takes pointer events — the inert state being ruled out"
   ).not.toBe("none")
 
   const snap = await fixture.readDebug(page)
+  expect(snap?.entries["lock_aaa"]?.viewKind).toBe("plated")
   expect(
-    snap?.entries["lock_aaa"]?.viewKind,
-    "the user's own disclosure is not silently revoked"
-  ).toBe("revealed")
-})
-
-test("T9: dblclick reveals a card already progressed to title, not just a fresh masked one", async ({
-  fixture,
-}) => {
-  const page = await fixture.goto("yt-home")
-
-  await fixture.pollDebug(page, (d) => "vid_bbb222" in d.entries, {
-    timeout: 5000,
-  })
-
-  // masked -> meta -> title, the same two single clicks T5 exercises.
-  await fixture.fixtureCall<boolean>(page, "clickVeil", "vid_bbb222", 2)
-  await fixture.pollDebug(
-    page,
-    (d) => d.entries["vid_bbb222"]?.viewKind === "title",
-    { timeout: 3000 }
-  )
-
-  await fixture.fixtureCall<boolean>(page, "dblclickVeil", "vid_bbb222")
-
-  const snap = await fixture.pollDebug(
-    page,
-    (d) => d.entries["vid_bbb222"]?.viewKind === "revealed",
-    { timeout: 3000 }
-  )
-  expect(snap.entries["vid_bbb222"]?.viewKind).toBe("revealed")
+    snap?.entries["preview_zzz"],
+    "the preview is not a card"
+  ).toBeUndefined()
 })

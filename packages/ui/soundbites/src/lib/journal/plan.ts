@@ -12,13 +12,10 @@
  * one, and lets it go once shared, discarded, replaced by another primer, or
  * left `JOURNAL_IDLE_MS` without a take.
  */
-import {
-  SOUNDBITE_BITS_PER_SECOND,
-  SOUNDBITE_MIN_MS,
-} from "@soundbites/lib/policy"
+import { SOUNDBITE_MIN_MS } from "@soundbites/lib/policy"
 
 import type { Cut, Primer } from "./primer"
-import { CUT_TARGET_MIN_MS, JOURNAL_BUDGET_MAX_MS } from "./primer"
+import { CUT_TARGET_MIN_MS } from "./primer"
 
 export type JournalPlan = {
   readonly primer: Primer
@@ -55,13 +52,6 @@ export function expiresAt(plan: JournalPlan): number {
 
 /** One tap on a cut's minus or plus. */
 export const NUDGE_MS = 5_000
-
-/**
- * The most take audio the phone keeps: twice a full budget at the target
- * bitrate, since the recorder's rate is a target, not a promise.
- */
-export const JOURNAL_TAKES_MAX_BYTES =
-  2 * (JOURNAL_BUDGET_MAX_MS / 1_000) * (SOUNDBITE_BITS_PER_SECOND / 8)
 
 export function targetOf(plan: JournalPlan, cut: Cut): number {
   return plan.targets[cut.id] ?? cut.targetMs

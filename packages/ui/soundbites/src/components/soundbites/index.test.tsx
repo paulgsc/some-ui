@@ -363,7 +363,6 @@ describe("Soundbites", () => {
   })
 
   it("keeps a recording it could not delete, and says so", async () => {
-    const confirm = vi.spyOn(window, "confirm").mockReturnValue(true)
     const memory = memoryStore([bite("a", 5)])
     vi.spyOn(memory.store, "remove").mockRejectedValueOnce(new Error("busy"))
     render(
@@ -374,16 +373,15 @@ describe("Soundbites", () => {
     )
 
     await tap(/^Delete /)
+    await tap("Delete it")
 
     expect(
       await screen.findByText("That one couldn't be deleted. Try again?")
     ).toBeInTheDocument()
     expect(screen.getByText("1 of 6 kept")).toBeVisible()
-    confirm.mockRestore()
   })
 
   it("shows the list unknown when it cannot be re-read after a delete", async () => {
-    const confirm = vi.spyOn(window, "confirm").mockReturnValue(true)
     const memory = memoryStore([bite("a", 5), bite("b", 10)])
     render(
       <Soundbites
@@ -397,13 +395,13 @@ describe("Soundbites", () => {
     const [first] = screen.getAllByRole("button", { name: /^Delete / })
     if (first === undefined) throw new Error("a recording to delete")
     await settle(() => fireEvent.click(first))
+    await tap("Delete it")
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "Couldn't read what's on this phone"
     )
     expect(screen.queryByText(/of 6 kept/)).toBeNull()
     expect(memory.kept.size).toBe(1)
-    confirm.mockRestore()
   })
 
   it("plays one recording at a time, however fast the taps", async () => {
@@ -608,14 +606,26 @@ describe("Soundbites", () => {
   })
 
   it("deletes a kept one after asking", async () => {
-    const confirm = vi.spyOn(window, "confirm").mockReturnValue(true)
     const { kept } = setup({ kept: [bite("only", 5)] })
 
     await tap(/^Delete /)
+    expect(
+      await screen.findByRole("dialog", { name: "Delete this soundbite?" })
+    ).toBeInTheDocument()
+    expect(kept.size).toBe(1)
+    await tap("Delete it")
 
-    expect(confirm).toHaveBeenCalledTimes(1)
     expect(await screen.findByText("Nothing kept yet.")).toBeInTheDocument()
     expect(kept.size).toBe(0)
-    confirm.mockRestore()
+  })
+
+  it("keeps a kept one when the person keeps it", async () => {
+    const { kept } = setup({ kept: [bite("only", 5)] })
+
+    await tap(/^Delete /)
+    await tap("Keep it")
+
+    expect(kept.size).toBe(1)
+    expect(screen.queryByText("Nothing kept yet.")).toBeNull()
   })
 })

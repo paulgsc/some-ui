@@ -27,7 +27,7 @@
  *     budget; rejection is sticky against `scan()` and revocable on
  *     extraction (#1422).
  *   - Observation is total on what it sees: `observe()` is what a scan,
- *     a mutation batch, a retry tick and a gesture refresh all call.
+ *     a mutation batch and a retry tick all call.
  */
 
 import type { CustodyTarget } from "@censor/lib/content/actuator/bound"
@@ -37,6 +37,7 @@ import type { CardKey } from "@censor/lib/content/core/keys"
 import { keyVideoId } from "@censor/lib/content/core/keys"
 import type { Observation } from "@censor/lib/content/core/observation"
 import {
+  extractIsShort,
   extractMeta,
   extractTitle,
   extractUploadDate,
@@ -98,8 +99,6 @@ export type Sensor = {
   stop(): void
   /** Observe every catalogue element on the page. */
   scan(): void
-  /** Re-observe a card now (before a gesture reaches Core). */
-  refresh(key: CardKey): void
   /** The elements carrying `key`, for the runtime to bind. */
   custodyOf(key: CardKey): ReadonlyArray<CustodyTarget>
   census(): SensorCensus
@@ -116,6 +115,16 @@ export function createSensor(ports: SensorPorts): Sensor {
   const channelPending = new Map<HTMLElement, number>()
   /** Cards whose channel budget is spent: not re-sampled again this session. */
   let channelAbandoned = new WeakSet<HTMLElement>()
+  /**
+   * Cards observed with no upload date at all, kept under the same budget: the
+   * date decides whether a card is shown (#1803), and YouTube can fill an
+   * empty run in without a mutation the observer sees (a text node's data).
+   * Pending keeps the retry loop, whose `scan()` re-reads every card, alive
+   * until the date arrives or the budget is spent. A Short is held whatever
+   * its date, so it is never pending.
+   */
+  const datePending = new Map<HTMLElement, number>()
+  let dateAbandoned = new WeakSet<HTMLElement>()
   /** Elements already reported as `unknown-shape` this session. */
   let unknownReported = new WeakSet<HTMLElement>()
   /**
@@ -152,6 +161,7 @@ export function createSensor(ports: SensorPorts): Sensor {
       title: extractTitle(el),
       duration: meta.duration,
       uploadDate: extractUploadDate(el),
+      short: extractIsShort(el),
       surface: ports.surface(),
       renderer: el.tagName.toLowerCase(),
       shape,
@@ -224,6 +234,8 @@ export function createSensor(ports: SensorPorts): Sensor {
       // The channel budget belonged to the previous video.
       channelPending.delete(el)
       channelAbandoned.delete(el)
+      datePending.delete(el)
+      dateAbandoned.delete(el)
       if (rec.previousGone) {
         ports.emit({ kind: "gone", key: rec.previous, t: now })
       }
@@ -260,6 +272,12 @@ export function createSensor(ports: SensorPorts): Sensor {
       extracted.channelId,
       cls.shape
     )
+    if (observation.uploadDate || observation.short) {
+      datePending.delete(el)
+    } else if (!datePending.has(el) && !dateAbandoned.has(el)) {
+      datePending.set(el, now)
+      ensureRetryLoop()
+    }
     const serialized = JSON.stringify(observation)
     // A new nested wrapper is only stamped by the render a token causes.
     if (
@@ -297,6 +315,8 @@ export function createSensor(ports: SensorPorts): Sensor {
     lastEmitted.delete(el)
     channelPending.delete(el)
     channelAbandoned.delete(el)
+    datePending.delete(el)
+    dateAbandoned.delete(el)
     const released = identity.release(el)
     if (released === null) return
     if (released.gone) {
@@ -356,6 +376,13 @@ export function createSensor(ports: SensorPorts): Sensor {
       }
     }
 
+    for (const [el, since] of datePending) {
+      if (!el.isConnected || now - since >= RESOLVE_BUDGET_MS) {
+        datePending.delete(el)
+        dateAbandoned.add(el)
+      }
+    }
+
     recheckRejected()
     maybeStopRetryLoop()
   }
@@ -396,7 +423,12 @@ export function createSensor(ports: SensorPorts): Sensor {
   }
 
   function maybeStopRetryLoop(): void {
-    if (queue.size === 0 && channelPending.size === 0 && retryTimer !== null) {
+    if (
+      queue.size === 0 &&
+      channelPending.size === 0 &&
+      datePending.size === 0 &&
+      retryTimer !== null
+    ) {
       clearInterval(retryTimer)
       retryTimer = null
     }
@@ -481,6 +513,8 @@ export function createSensor(ports: SensorPorts): Sensor {
     queue.clear()
     channelPending.clear()
     channelAbandoned = new WeakSet()
+    datePending.clear()
+    dateAbandoned = new WeakSet()
     unknownReported = new WeakSet()
     lastEmitted.clear()
     if (retryTimer !== null) {
@@ -522,12 +556,6 @@ export function createSensor(ports: SensorPorts): Sensor {
     },
 
     scan,
-
-    refresh(key: CardKey): void {
-      for (const { el, role } of identity.custodyOf(key)) {
-        if (role === "anchor") observe(el)
-      }
-    },
 
     custodyOf(key: CardKey): ReadonlyArray<CustodyTarget> {
       return identity.custodyOf(key)

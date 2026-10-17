@@ -92,6 +92,7 @@ export const MOBILE_ROUTE_FILES = [
   "apps/www/src/routes/_dashboard.tsx*",
   "apps/www/src/routes/_dashboard/_apk.tsx*",
   "apps/www/src/routes/_dashboard/_apk/**",
+  "apps/www/src/routes/_dashboard/practice/settings.tsx*",
   "apps/www/src/routes/_dashboard/sessions/**",
   "apps/www/src/routes/_dashboard/settings.tsx*",
   "apps/www/src/routes/auth.tsx*",
@@ -174,6 +175,11 @@ export const paths: PathRules<Profile> = definePaths<Profile>({
       modules: [`${SPEECH_ENTRY}/web-speech.es.js`],
       profiles: ["lan", "pages"],
       why: "the web builds' voice, the browser's own synthesizer: the Android app speaks only with the phone's engine (src/providers/tts.tsx)",
+    },
+    {
+      modules: ["apps/www/src/lib/demo/**"],
+      profiles: ["pages"],
+      why: "a viewer's sample drafts (CLAUDE.md, two mandates): only the Pages build is a viewer's, and the owner's builds keep to their own records",
     },
     {
       modules: [
@@ -267,6 +273,11 @@ export const paths: PathRules<Profile> = definePaths<Profile>({
       modules: [`${SPEECH_ENTRY}/web-speech.es.js`],
       why: "Pages speaks through this (src/providers/tts.tsx); a build without it is silent",
     },
+    {
+      profile: "pages",
+      modules: ["apps/www/src/lib/demo/index.ts"],
+      why: "a viewer starts from these sample drafts (src/main.tsx); without them the demo opens empty. Also what keeps its `exclusive` rule from passing by matching nothing",
+    },
   ],
   // Every profile builds one route tree, shared by design until now
   // (AUDIENCES.md, "Build audiences"): a route off a profile's path ships
@@ -294,7 +305,6 @@ export const paths: PathRules<Profile> = definePaths<Profile>({
       "extensions.tsx*",
       "playoff-delta.tsx*",
       "_dashboard/app.tsx*",
-      "_dashboard/jobs.tsx*",
       "_dashboard/profile.tsx*",
       "_dashboard/resume.tsx*",
     ].map(

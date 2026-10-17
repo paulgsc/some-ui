@@ -80,3 +80,13 @@ export function displacedBy(
   const excess = kept.length + 1 - limit
   return [first.id, ...rest.slice(0, excess - 1).map((bite) => bite.id)]
 }
+
+/** The longest a Build Journal episode's takes may run in total: three minutes. */
+export const JOURNAL_BUDGET_MAX_MS = 180_000
+
+/**
+ * The most Build Journal take audio the phone keeps: twice a full budget at
+ * the target bitrate, since the recorder's rate is a target, not a promise.
+ */
+export const JOURNAL_TAKES_MAX_BYTES =
+  2 * (JOURNAL_BUDGET_MAX_MS / 1_000) * (SOUNDBITE_BITS_PER_SECOND / 8)

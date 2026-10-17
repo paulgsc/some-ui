@@ -3,8 +3,8 @@
  *
  * What is left once the Sensor owns observation and navigation, Core owns
  * every decision and the Actuator owns every write: starting the recording,
- * waiting for `ytd-app`, answering the background's enable/disable and
- * whitelist broadcasts, and the keybindings.
+ * waiting for `ytd-app`, and answering the background's enable/disable
+ * broadcast.
  *
  * Lifecycle properties, labelled here because they are cited elsewhere;
  * pinned by `runtime/runtime.test.ts`, not declared review invariants:
@@ -17,16 +17,13 @@
  *        session (R3). Chip and feed swaps reuse elements in place, so
  *        anything less would leave their old views showing.
  *   C3 — A second start is a no-op, not duplicate state: one Sensor, one
- *        Actuator, one set of key bindings.
+ *        Actuator.
  *   C4 — Navigation is debounced. The Sensor coalesces a burst of
  *        `yt-navigate-finish` into one `nav` (`NAV_DEBOUNCE_MS`).
  */
 
 import { ext } from "@censor/platform/content"
-import { asChannelId } from "@censor/types/ids"
-import type { KeyBindingDisposer } from "@some-extension/common"
 
-import { attachKeyBindings } from "./commands"
 import { startObservability } from "./observability"
 import type { Runtime } from "./runtime/runtime"
 import { createRuntime } from "./runtime/runtime"
@@ -34,7 +31,6 @@ import { createRuntime } from "./runtime/runtime"
 export class Controller {
   private readonly _runtime: Runtime
   private _appWaiter: MutationObserver | null = null
-  private _disposeKeyBindings: KeyBindingDisposer | null = null
 
   constructor(runtime?: Runtime) {
     this._runtime = runtime ?? createRuntime({ doc: document, win: window })
@@ -72,16 +68,11 @@ export class Controller {
   private _start(): void {
     if (this._runtime.running) return
     this._runtime.start()
-    this._disposeKeyBindings = attachKeyBindings((command) =>
-      this._runtime.dispatch({ kind: "command", command, t: Date.now() })
-    )
   }
 
   private _stop(): void {
     this._appWaiter?.disconnect()
     this._appWaiter = null
-    this._disposeKeyBindings?.()
-    this._disposeKeyBindings = null
     this._runtime.stop()
   }
 
@@ -110,26 +101,10 @@ export class Controller {
   private _listenBroadcasts(): void {
     ext.runtime.onMessage.addListener((msg: unknown) => {
       // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-      const m = msg as { type?: string; enabled?: boolean; channelId?: string }
-      const { type: t } = m
-      // eslint-disable-next-line switch-lint/require-fail-fast-default
-      switch (t) {
-        case "ENABLED_CHANGED": {
-          if (m.enabled) this._start()
-          else this._stop()
-          break
-        }
-        case "CHANNEL_WHITELISTED": {
-          if (m.channelId !== undefined) {
-            this._runtime.dispatch({
-              kind: "whitelist-broadcast",
-              channelId: asChannelId(m.channelId),
-              t: Date.now(),
-            })
-          }
-          break
-        }
-      }
+      const m = msg as { type?: string; enabled?: boolean }
+      if (m.type !== "ENABLED_CHANGED") return
+      if (m.enabled) this._start()
+      else this._stop()
     })
   }
 }

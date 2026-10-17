@@ -2,7 +2,8 @@
  * some-censor — smoke tests (non-headless, requires built extension).
  *
  * Minimal invariant: href-only video cards on a simulated YouTube home page
- * are masked within 5 seconds of the content script running. If this fails
+ * are decided (here, plated: the fixture's cards are old) within 5 seconds
+ * of the content script running. If this fails
  * the extension's core loop is broken and all other tests are moot.
  *
  * Run via:
@@ -14,7 +15,7 @@
 import { expect, test } from "@censor/playwright/fixture"
 
 test.describe("some-censor smoke", () => {
-  test("href-only cards are masked on load", async ({ fixture }) => {
+  test("href-only cards are plated on load", async ({ fixture }) => {
     const page = await fixture.goto("yt-home")
 
     const ids = ["vid_aaa111", "vid_bbb222", "vid_ccc333"]
@@ -26,8 +27,8 @@ test.describe("some-censor smoke", () => {
     )
 
     for (const id of ids) {
-      expect(snap.entries[id]?.viewKind, `${id} should be masked`).toBe(
-        "masked"
+      expect(snap.entries[id]?.viewKind, `${id} should be plated`).toBe(
+        "plated"
       )
     }
   })

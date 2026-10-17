@@ -150,8 +150,10 @@ from the friction mechanism the extension is today. Friction says _you may
 expose yourself, after several deliberate actions_. Quarantine says _this is
 not eligible yet_. The difference is whether curiosity has a path.
 
-_Status: absent._ Today every card, of every age, has a path to `revealed` in
-three interactions.
+_Status: holds on feeds (#1803)._ A card's view is decided by its evidence
+alone: one the estimator cannot place at `QM3`–`QM4` under the boundary is
+absent, and no interaction reaches it. A held video's watch page is still
+`QD11`'s gap, until #1805.
 
 _Amended by `QD15`:_ "regardless of its subject" admits one exception. Music
 whose title is mostly in a script the owner listens to but doesn't read is
@@ -181,9 +183,8 @@ empty values, in several languages. All of those are `Unverified`, and
 `Unverified` is sealed.
 
 _Status: holds in the estimator._ `src/lib/content/maturity/maturity.ts` maps
-every form it cannot read with certainty to `unverified` (`QM0`). Nothing
-gates on it yet; only the diagnostics record its estimate. #1803 makes it
-decide what is shown.
+every form it cannot read with certainty to `unverified` (`QM0`), and since
+#1803 that decides what is shown: an unverified card is absent.
 
 _Amended by `QD15`:_ opacity admits without age evidence, so a lane video is
 shown whole even when its age is unknown. Everywhere else, unknown still means
@@ -203,8 +204,8 @@ the moment announcing itself in the one field the extension had decided was
 safe to echo. The presentation layer receives a class and a day count; it never
 receives the string they were derived from.
 
-_Status: holds._ The presentable `MetaData` has no date field, so the
-metadata chip in `src/lib/content/actuator/veil.ts` cannot render one; the raw
+_Status: holds._ The presentable `MetaData` has no date field, and the render
+model the Actuator draws from carries nothing from the card at all; the raw
 string stays in the observation as evidence (#1384). A type-level test in
 `maturity/maturity.test.ts` pins it. The one place the raw string is shown is
 the owner's own diagnostics page (OBS1), which is not a youtube.com surface.
@@ -229,12 +230,9 @@ not exempt a card from having one.
 _Amended by `QD16`:_ there is no channel trust at all. The whitelist is deleted
 (#1807), and every source has the same boundary.
 
-_Status: violated._ `applyWhitelist` in `src/lib/content/fsm.ts` accepts any
-state and yields `Whitelisted`, which is a permanent bypass, and the
-`CHANNEL_WHITELISTED` broadcast lifts every card from that channel at once —
-including the one uploaded this morning. The prompt's copy, "always show
-content from this channel," is an accurate description of the current
-behaviour and precisely the semantics QD5 rejects. See `QA2`.
+_Status: holds in the content script (#1803)._ No whitelist input, state or
+broadcast reaches Core. The background still stores and answers the whitelist
+messages, which nothing sends, until #1807 deletes them. See `QA2`.
 
 ---
 
@@ -244,12 +242,11 @@ Any affordance that acts on many cards at once acts only on cards that are
 individually admissible. There is no operation whose plural form discloses
 something its singular form would refuse.
 
-_Status: violated._ `advance-all-to-title` (Ctrl/⌘+Shift+Period, wired in
-`src/lib/content/commands.ts`) advances **every** tracked card to `title`. Under
-QD2 that is a whole-page capsule breach bound to a single keystroke. Note also
-what its existence says diagnostically: the per-card ritual became mechanical
-enough that the user wanted to batch past it — which is an argument for
-_fewer eligible cards_, not for a faster ladder.
+_Status: holds (#1803)._ There is no bulk operation: `advance-all-to-title`
+and its keybinding are deleted with the ladder. What its existence said
+diagnostically still stands: the per-card ritual became mechanical enough that
+the user wanted to batch past it — an argument for _fewer eligible cards_, not
+for a faster ladder.
 
 ---
 
@@ -263,8 +260,8 @@ This is why [`absent-plated-heard.md`](./absent-plated-heard.md) forbids the
 padlock, the progress bar, the green check and every count, and why a held card
 is absent rather than drawn at all (`QD11`).
 
-_Status: violated._ The ladder's hints and progress rail present every veiled
-card as a pending step. #1803.
+_Status: holds (#1803)._ The ladder, its hints and its progress rail are
+deleted; a held card is absent, not pending.
 
 ---
 
@@ -332,10 +329,7 @@ disclosure step. `QD1`'s non-contact bar has no metadata-only exception for
 held material; this result only says what becomes available once an artifact
 has already cleared the boundary.
 
-_Status: absent._ No admission axis exists yet to gate `Inspect metadata` by
-eligibility (see the gap table in §7); the ladder currently starts
-unconditionally at `meta` for every card, which is the same root cause as
-`QD4`'s violation above.
+_Status: retired with the ladder (#1803)._ `Inspect metadata` is deleted.
 
 _Superseded by `QD12` and `QD16`._ There is no metadata step: an admitted card
 shows its title, channel name and duration on a plate, with no disclosure act.
@@ -360,7 +354,15 @@ having _seen_ things. A covered card is still something seen — a shape, a
 slot, an invitation — and a count of covered cards is the present reported
 second-hand.
 
-_Status: absent._ Every held card is veiled in place today. #1803.
+_Status: holds on feeds (#1803, #1846)._ A held card is out of layout and the
+accessibility tree, and so is a home-feed grid cell around one, and a shelf
+whose every card is held, in the containers captured so far (home's rich
+section, search's grid shelf, a channel page's shelf section). Gaps remain:
+a shelf in any other container keeps its header, and so does one whose only
+other tile is a post with an absent video attached; a video-shaped element the
+Sensor cannot resolve stays blurred in place under the occluder
+(`OccluderReleases` reports it); and a held video's watch page, and autoplay
+into one (#1805).
 
 ---
 
@@ -444,7 +446,8 @@ rewarding … if you don't like the card that you did all that work for".
 Amends `QD5`; supersedes `QD10`, `QA2`, `QA3`, §6's delayed subscription and
 the "airlock" in §7.
 
-_Status: absent._ The ladder is live. #1803, #1807.
+_Status: holds for the ladder (#1803)._ No gesture changes a card. The
+popup's two settings are #1807's.
 
 ---
 
@@ -458,8 +461,8 @@ control (`QD13`), labelled with what it does and nothing more.
 A tool that narrates itself ("in here it is 2025", "24 held") makes its
 mechanism the thing on screen; the owner found that inauthentic.
 
-_Status: violated._ The ladder's hints ("Click to preview", "Double-click to
-reveal") are on-page copy. #1803.
+_Status: holds (#1803)._ The ladder and its hints are deleted, and the veil
+over a plated card carries no copy.
 
 ## 5. The temporal model
 
@@ -584,17 +587,14 @@ section is a behavioural change; it is a statement of distance.
 
 ### What contradicts it
 
-| gap                                            | where                                                    | doctrine   |
-| ---------------------------------------------- | -------------------------------------------------------- | ---------- |
-| Every card, at every age, can reach `revealed` | `fsm.ts` — the `ViewState` union has no maturity axis    | QD2        |
-| Whitelist is a permanent, channel-wide bypass  | `fsm.ts:applyWhitelist`, `CHANNEL_WHITELISTED` broadcast | QD5, QA2   |
-| Bulk advance ignores eligibility               | `commands.ts` → Core's `advance-all-to-title` command    | QD6        |
-| No surface-level concealment                   | veil is per-renderer throughout                          | QD8        |
-| Manifest copy describes the mechanism          | `public/manifest.json` `description`                     | §0         |
-| Held cards are veiled in place, not absent     | `actuator/veil.ts` (the veil after handover)             | QD11       |
-| Admitted cards would show real thumbnails      | nothing replaces a thumbnail or avatar                   | QD12       |
-| No crowd number or age is removed              | vendor metadata rows render untouched                    | QD14       |
-| The ladder and its hints are on the page       | `fsm.ts:project()`, `actuator/gestures.ts`               | QD16, QD17 |
+| gap                                                            | where                                                     | doctrine |
+| -------------------------------------------------------------- | --------------------------------------------------------- | -------- |
+| No surface-level concealment                                   | veil is per-renderer throughout                           | QD8      |
+| Manifest copy describes the mechanism                          | `public/manifest.json` `description`, the popup's tagline | §0       |
+| A held video's watch page still plays                          | nothing handles the watch page itself (#1805)             | QD11     |
+| A shelf elsewhere keeps its header                             | a container `SHELF_SELECTORS` does not name               | QD11     |
+| Plated cards are veiled whole: title, channel and duration too | `actuator/veil.ts`, until the plate (#1804)               | QD12     |
+| No crowd number or age is removed                              | vendor metadata rows render untouched                     | QD14     |
 
 ### Extraction hazards a maturity estimator will meet
 
