@@ -60,7 +60,13 @@ const entry = (
   recordEntry(
     item,
     { ...OUTCOME, ...overrides },
-    { session: "s", closedAt: Date.UTC(2026, 9, 17), audio, earlier }
+    {
+      session: "s",
+      closedAt: Date.UTC(2026, 9, 17),
+      audio,
+      earlier,
+      take: { count: 2, lastMs: 3100, heardFirst: false },
+    }
   )
 
 describe("recordEntry", () => {
@@ -88,6 +94,7 @@ describe("recordEntry", () => {
         floor: 1,
       },
       situation: null,
+      take: { count: 2, lastMs: 3100, heardFirst: false },
     })
   })
 

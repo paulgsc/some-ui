@@ -3,6 +3,8 @@ export { blobShelf, savingShelf, ShelfFullError } from "./lib/blob-shelf"
 export { bytesBesides, bytesOf, connection, done, result } from "./lib/idb"
 export type { StorageRoom } from "./lib/room"
 export { claimedRoom, setStorageRoom, withRoom } from "./lib/room"
+export type { Playback, Player } from "./lib/player"
+export { audioPlayer } from "./lib/player"
 export type {
   Recording,
   RecordingFailure,
@@ -29,8 +31,15 @@ export {
   takeRunner,
 } from "./lib/take"
 export type {
+  TakeView,
   VoiceNoteOutcome,
   VoiceNoteRuntime,
   VoiceNoteState,
 } from "./lib/voice-note"
-export { VOICE_NOTE_SAID, voiceNoteRuntime } from "./lib/voice-note"
+export {
+  shelveTake,
+  takeView,
+  VOICE_NOTE_SAID,
+  voiceNoteRuntime,
+  voiceNoteSaid,
+} from "./lib/voice-note"

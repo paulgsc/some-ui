@@ -8,6 +8,7 @@ import { LiveEditOverlay, OrchestratedYouTubeViewport } from "wireframes"
 import { useAuthority } from "@/lib/authority"
 import { AmbientIntentStatus } from "@/lib/intent/render"
 import { loadLeetypeRoundRuns, loadLeetypeRounds } from "@/lib/leetype-content"
+import { phoneLensTakes } from "@/lib/lens-takes"
 import {
   setSessionKey,
   setSuspended,
@@ -39,6 +40,7 @@ const ON_PHONE =
   import.meta.env.VITE_DEVICE_BACKEND === "true" && runsNatively()
 const PHONE_SHARE = ON_PHONE ? shareDramaPrompt : undefined
 const PHONE_SCENE_VOICE = ON_PHONE ? phoneSceneVoice() : undefined
+const PHONE_LENS_TAKES = ON_PHONE ? phoneLensTakes() : undefined
 
 /** What the player renders: the bound panels, and a note for a web one. */
 const PLAYER_PANELS = withWebOnlyNotes(PANELS, WEB_PANEL_KEYS)
@@ -133,6 +135,7 @@ export const SessionViewport = ({
           wordSetHint: ON_PHONE ? lookIn("word-set") : undefined,
           // Kept only where the study-context export carries it (Rem. 4.18).
           recordsLens: ON_PHONE,
+          lensTakes: PHONE_LENS_TAKES,
           paused,
         },
         leetype: {

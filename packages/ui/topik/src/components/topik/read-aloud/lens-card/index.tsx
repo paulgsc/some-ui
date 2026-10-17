@@ -15,6 +15,7 @@ import type { JSX, ReactNode } from "react"
 import { assertNever, cn } from "@some-ui/core-utils"
 import { Button } from "@some-ui/shared"
 import { StepLayout } from "@topik/components/topik/handheld/step-layout"
+import type { LensTakeSnapshot } from "@topik/lib/topik/adapter/lens-takes"
 import type { Tense } from "@topik/lib/topik/read-aloud/content"
 import { TENSES } from "@topik/lib/topik/read-aloud/content"
 import type {
@@ -34,7 +35,7 @@ import type {
 import type { LensPlaying } from "@topik/lib/topik/read-aloud/lens/runtime"
 import type { MistakeId } from "@topik/lib/topik/read-aloud/mistakes"
 import { MISTAKES } from "@topik/lib/topik/read-aloud/mistakes"
-import { Check, Ear, Eye, Volume2, X } from "lucide-react"
+import { Check, Ear, Eye, Mic, Play, Square, Volume2, X } from "lucide-react"
 
 type LensCardProps = {
   item: LensItem
@@ -52,6 +53,13 @@ type LensCardProps = {
   onNext: () => void
   onHearCue: () => void
   onHearLine: () => void
+  /** The learner's takes of the line (Rem. 4.16); absent, none is offered. */
+  take?: {
+    snapshot: LensTakeSnapshot
+    onStart: () => void
+    onStop: () => void
+    onPlay: () => void
+  }
 }
 
 const TENSE_LABEL = {
@@ -195,6 +203,73 @@ const ModeIcon = ({ modality }: { modality: CueModality }): JSX.Element => (
   </span>
 )
 
+/** Record yourself reading the line as authored, then play it back (Rem. 4.16). */
+const TakeRow = ({
+  take,
+}: {
+  take: NonNullable<LensCardProps["take"]>
+}): JSX.Element => {
+  const { snapshot } = take
+  const state = snapshot.take
+  return (
+    <div data-slot="lens-take" className="flex flex-col gap-1">
+      <div className="flex gap-2">
+        {state.kind === "recording" ? (
+          <Button
+            variant="destructive"
+            className="h-12 min-w-0 flex-1 gap-2 rounded-2xl"
+            onClick={take.onStop}
+          >
+            <Square className="size-4" /> Stop{" "}
+            <span className="tabular-nums">
+              {(state.elapsedMs / 1000).toFixed(1)}s
+            </span>
+          </Button>
+        ) : (
+          <Button
+            variant="outline"
+            className="h-12 min-w-0 flex-1 gap-2 rounded-2xl"
+            disabled={state.kind !== "idle" || snapshot.full}
+            onClick={take.onStart}
+          >
+            <Mic className="size-5" />
+            {state.kind === "opening"
+              ? "Opening the microphone…"
+              : state.kind === "keeping"
+                ? "Keeping it…"
+                : snapshot.full
+                  ? "No room for a take"
+                  : snapshot.last
+                    ? "Again"
+                    : "Record yourself"}
+          </Button>
+        )}
+        {snapshot.last && state.kind === "idle" && (
+          <Button
+            variant="outline"
+            className={cn(
+              "h-12 gap-2 rounded-2xl",
+              snapshot.playing && "ring-primary ring-2"
+            )}
+            onClick={take.onPlay}
+          >
+            <Play className="size-4" /> Mine{" "}
+            <span className="tabular-nums">
+              {(snapshot.last.durationMs / 1000).toFixed(1)}s
+            </span>
+          </Button>
+        )}
+      </div>
+      {(snapshot.said ?? snapshot.full) && (
+        <span role="status" className="text-muted-foreground text-xs">
+          {snapshot.said ??
+            "Share your study context with an agent to make room."}
+        </span>
+      )}
+    </div>
+  )
+}
+
 export const LensCard = ({
   item,
   phase,
@@ -211,6 +286,7 @@ export const LensCard = ({
   onNext,
   onHearCue,
   onHearLine,
+  take,
 }: LensCardProps): JSX.Element => {
   const answering = phase.name === "item"
   const revealed = phase.name === "reveal"
@@ -444,6 +520,8 @@ export const LensCard = ({
     </div>
   )
 
+  // A take under way holds what would sound into it, and the next item.
+  const recording = take !== undefined && take.snapshot.take.kind !== "idle"
   const cueButton = (label: string): JSX.Element => (
     <Button
       variant="outline"
@@ -451,6 +529,7 @@ export const LensCard = ({
         "h-12 min-w-0 flex-1 gap-2 rounded-2xl",
         playing === "cue" && "ring-primary ring-2"
       )}
+      disabled={recording}
       onClick={onHearCue}
     >
       <Ear className="size-5" /> {label}
@@ -552,13 +631,19 @@ export const LensCard = ({
                 "h-12 min-w-0 flex-1 gap-2 rounded-2xl",
                 playing === "line" && "ring-primary ring-2"
               )}
+              disabled={recording}
               onClick={onHearLine}
             >
               <Volume2 className="size-5" /> Hear B
             </Button>
           </div>
         )}
-        <Button className="h-12 rounded-2xl" onClick={onNext}>
+        {take && <TakeRow take={take} />}
+        <Button
+          className="h-12 rounded-2xl"
+          disabled={recording}
+          onClick={onNext}
+        >
           {last ? "Finish the set" : "Next"}
         </Button>
       </>

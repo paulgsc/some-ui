@@ -34,6 +34,8 @@ export type LensSessionVM = LensSnapshot & {
   startSitting: () => void
   hearCue: () => void
   hearLine: () => void
+  startTake: () => void
+  playTake: () => void
 }
 
 export function useLensSession(options: UseLensSessionOptions): LensSessionVM {
@@ -83,5 +85,7 @@ export function useLensSession(options: UseLensSessionOptions): LensSessionVM {
     startSitting: (): void => send({ type: "start-sitting" }),
     hearCue: (): void => runtimeRef.current?.hearCue(),
     hearLine: (): void => runtimeRef.current?.hearLine(),
+    startTake: (): void => runtimeRef.current?.startTake(),
+    playTake: (): void => runtimeRef.current?.playTake(),
   }
 }

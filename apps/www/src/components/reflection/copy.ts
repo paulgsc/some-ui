@@ -6,16 +6,18 @@ import type { ConfirmRequest } from "@some-ui/shared"
  * and 8 grammar-lens answers"; empty when nothing went out that the phone
  * would let go.
  */
-export function goingOut(
-  reflections: number,
-  soundbites: number,
-  lens: number
-): string {
+export function goingOut(counts: {
+  reflections: number
+  soundbites: number
+  lensAnswers: number
+  lensTakes: number
+}): string {
   const parts = [
-    reflections > 0 ? counted(reflections, "reflection") : null,
-    soundbites > 0 ? counted(soundbites, "soundbite") : null,
-    lens > 0 ? counted(lens, "grammar-lens answer") : null,
-  ].filter((part) => part !== null)
+    [counts.reflections, "reflection"] as const,
+    [counts.soundbites, "soundbite"] as const,
+    [counts.lensAnswers, "grammar-lens answer"] as const,
+    [counts.lensTakes, "grammar-lens take"] as const,
+  ].flatMap(([n, noun]) => (n > 0 ? [counted(n, noun)] : []))
   const last = parts.pop() ?? ""
   return parts.length > 0 ? `${parts.join(", ")} and ${last}` : last
 }
