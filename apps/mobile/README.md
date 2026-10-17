@@ -366,8 +366,8 @@ install over a CI build, or the other way round.
 
 ### Play readiness
 
-The app is sideloaded and there is no plan to publish it. But if it ever goes
-through Google Play, that should be an increment, not an overhaul. So every
+The app is sideloaded today, and headed for Google Play as a free personal
+hobby app. The listing should be an increment, not an overhaul. So every
 run builds what Play would take, a **release** APK (the one the phone
 installs) and **app bundle** (R8-shrunk, not debuggable, same key), and
 `.github/workflows/_mobile-review.yml` reviews the build against Google's

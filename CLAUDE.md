@@ -22,9 +22,10 @@ There are two users:
 
 What follows from them:
 
-- **Published by default.** The code is public, and the apps ship through public channels
-  (Pages, AMO, Google Play, YouTube). "For me" names the audience; exposure is a separate
-  question. Keep every public channel and its upkeep (the APK's Play readiness in
+- **Published by default.** The code is public, and the apps ship through public channels:
+  Pages, AMO and YouTube today. The APK is sideloaded today and headed for Google Play as a
+  free personal hobby app. "For me" names the audience; exposure is a separate question.
+  Keep every public channel and its upkeep (the APK's Play readiness in
   `apps/mobile/README.md`, say) even when only the owner uses the thing.
 - **Private only where the data is personal.** What serves A and holds PII stays on the
   home network (the `lan` audience, behind the passkey) and on the owner's own devices.
@@ -35,7 +36,15 @@ What follows from them:
   interaction rather than all at once. The extensions comb is the model
   (`packages/ui/honeycomb/src/components/extensions-comb/extensions.data.ts`).
 - **One screen, two readings.** Where the owner and a viewer can reach the same screen, it
-  should say which of them is looking.
+  says which of them is looking: `components/provenance-strip.tsx` under the web header
+  tells the owner what a wing publishes and keeps, and tells a viewer it is sample data.
+- **A viewer tries, and nothing is kept.** The Pages build is the viewer's
+  (`VIEWER_BUILD`, `apps/www/src/lib/data-mode`). There the person's stores read and write
+  an in-memory copy (`tenantStorage`, `apps/www/src/lib/tenant/storage.ts`) that
+  `apps/www/src/lib/demo` seeds with sample drafts: a mock demo, and nothing reaches the
+  browser's storage. A store of the person's own records goes through `tenantStorage`,
+  never `localStorage` directly; conveniences (the theme, a remembered choice) stay in
+  `localStorage`.
 - **Say what it is.** In copy anyone reads (pages, READMEs, store listings, release
   notes), describe each thing by what it is and does, plus its honest limits. Skip foils
   and put-downs ("not another X", "not just a Y"): an affirmative definition says it all.
@@ -52,11 +61,6 @@ What follows from them:
   store in `packages/ui/soundbites`, the "let it go" steps), so an append-only claim would
   be false on landing. Declaring it, with a tag at each discard site, waits on the owner's
   call about those sites.
-
-**Open (the owner's call; ask, don't settle it):** whether some features need a mock
-demonstration surface (seeded data, nothing kept) where a video is not enough. Related: a
-Pages visitor can use the study screens today, with data kept in their own browser, which
-"read-only" may change. Seed data for Pages: `apps/www/src/lib/data-mode`.
 
 `/mission` (`apps/www/src/routes/mission.tsx`) says the same to the viewer.
 

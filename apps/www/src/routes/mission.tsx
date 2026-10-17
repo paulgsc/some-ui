@@ -139,7 +139,7 @@ type Figure = { value: string; label: string }
  * `docs/canon/*.typ` files.
  */
 const FIGURES: ReadonlyArray<Figure> = [
-  { value: "44", label: "workspace packages" },
+  { value: "43", label: "workspace packages" },
   { value: "5", label: "browser extensions" },
   { value: "4", label: "formal canons" },
   { value: "1", label: "engineer" },
@@ -207,8 +207,8 @@ const Mission = (): JSX.Element => (
         </p>
         <p className="text-muted-foreground/80 mt-5 max-w-2xl leading-relaxed text-pretty">
           The code is all public, and my own data stays on my home network and
-          my devices. Where a tool here lets you try it, what you do stays in
-          your own browser.
+          my devices. Where a tool here lets you try it, it runs on sample data,
+          and nothing you do is kept.
         </p>
       </header>
 
