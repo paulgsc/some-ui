@@ -6,3 +6,4 @@
 export type { Actuator } from "./actuator"
 export { createActuator } from "./actuator"
 export type { BoundAction } from "./bound"
+export { setSwitchedOff } from "./switch"

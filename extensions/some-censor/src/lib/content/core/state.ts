@@ -8,6 +8,7 @@
 
 import type { ViewState } from "@censor/lib/content/fsm"
 import type { UnknownShapeReason } from "@censor/lib/content/layout/lookup"
+import { DEFAULT_BOUNDARY_DAYS } from "@censor/lib/content/maturity/maturity"
 import type { SessionId } from "@some-extension/common"
 
 import type { CardKey } from "./keys"
@@ -29,6 +30,8 @@ export type CoreState = {
   readonly phase: Phase
   readonly session: SessionId
   readonly cards: ReadonlyMap<CardKey, CardState>
+  /** The owner's `B`, in days, as the shell last supplied it. */
+  readonly boundaryDays: number
   /** B4's staleness signal, per session: how often the table had no answer. */
   readonly unknownShapes: Readonly<Record<UnknownShapeReason, number>>
 }
@@ -46,6 +49,7 @@ export function initialState(session: SessionId): CoreState {
     phase: "idle",
     session,
     cards: new Map(),
+    boundaryDays: DEFAULT_BOUNDARY_DAYS,
     unknownShapes: EMPTY_UNKNOWN_SHAPES,
   }
 }
@@ -58,6 +62,7 @@ export type CoreSnapshot = {
   readonly phase: Phase
   readonly session: number
   readonly cards: ReadonlyArray<CardState>
+  readonly boundaryDays: number
   readonly unknownShapes: CoreState["unknownShapes"]
 }
 
@@ -66,6 +71,7 @@ export function snapshot(state: CoreState): CoreSnapshot {
     phase: state.phase,
     session: state.session,
     cards: [...state.cards.values()],
+    boundaryDays: state.boundaryDays,
     unknownShapes: state.unknownShapes,
   }
 }

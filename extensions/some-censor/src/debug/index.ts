@@ -31,6 +31,12 @@ import {
   sessionStorageKey,
   type IndexEntry,
 } from "@censor/lib/content/observability"
+import type { BoundaryChange } from "@censor/lib/settings/settings"
+import {
+  BOUNDARY_CHANGES_KEY,
+  BOUNDARY_LABEL,
+  parseBoundaryChanges,
+} from "@censor/lib/settings/settings"
 import { ext } from "@censor/platform/content"
 import {
   createSessionLoader,
@@ -528,6 +534,63 @@ function timelineSection(b: Bundle, rerender: () => void): HTMLElement {
   return section
 }
 
+/**
+ * Every boundary change the popup logged, newest first. It spans every
+ * session, so it does not follow the picker.
+ */
+function boundarySection(
+  changes: ReadonlyArray<BoundaryChange> | null | undefined
+): HTMLElement {
+  const section = el("section")
+  section.append(el("h2", { text: "Boundary changes" }))
+  if (changes == null || changes.length === 0) {
+    section.append(
+      el("div", {
+        class: changes === null ? "bc-empty bad" : "bc-empty",
+        text:
+          changes === undefined
+            ? "Loading…"
+            : changes === null
+              ? "The change log could not be read."
+              : "The boundary has not changed.",
+      })
+    )
+    return section
+  }
+  const table = el("table", { class: "bc-events" })
+  const head = el("tr")
+  for (const label of ["when", "from", "to"]) {
+    head.appendChild(el("th", { text: label }))
+  }
+  table.appendChild(el("thead", {}, [head]))
+  const body = el("tbody")
+  for (const change of [...changes].reverse()) {
+    const row = el("tr")
+    row.append(
+      el("td", { class: "muted", text: new Date(change.at).toLocaleString() }),
+      el("td", { text: BOUNDARY_LABEL[change.from] }),
+      el("td", { text: BOUNDARY_LABEL[change.to] })
+    )
+    body.appendChild(row)
+  }
+  table.appendChild(body)
+  section.append(el("div", { class: "bc-scroll" }, [table]))
+  return section
+}
+
+/** `undefined` until read, `null` when the read failed. */
+let boundaryChanges: ReadonlyArray<BoundaryChange> | null | undefined
+
+async function loadBoundaryChanges(): Promise<void> {
+  try {
+    const stored = await ext.storage.local.get(BOUNDARY_CHANGES_KEY)
+    boundaryChanges = parseBoundaryChanges(stored[BOUNDARY_CHANGES_KEY])
+  } catch {
+    boundaryChanges = null
+  }
+  render()
+}
+
 // ── Actions ──────────────────────────────────────────────────────────────────
 
 /**
@@ -576,7 +639,10 @@ function header(b: Bundle | undefined): HTMLElement {
   )
 
   const refresh = el("button", { text: "Refresh" })
-  refresh.addEventListener("click", () => void loader.load())
+  refresh.addEventListener("click", () => {
+    void loader.load()
+    void loadBoundaryChanges()
+  })
   const actions = el("div", { class: "bc-actions" }, [refresh])
 
   if (b) {
@@ -595,6 +661,7 @@ function render(): void {
 
   const { bundle, loadError } = loader
   root.appendChild(header(bundle))
+  root.appendChild(boundarySection(boundaryChanges))
   root.appendChild(pickerSection())
 
   if (loadError !== undefined) {
@@ -644,3 +711,4 @@ const loader = createSessionLoader<IndexEntry, Bundle>({
 })
 
 void loader.load()
+void loadBoundaryChanges()

@@ -24,6 +24,7 @@ import {
   PREMASK_SELECTORS,
   SEL,
   SHELF_COLLAPSE_SELECTORS,
+  SWITCHED_OFF_ATTRIBUTE,
   VIDEO_SELECTORS,
 } from "@censor/lib/content/selectors"
 import { describe, expect, it } from "vitest"
@@ -124,6 +125,9 @@ function shelfRulesFromCss(): Array<string> {
   ).filter((r) => normalize(r).includes(':has([data-boyo="absent"]):not('))
 }
 
+/** Every pre-mask rule's gate: the owner's off switch lifts them all. */
+const WHILE_ON = `:root:not([${SWITCHED_OFF_ATTRIBUTE}]) `
+
 describe("the stylesheet and the catalogue agree", () => {
   it("occludes exactly the tags the content script adopts, one rule per tag", () => {
     expect(premaskRulesFromCss().map(normalize)).toEqual(
@@ -139,7 +143,7 @@ describe("the stylesheet and the catalogue agree", () => {
       PREMASK_FALLBACK_SELECTORS.map(normalize)
     )
     expect(PREMASK_FALLBACK_SELECTORS).toEqual([
-      "ytd-rich-item-renderer:not([data-boyo])",
+      `${WHILE_ON}ytd-rich-item-renderer:not([data-boyo])`,
     ])
     for (const rule of fallbackRulesFromCss()) {
       expect(rule, "a fallback rule must not itself need :has()").not.toContain(
@@ -255,7 +259,7 @@ describe("the stylesheet and the catalogue agree", () => {
 
   it("keeps the plain Polymer tags free of :has(), so the Firefox 112 floor — which predates :has() entirely — still occludes them", () => {
     const rule = premaskRulesFromCss().find((r) =>
-      r.startsWith("ytd-video-renderer:")
+      normalize(r).startsWith(normalize(`${WHILE_ON}ytd-video-renderer:`))
     )
     expect(rule).toBeDefined()
     expect(rule).not.toContain(":has(")
@@ -263,7 +267,9 @@ describe("the stylesheet and the catalogue agree", () => {
 
   it("guards every polymorphic tag with :has(), and no others", () => {
     for (const { tag, requiresVideoLink } of CARD_SELECTORS) {
-      const rule = premaskRulesFromCss().find((r) => r.startsWith(`${tag}:`))
+      const rule = premaskRulesFromCss().find((r) =>
+        normalize(r).startsWith(normalize(`${WHILE_ON}${tag}:`))
+      )
       expect(rule, `${tag} must appear in the pre-mask rule`).toBeDefined()
       expect(rule?.includes(":has("), `${tag} :has() guard`).toBe(
         requiresVideoLink
@@ -272,9 +278,9 @@ describe("the stylesheet and the catalogue agree", () => {
   })
 
   it("never occludes a card it cannot later un-occlude", () => {
-    // The invariant behind the guard: the only thing that lifts the pre-mask
-    // filter is the content script writing data-boyo, and it only does that for
-    // an element isVideoCard() accepts. So anything the CSS occludes must be
+    // The invariant behind the guard: while switched on, the only thing that
+    // lifts the pre-mask filter is the content script writing data-boyo, and
+    // it only does that for an element isVideoCard() accepts. So anything the CSS occludes must be
     // something isVideoCard() could accept.
     const guarded = CARD_SELECTORS.filter((s) => s.requiresVideoLink)
     for (const { tag } of guarded) {

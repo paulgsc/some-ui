@@ -186,8 +186,8 @@ type QueuedCard = {
  * Sized above `RESOLVE_BUDGET_MS` on purpose: a card legitimately waiting out
  * its resolution budget is still occluded and must not read as a violation.
  * Past that budget plus a margin, nothing in the design is still coming for
- * it — the occluder is lifted by exactly one thing, and that thing has given
- * up or never knew.
+ * it — while switched on, the occluder is lifted by exactly one thing, and
+ * that thing has given up or never knew.
  */
 export const OCCLUSION_GRACE_MS = 15_000
 
@@ -246,7 +246,7 @@ export const boyoInvariants: ReadonlyArray<Invariant<BoyoContext>> = [
   {
     name: "OccluderReleases",
     description:
-      "No element sits under the static pre-mask occluder, without data-boyo, past OCCLUSION_GRACE_MS. Unlike every other check here this reads the DOM rather than the pipeline's bookkeeping, because the failures it exists for are precisely the ones that leave an element in no queue and held by no card — where a bookkeeping check has nothing to look at and reports healthy while the page is visibly broken (#1421). The occluder is lifted by exactly one thing, the content script writing data-boyo; an element it is still hiding after the resolution budget has passed is one nothing is coming back for, and it is inert as well as blurred because that rule sets pointer-events: none.",
+      "No element sits under the static pre-mask occluder, without data-boyo, past OCCLUSION_GRACE_MS. Unlike every other check here this reads the DOM rather than the pipeline's bookkeeping, because the failures it exists for are precisely the ones that leave an element in no queue and held by no card — where a bookkeeping check has nothing to look at and reports healthy while the page is visibly broken (#1421). While switched on, the occluder is lifted by exactly one thing, the content script writing data-boyo; an element it is still hiding after the resolution budget has passed is one nothing is coming back for, and it is inert as well as blurred because that rule sets pointer-events: none.",
     check: (ctx): InvariantOutcome => {
       if (ctx.phase !== "running") return { ok: "unknown" }
       const stranded = ctx.occluded.filter(

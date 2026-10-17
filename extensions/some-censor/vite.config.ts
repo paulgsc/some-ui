@@ -12,8 +12,7 @@ const platformAlias = (
 
 // The diagnostics page (OBS2) is its own standalone extension page, reachable
 // at its own moz-extension:// / chrome-extension:// URL, as in
-// suspender-ledger and some-filter. "popup" is only the "Diagnostics" entry
-// point, not the whitelist/enabled controls `@censor/types/messages` models.
+// suspender-ledger and some-filter.
 const entries = [
   { name: "content", input: "src/content/content.ts" },
   { name: "background", input: "src/background/background.ts" },

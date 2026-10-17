@@ -58,6 +58,8 @@ export type Runtime = {
   stop(): void
   /** Observe every card on the page now. */
   scan(): void
+  /** The owner's boundary, applied now if running and at every later start. */
+  setBoundary(days: number): void
   readonly state: CoreState
   readonly running: boolean
 }
@@ -69,6 +71,7 @@ export function createRuntime(ports: RuntimePorts): Runtime {
   const onFact = ports.onFact ?? recordFact
 
   let state: CoreState = initialState(mintSession())
+  let boundaryDays = state.boundaryDays
   let actuator: Actuator | null = null
   let health: Health | null = null
   let firstScan: number | null = null
@@ -155,7 +158,12 @@ export function createRuntime(ports: RuntimePorts): Runtime {
         state: () => state,
         census: () => sensorInstance.census(),
       })
-      dispatch({ kind: "start", session: mintSession(), t: clock() })
+      dispatch({
+        kind: "start",
+        session: mintSession(),
+        boundaryDays,
+        t: clock(),
+      })
       sensorInstance.start()
       health.sessionStarted()
       if (typeof ports.win.requestAnimationFrame === "function") {
@@ -183,6 +191,11 @@ export function createRuntime(ports: RuntimePorts): Runtime {
 
     scan(): void {
       sensorInstance.scan()
+    },
+
+    setBoundary(days: number): void {
+      boundaryDays = days
+      dispatch({ kind: "boundary", days, t: clock() })
     },
 
     get state(): CoreState {

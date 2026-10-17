@@ -4,21 +4,21 @@
 
 The extension operates exclusively on www.youtube.com. Host permissions are
 intentionally narrow: no other origin, including other YouTube subdomains
-(m., music., studio.), is ever accessed. The content script, background worker,
-and popup all communicate within the `youtube.com` boundary.
+(m., music., studio.), is ever accessed. The content script runs only there;
+the popup and the diagnostics page are the extension's own pages.
 
-## Network Fetch: development-only
+## Permissions
 
-A localhost persistence API client (`ApiClient`, `src/lib/background/api-client.ts`)
-exists to allow developer tooling to inspect and manage whitelist entries during
-development. It is **unconditionally disabled in production builds** via a
-`import.meta.env.PROD` guard that throws before any `fetch()` call is made.
+- `storage`: the settings (the boundary and the on/off switch) and the
+  diagnostics recordings, in `browser.storage.local`.
+- `contextMenus`: one "Open diagnostics" item on the tab context menu.
 
-In production, all state (whitelist entries, enabled flag) is stored exclusively
-in `browser.storage.local`. No network requests are made.
+## Network requests: none
 
-## Data Collected: none
+The extension makes no network requests.
 
-Channel IDs and the extension-enabled flag are stored in `browser.storage.local`
-only, never transmitted. No page content, video titles, or browsing history leave
-the browser.
+## Data collected: none
+
+The settings and the diagnostics recordings stay in `browser.storage.local`,
+on this device. The recordings hold upload-date text, video IDs and counts,
+never a title, channel or thumbnail. Nothing leaves the browser.

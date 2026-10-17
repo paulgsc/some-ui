@@ -6,7 +6,8 @@ the `@some-extension/transport` kernel.
 ## Architecture at a glance
 
 The content script runs four stages (Boundary Contract #1433, BC1–BC5):
-`src/content/content.ts` → `Controller` (lifecycle: enable/disable) →
+`src/content/content.ts` → `Controller` (lifecycle: it follows the owner's
+settings in `storage.local`, `src/lib/settings/`) →
 `runtime/runtime.ts`, which folds every token through Core and hands the
 resulting actions to the Actuator. The Layout table and Core are pure; the
 Sensor turns the vendor DOM into the tokens Core sees, and the Actuator is the
@@ -29,8 +30,9 @@ observation to write:
 3. **Core reducer** (`src/lib/content/core/`) — a pure, total
    `reduce(state, event) → { state, actions }`: no DOM, `browser.*`, clock,
    or randomness anywhere under `core/`. A card's view is decided by its
-   evidence alone (`fsm.ts`'s `decide`, over the maturity estimate): absent,
-   or plated when it is old enough. No gesture is an input (#1803).
+   evidence under the owner's boundary (`fsm.ts`'s `decide`, over the
+   maturity estimate): absent, or plated when it is old enough. No gesture is
+   an input (#1803); the boundary, set in the popup, is (#1807).
 4. **Actuator** (`src/lib/content/actuator/`) — the only writer to the
    vendor DOM. It only executes the actions Core named: the `data-boyo`
    stamp (`absent` is `display: none` in `styles/content.css`) and the veil

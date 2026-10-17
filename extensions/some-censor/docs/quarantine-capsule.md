@@ -230,9 +230,8 @@ not exempt a card from having one.
 _Amended by `QD16`:_ there is no channel trust at all. The whitelist is deleted
 (#1807), and every source has the same boundary.
 
-_Status: holds in the content script (#1803)._ No whitelist input, state or
-broadcast reaches Core. The background still stores and answers the whitelist
-messages, which nothing sends, until #1807 deletes them. See `QA2`.
+_Status: holds (#1803, #1807)._ The whitelist is deleted end to end: no
+message, handler, store or type for it is left. See `QA2`.
 
 ---
 
@@ -427,15 +426,19 @@ its subject" and `QD3`'s "unknown means outside" to say so. Lane videos keep
 their real thumbnails; `QD12` applies only to videos admitted by distance. The rule describes the owner as they
 are, and does not anticipate them learning these scripts.
 
-_Status: absent._ #1806.
+_Status: absent._ #1806. _Pending amendment:_ the owner decided on
+2026-10-17 (recorded on #1806) that being music alone admits a video, unless
+it is live, a premiere or a Short; the title-script rule and the per-language
+setting are dropped. #1806 rewrites this result when it builds the lane.
 
 ---
 
 ### QD16 — Decide once
 
-The owner's judgement is exercised on two settings — the boundary `B`, and the
-scripts they listen to but don't read — and nowhere else, besides switching
-the extension on or off. No card, channel or page offers a disclosure step, a
+The owner's judgement is exercised on one setting, the boundary `B`, and
+nowhere else, besides switching the extension on or off. (A second setting,
+the scripts they listen to but don't read, was dropped on 2026-10-17 with the
+lane's title-script rule; see `QD15`.) No card, channel or page offers a disclosure step, a
 trust decision or a verdict. The one exception is `QD13`'s face control, which
 shows only the thumbnail of a video already admitted and plated, and decides
 nothing about admission.
@@ -446,8 +449,8 @@ rewarding … if you don't like the card that you did all that work for".
 Amends `QD5`; supersedes `QD10`, `QA2`, `QA3`, §6's delayed subscription and
 the "airlock" in §7.
 
-_Status: holds for the ladder (#1803)._ No gesture changes a card. The
-popup's two settings are #1807's.
+_Status: holds (#1803, #1807)._ No gesture changes a card. The popup holds
+the boundary and the switch, and Diagnostics logs every boundary change.
 
 ---
 
@@ -474,13 +477,9 @@ band is derived from `B`, so the model reads the same whether `B` is ninety
 days or five years, and there is no configuration surface with five
 independently wrong thresholds on it.
 
-This is a statement of the _model_, not a claim that a production path to
-store `B` exists today. It does not (#1807 builds one): `#1386` (`QC4`) established that
-`browser.storage.local` holds only `apiBaseUrl`, that every settings row sits
-behind an `ApiClient` no shipping build can reach, and that
-`_assertDev()` throws on `import.meta.env.PROD`. Whether `B` persists and
-propagates in production is `QC4`'s question to answer, not this document's
-to promise.
+`B` is stored in `browser.storage.local`, set from the popup to 6 months,
+1 year or 2 years, and followed live by every open tab (#1807, which
+answered `#1386`'s `QC4` question).
 
 | id    | class          | range               | meaning                                                    |
 | ----- | -------------- | ------------------- | ---------------------------------------------------------- |
@@ -525,7 +524,7 @@ under `QD11` it renders nothing at all.
 ## 6. Admission — the two axes
 
 Maturity is one axis. **Admission** is the other, and conflating them is the
-mistake the current whitelist makes.
+mistake the whitelist made until #1807 deleted it.
 
 | id    | primitive              | meaning                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
 | ----- | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -546,8 +545,8 @@ never a path that admits one that isn't. (This also matches `#1382`'s own
 non-goals: boundary exemption is explicitly out of the implementation
 floor.)
 
-Today's whitelist is `QA4` wearing `QA2`'s label, and under this resolution it
-has no home in the doctrine at all — it is not a stricter `QA3`, it is the
+The whitelist was `QA4` wearing `QA2`'s label, and under this resolution it
+had no home in the doctrine at all — it was not a stricter `QA3`, it was the
 primitive this section rejects. The replacement aligned with the story is
 `QA3`: a **delayed subscription**, where following a creator means receiving
 their work a year late. That is what living under a rock actually looks like,

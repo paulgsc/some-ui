@@ -7,14 +7,19 @@
 
 import type { ViewState } from "@censor/lib/content/fsm"
 import { decide, project } from "@censor/lib/content/fsm"
+import { DEFAULT_BOUNDARY_DAYS } from "@censor/lib/content/maturity/maturity"
 import { mkSession } from "@some-extension/common"
 import { describe, expect, it } from "vitest"
 
 const session = mkSession()
 const NOW = Date.UTC(2026, 9, 16)
 
-function view(uploadDate: string | null, short = false): ViewState["kind"] {
-  return decide({ uploadDate, short }, NOW, session).kind
+function view(
+  uploadDate: string | null,
+  short = false,
+  boundaryDays = DEFAULT_BOUNDARY_DAYS
+): ViewState["kind"] {
+  return decide({ uploadDate, short }, NOW, boundaryDays, session).kind
 }
 
 describe("decide", () => {
@@ -27,6 +32,10 @@ describe("decide", () => {
   it("holds a card younger than the boundary (QM1, QM2)", () => {
     expect(view("3 days ago")).toBe("absent")
     expect(view("11 months ago")).toBe("absent")
+  })
+
+  it("reads the band against the boundary it is given", () => {
+    expect(view("11 months ago", false, 182)).toBe("plated")
   })
 
   it("holds a card whose age it cannot prove (QM0)", () => {
@@ -46,7 +55,14 @@ describe("decide", () => {
   })
 
   it("keeps the session it is given (F1)", () => {
-    expect(decide({ uploadDate: null, short: false }, NOW, session)).toEqual({
+    expect(
+      decide(
+        { uploadDate: null, short: false },
+        NOW,
+        DEFAULT_BOUNDARY_DAYS,
+        session
+      )
+    ).toEqual({
       kind: "absent",
       session,
     })

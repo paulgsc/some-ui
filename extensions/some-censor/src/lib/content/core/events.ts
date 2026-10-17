@@ -58,13 +58,21 @@ export type Token =
 // ── Inputs: the extension's own world ────────────────────────────────────────
 
 /**
- * The shell's lifecycle. There is no user input: a card's view is decided by
- * its evidence alone (`fsm.ts`), so nothing a user does reaches Core.
+ * The shell's lifecycle, and the owner's boundary. No gesture on a card
+ * reaches Core: a card's view is decided by its evidence under the boundary
+ * (`fsm.ts`, `QD16`).
  */
 export type Input =
   /** The shell started a session (bootstrap, or re-enable). */
-  | { readonly kind: "start"; readonly session: SessionId; readonly t: number }
+  | {
+      readonly kind: "start"
+      readonly session: SessionId
+      readonly boundaryDays: number
+      readonly t: number
+    }
   /** The shell is tearing the runtime down (disable). */
   | { readonly kind: "stop"; readonly t: number }
+  /** The owner set the boundary in the popup (#1807). */
+  | { readonly kind: "boundary"; readonly days: number; readonly t: number }
 
 export type CoreEvent = Token | Input

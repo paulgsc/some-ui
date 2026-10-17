@@ -73,8 +73,9 @@
    PRE-MASK OCCLUSION — SAFETY INVARIANT, NOT DECORATION
    ------------------------------------------------------------
    This is the most important rule in the file. It is the static-CSS
-   guarantee that a card is OCCLUDED from the instant it paints until the
-   content script proves it has taken ownership by writing data-boyo.
+   guarantee that, while switched on, a card is OCCLUDED from the instant it
+   paints until the content script proves it has taken ownership by writing
+   data-boyo.
 
    The JS handover can fail open-endedly: the content script may never load,
    may throw during bootstrap, or may never resolve this particular card. In
@@ -102,6 +103,11 @@
    and adopted, never the wrapper (#1426's grid cell, and any shelf); see
    selectors.ts's classifyCard() for the full argument.
 
+   Every rule is keyed to `:root:not([data-boyo-off])`. The content script
+   sets that attribute only when the owner has switched the extension off
+   (#1807), so the switch lifts the pre-mask, and a content script that never
+   runs leaves it on.
+
    Each tag gets its OWN rule below rather than sharing one comma-separated
    selector list. CSS selector-list invalidation is all-or-nothing: if any
    one selector in a comma list fails to parse, the entire rule is dropped —
@@ -110,7 +116,7 @@
    do. See the `:has()` baseline note in :root above for the measured
    Firefox gap this closes (#1390 / QC0).
    ============================================================ */
-ytd-video-renderer:not([data-boyo]) {
+:root:not([data-boyo-off]) ytd-video-renderer:not([data-boyo]) {
   cursor: default !important;
   filter: brightness(0.35) contrast(0.85) saturate(0.7) blur(12px) !important;
   opacity: 0.5 !important;
@@ -118,7 +124,7 @@ ytd-video-renderer:not([data-boyo]) {
   user-select: none !important;
 }
 
-ytd-grid-video-renderer:not([data-boyo]) {
+:root:not([data-boyo-off]) ytd-grid-video-renderer:not([data-boyo]) {
   cursor: default !important;
   filter: brightness(0.35) contrast(0.85) saturate(0.7) blur(12px) !important;
   opacity: 0.5 !important;
@@ -126,7 +132,7 @@ ytd-grid-video-renderer:not([data-boyo]) {
   user-select: none !important;
 }
 
-ytd-compact-video-renderer:not([data-boyo]) {
+:root:not([data-boyo-off]) ytd-compact-video-renderer:not([data-boyo]) {
   cursor: default !important;
   filter: brightness(0.35) contrast(0.85) saturate(0.7) blur(12px) !important;
   opacity: 0.5 !important;
@@ -134,7 +140,7 @@ ytd-compact-video-renderer:not([data-boyo]) {
   user-select: none !important;
 }
 
-ytd-playlist-panel-video-renderer:not([data-boyo]) {
+:root:not([data-boyo-off]) ytd-playlist-panel-video-renderer:not([data-boyo]) {
   cursor: default !important;
   filter: brightness(0.35) contrast(0.85) saturate(0.7) blur(12px) !important;
   opacity: 0.5 !important;
@@ -142,7 +148,7 @@ ytd-playlist-panel-video-renderer:not([data-boyo]) {
   user-select: none !important;
 }
 
-ytd-playlist-video-renderer:not([data-boyo]) {
+:root:not([data-boyo-off]) ytd-playlist-video-renderer:not([data-boyo]) {
   cursor: default !important;
   filter: brightness(0.35) contrast(0.85) saturate(0.7) blur(12px) !important;
   opacity: 0.5 !important;
@@ -150,7 +156,7 @@ ytd-playlist-video-renderer:not([data-boyo]) {
   user-select: none !important;
 }
 
-ytd-reel-item-renderer:not([data-boyo]) {
+:root:not([data-boyo-off]) ytd-reel-item-renderer:not([data-boyo]) {
   cursor: default !important;
   filter: brightness(0.35) contrast(0.85) saturate(0.7) blur(12px) !important;
   opacity: 0.5 !important;
@@ -158,7 +164,8 @@ ytd-reel-item-renderer:not([data-boyo]) {
   user-select: none !important;
 }
 
-ytd-rich-item-renderer:has(a[href*="/watch"], a[href*="/shorts/"]):not(
+:root:not([data-boyo-off])
+  ytd-rich-item-renderer:has(a[href*="/watch"], a[href*="/shorts/"]):not(
     :has(
       ytd-video-renderer,
       ytd-grid-video-renderer,
@@ -181,7 +188,8 @@ ytd-rich-item-renderer:has(a[href*="/watch"], a[href*="/shorts/"]):not(
   user-select: none !important;
 }
 
-yt-lockup-view-model:has(a[href*="/watch"], a[href*="/shorts/"]):not(
+:root:not([data-boyo-off])
+  yt-lockup-view-model:has(a[href*="/watch"], a[href*="/shorts/"]):not(
     :has(
       ytd-video-renderer,
       ytd-grid-video-renderer,
@@ -204,7 +212,8 @@ yt-lockup-view-model:has(a[href*="/watch"], a[href*="/shorts/"]):not(
   user-select: none !important;
 }
 
-ytm-shorts-lockup-view-model:has(a[href*="/watch"], a[href*="/shorts/"]):not(
+:root:not([data-boyo-off])
+  ytm-shorts-lockup-view-model:has(a[href*="/watch"], a[href*="/shorts/"]):not(
     :has(
       ytd-video-renderer,
       ytd-grid-video-renderer,
@@ -227,7 +236,11 @@ ytm-shorts-lockup-view-model:has(a[href*="/watch"], a[href*="/shorts/"]):not(
   user-select: none !important;
 }
 
-ytm-shorts-lockup-view-model-v2:has(a[href*="/watch"], a[href*="/shorts/"]):not(
+:root:not([data-boyo-off])
+  ytm-shorts-lockup-view-model-v2:has(
+    a[href*="/watch"],
+    a[href*="/shorts/"]
+  ):not(
     :has(
       ytd-video-renderer,
       ytd-grid-video-renderer,
@@ -250,7 +263,8 @@ ytm-shorts-lockup-view-model-v2:has(a[href*="/watch"], a[href*="/shorts/"]):not(
   user-select: none !important;
 }
 
-ytd-structured-description-video-lockup-renderer:has(
+:root:not([data-boyo-off])
+  ytd-structured-description-video-lockup-renderer:has(
     a[href*="/watch"],
     a[href*="/shorts/"]
   ):not(
@@ -297,7 +311,7 @@ ytd-structured-description-video-lockup-renderer:has(
    lib/content/selectors.ts and asserted by selectors.test.ts.
    ---------------------------------------------------------- */
 @supports not selector(:has(a)) {
-  ytd-rich-item-renderer:not([data-boyo]) {
+  :root:not([data-boyo-off]) ytd-rich-item-renderer:not([data-boyo]) {
     cursor: default !important;
     filter: brightness(0.35) contrast(0.85) saturate(0.7) blur(12px) !important;
     opacity: 0.5 !important;

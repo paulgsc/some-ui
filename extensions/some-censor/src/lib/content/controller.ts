@@ -3,8 +3,8 @@
  *
  * What is left once the Sensor owns observation and navigation, Core owns
  * every decision and the Actuator owns every write: starting the recording,
- * waiting for `ytd-app`, and answering the background's enable/disable
- * broadcast.
+ * waiting for `ytd-app`, and following the owner's settings (`lib/settings`,
+ * #1807).
  *
  * Lifecycle properties, labelled here because they are cited elsewhere;
  * pinned by `runtime/runtime.test.ts`, not declared review invariants:
@@ -22,8 +22,11 @@
  *        `yt-navigate-finish` into one `nav` (`NAV_DEBOUNCE_MS`).
  */
 
+import type { Settings } from "@censor/lib/settings/settings"
+import { boundaryDays, followSettings } from "@censor/lib/settings/settings"
 import { ext } from "@censor/platform/content"
 
+import { setSwitchedOff } from "./actuator/index"
 import { startObservability } from "./observability"
 import type { Runtime } from "./runtime/runtime"
 import { createRuntime } from "./runtime/runtime"
@@ -41,28 +44,21 @@ export class Controller {
     // record into it and deliberately *not* restarted per session — see
     // observability.ts's header for why that scope is the right one.
     startObservability()
-    this._listenBroadcasts()
-    this._bootstrap()
+    followSettings(ext.storage, (settings) => this._apply(settings))
   }
 
-  // ── Bootstrap ─────────────────────────────────────────────────────────────
+  // ── Settings ──────────────────────────────────────────────────────────────
 
-  private _bootstrap(): void {
-    ext.runtime
-      .sendMessage({ type: "GET_ENABLED" })
-      .then((r: unknown) => {
-        // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-        const resp = r as { ok?: boolean; enabled?: boolean } | null
-        const enabled =
-          resp?.ok === true && typeof resp.enabled === "boolean"
-            ? resp.enabled
-            : true
-        if (enabled) this._waitForApp()
-      })
-      .catch(() => {
-        // Degraded: proceed as enabled (safe default)
-        this._waitForApp()
-      })
+  /** Off stops the runtime and lifts the pre-mask, in one task. */
+  private _apply(settings: Settings): void {
+    this._runtime.setBoundary(boundaryDays(settings.boundary))
+    if (settings.enabled) {
+      setSwitchedOff(document, false)
+      this._waitForApp()
+    } else {
+      this._stop()
+      setSwitchedOff(document, true)
+    }
   }
 
   private _start(): void {
@@ -79,6 +75,7 @@ export class Controller {
   // ── DOM bootstrap ─────────────────────────────────────────────────────────
 
   private _waitForApp(): void {
+    if (this._appWaiter !== null) return
     if (document.querySelector("ytd-app")) {
       this._start()
       return
@@ -93,18 +90,6 @@ export class Controller {
     this._appWaiter.observe(document.documentElement, {
       childList: true,
       subtree: true,
-    })
-  }
-
-  // ── Background messages ───────────────────────────────────────────────────
-
-  private _listenBroadcasts(): void {
-    ext.runtime.onMessage.addListener((msg: unknown) => {
-      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-      const m = msg as { type?: string; enabled?: boolean }
-      if (m.type !== "ENABLED_CHANGED") return
-      if (m.enabled) this._start()
-      else this._stop()
     })
   }
 }

@@ -21,9 +21,11 @@
  *   R6 — Unknown shape is a state (B4). A card the table could not place is
  *        still a card, decided like every other; each `unknown-shape` token
  *        (one per element the Sensor could not place) is counted.
- *   R7 — Evidence alone. A card's view is `decide()` of its merged
- *        observation at the `t` it was last observed: no input changes it,
- *        and a re-observation that moves the estimate moves the view (#1803).
+ *   R7 — Evidence under the boundary. A card's view is `decide()` of its
+ *        merged observation at the `t` it was last observed, under the
+ *        state's boundary: a re-observation that moves the estimate moves
+ *        the view (#1803), and so does the owner's `boundary`, re-deciding
+ *        every card in place in one step (#1807). No other input changes it.
  *
  * R4 correlated the answers to Core's async requests; none are left, so it
  * is retired. The parenthesised M- and C- labels are kept so their
@@ -103,6 +105,7 @@ export function reduce(state: CoreState, event: CoreEvent): Step {
           phase: "running",
           session: event.session,
           cards: new Map(),
+          boundaryDays: event.boundaryDays,
           unknownShapes: EMPTY_UNKNOWN_SHAPES,
         },
         actions: [record({ kind: "session.start", session: event.session })],
@@ -137,6 +140,11 @@ export function reduce(state: CoreState, event: CoreEvent): Step {
           record({ kind: "session.start", session: event.session }),
         ],
       }
+    }
+
+    case "boundary": {
+      if (state.phase !== "running") return none(state)
+      return rebound(state, event.days)
     }
 
     // ── Tokens ─────────────────────────────────────────────────────────────
@@ -197,7 +205,7 @@ function adopt(
   const card: CardState = {
     key,
     observation,
-    view: decide(observation, t, state.session),
+    view: decide(observation, t, state.boundaryDays, state.session),
     firstSeenAt: t,
     lastSeenAt: t,
   }
@@ -229,7 +237,7 @@ function reobserve(
   t: number
 ): Step {
   const merged = mergeObservation(card.observation, observation)
-  const view = decide(merged, t, state.session)
+  const view = decide(merged, t, state.boundaryDays, state.session)
   const next: CardState = { ...card, observation: merged, view, lastSeenAt: t }
   const actions: Array<Action> = []
   const videoId = keyVideoId(card.key)
@@ -266,4 +274,27 @@ function reobserve(
   actions.push(render(next))
   if (view.kind !== card.view.kind) actions.push(stateFact(next))
   return { state: setCard(state, next), actions }
+}
+
+/**
+ * Re-decide every card under a new boundary. Only a card whose view moved is
+ * re-rendered, and each goes straight from one stamp to the other, so no
+ * card passes through unstamped.
+ */
+function rebound(state: CoreState, boundaryDays: number): Step {
+  const cards = new Map<CardKey, CardState>()
+  const actions: Array<Action> = []
+  for (const card of state.cards.values()) {
+    const view = decide(
+      card.observation,
+      card.lastSeenAt,
+      boundaryDays,
+      state.session
+    )
+    const next: CardState = { ...card, view }
+    cards.set(card.key, next)
+    if (view.kind !== card.view.kind)
+      actions.push(render(next), stateFact(next))
+  }
+  return { state: { ...state, boundaryDays, cards }, actions }
 }
