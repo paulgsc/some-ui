@@ -143,8 +143,9 @@ the WebView holds (`navigator.storage.estimate()`: soundbites, voice
 reflections, scene notes, journal takes, and any audio store added later),
 each counted as it is. A database save that would take the total past the
 quota is refused (`budgeted`), and so is an audio write: every audio store
-asks the same budget before it writes (`fitsRoom` in
-`@some-ui/voice-capture`, installed at boot by `roomOn`). A store keeps its
+writes inside `withRoom` (`@some-ui/voice-capture`, installed at boot by
+`roomOn`), which claims the write's growth until it settles, so two saves at
+once cannot both pass on one measurement. A store keeps its
 own cap besides, which is its own rule: no store keeps space free for
 itself, so a new one costs nothing until it holds something. There is no
 size per table.

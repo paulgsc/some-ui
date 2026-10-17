@@ -12,8 +12,8 @@ import {
   bytesOf,
   connection,
   done,
-  fitsRoom,
   result,
+  withRoom,
 } from "@some-ui/voice-capture"
 
 import { byNewest, displacedBy, fitsMaxBytes, SOUNDBITE_LIMIT } from "./policy"
@@ -119,35 +119,38 @@ export function indexedDbSoundbiteStore(): SoundbiteStore {
         SOUNDBITE_LIMIT
       )
       const freed = await bytesOf(db, AUDIO, leaving)
-      if (!(await fitsRoom(audio.size - freed))) {
-        throw new SoundbitesFullError()
-      }
-      const tx = db.transaction([META, AUDIO], "readwrite")
-      const meta = tx.objectStore(META)
-      const audios = tx.objectStore(AUDIO)
-      // Read and evict inside the one transaction: the cap holds even if two
-      // saves overlap (a second tab of the WebView, say).
-      const kept = await allKept(meta)
-      const displaced = displacedBy(kept, replace, SOUNDBITE_LIMIT)
-      const staying = await Promise.all(
-        kept
-          .filter((each) => !displaced.includes(each.id))
-          .map(async (each) => {
-            const blob: unknown = await result(audios.get(each.id))
-            return blob instanceof Blob ? blob.size : 0
-          })
+      await withRoom(
+        audio.size - freed,
+        async (): Promise<void> => {
+          const tx = db.transaction([META, AUDIO], "readwrite")
+          const meta = tx.objectStore(META)
+          const audios = tx.objectStore(AUDIO)
+          // Read and evict inside the one transaction: the cap holds even if two
+          // saves overlap (a second tab of the WebView, say).
+          const kept = await allKept(meta)
+          const displaced = displacedBy(kept, replace, SOUNDBITE_LIMIT)
+          const staying = await Promise.all(
+            kept
+              .filter((each) => !displaced.includes(each.id))
+              .map(async (each) => {
+                const blob: unknown = await result(audios.get(each.id))
+                return blob instanceof Blob ? blob.size : 0
+              })
+          )
+          if (!fitsMaxBytes(staying, audio.size)) {
+            tx.abort()
+            throw new SoundbitesFullError()
+          }
+          for (const id of displaced) {
+            meta.delete(id)
+            audios.delete(id)
+          }
+          meta.put(bite)
+          audios.put(audio, bite.id)
+          await done(tx)
+        },
+        () => new SoundbitesFullError()
       )
-      if (!fitsMaxBytes(staying, audio.size)) {
-        tx.abort()
-        throw new SoundbitesFullError()
-      }
-      for (const id of displaced) {
-        meta.delete(id)
-        audios.delete(id)
-      }
-      meta.put(bite)
-      audios.put(audio, bite.id)
-      await done(tx)
       changed()
     },
 

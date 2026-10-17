@@ -6,7 +6,7 @@
  * the bytes.
  */
 import { bytesBesides, bytesOf, connection, done, result } from "./idb"
-import { fitsRoom } from "./room"
+import { withRoom } from "./room"
 
 export type BlobShelf = {
   /**
@@ -43,15 +43,20 @@ export function blobShelf({
   return {
     async put(id, blob): Promise<void> {
       const freed = await bytesOf(await connect(), STORE, [id])
-      if (!(await fitsRoom(blob.size - freed))) throw new ShelfFullError()
-      const tx = (await connect()).transaction(STORE, "readwrite")
-      const blobs = tx.objectStore(STORE)
-      if ((await bytesBesides(blobs, id)) + blob.size > maxBytes) {
-        tx.abort()
-        throw new ShelfFullError()
-      }
-      blobs.put(blob, id)
-      await done(tx)
+      await withRoom(
+        blob.size - freed,
+        async (): Promise<void> => {
+          const tx = (await connect()).transaction(STORE, "readwrite")
+          const blobs = tx.objectStore(STORE)
+          if ((await bytesBesides(blobs, id)) + blob.size > maxBytes) {
+            tx.abort()
+            throw new ShelfFullError()
+          }
+          blobs.put(blob, id)
+          await done(tx)
+        },
+        () => new ShelfFullError()
+      )
     },
 
     async get(id): Promise<Blob | null> {

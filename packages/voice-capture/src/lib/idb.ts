@@ -42,7 +42,7 @@ export async function bytesBesides(
 /**
  * The bytes the blobs under `keys` hold in `store`, in a read of their own:
  * what a write that replaces or displaces them frees, so the device's room
- * is asked only for the write's growth (`fitsRoom`).
+ * is asked only for the write's growth (`withRoom`).
  */
 export async function bytesOf(
   db: IDBDatabase,

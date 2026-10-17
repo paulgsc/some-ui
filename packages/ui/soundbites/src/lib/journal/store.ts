@@ -14,8 +14,8 @@ import {
   bytesOf,
   connection,
   done,
-  fitsRoom,
   result,
+  withRoom,
 } from "@some-ui/voice-capture"
 import { JOURNAL_TAKES_MAX_BYTES } from "@soundbites/lib/policy"
 import { askToKeep } from "@soundbites/lib/store"
@@ -227,28 +227,36 @@ export function indexedDbJournalStore(): JournalStore {
     async saveTake(take, audio, episode): Promise<void> {
       const db = await connect()
       const freed = await bytesOf(db, AUDIO, [take.cutId])
-      if (!(await fitsRoom(audio.size - freed))) throw new JournalFullError()
-      const tx = db.transaction([PLAN, TAKES, AUDIO], "readwrite")
-      const audios = tx.objectStore(AUDIO)
-      const plan = await planIn(tx.objectStore(PLAN))
-      if (
-        plan?.openedAt !== episode ||
-        !plan.primer.cuts.some((cut) => cut.id === take.cutId)
-      ) {
-        tx.abort()
-        throw new JournalStaleError()
-      }
-      if (
-        (await bytesBesides(audios, take.cutId)) + audio.size >
-        JOURNAL_TAKES_MAX_BYTES
-      ) {
-        tx.abort()
-        throw new JournalFullError()
-      }
-      tx.objectStore(TAKES).put(take)
-      audios.put(audio, take.cutId)
-      tx.objectStore(PLAN).put({ ...plan, touchedAt: take.recordedAt }, CURRENT)
-      await done(tx)
+      await withRoom(
+        audio.size - freed,
+        async (): Promise<void> => {
+          const tx = db.transaction([PLAN, TAKES, AUDIO], "readwrite")
+          const audios = tx.objectStore(AUDIO)
+          const plan = await planIn(tx.objectStore(PLAN))
+          if (
+            plan?.openedAt !== episode ||
+            !plan.primer.cuts.some((cut) => cut.id === take.cutId)
+          ) {
+            tx.abort()
+            throw new JournalStaleError()
+          }
+          if (
+            (await bytesBesides(audios, take.cutId)) + audio.size >
+            JOURNAL_TAKES_MAX_BYTES
+          ) {
+            tx.abort()
+            throw new JournalFullError()
+          }
+          tx.objectStore(TAKES).put(take)
+          audios.put(audio, take.cutId)
+          tx.objectStore(PLAN).put(
+            { ...plan, touchedAt: take.recordedAt },
+            CURRENT
+          )
+          await done(tx)
+        },
+        () => new JournalFullError()
+      )
       changed()
     },
 

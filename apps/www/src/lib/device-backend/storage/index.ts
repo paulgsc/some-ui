@@ -7,10 +7,10 @@
  * voice reflections, scene notes, journal takes, and any store added later),
  * each counted as it is. A save on either side that would take the total
  * past the quota is refused: the database's by `budgeted`, an audio store's
- * by the room it asks (`fitsRoom` in `@some-ui/voice-capture`, installed by
- * `roomOn`).
+ * by the room it claims (`withRoom` in `@some-ui/voice-capture`, installed by
+ * `roomOn`), which a database save counts until that write settles.
  */
-import { setStorageRoom } from "@some-ui/voice-capture"
+import { claimedRoom, setStorageRoom } from "@some-ui/voice-capture"
 
 import { errorResponse } from "@/lib/device-backend/router"
 import type { SqlDriver } from "@/lib/device-backend/sql"
@@ -85,7 +85,8 @@ export async function budgeted<T>(
   db: SqlDriver,
   budget: StorageBudget,
   write: () => Promise<T>,
-  besides: () => Promise<number> = webViewBytes
+  besides: () => Promise<number> = async () =>
+    (await webViewBytes()) + claimedRoom()
 ): Promise<T> {
   return db.transaction(async () => {
     const before = await databaseBytes(db)
@@ -115,7 +116,10 @@ export async function fitsBesides(
   return false
 }
 
-/** Makes every audio store's write ask this budget (`fitsRoom`). */
+/**
+ * Makes every audio store's write ask this budget (`withRoom`); `bytes`
+ * already holds what other writes in flight have claimed.
+ */
 export function roomOn(
   db: () => Promise<SqlDriver>,
   budget: StorageBudget

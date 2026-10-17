@@ -19,7 +19,7 @@ export const SOUNDBITE_TAKE_MAX_BYTES =
 /**
  * The most audio the kept soundbites may hold: six full minutes at the target
  * bitrate. The store refuses a save past it (`fitsMaxBytes`), as it does one
- * past the device's room (`fitsRoom`).
+ * past the device's room (`withRoom`).
  */
 export const SOUNDBITES_MAX_BYTES = SOUNDBITE_LIMIT * SOUNDBITE_TAKE_MAX_BYTES
 
