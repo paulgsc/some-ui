@@ -1,3 +1,5 @@
+import { JOURNAL_BUDGET_MAX_MS } from "@soundbites/lib/policy"
+
 /**
  * A primer: what an agent prepared for one Build Journal episode, as the
  * phone reads it. An ordered list of cuts, each an artifact the video will
@@ -22,9 +24,6 @@
  * `budgetSec` is optional and at most `JOURNAL_BUDGET_MAX_MS`. A cut's `id`
  * names its take's file, so it is short, lowercase and unique.
  */
-
-/** The longest an episode's takes may run in total: three minutes. */
-export const JOURNAL_BUDGET_MAX_MS = 180_000
 
 /** A cut's target is a guide, never under this or over the budget. */
 export const CUT_TARGET_MIN_MS = 3_000

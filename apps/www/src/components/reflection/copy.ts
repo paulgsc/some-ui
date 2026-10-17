@@ -1,3 +1,5 @@
+import type { ConfirmRequest } from "@some-ui/shared"
+
 /** `1 reflection`, `3 reflections`, `2 soundbites`. */
 export function counted(n: number, noun = "reflection"): string {
   return `${n} ${noun}${n === 1 ? "" : "s"}`
@@ -14,6 +16,25 @@ export function goingOut(reflections: number, soundbites: number): string {
   ]
     .filter((part) => part !== null)
     .join(" and ")
+}
+
+/**
+ * The question after a share: Android says "shared" once an app is picked,
+ * even if the person backs out of it, so `what` leaves the phone only on
+ * their word.
+ */
+export function arrived(
+  what: string,
+  keep: string,
+  onConfirm: () => void
+): ConfirmRequest {
+  return {
+    title: "Did they arrive?",
+    description: `Once they have, ${what} can leave this phone.`,
+    confirm: "They arrived: let them go",
+    keep,
+    onConfirm,
+  }
 }
 
 /** What a reflection refused for want of a slot says. */

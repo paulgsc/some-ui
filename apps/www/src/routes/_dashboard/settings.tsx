@@ -1,21 +1,16 @@
 import type { JSX } from "react"
-import { useState } from "react"
 import { useTheme } from "@/providers/theme"
-import type { LayoutTreeId } from "@some-ui/activity-catalog"
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
-  Input,
   Label,
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-  Skeleton,
 } from "@some-ui/shared"
 import {
   isThemePreference,
@@ -23,28 +18,11 @@ import {
   SYSTEM_PREFERENCE,
 } from "@some-ui/styles/theme"
 import { createFileRoute } from "@tanstack/react-router"
-import { toast } from "sonner"
 
-import { useIntent, useIntentEffect } from "@/lib/intent"
-import { IntentButton, IntentFailure } from "@/lib/intent/render"
-import { matchQueryOutcome, queryOutcome } from "@/lib/query-outcome"
-import type { UserSettings } from "@/lib/tenant"
-import { settingsQuery, useSettings, useUpdateSettings } from "@/lib/tenant"
+import { MOBILE_APP } from "@/lib/build-profile"
+import { VIEWER_BUILD } from "@/lib/data-mode"
 import { DataHomeSection } from "@/components/settings/data-home-section"
 import { DeviceSection } from "@/components/settings/device-section"
-import { DeviceVoiceField } from "@/components/settings/device-voice-field"
-import { HostedVoiceFields } from "@/components/settings/hosted-voice-fields"
-import { StudyNudgeSection } from "@/components/settings/study-nudge-section"
-
-const LAYOUT_TREE_OPTIONS: ReadonlyArray<{
-  value: LayoutTreeId
-  label: string
-}> = [
-  { value: "study", label: "Study" },
-  { value: "topik", label: "TOPIK sidebar" },
-  { value: "drama", label: "Drama" },
-  { value: "voice", label: "Voice" },
-]
 
 /** "System" plus every selectable palette from the shared design system. */
 const THEME_OPTIONS: ReadonlyArray<{ value: string; label: string }> = [
@@ -52,145 +30,33 @@ const THEME_OPTIONS: ReadonlyArray<{ value: string; label: string }> = [
   ...SESSION_THEMES.map((theme) => ({ value: theme.id, label: theme.label })),
 ]
 
-function isLayoutTreeId(value: string): value is LayoutTreeId {
-  return LAYOUT_TREE_OPTIONS.some((option) => option.value === value)
-}
-
-const SettingsSkeleton = (): JSX.Element => (
-  <Card className="max-w-xl">
-    <CardContent className="space-y-4 pt-[var(--card-p,1.5rem)]">
-      <Skeleton className="h-10 w-full" />
-      <Skeleton className="h-10 w-full" />
-      <Skeleton className="h-10 w-full" />
-    </CardContent>
-  </Card>
-)
-
-const SettingsForm = ({
-  settings,
-}: {
-  settings: UserSettings
-}): JSX.Element => {
-  // eslint-disable-next-line owner-guard/no-mount-snapshot -- an edit buffer: a refetch must not overwrite unsaved choices, and isDirty compares it against the live settings
-  const [draft, setDraft] = useState<UserSettings>(settings)
-  const saveIntent = useIntent(useUpdateSettings(), {
-    presentation: "interactive",
-  })
+/** Applies live and persists on its own (`providers/theme`): no Save. */
+const ThemeCard = (): JSX.Element => {
   const { preference, setPreference } = useTheme()
-
-  const isDirty = JSON.stringify(settings) !== JSON.stringify(draft)
-
-  // One save intent and no navigation, so no `activeAction`-style gating.
-  useIntentEffect(saveIntent, () => {
-    toast("Settings saved")
-  })
-
-  const handleSave = (): void => {
-    saveIntent.start(draft)
-  }
-
   return (
     <Card className="max-w-xl">
       <CardHeader>
-        <CardTitle>Settings</CardTitle>
-        <CardDescription>
-          Defaults applied across your sessions.
-        </CardDescription>
+        <CardTitle>Appearance</CardTitle>
       </CardHeader>
-      <CardContent className="space-y-6">
-        {/* The phone speaks with its own engine, so a hosted provider and
-            voice mean nothing there (#1628): it gets its own voices. Pages
-            has no voice service at all, only the browser's voice
-            (providers/tts.tsx), so it has nothing to choose. */}
-        {import.meta.env.VITE_DEVICE_BACKEND === "true" ? (
-          <DeviceVoiceField
-            value={draft.deviceVoiceId}
-            onChange={(deviceVoiceId) => setDraft({ ...draft, deviceVoiceId })}
-          />
-        ) : import.meta.env.VITE_STATIC_DATA === "true" ? null : (
-          <HostedVoiceFields
-            value={draft.ttsVoice}
-            onChange={(ttsVoice) => setDraft({ ...draft, ttsVoice })}
-          />
-        )}
-
-        <div className="space-y-2">
-          <Label htmlFor="default-duration">
-            Default session length (minutes)
-          </Label>
-          <Input
-            id="default-duration"
-            type="number"
-            min={5}
-            max={60}
-            step={5}
-            value={draft.defaultSessionDurationMinutes}
-            onChange={(e) => {
-              const value = Number.parseInt(e.target.value, 10)
-              if (!Number.isNaN(value) && value > 0) {
-                setDraft({ ...draft, defaultSessionDurationMinutes: value })
-              }
-            }}
-          />
-        </div>
-
-        <div className="space-y-2">
-          <Label>Default layout</Label>
-          <Select
-            value={draft.defaultLayoutTree}
-            onValueChange={(value: string) => {
-              if (isLayoutTreeId(value))
-                setDraft({ ...draft, defaultLayoutTree: value })
-            }}
-          >
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {LAYOUT_TREE_OPTIONS.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
-                  {option.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="space-y-2">
-          <Label>Theme</Label>
-          <Select
-            value={preference}
-            onValueChange={(value: string) => {
-              // Themes apply live and persist independently of the settings
-              // form, so no Save is needed for this control.
-              if (isThemePreference(value)) setPreference(value)
-            }}
-          >
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {THEME_OPTIONS.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
-                  {option.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        <StudyNudgeSection
-          preferences={draft.notifications}
-          onChange={(notifications) => setDraft({ ...draft, notifications })}
-        />
-
-        <IntentButton
-          state={saveIntent.state}
-          onPress={handleSave}
-          disabled={!isDirty}
-          idleLabel="Save changes"
-          workingLabel="Saving..."
-        />
+      <CardContent className="space-y-2">
+        <Label htmlFor="theme">Theme</Label>
+        <Select
+          value={preference}
+          onValueChange={(value: string) => {
+            if (isThemePreference(value)) setPreference(value)
+          }}
+        >
+          <SelectTrigger id="theme">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {THEME_OPTIONS.map((option) => (
+              <SelectItem key={option.value} value={option.value}>
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </CardContent>
     </Card>
   )
@@ -199,13 +65,16 @@ const SettingsForm = ({
 /**
  * Outside the settings outcome: signing out must work when settings don't
  * load. On the Android app there is no account to sign out of; the card
- * holds the phone's own controls instead (the sync from home).
+ * holds the phone's own controls instead (the sync from home). On the Pages
+ * build, a viewer's, it says the data is a sample that nothing keeps.
  */
 const AccountCard = (): JSX.Element => (
   <Card className="max-w-xl">
     <CardContent className="pt-[var(--card-p,1.5rem)]">
       {import.meta.env.VITE_DEVICE_BACKEND === "true" ? (
         <DeviceSection />
+      ) : VIEWER_BUILD ? (
+        <ViewerNote />
       ) : (
         <DataHomeSection />
       )}
@@ -213,40 +82,39 @@ const AccountCard = (): JSX.Element => (
   </Card>
 )
 
-const SettingsOutcome = (): JSX.Element => {
-  const outcome = queryOutcome(useSettings())
+/** A viewer's front desk: whose this is, and that nothing here is kept. */
+const ViewerNote = (): JSX.Element => (
+  <section className="space-y-2" aria-labelledby="viewer-heading">
+    <Label id="viewer-heading">Sample data</Label>
+    <p className="text-muted-foreground text-sm">
+      You&apos;re trying my toolkit on sample data. Nothing you do here is kept:
+      a reload starts over. Only I sign in, on my home network, where my own
+      data stays.
+    </p>
+  </section>
+)
 
-  return matchQueryOutcome(outcome, {
-    pending: () => <SettingsSkeleton />,
-    failed: (error, retry) => <IntentFailure error={error} onRetry={retry} />,
-    ready: (settings, refreshError) => (
-      <div className="max-w-xl space-y-4">
-        {/* A cached record through a failed refresh may be stale, so the
-              failure rides alongside the form (as in `profile.tsx`). */}
-        {refreshError && (
-          <IntentFailure
-            error={refreshError.error}
-            onRetry={refreshError.retry}
-          />
-        )}
-        <SettingsForm settings={settings} />
-      </div>
-    ),
-  })
-}
-
+/**
+ * The front desk (lib/wings): what belongs to no wing. The theme, and the
+ * account on the web or this phone's own controls on the Android app. The
+ * study settings are Practice's own (`/practice/settings`) on both.
+ */
 const SettingsRoute = (): JSX.Element => (
   <div className="max-w-xl space-y-4">
-    <SettingsOutcome />
+    {!MOBILE_APP && (
+      <div className="space-y-1">
+        <h1 className="text-2xl font-semibold tracking-tight">Front desk</h1>
+        <p className="text-muted-foreground text-sm">
+          What belongs to no wing: the theme and the account. Study settings are
+          in Practice.
+        </p>
+      </div>
+    )}
+    <ThemeCard />
     <AccountCard />
   </div>
 )
 
 export const Route = createFileRoute("/_dashboard/settings")({
-  // See `sessions/$sessionId.tsx`'s loader for why this is a non-awaited
-  // prefetch and not `ensureQueryData`: a head start, never a gate.
-  loader: ({ context }) => {
-    void context.queryClient.prefetchQuery(settingsQuery)
-  },
   component: SettingsRoute,
 })

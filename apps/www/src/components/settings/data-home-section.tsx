@@ -4,7 +4,8 @@
  *
  * Which of the four screens this is follows `lib/authority`:
  *
- * - **No server** (the demo): the account section's own "no server" copy.
+ * - **No server**: not reached; the Pages build shows a viewer the front
+ *   desk's own sample-data note instead (`routes/_dashboard/settings.tsx`).
  * - **On this device**: nothing about the sessions is sent anywhere and no
  *   account is needed. One button to keep an account (the passkey screen).
  * - **On the account**: the account's controls, and, if the device holds

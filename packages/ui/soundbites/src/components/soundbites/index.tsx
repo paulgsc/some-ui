@@ -22,7 +22,7 @@
 import type { JSX, ReactNode } from "react"
 import { useEffect, useState, useSyncExternalStore } from "react"
 import { cn } from "@some-ui/core-utils"
-import { BrandMark, Button, TalkGlyph } from "@some-ui/shared"
+import { BrandMark, Button, TalkGlyph, useConfirmSheet } from "@some-ui/shared"
 import { RECORDING_FAILURE_COPY } from "@some-ui/voice-capture"
 import {
   describeContext,
@@ -297,10 +297,14 @@ export const Soundbites = ({
   const replaced = kept === null ? null : nextReplaced(kept, choice)
   const playingId = activity.kind === "playing" ? activity.id : null
 
-  const remove = (bite: Soundbite, when: string): void => {
-    if (window.confirm(`Delete the soundbite from ${when}?`))
-      dispatch({ type: "deleteConfirmed", id: bite.id })
-  }
+  const confirmSheet = useConfirmSheet()
+  const remove = (bite: Soundbite, when: string): void =>
+    confirmSheet.ask({
+      title: "Delete this soundbite?",
+      description: `The soundbite from ${when} leaves this phone, and can't be brought back.`,
+      confirm: "Delete it",
+      onConfirm: () => dispatch({ type: "deleteConfirmed", id: bite.id }),
+    })
 
   return (
     <div className="mx-auto flex w-full max-w-md flex-col gap-6 pb-8">
@@ -452,6 +456,7 @@ export const Soundbites = ({
           activity.kind === "recording" ||
           activity.kind === "saving"
       )}
+      {confirmSheet.sheet}
     </div>
   )
 }

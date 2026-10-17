@@ -210,7 +210,7 @@ describe("logging theirs", () => {
   })
 
   it("reports the side it saved, not the side it opened on", () => {
-    // Opened on mine (Home's due card), switched to theirs before saving.
+    // Opened on mine, switched to theirs before saving.
     const { type, onSaved } = setup()
     fireEvent.click(screen.getByRole("radio", { name: /^Theirs/ }))
     type("4900")

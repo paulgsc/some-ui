@@ -164,7 +164,9 @@ export const StopScreen = ({
           {reasons}
           <div className="mt-auto flex flex-col gap-1">
             <Button asChild className="h-12">
-              <Link to={hasAudience("apk") ? "/today" : "/sessions"}>Go</Link>
+              <Link to={hasAudience("apk") ? "/practice" : "/sessions"}>
+                Go
+              </Link>
             </Button>
             <Button variant="ghost" className="h-11" onClick={onPickUp}>
               Oops, keep going

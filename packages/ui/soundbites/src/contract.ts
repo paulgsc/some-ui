@@ -5,6 +5,7 @@
  * `lib/scene-voice`) record to the same limits.
  */
 export {
+  JOURNAL_TAKES_MAX_BYTES,
   SOUNDBITE_BITS_PER_SECOND,
   SOUNDBITE_MAX_MS,
   SOUNDBITE_MIN_MS,
