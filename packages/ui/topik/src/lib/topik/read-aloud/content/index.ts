@@ -397,7 +397,7 @@ function auditLens(
       )
     } else if (
       misforms.some(
-        (kept) => kept.word === misform.word && kept.surface === misform.surface
+        (kept) => kept.word === at && kept.surface === misform.surface
       )
     ) {
       dropped("misform-malformed", `"${misform.surface}" is given twice`)

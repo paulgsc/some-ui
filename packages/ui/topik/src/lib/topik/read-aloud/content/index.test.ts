@@ -361,7 +361,8 @@ describe("parseReadAloudDeck, a line's lens (Def. 4.9)", () => {
 
   it("indexes the authored words, past an occurrence that was dropped", () => {
     const stray = { wordId: "nope", surface: "잔", stemEnd: 1 }
-    const { deck: parsed } = parsedOrThrow(
+    const misform = { ...MISFORM, word: 3, decides: [2], cueDecides: [] }
+    const { deck: parsed, findings } = parsedOrThrow(
       deck({
         lines: [
           {
@@ -369,8 +370,9 @@ describe("parseReadAloudDeck, a line's lens (Def. 4.9)", () => {
             words: [stray, ...ONE_CUP.words],
             lens: {
               misforms: [
-                { ...MISFORM, word: 3, decides: [2], cueDecides: [] },
+                misform,
                 { ...MISFORM, surface: "줘아요", word: 3, decides: [0] },
+                misform,
               ],
             },
           },
@@ -380,6 +382,9 @@ describe("parseReadAloudDeck, a line's lens (Def. 4.9)", () => {
     expect(parsed.lines[0]?.lens?.misforms).toEqual([
       { ...MISFORM, word: 2, decides: [1], cueDecides: [] },
     ])
+    expect(findings.map((f) => f.detail)).toContain(
+      `"${MISFORM.surface}" is given twice`
+    )
   })
 
   it("drops a cue that holds the word a misform replaces, or a misform", () => {
