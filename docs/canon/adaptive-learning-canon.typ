@@ -1771,10 +1771,12 @@ rather than as *data*, and the remedy is to exhibit the data.
   shapes. A *pick* shows $b$ with one word's particle or ending left open
   and offers the authored form against that word's misforms. A *judge* shows
   $b$ whole, either as authored or with exactly one misform in place, and
-  asks for the word that is wrong or for "looks right". Its objective is
-  discrimination, and its concepts are the catalogue entries its line's
-  misforms name, by identifier (Def. 1.3); a line with no misform yields only
-  judges shown as authored, and they examine no entry. Its direction is a new
+  asks for the word that is wrong or for "looks right". Only a line with at
+  least one misform yields items. Its objective is discrimination, and its
+  concepts are the catalogue entries its line's misforms name, by identifier
+  (Def. 1.3): Definition 4.1's $k$ is extended to a non-empty set $K_e$, as
+  Definition 4.8 extends it for read-aloud, and a judge shown as authored
+  examines the same set as every other item on its line. Its direction is a new
   value of $p_"direction"$, *judgement* (a written form to whether it is well
   formed), a new value of an existing dimension, which Theorem 4.1 says is
   cheap.
@@ -1838,7 +1840,9 @@ rather than as *data*, and the remedy is to exhibit the data.
 
 #remark("4.15", name: "The step-down and the situation check, sealed")[
   Two checks follow an outcome, and both are *sealed*: no answer to them is
-  marked right or wrong, and nothing on the device reads one. After a miss,
+  marked right or wrong, and nothing on the device acts on one beyond
+  choosing the step-down's next question --- no summary, no later item, no
+  policy reads it. After a miss,
   the *step-down* asks easier questions about the same $b$, one at a time,
   each on a lower rung of a fixed ladder --- name the line's tense, find its
   subject or object, find where a word's particle starts, find its verb ---
