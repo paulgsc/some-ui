@@ -1,3 +1,7 @@
+// First: on the Pages build, the page's storage becomes an in-memory copy
+// before any module reads it (lib/demo/viewer-storage).
+import "@/lib/demo/viewer-storage"
+
 import { StrictMode } from "react"
 import { AppProviders } from "@/providers"
 import { queryClient } from "@/providers/tanstack-query"

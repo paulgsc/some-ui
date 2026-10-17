@@ -23,13 +23,26 @@ export const HandOff = (): JSX.Element | null => {
   const groups = bySession(kept, now)
   if (groups.length === 0) return null
 
-  const confirmLetGo = (name: string, ids: ReadonlyArray<string>): void =>
+  // The phone asks in a sheet; the desktop web keeps the browser's dialog
+  // (CLAUDE.md, "The phone and the desktop web are separate surfaces").
+  const confirmLetGo = (name: string, ids: ReadonlyArray<string>): void => {
+    const what = `${counted(ids.length)} from "${name}"`
+    if (import.meta.env.VITE_DEVICE_BACKEND !== "true") {
+      if (
+        confirm(
+          `Let go of ${what}? They won't be shared, and can't be brought back.`
+        )
+      )
+        letGo(ids)
+      return
+    }
     ask({
       title: `Let go of ${counted(ids.length)}?`,
       description: `From "${name}". They won't be shared, and can't be brought back.`,
       confirm: "Let go",
       onConfirm: () => letGo(ids),
     })
+  }
 
   return (
     <div className="flex flex-col gap-2">

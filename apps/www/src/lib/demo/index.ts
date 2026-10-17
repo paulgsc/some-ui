@@ -1,9 +1,9 @@
 /**
- * The sample a viewer's study screens start from (CLAUDE.md, "two mandates"):
- * on the Pages build the person's stores read and write `tenantStorage`'s
- * in-memory copy, and this seeds it with a few drafts. A viewer can compose,
- * edit and play; a reload starts over. Seeded from `main.tsx`, which loads
- * the activity registry anyway, so the stores stay free of it.
+ * The sample a viewer's study screens start from (CLAUDE.md, "A viewer tries,
+ * and nothing is kept"): on the Pages build the page's storage is an
+ * in-memory copy (`./viewer-storage`), and this seeds it with a few drafts. A
+ * viewer can compose, edit and play; a reload starts over. Seeded from
+ * `main.tsx`, which loads the activity registry anyway.
  */
 import {
   defaultSessionName,
@@ -14,7 +14,7 @@ import {
 import { VIEWER_BUILD } from "@/lib/data-mode"
 import { OFFERED_ACTIVITIES } from "@/lib/playable"
 import { STORAGE_KEY as SESSIONS_KEY } from "@/lib/tenant/sessions-repository"
-import { tenantStorage, writeJSON } from "@/lib/tenant/storage"
+import { browserLocalStorage, writeJSON } from "@/lib/tenant/storage"
 import type { SessionRecord } from "@/lib/tenant/types"
 
 /** When the samples were "made": fixed, so the demo reads the same each visit. */
@@ -49,7 +49,7 @@ export function demoSessions(): Array<SessionRecord> {
   })
 }
 
-/** On the Pages build, gives a viewer's fresh store its sample drafts. */
+/** On the Pages build, gives a viewer's fresh storage its sample drafts. */
 export function seedDemo(): void {
-  if (VIEWER_BUILD) writeJSON(tenantStorage, SESSIONS_KEY, demoSessions())
+  if (VIEWER_BUILD) writeJSON(browserLocalStorage, SESSIONS_KEY, demoSessions())
 }

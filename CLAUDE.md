@@ -38,13 +38,13 @@ What follows from them:
 - **One screen, two readings.** Where the owner and a viewer can reach the same screen, it
   says which of them is looking: `components/provenance-strip.tsx` under the web header
   tells the owner what a wing publishes and keeps, and tells a viewer it is sample data.
-- **A viewer tries, and nothing is kept.** The Pages build is the viewer's
-  (`VIEWER_BUILD`, `apps/www/src/lib/data-mode`). There the person's stores read and write
-  an in-memory copy (`tenantStorage`, `apps/www/src/lib/tenant/storage.ts`) that
-  `apps/www/src/lib/demo` seeds with sample drafts: a mock demo, and nothing reaches the
-  browser's storage. A store of the person's own records goes through `tenantStorage`,
-  never `localStorage` directly; conveniences (the theme, a remembered choice) stay in
-  `localStorage`.
+- **A viewer tries, and nothing is kept.** The Pages build is the viewer's (`VIEWER_BUILD`,
+  `apps/www/src/lib/data-mode`). There the page's `localStorage` and `sessionStorage` are
+  in-memory copies (`apps/www/src/lib/demo/viewer-storage.ts`, imported first by
+  `main.tsx`), which `apps/www/src/lib/demo` seeds with sample drafts: a mock demo, where
+  every store, the activity packages' included, works as usual and a reload starts over.
+  A person's records may not bypass them (no IndexedDB, Cache Storage or cookie holding
+  them on the Pages build); a convenience, such as the sidebar's open/closed cookie, may.
 - **Say what it is.** In copy anyone reads (pages, READMEs, store listings, release
   notes), describe each thing by what it is and does, plus its honest limits. Skip foils
   and put-downs ("not another X", "not just a Y"): an affirmative definition says it all.

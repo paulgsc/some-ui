@@ -12,6 +12,7 @@ import {
   owns,
   ROOMS,
   tabsOf,
+  webSettingsOf,
   webWingsHere,
   wingOf,
   WINGS,
@@ -85,17 +86,27 @@ describe("wings", () => {
   })
 
   it("lists only a wing's own rooms in its web sidebar", () => {
-    expect(navOf("practice").map((room) => room.nav)).toEqual([
+    const wing = (id: string): (typeof WINGS)[number] => {
+      const found = WINGS.find((w) => w.id === id)
+      if (!found) throw new Error(id)
+      return found
+    }
+    expect(navOf(wing("practice")).map((room) => room.nav)).toEqual([
       "Home",
       "Sessions",
       "Profile",
     ])
-    expect(navOf("operate").map((room) => room.nav)).toEqual([
+    expect(webSettingsOf(wing("practice"))).toBe("/practice/settings")
+    expect(navOf(wing("self"))).toEqual([])
+    expect(webSettingsOf(wing("self"))).toBeNull()
+    // The home network's rooms only where the build carries them (A3).
+    expect(navOf(wing("operate"))).toEqual([])
+    carriesLan = true
+    expect(navOf(wing("operate")).map((room) => room.nav)).toEqual([
       "Lessons",
       "Rounds",
       "Résumé build",
     ])
-    expect(navOf("self")).toEqual([])
   })
 
   it("lists only a wing's own rooms as its tabs", () => {

@@ -38,7 +38,7 @@ import { authority } from "@/lib/authority"
 import { MOBILE_APP } from "@/lib/build-profile"
 import { useIsTerminal } from "@/lib/orchestrator"
 import { useIsDeclaredBounded } from "@/lib/route-bounds"
-import { navOf, owns, wingOf } from "@/lib/wings"
+import { navOf, owns, webSettingsOf, wingOf } from "@/lib/wings"
 import { AudioIndicator } from "@/components/audio/audio-indicator"
 import { AccountUnavailableBanner } from "@/components/auth/account-unavailable-banner"
 import { LocIndicator } from "@/components/loc/loc-indicator"
@@ -106,20 +106,21 @@ const DashboardSidebarContent = ({
 }): JSX.Element => {
   const { setOpenMobile, isMobile } = useSidebar()
   const wing = wingOf(pathname)
+  const settings = wing && webSettingsOf(wing)
   const closeOnPhone = (): void => {
     if (isMobile) setOpenMobile(false)
   }
   const items = wing
     ? [
-        ...navOf(wing.id).map((room) => ({
+        ...navOf(wing).map((room) => ({
           to: room.roots[0],
           label: room.nav,
           icon: NAV_ICONS[room.id],
         })),
-        ...(wing.settings
+        ...(settings
           ? [
               {
-                to: wing.settings,
+                to: settings,
                 label: `${wing.name} settings`,
                 icon: SlidersHorizontal,
               },

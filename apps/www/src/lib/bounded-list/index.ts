@@ -1,8 +1,5 @@
-import { tenantStorage } from "@/lib/tenant/storage"
-
 /**
- * A newest-first list in the person's storage (`tenantStorage`: the
- * browser's, or a viewer's in-memory copy), never longer than `limit`. What it
+ * A newest-first list in `localStorage`, never longer than `limit`. What it
  * cannot read (no storage, bad JSON, an item `isItem` rejects) reads as
  * absent, and a failed write is dropped and said so (`false`): a store built
  * on it decides whether that matters.
@@ -22,7 +19,7 @@ export function boundedList<T>(
 } {
   const read = (): Array<T> => {
     try {
-      const parsed: unknown = JSON.parse(tenantStorage.getItem(key) ?? "[]")
+      const parsed: unknown = JSON.parse(localStorage.getItem(key) ?? "[]")
       return Array.isArray(parsed) ? parsed.filter(isItem) : []
     } catch {
       return []
@@ -30,7 +27,7 @@ export function boundedList<T>(
   }
   const write = (items: Array<T>): boolean => {
     try {
-      tenantStorage.setItem(key, JSON.stringify(items.slice(0, limit)))
+      localStorage.setItem(key, JSON.stringify(items.slice(0, limit)))
       return true
     } catch {
       // Full or missing storage: this write is lost, nothing else.

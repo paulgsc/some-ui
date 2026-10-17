@@ -62,6 +62,7 @@ describe("ReflectPanel", () => {
 
   it("offers letting go instead of a new one once every slot is taken", () => {
     fill(REFLECTION_LIMIT)
+    vi.spyOn(window, "confirm").mockReturnValue(true)
     render(withQueryClient(<ReflectPanel sessionId="s1" atMs={1_000} />))
 
     expect(screen.getByText("Time to hand these off")).toBeTruthy()
@@ -69,9 +70,6 @@ describe("ReflectPanel", () => {
     expect(screen.getByText("stale")).toBeTruthy()
 
     fireEvent.click(screen.getByRole("button", { name: /let go/i }))
-    const sheet = screen.getByRole("dialog")
-    expect(reflections.getSnapshot().kept).toHaveLength(REFLECTION_LIMIT)
-    fireEvent.click(within(sheet).getByRole("button", { name: "Let go" }))
 
     expect(reflections.getSnapshot().kept).toEqual([])
     expect(screen.getByLabelText("Type a reflection")).toBeTruthy()

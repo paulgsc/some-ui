@@ -290,6 +290,8 @@ const PhoneSessionRow = ({
           name={session.name}
           finished={session.status === "completed"}
         />
+        {failureOf(deleteIntent.state)}
+        {failureOf(duplicateIntent.state)}
       </CardContent>
       <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
         <SheetContent side="bottom" className="rounded-t-3xl px-3 pt-6 pb-6">
@@ -300,6 +302,7 @@ const PhoneSessionRow = ({
             <Button
               variant="ghost"
               className="h-12 justify-start gap-3 text-base"
+              disabled={isIntentPending(duplicateIntent.state)}
               onClick={() => {
                 setMenuOpen(false)
                 duplicateIntent.start(session.id)
@@ -413,11 +416,10 @@ function isIntentPending<T>(state: Intent<T>): boolean {
 }
 
 /** Named, not an inline arrow, for `react/no-unstable-nested-components`.
- * Status changes fire from a `Select`, with no button to retry through, so
- * `IntentFailure`'s own retry control is rendered directly. */
-function bulkStatusChangeFailure(
-  state: Intent<Array<SessionRecord>>
-): JSX.Element | null {
+ * For an action with no button of its own to retry through (a status change
+ * fires from a `Select`; the phone's row acts from a sheet that has closed),
+ * so `IntentFailure`'s own retry control is rendered directly. */
+function failureOf<T>(state: Intent<T>): JSX.Element | null {
   return matchIntent(state, {
     idle: () => null,
     working: () => null,
@@ -506,7 +508,7 @@ const BulkActionBar = ({
           Clear selection
         </Button>
       </div>
-      {bulkStatusChangeFailure(updateStatusManyIntent.state)}
+      {failureOf(updateStatusManyIntent.state)}
     </div>
   )
 }

@@ -1,5 +1,3 @@
-import { VIEWER_BUILD } from "@/lib/data-mode"
-
 /**
  * Minimal storage seam so repositories can be exercised in tests with an
  * in-memory fake instead of the real `window.localStorage`.
@@ -33,15 +31,6 @@ export function createInMemoryStorage(): StorageAdapter {
     },
   }
 }
-
-/**
- * Where the person's own records live: the browser's storage for the owner,
- * and on the Pages build an in-memory copy that `lib/demo` seeds with sample
- * drafts, so a viewer can try everything and nothing is kept.
- */
-export const tenantStorage: StorageAdapter = VIEWER_BUILD
-  ? createInMemoryStorage()
-  : browserLocalStorage
 
 /** Default simulated network latency for the mock tenant repositories. */
 export const MOCK_LATENCY_MS = 150

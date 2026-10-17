@@ -31,10 +31,17 @@ export function useConfirmSheet(): {
   ask: (request: ConfirmRequest) => void
   sheet: JSX.Element
 } {
+  // The last question stays put while the sheet slides away, so its words do
+  // not blank out mid-animation; `open` alone says whether it shows.
   const [request, setRequest] = useState<ConfirmRequest | null>(null)
-  const close = (): void => setRequest(null)
+  const [open, setOpen] = useState(false)
+  const close = (): void => setOpen(false)
+  const ask = (next: ConfirmRequest): void => {
+    setRequest(next)
+    setOpen(true)
+  }
   const sheet = (
-    <Sheet open={request !== null} onOpenChange={(open) => !open && close()}>
+    <Sheet open={open} onOpenChange={setOpen}>
       <SheetContent side="bottom" className="rounded-t-3xl px-5 pt-6 pb-8">
         <SheetHeader className="px-0 text-left">
           <SheetTitle className="text-xl">{request?.title}</SheetTitle>
@@ -66,5 +73,5 @@ export function useConfirmSheet(): {
       </SheetContent>
     </Sheet>
   )
-  return { ask: setRequest, sheet }
+  return { ask, sheet }
 }

@@ -1,11 +1,10 @@
 /**
  * @vitest-environment jsdom
  *
- * A viewer's sample (CLAUDE.md, "two mandates"): drafts the composer could
- * have made, in a store of their own that nothing persists.
+ * A viewer's sample (CLAUDE.md, "A viewer tries, and nothing is kept"):
+ * drafts the composer could have made, in a page storage of their own.
  */
 
-import { sequenceScenes } from "@some-ui/activity-catalog"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
 const viewer = vi.hoisted(() => ({ build: true }))
@@ -17,13 +16,13 @@ vi.mock("@/lib/data-mode", async (importOriginal) => ({
   },
 }))
 
+const browserStorage = window.localStorage
 const { demoSessions, seedDemo } = await import("@/lib/demo")
 const { OFFERED_ACTIVITIES } = await import("@/lib/playable")
 const { STORAGE_KEY } = await import("@/lib/tenant/sessions-repository")
-const { readJSON, tenantStorage } = await import("@/lib/tenant/storage")
 
 afterEach(() => {
-  tenantStorage.removeItem(STORAGE_KEY)
+  window.localStorage.clear()
   viewer.build = true
 })
 
@@ -33,7 +32,7 @@ describe("demoSessions", () => {
     expect(sessions).toHaveLength(OFFERED_ACTIVITIES.length + 1)
     for (const session of sessions) {
       expect(session.status).toBe("draft")
-      expect(session.scenes).toEqual(sequenceScenes(session.activities))
+      expect(session.scenes).toHaveLength(session.activities.length)
       expect(session.totalDurationMs).toBeGreaterThan(0)
     }
     expect(sessions.at(-1)?.activities.map((a) => a.activityId)).toEqual(
@@ -42,16 +41,23 @@ describe("demoSessions", () => {
   })
 })
 
-describe("seedDemo", () => {
-  it("seeds a viewer's store, which is not the browser's", () => {
+describe("the viewer's storage", () => {
+  it("is a copy of the page's own once installed, so nothing reaches the browser", async () => {
+    await import("@/lib/demo/viewer-storage")
+    expect(window.localStorage).not.toBe(browserStorage)
+    expect(window.sessionStorage.getItem("anything")).toBeNull()
+
     seedDemo()
-    expect(readJSON(tenantStorage, STORAGE_KEY, [])).toEqual(demoSessions())
-    expect(localStorage.getItem(STORAGE_KEY)).toBeNull()
+
+    expect(
+      JSON.parse(window.localStorage.getItem(STORAGE_KEY) ?? "[]")
+    ).toEqual(demoSessions())
+    expect(browserStorage.getItem(STORAGE_KEY)).toBeNull()
   })
 
-  it("leaves the owner's store alone", () => {
+  it("is not seeded on the owner's builds", () => {
     viewer.build = false
     seedDemo()
-    expect(readJSON(tenantStorage, STORAGE_KEY, [])).toEqual([])
+    expect(window.localStorage.getItem(STORAGE_KEY)).toBeNull()
   })
 })

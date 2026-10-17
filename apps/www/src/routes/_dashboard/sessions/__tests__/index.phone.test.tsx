@@ -57,13 +57,17 @@ const { Route } = await import("@/routes/_dashboard/sessions/index")
 const SessionsRoute = routeComponent(Route)
 
 let deletes: Array<string>
+let deleteStatus = 200
 
 beforeEach(() => {
   signInForTests()
   deletes = []
+  deleteStatus = 200
   vi.stubGlobal("fetch", (input: RequestInfo | URL, init?: RequestInit) => {
     if (init?.method === "DELETE") deletes.push(String(input))
-    return Promise.resolve(new Response(null, { status: 204 }))
+    // The client reads every answer as JSON (`requestJSON`).
+    const status = init?.method === "DELETE" ? deleteStatus : 200
+    return Promise.resolve(new Response("{}", { status }))
   })
 })
 
@@ -107,6 +111,20 @@ describe("sessions list on the phone", () => {
 
     expect(deletes).toHaveLength(1)
     expect(deletes[0]).toContain("session-1")
+    expect(screen.queryByRole("alert")).toBeNull()
+  })
+
+  it("says so in the row when letting it go fails", async () => {
+    deleteStatus = 500
+    render(withQueryClient(<SessionsRoute />))
+
+    const sheet = openMenuAndLetGo()
+    await act(async () => {
+      fireEvent.click(within(sheet).getByRole("button", { name: "Let it go" }))
+      await new Promise((resolve) => setTimeout(resolve, 20))
+    })
+
+    expect(await screen.findByRole("alert")).toBeTruthy()
   })
 
   it("keeps the session when the sheet is answered no", () => {

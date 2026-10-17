@@ -70,7 +70,7 @@ export const WINGS: ReadonlyArray<Wing> = [
     },
     exposure: {
       published: "these study screens, on Pages",
-      private: "your sessions and reflections, kept on this server",
+      private: "your sessions and reflections, which stay yours",
     },
   },
   {
@@ -186,19 +186,29 @@ export function webWingsHere(): ReadonlyArray<
   Wing & { web: NonNullable<Wing["web"]> }
 > {
   return WINGS.filter(
-    (wing): wing is Wing & { web: NonNullable<Wing["web"]> } =>
-      wing.web !== null && (wing.web.lanOnly !== true || hasAudience("lan"))
+    (wing): wing is Wing & { web: NonNullable<Wing["web"]> } => onWebHere(wing)
   )
 }
 
+/** Whether `wing` has a side on the desktop web in this build (A3). */
+function onWebHere(wing: Wing): boolean {
+  return wing.web !== null && (wing.web.lanOnly !== true || hasAudience("lan"))
+}
+
 /**
- * A wing's rooms in its sidebar on the desktop web, in registry order. Only a
- * page of that wing shows the sidebar, so a home-network room is listed only
- * where its own page already rendered.
+ * A wing's rooms in its sidebar on the desktop web, in registry order, and
+ * none for a wing this build's web does not carry (A3,
+ * packages/some-vite-config/AUDIENCES.md).
  */
-export function navOf(wing: WingId): ReadonlyArray<Room & { nav: string }> {
+export function navOf(wing: Wing): ReadonlyArray<Room & { nav: string }> {
+  if (!onWebHere(wing)) return []
   return ROOMS.filter(
     (room): room is Room & { nav: string } =>
-      room.wing === wing && room.nav !== undefined
+      room.wing === wing.id && room.nav !== undefined
   )
+}
+
+/** A wing's settings on the desktop web, where it has a web side here. */
+export function webSettingsOf(wing: Wing): Path | null {
+  return onWebHere(wing) ? wing.settings : null
 }

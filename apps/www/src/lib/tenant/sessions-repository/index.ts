@@ -2,11 +2,11 @@ import type { SceneConfig } from "@some-ui/types"
 
 import type { StorageAdapter } from "@/lib/tenant/storage"
 import {
+  browserLocalStorage,
   delay,
   generateId,
   MOCK_LATENCY_MS,
   readJSON,
-  tenantStorage,
   writeJSON,
 } from "@/lib/tenant/storage"
 import type {
@@ -177,7 +177,7 @@ export class SessionsRepository implements SessionsStore {
 }
 
 export function createSessionsRepository(
-  storage: StorageAdapter = tenantStorage,
+  storage: StorageAdapter = browserLocalStorage,
   latencyMs: number = MOCK_LATENCY_MS
 ): SessionsRepository {
   return new SessionsRepository(storage, latencyMs)

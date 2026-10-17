@@ -8,10 +8,10 @@ import {
 import { DEFAULT_NUDGE_PREFERENCES, withNudgeDefaults } from "@/lib/study-nudge"
 import type { StorageAdapter } from "@/lib/tenant/storage"
 import {
+  browserLocalStorage,
   delay,
   MOCK_LATENCY_MS,
   readJSON,
-  tenantStorage,
   writeJSON,
 } from "@/lib/tenant/storage"
 import type { UserSettings } from "@/lib/tenant/types"
@@ -80,7 +80,7 @@ export class SettingsRepository {
 }
 
 export function createSettingsRepository(
-  storage: StorageAdapter = tenantStorage,
+  storage: StorageAdapter = browserLocalStorage,
   latencyMs: number = MOCK_LATENCY_MS
 ): SettingsRepository {
   return new SettingsRepository(storage, latencyMs)
