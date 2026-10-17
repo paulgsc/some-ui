@@ -44,7 +44,9 @@ jobs:
 
       # The APK the phone may already have: this build's versionCode must be
       # above it. The prune job deletes older ones only after this passes, so
-      # the retained set is every build since the last green review.
+      # the retained set is every build since the last green review. Only
+      # earlier runs' APKs count (run IDs only rise): two approved builds can
+      # overlap, and the newer one's APK is no reason to fail the older one.
       - name: Fetch the retained APKs
         env:
           GH_TOKEN: ${{ github.token }}
@@ -53,7 +55,7 @@ jobs:
           gh api --paginate "repos/$GITHUB_REPOSITORY/actions/artifacts?per_page=100" \
             --jq ".artifacts[]
                   | select(.name | startswith(\"some-ui-apk-\"))
-                  | select(.workflow_run.id != $GITHUB_RUN_ID)
+                  | select(.workflow_run.id < $GITHUB_RUN_ID)
                   | select(.expired | not)
                   | .id" |
           while read -r id; do

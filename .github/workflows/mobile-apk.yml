@@ -9,6 +9,14 @@ name: Mobile APK
 # `main` when that branch landed; pull requests do not build it (pr.yml still
 # lints, typechecks and tests the www code it carries).
 #
+# A push does not build on its own: its run waits in the `approve` job on the
+# `mobile-release` environment's required reviewer, and only approving it
+# builds an APK, from that run's commit. A newer push cancels a run still
+# waiting there, so the run you can approve is always main's newest, while an
+# approved build always finishes. Nothing consumes a version from this
+# workflow (versionCode is the run number), so no release PR or version bump
+# is involved (epic #1615, Decision 1).
+#
 # Why CI builds it rather than a laptop or the agent sandbox: Gradle needs the
 # Android SDK (`compileSdkVersion` in apps/mobile/android/variables.gradle),
 # which `ubuntu-latest` ships preinstalled at $ANDROID_HOME. The Claude Code
@@ -26,9 +34,11 @@ on:
       - ".github/workflows/_mobile-review.yml"
       - ".github/actions/**"
 
-concurrency:
-  group: mobile-apk-${{ github.ref }}
-  cancel-in-progress: true
+# No workflow-level concurrency: cancelling in progress there would let a
+# newer push kill a build someone approved, and queueing there would leave a
+# newer push behind a run still waiting for approval. Only `approve` takes a
+# group. Two approved builds can therefore overlap, which is why the review
+# and prune compare only with older runs' APKs.
 
 permissions:
   contents: read
@@ -37,8 +47,35 @@ permissions:
   actions: write
 
 jobs:
+  approve:
+    name: Approve APK build
+    runs-on: ubuntu-latest
+    environment: mobile-release
+    concurrency:
+      group: mobile-apk-approve
+      cancel-in-progress: true
+    permissions:
+      actions: read
+    steps:
+      # The approval is a repo setting, not code. If mobile-release loses its
+      # required reviewer, or is deleted and this job's reference re-creates
+      # it unprotected, GitHub runs this job at once and nothing else fails:
+      # every push would build unapproved. So check the setting itself.
+      - name: Check mobile-release still requires a reviewer
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          reviewers=$(gh api "repos/$GITHUB_REPOSITORY/environments/mobile-release" \
+            --jq '[.protection_rules[] | select(.type == "required_reviewers")] | length')
+          if [ "$reviewers" -lt 1 ]; then
+            echo "::error::mobile-release has no required reviewer, so nobody approved this build. Add one under Settings > Environments, then re-run."
+            exit 1
+          fi
+          echo "Approved: building ${GITHUB_SHA}."
+
   apk:
     name: Build APK
+    needs: approve
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -286,7 +323,9 @@ jobs:
   # retained APK to check versionCode only ever rises, and after the launch
   # test, so an APK that will not open never replaces one that does; and
   # never after a failed or cancelled run, which leaves the previous APK in
-  # place.
+  # place. Older means an earlier run (run IDs only rise): two approved
+  # builds can overlap, and the older one's prune must not delete the newer
+  # one's APK.
   prune:
     name: Delete older APK artifacts
     needs: [apk, review, launch]
@@ -299,7 +338,7 @@ jobs:
           gh api --paginate "repos/$GITHUB_REPOSITORY/actions/artifacts?per_page=100" \
             --jq ".artifacts[]
                   | select(.name | startswith(\"some-ui-apk-\"))
-                  | select(.workflow_run.id != $GITHUB_RUN_ID)
+                  | select(.workflow_run.id < $GITHUB_RUN_ID)
                   | select(.expired | not)
                   | .id" |
           while read -r id; do

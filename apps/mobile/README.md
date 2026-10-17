@@ -309,9 +309,14 @@ Only a debug build offers it.
 
 ### In CI (how to get the APK onto a phone)
 
-`.github/workflows/mobile-apk.yml` builds it on every push to `main` that
-touches what it is built from, and on nothing else (pull requests do not).
-Open the run in the repository's **Actions** tab and download the
+`.github/workflows/mobile-apk.yml` builds it from a push to `main` that
+touches what it is built from, once you approve that run, and on nothing
+else (pull requests do not). Each such push starts a run that waits on the
+`mobile-release` environment: GitHub notifies its required reviewer, and
+**Review deployments** on the run approves it. A newer push cancels a run
+still waiting, so the one waiting is always `main`'s newest; an unapproved
+run fails on its own after 30 days. Once the approved run finishes, open it
+in the repository's **Actions** tab and download the
 `some-ui-apk-<sha>` artifact. It is a zip holding `some-ui-<sha7>.apk`, the
 **release** build (R8-shrunk, not debuggable). Install that on the phone
 (allow installs from your browser or file manager). It is signed with the
@@ -375,7 +380,7 @@ install over a CI build, or the other way round.
 
 - **One APK at a time.** Each run uploads its APK, and a run that also
   passes the review (below) and the launch test then deletes every older `some-ui-apk-*`
-  artifact, so GitHub holds about 10 MB, not 10 MB per push. A failed or
+  artifact, so GitHub holds about 10 MB, not 10 MB per build. A failed or
   cancelled run deletes nothing, so the previous APK stays in place.
 - **30-day expiry.** `retention-days: 30` bounds the newest one too.
 - **arm64 only.** SQLCipher, which the SQLite plugin brings, ships a native

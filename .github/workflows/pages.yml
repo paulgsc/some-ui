@@ -12,13 +12,19 @@ name: Pages
 # A plain `push: branches: [main]` trigger would also mean every merge to
 # main rebuilds and redeploys the whole site, even though several PRs often
 # land within minutes of each other - each one paying for a full www
-# build that the next merge immediately supersedes. So, patterned
-# after wasm-release.yml / www-docker-release.yml: a push to main that
-# touches release-worthy paths doesn't deploy directly. It opens/updates a
-# standing release PR (branch `release/pages`) instead, and only merging
-# that PR - the human "yes, ship what's on main now" judgment call - builds
-# and deploys. Multiple merges before someone gets to it collapse into one
-# deploy instead of one per PR.
+# build that the next merge immediately supersedes. So a push to main that
+# touches what the site is built from doesn't deploy directly: its run waits
+# in the `approve` job on the `pages-release` environment's required
+# reviewer, and only approving it - the human "yes, ship what's on main now"
+# judgment call - builds and deploys. A newer push cancels a run still
+# waiting there, so however many merges land first, the one run you can
+# approve is main's newest, and they collapse into one deploy. Nothing is
+# written back to main and no PR is opened (epic #1615, Decision 1).
+#
+# The Pages site is not a versioned artifact, so there is no version to
+# bump. A workflow_dispatch builds and deploys at once without the approval,
+# since dispatching is itself someone asking to deploy; `rollback_sha`
+# deploys a last-known-good commit instead of main's head.
 on:
   push:
     branches: [main]
@@ -28,10 +34,6 @@ on:
       - "pnpm-lock.yaml"
       - ".github/workflows/pages.yml"
       - ".github/actions/**"
-      # The release PR's own commit only touches this file (see the
-      # release-pr job below) - without it here, merging that PR would
-      # never re-trigger the workflow, and the deploy would never fire.
-      - ".github/pages-release-marker.txt"
   pull_request:
     branches: [main]
     paths:
@@ -42,117 +44,71 @@ on:
       - ".github/actions/**"
   workflow_dispatch:
     inputs:
-      publish_only:
-        description: "Skip detection/PR and build+deploy Pages (use to force a redeploy; implied when rollback_sha is set)"
-        type: boolean
-        default: false
       rollback_sha:
-        description: "Optional last-known-good commit SHA to deploy while leaving main unchanged"
+        description: "Optional last-known-good commit SHA to deploy while leaving main unchanged (empty: deploy main's head)"
         type: string
         required: false
-env:
-  RELEASE_COMMIT_MESSAGE: "chore(release): deploy pages site"
-  RELEASE_BRANCH: "release/pages"
 permissions:
   contents: read
   pages: write
   id-token: write
-concurrency:
-  group: pages-${{ github.ref }}
-  cancel-in-progress: false
+# No workflow-level concurrency: a run waiting in `approve` would hold that
+# group, so a newer push would queue behind it and approving the waiting run
+# would deploy the older commit. Each job below takes its own group instead.
 jobs:
-  # ── Detect whether a PR needs the build, and what main's push should do ─
-  # On pull_request, the path filter below decides whether the preview
-  # build runs.
-  #
-  # On push (and workflow_dispatch), the path filter doesn't apply -
-  # pages-detect below decides instead whether this push opens/updates the
-  # release PR or is the release PR's own merge landing (in which case the
-  # build always runs regardless of what changed, since assemble/deploy
-  # replace the *entire* Pages artifact each run - see header).
-  detect:
-    name: Detect Pages Changes
+  # ── Approve the deploy ──────────────────────────────────────────────────
+  # Waits on the pages-release environment's required reviewer (see header).
+  # Only on push: a pull request builds a preview and deploys nothing, and a
+  # workflow_dispatch is itself the request to deploy.
+  approve:
+    name: Approve Pages deploy
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
-    outputs:
-      www: ${{ steps.filter.outputs.www }}
-      release_mode: ${{ steps.pages-detect.outputs.release_mode }}
+    environment: pages-release
+    # A newer push cancels a run still waiting here, so the one you can
+    # approve is always main's newest.
+    concurrency:
+      group: pages-approve
+      cancel-in-progress: true
+    permissions:
+      actions: read
+    steps:
+      # The approval is a repo setting, not code. If pages-release loses its
+      # required reviewer, or is deleted and this job's reference re-creates
+      # it unprotected, GitHub runs this job at once and nothing else fails:
+      # every push would deploy unapproved. So check the setting itself.
+      - name: Check pages-release still requires a reviewer
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          reviewers=$(gh api "repos/$GITHUB_REPOSITORY/environments/pages-release" \
+            --jq '[.protection_rules[] | select(.type == "required_reviewers")] | length')
+          if [ "$reviewers" -lt 1 ]; then
+            echo "::error::pages-release has no required reviewer, so nobody approved this deploy. Add one under Settings > Environments, then re-run."
+            exit 1
+          fi
+          echo "Approved: deploying ${GITHUB_SHA}."
+
+  # ── Build the tanstack app ───────────────────────────────────────────────
+  build-www:
+    name: Build www (TanStack app)
+    needs: approve
+    # `approve` is skipped on pull_request and workflow_dispatch, and a job a
+    # skipped one sits above is itself skipped unless its `if` says
+    # otherwise, so this one and the two below it spell out `!cancelled()`.
+    # pull_request runs only when its paths above matched, so it always
+    # builds the preview.
+    if: ${{ !cancelled() && (github.event_name != 'push' || needs.approve.result == 'success') }}
+    runs-on: ubuntu-latest
+    concurrency:
+      group: pages-build-${{ github.ref }}
+      cancel-in-progress: false
     steps:
       - uses: actions/checkout@v7
         with:
           # A re-run remains tied to that run's github.sha. A manual
           # rollback instead checks out the operator-selected known-good
           # tree, without moving or reverting main.
-          ref: ${{ inputs.rollback_sha || github.sha }}
-      - name: Filter paths
-        id: filter
-        uses: dorny/paths-filter@v4
-        with:
-          filters: |
-            www:
-              - 'apps/www/**'
-              - 'packages/**'
-              - 'pnpm-lock.yaml'
-              - '.github/workflows/pages.yml'
-              - '.github/actions/**'
-      - id: pages-detect
-        uses: ./.github/actions/pages-detect
-        with:
-          event-name: ${{ github.event_name }}
-          publish-only: ${{ inputs.publish_only }}
-          rollback-sha: ${{ inputs.rollback_sha }}
-          commit-message: ${{ github.event.head_commit.message }}
-          release-commit-message: ${{ env.RELEASE_COMMIT_MESSAGE }}
-
-  # ── Open/update the release PR ──────────────────────────────────────────
-  # Re-running this on a later push updates the same PR/branch, so several
-  # merges before a maintainer gets to it collapse into one review instead
-  # of one deploy each. No changeset/version bump here, unlike
-  # wasm-release.yml / www-docker-release.yml's release tracks - the Pages
-  # site isn't a versioned artifact, just a standing "deploy what's on main
-  # now" gate, so the PR's only content is a marker file to give it a diff.
-  release-pr:
-    name: Open/Update Pages Release PR
-    needs: detect
-    if: needs.detect.outputs.release_mode == 'release-pr'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      pull-requests: write
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          fetch-depth: 0
-          # This job never runs for rollback dispatches; keep release-PR
-          # updates anchored to the commit which triggered this run.
-          ref: ${{ github.sha }}
-      - name: Bump Pages release marker
-        run: |
-          {
-            echo "Pending Pages deploy through commit ${{ github.sha }}"
-            echo "Updated: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
-          } > .github/pages-release-marker.txt
-      - name: Open release PR
-        uses: peter-evans/create-pull-request@v8
-        with:
-          branch: ${{ env.RELEASE_BRANCH }}
-          base: main
-          delete-branch: true
-          commit-message: ${{ env.RELEASE_COMMIT_MESSAGE }}
-          title: ${{ env.RELEASE_COMMIT_MESSAGE }}
-          body: >
-            Opened automatically because a change reachable from `apps/www` or `packages/**` landed on `main`. Several PRs landing close together would otherwise each trigger their own Pages build+deploy; this collects them into one. Review and merge via **squash** (the merge commit message drives the deploy step below) to build and deploy the Pages site.
-
-  # ── Build the tanstack app ───────────────────────────────────────────────
-  build-www:
-    name: Build www (TanStack app)
-    needs: detect
-    if: >
-      (github.event_name == 'pull_request' && needs.detect.outputs.www == 'true') ||
-      (github.event_name != 'pull_request' && needs.detect.outputs.release_mode == 'publish')
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-        with:
           ref: ${{ inputs.rollback_sha || github.sha }}
       - uses: ./.github/actions/nix-setup
       - uses: ./.github/actions/pnpm-cache
@@ -243,6 +199,7 @@ jobs:
   assemble:
     name: Assemble Pages site
     needs: [build-www]
+    if: ${{ !cancelled() && needs.build-www.result == 'success' }}
     runs-on: ubuntu-latest
     steps:
       - name: Download www build
@@ -262,17 +219,20 @@ jobs:
     name: Deploy to GitHub Pages
     runs-on: ubuntu-latest
     needs: assemble
-    # Only deploy on the release commit landing on main (a merged release
-    # PR, or a forced workflow_dispatch publish_only) - never on ordinary
-    # PRs, preview builds, or a push that only opened/updated the release
-    # PR (assemble is skipped in that case). The explicit
+    # Only deploy from main, on an approved push or a workflow_dispatch -
+    # never on pull requests, whose builds are previews. The explicit
     # needs.assemble.result check matters here, not just event/ref: a
     # skipped upstream job doesn't reliably skip a job with its own custom
     # `if`, so this can't just rely on assemble having been skipped.
     if: >
+      !cancelled() &&
       needs.assemble.result == 'success' &&
       (github.event_name == 'push' || github.event_name == 'workflow_dispatch') &&
       github.ref == 'refs/heads/main'
+    # One deploy at a time; one that has started always finishes.
+    concurrency:
+      group: pages-deploy
+      cancel-in-progress: false
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
