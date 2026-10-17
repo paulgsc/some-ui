@@ -32,6 +32,7 @@ const LOCAL_ROUTES = [
   "/sessions",
   "/sessions/new",
   "/settings",
+  "/practice/settings",
   "/profile",
   "/extensions",
   "/mission",
@@ -231,7 +232,12 @@ test.describe("the lan build, with an account", () => {
     await page.addInitScript((value) => {
       window.localStorage.setItem("some-ui.authority.v1", value)
     }, JSON.stringify(remembered))
-    for (const route of ["/app", "/sessions", "/settings"]) {
+    for (const route of [
+      "/app",
+      "/sessions",
+      "/settings",
+      "/practice/settings",
+    ]) {
       await page.goto(`${app().origin}${route}`)
       await page.waitForLoadState("networkidle")
       await expect(page.locator("#app")).not.toBeEmpty()
@@ -298,7 +304,14 @@ test.describe("the Pages build", () => {
     })
     const seen = watch(context)
 
-    for (const route of ["", "app", "extensions", "sessions", "settings"]) {
+    for (const route of [
+      "",
+      "app",
+      "extensions",
+      "sessions",
+      "settings",
+      "practice/settings",
+    ]) {
       await page.goto(`${app().origin}${BASE}${route}`)
       await page.waitForLoadState("networkidle")
       await expect(page.locator("#app")).not.toBeEmpty()
