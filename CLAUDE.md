@@ -43,9 +43,10 @@ What follows from them:
 - **Never lose the record.** Because A is real use, the data it leaves (study sessions,
   reflections, typing rounds, voice takes) is also the evidence of growth over time:
   struggling to read a sentence at the first beta, finishing sessions much later. That
-  record exists only if the history survives, so treat the owner's history as append-only. Before adding anything that discards or rewrites it
-  (a cap that evicts old entries, pruning, a migration that drops or reshapes data, a
-  "let it go" that deletes for good), give it a durable copy first, or ask. This is the
+  record exists only if the history survives, so treat the owner's history as
+  append-only. Before adding anything that discards or rewrites it (a cap that evicts old
+  entries, pruning, a migration that drops or reshapes data, a "let it go" that deletes for
+  good), give it a durable copy first, or ask. This is the
   owner's direction, not yet a declared invariant: today's code still discards history (a
   session delete, the `reflection-voice` and `scene-voice` budgets, the Build Journal takes
   store in `packages/ui/soundbites`, the "let it go" steps), so an append-only claim would
