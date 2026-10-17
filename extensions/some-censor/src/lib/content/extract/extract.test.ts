@@ -166,6 +166,12 @@ describe("extractTitle", () => {
     )
   })
 
+  it("reads a camelCase lockup title", () => {
+    expect(extractTitle(make("yt-lockup-view-model", CAMEL_LOCKUP))).toBe(
+      "20 years of esports history explained"
+    )
+  })
+
   it("reads a shorts lockup title", () => {
     expect(
       extractTitle(make("ytm-shorts-lockup-view-model-v2", SHORTS_LOCKUP))
@@ -249,6 +255,25 @@ describe("extractMeta", () => {
     )
     expect(extractUploadDate(make("yt-lockup-view-model", swapped))).toBe(
       "8 days ago"
+    )
+  })
+
+  it("never reads a BEM channel run as the age, even wrapped in a span", () => {
+    const wrapped = LOCKUP.replace(
+      /<div class="yt-content-metadata-view-model__metadata-row">\s*<a[\s\S]*?<\/a>\s*<\/div>/,
+      ""
+    ).replace(
+      /(<span class="yt-content-metadata-view-model__metadata-text">2 weeks ago<\/span>\s*<\/div>)/,
+      `$1
+    <div class="yt-content-metadata-view-model__metadata-row">
+      <span class="yt-content-metadata-view-model__metadata-text"><a href="/@x">10 years ago</a></span>
+    </div>`
+    )
+    expect(wrapped.indexOf("10 years ago")).toBeGreaterThan(
+      wrapped.indexOf("2 weeks ago")
+    )
+    expect(extractUploadDate(make("yt-lockup-view-model", wrapped))).toBe(
+      "2 weeks ago"
     )
   })
 

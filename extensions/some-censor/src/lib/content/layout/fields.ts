@@ -19,24 +19,23 @@
  * selectors here name both.
  */
 
-/** A BEM lockup's metadata text run; its channel run is an `<a>` instead. */
-const BEM_TEXT_RUN =
-  'span[class*="yt-content-metadata-view-model__metadata-text"]'
-
 /**
- * A camelCase lockup's labelled metadata run. The view count and the age carry
- * an `aria-label` in their long form; the channel run, also a `span` of this
- * class, carries none, so it can never be read as the date whatever the row
- * order or the channel's name.
+ * The lockup metadata runs an upload date can be read from, one per spelling.
+ * A camelCase run counts only when it carries an `aria-label`, which the view
+ * count and the age do in their long form ("8 days ago" for an "8d ago").
+ * `extract/meta.ts` reads them as one list, in document order.
  */
-const CAMEL_LABELLED_RUN =
-  'span[class*="ytContentMetadataViewModelMetadataText"][aria-label]'
+export const LOCKUP_DATE_RUNS = [
+  'span[class*="yt-content-metadata-view-model__metadata-text"]',
+  'span[class*="ytContentMetadataViewModelMetadataText"][aria-label]',
+] as const
 
 export type CardField = "title" | "channelName" | "duration" | "uploadDate"
 
 /**
  * Selectors in priority order. The first one that yields non-empty text wins
- * at extraction time; the fingerprint records every one that matched.
+ * at extraction time, except the lockup dates (see `uploadDate` below); the
+ * fingerprint records every one that matched.
  */
 export const FIELD_SELECTORS: Readonly<
   Record<CardField, ReadonlyArray<string>>
@@ -68,13 +67,9 @@ export const FIELD_SELECTORS: Readonly<
     '[class*="ThumbnailOverlayBadgeViewModel"] [class*="badge-shape"]',
     '[class*="ytThumbnailBadgeViewModelHost"] [class*="ytBadgeShapeText"]',
   ],
-  // The Polymer metadata line is "views · date" as two spans. The lockup cases
-  // are positional — the *last* matching run — and are spelled by
-  // `extract/meta.ts`'s `lockupUploadDate()` rather than as selectors, so
-  // they are recorded here under their own names for the fingerprint.
-  uploadDate: [
-    "#metadata-line span:nth-child(2)",
-    BEM_TEXT_RUN,
-    CAMEL_LABELLED_RUN,
-  ],
+  // The Polymer metadata line is "views · date" as two spans. The lockup case
+  // is positional — the *last* run, of either spelling — and is read by
+  // `extract/meta.ts`'s `lockupUploadDate()`; its runs are listed here so the
+  // fingerprint records them.
+  uploadDate: ["#metadata-line span:nth-child(2)", ...LOCKUP_DATE_RUNS],
 }

@@ -1,4 +1,7 @@
-import { FIELD_SELECTORS } from "@censor/lib/content/layout/fields"
+import {
+  FIELD_SELECTORS,
+  LOCKUP_DATE_RUNS,
+} from "@censor/lib/content/layout/fields"
 import type { MetaData } from "@censor/types/states"
 
 /**
@@ -36,11 +39,9 @@ function firstText(
  * never into anything a veil renders (QD4). Still pure (E1).
  */
 export function extractUploadDate(el: HTMLElement): string | null {
-  const [polymer, bem, camel] = FIELD_SELECTORS.uploadDate
+  const [polymer] = FIELD_SELECTORS.uploadDate
   return (
-    (polymer === undefined ? null : text(el, polymer)) ??
-    lastRun(el, camel, (run) => run.getAttribute("aria-label")) ??
-    lastRun(el, bem, (run) => run.textContent)
+    (polymer === undefined ? null : text(el, polymer)) ?? lockupUploadDate(el)
   )
 }
 
@@ -57,17 +58,19 @@ export function extractMeta(el: HTMLElement): MetaData {
  * confidence: on a row with no date the last run is the view count, which the
  * estimator does not recognize and holds as unverified (#1384).
  *
- * The camelCase run shows a compact age ("8d ago") and is read by its
- * `aria-label` ("8 days ago") instead: the estimator knows the long form, and
- * a compact "5m" cannot say whether it means minutes or months.
+ * A run holding a link is never read: that is the channel, in either spelling,
+ * and YouTube places its row before or after the date's. Read as a date, a
+ * channel named like an age ("10 years ago") would admit a fresh video.
+ *
+ * The camelCase run is read by its `aria-label` ("8 days ago"), not its compact
+ * text ("8d ago"): the estimator knows the long form, and a compact "5m"
+ * cannot say whether it means minutes or months.
  */
-function lastRun(
-  el: HTMLElement,
-  selector: string | undefined,
-  read: (run: Element) => string | null
-): string | null {
-  if (selector === undefined) return null
-  const runs = el.querySelectorAll(selector)
+function lockupUploadDate(el: HTMLElement): string | null {
+  const runs = [...el.querySelectorAll(LOCKUP_DATE_RUNS.join(", "))].filter(
+    (run) => run.querySelector("a") === null
+  )
   const last = runs[runs.length - 1]
-  return (last === undefined ? null : read(last)?.trim()) || null
+  if (last === undefined) return null
+  return (last.getAttribute("aria-label") ?? last.textContent).trim() || null
 }
