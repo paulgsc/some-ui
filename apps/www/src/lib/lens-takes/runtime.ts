@@ -164,7 +164,10 @@ export function createLensTakes(ports: LensTakesPorts): PhoneLensTakes {
     playLast: (): void => {
       const playing = last
       if (!playing || snapshot.take.kind !== "idle") return
+      const wasPlaying = playback !== null
       stopPlayback()
+      // The one playing has stopped, whether or not the new read lands.
+      if (wasPlaying) publish()
       const request = playRequest
       ports.audio.get(playing.id).then(
         (blob) => {

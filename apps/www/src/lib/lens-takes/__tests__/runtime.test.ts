@@ -198,6 +198,19 @@ describe("createLensTakes", () => {
     expect(takes.getSnapshot().playing).toBe(false)
   })
 
+  it("says a playback stopped when Mine is tapped again and the take is gone", async () => {
+    const p = ports()
+    const takes = createLensTakes(p)
+    await take(takes)
+    takes.playLast()
+    await settle()
+    expect(takes.getSnapshot().playing).toBe(true)
+    p.audio.get = (): Promise<Blob | null> => Promise.resolve(null)
+    takes.playLast()
+    await settle()
+    expect(takes.getSnapshot().playing).toBe(false)
+  })
+
   it("plays the last take back, and says when it ends", async () => {
     const p = ports()
     const takes = createLensTakes(p)
