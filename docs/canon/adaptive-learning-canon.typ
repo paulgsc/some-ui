@@ -1834,7 +1834,9 @@ rather than as *data*, and the remedy is to exhibit the data.
   Remark 4.10's, stated over every screen this session shows --- an item, its
   reveal, each step-down question, the situation check, a take and the
   summary --- each bounded at two minutes, and a sitting of either session
-  ends as Remark 4.10 says. Grammar-lens items enter no practice record
+  ends as Remark 4.10 says. An item's step-down and reveal belong to it: an
+  item showing at thirty minutes finishes with both, and what does not begin
+  is the next item. Grammar-lens items enter no practice record
   (Def. 6.6).
 ]
 
@@ -1862,8 +1864,10 @@ rather than as *data*, and the remedy is to exhibit the data.
   its answer is unique in $b$; the situation check on its authored
   candidate. After a miss, the item's reveal (Cor. 4.8) waits until its
   step-down ends, since an explanation shown first would answer it
-  (Prop. 3.1). Both are uncredited, unscored and skippable; Remark 4.18 keeps
-  their outcomes, the step-down's last rung above all.
+  (Prop. 3.1). Both are uncredited, unscored and skippable. Neither names a
+  concept of its own, so their answers are not observations (Def. 3.1): they
+  are the learner's answers kept as text, as a stuck report is (Rem. 3.6),
+  and Remark 4.18 keeps them, the step-down's last rung above all.
 ]
 
 #remark("4.16", name: "A take of one's own reading")[
@@ -1895,8 +1899,10 @@ rather than as *data*, and the remedy is to exhibit the data.
   it was right or expired, the catalogue entries it showed and the one
   chosen, if a misform was, the time to answer
   and whether it was rushed, the step-down's questions, answers and last
-  rung, the situation chosen, and the take's counts; per session, whether it
-  was racing. They are observations (Def. 3.1); the surface keeps no belief,
+  rung, the situation chosen, and the take's count, last length and whether
+  $b$ was heard first; per session, whether it was racing. The items'
+  outcomes are observations (Def. 3.1), and the sealed checks' answers ride
+  with them as text (Rem. 4.15); the surface keeps no belief,
   so no update consumes them, and the application draws no inference from
   them. They reach the learner's own agent only inside the study-context
   export, a file the learner hands to the share sheet as Remark 8.3 allows
