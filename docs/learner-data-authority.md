@@ -41,6 +41,7 @@ Which authority a build starts in depends on what it can reach (`Backend`):
 | Push subscription                   | never                                        | never                                                                                                                                                                                       | the account's, on the person's own taps    |
 | Reflections                         | on the device (at most 20), never sent       | never sent (LA7)                                                                                                                                                                            | never sent (LA7)                           |
 | Shelf                               | never                                        | the account's, on the person's own taps                                                                                                                                                     | the same                                   |
+| aph (the phone's)                   | on the phone, never sent                     | once its person keeps it on home, on the paired home, synced while aph is open; the phone keeps only what home has not confirmed (LA9)                                                      | the same                                   |
 | Speech                              | the browser's own voice                      | the server's speech service                                                                                                                                                                 | the same                                   |
 | Reminders                           | the client's own policy, while a tab is open | the client's own policy, while a tab is open                                                                                                                                                | the server's push, with the browser closed |
 
@@ -298,10 +299,10 @@ declared (checked by reading every call site and by the tests named).
 
 - _Claim:_ in the Android app, every request to the home server goes through
   `lib/device-backend/native-http` (the one module that names
-  `CapacitorHttp`), which only `lib/home-link` calls, and is started by a tap
+  `CapacitorHttp`), which only `lib/home-link` calls, and, but for aph kept
+  on home (LA9, the one other caller of `lib/home-link`), is started by a tap
   in the Home server block of Settings
-  (`components/settings/device-section.tsx`, the one module outside
-  `lib/home-link` that calls it):
+  (`components/settings/device-section.tsx`):
   the sync (published lessons and rounds, read with no credential), pairing
   (the code only), unpairing, and the send to home (`lib/home-link/send`,
   after one confirm that names how many sessions and kept items and the
@@ -314,11 +315,12 @@ declared (checked by reading every call site and by the tests named).
   lets go of its own copy of those alone, each unchanged since it was read;
   then one PUT per item kept on this phone's shelf, its bytes as kept,
   nothing read back and the item kept on the phone. Nothing on home is
-  deleted. Nothing is sent when the app or Settings
+  deleted. Outside LA9, nothing is sent when the app or Settings
   opens, on resume, on a timer or on a network change: making the runtime and
-  `load` read only the phone's own record. There is no retry; a sync, a send
-  or a copy ends at Stop, or when the app goes to the background, before its
-  next request, and is over only once every request it started has settled.
+  `load` read only the phone's own record. There is no retry; a sync, a send,
+  a copy or aph's keeping ends at Stop, or when the app goes to the
+  background, before its next request, and is over only once every request
+  it started has settled.
   The pairing's credential is sent only to the base stored with it, over
   `https:` (`homeRequest` refuses a credentialed `http:` URL), and never on
   a sync read; no redirect is followed. Unpairing forgets it on the phone whether or
@@ -335,9 +337,10 @@ declared (checked by reading every call site and by the tests named).
   `CapacitorHttp`, call `native-http`, call `lib/home-link`); one that calls
   a `homeLink()` method that sends (`pair`, `unpair`, `sync`, `send`) from anywhere but
   a press handler in the Home server block or a module that block calls; one
-  that sends from `createHomeLink`, `load`, a `useEffect`, a timer, a
-  `visibilitychange` or `online` listener; one that retries a failed home
-  request, or queues one for later; one that lets the send start without
+  that calls its `keep` from anywhere but `lib/home-link/aph.ts` (LA9); one
+  that sends from `createHomeLink`, `load`, or, outside `lib/home-link/aph.ts`,
+  a `useEffect`, a timer, a `visibilitychange` or `online` listener; one that
+  retries a failed home request, or queues one for later, outside LA9; one that lets the send start without
   its confirm, or drops a count or the host from that confirm; one that
   sends shelf items other than `everyKept`'s, or with a method other than
   `PUT`; one that passes `copySessionsTo` anything but session records
@@ -361,7 +364,7 @@ declared (checked by reading every call site and by the tests named).
   (`sameRecord`); one that lets the runtime's `work` end before every
   request it started has settled (`inFlight`, `track`), so a second tap could
   race a create still on its way; one that deletes or weakens the
-  `onHidden` subscription in the runtime's `sync`, the `stopPressed` it
+  `onHidden` subscription in the runtime's `work`, the `stopPressed` it
   dispatches, the `stopped()` check in the `get` it hands out, or
   `onHidden`'s stop of a sync that starts already hidden
   (`lib/home-link/visibility.ts`); one that passes `token` on a sync's
@@ -401,6 +404,62 @@ declared (checked by reading every call site and by the tests named).
   `components/settings/__tests__/device-section.test.tsx` (opening Settings,
   paired or not, sends nothing; unpairing and the send each take a second
   press).
+
+### LA9: aph reaches home only once its person opted in, and only while it is open
+
+- _Claim:_ in the Android app, aph's record (packages/ui/aph) reaches the
+  paired home only after its person chose to keep it there, by the second
+  press of the strip on aph's screens (`components/aph/device-keep-on-home.tsx`,
+  `keepAphOnHome`), whose first names the host and how many entries go; and
+  then only through the link's `keep`, which only `lib/home-link/aph.ts`
+  calls (its runtime, `aph-runtime.ts`, through the port it is handed), and only with the requests of `@some-ui/aph`'s `exchangeWithHome`:
+  `PUT /aph/settings`, one `PUT /aph/entries/:id` per entry waiting on the
+  phone, and `GET /aph`. A run is asked for (`ask`) only while that strip is
+  mounted (`watchAph`, `useAphHome`), only when aph is kept on home, and only
+  with the app in front: when aph opens, when it is changed on this phone,
+  when the app comes back to the foreground, when the network comes back,
+  when the phone is paired, when the link frees up after turning a run away,
+  and on "Try now". Never on a timer, and one run at a time (`stepAph`). The
+  phone keeps the settings and what home has not confirmed (the outbox,
+  `HomeRecord`); it lets go of an entry only when home answered with the same
+  entry, field for field, still unchanged on the phone (`afterSend`,
+  `sameEntry`), and removes the device record only after the home record
+  carrying all of it is written (`keepOnHome`). Home keeps every revision
+  and deletes none (paulgsc/server docs/identity.md, invariant 15).
+- _Falsified by:_ a hunk that calls the link's `keep` outside
+  `lib/home-link/aph.ts` and `aph-runtime.ts`, or passes it a run other than the exchange handed in
+  by `AphKeeping`; one that makes `exchangeWithHome` (`packages/ui/aph/src/lib/sync.ts`)
+  send another path or method, or anything but the outbox's settings and
+  entries; one that removes `ask`'s check that aph is kept on home or that the
+  document is visible, or adds a `setTimeout`, `setInterval` or other timer to
+  `lib/home-link/aph*.ts`; one that calls `keepAphOnHome` from anywhere but a
+  press handler, or lets the strip's first press keep on home, or drops the
+  host or the count from the confirm; one that lets `afterSend`
+  (`packages/ui/aph/src/lib/home.ts`) drop a pending entry no held entry
+  matches by `sameEntry`, makes `sameEntry` compare fewer fields than an
+  `Entry` carries, or lets the store drop an entry from the outbox by any
+  other route; one that lets `keepOnHome` call `forgetDeviceRecord` without a
+  `writeHome` that succeeded first; or one that removes or widens the LA8
+  allowlists in `lib/serving-privacy/__tests__/egress-choke-points.test.ts`
+  that name the strip.
+- _Scope:_ `apps/www/src/lib/home-link/aph*.ts`,
+  `apps/www/src/components/aph/device-keep-on-home.tsx`,
+  `apps/www/src/routes/_dashboard/_apk/aph.tsx`, and
+  `packages/ui/aph/src/lib/{home,store,stored,sync}.ts`.
+- _Why not enforced:_ who may reach `lib/home-link`, and that only those two
+  files call `keep`, are, by test (`egress-choke-points`).
+  What no test can say is that each moment `watchAph` asks at
+  is one where the person is using aph: a test sees the listener, not why it
+  is there. What a run sends and lets go of is pinned by
+  `packages/ui/aph/src/lib/__tests__/sync.test.ts` (a refused entry, no
+  answer, a stop part way and a forgotten phone each keep everything home did
+  not confirm) and `home.test.ts` (the device record goes only after the
+  home record is kept; a change made after a send stays waiting); one run at a
+  time by `lib/home-link/__tests__/aph.test.ts`. Held when declared, by
+  reading every caller: `keep` is called in `lib/home-link/aph.ts` alone
+  (and through its port, in `aph-runtime.ts`'s `once`),
+  `keepAphOnHome` and `askAph` from the strip's `onClick`s alone, and `ask`
+  from `watchAph`'s listeners and those two.
 
 ## Not covered, on purpose
 

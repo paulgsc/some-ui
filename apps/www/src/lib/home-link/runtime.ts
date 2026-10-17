@@ -6,12 +6,14 @@
  *
  * LA8 (docs/learner-data-authority.md), as this module holds it:
  *
- * - **Nothing is sent but by a method a tap called.** Creating the runtime
- *   and `load` read only the phone's own record; being paired sends nothing
- *   on a timer, on resume or on a network change.
+ * - **Nothing is sent but by a method a tap called,** or by `keep`, which
+ *   only `lib/home-link/aph` calls, for aph once its person opted in to
+ *   keeping it on home (LA9). Creating the runtime and `load` read only the
+ *   phone's own record; being paired sends nothing on a timer, on resume or
+ *   on a network change.
  * - **No retry.** A failed request is said once and left; the next tap is
- *   the next try.
- * - **Stop, and the background, end a sync or a send** after the request
+ *   the next try. (aph's outbox is sent again when aph next asks: LA9.)
+ * - **Stop, and the background, end a sync, a send or a keep** after the request
  *   in flight: the `get` or `send` it is handed refuses to send once
  *   stopped. A run is over only once every request it started has settled.
  * - **Unpair forgets the credential on the phone** whether or not home was
@@ -29,7 +31,7 @@ import type { HomeAnswer, HomeCall } from "@/lib/device-backend/native-http"
 
 import type { HomeAddress } from "./address"
 import type { HomeLinkEvent, HomeLinkState, PairFailure } from "./model"
-import { INITIAL, step } from "./model"
+import { INITIAL, step, working } from "./model"
 
 /** The phone's sealed record (`HomeCredentialPlugin`): read, kept, forgotten. */
 export type CredentialPort = {
@@ -117,6 +119,13 @@ export type HomeLink = {
   send: <T>(
     run: (send: HomeSend) => Promise<T>
   ) => Promise<SyncOutcome<T> | null>
+  /**
+   * As `send`, for aph's keeping on home (LA9): called by
+   * `lib/home-link/aph` alone, never for anything but aph.
+   */
+  keep: <T>(
+    run: (send: HomeSend) => Promise<T>
+  ) => Promise<SyncOutcome<T> | null>
   stop: () => void
 }
 
@@ -141,8 +150,7 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
   }
 
   const stopped = (): boolean =>
-    (state.activity.kind === "syncing" || state.activity.kind === "sending") &&
-    state.activity.stopping
+    working(state.activity) && state.activity.stopping
 
   // Every request a sync or send started, until it settles: a caller can
   // give up on one (requestJSON's own deadline) that the native call still
@@ -215,6 +223,31 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
     }
     return null
   }
+
+  /** A run with a `send` to the paired home, after `pressed` starts it. */
+  const credentialed = <T>(
+    pressed: HomeLinkEvent,
+    run: (send: HomeSend) => Promise<T>
+  ): Promise<SyncOutcome<T> | null> =>
+    work(pressed, async () => {
+      const pairing = await readPairing()
+      if (pairing === null) throw new Error("this phone's pairing is gone")
+      const send: HomeSend = (method, path, body) => {
+        if (stopped()) return Promise.reject(new SyncStoppedError())
+        if (!path.startsWith("/")) {
+          return Promise.reject(new Error(`not a path: ${path}`))
+        }
+        return track(
+          ports.request({
+            method,
+            url: `${pairing.base}${path}`,
+            token: pairing.token,
+            ...(body === undefined ? {} : { body }),
+          })
+        )
+      }
+      return run(send)
+    })
 
   return {
     getSnapshot: (): HomeLinkState => state,
@@ -294,25 +327,13 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
     send<T>(
       run: (send: HomeSend) => Promise<T>
     ): Promise<SyncOutcome<T> | null> {
-      return work({ type: "sendPressed" }, async () => {
-        const pairing = await readPairing()
-        if (pairing === null) throw new Error("this phone's pairing is gone")
-        const send: HomeSend = (method, path, body) => {
-          if (stopped()) return Promise.reject(new SyncStoppedError())
-          if (!path.startsWith("/")) {
-            return Promise.reject(new Error(`not a path: ${path}`))
-          }
-          return track(
-            ports.request({
-              method,
-              url: `${pairing.base}${path}`,
-              token: pairing.token,
-              ...(body === undefined ? {} : { body }),
-            })
-          )
-        }
-        return run(send)
-      })
+      return credentialed({ type: "sendPressed" }, run)
+    },
+
+    keep<T>(
+      run: (send: HomeSend) => Promise<T>
+    ): Promise<SyncOutcome<T> | null> {
+      return credentialed({ type: "keepStarted" }, run)
     },
 
     stop(): void {
