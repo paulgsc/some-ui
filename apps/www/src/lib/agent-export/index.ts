@@ -365,9 +365,13 @@ export async function shareAgentExport(
     if (blob) audio.set(bite.id, blob)
   }
   const sessions = await sessionsRepository.list()
+  // The record before the takes: a take kept in between is then exported
+  // without its count, and its entry, rewritten, differs from the one sent
+  // and stays for the next export; the other way round, the entry would go
+  // and the take would stay behind.
+  const lens = await grammarLens()
   const takes = await lensTakes()
   const exportedAt = now().toISOString()
-  const lens = await grammarLens()
   const { bySession, files, sent } = await writeOut(
     reflections.getSnapshot().kept,
     sessions,

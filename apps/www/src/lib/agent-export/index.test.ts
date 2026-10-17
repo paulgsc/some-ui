@@ -50,9 +50,14 @@ const LENS = vi.hoisted(() => ({
   sessions: [{ session: "2026-10-10T08:00:00.000Z", racing: false }],
 }))
 const letGoLensRecord = vi.hoisted(() => vi.fn(() => 1))
+/** Which lens store each export read, in order. */
+const lensReads = vi.hoisted((): Array<string> => [])
 vi.mock("@some-ui/topik", () => ({
   readAloudPracticeRecord: (): typeof PRACTICE => PRACTICE,
-  lensRecordForExport: (): typeof LENS => LENS,
+  lensRecordForExport: (): typeof LENS => {
+    lensReads.push("record")
+    return LENS
+  },
   letGoLensRecord,
 }))
 const TAKE = {
@@ -64,8 +69,9 @@ const TAKE = {
 const letGoLensTakes = vi.hoisted(() => vi.fn())
 vi.mock("@/lib/lens-takes", () => ({
   letGoLensTakes,
-  lensTakesForExport: (): Promise<Array<unknown>> =>
-    Promise.resolve([
+  lensTakesForExport: (): Promise<Array<unknown>> => {
+    lensReads.push("takes")
+    return Promise.resolve([
       {
         take: { ...TAKE, id: "take-one-aaaa" },
         audio: new Blob(["opus"]),
@@ -74,7 +80,8 @@ vi.mock("@/lib/lens-takes", () => ({
       { take: { ...TAKE, id: "take-two-bbbb" }, audio: null, read: true },
       // The shelf failed: listed without a file, and never let go.
       { take: { ...TAKE, id: "take-three-cc" }, audio: null, read: false },
-    ]),
+    ])
+  },
 }))
 vi.mock("@/lib/tenant/queries", () => ({
   sessionsRepository: {
@@ -306,6 +313,8 @@ describe("shareAgentExport", () => {
     expect(result.soundbites).toEqual(["b1"])
     expect(result.lens).toEqual(LENS.entries)
     expect(result.takes).toEqual(["take-one-aaaa", "take-two-bbbb"])
+    // The record first: a take kept in between stays with its rewritten entry.
+    expect(lensReads.slice(-2)).toEqual(["record", "takes"])
 
     const remove = vi.fn(() => Promise.resolve())
     handOffExport({ remove }, result, NOW())

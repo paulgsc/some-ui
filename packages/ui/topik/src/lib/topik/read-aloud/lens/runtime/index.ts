@@ -174,10 +174,12 @@ export function createLensRuntime(
       })
   }
 
-  /** A playback of the learner's take stops before speech starts. */
+  /**
+   * A playback of the learner's take stops before speech starts, and so does
+   * one still being read, which `playing` does not show yet.
+   */
   const stopPlayback = (): void => {
-    const port = options().takes
-    if (port?.getSnapshot().playing) port.stop()
+    options().takes?.stop()
   }
 
   /** A take is opening, recording or being kept. */

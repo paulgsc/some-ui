@@ -473,5 +473,9 @@ describe("createLensRuntime", () => {
     expect(takes.getSnapshot().playing).toBe(true)
     runtime.hearLine()
     expect(takes.getSnapshot().playing).toBe(false)
+    // A playback still being read is not yet playing; it is stopped anyway.
+    const stops = takes.stops
+    runtime.hearLine()
+    expect(takes.stops).toBe(stops + 1)
   })
 })
