@@ -61,15 +61,11 @@ describe("glyphCells (Cor. 4.6 (iv))", () => {
     ).toEqual([false, true, true, true])
   })
 
-  it("divides no sentence, its gloss being the basket, but the words asked", () => {
+  it("divides no sentence, its gloss being the basket", () => {
     const cells = glyphCells(STARTER_SET, PRICE, "divided")
     expect(cells.some((cell) => cell.kind === "syllable" && cell.ending)).toBe(
       false
     )
-    const endings = glyphCells(STARTER_SET, PRICE, "divided", [1]).flatMap(
-      (cell) => (cell.kind === "syllable" && cell.ending ? [cell.text] : [])
-    )
-    expect(endings).toEqual(["입", "니", "다"])
   })
 
   it("shows the spelling when the line has no matching occurrence", () => {

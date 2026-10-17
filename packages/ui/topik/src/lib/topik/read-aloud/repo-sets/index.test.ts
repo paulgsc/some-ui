@@ -3,7 +3,6 @@ import {
   parseReadAloudDeck,
   READ_ALOUD_LEVELS,
 } from "@topik/lib/topik/read-aloud/content"
-import { lensesOf } from "@topik/lib/topik/read-aloud/lens"
 import {
   LEVEL_ONE_SET,
   rawSet,
@@ -84,10 +83,13 @@ describe("the repo's sets, both added", () => {
     expect(wrong).toEqual([])
   })
 
-  it("give most level-one lines a lens, and every tense often enough to ask", () => {
+  it("give most level-one lines a role or tense, and every tense often enough", () => {
     const lines = REPO_SETS.lines.filter((line) => line.level === 1)
-    const lensed = lines.filter((line) => lensesOf(line).length > 0)
-    expect(lensed.length / lines.length).toBeGreaterThan(0.8)
+    const marked = lines.filter(
+      (line) =>
+        line.tense !== undefined || line.words.some((w) => w.role !== undefined)
+    )
+    expect(marked.length / lines.length).toBeGreaterThan(0.8)
     for (const tense of ["past", "present", "future"] as const) {
       const count = lines.filter((line) => line.tense === tense).length
       expect(count, tense).toBeGreaterThanOrEqual(4)

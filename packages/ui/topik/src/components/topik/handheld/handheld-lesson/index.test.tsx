@@ -214,7 +214,7 @@ describe("HandheldLesson", () => {
     expect(
       document.querySelector('[data-slot="read-aloud-level"]')?.textContent
     ).toBe("TOPIK 3")
-    expect(screen.getByRole("button", { name: /Start/ })).toBeTruthy()
+    expect(screen.getByRole("button", { name: /^Read aloud$/ })).toBeTruthy()
     expect(screen.getByLabelText("Your reading aloud")).toBeTruthy()
     click("Back")
     expect(await writeYourOwnButton()).toBeTruthy()
