@@ -43,7 +43,11 @@ function fakeSpeech(outcome: SpeechOutcome = { kind: "heard" }): FakeSpeech {
 }
 
 /** A take port whose take runs until stopped, then is kept at 2 s. */
-function fakeTakes(): LensTakes & { stops: number } {
+function fakeTakes(): LensTakes & {
+  stops: number
+  tick: (elapsedMs: number) => void
+  keeping: () => void
+} {
   let snapshot: LensTakeSnapshot = {
     take: { kind: "idle" },
     said: null,
@@ -76,6 +80,9 @@ function fakeTakes(): LensTakes & { stops: number } {
     },
     playLast: (): void => undefined,
     reset: (): void => set({ take: { kind: "idle" }, last: null }),
+    tick: (elapsedMs: number): void =>
+      set({ take: { kind: "recording", elapsedMs } }),
+    keeping: (): void => set({ take: { kind: "keeping" } }),
   }
   return port
 }
@@ -396,6 +403,27 @@ describe("createLensRuntime", () => {
     runtime.startTake()
     runtime.dispose()
     expect(entries.at(-1)?.take).toMatchObject({ count: 1 })
+    detach()
+  })
+
+  it("counts a take being kept when the learner leaves, at the length it ran", () => {
+    const takes = fakeTakes()
+    const { runtime, last, entries } = harness(fakeSpeech(), takes)
+    const detach = runtime.attach()
+    runtime.begin()
+    runtime.dispatch({
+      type: "answer",
+      at: runtime.now(),
+      answer: firstAnswer(last()),
+    })
+    if (last().state.phase.name === "step-down") {
+      runtime.dispatch({ type: "skip-probes", at: runtime.now() })
+    }
+    runtime.startTake()
+    takes.tick(3_200)
+    takes.keeping()
+    runtime.dispose()
+    expect(entries.at(-1)?.take).toMatchObject({ count: 1, lastMs: 3_200 })
     detach()
   })
 })

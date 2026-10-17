@@ -66,6 +66,8 @@ export function createLensTakes(ports: LensTakesPorts): PhoneLensTakes {
   const listeners = new Set<() => void>()
   let last: LensTakeSnapshot["last"] = null
   let playback: Playback | null = null
+  // Bumped by every play, stop and reset: a read that lands after is stale.
+  let playRequest = 0
   // Bumped by `reset`: a take started before it is not the new item's.
   let item = 0
   /** The take under way: the line it reads, and the item it was started on. */
@@ -128,6 +130,7 @@ export function createLensTakes(ports: LensTakesPorts): PhoneLensTakes {
   note.subscribe(publish)
 
   const stopPlayback = (): void => {
+    playRequest += 1
     playback?.stop()
     playback = null
   }
@@ -149,20 +152,22 @@ export function createLensTakes(ports: LensTakesPorts): PhoneLensTakes {
     },
     stop: (): void => {
       note.stop()
-      if (playback) {
-        stopPlayback()
-        publish()
-      }
+      const wasPlaying = playback !== null
+      // Always: a playback still being read must not start after a stop.
+      stopPlayback()
+      if (wasPlaying) publish()
     },
     playLast: (): void => {
       const playing = last
       if (!playing || snapshot.take.kind !== "idle") return
       stopPlayback()
+      const request = playRequest
       ports.audio.get(playing.id).then(
         (blob) => {
-          // Gone, or another take, item or playback since.
+          // Gone, or stopped, or another take, item or playback since.
           const idle = snapshot.take.kind === "idle" && playback === null
-          if (!blob || last?.id !== playing.id || !idle) return
+          const current = request === playRequest && last?.id === playing.id
+          if (!blob || !current || !idle) return
           const started = ports.player.play(blob)
           playback = started
           publish()

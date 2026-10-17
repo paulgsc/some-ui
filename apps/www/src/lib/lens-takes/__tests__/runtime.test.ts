@@ -183,6 +183,19 @@ describe("createLensTakes", () => {
     expect(takes.getSnapshot().playing).toBe(false)
   })
 
+  it("starts no playback whose read lands after a stop", async () => {
+    const p = ports()
+    const play = vi.spyOn(p.player, "play")
+    const takes = createLensTakes(p)
+    await take(takes)
+    takes.playLast()
+    // Hidden before the audio is read.
+    takes.stop()
+    await settle()
+    expect(play).not.toHaveBeenCalled()
+    expect(takes.getSnapshot().playing).toBe(false)
+  })
+
   it("plays the last take back, and says when it ends", async () => {
     const p = ports()
     const takes = createLensTakes(p)

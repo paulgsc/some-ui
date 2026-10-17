@@ -115,6 +115,8 @@ export function createLensRuntime(
   /** Whether the line had been heard when each item's first take began. */
   let heardAtFirst = new Map<number, boolean>()
   let lastTake: string | null = null
+  /** How long the take under way ran, last seen: a take being kept says not. */
+  let takeMs = 0
 
   const now = (): number => options().now?.() ?? Date.now()
   const publish = (): void => {
@@ -195,7 +197,7 @@ export function createLensRuntime(
     if (!take || !under || index !== state.cursor) return made
     return {
       count: (made?.count ?? 0) + 1,
-      lastMs: take.kind === "recording" ? take.elapsedMs : (made?.lastMs ?? 0),
+      lastMs: take.kind === "recording" ? take.elapsedMs : takeMs,
       heardFirst:
         made?.heardFirst ?? heardAtFirst.get(index) ?? lineHeard.has(index),
     }
@@ -311,6 +313,8 @@ export function createLensRuntime(
       const port = options().takes
       if (!port) return () => undefined
       return port.subscribe(() => {
+        const { take } = port.getSnapshot()
+        if (take.kind === "recording") takeMs = take.elapsedMs
         const kept = port.getSnapshot().last
         if (!kept || kept.id === lastTake) return
         lastTake = kept.id
