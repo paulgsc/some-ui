@@ -18,14 +18,10 @@ import { ThemeSwitcher } from "@/components/theme-switcher"
 
 /**
  * The "why" behind this workspace, as a page: "/" says *what* is deployed;
- * this says what it is (the two mandates in `CLAUDE.md`: a toolkit that works
- * for its one user, published for everyone else to see) and then the
- * positions the projects take (a browser is an operating system, exposure
- * should be opt-in, visual comfort is measurable, a curriculum should adapt).
- * Each position is one claim and one mechanism, held to
+ * this says the two mandates (`CLAUDE.md`) to the viewer, then the position
+ * each of four tools takes, as one claim and one mechanism, held to
  * `packages/ui/resume/resume.typ`'s rule that a premise is immediately cashed
- * out in its mechanism. Copy says what each thing is and does (CLAUDE.md,
- * "Say what it is"): no foils, no "not another X".
+ * out in its mechanism.
  */
 
 type Mandate = { term: string; gloss: string }
@@ -46,7 +42,7 @@ const MANDATES: ReadonlyArray<Mandate> = [
 type Position = {
   /** Display ordinal. Not derived from the array index — it's typeset. */
   ordinal: string
-  /** What it actually is. */
+  /** What it is. */
   claim: string
   /** How the claim is made true in code — the part that keeps this honest. */
   mechanism: string
@@ -140,7 +136,7 @@ type Figure = { value: string; label: string }
  * Counted from the repo: packages and extensions as
  * `packages/ui/resume/scripts/check-claims.mjs` counts them (its
  * EXPECTED_PACKAGE_COUNT and EXPECTED_EXTENSION_COUNT), canons as the
- * `docs/canon/*.typ` files. Recount here when those change.
+ * `docs/canon/*.typ` files.
  */
 const FIGURES: ReadonlyArray<Figure> = [
   { value: "44", label: "workspace packages" },
@@ -253,11 +249,9 @@ const Mission = (): JSX.Element => (
           Positions
         </h2>
         <p className="text-muted-foreground mt-6 max-w-2xl pb-6 leading-relaxed text-pretty">
-          The tools that mediate a working day (the browser holding your state,
-          the feed spending your attention, the surface straining your eyes, the
-          software claiming to teach you) arrive with defaults chosen by someone
-          else. Four of these tools each take one of those defaults and set it
-          on purpose.
+          Four tools each set one default of a working day on purpose: what a
+          browser keeps, what a feed shows, how a page renders, and what a
+          lesson teaches next.
         </p>
         {POSITIONS.map((position) => (
           <PositionRow key={position.ordinal} {...position} />

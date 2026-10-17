@@ -18,8 +18,7 @@ There are two users:
 - **The owner:** the only one who signs in and the only one ever online. Uses, maintains
   and consumes all of it.
 - **The viewer** (the owner's word is "voyeur"): anyone else. Observes, read-only, and
-  never sees the owner's data. The source is public, so a viewer could rebuild any of it;
-  the aim is that they understand it.
+  never sees the owner's data. The aim is that they understand what they see.
 
 What follows from them:
 
@@ -43,16 +42,15 @@ What follows from them:
   The voice is plain and first-person, with no pitch and no promise of support.
 - **Never lose the record.** Because A is real use, the data it leaves (study sessions,
   reflections, typing rounds, voice takes) is also the evidence of growth over time:
-  struggling to read a sentence at the first beta, finishing sessions much later. Showing
-  that is not built yet, but it can only ever be built if the history survives. So treat
-  the owner's history as append-only. Before adding anything that discards or rewrites it
+  struggling to read a sentence at the first beta, finishing sessions much later. That
+  record exists only if the history survives, so treat the owner's history as append-only. Before adding anything that discards or rewrites it
   (a cap that evicts old entries, pruning, a migration that drops or reshapes data, a
   "let it go" that deletes for good), give it a durable copy first, or ask.
 
 **Open (the owner's call; ask, don't settle it):** whether some features need a mock
 demonstration surface (seeded data, nothing kept) where a video is not enough. Related: a
 Pages visitor can use the study screens today, with data kept in their own browser, which
-"read-only" may change. Pages already runs on bundled seed data (`apps/www/src/lib/data-mode`).
+"read-only" may change. Seed data for Pages: `apps/www/src/lib/data-mode`.
 
 `/mission` (`apps/www/src/routes/mission.tsx`) says the same to the viewer.
 
