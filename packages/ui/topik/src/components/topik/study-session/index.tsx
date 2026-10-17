@@ -96,6 +96,11 @@ export type KoreanStudyPageProps = {
    */
   wordSetHint?: string
   /**
+   * The Android app keeps the grammar lens's record for its study-context
+   * export (adaptive-learning canon Rem. 4.18); absent, nothing is kept.
+   */
+  recordsLens?: boolean
+  /**
    * Art direction. `inherit` — the default — renders in whatever theme the
    * host established, so the user's session theme reaches the applet.
    * `appearance="topik"` is the self-contained study surface: `.topik`
@@ -210,6 +215,7 @@ export const KoreanStudyPage = ({
   sceneVoice,
   sceneFileHint,
   wordSetHint,
+  recordsLens,
   appearance = "inherit",
   surface = "auto",
   paused,
@@ -242,6 +248,7 @@ export const KoreanStudyPage = ({
       ...(sceneVoice ? { sceneVoice } : {}),
       ...(sceneFileHint ? { sceneFileHint } : {}),
       ...(wordSetHint ? { wordSetHint } : {}),
+      ...(recordsLens ? { recordsLens } : {}),
       ...(loadTreeManifest && loadTopik
         ? { treeFeed: createTreeFeed(loadTreeManifest, loadTopik) }
         : {}),
@@ -259,6 +266,7 @@ export const KoreanStudyPage = ({
       sceneVoice,
       sceneFileHint,
       wordSetHint,
+      recordsLens,
     ]
   )
 

@@ -30,7 +30,7 @@ export type ReadAloudSessionProps = UseReadAloudOptions & {
   /** The practice record to show on the start screen, and today's key. */
   record?: { record: PracticeRecord; today: string }
   /** The grammar-lens session's start, offered beside read-aloud's when given. */
-  lens?: { available: boolean; onStart: () => void }
+  lens?: { available: boolean; full?: boolean; onStart: () => void }
   onExit: () => void
 }
 

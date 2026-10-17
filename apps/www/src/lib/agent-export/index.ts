@@ -10,16 +10,16 @@
  * session named for it with that session's stops and path counts and the
  * practice record, each voice note beside its file. Either way, the
  * reflections that went out leave the phone once the person says they arrived
- * (`handOff`), and with the whole export so do its soundbites
- * (`handOffExport`): they are for the agent to act on, not for the phone to
- * keep.
+ * (`handOff`), and with the whole export so do its soundbites and
+ * grammar-lens entries (`handOffExport`): they are for the agent to act on,
+ * not for the phone to keep.
  *
  * Phone-only: rendered only in the device build, so no other profile ships it
  * (`build.paths.ts`).
  */
 import { extensionOf } from "@some-ui/core-utils"
 import type { Soundbite, SoundbiteStore } from "@some-ui/soundbites"
-import type { PracticeRecord } from "@some-ui/topik"
+import type { LensRecordExport, PracticeRecord } from "@some-ui/topik"
 
 import { foreignValue } from "@/lib/intent/foreign"
 import {
@@ -46,6 +46,15 @@ type SoundbiteRemover = Pick<SoundbiteStore, "remove">
 const READ_ALOUD_PRACTICE =
   "`readAloudPractice` is the read-aloud drill's practice record: for each of the 60 most recent days that had any (a day without practice has no entry, and an old day stays until 60 newer ones replace it), and in `totals` for all time, the reps read to the end, the sets finished and the practice they are credited with (a nominal time per rep, not the clock). All zeros means nothing was recorded or the stored record could not be read, which the app cannot tell apart; null means the app could not load the drill at all."
 
+const GRAMMAR_LENS = [
+  "`grammarLens` is the grammar-lens session's record (`grammarLens.entries`): one entry per item, most recent last. Once the learner confirms this file arrived, the entries in it leave the phone: this file is their only copy.",
+  "An item asked about one `line` of a read-aloud set (its id; the line itself is in the set) by showing a pick (choose the word's form), a judge with a misform in place (find the wrong word), or a judge as written (nothing wrong). `session` is when its grammar-lens session began, `shownAt` and `closedAt` when the item was shown and closed (ISO).",
+  '`cue` is how the line it answered was given: "glyph" read (also a cue meant to be heard that could not be), "audio" heard, "both", or null for none. `answer` is the form picked, the word tapped as it was shown, or "looks right"; `shown` names the mistake-catalogue entries the item showed, `chosen` the one picked if the learner fell for it, and `expired` an item left unanswered for two minutes.',
+  "`answerMs` is the time from its showing to its answer, its pauses left out, and `rushed` whether that was faster than reading the line, and the cue when it was read, at twice the level's rate. `racing` means three of five answers in the session were rushed by then; it stays so, and `grammarLens.sessions` says it per session. Weigh a racing session's entries less.",
+  'After a miss, `stepDown` lists easier questions on the same line, each with its `rung` (4 tense, 3 subject or object, 2 where the ending starts, 1 the verb), `kind`, the `word` it named if any, the `answer` as text (a word, a cut such as 가|요, or a tense) and whether it was right; `end` says how it stopped ("right", "ran-out", "skipped", "expired", or "left" when the session ended during it) and `floor` the rung that came right first (0 when it ran out, else null). `situation` is the optional "when would someone say this" pick and whether it matched the author\'s.',
+  "Use it to choose the next deck's misforms, cues and level. Null means the app could not load the record; no entries, that the phone held none it could read.",
+].join(" ")
+
 const STOPS =
   '`stops` are the times a session was stopped before its end, each with when (`stoppedAt`), how far in (`elapsedMs` of `plannedMs`, in `scene`), `via` a tap on "Got to go" or leaving (`left`: the app went to the background, or Android\'s back button or a link in the app closed the session\'s screen), the optional `reason` (`legend` reads it) and where it was given (`reasonFrom`), and `outcome` (open, resumed, done or lapsed, as of `settledAt`). Not every departure is a stop: one the learner was back from within a minute (a glance), and a tap taken back before leaving ("Oops, keep going"), are deleted, and `paths` counts them instead. Only the newest 20 stops are kept, so an older session can show none.'
 
@@ -62,6 +71,7 @@ const ABOUT = [
   PATHS,
   "A deleted session's counts, still on the phone, are in `pathsWithoutSession`.",
   READ_ALOUD_PRACTICE,
+  GRAMMAR_LENS,
 ].join("\n")
 
 const ABOUT_REFLECTIONS = [
@@ -202,6 +212,16 @@ async function readAloudPractice(): Promise<PracticeRecord | null> {
   }
 }
 
+/** The grammar lens's record, loaded as the practice record is; null if it can't be. */
+async function grammarLens(): Promise<LensRecordExport | null> {
+  try {
+    const { lensRecordForExport } = await import("@some-ui/topik")
+    return lensRecordForExport()
+  } catch {
+    return null
+  }
+}
+
 function timeZone(): string {
   return Intl.DateTimeFormat().resolvedOptions().timeZone
 }
@@ -219,13 +239,15 @@ export type ShareResult = {
 
 /**
  * What the whole export put in front of the share sheet: `soundbites` are
- * those that went out, the only ones `handOffExport` may let go.
+ * those that went out, and `lens` the grammar-lens entries, the only ones
+ * `handOffExport` may let go.
  */
 export type AgentExportResult = ShareResult & {
   soundbites: ReadonlyArray<string>
+  lens: LensRecordExport["entries"]
 }
 
-type Sent = Pick<AgentExportResult, "sent" | "soundbites">
+type Sent = Pick<AgentExportResult, "sent" | "soundbites" | "lens">
 
 /**
  * The person says these arrived: they leave the phone, and their sessions
@@ -242,17 +264,23 @@ export function handOff(ids: ReadonlyArray<string>, at = new Date()): void {
 
 /**
  * The person says the whole export arrived: its reflections leave the phone
- * (`handOff`), and so do the soundbites that went out; one recorded since
- * stays. Best effort: soundbites the store would not let go stay on the
- * list, where each one's delete still lets it go.
+ * (`handOff`), and so do the soundbites and grammar-lens entries that went
+ * out; one recorded or changed since stays. Best effort: soundbites the store
+ * would not let go stay on the list, where each one's delete still lets it
+ * go, and entries stay in the record for the next export.
  */
 export function handOffExport(
   store: SoundbiteRemover,
-  { sent, soundbites }: Sent,
+  { sent, soundbites, lens }: Sent,
   at = new Date()
 ): void {
   if (sent.length > 0) handOff(sent, at)
   if (soundbites.length > 0) store.remove(soundbites).catch(() => undefined)
+  if (lens.length > 0) {
+    import("@some-ui/topik")
+      .then(({ letGoLensRecord }) => letGoLensRecord(lens))
+      .catch(() => undefined)
+  }
 }
 
 /** Shares the reflections of `sessionIds`, one file per session. */
@@ -312,6 +340,7 @@ export async function shareAgentExport(
   }
   const sessions = await sessionsRepository.list()
   const exportedAt = now().toISOString()
+  const lens = await grammarLens()
   const { bySession, files, sent } = await writeOut(
     reflections.getSnapshot().kept,
     sessions,
@@ -340,6 +369,7 @@ export async function shareAgentExport(
       ),
       stops: allStops(),
       readAloudPractice: await readAloudPractice(),
+      grammarLens: lens,
       // `file: null`: its audio could not be read (removed since listed).
       soundbites: bites.map((bite) => ({
         ...bite,
@@ -361,5 +391,10 @@ export async function shareAgentExport(
   })
   // Every bite listed went out: its audio beside it, or `file: null` for
   // audio already gone, which leaves nothing on the phone worth keeping.
-  return { outcome, sent, soundbites: bites.map((bite) => bite.id) }
+  return {
+    outcome,
+    sent,
+    soundbites: bites.map((bite) => bite.id),
+    lens: lens?.entries ?? [],
+  }
 }

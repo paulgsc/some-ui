@@ -55,6 +55,8 @@ export type LensPhase =
       /** "session": the host's session is paused, with the page shown. */
       by: "hidden" | "session"
       resume: PausablePhase
+      /** When the pause began. */
+      since: number
     }
   | {
       name: "sitting-over"
@@ -62,7 +64,7 @@ export type LensPhase =
       resume: FollowUp | null
     }
 
-type StepDownEnd = "right" | "ran-out" | "skipped" | "expired"
+export type StepDownEnd = "right" | "ran-out" | "skipped" | "expired"
 
 /** What one item came to; the step-down's answers are kept, never shown. */
 export type LensOutcome = {
@@ -72,12 +74,17 @@ export type LensOutcome = {
   expired: boolean
   chosen: MistakeId | null
   probes: Array<{ rung: number; answer: string; right: boolean }>
+  /** Time the item spent paused before it was answered. */
+  pausedMs: number
   /** Null when no step-down was asked. */
   stepDown: StepDownEnd | null
   /** The rung it stopped on rightly; 0 when it ran out; else null. */
   floor: number | null
   /** Offered on alternate right answers; the index chosen, if any. */
   situation: { chosen: number | null } | null
+  /** When the item appeared, and when it was answered or expired. */
+  shownAt: number
+  answeredAt: number | null
 }
 
 export type LensState = {
@@ -96,6 +103,8 @@ export type LensEffect =
   | { type: "wait"; seq: number; ms: number }
   /** Say the item's cue: it was drawn to be heard. */
   | { type: "speak-cue"; text: string }
+  /** The item at `index` is done with: its outcome is final. */
+  | { type: "closed"; index: number; at: number }
   | { type: "stop-speech" }
   /** Build the next set and dispatch `begin`. */
   | { type: "request-set" }
@@ -151,6 +160,9 @@ const OPEN: LensOutcome = {
   stepDown: null,
   floor: null,
   situation: null,
+  shownAt: 0,
+  answeredAt: null,
+  pausedMs: 0,
 }
 
 /** Move to a screen under a fresh sequence number, with its two minutes. */
@@ -202,7 +214,7 @@ function startItem(state: LensState, at: number): LensTransition {
   const item = currentItem(state)
   if (!item) return enter(state, { name: "summary" }, [{ type: "stop-speech" }])
   const heard = item.cue && item.cue.modality !== "glyph"
-  return enter(withOutcome(state, OPEN), { name: "item" }, [
+  return enter(withOutcome(state, { ...OPEN, shownAt: at }), { name: "item" }, [
     { type: "stop-speech" },
     ...(heard && item.cue
       ? [{ type: "speak-cue" as const, text: item.cue.korean }]
@@ -223,7 +235,8 @@ function reveal(state: LensState): LensTransition {
 function answered(
   state: LensState,
   item: LensItem,
-  answer: LensAnswer
+  answer: LensAnswer,
+  at: number
 ): LensTransition {
   const { right, chosen } = graded(item, answer)
   const rights = state.rights + (right ? 1 : 0)
@@ -231,11 +244,12 @@ function answered(
   const next = withOutcome(
     { ...state, rights },
     {
-      ...OPEN,
+      ...(currentOutcome(state) ?? OPEN),
       answer,
       right,
       chosen,
       situation: offered ? { chosen: null } : null,
+      answeredAt: at,
     }
   )
   if (!right && item.probes.length > 0) {
@@ -280,8 +294,13 @@ function stepDownEnded(state: LensState, end: StepDownEnd): LensTransition {
   return reveal(withOutcome(state, { ...outcome, stepDown: end }))
 }
 
+/** Leave the reveal: the item is closed, and the next one starts. */
 function advance(state: LensState, at: number): LensTransition {
-  return startItem({ ...state, cursor: state.cursor + 1 }, at)
+  const next = startItem({ ...state, cursor: state.cursor + 1 }, at)
+  return {
+    state: next.state,
+    effects: [{ type: "closed", index: state.cursor, at }, ...next.effects],
+  }
 }
 
 function onElapsed(state: LensState, at: number): LensTransition {
@@ -289,7 +308,9 @@ function onElapsed(state: LensState, at: number): LensTransition {
   switch (phase.name) {
     case "item": {
       const outcome = currentOutcome(state) ?? OPEN
-      return reveal(withOutcome(state, { ...outcome, expired: true }))
+      return reveal(
+        withOutcome(state, { ...outcome, expired: true, answeredAt: at })
+      )
     }
     case "step-down": {
       return stepDownEnded(state, "expired")
@@ -351,7 +372,7 @@ function pauseWith(
   const { phase } = state
   if (!pausable(phase)) return { state, effects: [] }
   if (sittingOver(state, at)) return endSitting(state, phase)
-  return pausedAs(state, { name: "paused", by, resume: phase }, [
+  return pausedAs(state, { name: "paused", by, resume: phase, since: at }, [
     { type: "stop-speech" },
   ])
 }
@@ -361,7 +382,16 @@ function resumed(state: LensState, at: number): LensTransition {
   const { phase } = state
   if (phase.name !== "paused") return { state, effects: [] }
   if (sittingOver(state, at)) return endSitting(state, phase.resume)
-  return enter(state, phase.resume)
+  const outcome = currentOutcome(state)
+  // An item's time to answer leaves out its pauses (Rem. 4.17).
+  const waited =
+    phase.resume.name === "item" && outcome
+      ? withOutcome(state, {
+          ...outcome,
+          pausedMs: outcome.pausedMs + (at - phase.since),
+        })
+      : state
+  return enter(waited, phase.resume)
 }
 
 export function lensReducer(
@@ -387,7 +417,7 @@ export function lensReducer(
     }
     case "answer": {
       return phase.name === "item" && item
-        ? answered(state, item, event.answer)
+        ? answered(state, item, event.answer, event.at)
         : unchanged
     }
     case "probe": {

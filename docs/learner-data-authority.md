@@ -413,10 +413,11 @@ declared (checked by reading every call site and by the tests named).
   to `file_host`; a user-selected speech provider receives the text it speaks; a
   kept shelf item is stored verbatim; the phone's "Share with an agent"
   (`lib/agent-export`) hands Android's share sheet a file of the device's
-  sessions, reflections, stops and soundbites, and a session's (or every
-  session's) **Share** hands it that session's reflections, and the learner
-  picks where they go; the reflections (and, from the whole export, the
-  soundbites) shared then leave the phone. "Archive finished sessions"
+  sessions, reflections, stops, soundbites and grammar-lens record, and a
+  session's (or every session's) **Share** hands it that session's
+  reflections, and the learner picks where they go; the reflections (and,
+  from the whole export, the soundbites and grammar-lens entries) shared
+  then leave the phone once the learner says they arrived. "Archive finished sessions"
   (`lib/session-archive`) hands the share sheet one file of the finished
   sessions' records, and they leave the phone once the learner says it
   arrived. The phone's Home server block

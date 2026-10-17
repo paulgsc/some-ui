@@ -71,6 +71,25 @@ describe("ReadAloudScreen", () => {
     expect(screen.getByRole("button", { name: /^read aloud$/i })).toBeTruthy()
   })
 
+  it("says on its start screen when the lens record keeps no new answers (Rem. 4.18)", () => {
+    const full = vi.fn(() => false)
+    render(
+      <ReadAloudScreen
+        topikLevel={1}
+        speech={null}
+        deck={DECK}
+        store={createReadAloudStore(memoryStorage())}
+        lensRecord={{ add: () => undefined, full }}
+        onExit={() => undefined}
+      />
+    )
+    expect(screen.queryByText(/record is full/i)).toBeNull()
+    full.mockReturnValue(true)
+    fireEvent.click(screen.getByRole("button", { name: /grammar lens/i }))
+    fireEvent.click(screen.getByRole("button", { name: /back to read-aloud/i }))
+    expect(screen.getByText(/record is full/i)).toBeTruthy()
+  })
+
   it("offers the grammar lens where nothing can speak (Cor. 4.8)", () => {
     render(
       <ReadAloudScreen

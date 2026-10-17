@@ -131,6 +131,8 @@ export const SessionViewport = ({
           // Read at render: main.tsx installs the sidecar after imports run.
           sceneFileHint: ON_PHONE ? lookIn("drama-tree") : undefined,
           wordSetHint: ON_PHONE ? lookIn("word-set") : undefined,
+          // Kept only where the study-context export carries it (Rem. 4.18).
+          recordsLens: ON_PHONE,
           paused,
         },
         leetype: {

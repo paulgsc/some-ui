@@ -17,6 +17,7 @@ import { describe, expect, it } from "vitest"
 const PICK: LensItem = {
   key: "l:school",
   lineId: "school",
+  level: 1,
   cue: { korean: "어떻게 가요?", segments: [], decides: [], modality: "audio" },
   korean: "학교에 가요.",
   segments: [],
@@ -96,6 +97,21 @@ describe("the grammar-lens machine", () => {
       chosen: null,
       probes: [],
     })
+  })
+
+  it("closes an item on leaving its reveal, with when it was shown and answered", () => {
+    const host = new Host()
+    host.now = 1_000
+    host.begin([PICK, AUTHORED])
+    host.now = 4_000
+    host.send({ type: "answer", answer: RIGHT })
+    expect(currentOutcome(host.state)).toMatchObject({
+      shownAt: 1_000,
+      answeredAt: 4_000,
+    })
+    host.now = 9_000
+    host.send({ type: "next" })
+    expect(host.effects[0]).toEqual({ type: "closed", index: 0, at: 9_000 })
   })
 
   it("steps down after a miss, stopping at the first right answer", () => {
@@ -189,6 +205,7 @@ describe("the grammar-lens machine", () => {
       name: "paused",
       by: "hidden",
       resume: { name: "item" },
+      since: 0,
     })
     expect(host.effects).toEqual([{ type: "stop-speech" }])
     host.send({ type: "elapsed", seq })
@@ -201,6 +218,16 @@ describe("the grammar-lens machine", () => {
     // Shown again with nothing paused, the clock is left alone.
     host.send({ type: "shown" })
     expect(host.effects).toEqual([])
+  })
+
+  it("leaves an item's pauses out of its time to answer", () => {
+    const host = new Host()
+    host.begin([PICK])
+    host.now = 1_000
+    host.send({ type: "hidden" })
+    host.now = 5_000
+    host.send({ type: "shown" })
+    expect(currentOutcome(host.state)?.pausedMs).toBe(4_000)
   })
 
   it("bounds a pause on screen: two minutes held end the sitting", () => {
