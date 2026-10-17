@@ -1,6 +1,6 @@
 export type { BlobShelf } from "./lib/blob-shelf"
 export { blobShelf, savingShelf, ShelfFullError } from "./lib/blob-shelf"
-export { bytesBesides, connection, done, result } from "./lib/idb"
+export { bytesBesides, bytesOf, connection, done, result } from "./lib/idb"
 export type { StorageRoom } from "./lib/room"
 export { fitsRoom, setStorageRoom } from "./lib/room"
 export type {

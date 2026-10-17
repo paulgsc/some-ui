@@ -8,7 +8,13 @@
  * server has no route for them, and audio is the one thing that database
  * would hold as large opaque values for no query to read.
  */
-import { connection, done, fitsRoom, result } from "@some-ui/voice-capture"
+import {
+  bytesOf,
+  connection,
+  done,
+  fitsRoom,
+  result,
+} from "@some-ui/voice-capture"
 
 import { byNewest, displacedBy, fitsMaxBytes, SOUNDBITE_LIMIT } from "./policy"
 import type { Soundbite } from "./types"
@@ -106,8 +112,17 @@ export function indexedDbSoundbiteStore(): SoundbiteStore {
     },
 
     async save(bite, audio, replace): Promise<void> {
-      if (!(await fitsRoom(audio.size))) throw new SoundbitesFullError()
-      const tx = (await connect()).transaction([META, AUDIO], "readwrite")
+      const db = await connect()
+      const leaving = displacedBy(
+        await allKept(db.transaction(META, "readonly").objectStore(META)),
+        replace,
+        SOUNDBITE_LIMIT
+      )
+      const freed = await bytesOf(db, AUDIO, leaving)
+      if (!(await fitsRoom(audio.size - freed))) {
+        throw new SoundbitesFullError()
+      }
+      const tx = db.transaction([META, AUDIO], "readwrite")
       const meta = tx.objectStore(META)
       const audios = tx.objectStore(AUDIO)
       // Read and evict inside the one transaction: the cap holds even if two

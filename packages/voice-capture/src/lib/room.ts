@@ -20,7 +20,9 @@ export function setStorageRoom(check: StorageRoom): void {
 
 /**
  * Ask before opening the write's IndexedDB transaction: one left waiting on
- * this while another store is read auto-commits.
+ * this while another store is read auto-commits. `bytes` is the write's
+ * growth: less what it replaces or displaces (`bytesOf`), so a redo that
+ * grows nothing always fits.
  */
 export async function fitsRoom(bytes: number): Promise<boolean> {
   try {

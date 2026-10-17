@@ -5,7 +5,7 @@
  * and whether it may be kept at all, is the caller's: the shelf only holds
  * the bytes.
  */
-import { bytesBesides, connection, done, result } from "./idb"
+import { bytesBesides, bytesOf, connection, done, result } from "./idb"
 import { fitsRoom } from "./room"
 
 export type BlobShelf = {
@@ -42,7 +42,8 @@ export function blobShelf({
 
   return {
     async put(id, blob): Promise<void> {
-      if (!(await fitsRoom(blob.size))) throw new ShelfFullError()
+      const freed = await bytesOf(await connect(), STORE, [id])
+      if (!(await fitsRoom(blob.size - freed))) throw new ShelfFullError()
       const tx = (await connect()).transaction(STORE, "readwrite")
       const blobs = tx.objectStore(STORE)
       if ((await bytesBesides(blobs, id)) + blob.size > maxBytes) {

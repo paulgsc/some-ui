@@ -11,6 +11,7 @@
  */
 import {
   bytesBesides,
+  bytesOf,
   connection,
   done,
   fitsRoom,
@@ -224,11 +225,10 @@ export function indexedDbJournalStore(): JournalStore {
     },
 
     async saveTake(take, audio, episode): Promise<void> {
-      if (!(await fitsRoom(audio.size))) throw new JournalFullError()
-      const tx = (await connect()).transaction(
-        [PLAN, TAKES, AUDIO],
-        "readwrite"
-      )
+      const db = await connect()
+      const freed = await bytesOf(db, AUDIO, [take.cutId])
+      if (!(await fitsRoom(audio.size - freed))) throw new JournalFullError()
+      const tx = db.transaction([PLAN, TAKES, AUDIO], "readwrite")
       const audios = tx.objectStore(AUDIO)
       const plan = await planIn(tx.objectStore(PLAN))
       if (
