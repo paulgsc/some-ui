@@ -2,7 +2,10 @@
  * The phone's storage budget and the rule that keeps it (apps/mobile/README.md,
  * "What the phone keeps").
  */
-import { SOUNDBITES_MAX_BYTES } from "@some-ui/soundbites/contract"
+import {
+  JOURNAL_TAKES_MAX_BYTES,
+  SOUNDBITES_MAX_BYTES,
+} from "@some-ui/soundbites/contract"
 
 import { errorResponse } from "@/lib/device-backend/router"
 import type { SqlDriver } from "@/lib/device-backend/sql"
@@ -13,8 +16,9 @@ import { SCENE_AUDIO_MAX_BYTES } from "@/lib/scene-voice/budget"
 export type StorageBudget = {
   quotaBytes: number
   /**
-   * Kept free for WebView storage (the soundbites' cap and voice
-   * reflections'); only the database is measured.
+   * Kept free for WebView storage (the soundbites' cap, voice reflections',
+   * scene notes' and the Build Journal's takes'); only the database is
+   * measured.
    */
   reservedBytes: number
 }
@@ -33,7 +37,10 @@ async function webViewBytes(): Promise<number> {
 export const ANDROID_BACKUP_BUDGET: StorageBudget = {
   quotaBytes: 25 * 1024 * 1024,
   reservedBytes:
-    SOUNDBITES_MAX_BYTES + REFLECTION_AUDIO_MAX_BYTES + SCENE_AUDIO_MAX_BYTES,
+    SOUNDBITES_MAX_BYTES +
+    REFLECTION_AUDIO_MAX_BYTES +
+    SCENE_AUDIO_MAX_BYTES +
+    JOURNAL_TAKES_MAX_BYTES,
 }
 
 /** The database's pages in use: its file size, with `auto_vacuum = FULL`. */
