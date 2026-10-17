@@ -12,8 +12,8 @@
  * pronounced when that differs from its spelling (Cor. 4.6 (iv)).
  *
  * An occurrence may also name its grammatical role, and a line its tense:
- * what the grammar lens (`read-aloud/lens`) asks the learner to find. Both
- * are optional. A line may also carry what the grammar lens needs to ask about
+ * what the grammar lens's step-down asks the learner to find. Both are
+ * optional. A line may also carry what the grammar lens needs to ask about
  * it (Def. 4.9): a cue, misforms naming the mistake catalogue
  * (`read-aloud/mistakes`), and situations of use. All optional: a line
  * without them is read aloud as before.
@@ -59,8 +59,7 @@ export type ReadAloudWord = {
 }
 
 /**
- * What a written word does in its line, named by the Korean question it
- * answers, which is also what the lens shows the learner:
+ * What a written word does in its line, by the Korean question it answers:
  *
  * - `subject` 누가: marked 이/가
  * - `topic` 은·는: marked 은/는
@@ -73,7 +72,7 @@ export type ReadAloudWord = {
  * - `describing` 어때요: a describing verb (커요, 좋아요)
  * - `action` 뭐 해요: an action verb (먹어요, 가요)
  */
-export const GRAMMAR_ROLES = [
+const GRAMMAR_ROLES = [
   "subject",
   "topic",
   "object",

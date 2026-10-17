@@ -1,13 +1,12 @@
-import type { JSX } from "react"
-import { useEffect, useId, useState } from "react"
-import { Button, Switch } from "@some-ui/shared"
+import type { JSX, ReactNode } from "react"
+import { useEffect, useState } from "react"
+import { Button } from "@some-ui/shared"
 import { StepLayout } from "@topik/components/topik/handheld/step-layout"
 import { PracticeRecordView } from "@topik/components/topik/read-aloud/practice-record"
 import type { ReadAloudLevel } from "@topik/lib/topik/read-aloud/content"
 import type { PracticeRecord } from "@topik/lib/topik/read-aloud/records"
-import type { LensTally } from "@topik/lib/topik/read-aloud/set-machine"
 import { SUMMARY_MS } from "@topik/lib/topik/read-aloud/timing"
-import { BookOpenText, Play, VolumeX } from "lucide-react"
+import { BookOpenText, Play, ScanSearch, VolumeX } from "lucide-react"
 
 export type SetCardProps = { short: boolean; onStop: () => void } & (
   | {
@@ -23,21 +22,33 @@ export type SetCardProps = { short: boolean; onStop: () => void } & (
       shortfall: number | null
       /** The practice record and the learner's local day, where one is kept. */
       record?: { record: PracticeRecord; today: string }
-      /** Whether sets are drawn with grammar lenses, where that is offered. */
-      lenses?: { on: boolean; onChange: (on: boolean) => void }
+      /**
+       * The grammar-lens session, a start of its own (Cor. 4.8), where the
+       * host offers it, and whether any line at or below this level has
+       * something for it to ask.
+       */
+      lens?: { available: boolean; onStart: () => void }
       onStart: () => void
     }
   | {
       kind: "summary"
-      /** Reps of this set that ran to the end (Prop. 6.4). */
-      counted: number
-      /** The lenses those reps carried, and how many were found. */
-      lensed: LensTally
-      /** Restarts the countdown when it changes. */
-      runKey: number
+      /** What the set came to, in a line. */
+      headline: string
+      /** More of it, below the headline; the summary then scrolls. */
+      detail?: ReactNode
+      /**
+       * Restarts the countdown to the next set when it changes; null shows
+       * none, for a summary that does not move on by itself.
+       */
+      runKey: number | null
       onNext: () => void
     }
-  | { kind: "sitting-over"; onContinue: () => void }
+  | {
+      kind: "sitting-over"
+      /** What waits for the next sitting; read-aloud's set when absent. */
+      note?: string
+      onContinue: () => void
+    }
 )
 
 /** Whole seconds left of `ms`, counted down from when `runKey` last changed. */
@@ -57,47 +68,44 @@ function useCountdown(ms: number, runKey: number): number {
 }
 
 const Summary = ({
-  counted,
-  lensed,
+  headline,
+  detail,
   runKey,
   short,
   onNext,
   onStop,
 }: {
-  counted: number
-  lensed: LensTally
-  runKey: number
+  headline: string
+  detail: ReactNode
+  runKey: number | null
   short: boolean
   onNext: () => void
   onStop: () => void
 }): JSX.Element => {
-  const seconds = useCountdown(SUMMARY_MS, runKey)
+  const seconds = useCountdown(SUMMARY_MS, runKey ?? 0)
   return (
     <StepLayout
       short={short}
+      longForm={detail !== undefined}
       stage={
         <div
           data-slot="read-aloud-summary"
-          className="flex flex-col items-center gap-2 text-center"
+          className="mx-auto flex w-full max-w-sm flex-col items-center gap-2 text-center"
         >
           <span className="text-muted-foreground text-xs font-medium tracking-wider uppercase">
             Set done
           </span>
-          <p className="text-2xl font-semibold">{counted} read aloud</p>
-          {lensed.asked > 0 && (
-            <p
-              data-slot="read-aloud-lensed"
-              className="text-muted-foreground text-base"
-            >
-              Found {lensed.found} of {lensed.asked} with the lens
-            </p>
-          )}
+          <p className="text-2xl font-semibold">{headline}</p>
+          {detail}
         </div>
       }
       dock={
         <>
           <Button className="h-12 gap-2 rounded-2xl" onClick={onNext}>
-            Next set <span className="tabular-nums opacity-70">{seconds}</span>
+            Next set{" "}
+            {runKey !== null && (
+              <span className="tabular-nums opacity-70">{seconds}</span>
+            )}
           </Button>
           <Button variant="ghost" className="h-12 rounded-2xl" onClick={onStop}>
             Stop
@@ -119,13 +127,12 @@ const Summary = ({
  */
 export const SetCard = (props: SetCardProps): JSX.Element => {
   const { short, onStop } = props
-  const lensesId = useId()
 
   if (props.kind === "summary") {
     return (
       <Summary
-        counted={props.counted}
-        lensed={props.lensed}
+        headline={props.headline}
+        detail={props.detail}
         runKey={props.runKey}
         short={short}
         onNext={props.onNext}
@@ -148,8 +155,8 @@ export const SetCard = (props: SetCardProps): JSX.Element => {
             </span>
             <p className="text-2xl font-semibold">That&apos;s a sitting.</p>
             <p className="text-muted-foreground text-sm leading-relaxed">
-              Your set is kept. It picks up at its next item whenever you come
-              back, now included.
+              {props.note ??
+                "Your set is kept. It picks up at its next item whenever you come back, now included."}
             </p>
           </div>
         }
@@ -221,29 +228,15 @@ export const SetCard = (props: SetCardProps): JSX.Element => {
               no voice to play it with.
             </p>
           )}
-          {props.audio && !props.empty && props.lenses && (
-            <div className="bg-muted/50 flex w-full items-center gap-3 rounded-2xl p-3 text-left">
-              <div className="min-w-0 flex-1">
-                <label htmlFor={lensesId} className="block font-semibold">
-                  Grammar lens
-                </label>
-                <p
-                  id={`${lensesId}-about`}
-                  className="text-muted-foreground text-sm leading-snug"
-                >
-                  Each sentence asks one thing: who, what, where, when, or which
-                  tense. Tap your answer; nothing waits for it.
-                  {props.resuming &&
-                    " The set you continue keeps how it was drawn; this applies from the next one."}
-                </p>
-              </div>
-              <Switch
-                id={lensesId}
-                aria-describedby={`${lensesId}-about`}
-                checked={props.lenses.on}
-                onCheckedChange={props.lenses.onChange}
-              />
-            </div>
+          {props.lens && (
+            <p
+              data-slot="read-aloud-lens-about"
+              className="text-muted-foreground text-sm leading-relaxed"
+            >
+              {props.lens.available
+                ? "Grammar lens: spot the form a learner gets wrong, one line at a time. Nothing counts down."
+                : "Grammar lens needs lines written with likely mistakes, and this set has none at this level yet."}
+            </p>
           )}
           {props.record && (
             <PracticeRecordView
@@ -258,7 +251,16 @@ export const SetCard = (props: SetCardProps): JSX.Element => {
           {props.audio && !props.empty && (
             <Button className="h-12 gap-2 rounded-2xl" onClick={props.onStart}>
               <Play className="size-5" />{" "}
-              {props.resuming ? "Continue" : "Start"}
+              {props.resuming ? "Continue reading aloud" : "Read aloud"}
+            </Button>
+          )}
+          {props.lens?.available && (
+            <Button
+              variant="secondary"
+              className="h-12 gap-2 rounded-2xl"
+              onClick={props.lens.onStart}
+            >
+              <ScanSearch className="size-5" /> Grammar lens
             </Button>
           )}
           <Button variant="ghost" className="h-12 rounded-2xl" onClick={onStop}>

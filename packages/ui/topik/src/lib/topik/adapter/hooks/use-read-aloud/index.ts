@@ -20,14 +20,15 @@ import type { RefObject } from "react"
 import { useEffect, useLayoutEffect, useRef, useState } from "react"
 import { assertNever } from "@some-ui/core-utils"
 import type { Speaker, Urgency } from "@some-ui/speech"
+import { holdOrShow, useHeld } from "@topik/lib/topik/adapter/hooks/use-held"
 import { SPOKEN_LANGUAGE } from "@topik/lib/topik/core/spoken-language"
 import type {
   ReadAloudDeck,
   ReadAloudLevel,
 } from "@topik/lib/topik/read-aloud/content"
-import type { LensAnswer } from "@topik/lib/topik/read-aloud/lens"
 import type { PaceBook, PaceEntry } from "@topik/lib/topik/read-aloud/records"
 import { dayKey } from "@topik/lib/topik/read-aloud/records"
+import { serialDispatch } from "@topik/lib/topik/read-aloud/serial-dispatch"
 import { buildSet } from "@topik/lib/topik/read-aloud/set-builder"
 import type {
   QueueEntry,
@@ -56,11 +57,6 @@ export type UseReadAloudOptions = {
   paces?: PaceBook
   /** A set left unfinished in an earlier sitting, resumed at its next rep. */
   resume?: SetProgress | null
-  /**
-   * Draw each new set with grammar lenses. Read when a set is drawn, so a
-   * set keeps what it was drawn with, a resumed one included.
-   */
-  lenses?: boolean
   /**
    * The host's session is paused (its stop screen, its own Pause): the rep
    * pauses, nothing the learner taps starts it, and it starts over once the
@@ -98,8 +94,6 @@ export type ReadAloudVM = {
   /** No set can be drawn: the deck has nothing at or below this level. */
   empty: boolean
   begin: () => void
-  /** Answer the entry's lens; the same answer again takes it back. */
-  answer: (answer: LensAnswer) => void
   stuck: () => void
   skip: () => void
   pause: () => void
@@ -140,8 +134,6 @@ function createRunner(
   let empty = false
   let timer: ReturnType<typeof setTimeout> | null = null
   let utterance: AbortController | null = null
-  const queue: Array<SetEvent> = []
-  let dispatching = false
 
   const now = (): number => options().now?.() ?? Date.now()
 
@@ -157,11 +149,10 @@ function createRunner(
   }
 
   const drawSet = (): void => {
-    const { deck, level, seedKey, lenses } = options()
+    const { deck, level, seedKey } = options()
     const items = buildSet(deck, {
       level,
       seedKey: seedKey?.() ?? `${now()}`,
-      lenses,
     })
     if (items.length === 0) {
       // Nothing at or below this level: say so rather than wait for a set
@@ -282,32 +273,21 @@ function createRunner(
     }
   }
 
-  function dispatch(event: SetEvent): void {
-    // Effects may dispatch (a set is drawn, then begun); those events wait
-    // for the current one's effects to finish, so none acts on a stale step.
-    queue.push(event)
-    if (dispatching) return
-    dispatching = true
-    try {
-      while (queue.length > 0) {
-        const next = queue.shift()
-        if (!next) break
-        const transition = setMachineReducer(state, next)
-        if (transition.state === state) continue
-        // A new step has no clock, and no audio, until its own effects start them.
-        if (transition.state.seq !== state.seq) {
-          step = null
-          playing = null
-        }
-        state = transition.state
-        for (const effect of transition.effects) run(effect)
-        options().onProgress?.(progressOf(state))
+  const dispatch = serialDispatch(
+    (event: SetEvent) => {
+      const transition = setMachineReducer(state, event)
+      if (transition.state === state) return
+      // A new step has no clock, and no audio, until its own effects start them.
+      if (transition.state.seq !== state.seq) {
+        step = null
+        playing = null
       }
-    } finally {
-      dispatching = false
-    }
-    render({ state, step, playing, empty })
-  }
+      state = transition.state
+      for (const effect of transition.effects) run(effect)
+      options().onProgress?.(progressOf(state))
+    },
+    () => render({ state, step, playing, empty })
+  )
 
   return {
     dispatch,
@@ -336,13 +316,6 @@ function createRunner(
       stopSpeech()
     },
   }
-}
-
-/** A hidden page, else a paused session, holds the drill; shown needs neither. */
-function holdOrShow(runner: Runner, paused: boolean | undefined): void {
-  if (document.visibilityState === "hidden") runner.hide()
-  else if (paused === true) runner.hold()
-  else runner.show()
 }
 
 /**
@@ -387,19 +360,12 @@ export function useReadAloud(options: UseReadAloudOptions): ReadAloudVM {
       () => latest.current,
       setSnapshot
     ))
-    const onVisibility = (): void => holdOrShow(runner, latest.current.paused)
-    document.addEventListener("visibilitychange", onVisibility)
     return (): void => {
-      document.removeEventListener("visibilitychange", onVisibility)
       runner.dispose()
     }
   }, [])
-  // After the effect above, on every mount: a remount (React's development
-  // double mount) picks the rep up again, or holds it.
-  const { paused } = options
-  useEffect(() => {
-    if (runnerRef.current) holdOrShow(runnerRef.current, paused)
-  }, [paused])
+  // After the effect above: a remount picks the rep up again, or holds it.
+  useHeld(runnerRef, options.paused)
 
   return {
     state: snapshot.state,
@@ -415,11 +381,6 @@ export function useReadAloud(options: UseReadAloudOptions): ReadAloudVM {
       setStarted(true)
       runner.begin()
       holdOrShow(runner, latest.current.paused)
-    },
-    // Starts nothing and stops nothing, so the hold need not be applied again.
-    answer: (answer): void => {
-      const runner = runnerRef.current
-      runner?.dispatch({ type: "answer", at: runner.now(), answer })
     },
     stuck: (): void => send(runnerRef, latest.current.paused, "stuck"),
     skip: (): void => send(runnerRef, latest.current.paused, "skip"),

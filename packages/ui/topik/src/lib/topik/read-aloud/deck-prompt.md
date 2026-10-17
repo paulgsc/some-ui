@@ -12,7 +12,7 @@ words named consistently, and three facts about every written form that no
 program can reliably work out on its own: which word it is, where its stem
 ends, and how it is actually pronounced. Where the form shows them, give two
 more: the grammatical role a written word plays, and the line's tense. The
-drill's grammar lens asks the learner to find them while reading aloud.
+grammar lens asks the learner to find them after a missed question.
 
 A line may also carry a **lens**: what the app's grammar-lens session needs to
 ask about it. That session never reads aloud on a clock and never shows what a
@@ -152,18 +152,18 @@ with a different `lemma` loses that word and every line written with it.
 **`role` and `tense` come from the form, and are optional.** Give a written
 word a `role` only when its particle or ending shows it:
 
-| `role`       | The learner is asked | Shown by                                        |
-| ------------ | -------------------- | ----------------------------------------------- |
-| `subject`    | 누가                 | 이/가: 고양이가                                 |
-| `topic`      | 은 · 는              | 은/는: 형은                                     |
-| `object`     | 무엇을               | 을/를: 빵을                                     |
-| `place`      | 어디서               | 에서: 도서관에서                                |
-| `goal`       | 어디에               | 에, where to or where something is: 학교에      |
-| `time`       | 언제                 | 에 after a time (아침에), or a time word (오늘) |
-| `means`      | 무엇으로             | (으)로: 버스로                                  |
-| `company`    | 누구와               | 와/과/하고 meaning "with": 친구와 먹어요        |
-| `describing` | 어때요               | a describing verb: 커요, 좋아요                 |
-| `action`     | 뭐 해요              | an action verb: 먹어요, 가요                    |
+| `role`       | Shown by                                        |
+| ------------ | ----------------------------------------------- |
+| `subject`    | 이/가: 고양이가                                 |
+| `topic`      | 은/는: 형은                                     |
+| `object`     | 을/를: 빵을                                     |
+| `place`      | 에서: 도서관에서                                |
+| `goal`       | 에, where to or where something is: 학교에      |
+| `time`       | 에 after a time (아침에), or a time word (오늘) |
+| `means`      | (으)로: 버스로                                  |
+| `company`    | 와/과/하고 meaning "with": 친구와 먹어요        |
+| `describing` | a describing verb: 커요, 좋아요                 |
+| `action`     | an action verb: 먹어요, 가요                    |
 
 Leave `role` out when the form does not settle it: 와 meaning "and"
 (아버지와 어머니가), a noun with no particle (아메리카노 한 잔), an adverb.

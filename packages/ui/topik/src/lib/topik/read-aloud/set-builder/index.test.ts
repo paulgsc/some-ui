@@ -1,5 +1,4 @@
 import type { ReadAloudLevel } from "@topik/lib/topik/read-aloud/content"
-import { pickLens } from "@topik/lib/topik/read-aloud/lens"
 import { STARTER_SET } from "@topik/lib/topik/read-aloud/repo-sets"
 import type { SetItem } from "@topik/lib/topik/read-aloud/set-builder"
 import {
@@ -18,27 +17,6 @@ const keys = (items: Array<SetItem>): Array<string> =>
   items.map((item) => item.key)
 
 describe("buildSet", () => {
-  it("gives each sentence its line's lens only when drawn with lenses", () => {
-    const plain = buildSet(STARTER_SET, { level: 2, seedKey: "lens" })
-    const lensed = buildSet(STARTER_SET, {
-      level: 2,
-      seedKey: "lens",
-      lenses: true,
-    })
-    expect(keys(lensed)).toEqual(keys(plain))
-    expect(plain.some((item) => "lens" in item)).toBe(false)
-    for (const item of lensed) {
-      if (item.kind === "word") {
-        expect(item).not.toHaveProperty("lens")
-        continue
-      }
-      const line = STARTER_SET.lines.find(({ id }) => id === item.lineId)
-      const lens = line ? pickLens(line, "lens") : null
-      if (lens) expect(item.lens).toEqual(lens)
-      else expect(item).not.toHaveProperty("lens")
-    }
-  })
-
   it("never presents three items of one kind in a row (Cor. 4.6 (i))", () => {
     for (const level of LEVELS) {
       for (const seedKey of SEEDS) {
@@ -197,38 +175,6 @@ describe("drawnFrom", () => {
           ),
         },
         1
-      )
-    ).toBe(false)
-  })
-
-  it("fails once a sentence's line no longer supports the lens it was drawn with", () => {
-    const lensed = buildSet(STARTER_SET, {
-      level: 3,
-      seedKey: "kept",
-      lenses: true,
-    })
-    const asked = lensed.find(
-      (item) => item.kind === "sentence" && item.lens !== undefined
-    )
-    expect(drawnFrom(lensed, STARTER_SET, 3)).toBe(true)
-    expect(
-      drawnFrom(
-        lensed,
-        {
-          ...STARTER_SET,
-          lines: STARTER_SET.lines.map((line) =>
-            line.id === asked?.lineId
-              ? {
-                  id: line.id,
-                  level: line.level,
-                  korean: line.korean,
-                  english: line.english,
-                  words: line.words.map(({ role: _role, ...word }) => word),
-                }
-              : line
-          ),
-        },
-        3
       )
     ).toBe(false)
   })
