@@ -95,8 +95,14 @@ function soundbiteFile(bite: Soundbite): string {
   return `soundbite-${bite.id}.${extensionOf(bite.mimeType)}`
 }
 
+/**
+ * The take's file, named for its line, cut short: a line id has no length
+ * bound, and a name past the filesystem's would fail the whole share.
+ * `context.json` carries the full id.
+ */
 function lensTakeFile(take: LensTake): string {
-  return `lens-take-${take.line}-${take.id.slice(0, 8)}.${extensionOf(take.mimeType)}`
+  const line = take.line.slice(0, 48)
+  return `lens-take-${line}-${take.id.slice(0, 8)}.${extensionOf(take.mimeType)}`
 }
 
 /** Without `scenes` and `layout`: playback wiring, not what was studied. */
