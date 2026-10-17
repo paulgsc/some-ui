@@ -18,6 +18,27 @@
       "module": "activities"
     },
     {
+      "method": "GET",
+      "path": "/aph",
+      "full_path": "/api/v1/aph",
+      "versioned": true,
+      "module": "aph"
+    },
+    {
+      "method": "PUT",
+      "path": "/aph/entries/:id",
+      "full_path": "/api/v1/aph/entries/:id",
+      "versioned": true,
+      "module": "aph"
+    },
+    {
+      "method": "PUT",
+      "path": "/aph/settings",
+      "full_path": "/api/v1/aph/settings",
+      "versioned": true,
+      "module": "aph"
+    },
+    {
       "method": "DELETE",
       "path": "/auth/account",
       "full_path": "/api/v1/auth/account",
