@@ -101,19 +101,36 @@ describe("the repo's sets, both added", () => {
     expect(misformed.length).toBeGreaterThanOrEqual(16)
   })
 
-  it("say what a misform does without an English word for any word (Cor. 4.8 (i))", () => {
+  it("put no line's word in English, in what a misform does or when one is said (Cor. 4.8 (i))", () => {
+    const escape = (text: string): string =>
+      text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+    const gloss = new Map(REPO_SETS.words.map((word) => [word.id, word.gloss]))
+    /** A gloss's parts ("see, watch" → see, watch), each as a word's start. */
+    const meanings = (
+      glosses: Iterable<string>,
+      shortest: number
+    ): Array<RegExp> =>
+      [...glosses]
+        .flatMap((text) => text.split(/[;,/()]| or /))
+        .map((part) => part.trim().replace(/^to /, ""))
+        .filter((part) => part.length >= shortest)
+        .map((part) => new RegExp(`\\b${escape(part)}`, "i"))
     // Short glosses ("go", "what") are also words of the grammar's English.
-    const glosses = REPO_SETS.words
-      .map((word) => word.gloss)
-      .filter((gloss) => gloss.length >= 6)
+    const anyWord = meanings(gloss.values(), 6)
     for (const line of REPO_SETS.lines) {
-      for (const misform of line.lens?.misforms ?? []) {
-        for (const gloss of glosses) {
-          const word = gloss.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
-          expect(misform.instead ?? "").not.toMatch(
-            new RegExp(`\\b${word}\\b`, "i")
-          )
+      const { lens } = line
+      if (!lens) continue
+      const own = meanings(
+        line.words.flatMap(({ wordId }) => gloss.get(wordId) ?? []),
+        3
+      )
+      for (const misform of lens.misforms) {
+        for (const word of anyWord) {
+          expect(misform.instead ?? "").not.toMatch(word)
         }
+      }
+      for (const option of lens.situations?.options ?? []) {
+        for (const word of own) expect(option, line.id).not.toMatch(word)
       }
     }
   })

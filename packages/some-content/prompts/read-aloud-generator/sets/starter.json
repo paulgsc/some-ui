@@ -581,7 +581,7 @@
       ],
       "lens": {
         "cue": {
-          "korean": "주말에 뭐 했어요?"
+          "korean": "어디 갔다 왔어요?"
         },
         "misforms": [
           {
@@ -589,21 +589,22 @@
             "surface": "시장에서",
             "mistake": "eseo-for-e",
             "instead": "With 가서, 에서 marks 시장 as where you set off from.",
-            "decides": [4]
+            "decides": [4],
+            "cueDecides": ["어디"]
           },
           {
             "word": 6,
             "surface": "사요",
             "mistake": "tense-mismatch",
-            "instead": "사요 is present; the cue's 했어요 is past.",
-            "cueDecides": ["했어요"]
+            "instead": "사요 is present; the cue's 왔어요 is past.",
+            "cueDecides": ["왔어요"]
           }
         ],
         "situations": {
           "options": [
-            "Telling someone about your weekend",
-            "Asking where the market is",
-            "Haggling over fruit"
+            "Recounting an outing that is already over",
+            "Planning an outing for later",
+            "Inviting someone along right now"
           ],
           "intended": 0
         }
@@ -673,17 +674,17 @@
             "word": 3,
             "surface": "집에",
             "mistake": "e-for-eseo",
-            "instead": "With 볼, 에 marks 집 as where you go or where something is; watching is done there, which takes 에서.",
+            "instead": "With 볼, 에 marks 집 as where you go or where something is; 볼 is done there, which takes 에서.",
             "decides": [5]
           }
         ],
         "situations": {
           "options": [
-            "Recommending a film",
-            "Saying your plans for today",
-            "Booking cinema tickets"
+            "Answering a question about plans",
+            "Describing what happened earlier",
+            "Describing what is happening at this moment"
           ],
-          "intended": 1
+          "intended": 0
         }
       }
     },
@@ -763,11 +764,11 @@
         ],
         "situations": {
           "options": [
-            "Shopping for a winter coat",
-            "Talking about how the season is changing",
-            "Saying a room is too warm"
+            "Remarking on a change you have noticed lately",
+            "Giving advice before a trip",
+            "Complaining about one bad day"
           ],
-          "intended": 1
+          "intended": 0
         }
       }
     },

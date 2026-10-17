@@ -403,6 +403,25 @@ describe("parseReadAloudDeck, a line's lens (Def. 4.9)", () => {
     }
   })
 
+  it("drops, with a cue that gives the answer away, the misforms only it decides", () => {
+    const { deck: parsed, findings } = parsedOrThrow(
+      withLens({
+        cue: { korean: "주세요 드릴까요?" },
+        misforms: [
+          { ...MISFORM, cueDecides: [] },
+          { ...MISFORM, surface: "줘아요" },
+        ],
+      })
+    )
+    expect(parsed.lines[0]?.lens?.misforms).toEqual([
+      { ...MISFORM, cueDecides: [] },
+    ])
+    expect(findings.map((f) => f.detail)).toEqual([
+      "cue: 주세요 gives the answer away",
+      '"줘아요" is wrong only beside the cue',
+    ])
+  })
+
   it("keeps a cue and situations past misforms that are not a list, but no lens without a misform", () => {
     const { deck: parsed, findings } = parsedOrThrow(
       withLens({ ...LENS, misforms: "no" })

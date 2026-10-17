@@ -371,7 +371,7 @@ function auditLens(
   if (lens.data.misforms !== undefined && !Array.isArray(lens.data.misforms)) {
     dropped("misform-malformed", "misforms is not a list")
   }
-  const misforms: Array<Misform> = []
+  let misforms: Array<Misform> = []
   for (const candidate of candidates) {
     const parsed = MisformSchema.safeParse(candidate)
     if (!parsed.success) {
@@ -427,7 +427,8 @@ function auditLens(
   }
 
   // A cue that holds the word a misform replaces, or a misform, gives the
-  // answer away: 학교에 가요? spells the 학교에 the learner must choose.
+  // answer away: 학교에 가요? spells the 학교에 the learner must choose. A
+  // misform the cue decides goes with it: without the cue it may be right.
   if (cue) {
     const answers = new Set(
       misforms.flatMap((m) => [m.surface, kept[m.word]?.surface])
@@ -438,7 +439,13 @@ function auditLens(
         "lens-malformed",
         `cue: ${telling.join(", ")} gives the answer away`
       )
-      for (const misform of misforms) misform.cueDecides = []
+      for (const misform of misforms.filter((m) => m.cueDecides.length > 0)) {
+        dropped(
+          "misform-malformed",
+          `"${misform.surface}" is wrong only beside the cue`
+        )
+      }
+      misforms = misforms.filter((m) => m.cueDecides.length === 0)
     }
   }
 

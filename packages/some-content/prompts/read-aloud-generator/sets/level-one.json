@@ -1013,11 +1013,11 @@
         ],
         "situations": {
           "options": [
-            "Setting an alarm for someone",
-            "Saying when you get up",
-            "Saying you overslept"
+            "Describing your usual daily routine",
+            "Asking someone to set an alarm",
+            "Explaining why you were late this once"
           ],
-          "intended": 1
+          "intended": 0
         }
       }
     },
@@ -1122,11 +1122,11 @@
         ],
         "situations": {
           "options": [
-            "Asking which bus to take",
-            "Saying you missed the bus",
-            "Saying how you get to school"
+            "Describing your usual commute",
+            "Asking a driver where to get off",
+            "Saying you missed your ride"
           ],
-          "intended": 2
+          "intended": 0
         }
       }
     },
@@ -1242,7 +1242,7 @@
       ],
       "lens": {
         "cue": {
-          "korean": "오후에 뭐 해요?"
+          "korean": "수업 끝나고 뭐 해요?"
         },
         "misforms": [
           {
@@ -1255,9 +1255,9 @@
         ],
         "situations": {
           "options": [
-            "Saying where you usually read",
-            "Asking where the library is",
-            "Returning a book"
+            "Describing your usual afternoon routine",
+            "Asking for directions to a building",
+            "Paying a late fee"
           ],
           "intended": 0
         }
@@ -1401,11 +1401,11 @@
         ],
         "situations": {
           "options": [
-            "Asking the price of milk",
-            "Saying the shop is closed",
-            "Saying where you buy something"
+            "Saying where you will run an errand",
+            "Asking how much something costs",
+            "Saying a place has shut for the day"
           ],
-          "intended": 2
+          "intended": 0
         }
       }
     },
@@ -1451,9 +1451,9 @@
         ],
         "situations": {
           "options": [
-            "Small talk about the weather",
-            "Checking tomorrow's forecast",
-            "Complaining about the rain"
+            "Making small talk outdoors",
+            "Checking a forecast for next week",
+            "Complaining about a storm"
           ],
           "intended": 0
         }
@@ -1567,7 +1567,7 @@
       ],
       "lens": {
         "cue": {
-          "korean": "여름에 보통 뭐 해요?"
+          "korean": "휴가 때 보통 어디 가요?"
         },
         "misforms": [
           {
@@ -1575,16 +1575,17 @@
             "surface": "바다에서",
             "mistake": "eseo-for-e",
             "instead": "With 가요, 에서 marks 바다 as where you set off from.",
-            "decides": [2]
+            "decides": [2],
+            "cueDecides": ["어디"]
           }
         ],
         "situations": {
           "options": [
-            "Booking a hotel by the sea",
-            "Saying what you usually do in summer",
-            "Saying the water is too cold"
+            "Telling someone where you usually head each year",
+            "Describing what you do once you arrive somewhere",
+            "Saying where you went last year"
           ],
-          "intended": 1
+          "intended": 0
         }
       }
     },
@@ -1618,7 +1619,7 @@
       ],
       "lens": {
         "cue": {
-          "korean": "주말에 뭐 해요?"
+          "korean": "주말마다 뭐 해요?"
         },
         "misforms": [
           {
@@ -1631,11 +1632,11 @@
         ],
         "situations": {
           "options": [
-            "Inviting a friend over",
-            "Saying you are ill at home",
-            "Saying how you spend weekends"
+            "Describing what you usually do, and where",
+            "Saying where you are heading now",
+            "Saying what you did last time"
           ],
-          "intended": 2
+          "intended": 0
         }
       }
     },
@@ -1689,9 +1690,9 @@
         ],
         "situations": {
           "options": [
-            "Saying when and where you exercise",
-            "Asking the way to the park",
-            "Joining a gym"
+            "Describing a weekly habit and where you keep it",
+            "Asking how to get somewhere",
+            "Signing up for a class"
           ],
           "intended": 0
         }
@@ -1751,11 +1752,11 @@
         ],
         "situations": {
           "options": [
-            "Making a doctor's appointment",
             "Leaving work in the middle of the day",
-            "Visiting a friend in hospital"
+            "Making an appointment for next week",
+            "Visiting a relative"
           ],
-          "intended": 1
+          "intended": 0
         }
       }
     },
@@ -1854,12 +1855,8 @@
           }
         ],
         "situations": {
-          "options": [
-            "Opening a bank account",
-            "Sending a parcel",
-            "Giving directions"
-          ],
-          "intended": 2
+          "options": ["Giving directions", "Paying a bill", "Mailing a letter"],
+          "intended": 0
         }
       }
     },
@@ -1969,11 +1966,11 @@
         ],
         "situations": {
           "options": [
-            "Asking where the department store is",
-            "Saying what you bought yesterday",
-            "Returning clothes"
+            "Recounting an errand that is already done",
+            "Asking for directions to a building",
+            "Asking to exchange something"
           ],
-          "intended": 1
+          "intended": 0
         }
       }
     },
@@ -2175,8 +2172,8 @@
         ],
         "situations": {
           "options": [
-            "Saying where your cat is sleeping",
-            "Buying a new sofa",
+            "Answering a guest who asks about your pet",
+            "Choosing new furniture",
             "Booking a vet appointment"
           ],
           "intended": 0
@@ -2251,11 +2248,11 @@
         ],
         "situations": {
           "options": [
-            "Asking someone to turn the music down",
-            "Talking about a daily habit",
+            "Talking about a habit",
+            "Asking someone to be quieter",
             "Buying concert tickets"
           ],
-          "intended": 1
+          "intended": 0
         }
       }
     },
@@ -2299,11 +2296,11 @@
         ],
         "situations": {
           "options": [
-            "Asking if photos are allowed",
-            "Saying where you take photos",
-            "Printing photos"
+            "Showing a friend a favourite spot",
+            "Asking whether something is allowed",
+            "Picking up an order"
           ],
-          "intended": 1
+          "intended": 0
         }
       }
     },
@@ -2489,11 +2486,11 @@
         ],
         "situations": {
           "options": [
-            "Saying your stomach hurts",
-            "Ordering dessert",
-            "Agreeing it is time to eat"
+            "Agreeing it is time for a meal",
+            "Saying you feel unwell",
+            "Ordering dessert"
           ],
-          "intended": 2
+          "intended": 0
         }
       }
     },
@@ -2647,8 +2644,8 @@
         "situations": {
           "options": [
             "Saying what you are doing as you leave a room",
-            "Asking someone to open the door",
-            "Saying the shop is closed"
+            "Asking someone to come in",
+            "Saying a shop has run out"
           ],
           "intended": 0
         }
@@ -2867,9 +2864,9 @@
         ],
         "situations": {
           "options": [
-            "Apologising to a friend for not getting in touch",
-            "Asking for help with work",
-            "Saying you have free time"
+            "Giving a reason about a day that is over",
+            "Giving a reason about today",
+            "Giving a reason about tomorrow"
           ],
           "intended": 0
         }
@@ -2969,11 +2966,11 @@
         ],
         "situations": {
           "options": [
-            "Making plans with a friend",
-            "Telling someone what you did yesterday",
-            "Introducing a friend"
+            "Recounting something that is already over",
+            "Describing plans for later today",
+            "Describing what is happening now"
           ],
-          "intended": 1
+          "intended": 0
         }
       }
     },
@@ -3064,9 +3061,9 @@
         ],
         "situations": {
           "options": [
-            "Answering whether you have eaten",
-            "Ordering breakfast",
-            "Offering someone food"
+            "Answering a question about earlier today",
+            "Ordering at a counter",
+            "Offering someone something"
           ],
           "intended": 0
         }
@@ -3104,15 +3101,15 @@
       ],
       "lens": {
         "cue": {
-          "korean": "주말에 뭐 했어요?"
+          "korean": "지난 주말 뭐 했어요?"
         },
         "misforms": [
           {
             "word": 2,
             "surface": "쉬어요",
             "mistake": "tense-mismatch",
-            "instead": "쉬어요 is present; the cue's 했어요 is past.",
-            "cueDecides": ["했어요"]
+            "instead": "쉬어요 is present; the cue's 지난 and 했어요 are past.",
+            "cueDecides": ["지난", "했어요"]
           },
           {
             "word": 1,
@@ -3124,11 +3121,11 @@
         ],
         "situations": {
           "options": [
-            "Inviting a friend for next weekend",
-            "Telling someone how your weekend went",
-            "Saying you worked all weekend"
+            "Recounting time that is already over",
+            "Making plans for later",
+            "Saying where you are heading now"
           ],
-          "intended": 1
+          "intended": 0
         }
       }
     },

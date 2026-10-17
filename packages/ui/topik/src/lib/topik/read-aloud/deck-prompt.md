@@ -217,16 +217,20 @@ form (어제 뭐 했어요? decides that 만났어요 is past); otherwise it giv
 line a setting, and decides nothing. Choose it so that every misform stays
 wrong: after 보통 어떻게 가요?, 학교에서 버스로 가요 (from school) is good
 Korean, so a cue that asks where someone is going is needed for 학교에서 to be
-a misform. Never give away the answer: a cue that asks 어디에 가요? spells the
-에 the learner must choose, so ask 어디 가요? or 뭐 해요? instead. Set
+a misform; 뭐 해요? does not, since it leaves 에서 its own sense. Never give
+away the answer: a cue that asks 어디에 가요? spells the 에 the learner must
+choose, so ask 어디 가요? instead, and where the choice is between 에 and 에서,
+spell neither in any of the cue's words (주말에, 오후에). Set
 `hearable: false` on a cue longer than about fifteen syllables.
 
-**`situations` are when someone would say the line,** never what it means:
-"Telling someone what you did yesterday", not "I met a friend yesterday".
-Three, in English, one of them the author's (`intended`), the other two from
-the same setting but not when someone would say this line. Describe the
-setting, not the cue: "Explaining why you missed a call" restates a cue that
-asks why, so it answers the check from the cue alone.
+**`situations` are when someone would say the line,** never what it means,
+and they name none of its words in English: "Recounting something that is
+already over", not "Telling someone you met a friend". Three, in English, one
+of them the author's (`intended`), the other two in the cue's setting but not
+when someone would say this line, so that only what the line says tells them
+apart: its tense, its place, who did it. Describe the setting, not the cue:
+"Explaining why you missed a call" restates a cue that asks why, so it
+answers the check from the cue alone.
 
 ## Before you answer
 
