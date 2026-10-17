@@ -246,6 +246,28 @@ describe("tryExtract", () => {
     ).toEqual({ kind: "full", videoId: "panel_1", channelId: "Panel Channel" })
   })
 
+  it("takes no channel id from a link whose href names none", () => {
+    // A channel link not hydrated yet waits for its href, the backfill's job,
+    // and a link elsewhere in a collection's row is not a channel at all.
+    const pending = make(
+      "yt-lockup-view-model",
+      CAMEL_LOCKUP.replace(
+        '<a class="ytAttributedStringLink" href="/@CamelChannel">',
+        '<a class="ytAttributedStringLink">'
+      )
+    )
+    expect(tryExtract(pending).kind).toBe("video-only")
+    expect(extractMeta(pending).channelName).toBe("Camel Channel")
+    const playlistLink = make(
+      "yt-lockup-view-model",
+      MIX_LOCKUP.replace(
+        "Artist A, Artist B and more",
+        '<a href="/playlist?list=PL1">View full playlist</a>'
+      )
+    )
+    expect(tryExtract(playlistLink).channelId).toBeNull()
+  })
+
   it("takes no channel from a Mix's artist list", () => {
     expect(tryExtract(make("yt-lockup-view-model", MIX_LOCKUP))).toEqual({
       kind: "video-only",

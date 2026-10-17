@@ -1,4 +1,5 @@
 import {
+  CHANNEL_LINK_RUNS,
   FIELD_SELECTORS,
   LOCKUP_DATE_RUNS,
   PLAIN_CHANNEL_RUN,
@@ -53,14 +54,28 @@ export function extractMeta(el: HTMLElement): MetaData {
   }
 }
 
-/** The channel's display name. */
-export function channelName(el: HTMLElement): string | null {
-  return firstText(
-    el,
-    isCollection(el)
-      ? FIELD_SELECTORS.channelName.filter((s) => s !== PLAIN_CHANNEL_RUN)
-      : FIELD_SELECTORS.channelName
+/**
+ * The channel's display name. With `links` false a link's text is not read:
+ * `channel-id.ts` calls it only once no link's href named a channel, so a
+ * link's text then names something else, or a channel whose href is still on
+ * its way.
+ */
+export function channelName(el: HTMLElement, links = true): string | null {
+  for (const selector of FIELD_SELECTORS.channelName) {
+    if (!links && CHANNEL_LINK_RUNS.includes(selector)) continue
+    const value =
+      selector === PLAIN_CHANNEL_RUN ? plainChannelRun(el) : text(el, selector)
+    if (value) return value
+  }
+  return null
+}
+
+function plainChannelRun(el: HTMLElement): string | null {
+  if (isCollection(el)) return null
+  const run = [...el.querySelectorAll(PLAIN_CHANNEL_RUN)].find(
+    (r) => r.querySelector("a") === null
   )
+  return run?.textContent.trim() ?? null
 }
 
 /**

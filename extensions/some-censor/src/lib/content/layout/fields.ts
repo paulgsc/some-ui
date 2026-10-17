@@ -31,7 +31,19 @@ export const LOCKUP_DATE_RUNS = [
   'span[class*="ytContentMetadataViewModelMetadataText"][aria-label]',
 ] as const
 
-/** The watch rail's plain-text channel run. `extract/meta.ts` skips it on a collection. */
+/**
+ * On the feed the channel is the metadata run that is a link. The BEM run can
+ * be the link; the camelCase run wraps one.
+ */
+export const CHANNEL_LINK_RUNS: ReadonlyArray<string> = [
+  'a[class*="yt-content-metadata-view-model__metadata-text"]',
+  '[class*="ytContentMetadataViewModelMetadataText"] a',
+]
+
+/**
+ * The watch rail's plain-text channel run. `extract/meta.ts` reads it only
+ * where it holds no link, and never on a collection.
+ */
 export const PLAIN_CHANNEL_RUN =
   'span[class*="ytContentMetadataViewModelMetadataText"]:not([aria-label])'
 
@@ -62,13 +74,10 @@ export const FIELD_SELECTORS: Readonly<
   channelName: [
     "ytd-channel-name yt-formatted-string",
     "#channel-name yt-formatted-string",
+    ...CHANNEL_LINK_RUNS,
+    PLAIN_CHANNEL_RUN,
     // The playlist panel's row has no link and no `ytd-channel-name`.
     "span#byline",
-    // On the feed the channel is the metadata run that is a link. The BEM run
-    // can be the link; the camelCase run wraps one.
-    'a[class*="yt-content-metadata-view-model__metadata-text"]',
-    '[class*="ytContentMetadataViewModelMetadataText"] a',
-    PLAIN_CHANNEL_RUN,
   ],
   duration: [
     "span.ytd-thumbnail-overlay-time-status-renderer",

@@ -22,6 +22,6 @@ export function extractChannelId(el: HTMLElement): ChannelId | null {
     if (parsed !== null) return parsed
   }
 
-  const name = channelName(el)
+  const name = channelName(el, false)
   return name ? asChannelId(name) : null
 }

@@ -356,6 +356,18 @@ describe("surface", () => {
     expect(surfaceOf(K("left"))).toBe("watch")
   })
 
+  it("places a card in the hidden page against that page's layout, not the shown one's", async () => {
+    // The home table has never seen a playlist-panel row; the watch table has.
+    const { watch } = pages()
+    watch.setAttribute("hidden", "")
+    const row = document.createElement("ytd-playlist-panel-video-renderer")
+    row.innerHTML = '<a id="wc-endpoint" href="/watch?v=row"></a>'
+    watch.appendChild(row)
+    await tick()
+    expect(observedKeys()).toEqual([K("row")])
+    expect(tokens.filter((t) => t.kind === "unknown-shape")).toEqual([])
+  })
+
   it("names a hidden page it cannot place other, never the page shown", async () => {
     const { browse } = pages()
     browse.setAttribute("hidden", "")
