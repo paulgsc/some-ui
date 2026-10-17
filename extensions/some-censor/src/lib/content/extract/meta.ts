@@ -55,10 +55,10 @@ export function extractMeta(el: HTMLElement): MetaData {
 }
 
 /**
- * The channel's display name. With `links` false a link's text is not read:
- * `channel-id.ts` calls it only once no link's href named a channel, so a
- * link's text then names something else, or a channel whose href is still on
- * its way.
+ * The channel's display name. With `links` false the lockups' link runs are
+ * not read: `channel-id.ts` calls it only once no link's href named a channel,
+ * so a link's text then names something else, or a channel whose href is
+ * still on its way.
  */
 export function channelName(el: HTMLElement, links = true): string | null {
   for (const selector of FIELD_SELECTORS.channelName) {
@@ -70,12 +70,12 @@ export function channelName(el: HTMLElement, links = true): string | null {
   return null
 }
 
+/** The first plain run is the channel's; one holding a link is a link run. */
 function plainChannelRun(el: HTMLElement): string | null {
   if (isCollection(el)) return null
-  const run = [...el.querySelectorAll(PLAIN_CHANNEL_RUN)].find(
-    (r) => r.querySelector("a") === null
-  )
-  return run?.textContent.trim() ?? null
+  const run = el.querySelector(PLAIN_CHANNEL_RUN)
+  if (run?.querySelector("a") !== null) return null
+  return run.textContent.trim()
 }
 
 /**

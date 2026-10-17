@@ -258,6 +258,12 @@ describe("tryExtract", () => {
     )
     expect(tryExtract(pending).kind).toBe("video-only")
     expect(extractMeta(pending).channelName).toBe("Camel Channel")
+    // Nor from a later unlabelled run, past the channel's.
+    pending.insertAdjacentHTML(
+      "beforeend",
+      '<span class="ytContentMetadataViewModelMetadataText">Scheduled for 10/20/26</span>'
+    )
+    expect(tryExtract(pending).kind).toBe("video-only")
     const playlistLink = make(
       "yt-lockup-view-model",
       MIX_LOCKUP.replace(
