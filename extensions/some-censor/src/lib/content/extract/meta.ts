@@ -58,7 +58,7 @@ export function extractMeta(el: HTMLElement): MetaData {
  * confidence: on a row with no date the last run is the view count, which the
  * estimator does not recognize and holds as unverified (#1384).
  *
- * A run holding a link is never read: that is the channel, in either spelling,
+ * A run holding a link, or held by one, is never read: that is the channel,
  * and YouTube places its row before or after the date's. Read as a date, a
  * channel named like an age ("10 years ago") would admit a fresh video.
  *
@@ -68,7 +68,7 @@ export function extractMeta(el: HTMLElement): MetaData {
  */
 function lockupUploadDate(el: HTMLElement): string | null {
   const runs = [...el.querySelectorAll(LOCKUP_DATE_RUNS.join(", "))].filter(
-    (run) => run.querySelector("a") === null
+    (run) => run.querySelector("a") === null && run.closest("a") === null
   )
   const last = runs[runs.length - 1]
   if (last === undefined) return null

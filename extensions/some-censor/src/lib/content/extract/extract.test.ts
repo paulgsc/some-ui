@@ -277,6 +277,36 @@ describe("extractMeta", () => {
     )
   })
 
+  it("never reads a run inside a link as the age", () => {
+    const linked = LOCKUP.replace(
+      /(<span class="yt-content-metadata-view-model__metadata-text">2 weeks ago<\/span>\s*<\/div>)/,
+      `$1
+    <div class="yt-content-metadata-view-model__metadata-row">
+      <a href="/@x"><span class="yt-content-metadata-view-model__metadata-text">10 years ago</span></a>
+    </div>`
+    )
+    expect(linked).toContain("10 years ago")
+    expect(extractUploadDate(make("yt-lockup-view-model", linked))).toBe(
+      "2 weeks ago"
+    )
+  })
+
+  it("never reads an unlabelled camelCase run, such as a plain-text channel", () => {
+    // A channel's own page shows its name as plain text, with no link to
+    // exclude it; the missing aria-label is what keeps it out.
+    const plain = CAMEL_LOCKUP.replace(
+      /(aria-label="8 days ago" role="text">8d ago<\/span>\s*<\/div>)/,
+      `$1
+              <div class="ytContentMetadataViewModelMetadataRow" role="group">
+                <span class="ytAttributedStringHost ytContentMetadataViewModelMetadataText" role="text">10 years ago</span>
+              </div>`
+    )
+    expect(plain).toContain("10 years ago")
+    expect(extractUploadDate(make("yt-lockup-view-model", plain))).toBe(
+      "8 days ago"
+    )
+  })
+
   it("returns nulls rather than throwing on a card with no metadata", () => {
     expect(extractMeta(make("yt-lockup-view-model", SHORTS_LOCKUP))).toEqual({
       channelName: null,

@@ -22,7 +22,8 @@
 /**
  * The lockup metadata runs an upload date can be read from, one per spelling.
  * A camelCase run counts only when it carries an `aria-label`, which the view
- * count and the age do in their long form ("8 days ago" for an "8d ago").
+ * count and the age do in their long form ("8 days ago" for an "8d ago") and
+ * a plain-text channel run does not.
  * `extract/meta.ts` reads them as one list, in document order.
  */
 export const LOCKUP_DATE_RUNS = [
@@ -58,7 +59,7 @@ export const FIELD_SELECTORS: Readonly<
     "ytd-channel-name yt-formatted-string",
     "#channel-name yt-formatted-string",
     // The channel is the metadata run that is a link; view counts and dates
-    // are plain text. The BEM run is the link; the camelCase run wraps one.
+    // are plain text. The BEM run can be the link; the camelCase run wraps one.
     'a[class*="yt-content-metadata-view-model__metadata-text"]',
     '[class*="ytContentMetadataViewModelMetadataText"] a',
   ],
