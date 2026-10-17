@@ -34,7 +34,7 @@ import type {
 } from "./sessions-repository"
 import { createSessionsRepository } from "./sessions-repository"
 import type { StorageAdapter } from "./storage"
-import { browserLocalStorage } from "./storage"
+import { tenantStorage } from "./storage"
 import type { SessionRecord, SessionStatus } from "./types"
 
 /** What `createSessionsBackend` reads from the world; every part is a test seam. */
@@ -65,7 +65,7 @@ function defaultRemote(): (token: Authority) => SessionsStore | null {
 export function createSessionsBackend(
   deps: SessionsBackendDeps = {}
 ): SessionsStore {
-  const local = createSessionsRepository(deps.storage ?? browserLocalStorage)
+  const local = createSessionsRepository(deps.storage ?? tenantStorage)
   const settle = deps.settle ?? resolveSessionIfChosen
   const remote = deps.remote ?? defaultRemote()
 

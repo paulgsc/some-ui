@@ -4,6 +4,7 @@ import { queryClient } from "@/providers/tanstack-query"
 import { createRouter, RouterProvider } from "@tanstack/react-router"
 import ReactDOM from "react-dom/client"
 
+import { seedDemo } from "@/lib/demo"
 import { bootDeviceBackend } from "@/lib/device-backend/boot"
 import { driveFiling } from "@/lib/drive-filing"
 import { sweepOrphans } from "@/lib/reflection-voice"
@@ -42,6 +43,9 @@ if (import.meta.env.VITE_DEVICE_BACKEND === "true") {
   sweepSceneVoice()
   installShareSidecar(driveFiling())
 }
+
+// A viewer of the Pages build starts from sample drafts (lib/demo).
+seedDemo()
 
 // A browser subscribed to push while signed in must not stay subscribed once
 // the learner's data is no longer the account's. No request is made to do it.

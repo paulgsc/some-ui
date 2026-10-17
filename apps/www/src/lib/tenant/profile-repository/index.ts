@@ -1,9 +1,9 @@
 import type { StorageAdapter } from "@/lib/tenant/storage"
 import {
-  browserLocalStorage,
   delay,
   MOCK_LATENCY_MS,
   readJSON,
+  tenantStorage,
   writeJSON,
 } from "@/lib/tenant/storage"
 import type { UserProfile } from "@/lib/tenant/types"
@@ -36,7 +36,7 @@ export class ProfileRepository {
 }
 
 export function createProfileRepository(
-  storage: StorageAdapter = browserLocalStorage,
+  storage: StorageAdapter = tenantStorage,
   latencyMs: number = MOCK_LATENCY_MS
 ): ProfileRepository {
   return new ProfileRepository(storage, latencyMs)

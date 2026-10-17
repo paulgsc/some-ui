@@ -20,6 +20,7 @@ import {
 import { createFileRoute } from "@tanstack/react-router"
 
 import { MOBILE_APP } from "@/lib/build-profile"
+import { VIEWER_BUILD } from "@/lib/data-mode"
 import { DataHomeSection } from "@/components/settings/data-home-section"
 import { DeviceSection } from "@/components/settings/device-section"
 
@@ -64,18 +65,33 @@ const ThemeCard = (): JSX.Element => {
 /**
  * Outside the settings outcome: signing out must work when settings don't
  * load. On the Android app there is no account to sign out of; the card
- * holds the phone's own controls instead (the sync from home).
+ * holds the phone's own controls instead (the sync from home). On the Pages
+ * build, a viewer's, it says the data is a sample that nothing keeps.
  */
 const AccountCard = (): JSX.Element => (
   <Card className="max-w-xl">
     <CardContent className="pt-[var(--card-p,1.5rem)]">
       {import.meta.env.VITE_DEVICE_BACKEND === "true" ? (
         <DeviceSection />
+      ) : VIEWER_BUILD ? (
+        <ViewerNote />
       ) : (
         <DataHomeSection />
       )}
     </CardContent>
   </Card>
+)
+
+/** A viewer's front desk: whose this is, and that nothing here is kept. */
+const ViewerNote = (): JSX.Element => (
+  <section className="space-y-2" aria-labelledby="viewer-heading">
+    <Label id="viewer-heading">Sample data</Label>
+    <p className="text-muted-foreground text-sm">
+      You&apos;re trying my toolkit on sample data. Nothing you do here is kept:
+      a reload starts over. Only I sign in, on my home network, where my own
+      data stays.
+    </p>
+  </section>
 )
 
 /**
