@@ -65,6 +65,52 @@ const LOCKUP = `
     </div>
   </div>`
 
+// The camelCase spelling, cut down from a live capture of youtube.com on
+// 2026-10-17 (a channel page's Videos tab), with the classes and attributes
+// the extractors could plausibly read kept as served. The channel run is a
+// link here, as on the home feed and in search.
+const CAMEL_LOCKUP = `
+  <div class="ytLockupViewModelHost ytLockupViewModelVertical content-id-camel_1">
+    <a href="/watch?v=camel_1" class="ytLockupViewModelContentImage">
+      <yt-thumbnail-view-model class="ytThumbnailViewModelHost">
+        <yt-thumbnail-bottom-overlay-view-model class="ytThumbnailBottomOverlayViewModelHost">
+          <div class="ytThumbnailBottomOverlayViewModelBadgeContainer">
+            <yt-thumbnail-badge-view-model class="ytThumbnailBadgeViewModelHost ytThumbnailBottomOverlayViewModelBadge">
+              <badge-shape class="ytBadgeShapeHost ytBadgeShapeThumbnailDefault" role="img" aria-label="14 minutes, 52 seconds">
+                <div class="ytBadgeShapeText">14:52</div>
+              </badge-shape>
+            </yt-thumbnail-badge-view-model>
+          </div>
+        </yt-thumbnail-bottom-overlay-view-model>
+      </yt-thumbnail-view-model>
+    </a>
+    <div class="ytLockupViewModelMetadata">
+      <yt-lockup-metadata-view-model class="ytLockupMetadataViewModelHost">
+        <div class="ytLockupMetadataViewModelTextContainer">
+          <h3 class="ytLockupMetadataViewModelHeadingReset" title="20 years of esports history explained">
+            <a href="/watch?v=camel_1" class="ytLockupMetadataViewModelTitle" aria-label="20 years of esports history explained 14 minutes, 52 seconds">
+              <span class="ytAttributedStringHost ytAttributedStringWhiteSpacePreWrap" role="text">20 years of esports history explained</span>
+            </a>
+          </h3>
+          <div class="ytLockupMetadataViewModelMetadata">
+            <yt-content-metadata-view-model class="ytContentMetadataViewModelHost">
+              <div class="ytContentMetadataViewModelMetadataRow" role="group">
+                <span class="ytAttributedStringHost ytContentMetadataViewModelMetadataText ytContentMetadataViewModelMetadataTextLastPart">
+                  <span class=""><a class="ytAttributedStringLink" href="/@CamelChannel">Camel Channel</a></span>
+                </span>
+              </div>
+              <div class="ytContentMetadataViewModelMetadataRow" role="group">
+                <span class="ytAttributedStringHost ytContentMetadataViewModelMetadataText" aria-label="1.3 million views" role="text">1.3M</span>
+                <span class="ytContentMetadataViewModelDelimiter"></span>
+                <span class="ytAttributedStringHost ytContentMetadataViewModelMetadataText ytContentMetadataViewModelMetadataTextLastPart" aria-label="8 days ago" role="text">8d ago</span>
+              </div>
+            </yt-content-metadata-view-model>
+          </div>
+        </div>
+      </yt-lockup-metadata-view-model>
+    </div>
+  </div>`
+
 const SHORTS_LOCKUP = `
   <a href="/shorts/short_1"></a>
   <div class="shortsLockupViewModelHostMetadataTitle">A very short video</div>`
@@ -84,6 +130,13 @@ describe("tryExtract", () => {
     expect(out.kind).toBe("full")
     expect(out.videoId).toBe("lock_1")
     expect(out.channelId).toBe("@Lockups")
+  })
+
+  it("fully resolves a camelCase video lockup", () => {
+    const out = tryExtract(make("yt-lockup-view-model", CAMEL_LOCKUP))
+    expect(out.kind).toBe("full")
+    expect(out.videoId).toBe("camel_1")
+    expect(out.channelId).toBe("@CamelChannel")
   })
 
   it("resolves a shorts lockup as video-only", () => {
@@ -120,6 +173,12 @@ describe("extractTitle", () => {
     )
   })
 
+  it("reads a camelCase lockup title", () => {
+    expect(extractTitle(make("yt-lockup-view-model", CAMEL_LOCKUP))).toBe(
+      "20 years of esports history explained"
+    )
+  })
+
   it("reads a shorts lockup title", () => {
     expect(
       extractTitle(make("ytm-shorts-lockup-view-model-v2", SHORTS_LOCKUP))
@@ -149,6 +208,22 @@ describe("extractMeta", () => {
       channelName: "Lockups Channel",
       duration: "10:11",
     })
+  })
+
+  it("reads the channel and duration off a camelCase lockup", () => {
+    expect(extractMeta(make("yt-lockup-view-model", CAMEL_LOCKUP))).toEqual({
+      channelName: "Camel Channel",
+      duration: "14:52",
+    })
+  })
+
+  it("takes a camelCase lockup's age from its label, not its compact text", () => {
+    // "8d ago" is what the run shows. The estimator does not read compact ages
+    // (a bare "5m" is minutes or months), so the long form has to be the one
+    // that reaches it.
+    expect(extractUploadDate(make("yt-lockup-view-model", CAMEL_LOCKUP))).toBe(
+      "8 days ago"
+    )
   })
 
   it("takes the age, not the view count, from the lockup's second row", () => {

@@ -1,4 +1,7 @@
-import { FIELD_SELECTORS, LOCKUP_TEXT } from "@censor/lib/content/layout/fields"
+import {
+  FIELD_SELECTORS,
+  LOCKUP_TEXT_RUNS,
+} from "@censor/lib/content/layout/fields"
 import type { MetaData } from "@censor/types/states"
 
 /**
@@ -54,9 +57,17 @@ export function extractMeta(el: HTMLElement): MetaData {
  * text runs, and the age is usually the last of them. Positional, so low
  * confidence: on a row with no date the last run is the view count, which the
  * estimator does not recognize and holds as unverified (#1384).
+ *
+ * The camelCase lockup shows a compact age ("8d ago") and spells it out in the
+ * run's `aria-label` ("8 days ago"). The label is read first: the estimator
+ * knows the long form, and a compact "5m" cannot say whether it means minutes
+ * or months, which is the difference between held and admitted.
  */
 function lockupUploadDate(el: HTMLElement): string | null {
-  const runs = el.querySelectorAll(`span${LOCKUP_TEXT}`)
+  const runs = el.querySelectorAll(LOCKUP_TEXT_RUNS)
   const last = runs[runs.length - 1]
-  return last?.textContent.trim() || null
+  if (last === undefined) return null
+  return (
+    last.getAttribute("aria-label")?.trim() || last.textContent.trim() || null
+  )
 }
