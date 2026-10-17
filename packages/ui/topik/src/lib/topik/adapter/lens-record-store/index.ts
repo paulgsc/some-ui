@@ -93,7 +93,11 @@ const EntrySchema: z.ZodType<LensRecordEntry> = z.strictObject({
     .nullable(),
   // Absent in entries written before takes were offered.
   take: z
-    .object({ count: z.number(), lastMs: z.number(), heardFirst: z.boolean() })
+    .strictObject({
+      count: z.number(),
+      lastMs: z.number(),
+      heardFirst: z.boolean(),
+    })
     .nullable()
     .default(null),
 })
