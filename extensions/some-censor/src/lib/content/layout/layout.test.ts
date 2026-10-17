@@ -305,9 +305,19 @@ describe("classifyShape", () => {
     })
   })
 
+  it("places a Short inside its -v2 wrapper, as home serves every Short (#1848)", () => {
+    expect(
+      classify(
+        "home",
+        "ytm-shorts-lockup-view-model",
+        "ytm-shorts-lockup-view-model-v2"
+      )
+    ).toEqual({ kind: "nested", outer: "ytm-shorts-lockup-view-model-v2" })
+  })
+
   it("says unknown, with a reason, rather than guessing", () => {
     // A catalogue tag the crawl never saw on this surface.
-    expect(classify("watch", "yt-lockup-view-model", null)).toEqual({
+    expect(classify("watch", "ytd-video-renderer", null)).toEqual({
       kind: "unknown",
       reason: "tag-unseen",
     })

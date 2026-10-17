@@ -16,6 +16,7 @@
 import { describe, expect, it } from "vitest"
 
 import {
+  extractCarriesChannel,
   extractIsShort,
   extractMeta,
   extractTitle,
@@ -112,6 +113,96 @@ const CAMEL_LOCKUP = `
     </div>
   </div>`
 
+// The watch rail, the Mix lockup and the playlist-panel row, cut down from a
+// signed-in watch page in a Mix captured 2026-10-17 (#1848), with
+// placeholders for every title, channel and id.
+const RAIL_LOCKUP = `
+  <div class="ytLockupViewModelHost ytLockupViewModelHorizontal content-id-rail_1">
+    <a class="ytLockupViewModelContentImage" href="/watch?v=rail_1&amp;list=RDmix_1&amp;start_radio=1">
+      <yt-thumbnail-view-model class="ytThumbnailViewModelHost">
+        <yt-thumbnail-bottom-overlay-view-model class="ytThumbnailBottomOverlayViewModelHost">
+          <yt-thumbnail-badge-view-model class="ytThumbnailBadgeViewModelHost ytThumbnailBottomOverlayViewModelBadge">
+            <badge-shape class="ytBadgeShapeHost" role="img" aria-label="3 minutes, 11 seconds">
+              <div class="ytBadgeShapeText" aria-hidden="true">3:11</div>
+            </badge-shape>
+          </yt-thumbnail-badge-view-model>
+        </yt-thumbnail-bottom-overlay-view-model>
+      </yt-thumbnail-view-model>
+    </a>
+    <yt-lockup-metadata-view-model class="ytLockupMetadataViewModelHost ytLockupMetadataViewModelTitleMaxLines3">
+      <div class="ytLockupMetadataViewModelAvatar">
+        <div class="ytSpecAvatarShapeHost" role="button" aria-label="Go to channel Rail Channel"></div>
+      </div>
+      <div class="ytLockupMetadataViewModelTextContainer">
+        <h3 class="ytLockupMetadataViewModelHeadingReset" title="Rail Title">
+          <a class="ytLockupMetadataViewModelTitle" href="/watch?v=rail_1&amp;list=RDmix_1&amp;start_radio=1">
+            <span class="ytAttributedStringHost" role="text">Rail Title</span>
+          </a>
+        </h3>
+        <yt-content-metadata-view-model class="ytContentMetadataViewModelHost">
+          <div class="ytContentMetadataViewModelMetadataRow" role="group">
+            <span class="ytAttributedStringHost ytContentMetadataViewModelMetadataText ytContentMetadataViewModelMetadataTextLastPart" role="text">Rail Channel</span>
+          </div>
+          <div class="ytContentMetadataViewModelMetadataRow" role="group">
+            <span class="ytIconWrapperHost ytContentMetadataViewModelLeadingIcon"></span>
+            <span class="ytAttributedStringHost ytContentMetadataViewModelMetadataText" aria-label="50 thousand views" role="text">50K</span>
+            <span class="ytContentMetadataViewModelDelimiter" aria-hidden="true"></span>
+            <span class="ytAttributedStringHost ytContentMetadataViewModelMetadataText ytContentMetadataViewModelMetadataTextLastPart" aria-label="14 years ago" role="text">14y ago</span>
+          </div>
+        </yt-content-metadata-view-model>
+      </div>
+    </yt-lockup-metadata-view-model>
+  </div>`
+
+const MIX_LOCKUP = `
+  <div class="ytLockupViewModelHost ytLockupViewModelCollectionStack2 content-id-RDmix_2">
+    <a class="ytLockupViewModelContentImage" href="/watch?v=mix_2&amp;list=RDmix_2&amp;start_radio=1">
+      <yt-collection-thumbnail-view-model class="ytCollectionThumbnailViewModelHost">
+        <yt-collections-stack class="ytCollectionsStackHost">
+          <yt-thumbnail-view-model class="ytThumbnailViewModelHost">
+            <yt-thumbnail-overlay-badge-view-model class="ytThumbnailOverlayBadgeViewModelHost ytThumbnailOverlayBadgeViewModelBottomEnd">
+              <yt-thumbnail-badge-view-model class="ytThumbnailBadgeViewModelHost ytThumbnailOverlayBadgeViewModelBadge">
+                <badge-shape class="ytBadgeShapeHost">
+                  <div class="ytBadgeShapeIcon"></div>
+                  <div class="ytBadgeShapeText">Mix</div>
+                </badge-shape>
+              </yt-thumbnail-badge-view-model>
+            </yt-thumbnail-overlay-badge-view-model>
+          </yt-thumbnail-view-model>
+        </yt-collections-stack>
+      </yt-collection-thumbnail-view-model>
+    </a>
+    <yt-lockup-metadata-view-model class="ytLockupMetadataViewModelHost">
+      <h3 class="ytLockupMetadataViewModelHeadingReset" title="Mix Title">
+        <a class="ytLockupMetadataViewModelTitle" href="/watch?v=mix_2&amp;list=RDmix_2&amp;start_radio=1">
+          <span class="ytAttributedStringHost" role="text">Mix Title</span>
+        </a>
+      </h3>
+      <yt-content-metadata-view-model class="ytContentMetadataViewModelHost">
+        <div class="ytContentMetadataViewModelMetadataRow" role="group">
+          <span class="ytAttributedStringHost ytContentMetadataViewModelMetadataText" role="text">Artist A, Artist B and more</span>
+          <span class="ytContentMetadataViewModelDelimiter" aria-hidden="true"></span>
+          <span class="ytAttributedStringHost ytContentMetadataViewModelMetadataText ytContentMetadataViewModelMetadataTextLastPart" role="text">Playlist</span>
+        </div>
+      </yt-content-metadata-view-model>
+    </yt-lockup-metadata-view-model>
+  </div>`
+
+const PANEL_ROW = `
+  <a id="wc-endpoint" class="yt-simple-endpoint" href="/watch?v=panel_1&amp;list=RDmix_1&amp;index=2">
+    <div id="container">
+      <ytd-thumbnail>
+        <a id="thumbnail" href="/watch?v=panel_1&amp;list=RDmix_1&amp;index=2"></a>
+      </ytd-thumbnail>
+      <div id="meta">
+        <h4><span id="video-title" title="Panel Title">Panel Title</span></h4>
+        <div id="byline-container">
+          <span id="byline" title="Panel Channel">Panel Channel</span>
+        </div>
+      </div>
+    </div>
+  </a>`
+
 const SHORTS_LOCKUP = `
   <a href="/shorts/short_1"></a>
   <div class="shortsLockupViewModelHostMetadataTitle">A very short video</div>`
@@ -145,6 +236,25 @@ describe("tryExtract", () => {
     expect(out.channelId).toBeNull()
   })
 
+  it("resolves a watch-rail lockup and a playlist-panel row by the channel's name, which is all they carry (#1848)", () => {
+    expect(tryExtract(make("yt-lockup-view-model", RAIL_LOCKUP))).toEqual({
+      kind: "full",
+      videoId: "rail_1",
+      channelId: "Rail Channel",
+    })
+    expect(
+      tryExtract(make("ytd-playlist-panel-video-renderer", PANEL_ROW))
+    ).toEqual({ kind: "full", videoId: "panel_1", channelId: "Panel Channel" })
+  })
+
+  it("takes no channel from a Mix's artist list", () => {
+    expect(tryExtract(make("yt-lockup-view-model", MIX_LOCKUP))).toEqual({
+      kind: "video-only",
+      videoId: "mix_2",
+      channelId: null,
+    })
+  })
+
   it("resolves nothing from a lockup that is not a video", () => {
     const channelLockup = make(
       "yt-lockup-view-model",
@@ -171,6 +281,15 @@ describe("extractTitle", () => {
     expect(extractTitle(make("yt-lockup-view-model", CAMEL_LOCKUP))).toBe(
       "20 years of esports history explained"
     )
+  })
+
+  it("reads a watch-rail lockup's title by its class token", () => {
+    // `h3 a` would also find it; the class token must, on its own.
+    const rail = make("yt-lockup-view-model", RAIL_LOCKUP)
+    rail
+      .querySelector("h3")
+      ?.replaceWith(...(rail.querySelector("h3")?.childNodes ?? []))
+    expect(extractTitle(rail)).toBe("Rail Title")
   })
 
   it("reads a shorts lockup title", () => {
@@ -209,6 +328,29 @@ describe("extractMeta", () => {
       channelName: "Camel Channel",
       duration: "14:52",
     })
+  })
+
+  it("reads the plain-text channel and the duration off a watch-rail lockup", () => {
+    const rail = make("yt-lockup-view-model", RAIL_LOCKUP)
+    expect(extractMeta(rail)).toEqual({
+      channelName: "Rail Channel",
+      duration: "3:11",
+    })
+    expect(extractUploadDate(rail)).toBe("14 years ago")
+  })
+
+  it("reads a playlist-panel row's channel from its byline", () => {
+    expect(
+      extractMeta(make("ytd-playlist-panel-video-renderer", PANEL_ROW))
+        .channelName
+    ).toBe("Panel Channel")
+  })
+
+  it("reads no channel and no duration off a Mix", () => {
+    // Its run is an artist list, and its badge says "Mix".
+    const mix = make("yt-lockup-view-model", MIX_LOCKUP)
+    expect(extractMeta(mix)).toEqual({ channelName: null, duration: null })
+    expect(extractUploadDate(mix)).toBeNull()
   })
 
   it("takes a camelCase lockup's age from its label, not its compact text", () => {
@@ -316,6 +458,20 @@ describe("extractMeta", () => {
     expect(extractUploadDate(make("yt-lockup-view-model", SHORTS_LOCKUP))).toBe(
       null
     )
+  })
+})
+
+describe("extractCarriesChannel", () => {
+  it("is false for a Short and a Mix, true for a video", () => {
+    expect(
+      extractCarriesChannel(make("ytm-shorts-lockup-view-model", SHORTS_LOCKUP))
+    ).toBe(false)
+    expect(
+      extractCarriesChannel(make("yt-lockup-view-model", MIX_LOCKUP))
+    ).toBe(false)
+    expect(
+      extractCarriesChannel(make("yt-lockup-view-model", RAIL_LOCKUP))
+    ).toBe(true)
   })
 })
 

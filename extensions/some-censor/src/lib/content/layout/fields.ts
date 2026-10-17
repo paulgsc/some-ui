@@ -31,6 +31,14 @@ export const LOCKUP_DATE_RUNS = [
   'span[class*="ytContentMetadataViewModelMetadataText"][aria-label]',
 ] as const
 
+/**
+ * The watch rail's plain-text channel run. The view count and the age carry an
+ * `aria-label` and it does not. A Mix's run under the same class is an artist
+ * list, so `extract/meta.ts` skips this one on a collection.
+ */
+export const PLAIN_CHANNEL_RUN =
+  'span[class*="ytContentMetadataViewModelMetadataText"]:not([aria-label])'
+
 export type CardField = "title" | "channelName" | "duration" | "uploadDate"
 
 /**
@@ -49,24 +57,29 @@ export const FIELD_SELECTORS: Readonly<
     "a#video-title",
     "#video-title-link",
     "yt-formatted-string#video-title",
-    // Matched on a class *prefix* because YouTube appends modifiers
-    // (`…__title--small`) and versions the host class.
-    '[class*="lockup-metadata-view-model__title"]',
+    // The whole class token, not a substring: the metadata host's own
+    // `ytLockupMetadataViewModelTitleMaxLines3` would match one.
+    "a.ytLockupMetadataViewModelTitle",
     '[class*="shortsLockupViewModelHostMetadataTitle"]',
     "h3 a",
   ],
   channelName: [
     "ytd-channel-name yt-formatted-string",
     "#channel-name yt-formatted-string",
-    // The channel is the metadata run that is a link; view counts and dates
-    // are plain text. The BEM run can be the link; the camelCase run wraps one.
+    // The playlist panel's row has no link and no `ytd-channel-name`.
+    "span#byline",
+    // On the feed the channel is the metadata run that is a link. The BEM run
+    // can be the link; the camelCase run wraps one.
     'a[class*="yt-content-metadata-view-model__metadata-text"]',
     '[class*="ytContentMetadataViewModelMetadataText"] a',
+    PLAIN_CHANNEL_RUN,
   ],
   duration: [
     "span.ytd-thumbnail-overlay-time-status-renderer",
     '[class*="ThumbnailOverlayBadgeViewModel"] [class*="badge-shape"]',
-    '[class*="ytThumbnailBadgeViewModelHost"] [class*="ytBadgeShapeText"]',
+    // The bottom overlay holds the duration. A Mix's "Mix" badge sits in a
+    // corner overlay of its own and is not one.
+    '[class*="ytThumbnailBottomOverlayViewModelHost"] [class*="ytBadgeShapeText"]',
   ],
   // The Polymer metadata line is "views · date" as two spans. The lockup case
   // is positional — the *last* run, of either spelling — and is read by

@@ -1,6 +1,7 @@
 import {
   FIELD_SELECTORS,
   LOCKUP_DATE_RUNS,
+  PLAIN_CHANNEL_RUN,
 } from "@censor/lib/content/layout/fields"
 import type { MetaData } from "@censor/types/states"
 
@@ -47,9 +48,19 @@ export function extractUploadDate(el: HTMLElement): string | null {
 
 export function extractMeta(el: HTMLElement): MetaData {
   return {
-    channelName: firstText(el, FIELD_SELECTORS.channelName),
+    channelName: channelName(el),
     duration: firstText(el, FIELD_SELECTORS.duration),
   }
+}
+
+/** The channel's display name. Also `channel-id.ts`'s last resort. */
+export function channelName(el: HTMLElement): string | null {
+  return firstText(
+    el,
+    isCollection(el)
+      ? FIELD_SELECTORS.channelName.filter((s) => s !== PLAIN_CHANNEL_RUN)
+      : FIELD_SELECTORS.channelName
+  )
 }
 
 /**
@@ -92,4 +103,22 @@ export function extractIsShort(el: HTMLElement): boolean {
     SHORTS_TAGS.has(el.tagName.toLowerCase()) ||
     el.querySelector('a[href*="/shorts/"]') !== null
   )
+}
+
+/**
+ * A lockup for a list rather than one video. Every one in the 2026-10-17
+ * captures is a Mix, whose metadata run is an artist list ("A, B and more"),
+ * not a channel. Its "Mix" badge is kept out of the duration by `fields.ts`.
+ */
+function isCollection(el: HTMLElement): boolean {
+  return el.querySelector("yt-collection-thumbnail-view-model") !== null
+}
+
+/**
+ * Can `el`'s markup hold a channel at all? A Shorts lockup has none, and
+ * neither does a Mix, so a channel backfill on either waits for nothing
+ * (#1848).
+ */
+export function extractCarriesChannel(el: HTMLElement): boolean {
+  return !SHORTS_TAGS.has(el.tagName.toLowerCase()) && !isCollection(el)
 }

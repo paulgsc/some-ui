@@ -278,6 +278,29 @@ test("T7: watch-page sidebar compact renderers are decided like the feed", async
   ).toBe("absent")
 })
 
+test("T7b: rail and panel cards resolve a channel from its name; a Mix waits for none (#1848)", async ({
+  fixture,
+}) => {
+  const page = await fixture.goto("yt-watch")
+  const ids = ["vid_rail001", "vid_mix0002", "vid_panel01"]
+
+  const snap = await fixture.pollDebug(
+    page,
+    (d) => d.phase === "running" && ids.every((id) => id in d.entries),
+    { timeout: 5000 }
+  )
+
+  expect(snap.entries["vid_rail001"]?.viewKind, "the rail card is old").toBe(
+    "plated"
+  )
+  expect(snap.entries["vid_rail001"]?.channelId).toBe("Rail Channel")
+  expect(snap.entries["vid_panel01"]?.channelId).toBe("Panel Channel")
+  expect(
+    snap.entries["vid_mix0002"]?.channelId,
+    "an artist list is not a channel"
+  ).toBe("")
+})
+
 // ─────────────────────────────────────────────────────────────────────────────
 // T8: navigation bumps the session (root-cause guard for stale state)
 // ─────────────────────────────────────────────────────────────────────────────

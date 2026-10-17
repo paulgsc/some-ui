@@ -46,6 +46,14 @@
         font-size: 14px;
         font-weight: 500;
       }
+      yt-lockup-view-model,
+      ytd-playlist-panel-video-renderer {
+        display: block;
+        position: relative;
+        background: #1f1f1f;
+        border-radius: 8px;
+        padding: 8px;
+      }
       ytd-channel-name yt-formatted-string {
         font-size: 12px;
         color: #aaa;
@@ -65,6 +73,14 @@
     works if navigation correctly tears down and restarts (issue #2).
 
     Sidebar cards are href-only (realistic).
+
+    Below them, the rail and playlist panel as a signed-in watch page in a Mix
+    serves them on 2026-10-17 (#1848), trimmed, with placeholders for every
+    title, channel and id:
+      - a rail lockup whose channel is a plain-text run with no link;
+      - a Mix lockup: an artist list where the channel would be, and a "Mix"
+        badge where the duration would be;
+      - a playlist-panel row whose channel is `span#byline`.
   -->
 
     <ytd-app>
@@ -116,6 +132,213 @@
               <a href="/channel/UCside003">WasmWeekly</a>
             </div>
           </ytd-compact-video-renderer>
+
+          <div id="related">
+            <yt-lockup-view-model class="lockup ytLockupViewModelWrapper">
+              <div
+                class="ytLockupViewModelHost ytLockupViewModelHorizontal content-id-vid_rail001 ytLockupViewModelCompact"
+              >
+                <a
+                  aria-hidden="true"
+                  class="ytLockupViewModelContentImage"
+                  href="/watch?v=vid_rail001&amp;list=RDvid_mix0001&amp;start_radio=1"
+                  tabindex="-1"
+                >
+                  <yt-thumbnail-view-model class="ytThumbnailViewModelHost">
+                    <div class="thumbnail"></div>
+                    <yt-thumbnail-bottom-overlay-view-model
+                      class="ytThumbnailBottomOverlayViewModelHost"
+                    >
+                      <div
+                        class="ytThumbnailBottomOverlayViewModelBadgeContainer"
+                      >
+                        <yt-thumbnail-badge-view-model
+                          class="ytThumbnailBadgeViewModelHost ytThumbnailBottomOverlayViewModelBadge"
+                        >
+                          <badge-shape
+                            aria-label="3 minutes, 11 seconds"
+                            class="ytBadgeShapeHost"
+                            role="img"
+                          >
+                            <div aria-hidden="true" class="ytBadgeShapeText">
+                              3:11
+                            </div>
+                          </badge-shape>
+                        </yt-thumbnail-badge-view-model>
+                      </div>
+                    </yt-thumbnail-bottom-overlay-view-model>
+                  </yt-thumbnail-view-model>
+                </a>
+                <div class="ytLockupViewModelMetadata">
+                  <yt-lockup-metadata-view-model
+                    class="ytLockupMetadataViewModelHost ytLockupMetadataViewModelTitleMaxLines3"
+                  >
+                    <div class="ytLockupMetadataViewModelAvatar">
+                      <div
+                        aria-label="Go to channel Rail Channel"
+                        class="ytSpecAvatarShapeHost"
+                        role="button"
+                      ></div>
+                    </div>
+                    <div class="ytLockupMetadataViewModelTextContainer">
+                      <h3
+                        class="ytLockupMetadataViewModelHeadingReset"
+                        title="Rail: A Video Up Next"
+                      >
+                        <a
+                          aria-label="Rail: A Video Up Next 3 minutes, 11 seconds"
+                          class="ytLockupMetadataViewModelTitle"
+                          href="/watch?v=vid_rail001&amp;list=RDvid_mix0001&amp;start_radio=1"
+                          ><span role="text">Rail: A Video Up Next</span></a
+                        >
+                      </h3>
+                      <yt-content-metadata-view-model
+                        class="ytContentMetadataViewModelHost"
+                      >
+                        <div class="ytContentMetadataViewModelMetadataRow">
+                          <span
+                            class="ytContentMetadataViewModelMetadataText ytContentMetadataViewModelMetadataTextLastPart"
+                            >Rail Channel</span
+                          >
+                        </div>
+                        <div class="ytContentMetadataViewModelMetadataRow">
+                          <span
+                            aria-label="50 thousand views"
+                            class="ytContentMetadataViewModelMetadataText"
+                            >50K</span
+                          >
+                          <span
+                            aria-hidden="true"
+                            class="ytContentMetadataViewModelDelimiter"
+                          ></span>
+                          <span
+                            aria-label="14 years ago"
+                            class="ytContentMetadataViewModelMetadataText ytContentMetadataViewModelMetadataTextLastPart"
+                            >14y ago</span
+                          >
+                        </div>
+                      </yt-content-metadata-view-model>
+                    </div>
+                  </yt-lockup-metadata-view-model>
+                </div>
+              </div>
+            </yt-lockup-view-model>
+
+            <yt-lockup-view-model class="lockup ytLockupViewModelWrapper">
+              <div
+                class="ytLockupViewModelHost ytLockupViewModelHorizontal ytLockupViewModelCollectionStack2 content-id-RDvid_mix0002 ytLockupViewModelCompact"
+              >
+                <a
+                  aria-hidden="true"
+                  class="ytLockupViewModelContentImage"
+                  href="/watch?v=vid_mix0002&amp;list=RDvid_mix0002&amp;start_radio=1"
+                  tabindex="-1"
+                >
+                  <yt-collection-thumbnail-view-model
+                    aria-hidden="true"
+                    class="ytCollectionThumbnailViewModelHost"
+                  >
+                    <yt-collections-stack class="ytCollectionsStackHost">
+                      <yt-thumbnail-view-model class="ytThumbnailViewModelHost">
+                        <div class="thumbnail"></div>
+                        <yt-thumbnail-overlay-badge-view-model
+                          class="ytThumbnailOverlayBadgeViewModelHost ytThumbnailOverlayBadgeViewModelBottomEnd"
+                        >
+                          <yt-thumbnail-badge-view-model
+                            class="ytThumbnailBadgeViewModelHost ytThumbnailOverlayBadgeViewModelBadge"
+                          >
+                            <badge-shape class="ytBadgeShapeHost">
+                              <div class="ytBadgeShapeIcon"></div>
+                              <div class="ytBadgeShapeText">Mix</div>
+                            </badge-shape>
+                          </yt-thumbnail-badge-view-model>
+                        </yt-thumbnail-overlay-badge-view-model>
+                      </yt-thumbnail-view-model>
+                    </yt-collections-stack>
+                  </yt-collection-thumbnail-view-model>
+                </a>
+                <div class="ytLockupViewModelMetadata">
+                  <yt-lockup-metadata-view-model
+                    class="ytLockupMetadataViewModelHost"
+                  >
+                    <div class="ytLockupMetadataViewModelTextContainer">
+                      <h3
+                        class="ytLockupMetadataViewModelHeadingReset"
+                        title="Mix: A Mix of Something"
+                      >
+                        <a
+                          class="ytLockupMetadataViewModelTitle"
+                          href="/watch?v=vid_mix0002&amp;list=RDvid_mix0002&amp;start_radio=1"
+                          ><span role="text">Mix: A Mix of Something</span></a
+                        >
+                      </h3>
+                      <yt-content-metadata-view-model
+                        class="ytContentMetadataViewModelHost"
+                      >
+                        <div class="ytContentMetadataViewModelMetadataRow">
+                          <span class="ytContentMetadataViewModelMetadataText"
+                            >Artist A, Artist B and more</span
+                          >
+                          <span
+                            aria-hidden="true"
+                            class="ytContentMetadataViewModelDelimiter"
+                          ></span>
+                          <span
+                            class="ytContentMetadataViewModelMetadataText ytContentMetadataViewModelMetadataTextLastPart"
+                            >Playlist</span
+                          >
+                        </div>
+                      </yt-content-metadata-view-model>
+                    </div>
+                  </yt-lockup-metadata-view-model>
+                </div>
+              </div>
+            </yt-lockup-view-model>
+          </div>
+
+          <ytd-playlist-panel-renderer id="playlist">
+            <div id="items" class="playlist-items">
+              <ytd-playlist-panel-video-renderer
+                id="playlist-items"
+                lockup="true"
+              >
+                <a
+                  id="wc-endpoint"
+                  class="yt-simple-endpoint"
+                  href="/watch?v=vid_panel01&amp;list=RDvid_mix0001&amp;index=2"
+                >
+                  <div id="container">
+                    <div id="thumbnail-container">
+                      <ytd-thumbnail>
+                        <a
+                          aria-hidden="true"
+                          id="thumbnail"
+                          href="/watch?v=vid_panel01&amp;list=RDvid_mix0001&amp;index=2"
+                          tabindex="-1"
+                          ><div class="thumbnail"></div
+                        ></a>
+                      </ytd-thumbnail>
+                    </div>
+                    <div id="meta">
+                      <h4>
+                        <span
+                          id="video-title"
+                          title="Panel: The Next in the Mix"
+                          aria-label="Panel: The Next in the Mix 3 minutes, 51 seconds"
+                          >Panel: The Next in the Mix</span
+                        >
+                      </h4>
+                      <div id="byline-container">
+                        <span id="byline" title="Panel Channel"
+                          >Panel Channel</span
+                        >
+                      </div>
+                    </div>
+                  </div>
+                </a>
+              </ytd-playlist-panel-video-renderer>
+            </div>
+          </ytd-playlist-panel-renderer>
         </div>
       </ytd-watch-flexy>
     </ytd-app>

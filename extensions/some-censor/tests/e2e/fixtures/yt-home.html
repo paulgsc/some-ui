@@ -78,6 +78,12 @@
         background: #1f1f1f;
         border-radius: 8px;
       }
+      /* The Short's card is the inner lockup; it fills the -v2 wrapper. */
+      #upcoming-slider ytm-shorts-lockup-view-model {
+        display: block;
+        position: relative;
+        min-height: 160px;
+      }
       /* Same component, full width — the control for the narrow cards above. */
       #wide-shelf yt-lockup-view-model,
       #nested-shelf yt-lockup-view-model {
@@ -257,11 +263,17 @@
       <yt-lockup-view-model id="slider-card-2">
         <a class="ytLockupViewModelContentImage" href="/watch?v=lock_bbb">
           <span class="lockup-thumb"></span>
-          <yt-thumbnail-badge-view-model class="ytThumbnailBadgeViewModelHost">
-            <badge-shape class="ytBadgeShapeHost">
-              <div class="ytBadgeShapeText">4:02</div>
-            </badge-shape>
-          </yt-thumbnail-badge-view-model>
+          <yt-thumbnail-bottom-overlay-view-model
+            class="ytThumbnailBottomOverlayViewModelHost"
+          >
+            <yt-thumbnail-badge-view-model
+              class="ytThumbnailBadgeViewModelHost ytThumbnailBottomOverlayViewModelBadge"
+            >
+              <badge-shape class="ytBadgeShapeHost">
+                <div class="ytBadgeShapeText">4:02</div>
+              </badge-shape>
+            </yt-thumbnail-badge-view-model>
+          </yt-thumbnail-bottom-overlay-view-model>
         </a>
         <div class="ytLockupMetadataViewModelTextContainer">
           <h3 class="ytLockupMetadataViewModelHeadingReset">
@@ -304,12 +316,35 @@
         </div>
       </yt-lockup-view-model>
 
-      <!-- videoId but no channel, anywhere. A Short: held absent, must not stall. -->
-      <ytm-shorts-lockup-view-model-v2 id="slider-short">
-        <a href="/shorts/short_eee"><span class="lockup-thumb"></span></a>
-        <div class="shortsLockupViewModelHostMetadataTitle">
-          A Short With No Channel Attached
-        </div>
+      <!--
+        videoId but no channel, anywhere. A Short: held absent, must not stall.
+        Nested as a 2026-10-17 capture serves every Short on home: the -v2 tag
+        is a wrapper, and the inner lockup is the card (#1848).
+      -->
+      <ytm-shorts-lockup-view-model-v2
+        id="slider-short"
+        class="shortsLockupViewModelHost"
+      >
+        <ytm-shorts-lockup-view-model class="shortsLockupViewModelHost">
+          <a
+            class="shortsLockupViewModelHostEndpoint reel-item-endpoint"
+            href="/shorts/short_eee"
+            ><span class="lockup-thumb"></span
+          ></a>
+          <div class="shortsLockupViewModelHostOutsideMetadata">
+            <h3 class="shortsLockupViewModelHostMetadataTitle">
+              <a
+                class="shortsLockupViewModelHostOutsideMetadataEndpoint"
+                href="/shorts/short_eee"
+                title="A Short With No Channel Attached"
+                ><span role="text">A Short With No Channel Attached</span></a
+              >
+            </h3>
+            <div class="shortsLockupViewModelHostOutsideMetadataSubhead">
+              <span role="text">566K views</span>
+            </div>
+          </div>
+        </ytm-shorts-lockup-view-model>
       </ytm-shorts-lockup-view-model-v2>
     </div>
 

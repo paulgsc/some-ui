@@ -2,13 +2,15 @@ import { parseChannelHref } from "@censor/lib/content/core/parse"
 import type { ChannelId } from "@censor/types/ids"
 import { asChannelId } from "@censor/types/ids"
 
+import { channelName } from "./meta"
+
 /**
  * Extract YouTube channel identifier from a renderer element.
  * Normalises all formats to either:
  *   - UCxxx...  (channel ID)
  *   - @handle   (handle)
  *
- * Falls back to display name text if no href pattern matches.
+ * Falls back to the display name (`meta.ts`) if no href pattern matches.
  */
 export function extractChannelId(el: HTMLElement): ChannelId | null {
   for (const a of el.querySelectorAll<HTMLAnchorElement>("a")) {
@@ -19,17 +21,9 @@ export function extractChannelId(el: HTMLElement): ChannelId | null {
     if (parsed !== null) return parsed
   }
 
-  // Fallback: visible channel name text (less stable but better than null).
-  // The second selector is the Lit-era lockup's metadata row; a lockup
-  // usually does carry an /@handle anchor, but a shorts lockup carries none at
-  // all, so without this every shorts card stayed channel-less forever.
-  const node = el.querySelector(
-    "ytd-channel-name yt-formatted-string, #channel-name yt-formatted-string, " +
-      'a[class*="yt-content-metadata-view-model__metadata-text"]'
-  )
-
-  if (!node) return null
-
-  const name = node.textContent.trim()
+  // Fallback: the visible channel name (less stable but better than null).
+  // A watch-rail lockup and a playlist-panel row carry no channel link at
+  // all, only the name.
+  const name = channelName(el)
   return name ? asChannelId(name) : null
 }

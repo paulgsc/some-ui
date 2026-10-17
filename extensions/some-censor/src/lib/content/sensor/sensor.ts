@@ -16,8 +16,9 @@
  *   - Structure is looked up, not discovered (B3). What a node is comes
  *     from the catalogue predicate and the layout table; the only walks
  *     are single `closest()` calls (the enclosing card for the table's
- *     context, a mutation's enclosing card, the fallback wrapper), never
- *     a loop over ancestors.
+ *     context, a mutation's enclosing card, the fallback wrapper, the
+ *     hidden page a card's surface comes from), never a loop over
+ *     ancestors.
  *   - Unknown shape is a state (B4). A card the table cannot place is
  *     still observed (with `shape: "unknown"`), queued if it has no id yet,
  *     and reported once per element as `unknown-shape`.
@@ -37,6 +38,7 @@ import type { CardKey } from "@censor/lib/content/core/keys"
 import { keyVideoId } from "@censor/lib/content/core/keys"
 import type { Observation } from "@censor/lib/content/core/observation"
 import {
+  extractCarriesChannel,
   extractIsShort,
   extractMeta,
   extractTitle,
@@ -46,6 +48,10 @@ import {
 import type { UnknownShapeReason } from "@censor/lib/content/layout/lookup"
 import type { LayoutTable } from "@censor/lib/content/layout/schema"
 import type { BoyoSurface } from "@censor/lib/content/layout/surface"
+import {
+  HIDDEN_PAGE_SELECTOR,
+  hiddenPageSurface,
+} from "@censor/lib/content/layout/surface"
 import {
   classifyCard,
   detectOccluderEngine,
@@ -68,6 +74,7 @@ export type SensorPorts = {
   readonly doc: Document
   readonly win: Window
   readonly table: LayoutTable
+  /** The surface the page being shown is on. */
   readonly surface: () => BoyoSurface
   readonly clock: () => number
   readonly mintSession: () => SessionId
@@ -147,6 +154,20 @@ export function createSensor(ports: SensorPorts): Sensor {
 
   // ── Observation ────────────────────────────────────────────────────────
 
+  /**
+   * The surface `el` is on: the page shown's, unless `el` sits in the page
+   * an SPA navigation left hidden in the document.
+   */
+  function cardSurface(el: HTMLElement): BoyoSurface {
+    const page = el.closest(HIDDEN_PAGE_SELECTOR)
+    return page === null
+      ? ports.surface()
+      : hiddenPageSurface(
+          page.tagName.toLowerCase(),
+          page.getAttribute("page-subtype")
+        )
+  }
+
   function observationOf(
     el: HTMLElement,
     videoId: Observation["videoId"],
@@ -162,7 +183,7 @@ export function createSensor(ports: SensorPorts): Sensor {
       duration: meta.duration,
       uploadDate: extractUploadDate(el),
       short: extractIsShort(el),
-      surface: ports.surface(),
+      surface: cardSurface(el),
       renderer: el.tagName.toLowerCase(),
       shape,
     }
@@ -177,7 +198,7 @@ export function createSensor(ports: SensorPorts): Sensor {
   function observe(el: HTMLElement, force = false): void {
     if (!running) return
     const now = ports.clock()
-    const cls = classifyNode(el, ports.surface(), ports.table)
+    const cls = classifyNode(el, cardSurface(el), ports.table)
 
     if (cls.kind === "not-card") {
       // A container, or not ours. Whatever it carried as a card is over.
@@ -242,7 +263,11 @@ export function createSensor(ports: SensorPorts): Sensor {
     }
 
     if (extracted.kind === "video-only") {
-      if (!channelPending.has(el) && !channelAbandoned.has(el)) {
+      if (
+        extractCarriesChannel(el) &&
+        !channelPending.has(el) &&
+        !channelAbandoned.has(el)
+      ) {
         channelPending.set(el, now)
         ensureRetryLoop()
       }
@@ -300,7 +325,7 @@ export function createSensor(ports: SensorPorts): Sensor {
     ports.emit({
       kind: "unknown-shape",
       tag: el.tagName.toLowerCase(),
-      surface: ports.surface(),
+      surface: cardSurface(el),
       reason,
       t: now,
     })
@@ -343,7 +368,7 @@ export function createSensor(ports: SensorPorts): Sensor {
         queue.dequeue(el)
         continue
       }
-      const cls = classifyNode(el, ports.surface(), ports.table)
+      const cls = classifyNode(el, cardSurface(el), ports.table)
       if (cls.kind === "not-card") {
         queue.dequeue(el)
         continue

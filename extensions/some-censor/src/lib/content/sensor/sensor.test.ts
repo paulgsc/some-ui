@@ -299,15 +299,15 @@ describe("the retry queue", () => {
   })
 
   it("gives up on a channel that never arrives, keeping the card", async () => {
-    document.body.appendChild(shorts("s"))
+    document.body.appendChild(lockup("a", null))
     await tick(RESOLVE_BUDGET_MS / RETRY_INTERVAL_MS + 2)
     expect(sensor.census().channelPending).toHaveLength(0)
-    expect(facts).toContainEqual({ kind: "channel.abandoned", videoId: "s" })
+    expect(facts).toContainEqual({ kind: "channel.abandoned", videoId: "a" })
     expect(tokens.filter((t) => t.kind === "gone")).toEqual([])
   })
 
   it("starts a fresh channel budget for the video a pending card is recycled to", async () => {
-    const el = shorts("s")
+    const el = lockup("a", null)
     document.body.appendChild(el)
     await tick(RESOLVE_BUDGET_MS / RETRY_INTERVAL_MS + 2)
     expect(sensor.census().channelPending).toHaveLength(0)
@@ -315,6 +315,54 @@ describe("the retry queue", () => {
     el.replaceChildren(...lockup("b", null).childNodes)
     await tick()
     expect(sensor.census().channelPending).toHaveLength(1)
+  })
+
+  it("never waits on a channel for a Short or a Mix, which carry none (#1848)", async () => {
+    const mix = lockup("m", null)
+    mix.insertAdjacentHTML(
+      "afterbegin",
+      "<yt-collection-thumbnail-view-model></yt-collection-thumbnail-view-model>"
+    )
+    document.body.append(shorts("s"), mix)
+    await tick()
+    expect(observedKeys()).toEqual([K("s"), K("m")])
+    expect(sensor.census().channelPending).toHaveLength(0)
+  })
+})
+
+describe("surface", () => {
+  function pages(): { browse: HTMLElement; watch: HTMLElement } {
+    const manager = document.createElement("ytd-page-manager")
+    const browse = document.createElement("ytd-browse")
+    browse.setAttribute("page-subtype", "home")
+    const watch = document.createElement("ytd-watch-flexy")
+    manager.append(watch, browse)
+    document.body.appendChild(manager)
+    return { browse, watch }
+  }
+
+  function surfaceOf(key: string): string | undefined {
+    const token = tokens.find((t) => t.kind === "observed" && t.key === key)
+    return token?.kind === "observed" ? token.observation.surface : undefined
+  }
+
+  it("puts a card in the page an SPA navigation left hidden on that page's surface (#1848)", async () => {
+    const { browse, watch } = pages()
+    watch.setAttribute("hidden", "")
+    browse.appendChild(lockup("shown"))
+    watch.appendChild(lockup("left"))
+    await tick()
+    expect(surfaceOf(K("shown"))).toBe("home")
+    expect(surfaceOf(K("left"))).toBe("watch")
+  })
+
+  it("names a hidden page it cannot place other, never the page shown", async () => {
+    const { browse } = pages()
+    browse.setAttribute("hidden", "")
+    browse.setAttribute("page-subtype", "channels")
+    browse.appendChild(lockup("left"))
+    await tick()
+    expect(surfaceOf(K("left"))).toBe("other")
   })
 })
 

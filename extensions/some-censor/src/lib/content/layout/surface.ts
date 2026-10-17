@@ -36,3 +36,24 @@ export function surfaceOf(pathname: string): BoyoSurface {
   }
   return "other"
 }
+
+/**
+ * `ytd-page-manager`'s hidden child: the page an SPA navigation left behind.
+ * Its cards stay in the document while the pathname names the page shown, so
+ * a card under it is not on the surface the path names (#1848).
+ */
+export const HIDDEN_PAGE_SELECTOR = "ytd-page-manager > [hidden]"
+
+/**
+ * The surface a hidden page container held, from its tag and `page-subtype`.
+ * Only the two containers seen hidden in a capture are named; any other is
+ * `"other"`, which is never the visible page's surface by mistake.
+ */
+export function hiddenPageSurface(
+  tag: string,
+  pageSubtype: string | null
+): BoyoSurface {
+  if (tag === "ytd-watch-flexy") return "watch"
+  if (tag === "ytd-browse" && pageSubtype === "home") return "home"
+  return "other"
+}
