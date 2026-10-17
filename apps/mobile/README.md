@@ -764,14 +764,29 @@ past. Colours are theme tokens (`--success`, `--warning`, `--destructive`,
 Code: `packages/ui/aph` (`lib/model.ts` decides everything; the screens
 draw it), routed under `_dashboard/_apk/aph`.
 
-- **Kept on the phone** (`lib/stored.ts`): entries and settings live in one
-  `localStorage` key under the pinned `https://localhost` origin, so they
-  survive a reload, a restart and an update installed over the app, and go
-  into Android's backup with the WebView's storage. The first launch starts
-  from the paper notes they replace (`lib/seed.ts`) and keeps them. A change
-  the phone refuses to keep is refused on screen too ("Not saved"), and a
-  record that cannot be read is moved aside, never written over.
-  Uninstalling the app, or clearing its data, still deletes it.
+- **Kept on the phone** (`lib/stored.ts`), until I choose otherwise: entries
+  and settings live in one `localStorage` key under the pinned
+  `https://localhost` origin, so they survive a reload, a restart and an
+  update installed over the app, and go into Android's backup with the
+  WebView's storage. The first launch starts from the paper notes they
+  replace (`lib/seed.ts`) and keeps them. A change the phone refuses to keep
+  is refused on screen too ("Not saved"), and a record that cannot be read is
+  moved aside, never written over. Uninstalling the app, or clearing its
+  data, still deletes it, which is what the strip above aph's views says.
+- **Kept on home**, once I press "Keep on home" twice in that strip (the
+  first press names the host and how many entries go; the phone must be
+  paired). From then on the home server is the record (paulgsc/server
+  `routes/aph.rs`, append-only: every revision is kept and nothing is
+  deleted), and the phone keeps only the settings and what home hasn't
+  confirmed (`lib/home.ts`). While aph is open with the app in front, it
+  syncs on its own: when aph opens, after each change, when the app comes back
+  or the network does (`lib/home-link/aph.ts` in www; LA9 in
+  `docs/learner-data-authority.md`). A change leaves the phone only once home
+  answers with the same entry. Off the home network, changes wait on the
+  phone, and the strip says how many; until home is reached, History shows
+  only what the phone hasn't sent. An entry home refuses (a second plain
+  figure at a checkpoint home already holds, say) stays on the phone with
+  why, until it is changed. There is no way back to the phone only yet.
 - **A day I missed** can still be logged, up to two weeks back
   (`loggableDays`): the logger steps back a day at a time, and History's
   "not logged" rows open it on that day. A figure off the checkpoints on a

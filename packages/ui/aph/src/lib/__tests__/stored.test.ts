@@ -74,6 +74,9 @@ describe("what the phone keeps", () => {
       setItem: () => {
         writes += 1
       },
+      removeItem: () => {
+        writes += 1
+      },
     })
     expect(store.get()).toEqual(seed)
     expect(store.save(figure("4900"), commit)).toBeNull()

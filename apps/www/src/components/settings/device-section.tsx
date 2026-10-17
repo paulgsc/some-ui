@@ -368,7 +368,8 @@ export const DeviceSection = (): JSX.Element => {
               </p>
             ) : null}
             <p className="text-muted-foreground text-xs">
-              Nothing is sent unless you tap below.
+              Nothing is sent unless you tap below, except aph once you keep it
+              on home: it syncs on its own while aph is open.
             </p>
             {confirmingUnpair ? null : (
               <SendHome
