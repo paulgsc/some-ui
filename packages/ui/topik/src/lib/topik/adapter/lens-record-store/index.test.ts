@@ -51,7 +51,9 @@ describe("the lens record store", () => {
     expect(entries[0]?.line).toBe("old")
     expect(entries.some((e) => e.line === "refused")).toBe(false)
     expect(entries.find((e) => e.line === "l1")?.right).toBe(false)
-  })
+    // A thousand adds, each rewriting the whole record: about 1.2 s here and
+    // 5.1 to 5.8 s on CI's runner, past vitest's 5 s default.
+  }, 15_000)
 
   it("lets go only what an export carried, unchanged since", () => {
     const storage = memoryStorage()
