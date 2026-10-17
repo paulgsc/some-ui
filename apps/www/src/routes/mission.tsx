@@ -19,7 +19,7 @@ import { ThemeSwitcher } from "@/components/theme-switcher"
 /**
  * The "why" behind this workspace, as a page: "/" says *what* is deployed;
  * this says what it is (the two mandates in `CLAUDE.md`: a toolkit that works
- * for its one user, published read-only for everyone else) and then the
+ * for its one user, published for everyone else to see) and then the
  * positions the projects take (a browser is an operating system, exposure
  * should be opt-in, visual comfort is measurable, a curriculum should adapt).
  * Each position is one claim and one mechanism, held to
@@ -39,7 +39,7 @@ const MANDATES: ReadonlyArray<Mandate> = [
   {
     term: "It reads.",
     gloss:
-      "Each tool is also published as it is, read-only, so anyone can see what it does and how, whatever they bring to it.",
+      "Each tool is also published as it is, so anyone can see what it does and how, whatever they bring to it.",
   },
 ]
 
@@ -210,8 +210,9 @@ const Mission = (): JSX.Element => (
           It’s a snapshot of real, live work, published as it happens.
         </p>
         <p className="text-muted-foreground/80 mt-5 max-w-2xl leading-relaxed text-pretty">
-          You’re seeing it read-only. The code is all public; my own data stays
-          on my home network and my devices.
+          The code is all public, and my own data stays on my home network and
+          my devices. Where a tool here lets you try it, what you do stays in
+          your own browser.
         </p>
       </header>
 
