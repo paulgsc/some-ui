@@ -479,8 +479,9 @@ ytd-item-section-renderer:has(> #contents > ytd-shelf-renderer:only-child):has(
    THE PLATE (QD12, #1804)
 
    A plated card paints no image: no thumbnail, no moving thumbnail,
-   no channel photo. Every image-bearing element and background image
-   under the stamp is hidden, whatever the vendor's shape, so a
+   no channel photo. Every image element (img, video, picture, canvas,
+   object, embed, SVG image) and background image under the stamp is
+   hidden, whatever the vendor's shape, so a
    thumbnail shape this file does not name still shows nothing.
 
    The tones are the Actuator's custom properties on the card
@@ -509,14 +510,14 @@ ytd-item-section-renderer:has(> #contents > ytd-shelf-renderer:only-child):has(
 /* The thumbnail takes no pointer: YouTube starts its hover preview from
    it, and a hidden preview still plays. The title, channel name and
    duration open the card; the duration's badge sits inside the
-   thumbnail's link, so it takes the pointer back. */
+   thumbnail's link, so the badge alone takes the pointer back. */
 [data-boyo="plated"] ytd-thumbnail,
 [data-boyo="plated"] .ytLockupViewModelContentImage {
   pointer-events: none !important;
 }
 
-[data-boyo="plated"] ytd-thumbnail #overlays,
-[data-boyo="plated"] yt-thumbnail-bottom-overlay-view-model {
+[data-boyo="plated"] ytd-thumbnail badge-shape,
+[data-boyo="plated"] .ytLockupViewModelContentImage badge-shape {
   pointer-events: auto !important;
 }
 

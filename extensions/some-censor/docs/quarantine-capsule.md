@@ -380,8 +380,9 @@ _Status: holds on cards, with gaps (#1804)._ Under a plated card no `img` or
 `video` is painted, whatever its shape (`styles/content.css`, "THE PLATE"), so
 the card's own thumbnail and channel photo show nothing. The thumbnail's box is
 filled with the video's tone and the avatar's with the channel's disc, both
-hashed by `lib/content/plate/plate.ts`. The thumbnail takes no pointer, so a
-hover there starts no preview, and the preview player never shows. The
+hashed by `lib/content/plate/plate.ts`. The thumbnail takes no pointer except
+its duration badge, so a hover over the plate reaches no thumbnail, and the
+preview player never shows. The
 surfaces outside a card are in the gap table below.
 
 ---

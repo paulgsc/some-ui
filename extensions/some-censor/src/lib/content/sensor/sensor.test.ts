@@ -305,7 +305,9 @@ describe("the retry queue", () => {
     const text = link.appendChild(document.createTextNode(""))
     document.body.appendChild(el)
     await tick()
-    expect(sensor.census().channelPending).toHaveLength(1)
+    expect(sensor.census().channelPending, "its channel is known").toHaveLength(
+      0
+    )
 
     // A text node's data changing is no mutation the observer sees.
     text.data = "Named"
@@ -316,7 +318,15 @@ describe("the retry queue", () => {
     expect(last?.kind === "observed" && last.observation.channelName).toBe(
       "Named"
     )
-    expect(sensor.census().channelPending).toHaveLength(0)
+  })
+
+  it("gives up on a name that never arrives quietly, and stops", async () => {
+    const el = lockup("nameless", "Nameless")
+    el.querySelector('a[href="/@Nameless"]')!.textContent = ""
+    document.body.appendChild(el)
+    await tick(RESOLVE_BUDGET_MS / RETRY_INTERVAL_MS + 2)
+    expect(facts.some((f) => f.kind === "channel.abandoned")).toBe(false)
+    expect(vi.getTimerCount(), "the loop terminates").toBe(0)
   })
 
   it("gives up on a channel that never arrives, keeping the card", async () => {

@@ -123,6 +123,13 @@ export function createSensor(ports: SensorPorts): Sensor {
   /** Cards whose channel budget is spent: not re-sampled again this session. */
   let channelAbandoned = new WeakSet<HTMLElement>()
   /**
+   * Cards with a channel but no name yet: a name can hydrate in place after
+   * its link, a text change no mutation this observes, and the plate's
+   * initial reads it. Re-read under the same budget, and given up silently.
+   */
+  const namePending = new Map<HTMLElement, number>()
+  let nameAbandoned = new WeakSet<HTMLElement>()
+  /**
    * Cards observed with no upload date at all, kept under the same budget: the
    * date decides whether a card is shown (#1803), and YouTube can fill an
    * empty run in without a mutation the observer sees (a text node's data).
@@ -237,6 +244,8 @@ export function createSensor(ports: SensorPorts): Sensor {
       // The channel budget belonged to the previous video.
       channelPending.delete(el)
       channelAbandoned.delete(el)
+      namePending.delete(el)
+      nameAbandoned.delete(el)
       datePending.delete(el)
       dateAbandoned.delete(el)
       if (rec.previousGone) {
@@ -266,9 +275,7 @@ export function createSensor(ports: SensorPorts): Sensor {
       cls.shape,
       surface
     )
-    // A channel's name can hydrate in place after its link, as a text
-    // change no mutation this observes; the plate's initial reads it.
-    if (observation.channelId === null || observation.channelName === null) {
+    if (observation.channelId === null) {
       if (
         extractCarriesChannel(el) &&
         !channelPending.has(el) &&
@@ -280,6 +287,15 @@ export function createSensor(ports: SensorPorts): Sensor {
     } else {
       channelPending.delete(el)
       channelAbandoned.delete(el)
+    }
+    if (observation.channelId !== null && observation.channelName === null) {
+      if (!namePending.has(el) && !nameAbandoned.has(el)) {
+        namePending.set(el, now)
+        ensureRetryLoop()
+      }
+    } else {
+      namePending.delete(el)
+      nameAbandoned.delete(el)
     }
     if (observation.uploadDate || observation.short) {
       datePending.delete(el)
@@ -320,6 +336,8 @@ export function createSensor(ports: SensorPorts): Sensor {
     lastEmitted.delete(el)
     channelPending.delete(el)
     channelAbandoned.delete(el)
+    namePending.delete(el)
+    nameAbandoned.delete(el)
     datePending.delete(el)
     dateAbandoned.delete(el)
     const released = identity.release(el)
@@ -368,15 +386,25 @@ export function createSensor(ports: SensorPorts): Sensor {
         channelPending.delete(el)
         continue
       }
-      if (now - since < RESOLVE_BUDGET_MS) {
+      const extracted = tryExtract(el)
+      if (extracted.kind === "full") {
         observe(el)
-      } else {
+      } else if (now - since >= RESOLVE_BUDGET_MS) {
         channelPending.delete(el)
         channelAbandoned.add(el)
         const key = identity.keyOf(el)
         if (key !== null) {
           ports.onFact({ kind: "channel.abandoned", videoId: keyVideoId(key) })
         }
+      }
+    }
+
+    for (const [el, since] of namePending) {
+      if (!el.isConnected || now - since >= RESOLVE_BUDGET_MS) {
+        namePending.delete(el)
+        nameAbandoned.add(el)
+      } else if (extractMeta(el).channelName !== null) {
+        observe(el)
       }
     }
 
@@ -430,6 +458,7 @@ export function createSensor(ports: SensorPorts): Sensor {
     if (
       queue.size === 0 &&
       channelPending.size === 0 &&
+      namePending.size === 0 &&
       datePending.size === 0 &&
       retryTimer !== null
     ) {
@@ -517,6 +546,8 @@ export function createSensor(ports: SensorPorts): Sensor {
     queue.clear()
     channelPending.clear()
     channelAbandoned = new WeakSet()
+    namePending.clear()
+    nameAbandoned = new WeakSet()
     datePending.clear()
     dateAbandoned = new WeakSet()
     unknownReported = new WeakSet()
