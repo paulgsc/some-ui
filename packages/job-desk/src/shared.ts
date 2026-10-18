@@ -12,9 +12,13 @@ export const FingerprintSchema = z.string().regex(/^[^|]+\|[^|]+\|[^|]+$/)
 
 export const CommitSchema = z.string().regex(/^[0-9a-f]{7,40}$/)
 
-export const TrackSchema = z.enum(TRACKS)
+/** A track, and on the adjacent track its family. */
+export const TrackedSchema = z.discriminatedUnion("track", [
+  z.object({ track: z.literal(TRACKS[0]), family: z.null() }),
+  z.object({ track: z.literal(TRACKS[1]), family: z.enum(ADJACENT_FAMILIES) }),
+])
 
-export const FamilySchema = z.enum(ADJACENT_FAMILIES)
+export const HttpsUrlSchema = z.url({ protocol: /^https$/ })
 
 /** A voice note shared beside a file, by its name in the same folder. */
 export const VoiceFileSchema = z

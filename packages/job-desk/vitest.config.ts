@@ -1,6 +1,5 @@
 import { defineNodeTest } from "@some-ui/vite-config/vitest"
 
-// Pure schemas and checks: no React, no DOM.
 export default defineNodeTest({
   // tsconfig.json's `@job-desk/*` path, for the tests under src/__tests__/
   // (a parent-relative `../` import is lint-banned).

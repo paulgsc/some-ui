@@ -12,6 +12,23 @@ export type Finding = { path: string; message: string }
 
 const DAY_MS = 24 * 60 * 60 * 1000
 
+/**
+ * A posting's company and title: the same role searched from another place
+ * is one posting (ROUTINE.md, "Search").
+ */
+function roleOf(print: string): string {
+  return print.slice(0, print.lastIndexOf("|"))
+}
+
+/** Whether `text` names `term` as a whole word or phrase, ignoring case. */
+function mentions(text: string, term: string): boolean {
+  const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+  return new RegExp(
+    `(?<![\\p{L}\\p{N}])${escaped}(?![\\p{L}\\p{N}])`,
+    "iu"
+  ).test(text)
+}
+
 function daysBetween(from: string, to: string): number {
   return Math.round((Date.parse(to) - Date.parse(from)) / DAY_MS)
 }
@@ -25,6 +42,7 @@ export function digestFindings(digest: Digest): ReadonlyArray<Finding> {
   const found: Array<Finding> = []
   const ids = new Set<string>()
   const prints = new Map<string, string>()
+  const roles = new Map<string, string>()
 
   for (const track of TRACKS) {
     const count = digest.picks.filter((p) => p.track === track).length
@@ -59,12 +77,15 @@ export function digestFindings(digest: Digest): ReadonlyArray<Finding> {
     }
     prints.set(pick.fingerprint, at)
 
-    if ((pick.track === "adjacent") !== (pick.family !== null)) {
+    const role = roleOf(pick.fingerprint)
+    const sameRole = roles.get(role)
+    if (sameRole && !twin) {
       found.push({
-        path: `${at}.family`,
-        message: "an adjacent pick names its family; a software pick has none",
+        path: `${at}.fingerprint`,
+        message: `same role as ${sameRole}, in another place`,
       })
     }
+    roles.set(role, at)
     if (EXCLUDED_TITLE.test(pick.posting.title)) {
       found.push({
         path: `${at}.posting.title`,
@@ -72,15 +93,19 @@ export function digestFindings(digest: Digest): ReadonlyArray<Finding> {
       })
     }
     const posted = pick.posting.postedOn
-    if (posted && daysBetween(posted, digest.day) > MAX_POSTING_AGE_DAYS) {
+    const age = posted ? daysBetween(posted, digest.day) : 0
+    if (age > MAX_POSTING_AGE_DAYS || age < 0) {
       found.push({
         path: `${at}.posting.postedOn`,
-        message: `older than ${MAX_POSTING_AGE_DAYS} days on ${digest.day}`,
+        message:
+          age < 0
+            ? `after the digest's day, ${digest.day}`
+            : `older than ${MAX_POSTING_AGE_DAYS} days on ${digest.day}`,
       })
     }
     pick.fits.forEach((fit, j) => {
-      const claim = `${fit.title} ${fit.detail}`.toLowerCase()
-      const term = pick.dontClaim.find((t) => claim.includes(t.toLowerCase()))
+      const claim = `${fit.title} ${fit.detail}`
+      const term = pick.dontClaim.find((t) => mentions(claim, t))
       if (term) {
         found.push({
           path: `${at}.fits.${j}`,
@@ -91,13 +116,17 @@ export function digestFindings(digest: Digest): ReadonlyArray<Finding> {
   })
 
   digest.setAside.forEach((aside, i) => {
+    const at = `setAside.${i}`
     const twin = prints.get(aside.fingerprint)
     if (twin) {
       found.push({
-        path: `setAside.${i}.fingerprint`,
-        message: `also picked as ${twin}`,
+        path: `${at}.fingerprint`,
+        message: twin.startsWith("picks.")
+          ? `also picked as ${twin}`
+          : `same posting as ${twin}`,
       })
     }
+    prints.set(aside.fingerprint, at)
   })
 
   digest.scouts.forEach((scout, i) => {

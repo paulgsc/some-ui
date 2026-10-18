@@ -1,11 +1,11 @@
 import { z } from "zod"
 
 import {
-  FamilySchema,
+  HttpsUrlSchema,
   IdSchema,
   parseWith,
   text,
-  TrackSchema,
+  TrackedSchema,
   VoiceFileSchema,
   type Parsed,
 } from "./shared"
@@ -24,18 +24,18 @@ export const ScoutsSchema = z.object({
   sharedAt: z.iso.datetime(),
   scouts: z
     .array(
-      z.object({
-        id: IdSchema,
-        url: z.url({ protocol: /^https$/ }),
-        track: TrackSchema,
-        family: FamilySchema.nullable(),
-        /** Title and company as I saw them. */
-        title: text,
-        why: z.string(),
-        postingText: z.string().max(20_000).nullable(),
-        voice: z.array(VoiceFileSchema),
-        addedAt: z.iso.datetime(),
-      })
+      z
+        .object({
+          id: IdSchema,
+          url: HttpsUrlSchema,
+          /** Title and company as I saw them. */
+          title: text,
+          why: z.string(),
+          postingText: z.string().max(20_000).nullable(),
+          voice: z.array(VoiceFileSchema),
+          addedAt: z.iso.datetime(),
+        })
+        .and(TrackedSchema)
     )
     .min(1),
 })

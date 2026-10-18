@@ -3,9 +3,7 @@
  * gets, where, what it searches, and what it never picks. `ROUTINE.md`
  * describes the run around it, and `digestFindings` holds a digest to it.
  *
- * The owner set these on 2026-10-17: five picks a day, three software and
- * two software-adjacent, remote or in the Bay Area; the adjacent track is
- * data, QA and solutions work, never a customer-facing or phone role.
+ * The owner set these on 2026-10-17.
  */
 
 export const TRACKS = ["software", "adjacent"] as const

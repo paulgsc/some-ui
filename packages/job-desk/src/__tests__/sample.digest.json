@@ -20,9 +20,9 @@
       },
       "scores": {
         "fit": 0.66,
-        "odds": 0.22,
+        "odds": 0.45,
         "fitWhy": "covers 8 of 12 requirements",
-        "oddsWhy": "30 days old · remote · no years floor stated"
+        "oddsWhy": "30 days old · remote"
       },
       "wants": "Backend services and data pipelines for aviation weather products, with automated tests and CI.",
       "fits": [
@@ -38,8 +38,14 @@
         }
       ],
       "gaps": [
-        { "kind": "learnable", "text": "Aviation weather data formats" },
-        { "kind": "unknown", "text": "Security clearance for some contracts" }
+        {
+          "kind": "learnable",
+          "text": "Aviation weather data formats"
+        },
+        {
+          "kind": "unknown",
+          "text": "Security clearance for some contracts"
+        }
       ],
       "dontClaim": ["Managed cloud tenure", "Kubernetes"],
       "resume": {
@@ -50,17 +56,32 @@
       },
       "kit": {
         "fields": [
-          { "label": "Email", "value": "paulgathondudev@gmail.com" },
-          { "label": "Location", "value": "Berkeley, CA" },
-          { "label": "GitHub", "value": "https://github.com/paulgsc" },
-          { "label": "Portfolio", "value": "https://paulgsc.github.io/some-ui" }
+          {
+            "label": "Email",
+            "value": "paulgathondudev@gmail.com"
+          },
+          {
+            "label": "Location",
+            "value": "Berkeley, CA"
+          },
+          {
+            "label": "GitHub",
+            "value": "https://github.com/paulgsc"
+          },
+          {
+            "label": "Portfolio",
+            "value": "https://paulgsc.github.io/some-ui"
+          }
         ],
         "answers": [
           {
             "label": "Authorized to work in the US",
             "value": "Yes, for any employer"
           },
-          { "label": "Sponsorship", "value": "Not needed" }
+          {
+            "label": "Sponsorship",
+            "value": "Not needed"
+          }
         ],
         "why": null
       }
@@ -81,9 +102,9 @@
       },
       "scores": {
         "fit": 0.61,
-        "odds": 0.34,
+        "odds": 0.55,
         "fitWhy": "covers 8 of 13 requirements",
-        "oddsWhy": "11 days old · remote · asks 2+ years"
+        "oddsWhy": "11 days old · remote · asks 2+ years, no penalty"
       },
       "wants": "Full-stack TypeScript product work: React front end, Node services, Postgres.",
       "fits": [
@@ -99,8 +120,14 @@
         }
       ],
       "gaps": [
-        { "kind": "hard", "text": "Two years in a paid engineering role" },
-        { "kind": "learnable", "text": "Node services in production" }
+        {
+          "kind": "hard",
+          "text": "Two years in a paid engineering role"
+        },
+        {
+          "kind": "learnable",
+          "text": "Node services in production"
+        }
       ],
       "dontClaim": ["Commercial-scale traffic"],
       "resume": {
@@ -111,8 +138,14 @@
       },
       "kit": {
         "fields": [
-          { "label": "Email", "value": "paulgathondudev@gmail.com" },
-          { "label": "GitHub", "value": "https://github.com/paulgsc" }
+          {
+            "label": "Email",
+            "value": "paulgathondudev@gmail.com"
+          },
+          {
+            "label": "GitHub",
+            "value": "https://github.com/paulgsc"
+          }
         ],
         "answers": [],
         "why": null
@@ -134,9 +167,9 @@
       },
       "scores": {
         "fit": 0.68,
-        "odds": 0.44,
+        "odds": 0.65,
         "fitWhy": "covers 7 of 10 requirements",
-        "oddsWhy": "3 days old · remote · no years floor stated"
+        "oddsWhy": "3 days old · remote"
       },
       "wants": "SQL and Python analysis of hospital pharmacy data, dashboards for internal teams, and quality checks on incoming feeds.",
       "fits": [
@@ -157,8 +190,14 @@
         }
       ],
       "gaps": [
-        { "kind": "learnable", "text": "Pharmacy supply-chain domain" },
-        { "kind": "learnable", "text": "dbt or a cloud warehouse" }
+        {
+          "kind": "learnable",
+          "text": "Pharmacy supply-chain domain"
+        },
+        {
+          "kind": "learnable",
+          "text": "dbt or a cloud warehouse"
+        }
       ],
       "dontClaim": ["Snowflake", "BigQuery", "Analytics engineer title"],
       "resume": {
@@ -170,7 +209,12 @@
         "change": "A data composition: SQL and Python analysis lead, CABA Design and Natera render as experience, and the metric-contract checks are the engineering evidence."
       },
       "kit": {
-        "fields": [{ "label": "Email", "value": "paulgathondudev@gmail.com" }],
+        "fields": [
+          {
+            "label": "Email",
+            "value": "paulgathondudev@gmail.com"
+          }
+        ],
         "answers": [],
         "why": null
       }
@@ -191,9 +235,9 @@
       },
       "scores": {
         "fit": 0.63,
-        "odds": 0.39,
+        "odds": 0.65,
         "fitWhy": "covers 7 of 11 requirements",
-        "oddsWhy": "5 days old · remote · asks for a framework you've built"
+        "oddsWhy": "5 days old · remote"
       },
       "wants": "Build and keep an automated UI and API test suite in CI, and triage failures with the developers.",
       "fits": [
@@ -209,8 +253,14 @@
         }
       ],
       "gaps": [
-        { "kind": "learnable", "text": "Selenium or Cypress" },
-        { "kind": "unknown", "text": "Mobile device lab" }
+        {
+          "kind": "learnable",
+          "text": "Selenium or Cypress"
+        },
+        {
+          "kind": "unknown",
+          "text": "Mobile device lab"
+        }
       ],
       "dontClaim": ["QA job title", "ISTQB certification"],
       "resume": {
@@ -222,7 +272,12 @@
         "change": "A qa composition: the end-to-end suites, the contract harness and the CI gate lead, and the build work supports them."
       },
       "kit": {
-        "fields": [{ "label": "Email", "value": "paulgathondudev@gmail.com" }],
+        "fields": [
+          {
+            "label": "Email",
+            "value": "paulgathondudev@gmail.com"
+          }
+        ],
         "answers": [],
         "why": null
       }
@@ -256,5 +311,8 @@
   ],
   "scouts": [],
   "read": [],
-  "evidence": { "someUi": "cb503cb", "server": "9226240" }
+  "evidence": {
+    "someUi": "cb503cb",
+    "server": "9226240"
+  }
 }

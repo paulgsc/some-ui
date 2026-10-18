@@ -18,7 +18,5 @@ UI here, only the shapes, the policy and a checker.
   the way the phone will read it, after a build. It prints `[]` when the file
   is ready to upload.
 
-Indeed gives a run no stable key for a posting, so `fingerprint()` names one by
-company, title and location. Everything is append-only: a later file adds to
-what an earlier one said and never restates it, and the routine never replaces
-a digest.
+The files are append-only by convention: a later one adds to what an earlier
+one said, and the routine never replaces a digest.

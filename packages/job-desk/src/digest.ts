@@ -2,12 +2,12 @@ import { z } from "zod"
 
 import {
   CommitSchema,
-  FamilySchema,
   FingerprintSchema,
+  HttpsUrlSchema,
   IdSchema,
   parseWith,
   text,
-  TrackSchema,
+  TrackedSchema,
   type Parsed,
 } from "./shared"
 
@@ -16,10 +16,6 @@ import {
  * `some-ui jobs/Brief/` as `digest-<day>.json`. A day's picks, each scored
  * and carrying the résumé to send, plus what the run set aside and its
  * verdict on each scout it read. The phone opens it from the file picker.
- *
- * Widened from the unmerged branch's `some-ui.job-brief/1` (one posting at a
- * time): a pick keeps the brief's fits, gaps, dontClaim and kit, and adds a
- * track, two scores, a fingerprint, and a résumé that is a build or a patch.
  *
  * `__tests__/sample.digest.json` is a complete digest, and the template a run
  * copies.
@@ -37,14 +33,19 @@ export const SUBMISSION_TEMPLATES = [
   "conventional",
 ] as const
 
-/** A composition's name: one of `@some-ui/resume`'s variants, or a new one. */
+/** `@some-ui/resume`'s compositions, the only ones a build can render. */
+export const RESUME_VARIANTS = ["backend", "platform", "fullstack"] as const
+
+const BuiltVariantSchema = z.enum(RESUME_VARIANTS)
+
+/** A patch may name a composition that does not exist yet. */
 const VariantSchema = z.string().regex(/^[a-z][a-z-]{1,30}$/)
 
 const ResumeSchema = z.discriminatedUnion("kind", [
   z.object({
     /** An existing composition fits as it stands. */
     kind: z.literal("build"),
-    variant: VariantSchema,
+    variant: BuiltVariantSchema,
     template: z.enum(SUBMISSION_TEMPLATES),
     /** The some-ui commit whose composition the fits were read from. */
     ref: CommitSchema,
@@ -55,7 +56,7 @@ const ResumeSchema = z.discriminatedUnion("kind", [
     variant: VariantSchema,
     template: z.enum(SUBMISSION_TEMPLATES),
     /** The existing composition to send until the patch is merged. */
-    fallback: VariantSchema,
+    fallback: BuiltVariantSchema,
     /** The PR that adds it, or null while it is only proposed. */
     pr: z.number().int().positive().nullable(),
     /** What the composition would lead with, in a sentence or two. */
@@ -67,46 +68,45 @@ export type ResumeRecommendation = z.infer<typeof ResumeSchema>
 
 const LabelledSchema = z.object({ label: text, value: text })
 
-const PickSchema = z.object({
-  id: IdSchema,
-  track: TrackSchema,
-  /** The adjacent family, or null on the software track. */
-  family: FamilySchema.nullable(),
-  fingerprint: FingerprintSchema,
-  posting: z.object({
-    title: text,
-    company: text,
-    location: text,
-    compensation: text.nullable(),
-    /** The experience the posting asks for, as it says it. */
-    experience: text.nullable(),
-    postedOn: z.iso.date().nullable(),
-    applyUrl: z.url({ protocol: /^https$/ }),
-  }),
-  scores: z.object({
-    /** How much of what the posting requires my evidence covers, 0 to 1. */
-    fit: z.number().min(0).max(1),
-    /** The chance of hearing back, 0 to 1. A judgment until outcomes calibrate it. */
-    odds: z.number().min(0).max(1),
-    fitWhy: text,
-    oddsWhy: text,
-  }),
-  /** What the posting asks for, in a sentence or two. */
-  wants: text,
-  fits: z.array(z.object({ title: text, detail: text, source: text })).min(1),
-  gaps: z.array(
-    z.object({ kind: z.enum(["unknown", "learnable", "hard"]), text })
-  ),
-  dontClaim: z.array(text),
-  resume: ResumeSchema,
-  kit: z.object({
-    /** Copied into the form one at a time: email, links, location. */
-    fields: z.array(LabelledSchema),
-    /** The form's standard questions, already answered. */
-    answers: z.array(LabelledSchema),
-    why: z.object({ prompt: text, draft: text }).nullable(),
-  }),
-})
+const PickSchema = z
+  .object({
+    id: IdSchema,
+    fingerprint: FingerprintSchema,
+    posting: z.object({
+      title: text,
+      company: text,
+      location: text,
+      compensation: text.nullable(),
+      /** The experience the posting asks for, as it says it. */
+      experience: text.nullable(),
+      postedOn: z.iso.date().nullable(),
+      applyUrl: HttpsUrlSchema,
+    }),
+    scores: z.object({
+      /** How much of what the posting requires my evidence covers, 0 to 1. */
+      fit: z.number().min(0).max(1),
+      /** The chance of hearing back, 0 to 1. A judgment until outcomes calibrate it. */
+      odds: z.number().min(0).max(1),
+      fitWhy: text,
+      oddsWhy: text,
+    }),
+    /** What the posting asks for, in a sentence or two. */
+    wants: text,
+    fits: z.array(z.object({ title: text, detail: text, source: text })).min(1),
+    gaps: z.array(
+      z.object({ kind: z.enum(["unknown", "learnable", "hard"]), text })
+    ),
+    dontClaim: z.array(text),
+    resume: ResumeSchema,
+    kit: z.object({
+      /** Copied into the form one at a time: email, links, location. */
+      fields: z.array(LabelledSchema),
+      /** The form's standard questions, already answered. */
+      answers: z.array(LabelledSchema),
+      why: z.object({ prompt: text, draft: text }).nullable(),
+    }),
+  })
+  .and(TrackedSchema)
 
 export type Pick = z.infer<typeof PickSchema>
 

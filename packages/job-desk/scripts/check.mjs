@@ -1,9 +1,6 @@
 #!/usr/bin/env node
 // usage: pnpm --filter @some-ui/job-desk check <file.json>
-// Checks a digest, decisions or scouts file the way the phone will read it,
-// picked by its `schema`. Prints [] and exits 0 when the file is ready to
-// upload; otherwise prints what is wrong and exits 1. Reads this package's
-// own build, so build it first (pnpm --filter @some-ui/job-desk build).
+// Exits 0 only when it prints []. Reads this package's own build.
 import { readFileSync } from "node:fs"
 import { resolve } from "node:path"
 import {
@@ -13,19 +10,23 @@ import {
   parseScouts,
 } from "@some-ui/job-desk"
 
-const PARSERS = {
-  "some-ui.job-decisions/1": parseDecisions,
-  "some-ui.job-scouts/1": parseScouts,
-}
+const PARSERS = new Map([
+  ["some-ui.job-digest/1", parseDigest],
+  ["some-ui.job-decisions/1", parseDecisions],
+  ["some-ui.job-scouts/1", parseScouts],
+])
 
 function check(raw) {
-  let schema = null
+  let schema
   try {
-    schema = JSON.parse(raw).schema
+    schema = JSON.parse(raw)?.schema
   } catch {
-    // parseDigest names the problem below
+    return "That file isn’t JSON."
   }
-  const parse = PARSERS[schema] ?? parseDigest
+  const parse = PARSERS.get(schema)
+  if (!parse) {
+    return `Unknown schema ${JSON.stringify(schema)}: expected one of ${[...PARSERS.keys()].join(", ")}`
+  }
   const parsed = parse(raw)
   if (!parsed.ok) return parsed.problem
   return parse === parseDigest ? digestFindings(parsed.value) : []

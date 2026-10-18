@@ -4,7 +4,8 @@ A scheduled task runs this every morning at 07:52 Pacific, in a fresh session
 with the Indeed and Google Drive connectors and a checkout of
 `paulgsc/some-ui`. It reads my résumé and what I said about yesterday's picks,
 searches Indeed on two tracks, and leaves one file in Drive: today's digest.
-The phone opens that file; nothing else reads it.
+The phone opens that file, and later runs read it back to see what was
+already picked.
 
 The run writes to Drive only. It changes nothing in the repo: no commits, no
 pushes, no PRs. A posting that needs a résumé composition that doesn't exist

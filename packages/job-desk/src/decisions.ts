@@ -16,8 +16,8 @@ import {
  * passed and why, how applying went, and what happened afterwards. The
  * routine cannot reach home, so this file is its only view of the record.
  *
- * Append-only by construction: a later file adds outcomes for earlier
- * picks by fingerprint, and never restates or edits an earlier file.
+ * Append-only by convention: a later file adds outcomes for earlier picks
+ * by fingerprint, and never restates or edits an earlier file.
  */
 
 export const PASS_REASONS = [

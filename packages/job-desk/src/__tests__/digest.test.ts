@@ -1,7 +1,11 @@
 import { readFileSync } from "node:fs"
 import { parseDecisions } from "@job-desk/decisions"
 import type { Digest } from "@job-desk/digest"
-import { parseDigest } from "@job-desk/digest"
+import {
+  parseDigest,
+  RESUME_VARIANTS,
+  SUBMISSION_TEMPLATES,
+} from "@job-desk/digest"
 import { digestFindings } from "@job-desk/findings"
 import { fingerprint } from "@job-desk/fingerprint"
 import { parseScouts } from "@job-desk/scouts"
@@ -45,13 +49,35 @@ describe("parseDigest", () => {
     })
   })
 
-  it("takes a résumé only in a layout that accepts contact details", () => {
+  it("refuses a software pick that names a family", () => {
     const digest = sample()
     const [first, ...rest] = digest.picks
-    const rail = { ...first, resume: { ...first!.resume, template: "rail" } }
+    const named = { ...first, family: "data" }
     expect(
-      parseDigest(JSON.stringify({ ...digest, picks: [rail, ...rest] })).ok
+      parseDigest(JSON.stringify({ ...digest, picks: [named, ...rest] })).ok
     ).toBe(false)
+  })
+})
+
+/** A file in `@some-ui/resume`, read as text: the lists below copy its own. */
+function resumeFile(path: string): string {
+  return readFileSync(
+    new URL(`../../../ui/resume/${path}`, import.meta.url),
+    "utf8"
+  )
+}
+
+describe("the résumé lists a digest names", () => {
+  it("are the compositions the résumé builds", () => {
+    const [, list] = /export const variants = (\[[^\]]*\])/.exec(
+      resumeFile("scripts/typst.mjs")
+    )!
+    expect(RESUME_VARIANTS).toEqual(JSON.parse(list!))
+  })
+
+  it("are the layouts that take contact details", () => {
+    const envelope: unknown = JSON.parse(resumeFile("src/pii/envelope.json"))
+    expect(envelope).toMatchObject({ templates: SUBMISSION_TEMPLATES })
   })
 })
 
@@ -103,11 +129,46 @@ describe("digestFindings", () => {
     ])
   })
 
-  it("asks an adjacent pick, and only one, for its family", () => {
+  it("finds the same role picked from two places", () => {
     const digest = sample()
-    digest.picks[0]!.family = "data"
-    digest.picks[2]!.family = null
-    expect(messages(digest)).toHaveLength(2)
+    const remote = digest.picks[1]!
+    const posting = { ...remote.posting, location: "Oakland, CA" }
+    digest.picks.push({
+      ...remote,
+      id: "apl-oak1",
+      posting,
+      fingerprint: fingerprint(posting),
+    })
+    expect(messages(digest)).toEqual([
+      "picks.4.fingerprint: same role as picks.1, in another place",
+    ])
+  })
+
+  it("finds a posting set aside twice", () => {
+    const digest = sample()
+    digest.setAside.push({ ...digest.setAside[0]! })
+    expect(messages(digest)).toEqual([
+      "setAside.4.fingerprint: same posting as setAside.0",
+    ])
+  })
+
+  it("finds a posting dated after the digest", () => {
+    const digest = sample()
+    digest.picks[1]!.posting.postedOn = "2026-10-19"
+    expect(messages(digest)).toEqual([
+      "picks.1.posting.postedOn: after the digest's day, 2026-10-18",
+    ])
+  })
+
+  it("matches what not to claim as a whole word", () => {
+    const digest = sample()
+    digest.picks[1]!.dontClaim.push("Java")
+    digest.picks[1]!.fits[0]!.detail = "JavaScript and TypeScript services."
+    expect(messages(digest)).toEqual([])
+    digest.picks[1]!.fits[0]!.detail = "Services in Java."
+    expect(messages(digest)).toEqual([
+      'picks.1.fits.0: claims "Java", which dontClaim rules out',
+    ])
   })
 
   it("finds a fit that claims what the pick rules out", () => {
