@@ -298,6 +298,27 @@ describe("the retry queue", () => {
     expect(sensor.census().channelPending).toHaveLength(0)
   })
 
+  it("re-reads a card whose channel name hydrates after its link", async () => {
+    const el = lockup("unnamed", "Named")
+    const link = el.querySelector<HTMLElement>('a[href="/@Named"]')!
+    link.textContent = ""
+    const text = link.appendChild(document.createTextNode(""))
+    document.body.appendChild(el)
+    await tick()
+    expect(sensor.census().channelPending).toHaveLength(1)
+
+    // A text node's data changing is no mutation the observer sees.
+    text.data = "Named"
+    await tick(2)
+    const last = tokens
+      .filter((t) => t.kind === "observed" && t.key === K("unnamed"))
+      .at(-1)
+    expect(last?.kind === "observed" && last.observation.channelName).toBe(
+      "Named"
+    )
+    expect(sensor.census().channelPending).toHaveLength(0)
+  })
+
   it("gives up on a channel that never arrives, keeping the card", async () => {
     document.body.appendChild(lockup("a", null))
     await tick(RESOLVE_BUDGET_MS / RETRY_INTERVAL_MS + 2)

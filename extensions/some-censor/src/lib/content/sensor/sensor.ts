@@ -244,20 +244,6 @@ export function createSensor(ports: SensorPorts): Sensor {
       }
     }
 
-    if (extracted.kind === "video-only") {
-      if (
-        extractCarriesChannel(el) &&
-        !channelPending.has(el) &&
-        !channelAbandoned.has(el)
-      ) {
-        channelPending.set(el, now)
-        ensureRetryLoop()
-      }
-    } else {
-      channelPending.delete(el)
-      channelAbandoned.delete(el)
-    }
-
     // On an engine without `:has()`, the fallback rule occludes an
     // enclosing rich-item unconditionally; that wrapper is nested custody
     // of this card so the stamp releases it (D6, #1504).
@@ -280,6 +266,21 @@ export function createSensor(ports: SensorPorts): Sensor {
       cls.shape,
       surface
     )
+    // A channel's name can hydrate in place after its link, as a text
+    // change no mutation this observes; the plate's initial reads it.
+    if (observation.channelId === null || observation.channelName === null) {
+      if (
+        extractCarriesChannel(el) &&
+        !channelPending.has(el) &&
+        !channelAbandoned.has(el)
+      ) {
+        channelPending.set(el, now)
+        ensureRetryLoop()
+      }
+    } else {
+      channelPending.delete(el)
+      channelAbandoned.delete(el)
+    }
     if (observation.uploadDate || observation.short) {
       datePending.delete(el)
     } else if (!datePending.has(el) && !dateAbandoned.has(el)) {
@@ -367,10 +368,9 @@ export function createSensor(ports: SensorPorts): Sensor {
         channelPending.delete(el)
         continue
       }
-      const extracted = tryExtract(el)
-      if (extracted.kind === "full") {
+      if (now - since < RESOLVE_BUDGET_MS) {
         observe(el)
-      } else if (now - since >= RESOLVE_BUDGET_MS) {
+      } else {
         channelPending.delete(el)
         channelAbandoned.add(el)
         const key = identity.keyOf(el)
