@@ -18,6 +18,12 @@
  * (`read-aloud/mistakes`), and situations of use. All optional: a line
  * without them is read aloud as before.
  *
+ * A deck is written for one practice, read-aloud or the grammar lens, and
+ * set in a context: a genre (a drama's, or everyday life) and a premise. A
+ * lens set keeps only lines with a lens; a read-aloud set keeps none of its
+ * lines' lenses. A deck with no practice is one written before sets had
+ * one: it serves both, as every deck once did.
+ *
  * Content is checked at load, not trusted (Prop. 8.1, Thm. 8.2). A malformed
  * word, line or occurrence is dropped and reported, never the whole deck. A
  * line whose occurrences do not account for every word in it is dropped as
@@ -35,11 +41,25 @@
  * their conventions: kebab-case ids and short glosses.
  */
 
+import { GENRES, koreanGenre } from "@topik/lib/topik/core/feed-card"
 import type { MistakeId } from "@topik/lib/topik/read-aloud/mistakes"
 import { isMistakeId } from "@topik/lib/topik/read-aloud/mistakes"
 import { z } from "zod"
 
 // TYPES
+
+const SET_PRACTICES = ["read-aloud", "lens"] as const
+export type SetPractice = (typeof SET_PRACTICES)[number]
+
+/**
+ * A set genre's Korean name: a drama's (로맨스), or 일상 for a set set in
+ * everyday life; none for a genre that is neither.
+ */
+export const setGenreKo = (genre: string): string | undefined =>
+  genre === "everyday" ? "일상" : koreanGenre(genre)
+
+/** Where a set's lines take place: a genre and a premise in a sentence. */
+type SetContext = { genre: string; premise: string }
 
 export const READ_ALOUD_LEVELS = [1, 2, 3] as const
 export type ReadAloudLevel = (typeof READ_ALOUD_LEVELS)[number]
@@ -187,11 +207,18 @@ export type ReadAloudDeck = {
    * (`added-sets`); a deck written for anyone has none.
    */
   from?: string
+  /** Absent on a deck written before sets had one: it serves both. */
+  practice?: SetPractice
+  context?: SetContext
   words: Array<ReadAloudWord>
   lines: Array<ReadAloudLine>
 }
 
 export type ContentFindingKind =
+  | "practice-unknown"
+  | "context-malformed"
+  | "line-without-lens"
+  | "lens-in-read-aloud-set"
   | "word-malformed"
   | "word-duplicate"
   | "line-malformed"
@@ -290,8 +317,20 @@ const DeckSchema = z.object({
   id: IdSchema,
   title: z.string().trim().min(1),
   from: z.string().trim().min(1).max(200).optional(),
+  practice: z.unknown().optional(),
+  context: z.unknown().optional(),
   words: z.array(z.unknown()),
   lines: z.array(z.unknown()),
+})
+
+const ContextSchema = z.object({
+  genre: z
+    .string()
+    .refine(
+      (genre) => setGenreKo(genre) !== undefined,
+      `a genre is everyday or one of ${GENRES.map(({ genre }) => genre).join(", ")}`
+    ),
+  premise: z.string().trim().min(1).max(200),
 })
 
 const summarise = (error: z.ZodError): string =>
@@ -569,6 +608,29 @@ export function parseReadAloudDeck(raw: unknown): ParsedDeck {
 
   const findings: Array<ContentFinding> = []
 
+  const rawPractice = outer.data.practice
+  const practice = SET_PRACTICES.find((known) => known === rawPractice)
+  if (rawPractice !== undefined && practice === undefined) {
+    findings.push({
+      kind: "practice-unknown",
+      where: "practice",
+      detail: `${JSON.stringify(rawPractice)} is not a practice; the deck serves both`,
+    })
+  }
+  let context: { context?: SetContext } = {}
+  if (outer.data.context !== undefined) {
+    const parsed = ContextSchema.safeParse(outer.data.context)
+    if (parsed.success) {
+      context = { context: parsed.data }
+    } else {
+      findings.push({
+        kind: "context-malformed",
+        where: "context",
+        detail: `${summarise(parsed.error)}; the deck is kept without it`,
+      })
+    }
+  }
+
   const words: Array<ReadAloudWord> = []
   const wordIds = new Set<string>()
   outer.data.words.forEach((candidate, index) => {
@@ -674,10 +736,25 @@ export function parseReadAloudDeck(raw: unknown): ParsedDeck {
         })
       }
     }
+    if (rawLens !== undefined && practice === "read-aloud") {
+      findings.push({
+        kind: "lens-in-read-aloud-set",
+        where: line.id,
+        detail: "a read-aloud set asks no lens; the line is kept without it",
+      })
+    }
     const lens =
-      rawLens === undefined
+      rawLens === undefined || practice === "read-aloud"
         ? null
         : auditLens(rawLens, line.id, authored, findings)
+    if (lens === null && practice === "lens") {
+      findings.push({
+        kind: "line-without-lens",
+        where: line.id,
+        detail: "a lens set's line is there to be asked about; it is dropped",
+      })
+      return
+    }
     lines.push({
       ...line,
       words: occurrences,
@@ -692,6 +769,8 @@ export function parseReadAloudDeck(raw: unknown): ParsedDeck {
       id: outer.data.id,
       title: outer.data.title,
       ...(outer.data.from === undefined ? {} : { from: outer.data.from }),
+      ...(practice === undefined ? {} : { practice }),
+      ...context,
       words,
       lines,
     },

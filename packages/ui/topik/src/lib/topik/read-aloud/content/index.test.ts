@@ -438,6 +438,74 @@ describe("parseReadAloudDeck, a line's lens (Def. 4.9)", () => {
       expect(empty.findings.map((f) => f.kind)).toEqual(["lens-malformed"])
     }
   })
+
+  describe("a set's practice and context", () => {
+    const TWO_CUPS: RawLine = { ...ONE_CUP, id: "two-cups" }
+    const both = (
+      overrides: Record<string, unknown>
+    ): Record<string, unknown> =>
+      deck({ lines: [{ ...ONE_CUP, lens: LENS }, TWO_CUPS], ...overrides })
+    const CONTEXT = {
+      genre: "romance",
+      premise: "Two strangers share a table.",
+    }
+
+    it("keeps a known practice and context", () => {
+      const { deck: parsed } = parsedOrThrow(
+        both({ practice: "lens", context: CONTEXT })
+      )
+      expect(parsed.practice).toBe("lens")
+      expect(parsed.context).toEqual(CONTEXT)
+    })
+
+    it("keeps only lines with a lens in a lens set", () => {
+      const { deck: parsed, findings } = parsedOrThrow(
+        both({ practice: "lens" })
+      )
+      expect(parsed.lines.map((kept) => kept.id)).toEqual(["one-cup"])
+      expect(findings).toEqual([
+        expect.objectContaining({
+          kind: "line-without-lens",
+          where: "two-cups",
+        }),
+      ])
+    })
+
+    it("keeps no lens in a read-aloud set, and every line", () => {
+      const { deck: parsed, findings } = parsedOrThrow(
+        both({ practice: "read-aloud" })
+      )
+      expect(parsed.lines.map((kept) => kept.lens)).toEqual([
+        undefined,
+        undefined,
+      ])
+      expect(findings.map((finding) => finding.kind)).toEqual([
+        "lens-in-read-aloud-set",
+      ])
+    })
+
+    it("serves both without a practice, or with one it does not know", () => {
+      expect(parsedOrThrow(both({})).deck.practice).toBeUndefined()
+      const { deck: parsed, findings } = parsedOrThrow(
+        both({ practice: "drama" })
+      )
+      expect(parsed.practice).toBeUndefined()
+      expect(parsed.lines).toHaveLength(2)
+      expect(findings.map((finding) => finding.kind)).toEqual([
+        "practice-unknown",
+      ])
+    })
+
+    it("keeps the deck without a context it cannot read", () => {
+      const { deck: parsed, findings } = parsedOrThrow(
+        both({ context: { genre: "space-opera", premise: "x" } })
+      )
+      expect(parsed.context).toBeUndefined()
+      expect(findings.map((finding) => finding.kind)).toEqual([
+        "context-malformed",
+      ])
+    })
+  })
 })
 
 describe("readAloudLevelFor", () => {

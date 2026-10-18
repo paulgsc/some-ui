@@ -3,7 +3,12 @@ import { memoryStorage } from "@some-ui/vite-config/vitest/memory-storage"
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { ReadAloudScreen } from "@topik/components/topik/read-aloud/read-aloud-screen"
 import { createReadAloudStore } from "@topik/lib/topik/adapter/read-aloud-store"
-import { REPO_SETS as DECK } from "@topik/lib/topik/read-aloud/repo-sets"
+import {
+  REPO_SETS as DECK,
+  LEVEL_ONE_LENS_SET,
+  LEVEL_ONE_SET,
+  REPO_LENS,
+} from "@topik/lib/topik/read-aloud/repo-sets"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 function fakeSpeech(): Speaker {
@@ -60,6 +65,7 @@ describe("ReadAloudScreen", () => {
         topikLevel={1}
         speech={fakeSpeech()}
         deck={DECK}
+        lensDeck={REPO_LENS}
         store={createReadAloudStore(memoryStorage())}
         onExit={() => undefined}
       />
@@ -78,6 +84,7 @@ describe("ReadAloudScreen", () => {
         topikLevel={1}
         speech={null}
         deck={DECK}
+        lensDeck={REPO_LENS}
         store={createReadAloudStore(memoryStorage())}
         lensRecord={{ add: () => undefined, full }}
         onExit={() => undefined}
@@ -96,12 +103,50 @@ describe("ReadAloudScreen", () => {
         topikLevel={1}
         speech={null}
         deck={DECK}
+        lensDeck={REPO_LENS}
         store={createReadAloudStore(memoryStorage())}
         onExit={() => undefined}
       />
     )
     fireEvent.click(screen.getByRole("button", { name: /grammar lens/i }))
     expect(document.querySelector('[data-slot="lens-card"]')).not.toBeNull()
+  })
+
+  it("opens a lens set on the grammar lens, and leaves to where it came from", () => {
+    const onExit = vi.fn()
+    render(
+      <ReadAloudScreen
+        topikLevel={1}
+        speech={fakeSpeech()}
+        deck={LEVEL_ONE_LENS_SET}
+        store={createReadAloudStore(memoryStorage())}
+        onExit={onExit}
+      />
+    )
+    expect(document.querySelector('[data-slot="lens-card"]')).not.toBeNull()
+    expect(screen.queryByRole("button", { name: /^read aloud$/i })).toBeNull()
+    fireEvent.click(
+      screen.getByRole("button", { name: /stop the grammar lens/i })
+    )
+    expect(onExit).toHaveBeenCalledOnce()
+  })
+
+  it("offers a read-aloud set no grammar lens", () => {
+    render(
+      <ReadAloudScreen
+        topikLevel={1}
+        speech={fakeSpeech()}
+        deck={LEVEL_ONE_SET}
+        lensDeck={REPO_LENS}
+        store={createReadAloudStore(memoryStorage())}
+        onExit={() => undefined}
+      />
+    )
+    expect(screen.getByRole("button", { name: /^read aloud$/i })).toBeTruthy()
+    expect(screen.queryByRole("button", { name: /grammar lens/i })).toBeNull()
+    expect(
+      document.querySelector('[data-slot="read-aloud-lens-about"]')
+    ).toBeNull()
   })
 
   it("records what ran and keeps each word's pace", async () => {
