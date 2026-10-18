@@ -575,9 +575,7 @@
       >
         <ytd-engagement-panel-title-header-renderer>
           <h2 id="title" aria-label="Comments 27">
-            <yt-formatted-string id="title-text" data-keep="comments title"
-              >Comments</yt-formatted-string
-            >
+            <yt-formatted-string id="title-text">Comments</yt-formatted-string>
             <yt-formatted-string
               id="contextual-info"
               data-crowd="comments panel count"
@@ -587,11 +585,14 @@
         </ytd-engagement-panel-title-header-renderer>
       </ytd-engagement-panel-section-list-renderer>
 
-      <!-- The same count, under a panel id of another name. -->
+      <!-- The same count, under a panel id of another name: the comments
+           panel itself goes whole (#1805), this one keeps its title. -->
       <ytd-engagement-panel-section-list-renderer target-id="PAsearch_preview">
         <ytd-engagement-panel-title-header-renderer>
           <h2 id="title" aria-label="Comments 1K">
-            <yt-formatted-string id="title-text">Comments</yt-formatted-string>
+            <yt-formatted-string id="title-text" data-keep="panel title"
+              >Comments</yt-formatted-string
+            >
             <yt-formatted-string
               id="contextual-info"
               data-crowd="preview comments count"

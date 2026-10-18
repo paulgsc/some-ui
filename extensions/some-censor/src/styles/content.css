@@ -605,6 +605,31 @@ ytd-item-section-renderer:has(> #contents > ytd-shelf-renderer:only-child):has(
 }
 
 /* ----------------------------------------------------------
+   NO COMMENTS (QD14, #1805)
+
+   Comments are written in the present, even under a 2015 video, so
+   the whole section goes, under every video: the watch page's section
+   (its header, count and every thread), the narrow layout's teaser,
+   and the comments panel YouTube opens beside a video or a Short.
+   ---------------------------------------------------------- */
+:root:not([data-boyo-off]) ytd-comments {
+  display: none !important;
+}
+
+:root:not([data-boyo-off]) ytd-comments-entry-point-header-renderer {
+  display: none !important;
+}
+
+:root:not([data-boyo-off]) ytd-comments-entry-point-teaser-renderer {
+  display: none !important;
+}
+
+:root:not([data-boyo-off])
+  ytd-engagement-panel-section-list-renderer[target-id="engagement-panel-comments-section"] {
+  display: none !important;
+}
+
+/* ----------------------------------------------------------
    THE CROWD (QD14)
 
    A card keeps its title, its channel name and its duration.
