@@ -27,11 +27,9 @@ describe("createSessionLogStore", () => {
     expect(store.append(started("e1", "a"))).toBe(true)
     expect(store.append(started("e2", "b"))).toBe(true)
     expect(seen).toEqual([1, 2])
-    expect([...storage.map.keys()]).toEqual([
-      sessionKey("a"),
-      INDEX_KEY,
-      sessionKey("b"),
-    ])
+    expect(new Set(storage.map.keys())).toEqual(
+      new Set([INDEX_KEY, sessionKey("a"), sessionKey("b")])
+    )
     expect(createSessionLogStore(storage).getSnapshot().log).toEqual([
       started("e1", "a"),
       started("e2", "b"),
@@ -51,8 +49,51 @@ describe("createSessionLogStore", () => {
     ).toEqual(["e1", "e2"])
   })
 
+  it("keeps an event once, and says it is kept", () => {
+    const storage = memoryStorage()
+    const store = createSessionLogStore(storage)
+    store.append(started("e1", "a"))
+    storage.full = true
+    expect(store.append(started("e1", "a"))).toBe(true)
+    expect(store.getSnapshot().problem).toBeNull()
+  })
+
+  it("lists a session before keeping it, so a refused index keeps nothing unlisted", () => {
+    const storage = memoryStorage()
+    const setItem = storage.setItem
+    storage.setItem = (key, value): void => {
+      if (key === INDEX_KEY)
+        throw new DOMException("full", "QuotaExceededError")
+      setItem(key, value)
+    }
+    const store = createSessionLogStore(storage)
+    expect(store.append(started("e1", "a"))).toBe(false)
+    expect(storage.map.size).toBe(0)
+
+    storage.setItem = setItem
+    expect(store.append(started("e1", "a"))).toBe(true)
+    expect(createSessionLogStore(storage).getSnapshot().log).toHaveLength(1)
+  })
+
+  it("leaves an unreadable index as it is and opens read-only", () => {
+    const storage = memoryStorage([[INDEX_KEY, `{"v":2,"sessions":["a"]}`]])
+    const store = createSessionLogStore(storage)
+    expect(store.readOnly).toBe(true)
+    expect(store.append(started("e1", "b"))).toBe(false)
+    expect([...storage.map]).toEqual([[INDEX_KEY, `{"v":2,"sessions":["a"]}`]])
+  })
+
+  it("refuses an event the log cannot read back, and says why", () => {
+    const store = createSessionLogStore(memoryStorage())
+    expect(store.append({ ...started("e1", "a"), session: "a:b" })).toBe(false)
+    expect(store.getSnapshot().problem).toContain("isn't one the log can keep")
+  })
+
   it("moves an unreadable session aside rather than writing over it", () => {
-    const storage = memoryStorage([[sessionKey("a"), "{not json"]])
+    const storage = memoryStorage([
+      [INDEX_KEY, `{"v":1,"sessions":["a"]}`],
+      [sessionKey("a"), "{not json"],
+    ])
     const store = createSessionLogStore(storage)
     expect(store.append(started("e1", "a"))).toBe(true)
     expect(storage.map.get(`${sessionKey("a")}:unreadable:1`)).toBe("{not json")

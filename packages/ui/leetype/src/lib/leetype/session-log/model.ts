@@ -16,10 +16,9 @@ import { z } from "zod"
 const Stamp = {
   /** Unique within the log; an event whose id is already kept is not appended twice. */
   id: z.string().min(1),
-  /** ISO time. */
-  at: z.string(),
-  /** One run of one session file. */
-  session: z.string().min(1),
+  at: z.iso.datetime(),
+  /** One run of one session file; no `:`, since it names a storage key (`stored.ts`). */
+  session: z.string().regex(/^[^:]+$/),
 }
 
 const OnScreen = { file: z.string().min(1), screen: z.string().min(1) }
@@ -93,12 +92,16 @@ export const SessionEventSchema = z.discriminatedUnion("type", [
     ...Stamp,
     ...OnScreen,
     type: z.literal("spoken"),
-    /** Recording length; 0 for a pass. */
-    seconds: z.number().nonnegative(),
-    passed: z.boolean(),
-    typed: z.boolean(),
-    /** Rubric points ticked, as the rubric words them. */
-    ticks: z.array(z.string()),
+    /** Passed, or answered aloud or typed (a bus) with the rubric points ticked after. */
+    answer: z.discriminatedUnion("as", [
+      z.strictObject({ as: z.literal("passed") }),
+      z.strictObject({
+        as: z.literal("recorded"),
+        seconds: z.number().positive(),
+        ticks: z.array(z.string()),
+      }),
+      z.strictObject({ as: z.literal("typed"), ticks: z.array(z.string()) }),
+    ]),
   }),
   z.strictObject({
     ...Stamp,
@@ -115,11 +118,12 @@ export function append(log: SessionLog, event: SessionEvent): SessionLog {
   return log.some((kept) => kept.id === event.id) ? log : [...log, event]
 }
 
-type OnFile = { readonly file: string; readonly screen: string }
+type OnFile = z.infer<z.ZodObject<typeof OnScreen>>
 
 /**
- * What a session's ledger screen says (Prop. 10.2), computed from the log.
- * `parked` and `saved` are across every session so far: a round parked
+ * What a session's ledger screen says (Prop. 10.2), computed from the log
+ * up to the session's last event, so a past session's ledger never changes.
+ * `parked` and `saved` are across every session until then: a round parked
  * earlier and not since returned and solved still waits on its reading, and
  * a reading saved earlier and not since read is still saved.
  */
@@ -131,7 +135,7 @@ export type SessionLedger = {
     readonly reading: string
   }>
   readonly spoken: ReadonlyArray<
-    OnFile & { readonly passed: boolean; readonly typed: boolean }
+    OnFile & { readonly as: "passed" | "recorded" | "typed" }
   >
 }
 
@@ -139,16 +143,19 @@ const keyOf = (file: string, screen: string): string =>
   JSON.stringify([file, screen])
 
 export function ledgerOf(log: SessionLog, session: string): SessionLedger {
+  let until = log.length - 1
+  while (until >= 0 && log[until]?.session !== session) until -= 1
+  const before = log.slice(0, until + 1)
   const walked = new Map<string, OnFile>()
-  const spoken: Array<OnFile & { passed: boolean; typed: boolean }> = []
-  for (const event of log) {
+  const spoken: Array<SessionLedger["spoken"][number]> = []
+  for (const event of before) {
     if (event.session !== session) continue
     if (event.type === "picked" || event.type === "returned") {
       const screen = event.type === "picked" ? event.screen : event.variant
       walked.set(keyOf(event.file, screen), { file: event.file, screen })
     } else if (event.type === "spoken") {
-      const { file, screen, passed, typed } = event
-      spoken.push({ file, screen, passed, typed })
+      const { file, screen } = event
+      spoken.push({ file, screen, as: event.answer.as })
     }
   }
 
@@ -156,7 +163,7 @@ export function ledgerOf(log: SessionLog, session: string): SessionLedger {
   const placedFor = new Map<string, string>()
   const waiting = new Map<string, OnFile>()
   const saved = new Map<string, { file: string; reading: string }>()
-  for (const event of log) {
+  for (const event of before) {
     if (event.type === "placed" && event.as === "placement") {
       placedFor.set(keyOf(event.file, event.screen), event.reading)
     } else if (event.type === "parked") {

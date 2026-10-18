@@ -58,10 +58,11 @@ function aSession(
       file,
       screen: "s1",
       type: "spoken",
-      seconds: 41,
-      passed: false,
-      typed: false,
-      ticks: ["A majority must hold the write"],
+      answer: {
+        as: "recorded",
+        seconds: 41,
+        ticks: ["A majority must hold the write"],
+      },
     },
     { ...stamp(session), file, screen: "end", type: "ended", how: "left" },
   ]
@@ -69,19 +70,33 @@ function aSession(
 
 function returned(
   session: string,
-  response: "correct" | "incorrect",
-  file = "thread-1.json"
+  response: "correct" | "incorrect" | "abstained"
 ): SessionEvent {
   return {
     ...stamp(session),
-    file,
+    file: "thread-1.json",
     screen: "r1",
     type: "returned",
     variant: "r1b",
     asked: false,
     option: "Three",
     ms: 7000,
-    answer: { response, slow: false },
+    answer: response === "abstained" ? { response } : { response, slow: false },
+  }
+}
+
+function placed(
+  session: string,
+  reading: string,
+  as: "placement" | "pointer"
+): SessionEvent {
+  return {
+    ...stamp(session),
+    file: "thread-1.json",
+    screen: "r1",
+    type: "placed",
+    reading,
+    as,
   }
 }
 
@@ -133,9 +148,7 @@ describe("ledgerOf", () => {
       walked: [{ file: "thread-1.json", screen: "r1" }],
       parked: [{ file: "thread-1.json", screen: "r1", reading: "p1" }],
       saved: [{ file: "thread-1.json", reading: "p1" }],
-      spoken: [
-        { file: "thread-1.json", screen: "s1", passed: false, typed: false },
-      ],
+      spoken: [{ file: "thread-1.json", screen: "s1", as: "recorded" }],
     })
   })
 
@@ -144,14 +157,9 @@ describe("ledgerOf", () => {
       ...aSession("a"),
       ...aSession("b", "thread-2.json").slice(0, 1),
       returned("b", "incorrect"),
-      {
-        ...stamp("b"),
-        file: "thread-1.json",
-        screen: "r1",
-        type: "placed",
-        reading: "p2",
-        as: "placement",
-      } satisfies SessionEvent,
+      placed("b", "p2", "placement"),
+      returned("b", "abstained"),
+      placed("b", "p3", "pointer"),
     ]
     expect(ledgerOf(logOf(events), "b").parked).toEqual([
       { file: "thread-1.json", screen: "r1", reading: "p2" },
@@ -161,6 +169,7 @@ describe("ledgerOf", () => {
     const ledger = ledgerOf(logOf(events), "b")
     expect(ledger.parked).toEqual([])
     expect(ledger.walked).toEqual([{ file: "thread-1.json", screen: "r1b" }])
+    expect(ledgerOf(logOf(events), "a").parked).toHaveLength(1)
   })
 
   it("keeps a reading saved until it is read, whatever else is done with it", () => {
@@ -180,12 +189,13 @@ describe("ledgerOf", () => {
       action("b", "thread-1.json", "opened"),
       action("b", "thread-2.json", "read"),
     ]
-    expect(ledgerOf(logOf(events), "a").saved).toEqual([
+    expect(ledgerOf(logOf(events), "b").saved).toEqual([
       { file: "thread-1.json", reading: "p1" },
     ])
 
     events.push(action("b", "thread-1.json", "read"))
-    expect(ledgerOf(logOf(events), "a").saved).toEqual([])
+    expect(ledgerOf(logOf(events), "b").saved).toEqual([])
+    expect(ledgerOf(logOf(events), "a").saved).toHaveLength(1)
   })
 
   it("tells apart rounds that share an id in different session files", () => {
