@@ -1,0 +1,79 @@
+diff --git a/android/src/main/java/com/getcapacitor/community/database/sqlite/CapacitorSQLite.java b/android/src/main/java/com/getcapacitor/community/database/sqlite/CapacitorSQLite.java
+index 17294270ace3731844d9577a8ac3b31718e355fb..be3e69d2a29bfb74b84501221e55e7425c0e5656 100644
+--- a/android/src/main/java/com/getcapacitor/community/database/sqlite/CapacitorSQLite.java
++++ b/android/src/main/java/com/getcapacitor/community/database/sqlite/CapacitorSQLite.java
+@@ -655,6 +655,9 @@ public class CapacitorSQLite {
+         if (db != null) {
+             if (db.isOpen()) {
+                 try {
++                    if (db.isAvailTrans()) {
++                        db.rollbackTransaction();
++                    }
+                     db.close();
+                 } catch (Exception e) {
+                     throw new Exception(e.getMessage());
+diff --git a/android/src/main/java/com/getcapacitor/community/database/sqlite/CapacitorSQLitePlugin.java b/android/src/main/java/com/getcapacitor/community/database/sqlite/CapacitorSQLitePlugin.java
+index 675c3face9431e47f711ee976a84fa7a474474b6..83f489801989413f721533a0f758cf47c03c9b59 100644
+--- a/android/src/main/java/com/getcapacitor/community/database/sqlite/CapacitorSQLitePlugin.java
++++ b/android/src/main/java/com/getcapacitor/community/database/sqlite/CapacitorSQLitePlugin.java
+@@ -15,6 +15,7 @@ import java.util.Collections;
+ import java.util.Dictionary;
+ import java.util.Hashtable;
+ import java.util.List;
++import java.util.concurrent.CompletableFuture;
+ import org.json.JSONArray;
+ import org.json.JSONException;
+ import org.json.JSONObject;
+@@ -23,6 +24,10 @@ import org.json.JSONObject;
+ public class CapacitorSQLitePlugin extends Plugin {
+ 
+     private static final String TAG = CapacitorSQLitePlugin.class.getName();
++    // Lifecycle callbacks run on the main thread; database work stays on each
++    // bridge's worker. A replacement bridge must wait for its predecessor.
++    private static CompletableFuture<Void> pendingClose = CompletableFuture.completedFuture(null);
++    private CompletableFuture<Void> previousClose;
+     private SqliteConfig config;
+     private CapacitorSQLite implementation;
+     private final Dictionary<String, Dictionary<Integer, JSONObject>> versionUpgrades = new Hashtable<>();
+@@ -39,6 +44,7 @@ public class CapacitorSQLitePlugin extends Plugin {
+      * Load the context
+      */
+     public void load() {
++        previousClose = pendingClose;
+         Context context = getContext();
+         try {
+             config = getSqliteConfig();
+@@ -51,6 +57,25 @@ public class CapacitorSQLitePlugin extends Plugin {
+         }
+     }
+ 
++    @Override
++    protected void handleOnDestroy() {
++        CompletableFuture<Void> closed = new CompletableFuture<>();
++        pendingClose = closed;
++        // Bridge.onDestroy drains this queue before quitting its worker.
++        getBridge().execute(() -> {
++            try {
++                previousClose.get();
++                if (implementation != null) {
++                    implementation.checkConnectionsConsistency(new JSArray(), new JSArray());
++                }
++                closed.complete(null);
++            } catch (Exception e) {
++                Log.e(TAG, "Failed to close destroyed bridge's databases", e);
++                closed.completeExceptionally(e);
++            }
++        });
++    }
++
+     /**
+      * Echo Method
+      * test the plugin
+@@ -330,6 +355,7 @@ public class CapacitorSQLitePlugin extends Plugin {
+         Boolean readOnly = call.getBoolean("readonly", false);
+         if (implementation != null) {
+             try {
++                previousClose.get();
+                 implementation.open(dbName, readOnly);
+                 rHandler.retResult(call, null, null);
+             } catch (Exception e) {

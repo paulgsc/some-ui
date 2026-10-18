@@ -4,10 +4,8 @@ name: Mobile APK
 # uploads it as a run artifact, so a phone can install what `main` actually
 # contains.
 #
-# On pushes to `main` only, and only when something the APK is built from
-# changes. It grew up on a long-lived mobile staging branch and moved to
-# `main` when that branch landed; pull requests do not build it (pr.yml still
-# lints, typechecks and tests the www code it carries).
+# On pushes to main when APK inputs change, or by manual dispatch to validate
+# a branch before merging. Pull requests do not build it automatically.
 #
 # Why CI builds it rather than a laptop or the agent sandbox: Gradle needs the
 # Android SDK (`compileSdkVersion` in apps/mobile/android/variables.gradle),
@@ -15,6 +13,7 @@ name: Mobile APK
 # sandbox can install it too when its environment allows dl.google.com, but
 # only CI holds the signing key the phone's installed app was signed with.
 on:
+  workflow_dispatch:
   push:
     branches: [main]
     paths:
@@ -165,6 +164,7 @@ jobs:
       # one's life. After 30 days with no push there is nothing to download
       # until the next.
       - name: Upload APK
+        if: github.ref == 'refs/heads/main'
         uses: actions/upload-artifact@v7
         with:
           name: some-ui-apk-${{ github.sha }}
@@ -219,9 +219,11 @@ jobs:
           SOME_UI_VERSION_NAME: 0.1.${{ github.run_number }}+${{ github.sha }}
           SOME_UI_EXTRA_ABI: x86_64
         run: |
-          ./gradlew assembleRelease --no-daemon
+          ./gradlew :app:assembleRelease :app:assembleDebug :app:assembleDebugAndroidTest --no-daemon
           mkdir ../../../launch-apk
           cp app/build/outputs/apk/release/app-release.apk ../../../launch-apk/launch.apk
+          cp app/build/outputs/apk/debug/app-debug.apk ../../../launch-apk/debug.apk
+          cp app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk ../../../launch-apk/tests.apk
       - name: Upload the launch test's APK
         uses: actions/upload-artifact@v7
         with:
@@ -268,7 +270,12 @@ jobs:
           api-level: 36
           target: google_apis
           arch: x86_64
-          script: bash apps/mobile/launch/launch-test.sh launch-apk/launch.apk launch-out
+          script: |
+            bash apps/mobile/launch/launch-test.sh launch-apk/launch.apk launch-out
+            adb install -r launch-apk/debug.apk
+            adb install -r launch-apk/tests.apk
+            adb shell am instrument -w -r -e class dev.paulgsc.someui.SQLiteLifecycleTest dev.paulgsc.someui.test/androidx.test.runner.AndroidJUnitRunner | tee launch-out/lifecycle-test.txt
+            grep -q 'OK (1 test)' launch-out/lifecycle-test.txt
       - name: Upload what the emulator showed
         if: always()
         uses: actions/upload-artifact@v7
@@ -289,6 +296,7 @@ jobs:
   # place.
   prune:
     name: Delete older APK artifacts
+    if: github.ref == 'refs/heads/main'
     needs: [apk, review, launch]
     runs-on: ubuntu-latest
     steps:
