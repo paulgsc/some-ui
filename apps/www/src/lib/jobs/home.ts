@@ -26,7 +26,7 @@ import { homeOutbox } from "./model"
 import { EventSchema } from "./stored"
 
 /** The record an exchange reads and the answers it hands back. */
-export type JobsKeeping = {
+export type JobsRecordPort = {
   state: () => JobsState
   answered: (
     held: ReadonlyArray<string>,
@@ -41,7 +41,7 @@ const HeldSchema = z.object({ events: z.array(EventSchema) })
 type Learned = { held: Array<string>; refused: Array<HomeRefusal> }
 
 async function exchange(
-  keeping: JobsKeeping,
+  keeping: JobsRecordPort,
   send: HomeCall,
   learned: Learned
 ): Promise<HomeExchanged> {
@@ -85,7 +85,7 @@ async function exchange(
 
 /** Steps 1 and 2 through `send`. Throws what `send` throws. */
 export async function exchangeJobs(
-  keeping: JobsKeeping,
+  keeping: JobsRecordPort,
   send: HomeCall
 ): Promise<HomeExchanged> {
   const learned: Learned = { held: [], refused: [] }

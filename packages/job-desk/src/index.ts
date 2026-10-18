@@ -41,4 +41,4 @@ export {
   scoutsFileName,
 } from "./scouts"
 export type { Parsed } from "./shared"
-export { TrackedSchema } from "./shared"
+export { MAX_NOTE, MAX_SCOUT_TITLE, MAX_URL, TrackedSchema } from "./shared"

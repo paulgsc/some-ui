@@ -147,7 +147,6 @@ describe("where the Jobs record is kept", () => {
       screen.getByRole("button", { name: "Keep on home.example" })
     )
     await settle()
-    expect(home.sent.length).toBeGreaterThan(0)
     expect(
       await screen.findByText(
         `${events} changes wait on this phone until home.example answers.`

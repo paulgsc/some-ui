@@ -92,6 +92,35 @@ describe("step", () => {
     expect(record(taken, debrief(45)).log).toHaveLength(2)
   })
 
+  it("refuses what home would refuse to keep", () => {
+    const pass = (note: string): Draft => ({
+      type: "passed",
+      ...ref(),
+      reasons: [],
+      note,
+      voice: [],
+    })
+    expect(record(opened, pass("x".repeat(2_001)))).toBe(opened)
+    expect(record(opened, pass("x".repeat(2_000))).log).toHaveLength(1)
+    const scout = (url: string): Draft => ({
+      type: "scout",
+      scout: {
+        id: "sc-a1b2c3",
+        url,
+        track: "software",
+        family: null,
+        title: "SRE",
+        why: "",
+        postingText: null,
+      },
+      voice: [],
+    })
+    expect(record(opened, scout("HTTPS://www.indeed.com/x"))).toBe(opened)
+    expect(record(opened, scout("https://www.indeed.com/x")).log).toHaveLength(
+      1
+    )
+  })
+
   it("lets a draft's voice note go, and never one the record names", () => {
     const note = (id: string): VoiceNote => ({
       id,

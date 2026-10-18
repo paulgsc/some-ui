@@ -1,7 +1,7 @@
 import type { HomeCall } from "@some-ui/core-utils"
 import { describe, expect, it } from "vitest"
 
-import type { JobsKeeping } from "@/lib/jobs/home"
+import type { JobsRecordPort } from "@/lib/jobs/home"
 import { exchangeJobs } from "@/lib/jobs/home"
 import type { JobEvent, JobsState, PickRef } from "@/lib/jobs/model"
 import { EMPTY, homeOutbox, step } from "@/lib/jobs/model"
@@ -38,7 +38,7 @@ const withLog = [
 )
 
 /** A keeping over a state it updates as `step` would. */
-function keeping(initial: JobsState): JobsKeeping & { current: JobsState } {
+function keeping(initial: JobsState): JobsRecordPort & { current: JobsState } {
   const k = {
     current: initial,
     state: (): JobsState => k.current,
@@ -101,7 +101,6 @@ describe("exchangeJobs", () => {
     const again = home(holding())
     await exchangeJobs(k, again.send)
     expect(again.calls.map((c) => c.method)).toEqual(["GET"])
-    // The phone keeps its whole log either way.
     expect(k.current.log).toEqual(withLog.log)
   })
 

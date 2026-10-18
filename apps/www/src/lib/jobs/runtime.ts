@@ -25,7 +25,7 @@ import type { StorageAdapter } from "@/lib/tenant/storage"
 
 import type { Outgoing, OutgoingFile } from "./files"
 import { decisionsFile, isFile, scoutsFile } from "./files"
-import type { JobsKeeping } from "./home"
+import type { JobsRecordPort } from "./home"
 import type {
   Draft,
   JobsAction,
@@ -113,7 +113,7 @@ export type JobsRuntime = {
   /** Its person's second press: the record is kept on home from now on. */
   keepOnHome: () => boolean
   /** The record one exchange with home reads and answers (`./home`). */
-  keeping: JobsKeeping
+  keeping: JobsRecordPort
 }
 
 /** A note is a take of a soundbite's length. */

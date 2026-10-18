@@ -24,7 +24,10 @@ import type {
 import {
   DebriefMinutesSchema,
   FrictionSchema,
+  MAX_NOTE,
   MAX_POSTING_TEXT,
+  MAX_SCOUT_TITLE,
+  MAX_URL,
 } from "@some-ui/job-desk"
 
 export type PassReason = (typeof PASS_REASONS)[number]
@@ -190,10 +193,43 @@ function named(log: ReadonlyArray<JobEvent>): Set<string> {
  * Whether `event` can be added to `state`: a pick event names a pick of an
  * opened digest, and a step after the decision follows a "taken".
  */
-function fits(state: JobsState, event: Draft): boolean {
-  if (event.type === "scout") {
-    return (event.scout.postingText?.length ?? 0) <= MAX_POSTING_TEXT
+/** Whether `event`'s texts are within what job-desk's files and home take. */
+function withinLimits(event: Draft): boolean {
+  switch (event.type) {
+    case "passed":
+    case "outcome":
+    case "disagree": {
+      return event.note.length <= MAX_NOTE
+    }
+    case "debrief": {
+      return event.what.length <= MAX_NOTE
+    }
+    case "scout": {
+      const { scout } = event
+      return (
+        scout.url.startsWith("https://") &&
+        scout.url.length <= MAX_URL &&
+        scout.title.length <= MAX_SCOUT_TITLE &&
+        scout.why.length <= MAX_NOTE &&
+        (scout.postingText?.length ?? 0) <= MAX_POSTING_TEXT
+      )
+    }
+    case "taken":
+    case "resume-ready":
+    case "apply-opened":
+    case "shared":
+    case "arrived": {
+      return true
+    }
+    default: {
+      return assertNever(event)
+    }
   }
+}
+
+function fits(state: JobsState, event: Draft): boolean {
+  if (!withinLimits(event)) return false
+  if (event.type === "scout") return true
   if (
     event.type === "debrief" &&
     !(
@@ -448,6 +484,17 @@ export function lastDelivered(
   return found ?? null
 }
 
+/**
+ * How much of the log the last share of `kind` that arrived covers: its
+ * `through`, but never past its own place. A log home restored (`restored`)
+ * lacks the events home refused, so a share in it sits earlier than it did.
+ */
+export function deliveredThrough(state: JobsState, kind: ShareKind): number {
+  const share = lastDelivered(state, kind)
+  if (share === null) return 0
+  return Math.min(share.through, state.log.indexOf(share))
+}
+
 /** How many shares of `kind` went out on `day`, confirmed or not. */
 export function sharesOn(
   state: JobsState,
@@ -467,8 +514,8 @@ export function sharesOn(
  */
 export function releasedVoice(state: JobsState): ReadonlySet<string> {
   const through = {
-    decisions: lastDelivered(state, "decisions")?.through ?? 0,
-    scouts: lastDelivered(state, "scouts")?.through ?? 0,
+    decisions: deliveredThrough(state, "decisions"),
+    scouts: deliveredThrough(state, "scouts"),
   }
   const ids = new Set<string>()
   state.log.forEach((e, i) => {

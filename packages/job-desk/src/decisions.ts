@@ -3,6 +3,7 @@ import { z } from "zod"
 import {
   FingerprintSchema,
   IdSchema,
+  MAX_NOTE,
   parseWith,
   text,
   VoiceFileSchema,
@@ -82,7 +83,7 @@ const DebriefSchema = z.object({
   minutes: DebriefMinutesSchema,
   friction: FrictionSchema,
   frictionChips: z.array(z.enum(FRICTION)),
-  what: z.string(),
+  what: z.string().max(MAX_NOTE),
   voice: z.array(VoiceFileSchema),
   result: z.enum(DEBRIEF_RESULTS),
 })
@@ -104,14 +105,18 @@ export const DecisionsSchema = z.object({
       id: EventIdSchema.nullable(),
       decision: z.enum(["taken", "passed", "untouched"]),
       reasons: z.array(z.enum(PASS_REASONS)),
-      note: z.string(),
+      note: z.string().max(MAX_NOTE),
       voice: z.array(VoiceFileSchema),
       debrief: DebriefSchema.nullable(),
     })
   ),
   /** Set-aside postings I'd have picked, and why. */
   disagreements: z.array(
-    z.object({ id: EventIdSchema, fingerprint: FingerprintSchema, note: text })
+    z.object({
+      id: EventIdSchema,
+      fingerprint: FingerprintSchema,
+      note: text.max(MAX_NOTE),
+    })
   ),
   /** What happened later to any application, by its fingerprint. */
   outcomes: z.array(
@@ -120,7 +125,7 @@ export const DecisionsSchema = z.object({
       fingerprint: FingerprintSchema,
       event: z.enum(OUTCOMES),
       on: z.iso.date(),
-      note: z.string(),
+      note: z.string().max(MAX_NOTE),
     })
   ),
 })

@@ -317,3 +317,81 @@ describe("scoutsFile", () => {
     expect(scoutsFile(EMPTY, new Date(2026, 9, 18, 20, 5, 0))).toBeNull()
   })
 })
+
+describe("a log home restored", () => {
+  const D = digest("2026-10-18")
+  const [SW, AD] = D.picks
+  const ref = (p = SW): PickRef => ({
+    day: D.day,
+    pickId: p.id,
+    fingerprint: p.fingerprint,
+  })
+
+  it("lacks the events home refused, so a share covers no further than its own place", () => {
+    // On the phone that made it: two events home refused, then a share.
+    let made = step(EMPTY, { type: "opened", digest: D, at: OPENED_AT })
+    made = record(made, { type: "taken", ...ref() })
+    made = record(made, { type: "taken", ...ref(AD) })
+    made = record(made, {
+      type: "disagree",
+      day: D.day,
+      fingerprint: "indeed|software engineer ii|remote",
+      note: "Remote",
+    })
+    const file = fileOf(decisionsFile(made, D.day, "2026-10-18T22:00:00Z"))
+    made = record(made, {
+      type: "shared",
+      kind: "decisions",
+      day: D.day,
+      file: file.name,
+      through: file.through,
+      voice: [],
+    })
+    const share = made.log.at(-1)!
+    made = record(made, {
+      type: "outcome",
+      fingerprint: SW.fingerprint,
+      event: "reply",
+      on: "2026-10-20",
+      note: "",
+    })
+    made = record(made, { type: "arrived", shareId: share.id })
+
+    // Home holds all but the second and third events.
+    const held = made.log.filter((_, i) => i !== 1 && i !== 2)
+    let restored = step(EMPTY, { type: "opened", digest: D, at: OPENED_AT })
+    restored = step(restored, { type: "restored", events: held })
+    const again = fileOf(
+      decisionsFile(restored, "2026-10-20", "2026-10-20T22:00:00Z")
+    )
+    expect(JSON.parse(again.json).outcomes).toEqual([
+      expect.objectContaining({ fingerprint: SW.fingerprint, event: "reply" }),
+    ])
+  })
+
+  it("names a scout's notes but sends no audio the phone doesn't hold", () => {
+    let made = step(EMPTY, {
+      type: "voice-kept",
+      note: { id: "v9", mimeType: "audio/webm", durationMs: 2000, owner: "o" },
+    })
+    made = record(made, {
+      type: "scout",
+      scout: {
+        id: "sc-a1b2c3",
+        url: "https://www.indeed.com/viewjob?jk=1",
+        track: "software",
+        family: null,
+        title: "SRE · Somewhere",
+        why: "",
+        postingText: null,
+      },
+      voice: ["v9"],
+    })
+    const restored = step(EMPTY, { type: "restored", events: made.log })
+    const file = fileOf(scoutsFile(restored, new Date(2026, 9, 18, 20, 5, 0)))
+    expect(JSON.parse(file.json).scouts[0].voice).toEqual([
+      "sc-a1b2c3_voice-1.webm",
+    ])
+    expect(file.voice).toEqual([])
+  })
+})

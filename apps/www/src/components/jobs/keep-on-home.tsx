@@ -30,7 +30,10 @@ function jobsKeeping(): JobsKeeping {
     const jobs = phoneJobs()
     keeping = {
       kept: (): boolean => jobs.getSnapshot().state.home.kept,
-      size: (): number => jobs.getSnapshot().state.log.length,
+      revision: (): number => {
+        const { home, log } = jobs.getSnapshot().state
+        return home.kept ? log.length : -1
+      },
       subscribe: jobs.subscribe,
       keepOnHome: jobs.keepOnHome,
       exchange: (send): Promise<HomeExchanged> =>

@@ -393,7 +393,7 @@ declared (checked by reading every call site and by the tests named).
 - _Why not enforced:_ who may reach home is, by test (`egress-choke-points`:
   `CapacitorHttp` named only in `native-http`, which only
   `lib/home-link/index.ts` imports as a value, and `lib/home-link` imported
-  only by the Home server block). What a test cannot say is that a call
+  only by the Home server block and the kept-on-home strips). What a test cannot say is that a call
   site in that block is a tap: a lint rule cannot
   tell a press handler from an effect that reaches it through a helper.
   Held when declared, by reading every caller (`device-section.tsx` alone
@@ -419,34 +419,41 @@ answers with it unchanged (`packages/ui/aph/src/lib/__tests__/sync.test.ts`,
 `components/aph/device-keep-on-home.test.tsx`). What no test can say is when
 a run is asked for:
 
-- _Claim:_ in `lib/home-link/aph.ts`, `ask` runs only at a moment its person
-  is using aph: from `watchAph`, which only `useAphHome` starts, for as long
-  as aph's strip is mounted, on the strip mounting, the switch to home (the
-  opt-in's second press) or an edit on this phone,
-  the app coming back to the foreground, the network coming back, the phone
-  being paired, or the link freeing up after turning a run away; or from
-  `askAph`, which the strip calls only from its button's `onClick`. Each
-  asks only when aph is kept on home and the document is visible. Nothing
-  asks on a timer.
-- _Falsified by:_ a hunk to `lib/home-link/aph.ts` that adds a listener,
-  subscription, timer or call site that reaches `ask`, removes `ask`'s check
-  that aph is kept on home or that the document is visible, or calls
-  `watchAph` from anywhere but `useAphHome`'s effect, or makes
+- _Claim:_ `askKept` (`lib/home-link/kept-watch.ts`) asks for a run of aph
+  only at a moment its person is using aph: from `watchKept`, which for aph
+  only `useAphHome` starts, for as long as aph's strip is mounted, on the
+  strip mounting, a move of aph's revision (an edit on this phone, or the
+  switch to home, the opt-in's second press), the app coming back to the
+  foreground, the network coming back, the phone being paired, or the link
+  freeing up after turning a run away; or from `askAph`, which aph's strip
+  passes only as the shared strip's `ask`. Each asks only when aph is kept on
+  home and the document is visible. Nothing asks on a timer.
+- _Falsified by:_ a hunk to `lib/home-link/kept-watch.ts` that reaches
+  `askKept` from anything but `watchKept`'s record subscription, its link
+  subscription, its `visibilitychange` and `online` listeners and its first
+  ask, adds a timer, or removes `askKept`'s check that the record is kept
+  on home or that the document is visible; a hunk to `lib/home-link/aph.ts`
+  that calls `watchKept` from anywhere but `useAphHome`'s effect, calls
+  `askKept` from anywhere but `askAph`, changes `recordOf`'s `kept`,
+  `revision` or `subscribe` to anything but aph's store's, or makes
   `keepAphOnHome` do more than switch the store; a hunk to
   `components/aph/device-keep-on-home.tsx` that calls `keepAphOnHome` or
-  `askAph` other than from the shared strip's `keep` and `ask`; or a hunk to
-  `components/device-keep-on-home.tsx` that calls `keep` or `ask` other than from
-  a button's `onClick`, or lets the first press of the opt-in call `keep`.
-- _Scope:_ `apps/www/src/lib/home-link/aph.ts`,
+  `askAph` other than as the shared strip's `keep` and `ask`; or a hunk to
+  `components/device-keep-on-home.tsx` that calls `keep` or `ask` other
+  than from a button's `onClick`, or lets the first press of the opt-in call
+  `keep`.
+- _Scope:_ `apps/www/src/lib/home-link/kept-watch.ts`,
+  `apps/www/src/lib/home-link/aph.ts`,
   `apps/www/src/components/aph/device-keep-on-home.tsx`,
   `apps/www/src/components/device-keep-on-home.tsx`.
 - _Why not enforced:_ whether a moment is one where the person is using aph
   is a reading of intent: a test sees a listener, not why it is there, and a
   lint rule cannot tell a press handler from an effect that reaches it
-  through a helper. Held when declared, by reading every call: `ask` is
-  called in `watchAph`'s three listeners and its first ask, and in `askAph`;
-  `askAph` and `keepAphOnHome` are passed only as the shared strip's `ask`
-  and `keep`, which it calls only from its buttons' `onClick`s.
+  through a helper. Held when declared, by reading every call: `askKept` is
+  called in `watchKept`'s three listeners and its first ask, and in
+  `askAph` and `askJobs`; `askAph` and `keepAphOnHome` are passed only as
+  the shared strip's `ask` and `keep`, which it calls only from its
+  buttons' `onClick`s.
 
 ### LA10: the Jobs record is sent home only while its person is using the wing
 
@@ -461,36 +468,38 @@ keeps its whole log once home holds it: its shares count events by their
 place in the log, and home's copy is the way back for a phone that lost it.
 What no test can say is when a run is asked for:
 
-- _Claim:_ in `lib/home-link/jobs.ts`, `ask` runs only at a moment its person
-  is using the Jobs wing: from `watchJobs`, which only `useJobsHome` starts,
-  for as long as the wing's layout (`routes/_dashboard/_apk/jobs.tsx`, through
-  `JobsHomeWatch`) is mounted, on it mounting, the switch to home (the
-  opt-in's second press) or an event added on this phone, the app coming
+- _Claim:_ `askKept` asks for a run of the Jobs record only at a moment its
+  person is using the Jobs wing: from `watchKept`, which for the record only
+  `useJobsHome` starts, for as long as the wing's layout
+  (`routes/_dashboard/_apk/jobs.tsx`, through `JobsHomeWatch`) is mounted, on
+  it mounting, a move of the record's revision (an event added on this
+  phone, or the switch to home, the opt-in's second press), the app coming
   back to the foreground, the network coming back, the phone being paired,
   or the link freeing up after turning a run away; or from `askJobs`, which
   the Record view's strip passes only as the shared strip's `ask`. Each asks
   only when the record is kept on home and the document is visible. Nothing
   asks on a timer.
-- _Falsified by:_ a hunk to `lib/home-link/jobs.ts` that adds a listener,
-  subscription, timer or call site that reaches `ask` at a moment the claim
-  does not name, removes `ask`'s check
-  that the record is kept on home or that the document is visible, calls
-  `watchJobs` from anywhere but `useJobsHome`'s effect, or makes
-  `keepJobsOnHome` do more than call the record's `keepOnHome`; a hunk that
-  mounts `JobsHomeWatch` anywhere but the Jobs layout; or a hunk to
-  `components/jobs/keep-on-home.tsx` that calls `keepJobsOnHome` or
-  `askJobs` other than as the shared strip's `keep` and `ask`
-  (`components/device-keep-on-home.tsx` calls those only from a button's `onClick`,
-  LA9).
-- _Scope:_ `apps/www/src/lib/home-link/jobs.ts`,
+- _Falsified by:_ a hunk to `lib/home-link/kept-watch.ts` as LA9's says; a
+  hunk to `lib/home-link/jobs.ts` that calls `watchKept` from anywhere but
+  `useJobsHome`'s effect, calls `askKept` from anywhere but `askJobs`, or
+  makes `keepJobsOnHome` do more than call the record's `keepOnHome`; a
+  hunk that mounts `JobsHomeWatch` anywhere but the Jobs layout; or a hunk to
+  `components/jobs/keep-on-home.tsx` that changes `jobsKeeping`'s `kept`,
+  `revision` or `subscribe` to anything but the record's own (its kept flag,
+  its log's length while kept and -1 before, the runtime's `subscribe`), or
+  that calls `keepJobsOnHome` or `askJobs` other than as the shared strip's
+  `keep` and `ask` (`components/device-keep-on-home.tsx` calls those only
+  from a button's `onClick`, LA9).
+- _Scope:_ `apps/www/src/lib/home-link/kept-watch.ts`,
+  `apps/www/src/lib/home-link/jobs.ts`,
   `apps/www/src/components/jobs/keep-on-home.tsx`,
   `apps/www/src/routes/_dashboard/_apk/jobs.tsx`.
 - _Why not enforced:_ as LA9's: whether a moment is one where the person is
   using the wing is a reading of intent, which a test sees only as a
-  listener. Held when declared, by reading every call: `ask` is called in
-  `watchJobs`'s three listeners and its first ask, and in `askJobs`;
-  `askJobs` and `keepJobsOnHome` are passed only as the shared strip's `ask`
-  and `keep`; `JobsHomeWatch` is mounted only by the Jobs layout.
+  listener. Held when declared, by reading every call: `askKept` is called
+  as LA9 says; `askJobs` and `keepJobsOnHome` are passed only as the shared
+  strip's `ask` and `keep`; `JobsHomeWatch` is mounted only by the Jobs
+  layout.
 
 ## Not covered, on purpose
 
