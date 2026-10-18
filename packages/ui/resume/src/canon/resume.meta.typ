@@ -342,7 +342,7 @@ backs should be cut, not kept and re-justified.
 
 == Counts
 
-*44 workspace packages, 5 browser extensions* --- counted 2026-10-12 by
+*44 workspace packages, 5 browser extensions* --- counted 2026-10-18 by
 `scripts/check-claims.mjs`, which walks the globs in `pnpm-workspace.yaml`
 (`packages/ui/*`, `apps/*`, `docs/canon`, `extensions/**`, `packages/*`,
 `crates/*`) for a `package.json`, the same method `pnpm -r list --depth -1`
@@ -354,7 +354,9 @@ catches build scripts): `some-censor`, `some-drama`, `some-filter`,
 `filter-classifier`, `docs`, and `scripts` are excluded — shared code and a
 test corpus, not shipped extensions.
 
-The package count is 44 -> 43 on 2026-10-17: `packages/job-tracker`
+The package count is 43 -> 44 on 2026-10-18: `packages/job-desk`
+(`@some-ui/job-desk`, the Jobs wing's Drive contract and the checker its
+daily routine runs) landed. Before that it was 44 -> 43 on 2026-10-17: `packages/job-tracker`
 (`@some-ui/job-tracker`, the web app's local job queue) was deleted with its
 `/jobs` page; the story behind it moved on. Before that it was 43 -> 44 on
 2026-10-12, when `packages/ui/playoff-delta`
