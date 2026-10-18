@@ -1,40 +1,37 @@
 /**
- * aph kept on home, wired: one runtime per page load over the app's home
- * link and aph's store (`./aph-runtime`), and what asks it to run (LA9,
- * docs/learner-data-authority.md).
- *
- * Only for aph, only once its person opted in (`keepAphOnHome`, from the aph
- * screens' second press), and only while aph is open with the app in the
- * foreground. Then it asks when aph opens, when aph is changed on this
- * phone, when the app comes back to the foreground, when the network comes
- * back, when the phone is paired, and when the link frees up after turning a
- * run away busy. Never on a timer.
+ * aph kept on home, wired (LA9, docs/learner-data-authority.md): one runtime
+ * per page load over the app's home link and aph's store (`./kept-runtime`),
+ * and the shared watch (`./kept-watch`) for as long as aph's strip mounts
+ * `useAphHome`, once its person opted in (`keepAphOnHome`).
  *
  * `@some-ui/aph` is the phone's alone, so only aph's screens import it
  * (packages/some-vite-config/AUDIENCES.md): they hand its store and its
  * exchange in (`AphKeeping`), and this module names its types alone.
  */
 import { useEffect, useSyncExternalStore } from "react"
-import type { AphStore, AphWhere, Exchanged, HomeCall } from "@some-ui/aph"
+import type { AphStore, AphWhere } from "@some-ui/aph"
+import type { HomeCall, HomeExchanged } from "@some-ui/core-utils"
 
-import type { AphHomeState } from "./aph-model"
-import type { AphHome } from "./aph-runtime"
-import { createAphHome } from "./aph-runtime"
 import { homeLink } from "./index"
+import type { KeptState } from "./kept-model"
+import type { Kept } from "./kept-runtime"
+import { createKept } from "./kept-runtime"
+import type { KeptRecord } from "./kept-watch"
+import { askKept, watchKept } from "./kept-watch"
 
-export type { AphHomeState } from "./aph-model"
+export type { KeptState } from "./kept-model"
 
 /** aph's store, and one exchange with home over it. */
 export type AphKeeping = {
   store: AphStore
-  exchange: (store: AphStore, send: HomeCall) => Promise<Exchanged>
+  exchange: (store: AphStore, send: HomeCall) => Promise<HomeExchanged>
 }
 
-let home: AphHome | null = null
+let home: Kept | null = null
 
 /** One runtime per page load, over the first `aph` handed in. */
-function aphHome(aph: AphKeeping): AphHome {
-  home ??= createAphHome({
+function aphHome(aph: AphKeeping): Kept {
+  home ??= createKept({
     exchange: (send) => aph.exchange(aph.store, send),
     keep: (run) => homeLink().keep(run),
     paired: () => homeLink().getSnapshot().link.kind === "paired",
@@ -47,67 +44,22 @@ function editsOf(where: AphWhere): number {
   return where.kind === "home" ? where.edits : -1
 }
 
-/** Asks for a run when aph is kept on home and the app is in front. */
-function ask(aph: AphKeeping, doc: Document): void {
-  if (aph.store.where().kind !== "home") return
-  if (doc.visibilityState !== "visible") return
-  aphHome(aph).want()
-}
-
-/**
- * Asks once now and on each of the moments above, until the returned
- * unsubscribe is called.
- */
-function watchAph(
-  aph: AphKeeping,
-  doc: Document = document,
-  win: Window = window
-): () => void {
-  const link = homeLink()
-  let edits = editsOf(aph.store.where())
-  let paired = link.getSnapshot().link.kind === "paired"
-  let idle = link.getSnapshot().activity.kind === "idle"
-
-  const onStore = (): void => {
-    const now = editsOf(aph.store.where())
-    if (now === edits) return
-    edits = now
-    ask(aph, doc)
-  }
-  const onLink = (): void => {
-    const { link: pairing, activity } = link.getSnapshot()
-    const nowPaired = pairing.kind === "paired"
-    const nowIdle = activity.kind === "idle"
-    const freed = nowIdle && !idle
-    const turnedAway = aphHome(aph).getSnapshot().last?.kind === "busy"
-    if ((nowPaired && !paired) || (freed && turnedAway)) ask(aph, doc)
-    paired = nowPaired
-    idle = nowIdle
-  }
-  const onBack = (): void => {
-    ask(aph, doc)
-  }
-
-  const unsubscribeStore = aph.store.subscribe(onStore)
-  const unsubscribeLink = link.subscribe(onLink)
-  doc.addEventListener("visibilitychange", onBack)
-  win.addEventListener("online", onBack)
-  ask(aph, doc)
-  return () => {
-    unsubscribeStore()
-    unsubscribeLink()
-    doc.removeEventListener("visibilitychange", onBack)
-    win.removeEventListener("online", onBack)
+/** aph's store as the watch sees it (`./kept-watch`). */
+function recordOf(aph: AphKeeping): KeptRecord {
+  return {
+    kept: () => aph.store.where().kind === "home",
+    revision: () => editsOf(aph.store.where()),
+    subscribe: aph.store.subscribe,
   }
 }
 
 /**
- * The aph screens' view of keeping on home, and the watch above for as long
- * as they are mounted.
+ * The aph screens' view of keeping on home, and the watch for as long as
+ * they are mounted.
  */
-export function useAphHome(aph: AphKeeping): AphHomeState {
+export function useAphHome(aph: AphKeeping): KeptState {
   const current = aphHome(aph)
-  useEffect(() => watchAph(aph), [aph])
+  useEffect(() => watchKept(recordOf(aph), aphHome(aph)), [aph])
   return useSyncExternalStore(current.subscribe, current.getSnapshot)
 }
 
@@ -120,7 +72,7 @@ export function keepAphOnHome(aph: AphKeeping): boolean {
   return aph.store.keepOnHome()
 }
 
-/** "Try now": asks for a run, as any other moment above would. */
+/** "Try now": asks for a run, as any moment the watch names would. */
 export function askAph(aph: AphKeeping): void {
-  ask(aph, document)
+  askKept(recordOf(aph), aphHome(aph), document)
 }

@@ -7,7 +7,8 @@
  * on home, it says what still waits on the phone.
  */
 
-import type { AphStore, AphWhere, Exchanged, HomeCall } from "@some-ui/aph"
+import type { AphStore, AphWhere } from "@some-ui/aph"
+import type { HomeCall, HomeExchanged } from "@some-ui/core-utils"
 import type * as ReactRouterModule from "@tanstack/react-router"
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest"
@@ -124,7 +125,10 @@ async function show(
   const seen = { exchanges: 0 }
   const aph: AphKeeping = {
     store,
-    exchange: async (_store: AphStore, send: HomeCall): Promise<Exchanged> => {
+    exchange: async (
+      _store: AphStore,
+      send: HomeCall
+    ): Promise<HomeExchanged> => {
       seen.exchanges += 1
       if (!reaches) await send("GET", "/record")
       return { kind: "synced" }
@@ -207,7 +211,7 @@ describe("where aph is kept", () => {
     const seen = { stopped: false }
     const aph: AphKeeping = {
       store,
-      exchange: async (_store, send): Promise<Exchanged> => {
+      exchange: async (_store, send): Promise<HomeExchanged> => {
         await new Promise<void>((resolve) => {
           release = resolve
         })

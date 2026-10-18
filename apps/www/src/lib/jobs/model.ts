@@ -24,7 +24,10 @@ import type {
 import {
   DebriefMinutesSchema,
   FrictionSchema,
+  MAX_NOTE,
   MAX_POSTING_TEXT,
+  MAX_SCOUT_TITLE,
+  MAX_URL,
 } from "@some-ui/job-desk"
 
 export type PassReason = (typeof PASS_REASONS)[number]
@@ -105,6 +108,22 @@ export type JobEvent = { id: string; at: string } & (
   | { type: "arrived"; shareId: string }
 )
 
+/** One event home would not hold, and why it said so. */
+export type HomeRefusal = { id: string; why: string }
+
+/**
+ * The record kept on the paired home (`./home`): a copy, since the phone keeps
+ * its whole log, and the way back for a phone that lost it.
+ */
+type JobsHome = {
+  /** Its person chose to keep the record on home. */
+  kept: boolean
+  /** The events home answered it holds, by id. */
+  held: ReadonlyArray<string>
+  /** The events home refused: kept here, and not sent again. */
+  refused: ReadonlyArray<HomeRefusal>
+}
+
 export type JobsState = {
   /** By day, newest last. */
   digests: ReadonlyArray<Digest>
@@ -115,6 +134,7 @@ export type JobsState = {
   log: ReadonlyArray<JobEvent>
   /** Voice notes whose audio is on the phone, or once was. */
   voice: ReadonlyArray<VoiceNote>
+  home: JobsHome
 }
 
 export const EMPTY: JobsState = {
@@ -123,6 +143,7 @@ export const EMPTY: JobsState = {
   firstOpened: {},
   log: [],
   voice: [],
+  home: { kept: false, held: [], refused: [] },
 }
 
 type Stamp = { id: string; at: string }
@@ -137,6 +158,16 @@ export type JobsAction =
   | { type: "voice-kept"; note: VoiceNote }
   | { type: "voice-dropped"; ids: ReadonlyArray<string> }
   | { type: "record"; event: Draft; stamp: Stamp }
+  /** Its person's second press: the record is kept on home from now on. */
+  | { type: "kept-on-home" }
+  /** What one exchange with home learned (`./home`). */
+  | {
+      type: "home-answered"
+      held: ReadonlyArray<string>
+      refused: ReadonlyArray<HomeRefusal>
+    }
+  /** Home's copy, taken in by a phone whose own log is empty. */
+  | { type: "restored"; events: ReadonlyArray<JobEvent> }
 
 const DECIDED = new Set(["taken", "passed"])
 
@@ -158,14 +189,47 @@ function named(log: ReadonlyArray<JobEvent>): Set<string> {
   return ids
 }
 
+/** Whether `event`'s texts are within what home takes. */
+function withinLimits(event: Draft): boolean {
+  switch (event.type) {
+    case "passed":
+    case "outcome":
+    case "disagree": {
+      return event.note.length <= MAX_NOTE
+    }
+    case "debrief": {
+      return event.what.length <= MAX_NOTE
+    }
+    case "scout": {
+      const { scout } = event
+      return (
+        scout.url.startsWith("https://") &&
+        scout.url.length <= MAX_URL &&
+        scout.title.length <= MAX_SCOUT_TITLE &&
+        scout.why.length <= MAX_NOTE &&
+        (scout.postingText?.length ?? 0) <= MAX_POSTING_TEXT
+      )
+    }
+    case "taken":
+    case "resume-ready":
+    case "apply-opened":
+    case "shared":
+    case "arrived": {
+      return true
+    }
+    default: {
+      return assertNever(event)
+    }
+  }
+}
+
 /**
  * Whether `event` can be added to `state`: a pick event names a pick of an
  * opened digest, and a step after the decision follows a "taken".
  */
 function fits(state: JobsState, event: Draft): boolean {
-  if (event.type === "scout") {
-    return (event.scout.postingText?.length ?? 0) <= MAX_POSTING_TEXT
-  }
+  if (!withinLimits(event)) return false
+  if (event.type === "scout") return true
   if (
     event.type === "debrief" &&
     !(
@@ -221,6 +285,41 @@ export function step(state: JobsState, action: JobsAction): JobsState {
       if (!fits(state, action.event)) return state
       const event: JobEvent = { ...action.event, ...action.stamp }
       return { ...state, log: [...state.log, event] }
+    }
+    case "kept-on-home": {
+      if (state.home.kept) return state
+      return { ...state, home: { ...state.home, kept: true } }
+    }
+    case "home-answered": {
+      const inLog = new Set(state.log.map((e) => e.id))
+      const known = new Set([
+        ...state.home.held,
+        ...state.home.refused.map((r) => r.id),
+      ])
+      const fresh = (id: string): boolean => {
+        if (!inLog.has(id) || known.has(id)) return false
+        known.add(id)
+        return true
+      }
+      const held = action.held.filter(fresh)
+      const refused = action.refused.filter((r) => fresh(r.id))
+      if (held.length + refused.length === 0) return state
+      return {
+        ...state,
+        home: {
+          ...state.home,
+          held: [...state.home.held, ...held],
+          refused: [...state.home.refused, ...refused],
+        },
+      }
+    }
+    case "restored": {
+      if (state.log.length > 0 || action.events.length === 0) return state
+      return {
+        ...state,
+        log: [...action.events],
+        home: { ...state.home, held: action.events.map((e) => e.id) },
+      }
     }
     default: {
       return assertNever(action)
@@ -385,6 +484,17 @@ export function lastDelivered(
   return found ?? null
 }
 
+/**
+ * How much of the log the last share of `kind` that arrived covers: its
+ * `through`, but never past its own place. A log home restored (`restored`)
+ * lacks the events home refused, so a share in it sits earlier than it did.
+ */
+export function deliveredThrough(state: JobsState, kind: ShareKind): number {
+  const share = lastDelivered(state, kind)
+  if (share === null) return 0
+  return Math.min(share.through, state.log.indexOf(share))
+}
+
 /** How many shares of `kind` went out on `day`, confirmed or not. */
 export function sharesOn(
   state: JobsState,
@@ -404,8 +514,8 @@ export function sharesOn(
  */
 export function releasedVoice(state: JobsState): ReadonlySet<string> {
   const through = {
-    decisions: lastDelivered(state, "decisions")?.through ?? 0,
-    scouts: lastDelivered(state, "scouts")?.through ?? 0,
+    decisions: deliveredThrough(state, "decisions"),
+    scouts: deliveredThrough(state, "scouts"),
   }
   const ids = new Set<string>()
   state.log.forEach((e, i) => {
@@ -432,6 +542,13 @@ export function untouchedReported(state: JobsState, day: string): boolean {
       e.at >= opened &&
       hasArrived(state, e.id)
   )
+}
+
+/** The events home does not hold yet and has not refused, in log order. */
+export function homeOutbox(state: JobsState): ReadonlyArray<JobEvent> {
+  const held = new Set(state.home.held)
+  const refused = new Set(state.home.refused.map((r) => r.id))
+  return state.log.filter((e) => !held.has(e.id) && !refused.has(e.id))
 }
 
 /** Whether the files of share `shareId` were said to have arrived. */

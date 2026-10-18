@@ -6,7 +6,12 @@ import type { JSX } from "react"
 import { useState } from "react"
 import { assertNever, counted } from "@some-ui/core-utils"
 import type { Digest, Pick, Track } from "@some-ui/job-desk"
-import { digestFindings, PICKS_PER_DAY, TRACKS } from "@some-ui/job-desk"
+import {
+  digestFindings,
+  MAX_NOTE,
+  PICKS_PER_DAY,
+  TRACKS,
+} from "@some-ui/job-desk"
 import { Badge, Button, Textarea } from "@some-ui/shared"
 import { Link } from "@tanstack/react-router"
 
@@ -152,6 +157,7 @@ const SetAside = ({
           <Textarea
             aria-label={`Why ${aside.title}`}
             rows={2}
+            maxLength={MAX_NOTE}
             value={note}
             placeholder="Why it fits"
             onChange={(e) => setNote(e.target.value)}

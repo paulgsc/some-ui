@@ -1,16 +1,17 @@
 /**
- * aph kept on home (LA9): one exchange at a time through the link's `keep`,
- * and how each ended. What an exchange sends and lets go of is
- * `@some-ui/aph`'s, tested there (`lib/__tests__/sync.test.ts`).
+ * A record kept on home (LA9, LA10): one exchange at a time through the
+ * link's `keep`, and how each ended. What an exchange sends is the record's
+ * own, tested with it (`@some-ui/aph`'s `lib/__tests__/sync.test.ts`, www's
+ * `lib/jobs/__tests__/home.test.ts`).
  */
-import type { Exchanged } from "@some-ui/aph"
+import type { HomeExchanged } from "@some-ui/core-utils"
 import { describe, expect, it } from "vitest"
 
 import { SyncStoppedError } from "@/lib/device-backend/home-sync"
-import type { AphHomeState } from "@/lib/home-link/aph-model"
-import { INITIAL_APH, stepAph } from "@/lib/home-link/aph-model"
-import type { AphHome, AphHomePorts } from "@/lib/home-link/aph-runtime"
-import { createAphHome } from "@/lib/home-link/aph-runtime"
+import type { KeptState } from "@/lib/home-link/kept-model"
+import { INITIAL_KEPT, stepKept } from "@/lib/home-link/kept-model"
+import type { Kept, KeptPorts } from "@/lib/home-link/kept-runtime"
+import { createKept } from "@/lib/home-link/kept-runtime"
 import { INITIAL, step } from "@/lib/home-link/model"
 import type { HomeLink, HomeSend } from "@/lib/home-link/runtime"
 
@@ -29,9 +30,9 @@ function keep(busy = false): HomeLink["keep"] {
   }
 }
 
-function homeWith(over: Partial<AphHomePorts>): AphHome {
-  return createAphHome({
-    exchange: () => Promise.resolve<Exchanged>({ kind: "synced" }),
+function homeWith(over: Partial<KeptPorts>): Kept {
+  return createKept({
+    exchange: () => Promise.resolve<HomeExchanged>({ kind: "synced" }),
     keep: keep(),
     paired: () => true,
     now: () => 7,
@@ -39,7 +40,7 @@ function homeWith(over: Partial<AphHomePorts>): AphHome {
   })
 }
 
-function settled(home: AphHome): Promise<AphHomeState> {
+function settled(home: Kept): Promise<KeptState> {
   return new Promise((resolve) => {
     const check = (): void => {
       if (home.getSnapshot().running) return
@@ -51,24 +52,24 @@ function settled(home: AphHome): Promise<AphHomeState> {
   })
 }
 
-async function lastOf(over: Partial<AphHomePorts>): Promise<unknown> {
+async function lastOf(over: Partial<KeptPorts>): Promise<unknown> {
   const home = homeWith(over)
   home.want()
   return (await settled(home)).last
 }
 
-describe("aph kept on home", () => {
+describe("a record kept on home", () => {
   it("says when it synced, and how an exchange that got answers ended", async () => {
     expect(await lastOf({})).toEqual({ kind: "synced", at: 7 })
     expect(
       await lastOf({
-        exchange: () => Promise.resolve<Exchanged>({ kind: "forgotten" }),
+        exchange: () => Promise.resolve<HomeExchanged>({ kind: "forgotten" }),
       })
     ).toEqual({ kind: "forgotten" })
     expect(
       await lastOf({
         exchange: () =>
-          Promise.resolve<Exchanged>({ kind: "failed", why: "no" }),
+          Promise.resolve<HomeExchanged>({ kind: "failed", why: "no" }),
       })
     ).toEqual({ kind: "failed", why: "no" })
   })
@@ -93,7 +94,7 @@ describe("aph kept on home", () => {
 
   it("runs once more for asks made while it ran, and not again after", async () => {
     let runs = 0
-    let home: AphHome | null = null
+    let home: Kept | null = null
     home = homeWith({
       exchange: () => {
         runs += 1
@@ -101,7 +102,7 @@ describe("aph kept on home", () => {
           home?.want()
           home?.want()
         }
-        return Promise.resolve<Exchanged>({ kind: "synced" })
+        return Promise.resolve<HomeExchanged>({ kind: "synced" })
       },
     })
     home.want()
@@ -110,16 +111,16 @@ describe("aph kept on home", () => {
   })
 })
 
-describe("stepAph", () => {
+describe("stepKept", () => {
   it("asks for one more run at most, and only after one that reached home", () => {
-    const running = stepAph(INITIAL_APH, { type: "wanted" })
-    const again = stepAph(running, { type: "wanted" })
-    expect(stepAph(again, { type: "wanted" })).toBe(again)
+    const running = stepKept(INITIAL_KEPT, { type: "wanted" })
+    const again = stepKept(running, { type: "wanted" })
+    expect(stepKept(again, { type: "wanted" })).toBe(again)
     expect(
-      stepAph(again, { type: "ran", run: { kind: "synced", at: 1 } })
+      stepKept(again, { type: "ran", run: { kind: "synced", at: 1 } })
     ).toEqual({ running: true, again: false, last: { kind: "synced", at: 1 } })
     expect(
-      stepAph(again, { type: "ran", run: { kind: "unreachable", at: 1 } })
+      stepKept(again, { type: "ran", run: { kind: "unreachable", at: 1 } })
     ).toMatchObject({ running: false, again: false })
   })
 })

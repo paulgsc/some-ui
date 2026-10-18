@@ -36,7 +36,7 @@ const Stamp = { id: z.string(), at: z.string() }
 const PickRef = { day: z.string(), pickId: z.string(), fingerprint: z.string() }
 const Ids = z.array(z.string())
 
-const EventSchema: z.ZodType<JobEvent> = z.discriminatedUnion("type", [
+export const EventSchema: z.ZodType<JobEvent> = z.discriminatedUnion("type", [
   z.object({ ...Stamp, ...PickRef, type: z.literal("taken") }),
   z.object({
     ...Stamp,
@@ -114,6 +114,14 @@ const StoredSchema = z.object({
       owner: z.string(),
     })
   ),
+  // A record kept by the first Jobs build has no `home`: not yet kept there.
+  home: z
+    .object({
+      kept: z.boolean(),
+      held: Ids,
+      refused: z.array(z.object({ id: z.string(), why: z.string() })),
+    })
+    .default({ kept: false, held: [], refused: [] }),
 })
 
 /**
@@ -130,8 +138,8 @@ function parse(raw: string): JobsState | null {
   try {
     const stored = StoredSchema.safeParse(JSON.parse(raw))
     if (!stored.success) return null
-    const { digests, current, firstOpened, log, voice } = stored.data
-    return { digests, current, firstOpened, log, voice }
+    const { digests, current, firstOpened, log, voice, home } = stored.data
+    return { digests, current, firstOpened, log, voice, home }
   } catch {
     return null
   }

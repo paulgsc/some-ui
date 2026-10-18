@@ -7,7 +7,12 @@ import type { JSX } from "react"
 import { useState } from "react"
 import { cn } from "@some-ui/core-utils"
 import type { Pick } from "@some-ui/job-desk"
-import { FRICTION, MAX_DEBRIEF_MINUTES, PASS_REASONS } from "@some-ui/job-desk"
+import {
+  FRICTION,
+  MAX_DEBRIEF_MINUTES,
+  MAX_NOTE,
+  PASS_REASONS,
+} from "@some-ui/job-desk"
 import { Badge, Button, Input, Label, Textarea } from "@some-ui/shared"
 import { ExternalLink } from "lucide-react"
 
@@ -225,6 +230,7 @@ const Decide = ({
           <Textarea
             id="pass-note"
             rows={2}
+            maxLength={MAX_NOTE}
             value={note}
             onChange={(e) => setNote(e.target.value)}
           />
@@ -477,6 +483,7 @@ const Debrief = ({
         <Textarea
           id="debrief-what"
           rows={3}
+          maxLength={MAX_NOTE}
           value={what}
           onChange={(e) => setWhat(e.target.value)}
         />

@@ -60,6 +60,17 @@ describe("createJobsRuntime", () => {
     await settle()
     expect(createJobsRuntime(p).getSnapshot().state.current).toBe("2026-10-18")
 
+    // A record the first Jobs build kept has no `home`: it opens, not kept there.
+    const kept: unknown = JSON.parse(p.storage.getItem(STORAGE_KEY) ?? "{}")
+    const firstBuild = Object.fromEntries(
+      Object.entries(kept ?? {}).filter(([key]) => key !== "home")
+    )
+    p.storage.setItem(STORAGE_KEY, JSON.stringify(firstBuild))
+    expect(createJobsRuntime(p).getSnapshot().state).toMatchObject({
+      current: "2026-10-18",
+      home: { kept: false, held: [], refused: [] },
+    })
+
     p.storage.setItem(STORAGE_KEY, "{torn")
     const fresh = createJobsRuntime(p)
     expect(fresh.getSnapshot().state.digests).toEqual([])

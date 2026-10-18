@@ -18,6 +18,17 @@ export const TrackedSchema = z.discriminatedUnion("track", [
   z.object({ track: z.literal(TRACKS[1]), family: z.enum(ADJACENT_FAMILIES) }),
 ])
 
+/**
+ * Home's limits on what the phone keeps there (paulgsc/server
+ * `crates/db/jobs/src/model.rs`): a note (a pass's, an outcome's, a
+ * disagreement's, a debrief's `what`, a scout's `why`), a scout's title, and
+ * its link. The phone holds each new event to them; the files don't, so a
+ * record kept before they existed still shares.
+ */
+export const MAX_NOTE = 2_000
+export const MAX_SCOUT_TITLE = 300
+export const MAX_URL = 2_048
+
 export const HttpsUrlSchema = z.url({ protocol: /^https$/ })
 
 /** A voice note shared beside a file, by its name in the same folder. */

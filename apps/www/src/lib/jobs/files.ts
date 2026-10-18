@@ -17,7 +17,7 @@ import type { JobEvent, JobsState, ShareKind, VoiceNote } from "./model"
 import {
   debriefOf,
   decisionOf,
-  lastDelivered,
+  deliveredThrough,
   sharesOn,
   untouchedReported,
 } from "./model"
@@ -78,8 +78,18 @@ function pickVoice(
   return voiceNames(state.voice, ids, `${day}_${pickId}`, 1)
 }
 
+/**
+ * Whether the phone holds `id`'s audio. A log home restored names notes whose
+ * audio stayed on the phone it came from: the file still names them, but none
+ * goes out beside it.
+ */
+function holds(state: JobsState): (id: string) => boolean {
+  const kept = new Set(state.voice.map((n) => n.id))
+  return (id) => kept.has(id)
+}
+
 function since(state: JobsState, kind: ShareKind): ReadonlyArray<JobEvent> {
-  return state.log.slice(lastDelivered(state, kind)?.through ?? 0)
+  return state.log.slice(deliveredThrough(state, kind))
 }
 
 /**
@@ -101,6 +111,7 @@ export function decisionsFile(
 
   const picks: Decisions["picks"] = []
   const voice: Array<{ id: string; name: string }> = []
+  const heard = holds(state)
   for (const digest of state.digests) {
     const stale = digest.day < day && !untouchedReported(state, digest.day)
     for (const pick of digest.picks) {
@@ -135,7 +146,8 @@ export function decisionsFile(
       ]
       voice.push(
         ...names.filter(
-          (n) => named.includes(n.id) && freshVoice.includes(n.id)
+          (n) =>
+            named.includes(n.id) && freshVoice.includes(n.id) && heard(n.id)
         )
       )
       picks.push({
@@ -215,10 +227,11 @@ export function scoutsFile(state: JobsState, at: Date): Outgoing {
   if (fresh.length === 0) return null
   const stamp = stampOf(at)
   const voice: Array<{ id: string; name: string }> = []
+  const heard = holds(state)
   const scouts: Scouts["scouts"] = fresh.map((e) => {
     // By the scout, never the share: a retry names the same audio the same.
     const names = voiceNames(state.voice, e.voice, e.scout.id, 1)
-    voice.push(...names)
+    voice.push(...names.filter((n) => heard(n.id)))
     return { ...e.scout, voice: names.map((n) => n.name), addedAt: e.at }
   })
   const parsed = ScoutsSchema.safeParse({

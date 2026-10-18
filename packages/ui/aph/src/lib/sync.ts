@@ -20,56 +20,16 @@
  * ends: a throw part way (a stop, no answer) keeps what home already
  * confirmed, and everything else waiting.
  */
+import type { HomeCall, HomeExchanged } from "@some-ui/core-utils"
+import { readAs, refusalOf, unexpectedAnswer } from "@some-ui/core-utils"
 import { z } from "zod"
 
 import type { Receipt } from "./home"
 import type { AphStore } from "./store"
 import { EntrySchema, HeldSchema, SettingsSchema } from "./stored"
 
-/** A credentialed request to the paired home, at `path` under its API base. */
-export type HomeCall = (
-  method: "GET" | "PUT",
-  path: string,
-  body?: string
-) => Promise<{ status: number; body: string }>
-
-/** How an exchange that got its answers ended. */
-export type Exchanged =
-  /** Everything sendable sent, and home's record read and shown. */
-  | { readonly kind: "synced" }
-  /** Home answered `401`: it no longer knows this phone. */
-  | { readonly kind: "forgotten" }
-  /** Home answered something else, said in words. */
-  | { readonly kind: "failed"; readonly why: string }
-
 const EntryAnswer = z.object({ entry: EntrySchema })
 const SettingsAnswer = z.object({ settings: SettingsSchema })
-const Refusal = z.object({
-  error: z.object({ details: z.record(z.string(), z.array(z.string())) }),
-})
-
-/** `text` as `schema` reads it, or null. */
-function readAs<T>(schema: z.ZodType<T>, text: string): T | null {
-  try {
-    const read = schema.safeParse(JSON.parse(text))
-    return read.success ? read.data : null
-  } catch {
-    return null
-  }
-}
-
-/** A `422`'s reasons, as "field why; field why". */
-function refusalOf(body: string): string {
-  const details = readAs(Refusal, body)?.error.details ?? {}
-  const reasons = Object.entries(details).flatMap(([field, whys]) =>
-    whys.map((why) => `${field} ${why}`)
-  )
-  return reasons.length > 0 ? reasons.join("; ") : "refused"
-}
-
-function unexpected(what: string, status: number): Exchanged {
-  return { kind: "failed", why: `${what}: home answered ${status}` }
-}
 
 type Mutable<T> = { -readonly [K in keyof T]: T[K] }
 /** A `Receipt`, filled in as an exchange goes. */
@@ -81,7 +41,7 @@ async function exchange(
   store: AphStore,
   send: HomeCall,
   learned: Learned
-): Promise<Exchanged> {
+): Promise<HomeExchanged> {
   const box = store.outbox()
   if (box === null) return { kind: "synced" }
 
@@ -100,7 +60,7 @@ async function exchange(
     }
     const settings = readAs(SettingsAnswer, answer.body)?.settings ?? null
     if (answer.status !== 200 || settings === null) {
-      return unexpected("the settings", answer.status)
+      return unexpectedAnswer("the settings", answer.status)
     }
     learned.settings = settings
   }
@@ -118,7 +78,7 @@ async function exchange(
     }
     const held = readAs(EntryAnswer, answer.body)?.entry ?? null
     if (answer.status !== 200 || held === null) {
-      return unexpected("an entry", answer.status)
+      return unexpectedAnswer("an entry", answer.status)
     }
     learned.held.push(held)
   }
@@ -127,7 +87,7 @@ async function exchange(
   if (answer.status === 401) return { kind: "forgotten" }
   const record = readAs(HeldSchema, answer.body)
   if (answer.status !== 200 || record === null) {
-    return unexpected("the record", answer.status)
+    return unexpectedAnswer("the record", answer.status)
   }
   // First, so what home just took is no longer laid over its record.
   store.sent(learned)
@@ -144,7 +104,7 @@ async function exchange(
 export async function exchangeWithHome(
   store: AphStore,
   send: HomeCall
-): Promise<Exchanged> {
+): Promise<HomeExchanged> {
   const learned: Learned = { settings: null, held: [], refused: [] }
   try {
     return await exchange(store, send, learned)
