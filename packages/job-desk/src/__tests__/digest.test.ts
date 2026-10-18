@@ -232,6 +232,26 @@ describe("digestFindings", () => {
     ])
   })
 
+  it("links at most one résumé PR, and only to change a composition that exists", () => {
+    const digest = sample()
+    const [software, , , qa] = digest.picks
+    if (qa!.resume.kind === "patch") qa!.resume.pr = 1901
+    expect(messages(digest)).toEqual([])
+
+    software!.resume = {
+      kind: "patch",
+      variant: "embedded",
+      template: "safe",
+      fallback: "backend",
+      pr: 1902,
+      change: "A composition that leads with the firmware work.",
+    }
+    expect(messages(digest)).toEqual([
+      "picks: links 2 résumé PRs; the most is 1",
+      "picks.0.resume.pr: a run's PR changes an existing composition, not a new embedded",
+    ])
+  })
+
   it("sends each pick a composition of its own track", () => {
     const digest = sample()
     const [software, , data, qa] = digest.picks

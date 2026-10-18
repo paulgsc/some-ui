@@ -7,9 +7,10 @@ searches Indeed on two tracks, and leaves one file in Drive: today's digest.
 The phone opens that file, and later runs read it back to see what was
 already picked.
 
-The run writes to Drive only. It changes nothing in the repo: no commits, no
-pushes, no PRs. A posting no composition leads with yet is proposed as a
-patch with `pr: null` (§6), and I decide whether to write it.
+The run writes one file to Drive, and at most one PR to the repo: a change to
+one résumé composition, for a posting no composition leads with yet (§6). I
+review and merge it; the run never does. It pushes nothing else and changes
+nothing else in the repo.
 
 The shapes are this package's schemas, and `src/__tests__/sample.digest.json`
 is a complete digest to copy. The limits (picks per track, places, queries,
@@ -169,8 +170,52 @@ picked today. Fewer picks than the limit is fine; a weak pick is not.
 - **Patch** when none does. An adjacent pick's patch changes its family's
   composition; a software pick's names the composition to change, or a new
   one. Give a `fallback` to send meanwhile (the same rule as a build),
-  `pr: null`, and in `change` what the composition would lead with, in a
-  sentence or two, from evidence that exists.
+  `pr: null` unless this run opens its PR (below), and in `change` what the
+  composition would lead with, in a sentence or two, from evidence that
+  exists.
+
+### The résumé PR
+
+A run opens at most `PATCH_PRS_PER_RUN` (one) PR, so I review one change at
+a time:
+
+1. Search `paulgsc/some-ui` for open PRs whose body has a `Jobs patch:` line.
+   If one is open, open none today. A patch for the same composition it
+   changes may name it as its `pr`; every other patch keeps `pr: null`.
+2. Otherwise take the patch pick with the highest fit × odds whose `variant`
+   is an existing composition. A new composition stays proposed, with
+   `pr: null`: adding one touches more than its own entries, and that is
+   mine to write.
+3. From `origin/main`, on the branch this session was given to work on (or
+   `jobs/resume-<today>-<pick id>` if it was given none), change only that
+   composition's entries in `packages/ui/resume/src/data/resume.typ`: its
+   `summary`, `skills`, `keywords`, the order and choice of its projects and
+   bullets, its highlights and its toolbox. Each change restates a claim
+   some composition or `src/canon/resume.meta.typ` already makes. A claim
+   with no trace there is never added; it goes in the pick's `gaps`.
+4. Check it from the repo root:
+
+   ```sh
+   apt-get update -qq && apt-get install -y --no-install-recommends poppler-utils
+   npx turbo run build --filter="@some-ui/resume^..."
+   CI=true pnpm --filter @some-ui/resume build
+   pnpm --filter @some-ui/job-desk test
+   ```
+
+   `CI=true` makes a check that can't run fail instead of being skipped. Every
+   check must pass; if one can't, open no PR and say why in the summary.
+   Commit `src/react/generated/data.ts` as the build rewrote it.
+
+5. Commit with a conventional header, lower case after the colon and at most
+   100 characters (`feat(resume): lead qa with the android launch test`).
+   Push that one branch and open the PR. Its body follows
+   `.github/pull_request_template.md`. It also says which posting asked for
+   the change, by title and company, and what each change restates and from
+   where. Its Superseded section is "None: the composition is edited in
+   place." Its last line is `Jobs patch: <today> <pick id> <variant>`. No
+   phone number, address or other contact detail goes in it.
+6. Put the PR's number in that pick's `pr`. Never merge it, never push to it
+   again, and never touch any other branch or PR.
 
 ## 7. The kit
 
@@ -213,7 +258,8 @@ Never edit, move, rename or trash anything under `some-ui jobs/`. Triage
 
 ## 9. Summary
 
-End with: each pick with its track, scores and résumé; how many postings were
+End with: each pick with its track, scores and résumé; the PR this run
+opened, or why it opened none; how many postings were
 set aside, by reason; what each new decisions file and voice note said; each
 scout's verdict; the calibration note, once there are enough outcomes; and
 anything skipped, with why.
