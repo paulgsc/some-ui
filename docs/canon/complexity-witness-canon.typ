@@ -966,7 +966,8 @@ superseded and kept.
   `CW-P` alone, and Def. 1.9's $kappa$ into `M` or `A`. Their identifiers are never
   reused, never renumbered and never removed, and a superseded entry is marked
   and kept (Amendment protocol, second rule). Def. 1.5's "a general claim
-  about cost" reads "about cost or safety" for `A`. Each rule is the one-line form a learner
+  about cost" reads "about cost, safety or liveness, under a stated failure
+  model" for `A`. Each rule is the one-line form a learner
   reads, and each is covered by the seed reading list of the brief the v1.2
   log names.
 
@@ -1004,7 +1005,8 @@ superseded and kept.
 
   The A/B never showed a rule's name before a pick, so it tested the
   registers' coverage and not their wording; the v0 rows are revised from
-  real sessions, by amendment, with the identifiers kept. They are rows of this remark rather than `#proposition`
+  real sessions by amendment, a revised rule taking a new identifier and the
+  row it supersedes marked and kept. They are rows of this remark rather than `#proposition`
   entries of §7 because the generated `CW-P` register is read from those
   entries and is a closed union of `CW-P` identifiers. Rem. 7.1's citation
   check over `M` and `A` is mechanical and not yet a rule: it arrives with the
@@ -1280,18 +1282,19 @@ superseded and kept.
   A learner *struggles* on an incident round on any of: an incorrect
   selection; the abstention; a selection slower than twice the learner's own
   median for that kind of round (no slowness is counted until there are
-  enough selections to have a median); or, on a spoken answer, fewer than two
-  of its rubric points ticked. Each is recorded as what it is --- Prop. 9.1's
+  enough selections to have a median); or, on a spoken answer, a pass or fewer
+  than two of its rubric points ticked. Each is recorded as what it is --- Prop. 9.1's
   three responses stay three, and slowness is an annotation on a correct or
   incorrect selection, never a fourth folded response.
 ]
 
 #definition("9.5", name: "Spoken answer (v1.2)")[
   A *spoken answer* is a recording, of up to 60 seconds, made in reply to a
-  one-sentence prompt that names the incident it is about. Its *rubric* is
-  three or four points a good answer hits, shown only after the recording
-  (Axiom 9.2) and ticked by the learner. Where the learner cannot speak, a
-  typed answer is accepted and recorded as typed.
+  one-sentence prompt that names the incident it is about. Its commitment
+  (Def. 9.1) is the closed choice between recording and passing, the pass
+  being its abstention. Its *rubric* is three or four points a good answer
+  hits, shown only after either (Axiom 9.2) and ticked by the learner. Where
+  the learner cannot speak, a typed answer is accepted and recorded as typed.
 ]
 
 #proposition("9.4", name: "A struggle places a reading and parks the round (v1.2)")[
@@ -1342,9 +1345,10 @@ superseded and kept.
   inside the two results only by clause (d). What the reading gates is only
   whether the sampler offers the return unasked; the confirmation, the round
   and the return are reachable on request throughout, so nothing a response
-  leads to is withheld. Taking either costs evidence, never
-  access: by Axiom 9.2 that round earns no credit afterwards, while its
-  return, being new numbers, is a fresh commitment. A surface that makes
+  leads to is withheld. Taking the confirmation or the
+  round costs evidence, never access: by Axiom 9.2 that round earns no credit
+  afterwards. Requesting the return costs nothing, since it is new numbers
+  and a fresh commitment. A surface that makes
   any of them unreachable has turned a placement into a gate.
 ]
 
@@ -1352,10 +1356,11 @@ superseded and kept.
   Def. 9.4 keeps Prop. 9.1's three responses as three records. Prop. 9.1 also
   asks each for its own follow-up, and for an incident round the return
   carries it: after an incorrect selection, a variant in which the option
-  picked visibly fails; after the abstention, or a correct selection
-  slow enough to be a struggle, a cleaner instance; after a correct selection
-  that is not a struggle no return, the thread's next round being the nearby
-  boundary case. A session file that authors one return for every struggle
+  picked visibly fails; after the abstention, a cleaner instance; after
+  any correct selection, the thread's next round as the nearby boundary case,
+  and, where the selection was slow enough to be a struggle, a cleaner
+  instance as its return as well. A struggle on a spoken answer returns,
+  after its reading, to a numbers probe on its weakest rubric point. A session file that authors one return for every struggle
   meets Def. 9.4 and not Prop. 9.1; checking that a file authors a variant
   per response kind is mechanical, not yet a rule.
 ]
@@ -1390,14 +1395,13 @@ superseded and kept.
 ]
 
 #proof[
-  Prop. 8.1 says a cycle ends only when the learner leaves; read for a
-  session of incident rounds as for a cycle, leaving must be available,
-  legible and clean; a design in which the only way out is to
-  abandon a round mid-screen has made leaving a failure. In the A/B four of
-  five designs promised about ten minutes and lost the five-minute commuter
-  mid-round with no way out. A declared length is a plan for the session's
-  time, not a terminal condition, and the thread continues from wherever the
-  learner left.
+  Axiom P.1 makes abandonment the binding constraint, for either kind of
+  round; a session whose only way out is to abandon a round mid-screen
+  manufactures it, and Prop. 8.1 draws the same conclusion for Def. 1.7
+  cycles. In the A/B four of five designs promised about ten minutes and lost
+  the five-minute commuter mid-round with no way out. A declared length is a
+  plan for the session's time, not a terminal condition, and the thread
+  continues from wherever the learner left.
 ]
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -1490,7 +1494,7 @@ superseded and kept.
 ]
 
 #remark("10.3", name: "Content obligations for incident rounds, beside Rem. 7.1 and Rem. 10.2 (v1.2)")[
-  Four properties of an authored session, each checked before it reaches a
+  Five properties of an authored session, each checked before it reaches a
   learner:
   + every incident round cites the passage $pi$ that answers it;
   + every struggle path ends in a placed reading with a source;
