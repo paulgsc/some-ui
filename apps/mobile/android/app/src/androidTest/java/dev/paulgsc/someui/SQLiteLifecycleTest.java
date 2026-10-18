@@ -8,6 +8,7 @@ import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import androidx.test.core.app.ActivityScenario;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
+import com.getcapacitor.JSArray;
 import com.getcapacitor.JSObject;
 import com.getcapacitor.PluginCall;
 import com.getcapacitor.community.database.sqlite.CapacitorSQLitePlugin;
@@ -32,13 +33,14 @@ public class SQLiteLifecycleTest {
             ).put("transaction", false), CapacitorSQLitePlugin::execute);
             call(activity, "beginTransaction", data(), CapacitorSQLitePlugin::beginTransaction);
             call(activity, "run", data().put("statement", "INSERT INTO records VALUES ('unfinished')")
-                .put("transaction", false), CapacitorSQLitePlugin::run);
+                .put("values", new JSArray()).put("transaction", false), CapacitorSQLitePlugin::run);
 
             activity.recreate();
             nativeOnly(activity);
             call(activity, "createConnection", data(), CapacitorSQLitePlugin::createConnection);
             call(activity, "open", data(), CapacitorSQLitePlugin::open);
-            JSObject result = call(activity, "query", data().put("statement", "SELECT value FROM records"),
+            JSObject result = call(activity, "query", data().put("statement", "SELECT value FROM records")
+                .put("values", new JSArray()),
                 CapacitorSQLitePlugin::query);
             assertEquals(1, result.getJSONArray("values").length());
             assertEquals("kept", result.getJSONArray("values").getJSONObject(0).getString("value"));
