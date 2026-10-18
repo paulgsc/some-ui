@@ -1,6 +1,6 @@
 ---
 name: drive-sop
-description: Where files go in the owner's Google Drive, and what an agent may do there. Read before any Google Drive connector call that writes, moves or trashes a file, or that looks for something the phone shared (a drama prompt, voice notes, reflections, a study-context export, Build Journal primers or takes, vlog clips, a job brief). Points at the Drive's own SOP doc, which is the rule.
+description: Where files go in the owner's Google Drive, and what an agent may do there. Read before any Google Drive connector call that writes, moves or trashes a file, or that looks for something the phone shared (a drama prompt, voice notes, reflections, a study-context export, Build Journal primers or takes, vlog clips, a jobs digest, decisions or scouts). Points at the Drive's own SOP doc, which is the rule.
 ---
 
 # drive-sop
@@ -18,12 +18,13 @@ What it settles, so you know it's worth the read:
 
 - **The tree.** `Inbox/`, `Dramas/requests` and `played`, `Read aloud/sets`,
   `Study ledger/reflections` and `study-context/<date>/`, `Build Journal/`,
-  `Vlog/playoff-delta/week-NN` and `published`, `some-ui jobs/`, `Archive/`, plus the
+  `Vlog/playoff-delta/week-NN` and `published`, `some-ui jobs/` (`Brief`, `Decisions`,
+  `Scout`, `Recommended resume`), `Archive/`, plus the
   `Publish ledger` sheet. The doc carries each folder's id.
 - **Who writes what where,** each share's file-name contract, and each folder's lifecycle:
   what moves where and when, and what an agent may trash.
 - **Load-bearing names** that code finds by exact title (`Build Journal/voice/primers`,
-  `Build Journal/voice/takes`, `some-ui jobs`). Never rename them.
+  `Build Journal/voice/takes`, `some-ui jobs` and its four subfolders). Never rename them.
 
 The phone names each share's folder as its sheet opens, and where a picked file waits (under
 "Open a scene from storage"): `apps/www/src/lib/drive-filing`, a sidecar installed in

@@ -1,0 +1,260 @@
+{
+  "schema": "some-ui.job-digest/1",
+  "day": "2026-10-18",
+  "createdAt": "2026-10-18T14:52:00Z",
+  "seen": 37,
+  "picks": [
+    {
+      "id": "avm-0b77",
+      "track": "software",
+      "family": null,
+      "fingerprint": "avmet applications|software engineer|remote",
+      "posting": {
+        "title": "Software Engineer",
+        "company": "AvMet Applications",
+        "location": "Remote",
+        "compensation": "$80,000–$120,000 a year",
+        "experience": null,
+        "postedOn": "2026-09-18",
+        "applyUrl": "https://to.indeed.com/aa7ghmzgvyn9"
+      },
+      "scores": {
+        "fit": 0.66,
+        "odds": 0.22,
+        "fitWhy": "covers 8 of 12 requirements",
+        "oddsWhy": "30 days old · remote · no years floor stated"
+      },
+      "wants": "Backend services and data pipelines for aviation weather products, with automated tests and CI.",
+      "fits": [
+        {
+          "title": "Pipelines and background jobs",
+          "detail": "Redis coalescing in front of NATS JetStream; retryable failures are NAKed for redelivery.",
+          "source": "server · crates"
+        },
+        {
+          "title": "Data checks in CI",
+          "detail": "Python checks hold dashboards to the metrics the services emit.",
+          "source": "server · scripts/check_metric_contract.py"
+        }
+      ],
+      "gaps": [
+        { "kind": "learnable", "text": "Aviation weather data formats" },
+        { "kind": "unknown", "text": "Security clearance for some contracts" }
+      ],
+      "dontClaim": ["Managed cloud tenure", "Kubernetes"],
+      "resume": {
+        "kind": "build",
+        "variant": "backend",
+        "template": "safe",
+        "ref": "cb503cb"
+      },
+      "kit": {
+        "fields": [
+          { "label": "Email", "value": "paulgathondudev@gmail.com" },
+          { "label": "Location", "value": "Berkeley, CA" },
+          { "label": "GitHub", "value": "https://github.com/paulgsc" },
+          { "label": "Portfolio", "value": "https://paulgsc.github.io/some-ui" }
+        ],
+        "answers": [
+          {
+            "label": "Authorized to work in the US",
+            "value": "Yes, for any employer"
+          },
+          { "label": "Sponsorship", "value": "Not needed" }
+        ],
+        "why": null
+      }
+    },
+    {
+      "id": "apl-5d19",
+      "track": "software",
+      "family": null,
+      "fingerprint": "applyline|software engineer|remote",
+      "posting": {
+        "title": "Software Engineer",
+        "company": "Applyline",
+        "location": "Remote",
+        "compensation": "$100,000 a year",
+        "experience": "2+ years",
+        "postedOn": "2026-10-07",
+        "applyUrl": "https://to.indeed.com/aam6bbz9rggc"
+      },
+      "scores": {
+        "fit": 0.61,
+        "odds": 0.34,
+        "fitWhy": "covers 8 of 13 requirements",
+        "oddsWhy": "11 days old · remote · asks 2+ years"
+      },
+      "wants": "Full-stack TypeScript product work: React front end, Node services, Postgres.",
+      "fits": [
+        {
+          "title": "React and TypeScript",
+          "detail": "A TanStack app with typed routes and builds gated by audience.",
+          "source": "some-ui · apps/www"
+        },
+        {
+          "title": "Services and SQL",
+          "detail": "40+ inventoried Axum operations and SQLx repositories.",
+          "source": "server · apps/servers/file_host"
+        }
+      ],
+      "gaps": [
+        { "kind": "hard", "text": "Two years in a paid engineering role" },
+        { "kind": "learnable", "text": "Node services in production" }
+      ],
+      "dontClaim": ["Commercial-scale traffic"],
+      "resume": {
+        "kind": "build",
+        "variant": "fullstack",
+        "template": "classic",
+        "ref": "cb503cb"
+      },
+      "kit": {
+        "fields": [
+          { "label": "Email", "value": "paulgathondudev@gmail.com" },
+          { "label": "GitHub", "value": "https://github.com/paulgsc" }
+        ],
+        "answers": [],
+        "why": null
+      }
+    },
+    {
+      "id": "blu-7f2a",
+      "track": "adjacent",
+      "family": "data",
+      "fingerprint": "bluesight|data analyst|remote",
+      "posting": {
+        "title": "Data Analyst",
+        "company": "BlueSight",
+        "location": "Remote",
+        "compensation": "$70,000–$82,000 a year",
+        "experience": null,
+        "postedOn": "2026-10-15",
+        "applyUrl": "https://to.indeed.com/aaqknqlbpywc"
+      },
+      "scores": {
+        "fit": 0.68,
+        "odds": 0.44,
+        "fitWhy": "covers 7 of 10 requirements",
+        "oddsWhy": "3 days old · remote · no years floor stated"
+      },
+      "wants": "SQL and Python analysis of hospital pharmacy data, dashboards for internal teams, and quality checks on incoming feeds.",
+      "fits": [
+        {
+          "title": "SQL and dashboards",
+          "detail": "Tableau dashboards on PostgreSQL, and reporting automated through the Google Workspace API.",
+          "source": "personal · CABA Design, 2020–2023"
+        },
+        {
+          "title": "Python data checks",
+          "detail": "Python checks hold dashboards to the metrics the services emit.",
+          "source": "server · scripts/check_metric_contract.py"
+        },
+        {
+          "title": "Clinical data handling",
+          "detail": "HIPAA-compliant LIMS accessioning at 99.99% accuracy.",
+          "source": "personal · Natera, 2019–2020"
+        }
+      ],
+      "gaps": [
+        { "kind": "learnable", "text": "Pharmacy supply-chain domain" },
+        { "kind": "learnable", "text": "dbt or a cloud warehouse" }
+      ],
+      "dontClaim": ["Snowflake", "BigQuery", "Analytics engineer title"],
+      "resume": {
+        "kind": "patch",
+        "variant": "data",
+        "template": "safe",
+        "fallback": "backend",
+        "pr": null,
+        "change": "A data composition: SQL and Python analysis lead, CABA Design and Natera render as experience, and the metric-contract checks are the engineering evidence."
+      },
+      "kit": {
+        "fields": [{ "label": "Email", "value": "paulgathondudev@gmail.com" }],
+        "answers": [],
+        "why": null
+      }
+    },
+    {
+      "id": "wis-21c0",
+      "track": "adjacent",
+      "family": "qa",
+      "fingerprint": "wisemen multimedia|automation test engineer|remote",
+      "posting": {
+        "title": "Automation Test Engineer",
+        "company": "Wisemen Multimedia",
+        "location": "Remote",
+        "compensation": "$85,000–$100,000 a year",
+        "experience": null,
+        "postedOn": "2026-10-13",
+        "applyUrl": "https://to.indeed.com/aab4m6j9687s"
+      },
+      "scores": {
+        "fit": 0.63,
+        "odds": 0.39,
+        "fitWhy": "covers 7 of 11 requirements",
+        "oddsWhy": "5 days old · remote · asks for a framework you've built"
+      },
+      "wants": "Build and keep an automated UI and API test suite in CI, and triage failures with the developers.",
+      "fits": [
+        {
+          "title": "UI automation",
+          "detail": "Playwright end-to-end suites for the browser extensions and the web app.",
+          "source": "some-ui · extensions, apps/www/tests"
+        },
+        {
+          "title": "API contract tests",
+          "detail": "A contract harness that fails on route and payload drift.",
+          "source": "some-ui · packages/contract-harness"
+        }
+      ],
+      "gaps": [
+        { "kind": "learnable", "text": "Selenium or Cypress" },
+        { "kind": "unknown", "text": "Mobile device lab" }
+      ],
+      "dontClaim": ["QA job title", "ISTQB certification"],
+      "resume": {
+        "kind": "patch",
+        "variant": "qa",
+        "template": "classic",
+        "fallback": "fullstack",
+        "pr": null,
+        "change": "A qa composition: the end-to-end suites, the contract harness and the CI gate lead, and the build work supports them."
+      },
+      "kit": {
+        "fields": [{ "label": "Email", "value": "paulgathondudev@gmail.com" }],
+        "answers": [],
+        "why": null
+      }
+    }
+  ],
+  "setAside": [
+    {
+      "fingerprint": "indeed|software engineer ii|remote",
+      "title": "Software Engineer II",
+      "company": "Indeed",
+      "why": "Posted Jul 28, older than 30 days"
+    },
+    {
+      "fingerprint": "dataannotation|backend software engineer ai trainer|indianapolis in",
+      "title": "Backend Software Engineer - AI Trainer",
+      "company": "DataAnnotation",
+      "why": "Part-time gig work; three copies by city, collapsed"
+    },
+    {
+      "fingerprint": "virtual integrated analytics solutions inc|technical support specialist|remote",
+      "title": "Technical Support Specialist",
+      "company": "Virtual Integrated Analytics Solutions Inc.",
+      "why": "Customer-facing support"
+    },
+    {
+      "fingerprint": "vissat solutions inc|data analyst jr mid sr u s citizen dod clearance|remote",
+      "title": "Data Analyst - Jr./Mid./Sr.-U. S Citizen & DOD clearance",
+      "company": "Vissat Solutions, Inc",
+      "why": "Requires a DoD clearance"
+    }
+  ],
+  "scouts": [],
+  "read": [],
+  "evidence": { "someUi": "cb503cb", "server": "9226240" }
+}
