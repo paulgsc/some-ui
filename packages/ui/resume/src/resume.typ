@@ -48,22 +48,35 @@
   )
 
   let chosen = templates.at(template-name)
+  let comp = resume-compositions.at(variant)
+
+  // What differs by composition beyond its content: the title under the
+  // name, the role line under EXPERIENCE, and which non-engineering jobs it
+  // renders, named by `org` in the order it lists them.
+  let profile = resume-profile + (title: comp.title)
+  let engagement = resume-engagement + (role: comp.role)
+  let roles = comp.experience.map(org => {
+    let found = personal.additional-experience.filter(entry => entry.org == org)
+    assert(found.len() == 1, message: variant + " renders unknown experience '" + org + "'")
+    found.first()
+  })
+  let personal = personal + (additional-experience: roles)
 
   set document(
     title: resume-profile.name + " — Résumé (" + variant + ")",
     author: resume-profile.name,
-    keywords: ("software engineer", "Rust", "TypeScript", "backend", "full-stack", "developer platform"),
+    keywords: comp.keywords,
   )
 
   (chosen.render)((
-    profile: resume-profile,
+    profile: profile,
     personal: personal,
     pii: pii,
-    composition: resume-compositions.at(variant),
+    composition: comp,
     highlights: resume-highlights.at(variant),
     toolbox: resume-toolbox.at(variant),
     repositories: resume-repositories,
-    engagement: resume-engagement,
+    engagement: engagement,
     theme: resolve-theme(theme-name),
     font: resolve-font(font-name),
     base-size: chosen.base,
@@ -85,23 +98,24 @@
   // already defined above; nothing new is asserted.
   [#metadata((
     variant: variant,
+    track: comp.track,
     profile: (
-      name: resume-profile.name,
-      title: resume-profile.title,
-      email: resume-profile.email,
-      github: resume-profile.github,
-      portfolio: resume-profile.portfolio,
-      location: resume-profile.location,
+      name: profile.name,
+      title: profile.title,
+      email: profile.email,
+      github: profile.github,
+      portfolio: profile.portfolio,
+      location: profile.location,
     ),
-    label: resume-compositions.at(variant).label,
-    summary: resume-compositions.at(variant).summary,
-    skills: resume-compositions.at(variant).skills,
-    projects: resume-compositions.at(variant).projects,
-    platform: resume-compositions.at(variant).platform,
+    label: comp.label,
+    summary: comp.summary,
+    skills: comp.skills,
+    projects: comp.projects,
+    platform: comp.platform,
     highlights: resume-highlights.at(variant),
     toolbox: resume-toolbox.at(variant),
     repositories: resume-repositories,
-    engagement: resume-engagement,
+    engagement: engagement,
     education: personal.education,
     languages: personal.languages,
     certifications: personal.certifications,

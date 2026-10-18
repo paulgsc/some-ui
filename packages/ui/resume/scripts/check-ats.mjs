@@ -24,6 +24,9 @@ const variants = {
   backend: "Backend & event-driven systems",
   platform: "Developer platform & release engineering",
   fullstack: "Full-stack web & product engineering",
+  data: "Data analysis, metrics & reporting",
+  qa: "Test automation & quality engineering",
+  solutions: "Integrations & internal tools",
 }
 // Identity facts, matched anywhere in the extracted text. A build with PII
 // (src/lib/pii.typ) also requires each supplied field, and its email
@@ -93,6 +96,34 @@ const requiredQualificationsByVariant = {
     "testing",
     "Node.js",
     "GitHub Actions",
+  ],
+  data: [
+    "SQL",
+    "PostgreSQL",
+    "Python",
+    "Tableau",
+    "dashboards",
+    "reporting",
+    "data quality",
+    "JSON",
+  ],
+  qa: [
+    "Playwright",
+    "test automation",
+    "end-to-end",
+    "API testing",
+    "regression testing",
+    "CI/CD",
+    "TypeScript",
+  ],
+  solutions: [
+    "API integration",
+    "REST",
+    "JSON",
+    "TypeScript",
+    "Python",
+    "automation",
+    "internal tools",
   ],
 }
 

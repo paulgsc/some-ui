@@ -5,7 +5,7 @@
 // tracking systems most often interleave the columns and destroy reading
 // order, and a photograph is a liability in several hiring pipelines. When the
 // posting routes through an unknown ATS, send this one.
-#import "../lib/parts.typ": HEADING-GAP, bullets, contact-line, engagement-head, project-entry, section-head
+#import "../lib/parts.typ": HEADING-GAP, STACK-GAP, bullets, contact-line, engagement-head, project-entry, section-head
 #import "../lib/fit.typ": fit-scale, join-blocks, justify-blocks
 
 #let PAGE-W = 8.5in
@@ -73,8 +73,10 @@
     if personal.additional-experience.len() > 0 {
       out.push([
         #section-head(theme)[Additional experience]
-        #for role in personal.additional-experience [
-          #block(below: 0.5em, breakable: false)[
+        #for (i, role) in personal.additional-experience.enumerate() [
+          // A second entry needs the full stack gap above it, or its title
+          // rides up into the previous entry's last bullet.
+          #block(above: if i > 0 { STACK-GAP } else { auto }, below: 0.5em, breakable: false)[
             #grid(
               columns: (1fr, auto),
               text(size: 1.02em, weight: "bold")[#role.role],

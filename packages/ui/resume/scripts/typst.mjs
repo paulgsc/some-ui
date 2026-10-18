@@ -34,7 +34,14 @@ export const sourceFile = join(packageDir, "src", "main.typ")
 export const outDir = join(packageDir, "documents")
 const cacheDir = join(packageDir, "node_modules", ".cache", "typst-bin")
 
-export const variants = ["backend", "platform", "fullstack"]
+export const variants = [
+  "backend",
+  "platform",
+  "fullstack",
+  "data",
+  "qa",
+  "solutions",
+]
 export const templates = [
   "rail",
   "classic",
