@@ -219,7 +219,7 @@ jobs:
           SOME_UI_VERSION_NAME: 0.1.${{ github.run_number }}+${{ github.sha }}
           SOME_UI_EXTRA_ABI: x86_64
         run: |
-          ./gradlew assembleRelease assembleDebug assembleDebugAndroidTest --no-daemon
+          ./gradlew :app:assembleRelease :app:assembleDebug :app:assembleDebugAndroidTest --no-daemon
           mkdir ../../../launch-apk
           cp app/build/outputs/apk/release/app-release.apk ../../../launch-apk/launch.apk
           cp app/build/outputs/apk/debug/app-debug.apk ../../../launch-apk/debug.apk
