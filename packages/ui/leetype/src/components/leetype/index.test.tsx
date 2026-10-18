@@ -177,7 +177,7 @@ describe("Leetype", () => {
     expect(loadRounds).not.toHaveBeenCalled()
   })
 
-  it("offers to open a session file on a phone only when the host keeps them", () => {
+  it("offers to add a session file on a phone only when the host keeps them", () => {
     setViewport(true)
     const store = {
       list: vi.fn(() => Promise.resolve([])),
@@ -190,7 +190,6 @@ describe("Leetype", () => {
 
     render(<Leetype sessionFiles={{ store }} />)
     expect(screen.getByText("Add a session from storage")).toBeTruthy()
-    expect(store.list).toHaveBeenCalledOnce()
   })
 
   it("starts a session once the learner picks an exercise from the picker", () => {

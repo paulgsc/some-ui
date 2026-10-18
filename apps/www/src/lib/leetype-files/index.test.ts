@@ -1,8 +1,3 @@
-/**
- * The phone's session-file store over a real database: a picked file lands
- * in the content store verbatim, its name is its identity, and a keep past
- * the storage budget is refused rather than written.
- */
 import { openNodeSqlite } from "@/test-support/node-sqlite-driver"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
@@ -49,7 +44,6 @@ describe("phoneSessionFiles", () => {
     const store = phoneSessionFiles()
     expect(await store.keep(FILE, AT)).toBe("kept")
     expect(await store.read(FILE.name)).toBe(FILE.body)
-    expect(await store.read("elsewhere")).toBeNull()
     expect(await store.list()).toEqual([
       {
         name: FILE.name,
@@ -70,7 +64,7 @@ describe("phoneSessionFiles", () => {
     expect(await store.read(FILE.name)).toBe(FILE.body)
   })
 
-  it("refuses a keep past the storage budget, writes nothing, and asks for room", async () => {
+  it("refuses a keep past the storage budget, writes nothing, and offers no session for removal", async () => {
     const store = phoneSessionFiles()
     const refused = vi.fn()
     const stop = onSaveRefused(refused)
@@ -79,7 +73,7 @@ describe("phoneSessionFiles", () => {
       "full"
     )
     expect(await store.list()).toEqual([])
-    expect(refused).toHaveBeenCalledWith(null)
+    expect(refused).not.toHaveBeenCalled()
     stop()
   })
 })

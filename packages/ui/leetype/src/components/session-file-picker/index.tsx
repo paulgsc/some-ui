@@ -45,8 +45,7 @@ function statusOf(pick: PickState): string | null {
 /**
  * "Add a session from storage": the system picker, where Android lists
  * Drive beside the phone's own files, then what the phone holds. A refusal
- * says why; the content lint's findings fold under a kept file. Bounded, so
- * it never takes the round's screen from it.
+ * says why; the content lint's findings fold under a kept file.
  */
 export const SessionFilePicker: FC<SessionFilePickerProps> = ({
   store,

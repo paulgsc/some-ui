@@ -7,8 +7,9 @@
  * this reaches the database directly, as the sync from home does.
  *
  * A keep is `budgeted`: past the phone's storage budget it is refused
- * (`"full"`), not written, and the app asks the person to make room, as for
- * any refused save.
+ * (`"full"`), not written. It does not raise the app's make-room prompt,
+ * which offers to remove a finished session: the record is never spent to
+ * hold a copy of a file Drive keeps.
  *
  * Phone-only (`build.paths.ts`).
  */
@@ -20,11 +21,7 @@ import {
   listSessionFiles,
   readSessionFile,
 } from "@/lib/device-backend/content-store"
-import {
-  budgetedDriver,
-  noteSaveRefused,
-  OverBudgetError,
-} from "@/lib/device-backend/storage"
+import { budgetedDriver, OverBudgetError } from "@/lib/device-backend/storage"
 import { deviceStorage } from "@/lib/device-backend/storage-view"
 
 export function phoneSessionFiles(): SessionFileStore {
@@ -41,9 +38,8 @@ export function phoneSessionFiles(): SessionFileStore {
         if (outcome === "kept") void deviceStorage.refresh()
         return outcome
       } catch (error) {
-        if (!(error instanceof OverBudgetError)) throw error
-        noteSaveRefused(null)
-        return "full"
+        if (error instanceof OverBudgetError) return "full"
+        throw error
       }
     },
     read: async (name) =>

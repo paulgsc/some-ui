@@ -89,8 +89,7 @@ type LeetypeProps = {
   loadRuns?: RoundRunsLoader
   /**
    * Where the phone keeps session files picked from storage, and where to
-   * look for them (`lib/leetype/session-file-pick`). `apps/www` passes it
-   * only in the Android app, whose picker lists Drive. Phone surface only.
+   * look for them (`lib/leetype/session-file-pick`). Phone surface only.
    */
   sessionFiles?: { store: SessionFileStore; hint?: string }
 }

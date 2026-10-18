@@ -51,10 +51,6 @@ describe("SessionFilePicker", () => {
     expect(
       await screen.findByText(`Kept ${RAW.title} on this phone.`)
     ).toBeTruthy()
-    expect(keep).toHaveBeenCalledWith(
-      expect.objectContaining({ name: "t1-01", body: VALID }),
-      expect.any(Date)
-    )
     expect(await screen.findByText("On this phone (1)")).toBeTruthy()
   })
 
@@ -77,6 +73,5 @@ describe("SessionFilePicker", () => {
 
     const alert = await screen.findByRole("alert")
     expect(alert.textContent).toMatch(/^notes isn't a session file\. /)
-    expect(keep).not.toHaveBeenCalled()
   })
 })

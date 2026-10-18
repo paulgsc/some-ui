@@ -156,8 +156,7 @@ once cannot both pass on one measurement. A store keeps its
 own cap besides, which is its own rule: no store keeps space free for
 itself, so a new one costs nothing until it holds something. There is no
 size per table. LeetType's session files, picked from storage, count toward
-it too, and nothing lets them go yet (#1921): Drive keeps each one for good,
-so the phone's copy is only a copy.
+it too, and nothing lets them go yet (#1921).
 
 A restore has to be able to open what it brings back, which is why the SQLite
 plugin's unused encryption is off (`capacitor.config.ts` says why; the review

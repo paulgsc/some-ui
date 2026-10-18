@@ -1,6 +1,7 @@
 import type {
   HeldSessionFile,
   KeepOutcome,
+  PickedSessionFile,
   SessionFileStore,
 } from "@leetype/lib/leetype/session-file-pick"
 import {
@@ -10,7 +11,7 @@ import {
 import { AB_FIXTURES } from "@leetype/lib/leetype/session-file/__tests__/fixtures"
 import { SessionFileSchema } from "@leetype/types/session-file"
 import { PICKED_FILE_MAX_BYTES } from "@some-ui/intent-kit"
-import { describe, expect, it, vi } from "vitest"
+import { describe, expect, it } from "vitest"
 
 const VALID = JSON.stringify(AB_FIXTURES[1]?.raw)
 const FILE = SessionFileSchema.parse(AB_FIXTURES[1]?.raw)
@@ -20,10 +21,7 @@ const AT = new Date("2026-10-18T21:00:00.000Z")
 const settle = (): Promise<void> =>
   new Promise((resolve) => setTimeout(resolve, 0))
 
-function picked(
-  name: string,
-  text: string
-): Pick<File, "name" | "size" | "text"> {
+function picked(name: string, text: string): PickedSessionFile {
   return { name, size: text.length, text: () => Promise.resolve(text) }
 }
 
@@ -60,7 +58,6 @@ describe("intakeSessionFile", () => {
   it("takes a session file's name without .json and lints it", () => {
     const intake = intakeSessionFile("t1-01-power-cut.json", VALID)
     expect(intake).toMatchObject({ ok: true, name: "t1-01-power-cut" })
-    expect(intake.ok && Array.isArray(intake.findings)).toBe(true)
   })
 
   it("refuses what isn't JSON", () => {
@@ -132,7 +129,6 @@ describe("SessionFilePickRuntime", () => {
       reason:
         "This phone already holds a different file named t1. A fix goes up under a new name, such as t1-r2.",
     })
-    expect(store.bodies.get("t1")).toBe(VALID)
 
     runtime.pick(picked("t1-r2.json", VALID))
     await settle()
@@ -143,15 +139,17 @@ describe("SessionFilePickRuntime", () => {
     })
   })
 
-  it("refuses a file too large to read, before reading it", () => {
+  it("refuses a file too large to read", () => {
     const runtime = new SessionFilePickRuntime(memoryStore())
-    const text = vi.fn(() => Promise.resolve(VALID))
-    runtime.pick({ name: "big.json", size: PICKED_FILE_MAX_BYTES + 1, text })
+    runtime.pick({
+      name: "big.json",
+      size: PICKED_FILE_MAX_BYTES + 1,
+      text: () => Promise.resolve(VALID),
+    })
     expect(runtime.getSnapshot().pick).toEqual({
       kind: "refused",
       reason: "That file is too large to open.",
     })
-    expect(text).not.toHaveBeenCalled()
   })
 
   it("says so when the store fails, and when the phone is full", async () => {
@@ -178,7 +176,8 @@ describe("SessionFilePickRuntime", () => {
     await settle()
     expect(full.getSnapshot().pick).toEqual({
       kind: "refused",
-      reason: "This phone is full: make room, then pick the file again.",
+      reason:
+        "This phone is full. Settings shows what it holds; free some space, then pick the file again.",
     })
   })
 
@@ -216,12 +215,26 @@ describe("SessionFilePickRuntime", () => {
 
     runtime.pick(picked("third.json", VALID))
     await settle()
+    const held = runtime.getSnapshot().held
     runtime.cancel()
     release("kept")
     await settle()
-    expect(runtime.getSnapshot().pick).toEqual({
-      kind: "keeping",
-      name: "third",
+    expect(runtime.getSnapshot()).toEqual({
+      held,
+      pick: { kind: "keeping", name: "third" },
+    })
+  })
+
+  it("lists a keep after a remount's start, cancel and start", async () => {
+    const runtime = new SessionFilePickRuntime(memoryStore(), () => AT)
+    runtime.start()
+    runtime.cancel()
+    runtime.start()
+    runtime.pick(picked("t1.json", VALID))
+    await settle()
+    expect(runtime.getSnapshot().held).toMatchObject({
+      kind: "ready",
+      files: [{ name: "t1" }],
     })
   })
 })

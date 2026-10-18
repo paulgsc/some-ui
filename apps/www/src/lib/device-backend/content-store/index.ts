@@ -372,11 +372,10 @@ export type SessionFileRow = {
 }
 
 /**
- * A session file picked from storage, kept verbatim under its name. A name
- * is the file's identity (the session log names it in every event), so
- * other bytes under a name the phone holds are refused (`"name-taken"`), and
- * the same bytes again change nothing. The caller has parsed it
- * (`@some-ui/leetype`'s session-file pick).
+ * A session file picked from storage, kept verbatim under its name: other
+ * bytes under a name the phone holds are refused (`"name-taken"`), and the
+ * same bytes again change nothing. Why a name is held, and the parse before
+ * it: `@some-ui/leetype`'s session-file pick.
  */
 export async function keepSessionFile(
   db: SqlDriver,

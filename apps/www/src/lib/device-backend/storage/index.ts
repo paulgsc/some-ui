@@ -116,7 +116,7 @@ export async function fitsBesides(
 ): Promise<boolean> {
   const held = (await databaseBytes(db)) + (await besides())
   if (held + bytes <= budget.quotaBytes) return true
-  noteSaveRefused(null)
+  for (const listener of refusals) listener(null)
   return false
 }
 
@@ -153,16 +153,11 @@ export async function budgetedAnswer(
     return await budgeted(db, budget, write)
   } catch (error) {
     if (!(error instanceof OverBudgetError)) throw error
-    noteSaveRefused(spare)
+    for (const listener of refusals) listener(spare)
     return errorResponse(400, "max_record_limit_exceeded", {
       message: error.message,
     })
   }
-}
-
-/** Tells the app a save was refused, so it asks the person to make room. */
-export function noteSaveRefused(spare: string | null): void {
-  for (const listener of refusals) listener(spare)
 }
 
 export function onSaveRefused(listener: RefusalListener): () => void {

@@ -157,7 +157,7 @@ function refusalOf(outcome: KeepOutcome, name: string): string | null {
       return `This phone already holds a different file named ${name}. A fix goes up under a new name, such as ${nextRevision(name)}.`
     }
     case "full": {
-      return "This phone is full: make room, then pick the file again."
+      return "This phone is full. Settings shows what it holds; free some space, then pick the file again."
     }
     case "kept":
     case "already-held": {
@@ -200,7 +200,7 @@ export class SessionFilePickRuntime {
     return () => this.listeners.delete(listener)
   }
 
-  /** Reads the held list; again after every keep. */
+  /** Reads the held list. */
   start = (): void => {
     this.stopped = false
     const turn = ++this.listTurn
@@ -257,7 +257,6 @@ export class SessionFilePickRuntime {
       )
       .then(
         (outcome) => {
-          // Whichever pick sent it, a write that landed changes the list.
           if (outcome === "kept" && !this.stopped) this.start()
           if (turn !== this.turn) return
           const reason = refusalOf(outcome, name)
