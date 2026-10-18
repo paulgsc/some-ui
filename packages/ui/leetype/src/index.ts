@@ -16,3 +16,13 @@ export { serializeRound } from "./lib/leetype/round-export"
 export { RoundSchema } from "./types/authored-round"
 export type { Round } from "./types/authored-round"
 export { AUTHORED_ROUNDS } from "./lib/leetype/authored-rounds"
+// Sessions of incident rounds (canon v1.2): the append-only log the phone's
+// session surface writes and the reflection export reads (#1917–#1923).
+export { createSessionLogStore, ledgerOf } from "./lib/leetype/session-log"
+export type {
+  SessionEvent,
+  SessionLedger,
+  SessionLog,
+  SessionLogSnapshot,
+  SessionLogStore,
+} from "./lib/leetype/session-log"
