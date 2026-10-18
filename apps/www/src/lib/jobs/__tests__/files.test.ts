@@ -1,0 +1,160 @@
+import { describe, expect, it } from "vitest"
+
+import { decisionsFile, scoutsFile } from "@/lib/jobs/files"
+import type { Draft, JobsState, VoiceNote } from "@/lib/jobs/model"
+import { EMPTY, step } from "@/lib/jobs/model"
+
+import { digest } from "./fixture"
+
+type PickRef = { day: string; pickId: string; fingerprint: string }
+
+let n = 0
+function record(
+  state: JobsState,
+  event: Draft,
+  at = "2026-10-18T16:00:00Z"
+): JobsState {
+  n += 1
+  return step(state, { type: "record", event, stamp: { id: `e${n}`, at } })
+}
+
+const voice = (id: string): { type: "voice-kept"; note: VoiceNote } => ({
+  type: "voice-kept",
+  note: {
+    id,
+    mimeType: "audio/webm;codecs=opus",
+    durationMs: 3000,
+    owner: "o",
+  },
+})
+
+describe("decisionsFile", () => {
+  const D = digest("2026-10-18")
+  const [SW, AD] = D.picks
+  const ref = (p = SW): PickRef => ({
+    day: D.day,
+    pickId: p.id,
+    fingerprint: p.fingerprint,
+  })
+  let state = step(EMPTY, { type: "opened", digest: D })
+  state = step(state, voice("v1"))
+  state = record(state, {
+    type: "passed",
+    ...ref(AD),
+    reasons: ["customer-facing"],
+    note: "Calls",
+    voice: ["v1"],
+  })
+  state = record(state, { type: "taken", ...ref() })
+  state = record(state, {
+    type: "debrief",
+    ...ref(),
+    minutes: 23,
+    friction: 4,
+    chips: ["company-ats"],
+    what: "Workday",
+    voice: [],
+    result: "submitted",
+  })
+
+  it("says each pick as it stands, and names its voice notes", () => {
+    const file = decisionsFile(state, "2026-10-18", "2026-10-18T22:00:00Z")
+    expect(file?.name).toBe("decisions-2026-10-18.json")
+    const json = JSON.parse(file!.json)
+    expect(json.picks).toEqual([
+      expect.objectContaining({
+        pickId: SW.id,
+        decision: "taken",
+        debrief: expect.objectContaining({ minutes: 23, result: "submitted" }),
+      }),
+      expect.objectContaining({
+        pickId: AD.id,
+        decision: "passed",
+        reasons: ["customer-facing"],
+        voice: ["2026-10-18_blu-7f2a_voice-1.webm"],
+      }),
+    ])
+    expect(file?.voice).toEqual([
+      { id: "v1", name: "2026-10-18_blu-7f2a_voice-1.webm" },
+    ])
+  })
+
+  it("says nothing new after a share, and numbers a second share that day", () => {
+    const file = decisionsFile(state, "2026-10-18", "2026-10-18T22:00:00Z")!
+    let shared = record(state, {
+      type: "shared",
+      kind: "decisions",
+      day: "2026-10-18",
+      file: file.name,
+      through: file.through,
+      voice: ["v1"],
+    })
+    expect(
+      decisionsFile(shared, "2026-10-18", "2026-10-18T23:00:00Z")
+    ).toBeNull()
+    shared = record(shared, {
+      type: "outcome",
+      fingerprint: SW.fingerprint,
+      event: "reply",
+      on: "2026-10-18",
+      note: "",
+    })
+    const again = decisionsFile(shared, "2026-10-18", "2026-10-18T23:00:00Z")!
+    expect(again.name).toBe("decisions-2026-10-18-2.json")
+    expect(JSON.parse(again.json).picks).toEqual([])
+    expect(again.voice).toEqual([])
+  })
+
+  it("reports an earlier day's untouched picks once", () => {
+    const old = step(EMPTY, { type: "opened", digest: digest("2026-10-17") })
+    const file = decisionsFile(old, "2026-10-18", "2026-10-18T22:00:00Z")!
+    expect(
+      JSON.parse(file.json).picks.map((p: { decision: string }) => p.decision)
+    ).toEqual(["untouched", "untouched"])
+    const shared = record(old, {
+      type: "shared",
+      kind: "decisions",
+      day: "2026-10-18",
+      file: file.name,
+      through: file.through,
+      voice: [],
+    })
+    expect(
+      decisionsFile(shared, "2026-10-19", "2026-10-19T22:00:00Z")
+    ).toBeNull()
+    expect(decisionsFile(old, "2026-10-17", "2026-10-17T22:00:00Z")).toBeNull()
+  })
+})
+
+describe("scoutsFile", () => {
+  it("carries each scout added since the last scouts share", () => {
+    let state = step(EMPTY, voice("v9"))
+    state = record(
+      state,
+      {
+        type: "scout",
+        scout: {
+          id: "sc-a1b2c3",
+          url: "https://www.indeed.com/viewjob?jk=1",
+          track: "adjacent",
+          family: "qa",
+          title: "SDET · Second Dinner",
+          why: "Games",
+          postingText: null,
+        },
+        voice: ["v9"],
+      },
+      "2026-10-18T20:00:00Z"
+    )
+    const file = scoutsFile(state, "2026-10-18T20:05:00Z")!
+    expect(file.name).toBe("scouts-20261018T200500.json")
+    expect(file.voice).toEqual([
+      { id: "v9", name: "20261018T200500_sc-a1b2c3_voice-1.webm" },
+    ])
+    expect(JSON.parse(file.json).scouts[0]).toMatchObject({
+      id: "sc-a1b2c3",
+      addedAt: "2026-10-18T20:00:00Z",
+    })
+    expect(scoutsFile(EMPTY, "2026-10-18T20:05:00Z")).toBeNull()
+  })
+})

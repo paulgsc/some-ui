@@ -8,7 +8,7 @@ import { FOYER } from "@/lib/wings"
  * What the Android app (apps/mobile) carries, by wing (lib/wings): the foyer,
  * where a wing is chosen; Practice (its Home and settings, sessions - the
  * list, the composer and the player - and the soundbites); Self (aph);
- * Studio (the Build Journal); and the front desk (settings: this phone, the
+ * Studio (the Build Journal); Jobs (the day's picks); and the front desk (settings: this phone, the
  * theme). Everything else www routes to (the landing, the web's Home, the
  * résumé, profile, the extensions tour, the LAN tools) is the web app's, and
  * the phone has no use for it.
@@ -21,10 +21,17 @@ const MOBILE_SURFACE: ReadonlyArray<keyof FileRoutesByTo> = [
   "/sessions",
   // The pages only the Android app's build carries (the "apk" audience): the
   // foyer, Practice's Home and settings, the soundbites (the phone's
-  // microphone), aph and the Build Journal. Asked rather than assumed, like
+  // microphone), aph, the Build Journal and Jobs. Asked rather than assumed, like
   // any gated link.
   ...(hasAudience("apk")
-    ? (["/foyer", "/practice", "/soundbites", "/aph", "/journal"] as const)
+    ? ([
+        "/foyer",
+        "/practice",
+        "/soundbites",
+        "/aph",
+        "/journal",
+        "/jobs",
+      ] as const)
     : []),
   "/settings",
   // Not a page the phone shows: the device backend is always signed in. But

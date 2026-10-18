@@ -14,8 +14,8 @@ handler is www's, and so is the backend (`apps/www/src/lib/device-backend`).
 
 ## What the app carries: a foyer and its wings
 
-The app is several visits, not one: studying, my own tracking, and making
-the Build Journal. Each is a **wing** (www `src/lib/wings`): its own Home, its
+The app is several visits, not one: studying, my own tracking, making the
+Build Journal, and applying for jobs. Each is a **wing** (www `src/lib/wings`): its own Home, its
 own rooms and settings, and nothing of another wing's on the screen.
 
 - The plain app icon opens the **foyer** (`/foyer`), "Where to?": each
@@ -37,6 +37,12 @@ The wings:
 - **Self** (`/aph`): logging aph and reconciling it (below). One room, so no
   bar: aph's own strip (Log, History, Trend, Settings) is its navigation.
 - **Studio** (`/journal`): the Build Journal's voice takes. One room.
+- **Jobs** (`/jobs`): the morning run's picks from Drive, worked through
+  step by step (review, decide, résumé, apply, debrief), my own finds, and
+  the record of each application. One room, so no bar: its strip (Today,
+  Scout, Record) is its navigation. The résumé is built in the phone's
+  browser on the home network, never in the app (www `src/lib/jobs`,
+  `packages/job-desk`).
 
 Outside every wing is the **front desk** (`/settings`, the gear on the
 foyer): this phone (the sync from home, pairing, storage) and the theme.
@@ -48,7 +54,7 @@ How that is enforced (www `src/lib/app-surface`, `src/lib/wings`):
 - `build:web` selects the `mobile` profile (`apps/www/build.profiles.ts`),
   which sets `MOBILE_APP` in the bundle.
 - `MOBILE_SURFACE` is an **allowlist**: `/foyer`, `/practice`, `/sessions`,
-  `/soundbites`, `/aph`, `/journal` and `/settings`, typed against the route
+  `/soundbites`, `/aph`, `/journal`, `/jobs` and `/settings`, typed against the route
   tree. (Also `/auth`, which the phone never shows since it is always signed
   in: should a device route ever answer 401, the account banner links there,
   and in this build it offers a reload, not a sign-in.) The root route
@@ -499,7 +505,7 @@ In the `CLAUDE.md` "Gray-area invariants" shape.
 >   `apps/www/src/lib/device-backend/capacitor-sqlite/`; the launcher
 >   activity (`MainActivity`), `MainActivity.java` and its launcher
 >   intent-filter in `android/app/src/main/AndroidManifest.xml`; the wings'
->   launcher icons (`WingPractice`, `WingSelf`, `WingStudio`), their
+>   launcher icons (`WingPractice`, `WingSelf`, `WingStudio`, `WingJobs`), their
 >   `<activity-alias>` entries in that manifest, `MainActivity`'s wing table
 >   and `apps/www/src/lib/wings/`.
 > - _Scope:_ `apps/mobile/review/policy.json`, the code listed above, and

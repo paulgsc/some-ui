@@ -1,6 +1,6 @@
 import type { ComponentType, JSX } from "react"
 import { StudyGlyph, TalkGlyph, TrendGlyph } from "@some-ui/shared"
-import { Wrench } from "lucide-react"
+import { Briefcase, Wrench } from "lucide-react"
 
 import type { WingId } from "@/lib/wings"
 
@@ -14,6 +14,7 @@ export const WING_GLYPHS: Partial<
   practice: StudyGlyph,
   self: TrendGlyph,
   studio: TalkGlyph,
+  jobs: Briefcase,
   operate: Wrench,
 }
 
