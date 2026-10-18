@@ -12,6 +12,7 @@
  *      card is not painted, whatever the card's shape.
  * P6 — No channel photo outside a card is visible while the extension is on,
  *      and off is plain YouTube.
+ * P7 — The same for the page header's images and the player's overlays.
  */
 
 import { SWITCHED_OFF_ATTRIBUTE } from "@censor/lib/content/selectors"
@@ -190,4 +191,28 @@ test("P6: no channel photo outside a card is visible, unless off", async ({
     SWITCHED_OFF_ATTRIBUTE
   )
   for (const photo of await photos.all()) await expect(photo).toBeVisible()
+})
+
+test("P7: no header or player image paints, unless off", async ({
+  fixture,
+}) => {
+  const page = await fixture.goto("yt-headers")
+  const painted = async (): Promise<Array<boolean>> =>
+    page.evaluate(() => [
+      ...[...document.querySelectorAll("#images img")].map(
+        (img) => getComputedStyle(img).visibility !== "hidden"
+      ),
+      ...[...document.querySelectorAll("#images [data-bg]")].map(
+        (el) => getComputedStyle(el).backgroundImage !== "none"
+      ),
+    ])
+  const on = await painted()
+  expect(on).toHaveLength(10)
+  expect(on).toEqual(on.map(() => false))
+
+  await page.evaluate(
+    (attribute) => document.documentElement.setAttribute(attribute, ""),
+    SWITCHED_OFF_ATTRIBUTE
+  )
+  expect(await painted()).toEqual(on.map(() => true))
 })

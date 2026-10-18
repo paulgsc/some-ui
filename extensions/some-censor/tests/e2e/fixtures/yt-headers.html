@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>BOYO Fixture — Headers and the Player</title>
+  </head>
+  <body>
+    <!--
+    BOYO fixture: images outside a card (#1804). The page header's banner,
+    cover and backdrop, the Polymer playlist header, and the player's
+    overlays, in the shapes YouTube's desktop templates and player draw.
+    Each image is set from the script below; none may paint while on.
+  -->
+    <ytd-app>
+      <div id="images">
+        <yt-page-header-view-model class="ytPageHeaderViewModelHost">
+          <div class="ytPageHeaderViewModelBannerContainer">
+            <yt-image-banner-view-model class="ytImageBannerViewModelHost"
+              ><img
+            /></yt-image-banner-view-model>
+          </div>
+          <div class="ytPageHeaderViewModelBackground" data-bg></div>
+          <yt-content-preview-image-view-model
+            class="ytContentPreviewImageViewModelHost"
+            ><img
+          /></yt-content-preview-image-view-model>
+        </yt-page-header-view-model>
+        <ytd-playlist-header-renderer
+          ><div class="immersive-header-background-wrapper" data-bg></div>
+          <img
+        /></ytd-playlist-header-renderer>
+        <div class="ytp-ce-element">
+          <div class="ytp-ce-covering-image" data-bg></div>
+        </div>
+        <a class="ytp-videowall-still"
+          ><div class="ytp-videowall-still-image" data-bg></div
+        ></a>
+        <a class="ytp-modern-videowall-still"
+          ><div class="ytp-modern-videowall-still-image" data-bg></div
+        ></a>
+        <div class="ytp-autonav-endscreen-upnext-thumbnail" data-bg></div>
+        <a class="ytp-suggestion-link"
+          ><div class="ytp-suggestion-image" data-bg></div
+        ></a>
+      </div>
+    </ytd-app>
+    <script>
+      const image =
+        "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='100%25' height='100%25' fill='%23f0f'/%3E%3C/svg%3E"
+      for (const img of document.querySelectorAll("#images img"))
+        img.src = image
+      for (const el of document.querySelectorAll("#images [data-bg]"))
+        el.style.backgroundImage = `url("${image}")`
+    </script>
+  </body>
+</html>
