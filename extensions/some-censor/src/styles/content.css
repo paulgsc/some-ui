@@ -516,7 +516,7 @@ ytd-item-section-renderer:has(> #contents > ytd-shelf-renderer:only-child):has(
   pointer-events: none !important;
 }
 
-[data-boyo="plated"] ytd-thumbnail badge-shape,
+[data-boyo="plated"] ytd-thumbnail ytd-thumbnail-overlay-time-status-renderer,
 [data-boyo="plated"] .ytLockupViewModelContentImage badge-shape {
   pointer-events: auto !important;
 }

@@ -386,16 +386,17 @@ export function createSensor(ports: SensorPorts): Sensor {
         channelPending.delete(el)
         continue
       }
-      const extracted = tryExtract(el)
-      if (extracted.kind === "full") {
-        observe(el)
-      } else if (now - since >= RESOLVE_BUDGET_MS) {
+      // The budget first: a card observe() leaves pending (vendor churn)
+      // must still run out.
+      if (now - since >= RESOLVE_BUDGET_MS) {
         channelPending.delete(el)
         channelAbandoned.add(el)
         const key = identity.keyOf(el)
         if (key !== null) {
           ports.onFact({ kind: "channel.abandoned", videoId: keyVideoId(key) })
         }
+      } else if (tryExtract(el).kind === "full") {
+        observe(el)
       }
     }
 

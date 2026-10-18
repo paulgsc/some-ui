@@ -324,8 +324,26 @@ describe("the retry queue", () => {
     const el = lockup("nameless", "Nameless")
     el.querySelector('a[href="/@Nameless"]')!.textContent = ""
     document.body.appendChild(el)
+    await tick()
+    expect(vi.getTimerCount(), "the name is waited for").toBeGreaterThan(0)
     await tick(RESOLVE_BUDGET_MS / RETRY_INTERVAL_MS + 2)
     expect(facts.some((f) => f.kind === "channel.abandoned")).toBe(false)
+    expect(vi.getTimerCount(), "the loop terminates").toBe(0)
+  })
+
+  it("runs out a channel budget even while the card churns", async () => {
+    const el = lockup("churning", null)
+    document.body.appendChild(el)
+    await tick()
+    const preview = document.createElement("a")
+    preview.setAttribute("href", "/watch?v=preview")
+    el.prepend(preview)
+    el.insertAdjacentHTML(
+      "beforeend",
+      '<a class="yt-content-metadata-view-model__metadata-text" href="/@Late">Late</a>'
+    )
+    await tick(RESOLVE_BUDGET_MS / RETRY_INTERVAL_MS + 2)
+    expect(sensor.census().channelPending).toHaveLength(0)
     expect(vi.getTimerCount(), "the loop terminates").toBe(0)
   })
 
