@@ -40,6 +40,3 @@ export function arrived(
     onConfirm,
   }
 }
-
-/** What a reflection refused for want of a slot says. */
-export const NO_ROOM = "No room for it: share or let some go first."

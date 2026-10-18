@@ -6,11 +6,11 @@
  * Two shares. `shareAgentExport` is everything: one `context.json` (sessions,
  * each with its reflections and path counts, stops, soundbites and the
  * read-aloud practice record) and every recording beside it.
- * `shareReflections` is the reflections of the sessions named, one file per
- * session named for it with that session's stops and path counts and the
- * practice record, each voice note beside its file. Either way, the
+ * `shareReflections` is the reflections of the sessions named, or some of
+ * them, one file per session named for it with that session's stops and path
+ * counts and the practice record, each voice note beside its file. Either way, the
  * reflections that went out leave the phone once the person says they arrived
- * (`handOff`), and with the whole export so do its soundbites and
+ * (`arrivals`, `handOff`), and with the whole export so do its soundbites and
  * grammar-lens entries (`handOffExport`): they are for the agent to act on,
  * not for the phone to keep.
  *
@@ -315,15 +315,64 @@ export function handOffExport(
   }
 }
 
-/** Shares the reflections of `sessionIds`, one file per session. */
+export type ReflectionPick = {
+  sessionIds: ReadonlyArray<string>
+  only?: ReadonlyArray<string>
+}
+
+/**
+ * Reflection shares Android called "shared", oldest first, each waiting on
+ * the person's word that it arrived. Held here, not by the button that
+ * shared: mid-session the share sheet sends the app to the background, and
+ * the session's chrome remounts (`live-player.tsx`), the drawer and its
+ * button with it, so only a question asked from outside them survives.
+ */
+let awaiting: ReadonlyArray<ReadonlyArray<string>> = []
+const awaitingListeners = new Set<() => void>()
+
+function setAwaiting(next: ReadonlyArray<ReadonlyArray<string>>): void {
+  awaiting = next
+  awaitingListeners.forEach((listener) => listener())
+}
+
+export const arrivals = {
+  subscribe(listener: () => void): () => void {
+    awaitingListeners.add(listener)
+    return () => awaitingListeners.delete(listener)
+  },
+  getSnapshot: (): ReadonlyArray<ReadonlyArray<string>> => awaiting,
+  /**
+   * The person's answer for `batch`: arrived hands it off; otherwise it
+   * stays on the phone to share again. Only the first answer counts.
+   */
+  answer(
+    batch: ReadonlyArray<string>,
+    arrived: boolean,
+    at = new Date()
+  ): void {
+    if (!awaiting.includes(batch)) return
+    setAwaiting(awaiting.filter((b) => b !== batch))
+    if (arrived) handOff(batch, at)
+  },
+}
+
+/**
+ * Shares the reflections picked, one file per session. Some of a session's
+ * are named and written as all of them would be; once handed off they leave
+ * the phone, so a later share of the session carries only the rest. What
+ * went out waits in `arrivals`.
+ */
 export async function shareReflections(
-  sessionIds: ReadonlyArray<string>,
+  { sessionIds, only }: ReflectionPick,
   now: () => Date = () => new Date()
 ): Promise<ShareResult> {
   const wanted = new Set(sessionIds)
+  const picked = only ? new Set(only) : null
   const kept = reflections
     .getSnapshot()
-    .kept.filter((r) => wanted.has(r.sessionId))
+    .kept.filter(
+      (r) => wanted.has(r.sessionId) && (picked === null || picked.has(r.id))
+    )
   const sessions = await sessionsRepository.list()
   const exportedAt = now().toISOString()
   const { bySession, files, sent } = await writeOut(kept, sessions, exportedAt)
@@ -356,6 +405,7 @@ export async function shareReflections(
       ...files,
     ]),
   })
+  if (outcome === "shared" && sent.length > 0) setAwaiting([...awaiting, sent])
   return { outcome, sent }
 }
 
