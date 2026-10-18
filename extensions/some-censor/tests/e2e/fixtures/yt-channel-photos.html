@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>BOYO Fixture — Channel Photos</title>
+  </head>
+  <body>
+    <!--
+    BOYO fixture: channel photos outside a card (#1804), one per shape
+    YouTube draws them in, from its desktop templates. None may show while
+    the extension is on. The image is set from the script below.
+  -->
+    <ytd-app>
+      <div id="photos">
+        <ytd-video-owner-renderer
+          ><yt-img-shadow id="avatar"><img /></yt-img-shadow
+        ></ytd-video-owner-renderer>
+        <yt-page-header-view-model
+          ><yt-avatar-shape
+            ><div class="ytSpecAvatarShapeHost"><img /></div></yt-avatar-shape
+        ></yt-page-header-view-model>
+        <yt-video-attribute-view-model
+          ><div
+            class="ytVideoAttributeViewModelHost ytVideoAttributeViewModelImageAvatar"
+          >
+            <img
+              class="ytCoreImageHost ytVideoAttributeViewModelHeroImage"
+            /></div
+        ></yt-video-attribute-view-model>
+        <ytd-rich-shelf-renderer
+          ><img class="ytCoreImageHost ytdRichShelfRendererAvatar"
+        /></ytd-rich-shelf-renderer>
+        <ytm-profile-icon class="ytProfileIconHost"
+          ><img class="ytProfileIconImage"
+        /></ytm-profile-icon>
+      </div>
+    </ytd-app>
+    <script>
+      for (const img of document.querySelectorAll("#photos img"))
+        img.src =
+          "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='100%25' height='100%25' fill='%23f0f'/%3E%3C/svg%3E"
+    </script>
+  </body>
+</html>
