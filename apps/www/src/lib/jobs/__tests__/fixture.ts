@@ -14,8 +14,9 @@ function pick(id: string, company: string, adjacent: boolean): Pick {
   }
   return {
     id,
-    track: adjacent ? "adjacent" : "software",
-    family: adjacent ? "data" : null,
+    ...(adjacent
+      ? { track: "adjacent", family: "data" }
+      : { track: "software", family: null }),
     fingerprint: fingerprint(posting),
     posting,
     scores: { fit: 0.6, odds: 0.4, fitWhy: "covers 6 of 10", oddsWhy: "new" },

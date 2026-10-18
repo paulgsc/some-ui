@@ -41,12 +41,13 @@ export type VoiceNote = {
 export type Scout = {
   id: string
   url: string
-  track: "software" | "adjacent"
-  family: "data" | "qa" | "solutions" | null
   title: string
   why: string
   postingText: string | null
-}
+} & (
+  | { track: "software"; family: null }
+  | { track: "adjacent"; family: "data" | "qa" | "solutions" }
+)
 
 type PickRef = { day: string; pickId: string; fingerprint: string }
 

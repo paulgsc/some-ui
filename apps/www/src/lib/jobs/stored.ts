@@ -71,15 +71,23 @@ const EventSchema: z.ZodType<JobEvent> = z.discriminatedUnion("type", [
   z.object({
     ...Stamp,
     type: z.literal("scout"),
-    scout: z.object({
-      id: z.string(),
-      url: z.string(),
-      track: z.enum(["software", "adjacent"]),
-      family: z.enum(["data", "qa", "solutions"]).nullable(),
-      title: z.string(),
-      why: z.string(),
-      postingText: z.string().nullable(),
-    }),
+    scout: z
+      .object({
+        id: z.string(),
+        url: z.string(),
+        title: z.string(),
+        why: z.string(),
+        postingText: z.string().nullable(),
+      })
+      .and(
+        z.discriminatedUnion("track", [
+          z.object({ track: z.literal("software"), family: z.null() }),
+          z.object({
+            track: z.literal("adjacent"),
+            family: z.enum(["data", "qa", "solutions"]),
+          }),
+        ])
+      ),
     voice: Ids,
   }),
   z.object({

@@ -58,8 +58,7 @@ export const JobsScout = (): JSX.Element => {
       scout: {
         id: `sc-${crypto.randomUUID().slice(0, 8)}`,
         url: url.trim(),
-        track,
-        family: track === "adjacent" ? family : null,
+        ...(track === "adjacent" ? { track, family } : { track, family: null }),
         title: title.trim(),
         why: why.trim(),
         postingText: postingText.trim() === "" ? null : postingText.trim(),
