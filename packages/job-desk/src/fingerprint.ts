@@ -1,8 +1,7 @@
 /**
- * Indeed has no stable key a run can see: the connector's job ids count up
- * per session (`JOBSEARCH_100011`) and its short links change between two
- * calls for the same posting. So a posting is known by what it says about
- * itself, normalized: company, title and location.
+ * Postings come from several job boards and Hacker News, and no id is shared
+ * across them or stable from one run to the next. So a posting is known by
+ * what it says about itself, normalized: company, title and location.
  */
 
 function part(value: string): string {

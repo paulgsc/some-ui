@@ -1,10 +1,11 @@
 # The daily jobs run
 
 A scheduled task runs this every morning at 07:52 Pacific, in a fresh session
-with the Indeed and Google Drive connectors, GitHub access to
+with the Google Drive connector, web search, GitHub access to
 `paulgsc/some-ui` that can push one branch and open a PR, and a checkout of
 it. It reads my résumé and what I said about yesterday's picks,
-searches Indeed on two tracks, and leaves one file in Drive: today's digest.
+searches public job postings on two tracks, and leaves one file in Drive:
+today's digest.
 The phone opens that file, and later runs read it back to see what was
 already picked.
 
@@ -24,8 +25,9 @@ policy disagree, the policy wins and this file is the bug.
    for where files go, and its `some-ui jobs/` section holds the folder ids.
    Every Drive result's owner must be paulgathondudev@gmail.com; if one isn't,
    stop.
-2. If the Indeed connector isn't available, stop and say so. Write no digest:
-   a digest from yesterday's postings would read as today's.
+2. If this session can't run a web search and an HTTPS GET, stop and say
+   so. Write no digest: a digest from yesterday's postings would read as
+   today's.
 3. List `some-ui jobs/Brief/`. If `digest-<today>.json` is already there,
    stop and say so. A digest is never replaced.
 
@@ -86,7 +88,8 @@ For each new file:
    - **Passed picks:** the reasons and notes tell me what to stop sending. A
      reason given twice is a rule for this run.
    - **Disagreements:** a set-aside posting I would have picked. Look it up
-     again; if it is still open, it may be a pick today.
+     again as §3 looks up a scout; if it is still open, it may be a pick
+     today.
    - **Debriefs and outcomes:** how applying went and what came of it. Report
      them in the summary. Once there are 30 or more outcomes, compare them with
      the odds each pick was given and say in the summary whether the rubric
@@ -101,31 +104,107 @@ never picked again, unless a disagreement brought it back.
 
 ## 3. Search
 
-For every query in `QUERIES` (the software list, then each adjacent family's)
-and every place in `LOCATIONS`, call `search_jobs` with that `search` and
-`location`, country `US` and job type `fulltime`. Each call returns about ten
-postings.
+Postings come from public sources that give anyone a posting's full text:
+the Greenhouse, Lever and Ashby job boards, and Hacker News's monthly "Who is
+hiring?" thread. Fetch each with an HTTPS GET (`curl`) and read the fields
+named here; never take a field from a search result's snippet or from a
+summary of a page. Fetch each Ashby board once per run, however many of its
+postings you read: one can run to megabytes. Indeed and LinkedIn are never searched: their
+pages refuse agents.
+
+1. **Find on the boards.** For every query in `QUERIES` (the software list,
+   then each adjacent family's) and every place in `LOCATIONS`, run one web
+   search for the query and the place, unquoted, with the search limited to
+   the domains `job-boards.greenhouse.io`, `boards.greenhouse.io`,
+   `jobs.lever.co` and `jobs.ashbyhq.com`. Keep only results that name one
+   posting, and drop any query string and a trailing `/apply` or
+   `/application`. Keep the slug's case: Lever's is case-sensitive.
+
+   - Greenhouse: `…greenhouse.io/<board>/jobs/<id>`;
+   - Lever: `jobs.lever.co/<company>/<id>`;
+   - Ashby: `jobs.ashbyhq.com/<org>/<id>`.
+
+2. **Find on Hacker News.** Take the newest story by `whoishiring` titled
+   "Ask HN: Who is hiring? (…)"
+   (`https://hn.algolia.com/api/v1/search_by_date?tags=story,author_whoishiring`).
+   Before this month's thread is up, that is last month's; §4's age rule
+   sets aside its old posts. Search its posts once per query, `page` from 0
+   to `nbPages` − 1:
+   `https://hn.algolia.com/api/v1/search?tags=comment,story_<id>&query=<query>&typoTolerance=false&hitsPerPage=50&page=<n>`.
+   Keep top-level posts only, those whose `parent_id` is the story's id. A
+   post that links a posting on one of the three boards is read there, as
+   that posting. A post that lists several roles is one candidate per role.
+
+3. **Read.** Read every candidate from its source:
+
+   - **Greenhouse:**
+     `https://boards-api.greenhouse.io/v1/boards/<board>/jobs/<id>`. Title
+     `title`, company `company_name`, description `content` (HTML,
+     entity-escaped), place `location.name`, posted `first_published`, apply
+     link `absolute_url`. Add `?pay_transparency=true` for pay
+     (`pay_input_ranges`, in cents).
+   - **Lever:** `https://api.lever.co/v0/postings/<company>/<id>`. Title
+     `text`, description `descriptionPlain`, `lists`, `additionalPlain` and
+     `salaryDescriptionPlain` (pay and clearance terms are often only in the
+     last two), pay `salaryRange`, places `categories.allLocations`, remote
+     when `workplaceType` is `remote`, job type `categories.commitment`,
+     posted `createdAt` (milliseconds), apply link `hostedUrl`.
+   - **Ashby:**
+     `https://api.ashbyhq.com/posting-api/job-board/<org>?includeCompensation=true`,
+     the entry with that `id`. Title `title`, description `descriptionPlain`,
+     pay `compensation.compensationTierSummary` (often null), places
+     `location` and every `secondaryLocations[].location`, remote when
+     `workplaceType` is `Remote` (never `isRemote`, which is true for most
+     hybrid roles), job type `employmentType`, posted `publishedAt`, apply
+     link `jobUrl`.
+   - **A Hacker News post:** description `comment_text` (HTML,
+     entity-escaped), posted `created_at`. Company, title and place come
+     from its first line. The apply link is the first https link the post
+     gives for applying (an email address is not one), else
+     `https://news.ycombinator.com/item?id=<objectID>`.
+
+   Lever and Ashby give no company name in their JSON: take it from the
+   posting page's `<title>`, with its entities decoded, never from the URL.
+   Lever's is "Company - Title", so the company is what precedes the
+   trailing " - " and title; Ashby's is "Title @ Company". Write every
+   company as it names itself, without a legal suffix (Inc., LLC, Corp.) or
+   a country (USA), so the same company reads the same from every source.
+   When a board reposts other employers' roles (Jobgether, say), the company
+   is the employer the posting is for; one that doesn't name it is dropped. `postedOn` is the
+   America/Los_Angeles day of the posted time.
+
+   A Greenhouse or Lever 404, or an Ashby `id` missing from its board, means
+   the posting has closed: drop it. Drop a candidate whose source can't be
+   read, or that names no company, title or place, rather than guess.
+
+4. **Keep** a posting only when one of its places is in `LOCATIONS`: remote
+   and open to people in the US, or based in Berkeley, San Francisco or
+   Oakland. A posting is remote when its `workplaceType` says so or one of
+   its places does ("Remote (US)", "Open to US-based Remote"); either way
+   the region must be the US. A remote role limited to another region
+   ("Europe", "Hybrid - London") is not. Record as its `location` the
+   `LOCATIONS` entry it matched ("Remote" for `remote`), the remote one
+   first, so the same posting has one fingerprint from every source and
+   every run. Drop the other postings before counting. A scout outside
+   `LOCATIONS` is counted in `seen` and set aside by §4's rule for scouts,
+   with `rule` "outside LOCATIONS".
 
 Give each posting its `fingerprint()`. Postings with the same fingerprint are
 one posting. The same company and title in several cities are one posting
 too: keep the remote one, else the nearest to Berkeley. `seen` is the count of
 distinct postings left.
 
-The connector's job ids count up within this session and mean nothing in the
-next one, so call `get_job_details` for every posting you might pick in this
-same run.
-
 **Scouts.** Each new scout from step 2 is a posting I found myself, and a
-candidate like the rest, on the track and family I filed it under. Look it
-up with `search_jobs` by its title words and company, and call
-`get_job_details` on the match. Count each one found in `seen`, once per
-fingerprint. When no search turns it up, its `postingText` (what I pasted)
-stands in for the description and its link for the apply link: take the
-company, title, location and posted date from that text, never a guess. One
-whose text names no location or no posted date can't be fingerprinted or
-aged, so it never becomes a pick; it is scored and answered with a `review`
-only. With neither a match nor the text, its verdict is `not-found` and it
-goes no further.
+candidate like the rest, on the track and family I filed it under. When its
+link is on a board above, read it there. Otherwise search those boards for
+its title words and company, and read the match. Count each one found in
+`seen`, once per fingerprint. When neither turns it up, its `postingText`
+(what I pasted) stands in for the description and its link for the apply
+link: take the company, title, location and posted date from that text, never
+a guess. One whose text names no location or no posted date can't be
+fingerprinted or aged, so it never becomes a pick; it is scored and answered
+with a `review` only. With neither a match nor the text, its verdict is
+`not-found` and it goes no further.
 
 ## 4. Set aside
 
@@ -136,8 +215,10 @@ Set a posting aside, with a one-line `why`, when:
   take customer-facing or phone roles. Solutions work qualifies only when it
   is integration or internal-tools building with no quota and no calls;
 - it was posted more than `MAX_POSTING_AGE_DAYS` days ago;
-- it is part-time, gig work, or a staffing program with relocation or
-  repayment terms;
+- it is part-time, an internship, fixed-term, temporary, a contract
+  (Lever's "Full Time Contractor" too), gig work, or a staffing program with
+  relocation or repayment terms. Lever's `commitment` and Ashby's
+  `employmentType` say which; elsewhere the description does;
 - it requires a security clearance or US citizenship. Work authorization is
   "Authorized to work in the US for any employer"; there is no clearance;
 - it asks for five or more years, or a senior, staff or lead title;
