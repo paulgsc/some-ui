@@ -610,9 +610,10 @@ ytd-item-section-renderer:has(> #contents > ytd-shelf-renderer:only-child):has(
    Comments are written in the present, even under a 2015 video, so
    they go whole, wherever YouTube draws them: every comments section
    (its header, count and threads; a watch page's, a post's, the one
-   inside a Short's panel), the narrow layout's teaser, the top comment
-   and comment box in the metadata carousel, and the comments panel
-   YouTube opens beside a video.
+   inside a Short's panel), the narrow layout's teaser, and the comments
+   panel YouTube opens beside a video. The metadata carousel goes whole:
+   its title is the shown item's, a comment count among them, and its
+   other items only open panels the page already offers.
    ---------------------------------------------------------- */
 :root:not([data-boyo-off]) ytd-comments {
   display: none !important;
@@ -622,11 +623,7 @@ ytd-item-section-renderer:has(> #contents > ytd-shelf-renderer:only-child):has(
   display: none !important;
 }
 
-:root:not([data-boyo-off]) yt-comment-teaser-carousel-item-view-model {
-  display: none !important;
-}
-
-:root:not([data-boyo-off]) yt-comment-input-box-carousel-item-view-model {
+:root:not([data-boyo-off]) yt-video-metadata-carousel-view-model {
   display: none !important;
 }
 

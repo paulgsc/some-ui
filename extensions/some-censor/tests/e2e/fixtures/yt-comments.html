@@ -41,18 +41,25 @@
               >
             </div>
             <div id="teaser-carousel">
-              <yt-video-metadata-carousel-view-model>
-                <yt-comment-teaser-carousel-item-view-model
-                  data-comments="carousel comment"
-                  ><comments-entry-point-teaser-view-model
-                    >A comment</comments-entry-point-teaser-view-model
-                  ></yt-comment-teaser-carousel-item-view-model
-                >
-                <yt-comment-input-box-carousel-item-view-model
-                  data-comments="carousel comment box"
-                  >Add a comment</yt-comment-input-box-carousel-item-view-model
-                >
-              </yt-video-metadata-carousel-view-model>
+              <yt-video-metadata-carousel-view-model data-comments="carousel"
+                ><div class="ytVideoMetadataCarouselViewModelTitleSection">
+                  <yt-carousel-title-view-model
+                    ><h2 class="ytCarouselTitleViewModelTitle">Comments</h2>
+                    <span class="ytCarouselTitleViewModelSubtitle"
+                      >1.2K</span
+                    ></yt-carousel-title-view-model
+                  >
+                </div>
+                <div class="ytVideoMetadataCarouselViewModelItemSection">
+                  <yt-carousel-item-view-model
+                    ><yt-comment-teaser-carousel-item-view-model
+                      ><comments-entry-point-teaser-view-model
+                        >A comment</comments-entry-point-teaser-view-model
+                      ></yt-comment-teaser-carousel-item-view-model
+                    ></yt-carousel-item-view-model
+                  >
+                </div></yt-video-metadata-carousel-view-model
+              >
             </div>
           </ytd-watch-metadata>
         </div>
