@@ -12,7 +12,7 @@ import { expect, test } from "@censor/playwright/fixture"
 test("W1: no comments render, unless off", async ({ fixture }) => {
   const page = await fixture.goto("yt-comments")
   const comments = page.locator("[data-comments]")
-  await expect(comments).toHaveCount(4)
+  await expect(comments).toHaveCount(6)
   for (const el of await comments.all()) await expect(el).toBeHidden()
   await expect(page.locator("#description-panel")).toBeVisible()
 

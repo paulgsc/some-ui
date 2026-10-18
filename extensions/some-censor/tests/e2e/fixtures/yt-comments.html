@@ -27,13 +27,34 @@
               ></ytd-item-section-renderer
             ></ytd-comments
           >
-          <ytd-comments-entry-point-header-renderer
-            data-comments="teaser header"
-            >Comments 1.2K</ytd-comments-entry-point-header-renderer
-          >
-          <ytd-comments-entry-point-teaser-renderer data-comments="teaser"
-            >A comment</ytd-comments-entry-point-teaser-renderer
-          >
+          <ytd-watch-metadata>
+            <div id="comment-teaser">
+              <ytd-comments-entry-point-header-renderer
+                data-comments="teaser header"
+                >Comments 1.2K
+                <div id="contents">
+                  <ytd-comments-entry-point-teaser-renderer
+                    data-comments="teaser"
+                    >A comment</ytd-comments-entry-point-teaser-renderer
+                  >
+                </div></ytd-comments-entry-point-header-renderer
+              >
+            </div>
+            <div id="teaser-carousel">
+              <yt-video-metadata-carousel-view-model>
+                <yt-comment-teaser-carousel-item-view-model
+                  data-comments="carousel comment"
+                  ><comments-entry-point-teaser-view-model
+                    >A comment</comments-entry-point-teaser-view-model
+                  ></yt-comment-teaser-carousel-item-view-model
+                >
+                <yt-comment-input-box-carousel-item-view-model
+                  data-comments="carousel comment box"
+                  >Add a comment</yt-comment-input-box-carousel-item-view-model
+                >
+              </yt-video-metadata-carousel-view-model>
+            </div>
+          </ytd-watch-metadata>
         </div>
         <div id="panels">
           <ytd-engagement-panel-section-list-renderer

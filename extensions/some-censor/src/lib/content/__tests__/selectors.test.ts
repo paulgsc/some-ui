@@ -29,7 +29,7 @@ import {
 } from "@censor/lib/content/selectors"
 import { describe, expect, it } from "vitest"
 
-import { CROWD_MARKER, crowdRules } from "./crowd-css"
+import { commentsRules, CROWD_MARKER, crowdRules } from "./crowd-css"
 
 // Read from disk rather than imported: vitest resolves a `.css` import to an
 // empty module by design, and the point of this suite is the actual bytes the
@@ -264,6 +264,7 @@ describe("the stylesheet and the catalogue agree", () => {
       ...premaskRulesFromCss(),
       ...shelfRulesFromCss(),
       ...crowdRulesFromCss().map((r) => r.selector),
+      ...commentsRules(CSS).map((r) => r.selector),
     ]) {
       expect(topLevelCommaCount(rule), rule).toBe(0)
     }
@@ -399,6 +400,17 @@ describe("the crowd rules (QD14)", () => {
       expect(selector, selector).not.toMatch(/\[[^\]]*=/)
     }
     expect(CSS.slice(CSS.indexOf(CROWD_MARKER))).not.toContain("@")
+  })
+})
+
+describe("the comments rules (QD14, #1805)", () => {
+  it("hide a vendor element whole and do nothing else, behind the off switch", () => {
+    const rules = commentsRules(CSS)
+    expect(rules.length, "the comments section must exist").toBeGreaterThan(0)
+    for (const { selector, body } of rules) {
+      expect(body, selector).toBe("display: none !important;")
+      expect(selector.startsWith(WHILE_ON), selector).toBe(true)
+    }
   })
 })
 

@@ -427,8 +427,10 @@ shape the 2026-10-17 captures and signed-out live pages hold, and
 keeps. Gaps: a trending rank appears in no capture, so it has no rule; the
 "Video details" list needs `:has()`, so Firefox 112–120 still shows it; a
 linked video's views and age in the description's cards are unseen in any
-capture. The comments go whole, section, teaser and panel, on every watch page
-(#1805).
+capture. The comments go whole wherever YouTube draws them (#1805): every
+comments section, the teaser, the metadata carousel's top comment and comment
+box, and the comments panel; `selectors.test.ts` pins their rules' shape, and
+`watch.spec.ts`, run locally, proves each hidden.
 
 ---
 
