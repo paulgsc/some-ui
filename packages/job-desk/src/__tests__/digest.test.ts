@@ -69,10 +69,11 @@ function resumeFile(path: string): string {
 
 describe("the résumé lists a digest names", () => {
   it("are the compositions the résumé builds", () => {
-    const [, list] = /export const variants = (\[[^\]]*\])/.exec(
+    const [, list] = /export const variants = \[([^\]]*)\]/.exec(
       resumeFile("scripts/typst.mjs")
     )!
-    expect(RESUME_VARIANTS).toEqual(JSON.parse(list!))
+    const names = [...list!.matchAll(/"([^"]+)"/g)].map(([, name]) => name)
+    expect(RESUME_VARIANTS).toEqual(names)
   })
 
   it("are the layouts that take contact details", () => {
@@ -203,15 +204,29 @@ describe("digestFindings", () => {
     expect(messages(digest)).toEqual([
       "picks.0.resume.ref: builds at cb503cb, but the fits were checked at e61af8f",
       "picks.1.resume.ref: builds at cb503cb, but the fits were checked at e61af8f",
+      "picks.2.resume.ref: builds at cb503cb, but the fits were checked at e61af8f",
     ])
   })
 
   it("patches an adjacent pick with its own family's composition", () => {
     const digest = sample()
-    const resume = digest.picks[2]!.resume
-    if (resume.kind === "patch") resume.variant = "qa"
+    const resume = digest.picks[3]!.resume
+    if (resume.kind === "patch") resume.variant = "data"
     expect(messages(digest)).toEqual([
-      "picks.2.resume.variant: a data pick's patch is the data composition",
+      "picks.3.resume.variant: a qa pick's patch is the qa composition",
+    ])
+  })
+
+  it("sends each pick a composition of its own track", () => {
+    const digest = sample()
+    const [software, , data, qa] = digest.picks
+    if (software!.resume.kind === "build") software!.resume.variant = "data"
+    if (data!.resume.kind === "build") data!.resume.variant = "backend"
+    if (qa!.resume.kind === "patch") qa!.resume.fallback = "solutions"
+    expect(messages(digest)).toEqual([
+      "picks.0.resume.variant: a software pick sends one of backend, platform, fullstack",
+      "picks.2.resume.variant: a data pick sends the data composition",
+      "picks.3.resume.fallback: a qa pick sends the qa composition",
     ])
   })
 
