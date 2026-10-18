@@ -48,7 +48,7 @@ const HOME_LINK_CALLERS = new Set([
   // LA9 and LA10: the strips of a record kept on home, and nothing else.
   "components/aph/device-keep-on-home.tsx",
   "components/jobs/keep-on-home.tsx",
-  "components/keep-on-home.tsx",
+  "components/device-keep-on-home.tsx",
 ])
 
 /**

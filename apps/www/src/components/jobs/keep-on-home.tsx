@@ -1,7 +1,7 @@
 /**
  * The Jobs record kept on home (LA10, docs/learner-data-authority.md): the
  * wing's watch, which its layout mounts, and the Record view's strip, through
- * the shared one (`components/keep-on-home.tsx`). Phone-only
+ * the shared one (`components/device-keep-on-home.tsx`). Phone-only
  * (`build.paths.ts`).
  */
 import type { JSX } from "react"
@@ -18,7 +18,7 @@ import {
 import { phoneJobs } from "@/lib/jobs"
 import { exchangeJobs } from "@/lib/jobs/home"
 import { homeOutbox } from "@/lib/jobs/model"
-import { KeepOnHome } from "@/components/keep-on-home"
+import { KeepOnHome } from "@/components/device-keep-on-home"
 
 import { useJobs } from "./parts"
 

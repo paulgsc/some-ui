@@ -435,11 +435,11 @@ a run is asked for:
   `keepAphOnHome` do more than switch the store; a hunk to
   `components/aph/device-keep-on-home.tsx` that calls `keepAphOnHome` or
   `askAph` other than from the shared strip's `keep` and `ask`; or a hunk to
-  `components/keep-on-home.tsx` that calls `keep` or `ask` other than from
+  `components/device-keep-on-home.tsx` that calls `keep` or `ask` other than from
   a button's `onClick`, or lets the first press of the opt-in call `keep`.
 - _Scope:_ `apps/www/src/lib/home-link/aph.ts`,
   `apps/www/src/components/aph/device-keep-on-home.tsx`,
-  `apps/www/src/components/keep-on-home.tsx`.
+  `apps/www/src/components/device-keep-on-home.tsx`.
 - _Why not enforced:_ whether a moment is one where the person is using aph
   is a reading of intent: a test sees a listener, not why it is there, and a
   lint rule cannot tell a press handler from an effect that reaches it
@@ -479,7 +479,7 @@ What no test can say is when a run is asked for:
   mounts `JobsHomeWatch` anywhere but the Jobs layout; or a hunk to
   `components/jobs/keep-on-home.tsx` that calls `keepJobsOnHome` or
   `askJobs` other than as the shared strip's `keep` and `ask`
-  (`components/keep-on-home.tsx` calls those only from a button's `onClick`,
+  (`components/device-keep-on-home.tsx` calls those only from a button's `onClick`,
   LA9).
 - _Scope:_ `apps/www/src/lib/home-link/jobs.ts`,
   `apps/www/src/components/jobs/keep-on-home.tsx`,

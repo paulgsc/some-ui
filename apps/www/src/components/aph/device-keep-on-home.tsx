@@ -1,7 +1,7 @@
 /**
  * Where aph is kept, on aph's screens in the Android app (LA9,
  * docs/learner-data-authority.md), through the shared strip
- * (`components/keep-on-home.tsx`). Phone-only (`build.paths.ts`); the route
+ * (`components/device-keep-on-home.tsx`). Phone-only (`build.paths.ts`); the route
  * hands in aph's store and exchange (`AphKeeping`).
  */
 import type { JSX } from "react"
@@ -10,7 +10,7 @@ import { counted } from "@some-ui/core-utils"
 
 import type { AphKeeping } from "@/lib/home-link/aph"
 import { askAph, keepAphOnHome, useAphHome } from "@/lib/home-link/aph"
-import { KeepOnHome } from "@/components/keep-on-home"
+import { KeepOnHome } from "@/components/device-keep-on-home"
 
 export const DeviceKeepOnHome = ({ aph }: { aph: AphKeeping }): JSX.Element => {
   const where = useSyncExternalStore(aph.store.subscribe, aph.store.where)
