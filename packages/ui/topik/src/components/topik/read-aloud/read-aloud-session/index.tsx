@@ -16,6 +16,7 @@ import type { JSX } from "react"
 import { Button } from "@some-ui/shared"
 import { StepLayout } from "@topik/components/topik/handheld/step-layout"
 import { HeldNote, RepCard } from "@topik/components/topik/read-aloud/rep-card"
+import type { LevelReason } from "@topik/components/topik/read-aloud/session-header"
 import { SessionHeader } from "@topik/components/topik/read-aloud/session-header"
 import { SetCard } from "@topik/components/topik/read-aloud/set-card"
 import type { UseReadAloudOptions } from "@topik/lib/topik/adapter/hooks/use-read-aloud"
@@ -31,6 +32,8 @@ export type ReadAloudSessionProps = UseReadAloudOptions & {
   record?: { record: PracticeRecord; today: string }
   /** The grammar-lens session's start, offered beside read-aloud's when given. */
   lens?: { available: boolean; full?: boolean; onStart: () => void }
+  /** Why the header's level is not the one held, when it is not. */
+  levelReason?: LevelReason
   onExit: () => void
 }
 
@@ -38,6 +41,7 @@ export const ReadAloudSession = ({
   short = false,
   record,
   lens,
+  levelReason,
   onExit,
   ...options
 }: ReadAloudSessionProps): JSX.Element => {
@@ -55,6 +59,7 @@ export const ReadAloudSession = ({
     <SessionHeader
       title="Read aloud"
       level={options.level}
+      levelReason={levelReason}
       short={short}
       exit={{
         label: "Stop reading aloud",

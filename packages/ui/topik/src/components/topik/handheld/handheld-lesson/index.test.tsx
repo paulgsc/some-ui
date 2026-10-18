@@ -69,7 +69,7 @@ function renderLesson({
   pastedStore = createPastedLessonStore(memoryStorage()),
   client = new QueryClient({ defaultOptions: { queries: { retry: false } } }),
   speaker = null,
-  readAloudStore,
+  readAloudStore = createReadAloudStore(memoryStorage()),
   soundControl,
   tones,
   treeFeed,
@@ -229,7 +229,7 @@ describe("HandheldLesson", () => {
     fireEvent.click(card)
     expect(
       document.querySelector('[data-slot="read-aloud-level"]')?.textContent
-    ).toBe("TOPIK 3")
+    ).toBe("TOPIK 3 (highest)")
     expect(screen.getByRole("button", { name: /^Read aloud$/ })).toBeTruthy()
     expect(screen.getByLabelText("Your reading aloud")).toBeTruthy()
     click("Back")
@@ -287,7 +287,7 @@ describe("HandheldLesson", () => {
     fireEvent.click(ready)
     expect(
       document.querySelector('[data-slot="read-aloud-level"]')?.textContent
-    ).toBe("TOPIK 2")
+    ).toBe("TOPIK 2 (this set's)")
     expect(store.sets()[0]?.openedAt).toBe("2026-10-14T06:00:00.000Z")
 
     click("Back")
@@ -358,8 +358,9 @@ describe("HandheldLesson", () => {
     )
   })
 
-  it("holds the level of the last drama until the learner chooses another", async () => {
-    renderLesson({ lastDrama: holding() })
+  it("holds the level of the last drama until the learner chooses another, and keeps that one", async () => {
+    const readAloudStore = createReadAloudStore(memoryStorage())
+    renderLesson({ lastDrama: holding(), readAloudStore })
     const level = (value: number): string | null =>
       screen
         .getByRole("radio", { name: `TOPIK ${value}` })
@@ -376,6 +377,11 @@ describe("HandheldLesson", () => {
         .getByRole("radio", { name: "TOPIK 2" })
         .getAttribute("aria-checked")
     ).toBe("true")
+    // Opened again, the choice still holds over the last drama's level.
+    cleanup()
+    renderLesson({ lastDrama: holding(), readAloudStore })
+    await writeYourOwnButton()
+    expect(level(2)).toBe("true")
   })
 
   describe("the operator's served dramas (MKJ-S4)", () => {
@@ -549,6 +555,10 @@ describe("HandheldLesson", () => {
 
       expect(await screen.findByText("숨 막히는 긴장감")).toBeTruthy()
       expect(pasted.getTree()?.id).toBe("first-tea")
+      // The drama's own level, in sight while it plays.
+      expect(
+        document.querySelector('[data-slot="drama-level"]')?.textContent
+      ).toBe("TOPIK 2")
 
       click("Back to materials")
       const held = await screen.findByRole("region", {

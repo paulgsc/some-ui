@@ -190,7 +190,7 @@ describe("ReadAloudScreen", () => {
     )
     expect(
       document.querySelector('[data-slot="read-aloud-level"]')?.textContent
-    ).toBe("TOPIK 3")
+    ).toBe("TOPIK 3 (highest)")
     const record = screen.getByLabelText("Your reading aloud")
     expect(record.textContent).toContain("Today1 read · 0 sets · 2 min")
     expect(record.textContent).toContain("In all1 read · 1 set · 2 min")

@@ -4,13 +4,27 @@ import { Button } from "@some-ui/shared"
 import type { ReadAloudLevel } from "@topik/lib/topik/read-aloud/content"
 
 /**
+ * Why the drill reads at its level, when that is not simply the level the
+ * learner holds: the held level is above the drill's highest, or an opened
+ * set reads at its own.
+ */
+export type LevelReason = "held" | "highest" | "set"
+
+const REASON_LABEL: Record<LevelReason, string> = {
+  held: "",
+  highest: " (highest)",
+  set: " (this set's)",
+}
+
+/**
  * The header read-aloud's two sessions share: the way out, the title, the
- * level in sight throughout (Cor. 4.6 (ii)), and the set's progress once a
- * set is under way.
+ * level in sight throughout (Cor. 4.6 (ii)), saying why when it is not the
+ * level held, and the set's progress once a set is under way.
  */
 export const SessionHeader = ({
   title,
   level,
+  levelReason = "held",
   short,
   exit,
   trailing,
@@ -18,6 +32,7 @@ export const SessionHeader = ({
 }: {
   title: string
   level: ReadAloudLevel
+  levelReason?: LevelReason
   short: boolean
   exit: { label: string; icon: ReactNode; onClick: () => void }
   /** Controls after the level, such as read-aloud's pause. */
@@ -46,6 +61,7 @@ export const SessionHeader = ({
         className="bg-primary/15 shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold last:mr-2"
       >
         TOPIK {level}
+        {REASON_LABEL[levelReason]}
       </span>
       {trailing}
     </div>

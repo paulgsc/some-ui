@@ -113,7 +113,8 @@ export const HandheldLesson = ({
   const [held] = useState(() => pastedStore ?? createPastedLessonStore())
   const drama = usePastedTree(held)
   const [last] = useState(() => lastDrama ?? createLastDramaStore())
-  const lessonPrompt = useLessonPrompt(last)
+  const [readAloud] = useState(() => readAloudStore ?? createReadAloudStore())
+  const lessonPrompt = useLessonPrompt(last, readAloud)
   // Writing one's own drama: from a card's seed, from nothing, or from a
   // picked file that did not play.
   const [generating, setGenerating] = useState<{
@@ -177,7 +178,6 @@ export const HandheldLesson = ({
     }
   }
   const leaveServed = (): void => setServedKey(null)
-  const [readAloud] = useState(() => readAloudStore ?? createReadAloudStore())
   // Made once; whether it is kept is the host's call, at each render.
   const [lensRecord] = useState(createLensRecordStore)
   const [added, setAdded] = useState(() => readAloud.sets())
@@ -228,6 +228,7 @@ export const HandheldLesson = ({
         <ReadAloudScreen
           key={deck.id}
           topikLevel={own ? setLevel(own) : lessonPrompt.level}
+          heldLevel={lessonPrompt.level}
           speech={speaker}
           store={readAloud}
           lensRecord={recordsLens ? lensRecord : undefined}
@@ -287,6 +288,15 @@ export const HandheldLesson = ({
             {title}
           </h1>
         </div>
+        {playing && (
+          // The drama's own level: the one held steers the next prompt only.
+          <span
+            data-slot="drama-level"
+            className="bg-primary/15 shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold"
+          >
+            TOPIK {playing.level}
+          </span>
+        )}
         {playing && (
           <Button
             variant="ghost"

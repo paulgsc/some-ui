@@ -4,7 +4,8 @@
  *
  * The prompt is the tree prompt, carrying the last drama the learner played
  * to an ending (`adapter/last-drama-store`, canon Rem. 4.14). The level is
- * the learner's to choose; until they do, it is that drama's level.
+ * the learner's to choose, kept on the device once chosen (`kept`); until
+ * they choose, it is that drama's level.
  */
 
 import { useCallback, useRef, useState, useSyncExternalStore } from "react"
@@ -12,14 +13,15 @@ import type {
   Carried,
   LastDramaStore,
 } from "@topik/lib/topik/adapter/last-drama-store"
-import type { DramaRequest } from "@topik/lib/topik/generation"
+import type { ReadAloudStore } from "@topik/lib/topik/adapter/read-aloud-store"
+import type { DramaRequest, TopikLevel } from "@topik/lib/topik/generation"
 import { buildTreePrompt, lastDramaText } from "@topik/lib/topik/generation"
 
 export type LessonPrompt = {
   /** The level the learner holds: read-aloud's, and the prompt's default. */
   level: number
   /** The learner moving to another level; a review never does. */
-  chooseLevel: (level: number) => void
+  chooseLevel: (level: TopikLevel) => void
   /** The tree prompt for this request, with the last drama. */
   prompt: (request: DramaRequest) => string
   /**
@@ -30,9 +32,20 @@ export type LessonPrompt = {
   handedOff: (prompt: string) => void
 }
 
-export function useLessonPrompt(store: LastDramaStore): LessonPrompt {
+export function useLessonPrompt(
+  store: LastDramaStore,
+  kept: Pick<ReadAloudStore, "level" | "saveLevel">
+): LessonPrompt {
   const last = useSyncExternalStore(store.subscribe, store.get, store.get)
-  const [chosenLevel, setChosenLevel] = useState<number | null>(null)
+  // Read once: from here the choice is this hook's, and each one is written.
+  const [chosenLevel, setChosenLevel] = useState(() => kept.level())
+  const chooseLevel = useCallback(
+    (level: TopikLevel): void => {
+      kept.saveLevel(level)
+      setChosenLevel(level)
+    },
+    [kept]
+  )
 
   // Each prompt built, and the free text it carried. A handoff names the
   // prompt it handed off, so it forgets what that prompt carried and nothing
@@ -68,7 +81,7 @@ export function useLessonPrompt(store: LastDramaStore): LessonPrompt {
 
   return {
     level: chosenLevel ?? last?.level ?? 1,
-    chooseLevel: setChosenLevel,
+    chooseLevel,
     prompt,
     handedOff,
   }

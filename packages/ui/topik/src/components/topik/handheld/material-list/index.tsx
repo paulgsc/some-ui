@@ -9,6 +9,7 @@ import { titleOf } from "@topik/lib/topik/core/drama"
 import type { FeedCard, Seed } from "@topik/lib/topik/core/feed-card"
 import { cardOf, koreanGenre, seedOf } from "@topik/lib/topik/core/feed-card"
 import { TOPIK_LEVELS } from "@topik/lib/topik/generation"
+import type { TopikLevel } from "@topik/lib/topik/generation"
 import type {
   ReadAloudDeck,
   SetPractice,
@@ -30,7 +31,7 @@ import {
 type MaterialListProps = {
   /** The level the learner holds: read-aloud's, and the prompt's default. */
   level: number
-  onLevel: (level: number) => void
+  onLevel: (level: TopikLevel) => void
   /** The scene tree pasted this session, with how to play and forget it. */
   pastedTree?: {
     lesson: DramaLesson

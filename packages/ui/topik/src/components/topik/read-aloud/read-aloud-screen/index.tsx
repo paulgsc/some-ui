@@ -11,7 +11,8 @@
  * offers both, the lens asking about `lensDeck`'s lines. The drill's level
  * is the one the host passes: the level held on the material list, or the
  * set's own, capped at the drill's highest (TOPIK 3), since that is where
- * its vocabulary stops.
+ * its vocabulary stops. The header says which of those it is when it is not
+ * simply the level held.
  *
  * Opening it prunes no pace: a word the deck drawn from does not name may be
  * another set's, or one not added again yet (`added-sets`, `wordsLeaving`).
@@ -22,6 +23,7 @@ import { useState } from "react"
 import type { Speaker } from "@some-ui/speech"
 import { LensSession } from "@topik/components/topik/read-aloud/lens-session"
 import { ReadAloudSession } from "@topik/components/topik/read-aloud/read-aloud-session"
+import type { LevelReason } from "@topik/components/topik/read-aloud/session-header"
 import type { LensRecordStore } from "@topik/lib/topik/adapter/lens-record-store"
 import type { LensTakes } from "@topik/lib/topik/adapter/lens-takes"
 import type { ReadAloudStore } from "@topik/lib/topik/adapter/read-aloud-store"
@@ -33,8 +35,10 @@ import { dayKey } from "@topik/lib/topik/read-aloud/records"
 import { drawnFrom } from "@topik/lib/topik/read-aloud/set-builder"
 
 type ReadAloudScreenProps = {
-  /** The TOPIK level held on the material list, one to six. */
+  /** The TOPIK level to read at, one to six: the one held, or the set's own. */
   topikLevel: number
+  /** The TOPIK level held on the material list; `topikLevel` when absent. */
+  heldLevel?: number
   speech: Speaker | null
   store?: ReadAloudStore
   /** Where the grammar lens's record is kept; absent, nothing is (Rem. 4.18). */
@@ -54,6 +58,7 @@ type ReadAloudScreenProps = {
 
 export const ReadAloudScreen = ({
   topikLevel,
+  heldLevel = topikLevel,
   speech,
   store: given,
   lensRecord,
@@ -66,6 +71,12 @@ export const ReadAloudScreen = ({
   now = Date.now,
 }: ReadAloudScreenProps): JSX.Element => {
   const level = readAloudLevelFor(topikLevel)
+  const levelReason: LevelReason =
+    level !== readAloudLevelFor(heldLevel)
+      ? "set"
+      : level < heldLevel
+        ? "highest"
+        : "held"
   // Read once: the drill keeps its own copy of the pace book from the first
   // tap, and the unfinished set is only a starting point.
   const [loaded] = useState(() => {
@@ -95,6 +106,7 @@ export const ReadAloudScreen = ({
       <LensSession
         deck={lensDeck}
         level={level}
+        levelReason={levelReason}
         speech={speech}
         short={short}
         paused={paused}
@@ -113,6 +125,7 @@ export const ReadAloudScreen = ({
     <ReadAloudSession
       deck={deck}
       level={level}
+      levelReason={levelReason}
       speech={speech}
       paces={loaded.paces}
       resume={loaded.resume}
