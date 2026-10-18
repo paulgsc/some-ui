@@ -33,6 +33,19 @@ describe("JobRun", () => {
     }
   })
 
+  it("says what a patch would change, and what goes out until it lands", () => {
+    render(<JobRun />)
+    for (const { resume } of SAMPLE.picks) {
+      if (resume.kind !== "patch") continue
+      expect(
+        screen.getByText(
+          `${resume.change} Until it lands, it sends ${resume.fallback} · ${resume.template}.`
+        )
+      ).toBeTruthy()
+    }
+    expect(SAMPLE.picks.some((pick) => pick.resume.kind === "patch")).toBe(true)
+  })
+
   it("links each part of the run to its source", () => {
     render(<JobRun />)
     const link = screen.getByRole("link", { name: /ROUTINE\.md/ })

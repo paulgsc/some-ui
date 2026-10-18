@@ -84,6 +84,12 @@ const PickCard = ({ pick }: { pick: Pick }): JSX.Element => (
       <span className="text-muted-foreground">Résumé: </span>
       {resumeLabel(pick.resume)}
     </span>
+    {pick.resume.kind === "patch" && (
+      <p className="text-muted-foreground text-sm">
+        {pick.resume.change} Until it lands, it sends {pick.resume.fallback} ·{" "}
+        {pick.resume.template}.
+      </p>
+    )}
     <Disclosed summary={`Where I fit, and the gaps · ${pick.fits.length}`}>
       <ul className="flex flex-col gap-2">
         {pick.fits.map((fit) => (
