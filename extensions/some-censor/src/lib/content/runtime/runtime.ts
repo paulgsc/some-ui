@@ -22,8 +22,8 @@ import { createActuator } from "@censor/lib/content/actuator/index"
 import type { Action, CoreFact } from "@censor/lib/content/core/actions"
 import type { CoreEvent } from "@censor/lib/content/core/events"
 import { reduce } from "@censor/lib/content/core/reduce"
+import { admits, initialState } from "@censor/lib/content/core/state"
 import type { CoreState } from "@censor/lib/content/core/state"
-import { initialState } from "@censor/lib/content/core/state"
 import {
   notifyMutation,
   notifyNavigation,
@@ -84,6 +84,7 @@ export function createRuntime(ports: RuntimePorts): Runtime {
     clock,
     mintSession,
     emit: (token) => dispatch(token),
+    admits: (videoId) => admits(state, videoId),
     onFact: (fact) => {
       onFact(fact)
       if (fact.kind === "mutation.batch") {

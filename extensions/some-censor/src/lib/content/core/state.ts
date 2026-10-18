@@ -9,6 +9,7 @@
 import type { ViewState, WatchView } from "@censor/lib/content/fsm"
 import type { UnknownShapeReason } from "@censor/lib/content/layout/lookup"
 import { DEFAULT_BOUNDARY_DAYS } from "@censor/lib/content/maturity/maturity"
+import type { VideoId } from "@censor/types/ids"
 import type { SessionId } from "@some-extension/common"
 
 import type { CardKey } from "./keys"
@@ -95,6 +96,20 @@ export type CoreSnapshot = {
   readonly watchDates: WatchDates | null
   readonly boundaryDays: number
   readonly unknownShapes: CoreState["unknownShapes"]
+}
+
+/**
+ * Whether Core admits `videoId` where autoplay would go next (#1805): a
+ * card for it is on the page, plated. A held card, or a video with no card
+ * at all, is not admitted (QD3, QD11).
+ */
+export function admits(state: CoreState, videoId: VideoId): boolean {
+  for (const card of state.cards.values()) {
+    if (card.observation.videoId === videoId && card.view.kind === "plated") {
+      return true
+    }
+  }
+  return false
 }
 
 export function snapshot(state: CoreState): CoreSnapshot {

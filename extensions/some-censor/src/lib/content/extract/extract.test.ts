@@ -20,6 +20,7 @@ import {
   extractMeta,
   extractTitle,
   extractUploadDate,
+  readAutonav,
   readDescription,
   readWatch,
   tryExtract,
@@ -599,5 +600,24 @@ describe("readWatch (#1805)", () => {
       dates: [],
       miniplayer: true,
     })
+  })
+})
+
+describe("readAutonav (#1805)", () => {
+  const event = (detail: unknown): Event =>
+    // eslint-disable-next-line extension-charter/no-unprefixed-namespace -- YouTube's own event, as the page dispatches it
+    new CustomEvent("yt-navigate", { detail })
+
+  it("names the next video of an autoplay navigation, and of no other", () => {
+    const endpoint = { watchEndpoint: { videoId: "next" } }
+    expect(readAutonav(event({ endpoint, tempData: { autonav: "1" } }))).toBe(
+      "next"
+    )
+    expect(readAutonav(event({ endpoint }))).toBeNull()
+    expect(
+      readAutonav(event({ endpoint, tempData: { autonav: "0" } }))
+    ).toBeNull()
+    expect(readAutonav(event(null))).toBeNull()
+    expect(readAutonav(new Event("yt-navigate"))).toBeNull()
   })
 })

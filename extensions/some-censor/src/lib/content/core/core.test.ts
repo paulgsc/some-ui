@@ -22,7 +22,7 @@ import type {
   Observation,
   WatchObservation,
 } from "./index"
-import { cardKey, initialState, reduce, snapshot } from "./index"
+import { admits, cardKey, initialState, reduce, snapshot } from "./index"
 
 // SessionId is a branded number minted by the shell; the reducer only ever
 // carries one, so a literal is enough here.
@@ -610,6 +610,19 @@ describe("the watch page (R8, #1805)", () => {
     expect(reduce(state, { kind: "boundary", days: B, t: 5 }).actions).toEqual(
       []
     )
+  })
+})
+
+describe("what autoplay may go on into (#1805)", () => {
+  it("admits a plated card's video, and nothing held or unseen", () => {
+    const { state } = fold([
+      started,
+      seen(1, { uploadDate: OLD }, "old"),
+      seen(1, { uploadDate: "3 hours ago" }, "recent"),
+    ])
+    expect(admits(state, asVideoId("old"))).toBe(true)
+    expect(admits(state, asVideoId("recent"))).toBe(false)
+    expect(admits(state, asVideoId("unseen"))).toBe(false)
   })
 })
 

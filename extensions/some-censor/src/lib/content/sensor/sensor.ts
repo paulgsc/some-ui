@@ -6,10 +6,12 @@
  * Wraps the mutation observer and the navigation event, resolves every
  * observed node against the catalogue and the layout table, keeps the
  * element ↔ card identity (`identity.ts`) and the retry queue
- * (`queue.ts`), and emits `Token`s. It never calls Core: tokens go onto
- * whatever `emit` it was given, and Core sees exactly two kinds of vendor
- * event through it — mutation-derived (`observed`, `gone`,
- * `unknown-shape`, `watched`) and `nav` (B5).
+ * (`queue.ts`), and emits `Token`s. Tokens go onto whatever `emit` it was
+ * given, and Core sees exactly two kinds of vendor event through it:
+ * mutation-derived (`observed`, `gone`, `unknown-shape`, `watched`,
+ * `described`) and `nav` (B5). It asks Core one question, through the
+ * `admits` port: whether an autoplay may go on into a video. On a no it
+ * holds that one vendor event (`onYtNavigate`, #1805).
  *
  * Design properties (not declared review invariants; the behavioural ones
  * are pinned by `sensor.test.ts`):
@@ -44,6 +46,7 @@ import {
   extractMeta,
   extractTitle,
   extractUploadDate,
+  readAutonav,
   readDescription,
   readWatch,
   tryExtract,
@@ -87,6 +90,8 @@ export type SensorPorts = {
   readonly mintSession: () => SessionId
   readonly emit: (token: Token) => void
   readonly onFact: (fact: CoreFact) => void
+  /** Core's answer: whether autoplay may go on into `videoId` (#1805). */
+  readonly admits: (videoId: VideoId) => boolean
 }
 
 /** The live queue state, for the health context and the debug layer. */
@@ -593,6 +598,18 @@ export function createSensor(ports: SensorPorts): Sensor {
     }
   }
 
+  /**
+   * An autoplay into a video Core does not admit is held (#1805, QD11).
+   * YouTube's `yt-navigate` is not cancelable, but it is dispatched before
+   * the app's own listener sees it, so stopping it here, in the capture
+   * phase on the window, keeps the page where it is. The one vendor event
+   * the Sensor holds, and only on Core's answer; a click is never held.
+   */
+  function onYtNavigate(event: Event): void {
+    const next = readAutonav(event)
+    if (next !== null && !ports.admits(next)) event.stopImmediatePropagation()
+  }
+
   function onNavigate(): void {
     if (navDebounce !== null) clearTimeout(navDebounce)
     navDebounce = setTimeout(() => {
@@ -648,6 +665,7 @@ export function createSensor(ports: SensorPorts): Sensor {
         attributeFilter: ["data-video-id", "video-id", "miniplayer-is-active"],
       })
       ports.win.addEventListener("yt-navigate-finish", onNavigate)
+      ports.win.addEventListener("yt-navigate", onYtNavigate, true)
     },
 
     stop(): void {
@@ -656,6 +674,7 @@ export function createSensor(ports: SensorPorts): Sensor {
       observer?.disconnect()
       observer = null
       ports.win.removeEventListener("yt-navigate-finish", onNavigate)
+      ports.win.removeEventListener("yt-navigate", onYtNavigate, true)
       if (navDebounce !== null) {
         clearTimeout(navDebounce)
         navDebounce = null
