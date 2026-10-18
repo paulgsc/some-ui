@@ -62,6 +62,11 @@ const manifest = ({
         <action android:name="android.intent.action.MAIN" />
       </intent-filter>
     </activity-alias>
+    <activity-alias android:name=".WingJobs" android:targetActivity=".MainActivity" android:exported="true">
+      <intent-filter>
+        <action android:name="android.intent.action.MAIN" />
+      </intent-filter>
+    </activity-alias>
     <provider android:name="androidx.core.content.FileProvider" android:exported="false" />
     <receiver android:name="androidx.profileinstaller.ProfileInstallReceiver"
         android:permission="android.permission.DUMP" android:enabled="true" android:exported="true" />
