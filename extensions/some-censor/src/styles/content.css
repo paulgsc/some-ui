@@ -565,7 +565,6 @@ ytd-item-section-renderer:has(> #contents > ytd-shelf-renderer:only-child):has(
 :root:not([data-boyo-off]) yt-avatar-shape img,
 :root:not([data-boyo-off]) .ytVideoAttributeViewModelImageAvatar img,
 :root:not([data-boyo-off]) .ytdRichShelfRendererAvatar,
-:root:not([data-boyo-off]) .ytdRichShelfRendererAvatar img,
 :root:not([data-boyo-off]) .ytProfileIconImage {
   visibility: hidden !important;
 }
