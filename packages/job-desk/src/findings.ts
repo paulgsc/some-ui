@@ -126,7 +126,16 @@ export function digestFindings(digest: Digest): ReadonlyArray<Finding> {
           : `same posting as ${twin}`,
       })
     }
+    const role = roleOf(aside.fingerprint)
+    const sameRole = roles.get(role)
+    if (sameRole && !twin) {
+      found.push({
+        path: `${at}.fingerprint`,
+        message: `same role as ${sameRole}, in another place`,
+      })
+    }
     prints.set(aside.fingerprint, at)
+    roles.set(role, at)
   })
 
   digest.scouts.forEach((scout, i) => {

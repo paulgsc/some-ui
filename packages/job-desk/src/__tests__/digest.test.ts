@@ -144,6 +144,24 @@ describe("digestFindings", () => {
     ])
   })
 
+  it("finds the same role set aside from two places, or picked and set aside", () => {
+    const digest = sample()
+    const aside = digest.setAside[0]!
+    digest.setAside.push({
+      ...aside,
+      fingerprint: `${aside.fingerprint.split("|").slice(0, 2).join("|")}|oakland ca`,
+    })
+    const picked = digest.picks[1]!
+    digest.setAside.push({
+      ...aside,
+      fingerprint: `${picked.fingerprint.split("|").slice(0, 2).join("|")}|berkeley ca`,
+    })
+    expect(messages(digest)).toEqual([
+      "setAside.4.fingerprint: same role as setAside.0, in another place",
+      "setAside.5.fingerprint: same role as picks.1, in another place",
+    ])
+  })
+
   it("finds a posting set aside twice", () => {
     const digest = sample()
     digest.setAside.push({ ...digest.setAside[0]! })
