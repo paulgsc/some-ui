@@ -70,6 +70,9 @@ can repeat one already read:
 - a scout some digest already answered in `scouts` is not new: skip it;
 - a voice note is new until some digest lists it in `transcribed`, even when an
   earlier file named it, since its audio may not have arrived the first time.
+  So also transcribe each note a file already read names whose audio is now
+  in `Decisions/` or `Scout/` and no digest lists, and take it in with the
+  entry that names it.
 
 For each new file:
 

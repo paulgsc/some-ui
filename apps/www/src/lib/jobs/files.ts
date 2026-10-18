@@ -216,7 +216,8 @@ export function scoutsFile(state: JobsState, at: Date): Outgoing {
   const stamp = stampOf(at)
   const voice: Array<{ id: string; name: string }> = []
   const scouts: Scouts["scouts"] = fresh.map((e) => {
-    const names = voiceNames(state.voice, e.voice, `${stamp}_${e.scout.id}`, 1)
+    // By the scout, never the share: a retry names the same audio the same.
+    const names = voiceNames(state.voice, e.voice, e.scout.id, 1)
     voice.push(...names)
     return { ...e.scout, voice: names.map((n) => n.name), addedAt: e.at }
   })

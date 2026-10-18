@@ -305,9 +305,11 @@ describe("scoutsFile", () => {
     // Local time: the stamp names the file as the phone's clock reads.
     const file = fileOf(scoutsFile(state, new Date(2026, 9, 18, 20, 5, 0)))
     expect(file.name).toBe("scouts-20261018T200500.json")
-    expect(file.voice).toEqual([
-      { id: "v9", name: "20261018T200500_sc-a1b2c3_voice-1.webm" },
-    ])
+    expect(file.voice).toEqual([{ id: "v9", name: "sc-a1b2c3_voice-1.webm" }])
+    // Offered again later: the same notes under the same names.
+    const retried = fileOf(scoutsFile(state, new Date(2026, 9, 19, 8, 0, 0)))
+    expect(retried.name).not.toBe(file.name)
+    expect(retried.voice).toEqual(file.voice)
     expect(JSON.parse(file.json).scouts[0]).toMatchObject({
       id: "sc-a1b2c3",
       addedAt: "2026-10-18T20:00:00Z",
