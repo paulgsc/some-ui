@@ -48,6 +48,7 @@ public class MainActivity extends BridgeActivity {
             case "WingPractice": return "/practice";
             case "WingSelf": return "/aph";
             case "WingStudio": return "/journal";
+            case "WingJobs": return "/jobs";
             default: return null;
         }
     }

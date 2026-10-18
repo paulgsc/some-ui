@@ -8,10 +8,12 @@
     <string name="wing_practice">Practice</string>
     <string name="wing_self">Self</string>
     <string name="wing_studio">Studio</string>
+    <string name="wing_jobs">Jobs</string>
 
     <color name="wing_practice_background">#2F6FB3</color>
     <color name="wing_self_background">#A8456B</color>
     <color name="wing_studio_background">#7A5AB8</color>
+    <color name="wing_jobs_background">#2E8A6E</color>
 
     <!-- Before Android 8 (API 26) there are no adaptive icons: there, each
          wing shows the app's own icon (its PNG mipmaps), and only the label
@@ -19,4 +21,5 @@
     <item name="ic_wing_practice" type="mipmap">@mipmap/ic_launcher</item>
     <item name="ic_wing_self" type="mipmap">@mipmap/ic_launcher</item>
     <item name="ic_wing_studio" type="mipmap">@mipmap/ic_launcher</item>
+    <item name="ic_wing_jobs" type="mipmap">@mipmap/ic_launcher</item>
 </resources>

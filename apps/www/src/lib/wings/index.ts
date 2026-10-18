@@ -20,7 +20,13 @@ import { hasAudience } from "@/lib/build-profile"
 
 type Path = keyof FileRoutesByTo
 
-export type WingId = "practice" | "self" | "studio" | "operate" | "public"
+export type WingId =
+  | "practice"
+  | "self"
+  | "studio"
+  | "jobs"
+  | "operate"
+  | "public"
 
 export type Wing = {
   id: WingId
@@ -93,6 +99,14 @@ export const WINGS: ReadonlyArray<Wing> = [
     },
   },
   {
+    id: "jobs",
+    name: "Jobs",
+    job: "Today's picks, your own finds, and how each went",
+    home: "/jobs",
+    settings: null,
+    web: null,
+  },
+  {
     id: "operate",
     name: "Operate",
     job: "Lessons and rounds for every learner",
@@ -129,6 +143,7 @@ export const ROOMS: ReadonlyArray<Room> = [
   { id: "aph", wing: "self", roots: ["/aph"] },
   { id: "journal", wing: "studio", roots: ["/journal"] },
   { id: "playoff-delta", wing: "studio", roots: ["/playoff-delta"] },
+  { id: "jobs", wing: "jobs", roots: ["/jobs"] },
   { id: "lessons", wing: "operate", roots: ["/lessons"], nav: "Lessons" },
   { id: "rounds", wing: "operate", roots: ["/rounds"], nav: "Rounds" },
   {

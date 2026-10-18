@@ -33,6 +33,8 @@ export const DRIVE_FOLDERS: Readonly<
   "journal-takes": () => "Build Journal › voice › takes",
   "drama-prompt": () => DRAMA_REQUESTS,
   "session-archive": () => "Study ledger › sessions",
+  "job-decisions": () => "some-ui jobs › Decisions",
+  "job-scouts": () => "some-ui jobs › Scout",
 }
 
 /**
@@ -43,6 +45,8 @@ export const DRIVE_LOOK_IN: Readonly<Partial<Record<string, string>>> = {
   "drama-tree": DRAMA_REQUESTS,
   // An agent writes read-aloud's word sets here from the reflections.
   "word-set": "Read aloud › sets",
+  // The morning run leaves each day's digest here.
+  "job-digest": "some-ui jobs › Brief",
 }
 
 /** Where `dir`'s files go in Drive when shared at `at`; none for an unfiled `dir`. */

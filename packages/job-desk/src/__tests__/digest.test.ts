@@ -304,13 +304,16 @@ describe("the files the phone shares back", () => {
         sharedAt: "2026-10-18T22:10:00Z",
         picks: [
           {
+            day: "2026-10-18",
             pickId: "blu-7f2a",
             fingerprint: "bluesight|data analyst|remote",
+            id: "4f1a2b3c-5d6e-4f70-8a9b-0c1d2e3f4a5b",
             decision: "taken",
             reasons: [],
             note: "",
             voice: [],
             debrief: {
+              id: "0b3c9a52-6f1e-4d2a-9a43-8a1f0c7e2b11",
               minutes: 23,
               friction: 3,
               frictionChips: ["company-ats"],
@@ -320,8 +323,10 @@ describe("the files the phone shares back", () => {
             },
           },
           {
+            day: "2026-10-18",
             pickId: "avm-0b77",
             fingerprint: "avmet applications|software engineer|remote",
+            id: "9e8d7c6b-5a49-4382-a1b0-c9d8e7f6a5b4",
             decision: "passed",
             reasons: ["seniority"],
             note: "Clearance for most contracts",
@@ -330,7 +335,15 @@ describe("the files the phone shares back", () => {
           },
         ],
         disagreements: [],
-        outcomes: [],
+        outcomes: [
+          {
+            id: "7d2e1f40-3b5a-4c8e-b1d9-2e6f8a0c4d53",
+            fingerprint: "bluesight|data analyst|remote",
+            event: "reply",
+            on: "2026-10-20",
+            note: "",
+          },
+        ],
       })
     )
     expect(parsed.ok).toBe(true)

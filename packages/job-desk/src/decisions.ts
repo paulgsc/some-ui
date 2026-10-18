@@ -16,8 +16,16 @@ import {
  * passed and why, how applying went, and what happened afterwards. The
  * routine cannot reach home, so this file is its only view of the record.
  *
- * Append-only by convention: a later file adds outcomes for earlier picks
- * by fingerprint, and never restates or edits an earlier file.
+ * Append-only by convention: a later file never edits an earlier one. It
+ * adds outcomes for earlier picks by fingerprint, and it restates a pick only
+ * when I changed my mind about it; the newest file's entry for a fingerprint
+ * is the decision that stands. A second share on one day is
+ * `decisions-<day>-2.json`, then `-3`, and so on (`decisionsFileName`).
+ *
+ * A share the phone was not told arrived is offered again, so a later file
+ * can repeat what an earlier one said. Each pick's decision, debrief,
+ * outcome and disagreement carries the `id` of the phone event that recorded
+ * it: one already taken in from any file is the same one, not another.
  */
 
 export const PASS_REASONS = [
@@ -51,28 +59,49 @@ export const OUTCOMES = [
   "no-reply-30d",
 ] as const
 
+export const DEBRIEF_RESULTS = ["submitted", "gave-up", "closed"] as const
+
+/** The longest an application may be said to have taken, in minutes. */
+export const MAX_DEBRIEF_MINUTES = 600
+
+/** A debrief's minutes, from opening the posting to done, as I confirmed it. */
+export const DebriefMinutesSchema = z
+  .number()
+  .int()
+  .min(1)
+  .max(MAX_DEBRIEF_MINUTES)
+
+/** 1 smooth, 5 nearly gave up. */
+export const FrictionSchema = z.number().int().min(1).max(5)
+
+/** The phone's id for the event an entry came from. */
+const EventIdSchema = z.string().regex(/^[A-Za-z0-9_-]{1,64}$/)
+
 const DebriefSchema = z.object({
-  /** From opening the posting to done, as I confirmed it. */
-  minutes: z.number().int().min(1).max(600),
-  /** 1 smooth, 5 nearly gave up. */
-  friction: z.number().int().min(1).max(5),
+  id: EventIdSchema,
+  minutes: DebriefMinutesSchema,
+  friction: FrictionSchema,
   frictionChips: z.array(z.enum(FRICTION)),
   what: z.string(),
   voice: z.array(VoiceFileSchema),
-  result: z.enum(["submitted", "gave-up", "closed"]),
+  result: z.enum(DEBRIEF_RESULTS),
 })
 
 export const DecisionsSchema = z.object({
   schema: z.literal("some-ui.job-decisions/1"),
   /** The day it was shared: `decisions-<day>.json`. */
   day: z.iso.date(),
-  /** The digest whose picks it answers. */
+  /** The newest digest whose picks it answers; each pick names its own. */
   digestDay: z.iso.date(),
   sharedAt: z.iso.datetime(),
   picks: z.array(
     z.object({
+      /** The digest the pick came from: ids are unique only within one. */
+      day: z.iso.date(),
       pickId: IdSchema,
       fingerprint: FingerprintSchema,
+      /** The event that decided it; null while untouched. */
+      id: EventIdSchema.nullable(),
       decision: z.enum(["taken", "passed", "untouched"]),
       reasons: z.array(z.enum(PASS_REASONS)),
       note: z.string(),
@@ -82,11 +111,12 @@ export const DecisionsSchema = z.object({
   ),
   /** Set-aside postings I'd have picked, and why. */
   disagreements: z.array(
-    z.object({ fingerprint: FingerprintSchema, note: text })
+    z.object({ id: EventIdSchema, fingerprint: FingerprintSchema, note: text })
   ),
   /** What happened later to any application, by its fingerprint. */
   outcomes: z.array(
     z.object({
+      id: EventIdSchema,
       fingerprint: FingerprintSchema,
       event: z.enum(OUTCOMES),
       on: z.iso.date(),
@@ -99,4 +129,9 @@ export type Decisions = z.infer<typeof DecisionsSchema>
 
 export function parseDecisions(raw: string): Parsed<Decisions> {
   return parseWith(DecisionsSchema, "a decisions file", raw)
+}
+
+/** The `n`th decisions file shared on `day`, counting from 1. */
+export function decisionsFileName(day: string, n = 1): string {
+  return n <= 1 ? `decisions-${day}.json` : `decisions-${day}-${n}.json`
 }

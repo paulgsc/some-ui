@@ -19,6 +19,9 @@ import {
  * carries the description when I paste it; without it, the routine looks the
  * posting up through the Indeed connector by title and company.
  */
+/** The longest posting text a scout may carry. */
+export const MAX_POSTING_TEXT = 20_000
+
 export const ScoutsSchema = z.object({
   schema: z.literal("some-ui.job-scouts/1"),
   sharedAt: z.iso.datetime(),
@@ -31,7 +34,7 @@ export const ScoutsSchema = z.object({
           /** Title and company as I saw them. */
           title: text,
           why: z.string(),
-          postingText: z.string().max(20_000).nullable(),
+          postingText: z.string().max(MAX_POSTING_TEXT).nullable(),
           voice: z.array(VoiceFileSchema),
           addedAt: z.iso.datetime(),
         })
@@ -44,4 +47,9 @@ export type Scouts = z.infer<typeof ScoutsSchema>
 
 export function parseScouts(raw: string): Parsed<Scouts> {
   return parseWith(ScoutsSchema, "a scouts file", raw)
+}
+
+/** `scouts-<stamp>.json`, the stamp in local time (`20261018T145200`). */
+export function scoutsFileName(stamp: string): string {
+  return `scouts-${stamp}.json`
 }

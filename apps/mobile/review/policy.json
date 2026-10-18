@@ -73,6 +73,9 @@
     "${applicationId}.WingStudio": {
       "reason": "The Studio wing's launcher icon, an activity-alias of MainActivity that opens the app at /journal: the home screen starts it, so it must be exported. MainActivity maps the alias's name to that path through a fixed table and reads nothing else from the intent, so another app starting it can do no more than a tap on the icon."
     },
+    "${applicationId}.WingJobs": {
+      "reason": "The Jobs wing's launcher icon, an activity-alias of MainActivity that opens the app at /jobs: the home screen starts it, so it must be exported. MainActivity maps the alias's name to that path through a fixed table and reads nothing else from the intent, so another app starting it can do no more than a tap on the icon."
+    },
     "androidx.profileinstaller.ProfileInstallReceiver": {
       "reason": "androidx.profileinstaller (via androidx.appcompat and Capacitor) installs baseline profiles when adb or the Play Store asks it to. Guarded by android.permission.DUMP, which only the system and adb hold."
     }

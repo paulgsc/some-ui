@@ -110,6 +110,7 @@ const DEVICE_MODULES = [
   "apps/www/src/lib/agent-export/**",
   "apps/www/src/lib/drive-filing/**",
   "apps/www/src/lib/home-link/**",
+  "apps/www/src/lib/jobs/**",
   "apps/www/src/lib/journal-share/**",
   "apps/www/src/lib/lens-takes/**",
   "apps/www/src/lib/reflection-voice/**",
@@ -122,6 +123,7 @@ const DEVICE_MODULES = [
   "apps/www/src/lib/study-nudge/native.ts",
   "apps/www/src/lib/study-nudge/schedule.ts",
   "apps/www/src/components/aph/device-*.tsx",
+  "apps/www/src/components/jobs/**",
   "apps/www/src/components/auth/device-*.tsx",
   "apps/www/src/components/settings/device-*.tsx",
   "apps/www/src/components/reflection/device-*.tsx",
@@ -206,6 +208,11 @@ export const paths: PathRules<Profile> = definePaths<Profile>({
       modules: ["apps/www/src/components/reflection/copy.ts"],
       profiles: [MOBILE_PROFILE],
       why: "the phone's hand-off wording (`arrived`, `goingOut`), after a share only the Android app makes; the web's reflection screens count with `@some-ui/core-utils`",
+    },
+    {
+      modules: ["packages/job-desk/**"],
+      profiles: [MOBILE_PROFILE],
+      why: "the Jobs wing's Drive files (the digest, decisions, scouts), which only the Android app's Jobs wing reads and writes (src/lib/jobs); the web builds have no Jobs wing",
     },
     {
       modules: DEVICE_MODULES,
