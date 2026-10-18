@@ -436,7 +436,26 @@ describe("the poster and the face control (#1805, QD13)", () => {
 
     key("keydown")
     vi.advanceTimersByTime(3_000)
+    expect(faced, "it reports on the release").toEqual([])
+    key("keyup")
+    vi.advanceTimersByTime(0)
     expect(faced).toEqual(["vid_w"])
+  })
+
+  it("keeps Space and Enter from YouTube's own keys, held or let go", () => {
+    actuator.realize([plated(description())])
+    const reached: Array<string> = []
+    const page = new AbortController()
+    for (const type of ["keydown", "keyup"]) {
+      document.addEventListener(type, () => reached.push(type), {
+        signal: page.signal,
+      })
+    }
+    key("keydown")
+    vi.advanceTimersByTime(3_000)
+    key("keyup")
+    page.abort()
+    expect(reached).toEqual([])
   })
 
   it("keeps the description's own click from the control", () => {

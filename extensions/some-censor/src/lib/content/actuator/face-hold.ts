@@ -1,10 +1,15 @@
 /**
  * The face control (QD13, #1805): "Hold to show the original thumbnail", in
  * a plated watch page's description. Held for {@link FACE_HOLD_MS} without
- * a break, by the pointer or by Space or Enter, it reports the hold; any
- * release, a lost pointer or focus leaving cancels it. The one control the
- * extension adds to a page it admits, and the one input from the owner that
- * reaches Core (`face`).
+ * a break, by the pointer or by Space or Enter, it reports the hold when it
+ * is let go; a release before then, a lost pointer or focus leaving cancels
+ * it. The one control the extension adds to a page it admits, and the one
+ * input from the owner that reaches Core (`face`).
+ *
+ * It reports on the release, a task after it, because the report takes the
+ * control away: the release and its click still land on the control, so
+ * neither reaches YouTube (Space is its play key, and a click on the
+ * description expands it).
  *
  * Grey, dashed, and plain on purpose (`absent-plated-heard.md` §4): no
  * progress colour, no reward, no memory of having been held. `content.css`
@@ -34,21 +39,35 @@ export function createFaceControl(
   el.append(label)
 
   let timer: ReturnType<typeof setTimeout> | null = null
+  /** Held for the whole time: the next release reports it. */
+  let full = false
+  let report: ReturnType<typeof setTimeout> | null = null
 
   function start(): void {
-    if (timer !== null) return
+    if (timer !== null || full) return
     el.dataset["holding"] = ""
     timer = setTimeout(() => {
       timer = null
-      delete el.dataset["holding"]
-      onHeld()
+      full = true
     }, FACE_HOLD_MS)
   }
 
   function cancel(): void {
     if (timer !== null) clearTimeout(timer)
     timer = null
+    full = false
     delete el.dataset["holding"]
+  }
+
+  function release(): void {
+    const reported = full
+    cancel()
+    if (reported && report === null) {
+      report = setTimeout(() => {
+        report = null
+        onHeld()
+      }, 0)
+    }
   }
 
   const held = (event: KeyboardEvent): boolean =>
@@ -63,7 +82,8 @@ export function createFaceControl(
     el.setPointerCapture(event.pointerId)
     start()
   })
-  for (const type of ["pointerup", "pointercancel", "lostpointercapture"]) {
+  el.addEventListener("pointerup", release)
+  for (const type of ["pointercancel", "lostpointercapture"]) {
     el.addEventListener(type, cancel)
   }
   el.addEventListener("keydown", (event) => {
@@ -73,7 +93,10 @@ export function createFaceControl(
     if (!event.repeat) start()
   })
   el.addEventListener("keyup", (event) => {
-    if (held(event)) cancel()
+    if (!held(event)) return
+    event.preventDefault()
+    event.stopPropagation()
+    release()
   })
   el.addEventListener("blur", cancel)
   el.addEventListener("click", (event) => {
@@ -85,6 +108,8 @@ export function createFaceControl(
     el,
     dispose(): void {
       cancel()
+      if (report !== null) clearTimeout(report)
+      report = null
       el.remove()
     },
   }

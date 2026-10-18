@@ -91,6 +91,7 @@ test("F4: reduced motion drops the fill's animation", async ({ fixture }) => {
   await plated(page)
   await page.locator(CONTROL).focus()
   await page.keyboard.down(" ")
+  await expect(page.locator(CONTROL)).toHaveAttribute("data-holding", "")
   const duration = await page
     .locator(CONTROL)
     .evaluate((el) => getComputedStyle(el, "::before").transitionDuration)

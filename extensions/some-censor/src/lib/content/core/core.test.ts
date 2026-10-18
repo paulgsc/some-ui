@@ -545,6 +545,13 @@ describe("the watch page (R8, #1805)", () => {
     expect(held.state.watch?.face).toBe(true)
     expect(faces(held.actions)).toEqual([true])
     expect(reduce(held.state, face(3)).actions, "once").toEqual([])
+    const reread = reduce(
+      held.state,
+      watched(3, { ...OLD_PAGE, dates: ["444,875,933 views", "20y ago"] })
+    )
+    expect(reread.state.watch?.face, "kept for the same plated video").toBe(
+      true
+    )
 
     // Another video's hold, a held page and the miniplayer show nothing.
     expect(reduce(plated, face(2, "vid_other")).actions).toEqual([])
