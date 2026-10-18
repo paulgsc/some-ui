@@ -29,6 +29,8 @@ import {
 } from "@censor/lib/content/selectors"
 import { describe, expect, it } from "vitest"
 
+import { CROWD_MARKER, crowdRules } from "./crowd-css"
+
 // Read from disk rather than imported: vitest resolves a `.css` import to an
 // empty module by design, and the point of this suite is the actual bytes the
 // build will concatenate into dist/styles/content.css.
@@ -123,6 +125,12 @@ function shelfRulesFromCss(): Array<string> {
     splitFallback().main,
     "display: none !important"
   ).filter((r) => normalize(r).includes(':has([data-boyo="absent"]):not('))
+}
+
+function crowdRulesFromCss(): ReturnType<typeof crowdRules> {
+  const rules = crowdRules(CSS)
+  expect(rules.length, "the crowd section must exist").toBeGreaterThan(0)
+  return rules
 }
 
 /** Every pre-mask rule's gate: the owner's off switch lifts them all. */
@@ -252,7 +260,11 @@ describe("the stylesheet and the catalogue agree", () => {
     // QC0: CSS selector-list invalidation is all-or-nothing, so one
     // unparseable selector sharing a rule (e.g. `:has()` before Firefox 121)
     // would cost every other selector in that rule its occluder.
-    for (const rule of [...premaskRulesFromCss(), ...shelfRulesFromCss()]) {
+    for (const rule of [
+      ...premaskRulesFromCss(),
+      ...shelfRulesFromCss(),
+      ...crowdRulesFromCss().map((r) => r.selector),
+    ]) {
       expect(topLevelCommaCount(rule), rule).toBe(0)
     }
   })
@@ -369,6 +381,24 @@ describe("the stylesheet and the catalogue agree", () => {
     wrapper.remove()
     channel.remove()
     plain.remove()
+  })
+})
+
+describe("the crowd rules (QD14)", () => {
+  it("hides a vendor element and does nothing else, behind the off switch", () => {
+    for (const { selector, body } of crowdRulesFromCss()) {
+      expect(body, selector).toBe("display: none !important;")
+      // A descendant of the gate: without the space it would name nothing.
+      expect(selector.startsWith(WHILE_ON), selector).toBe(true)
+    }
+  })
+
+  it("hides by where an element sits, never by what it says (H1)", () => {
+    // Matching an attribute's value is reading its text. Presence is not.
+    for (const { selector } of crowdRulesFromCss()) {
+      expect(selector, selector).not.toMatch(/\[[^\]]*=/)
+    }
+    expect(CSS.slice(CSS.indexOf(CROWD_MARKER))).not.toContain("@")
   })
 })
 

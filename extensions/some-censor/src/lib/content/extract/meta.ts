@@ -88,9 +88,8 @@ function plainChannelRun(el: HTMLElement): string | null {
  * and YouTube places its row before or after the date's. Read as a date, a
  * channel named like an age ("10 years ago") would admit a fresh video.
  *
- * The camelCase run is read by its `aria-label` ("8 days ago"), not its compact
- * text ("8d ago"): the estimator knows the long form, and a compact "5m"
- * cannot say whether it means minutes or months.
+ * The camelCase run is read by its `aria-label` ("8 days ago") rather than its
+ * compact text ("8d ago"), the form that names its unit in full.
  */
 function lockupUploadDate(el: HTMLElement): string | null {
   const runs = [...el.querySelectorAll(LOCKUP_DATE_RUNS.join(", "))].filter(

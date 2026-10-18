@@ -16,11 +16,11 @@ other agent without this repo reads the same text:
 
 What it settles, so you know it's worth the read:
 
-- **The tree.** `Inbox/`, `Dramas/requests` and `played`, `Read aloud/sets`,
-  `Study ledger/reflections` and `study-context/<date>/`, `Build Journal/`,
-  `Vlog/playoff-delta/week-NN` and `published`, `some-ui jobs/` (`Brief`, `Decisions`,
-  `Scout`, `Recommended resume`), `Archive/`, plus the
-  `Publish ledger` sheet. The doc carries each folder's id.
+- **The tree.** `Inbox/`, `Dramas/requests` and `played`, `Read aloud/sets/<scene>/` and
+  `Read aloud/archive/<date>/`, `Study ledger/reflections` and `study-context/<date>/`,
+  `Build Journal/`, `Vlog/playoff-delta/week-NN` and `published`, `some-ui jobs/` (`Brief`,
+  `Decisions`, `Scout`, `Recommended resume`), `Archive/`, plus the `Publish ledger` sheet. The
+  doc carries each folder's id.
 - **Who writes what where,** each share's file-name contract, and each folder's lifecycle:
   what moves where and when, and what an agent may trash.
 - **Load-bearing names** that code finds by exact title (`Build Journal/voice/primers`,

@@ -444,7 +444,7 @@ describe("uploadDate — the corpus mechanism QC2 depends on", () => {
       raw: "Streamed 2 hours ago",
       renderer: "ytd-compact-video-renderer",
       estimate: { kind: "aged", minDays: 0 },
-      parser: "en-v1",
+      parser: "en-v2",
     })
   })
 
