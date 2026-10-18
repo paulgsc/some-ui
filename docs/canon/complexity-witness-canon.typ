@@ -81,7 +81,7 @@
     `packages/some-content/prompts/leetype-exercise-generator` · `pedagogy/`
   ]
   #v(1em)
-  #text(size: 9.5pt)[Version 1.1 --- 2026-10-07]
+  #text(size: 9.5pt)[Version 1.2 --- 2026-10-18]
   #v(2cm)
 ]
 
@@ -392,6 +392,46 @@ answer to the second forces most of the answers to the first.
   Axiom P.1 forbids.
 ]
 
+#definition("1.8", name: "Invariant (v1.2)")[
+  An *invariant* $I$ is a stated safety property of a system under a stated
+  failure model --- "two different values are never chosen", "an acknowledged
+  write survives the loss of any one node". Like a budget it is data a round
+  carries, written in one sentence the learner reads; unlike a budget it is
+  not evaluated by §2's cost algebra, which computes loop costs and nothing
+  about safety.
+]
+
+#definition("1.9", name: "Incident round (v1.2)")[
+  An *incident round* is the tuple $(j, s, O, B, I, rho, w, pi)$ where
+  + $j$ is the *job*: one sentence saying what the learner is asked to do;
+  + $s$ is the *situation*: a concrete failure or target told with its
+    numbers, optionally with a panel of who holds what state;
+  + $O$ is a closed option set, each option one line, always including the
+    abstention of Def. 9.1;
+  + $B$ is a budget, $I$ an invariant, and at least one of them is present;
+  + $rho$ is the one register entry (§7, Rem. 7.4) that decides the round,
+    named to the learner only after the commitment;
+  + $w$ assigns to every option an authored reason: for the correct option,
+    the worked confirmation; for every other, what it breaks --- $B$ (too
+    slow), $I$ (unsafe), or both --- with any arithmetic shown;
+  + $pi$ is the cited passage that answers the round (Rem. 10.3).
+  It has no algorithm, no constraint set and no diff, so it is not a round in
+  Def. 1.7's sense, and none of §2--§5 applies to it.
+]
+
+#remark("1.2", name: "Two kinds of round, and why the first is not rewritten")[
+  Def. 1.7 is retained as filed: a round over $(A, C, B, D, mu, r)$ is still
+  what §2--§6 are about, and every theorem there is still true of it. What
+  changed is which kind the phone plays. The observation is the A/B recorded
+  in the v1.2 log: the Big-O round asks the wrong kind of question for the
+  learner this workspace serves (it can express a loop rewrite of a toy
+  function and never a machine or a failure), and an incident is the unit
+  every scored design converged on. Def. 1.9 is a second object beside
+  Def. 1.7, not a revision of it; a result below that names "round" without a
+  qualifier means a Def. 1.7 round, as it always did, and the v1.2 results
+  say which kind they govern.
+]
+
 // ═══════════════════════════════════════════════════════════════════════════
 = The cost algebra
 // ═══════════════════════════════════════════════════════════════════════════
@@ -530,6 +570,31 @@ repository's own standing rule forbids. A cost graph is the justification.
   and it is the only framing in which "minimal diff" is a well-posed question
   (Def. 5.2), because there is a *specific* admissibility failure to repair
   rather than a general invitation to make the code faster.
+]
+
+#definition("3.3", name: "Verdict of an incident round (v1.2)")[
+  An option of an incident round is *correct* iff it fits $B$ (where $B$ is
+  present) *and* keeps $I$ (where $I$ is present). The verdict is the
+  conjunction; an option that is fast and unsafe, or safe and too slow, is
+  wrong for a stated reason, and $w$ (Def. 1.9) states which.
+]
+
+#axiom("3.2", name: "Machine budgets are orders of magnitude (v1.2)")[
+  Axiom 3.1 applied to latency. A budget stated in time (a commit within a
+  millisecond, ten thousand writes a second) is checked against figures that
+  are ranges, not constants --- a datacenter round trip from about 5 µs tuned
+  to about 0.5 ms typical, a durable write from about 100 µs to about 10 ms
+  --- so a round states the figure it assumes as an assumption, and a verdict
+  that turns on less than an order of magnitude is malformed.
+]
+
+#remark("3.2", name: "Agreement verdicts are authored, and reviewed")[
+  Whether an option keeps $I$ is not derivable from anything this canon
+  computes. So the correct flag and every reason in $w$ are authored, which is
+  Axiom 6.1's posture applied to safety, and they are reviewed against the
+  cited passage (Rem. 10.3), because the A/B found that authored content is
+  where the errors are: six in five agent-written sessions, none in a correct
+  flag and every one in a reason, a passage or a rubric.
 ]
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -895,6 +960,60 @@ superseded and kept.
   exercise is much stronger than the temptation to fork a theorem.
 ]
 
+#remark("7.4", name: "Two registers beside `CW-P` (v1.2)")[
+  The register grows by amendment (Rem. 7.2), and this is one. Incident rounds
+  (Def. 1.9) are decided by rules about machines and about agreement, which
+  `CW-P1`--`CW-P16` cannot state, so two registers are added under new
+  prefixes, *Machine* and *Agreement*. No `CW-P` identifier moves. Def. 1.5's
+  "register" now reads as any of the three; Def. 1.6's $mu$ still maps into
+  `CW-P` alone, and Def. 1.9's $rho$ into `M` or `A`. Each identifier below is
+  stable under the same rule as a `CW-P` one: never reused, never renumbered,
+  never removed, and a superseded entry is marked and kept. Each rule is the
+  one-line form a learner reads, and each is covered by the seed reading list
+  the v1.2 log names.
+
+  *Machine register (v0).*
+  #table(
+    columns: (auto, auto, 1fr),
+    stroke: 0.4pt,
+    [*Id*], [*Rule*], [*Its one line*],
+    [`M1`], [The latency ladder], [An L1 hit costs about 1 ns, DRAM about 100 ns, an NVMe read 10--100 µs, a durable write about 100 µs (fast SSD) to about 10 ms (spinning disk), a datacenter round trip about 5 µs (tuned) to 0.5 ms (typical), and a cross-continent one 100 ms or more. A round states which figure it assumes.],
+    [`M2`], [Batch to amortize a fixed cost], [A fixed cost $F$ per operation becomes $F / k$ when $k$ operations share it: group commit, syscall batching.],
+    [`M3`], [Pointer chasing costs a miss per hop], [Each node of a linked structure is a likely DRAM miss; wide nodes, as in a B-tree, cut the hops.],
+    [`M4`], [Little's law], [Work in flight equals throughput times latency; at fixed latency, more throughput needs more in flight, which pipelining supplies.],
+    [`M5`], [Shared writes serialize], [Contended locks and cache lines moving between cores cap throughput; partitioning the state removes the cap.],
+    [`M6`], [Queues explode near saturation], [Waiting time grows like $rho / (1 - rho)$ in utilization $rho$: at 90% busy it is nine times the service time.],
+    [`M7`], [Fan-out amplifies the tail], [A request waiting on $n$ calls is as slow as the slowest of them, so a per-call 99th percentile becomes the common case.],
+    [`M8`], [Durability has a price], [An acknowledgement is only as durable as what was flushed before it was sent.],
+  )
+
+  *Agreement register (v0).*
+  #table(
+    columns: (auto, auto, 1fr),
+    stroke: 0.4pt,
+    [*Id*], [*Rule*], [*Its one line*],
+    [`A1`], [The failure model decides], [Crash-stop, crash-recover or Byzantine; synchronous, partially synchronous or not: change the model and the right protocol changes.],
+    [`A2`], [Timeouts buy liveness, never safety], [No deterministic protocol guarantees consensus in a fully asynchronous system in which one node may crash (Fischer, Lynch, Paterson).],
+    [`A3`], [Majorities intersect], [$2 f + 1$ nodes tolerate $f$ crashes, because any two majorities share a node that remembers.],
+    [`A4`], [Safety always, liveness when stable], [Two different values are never chosen; progress may wait for a stable leader.],
+    [`A5`], [A stable leader amortizes agreement], [The prepare phase runs once per leader; each entry then costs one round trip to a majority.],
+    [`A6`], [Higher terms fence stale leaders], [Ballots or terms order leadership, and a node rejects anything carrying a lower one.],
+    [`A7`], [Elect only complete leaders], [Raft's vote rule means the winner already holds every committed entry, so repair flows from leader to followers only.],
+    [`A8`], [Committed means a majority stored it], [Until then an entry can vanish; Raft counts only current-term entries toward commit (its Figure 8).],
+    [`A9`], [Replication is not consensus], [Asynchronous primary--backup loses acknowledged writes on failover.],
+    [`A10`], [Reads need agreement too], [A leader must confirm it still leads before it answers a read: by a read index, or by a lease that trusts bounded clock drift.],
+  )
+
+  These entries are *v0*. The A/B that motivates this amendment never showed
+  a rule's name before a pick, so it tested the registers' coverage and not
+  their wording; they are revised from real sessions, by amendment, with the
+  identifiers kept. They are rows of this remark rather than `#proposition`
+  entries of §7 because the generated `CW-P` register is read from those
+  entries and is a closed union of `CW-P` identifiers. Rem. 7.1's citation
+  check over `M` and `A` is mechanical and not yet a rule: it arrives with the
+  first source that cites one, the session-file lint of Rem. 10.3.
+]
+
 // ═══════════════════════════════════════════════════════════════════════════
 = The cycle
 // ═══════════════════════════════════════════════════════════════════════════
@@ -1126,6 +1245,131 @@ superseded and kept.
   simplification, it is the loss of the signal.
 ]
 
+#proposition("9.3", name: "Task legibility (v1.2)")[
+  Every round states its job in one sentence before any evidence, and keeps
+  it in view while the learner works. For an incident round the job is $j$
+  (Def. 1.9), pinned at the top of the screen.
+]
+
+#proof[
+  Not a deduction; an observation this canon owed a result for. Nothing in
+  §1--§11 owned what the learner is told to do, and the surface the
+  post-mortem studied stated the task on page 4 of 4 and was abandoned four
+  times in four sessions, which is Axiom P.1's failure arrived at by a new
+  route. In the A/B all five designs pinned the job, and all five commuters
+  resumed correctly after a 60-second interruption from the pinned line
+  alone.
+]
+
+#definition("9.3", name: "One scrolling screen (v1.2)")[
+  An incident round is played on *one scrolling screen* holding, top to
+  bottom, the job, the situation and the options. It relaxes Def. 9.2 for
+  incident rounds only: there is no artifact switching, and nothing pages. A
+  Def. 1.7 round is still governed by Def. 9.2 as filed.
+]
+
+#remark("9.4", name: "Why the leak Rem. 9.2 guards against does not arise")[
+  Rem. 9.2's leak is a correspondence on screen at commitment time: the diff
+  beside the propositions, so that the learner checks a mapping rather than
+  recalls it. An incident round asks for no mapping. There is no "which rule
+  applies?" step; $rho$ is named only in the reveal, after the commitment, and
+  recall of the rule is tested where it cannot be read off the screen, in a
+  spoken answer. With the step gone, putting the situation beside the options
+  hands the learner nothing Axiom 9.2 forbids; it is the evidence the
+  commitment is about. No design in the A/B used a pager or a rule-selection
+  step, and no simulated learner asked for either.
+]
+
+#definition("9.4", name: "Struggle (v1.2)")[
+  A learner *struggles* on an incident round on any of: an incorrect
+  selection; the abstention; a selection slower than twice the learner's own
+  median for that kind of round (no slowness is counted until there are
+  enough selections to have a median); or, on a spoken answer, fewer than two
+  of its rubric points ticked. Each is recorded as what it is --- Prop. 9.1's
+  three responses stay three, and slowness is an annotation on a correct or
+  incorrect selection, never a fourth folded response.
+]
+
+#proposition("9.4", name: "A struggle places a reading and parks the round (v1.2)")[
+  On a struggle the reveal is a *placement*: the question restated as what a
+  reading answers, the exact place to read (source, section, page, minutes),
+  one or two lines on what to look for, and the passage's in-app core. The
+  round is *parked*. Three clauses complete it:
+  - *(a) The core is short.* The in-app core of a placed reading takes three
+    minutes or less to read; the full source sits behind a link. Its form is
+    the source's licence: a real excerpt only where the licence allows it, a
+    short quote otherwise, a link alone where nothing else is allowed.
+  - *(b) A return is a transfer probe.* A parked round returns only after its
+    reading is marked read, and it returns as the same mechanism with new
+    numbers or a new case, never verbatim. An incorrect return stays parked
+    and places a different source.
+  - *(c) A correct selection may carry a pointer.* After a correct selection
+    the reveal may offer one named passage, with the question it answers and
+    its reading time, which the learner may open, save or pass.
+  Progression is untouched (Ax. 9.1): the thread moves on, and a parked round
+  never gates the next one. Credit still needs an unassisted commitment
+  (Ax. 9.2): a reading explains the rule and never states this round's
+  answer.
+]
+
+#proof[
+  Evidence, clause by clause, from the A/B. (a) Of 20 sessions' readings,
+  learners opened 10, and every one opened took three minutes or less; tired
+  and commuting learners saved or skipped every reading of five minutes or
+  more, in every design. (b) Where a parked round came back with new numbers
+  it was solved every time, 7 of 7, and no return repeated its numbers;
+  verbatim repetition was the first finding of the post-mortem, whose five
+  bundled rounds were memorised by round 14. (c) The owner-like expert placed
+  no reading in any design, because a learner who never struggles is never
+  offered one, and called the one pointer after a correct pick the most useful
+  thing in the session; without (c) the reading habit is built only from
+  failure.
+]
+
+#remark("9.5", name: "Deferred, never withheld: Prop. 9.4 under Axiom 9.1")[
+  Axiom 9.1 names "explanation" among the artifacts never withheld on the
+  basis of a learner response, and Prop. 9.4 replaces a struggled round's
+  worked confirmation with a placement. The two are consistent on one
+  condition, which Prop. 9.4 therefore carries: the placement is the default
+  of the reveal, not a lock on it. The worked confirmation of a parked round
+  stays reachable on request at every moment, by one action, and taking it is
+  recorded. What the request costs is evidence, never access: by Axiom 9.2 the
+  parked round's later answer is an observation of the reveal and earns no
+  credit, while its return (Prop. 9.4 (b)), being new numbers, is a fresh
+  commitment and still can. A surface that makes the confirmation
+  unreachable --- for a session, or until a reading is marked read --- has
+  turned a placement into a gate, and is the error Theorem 9.1 forbids.
+]
+
+#proposition("9.5", name: "First-use gloss (v1.2)")[
+  Every term a round relies on is defined, in one line, on or before the
+  screen that first uses it.
+]
+
+#proof[
+  An observation. Beginners in all five A/B designs were stopped by a term
+  used before any definition --- ballot, term, Sentinel, fsync, lease,
+  quorum --- and the brief's primer card showed one rule and no vocabulary.
+  The mandate that a viewer can read what the owner uses (the repository's
+  two-mandate rule) asks the same of every screen.
+]
+
+#proposition("9.6", name: "Declared length, and leaving as an action (v1.2)")[
+  A session states its length on its first screen, offers a short form, and
+  can be ended at any round boundary onto its ledger screen (Prop. 10.2).
+  Ending is an action the session offers, not a quit it suffers.
+]
+
+#proof[
+  Prop. 8.1 says a cycle ends only when the learner leaves, so leaving must be
+  available, legible and clean; a design in which the only way out is to
+  abandon a round mid-screen has made leaving a failure. In the A/B four of
+  five designs promised about ten minutes and lost the five-minute commuter
+  mid-round with no way out. A declared length is a plan for the session's
+  time, not a terminal condition: it does not end the cycle, and the thread
+  continues from wherever the learner left.
+]
+
 // ═══════════════════════════════════════════════════════════════════════════
 = The ledger
 // ═══════════════════════════════════════════════════════════════════════════
@@ -1196,6 +1440,50 @@ superseded and kept.
   round with it in the presented option set where $mu(d)$ is something else.
   Both are mechanically checkable at authoring time and belong in the same
   lint as Rem. 7.1's citation check.
+]
+
+#proposition("10.2", name: "The ledger screen is derived, never authored (v1.2)")[
+  Everything a session tells the learner about itself at its end --- which
+  rounds were walked, which are parked and the reading each waits on, which
+  readings are saved, which spoken answer was recorded --- is computed from
+  the events the session recorded, in words and without counts. No sentence
+  on it is written ahead of the session.
+]
+
+#proof[
+  An authored ledger is a claim about events that did not take place yet, so
+  it is true only when the session happens to go as its author guessed. In
+  the A/B one design's authored end screen listed sources its learner never
+  saw, and three simulated learners reported it. Cor. 10.1 already forbids a
+  progress figure that conflates recognition with demonstration; this result
+  forbids the simpler falsehood of reporting what did not happen.
+]
+
+#remark("10.3", name: "Content obligations for incident rounds, beside Rem. 7.1 and Rem. 10.2 (v1.2)")[
+  Four properties of an authored session, each checked before it reaches a
+  learner:
+  + every incident round cites the passage $pi$ that answers it;
+  + every struggle path ends in a placed reading with a source;
+  + no incorrect option's reason in $w$ names the correct option, so that a
+    placement never smuggles the answer (Prop. 9.4, Ax. 9.2);
+  + every term is glossed on or before its first use (Prop. 9.5).
+  The second, third and fourth, and the presence of the first, are mechanical
+  over a session file and belong in one lint with Rem. 7.1's citation check.
+  Whether a citation is *right* is not mechanical: the passage is checked
+  against the source document, not from memory, by a review pass that plays
+  the expert learner. The evidence for making these lints rather than advice is
+  Rem. 3.2's: six errors in five agent-written sessions, every one in a
+  reason, a passage or a rubric.
+]
+
+#remark("10.4", name: "Def. 10.2 over the new registers (v1.2)")[
+  For an entry of `M` or `A`, Def. 10.2's positive transfer reads "rounds whose
+  incidents are structurally distinct" for "rounds whose diffs induce
+  structurally distinct rewrites". A return (Prop. 9.4 (b)) is the same
+  mechanism by construction, so it is retention evidence and never a second
+  instance of transfer. Rubric ticks on a spoken answer are the learner's own
+  reading of it: recorded as their claim, used to route (Def. 9.4), and never
+  counted toward *demonstrated*.
 ]
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -1405,6 +1693,31 @@ superseded and kept.
   observation motivates it; the artifacts had no caller.
 ]
 
+#remark("11.7", name: "What v1.2 changes in the governed source")[
+  Amends Rem. 11.1 and Rem. 11.4, which are retained as filed. The phone stops
+  playing Def. 1.7 rounds and plays incident rounds (Def. 1.9) from *session
+  files*: data an agent writes to the owner's Drive and the phone pulls through
+  the file picker, as TOPIK's lessons already arrive. Four consequences:
+
+  - The bundled corpus is retired for LeetType: `packages/ui/leetype/corpus`,
+    the `bundled-corpus` copy into the device database, the round sampler over
+    `CW-P` rounds on the phone, and `RoundSession`'s artifact switcher and
+    diff-set choices. The five bundled rounds are not kept as a thread; Git
+    history keeps them.
+  - Rem. 11.4's server hoist becomes optional sync. Reviewed content still
+    reaches the learner, now reviewed by Rem. 10.3's lint and expert pass
+    rather than by a code review of a `.ts` file. Syncing what the phone pulled
+    to `paulgsc/server`, and a small offline cache of the current thread, need
+    routes that server does not yet serve, and are a request for amendment
+    there, as Rem. 11.4's were.
+  - Session records keep the funnel Prop. 9.4 defines --- struggled, placed,
+    opened, saved, marked read, returned, solved --- append-only, so that the
+    ledger screen (Prop. 10.2) and any later report are computed from them.
+  - The wide typing surface is untouched. Nothing in v1.2 governs it.
+
+  Evidence: the A/B named in the v1.2 log, and the code each bullet names.
+]
+
 // ═══════════════════════════════════════════════════════════════════════════
 = Falsifiers
 // ═══════════════════════════════════════════════════════════════════════════
@@ -1459,6 +1772,10 @@ that it could actually happen, not so that it comfortably cannot.
   reads as an absence of content --- nothing happened, the code still works,
   a number changed --- then the cycle's reward structure is carried entirely
   by failure, and §8's symmetry is cosmetic.
+
++ *The pointer is ignored* (v1.2). If the owner, offered a one-minute pointer
+  after correct selections over twenty sessions, opens none, then the reading
+  habit cannot be built from correct answers, and Prop. 9.4 (c) is cosmetic.
 
 // ═══════════════════════════════════════════════════════════════════════════
 = Amendment protocol
@@ -1549,6 +1866,28 @@ Rem. 11.1 listed as retained (`claimOf`, `readingProbeOf`, `claimPoolOf`,
 `ClaimChoices`, `ReadingFeedback`), removed with the reading surface in
 `#1702`, and names the round-surface artifacts that carry their roles. No
 Definition, Axiom, Theorem or `CW-P` entry changes.
+
+*v1.2 --- 2026-10-18.* Re-aims the phone at incident rounds, on the evidence of
+a design A/B: five session designs, each played by four simulated learners and
+scored blind on a held-out test, recorded with its method, data and judging in
+"LeetType A/B: result and plan" (#link("https://claude.ai/code/artifact/6aaaf237-4c29-46c2-a839-70498f8a94c2")[the plan], 2026-10-18), which is the observation every
+v1.2 result cites. Adds, and rewrites nothing: the invariant and the incident
+round (Def. 1.8, Def. 1.9, Rem. 1.2); the incident verdict and latency budgets
+(Def. 3.3, Ax. 3.2, Rem. 3.2); the Machine and Agreement registers `M1`--`M8`
+and `A1`--`A10`, as v0 (Rem. 7.4); task legibility
+(Prop. 9.3); one scrolling screen for incident rounds (Def. 9.3, Rem. 9.4);
+struggle, placement, parking, returns and the correct-pick pointer (Def. 9.4,
+Prop. 9.4), with the condition that keeps them inside Axiom 9.1 (Rem. 9.5);
+first-use gloss (Prop. 9.5); declared length and leaving (Prop. 9.6); the
+derived ledger screen (Prop. 10.2); the content obligations (Rem. 10.3);
+Def. 10.2 read over the new registers (Rem. 10.4); the source consequences
+(Rem. 11.7); and one falsifier in §12. Def. 1.7, Def. 9.2, Rem. 9.2 and every
+`CW-P` entry stand as filed and still govern Def. 1.7 rounds.
+
+Rem. 9.5 is the one result the plan did not state. The plan kept Axiom 9.1 by
+name while replacing a struggled round's answer with a reading; read against
+the axiom's text, that is consistent only if the answer stays reachable, so
+the condition is recorded rather than left for a surface to discover.
 
 #pagebreak()
 
