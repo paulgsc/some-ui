@@ -907,6 +907,25 @@ Everything else in this file stands. In particular the hunk model
 replaced — canon Rem. 11.1 is the table of what survives, and it is most of
 the mechanism.
 
+### What canon v1.2 changes
+
+[Canon v1.2](../canon/complexity-witness-canon.typ) (2026-10-18, from a design
+A/B of five phone sessions) re-aims the phone. Epics #1906–#1909 move it from
+Big-O rounds (Def. 1.7), which it still plays today, to **incident rounds**
+(Def. 1.9): a failure or a target told with its numbers, a job in one
+sentence pinned above it, and three or four options plus "Not sure", all on
+one scrolling screen (Def. 9.3). The rules that decide them are two new
+registers beside `CW-P`, Machine (`M1`–`M8`) and Agreement (`A1`–`A10`),
+filed as v0 (Rem. 7.4). A struggle places a short reading and parks the
+round, whose return waits on the reading (Prop. 9.4), and the content is to
+arrive as session files from Drive, not as a bundled corpus (Rem. 11.7).
+
+That retires **LTY-MOBILE's premise for good**. The section above argued from
+what the phone lacks (a keyboard to produce code) to a weaker probe, and canon
+Rem. 9.3 inverted that premise while keeping the probe. Under v1.2 neither
+version applies: an incident round is not a substitute for typing. The
+LTY-MOBILE section stays as the record of the Def. 1.7 surface it describes.
+
 ### The epics the canon governs
 
 Decomposed across the same milestone **leetype (M20)**. Each cites the
