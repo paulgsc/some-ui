@@ -149,6 +149,10 @@ describe("decisionsFile", () => {
     expect(JSON.parse(unconfirmed.json).picks[0].debrief.id).toBe(
       JSON.parse(file.json).picks[0].debrief.id
     )
+    expect(JSON.parse(unconfirmed.json).picks[1].id).toBe(
+      JSON.parse(file.json).picks[1].id
+    )
+    expect(JSON.parse(file.json).picks[1].id).toEqual(expect.any(String))
 
     const shareId = shared.log.at(-1)!.id
     shared = record(shared, { type: "arrived", shareId })
@@ -182,9 +186,10 @@ describe("decisionsFile", () => {
     const file = fileOf(
       decisionsFile(old, "2026-10-18", "2026-10-18T22:00:00Z")
     )
-    expect(
-      JSON.parse(file.json).picks.map((p: { decision: string }) => p.decision)
-    ).toEqual(["untouched", "untouched"])
+    expect(JSON.parse(file.json).picks).toEqual([
+      expect.objectContaining({ decision: "untouched", id: null }),
+      expect.objectContaining({ decision: "untouched", id: null }),
+    ])
     let shared = record(old, {
       type: "shared",
       kind: "decisions",

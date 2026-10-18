@@ -111,6 +111,9 @@ export function decisionsFile(
         (e) => "pickId" in e && e.day === digest.day && e.pickId === pick.id
       )
       const passed = events.filter((e) => e.type === "passed").at(-1)
+      const decider = events
+        .filter((e) => e.type === "passed" || e.type === "taken")
+        .at(-1)
       const debrief = debriefOf(state, digest.day, pick.id)
       const names = pickVoice(state, digest.day, pick.id)
       const nameOf = (id: string): string =>
@@ -139,6 +142,7 @@ export function decisionsFile(
         day: digest.day,
         pickId: pick.id,
         fingerprint: pick.fingerprint,
+        id: decider?.id ?? null,
         decision: decision ?? "untouched",
         reasons:
           decision === "passed" && passed?.type === "passed"

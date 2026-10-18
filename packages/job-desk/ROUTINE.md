@@ -63,10 +63,15 @@ Every digest lists in `read` the Decisions and Scout files it took in. Read
 every digest in `Brief/` and collect those names; the files in
 `some-ui jobs/Decisions/` and `some-ui jobs/Scout/` that no digest names are
 new. The phone offers a share again until I confirm it arrived, so a new file
-can repeat one already read. Each debrief, outcome and disagreement carries an
-`id`: skip one whose `id` any decisions file in `Decisions/` already carried
-when it was read, and a voice note whose file name one already named. For
-each new file:
+can repeat one already read:
+
+- a pick's decision, a debrief, an outcome or a disagreement whose `id` a file
+  some digest names in `read` already carried is not new: skip it;
+- a scout some digest already answered in `scouts` is not new: skip it;
+- a voice note is new until some digest lists it in `transcribed`, even when an
+  earlier file named it, since its audio may not have arrived the first time.
+
+For each new file:
 
 1. Check it with the checker (step 8). One that fails is skipped and named in
    the summary, never guessed at.
@@ -180,7 +185,8 @@ picked today. Fewer picks than the limit is fine; a weak pick is not.
    using its title words and the company. Use its `postingText` when it has
    one. The verdict is `agree` (and it becomes a pick when it outranks one),
    `disagree` with why, or `not-found`.
-3. `read` names every Decisions and Scout file this run took in.
+3. `read` names every Decisions and Scout file this run took in, and
+   `transcribed` every voice note it transcribed.
 4. Save the digest as bare JSON to a scratch file and check it from the repo
    root (run `pnpm install` first if `node_modules` is missing):
 

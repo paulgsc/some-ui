@@ -23,9 +23,9 @@ import {
  * `decisions-<day>-2.json`, then `-3`, and so on (`decisionsFileName`).
  *
  * A share the phone was not told arrived is offered again, so a later file
- * can repeat what an earlier one said. Each debrief, outcome and
- * disagreement carries the `id` of the phone event that recorded it: one
- * already taken in from any file is the same one, not another.
+ * can repeat what an earlier one said. Each pick's decision, debrief,
+ * outcome and disagreement carries the `id` of the phone event that recorded
+ * it: one already taken in from any file is the same one, not another.
  */
 
 export const PASS_REASONS = [
@@ -100,6 +100,8 @@ export const DecisionsSchema = z.object({
       day: z.iso.date(),
       pickId: IdSchema,
       fingerprint: FingerprintSchema,
+      /** The event that decided it; null while untouched. */
+      id: EventIdSchema.nullable(),
       decision: z.enum(["taken", "passed", "untouched"]),
       reasons: z.array(z.enum(PASS_REASONS)),
       note: z.string(),
