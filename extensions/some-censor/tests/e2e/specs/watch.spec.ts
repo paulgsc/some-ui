@@ -19,6 +19,8 @@
  *      page it was opened on says nothing about it.
  * W10 — Autoplay goes on only into a video the page admits; a click is never
  *       held.
+ * W11 — A music video's page is shown whole at any age (QD15): its player and
+ *       its own poster, and no face control.
  */
 
 import { SWITCHED_OFF_ATTRIBUTE } from "@censor/lib/content/selectors"
@@ -266,4 +268,26 @@ test("W10: autoplay goes on only into a video the page admits", async ({
   expect(await reaches("new_next", "1")).toBe(false)
   expect(await reaches("unseen", "1")).toBe(false)
   expect(await reaches("new_next")).toBe(true)
+})
+
+test("W11: a music video's page is shown whole, at any age", async ({
+  fixture,
+}) => {
+  const page = await fixture.goto("yt-watch-page")
+  await watchView(page, "plated")
+  await page.evaluate(() => {
+    const title = document.querySelector("#title yt-formatted-string")
+    if (title) title.textContent = "[MV] Stay With Me (Goblin OST)"
+  })
+  await setAge(page, "3 hours ago")
+  await watchView(page, "whole")
+  await expect(page.locator("#primary-inner")).toBeVisible()
+  // The player's own poster, and no face control: nothing is plated.
+  expect(
+    await page
+      .locator("#movie_player > .ytp-cued-thumbnail-overlay > div")
+      .evaluate((el) => getComputedStyle(el).backgroundImage.includes("url("))
+  ).toBe(true)
+  await expect(page.locator("[data-boyo-face-hold]")).toHaveCount(0)
+  expect(await playsThrough(page)).toBe(true)
 })

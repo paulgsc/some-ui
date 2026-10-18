@@ -120,6 +120,18 @@ export function extractIsShort(el: HTMLElement): boolean {
 }
 
 /**
+ * The official-artist badge (QD15). YouTube draws it with the plain verified
+ * badge's class, so only its label tells them apart: on a Polymer card's
+ * `badge-shape`, and on a lockup's metadata icon. The label is English, as
+ * the extension reads YouTube (`maturity.ts`'s `PARSER`).
+ */
+export const ARTIST_BADGE = '[aria-label="Official Artist Channel"]'
+
+export function extractIsArtist(el: HTMLElement): boolean {
+  return el.querySelector(ARTIST_BADGE) !== null
+}
+
+/**
  * A lockup for a list rather than one video. Every one in the 2026-10-17
  * captures is a Mix, whose metadata run is an artist list ("A, B and more"),
  * not a channel.

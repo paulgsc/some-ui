@@ -19,6 +19,7 @@
 
 import path from "path"
 import { fileURLToPath } from "url"
+import type { ViewState } from "@censor/lib/content/fsm"
 import {
   BOUNDARY_CHANGES_KEY,
   SETTINGS_KEY,
@@ -49,7 +50,7 @@ type BoyoDebug = {
     {
       videoId: string
       channelId: string
-      viewKind: "absent" | "plated"
+      viewKind: ViewState["kind"]
       isConnected: boolean
     }
   >

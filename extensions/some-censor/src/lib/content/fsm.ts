@@ -19,6 +19,8 @@
  */
 
 import type { WatchObservation } from "@censor/lib/content/core/observation"
+import type { MusicEvidence } from "@censor/lib/content/lane/lane"
+import { isMusic } from "@censor/lib/content/lane/lane"
 import {
   classify,
   estimate,
@@ -41,10 +43,16 @@ type Plated = {
   readonly session: SessionId
 }
 
-export type ViewState = Absent | Plated
+/** In the listening lane: shown as YouTube shows it, at any age (QD15). */
+type Whole = {
+  readonly kind: "whole"
+  readonly session: SessionId
+}
+
+export type ViewState = Absent | Plated | Whole
 
 /** What {@link decide} reads off an observation, and nothing else. */
-type Evidence = {
+type Evidence = MusicEvidence & {
   /** Raw vendor date text (`core/observation.ts`). */
   readonly uploadDate: string | null
   /** The card is a Short (QD11: always held). */
@@ -54,10 +62,12 @@ type Evidence = {
 /**
  * The view a card's evidence earns at `now`, under the owner's boundary.
  *
- * Plated only when the estimator places it at QM3 or QM4. Everything else is
- * absent: no date, a date the grammar cannot read, a live or upcoming card,
- * anything younger than the boundary, and every Short. Missing or
- * invalidated evidence therefore fails closed (doctrine §7).
+ * Whole when it is music (`lane/lane.ts`) and its date proves a past upload,
+ * neither live nor upcoming, at any age (QD15). Otherwise plated only when
+ * the estimator places it at QM3 or QM4. Everything else is absent: no date,
+ * a date the grammar cannot read, a live or upcoming card, anything younger
+ * than the boundary, and every Short. Missing or invalidated evidence
+ * therefore fails closed (doctrine §7).
  */
 export function decide(
   evidence: Evidence,
@@ -66,14 +76,19 @@ export function decide(
   session: SessionId
 ): ViewState {
   if (evidence.short) return { kind: "absent", session }
-  const band = classify(estimate(evidence.uploadDate, now), boundaryDays)
+  const e = estimate(evidence.uploadDate, now)
+  if (e.kind === "aged" && isMusic(evidence)) return { kind: "whole", session }
+  const band = classify(e, boundaryDays)
   return band === "QM3" || band === "QM4"
     ? { kind: "plated", session }
     : { kind: "absent", session }
 }
 
-/** The `data-boyo` stamp. `styles/content.css` keys `absent` to `display: none`. */
-type DataBoyo = "absent" | "plated"
+/**
+ * The `data-boyo` stamp. `styles/content.css` keys `absent` to
+ * `display: none`, and `whole` to nothing: the card as YouTube draws it.
+ */
+type DataBoyo = "absent" | "plated" | "whole"
 
 export type RenderModel = {
   readonly dataBoyo: DataBoyo
@@ -93,6 +108,9 @@ export function project(
     case "plated": {
       return { dataBoyo: "plated", plate: plateOf(inputs) }
     }
+    case "whole": {
+      return { dataBoyo: "whole", plate: null }
+    }
     default: {
       kind satisfies never
       return assertNever(kind)
@@ -105,11 +123,17 @@ export function project(
  * it: the player and what is said about the video stay hidden, and so does
  * the tab title, without yet saying "Not here." (QD17).
  */
-export type WatchView = "pending" | "absent" | "plated"
+export type WatchView = "pending" | "absent" | "plated" | "whole"
+
+/** A view shown with its player: plated, or whole in the lane. */
+export function admitted(view: WatchView | ViewState["kind"]): boolean {
+  return view === "plated" || view === "whole"
+}
 
 /**
- * {@link decide}'s rule for the page's own video: plated at QM3 or QM4, on
- * the youngest of the dates it shows; absent for a Short, and for a page
+ * {@link decide}'s rule for the page's own video: whole when it is music and
+ * the youngest of the dates it shows proves a past upload (QD15); else
+ * plated at QM3 or QM4 on that date; absent for a Short, and for a page
  * whose dates the grammar cannot place (QD3). A page with no metadata or no
  * date yet is pending.
  */
@@ -121,6 +145,7 @@ export function decideWatch(
   if (watch.short) return "absent"
   if (!watch.hydrated || watch.dates.length === 0) return "pending"
   const e = youngest(watch.dates.map((raw) => estimate(raw, now)))
+  if (e.kind === "aged" && isMusic(watch)) return "whole"
   const band = classify(e, boundaryDays)
   return band === "QM3" || band === "QM4" ? "plated" : "absent"
 }

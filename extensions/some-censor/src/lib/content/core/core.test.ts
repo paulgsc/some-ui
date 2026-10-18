@@ -41,6 +41,7 @@ function observation(
     duration: "1:23",
     uploadDate: "3 days ago",
     short: false,
+    artist: false,
     surface: "home",
     renderer: "ytd-rich-item-renderer",
     shape: "known",
@@ -407,6 +408,9 @@ describe("the watch page (R8, #1805)", () => {
     hydrated: true,
     dates: ["444M views", "21y ago"],
     miniplayer: false,
+    title: "Me at the zoo",
+    channelName: "jawed",
+    artist: false,
   }
   const watched = (
     t: number,
@@ -613,6 +617,65 @@ describe("the watch page (R8, #1805)", () => {
   })
 })
 
+describe("the listening lane (QD15, #1806)", () => {
+  it("follows the latest reading of the artist badge, never a stale one", () => {
+    const { state } = fold([
+      started,
+      seen(1, { uploadDate: "2 hours ago", title: "News", artist: true }),
+    ])
+    expect(viewOf(state)).toBe("whole")
+    const lost = reduce(
+      state,
+      seen(2, { uploadDate: "2 hours ago", title: "News", artist: false })
+    )
+    expect(viewOf(lost.state)).toBe("absent")
+  })
+
+  it("reads nothing of the lane off another video's metadata still on screen", () => {
+    const page = (
+      videoId: string,
+      overrides: Partial<WatchObservation>
+    ): CoreEvent => ({
+      kind: "watched",
+      watch: {
+        videoId: asVideoId(videoId),
+        short: false,
+        hydrated: true,
+        dates: ["444M views", "21y ago"],
+        miniplayer: false,
+        title: null,
+        channelName: null,
+        artist: false,
+        ...overrides,
+      },
+      t: 2,
+    })
+    const { state } = fold([
+      started,
+      page("song", { title: "Stay With Me MV", artist: true }),
+    ])
+    expect(state.watch?.view).toBe("whole")
+    // The next video, named before its page is rewritten: first with no
+    // date at all, then with the previous one's.
+    const undated = reduce(
+      state,
+      page("news", { dates: [], title: "Stay With Me MV", artist: true })
+    )
+    const next = reduce(
+      undated.state,
+      page("news", { title: "Stay With Me MV", artist: true })
+    )
+    expect(next.state.watch?.view).toBe("pending")
+    // Its own date arrives before its title does: nothing of the previous
+    // video's title or badge is kept to admit it.
+    const dated = reduce(
+      next.state,
+      page("news", { dates: ["3 hours ago"], title: null })
+    )
+    expect(dated.state.watch?.view).toBe("absent")
+  })
+})
+
 describe("what autoplay may go on into (#1805)", () => {
   it("admits a plated card's video, and nothing held or unseen", () => {
     const { state } = fold([
@@ -623,6 +686,13 @@ describe("what autoplay may go on into (#1805)", () => {
     expect(admits(state, asVideoId("old"))).toBe(true)
     expect(admits(state, asVideoId("recent"))).toBe(false)
     expect(admits(state, asVideoId("unseen"))).toBe(false)
+    const lane = fold([
+      started,
+      seen(1, { uploadDate: "3 hours ago", title: "Stay With Me MV" }, "song"),
+    ])
+    expect(admits(lane.state, asVideoId("song")), "whole, in the lane").toBe(
+      true
+    )
   })
 })
 

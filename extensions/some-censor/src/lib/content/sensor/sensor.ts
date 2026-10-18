@@ -42,6 +42,7 @@ import { keyVideoId } from "@censor/lib/content/core/keys"
 import type { Observation } from "@censor/lib/content/core/observation"
 import {
   extractCarriesChannel,
+  extractIsArtist,
   extractIsShort,
   extractMeta,
   extractTitle,
@@ -137,11 +138,15 @@ export function createSensor(ports: SensorPorts): Sensor {
   /** Cards whose channel budget is spent: not re-sampled again this session. */
   let channelAbandoned = new WeakSet<HTMLElement>()
   /**
-   * Cards with a channel but no name yet: a name can hydrate in place after
-   * its link, a text change no mutation this observes, and the plate's
-   * initial reads it. Re-read under the same budget, and given up silently.
+   * Cards with a channel but no name yet, or no title yet: either can
+   * hydrate in place after the card, a text change no mutation this
+   * observes, and the plate's initial reads the name and the lane (QD15)
+   * both. Re-read under the same budget, and given up silently.
    */
-  const namePending = new Map<HTMLElement, number>()
+  const namePending = new Map<
+    HTMLElement,
+    { since: number; name: boolean; title: boolean }
+  >()
   let nameAbandoned = new WeakSet<HTMLElement>()
   /**
    * Cards observed with no upload date at all, kept under the same budget: the
@@ -220,6 +225,7 @@ export function createSensor(ports: SensorPorts): Sensor {
       duration: meta.duration,
       uploadDate: extractUploadDate(el),
       short: extractIsShort(el),
+      artist: extractIsArtist(el),
       surface,
       renderer: el.tagName.toLowerCase(),
       shape,
@@ -323,9 +329,16 @@ export function createSensor(ports: SensorPorts): Sensor {
       channelPending.delete(el)
       channelAbandoned.delete(el)
     }
-    if (observation.channelId !== null && observation.channelName === null) {
-      if (!namePending.has(el) && !nameAbandoned.has(el)) {
-        namePending.set(el, now)
+    const name =
+      observation.channelId !== null && observation.channelName === null
+    const title = observation.title === null
+    if (name || title) {
+      const pending = namePending.get(el)
+      if (pending !== undefined) {
+        // Only what is still missing is waited for.
+        namePending.set(el, { since: pending.since, name, title })
+      } else if (!nameAbandoned.has(el)) {
+        namePending.set(el, { since: now, name, title })
         ensureRetryLoop()
       }
     } else {
@@ -435,11 +448,14 @@ export function createSensor(ports: SensorPorts): Sensor {
       }
     }
 
-    for (const [el, since] of namePending) {
+    for (const [el, { since, name, title }] of namePending) {
       if (!el.isConnected || now - since >= RESOLVE_BUDGET_MS) {
         namePending.delete(el)
         nameAbandoned.add(el)
-      } else if (extractMeta(el).channelName !== null) {
+      } else if (
+        (name && extractMeta(el).channelName !== null) ||
+        (title && extractTitle(el) !== null)
+      ) {
         observe(el)
       }
     }

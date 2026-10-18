@@ -156,9 +156,9 @@ own video is decided the same way, so a link to a held video reaches "Not
 here." (`QD11`).
 
 _Amended by `QD15`:_ "regardless of its subject" admits one exception. Music
-whose title is mostly in a script the owner listens to but doesn't read is
-admitted whole at any age, because its coupling to the present, the quantity
-this result bounds by age, is already zero.
+is admitted whole at any age, because the music the feed offers the owner is
+music whose words don't reach them, so its coupling to the present, the
+quantity this result bounds by age, is already zero.
 
 ---
 
@@ -186,9 +186,9 @@ _Status: holds in the estimator._ `src/lib/content/maturity/maturity.ts` maps
 every form it cannot read with certainty to `unverified` (`QM0`), and since
 #1803 that decides what is shown: an unverified card is absent.
 
-_Amended by `QD15`:_ opacity admits without age evidence, so a lane video is
-shown whole even when its age is unknown. Everywhere else, unknown still means
-outside.
+_Amended by `QD15`:_ a lane video needs no age, only a date that proves a
+past upload: one the estimator cannot read could be live, so it is still
+outside. Everywhere else, unknown still means outside.
 
 ---
 
@@ -466,11 +466,19 @@ proves each hidden.
 
 ### QD15 — Opacity is a second way in
 
-Music whose title is mostly in a script the owner has declared they listen to
-but don't read is admitted whole, whatever its age, unless it is live, a
-premiere or a Short. The script is counted, never interpreted (§8). The owner
-sets this per language, so marking Chinese admits Han-script titles, which
-includes Japanese titles written mostly in kanji; that overlap is accepted.
+Music is admitted whole, whatever its age, unless it is live, a premiere or a
+Short. A video is music when its title carries "OST" or "MV" as a word, its
+channel is an artist's `… - Topic` channel, or the channel carries YouTube's
+official-artist badge. Each sign is read, never interpreted (§8).
+
+The owner first asked for music whose title is mostly in a script they listen
+to but don't read, set per language. On 2026-10-17 they chose music alone: the
+music the feed offers them is already the Korean and Chinese soundtracks they
+mean, so the script rule and its setting are dropped. An English song with
+topical lyrics is admitted whole too, and so is any title that carries the
+token without being music: a ship ("MV Dali"), a motorcycle ("MV Agusta"), a
+reaction video. The owner accepted both; the token is upper case only, since
+"Ost" and "ost" are words.
 
 `H2` makes age a classifier of _coupling to the present_. Music whose words do
 not reach the listener has no coupling to measure: the owner consumes K-drama
@@ -480,10 +488,15 @@ its subject" and `QD3`'s "unknown means outside" to say so. Lane videos keep
 their real thumbnails; `QD12` applies only to videos admitted by distance. The rule describes the owner as they
 are, and does not anticipate them learning these scripts.
 
-_Status: absent._ #1806. _Pending amendment:_ the owner decided on
-2026-10-17 (recorded on #1806) that being music alone admits a video, unless
-it is live, a premiere or a Short; the title-script rule and the per-language
-setting are dropped. #1806 rewrites this result when it builds the lane.
+_Status: holds, with gaps (#1806)._ `lane/lane.ts` reads the three signs, off
+the title and channel name every card already carries and the badge the
+Sensor reads (`extract/meta.ts`); `fsm.ts` decides a card or the watch page
+whole when it is music and its date proves a past upload, before the boundary
+is asked. A whole card shows its own thumbnail and channel photo, and its
+crowd numbers still go; a whole watch page shows its player and its own
+poster, with no face control. Autoplay goes on into a whole video. There is no
+setting: the lane is always on (owner, 2026-10-18). `lane.test.ts` holds the
+table, and `lane.spec.ts` LN1–LN3 and `watch.spec.ts` W11 prove it, locally.
 
 ---
 
@@ -492,7 +505,7 @@ setting are dropped. #1806 rewrites this result when it builds the lane.
 The owner's judgement is exercised on one setting, the boundary `B`, and
 nowhere else, besides switching the extension on or off. (A second setting,
 the scripts they listen to but don't read, was dropped on 2026-10-17 with the
-lane's title-script rule; see `QD15`.) No card, channel or page offers a disclosure step, a
+lane's title-script rule, and the lane has no switch of its own; see `QD15`.) No card, channel or page offers a disclosure step, a
 trust decision or a verdict. The one exception is `QD13`'s face control, which
 shows only the thumbnail of a video already admitted and plated, and decides
 nothing about admission.
@@ -588,7 +601,7 @@ mistake the whitelist made until #1807 deleted it.
 | `QA2` | **Identity trust**     | This channel is genuinely who it claims to be. Provenance, not admission. _Superseded by `QD16`:_ no trust decision exists.                                                                                                                                                                                                                                                                                                                                                          |
 | `QA3` | **Delayed source**     | This channel's uploads become admissible after `B` (or a per-source `B`) — never before it. _Superseded by `QD16`:_ there are no per-source settings; not planned.                                                                                                                                                                                                                                                                                                                   |
 | `QA4` | **Boundary exemption** | **Rejected.** Listed only to be ruled out: a channel's uploads skipping the boundary entirely is exactly what `QD2` forbids, however it is framed at the UI.                                                                                                                                                                                                                                                                                                                         |
-| `QA5` | **Opacity**            | Music whose title is mostly in a script the owner listens to but doesn't read is admitted whole, at any age, unless live, a premiere or a Short (`QD15`). Unlike `QA4` it is not keyed on a source: it measures the same coupling `B` does, by another route.                                                                                                                                                                                                                        |
+| `QA5` | **Opacity**            | Music is admitted whole, at any age, unless live, a premiere or a Short (`QD15`). Unlike `QA4` it is not keyed on a source: it measures the same coupling `B` does, by another route.                                                                                                                                                                                                                                                                                                |
 
 `QD2` says material newer than the boundary is ineligible "regardless of its
 source, its subject, or how much the user wants to see it in the moment." That
@@ -642,29 +655,34 @@ section is a behavioural change; it is a statement of distance.
 
 ### What contradicts it
 
-| gap                                                              | where                                                                       | doctrine |
-| ---------------------------------------------------------------- | --------------------------------------------------------------------------- | -------- |
-| No surface-level concealment                                     | absence and the plate are per renderer                                      | QD8      |
-| Manifest copy describes the mechanism                            | `public/manifest.json` `description`, the popup's tagline                   | §0       |
-| Autoplay stops before an old video that has no card on the page  | Core admits only what it has plated, so an unseen next video is held        | QD12     |
-| A playlist skips an unplayable item into the next, held or not   | that advance (`onPlaylistNext`) carries no `autonav`, so nothing holds it   | QD11     |
-| The countdown's "Play now" may be held like autoplay             | its module was not captured; if it plays next as autonav, it reads as one   | QD12     |
-| The autoplay countdown can show a held next video's title        | the end screen's markup was not captured, so no rule names its title        | QD11     |
-| A page YouTube moves to another video could paint it unmasked    | the mask returns when `video-id` changes; nothing proves it changes first   | QD11     |
-| A watch page that never shows its video's date stays blank       | it is pending, which says nothing, and nothing ends pending                 | QD17     |
-| A held video's title shows in the tab on a direct load, briefly  | the server sends it, and the content script runs at `document_end`          | QD11     |
-| Two videos showing the same date runs read as one                | the second is pending until a run differs, the view count included          | QD17     |
-| A start mid-transition can admit the next video on the last date | Core has read no previous video, so nothing marks that date as another's    | QD11     |
-| The miniplayer's next video is held, however old                 | nothing on the page states its date; expanding it to its page decides it    | QD17     |
-| The miniplayer's next video gets in if its title is the same     | its title bar is the only sign the video changed                            | QD11     |
-| A shelf elsewhere keeps its header                               | a container `SHELF_SELECTORS` does not name                                 | QD11     |
-| A channel photo outside a card leaves an empty space, not a disc | no card's ids to hash there; the photo itself is hidden                     | QD12     |
-| Live chat shows its authors' photos                              | the chat is its own frame, and the manifest injects into the top frame only | QD12     |
-| A channel's seamless header can play its video trailer           | a video, not an image, so no image rule hides it (#1888)                    | QD12     |
-| #1806's whole cards would lose their channel photos              | the channel-photo rule hides them wherever they sit                         | QD15     |
-| A hover on the duration badge can still start a hidden preview   | the badge takes the pointer to open the card; the player is `display: none` | QD12     |
-| A trending rank is shown                                         | no capture holds one, so no crowd rule names it                             | QD14     |
-| The "Video details" list shows on Firefox 112–120                | its crowd rule needs `:has()`                                               | QD14     |
+| gap                                                                                  | where                                                                       | doctrine |
+| ------------------------------------------------------------------------------------ | --------------------------------------------------------------------------- | -------- |
+| No surface-level concealment                                                         | absence and the plate are per renderer                                      | QD8      |
+| Manifest copy describes the mechanism                                                | `public/manifest.json` `description`, the popup's tagline                   | §0       |
+| Autoplay stops before an old video that has no card on the page                      | Core admits only what it has plated, so an unseen next video is held        | QD12     |
+| A playlist skips an unplayable item into the next, held or not                       | that advance (`onPlaylistNext`) carries no `autonav`, so nothing holds it   | QD11     |
+| The countdown's "Play now" may be held like autoplay                                 | its module was not captured; if it plays next as autonav, it reads as one   | QD12     |
+| The autoplay countdown can show a held next video's title                            | the end screen's markup was not captured, so no rule names its title        | QD11     |
+| A page YouTube moves to another video could paint it unmasked                        | the mask returns when `video-id` changes; nothing proves it changes first   | QD11     |
+| A watch page that never shows its video's date stays blank                           | it is pending, which says nothing, and nothing ends pending                 | QD17     |
+| A held video's title shows in the tab on a direct load, briefly                      | the server sends it, and the content script runs at `document_end`          | QD11     |
+| Two videos showing the same date runs read as one                                    | the second is pending until a run differs, the view count included          | QD17     |
+| A start mid-transition can admit the next video on the last date                     | Core has read no previous video, so nothing marks that date as another's    | QD11     |
+| The miniplayer's next video is held, however old                                     | nothing on the page states its date; expanding it to its page decides it    | QD17     |
+| The miniplayer's next video gets in if its title is the same                         | its title bar is the only sign the video changed                            | QD11     |
+| A shelf elsewhere keeps its header                                                   | a container `SHELF_SELECTORS` does not name                                 | QD11     |
+| A channel photo outside a card leaves an empty space, not a disc                     | no card's ids to hash there; the photo itself is hidden                     | QD12     |
+| Live chat shows its authors' photos                                                  | the chat is its own frame, and the manifest injects into the top frame only | QD12     |
+| A channel's seamless header can play its video trailer                               | a video, not an image, so no image rule hides it (#1888)                    | QD12     |
+| The watch page's category, Music, is not read                                        | the rendered page carries it nowhere; YouTube's crawler block is empty      | QD15     |
+| A Topic channel and the artist badge are unseen in any capture                       | both are read as documented (`… - Topic`, "Official Artist Channel")        | QD15     |
+| A whole watch page hides its channel's photo                                         | the channel-photo rule exempts only whole cards                             | QD15     |
+| A whole card's hover preview never plays                                             | the preview player is hidden for every card                                 | QD15     |
+| A current non-music title with "MV" or "OST" as a word is whole                      | the token rule reads the word, not what it names (accepted, QD15)           | QD15     |
+| A watch page's title, channel and badge are assumed rewritten no later than its date | Core blanks the title, channel and badge only while the date is stale       | QD15     |
+| A hover on the duration badge can still start a hidden preview                       | the badge takes the pointer to open the card; the player is `display: none` | QD12     |
+| A trending rank is shown                                                             | no capture holds one, so no crowd rule names it                             | QD14     |
+| The "Video details" list shows on Firefox 112–120                                    | its crowd rule needs `:has()`                                               | QD14     |
 
 ### Extraction hazards a maturity estimator will meet
 

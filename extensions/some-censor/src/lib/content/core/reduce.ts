@@ -369,7 +369,19 @@ function watched(
     last !== null &&
     last.videoId !== observation.videoId &&
     within(observation.dates, last.dates)
-  const own = stale ? { ...observation, dates: [] } : observation
+  // With them, the title and the channel are the previous video's too, so
+  // they say nothing about the lane (QD15) yet; nor do they on a reading
+  // with no date of this video's own, which may be the previous page.
+  const own =
+    stale || observation.dates.length === 0
+      ? {
+          ...observation,
+          dates: stale ? [] : observation.dates,
+          title: null,
+          channelName: null,
+          artist: false,
+        }
+      : observation
   const merged = previous === null ? own : mergeWatch(previous.observation, own)
   const view = decideWatch(merged, t, state.boundaryDays)
   const next: WatchState = {

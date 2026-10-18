@@ -16,6 +16,7 @@
 import { describe, expect, it } from "vitest"
 
 import {
+  extractIsArtist,
   extractIsShort,
   extractMeta,
   extractTitle,
@@ -539,6 +540,9 @@ describe("readWatch (#1805)", () => {
         "SAN DIEGO ZOO",
       ],
       miniplayer: false,
+      title: "Me at the zoo",
+      channelName: null,
+      artist: false,
     })
   })
 
@@ -552,6 +556,9 @@ describe("readWatch (#1805)", () => {
       hydrated: false,
       dates: [],
       miniplayer: false,
+      title: null,
+      channelName: null,
+      artist: false,
     })
   })
 
@@ -599,6 +606,9 @@ describe("readWatch (#1805)", () => {
       hydrated: false,
       dates: [],
       miniplayer: true,
+      title: null,
+      channelName: null,
+      artist: false,
     })
   })
 })
@@ -625,5 +635,25 @@ describe("readAutonav (#1805)", () => {
     })
     expect(readAutonav(xray)).toBe("next")
     expect(readAutonav(new Event("yt-navigate"))).toBeNull()
+  })
+})
+
+describe("extractIsArtist (QD15, #1806)", () => {
+  it("reads the official-artist badge, and not the plain verified one", () => {
+    const polymer = make(
+      "ytd-video-renderer",
+      '<ytd-channel-name><ytd-badge-supported-renderer><badge-shape role="img" aria-label="Official Artist Channel"></badge-shape></ytd-badge-supported-renderer></ytd-channel-name>'
+    )
+    const lockup = make(
+      "yt-lockup-view-model",
+      '<span class="ytContentMetadataViewModelIcon" aria-label="Official Artist Channel">♪</span>'
+    )
+    const verified = make(
+      "ytd-video-renderer",
+      '<ytd-channel-name><ytd-badge-supported-renderer><badge-shape role="img" aria-label="Verified"></badge-shape></ytd-badge-supported-renderer></ytd-channel-name>'
+    )
+    expect(extractIsArtist(polymer)).toBe(true)
+    expect(extractIsArtist(lockup)).toBe(true)
+    expect(extractIsArtist(verified)).toBe(false)
   })
 })

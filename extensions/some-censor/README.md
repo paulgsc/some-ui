@@ -32,7 +32,8 @@ observation to write:
    `reduce(state, event) → { state, actions }`: no DOM, `browser.*`, clock,
    or randomness anywhere under `core/`. A card's view is decided by its
    evidence under the owner's boundary (`fsm.ts`'s `decide`, over the
-   maturity estimate): absent, or plated when it is old enough. No gesture on
+   maturity estimate): absent, plated when it is old enough, or whole when it
+   is music (`lane/lane.ts`, QD15). No gesture on
    a card is an input (#1803); the boundary, set in the popup, is (#1807),
    and so is the face hold on a plated watch page (QD13, #1805).
 4. **Actuator** (`src/lib/content/actuator/`) — the only writer to the
@@ -40,8 +41,8 @@ observation to write:
    stamp (`absent` is `display: none` in `styles/content.css`), the plate's
    tones on a plated card, which the stylesheet paints in place of its
    images (QD12), and the watch page's view (#1805): "Not here." on a held
-   video's page, and until a video is plated no playback and a tab title of
-   "YouTube", which it keeps against YouTube's own writes.
+   video's page, and until a video is plated or whole no playback and a tab
+   title of "YouTube", which it keeps against YouTube's own writes.
 
 ## Browsers
 

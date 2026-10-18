@@ -28,6 +28,7 @@
 
 import type { Action } from "@censor/lib/content/core/actions"
 import type { WatchView } from "@censor/lib/content/fsm"
+import { admitted } from "@censor/lib/content/fsm"
 import type { VideoId } from "@censor/types/ids"
 
 import type { FaceControl } from "./face-hold"
@@ -217,7 +218,7 @@ export function createWatchHold(
       return
     }
     root.dataset["boyoWatch"] = view
-    if (view === "plated") {
+    if (admitted(view)) {
       hideSurface()
       release()
       return

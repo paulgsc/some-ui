@@ -7,6 +7,7 @@
  */
 
 import type { ViewState, WatchView } from "@censor/lib/content/fsm"
+import { admitted } from "@censor/lib/content/fsm"
 import type { UnknownShapeReason } from "@censor/lib/content/layout/lookup"
 import { DEFAULT_BOUNDARY_DAYS } from "@censor/lib/content/maturity/maturity"
 import type { VideoId } from "@censor/types/ids"
@@ -100,12 +101,12 @@ export type CoreSnapshot = {
 
 /**
  * Whether Core admits `videoId` where autoplay would go next (#1805): a
- * card for it is on the page, plated. A held card, or a video with no card
- * at all, is not admitted (QD3, QD11).
+ * card for it is on the page, plated or whole in the lane. A held card, or a
+ * video with no card at all, is not admitted (QD3, QD11).
  */
 export function admits(state: CoreState, videoId: VideoId): boolean {
   for (const card of state.cards.values()) {
-    if (card.observation.videoId === videoId && card.view.kind === "plated") {
+    if (card.observation.videoId === videoId && admitted(card.view.kind)) {
       return true
     }
   }

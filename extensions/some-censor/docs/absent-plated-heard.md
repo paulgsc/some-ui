@@ -8,27 +8,27 @@
 ## 1. The three states
 
 Every video on www.youtube.com is in exactly one of three states. The state is
-a pure function of evidence (the video's estimated age, its title's script, its
-music signals) and one setting, the boundary. No gesture changes it (`QD16`).
+a pure function of evidence (the video's estimated age, its music signals) and
+one setting, the boundary. No gesture changes it (`QD16`).
 
-| The video is                                                           | On feeds and search                                                                           | On its watch page                                                                                    | Its real thumbnail                                              |
-| ---------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
-| Current, or of unprovable age (`QM0`–`QM2`), and not in the lane       | **Absent**: no tile, no cover, no count (`QD11`)                                              | "Not here." and Back. No player, title, date, or video-derived tab title (`QD17`)                    | Never                                                           |
-| Old enough (`QM3`–`QM4`, boundary `B`), and not in the lane            | **Plated**: title, channel name and duration, on a plate, with a plated channel icon (`QD12`) | The plate is the poster until play. Up next is plated. No comments (`QD14`) or end-screen thumbnails | After a 3-second hold on the watch page, for that view (`QD13`) |
-| Music whose title is in a script the owner listens to but doesn't read | **Whole**: as YouTube renders it, minus every crowd number and age (`QD14`, `QD15`)           | As YouTube renders it, minus the crowd. Autoplay stops before a held video (`QD11`)                  | Shown                                                           |
+| The video is                                                     | On feeds and search                                                                           | On its watch page                                                                                    | Its real thumbnail                                              |
+| ---------------------------------------------------------------- | --------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
+| Current, or of unprovable age (`QM0`–`QM2`), and not in the lane | **Absent**: no tile, no cover, no count (`QD11`)                                              | "Not here." and Back. No player, title, date, or video-derived tab title (`QD17`)                    | Never                                                           |
+| Old enough (`QM3`–`QM4`, boundary `B`), and not in the lane      | **Plated**: title, channel name and duration, on a plate, with a plated channel icon (`QD12`) | The plate is the poster until play. Up next is plated. No comments (`QD14`) or end-screen thumbnails | After a 3-second hold on the watch page, for that view (`QD13`) |
+| Music, and not live, a premiere or a Short                       | **Whole**: as YouTube renders it, minus every crowd number and age (`QD14`, `QD15`)           | As YouTube renders it, minus the crowd. Autoplay stops before a held video (`QD11`)                  | Shown                                                           |
 
 Live streams, premieres and Shorts are always held (`QD11`): a live object is
 present by definition, and a Short carries no date (`QD3`).
 
 ## 2. The terms
 
-| Term         | Meaning                                                                                                                                                                    |
-| ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Coupling** | How much of the present a video can carry into the owner's head. The one thing being managed (`H2`). Age and opacity are two ways of measuring it.                         |
-| **Distance** | The first way coupling fades: the video is older than `B`.                                                                                                                 |
-| **Opacity**  | The second way: the video is music, and its words are in a script the owner has said they listen to but don't read. Coupling is zero however recent it is (`QD15`, `QA5`). |
-| **Face**     | A video's real thumbnail. Never offered on a feed; reachable only by the hold on a watch page.                                                                             |
-| **Lane**     | The set of videos admitted by opacity. Shown whole: the owner chose to see drama stills and show names ("seeing the drama is fine").                                       |
+| Term         | Meaning                                                                                                                                            |
+| ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Coupling** | How much of the present a video can carry into the owner's head. The one thing being managed (`H2`). Age and opacity are two ways of measuring it. |
+| **Distance** | The first way coupling fades: the video is older than `B`.                                                                                         |
+| **Opacity**  | The second way: the video is music, whose words don't reach the owner. Coupling is zero however recent it is (`QD15`, `QA5`).                      |
+| **Face**     | A video's real thumbnail. Never offered on a feed; reachable only by the hold on a watch page.                                                     |
+| **Lane**     | The set of videos admitted by opacity. Shown whole: the owner chose to see drama stills and show names ("seeing the drama is fine").               |
 
 ## 3. The plate (`QD12`)
 
@@ -76,22 +76,21 @@ Removed on every surface, the lane included:
 
 ## 6. The lane (`QD15`)
 
-Admitted whole only when all three hold:
+Admitted whole when both hold:
 
-1. **It's music.** On the watch page, YouTube's category is Music. On a card,
-   a `… - Topic` channel or an official-artist badge. Over-holding is the safe
-   direction (`QD3`).
-2. **Its title is mostly in a script the owner marked.** Counted by Unicode
-   script over the title's code points, ignoring Latin, digits and punctuation.
-   Mechanical: no judgement about meaning (§8 of the doctrine).
-3. **It's not live, a premiere, or a Short.**
+1. **It's music.** Any one sign is enough: the title carries `OST` or `MV` as
+   a word (as YouTube titles write them: `OST`, `Ost`, `MV`; never lower case,
+   which is a word elsewhere), the channel is an artist's `… - Topic` channel,
+   or it carries the official-artist badge. Mechanical: no judgement about
+   meaning (§8 of the doctrine).
+2. **It's not live, a premiere, or a Short.** Its date must prove a past
+   upload; a date the estimator cannot read could be live, so it stays held
+   (`QD3`).
 
-The setting is per language and the rule counts scripts, so 中文 and 日本語
-share Han (`QD15`).
-
-_Pending amendment (#1806):_ the owner dropped rule 2 and its setting on
-2026-10-17, so being music, and not live, a premiere or a Short, will be
-enough. #1806 rewrites this section with `QD15`.
+The owner dropped the earlier rule, a title mostly in a script they listen to
+but don't read, on 2026-10-17: the feed's music is already that subset. The
+lane has no setting (2026-10-18). The watch page's category is not on the
+rendered page, so the watch page uses the same three signs (`QD15`).
 
 ## 7. Decide once (`QD16`)
 
