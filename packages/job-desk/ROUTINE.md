@@ -1,8 +1,9 @@
 # The daily jobs run
 
 A scheduled task runs this every morning at 07:52 Pacific, in a fresh session
-with the Indeed and Google Drive connectors and a checkout of
-`paulgsc/some-ui`. It reads my résumé and what I said about yesterday's picks,
+with the Indeed and Google Drive connectors, GitHub access to
+`paulgsc/some-ui` that can push one branch and open a PR, and a checkout of
+it. It reads my résumé and what I said about yesterday's picks,
 searches Indeed on two tracks, and leaves one file in Drive: today's digest.
 The phone opens that file, and later runs read it back to see what was
 already picked.
@@ -177,25 +178,39 @@ picked today. Fewer picks than the limit is fine; a weak pick is not.
 ### The résumé PR
 
 A run opens at most `PATCH_PRS_PER_RUN` (one) PR, so I review one change at
-a time:
+a time. Its PRs carry the label `jobs-patch`, and only theirs do.
 
-1. Search `paulgsc/some-ui` for open PRs whose body has a `Jobs patch:` line.
-   If one is open, open none today. A patch for the same composition it
-   changes may name it as its `pr`; every other patch keeps `pr: null`.
+1. Search `paulgsc/some-ui` for PRs labelled `jobs-patch`. If one is open,
+   open none today: a patch for the composition it changes may name it as
+   its `pr`, and every other patch keeps `pr: null`.
 2. Otherwise take the patch pick with the highest fit × odds whose `variant`
-   is an existing composition. A new composition stays proposed, with
-   `pr: null`: adding one touches more than its own entries, and that is
-   mine to write.
+   is an existing composition, unless the latest `jobs-patch` PR for that
+   composition was closed without merging: I turned that change down, so
+   leave the composition to me and say so in the summary. A new composition
+   stays proposed, with `pr: null`: adding one touches more than its own
+   entries, and that is mine to write. Give every pick its id now (§8,
+   step 1), so the branch and the PR name the id the digest will carry.
 3. From `origin/main`, on the branch this session was given to work on (or
    `jobs/resume-<today>-<pick id>` if it was given none), change only that
    composition's entries in `packages/ui/resume/src/data/resume.typ`: its
-   `summary`, `skills`, `keywords`, the order and choice of its projects and
-   bullets, its highlights and its toolbox. Each change restates a claim
-   some composition or `src/canon/resume.meta.typ` already makes. A claim
-   with no trace there is never added; it goes in the pick's `gaps`.
+   `summary`, `skills`, `keywords`, `platform` (the "Engineering practice"
+   lines), the order and choice of its projects and bullets, its highlights
+   and its toolbox. Each new or reworded line restates a line some
+   composition in `resume.typ` already carries, or an entry under
+   `= Provenance` in `src/canon/resume.meta.typ`; never a gap, a requirement
+   or a revision note. A claim with no such source is never added; it goes in
+   the pick's `gaps`. Never write a phone number, street address or other
+   contact detail anywhere in the repo.
+
+   In `resume.meta.typ`, add one line under `= Current revision` naming the
+   change and the PR's composition, and, for an adjacent composition, the
+   line's source in its list under "Software-adjacent compositions". Change
+   nothing else there.
+
 4. Check it from the repo root:
 
    ```sh
+   pnpm install --frozen-lockfile
    apt-get update -qq && apt-get install -y --no-install-recommends poppler-utils
    npx turbo run build --filter="@some-ui/resume^..."
    CI=true pnpm --filter @some-ui/resume build
@@ -208,12 +223,12 @@ a time:
 
 5. Commit with a conventional header, lower case after the colon and at most
    100 characters (`feat(resume): lead qa with the android launch test`).
-   Push that one branch and open the PR. Its body follows
-   `.github/pull_request_template.md`. It also says which posting asked for
-   the change, by title and company, and what each change restates and from
-   where. Its Superseded section is "None: the composition is edited in
-   place." Its last line is `Jobs patch: <today> <pick id> <variant>`. No
-   phone number, address or other contact detail goes in it.
+   Push that one branch, open the PR and label it `jobs-patch`. Its body
+   follows `.github/pull_request_template.md`. It also names the posting
+   that asked for the change, by title and company, and the digest day and
+   pick id. For each new or reworded line it quotes the source it restates,
+   with its file and line. Its Superseded section is "None: the composition
+   is edited in place."
 6. Put the PR's number in that pick's `pr`. Never merge it, never push to it
    again, and never touch any other branch or PR.
 
@@ -229,8 +244,9 @@ a time:
 
 ## 8. Write it
 
-1. Give each pick an `id`: three letters of the company and four hex digits
-   (`blu-7f2a`), unique in the digest.
+1. Give each pick an `id`, unless "The résumé PR" (§6) already did: three
+   letters of the company and four hex digits (`blu-7f2a`), unique in the
+   digest. Never change one a PR already names.
 2. For each scout read in step 2, look the posting up with `search_jobs`,
    using its title words and the company. Use its `postingText` when it has
    one. The verdict is `agree` (and it becomes a pick when it outranks one),

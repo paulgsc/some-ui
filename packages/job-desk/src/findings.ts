@@ -48,11 +48,19 @@ export function digestFindings(digest: Digest): ReadonlyArray<Finding> {
     }
   }
 
-  const prs = new Set(
-    digest.picks.flatMap((p) =>
-      p.resume.kind === "patch" && p.resume.pr !== null ? [p.resume.pr] : []
-    )
-  )
+  // Each résumé PR the digest links, and the composition it changes.
+  const prs = new Map<number, string>()
+  digest.picks.forEach(({ resume }, i) => {
+    if (resume.kind !== "patch" || resume.pr === null) return
+    const changes = prs.get(resume.pr)
+    if (changes !== undefined && changes !== resume.variant) {
+      found.push({
+        path: `picks.${i}.resume.pr`,
+        message: `PR #${resume.pr} changes ${changes}, not ${resume.variant}`,
+      })
+    }
+    prs.set(resume.pr, changes ?? resume.variant)
+  })
   if (prs.size > PATCH_PRS_PER_RUN) {
     found.push({
       path: "picks",
