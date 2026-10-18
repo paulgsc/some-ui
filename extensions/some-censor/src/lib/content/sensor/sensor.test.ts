@@ -343,6 +343,11 @@ describe("the retry queue", () => {
       '<a class="yt-content-metadata-view-model__metadata-text" href="/@Late">Late</a>'
     )
     await tick(RESOLVE_BUDGET_MS / RETRY_INTERVAL_MS + 2)
+    expect(facts).toContainEqual({ kind: "churn.ignored", videoId: "churning" })
+    expect(facts).toContainEqual({
+      kind: "channel.abandoned",
+      videoId: "churning",
+    })
     expect(sensor.census().channelPending).toHaveLength(0)
     expect(vi.getTimerCount(), "the loop terminates").toBe(0)
   })

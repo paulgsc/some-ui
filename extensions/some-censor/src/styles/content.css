@@ -509,14 +509,16 @@ ytd-item-section-renderer:has(> #contents > ytd-shelf-renderer:only-child):has(
 
 /* The thumbnail takes no pointer: YouTube starts its hover preview from
    it, and a hidden preview still plays. The title, channel name and
-   duration open the card; the duration's badge sits inside the
-   thumbnail's link, so the badge alone takes the pointer back. */
+   duration open the card; the duration sits inside the thumbnail's
+   link, so its badge (a badge-shape, or Polymer's time-status renderer)
+   takes the pointer back. */
 [data-boyo="plated"] ytd-thumbnail,
 [data-boyo="plated"] .ytLockupViewModelContentImage {
   pointer-events: none !important;
 }
 
 [data-boyo="plated"] ytd-thumbnail ytd-thumbnail-overlay-time-status-renderer,
+[data-boyo="plated"] ytd-thumbnail badge-shape,
 [data-boyo="plated"] .ytLockupViewModelContentImage badge-shape {
   pointer-events: auto !important;
 }
