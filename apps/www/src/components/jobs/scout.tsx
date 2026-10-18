@@ -39,11 +39,17 @@ const FAMILY_LABELS: Readonly<Record<AdjacentFamily, string>> = {
   solutions: "Solutions",
 }
 
-function isHttps(url: string): boolean {
+/**
+ * The link as the URL parser writes it (`https://` in lower case, as home
+ * wants), or null when it isn't one home would keep. Parsing can percent-encode
+ * and so lengthen it, so the limit is checked here as well as by `maxLength`.
+ */
+function httpsLink(url: string): string | null {
   try {
-    return new URL(url).protocol === "https:"
+    const { protocol, href } = new URL(url)
+    return protocol === "https:" && href.length <= MAX_URL ? href : null
   } catch {
-    return false
+    return null
   }
 }
 
@@ -61,15 +67,15 @@ export const JobsScout = (): JSX.Element => {
   const verdicts = new Map(
     state.digests.flatMap((d) => d.scouts.map((s) => [s.scoutId, s] as const))
   )
-  const ready = isHttps(url.trim()) && title.trim() !== ""
+  const link = httpsLink(url.trim())
+  const ready = link !== null && title.trim() !== ""
   const busy = useVoiceBusy(SCOUT_OWNER)
 
   const add = (): void => {
-    if (!ready || busy) return
+    if (link === null || !ready || busy) return
     const kept = jobs.addScout(
       {
-        // As the URL parser writes it: `https://` in lower case, as home wants.
-        url: new URL(url.trim()).href,
+        url: link,
         ...(track === "adjacent" ? { track, family } : { track, family: null }),
         title: title.trim(),
         why: why.trim(),

@@ -43,6 +43,12 @@ describe("parseDigest", () => {
       expect(parsed.problem).toMatch(/^Not a digest: picks\.0\.scores\.fit/)
   })
 
+  it("takes an apply link longer than home keeps a scout's", () => {
+    const digest = sample()
+    digest.picks[0]!.posting.applyUrl = `https://apply.example/?r=${"a".repeat(3_000)}`
+    expect(parseDigest(JSON.stringify(digest)).ok).toBe(true)
+  })
+
   it("refuses a file that isn't JSON", () => {
     expect(parseDigest("digest")).toEqual({
       ok: false,

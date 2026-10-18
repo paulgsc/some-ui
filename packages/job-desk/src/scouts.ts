@@ -3,8 +3,6 @@ import { z } from "zod"
 import {
   HttpsUrlSchema,
   IdSchema,
-  MAX_NOTE,
-  MAX_SCOUT_TITLE,
   parseWith,
   text,
   TrackedSchema,
@@ -34,8 +32,8 @@ export const ScoutsSchema = z.object({
           id: IdSchema,
           url: HttpsUrlSchema,
           /** Title and company as I saw them. */
-          title: text.max(MAX_SCOUT_TITLE),
-          why: z.string().max(MAX_NOTE),
+          title: text,
+          why: z.string(),
           postingText: z.string().max(MAX_POSTING_TEXT).nullable(),
           voice: z.array(VoiceFileSchema),
           addedAt: z.iso.datetime(),

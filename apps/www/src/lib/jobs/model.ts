@@ -189,11 +189,7 @@ function named(log: ReadonlyArray<JobEvent>): Set<string> {
   return ids
 }
 
-/**
- * Whether `event` can be added to `state`: a pick event names a pick of an
- * opened digest, and a step after the decision follows a "taken".
- */
-/** Whether `event`'s texts are within what job-desk's files and home take. */
+/** Whether `event`'s texts are within what home takes. */
 function withinLimits(event: Draft): boolean {
   switch (event.type) {
     case "passed":
@@ -227,6 +223,10 @@ function withinLimits(event: Draft): boolean {
   }
 }
 
+/**
+ * Whether `event` can be added to `state`: a pick event names a pick of an
+ * opened digest, and a step after the decision follows a "taken".
+ */
 function fits(state: JobsState, event: Draft): boolean {
   if (!withinLimits(event)) return false
   if (event.type === "scout") return true

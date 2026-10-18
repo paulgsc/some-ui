@@ -431,9 +431,15 @@ a run is asked for:
 - _Falsified by:_ a hunk to `lib/home-link/kept-watch.ts` that reaches
   `askKept` from anything but `watchKept`'s record subscription, its link
   subscription, its `visibilitychange` and `online` listeners and its first
-  ask, adds a timer, or removes `askKept`'s check that the record is kept
-  on home or that the document is visible; a hunk to `lib/home-link/aph.ts`
-  that calls `watchKept` from anywhere but `useAphHome`'s effect, calls
+  ask, adds a timer, changes when a listener asks (the record subscription's
+  check that the revision moved, the link subscription's test for a new
+  pairing or for the link freeing up after a run it turned away), removes or
+  changes anything the cleanup `watchKept` returns undoes, or removes
+  `askKept`'s check that the record is kept on home or that the document is
+  visible; a hunk to `lib/home-link/aph.ts` that calls `watchKept` from
+  anywhere but `useAphHome`'s effect, passes it anything but `recordOf(aph)`
+  and `aphHome(aph)`, keeps that effect from returning the cleanup
+  `watchKept` returns, calls
   `askKept` from anywhere but `askAph`, changes `recordOf`'s `kept`,
   `revision` or `subscribe` to anything but aph's store's, or makes
   `keepAphOnHome` do more than switch the store; a hunk to
@@ -473,7 +479,8 @@ What no test can say is when a run is asked for:
   `useJobsHome` starts, for as long as the wing's layout
   (`routes/_dashboard/_apk/jobs.tsx`, through `JobsHomeWatch`) is mounted, on
   it mounting, a move of the record's revision (an event added on this
-  phone, or the switch to home, the opt-in's second press), the app coming
+  phone, the switch to home, the opt-in's second press, or home's copy
+  taken in by a phone whose log was empty), the app coming
   back to the foreground, the network coming back, the phone being paired,
   or the link freeing up after turning a run away; or from `askJobs`, which
   the Record view's strip passes only as the shared strip's `ask`. Each asks
@@ -481,7 +488,9 @@ What no test can say is when a run is asked for:
   asks on a timer.
 - _Falsified by:_ a hunk to `lib/home-link/kept-watch.ts` as LA9's says; a
   hunk to `lib/home-link/jobs.ts` that calls `watchKept` from anywhere but
-  `useJobsHome`'s effect, calls `askKept` from anywhere but `askJobs`, or
+  `useJobsHome`'s effect, passes it anything but `jobs` and `jobsHome(jobs)`,
+  keeps that effect from returning the cleanup `watchKept` returns, calls
+  `askKept` from anywhere but `askJobs`, or
   makes `keepJobsOnHome` do more than call the record's `keepOnHome`; a
   hunk that mounts `JobsHomeWatch` anywhere but the Jobs layout; or a hunk to
   `components/jobs/keep-on-home.tsx` that changes `jobsKeeping`'s `kept`,
