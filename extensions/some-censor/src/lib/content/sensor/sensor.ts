@@ -190,8 +190,8 @@ export function createSensor(ports: SensorPorts): Sensor {
   /**
    * One path for every element the Sensor is ever handed. `force` re-announces
    * the card even when its evidence is unchanged: its subtree changed, and
-   * only a render (which Core sends on every observation) puts back a veil
-   * the vendor removed with it.
+   * only a render (which Core sends on every observation) puts back a stamp
+   * or plate the vendor removed with it.
    */
   function observe(el: HTMLElement, force = false): void {
     if (!running) return
@@ -335,7 +335,7 @@ export function createSensor(ports: SensorPorts): Sensor {
   /**
    * `el` stopped being a card: release its custody. A key nothing carries is
    * gone; a key another element still carries is re-announced, because the
-   * Actuator drops an element's stamp and veil only on a render of its key.
+   * Actuator drops an element's stamp and plate only on a render of its key.
    */
   function releaseElement(el: HTMLElement, now: number): void {
     lastEmitted.delete(el)

@@ -71,8 +71,9 @@ async function wait(ms: number): Promise<void> {
   }
 }
 
-function veil(el: HTMLElement): HTMLElement | null {
-  return el.querySelector(":scope > .boyo-veil")
+/** The plate's fill the Actuator wrote on `el`, or null. */
+function plate(el: HTMLElement): string | null {
+  return el.style.getPropertyValue("--boyo-plate") || null
 }
 
 function entry(videoId: string): ReturnType<Runtime["state"]["cards"]["get"]> {
@@ -113,7 +114,7 @@ describe("adoption", () => {
     }
     for (const el of document.querySelectorAll<HTMLElement>("[data-boyo]")) {
       expect(el.dataset["boyo"]).toBe("plated")
-      expect(veil(el)).not.toBeNull()
+      expect(plate(el)).not.toBeNull()
     }
     expect(entry("a")?.observation.channelId).toBe("@Chan")
     expect(facts.filter((f) => f.kind === "mount.resolved")).toHaveLength(3)
@@ -136,7 +137,7 @@ describe("adoption", () => {
     await tick()
     expect(runtime.state.cards.size).toBe(1)
     expect(inner.dataset["boyo"]).toBe("plated")
-    expect(veil(inner)).not.toBeNull()
+    expect(plate(inner)).not.toBeNull()
     expect(outer.hasAttribute("data-boyo")).toBe(false)
     expect(occludedElements(document)).not.toContain(outer)
     expect(
@@ -161,13 +162,13 @@ describe("adoption", () => {
 })
 
 describe("evidence decides (#1803)", () => {
-  it("takes a card too young to show out of layout, with no veil", async () => {
+  it("takes a card too young to show out of layout, with no plate", async () => {
     const el = cell("fresh", "Chan", "2 days ago")
     document.body.appendChild(el)
     await tick()
     expect(entry("fresh")?.view.kind).toBe("absent")
     expect(el.dataset["boyo"]).toBe("absent")
-    expect(veil(el)).toBeNull()
+    expect(plate(el)).toBeNull()
   })
 
   it("holds a card until its date hydrates in place, then plates it", async () => {
@@ -182,7 +183,7 @@ describe("evidence decides (#1803)", () => {
     text.data = OLD
     await tick(2)
     expect(entry("late-date")?.view.kind).toBe("plated")
-    expect(veil(el)).not.toBeNull()
+    expect(plate(el)).not.toBeNull()
   })
 })
 
@@ -199,7 +200,7 @@ describe("identity across vendor churn (#1423, #980)", () => {
     expect(entry("new")?.view.kind).toBe("plated")
     expect(el.dataset["boyo"]).toBe("plated")
     expect(el.dataset["boyoVid"]).toBe("new")
-    expect(veil(el)).not.toBeNull()
+    expect(plate(el)).not.toBeNull()
   })
 
   it("keeps a lockup's card when a preview anchor displaces its id", async () => {
@@ -229,34 +230,9 @@ describe("identity across vendor churn (#1423, #980)", () => {
     await tick()
     expect(runtime.state.cards.size).toBe(1)
     expect(inner.dataset["boyo"]).toBe("plated")
-    expect(veil(inner)).not.toBeNull()
+    expect(plate(inner)).not.toBeNull()
     expect(el.hasAttribute("data-boyo")).toBe(false)
-    expect(veil(el)).toBeNull()
-  })
-})
-
-describe("vendor churn that takes the veil with it", () => {
-  it("puts back the veil the vendor removed from a plated card", async () => {
-    const el = cell("v")
-    document.body.appendChild(el)
-    await tick()
-    veil(el)?.remove()
-    await tick()
-    expect(el.dataset["boyo"]).toBe("plated")
-    expect(veil(el), "fails closed, not open").not.toBeNull()
-  })
-
-  it("puts it back when the same change also displaced the card's id", async () => {
-    const el = lockup("kept")
-    document.body.appendChild(el)
-    await tick()
-    const preview = document.createElement("a")
-    preview.setAttribute("href", "/watch?v=preview")
-    el.prepend(preview)
-    veil(el)?.remove()
-    await tick()
-    expect(entry("kept")?.view.kind).toBe("plated")
-    expect(veil(el)).not.toBeNull()
+    expect(plate(el)).toBeNull()
   })
 })
 
@@ -337,7 +313,7 @@ describe("lifecycle", () => {
     expect(entry("before")).toBeUndefined()
     expect(entry("after")?.view.kind).toBe("plated")
     expect(a.dataset["boyo"]).toBe("plated")
-    expect(a.querySelectorAll(".boyo-veil")).toHaveLength(1)
+    expect(plate(a)).not.toBeNull()
   })
 
   it("stops totally and starts again idempotently", async () => {
@@ -347,7 +323,7 @@ describe("lifecycle", () => {
     runtime.stop()
     expect(runtime.running).toBe(false)
     expect(el.hasAttribute("data-boyo")).toBe(false)
-    expect(document.querySelector(".boyo-veil")).toBeNull()
+    expect(plate(el)).toBeNull()
     expect(vi.getTimerCount(), "no timer survives a stop").toBe(0)
 
     runtime.start()

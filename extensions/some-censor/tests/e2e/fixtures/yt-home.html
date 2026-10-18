@@ -59,9 +59,8 @@
       }
 
       /* The upcoming-feed slider from #973: a horizontal shelf of cards far
-         narrower than a home-feed card. The widths are the point of the
-         fixture — the veil is a container, so these are what its container
-         queries resolve against. */
+         narrower than a home-feed card. A narrow card is decided like a wide
+         one. */
       #upcoming-slider {
         display: flex;
         gap: 8px;
@@ -651,9 +650,9 @@
           return el ? el.getAttribute("data-boyo") : null
         },
 
-        hasVeil(videoId) {
+        hasPlate(videoId) {
           const el = window.__FIXTURE__.cardEl(videoId)
-          return el ? el.querySelector(".boyo-veil") !== null : false
+          return el ? el.style.getPropertyValue("--boyo-plate") !== "" : false
         },
 
         /** Has this element been adopted at all? Keyed by id, not videoId. */
@@ -665,7 +664,7 @@
         /**
          * Is the pre-mask occluder currently applied to this element?
          *
-         * That rule is the only thing hiding a card before the veil mounts, so
+         * That rule is the only thing hiding a card before it is stamped, so
          * "not masked and not occluded" is the leak #973 reported, and "not
          * masked but still occluded" is the permanent blur the :has() guard
          * exists to prevent.

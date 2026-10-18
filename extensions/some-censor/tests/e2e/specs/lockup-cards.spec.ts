@@ -47,8 +47,8 @@ test("L1: every video lockup in the slider is plated", async ({ fixture }) => {
     )
     expect(dataBoyo, `data-boyo for ${id}`).toBe("plated")
     expect(
-      await fixture.fixtureCall<boolean>(page, "hasVeil", id),
-      `veil for ${id}`
+      await fixture.fixtureCall<boolean>(page, "hasPlate", id),
+      `plate for ${id}`
     ).toBe(true)
   }
 })
@@ -99,12 +99,12 @@ test("L2: a channel lockup is neither masked nor left blurred", async ({
   ).toBe(false)
 })
 
-test("L2: a video lockup IS pre-masked before its veil arrives", async ({
+test("L2: a video lockup IS pre-masked before it is plated", async ({
   fixture,
 }) => {
   // The other side of the same guard: the `:has()` in the occluder must not be
-  // so narrow that it stops protecting real cards. Once the veil is up the
-  // static filter is lifted by [data-boyo], so this asserts the rule matches
+  // so narrow that it stops protecting real cards. Once the card is stamped
+  // the static filter is lifted by [data-boyo], so this asserts the rule matches
   // the element rather than sampling a race.
   const page = await fixture.goto("yt-home")
   const matches = await page.evaluate(() =>

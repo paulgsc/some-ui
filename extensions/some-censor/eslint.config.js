@@ -22,7 +22,7 @@ export default defineConfig(
     //
     //   fsm.ts          transitions + the render projection
     //   selectors.ts    the card catalogue, also read by the stylesheet test
-    //   veil-styles.ts  class strings; it names elements it must not touch
+    //   plate/plate.ts  the plate's tones and the disc's letter
     //   layout/**       the layout table, its schema, its instrument and its
     //                   lookups (BC1, #1434) — the fingerprint reads only the
     //                   root it is handed, the way selectors.ts's
@@ -36,7 +36,7 @@ export default defineConfig(
     files: [
       "src/lib/content/fsm.ts",
       "src/lib/content/selectors.ts",
-      "src/lib/content/veil-styles.ts",
+      "src/lib/content/plate/plate.ts",
       "src/lib/content/layout/**/*.ts",
       "src/lib/content/core/**/*.ts",
       "src/types/**/*.ts",

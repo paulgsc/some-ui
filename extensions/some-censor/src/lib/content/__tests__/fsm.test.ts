@@ -8,6 +8,8 @@
 import type { ViewState } from "@censor/lib/content/fsm"
 import { decide, project } from "@censor/lib/content/fsm"
 import { DEFAULT_BOUNDARY_DAYS } from "@censor/lib/content/maturity/maturity"
+import { tone } from "@censor/lib/content/plate/plate"
+import { asChannelId, asVideoId } from "@censor/types/ids"
 import { mkSession } from "@some-extension/common"
 import { describe, expect, it } from "vitest"
 
@@ -69,17 +71,30 @@ describe("decide", () => {
 })
 
 describe("project", () => {
-  it("stamps absent and puts no veil on what is not rendered", () => {
-    expect(project({ kind: "absent", session })).toEqual({
+  const inputs = {
+    videoId: asVideoId("vid_a"),
+    channelId: asChannelId("UC_a"),
+    channelName: "《Lost Summer》",
+  }
+
+  it("stamps absent and plates nothing that is not rendered", () => {
+    expect(project({ kind: "absent", session }, inputs)).toEqual({
       dataBoyo: "absent",
-      veil: false,
+      plate: null,
     })
   })
 
-  it("veils a plated card until the plate replaces it", () => {
-    expect(project({ kind: "plated", session })).toEqual({
+  it("plates a plated card from its ids and its channel's initial", () => {
+    expect(project({ kind: "plated", session }, inputs)).toEqual({
       dataBoyo: "plated",
-      veil: true,
+      plate: { fill: tone("vid_a"), disc: tone("UC_a"), initial: "L" },
     })
+  })
+
+  it("tones the disc by name until the channel resolves", () => {
+    const unresolved = { ...inputs, channelId: null }
+    expect(project({ kind: "plated", session }, unresolved).plate?.disc).toBe(
+      tone("《Lost Summer》")
+    )
   })
 })

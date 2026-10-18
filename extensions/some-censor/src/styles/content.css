@@ -1,57 +1,21 @@
 /* ============================================================
-   BOYO — Purposeful Feed  |  the irreducible layer
+   BOYO — Purposeful Feed
 
-   Everything that styles an element BOYO *builds* lives in
-   src/lib/content/veil-styles.ts as UnoCSS utilities, and is appended
-   below this file at build time. What is left here is the set of rules
-   that cannot be expressed as a class on our own element:
-
-     1. Design tokens. The utilities reference these by name
-        (`bg-[rgb(var(--boyo-glass)/86%)]`), so the ramp stays one edit.
-     2. The pre-mask occluder, the absent and shelf rules, and the crowd
-        rules — rules that target *vendor* elements, which we do not
-        construct and must not add classes to.
+   Every rule BOYO paints. They target *vendor* elements, which we do
+   not construct and must not add classes to: the pre-mask occluder,
+   the absent, shelf and plate rules, and the crowd rules.
 
    A card's view, stamped as data-boyo on the renderer element:
-     "absent" not rendered      "plated" shown behind the veil
+     "absent" not rendered      "plated" shown on its plate
    ============================================================ */
 
 :root {
-  /* UnoCSS spacing scale — normally emitted by preflight, which a content
-     script must not ship (it would repaint YouTube). */
-  --spacing: 0.25rem;
-  --boyo-glass: 15 15 18; /* veil base (matches yt)   */
+  --boyo-glass: 15 15 18; /* plate fallback (matches yt) */
+}
 
-  /* ── Firefox 112 baseline ────────────────────────────────────────────
-     UnoCSS emits colors as
-       color-mix(in oklab, <color> var(--un-bg-opacity), transparent)
-     and supplies that variable's initial value only through
-       @property --un-bg-opacity { initial-value: 100%; … }
-
-     Firefox did not support @property until 128, and
-     manifest.firefox.json declares strict_min_version 112.0. On 112–127
-     the variable resolves to nothing, color-mix() becomes invalid, and
-     the entire declaration is dropped — including the veil's background.
-
-     For a masking extension that is the worst available failure: the
-     veil still mounts and still takes clicks, but paints nothing, while
-     [data-boyo] has already lifted the static occluder. The extension
-     fails OPEN, showing exactly the content it exists to hide.
-
-     Declaring the same initial values as ordinary custom properties
-     makes them resolve everywhere; @property still registers them where
-     it is supported, so nothing is lost on modern engines.
-
-     Only the variables the generated sheet reads with no inline
-     `var(--x, fallback)` and never assigns are listed — today one,
-     `--un-bg-opacity`. Because nothing assigns it, ordinary inheritance
-     cannot leak one element's value to another the way it could for a
-     variable a utility sets per-element. styles.test.ts regenerates the
-     stylesheet and fails if either of those stops holding, or if a new
-     unbacked variable appears.
-
-     ── :has() baseline (#1390 / QC0) ────────────────────────────────
-     The same 112 floor also predates `:has()`. Firefox shipped `:has()`
+/* ── :has() baseline (#1390 / QC0) ────────────────────────────────
+     `manifest.firefox.json` declares strict_min_version 112.0, which
+     predates `:has()`. Firefox shipped `:has()`
      unflagged in version 121 — measured against MDN's browser-compat-data
      (css/selectors/has.json, firefox.version_added: "121", no experimental
      flag), not assumed from memory. Firefox 112–120 are therefore declared-
@@ -66,8 +30,6 @@
      closes for the six tags that never needed `:has()`. The seventh,
      `ytd-rich-item-renderer`, moved behind the guard in #1422 and gets an
      explicit `@supports not selector(:has(a))` fallback below instead. */
-  --un-bg-opacity: 100%;
-}
 
 /* ============================================================
    PRE-MASK OCCLUSION — SAFETY INVARIANT, NOT DECORATION
@@ -80,14 +42,15 @@
    The JS handover can fail open-endedly: the content script may never load,
    may throw during bootstrap, or may never resolve this particular card. In
    ALL of those failure modes this rule is the ONLY thing occluding the
-   thumbnail/title — there is no veil yet, because the veil is injected by JS.
+   thumbnail/title.
 
    Therefore this MUST be a true occluder, not a "pending" affordance. The
    blur radius and brightness floor are deliberately strong enough that the
    thumbnail content is unreadable. When JS does take over, [data-boyo]
-   hands the card to one of two states, and neither is legible: absent, which
-   takes it out of layout altogether, or plated, behind the glass veil — an
-   equal-or-stronger occlusion. The handover is never a reveal.
+   hands the card to one of two states, and neither shows its image: absent,
+   which takes it out of layout altogether, or plated, where no image under
+   the card is painted (THE PLATE below). The handover never reveals a
+   thumbnail.
 
    DO NOT soften this into a legible dim. A readable pre-mask state exposes the
    card during the (possibly infinite) gap before JS resolves it, which defeats
@@ -324,9 +287,7 @@
    HANDOVER + POSITION CONTEXT
 
    Once JS has taken ownership (data-boyo present) the card is absent or
-   veiled instead, so the static filter is lifted. The same rule
-   establishes the local stacking context the veil anchors to, which is
-   what keeps it over the card and never over a real YouTube dialog.
+   plated instead, so the static filter is lifted.
 
    Targets vendor elements, so it cannot be a utility class: we do not
    own these nodes and adding classes to them would be a mutation of the
@@ -334,11 +295,8 @@
    ---------------------------------------------------------- */
 [data-boyo] {
   filter: none !important;
-  isolation: isolate;
   opacity: 1 !important;
-  overflow: hidden !important;
   pointer-events: auto;
-  position: relative !important;
 }
 
 /* ----------------------------------------------------------
@@ -522,6 +480,64 @@ ytd-item-section-renderer:has(> #contents > ytd-shelf-renderer:only-child):has(
         )
     )
   ) {
+  display: none !important;
+}
+
+/* ----------------------------------------------------------
+   THE PLATE (QD12, #1804)
+
+   A plated card paints no image: no thumbnail, no moving thumbnail,
+   no channel photo. Every `img` and `video` under the stamp is
+   hidden, whatever the vendor's shape, so a thumbnail shape this file
+   does not name still shows nothing. The title, channel name and
+   duration stay, and the card opens in one click.
+
+   The tones are the Actuator's custom properties on the card
+   (`lib/content/plate/plate.ts`). The fill and the disc are painted on
+   the containers named below; one this file misses shows the
+   vendor's own empty box.
+   ---------------------------------------------------------- */
+[data-boyo="plated"] img,
+[data-boyo="plated"] video {
+  visibility: hidden !important;
+}
+
+[data-boyo="plated"] .ytThumbnailViewModelImage,
+[data-boyo="plated"] ytd-thumbnail a#thumbnail {
+  background: linear-gradient(135deg, rgb(255 255 255 / 6%), transparent 55%),
+    var(--boyo-plate, rgb(var(--boyo-glass))) !important;
+}
+
+/* The channel disc: a tone and the name's first letter. */
+[data-boyo="plated"] .ytSpecAvatarShapeHost,
+[data-boyo="plated"] #channel-thumbnail yt-img-shadow {
+  background: var(--boyo-disc, rgb(var(--boyo-glass))) !important;
+  position: relative;
+}
+
+[data-boyo="plated"] .ytSpecAvatarShapeHost::after,
+[data-boyo="plated"] #channel-thumbnail yt-img-shadow::after {
+  align-items: center;
+  color: rgb(255 255 255 / 72%);
+  content: var(--boyo-initial, "");
+  display: flex;
+  font:
+    500 14px/1 Roboto,
+    Arial,
+    sans-serif;
+  inset: 0;
+  justify-content: center;
+  position: absolute;
+}
+
+/* The hover preview is a moving thumbnail, so it never shows: YouTube
+   plays it in one shared player at the app level, over whichever card
+   is hovered. */
+:root:not([data-boyo-off]) ytd-video-preview {
+  display: none !important;
+}
+
+:root:not([data-boyo-off]) #inline-preview-player {
   display: none !important;
 }
 

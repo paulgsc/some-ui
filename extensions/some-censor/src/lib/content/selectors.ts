@@ -5,8 +5,8 @@
  * `PREMASK_SELECTORS` — the static occluder rules in `styles/content.css`,
  * which are the only thing hiding a card between paint and the content
  * script taking ownership. If the two lists disagree, a card type only in the
- * CSS is blurred forever, and one only here flashes its thumbnail before the
- * veil mounts. `selectors.test.ts` asserts the stylesheet derives from this
+ * CSS is blurred forever, and one only here flashes its thumbnail before it is
+ * stamped. `selectors.test.ts` asserts the stylesheet derives from this
  * file.
  *
  * ## Two families, and why one of them needs a guard
@@ -312,7 +312,7 @@ export function occludedElements(
  *   `container` — a catalogue tag wrapping *other* catalogue cards: the home
  *                 feed's grid cell around a lockup, or a shelf around
  *                 a row of them. It holds video links, so a link check alone
- *                 would adopt it and mount one veil over everything inside;
+ *                 would adopt it as one card around everything inside;
  *                 the cards inside are the cards, and this is never one. It
  *                 is not queued and the stylesheet does not occlude it.
  *   `shell`     — a guarded tag with no video link (yet): a channel or

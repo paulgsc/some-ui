@@ -38,7 +38,7 @@ function firstText(
  *
  * Kept apart from {@link extractMeta} because it is evidence, not
  * presentation: it goes into the observation and the maturity estimate, and
- * never into anything a veil renders (QD4). Still pure (E1).
+ * never into anything a plate renders (QD4). Still pure (E1).
  */
 export function extractUploadDate(el: HTMLElement): string | null {
   const [polymer] = FIELD_SELECTORS.uploadDate

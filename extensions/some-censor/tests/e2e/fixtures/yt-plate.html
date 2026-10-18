@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>BOYO Fixture — The Plate</title>
+    <style>
+      /* Stand-ins for YouTube's own layout, so a screenshot has boxes to
+         compare. The image fills a box sized without it, as on youtube.com. */
+      body {
+        background: #0f0f0f;
+        color: #fff;
+        font-family: sans-serif;
+        margin: 0;
+        padding: 20px;
+      }
+      ytd-video-renderer,
+      yt-lockup-view-model {
+        display: block;
+        margin-bottom: 16px;
+        width: 420px;
+      }
+      ytd-thumbnail a#thumbnail,
+      .ytThumbnailViewModelImage {
+        background: #272727;
+        display: block;
+        height: 180px;
+        position: relative;
+        width: 320px;
+      }
+      #channel-thumbnail yt-img-shadow,
+      .ytSpecAvatarShapeHost {
+        border-radius: 50%;
+        display: block;
+        height: 36px;
+        overflow: hidden;
+        width: 36px;
+      }
+      img {
+        height: 100%;
+        inset: 0;
+        position: absolute;
+        width: 100%;
+      }
+      #channel-thumbnail yt-img-shadow img,
+      .ytSpecAvatarShapeHost img {
+        position: static;
+      }
+      #overlays,
+      .ytThumbnailBottomOverlayViewModelHost {
+        bottom: 4px;
+        position: absolute;
+        right: 4px;
+      }
+      ytd-video-preview {
+        display: block;
+        height: 180px;
+        position: relative;
+        width: 320px;
+      }
+    </style>
+  </head>
+  <body>
+    <!--
+    BOYO fixture: the plate (#1804).
+
+    Trimmed from a signed-out live search (the Polymer result) and the
+    camelCase lockup of 2026-10-17, with each thumbnail and avatar replaced
+    by a vivid "FACE" image the plate must leave no pixel of. Titles,
+    channels and ids are placeholders.
+  -->
+    <ytd-app>
+      <ytd-video-preview id="preview"
+        ><img
+          alt=""
+          src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMjAiIGhlaWdodD0iMTgwIj48ZGVmcz48bGluZWFyR3JhZGllbnQgaWQ9ImciIHgxPSIwIiB5MT0iMCIgeDI9IjEiIHkyPSIxIj48c3RvcCBvZmZzZXQ9IjAiIHN0b3AtY29sb3I9IiNmZjAwODAiLz48c3RvcCBvZmZzZXQ9IjAuNSIgc3RvcC1jb2xvcj0iI2ZmZTYwMCIvPjxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iIzAwZTVmZiIvPjwvbGluZWFyR3JhZGllbnQ+PC9kZWZzPjxyZWN0IHdpZHRoPSIzMjAiIGhlaWdodD0iMTgwIiBmaWxsPSJ1cmwoI2cpIi8+PHRleHQgeD0iMTYwIiB5PSIxMTAiIGZvbnQtc2l6ZT0iNjQiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJzYW5zLXNlcmlmIiBmaWxsPSIjMDAwIj5GQUNFPC90ZXh0Pjwvc3ZnPg=="
+      /></ytd-video-preview>
+    </ytd-app>
+
+    <ytd-video-renderer id="poly">
+      <ytd-thumbnail
+        ><a id="thumbnail" href="/watch?v=vid_plate01"
+          ><yt-image
+            ><img
+              alt=""
+              src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMjAiIGhlaWdodD0iMTgwIj48ZGVmcz48bGluZWFyR3JhZGllbnQgaWQ9ImciIHgxPSIwIiB5MT0iMCIgeDI9IjEiIHkyPSIxIj48c3RvcCBvZmZzZXQ9IjAiIHN0b3AtY29sb3I9IiNmZjAwODAiLz48c3RvcCBvZmZzZXQ9IjAuNSIgc3RvcC1jb2xvcj0iI2ZmZTYwMCIvPjxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iIzAwZTVmZiIvPjwvbGluZWFyR3JhZGllbnQ+PC9kZWZzPjxyZWN0IHdpZHRoPSIzMjAiIGhlaWdodD0iMTgwIiBmaWxsPSJ1cmwoI2cpIi8+PHRleHQgeD0iMTYwIiB5PSIxMTAiIGZvbnQtc2l6ZT0iNjQiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJzYW5zLXNlcmlmIiBmaWxsPSIjMDAwIj5GQUNFPC90ZXh0Pjwvc3ZnPg=="
+          /></yt-image>
+          <div id="overlays">
+            <badge-shape class="ytBadgeShapeHost"
+              ><div class="ytBadgeShapeText">51:51</div></badge-shape
+            >
+          </div></a
+        ></ytd-thumbnail
+      >
+      <a id="channel-thumbnail" href="/@plate_poly"
+        ><yt-img-shadow
+          ><img
+            id="img"
+            alt=""
+            src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMjAiIGhlaWdodD0iMTgwIj48ZGVmcz48bGluZWFyR3JhZGllbnQgaWQ9ImciIHgxPSIwIiB5MT0iMCIgeDI9IjEiIHkyPSIxIj48c3RvcCBvZmZzZXQ9IjAiIHN0b3AtY29sb3I9IiNmZjAwODAiLz48c3RvcCBvZmZzZXQ9IjAuNSIgc3RvcC1jb2xvcj0iI2ZmZTYwMCIvPjxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iIzAwZTVmZiIvPjwvbGluZWFyR3JhZGllbnQ+PC9kZWZzPjxyZWN0IHdpZHRoPSIzMjAiIGhlaWdodD0iMTgwIiBmaWxsPSJ1cmwoI2cpIi8+PHRleHQgeD0iMTYwIiB5PSIxMTAiIGZvbnQtc2l6ZT0iNjQiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJzYW5zLXNlcmlmIiBmaWxsPSIjMDAwIj5GQUNFPC90ZXh0Pjwvc3ZnPg==" /></yt-img-shadow
+      ></a>
+      <a id="video-title" href="/watch?v=vid_plate01">Polymer Title</a>
+      <ytd-channel-name
+        ><yt-formatted-string
+          ><a href="/@plate_poly">Polymer Channel</a></yt-formatted-string
+        ></ytd-channel-name
+      >
+      <div id="metadata-line">
+        <span class="inline-metadata-item">2.5M</span>
+        <span class="inline-metadata-item">7 years ago</span>
+      </div>
+    </ytd-video-renderer>
+
+    <yt-lockup-view-model id="lockup">
+      <a class="ytLockupViewModelContentImage" href="/watch?v=vid_plate02">
+        <yt-thumbnail-view-model class="ytThumbnailViewModelHost"
+          ><div class="ytThumbnailViewModelImage">
+            <img
+              class="ytCoreImageHost"
+              alt=""
+              src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMjAiIGhlaWdodD0iMTgwIj48ZGVmcz48bGluZWFyR3JhZGllbnQgaWQ9ImciIHgxPSIwIiB5MT0iMCIgeDI9IjEiIHkyPSIxIj48c3RvcCBvZmZzZXQ9IjAiIHN0b3AtY29sb3I9IiNmZjAwODAiLz48c3RvcCBvZmZzZXQ9IjAuNSIgc3RvcC1jb2xvcj0iI2ZmZTYwMCIvPjxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iIzAwZTVmZiIvPjwvbGluZWFyR3JhZGllbnQ+PC9kZWZzPjxyZWN0IHdpZHRoPSIzMjAiIGhlaWdodD0iMTgwIiBmaWxsPSJ1cmwoI2cpIi8+PHRleHQgeD0iMTYwIiB5PSIxMTAiIGZvbnQtc2l6ZT0iNjQiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJzYW5zLXNlcmlmIiBmaWxsPSIjMDAwIj5GQUNFPC90ZXh0Pjwvc3ZnPg=="
+            />
+            <yt-thumbnail-bottom-overlay-view-model
+              class="ytThumbnailBottomOverlayViewModelHost"
+            >
+              <yt-thumbnail-badge-view-model
+                class="ytThumbnailBadgeViewModelHost ytThumbnailBottomOverlayViewModelBadge"
+              >
+                <badge-shape class="ytBadgeShapeHost">
+                  <div class="ytBadgeShapeText">4:02</div>
+                </badge-shape>
+              </yt-thumbnail-badge-view-model>
+            </yt-thumbnail-bottom-overlay-view-model>
+          </div></yt-thumbnail-view-model
+        >
+      </a>
+      <div class="ytLockupMetadataViewModelAvatar">
+        <yt-decorated-avatar-view-model
+          ><yt-avatar-shape
+            ><div
+              class="ytSpecAvatarShapeHost"
+              aria-label="Go to channel Lockup Channel"
+            >
+              <img
+                class="ytSpecAvatarShapeImage"
+                alt=""
+                src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMjAiIGhlaWdodD0iMTgwIj48ZGVmcz48bGluZWFyR3JhZGllbnQgaWQ9ImciIHgxPSIwIiB5MT0iMCIgeDI9IjEiIHkyPSIxIj48c3RvcCBvZmZzZXQ9IjAiIHN0b3AtY29sb3I9IiNmZjAwODAiLz48c3RvcCBvZmZzZXQ9IjAuNSIgc3RvcC1jb2xvcj0iI2ZmZTYwMCIvPjxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iIzAwZTVmZiIvPjwvbGluZWFyR3JhZGllbnQ+PC9kZWZzPjxyZWN0IHdpZHRoPSIzMjAiIGhlaWdodD0iMTgwIiBmaWxsPSJ1cmwoI2cpIi8+PHRleHQgeD0iMTYwIiB5PSIxMTAiIGZvbnQtc2l6ZT0iNjQiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJzYW5zLXNlcmlmIiBmaWxsPSIjMDAwIj5GQUNFPC90ZXh0Pjwvc3ZnPg=="
+              /></div></yt-avatar-shape
+        ></yt-decorated-avatar-view-model>
+      </div>
+      <div class="ytLockupMetadataViewModelTextContainer">
+        <h3 class="ytLockupMetadataViewModelHeadingReset">
+          <a class="ytLockupMetadataViewModelTitle" href="/watch?v=vid_plate02">
+            <span role="text">《Lockup》 Title</span>
+          </a>
+        </h3>
+        <div class="ytContentMetadataViewModelMetadataRow" role="group">
+          <span class="ytContentMetadataViewModelMetadataText"
+            ><span><a href="/@plate_lockup">《Lockup Channel》</a></span></span
+          >
+        </div>
+        <div class="ytContentMetadataViewModelMetadataRow" role="group">
+          <span
+            class="ytContentMetadataViewModelMetadataText ytContentMetadataViewModelMetadataTextLastPart"
+            aria-label="4 years ago"
+            >4y ago</span
+          >
+        </div>
+      </div>
+    </yt-lockup-view-model>
+  </body>
+</html>

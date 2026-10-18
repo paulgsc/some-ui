@@ -17,7 +17,9 @@
  * they went with the ladder.
  */
 
+import type { Observation } from "@censor/lib/content/core/observation"
 import { classify, estimate } from "@censor/lib/content/maturity/maturity"
+import { initial, tone } from "@censor/lib/content/plate/plate"
 import type { SessionId } from "@some-extension/common"
 import { assertNever } from "@some-extension/common"
 
@@ -67,23 +69,42 @@ export function decide(
 /** The `data-boyo` stamp. `styles/content.css` keys `absent` to `display: none`. */
 type DataBoyo = "absent" | "plated"
 
-export type RenderModel = {
-  readonly dataBoyo: DataBoyo
-  /**
-   * Whether the card carries the occluding veil: a plated card does until the
-   * plate replaces it (#1804), and an absent one is not rendered at all.
-   */
-  readonly veil: boolean
+/**
+ * The plate's values (QD12), which `styles/content.css` paints over a plated
+ * card's thumbnail and channel photo: CSS colours and the disc's letter.
+ */
+export type Plate = {
+  readonly fill: string
+  readonly disc: string
+  readonly initial: string
 }
 
-export function project(state: ViewState): RenderModel {
+export type RenderModel = {
+  readonly dataBoyo: DataBoyo
+  /** Null on an absent card, which is not rendered at all. */
+  readonly plate: Plate | null
+}
+
+/** What a plate is made from: ids and the channel's display name. */
+type PlateInputs = Pick<Observation, "videoId" | "channelId" | "channelName">
+
+export function project(state: ViewState, inputs: PlateInputs): RenderModel {
   const { kind } = state
   switch (kind) {
     case "absent": {
-      return { dataBoyo: "absent", veil: false }
+      return { dataBoyo: "absent", plate: null }
     }
     case "plated": {
-      return { dataBoyo: "plated", veil: true }
+      const { videoId, channelId, channelName } = inputs
+      return {
+        dataBoyo: "plated",
+        plate: {
+          fill: tone(videoId),
+          // Before its channel resolves a card's disc is toned by name.
+          disc: tone(channelId ?? channelName ?? videoId),
+          initial: initial(channelName),
+        },
+      }
     }
     default: {
       kind satisfies never

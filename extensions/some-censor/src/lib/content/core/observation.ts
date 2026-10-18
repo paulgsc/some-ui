@@ -5,7 +5,7 @@
  * Raw vendor text lives here and only here: `uploadDate` in particular is
  * the string exactly as YouTube rendered it. It is evidence for the maturity
  * estimate (`maturity/maturity.ts`) and the observability corpus, and it
- * cannot reach a veil: the presentable `MetaData` has no date field (QD4,
+ * cannot reach a plate: the presentable `MetaData` has no date field (QD4,
  * #1384).
  */
 
@@ -18,8 +18,8 @@ export type ShapeConfidence =
   | "known"
   /**
    * The table did not (B4). Core still treats the card as a card — the
-   * stylesheet is occluding it regardless, and a veil is strictly better
-   * than an occluder nothing lifts — and counts the miss as the table's
+   * stylesheet is occluding it regardless, and a decision is strictly
+   * better than an occluder nothing lifts — and counts the miss as the table's
    * staleness signal (#1434's recrawl cadence).
    */
   | "unknown"
