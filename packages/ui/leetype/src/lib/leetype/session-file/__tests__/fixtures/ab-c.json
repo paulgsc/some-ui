@@ -1,0 +1,694 @@
+{
+  "variant": "C",
+  "title": "Build it up, one force at a time",
+  "oneLine": "Start with one node and one log; six failures arrive one by one, and the learner picks the smallest change that survives each, ending with a replicated log and a spoken account of what forced each part.",
+  "session": {
+    "kind": "probe",
+    "budgetMinutes": 10
+  },
+  "start": "s01",
+  "screens": {
+    "s01": {
+      "type": "info",
+      "title": "Build it up, one force at a time",
+      "body": "Today's job: start with one node and one log, then let six things go wrong, one at a time. Each time, pick the smallest change that survives it. By the end you have built a replicated log, and you can say what forced each part.\n\nThe six, in order: a power cut, speed, a lost machine, a split network, an old leader coming back, a read that must be fresh.\n\nA wrong pick or \"Not sure\" costs nothing. It places a short reading, and that round waits for it. After you read, you get the same job again with new numbers. If you skip the reading, the build carries on as if that part held, and the round keeps waiting.",
+      "actions": [
+        {
+          "label": "Start with one node",
+          "next": "f1"
+        }
+      ],
+      "tags": ["map", "primer"]
+    },
+    "f1": {
+      "type": "choice",
+      "pinned": "Job: decide what must be on disk before a client hears \"done\".",
+      "title": "Force 1: the power cut",
+      "body": "You have one node and one log file. A client sends \"set balance = 70\". The node appends the record to the file (the OS holds it in memory) and replies \"done\".\n\nAssumed costs, not measurements (an SSD flush ranges from about 100 µs to 10 ms): a memory write about 100 ns; a flush to the SSD about 1 ms.\n\nPower dies one millisecond after \"done\". On restart the client reads balance = 100.\n\nWhat is the smallest change so this cannot happen?",
+      "options": [
+        {
+          "label": "Flush the file in the background once a second",
+          "next": "r1",
+          "feedback": "Writes acknowledged in that last second are still lost. This only narrows the window."
+        },
+        {
+          "label": "Reply \"done\" only after the record has been flushed to disk",
+          "next": "f2",
+          "correct": true,
+          "feedback": "Yes. \"Done\" now means \"on disk\". You paid for it: about 1 ms instead of 100 ns, ten thousand times slower per write. That cost is Force 2.\n\nBuilt so far: one node, a log, flushed before \"done\"."
+        },
+        {
+          "label": "Keep a second copy of the record in memory, in another process",
+          "next": "r1",
+          "feedback": "Both copies sit in memory, and a power cut empties all of it."
+        },
+        {
+          "label": "Not sure",
+          "abstain": true,
+          "next": "r1",
+          "feedback": "Noted as evidence, not failure. A short reading is placed, and this round waits for it."
+        }
+      ],
+      "onHesitate": "r1",
+      "tags": ["round:1"]
+    },
+    "r1": {
+      "type": "reading",
+      "title": "A reading, placed",
+      "primer": "You were choosing what comes before \"done\". Lamport writes one sentence that orders a disk write against a message. Find it. Which comes first, and what would a restarted node have forgotten if the order were reversed?",
+      "source": {
+        "title": "Paxos Made Simple",
+        "author": "Lamport",
+        "year": 2001,
+        "where": "§2.5, pp. 7-8",
+        "url": "https://lamport.azurewebsites.net/pubs/paxos-simple.pdf",
+        "minutes": 3
+      },
+      "passage": "Paraphrase of §2.5: an acceptor has to remember what it promised and what it accepted, even through a crash and restart. It does so by recording this in stable storage, and the sentence says where that write sits relative to sending the reply.",
+      "actions": [
+        {
+          "label": "Read now",
+          "next": "f1b",
+          "effect": "read"
+        },
+        {
+          "label": "Save for a Read session",
+          "next": "f2",
+          "effect": "save"
+        },
+        {
+          "label": "Skip",
+          "next": "f2"
+        }
+      ],
+      "tags": ["placement", "struggle"]
+    },
+    "f1b": {
+      "type": "choice",
+      "pinned": "Job: decide what must be on disk before a client hears \"done\".",
+      "title": "Force 1 again: a replica's \"stored\"",
+      "body": "Same job, a different place. The build now has a leader and one replica. The replica receives a record, keeps it in memory, and immediately replies \"stored\". The leader counts that reply and tells the client \"done\".\n\nA moment later the replica loses power, before it flushed anything.\n\nWhich change keeps \"done\" honest?",
+      "options": [
+        {
+          "label": "The replica flushes every 10 ms in the background",
+          "next": "f2",
+          "correct": false,
+          "feedback": "A write acknowledged inside those 10 ms is still gone. This stays parked until next session; the reading is already marked read."
+        },
+        {
+          "label": "The replica replies \"stored\" only after its own flush",
+          "next": "f2",
+          "correct": true,
+          "feedback": "Right. The same rule where a reply is a promise: a node's \"stored\" is worth only what survives its restart.\n\nBuilt so far: a log, flushed before any reply that counts."
+        },
+        {
+          "label": "After the restart, the leader asks the replica to say \"stored\" again",
+          "next": "f2",
+          "correct": false,
+          "feedback": "The first reply was already counted and the client already heard \"done\". Asking later cannot take that back. This stays parked until next session; the reading is already marked read."
+        },
+        {
+          "label": "Not sure",
+          "abstain": true,
+          "next": "f2",
+          "feedback": "Noted as evidence. This stays parked until next session; the reading is already marked read."
+        }
+      ],
+      "tags": ["round:1", "parked-return", "struggle"]
+    },
+    "f2": {
+      "type": "choice",
+      "pinned": "Job: raise writes per second while every write still waits for its flush.",
+      "title": "Force 2: speed",
+      "body": "So far: one log, flushed before \"done\".\n\nAssume one log device that does one flush at a time, 1 ms each. One write per flush means:\n1 s ÷ 1 ms = 1,000 writes per second, at most.\n\nYour service needs 10,000 per second.\n\nWhich change gets there without bringing the power-cut problem back?",
+      "options": [
+        {
+          "label": "Run ten threads, each flushing its own write",
+          "next": "r2",
+          "feedback": "The device still does one flush at a time, 1 ms each. The ceiling stays 1,000 per second."
+        },
+        {
+          "label": "Writes arriving during a flush wait, then share the next flush",
+          "next": "f3",
+          "correct": true,
+          "feedback": "Yes. Writes in flight at once = rate × wait = 10,000 per second × 0.001 s = 10. Each flush carries about 10 writes, every client still waits for its flush, and the ceiling rises tenfold. The cost: a write may wait up to one flush for company.\n\nBuilt so far: a log, flushed before \"done\", in groups."
+        },
+        {
+          "label": "Reply \"done\" first and flush in the background",
+          "next": "r2",
+          "feedback": "Faster, and the power cut from Force 1 is back: \"done\" no longer means \"on disk\"."
+        },
+        {
+          "label": "Buy a CPU twice as fast",
+          "next": "r2",
+          "feedback": "The wait is the 1 ms flush, not the 100 ns of CPU work. Twice as fast changes almost nothing."
+        },
+        {
+          "label": "Not sure",
+          "abstain": true,
+          "next": "r2",
+          "feedback": "Noted as evidence, not failure. A short reading is placed, and this round waits for it."
+        }
+      ],
+      "onHesitate": "r2",
+      "tags": ["round:2"]
+    },
+    "r2": {
+      "type": "reading",
+      "title": "A reading, placed",
+      "primer": "One sentence in this paper buys more throughput from the same protocol. Find it, and ask which fixed cost it spreads across many commands. (The 1984 origin, DeWitt et al. §5.2, is link-only.)",
+      "source": {
+        "title": "Paxos Made Live",
+        "author": "Chandra, Griesemer, Redstone",
+        "year": 2007,
+        "where": "§4.2, last paragraph, p. 5",
+        "url": "https://static.googleusercontent.com/media/research.google.com/en//archive/paxos_made_live.pdf",
+        "minutes": 1
+      },
+      "passage": "Paraphrase of §4.2: the authors batch several submitted values into one proposal, so one run of the protocol carries many of them.",
+      "actions": [
+        {
+          "label": "Read now",
+          "next": "f2b",
+          "effect": "read"
+        },
+        {
+          "label": "Save for a Read session",
+          "next": "f3",
+          "effect": "save"
+        },
+        {
+          "label": "Skip",
+          "next": "f3"
+        }
+      ],
+      "tags": ["placement", "struggle"]
+    },
+    "f2b": {
+      "type": "choice",
+      "pinned": "Job: raise writes per second while every write still waits for its flush.",
+      "title": "Force 2 again: new numbers",
+      "body": "One log device, one flush at a time, now 2 ms each.\n\nOne write per flush:\n1 s ÷ 2 ms = 500 writes per second, at most.\n\nThe service needs 4,000 per second, and every write still waits for its flush.\n\nOn average, how many writes must each flush carry?",
+      "options": [
+        {
+          "label": "2",
+          "next": "f3",
+          "correct": false,
+          "feedback": "2 × 500 = 1,000 per second. Short of 4,000. This stays parked until next session; the reading is already marked read."
+        },
+        {
+          "label": "4",
+          "next": "f3",
+          "correct": false,
+          "feedback": "4 × 500 = 2,000 per second. Still short. This stays parked until next session; the reading is already marked read."
+        },
+        {
+          "label": "8",
+          "next": "f3",
+          "correct": true,
+          "feedback": "Right: 4,000 per second × 0.002 s = 8. The same product is how many writes are waiting at any moment.\n\nBuilt so far: a log, flushed in groups sized by rate × flush time."
+        },
+        {
+          "label": "500",
+          "next": "f3",
+          "correct": false,
+          "feedback": "That is the ceiling you started from, per second, not a batch size. This stays parked until next session; the reading is already marked read."
+        },
+        {
+          "label": "Not sure",
+          "abstain": true,
+          "next": "f3",
+          "feedback": "Noted as evidence. This stays parked until next session; the reading is already marked read."
+        }
+      ],
+      "tags": ["round:2", "parked-return", "struggle"]
+    },
+    "f3": {
+      "type": "choice",
+      "pinned": "Job: decide when the leader may say \"done\" now that a second machine exists.",
+      "title": "Force 3: a lost machine",
+      "body": "So far: a log, flushed before \"done\", in groups.\n\nThe leader's machine can burn, and its disk goes with it. So you added a replica. A round trip between them is about 0.5 ms in one datacenter.\n\nToday the leader says \"done\" after its own flush, and sends the record to the replica in the background. The leader's machine burns. The replica takes over. A write the client was told was done is gone.\n\nWhat is the smallest change so an acknowledged write survives a dead machine?",
+      "options": [
+        {
+          "label": "Send records to the replica faster, in smaller pieces",
+          "next": "r3",
+          "feedback": "Faster shrinks the gap between \"done\" and \"copied\"; it does not close it."
+        },
+        {
+          "label": "Say \"done\" only after the replica has also flushed the record",
+          "next": "f4",
+          "correct": true,
+          "feedback": "\"Done\" now means \"on two disks\". It costs one more round trip, about 0.5 ms, per group of writes.\n\nNew problem: with two machines, if the replica is down the leader cannot say \"done\" at all. That is Force 4.\n\nBuilt so far: a log, flushed on two machines before \"done\"."
+        },
+        {
+          "label": "Flush the leader's disk twice",
+          "next": "r3",
+          "feedback": "Both flushes are on the machine that burned."
+        },
+        {
+          "label": "Copy the leader's disk every night",
+          "next": "r3",
+          "feedback": "A copy restores yesterday. Everything acknowledged since is not in it."
+        },
+        {
+          "label": "Not sure",
+          "abstain": true,
+          "next": "r3",
+          "feedback": "Noted as evidence, not failure. A short reading is placed, and this round waits for it."
+        }
+      ],
+      "onHesitate": "r3",
+      "tags": ["round:3"]
+    },
+    "r3": {
+      "type": "reading",
+      "title": "A reading, placed",
+      "primer": "A majority makes the failover decision, yet acknowledged writes vanish. As you read, ask: what did the majority agree on, and what did the primary's \"OK\" certify?",
+      "source": {
+        "title": "Call me maybe: Redis",
+        "author": "Kingsbury (Jepsen)",
+        "year": 2013,
+        "where": "\"What about high availability?\" and \"Results\"",
+        "url": "https://aphyr.com/posts/283-call-me-maybe-redis",
+        "minutes": 8
+      },
+      "passage": "Setup, summarised (not a quote): a Redis primary with replicas is partitioned; a majority of monitor processes promote a new primary; writes the old primary had acknowledged are missing afterwards.",
+      "actions": [
+        {
+          "label": "Read now",
+          "next": "f3b",
+          "effect": "read"
+        },
+        {
+          "label": "Save for a Read session",
+          "next": "f4",
+          "effect": "save"
+        },
+        {
+          "label": "Skip",
+          "next": "f4"
+        }
+      ],
+      "tags": ["placement", "struggle"]
+    },
+    "f3b": {
+      "type": "choice",
+      "pinned": "Job: decide when the leader may say \"done\" now that a second machine exists.",
+      "title": "Force 3 again: a vote that lost writes",
+      "body": "A team runs a primary with one backup that copies in the background. Three monitor processes watch them. Two of the three agree the primary is down and promote the backup.\n\nThe last 40 writes the old primary acknowledged were never copied. They are gone. Someone says: \"We had a majority vote, so this was consensus.\"\n\nWhich statement is right?",
+      "options": [
+        {
+          "label": "The vote picked who is primary. Nobody checked that the new primary held what the old one had acknowledged.",
+          "next": "f4",
+          "correct": true,
+          "feedback": "Right. A majority chose a leader; it never agreed on the log. Replication is not consensus.\n\nBuilt so far: acknowledged means held by another machine."
+        },
+        {
+          "label": "Three monitors is too few; five would have kept the writes",
+          "next": "f4",
+          "correct": false,
+          "feedback": "More voters on who is primary change nothing about what the backup holds. This stays parked until next session; the reading is already marked read."
+        },
+        {
+          "label": "The backup flushed too slowly",
+          "next": "f4",
+          "correct": false,
+          "feedback": "The writes never reached it before \"done\". Its flush speed does not enter. This stays parked until next session; the reading is already marked read."
+        },
+        {
+          "label": "Not sure",
+          "abstain": true,
+          "next": "f4",
+          "feedback": "Noted as evidence. This stays parked until next session; the reading is already marked read."
+        }
+      ],
+      "tags": ["round:3", "parked-return", "struggle"]
+    },
+    "f4": {
+      "type": "choice",
+      "pinned": "Job: choose how many machines must store a write before \"done\".",
+      "title": "Force 4: a split network",
+      "body": "So far: a leader and two replicas, \"done\" means held by another machine.\n\nThe network splits. Side X: the leader alone. Side Y: both replicas. Clients can reach both sides. Side Y elects a new leader and carries on.\n\nWaiting for all three stalls writes whenever any machine is down. Waiting for one lets the old leader keep saying \"done\" alone.\n\nHow many machines must store a write before \"done\"?",
+      "options": [
+        {
+          "label": "One: the leader alone is enough",
+          "next": "r4",
+          "feedback": "The isolated leader says \"done\" on its own disk while side Y accepts different writes. Two histories."
+        },
+        {
+          "label": "Three: every machine",
+          "next": "r4",
+          "feedback": "One machine down, even rebooting, stops all writes."
+        },
+        {
+          "label": "Two: any majority of the three",
+          "next": "f5",
+          "correct": true,
+          "feedback": "Any two groups of two among three machines share a machine. So two different answers can never both be \"done\", and the shared machine can tell a new leader what was committed. The cost: one slow or dead machine is ignored, but two down stops writes.\n\nBuilt so far: a log on a majority before \"done\"."
+        },
+        {
+          "label": "Whichever side has more clients",
+          "next": "r4",
+          "feedback": "Clients can't prove which side is bigger. Both sides can claim it."
+        },
+        {
+          "label": "Not sure",
+          "abstain": true,
+          "next": "r4",
+          "feedback": "Noted as evidence, not failure. A short reading is placed, and this round waits for it."
+        }
+      ],
+      "onHesitate": "r4",
+      "tags": ["round:4"]
+    },
+    "r4": {
+      "type": "reading",
+      "title": "A reading, placed",
+      "primer": "Lamport picks a size for \"large enough\" and gives a one-line reason. Find it. What would break if two such sets could be disjoint?",
+      "source": {
+        "title": "Paxos Made Simple",
+        "author": "Lamport",
+        "year": 2001,
+        "where": "§2.2, p. 2",
+        "url": "https://lamport.azurewebsites.net/pubs/paxos-simple.pdf",
+        "minutes": 5
+      },
+      "passage": "Paraphrase of §2.2: to make sure only one value is chosen, a value counts as chosen when a majority of acceptors have accepted it, and the argument leans on a fact about any two majorities.",
+      "actions": [
+        {
+          "label": "Read now",
+          "next": "f4b",
+          "effect": "read"
+        },
+        {
+          "label": "Save for a Read session",
+          "next": "f5",
+          "effect": "save"
+        },
+        {
+          "label": "Skip",
+          "next": "f5"
+        }
+      ],
+      "tags": ["placement", "struggle"]
+    },
+    "f4b": {
+      "type": "choice",
+      "pinned": "Job: choose how many machines must store a write before \"done\".",
+      "title": "Force 4 again: five machines",
+      "body": "Five machines. The network splits them into a group of two and a group of three. A teammate says: \"Two acks is enough for done.\"\n\nPick the smallest number of acks that stops both groups from saying \"done\" to different writes, while still working with two machines down.",
+      "options": [
+        {
+          "label": "Two",
+          "next": "f5",
+          "correct": false,
+          "feedback": "The group of two and the group of three can each reach two acks, with different writes. This stays parked until next session; the reading is already marked read."
+        },
+        {
+          "label": "Three",
+          "next": "f5",
+          "correct": true,
+          "feedback": "Right. Any two groups of three among five share a machine, and three still works with two machines down.\n\nBuilt so far: a log on a majority before \"done\"."
+        },
+        {
+          "label": "Four",
+          "next": "f5",
+          "correct": false,
+          "feedback": "Safe against disagreeing, but writes stop after the second failure. This stays parked until next session; the reading is already marked read."
+        },
+        {
+          "label": "Not sure",
+          "abstain": true,
+          "next": "f5",
+          "feedback": "Noted as evidence. This stays parked until next session; the reading is already marked read."
+        }
+      ],
+      "tags": ["round:4", "parked-return", "struggle"]
+    },
+    "f5": {
+      "type": "choice",
+      "pinned": "Job: decide how a machine tells a dead leader's orders from the current leader's.",
+      "title": "Force 5: the old leader comes back",
+      "body": "So far: a leader and two replicas, \"done\" on a majority.\n\nDuring the split, side Y elected leader B and committed new writes. Now the network heals. Old leader A never knew. It sends replica 2: \"append x = 1\". Replica 2 follows B.\n\nA needs two acks, and replica 2 would make two. Each leader's timers are sometimes wrong about the other.\n\nWhat stops replica 2 from obeying A?",
+      "options": [
+        {
+          "label": "Replica 2 waits for A's heartbeat timeout before trusting B",
+          "next": "r5",
+          "feedback": "A late A and a dead A look the same in an asynchronous network. Safety cannot rest on a timer."
+        },
+        {
+          "label": "Every leadership period has a number; messages carry it; a machine rejects any lower number than it has seen",
+          "next": "f6",
+          "correct": true,
+          "feedback": "A term. B's is 4, A's is 3. Replica 2 rejects A and tells it 4, and A steps down. The cost: a number in every message, kept on disk across restarts, so another flush. Timers only decide when to start an election. The numbers keep it safe.\n\nBuilt so far: a majority log with numbered leaders."
+        },
+        {
+          "label": "Replica 2 obeys whichever leader it heard from most recently",
+          "next": "r5",
+          "feedback": "Messages arrive late. The most recent arrival can be the oldest leader, which is A here."
+        },
+        {
+          "label": "Replica 2 asks the clients which leader to trust",
+          "next": "r5",
+          "feedback": "Clients saw both leaders answer. They have no basis either."
+        },
+        {
+          "label": "Not sure",
+          "abstain": true,
+          "next": "r5",
+          "feedback": "Noted as evidence, not failure. A short reading is placed, and this round waits for it."
+        }
+      ],
+      "onHesitate": "r5",
+      "tags": ["round:5"]
+    },
+    "r5": {
+      "type": "reading",
+      "title": "A reading, placed",
+      "primer": "Raft lists every place a term is compared. List them as you read. What does a server do on a bigger term, and what on a smaller one?",
+      "source": {
+        "title": "In Search of an Understandable Consensus Algorithm (extended)",
+        "author": "Ongaro, Ousterhout",
+        "year": 2014,
+        "where": "§5.1, p. 5",
+        "url": "https://raft.github.io/raft.pdf",
+        "minutes": 5
+      },
+      "passage": "Short quote: \"If a server receives a request with a stale term number, it rejects the request.\"",
+      "actions": [
+        {
+          "label": "Read now",
+          "next": "f5b",
+          "effect": "read"
+        },
+        {
+          "label": "Save for a Read session",
+          "next": "f6",
+          "effect": "save"
+        },
+        {
+          "label": "Skip",
+          "next": "f6"
+        }
+      ],
+      "tags": ["placement", "struggle"]
+    },
+    "f5b": {
+      "type": "choice",
+      "pinned": "Job: decide how a machine tells a dead leader's orders from the current leader's.",
+      "title": "Force 5 again: a stale message",
+      "body": "Replica C is at term 7. A message arrives: \"append entry\", term 5.\n\nWhat does C do?",
+      "options": [
+        {
+          "label": "Accept it: a leader that has been up longer must know more",
+          "next": "f6",
+          "correct": false,
+          "feedback": "Longer up proves nothing. Term 5 is the older leadership. This stays parked until next session; the reading is already marked read."
+        },
+        {
+          "label": "Reject it silently",
+          "next": "f6",
+          "correct": false,
+          "feedback": "C is safe, but the sender never learns it is stale and keeps believing it leads. This stays parked until next session; the reading is already marked read."
+        },
+        {
+          "label": "Reject it and reply with 7",
+          "next": "f6",
+          "correct": true,
+          "feedback": "Right. The sender sees a bigger term and steps down.\n\nBuilt so far: a majority log with numbered leaders."
+        },
+        {
+          "label": "Accept it and lower its own term to 5",
+          "next": "f6",
+          "correct": false,
+          "feedback": "Terms only go up. Going back could let C vote again in a term it already voted in. This stays parked until next session; the reading is already marked read."
+        },
+        {
+          "label": "Not sure",
+          "abstain": true,
+          "next": "f6",
+          "feedback": "Noted as evidence. This stays parked until next session; the reading is already marked read."
+        }
+      ],
+      "tags": ["round:5", "parked-return", "struggle"]
+    },
+    "f6": {
+      "type": "choice",
+      "pinned": "Job: decide how a leader answers a read without serving old data.",
+      "title": "Force 6: a read that must be fresh",
+      "body": "So far: a majority log with numbered leaders.\n\nLeader B holds the state in memory: a local read costs about 100 ns. Asking a majority \"am I still leader?\" costs a round trip, about 0.5 ms, five thousand times more.\n\nSuppose B was cut off and replaced, and does not know yet. If it answers from its own copy, a client gets an old value after seeing a newer one from the new leader.\n\nWhat should B do before answering a read?",
+      "options": [
+        {
+          "label": "Answer from its own copy; reads change nothing, so they can't break agreement",
+          "next": "r6",
+          "feedback": "Reads change nothing, but a deposed leader's copy is old. The client sees time go backwards."
+        },
+        {
+          "label": "Answer from any replica, to spread the load",
+          "next": "r6",
+          "feedback": "A replica can lag behind what is committed, so it can return old values even when the leader is fine."
+        },
+        {
+          "label": "Shorten the leader timeout so a deposed leader notices sooner",
+          "next": "r6",
+          "feedback": "Sooner is not sure. Between its last check and the next, it still answers."
+        },
+        {
+          "label": "Confirm with a majority that it is still leader, then answer",
+          "next": "rec",
+          "correct": true,
+          "feedback": "Reads write nothing to the log, but they still need agreement about who leads. One round trip with a majority can serve every read that is waiting. A lease can skip that trip if you trust clocks; then the cost moves to clock assumptions.\n\nBuilt: a replicated log with durable commits, a majority, numbered leaders, and agreed reads."
+        },
+        {
+          "label": "Not sure",
+          "abstain": true,
+          "next": "r6",
+          "feedback": "Noted as evidence, not failure. A short reading is placed, and this round waits for it."
+        }
+      ],
+      "onHesitate": "r6",
+      "tags": ["round:6"]
+    },
+    "r6": {
+      "type": "reading",
+      "title": "A reading, placed",
+      "primer": "Why can't a master answer reads from its own copy? Find the reason the authors give. Then find which side's lease timeout is shorter, and what that protects against.",
+      "source": {
+        "title": "Paxos Made Live",
+        "author": "Chandra, Griesemer, Redstone",
+        "year": 2007,
+        "where": "§5.2–5.3, pp. 6–7",
+        "url": "https://static.googleusercontent.com/media/research.google.com/en//archive/paxos_made_live.pdf",
+        "minutes": 6
+      },
+      "passage": "Paraphrase of §5.2–5.3: in their system a master serves reads from its own copy only under a lease the other replicas have agreed not to break, and an epoch number kept in the database lets the master abort a request if its own mastership was lost or re-acquired while handling it.",
+      "actions": [
+        {
+          "label": "Read now",
+          "next": "f6b",
+          "effect": "read"
+        },
+        {
+          "label": "Save for a Read session",
+          "next": "rec",
+          "effect": "save"
+        },
+        {
+          "label": "Skip",
+          "next": "rec"
+        }
+      ],
+      "tags": ["placement", "struggle"]
+    },
+    "f6b": {
+      "type": "choice",
+      "pinned": "Job: decide how a leader answers a read without serving old data.",
+      "title": "Force 6 again: fifty thousand reads",
+      "body": "Confirming leadership with a majority takes 0.5 ms, and the leader runs one confirmation at a time. One confirmation per read means:\n1 s ÷ 0.5 ms = 2,000 reads per second, at most.\n\nThe service gets 50,000 reads per second, and none may be stale.\n\nHow should the leader confirm?",
+      "options": [
+        {
+          "label": "Confirm one read in every 25 and answer the rest locally",
+          "next": "rec",
+          "correct": false,
+          "feedback": "The unconfirmed ones may be stale. This stays parked until next session; the reading is already marked read."
+        },
+        {
+          "label": "One confirmation covers every read that arrived while it was in flight",
+          "next": "rec",
+          "correct": true,
+          "feedback": "Right. 50,000 per second × 0.0005 s = 25 reads wait at any moment, so one round serves about 25.\n\nBuilt: a replicated log with agreed reads."
+        },
+        {
+          "label": "Add machines so more confirmations run at once",
+          "next": "rec",
+          "correct": false,
+          "feedback": "More machines make the majority bigger; the leader still runs one confirmation at a time. This stays parked until next session; the reading is already marked read."
+        },
+        {
+          "label": "Not sure",
+          "abstain": true,
+          "next": "rec",
+          "feedback": "Noted as evidence. This stays parked until next session; the reading is already marked read."
+        }
+      ],
+      "tags": ["round:6", "parked-return", "struggle"]
+    },
+    "rec": {
+      "type": "record",
+      "pinned": "Job: say the build in your own voice, with what forced each part.",
+      "title": "Say it out loud",
+      "prompt": "An interviewer asks: \"Why isn't one flushed log enough for your system?\" In about a minute, walk from one node to a replicated log. For each part, say what forced it and what it costs. No notes.",
+      "maxSeconds": 75,
+      "rubric": [
+        "Flush before \"done\", forced by a power cut; costs about a millisecond per write.",
+        "Group commit, forced by the flush ceiling; batch size is rate × flush time.",
+        "\"Done\" only after another machine has flushed it, forced by a lost machine and its disk.",
+        "A majority, forced by a split; any two majorities share a machine.",
+        "Numbered leaders, forced by timers that cannot tell a late leader from a dead one.",
+        "Reads confirm leadership with a majority, because a deposed leader doesn't know it yet."
+      ],
+      "weakIfFewerThan": 3,
+      "next": "end",
+      "onWeak": "rw",
+      "tags": ["speak"]
+    },
+    "rw": {
+      "type": "reading",
+      "title": "A reading, placed",
+      "primer": "Your take left several forces unnamed. This paper builds the same log in industry. Count the forced flushes on the critical path, then see what it says about a stable master. Your recording is kept; you can re-take it after reading.",
+      "source": {
+        "title": "Paxos Made Live",
+        "author": "Chandra, Griesemer, Redstone",
+        "year": 2007,
+        "where": "§4.2, p. 5 and §5.1, p. 6",
+        "url": "https://static.googleusercontent.com/media/research.google.com/en//archive/paxos_made_live.pdf",
+        "minutes": 8
+      },
+      "passage": "Summary, not a quote: §4.2 describes a master that stays the same across instances and where replicas write to disk before replying; §5.1 covers what happens to the argument when a replica loses what it flushed.",
+      "actions": [
+        {
+          "label": "Read now",
+          "next": "end",
+          "effect": "read"
+        },
+        {
+          "label": "Save for a Read session",
+          "next": "end",
+          "effect": "save"
+        },
+        {
+          "label": "Skip",
+          "next": "end"
+        }
+      ],
+      "tags": ["placement", "struggle"]
+    },
+    "end": {
+      "type": "end",
+      "title": "Where you are",
+      "body": "You built a log that is flushed before \"done\", flushed in groups, held by a majority, led by numbered leaders, and read through agreement.\n\nYour ledger holds, in words: the forces you answered on your own; the ones where you chose wrongly or said \"Not sure\", each with its placed reading; and which of those you read, saved or skipped. Parked rounds come back after their reading.\n\nYour recording is kept with its prompt, the six ideas and the ones you ticked. The weekly review reads it.\n\nNext force: one request fans out to many machines, and the slowest one sets the time.",
+      "actions": [],
+      "tags": ["end"]
+    }
+  }
+}

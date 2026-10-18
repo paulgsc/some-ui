@@ -20,3 +20,12 @@ export function extensionOf(mimeType: string): string {
 
 export const getAcronymFromString = (str: string): string =>
   (str.trim().match(/\b(\w)/g) ?? [""]).join("").toUpperCase()
+
+/** Whether `text` names `term` as a whole word or phrase, ignoring case. */
+export function mentionsWord(text: string, term: string): boolean {
+  const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+  return new RegExp(
+    `(?<![\\p{L}\\p{N}])${escaped}(?![\\p{L}\\p{N}])`,
+    "iu"
+  ).test(text)
+}

@@ -1,0 +1,722 @@
+{
+  "variant": "A",
+  "title": "LeetType Probe session (Oct 18 brief)",
+  "oneLine": "A map and a primer card, three Paxos-to-Raft rounds where a struggle places a reading and parks the round, one spoken soundbite, then the parked round's return.",
+  "session": {
+    "kind": "probe",
+    "budgetMinutes": 10
+  },
+  "start": "s_map",
+  "screens": {
+    "s_map": {
+      "type": "info",
+      "title": "The map",
+      "body": "LeetType has two aims: motivate a systems design out loud, and get in the habit of reading the sources behind it.\n\nThree skills:\nRead: trace what a system does when something happens.\nSpeak: motivate a design choice out loud, then check yourself against a short rubric.\nConjugate: a force changes; pick the change that restores the budget or the invariant, and name the rule that decides.\n\nTwo sets of rules, Machine (8) and Agreement (10), walked in short threads. Today: Thread 1, From one value to a log. Next: Thread 2, The leader must fsync.\n\nYou have not walked any thread yet. The map shows threads in words, never a score.",
+      "actions": [
+        {
+          "label": "Start today's session",
+          "next": "s_primer"
+        },
+        {
+          "label": "See the rules",
+          "next": "s_rules"
+        }
+      ],
+      "tags": ["map"]
+    },
+    "s_rules": {
+      "type": "info",
+      "title": "The rules on the map",
+      "body": "Machine\nM1 The latency ladder\nM2 Batch to amortize a fixed cost\nM3 Pointer chasing costs a miss per hop\nM4 Little's law\nM5 Shared writes serialize\nM6 Queues explode near saturation\nM7 Fan-out amplifies the tail\nM8 Durability has a price\n\nAgreement\nA1 The failure model decides\nA2 FLP: timeouts buy liveness, never safety\nA3 Majorities intersect\nA4 Safety always, liveness when stable\nA5 A stable leader amortizes agreement\nA6 Higher terms fence stale leaders\nA7 Elect only complete leaders\nA8 Committed means a majority stored it\nA9 Replication is not consensus\nA10 Reads need agreement too",
+      "actions": [
+        {
+          "label": "Back to the map",
+          "next": "s_map"
+        }
+      ],
+      "tags": ["map"]
+    },
+    "s_primer": {
+      "type": "info",
+      "title": "Today's new rule: A3, Majorities intersect",
+      "body": "2f + 1 nodes tolerate f crashes, because any two majorities share a node that remembers.\n\nWith five nodes (f = 2) a majority is three. Any two groups of three out of five overlap in at least one node: 3 + 3 = 6, and there are only 5.\n\nToday is Thread 1, From one value to a log: three rounds, then one soundbite where you speak. About 10 minutes. Each round states its job in one sentence at the top. If a round stumps you, you get a reading placed for it, not the answer.",
+      "actions": [
+        {
+          "label": "Start Round 1",
+          "next": "r1"
+        }
+      ],
+      "tags": ["primer"]
+    },
+    "r1": {
+      "type": "choice",
+      "pinned": "What may P2 propose in ballot 7?",
+      "title": "Round 1 · Read · Paxos",
+      "body": "Single-decree Paxos, five acceptors A–E. Proposer P1 ran ballot 5; A, B and C accepted value x. Then P1 crashed before telling anyone. Proposer P2 runs ballot 7 and gets promises from C, D and E. C reports “I accepted (5, x)”. D and E report nothing.\n\nWho holds what:\nA, B, C: accepted (5, x)\nD, E: nothing accepted\nPromises to P2: C says (5, x); D and E say nothing",
+      "options": [
+        {
+          "label": "A. Its own value y: two of the three promises report nothing.",
+          "correct": false,
+          "feedback": "No answer here. A reading is placed instead, and this round is parked until you have read it.",
+          "next": "p1"
+        },
+        {
+          "label": "B. Either value: ballot 7 outranks ballot 5, so both are safe.",
+          "correct": false,
+          "feedback": "No answer here. A reading is placed instead, and this round is parked until you have read it.",
+          "next": "p1"
+        },
+        {
+          "label": "C. x: it must adopt the highest-ballot value any promise reports.",
+          "correct": true,
+          "next": "ok1"
+        },
+        {
+          "label": "D. Nothing: a value is already chosen, so P2 must give up.",
+          "correct": false,
+          "feedback": "No answer here. A reading is placed instead, and this round is parked until you have read it.",
+          "next": "p1"
+        },
+        {
+          "label": "Not sure",
+          "abstain": true,
+          "feedback": "Noted as “Not sure”: that is evidence, not a miss. No answer here. A reading is placed instead, and this round is parked until you have read it.",
+          "next": "p1"
+        }
+      ],
+      "tags": ["round:1"],
+      "onHesitate": "p1"
+    },
+    "ok1": {
+      "type": "info",
+      "title": "Round 1: answered",
+      "body": "Right: C (A3, majorities intersect). x sits on a majority {A, B, C}, so it may already be chosen. Any majority P2 hears from shares at least one node with {A, B, C}, here C, and the rule says P2 must carry the highest-ballot value it hears.\n\nA breaks the invariant: proposing y could choose a second value.\nB confuses ordering with safety: the ballot only orders attempts (A6); what's carried forward is what makes it safe.\nD: P2 can't know x is chosen (only C mentioned it). Proposing x is how it finishes safely; it doesn't give up.",
+      "actions": [
+        {
+          "label": "Round 2",
+          "next": "r2"
+        }
+      ],
+      "tags": ["reveal"]
+    },
+    "p1": {
+      "type": "reading",
+      "title": "Why must any group P2 hears from include a node that remembers?",
+      "primer": "Round 1 is parked; no answer yet. Lamport picks a size for “large enough” and gives a one-line reason. Look for it: what would break if two such sets could be disjoint? Once you mark this read, Round 1 comes back in your next Probe session.",
+      "source": {
+        "title": "Paxos Made Simple",
+        "author": "Lamport",
+        "year": 2001,
+        "where": "§2.2, p. 2",
+        "url": "https://lamport.azurewebsites.net/pubs/paxos-simple.pdf",
+        "minutes": 5
+      },
+      "passage": "(Paraphrase; open the source for the paper's own words.) A value is chosen once a large enough set of acceptors has accepted it. Lamport takes “large enough” to mean any majority of the acceptors. His one-line reason: any two majorities have at least one acceptor in common, so if each acceptor accepts at most one value, two different values cannot both be chosen.",
+      "actions": [
+        {
+          "label": "Read now",
+          "next": "r2b",
+          "effect": "read"
+        },
+        {
+          "label": "Save to queue",
+          "next": "r2b",
+          "effect": "save"
+        }
+      ],
+      "tags": ["placement", "struggle"]
+    },
+    "r2": {
+      "type": "choice",
+      "pinned": "Five nodes now need an ordered log of 10k writes/s at about one round trip per write, losing no acknowledged write while a majority survives. Which change gets there?",
+      "title": "Round 2 · Conjugate · from one value to a log",
+      "body": "You have Round 1's single-decree Paxos. All five nodes are in one datacenter; a round trip is ≈0.5 ms. At 10k writes/s that is about five writes in flight at once, so writes are pipelined.",
+      "options": [
+        {
+          "label": "A. Run a separate full Paxos instance (prepare, then accept) for every log slot; any node may propose.",
+          "correct": false,
+          "feedback": "No answer here. A reading is placed instead, and this round is parked until you have read it.",
+          "next": "p2"
+        },
+        {
+          "label": "B. A primary appends locally, acknowledges the client, and streams entries to the four backups in the background.",
+          "correct": false,
+          "feedback": "No answer here. A reading is placed instead, and this round is parked until you have read it.",
+          "next": "p2"
+        },
+        {
+          "label": "C. Elect one leader that runs prepare once for all future slots, then sends only accept for each entry.",
+          "correct": true,
+          "next": "ok2"
+        },
+        {
+          "label": "D. Every node accepts writes; the log is ordered afterwards by wall-clock timestamp.",
+          "correct": false,
+          "feedback": "No answer here. A reading is placed instead, and this round is parked until you have read it.",
+          "next": "p2"
+        },
+        {
+          "label": "Not sure",
+          "abstain": true,
+          "feedback": "Noted as “Not sure”: that is evidence, not a miss. No answer here. A reading is placed instead, and this round is parked until you have read it.",
+          "next": "p2"
+        }
+      ],
+      "tags": ["round:2"],
+      "onHesitate": "p2"
+    },
+    "r2b": {
+      "type": "choice",
+      "pinned": "Five nodes now need an ordered log of 10k writes/s at about one round trip per write, losing no acknowledged write while a majority survives. Which change gets there?",
+      "title": "Round 2 · Conjugate · from one value to a log",
+      "body": "You have Round 1's single-decree Paxos. All five nodes are in one datacenter; a round trip is ≈0.5 ms. At 10k writes/s that is about five writes in flight at once, so writes are pipelined.",
+      "options": [
+        {
+          "label": "A. Run a separate full Paxos instance (prepare, then accept) for every log slot; any node may propose.",
+          "correct": false,
+          "feedback": "No answer here. A reading is placed instead, and this round is parked until you have read it.",
+          "next": "p2b"
+        },
+        {
+          "label": "B. A primary appends locally, acknowledges the client, and streams entries to the four backups in the background.",
+          "correct": false,
+          "feedback": "No answer here. A reading is placed instead, and this round is parked until you have read it.",
+          "next": "p2b"
+        },
+        {
+          "label": "C. Elect one leader that runs prepare once for all future slots, then sends only accept for each entry.",
+          "correct": true,
+          "next": "ok2"
+        },
+        {
+          "label": "D. Every node accepts writes; the log is ordered afterwards by wall-clock timestamp.",
+          "correct": false,
+          "feedback": "No answer here. A reading is placed instead, and this round is parked until you have read it.",
+          "next": "p2b"
+        },
+        {
+          "label": "Not sure",
+          "abstain": true,
+          "feedback": "Noted as “Not sure”: that is evidence, not a miss. No answer here. A reading is placed instead, and this round is parked until you have read it.",
+          "next": "p2b"
+        }
+      ],
+      "tags": ["round:2"],
+      "onHesitate": "p2b"
+    },
+    "ok2": {
+      "type": "info",
+      "title": "Round 2: answered",
+      "body": "Right: C (A5, a stable leader amortizes agreement). This is Multi-Paxos. Steady state is one accept round trip per entry ≈ 0.5 ms, and safety is the same as Round 1.\n\nA breaks the budget: two round trips per entry, and competing proposers can livelock.\nB fits the budget but breaks the invariant (A9): a write acknowledged before it reached a majority dies with the primary.\nD breaks the invariant (A1, A2): clocks drift and timestamps tie, so two nodes can order the log differently.",
+      "actions": [
+        {
+          "label": "Round 3",
+          "next": "r3"
+        }
+      ],
+      "tags": ["reveal"]
+    },
+    "p2": {
+      "type": "reading",
+      "title": "In a long log, which step does a leader repay for every entry, and which only once?",
+      "primer": "Round 2 is parked; no answer yet. Watch a stable leader run a whole log. Which phase does it pay per command, and which only once? Once you mark this read, Round 2 comes back in your next Probe session.",
+      "source": {
+        "title": "Paxos Made Simple",
+        "author": "Lamport",
+        "year": 2001,
+        "where": "§3, pp. 8–11",
+        "url": "https://lamport.azurewebsites.net/pubs/paxos-simple.pdf",
+        "minutes": 12
+      },
+      "passage": "(Paraphrase; open the source for the paper's own words.) Section 3 turns the single-value algorithm into a log: one instance per command. A stable leader is elected as the distinguished proposer. Having one leader lets it run the first phase for all instances it has not started yet in a single step, so each later command costs only the second phase.",
+      "tags": ["placement", "struggle"],
+      "actions": [
+        {
+          "label": "Read now",
+          "next": "r3",
+          "effect": "read"
+        },
+        {
+          "label": "Save to queue",
+          "next": "r3",
+          "effect": "save"
+        }
+      ]
+    },
+    "p2b": {
+      "type": "reading",
+      "title": "In a long log, which step does a leader repay for every entry, and which only once?",
+      "primer": "Round 2 is parked; no answer yet. Watch a stable leader run a whole log. Which phase does it pay per command, and which only once? Once you mark this read, Round 2 comes back in your next Probe session.",
+      "source": {
+        "title": "Paxos Made Simple",
+        "author": "Lamport",
+        "year": 2001,
+        "where": "§3, pp. 8–11",
+        "url": "https://lamport.azurewebsites.net/pubs/paxos-simple.pdf",
+        "minutes": 12
+      },
+      "passage": "(Paraphrase; open the source for the paper's own words.) Section 3 turns the single-value algorithm into a log: one instance per command. A stable leader is elected as the distinguished proposer. Having one leader lets it run the first phase for all instances it has not started yet in a single step, so each later command costs only the second phase.",
+      "tags": ["placement", "struggle"],
+      "actions": [
+        {
+          "label": "Read now",
+          "next": "r3x",
+          "effect": "read"
+        },
+        {
+          "label": "Save to queue",
+          "next": "r3x",
+          "effect": "save"
+        }
+      ]
+    },
+    "r3": {
+      "type": "choice",
+      "pinned": "S3 has just won the election for term 4. What happens to entry 7 on S2?",
+      "title": "Round 3 · Read · Raft",
+      "body": "Five Raft servers, S1–S5. Entries 1–6 (all term 3) are committed on every server. Leader S1 (term 3) appends entry 7, replicates it to S2 only, then crashes. No client has had an answer for entry 7. S3 times out first and asks for votes in term 4.\n\nWho holds what:\nEntries 1–6 (term 3): all five servers\nEntry 7 (term 3): S1 and S2 only\nS3's log ends at entry 6. S1 is down.",
+      "options": [
+        {
+          "label": "A. S3 first copies entry 7 from S2, since S2 has the longer log.",
+          "correct": false,
+          "feedback": "No answer here. A reading is placed instead, and this round is parked until you have read it.",
+          "next": "p3"
+        },
+        {
+          "label": "B. It gets overwritten: entry 7 was never committed, and no client was told it was.",
+          "correct": true,
+          "next": "ok3"
+        },
+        {
+          "label": "C. It stays: Raft never deletes an entry once a server has stored it.",
+          "correct": false,
+          "feedback": "No answer here. A reading is placed instead, and this round is parked until you have read it.",
+          "next": "p3"
+        },
+        {
+          "label": "D. The premise is impossible: S2 refuses its vote, so S3 can't reach a majority.",
+          "correct": false,
+          "feedback": "No answer here. A reading is placed instead, and this round is parked until you have read it.",
+          "next": "p3"
+        },
+        {
+          "label": "Not sure",
+          "abstain": true,
+          "feedback": "Noted as “Not sure”: that is evidence, not a miss. No answer here. A reading is placed instead, and this round is parked until you have read it.",
+          "next": "p3"
+        }
+      ],
+      "tags": ["round:3"],
+      "onHesitate": "p3"
+    },
+    "r3x": {
+      "type": "choice",
+      "pinned": "S3 has just won the election for term 4. What happens to entry 7 on S2?",
+      "title": "Round 3 · Read · Raft",
+      "body": "Five Raft servers, S1–S5. Entries 1–6 (all term 3) are committed on every server. Leader S1 (term 3) appends entry 7, replicates it to S2 only, then crashes. No client has had an answer for entry 7. S3 times out first and asks for votes in term 4.\n\nWho holds what:\nEntries 1–6 (term 3): all five servers\nEntry 7 (term 3): S1 and S2 only\nS3's log ends at entry 6. S1 is down.",
+      "options": [
+        {
+          "label": "A. S3 first copies entry 7 from S2, since S2 has the longer log.",
+          "correct": false,
+          "feedback": "No answer here. A reading is placed instead, and this round is parked until you have read it.",
+          "next": "p3x"
+        },
+        {
+          "label": "B. It gets overwritten: entry 7 was never committed, and no client was told it was.",
+          "correct": true,
+          "next": "ok3"
+        },
+        {
+          "label": "C. It stays: Raft never deletes an entry once a server has stored it.",
+          "correct": false,
+          "feedback": "No answer here. A reading is placed instead, and this round is parked until you have read it.",
+          "next": "p3x"
+        },
+        {
+          "label": "D. The premise is impossible: S2 refuses its vote, so S3 can't reach a majority.",
+          "correct": false,
+          "feedback": "No answer here. A reading is placed instead, and this round is parked until you have read it.",
+          "next": "p3x"
+        },
+        {
+          "label": "Not sure",
+          "abstain": true,
+          "feedback": "Noted as “Not sure”: that is evidence, not a miss. No answer here. A reading is placed instead, and this round is parked until you have read it.",
+          "next": "p3x"
+        }
+      ],
+      "tags": ["round:3"],
+      "onHesitate": "p3x"
+    },
+    "ok3": {
+      "type": "info",
+      "title": "Round 3: answered",
+      "body": "Right: B (A7, A8). S2 refuses its vote, because its log (index 7, term 3) is more up to date than S3's. S4 and S5 grant theirs, so S3 wins with three of five. Entry 7 was only on two servers, so it was never committed, and the new leader's log overwrites it on S2.\n\nA: in Raft, data flows only from leader to follower. Elections are restricted precisely so that a winner never needs to fetch anything.\nC: uncommitted entries on followers are overwritten when they conflict with the leader.\nD: one refusal isn't a lost majority.",
+      "actions": [
+        {
+          "label": "Now say one out loud",
+          "next": "rec"
+        }
+      ],
+      "tags": ["reveal"]
+    },
+    "p3": {
+      "type": "reading",
+      "title": "How does a voter decide whose log is more up to date, and what does that guarantee about the winner?",
+      "primer": "Round 3 is parked; no answer yet. How does a voter compare logs, and what does the restriction guarantee about any winner? Once you mark this read, Round 3 comes back in your next Probe session.",
+      "source": {
+        "title": "In Search of an Understandable Consensus Algorithm (extended)",
+        "author": "Ongaro, Ousterhout",
+        "year": 2014,
+        "where": "§5.4.1, p. 8",
+        "url": "https://raft.github.io/raft.pdf",
+        "minutes": 5
+      },
+      "passage": "(Paraphrase; open the source for the paper's own words.) A server grants its vote only if the candidate's log is at least as up to date as its own. Up to date is compared on the last entry: a later term wins; with equal terms, the longer log wins. A committed entry sits on a majority and a winner needs a majority, so at least one voter holds every committed entry. The winner's log therefore already contains all of them.",
+      "tags": ["placement", "struggle"],
+      "actions": [
+        {
+          "label": "Read now",
+          "next": "rec",
+          "effect": "read"
+        },
+        {
+          "label": "Save to queue",
+          "next": "rec",
+          "effect": "save"
+        }
+      ]
+    },
+    "p3x": {
+      "type": "reading",
+      "title": "How does a voter decide whose log is more up to date, and what does that guarantee about the winner?",
+      "primer": "Round 3 is parked; no answer yet. How does a voter compare logs, and what does the restriction guarantee about any winner? Once you mark this read, Round 3 comes back in your next Probe session.",
+      "source": {
+        "title": "In Search of an Understandable Consensus Algorithm (extended)",
+        "author": "Ongaro, Ousterhout",
+        "year": 2014,
+        "where": "§5.4.1, p. 8",
+        "url": "https://raft.github.io/raft.pdf",
+        "minutes": 5
+      },
+      "passage": "(Paraphrase; open the source for the paper's own words.) A server grants its vote only if the candidate's log is at least as up to date as its own. Up to date is compared on the last entry: a later term wins; with equal terms, the longer log wins. A committed entry sits on a majority and a winner needs a majority, so at least one voter holds every committed entry. The winner's log therefore already contains all of them.",
+      "tags": ["placement", "struggle"],
+      "actions": [
+        {
+          "label": "Read now",
+          "next": "rec_cap",
+          "effect": "read"
+        },
+        {
+          "label": "Save to queue",
+          "next": "rec_cap",
+          "effect": "save"
+        }
+      ]
+    },
+    "rec": {
+      "type": "record",
+      "pinned": "In 45 seconds, out loud: why did Raft's authors bother, given Multi-Paxos?",
+      "title": "Round 4 · Speak · why Raft?",
+      "body": "Hold to record, up to 60 seconds. The rubric appears only after you have recorded. Your recording is kept with its prompt, rubric and ticks, and exported to Drive for the weekly review.",
+      "prompt": "Multi-Paxos already replicates a log with a stable leader. In 45 seconds, out loud: why did Raft's authors bother?",
+      "maxSeconds": 60,
+      "rubric": [
+        "Understandability was the explicit goal: published Multi-Paxos leaves leader election, gaps in the log and catch-up to each implementer, and implementations diverge.",
+        "A strong leader: entries flow only from leader to followers, with no per-slot recovery of values from acceptors.",
+        "The election restriction: only a candidate with an up-to-date log can win, so a new leader already has every committed entry (A7).",
+        "Fewer states to reason about: terms, plus the log-matching property (same index and term means the same history up to there)."
+      ],
+      "weakIfFewerThan": 2,
+      "next": "s_end",
+      "tags": ["speak", "round:4"],
+      "onWeak": "p4"
+    },
+    "rec_cap": {
+      "type": "record",
+      "pinned": "In 45 seconds, out loud: why did Raft's authors bother, given Multi-Paxos?",
+      "title": "Round 4 · Speak · why Raft?",
+      "body": "Hold to record, up to 60 seconds. The rubric appears only after you have recorded. Your recording is kept with its prompt, rubric and ticks, and exported to Drive for the weekly review.",
+      "prompt": "Multi-Paxos already replicates a log with a stable leader. In 45 seconds, out loud: why did Raft's authors bother?",
+      "maxSeconds": 60,
+      "rubric": [
+        "Understandability was the explicit goal: published Multi-Paxos leaves leader election, gaps in the log and catch-up to each implementer, and implementations diverge.",
+        "A strong leader: entries flow only from leader to followers, with no per-slot recovery of values from acceptors.",
+        "The election restriction: only a candidate with an up-to-date log can win, so a new leader already has every committed entry (A7).",
+        "Fewer states to reason about: terms, plus the log-matching property (same index and term means the same history up to there)."
+      ],
+      "weakIfFewerThan": 2,
+      "next": "s_end",
+      "tags": ["speak", "round:4"],
+      "onWeak": "capinfo"
+    },
+    "p4": {
+      "type": "reading",
+      "title": "What was the complaint about Paxos that Raft was built to answer?",
+      "primer": "Your soundbite is parked; the self-check is the strongest sign of a gap. Before deciding whether Raft is “Paxos made easy”, read the complaint. It's about which subproblem Paxos was built on. Once you mark this read, the soundbite comes back in your next Probe session.",
+      "source": {
+        "title": "In Search of an Understandable Consensus Algorithm (extended)",
+        "author": "Ongaro, Ousterhout",
+        "year": 2014,
+        "where": "§3, pp. 2–3",
+        "url": "https://raft.github.io/raft.pdf",
+        "minutes": 6
+      },
+      "passage": "(Paraphrase; open the source for the paper's own words.) Section 3 says Paxos has two drawbacks. It is exceptionally difficult to understand. And it is a poor foundation for building practical systems: the single-decree protocol is subtle, and there is no widely agreed algorithm for multi-Paxos, so implementations diverge from it. The authors made understandability an explicit goal of Raft.",
+      "actions": [
+        {
+          "label": "Read now",
+          "next": "s_end",
+          "effect": "read"
+        },
+        {
+          "label": "Save to queue",
+          "next": "s_end",
+          "effect": "save"
+        }
+      ],
+      "tags": ["placement", "struggle"]
+    },
+    "capinfo": {
+      "type": "info",
+      "title": "Reading saved to your queue",
+      "body": "Your self-check counts as a struggle. Three readings are already placed today, the most for one session, so this one goes to your queue instead: Raft paper, §3, pp. 2–3, 6 min. The soundbite is parked until you have marked it read, and then it comes back.",
+      "actions": [
+        {
+          "label": "Continue",
+          "next": "s_end"
+        }
+      ],
+      "tags": ["struggle"]
+    },
+    "s_end": {
+      "type": "info",
+      "title": "Where you are",
+      "body": "Thread 1, From one value to a log: you took on its first steps today. One value (Paxos), a stable leader, and Raft's elected leader, then your own voice on why Raft exists.\n\nA round you answered on your own is walked. A round that went to a reading is parked in the thread: no answer was shown, its reading is in your queue or marked read, and the round comes back in your next Probe session once you have marked that reading read. Nothing is held back; the thread moves on.\n\nYour soundbite is kept with its prompt, rubric and ticks, ready to export. The weekly review reads it.",
+      "actions": [
+        {
+          "label": "Rate this session",
+          "next": "s_reflect"
+        }
+      ],
+      "tags": ["end"]
+    },
+    "s_reflect": {
+      "type": "choice",
+      "title": "Reflect",
+      "body": "LeetType, Probe session. Was it worth your 10 minutes? (No right answer.)",
+      "options": [
+        {
+          "label": "Worth it: Yes",
+          "next": "s_close"
+        },
+        {
+          "label": "Worth it: Partly",
+          "next": "s_close"
+        },
+        {
+          "label": "Worth it: No",
+          "next": "s_close"
+        }
+      ],
+      "tags": ["reflect"]
+    },
+    "s_close": {
+      "type": "info",
+      "title": "Saved",
+      "body": "Your rating is kept against this Probe session. That is today's 10 minutes.",
+      "actions": [
+        {
+          "label": "Done for today",
+          "next": "s_done"
+        },
+        {
+          "label": "Open the next Probe session",
+          "next": "s_next"
+        }
+      ],
+      "tags": ["end"]
+    },
+    "s_done": {
+      "type": "end",
+      "title": "See you next time",
+      "body": "The thread continues in your next Probe session. Readings you saved wait in the queue for a Read session.",
+      "tags": ["end"]
+    },
+    "s_next": {
+      "type": "info",
+      "title": "Next Probe session",
+      "body": "Thread 1 continues. A parked round comes back first, and only once its reading is marked read. Which one is back?",
+      "actions": [
+        {
+          "label": "Round 1 · Paxos",
+          "next": "ret1"
+        },
+        {
+          "label": "Round 2 · a stable leader",
+          "next": "ret2"
+        },
+        {
+          "label": "Round 3 · Raft",
+          "next": "ret3"
+        },
+        {
+          "label": "Soundbite · why Raft?",
+          "next": "retS"
+        },
+        {
+          "label": "None was parked",
+          "next": "s_done"
+        }
+      ],
+      "tags": ["parked-return-menu"]
+    },
+    "ret1": {
+      "type": "choice",
+      "pinned": "What may P2 propose in ballot 7?",
+      "title": "Round 1 · Read · Paxos (back from its reading)",
+      "body": "Single-decree Paxos, five acceptors A–E. Proposer P1 ran ballot 5; A, B and C accepted value x. Then P1 crashed before telling anyone. Proposer P2 runs ballot 7 and gets promises from C, D and E. C reports “I accepted (5, x)”. D and E report nothing.\n\nWho holds what:\nA, B, C: accepted (5, x)\nD, E: nothing accepted\nPromises to P2: C says (5, x); D and E say nothing",
+      "options": [
+        {
+          "label": "A. Its own value y: two of the three promises report nothing.",
+          "correct": false,
+          "feedback": "No answer here. The round stays parked.",
+          "next": "s_still"
+        },
+        {
+          "label": "B. Either value: ballot 7 outranks ballot 5, so both are safe.",
+          "correct": false,
+          "feedback": "No answer here. The round stays parked.",
+          "next": "s_still"
+        },
+        {
+          "label": "C. x: it must adopt the highest-ballot value any promise reports.",
+          "correct": true,
+          "feedback": "Right: C (A3, majorities intersect). x sits on a majority {A, B, C}, so it may already be chosen. Any majority P2 hears from shares at least one node with {A, B, C}, here C, and the rule says P2 must carry the highest-ballot value it hears.\n\nA breaks the invariant: proposing y could choose a second value.\nB confuses ordering with safety: the ballot only orders attempts (A6); what's carried forward is what makes it safe.\nD: P2 can't know x is chosen (only C mentioned it). Proposing x is how it finishes safely; it doesn't give up.\n\nYou answered this after its reading. That is the best evidence a session can get that the reading helped; it is not a measure of mastery.",
+          "next": "s_done"
+        },
+        {
+          "label": "D. Nothing: a value is already chosen, so P2 must give up.",
+          "correct": false,
+          "feedback": "No answer here. The round stays parked.",
+          "next": "s_still"
+        },
+        {
+          "label": "Not sure",
+          "abstain": true,
+          "feedback": "Noted as “Not sure”: that is evidence, not a miss. No answer here. The round stays parked.",
+          "next": "s_still"
+        }
+      ],
+      "tags": ["round:1", "parked-return"]
+    },
+    "ret2": {
+      "type": "choice",
+      "pinned": "Five nodes now need an ordered log of 10k writes/s at about one round trip per write, losing no acknowledged write while a majority survives. Which change gets there?",
+      "title": "Round 2 · Conjugate · from one value to a log (back from its reading)",
+      "body": "You have Round 1's single-decree Paxos. All five nodes are in one datacenter; a round trip is ≈0.5 ms. At 10k writes/s that is about five writes in flight at once, so writes are pipelined.",
+      "options": [
+        {
+          "label": "A. Run a separate full Paxos instance (prepare, then accept) for every log slot; any node may propose.",
+          "correct": false,
+          "feedback": "No answer here. The round stays parked.",
+          "next": "s_still"
+        },
+        {
+          "label": "B. A primary appends locally, acknowledges the client, and streams entries to the four backups in the background.",
+          "correct": false,
+          "feedback": "No answer here. The round stays parked.",
+          "next": "s_still"
+        },
+        {
+          "label": "C. Elect one leader that runs prepare once for all future slots, then sends only accept for each entry.",
+          "correct": true,
+          "feedback": "Right: C (A5, a stable leader amortizes agreement). This is Multi-Paxos. Steady state is one accept round trip per entry ≈ 0.5 ms, and safety is the same as Round 1.\n\nA breaks the budget: two round trips per entry, and competing proposers can livelock.\nB fits the budget but breaks the invariant (A9): a write acknowledged before it reached a majority dies with the primary.\nD breaks the invariant (A1, A2): clocks drift and timestamps tie, so two nodes can order the log differently.\n\nYou answered this after its reading. That is the best evidence a session can get that the reading helped; it is not a measure of mastery.",
+          "next": "s_done"
+        },
+        {
+          "label": "D. Every node accepts writes; the log is ordered afterwards by wall-clock timestamp.",
+          "correct": false,
+          "feedback": "No answer here. The round stays parked.",
+          "next": "s_still"
+        },
+        {
+          "label": "Not sure",
+          "abstain": true,
+          "feedback": "Noted as “Not sure”: that is evidence, not a miss. No answer here. The round stays parked.",
+          "next": "s_still"
+        }
+      ],
+      "tags": ["round:2", "parked-return"]
+    },
+    "ret3": {
+      "type": "choice",
+      "pinned": "S3 has just won the election for term 4. What happens to entry 7 on S2?",
+      "title": "Round 3 · Read · Raft (back from its reading)",
+      "body": "Five Raft servers, S1–S5. Entries 1–6 (all term 3) are committed on every server. Leader S1 (term 3) appends entry 7, replicates it to S2 only, then crashes. No client has had an answer for entry 7. S3 times out first and asks for votes in term 4.\n\nWho holds what:\nEntries 1–6 (term 3): all five servers\nEntry 7 (term 3): S1 and S2 only\nS3's log ends at entry 6. S1 is down.",
+      "options": [
+        {
+          "label": "A. S3 first copies entry 7 from S2, since S2 has the longer log.",
+          "correct": false,
+          "feedback": "No answer here. The round stays parked.",
+          "next": "s_still"
+        },
+        {
+          "label": "B. It gets overwritten: entry 7 was never committed, and no client was told it was.",
+          "correct": true,
+          "feedback": "Right: B (A7, A8). S2 refuses its vote, because its log (index 7, term 3) is more up to date than S3's. S4 and S5 grant theirs, so S3 wins with three of five. Entry 7 was only on two servers, so it was never committed, and the new leader's log overwrites it on S2.\n\nA: in Raft, data flows only from leader to follower. Elections are restricted precisely so that a winner never needs to fetch anything.\nC: uncommitted entries on followers are overwritten when they conflict with the leader.\nD: one refusal isn't a lost majority.\n\nYou answered this after its reading. That is the best evidence a session can get that the reading helped; it is not a measure of mastery.",
+          "next": "s_done"
+        },
+        {
+          "label": "C. It stays: Raft never deletes an entry once a server has stored it.",
+          "correct": false,
+          "feedback": "No answer here. The round stays parked.",
+          "next": "s_still"
+        },
+        {
+          "label": "D. The premise is impossible: S2 refuses its vote, so S3 can't reach a majority.",
+          "correct": false,
+          "feedback": "No answer here. The round stays parked.",
+          "next": "s_still"
+        },
+        {
+          "label": "Not sure",
+          "abstain": true,
+          "feedback": "Noted as “Not sure”: that is evidence, not a miss. No answer here. The round stays parked.",
+          "next": "s_still"
+        }
+      ],
+      "tags": ["round:3", "parked-return"]
+    },
+    "retS": {
+      "type": "record",
+      "pinned": "In 45 seconds, out loud: why did Raft's authors bother, given Multi-Paxos?",
+      "title": "Round 4 · Speak · why Raft? (back from its reading)",
+      "body": "Hold to record, up to 60 seconds. The rubric appears only after you have recorded. Your recording is kept with its prompt, rubric and ticks, and exported to Drive for the weekly review.",
+      "prompt": "Multi-Paxos already replicates a log with a stable leader. In 45 seconds, out loud: why did Raft's authors bother?",
+      "maxSeconds": 60,
+      "rubric": [
+        "Understandability was the explicit goal: published Multi-Paxos leaves leader election, gaps in the log and catch-up to each implementer, and implementations diverge.",
+        "A strong leader: entries flow only from leader to followers, with no per-slot recovery of values from acceptors.",
+        "The election restriction: only a candidate with an up-to-date log can win, so a new leader already has every committed entry (A7).",
+        "Fewer states to reason about: terms, plus the log-matching property (same index and term means the same history up to there)."
+      ],
+      "weakIfFewerThan": 2,
+      "next": "s_done",
+      "tags": ["speak", "round:4", "parked-return"],
+      "onWeak": "s_still"
+    },
+    "s_still": {
+      "type": "info",
+      "title": "Still parked",
+      "body": "No answer here either. The round stays parked in its thread and its reading stays with it. Go back to the reading and read it for the step this round turns on; then the round comes back again. Nothing else in the thread is held back.",
+      "actions": [
+        {
+          "label": "Continue",
+          "next": "s_done"
+        }
+      ],
+      "tags": ["struggle"]
+    }
+  }
+}

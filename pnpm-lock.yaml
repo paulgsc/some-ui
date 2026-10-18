@@ -890,6 +890,9 @@ importers:
 
   packages/job-desk:
     dependencies:
+      '@some-ui/core-utils':
+        specifier: workspace:*
+        version: link:../core-utils
       zod:
         specifier: 'catalog:'
         version: 4.6.5
