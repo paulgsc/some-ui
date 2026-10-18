@@ -287,6 +287,7 @@ describe("digestFindings", () => {
       verdict: "disagree",
       note: "Senior only",
       pickId: "avm-0b77",
+      rule: null,
       review: null,
     })
     expect(messages(digest)).toEqual([
@@ -329,70 +330,51 @@ describe("digestFindings", () => {
     ])
   })
 
-  it("reviews a scout it found and didn't pick, and no other", () => {
+  it("reviews a scout it scored and didn't pick, and no other", () => {
     const digest = sample()
-    const review = {
-      scores: {
-        fit: 0.7,
-        odds: 0.4,
-        fitWhy: "covers 7 of 10",
-        oddsWhy: "remote",
-      },
+    const review = (
+      fit: number
+    ): NonNullable<Digest["scouts"][number]["review"]> => ({
+      scores: { fit, odds: 0.4, fitWhy: "covers some", oddsWhy: "remote" },
       gaps: [{ kind: "learnable" as const, text: "Go" }],
       sends: { variant: "qa" as const, template: "classic" as const },
-    }
+    })
+    const scout = (
+      verdict: "agree" | "disagree" | "not-found",
+      more: { pickId?: string; rule?: string; fit?: number }
+    ): Digest["scouts"][number] => ({
+      scoutId: `sc-${digest.scouts.length}`,
+      verdict,
+      note: "Why.",
+      pickId: more.pickId ?? null,
+      rule: more.rule ?? null,
+      review: more.fit === undefined ? null : review(more.fit),
+    })
     digest.scouts.push(
-      {
-        scoutId: "sc-1",
-        verdict: "agree",
-        note: "Worth it",
-        pickId: null,
-        review,
-      },
-      {
-        scoutId: "sc-2",
-        verdict: "disagree",
-        note: "Five years",
-        pickId: null,
-        review,
-      },
-      {
-        scoutId: "sc-3",
-        verdict: "disagree",
-        note: "Phone screens",
-        pickId: null,
-        review: null,
-      }
+      scout("agree", { fit: 0.7 }),
+      scout("disagree", { fit: 0.3 }),
+      scout("disagree", { rule: "phone screens" }),
+      scout("not-found", {}),
+      scout("agree", { pickId: "avm-0b77" })
     )
     expect(messages(digest)).toEqual([])
 
+    digest.scouts.splice(1)
     digest.scouts.push(
-      {
-        scoutId: "sc-4",
-        verdict: "agree",
-        note: "Worth it",
-        pickId: null,
-        review: null,
-      },
-      {
-        scoutId: "sc-5",
-        verdict: "not-found",
-        note: "Gone",
-        pickId: null,
-        review,
-      },
-      {
-        scoutId: "sc-6",
-        verdict: "agree",
-        note: "Top",
-        pickId: "avm-0b77",
-        review,
-      }
+      scout("agree", {}),
+      scout("not-found", { fit: 0.7 }),
+      scout("agree", { pickId: "avm-0b77", fit: 0.7 }),
+      scout("disagree", { fit: 0.7 }),
+      scout("agree", { fit: 0.4 }),
+      scout("agree", { rule: "senior title" })
     )
     expect(messages(digest)).toEqual([
-      "scouts.4.review: a scout the run agrees with but didn't pick says what to send",
-      "scouts.5.review: a scout the run couldn't find has no review",
-      "scouts.6.review: a scout that became a pick is reviewed by its pick",
+      "scouts.1.review: a scout the run scored and didn't pick carries its review",
+      "scouts.2.review: a scout the run couldn't find has no review",
+      "scouts.3.review: a scout that became a pick has no review",
+      "scouts.4.verdict: fit 0.7 is an agree; the cutoff is 0.5",
+      "scouts.5.verdict: fit 0.4 is a disagree; the cutoff is 0.5",
+      "scouts.6.rule: a scout a set-aside rule decided is a disagree and no pick",
     ])
   })
 
@@ -414,6 +396,7 @@ describe("digestFindings", () => {
       verdict: "agree",
       note: "Good fit",
       pickId: "nope-123",
+      rule: null,
       review: null,
     })
     expect(messages(digest)).toEqual(["scouts.1.pickId: no pick nope-123"])

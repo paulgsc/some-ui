@@ -333,7 +333,7 @@
       }
     }
   ],
-  "read": [],
+  "read": ["scouts-20261017T210400.json"],
   "transcribed": [],
   "evidence": {
     "someUi": "cb503cb",

@@ -153,6 +153,11 @@ export const DigestSchema = z.object({
       /** The pick it became, when it became one. */
       pickId: IdSchema.nullable(),
       /**
+       * The set-aside rule that decided it (ROUTINE.md §4), in a few words,
+       * when one did. Digests before it had none.
+       */
+      rule: text.nullable().default(null),
+      /**
        * How the run scored a scout it found that isn't a pick, and what to
        * send if I apply anyway. Null for a pick (the pick says it), a scout
        * not found, or one a set-aside rule decided. Digests before it had

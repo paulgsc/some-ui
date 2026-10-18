@@ -28,6 +28,12 @@ export const LOCATIONS: ReadonlyArray<string> = [
 ]
 
 /**
+ * The fit at which the run agrees with a scout it scored but didn't pick:
+ * worth applying to, even though the day's picks ranked higher.
+ */
+export const SCOUT_AGREE_FIT = 0.5
+
+/**
  * The most résumé PRs one digest may link. A run opens one only while none it
  * opened earlier is still open, so I review one change at a time.
  */

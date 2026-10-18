@@ -6,6 +6,7 @@ import {
   MAX_POSTING_AGE_DAYS,
   PATCH_PRS_PER_RUN,
   PICKS_PER_DAY,
+  SCOUT_AGREE_FIT,
   TRACKS,
 } from "./policy"
 
@@ -211,22 +212,42 @@ export function digestFindings(digest: Digest): ReadonlyArray<Finding> {
   })
 
   digest.scouts.forEach((scout, i) => {
-    const reviewed = scout.verdict !== "not-found" && scout.pickId === null
-    if (scout.review !== null && !reviewed) {
+    const at = `scouts.${i}`
+    const unscored =
+      scout.verdict === "not-found"
+        ? "a scout the run couldn't find"
+        : scout.pickId !== null
+          ? "a scout that became a pick"
+          : scout.rule !== null
+            ? "a scout a set-aside rule decided"
+            : null
+    if (
+      scout.rule !== null &&
+      (scout.verdict !== "disagree" || scout.pickId !== null)
+    ) {
       found.push({
-        path: `scouts.${i}.review`,
-        message:
-          scout.verdict === "not-found"
-            ? "a scout the run couldn't find has no review"
-            : "a scout that became a pick is reviewed by its pick",
+        path: `${at}.rule`,
+        message: "a scout a set-aside rule decided is a disagree and no pick",
       })
     }
-    if (scout.review === null && scout.verdict === "agree" && reviewed) {
+    if (unscored !== null && scout.review !== null) {
+      found.push({ path: `${at}.review`, message: `${unscored} has no review` })
+    }
+    if (unscored === null && scout.review === null) {
       found.push({
-        path: `scouts.${i}.review`,
-        message:
-          "a scout the run agrees with but didn't pick says what to send",
+        path: `${at}.review`,
+        message: "a scout the run scored and didn't pick carries its review",
       })
+    }
+    // `sends` can't be held to the scout's track: its entry here carries none.
+    if (unscored === null && scout.review !== null) {
+      const agrees = scout.review.scores.fit >= SCOUT_AGREE_FIT
+      if (agrees !== (scout.verdict === "agree")) {
+        found.push({
+          path: `${at}.verdict`,
+          message: `fit ${scout.review.scores.fit} is ${agrees ? "an agree" : "a disagree"}; the cutoff is ${SCOUT_AGREE_FIT}`,
+        })
+      }
     }
     if (scout.pickId === null) return
     if (scout.verdict !== "agree") {
