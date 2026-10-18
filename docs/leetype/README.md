@@ -923,11 +923,8 @@ bundled corpus (Rem. 11.7).
 That retires **LTY-MOBILE's premise for good**. The section below argued from
 what the phone lacks (a keyboard to produce code) to a weaker probe, and canon
 Rem. 9.3 inverted that premise while keeping the probe. Under v1.2 neither
-version applies to what the phone plays: an incident round is not a substitute
-for typing, nor a diff read one artifact at a time, and nothing about it is
-derived from the absence of a keyboard. The LTY-MOBILE section stays as the
-record of the Def. 1.7 surface it describes; read it as history, not as a
-constraint on the phone.
+version applies: an incident round is not a substitute for typing. The
+LTY-MOBILE section stays as the record of the Def. 1.7 surface it describes.
 
 ### The epics the canon governs
 

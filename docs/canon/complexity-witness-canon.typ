@@ -397,8 +397,7 @@ answer to the second forces most of the answers to the first.
   failure model --- "two different values are never chosen", "an acknowledged
   write survives the loss of any one node". Like a budget it is data a round
   carries, written in one sentence the learner reads; unlike a budget it is
-  not evaluated by §2's cost algebra, which computes loop costs and nothing
-  about safety.
+  not evaluated by §2's cost algebra.
 ]
 
 #definition("1.9", name: "Incident round (v1.2)")[
@@ -419,17 +418,12 @@ answer to the second forces most of the answers to the first.
   Def. 1.7's sense, and none of §2--§5 applies to it.
 ]
 
-#remark("1.2", name: "Two kinds of round, and why the first is not rewritten")[
-  Def. 1.7 is retained as filed: a round over $(A, C, B, D, mu, r)$ is still
-  what §2--§6 are about, and every theorem there is still true of it. What
-  changed is which kind the phone plays. The observation is the A/B recorded
-  in the v1.2 log: the Big-O round asks the wrong kind of question for the
-  learner this workspace serves (it can express a loop rewrite of a toy
-  function and never a machine or a failure), and an incident is the unit
-  every scored design converged on. Def. 1.9 is a second object beside
-  Def. 1.7, not a revision of it; a result below that names "round" without a
-  qualifier means a Def. 1.7 round, as it always did, and the v1.2 results
-  say which kind they govern.
+#remark("1.2", name: "Two kinds of round")[
+  What v1.2 changes is which kind the phone plays: a Def. 1.7 round can
+  express a loop rewrite of a toy function and never a machine or a failure,
+  and an incident is the unit every design in the v1.2 log's A/B converged
+  on. A result that names "round" without a qualifier means a Def. 1.7 round,
+  as it always did; the v1.2 results say which kind they govern.
 ]
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -961,16 +955,13 @@ superseded and kept.
 ]
 
 #remark("7.4", name: "Two registers beside `CW-P` (v1.2)")[
-  The register grows by amendment (Rem. 7.2), and this is one. Incident rounds
-  (Def. 1.9) are decided by rules about machines and about agreement, which
+  Incident rounds (Def. 1.9) are decided by rules about machines and about agreement, which
   `CW-P1`--`CW-P16` cannot state, so two registers are added under new
   prefixes, *Machine* and *Agreement*. No `CW-P` identifier moves. Def. 1.5's
   "register" now reads as any of the three; Def. 1.6's $mu$ still maps into
-  `CW-P` alone, and Def. 1.9's $rho$ into `M` or `A`. Each identifier below is
-  stable under the same rule as a `CW-P` one: never reused, never renumbered,
-  never removed, and a superseded entry is marked and kept. Each rule is the
-  one-line form a learner reads, and each is covered by the seed reading list
-  the v1.2 log names.
+  `CW-P` alone, and Def. 1.9's $rho$ into `M` or `A`. Their identifiers are stable
+  as `CW-P` ones are (Rem. 7.2). Each rule is the one-line form a learner
+  reads, and each is covered by the seed reading list the v1.2 log names.
 
   *Machine register (v0).*
   #table(
@@ -1004,10 +995,9 @@ superseded and kept.
     [`A10`], [Reads need agreement too], [A leader must confirm it still leads before it answers a read: by a read index, or by a lease that trusts bounded clock drift.],
   )
 
-  These entries are *v0*. The A/B that motivates this amendment never showed
-  a rule's name before a pick, so it tested the registers' coverage and not
-  their wording; they are revised from real sessions, by amendment, with the
-  identifiers kept. They are rows of this remark rather than `#proposition`
+  The A/B never showed a rule's name before a pick, so it tested the
+  registers' coverage and not their wording; the v0 rows are revised from
+  real sessions, by amendment, with the identifiers kept. They are rows of this remark rather than `#proposition`
   entries of §7 because the generated `CW-P` register is read from those
   entries and is a closed union of `CW-P` identifiers. Rem. 7.1's citation
   check over `M` and `A` is mechanical and not yet a rule: it arrives with the
@@ -1252,8 +1242,7 @@ superseded and kept.
 ]
 
 #proof[
-  Not a deduction; an observation this canon owed a result for. Nothing in
-  §1--§11 owned what the learner is told to do, and the surface the
+  Nothing in §1--§11 owned what the learner is told to do, and the surface the
   post-mortem studied stated the task on page 4 of 4 and was abandoned four
   times in four sessions, which is Axiom P.1's failure arrived at by a new
   route. In the A/B all five designs pinned the job, and all five commuters
@@ -1327,18 +1316,14 @@ superseded and kept.
 ]
 
 #remark("9.5", name: "Deferred, never withheld: Prop. 9.4 under Axiom 9.1")[
-  Axiom 9.1 names "explanation" among the artifacts never withheld on the
-  basis of a learner response, and Prop. 9.4 replaces a struggled round's
-  worked confirmation with a placement. The two are consistent on one
-  condition, which Prop. 9.4 therefore carries: the placement is the default
-  of the reveal, not a lock on it. The worked confirmation of a parked round
-  stays reachable on request at every moment, by one action, and taking it is
-  recorded. What the request costs is evidence, never access: by Axiom 9.2 the
-  parked round's later answer is an observation of the reveal and earns no
-  credit, while its return (Prop. 9.4 (b)), being new numbers, is a fresh
-  commitment and still can. A surface that makes the confirmation
-  unreachable --- for a session, or until a reading is marked read --- has
-  turned a placement into a gate, and is the error Theorem 9.1 forbids.
+  Axiom 9.1 never withholds an explanation on the basis of a response, and
+  Prop. 9.4 replaces a struggled round's worked confirmation with a
+  placement. They agree on one condition, which Prop. 9.4 therefore carries:
+  the confirmation of a parked round stays reachable by one action at every
+  moment, and taking it is recorded. It costs evidence, never access: by
+  Axiom 9.2 that round earns no credit afterwards, while its return, being
+  new numbers, is a fresh commitment. A surface that makes the confirmation
+  unreachable has turned a placement into a gate (Theorem 9.1).
 ]
 
 #proposition("9.5", name: "First-use gloss (v1.2)")[
@@ -1347,7 +1332,7 @@ superseded and kept.
 ]
 
 #proof[
-  An observation. Beginners in all five A/B designs were stopped by a term
+  Beginners in all five A/B designs were stopped by a term
   used before any definition --- ballot, term, Sentinel, fsync, lease,
   quorum --- and the brief's primer card showed one rule and no vocabulary.
   The mandate that a viewer can read what the owner uses (the repository's
@@ -1366,8 +1351,7 @@ superseded and kept.
   abandon a round mid-screen has made leaving a failure. In the A/B four of
   five designs promised about ten minutes and lost the five-minute commuter
   mid-round with no way out. A declared length is a plan for the session's
-  time, not a terminal condition: it does not end the cycle, and the thread
-  continues from wherever the learner left.
+  time, not a terminal condition.
 ]
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -1467,13 +1451,11 @@ superseded and kept.
   + no incorrect option's reason in $w$ names the correct option, so that a
     placement never smuggles the answer (Prop. 9.4, Ax. 9.2);
   + every term is glossed on or before its first use (Prop. 9.5).
-  The second, third and fourth, and the presence of the first, are mechanical
-  over a session file and belong in one lint with Rem. 7.1's citation check.
-  Whether a citation is *right* is not mechanical: the passage is checked
-  against the source document, not from memory, by a review pass that plays
-  the expert learner. The evidence for making these lints rather than advice is
-  Rem. 3.2's: six errors in five agent-written sessions, every one in a
-  reason, a passage or a rubric.
+  All but a citation's correctness are mechanical over a session file and
+  belong in one lint with Rem. 7.1's citation check; they are lints rather
+  than advice on Rem. 3.2's evidence. Whether a citation is *right* is
+  checked against the source document, not from memory, by a review pass
+  that plays the expert learner.
 ]
 
 #remark("10.4", name: "Def. 10.2 over the new registers (v1.2)")[
@@ -1704,18 +1686,15 @@ superseded and kept.
     `CW-P` rounds on the phone, and `RoundSession`'s artifact switcher and
     diff-set choices. The five bundled rounds are not kept as a thread; Git
     history keeps them.
-  - Rem. 11.4's server hoist becomes optional sync. Reviewed content still
-    reaches the learner, now reviewed by Rem. 10.3's lint and expert pass
-    rather than by a code review of a `.ts` file. Syncing what the phone pulled
-    to `paulgsc/server`, and a small offline cache of the current thread, need
-    routes that server does not yet serve, and are a request for amendment
-    there, as Rem. 11.4's were.
+  - Rem. 11.4's server hoist becomes optional sync. Content is still
+    reviewed before it reaches the learner, by Rem. 10.3's lint and expert
+    pass rather than a code review of a `.ts` file. Sync, and a small offline
+    cache of the current thread, need `paulgsc/server` routes that do not
+    exist yet.
   - Session records keep the funnel Prop. 9.4 defines --- struggled, placed,
     opened, saved, marked read, returned, solved --- append-only, so that the
     ledger screen (Prop. 10.2) and any later report are computed from them.
-  - The wide typing surface is untouched. Nothing in v1.2 governs it.
-
-  Evidence: the A/B named in the v1.2 log, and the code each bullet names.
+  - Nothing in v1.2 governs the wide typing surface.
 ]
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -1884,10 +1863,8 @@ Def. 10.2 read over the new registers (Rem. 10.4); the source consequences
 (Rem. 11.7); and one falsifier in §12. Def. 1.7, Def. 9.2, Rem. 9.2 and every
 `CW-P` entry stand as filed and still govern Def. 1.7 rounds.
 
-Rem. 9.5 is the one result the plan did not state. The plan kept Axiom 9.1 by
-name while replacing a struggled round's answer with a reading; read against
-the axiom's text, that is consistent only if the answer stays reachable, so
-the condition is recorded rather than left for a surface to discover.
+Rem. 9.5 is the one condition the plan did not state; it is recorded here
+rather than left for a surface to discover.
 
 #pagebreak()
 

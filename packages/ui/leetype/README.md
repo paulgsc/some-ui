@@ -27,7 +27,7 @@ nothing to opt in.
 
 > [!IMPORTANT] > **Canon-governed workspace — read the canon before editing this package.**
 >
-> - [`docs/canon/complexity-witness-canon.typ`](../../../docs/canon/complexity-witness-canon.typ) — _The Unprovable Measurement_. Its §7 holds three registers cited by identifier: `CW-P1`–`CW-P16` for Big-O rounds (Def. 1.7), and since v1.2 Machine `M1`–`M8` and Agreement `A1`–`A10` for the phone's incident rounds (Def. 1.9, Rem. 7.4). A rule a round needs that none of them holds is an amendment, filed first (Rem. 7.2).
+> - [`docs/canon/complexity-witness-canon.typ`](../../../docs/canon/complexity-witness-canon.typ) — _The Unprovable Measurement_. Its §7 holds the registers rounds cite by identifier: `CW-P1`–`CW-P16`, and since v1.2 Machine `M1`–`M8` and Agreement `A1`–`A10` for incident rounds (Rem. 7.4).
 > - [`docs/canon/adaptive-learning-canon.typ`](../../../docs/canon/adaptive-learning-canon.typ) — _The Unobservable Learner_. §6–§7 are what the M20 rewrite discharged: the `adaptiveHidden` latch (Prop. 6.1) is gone, replaced by an engine-owned control loop; `PlayerProgress.solves` (Prop. 7.1) is gone, replaced by one bounded baseline sample; XP and level (Prop. 2.1) are gone entirely. A change that reintroduces any of them needs a citation, or an amendment
 >
 > These are not background reading. They are the documents this package is
