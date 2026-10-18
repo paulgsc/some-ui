@@ -208,7 +208,14 @@ export function createJobsRuntime(ports: JobsPorts): JobsRuntime {
     if (pick !== picks) return
     const parsed = parseDigest(text)
     importing = parsed.ok ? IDLE : { kind: "rejected", problem: parsed.problem }
-    if (!parsed.ok || !commit({ type: "opened", digest: parsed.value })) {
+    if (
+      !parsed.ok ||
+      !commit({
+        type: "opened",
+        digest: parsed.value,
+        at: ports.now().toISOString(),
+      })
+    ) {
       publish()
     }
   }

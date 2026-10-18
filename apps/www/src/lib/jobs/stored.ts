@@ -104,6 +104,7 @@ const StoredSchema = z.object({
   v: z.literal(VERSION),
   digests: z.array(DigestSchema),
   current: z.string().nullable(),
+  firstOpened: z.record(z.string(), z.string()).default({}),
   log: z.array(EventSchema),
   voice: z.array(
     z.object({
@@ -129,8 +130,8 @@ function parse(raw: string): JobsState | null {
   try {
     const stored = StoredSchema.safeParse(JSON.parse(raw))
     if (!stored.success) return null
-    const { digests, current, log, voice } = stored.data
-    return { digests, current, log, voice }
+    const { digests, current, firstOpened, log, voice } = stored.data
+    return { digests, current, firstOpened, log, voice }
   } catch {
     return null
   }

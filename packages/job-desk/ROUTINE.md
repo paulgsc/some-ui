@@ -62,7 +62,10 @@ Record both commits in `evidence`, and the some-ui commit as each build's
 Every digest lists in `read` the Decisions and Scout files it took in. Read
 every digest in `Brief/` and collect those names; the files in
 `some-ui jobs/Decisions/` and `some-ui jobs/Scout/` that no digest names are
-new. For each new file:
+new. Of new decisions files that name the same `since`, take in only the
+newest by `sharedAt`: the phone offers a share it was not told arrived again
+whole, so the newest carries everything the others do. List them all in `read`.
+For each file taken in:
 
 1. Check it with the checker (step 8). One that fails is skipped and named in
    the summary, never guessed at.

@@ -14,7 +14,13 @@ import {
 } from "@some-ui/job-desk"
 
 import type { JobEvent, JobsState, ShareKind, VoiceNote } from "./model"
-import { debriefOf, decisionOf, lastDelivered, sharesOn } from "./model"
+import {
+  debriefOf,
+  decisionOf,
+  lastDelivered,
+  sharesOn,
+  untouchedReported,
+} from "./model"
 
 export type OutgoingFile = {
   kind: ShareKind
@@ -92,7 +98,6 @@ export function decisionsFile(
   for (const e of fresh) {
     if ("pickId" in e) touched.set(`${e.day}/${e.pickId}`, e)
   }
-  const lastDay = lastDelivered(state, "decisions")?.day ?? ""
 
   const picks: Decisions["picks"] = []
   const voice: Array<{ id: string; name: string }> = []
@@ -100,7 +105,7 @@ export function decisionsFile(
     for (const pick of digest.picks) {
       const key = `${digest.day}/${pick.id}`
       const decision = decisionOf(state, digest.day, pick.id)
-      const stale = digest.day < day && digest.day >= lastDay
+      const stale = digest.day < day && !untouchedReported(state, digest.day)
       if (!touched.has(key) && !(decision === null && stale)) continue
       const events = state.log.filter(
         (e) => "pickId" in e && e.day === digest.day && e.pickId === pick.id
@@ -173,6 +178,7 @@ export function decisionsFile(
     schema: "some-ui.job-decisions/1",
     day,
     digestDay: newestDay(picks) ?? state.digests.at(-1)?.day ?? day,
+    since: lastDelivered(state, "decisions")?.file ?? null,
     sharedAt: at,
     picks,
     disagreements,

@@ -21,6 +21,10 @@ import {
  * when I changed my mind about it; the newest file's entry for a fingerprint
  * is the decision that stands. A second share on one day is
  * `decisions-<day>-2.json`, then `-3`, and so on (`decisionsFileName`).
+ *
+ * A share the phone was not told arrived is offered again whole, so two
+ * files can carry the same entries. `since` says which: every file naming the
+ * same `since` holds all that an earlier one does, and the newest is read.
  */
 
 export const PASS_REASONS = [
@@ -85,6 +89,11 @@ export const DecisionsSchema = z.object({
   /** The newest digest whose picks it answers; each pick names its own. */
   digestDay: z.iso.date(),
   sharedAt: z.iso.datetime(),
+  /**
+   * The last decisions file the phone was told arrived, or null for none:
+   * this file carries everything recorded since.
+   */
+  since: text.nullable(),
   picks: z.array(
     z.object({
       /** The digest the pick came from: ids are unique only within one. */

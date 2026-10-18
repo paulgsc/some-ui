@@ -38,6 +38,9 @@ function pick(id: string, company: string, adjacent: boolean): Pick {
   }
 }
 
+/** When a test's digests are opened, before any event it records. */
+export const OPENED_AT = "2026-10-17T15:00:00Z"
+
 /** A digest for `day` with one software pick and one adjacent one. */
 export function digest(day: string): Digest {
   return {

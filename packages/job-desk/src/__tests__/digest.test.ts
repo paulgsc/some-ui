@@ -302,6 +302,7 @@ describe("the files the phone shares back", () => {
         day: "2026-10-18",
         digestDay: "2026-10-18",
         sharedAt: "2026-10-18T22:10:00Z",
+        since: null,
         picks: [
           {
             day: "2026-10-18",

@@ -11,7 +11,7 @@ import {
   step,
 } from "@/lib/jobs/model"
 
-import { digest } from "./fixture"
+import { digest, OPENED_AT } from "./fixture"
 
 const DAY = "2026-10-18"
 const D = digest(DAY)
@@ -35,7 +35,7 @@ function record(state: JobsState, event: Draft): JobsState {
   })
 }
 
-const opened = step(EMPTY, { type: "opened", digest: D })
+const opened = step(EMPTY, { type: "opened", digest: D, at: OPENED_AT })
 
 describe("step", () => {
   it("refuses an event for a pick it hasn't opened, or a step before taking", () => {
@@ -49,7 +49,7 @@ describe("step", () => {
   it("keeps the newest digests and every one the record names, one per day", () => {
     const first = digest("2026-09-01")
     const [pick] = first.picks
-    let state = step(EMPTY, { type: "opened", digest: first })
+    let state = step(EMPTY, { type: "opened", digest: first, at: OPENED_AT })
     state = record(state, {
       type: "taken",
       day: first.day,
@@ -58,9 +58,17 @@ describe("step", () => {
     })
     for (let i = 2; i <= DIGESTS_KEPT + 3; i += 1) {
       const day = `2026-09-${String(i).padStart(2, "0")}`
-      state = step(state, { type: "opened", digest: digest(day) })
+      state = step(state, {
+        type: "opened",
+        digest: digest(day),
+        at: OPENED_AT,
+      })
     }
-    state = step(state, { type: "opened", digest: digest("2026-09-05") })
+    state = step(state, {
+      type: "opened",
+      digest: digest("2026-09-05"),
+      at: OPENED_AT,
+    })
     expect(state.digests).toHaveLength(DIGESTS_KEPT + 1)
     expect(state.digests[0].day).toBe("2026-09-01")
     expect(state.digests.filter((d) => d.day === "2026-09-05")).toHaveLength(1)

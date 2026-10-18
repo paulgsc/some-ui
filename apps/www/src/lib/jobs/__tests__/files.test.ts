@@ -5,7 +5,7 @@ import { decisionsFile, isFile, scoutsFile } from "@/lib/jobs/files"
 import type { Draft, JobsState, PickRef, VoiceNote } from "@/lib/jobs/model"
 import { EMPTY, step } from "@/lib/jobs/model"
 
-import { digest } from "./fixture"
+import { digest, OPENED_AT } from "./fixture"
 
 function fileOf(outgoing: Outgoing): OutgoingFile {
   if (!isFile(outgoing)) throw new Error(`no file: ${JSON.stringify(outgoing)}`)
@@ -40,7 +40,7 @@ describe("decisionsFile", () => {
     pickId: p.id,
     fingerprint: p.fingerprint,
   })
-  let state = step(EMPTY, { type: "opened", digest: D })
+  let state = step(EMPTY, { type: "opened", digest: D, at: OPENED_AT })
   state = step(state, voice("v1"))
   state = record(state, {
     type: "passed",
@@ -116,7 +116,11 @@ describe("decisionsFile", () => {
 
   it("names the newest digest its picks answer, whichever was opened last", () => {
     const older = digest("2026-10-17")
-    const reopened = step(state, { type: "opened", digest: older })
+    const reopened = step(state, {
+      type: "opened",
+      digest: older,
+      at: OPENED_AT,
+    })
     expect(reopened.current).toBe("2026-10-17")
     const file = fileOf(
       decisionsFile(reopened, "2026-10-18", "2026-10-18T22:00:00Z")
@@ -141,6 +145,9 @@ describe("decisionsFile", () => {
     )
     expect(unconfirmed.name).toBe("decisions-2026-10-18-2.json")
     expect(JSON.parse(unconfirmed.json).picks).toHaveLength(2)
+    // The same `since` as the first: the routine reads only the newer.
+    expect(JSON.parse(file.json).since).toBeNull()
+    expect(JSON.parse(unconfirmed.json).since).toBeNull()
 
     const shareId = shared.log.at(-1)!.id
     shared = record(shared, { type: "arrived", shareId })
@@ -158,12 +165,17 @@ describe("decisionsFile", () => {
       decisionsFile(shared, "2026-10-18", "2026-10-18T23:00:00Z")
     )
     expect(again.name).toBe("decisions-2026-10-18-2.json")
+    expect(JSON.parse(again.json).since).toBe(file.name)
     expect(JSON.parse(again.json).picks).toEqual([])
     expect(again.voice).toEqual([])
   })
 
   it("reports an earlier day's untouched picks once", () => {
-    const old = step(EMPTY, { type: "opened", digest: digest("2026-10-17") })
+    const old = step(EMPTY, {
+      type: "opened",
+      digest: digest("2026-10-17"),
+      at: OPENED_AT,
+    })
     const file = fileOf(
       decisionsFile(old, "2026-10-18", "2026-10-18T22:00:00Z")
     )
@@ -183,6 +195,38 @@ describe("decisionsFile", () => {
       decisionsFile(shared, "2026-10-19", "2026-10-19T22:00:00Z")
     ).toBeNull()
     expect(decisionsFile(old, "2026-10-17", "2026-10-17T22:00:00Z")).toBeNull()
+  })
+
+  it("reports a digest opened after a later day's share arrived", () => {
+    let late = record(
+      state,
+      {
+        type: "shared",
+        kind: "decisions",
+        day: "2026-10-19",
+        file: "decisions-2026-10-19.json",
+        through: state.log.length,
+        voice: ["v1"],
+      },
+      "2026-10-19T20:00:00Z"
+    )
+    late = record(
+      late,
+      { type: "arrived", shareId: late.log.at(-1)!.id },
+      "2026-10-19T20:01:00Z"
+    )
+    late = step(late, {
+      type: "opened",
+      digest: digest("2026-10-17"),
+      at: "2026-10-19T21:00:00Z",
+    })
+    const file = fileOf(
+      decisionsFile(late, "2026-10-19", "2026-10-19T22:00:00Z")
+    )
+    expect(JSON.parse(file.json).picks).toEqual([
+      expect.objectContaining({ day: "2026-10-17", decision: "untouched" }),
+      expect.objectContaining({ day: "2026-10-17", decision: "untouched" }),
+    ])
   })
 
   it("names what it can't share instead of throwing, for an event job-desk refuses", () => {

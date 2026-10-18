@@ -110,6 +110,8 @@ export type JobsState = {
   digests: ReadonlyArray<Digest>
   /** The day Today shows, the digest opened last. */
   current: string | null
+  /** When each kept digest was first opened, by its day. */
+  firstOpened: Readonly<Record<string, string>>
   log: ReadonlyArray<JobEvent>
   /** Voice notes whose audio is on the phone, or once was. */
   voice: ReadonlyArray<VoiceNote>
@@ -118,6 +120,7 @@ export type JobsState = {
 export const EMPTY: JobsState = {
   digests: [],
   current: null,
+  firstOpened: {},
   log: [],
   voice: [],
 }
@@ -130,7 +133,7 @@ export type Draft<T = JobEvent> = T extends unknown
   : never
 
 export type JobsAction =
-  | { type: "opened"; digest: Digest }
+  | { type: "opened"; digest: Digest; at: string }
   | { type: "voice-kept"; note: VoiceNote }
   | { type: "voice-dropped"; ids: ReadonlyArray<string> }
   | { type: "record"; event: Draft; stamp: Stamp }
@@ -193,7 +196,13 @@ export function step(state: JobsState, action: JobsAction): JobsState {
       const digests = all.filter(
         (d) => recent.has(d.day) || referenced.has(d.day)
       )
-      return { ...state, digests, current: digest.day }
+      const firstOpened = Object.fromEntries(
+        digests.map((d) => [
+          d.day,
+          state.firstOpened[d.day] ?? (d.day === digest.day ? action.at : ""),
+        ])
+      )
+      return { ...state, digests, current: digest.day, firstOpened }
     }
     case "voice-kept": {
       if (state.voice.some((n) => n.id === action.note.id)) return state
@@ -406,6 +415,22 @@ export function releasedVoice(state: JobsState): ReadonlySet<string> {
     if (covered && "voice" in e) for (const id of e.voice) ids.add(id)
   })
   return ids
+}
+
+/**
+ * Whether a decisions share that arrived already reported `day`'s untouched
+ * picks: one made after that digest was first opened, on a later day.
+ */
+export function untouchedReported(state: JobsState, day: string): boolean {
+  const opened = state.firstOpened[day] ?? ""
+  return state.log.some(
+    (e) =>
+      e.type === "shared" &&
+      e.kind === "decisions" &&
+      e.day > day &&
+      e.at >= opened &&
+      hasArrived(state, e.id)
+  )
 }
 
 /** Whether the files of share `shareId` were said to have arrived. */
