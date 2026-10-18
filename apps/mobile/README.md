@@ -922,5 +922,26 @@ offline, in any language whose voice data is installed (#1625):
   brought back, and an archive is not imported: a finished session's record
   is for an agent to read when it shapes the next lesson, not for the phone
   to show again.
-- **Nothing here has run on a phone yet.** CI proves the APK builds. Every
-  test runs the backend's SQL in Node's SQLite, not through the native bridge.
+- **Nothing here has run on a phone yet.** CI builds and launches it in an
+  emulator and checks native SQLite across activity recreation. The backend's
+  route tests run its SQL in Node's SQLite.
+
+### SQLite bridge lifetime
+
+`patches/@capacitor-community__sqlite@8.1.1.patch` releases SQLite connections
+when Capacitor destroys a bridge. Cleanup runs on the bridge's plugin worker,
+where its transactions belong, and rolls back any transaction the destroyed
+WebView left unfinished. The next bridge waits for cleanup before opening a
+database. Without this, activity recreation during startup can leave the old
+transaction holding the file locked (`PRAGMA journal_mode` on the next open).
+
+`SQLiteLifecycleTest` recreates the activity with an unfinished transaction and
+checks that the replacement bridge can reopen the file, preserving committed
+rows and rolling back the unfinished row. The APK launch job runs it after
+installing and exercising the release APK. Remove the patch when the upstream
+plugin provides equivalent lifecycle cleanup.
+
+For pre-merge Android validation, dispatch **Mobile APK** on the fix branch
+(`gh workflow run mobile-apk.yml --ref <branch>`). Branch runs build, review,
+and launch the APK and run the lifecycle regression, without publishing or
+pruning the phone's retained APK.
