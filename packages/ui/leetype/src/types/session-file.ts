@@ -153,7 +153,7 @@ export function edgesOf(screen: SessionScreen): Array<string> {
 }
 
 export const SessionFileSchema = z
-  .object({
+  .strictObject({
     variant: z.string().optional(),
     title: z.string().min(1),
     oneLine: z.string().min(1),

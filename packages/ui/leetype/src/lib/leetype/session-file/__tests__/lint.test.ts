@@ -210,6 +210,36 @@ describe("lintSessionFile", () => {
     expect(lintSessionFile(file)).toEqual([])
   })
 
+  it("reads a return's new numbers in its panel, not only its body", () => {
+    const file = clean()
+    const round = file.screens.r1
+    if (round?.type !== "choice") throw new Error("r1 is a choice")
+    round.panel = { rows: [{ who: "n1", holds: "x = 1" }] }
+    file.screens.r1b = {
+      ...round,
+      returnOf: "r1",
+      panel: { rows: [{ who: "n1", holds: "x = 2" }] },
+    }
+    const reading = file.screens.p1
+    if (reading?.type === "reading") {
+      reading.actions = [{ label: "Read now", next: "r1b", effect: "read" }]
+    }
+    expect(lintSessionFile(file)).toEqual([])
+  })
+
+  it("lets a return use a term its round glossed", () => {
+    const file = clean()
+    const round = file.screens.r1
+    if (round?.type !== "choice") throw new Error("r1 is a choice")
+    file.screens.r1b = {
+      ...round,
+      glosses: [],
+      returnOf: "r1",
+      body: "Seven nodes; three may crash. How big is a quorum?",
+    }
+    expect(lintSessionFile(file)).toEqual([])
+  })
+
   it.each([{ body: "You read two sources." }, { title: "Two sources read" }])(
     "reports an end screen with authored text: %j",
     (text) => {

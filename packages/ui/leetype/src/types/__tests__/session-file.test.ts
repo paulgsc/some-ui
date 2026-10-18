@@ -99,6 +99,11 @@ describe("SessionFileSchema", () => {
       "Unrecognized key",
     ],
     [
+      "a misspelled top-level key",
+      minimal({ r1: end }, { glosary: { quorum: "enough nodes" } }),
+      "Unrecognized key",
+    ],
+    [
       "more than five options",
       minimal({
         r1: {

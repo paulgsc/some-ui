@@ -48,6 +48,16 @@ function normalized(text: string): string {
   return text.toLowerCase().replace(/\s+/g, " ").trim()
 }
 
+/** What a round's numbers live in: its body and its who-holds-what panel. */
+function situationOf(screen: ChoiceScreen): string {
+  return normalized(
+    [
+      screen.body ?? "",
+      ...(screen.panel?.rows.map((row) => `${row.who}: ${row.holds}`) ?? []),
+    ].join("\n")
+  )
+}
+
 /** Every string a learner reads on `screen`. */
 function textOf(screen: SessionScreen): string {
   const parts = [screen.title, screen.pinned, screen.body]
@@ -55,6 +65,7 @@ function textOf(screen: SessionScreen): string {
     case "choice": {
       parts.push(
         screen.provenance,
+        screen.panel?.title,
         ...screen.options.flatMap((o) => [o.label, o.feedback]),
         ...(screen.panel?.rows.flatMap((r) => [r.who, r.holds]) ?? [])
       )
@@ -65,7 +76,11 @@ function textOf(screen: SessionScreen): string {
       break
     }
     case "reading": {
-      parts.push(screen.primer, screen.passage)
+      parts.push(
+        screen.primer,
+        screen.passage,
+        ...screen.actions.map((action) => action.label)
+      )
       break
     }
     case "info":
@@ -80,24 +95,39 @@ function textOf(screen: SessionScreen): string {
   return parts.filter((part) => part !== undefined).join("\n")
 }
 
+/** A term and its English plurals, so "quorum" also finds "quorums". */
+function formsOf(term: string): Array<string> {
+  const forms = [term, `${term}s`, `${term}es`]
+  if (term.endsWith("y")) forms.push(`${term.slice(0, -1)}ies`)
+  return forms
+}
+
 /** The screens a struggle edge lands on, with the screen it leaves. */
 function struggleEdges(
   id: string,
   screen: SessionScreen
-): Array<{ from: string; to: string }> {
+): Array<{ from: string; to: string; how: string }> {
   if (screen.type === "record") {
-    return screen.onWeak ? [{ from: id, to: screen.onWeak }] : []
+    return screen.onWeak
+      ? [{ from: id, to: screen.onWeak, how: "a weak spoken answer" }]
+      : []
   }
   if (!isRound(screen)) return []
   // A slow pick is a struggle even when correct (Def. 9.4); with no
   // `onHesitate` it goes where the correct option goes.
   const slow =
     screen.onHesitate ?? screen.options.find((option) => option.correct)?.next
-  const targets = new Set(
-    screen.options.filter((option) => !option.correct).map((o) => o.next)
-  )
-  if (slow !== undefined) targets.add(slow)
-  return [...targets].map((to) => ({ from: id, to }))
+  const targets = new Map<string, string>()
+  for (const option of screen.options) {
+    if (!option.correct) targets.set(option.next, "a wrong pick or Not sure")
+  }
+  if (slow !== undefined && !targets.has(slow)) {
+    targets.set(
+      slow,
+      screen.onHesitate ? "a slow pick" : "a slow pick (no onHesitate)"
+    )
+  }
+  return [...targets].map(([to, how]) => ({ from: id, to, how }))
 }
 
 /**
@@ -122,8 +152,8 @@ function alwaysReachesReading(
     if (screen.type !== "info" || visiting.has(id)) return false
     if (screen.actions.some((action) => !action.next)) return false
     visiting.add(id)
-    const nexts = edgesOf(screen)
-    const ok = nexts.length > 0 && nexts.every(walk)
+    const reached = edgesOf(screen).map(walk)
+    const ok = reached.length > 0 && reached.every(Boolean)
     visiting.delete(id)
     return ok
   }
@@ -136,16 +166,23 @@ function alwaysReachesReading(
  */
 function reachableUnglossed(file: SessionFile, term: string): Set<string> {
   const reached = new Set<string>()
-  const returns = Object.entries(file.screens).flatMap(([id, screen]) =>
-    screen.type === "choice" && screen.returnOf !== undefined ? [id] : []
-  )
-  const queue = [file.start, ...returns]
+  // A return is played after its round, in this session or a later one.
+  const returnsOf = new Map<string, Array<string>>()
+  for (const [id, screen] of Object.entries(file.screens)) {
+    if (screen.type === "choice" && screen.returnOf !== undefined) {
+      returnsOf.set(screen.returnOf, [
+        ...(returnsOf.get(screen.returnOf) ?? []),
+        id,
+      ])
+    }
+  }
+  const queue = [file.start]
   for (let id = queue.shift(); id !== undefined; id = queue.shift()) {
     const screen = file.screens[id]
     if (!screen || reached.has(id)) continue
     if (screen.glosses?.includes(term)) continue
     reached.add(id)
-    queue.push(...edgesOf(screen))
+    queue.push(...edgesOf(screen), ...(returnsOf.get(id) ?? []))
   }
   return reached
 }
@@ -191,8 +228,8 @@ export function lintSessionFile(file: SessionFile): Array<SessionFileFinding> {
       if (screen.returnOf !== undefined) {
         const original = file.screens[screen.returnOf]
         if (
-          original &&
-          normalized(original.body ?? "") === normalized(screen.body ?? "")
+          original?.type === "choice" &&
+          situationOf(original) === situationOf(screen)
         ) {
           add(
             "verbatim-return",
@@ -208,7 +245,7 @@ export function lintSessionFile(file: SessionFile): Array<SessionFileFinding> {
         add(
           "struggle-without-reading",
           edge.from,
-          `a struggle leading to "${edge.to}" can go on without a placed reading`
+          `${edge.how} leads to "${edge.to}", which can go on without a placed reading`
         )
       }
     }
@@ -247,7 +284,7 @@ export function lintSessionFile(file: SessionFile): Array<SessionFileFinding> {
     for (const id of reachableUnglossed(file, term)) {
       const screen = file.screens[id]
       const text = screen ? textOf(screen) : ""
-      if (mentionsWord(text, term) || mentionsWord(text, `${term}s`)) {
+      if (formsOf(term).some((form) => mentionsWord(text, form))) {
         add(
           "unglossed-term",
           id,
