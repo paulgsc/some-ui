@@ -53,7 +53,9 @@ function situationOf(screen: ChoiceScreen): string {
   return normalized(
     [
       screen.body ?? "",
-      ...(screen.panel?.rows.map((row) => `${row.who}: ${row.holds}`) ?? []),
+      ...(
+        screen.panel?.rows.map((row) => `${row.who}: ${row.holds}`) ?? []
+      ).sort(),
     ].join("\n")
   )
 }
@@ -200,11 +202,12 @@ export function lintSessionFile(file: SessionFile): Array<SessionFileFinding> {
   const placed = new Set<string>()
   for (const [id, screen] of Object.entries(file.screens)) {
     if (isRound(screen)) {
-      if (!screen.options.some((option) => option.abstain)) {
+      const abstentions = screen.options.filter((option) => option.abstain)
+      if (abstentions.length !== 1) {
         add(
           "round-without-abstention",
           id,
-          "the round has no abstention, which Def. 9.1 requires"
+          "a round has exactly one abstention (Def. 9.1)"
         )
       }
       if (screen.cites === undefined) {
@@ -256,7 +259,9 @@ export function lintSessionFile(file: SessionFile): Array<SessionFileFinding> {
 
     if (
       screen.type === "end" &&
-      (screen.body !== undefined || screen.title !== undefined)
+      (screen.body !== undefined ||
+        screen.title !== undefined ||
+        screen.pinned !== undefined)
     ) {
       add(
         "authored-ledger",

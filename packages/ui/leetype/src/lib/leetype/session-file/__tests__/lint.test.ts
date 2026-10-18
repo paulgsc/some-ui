@@ -173,10 +173,13 @@ describe("lintSessionFile", () => {
     ])
   })
 
-  it("reports a round with no abstention", () => {
+  it("reports a round without exactly one abstention", () => {
     const file = clean()
     const round = file.screens.r1
-    if (round?.type === "choice") round.options.pop()
+    if (round?.type !== "choice") throw new Error("r1 is a choice")
+    const abstention = round.options.pop()
+    expect(codes(file)).toEqual(["round-without-abstention"])
+    if (abstention) round.options.push(abstention, { ...abstention })
     expect(codes(file)).toEqual(["round-without-abstention"])
   })
 
@@ -240,14 +243,15 @@ describe("lintSessionFile", () => {
     expect(lintSessionFile(file)).toEqual([])
   })
 
-  it.each([{ body: "You read two sources." }, { title: "Two sources read" }])(
-    "reports an end screen with authored text: %j",
-    (text) => {
-      const file = clean()
-      file.screens.end = { type: "end", ...text }
-      expect(codes(file)).toEqual(["authored-ledger"])
-    }
-  )
+  it.each([
+    { body: "You read two sources." },
+    { title: "Two sources read" },
+    { pinned: "Two sources read" },
+  ])("reports an end screen with authored text: %j", (text) => {
+    const file = clean()
+    file.screens.end = { type: "end", ...text }
+    expect(codes(file)).toEqual(["authored-ledger"])
+  })
 
   it.each(AB_FIXTURES)(
     "reads the A/B's variant $variant as the A/B found it: no round cites its passage, and the end is authored",
