@@ -1345,10 +1345,11 @@ superseded and kept.
   inside the two results only by clause (d). What the reading gates is only
   whether the sampler offers the return unasked; the confirmation, the round
   and the return are reachable on request throughout, so nothing a response
-  leads to is withheld. Taking the confirmation or the
-  round costs evidence, never access: by Axiom 9.2 that round earns no credit
-  afterwards. Requesting the return costs nothing, since it is new numbers
-  and a fresh commitment. A surface that makes
+  leads to is withheld. What is taken costs evidence, never
+  access: an answer after the confirmation is an observation of it
+  (Axiom 9.2), and replaying the round repeats the same mechanism, which is
+  never a second instance (Rem. 10.4). Requesting the return costs nothing,
+  since it is new numbers and a fresh commitment. A surface that makes
   any of them unreachable has turned a placement into a gate.
 ]
 
@@ -1359,8 +1360,9 @@ superseded and kept.
   picked visibly fails; after the abstention, a cleaner instance; after
   any correct selection, the thread's next round as the nearby boundary case,
   and, where the selection was slow enough to be a struggle, a cleaner
-  instance as its return as well. A struggle on a spoken answer returns,
-  after its reading, to a numbers probe on its weakest rubric point. A session file that authors one return for every struggle
+  instance as its return as well. After a pass on a spoken answer, the
+  return is a cleaner prompt; after fewer than two ticks, it is a numbers
+  probe on a rubric point left unticked. A session file that authors one return for every struggle
   meets Def. 9.4 and not Prop. 9.1; checking that a file authors a variant
   per response kind is mechanical, not yet a rule.
 ]
