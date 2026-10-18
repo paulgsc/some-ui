@@ -176,8 +176,7 @@ describe("SessionFilePickRuntime", () => {
     await settle()
     expect(full.getSnapshot().pick).toEqual({
       kind: "refused",
-      reason:
-        "This phone is full. Settings shows what it holds; free some space, then pick the file again.",
+      reason: "This phone is full: free some space, then pick the file again.",
     })
   })
 

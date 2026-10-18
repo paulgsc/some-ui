@@ -157,7 +157,7 @@ function refusalOf(outcome: KeepOutcome, name: string): string | null {
       return `This phone already holds a different file named ${name}. A fix goes up under a new name, such as ${nextRevision(name)}.`
     }
     case "full": {
-      return "This phone is full. Settings shows what it holds; free some space, then pick the file again."
+      return "This phone is full: free some space, then pick the file again."
     }
     case "kept":
     case "already-held": {

@@ -9,7 +9,7 @@
  * A keep is `budgeted`: past the phone's storage budget it is refused
  * (`"full"`), not written. It does not raise the app's make-room prompt,
  * which offers to remove a finished session: the record is never spent to
- * hold a copy of a file Drive keeps.
+ * hold a copy of a file that stays where it was picked from.
  *
  * Phone-only (`build.paths.ts`).
  */

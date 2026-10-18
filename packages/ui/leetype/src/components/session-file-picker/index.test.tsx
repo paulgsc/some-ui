@@ -73,5 +73,6 @@ describe("SessionFilePicker", () => {
 
     const alert = await screen.findByRole("alert")
     expect(alert.textContent).toMatch(/^notes isn't a session file\. /)
+    expect(keep).not.toHaveBeenCalled()
   })
 })
