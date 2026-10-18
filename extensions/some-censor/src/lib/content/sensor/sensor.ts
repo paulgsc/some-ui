@@ -603,7 +603,8 @@ export function createSensor(ports: SensorPorts): Sensor {
    * YouTube's `yt-navigate` is not cancelable, but it is dispatched before
    * the app's own listener sees it, so stopping it here, in the capture
    * phase on the window, keeps the page where it is. The one vendor event
-   * the Sensor holds, and only on Core's answer; a click is never held.
+   * the Sensor holds, and only on Core's answer; a navigation the owner
+   * starts carries no `autonav`, and is never held.
    */
   function onYtNavigate(event: Event): void {
     const next = readAutonav(event)

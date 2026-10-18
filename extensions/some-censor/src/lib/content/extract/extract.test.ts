@@ -618,6 +618,12 @@ describe("readAutonav (#1805)", () => {
       readAutonav(event({ endpoint, tempData: { autonav: "0" } }))
     ).toBeNull()
     expect(readAutonav(event(null))).toBeNull()
+    // Firefox: the page's own detail, waived, when the Xray view is empty.
+    const xray = event(null)
+    Object.defineProperty(xray, "wrappedJSObject", {
+      value: { detail: { endpoint, tempData: { autonav: "1" } } },
+    })
+    expect(readAutonav(xray)).toBe("next")
     expect(readAutonav(new Event("yt-navigate"))).toBeNull()
   })
 })

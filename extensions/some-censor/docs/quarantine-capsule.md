@@ -365,8 +365,10 @@ Sensor cannot resolve stays blurred in place under the occluder
 Autoplay stops before a held video (#1805). YouTube's autoplay and playlist
 advance navigate by a `yt-navigate` marked `autonav`, naming the next video;
 the Sensor holds one in the capture phase, before the app sees it, unless a
-card for that video is on the page and plated (Core's `admits`). A click is
-never held. `watch.spec.ts` W10 proves it, locally.
+card for that video is on the page and plated (Core's `admits`). A navigation
+the owner starts carries no `autonav` and is never held. A playlist's rows
+carry no date (sealed under `QD3`), so a playlist, Mix or queue stops after
+nearly every video. `watch.spec.ts` W10 proves the hold, locally.
 
 A held video's watch page, reached by a link, is "Not here." and Back
 (#1805): `styles/content.css` renders no player, miniplayer, title or date
@@ -645,6 +647,8 @@ section is a behavioural change; it is a statement of distance.
 | No surface-level concealment                                     | absence and the plate are per renderer                                      | QD8      |
 | Manifest copy describes the mechanism                            | `public/manifest.json` `description`, the popup's tagline                   | §0       |
 | Autoplay stops before an old video that has no card on the page  | Core admits only what it has plated, so an unseen next video is held        | QD12     |
+| A playlist skips an unplayable item into the next, held or not   | that advance (`onPlaylistNext`) carries no `autonav`, so nothing holds it   | QD11     |
+| The countdown's "Play now" may be held like autoplay             | its module was not captured; if it plays next as autonav, it reads as one   | QD12     |
 | The autoplay countdown can show a held next video's title        | the end screen's markup was not captured, so no rule names its title        | QD11     |
 | A page YouTube moves to another video could paint it unmasked    | the mask returns when `video-id` changes; nothing proves it changes first   | QD11     |
 | A watch page that never shows its video's date stays blank       | it is pending, which says nothing, and nothing ends pending                 | QD17     |

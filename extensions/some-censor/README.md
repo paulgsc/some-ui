@@ -11,7 +11,8 @@ settings in `storage.local`, `src/lib/settings/`) →
 `runtime/runtime.ts`, which folds every token through Core and hands the
 resulting actions to the Actuator. The Layout table and Core are pure; the
 Sensor turns the vendor DOM into the tokens Core sees, and the Actuator is the
-only writer to it.
+only writer to it. The one vendor event the Sensor holds, on Core's answer, is
+an autoplay into a video Core does not admit (#1805).
 
 Four stages, each owning exactly one concern, in a straight line from
 observation to write:
@@ -31,8 +32,9 @@ observation to write:
    `reduce(state, event) → { state, actions }`: no DOM, `browser.*`, clock,
    or randomness anywhere under `core/`. A card's view is decided by its
    evidence under the owner's boundary (`fsm.ts`'s `decide`, over the
-   maturity estimate): absent, or plated when it is old enough. No gesture is
-   an input (#1803); the boundary, set in the popup, is (#1807).
+   maturity estimate): absent, or plated when it is old enough. No gesture on
+   a card is an input (#1803); the boundary, set in the popup, is (#1807),
+   and so is the face hold on a plated watch page (QD13, #1805).
 4. **Actuator** (`src/lib/content/actuator/`) — the only writer to the
    vendor DOM. It only executes the actions Core named: the `data-boyo`
    stamp (`absent` is `display: none` in `styles/content.css`), the plate's
