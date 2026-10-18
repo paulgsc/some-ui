@@ -29,7 +29,7 @@ public class SQLiteLifecycleTest {
             call(activity, "createConnection", data(), CapacitorSQLitePlugin::createConnection);
             call(activity, "open", data(), CapacitorSQLitePlugin::open);
             call(activity, "execute", data().put("statements",
-                "DROP TABLE IF EXISTS records; CREATE TABLE records (value TEXT); INSERT INTO records VALUES ('kept');"
+                "DROP TABLE IF EXISTS records;\nCREATE TABLE records (value TEXT);\nINSERT INTO records VALUES ('kept');"
             ).put("transaction", false), CapacitorSQLitePlugin::execute);
             call(activity, "beginTransaction", data(), CapacitorSQLitePlugin::beginTransaction);
             call(activity, "run", data().put("statement", "INSERT INTO records VALUES ('unfinished')")
