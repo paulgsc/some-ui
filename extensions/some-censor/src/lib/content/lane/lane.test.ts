@@ -13,6 +13,8 @@ describe("isMusic (QD15, #1806)", () => {
     ["[도깨비 OST Part 9] 에일리 (Ailee) - 첫눈처럼 너에게 가겠다", true],
     ["Kumpulan Lagu - OST GOBLIN (Lirik)", true],
     ["Beautiful (OST)", true],
+    ["도깨비OST 모음", true],
+    ["电视剧OST的片尾曲", true],
     // Not a whole token, or not as titles write it.
     ["The MVP of the season", false],
     ["Ghost stories, hosted live", false],

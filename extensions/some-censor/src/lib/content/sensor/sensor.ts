@@ -333,7 +333,11 @@ export function createSensor(ports: SensorPorts): Sensor {
       observation.channelId !== null && observation.channelName === null
     const title = observation.title === null
     if (name || title) {
-      if (!namePending.has(el) && !nameAbandoned.has(el)) {
+      const pending = namePending.get(el)
+      if (pending !== undefined) {
+        // Only what is still missing is waited for.
+        namePending.set(el, { since: pending.since, name, title })
+      } else if (!nameAbandoned.has(el)) {
         namePending.set(el, { since: now, name, title })
         ensureRetryLoop()
       }

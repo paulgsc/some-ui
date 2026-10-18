@@ -18,12 +18,14 @@ export type MusicEvidence = {
 
 /**
  * "OST" or "MV" as a whole word, in upper case as YouTube titles write them:
- * `[MV]`, `OST Part.3`, `(OST)` count, and `MVP` or `HOST` do not. Never in
+ * `[MV]`, `OST Part.3`, `(OST)`, and `도깨비OST` or `OST的` against another
+ * script count, and `MVP` or `HOST` do not. Only a Latin letter or a digit
+ * joins the token to a longer word. Never in
  * another case: "Ost" is German for east and "ost" Scandinavian for cheese.
  * A non-music title can still carry the token (a ship, "MV Dali"; a
  * motorcycle, "MV Agusta"); the owner's rule accepts that.
  */
-const MUSIC_TOKEN = /(?:^|[^\p{L}\p{N}])(?:OST|MV)(?=$|[^\p{L}\p{N}])/u
+const MUSIC_TOKEN = /(?:^|[^A-Za-z0-9])(?:OST|MV)(?=$|[^A-Za-z0-9])/
 
 /** YouTube's auto-generated artist channels: "Ailee - Topic". */
 const TOPIC_SUFFIX = " - Topic"

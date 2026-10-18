@@ -655,9 +655,14 @@ describe("the listening lane (QD15, #1806)", () => {
       page("song", { title: "Stay With Me MV", artist: true }),
     ])
     expect(state.watch?.view).toBe("whole")
-    // The next video, named before its page is rewritten.
-    const next = reduce(
+    // The next video, named before its page is rewritten: first with no
+    // date at all, then with the previous one's.
+    const undated = reduce(
       state,
+      page("news", { dates: [], title: "Stay With Me MV", artist: true })
+    )
+    const next = reduce(
+      undated.state,
       page("news", { title: "Stay With Me MV", artist: true })
     )
     expect(next.state.watch?.view).toBe("pending")

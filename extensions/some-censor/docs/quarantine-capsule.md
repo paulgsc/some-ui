@@ -655,34 +655,34 @@ section is a behavioural change; it is a statement of distance.
 
 ### What contradicts it
 
-| gap                                                                | where                                                                       | doctrine |
-| ------------------------------------------------------------------ | --------------------------------------------------------------------------- | -------- |
-| No surface-level concealment                                       | absence and the plate are per renderer                                      | QD8      |
-| Manifest copy describes the mechanism                              | `public/manifest.json` `description`, the popup's tagline                   | §0       |
-| Autoplay stops before an old video that has no card on the page    | Core admits only what it has plated, so an unseen next video is held        | QD12     |
-| A playlist skips an unplayable item into the next, held or not     | that advance (`onPlaylistNext`) carries no `autonav`, so nothing holds it   | QD11     |
-| The countdown's "Play now" may be held like autoplay               | its module was not captured; if it plays next as autonav, it reads as one   | QD12     |
-| The autoplay countdown can show a held next video's title          | the end screen's markup was not captured, so no rule names its title        | QD11     |
-| A page YouTube moves to another video could paint it unmasked      | the mask returns when `video-id` changes; nothing proves it changes first   | QD11     |
-| A watch page that never shows its video's date stays blank         | it is pending, which says nothing, and nothing ends pending                 | QD17     |
-| A held video's title shows in the tab on a direct load, briefly    | the server sends it, and the content script runs at `document_end`          | QD11     |
-| Two videos showing the same date runs read as one                  | the second is pending until a run differs, the view count included          | QD17     |
-| A start mid-transition can admit the next video on the last date   | Core has read no previous video, so nothing marks that date as another's    | QD11     |
-| The miniplayer's next video is held, however old                   | nothing on the page states its date; expanding it to its page decides it    | QD17     |
-| The miniplayer's next video gets in if its title is the same       | its title bar is the only sign the video changed                            | QD11     |
-| A shelf elsewhere keeps its header                                 | a container `SHELF_SELECTORS` does not name                                 | QD11     |
-| A channel photo outside a card leaves an empty space, not a disc   | no card's ids to hash there; the photo itself is hidden                     | QD12     |
-| Live chat shows its authors' photos                                | the chat is its own frame, and the manifest injects into the top frame only | QD12     |
-| A channel's seamless header can play its video trailer             | a video, not an image, so no image rule hides it (#1888)                    | QD12     |
-| The watch page's category, Music, is not read                      | the rendered page carries it nowhere; YouTube's crawler block is empty      | QD15     |
-| A Topic channel and the artist badge are unseen in any capture     | both are read as documented (`… - Topic`, "Official Artist Channel")        | QD15     |
-| A whole watch page hides its channel's photo                       | the channel-photo rule exempts only whole cards                             | QD15     |
-| A whole card's hover preview never plays                           | the preview player is hidden for every card                                 | QD15     |
-| A current non-music title with "MV" or "OST" as a word is whole    | the token rule reads the word, not what it names (accepted, QD15)           | QD15     |
-| A watch page's channel is assumed rewritten no later than its date | Core blanks the title, channel and badge only while the date is stale       | QD15     |
-| A hover on the duration badge can still start a hidden preview     | the badge takes the pointer to open the card; the player is `display: none` | QD12     |
-| A trending rank is shown                                           | no capture holds one, so no crowd rule names it                             | QD14     |
-| The "Video details" list shows on Firefox 112–120                  | its crowd rule needs `:has()`                                               | QD14     |
+| gap                                                                                  | where                                                                       | doctrine |
+| ------------------------------------------------------------------------------------ | --------------------------------------------------------------------------- | -------- |
+| No surface-level concealment                                                         | absence and the plate are per renderer                                      | QD8      |
+| Manifest copy describes the mechanism                                                | `public/manifest.json` `description`, the popup's tagline                   | §0       |
+| Autoplay stops before an old video that has no card on the page                      | Core admits only what it has plated, so an unseen next video is held        | QD12     |
+| A playlist skips an unplayable item into the next, held or not                       | that advance (`onPlaylistNext`) carries no `autonav`, so nothing holds it   | QD11     |
+| The countdown's "Play now" may be held like autoplay                                 | its module was not captured; if it plays next as autonav, it reads as one   | QD12     |
+| The autoplay countdown can show a held next video's title                            | the end screen's markup was not captured, so no rule names its title        | QD11     |
+| A page YouTube moves to another video could paint it unmasked                        | the mask returns when `video-id` changes; nothing proves it changes first   | QD11     |
+| A watch page that never shows its video's date stays blank                           | it is pending, which says nothing, and nothing ends pending                 | QD17     |
+| A held video's title shows in the tab on a direct load, briefly                      | the server sends it, and the content script runs at `document_end`          | QD11     |
+| Two videos showing the same date runs read as one                                    | the second is pending until a run differs, the view count included          | QD17     |
+| A start mid-transition can admit the next video on the last date                     | Core has read no previous video, so nothing marks that date as another's    | QD11     |
+| The miniplayer's next video is held, however old                                     | nothing on the page states its date; expanding it to its page decides it    | QD17     |
+| The miniplayer's next video gets in if its title is the same                         | its title bar is the only sign the video changed                            | QD11     |
+| A shelf elsewhere keeps its header                                                   | a container `SHELF_SELECTORS` does not name                                 | QD11     |
+| A channel photo outside a card leaves an empty space, not a disc                     | no card's ids to hash there; the photo itself is hidden                     | QD12     |
+| Live chat shows its authors' photos                                                  | the chat is its own frame, and the manifest injects into the top frame only | QD12     |
+| A channel's seamless header can play its video trailer                               | a video, not an image, so no image rule hides it (#1888)                    | QD12     |
+| The watch page's category, Music, is not read                                        | the rendered page carries it nowhere; YouTube's crawler block is empty      | QD15     |
+| A Topic channel and the artist badge are unseen in any capture                       | both are read as documented (`… - Topic`, "Official Artist Channel")        | QD15     |
+| A whole watch page hides its channel's photo                                         | the channel-photo rule exempts only whole cards                             | QD15     |
+| A whole card's hover preview never plays                                             | the preview player is hidden for every card                                 | QD15     |
+| A current non-music title with "MV" or "OST" as a word is whole                      | the token rule reads the word, not what it names (accepted, QD15)           | QD15     |
+| A watch page's title, channel and badge are assumed rewritten no later than its date | Core blanks the title, channel and badge only while the date is stale       | QD15     |
+| A hover on the duration badge can still start a hidden preview                       | the badge takes the pointer to open the card; the player is `display: none` | QD12     |
+| A trending rank is shown                                                             | no capture holds one, so no crowd rule names it                             | QD14     |
+| The "Video details" list shows on Firefox 112–120                                    | its crowd rule needs `:has()`                                               | QD14     |
 
 ### Extraction hazards a maturity estimator will meet
 
