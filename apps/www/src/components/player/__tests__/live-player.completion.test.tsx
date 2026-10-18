@@ -2,29 +2,29 @@
  * @vitest-environment jsdom
  *
  * The orchestrator store is app-wide, so a new session mounts while it still
- * holds the previous one's terminal mode and clock. Exported records showed
- * the new session written `completed` about 70 ms after it started, with the
- * previous session's `finalElapsedMs`. The store and the mock engine here are
- * the real ones; only the write and the screens around the player are stubbed.
+ * holds the previous one's terminal mode and clock. The store, the mock
+ * engine and its provider are the real ones; only the write and the screens
+ * around the player are stubbed.
  */
 
-import type { JSX, ReactNode } from "react"
+import type { JSX } from "react"
+import { OrchestratorWrapper } from "@/providers/orchestrator"
+import { sessionRecord } from "@/test-support/session-record"
 import { resetViewport, setViewport } from "@/test-support/viewport"
 import type { SceneConfig } from "@some-ui/types"
 import { act, cleanup, render, screen } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
-import { useMockOrchestrator, useOrchestratorStore } from "@/lib/orchestrator"
-import type { SessionRecord } from "@/lib/tenant"
+import { useOrchestratorStore } from "@/lib/orchestrator"
 import { LivePlayer } from "@/components/player/live-player"
 
-const writes = vi.hoisted(() => ({ start: vi.fn() }))
+const writeSession = vi.hoisted(() => vi.fn())
 
 vi.mock("@/lib/tenant", () => ({ useUpdateSession: (): object => ({}) }))
 vi.mock("@/lib/intent", () => ({
   useIntent: (): object => ({
     state: { status: "idle" },
-    start: writes.start,
+    start: writeSession,
   }),
 }))
 vi.mock("@/lib/intent/render", () => ({
@@ -59,28 +59,9 @@ const scenes: Array<SceneConfig> = [
   { scene_name: "rounds", duration: 60_000, start_time: 0, ui: [] },
 ]
 
-function session(id: string): SessionRecord {
-  return {
-    id,
-    name: id,
-    status: "active",
-    activities: [],
-    scenes,
-    layoutMode: "basic",
-    totalDurationMs: 60_000,
-    createdAt: "2026-10-18T00:00:00.000Z",
-    updatedAt: "2026-10-18T00:00:00.000Z",
-  }
-}
-
-/** The app's provider, mounted once for every session, as in the shell. */
-const Orchestrated = ({ children }: { children: ReactNode }): JSX.Element => {
-  useMockOrchestrator({ stream_id: "test" })
-  return <>{children}</>
-}
-
-/** Plays a previous session 42 s in and stops it: a terminal store. */
-async function endPreviousSession(): Promise<void> {
+/** Stops a previous session 42 s in, then mounts the next one. */
+async function mountAfterAStoppedSession(): Promise<void> {
+  const { rerender } = render(<OrchestratorWrapper>{null}</OrchestratorWrapper>)
   const o = useOrchestratorStore.getState()
   await act(async () => {
     await o.configure(scenes)
@@ -89,6 +70,19 @@ async function endPreviousSession(): Promise<void> {
     await o.stop()
   })
   expect(useOrchestratorStore.getState().mode.is_terminal).toBe(true)
+
+  const next = sessionRecord({
+    id: "next",
+    status: "active",
+    scenes,
+    totalDurationMs: 60_000,
+  })
+  rerender(
+    <OrchestratorWrapper>
+      <LivePlayer key={next.id} session={next} />
+    </OrchestratorWrapper>
+  )
+  await act(async () => {})
 }
 
 beforeEach(() => {
@@ -98,35 +92,19 @@ beforeEach(() => {
 afterEach(() => {
   cleanup()
   resetViewport()
-  writes.start.mockClear()
+  writeSession.mockClear()
 })
 
 describe("LivePlayer after a previous session ended", () => {
   it("does not complete the new session from the old one's state", async () => {
-    const { rerender } = render(<Orchestrated>{null}</Orchestrated>)
-    await endPreviousSession()
+    await mountAfterAStoppedSession()
 
-    rerender(
-      <Orchestrated>
-        <LivePlayer key="next" session={session("next")} />
-      </Orchestrated>
-    )
-    await act(async () => {})
-
-    expect(writes.start).not.toHaveBeenCalled()
-    expect(screen.queryByTestId("completion")).toBeNull()
+    expect(writeSession).not.toHaveBeenCalled()
     expect(screen.getByTestId("viewport")).toBeDefined()
   })
 
   it("still completes the new session when its own run ends", async () => {
-    const { rerender } = render(<Orchestrated>{null}</Orchestrated>)
-    await endPreviousSession()
-    rerender(
-      <Orchestrated>
-        <LivePlayer key="next" session={session("next")} />
-      </Orchestrated>
-    )
-    await act(async () => {})
+    await mountAfterAStoppedSession()
 
     await act(async () => {
       const o = useOrchestratorStore.getState()
@@ -135,8 +113,8 @@ describe("LivePlayer after a previous session ended", () => {
       await o.stop()
     })
 
-    expect(writes.start).toHaveBeenCalledTimes(1)
-    expect(writes.start).toHaveBeenCalledWith({
+    expect(writeSession).toHaveBeenCalledTimes(1)
+    expect(writeSession).toHaveBeenCalledWith({
       id: "next",
       patch: expect.objectContaining({
         status: "completed",

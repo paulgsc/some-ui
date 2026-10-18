@@ -39,8 +39,8 @@ export const LivePlayer = ({ session }: LivePlayerProps): JSX.Element => {
   const start = useOrchestratorStore((s) => s.start)
   const { state: stop, stops } = useSessionStop(session.id)
   const closedAt = stop.kind === "closed" ? stop.stop : null
-  // The store is app-wide: until this mount's configure resolves it still
-  // holds the previous session's terminal mode and clock.
+  // Until this mount's configure resolves, the app-wide store still holds
+  // the previous session's terminal mode.
   const [configured, setConfigured] = useState(false)
   const isTerminal = useIsTerminal() && configured
   const isMobile = useIsMobile()
