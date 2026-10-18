@@ -13,12 +13,13 @@ import { z } from "zod"
 
 const ScreenIdSchema = z.string().min(1)
 
-/** A register entry an incident round is decided by (Rem. 7.4), or a `CW-P` one. */
-const RuleIdSchema = z.string().regex(/^(M|A|CW-P)\d+$/, {
-  message: "a rule is a register id: M<n>, A<n> or CW-P<n>",
+/** κ, the register entry an incident round is decided by (Def. 1.9, Rem. 7.4). */
+const RuleIdSchema = z.string().regex(/^[MA][1-9]\d*$/, {
+  message:
+    "an incident round's rule is a Machine or Agreement id, M<n> or A<n>",
 })
 
-const SourceSchema = z.object({
+const SourceSchema = z.strictObject({
   title: z.string().min(1),
   author: z.string().min(1),
   year: z.number().int(),
@@ -28,14 +29,14 @@ const SourceSchema = z.object({
 })
 
 /** An action with no `next` leaves the session from that screen. */
-const ActionSchema = z.object({
+const ActionSchema = z.strictObject({
   label: z.string().min(1),
   next: ScreenIdSchema.nullish(),
   effect: z.enum(["read", "save"]).optional(),
 })
 
 /** `applies` names the register entry whose fix the option applies (Rem. 10.4). */
-const OptionSchema = z.object({
+const OptionSchema = z.strictObject({
   label: z.string().min(1),
   next: ScreenIdSchema,
   applies: RuleIdSchema.optional(),
@@ -45,10 +46,10 @@ const OptionSchema = z.object({
 })
 
 /** Who holds what, for a round where the state matters (the "who holds what" panel). */
-const PanelSchema = z.object({
+const PanelSchema = z.strictObject({
   title: z.string().min(1).optional(),
   rows: z
-    .array(z.object({ who: z.string().min(1), holds: z.string().min(1) }))
+    .array(z.strictObject({ who: z.string().min(1), holds: z.string().min(1) }))
     .min(1),
 })
 
@@ -61,7 +62,7 @@ const screenBase = {
   glosses: z.array(z.string().min(1)).optional(),
 }
 
-const InfoScreenSchema = z.object({
+const InfoScreenSchema = z.strictObject({
   ...screenBase,
   type: z.literal("info"),
   actions: z.array(ActionSchema),
@@ -73,7 +74,7 @@ const InfoScreenSchema = z.object({
  * round it returns (Prop. 9.4 (b)). `onHesitate` is where a slow pick goes
  * instead of the option's own `next` (Def. 9.4).
  */
-const ChoiceScreenSchema = z.object({
+const ChoiceScreenSchema = z.strictObject({
   ...screenBase,
   type: z.literal("choice"),
   // At most five, the abstention included (Def. 1.9).
@@ -87,7 +88,7 @@ const ChoiceScreenSchema = z.object({
 })
 
 /** A spoken answer: the rubric is shown only after recording (Ax. 9.2). */
-const RecordScreenSchema = z.object({
+const RecordScreenSchema = z.strictObject({
   ...screenBase,
   type: z.literal("record"),
   prompt: z.string().min(1),
@@ -99,7 +100,7 @@ const RecordScreenSchema = z.object({
 })
 
 /** A reading: placed after a struggle, offered as a pointer, or scheduled. */
-const ReadingScreenSchema = z.object({
+const ReadingScreenSchema = z.strictObject({
   ...screenBase,
   type: z.literal("reading"),
   primer: z.string().min(1),
@@ -109,7 +110,7 @@ const ReadingScreenSchema = z.object({
 })
 
 /** The last screen. */
-const EndScreenSchema = z.object({
+const EndScreenSchema = z.strictObject({
   ...screenBase,
   type: z.literal("end"),
   actions: z.array(ActionSchema).optional(),
@@ -156,7 +157,7 @@ export const SessionFileSchema = z
     variant: z.string().optional(),
     title: z.string().min(1),
     oneLine: z.string().min(1),
-    session: z.object({
+    session: z.strictObject({
       kind: z.string().min(1),
       budgetMinutes: z.number().positive(),
     }),

@@ -85,6 +85,20 @@ describe("SessionFileSchema", () => {
       '"end" is not a reading screen',
     ],
     [
+      "a key the format does not have",
+      minimal({
+        r1: {
+          type: "choice",
+          options: [
+            { label: "x", next: "end", corect: true },
+            { label: "y", next: "end" },
+          ],
+        },
+        end,
+      }),
+      "Unrecognized key",
+    ],
+    [
       "more than five options",
       minimal({
         r1: {
@@ -112,7 +126,7 @@ describe("SessionFileSchema", () => {
         },
         end,
       }),
-      "a rule is a register id",
+      "a Machine or Agreement id",
     ],
   ])("rejects %s", (_name, file, message) => {
     const result = SessionFileSchema.safeParse(file)

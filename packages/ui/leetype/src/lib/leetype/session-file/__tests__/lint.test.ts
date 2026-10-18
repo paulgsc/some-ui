@@ -140,11 +140,55 @@ describe("lintSessionFile", () => {
     ])
   })
 
-  it("reports a placed reading longer than three minutes", () => {
+  it("reports a placed reading whose in-app core runs over three minutes", () => {
     const file = clean()
     const reading = file.screens.p1
-    if (reading?.type === "reading") reading.source.minutes = 8
+    if (reading?.type === "reading") {
+      reading.source.minutes = 12
+      expect(lintSessionFile(file)).toEqual([])
+      reading.passage = "word ".repeat(460)
+    }
     expect(codes(file)).toEqual(["long-placement"])
+  })
+
+  it("counts a reading as placed when a struggle reaches it, tagged or not", () => {
+    const file = clean()
+    const reading = file.screens.p1
+    if (reading?.type === "reading") {
+      reading.tags = []
+      reading.passage = "word ".repeat(460)
+    }
+    expect(codes(file)).toEqual(["long-placement"])
+  })
+
+  it("follows a slow correct pick where the correct option goes", () => {
+    const file = clean()
+    const round = file.screens.r1
+    if (round?.type === "choice") delete round.onHesitate
+    expect(lintSessionFile(file)).toEqual([
+      expect.objectContaining({
+        code: "struggle-without-reading",
+        message: expect.stringContaining('"end"'),
+      }),
+    ])
+  })
+
+  it("reports a round with no abstention", () => {
+    const file = clean()
+    const round = file.screens.r1
+    if (round?.type === "choice") round.options.pop()
+    expect(codes(file)).toEqual(["round-without-abstention"])
+  })
+
+  it("finds a glossed term's plural", () => {
+    const file = clean()
+    file.start = "intro"
+    file.screens.intro = {
+      type: "info",
+      body: "Today: quorums.",
+      actions: [{ label: "Start", next: "r1" }],
+    }
+    expect(codes(file)).toEqual(["unglossed-term"])
   })
 
   it("reports a return that repeats its round's situation", () => {
@@ -166,11 +210,14 @@ describe("lintSessionFile", () => {
     expect(lintSessionFile(file)).toEqual([])
   })
 
-  it("reports an end screen with authored text", () => {
-    const file = clean()
-    file.screens.end = { type: "end", body: "You read two sources today." }
-    expect(codes(file)).toEqual(["authored-ledger"])
-  })
+  it.each([{ body: "You read two sources." }, { title: "Two sources read" }])(
+    "reports an end screen with authored text: %j",
+    (text) => {
+      const file = clean()
+      file.screens.end = { type: "end", ...text }
+      expect(codes(file)).toEqual(["authored-ledger"])
+    }
+  )
 
   it.each(AB_FIXTURES)(
     "reads the A/B's variant $variant as the A/B found it: no round cites its passage, and the end is authored",

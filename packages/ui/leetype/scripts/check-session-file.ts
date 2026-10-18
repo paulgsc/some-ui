@@ -38,6 +38,6 @@ if (paths.length === 0) {
   if (problems > 0) process.exitCode = 1
   else
     console.log(
-      `OK: ${String(paths.length)} session file(s) keep every obligation.`
+      `OK: ${String(paths.length)} session file(s) parse and pass the lint.`
     )
 }
