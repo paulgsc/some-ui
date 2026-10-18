@@ -152,7 +152,7 @@ export function createRuntime(ports: RuntimePorts): Runtime {
   return {
     start(): void {
       if (state.phase === "running") return
-      actuator = createActuator({ doc: ports.doc })
+      actuator = createActuator()
       health = createHealth({
         clock,
         state: () => state,

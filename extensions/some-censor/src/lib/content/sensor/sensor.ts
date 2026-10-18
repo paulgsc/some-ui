@@ -123,6 +123,13 @@ export function createSensor(ports: SensorPorts): Sensor {
   /** Cards whose channel budget is spent: not re-sampled again this session. */
   let channelAbandoned = new WeakSet<HTMLElement>()
   /**
+   * Cards with a channel but no name yet: a name can hydrate in place after
+   * its link, a text change no mutation this observes, and the plate's
+   * initial reads it. Re-read under the same budget, and given up silently.
+   */
+  const namePending = new Map<HTMLElement, number>()
+  let nameAbandoned = new WeakSet<HTMLElement>()
+  /**
    * Cards observed with no upload date at all, kept under the same budget: the
    * date decides whether a card is shown (#1803), and YouTube can fill an
    * empty run in without a mutation the observer sees (a text node's data).
@@ -143,10 +150,7 @@ export function createSensor(ports: SensorPorts): Sensor {
    * feed card and a sidebar card) would otherwise each differ from the
    * other's last token and re-announce on every tick.
    */
-  const lastEmitted = new Map<
-    HTMLElement,
-    { readonly serialized: string; readonly observation: Observation }
-  >()
+  const lastEmitted = new Map<HTMLElement, string>()
   let observer: MutationObserver | null = null
   let retryTimer: ReturnType<typeof setInterval> | null = null
   let navDebounce: ReturnType<typeof setTimeout> | null = null
@@ -187,13 +191,8 @@ export function createSensor(ports: SensorPorts): Sensor {
     }
   }
 
-  /**
-   * One path for every element the Sensor is ever handed. `force` re-announces
-   * the card even when its evidence is unchanged: its subtree changed, and
-   * only a render (which Core sends on every observation) puts back a veil
-   * the vendor removed with it.
-   */
-  function observe(el: HTMLElement, force = false): void {
+  /** One path for every element the Sensor is ever handed. */
+  function observe(el: HTMLElement): void {
     if (!running) return
     const now = ports.clock()
     const surface = cardSurface(el)
@@ -236,15 +235,6 @@ export function createSensor(ports: SensorPorts): Sensor {
     if (rec.kind === "churn") {
       // Kept its key, and nothing about the artifact changed.
       ports.onFact({ kind: "churn.ignored", videoId: keyVideoId(rec.key) })
-      const last = lastEmitted.get(el)
-      if (force && last !== undefined) {
-        ports.emit({
-          kind: "observed",
-          key: rec.key,
-          observation: last.observation,
-          t: now,
-        })
-      }
       return
     }
     // Per element, not per key: a second carrier of a video Core already
@@ -254,25 +244,13 @@ export function createSensor(ports: SensorPorts): Sensor {
       // The channel budget belonged to the previous video.
       channelPending.delete(el)
       channelAbandoned.delete(el)
+      namePending.delete(el)
+      nameAbandoned.delete(el)
       datePending.delete(el)
       dateAbandoned.delete(el)
       if (rec.previousGone) {
         ports.emit({ kind: "gone", key: rec.previous, t: now })
       }
-    }
-
-    if (extracted.kind === "video-only") {
-      if (
-        extractCarriesChannel(el) &&
-        !channelPending.has(el) &&
-        !channelAbandoned.has(el)
-      ) {
-        channelPending.set(el, now)
-        ensureRetryLoop()
-      }
-    } else {
-      channelPending.delete(el)
-      channelAbandoned.delete(el)
     }
 
     // On an engine without `:has()`, the fallback rule occludes an
@@ -297,6 +275,28 @@ export function createSensor(ports: SensorPorts): Sensor {
       cls.shape,
       surface
     )
+    if (observation.channelId === null) {
+      if (
+        extractCarriesChannel(el) &&
+        !channelPending.has(el) &&
+        !channelAbandoned.has(el)
+      ) {
+        channelPending.set(el, now)
+        ensureRetryLoop()
+      }
+    } else {
+      channelPending.delete(el)
+      channelAbandoned.delete(el)
+    }
+    if (observation.channelId !== null && observation.channelName === null) {
+      if (!namePending.has(el) && !nameAbandoned.has(el)) {
+        namePending.set(el, now)
+        ensureRetryLoop()
+      }
+    } else {
+      namePending.delete(el)
+      nameAbandoned.delete(el)
+    }
     if (observation.uploadDate || observation.short) {
       datePending.delete(el)
     } else if (!datePending.has(el) && !dateAbandoned.has(el)) {
@@ -305,13 +305,8 @@ export function createSensor(ports: SensorPorts): Sensor {
     }
     const serialized = JSON.stringify(observation)
     // A new nested wrapper is only stamped by the render a token causes.
-    if (
-      !force &&
-      !custodyChanged &&
-      lastEmitted.get(el)?.serialized === serialized
-    )
-      return
-    lastEmitted.set(el, { serialized, observation })
+    if (!custodyChanged && lastEmitted.get(el) === serialized) return
+    lastEmitted.set(el, serialized)
     ports.emit({ kind: "observed", key: rec.key, observation, t: now })
   }
 
@@ -335,12 +330,14 @@ export function createSensor(ports: SensorPorts): Sensor {
   /**
    * `el` stopped being a card: release its custody. A key nothing carries is
    * gone; a key another element still carries is re-announced, because the
-   * Actuator drops an element's stamp and veil only on a render of its key.
+   * Actuator drops an element's stamp and plate only on a render of its key.
    */
   function releaseElement(el: HTMLElement, now: number): void {
     lastEmitted.delete(el)
     channelPending.delete(el)
     channelAbandoned.delete(el)
+    namePending.delete(el)
+    nameAbandoned.delete(el)
     datePending.delete(el)
     dateAbandoned.delete(el)
     const released = identity.release(el)
@@ -389,16 +386,26 @@ export function createSensor(ports: SensorPorts): Sensor {
         channelPending.delete(el)
         continue
       }
-      const extracted = tryExtract(el)
-      if (extracted.kind === "full") {
-        observe(el)
-      } else if (now - since >= RESOLVE_BUDGET_MS) {
+      // The budget first: a card observe() leaves pending (vendor churn)
+      // must still run out.
+      if (now - since >= RESOLVE_BUDGET_MS) {
         channelPending.delete(el)
         channelAbandoned.add(el)
         const key = identity.keyOf(el)
         if (key !== null) {
           ports.onFact({ kind: "channel.abandoned", videoId: keyVideoId(key) })
         }
+      } else if (tryExtract(el).kind === "full") {
+        observe(el)
+      }
+    }
+
+    for (const [el, since] of namePending) {
+      if (!el.isConnected || now - since >= RESOLVE_BUDGET_MS) {
+        namePending.delete(el)
+        nameAbandoned.add(el)
+      } else if (extractMeta(el).channelName !== null) {
+        observe(el)
       }
     }
 
@@ -452,6 +459,7 @@ export function createSensor(ports: SensorPorts): Sensor {
     if (
       queue.size === 0 &&
       channelPending.size === 0 &&
+      namePending.size === 0 &&
       datePending.size === 0 &&
       retryTimer !== null
     ) {
@@ -495,7 +503,7 @@ export function createSensor(ports: SensorPorts): Sensor {
       }
     }
 
-    enclosing.forEach((el) => observe(el, true))
+    enclosing.forEach((el) => observe(el))
     candidates.forEach((el) => {
       if (!enclosing.has(el)) observe(el)
     })
@@ -539,6 +547,8 @@ export function createSensor(ports: SensorPorts): Sensor {
     queue.clear()
     channelPending.clear()
     channelAbandoned = new WeakSet()
+    namePending.clear()
+    nameAbandoned = new WeakSet()
     datePending.clear()
     dateAbandoned = new WeakSet()
     unknownReported = new WeakSet()

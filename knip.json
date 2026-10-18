@@ -43,8 +43,7 @@
         "src/popup/popup.ts",
         "src/lib/platform/**/api.*.ts",
         "scripts/setup-test-profile.mjs"
-      ],
-      "ignoreDependencies": ["@unocss/cli"]
+      ]
     },
     "extensions/some-drama": {
       "entry": [

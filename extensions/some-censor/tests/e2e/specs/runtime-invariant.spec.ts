@@ -20,7 +20,7 @@
  *      out of the Tab order.
  * T10 — a renderer repointed at a new video is decided afresh (QD1).
  * T11 — an href-only lockup's card survives preview-anchor churn.
- * T12 — a plated card's veil covers all of it.
+ * T12 — retired (#1804); see plate.spec.ts.
  */
 
 import { expect, test } from "@censor/playwright/fixture"
@@ -181,9 +181,8 @@ test("T5: a click, a double click or a context menu changes nothing", async ({
   for (const type of ["click", "dblclick", "contextmenu"]) {
     await page.evaluate((eventType) => {
       const el = document.querySelector('[data-boyo-vid="vid_bbb222"]')
-      const veil = el?.querySelector(".boyo-veil")
-      if (!(veil instanceof HTMLElement)) throw new Error("veil not found")
-      veil.dispatchEvent(
+      if (!(el instanceof HTMLElement)) throw new Error("card not found")
+      el.dispatchEvent(
         new MouseEvent(eventType, { bubbles: true, cancelable: true })
       )
     }, type)
@@ -196,7 +195,7 @@ test("T5: a click, a double click or a context menu changes nothing", async ({
     await fixture.fixtureCall<string | null>(page, "dataBoyoFor", "vid_bbb222")
   ).toBe("plated")
   expect(
-    await fixture.fixtureCall<boolean>(page, "hasVeil", "vid_bbb222")
+    await fixture.fixtureCall<boolean>(page, "hasPlate", "vid_bbb222")
   ).toBe(true)
 })
 
@@ -268,8 +267,8 @@ test("T7: watch-page sidebar compact renderers are decided like the feed", async
       `data-boyo for sidebar ${id}`
     ).toBe("plated")
     expect(
-      await fixture.fixtureCall<boolean>(page, "hasVeil", id),
-      `veil for sidebar ${id}`
+      await fixture.fixtureCall<boolean>(page, "hasPlate", id),
+      `plate for sidebar ${id}`
     ).toBe(true)
   }
   expect(
@@ -385,27 +384,6 @@ test("T9: an absent card is out of layout, the accessibility tree and the Tab or
     [...reached].some((h) => h.includes("vid_aaa111")),
     "precondition: the walk does reach a plated card's link"
   ).toBe(true)
-})
-
-test("T12: a plated card's veil covers the whole card", async ({ fixture }) => {
-  const page = await fixture.goto("yt-home")
-  await fixture.pollDebug(page, (d) => "vid_aaa111" in d.entries, {
-    timeout: 5000,
-  })
-  const boxes = await page.evaluate(() => {
-    const el = document.querySelector('[data-boyo-vid="vid_aaa111"]')
-    const veil = el?.querySelector(":scope > .boyo-veil")
-    if (!el || !veil) return null
-    const a = el.getBoundingClientRect()
-    const b = veil.getBoundingClientRect()
-    return [a.left, a.top, a.width, a.height, b.left, b.top, b.width, b.height]
-  })
-  expect(boxes).not.toBeNull()
-  const [cl, ct, cw, ch, vl, vt, vw, vh] = boxes ?? []
-  expect(vl).toBeCloseTo(cl ?? NaN, 0)
-  expect(vt).toBeCloseTo(ct ?? NaN, 0)
-  expect(vw).toBeCloseTo(cw ?? NaN, 0)
-  expect(vh).toBeCloseTo(ch ?? NaN, 0)
 })
 
 // ─────────────────────────────────────────────────────────────────────────────

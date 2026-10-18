@@ -18,6 +18,8 @@
  */
 
 import { classify, estimate } from "@censor/lib/content/maturity/maturity"
+import type { Plate } from "@censor/lib/content/plate/plate"
+import { plateOf } from "@censor/lib/content/plate/plate"
 import type { SessionId } from "@some-extension/common"
 import { assertNever } from "@some-extension/common"
 
@@ -69,21 +71,21 @@ type DataBoyo = "absent" | "plated"
 
 export type RenderModel = {
   readonly dataBoyo: DataBoyo
-  /**
-   * Whether the card carries the occluding veil: a plated card does until the
-   * plate replaces it (#1804), and an absent one is not rendered at all.
-   */
-  readonly veil: boolean
+  /** Null on an absent card, which is not rendered at all. */
+  readonly plate: Plate | null
 }
 
-export function project(state: ViewState): RenderModel {
+export function project(
+  state: ViewState,
+  inputs: Parameters<typeof plateOf>[0]
+): RenderModel {
   const { kind } = state
   switch (kind) {
     case "absent": {
-      return { dataBoyo: "absent", veil: false }
+      return { dataBoyo: "absent", plate: null }
     }
     case "plated": {
-      return { dataBoyo: "plated", veil: true }
+      return { dataBoyo: "plated", plate: plateOf(inputs) }
     }
     default: {
       kind satisfies never

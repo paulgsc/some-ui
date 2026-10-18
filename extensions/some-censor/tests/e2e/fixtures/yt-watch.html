@@ -351,11 +351,11 @@
           ].find((n) => n.getAttribute("data-boyo-vid") === videoId)
           return el ? el.getAttribute("data-boyo") : null
         },
-        hasVeil(videoId) {
+        hasPlate(videoId) {
           const el = [
             ...document.querySelectorAll("ytd-compact-video-renderer"),
           ].find((n) => n.getAttribute("data-boyo-vid") === videoId)
-          return el ? el.querySelector(".boyo-veil") !== null : false
+          return el ? el.style.getPropertyValue("--boyo-plate") !== "" : false
         },
         sidebarCount() {
           return document.querySelectorAll("ytd-compact-video-renderer").length

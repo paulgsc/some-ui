@@ -53,7 +53,7 @@ export type Identity = {
   /** The elements currently carrying `key`, anchors first. */
   custodyOf(key: CardKey): ReadonlyArray<CustodyTarget>
   /**
-   * Add an element as nested custody of `key` (no veil; stamp only). Returns
+   * Add an element as nested custody of `key` (no plate; stamp only). Returns
    * whether custody changed, and the key `el` was taken from if that key is
    * now carried by nothing.
    */
@@ -107,7 +107,7 @@ export function createIdentity(): Identity {
         // Re-assert custody in case the key's set was dropped without this
         // element hearing of it. A nested wrapper extraction now reads as the
         // card itself (its inner card is gone) becomes the anchor, or the
-        // card would be stamped with no veil.
+        // card would be stamped with no plate.
         if (keyToEls.get(key)?.get(el) !== "anchor") attach(key, el, "anchor")
         return { kind: "same", key }
       }

@@ -35,8 +35,9 @@ observation to write:
    an input (#1803); the boundary, set in the popup, is (#1807).
 4. **Actuator** (`src/lib/content/actuator/`) — the only writer to the
    vendor DOM. It only executes the actions Core named: the `data-boyo`
-   stamp (`absent` is `display: none` in `styles/content.css`) and the veil
-   over a plated card.
+   stamp (`absent` is `display: none` in `styles/content.css`) and the plate's
+   tones on a plated card, which the stylesheet paints in place of its
+   images (QD12).
 
 ## Browsers
 

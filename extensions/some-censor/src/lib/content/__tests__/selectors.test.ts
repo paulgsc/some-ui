@@ -4,8 +4,8 @@
  * The set of elements the *stylesheet* occludes and the set the *content
  * script* adopts live in two files and can drift. A tag in the CSS but not in
  * TypeScript is a card
- * blurred forever with no veil coming; a tag in TypeScript but not in the CSS
- * is a card that flashes its thumbnail before the veil mounts. Neither shows up
+ * blurred forever with no stamp coming; a tag in TypeScript but not in the CSS
+ * is a card that flashes its thumbnail before it is stamped. Neither shows up
  * in a type error and neither shows up in the e2e fixtures, which only contain
  * the tags someone remembered to add.
  *
@@ -306,9 +306,9 @@ describe("the stylesheet and the catalogue agree", () => {
   it("does not occlude a cell or shelf that merely contains cards", () => {
     // A wrapper necessarily contains its children's watch links, so a link
     // check alone would occlude it — and
-    // adopt it as one card with one veil over everything inside. The inner
+    // adopt it as one card around everything inside. The inner
     // cards are the cards; the stylesheet and classifyCard() both exclude
-    // the wrapper, so they agree about which element gets the veil.
+    // the wrapper, so they agree about which element gets the stamp.
     const cell = document.createElement("ytd-rich-item-renderer")
     cell.innerHTML = `<yt-lockup-view-model><a href="/watch?v=inner_1">t</a></yt-lockup-view-model>`
     document.body.appendChild(cell)

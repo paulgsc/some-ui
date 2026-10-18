@@ -33,7 +33,7 @@ It is nevertheless **governing**: sections below carry hand-assigned numbers
 (`QD1`–`QD17`, `QM0`–`QM4`, `QA1`–`QA5`) for the same reason the canons do, so
 source comments and commit messages can cite them and the citations survive
 reshuffles. The `Q` prefix is deliberate: the Actuator and Sensor cite the
-veil's own unrelated `D1`–`D6` (restated in `actuator/actuator.ts`), and Core
+veil ledger's unrelated `D1`–`D6` (restated in `actuator/actuator.ts`), and Core
 the card pipeline's `M1`–`M3` and `M6` (restated in `core/reduce.ts`) — a bare
 "see D3" or "M2" would resolve to whichever ledger the reader happened to be
 looking at. A behavioural change to this extension that
@@ -132,8 +132,7 @@ belonging to an unadmitted artifact may become legible without an explicit
 disclosure act by the user.
 
 _Status: holds._ This is the invariant the pre-mask occluder in
-`src/styles/content.css` and the veil in `src/lib/content/actuator/veil.ts`
-already enforce, and it is the one thing in the workspace that must never be
+`src/styles/content.css` and its plate rules already enforce, and it is the one thing in the workspace that must never be
 traded for comfort. Everything below is built **above** this line, never by
 weakening it.
 
@@ -276,7 +275,7 @@ Where a region contains nothing admissible, the region — not each card in it �
 is the unit of concealment. One quiet statement and reclaimed empty space is
 the correct rendering of "there is nothing here for you today."
 
-_Status: absent._ The veil is applied per renderer; there is no surface-level
+_Status: absent._ Concealment is per renderer; there is no surface-level
 construct at all.
 
 _Superseded in part by `QD11`._ The distance this result asks for stands. Its
@@ -377,7 +376,14 @@ huge type, an arrow, the week's news. The owner already chooses from words, so
 the thumbnail has no job left. The plate is the card's finished state, not a
 cover waiting to be lifted.
 
-_Status: absent._ #1804.
+_Status: holds on cards, with gaps (#1804)._ Under a plated card no `img` or
+`video` is painted, whatever its shape (`styles/content.css`, "THE PLATE"), so
+the card's own thumbnail and channel photo show nothing. The thumbnail's box is
+filled with the video's tone and the avatar's with the channel's disc, both
+hashed by `lib/content/plate/plate.ts`. The thumbnail takes no pointer except
+its duration badge, so a hover over the plate reaches no thumbnail, and the
+preview player never shows. The
+surfaces outside a card are in the gap table below.
 
 ---
 
@@ -473,8 +479,8 @@ control (`QD13`), labelled with what it does and nothing more.
 A tool that narrates itself ("in here it is 2025", "24 held") makes its
 mechanism the thing on screen; the owner found that inauthentic.
 
-_Status: holds (#1803)._ The ladder and its hints are deleted, and the veil
-over a plated card carries no copy.
+_Status: holds (#1803)._ The ladder and its hints are deleted, and a plated
+card carries no copy.
 
 ## 5. The temporal model
 
@@ -595,16 +601,18 @@ section is a behavioural change; it is a statement of distance.
 
 ### What contradicts it
 
-| gap                                                            | where                                                     | doctrine |
-| -------------------------------------------------------------- | --------------------------------------------------------- | -------- |
-| No surface-level concealment                                   | veil is per-renderer throughout                           | QD8      |
-| Manifest copy describes the mechanism                          | `public/manifest.json` `description`, the popup's tagline | §0       |
-| A held video's watch page still plays                          | nothing handles the watch page itself (#1805)             | QD11     |
-| A shelf elsewhere keeps its header                             | a container `SHELF_SELECTORS` does not name               | QD11     |
-| Plated cards are veiled whole: title, channel and duration too | `actuator/veil.ts`, until the plate (#1804)               | QD12     |
-| A trending rank is shown                                       | no capture holds one, so no crowd rule names it           | QD14     |
-| The "Video details" list shows on Firefox 112–120              | its crowd rule needs `:has()`                             | QD14     |
-| Each comment's age and like count shows                        | the comments section is #1805's                           | QD14     |
+| gap                                                            | where                                                                       | doctrine |
+| -------------------------------------------------------------- | --------------------------------------------------------------------------- | -------- |
+| No surface-level concealment                                   | absence and the plate are per renderer                                      | QD8      |
+| Manifest copy describes the mechanism                          | `public/manifest.json` `description`, the popup's tagline                   | §0       |
+| A held video's watch page still plays                          | nothing handles the watch page itself (#1805)                               | QD11     |
+| A shelf elsewhere keeps its header                             | a container `SHELF_SELECTORS` does not name                                 | QD11     |
+| Channel photos outside a card show                             | watch owner, guide, description, channel page (#1804)                       | QD12     |
+| Mosaics, banners, notifications and end screens show images    | playlist header, channel banner, bell, player (#1804)                       | QD12     |
+| A hover on the duration badge can still start a hidden preview | the badge takes the pointer to open the card; the player is `display: none` | QD12     |
+| A trending rank is shown                                       | no capture holds one, so no crowd rule names it                             | QD14     |
+| The "Video details" list shows on Firefox 112–120              | its crowd rule needs `:has()`                                               | QD14     |
+| Each comment's age and like count shows                        | the comments section is #1805's                                             | QD14     |
 
 ### Extraction hazards a maturity estimator will meet
 

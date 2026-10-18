@@ -75,7 +75,11 @@ function deleteCard(state: CoreState, key: CardKey): CoreState {
 
 /** The render for a card's current view. */
 function render(card: CardState): Action {
-  return { kind: "render", key: card.key, model: project(card.view) }
+  return {
+    kind: "render",
+    key: card.key,
+    model: project(card.view, card.observation),
+  }
 }
 
 function stateFact(card: CardState): Action {

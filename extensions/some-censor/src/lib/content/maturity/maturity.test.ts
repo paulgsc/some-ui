@@ -1,4 +1,5 @@
 import type { RenderModel } from "@censor/lib/content/fsm"
+import type { Plate } from "@censor/lib/content/plate/plate"
 import type { MetaData } from "@censor/types/states"
 import { describe, expect, expectTypeOf, it } from "vitest"
 
@@ -117,8 +118,9 @@ describe("classify", () => {
 })
 
 describe("the presentable metadata", () => {
-  it("cannot carry a raw date into a veil (QD4)", () => {
+  it("cannot carry a raw date into a render (QD4)", () => {
     expectTypeOf<keyof MetaData>().toEqualTypeOf<"channelName" | "duration">()
-    expectTypeOf<keyof RenderModel>().toEqualTypeOf<"dataBoyo" | "veil">()
+    expectTypeOf<keyof RenderModel>().toEqualTypeOf<"dataBoyo" | "plate">()
+    expectTypeOf<keyof Plate>().toEqualTypeOf<"fill" | "disc" | "initial">()
   })
 })

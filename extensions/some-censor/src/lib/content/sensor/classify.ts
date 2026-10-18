@@ -31,8 +31,8 @@ export type NodeClass =
   | { readonly kind: "card"; readonly shape: "known" }
   /**
    * A card the table could not place (B4). Still adopted — the stylesheet
-   * is occluding it regardless, and a veil is strictly better than an
-   * occluder nothing lifts — and counted.
+   * is occluding it regardless, and a decision is strictly better than
+   * an occluder nothing lifts — and counted.
    */
   | {
       readonly kind: "card"
@@ -62,7 +62,7 @@ export function classifyNode(
     case "nested": {
       // The table has seen this tag here, in this context. Whether it called
       // the occurrence an anchor or nested is the *table's* description of
-      // the crawl; which element gets the veil is the catalogue predicate's
+      // the crawl; which element gets the stamp is the catalogue predicate's
       // decision (a container is never a card), already made above.
       return { kind: "card", shape: "known" }
     }

@@ -13,7 +13,7 @@ import type { Action } from "@censor/lib/content/core/actions"
 
 /** How one element takes part in a card. */
 export type CustodyRole =
-  /** Carries the veil and the `data-boyo-vid` stamp. */
+  /** Carries the plate's values and the `data-boyo-vid` stamp. */
   | "anchor"
   /**
    * Inside an anchor and matching a pre-mask rule of its own (a grid cell

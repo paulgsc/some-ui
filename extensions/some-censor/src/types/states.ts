@@ -6,7 +6,7 @@
 
 /**
  * What a card may present about itself. Deliberately no date: the raw upload
- * string is evidence (`core/observation.ts`), never something a veil or plate
+ * string is evidence (`core/observation.ts`), never something a plate
  * may render (QD4, #1384).
  */
 export type MetaData = {
