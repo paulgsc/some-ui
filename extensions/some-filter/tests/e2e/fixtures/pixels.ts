@@ -23,11 +23,7 @@ export type SampledColor = {
 export const DARK = 0.05
 
 /** WCAG 2.1 relative luminance, matching src/lib/content/color.ts. */
-export function luminance8Bit([r, g, b]: readonly [
-  number,
-  number,
-  number,
-]): number {
+function luminance8Bit([r, g, b]: readonly [number, number, number]): number {
   const lin = (channel: number): number => {
     const s = channel / 255
     return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4)
@@ -67,11 +63,15 @@ export async function brightestIn(
   try {
     // A 4px stride: a flat fill is expected and a flash is never a single
     // stray pixel.
-    sampled = await colorsIn(scratch, shot, 4)
+    sampled = await colorsIn(scratch, shot, { stride: 4 })
   } finally {
     await scratch.close()
   }
+  return brightestOf(sampled)
+}
 
+/** The brightest of a shot's sampled colours, for this module and frames.ts. */
+export function brightestOf(sampled: ReadonlyArray<ShotColor>): SampledColor {
   const ranked = sampled
     .map(({ color }) => ({ color, luminance: luminance8Bit(color) }))
     .sort((a, b) => b.luminance - a.luminance)
