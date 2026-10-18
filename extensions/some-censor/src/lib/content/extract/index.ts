@@ -42,7 +42,7 @@ import { extractVideoId } from "./video-id"
 export { representsVideo } from "./video-id"
 
 export { extractTitle } from "./title"
-export { readDescription, readWatch } from "./watch"
+export { readAutonav, readDescription, readWatch } from "./watch"
 export {
   extractCarriesChannel,
   extractIsShort,

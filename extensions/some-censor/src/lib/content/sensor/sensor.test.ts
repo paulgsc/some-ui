@@ -23,6 +23,7 @@ import { createSensor, NAV_DEBOUNCE_MS } from "./sensor"
 const TABLE: LayoutTable = YOUTUBE_LAYOUT
 
 let tokens: Array<Token>
+let admitted: Set<string>
 let facts: Array<CoreFact>
 let sensor: Sensor
 let now: number
@@ -78,6 +79,7 @@ function startSensor(): Sensor {
     mintSession: () => session(++sessions),
     emit: (t) => tokens.push(t),
     onFact: (f) => facts.push(f),
+    admits: (videoId) => admitted.has(videoId),
   })
   s.start()
   return s
@@ -105,6 +107,7 @@ beforeEach(() => {
   document.body.innerHTML = ""
   tokens = []
   facts = []
+  admitted = new Set()
   now = 10_000
   sessions = 0
   sensor = startSensor()
@@ -654,6 +657,51 @@ describe("the watch page (#1805)", () => {
     window.dispatchEvent(new Event("yt-navigate-finish"))
     await vi.advanceTimersByTimeAsync(NAV_DEBOUNCE_MS)
     expect(tokens.map((t) => t.kind)).toEqual(["nav"])
+  })
+})
+
+describe("autoplay (#1805)", () => {
+  /** What the app's own listener would see of a navigation. */
+  function navigate(detail: unknown): boolean {
+    let reached = false
+    const app = new AbortController()
+    window.addEventListener(
+      "yt-navigate",
+      () => {
+        reached = true
+      },
+      { signal: app.signal }
+    )
+    const root = document.createElement("ytd-watch-flexy")
+    document.body.append(root)
+    root.dispatchEvent(
+      // eslint-disable-next-line extension-charter/no-unprefixed-namespace -- YouTube's own event, as the page dispatches it
+      new CustomEvent("yt-navigate", { detail, bubbles: true, composed: true })
+    )
+    app.abort()
+    return reached
+  }
+  const autoplay = (videoId: string): unknown => ({
+    endpoint: { watchEndpoint: { videoId } },
+    tempData: { autonav: "1" },
+  })
+
+  it("holds an autoplay into a video Core does not admit", () => {
+    expect(navigate(autoplay("held"))).toBe(false)
+    admitted.add("old")
+    expect(navigate(autoplay("old"))).toBe(true)
+  })
+
+  it("never holds a navigation the owner asked for", () => {
+    expect(navigate({ endpoint: { watchEndpoint: { videoId: "held" } } })).toBe(
+      true
+    )
+    expect(navigate(null)).toBe(true)
+  })
+
+  it("holds nothing once stopped", () => {
+    sensor.stop()
+    expect(navigate(autoplay("held"))).toBe(true)
   })
 })
 

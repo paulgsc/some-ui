@@ -17,6 +17,8 @@
  * W8 — An old video moved into the miniplayer plays on, shown.
  * W9 — When the miniplayer goes on to another video, that video is held: the
  *      page it was opened on says nothing about it.
+ * W10 — Autoplay goes on only into a video the page admits; a click is never
+ *       held.
  */
 
 import { SWITCHED_OFF_ATTRIBUTE } from "@censor/lib/content/selectors"
@@ -206,4 +208,62 @@ test("W9: the miniplayer going on to another video holds it", async ({
   await watchView(page, "pending")
   await expect(page.locator("ytd-miniplayer")).toBeHidden()
   expect(await playsThrough(page)).toBe(false)
+})
+
+test("W10: autoplay goes on only into a video the page admits", async ({
+  fixture,
+}) => {
+  const page = await fixture.goto("yt-watch-page")
+  await watchView(page, "plated")
+  // Two up-next cards: one old, one recent.
+  await page.evaluate(() => {
+    const card = (id: string, age: string): string =>
+      `<ytd-compact-video-renderer><a id="video-title" href="/watch?v=${id}">${id}</a><ytd-channel-name><yt-formatted-string>Chan</yt-formatted-string></ytd-channel-name><a href="/@Chan">Chan</a><div id="metadata-line"><span>1M views</span><span>${age}</span></div></ytd-compact-video-renderer>`
+    const secondary = document.querySelector("#secondary")
+    if (secondary)
+      secondary.innerHTML =
+        card("old_next", "9 years ago") + card("new_next", "3 hours ago")
+  })
+  await expect(page.locator('[data-boyo-vid="old_next"]')).toHaveAttribute(
+    "data-boyo",
+    "plated"
+  )
+  await expect(page.locator('[data-boyo-vid="new_next"]')).toHaveAttribute(
+    "data-boyo",
+    "absent"
+  )
+  // Whether YouTube's app would see a navigation, as YouTube sends it.
+  const reaches = (videoId: string, autonav?: string): Promise<boolean> =>
+    page.evaluate(
+      ([id, nav]) => {
+        let reached = false
+        const app = new AbortController()
+        window.addEventListener(
+          "yt-navigate",
+          () => {
+            reached = true
+          },
+          { signal: app.signal }
+        )
+        document.querySelector("ytd-watch-flexy")?.dispatchEvent(
+          new CustomEvent("yt-navigate", {
+            bubbles: true,
+            composed: true,
+            detail: {
+              endpoint: { watchEndpoint: { videoId: id } },
+              tempData: { autonav: nav },
+            },
+          })
+        )
+        app.abort()
+        return reached
+      },
+      [videoId, autonav] as const
+    )
+  // Autoplay into the old one goes on; into the recent or an unseen one it is
+  // held; a click on the recent one is the owner's own and is never held.
+  expect(await reaches("old_next", "1")).toBe(true)
+  expect(await reaches("new_next", "1")).toBe(false)
+  expect(await reaches("unseen", "1")).toBe(false)
+  expect(await reaches("new_next")).toBe(true)
 })

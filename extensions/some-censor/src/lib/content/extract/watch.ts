@@ -9,6 +9,7 @@
  */
 
 import type { WatchObservation } from "@censor/lib/content/core/observation"
+import type { VideoId } from "@censor/types/ids"
 import { asVideoId } from "@censor/types/ids"
 
 const SHORTS_PAGE = "ytd-page-manager > ytd-shorts:not([hidden])"
@@ -99,4 +100,26 @@ export function readDescription(doc: Document): HTMLElement | null {
   return doc.querySelector<HTMLElement>(
     `${WATCH_PAGE}:not([hidden]) ytd-watch-metadata #description-inner`
   )
+}
+
+/**
+ * The video an autoplay navigation goes to, or null for any other
+ * navigation (#1805). YouTube's autoplay and playlist advance navigate by
+ * a `yt-navigate` whose `tempData.autonav` is "1", naming the next video
+ * in its endpoint; a click carries no `autonav`. The detail is the page's
+ * own object, read through Firefox's `wrappedJSObject` when its Xray view
+ * shows nothing.
+ */
+export function readAutonav(event: Event): VideoId | null {
+  const waived = field(event, "wrappedJSObject")
+  const detail = field(waived ?? event, "detail") ?? field(event, "detail")
+  if (field(field(detail, "tempData"), "autonav") !== "1") return null
+  const id = field(field(field(detail, "endpoint"), "watchEndpoint"), "videoId")
+  return typeof id === "string" && id !== "" ? asVideoId(id) : null
+}
+
+function field(value: unknown, key: string): unknown {
+  return typeof value === "object" && value !== null
+    ? Reflect.get(value, key)
+    : undefined
 }

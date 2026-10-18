@@ -360,7 +360,15 @@ section, search's grid shelf, a channel page's shelf section). Gaps remain:
 a shelf in any other container keeps its header, and so does one whose only
 other tile is a post with an absent video attached; a video-shaped element the
 Sensor cannot resolve stays blurred in place under the occluder
-(`OccluderReleases` reports it); and autoplay into a held video (#1805).
+(`OccluderReleases` reports it).
+
+Autoplay stops before a held video (#1805). YouTube's autoplay and playlist
+advance navigate by a `yt-navigate` marked `autonav`, naming the next video;
+the Sensor holds one in the capture phase, before the app sees it, unless a
+card for that video is on the page and plated (Core's `admits`). A navigation
+the owner starts carries no `autonav` and is never held. A playlist's rows
+carry no date (sealed under `QD3`), so a playlist, Mix or queue stops after
+nearly every video. `watch.spec.ts` W10 proves the hold, locally.
 
 A held video's watch page, reached by a link, is "Not here." and Back
 (#1805): `styles/content.css` renders no player, miniplayer, title or date
@@ -638,7 +646,10 @@ section is a behavioural change; it is a statement of distance.
 | ---------------------------------------------------------------- | --------------------------------------------------------------------------- | -------- |
 | No surface-level concealment                                     | absence and the plate are per renderer                                      | QD8      |
 | Manifest copy describes the mechanism                            | `public/manifest.json` `description`, the popup's tagline                   | §0       |
-| Autoplay can still go on into a held video                       | its page then reads "Not here.", but nothing stops autoplay first (#1805)   | QD11     |
+| Autoplay stops before an old video that has no card on the page  | Core admits only what it has plated, so an unseen next video is held        | QD12     |
+| A playlist skips an unplayable item into the next, held or not   | that advance (`onPlaylistNext`) carries no `autonav`, so nothing holds it   | QD11     |
+| The countdown's "Play now" may be held like autoplay             | its module was not captured; if it plays next as autonav, it reads as one   | QD12     |
+| The autoplay countdown can show a held next video's title        | the end screen's markup was not captured, so no rule names its title        | QD11     |
 | A page YouTube moves to another video could paint it unmasked    | the mask returns when `video-id` changes; nothing proves it changes first   | QD11     |
 | A watch page that never shows its video's date stays blank       | it is pending, which says nothing, and nothing ends pending                 | QD17     |
 | A held video's title shows in the tab on a direct load, briefly  | the server sends it, and the content script runs at `document_end`          | QD11     |
