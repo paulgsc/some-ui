@@ -415,7 +415,15 @@ This is friction in the opposite place from the old ladder. The ladder put work
 between the owner and the _video_, so every bad card cost effort. The hold puts
 work only between the owner and the _thumbnail_, which nothing needs.
 
-_Status: absent._ #1805.
+_Status: holds (#1805)._ A plated video's poster is the plate: its tone is
+the video's, and the player's own poster does not paint, before play or once
+it ends. In the description, "Hold to show the original thumbnail" reports a
+hold of three seconds without a break, by the pointer or by Space or Enter
+(`actuator/face-hold.ts`); a release, a lost pointer or focus leaving cancels
+it, and reduced motion drops its fill. Core keeps the face for that view only
+(R9): a navigation, another video or a view no longer plated takes it away,
+and nothing stores it. The control goes once used, with no message.
+`face.spec.ts` F1–F4 prove each, locally.
 
 ---
 
@@ -502,7 +510,8 @@ mechanism the thing on screen; the owner found that inauthentic.
 
 _Status: holds (#1803, #1805)._ The ladder and its hints are deleted, and a
 plated card carries no copy. A held watch page carries "Not here." and Back,
-and its tab title is "YouTube". The face control is still to come (#1805).
+and its tab title is "YouTube". A plated one carries the face control, its
+label the only copy, and it goes once used.
 
 ## 5. The temporal model
 
@@ -638,7 +647,6 @@ section is a behavioural change; it is a statement of distance.
 | A shelf elsewhere keeps its header                               | a container `SHELF_SELECTORS` does not name                                 | QD11     |
 | A channel photo outside a card leaves an empty space, not a disc | no card's ids to hash there; the photo itself is hidden                     | QD12     |
 | Live chat shows its authors' photos                              | the chat is its own frame, and the manifest injects into the top frame only | QD12     |
-| The player's poster is the real thumbnail, not the plate         | the player is #1805's, with the face (QD13)                                 | QD12     |
 | A channel's seamless header can play its video trailer           | a video, not an image, so no image rule hides it (#1888)                    | QD12     |
 | #1806's whole cards would lose their channel photos              | the channel-photo rule hides them wherever they sit                         | QD15     |
 | A hover on the duration badge can still start a hidden preview   | the badge takes the pointer to open the card; the player is `display: none` | QD12     |

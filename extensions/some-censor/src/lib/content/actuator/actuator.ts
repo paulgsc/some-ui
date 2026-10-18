@@ -5,7 +5,9 @@
  * the one module that mutates VendorDOM (stamps and the plate's values);
  * every such write lives here or in a file this module owns (`switch.ts`
  * for the page-wide off switch, `watch-hold.ts` for the watch page's hold).
- * Nothing it does produces an input for Core.
+ * Nothing it does produces an input for Core but the face control's hold
+ * (`face-hold.ts`, QD13), the one gesture Core hears, which it reports
+ * through `ports.onFace`.
  *
  * Design properties, pinned by `actuator.test.ts` (labels for citation, not
  * declared review invariants). The parenthesised D-numbers are the veil
@@ -57,9 +59,14 @@ const PLATE_PROPERTIES: Readonly<Record<keyof Plate, string>> = {
   initial: "--boyo-initial",
 }
 
-export function createActuator(doc: Document): Actuator {
+export type ActuatorPorts = {
+  /** The owner held the face control on `videoId`'s page (QD13). */
+  readonly onFace: (videoId: VideoId) => void
+}
+
+export function createActuator(doc: Document, ports: ActuatorPorts): Actuator {
   const realized = new Map<CardKey, Realized>()
-  const watchHold = createWatchHold(doc)
+  const watchHold = createWatchHold(doc, ports.onFace)
   const owner = new WeakMap<HTMLElement, CardKey>()
   /** Elements whose `style` attribute this module created, so A4 removes only those. */
   const styled = new WeakSet<HTMLElement>()
@@ -186,7 +193,7 @@ export function createActuator(doc: Document): Actuator {
             break
           }
           case "watch": {
-            watchHold.realize(action.view, action.videoId, action.miniplayer)
+            watchHold.realize(action, targets[0]?.el ?? null)
             break
           }
           default: {

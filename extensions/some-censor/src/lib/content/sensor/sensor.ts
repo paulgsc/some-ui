@@ -44,6 +44,7 @@ import {
   extractMeta,
   extractTitle,
   extractUploadDate,
+  readDescription,
   readWatch,
   tryExtract,
 } from "@censor/lib/content/extract/index"
@@ -113,6 +114,8 @@ export type Sensor = {
   scan(): void
   /** The elements carrying `key`, for the runtime to bind. */
   custodyOf(key: CardKey): ReadonlyArray<CustodyTarget>
+  /** The shown watch page's description, where the face control goes. */
+  description(): HTMLElement | null
   census(): SensorCensus
   /** How many elements are queued; O(1), unlike {@link census}. */
   readonly queued: number
@@ -649,6 +652,10 @@ export function createSensor(ports: SensorPorts): Sensor {
 
     custodyOf(key: CardKey): ReadonlyArray<CustodyTarget> {
       return identity.custodyOf(key)
+    },
+
+    description(): HTMLElement | null {
+      return readDescription(ports.doc)
     },
 
     census(): SensorCensus {

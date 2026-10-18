@@ -35,8 +35,12 @@
  *        video read; and a date written before its video's id, which would
  *        hold the next video pending.) It is not a card: `nav` leaves it to the next reading, and
  *        `stop` forgets it, the Actuator's `dispose` lifting its hold. A
- *        `watch` action is emitted only when its view, its video or where it
- *        plays changes.
+ *        `watch` action is emitted only when its view, its video, where it
+ *        plays or its face changes.
+ *   R9 — The face is one view's (QD13). A `face` input for the plated page's
+ *        video, outside the miniplayer, shows its real thumbnail; a new
+ *        video, a view that is no longer plated, and `nav` take it away.
+ *        Nothing keeps it.
  *
  * R4 correlated the answers to Core's async requests; none are left, so it
  * is retired. The parenthesised M- and C- labels are kept so their
@@ -45,6 +49,7 @@
  */
 
 import { decide, decideWatch, project } from "@censor/lib/content/fsm"
+import { plateOf } from "@censor/lib/content/plate/plate"
 import { assertNever } from "@some-extension/common"
 
 import type { Action, CoreFact } from "./actions"
@@ -144,19 +149,40 @@ export function reduce(state: CoreState, event: CoreEvent): Step {
     case "nav": {
       if (state.phase !== "running") return none(state)
       const cleared = clearCards(state)
+      // R9: a navigation is a new view, so the face goes with it.
+      const faced = state.watch?.face === true
+      const watch =
+        state.watch === null ? null : { ...state.watch, face: false }
       return {
         state: {
           ...cleared.state,
           session: event.session,
+          watch,
           unknownShapes: EMPTY_UNKNOWN_SHAPES,
         },
         actions: [
           record({ kind: "navigation" }),
           record({ kind: "session.reset", session: state.session }),
           ...cleared.actions,
+          ...(faced ? [watchAction(watch)] : []),
           record({ kind: "session.start", session: event.session }),
         ],
       }
+    }
+
+    case "face": {
+      if (state.phase !== "running") return none(state)
+      const watch = state.watch
+      if (
+        watch?.view !== "plated" ||
+        watch.face ||
+        watch.observation.miniplayer ||
+        watch.observation.videoId !== event.videoId
+      ) {
+        return none(state)
+      }
+      const next = { ...watch, face: true }
+      return { state: { ...state, watch: next }, actions: [watchAction(next)] }
     }
 
     case "boundary": {
@@ -299,11 +325,17 @@ function reobserve(
 }
 
 function watchAction(watch: WatchState | null): Action {
+  const videoId = watch?.observation.videoId ?? null
   return {
     kind: "watch",
     view: watch?.view ?? null,
-    videoId: watch?.observation.videoId ?? null,
+    videoId,
     miniplayer: watch?.observation.miniplayer ?? false,
+    poster:
+      watch?.view === "plated" && videoId !== null
+        ? plateOf({ videoId, channelId: null, channelName: null }).fill
+        : null,
+    face: watch?.face ?? false,
   }
 }
 
@@ -333,9 +365,17 @@ function watched(
     within(observation.dates, last.dates)
   const own = stale ? { ...observation, dates: [] } : observation
   const merged = previous === null ? own : mergeWatch(previous.observation, own)
+  const view = decideWatch(merged, t, state.boundaryDays)
   const next: WatchState = {
     observation: merged,
-    view: decideWatch(merged, t, state.boundaryDays),
+    view,
+    // R9: the face stays only with the same plated video, outside the
+    // miniplayer.
+    face:
+      previous?.face === true &&
+      previous.observation.videoId === merged.videoId &&
+      view === "plated" &&
+      !merged.miniplayer,
     seenAt: t,
   }
   let watchDates = last
@@ -349,7 +389,8 @@ function watched(
   const moved =
     previous?.view !== next.view ||
     previous.observation.videoId !== merged.videoId ||
-    previous.observation.miniplayer !== merged.miniplayer
+    previous.observation.miniplayer !== merged.miniplayer ||
+    previous.face !== next.face
   return {
     state: { ...state, watch: next, watchDates },
     actions: moved ? [watchAction(next)] : [],
@@ -380,7 +421,7 @@ function rebound(state: CoreState, boundaryDays: number): Step {
   if (watch !== null) {
     const view = decideWatch(watch.observation, watch.seenAt, boundaryDays)
     if (view !== watch.view) {
-      watch = { ...watch, view }
+      watch = { ...watch, view, face: watch.face && view === "plated" }
       actions.push(watchAction(watch))
     }
   }

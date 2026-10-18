@@ -90,3 +90,13 @@ function playsAnother(doc: Document, metadata: Element): boolean {
   const own = metadata.querySelector(PAGE_TITLE)?.textContent.trim()
   return playing !== "" && playing !== own
 }
+
+/**
+ * The shown watch page's description, where the face control goes (QD13):
+ * stamped with the metadata, so it is there whenever the page is plated.
+ */
+export function readDescription(doc: Document): HTMLElement | null {
+  return doc.querySelector<HTMLElement>(
+    `${WATCH_PAGE}:not([hidden]) ytd-watch-metadata #description-inner`
+  )
+}

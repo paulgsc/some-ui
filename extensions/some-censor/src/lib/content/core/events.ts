@@ -14,6 +14,7 @@
 
 import type { UnknownShapeReason } from "@censor/lib/content/layout/lookup"
 import type { BoyoSurface } from "@censor/lib/content/layout/surface"
+import type { VideoId } from "@censor/types/ids"
 import type { SessionId } from "@some-extension/common"
 
 import type { CardKey } from "./keys"
@@ -67,9 +68,10 @@ export type Token =
 // ── Inputs: the extension's own world ────────────────────────────────────────
 
 /**
- * The shell's lifecycle, and the owner's boundary. No gesture on a card
- * reaches Core: a card's view is decided by its evidence under the boundary
- * (`fsm.ts`, `QD16`).
+ * The shell's lifecycle, the owner's boundary, and the face hold. No gesture
+ * on a card reaches Core: a card's view is decided by its evidence under the
+ * boundary (`fsm.ts`, `QD16`). The face hold decides nothing about whether a
+ * video is admitted; it shows a plated video's own thumbnail (QD13).
  */
 export type Input =
   /** The shell started a session (bootstrap, or re-enable). */
@@ -83,5 +85,10 @@ export type Input =
   | { readonly kind: "stop"; readonly t: number }
   /** The owner set the boundary in the popup (#1807). */
   | { readonly kind: "boundary"; readonly days: number; readonly t: number }
+  /**
+   * The owner held the face control on `videoId`'s plated page for its
+   * whole time (QD13, #1805).
+   */
+  | { readonly kind: "face"; readonly videoId: VideoId; readonly t: number }
 
 export type CoreEvent = Token | Input

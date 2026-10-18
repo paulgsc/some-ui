@@ -104,7 +104,11 @@ export function createRuntime(ports: RuntimePorts): Runtime {
         if (action.fact.kind === "navigation") notifyNavigation()
         onFact(action.fact)
       } else if (action.kind === "watch") {
-        bound.push({ action, targets: [] })
+        const el = sensorInstance.description()
+        bound.push({
+          action,
+          targets: el === null ? [] : [{ el, role: "anchor" }],
+        })
       } else {
         bound.push({ action, targets: sensorInstance.custodyOf(action.key) })
       }
@@ -154,7 +158,9 @@ export function createRuntime(ports: RuntimePorts): Runtime {
   return {
     start(): void {
       if (state.phase === "running") return
-      actuator = createActuator(ports.doc)
+      actuator = createActuator(ports.doc, {
+        onFace: (videoId) => dispatch({ kind: "face", videoId, t: clock() }),
+      })
       health = createHealth({
         clock,
         state: () => state,

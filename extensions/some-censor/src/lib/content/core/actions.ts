@@ -39,6 +39,10 @@ export type Action =
       readonly view: WatchView | null
       readonly videoId: VideoId | null
       readonly miniplayer: boolean
+      /** The plate's tone for the player's poster; null unless plated. */
+      readonly poster: string | null
+      /** The owner held for the real thumbnail, this view (QD13). */
+      readonly face: boolean
     }
   /** A fact for the flight recorder; the runtime forwards it. */
   | { readonly kind: "record"; readonly fact: CoreFact }

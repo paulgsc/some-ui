@@ -7,6 +7,10 @@
  *   `plated`, and the whole page on `absent`.
  * - On `absent`, "Not here." and a Back button, built here, unless the video
  *   is in the miniplayer over another page.
+ * - On `plated`, the plate's tone for the player's poster, as
+ *   `--boyo-poster` on `<html>`, and the face control (`face-hold.ts`) in
+ *   the description it is given; once the owner has held it, `data-boyo-face`
+ *   on `<html>`, which lifts the poster's plate (QD13).
  * - Until `plated`, no media plays, and the tab title is not the video's.
  *
  * Those last two are holds YouTube would undo, so this is the one place the
@@ -17,27 +21,39 @@
  * replaced), to give back on `plated`.
  *
  *   WH1 — Idempotent: realizing the same view twice writes nothing new.
- *   WH2 — Total cleanup: `null` and `dispose` leave no attribute, surface,
- *         listener or observer; only `dispose` gives back a title, the one
- *         the page still shows.
+ *   WH2 — Total cleanup: `null` and `dispose` leave no attribute, property,
+ *         surface, control, listener or observer; only `dispose` gives back
+ *         a title, the one the page still shows.
  */
 
+import type { Action } from "@censor/lib/content/core/actions"
 import type { WatchView } from "@censor/lib/content/fsm"
 import type { VideoId } from "@censor/types/ids"
+
+import type { FaceControl } from "./face-hold"
+import { createFaceControl } from "./face-hold"
 
 /** The tab title while the video is held: the site's, never the video's. */
 export const NEUTRAL_TITLE = "YouTube"
 
+const POSTER_PROPERTY = "--boyo-poster"
+
+type WatchRender = Omit<Extract<Action, { kind: "watch" }>, "kind">
+
 export type WatchHold = {
-  realize(
-    view: WatchView | null,
-    videoId: VideoId | null,
-    miniplayer: boolean
-  ): void
+  /** `description` is where the face control goes, when there is one. */
+  realize(watch: WatchRender, description: HTMLElement | null): void
   dispose(): void
 }
 
-export function createWatchHold(doc: Document): WatchHold {
+export function createWatchHold(
+  doc: Document,
+  onFace: (videoId: VideoId) => void
+): WatchHold {
+  let face: FaceControl | null = null
+  let faceFor: VideoId | null = null
+  /** Whether this module created `<html>`'s style attribute, for the poster. */
+  let styled = false
   let current: WatchView | null = null
   let currentVideo: VideoId | null = null
   let currentMiniplayer = false
@@ -135,7 +151,45 @@ export function createWatchHold(doc: Document): WatchHold {
     paused = new Set()
   }
 
-  function realize(
+  /** The poster's plate, and the face control, for a plated view. */
+  function showPoster(
+    { view, videoId, miniplayer, poster, face: faced }: WatchRender,
+    description: HTMLElement | null
+  ): void {
+    const root = doc.documentElement
+    if (poster === null) {
+      root.style.removeProperty(POSTER_PROPERTY)
+      if (styled && root.getAttribute("style") === "") {
+        root.removeAttribute("style")
+      }
+      styled = false
+    } else {
+      if (!root.hasAttribute("style")) styled = true
+      root.style.setProperty(POSTER_PROPERTY, poster)
+    }
+    root.toggleAttribute("data-boyo-face", faced)
+
+    const offered =
+      view === "plated" && !faced && !miniplayer && videoId !== null
+    if (!offered || description === null) {
+      face?.dispose()
+      face = null
+      faceFor = null
+      return
+    }
+    if (face?.el.parentElement === description && faceFor === videoId) return
+    face?.dispose()
+    face = createFaceControl(doc, () => onFace(videoId))
+    faceFor = videoId
+    description.append(face.el)
+  }
+
+  function realize(watch: WatchRender, description: HTMLElement | null): void {
+    showPoster(watch, description)
+    hold(watch.view, watch.videoId, watch.miniplayer)
+  }
+
+  function hold(
     view: WatchView | null,
     videoId: VideoId | null,
     miniplayer: boolean
@@ -178,7 +232,16 @@ export function createWatchHold(doc: Document): WatchHold {
     dispose(): void {
       // Off is plain YouTube: the shown page's own title comes back.
       const title = vendorTitle
-      realize(null, null, false)
+      realize(
+        {
+          view: null,
+          videoId: null,
+          miniplayer: false,
+          poster: null,
+          face: false,
+        },
+        null
+      )
       if (title !== null && doc.title === NEUTRAL_TITLE) doc.title = title
     },
   }
