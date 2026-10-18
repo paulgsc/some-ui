@@ -29,6 +29,14 @@ const CROWD = crowdRules(CSS).map((r) => r.selector)
 type Hider = "none" | "crowd" | "card" | "other"
 type Verdict = { readonly label: string; readonly hider: Hider }
 
+/** Kept elements inside cards the evidence makes absent: the search result
+ *  and the description's linked video, neither of which reads a date. */
+const IN_ABSENT_CARDS = new Set([
+  "CC badge",
+  "linked video title",
+  "linked video channel",
+])
+
 test.beforeAll(() => {
   // Without it, an empty parse would make C2 pass with nothing to spare.
   expect(CROWD.length).toBeGreaterThan(20)
@@ -95,6 +103,9 @@ test("C2: no crowd rule hides what a card keeps, or a button", async ({
   const kept = await verdicts(page, "data-keep")
   expect(kept.length).toBeGreaterThan(10)
   for (const { label, hider } of kept) {
-    expect(["none", "card"], label).toContain(hider)
+    expect(hider, label).toBe(IN_ABSENT_CARDS.has(label) ? "card" : "none")
   }
+  // And a plated card's are on screen, not merely spared.
+  await expect(page.locator('[data-keep="title"]').first()).toBeVisible()
+  await expect(page.locator('[data-keep="duration"]')).toBeVisible()
 })
