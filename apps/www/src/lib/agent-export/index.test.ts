@@ -188,7 +188,9 @@ describe("shareReflections", () => {
     seedStop(stopRecord(0, { sessionId: "s1-0000000000", reason: "break" }))
     seedStop(stopRecord(0, { sessionId: "another-session" }))
     storeEffect({ kind: "count", sessionId: "s1-0000000000", path: "glances" })
-    await expect(shareReflections(["s1-0000000000"], NOW)).resolves.toEqual({
+    await expect(
+      shareReflections({ sessionIds: ["s1-0000000000"] }, NOW)
+    ).resolves.toEqual({
       outcome: "shared",
       sent: ["v1", "t1"],
     })
@@ -228,6 +230,38 @@ describe("shareReflections", () => {
     ])
   })
 
+  it("shares one reflection of a session under the session's own file name, and a later share of the session carries only the rest", async () => {
+    await expect(
+      shareReflections({ sessionIds: ["s1-0000000000"], only: ["v1"] }, NOW)
+    ).resolves.toEqual({ outcome: "shared", sent: ["v1"] })
+
+    const base = "reflections/2026-10-10_morning-drama_s1-00000"
+    expect(share).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        files: [
+          `file:///cache/${base}.json`,
+          `file:///cache/${base}_voice-04m12s-v1.webm`,
+        ],
+      })
+    )
+    expect(JSON.parse(written.get(`${base}.json`) ?? "null")).toMatchObject({
+      session: { id: "s1-0000000000" },
+      reflections: [{ id: "v1" }],
+    })
+    expect(
+      JSON.parse(written.get(`${base}.json`) ?? "null").reflections
+    ).toHaveLength(1)
+
+    handOff(["v1"], NOW())
+    written.clear()
+    await expect(
+      shareReflections({ sessionIds: ["s1-0000000000"] }, NOW)
+    ).resolves.toEqual({ outcome: "shared", sent: ["t1"] })
+    expect(
+      JSON.parse(written.get(`${base}.json`) ?? "null").reflections
+    ).toEqual([expect.objectContaining({ id: "t1" })])
+  })
+
   it("marks nothing shared when the phone would not store the hand-off", () => {
     const setItem = Storage.prototype.setItem
     vi.spyOn(Storage.prototype, "setItem").mockImplementation(function (
@@ -250,7 +284,10 @@ describe("shareReflections", () => {
   it("leaves out a voice note whose audio could not be read, so it stays", async () => {
     audioRead.fails = true
 
-    const { sent } = await shareReflections(["s1-0000000000"], NOW)
+    const { sent } = await shareReflections(
+      { sessionIds: ["s1-0000000000"] },
+      NOW
+    )
 
     expect(sent).toEqual(["t1"])
     expect(
@@ -265,7 +302,7 @@ describe("shareReflections", () => {
     share.mockRejectedValue(new Error("Share canceled"))
 
     await expect(
-      shareReflections(["s1-0000000000"], NOW)
+      shareReflections({ sessionIds: ["s1-0000000000"] }, NOW)
     ).resolves.toMatchObject({ outcome: "cancelled" })
   })
 })

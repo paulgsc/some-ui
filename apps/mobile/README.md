@@ -686,13 +686,17 @@ across every session (`REFLECTION_LIMIT`, `lib/session-reflection`); nothing
 is dropped to make room, so at 20 the panel offers only the way out. One
 older than a week reads as **stale**. The study list says how many slots are
 taken and how long the oldest has waited ("To hand off"), and each session's
-card says how many it has, how old, and **Share**. Sharing (one session, or
+card says how many it has, how old, and **Share**. In the panel, each of the
+session's reflections has its own share beside its let go, so one said
+mid-session can go out at once. Sharing (one reflection, one session, or
 all of them, through the share sheet: one file per session named for its date,
 name and ID, each voice note beside it, with the session's stops and the
 read-aloud practice record, `lib/agent-export`) then asks whether
 they arrived: Android says "shared" as soon as an app is picked, even if the
-person backs out of it. Yes takes them off the phone and leaves "Reflections
-shared" on the card; **Let go** removes them unshared. A voice reflection's audio is on a shelf of its own
+person backs out of it. Yes takes them off the phone, so a reflection shared
+mid-session is not in its session's file again at the end (both files carry
+the session's name, so a folder can hold two of that name), and leaves
+"Reflections shared" on the card; **Let go** removes them unshared. A voice reflection's audio is on a shelf of its own
 (`lib/reflection-voice`), counted toward the 20 and never toward the
 soundbites' six. Nothing about a reflection reaches the home server
 (`docs/learner-data-authority.md`, LA7).

@@ -6,9 +6,10 @@
  * Two shares. `shareAgentExport` is everything: one `context.json` (sessions,
  * each with its reflections and path counts, stops, soundbites and the
  * read-aloud practice record) and every recording beside it.
- * `shareReflections` is the reflections of the sessions named, one file per
- * session named for it with that session's stops and path counts and the
- * practice record, each voice note beside its file. Either way, the
+ * `shareReflections` is the reflections of the sessions named (or only the
+ * ones picked among them, as the reflection drawer shares one mid-session),
+ * one file per session named for it with that session's stops and path
+ * counts and the practice record, each voice note beside its file. Either way, the
  * reflections that went out leave the phone once the person says they arrived
  * (`handOff`), and with the whole export so do its soundbites and
  * grammar-lens entries (`handOffExport`): they are for the agent to act on,
@@ -315,15 +316,29 @@ export function handOffExport(
   }
 }
 
-/** Shares the reflections of `sessionIds`, one file per session. */
+/** Which reflections a share takes: `sessionIds`', or `only` these of them. */
+export type ReflectionPick = {
+  sessionIds: ReadonlyArray<string>
+  only?: ReadonlyArray<string>
+}
+
+/**
+ * Shares the reflections picked, one file per session. Picking some of a
+ * session's (one, mid-session) names and writes its file as sharing them all
+ * would: those handed off then leave the phone, so a later share of the
+ * session carries only the rest.
+ */
 export async function shareReflections(
-  sessionIds: ReadonlyArray<string>,
+  { sessionIds, only }: ReflectionPick,
   now: () => Date = () => new Date()
 ): Promise<ShareResult> {
   const wanted = new Set(sessionIds)
+  const picked = only ? new Set(only) : null
   const kept = reflections
     .getSnapshot()
-    .kept.filter((r) => wanted.has(r.sessionId))
+    .kept.filter(
+      (r) => wanted.has(r.sessionId) && (picked === null || picked.has(r.id))
+    )
   const sessions = await sessionsRepository.list()
   const exportedAt = now().toISOString()
   const { bySession, files, sent } = await writeOut(kept, sessions, exportedAt)

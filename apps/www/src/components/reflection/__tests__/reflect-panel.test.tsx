@@ -3,7 +3,8 @@
  *
  * Reflecting on a session: a typed line and the one-tap answers are kept
  * with the session's ID and the moment, and a full phone offers the way out
- * (let go) instead of a place to add another.
+ * (let go) instead of a place to add another. On the phone each one shares
+ * on its own, mid-session.
  */
 
 import { withQueryClient } from "@/test-support/query-client"
@@ -18,6 +19,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import { REFLECTION_LIMIT, reflections } from "@/lib/session-reflection"
 import { ReflectPanel } from "@/components/reflection/reflect-panel"
+
+const shareReflections = vi.hoisted(() => vi.fn())
+const handOff = vi.hoisted(() => vi.fn())
+vi.mock("@/lib/agent-export", () => ({ shareReflections, handOff }))
+// The microphone is its own module's to test.
+vi.mock("@/components/reflection/device-reflection-voice", () => ({
+  DeviceReflectionVoice: (): null => null,
+}))
 
 function fill(count: number, sessionId = "older"): void {
   for (let i = 0; i < count; i++)
@@ -38,6 +47,9 @@ beforeEach(() => {
 afterEach(() => {
   cleanup()
   vi.restoreAllMocks()
+  vi.unstubAllEnvs()
+  shareReflections.mockReset()
+  handOff.mockReset()
 })
 
 describe("ReflectPanel", () => {
@@ -83,5 +95,31 @@ describe("ReflectPanel", () => {
     fireEvent.click(within(energy).getByRole("button", { name: "Keen" }))
 
     expect(screen.getByRole("alert").textContent).toMatch(/no room/i)
+  })
+
+  it("shares one reflection on the phone mid-session, and lets it go once it arrived", async () => {
+    vi.stubEnv("VITE_DEVICE_BACKEND", "true")
+    reflections.keep({
+      id: "now",
+      sessionId: "s1",
+      createdAt: "2026-10-10T09:00:00.000Z",
+      atMs: 252_000,
+      body: { kind: "text", text: "particles" },
+    })
+    shareReflections.mockResolvedValue({ outcome: "shared", sent: ["now"] })
+    render(withQueryClient(<ReflectPanel sessionId="s1" atMs={300_000} />))
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Share the one at 4:12" })
+    )
+
+    expect(shareReflections).toHaveBeenCalledWith({
+      sessionIds: ["s1"],
+      only: ["now"],
+    })
+    fireEvent.click(
+      await screen.findByRole("button", { name: "They arrived: let them go" })
+    )
+    expect(handOff).toHaveBeenCalledWith(["now"])
   })
 })

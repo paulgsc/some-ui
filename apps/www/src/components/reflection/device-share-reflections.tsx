@@ -20,6 +20,7 @@ import { arrived } from "./copy"
 
 export const DeviceShareReflections = ({
   sessionIds,
+  only,
   label,
   title,
   size = "sm",
@@ -27,17 +28,26 @@ export const DeviceShareReflections = ({
   className,
 }: {
   sessionIds: ReadonlyArray<string>
-  label: ReactNode
+  /** Only these of the sessions' reflections (one, from the drawer). */
+  only?: ReadonlyArray<string>
+  /** None: the icon alone, named by `title`. */
+  label?: ReactNode
   /** The button's name when `label` alone does not say whose these are. */
   title?: string
   size?: ButtonProps["size"]
   variant?: ButtonProps["variant"]
   className?: string
 }): JSX.Element => {
-  const share = useAsyncIntent(() => shareReflections(sessionIds), {
+  const share = useAsyncIntent(() => shareReflections({ sessionIds, only }), {
     presentation: "interactive",
   })
   const { ask, sheet } = useConfirmSheet()
+  const icon = (
+    <Share2
+      className={label === undefined ? "size-3.5" : "mr-1.5 size-3.5"}
+      aria-hidden
+    />
+  )
   useIntentEffect(share, ({ outcome, sent }) => {
     if (outcome !== "shared" || sent.length === 0) return
     ask(
@@ -59,11 +69,11 @@ export const DeviceShareReflections = ({
         title={title}
         idleLabel={
           <>
-            <Share2 className="mr-1.5 size-3.5" aria-hidden />
+            {icon}
             {label}
           </>
         }
-        workingLabel="Preparing..."
+        workingLabel={label === undefined ? icon : "Preparing..."}
       />
       {sheet}
     </>
