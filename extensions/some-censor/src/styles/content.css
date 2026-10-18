@@ -553,20 +553,21 @@ ytd-item-section-renderer:has(> #contents > ytd-shelf-renderer:only-child):has(
   position: absolute;
 }
 
-/* Channel photos outside a card: the watch page's owner, the guide's
-   subscriptions, channel results and headers, comment authors and the
-   notifications menu. Every image in YouTube's two avatar elements is
-   hidden, wherever it sits, which takes a chapter's frame (drawn in
-   the same element) with it. What is left is the vendor's empty disc:
-   with no card's ids to hash, it carries no tone or letter. */
+/* Channel photos outside a card. `yt-img-shadow` is YouTube's general
+   lazy image and `yt-avatar-shape` its avatar; every image in either
+   is hidden, wherever it sits. With the channel photos (the watch
+   page's owner, the guide, channel results and headers, comment
+   authors, the notifications menu) go the other images YouTube draws in
+   them: notification and chapter frames, community post images, promo
+   art. The rest are avatars YouTube draws as a bare image. #1806's
+   whole cards keep their thumbnails, so they will need an exemption. */
 :root:not([data-boyo-off]) yt-img-shadow img,
-:root:not([data-boyo-off]) yt-avatar-shape img {
+:root:not([data-boyo-off]) yt-avatar-shape img,
+:root:not([data-boyo-off]) .ytVideoAttributeViewModelImageAvatar img,
+:root:not([data-boyo-off]) .ytdRichShelfRendererAvatar,
+:root:not([data-boyo-off]) .ytdRichShelfRendererAvatar img,
+:root:not([data-boyo-off]) .ytProfileIconImage {
   visibility: hidden !important;
-}
-
-:root:not([data-boyo-off]) yt-img-shadow,
-:root:not([data-boyo-off]) .ytSpecAvatarShapeHost {
-  background-color: rgb(127 127 127 / 25%);
 }
 
 /* The hover preview is a moving thumbnail. YouTube plays it in one

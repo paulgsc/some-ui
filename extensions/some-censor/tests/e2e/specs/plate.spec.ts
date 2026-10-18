@@ -14,6 +14,7 @@
  *      and off is plain YouTube.
  */
 
+import { SWITCHED_OFF_ATTRIBUTE } from "@censor/lib/content/selectors"
 import { expect, test } from "@censor/playwright/fixture"
 import type { Page } from "@playwright/test"
 
@@ -176,14 +177,17 @@ test("P5: no image under any plated card paints, on every fixture", async ({
   }
 })
 
-test("P6: no channel photo outside a card is visible", async ({ fixture }) => {
+test("P6: no channel photo outside a card is visible, unless off", async ({
+  fixture,
+}) => {
   const page = await fixture.goto("yt-channel-photos")
   const photos = page.locator("#photos img")
-  expect(await photos.count()).toBe(8)
+  await expect(photos).toHaveCount(5)
   for (const photo of await photos.all()) await expect(photo).toBeHidden()
 
-  await page.evaluate(() =>
-    document.documentElement.setAttribute("data-boyo-off", "")
+  await page.evaluate(
+    (attribute) => document.documentElement.setAttribute(attribute, ""),
+    SWITCHED_OFF_ATTRIBUTE
   )
   for (const photo of await photos.all()) await expect(photo).toBeVisible()
 })

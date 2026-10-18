@@ -383,9 +383,12 @@ thumbnail's box is filled with the video's tone and the avatar's with the
 channel's disc, both hashed by `lib/content/plate/plate.ts`. The thumbnail takes
 no pointer except its duration badge, so a hover over the plate reaches no
 thumbnail, and the preview player never shows. Outside a card, every image in
-YouTube's avatar elements (`yt-img-shadow`, `yt-avatar-shape`) is hidden: the
-watch page's owner, the guide, channel results and headers, comment authors and
-the notifications menu. The rest is in the gap table below.
+YouTube's general lazy image (`yt-img-shadow`) and its avatar (`yt-avatar-shape`)
+is hidden, and so are the avatars it draws as a bare image: the watch page's
+owner, the guide, channel results and headers, comment authors, people
+mentioned in a description and the notifications menu. The other images drawn
+in those elements go with them: notification and chapter frames, community post
+images, promo art. The rest is in the gap table below.
 
 ---
 
@@ -603,19 +606,20 @@ section is a behavioural change; it is a statement of distance.
 
 ### What contradicts it
 
-| gap                                                                   | where                                                                       | doctrine |
-| --------------------------------------------------------------------- | --------------------------------------------------------------------------- | -------- |
-| No surface-level concealment                                          | absence and the plate are per renderer                                      | QD8      |
-| Manifest copy describes the mechanism                                 | `public/manifest.json` `description`, the popup's tagline                   | §0       |
-| A held video's watch page still plays                                 | nothing handles the watch page itself (#1805)                               | QD11     |
-| A shelf elsewhere keeps its header                                    | a container `SHELF_SELECTORS` does not name                                 | QD11     |
-| A channel disc outside a card has no tone or letter                   | no card's ids to hash there; the photo itself is hidden                     | QD12     |
-| Live chat replay shows its authors' photos                            | the chat is its own frame, where no content stylesheet runs                 | QD12     |
-| Mosaics, banners, notification thumbnails and end screens show images | playlist header, channel banner, bell, player (#1804)                       | QD12     |
-| A hover on the duration badge can still start a hidden preview        | the badge takes the pointer to open the card; the player is `display: none` | QD12     |
-| A trending rank is shown                                              | no capture holds one, so no crowd rule names it                             | QD14     |
-| The "Video details" list shows on Firefox 112–120                     | its crowd rule needs `:has()`                                               | QD14     |
-| Each comment's age and like count shows                               | the comments section is #1805's                                             | QD14     |
+| gap                                                              | where                                                                       | doctrine |
+| ---------------------------------------------------------------- | --------------------------------------------------------------------------- | -------- |
+| No surface-level concealment                                     | absence and the plate are per renderer                                      | QD8      |
+| Manifest copy describes the mechanism                            | `public/manifest.json` `description`, the popup's tagline                   | §0       |
+| A held video's watch page still plays                            | nothing handles the watch page itself (#1805)                               | QD11     |
+| A shelf elsewhere keeps its header                               | a container `SHELF_SELECTORS` does not name                                 | QD11     |
+| A channel photo outside a card leaves an empty space, not a disc | no card's ids to hash there; the photo itself is hidden                     | QD12     |
+| Live chat shows its authors' photos                              | the chat is its own frame, and the manifest injects into the top frame only | QD12     |
+| Mosaics, banners and end screens show images                     | playlist header, channel banner, player (#1804)                             | QD12     |
+| #1806's whole cards would lose their channel photos              | the channel-photo rule hides them wherever they sit                         | QD15     |
+| A hover on the duration badge can still start a hidden preview   | the badge takes the pointer to open the card; the player is `display: none` | QD12     |
+| A trending rank is shown                                         | no capture holds one, so no crowd rule names it                             | QD14     |
+| The "Video details" list shows on Firefox 112–120                | its crowd rule needs `:has()`                                               | QD14     |
+| Each comment's age and like count shows                          | the comments section is #1805's                                             | QD14     |
 
 ### Extraction hazards a maturity estimator will meet
 
