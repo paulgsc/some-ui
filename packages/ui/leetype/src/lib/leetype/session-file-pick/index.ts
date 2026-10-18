@@ -143,13 +143,21 @@ export type PickedSessionFile = Pick<File, "name" | "size" | "text">
 const COULD_NOT_KEEP = "Couldn't keep that file on this phone. Try again."
 const COULD_NOT_LIST = "Couldn't read the session files on this phone."
 
+/** The name a fix of `name` goes up under (the Drive SOP's `-r<n>`). */
+function nextRevision(name: string): string {
+  const match = /^(.*)-r(\d+)$/.exec(name)
+  return match
+    ? `${match[1] ?? ""}-r${String(Number(match[2]) + 1)}`
+    : `${name}-r2`
+}
+
 function refusalOf(outcome: KeepOutcome, name: string): string | null {
   switch (outcome) {
     case "name-taken": {
-      return `This phone already holds a different file named ${name}. A fix goes up under a new name, such as ${name}-r2.`
+      return `This phone already holds a different file named ${name}. A fix goes up under a new name, such as ${nextRevision(name)}.`
     }
     case "full": {
-      return "This phone is full: make room before keeping another session file."
+      return "This phone is full: make room, then pick the file again."
     }
     case "kept":
     case "already-held": {
@@ -163,9 +171,10 @@ function refusalOf(outcome: KeepOutcome, name: string): string | null {
 
 /**
  * The picker card's coordinator: one read in flight (`PickedFileRuntime`),
- * then one keep, and the list of held files read again after it. `turn`
- * decides staleness: a newer pick, or `cancel`, makes every later result of
- * an earlier one land nowhere.
+ * then its keep, and the list of held files read again whenever a keep
+ * lands. A keep is never abandoned once sent, so a newer pick does not stop
+ * an earlier write; `turn` only decides whose outcome the card shows, and
+ * `listTurn` which list.
  */
 export class SessionFilePickRuntime {
   private snapshot: SessionFilePickSnapshot = {
@@ -176,6 +185,7 @@ export class SessionFilePickRuntime {
   private turn = 0
   private listTurn = 0
   private stopReading: (() => void) | null = null
+  private stopped = false
 
   constructor(
     private readonly store: SessionFileStore,
@@ -192,6 +202,7 @@ export class SessionFilePickRuntime {
 
   /** Reads the held list; again after every keep. */
   start = (): void => {
+    this.stopped = false
     const turn = ++this.listTurn
     this.store.list().then(
       (files) => {
@@ -223,6 +234,7 @@ export class SessionFilePickRuntime {
 
   /** The person left: nothing in flight changes the card. */
   cancel = (): void => {
+    this.stopped = true
     this.turn += 1
     this.listTurn += 1
     this.stopReading?.()
@@ -245,6 +257,8 @@ export class SessionFilePickRuntime {
       )
       .then(
         (outcome) => {
+          // Whichever pick sent it, a write that landed changes the list.
+          if (outcome === "kept" && !this.stopped) this.start()
           if (turn !== this.turn) return
           const reason = refusalOf(outcome, name)
           this.set({
@@ -259,7 +273,6 @@ export class SessionFilePickRuntime {
                   }
                 : { kind: "refused", reason },
           })
-          if (outcome === "kept") this.start()
         },
         () => {
           if (turn === this.turn) {

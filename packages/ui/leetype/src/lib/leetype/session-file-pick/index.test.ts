@@ -133,6 +133,14 @@ describe("SessionFilePickRuntime", () => {
         "This phone already holds a different file named t1. A fix goes up under a new name, such as t1-r2.",
     })
     expect(store.bodies.get("t1")).toBe(VALID)
+
+    runtime.pick(picked("t1-r2.json", VALID))
+    await settle()
+    runtime.pick(picked("t1-r2.json", other))
+    await settle()
+    expect(runtime.getSnapshot().pick).toMatchObject({
+      reason: expect.stringContaining("such as t1-r3."),
+    })
   })
 
   it("refuses a file too large to read, before reading it", () => {
@@ -168,17 +176,22 @@ describe("SessionFilePickRuntime", () => {
     )
     full.pick(picked("t1.json", VALID))
     await settle()
-    expect(full.getSnapshot().pick).toMatchObject({ kind: "refused" })
+    expect(full.getSnapshot().pick).toEqual({
+      kind: "refused",
+      reason: "This phone is full: make room, then pick the file again.",
+    })
   })
 
-  it("lets a late keep of an earlier pick, or one after cancel, land nowhere", async () => {
+  it("shows a late keep of an earlier pick nowhere, yet lists what it kept", async () => {
     const store = memoryStore()
     let release: (outcome: KeepOutcome) => void = () => undefined
     const slow: SessionFileStore = {
       ...store,
-      keep: () =>
+      keep: (file, at) =>
         new Promise((resolve) => {
-          release = resolve
+          release = (outcome): void => {
+            void store.keep(file, at).then(() => resolve(outcome))
+          }
         }),
     }
     const runtime = new SessionFilePickRuntime(slow, () => AT)
@@ -195,6 +208,10 @@ describe("SessionFilePickRuntime", () => {
     expect(runtime.getSnapshot().pick).toEqual({
       kind: "refused",
       reason: "second isn't a session file: it isn't JSON.",
+    })
+    expect(runtime.getSnapshot().held).toMatchObject({
+      kind: "ready",
+      files: [{ name: "first" }],
     })
 
     runtime.pick(picked("third.json", VALID))

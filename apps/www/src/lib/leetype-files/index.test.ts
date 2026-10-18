@@ -9,7 +9,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 import { openDeviceBackend } from "@/lib/device-backend/backend"
 import type { DeviceBackend } from "@/lib/device-backend/interceptor"
 import type { StorageBudget } from "@/lib/device-backend/storage"
-import { databaseBytes } from "@/lib/device-backend/storage"
+import { databaseBytes, onSaveRefused } from "@/lib/device-backend/storage"
 import { phoneSessionFiles } from "@/lib/leetype-files"
 
 let backend: DeviceBackend
@@ -70,12 +70,16 @@ describe("phoneSessionFiles", () => {
     expect(await store.read(FILE.name)).toBe(FILE.body)
   })
 
-  it("refuses a keep past the storage budget, and writes nothing", async () => {
+  it("refuses a keep past the storage budget, writes nothing, and asks for room", async () => {
     const store = phoneSessionFiles()
+    const refused = vi.fn()
+    const stop = onSaveRefused(refused)
     quota = await databaseBytes(backend.context.db)
     expect(await store.keep({ ...FILE, body: "x".repeat(50_000) }, AT)).toBe(
       "full"
     )
     expect(await store.list()).toEqual([])
+    expect(refused).toHaveBeenCalledWith(null)
+    stop()
   })
 })

@@ -185,11 +185,11 @@ describe("Leetype", () => {
       read: vi.fn(),
     }
     const { unmount } = render(<Leetype />)
-    expect(screen.queryByText("Open a session from storage")).toBeNull()
+    expect(screen.queryByText("Add a session from storage")).toBeNull()
     unmount()
 
     render(<Leetype sessionFiles={{ store }} />)
-    expect(screen.getByText("Open a session from storage")).toBeTruthy()
+    expect(screen.getByText("Add a session from storage")).toBeTruthy()
     expect(store.list).toHaveBeenCalledOnce()
   })
 

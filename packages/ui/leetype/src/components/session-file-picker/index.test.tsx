@@ -43,7 +43,7 @@ describe("SessionFilePicker", () => {
     ).toBeTruthy()
 
     pick(
-      screen.getByLabelText("Open a session from storage"),
+      screen.getByLabelText("Add a session from storage"),
       "t1-01.json",
       VALID
     )
@@ -70,7 +70,7 @@ describe("SessionFilePicker", () => {
       />
     )
     pick(
-      screen.getByLabelText("Open a session from storage"),
+      screen.getByLabelText("Add a session from storage"),
       "notes.json",
       "{}"
     )

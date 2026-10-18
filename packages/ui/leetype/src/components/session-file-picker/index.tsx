@@ -43,9 +43,10 @@ function statusOf(pick: PickState): string | null {
 }
 
 /**
- * "Open a session from storage": the system picker, where Android lists
+ * "Add a session from storage": the system picker, where Android lists
  * Drive beside the phone's own files, then what the phone holds. A refusal
- * says why; the content lint's findings are listed under a kept file.
+ * says why; the content lint's findings fold under a kept file. Bounded, so
+ * it never takes the round's screen from it.
  */
 export const SessionFilePicker: FC<SessionFilePickerProps> = ({
   store,
@@ -70,16 +71,21 @@ export const SessionFilePicker: FC<SessionFilePickerProps> = ({
     if (file) runtime.pick(file)
   }
   const status = statusOf(pick)
+  const card =
+    // scroll-intent: reading-page: the held list and a file's findings can
+    // outgrow a phone held sideways; the card scrolls inside its cap.
+    "flex max-h-[40%] flex-col gap-2 overflow-y-auto px-4 py-3"
 
   return (
     <section
       aria-label="Session files"
-      className={cn("flex flex-col gap-2 px-4 py-3", className)}
+      data-scroll-intent="reading-page"
+      className={cn(card, className)}
     >
       <Button asChild variant="outline" size="sm" className="self-start">
         <label className="cursor-pointer">
           <FolderOpen aria-hidden />
-          Open a session from storage
+          Add a session from storage
           <input
             type="file"
             accept="application/json,.json"
@@ -103,10 +109,10 @@ export const SessionFilePicker: FC<SessionFilePickerProps> = ({
         </p>
       )}
       {pick.kind === "kept" && pick.findings.length > 0 && (
-        <div className="text-sm">
-          <p className="text-muted-foreground">
-            The content lint found these; the session still plays:
-          </p>
+        <details className="text-sm">
+          <summary className="cursor-pointer text-muted-foreground">
+            The content lint found something; the session still plays
+          </summary>
           <ul className="mt-1 list-disc space-y-0.5 pl-5 text-muted-foreground">
             {pick.findings.map((finding) => (
               <li key={`${finding.code} ${finding.screen} ${finding.message}`}>
@@ -114,7 +120,7 @@ export const SessionFilePicker: FC<SessionFilePickerProps> = ({
               </li>
             ))}
           </ul>
-        </div>
+        </details>
       )}
       {held.kind === "failed" && (
         <p role="alert" className="text-sm text-destructive">
