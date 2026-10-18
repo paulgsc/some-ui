@@ -570,11 +570,14 @@ describe("readWatch (#1805)", () => {
     )
     doc.body.insertAdjacentHTML(
       "beforeend",
-      '<ytd-miniplayer><h1 class="ytdMiniplayerInfoBarTitle">Me at the zoo</h1></ytd-miniplayer>'
+      '<ytd-miniplayer><h1 class="ytdMiniplayerInfoBarTitle"></h1></ytd-miniplayer>'
     )
     expect(readWatch(doc)).toBeNull()
-    // YouTube reflects the miniplayer on the app.
+    // YouTube reflects the miniplayer on the app, then fills its title bar.
     doc.querySelector("ytd-app")?.setAttribute("miniplayer-is-active", "")
+    expect(readWatch(doc)).toMatchObject({ videoId: "jNQ", miniplayer: true })
+    const empty = doc.querySelector(".ytdMiniplayerInfoBarTitle")
+    if (empty) empty.textContent = "Me at the zoo"
     expect(readWatch(doc)).toMatchObject({ videoId: "jNQ", miniplayer: true })
     // It goes on to the next video without touching the hidden page.
     const bar = doc.querySelector(".ytdMiniplayerInfoBarTitle")

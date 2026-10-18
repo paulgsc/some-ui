@@ -55,20 +55,24 @@ async function setAge(page: Page, age: string): Promise<void> {
 }
 
 /**
- * YouTube's "i": the home page shows, the player moves into the miniplayer,
- * and the app reflects it as `miniplayer-is-active`.
+ * YouTube's "i", in its order: the home page shows, the player moves into
+ * the miniplayer, the app reflects it as `miniplayer-is-active`, and only
+ * then, a task later, the miniplayer's title bar fills in.
  */
 async function toMiniplayer(page: Page): Promise<void> {
-  await page.evaluate(() => {
+  await page.evaluate(async () => {
     document.querySelector("ytd-watch-flexy")?.setAttribute("hidden", "")
     document.querySelector("ytd-browse")?.removeAttribute("hidden")
     const mini = document.createElement("ytd-miniplayer")
-    mini.innerHTML = '<h1 class="ytdMiniplayerInfoBarTitle">Me at the zoo</h1>'
+    mini.innerHTML = '<h1 class="ytdMiniplayerInfoBarTitle"></h1>'
     const video = document.querySelector("video")
     if (video) mini.append(video)
     const app = document.querySelector("ytd-app")
     app?.append(mini)
     app?.setAttribute("miniplayer-is-active", "")
+    await new Promise((r) => setTimeout(r, 50))
+    const bar = mini.querySelector("h1")
+    if (bar) bar.textContent = "Me at the zoo"
   })
 }
 
@@ -177,10 +181,14 @@ test("W8: an old video moved into the miniplayer plays on, shown", async ({
 }) => {
   const page = await fixture.goto("yt-watch-page")
   await watchView(page, "plated")
+  expect(await playsThrough(page), "playing before the move").toBe(true)
   await toMiniplayer(page)
   await expect(page.locator("ytd-miniplayer")).toBeVisible()
   await watchView(page, "plated")
-  expect(await playsThrough(page)).toBe(true)
+  // Still playing, untouched: the move never read as another video.
+  expect(
+    await page.evaluate(() => document.querySelector("video")?.paused)
+  ).toBe(false)
 })
 
 test("W9: the miniplayer going on to another video holds it", async ({

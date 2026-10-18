@@ -634,6 +634,7 @@ section is a behavioural change; it is a statement of distance.
 | Two videos showing the same date runs read as one                | the second is pending until a run differs, the view count included          | QD17     |
 | A start mid-transition can admit the next video on the last date | Core has read no previous video, so nothing marks that date as another's    | QD11     |
 | The miniplayer's next video is held, however old                 | nothing on the page states its date; expanding it to its page decides it    | QD17     |
+| The miniplayer's next video gets in if its title is the same     | its title bar is the only sign the video changed                            | QD11     |
 | A shelf elsewhere keeps its header                               | a container `SHELF_SELECTORS` does not name                                 | QD11     |
 | A channel photo outside a card leaves an empty space, not a disc | no card's ids to hash there; the photo itself is hidden                     | QD12     |
 | Live chat shows its authors' photos                              | the chat is its own frame, and the manifest injects into the top frame only | QD12     |

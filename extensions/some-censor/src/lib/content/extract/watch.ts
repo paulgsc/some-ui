@@ -22,7 +22,8 @@ const MINIPLAYER = "ytd-app[miniplayer-is-active]"
  * What the miniplayer is playing. It goes on to the next video (autoplay,
  * its own next button, the queue) without touching the hidden page, so the
  * page's `video-id` names only the video it was opened on; its title bar
- * is what follows the video playing.
+ * is what follows the video playing. (A next video with the same title as
+ * the page's reads as the page's.)
  */
 const MINIPLAYER_TITLE = "ytd-miniplayer .ytdMiniplayerInfoBarTitle"
 const PAGE_TITLE = "#title h1"
@@ -56,7 +57,7 @@ export function readWatch(doc: Document): WatchObservation | null {
   if (videoId === null || metadata?.getAttribute("video-id") !== videoId) {
     return { videoId, short: false, hydrated: false, dates: [], miniplayer }
   }
-  if (miniplayer && !playsPage(doc, metadata)) {
+  if (miniplayer && playsAnother(doc, metadata)) {
     // Another video than the page's, which the page says nothing about.
     return {
       videoId: null,
@@ -79,9 +80,13 @@ export function readWatch(doc: Document): WatchObservation | null {
   return { videoId, short: false, hydrated: true, dates, miniplayer }
 }
 
-/** The miniplayer still plays the page's own video: its title bar says so. */
-function playsPage(doc: Document, metadata: Element): boolean {
-  const playing = doc.querySelector(MINIPLAYER_TITLE)?.textContent.trim()
+/**
+ * The miniplayer plays another video than the page's: its title bar names
+ * another title. An empty bar is the page's own video, since YouTube opens
+ * the miniplayer before it fills the bar in.
+ */
+function playsAnother(doc: Document, metadata: Element): boolean {
+  const playing = doc.querySelector(MINIPLAYER_TITLE)?.textContent.trim() ?? ""
   const own = metadata.querySelector(PAGE_TITLE)?.textContent.trim()
-  return playing !== undefined && playing !== "" && playing === own
+  return playing !== "" && playing !== own
 }
