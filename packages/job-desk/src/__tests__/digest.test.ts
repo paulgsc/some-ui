@@ -78,9 +78,9 @@ describe("the résumé lists a digest names", () => {
   })
 
   it("send a software pick only the compositions the résumé tracks as software", () => {
-    const data = resumeFile("src/react/generated/data.ts")
+    const source = resumeFile("src/data/resume.typ")
     const software = [
-      ...data.matchAll(/"variant": "([a-z-]+)",\s*"track": "software"/g),
+      ...source.matchAll(/^ {2}([a-z-]+): \(\s*track: "software"/gm),
     ].map(([, name]) => name)
     expect(SOFTWARE_VARIANTS).toEqual(software)
   })

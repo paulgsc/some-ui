@@ -324,7 +324,7 @@
     ),
     (
       title: "Reporting automation",
-      body: "Reporting automated through the Google Workspace API, saving 10+ hours weekly, and Python scripts against Odoo's XML-RPC API at CABA Design.",
+      body: "Reporting automated through the Google Workspace API, saving 10+ hours weekly, and Python scripts against Odoo's XML-RPC API that automated record creation and data fixes, at CABA Design.",
     ),
   ),
 )
