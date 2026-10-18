@@ -1,5 +1,5 @@
 import type { JSX } from "react"
-import { useEffect, useEffectEvent, useRef } from "react"
+import { useEffect, useEffectEvent, useRef, useState } from "react"
 import { cn } from "@some-ui/core-utils"
 import { useIsMobile } from "@some-ui/react-hooks"
 
@@ -39,7 +39,10 @@ export const LivePlayer = ({ session }: LivePlayerProps): JSX.Element => {
   const start = useOrchestratorStore((s) => s.start)
   const { state: stop, stops } = useSessionStop(session.id)
   const closedAt = stop.kind === "closed" ? stop.stop : null
-  const isTerminal = useIsTerminal()
+  // Until this mount's configure resolves, the app-wide store still holds
+  // the previous session's terminal mode.
+  const [configured, setConfigured] = useState(false)
+  const isTerminal = useIsTerminal() && configured
   const isMobile = useIsMobile()
   const { current_time: currentTime } = useOrchestratorClock()
   // Ambient (#940/#944): ending a session already shows the completion
@@ -56,6 +59,7 @@ export const LivePlayer = ({ session }: LivePlayerProps): JSX.Element => {
     hasConfiguredRef.current = true
 
     void configure(session.scenes).then(() => {
+      setConfigured(true)
       if (session.status === "active" || session.status === "paused") {
         stops.begin()
       }
