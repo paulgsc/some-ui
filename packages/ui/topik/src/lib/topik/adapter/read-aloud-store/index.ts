@@ -5,10 +5,11 @@
  * (adaptive-learning canon Cor. 4.6 (iii), Def. 6.6, Rem. 4.10, Rem. 7.5).
  *
  * The added sets are content, kept so the learner need not pick them again;
- * losing them costs the picking. The other three sit outside the belief
+ * losing them costs the picking. The other four sit outside the belief
  * envelope. The pace book is pacing and nothing more; the record is a count
  * shown to the learner; the unfinished set is a place in content, like the
- * handheld lesson's resume point. Losing
+ * handheld lesson's resume point; the level is a setting, which falls back
+ * to the last drama's. Losing
  * any of them costs exactly that and nothing else (Thm. 7.2), which is why
  * every failure below is silent: eviction, a full quota, a private window, a
  * document an older build wrote. Everything read is parsed, not trusted, and
@@ -17,7 +18,7 @@
 
 import { localStorageOrNull } from "@some-ui/core-utils"
 import type { StorageLike } from "@topik/lib/topik/adapter/storage"
-import { topikLevelOf } from "@topik/lib/topik/generation"
+import { asTopikLevel } from "@topik/lib/topik/generation"
 import type { TopikLevel } from "@topik/lib/topik/generation"
 import type { AddedSet } from "@topik/lib/topik/read-aloud/added-sets"
 import {
@@ -189,7 +190,7 @@ export function createReadAloudStore(
       write(READ_ALOUD_STORAGE_KEYS.sets, sets.map(storedSet))
     },
     level: (): TopikLevel | null =>
-      topikLevelOf(read(READ_ALOUD_STORAGE_KEYS.level)),
+      asTopikLevel(read(READ_ALOUD_STORAGE_KEYS.level)),
     saveLevel: (level): void => {
       write(READ_ALOUD_STORAGE_KEYS.level, level)
     },
