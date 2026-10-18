@@ -15,10 +15,10 @@ import {
  * `some-ui jobs/Scout/` as `scouts-<stamp>.json` for the routine's second
  * opinion, which comes back in the next digest's `scouts`.
  *
- * Indeed pages refuse agents, so a link alone cannot be read. The routine
- * looks the posting up through the Indeed connector by title and company;
- * when that finds nothing, `postingText`, the description as I pasted it,
- * stands in (ROUTINE.md §3).
+ * The routine reads a link on a public job board (Greenhouse, Lever, Ashby)
+ * directly, and searches those boards for any other by title and company.
+ * Sites such as Indeed refuse agents, so when neither finds it,
+ * `postingText`, the description as I pasted it, stands in (ROUTINE.md §3).
  */
 /** The longest posting text a scout may carry. */
 export const MAX_POSTING_TEXT = 20_000

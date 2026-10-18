@@ -1,10 +1,11 @@
 # The daily jobs run
 
 A scheduled task runs this every morning at 07:52 Pacific, in a fresh session
-with the Indeed and Google Drive connectors, GitHub access to
+with the Google Drive connector, web search, GitHub access to
 `paulgsc/some-ui` that can push one branch and open a PR, and a checkout of
 it. It reads my résumé and what I said about yesterday's picks,
-searches Indeed on two tracks, and leaves one file in Drive: today's digest.
+searches public job postings on two tracks, and leaves one file in Drive:
+today's digest.
 The phone opens that file, and later runs read it back to see what was
 already picked.
 
@@ -24,8 +25,9 @@ policy disagree, the policy wins and this file is the bug.
    for where files go, and its `some-ui jobs/` section holds the folder ids.
    Every Drive result's owner must be paulgathondudev@gmail.com; if one isn't,
    stop.
-2. If the Indeed connector isn't available, stop and say so. Write no digest:
-   a digest from yesterday's postings would read as today's.
+2. If this session can't search the web or read a page, stop and say so.
+   Write no digest: a digest from yesterday's postings would read as today's.
+   No job-site connector is needed (§3).
 3. List `some-ui jobs/Brief/`. If `digest-<today>.json` is already there,
    stop and say so. A digest is never replaced.
 
@@ -101,30 +103,69 @@ never picked again, unless a disagreement brought it back.
 
 ## 3. Search
 
-For every query in `QUERIES` (the software list, then each adjacent family's)
-and every place in `LOCATIONS`, call `search_jobs` with that `search` and
-`location`, country `US` and job type `fulltime`. Each call returns about ten
-postings.
+Postings come from public sources that give anyone a posting's full text:
+the Greenhouse, Lever and Ashby job boards, and this month's Hacker News "Who
+is hiring?" thread. Indeed and LinkedIn pages refuse agents, so a posting
+seen only there is never read or picked.
+
+1. **Find.** For every query in `QUERIES` (the software list, then each
+   adjacent family's) and every place in `LOCATIONS`, search the web for the
+   query and the place on those boards:
+
+   ```text
+   "<query>" "<place>" (site:job-boards.greenhouse.io OR site:boards.greenhouse.io OR site:jobs.lever.co OR site:jobs.ashbyhq.com)
+   ```
+
+   For `remote`, search `"<query>" remote "United States"` the same way.
+   Then find this month's thread, the newest story by `whoishiring` titled
+   "Ask HN: Who is hiring?"
+   (`https://hn.algolia.com/api/v1/search_by_date?tags=story,author_whoishiring`),
+   and search its posts once per query:
+   `https://hn.algolia.com/api/v1/search?tags=comment,story_<id>&query=<query>&hitsPerPage=50`.
+   Keep the posts that name a place in `LOCATIONS`, where remote means
+   remote in the US.
+
+2. **Read.** Read every candidate from its source, never from a search
+   result's snippet:
+
+   - **Greenhouse** (`…greenhouse.io/<board>/jobs/<id>`):
+     `https://boards-api.greenhouse.io/v1/boards/<board>/jobs/<id>`. The
+     description is `content` (HTML, entity-escaped), the place
+     `location.name`, the posted date `first_published`, the apply link
+     `absolute_url`, the company `company_name`.
+   - **Lever** (`jobs.lever.co/<company>/<id>`):
+     `https://api.lever.co/v0/postings/<company>/<id>`. The description is
+     `descriptionPlain` with `lists`, the place `categories.location` and
+     `workplaceType`, the posted date `createdAt` (milliseconds), the apply
+     link `hostedUrl`.
+   - **Ashby** (`jobs.ashbyhq.com/<org>/<id>`):
+     `https://api.ashbyhq.com/posting-api/job-board/<org>`, the entry with
+     that `id`. The description is `descriptionPlain`, the place `location`
+     and `isRemote`, the posted date `publishedAt`, the apply link `jobUrl`.
+   - **A Hacker News post:** `comment_text` is the description and
+     `created_at` the posted date. Company, title and place come from its
+     first line. The apply link is the one the post gives for applying,
+     else `https://news.ycombinator.com/item?id=<objectID>`.
+
+   A board that answers 404 has closed the posting: drop it. Drop a
+   candidate whose source can't be read, or whose text names no company,
+   title or place, rather than guess.
 
 Give each posting its `fingerprint()`. Postings with the same fingerprint are
 one posting. The same company and title in several cities are one posting
 too: keep the remote one, else the nearest to Berkeley. `seen` is the count of
 distinct postings left.
 
-The connector's job ids count up within this session and mean nothing in the
-next one, so call `get_job_details` for every posting you might pick in this
-same run.
-
 **Scouts.** Each new scout from step 2 is a posting I found myself, and a
-candidate like the rest, on the track and family I filed it under. Look it
-up with `search_jobs` by its title words and company, and call
-`get_job_details` on the match. Count each one found in `seen`, once per
-fingerprint. When no search turns it up, its `postingText` (what I pasted)
-stands in for the description and its link for the apply link: take the
-company, title, location and posted date from that text, never a guess. One
-whose text names no location or no posted date can't be fingerprinted or
-aged, so it never becomes a pick; it is scored and answered with a `review`
-only. With neither a match nor the text, its verdict is `not-found` and it
+candidate like the rest, on the track and family I filed it under. When its
+link is on a board above, read it there. Otherwise search those boards for
+its title words and company, and read the match. Count each one found in
+`seen`, once per fingerprint. When neither turns it up, its `postingText`
+(what I pasted) stands in for the description and its link for the apply
+link: take the company, title, location and posted date from that text, never
+a guess. One whose text names no location or no posted date can't be
+fingerprinted or aged, so it never becomes a pick; it is scored and answered
+with a `review` only. With neither a match nor the text, its verdict is `not-found` and it
 goes no further.
 
 ## 4. Set aside

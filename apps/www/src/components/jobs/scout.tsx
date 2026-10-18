@@ -1,6 +1,7 @@
 /**
  * Jobs › Scout: postings I found myself, for the morning run's second
- * opinion. Indeed pages refuse agents, so the posting's text can come along.
+ * opinion. Some sites, Indeed among them, refuse agents, so the posting's text
+ * can come along.
  */
 import type { JSX } from "react"
 import { useState } from "react"
@@ -129,7 +130,7 @@ export const JobsScout = (): JSX.Element => {
           id="scout-url"
           inputMode="url"
           maxLength={MAX_URL}
-          placeholder="https://www.indeed.com/viewjob?jk=…"
+          placeholder="https://jobs.lever.co/…"
           value={url}
           onChange={(e) => setUrl(e.target.value)}
         />
@@ -174,7 +175,7 @@ export const JobsScout = (): JSX.Element => {
         <Textarea
           id="scout-text"
           rows={3}
-          placeholder="Paste the description: the run can’t open Indeed links."
+          placeholder="Paste the description: the run can’t open Indeed or LinkedIn links."
           maxLength={MAX_POSTING_TEXT}
           value={postingText}
           onChange={(e) => setPostingText(e.target.value)}

@@ -19,7 +19,7 @@ export const PICKS_PER_DAY: Readonly<Record<Track, number>> = {
   adjacent: 2,
 }
 
-/** Indeed `location` values the routine searches, in this order. */
+/** The places the routine searches, in this order (ROUTINE.md §3). */
 export const LOCATIONS: ReadonlyArray<string> = [
   "remote",
   "Berkeley, CA",
@@ -45,7 +45,7 @@ export const MAX_SET_ASIDE = 40
 /** A posting older than this, on the digest's day, is set aside as stale. */
 export const MAX_POSTING_AGE_DAYS = 30
 
-/** Indeed `search` terms per track, and per family on the adjacent track. */
+/** Search terms per track, and per family on the adjacent track. */
 export const QUERIES: {
   readonly software: ReadonlyArray<string>
   readonly adjacent: Readonly<Record<AdjacentFamily, ReadonlyArray<string>>>
