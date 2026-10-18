@@ -543,6 +543,88 @@ describe("navigation (B5)", () => {
   })
 })
 
+describe("the watch page (#1805)", () => {
+  function watchPage(videoId: string, date: string | null): HTMLElement {
+    const manager = document.createElement("ytd-page-manager")
+    manager.innerHTML = `<ytd-watch-flexy video-id="${videoId}"><ytd-watch-metadata video-id="${videoId}"><ytd-watch-info-text><yt-formatted-string id="info">${date === null ? "" : `<span>${date}</span>`}</yt-formatted-string></ytd-watch-info-text></ytd-watch-metadata></ytd-watch-flexy>`
+    document.body.appendChild(manager)
+    return manager
+  }
+  const watched = (): Array<unknown> =>
+    tokens.flatMap((t) => (t.kind === "watched" ? [t.watch] : []))
+  const reading = (
+    videoId: string,
+    dates: Array<string>
+  ): Record<string, unknown> => ({
+    videoId,
+    short: false,
+    hydrated: true,
+    dates,
+    miniplayer: false,
+  })
+
+  it("announces the page's video when what is read of it changes, and only then", async () => {
+    const manager = watchPage("w1", "21y ago")
+    await tick()
+    sensor.scan()
+    expect(watched()).toEqual([reading("w1", ["21y ago"])])
+    // An SPA navigation: the page's video changes before anything else does.
+    const flexy = manager.querySelector("ytd-watch-flexy")
+    flexy?.setAttribute("video-id", "w2")
+    await vi.advanceTimersByTimeAsync(0)
+    expect(watched().at(-1)).toMatchObject({ videoId: "w2", hydrated: false })
+    flexy?.setAttribute("hidden", "")
+    manager.append(document.createElement("ytd-browse"))
+    await vi.advanceTimersByTimeAsync(0)
+    expect(watched().at(-1)).toBeNull()
+  })
+
+  it("re-reads the page under the budget, since its date can arrive unobserved", async () => {
+    const manager = watchPage("w1", null)
+    const run = document.createElement("span")
+    const text = run.appendChild(document.createTextNode(""))
+    manager.querySelector("#info")?.appendChild(run)
+    await tick()
+    tokens = []
+    // A date arriving as a text node's data: no mutation this observes.
+    text.data = "3 hours ago"
+    await tick()
+    expect(watched()).toEqual([reading("w1", ["3 hours ago"])])
+    now += RESOLVE_BUDGET_MS
+    await tick(2)
+    expect(vi.getTimerCount()).toBe(0)
+  })
+
+  it("reads the page again when the miniplayer opens, though no node moves", async () => {
+    const app = document.createElement("ytd-app")
+    document.body.append(app)
+    const manager = watchPage("w1", "21y ago")
+    manager.querySelector("ytd-watch-flexy")?.setAttribute("hidden", "")
+    const mini = document.createElement("ytd-miniplayer")
+    mini.innerHTML = '<h1 class="ytdMiniplayerInfoBarTitle">Title</h1>'
+    manager
+      .querySelector("ytd-watch-metadata")
+      ?.insertAdjacentHTML("afterbegin", '<div id="title"><h1>Title</h1></div>')
+    app.append(manager, mini)
+    await tick()
+    tokens = []
+    app.setAttribute("miniplayer-is-active", "")
+    await vi.advanceTimersByTimeAsync(0)
+    expect(watched()).toEqual([
+      { ...reading("w1", ["21y ago"]), miniplayer: true },
+    ])
+  })
+
+  it("keeps the page across a navigation, which Core does too", async () => {
+    watchPage("w1", "21y ago")
+    await tick()
+    tokens = []
+    window.dispatchEvent(new Event("yt-navigate-finish"))
+    await vi.advanceTimersByTimeAsync(NAV_DEBOUNCE_MS)
+    expect(tokens.map((t) => t.kind)).toEqual(["nav"])
+  })
+})
+
 describe("census", () => {
   it("counts an occluded element the Sensor gave up on as untracked", async () => {
     document.body.appendChild(cell("held"))

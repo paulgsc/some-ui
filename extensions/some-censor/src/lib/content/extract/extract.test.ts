@@ -20,6 +20,7 @@ import {
   extractMeta,
   extractTitle,
   extractUploadDate,
+  readWatch,
   tryExtract,
 } from "./index"
 
@@ -502,5 +503,91 @@ describe("extractIsShort", () => {
       )
     ).toBe(true)
     expect(extractIsShort(make("ytd-rich-item-renderer", POLYMER))).toBe(false)
+  })
+})
+
+describe("readWatch (#1805)", () => {
+  function page(html: string): Document {
+    const doc = document.implementation.createHTMLDocument("t")
+    doc.body.innerHTML = `<ytd-app><ytd-page-manager>${html}</ytd-page-manager></ytd-app>`
+    return doc
+  }
+  const metadata = (videoId: string): string => `
+    <ytd-watch-metadata video-id="${videoId}">
+      <div id="title"><h1><yt-formatted-string>Me at the zoo</yt-formatted-string></h1></div>
+      <ytd-watch-info-text>
+        <yt-formatted-string id="info"><span>444M views</span><span> </span><span>21y ago</span><span> </span><a>SAN DIEGO ZOO</a></yt-formatted-string>
+        <tp-yt-paper-tooltip><div id="tooltip"> 444,875,933 views • Apr 23, 2005 • SAN DIEGO ZOO </div></tp-yt-paper-tooltip>
+      </ytd-watch-info-text>
+    </ytd-watch-metadata>`
+
+  it("reads the shown watch page's video and every run that may be its date", () => {
+    const doc = page(
+      `<ytd-browse hidden></ytd-browse><ytd-watch-flexy video-id="jNQ">${metadata("jNQ")}</ytd-watch-flexy>`
+    )
+    expect(readWatch(doc)).toEqual({
+      videoId: "jNQ",
+      short: false,
+      hydrated: true,
+      dates: [
+        "444M views",
+        "21y ago",
+        "444,875,933 views",
+        "Apr 23, 2005",
+        "SAN DIEGO ZOO",
+      ],
+      miniplayer: false,
+    })
+  })
+
+  it("reads no date while the metadata still names the previous video", () => {
+    const doc = page(
+      `<ytd-watch-flexy video-id="next">${metadata("jNQ")}</ytd-watch-flexy>`
+    )
+    expect(readWatch(doc)).toEqual({
+      videoId: "next",
+      short: false,
+      hydrated: false,
+      dates: [],
+      miniplayer: false,
+    })
+  })
+
+  it("reads a Short as a Short, and a hidden page as no page", () => {
+    expect(readWatch(page("<ytd-shorts></ytd-shorts>"))?.short).toBe(true)
+    expect(
+      readWatch(
+        page(
+          `<ytd-watch-flexy hidden video-id="jNQ">${metadata("jNQ")}</ytd-watch-flexy><ytd-shorts hidden></ytd-shorts>`
+        )
+      )
+    ).toBeNull()
+  })
+
+  it("reads a hidden page's video while the miniplayer plays it, and only it", () => {
+    const doc = page(
+      `<ytd-browse page-subtype="home"></ytd-browse><ytd-watch-flexy hidden video-id="jNQ">${metadata("jNQ")}</ytd-watch-flexy>`
+    )
+    doc.body.insertAdjacentHTML(
+      "beforeend",
+      '<ytd-miniplayer><h1 class="ytdMiniplayerInfoBarTitle"></h1></ytd-miniplayer>'
+    )
+    expect(readWatch(doc)).toBeNull()
+    // YouTube reflects the miniplayer on the app, then fills its title bar.
+    doc.querySelector("ytd-app")?.setAttribute("miniplayer-is-active", "")
+    expect(readWatch(doc)).toMatchObject({ videoId: "jNQ", miniplayer: true })
+    const empty = doc.querySelector(".ytdMiniplayerInfoBarTitle")
+    if (empty) empty.textContent = "Me at the zoo"
+    expect(readWatch(doc)).toMatchObject({ videoId: "jNQ", miniplayer: true })
+    // It goes on to the next video without touching the hidden page.
+    const bar = doc.querySelector(".ytdMiniplayerInfoBarTitle")
+    if (bar) bar.textContent = "The next video"
+    expect(readWatch(doc)).toEqual({
+      videoId: null,
+      short: false,
+      hydrated: false,
+      dates: [],
+      miniplayer: true,
+    })
   })
 })

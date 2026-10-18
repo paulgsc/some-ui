@@ -1,5 +1,6 @@
 /**
- * A card's view and its projection (`docs/absent-plated-heard.md`, #1803).
+ * A card's view and its projection (`docs/absent-plated-heard.md`, #1803),
+ * and the watch page's view (#1805).
  *
  * A view is decided by evidence, never by a gesture: there is no transition
  * a user can take, so there is no transition table. {@link decide} is the
@@ -17,7 +18,12 @@
  * they went with the ladder.
  */
 
-import { classify, estimate } from "@censor/lib/content/maturity/maturity"
+import type { WatchObservation } from "@censor/lib/content/core/observation"
+import {
+  classify,
+  estimate,
+  youngest,
+} from "@censor/lib/content/maturity/maturity"
 import type { Plate } from "@censor/lib/content/plate/plate"
 import { plateOf } from "@censor/lib/content/plate/plate"
 import type { SessionId } from "@some-extension/common"
@@ -92,4 +98,29 @@ export function project(
       return assertNever(kind)
     }
   }
+}
+
+/**
+ * The page's own video (#1805). `pending` until the page's metadata names
+ * it: the player and what is said about the video stay hidden, and so does
+ * the tab title, without yet saying "Not here." (QD17).
+ */
+export type WatchView = "pending" | "absent" | "plated"
+
+/**
+ * {@link decide}'s rule for the page's own video: plated at QM3 or QM4, on
+ * the youngest of the dates it shows; absent for a Short, and for a page
+ * whose dates the grammar cannot place (QD3). A page with no metadata or no
+ * date yet is pending.
+ */
+export function decideWatch(
+  watch: WatchObservation,
+  now: number,
+  boundaryDays: number
+): WatchView {
+  if (watch.short) return "absent"
+  if (!watch.hydrated || watch.dates.length === 0) return "pending"
+  const e = youngest(watch.dates.map((raw) => estimate(raw, now)))
+  const band = classify(e, boundaryDays)
+  return band === "QM3" || band === "QM4" ? "plated" : "absent"
 }

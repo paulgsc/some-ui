@@ -41,6 +41,51 @@ export type Observation = {
 }
 
 /**
+ * What the Sensor reads of the page's own video: the watch page's, or a
+ * Short's (#1805). Raw vendor text, as {@link Observation}'s date is.
+ */
+export type WatchObservation = {
+  /**
+   * The watch page's `video-id`; null on a Short, which needs none, and in a
+   * miniplayer that has gone on to a video the page does not name.
+   */
+  readonly videoId: VideoId | null
+  /** A Short, held whatever its date (QD11). */
+  readonly short: boolean
+  /**
+   * The page's metadata is there and names this video. Not proof that its
+   * dates are this video's: YouTube names the video before it rewrites the
+   * date, which is what Core's stale dates are for (R8).
+   */
+  readonly hydrated: boolean
+  /** Every run that may be the date: the info line's, and its tooltip's. */
+  readonly dates: ReadonlyArray<string>
+  /**
+   * The video plays in the miniplayer, over another page: still held until
+   * plated, but nothing stands in for a page that is not shown.
+   */
+  readonly miniplayer: boolean
+}
+
+/**
+ * The same video's evidence only accumulates, as a card's does; another
+ * video's replaces it.
+ */
+export function mergeWatch(
+  previous: WatchObservation,
+  next: WatchObservation
+): WatchObservation {
+  if (next.videoId !== previous.videoId || next.short !== previous.short) {
+    return next
+  }
+  return {
+    ...next,
+    hydrated: previous.hydrated || next.hydrated,
+    dates: next.dates.length > 0 ? next.dates : previous.dates,
+  }
+}
+
+/**
  * Fold a fresh observation over an older one: every field keeps the newest
  * non-null value, so evidence only ever accumulates (the monotonic tier order
  * of canon Theorem 5.1, at field granularity). A later observation that lost

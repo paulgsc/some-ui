@@ -26,6 +26,17 @@
  *        state's boundary: a re-observation that moves the estimate moves
  *        the view (#1803), and so does the owner's `boundary`, re-deciding
  *        every card in place in one step (#1807). No other input changes it.
+ *   R8 — The watch page is one more piece of evidence (#1805). Its view is
+ *        `decideWatch()` of the merged `watched` observations of the same
+ *        video, re-decided by `boundary` as a card is. YouTube names the
+ *        next video before it rewrites the date, so a reading whose runs
+ *        are all runs the previous video showed is that video's, and reads
+ *        as none. (Not covered: a start mid-transition, with no previous
+ *        video read; and a date written before its video's id, which would
+ *        hold the next video pending.) It is not a card: `nav` leaves it to the next reading, and
+ *        `stop` forgets it, the Actuator's `dispose` lifting its hold. A
+ *        `watch` action is emitted only when its view, its video or where it
+ *        plays changes.
  *
  * R4 correlated the answers to Core's async requests; none are left, so it
  * is retired. The parenthesised M- and C- labels are kept so their
@@ -33,16 +44,16 @@
  * are `controller.ts`'s.
  */
 
-import { decide, project } from "@censor/lib/content/fsm"
+import { decide, decideWatch, project } from "@censor/lib/content/fsm"
 import { assertNever } from "@some-extension/common"
 
 import type { Action, CoreFact } from "./actions"
 import type { CoreEvent } from "./events"
 import type { CardKey } from "./keys"
 import { keyVideoId } from "./keys"
-import type { Observation } from "./observation"
-import { mergeObservation } from "./observation"
-import type { CardState, CoreState } from "./state"
+import type { Observation, WatchObservation } from "./observation"
+import { mergeObservation, mergeWatch } from "./observation"
+import type { CardState, CoreState, WatchState } from "./state"
 import { EMPTY_UNKNOWN_SHAPES } from "./state"
 
 export type Step = {
@@ -109,6 +120,8 @@ export function reduce(state: CoreState, event: CoreEvent): Step {
           phase: "running",
           session: event.session,
           cards: new Map(),
+          watch: null,
+          watchDates: null,
           boundaryDays: event.boundaryDays,
           unknownShapes: EMPTY_UNKNOWN_SHAPES,
         },
@@ -120,7 +133,7 @@ export function reduce(state: CoreState, event: CoreEvent): Step {
       if (state.phase !== "running") return none(state)
       const cleared = clearCards(state)
       return {
-        state: { ...cleared.state, phase: "idle" },
+        state: { ...cleared.state, phase: "idle", watch: null },
         actions: [
           record({ kind: "session.reset", session: state.session }),
           ...cleared.actions,
@@ -167,6 +180,11 @@ export function reduce(state: CoreState, event: CoreEvent): Step {
         state: deleteCard(state, event.key),
         actions: [{ kind: "unmount", key: event.key }],
       }
+    }
+
+    case "watched": {
+      if (state.phase !== "running") return none(state)
+      return watched(state, event.watch, event.t)
     }
 
     case "unknown-shape": {
@@ -280,10 +298,68 @@ function reobserve(
   return { state: setCard(state, next), actions }
 }
 
+function watchAction(watch: WatchState | null): Action {
+  return {
+    kind: "watch",
+    view: watch?.view ?? null,
+    videoId: watch?.observation.videoId ?? null,
+    miniplayer: watch?.observation.miniplayer ?? false,
+  }
+}
+
+/** Every run of `dates` is one of `seen`: none of them is new. */
+const within = (
+  dates: ReadonlyArray<string>,
+  seen: ReadonlyArray<string>
+): boolean => dates.length > 0 && dates.every((d) => seen.includes(d))
+
+function watched(
+  state: CoreState,
+  observation: WatchObservation | null,
+  t: number
+): Step {
+  const previous = state.watch
+  if (observation === null) {
+    return {
+      state: { ...state, watch: null },
+      actions: previous === null ? [] : [watchAction(null)],
+    }
+  }
+  // R8: another video's dates, still on screen, are not this one's.
+  const last = state.watchDates
+  const stale =
+    last !== null &&
+    last.videoId !== observation.videoId &&
+    within(observation.dates, last.dates)
+  const own = stale ? { ...observation, dates: [] } : observation
+  const merged = previous === null ? own : mergeWatch(previous.observation, own)
+  const next: WatchState = {
+    observation: merged,
+    view: decideWatch(merged, t, state.boundaryDays),
+    seenAt: t,
+  }
+  let watchDates = last
+  if (own.dates.length > 0) {
+    const seen = last?.videoId === observation.videoId ? last.dates : []
+    watchDates = {
+      videoId: observation.videoId,
+      dates: [...seen, ...own.dates.filter((d) => !seen.includes(d))],
+    }
+  }
+  const moved =
+    previous?.view !== next.view ||
+    previous.observation.videoId !== merged.videoId ||
+    previous.observation.miniplayer !== merged.miniplayer
+  return {
+    state: { ...state, watch: next, watchDates },
+    actions: moved ? [watchAction(next)] : [],
+  }
+}
+
 /**
- * Re-decide every card under a new boundary. Only a card whose view moved is
- * re-rendered, and each goes straight from one stamp to the other, so no
- * card passes through unstamped.
+ * Re-decide every card, and the watch page, under a new boundary. Only a
+ * card whose view moved is re-rendered, and each goes straight from one
+ * stamp to the other, so no card passes through unstamped.
  */
 function rebound(state: CoreState, boundaryDays: number): Step {
   const cards = new Map<CardKey, CardState>()
@@ -300,5 +376,13 @@ function rebound(state: CoreState, boundaryDays: number): Step {
     if (view.kind !== card.view.kind)
       actions.push(render(next), stateFact(next))
   }
-  return { state: { ...state, boundaryDays, cards }, actions }
+  let watch = state.watch
+  if (watch !== null) {
+    const view = decideWatch(watch.observation, watch.seenAt, boundaryDays)
+    if (view !== watch.view) {
+      watch = { ...watch, view }
+      actions.push(watchAction(watch))
+    }
+  }
+  return { state: { ...state, boundaryDays, cards, watch }, actions }
 }

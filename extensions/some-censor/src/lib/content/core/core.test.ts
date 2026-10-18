@@ -15,7 +15,13 @@ import type { SessionId } from "@some-extension/common"
 import { describe, expect, it } from "vitest"
 
 import type { Input } from "./events"
-import type { Action, CoreEvent, CoreState, Observation } from "./index"
+import type {
+  Action,
+  CoreEvent,
+  CoreState,
+  Observation,
+  WatchObservation,
+} from "./index"
 import { cardKey, initialState, reduce, snapshot } from "./index"
 
 // SessionId is a branded number minted by the shell; the reducer only ever
@@ -390,6 +396,150 @@ describe("the boundary (R7, #1807)", () => {
       seen(1, { uploadDate: TWO_YEARS }),
     ])
     expect(viewOf(restarted.state)).toBe("absent")
+  })
+})
+
+describe("the watch page (R8, #1805)", () => {
+  const OLD_PAGE: WatchObservation = {
+    videoId: asVideoId("vid_w"),
+    short: false,
+    hydrated: true,
+    dates: ["444M views", "21y ago"],
+    miniplayer: false,
+  }
+  const watched = (
+    t: number,
+    watch: WatchObservation | null = OLD_PAGE
+  ): CoreEvent => ({ kind: "watched", watch, t })
+  const watchActions = (actions: ReadonlyArray<Action>): Array<unknown> =>
+    actions.flatMap((a) =>
+      a.kind === "watch"
+        ? [{ view: a.view, videoId: a.videoId, miniplayer: a.miniplayer }]
+        : []
+    )
+  const shown = (
+    view: string | null,
+    videoId: string | null = "vid_w"
+  ): Record<string, unknown> => ({
+    view,
+    videoId,
+    miniplayer: false,
+  })
+
+  it("does nothing while idle", () => {
+    expect(reduce(initialState(session(0)), watched(1)).actions).toEqual([])
+  })
+
+  it("decides the page's video by its evidence, and announces it once", () => {
+    const { state, actions } = fold([started, watched(1), watched(2)])
+    expect(state.watch?.view).toBe("plated")
+    expect(watchActions(actions)).toEqual([shown("plated")])
+  })
+
+  it("is pending until a date shows, absent with none it can place", () => {
+    const { actions } = fold([
+      started,
+      watched(1, { ...OLD_PAGE, hydrated: false, dates: [] }),
+      watched(2, { ...OLD_PAGE, dates: ["444M views"] }),
+      watched(3, {
+        ...OLD_PAGE,
+        dates: ["3 hours ago"],
+        videoId: asVideoId("y"),
+      }),
+      watched(4, { ...OLD_PAGE, videoId: null, short: true, dates: [] }),
+    ])
+    expect(watchActions(actions)).toEqual([
+      shown("pending"),
+      shown("absent"),
+      shown("absent", "y"),
+      shown("absent", null),
+    ])
+  })
+
+  it("reads another video's dates, still on screen, as none, until they change", () => {
+    const next = asVideoId("vid_next")
+    const { state, actions } = fold([
+      started,
+      watched(1),
+      // YouTube names the next video before it rewrites the date.
+      watched(2, { ...OLD_PAGE, videoId: next }),
+      watched(3, { ...OLD_PAGE, videoId: next, dates: ["3 hours ago"] }),
+    ])
+    expect(watchActions(actions)).toEqual([
+      shown("plated"),
+      shown("pending", "vid_next"),
+      shown("absent", "vid_next"),
+    ])
+    // The page keeps them while it is hidden, and so does Core.
+    const back = fold(
+      [watched(4, null), watched(5, { ...OLD_PAGE, dates: ["3 hours ago"] })],
+      state
+    )
+    expect(back.state.watch?.view).toBe("pending")
+  })
+
+  it("reads any part of another video's runs as none, in any form it showed", () => {
+    const next = asVideoId("vid_next")
+    const expanded = ["444,875,933 views", "Apr 23, 2005"]
+    const { state } = fold([
+      started,
+      watched(1),
+      // The description expanded: the same date in its long form.
+      watched(2, { ...OLD_PAGE, dates: expanded }),
+    ])
+    for (const dates of [["21y ago"], ["Apr 23, 2005"], OLD_PAGE.dates]) {
+      const step = reduce(
+        state,
+        watched(3, { ...OLD_PAGE, videoId: next, dates })
+      )
+      expect(step.state.watch?.view, dates.join()).toBe("pending")
+    }
+  })
+
+  it("keeps a video's evidence a later reading lost", () => {
+    const lost = { ...OLD_PAGE, hydrated: false, dates: [] }
+    const { state } = fold([started, watched(1), watched(2, lost)])
+    expect(state.watch?.view).toBe("plated")
+  })
+
+  it("holds the miniplayer's video, and says where it plays", () => {
+    const { actions } = fold([
+      started,
+      watched(1, { ...OLD_PAGE, dates: ["3 hours ago"] }),
+      watched(2, { ...OLD_PAGE, dates: ["3 hours ago"], miniplayer: true }),
+    ])
+    expect(watchActions(actions)).toEqual([
+      shown("absent"),
+      { view: "absent", videoId: "vid_w", miniplayer: true },
+    ])
+  })
+
+  it("strips the hold when no page is shown, keeps it across nav, and forgets it on stop", () => {
+    const on = fold([started, watched(1)]).state
+    const left = reduce(on, watched(2, null))
+    expect(left.state.watch).toBeNull()
+    expect(watchActions(left.actions)).toEqual([shown(null, null)])
+
+    const navigated = reduce(on, nav(2, 2))
+    expect(navigated.state.watch?.view).toBe("plated")
+    expect(watchActions(navigated.actions)).toEqual([])
+
+    // The Actuator's dispose lifts the hold, giving the shown page its title.
+    const stopped = reduce(on, { kind: "stop", t: 2 })
+    expect(stopped.state.watch).toBeNull()
+    expect(watchActions(stopped.actions)).toEqual([])
+  })
+
+  it("is re-decided by the boundary", () => {
+    const { state } = fold([
+      started,
+      watched(1, { ...OLD_PAGE, dates: ["2 years ago"] }),
+    ])
+    const raised = reduce(state, { kind: "boundary", days: 3 * B, t: 5 })
+    expect(watchActions(raised.actions)).toEqual([shown("absent")])
+    expect(reduce(state, { kind: "boundary", days: B, t: 5 }).actions).toEqual(
+      []
+    )
   })
 })
 

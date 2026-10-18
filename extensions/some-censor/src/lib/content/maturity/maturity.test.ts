@@ -4,7 +4,7 @@ import type { MetaData } from "@censor/types/states"
 import { describe, expect, expectTypeOf, it } from "vitest"
 
 import type { Estimate } from "./maturity"
-import { classify, DEFAULT_BOUNDARY_DAYS, estimate } from "./maturity"
+import { classify, DEFAULT_BOUNDARY_DAYS, estimate, youngest } from "./maturity"
 
 const NOW = Date.UTC(2026, 9, 16)
 
@@ -114,6 +114,22 @@ describe("classify", () => {
     for (const bad of [Number.NaN, 0, -365, Number.POSITIVE_INFINITY]) {
       expect(classify(aged(10_000), bad)).toBe("QM0")
     }
+  })
+})
+
+describe("youngest", () => {
+  const aged = (minDays: number): Estimate => ({ kind: "aged", minDays })
+  const live: Estimate = { kind: "present", reason: "live" }
+  const unverified: Estimate = { kind: "unverified" }
+
+  it("takes the smallest age, and a present reading over any age", () => {
+    expect(youngest([aged(900), aged(400), unverified])).toEqual(aged(400))
+    expect(youngest([aged(900), live, aged(1)])).toEqual(live)
+  })
+
+  it("is unverified only when no reading places the date (QD3)", () => {
+    expect(youngest([])).toEqual(unverified)
+    expect(youngest([unverified, unverified])).toEqual(unverified)
   })
 })
 

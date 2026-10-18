@@ -7,11 +7,12 @@ import { cardKey } from "@censor/lib/content/core/keys"
 import type { RenderModel } from "@censor/lib/content/fsm"
 import { project } from "@censor/lib/content/fsm"
 import { asVideoId } from "@censor/types/ids"
-import { afterEach, beforeEach, describe, expect, it } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import type { Actuator } from "./actuator"
 import { createActuator } from "./actuator"
 import type { BoundAction, CustodyTarget } from "./bound"
+import { NEUTRAL_TITLE } from "./watch-hold"
 
 const K = cardKey(asVideoId("vid_a"))
 const K2 = cardKey(asVideoId("vid_b"))
@@ -65,7 +66,7 @@ function fillOf(el: HTMLElement): string {
 
 beforeEach(() => {
   document.body.innerHTML = ""
-  actuator = createActuator()
+  actuator = createActuator(document)
 })
 
 afterEach(() => {
@@ -233,5 +234,123 @@ describe("dispose", () => {
     expect(el.hasAttribute("data-boyo"), "realize after dispose is inert").toBe(
       false
     )
+  })
+})
+
+describe("the watch page's hold (#1805, WH1, WH2)", () => {
+  const VIDEO = asVideoId("vid_w")
+  const watch = (
+    view: "pending" | "absent" | "plated" | null,
+    videoId: typeof VIDEO | null = VIDEO,
+    miniplayer = false
+  ): BoundAction => ({
+    action: { kind: "watch", view, videoId, miniplayer },
+    targets: [],
+  })
+
+  /** A playing video; jsdom implements no playback, so its two calls are stubs. */
+  function playing(): HTMLVideoElement & { plays: number } {
+    const video = Object.assign(document.createElement("video"), { plays: 0 })
+    let paused = false
+    Object.defineProperty(video, "paused", { get: () => paused })
+    video.pause = (): void => {
+      paused = true
+    }
+    video.play = (): Promise<void> => {
+      paused = false
+      video.plays += 1
+      video.dispatchEvent(new Event("play"))
+      return Promise.resolve()
+    }
+    document.body.appendChild(video)
+    return video
+  }
+  const surface = (): HTMLElement | null =>
+    document.querySelector("[data-boyo-not-here]")
+  const flush = (): Promise<void> => new Promise((r) => setTimeout(r, 0))
+
+  beforeEach(() => {
+    document.title = "Me at the zoo - YouTube"
+  })
+
+  it("holds the page until it is decided: no media, no title, no surface yet", async () => {
+    const video = playing()
+    actuator.realize([watch("pending")])
+    expect(document.documentElement.dataset["boyoWatch"]).toBe("pending")
+    expect(video.paused).toBe(true)
+    expect(document.title).toBe(NEUTRAL_TITLE)
+    expect(surface()).toBeNull()
+
+    void video.play()
+    expect(video.paused, "a play while held is paused").toBe(true)
+    document.title = "Me at the zoo - YouTube"
+    await flush()
+    expect(document.title, "a title YouTube writes is replaced").toBe(
+      NEUTRAL_TITLE
+    )
+  })
+
+  it('says "Not here." with a Back button on absent, and is idempotent', () => {
+    actuator.realize([watch("absent")])
+    actuator.realize([watch("absent")])
+    const shown = document.querySelectorAll("[data-boyo-not-here]")
+    expect(shown).toHaveLength(1)
+    expect(shown[0]?.textContent).toBe("Not here.Back")
+
+    history.pushState(null, "", "#watch")
+    const back = vi.spyOn(history, "back").mockImplementation(() => undefined)
+    shown[0]?.querySelector("button")?.click()
+    expect(back).toHaveBeenCalledTimes(1)
+    back.mockRestore()
+  })
+
+  it('holds the miniplayer\'s video without saying "Not here." over another page', () => {
+    const video = playing()
+    actuator.realize([watch("absent", VIDEO, true)])
+    expect(document.documentElement.dataset["boyoWatch"]).toBe("absent")
+    expect(surface()).toBeNull()
+    expect(video.paused).toBe(true)
+    actuator.realize([watch("absent")])
+    expect(surface()).not.toBeNull()
+  })
+
+  it("gives back what it held on plated, and nothing else", async () => {
+    const video = playing()
+    actuator.realize([watch("pending")])
+    document.title = "Me at the zoo - YouTube"
+    await flush()
+    actuator.realize([watch("plated")])
+    expect(document.documentElement.dataset["boyoWatch"]).toBe("plated")
+    expect(document.title).toBe("Me at the zoo - YouTube")
+    expect(video.plays).toBe(1)
+    expect(video.paused).toBe(false)
+    expect(surface()).toBeNull()
+  })
+
+  it("never gives one video's title to another, or to a page no longer shown", () => {
+    actuator.realize([watch("absent")])
+    actuator.realize([watch("pending", asVideoId("vid_next"))])
+    actuator.realize([watch("plated", asVideoId("vid_next"))])
+    expect(document.title).toBe(NEUTRAL_TITLE)
+
+    actuator.realize([watch("absent")])
+    actuator.realize([watch(null, null)])
+    expect(document.title).toBe(NEUTRAL_TITLE)
+    expect(document.documentElement.hasAttribute("data-boyo-watch")).toBe(false)
+    expect(surface()).toBeNull()
+  })
+
+  it("lifts everything on dispose, and the shown page's title comes back", async () => {
+    const video = playing()
+    actuator.realize([watch("absent")])
+    actuator.dispose()
+    expect(document.documentElement.hasAttribute("data-boyo-watch")).toBe(false)
+    expect(surface()).toBeNull()
+    expect(document.title).toBe("Me at the zoo - YouTube")
+    void video.play()
+    expect(video.paused, "no listener is left").toBe(false)
+    document.title = "Next - YouTube"
+    await flush()
+    expect(document.title, "no observer is left").toBe("Next - YouTube")
   })
 })

@@ -149,10 +149,11 @@ from the friction mechanism the extension is today. Friction says _you may
 expose yourself, after several deliberate actions_. Quarantine says _this is
 not eligible yet_. The difference is whether curiosity has a path.
 
-_Status: holds on feeds (#1803)._ A card's view is decided by its evidence
-alone: one the estimator cannot place at `QM3`–`QM4` under the boundary is
-absent, and no interaction reaches it. A held video's watch page is still
-`QD11`'s gap, until #1805.
+_Status: holds on feeds and watch pages (#1803, #1805)._ A card's view is
+decided by its evidence alone: one the estimator cannot place at `QM3`–`QM4`
+under the boundary is absent, and no interaction reaches it. A watch page's
+own video is decided the same way, so a link to a held video reaches "Not
+here." (`QD11`).
 
 _Amended by `QD15`:_ "regardless of its subject" admits one exception. Music
 whose title is mostly in a script the owner listens to but doesn't read is
@@ -359,8 +360,18 @@ section, search's grid shelf, a channel page's shelf section). Gaps remain:
 a shelf in any other container keeps its header, and so does one whose only
 other tile is a post with an absent video attached; a video-shaped element the
 Sensor cannot resolve stays blurred in place under the occluder
-(`OccluderReleases` reports it); and a held video's watch page, and autoplay
-into one (#1805).
+(`OccluderReleases` reports it); and autoplay into a held video (#1805).
+
+A held video's watch page, reached by a link, is "Not here." and Back
+(#1805): `styles/content.css` renders no player, miniplayer, title or date
+until Core plates the page's video, its view written on `<html>`; until then
+the Actuator's watch hold pauses every media play and keeps the tab title
+"YouTube"; and a Short's page is never rendered. YouTube names the next
+video before it rewrites the date, so Core reads a page whose date runs are
+all runs the previous video showed as showing no date yet. The miniplayer
+goes on to the next video without touching the page, so its video is the
+page's only while its title bar names the page's title, and held otherwise.
+`watch.spec.ts` W2–W9 prove each, locally.
 
 ---
 
@@ -489,8 +500,9 @@ control (`QD13`), labelled with what it does and nothing more.
 A tool that narrates itself ("in here it is 2025", "24 held") makes its
 mechanism the thing on screen; the owner found that inauthentic.
 
-_Status: holds (#1803)._ The ladder and its hints are deleted, and a plated
-card carries no copy.
+_Status: holds (#1803, #1805)._ The ladder and its hints are deleted, and a
+plated card carries no copy. A held watch page carries "Not here." and Back,
+and its tab title is "YouTube". The face control is still to come (#1805).
 
 ## 5. The temporal model
 
@@ -615,7 +627,14 @@ section is a behavioural change; it is a statement of distance.
 | ---------------------------------------------------------------- | --------------------------------------------------------------------------- | -------- |
 | No surface-level concealment                                     | absence and the plate are per renderer                                      | QD8      |
 | Manifest copy describes the mechanism                            | `public/manifest.json` `description`, the popup's tagline                   | §0       |
-| A held video's watch page still plays                            | nothing handles the watch page itself (#1805)                               | QD11     |
+| Autoplay can still go on into a held video                       | its page then reads "Not here.", but nothing stops autoplay first (#1805)   | QD11     |
+| A page YouTube moves to another video could paint it unmasked    | the mask returns when `video-id` changes; nothing proves it changes first   | QD11     |
+| A watch page that never shows its video's date stays blank       | it is pending, which says nothing, and nothing ends pending                 | QD17     |
+| A held video's title shows in the tab on a direct load, briefly  | the server sends it, and the content script runs at `document_end`          | QD11     |
+| Two videos showing the same date runs read as one                | the second is pending until a run differs, the view count included          | QD17     |
+| A start mid-transition can admit the next video on the last date | Core has read no previous video, so nothing marks that date as another's    | QD11     |
+| The miniplayer's next video is held, however old                 | nothing on the page states its date; expanding it to its page decides it    | QD17     |
+| The miniplayer's next video gets in if its title is the same     | its title bar is the only sign the video changed                            | QD11     |
 | A shelf elsewhere keeps its header                               | a container `SHELF_SELECTORS` does not name                                 | QD11     |
 | A channel photo outside a card leaves an empty space, not a disc | no card's ids to hash there; the photo itself is hidden                     | QD12     |
 | Live chat shows its authors' photos                              | the chat is its own frame, and the manifest injects into the top frame only | QD12     |

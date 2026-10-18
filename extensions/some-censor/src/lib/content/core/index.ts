@@ -11,7 +11,7 @@
 export type { Action } from "./actions"
 export type { CoreEvent } from "./events"
 export { cardKey } from "./keys"
-export type { Observation } from "./observation"
+export type { Observation, WatchObservation } from "./observation"
 export { reduce } from "./reduce"
 export type { CoreState } from "./state"
 export { initialState, snapshot } from "./state"

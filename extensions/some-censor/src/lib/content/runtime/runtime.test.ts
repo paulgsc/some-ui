@@ -294,6 +294,22 @@ describe("health and coverage, recorded", () => {
   })
 })
 
+describe("the watch page (#1805)", () => {
+  it("off gives the tab back the title of the page still shown", async () => {
+    document.title = "A recent video - YouTube"
+    const manager = document.createElement("ytd-page-manager")
+    manager.innerHTML = `<ytd-watch-flexy video-id="w1"><ytd-watch-metadata video-id="w1"><ytd-watch-info-text><yt-formatted-string id="info"><span>3 hours ago</span></yt-formatted-string></ytd-watch-info-text></ytd-watch-metadata></ytd-watch-flexy>`
+    document.body.appendChild(manager)
+    runtime.scan()
+    await tick()
+    expect(runtime.state.watch?.view).toBe("absent")
+    expect(document.title).toBe("YouTube")
+    runtime.stop()
+    expect(document.title).toBe("A recent video - YouTube")
+    expect(document.querySelector("[data-boyo-not-here]")).toBeNull()
+  })
+})
+
 describe("lifecycle", () => {
   it("resets every card on navigation, even reused elements, and bumps the session", async () => {
     const a = cell("before")

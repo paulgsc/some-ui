@@ -7,7 +7,7 @@
  * before handing one over, so nothing here can name an element either.
  */
 
-import type { RenderModel, ViewState } from "@censor/lib/content/fsm"
+import type { RenderModel, ViewState, WatchView } from "@censor/lib/content/fsm"
 import type { UnknownShapeReason } from "@censor/lib/content/layout/lookup"
 import type { BoyoSurface } from "@censor/lib/content/layout/surface"
 import type { VideoId } from "@censor/types/ids"
@@ -28,6 +28,18 @@ export type Action =
     }
   /** Strip everything the extension put on the elements carrying `key`. */
   | { readonly kind: "unmount"; readonly key: CardKey }
+  /**
+   * Bring the page to the watch view for `videoId`, or, with `view: null`,
+   * strip the watch page's hold: no watch page is shown (#1805). In the
+   * miniplayer the video is held the same, but "Not here." is not shown
+   * over a page that is not its own.
+   */
+  | {
+      readonly kind: "watch"
+      readonly view: WatchView | null
+      readonly videoId: VideoId | null
+      readonly miniplayer: boolean
+    }
   /** A fact for the flight recorder; the runtime forwards it. */
   | { readonly kind: "record"; readonly fact: CoreFact }
 

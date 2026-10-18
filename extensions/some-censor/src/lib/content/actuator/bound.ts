@@ -6,7 +6,9 @@
  * read nothing but its own input (§3's ownership table) — so the join
  * between a `CardKey` and the elements currently carrying it happens in the
  * runtime, which asks the Sensor and hands the Actuator a `BoundAction`.
- * The Actuator never looks anything up.
+ * The Actuator never looks a card up. Its one read of the page is the
+ * watch page's hold (`watch-hold.ts`), which reads only to keep its own
+ * writes held and decides nothing.
  */
 
 import type { Action } from "@censor/lib/content/core/actions"
@@ -28,10 +30,11 @@ export type CustodyTarget = {
 }
 
 /**
- * A `render` or `unmount`, with its targets: the only actions the Actuator
- * receives, since the runtime forwards `record` facts itself.
+ * A `render`, `unmount` or `watch`, with its targets: the only actions the
+ * Actuator receives, since the runtime forwards `record` facts itself. A
+ * `watch` names no card, so it has none.
  */
 export type BoundAction = {
-  readonly action: Extract<Action, { kind: "render" | "unmount" }>
+  readonly action: Extract<Action, { kind: "render" | "unmount" | "watch" }>
   readonly targets: ReadonlyArray<CustodyTarget>
 }

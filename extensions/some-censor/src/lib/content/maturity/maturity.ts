@@ -143,6 +143,21 @@ function fromCalendarDate(match: RegExpExecArray, now: number): Estimate {
   }
 }
 
+/**
+ * The youngest of several readings of one date: a present one, else the
+ * smallest age. A reading the grammar cannot place says nothing about the
+ * others, so it is skipped; with none placed the date is unverified (QD3).
+ */
+export function youngest(estimates: ReadonlyArray<Estimate>): Estimate {
+  let best: Estimate = { kind: "unverified" }
+  for (const e of estimates) {
+    if (e.kind === "present") return e
+    if (e.kind !== "aged") continue
+    if (best.kind !== "aged" || e.minDays < best.minDays) best = e
+  }
+  return best
+}
+
 /** Doctrine §5: one boundary `B`, four bands derived from it. */
 export function classify(e: Estimate, boundaryDays: number): MaturityClass {
   // A missing or corrupt boundary fails every comparison below, which would
