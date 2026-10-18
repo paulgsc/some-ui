@@ -16,7 +16,7 @@ other agent without this repo reads the same text:
 
 What it settles, so you know it's worth the read:
 
-- **The tree.** `Inbox/`, `Dramas/requests` and `played`, `Read aloud/sets`,
+- **The tree.** `Inbox/`, `Dramas/requests` and `played`, `Read aloud/sets` (a folder per scene) and `archive`,
   `Study ledger/reflections` and `study-context/<date>/`, `Build Journal/`,
   `Vlog/playoff-delta/week-NN` and `published`, `some-ui jobs/`, `Archive/`, plus the
   `Publish ledger` sheet. The doc carries each folder's id.

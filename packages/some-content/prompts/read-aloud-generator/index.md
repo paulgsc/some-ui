@@ -51,9 +51,9 @@ read-aloud set and a lens set, all four in the `everyday` genre: the starter
 (`starter.read-aloud.json`, every level, a few lines each, and
 `starter.lens.json`) and level one (`level-one.read-aloud.json`, with roles
 and tenses throughout, and `level-one.lens.json`, its lines a learner could go
-wrong in one word). Copy them to the Drive folder below under the names it
-uses (`read-aloud · TOPIK 1 · everyday · Level one.json`, and so on) and add
-them on the phone like any other set. A word keeps its id across them, so a
+wrong in one word). Copy each pair to its scene folder in the Drive folder
+below (`TOPIK 1 · everyday · Level one/`, as `read-aloud.json` and
+`lens.json`) and add them on the phone like any other set. A word keeps its id across them, so a
 learner's pace for it comes back when its set is added again.
 Nothing in the app imports these files; topik's tests read them from disk
 (`src/lib/topik/read-aloud/repo-sets`), which is where their content checks
@@ -73,33 +73,33 @@ where):
 
 - **In:** `Study ledger/reflections/<base>.json`, with its voice notes
   `<base>_voice-<when>-<id6>.<ext>` beside it.
-- **Out:** two decks in `Read aloud/sets`, as bare JSON (no code fence),
-  uploaded as `application/json`, each named
-  `<practice> · TOPIK <level> · <genre> · <title> · <base>.json`:
-  `read-aloud · TOPIK 2 · office · Late at the office · <base>.json` and
-  `lens · TOPIK 2 · office · Late at the office · <base>.json`. The name
-  sorts the folder by practice, level and genre for the learner picking a
-  set, and its last part pairs it with the reflection it answers: a
-  reflection with both is answered.
+- **Out:** a scene folder in `Read aloud/sets`, named
+  `TOPIK <level> · <genre> · <title>` (`TOPIK 2 · office · Late at the office`)
+  so the folder sorts by level and genre for the learner picking a set. It
+  holds the two decks as bare JSON (no code fence), uploaded as
+  `application/json`: `read-aloud.json` and `lens.json`. The folder's Drive
+  description, `answers: <base>`, pairs it with the reflection it answers: a
+  reflection whose folder holds both is answered.
+- **Retired:** sets that are no longer offered move to `Read aloud/archive/`,
+  one folder per retirement, named by its date.
 
 The routine to give an agent with the Drive connector and a checkout of this
 repo:
 
 > Read `README — Drive SOP` in Drive. For each reflection in
-> `Study ledger/reflections` that `Read aloud/sets` does not yet answer with
-> both a `read-aloud · …` and a `lens · …` file ending ` · <base>.json`,
-> newest first, at most three a run: read it and listen to its voice notes.
-> Choose a context for it: a genre from `deck-prompt.md` (a drama's, unless
-> the note asks for everyday life) and a premise that fits what the note
-> mentions.
-> Write two decks from `deck-prompt.md` in `@some-ui/topik`
-> (`src/lib/topik/read-aloud`) in that context, at the level the learner asked
-> for, or else the level they studied at: a read-aloud deck of 12 or so lines,
-> and a lens deck of 8 or so lines, each with its own `id` (the lens deck's
-> ending `-lens`), the same `title`, `from` and `context`. The words they
-> already have are those in `sets/` and in `Read aloud/sets`. Check each with
-> `parseReadAloudDeck` and fix every finding, then upload both under the names
-> above (only the missing one, if the other is there).
+> `Study ledger/reflections` that no scene folder in `Read aloud/sets` answers
+> (description `answers: <base>`, holding both decks), newest first, at most
+> three a run: read it and listen to its voice notes. Choose a context for it:
+> a genre from `deck-prompt.md` (a drama's, unless the note asks for everyday
+> life) and a premise that fits what the note mentions. Write two decks from
+> `deck-prompt.md` in `@some-ui/topik` (`src/lib/topik/read-aloud`) in that
+> context, at the level the learner asked for, or else the level they studied
+> at: a read-aloud deck of 12 or so lines, and a lens deck of 8 or so lines,
+> each with its own `id` (the lens deck's ending `-lens`), the same `title`,
+> `from` and `context`. The words they already have are those in `sets/` and
+> in `Read aloud/sets`. Check each with `parseReadAloudDeck` and fix every
+> finding, then create the scene folder, set its description, and upload both
+> into it (only the missing one, if the other is there).
 
 The same pass reads each reflection for what it says about the app. A note
 can speak to both: what to study next shapes the pair, and a bug or a wish
