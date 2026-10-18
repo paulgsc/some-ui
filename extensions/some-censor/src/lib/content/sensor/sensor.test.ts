@@ -552,7 +552,10 @@ describe("the watch page (#1805)", () => {
   }
   const watched = (): Array<unknown> =>
     tokens.flatMap((t) => (t.kind === "watched" ? [t.watch] : []))
-  const reading = (videoId: string, dates: Array<string>) => ({
+  const reading = (
+    videoId: string,
+    dates: Array<string>
+  ): Record<string, unknown> => ({
     videoId,
     short: false,
     hydrated: true,

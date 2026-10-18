@@ -417,7 +417,10 @@ describe("the watch page (R8, #1805)", () => {
         ? [{ view: a.view, videoId: a.videoId, miniplayer: a.miniplayer }]
         : []
     )
-  const shown = (view: string | null, videoId: string | null = "vid_w") => ({
+  const shown = (
+    view: string | null,
+    videoId: string | null = "vid_w"
+  ): Record<string, unknown> => ({
     view,
     videoId,
     miniplayer: false,
