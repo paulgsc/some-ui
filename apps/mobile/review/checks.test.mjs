@@ -30,6 +30,21 @@ const policy = JSON.parse(
   readFileSync(new URL("./policy.json", import.meta.url), "utf8")
 )
 
+// Every launcher alias policy.json allows, so the fixture follows a new wing.
+const wingAliases = Object.keys(policy.exportedComponents)
+  .map((key) => /\.(Wing\w+)$/.exec(key)?.[1])
+  .filter(Boolean)
+  .map(
+    (
+      name
+    ) => `<activity-alias android:name=".${name}" android:targetActivity=".MainActivity" android:exported="true">
+      <intent-filter>
+        <action android:name="android.intent.action.MAIN" />
+      </intent-filter>
+    </activity-alias>`
+  )
+  .join("\n    ")
+
 // A merged manifest shaped like `apkanalyzer manifest print` output.
 const manifest = ({
   permissions = [],
@@ -47,21 +62,7 @@ const manifest = ({
         <action android:name="android.intent.action.MAIN" />
       </intent-filter>
     </activity>
-    <activity-alias android:name=".WingPractice" android:targetActivity=".MainActivity" android:exported="true">
-      <intent-filter>
-        <action android:name="android.intent.action.MAIN" />
-      </intent-filter>
-    </activity-alias>
-    <activity-alias android:name=".WingSelf" android:targetActivity=".MainActivity" android:exported="true">
-      <intent-filter>
-        <action android:name="android.intent.action.MAIN" />
-      </intent-filter>
-    </activity-alias>
-    <activity-alias android:name=".WingStudio" android:targetActivity=".MainActivity" android:exported="true">
-      <intent-filter>
-        <action android:name="android.intent.action.MAIN" />
-      </intent-filter>
-    </activity-alias>
+    ${wingAliases}
     <provider android:name="androidx.core.content.FileProvider" android:exported="false" />
     <receiver android:name="androidx.profileinstaller.ProfileInstallReceiver"
         android:permission="android.permission.DUMP" android:enabled="true" android:exported="true" />

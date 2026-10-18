@@ -14,7 +14,52 @@
  */
 import { assertNever } from "@some-ui/core-utils"
 import type { ResumeRenderOutcome, ResumeRenderRequest } from "@some-ui/resume"
-import { renderResume } from "@some-ui/resume"
+import { PII_TEMPLATES, renderResume } from "@some-ui/resume"
+
+import { isResumeComposition } from "@/lib/resume-options"
+
+/**
+ * What a link may preselect: the phone's Jobs wing opens this page with the
+ * composition and layout a pick recommends, and the pick's id. Anything
+ * unknown or malformed is dropped, so a stale link still opens the page.
+ */
+export type BuilderSearch = {
+  readonly variant?: string
+  readonly template?: string
+  readonly pick?: string
+}
+
+/**
+ * A job pick's id: `@some-ui/job-desk`'s `IdSchema`, copied because job-desk
+ * ships only in the phone's build (build.paths.ts) and this page is the lan
+ * build's.
+ */
+const PICK_ID = /^[a-z0-9][a-z0-9-]{2,40}$/
+
+export function parseBuilderSearch(
+  search: Record<string, unknown>
+): BuilderSearch {
+  const pick =
+    typeof search.pick === "string" && PICK_ID.test(search.pick)
+      ? search.pick
+      : undefined
+  return {
+    variant: isResumeComposition(search.variant) ? search.variant : undefined,
+    template: PII_TEMPLATES.find((t) => t === search.template),
+    pick,
+  }
+}
+
+/**
+ * The name a pick's PDF downloads as, the one Drive's `some-ui jobs/
+ * Recommended resume/` keeps (README — Drive SOP).
+ */
+export function pickFileName(
+  pick: string,
+  request: Pick<ResumeRenderRequest, "variant" | "template">
+): string {
+  return `resume-${pick}-${request.variant}-${request.template}.pdf`
+}
 
 export type RenderPort = (
   request: ResumeRenderRequest,
@@ -72,8 +117,11 @@ export type ObjectUrls = {
 export type ResumeBuildRuntime = {
   readonly getSnapshot: () => ResumeBuildState
   readonly subscribe: (listener: () => void) => () => void
-  /** Starts a render, superseding any in flight. Never rejects. */
-  readonly build: (request: ResumeRenderRequest) => void
+  /**
+   * Starts a render, superseding any in flight. Never rejects. `filename`,
+   * when given, replaces the name the service gave the PDF.
+   */
+  readonly build: (request: ResumeRenderRequest, filename?: string) => void
   readonly dispose: () => void
 }
 
@@ -99,7 +147,7 @@ export function createResumeBuild(ports: {
         listeners.delete(listener)
       }
     },
-    build: (request): void => {
+    build: (request, filename): void => {
       inFlight?.abort()
       const controller = new AbortController()
       inFlight = controller
@@ -113,7 +161,7 @@ export function createResumeBuild(ports: {
               ? {
                   type: "rendered",
                   url: ports.urls.create(outcome.pdf),
-                  filename: outcome.filename,
+                  filename: filename ?? outcome.filename,
                 }
               : { type: "refused", message: outcome.message }
           )

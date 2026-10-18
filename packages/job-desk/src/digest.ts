@@ -1,6 +1,6 @@
 import { z } from "zod"
 
-import { MAX_SET_ASIDE } from "./policy"
+import { ADJACENT_FAMILIES, MAX_SET_ASIDE } from "./policy"
 import {
   CommitSchema,
   FingerprintSchema,
@@ -34,8 +34,14 @@ export const SUBMISSION_TEMPLATES = [
   "conventional",
 ] as const
 
+/** The compositions a software pick sends. An adjacent pick sends its family's. */
+export const SOFTWARE_VARIANTS = ["backend", "platform", "fullstack"] as const
+
 /** `@some-ui/resume`'s compositions, the only ones a build can render. */
-export const RESUME_VARIANTS = ["backend", "platform", "fullstack"] as const
+export const RESUME_VARIANTS = [
+  ...SOFTWARE_VARIANTS,
+  ...ADJACENT_FAMILIES,
+] as const
 
 const BuiltVariantSchema = z.enum(RESUME_VARIANTS)
 
@@ -52,7 +58,10 @@ const ResumeSchema = z.discriminatedUnion("kind", [
     ref: CommitSchema,
   }),
   z.object({
-    /** The posting needs a composition that does not exist yet. */
+    /**
+     * No composition leads with what the posting wants yet: a change to one,
+     * or a new one, proposed as a PR.
+     */
     kind: z.literal("patch"),
     variant: VariantSchema,
     template: z.enum(SUBMISSION_TEMPLATES),

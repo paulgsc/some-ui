@@ -199,14 +199,12 @@
           "text": "dbt or a cloud warehouse"
         }
       ],
-      "dontClaim": ["Snowflake", "BigQuery", "Analytics engineer title"],
+      "dontClaim": ["Snowflake", "BigQuery", "A held analytics engineer title"],
       "resume": {
-        "kind": "patch",
+        "kind": "build",
         "variant": "data",
         "template": "safe",
-        "fallback": "backend",
-        "pr": null,
-        "change": "A data composition: SQL and Python analysis lead, CABA Design and Natera render as experience, and the metric-contract checks are the engineering evidence."
+        "ref": "cb503cb"
       },
       "kit": {
         "fields": [
@@ -262,14 +260,14 @@
           "text": "Mobile device lab"
         }
       ],
-      "dontClaim": ["QA job title", "ISTQB certification"],
+      "dontClaim": ["A held QA job title", "ISTQB certification"],
       "resume": {
         "kind": "patch",
         "variant": "qa",
         "template": "classic",
-        "fallback": "fullstack",
+        "fallback": "qa",
         "pr": null,
-        "change": "A qa composition: the end-to-end suites, the contract harness and the CI gate lead, and the build work supports them."
+        "change": "The qa composition leads with the Android launch test and the emulator monkey, which this posting asks for, ahead of the browser suites."
       },
       "kit": {
         "fields": [

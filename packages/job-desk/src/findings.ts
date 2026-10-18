@@ -1,4 +1,5 @@
 import type { Digest } from "./digest"
+import { SOFTWARE_VARIANTS } from "./digest"
 import { fingerprint, role as roleOf } from "./fingerprint"
 import {
   EXCLUDED_TITLE,
@@ -71,6 +72,23 @@ export function digestFindings(digest: Digest): ReadonlyArray<Finding> {
       found.push({
         path: `${at}.resume.variant`,
         message: `a ${pick.family} pick's patch is the ${pick.family} composition`,
+      })
+    }
+    const [sends, field] =
+      resume.kind === "build"
+        ? [resume.variant, "variant"]
+        : [resume.fallback, "fallback"]
+    const fitsTrack =
+      pick.family === null
+        ? SOFTWARE_VARIANTS.some((v) => v === sends)
+        : sends === pick.family
+    if (!fitsTrack) {
+      found.push({
+        path: `${at}.resume.${field}`,
+        message:
+          pick.family === null
+            ? `a software pick sends one of ${SOFTWARE_VARIANTS.join(", ")}`
+            : `a ${pick.family} pick sends the ${pick.family} composition`,
       })
     }
     if (ids.has(pick.id)) {

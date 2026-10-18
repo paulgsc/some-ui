@@ -10,7 +10,7 @@
 // Templates supply `opts`; they do not re-implement any of this. Adding a
 // layout that is a rearrangement rather than a different document should mean
 // adding an options record, not another copy of the code below.
-#import "parts.typ": avatar, bullets, engagement-head, name-block, project-entry, rail-entry, rail-pair, rail-rated, section-head
+#import "parts.typ": avatar, bullets, engagement-head, name-block, project-entry, rail-entry, rail-pair, rail-rated, section-head, stack-above
 #import "fit.typ": fit-scale, fit-secondary, join-blocks, justify-blocks
 
 // Geometry in absolute units: the fitting pass has to know the box it is
@@ -89,8 +89,8 @@
     if personal.additional-experience.len() > 0 {
       out.push([
         #section-head(theme)[Additional experience]
-        #for role in personal.additional-experience [
-          #block(below: 0.5em, breakable: false)[
+        #for (i, role) in personal.additional-experience.enumerate() [
+          #block(above: stack-above(i), below: 0.5em, breakable: false)[
             #grid(
               columns: (1fr, auto),
               text(size: 1.02em, weight: "bold")[#role.role],

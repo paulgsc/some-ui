@@ -7,11 +7,11 @@
 //  spoken languages, certifications, and non-engineering employment exist
 //  outside both repositories.
 //
-//  They are therefore left EMPTY rather than filled with plausible-looking
-//  values. A résumé is used to make hiring claims about a real person, so an
+//  Each one is filled only from the candidate's own records, and a field
+//  with nothing to say stays empty rather than holding a plausible-looking
+//  value. A résumé is used to make hiring claims about a real person, so an
 //  invented certification or degree is not a placeholder — it is a false
-//  statement waiting to be sent to an employer. Fill these in from your own
-//  records.
+//  statement waiting to be sent to an employer.
 //
 //  Every template renders a section only when its list is non-empty, so an
 //  unfilled field costs nothing but the space it would have taken — the
@@ -54,22 +54,12 @@
   // (title, body) — short, and only if they support the application.
   interests: (),
 
-  // Non-engineering roles. Keep the same shape as an engineering entry so the
-  // templates can render them without a special case: the résumé is stronger
-  // for showing continuous employment, and transferable evidence (ownership,
-  // throughput, customer contact) belongs on the page when it is real.
+  // Non-engineering roles, all four from the candidate's non-engineering
+  // résumé (src/canon/resume.meta.typ, "Non-engineering employment
+  // history"), each with its own dates. Keep the same shape as an engineering
+  // entry so the templates render them without a special case. Each
+  // composition in resume.typ names, by `org`, which of these it renders.
   //
-  // One specific past non-engineering employer (CABA Design, 2020 — 2023)
-  // rather than a consolidated, date-spanning entry across every employer on
-  // the candidate's non-engineering résumé — Natera, WIS, and PayLocity also
-  // appear there, on their own separate dates (see
-  // src/canon/resume.meta.typ's "Non-engineering employment history" for
-  // all four, sourced from that résumé): the point here is naming
-  // transferable, evidence-backed skills from one real job, not
-  // re-litigating a separate career in detail — or implying tenure this
-  // entry alone doesn't cover — on an engineering résumé.
-  //
-  // (role, org, detail, dates, bullets)
   additional-experience: (
     (
       role: "Data Administrator",
@@ -80,6 +70,36 @@
         "Built interactive Tableau dashboards on PostgreSQL for daily operational visibility.",
         "Automated executive reporting through Google Workspace API integration, saving 10+ hours weekly.",
         "Automated record creation and resolved data issues with Python scripts against Odoo's XML-RPC API, eliminating manual intervention.",
+      ),
+    ),
+    (
+      role: "Inventory Specialist",
+      org: "WIS",
+      detail: "Sacramento, CA",
+      dates: "2024 — Present",
+      bullets: (
+        "Cycle counting and 10-key data entry at 99.9%+ accuracy.",
+        "Reconcile physical counts against system records daily.",
+      ),
+    ),
+    (
+      role: "Clinical Data Operator",
+      org: "Natera",
+      detail: "San Carlos, CA",
+      dates: "2019 — 2020",
+      bullets: (
+        "HIPAA-compliant LIMS sample accessioning at 99.99% accuracy.",
+        "Processed 30+ kits per hour; recognized as a top performer for speed and regulatory adherence.",
+      ),
+    ),
+    (
+      role: "Distribution Assistant",
+      org: "PayLocity",
+      detail: "Oakland, CA",
+      dates: "2017 — 2019",
+      bullets: (
+        "Weekly inventory audits with zero discrepancies.",
+        "Named Top Performing Employee for error-free execution.",
       ),
     ),
   ),

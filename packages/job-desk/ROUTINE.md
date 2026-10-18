@@ -8,8 +8,8 @@ The phone opens that file, and later runs read it back to see what was
 already picked.
 
 The run writes to Drive only. It changes nothing in the repo: no commits, no
-pushes, no PRs. A posting that needs a résumé composition that doesn't exist
-yet is proposed as a patch with `pr: null`, and I decide whether to write it.
+pushes, no PRs. A posting no composition leads with yet is proposed as a
+patch with `pr: null` (§6), and I decide whether to write it.
 
 The shapes are this package's schemas, and `src/__tests__/sample.digest.json`
 is a complete digest to copy. The limits (picks per track, places, queries,
@@ -159,16 +159,18 @@ picked today. Fewer picks than the limit is fine; a weak pick is not.
 ## 6. The résumé for each pick
 
 - **Build** when an existing composition already leads with the evidence the
-  posting wants. Pick the variant whose summary and skills match the posting
-  best, and a layout that takes contact details: `safe` by default, `classic`
-  for a modern ATS (Greenhouse, Lever, Ashby), `conventional` for traditional
-  employers (government, healthcare, finance) and `vanilla` for an old parser
-  (Taleo, a legacy iCIMS form).
-- **Patch** when none does. That is every adjacent pick until the data, QA and
-  solutions compositions exist. Name the new `variant` (`data`, `qa` or
-  `solutions`), a `fallback` existing variant to send meanwhile, `pr: null`,
-  and in `change` what the composition would lead with, in a sentence or two,
-  from evidence that exists.
+  posting wants. A software pick sends `backend`, `platform` or `fullstack`,
+  whichever summary and skills match the posting best; an adjacent pick sends
+  its family's composition (`data`, `qa` or `solutions`). Choose a layout
+  that takes contact details: `safe` by default, `classic` for a modern ATS
+  (Greenhouse, Lever, Ashby), `conventional` for traditional employers
+  (government, healthcare, finance) and `vanilla` for an old parser (Taleo, a
+  legacy iCIMS form).
+- **Patch** when none does. An adjacent pick's patch changes its family's
+  composition; a software pick's names the composition to change, or a new
+  one. Give a `fallback` to send meanwhile (the same rule as a build),
+  `pr: null`, and in `change` what the composition would lead with, in a
+  sentence or two, from evidence that exists.
 
 ## 7. The kit
 

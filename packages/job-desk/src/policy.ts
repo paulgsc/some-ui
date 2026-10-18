@@ -9,7 +9,7 @@
 export const TRACKS = ["software", "adjacent"] as const
 export type Track = (typeof TRACKS)[number]
 
-/** The adjacent track's role families, each a résumé composition to come. */
+/** The adjacent track's role families, each a résumé composition of its own. */
 export const ADJACENT_FAMILIES = ["data", "qa", "solutions"] as const
 export type AdjacentFamily = (typeof ADJACENT_FAMILIES)[number]
 

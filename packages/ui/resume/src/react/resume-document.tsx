@@ -168,9 +168,9 @@ export const ResumeDocument = ({
         </dl>
       </Section>
 
-      {/* Sections below come from src/data/personal.typ, which ships empty
-          rather than filled with plausible-looking values. They render only
-          once they carry real data — same rule the print templates follow. */}
+      {/* Sections below come from src/data/personal.typ, filled only from
+          the candidate's own records. Each renders only when it carries
+          data, the same rule the print templates follow. */}
       {data.additionalExperience.length > 0 && (
         <Section title="Additional experience">
           {data.additionalExperience.map((role) => (

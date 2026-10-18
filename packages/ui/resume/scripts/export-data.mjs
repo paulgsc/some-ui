@@ -42,6 +42,7 @@ const target = join(packageDir, "src", "react", "generated", "data.ts")
 // generated output.
 const REQUIRED_KEYS = [
   "variant",
+  "track",
   "profile",
   "label",
   "summary",
