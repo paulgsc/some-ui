@@ -4,10 +4,12 @@
  * included), so a row here is one `file_host` could take verbatim. Each table
  * names its source migration and anything left out.
  *
- * Three tables are the device's own: `device_round_from_home` (migration 2),
+ * Four tables are the device's own: `device_round_from_home` (migration 2),
  * so the bundled seed never replaces synced rounds with older bytes;
- * `device_round_retired` (3), so it never restores one home retired; and
- * `device_storage_notice` (3), removals not yet shown (`device-backend/storage`).
+ * `device_round_retired` (3), so it never restores one home retired;
+ * `device_storage_notice` (3), removals not yet shown (`device-backend/storage`);
+ * and `device_leetype_session_file` (4), the LeetType session files picked
+ * from storage, which no server serves (`content-store`).
  *
  * Migrations are append-only, numbered by `PRAGMA user_version`. Never edit a
  * shipped entry: a phone that ran it will not run it again.
@@ -127,6 +129,18 @@ const MIGRATIONS: ReadonlyArray<string> = [
   CREATE TABLE device_storage_notice (
       id     INTEGER PRIMARY KEY CHECK (id = 1),
       rounds INTEGER NOT NULL
+  );
+  `,
+  // 4 - device only: LeetType session files picked from storage, by the
+  // file's name (`content-store`'s `keepSessionFile`).
+  `
+  CREATE TABLE device_leetype_session_file (
+      name         TEXT PRIMARY KEY,
+      title        TEXT NOT NULL,
+      one_line     TEXT NOT NULL,
+      content_hash TEXT NOT NULL,
+      body         TEXT NOT NULL,
+      picked_at    TEXT NOT NULL
   );
   `,
 ]

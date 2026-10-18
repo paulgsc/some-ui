@@ -47,6 +47,8 @@ export const DRIVE_LOOK_IN: Readonly<Partial<Record<string, string>>> = {
   "word-set": "Read aloud › sets",
   // The morning run leaves each day's digest here.
   "job-digest": "some-ui jobs › Brief",
+  // Agents write LeetType's session files here (the SOP's LeetType/).
+  "leetype-session": "LeetType › sessions",
 }
 
 /** Where `dir`'s files go in Drive when shared at `at`; none for an unfiled `dir`. */

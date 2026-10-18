@@ -177,6 +177,22 @@ describe("Leetype", () => {
     expect(loadRounds).not.toHaveBeenCalled()
   })
 
+  it("offers to open a session file on a phone only when the host keeps them", () => {
+    setViewport(true)
+    const store = {
+      list: vi.fn(() => Promise.resolve([])),
+      keep: vi.fn(),
+      read: vi.fn(),
+    }
+    const { unmount } = render(<Leetype />)
+    expect(screen.queryByText("Open a session from storage")).toBeNull()
+    unmount()
+
+    render(<Leetype sessionFiles={{ store }} />)
+    expect(screen.getByText("Open a session from storage")).toBeTruthy()
+    expect(store.list).toHaveBeenCalledOnce()
+  })
+
   it("starts a session once the learner picks an exercise from the picker", () => {
     setViewport(false)
     render(<Leetype />)

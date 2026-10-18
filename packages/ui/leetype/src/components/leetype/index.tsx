@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from "react"
 import type { ExercisePickerBadge } from "@leetype/components/exercise-picker"
 import { ExercisePicker } from "@leetype/components/exercise-picker"
 import { RoundSession } from "@leetype/components/round/round-session"
+import { SessionFilePicker } from "@leetype/components/session-file-picker"
 import { TypingSession } from "@leetype/components/typing-game/typing-session"
 import { AUTHORED_ROUNDS } from "@leetype/lib/leetype/authored-rounds"
 import {
@@ -11,6 +12,7 @@ import {
 } from "@leetype/lib/leetype/exercises"
 import { lintAuthoredRounds } from "@leetype/lib/leetype/round-assembly"
 import type { RoundRunsLoader } from "@leetype/lib/leetype/round-runs"
+import type { SessionFileStore } from "@leetype/lib/leetype/session-file-pick"
 import type { Round } from "@leetype/types/authored-round"
 import { RoundSchema } from "@leetype/types/authored-round"
 import type { Exercise } from "@leetype/types/exercise"
@@ -85,6 +87,12 @@ type LeetypeProps = {
    * Phone surface only.
    */
   loadRuns?: RoundRunsLoader
+  /**
+   * Where the phone keeps session files picked from storage, and where to
+   * look for them (`lib/leetype/session-file-pick`). `apps/www` passes it
+   * only in the Android app, whose picker lists Drive. Phone surface only.
+   */
+  sessionFiles?: { store: SessionFileStore; hint?: string }
 }
 
 /**
@@ -138,6 +146,7 @@ export const Leetype: FC<LeetypeProps> = ({
   loadRounds,
   shelf,
   loadRuns,
+  sessionFiles,
 }) => {
   const isMobile = useIsMobile()
   const resolved =
@@ -224,24 +233,40 @@ export const Leetype: FC<LeetypeProps> = ({
   // On a phone the session is rounds (Def. 1.7).
   if (playsRounds) {
     return (
-      <div className={cn(appearanceClassName(appearance), "absolute inset-0")}>
-        {roundPlay === null ? (
-          <p
-            role="status"
-            className="flex h-full items-center justify-center text-sm text-muted-foreground"
-          >
-            Loading rounds…
-          </p>
-        ) : (
-          <RoundSession
-            rounds={roundPlay.rounds}
-            sessionDurationMs={roundPlay.remainingMs}
-            {...(sessionSeed === undefined ? {} : { sessionSeed })}
-            {...(shelf === undefined ? {} : { shelf })}
-            {...(loadRuns === undefined ? {} : { loadRuns })}
-            onSessionComplete={(): void => onSessionComplete?.()}
+      <div
+        className={cn(
+          appearanceClassName(appearance),
+          "absolute inset-0 flex flex-col"
+        )}
+      >
+        {sessionFiles !== undefined && (
+          <SessionFilePicker
+            store={sessionFiles.store}
+            {...(sessionFiles.hint === undefined
+              ? {}
+              : { hint: sessionFiles.hint })}
+            className="shrink-0 border-b border-border"
           />
         )}
+        <div className="relative min-h-0 flex-1">
+          {roundPlay === null ? (
+            <p
+              role="status"
+              className="flex h-full items-center justify-center text-sm text-muted-foreground"
+            >
+              Loading rounds…
+            </p>
+          ) : (
+            <RoundSession
+              rounds={roundPlay.rounds}
+              sessionDurationMs={roundPlay.remainingMs}
+              {...(sessionSeed === undefined ? {} : { sessionSeed })}
+              {...(shelf === undefined ? {} : { shelf })}
+              {...(loadRuns === undefined ? {} : { loadRuns })}
+              onSessionComplete={(): void => onSessionComplete?.()}
+            />
+          )}
+        </div>
       </div>
     )
   }

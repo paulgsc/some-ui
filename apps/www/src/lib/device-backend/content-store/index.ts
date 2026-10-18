@@ -1,11 +1,12 @@
 /**
- * Writes into the device's content tables: the one place TOPIK lessons and
- * Leetype rounds get *into* the phone's database.
+ * Writes into the device's content tables: the one place TOPIK lessons,
+ * Leetype rounds and LeetType session files get *into* the phone's database.
  *
- * Two callers: the bundled Leetype corpus, seeded on every start (an
- * unchanged body, or a round home wrote, is a no-op), and the sync from the
+ * Three callers: the bundled Leetype corpus, seeded on every start (an
+ * unchanged body, or a round home wrote, is a no-op); the sync from the
  * home `file_host` (`device-backend/home-sync`), the only way TOPIK lessons
- * arrive.
+ * arrive; and a session file the person picks from storage
+ * (`lib/leetype-files`).
  *
  * Bodies are stored and hashed as received, so a round's recorded runs (keyed
  * by content hash) keep matching.
@@ -360,4 +361,81 @@ export async function removeRoundsExcept(
     await notePruned(db, removed)
     return removed
   })
+}
+
+/** A LeetType session file the phone holds, as its list shows it. */
+export type SessionFileRow = {
+  name: string
+  title: string
+  oneLine: string
+  pickedAt: string
+}
+
+/**
+ * A session file picked from storage, kept verbatim under its name. A name
+ * is the file's identity (the session log names it in every event), so
+ * other bytes under a name the phone holds are refused (`"name-taken"`), and
+ * the same bytes again change nothing. The caller has parsed it
+ * (`@some-ui/leetype`'s session-file pick).
+ */
+export async function keepSessionFile(
+  db: SqlDriver,
+  file: Omit<SessionFileRow, "pickedAt"> & { body: string },
+  nowMs: number
+): Promise<"kept" | "already-held" | "name-taken"> {
+  const contentHash = await sha256Hex(file.body)
+  return db.transaction(async () => {
+    const stored = await one(
+      db,
+      "SELECT content_hash FROM device_leetype_session_file WHERE name = ?",
+      [file.name]
+    )
+    if (stored !== null) {
+      return text(stored, "content_hash") === contentHash
+        ? "already-held"
+        : "name-taken"
+    }
+    await db.run(
+      `INSERT INTO device_leetype_session_file (name, title, one_line, content_hash, body, picked_at)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [
+        file.name,
+        file.title,
+        file.oneLine,
+        contentHash,
+        file.body,
+        rfc3339(nowMs),
+      ]
+    )
+    return "kept"
+  })
+}
+
+/** Every session file the phone holds, newest pick first. */
+export async function listSessionFiles(
+  db: SqlDriver
+): Promise<Array<SessionFileRow>> {
+  const rows = await db.all(
+    `SELECT name, title, one_line, picked_at FROM device_leetype_session_file
+     ORDER BY picked_at DESC, name`
+  )
+  return rows.map((row) => ({
+    name: text(row, "name"),
+    title: text(row, "title"),
+    oneLine: text(row, "one_line"),
+    pickedAt: text(row, "picked_at"),
+  }))
+}
+
+/** A held session file's text, verbatim, or `null`. */
+export async function readSessionFile(
+  db: SqlDriver,
+  name: string
+): Promise<string | null> {
+  const row = await one(
+    db,
+    "SELECT body FROM device_leetype_session_file WHERE name = ?",
+    [name]
+  )
+  return row === null ? null : text(row, "body")
 }

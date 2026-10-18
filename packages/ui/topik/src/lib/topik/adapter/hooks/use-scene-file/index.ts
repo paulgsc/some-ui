@@ -1,17 +1,17 @@
 /**
- * Wiring only: one scene-file runtime (`adapter/scene-file`) per mount, its
+ * Wiring only: one picked-file runtime (`@some-ui/intent-kit`) per mount, its
  * state read with `useSyncExternalStore`, and its read let go on unmount.
  */
 
 import { useEffect, useState, useSyncExternalStore } from "react"
-import type { SceneFileState } from "@topik/lib/topik/adapter/scene-file"
-import { SceneFileRuntime } from "@topik/lib/topik/adapter/scene-file"
+import type { PickedFileState } from "@some-ui/intent-kit"
+import { PickedFileRuntime } from "@some-ui/intent-kit"
 
 export function useSceneFile(): {
-  state: SceneFileState
-  open: SceneFileRuntime["open"]
+  state: PickedFileState
+  open: PickedFileRuntime["open"]
 } {
-  const [runtime] = useState(() => new SceneFileRuntime())
+  const [runtime] = useState(() => new PickedFileRuntime())
   const state = useSyncExternalStore(
     runtime.subscribe,
     runtime.getSnapshot,
