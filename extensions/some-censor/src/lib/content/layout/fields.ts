@@ -87,9 +87,9 @@ export const FIELD_SELECTORS: Readonly<
     '[class*="ytThumbnailBottomOverlayViewModelHost"] [class*="ytBadgeShapeText"]',
   ],
   // The Polymer metadata line's last span: search puts a hidden badge and a
-  // separator ahead of "views", "age" (#1864), and a live result has only
-  // "N watching". The lockup case is positional too — the *last* run, of
-  // either spelling — and is read by `extract/meta.ts`'s `lockupUploadDate()`;
-  // its runs are listed here so the fingerprint records them.
+  // separator ahead of "views", "age" (#1864). The lockup case is positional
+  // too — the *last* run, of either spelling — and is read by
+  // `extract/meta.ts`'s `lockupUploadDate()`; its runs are listed here so the
+  // fingerprint records them.
   uploadDate: ["#metadata-line > span:last-of-type", ...LOCKUP_DATE_RUNS],
 }

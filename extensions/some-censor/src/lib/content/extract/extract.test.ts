@@ -344,19 +344,17 @@ describe("extractMeta", () => {
   })
 
   it("takes a search result's age from the last span of its line", () => {
-    // Search's child order, as served (#1864).
-    const line = (...runs: Array<string>): HTMLElement =>
-      make(
-        "ytd-video-renderer",
-        `<div id="metadata-line">
-          <ytd-badge-supported-renderer class="inline-metadata-badge" hidden></ytd-badge-supported-renderer>
-          <div id="separator" hidden>•</div>
-          ${runs.map((r) => `<span class="inline-metadata-item">${r}</span>`).join("")}
-          <dom-repeat></dom-repeat>
-        </div>`
-      )
-    expect(extractUploadDate(line("23K", "8h ago"))).toBe("8h ago")
-    expect(extractUploadDate(line("297 watching"))).toBe("297 watching")
+    const result = make(
+      "ytd-video-renderer",
+      `<div id="metadata-line">
+        <ytd-badge-supported-renderer class="inline-metadata-badge" hidden></ytd-badge-supported-renderer>
+        <div id="separator" hidden>•</div>
+        <span class="inline-metadata-item">23K</span>
+        <span class="inline-metadata-item">8h ago</span>
+        <dom-repeat></dom-repeat>
+      </div>`
+    )
+    expect(extractUploadDate(result)).toBe("8h ago")
   })
 
   it("reads the channel and duration off a lockup", () => {

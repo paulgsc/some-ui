@@ -43,7 +43,12 @@ export type Estimate =
 /** Doctrine §5's bands. */
 export type MaturityClass = "QM0" | "QM1" | "QM2" | "QM3" | "QM4"
 
-/** Each unit's shortest length in days, so a reading only ever errs younger. */
+/**
+ * Each unit's shortest length in days, so a reading only ever errs younger.
+ * The compact units are search's, which shows no long form beside them. "m"
+ * is minutes: read as months it would only make the card older, so minutes
+ * is the youngest reading either way.
+ */
 const UNIT_DAYS: ReadonlyMap<string, number> = new Map([
   ["second", 0],
   ["minute", 0],
@@ -52,29 +57,18 @@ const UNIT_DAYS: ReadonlyMap<string, number> = new Map([
   ["week", 7],
   ["month", 28],
   ["year", 365],
+  ["s", 0],
+  ["m", 0],
+  ["h", 0],
+  ["d", 1],
+  ["w", 7],
+  ["mo", 28],
+  ["y", 365],
 ])
 
+/** "3 days ago", or compact, "3d ago". */
 const RELATIVE =
-  /^(?:(?:streamed|premiered)(?: live)? )?(\d{1,4}) (second|minute|hour|day|week|month|year)s? ago$/
-
-/**
- * The compact form search shows ("9h ago", "5mo ago", "Streamed 2w ago",
- * 2026-10-18), with no long form beside it. "m" is minutes; read as months it
- * would only make the card older, so taking it for minutes is the youngest
- * reading either way.
- */
-const COMPACT =
-  /^(?:(?:streamed|premiered)(?: live)? )?(\d{1,4})(s|m|h|d|w|mo|y) ago$/
-
-const COMPACT_UNITS: ReadonlyMap<string, string> = new Map([
-  ["s", "second"],
-  ["m", "minute"],
-  ["h", "hour"],
-  ["d", "day"],
-  ["w", "week"],
-  ["mo", "month"],
-  ["y", "year"],
-])
+  /^(?:(?:streamed|premiered)(?: live)? )?(\d{1,4})(?: (second|minute|hour|day|week|month|year)s?|(s|m|h|d|w|mo|y)) ago$/
 
 const MONTHS = [
   "jan",
@@ -110,10 +104,10 @@ export function estimate(raw: string | null, now: number): Estimate {
   if (LIVE.test(text)) return { kind: "present", reason: "live" }
   if (UPCOMING.test(text)) return { kind: "present", reason: "upcoming" }
 
-  const relative = RELATIVE.exec(text) ?? COMPACT.exec(text)
+  const relative = RELATIVE.exec(text)
   if (relative) {
-    const [, count, unit = ""] = relative
-    const days = UNIT_DAYS.get(COMPACT_UNITS.get(unit) ?? unit)
+    const [, count, long, short] = relative
+    const days = UNIT_DAYS.get(long ?? short ?? "")
     // The regex admits only listed units; the guard is for the type checker.
     if (days === undefined) return { kind: "unverified" }
     return { kind: "aged", minDays: Math.floor((Number(count) - 0.5) * days) }
