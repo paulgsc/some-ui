@@ -13,6 +13,7 @@ import { phoneJobs } from "@/lib/jobs"
 import type { Outcome } from "@/lib/jobs/model"
 import { applicationsOf, lastDelivered } from "@/lib/jobs/model"
 
+import { JobsKeepOnHome } from "./keep-on-home"
 import { Problem, sectionHeading, ShareToDrive, useJobs } from "./parts"
 
 const OUTCOME_LABELS: Readonly<Record<Outcome, string>> = {
@@ -50,9 +51,9 @@ export const JobsRecord = (): JSX.Element => {
         </span>
       </section>
       <p className="text-muted-foreground text-xs">
-        Kept on this phone. Nothing here is edited or deleted, only added to.
-        Keeping it on home comes next.
+        Nothing here is edited or deleted, only added to.
       </p>
+      <JobsKeepOnHome />
       <ShareToDrive kind="decisions" label="Share today’s decisions">
         <p className="text-muted-foreground text-xs">
           The morning run reads these and your voice notes.

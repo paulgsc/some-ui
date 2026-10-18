@@ -105,6 +105,22 @@ export type JobEvent = { id: string; at: string } & (
   | { type: "arrived"; shareId: string }
 )
 
+/** One event home would not hold, and why it said so. */
+export type HomeRefusal = { id: string; why: string }
+
+/**
+ * The record kept on the paired home (`./home`): a copy, since the phone keeps
+ * its whole log, and the way back for a phone that lost it.
+ */
+type JobsHome = {
+  /** Its person chose to keep the record on home. */
+  kept: boolean
+  /** The events home answered it holds, by id. */
+  held: ReadonlyArray<string>
+  /** The events home refused: kept here, and not sent again. */
+  refused: ReadonlyArray<HomeRefusal>
+}
+
 export type JobsState = {
   /** By day, newest last. */
   digests: ReadonlyArray<Digest>
@@ -115,6 +131,7 @@ export type JobsState = {
   log: ReadonlyArray<JobEvent>
   /** Voice notes whose audio is on the phone, or once was. */
   voice: ReadonlyArray<VoiceNote>
+  home: JobsHome
 }
 
 export const EMPTY: JobsState = {
@@ -123,6 +140,7 @@ export const EMPTY: JobsState = {
   firstOpened: {},
   log: [],
   voice: [],
+  home: { kept: false, held: [], refused: [] },
 }
 
 type Stamp = { id: string; at: string }
@@ -137,6 +155,16 @@ export type JobsAction =
   | { type: "voice-kept"; note: VoiceNote }
   | { type: "voice-dropped"; ids: ReadonlyArray<string> }
   | { type: "record"; event: Draft; stamp: Stamp }
+  /** Its person's second press: the record is kept on home from now on. */
+  | { type: "kept-on-home" }
+  /** What one exchange with home learned (`./home`). */
+  | {
+      type: "home-answered"
+      held: ReadonlyArray<string>
+      refused: ReadonlyArray<HomeRefusal>
+    }
+  /** Home's copy, taken in by a phone whose own log is empty. */
+  | { type: "restored"; events: ReadonlyArray<JobEvent> }
 
 const DECIDED = new Set(["taken", "passed"])
 
@@ -221,6 +249,41 @@ export function step(state: JobsState, action: JobsAction): JobsState {
       if (!fits(state, action.event)) return state
       const event: JobEvent = { ...action.event, ...action.stamp }
       return { ...state, log: [...state.log, event] }
+    }
+    case "kept-on-home": {
+      if (state.home.kept) return state
+      return { ...state, home: { ...state.home, kept: true } }
+    }
+    case "home-answered": {
+      const inLog = new Set(state.log.map((e) => e.id))
+      const known = new Set([
+        ...state.home.held,
+        ...state.home.refused.map((r) => r.id),
+      ])
+      const fresh = (id: string): boolean => {
+        if (!inLog.has(id) || known.has(id)) return false
+        known.add(id)
+        return true
+      }
+      const held = action.held.filter(fresh)
+      const refused = action.refused.filter((r) => fresh(r.id))
+      if (held.length + refused.length === 0) return state
+      return {
+        ...state,
+        home: {
+          ...state.home,
+          held: [...state.home.held, ...held],
+          refused: [...state.home.refused, ...refused],
+        },
+      }
+    }
+    case "restored": {
+      if (state.log.length > 0 || action.events.length === 0) return state
+      return {
+        ...state,
+        log: [...action.events],
+        home: { ...state.home, held: action.events.map((e) => e.id) },
+      }
     }
     default: {
       return assertNever(action)
@@ -432,6 +495,13 @@ export function untouchedReported(state: JobsState, day: string): boolean {
       e.at >= opened &&
       hasArrived(state, e.id)
   )
+}
+
+/** The events home does not hold yet and has not refused, in log order. */
+export function homeOutbox(state: JobsState): ReadonlyArray<JobEvent> {
+  const held = new Set(state.home.held)
+  const refused = new Set(state.home.refused.map((r) => r.id))
+  return state.log.filter((e) => !held.has(e.id) && !refused.has(e.id))
 }
 
 /** Whether the files of share `shareId` were said to have arrived. */

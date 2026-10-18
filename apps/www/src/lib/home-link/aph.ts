@@ -1,6 +1,6 @@
 /**
  * aph kept on home, wired: one runtime per page load over the app's home
- * link and aph's store (`./aph-runtime`), and what asks it to run (LA9,
+ * link and aph's store (`./kept-runtime`), and what asks it to run (LA9,
  * docs/learner-data-authority.md).
  *
  * Only for aph, only once its person opted in (`keepAphOnHome`, from the aph
@@ -15,26 +15,27 @@
  * exchange in (`AphKeeping`), and this module names its types alone.
  */
 import { useEffect, useSyncExternalStore } from "react"
-import type { AphStore, AphWhere, Exchanged, HomeCall } from "@some-ui/aph"
+import type { AphStore, AphWhere } from "@some-ui/aph"
+import type { HomeCall, HomeExchanged } from "@some-ui/core-utils"
 
-import type { AphHomeState } from "./aph-model"
-import type { AphHome } from "./aph-runtime"
-import { createAphHome } from "./aph-runtime"
 import { homeLink } from "./index"
+import type { KeptState } from "./kept-model"
+import type { Kept } from "./kept-runtime"
+import { createKept } from "./kept-runtime"
 
-export type { AphHomeState } from "./aph-model"
+export type { KeptState } from "./kept-model"
 
 /** aph's store, and one exchange with home over it. */
 export type AphKeeping = {
   store: AphStore
-  exchange: (store: AphStore, send: HomeCall) => Promise<Exchanged>
+  exchange: (store: AphStore, send: HomeCall) => Promise<HomeExchanged>
 }
 
-let home: AphHome | null = null
+let home: Kept | null = null
 
 /** One runtime per page load, over the first `aph` handed in. */
-function aphHome(aph: AphKeeping): AphHome {
-  home ??= createAphHome({
+function aphHome(aph: AphKeeping): Kept {
+  home ??= createKept({
     exchange: (send) => aph.exchange(aph.store, send),
     keep: (run) => homeLink().keep(run),
     paired: () => homeLink().getSnapshot().link.kind === "paired",
@@ -105,7 +106,7 @@ function watchAph(
  * The aph screens' view of keeping on home, and the watch above for as long
  * as they are mounted.
  */
-export function useAphHome(aph: AphKeeping): AphHomeState {
+export function useAphHome(aph: AphKeeping): KeptState {
   const current = aphHome(aph)
   useEffect(() => watchAph(aph), [aph])
   return useSyncExternalStore(current.subscribe, current.getSnapshot)

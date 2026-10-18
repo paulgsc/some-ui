@@ -1,18 +1,19 @@
 /**
- * aph's keeping on home as one state: whether a run is under way, whether
- * another was asked for while it ran, and how the last one ended. `step` is
- * pure; `./aph-runtime` runs the work and feeds its end back in.
+ * A record kept on home (aph, LA9; the Jobs record, LA10) as one state:
+ * whether a run is under way, whether another was asked for while it ran, and
+ * how the last one ended. `step` is pure; `./kept-runtime` runs the work and
+ * feeds its end back in.
  *
  * One run at a time, by structure: asking while one runs only marks that
  * another is wanted once it ends, so a burst of edits is one more run, not
  * one each.
  */
-import type { Exchanged } from "@some-ui/aph"
+import type { HomeExchanged } from "@some-ui/core-utils"
 import { assertNever } from "@some-ui/core-utils"
 
 /** How one run ended: as its exchange did, or before one could. */
-export type AphRun =
-  | Exclude<Exchanged, { kind: "synced" }>
+export type KeptRun =
+  | Exclude<HomeExchanged, { kind: "synced" }>
   | { readonly kind: "synced"; readonly at: number }
   /** Home did not answer: what is waiting stays on this phone. */
   | { readonly kind: "unreachable"; readonly at: number }
@@ -22,27 +23,24 @@ export type AphRun =
   | { readonly kind: "busy" }
   | { readonly kind: "unpaired" }
 
-export type AphHomeState = {
+export type KeptState = {
   readonly running: boolean
   /** Asked for again while running: one more run once this one ends. */
   readonly again: boolean
-  readonly last: AphRun | null
+  readonly last: KeptRun | null
 }
 
-export type AphHomeEvent =
+export type KeptEvent =
   | { readonly type: "wanted" }
-  | { readonly type: "ran"; readonly run: AphRun }
+  | { readonly type: "ran"; readonly run: KeptRun }
 
-export const INITIAL_APH: AphHomeState = {
+export const INITIAL_KEPT: KeptState = {
   running: false,
   again: false,
   last: null,
 }
 
-export function stepAph(
-  state: AphHomeState,
-  event: AphHomeEvent
-): AphHomeState {
+export function stepKept(state: KeptState, event: KeptEvent): KeptState {
   switch (event.type) {
     case "wanted": {
       if (state.running) return state.again ? state : { ...state, again: true }

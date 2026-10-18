@@ -25,6 +25,7 @@ import type { StorageAdapter } from "@/lib/tenant/storage"
 
 import type { Outgoing, OutgoingFile } from "./files"
 import { decisionsFile, isFile, scoutsFile } from "./files"
+import type { JobsKeeping } from "./home"
 import type {
   Draft,
   JobsAction,
@@ -109,6 +110,10 @@ export type JobsRuntime = {
   arrived: (shareId: string) => void
   /** Audio no note lists (the app closed mid-save). Best effort. */
   sweep: () => void
+  /** Its person's second press: the record is kept on home from now on. */
+  keepOnHome: () => boolean
+  /** The record one exchange with home reads and answers (`./home`). */
+  keeping: JobsKeeping
 }
 
 /** A note is a take of a soundbite's length. */
@@ -239,6 +244,14 @@ export function createJobsRuntime(ports: JobsPorts): JobsRuntime {
   }
 
   return {
+    keepOnHome: () => commit({ type: "kept-on-home" }),
+    keeping: {
+      state: () => state,
+      answered(held, refused): void {
+        commit({ type: "home-answered", held, refused })
+      },
+      restored: (events) => commit({ type: "restored", events }),
+    },
     getSnapshot: () => snapshot,
     subscribe(listener): () => void {
       listeners.add(listener)

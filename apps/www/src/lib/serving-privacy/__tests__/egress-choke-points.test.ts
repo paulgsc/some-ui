@@ -15,8 +15,9 @@
  *   `no-restricted-globals` cannot see it, and `no-restricted-imports`
  *   misses a dynamic `import()` and `Capacitor.Plugins.CapacitorHttp`: only
  *   `lib/device-backend/native-http` may name it, only `lib/home-link` may
- *   call that module, and only the Home server block and aph's strip (LA9,
- *   aph kept on home) may call `lib/home-link`.
+ *   call that module, and only the Home server block and the strips of a
+ *   record kept on home (aph, LA9; the Jobs record, LA10) may call
+ *   `lib/home-link`.
  *
  * The last group feeds the checks known-bad sources, so a check that stopped
  * looking cannot stay green.
@@ -44,17 +45,21 @@ const NATIVE_HTTP = "lib/device-backend/native-http/index.ts"
 const NATIVE_HTTP_CALLERS = new Set(["lib/home-link/index.ts"])
 const HOME_LINK_CALLERS = new Set([
   "components/settings/device-section.tsx",
-  // LA9: aph's strip, for aph kept on home and nothing else.
+  // LA9 and LA10: the strips of a record kept on home, and nothing else.
   "components/aph/device-keep-on-home.tsx",
+  "components/jobs/keep-on-home.tsx",
+  "components/keep-on-home.tsx",
 ])
 
 /**
- * LA9: the one module that calls the link's `keep`, for aph kept on home,
- * and its runtime, which calls it through the port that module hands it.
+ * LA9 and LA10: the modules that call the link's `keep`, one per record kept
+ * on home, and their shared runtime, which calls it through the port each
+ * hands it.
  */
-const APH_KEEPERS = new Set([
+const KEEPERS = new Set([
   "lib/home-link/aph.ts",
-  "lib/home-link/aph-runtime.ts",
+  "lib/home-link/jobs.ts",
+  "lib/home-link/kept-runtime.ts",
 ])
 
 /** Every mention of `CapacitorHttp` in `text`: an import, a member, a string. */
@@ -394,7 +399,7 @@ describe("LA8: the phone reaches home through one module", () => {
     expect(problems).toEqual([])
   })
 
-  it("calls native-http only from the link, and the link only from the Home server block and aph's strip", () => {
+  it("calls native-http only from the link, and the link only from the Home server block and the kept-on-home strips", () => {
     const outsideLink = sources.filter((f) => !f.startsWith("lib/home-link/"))
     expect(
       sources
@@ -408,15 +413,16 @@ describe("LA8: the phone reaches home through one module", () => {
     ).toEqual([])
   })
 
-  it("calls the link's keep only from aph's keeping (LA9)", () => {
+  it("calls the link's keep only from a record's keeping (LA9, LA10)", () => {
     const keeps = (f: string): boolean => /\.keep\(/.test(read(f))
     const reach = sources.filter(
       (f) =>
         (f.startsWith("lib/home-link/") || HOME_LINK_CALLERS.has(f)) &&
-        !APH_KEEPERS.has(f)
+        !KEEPERS.has(f)
     )
     expect(reach.filter(keeps)).toEqual([])
     expect(read("lib/home-link/aph.ts")).toContain("homeLink().keep(")
+    expect(read("lib/home-link/jobs.ts")).toContain("homeLink().keep(")
   })
 
   it("still finds what it is meant to guard", () => {

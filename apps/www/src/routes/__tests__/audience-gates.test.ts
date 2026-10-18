@@ -99,6 +99,19 @@ function namesPath(source: string, path: string): boolean {
   return new RegExp(`(["'\`])${quoted}\\1`).test(source)
 }
 
+/**
+ * A quoted path that is a request to the home server, not a link to the page
+ * of the same name: `file`, the path, and why. Each pair skips that path in
+ * that file alone.
+ */
+const SERVER_PATHS: ReadonlyArray<readonly [string, string, string]> = [
+  [
+    "src/lib/jobs/home.ts",
+    "/jobs",
+    "GET /jobs, the server's Jobs record, under the home API base",
+  ],
+]
+
 const IMPORTS_HAS_AUDIENCE =
   /import\s*\{[^}]*\bhasAudience\b[^}]*\}\s*from\s*["']@\/lib\/build-profile["']/
 
@@ -217,7 +230,11 @@ describe("audience gates", () => {
       if (IMPORTS_HAS_AUDIENCE.test(source)) return []
       return gated
         .flatMap((g) => g.paths)
-        .filter((path) => namesPath(source, path))
+        .filter(
+          (path) =>
+            namesPath(source, path) &&
+            !SERVER_PATHS.some(([f, p]) => f === file && p === path)
+        )
         .map((path) => `${file} links to ${path}`)
     })
     expect(unguarded).toEqual([])
