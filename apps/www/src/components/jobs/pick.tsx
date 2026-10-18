@@ -37,6 +37,7 @@ import {
   resumeLabel,
   sectionHeading,
   useJobs,
+  useVoiceBusy,
   VoiceNotes,
 } from "./parts"
 
@@ -167,6 +168,7 @@ const Decide = ({
   const [note, setNote] = useState("")
   const owner = pickOwner(pickRef.day, pickRef.pickId, "pass")
   const voice = draftVoice(state, owner)
+  const busy = useVoiceBusy(owner)
   const decision = decisionOf(state, pickRef.day, pickRef.pickId)
   if (decision === "passed") {
     return (
@@ -233,7 +235,9 @@ const Decide = ({
           />
           <Button
             type="button"
+            disabled={busy}
             onClick={() => {
+              if (busy) return
               const kept = jobs.record({
                 type: "passed",
                 ...pickRef,
@@ -413,6 +417,7 @@ const Debrief = ({
   const [result, setResult] = useState<DebriefResult | null>(null)
   const owner = pickOwner(pickRef.day, pickRef.pickId, "debrief")
   const voice = draftVoice(state, owner)
+  const busy = useVoiceBusy(owner)
   const shownMinutes = minutes ?? (timed === null ? "" : String(timed))
   const parsedMinutes = Number.parseInt(shownMinutes, 10)
   const minutesFit = parsedMinutes >= 1 && parsedMinutes <= MAX_DEBRIEF_MINUTES
@@ -493,9 +498,9 @@ const Debrief = ({
       <Button
         type="button"
         size="lg"
-        disabled={!ready}
+        disabled={!ready || busy}
         onClick={() => {
-          if (!ready) return
+          if (!ready || busy) return
           const kept = jobs.record({
             type: "debrief",
             ...pickRef,

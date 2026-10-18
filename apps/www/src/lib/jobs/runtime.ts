@@ -334,8 +334,18 @@ export function createJobsRuntime(ports: JobsPorts): JobsRuntime {
         .ids()
         .then((stored) => {
           const listed = new Set(state.voice.map((n) => n.id))
+          // A note whose share arrived was let go; retry one whose removal
+          // failed or was cut short.
+          const arrived = new Set(
+            state.log.flatMap((e) => (e.type === "arrived" ? [e.shareId] : []))
+          )
+          const released = new Set(
+            state.log.flatMap((e) =>
+              e.type === "shared" && arrived.has(e.id) ? e.voice : []
+            )
+          )
           const orphans = stored.filter(
-            (id) => !listed.has(id) && !ports.isSaving(id)
+            (id) => (!listed.has(id) || released.has(id)) && !ports.isSaving(id)
           )
           return ports.audio.remove(orphans)
         })

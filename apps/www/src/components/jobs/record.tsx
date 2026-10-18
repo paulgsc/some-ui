@@ -3,6 +3,7 @@
  * out to Drive for the morning run.
  */
 import type { JSX } from "react"
+import { median } from "@some-ui/core-utils"
 import { OUTCOMES } from "@some-ui/job-desk"
 import { Badge, Button } from "@some-ui/shared"
 import { Link } from "@tanstack/react-router"
@@ -30,9 +31,7 @@ export const JobsRecord = (): JSX.Element => {
   const applications = applicationsOf(state)
   const debriefs = state.log.flatMap((e) => (e.type === "debrief" ? [e] : []))
   const passed = state.log.filter((e) => e.type === "passed").length
-  const minutes = debriefs.map((d) => d.minutes).sort((a, b) => a - b)
-  const median =
-    minutes.length > 0 ? minutes[Math.floor(minutes.length / 2)] : null
+  const minutes = median(debriefs.map((d) => d.minutes))
   const last = lastDelivered(state, "decisions")
   return (
     <div className="flex flex-col gap-5">
@@ -46,7 +45,9 @@ export const JobsRecord = (): JSX.Element => {
           {debriefs.filter((d) => d.result === "submitted").length}
         </span>
         <span className="text-muted-foreground">Median minutes</span>
-        <span className="text-right">{median ?? "–"}</span>
+        <span className="text-right">
+          {minutes === null ? "–" : Math.round(minutes)}
+        </span>
       </section>
       <p className="text-muted-foreground text-xs">
         Kept on this phone. Nothing here is edited or deleted, only added to.

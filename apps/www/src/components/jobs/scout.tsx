@@ -17,6 +17,7 @@ import {
   sectionHeading,
   ShareToDrive,
   useJobs,
+  useVoiceBusy,
   VoiceNotes,
 } from "./parts"
 
@@ -54,9 +55,10 @@ export const JobsScout = (): JSX.Element => {
     state.digests.flatMap((d) => d.scouts.map((s) => [s.scoutId, s] as const))
   )
   const ready = isHttps(url.trim()) && title.trim() !== ""
+  const busy = useVoiceBusy(SCOUT_OWNER)
 
   const add = (): void => {
-    if (!ready) return
+    if (!ready || busy) return
     const kept = jobs.addScout(
       {
         url: url.trim(),
@@ -137,7 +139,7 @@ export const JobsScout = (): JSX.Element => {
           notes={voice}
           hint="Or say why, up to a minute"
         />
-        <Button type="button" disabled={!ready} onClick={add}>
+        <Button type="button" disabled={!ready || busy} onClick={add}>
           Add to my scouts
         </Button>
         <Problem />

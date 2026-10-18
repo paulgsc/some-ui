@@ -117,7 +117,21 @@ export function decisionsFile(
           ? e.voice
           : []
       )
-      voice.push(...names.filter((n) => freshVoice.includes(n.id)))
+      // Attach only notes the pick as written names: a pass changed to taken
+      // leaves its note out of the file, so it is not sent either.
+      const named = [
+        ...(decision === "passed" && passed?.type === "passed"
+          ? passed.voice
+          : []),
+        ...(decision === "taken" && debrief?.type === "debrief"
+          ? debrief.voice
+          : []),
+      ]
+      voice.push(
+        ...names.filter(
+          (n) => named.includes(n.id) && freshVoice.includes(n.id)
+        )
+      )
       picks.push({
         day: digest.day,
         pickId: pick.id,

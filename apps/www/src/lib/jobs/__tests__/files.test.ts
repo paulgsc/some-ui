@@ -85,6 +85,18 @@ describe("decisionsFile", () => {
     ])
   })
 
+  it("sends no voice note the pick as written doesn't name", () => {
+    const changed = record(state, { type: "taken", ...ref(AD) })
+    const file = fileOf(
+      decisionsFile(changed, "2026-10-18", "2026-10-18T22:00:00Z")
+    )
+    const json = JSON.parse(file.json)
+    expect(json.picks[1]).toEqual(
+      expect.objectContaining({ decision: "taken", voice: [] })
+    )
+    expect(file.voice).toEqual([])
+  })
+
   it("offers a share again until it arrived, then says only what is new", () => {
     const file = fileOf(
       decisionsFile(state, "2026-10-18", "2026-10-18T22:00:00Z")

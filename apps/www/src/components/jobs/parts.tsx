@@ -24,6 +24,12 @@ export function useJobs(): JobsSnapshot {
   return useSyncExternalStore(jobs.subscribe, jobs.getSnapshot)
 }
 
+/** Whether `owner`'s voice note is still opening, recording or being kept. */
+export function useVoiceBusy(owner: string): boolean {
+  const { take, takeOwner } = useJobs()
+  return take.kind !== "idle" && takeOwner === owner
+}
+
 export const sectionHeading =
   "text-muted-foreground text-xs font-semibold tracking-wider uppercase"
 
