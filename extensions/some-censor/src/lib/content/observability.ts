@@ -33,6 +33,7 @@
  * snapshots are never shed, so the corpus survives a long session.
  */
 
+import { fnv1a } from "@some-extension/common"
 import {
   createSessionIndex,
   extensionStoragePersistence,
@@ -841,12 +842,7 @@ export function redactQueueKey(key: string): string {
  * same element correlatable without persisting the element's address.
  */
 function labelFor(value: string): string {
-  let h = 0x811c9dc5
-  for (let i = 0; i < value.length; i++) {
-    h ^= value.charCodeAt(i)
-    h = Math.imul(h, 0x01000193) >>> 0
-  }
-  return h.toString(16).padStart(8, "0")
+  return fnv1a(value).toString(16).padStart(8, "0")
 }
 
 function currentSurface(): BoyoSurface {

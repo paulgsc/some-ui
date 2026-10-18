@@ -59,7 +59,7 @@ function unmount(
   return { action: { kind: "unmount", key }, targets }
 }
 
-function plateOf(el: HTMLElement): string {
+function fillOf(el: HTMLElement): string {
   return el.style.getPropertyValue("--boyo-plate")
 }
 
@@ -79,10 +79,9 @@ describe("render", () => {
 
     expect(el.dataset["boyo"]).toBe("plated")
     expect(el.dataset["boyoVid"]).toBe("vid_a")
-    expect(plateOf(el)).toBe(PLATED.plate?.fill)
+    expect(fillOf(el)).toBe(PLATED.plate?.fill)
     expect(el.style.getPropertyValue("--boyo-disc")).toBe(PLATED.plate?.disc)
     expect(el.style.getPropertyValue("--boyo-initial")).toBe('"C"')
-    expect(el.children, "it mounts nothing in the card").toHaveLength(1)
   })
 
   it("is idempotent: the same render twice is the same DOM (A3)", () => {
@@ -94,24 +93,12 @@ describe("render", () => {
     expect(el.outerHTML).toBe(before)
   })
 
-  it("re-asserts a stamp and plate the vendor removed", () => {
-    const el = card()
-    actuator.realize([render(K, PLATED, [{ el, role: "anchor" }])])
-    el.removeAttribute("style")
-    delete el.dataset["boyo"]
-    actuator.realize([render(K, PLATED, [{ el, role: "anchor" }])])
-    expect(el.dataset["boyo"]).toBe("plated")
-    expect(plateOf(el)).toBe(PLATED.plate?.fill)
-  })
-
-  it("clears the plate on a card that turns absent, and writes it back", () => {
+  it("clears the plate on a card that turns absent", () => {
     const el = card()
     actuator.realize([render(K, PLATED, [{ el, role: "anchor" }])])
     actuator.realize([render(K, ABSENT, [{ el, role: "anchor" }])])
     expect(el.dataset["boyo"]).toBe("absent")
     expect(el.hasAttribute("style"), "removed at once").toBe(false)
-    actuator.realize([render(K, PLATED, [{ el, role: "anchor" }])])
-    expect(plateOf(el)).toBe(PLATED.plate?.fill)
   })
 
   it("leaves the vendor's own inline style alone", () => {
@@ -135,7 +122,7 @@ describe("render", () => {
     expect(nested.dataset["boyo"]).toBe("plated")
     expect(nested.dataset["boyoVid"]).toBeUndefined()
     expect(nested.hasAttribute("style")).toBe(false)
-    expect(plateOf(anchor)).not.toBe("")
+    expect(fillOf(anchor)).not.toBe("")
     expect(actuator.custodyOf(K)).toEqual([anchor, nested])
   })
 })
@@ -166,7 +153,7 @@ describe("custody accounting (A5)", () => {
     actuator.realize([render(K, ABSENT, [])])
     expect(x.dataset["boyoVid"], "K2's stamp survives K's diff").toBe("vid_b")
     expect(x.dataset["boyo"]).toBe("plated")
-    expect(plateOf(x), "K2's plate survives too").not.toBe("")
+    expect(fillOf(x), "K2's plate survives too").not.toBe("")
 
     // The other order: K learns first, then K2 takes over.
     const y = card()

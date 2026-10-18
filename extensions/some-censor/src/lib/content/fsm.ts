@@ -17,9 +17,9 @@
  * they went with the ladder.
  */
 
-import type { Observation } from "@censor/lib/content/core/observation"
 import { classify, estimate } from "@censor/lib/content/maturity/maturity"
-import { initial, tone } from "@censor/lib/content/plate/plate"
+import type { Plate } from "@censor/lib/content/plate/plate"
+import { plateOf } from "@censor/lib/content/plate/plate"
 import type { SessionId } from "@some-extension/common"
 import { assertNever } from "@some-extension/common"
 
@@ -69,42 +69,23 @@ export function decide(
 /** The `data-boyo` stamp. `styles/content.css` keys `absent` to `display: none`. */
 type DataBoyo = "absent" | "plated"
 
-/**
- * The plate's values (QD12), which `styles/content.css` paints over a plated
- * card's thumbnail and channel photo: CSS colours and the disc's letter.
- */
-export type Plate = {
-  readonly fill: string
-  readonly disc: string
-  readonly initial: string
-}
-
 export type RenderModel = {
   readonly dataBoyo: DataBoyo
   /** Null on an absent card, which is not rendered at all. */
   readonly plate: Plate | null
 }
 
-/** What a plate is made from: ids and the channel's display name. */
-type PlateInputs = Pick<Observation, "videoId" | "channelId" | "channelName">
-
-export function project(state: ViewState, inputs: PlateInputs): RenderModel {
+export function project(
+  state: ViewState,
+  inputs: Parameters<typeof plateOf>[0]
+): RenderModel {
   const { kind } = state
   switch (kind) {
     case "absent": {
       return { dataBoyo: "absent", plate: null }
     }
     case "plated": {
-      const { videoId, channelId, channelName } = inputs
-      return {
-        dataBoyo: "plated",
-        plate: {
-          fill: tone(videoId),
-          // Before its channel resolves a card's disc is toned by name.
-          disc: tone(channelId ?? channelName ?? videoId),
-          initial: initial(channelName),
-        },
-      }
+      return { dataBoyo: "plated", plate: plateOf(inputs) }
     }
     default: {
       kind satisfies never

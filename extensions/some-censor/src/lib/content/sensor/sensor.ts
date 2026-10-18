@@ -143,10 +143,7 @@ export function createSensor(ports: SensorPorts): Sensor {
    * feed card and a sidebar card) would otherwise each differ from the
    * other's last token and re-announce on every tick.
    */
-  const lastEmitted = new Map<
-    HTMLElement,
-    { readonly serialized: string; readonly observation: Observation }
-  >()
+  const lastEmitted = new Map<HTMLElement, string>()
   let observer: MutationObserver | null = null
   let retryTimer: ReturnType<typeof setInterval> | null = null
   let navDebounce: ReturnType<typeof setTimeout> | null = null
@@ -187,13 +184,8 @@ export function createSensor(ports: SensorPorts): Sensor {
     }
   }
 
-  /**
-   * One path for every element the Sensor is ever handed. `force` re-announces
-   * the card even when its evidence is unchanged: its subtree changed, and
-   * only a render (which Core sends on every observation) puts back a stamp
-   * or plate the vendor removed with it.
-   */
-  function observe(el: HTMLElement, force = false): void {
+  /** One path for every element the Sensor is ever handed. */
+  function observe(el: HTMLElement): void {
     if (!running) return
     const now = ports.clock()
     const surface = cardSurface(el)
@@ -236,15 +228,6 @@ export function createSensor(ports: SensorPorts): Sensor {
     if (rec.kind === "churn") {
       // Kept its key, and nothing about the artifact changed.
       ports.onFact({ kind: "churn.ignored", videoId: keyVideoId(rec.key) })
-      const last = lastEmitted.get(el)
-      if (force && last !== undefined) {
-        ports.emit({
-          kind: "observed",
-          key: rec.key,
-          observation: last.observation,
-          t: now,
-        })
-      }
       return
     }
     // Per element, not per key: a second carrier of a video Core already
@@ -305,13 +288,8 @@ export function createSensor(ports: SensorPorts): Sensor {
     }
     const serialized = JSON.stringify(observation)
     // A new nested wrapper is only stamped by the render a token causes.
-    if (
-      !force &&
-      !custodyChanged &&
-      lastEmitted.get(el)?.serialized === serialized
-    )
-      return
-    lastEmitted.set(el, { serialized, observation })
+    if (!custodyChanged && lastEmitted.get(el) === serialized) return
+    lastEmitted.set(el, serialized)
     ports.emit({ kind: "observed", key: rec.key, observation, t: now })
   }
 
@@ -495,7 +473,7 @@ export function createSensor(ports: SensorPorts): Sensor {
       }
     }
 
-    enclosing.forEach((el) => observe(el, true))
+    enclosing.forEach((el) => observe(el))
     candidates.forEach((el) => {
       if (!enclosing.has(el)) observe(el)
     })

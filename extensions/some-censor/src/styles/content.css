@@ -9,10 +9,6 @@
      "absent" not rendered      "plated" shown on its plate
    ============================================================ */
 
-:root {
-  --boyo-glass: 15 15 18; /* plate fallback (matches yt) */
-}
-
 /* ── :has() baseline (#1390 / QC0) ────────────────────────────────
      `manifest.firefox.json` declares strict_min_version 112.0, which
      predates `:has()`. Firefox shipped `:has()`
@@ -76,7 +72,7 @@
    one selector in a comma list fails to parse, the entire rule is dropped —
    which used to mean the seven plain tags here, none of which use `:has()`,
    lost their occluder too on any engine that couldn't parse the four that
-   do. See the `:has()` baseline note in :root above for the measured
+   do. See the `:has()` baseline note above for the measured
    Firefox gap this closes (#1390 / QC0).
    ============================================================ */
 :root:not([data-boyo-off]) ytd-video-renderer:not([data-boyo]) {
@@ -284,14 +280,10 @@
 }
 
 /* ----------------------------------------------------------
-   HANDOVER + POSITION CONTEXT
+   HANDOVER
 
    Once JS has taken ownership (data-boyo present) the card is absent or
    plated instead, so the static filter is lifted.
-
-   Targets vendor elements, so it cannot be a utility class: we do not
-   own these nodes and adding classes to them would be a mutation of the
-   host page's markup (Charter §0).
    ---------------------------------------------------------- */
 [data-boyo] {
   filter: none !important;
@@ -489,8 +481,7 @@ ytd-item-section-renderer:has(> #contents > ytd-shelf-renderer:only-child):has(
    A plated card paints no image: no thumbnail, no moving thumbnail,
    no channel photo. Every `img` and `video` under the stamp is
    hidden, whatever the vendor's shape, so a thumbnail shape this file
-   does not name still shows nothing. The title, channel name and
-   duration stay, and the card opens in one click.
+   does not name still shows nothing.
 
    The tones are the Actuator's custom properties on the card
    (`lib/content/plate/plate.ts`). The fill and the disc are painted on
@@ -505,13 +496,13 @@ ytd-item-section-renderer:has(> #contents > ytd-shelf-renderer:only-child):has(
 [data-boyo="plated"] .ytThumbnailViewModelImage,
 [data-boyo="plated"] ytd-thumbnail a#thumbnail {
   background: linear-gradient(135deg, rgb(255 255 255 / 6%), transparent 55%),
-    var(--boyo-plate, rgb(var(--boyo-glass))) !important;
+    var(--boyo-plate, rgb(15 15 18)) !important;
 }
 
 /* The channel disc: a tone and the name's first letter. */
 [data-boyo="plated"] .ytSpecAvatarShapeHost,
 [data-boyo="plated"] #channel-thumbnail yt-img-shadow {
-  background: var(--boyo-disc, rgb(var(--boyo-glass))) !important;
+  background: var(--boyo-disc, rgb(15 15 18)) !important;
   position: relative;
 }
 
@@ -533,10 +524,7 @@ ytd-item-section-renderer:has(> #contents > ytd-shelf-renderer:only-child):has(
 /* The hover preview is a moving thumbnail, so it never shows: YouTube
    plays it in one shared player at the app level, over whichever card
    is hovered. */
-:root:not([data-boyo-off]) ytd-video-preview {
-  display: none !important;
-}
-
+:root:not([data-boyo-off]) ytd-video-preview,
 :root:not([data-boyo-off]) #inline-preview-player {
   display: none !important;
 }

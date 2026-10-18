@@ -1,4 +1,5 @@
-import type { Plate, RenderModel } from "@censor/lib/content/fsm"
+import type { RenderModel } from "@censor/lib/content/fsm"
+import type { Plate } from "@censor/lib/content/plate/plate"
 import type { MetaData } from "@censor/types/states"
 import { describe, expect, expectTypeOf, it } from "vitest"
 

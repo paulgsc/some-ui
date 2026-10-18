@@ -33,15 +33,14 @@ async function plated(page: Page): Promise<void> {
   await expect(page.locator("#lockup")).toHaveAttribute("data-boyo", "plated")
 }
 
-/** Is `selector`'s computed `prop` the colour the card's `variable` names? */
+/** Is `selector`'s background the colour the card's `variable` names? */
 async function paintedWith(
   page: Page,
   selector: string,
-  variable: string,
-  pseudo: string | null = null
+  variable: string
 ): Promise<boolean> {
   return page.evaluate(
-    ([sel, v, p]) => {
+    ([sel, v]) => {
       const el = document.querySelector(sel)
       const card = el?.closest("[data-boyo]")
       if (!(el instanceof HTMLElement) || !(card instanceof HTMLElement))
@@ -52,10 +51,10 @@ async function paintedWith(
       const expected = getComputedStyle(probe).color
       probe.remove()
       return (
-        expected !== "" && getComputedStyle(el, p).backgroundColor === expected
+        expected !== "" && getComputedStyle(el).backgroundColor === expected
       )
     },
-    [selector, variable, pseudo] as const
+    [selector, variable] as const
   )
 }
 
@@ -134,4 +133,5 @@ test("P4: the hover preview never shows", async ({ fixture }) => {
   const page = await fixture.goto("yt-plate")
   await plated(page)
   await expect(page.locator("#preview")).toBeHidden()
+  await expect(page.locator("#inline-preview-player")).toBeHidden()
 })

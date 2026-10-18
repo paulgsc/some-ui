@@ -13,8 +13,7 @@
  * custody: an element inside an anchor that matches a pre-mask rule of its
  * own gets `data-boyo` so the occluder releases it, and no plate values.
  *
- *   A1 and A2 anchored and mounted the veil, which the plate replaced
- *   (#1804); both are retired.
+ *   A1, A2 and A6 — retired with the veil (#1804).
  *   A3 — Idempotent (D2). Realizing the same actions twice leaves the same
  *        DOM: a render whose model and targets are unchanged re-asserts the
  *        stamps and the plate's values, and touches nothing else.
@@ -27,12 +26,12 @@
  *        elements that left — but only those this key still owns, so an
  *        element that moved to another card keeps that card's stamp
  *        whichever render runs first.
- *   A6 — No class names (D5): this module writes none.
  */
 
 import type { CardKey } from "@censor/lib/content/core/keys"
 import { keyVideoId } from "@censor/lib/content/core/keys"
-import type { Plate, RenderModel } from "@censor/lib/content/fsm"
+import type { RenderModel } from "@censor/lib/content/fsm"
+import type { Plate } from "@censor/lib/content/plate/plate"
 import type { VideoId } from "@censor/types/ids"
 
 import type { BoundAction, CustodyTarget } from "./bound"
@@ -49,27 +48,28 @@ type Realized = {
   nested: Set<HTMLElement>
 }
 
-/**
- * The plate's values, as custom properties on an anchor: `content.css` reads
- * them under `[data-boyo="plated"]`. Namespaced, so no vendor declaration is
- * ever written over and A4 can simply remove them.
- */
-const PLATE_PROPERTIES = ["--boyo-plate", "--boyo-disc", "--boyo-initial"]
+/** The plate's custom properties, namespaced so A4 can simply remove them. */
+const PLATE_PROPERTIES: Readonly<Record<keyof Plate, string>> = {
+  fill: "--boyo-plate",
+  disc: "--boyo-disc",
+  initial: "--boyo-initial",
+}
 
 function setPlate(el: HTMLElement, plate: Plate | null): void {
   if (plate === null) {
     clearPlate(el)
     return
   }
-  el.style.setProperty("--boyo-plate", plate.fill)
-  el.style.setProperty("--boyo-disc", plate.disc)
-  // A CSS string for `content`. The letter is a letter or a digit, never a
-  // quote or a backslash (`plate.ts`'s `initial`).
-  el.style.setProperty("--boyo-initial", `"${plate.initial}"`)
+  el.style.setProperty(PLATE_PROPERTIES.fill, plate.fill)
+  el.style.setProperty(PLATE_PROPERTIES.disc, plate.disc)
+  // A CSS string for `content`: the letter is never a quote or a backslash.
+  el.style.setProperty(PLATE_PROPERTIES.initial, `"${plate.initial}"`)
 }
 
 function clearPlate(el: HTMLElement): void {
-  for (const property of PLATE_PROPERTIES) el.style.removeProperty(property)
+  for (const property of Object.values(PLATE_PROPERTIES)) {
+    el.style.removeProperty(property)
+  }
   if (el.getAttribute("style") === "") el.removeAttribute("style")
 }
 

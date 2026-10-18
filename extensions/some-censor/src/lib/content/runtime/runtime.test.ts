@@ -71,7 +71,6 @@ async function wait(ms: number): Promise<void> {
   }
 }
 
-/** The plate's fill the Actuator wrote on `el`, or null. */
 function plate(el: HTMLElement): string | null {
   return el.style.getPropertyValue("--boyo-plate") || null
 }

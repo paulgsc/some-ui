@@ -20,8 +20,7 @@
  *      out of the Tab order.
  * T10 — a renderer repointed at a new video is decided afresh (QD1).
  * T11 — an href-only lockup's card survives preview-anchor churn.
- * T12 covered a plated card with its veil; the plate replaced the veil
- *      (#1804), and plate.spec.ts covers it.
+ * T12 — retired (#1804); see plate.spec.ts.
  */
 
 import { expect, test } from "@censor/playwright/fixture"
