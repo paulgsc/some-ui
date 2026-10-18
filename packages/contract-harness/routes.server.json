@@ -180,6 +180,20 @@
     },
     {
       "method": "GET",
+      "path": "/jobs",
+      "full_path": "/api/v1/jobs",
+      "versioned": true,
+      "module": "jobs"
+    },
+    {
+      "method": "PUT",
+      "path": "/jobs/events/:id",
+      "full_path": "/api/v1/jobs/events/:id",
+      "versioned": true,
+      "module": "jobs"
+    },
+    {
+      "method": "GET",
       "path": "/leetype/rounds",
       "full_path": "/api/v1/leetype/rounds",
       "versioned": true,
