@@ -7,19 +7,15 @@ import { z } from "zod"
  * The format is the LeetType A/B's prototype format, kept so that the A/B's
  * harness can play real content too, plus optional fields the A/B's designs
  * could not express: `rule`, `cites`, `returnOf`, `glosses`, `panel`,
- * `provenance` and the session's `glossary`.
- *
- * Parsing checks shape and wiring (every edge lands on a screen). Whether
- * the content keeps the canon's content obligations is
- * `lib/leetype/session-file`'s lint, which reports findings, not failures:
- * an authored session can be well formed and still owe a citation.
+ * `provenance`, `applies` and the session's `glossary`. Parsing checks
+ * shape and wiring; `lib/leetype/session-file` lints the content.
  */
 
 const ScreenIdSchema = z.string().min(1)
 
 /** A register entry an incident round is decided by (Rem. 7.4), or a `CW-P` one. */
 const RuleIdSchema = z.string().regex(/^(M|A|CW-P)\d+$/, {
-  message: "a rule is a register id: M<n>, A<n> or CW-P<n> (Rem. 7.4)",
+  message: "a rule is a register id: M<n>, A<n> or CW-P<n>",
 })
 
 const SourceSchema = z.object({
@@ -38,9 +34,11 @@ const ActionSchema = z.object({
   effect: z.enum(["read", "save"]).optional(),
 })
 
+/** `applies` names the register entry whose fix the option applies (Rem. 10.4). */
 const OptionSchema = z.object({
   label: z.string().min(1),
   next: ScreenIdSchema,
+  applies: RuleIdSchema.optional(),
   correct: z.boolean().optional(),
   abstain: z.boolean().optional(),
   feedback: z.string().optional(),
@@ -78,7 +76,8 @@ const InfoScreenSchema = z.object({
 const ChoiceScreenSchema = z.object({
   ...screenBase,
   type: z.literal("choice"),
-  options: z.array(OptionSchema).min(2),
+  // At most five, the abstention included (Def. 1.9).
+  options: z.array(OptionSchema).min(2).max(5),
   onHesitate: ScreenIdSchema.optional(),
   rule: RuleIdSchema.optional(),
   cites: ScreenIdSchema.optional(),
@@ -109,7 +108,7 @@ const ReadingScreenSchema = z.object({
   actions: z.array(ActionSchema),
 })
 
-/** The last screen. Its ledger is derived from the session's events (Prop. 10.2). */
+/** The last screen. */
 const EndScreenSchema = z.object({
   ...screenBase,
   type: z.literal("end"),

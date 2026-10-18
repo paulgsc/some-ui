@@ -1,3 +1,5 @@
+import { mentionsWord } from "@some-ui/core-utils"
+
 import type { Digest } from "./digest"
 import { RESUME_VARIANTS, SOFTWARE_VARIANTS } from "./digest"
 import { fingerprint, role as roleOf } from "./fingerprint"
@@ -14,15 +16,6 @@ import {
 export type Finding = { path: string; message: string }
 
 const DAY_MS = 24 * 60 * 60 * 1000
-
-/** Whether `text` names `term` as a whole word or phrase, ignoring case. */
-function mentions(text: string, term: string): boolean {
-  const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
-  return new RegExp(
-    `(?<![\\p{L}\\p{N}])${escaped}(?![\\p{L}\\p{N}])`,
-    "iu"
-  ).test(text)
-}
 
 function daysBetween(from: string, to: string): number {
   return Math.round((Date.parse(to) - Date.parse(from)) / DAY_MS)
@@ -172,7 +165,7 @@ export function digestFindings(digest: Digest): ReadonlyArray<Finding> {
     }
     pick.fits.forEach((fit, j) => {
       const claim = `${fit.title} ${fit.detail}`
-      const term = pick.dontClaim.find((t) => mentions(claim, t))
+      const term = pick.dontClaim.find((t) => mentionsWord(claim, t))
       if (term) {
         found.push({
           path: `${at}.fits.${j}`,

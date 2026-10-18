@@ -12,10 +12,7 @@ function fixture(relativePath: string): unknown {
   )
 }
 
-/**
- * The LeetType A/B's five prototype sessions (variants A–E), with the six
- * factual errors its compliance audit and expert persona found corrected.
- */
+/** The LeetType A/B's five prototype sessions, variants A–E. */
 export const AB_FIXTURES = ["a", "b", "c", "d", "e"].map((variant) => ({
   variant,
   raw: fixture(`./fixtures/ab-${variant}.json`),

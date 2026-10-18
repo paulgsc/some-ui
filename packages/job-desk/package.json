@@ -33,6 +33,7 @@
     "dist"
   ],
   "dependencies": {
+    "@some-ui/core-utils": "workspace:*",
     "zod": "catalog:"
   },
   "devDependencies": {

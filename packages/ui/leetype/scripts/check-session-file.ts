@@ -1,10 +1,7 @@
 /**
- * Checks session files (canon v1.2, Def. 1.9) before they are placed in
- * Drive: each must parse (`types/session-file.ts`) and keep the content
- * obligations `lib/leetype/session-file` lints for (Rem. 10.3). Exits 1 on
- * a parse failure or any finding.
- *
- * Usage: pnpm --filter @some-ui/leetype lint:session-file <file.json>...
+ * Run on session files before they are placed in Drive: each must parse and
+ * keep the content obligations (Rem. 10.3). Exits 1 on a parse failure or
+ * any finding.
  */
 import { readFileSync } from "node:fs"
 import { lintSessionFile } from "@leetype/lib/leetype/session-file"
@@ -32,7 +29,9 @@ function check(path: string): number {
 
 const paths = process.argv.slice(2)
 if (paths.length === 0) {
-  console.error("usage: check-session-file.ts <file.json>...")
+  console.error(
+    "usage: pnpm --filter @some-ui/leetype lint:session-file <file.json>..."
+  )
   process.exitCode = 1
 } else {
   const problems = paths.reduce((total, path) => total + check(path), 0)

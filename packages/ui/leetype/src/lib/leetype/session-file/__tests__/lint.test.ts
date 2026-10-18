@@ -14,12 +14,7 @@ const source = {
   minutes: 3,
 }
 
-/**
- * One round that keeps every content obligation: it cites its passage, its
- * struggles land on a short placed reading, its feedback never names the
- * answer, its one term is glossed where it is first used, and its end
- * screen is not written ahead.
- */
+/** One round that keeps every content obligation. */
 function clean(): SessionFile {
   return SessionFileSchema.parse({
     title: "A session",
@@ -63,10 +58,6 @@ function codes(file: SessionFile): Array<string> {
 }
 
 describe("lintSessionFile", () => {
-  it("finds nothing in a session that keeps every obligation", () => {
-    expect(lintSessionFile(clean())).toEqual([])
-  })
-
   it("reports a round that cites no passage", () => {
     const file = clean()
     const round = file.screens.r1
@@ -109,6 +100,31 @@ describe("lintSessionFile", () => {
       }
     }
     expect(codes(file)).toEqual(["feedback-names-answer"])
+  })
+
+  it("reports a struggle that can leave the session from an info screen", () => {
+    const file = clean()
+    file.screens.why = {
+      type: "info",
+      body: "Not this one.",
+      actions: [{ label: "Go on", next: "p1" }, { label: "Leave" }],
+    }
+    const round = file.screens.r1
+    if (round?.type === "choice") round.onHesitate = "why"
+    expect(codes(file)).toEqual(["struggle-without-reading"])
+  })
+
+  it("matches the correct option as a word, not inside another", () => {
+    const file = clean()
+    const round = file.screens.r1
+    if (round?.type === "choice") {
+      round.options = [
+        { label: "3", next: "end", correct: true },
+        { label: "2", next: "p1", feedback: "13 nodes would still disagree." },
+        { label: "Not sure", next: "p1", abstain: true },
+      ]
+    }
+    expect(lintSessionFile(file)).toEqual([])
   })
 
   it("reports a term used before any screen on the way glosses it", () => {

@@ -85,6 +85,21 @@ describe("SessionFileSchema", () => {
       '"end" is not a reading screen',
     ],
     [
+      "more than five options",
+      minimal({
+        r1: {
+          type: "choice",
+          options: ["a", "b", "c", "d", "e", "f"].map((label, index) => ({
+            label,
+            next: "end",
+            correct: index === 0,
+          })),
+        },
+        end,
+      }),
+      "Too big",
+    ],
+    [
       "a rule outside the registers",
       minimal({
         r1: {
