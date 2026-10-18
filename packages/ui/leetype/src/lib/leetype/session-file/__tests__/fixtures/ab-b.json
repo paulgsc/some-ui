@@ -1,0 +1,614 @@
+{
+  "variant": "B",
+  "title": "Incident first",
+  "oneLine": "Three production incidents, each told with its numbers: you predict the cause or fix, a wrong pick sends you to the paper that explains it, and you finish by telling one incident aloud.",
+  "session": {
+    "kind": "probe",
+    "budgetMinutes": 10
+  },
+  "start": "s01",
+  "screens": {
+    "s01": {
+      "type": "info",
+      "pinned": "The job: work out why each system broke, then say it in your own words.",
+      "title": "Three incidents, one take",
+      "body": "Three production incidents, each with its numbers. For each one you pick what happened or what fixes it, before anything is shown. Then you tell one of them out loud, as to a colleague.\n\nA wrong pick or a \"Not sure\" is kept as evidence. It sends you to the page that explains that incident, and that round waits until you have read it.\n\nAbout 10 minutes. Readings are extra; nothing is withheld if you skip.",
+      "actions": [
+        {
+          "label": "Start with incident 1",
+          "next": "s02"
+        }
+      ],
+      "tags": ["map", "primer"]
+    },
+    "s02": {
+      "type": "choice",
+      "pinned": "Job: separate what the majority agreed on from what the primary's OK promised.",
+      "title": "Incident 1: the writes that vanished",
+      "body": "Five machines, each running a Sentinel watcher; one is the primary. A network split leaves the primary and one other machine on one side, three on the other.\n\nThe three cannot reach the primary. As a majority of the Sentinels they promote a replica.\n\nFor 40 seconds a client on the cut-off side keeps writing to the old primary, which answers OK to 212 writes. The split heals; the old primary copies the new primary's data.\n\nAll 212 acknowledged writes are gone.\n\n(Numbers invented; the pattern is Kingsbury's.)",
+      "options": [
+        {
+          "label": "The vote chose a primary; the OK only meant one machine had the write",
+          "correct": true,
+          "feedback": "Yes. The vote chose a primary. Nothing made the old primary's OK wait for anyone else, so no majority ever held those 212 writes. Copying data to replicas is not the same as agreeing on it.",
+          "next": "s05"
+        },
+        {
+          "label": "Three is too small a majority; failover should need all five",
+          "correct": false,
+          "feedback": "All five would block every failover while one machine is down. And it changes who may promote, not what the old primary said OK to.",
+          "next": "s03"
+        },
+        {
+          "label": "Writes sat in memory; fsync on every write would have saved them",
+          "correct": false,
+          "feedback": "The writes would sit on the old primary's disk, then be overwritten when it copies the new primary's data. A disk on one machine is still one machine.",
+          "next": "s03"
+        },
+        {
+          "label": "The failover timeout was too short; a longer one avoids the split",
+          "correct": false,
+          "feedback": "A longer timeout narrows the window. Any pause or split longer than it brings the same loss.",
+          "next": "s03"
+        },
+        {
+          "label": "Not sure",
+          "abstain": true,
+          "next": "s03"
+        }
+      ],
+      "onHesitate": "s03",
+      "tags": ["round:1"]
+    },
+    "s03": {
+      "type": "reading",
+      "title": "A page for incident 1",
+      "primer": "Kingsbury cut the network under a real Redis cluster and counted which acknowledged writes survived. Read \"What about high availability?\" and \"Results\". Keep two things apart as you read: what the majority decided, and what the primary's OK was waiting for. This round waits until you have read it.",
+      "source": {
+        "title": "Call me maybe: Redis",
+        "author": "Kingsbury (Jepsen)",
+        "year": 2013,
+        "where": "\"What about high availability?\" and \"Results\"",
+        "url": "https://aphyr.com/posts/283-call-me-maybe-redis",
+        "minutes": 8
+      },
+      "actions": [
+        {
+          "label": "Read now",
+          "next": "s04",
+          "effect": "read"
+        },
+        {
+          "label": "Save it; this round waits",
+          "next": "s06",
+          "effect": "save"
+        },
+        {
+          "label": "Skip; this round waits",
+          "next": "s06"
+        }
+      ],
+      "tags": ["placement", "struggle"],
+      "passage": "My paraphrase, not a quote. Kingsbury partitions a Redis primary managed by Sentinel while clients keep writing, then checks which acknowledged writes are still there after the network heals. Look for his account of what the old primary did on the cut-off side, and the list of results."
+    },
+    "s04": {
+      "type": "choice",
+      "pinned": "Job: say what must be true before a primary may answer OK.",
+      "title": "Incident 1 again, a different machine",
+      "body": "A five-machine store takes 400 writes a second. The primary answers OK once it has the write on its own disk and sent it on. Replicas lag about 3 seconds.\n\nThe primary's disk dies. A replica takes over. Everything from the last 3 seconds is gone: 400 x 3 = 1,200 acknowledged writes.\n\nThe team wants: after an OK, a failover can never lose the write.\n\nWhat must be true before the OK goes out?",
+      "options": [
+        {
+          "label": "The primary and any two other machines have stored it",
+          "correct": true,
+          "feedback": "Three is a majority of five. Any three machines that later form a new majority must share at least one machine with those three (3 + 3 is more than 5), so the write cannot be missed by all of them.",
+          "next": "s06"
+        },
+        {
+          "label": "The primary has fsynced it",
+          "correct": false,
+          "feedback": "That is the failure here: the write was on the dead disk. One machine's disk is one copy.",
+          "next": "s06"
+        },
+        {
+          "label": "The one replica that would be promoted has it",
+          "correct": false,
+          "feedback": "Two copies. If both fail together, or a different replica is chosen, the write is lost. A new majority needs only three machines, and those may all miss it.",
+          "next": "s06"
+        },
+        {
+          "label": "All five machines have it",
+          "correct": false,
+          "feedback": "One slow or dead machine would stop every write. Safety does not need that many.",
+          "next": "s06"
+        },
+        {
+          "label": "Not sure",
+          "abstain": true,
+          "next": "s06"
+        }
+      ],
+      "tags": ["round:1", "parked-return"]
+    },
+    "s05": {
+      "type": "reading",
+      "title": "Where this is written",
+      "primer": "You can say why the vote was not enough. Kingsbury's article shows it on a real cluster. Read his account next to your own wording and see which words differ. Optional.",
+      "source": {
+        "title": "Call me maybe: Redis",
+        "author": "Kingsbury (Jepsen)",
+        "year": 2013,
+        "where": "\"Results\"",
+        "url": "https://aphyr.com/posts/283-call-me-maybe-redis",
+        "minutes": 8
+      },
+      "actions": [
+        {
+          "label": "Read now",
+          "next": "s06",
+          "effect": "read"
+        },
+        {
+          "label": "Save for a Read session",
+          "next": "s06",
+          "effect": "save"
+        },
+        {
+          "label": "Skip",
+          "next": "s06"
+        }
+      ],
+      "tags": ["reading"],
+      "passage": "My paraphrase, not a quote. Kingsbury's results section lists how many acknowledged writes the cluster kept and lost under a partition, and describes how Sentinel's majority decision and the old primary's acknowledgements relate."
+    },
+    "s06": {
+      "type": "choice",
+      "pinned": "Job: find the one thing the old leader could not know.",
+      "title": "Incident 2: a leader that didn't know",
+      "body": "A five-node Raft config store. Node L is leader in term 7. A network split puts L and one follower on one side, three nodes on the other.\n\nThe three elect a new leader in term 8 and commit: feature_flag = off.\n\nTwo seconds later a client still connected to L reads feature_flag. L answers \"on\" from its own copy. A write to L would fail (no majority), but this read touched nobody.\n\nWithout logging every read, what should L have done before answering?\n\n(Composite; numbers invented.)",
+      "options": [
+        {
+          "label": "Hear back from a majority that it is still their leader",
+          "correct": true,
+          "feedback": "Yes. Any majority overlaps the three that voted for term 8, so at least one of them would have refused. The price is one round of heartbeats per read, and no disk write.",
+          "next": "s09"
+        },
+        {
+          "label": "Compare its term with the last entry in its log",
+          "correct": false,
+          "feedback": "L's log still says term 7. From inside the split nothing local shows that term 8 exists.",
+          "next": "s07"
+        },
+        {
+          "label": "Read from a follower instead",
+          "correct": false,
+          "feedback": "Followers lag the leader by design, and the follower on L's side is as cut off as L. Staleness gets likelier, not rarer.",
+          "next": "s07"
+        },
+        {
+          "label": "Have L step down after a quiet spell",
+          "correct": false,
+          "feedback": "The read can still land before the timer fires, and a timer is a guess about time. Between the split and the step-down L keeps answering.",
+          "next": "s07"
+        },
+        {
+          "label": "Not sure",
+          "abstain": true,
+          "next": "s07"
+        }
+      ],
+      "onHesitate": "s07",
+      "tags": ["round:2"]
+    },
+    "s07": {
+      "type": "reading",
+      "title": "A page for incident 2",
+      "primer": "This is Ongaro's treatment of read-only requests. Find the step that stops a deposed leader from answering. Then list every assumption the clock-based variant adds. This round waits until you have read it.",
+      "source": {
+        "title": "Consensus: Bridging Theory and Practice",
+        "author": "Ongaro (PhD dissertation, CC BY 4.0)",
+        "year": 2014,
+        "where": "§6.4–§6.4.1, pp. 72–74",
+        "url": "https://web.stanford.edu/~ouster/cgi-bin/papers/OngaroPhD.pdf",
+        "minutes": 12
+      },
+      "actions": [
+        {
+          "label": "Read now",
+          "next": "s08",
+          "effect": "read"
+        },
+        {
+          "label": "Save it; this round waits",
+          "next": "s10",
+          "effect": "save"
+        },
+        {
+          "label": "Skip; this round waits",
+          "next": "s10"
+        }
+      ],
+      "tags": ["placement", "struggle"],
+      "passage": "My paraphrase of the read-index recipe. A leader first makes sure it has committed an entry in its own term. It notes its current commit index as the read index. It then confirms it is still leader by exchanging heartbeats with a majority. It waits until its state machine has applied up to the read index, and only then answers. A clock-based variant skips the heartbeat round, and adds assumptions about clocks."
+    },
+    "s08": {
+      "type": "choice",
+      "pinned": "Job: count how many replies a leader needs before it may answer a read.",
+      "title": "Incident 2 again, seven nodes",
+      "body": "A seven-node cluster splits three and four. The old leader sits on the three side. The four side elects a new leader.\n\nThe old leader may answer a read only after it hears from enough nodes, counting itself, that it is still leader.\n\nHow many?",
+      "options": [
+        {
+          "label": "Three: everyone it can still reach",
+          "correct": false,
+          "feedback": "Three is not a majority of seven. The four on the other side can elect a leader without any of them, so all three can be wrong together.",
+          "next": "s10"
+        },
+        {
+          "label": "Four",
+          "correct": true,
+          "feedback": "Four plus the four that elected the new leader is eight, more than seven nodes, so some node is in both groups and has seen the higher term. It refuses.",
+          "next": "s10"
+        },
+        {
+          "label": "Seven: every node",
+          "correct": false,
+          "feedback": "One dead node would stop all reads. Safety does not need everyone.",
+          "next": "s10"
+        },
+        {
+          "label": "One: itself, if its heartbeat timer has not expired",
+          "correct": false,
+          "feedback": "Then it trusts a timer, not other nodes. A paused process or a slow clock makes the timer wrong with nobody to say so.",
+          "next": "s10"
+        },
+        {
+          "label": "Not sure",
+          "abstain": true,
+          "next": "s10"
+        }
+      ],
+      "tags": ["round:2", "parked-return"]
+    },
+    "s09": {
+      "type": "reading",
+      "title": "Where this is written",
+      "primer": "You can say what a leader must check before a read. Raft's own section on reads says it in two precautions. See whether your two match theirs. Optional.",
+      "source": {
+        "title": "In Search of an Understandable Consensus Algorithm (extended)",
+        "author": "Ongaro, Ousterhout",
+        "year": 2014,
+        "where": "§8, p. 13",
+        "url": "https://raft.github.io/raft.pdf",
+        "minutes": 6
+      },
+      "actions": [
+        {
+          "label": "Read now",
+          "next": "s10",
+          "effect": "read"
+        },
+        {
+          "label": "Save for a Read session",
+          "next": "s10",
+          "effect": "save"
+        },
+        {
+          "label": "Skip",
+          "next": "s10"
+        }
+      ],
+      "tags": ["reading"],
+      "passage": "My paraphrase. Reads need not go in the log, but a leader could be answering after a newer leader has taken over. Raft adds two precautions: the leader must know which entries are committed, and it must check it has not been deposed, by exchanging heartbeats with a majority before it answers. A lease can replace the heartbeat round, but then safety rests on timing."
+    },
+    "s10": {
+      "type": "choice",
+      "pinned": "Job: find what sets the ceiling, then the change that lifts it.",
+      "title": "Incident 3: 500 commits a second",
+      "body": "A payments service appends each commit to a log and calls fsync before it answers OK. Rule: no OK until it is on disk.\n\nLoad test: it tops out at 500 commits a second. The CPU is almost idle. Adding client threads changes nothing.\n\nOn this SSD, the team's own measurement, one fsync takes 2 ms. 1 s divided by 2 ms is 500 flushes a second. Each commit gets its own flush.\n\nTarget: 5,000 commits a second, with the rule intact.\n\n(Composite; numbers invented.)",
+      "options": [
+        {
+          "label": "Let commits that arrive during a flush share the next flush",
+          "correct": true,
+          "feedback": "Yes. A flush costs 2 ms whether it carries 1 commit or 10. Ten per flush is 5,000 a second. Each commit now waits up to about 4 ms (the flush in progress, then its own) instead of 2: a little latency buys a shared cost.",
+          "next": "s13"
+        },
+        {
+          "label": "Send the OK first and flush in the background",
+          "correct": false,
+          "feedback": "Throughput jumps, but a crash after the OK loses commits the client was told were safe. The rule is gone.",
+          "next": "s11"
+        },
+        {
+          "label": "Run more threads, each calling fsync",
+          "correct": false,
+          "feedback": "One log on one device flushes one batch at a time. The threads line up behind each other at the same 500 a second.",
+          "next": "s11"
+        },
+        {
+          "label": "Move to a CPU twice as fast",
+          "correct": false,
+          "feedback": "The CPU is idle. The 2 ms is spent waiting on the device, and a faster CPU just waits faster.",
+          "next": "s11"
+        },
+        {
+          "label": "Not sure",
+          "abstain": true,
+          "next": "s11"
+        }
+      ],
+      "onHesitate": "s11",
+      "tags": ["round:3"]
+    },
+    "s11": {
+      "type": "reading",
+      "title": "A page for incident 3",
+      "primer": "The 1984 report that named this problem. Start from its ceiling on commits per second for one log device, then find the single change it says raises the ceiling. Note what must be true before a client is told OK. Link only: it opens the report. This round waits until you have read it.",
+      "source": {
+        "title": "Implementation Techniques for Main Memory Database Systems",
+        "author": "DeWitt et al.",
+        "year": 1984,
+        "where": "§5.2, pp. 16–17",
+        "url": "https://www2.eecs.berkeley.edu/Pubs/TechRpts/1984/ERL-m-84-5.pdf",
+        "minutes": 6
+      },
+      "actions": [
+        {
+          "label": "Read now",
+          "next": "s12",
+          "effect": "read"
+        },
+        {
+          "label": "Save it; this round waits",
+          "next": "s14",
+          "effect": "save"
+        },
+        {
+          "label": "Skip; this round waits",
+          "next": "s14"
+        }
+      ],
+      "tags": ["placement", "struggle"]
+    },
+    "s12": {
+      "type": "choice",
+      "pinned": "Job: work out how many commits must share one flush.",
+      "title": "Incident 3 again, a slower disk",
+      "body": "Another service, same rule (no OK before the flush). Its disk takes 4 ms per fsync.\n\nOne commit per flush: 1 s divided by 4 ms is 250 flushes, so 250 commits a second.\n\nTarget: 2,000 commits a second.\n\nWhat is the fewest commits that must share each flush?",
+      "options": [
+        {
+          "label": "2",
+          "correct": false,
+          "feedback": "250 flushes x 2 is 500 a second, well short.",
+          "next": "s14"
+        },
+        {
+          "label": "4",
+          "correct": false,
+          "feedback": "250 flushes x 4 is 1,000 a second, still half short.",
+          "next": "s14"
+        },
+        {
+          "label": "8",
+          "correct": true,
+          "feedback": "250 flushes x 8 is 2,000 a second. A commit waits at most about two flushes, 8 ms.",
+          "next": "s14"
+        },
+        {
+          "label": "16",
+          "correct": false,
+          "feedback": "That reaches 4,000 a second, more than the target; the question asked for the fewest, since each extra commit in a batch is more waiting.",
+          "next": "s14"
+        },
+        {
+          "label": "Not sure",
+          "abstain": true,
+          "next": "s14"
+        }
+      ],
+      "tags": ["round:3", "parked-return"]
+    },
+    "s13": {
+      "type": "reading",
+      "title": "Where this is written",
+      "primer": "The same trick, one sentence long, in Google's production Paxos. Read it and name the fixed cost it spreads. Optional.",
+      "source": {
+        "title": "Paxos Made Live",
+        "author": "Chandra, Griesemer, Redstone",
+        "year": 2007,
+        "where": "§4.2, last paragraph, p. 5",
+        "url": "https://static.googleusercontent.com/media/research.google.com/en//archive/paxos_made_live.pdf",
+        "minutes": 1
+      },
+      "actions": [
+        {
+          "label": "Read now",
+          "next": "s14",
+          "effect": "read"
+        },
+        {
+          "label": "Save for a Read session",
+          "next": "s14",
+          "effect": "save"
+        },
+        {
+          "label": "Skip",
+          "next": "s14"
+        }
+      ],
+      "tags": ["reading"],
+      "passage": "My paraphrase. To raise throughput, several values submitted by clients are packed into a single Paxos instance, so one round of the protocol, with its forced writes, serves many."
+    },
+    "s14": {
+      "type": "choice",
+      "pinned": "Job: tell one incident as you would to a colleague who wasn't there.",
+      "title": "Your take",
+      "body": "Pick the incident that felt shakiest. You get 45 seconds, from memory, with nothing on screen to read from.\n\nYou will say: what happened, what forced the fix, what the fix costs, what breaks without it. Use the numbers.\n\nThere is no right pick here. Your recording is kept with its question and the lines you tick afterwards.",
+      "options": [
+        {
+          "label": "Incident 1: the vanished writes",
+          "next": "s15"
+        },
+        {
+          "label": "Incident 2: the leader that didn't know",
+          "next": "s16"
+        },
+        {
+          "label": "Incident 3: 500 commits a second",
+          "next": "s17"
+        },
+        {
+          "label": "No take today",
+          "abstain": true,
+          "next": "s21"
+        }
+      ],
+      "tags": ["speak", "primer"]
+    },
+    "s15": {
+      "type": "record",
+      "title": "Incident 1, out loud",
+      "prompt": "In 45 seconds, to a colleague who wasn't there: the cache cluster that lost 212 acknowledged writes after a failover. Say what happened, what forced the fix, what the fix costs, and what breaks without it. Use the numbers.",
+      "maxSeconds": 60,
+      "rubric": [
+        "The OK came before a majority held the write; one replica on the primary's side was not enough",
+        "The majority voted on who is primary, not on which writes exist",
+        "The fix costs waiting for a majority to store each write before the OK",
+        "Without it a split loses acknowledged writes (212 here)"
+      ],
+      "weakIfFewerThan": 2,
+      "next": "s21",
+      "onWeak": "s18",
+      "tags": ["speak"]
+    },
+    "s16": {
+      "type": "record",
+      "title": "Incident 2, out loud",
+      "prompt": "In 45 seconds, to a colleague who wasn't there: the old leader that answered a read with a value two seconds stale. Say what happened, what forced the fix, what the fix costs, and what breaks without it. Use the numbers.",
+      "maxSeconds": 60,
+      "rubric": [
+        "The old leader answered from its own copy and had no way to learn term 8 existed",
+        "Any majority overlaps the majority that elected the new leader, so someone refuses",
+        "The fix costs a round of heartbeats per read (or trusting clocks with a lease)",
+        "Without it a deposed leader serves old values"
+      ],
+      "weakIfFewerThan": 2,
+      "next": "s21",
+      "onWeak": "s19",
+      "tags": ["speak"]
+    },
+    "s17": {
+      "type": "record",
+      "title": "Incident 3, out loud",
+      "prompt": "In 45 seconds, to a colleague who wasn't there: the payments service stuck at 500 commits a second with an idle CPU. Say what happened, what forced the fix, what the fix costs, and what breaks without it. Use the numbers.",
+      "maxSeconds": 60,
+      "rubric": [
+        "The ceiling was the flush: 2 ms each, so 500 a second",
+        "Commits that arrive during a flush share the next one",
+        "The fix costs each commit a little waiting, about 4 ms instead of 2",
+        "The shortcut (OK before the flush) loses acknowledged commits on a crash"
+      ],
+      "weakIfFewerThan": 2,
+      "next": "s21",
+      "onWeak": "s20",
+      "tags": ["speak"]
+    },
+    "s18": {
+      "type": "reading",
+      "title": "A page for your take, incident 1",
+      "primer": "Your take on the vanished writes missed some of the pieces. Lamport gives the reason a majority is the right size in one line. Find that line, and ask what could go wrong if two such groups could be disjoint. Your take is kept and comes back after this is read.",
+      "source": {
+        "title": "Paxos Made Simple",
+        "author": "Lamport",
+        "year": 2001,
+        "where": "§2.2, p. 2",
+        "url": "https://lamport.azurewebsites.net/pubs/paxos-simple.pdf",
+        "minutes": 5
+      },
+      "actions": [
+        {
+          "label": "Read now",
+          "next": "s21",
+          "effect": "read"
+        },
+        {
+          "label": "Save it; the take waits",
+          "next": "s21",
+          "effect": "save"
+        },
+        {
+          "label": "Skip; the take waits",
+          "next": "s21"
+        }
+      ],
+      "tags": ["placement", "struggle"],
+      "passage": "My paraphrase. Lamport takes \"large enough\" to mean a majority, because any two majorities of a set have at least one member in common."
+    },
+    "s19": {
+      "type": "reading",
+      "title": "A page for your take, incident 2",
+      "primer": "Your take on the deposed leader missed some of the pieces. Google's production Paxos faced the same question. Find why a master cannot answer reads from its own copy, and which side's lease timeout is shorter. Your take is kept and comes back after this is read.",
+      "source": {
+        "title": "Paxos Made Live",
+        "author": "Chandra, Griesemer, Redstone",
+        "year": 2007,
+        "where": "§5.2, pp. 6–7",
+        "url": "https://static.googleusercontent.com/media/research.google.com/en//archive/paxos_made_live.pdf",
+        "minutes": 6
+      },
+      "actions": [
+        {
+          "label": "Read now",
+          "next": "s21",
+          "effect": "read"
+        },
+        {
+          "label": "Save it; the take waits",
+          "next": "s21",
+          "effect": "save"
+        },
+        {
+          "label": "Skip; the take waits",
+          "next": "s21"
+        }
+      ],
+      "tags": ["placement", "struggle"],
+      "passage": "My paraphrase. A master that serves reads from its own copy might have been replaced without knowing it. The paper bounds that with a master lease, a period during which the replicas promise not to elect another master, and the lease depends on clocks drifting only so far."
+    },
+    "s20": {
+      "type": "reading",
+      "title": "A page for your take, incident 3",
+      "primer": "Your take on the 500 commits a second missed some of the pieces. Aether starts after group commit is already in place. Find the cost group commit does not remove and how flush pipelining spreads it. Your take is kept and comes back after this is read.",
+      "source": {
+        "title": "Aether: A Scalable Approach to Logging",
+        "author": "Johnson et al.",
+        "year": 2010,
+        "where": "§4–§4.2, PDF pp. 4–5",
+        "url": "https://infoscience.epfl.ch/record/149436/files/vldb10aether.pdf?version=2",
+        "minutes": 8
+      },
+      "actions": [
+        {
+          "label": "Read now",
+          "next": "s21",
+          "effect": "read"
+        },
+        {
+          "label": "Save it; the take waits",
+          "next": "s21",
+          "effect": "save"
+        },
+        {
+          "label": "Skip; the take waits",
+          "next": "s21"
+        }
+      ],
+      "tags": ["placement", "struggle"]
+    },
+    "s21": {
+      "type": "end",
+      "title": "Where you are",
+      "body": "Kept from this session: every pick, including any \"Not sure\"; your voice take with its question and the lines you ticked; which readings you read, saved or skipped.\n\nA round parked behind a reading comes back in a later session, as a new incident with the same problem, once that reading is marked read.\n\nNothing here is a mark. It is a record of what you could say today and what you could not yet.",
+      "actions": [],
+      "tags": ["end"]
+    }
+  }
+}

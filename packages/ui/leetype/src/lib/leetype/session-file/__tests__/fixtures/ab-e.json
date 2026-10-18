@@ -1,0 +1,585 @@
+{
+  "variant": "E",
+  "title": "Say it first",
+  "oneLine": "Three 45-second interview answers spoken aloud and self-ticked, each followed by a numbers probe on the point most often missed and a placed reading where the answer was weak.",
+  "session": {
+    "kind": "probe",
+    "budgetMinutes": 10
+  },
+  "start": "s01",
+  "screens": {
+    "s01": {
+      "type": "info",
+      "title": "Three interview questions",
+      "body": "Today you answer three questions out loud, the way an interviewer would ask them.\n\nEach one: you talk for up to 45 seconds, you tick what you really said, then one question with numbers checks the part people most often miss.\n\nYour recordings are kept with the question and your ticks. If something is shaky, I place a short reading instead of telling you the answer. Nothing is withheld because you got one wrong, except that a round waiting for its reading comes back only after you have read.",
+      "actions": [
+        {
+          "label": "Start the first question",
+          "next": "s02"
+        }
+      ],
+      "tags": ["map", "primer"]
+    },
+    "s02": {
+      "type": "record",
+      "pinned": "Job: say what forced a design, what it costs, and what breaks without it.",
+      "title": "The lost OK",
+      "prompt": "Interviewer: \"Your database has a primary and one replica that copies writes a moment later. The primary said OK to a write, then its machine died, and the replica took over without that write. Why did that happen, what would you change, and what does the change cost?\"\n\nSpeak for up to 45 seconds. Start anywhere.",
+      "maxSeconds": 60,
+      "rubric": [
+        "The OK went out while only the primary held the write; the copy came later, so a crash in between loses a write that was already acknowledged.",
+        "The fix: say OK only after a majority of the servers have stored the write, not just the primary.",
+        "Why a majority: any two majorities share at least one server, so whoever takes over can be required to come from servers that include a holder.",
+        "The cost: every write waits one network round trip to a majority, and two servers are not enough to keep going after a failure."
+      ],
+      "weakIfFewerThan": 2,
+      "next": "s03",
+      "onWeak": "s04",
+      "tags": ["speak"]
+    },
+    "s03": {
+      "type": "choice",
+      "pinned": "Job: check the numbers behind \"a majority\".",
+      "title": "How many copies before OK?",
+      "body": "Five servers. A leader says OK only after w servers (itself included) have stored the write.\n\nThen the leader dies, and any 3 servers (a majority of 5) may elect the next one. The write is safe only if every group of 3 contains a server that stored it.\n\nSmallest w that guarantees that?",
+      "options": [
+        {
+          "label": "w = 2: the leader and one backup",
+          "next": "s05",
+          "correct": false,
+          "feedback": "Breaks it. With 2 holders, 3 servers lack the write, and those 3 are a majority that can elect a leader who never saw it. The OK was a promise nobody can keep."
+        },
+        {
+          "label": "w = 3: the leader and two others",
+          "next": "s08",
+          "correct": true,
+          "feedback": "Right. 5 - 3 = 2 servers lack the write, and a group of 3 cannot fit inside 2, so every majority holds at least one copy. 4 and 5 also work, but wait for more servers than needed."
+        },
+        {
+          "label": "w = 4",
+          "next": "s05",
+          "correct": false,
+          "feedback": "Safe, but it waits on one more server than needed: with two servers down, no write could ever be acknowledged."
+        },
+        {
+          "label": "w = 5: every server",
+          "next": "s05",
+          "correct": false,
+          "feedback": "Safe, but one slow or dead server stops every write. Waiting for everyone gives up availability for protection a majority already gives."
+        },
+        {
+          "label": "Not sure",
+          "next": "s05",
+          "abstain": true
+        }
+      ],
+      "onHesitate": "s05",
+      "tags": ["round:1"]
+    },
+    "s04": {
+      "type": "reading",
+      "title": "A reading, placed: an OK is not agreement",
+      "primer": "A majority made the failover decision, yet acknowledged writes vanished. Find what the majority agreed on, and what the primary's \"OK\" actually certified. Question 1 is parked until you have read this.",
+      "source": {
+        "title": "Call me maybe: Redis",
+        "author": "Kingsbury (Jepsen)",
+        "year": 2013,
+        "where": "\"What about high availability?\" and \"Results\"",
+        "url": "https://aphyr.com/posts/283-call-me-maybe-redis",
+        "minutes": 8
+      },
+      "passage": "(Paraphrase.) In the test, a partition leaves some clients talking to the old primary while the majority side elects a new one. The old primary keeps acknowledging writes; when the partition heals its data is discarded, and writes that were acknowledged are gone.",
+      "actions": [
+        {
+          "label": "Read now",
+          "next": "s06",
+          "effect": "read"
+        },
+        {
+          "label": "Save for a Read session",
+          "next": "s08",
+          "effect": "save"
+        },
+        {
+          "label": "Skip",
+          "next": "s08"
+        }
+      ],
+      "tags": ["placement", "struggle"]
+    },
+    "s05": {
+      "type": "reading",
+      "title": "A reading, placed: why a majority",
+      "primer": "Lamport picks a size for \"large enough\" and gives a one-line reason. Look for what would break if two such sets could be disjoint. Question 1 is parked until you have read this.",
+      "source": {
+        "title": "Paxos Made Simple",
+        "author": "Lamport",
+        "year": 2001,
+        "where": "§2.2, p. 2",
+        "url": "https://lamport.azurewebsites.net/pubs/paxos-simple.pdf",
+        "minutes": 5
+      },
+      "passage": "(Paraphrase, not a quotation.) A value counts as chosen when a large enough set of acceptors has accepted it. The paper takes \"large enough\" to mean a majority, because any two majorities have at least one acceptor in common.",
+      "actions": [
+        {
+          "label": "Read now",
+          "next": "s06",
+          "effect": "read"
+        },
+        {
+          "label": "Save for a Read session",
+          "next": "s08",
+          "effect": "save"
+        },
+        {
+          "label": "Skip",
+          "next": "s08"
+        }
+      ],
+      "tags": ["placement", "struggle"]
+    },
+    "s06": {
+      "type": "choice",
+      "pinned": "Back to the round you parked: same job, new numbers.",
+      "title": "Seven servers",
+      "body": "Seven servers. A leader says OK only after w servers (itself included) have stored the write.\n\nAny 4 servers (a majority of 7) may elect the next leader. The write survives for sure only if every possible group of 4 contains a server that stored it.\n\nWhat is the smallest w?",
+      "options": [
+        {
+          "label": "w = 5",
+          "next": "s07",
+          "correct": false,
+          "feedback": "Safe, but it waits for one more server than the smallest number that works."
+        },
+        {
+          "label": "w = 3",
+          "next": "s07",
+          "correct": false,
+          "feedback": "Breaks it. 7 - 3 = 4 servers lack the write, and those 4 are a majority that can elect a leader without it."
+        },
+        {
+          "label": "w = 4",
+          "next": "s08",
+          "correct": true,
+          "feedback": "Right. 7 - 4 = 3 servers lack the write, and a group of 4 cannot fit inside 3. The smallest safe w is itself a majority."
+        },
+        {
+          "label": "Not sure",
+          "next": "s07",
+          "abstain": true
+        }
+      ],
+      "onHesitate": "s07",
+      "tags": ["round:1", "parked-return"]
+    },
+    "s07": {
+      "type": "reading",
+      "title": "A reading, placed: what each step relies on",
+      "primer": "Find the single fact each step of the proof uses, and what would make the step fail. A different angle on the same overlap. Question 1 stays parked for the next session unless you read this.",
+      "source": {
+        "title": "Paxos vs Raft: Have we reached consensus on distributed consensus?",
+        "author": "Howard, Mortier",
+        "year": 2020,
+        "where": "the proof sketch, p. 4",
+        "url": "https://arxiv.org/pdf/2004.05074",
+        "minutes": 5
+      },
+      "actions": [
+        {
+          "label": "Read now",
+          "next": "s08",
+          "effect": "read"
+        },
+        {
+          "label": "Save for a Read session",
+          "next": null,
+          "effect": "save"
+        },
+        {
+          "label": "Skip",
+          "next": null
+        }
+      ],
+      "tags": ["placement", "struggle"]
+    },
+    "s08": {
+      "type": "record",
+      "pinned": "Job: say what a number on the hardware ladder forces in a design.",
+      "title": "The 200 ceiling",
+      "prompt": "Interviewer: \"Your service writes each transaction to a log and calls fsync before it says OK. On this drive an fsync takes about 5 ms, and the service tops out near 200 transactions a second, however many cores you add. Why is there a ceiling, what do you change, and what does the change cost?\"\n\nSpeak for up to 45 seconds.",
+      "maxSeconds": 60,
+      "rubric": [
+        "The ceiling is one flush per transaction: 1 s divided by 5 ms is 200 flushes a second, so 200 transactions.",
+        "The fix: transactions that arrive while a flush runs wait and share the next flush (group commit).",
+        "OK is still sent only after the flush that holds your transaction, so nothing acknowledged can be lost.",
+        "The cost: a transaction may wait for the flush in progress before its own starts, so latency rises a little while throughput multiplies."
+      ],
+      "weakIfFewerThan": 2,
+      "next": "s09",
+      "onWeak": "s10",
+      "tags": ["speak"]
+    },
+    "s09": {
+      "type": "choice",
+      "pinned": "Job: pick the change that raises the ceiling without breaking the promise behind OK.",
+      "title": "1,000 a second on a 5 ms drive",
+      "body": "One log drive; one flush takes 5 ms (my assumption; Ongaro 2014 gives 100 µs to 10 ms).\n\nOne flush per transaction: 1 s / 5 ms = 200 a second.\n\nTransactions now arrive at 1,000 a second. Which change handles that and keeps OK honest?",
+      "options": [
+        {
+          "label": "Say OK once the log write is queued; flush in the background",
+          "next": "s11",
+          "correct": false,
+          "feedback": "Throughput solved, promise broken. A crash loses transactions you already acknowledged."
+        },
+        {
+          "label": "Hold arrivals while a flush runs, flush them together, then say OK to all of them",
+          "next": "s14",
+          "correct": true,
+          "feedback": "Right. In 5 ms, 1,000 a second x 0.005 s = 5 transactions arrive. One flush carries 5; 200 flushes a second x 5 = 1,000 a second. OK still follows the flush, and each transaction waits about one flush longer."
+        },
+        {
+          "label": "Run 8 threads that each fsync their own transactions",
+          "next": "s11",
+          "correct": false,
+          "feedback": "Flushes to one drive mostly queue one after another, so 8 threads line up behind the same 5 ms and the ceiling stays near 200."
+        },
+        {
+          "label": "Make each transaction smaller so its flush is shorter",
+          "next": "s11",
+          "correct": false,
+          "feedback": "The 5 ms is the price of making the drive confirm the data is durable, not of the bytes; a smaller write pays most of it anyway."
+        },
+        {
+          "label": "Not sure",
+          "next": "s11",
+          "abstain": true
+        }
+      ],
+      "onHesitate": "s11",
+      "tags": ["round:2"]
+    },
+    "s10": {
+      "type": "reading",
+      "title": "A reading, placed: the ceiling of one log device",
+      "primer": "Start from the commits-per-second ceiling for one log device. Which single change raises it tenfold? Notice which event is allowed to release the user's acknowledgement. Question 2 is parked until you have read this.",
+      "source": {
+        "title": "Implementation Techniques for Main Memory Database Systems",
+        "author": "DeWitt et al.",
+        "year": 1984,
+        "where": "§5.2, pp. 16-17",
+        "url": "https://www2.eecs.berkeley.edu/Pubs/TechRpts/1984/ERL-m-84-5.pdf",
+        "minutes": 6
+      },
+      "actions": [
+        {
+          "label": "Read now",
+          "next": "s12",
+          "effect": "read"
+        },
+        {
+          "label": "Save for a Read session",
+          "next": "s14",
+          "effect": "save"
+        },
+        {
+          "label": "Skip",
+          "next": "s14"
+        }
+      ],
+      "tags": ["placement", "struggle"]
+    },
+    "s11": {
+      "type": "reading",
+      "title": "A reading, placed: what asynchronous commit gives up",
+      "primer": "What does asynchronous commit give up, and does the paper's alternative give up the same thing? Question 2 is parked until you have read this.",
+      "source": {
+        "title": "Aether: A Scalable Approach to Logging",
+        "author": "Johnson et al.",
+        "year": 2010,
+        "where": "§1.1 (A) and §4, PDF pp. 2 and 4",
+        "url": "https://infoscience.epfl.ch/record/149436/files/vldb10aether.pdf?version=2",
+        "minutes": 4
+      },
+      "passage": "(Paraphrase.) Asynchronous commit returns to the client before the log record is on disk. The paper notes this can lose transactions the client was told had committed, and sets it against designs that keep the ordering.",
+      "actions": [
+        {
+          "label": "Read now",
+          "next": "s12",
+          "effect": "read"
+        },
+        {
+          "label": "Save for a Read session",
+          "next": "s14",
+          "effect": "save"
+        },
+        {
+          "label": "Skip",
+          "next": "s14"
+        }
+      ],
+      "tags": ["placement", "struggle"]
+    },
+    "s12": {
+      "type": "choice",
+      "pinned": "Back to the round you parked: same job, new numbers.",
+      "title": "A slower drive",
+      "body": "Another drive: one flush takes 10 ms, so flush-per-transaction caps at 1 s / 10 ms = 100 a second.\n\n500 a second arrive. You batch as before: arrivals during a flush share the next one, and OK follows the flush.\n\nAbout how many transactions does each flush carry?",
+      "options": [
+        {
+          "label": "About 50",
+          "next": "s13",
+          "correct": false,
+          "feedback": "That is the batch for a flush ten times slower than this one. Check the units: 10 ms is 0.010 s."
+        },
+        {
+          "label": "About 500",
+          "next": "s13",
+          "correct": false,
+          "feedback": "That is a whole second of arrivals, one flush a second; each transaction would wait about a second for its OK."
+        },
+        {
+          "label": "About 5",
+          "next": "s14",
+          "correct": true,
+          "feedback": "Right. 500 a second x 0.010 s = 5 arrive during one flush. 100 flushes a second x 5 = 500 a second, which just keeps up."
+        },
+        {
+          "label": "1: batching changes nothing here",
+          "next": "s13",
+          "correct": false,
+          "feedback": "That is no batching: the ceiling stays at 100 a second while 500 arrive, and the queue grows without bound."
+        },
+        {
+          "label": "Not sure",
+          "next": "s13",
+          "abstain": true
+        }
+      ],
+      "onHesitate": "s13",
+      "tags": ["round:2", "parked-return"]
+    },
+    "s13": {
+      "type": "reading",
+      "title": "A reading, placed: the range for a disk write",
+      "primer": "Read the range for a disk write and for a network round trip before guessing which dominates your commit. Question 2 stays parked for the next session unless you read this.",
+      "source": {
+        "title": "Consensus: Bridging Theory and Practice",
+        "author": "Ongaro (CC BY 4.0)",
+        "year": 2014,
+        "where": "§10.2, p. 141",
+        "url": "https://web.stanford.edu/~ouster/cgi-bin/papers/OngaroPhD.pdf",
+        "minutes": 3
+      },
+      "passage": "(Paraphrase.) The dissertation gives ranges, not single numbers: a durable disk write from about 100 µs on a fast SSD to about 10 ms on a spinning disk, and a network round trip from about 5 µs in a highly optimized datacenter network to about 400 ms across the globe.",
+      "actions": [
+        {
+          "label": "Read now",
+          "next": "s14",
+          "effect": "read"
+        },
+        {
+          "label": "Save for a Read session",
+          "next": "s14",
+          "effect": "save"
+        },
+        {
+          "label": "Skip",
+          "next": "s14"
+        }
+      ],
+      "tags": ["placement", "struggle"]
+    },
+    "s14": {
+      "type": "record",
+      "pinned": "Job: say how a system stops a node that does not know it was replaced.",
+      "title": "The leader who came back",
+      "prompt": "Interviewer: \"In a five-server replicated log, the leader is cut off from the network for 30 seconds. The others elect a new leader and carry on. Then the old leader's network returns, and it still believes it is the leader. What stops it from damaging the log, and what does that rely on?\"\n\nSpeak for up to 45 seconds.",
+      "maxSeconds": 60,
+      "rubric": [
+        "Every leader's reign has a number (its term), and the new leader's number is higher than the old one's.",
+        "Every message carries the sender's number; a server that sees a lower one refuses the message and replies with its own number.",
+        "A leader that sees a higher number steps down at once and becomes a follower.",
+        "The cost: elections run on timeouts, so a slow network can cause needless elections (liveness), but the numbers keep the log safe regardless (safety)."
+      ],
+      "weakIfFewerThan": 2,
+      "next": "s15",
+      "onWeak": "s16",
+      "tags": ["speak"]
+    },
+    "s15": {
+      "type": "choice",
+      "pinned": "Job: trace one stale message through the number rule.",
+      "title": "A message from term 4",
+      "body": "Five servers. S1 led term 4, then was cut off. S2 won term 5 (votes: S2, S3, S4) and now leads.\n\nS1 reconnects, still thinks it leads, and sends S3: \"append this entry (term 4)\". S3 is in term 5.\n\nWhat does S3 do?",
+      "options": [
+        {
+          "label": "Accepts it: S1 was a real leader when it sent it",
+          "next": "s17",
+          "correct": false,
+          "feedback": "Two leaders now write to S3's log, and S1's entries can conflict with S2's. Nothing about S1's message shows it was replaced."
+        },
+        {
+          "label": "Accepts it if S1's log is longer than its own",
+          "next": "s17",
+          "correct": false,
+          "feedback": "Length says nothing about who is current: S1's extra entries may be ones no majority ever stored."
+        },
+        {
+          "label": "Refuses it and replies with its own term, 5",
+          "next": "end",
+          "correct": true,
+          "feedback": "Right: 4 is less than 5, so S3 refuses. The reply carries 5, and since 5 is more than 4, S1 steps down to follower. (Raft paper, §5.1.)"
+        },
+        {
+          "label": "Refuses it and says nothing",
+          "next": "s17",
+          "correct": false,
+          "feedback": "S3 is safe, but S1 never learns. It keeps believing it leads, and clients who still reach it wait for OKs that can never come. The reply is how the old leader finds out."
+        },
+        {
+          "label": "Not sure",
+          "next": "s17",
+          "abstain": true
+        }
+      ],
+      "onHesitate": "s17",
+      "tags": ["round:3"]
+    },
+    "s16": {
+      "type": "reading",
+      "title": "A reading, placed: every place a term is compared",
+      "primer": "List every place a term is compared, and what a server does on a bigger or a smaller one. Question 3 is parked until you have read this.",
+      "source": {
+        "title": "In Search of an Understandable Consensus Algorithm (extended)",
+        "author": "Ongaro, Ousterhout",
+        "year": 2014,
+        "where": "§5.1, p. 5",
+        "url": "https://raft.github.io/raft.pdf",
+        "minutes": 5
+      },
+      "passage": "(Paraphrase.) Terms act as a logical clock. Servers exchange current terms whenever they communicate, and a server whose term is smaller than another's moves to the larger one. A leader or candidate that finds its term out of date reverts to follower, and a server that receives a request with a stale term rejects it.",
+      "actions": [
+        {
+          "label": "Read now",
+          "next": "s18",
+          "effect": "read"
+        },
+        {
+          "label": "Save for a Read session",
+          "next": "end",
+          "effect": "save"
+        },
+        {
+          "label": "Skip",
+          "next": "end"
+        }
+      ],
+      "tags": ["placement", "struggle"]
+    },
+    "s17": {
+      "type": "reading",
+      "title": "A reading, placed: a number that outranks an old master",
+      "primer": "An old master returns with a higher number than the new one. What does the epoch number let a request detect? Question 3 is parked until you have read this.",
+      "source": {
+        "title": "Paxos Made Live",
+        "author": "Chandra, Griesemer, Redstone",
+        "year": 2007,
+        "where": "§5.2-§5.3, p. 7",
+        "url": "https://static.googleusercontent.com/media/research.google.com/en//archive/paxos_made_live.pdf",
+        "minutes": 5
+      },
+      "actions": [
+        {
+          "label": "Read now",
+          "next": "s18",
+          "effect": "read"
+        },
+        {
+          "label": "Save for a Read session",
+          "next": "end",
+          "effect": "save"
+        },
+        {
+          "label": "Skip",
+          "next": "end"
+        }
+      ],
+      "tags": ["placement", "struggle"]
+    },
+    "s18": {
+      "type": "choice",
+      "pinned": "Back to the round you parked: same job, new numbers.",
+      "title": "A message from the future",
+      "body": "S4 is a follower in term 3, cut off for a while. A message arrives from S2, stamped term 6 (S2 won term 6 while S4 was away).\n\nWhat does S4 do?",
+      "options": [
+        {
+          "label": "Refuses it: 6 is not the term S4 knows",
+          "next": "s19",
+          "correct": false,
+          "feedback": "S4 would stay in a stale term and keep refusing the real leader, so it is stuck out of the cluster."
+        },
+        {
+          "label": "Replies with term 3 so S2 learns it is behind",
+          "next": "s19",
+          "correct": false,
+          "feedback": "S2 is not behind; S4 is. Telling S2 about term 3 teaches the wrong server."
+        },
+        {
+          "label": "Waits for its election timeout to expire, then compares",
+          "next": "s19",
+          "correct": false,
+          "feedback": "A timeout is for noticing a missing leader, not for reading a number. Waiting leaves S4 acting on a term it already knows is out of date."
+        },
+        {
+          "label": "Moves to term 6, then handles the message as a follower of S2",
+          "next": "end",
+          "correct": true,
+          "feedback": "Right. The larger number wins on contact: S4 adopts 6 and follows. That is why a returning server needs no special rejoin step."
+        },
+        {
+          "label": "Not sure",
+          "next": "s19",
+          "abstain": true
+        }
+      ],
+      "onHesitate": "s19",
+      "tags": ["round:3", "parked-return"]
+    },
+    "s19": {
+      "type": "reading",
+      "title": "A reading, placed: names for the same idea",
+      "primer": "Collect every name for \"term\" and \"leader\", then how each algorithm keeps one leader per term. Question 3 stays parked for the next session unless you read this.",
+      "source": {
+        "title": "Paxos vs Raft: Have we reached consensus on distributed consensus?",
+        "author": "Howard, Mortier",
+        "year": 2020,
+        "where": "§3, pp. 2-3 and p. 5",
+        "url": "https://arxiv.org/pdf/2004.05074",
+        "minutes": 6
+      },
+      "actions": [
+        {
+          "label": "Read now",
+          "next": "end",
+          "effect": "read"
+        },
+        {
+          "label": "Save for a Read session",
+          "next": "end",
+          "effect": "save"
+        },
+        {
+          "label": "Skip",
+          "next": "end"
+        }
+      ],
+      "tags": ["placement", "struggle"]
+    },
+    "end": {
+      "type": "end",
+      "title": "Where you are",
+      "body": "You spoke three answers. They are saved with their questions and your ticks, ready to export and to be reviewed this week.\n\nWhatever you did not settle stays parked: it comes back with new numbers once its reading is marked read. Readings you saved wait in your Read session queue.\n\nNext time I can start from the answer you ticked least often, or from a source you saved.\n\nYou can stop here.",
+      "actions": [],
+      "tags": ["end"]
+    }
+  }
+}
