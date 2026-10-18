@@ -46,8 +46,33 @@ export function digestFindings(digest: Digest): ReadonlyArray<Finding> {
     }
   }
 
+  const listed = digest.picks.length + digest.setAside.length
+  if (digest.seen < listed) {
+    found.push({
+      path: "seen",
+      message: `${digest.seen} is fewer than the ${listed} postings picked or set aside`,
+    })
+  }
+
   digest.picks.forEach((pick, i) => {
     const at = `picks.${i}`
+    const { resume } = pick
+    if (resume.kind === "build" && resume.ref !== digest.evidence.someUi) {
+      found.push({
+        path: `${at}.resume.ref`,
+        message: `builds at ${resume.ref}, but the fits were checked at ${digest.evidence.someUi}`,
+      })
+    }
+    if (
+      resume.kind === "patch" &&
+      pick.family !== null &&
+      resume.variant !== pick.family
+    ) {
+      found.push({
+        path: `${at}.resume.variant`,
+        message: `a ${pick.family} pick's patch is the ${pick.family} composition`,
+      })
+    }
     if (ids.has(pick.id)) {
       found.push({ path: `${at}.id`, message: `${pick.id} is used twice` })
     }

@@ -189,6 +189,32 @@ describe("digestFindings", () => {
     )
   })
 
+  it("counts at least the postings it lists as seen", () => {
+    const digest = sample()
+    digest.seen = 3
+    expect(messages(digest)).toEqual([
+      "seen: 3 is fewer than the 8 postings picked or set aside",
+    ])
+  })
+
+  it("builds at the commit the fits were checked at", () => {
+    const digest = sample()
+    digest.evidence.someUi = "e61af8f"
+    expect(messages(digest)).toEqual([
+      "picks.0.resume.ref: builds at cb503cb, but the fits were checked at e61af8f",
+      "picks.1.resume.ref: builds at cb503cb, but the fits were checked at e61af8f",
+    ])
+  })
+
+  it("patches an adjacent pick with its own family's composition", () => {
+    const digest = sample()
+    const resume = digest.picks[2]!.resume
+    if (resume.kind === "patch") resume.variant = "qa"
+    expect(messages(digest)).toEqual([
+      "picks.2.resume.variant: a data pick's patch is the data composition",
+    ])
+  })
+
   it("links a scout to a pick only when the run agreed with it", () => {
     const digest = sample()
     digest.scouts.push({
