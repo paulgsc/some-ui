@@ -293,13 +293,18 @@ Check each line against these, and fix it rather than explaining:
 10. `context.genre` is one of the genres above, and every line belongs in
     `context.premise`.
 
-The app checks these too, except whether a misform is wrong in its line,
-whether a cue spells a particle in another word, and whether every line
-belongs in the premise, which only you can, and except that a deck with no
-`practice` or `context` is not refused: it reads as one written before decks
-had them, and serves both practices. A line, word or occurrence that fails is
-dropped, and a pronunciation, role, tense or lens part that does not line up
-is ignored, so an error costs material, not the deck.
+The app checks the shape of what you write: that each line's entries account
+for its Hangul, that every `wordId`, `stemEnd` and `pronunciation` lines up
+with its word and surface, that roles, tenses and mistakes are names it knows,
+that a misform replaces one written word, that a cue holds neither a misform
+nor the word it replaces, and that a lens deck's lines carry a lens. It cannot
+tell whether a level, role, tense or misform is right for its line, whether a
+cue spells a particle in another word, or whether a line belongs in the
+premise: those are yours. It keeps a word no line uses. A deck whose
+`practice` is missing or unknown serves both practices, and a `context` it
+cannot read is dropped from the deck. A line, word or occurrence that fails is
+dropped, and a pronunciation, role, tense or lens part the app cannot read is
+ignored, so an error costs material, not the deck.
 
 ## Output
 

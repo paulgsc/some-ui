@@ -41,7 +41,7 @@
  * their conventions: kebab-case ids and short glosses.
  */
 
-import { koreanGenre } from "@topik/lib/topik/core/feed-card"
+import { GENRES, koreanGenre } from "@topik/lib/topik/core/feed-card"
 import type { MistakeId } from "@topik/lib/topik/read-aloud/mistakes"
 import { isMistakeId } from "@topik/lib/topik/read-aloud/mistakes"
 import { z } from "zod"
@@ -328,7 +328,7 @@ const ContextSchema = z.object({
     .string()
     .refine(
       (genre) => setGenreKo(genre) !== undefined,
-      "a genre is a drama's, as the drama picker lists them, or everyday"
+      `a genre is everyday or one of ${GENRES.map(({ genre }) => genre).join(", ")}`
     ),
   premise: z.string().trim().min(1).max(200),
 })
