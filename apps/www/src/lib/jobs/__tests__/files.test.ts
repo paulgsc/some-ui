@@ -97,6 +97,33 @@ describe("decisionsFile", () => {
     expect(file.voice).toEqual([])
   })
 
+  it("reports a new attempt without the debrief of the one before", () => {
+    let again = record(state, {
+      type: "passed",
+      ...ref(),
+      reasons: ["pay"],
+      note: "",
+      voice: [],
+    })
+    again = record(again, { type: "taken", ...ref() })
+    const file = fileOf(
+      decisionsFile(again, "2026-10-18", "2026-10-18T22:00:00Z")
+    )
+    expect(JSON.parse(file.json).picks[0]).toEqual(
+      expect.objectContaining({ decision: "taken", debrief: null })
+    )
+  })
+
+  it("names the newest digest its picks answer, whichever was opened last", () => {
+    const older = digest("2026-10-17")
+    const reopened = step(state, { type: "opened", digest: older })
+    expect(reopened.current).toBe("2026-10-17")
+    const file = fileOf(
+      decisionsFile(reopened, "2026-10-18", "2026-10-18T22:00:00Z")
+    )
+    expect(JSON.parse(file.json).digestDay).toBe("2026-10-18")
+  })
+
   it("offers a share again until it arrived, then says only what is new", () => {
     const file = fileOf(
       decisionsFile(state, "2026-10-18", "2026-10-18T22:00:00Z")

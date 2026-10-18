@@ -23,7 +23,11 @@ export type OpenedRecord<T> =
   | { kind: "moved" }
   | { kind: "unreadable" }
 
-/** Moves `raw` to the first free `<prefix><n>` key; false if it could not. */
+/**
+ * Copies `raw` to the first free `<prefix><n>` key, unless a slot already
+ * holds it (a launch that could not write over it finds it again); false if
+ * it could not.
+ */
 function quarantine(
   storage: KeyedStorage,
   raw: string,
@@ -31,7 +35,12 @@ function quarantine(
 ): boolean {
   try {
     let n = 1
-    while (storage.getItem(`${prefix}${n}`) !== null) n += 1
+    let held = storage.getItem(`${prefix}${n}`)
+    while (held !== null) {
+      if (held === raw) return true
+      n += 1
+      held = storage.getItem(`${prefix}${n}`)
+    }
     storage.setItem(`${prefix}${n}`, raw)
     return true
   } catch {

@@ -33,7 +33,7 @@ import type {
   ScoutDraft,
   ShareKind,
 } from "./model"
-import { EMPTY, hasArrived, step } from "./model"
+import { EMPTY, hasArrived, releasedVoice, step } from "./model"
 import { openStored, writeStored } from "./stored"
 
 /** Reading a picked file: nothing in hand, reading, or not a digest (and why). */
@@ -327,23 +327,16 @@ export function createJobsRuntime(ports: JobsPorts): JobsRuntime {
       ) {
         return
       }
-      ports.audio.remove([...share.voice]).catch(() => undefined)
+      ports.audio.remove([...releasedVoice(state)]).catch(() => undefined)
     },
     sweep(): void {
       ports.audio
         .ids()
         .then((stored) => {
           const listed = new Set(state.voice.map((n) => n.id))
-          // A note whose share arrived was let go; retry one whose removal
-          // failed or was cut short.
-          const arrived = new Set(
-            state.log.flatMap((e) => (e.type === "arrived" ? [e.shareId] : []))
-          )
-          const released = new Set(
-            state.log.flatMap((e) =>
-              e.type === "shared" && arrived.has(e.id) ? e.voice : []
-            )
-          )
+          // A released note was let go; retry one whose removal failed or
+          // was cut short.
+          const released = releasedVoice(state)
           const orphans = stored.filter(
             (id) => (!listed.has(id) || released.has(id)) && !ports.isSaving(id)
           )

@@ -7,6 +7,7 @@ import {
   draftVoice,
   EMPTY,
   progressOf,
+  releasedVoice,
   step,
 } from "@/lib/jobs/model"
 
@@ -131,5 +132,46 @@ describe("progressOf", () => {
     })
     expect(applicationsOf(state).map((a) => a.pick.id)).toEqual([SW.id])
     expect(progressOf(state, DAY, AD.id)).toEqual({ kind: "open", step: 0 })
+
+    // Passed, then taken again: a new attempt, which the old debrief isn't.
+    state = record(state, {
+      type: "passed",
+      ...ref(),
+      reasons: ["pay"],
+      note: "",
+      voice: [],
+    })
+    state = record(state, { type: "taken", ...ref() })
+    expect(progressOf(state, DAY, SW.id)).toEqual({ kind: "open", step: 2 })
+  })
+})
+
+describe("releasedVoice", () => {
+  const share = (state: JobsState, voice: ReadonlyArray<string>): JobsState =>
+    record(state, {
+      type: "shared",
+      kind: "decisions",
+      day: DAY,
+      file: "decisions.json",
+      through: state.log.length,
+      voice,
+    })
+
+  it("lets go of a note a later decision replaced, once a later share arrives", () => {
+    let state = record(opened, {
+      type: "passed",
+      ...ref(),
+      reasons: [],
+      note: "",
+      voice: ["v1"],
+    })
+    // Shared with v1, never confirmed; then taken, so the next share omits it.
+    state = share(state, ["v1"])
+    state = record(state, { type: "taken", ...ref() })
+    expect(releasedVoice(state)).toEqual(new Set())
+    state = share(state, [])
+    expect(releasedVoice(state)).toEqual(new Set())
+    state = record(state, { type: "arrived", shareId: state.log.at(-1)!.id })
+    expect(releasedVoice(state)).toEqual(new Set(["v1"]))
   })
 })

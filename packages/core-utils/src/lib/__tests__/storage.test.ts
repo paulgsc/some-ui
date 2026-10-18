@@ -40,6 +40,14 @@ describe("openRecord", () => {
     expect(s.map.get(`${PREFIX}2`)).toBe('{"v":99}')
   })
 
+  it("keeps one copy of a value it finds again on a later launch", () => {
+    const s = storage([[KEY, "{torn"]])
+    openRecord(s, KEY, parse, PREFIX)
+    expect(openRecord(s, KEY, parse, PREFIX)).toEqual({ kind: "moved" })
+    expect(s.map.get(`${PREFIX}1`)).toBe("{torn")
+    expect(s.map.has(`${PREFIX}2`)).toBe(false)
+  })
+
   it("says the storage is unreadable when it throws", () => {
     const s: KeyedStorage = {
       getItem: () => {

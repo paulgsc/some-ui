@@ -256,17 +256,34 @@ export function progressOf(
   const decision = decisionOf(state, day, pickId)
   if (decision === "passed") return { kind: "passed" }
   if (decision === null) return { kind: "open", step: 0 }
-  const taken = events.map((e) => e.type).lastIndexOf("taken")
-  const after = events.slice(taken)
-  const debrief = after.filter((e) => e.type === "debrief").at(-1)
-  if (debrief?.type === "debrief") {
-    return { kind: "done", result: debrief.result }
-  }
+  const after = sinceTaken(events)
+  const debrief = debriefOf(state, day, pickId)
+  if (debrief) return { kind: "done", result: debrief.result }
   if (after.some((e) => e.type === "apply-opened"))
     return { kind: "open", step: 4 }
   if (after.some((e) => e.type === "resume-ready"))
     return { kind: "open", step: 3 }
   return { kind: "open", step: 2 }
+}
+
+/** A pick's events from its latest "taken" on: the attempt under way. */
+function sinceTaken(
+  events: ReadonlyArray<JobEvent & PickRef>
+): ReadonlyArray<JobEvent & PickRef> {
+  const taken = events.map((e) => e.type).lastIndexOf("taken")
+  return taken < 0 ? [] : events.slice(taken)
+}
+
+/** The debrief of a pick's latest attempt, if it has one. */
+export function debriefOf(
+  state: JobsState,
+  day: string,
+  pickId: string
+): (JobEvent & { type: "debrief" }) | null {
+  const debrief = sinceTaken(pickEvents(state.log, day, pickId))
+    .filter((e) => e.type === "debrief")
+    .at(-1)
+  return debrief?.type === "debrief" ? debrief : null
 }
 
 /** When the posting was last opened for this pick, to time the debrief. */
@@ -367,6 +384,28 @@ export function sharesOn(
   return state.log.filter(
     (e) => e.type === "shared" && e.kind === kind && e.day === day
   ).length
+}
+
+/**
+ * Voice ids whose audio can leave the phone: each one an event names before
+ * the last share of its kind that arrived. Such a note either went out in a
+ * share that arrived, or belongs to a pass or debrief a later decision
+ * replaced, which no share will send.
+ */
+export function releasedVoice(state: JobsState): ReadonlySet<string> {
+  const through = {
+    decisions: lastDelivered(state, "decisions")?.through ?? 0,
+    scouts: lastDelivered(state, "scouts")?.through ?? 0,
+  }
+  const ids = new Set<string>()
+  state.log.forEach((e, i) => {
+    const covered =
+      e.type === "scout"
+        ? i < through.scouts
+        : (e.type === "passed" || e.type === "debrief") && i < through.decisions
+    if (covered && "voice" in e) for (const id of e.voice) ids.add(id)
+  })
+  return ids
 }
 
 /** Whether the files of share `shareId` were said to have arrived. */

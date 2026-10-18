@@ -14,7 +14,7 @@ import {
 } from "@some-ui/job-desk"
 
 import type { JobEvent, JobsState, ShareKind, VoiceNote } from "./model"
-import { decisionOf, lastDelivered, sharesOn } from "./model"
+import { debriefOf, decisionOf, lastDelivered, sharesOn } from "./model"
 
 export type OutgoingFile = {
   kind: ShareKind
@@ -106,7 +106,7 @@ export function decisionsFile(
         (e) => "pickId" in e && e.day === digest.day && e.pickId === pick.id
       )
       const passed = events.filter((e) => e.type === "passed").at(-1)
-      const debrief = events.filter((e) => e.type === "debrief").at(-1)
+      const debrief = debriefOf(state, digest.day, pick.id)
       const names = pickVoice(state, digest.day, pick.id)
       const nameOf = (id: string): string =>
         names.find((n) => n.id === id)?.name ?? id
@@ -123,9 +123,7 @@ export function decisionsFile(
         ...(decision === "passed" && passed?.type === "passed"
           ? passed.voice
           : []),
-        ...(decision === "taken" && debrief?.type === "debrief"
-          ? debrief.voice
-          : []),
+        ...(decision === "taken" && debrief ? debrief.voice : []),
       ]
       voice.push(
         ...names.filter(
@@ -148,7 +146,7 @@ export function decisionsFile(
             ? passed.voice.map(nameOf)
             : [],
         debrief:
-          decision === "taken" && debrief?.type === "debrief"
+          decision === "taken" && debrief
             ? {
                 minutes: debrief.minutes,
                 friction: debrief.friction,
@@ -174,7 +172,7 @@ export function decisionsFile(
   const parsed = DecisionsSchema.safeParse({
     schema: "some-ui.job-decisions/1",
     day,
-    digestDay: state.current ?? day,
+    digestDay: newestDay(picks) ?? state.digests.at(-1)?.day ?? day,
     sharedAt: at,
     picks,
     disagreements,
@@ -216,6 +214,14 @@ export function scoutsFile(state: JobsState, at: Date): Outgoing {
     voice,
     through: state.log.length,
   }
+}
+
+/** The newest digest day `picks` answer, if any. */
+function newestDay(picks: Decisions["picks"]): string | null {
+  return picks.reduce<string | null>(
+    (newest, p) => (newest === null || p.day > newest ? p.day : newest),
+    null
+  )
 }
 
 function unshareable(
