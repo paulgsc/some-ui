@@ -427,8 +427,11 @@ shape the 2026-10-17 captures and signed-out live pages hold, and
 keeps. Gaps: a trending rank appears in no capture, so it has no rule; the
 "Video details" list needs `:has()`, so Firefox 112–120 still shows it; a
 linked video's views and age in the description's cards are unseen in any
-capture; the comments themselves, with their ages and like counts, are
-#1805's.
+capture. The comments go whole wherever YouTube draws them (#1805): every
+comments section, the teaser, the metadata carousel (its title is the shown
+item's, a comment count among them), and the comments panel;
+`selectors.test.ts` pins their rules' shape, and `watch.spec.ts`, run locally,
+proves each hidden.
 
 ---
 
@@ -622,7 +625,6 @@ section is a behavioural change; it is a statement of distance.
 | A hover on the duration badge can still start a hidden preview   | the badge takes the pointer to open the card; the player is `display: none` | QD12     |
 | A trending rank is shown                                         | no capture holds one, so no crowd rule names it                             | QD14     |
 | The "Video details" list shows on Firefox 112–120                | its crowd rule needs `:has()`                                               | QD14     |
-| Each comment's age and like count shows                          | the comments section is #1805's                                             | QD14     |
 
 ### Extraction hazards a maturity estimator will meet
 

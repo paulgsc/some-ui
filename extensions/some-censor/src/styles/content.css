@@ -605,6 +605,35 @@ ytd-item-section-renderer:has(> #contents > ytd-shelf-renderer:only-child):has(
 }
 
 /* ----------------------------------------------------------
+   NO COMMENTS (QD14, #1805)
+
+   Comments are written in the present, even under a 2015 video, so
+   they go whole, wherever YouTube draws them: every comments section
+   (its header, count and threads; a watch page's, a post's, the one
+   inside a Short's panel), the narrow layout's teaser, and the comments
+   panel YouTube opens beside a video. The metadata carousel goes whole:
+   its title is the shown item's, a comment count among them. Its other
+   items open live chat and Ask, which have other ways in, and a quiz
+   teaser, which goes with it.
+   ---------------------------------------------------------- */
+:root:not([data-boyo-off]) ytd-comments {
+  display: none !important;
+}
+
+:root:not([data-boyo-off]) ytd-comments-entry-point-header-renderer {
+  display: none !important;
+}
+
+:root:not([data-boyo-off]) yt-video-metadata-carousel-view-model {
+  display: none !important;
+}
+
+:root:not([data-boyo-off])
+  ytd-engagement-panel-section-list-renderer[target-id="engagement-panel-comments-section"] {
+  display: none !important;
+}
+
+/* ----------------------------------------------------------
    THE CROWD (QD14)
 
    A card keeps its title, its channel name and its duration.
@@ -733,10 +762,6 @@ ytd-item-section-renderer:has(> #contents > ytd-shelf-renderer:only-child):has(
 :root:not([data-boyo-off])
   ytd-engagement-panel-title-header-renderer
   #contextual-info {
-  display: none !important;
-}
-
-:root:not([data-boyo-off]) ytd-comments-header-renderer #count {
   display: none !important;
 }
 

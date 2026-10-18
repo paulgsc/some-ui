@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>BOYO Fixture — Comments</title>
+  </head>
+  <body>
+    <!--
+    BOYO fixture: the comments (#1805), in the elements YouTube's desktop
+    bundle draws them in. None may render while the extension is on.
+  -->
+    <ytd-app>
+      <ytd-watch-flexy>
+        <div id="below">
+          <ytd-comments id="comments" data-comments="section"
+            ><ytd-item-section-renderer
+              ><ytd-comments-header-renderer
+                ><h2 id="count">
+                  1,234 Comments
+                </h2></ytd-comments-header-renderer
+              ><ytd-comment-thread-renderer
+                ><ytd-comment-view-model
+                  ><span id="content-text"
+                    >A comment</span
+                  ></ytd-comment-view-model
+                ></ytd-comment-thread-renderer
+              ></ytd-item-section-renderer
+            ></ytd-comments
+          >
+          <ytd-watch-metadata>
+            <div id="comment-teaser">
+              <ytd-comments-entry-point-header-renderer
+                data-comments="teaser header"
+                >Comments 1.2K
+                <div id="contents">
+                  <ytd-comments-entry-point-teaser-renderer
+                    data-comments="teaser"
+                    >A comment</ytd-comments-entry-point-teaser-renderer
+                  >
+                </div></ytd-comments-entry-point-header-renderer
+              >
+            </div>
+            <div id="teaser-carousel">
+              <yt-video-metadata-carousel-view-model data-comments="carousel"
+                ><div class="ytVideoMetadataCarouselViewModelTitleSection">
+                  <yt-carousel-title-view-model
+                    ><h2 class="ytCarouselTitleViewModelTitle">Comments</h2>
+                    <span class="ytCarouselTitleViewModelSubtitle"
+                      >1.2K</span
+                    ></yt-carousel-title-view-model
+                  >
+                </div>
+                <div class="ytVideoMetadataCarouselViewModelItemSection">
+                  <yt-carousel-item-view-model
+                    ><yt-comment-teaser-carousel-item-view-model
+                      ><comments-entry-point-teaser-view-model
+                        >A comment</comments-entry-point-teaser-view-model
+                      ></yt-comment-teaser-carousel-item-view-model
+                    ></yt-carousel-item-view-model
+                  >
+                </div></yt-video-metadata-carousel-view-model
+              >
+            </div>
+          </ytd-watch-metadata>
+        </div>
+        <div id="panels">
+          <ytd-engagement-panel-section-list-renderer
+            target-id="engagement-panel-comments-section"
+            data-comments="panel"
+            >Comments</ytd-engagement-panel-section-list-renderer
+          >
+          <ytd-engagement-panel-section-list-renderer
+            target-id="engagement-panel-structured-description"
+            id="description-panel"
+            >Description</ytd-engagement-panel-section-list-renderer
+          >
+        </div>
+      </ytd-watch-flexy>
+    </ytd-app>
+  </body>
+</html>
