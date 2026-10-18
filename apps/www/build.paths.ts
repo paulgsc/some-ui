@@ -158,6 +158,11 @@ export const paths: PathRules<Profile> = definePaths<Profile>({
   exclusive: [
     ...gatedRoutes,
     {
+      modules: ["packages/job-desk/dist/@some-ui/job-desk.es.js"],
+      profiles: [MOBILE_PROFILE],
+      why: "job-desk's main entry: the Jobs wing's Drive files, which only the Android app's Jobs wing reads and writes (src/lib/jobs). The web builds take only its id rule (the résumé builder) and its sample entry (/job-run)",
+    },
+    {
       modules: [
         "apps/www/src/lib/tenant/sessions-transfer/**",
         "apps/www/src/lib/tenant/transfer-lock/**",
@@ -209,11 +214,6 @@ export const paths: PathRules<Profile> = definePaths<Profile>({
       modules: ["apps/www/src/components/reflection/copy.ts"],
       profiles: [MOBILE_PROFILE],
       why: "the phone's hand-off wording (`arrived`, `goingOut`), after a share only the Android app makes; the web's reflection screens count with `@some-ui/core-utils`",
-    },
-    {
-      modules: ["packages/job-desk/**"],
-      profiles: [MOBILE_PROFILE],
-      why: "the Jobs wing's Drive files (the digest, decisions, scouts), which only the Android app's Jobs wing reads and writes (src/lib/jobs); the web builds have no Jobs wing",
     },
     {
       modules: DEVICE_MODULES,
@@ -322,6 +322,7 @@ export const paths: PathRules<Profile> = definePaths<Profile>({
       "_dashboard/app.tsx*",
       "_dashboard/profile.tsx*",
       "_dashboard/resume.tsx*",
+      "_dashboard/job-run.tsx*",
     ].map(
       (route): Debt => ({
         profile: MOBILE_PROFILE,

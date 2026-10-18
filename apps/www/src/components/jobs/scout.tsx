@@ -18,14 +18,12 @@ import { ExternalLink } from "lucide-react"
 
 import { phoneJobs } from "@/lib/jobs"
 import { draftVoice, SCOUT_OWNER, scoutsOf } from "@/lib/jobs/model"
+import { Gaps, Scores, sectionHeading } from "@/components/job-reading"
 
 import {
   builderHref,
   Chips,
-  Gaps,
   Problem,
-  Scores,
-  sectionHeading,
   ShareToDrive,
   useJobs,
   useVoiceBusy,

@@ -33,16 +33,18 @@ import {
   pickOwner,
   progressOf,
 } from "@/lib/jobs/model"
+import {
+  Gaps,
+  resumeLabel,
+  Scores,
+  sectionHeading,
+} from "@/components/job-reading"
 
 import {
   builderHref,
   Chips,
   CopyButton,
-  Gaps,
   Problem,
-  resumeLabel,
-  Scores,
-  sectionHeading,
   useJobs,
   useVoiceBusy,
   VoiceNotes,

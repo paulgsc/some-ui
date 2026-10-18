@@ -84,12 +84,12 @@ describe("createResumeBuild", () => {
 
   it("names the PDF as asked, for a job pick", async () => {
     const { runtime, pending } = harness()
-    runtime.build(request, pickFileName("blu-7f2a", request))
+    runtime.build(request, pickFileName("tid-7f2a", request))
     pending[0].outcome.resolve(pdf())
     await vi.waitFor(() =>
       expect(runtime.getSnapshot()).toMatchObject({
         status: "ready",
-        filename: "resume-blu-7f2a-backend-classic.pdf",
+        filename: "resume-tid-7f2a-backend-classic.pdf",
       })
     )
   })
@@ -143,9 +143,9 @@ describe("parseBuilderSearch", () => {
       parseBuilderSearch({
         variant: "data",
         template: "safe",
-        pick: "blu-7f2a",
+        pick: "tid-7f2a",
       })
-    ).toEqual({ variant: "data", template: "safe", pick: "blu-7f2a" })
+    ).toEqual({ variant: "data", template: "safe", pick: "tid-7f2a" })
   })
 
   it("drops what it doesn't know, so a stale link still opens the page", () => {

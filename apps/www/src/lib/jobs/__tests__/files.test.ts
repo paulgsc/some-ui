@@ -77,11 +77,11 @@ describe("decisionsFile", () => {
         pickId: AD.id,
         decision: "passed",
         reasons: ["customer-facing"],
-        voice: ["2026-10-18_blu-7f2a_voice-1.webm"],
+        voice: ["2026-10-18_tid-7f2a_voice-1.webm"],
       }),
     ])
     expect(file.voice).toEqual([
-      { id: "v1", name: "2026-10-18_blu-7f2a_voice-1.webm" },
+      { id: "v1", name: "2026-10-18_tid-7f2a_voice-1.webm" },
     ])
   })
 
@@ -335,7 +335,7 @@ describe("a log home restored", () => {
     made = record(made, {
       type: "disagree",
       day: D.day,
-      fingerprint: "indeed|software engineer ii|remote",
+      fingerprint: "juniper row|software engineer ii|remote",
       note: "Remote",
     })
     const file = fileOf(decisionsFile(made, D.day, "2026-10-18T22:00:00Z"))

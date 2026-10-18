@@ -22,6 +22,11 @@
       "types": "./dist/@some-ui/job-desk.d.ts",
       "import": "./dist/@some-ui/job-desk.es.js",
       "default": "./dist/@some-ui/job-desk.es.js"
+    },
+    "./sample": {
+      "types": "./dist/@some-ui/job-desk/sample.d.ts",
+      "import": "./dist/@some-ui/job-desk/sample.es.js",
+      "default": "./dist/@some-ui/job-desk/sample.es.js"
     }
   },
   "files": [

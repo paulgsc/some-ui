@@ -49,14 +49,14 @@ export function digest(day: string): Digest {
     createdAt: `${day}T14:52:00Z`,
     seen: 12,
     picks: [
-      pick("avm-0b77", "AvMet", false),
-      pick("blu-7f2a", "BlueSight", true),
+      pick("nor-0b77", "Northwind Avionics", false),
+      pick("tid-7f2a", "Tidewater Analytics", true),
     ],
     setAside: [
       {
-        fingerprint: "indeed|software engineer ii|remote",
+        fingerprint: "juniper row|software engineer ii|remote",
         title: "Software Engineer II",
-        company: "Indeed",
+        company: "Juniper Row",
         why: "Stale",
       },
     ],

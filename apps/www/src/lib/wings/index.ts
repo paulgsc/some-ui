@@ -104,7 +104,14 @@ export const WINGS: ReadonlyArray<Wing> = [
     job: "Today's picks, your own finds, and how each went",
     home: "/jobs",
     settings: null,
-    web: null,
+    web: {
+      home: "/job-run",
+      job: "Read one morning's run: what it picked, and why",
+    },
+    exposure: {
+      published: "how the run works, on a sample digest",
+      private: "the real digests and how each application went",
+    },
   },
   {
     id: "operate",
@@ -144,6 +151,7 @@ export const ROOMS: ReadonlyArray<Room> = [
   { id: "journal", wing: "studio", roots: ["/journal"] },
   { id: "playoff-delta", wing: "studio", roots: ["/playoff-delta"] },
   { id: "jobs", wing: "jobs", roots: ["/jobs"] },
+  { id: "job-run", wing: "jobs", roots: ["/job-run"], nav: "Morning run" },
   { id: "lessons", wing: "operate", roots: ["/lessons"], nav: "Lessons" },
   { id: "rounds", wing: "operate", roots: ["/rounds"], nav: "Rounds" },
   {

@@ -74,11 +74,13 @@ describe("wings", () => {
     expect(webWingsHere().map((wing) => wing.id)).toEqual([
       "practice",
       "studio",
+      "jobs",
     ])
     carriesLan = true
     expect(webWingsHere().map((wing) => wing.id)).toEqual([
       "practice",
       "studio",
+      "jobs",
       "operate",
     ])
   })

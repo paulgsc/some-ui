@@ -12,9 +12,10 @@ import { hasAudience } from "@/lib/build-profile"
 import { phoneJobs } from "@/lib/jobs"
 import type { Outcome } from "@/lib/jobs/model"
 import { applicationsOf, lastDelivered } from "@/lib/jobs/model"
+import { sectionHeading } from "@/components/job-reading"
 
 import { JobsKeepOnHome } from "./keep-on-home"
-import { Problem, sectionHeading, ShareToDrive, useJobs } from "./parts"
+import { Problem, ShareToDrive, useJobs } from "./parts"
 
 const OUTCOME_LABELS: Readonly<Record<Outcome, string>> = {
   viewed: "Viewed",
