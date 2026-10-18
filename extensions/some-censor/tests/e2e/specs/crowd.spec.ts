@@ -29,8 +29,8 @@ const CROWD = crowdRules(CSS).map((r) => r.selector)
 type Hider = "none" | "crowd" | "card" | "other"
 type Verdict = { readonly label: string; readonly hider: Hider }
 
-/** Kept elements inside cards the evidence makes absent: the search result
- *  and the description's linked video, neither of which reads a date. */
+/** Kept elements inside cards the evidence makes absent: the search result,
+ *  which is live, and the description's linked video, which reads no date. */
 const IN_ABSENT_CARDS = new Set([
   "CC badge",
   "linked video title",

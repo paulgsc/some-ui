@@ -343,6 +343,20 @@ describe("extractMeta", () => {
     )
   })
 
+  it("takes a search result's age from the last span of its line", () => {
+    const result = make(
+      "ytd-video-renderer",
+      `<div id="metadata-line">
+        <ytd-badge-supported-renderer class="inline-metadata-badge" hidden></ytd-badge-supported-renderer>
+        <div id="separator" hidden>•</div>
+        <span class="inline-metadata-item">23K</span>
+        <span class="inline-metadata-item">8h ago</span>
+        <dom-repeat></dom-repeat>
+      </div>`
+    )
+    expect(extractUploadDate(result)).toBe("8h ago")
+  })
+
   it("reads the channel and duration off a lockup", () => {
     expect(extractMeta(make("yt-lockup-view-model", LOCKUP))).toEqual({
       channelName: "Lockups Channel",

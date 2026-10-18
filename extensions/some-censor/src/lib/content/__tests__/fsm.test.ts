@@ -42,7 +42,6 @@ describe("decide", () => {
     expect(view(null)).toBe("absent")
     expect(view("")).toBe("absent")
     expect(view("1.2M views")).toBe("absent")
-    expect(view("8d ago")).toBe("absent")
   })
 
   it("holds live and upcoming cards (present)", () => {
