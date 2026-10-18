@@ -18,6 +18,14 @@ const WATCH_PAGE = "ytd-page-manager > ytd-watch-flexy"
  * reflects it on the app, not on `ytd-miniplayer`.
  */
 const MINIPLAYER = "ytd-app[miniplayer-is-active]"
+/**
+ * What the miniplayer is playing. It goes on to the next video (autoplay,
+ * its own next button, the queue) without touching the hidden page, so the
+ * page's `video-id` names only the video it was opened on; its title bar
+ * is what follows the video playing.
+ */
+const MINIPLAYER_TITLE = "ytd-miniplayer .ytdMiniplayerInfoBarTitle"
+const PAGE_TITLE = "#title h1"
 
 /**
  * Where the watch page states the date: the info line under the title, in
@@ -48,6 +56,16 @@ export function readWatch(doc: Document): WatchObservation | null {
   if (videoId === null || metadata?.getAttribute("video-id") !== videoId) {
     return { videoId, short: false, hydrated: false, dates: [], miniplayer }
   }
+  if (miniplayer && !playsPage(doc, metadata)) {
+    // Another video than the page's, which the page says nothing about.
+    return {
+      videoId: null,
+      short: false,
+      hydrated: false,
+      dates: [],
+      miniplayer,
+    }
+  }
   const dates: Array<string> = []
   for (const run of metadata.querySelectorAll(INFO_RUNS)) {
     const text = run.textContent.trim()
@@ -59,4 +77,11 @@ export function readWatch(doc: Document): WatchObservation | null {
     if (text) dates.push(text)
   }
   return { videoId, short: false, hydrated: true, dates, miniplayer }
+}
+
+/** The miniplayer still plays the page's own video: its title bar says so. */
+function playsPage(doc: Document, metadata: Element): boolean {
+  const playing = doc.querySelector(MINIPLAYER_TITLE)?.textContent.trim()
+  const own = metadata.querySelector(PAGE_TITLE)?.textContent.trim()
+  return playing !== undefined && playing !== "" && playing === own
 }

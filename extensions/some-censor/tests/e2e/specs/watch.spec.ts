@@ -15,6 +15,8 @@
  * W7 — A held video moved into the miniplayer stays hidden and paused, and
  *      "Not here." does not cover the page shown.
  * W8 — An old video moved into the miniplayer plays on, shown.
+ * W9 — When the miniplayer goes on to another video, that video is held: the
+ *      page it was opened on says nothing about it.
  */
 
 import { SWITCHED_OFF_ATTRIBUTE } from "@censor/lib/content/selectors"
@@ -61,6 +63,7 @@ async function toMiniplayer(page: Page): Promise<void> {
     document.querySelector("ytd-watch-flexy")?.setAttribute("hidden", "")
     document.querySelector("ytd-browse")?.removeAttribute("hidden")
     const mini = document.createElement("ytd-miniplayer")
+    mini.innerHTML = '<h1 class="ytdMiniplayerInfoBarTitle">Me at the zoo</h1>'
     const video = document.querySelector("video")
     if (video) mini.append(video)
     const app = document.querySelector("ytd-app")
@@ -178,4 +181,21 @@ test("W8: an old video moved into the miniplayer plays on, shown", async ({
   await expect(page.locator("ytd-miniplayer")).toBeVisible()
   await watchView(page, "plated")
   expect(await playsThrough(page)).toBe(true)
+})
+
+test("W9: the miniplayer going on to another video holds it", async ({
+  fixture,
+}) => {
+  const page = await fixture.goto("yt-watch-page")
+  await watchView(page, "plated")
+  await toMiniplayer(page)
+  await watchView(page, "plated")
+  // Autoplay in the miniplayer: only its title bar follows the new video.
+  await page.evaluate(() => {
+    const bar = document.querySelector(".ytdMiniplayerInfoBarTitle")
+    if (bar) bar.textContent = "A video posted an hour ago"
+  })
+  await watchView(page, "pending")
+  await expect(page.locator("ytd-miniplayer")).toBeHidden()
+  expect(await playsThrough(page)).toBe(false)
 })

@@ -514,6 +514,7 @@ describe("readWatch (#1805)", () => {
   }
   const metadata = (videoId: string): string => `
     <ytd-watch-metadata video-id="${videoId}">
+      <div id="title"><h1><yt-formatted-string>Me at the zoo</yt-formatted-string></h1></div>
       <ytd-watch-info-text>
         <yt-formatted-string id="info"><span>444M views</span><span> </span><span>21y ago</span><span> </span><a>SAN DIEGO ZOO</a></yt-formatted-string>
         <tp-yt-paper-tooltip><div id="tooltip"> 444,875,933 views • Apr 23, 2005 • SAN DIEGO ZOO </div></tp-yt-paper-tooltip>
@@ -563,13 +564,27 @@ describe("readWatch (#1805)", () => {
     ).toBeNull()
   })
 
-  it("reads a hidden page's video while the miniplayer plays it", () => {
+  it("reads a hidden page's video while the miniplayer plays it, and only it", () => {
     const doc = page(
       `<ytd-browse page-subtype="home"></ytd-browse><ytd-watch-flexy hidden video-id="jNQ">${metadata("jNQ")}</ytd-watch-flexy>`
+    )
+    doc.body.insertAdjacentHTML(
+      "beforeend",
+      '<ytd-miniplayer><h1 class="ytdMiniplayerInfoBarTitle">Me at the zoo</h1></ytd-miniplayer>'
     )
     expect(readWatch(doc)).toBeNull()
     // YouTube reflects the miniplayer on the app.
     doc.querySelector("ytd-app")?.setAttribute("miniplayer-is-active", "")
     expect(readWatch(doc)).toMatchObject({ videoId: "jNQ", miniplayer: true })
+    // It goes on to the next video without touching the hidden page.
+    const bar = doc.querySelector(".ytdMiniplayerInfoBarTitle")
+    if (bar) bar.textContent = "The next video"
+    expect(readWatch(doc)).toEqual({
+      videoId: null,
+      short: false,
+      hydrated: false,
+      dates: [],
+      miniplayer: true,
+    })
   })
 })

@@ -595,6 +595,26 @@ describe("the watch page (#1805)", () => {
     expect(vi.getTimerCount()).toBe(0)
   })
 
+  it("reads the page again when the miniplayer opens, though no node moves", async () => {
+    const app = document.createElement("ytd-app")
+    document.body.append(app)
+    const manager = watchPage("w1", "21y ago")
+    manager.querySelector("ytd-watch-flexy")?.setAttribute("hidden", "")
+    const mini = document.createElement("ytd-miniplayer")
+    mini.innerHTML = '<h1 class="ytdMiniplayerInfoBarTitle">Title</h1>'
+    manager
+      .querySelector("ytd-watch-metadata")
+      ?.insertAdjacentHTML("afterbegin", '<div id="title"><h1>Title</h1></div>')
+    app.append(manager, mini)
+    await tick()
+    tokens = []
+    app.setAttribute("miniplayer-is-active", "")
+    await vi.advanceTimersByTimeAsync(0)
+    expect(watched()).toEqual([
+      { ...reading("w1", ["21y ago"]), miniplayer: true },
+    ])
+  })
+
   it("keeps the page across a navigation, which Core does too", async () => {
     watchPage("w1", "21y ago")
     await tick()

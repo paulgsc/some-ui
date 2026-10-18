@@ -45,7 +45,10 @@ export type Observation = {
  * Short's (#1805). Raw vendor text, as {@link Observation}'s date is.
  */
 export type WatchObservation = {
-  /** The watch page's `video-id`; null on a Short, which needs none. */
+  /**
+   * The watch page's `video-id`; null on a Short, which needs none, and in a
+   * miniplayer that has gone on to a video the page does not name.
+   */
   readonly videoId: VideoId | null
   /** A Short, held whatever its date (QD11). */
   readonly short: boolean
