@@ -9,6 +9,7 @@ import {
   MAX_POSTING_AGE_DAYS,
   PATCH_PRS_PER_RUN,
   PICKS_PER_DAY,
+  QUEUE_FROM,
   SCOUT_AGREE_FIT,
   TRACKS,
 } from "./policy"
@@ -44,6 +45,12 @@ export function digestFindings(digest: Digest): ReadonlyArray<Finding> {
     }
   }
 
+  if (digest.queue === null && digest.day >= QUEUE_FROM) {
+    found.push({
+      path: "queue",
+      message: `a digest from ${QUEUE_FROM} on records its queue (ROUTINE.md §2)`,
+    })
+  }
   if (digest.queue !== null) {
     const { open } = digest.queue
     const closed = new Set(

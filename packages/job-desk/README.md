@@ -23,7 +23,7 @@ A second decisions share on one day is `decisions-<day>-2.json`, then `-3`
 - `pnpm --filter @some-ui/job-desk queue <files>` reads every digest and
   decisions file named and prints the picks still open (`openPicks`) and each
   track's free slots: a run adds picks only into those (`MAX_OPEN_PICKS`).
-  A pick stays open until I pass, archive or debrief it and share that.
+  A pick stays open until I pass it, archive it, or debrief it, and share that.
 - `pnpm --filter @some-ui/job-desk check <file>` checks any of the three files
   the way the phone will read it, after a build. It prints `[]` when the file
   is ready to upload.

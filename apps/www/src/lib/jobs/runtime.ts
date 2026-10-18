@@ -272,20 +272,18 @@ export function createJobsRuntime(ports: JobsPorts): JobsRuntime {
     },
     record: (event) => commit({ type: "record", event, stamp: stamp() }),
     archive: (day) =>
-      undecidedOf(state, day)
-        .map((pick) =>
-          commit({
-            type: "record",
-            event: {
-              type: "archived",
-              day,
-              pickId: pick.id,
-              fingerprint: pick.fingerprint,
-            },
-            stamp: stamp(),
-          })
-        )
-        .includes(true),
+      commit({
+        type: "record-all",
+        events: undecidedOf(state, day).map((pick) => ({
+          event: {
+            type: "archived",
+            day,
+            pickId: pick.id,
+            fingerprint: pick.fingerprint,
+          },
+          stamp: stamp(),
+        })),
+      }),
     addScout: (scout, voice) =>
       commit({
         type: "record",

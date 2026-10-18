@@ -60,15 +60,16 @@ describe("step", () => {
     })
     for (let i = 2; i <= DIGESTS_KEPT + 3; i += 1) {
       const day = `2026-09-${String(i).padStart(2, "0")}`
+      // No picks, so none holds a queue slot.
       state = step(state, {
         type: "opened",
-        digest: digest(day),
+        digest: { ...digest(day), picks: [] },
         at: OPENED_AT,
       })
     }
     state = step(state, {
       type: "opened",
-      digest: digest("2026-09-05"),
+      digest: { ...digest("2026-09-05"), picks: [] },
       at: OPENED_AT,
     })
     expect(state.digests).toHaveLength(DIGESTS_KEPT + 1)
@@ -76,6 +77,38 @@ describe("step", () => {
     expect(state.digests.filter((d) => d.day === "2026-09-05")).toHaveLength(1)
     expect(state.current).toBe("2026-09-05")
     expect(applicationsOf(state).map((a) => a.day)).toEqual(["2026-09-01"])
+  })
+
+  it("keeps a digest whose picks still hold queue slots, however many follow", () => {
+    let state = step(EMPTY, {
+      type: "opened",
+      digest: digest("2026-08-01"),
+      at: OPENED_AT,
+    })
+    for (let i = 1; i <= DIGESTS_KEPT + 2; i += 1) {
+      const day = `2026-09-${String(i).padStart(2, "0")}`
+      state = step(state, {
+        type: "opened",
+        digest: { ...digest(day), picks: [] },
+        at: OPENED_AT,
+      })
+    }
+    expect(state.digests[0].day).toBe("2026-08-01")
+    expect(undecidedOf(state, "2026-08-01")).toHaveLength(2)
+  })
+
+  it("archives together or not at all", () => {
+    const events = [AD, SW].map((p, i) => ({
+      event: { type: "archived" as const, ...ref(p) },
+      stamp: { id: `all${i}`, at: OPENED_AT },
+    }))
+    const both = step(opened, { type: "record-all", events })
+    expect(both.log.map((e) => e.id)).toEqual(["all0", "all1"])
+    const bad = [
+      ...events,
+      { ...events[0], event: { ...events[0].event, fingerprint: "a|b|c" } },
+    ]
+    expect(step(opened, { type: "record-all", events: bad })).toBe(opened)
   })
 
   it("refuses a debrief job-desk would refuse", () => {

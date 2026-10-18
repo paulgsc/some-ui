@@ -126,11 +126,6 @@ const PickCard = ({
   )
 }
 
-const TRACK_NOUNS: Readonly<Record<Track, string>> = {
-  software: "software",
-  adjacent: "adjacent",
-}
-
 /** Archives `day`'s undecided picks unreviewed, once asked. */
 const ArchiveBatch = ({
   day,
@@ -202,12 +197,13 @@ const Queue = ({
         Open on this phone:{" "}
         {TRACKS.map(
           (t) =>
-            `${open.filter((o) => o.pick.track === t).length} of ${MAX_OPEN_PICKS[t]} ${TRACK_NOUNS[t]}`
+            `${open.filter((o) => o.pick.track === t).length} of ${MAX_OPEN_PICKS[t]} ${t}`
         ).join(" · ")}
       </p>
       <p className="text-muted-foreground text-xs">
-        A pick stays open until you pass it, or take it and debrief, and share
-        your decisions. The morning run adds new picks only into free slots.
+        A pick stays open until you pass it, archive it, or take it and debrief,
+        and share your decisions. The morning run adds new picks only into free
+        slots.
         {held.length > 0 &&
           ` This one found ${counted(held.length - closed.size, "pick")} from earlier days still open${full ? ", so it searched nothing" : ""}.`}
       </p>

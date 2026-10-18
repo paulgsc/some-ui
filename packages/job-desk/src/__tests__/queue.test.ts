@@ -4,6 +4,7 @@ import { parseDecisions } from "@job-desk/decisions"
 import type { Digest } from "@job-desk/digest"
 import { parseDigest } from "@job-desk/digest"
 import { digestFindings } from "@job-desk/findings"
+import { QUEUE_FROM } from "@job-desk/policy"
 import { freeSlots, openPicks } from "@job-desk/queue"
 import { describe, expect, it } from "vitest"
 
@@ -176,6 +177,13 @@ describe("a digest's queue", () => {
       "queue.open.1: 2026-10-17/old-0001 is listed twice",
       `queue.open.2.day: an open pick comes from a digest before ${digest.day}`,
     ])
+  })
+
+  it("is recorded by every digest since the queue landed", () => {
+    const digest = { ...sample(), day: QUEUE_FROM, queue: null }
+    expect(messages(digest)).toContain(
+      `queue: a digest from ${QUEUE_FROM} on records its queue (ROUTINE.md §2)`
+    )
   })
 
   it("opens a digest written before the queue", () => {

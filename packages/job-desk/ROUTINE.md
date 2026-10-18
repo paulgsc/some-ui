@@ -88,8 +88,8 @@ For each new file:
    - **Passed picks:** the reasons and notes tell me what to stop sending. A
      reason given twice is a rule for this run.
    - **Disagreements:** a set-aside posting I would have picked. Look it up
-     again as §3 looks up a scout; if it is still open, it may be a pick
-     today.
+     again as §3 looks up a scout; if it is still open and its track has a
+     free slot (below), it may be a pick today.
    - **Debriefs and outcomes:** how applying went and what came of it. Report
      them in the summary. Once there are 30 or more outcomes, compare them with
      the odds each pick was given and say in the summary whether the rubric
@@ -110,9 +110,10 @@ the picks I haven't finished hold theirs. The limit is `MAX_OPEN_PICKS` per
 track (the same as `PICKS_PER_DAY`: 3 software, 2 adjacent), earlier
 digests' picks included.
 
-1. Download every digest in `Brief/` and every file in `Decisions/` (all of
-   them, not only the new ones) into one scratch folder, and from the repo
-   root run:
+1. Download every digest in `Brief/` and every decisions file in
+   `Decisions/` that passes the checker (all of them, not only the new ones;
+   a file step 1 skipped stays out) into one scratch folder, and from the
+   repo root run:
 
    ```sh
    pnpm --filter @some-ui/job-desk build
@@ -120,9 +121,11 @@ digests' picks included.
    ```
 
    It prints the picks still open (`open`) and each track's free slots
-   (`free`). A pick is open while no shared decision answers it, while it is
-   `untouched`, or while it is `taken` with no debrief. One `passed`,
-   `archived` (I let the batch go unreviewed) or debriefed is done. Only what
+   (`free`), and names any file it couldn't read under `skipped`: say each
+   in the summary. A pick is open while no shared decision answers it,
+   while it is `untouched`, or while it is `taken` with no debrief. One
+   `passed`, `archived` (I let the batch go unreviewed) or debriefed is
+   done. Only what
    reached Drive counts: a pick I decided on the phone and haven't shared is
    still open.
 
@@ -133,9 +136,10 @@ digests' picks included.
    archive. The run never writes a decision; only the phone does.
 3. Record it in the digest: `queue.open` lists every open pick with its
    `day`, `pickId`, `track` and `closed`.
-4. Each track gets at most its free slots today, counting a closed pick's
-   slot as free, and never more than `PICKS_PER_DAY`. The checker holds the
-   digest to this.
+4. Each track gets at most its `free` slots today, plus one for each of its
+   picks you marked `closed` (`free` counts them as held), and never more
+   than `PICKS_PER_DAY`. The checker holds the digest to this, and to
+   recording its queue at all.
 5. When a track has no free slot, run none of its queries in §3. When
    neither has one, search nothing: the digest has no picks and an empty
    `setAside`, and `seen` counts only the scouts it read. Either way, still
@@ -295,7 +299,8 @@ the halves as covered.
 `oddsWhy` names the factors that moved it. Both scores are judgments until the
 outcomes calibrate them, and the digest says so by naming its reasons.
 
-Rank each track's candidates by fit × odds and take up to `PICKS_PER_DAY`. On
+Rank each track's candidates by fit × odds and take up to the track's free
+slots (§2, "The queue"), never more than `PICKS_PER_DAY`. On
 the adjacent track, when two scores are within 0.05, prefer a family not yet
 picked today. Fewer picks than the limit is fine; a weak pick is not.
 

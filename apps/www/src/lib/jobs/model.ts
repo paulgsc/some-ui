@@ -9,7 +9,8 @@
  * appends to it, and a later event says what changed (a pick passed, then
  * taken, is taken). Nothing here removes an event. Digests are copies of
  * files kept in Drive's `some-ui jobs/Brief`: the phone keeps every digest
- * the log names, and of the rest only the newest `DIGESTS_KEPT`.
+ * the log names or that has a pick still open (it holds a queue slot), and
+ * of the rest only the newest `DIGESTS_KEPT`.
  */
 import { assertNever } from "@some-ui/core-utils"
 import type {
@@ -160,6 +161,11 @@ export type JobsAction =
   | { type: "voice-kept"; note: VoiceNote }
   | { type: "voice-dropped"; ids: ReadonlyArray<string> }
   | { type: "record"; event: Draft; stamp: Stamp }
+  /** Several events kept together, or none if any doesn't fit. */
+  | {
+      type: "record-all"
+      events: ReadonlyArray<{ event: Draft; stamp: Stamp }>
+    }
   /** Its person's second press: the record is kept on home from now on. */
   | { type: "kept-on-home" }
   /** What one exchange with home learned (`./home`). */
@@ -261,7 +267,10 @@ export function step(state: JobsState, action: JobsAction): JobsState {
         state.log.flatMap((e) => ("pickId" in e ? [e.day] : []))
       )
       const digests = all.filter(
-        (d) => recent.has(d.day) || referenced.has(d.day)
+        (d) =>
+          recent.has(d.day) ||
+          referenced.has(d.day) ||
+          d.picks.some((p) => progressOf(state, d.day, p.id).kind === "open")
       )
       // A digest opened again keeps the first time it was opened.
       const firstOpened = Object.fromEntries(
@@ -288,6 +297,15 @@ export function step(state: JobsState, action: JobsAction): JobsState {
       if (!fits(state, action.event)) return state
       const event: JobEvent = { ...action.event, ...action.stamp }
       return { ...state, log: [...state.log, event] }
+    }
+    case "record-all": {
+      let next = state
+      for (const { event, stamp } of action.events) {
+        const after = step(next, { type: "record", event, stamp })
+        if (after === next) return state
+        next = after
+      }
+      return next
     }
     case "kept-on-home": {
       if (state.home.kept) return state
