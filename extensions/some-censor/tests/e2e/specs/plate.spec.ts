@@ -197,22 +197,25 @@ test("P7: no header or player image paints, unless off", async ({
   fixture,
 }) => {
   const page = await fixture.goto("yt-headers")
-  const painted = async (): Promise<Array<boolean>> =>
-    page.evaluate(() => [
-      ...[...document.querySelectorAll("#images img")].map(
-        (img) => getComputedStyle(img).visibility !== "hidden"
-      ),
-      ...[...document.querySelectorAll("#images [data-bg]")].map(
-        (el) => getComputedStyle(el).backgroundImage !== "none"
-      ),
-    ])
-  const on = await painted()
-  expect(on).toHaveLength(10)
-  expect(on).toEqual(on.map(() => false))
+  const painting = async (): Promise<Array<string>> =>
+    page.evaluate(() =>
+      [...document.querySelectorAll<HTMLElement>("#images [data-name]")]
+        .filter((el) =>
+          el instanceof HTMLImageElement
+            ? getComputedStyle(el).visibility !== "hidden"
+            : getComputedStyle(el).backgroundImage !== "none"
+        )
+        .map((el) => el.dataset["name"] ?? "")
+    )
+  const all = await page
+    .locator("#images [data-name]")
+    .evaluateAll((els) => els.map((el) => el.getAttribute("data-name") ?? ""))
+  expect(all).toHaveLength(16)
+  expect(await painting()).toEqual([])
 
   await page.evaluate(
     (attribute) => document.documentElement.setAttribute(attribute, ""),
     SWITCHED_OFF_ATTRIBUTE
   )
-  expect(await painted()).toEqual(on.map(() => true))
+  expect(await painting()).toEqual(all)
 })

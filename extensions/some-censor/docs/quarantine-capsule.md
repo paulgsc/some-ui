@@ -388,9 +388,9 @@ is hidden, and so are the avatars it draws as a bare image: the watch page's
 owner, the guide, channel results and headers, comment authors, people
 mentioned in a description and the notifications menu. The other images drawn
 in those elements go with them: notification and chapter frames, community post
-images, promo art. So do the page header's banner, cover and backdrop, and
-the thumbnails the player's end screens, video wall, autoplay card and
-suggestions draw. The rest is in the gap table below.
+images, promo art. So do the page header's banner, cover and backdrop (its seamless
+portal too), and the thumbnails the player's end screens, video wall, autoplay
+card, suggestions, "More videos" button and playlist menu draw. The rest is in the gap table below.
 
 ---
 
