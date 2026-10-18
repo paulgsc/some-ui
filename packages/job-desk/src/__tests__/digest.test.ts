@@ -149,16 +149,56 @@ describe("digestFindings", () => {
     const aside = digest.setAside[0]!
     digest.setAside.push({
       ...aside,
-      fingerprint: `${aside.fingerprint.split("|").slice(0, 2).join("|")}|oakland ca`,
+      fingerprint: fingerprint({ ...aside, location: "Oakland, CA" }),
     })
-    const picked = digest.picks[1]!
+    const { company, title } = digest.picks[1]!.posting
     digest.setAside.push({
-      ...aside,
-      fingerprint: `${picked.fingerprint.split("|").slice(0, 2).join("|")}|berkeley ca`,
+      company,
+      title,
+      why: "Seen again from Berkeley",
+      fingerprint: fingerprint({ company, title, location: "Berkeley, CA" }),
     })
     expect(messages(digest)).toEqual([
       "setAside.4.fingerprint: same role as setAside.0, in another place",
       "setAside.5.fingerprint: same role as picks.1, in another place",
+    ])
+  })
+
+  it("checks a set-aside fingerprint against its company and title", () => {
+    const digest = sample()
+    digest.setAside[0]!.title = "Frontend Engineer"
+    expect(messages(digest)).toEqual([
+      'setAside.0.fingerprint: should start "indeed|frontend engineer|", from its company and title',
+    ])
+  })
+
+  it("lists at most 40 set-aside postings", () => {
+    const digest = sample()
+    const many = Array.from({ length: 41 }, (_, n) => ({
+      company: `Co ${n}`,
+      title: "Engineer",
+      why: "Stale",
+      fingerprint: fingerprint({
+        company: `Co ${n}`,
+        title: "Engineer",
+        location: "Remote",
+      }),
+    }))
+    expect(parseDigest(JSON.stringify({ ...digest, setAside: many })).ok).toBe(
+      false
+    )
+  })
+
+  it("links a scout to a pick only when the run agreed with it", () => {
+    const digest = sample()
+    digest.scouts.push({
+      scoutId: "sc-1234",
+      verdict: "disagree",
+      note: "Senior only",
+      pickId: "avm-0b77",
+    })
+    expect(messages(digest)).toEqual([
+      "scouts.0.pickId: a scout the run did not agree with became no pick",
     ])
   })
 

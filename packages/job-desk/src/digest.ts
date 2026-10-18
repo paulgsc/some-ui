@@ -1,5 +1,6 @@
 import { z } from "zod"
 
+import { MAX_SET_ASIDE } from "./policy"
 import {
   CommitSchema,
   FingerprintSchema,
@@ -119,14 +120,16 @@ export const DigestSchema = z.object({
   seen: z.number().int().nonnegative(),
   picks: z.array(PickSchema),
   /** Postings the run read and did not pick, each with why. */
-  setAside: z.array(
-    z.object({
-      fingerprint: FingerprintSchema,
-      title: text,
-      company: text,
-      why: text,
-    })
-  ),
+  setAside: z
+    .array(
+      z.object({
+        fingerprint: FingerprintSchema,
+        title: text,
+        company: text,
+        why: text,
+      })
+    )
+    .max(MAX_SET_ASIDE),
   /** The run's answer to each scout it read. */
   scouts: z.array(
     z.object({

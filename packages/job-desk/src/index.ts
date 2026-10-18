@@ -16,13 +16,14 @@ export {
 export type { Finding } from "./findings"
 export { digestFindings } from "./findings"
 export type { FingerprintInput } from "./fingerprint"
-export { fingerprint } from "./fingerprint"
+export { fingerprint, role } from "./fingerprint"
 export type { AdjacentFamily, Track } from "./policy"
 export {
   ADJACENT_FAMILIES,
   EXCLUDED_TITLE,
   LOCATIONS,
   MAX_POSTING_AGE_DAYS,
+  MAX_SET_ASIDE,
   PICKS_PER_DAY,
   QUERIES,
   TRACKS,

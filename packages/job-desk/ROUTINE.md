@@ -114,7 +114,7 @@ Set a posting aside, with a one-line `why`, when:
 - it was already decided (step 2). Count these in `seen`, but leave them out
   of `setAside`.
 
-List at most 40 set-aside postings, those closest to being picked first.
+List at most `MAX_SET_ASIDE` (40) set-aside postings, those closest to being picked first.
 
 ## 5. Score
 

@@ -1,5 +1,5 @@
 import type { Digest } from "./digest"
-import { fingerprint } from "./fingerprint"
+import { fingerprint, role as roleOf } from "./fingerprint"
 import {
   EXCLUDED_TITLE,
   MAX_POSTING_AGE_DAYS,
@@ -11,14 +11,6 @@ import {
 export type Finding = { path: string; message: string }
 
 const DAY_MS = 24 * 60 * 60 * 1000
-
-/**
- * A posting's company and title: the same role searched from another place
- * is one posting (ROUTINE.md, "Search").
- */
-function roleOf(print: string): string {
-  return print.slice(0, print.lastIndexOf("|"))
-}
 
 /** Whether `text` names `term` as a whole word or phrase, ignoring case. */
 function mentions(text: string, term: string): boolean {
@@ -77,7 +69,7 @@ export function digestFindings(digest: Digest): ReadonlyArray<Finding> {
     }
     prints.set(pick.fingerprint, at)
 
-    const role = roleOf(pick.fingerprint)
+    const role = roleOf(pick.posting)
     const sameRole = roles.get(role)
     if (sameRole && !twin) {
       found.push({
@@ -126,7 +118,13 @@ export function digestFindings(digest: Digest): ReadonlyArray<Finding> {
           : `same posting as ${twin}`,
       })
     }
-    const role = roleOf(aside.fingerprint)
+    const role = roleOf(aside)
+    if (!aside.fingerprint.startsWith(`${role}|`)) {
+      found.push({
+        path: `${at}.fingerprint`,
+        message: `should start "${role}|", from its company and title`,
+      })
+    }
     const sameRole = roles.get(role)
     if (sameRole && !twin) {
       found.push({
@@ -139,7 +137,13 @@ export function digestFindings(digest: Digest): ReadonlyArray<Finding> {
   })
 
   digest.scouts.forEach((scout, i) => {
-    if (scout.pickId !== null && !ids.has(scout.pickId)) {
+    if (scout.pickId === null) return
+    if (scout.verdict !== "agree") {
+      found.push({
+        path: `scouts.${i}.pickId`,
+        message: `a scout the run did not agree with became no pick`,
+      })
+    } else if (!ids.has(scout.pickId)) {
       found.push({
         path: `scouts.${i}.pickId`,
         message: `no pick ${scout.pickId}`,

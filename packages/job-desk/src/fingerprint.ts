@@ -26,3 +26,11 @@ export type FingerprintInput = {
 export function fingerprint(posting: FingerprintInput): string {
   return [posting.company, posting.title, posting.location].map(part).join("|")
 }
+
+/**
+ * `company|title`, the fingerprint without its place: the same role searched
+ * from another place is one posting (ROUTINE.md, "Search").
+ */
+export function role(posting: Omit<FingerprintInput, "location">): string {
+  return [posting.company, posting.title].map(part).join("|")
+}

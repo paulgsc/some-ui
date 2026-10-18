@@ -27,6 +27,9 @@ export const LOCATIONS: ReadonlyArray<string> = [
   "Oakland, CA",
 ]
 
+/** The most set-aside postings a digest lists, those closest to a pick first. */
+export const MAX_SET_ASIDE = 40
+
 /** A posting older than this, on the digest's day, is set aside as stale. */
 export const MAX_POSTING_AGE_DAYS = 30
 
