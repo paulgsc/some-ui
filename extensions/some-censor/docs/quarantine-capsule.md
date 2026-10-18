@@ -380,7 +380,8 @@ _Status: holds on cards, with gaps (#1804)._ Under a plated card no `img` or
 `video` is painted, whatever its shape (`styles/content.css`, "THE PLATE"), so
 the card's own thumbnail and channel photo show nothing. The thumbnail's box is
 filled with the video's tone and the avatar's with the channel's disc, both
-hashed by `lib/content/plate/plate.ts`, and the hover preview never shows. The
+hashed by `lib/content/plate/plate.ts`. The thumbnail takes no pointer, so a
+hover there starts no preview, and the preview player never shows. The
 surfaces outside a card are in the gap table below.
 
 ---
@@ -599,18 +600,18 @@ section is a behavioural change; it is a statement of distance.
 
 ### What contradicts it
 
-| gap                                                           | where                                                     | doctrine |
-| ------------------------------------------------------------- | --------------------------------------------------------- | -------- |
-| No surface-level concealment                                  | absence and the plate are per renderer                    | QD8      |
-| Manifest copy describes the mechanism                         | `public/manifest.json` `description`, the popup's tagline | §0       |
-| A held video's watch page still plays                         | nothing handles the watch page itself (#1805)             | QD11     |
-| A shelf elsewhere keeps its header                            | a container `SHELF_SELECTORS` does not name               | QD11     |
-| Channel photos outside a card show                            | watch owner, guide, description, channel page (#1804)     | QD12     |
-| Mosaics, banners, notifications and end screens show images   | playlist header, channel banner, bell, player (#1804)     | QD12     |
-| A hover preview is hidden, not stopped: it can still be heard | `ytd-video-preview` is `display: none`                    | QD12     |
-| A trending rank is shown                                      | no capture holds one, so no crowd rule names it           | QD14     |
-| The "Video details" list shows on Firefox 112–120             | its crowd rule needs `:has()`                             | QD14     |
-| Each comment's age and like count shows                       | the comments section is #1805's                           | QD14     |
+| gap                                                            | where                                                                       | doctrine |
+| -------------------------------------------------------------- | --------------------------------------------------------------------------- | -------- |
+| No surface-level concealment                                   | absence and the plate are per renderer                                      | QD8      |
+| Manifest copy describes the mechanism                          | `public/manifest.json` `description`, the popup's tagline                   | §0       |
+| A held video's watch page still plays                          | nothing handles the watch page itself (#1805)                               | QD11     |
+| A shelf elsewhere keeps its header                             | a container `SHELF_SELECTORS` does not name                                 | QD11     |
+| Channel photos outside a card show                             | watch owner, guide, description, channel page (#1804)                       | QD12     |
+| Mosaics, banners, notifications and end screens show images    | playlist header, channel banner, bell, player (#1804)                       | QD12     |
+| A hover on the duration badge can still start a hidden preview | the badge takes the pointer to open the card; the player is `display: none` | QD12     |
+| A trending rank is shown                                       | no capture holds one, so no crowd rule names it                             | QD14     |
+| The "Video details" list shows on Firefox 112–120              | its crowd rule needs `:has()`                                               | QD14     |
+| Each comment's age and like count shows                        | the comments section is #1805's                                             | QD14     |
 
 ### Extraction hazards a maturity estimator will meet
 

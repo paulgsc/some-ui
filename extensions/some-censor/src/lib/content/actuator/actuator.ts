@@ -55,28 +55,34 @@ const PLATE_PROPERTIES: Readonly<Record<keyof Plate, string>> = {
   initial: "--boyo-initial",
 }
 
-function setPlate(el: HTMLElement, plate: Plate | null): void {
-  if (plate === null) {
-    clearPlate(el)
-    return
-  }
-  el.style.setProperty(PLATE_PROPERTIES.fill, plate.fill)
-  el.style.setProperty(PLATE_PROPERTIES.disc, plate.disc)
-  // A CSS string for `content`: the letter is never a quote or a backslash.
-  el.style.setProperty(PLATE_PROPERTIES.initial, `"${plate.initial}"`)
-}
-
-function clearPlate(el: HTMLElement): void {
-  for (const property of Object.values(PLATE_PROPERTIES)) {
-    el.style.removeProperty(property)
-  }
-  if (el.getAttribute("style") === "") el.removeAttribute("style")
-}
-
 export function createActuator(): Actuator {
   const realized = new Map<CardKey, Realized>()
   const owner = new WeakMap<HTMLElement, CardKey>()
+  /** Elements whose `style` attribute this module created, so A4 removes only those. */
+  const styled = new WeakSet<HTMLElement>()
   let disposed = false
+
+  function setPlate(el: HTMLElement, plate: Plate | null): void {
+    if (plate === null) {
+      clearPlate(el)
+      return
+    }
+    if (!el.hasAttribute("style")) styled.add(el)
+    el.style.setProperty(PLATE_PROPERTIES.fill, plate.fill)
+    el.style.setProperty(PLATE_PROPERTIES.disc, plate.disc)
+    // A CSS string for `content`: the letter is never a quote or a backslash.
+    el.style.setProperty(PLATE_PROPERTIES.initial, `"${plate.initial}"`)
+  }
+
+  function clearPlate(el: HTMLElement): void {
+    for (const property of Object.values(PLATE_PROPERTIES)) {
+      el.style.removeProperty(property)
+    }
+    if (styled.has(el) && el.getAttribute("style") === "") {
+      el.removeAttribute("style")
+    }
+    styled.delete(el)
+  }
 
   // ── Stamps ─────────────────────────────────────────────────────────────
 

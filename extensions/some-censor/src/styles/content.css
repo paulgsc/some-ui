@@ -479,9 +479,9 @@ ytd-item-section-renderer:has(> #contents > ytd-shelf-renderer:only-child):has(
    THE PLATE (QD12, #1804)
 
    A plated card paints no image: no thumbnail, no moving thumbnail,
-   no channel photo. Every `img` and `video` under the stamp is
-   hidden, whatever the vendor's shape, so a thumbnail shape this file
-   does not name still shows nothing.
+   no channel photo. Every image-bearing element and background image
+   under the stamp is hidden, whatever the vendor's shape, so a
+   thumbnail shape this file does not name still shows nothing.
 
    The tones are the Actuator's custom properties on the card
    (`lib/content/plate/plate.ts`). The fill and the disc are painted on
@@ -489,8 +489,35 @@ ytd-item-section-renderer:has(> #contents > ytd-shelf-renderer:only-child):has(
    vendor's own empty box.
    ---------------------------------------------------------- */
 [data-boyo="plated"] img,
-[data-boyo="plated"] video {
+[data-boyo="plated"] video,
+[data-boyo="plated"] picture,
+[data-boyo="plated"] canvas,
+[data-boyo="plated"] object,
+[data-boyo="plated"] embed,
+[data-boyo="plated"] image {
   visibility: hidden !important;
+}
+
+/* The plate's own fills below are more specific, so they still paint. */
+[data-boyo="plated"],
+[data-boyo="plated"] *,
+[data-boyo="plated"] *::before,
+[data-boyo="plated"] *::after {
+  background-image: none !important;
+}
+
+/* The thumbnail takes no pointer: YouTube starts its hover preview from
+   it, and a hidden preview still plays. The title, channel name and
+   duration open the card; the duration's badge sits inside the
+   thumbnail's link, so it takes the pointer back. */
+[data-boyo="plated"] ytd-thumbnail,
+[data-boyo="plated"] .ytLockupViewModelContentImage {
+  pointer-events: none !important;
+}
+
+[data-boyo="plated"] ytd-thumbnail #overlays,
+[data-boyo="plated"] yt-thumbnail-bottom-overlay-view-model {
+  pointer-events: auto !important;
 }
 
 [data-boyo="plated"] .ytThumbnailViewModelImage,
@@ -501,13 +528,15 @@ ytd-item-section-renderer:has(> #contents > ytd-shelf-renderer:only-child):has(
 
 /* The channel disc: a tone and the name's first letter. */
 [data-boyo="plated"] .ytSpecAvatarShapeHost,
-[data-boyo="plated"] #channel-thumbnail yt-img-shadow {
+[data-boyo="plated"] #channel-thumbnail yt-img-shadow,
+[data-boyo="plated"] #avatar-link yt-img-shadow {
   background: var(--boyo-disc, rgb(15 15 18)) !important;
   position: relative;
 }
 
 [data-boyo="plated"] .ytSpecAvatarShapeHost::after,
-[data-boyo="plated"] #channel-thumbnail yt-img-shadow::after {
+[data-boyo="plated"] #channel-thumbnail yt-img-shadow::after,
+[data-boyo="plated"] #avatar-link yt-img-shadow::after {
   align-items: center;
   color: rgb(255 255 255 / 72%);
   content: var(--boyo-initial, "");
@@ -521,9 +550,9 @@ ytd-item-section-renderer:has(> #contents > ytd-shelf-renderer:only-child):has(
   position: absolute;
 }
 
-/* The hover preview is a moving thumbnail, so it never shows: YouTube
-   plays it in one shared player at the app level, over whichever card
-   is hovered. */
+/* The hover preview is a moving thumbnail. YouTube plays it in one
+   shared player at the app level, over whichever card is hovered; one
+   started from elsewhere than a plated thumbnail never shows. */
 :root:not([data-boyo-off]) ytd-video-preview,
 :root:not([data-boyo-off]) #inline-preview-player {
   display: none !important;

@@ -101,12 +101,18 @@ describe("render", () => {
     expect(el.hasAttribute("style"), "removed at once").toBe(false)
   })
 
-  it("leaves the vendor's own inline style alone", () => {
+  it("leaves the vendor's own inline style alone, an empty one included", () => {
     const el = card()
     el.style.position = "absolute"
-    actuator.realize([render(K, PLATED, [{ el, role: "anchor" }])])
-    actuator.realize([unmount(K)])
+    const empty = card()
+    empty.setAttribute("style", "")
+    actuator.realize([
+      render(K, PLATED, [{ el, role: "anchor" }]),
+      render(K2, PLATED, [{ el: empty, role: "anchor" }]),
+    ])
+    actuator.realize([unmount(K), unmount(K2)])
     expect(el.getAttribute("style")).toBe("position: absolute;")
+    expect(empty.getAttribute("style")).toBe("")
   })
 
   it("stamps nested custody without plate values (D6)", () => {
@@ -173,6 +179,17 @@ describe("custody accounting (A5)", () => {
     expect(x.dataset["boyo"]).toBe("absent")
     expect(x.hasAttribute("style"), "and the plate").toBe(false)
     expect(actuator.custodyOf(K2)).toEqual([x])
+  })
+})
+
+describe("demotion", () => {
+  it("demotes an anchor to nested custody, plate values and self-tag gone", () => {
+    const el = card()
+    actuator.realize([render(K, PLATED, [{ el, role: "anchor" }])])
+    actuator.realize([render(K, PLATED, [{ el, role: "nested" }])])
+    expect(el.dataset["boyo"]).toBe("plated")
+    expect(el.dataset["boyoVid"]).toBeUndefined()
+    expect(el.hasAttribute("style")).toBe(false)
   })
 })
 
