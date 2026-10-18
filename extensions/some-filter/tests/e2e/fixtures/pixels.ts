@@ -9,6 +9,8 @@
  */
 
 import type { BrowserContext, Page } from "@playwright/test"
+import { colorsIn } from "@some-extension/common/testing"
+import type { ShotColor } from "@some-extension/common/testing"
 
 export type Region = { x: number; y: number; width: number; height: number }
 
@@ -21,11 +23,7 @@ export type SampledColor = {
 export const DARK = 0.05
 
 /** WCAG 2.1 relative luminance, matching src/lib/content/color.ts. */
-export function luminance8Bit([r, g, b]: readonly [
-  number,
-  number,
-  number,
-]): number {
+function luminance8Bit([r, g, b]: readonly [number, number, number]): number {
   const lin = (channel: number): number => {
     const s = channel / 255
     return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4)
@@ -61,41 +59,21 @@ export async function brightestIn(
 ): Promise<SampledColor> {
   const shot = await page.screenshot({ clip: region, type: "png" })
   const scratch = await context.newPage()
-  let sampled: Array<[number, number, number]>
+  let sampled: Array<ShotColor>
   try {
-    sampled = await scratch.evaluate(async (b64: string) => {
-      const img = new Image()
-      img.src = `data:image/png;base64,${b64}`
-      await img.decode()
-      const canvas = document.createElement("canvas")
-      canvas.width = img.width
-      canvas.height = img.height
-      const ctx = canvas.getContext("2d")
-      if (ctx === null) throw new Error("no 2d context")
-      ctx.drawImage(img, 0, 0)
-      const { data } = ctx.getImageData(0, 0, img.width, img.height)
-      const seen = new Map<string, [number, number, number]>()
-      // A 4px stride: a flat fill is expected and a flash is never a single
-      // stray pixel.
-      for (let y = 0; y < img.height; y += 4) {
-        for (let x = 0; x < img.width; x += 4) {
-          const i = (y * img.width + x) * 4
-          const px: [number, number, number] = [
-            data[i] ?? 0,
-            data[i + 1] ?? 0,
-            data[i + 2] ?? 0,
-          ]
-          seen.set(px.join(","), px)
-        }
-      }
-      return Array.from(seen.values())
-    }, shot.toString("base64"))
+    // A 4px stride: a flat fill is expected and a flash is never a single
+    // stray pixel.
+    sampled = await colorsIn(scratch, shot, { stride: 4 })
   } finally {
     await scratch.close()
   }
+  return brightestOf(sampled)
+}
 
+/** The brightest of a shot's sampled colours, for this module and frames.ts. */
+export function brightestOf(sampled: ReadonlyArray<ShotColor>): SampledColor {
   const ranked = sampled
-    .map((color) => ({ color, luminance: luminance8Bit(color) }))
+    .map(({ color }) => ({ color, luminance: luminance8Bit(color) }))
     .sort((a, b) => b.luminance - a.luminance)
   const top = ranked[0]
   if (top === undefined) throw new Error("no pixels sampled")

@@ -19,9 +19,10 @@ import fs from "fs"
 import os from "os"
 import path from "path"
 import type { BrowserContext, Page } from "@playwright/test"
+import { colorsIn } from "@some-extension/common/testing"
 
 import { pageCreatedAt } from "./gate0-fixture"
-import { luminance8Bit, type Region, type SampledColor } from "./pixels"
+import { brightestOf, type Region, type SampledColor } from "./pixels"
 
 function ffmpegPath(): string {
   const fromEnv = process.env["PLAYWRIGHT_FFMPEG_EXECUTABLE_PATH"]
@@ -53,57 +54,6 @@ export type FrameSample = {
   /** Seconds since the video's first frame, per ffmpeg's constant output rate. */
   readonly atSeconds: number
   readonly brightest: SampledColor
-}
-
-/**
- * Decodes a PNG's pixels as `pixels.ts`'s `brightestIn` does, via `Image`/
- * `canvas` in a scratch page: no PNG npm dependency, and one decode path for
- * both modules.
- */
-async function brightestInPng(
-  scratch: Page,
-  pngBuffer: Buffer,
-  region?: Region
-): Promise<SampledColor> {
-  const sampled = await scratch.evaluate(
-    async ({ b64, region }) => {
-      const img = new Image()
-      img.src = `data:image/png;base64,${b64}`
-      await img.decode()
-      const canvas = document.createElement("canvas")
-      canvas.width = img.width
-      canvas.height = img.height
-      const ctx = canvas.getContext("2d")
-      if (ctx === null) throw new Error("no 2d context")
-      ctx.drawImage(img, 0, 0)
-      const rx = region?.x ?? 0
-      const ry = region?.y ?? 0
-      const rw = region?.width ?? img.width
-      const rh = region?.height ?? img.height
-      const { data } = ctx.getImageData(rx, ry, rw, rh)
-      const seen = new Map<string, [number, number, number]>()
-      for (let y = 0; y < rh; y += 4) {
-        for (let x = 0; x < rw; x += 4) {
-          const i = (y * rw + x) * 4
-          const px: [number, number, number] = [
-            data[i] ?? 0,
-            data[i + 1] ?? 0,
-            data[i + 2] ?? 0,
-          ]
-          seen.set(px.join(","), px)
-        }
-      }
-      return Array.from(seen.values())
-    },
-    { b64: pngBuffer.toString("base64"), region }
-  )
-
-  const ranked = sampled
-    .map((color) => ({ color, luminance: luminance8Bit(color) }))
-    .sort((a, b) => b.luminance - a.luminance)
-  const top = ranked[0]
-  if (top === undefined) throw new Error("no pixels sampled")
-  return top
 }
 
 /**
@@ -168,7 +118,10 @@ export async function captureFrames(
       const samples: Array<FrameSample> = []
       for (const [index, file] of files.entries()) {
         const buf = fs.readFileSync(path.join(outDir, file))
-        const brightest = await brightestInPng(scratch, buf, opts?.region)
+        // The same decode as `pixels.ts`'s `brightestIn`, on the frame.
+        const brightest = brightestOf(
+          await colorsIn(scratch, buf, { stride: 4, region: opts?.region })
+        )
         samples.push({
           frameIndex: index,
           atSeconds: index / displayFps,
