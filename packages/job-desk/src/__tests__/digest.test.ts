@@ -133,7 +133,7 @@ describe("digestFindings", () => {
     const digest = sample()
     digest.picks[0]!.fingerprint = "northwind|engineer|remote"
     expect(messages(digest)).toEqual([
-      'picks.0.fingerprint: should be "northwind avionics|software engineer|remote"',
+      'picks.0.fingerprint: should be "northwind avionics|backend engineer|remote"',
     ])
   })
 
@@ -416,11 +416,11 @@ describe("fingerprint", () => {
   it("ignores case, accents and punctuation", () => {
     expect(
       fingerprint({
-        company: "Vissat Solutions, Inc",
+        company: "Cobalt Field Systems, Inc",
         title: "Data Analyst - Jr./Mid.",
         location: "Remote",
       })
-    ).toBe("vissat solutions inc|data analyst jr mid|remote")
+    ).toBe("cobalt field systems inc|data analyst jr mid|remote")
     expect(
       fingerprint({
         company: "Café  Co.",
@@ -443,7 +443,7 @@ describe("the files the phone shares back", () => {
           {
             day: "2026-10-18",
             pickId: "tid-7f2a",
-            fingerprint: "bluesight|data analyst|remote",
+            fingerprint: "tidewater analytics|data analyst|remote",
             id: "4f1a2b3c-5d6e-4f70-8a9b-0c1d2e3f4a5b",
             decision: "taken",
             reasons: [],
@@ -462,7 +462,7 @@ describe("the files the phone shares back", () => {
           {
             day: "2026-10-18",
             pickId: "nor-0b77",
-            fingerprint: "avmet applications|software engineer|remote",
+            fingerprint: "northwind avionics|software engineer|remote",
             id: "9e8d7c6b-5a49-4382-a1b0-c9d8e7f6a5b4",
             decision: "passed",
             reasons: ["seniority"],
@@ -475,7 +475,7 @@ describe("the files the phone shares back", () => {
         outcomes: [
           {
             id: "7d2e1f40-3b5a-4c8e-b1d9-2e6f8a0c4d53",
-            fingerprint: "bluesight|data analyst|remote",
+            fingerprint: "tidewater analytics|data analyst|remote",
             event: "reply",
             on: "2026-10-20",
             note: "",

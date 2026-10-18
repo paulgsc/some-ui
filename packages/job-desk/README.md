@@ -17,7 +17,7 @@ A second decisions share on one day is `decisions-<day>-2.json`, then `-3`
   queries, and the titles never picked. The owner set it on 2026-10-17.
 - `ROUTINE.md` is the routine's instructions. The scheduled task's prompt
   points at it, so a change to the run is a reviewed change here.
-- `src/sample.digest.json` (`SAMPLE_DIGEST`) is a complete digest on made-up
+- `src/sample.digest.json` (`sampleDigest()`) is a complete digest on made-up
   postings: the template a run copies, and what the web builds' `/job-run`
   page reads to a viewer, since the real digests stay on the phone.
 - `pnpm --filter @some-ui/job-desk check <file>` checks any of the three files

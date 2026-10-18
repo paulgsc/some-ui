@@ -8,23 +8,23 @@
       "id": "nor-0b77",
       "track": "software",
       "family": null,
-      "fingerprint": "northwind avionics|software engineer|remote",
+      "fingerprint": "northwind avionics|backend engineer|remote",
       "posting": {
-        "title": "Software Engineer",
+        "title": "Backend Engineer",
         "company": "Northwind Avionics",
         "location": "Remote",
-        "compensation": "$80,000–$120,000 a year",
+        "compensation": "$95,000–$115,000 a year",
         "experience": null,
-        "postedOn": "2026-09-18",
+        "postedOn": "2026-09-20",
         "applyUrl": "https://jobs.example.com/nor-0b77"
       },
       "scores": {
         "fit": 0.66,
         "odds": 0.45,
         "fitWhy": "covers 8 of 12 requirements",
-        "oddsWhy": "30 days old · remote"
+        "oddsWhy": "28 days old · remote"
       },
-      "wants": "Backend services and data pipelines for aviation weather products, with automated tests and CI.",
+      "wants": "Backend services and event pipelines for a fleet-maintenance scheduling product, with automated tests and CI.",
       "fits": [
         {
           "title": "Pipelines and background jobs",
@@ -40,11 +40,11 @@
       "gaps": [
         {
           "kind": "learnable",
-          "text": "Aviation weather data formats"
+          "text": "Fleet-maintenance domain"
         },
         {
           "kind": "unknown",
-          "text": "Security clearance for some contracts"
+          "text": "An on-call rotation"
         }
       ],
       "dontClaim": ["Managed cloud tenure", "Kubernetes"],
@@ -90,23 +90,23 @@
       "id": "lar-5d19",
       "track": "software",
       "family": null,
-      "fingerprint": "larkspur labs|software engineer|remote",
+      "fingerprint": "larkspur labs|software engineer product|remote",
       "posting": {
-        "title": "Software Engineer",
+        "title": "Software Engineer, Product",
         "company": "Larkspur Labs",
         "location": "Remote",
-        "compensation": "$100,000 a year",
+        "compensation": "$105,000 a year",
         "experience": "2+ years",
-        "postedOn": "2026-10-07",
+        "postedOn": "2026-10-06",
         "applyUrl": "https://jobs.example.com/lar-5d19"
       },
       "scores": {
         "fit": 0.61,
         "odds": 0.55,
         "fitWhy": "covers 8 of 13 requirements",
-        "oddsWhy": "11 days old · remote · asks 2+ years, no penalty"
+        "oddsWhy": "12 days old · remote · asks 2+ years, no penalty"
       },
-      "wants": "Full-stack TypeScript product work: React front end, Node services, Postgres.",
+      "wants": "Full-stack TypeScript work on a booking app: React front end, Node services, Postgres.",
       "fits": [
         {
           "title": "React and TypeScript",
@@ -155,23 +155,23 @@
       "id": "tid-7f2a",
       "track": "adjacent",
       "family": "data",
-      "fingerprint": "tidewater analytics|data analyst|remote",
+      "fingerprint": "tidewater analytics|operations data analyst|remote",
       "posting": {
-        "title": "Data Analyst",
+        "title": "Operations Data Analyst",
         "company": "Tidewater Analytics",
         "location": "Remote",
-        "compensation": "$70,000–$82,000 a year",
+        "compensation": "$72,000–$85,000 a year",
         "experience": null,
-        "postedOn": "2026-10-15",
+        "postedOn": "2026-10-14",
         "applyUrl": "https://jobs.example.com/tid-7f2a"
       },
       "scores": {
         "fit": 0.68,
         "odds": 0.65,
         "fitWhy": "covers 7 of 10 requirements",
-        "oddsWhy": "3 days old · remote"
+        "oddsWhy": "4 days old · remote"
       },
-      "wants": "SQL and Python analysis of hospital pharmacy data, dashboards for internal teams, and quality checks on incoming feeds.",
+      "wants": "SQL and Python analysis of clinic scheduling data, dashboards for internal teams, and quality checks on incoming feeds.",
       "fits": [
         {
           "title": "SQL and dashboards",
@@ -192,7 +192,7 @@
       "gaps": [
         {
           "kind": "learnable",
-          "text": "Pharmacy supply-chain domain"
+          "text": "Clinic scheduling domain"
         },
         {
           "kind": "learnable",
@@ -221,23 +221,23 @@
       "id": "kes-21c0",
       "track": "adjacent",
       "family": "qa",
-      "fingerprint": "kestrel games|automation test engineer|remote",
+      "fingerprint": "kestrel games|qa automation engineer|remote",
       "posting": {
-        "title": "Automation Test Engineer",
+        "title": "QA Automation Engineer",
         "company": "Kestrel Games",
         "location": "Remote",
-        "compensation": "$85,000–$100,000 a year",
+        "compensation": "$88,000–$104,000 a year",
         "experience": null,
-        "postedOn": "2026-10-13",
+        "postedOn": "2026-10-12",
         "applyUrl": "https://jobs.example.com/kes-21c0"
       },
       "scores": {
         "fit": 0.63,
         "odds": 0.65,
         "fitWhy": "covers 7 of 11 requirements",
-        "oddsWhy": "5 days old · remote"
+        "oddsWhy": "6 days old · remote"
       },
-      "wants": "Build and keep an automated UI and API test suite in CI, and triage failures with the developers.",
+      "wants": "Keep an automated UI and API test suite running in CI for a mobile puzzle game, and triage failures with the developers.",
       "fits": [
         {
           "title": "UI automation",
@@ -286,13 +286,13 @@
       "fingerprint": "juniper row|software engineer ii|remote",
       "title": "Software Engineer II",
       "company": "Juniper Row",
-      "why": "Posted Jul 28, older than 30 days"
+      "why": "Posted Aug 30, older than 30 days"
     },
     {
-      "fingerprint": "mosaic annotation|backend software engineer ai trainer|indianapolis in",
-      "title": "Backend Software Engineer - AI Trainer",
+      "fingerprint": "mosaic annotation|backend engineer model evaluation contract|remote",
+      "title": "Backend Engineer, Model Evaluation (contract)",
       "company": "Mosaic Annotation",
-      "why": "Part-time gig work; three copies by city, collapsed"
+      "why": "Part-time contract gig work"
     },
     {
       "fingerprint": "bellwether analytics group|technical support specialist|remote",
@@ -301,10 +301,10 @@
       "why": "Customer-facing support"
     },
     {
-      "fingerprint": "cobalt field systems|data analyst jr mid sr u s citizen dod clearance|remote",
-      "title": "Data Analyst - Jr./Mid./Sr.-U. S Citizen & DOD clearance",
+      "fingerprint": "cobalt field systems|data analyst secret clearance required|remote",
+      "title": "Data Analyst (Secret clearance required)",
       "company": "Cobalt Field Systems",
-      "why": "Requires a DoD clearance"
+      "why": "Requires a security clearance"
     }
   ],
   "scouts": [
@@ -316,14 +316,14 @@
       "review": {
         "scores": {
           "fit": 0.6,
-          "odds": 0.4,
+          "odds": 0.45,
           "fitWhy": "covers 6 of 10 requirements",
-          "oddsWhy": "posted 12 days ago · remote"
+          "oddsWhy": "posted 20 days ago · remote"
         },
         "gaps": [
           {
             "kind": "learnable",
-            "text": "C# and Unity test tooling"
+            "text": "Game-engine test tooling"
           }
         ],
         "sends": {

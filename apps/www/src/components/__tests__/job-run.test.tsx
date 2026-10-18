@@ -6,27 +6,29 @@
  * aside, and the source a click away.
  */
 
-import { SAMPLE_DIGEST } from "@some-ui/job-desk"
+import { sampleDigest } from "@some-ui/job-desk/sample"
 import { cleanup, render, screen } from "@testing-library/react"
 import { afterEach, describe, expect, it } from "vitest"
 
 import { JobRun } from "@/components/job-run"
+
+const SAMPLE = sampleDigest()
 
 afterEach(cleanup)
 
 describe("JobRun", () => {
   it("reads every pick, every posting set aside and every scout", () => {
     render(<JobRun />)
-    for (const pick of SAMPLE_DIGEST.picks) {
+    for (const pick of SAMPLE.picks) {
       expect(
         screen.getByText(new RegExp(`^${pick.posting.company} · `))
       ).toBeTruthy()
       expect(screen.getAllByText(pick.scores.fitWhy).length).toBeGreaterThan(0)
     }
-    for (const aside of SAMPLE_DIGEST.setAside) {
+    for (const aside of SAMPLE.setAside) {
       expect(screen.getByText(aside.why)).toBeTruthy()
     }
-    for (const scout of SAMPLE_DIGEST.scouts) {
+    for (const scout of SAMPLE.scouts) {
       expect(screen.getByText(scout.note)).toBeTruthy()
     }
   })

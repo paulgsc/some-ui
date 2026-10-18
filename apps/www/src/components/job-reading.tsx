@@ -47,10 +47,17 @@ export const Scores = ({ scores }: { scores: Pick["scores"] }): JSX.Element => (
 )
 
 /** What the posting asks for that my evidence doesn't cover. */
-export const Gaps = ({ gaps }: { gaps: Pick["gaps"] }): JSX.Element | null =>
+export const Gaps = ({
+  gaps,
+  heading: Heading = "h3",
+}: {
+  gaps: Pick["gaps"]
+  /** One level below whatever titles the card it sits in. */
+  heading?: "h3" | "h4"
+}): JSX.Element | null =>
   gaps.length === 0 ? null : (
     <section className="flex flex-col gap-2">
-      <h3 className={sectionHeading}>Gaps</h3>
+      <Heading className={sectionHeading}>Gaps</Heading>
       <ul className="flex flex-col gap-1.5">
         {gaps.map((gap) => (
           <li key={gap.text} className="flex items-baseline gap-2 text-sm">

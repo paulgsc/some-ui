@@ -158,6 +158,11 @@ export const paths: PathRules<Profile> = definePaths<Profile>({
   exclusive: [
     ...gatedRoutes,
     {
+      modules: ["packages/job-desk/dist/@some-ui/job-desk.es.js"],
+      profiles: [MOBILE_PROFILE],
+      why: "job-desk's main entry: the Jobs wing's Drive files, which only the Android app's Jobs wing reads and writes (src/lib/jobs). The web builds take only its id rule (the résumé builder) and its sample entry (/job-run)",
+    },
+    {
       modules: [
         "apps/www/src/lib/tenant/sessions-transfer/**",
         "apps/www/src/lib/tenant/transfer-lock/**",

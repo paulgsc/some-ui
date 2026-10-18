@@ -88,7 +88,7 @@ describe("createJobsRuntime", () => {
     const runtime = createJobsRuntime(ports({ storage: blocked }))
     expect(runtime.getSnapshot().readOnly).toBe(true)
     expect(
-      runtime.addOutcome("avmet applications|software engineer|remote", "reply")
+      runtime.addOutcome("northwind avionics|software engineer|remote", "reply")
     ).toBe(false)
     expect(runtime.getSnapshot().problem).not.toBeNull()
     expect(runtime.getSnapshot().state.log).toEqual([])
@@ -147,9 +147,9 @@ describe("createJobsRuntime", () => {
         []
       )
     ).toBe(true)
-    expect(runtime.addOutcome("bluesight|data analyst|remote", "reply")).toBe(
-      true
-    )
+    expect(
+      runtime.addOutcome("tidewater analytics|data analyst|remote", "reply")
+    ).toBe(true)
     const [scout, outcome] = runtime.getSnapshot().state.log
     expect(scout).toMatchObject({ type: "scout", scout: { id: "sc-id1" } })
     expect(outcome).toMatchObject({ type: "outcome", on: "2026-10-19" })

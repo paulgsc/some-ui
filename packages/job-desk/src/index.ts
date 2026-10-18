@@ -48,4 +48,3 @@ export {
   MAX_URL,
   TrackedSchema,
 } from "./shared"
-export { SAMPLE_DIGEST } from "./sample"

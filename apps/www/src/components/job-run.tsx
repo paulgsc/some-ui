@@ -6,7 +6,7 @@
  */
 import type { JSX, ReactNode } from "react"
 import type { Digest, Pick, Track } from "@some-ui/job-desk"
-import { SAMPLE_DIGEST } from "@some-ui/job-desk"
+import { sampleDigest } from "@some-ui/job-desk/sample"
 import { Badge } from "@some-ui/shared"
 import { ExternalLink } from "lucide-react"
 
@@ -61,7 +61,7 @@ const Disclosed = ({
   summary: string
   children: ReactNode
 }): JSX.Element => (
-  <details className="group">
+  <details>
     <summary className="text-muted-foreground hover:text-foreground cursor-pointer text-xs font-semibold tracking-wider uppercase">
       {summary}
     </summary>
@@ -84,7 +84,7 @@ const PickCard = ({ pick }: { pick: Pick }): JSX.Element => (
       <span className="text-muted-foreground">Résumé: </span>
       {resumeLabel(pick.resume)}
     </span>
-    <Disclosed summary={`Where I fit · ${pick.fits.length}`}>
+    <Disclosed summary={`Where I fit, and the gaps · ${pick.fits.length}`}>
       <ul className="flex flex-col gap-2">
         {pick.fits.map((fit) => (
           <li
@@ -99,13 +99,13 @@ const PickCard = ({ pick }: { pick: Pick }): JSX.Element => (
           </li>
         ))}
       </ul>
-      <Gaps gaps={pick.gaps} />
+      <Gaps gaps={pick.gaps} heading="h4" />
     </Disclosed>
   </article>
 )
 
 export const JobRun = (): JSX.Element => {
-  const digest = SAMPLE_DIGEST
+  const digest = sampleDigest()
   const answered = digest.scouts.length
   return (
     <div className="mx-auto flex max-w-5xl flex-col gap-8">
@@ -119,7 +119,7 @@ export const JobRun = (): JSX.Element => {
           leaves one file in my Google Drive. On my phone I take or pass on each
           pick, build the résumé it names, and record how applying went; the
           next run reads that back. This is a sample digest on made-up postings.
-          My real ones stay on my phone and my home server.
+          My real ones stay in my Google Drive and on my phone.
         </p>
         <dl className="text-muted-foreground flex flex-wrap gap-x-6 gap-y-1 text-sm">
           <div className="flex gap-1.5">
@@ -183,7 +183,7 @@ export const JobRun = (): JSX.Element => {
                 {scout.review && (
                   <>
                     <Scores scores={scout.review.scores} />
-                    <Gaps gaps={scout.review.gaps} />
+                    <Gaps gaps={scout.review.gaps} heading="h4" />
                     <span className="text-sm">
                       <span className="text-muted-foreground">Résumé: </span>
                       {scout.review.sends.variant} ·{" "}

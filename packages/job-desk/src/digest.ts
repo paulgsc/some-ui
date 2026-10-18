@@ -18,7 +18,7 @@ import {
  * and carrying the résumé to send, plus what the run set aside and its
  * verdict on each scout it read. The phone opens it from the file picker.
  *
- * `sample.digest.json` (`SAMPLE_DIGEST`) is a complete digest, and the template a run
+ * `sample.digest.json` (`sampleDigest()`) is a complete digest, and the template a run
  * copies.
  */
 

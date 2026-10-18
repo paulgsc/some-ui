@@ -95,6 +95,9 @@
         "src/native.ts"
       ]
     },
+    "packages/job-desk": {
+      "entry": ["src/index.ts", "src/sample.ts"]
+    },
     "packages/ui/resume": {
       "ignoreDependencies": ["@some-ui/contract-harness"]
     },
