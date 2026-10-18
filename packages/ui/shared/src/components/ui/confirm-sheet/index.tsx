@@ -23,29 +23,31 @@ export type ConfirmRequest = {
 
 /**
  * A question before something that cannot be undone, as a sheet from the
- * bottom of the phone in the app's own theme. `ask` opens it; render `sheet`
- * once, anywhere in the component. A yes runs `onConfirm` and closes it.
+ * bottom of the phone in the app's own theme, shown while `open`. A yes runs
+ * `onConfirm`; either answer, or dismissing it, closes it (`onOpenChange`).
+ * For a question held outside the component; `useConfirmSheet` holds its own.
  */
-export function useConfirmSheet(): {
-  ask: (request: ConfirmRequest) => void
-  sheet: JSX.Element
-} {
+export const ConfirmSheet = ({
+  request,
+  open,
+  onOpenChange,
+}: {
+  request: ConfirmRequest | null
+  open: boolean
+  onOpenChange: (open: boolean) => void
+}): JSX.Element => {
   // The last question stays put while the sheet slides away, so its words do
   // not blank out mid-animation; `open` alone says whether it shows.
-  const [request, setRequest] = useState<ConfirmRequest | null>(null)
-  const [open, setOpen] = useState(false)
-  const close = (): void => setOpen(false)
-  const ask = (next: ConfirmRequest): void => {
-    setRequest(next)
-    setOpen(true)
-  }
-  const sheet = (
-    <Sheet open={open} onOpenChange={setOpen}>
+  const [last, setLast] = useState(request)
+  if (request !== null && request !== last) setLast(request)
+  const shown = request ?? last
+  return (
+    <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="bottom" className="rounded-t-3xl px-5 pt-6 pb-8">
         <SheetHeader className="px-0 text-left">
-          <SheetTitle className="text-xl">{request?.title}</SheetTitle>
+          <SheetTitle className="text-xl">{shown?.title}</SheetTitle>
           <SheetDescription className="text-base">
-            {request?.description}
+            {shown?.description}
           </SheetDescription>
         </SheetHeader>
         <div className="mt-6 flex flex-col gap-2.5">
@@ -54,23 +56,44 @@ export function useConfirmSheet(): {
             size="lg"
             className="h-12 rounded-2xl text-base"
             onClick={() => {
-              request?.onConfirm()
-              close()
+              shown?.onConfirm()
+              onOpenChange(false)
             }}
           >
-            {request?.confirm}
+            {shown?.confirm}
           </Button>
           <Button
             variant="outline"
             size="lg"
             className="h-12 rounded-2xl text-base"
-            onClick={close}
+            onClick={() => onOpenChange(false)}
           >
-            {request?.keep ?? "Keep it"}
+            {shown?.keep ?? "Keep it"}
           </Button>
         </div>
       </SheetContent>
     </Sheet>
   )
-  return { ask, sheet }
+}
+
+/**
+ * `ConfirmSheet` with its question held here: `ask` opens it; render `sheet`
+ * once, anywhere in the component.
+ */
+export function useConfirmSheet(): {
+  ask: (request: ConfirmRequest) => void
+  sheet: JSX.Element
+} {
+  const [request, setRequest] = useState<ConfirmRequest | null>(null)
+  const [open, setOpen] = useState(false)
+  const ask = (next: ConfirmRequest): void => {
+    setRequest(next)
+    setOpen(true)
+  }
+  return {
+    ask,
+    sheet: (
+      <ConfirmSheet request={request} open={open} onOpenChange={setOpen} />
+    ),
+  }
 }

@@ -41,8 +41,7 @@ function describe(reflection: Reflection): string {
 
 /**
  * Reflecting on one session, at any moment of it or after: say it (phone),
- * type it, or tap how it is going. On the phone each one can be shared at
- * once, mid-session, beside its let go. Every reflection counts toward one cap
+ * type it, or tap how it is going. Every reflection counts toward one cap
  * across all sessions; once it is reached, this offers the way out (share or
  * let go) instead of a place to add another.
  */
@@ -174,25 +173,22 @@ export const ReflectPanel = ({
           <p className="text-sm font-medium">This session · {own.length}</p>
           <ul className="flex flex-col gap-1">
             {own.map((reflection) => {
-              const at =
+              const timecode =
                 reflection.atMs === null
-                  ? "the end"
+                  ? null
                   : formatTimecode(reflection.atMs)
+              const at = timecode ?? "the end"
               return (
                 <li
                   key={reflection.id}
                   className="bg-muted/60 flex items-center gap-2 rounded-md py-1 pr-1 pl-2.5 text-sm"
                 >
                   <span className="text-muted-foreground w-12 shrink-0 font-mono text-xs">
-                    {reflection.atMs === null
-                      ? "after"
-                      : formatTimecode(reflection.atMs)}
+                    {timecode ?? "after"}
                   </span>
                   <span className="min-w-0 flex-1 truncate">
                     {describe(reflection)}
                   </span>
-                  {/* Shared now, it leaves once they arrived, so the
-                      session's own share later carries only the rest. */}
                   {import.meta.env.VITE_DEVICE_BACKEND === "true" && (
                     <DeviceShareReflections
                       sessionIds={[sessionId]}

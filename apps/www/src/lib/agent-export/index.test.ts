@@ -8,6 +8,7 @@ import type { Soundbite } from "@some-ui/soundbites"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 import {
+  arrivals,
   handOff,
   handOffExport,
   shareAgentExport,
@@ -157,6 +158,7 @@ beforeEach(() => {
   vi.spyOn(globalThis.console, "error").mockImplementation(() => undefined)
   localStorage.clear()
   reflections.letGo(reflections.getSnapshot().kept.map((r) => r.id))
+  for (const batch of arrivals.getSnapshot()) arrivals.answer(batch, false)
   written.clear()
   removedAudio.mockReset()
   audioRead.fails = false
@@ -230,12 +232,13 @@ describe("shareReflections", () => {
     ])
   })
 
-  it("shares one reflection of a session under the session's own file name, and a later share of the session carries only the rest", async () => {
-    await expect(
-      shareReflections({ sessionIds: ["s1-0000000000"], only: ["v1"] }, NOW)
-    ).resolves.toEqual({ outcome: "shared", sent: ["v1"] })
-
+  it("shares one reflection of a session under the session's own file name, and once it arrived a later share carries only the rest", async () => {
     const base = "reflections/2026-10-10_morning-drama_s1-00000"
+    const reflectionsIn = (): unknown =>
+      JSON.parse(written.get(`${base}.json`) ?? "null").reflections
+
+    await shareReflections({ sessionIds: ["s1-0000000000"], only: ["v1"] }, NOW)
+
     expect(share).toHaveBeenLastCalledWith(
       expect.objectContaining({
         files: [
@@ -244,22 +247,28 @@ describe("shareReflections", () => {
         ],
       })
     )
-    expect(JSON.parse(written.get(`${base}.json`) ?? "null")).toMatchObject({
-      session: { id: "s1-0000000000" },
-      reflections: [{ id: "v1" }],
-    })
-    expect(
-      JSON.parse(written.get(`${base}.json`) ?? "null").reflections
-    ).toHaveLength(1)
+    expect(reflectionsIn()).toEqual([expect.objectContaining({ id: "v1" })])
 
-    handOff(["v1"], NOW())
-    written.clear()
-    await expect(
-      shareReflections({ sessionIds: ["s1-0000000000"] }, NOW)
-    ).resolves.toEqual({ outcome: "shared", sent: ["t1"] })
-    expect(
-      JSON.parse(written.get(`${base}.json`) ?? "null").reflections
-    ).toEqual([expect.objectContaining({ id: "t1" })])
+    const [batch] = arrivals.getSnapshot()
+    expect(batch).toEqual(["v1"])
+    arrivals.answer(batch, true, NOW())
+    expect(arrivals.getSnapshot()).toEqual([])
+    await shareReflections({ sessionIds: ["s1-0000000000"] }, NOW)
+    expect(reflectionsIn()).toEqual([expect.objectContaining({ id: "t1" })])
+  })
+
+  it("keeps a share the person says did not arrive, and waits on none backed out of", async () => {
+    await shareReflections({ sessionIds: ["s1-0000000000"] }, NOW)
+    const [batch] = arrivals.getSnapshot()
+    arrivals.answer(batch, false)
+    arrivals.answer(batch, true)
+
+    expect(arrivals.getSnapshot()).toEqual([])
+    expect(reflections.getSnapshot().kept).toHaveLength(3)
+
+    share.mockRejectedValue(new Error("Share canceled"))
+    await shareReflections({ sessionIds: ["s1-0000000000"] }, NOW)
+    expect(arrivals.getSnapshot()).toEqual([])
   })
 
   it("marks nothing shared when the phone would not store the hand-off", () => {

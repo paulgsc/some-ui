@@ -3,8 +3,7 @@
  *
  * Reflecting on a session: a typed line and the one-tap answers are kept
  * with the session's ID and the moment, and a full phone offers the way out
- * (let go) instead of a place to add another. On the phone each one shares
- * on its own, mid-session.
+ * (let go) instead of a place to add another.
  */
 
 import { withQueryClient } from "@/test-support/query-client"
@@ -21,9 +20,8 @@ import { REFLECTION_LIMIT, reflections } from "@/lib/session-reflection"
 import { ReflectPanel } from "@/components/reflection/reflect-panel"
 
 const shareReflections = vi.hoisted(() => vi.fn())
-const handOff = vi.hoisted(() => vi.fn())
-vi.mock("@/lib/agent-export", () => ({ shareReflections, handOff }))
-// The microphone is its own module's to test.
+vi.mock("@/lib/agent-export", () => ({ shareReflections }))
+// On the phone the panel also records voice; that is its own module's test.
 vi.mock("@/components/reflection/device-reflection-voice", () => ({
   DeviceReflectionVoice: (): null => null,
 }))
@@ -48,8 +46,6 @@ afterEach(() => {
   cleanup()
   vi.restoreAllMocks()
   vi.unstubAllEnvs()
-  shareReflections.mockReset()
-  handOff.mockReset()
 })
 
 describe("ReflectPanel", () => {
@@ -97,7 +93,7 @@ describe("ReflectPanel", () => {
     expect(screen.getByRole("alert").textContent).toMatch(/no room/i)
   })
 
-  it("shares one reflection on the phone mid-session, and lets it go once it arrived", async () => {
+  it("shares one reflection on its own, on the phone", () => {
     vi.stubEnv("VITE_DEVICE_BACKEND", "true")
     reflections.keep({
       id: "now",
@@ -117,9 +113,5 @@ describe("ReflectPanel", () => {
       sessionIds: ["s1"],
       only: ["now"],
     })
-    fireEvent.click(
-      await screen.findByRole("button", { name: "They arrived: let them go" })
-    )
-    expect(handOff).toHaveBeenCalledWith(["now"])
   })
 })
