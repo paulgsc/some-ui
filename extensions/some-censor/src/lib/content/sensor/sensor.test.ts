@@ -615,6 +615,38 @@ describe("the watch page (#1805)", () => {
     ])
   })
 
+  it("announces the description when it is drawn again or loses the face control", async () => {
+    const manager = watchPage("w1", "21y ago")
+    const metadata = manager.querySelector("ytd-watch-metadata")
+    await tick()
+    const described = (): number =>
+      tokens.filter((t) => t.kind === "described").length
+    tokens = []
+    // Drawn late.
+    metadata?.insertAdjacentHTML(
+      "beforeend",
+      '<div id="description"><div id="description-inner"></div></div>'
+    )
+    await vi.advanceTimersByTimeAsync(0)
+    expect(described()).toBe(1)
+    // The control goes in, and is dropped by a redraw of the description.
+    const inner = manager.querySelector("#description-inner")
+    inner?.insertAdjacentHTML(
+      "beforeend",
+      "<button data-boyo-face-hold></button>"
+    )
+    await vi.advanceTimersByTimeAsync(0)
+    expect(described()).toBe(2)
+    // The same description loses the control, then is drawn anew.
+    inner?.querySelector("button")?.remove()
+    await vi.advanceTimersByTimeAsync(0)
+    expect(described()).toBe(3)
+    inner?.replaceWith(document.createElement("div"))
+    await vi.advanceTimersByTimeAsync(0)
+    expect(described()).toBe(4)
+    expect(watched(), "the reading itself did not change").toEqual([])
+  })
+
   it("keeps the page across a navigation, which Core does too", async () => {
     watchPage("w1", "21y ago")
     await tick()

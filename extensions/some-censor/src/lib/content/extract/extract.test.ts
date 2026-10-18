@@ -20,6 +20,7 @@ import {
   extractMeta,
   extractTitle,
   extractUploadDate,
+  readDescription,
   readWatch,
   tryExtract,
 } from "./index"
@@ -551,6 +552,15 @@ describe("readWatch (#1805)", () => {
       dates: [],
       miniplayer: false,
     })
+  })
+
+  it("finds the shown watch page's description, and no hidden page's", () => {
+    const shown = page(
+      `<ytd-watch-flexy video-id="jNQ"><ytd-watch-metadata><div id="description"><div id="description-inner"></div></div></ytd-watch-metadata></ytd-watch-flexy>`
+    )
+    expect(readDescription(shown)?.id).toBe("description-inner")
+    shown.querySelector("ytd-watch-flexy")?.setAttribute("hidden", "")
+    expect(readDescription(shown)).toBeNull()
   })
 
   it("reads a Short as a Short, and a hidden page as no page", () => {

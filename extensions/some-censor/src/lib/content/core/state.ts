@@ -34,6 +34,11 @@ export type WatchState = {
   /** The page's video, with only the dates that are its own. */
   readonly observation: WatchObservation
   readonly view: WatchView
+  /**
+   * The owner held for the real thumbnail (QD13): for this plated view
+   * only, gone with the video, the plate, or a navigation.
+   */
+  readonly face: boolean
   /** When it was last observed: what the boundary re-decides it at. */
   readonly seenAt: number
 }

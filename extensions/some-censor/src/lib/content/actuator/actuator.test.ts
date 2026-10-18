@@ -37,6 +37,7 @@ function sessionOf(n: number): Parameters<typeof project>[0]["session"] {
 }
 
 let actuator: Actuator
+let faced: Array<string>
 
 function card(tag = "ytd-rich-item-renderer"): HTMLElement {
   const el = document.createElement(tag)
@@ -66,7 +67,10 @@ function fillOf(el: HTMLElement): string {
 
 beforeEach(() => {
   document.body.innerHTML = ""
-  actuator = createActuator(document)
+  faced = []
+  actuator = createActuator(document, {
+    onFace: (videoId) => faced.push(videoId),
+  })
 })
 
 afterEach(() => {
@@ -242,10 +246,21 @@ describe("the watch page's hold (#1805, WH1, WH2)", () => {
   const watch = (
     view: "pending" | "absent" | "plated" | null,
     videoId: typeof VIDEO | null = VIDEO,
-    miniplayer = false
+    miniplayer = false,
+    extra: { face?: boolean; description?: HTMLElement } = {}
   ): BoundAction => ({
-    action: { kind: "watch", view, videoId, miniplayer },
-    targets: [],
+    action: {
+      kind: "watch",
+      view,
+      videoId,
+      miniplayer,
+      poster: view === "plated" ? "hsl(1 2% 3%)" : null,
+      face: extra.face ?? false,
+    },
+    targets:
+      extra.description === undefined
+        ? []
+        : [{ el: extra.description, role: "anchor" }],
   })
 
   /** A playing video; jsdom implements no playback, so its two calls are stubs. */
@@ -352,5 +367,138 @@ describe("the watch page's hold (#1805, WH1, WH2)", () => {
     document.title = "Next - YouTube"
     await flush()
     expect(document.title, "no observer is left").toBe("Next - YouTube")
+  })
+})
+
+describe("the poster and the face control (#1805, QD13)", () => {
+  const VIDEO = asVideoId("vid_w")
+  function description(): HTMLElement {
+    const el = document.createElement("div")
+    el.id = "description-inner"
+    document.body.append(el)
+    return el
+  }
+  const plated = (
+    el: HTMLElement | undefined,
+    face = false,
+    videoId = VIDEO
+  ): BoundAction => ({
+    action: {
+      kind: "watch",
+      view: "plated",
+      videoId,
+      miniplayer: false,
+      poster: "hsl(1 2% 3%)",
+      face,
+    },
+    targets: el === undefined ? [] : [{ el, role: "anchor" }],
+  })
+  const control = (): HTMLElement | null =>
+    document.querySelector("[data-boyo-face-hold]")
+  const key = (type: "keydown" | "keyup", repeat = false, name = " "): void => {
+    control()?.dispatchEvent(
+      new KeyboardEvent(type, { key: name, repeat, bubbles: true })
+    )
+  }
+
+  beforeEach(() => {
+    vi.useFakeTimers()
+  })
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it("plates the poster and offers the control in the description it is given", () => {
+    const desc = description()
+    actuator.realize([plated(desc)])
+    const root = document.documentElement
+    expect(root.style.getPropertyValue("--boyo-poster")).toBe("hsl(1 2% 3%)")
+    expect(control()?.parentElement).toBe(desc)
+    expect(control()?.textContent).toBe("Hold to show the original thumbnail")
+    actuator.realize([plated(desc)])
+    expect(document.querySelectorAll("[data-boyo-face-hold]")).toHaveLength(1)
+  })
+
+  it("reports a hold of the full three seconds, and nothing shorter", () => {
+    actuator.realize([plated(description())])
+    key("keydown")
+    vi.advanceTimersByTime(2_999)
+    key("keyup")
+    vi.advanceTimersByTime(5_000)
+    expect(faced, "an early release cancels").toEqual([])
+
+    key("keydown")
+    key("keydown", true)
+    vi.advanceTimersByTime(1_000)
+    control()?.dispatchEvent(new FocusEvent("blur"))
+    vi.advanceTimersByTime(5_000)
+    expect(faced, "leaving the control cancels").toEqual([])
+
+    key("keydown")
+    vi.advanceTimersByTime(3_000)
+    key("keydown", false, "Escape")
+    key("keyup")
+    vi.advanceTimersByTime(0)
+    expect(faced, "Escape cancels, even after the full time").toEqual([])
+
+    key("keydown")
+    vi.advanceTimersByTime(3_000)
+    expect(faced, "it reports on the release").toEqual([])
+    key("keyup")
+    vi.advanceTimersByTime(0)
+    expect(faced).toEqual(["vid_w"])
+  })
+
+  it("keeps Space and Enter from YouTube's own keys, held or let go", () => {
+    actuator.realize([plated(description())])
+    const reached: Array<string> = []
+    const page = new AbortController()
+    for (const type of ["keydown", "keyup"]) {
+      document.addEventListener(type, () => reached.push(type), {
+        signal: page.signal,
+      })
+    }
+    for (const name of [" ", "Enter"]) {
+      key("keydown", false, name)
+      vi.advanceTimersByTime(1_000)
+      key("keyup", false, name)
+    }
+    page.abort()
+    expect(reached).toEqual([])
+  })
+
+  it("keeps the description's own click from the control", () => {
+    const desc = description()
+    let expanded = 0
+    desc.addEventListener("click", () => (expanded += 1))
+    actuator.realize([plated(desc)])
+    control()?.click()
+    expect(expanded).toBe(0)
+  })
+
+  it("lifts the poster's plate once held, and takes everything back after", () => {
+    const desc = description()
+    actuator.realize([plated(desc)])
+    actuator.realize([plated(desc, true)])
+    const root = document.documentElement
+    expect(root.hasAttribute("data-boyo-face")).toBe(true)
+    expect(control(), "the control goes once used").toBeNull()
+
+    actuator.realize([
+      {
+        action: {
+          kind: "watch",
+          view: null,
+          videoId: null,
+          miniplayer: false,
+          poster: null,
+          face: false,
+        },
+        targets: [],
+      },
+    ])
+    expect(root.hasAttribute("data-boyo-face")).toBe(false)
+    expect(root.style.getPropertyValue("--boyo-poster")).toBe("")
+    expect(root.hasAttribute("style")).toBe(false)
   })
 })

@@ -346,6 +346,7 @@ describe("evidence alone decides (R7)", () => {
       start: { kind: "start", session: session(5), boundaryDays: B, t: 3 },
       stop: { kind: "stop", t: 3 },
       boundary: { kind: "boundary", days: 2 * B, t: 3 },
+      face: { kind: "face", videoId: asVideoId("vid_a"), t: 3 },
     }
     for (const uploadDate of [OLD, "3 days ago"]) {
       const { state } = fold([started, seen(1, { uploadDate })])
@@ -528,6 +529,75 @@ describe("the watch page (R8, #1805)", () => {
     const stopped = reduce(on, { kind: "stop", t: 2 })
     expect(stopped.state.watch).toBeNull()
     expect(watchActions(stopped.actions)).toEqual([])
+  })
+
+  it("shows the face for the plated page's video, this view only (R9)", () => {
+    const face = (t: number, videoId = "vid_w"): CoreEvent => ({
+      kind: "face",
+      videoId: asVideoId(videoId),
+      t,
+    })
+    const faces = (actions: ReadonlyArray<Action>): Array<unknown> =>
+      actions.flatMap((a) => (a.kind === "watch" ? [a.face] : []))
+    const plated = fold([started, watched(1)]).state
+
+    const held = reduce(plated, face(2))
+    expect(held.state.watch?.face).toBe(true)
+    expect(faces(held.actions)).toEqual([true])
+    expect(reduce(held.state, face(3)).actions, "once").toEqual([])
+    const reread = reduce(
+      held.state,
+      watched(3, { ...OLD_PAGE, dates: ["444,875,933 views", "20y ago"] })
+    )
+    expect(reread.state.watch?.face, "kept for the same plated video").toBe(
+      true
+    )
+
+    // Another video's hold, a held page and the miniplayer show nothing.
+    expect(reduce(plated, face(2, "vid_other")).actions).toEqual([])
+    const recent = fold([
+      started,
+      watched(1, { ...OLD_PAGE, dates: ["3 hours ago"] }),
+    ]).state
+    expect(reduce(recent, face(2)).actions).toEqual([])
+    const mini = fold([started, watched(1, { ...OLD_PAGE, miniplayer: true })])
+    expect(reduce(mini.state, face(2)).actions).toEqual([])
+
+    // It goes with a navigation, another video, and the plate.
+    expect(faces(reduce(held.state, nav(2, 4)).actions)).toEqual([false])
+    const next = reduce(
+      held.state,
+      watched(4, { ...OLD_PAGE, videoId: asVideoId("vid_next") })
+    )
+    expect(next.state.watch?.face).toBe(false)
+    const raised = reduce(held.state, { kind: "boundary", days: 30 * B, t: 4 })
+    expect(raised.state.watch?.face).toBe(false)
+  })
+
+  it("renders the watch view again when the description is drawn again", () => {
+    const described: CoreEvent = { kind: "described", t: 2 }
+    expect(reduce(fold([started]).state, described).actions).toEqual([])
+    const { state } = fold([started, watched(1)])
+    expect(watchActions(reduce(state, described).actions)).toEqual([
+      shown("plated"),
+    ])
+  })
+
+  it("puts the plate's tone on a plated page's poster, and no other", () => {
+    const posters = (actions: ReadonlyArray<Action>): Array<unknown> =>
+      actions.flatMap((a) => (a.kind === "watch" ? [a.poster] : []))
+    const { actions } = fold([
+      started,
+      watched(1),
+      watched(2, {
+        ...OLD_PAGE,
+        dates: ["3 hours ago"],
+        videoId: asVideoId("y"),
+      }),
+    ])
+    const [plated, absent] = posters(actions)
+    expect(plated).toMatch(/^hsl\(/)
+    expect(absent).toBeNull()
   })
 
   it("is re-decided by the boundary", () => {

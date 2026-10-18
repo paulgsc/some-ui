@@ -9,9 +9,10 @@
     BOYO fixture: the watch page itself (#1805), in the elements the
     2026-10-18 capture of /watch?v=jNQXAC9IVRw holds: the page manager's
     shown page, its player, the metadata naming its video, and the info
-    line and tooltip that state the date. The video is old, so it is
-    plated; a spec rewrites the date, the video or the page to reach
-    the other views.
+    line and tooltip that state the date, the description, and the
+    player's poster, painted vivid as the player paints it, inline. The
+    video is old, so it is plated; a spec rewrites the date, the video
+    or the page to reach the other views.
   -->
     <ytd-app>
       <ytd-page-manager>
@@ -22,11 +23,23 @@
             <div id="primary">
               <div id="primary-inner">
                 <div id="player">
-                  <video
-                    class="html5-main-video"
-                    width="320"
-                    height="180"
-                  ></video>
+                  <div id="movie_player" class="html5-video-player">
+                    <video
+                      class="html5-main-video"
+                      width="320"
+                      height="180"
+                    ></video>
+                    <div class="ytp-cued-thumbnail-overlay">
+                      <div
+                        class="ytp-cued-thumbnail-overlay-image"
+                        style="
+                          width: 320px;
+                          height: 180px;
+                          background-image: url(&quot;data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='9'%3E%3Crect width='16' height='9' fill='%23ff00ff'/%3E%3C/svg%3E&quot;);
+                        "
+                      ></div>
+                    </div>
+                  </div>
                 </div>
                 <div id="below">
                   <ytd-watch-metadata video-id="jNQXAC9IVRw">
@@ -47,6 +60,9 @@
                         </div></tp-yt-paper-tooltip
                       >
                     </ytd-watch-info-text>
+                    <div id="description">
+                      <div id="description-inner">A description.</div>
+                    </div>
                   </ytd-watch-metadata>
                 </div>
               </div>

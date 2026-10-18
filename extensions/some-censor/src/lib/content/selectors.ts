@@ -132,6 +132,9 @@ export const SEL = VIDEO_SELECTORS.join(",")
  */
 export const SWITCHED_OFF_ATTRIBUTE = "data-boyo-off"
 
+/** The face control the Actuator puts in a plated page's description (QD13). */
+export const FACE_CONTROL_ATTRIBUTE = "data-boyo-face-hold"
+
 const WHILE_ON = `:root:not([${SWITCHED_OFF_ATTRIBUTE}])`
 
 /**

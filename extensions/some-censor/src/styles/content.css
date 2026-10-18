@@ -614,7 +614,8 @@ ytd-item-section-renderer:has(> #contents > ytd-shelf-renderer:only-child):has(
    script has or has not decided yet, and neither is the miniplayer
    the video can move into; on "absent" the whole page goes, and
    "Not here." stands in its place. A Short is never admitted, so
-   the Shorts page is never rendered.
+   the Shorts page is never rendered. A plated video's poster is the
+   plate, and the face control in its description lifts it.
    ---------------------------------------------------------- */
 :root:not([data-boyo-off], [data-boyo-watch="plated"])
   ytd-page-manager
@@ -681,6 +682,67 @@ ytd-item-section-renderer:has(> #contents > ytd-shelf-renderer:only-child):has(
 }
 
 :root[data-boyo-off] [data-boyo-not-here] {
+  display: none !important;
+}
+
+/* The plated video's poster is the plate until the owner holds for the
+   real thumbnail (QD12, QD13): before play, and again once it ends. The
+   player draws the poster as an inline background on this one element;
+   the same class inside the up-next card is the overlays' rule above. */
+:root:not([data-boyo-off], [data-boyo-face])[data-boyo-watch="plated"]
+  #movie_player
+  > .ytp-cued-thumbnail-overlay
+  > .ytp-cued-thumbnail-overlay-image {
+  background: linear-gradient(135deg, rgb(255 255 255 / 6%), transparent 55%),
+    var(--boyo-poster, rgb(15 15 18)) !important;
+}
+
+/* "Hold to show the original thumbnail": grey, dashed and plain, with
+   no progress colour and no reward (absent-plated-heard.md §4). The
+   fill runs the hold's three seconds; reduced motion drops it. */
+[data-boyo-face-hold] {
+  background: transparent;
+  border: 1px dashed var(--yt-spec-10-percent-layer, rgb(0 0 0 / 10%));
+  border-radius: 4px;
+  color: var(--yt-spec-text-secondary, #606060);
+  cursor: pointer;
+  display: block;
+  font:
+    400 12px/1 Roboto,
+    Arial,
+    sans-serif;
+  margin-top: 12px;
+  overflow: hidden;
+  padding: 8px 10px;
+  position: relative;
+  touch-action: none;
+  user-select: none;
+}
+
+[data-boyo-face-hold]::before {
+  background: var(--yt-spec-10-percent-layer, rgb(0 0 0 / 10%));
+  content: "";
+  inset: 0 auto 0 0;
+  position: absolute;
+  width: 0;
+}
+
+[data-boyo-face-hold][data-holding]::before {
+  transition: width 3s linear;
+  width: 100%;
+}
+
+[data-boyo-face-hold] span {
+  position: relative;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-boyo-face-hold][data-holding]::before {
+    transition: none;
+  }
+}
+
+:root[data-boyo-off] [data-boyo-face-hold] {
   display: none !important;
 }
 
