@@ -891,6 +891,19 @@ importers:
         specifier: ^4.10.2
         version: 4.10.2
 
+  packages/job-desk:
+    dependencies:
+      zod:
+        specifier: 'catalog:'
+        version: 4.6.5
+    devDependencies:
+      '@some-ui/tsconfig':
+        specifier: workspace:*
+        version: link:../tsconfig
+      '@some-ui/vite-config':
+        specifier: workspace:*
+        version: link:../some-vite-config
+
   packages/makjang:
     devDependencies:
       '@some-ui/tsconfig':
