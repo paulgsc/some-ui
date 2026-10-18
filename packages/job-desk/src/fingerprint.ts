@@ -1,8 +1,7 @@
 /**
- * Postings come from several boards and threads, and no key is shared across
- * them: the same role can appear on a company's board and in a Hacker News
- * post. So a posting is known by what it says about itself, normalized:
- * company, title and location.
+ * Postings come from several job boards and Hacker News, and no id is shared
+ * across them or stable from one run to the next. So a posting is known by
+ * what it says about itself, normalized: company, title and location.
  */
 
 function part(value: string): string {

@@ -25,9 +25,9 @@ policy disagree, the policy wins and this file is the bug.
    for where files go, and its `some-ui jobs/` section holds the folder ids.
    Every Drive result's owner must be paulgathondudev@gmail.com; if one isn't,
    stop.
-2. If this session can't search the web or read a page, stop and say so.
-   Write no digest: a digest from yesterday's postings would read as today's.
-   No job-site connector is needed (§3).
+2. If this session can't run a web search and an HTTPS GET, stop and say
+   so. Write no digest: a digest from yesterday's postings would read as
+   today's.
 3. List `some-ui jobs/Brief/`. If `digest-<today>.json` is already there,
    stop and say so. A digest is never replaced.
 
@@ -88,7 +88,8 @@ For each new file:
    - **Passed picks:** the reasons and notes tell me what to stop sending. A
      reason given twice is a rule for this run.
    - **Disagreements:** a set-aside posting I would have picked. Look it up
-     again; if it is still open, it may be a pick today.
+     again as §3 looks up a scout; if it is still open, it may be a pick
+     today.
    - **Debriefs and outcomes:** how applying went and what came of it. Report
      them in the summary. Once there are 30 or more outcomes, compare them with
      the odds each pick was given and say in the summary whether the rubric
@@ -104,52 +105,75 @@ never picked again, unless a disagreement brought it back.
 ## 3. Search
 
 Postings come from public sources that give anyone a posting's full text:
-the Greenhouse, Lever and Ashby job boards, and this month's Hacker News "Who
-is hiring?" thread. Indeed and LinkedIn pages refuse agents, so a posting
-seen only there is never read or picked.
+the Greenhouse, Lever and Ashby job boards, and Hacker News's monthly "Who is
+hiring?" thread. Fetch each with an HTTPS GET (`curl`) and read the fields
+named here from its JSON; never take a field from a search result's snippet
+or from a summary of a page. Indeed and LinkedIn are never searched: their
+pages refuse agents.
 
-1. **Find.** For every query in `QUERIES` (the software list, then each
-   adjacent family's) and every place in `LOCATIONS`, search the web for the
-   query and the place on those boards:
+1. **Find on the boards.** For every query in `QUERIES` (the software list,
+   then each adjacent family's) and every place in `LOCATIONS`, run one web
+   search for the query and the place, unquoted, with the search limited to
+   the domains `job-boards.greenhouse.io`, `boards.greenhouse.io`,
+   `jobs.lever.co` and `jobs.ashbyhq.com`. A `site:` operator in the query
+   text is not honored; the domain limit is. Keep only results that name one
+   posting, and drop any query string:
 
-   ```text
-   "<query>" "<place>" (site:job-boards.greenhouse.io OR site:boards.greenhouse.io OR site:jobs.lever.co OR site:jobs.ashbyhq.com)
-   ```
+   - Greenhouse: `…greenhouse.io/<board>/jobs/<id>`;
+   - Lever: `jobs.lever.co/<company>/<id>`;
+   - Ashby: `jobs.ashbyhq.com/<org>/<id>`.
 
-   For `remote`, search `"<query>" remote "United States"` the same way.
-   Then find this month's thread, the newest story by `whoishiring` titled
-   "Ask HN: Who is hiring?"
-   (`https://hn.algolia.com/api/v1/search_by_date?tags=story,author_whoishiring`),
-   and search its posts once per query:
-   `https://hn.algolia.com/api/v1/search?tags=comment,story_<id>&query=<query>&hitsPerPage=50`.
-   Keep the posts that name a place in `LOCATIONS`, where remote means
-   remote in the US.
+2. **Find on Hacker News.** Take the newest story by `whoishiring` titled
+   "Ask HN: Who is hiring? (…)"
+   (`https://hn.algolia.com/api/v1/search_by_date?tags=story,author_whoishiring`).
+   Before this month's thread is up, that is last month's; §4's age rule
+   sets aside its old posts. Search its posts once per query, every page up
+   to `nbPages`:
+   `https://hn.algolia.com/api/v1/search?tags=comment,story_<id>&query=<query>&typoTolerance=false&hitsPerPage=50&page=<n>`.
+   Keep top-level posts only, those whose `parent_id` is the story's id. A
+   post that links a posting on one of the three boards is read there, as
+   that posting.
 
-2. **Read.** Read every candidate from its source, never from a search
-   result's snippet:
+3. **Read.** Read every candidate from its source:
 
-   - **Greenhouse** (`…greenhouse.io/<board>/jobs/<id>`):
-     `https://boards-api.greenhouse.io/v1/boards/<board>/jobs/<id>`. The
-     description is `content` (HTML, entity-escaped), the place
-     `location.name`, the posted date `first_published`, the apply link
-     `absolute_url`, the company `company_name`.
-   - **Lever** (`jobs.lever.co/<company>/<id>`):
-     `https://api.lever.co/v0/postings/<company>/<id>`. The description is
-     `descriptionPlain` with `lists`, the place `categories.location` and
-     `workplaceType`, the posted date `createdAt` (milliseconds), the apply
-     link `hostedUrl`.
-   - **Ashby** (`jobs.ashbyhq.com/<org>/<id>`):
-     `https://api.ashbyhq.com/posting-api/job-board/<org>`, the entry with
-     that `id`. The description is `descriptionPlain`, the place `location`
-     and `isRemote`, the posted date `publishedAt`, the apply link `jobUrl`.
-   - **A Hacker News post:** `comment_text` is the description and
-     `created_at` the posted date. Company, title and place come from its
-     first line. The apply link is the one the post gives for applying,
-     else `https://news.ycombinator.com/item?id=<objectID>`.
+   - **Greenhouse:**
+     `https://boards-api.greenhouse.io/v1/boards/<board>/jobs/<id>`. Title
+     `title`, company `company_name`, description `content` (HTML,
+     entity-escaped), place `location.name`, posted `first_published`, apply
+     link `absolute_url`.
+   - **Lever:** `https://api.lever.co/v0/postings/<company>/<id>`. Title
+     `text`, description `descriptionPlain`, `lists` and `additionalPlain`
+     (pay and clearance terms are often only there), place
+     `categories.location` and `workplaceType`, job type
+     `categories.commitment`, posted `createdAt` (milliseconds), apply link
+     `hostedUrl`.
+   - **Ashby:**
+     `https://api.ashbyhq.com/posting-api/job-board/<org>?includeCompensation=true`,
+     the entry with that `id`. Title `title`, description `descriptionPlain`
+     and `compensation`, place `location` and `isRemote`, job type
+     `employmentType`, posted `publishedAt`, apply link `jobUrl`.
+   - **A Hacker News post:** description `comment_text`, posted
+     `created_at`. Company, title and place come from its first line. The
+     apply link is the first https link the post gives for applying (an
+     email address is not one), else
+     `https://news.ycombinator.com/item?id=<objectID>`.
 
-   A board that answers 404 has closed the posting: drop it. Drop a
-   candidate whose source can't be read, or whose text names no company,
-   title or place, rather than guess.
+   Lever and Ashby give no company name in their JSON: take it from the
+   posting page's `<title>` (Lever "Company - Title", Ashby "Title @
+   Company"), never from the URL. Write every company as it names itself,
+   without a legal suffix (Inc., LLC, Corp.) or a country (USA), so the same
+   company reads the same from every source. `postedOn` is the
+   America/Los_Angeles day of the posted time.
+
+   A Greenhouse or Lever 404, or an Ashby `id` missing from its board, means
+   the posting has closed: drop it. Drop a candidate whose source can't be
+   read, or that names no company, title or place, rather than guess.
+
+4. **Keep** a posting only when its place is in `LOCATIONS`: remote and open
+   to people in the US, or based in Berkeley, San Francisco or Oakland. A
+   remote role limited to another region ("Europe", "Hybrid - London") is
+   not. When a posting lists several places, record the one in `LOCATIONS`,
+   remote first. Drop the rest before counting.
 
 Give each posting its `fingerprint()`. Postings with the same fingerprint are
 one posting. The same company and title in several cities are one posting
@@ -165,8 +189,8 @@ its title words and company, and read the match. Count each one found in
 link: take the company, title, location and posted date from that text, never
 a guess. One whose text names no location or no posted date can't be
 fingerprinted or aged, so it never becomes a pick; it is scored and answered
-with a `review` only. With neither a match nor the text, its verdict is `not-found` and it
-goes no further.
+with a `review` only. With neither a match nor the text, its verdict is
+`not-found` and it goes no further.
 
 ## 4. Set aside
 
@@ -177,8 +201,9 @@ Set a posting aside, with a one-line `why`, when:
   take customer-facing or phone roles. Solutions work qualifies only when it
   is integration or internal-tools building with no quota and no calls;
 - it was posted more than `MAX_POSTING_AGE_DAYS` days ago;
-- it is part-time, gig work, or a staffing program with relocation or
-  repayment terms;
+- it is part-time, an internship, fixed-term, gig work, or a staffing
+  program with relocation or repayment terms. Lever's `commitment` and
+  Ashby's `employmentType` say which; elsewhere the description does;
 - it requires a security clearance or US citizenship. Work authorization is
   "Authorized to work in the US for any employer"; there is no clearance;
 - it asks for five or more years, or a senior, staff or lead title;

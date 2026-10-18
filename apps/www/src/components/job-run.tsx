@@ -119,13 +119,14 @@ export const JobRun = (): JSX.Element => {
         <h1 className="text-2xl font-semibold">One morning&rsquo;s run</h1>
         <p className="text-muted-foreground max-w-3xl leading-relaxed">
           Each morning a scheduled agent reads my résumé and searches public job
-          boards on two tracks: software engineering, and software-adjacent work
-          in data, QA and solutions, never customer-facing or phone roles. It
-          scores what it finds, picks up to five, answers the postings I sent it
-          myself, and leaves one file in my Google Drive. On my phone I take or
-          pass on each pick, build the résumé it names, and record how applying
-          went; the next run reads that back. This is a sample digest on made-up
-          postings. My real ones stay in my Google Drive and on my phone.
+          boards and Hacker News on two tracks: software engineering, and
+          software-adjacent work in data, QA and solutions, never
+          customer-facing or phone roles. It scores what it finds, picks up to
+          five, answers the postings I sent it myself, and leaves one file in my
+          Google Drive. On my phone I take or pass on each pick, build the
+          résumé it names, and record how applying went; the next run reads that
+          back. This is a sample digest on made-up postings. My real ones stay
+          in my Google Drive and on my phone.
         </p>
         <dl className="text-muted-foreground flex flex-wrap gap-x-6 gap-y-1 text-sm">
           <div className="flex gap-1.5">
