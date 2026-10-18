@@ -26,6 +26,14 @@ describe("estimate", () => {
     ["Premiered 3 years ago", 912],
     ["Streamed live 2 years ago", 547],
     ["6 years ago", 2007],
+    // Search's compact form (#1864).
+    ["9h ago", 0],
+    ["30m ago", 0],
+    ["1d ago", 0],
+    ["2w ago", 10],
+    ["5mo ago", 126],
+    ["7y ago", 2372],
+    ["Streamed 2w ago", 10],
     // 2024-01-06T12:00Z, the last instant Jan 5 exists anywhere, to NOW.
     ["Jan 5, 2024", 1013],
     ["Premiered on Jan 5, 2024", 1013],
@@ -65,6 +73,9 @@ describe("estimate", () => {
       "Foo 5, 2024",
       "3 days",
       "3 days ago · 1.2M views",
+      "23K",
+      "9 h ago",
+      "9x ago",
       "watching",
       // A plain date after today: a misread or a wrong clock.
       "Dec 20, 2026",

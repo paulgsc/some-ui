@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>BOYO Fixture — Search</title>
+    <style>
+      body {
+        background: #0f0f0f;
+        color: #fff;
+        font-family: "Roboto", sans-serif;
+        margin: 0;
+        padding: 20px;
+      }
+      ytd-video-renderer {
+        display: block;
+        min-height: 40px;
+      }
+    </style>
+  </head>
+  <body>
+    <!--
+    BOYO fixture: search results (#1864).
+
+    The metadata line's child order is a signed-out live search of
+    2026-10-18: a hidden badge, a hidden separator, then "views", "age" as
+    compact runs. A live result has only "N watching". Titles, channels, ids
+    and counts are placeholders.
+  -->
+    <ytd-app></ytd-app>
+    <ytd-section-list-renderer>
+      <div id="contents">
+        <ytd-item-section-renderer>
+          <div id="contents">
+            <ytd-video-renderer>
+              <ytd-thumbnail
+                ><a id="thumbnail" href="/watch?v=vid_srch_old"></a
+              ></ytd-thumbnail>
+              <div id="meta">
+                <h3>
+                  <a id="video-title" href="/watch?v=vid_srch_old"
+                    ><yt-formatted-string
+                      >Search result vid_srch_old</yt-formatted-string
+                    ></a
+                  >
+                </h3>
+                <ytd-video-meta-block>
+                  <div id="metadata">
+                    <div id="byline-container">
+                      <ytd-channel-name id="channel-name">
+                        <yt-formatted-string id="text"
+                          ><a href="/@search_aaa"
+                            >Search Channel A</a
+                          ></yt-formatted-string
+                        >
+                      </ytd-channel-name>
+                    </div>
+                    <div id="metadata-line">
+                      <ytd-badge-supported-renderer
+                        class="inline-metadata-badge"
+                        hidden=""
+                      ></ytd-badge-supported-renderer>
+                      <div id="separator" hidden="">•</div>
+                      <span class="inline-metadata-item">2.5M</span>
+                      <span class="inline-metadata-item">7y ago</span>
+                      <dom-repeat></dom-repeat>
+                    </div>
+                  </div>
+                </ytd-video-meta-block>
+              </div>
+            </ytd-video-renderer>
+            <ytd-video-renderer>
+              <ytd-thumbnail
+                ><a id="thumbnail" href="/watch?v=vid_srch_strm"></a
+              ></ytd-thumbnail>
+              <div id="meta">
+                <h3>
+                  <a id="video-title" href="/watch?v=vid_srch_strm"
+                    ><yt-formatted-string
+                      >Search result vid_srch_strm</yt-formatted-string
+                    ></a
+                  >
+                </h3>
+                <ytd-video-meta-block>
+                  <div id="metadata">
+                    <div id="byline-container">
+                      <ytd-channel-name id="channel-name">
+                        <yt-formatted-string id="text"
+                          ><a href="/@search_bbb"
+                            >Search Channel B</a
+                          ></yt-formatted-string
+                        >
+                      </ytd-channel-name>
+                    </div>
+                    <div id="metadata-line">
+                      <ytd-badge-supported-renderer
+                        class="inline-metadata-badge"
+                        hidden=""
+                      ></ytd-badge-supported-renderer>
+                      <div id="separator" hidden="">•</div>
+                      <span class="inline-metadata-item">38K</span>
+                      <span class="inline-metadata-item">Streamed 6y ago</span>
+                      <dom-repeat></dom-repeat>
+                    </div>
+                  </div>
+                </ytd-video-meta-block>
+              </div>
+            </ytd-video-renderer>
+            <ytd-video-renderer>
+              <ytd-thumbnail
+                ><a id="thumbnail" href="/watch?v=vid_srch_new"></a
+              ></ytd-thumbnail>
+              <div id="meta">
+                <h3>
+                  <a id="video-title" href="/watch?v=vid_srch_new"
+                    ><yt-formatted-string
+                      >Search result vid_srch_new</yt-formatted-string
+                    ></a
+                  >
+                </h3>
+                <ytd-video-meta-block>
+                  <div id="metadata">
+                    <div id="byline-container">
+                      <ytd-channel-name id="channel-name">
+                        <yt-formatted-string id="text"
+                          ><a href="/@search_ccc"
+                            >Search Channel C</a
+                          ></yt-formatted-string
+                        >
+                      </ytd-channel-name>
+                    </div>
+                    <div id="metadata-line">
+                      <ytd-badge-supported-renderer
+                        class="inline-metadata-badge"
+                        hidden=""
+                      ></ytd-badge-supported-renderer>
+                      <div id="separator" hidden="">•</div>
+                      <span class="inline-metadata-item">26K</span>
+                      <span class="inline-metadata-item">9h ago</span>
+                      <dom-repeat></dom-repeat>
+                    </div>
+                  </div>
+                </ytd-video-meta-block>
+              </div>
+            </ytd-video-renderer>
+            <ytd-video-renderer>
+              <ytd-thumbnail
+                ><a id="thumbnail" href="/watch?v=vid_srch_live"></a
+              ></ytd-thumbnail>
+              <div id="meta">
+                <h3>
+                  <a id="video-title" href="/watch?v=vid_srch_live"
+                    ><yt-formatted-string
+                      >Search result vid_srch_live</yt-formatted-string
+                    ></a
+                  >
+                </h3>
+                <ytd-video-meta-block>
+                  <div id="metadata">
+                    <div id="byline-container">
+                      <ytd-channel-name id="channel-name">
+                        <yt-formatted-string id="text"
+                          ><a href="/@search_ddd"
+                            >Search Channel D</a
+                          ></yt-formatted-string
+                        >
+                      </ytd-channel-name>
+                    </div>
+                    <div id="metadata-line">
+                      <ytd-badge-supported-renderer
+                        class="inline-metadata-badge"
+                        hidden=""
+                      ></ytd-badge-supported-renderer>
+                      <div id="separator" hidden="">•</div>
+                      <span class="inline-metadata-item">74 watching</span>
+                      <dom-repeat></dom-repeat>
+                    </div>
+                  </div>
+                </ytd-video-meta-block>
+              </div>
+            </ytd-video-renderer>
+          </div>
+        </ytd-item-section-renderer>
+      </div>
+    </ytd-section-list-renderer>
+  </body>
+</html>

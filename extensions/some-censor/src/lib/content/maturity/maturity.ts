@@ -19,7 +19,7 @@
 import { assertNever } from "@some-extension/common"
 
 /** Which grammar produced an estimate. Recorded with every banked date form. */
-export const PARSER = "en-v1"
+export const PARSER = "en-v2"
 
 /** The boundary when the owner has not chosen one (#1807): one year. */
 export const DEFAULT_BOUNDARY_DAYS = 365
@@ -57,6 +57,25 @@ const UNIT_DAYS: ReadonlyMap<string, number> = new Map([
 const RELATIVE =
   /^(?:(?:streamed|premiered)(?: live)? )?(\d{1,4}) (second|minute|hour|day|week|month|year)s? ago$/
 
+/**
+ * The compact form search shows ("9h ago", "5mo ago", "Streamed 2w ago",
+ * 2026-10-18), with no long form beside it. "m" is minutes; read as months it
+ * would only make the card older, so taking it for minutes is the youngest
+ * reading either way.
+ */
+const COMPACT =
+  /^(?:(?:streamed|premiered)(?: live)? )?(\d{1,4})(s|m|h|d|w|mo|y) ago$/
+
+const COMPACT_UNITS: ReadonlyMap<string, string> = new Map([
+  ["s", "second"],
+  ["m", "minute"],
+  ["h", "hour"],
+  ["d", "day"],
+  ["w", "week"],
+  ["mo", "month"],
+  ["y", "year"],
+])
+
 const MONTHS = [
   "jan",
   "feb",
@@ -91,10 +110,10 @@ export function estimate(raw: string | null, now: number): Estimate {
   if (LIVE.test(text)) return { kind: "present", reason: "live" }
   if (UPCOMING.test(text)) return { kind: "present", reason: "upcoming" }
 
-  const relative = RELATIVE.exec(text)
+  const relative = RELATIVE.exec(text) ?? COMPACT.exec(text)
   if (relative) {
     const [, count, unit = ""] = relative
-    const days = UNIT_DAYS.get(unit)
+    const days = UNIT_DAYS.get(COMPACT_UNITS.get(unit) ?? unit)
     // The regex admits only listed units; the guard is for the type checker.
     if (days === undefined) return { kind: "unverified" }
     return { kind: "aged", minDays: Math.floor((Number(count) - 0.5) * days) }
