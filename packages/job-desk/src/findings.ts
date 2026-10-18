@@ -1,9 +1,10 @@
 import type { Digest } from "./digest"
-import { SOFTWARE_VARIANTS } from "./digest"
+import { RESUME_VARIANTS, SOFTWARE_VARIANTS } from "./digest"
 import { fingerprint, role as roleOf } from "./fingerprint"
 import {
   EXCLUDED_TITLE,
   MAX_POSTING_AGE_DAYS,
+  PATCH_PRS_PER_RUN,
   PICKS_PER_DAY,
   TRACKS,
 } from "./policy"
@@ -47,6 +48,26 @@ export function digestFindings(digest: Digest): ReadonlyArray<Finding> {
     }
   }
 
+  // Each résumé PR the digest links, and the composition it changes.
+  const prs = new Map<number, string>()
+  digest.picks.forEach(({ resume }, i) => {
+    if (resume.kind !== "patch" || resume.pr === null) return
+    const changes = prs.get(resume.pr)
+    if (changes !== undefined && changes !== resume.variant) {
+      found.push({
+        path: `picks.${i}.resume.pr`,
+        message: `PR #${resume.pr} changes ${changes}, not ${resume.variant}`,
+      })
+    }
+    prs.set(resume.pr, changes ?? resume.variant)
+  })
+  if (prs.size > PATCH_PRS_PER_RUN) {
+    found.push({
+      path: "picks",
+      message: `links ${prs.size} résumé PRs; the most is ${PATCH_PRS_PER_RUN}`,
+    })
+  }
+
   const listed = digest.picks.length + digest.setAside.length
   if (digest.seen < listed) {
     found.push({
@@ -72,6 +93,16 @@ export function digestFindings(digest: Digest): ReadonlyArray<Finding> {
       found.push({
         path: `${at}.resume.variant`,
         message: `a ${pick.family} pick's patch is the ${pick.family} composition`,
+      })
+    }
+    if (
+      resume.kind === "patch" &&
+      resume.pr !== null &&
+      !RESUME_VARIANTS.some((v) => v === resume.variant)
+    ) {
+      found.push({
+        path: `${at}.resume.pr`,
+        message: `a run's PR changes an existing composition, not a new ${resume.variant}`,
       })
     }
     const [sends, field] =

@@ -27,6 +27,12 @@ export const LOCATIONS: ReadonlyArray<string> = [
   "Oakland, CA",
 ]
 
+/**
+ * The most résumé PRs one digest may link. A run opens one only while none it
+ * opened earlier is still open, so I review one change at a time.
+ */
+export const PATCH_PRS_PER_RUN = 1
+
 /** The most set-aside postings a digest lists, those closest to a pick first. */
 export const MAX_SET_ASIDE = 40
 

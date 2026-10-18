@@ -232,6 +232,41 @@ describe("digestFindings", () => {
     ])
   })
 
+  it("links at most one résumé PR, and only to change a composition that exists", () => {
+    const digest = sample()
+    const [software, , , qa] = digest.picks
+    if (qa!.resume.kind === "patch") qa!.resume.pr = 1901
+    expect(messages(digest)).toEqual([])
+
+    // Two picks may wait on one PR when both want the change it makes.
+    const data = digest.picks[2]!
+    const twin = structuredClone(qa!)
+    twin.id = "wis-21c1"
+    twin.posting.title = "SDET II"
+    twin.fingerprint = fingerprint(twin.posting)
+    digest.picks[2] = twin
+    expect(messages(digest)).toEqual([])
+    if (twin.resume.kind === "patch") twin.resume.variant = "data"
+    expect(messages(digest)).toEqual([
+      "picks.3.resume.pr: PR #1901 changes data, not qa",
+      "picks.2.resume.variant: a qa pick's patch is the qa composition",
+    ])
+    digest.picks[2] = data
+
+    software!.resume = {
+      kind: "patch",
+      variant: "embedded",
+      template: "safe",
+      fallback: "backend",
+      pr: 1902,
+      change: "A composition that leads with the firmware work.",
+    }
+    expect(messages(digest)).toEqual([
+      "picks: links 2 résumé PRs; the most is 1",
+      "picks.0.resume.pr: a run's PR changes an existing composition, not a new embedded",
+    ])
+  })
+
   it("sends each pick a composition of its own track", () => {
     const digest = sample()
     const [software, , data, qa] = digest.picks
