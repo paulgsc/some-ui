@@ -535,6 +535,7 @@ describe("readWatch (#1805)", () => {
         "Apr 23, 2005",
         "SAN DIEGO ZOO",
       ],
+      miniplayer: false,
     })
   })
 
@@ -547,6 +548,7 @@ describe("readWatch (#1805)", () => {
       short: false,
       hydrated: false,
       dates: [],
+      miniplayer: false,
     })
   })
 
@@ -559,5 +561,15 @@ describe("readWatch (#1805)", () => {
         )
       )
     ).toBeNull()
+  })
+
+  it("reads a hidden page's video while the miniplayer plays it", () => {
+    const doc = page(
+      `<ytd-browse page-subtype="home"></ytd-browse><ytd-watch-flexy hidden video-id="jNQ">${metadata("jNQ")}</ytd-watch-flexy>`
+    )
+    doc.body.append(doc.createElement("ytd-miniplayer"))
+    expect(readWatch(doc)).toBeNull()
+    doc.querySelector("ytd-miniplayer")?.setAttribute("active", "")
+    expect(readWatch(doc)).toMatchObject({ videoId: "jNQ", miniplayer: true })
   })
 })

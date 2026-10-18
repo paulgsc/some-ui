@@ -81,6 +81,7 @@ describe("decideWatch (#1805)", () => {
         short: overrides.short ?? false,
         hydrated: overrides.hydrated ?? true,
         dates,
+        miniplayer: false,
       },
       NOW,
       DEFAULT_BOUNDARY_DAYS
@@ -92,14 +93,14 @@ describe("decideWatch (#1805)", () => {
     expect(page(["1.2K watching now"])).toBe("absent")
   })
 
-  it("is pending until the metadata names the video", () => {
+  it("is pending until the metadata names the video and shows a date", () => {
     expect(page(["21y ago"], { hydrated: false })).toBe("pending")
+    expect(page([])).toBe("pending")
   })
 
   it("holds a page with no date it can place, and every Short", () => {
     expect(page(["444M views", "SAN DIEGO ZOO"])).toBe("absent")
-    expect(page([])).toBe("absent")
-    expect(page(["21y ago"], { short: true })).toBe("absent")
+    expect(page([], { short: true })).toBe("absent")
   })
 })
 

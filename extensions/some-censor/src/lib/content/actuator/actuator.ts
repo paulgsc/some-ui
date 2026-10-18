@@ -20,7 +20,7 @@
  *   A4 — Full cleanup (D3, D4). `unmount` leaves every element it stamped
  *        as it was before (stamps and the plate's values) and drops the
  *        key's record; `dispose` does so for everything at once, and
- *        lifts the watch page's hold (`watch-hold.ts`'s W2).
+ *        lifts the watch page's hold (`watch-hold.ts`'s WH2).
  *   A5 — Custody is accounted for here, once (D6). Which elements carry which
  *        key's stamp is one map in
  *        this module; a render diffs its targets against it and strips the
@@ -186,7 +186,7 @@ export function createActuator(doc: Document): Actuator {
             break
           }
           case "watch": {
-            watchHold.realize(action.view, action.videoId)
+            watchHold.realize(action.view, action.videoId, action.miniplayer)
             break
           }
           default: {

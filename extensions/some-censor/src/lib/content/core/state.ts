@@ -24,8 +24,14 @@ export type CardState = {
   readonly lastSeenAt: number
 }
 
+type WatchDates = {
+  readonly videoId: WatchObservation["videoId"]
+  readonly dates: ReadonlyArray<string>
+}
+
 /** The page's own video (#1805), decided as a card is. */
 export type WatchState = {
+  /** The page's video, with only the dates that are its own. */
   readonly observation: WatchObservation
   readonly view: WatchView
   /** When it was last observed: what the boundary re-decides it at. */
@@ -40,6 +46,12 @@ export type CoreState = {
   readonly cards: ReadonlyMap<CardKey, CardState>
   /** Null when no watch page or Short is shown. */
   readonly watch: WatchState | null
+  /**
+   * The dates a watch page last showed as a video's own, and whose. The
+   * page keeps them when it hides, and shows them under the next video
+   * until it rewrites them (R8).
+   */
+  readonly watchDates: WatchDates | null
   /** The owner's `B`, in days, as the shell last supplied it. */
   readonly boundaryDays: number
   /** B4's staleness signal, per session: how often the table had no answer. */
@@ -60,6 +72,7 @@ export function initialState(session: SessionId): CoreState {
     session,
     cards: new Map(),
     watch: null,
+    watchDates: null,
     boundaryDays: DEFAULT_BOUNDARY_DAYS,
     unknownShapes: EMPTY_UNKNOWN_SHAPES,
   }
@@ -74,6 +87,7 @@ export type CoreSnapshot = {
   readonly session: number
   readonly cards: ReadonlyArray<CardState>
   readonly watch: WatchState | null
+  readonly watchDates: WatchDates | null
   readonly boundaryDays: number
   readonly unknownShapes: CoreState["unknownShapes"]
 }
@@ -84,6 +98,7 @@ export function snapshot(state: CoreState): CoreSnapshot {
     session: state.session,
     cards: [...state.cards.values()],
     watch: state.watch,
+    watchDates: state.watchDates,
     boundaryDays: state.boundaryDays,
     unknownShapes: state.unknownShapes,
   }

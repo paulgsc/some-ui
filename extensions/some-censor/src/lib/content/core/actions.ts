@@ -30,12 +30,15 @@ export type Action =
   | { readonly kind: "unmount"; readonly key: CardKey }
   /**
    * Bring the page to the watch view for `videoId`, or, with `view: null`,
-   * strip the watch page's hold: no watch page is shown (#1805).
+   * strip the watch page's hold: no watch page is shown (#1805). In the
+   * miniplayer the video is held the same, but "Not here." is not shown
+   * over a page that is not its own.
    */
   | {
       readonly kind: "watch"
       readonly view: WatchView | null
       readonly videoId: VideoId | null
+      readonly miniplayer: boolean
     }
   /** A fact for the flight recorder; the runtime forwards it. */
   | { readonly kind: "record"; readonly fact: CoreFact }

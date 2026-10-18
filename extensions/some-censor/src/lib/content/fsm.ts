@@ -109,8 +109,9 @@ export type WatchView = "pending" | "absent" | "plated"
 
 /**
  * {@link decide}'s rule for the page's own video: plated at QM3 or QM4, on
- * the youngest of the dates it shows; absent for a Short, and for a
- * hydrated page with no date the grammar can place (QD3).
+ * the youngest of the dates it shows; absent for a Short, and for a page
+ * whose dates the grammar cannot place (QD3). A page with no metadata or no
+ * date yet is pending.
  */
 export function decideWatch(
   watch: WatchObservation,
@@ -118,7 +119,7 @@ export function decideWatch(
   boundaryDays: number
 ): WatchView {
   if (watch.short) return "absent"
-  if (!watch.hydrated) return "pending"
+  if (!watch.hydrated || watch.dates.length === 0) return "pending"
   const e = youngest(watch.dates.map((raw) => estimate(raw, now)))
   const band = classify(e, boundaryDays)
   return band === "QM3" || band === "QM4" ? "plated" : "absent"

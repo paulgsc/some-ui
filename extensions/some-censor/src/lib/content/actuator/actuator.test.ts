@@ -237,12 +237,16 @@ describe("dispose", () => {
   })
 })
 
-describe("the watch page's hold (#1805, W1, W2)", () => {
+describe("the watch page's hold (#1805, WH1, WH2)", () => {
   const VIDEO = asVideoId("vid_w")
   const watch = (
     view: "pending" | "absent" | "plated" | null,
-    videoId: typeof VIDEO | null = VIDEO
-  ): BoundAction => ({ action: { kind: "watch", view, videoId }, targets: [] })
+    videoId: typeof VIDEO | null = VIDEO,
+    miniplayer = false
+  ): BoundAction => ({
+    action: { kind: "watch", view, videoId, miniplayer },
+    targets: [],
+  })
 
   /** A playing video; jsdom implements no playback, so its two calls are stubs. */
   function playing(): HTMLVideoElement & { plays: number } {
@@ -298,6 +302,16 @@ describe("the watch page's hold (#1805, W1, W2)", () => {
     shown[0]?.querySelector("button")?.click()
     expect(back).toHaveBeenCalledTimes(1)
     back.mockRestore()
+  })
+
+  it('holds the miniplayer\'s video without saying "Not here." over another page', () => {
+    const video = playing()
+    actuator.realize([watch("absent", VIDEO, true)])
+    expect(document.documentElement.dataset["boyoWatch"]).toBe("absent")
+    expect(surface()).toBeNull()
+    expect(video.paused).toBe(true)
+    actuator.realize([watch("absent")])
+    expect(surface()).not.toBeNull()
   })
 
   it("gives back what it held on plated, and nothing else", async () => {

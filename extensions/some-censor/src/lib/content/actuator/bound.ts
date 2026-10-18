@@ -6,7 +6,9 @@
  * read nothing but its own input (§3's ownership table) — so the join
  * between a `CardKey` and the elements currently carrying it happens in the
  * runtime, which asks the Sensor and hands the Actuator a `BoundAction`.
- * The Actuator never looks anything up.
+ * The Actuator never looks a card up. Its one read of the page is the
+ * watch page's hold (`watch-hold.ts`), which reads only to keep its own
+ * writes held and decides nothing.
  */
 
 import type { Action } from "@censor/lib/content/core/actions"

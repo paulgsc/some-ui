@@ -3,21 +3,23 @@
  * the page's own video, one module because every write here is page-wide.
  *
  * - The view goes on `<html>` as `data-boyo-watch`; `content.css` hides the
- *   player and what is said about the video until it reads `plated`, and the
- *   whole page on `absent`.
- * - On `absent`, "Not here." and a Back button, built here.
+ *   player, the miniplayer and what is said about the video until it reads
+ *   `plated`, and the whole page on `absent`.
+ * - On `absent`, "Not here." and a Back button, built here, unless the video
+ *   is in the miniplayer over another page.
  * - Until `plated`, no media plays, and the tab title is not the video's.
  *
- * The two "until" writes are holds the vendor would undo, so they are kept:
- * a `play` is paused as it starts, and a title YouTube writes is replaced.
- * What the hold read back is only what it overwrote (the media it paused,
- * the title it replaced), to give it back on `plated`; nothing it does
- * produces an input for Core.
+ * Those last two are holds YouTube would undo, so this is the one place the
+ * Actuator reads the page: it finds the media playing when the hold goes up,
+ * pauses each `play` as it starts, and replaces each title YouTube writes.
+ * It decides nothing, and nothing it reads becomes an input for Core; what
+ * it keeps is what it overwrote (the media it paused, the title it
+ * replaced), to give back on `plated`.
  *
- *   W1 — Idempotent: realizing the same view twice writes nothing new.
- *   W2 — Total cleanup: `null` and `dispose` leave no attribute, surface,
- *        listener or observer, and never give back a title for a page that
- *        is no longer shown.
+ *   WH1 — Idempotent: realizing the same view twice writes nothing new.
+ *   WH2 — Total cleanup: `null` and `dispose` leave no attribute, surface,
+ *         listener or observer; only `dispose` gives back a title, the one
+ *         the page still shows.
  */
 
 import type { WatchView } from "@censor/lib/content/fsm"
@@ -27,13 +29,18 @@ import type { VideoId } from "@censor/types/ids"
 export const NEUTRAL_TITLE = "YouTube"
 
 export type WatchHold = {
-  realize(view: WatchView | null, videoId: VideoId | null): void
+  realize(
+    view: WatchView | null,
+    videoId: VideoId | null,
+    miniplayer: boolean
+  ): void
   dispose(): void
 }
 
 export function createWatchHold(doc: Document): WatchHold {
   let current: WatchView | null = null
   let currentVideo: VideoId | null = null
+  let currentMiniplayer = false
   let surface: HTMLElement | null = null
   let guard: AbortController | null = null
   let titleObserver: MutationObserver | null = null
@@ -128,8 +135,18 @@ export function createWatchHold(doc: Document): WatchHold {
     paused = new Set()
   }
 
-  function realize(view: WatchView | null, videoId: VideoId | null): void {
-    if (view === current && videoId === currentVideo) return
+  function realize(
+    view: WatchView | null,
+    videoId: VideoId | null,
+    miniplayer: boolean
+  ): void {
+    if (
+      view === current &&
+      videoId === currentVideo &&
+      miniplayer === currentMiniplayer
+    ) {
+      return
+    }
     // Another video's title and media are not this one's to give back.
     if (videoId !== currentVideo) {
       vendorTitle = null
@@ -137,6 +154,7 @@ export function createWatchHold(doc: Document): WatchHold {
     }
     current = view
     currentVideo = videoId
+    currentMiniplayer = miniplayer
     const root = doc.documentElement
     if (view === null) {
       delete root.dataset["boyoWatch"]
@@ -151,7 +169,7 @@ export function createWatchHold(doc: Document): WatchHold {
       return
     }
     startHold()
-    if (view === "absent") showSurface()
+    if (view === "absent" && !miniplayer) showSurface()
     else hideSurface()
   }
 
@@ -160,7 +178,7 @@ export function createWatchHold(doc: Document): WatchHold {
     dispose(): void {
       // Off is plain YouTube: the shown page's own title comes back.
       const title = vendorTitle
-      realize(null, null)
+      realize(null, null, false)
       if (title !== null && doc.title === NEUTRAL_TITLE) doc.title = title
     },
   }

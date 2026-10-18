@@ -28,9 +28,13 @@
  *        every card in place in one step (#1807). No other input changes it.
  *   R8 — The watch page is one more piece of evidence (#1805). Its view is
  *        `decideWatch()` of the merged `watched` observations of the same
- *        video, re-decided by `boundary` as a card is; `nav` and `stop`
- *        forget it, as R3 forgets cards. A `watch` action is emitted only
- *        when its view or its video changes.
+ *        video, re-decided by `boundary` as a card is. YouTube names the
+ *        next video before it rewrites the date, so the dates shown when the
+ *        video changed are the previous video's until they change, and read
+ *        as none. It is not a card: `nav` leaves it to the next reading, and
+ *        `stop` forgets it, the Actuator's `dispose` lifting its hold. A
+ *        `watch` action is emitted only when its view, its video or where it
+ *        plays changes.
  *
  * R4 correlated the answers to Core's async requests; none are left, so it
  * is retired. The parenthesised M- and C- labels are kept so their
@@ -115,6 +119,7 @@ export function reduce(state: CoreState, event: CoreEvent): Step {
           session: event.session,
           cards: new Map(),
           watch: null,
+          watchDates: null,
           boundaryDays: event.boundaryDays,
           unknownShapes: EMPTY_UNKNOWN_SHAPES,
         },
@@ -130,7 +135,6 @@ export function reduce(state: CoreState, event: CoreEvent): Step {
         actions: [
           record({ kind: "session.reset", session: state.session }),
           ...cleared.actions,
-          ...unwatch(state),
         ],
       }
     }
@@ -142,14 +146,12 @@ export function reduce(state: CoreState, event: CoreEvent): Step {
         state: {
           ...cleared.state,
           session: event.session,
-          watch: null,
           unknownShapes: EMPTY_UNKNOWN_SHAPES,
         },
         actions: [
           record({ kind: "navigation" }),
           record({ kind: "session.reset", session: state.session }),
           ...cleared.actions,
-          ...unwatch(state),
           record({ kind: "session.start", session: event.session }),
         ],
       }
@@ -299,37 +301,50 @@ function watchAction(watch: WatchState | null): Action {
     kind: "watch",
     view: watch?.view ?? null,
     videoId: watch?.observation.videoId ?? null,
+    miniplayer: watch?.observation.miniplayer ?? false,
   }
 }
 
-/** Strip the watch page's hold, if one is up (R8). */
-function unwatch(state: CoreState): Array<Action> {
-  return state.watch === null ? [] : [watchAction(null)]
-}
+const sameDates = (
+  a: ReadonlyArray<string>,
+  b: ReadonlyArray<string>
+): boolean => a.length === b.length && a.every((d, i) => d === b[i])
 
 function watched(
   state: CoreState,
   observation: WatchObservation | null,
   t: number
 ): Step {
-  if (observation === null) {
-    return { state: { ...state, watch: null }, actions: unwatch(state) }
-  }
   const previous = state.watch
-  const merged =
-    previous === null
-      ? observation
-      : mergeWatch(previous.observation, observation)
+  if (observation === null) {
+    return {
+      state: { ...state, watch: null },
+      actions: previous === null ? [] : [watchAction(null)],
+    }
+  }
+  // R8: another video's dates, still on screen, are not this one's.
+  const last = state.watchDates
+  const stale =
+    last !== null &&
+    last.videoId !== observation.videoId &&
+    sameDates(observation.dates, last.dates)
+  const own = stale ? { ...observation, dates: [] } : observation
+  const merged = previous === null ? own : mergeWatch(previous.observation, own)
   const next: WatchState = {
     observation: merged,
     view: decideWatch(merged, t, state.boundaryDays),
     seenAt: t,
   }
+  const watchDates =
+    own.dates.length > 0
+      ? { videoId: observation.videoId, dates: own.dates }
+      : last
   const moved =
     previous?.view !== next.view ||
-    previous.observation.videoId !== merged.videoId
+    previous.observation.videoId !== merged.videoId ||
+    previous.observation.miniplayer !== merged.miniplayer
   return {
-    state: { ...state, watch: next },
+    state: { ...state, watch: next, watchDates },
     actions: moved ? [watchAction(next)] : [],
   }
 }

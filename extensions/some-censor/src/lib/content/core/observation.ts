@@ -50,12 +50,18 @@ export type WatchObservation = {
   /** A Short, held whatever its date (QD11). */
   readonly short: boolean
   /**
-   * The page's metadata names this video, so its dates are this video's and
-   * not the one an SPA navigation left behind.
+   * The page's metadata is there and names this video. Not proof that its
+   * dates are this video's: YouTube names the video before it rewrites the
+   * date, which is what Core's stale dates are for (R8).
    */
   readonly hydrated: boolean
   /** Every run that may be the date: the info line's, and its tooltip's. */
   readonly dates: ReadonlyArray<string>
+  /**
+   * The video plays in the miniplayer, over another page: still held until
+   * plated, but nothing stands in for a page that is not shown.
+   */
+  readonly miniplayer: boolean
 }
 
 /**

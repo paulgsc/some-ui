@@ -1,6 +1,7 @@
 /**
  * The Sensor (BC2, #1435) — Boundary Contract B3, B4, B5: the only reader
- * of VendorDOM.
+ * of VendorDOM that Core hears from. (The Actuator's watch hold reads the
+ * page too, only to keep its own writes held: `actuator/watch-hold.ts`.)
  *
  * Wraps the mutation observer and the navigation event, resolves every
  * observed node against the catalogue and the layout table, keeps the
@@ -156,16 +157,17 @@ export function createSensor(ports: SensorPorts): Sensor {
    */
   const lastEmitted = new Map<HTMLElement, string>()
   /**
-   * The page's own video as last announced, serialized. Core starts every
-   * session with none, so "none" needs no announcing.
+   * The page's own video as last announced, serialized. Core starts with
+   * none, so "none" needs no announcing, and keeps it across `nav`.
    */
   let lastWatch = NO_WATCH
   /**
-   * A watch page whose metadata has not named its video, or shows no date
-   * yet, since when: re-read by the retry loop under the same budget, since
-   * a date can arrive as a text node's data, which no mutation here shows.
+   * The watch page's video, and since when it is: re-read by the retry loop
+   * under the same budget, since its date arrives after it, and can arrive
+   * as a text node's data, which no mutation here shows. Which date is the
+   * video's own is Core's to tell (R8).
    */
-  let watchPending: { videoId: VideoId | null; since: number } | null = null
+  let watchSince: { videoId: VideoId | null; since: number } | null = null
   let observer: MutationObserver | null = null
   let retryTimer: ReturnType<typeof setInterval> | null = null
   let navDebounce: ReturnType<typeof setTimeout> | null = null
@@ -472,8 +474,8 @@ export function createSensor(ports: SensorPorts): Sensor {
 
   function watchWaiting(): boolean {
     return (
-      watchPending !== null &&
-      ports.clock() - watchPending.since < RESOLVE_BUDGET_MS
+      watchSince !== null &&
+      ports.clock() - watchSince.since < RESOLVE_BUDGET_MS
     )
   }
 
@@ -498,13 +500,13 @@ export function createSensor(ports: SensorPorts): Sensor {
     if (!running) return
     const now = ports.clock()
     const watch = readWatch(ports.doc)
-    if (watch !== null && (!watch.hydrated || watch.dates.length === 0)) {
-      if (watchPending?.videoId !== watch.videoId) {
-        watchPending = { videoId: watch.videoId, since: now }
+    if (watch !== null && !watch.short) {
+      if (watchSince?.videoId !== watch.videoId) {
+        watchSince = { videoId: watch.videoId, since: now }
       }
       if (watchWaiting()) ensureRetryLoop()
     } else {
-      watchPending = null
+      watchSince = null
     }
     const serialized = JSON.stringify(watch)
     if (serialized === lastWatch) return
@@ -598,8 +600,6 @@ export function createSensor(ports: SensorPorts): Sensor {
     dateAbandoned = new WeakSet()
     unknownReported = new WeakSet()
     lastEmitted.clear()
-    lastWatch = NO_WATCH
-    watchPending = null
     if (retryTimer !== null) {
       clearInterval(retryTimer)
       retryTimer = null
@@ -621,9 +621,9 @@ export function createSensor(ports: SensorPorts): Sensor {
         childList: true,
         subtree: true,
         attributes: true,
-        // `video-id` and `hidden`: the watch page's video, and which page
-        // `ytd-page-manager` shows (#1805).
-        attributeFilter: ["data-video-id", "video-id", "hidden"],
+        // `video-id`: the watch page's video changing (#1805), which can
+        // come before anything else on the page does.
+        attributeFilter: ["data-video-id", "video-id"],
       })
       ports.win.addEventListener("yt-navigate-finish", onNavigate)
     },
@@ -639,6 +639,9 @@ export function createSensor(ports: SensorPorts): Sensor {
         navDebounce = null
       }
       forget()
+      // Core forgets the page's video on `stop`, not on `nav` (R8).
+      lastWatch = NO_WATCH
+      watchSince = null
     },
 
     scan,

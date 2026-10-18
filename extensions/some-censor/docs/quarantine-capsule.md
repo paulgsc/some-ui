@@ -363,10 +363,13 @@ Sensor cannot resolve stays blurred in place under the occluder
 (`OccluderReleases` reports it); and autoplay into a held video (#1805).
 
 A held video's watch page, reached by a link, is "Not here." and Back
-(#1805): `styles/content.css` renders no player, title or date until Core
-plates the page's video, its view written on `<html>`; no media plays and the
-tab title is the site's until then; and a Short's page is never rendered.
-`watch.spec.ts` W2–W6 prove each, locally.
+(#1805): `styles/content.css` renders no player, miniplayer, title or date
+until Core plates the page's video, its view written on `<html>`; until then
+the Actuator's watch hold pauses every media play and keeps the tab title
+"YouTube"; and a Short's page is never rendered. YouTube names the next
+video before it rewrites the date, so Core reads the dates still on screen
+as the previous video's until they change. `watch.spec.ts` W2–W7 prove
+each, locally.
 
 ---
 
@@ -497,7 +500,7 @@ mechanism the thing on screen; the owner found that inauthentic.
 
 _Status: holds (#1803, #1805)._ The ladder and its hints are deleted, and a
 plated card carries no copy. A held watch page carries "Not here." and Back,
-and its tab title is "YouTube". The face control is #1805's.
+and its tab title is "YouTube". The face control is still to come (#1805).
 
 ## 5. The temporal model
 
@@ -624,7 +627,9 @@ section is a behavioural change; it is a statement of distance.
 | Manifest copy describes the mechanism                            | `public/manifest.json` `description`, the popup's tagline                   | §0       |
 | Autoplay can still go on into a held video                       | its page then reads "Not here.", but nothing stops autoplay first (#1805)   | QD11     |
 | A page YouTube moves to another video could paint it unmasked    | the mask returns when `video-id` changes; nothing proves it changes first   | QD11     |
-| A watch page whose metadata never names its video stays blank    | it is pending, which says nothing, and nothing ends pending                 | QD17     |
+| A watch page that never shows its video's date stays blank       | it is pending, which says nothing, and nothing ends pending                 | QD17     |
+| A held video's title shows in the tab on a direct load, briefly  | the server sends it, and the content script runs at `document_end`          | QD11     |
+| Two videos showing the same date runs read as one                | the second is pending until its runs differ, the view count included        | QD17     |
 | A shelf elsewhere keeps its header                               | a container `SHELF_SELECTORS` does not name                                 | QD11     |
 | A channel photo outside a card leaves an empty space, not a disc | no card's ids to hash there; the photo itself is hidden                     | QD12     |
 | Live chat shows its authors' photos                              | the chat is its own frame, and the manifest injects into the top frame only | QD12     |
