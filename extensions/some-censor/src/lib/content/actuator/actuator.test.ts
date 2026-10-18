@@ -395,9 +395,9 @@ describe("the poster and the face control (#1805, QD13)", () => {
   })
   const control = (): HTMLElement | null =>
     document.querySelector("[data-boyo-face-hold]")
-  const key = (type: "keydown" | "keyup", repeat = false): void => {
+  const key = (type: "keydown" | "keyup", repeat = false, name = " "): void => {
     control()?.dispatchEvent(
-      new KeyboardEvent(type, { key: " ", repeat, bubbles: true })
+      new KeyboardEvent(type, { key: name, repeat, bubbles: true })
     )
   }
 
@@ -436,6 +436,13 @@ describe("the poster and the face control (#1805, QD13)", () => {
 
     key("keydown")
     vi.advanceTimersByTime(3_000)
+    key("keydown", false, "Escape")
+    key("keyup")
+    vi.advanceTimersByTime(0)
+    expect(faced, "Escape cancels, even after the full time").toEqual([])
+
+    key("keydown")
+    vi.advanceTimersByTime(3_000)
     expect(faced, "it reports on the release").toEqual([])
     key("keyup")
     vi.advanceTimersByTime(0)
@@ -451,9 +458,11 @@ describe("the poster and the face control (#1805, QD13)", () => {
         signal: page.signal,
       })
     }
-    key("keydown")
-    vi.advanceTimersByTime(3_000)
-    key("keyup")
+    for (const name of [" ", "Enter"]) {
+      key("keydown", false, name)
+      vi.advanceTimersByTime(1_000)
+      key("keyup", false, name)
+    }
     page.abort()
     expect(reached).toEqual([])
   })

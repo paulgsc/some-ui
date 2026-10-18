@@ -2,8 +2,8 @@
  * The face control (QD13, #1805): "Hold to show the original thumbnail", in
  * a plated watch page's description. Held for {@link FACE_HOLD_MS} without
  * a break, by the pointer or by Space or Enter, it reports the hold when it
- * is let go; a release before then, a lost pointer or focus leaving cancels
- * it. The one control the extension adds to a page it admits, and the one
+ * is let go; a release before then, Escape, a lost pointer or focus leaving
+ * cancels it. The one control the extension adds to a page it admits, and the one
  * input from the owner that reaches Core (`face`).
  *
  * It reports on the release, a task after it, because the report takes the
@@ -87,6 +87,7 @@ export function createFaceControl(
     el.addEventListener(type, cancel)
   }
   el.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") cancel()
     if (!held(event)) return
     event.preventDefault()
     event.stopPropagation()

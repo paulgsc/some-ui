@@ -636,9 +636,14 @@ describe("the watch page (#1805)", () => {
       "<button data-boyo-face-hold></button>"
     )
     await vi.advanceTimersByTimeAsync(0)
-    inner?.replaceWith(document.createElement("div"))
+    expect(described()).toBe(2)
+    // The same description loses the control, then is drawn anew.
+    inner?.querySelector("button")?.remove()
     await vi.advanceTimersByTimeAsync(0)
     expect(described()).toBe(3)
+    inner?.replaceWith(document.createElement("div"))
+    await vi.advanceTimersByTimeAsync(0)
+    expect(described()).toBe(4)
     expect(watched(), "the reading itself did not change").toEqual([])
   })
 

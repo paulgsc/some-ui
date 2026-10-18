@@ -420,11 +420,12 @@ the video's, and the player's own poster does not paint, before play or once
 it ends. In the description, "Hold to show the original thumbnail" reports a
 hold of three seconds without a break, by the pointer or by Space or Enter,
 when it is let go (`actuator/face-hold.ts`); a release before then, a lost
-pointer or focus leaving cancels it, no key or click on it reaches YouTube,
-and reduced motion drops its fill. Core keeps the face for that view only
+pointer, Escape or focus leaving cancels it, no key or click on it reaches
+YouTube, and reduced motion drops its fill. Core keeps the face for that view only
 (R9): a navigation, another video or a view no longer plated takes it away,
-and nothing stores it. The control goes once used, with no message.
-`face.spec.ts` F1–F4 prove each, locally.
+and nothing stores it. The control goes once used, with no message, and
+comes back when YouTube draws the description again. `face.spec.ts` F1–F5
+prove each, locally.
 
 ---
 
