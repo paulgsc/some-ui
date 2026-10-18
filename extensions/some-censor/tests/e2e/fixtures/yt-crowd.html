@@ -59,6 +59,19 @@
               >
                 <yt-thumbnail-view-model class="ytThumbnailViewModelHost">
                   <span class="thumb"></span>
+                  <yt-thumbnail-overlay-badge-view-model
+                    class="ytThumbnailOverlayBadgeViewModelHost ytThumbnailOverlayBadgeViewModelTopStart"
+                    data-crowd="thumbnail new badge"
+                  >
+                    <yt-thumbnail-badge-view-model
+                      class="ytThumbnailBadgeViewModelHost"
+                    >
+                      <badge-shape
+                        class="ytBadgeShapeHost ytBadgeShapeThumbnailSpecial"
+                        ><div class="ytBadgeShapeText">New</div></badge-shape
+                      >
+                    </yt-thumbnail-badge-view-model>
+                  </yt-thumbnail-overlay-badge-view-model>
                   <yt-thumbnail-bottom-overlay-view-model
                     class="ytThumbnailBottomOverlayViewModelHost"
                   >
@@ -315,6 +328,22 @@
                   </ytd-badge-supported-renderer>
                 </ytd-channel-name>
               </div>
+              <ytd-badge-supported-renderer id="badges">
+                <yt-metadata-badge-renderer
+                  ><badge-shape
+                    class="ytBadgeShapeHost ytBadgeShapeDefault"
+                    data-crowd="search new badge"
+                    >New</badge-shape
+                  ></yt-metadata-badge-renderer
+                >
+                <yt-metadata-badge-renderer
+                  ><badge-shape
+                    class="ytBadgeShapeHost ytBadgeShapeMedia"
+                    data-keep="CC badge"
+                    >CC</badge-shape
+                  ></yt-metadata-badge-renderer
+                >
+              </ytd-badge-supported-renderer>
               <div id="metadata-line">
                 <ytd-badge-supported-renderer
                   class="inline-metadata-badge"
@@ -525,6 +554,20 @@
             </div>
           </div>
         </a>
+        <ytd-compact-infocard-renderer>
+          <ytd-structured-description-video-lockup-renderer>
+            <a id="text-wrapper" href="/watch?v=vid_linked01">
+              <div id="description">
+                <span id="title" data-keep="linked video title"
+                  >Linked Title</span
+                >
+                <div id="subtitle" data-keep="linked video channel">
+                  Linked Channel
+                </div>
+              </div>
+            </a>
+          </ytd-structured-description-video-lockup-renderer>
+        </ytd-compact-infocard-renderer>
       </ytd-video-description-infocards-section-renderer>
 
       <ytd-engagement-panel-section-list-renderer
@@ -539,6 +582,20 @@
               id="contextual-info"
               data-crowd="comments panel count"
               >27</yt-formatted-string
+            >
+          </h2>
+        </ytd-engagement-panel-title-header-renderer>
+      </ytd-engagement-panel-section-list-renderer>
+
+      <!-- The same count, under a panel id of another name. -->
+      <ytd-engagement-panel-section-list-renderer target-id="PAsearch_preview">
+        <ytd-engagement-panel-title-header-renderer>
+          <h2 id="title" aria-label="Comments 1K">
+            <yt-formatted-string id="title-text">Comments</yt-formatted-string>
+            <yt-formatted-string
+              id="contextual-info"
+              data-crowd="preview comments count"
+              >1K</yt-formatted-string
             >
           </h2>
         </ytd-engagement-panel-title-header-renderer>

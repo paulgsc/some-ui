@@ -29,6 +29,8 @@ import {
 } from "@censor/lib/content/selectors"
 import { describe, expect, it } from "vitest"
 
+import { CROWD_MARKER, crowdRules } from "./crowd-css"
+
 // Read from disk rather than imported: vitest resolves a `.css` import to an
 // empty module by design, and the point of this suite is the actual bytes the
 // build will concatenate into dist/styles/content.css.
@@ -125,20 +127,10 @@ function shelfRulesFromCss(): Array<string> {
   ).filter((r) => normalize(r).includes(':has([data-boyo="absent"]):not('))
 }
 
-const CROWD_MARKER = "THE CROWD (QD14)"
-
-/** Every rule after the section's header, as selector and body. */
-function crowdRules(): Array<{ selector: string; body: string }> {
-  const start = CSS.indexOf(CROWD_MARKER)
-  expect(start, "the crowd section must exist").toBeGreaterThan(-1)
-  const section = CSS.slice(CSS.lastIndexOf("/*", start)).replace(
-    /\/\*[\s\S]*?\*\//g,
-    ""
-  )
-  return [...section.matchAll(/([^{}]+)\{([^{}]*)\}/g)].map((m) => ({
-    selector: (m[1] ?? "").trim(),
-    body: (m[2] ?? "").trim(),
-  }))
+function crowdRulesFromCss(): ReturnType<typeof crowdRules> {
+  const rules = crowdRules(CSS)
+  expect(rules.length, "the crowd section must exist").toBeGreaterThan(0)
+  return rules
 }
 
 /** Every pre-mask rule's gate: the owner's off switch lifts them all. */
@@ -271,7 +263,7 @@ describe("the stylesheet and the catalogue agree", () => {
     for (const rule of [
       ...premaskRulesFromCss(),
       ...shelfRulesFromCss(),
-      ...crowdRules().map((r) => r.selector),
+      ...crowdRulesFromCss().map((r) => r.selector),
     ]) {
       expect(topLevelCommaCount(rule), rule).toBe(0)
     }
@@ -394,15 +386,19 @@ describe("the stylesheet and the catalogue agree", () => {
 
 describe("the crowd rules (QD14)", () => {
   it("hides a vendor element and does nothing else, behind the off switch", () => {
-    const rules = crowdRules()
-    expect(rules.length).toBeGreaterThan(0)
-    for (const { selector, body } of rules) {
+    for (const { selector, body } of crowdRulesFromCss()) {
       expect(body, selector).toBe("display: none !important;")
-      expect(
-        normalize(selector).startsWith(normalize(WHILE_ON)),
-        selector
-      ).toBe(true)
+      // A descendant of the gate: without the space it would name nothing.
+      expect(selector.startsWith(WHILE_ON), selector).toBe(true)
     }
+  })
+
+  it("hides by where an element sits, never by what it says (H1)", () => {
+    // Matching an attribute's value is reading its text. Presence is not.
+    for (const { selector } of crowdRulesFromCss()) {
+      expect(selector, selector).not.toMatch(/\[[\w-]+\s*[*^$~|]?=/)
+    }
+    expect(CSS.slice(CSS.indexOf(CROWD_MARKER))).not.toContain("@")
   })
 })
 

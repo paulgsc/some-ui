@@ -572,7 +572,17 @@ ytd-item-section-renderer:has(> #contents > ytd-shelf-renderer:only-child):has(
   display: none !important;
 }
 
-/* A Short's view count and its "New" badge. */
+/* "New": on a Short, in a lockup thumbnail's top corner (a duration sits in
+   the bottom overlay, "Mix" in the bottom corner), and in a search result's
+   badges, where CC, 4K and LIVE are shaped otherwise. A Short's view count. */
+:root:not([data-boyo-off]) .ytThumbnailOverlayBadgeViewModelTopStart {
+  display: none !important;
+}
+
+:root:not([data-boyo-off]) ytd-video-renderer #badges .ytBadgeShapeDefault {
+  display: none !important;
+}
+
 :root:not([data-boyo-off]) .shortsLockupViewModelHostOutsideMetadataSubhead {
   display: none !important;
 }
@@ -627,19 +637,21 @@ ytd-item-section-renderer:has(> #contents > ytd-shelf-renderer:only-child):has(
   display: none !important;
 }
 
-/* Subscribers, under the owner and in the description's channel card. */
+/* Subscribers, under the owner and in the description's channel card. A
+   linked video's card there has a `#subtitle` too, holding its channel. */
 :root:not([data-boyo-off]) #owner-sub-count {
   display: none !important;
 }
 
 :root:not([data-boyo-off])
   ytd-video-description-infocards-section-renderer
-  #subtitle {
+  #header-text
+  > #subtitle {
   display: none !important;
 }
 
 :root:not([data-boyo-off])
-  ytd-engagement-panel-section-list-renderer[target-id="engagement-panel-comments-section"]
+  ytd-engagement-panel-title-header-renderer
   #contextual-info {
   display: none !important;
 }
@@ -648,9 +660,9 @@ ytd-item-section-renderer:has(> #contents > ytd-shelf-renderer:only-child):has(
   display: none !important;
 }
 
-/* The player. The pill's title is "Most replayed" (its hover time stays),
-   and the fullscreen overlay's subtitle is one run of channel, views and
-   age. */
+/* The player. The pill's title is "Most replayed" (its hover time stays).
+   The fullscreen overlay's subtitle and the small autoplay screen's line
+   are each one run of channel and counts, so the channel goes with them. */
 :root:not([data-boyo-off]) .ytp-heat-map-container {
   display: none !important;
 }
