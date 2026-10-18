@@ -13,7 +13,7 @@ one résumé composition, for a posting no composition leads with yet (§6). I
 review and merge it; the run never does. It pushes nothing else and changes
 nothing else in the repo.
 
-The shapes are this package's schemas, and `src/__tests__/sample.digest.json`
+The shapes are this package's schemas, and `src/sample.digest.json`
 is a complete digest to copy. The limits (picks per track, places, queries,
 excluded titles, posting age) are `src/policy.ts`. When this file and the
 policy disagree, the policy wins and this file is the bug.
@@ -271,7 +271,7 @@ a time. Its PRs carry the label `jobs-patch`, and only theirs do.
 ## 8. Write it
 
 1. Give each pick an `id`, unless "The résumé PR" (§6) already did: three
-   letters of the company and four hex digits (`blu-7f2a`), unique in the
+   letters of the company and four hex digits (`tid-7f2a`), unique in the
    digest. Never change one a PR already names.
 2. Answer every scout read in step 2 in `scouts`, with the verdict, note, `rule`
    and `review` §3 to §5 gave it, and a scout that became a pick its

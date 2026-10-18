@@ -18,6 +18,7 @@ import { Route as PlayoffDeltaRouteImport } from './routes/playoff-delta'
 import { Route as DashboardApkRouteImport } from './routes/_dashboard/_apk'
 import { Route as DashboardLanRouteImport } from './routes/_dashboard/_lan'
 import { Route as DashboardAppRouteImport } from './routes/_dashboard/app'
+import { Route as DashboardJobRunRouteImport } from './routes/_dashboard/job-run'
 import { Route as DashboardProfileRouteImport } from './routes/_dashboard/profile'
 import { Route as DashboardResumeRouteImport } from './routes/_dashboard/resume'
 import { Route as DashboardSettingsRouteImport } from './routes/_dashboard/settings'
@@ -83,6 +84,11 @@ const DashboardLanRoute = DashboardLanRouteImport.update({
 const DashboardAppRoute = DashboardAppRouteImport.update({
   id: '/app',
   path: '/app',
+  getParentRoute: () => DashboardRoute,
+} as any)
+const DashboardJobRunRoute = DashboardJobRunRouteImport.update({
+  id: '/job-run',
+  path: '/job-run',
   getParentRoute: () => DashboardRoute,
 } as any)
 const DashboardProfileRoute = DashboardProfileRouteImport.update({
@@ -217,6 +223,7 @@ export interface FileRoutesByFullPath {
   '/mission': typeof MissionRoute
   '/playoff-delta': typeof PlayoffDeltaRoute
   '/app': typeof DashboardAppRoute
+  '/job-run': typeof DashboardJobRunRoute
   '/profile': typeof DashboardProfileRoute
   '/resume': typeof DashboardResumeRoute
   '/settings': typeof DashboardSettingsRoute
@@ -249,6 +256,7 @@ export interface FileRoutesByTo {
   '/mission': typeof MissionRoute
   '/playoff-delta': typeof PlayoffDeltaRoute
   '/app': typeof DashboardAppRoute
+  '/job-run': typeof DashboardJobRunRoute
   '/profile': typeof DashboardProfileRoute
   '/resume': typeof DashboardResumeRoute
   '/settings': typeof DashboardSettingsRoute
@@ -283,6 +291,7 @@ export interface FileRoutesById {
   '/_dashboard/_apk': typeof DashboardApkRouteWithChildren
   '/_dashboard/_lan': typeof DashboardLanRouteWithChildren
   '/_dashboard/app': typeof DashboardAppRoute
+  '/_dashboard/job-run': typeof DashboardJobRunRoute
   '/_dashboard/profile': typeof DashboardProfileRoute
   '/_dashboard/resume': typeof DashboardResumeRoute
   '/_dashboard/settings': typeof DashboardSettingsRoute
@@ -317,6 +326,7 @@ export interface FileRouteTypes {
     | '/mission'
     | '/playoff-delta'
     | '/app'
+    | '/job-run'
     | '/profile'
     | '/resume'
     | '/settings'
@@ -349,6 +359,7 @@ export interface FileRouteTypes {
     | '/mission'
     | '/playoff-delta'
     | '/app'
+    | '/job-run'
     | '/profile'
     | '/resume'
     | '/settings'
@@ -382,6 +393,7 @@ export interface FileRouteTypes {
     | '/_dashboard/_apk'
     | '/_dashboard/_lan'
     | '/_dashboard/app'
+    | '/_dashboard/job-run'
     | '/_dashboard/profile'
     | '/_dashboard/resume'
     | '/_dashboard/settings'
@@ -480,6 +492,13 @@ declare module '@tanstack/react-router' {
       path: '/app'
       fullPath: '/app'
       preLoaderRoute: typeof DashboardAppRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/_dashboard/job-run': {
+      id: '/_dashboard/job-run'
+      path: '/job-run'
+      fullPath: '/job-run'
+      preLoaderRoute: typeof DashboardJobRunRouteImport
       parentRoute: typeof DashboardRoute
     }
     '/_dashboard/profile': {
@@ -730,6 +749,7 @@ interface DashboardRouteChildren {
   DashboardApkRoute: typeof DashboardApkRouteWithChildren
   DashboardLanRoute: typeof DashboardLanRouteWithChildren
   DashboardAppRoute: typeof DashboardAppRoute
+  DashboardJobRunRoute: typeof DashboardJobRunRoute
   DashboardProfileRoute: typeof DashboardProfileRoute
   DashboardResumeRoute: typeof DashboardResumeRoute
   DashboardSettingsRoute: typeof DashboardSettingsRoute
@@ -743,6 +763,7 @@ const DashboardRouteChildren: DashboardRouteChildren = {
   DashboardApkRoute: DashboardApkRouteWithChildren,
   DashboardLanRoute: DashboardLanRouteWithChildren,
   DashboardAppRoute: DashboardAppRoute,
+  DashboardJobRunRoute: DashboardJobRunRoute,
   DashboardProfileRoute: DashboardProfileRoute,
   DashboardResumeRoute: DashboardResumeRoute,
   DashboardSettingsRoute: DashboardSettingsRoute,

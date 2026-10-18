@@ -13,7 +13,7 @@ import { parseScouts } from "@job-desk/scouts"
 import { describe, expect, it } from "vitest"
 
 const SAMPLE = readFileSync(
-  new URL("./sample.digest.json", import.meta.url),
+  new URL("../sample.digest.json", import.meta.url),
   "utf8"
 )
 
@@ -30,6 +30,15 @@ function messages(digest: Digest): ReadonlyArray<string> {
 describe("the sample digest", () => {
   it("parses and breaks no rule", () => {
     expect(messages(sample())).toEqual([])
+  })
+})
+
+describe("the sample digest's postings", () => {
+  // The web builds show it to anyone: it must name no posting I looked at.
+  it("are made up, each linking to example.com", () => {
+    for (const pick of sample().picks) {
+      expect(new URL(pick.posting.applyUrl).hostname).toBe("jobs.example.com")
+    }
   })
 })
 
@@ -122,9 +131,9 @@ describe("digestFindings", () => {
 
   it("checks each fingerprint against its posting", () => {
     const digest = sample()
-    digest.picks[0]!.fingerprint = "avmet|engineer|remote"
+    digest.picks[0]!.fingerprint = "northwind|engineer|remote"
     expect(messages(digest)).toEqual([
-      'picks.0.fingerprint: should be "avmet applications|software engineer|remote"',
+      'picks.0.fingerprint: should be "northwind avionics|software engineer|remote"',
     ])
   })
 
@@ -184,7 +193,7 @@ describe("digestFindings", () => {
     const digest = sample()
     digest.setAside[0]!.title = "Frontend Engineer"
     expect(messages(digest)).toEqual([
-      'setAside.0.fingerprint: should start "indeed|frontend engineer|", from its company and title',
+      'setAside.0.fingerprint: should start "juniper row|frontend engineer|", from its company and title',
     ])
   })
 
@@ -241,7 +250,7 @@ describe("digestFindings", () => {
     // Two picks may wait on one PR when both want the change it makes.
     const data = digest.picks[2]!
     const twin = structuredClone(qa!)
-    twin.id = "wis-21c1"
+    twin.id = "kes-21c1"
     twin.posting.title = "SDET II"
     twin.fingerprint = fingerprint(twin.posting)
     digest.picks[2] = twin
@@ -286,7 +295,7 @@ describe("digestFindings", () => {
       scoutId: "sc-1234",
       verdict: "disagree",
       note: "Senior only",
-      pickId: "avm-0b77",
+      pickId: "nor-0b77",
       rule: null,
       review: null,
     })
@@ -355,7 +364,7 @@ describe("digestFindings", () => {
       scout("disagree", { fit: 0.3 }),
       scout("disagree", { rule: "phone screens" }),
       scout("not-found", {}),
-      scout("agree", { pickId: "avm-0b77" })
+      scout("agree", { pickId: "nor-0b77" })
     )
     expect(messages(digest)).toEqual([])
 
@@ -363,7 +372,7 @@ describe("digestFindings", () => {
     digest.scouts.push(
       scout("agree", {}),
       scout("not-found", { fit: 0.7 }),
-      scout("agree", { pickId: "avm-0b77", fit: 0.7 }),
+      scout("agree", { pickId: "nor-0b77", fit: 0.7 }),
       scout("disagree", { fit: 0.7 }),
       scout("agree", { fit: 0.4 }),
       scout("agree", { rule: "senior title" })
@@ -433,7 +442,7 @@ describe("the files the phone shares back", () => {
         picks: [
           {
             day: "2026-10-18",
-            pickId: "blu-7f2a",
+            pickId: "tid-7f2a",
             fingerprint: "bluesight|data analyst|remote",
             id: "4f1a2b3c-5d6e-4f70-8a9b-0c1d2e3f4a5b",
             decision: "taken",
@@ -446,13 +455,13 @@ describe("the files the phone shares back", () => {
               friction: 3,
               frictionChips: ["company-ats"],
               what: "Indeed sent me to Workday.",
-              voice: ["2026-10-18_blu-7f2a_voice-1.webm"],
+              voice: ["2026-10-18_tid-7f2a_voice-1.webm"],
               result: "submitted",
             },
           },
           {
             day: "2026-10-18",
-            pickId: "avm-0b77",
+            pickId: "nor-0b77",
             fingerprint: "avmet applications|software engineer|remote",
             id: "9e8d7c6b-5a49-4382-a1b0-c9d8e7f6a5b4",
             decision: "passed",

@@ -211,11 +211,6 @@ export const paths: PathRules<Profile> = definePaths<Profile>({
       why: "the phone's hand-off wording (`arrived`, `goingOut`), after a share only the Android app makes; the web's reflection screens count with `@some-ui/core-utils`",
     },
     {
-      modules: ["packages/job-desk/**"],
-      profiles: [MOBILE_PROFILE],
-      why: "the Jobs wing's Drive files (the digest, decisions, scouts), which only the Android app's Jobs wing reads and writes (src/lib/jobs); the web builds have no Jobs wing",
-    },
-    {
       modules: DEVICE_MODULES,
       profiles: [MOBILE_PROFILE],
       why: "native-only code, which runs only in the Android app (src/lib/device-backend, src/vite-env.d.ts on VITE_DEVICE_BACKEND)",
@@ -322,6 +317,7 @@ export const paths: PathRules<Profile> = definePaths<Profile>({
       "_dashboard/app.tsx*",
       "_dashboard/profile.tsx*",
       "_dashboard/resume.tsx*",
+      "_dashboard/job-run.tsx*",
     ].map(
       (route): Debt => ({
         profile: MOBILE_PROFILE,

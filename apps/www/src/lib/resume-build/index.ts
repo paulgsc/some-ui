@@ -13,6 +13,7 @@
  * component only reads the snapshot and calls `build`.
  */
 import { assertNever } from "@some-ui/core-utils"
+import { IdSchema } from "@some-ui/job-desk"
 import type { ResumeRenderOutcome, ResumeRenderRequest } from "@some-ui/resume"
 import { PII_TEMPLATES, renderResume } from "@some-ui/resume"
 
@@ -29,20 +30,12 @@ export type BuilderSearch = {
   readonly pick?: string
 }
 
-/**
- * A job pick's id: `@some-ui/job-desk`'s `IdSchema`, copied because job-desk
- * ships only in the phone's build (build.paths.ts) and this page is the lan
- * build's.
- */
-const PICK_ID = /^[a-z0-9][a-z0-9-]{2,40}$/
-
 export function parseBuilderSearch(
   search: Record<string, unknown>
 ): BuilderSearch {
-  const pick =
-    typeof search.pick === "string" && PICK_ID.test(search.pick)
-      ? search.pick
-      : undefined
+  // A pick's or a scout's id, as job-desk writes it.
+  const id = IdSchema.safeParse(search.pick)
+  const pick = id.success ? id.data : undefined
   return {
     variant: isResumeComposition(search.variant) ? search.variant : undefined,
     template: PII_TEMPLATES.find((t) => t === search.template),

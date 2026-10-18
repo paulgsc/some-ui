@@ -5,18 +5,18 @@
   "seen": 37,
   "picks": [
     {
-      "id": "avm-0b77",
+      "id": "nor-0b77",
       "track": "software",
       "family": null,
-      "fingerprint": "avmet applications|software engineer|remote",
+      "fingerprint": "northwind avionics|software engineer|remote",
       "posting": {
         "title": "Software Engineer",
-        "company": "AvMet Applications",
+        "company": "Northwind Avionics",
         "location": "Remote",
         "compensation": "$80,000–$120,000 a year",
         "experience": null,
         "postedOn": "2026-09-18",
-        "applyUrl": "https://to.indeed.com/aa7ghmzgvyn9"
+        "applyUrl": "https://jobs.example.com/nor-0b77"
       },
       "scores": {
         "fit": 0.66,
@@ -87,18 +87,18 @@
       }
     },
     {
-      "id": "apl-5d19",
+      "id": "lar-5d19",
       "track": "software",
       "family": null,
-      "fingerprint": "applyline|software engineer|remote",
+      "fingerprint": "larkspur labs|software engineer|remote",
       "posting": {
         "title": "Software Engineer",
-        "company": "Applyline",
+        "company": "Larkspur Labs",
         "location": "Remote",
         "compensation": "$100,000 a year",
         "experience": "2+ years",
         "postedOn": "2026-10-07",
-        "applyUrl": "https://to.indeed.com/aam6bbz9rggc"
+        "applyUrl": "https://jobs.example.com/lar-5d19"
       },
       "scores": {
         "fit": 0.61,
@@ -152,18 +152,18 @@
       }
     },
     {
-      "id": "blu-7f2a",
+      "id": "tid-7f2a",
       "track": "adjacent",
       "family": "data",
-      "fingerprint": "bluesight|data analyst|remote",
+      "fingerprint": "tidewater analytics|data analyst|remote",
       "posting": {
         "title": "Data Analyst",
-        "company": "BlueSight",
+        "company": "Tidewater Analytics",
         "location": "Remote",
         "compensation": "$70,000–$82,000 a year",
         "experience": null,
         "postedOn": "2026-10-15",
-        "applyUrl": "https://to.indeed.com/aaqknqlbpywc"
+        "applyUrl": "https://jobs.example.com/tid-7f2a"
       },
       "scores": {
         "fit": 0.68,
@@ -218,18 +218,18 @@
       }
     },
     {
-      "id": "wis-21c0",
+      "id": "kes-21c0",
       "track": "adjacent",
       "family": "qa",
-      "fingerprint": "wisemen multimedia|automation test engineer|remote",
+      "fingerprint": "kestrel games|automation test engineer|remote",
       "posting": {
         "title": "Automation Test Engineer",
-        "company": "Wisemen Multimedia",
+        "company": "Kestrel Games",
         "location": "Remote",
         "compensation": "$85,000–$100,000 a year",
         "experience": null,
         "postedOn": "2026-10-13",
-        "applyUrl": "https://to.indeed.com/aab4m6j9687s"
+        "applyUrl": "https://jobs.example.com/kes-21c0"
       },
       "scores": {
         "fit": 0.63,
@@ -283,27 +283,27 @@
   ],
   "setAside": [
     {
-      "fingerprint": "indeed|software engineer ii|remote",
+      "fingerprint": "juniper row|software engineer ii|remote",
       "title": "Software Engineer II",
-      "company": "Indeed",
+      "company": "Juniper Row",
       "why": "Posted Jul 28, older than 30 days"
     },
     {
-      "fingerprint": "dataannotation|backend software engineer ai trainer|indianapolis in",
+      "fingerprint": "mosaic annotation|backend software engineer ai trainer|indianapolis in",
       "title": "Backend Software Engineer - AI Trainer",
-      "company": "DataAnnotation",
+      "company": "Mosaic Annotation",
       "why": "Part-time gig work; three copies by city, collapsed"
     },
     {
-      "fingerprint": "virtual integrated analytics solutions inc|technical support specialist|remote",
+      "fingerprint": "bellwether analytics group|technical support specialist|remote",
       "title": "Technical Support Specialist",
-      "company": "Virtual Integrated Analytics Solutions Inc.",
+      "company": "Bellwether Analytics Group",
       "why": "Customer-facing support"
     },
     {
-      "fingerprint": "vissat solutions inc|data analyst jr mid sr u s citizen dod clearance|remote",
+      "fingerprint": "cobalt field systems|data analyst jr mid sr u s citizen dod clearance|remote",
       "title": "Data Analyst - Jr./Mid./Sr.-U. S Citizen & DOD clearance",
-      "company": "Vissat Solutions, Inc",
+      "company": "Cobalt Field Systems",
       "why": "Requires a DoD clearance"
     }
   ],

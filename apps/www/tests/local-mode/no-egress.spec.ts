@@ -36,6 +36,7 @@ const LOCAL_ROUTES = [
   "/profile",
   "/extensions",
   "/mission",
+  "/job-run",
   "/auth",
 ]
 

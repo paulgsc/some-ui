@@ -19,15 +19,9 @@ import { hasAudience } from "@/lib/build-profile"
 import { phoneJobs } from "@/lib/jobs"
 import type { JobsState, Progress } from "@/lib/jobs/model"
 import { currentDigest, disagreed, progressOf } from "@/lib/jobs/model"
+import { Meter, resumeLabel, sectionHeading } from "@/components/job-reading"
 
-import {
-  Meter,
-  OpenDigest,
-  Problem,
-  resumeLabel,
-  sectionHeading,
-  useJobs,
-} from "./parts"
+import { OpenDigest, Problem, useJobs } from "./parts"
 
 const TRACK_HEADINGS: Readonly<Record<Track, string>> = {
   software: "Software engineering",
