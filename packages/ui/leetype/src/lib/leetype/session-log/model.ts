@@ -13,12 +13,14 @@ import { z } from "zod"
  * pointer may come from another file than the one the session started.
  */
 
+/** One run of one session file; no `:`, since it names a storage key (`stored.ts`). */
+export const SessionIdSchema = z.string().regex(/^[^:]+$/)
+
 const Stamp = {
-  /** Unique within the log; an event whose id is already kept is not appended twice. */
+  /** Unique; an event whose id its session already keeps is not appended twice. */
   id: z.string().min(1),
   at: z.iso.datetime(),
-  /** One run of one session file; no `:`, since it names a storage key (`stored.ts`). */
-  session: z.string().regex(/^[^:]+$/),
+  session: SessionIdSchema,
 }
 
 const OnScreen = { file: z.string().min(1), screen: z.string().min(1) }
@@ -143,9 +145,12 @@ const keyOf = (file: string, screen: string): string =>
   JSON.stringify([file, screen])
 
 export function ledgerOf(log: SessionLog, session: string): SessionLedger {
-  let until = log.length - 1
-  while (until >= 0 && log[until]?.session !== session) until -= 1
-  const before = log.slice(0, until + 1)
+  // By time, not position: the store lays the log out session by session.
+  let until = -Infinity
+  for (const event of log) {
+    if (event.session === session) until = Math.max(until, Date.parse(event.at))
+  }
+  const before = log.filter((event) => Date.parse(event.at) <= until)
   const walked = new Map<string, OnFile>()
   const spoken: Array<SessionLedger["spoken"][number]> = []
   for (const event of before) {
@@ -173,7 +178,9 @@ export function ledgerOf(log: SessionLog, session: string): SessionLedger {
       })
     } else if (
       event.type === "returned" &&
-      event.answer.response === "correct"
+      event.answer.response === "correct" &&
+      // A slow correct return is still a struggle (Def. 9.4): it stays parked.
+      !event.answer.slow
     ) {
       waiting.delete(keyOf(event.file, event.screen))
     } else if (event.type === "reading") {

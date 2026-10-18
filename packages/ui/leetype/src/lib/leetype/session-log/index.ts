@@ -71,7 +71,7 @@ export function createSessionLogStore(
       const events = appendStored(writable, event)
       if (events === null) {
         return refuse(
-          "This phone couldn't keep that step of the session. Free some space and try again."
+          "This phone couldn't keep that step of the session. If it's full, free some space and try again."
         )
       }
       sessions.set(event.session, events)

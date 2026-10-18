@@ -12,7 +12,8 @@ import { describe, expect, it } from "vitest"
 let n = 0
 function stamp(session: string): { id: string; at: string; session: string } {
   n += 1
-  return { id: `e${String(n)}`, at: "2026-10-18T20:00:00.000Z", session }
+  const at = new Date(Date.UTC(2026, 9, 18, 20) + n * 1000).toISOString()
+  return { id: `e${String(n)}`, at, session }
 }
 
 /** One session of each kind of event, in the order a session makes them. */
@@ -70,7 +71,8 @@ function aSession(
 
 function returned(
   session: string,
-  response: "correct" | "incorrect" | "abstained"
+  response: "correct" | "incorrect" | "abstained",
+  slow = false
 ): SessionEvent {
   return {
     ...stamp(session),
@@ -81,7 +83,7 @@ function returned(
     asked: false,
     option: "Three",
     ms: 7000,
-    answer: response === "abstained" ? { response } : { response, slow: false },
+    answer: response === "abstained" ? { response } : { response, slow },
   }
 }
 
@@ -160,6 +162,7 @@ describe("ledgerOf", () => {
       placed("b", "p2", "placement"),
       returned("b", "abstained"),
       placed("b", "p3", "pointer"),
+      returned("b", "correct", true),
     ]
     expect(ledgerOf(logOf(events), "b").parked).toEqual([
       { file: "thread-1.json", screen: "r1", reading: "p2" },
@@ -176,7 +179,7 @@ describe("ledgerOf", () => {
     const action = (
       session: string,
       file: string,
-      what: "opened" | "read"
+      what: "opened" | "skipped" | "read"
     ): SessionEvent => ({
       ...stamp(session),
       file,
@@ -187,6 +190,7 @@ describe("ledgerOf", () => {
     const events = [
       ...aSession("a"),
       action("b", "thread-1.json", "opened"),
+      action("b", "thread-1.json", "skipped"),
       action("b", "thread-2.json", "read"),
     ]
     expect(ledgerOf(logOf(events), "b").saved).toEqual([
@@ -196,6 +200,23 @@ describe("ledgerOf", () => {
     events.push(action("b", "thread-1.json", "read"))
     expect(ledgerOf(logOf(events), "b").saved).toEqual([])
     expect(ledgerOf(logOf(events), "a").saved).toHaveLength(1)
+  })
+
+  it("reads the log by time, so a late event in an earlier session leaves a later ledger as it was", () => {
+    const a = aSession("a")
+    const b = aSession("b", "thread-2.json")
+    const late: SessionEvent = {
+      ...stamp("a"),
+      file: "thread-1.json",
+      type: "reading",
+      reading: "p1",
+      action: "read",
+    }
+    const ledger = ledgerOf(logOf([...a, ...b]), "b")
+    expect(ledgerOf(logOf([...a, late, ...b]), "b")).toEqual(ledger)
+    expect(ledgerOf(logOf([...a, late, ...b]), "a").saved).toEqual([
+      { file: "thread-2.json", reading: "p1" },
+    ])
   })
 
   it("tells apart rounds that share an id in different session files", () => {

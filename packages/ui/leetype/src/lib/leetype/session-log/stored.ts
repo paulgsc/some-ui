@@ -23,7 +23,7 @@ import { openRecord, readAs, writeRecord } from "@some-ui/core-utils"
 import { z } from "zod"
 
 import type { SessionEvent, SessionLog } from "./model"
-import { append, SessionEventSchema } from "./model"
+import { append, SessionEventSchema, SessionIdSchema } from "./model"
 
 export const INDEX_KEY = "leetype:session-log"
 /** Session ids hold no `:` (`model.ts`), so no session's key is another's moved-aside copy. */
@@ -33,7 +33,7 @@ const VERSION = 1
 
 const IndexSchema = z.strictObject({
   v: z.literal(VERSION),
-  sessions: z.array(z.string().min(1)),
+  sessions: z.array(SessionIdSchema),
 })
 const SessionSchema = z.strictObject({
   v: z.literal(VERSION),

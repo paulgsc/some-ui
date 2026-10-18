@@ -83,6 +83,16 @@ describe("createSessionLogStore", () => {
     expect([...storage.map]).toEqual([[INDEX_KEY, `{"v":2,"sessions":["a"]}`]])
   })
 
+  it("opens read-only when a listed session cannot be read", () => {
+    const storage = memoryStorage([[INDEX_KEY, `{"v":1,"sessions":["a"]}`]])
+    const getItem = storage.getItem
+    storage.getItem = (key): string | null => {
+      if (key === sessionKey("a")) throw new Error("denied")
+      return getItem(key)
+    }
+    expect(createSessionLogStore(storage).readOnly).toBe(true)
+  })
+
   it("refuses an event the log cannot read back, and says why", () => {
     const store = createSessionLogStore(memoryStorage())
     expect(store.append({ ...started("e1", "a"), session: "a:b" })).toBe(false)
@@ -122,7 +132,7 @@ describe("createSessionLogStore", () => {
     storage.full = true
     expect(store.append(started("e1", "a"))).toBe(false)
     expect(store.getSnapshot().log).toEqual([])
-    expect(store.getSnapshot().problem).toContain("Free some space")
+    expect(store.getSnapshot().problem).toContain("free some space")
 
     storage.full = false
     expect(store.append(started("e1", "a"))).toBe(true)
