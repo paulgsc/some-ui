@@ -401,21 +401,23 @@ answer to the second forces most of the answers to the first.
 ]
 
 #definition("1.9", name: "Incident round (v1.2)")[
-  An *incident round* is the tuple $(j, s, O, B, I, rho, w, pi)$ where
+  An *incident round* is the tuple $(j, s, O, B_t, I, kappa, w, pi)$ where
   + $j$ is the *job*: one sentence saying what the learner is asked to do;
   + $s$ is the *situation*: a concrete failure or target told with its
     numbers, optionally with a panel of who holds what state;
   + $O$ is a closed option set, each option one line, always including the
     abstention of Def. 9.1;
-  + $B$ is a budget, $I$ an invariant, and at least one of them is present;
-  + $rho$ is the one register entry (§7, Rem. 7.4) that decides the round,
+  + $B_t$ is a *time budget* (a latency or a rate, Ax. 3.2), $I$ an
+    invariant, and at least one of them is present;
+  + $kappa$ is the one register entry (§7, Rem. 7.4) that decides the round,
     named to the learner only after the commitment;
   + $w$ assigns to every option an authored reason: for the correct option,
-    the worked confirmation; for every other, what it breaks --- $B$ (too
+    the worked confirmation; for every other, what it breaks --- $B_t$ (too
     slow), $I$ (unsafe), or both --- with any arithmetic shown;
   + $pi$ is the cited passage that answers the round (Rem. 10.3).
   It has no algorithm, no constraint set and no diff, so it is not a round in
-  Def. 1.7's sense, and none of §2--§5 applies to it.
+  Def. 1.7's sense, and none of the v1.1 results of §2--§5 applies to it;
+  Def. 3.3, Ax. 3.2 and Rem. 3.2 are its own.
 ]
 
 #remark("1.2", name: "Two kinds of round")[
@@ -567,19 +569,21 @@ repository's own standing rule forbids. A cost graph is the justification.
 ]
 
 #definition("3.3", name: "Verdict of an incident round (v1.2)")[
-  An option of an incident round is *correct* iff it fits $B$ (where $B$ is
-  present) *and* keeps $I$ (where $I$ is present). The verdict is the
+  An option of an incident round is *correct* iff it fits $B_t$ (where $B_t$
+  is present) *and* keeps $I$ (where $I$ is present). The verdict is the
   conjunction; an option that is fast and unsafe, or safe and too slow, is
   wrong for a stated reason, and $w$ (Def. 1.9) states which.
 ]
 
-#axiom("3.2", name: "Machine budgets are orders of magnitude (v1.2)")[
-  Axiom 3.1 applied to latency. A budget stated in time (a commit within a
-  millisecond, ten thousand writes a second) is checked against figures that
-  are ranges, not constants --- a datacenter round trip from about 5 µs tuned
-  to about 0.5 ms typical, a durable write from about 100 µs to about 10 ms
-  --- so a round states the figure it assumes as an assumption, and a verdict
-  that turns on less than an order of magnitude is malformed.
+#axiom("3.2", name: "Time budgets are orders of magnitude (v1.2)")[
+  Def. 1.3 and Axiom 3.1 count primitive operations and model no machine, so
+  they do not govern $B_t$, which is stated in time and checked against the
+  machine (`M1`). $B_t$ is held to the same coarseness by a rule of its own:
+  the figures it is checked against are ranges, not constants --- a
+  datacenter round trip from about 5 µs tuned to about 0.5 ms typical, a
+  durable write from about 100 µs to about 10 ms --- so a round states the
+  figure it assumes as an assumption, and a verdict that turns on less than
+  an order of magnitude is malformed.
 ]
 
 #remark("3.2", name: "Agreement verdicts are authored, and reviewed")[
@@ -959,22 +963,23 @@ superseded and kept.
   `CW-P1`--`CW-P16` cannot state, so two registers are added under new
   prefixes, *Machine* and *Agreement*. No `CW-P` identifier moves. Def. 1.5's
   "register" now reads as any of the three; Def. 1.6's $mu$ still maps into
-  `CW-P` alone, and Def. 1.9's $rho$ into `M` or `A`. Their identifiers are stable
+  `CW-P` alone, and Def. 1.9's $kappa$ into `M` or `A`. Their identifiers are stable
   as `CW-P` ones are (Rem. 7.2). Each rule is the one-line form a learner
-  reads, and each is covered by the seed reading list the v1.2 log names.
+  reads, and each is covered by the seed reading list of the brief the v1.2
+  log names.
 
   *Machine register (v0).*
   #table(
     columns: (auto, auto, 1fr),
     stroke: 0.4pt,
     [*Id*], [*Rule*], [*Its one line*],
-    [`M1`], [The latency ladder], [An L1 hit costs about 1 ns, DRAM about 100 ns, an NVMe read 10--100 µs, a durable write about 100 µs (fast SSD) to about 10 ms (spinning disk), a datacenter round trip about 5 µs (tuned) to 0.5 ms (typical), and a cross-continent one 100 ms or more. A round states which figure it assumes.],
+    [`M1`], [The latency ladder], [An L1 hit costs about 1 ns, DRAM about 100 ns, an NVMe read 10--100 µs, a durable write about 100 µs (fast SSD) to about 10 ms (spinning disk), a datacenter round trip about 5 µs (tuned) to 0.5 ms (typical), about 60--80 ms across a continent, and about 150 ms or more between continents. A round states which figure it assumes.],
     [`M2`], [Batch to amortize a fixed cost], [A fixed cost $F$ per operation becomes $F / k$ when $k$ operations share it: group commit, syscall batching.],
     [`M3`], [Pointer chasing costs a miss per hop], [Each node of a linked structure is a likely DRAM miss; wide nodes, as in a B-tree, cut the hops.],
     [`M4`], [Little's law], [Work in flight equals throughput times latency; at fixed latency, more throughput needs more in flight, which pipelining supplies.],
     [`M5`], [Shared writes serialize], [Contended locks and cache lines moving between cores cap throughput; partitioning the state removes the cap.],
-    [`M6`], [Queues explode near saturation], [Waiting time grows like $rho / (1 - rho)$ in utilization $rho$: at 90% busy it is nine times the service time.],
-    [`M7`], [Fan-out amplifies the tail], [A request waiting on $n$ calls is as slow as the slowest of them, so a per-call 99th percentile becomes the common case.],
+    [`M6`], [Queues explode near saturation], [In an M/M/1 queue, waiting time grows like $rho / (1 - rho)$ in utilization $rho$: at 90% busy it is nine times the service time.],
+    [`M7`], [Fan-out amplifies the tail], [A request waiting on $n$ calls is as slow as the slowest of them: if each call is slow 1% of the time, 63% of requests that fan out to 100 calls meet a slow one.],
     [`M8`], [Durability has a price], [An acknowledgement is only as durable as what was flushed before it was sent.],
   )
 
@@ -1236,14 +1241,14 @@ superseded and kept.
 ]
 
 #proposition("9.3", name: "Task legibility (v1.2)")[
-  Every round states its job in one sentence before any evidence, and keeps
-  it in view while the learner works. For an incident round the job is $j$
-  (Def. 1.9), pinned at the top of the screen.
+  Every incident round states its job $j$ (Def. 1.9) in one sentence before
+  any evidence, and keeps it in view while the learner works.
 ]
 
 #proof[
   Nothing in §1--§11 owned what the learner is told to do, and the surface the
-  post-mortem studied stated the task on page 4 of 4 and was abandoned four
+  post-mortem in the brief the v1.2 log names studied stated the task on
+  page 4 of 4 and was abandoned four
   times in four sessions, which is Axiom P.1's failure arrived at by a new
   route. In the A/B all five designs pinned the job, and all five commuters
   resumed correctly after a 60-second interruption from the pinned line
@@ -1261,7 +1266,7 @@ superseded and kept.
   Rem. 9.2's leak is a correspondence on screen at commitment time: the diff
   beside the propositions, so that the learner checks a mapping rather than
   recalls it. An incident round asks for no mapping. There is no "which rule
-  applies?" step; $rho$ is named only in the reveal, after the commitment, and
+  applies?" step; $kappa$ is named only in the reveal, after the commitment, and
   recall of the rule is tested where it cannot be read off the screen, in a
   spoken answer. With the step gone, putting the situation beside the options
   hands the learner nothing Axiom 9.2 forbids; it is the evidence the
@@ -1280,21 +1285,24 @@ superseded and kept.
 ]
 
 #proposition("9.4", name: "A struggle places a reading and parks the round (v1.2)")[
-  On a struggle the reveal is a *placement*: the question restated as what a
+  On a struggle in an incident round the reveal is a *placement*: the question restated as what a
   reading answers, the exact place to read (source, section, page, minutes),
   one or two lines on what to look for, and the passage's in-app core. The
-  round is *parked*. Three clauses complete it:
+  round is *parked*. Four clauses complete it:
   - *(a) The core is short.* The in-app core of a placed reading takes three
     minutes or less to read; the full source sits behind a link. Its form is
     the source's licence: a real excerpt only where the licence allows it, a
     short quote otherwise, a link alone where nothing else is allowed.
-  - *(b) A return is a transfer probe.* A parked round returns only after its
-    reading is marked read, and it returns as the same mechanism with new
-    numbers or a new case, never verbatim. An incorrect return stays parked
-    and places a different source.
+  - *(b) A return has new numbers.* The sampler draws a parked round's return
+    only after its reading is marked read, and the return is the same
+    mechanism with new numbers or a new case, never verbatim. An incorrect
+    return stays parked and places a different source.
   - *(c) A correct selection may carry a pointer.* After a correct selection
     the reveal may offer one named passage, with the question it answers and
     its reading time, which the learner may open, save or pass.
+  - *(d) Nothing is locked.* A parked round's worked confirmation, and the
+    round itself, stay reachable on request by one action at every moment;
+    taking either is recorded (Rem. 9.5).
   Progression is untouched (Ax. 9.1): the thread moves on, and a parked round
   never gates the next one. Credit still needs an unassisted commitment
   (Ax. 9.2): a reading explains the rule and never states this round's
@@ -1307,7 +1315,7 @@ superseded and kept.
   and commuting learners saved or skipped every reading of five minutes or
   more, in every design. (b) Where a parked round came back with new numbers
   it was solved every time, 7 of 7, and no return repeated its numbers;
-  verbatim repetition was the first finding of the post-mortem, whose five
+  verbatim repetition was the first finding of the brief's post-mortem, whose five
   bundled rounds were memorised by round 14. (c) The owner-like expert placed
   no reading in any design, because a learner who never struggles is never
   offered one, and called the one pointer after a correct pick the most useful
@@ -1315,34 +1323,57 @@ superseded and kept.
   failure.
 ]
 
-#remark("9.5", name: "Deferred, never withheld: Prop. 9.4 under Axiom 9.1")[
+#remark("9.5", name: "Deferred, never withheld: Prop. 9.4 under Axiom 9.1 and Theorem 9.1")[
   Axiom 9.1 never withholds an explanation on the basis of a response, and
-  Prop. 9.4 replaces a struggled round's worked confirmation with a
-  placement. They agree on one condition, which Prop. 9.4 therefore carries:
-  the confirmation of a parked round stays reachable by one action at every
-  moment, and taking it is recorded. It costs evidence, never access: by
-  Axiom 9.2 that round earns no credit afterwards, while its return, being
-  new numbers, is a fresh commitment. A surface that makes the confirmation
-  unreachable has turned a placement into a gate (Theorem 9.1).
+  Theorem 9.1 lets a response move only the distribution future rounds are
+  drawn from. Prop. 9.4 replaces a struggled round's confirmation with a
+  placement and waits on a reading before drawing the return; both stay
+  inside the two results only by clause (d). What the reading gates is the
+  sampler's draw, which is a distribution; the confirmation and the round are
+  reachable on request throughout. Taking either costs evidence, never
+  access: by Axiom 9.2 that round earns no credit afterwards, while its
+  return, being new numbers, is a fresh commitment. A surface that makes
+  either unreachable has turned a placement into a gate.
+]
+
+#remark("9.6", name: "Prop. 9.1's follow-ups over incident rounds")[
+  Def. 9.4 keeps Prop. 9.1's three responses as three records. Prop. 9.1 also
+  asks each for its own follow-up, and for an incident round the return
+  carries it: after an incorrect selection, a variant in which the option
+  picked visibly fails; after the abstention, a cleaner instance; after a
+  correct selection no return, the thread's next round being the nearby
+  boundary case. A session file that authors one return for every struggle
+  meets Def. 9.4 and not Prop. 9.1; checking that a file authors a variant
+  per response kind is mechanical, not yet a rule.
+]
+
+#remark("9.7", name: "The spoken answer and Prop. 9.2")[
+  Prop. 9.2's proof lists the inputs §1--§10 name; v1.2's spoken answer adds
+  one, hold-to-record, which is a press held. Its typed fallback uses a
+  keyboard and is optional, so no interaction *requires* one, and Prop. 9.2
+  stands with the list extended by a held press.
 ]
 
 #proposition("9.5", name: "First-use gloss (v1.2)")[
-  Every term a round relies on is defined, in one line, on or before the
-  screen that first uses it.
+  Every term an incident round relies on is defined, in one line, on or
+  before the screen that first uses it.
 ]
 
 #proof[
   Beginners in all five A/B designs were stopped by a term
   used before any definition --- ballot, term, Sentinel, fsync, lease,
-  quorum --- and the brief's primer card showed one rule and no vocabulary.
+  quorum --- and the primer card of the brief the v1.2 log names showed one
+  rule and no vocabulary.
   The mandate that a viewer can read what the owner uses (the repository's
   two-mandate rule) asks the same of every screen.
 ]
 
 #proposition("9.6", name: "Declared length, and leaving as an action (v1.2)")[
-  A session states its length on its first screen, offers a short form, and
-  can be ended at any round boundary onto its ledger screen (Prop. 10.2).
-  Ending is an action the session offers, not a quit it suffers.
+  A phone session of incident rounds states its length on its first screen,
+  offers a short form, and can be ended at any round boundary onto its ledger
+  screen (Prop. 10.2). Ending is an action the session offers, not a quit it
+  suffers; reaching the declared length offers the ledger screen and the
+  thread's next round, and forces neither.
 ]
 
 #proof[
@@ -1458,14 +1489,22 @@ superseded and kept.
   that plays the expert learner.
 ]
 
-#remark("10.4", name: "Def. 10.2 over the new registers (v1.2)")[
-  For an entry of `M` or `A`, Def. 10.2's positive transfer reads "rounds whose
-  incidents are structurally distinct" for "rounds whose diffs induce
-  structurally distinct rewrites". A return (Prop. 9.4 (b)) is the same
-  mechanism by construction, so it is retention evidence and never a second
-  instance of transfer. Rubric ticks on a spoken answer are the learner's own
-  reading of it: recorded as their claim, used to route (Def. 9.4), and never
-  counted toward *demonstrated*.
+#remark("10.4", name: "Def. 10.1 and Def. 10.2 over the new registers (v1.2)")[
+  For an entry $kappa$ of `M` or `A`, read over incident rounds:
+  - *recognized*: a correct commitment on an incident round $kappa$ decides;
+  - *positive transfer*: correct commitments on at least three incident
+    rounds $kappa$ decides whose incidents are structurally distinct. A return
+    (Prop. 9.4 (b)) is the same mechanism by construction, so it never counts
+    as a second instance;
+  - *negative discrimination* (Prop. 10.1): a correct commitment on an
+    incident round another entry decides, where one of the options applies
+    $kappa$'s fix. That needs each option to name the entry whose fix it
+    applies, a corpus obligation beside Rem. 10.3;
+  - *retention*: two of the above separated by a session boundary; a return
+    answered in a later session is such an observation.
+  Rubric ticks on a spoken answer are the learner's own reading of it:
+  recorded as their claim, used to route (Def. 9.4), and never counted toward
+  *demonstrated*.
 ]
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -1752,8 +1791,8 @@ that it could actually happen, not so that it comfortably cannot.
   a number changed --- then the cycle's reward structure is carried entirely
   by failure, and §8's symmetry is cosmetic.
 
-+ *The pointer is ignored* (v1.2). If the owner, offered a one-minute pointer
-  after correct selections over twenty sessions, opens none, then the reading
++ *The pointer is ignored* (v1.2). If the owner, offered a pointer after
+  correct selections over twenty sessions, opens or saves none, then the reading
   habit cannot be built from correct answers, and Prop. 9.4 (c) is cosmetic.
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -1849,22 +1888,30 @@ Definition, Axiom, Theorem or `CW-P` entry changes.
 *v1.2 --- 2026-10-18.* Re-aims the phone at incident rounds, on the evidence of
 a design A/B: five session designs, each played by four simulated learners and
 scored blind on a held-out test, recorded with its method, data and judging in
-"LeetType A/B: result and plan" (#link("https://claude.ai/code/artifact/6aaaf237-4c29-46c2-a839-70498f8a94c2")[the plan], 2026-10-18), which is the observation every
-v1.2 result cites. Adds, and rewrites nothing: the invariant and the incident
-round (Def. 1.8, Def. 1.9, Rem. 1.2); the incident verdict and latency budgets
-(Def. 3.3, Ax. 3.2, Rem. 3.2); the Machine and Agreement registers `M1`--`M8`
-and `A1`--`A10`, as v0 (Rem. 7.4); task legibility
-(Prop. 9.3); one scrolling screen for incident rounds (Def. 9.3, Rem. 9.4);
-struggle, placement, parking, returns and the correct-pick pointer (Def. 9.4,
-Prop. 9.4), with the condition that keeps them inside Axiom 9.1 (Rem. 9.5);
+"LeetType A/B: result and plan"
+(#link("https://claude.ai/code/artifact/6aaaf237-4c29-46c2-a839-70498f8a94c2")[the plan],
+2026-10-18), which is the observation every v1.2 result cites. Its
+predecessor, "LeetType, re-aimed: design brief"
+(#link("https://claude.ai/code/artifact/0b6c4fae-eae3-47be-bc1f-6c351f98ca3c")[the brief],
+2026-10-18), carries the post-mortem of the Oct 7--11 sessions and the seed
+reading list of sixteen sources that `M1`--`A10` cite. Adds, and rewrites
+nothing: the invariant and the incident round (Def. 1.8, Def. 1.9, Rem. 1.2);
+the incident verdict and time budgets (Def. 3.3, Ax. 3.2, Rem. 3.2); the
+Machine and Agreement registers `M1`--`M8` and `A1`--`A10`, as v0
+(Rem. 7.4); task legibility (Prop. 9.3); one scrolling screen for incident
+rounds (Def. 9.3, Rem. 9.4); struggle, placement, parking, returns and the
+correct-pick pointer (Def. 9.4, Prop. 9.4), with the condition that keeps
+them inside Axiom 9.1 and Theorem 9.1 (Rem. 9.5); Prop. 9.1's follow-ups over
+incident rounds (Rem. 9.6); the spoken answer under Prop. 9.2 (Rem. 9.7);
 first-use gloss (Prop. 9.5); declared length and leaving (Prop. 9.6); the
 derived ledger screen (Prop. 10.2); the content obligations (Rem. 10.3);
-Def. 10.2 read over the new registers (Rem. 10.4); the source consequences
-(Rem. 11.7); and one falsifier in §12. Def. 1.7, Def. 9.2, Rem. 9.2 and every
-`CW-P` entry stand as filed and still govern Def. 1.7 rounds.
+Def. 10.1 and Def. 10.2 read over the new registers (Rem. 10.4); the source
+consequences (Rem. 11.7); and one falsifier in §12. Def. 1.7, Def. 9.2,
+Rem. 9.2 and every `CW-P` entry stand as filed and still govern Def. 1.7
+rounds.
 
-Rem. 9.5 is the one condition the plan did not state; it is recorded here
-rather than left for a surface to discover.
+Prop. 9.4 (d) and Rem. 9.5 are the one condition the plan did not state; it
+is recorded here rather than left for a surface to discover.
 
 #pagebreak()
 
@@ -1892,6 +1939,10 @@ rather than left for a surface to discover.
   [$(C, C')$], [Constraint diff (Def. 3.2)],
   [$(G, G')$], [Graph rewrite witnessed by a diff (Def. 5.1, Thm. 5.1)],
   [$k$], [Presented option count, $k <= 5$ (Thm. 10.1)],
+  [$B_t$], [Time budget of an incident round, a latency or a rate (Def. 1.9, Ax. 3.2)],
+  [$I$], [Invariant (Def. 1.8)],
+  [$kappa$], [The register entry that decides an incident round (Def. 1.9)],
+  [`M`$n$, `A`$n$], [Machine and Agreement register identifiers (Rem. 7.4)],
 )
 
 // ═══════════════════════════════════════════════════════════════════════════
