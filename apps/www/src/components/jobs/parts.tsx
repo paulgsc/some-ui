@@ -7,8 +7,8 @@
 import type { ChangeEvent, JSX, ReactNode } from "react"
 import { useEffect, useSyncExternalStore } from "react"
 import { cn, counted, formatTimecode } from "@some-ui/core-utils"
-import type { ResumeRecommendation } from "@some-ui/job-desk"
-import { Button, useConfirmSheet } from "@some-ui/shared"
+import type { Pick, ResumeRecommendation } from "@some-ui/job-desk"
+import { Badge, Button, useConfirmSheet } from "@some-ui/shared"
 import { FolderOpen, Mic, Square } from "lucide-react"
 
 import { useAsyncIntent, useIntentEffect } from "@/lib/intent"
@@ -57,6 +57,54 @@ export const Meter = ({
     <span className="text-right">{value.toFixed(2)}</span>
   </div>
 )
+
+/** The run's two scores, each with the reasons it gave. */
+export const Scores = ({ scores }: { scores: Pick["scores"] }): JSX.Element => (
+  <section className="flex flex-col gap-1.5 rounded-xl border p-3">
+    <Meter label="Fit" value={scores.fit} tone="fit" />
+    <span className="text-muted-foreground text-xs">{scores.fitWhy}</span>
+    <Meter label="Odds" value={scores.odds} tone="odds" />
+    <span className="text-muted-foreground text-xs">{scores.oddsWhy}</span>
+  </section>
+)
+
+/** What the posting asks for that my evidence doesn't cover. */
+export const Gaps = ({ gaps }: { gaps: Pick["gaps"] }): JSX.Element | null =>
+  gaps.length === 0 ? null : (
+    <section className="flex flex-col gap-2">
+      <h3 className={sectionHeading}>Gaps</h3>
+      <ul className="flex flex-col gap-1.5">
+        {gaps.map((gap) => (
+          <li key={gap.text} className="flex items-baseline gap-2 text-sm">
+            <Badge variant="outline" className="w-20 shrink-0 justify-center">
+              {gap.kind}
+            </Badge>
+            {gap.text}
+          </li>
+        ))}
+      </ul>
+    </section>
+  )
+
+/**
+ * The home network's résumé builder, a page of the lan build, as an
+ * absolute URL: another deployable's, which Capacitor opens in the phone's
+ * browser. The Android app bundles no résumé build and holds no
+ * contact details.
+ */
+const RESUME_BUILDER = "https://www.home.maishatu.com/resume-build"
+
+/** The builder with a composition and layout preselected, for pick or scout `id`. */
+export function builderHref(
+  sends: { variant: string; template: string },
+  id: string
+): string {
+  return `${RESUME_BUILDER}?${new URLSearchParams({
+    variant: sends.variant,
+    template: sends.template,
+    pick: id,
+  }).toString()}`
+}
 
 export function resumeLabel(resume: ResumeRecommendation): string {
   return resume.kind === "build"

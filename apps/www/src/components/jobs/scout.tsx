@@ -4,7 +4,7 @@
  */
 import type { JSX } from "react"
 import { useState } from "react"
-import type { AdjacentFamily, Track } from "@some-ui/job-desk"
+import type { AdjacentFamily, Digest, Track } from "@some-ui/job-desk"
 import {
   ADJACENT_FAMILIES,
   MAX_NOTE,
@@ -14,13 +14,17 @@ import {
   TRACKS,
 } from "@some-ui/job-desk"
 import { Badge, Button, Input, Label, Textarea } from "@some-ui/shared"
+import { ExternalLink } from "lucide-react"
 
 import { phoneJobs } from "@/lib/jobs"
 import { draftVoice, SCOUT_OWNER, scoutsOf } from "@/lib/jobs/model"
 
 import {
+  builderHref,
   Chips,
+  Gaps,
   Problem,
+  Scores,
   sectionHeading,
   ShareToDrive,
   useJobs,
@@ -52,6 +56,32 @@ function httpsLink(url: string): string | null {
     return null
   }
 }
+
+type ScoutReview = NonNullable<Digest["scouts"][number]["review"]>
+
+/** How the run scored a scout it didn't pick, and the résumé to send anyway. */
+const Review = ({
+  review,
+  scoutId,
+}: {
+  review: ScoutReview
+  scoutId: string
+}): JSX.Element => (
+  <div className="flex flex-col gap-2">
+    <Scores scores={review.scores} />
+    <Gaps gaps={review.gaps} />
+    <Button asChild variant="outline" size="sm" className="self-start">
+      <a
+        href={builderHref(review.sends, scoutId)}
+        target="_blank"
+        rel="noreferrer"
+      >
+        Build {review.sends.variant} · {review.sends.template}{" "}
+        <ExternalLink aria-hidden />
+      </a>
+    </Button>
+  </div>
+)
 
 export const JobsScout = (): JSX.Element => {
   const { state } = useJobs()
@@ -196,6 +226,9 @@ export const JobsScout = (): JSX.Element => {
                     {scout.why ? ` · ${scout.why}` : ""}
                   </span>
                   {verdict && <p className="text-sm">{verdict.note}</p>}
+                  {verdict?.review && (
+                    <Review review={verdict.review} scoutId={scout.id} />
+                  )}
                 </li>
               )
             })}

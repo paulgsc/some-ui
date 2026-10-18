@@ -112,7 +112,7 @@ const ResumeBuildForm = ({
           its logs. Leave a field empty to leave it off.
           {initialSearch.pick === undefined ? null : (
             <span className="mt-1 block">
-              For job pick{" "}
+              For job {initialSearch.pick.startsWith("sc-") ? "scout" : "pick"}{" "}
               <span className="font-mono">{initialSearch.pick}</span>.
             </span>
           )}

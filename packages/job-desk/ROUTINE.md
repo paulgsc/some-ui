@@ -115,6 +115,18 @@ The connector's job ids count up within this session and mean nothing in the
 next one, so call `get_job_details` for every posting you might pick in this
 same run.
 
+**Scouts.** Each new scout from step 2 is a posting I found myself, and a
+candidate like the rest, on the track and family I filed it under. Look it
+up with `search_jobs` by its title words and company, and call
+`get_job_details` on the match. Count each one found in `seen`, once per
+fingerprint. When no search turns it up, its `postingText` (what I pasted)
+stands in for the description and its link for the apply link: take the
+company, title, location and posted date from that text, never a guess. One
+whose text names no location or no posted date can't be fingerprinted or
+aged, so it never becomes a pick; it is scored and answered with a `review`
+only. With neither a match nor the text, its verdict is `not-found` and it
+goes no further.
+
 ## 4. Set aside
 
 Set a posting aside, with a one-line `why`, when:
@@ -131,6 +143,12 @@ Set a posting aside, with a one-line `why`, when:
 - it asks for five or more years, or a senior, staff or lead title;
 - it was already decided (step 2). Count these in `seen`, but leave them out
   of `setAside`.
+
+A scout a rule sets aside isn't listed in `setAside`: its verdict is
+`disagree`, its `rule` names the rule in a few words, its note says how the
+posting met it, and it has no `review`. For a posting already decided, the
+`rule` is "already decided" and the note names the digest day and pick id
+(or the decisions file) that decided it.
 
 List at most `MAX_SET_ASIDE` (40) set-aside postings, those closest to being picked first.
 
@@ -157,6 +175,14 @@ outcomes calibrate them, and the digest says so by naming its reasons.
 Rank each track's candidates by fit × odds and take up to `PICKS_PER_DAY`. On
 the adjacent track, when two scores are within 0.05, prefer a family not yet
 picked today. Fewer picks than the limit is fine; a weak pick is not.
+
+A scout that makes the cut becomes a pick, and its verdict is `agree`; its
+`pickId` is the id that pick gets (§8, step 1). Any other scout still scored is answered in full, since I chose
+it: `agree` when its fit is `SCOUT_AGREE_FIT` (0.5) or more, `disagree`
+otherwise. Its `review`
+holds its scores, its gaps, and what to send if I apply anyway (`sends`, the
+composition and layout §6's build rule would choose). The `note` says in a
+line why it ranked where it did.
 
 ## 6. The résumé for each pick
 
@@ -247,10 +273,9 @@ a time. Its PRs carry the label `jobs-patch`, and only theirs do.
 1. Give each pick an `id`, unless "The résumé PR" (§6) already did: three
    letters of the company and four hex digits (`blu-7f2a`), unique in the
    digest. Never change one a PR already names.
-2. For each scout read in step 2, look the posting up with `search_jobs`,
-   using its title words and the company. Use its `postingText` when it has
-   one. The verdict is `agree` (and it becomes a pick when it outranks one),
-   `disagree` with why, or `not-found`.
+2. Answer every scout read in step 2 in `scouts`, with the verdict, note, `rule`
+   and `review` §3 to §5 gave it, and a scout that became a pick its
+   `pickId` from step 1.
 3. `read` names every Decisions and Scout file this run took in, and
    `transcribed` every voice note it transcribed.
 4. Save the digest as bare JSON to a scratch file and check it from the repo
