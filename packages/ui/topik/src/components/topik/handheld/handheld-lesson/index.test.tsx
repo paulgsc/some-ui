@@ -197,6 +197,21 @@ describe("HandheldLesson", () => {
     expect(screen.getByLabelText(/Open new words from storage/)).toBeTruthy()
   })
 
+  it("asks the grammar lens about a lens set's lines from every set as one", async () => {
+    const store = createReadAloudStore(memoryStorage())
+    store.saveSets([
+      { deck: LEVEL_ONE_SET, addedAt: "", openedAt: "" },
+      { deck: LEVEL_ONE_LENS_SET, addedAt: "", openedAt: "" },
+    ])
+    renderLesson({
+      speaker: voice(() => Promise.resolve({ kind: "heard" })),
+      readAloudStore: store,
+    })
+    fireEvent.click(await screen.findByRole("button", { name: /^Read aloud/ }))
+    fireEvent.click(screen.getByRole("button", { name: /grammar lens/i }))
+    expect(document.querySelector('[data-slot="lens-card"]')).not.toBeNull()
+  })
+
   it("opens the read-aloud drill at the level held, and comes back", async () => {
     const store = createReadAloudStore(memoryStorage())
     store.saveSets([

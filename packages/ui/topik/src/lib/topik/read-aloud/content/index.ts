@@ -41,7 +41,7 @@
  * their conventions: kebab-case ids and short glosses.
  */
 
-import { GENRES } from "@topik/lib/topik/core/feed-card"
+import { koreanGenre } from "@topik/lib/topik/core/feed-card"
 import type { MistakeId } from "@topik/lib/topik/read-aloud/mistakes"
 import { isMistakeId } from "@topik/lib/topik/read-aloud/mistakes"
 import { z } from "zod"
@@ -51,15 +51,12 @@ import { z } from "zod"
 const SET_PRACTICES = ["read-aloud", "lens"] as const
 export type SetPractice = (typeof SET_PRACTICES)[number]
 
-/** A set's genre: a drama's, or everyday life for a set set in none. */
-const SET_GENRES: ReadonlyArray<{ genre: string; ko: string }> = [
-  ...GENRES,
-  { genre: "everyday", ko: "일상" },
-]
-
-/** A set genre's Korean name: 로맨스, 일상. */
+/**
+ * A set genre's Korean name: a drama's (로맨스), or 일상 for a set set in
+ * everyday life; none for a genre that is neither.
+ */
 export const setGenreKo = (genre: string): string | undefined =>
-  SET_GENRES.find((known) => known.genre === genre)?.ko
+  genre === "everyday" ? "일상" : koreanGenre(genre)
 
 /** Where a set's lines take place: a genre and a premise in a sentence. */
 type SetContext = { genre: string; premise: string }
@@ -331,7 +328,7 @@ const ContextSchema = z.object({
     .string()
     .refine(
       (genre) => setGenreKo(genre) !== undefined,
-      `a genre is one of ${SET_GENRES.map(({ genre }) => genre).join(", ")}`
+      "a genre is a drama's, as the drama picker lists them, or everyday"
     ),
   premise: z.string().trim().min(1).max(200),
 })
