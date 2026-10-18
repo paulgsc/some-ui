@@ -2,7 +2,11 @@ import type {
   SessionEvent,
   SessionLog,
 } from "@leetype/lib/leetype/session-log/model"
-import { append, ledgerOf } from "@leetype/lib/leetype/session-log/model"
+import {
+  append,
+  ledgerOf,
+  SessionEventSchema,
+} from "@leetype/lib/leetype/session-log/model"
 import { describe, expect, it } from "vitest"
 
 let n = 0
@@ -16,6 +20,7 @@ function aSession(
   session: string,
   file = "thread-1.json"
 ): Array<SessionEvent> {
+  const on = { file, screen: "r1" }
   return [
     {
       ...stamp(session),
@@ -26,28 +31,58 @@ function aSession(
     },
     {
       ...stamp(session),
+      ...on,
       type: "picked",
-      screen: "r1",
       option: "Two",
-      response: "incorrect",
       ms: 9000,
-      slow: false,
+      answer: { response: "incorrect", slow: false },
     },
-    { ...stamp(session), type: "placed", screen: "r1", reading: "p1" },
-    { ...stamp(session), type: "parked", screen: "r1" },
-    { ...stamp(session), type: "reading", reading: "p1", action: "saved" },
-    { ...stamp(session), type: "confirmation-taken", screen: "r1" },
     {
       ...stamp(session),
-      type: "spoken",
+      ...on,
+      type: "placed",
+      reading: "p1",
+      as: "placement",
+    },
+    { ...stamp(session), ...on, type: "parked" },
+    {
+      ...stamp(session),
+      file,
+      type: "reading",
+      reading: "p1",
+      action: "saved",
+    },
+    { ...stamp(session), ...on, type: "confirmation-taken" },
+    {
+      ...stamp(session),
+      file,
       screen: "s1",
+      type: "spoken",
       seconds: 41,
       passed: false,
       typed: false,
       ticks: ["A majority must hold the write"],
     },
-    { ...stamp(session), type: "ended", screen: "end", how: "left" },
+    { ...stamp(session), file, screen: "end", type: "ended", how: "left" },
   ]
+}
+
+function returned(
+  session: string,
+  response: "correct" | "incorrect",
+  file = "thread-1.json"
+): SessionEvent {
+  return {
+    ...stamp(session),
+    file,
+    screen: "r1",
+    type: "returned",
+    variant: "r1b",
+    asked: false,
+    option: "Three",
+    ms: 7000,
+    answer: { response, slow: false },
+  }
 }
 
 function logOf(events: Array<SessionEvent>): SessionLog {
@@ -56,14 +91,12 @@ function logOf(events: Array<SessionEvent>): SessionLog {
 
 describe("append", () => {
   it("adds at the end and leaves every earlier event as it was", () => {
-    const events = aSession("a")
     let log: SessionLog = []
-    for (const event of events) {
+    for (const event of aSession("a")) {
       const before = structuredClone(log)
       const next = append(log, event)
       expect(log).toEqual(before)
-      expect(next.slice(0, -1)).toEqual(before)
-      expect(next.at(-1)).toEqual(event)
+      expect(next).toEqual([...before, event])
       log = next
     }
   })
@@ -76,48 +109,83 @@ describe("append", () => {
   })
 })
 
+describe("SessionEventSchema", () => {
+  it("reads back every event a session makes", () => {
+    for (const event of aSession("a")) {
+      expect(SessionEventSchema.parse(event)).toEqual(event)
+    }
+  })
+
+  it("refuses a slow abstention (Def. 9.4)", () => {
+    const [, picked] = aSession("a")
+    expect(
+      SessionEventSchema.safeParse({
+        ...picked,
+        answer: { response: "abstained", slow: true },
+      }).success
+    ).toBe(false)
+  })
+})
+
 describe("ledgerOf", () => {
   it("says what the session walked, parked, saved and spoke", () => {
-    const log = logOf(aSession("a"))
-    expect(ledgerOf(log, "a")).toEqual({
-      walked: ["r1"],
+    expect(ledgerOf(logOf(aSession("a")), "a")).toEqual({
+      walked: [{ file: "thread-1.json", screen: "r1" }],
       parked: [{ file: "thread-1.json", screen: "r1", reading: "p1" }],
-      saved: ["p1"],
-      spoken: [{ screen: "s1", passed: false, typed: false }],
+      saved: [{ file: "thread-1.json", reading: "p1" }],
+      spoken: [
+        { file: "thread-1.json", screen: "s1", passed: false, typed: false },
+      ],
     })
   })
 
-  it("keeps a round parked until a return solves it, in a later session", () => {
-    const events = aSession("a")
-    events.push(
+  it("keeps a round parked until a return solves it, in a later session of another file", () => {
+    const events = [
+      ...aSession("a"),
+      ...aSession("b", "thread-2.json").slice(0, 1),
+      returned("b", "incorrect"),
       {
         ...stamp("b"),
-        type: "started",
         file: "thread-1.json",
-        form: "full",
-        declaredMinutes: 10,
-      },
-      { ...stamp("b"), type: "reading", reading: "p1", action: "read" },
-      {
-        ...stamp("b"),
-        type: "returned",
         screen: "r1",
-        variant: "r1b",
-        response: "incorrect",
-      }
-    )
-    expect(ledgerOf(logOf(events), "b").parked).toHaveLength(1)
+        type: "placed",
+        reading: "p2",
+        as: "placement",
+      } satisfies SessionEvent,
+    ]
+    expect(ledgerOf(logOf(events), "b").parked).toEqual([
+      { file: "thread-1.json", screen: "r1", reading: "p2" },
+    ])
 
-    events.push({
-      ...stamp("b"),
-      type: "returned",
-      screen: "r1",
-      variant: "r1c",
-      response: "correct",
-    })
+    events.push(returned("b", "correct"))
     const ledger = ledgerOf(logOf(events), "b")
     expect(ledger.parked).toEqual([])
-    expect(ledger.saved).toEqual([])
+    expect(ledger.walked).toEqual([{ file: "thread-1.json", screen: "r1b" }])
+  })
+
+  it("keeps a reading saved until it is read, whatever else is done with it", () => {
+    const action = (
+      session: string,
+      file: string,
+      what: "opened" | "read"
+    ): SessionEvent => ({
+      ...stamp(session),
+      file,
+      type: "reading",
+      reading: "p1",
+      action: what,
+    })
+    const events = [
+      ...aSession("a"),
+      action("b", "thread-1.json", "opened"),
+      action("b", "thread-2.json", "read"),
+    ]
+    expect(ledgerOf(logOf(events), "a").saved).toEqual([
+      { file: "thread-1.json", reading: "p1" },
+    ])
+
+    events.push(action("b", "thread-1.json", "read"))
+    expect(ledgerOf(logOf(events), "a").saved).toEqual([])
   })
 
   it("tells apart rounds that share an id in different session files", () => {

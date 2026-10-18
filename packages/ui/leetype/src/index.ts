@@ -23,5 +23,6 @@ export type {
   SessionEvent,
   SessionLedger,
   SessionLog,
+  SessionLogSnapshot,
   SessionLogStore,
 } from "./lib/leetype/session-log"

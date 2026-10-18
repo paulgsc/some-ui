@@ -2,8 +2,7 @@ import type { KeyedStorage } from "@some-ui/core-utils"
 import { localStorageOrNull } from "@some-ui/core-utils"
 
 import type { SessionEvent, SessionLog } from "./model"
-import { append } from "./model"
-import { openStored, writeStored } from "./stored"
+import { appendStored, openStored } from "./stored"
 
 export type { SessionEvent, SessionLedger, SessionLog } from "./model"
 export { ledgerOf } from "./model"
@@ -11,11 +10,17 @@ export { ledgerOf } from "./model"
 /**
  * The session log on the device (`./model`, `./stored`): a snapshot to read,
  * a subscription, and `append`, the only write. It opens read-only when the
- * storage threw, and an append the device refuses leaves the snapshot as it
- * was, so nothing is shown that was not kept.
+ * storage threw. An append the device refuses leaves the log as it was and
+ * says so in `problem` until an append is kept, so nothing is shown that
+ * was not kept and no refusal passes unseen.
  */
+export type SessionLogSnapshot = {
+  readonly log: SessionLog
+  readonly problem: string | null
+}
+
 export type SessionLogStore = {
-  getSnapshot(): SessionLog
+  getSnapshot(): SessionLogSnapshot
   subscribe(listener: () => void): () => void
   readOnly: boolean
   /** Whether the event is now kept (also when it already was). */
@@ -25,27 +30,39 @@ export type SessionLogStore = {
 export function createSessionLogStore(
   storage: KeyedStorage | null = localStorageOrNull()
 ): SessionLogStore {
-  const opened = storage ? openStored(storage) : { kind: "unreadable" as const }
-  const write =
-    storage && opened.kind !== "unreadable"
-      ? (next: SessionLog): boolean => writeStored(storage, next)
-      : null
-  let log: SessionLog = opened.kind === "kept" ? opened.log : []
+  const opened = storage ? openStored(storage) : null
+  const sessions = new Map(opened ?? [])
+  const readOnly = storage === null || opened === null
+  let snapshot: SessionLogSnapshot = {
+    log: [...sessions.values()].flat(),
+    problem: null,
+  }
   const listeners = new Set<() => void>()
+  const publish = (next: SessionLogSnapshot): void => {
+    snapshot = next
+    for (const listener of listeners) listener()
+  }
 
   return {
-    getSnapshot: () => log,
+    getSnapshot: () => snapshot,
     subscribe: (listener): (() => void) => {
       listeners.add(listener)
       return (): void => void listeners.delete(listener)
     },
-    readOnly: write === null,
+    readOnly,
     append: (event): boolean => {
-      const next = append(log, event)
-      if (next === log) return true
-      if (!write?.(next)) return false
-      log = next
-      for (const listener of listeners) listener()
+      const events = storage && !readOnly ? appendStored(storage, event) : null
+      if (events === null) {
+        publish({
+          log: snapshot.log,
+          problem: readOnly
+            ? "This phone can't read its session log, so it isn't adding to it."
+            : "This phone couldn't keep that step of the session. Free some space and try again.",
+        })
+        return false
+      }
+      sessions.set(event.session, events)
+      publish({ log: [...sessions.values()].flat(), problem: null })
       return true
     },
   }

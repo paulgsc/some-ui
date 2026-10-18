@@ -1,13 +1,16 @@
 /**
- * The session log as kept on the device: one `localStorage` key, under the
- * same rules as `apps/www/src/lib/jobs/stored.ts`, since it is the owner's
- * record and the device may hold its only copy:
+ * The session log as kept on the device, under the same rules as
+ * `apps/www/src/lib/jobs/stored.ts`, since it is the owner's record and the
+ * device may hold its only copy:
  *
+ * - one `localStorage` key per session (`sessionKey`), listed in order by
+ *   one index key, so an append rewrites one session and not the whole log;
+ * - each append re-reads the session and the index first, so a second store
+ *   over the same storage adds to what the first kept instead of writing
+ *   over it;
  * - a value that does not parse, or is another version, is moved aside to a
- *   key of its own (`QUARANTINE_PREFIX`) before the log starts again empty,
- *   and stays there;
- * - when even that is impossible (the storage throws), the log opens
- *   read-only and refuses every append.
+ *   key of its own (`<key>:unreadable:<n>`) and stays there;
+ * - when the storage throws on reading, the log opens read-only.
  *
  * On the Pages build `localStorage` is the viewer's in-memory copy
  * (`apps/www/src/lib/demo/viewer-storage.ts`), so nothing is kept there.
@@ -17,110 +20,103 @@ import { openRecord, writeRecord } from "@some-ui/core-utils"
 import { z } from "zod"
 
 import type { SessionEvent, SessionLog } from "./model"
+import { append, SessionEventSchema } from "./model"
 
-export const STORAGE_KEY = "leetype:session-log"
-/** Followed by 1, 2 …: an unreadable value, kept as it was found. */
-const QUARANTINE_PREFIX = "leetype:session-log:unreadable:"
+export const INDEX_KEY = "leetype:session-log"
+export const sessionKey = (session: string): string =>
+  `leetype:session-log:session:${session}`
 const VERSION = 1
 
-const Stamp = { id: z.string().min(1), at: z.string(), session: z.string() }
-const ResponseSchema = z.enum(["correct", "incorrect", "abstained"])
-
-const EventSchema: z.ZodType<SessionEvent> = z.discriminatedUnion("type", [
-  z.object({
-    ...Stamp,
-    type: z.literal("started"),
-    file: z.string(),
-    form: z.enum(["full", "short"]),
-    declaredMinutes: z.number().positive(),
-  }),
-  z.object({
-    ...Stamp,
-    type: z.literal("picked"),
-    screen: z.string(),
-    option: z.string(),
-    response: ResponseSchema,
-    ms: z.number().nonnegative(),
-    slow: z.boolean(),
-  }),
-  z.object({
-    ...Stamp,
-    type: z.literal("placed"),
-    screen: z.string(),
-    reading: z.string(),
-  }),
-  z.object({
-    ...Stamp,
-    type: z.literal("reading"),
-    reading: z.string(),
-    action: z.enum(["opened", "saved", "read", "skipped"]),
-  }),
-  z.object({ ...Stamp, type: z.literal("parked"), screen: z.string() }),
-  z.object({
-    ...Stamp,
-    type: z.literal("confirmation-taken"),
-    screen: z.string(),
-  }),
-  z.object({
-    ...Stamp,
-    type: z.literal("returned"),
-    screen: z.string(),
-    variant: z.string(),
-    response: ResponseSchema,
-  }),
-  z.object({
-    ...Stamp,
-    type: z.literal("spoken"),
-    screen: z.string(),
-    seconds: z.number().nonnegative(),
-    passed: z.boolean(),
-    typed: z.boolean(),
-    ticks: z.array(z.string()),
-  }),
-  z.object({
-    ...Stamp,
-    type: z.literal("ended"),
-    screen: z.string(),
-    how: z.enum(["declared", "left"]),
-  }),
-])
-
-const StoredSchema = z.object({
+const IndexSchema = z.strictObject({
   v: z.literal(VERSION),
-  log: z.array(EventSchema),
+  sessions: z.array(z.string().min(1)),
+})
+const SessionSchema = z.strictObject({
+  v: z.literal(VERSION),
+  events: z.array(SessionEventSchema),
 })
 
-function parse(raw: string): SessionLog | null {
-  try {
-    const stored = StoredSchema.safeParse(JSON.parse(raw))
-    return stored.success ? stored.data.log : null
-  } catch {
-    return null
+function parser<T>(schema: z.ZodType<T>): (raw: string) => T | null {
+  return (raw) => {
+    try {
+      const parsed = schema.safeParse(JSON.parse(raw))
+      return parsed.success ? parsed.data : null
+    } catch {
+      return null
+    }
   }
+}
+const parseIndex = parser(IndexSchema)
+const parseSession = parser(SessionSchema)
+
+/** The index's sessions, `[]` for none (or one now moved aside), or null if the storage threw. */
+function readIndex(storage: KeyedStorage): ReadonlyArray<string> | null {
+  const opened = openRecord(
+    storage,
+    INDEX_KEY,
+    parseIndex,
+    `${INDEX_KEY}:unreadable:`
+  )
+  if (opened.kind === "unreadable") return null
+  return opened.kind === "kept" ? opened.value.sessions : []
+}
+
+/** As `readIndex`, for one session's events. */
+function readSession(
+  storage: KeyedStorage,
+  session: string
+): SessionLog | null {
+  const key = sessionKey(session)
+  const opened = openRecord(storage, key, parseSession, `${key}:unreadable:`)
+  if (opened.kind === "unreadable") return null
+  return opened.kind === "kept" ? opened.value.events : []
+}
+
+/** Every kept session's events, in the order the sessions started, or null if the storage threw. */
+export function openStored(
+  storage: KeyedStorage
+): ReadonlyMap<string, SessionLog> | null {
+  const sessions = readIndex(storage)
+  if (sessions === null) return null
+  const log = new Map<string, SessionLog>()
+  for (const session of sessions) {
+    const events = readSession(storage, session)
+    if (events === null) return null
+    log.set(session, events)
+  }
+  return log
 }
 
 /**
- * What opening the storage found: the log (`kept`, or `empty` when there was
- * none or an unreadable one was moved aside), or `unreadable` when the
- * storage itself threw and nothing may be written.
+ * Adds `event` to its session as kept now, and the session to the index;
+ * the session's events after, or null when the device kept nothing new.
  */
-export type Opened =
-  | { kind: "kept"; log: SessionLog }
-  | { kind: "empty" }
-  | { kind: "unreadable" }
-
-export function openStored(storage: KeyedStorage): Opened {
-  const opened = openRecord(storage, STORAGE_KEY, parse, QUARANTINE_PREFIX)
-  if (opened.kind === "kept") return { kind: "kept", log: opened.value }
-  return opened.kind === "moved" ? { kind: "empty" } : opened
-}
-
-/** Whether the device kept `log`; false leaves the old value as it was. */
-export function writeStored(storage: KeyedStorage, log: SessionLog): boolean {
-  return writeRecord(
+export function appendStored(
+  storage: KeyedStorage,
+  event: SessionEvent
+): SessionLog | null {
+  const kept = readSession(storage, event.session)
+  if (kept === null) return null
+  const events = append(kept, event)
+  if (
+    events !== kept &&
+    !writeRecord(
+      storage,
+      sessionKey(event.session),
+      JSON.stringify({ v: VERSION, events }),
+      parseSession
+    )
+  ) {
+    return null
+  }
+  const sessions = readIndex(storage)
+  if (sessions === null) return null
+  if (sessions.includes(event.session)) return events
+  const listed = writeRecord(
     storage,
-    STORAGE_KEY,
-    JSON.stringify({ v: VERSION, log }),
-    parse
+    INDEX_KEY,
+    JSON.stringify({ v: VERSION, sessions: [...sessions, event.session] }),
+    parseIndex
   )
+  return listed ? events : null
 }
