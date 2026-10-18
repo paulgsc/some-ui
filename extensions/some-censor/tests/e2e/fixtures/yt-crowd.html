@@ -1,0 +1,640 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>BOYO Fixture — The Crowd</title>
+    <style>
+      body {
+        background: #0f0f0f;
+        color: #fff;
+        font-family: "Roboto", sans-serif;
+        margin: 0;
+        padding: 20px;
+      }
+      yt-lockup-view-model,
+      ytd-video-renderer,
+      ytd-channel-renderer,
+      ytm-shorts-lockup-view-model {
+        display: block;
+        position: relative;
+        width: 420px;
+        margin-bottom: 16px;
+        background: #1f1f1f;
+      }
+      .thumb {
+        display: block;
+        width: 100%;
+        aspect-ratio: 16/9;
+        background: #333;
+      }
+    </style>
+  </head>
+  <body>
+    <!--
+    BOYO fixture: every crowd number and age QD14 removes (#1802).
+
+    Trimmed from the owner's signed-in captures (home, and a watch page in a
+    Mix) and signed-out live pages (search, a channel page, a watch page with
+    comments), all of 2026-10-17. Titles, channels, ids and counts are
+    placeholders; tag names, ids, classes and attribute names are as served.
+
+    `data-crowd` marks an element that carries a number or an age, and must
+    not be rendered. `data-keep` marks one that must be: a card's title,
+    channel name and duration, and the controls beside a number. Both
+    attributes are the spec's, not YouTube's.
+
+    The cards carry old dates, so they are plated and stay rendered: a number
+    hidden only because its card is absent would prove nothing. The Short and
+    the search result are absent whatever their dates, so they mark only
+    numbers, which the spec requires a crowd rule to hide.
+  -->
+
+    <ytd-app>
+      <!-- Home grid: [channel link, verified tick, ·, icon, views, ·, age]. -->
+      <ytd-rich-item-renderer>
+        <div id="content">
+          <yt-lockup-view-model class="lockup ytLockupViewModelWrapper">
+            <div class="ytLockupViewModelHost ytLockupViewModelVertical">
+              <a
+                aria-hidden="true"
+                class="ytLockupViewModelContentImage"
+                href="/watch?v=vid_crowd01"
+                tabindex="-1"
+              >
+                <yt-thumbnail-view-model class="ytThumbnailViewModelHost">
+                  <span class="thumb"></span>
+                  <yt-thumbnail-bottom-overlay-view-model
+                    class="ytThumbnailBottomOverlayViewModelHost"
+                  >
+                    <yt-thumbnail-badge-view-model
+                      class="ytThumbnailBadgeViewModelHost ytThumbnailBottomOverlayViewModelBadge"
+                    >
+                      <badge-shape
+                        aria-label="8 minutes, 51 seconds"
+                        class="ytBadgeShapeHost"
+                        role="img"
+                      >
+                        <div
+                          aria-hidden="true"
+                          class="ytBadgeShapeText"
+                          data-keep="duration"
+                        >
+                          8:51
+                        </div>
+                      </badge-shape>
+                    </yt-thumbnail-badge-view-model>
+                  </yt-thumbnail-bottom-overlay-view-model>
+                </yt-thumbnail-view-model>
+              </a>
+              <yt-lockup-metadata-view-model
+                class="ytLockupMetadataViewModelHost ytLockupMetadataViewModelVertical"
+              >
+                <h3 class="ytLockupMetadataViewModelHeadingReset">
+                  <a
+                    class="ytLockupMetadataViewModelTitle"
+                    href="/watch?v=vid_crowd01"
+                    data-keep="title"
+                    ><span role="text">Grid Title</span></a
+                  >
+                </h3>
+                <yt-content-metadata-view-model
+                  class="ytContentMetadataViewModelHost ytContentMetadataViewModelMediumText"
+                >
+                  <div
+                    class="ytContentMetadataViewModelMetadataRow"
+                    role="group"
+                  >
+                    <span class="ytContentMetadataViewModelMetadataText"
+                      ><span
+                        ><a
+                          class="ytAttributedStringLink"
+                          href="/@grid_channel"
+                          data-keep="channel"
+                          >Grid Channel</a
+                        ></span
+                      ></span
+                    >
+                    <span
+                      aria-label="Verified"
+                      class="ytIconWrapperHost ytContentMetadataViewModelIcon"
+                      data-crowd="verified tick"
+                      >✓</span
+                    >
+                    <span
+                      aria-hidden="true"
+                      class="ytContentMetadataViewModelDelimiter"
+                      data-crowd="delimiter"
+                      >·</span
+                    >
+                    <span
+                      class="ytIconWrapperHost ytContentMetadataViewModelLeadingIcon"
+                      data-crowd="views icon"
+                      >▶</span
+                    >
+                    <span
+                      aria-label="1 million views"
+                      class="ytContentMetadataViewModelMetadataText"
+                      role="text"
+                      data-crowd="card views"
+                      >1M</span
+                    >
+                    <span
+                      aria-hidden="true"
+                      class="ytContentMetadataViewModelDelimiter"
+                      data-crowd="delimiter"
+                      >·</span
+                    >
+                    <span
+                      aria-label="5 years ago"
+                      class="ytContentMetadataViewModelMetadataText ytContentMetadataViewModelMetadataTextLastPart"
+                      role="text"
+                      data-crowd="card age"
+                      >5y ago</span
+                    >
+                  </div>
+                </yt-content-metadata-view-model>
+              </yt-lockup-metadata-view-model>
+            </div>
+          </yt-lockup-view-model>
+        </div>
+      </ytd-rich-item-renderer>
+
+      <!-- Watch rail: the channel's row, then a row of views and age only. -->
+      <yt-lockup-view-model class="lockup ytLockupViewModelWrapper">
+        <div class="ytLockupViewModelHost ytLockupViewModelHorizontal">
+          <a
+            aria-hidden="true"
+            class="ytLockupViewModelContentImage"
+            href="/watch?v=vid_crowd02"
+            tabindex="-1"
+          >
+            <span class="thumb"></span>
+          </a>
+          <yt-lockup-metadata-view-model class="ytLockupMetadataViewModelHost">
+            <h3 class="ytLockupMetadataViewModelHeadingReset">
+              <a
+                class="ytLockupMetadataViewModelTitle"
+                href="/watch?v=vid_crowd02"
+                data-keep="title"
+                ><span role="text">Rail Title</span></a
+              >
+            </h3>
+            <yt-content-metadata-view-model
+              class="ytContentMetadataViewModelHost"
+            >
+              <div class="ytContentMetadataViewModelMetadataRow" role="group">
+                <span
+                  class="ytContentMetadataViewModelMetadataText ytContentMetadataViewModelMetadataTextLastPart"
+                  data-keep="channel"
+                  >Rail Channel</span
+                >
+                <span
+                  aria-label="Official Artist Channel"
+                  class="ytIconWrapperHost ytContentMetadataViewModelIcon"
+                  data-crowd="artist tick"
+                  >♪</span
+                >
+              </div>
+              <div class="ytContentMetadataViewModelMetadataRow" role="group">
+                <span
+                  class="ytIconWrapperHost ytContentMetadataViewModelLeadingIcon"
+                  data-crowd="views icon"
+                  >▶</span
+                >
+                <span
+                  aria-label="50 thousand views"
+                  class="ytContentMetadataViewModelMetadataText"
+                  role="text"
+                  data-crowd="rail views"
+                  >50K</span
+                >
+                <span
+                  aria-hidden="true"
+                  class="ytContentMetadataViewModelDelimiter"
+                  data-crowd="delimiter"
+                  >·</span
+                >
+                <span
+                  aria-label="Streamed 14 years ago"
+                  class="ytContentMetadataViewModelMetadataText ytContentMetadataViewModelMetadataTextLastPart"
+                  role="text"
+                  data-crowd="rail age"
+                  >Streamed 14y ago</span
+                >
+              </div>
+            </yt-content-metadata-view-model>
+          </yt-lockup-metadata-view-model>
+        </div>
+      </yt-lockup-view-model>
+
+      <!-- A live card in the rail: its viewer count is a labelled run too. -->
+      <yt-lockup-view-model class="lockup ytLockupViewModelWrapper">
+        <div class="ytLockupViewModelHost ytLockupViewModelHorizontal">
+          <a class="ytLockupViewModelContentImage" href="/watch?v=vid_crowd04"
+            ><span class="thumb"></span
+          ></a>
+          <yt-content-metadata-view-model
+            class="ytContentMetadataViewModelHost"
+          >
+            <div class="ytContentMetadataViewModelMetadataRow" role="group">
+              <span
+                aria-label="7.2 thousand watching"
+                class="ytContentMetadataViewModelMetadataText ytContentMetadataViewModelMetadataTextLastPart"
+                role="text"
+                data-crowd="live viewers"
+                >7.2K watching</span
+              >
+            </div>
+          </yt-content-metadata-view-model>
+        </div>
+      </yt-lockup-view-model>
+
+      <!-- A Short: its view count and "New" badge. -->
+      <ytm-shorts-lockup-view-model-v2 class="shortsLockupViewModelHost">
+        <ytm-shorts-lockup-view-model class="shortsLockupViewModelHost">
+          <a
+            class="shortsLockupViewModelHostEndpoint reel-item-endpoint"
+            href="/shorts/short_crowd"
+          >
+            <span class="thumb"></span>
+            <yt-badge-view-model
+              class="ytBadgeViewModelHost shortsLockupViewModelHostBadge"
+              data-crowd="new badge"
+            >
+              <badge-shape aria-label="New" class="ytBadgeShapeHost" role="img">
+                <div aria-hidden="true" class="ytBadgeShapeText">New</div>
+              </badge-shape>
+            </yt-badge-view-model>
+          </a>
+          <div class="shortsLockupViewModelHostOutsideMetadata">
+            <h3 class="shortsLockupViewModelHostMetadataTitle">
+              <a
+                class="shortsLockupViewModelHostOutsideMetadataEndpoint"
+                href="/shorts/short_crowd"
+                ><span role="text">Short Title</span></a
+              >
+            </h3>
+            <div
+              class="shortsLockupViewModelHostOutsideMetadataSubhead shortsLockupViewModelHostMetadataSubhead"
+            >
+              <span class="ytAttributedStringHost" data-crowd="short views"
+                >566K views</span
+              >
+            </div>
+          </div>
+        </ytm-shorts-lockup-view-model>
+      </ytm-shorts-lockup-view-model-v2>
+
+      <!-- Search: a Polymer result, in the child order a live page serves. -->
+      <ytd-video-renderer>
+        <ytd-thumbnail
+          ><a id="thumbnail" href="/watch?v=vid_crowd03"></a
+        ></ytd-thumbnail>
+        <div id="meta">
+          <h3>
+            <a id="video-title" href="/watch?v=vid_crowd03"
+              ><yt-formatted-string>Search Title</yt-formatted-string></a
+            >
+          </h3>
+          <ytd-video-meta-block>
+            <div id="metadata">
+              <div id="byline-container">
+                <ytd-channel-name id="channel-name">
+                  <div id="container">
+                    <yt-formatted-string id="text"
+                      ><a href="/@search_channel"
+                        >Search Channel</a
+                      ></yt-formatted-string
+                    >
+                  </div>
+                  <ytd-badge-supported-renderer
+                    data-crowd="search verified tick"
+                  >
+                    <badge-shape
+                      aria-label="Verified"
+                      class="ytBadgeShapeHost"
+                      role="img"
+                      >✓</badge-shape
+                    >
+                  </ytd-badge-supported-renderer>
+                </ytd-channel-name>
+              </div>
+              <div id="metadata-line">
+                <ytd-badge-supported-renderer
+                  class="inline-metadata-badge"
+                  hidden=""
+                ></ytd-badge-supported-renderer>
+                <div id="separator" hidden="">•</div>
+                <span class="inline-metadata-item" data-crowd="search views"
+                  >23K views</span
+                >
+                <span class="inline-metadata-item" data-crowd="search age"
+                  >8 hours ago</span
+                >
+                <span
+                  class="inline-metadata-item"
+                  data-crowd="search live viewers"
+                  >297 watching</span
+                >
+              </div>
+            </div>
+          </ytd-video-meta-block>
+        </div>
+      </ytd-video-renderer>
+
+      <!-- Search: a channel result. Its ids say the opposite of what they hold. -->
+      <ytd-channel-renderer>
+        <div id="info-section">
+          <h3 id="channel-title" data-keep="channel">Channel Result</h3>
+          <div id="metadata">
+            <yt-formatted-string id="subscribers"
+              >@channel_result</yt-formatted-string
+            >
+            <span id="dot">•</span>
+            <span id="video-count" data-crowd="channel result subscribers"
+              >1.12M subscribers</span
+            >
+          </div>
+        </div>
+      </ytd-channel-renderer>
+
+      <!-- A channel page's header. -->
+      <yt-page-header-view-model>
+        <h1 data-keep="channel">Channel Page</h1>
+        <yt-content-metadata-view-model
+          class="ytPageHeaderViewModelContentMetadata ytContentMetadataViewModelHost ytContentMetadataViewModelInline"
+        >
+          <div class="ytContentMetadataViewModelMetadataRow">
+            <span
+              class="ytContentMetadataViewModelMetadataText ytContentMetadataViewModelMetadataTextLastPart"
+              data-keep="handle"
+              >@channel_page</span
+            >
+          </div>
+          <span
+            aria-hidden="true"
+            class="ytContentMetadataViewModelDelimiter ytContentMetadataViewModelDelimiterStandalone"
+            data-crowd="delimiter"
+            >•</span
+          >
+          <div class="ytContentMetadataViewModelMetadataRow">
+            <span
+              aria-label="46.5 million subscribers"
+              class="ytContentMetadataViewModelMetadataText"
+              role="text"
+              data-crowd="channel page subscribers"
+              >46.5M subscribers</span
+            >
+          </div>
+        </yt-content-metadata-view-model>
+      </yt-page-header-view-model>
+
+      <!-- The watch page. -->
+      <ytd-watch-metadata>
+        <ytd-video-owner-renderer>
+          <div id="upload-info">
+            <ytd-channel-name id="channel-name">
+              <yt-formatted-string id="text"
+                ><a href="/@owner_channel" data-keep="owner"
+                  >Owner Channel</a
+                ></yt-formatted-string
+              >
+            </ytd-channel-name>
+            <yt-formatted-string
+              id="owner-sub-count"
+              aria-label="177 thousand subscribers"
+              data-crowd="owner subscribers"
+              >177K subscribers</yt-formatted-string
+            >
+          </div>
+        </ytd-video-owner-renderer>
+
+        <segmented-like-dislike-button-view-model>
+          <like-button-view-model class="ytLikeButtonViewModelHost">
+            <button
+              aria-label="like this video along with 1,242 other people"
+              class="ytSpecButtonShapeNextHost"
+              data-keep="like button"
+            >
+              <div aria-hidden="true" class="ytSpecButtonShapeNextIcon">👍</div>
+              <div
+                class="ytSpecButtonShapeNextButtonTextContent"
+                data-crowd="likes"
+              >
+                1.2K
+              </div>
+            </button>
+          </like-button-view-model>
+          <dislike-button-view-model>
+            <button aria-label="Dislike this video" data-keep="dislike button">
+              👎
+            </button>
+          </dislike-button-view-model>
+        </segmented-like-dislike-button-view-model>
+
+        <ytd-watch-info-text id="ytd-watch-info-text">
+          <div id="info-container">
+            <div id="view-count" aria-label="" data-crowd="rolling views">
+              119,853
+            </div>
+            <div id="date-text" aria-label="" data-crowd="rolling date">
+              Mar 3, 2024
+            </div>
+            <yt-formatted-string id="info"
+              ><span dir="auto" data-crowd="watch views">119K views</span
+              ><span dir="auto"> </span
+              ><span dir="auto" data-crowd="watch age">2y ago</span
+              ><span dir="auto"> </span
+              ><a href="/hashtag/placeholder" data-keep="hashtag"
+                >#placeholder</a
+              ></yt-formatted-string
+            >
+          </div>
+          <tp-yt-paper-tooltip
+            ><div id="tooltip" data-crowd="watch tooltip">
+              119,853 views • Mar 3, 2024
+            </div></tp-yt-paper-tooltip
+          >
+        </ytd-watch-info-text>
+      </ytd-watch-metadata>
+
+      <ytd-video-description-header-renderer>
+        <div id="factoids">
+          <factoid-renderer class="ytwFactoidRendererHost"
+            ><div
+              aria-label="1.2 thousand likes"
+              class="ytwFactoidRendererFactoid"
+              role="text"
+              data-crowd="description likes"
+            >
+              1.2K Likes
+            </div></factoid-renderer
+          >
+          <view-count-factoid-renderer
+            ><factoid-renderer class="ytwFactoidRendererHost"
+              ><div
+                aria-label="119,853 views"
+                class="ytwFactoidRendererFactoid"
+                role="text"
+                data-crowd="description views"
+              >
+                119K Views
+              </div></factoid-renderer
+            ></view-count-factoid-renderer
+          >
+          <factoid-renderer class="ytwFactoidRendererHost"
+            ><div
+              aria-label="Mar 3, 2024"
+              class="ytwFactoidRendererFactoid"
+              role="text"
+              data-crowd="description date"
+            >
+              2024 Mar 3
+            </div></factoid-renderer
+          >
+        </div>
+      </ytd-video-description-header-renderer>
+
+      <yt-list-view-model class="ytListViewModelHost" role="list">
+        <yt-list-item-view-model role="listitem"
+          ><span class="ytListItemViewModelTitle">Date</span
+          ><span
+            class="ytListItemViewModelTrailingLabel"
+            data-crowd="details date"
+            >Mar 3, 2024</span
+          ></yt-list-item-view-model
+        >
+        <yt-list-item-view-model role="listitem"
+          ><span class="ytListItemViewModelTitle">Views</span
+          ><yt-list-item-view-count-view-model
+            class="ytListItemViewCountViewModelHost"
+            data-crowd="details views"
+            >119,853</yt-list-item-view-count-view-model
+          ></yt-list-item-view-model
+        >
+        <yt-list-item-view-model role="listitem"
+          ><span class="ytListItemViewModelTitle">Likes</span
+          ><yt-list-item-like-count-view-model
+            class="ytListItemLikeCountViewModelHost"
+            data-crowd="details likes"
+            >1,242</yt-list-item-like-count-view-model
+          ></yt-list-item-view-model
+        >
+      </yt-list-view-model>
+
+      <ytd-video-description-infocards-section-renderer>
+        <a id="header" href="/@owner_channel">
+          <div id="header-text">
+            <h3 id="title" data-keep="infocard channel">Owner Channel</h3>
+            <div id="subtitle" data-crowd="infocard subscribers">
+              177K subscribers
+            </div>
+          </div>
+        </a>
+      </ytd-video-description-infocards-section-renderer>
+
+      <ytd-engagement-panel-section-list-renderer
+        target-id="engagement-panel-comments-section"
+      >
+        <ytd-engagement-panel-title-header-renderer>
+          <h2 id="title" aria-label="Comments 27">
+            <yt-formatted-string id="title-text" data-keep="comments title"
+              >Comments</yt-formatted-string
+            >
+            <yt-formatted-string
+              id="contextual-info"
+              data-crowd="comments panel count"
+              >27</yt-formatted-string
+            >
+          </h2>
+        </ytd-engagement-panel-title-header-renderer>
+      </ytd-engagement-panel-section-list-renderer>
+
+      <ytd-comments-header-renderer>
+        <div id="title">
+          <h2 id="count">
+            <yt-formatted-string class="count-text"
+              ><span dir="auto" data-crowd="comments header count"
+                >10,641,325</span
+              ><span dir="auto"> Comments</span></yt-formatted-string
+            >
+          </h2>
+        </div>
+      </ytd-comments-header-renderer>
+
+      <!-- The player. -->
+      <div id="movie_player" class="html5-video-player">
+        <div class="ytp-progress-bar-container">
+          <div class="ytp-heat-map-container" data-crowd="most replayed graph">
+            <svg class="ytp-heat-map-svg" width="200" height="20">
+              <path class="ytp-modern-heat-map" d="M0 20 L200 0"></path>
+            </svg>
+          </div>
+          <div class="ytp-progress-bar" role="slider" data-keep="seek bar">
+            seek bar
+          </div>
+        </div>
+        <div class="ytp-tooltip-progress-bar-pill">
+          <div
+            class="ytp-tooltip-progress-bar-pill-time-stamp"
+            data-keep="hover time"
+          >
+            2:42
+          </div>
+          <div
+            class="ytp-tooltip-progress-bar-pill-title"
+            data-crowd="most replayed label"
+          >
+            Most replayed
+          </div>
+        </div>
+        <yt-player-overlay-video-details-renderer>
+          <h2
+            class="ytPlayerOverlayVideoDetailsRendererTitle"
+            data-keep="overlay title"
+          >
+            Overlay Title
+          </h2>
+          <div
+            class="ytPlayerOverlayVideoDetailsRendererSubtitle"
+            data-crowd="overlay subtitle"
+          >
+            Owner Channel 119,853 views 2y ago
+          </div>
+        </yt-player-overlay-video-details-renderer>
+        <a class="ytp-modern-videowall-still" href="/watch?v=vid_wall01">
+          <span class="ytp-modern-videowall-still-info-content">
+            <span
+              class="ytp-modern-videowall-still-info-title"
+              data-keep="wall title"
+              >Wall Title</span
+            >
+            <span
+              class="ytp-modern-videowall-still-view-count-and-date-info"
+              data-crowd="video wall counts"
+              >86K • 2y ago</span
+            >
+          </span>
+        </a>
+        <div class="ytp-autonav-endscreen-video-info">
+          <div
+            class="ytp-autonav-endscreen-upnext-title"
+            data-keep="up next title"
+          >
+            Up Next Title
+          </div>
+          <div class="ytp-autonav-view-and-date" data-crowd="autoplay counts">
+            86K views • 2y ago
+          </div>
+          <div
+            class="ytp-autonav-author-and-view"
+            data-crowd="autoplay author and views"
+          >
+            Up Next Channel • 86K views
+          </div>
+        </div>
+      </div>
+    </ytd-app>
+  </body>
+</html>

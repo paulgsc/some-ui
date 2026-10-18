@@ -406,7 +406,13 @@ or derived, is shown on any surface, in any state, the lane included. Amends
 Each of these reports on a culture outside the rock. None informs a choice the
 owner makes.
 
-_Status: absent._ #1802.
+_Status: holds in the stylesheet (#1802), with gaps._ `styles/content.css`'s
+crowd rules hide each number and age by the element that carries it, one rule
+each, on every surface and in every state, and yield to the off switch.
+`tests/e2e/fixtures/yt-crowd.html` carries every shape from the 2026-10-17
+captures and of a signed-out live search. Gaps: a trending rank appears in no
+capture, so it has no rule; the "Video details" list needs `:has()`, so
+Firefox 112–120 still shows it; the comments themselves are #1805's.
 
 ---
 
@@ -593,7 +599,7 @@ section is a behavioural change; it is a statement of distance.
 | A held video's watch page still plays                          | nothing handles the watch page itself (#1805)             | QD11     |
 | A shelf elsewhere keeps its header                             | a container `SHELF_SELECTORS` does not name               | QD11     |
 | Plated cards are veiled whole: title, channel and duration too | `actuator/veil.ts`, until the plate (#1804)               | QD12     |
-| No crowd number or age is removed                              | vendor metadata rows render untouched                     | QD14     |
+| A trending rank is shown                                       | no capture holds one, so no crowd rule names it           | QD14     |
 
 ### Extraction hazards a maturity estimator will meet
 

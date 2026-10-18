@@ -372,6 +372,42 @@ describe("the stylesheet and the catalogue agree", () => {
   })
 })
 
+describe("the crowd rules (QD14)", () => {
+  const MARKER = "THE CROWD (QD14)"
+
+  /** Every rule after the section's header, as selector and body. */
+  function crowdRules(): Array<{ selector: string; body: string }> {
+    const start = CSS.indexOf(MARKER)
+    expect(start, "the crowd section must exist").toBeGreaterThan(-1)
+    const section = CSS.slice(CSS.lastIndexOf("/*", start)).replace(
+      /\/\*[\s\S]*?\*\//g,
+      ""
+    )
+    return [...section.matchAll(/([^{}]+)\{([^{}]*)\}/g)].map((m) => ({
+      selector: (m[1] ?? "").trim(),
+      body: (m[2] ?? "").trim(),
+    }))
+  }
+
+  it("hides one vendor element per rule, and does nothing else", () => {
+    const rules = crowdRules()
+    expect(rules.length).toBeGreaterThan(0)
+    for (const { selector, body } of rules) {
+      expect(topLevelCommaCount(selector), selector).toBe(0)
+      expect(body, selector).toBe("display: none !important;")
+    }
+  })
+
+  it("yields every rule to the off switch, so off is plain YouTube", () => {
+    for (const { selector } of crowdRules()) {
+      expect(
+        normalize(selector).startsWith(normalize(WHILE_ON)),
+        selector
+      ).toBe(true)
+    }
+  })
+})
+
 describe("isVideoCard", () => {
   it("accepts an unguarded renderer on its tag alone", () => {
     const el = document.createElement("ytd-video-renderer")
