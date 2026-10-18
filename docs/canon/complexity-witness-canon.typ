@@ -1347,9 +1347,9 @@ superseded and kept.
   and the return are reachable on request throughout, so nothing a response
   leads to is withheld. What is taken costs evidence, never
   access: an answer after the confirmation is an observation of it
-  (Axiom 9.2), and replaying the round repeats the same mechanism, which is
-  never a second instance (Rem. 10.4). Requesting the return costs nothing,
-  since it is new numbers and a fresh commitment. A surface that makes
+  (Axiom 9.2), and a replay answers the instance already committed on, so it
+  adds nothing to positive transfer (Rem. 10.4). Requesting the return costs
+  nothing, since it is new numbers and a fresh commitment. A surface that makes
   any of them unreachable has turned a placement into a gate.
 ]
 
