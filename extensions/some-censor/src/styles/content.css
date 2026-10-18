@@ -8,9 +8,9 @@
 
      1. Design tokens. The utilities reference these by name
         (`bg-[rgb(var(--boyo-glass)/86%)]`), so the ramp stays one edit.
-     2. The pre-mask occluder and the absent and shelf rules — rules that
-        target *vendor* elements, which we do not construct and must not
-        add classes to.
+     2. The pre-mask occluder, the absent and shelf rules, and the crowd
+        rules — rules that target *vendor* elements, which we do not
+        construct and must not add classes to.
 
    A card's view, stamped as data-boyo on the renderer element:
      "absent" not rendered      "plated" shown behind the veil
@@ -522,5 +522,169 @@ ytd-item-section-renderer:has(> #contents > ytd-shelf-renderer:only-child):has(
         )
     )
   ) {
+  display: none !important;
+}
+
+/* ----------------------------------------------------------
+   THE CROWD (QD14)
+
+   A card keeps its title, its channel name and its duration.
+
+   These are vendor elements the extension never reads for what they
+   say (H1), so they are hidden by where they sit, never by their
+   text. The Sensor still reads an age's `aria-label`; `display:
+   none` does not change what the DOM holds.
+
+   One selector per rule (QC0), each behind the off switch (#1807).
+   Fixture: `tests/e2e/fixtures/yt-crowd.html`.
+   ---------------------------------------------------------- */
+
+/* Lockup metadata runs. A view count, an age, a live count and a
+   channel page's subscriber count each carry an `aria-label` with
+   their long form; a channel name does not. The leading icon sits
+   before the view count, and the delimiters only separate what goes. */
+:root:not([data-boyo-off])
+  yt-content-metadata-view-model
+  .ytContentMetadataViewModelMetadataText[aria-label] {
+  display: none !important;
+}
+
+:root:not([data-boyo-off])
+  yt-content-metadata-view-model
+  .ytContentMetadataViewModelLeadingIcon {
+  display: none !important;
+}
+
+:root:not([data-boyo-off])
+  yt-content-metadata-view-model
+  .ytContentMetadataViewModelDelimiter {
+  display: none !important;
+}
+
+/* The verified and official-artist tick after a channel name. */
+:root:not([data-boyo-off])
+  yt-content-metadata-view-model
+  .ytContentMetadataViewModelIcon {
+  display: none !important;
+}
+
+:root:not([data-boyo-off]) ytd-channel-name ytd-badge-supported-renderer {
+  display: none !important;
+}
+
+/* "New": on a Short, in a lockup thumbnail's top corner (a duration sits in
+   the bottom overlay, "Mix" in the bottom corner), and in a search result's
+   badges, where CC, 4K and LIVE are shaped otherwise (a "360°" there
+   would share New's shape and go too). A Short's view count. */
+:root:not([data-boyo-off]) .ytThumbnailOverlayBadgeViewModelTopStart {
+  display: none !important;
+}
+
+:root:not([data-boyo-off]) ytd-video-renderer #badges .ytBadgeShapeDefault {
+  display: none !important;
+}
+
+:root:not([data-boyo-off]) .shortsLockupViewModelHostOutsideMetadataSubhead {
+  display: none !important;
+}
+
+:root:not([data-boyo-off]) .shortsLockupViewModelHostBadge {
+  display: none !important;
+}
+
+/* Search: a Polymer result's line holds its views and age only, and a
+   channel result's holds its handle and subscriber count. */
+:root:not([data-boyo-off]) ytd-video-meta-block #metadata-line {
+  display: none !important;
+}
+
+:root:not([data-boyo-off]) ytd-channel-renderer #metadata {
+  display: none !important;
+}
+
+/* The watch page's info row: its spans are the views and age, and its
+   hashtags are links, which stay. */
+:root:not([data-boyo-off]) ytd-watch-info-text #info > span {
+  display: none !important;
+}
+
+:root:not([data-boyo-off]) ytd-watch-info-text #view-count {
+  display: none !important;
+}
+
+:root:not([data-boyo-off]) ytd-watch-info-text #date-text {
+  display: none !important;
+}
+
+:root:not([data-boyo-off]) ytd-watch-info-text tp-yt-paper-tooltip {
+  display: none !important;
+}
+
+/* The description: its header's likes, views and date, and the "Video
+   details" list of the same three. */
+:root:not([data-boyo-off]) ytd-video-description-header-renderer #factoids {
+  display: none !important;
+}
+
+:root:not([data-boyo-off])
+  yt-list-view-model:has(yt-list-item-view-count-view-model) {
+  display: none !important;
+}
+
+/* The like count. The button stays; there is no dislike count. */
+:root:not([data-boyo-off])
+  like-button-view-model
+  .ytSpecButtonShapeNextButtonTextContent {
+  display: none !important;
+}
+
+/* Subscribers, under the owner and in the description's channel card. A
+   linked video's card there has a `#subtitle` too, holding its channel. */
+:root:not([data-boyo-off]) #owner-sub-count {
+  display: none !important;
+}
+
+:root:not([data-boyo-off])
+  ytd-video-description-infocards-section-renderer
+  #header-text
+  > #subtitle {
+  display: none !important;
+}
+
+:root:not([data-boyo-off])
+  ytd-engagement-panel-title-header-renderer
+  #contextual-info {
+  display: none !important;
+}
+
+:root:not([data-boyo-off]) ytd-comments-header-renderer #count {
+  display: none !important;
+}
+
+/* The player. The pill's title is "Most replayed" (its hover time stays).
+   The fullscreen overlay's subtitle and the small autoplay screen's line
+   are each one run of channel and counts, so the channel goes with them. */
+:root:not([data-boyo-off]) .ytp-heat-map-container {
+  display: none !important;
+}
+
+:root:not([data-boyo-off]) .ytp-tooltip-progress-bar-pill-title {
+  display: none !important;
+}
+
+:root:not([data-boyo-off]) .ytPlayerOverlayVideoDetailsRendererSubtitle {
+  display: none !important;
+}
+
+:root:not([data-boyo-off])
+  .ytp-modern-videowall-still-view-count-and-date-info {
+  display: none !important;
+}
+
+:root:not([data-boyo-off]) .ytp-autonav-view-and-date {
+  display: none !important;
+}
+
+:root:not([data-boyo-off]) .ytp-autonav-author-and-view {
   display: none !important;
 }
