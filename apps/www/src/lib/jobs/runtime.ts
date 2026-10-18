@@ -23,9 +23,16 @@ import {
 import type { SharedFile } from "@/lib/share-files"
 import type { StorageAdapter } from "@/lib/tenant/storage"
 
-import type { OutgoingFile } from "./files"
-import { decisionsFile, scoutsFile } from "./files"
-import type { Draft, JobsAction, JobsState, ShareKind } from "./model"
+import type { Outgoing, OutgoingFile } from "./files"
+import { decisionsFile, isFile, scoutsFile } from "./files"
+import type {
+  Draft,
+  JobsAction,
+  JobsState,
+  Outcome,
+  ScoutDraft,
+  ShareKind,
+} from "./model"
 import { EMPTY, hasArrived, step } from "./model"
 import { openStored, writeStored } from "./stored"
 
@@ -80,15 +87,25 @@ export type JobsRuntime = {
   open: (file: Blob) => void
   /** Adds an event to the record; false when it doesn't fit or wasn't kept. */
   record: (event: Draft) => boolean
+  /** Adds a scout, with an id of its own and the voice notes it names. */
+  addScout: (scout: ScoutDraft, voice: ReadonlyArray<string>) => boolean
+  /** Records what happened to an application, dated today. */
+  addOutcome: (fingerprint: string, event: Outcome) => boolean
   startVoice: (owner: string) => void
   stopVoice: () => void
   leaveVoice: () => void
   /** Lets a draft's voice notes go; a note the record names stays. */
   dropVoice: (ids: ReadonlyArray<string>) => void
-  /** The file `kind` would share now, or null when there's nothing new. */
-  outgoing: (kind: ShareKind) => OutgoingFile | null
+  /**
+   * The file `kind` would share now, why it can't be shared, or null when
+   * there's nothing new since the last share that arrived.
+   */
+  outgoing: (kind: ShareKind) => Outgoing
   share: (kind: ShareKind) => Promise<Shared>
-  /** The person said share `shareId`'s files arrived: its audio leaves. */
+  /**
+   * The person said share `shareId`'s files arrived: what it carried counts
+   * as sent, and its audio leaves.
+   */
   arrived: (shareId: string) => void
   /** Audio no note lists (the app closed mid-save). Best effort. */
   sweep: () => void
@@ -196,10 +213,10 @@ export function createJobsRuntime(ports: JobsPorts): JobsRuntime {
     }
   }
 
-  const fileFor = (kind: ShareKind, at: Date): OutgoingFile | null =>
+  const fileFor = (kind: ShareKind, at: Date): Outgoing =>
     kind === "decisions"
       ? decisionsFile(state, ports.dayOf(at), at.toISOString())
-      : scoutsFile(state, at.toISOString())
+      : scoutsFile(state, at)
 
   const audioOf = async (
     file: OutgoingFile
@@ -229,6 +246,28 @@ export function createJobsRuntime(ports: JobsPorts): JobsRuntime {
       void read(file, picks)
     },
     record: (event) => commit({ type: "record", event, stamp: stamp() }),
+    addScout: (scout, voice) =>
+      commit({
+        type: "record",
+        event: {
+          type: "scout",
+          scout: { ...scout, id: `sc-${ports.newId().slice(0, 8)}` },
+          voice,
+        },
+        stamp: stamp(),
+      }),
+    addOutcome: (fingerprint, event) =>
+      commit({
+        type: "record",
+        event: {
+          type: "outcome",
+          fingerprint,
+          event,
+          on: ports.dayOf(ports.now()),
+          note: "",
+        },
+        stamp: stamp(),
+      }),
     startVoice(owner): void {
       if (note.getSnapshot().kind !== "idle") return
       takeOwner = owner
@@ -247,7 +286,7 @@ export function createJobsRuntime(ports: JobsPorts): JobsRuntime {
       if (sharing.has(kind)) return { outcome: "cancelled" }
       const at = ports.now()
       const file = fileFor(kind, at)
-      if (file === null) return { outcome: "nothing" }
+      if (!isFile(file)) return { outcome: "nothing" }
       sharing.add(kind)
       try {
         const audio = await audioOf(file)

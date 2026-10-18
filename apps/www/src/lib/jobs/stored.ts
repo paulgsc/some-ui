@@ -11,10 +11,15 @@
  */
 import { openRecord, writeRecord } from "@some-ui/core-utils"
 import {
+  DEBRIEF_RESULTS,
+  DebriefMinutesSchema,
   DigestSchema,
   FRICTION,
+  FrictionSchema,
+  MAX_POSTING_TEXT,
   OUTCOMES,
   PASS_REASONS,
+  TrackedSchema,
 } from "@some-ui/job-desk"
 import { z } from "zod"
 
@@ -24,7 +29,7 @@ import type { JobEvent, JobsState } from "./model"
 
 export const STORAGE_KEY = "some-ui:jobs"
 /** Followed by 1, 2 …: an unreadable value, kept as it was found. */
-export const QUARANTINE_PREFIX = "some-ui:jobs:unreadable:"
+const QUARANTINE_PREFIX = "some-ui:jobs:unreadable:"
 const VERSION = 1
 
 const Stamp = { id: z.string(), at: z.string() }
@@ -47,12 +52,12 @@ const EventSchema: z.ZodType<JobEvent> = z.discriminatedUnion("type", [
     ...Stamp,
     ...PickRef,
     type: z.literal("debrief"),
-    minutes: z.number(),
-    friction: z.number(),
+    minutes: DebriefMinutesSchema,
+    friction: FrictionSchema,
     chips: z.array(z.enum(FRICTION)),
     what: z.string(),
     voice: Ids,
-    result: z.enum(["submitted", "gave-up", "closed"]),
+    result: z.enum(DEBRIEF_RESULTS),
   }),
   z.object({
     ...Stamp,
@@ -78,17 +83,9 @@ const EventSchema: z.ZodType<JobEvent> = z.discriminatedUnion("type", [
         url: z.string(),
         title: z.string(),
         why: z.string(),
-        postingText: z.string().nullable(),
+        postingText: z.string().max(MAX_POSTING_TEXT).nullable(),
       })
-      .and(
-        z.discriminatedUnion("track", [
-          z.object({ track: z.literal("software"), family: z.null() }),
-          z.object({
-            track: z.literal("adjacent"),
-            family: z.enum(["data", "qa", "solutions"]),
-          }),
-        ])
-      ),
+      .and(TrackedSchema),
     voice: Ids,
   }),
   z.object({

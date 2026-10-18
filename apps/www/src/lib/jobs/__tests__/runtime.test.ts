@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest"
 
 import { createJobsRuntime } from "@/lib/jobs/runtime"
 import type { JobsPorts } from "@/lib/jobs/runtime"
-import { QUARANTINE_PREFIX, STORAGE_KEY } from "@/lib/jobs/stored"
+import { STORAGE_KEY } from "@/lib/jobs/stored"
 import { createInMemoryStorage } from "@/lib/tenant/storage"
 import type { StorageAdapter } from "@/lib/tenant/storage"
 
@@ -53,7 +53,7 @@ describe("createJobsRuntime", () => {
     expect(runtime.getSnapshot().importing).toMatchObject({ kind: "rejected" })
   })
 
-  it("keeps the record, and moves an unreadable one aside instead of over it", async () => {
+  it("keeps the record between launches, and starts again past an unreadable one", async () => {
     const p = ports()
     const runtime = createJobsRuntime(p)
     runtime.open(blob(JSON.stringify(digest("2026-10-18"))))
@@ -63,7 +63,7 @@ describe("createJobsRuntime", () => {
     p.storage.setItem(STORAGE_KEY, "{torn")
     const fresh = createJobsRuntime(p)
     expect(fresh.getSnapshot().state.digests).toEqual([])
-    expect(p.storage.getItem(`${QUARANTINE_PREFIX}1`)).toBe("{torn")
+    expect(fresh.getSnapshot().readOnly).toBe(false)
   })
 
   it("refuses every change when the storage can't be read", () => {
@@ -76,9 +76,14 @@ describe("createJobsRuntime", () => {
     }
     const runtime = createJobsRuntime(ports({ storage: blocked }))
     expect(runtime.getSnapshot().readOnly).toBe(true)
+    expect(
+      runtime.addOutcome("avmet applications|software engineer|remote", "reply")
+    ).toBe(false)
+    expect(runtime.getSnapshot().problem).not.toBeNull()
+    expect(runtime.getSnapshot().state.log).toEqual([])
   })
 
-  it("records a share, and lets its audio go once it arrived", async () => {
+  it("offers a share again until it arrived, by a name of its own", async () => {
     const p = ports()
     const runtime = createJobsRuntime(p)
     runtime.open(blob(JSON.stringify(digest("2026-10-18"))))
@@ -104,9 +109,39 @@ describe("createJobsRuntime", () => {
     expect(p.share).toHaveBeenCalledWith("job-decisions", expect.any(String), [
       expect.objectContaining({ name: "decisions-2026-10-18.json" }),
     ])
-    expect(await runtime.share("decisions")).toEqual({ outcome: "nothing" })
-    if (shared.outcome === "shared") runtime.arrived(shared.shareId)
+    // Not yet arrived: the same picks go again, beside the first file.
+    const again = await runtime.share("decisions")
+    expect(p.share).toHaveBeenLastCalledWith(
+      "job-decisions",
+      expect.any(String),
+      [expect.objectContaining({ name: "decisions-2026-10-18-2.json" })]
+    )
+    if (again.outcome === "shared") runtime.arrived(again.shareId)
     expect(runtime.getSnapshot().state.log.at(-1)?.type).toBe("arrived")
+    expect(await runtime.share("decisions")).toEqual({ outcome: "nothing" })
+  })
+
+  it("gives a scout an id of its own, and dates an outcome today", () => {
+    const runtime = createJobsRuntime(ports({ dayOf: () => "2026-10-19" }))
+    expect(
+      runtime.addScout(
+        {
+          url: "https://www.indeed.com/viewjob?jk=0123456789abcdef",
+          title: "SDET · Second Dinner",
+          why: "Game testing",
+          postingText: null,
+          track: "adjacent",
+          family: "qa",
+        },
+        []
+      )
+    ).toBe(true)
+    expect(runtime.addOutcome("bluesight|data analyst|remote", "reply")).toBe(
+      true
+    )
+    const [scout, outcome] = runtime.getSnapshot().state.log
+    expect(scout).toMatchObject({ type: "scout", scout: { id: "sc-id1" } })
+    expect(outcome).toMatchObject({ type: "outcome", on: "2026-10-19" })
   })
 
   it("records nothing for a share backed out of", async () => {

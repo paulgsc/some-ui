@@ -1,12 +1,16 @@
 import { describe, expect, it } from "vitest"
 
-import { decisionsFile, scoutsFile } from "@/lib/jobs/files"
-import type { Draft, JobsState, VoiceNote } from "@/lib/jobs/model"
+import type { Outgoing, OutgoingFile } from "@/lib/jobs/files"
+import { decisionsFile, isFile, scoutsFile } from "@/lib/jobs/files"
+import type { Draft, JobsState, PickRef, VoiceNote } from "@/lib/jobs/model"
 import { EMPTY, step } from "@/lib/jobs/model"
 
 import { digest } from "./fixture"
 
-type PickRef = { day: string; pickId: string; fingerprint: string }
+function fileOf(outgoing: Outgoing): OutgoingFile {
+  if (!isFile(outgoing)) throw new Error(`no file: ${JSON.stringify(outgoing)}`)
+  return outgoing
+}
 
 let n = 0
 function record(
@@ -58,9 +62,11 @@ describe("decisionsFile", () => {
   })
 
   it("says each pick as it stands, and names its voice notes", () => {
-    const file = decisionsFile(state, "2026-10-18", "2026-10-18T22:00:00Z")
-    expect(file?.name).toBe("decisions-2026-10-18.json")
-    const json = JSON.parse(file!.json)
+    const file = fileOf(
+      decisionsFile(state, "2026-10-18", "2026-10-18T22:00:00Z")
+    )
+    expect(file.name).toBe("decisions-2026-10-18.json")
+    const json = JSON.parse(file.json)
     expect(json.picks).toEqual([
       expect.objectContaining({
         pickId: SW.id,
@@ -74,13 +80,15 @@ describe("decisionsFile", () => {
         voice: ["2026-10-18_blu-7f2a_voice-1.webm"],
       }),
     ])
-    expect(file?.voice).toEqual([
+    expect(file.voice).toEqual([
       { id: "v1", name: "2026-10-18_blu-7f2a_voice-1.webm" },
     ])
   })
 
-  it("says nothing new after a share, and numbers a second share that day", () => {
-    const file = decisionsFile(state, "2026-10-18", "2026-10-18T22:00:00Z")!
+  it("offers a share again until it arrived, then says only what is new", () => {
+    const file = fileOf(
+      decisionsFile(state, "2026-10-18", "2026-10-18T22:00:00Z")
+    )
     let shared = record(state, {
       type: "shared",
       kind: "decisions",
@@ -89,6 +97,14 @@ describe("decisionsFile", () => {
       through: file.through,
       voice: ["v1"],
     })
+    const unconfirmed = fileOf(
+      decisionsFile(shared, "2026-10-18", "2026-10-18T22:30:00Z")
+    )
+    expect(unconfirmed.name).toBe("decisions-2026-10-18-2.json")
+    expect(JSON.parse(unconfirmed.json).picks).toHaveLength(2)
+
+    const shareId = shared.log.at(-1)!.id
+    shared = record(shared, { type: "arrived", shareId })
     expect(
       decisionsFile(shared, "2026-10-18", "2026-10-18T23:00:00Z")
     ).toBeNull()
@@ -99,7 +115,9 @@ describe("decisionsFile", () => {
       on: "2026-10-18",
       note: "",
     })
-    const again = decisionsFile(shared, "2026-10-18", "2026-10-18T23:00:00Z")!
+    const again = fileOf(
+      decisionsFile(shared, "2026-10-18", "2026-10-18T23:00:00Z")
+    )
     expect(again.name).toBe("decisions-2026-10-18-2.json")
     expect(JSON.parse(again.json).picks).toEqual([])
     expect(again.voice).toEqual([])
@@ -107,11 +125,13 @@ describe("decisionsFile", () => {
 
   it("reports an earlier day's untouched picks once", () => {
     const old = step(EMPTY, { type: "opened", digest: digest("2026-10-17") })
-    const file = decisionsFile(old, "2026-10-18", "2026-10-18T22:00:00Z")!
+    const file = fileOf(
+      decisionsFile(old, "2026-10-18", "2026-10-18T22:00:00Z")
+    )
     expect(
       JSON.parse(file.json).picks.map((p: { decision: string }) => p.decision)
     ).toEqual(["untouched", "untouched"])
-    const shared = record(old, {
+    let shared = record(old, {
       type: "shared",
       kind: "decisions",
       day: "2026-10-18",
@@ -119,10 +139,37 @@ describe("decisionsFile", () => {
       through: file.through,
       voice: [],
     })
+    shared = record(shared, { type: "arrived", shareId: shared.log.at(-1)!.id })
     expect(
       decisionsFile(shared, "2026-10-19", "2026-10-19T22:00:00Z")
     ).toBeNull()
     expect(decisionsFile(old, "2026-10-17", "2026-10-17T22:00:00Z")).toBeNull()
+  })
+
+  it("names what it can't share instead of throwing, for an event job-desk refuses", () => {
+    const bad: JobsState = {
+      ...state,
+      log: [
+        ...state.log,
+        {
+          id: "e-bad",
+          at: "2026-10-18T21:00:00Z",
+          type: "debrief",
+          ...ref(),
+          minutes: 1_440,
+          friction: 2,
+          chips: [],
+          what: "",
+          voice: [],
+          result: "submitted",
+        },
+      ],
+    }
+    const outgoing = decisionsFile(bad, "2026-10-18", "2026-10-18T22:00:00Z")
+    expect(outgoing).toMatchObject({
+      kind: "decisions",
+      problem: expect.stringContaining("picks.0.debrief.minutes"),
+    })
   })
 })
 
@@ -146,7 +193,8 @@ describe("scoutsFile", () => {
       },
       "2026-10-18T20:00:00Z"
     )
-    const file = scoutsFile(state, "2026-10-18T20:05:00Z")!
+    // Local time: the stamp names the file as the phone's clock reads.
+    const file = fileOf(scoutsFile(state, new Date(2026, 9, 18, 20, 5, 0)))
     expect(file.name).toBe("scouts-20261018T200500.json")
     expect(file.voice).toEqual([
       { id: "v9", name: "20261018T200500_sc-a1b2c3_voice-1.webm" },
@@ -155,6 +203,6 @@ describe("scoutsFile", () => {
       id: "sc-a1b2c3",
       addedAt: "2026-10-18T20:00:00Z",
     })
-    expect(scoutsFile(EMPTY, "2026-10-18T20:05:00Z")).toBeNull()
+    expect(scoutsFile(EMPTY, new Date(2026, 9, 18, 20, 5, 0))).toBeNull()
   })
 })

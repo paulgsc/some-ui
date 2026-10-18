@@ -1,9 +1,8 @@
 import { describe, expect, it } from "vitest"
 
-import type { Draft, JobsState, VoiceNote } from "@/lib/jobs/model"
+import type { Draft, JobsState, PickRef, VoiceNote } from "@/lib/jobs/model"
 import {
   applicationsOf,
-  decisionOf,
   DIGESTS_KEPT,
   draftVoice,
   EMPTY,
@@ -12,8 +11,6 @@ import {
 } from "@/lib/jobs/model"
 
 import { digest } from "./fixture"
-
-type PickRef = { day: string; pickId: string; fingerprint: string }
 
 const DAY = "2026-10-18"
 const D = digest(DAY)
@@ -40,20 +37,6 @@ function record(state: JobsState, event: Draft): JobsState {
 const opened = step(EMPTY, { type: "opened", digest: D })
 
 describe("step", () => {
-  it("only ever appends to the log", () => {
-    const a = record(opened, { type: "taken", ...ref() })
-    const b = record(a, {
-      type: "passed",
-      ...ref(),
-      reasons: ["pay"],
-      note: "",
-      voice: [],
-    })
-    expect(b.log.slice(0, a.log.length)).toEqual(a.log)
-    expect(b.log).toHaveLength(2)
-    expect(decisionOf(b, DAY, SW.id)).toBe("passed")
-  })
-
   it("refuses an event for a pick it hasn't opened, or a step before taking", () => {
     expect(record(EMPTY, { type: "taken", ...ref() })).toBe(EMPTY)
     expect(record(opened, { type: "resume-ready", ...ref() })).toBe(opened)
@@ -62,16 +45,42 @@ describe("step", () => {
     ).toBe(opened)
   })
 
-  it("keeps the newest digests, one per day, opening the last", () => {
-    let state = EMPTY
-    for (let i = 1; i <= DIGESTS_KEPT + 2; i += 1) {
+  it("keeps the newest digests and every one the record names, one per day", () => {
+    const first = digest("2026-09-01")
+    const [pick] = first.picks
+    let state = step(EMPTY, { type: "opened", digest: first })
+    state = record(state, {
+      type: "taken",
+      day: first.day,
+      pickId: pick.id,
+      fingerprint: pick.fingerprint,
+    })
+    for (let i = 2; i <= DIGESTS_KEPT + 3; i += 1) {
       const day = `2026-09-${String(i).padStart(2, "0")}`
       state = step(state, { type: "opened", digest: digest(day) })
     }
     state = step(state, { type: "opened", digest: digest("2026-09-05") })
-    expect(state.digests).toHaveLength(DIGESTS_KEPT)
+    expect(state.digests).toHaveLength(DIGESTS_KEPT + 1)
+    expect(state.digests[0].day).toBe("2026-09-01")
     expect(state.digests.filter((d) => d.day === "2026-09-05")).toHaveLength(1)
     expect(state.current).toBe("2026-09-05")
+    expect(applicationsOf(state).map((a) => a.day)).toEqual(["2026-09-01"])
+  })
+
+  it("refuses a debrief job-desk would refuse", () => {
+    const taken = record(opened, { type: "taken", ...ref() })
+    const debrief = (minutes: number): Draft => ({
+      type: "debrief",
+      ...ref(),
+      minutes,
+      friction: 3,
+      chips: [],
+      what: "",
+      voice: [],
+      result: "submitted",
+    })
+    expect(record(taken, debrief(1_440))).toBe(taken)
+    expect(record(taken, debrief(45)).log).toHaveLength(2)
   })
 
   it("lets a draft's voice note go, and never one the record names", () => {

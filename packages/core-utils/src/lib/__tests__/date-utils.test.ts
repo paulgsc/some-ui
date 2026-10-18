@@ -1,12 +1,11 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
-
 import {
   addDays,
   dayOf,
   formatDay,
   formatRelativeTime,
   formatWeekday,
-} from "./date-utils"
+} from "@core-utils/lib/date-utils"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 const FIXED_NOW = new Date("2024-06-15T12:00:00.000Z")
 

@@ -8,25 +8,32 @@
  * The log is the record ("Never lose the record", CLAUDE.md): `step` only
  * appends to it, and a later event says what changed (a pick passed, then
  * taken, is taken). Nothing here removes an event. Digests are copies of
- * files kept in Drive's `some-ui jobs/Brief`, so the phone holds only the
- * newest `DIGESTS_KEPT` of them.
+ * files kept in Drive's `some-ui jobs/Brief`: the phone keeps every digest
+ * the log names, and of the rest only the newest `DIGESTS_KEPT`.
  */
 import { assertNever } from "@some-ui/core-utils"
 import type {
+  AdjacentFamily,
+  DEBRIEF_RESULTS,
   Digest,
   FRICTION,
   OUTCOMES,
   PASS_REASONS,
   Pick,
 } from "@some-ui/job-desk"
+import {
+  DebriefMinutesSchema,
+  FrictionSchema,
+  MAX_POSTING_TEXT,
+} from "@some-ui/job-desk"
 
 export type PassReason = (typeof PASS_REASONS)[number]
 export type FrictionChip = (typeof FRICTION)[number]
 export type Outcome = (typeof OUTCOMES)[number]
-export type DebriefResult = "submitted" | "gave-up" | "closed"
+export type DebriefResult = (typeof DEBRIEF_RESULTS)[number]
 export type ShareKind = "decisions" | "scouts"
 
-/** The digests the phone keeps a copy of; Drive keeps every one. */
+/** The digests no event names that the phone keeps a copy of. */
 export const DIGESTS_KEPT = 30
 
 /** A voice note's audio is on the shelf under `id`. */
@@ -38,18 +45,21 @@ export type VoiceNote = {
   owner: string
 }
 
-export type Scout = {
-  id: string
+/** A scout as the form makes it; the runtime gives it its `id`. */
+export type ScoutDraft = {
   url: string
   title: string
   why: string
   postingText: string | null
 } & (
   | { track: "software"; family: null }
-  | { track: "adjacent"; family: "data" | "qa" | "solutions" }
+  | { track: "adjacent"; family: AdjacentFamily }
 )
 
-type PickRef = { day: string; pickId: string; fingerprint: string }
+export type Scout = { id: string } & ScoutDraft
+
+/** Names one pick: ids are unique only within the digest of `day`. */
+export type PickRef = { day: string; pickId: string; fingerprint: string }
 
 /** One line of the record. `id` and `at` come from the runtime. */
 export type JobEvent = { id: string; at: string } & (
@@ -150,6 +160,18 @@ function named(log: ReadonlyArray<JobEvent>): Set<string> {
  * opened digest, and a step after the decision follows a "taken".
  */
 function fits(state: JobsState, event: Draft): boolean {
+  if (event.type === "scout") {
+    return (event.scout.postingText?.length ?? 0) <= MAX_POSTING_TEXT
+  }
+  if (
+    event.type === "debrief" &&
+    !(
+      DebriefMinutesSchema.safeParse(event.minutes).success &&
+      FrictionSchema.safeParse(event.friction).success
+    )
+  ) {
+    return false
+  }
   if (!("pickId" in event)) return true
   const digest = state.digests.find((d) => d.day === event.day)
   const pick = digest?.picks.find((p) => p.id === event.pickId)
@@ -163,9 +185,14 @@ export function step(state: JobsState, action: JobsAction): JobsState {
     case "opened": {
       const { digest } = action
       const others = state.digests.filter((d) => d.day !== digest.day)
-      const digests = [...others, digest]
-        .sort((a, b) => a.day.localeCompare(b.day))
-        .slice(-DIGESTS_KEPT)
+      const all = [...others, digest].sort((a, b) => a.day.localeCompare(b.day))
+      const recent = new Set(all.slice(-DIGESTS_KEPT).map((d) => d.day))
+      const referenced = new Set(
+        state.log.flatMap((e) => ("pickId" in e ? [e.day] : []))
+      )
+      const digests = all.filter(
+        (d) => recent.has(d.day) || referenced.has(d.day)
+      )
       return { ...state, digests, current: digest.day }
     }
     case "voice-kept": {
@@ -191,8 +218,7 @@ export function step(state: JobsState, action: JobsAction): JobsState {
   }
 }
 
-// What the screens read. Each walks the log, which stays small: a few
-// events per pick, a handful of picks a day.
+// What the screens read, each a walk of the log.
 
 export function currentDigest(state: JobsState): Digest | null {
   return state.digests.find((d) => d.day === state.current) ?? null
@@ -315,17 +341,32 @@ export function disagreed(state: JobsState): ReadonlySet<string> {
   )
 }
 
-export function lastShare(
+/**
+ * The last share of `kind` the person said arrived. A share they did not
+ * confirm counts for nothing, so what it carried is offered again.
+ */
+export function lastDelivered(
   state: JobsState,
   kind: ShareKind
 ): (JobEvent & { type: "shared" }) | null {
   const found = state.log
     .filter(
       (e): e is JobEvent & { type: "shared" } =>
-        e.type === "shared" && e.kind === kind
+        e.type === "shared" && e.kind === kind && hasArrived(state, e.id)
     )
     .at(-1)
   return found ?? null
+}
+
+/** How many shares of `kind` went out on `day`, confirmed or not. */
+export function sharesOn(
+  state: JobsState,
+  kind: ShareKind,
+  day: string
+): number {
+  return state.log.filter(
+    (e) => e.type === "shared" && e.kind === kind && e.day === day
+  ).length
 }
 
 /** Whether the files of share `shareId` were said to have arrived. */

@@ -1,13 +1,13 @@
 /**
  * Jobs › a pick: Review, Decide, Résumé, Apply, Debrief. Each step adds one
  * event to the record; the step shown follows the record, and any step
- * already reached can be looked at again. Phone-only (`build.paths.ts`).
+ * already reached can be looked at again.
  */
 import type { JSX } from "react"
 import { useState } from "react"
 import { cn } from "@some-ui/core-utils"
 import type { Pick } from "@some-ui/job-desk"
-import { FRICTION, PASS_REASONS } from "@some-ui/job-desk"
+import { FRICTION, MAX_DEBRIEF_MINUTES, PASS_REASONS } from "@some-ui/job-desk"
 import { Badge, Button, Input, Label, Textarea } from "@some-ui/shared"
 import { ExternalLink } from "lucide-react"
 
@@ -18,6 +18,7 @@ import type {
   FrictionChip,
   JobsState,
   PassReason,
+  PickRef,
 } from "@/lib/jobs/model"
 import {
   applyOpenedAt,
@@ -76,10 +77,8 @@ const RESULTS: ReadonlyArray<readonly [DebriefResult, string]> = [
   ["closed", "Couldn’t: posting closed"],
 ]
 
-type Ref = { day: string; pickId: string; fingerprint: string }
-
 /** A step's pick, and what moves the screen on once it records. */
-type StepProps = { pickRef: Ref; advance: () => void }
+type StepProps = { pickRef: PickRef; advance: () => void }
 
 function toggle<T>(list: ReadonlyArray<T>, value: T): Array<T> {
   return list.includes(value)
@@ -159,7 +158,7 @@ const Decide = ({
   advance,
 }: {
   state: JobsState
-  pickRef: Ref
+  pickRef: PickRef
   advance: () => void
 }): JSX.Element => {
   const jobs = phoneJobs()
@@ -400,7 +399,13 @@ const Debrief = ({
   const timed =
     openedAt === null
       ? null
-      : Math.max(1, Math.round((now.getTime() - Date.parse(openedAt)) / 60_000))
+      : Math.min(
+          MAX_DEBRIEF_MINUTES,
+          Math.max(
+            1,
+            Math.round((now.getTime() - Date.parse(openedAt)) / 60_000)
+          )
+        )
   const [minutes, setMinutes] = useState<string | null>(null)
   const [friction, setFriction] = useState<number | null>(null)
   const [chips, setChips] = useState<ReadonlyArray<FrictionChip>>([])
@@ -410,7 +415,8 @@ const Debrief = ({
   const voice = draftVoice(state, owner)
   const shownMinutes = minutes ?? (timed === null ? "" : String(timed))
   const parsedMinutes = Number.parseInt(shownMinutes, 10)
-  const ready = friction !== null && result !== null && parsedMinutes >= 1
+  const minutesFit = parsedMinutes >= 1 && parsedMinutes <= MAX_DEBRIEF_MINUTES
+  const ready = friction !== null && result !== null && minutesFit
   return (
     <div className="flex flex-col gap-4">
       <section className="flex flex-col gap-2">
@@ -424,6 +430,11 @@ const Debrief = ({
           value={shownMinutes}
           onChange={(e) => setMinutes(e.target.value)}
         />
+        {!minutesFit && shownMinutes !== "" && (
+          <span className="text-muted-foreground text-xs">
+            From 1 to {MAX_DEBRIEF_MINUTES} minutes.
+          </span>
+        )}
       </section>
       <section className="flex flex-col gap-2">
         <h3 className={sectionHeading}>Friction</h3>

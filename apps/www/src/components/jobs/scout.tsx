@@ -1,15 +1,14 @@
 /**
  * Jobs › Scout: postings I found myself, for the morning run's second
  * opinion. Indeed pages refuse agents, so the posting's text can come along.
- * Phone-only (`build.paths.ts`).
  */
 import type { JSX } from "react"
 import { useState } from "react"
-import { ADJACENT_FAMILIES } from "@some-ui/job-desk"
+import type { AdjacentFamily, Track } from "@some-ui/job-desk"
+import { ADJACENT_FAMILIES, MAX_POSTING_TEXT, TRACKS } from "@some-ui/job-desk"
 import { Badge, Button, Input, Label, Textarea } from "@some-ui/shared"
 
 import { phoneJobs } from "@/lib/jobs"
-import type { Scout } from "@/lib/jobs/model"
 import { draftVoice, SCOUT_OWNER, scoutsOf } from "@/lib/jobs/model"
 
 import {
@@ -21,11 +20,16 @@ import {
   VoiceNotes,
 } from "./parts"
 
-const FAMILY_LABELS = {
+const TRACK_LABELS: Readonly<Record<Track, string>> = {
+  software: "Software",
+  adjacent: "Adjacent",
+}
+
+const FAMILY_LABELS: Readonly<Record<AdjacentFamily, string>> = {
   data: "Data",
   qa: "QA",
   solutions: "Solutions",
-} as const
+}
 
 function isHttps(url: string): boolean {
   try {
@@ -39,8 +43,8 @@ export const JobsScout = (): JSX.Element => {
   const { state } = useJobs()
   const jobs = phoneJobs()
   const [url, setUrl] = useState("")
-  const [track, setTrack] = useState<Scout["track"]>("software")
-  const [family, setFamily] = useState<NonNullable<Scout["family"]>>("data")
+  const [track, setTrack] = useState<Track>("software")
+  const [family, setFamily] = useState<AdjacentFamily>("data")
   const [title, setTitle] = useState("")
   const [why, setWhy] = useState("")
   const [postingText, setPostingText] = useState("")
@@ -53,18 +57,16 @@ export const JobsScout = (): JSX.Element => {
 
   const add = (): void => {
     if (!ready) return
-    const kept = jobs.record({
-      type: "scout",
-      scout: {
-        id: `sc-${crypto.randomUUID().slice(0, 8)}`,
+    const kept = jobs.addScout(
+      {
         url: url.trim(),
         ...(track === "adjacent" ? { track, family } : { track, family: null }),
         title: title.trim(),
         why: why.trim(),
         postingText: postingText.trim() === "" ? null : postingText.trim(),
       },
-      voice: voice.map((v) => v.id),
-    })
+      voice.map((v) => v.id)
+    )
     if (!kept) return
     setUrl("")
     setTitle("")
@@ -97,10 +99,7 @@ export const JobsScout = (): JSX.Element => {
         />
         <Chips
           label="Track"
-          options={[
-            ["software", "Software"],
-            ["adjacent", "Adjacent"],
-          ]}
+          options={TRACKS.map((t) => [t, TRACK_LABELS[t]] as const)}
           pressed={(t) => t === track}
           onToggle={setTrack}
         />
@@ -129,6 +128,7 @@ export const JobsScout = (): JSX.Element => {
           id="scout-text"
           rows={3}
           placeholder="Paste the description: the run can’t open Indeed links."
+          maxLength={MAX_POSTING_TEXT}
           value={postingText}
           onChange={(e) => setPostingText(e.target.value)}
         />

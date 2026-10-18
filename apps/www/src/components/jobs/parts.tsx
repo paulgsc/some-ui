@@ -1,11 +1,12 @@
 /**
  * Pieces the Jobs screens share. Each reads the phone's jobs runtime
- * (`@/lib/jobs`) and forwards taps to it; none decides anything. Phone-only
- * (`build.paths.ts`): render behind an inline `VITE_DEVICE_BACKEND`.
+ * (`@/lib/jobs`) and forwards taps to it; none decides anything. The Jobs
+ * screens are phone-only (`build.paths.ts`): render them behind an inline
+ * `VITE_DEVICE_BACKEND`.
  */
 import type { ChangeEvent, JSX, ReactNode } from "react"
-import { useSyncExternalStore } from "react"
-import { cn, formatTimecode } from "@some-ui/core-utils"
+import { useEffect, useSyncExternalStore } from "react"
+import { cn, counted, formatTimecode } from "@some-ui/core-utils"
 import type { ResumeRecommendation } from "@some-ui/job-desk"
 import { Button, useConfirmSheet } from "@some-ui/shared"
 import { FolderOpen, Mic, Square } from "lucide-react"
@@ -14,6 +15,7 @@ import { useAsyncIntent, useIntentEffect } from "@/lib/intent"
 import { IntentButton } from "@/lib/intent/render"
 import type { JobsSnapshot } from "@/lib/jobs"
 import { copyText, phoneJobs } from "@/lib/jobs"
+import { isFile } from "@/lib/jobs/files"
 import type { ShareKind } from "@/lib/jobs/model"
 import { lookIn } from "@/lib/share-files"
 
@@ -128,6 +130,14 @@ export const VoiceNotes = ({
   const jobs = phoneJobs()
   const mine = takeOwner === owner
   const busy = take.kind !== "idle"
+  const { ask, sheet } = useConfirmSheet()
+  // Leaving the form ends its note under way rather than recording on.
+  useEffect(
+    () => (): void => {
+      if (jobs.getSnapshot().takeOwner === owner) jobs.leaveVoice()
+    },
+    [jobs, owner]
+  )
   return (
     <div className="flex flex-col gap-2 rounded-xl border border-dashed p-3">
       <div className="flex items-center gap-3">
@@ -151,7 +161,7 @@ export const VoiceNotes = ({
             {mine && take.kind === "recording"
               ? `${formatTimecode(take.elapsedMs)} / 1:00`
               : notes.length > 0
-                ? `${notes.length} voice note${notes.length > 1 ? "s" : ""}`
+                ? counted(notes.length, "voice note")
                 : hint}
           </span>
           <span className="text-muted-foreground text-xs">
@@ -169,8 +179,17 @@ export const VoiceNotes = ({
                 type="button"
                 size="sm"
                 variant="outline"
-                onClick={() => jobs.dropVoice([n.id])}
-                aria-label={`Let voice note ${i + 1} go`}
+                onClick={() =>
+                  ask({
+                    title: `Delete note ${i + 1}?`,
+                    description:
+                      "It hasn’t been shared, so deleting it can’t be undone.",
+                    confirm: "Delete it",
+                    keep: "Keep it",
+                    onConfirm: () => jobs.dropVoice([n.id]),
+                  })
+                }
+                aria-label={`Delete voice note ${i + 1}`}
               >
                 {`Note ${i + 1} · ${formatTimecode(n.durationMs)} ×`}
               </Button>
@@ -178,6 +197,7 @@ export const VoiceNotes = ({
           ))}
         </ul>
       )}
+      {sheet}
     </div>
   )
 }
@@ -232,7 +252,7 @@ export const OpenDigest = ({
 
 /**
  * Shares `kind`'s new file and its voice notes, then asks whether they
- * arrived: only then does their audio leave the phone.
+ * arrived: only then does the share count, and its audio leave the phone.
  */
 export const ShareToDrive = ({
   kind,
@@ -253,30 +273,38 @@ export const ShareToDrive = ({
   const { ask, sheet } = useConfirmSheet()
   useIntentEffect(share, (shared) => {
     if (shared.outcome !== "shared") return
+    // `arrived` (components/reflection/copy) says the same of reflections,
+    // but a reflection module stays out of reach here (LA7).
     ask({
       title: "Did they arrive?",
       description:
-        "Once they have, the voice notes that went out can leave the phone. What you decided stays.",
-      confirm: "They arrived",
-      keep: "Keep them here",
+        "Once they have, they count as sent and their voice notes can leave this phone.",
+      confirm: "They arrived: let them go",
+      keep: "Not yet: offer them again",
       onConfirm: () => jobs.arrived(shared.shareId),
     })
   })
+  const file = isFile(outgoing) ? outgoing : null
   return (
     <section className="flex flex-col gap-2">
       <IntentButton
         state={share.state}
         onPress={() => share.start(undefined)}
-        disabled={outgoing === null}
+        disabled={file === null}
         size="lg"
         idleLabel={label}
         workingLabel="Sharing…"
       />
       <p className="text-muted-foreground text-xs">
-        {outgoing === null
+        {file === null
           ? "Nothing new to share."
-          : `${outgoing.name}${outgoing.voice.length > 0 ? ` and ${outgoing.voice.length} voice note${outgoing.voice.length > 1 ? "s" : ""}` : ""}.`}
+          : `${file.name}${file.voice.length > 0 ? ` and ${counted(file.voice.length, "voice note")}` : ""}.`}
       </p>
+      {outgoing !== null && "problem" in outgoing && (
+        <p role="alert" className="text-destructive text-sm">
+          {outgoing.problem}
+        </p>
+      )}
       {children}
       {sheet}
     </section>

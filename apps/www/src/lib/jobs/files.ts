@@ -1,14 +1,20 @@
 /**
  * The files the phone shares back to Drive, made from the record: what the
- * log holds since the last share of their kind. `@some-ui/job-desk` owns the
- * shapes, and each file is parsed with it before it is offered, so the
- * routine never reads one the phone could not.
+ * log holds since the last share of their kind that arrived. `@some-ui/job-desk`
+ * owns the shapes, and each file is checked with it before it is offered, so
+ * the routine never reads one the phone could not.
  */
+import { extensionOf } from "@some-ui/core-utils"
 import type { Decisions, Scouts } from "@some-ui/job-desk"
-import { DecisionsSchema, ScoutsSchema } from "@some-ui/job-desk"
+import {
+  decisionsFileName,
+  DecisionsSchema,
+  scoutsFileName,
+  ScoutsSchema,
+} from "@some-ui/job-desk"
 
 import type { JobEvent, JobsState, ShareKind, VoiceNote } from "./model"
-import { decisionOf, lastShare } from "./model"
+import { decisionOf, lastDelivered, sharesOn } from "./model"
 
 export type OutgoingFile = {
   kind: ShareKind
@@ -20,19 +26,20 @@ export type OutgoingFile = {
   through: number
 }
 
-const EXTENSIONS: ReadonlyArray<readonly [RegExp, string]> = [
-  [/webm/, "webm"],
-  [/ogg/, "ogg"],
-  [/mp4|m4a|aac/, "m4a"],
-]
+/**
+ * A file the record holds but job-desk would refuse: never offered, and said
+ * instead of the file, so a bad event can't silently stop the share.
+ */
+type Unshareable = { kind: ShareKind; problem: string }
 
-function extensionOf(mimeType: string): string {
-  return EXTENSIONS.find(([pattern]) => pattern.test(mimeType))?.[1] ?? "webm"
-}
+export type Outgoing = OutgoingFile | Unshareable | null
 
-/** `20261018T145200`: a stamp that sorts and names a file. */
-function stampOf(at: string): string {
-  return at.replace(/[-:]/g, "").slice(0, 15)
+const pad = (n: number): string => String(n).padStart(2, "0")
+
+/** `20261018T145200` in local time: a stamp that sorts and names a file. */
+function stampOf(at: Date): string {
+  const day = `${at.getFullYear()}${pad(at.getMonth() + 1)}${pad(at.getDate())}`
+  return `${day}T${pad(at.getHours())}${pad(at.getMinutes())}${pad(at.getSeconds())}`
 }
 
 /** Names `ids` `<prefix>_voice-<n>.<ext>`, `n` counting from `first`. */
@@ -44,7 +51,7 @@ function voiceNames(
 ): Array<{ id: string; name: string }> {
   return ids.map((id, i) => {
     const note = voice.find((n) => n.id === id)
-    const ext = extensionOf(note?.mimeType ?? "")
+    const ext = extensionOf(note?.mimeType ?? "audio/webm")
     return { id, name: `${prefix}_voice-${first + i}.${ext}` }
   })
 }
@@ -66,32 +73,26 @@ function pickVoice(
 }
 
 function since(state: JobsState, kind: ShareKind): ReadonlyArray<JobEvent> {
-  return state.log.slice(lastShare(state, kind)?.through ?? 0)
-}
-
-function sharedOn(state: JobsState, kind: ShareKind, day: string): number {
-  return state.log.filter(
-    (e) => e.type === "shared" && e.kind === kind && e.day === day
-  ).length
+  return state.log.slice(lastDelivered(state, kind)?.through ?? 0)
 }
 
 /**
  * `decisions-<day>.json`: each pick decided or debriefed since the last
- * decisions share, as it stands now; the picks of an earlier day's digest
- * nobody touched; disagreements and outcomes since. Null when there is
- * nothing new to say.
+ * decisions share that arrived, as it stands now; the picks of an earlier
+ * day's digest nobody touched; disagreements and outcomes since. Null when
+ * there is nothing new to say.
  */
 export function decisionsFile(
   state: JobsState,
   day: string,
   at: string
-): OutgoingFile | null {
+): Outgoing {
   const fresh = since(state, "decisions")
   const touched = new Map<string, { day: string; pickId: string }>()
   for (const e of fresh) {
     if ("pickId" in e) touched.set(`${e.day}/${e.pickId}`, e)
   }
-  const lastDay = lastShare(state, "decisions")?.day ?? ""
+  const lastDay = lastDelivered(state, "decisions")?.day ?? ""
 
   const picks: Decisions["picks"] = []
   const voice: Array<{ id: string; name: string }> = []
@@ -156,7 +157,7 @@ export function decisionsFile(
   )
   if (picks.length + disagreements.length + outcomes.length === 0) return null
 
-  const file: Decisions = DecisionsSchema.parse({
+  const parsed = DecisionsSchema.safeParse({
     schema: "some-ui.job-decisions/1",
     day,
     digestDay: state.current ?? day,
@@ -165,18 +166,19 @@ export function decisionsFile(
     disagreements,
     outcomes,
   })
-  const n = sharedOn(state, "decisions", day)
+  if (!parsed.success) return unshareable("decisions", parsed.error.issues)
+  const file: Decisions = parsed.data
   return {
     kind: "decisions",
-    name: n === 0 ? `decisions-${day}.json` : `decisions-${day}-${n + 1}.json`,
+    name: decisionsFileName(day, sharesOn(state, "decisions", day) + 1),
     json: JSON.stringify(file, null, 2),
     voice,
     through: state.log.length,
   }
 }
 
-/** `scouts-<stamp>.json`: every scout added since the last scouts share. */
-export function scoutsFile(state: JobsState, at: string): OutgoingFile | null {
+/** `scouts-<stamp>.json`: every scout added since the last one that arrived. */
+export function scoutsFile(state: JobsState, at: Date): Outgoing {
   const fresh = since(state, "scouts").filter((e) => e.type === "scout")
   if (fresh.length === 0) return null
   const stamp = stampOf(at)
@@ -186,16 +188,37 @@ export function scoutsFile(state: JobsState, at: string): OutgoingFile | null {
     voice.push(...names)
     return { ...e.scout, voice: names.map((n) => n.name), addedAt: e.at }
   })
-  const file: Scouts = ScoutsSchema.parse({
+  const parsed = ScoutsSchema.safeParse({
     schema: "some-ui.job-scouts/1",
-    sharedAt: at,
+    sharedAt: at.toISOString(),
     scouts,
   })
+  if (!parsed.success) return unshareable("scouts", parsed.error.issues)
+  const file: Scouts = parsed.data
   return {
     kind: "scouts",
-    name: `scouts-${stamp}.json`,
+    name: scoutsFileName(stamp),
     json: JSON.stringify(file, null, 2),
     voice,
     through: state.log.length,
   }
+}
+
+function unshareable(
+  kind: ShareKind,
+  issues: ReadonlyArray<{ path: ReadonlyArray<PropertyKey>; message: string }>
+): Unshareable {
+  const issue = issues.at(0)
+  const where = issue
+    ? `${issue.path.map(String).join(".")}: ${issue.message}`
+    : ""
+  return {
+    kind,
+    problem: `This phone holds something the morning run can't read, so it isn't sharing ${kind} yet (${where}).`,
+  }
+}
+
+/** Whether `outgoing` is a file to share. */
+export function isFile(outgoing: Outgoing): outgoing is OutgoingFile {
+  return outgoing !== null && !("problem" in outgoing)
 }

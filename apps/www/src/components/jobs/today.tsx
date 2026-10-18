@@ -1,12 +1,12 @@
 /**
  * Jobs › Today: the digest opened last, its picks by track, and what the
- * routine set aside. Phone-only (`build.paths.ts`).
+ * routine set aside.
  */
 import type { JSX } from "react"
 import { useState } from "react"
-import { assertNever } from "@some-ui/core-utils"
-import type { Pick } from "@some-ui/job-desk"
-import { digestFindings } from "@some-ui/job-desk"
+import { assertNever, counted } from "@some-ui/core-utils"
+import type { Digest, Pick, Track } from "@some-ui/job-desk"
+import { digestFindings, PICKS_PER_DAY, TRACKS } from "@some-ui/job-desk"
 import { Badge, Button, Textarea } from "@some-ui/shared"
 import { Link } from "@tanstack/react-router"
 
@@ -23,6 +23,11 @@ import {
   sectionHeading,
   useJobs,
 } from "./parts"
+
+const TRACK_HEADINGS: Readonly<Record<Track, string>> = {
+  software: "Software engineering",
+  adjacent: "Software-adjacent",
+}
 
 const STATE_LABEL = (progress: Progress): string => {
   switch (progress.kind) {
@@ -98,7 +103,6 @@ const PickCard = ({
       <Steps progress={progress} />
     </>
   )
-  // A pick's page is an "apk" one (A3, packages/some-vite-config/AUDIENCES.md).
   return hasAudience("apk") ? (
     <Link
       to="/jobs/pick/$day/$pickId"
@@ -119,7 +123,7 @@ const SetAside = ({
 }: {
   state: JobsState
   day: string
-  aside: { fingerprint: string; title: string; company: string; why: string }
+  aside: Digest["setAside"][number]
 }): JSX.Element => {
   const [note, setNote] = useState<string | null>(null)
   const said = disagreed(state).has(aside.fingerprint)
@@ -184,9 +188,10 @@ export const JobsToday = (): JSX.Element => {
       <section className="flex flex-col gap-4 py-6">
         <h2 className="text-xl font-bold">No picks open yet</h2>
         <p className="text-muted-foreground">
-          Every morning a run leaves the day’s picks in Drive: three software
-          roles and two software-adjacent ones, each scored against the résumé.
-          Open the newest one here.
+          Every morning a run leaves the day’s picks in Drive: up to{" "}
+          {counted(PICKS_PER_DAY.software, "software role")} and{" "}
+          {counted(PICKS_PER_DAY.adjacent, "software-adjacent one")}, each
+          scored against the résumé. Open the newest one here.
         </p>
         <OpenDigest prominent />
         <Problem />
@@ -195,10 +200,7 @@ export const JobsToday = (): JSX.Element => {
   }
 
   const findings = digestFindings(digest)
-  const tracks = [
-    ["software", "Software engineering"],
-    ["adjacent", "Software-adjacent"],
-  ] as const
+  const tracks = TRACKS.map((t) => [t, TRACK_HEADINGS[t]] as const)
   return (
     <div className="flex flex-col gap-4">
       <section className="flex flex-col gap-2 rounded-xl border p-3">

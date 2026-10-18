@@ -10,6 +10,9 @@ UI here, only the shapes, the policy and a checker.
 | `decisions-<day>.json`, job-decisions/1 | the phone, shared | the routine | `some-ui jobs/Decisions` |
 | `scouts-<stamp>.json`, job-scouts/1     | the phone, shared | the routine | `some-ui jobs/Scout`     |
 
+A second decisions share on one day is `decisions-<day>-2.json`, then `-3`
+(`decisionsFileName`).
+
 - `src/policy.ts` sets how many picks each track gets, where to search, the
   queries, and the titles never picked. The owner set it on 2026-10-17.
 - `ROUTINE.md` is the routine's instructions. The scheduled task's prompt

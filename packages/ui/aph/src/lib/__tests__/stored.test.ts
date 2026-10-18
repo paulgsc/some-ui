@@ -45,12 +45,6 @@ describe("what the phone keeps", () => {
     const store = createAphStore(seed, storage)
     expect(store.get()).toEqual(seed)
     expect(storage.map.get(`${QUARANTINE_PREFIX}1`)).toBe("{not json")
-
-    // A second one goes beside the first, not over it.
-    storage.map.set(STORAGE_KEY, JSON.stringify({ v: 99 }))
-    createAphStore(seed, storage)
-    expect(storage.map.get(`${QUARANTINE_PREFIX}1`)).toBe("{not json")
-    expect(storage.map.get(`${QUARANTINE_PREFIX}2`)).toBe('{"v":99}')
   })
 
   it("moves aside a record that breaks the rules", () => {

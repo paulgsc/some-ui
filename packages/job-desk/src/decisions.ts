@@ -19,7 +19,8 @@ import {
  * Append-only by convention: a later file never edits an earlier one. It
  * adds outcomes for earlier picks by fingerprint, and it restates a pick only
  * when I changed my mind about it; the newest file's entry for a fingerprint
- * is the decision that stands.
+ * is the decision that stands. A second share on one day is
+ * `decisions-<day>-2.json`, then `-3`, and so on (`decisionsFileName`).
  */
 
 export const PASS_REASONS = [
@@ -53,15 +54,28 @@ export const OUTCOMES = [
   "no-reply-30d",
 ] as const
 
+export const DEBRIEF_RESULTS = ["submitted", "gave-up", "closed"] as const
+
+/** The longest an application may be said to have taken, in minutes. */
+export const MAX_DEBRIEF_MINUTES = 600
+
+/** A debrief's minutes, from opening the posting to done, as I confirmed it. */
+export const DebriefMinutesSchema = z
+  .number()
+  .int()
+  .min(1)
+  .max(MAX_DEBRIEF_MINUTES)
+
+/** 1 smooth, 5 nearly gave up. */
+export const FrictionSchema = z.number().int().min(1).max(5)
+
 const DebriefSchema = z.object({
-  /** From opening the posting to done, as I confirmed it. */
-  minutes: z.number().int().min(1).max(600),
-  /** 1 smooth, 5 nearly gave up. */
-  friction: z.number().int().min(1).max(5),
+  minutes: DebriefMinutesSchema,
+  friction: FrictionSchema,
   frictionChips: z.array(z.enum(FRICTION)),
   what: z.string(),
   voice: z.array(VoiceFileSchema),
-  result: z.enum(["submitted", "gave-up", "closed"]),
+  result: z.enum(DEBRIEF_RESULTS),
 })
 
 export const DecisionsSchema = z.object({
@@ -103,4 +117,9 @@ export type Decisions = z.infer<typeof DecisionsSchema>
 
 export function parseDecisions(raw: string): Parsed<Decisions> {
   return parseWith(DecisionsSchema, "a decisions file", raw)
+}
+
+/** The `n`th decisions file shared on `day`, counting from 1. */
+export function decisionsFileName(day: string, n = 1): string {
+  return n <= 1 ? `decisions-${day}.json` : `decisions-${day}-${n}.json`
 }

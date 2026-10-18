@@ -1,9 +1,8 @@
 /**
  * Jobs › Record: every pick taken, what came of it, and today's decisions
- * out to Drive for the morning run. Phone-only (`build.paths.ts`).
+ * out to Drive for the morning run.
  */
 import type { JSX } from "react"
-import { dayOf } from "@some-ui/core-utils"
 import { OUTCOMES } from "@some-ui/job-desk"
 import { Badge, Button } from "@some-ui/shared"
 import { Link } from "@tanstack/react-router"
@@ -11,7 +10,7 @@ import { Link } from "@tanstack/react-router"
 import { hasAudience } from "@/lib/build-profile"
 import { phoneJobs } from "@/lib/jobs"
 import type { Outcome } from "@/lib/jobs/model"
-import { applicationsOf, lastShare } from "@/lib/jobs/model"
+import { applicationsOf, lastDelivered } from "@/lib/jobs/model"
 
 import { Problem, sectionHeading, ShareToDrive, useJobs } from "./parts"
 
@@ -34,7 +33,7 @@ export const JobsRecord = (): JSX.Element => {
   const minutes = debriefs.map((d) => d.minutes).sort((a, b) => a - b)
   const median =
     minutes.length > 0 ? minutes[Math.floor(minutes.length / 2)] : null
-  const last = lastShare(state, "decisions")
+  const last = lastDelivered(state, "decisions")
   return (
     <div className="flex flex-col gap-5">
       <section className="grid grid-cols-2 gap-2 rounded-xl border p-3 text-sm tabular-nums">
@@ -70,7 +69,6 @@ export const JobsRecord = (): JSX.Element => {
                 className="flex flex-col gap-2 rounded-xl border p-3"
               >
                 <div className="flex items-baseline justify-between gap-2">
-                  {/* A pick's page is an "apk" one (A3). */}
                   {hasAudience("apk") ? (
                     <Link
                       to="/jobs/pick/$day/$pickId"
@@ -114,13 +112,7 @@ export const JobsRecord = (): JSX.Element => {
                         variant="outline"
                         className="rounded-full"
                         onClick={() =>
-                          jobs.record({
-                            type: "outcome",
-                            fingerprint: a.pick.fingerprint,
-                            event,
-                            on: dayOf(new Date()),
-                            note: "",
-                          })
+                          jobs.addOutcome(a.pick.fingerprint, event)
                         }
                       >
                         {OUTCOME_LABELS[event]}
