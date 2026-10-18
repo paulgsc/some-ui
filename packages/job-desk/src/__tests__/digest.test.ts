@@ -4,6 +4,7 @@ import type { Digest } from "@job-desk/digest"
 import {
   parseDigest,
   RESUME_VARIANTS,
+  SOFTWARE_VARIANTS,
   SUBMISSION_TEMPLATES,
 } from "@job-desk/digest"
 import { digestFindings } from "@job-desk/findings"
@@ -74,6 +75,14 @@ describe("the résumé lists a digest names", () => {
     )!
     const names = [...list!.matchAll(/"([^"]+)"/g)].map(([, name]) => name)
     expect(RESUME_VARIANTS).toEqual(names)
+  })
+
+  it("send a software pick only the compositions the résumé tracks as software", () => {
+    const data = resumeFile("src/react/generated/data.ts")
+    const software = [
+      ...data.matchAll(/"variant": "([a-z-]+)",\s*"track": "software"/g),
+    ].map(([, name]) => name)
+    expect(SOFTWARE_VARIANTS).toEqual(software)
   })
 
   it("are the layouts that take contact details", () => {

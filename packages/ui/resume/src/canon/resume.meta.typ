@@ -374,8 +374,10 @@ lines (fullstack, some-filter), the AMO release pipeline and CI gate
 (Platform, release, and reuse) and the transport kernel's null-adapter
 conformance. Titles are each composition's own (`title`, `role`): "Data
 Analyst", "QA Automation Engineer" and "Integration Engineer" describe the
-work on the page, and the role line keeps "independent systems work" and the
-"no employer" note, so none reads as a job held.
+work on the page. The role lines ("Data & Analytics Engineer", "Test
+Automation Engineer" and "Integration Engineer", each followed by
+"independent systems work") keep the "no employer" note, so none reads as a
+job held.
 
 == Counts
 
@@ -475,18 +477,15 @@ reusing the number anywhere that matters.
 Unlike every claim above, nothing in this section traces to `paulgsc/server` or
 `paulgsc/some-ui` — it is sourced from the candidate's own separate
 non-engineering résumé (`pg_resume_2026`), tracked here so the full history
-stays legible even though `src/data/personal.typ`'s `additional-experience`
-renders only one of these four entries. Kept out of the rendered résumé
-itself deliberately: an engineering résumé's "Additional experience" section
-exists to prove continuity and name transferable skills from one concrete
-job, not to re-litigate a full separate career — see `personal.typ`'s own
-comment on that field.
+stays legible. `src/data/personal.typ`'s `additional-experience` holds all
+four, and each composition renders only the ones its postings screen for
+(below).
 
 - *WIS* --- Inventory Specialist, Sacramento, CA, January 2024 --- Present
   (current). High-volume cycle counting and 10-key data entry at 99.9%+
   accuracy; daily reconciliation of physical counts against system records.
 - *CABA Design* --- Data Administrator, Rancho Cordova, CA, August 2020 ---
-  December 2023. The entry `personal.typ` actually renders: Tableau
+  December 2023. The entry every composition renders: Tableau
   dashboards on PostgreSQL, Google Workspace API-driven executive-reporting
   automation (10+ hours/week saved), and Python scripts against Odoo's
   XML-RPC API automating record creation and resolving data issues.

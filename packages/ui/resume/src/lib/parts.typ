@@ -16,6 +16,9 @@
 #let STACK-GAP = 0.72em
 // Gap under an oversized heading line, which needs to clear a much taller box.
 #let HEADING-GAP = 1.1em
+// The gap above the `i`-th of several stacked entries: a later one needs the
+// full stack gap, or its title rides up into the previous one's last bullet.
+#let stack-above(i) = if i > 0 { STACK-GAP } else { auto }
 
 // A section rule. `on-rail` flips the palette for the coloured column.
 #let section-head(theme, title, on-rail: false) = block(

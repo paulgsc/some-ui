@@ -411,7 +411,7 @@ export const resumeData: Record<ResumeVariant, ResumeData> = {
       "location": "Berkeley, CA"
     },
     "label": "Data analysis, metrics & reporting",
-    "summary": "Data analyst with three years as a data administrator building Tableau dashboards on PostgreSQL and automating reporting in Python, followed by independent engineering on the data paths of a Rust and TypeScript platform: SQL schema and query design, migrations, Prometheus metrics and Grafana dashboards, Python checks for data quality in CI, and typed JSON data contracts. Earlier clinical data operations under HIPAA at 99.99% accuracy.",
+    "summary": "Data analyst with three years as a data administrator building Tableau dashboards on PostgreSQL, automating reporting through the Google Workspace API and data fixes in Python, followed by independent engineering on the data paths of a Rust and TypeScript platform: SQL schema and query design, migrations, Prometheus metrics and Grafana dashboards, Python checks for data quality in CI, and typed JSON data contracts. Earlier clinical data operations under HIPAA at 99.99% accuracy.",
     "skills": "SQL; PostgreSQL; SQLite/SQLx; Python; Tableau; dashboards and reporting; reporting automation; data quality and validation checks; schema design and migrations; Prometheus metrics; Grafana; JSON; REST APIs; TypeScript; Zod data contracts; Google Workspace API; GitHub Actions CI/CD",
     "projects": [
       {
@@ -440,7 +440,7 @@ export const resumeData: Record<ResumeVariant, ResumeData> = {
     "platform": [
       "Write SQL against versioned schemas with paired migrations and compile-time-checked queries.",
       "Treat missing data as a fault: every dashboard distinguishes measured-good, measured-bad, and unknown.",
-      "Automate recurring reports and data fixes in Python rather than by hand.",
+      "Automate recurring reports and data fixes rather than doing them by hand.",
       "Check data contracts in CI so drift between producer and consumer fails a pull request.",
       "Keep definitions, limits, and failure conditions in version control beside the code and tests."
     ],
@@ -551,7 +551,7 @@ export const resumeData: Record<ResumeVariant, ResumeData> = {
       "location": "Berkeley, CA"
     },
     "label": "Test automation & quality engineering",
-    "summary": "Test automation engineer building the checks that gate every change across a TypeScript and Rust monorepo and its server: Playwright end-to-end suites in a real browser, contract and API testing against a generated route inventory, unit and integration tests, and change-scoped CI/CD that holds a release until they pass. Brings 99.9%+ accuracy habits from inventory reconciliation and clinical data work.",
+    "summary": "Test automation engineer building the checks that gate every change across a TypeScript and Rust monorepo and its server: Playwright end-to-end suites in a real browser, contract and API testing against a generated route inventory, unit and integration tests, and change-scoped CI/CD that holds a release until they pass. Brings 99.9%+ accuracy habits from daily inventory reconciliation.",
     "skills": "Playwright; Vitest; test automation; end-to-end, integration, unit, contract, and API testing; regression testing; cross-browser testing; TypeScript; Rust; Zod; REST APIs; GitHub Actions CI/CD; Turbo; Docker; release gating",
     "projects": [
       {
@@ -737,7 +737,7 @@ export const resumeData: Record<ResumeVariant, ResumeData> = {
       },
       {
         "title": "Reporting automation",
-        "body": "Google Workspace API reporting and Python scripts against Odoo's XML-RPC API, saving 10+ hours weekly at CABA Design."
+        "body": "Reporting automated through the Google Workspace API, saving 10+ hours weekly, and Python scripts against Odoo's XML-RPC API at CABA Design."
       }
     ],
     "toolbox": [

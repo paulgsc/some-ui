@@ -8,8 +8,8 @@ The phone opens that file, and later runs read it back to see what was
 already picked.
 
 The run writes to Drive only. It changes nothing in the repo: no commits, no
-pushes, no PRs. A posting that needs a résumé composition that doesn't exist
-yet is proposed as a patch with `pr: null`, and I decide whether to write it.
+pushes, no PRs. A posting no composition leads with yet is proposed as a
+patch with `pr: null` (§6), and I decide whether to write it.
 
 The shapes are this package's schemas, and `src/__tests__/sample.digest.json`
 is a complete digest to copy. The limits (picks per track, places, queries,

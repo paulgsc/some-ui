@@ -199,7 +199,7 @@
           "text": "dbt or a cloud warehouse"
         }
       ],
-      "dontClaim": ["Snowflake", "BigQuery", "Analytics engineer title"],
+      "dontClaim": ["Snowflake", "BigQuery", "A held analytics engineer title"],
       "resume": {
         "kind": "build",
         "variant": "data",
@@ -260,7 +260,7 @@
           "text": "Mobile device lab"
         }
       ],
-      "dontClaim": ["QA job title", "ISTQB certification"],
+      "dontClaim": ["A held QA job title", "ISTQB certification"],
       "resume": {
         "kind": "patch",
         "variant": "qa",

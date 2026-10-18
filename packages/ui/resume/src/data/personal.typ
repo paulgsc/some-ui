@@ -58,9 +58,7 @@
   // résumé (src/canon/resume.meta.typ, "Non-engineering employment
   // history"), each with its own dates. Keep the same shape as an engineering
   // entry so the templates render them without a special case. Each
-  // composition in resume.typ names, by `org`, which of these it renders:
-  // the software compositions show CABA Design alone, the adjacent ones the
-  // jobs whose evidence their postings screen for.
+  // composition in resume.typ names, by `org`, which of these it renders.
   //
   additional-experience: (
     (

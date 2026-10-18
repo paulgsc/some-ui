@@ -190,7 +190,7 @@ const ResumeBuildForm = ({
             <Button asChild variant="outline">
               <a href={state.url} download={state.filename}>
                 <Download />
-                Download {state.filename}
+                Download PDF
               </a>
             </Button>
           )}

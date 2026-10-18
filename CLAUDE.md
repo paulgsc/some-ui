@@ -486,10 +486,7 @@ never "sounds like good practice."
   `apps/mobile` (it generates the gitignored `capacitor-cordova-android-plugins/`, without
   which Gradle fails to configure) and `ANDROID_HOME=<dir> ./gradlew :app:lintRelease
 :app:assembleRelease`. Maven Central can answer 429 mid-download; that is rate limiting,
-  so retry. The Play review's own tests run only there too, and their fixture manifest
-  lists every launcher alias: after a change to `apps/mobile/review/policy.json` or the
-  manifest, run `node --test apps/mobile/review/checks.test.mjs` (a new wing's alias
-  turned `main` red on #1884). Separately, vitest and every www Playwright suite run the `lan` or `pages`
+  so retry. Separately, vitest and every www Playwright suite run the `lan` or `pages`
   build profile, never `mobile`: `MOBILE_APP` and `hasAudience("apk")` are false there, so
   an APK-only branch (the wing bar, the header's way out, the foyer) is rendered by no test
   unless that test mocks `@/lib/build-profile` itself. `main`'s launch test does start the

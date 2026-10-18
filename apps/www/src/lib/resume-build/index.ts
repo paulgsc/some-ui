@@ -16,7 +16,7 @@ import { assertNever } from "@some-ui/core-utils"
 import type { ResumeRenderOutcome, ResumeRenderRequest } from "@some-ui/resume"
 import { PII_TEMPLATES, renderResume } from "@some-ui/resume"
 
-import { RESUME_COMPOSITIONS } from "@/lib/resume-options"
+import { isResumeComposition } from "@/lib/resume-options"
 
 /**
  * What a link may preselect: the phone's Jobs wing opens this page with the
@@ -29,15 +29,12 @@ export type BuilderSearch = {
   readonly pick?: string
 }
 
-/** A job pick's id (`@some-ui/job-desk`'s `IdSchema`). */
+/**
+ * A job pick's id: `@some-ui/job-desk`'s `IdSchema`, copied because job-desk
+ * ships only in the phone's build (build.paths.ts) and this page is the lan
+ * build's.
+ */
 const PICK_ID = /^[a-z0-9][a-z0-9-]{2,40}$/
-
-function member(
-  value: unknown,
-  ids: ReadonlyArray<string>
-): string | undefined {
-  return typeof value === "string" && ids.includes(value) ? value : undefined
-}
 
 export function parseBuilderSearch(
   search: Record<string, unknown>
@@ -47,11 +44,8 @@ export function parseBuilderSearch(
       ? search.pick
       : undefined
   return {
-    variant: member(
-      search.variant,
-      RESUME_COMPOSITIONS.map(({ id }) => id)
-    ),
-    template: member(search.template, PII_TEMPLATES),
+    variant: isResumeComposition(search.variant) ? search.variant : undefined,
+    template: PII_TEMPLATES.find((t) => t === search.template),
     pick,
   }
 }
