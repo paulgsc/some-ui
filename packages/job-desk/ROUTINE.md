@@ -142,7 +142,7 @@ pages refuse agents.
      `title`, company `company_name`, description `content` (HTML,
      entity-escaped), place `location.name`, posted `first_published`, apply
      link `absolute_url`. Add `?pay_transparency=true` for pay
-     (`pay_input_ranges`).
+     (`pay_input_ranges`, in cents).
    - **Lever:** `https://api.lever.co/v0/postings/<company>/<id>`. Title
      `text`, description `descriptionPlain`, `lists`, `additionalPlain` and
      `salaryDescriptionPlain` (pay and clearance terms are often only in the
@@ -179,13 +179,15 @@ pages refuse agents.
 
 4. **Keep** a posting only when one of its places is in `LOCATIONS`: remote
    and open to people in the US, or based in Berkeley, San Francisco or
-   Oakland. A remote role limited to another region ("Europe", "Hybrid -
-   London") is not. Record as its `location` the `LOCATIONS` entry it
-   matched, written as `LOCATIONS` writes it ("Remote" for remote), the
-   remote one first, so the same posting has one fingerprint from every
-   source and every run. Drop the rest before counting. A scout outside
-   `LOCATIONS` is still answered: `disagree`, with `rule` "outside
-   LOCATIONS".
+   Oakland. A posting is remote when its `workplaceType` says so or one of
+   its places does ("Remote (US)", "Open to US-based Remote"); either way
+   the region must be the US. A remote role limited to another region
+   ("Europe", "Hybrid - London") is not. Record as its `location` the
+   `LOCATIONS` entry it matched ("Remote" for `remote`), the remote one
+   first, so the same posting has one fingerprint from every source and
+   every run. Drop the other postings before counting. A scout outside
+   `LOCATIONS` is counted in `seen` and set aside by §4's rule for scouts,
+   with `rule` "outside LOCATIONS".
 
 Give each posting its `fingerprint()`. Postings with the same fingerprint are
 one posting. The same company and title in several cities are one posting
