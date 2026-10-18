@@ -396,7 +396,7 @@ describe("the crowd rules (QD14)", () => {
   it("hides by where an element sits, never by what it says (H1)", () => {
     // Matching an attribute's value is reading its text. Presence is not.
     for (const { selector } of crowdRulesFromCss()) {
-      expect(selector, selector).not.toMatch(/\[[\w-]+\s*[*^$~|]?=/)
+      expect(selector, selector).not.toMatch(/\[[^\]]*=/)
     }
     expect(CSS.slice(CSS.indexOf(CROWD_MARKER))).not.toContain("@")
   })

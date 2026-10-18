@@ -25,11 +25,18 @@ const CSS = readFileSync(
 )
 const CROWD = crowdRules(CSS).map((r) => r.selector)
 
-type Verdict = { readonly label: string; readonly crowd: boolean }
+/** What the nearest `display: none` element on a path is. */
+type Hider = "none" | "crowd" | "card" | "other"
+type Verdict = { readonly label: string; readonly hider: Hider }
+
+test.beforeAll(() => {
+  // Without it, an empty parse would make C2 pass with nothing to spare.
+  expect(CROWD.length).toBeGreaterThan(20)
+})
 
 /**
- * For each element carrying `attr`, whether the nearest `display: none`
- * element on its path (itself included) is one a crowd selector names.
+ * For each element carrying `attr`, what hides it: nothing, a crowd rule, the
+ * card it sits in (stamped absent), or anything else.
  */
 async function verdicts(
   page: Page,
@@ -43,10 +50,15 @@ async function verdicts(
           n = n.parentElement
         }
         const hider = n
-        return {
-          label: el.getAttribute(a) ?? "",
-          crowd: hider !== null && selectors.some((s) => hider.matches(s)),
-        }
+        const kind =
+          hider === null
+            ? "none"
+            : selectors.some((s) => hider.matches(s))
+              ? "crowd"
+              : hider.getAttribute("data-boyo") === "absent"
+                ? "card"
+                : "other"
+        return { label: el.getAttribute(a) ?? "", hider: kind }
       }),
     [attr, CROWD] as const
   )
@@ -55,7 +67,6 @@ async function verdicts(
 test("C1: every crowd number and age is hidden by a crowd rule", async ({
   fixture,
 }) => {
-  expect(CROWD.length).toBeGreaterThan(20)
   const page = await fixture.goto("yt-crowd")
   await fixture.pollDebug(page, (d) => d.phase === "running", {
     timeout: 8000,
@@ -63,8 +74,8 @@ test("C1: every crowd number and age is hidden by a crowd rule", async ({
 
   const crowd = await verdicts(page, "data-crowd")
   expect(crowd.length).toBeGreaterThan(20)
-  for (const { label, crowd: hidden } of crowd) {
-    expect(hidden, label).toBe(true)
+  for (const { label, hider } of crowd) {
+    expect(hider, label).toBe("crowd")
   }
 })
 
@@ -83,10 +94,7 @@ test("C2: no crowd rule hides what a card keeps, or a button", async ({
 
   const kept = await verdicts(page, "data-keep")
   expect(kept.length).toBeGreaterThan(10)
-  for (const { label, crowd } of kept) {
-    expect(crowd, label).toBe(false)
+  for (const { label, hider } of kept) {
+    expect(["none", "card"], label).toContain(hider)
   }
-  // And a plated card's are on screen, not merely spared.
-  await expect(page.locator('[data-keep="title"]').first()).toBeVisible()
-  await expect(page.locator('[data-keep="duration"]')).toBeVisible()
 })

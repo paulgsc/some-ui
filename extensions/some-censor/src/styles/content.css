@@ -574,7 +574,8 @@ ytd-item-section-renderer:has(> #contents > ytd-shelf-renderer:only-child):has(
 
 /* "New": on a Short, in a lockup thumbnail's top corner (a duration sits in
    the bottom overlay, "Mix" in the bottom corner), and in a search result's
-   badges, where CC, 4K and LIVE are shaped otherwise. A Short's view count. */
+   badges, where CC, 4K and LIVE are shaped otherwise (a "360°" there
+   would share New's shape and go too). A Short's view count. */
 :root:not([data-boyo-off]) .ytThumbnailOverlayBadgeViewModelTopStart {
   display: none !important;
 }
