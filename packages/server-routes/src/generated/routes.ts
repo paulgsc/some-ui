@@ -27,6 +27,8 @@ export type ServerRoute =
   | "/api/v1/curriculum/operator/lessons/:key"
   | "/api/v1/curriculum/operator/lessons/:key/restore"
   | "/api/v1/curriculum/operator/lessons/:key/retire"
+  | "/api/v1/jobs"
+  | "/api/v1/jobs/events/:id"
   | "/api/v1/leetype/operator/rounds"
   | "/api/v1/leetype/operator/rounds/:id"
   | "/api/v1/leetype/operator/rounds/:id/restore"
