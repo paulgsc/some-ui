@@ -407,10 +407,9 @@ Each of these reports on a culture outside the rock. None informs a choice the
 owner makes.
 
 _Status: holds in the stylesheet (#1802), with gaps._ `styles/content.css`'s
-crowd rules hide each number and age by the element that carries it, one rule
-each, on every surface and in every state, and yield to the off switch.
-`tests/e2e/fixtures/yt-crowd.html` carries every shape from the 2026-10-17
-captures and of a signed-out live search. Gaps: a trending rank appears in no
+crowd rules hide each number and age by the element that carries it (pinned by
+`selectors.test.ts`). `tests/e2e/fixtures/yt-crowd.html` carries every shape
+from the 2026-10-17 captures and of a signed-out live search. Gaps: a trending rank appears in no
 capture, so it has no rule; the "Video details" list needs `:has()`, so
 Firefox 112–120 still shows it; the comments themselves are #1805's.
 

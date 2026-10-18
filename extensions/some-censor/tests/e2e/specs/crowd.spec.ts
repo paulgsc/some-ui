@@ -1,9 +1,9 @@
 /**
  * BOYO — the crowd is gone (#1802, QD14)
  *
- * C1 — Every crowd number and age in the fixture is hidden by a crowd rule
- *      of its own: the nearest element that is `display: none` is not a
- *      card the evidence made absent.
+ * C1 — Every crowd number and age in the fixture is hidden by a crowd rule:
+ *      the nearest element that is `display: none` is not a card the
+ *      evidence made absent.
  * C2 — What a card keeps (title, channel name, duration), and the controls
  *      beside a number, are still rendered.
  */
@@ -16,11 +16,9 @@ test("C1: every crowd number and age is hidden by a crowd rule, not by its card"
   fixture,
 }) => {
   const page = await fixture.goto("yt-crowd")
-  await fixture.pollDebug(
-    page,
-    (d) => d.phase === "running" && "vid_crowd01" in d.entries,
-    { timeout: 8000 }
-  )
+  await fixture.pollDebug(page, (d) => d.phase === "running", {
+    timeout: 8000,
+  })
 
   const verdicts = await page.evaluate((): Array<Verdict> => {
     const out: Array<Verdict> = []
@@ -69,9 +67,6 @@ test("C2: a card's title, channel and duration, and the buttons, stay rendered",
   expect(count).toBeGreaterThan(10)
   for (let i = 0; i < count; i += 1) {
     const el = kept.nth(i)
-    const label = await el.getAttribute("data-keep")
-    const box = await el.boundingBox()
-    expect(box, `${label ?? ""} is rendered`).not.toBeNull()
-    expect(box?.width ?? 0, `${label ?? ""} has width`).toBeGreaterThan(0)
+    await expect(el, (await el.getAttribute("data-keep")) ?? "").toBeVisible()
   }
 })

@@ -39,15 +39,10 @@
     comments), all of 2026-10-17. Titles, channels, ids and counts are
     placeholders; tag names, ids, classes and attribute names are as served.
 
-    `data-crowd` marks an element that carries a number or an age, and must
-    not be rendered. `data-keep` marks one that must be: a card's title,
-    channel name and duration, and the controls beside a number. Both
-    attributes are the spec's, not YouTube's.
-
-    The cards carry old dates, so they are plated and stay rendered: a number
-    hidden only because its card is absent would prove nothing. The Short and
-    the search result are absent whatever their dates, so they mark only
-    numbers, which the spec requires a crowd rule to hide.
+    `data-crowd` and `data-keep` are the spec's markers (crowd.spec.ts). The
+    lockups carry old dates, so they are plated and what they keep stays
+    rendered; the Short and the search result are absent, so they carry only
+    `data-crowd`.
   -->
 
     <ytd-app>
@@ -359,7 +354,6 @@
         </div>
       </ytd-channel-renderer>
 
-      <!-- A channel page's header. -->
       <yt-page-header-view-model>
         <h1 data-keep="channel">Channel Page</h1>
         <yt-content-metadata-view-model
@@ -390,7 +384,6 @@
         </yt-content-metadata-view-model>
       </yt-page-header-view-model>
 
-      <!-- The watch page. -->
       <ytd-watch-metadata>
         <ytd-video-owner-renderer>
           <div id="upload-info">
@@ -563,7 +556,6 @@
         </div>
       </ytd-comments-header-renderer>
 
-      <!-- The player. -->
       <div id="movie_player" class="html5-video-player">
         <div class="ytp-progress-bar-container">
           <div class="ytp-heat-map-container" data-crowd="most replayed graph">

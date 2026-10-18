@@ -528,22 +528,15 @@ ytd-item-section-renderer:has(> #contents > ytd-shelf-renderer:only-child):has(
 /* ----------------------------------------------------------
    THE CROWD (QD14)
 
-   Every crowd number and every age goes, on every surface and
-   whatever a card's state: views, likes, subscribers, comment
-   counts, live viewers, the most-replayed graph, the verified tick,
-   "New", and "6 years ago". A card keeps its title, its channel
-   name and its duration.
+   A card keeps its title, its channel name and its duration.
 
    These are vendor elements the extension never reads for what they
    say (H1), so they are hidden by where they sit, never by their
    text. The Sensor still reads an age's `aria-label`; `display:
    none` does not change what the DOM holds.
 
-   One selector per rule (QC0): an engine that cannot parse one
-   loses that number only. Each rule yields to the off switch, so off
-   stays plain YouTube (#1807). Shapes are from the owner's signed-in
-   captures and signed-out live pages of 2026-10-17; the fixture is
-   `tests/e2e/fixtures/yt-crowd.html`.
+   One selector per rule (QC0), each behind the off switch (#1807).
+   Fixture: `tests/e2e/fixtures/yt-crowd.html`.
    ---------------------------------------------------------- */
 
 /* Lockup metadata runs. A view count, an age, a live count and a
@@ -598,9 +591,8 @@ ytd-item-section-renderer:has(> #contents > ytd-shelf-renderer:only-child):has(
   display: none !important;
 }
 
-/* Watch page: the info row's views and age (its hashtags are links and
-   stay), the rolling counters beside it, and the tooltip with the exact
-   count and date. */
+/* The watch page's info row: its spans are the views and age, and its
+   hashtags are links, which stay. */
 :root:not([data-boyo-off]) ytd-watch-info-text #info > span {
   display: none !important;
 }
@@ -646,7 +638,6 @@ ytd-item-section-renderer:has(> #contents > ytd-shelf-renderer:only-child):has(
   display: none !important;
 }
 
-/* Comment counts: the comments panel's title, and the section header. */
 :root:not([data-boyo-off])
   ytd-engagement-panel-section-list-renderer[target-id="engagement-panel-comments-section"]
   #contextual-info {
@@ -657,10 +648,9 @@ ytd-item-section-renderer:has(> #contents > ytd-shelf-renderer:only-child):has(
   display: none !important;
 }
 
-/* The player: the most-replayed graph and its pill's label (the seek
-   bar and the hover time stay), the fullscreen overlay's subtitle (one
-   run of channel, views and age), the video wall's counts, and the
-   autoplay end screen's. */
+/* The player. The pill's title is "Most replayed" (its hover time stays),
+   and the fullscreen overlay's subtitle is one run of channel, views and
+   age. */
 :root:not([data-boyo-off]) .ytp-heat-map-container {
   display: none !important;
 }

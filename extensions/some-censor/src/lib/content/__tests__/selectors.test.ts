@@ -125,6 +125,22 @@ function shelfRulesFromCss(): Array<string> {
   ).filter((r) => normalize(r).includes(':has([data-boyo="absent"]):not('))
 }
 
+const CROWD_MARKER = "THE CROWD (QD14)"
+
+/** Every rule after the section's header, as selector and body. */
+function crowdRules(): Array<{ selector: string; body: string }> {
+  const start = CSS.indexOf(CROWD_MARKER)
+  expect(start, "the crowd section must exist").toBeGreaterThan(-1)
+  const section = CSS.slice(CSS.lastIndexOf("/*", start)).replace(
+    /\/\*[\s\S]*?\*\//g,
+    ""
+  )
+  return [...section.matchAll(/([^{}]+)\{([^{}]*)\}/g)].map((m) => ({
+    selector: (m[1] ?? "").trim(),
+    body: (m[2] ?? "").trim(),
+  }))
+}
+
 /** Every pre-mask rule's gate: the owner's off switch lifts them all. */
 const WHILE_ON = `:root:not([${SWITCHED_OFF_ATTRIBUTE}]) `
 
@@ -252,7 +268,11 @@ describe("the stylesheet and the catalogue agree", () => {
     // QC0: CSS selector-list invalidation is all-or-nothing, so one
     // unparseable selector sharing a rule (e.g. `:has()` before Firefox 121)
     // would cost every other selector in that rule its occluder.
-    for (const rule of [...premaskRulesFromCss(), ...shelfRulesFromCss()]) {
+    for (const rule of [
+      ...premaskRulesFromCss(),
+      ...shelfRulesFromCss(),
+      ...crowdRules().map((r) => r.selector),
+    ]) {
       expect(topLevelCommaCount(rule), rule).toBe(0)
     }
   })
@@ -373,33 +393,11 @@ describe("the stylesheet and the catalogue agree", () => {
 })
 
 describe("the crowd rules (QD14)", () => {
-  const MARKER = "THE CROWD (QD14)"
-
-  /** Every rule after the section's header, as selector and body. */
-  function crowdRules(): Array<{ selector: string; body: string }> {
-    const start = CSS.indexOf(MARKER)
-    expect(start, "the crowd section must exist").toBeGreaterThan(-1)
-    const section = CSS.slice(CSS.lastIndexOf("/*", start)).replace(
-      /\/\*[\s\S]*?\*\//g,
-      ""
-    )
-    return [...section.matchAll(/([^{}]+)\{([^{}]*)\}/g)].map((m) => ({
-      selector: (m[1] ?? "").trim(),
-      body: (m[2] ?? "").trim(),
-    }))
-  }
-
-  it("hides one vendor element per rule, and does nothing else", () => {
+  it("hides a vendor element and does nothing else, behind the off switch", () => {
     const rules = crowdRules()
     expect(rules.length).toBeGreaterThan(0)
     for (const { selector, body } of rules) {
-      expect(topLevelCommaCount(selector), selector).toBe(0)
       expect(body, selector).toBe("display: none !important;")
-    }
-  })
-
-  it("yields every rule to the off switch, so off is plain YouTube", () => {
-    for (const { selector } of crowdRules()) {
       expect(
         normalize(selector).startsWith(normalize(WHILE_ON)),
         selector
