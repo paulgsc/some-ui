@@ -4,6 +4,8 @@ import {
   FIXTURE_EXERCISE_ID,
   nextExercise,
 } from "@leetype/lib/leetype/exercises"
+import { AB_FIXTURES } from "@leetype/lib/leetype/session-file/__tests__/fixtures"
+import { SessionFileSchema } from "@leetype/types/session-file"
 import { act, fireEvent, render, screen } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
@@ -189,6 +191,34 @@ describe("Leetype", () => {
     unmount()
 
     render(<Leetype sessionFiles={{ store }} />)
+    expect(screen.getByText("Add a session from storage")).toBeTruthy()
+  })
+
+  it("plays a held session file in place of the rounds, and comes back when it ends", async () => {
+    setViewport(true)
+    const raw = SessionFileSchema.parse(AB_FIXTURES[1]?.raw)
+    const store = {
+      list: vi.fn(() =>
+        Promise.resolve([
+          {
+            name: "t1-01",
+            title: raw.title,
+            oneLine: raw.oneLine,
+            pickedAt: "2026-10-18T21:00:00.000Z",
+          },
+        ])
+      ),
+      keep: vi.fn(),
+      read: vi.fn(() => Promise.resolve(JSON.stringify(raw))),
+    }
+    render(<Leetype sessionFiles={{ store }} />)
+    fireEvent.click(
+      await screen.findByRole("button", {
+        name: new RegExp(`Play ${raw.title}`),
+      })
+    )
+    fireEvent.click(await screen.findByRole("button", { name: "End here" }))
+    fireEvent.click(screen.getByRole("button", { name: "Done" }))
     expect(screen.getByText("Add a session from storage")).toBeTruthy()
   })
 

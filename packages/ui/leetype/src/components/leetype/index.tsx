@@ -2,6 +2,7 @@ import type { FC } from "react"
 import { useCallback, useEffect, useState } from "react"
 import type { ExercisePickerBadge } from "@leetype/components/exercise-picker"
 import { ExercisePicker } from "@leetype/components/exercise-picker"
+import { IncidentSession } from "@leetype/components/incident/incident-session"
 import { RoundSession } from "@leetype/components/round/round-session"
 import { SessionFilePicker } from "@leetype/components/session-file-picker"
 import { TypingSession } from "@leetype/components/typing-game/typing-session"
@@ -12,7 +13,10 @@ import {
 } from "@leetype/lib/leetype/exercises"
 import { lintAuthoredRounds } from "@leetype/lib/leetype/round-assembly"
 import type { RoundRunsLoader } from "@leetype/lib/leetype/round-runs"
-import type { SessionFileStore } from "@leetype/lib/leetype/session-file-pick"
+import type {
+  OpenedSessionFile,
+  SessionFileStore,
+} from "@leetype/lib/leetype/session-file-pick"
 import type { Round } from "@leetype/types/authored-round"
 import { RoundSchema } from "@leetype/types/authored-round"
 import type { Exercise } from "@leetype/types/exercise"
@@ -220,6 +224,8 @@ export const Leetype: FC<LeetypeProps> = ({
   const activeDurationMs =
     exercise !== undefined ? sessionDurationMs : (picked?.remainingMs ?? 0)
 
+  const [playing, setPlaying] = useState<OpenedSessionFile | null>(null)
+
   // Only a picker-sourced choice returns to the picker on completion.
   const handleComplete = useCallback(
     (stats?: CompletedSessionStats): void => {
@@ -229,7 +235,21 @@ export const Leetype: FC<LeetypeProps> = ({
     [onSessionComplete, exercise]
   )
 
-  // On a phone the session is rounds (Def. 1.7).
+  // On a phone: a session file the learner chose to play (Def. 1.9), or
+  // the Def. 1.7 rounds until one is.
+  if (playsRounds && playing !== null) {
+    return (
+      <div className={cn(appearanceClassName(appearance), "absolute inset-0")}>
+        <IncidentSession
+          key={playing.name}
+          fileName={playing.name}
+          file={playing.file}
+          onEnd={(): void => setPlaying(null)}
+        />
+      </div>
+    )
+  }
+
   if (playsRounds) {
     return (
       <div
@@ -241,6 +261,7 @@ export const Leetype: FC<LeetypeProps> = ({
         {sessionFiles !== undefined && (
           <SessionFilePicker
             store={sessionFiles.store}
+            onPlay={setPlaying}
             {...(sessionFiles.hint === undefined
               ? {}
               : { hint: sessionFiles.hint })}

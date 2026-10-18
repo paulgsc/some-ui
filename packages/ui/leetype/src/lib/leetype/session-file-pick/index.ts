@@ -123,6 +123,7 @@ export type PickState =
   | { readonly kind: "idle" }
   | { readonly kind: "reading" }
   | { readonly kind: "keeping"; readonly name: string }
+  | { readonly kind: "opening"; readonly name: string }
   | { readonly kind: "refused"; readonly reason: string }
   | {
       readonly kind: "kept"
@@ -142,6 +143,13 @@ export type PickedSessionFile = Pick<File, "name" | "size" | "text">
 
 const COULD_NOT_KEEP = "Couldn't keep that file on this phone. Try again."
 const COULD_NOT_LIST = "Couldn't read the session files on this phone."
+const COULD_NOT_OPEN = "Couldn't open that session on this phone. Try again."
+
+/** A held file, opened to play. */
+export type OpenedSessionFile = {
+  readonly name: string
+  readonly file: SessionFile
+}
 
 /** The name a fix of `name` goes up under (the Drive SOP's `-r<n>`). */
 function nextRevision(name: string): string {
@@ -240,6 +248,32 @@ export class SessionFilePickRuntime {
     this.stopReading?.()
     this.stopReading = null
     this.reader.cancel()
+  }
+
+  /** Opens a held file to play; `onOpen` gets it if it is still the latest. */
+  open = (name: string, onOpen: (opened: OpenedSessionFile) => void): void => {
+    const turn = ++this.turn
+    this.set({ pick: { kind: "opening", name } })
+    this.store.read(name).then(
+      (body) => {
+        if (turn !== this.turn) return
+        const intake =
+          body === null ? null : intakeSessionFile(`${name}.json`, body)
+        if (intake?.ok !== true) {
+          this.set({
+            pick: { kind: "refused", reason: intake?.reason ?? COULD_NOT_OPEN },
+          })
+          return
+        }
+        this.set({ pick: { kind: "idle" } })
+        onOpen({ name, file: intake.file })
+      },
+      () => {
+        if (turn === this.turn) {
+          this.set({ pick: { kind: "refused", reason: COULD_NOT_OPEN } })
+        }
+      }
+    )
   }
 
   private keep(turn: number, fileName: string, text: string): void {
