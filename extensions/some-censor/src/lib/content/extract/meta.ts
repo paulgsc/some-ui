@@ -1,6 +1,8 @@
 import {
+  CHANNEL_LINK_RUNS,
   FIELD_SELECTORS,
   LOCKUP_DATE_RUNS,
+  PLAIN_CHANNEL_RUN,
 } from "@censor/lib/content/layout/fields"
 import type { MetaData } from "@censor/types/states"
 
@@ -47,9 +49,33 @@ export function extractUploadDate(el: HTMLElement): string | null {
 
 export function extractMeta(el: HTMLElement): MetaData {
   return {
-    channelName: firstText(el, FIELD_SELECTORS.channelName),
+    channelName: channelName(el),
     duration: firstText(el, FIELD_SELECTORS.duration),
   }
+}
+
+/**
+ * The channel's display name. With `links` false the lockups' link runs are
+ * not read: `channel-id.ts` calls it only once no link's href named a channel,
+ * so a link's text then names something else, or a channel whose href is
+ * still on its way.
+ */
+export function channelName(el: HTMLElement, links = true): string | null {
+  for (const selector of FIELD_SELECTORS.channelName) {
+    if (!links && CHANNEL_LINK_RUNS.includes(selector)) continue
+    const value =
+      selector === PLAIN_CHANNEL_RUN ? plainChannelRun(el) : text(el, selector)
+    if (value) return value
+  }
+  return null
+}
+
+/** The first plain run is the channel's; one holding a link is a link run. */
+function plainChannelRun(el: HTMLElement): string | null {
+  if (isCollection(el)) return null
+  const run = el.querySelector(PLAIN_CHANNEL_RUN)
+  if (run?.querySelector("a") !== null) return null
+  return run.textContent.trim()
 }
 
 /**
@@ -92,4 +118,22 @@ export function extractIsShort(el: HTMLElement): boolean {
     SHORTS_TAGS.has(el.tagName.toLowerCase()) ||
     el.querySelector('a[href*="/shorts/"]') !== null
   )
+}
+
+/**
+ * A lockup for a list rather than one video. Every one in the 2026-10-17
+ * captures is a Mix, whose metadata run is an artist list ("A, B and more"),
+ * not a channel.
+ */
+function isCollection(el: HTMLElement): boolean {
+  return el.querySelector("yt-collection-thumbnail-view-model") !== null
+}
+
+/**
+ * Can `el`'s markup hold a channel at all? A Shorts lockup has none, and
+ * neither does a Mix, so a channel backfill on either waits for nothing
+ * (#1848).
+ */
+export function extractCarriesChannel(el: HTMLElement): boolean {
+  return !SHORTS_TAGS.has(el.tagName.toLowerCase()) && !isCollection(el)
 }
