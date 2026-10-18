@@ -323,6 +323,25 @@ describe("the retry queue", () => {
     )
   })
 
+  it("re-reads a card whose title hydrates after it, as the lane needs (QD15)", async () => {
+    const el = cell("untitled")
+    const anchor = el.querySelector<HTMLElement>("#video-title")!
+    anchor.textContent = ""
+    const text = anchor.appendChild(document.createTextNode(""))
+    document.body.appendChild(el)
+    await tick()
+
+    // A text node's data changing is no mutation the observer sees.
+    text.data = "Stay With Me MV"
+    await tick(2)
+    const last = tokens
+      .filter((t) => t.kind === "observed" && t.key === K("untitled"))
+      .at(-1)
+    expect(last?.kind === "observed" && last.observation.title).toBe(
+      "Stay With Me MV"
+    )
+  })
+
   it("gives up on a name that never arrives quietly, and stops", async () => {
     const el = lockup("nameless", "Nameless")
     el.querySelector('a[href="/@Nameless"]')!.textContent = ""

@@ -11,16 +11,18 @@ describe("isMusic (QD15, #1806)", () => {
     ["【等风来】电视剧《Lost Summer》片尾曲 OST 2026", true],
     ["Goblin 도깨비 OST (Chanyeol, Punch) - Stay with me MV", true],
     ["[도깨비 OST Part 9] 에일리 (Ailee) - 첫눈처럼 너에게 가겠다", true],
-    ["Kumpulan Lagu - Ost GOBLIN (Lirik)", true],
+    ["Kumpulan Lagu - OST GOBLIN (Lirik)", true],
     ["Beautiful (OST)", true],
     // Not a whole token, or not as titles write it.
     ["The MVP of the season", false],
     ["Ghost stories, hosted live", false],
     ["Hvordan lage ost hjemme", false],
+    ["Ost-Berlin 1961", false],
     ["mv command in Linux", false],
-    // The token counts wherever it stands: a reaction titled "MV" is
-    // admitted, the cost of the owner's token rule (2026-10-17).
+    // The token counts wherever it stands: a reaction or a ship titled "MV"
+    // is admitted, the cost of the owner's token rule (2026-10-17).
     ["MV reaction 반응", true],
+    ["MV Dali crashes into a bridge", true],
     // No music sign at all: held by the maturity rule, not admitted here.
     ["서울 브이로그 (Seoul vlog)", false],
     ["", false],

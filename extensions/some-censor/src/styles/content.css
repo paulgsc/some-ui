@@ -7,6 +7,7 @@
 
    A card's view, stamped as data-boyo on the renderer element:
      "absent" not rendered      "plated" shown on its plate
+     "whole"  in the listening lane, as YouTube draws it (QD15)
    ============================================================ */
 
 /* ── :has() baseline (#1390 / QC0) ────────────────────────────────
@@ -43,10 +44,11 @@
    Therefore this MUST be a true occluder, not a "pending" affordance. The
    blur radius and brightness floor are deliberately strong enough that the
    thumbnail content is unreadable. When JS does take over, [data-boyo]
-   hands the card to one of two states, and neither shows its image: absent,
-   which takes it out of layout altogether, or plated, where no image under
-   the card is painted (THE PLATE below). The handover never reveals a
-   thumbnail.
+   hands the card to one of three states: absent, which takes it out of
+   layout altogether; plated, where no image under the card is painted
+   (THE PLATE below); or whole, music in the listening lane (QD15), the
+   one state that shows a card's own thumbnail. The handover reveals no
+   other thumbnail.
 
    DO NOT soften this into a legible dim. A readable pre-mask state exposes the
    card during the (possibly infinite) gap before JS resolves it, which defeats
@@ -618,7 +620,7 @@ ytd-item-section-renderer:has(> #contents > ytd-shelf-renderer:only-child):has(
 
    The page's own video is decided as a card is, and the Actuator
    writes the view on <html> as data-boyo-watch. Until it reads
-   "plated" the player and what is said about the video (title,
+   "plated" or "whole" the player and what is said about the video (title,
    date, channel, description) are not rendered, whatever the
    script has or has not decided yet, and neither is the miniplayer
    the video can move into; on "absent" the whole page goes, and

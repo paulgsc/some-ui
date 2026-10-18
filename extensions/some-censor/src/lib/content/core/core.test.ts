@@ -617,6 +617,60 @@ describe("the watch page (R8, #1805)", () => {
   })
 })
 
+describe("the listening lane (QD15, #1806)", () => {
+  it("follows the latest reading of the artist badge, never a stale one", () => {
+    const { state } = fold([
+      started,
+      seen(1, { uploadDate: "2 hours ago", title: "News", artist: true }),
+    ])
+    expect(viewOf(state)).toBe("whole")
+    const lost = reduce(
+      state,
+      seen(2, { uploadDate: "2 hours ago", title: "News", artist: false })
+    )
+    expect(viewOf(lost.state)).toBe("absent")
+  })
+
+  it("reads nothing of the lane off another video's metadata still on screen", () => {
+    const page = (
+      videoId: string,
+      overrides: Partial<WatchObservation>
+    ): CoreEvent => ({
+      kind: "watched",
+      watch: {
+        videoId: asVideoId(videoId),
+        short: false,
+        hydrated: true,
+        dates: ["444M views", "21y ago"],
+        miniplayer: false,
+        title: null,
+        channelName: null,
+        artist: false,
+        ...overrides,
+      },
+      t: 2,
+    })
+    const { state } = fold([
+      started,
+      page("song", { title: "Stay With Me MV", artist: true }),
+    ])
+    expect(state.watch?.view).toBe("whole")
+    // The next video, named before its page is rewritten.
+    const next = reduce(
+      state,
+      page("news", { title: "Stay With Me MV", artist: true })
+    )
+    expect(next.state.watch?.view).toBe("pending")
+    // Its own date arrives before its title does: nothing of the previous
+    // video's title or badge is kept to admit it.
+    const dated = reduce(
+      next.state,
+      page("news", { dates: ["3 hours ago"], title: null })
+    )
+    expect(dated.state.watch?.view).toBe("absent")
+  })
+})
+
 describe("what autoplay may go on into (#1805)", () => {
   it("admits a plated card's video, and nothing held or unseen", () => {
     const { state } = fold([

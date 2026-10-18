@@ -90,7 +90,9 @@ export function mergeWatch(
     dates: next.dates.length > 0 ? next.dates : previous.dates,
     title: next.title ?? previous.title,
     channelName: next.channelName ?? previous.channelName,
-    artist: previous.artist || next.artist,
+    // The latest reading only: a stale badge must not keep a video in the
+    // lane (QD15), and losing one only holds it.
+    artist: next.artist,
   }
 }
 
@@ -113,7 +115,9 @@ export function mergeObservation(
     uploadDate: next.uploadDate ?? previous.uploadDate,
     // Once seen as a Short, always held: the evidence only accumulates.
     short: previous.short || next.short,
-    artist: previous.artist || next.artist,
+    // The latest reading only: a stale badge must not keep a video in the
+    // lane (QD15), and losing one only holds it.
+    artist: next.artist,
     surface: next.surface,
     renderer: next.renderer,
     // Once the table has named a shape it stays named; a later unknown reading
