@@ -317,7 +317,7 @@ declared (checked by reading every call site and by the tests named).
   lets go of its own copy of those alone, each unchanged since it was read;
   then one PUT per item kept on this phone's shelf, its bytes as kept,
   nothing read back and the item kept on the phone. Nothing on home is
-  deleted. Outside LA9, nothing is sent when the app or Settings
+  deleted. Outside LA9 and LA10, nothing is sent when the app or Settings
   opens, on resume, on a timer or on a network change: making the runtime and
   `load` read only the phone's own record. There is no retry; a sync, a send,
   a copy or a record's keeping ends at Stop, or when the app goes to the
@@ -472,7 +472,8 @@ What no test can say is when a run is asked for:
   only when the record is kept on home and the document is visible. Nothing
   asks on a timer.
 - _Falsified by:_ a hunk to `lib/home-link/jobs.ts` that adds a listener,
-  subscription, timer or call site that reaches `ask`, removes `ask`'s check
+  subscription, timer or call site that reaches `ask` at a moment the claim
+  does not name, removes `ask`'s check
   that the record is kept on home or that the document is visible, calls
   `watchJobs` from anywhere but `useJobsHome`'s effect, or makes
   `keepJobsOnHome` do more than call the record's `keepOnHome`; a hunk that

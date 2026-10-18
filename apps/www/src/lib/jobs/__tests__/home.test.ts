@@ -160,6 +160,12 @@ describe("exchangeJobs", () => {
     expect(restoredHere.current.log).toEqual(withLog.log)
     expect(restoredHere.current.home.held).toEqual(["e1", "e2", "e3"])
 
+    const full = { ...keeping(EMPTY), restored: (): boolean => false }
+    expect(await exchangeJobs(full, home(holding(withLog.log)).send)).toEqual({
+      kind: "failed",
+      why: "this phone couldn't keep home's record",
+    })
+
     const own = keeping(opened)
     const one = step(own.current, {
       type: "record",

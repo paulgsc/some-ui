@@ -76,7 +76,10 @@ async function exchange(
   if (answer.status !== 200 || record === null) {
     return unexpectedAnswer("the record", answer.status)
   }
-  if (keeping.state().log.length === 0) keeping.restored(record.events)
+  const empty = keeping.state().log.length === 0
+  if (empty && record.events.length > 0 && !keeping.restored(record.events)) {
+    return { kind: "failed", why: "this phone couldn't keep home's record" }
+  }
   return { kind: "synced" }
 }
 
