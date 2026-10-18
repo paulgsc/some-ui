@@ -123,7 +123,10 @@ export function decisionsFile(
       )
       const passed = events.filter((e) => e.type === "passed").at(-1)
       const decider = events
-        .filter((e) => e.type === "passed" || e.type === "taken")
+        .filter(
+          (e) =>
+            e.type === "passed" || e.type === "taken" || e.type === "archived"
+        )
         .at(-1)
       const debrief = debriefOf(state, digest.day, pick.id)
       const names = pickVoice(state, digest.day, pick.id)

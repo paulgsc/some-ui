@@ -19,6 +19,16 @@ export const PICKS_PER_DAY: Readonly<Record<Track, number>> = {
   adjacent: 2,
 }
 
+/**
+ * The most picks each track may hold open at once, earlier digests' included
+ * (`openPicks`). A run adds only what fits under it, so the next picks wait
+ * until I have decided and shared the last ones: applying should take
+ * effort, and a full queue says so.
+ */
+export const MAX_OPEN_PICKS: Readonly<Record<Track, number>> = {
+  ...PICKS_PER_DAY,
+}
+
 /** The places the routine searches, in this order (ROUTINE.md §3). */
 export const LOCATIONS: ReadonlyArray<string> = [
   "remote",

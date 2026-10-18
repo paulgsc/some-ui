@@ -15,8 +15,8 @@ review and merge it; the run never does. It pushes nothing else and changes
 nothing else in the repo.
 
 The shapes are this package's schemas, and `src/sample.digest.json`
-is a complete digest to copy. The limits (picks per track, places, queries,
-excluded titles, posting age) are `src/policy.ts`. When this file and the
+is a complete digest to copy. The limits (picks per track, open picks,
+places, queries, excluded titles, posting age) are `src/policy.ts`. When this file and the
 policy disagree, the policy wins and this file is the bug.
 
 ## 0. Before anything
@@ -102,6 +102,47 @@ the newest entry is the decision that stands.
 A posting picked in any earlier digest, or named in any decisions file, is
 never picked again, unless a disagreement brought it back.
 
+### The queue
+
+I work one batch before the next: applying takes effort, and applying
+everywhere gets nothing back. So a run adds picks only into free slots, and
+the picks I haven't finished hold theirs. The limit is `MAX_OPEN_PICKS` per
+track (the same as `PICKS_PER_DAY`: 3 software, 2 adjacent), earlier
+digests' picks included.
+
+1. Download every digest in `Brief/` and every file in `Decisions/` (all of
+   them, not only the new ones) into one scratch folder, and from the repo
+   root run:
+
+   ```sh
+   pnpm --filter @some-ui/job-desk build
+   pnpm --filter @some-ui/job-desk queue <folder>/*.json
+   ```
+
+   It prints the picks still open (`open`) and each track's free slots
+   (`free`). A pick is open while no shared decision answers it, while it is
+   `untouched`, or while it is `taken` with no debrief. One `passed`,
+   `archived` (I let the batch go unreviewed) or debriefed is done. Only what
+   reached Drive counts: a pick I decided on the phone and haven't shared is
+   still open.
+
+2. Read each open pick's posting again, as §3 reads one. When it has closed
+   (a Greenhouse or Lever 404, an Ashby `id` gone from its board), its slot
+   is free: mark it `closed` and say so in the summary. Nothing else frees a
+   slot. No pick expires with age: one waiting ten days is mine to decide or
+   archive. The run never writes a decision; only the phone does.
+3. Record it in the digest: `queue.open` lists every open pick with its
+   `day`, `pickId`, `track` and `closed`.
+4. Each track gets at most its free slots today, counting a closed pick's
+   slot as free, and never more than `PICKS_PER_DAY`. The checker holds the
+   digest to this.
+5. When a track has no free slot, run none of its queries in §3. When
+   neither has one, search nothing: the digest has no picks and an empty
+   `setAside`, and `seen` counts only the scouts it read. Either way, still
+   take in what step 2 found, still answer every new scout (§3 to §5; with
+   no slot a scout becomes no pick, so it is scored and gets a `review`),
+   and still write the digest, so the phone shows the queue is full.
+
 ## 3. Search
 
 Postings come from public sources that give anyone a posting's full text:
@@ -113,8 +154,9 @@ postings you read: one can run to megabytes. Indeed and LinkedIn are never searc
 pages refuse agents.
 
 1. **Find on the boards.** For every query in `QUERIES` (the software list,
-   then each adjacent family's) and every place in `LOCATIONS`, run one web
-   search for the query and the place, unquoted, with the search limited to
+   then each adjacent family's) of a track with a free slot (§2, "The
+   queue"), and every place in `LOCATIONS`, run one web search for the
+   query and the place, unquoted, with the search limited to
    the domains `job-boards.greenhouse.io`, `boards.greenhouse.io`,
    `jobs.lever.co` and `jobs.ashbyhq.com`. Keep only results that name one
    posting, and drop any query string and a trailing `/apply` or
@@ -128,8 +170,8 @@ pages refuse agents.
    "Ask HN: Who is hiring? (…)"
    (`https://hn.algolia.com/api/v1/search_by_date?tags=story,author_whoishiring`).
    Before this month's thread is up, that is last month's; §4's age rule
-   sets aside its old posts. Search its posts once per query, `page` from 0
-   to `nbPages` − 1:
+   sets aside its old posts. Search its posts once per query of a track
+   with a free slot, `page` from 0 to `nbPages` − 1:
    `https://hn.algolia.com/api/v1/search?tags=comment,story_<id>&query=<query>&typoTolerance=false&hitsPerPage=50&page=<n>`.
    Keep top-level posts only, those whose `parent_id` is the story's id. A
    post that links a posting on one of the three boards is read there, as
@@ -380,8 +422,9 @@ Never edit, move, rename or trash anything under `some-ui jobs/`. Triage
 
 ## 9. Summary
 
-End with: each pick with its track, scores and résumé; the PR this run
-opened, or why it opened none; how many postings were
-set aside, by reason; what each new decisions file and voice note said; each
+End with: the queue (each open pick with its digest day, which postings
+closed, and each track's free slots); each pick with its track, scores and
+résumé; the PR this run opened, or why it opened none; how many postings
+were set aside, by reason; what each new decisions file and voice note said; each
 scout's verdict; the calibration note, once there are enough outcomes; and
 anything skipped, with why.

@@ -6,9 +6,11 @@ import {
   DIGESTS_KEPT,
   draftVoice,
   EMPTY,
+  openOf,
   progressOf,
   releasedVoice,
   step,
+  undecidedOf,
 } from "@/lib/jobs/model"
 
 import { digest, OPENED_AT } from "./fixture"
@@ -180,6 +182,23 @@ describe("progressOf", () => {
     })
     state = record(state, { type: "taken", ...ref() })
     expect(progressOf(state, DAY, SW.id)).toEqual({ kind: "open", step: 2 })
+  })
+})
+
+describe("an archived pick", () => {
+  it("leaves the queue unreviewed, until a later decision replaces it", () => {
+    let state = record(opened, { type: "taken", ...ref() })
+    expect(undecidedOf(state, DAY).map((p) => p.id)).toEqual([AD.id])
+    expect(openOf(state).map((o) => o.pick.id)).toEqual([SW.id, AD.id])
+
+    state = record(state, { type: "archived", ...ref(AD) })
+    expect(progressOf(state, DAY, AD.id)).toEqual({ kind: "archived" })
+    expect(undecidedOf(state, DAY)).toEqual([])
+    expect(openOf(state).map((o) => o.pick.id)).toEqual([SW.id])
+    expect(applicationsOf(state).map((a) => a.pick.id)).toEqual([SW.id])
+
+    state = record(state, { type: "taken", ...ref(AD) })
+    expect(progressOf(state, DAY, AD.id)).toEqual({ kind: "open", step: 2 })
   })
 })
 

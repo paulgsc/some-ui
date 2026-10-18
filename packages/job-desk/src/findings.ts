@@ -5,12 +5,14 @@ import { RESUME_VARIANTS, SOFTWARE_VARIANTS } from "./digest"
 import { fingerprint, role as roleOf } from "./fingerprint"
 import {
   EXCLUDED_TITLE,
+  MAX_OPEN_PICKS,
   MAX_POSTING_AGE_DAYS,
   PATCH_PRS_PER_RUN,
   PICKS_PER_DAY,
   SCOUT_AGREE_FIT,
   TRACKS,
 } from "./policy"
+import { freeSlots } from "./queue"
 
 /** One way a well-formed digest breaks the routine's rules, by path. */
 export type Finding = { path: string; message: string }
@@ -22,9 +24,9 @@ function daysBetween(from: string, to: string): number {
 }
 
 /**
- * What the schema cannot say about a digest: the policy's limits, one
- * fingerprint per posting, and no fit that claims what the same pick says
- * not to claim. An empty list is what a run uploads.
+ * What the schema cannot say about a digest: the policy's limits, the
+ * queue's room, one fingerprint per posting, and no fit that claims what the
+ * same pick says not to claim. An empty list is what a run uploads.
  */
 export function digestFindings(digest: Digest): ReadonlyArray<Finding> {
   const found: Array<Finding> = []
@@ -39,6 +41,40 @@ export function digestFindings(digest: Digest): ReadonlyArray<Finding> {
         path: "picks",
         message: `${count} ${track} picks; the most is ${PICKS_PER_DAY[track]}`,
       })
+    }
+  }
+
+  if (digest.queue !== null) {
+    const { open } = digest.queue
+    const closed = new Set(
+      open.filter((p) => p.closed).map((p) => `${p.day}/${p.pickId}`)
+    )
+    const free = freeSlots(open, closed)
+    const queued = new Set<string>()
+    open.forEach((held, i) => {
+      const key = `${held.day}/${held.pickId}`
+      if (held.day >= digest.day) {
+        found.push({
+          path: `queue.open.${i}.day`,
+          message: `an open pick comes from a digest before ${digest.day}`,
+        })
+      }
+      if (queued.has(key)) {
+        found.push({
+          path: `queue.open.${i}`,
+          message: `${key} is listed twice`,
+        })
+      }
+      queued.add(key)
+    })
+    for (const track of TRACKS) {
+      const count = digest.picks.filter((p) => p.track === track).length
+      if (count > free[track]) {
+        found.push({
+          path: "picks",
+          message: `${count} ${track} picks, but ${MAX_OPEN_PICKS[track] - free[track]} of ${MAX_OPEN_PICKS[track]} slots are still open; room for ${free[track]}`,
+        })
+      }
     }
   }
 

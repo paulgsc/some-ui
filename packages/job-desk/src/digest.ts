@@ -1,6 +1,6 @@
 import { z } from "zod"
 
-import { ADJACENT_FAMILIES, MAX_SET_ASIDE } from "./policy"
+import { ADJACENT_FAMILIES, MAX_SET_ASIDE, TRACKS } from "./policy"
 import {
   CommitSchema,
   FingerprintSchema,
@@ -176,6 +176,25 @@ export const DigestSchema = z.object({
         .default(null),
     })
   ),
+  /**
+   * The picks from earlier digests still open when the run began
+   * (`openPicks`), each holding a slot of its track's `MAX_OPEN_PICKS`
+   * unless its posting has `closed`. Digests before the queue had none.
+   */
+  queue: z
+    .object({
+      open: z.array(
+        z.object({
+          day: z.iso.date(),
+          pickId: IdSchema,
+          track: z.enum(TRACKS),
+          /** The posting is gone (§3's 404 rule), so its slot is free. */
+          closed: z.boolean(),
+        })
+      ),
+    })
+    .nullable()
+    .default(null),
   /** The Drive files this run read: decisions and scouts, by name. */
   read: z.array(text),
   /** The voice notes this run transcribed, by file name. */

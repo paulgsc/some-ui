@@ -155,6 +155,32 @@ describe("createJobsRuntime", () => {
     expect(outcome).toMatchObject({ type: "outcome", on: "2026-10-19" })
   })
 
+  it("archives a digest's undecided picks, and keeps them between launches", async () => {
+    const storage = createInMemoryStorage()
+    const runtime = createJobsRuntime(ports({ storage }))
+    const day = digest("2026-10-18")
+    runtime.open(blob(JSON.stringify(day)))
+    await settle()
+    const [taken, left] = day.picks
+    runtime.record({
+      type: "taken",
+      day: day.day,
+      pickId: taken.id,
+      fingerprint: taken.fingerprint,
+    })
+    expect(runtime.archive(day.day)).toBe(true)
+    expect(runtime.archive(day.day)).toBe(false)
+    const archived = runtime
+      .getSnapshot()
+      .state.log.filter((e) => e.type === "archived")
+    expect(archived).toEqual([
+      expect.objectContaining({ pickId: left.id, day: day.day }),
+    ])
+    expect(
+      createJobsRuntime(ports({ storage })).getSnapshot().state.log
+    ).toEqual(runtime.getSnapshot().state.log)
+  })
+
   it("records nothing for a share backed out of", async () => {
     const p = ports({
       share: vi.fn(() => Promise.resolve<"shared" | "cancelled">("cancelled")),

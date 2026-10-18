@@ -177,6 +177,24 @@ describe("decisionsFile", () => {
     expect(again.voice).toEqual([])
   })
 
+  it("says an archived pick is archived, by the event that archived it", () => {
+    const fresh = step(EMPTY, { type: "opened", digest: D, at: OPENED_AT })
+    const archived = record(fresh, { type: "archived", ...ref(AD) })
+    const file = fileOf(
+      decisionsFile(archived, "2026-10-18", "2026-10-18T22:00:00Z")
+    )
+    const [event] = archived.log
+    expect(JSON.parse(file.json).picks).toEqual([
+      expect.objectContaining({
+        pickId: AD.id,
+        decision: "archived",
+        id: event.id,
+        reasons: [],
+        debrief: null,
+      }),
+    ])
+  })
+
   it("reports an earlier day's untouched picks once", () => {
     const old = step(EMPTY, {
       type: "opened",

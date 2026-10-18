@@ -168,6 +168,12 @@ const Decide = ({
   }
   return (
     <div className="flex flex-col gap-4">
+      {decision === "archived" && (
+        <p className="bg-muted rounded-xl p-3 text-sm">
+          Archived with its digest, unreviewed. Taking or passing it now
+          replaces that.
+        </p>
+      )}
       <div className="grid grid-cols-2 gap-2">
         <Button
           type="button"
@@ -518,7 +524,7 @@ export const PickFlow = ({
   const reached =
     progress.kind === "open"
       ? Math.max(progress.step, 1)
-      : progress.kind === "passed"
+      : progress.kind === "passed" || progress.kind === "archived"
         ? 1
         : 4
   const current = progress.kind === "open" ? progress.step : reached

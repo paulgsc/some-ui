@@ -333,6 +333,16 @@
       }
     }
   ],
+  "queue": {
+    "open": [
+      {
+        "day": "2026-10-17",
+        "pickId": "lum-4c19",
+        "track": "software",
+        "closed": false
+      }
+    ]
+  },
   "read": ["scouts-20261017T210400.json"],
   "transcribed": [],
   "evidence": {
