@@ -287,9 +287,10 @@ describe("digestFindings", () => {
       verdict: "disagree",
       note: "Senior only",
       pickId: "avm-0b77",
+      review: null,
     })
     expect(messages(digest)).toEqual([
-      "scouts.0.pickId: a scout the run did not agree with became no pick",
+      "scouts.1.pickId: a scout the run did not agree with became no pick",
     ])
   })
 
@@ -328,6 +329,84 @@ describe("digestFindings", () => {
     ])
   })
 
+  it("reviews a scout it found and didn't pick, and no other", () => {
+    const digest = sample()
+    const review = {
+      scores: {
+        fit: 0.7,
+        odds: 0.4,
+        fitWhy: "covers 7 of 10",
+        oddsWhy: "remote",
+      },
+      gaps: [{ kind: "learnable" as const, text: "Go" }],
+      sends: { variant: "qa" as const, template: "classic" as const },
+    }
+    digest.scouts.push(
+      {
+        scoutId: "sc-1",
+        verdict: "agree",
+        note: "Worth it",
+        pickId: null,
+        review,
+      },
+      {
+        scoutId: "sc-2",
+        verdict: "disagree",
+        note: "Five years",
+        pickId: null,
+        review,
+      },
+      {
+        scoutId: "sc-3",
+        verdict: "disagree",
+        note: "Phone screens",
+        pickId: null,
+        review: null,
+      }
+    )
+    expect(messages(digest)).toEqual([])
+
+    digest.scouts.push(
+      {
+        scoutId: "sc-4",
+        verdict: "agree",
+        note: "Worth it",
+        pickId: null,
+        review: null,
+      },
+      {
+        scoutId: "sc-5",
+        verdict: "not-found",
+        note: "Gone",
+        pickId: null,
+        review,
+      },
+      {
+        scoutId: "sc-6",
+        verdict: "agree",
+        note: "Top",
+        pickId: "avm-0b77",
+        review,
+      }
+    )
+    expect(messages(digest)).toEqual([
+      "scouts.4.review: a scout the run agrees with but didn't pick says what to send",
+      "scouts.5.review: a scout the run couldn't find has no review",
+      "scouts.6.review: a scout that became a pick is reviewed by its pick",
+    ])
+  })
+
+  it("opens a digest written before scouts were reviewed", () => {
+    const scout = {
+      scoutId: "sc-1",
+      verdict: "not-found",
+      note: "Gone",
+      pickId: null,
+    }
+    const parsed = parseDigest(JSON.stringify({ ...sample(), scouts: [scout] }))
+    expect(parsed.ok && parsed.value.scouts[0]?.review).toBe(null)
+  })
+
   it("finds a scout verdict naming a pick that isn't there", () => {
     const digest = sample()
     digest.scouts.push({
@@ -335,8 +414,9 @@ describe("digestFindings", () => {
       verdict: "agree",
       note: "Good fit",
       pickId: "nope-123",
+      review: null,
     })
-    expect(messages(digest)).toEqual(["scouts.0.pickId: no pick nope-123"])
+    expect(messages(digest)).toEqual(["scouts.1.pickId: no pick nope-123"])
   })
 })
 

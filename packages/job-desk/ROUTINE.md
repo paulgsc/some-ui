@@ -115,6 +115,14 @@ The connector's job ids count up within this session and mean nothing in the
 next one, so call `get_job_details` for every posting you might pick in this
 same run.
 
+**Scouts.** Each new scout from step 2 is a posting I found myself, and a
+candidate like the rest, on the track and family I filed it under. Look it
+up with `search_jobs` by its title words and company, and call
+`get_job_details` on the match. When no search turns it up, its
+`postingText` (what I pasted) stands in for the description, and its link
+for the apply link. With neither, its verdict is `not-found` and it goes no
+further.
+
 ## 4. Set aside
 
 Set a posting aside, with a one-line `why`, when:
@@ -131,6 +139,9 @@ Set a posting aside, with a one-line `why`, when:
 - it asks for five or more years, or a senior, staff or lead title;
 - it was already decided (step 2). Count these in `seen`, but leave them out
   of `setAside`.
+
+A scout a rule sets aside isn't listed in `setAside`: its verdict is
+`disagree`, the rule is its note, and it has no `review`.
 
 List at most `MAX_SET_ASIDE` (40) set-aside postings, those closest to being picked first.
 
@@ -157,6 +168,13 @@ outcomes calibrate them, and the digest says so by naming its reasons.
 Rank each track's candidates by fit × odds and take up to `PICKS_PER_DAY`. On
 the adjacent track, when two scores are within 0.05, prefer a family not yet
 picked today. Fewer picks than the limit is fine; a weak pick is not.
+
+A scout that makes the cut becomes a pick, and its verdict is `agree` with
+its `pickId`. Any other scout still scored is answered in full, since I chose
+it: `agree` when its fit is 0.5 or more, `disagree` otherwise. Its `review`
+holds its scores, its gaps, and what to send if I apply anyway (`sends`, the
+composition and layout §6's build rule would choose). The `note` says in a
+line why it ranked where it did.
 
 ## 6. The résumé for each pick
 
@@ -247,10 +265,8 @@ a time. Its PRs carry the label `jobs-patch`, and only theirs do.
 1. Give each pick an `id`, unless "The résumé PR" (§6) already did: three
    letters of the company and four hex digits (`blu-7f2a`), unique in the
    digest. Never change one a PR already names.
-2. For each scout read in step 2, look the posting up with `search_jobs`,
-   using its title words and the company. Use its `postingText` when it has
-   one. The verdict is `agree` (and it becomes a pick when it outranks one),
-   `disagree` with why, or `not-found`.
+2. Answer every scout read in step 2 in `scouts`, with the verdict, note,
+   `pickId` and `review` §3 to §5 gave it.
 3. `read` names every Decisions and Scout file this run took in, and
    `transcribed` every voice note it transcribed.
 4. Save the digest as bare JSON to a scratch file and check it from the repo

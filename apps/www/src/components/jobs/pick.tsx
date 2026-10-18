@@ -35,24 +35,18 @@ import {
 } from "@/lib/jobs/model"
 
 import {
+  builderHref,
   Chips,
   CopyButton,
-  Meter,
+  Gaps,
   Problem,
   resumeLabel,
+  Scores,
   sectionHeading,
   useJobs,
   useVoiceBusy,
   VoiceNotes,
 } from "./parts"
-
-/**
- * The home network's résumé builder, a page of the lan build, as an
- * absolute URL: another deployable's, which Capacitor opens in the phone's
- * browser. The Android app bundles no résumé build and holds no
- * contact details.
- */
-const RESUME_BUILDER = "https://www.home.maishatu.com/resume-build"
 
 const STEPS = ["Review", "Decide", "Résumé", "Apply", "Debrief"] as const
 
@@ -100,16 +94,7 @@ const Review = ({
   onNext: () => void
 }): JSX.Element => (
   <div className="flex flex-col gap-4">
-    <section className="flex flex-col gap-1.5 rounded-xl border p-3">
-      <Meter label="Fit" value={pick.scores.fit} tone="fit" />
-      <span className="text-muted-foreground text-xs">
-        {pick.scores.fitWhy}
-      </span>
-      <Meter label="Odds" value={pick.scores.odds} tone="odds" />
-      <span className="text-muted-foreground text-xs">
-        {pick.scores.oddsWhy}
-      </span>
-    </section>
+    <Scores scores={pick.scores} />
     <section className="flex flex-col gap-1">
       <h3 className={sectionHeading}>What they want</h3>
       <p className="text-sm leading-relaxed">{pick.wants}</p>
@@ -131,21 +116,7 @@ const Review = ({
         ))}
       </ul>
     </section>
-    {pick.gaps.length > 0 && (
-      <section className="flex flex-col gap-2">
-        <h3 className={sectionHeading}>Gaps</h3>
-        <ul className="flex flex-col gap-1.5">
-          {pick.gaps.map((gap) => (
-            <li key={gap.text} className="flex items-baseline gap-2 text-sm">
-              <Badge variant="outline" className="w-20 shrink-0 justify-center">
-                {gap.kind}
-              </Badge>
-              {gap.text}
-            </li>
-          ))}
-        </ul>
-      </section>
-    )}
+    <Gaps gaps={pick.gaps} />
     {pick.dontClaim.length > 0 && (
       <section className="border-destructive/30 bg-destructive/5 flex flex-col gap-1 rounded-xl border p-3">
         <h3 className={cn(sectionHeading, "text-destructive")}>Don’t claim</h3>
@@ -277,11 +248,7 @@ const Resume = ({
     resume.kind === "build"
       ? resume
       : { variant: resume.fallback, template: resume.template }
-  const href = `${RESUME_BUILDER}?${new URLSearchParams({
-    variant: build.variant,
-    template: build.template,
-    pick: pick.id,
-  }).toString()}`
+  const href = builderHref(build, pick.id)
   return (
     <div className="flex flex-col gap-4">
       {resume.kind === "build" ? (

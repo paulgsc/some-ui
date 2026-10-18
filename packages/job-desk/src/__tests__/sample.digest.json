@@ -307,7 +307,32 @@
       "why": "Requires a DoD clearance"
     }
   ],
-  "scouts": [],
+  "scouts": [
+    {
+      "scoutId": "sc-3f9a21c0",
+      "verdict": "agree",
+      "note": "A real fit, ranked third on the adjacent track today behind two fresher postings.",
+      "pickId": null,
+      "review": {
+        "scores": {
+          "fit": 0.6,
+          "odds": 0.4,
+          "fitWhy": "covers 6 of 10 requirements",
+          "oddsWhy": "posted 12 days ago · remote"
+        },
+        "gaps": [
+          {
+            "kind": "learnable",
+            "text": "C# and Unity test tooling"
+          }
+        ],
+        "sends": {
+          "variant": "qa",
+          "template": "classic"
+        }
+      }
+    }
+  ],
   "read": [],
   "transcribed": [],
   "evidence": {

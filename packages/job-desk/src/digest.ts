@@ -78,6 +78,20 @@ export type ResumeRecommendation = z.infer<typeof ResumeSchema>
 
 const LabelledSchema = z.object({ label: text, value: text })
 
+const ScoresSchema = z.object({
+  /** How much of what the posting requires my evidence covers, 0 to 1. */
+  fit: z.number().min(0).max(1),
+  /** The chance of hearing back, 0 to 1. A judgment until outcomes calibrate it. */
+  odds: z.number().min(0).max(1),
+  fitWhy: text,
+  oddsWhy: text,
+})
+
+const GapSchema = z.object({
+  kind: z.enum(["unknown", "learnable", "hard"]),
+  text,
+})
+
 const PickSchema = z
   .object({
     id: IdSchema,
@@ -92,20 +106,11 @@ const PickSchema = z
       postedOn: z.iso.date().nullable(),
       applyUrl: HttpsUrlSchema,
     }),
-    scores: z.object({
-      /** How much of what the posting requires my evidence covers, 0 to 1. */
-      fit: z.number().min(0).max(1),
-      /** The chance of hearing back, 0 to 1. A judgment until outcomes calibrate it. */
-      odds: z.number().min(0).max(1),
-      fitWhy: text,
-      oddsWhy: text,
-    }),
+    scores: ScoresSchema,
     /** What the posting asks for, in a sentence or two. */
     wants: text,
     fits: z.array(z.object({ title: text, detail: text, source: text })).min(1),
-    gaps: z.array(
-      z.object({ kind: z.enum(["unknown", "learnable", "hard"]), text })
-    ),
+    gaps: z.array(GapSchema),
     dontClaim: z.array(text),
     resume: ResumeSchema,
     kit: z.object({
@@ -147,6 +152,23 @@ export const DigestSchema = z.object({
       note: text,
       /** The pick it became, when it became one. */
       pickId: IdSchema.nullable(),
+      /**
+       * How the run scored a scout it found that isn't a pick, and what to
+       * send if I apply anyway. Null for a pick (the pick says it), a scout
+       * not found, or one a set-aside rule decided. Digests before it had
+       * none.
+       */
+      review: z
+        .object({
+          scores: ScoresSchema,
+          gaps: z.array(GapSchema),
+          sends: z.object({
+            variant: BuiltVariantSchema,
+            template: z.enum(SUBMISSION_TEMPLATES),
+          }),
+        })
+        .nullable()
+        .default(null),
     })
   ),
   /** The Drive files this run read: decisions and scouts, by name. */

@@ -469,7 +469,7 @@ its own, is enforced by test: who reaches the link and its `keep` lane
 event stays on the phone and is not sent again, and that home's copy is
 taken in only by a phone whose log is empty (`lib/jobs/__tests__/home.test.ts`),
 one run at a time (`lib/home-link/__tests__/kept.test.ts`), and the opt-in's
-two presses (`components/jobs/keep-on-home.test.tsx`). Unlike aph, the phone
+two presses (`components/jobs/__tests__/keep-on-home.test.tsx`). Unlike aph, the phone
 keeps its whole log once home holds it: its shares count events by their
 place in the log, and home's copy is the way back for a phone that lost it.
 What no test can say is when a run is asked for:

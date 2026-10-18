@@ -211,6 +211,23 @@ export function digestFindings(digest: Digest): ReadonlyArray<Finding> {
   })
 
   digest.scouts.forEach((scout, i) => {
+    const reviewed = scout.verdict !== "not-found" && scout.pickId === null
+    if (scout.review !== null && !reviewed) {
+      found.push({
+        path: `scouts.${i}.review`,
+        message:
+          scout.verdict === "not-found"
+            ? "a scout the run couldn't find has no review"
+            : "a scout that became a pick is reviewed by its pick",
+      })
+    }
+    if (scout.review === null && scout.verdict === "agree" && reviewed) {
+      found.push({
+        path: `scouts.${i}.review`,
+        message:
+          "a scout the run agrees with but didn't pick says what to send",
+      })
+    }
     if (scout.pickId === null) return
     if (scout.verdict !== "agree") {
       found.push({
