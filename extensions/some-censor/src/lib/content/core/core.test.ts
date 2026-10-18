@@ -567,6 +567,15 @@ describe("the watch page (R8, #1805)", () => {
     expect(raised.state.watch?.face).toBe(false)
   })
 
+  it("renders the watch view again when the description is drawn again", () => {
+    const described: CoreEvent = { kind: "described", t: 2 }
+    expect(reduce(fold([started]).state, described).actions).toEqual([])
+    const { state } = fold([started, watched(1)])
+    expect(watchActions(reduce(state, described).actions)).toEqual([
+      shown("plated"),
+    ])
+  })
+
   it("puts the plate's tone on a plated page's poster, and no other", () => {
     const posters = (actions: ReadonlyArray<Action>): Array<unknown> =>
       actions.flatMap((a) => (a.kind === "watch" ? [a.poster] : []))

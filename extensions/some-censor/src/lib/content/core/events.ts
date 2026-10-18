@@ -44,6 +44,12 @@ export type Token =
   /** No element carries this key any more. */
   | { readonly kind: "gone"; readonly key: CardKey; readonly t: number }
   /**
+   * The watch page's description was drawn again, or lost the face
+   * control, with no change in the reading: render the watch view again,
+   * on the description as it is now (QD13).
+   */
+  | { readonly kind: "described"; readonly t: number }
+  /**
    * The page's own video, as the watch page or a Short shows it, or null
    * when neither is shown (#1805). Re-sent whenever the reading changes.
    */

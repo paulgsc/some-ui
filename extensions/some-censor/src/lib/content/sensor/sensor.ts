@@ -58,6 +58,7 @@ import {
 import {
   classifyCard,
   detectOccluderEngine,
+  FACE_CONTROL_ATTRIBUTE,
   FALLBACK_TAGS,
   occludedElements,
   SEL,
@@ -171,6 +172,15 @@ export function createSensor(ports: SensorPorts): Sensor {
    * video's own is Core's to tell (R8).
    */
   let watchSince: { videoId: VideoId | null; since: number } | null = null
+  /**
+   * The watch page's description as last seen, and whether the face control
+   * was in it. YouTube can draw the description late, or again, with no
+   * change in the reading, so it is announced on its own (`described`).
+   */
+  let lastDescription: { el: HTMLElement | null; offered: boolean } = {
+    el: null,
+    offered: false,
+  }
   let observer: MutationObserver | null = null
   let retryTimer: ReturnType<typeof setInterval> | null = null
   let navDebounce: ReturnType<typeof setTimeout> | null = null
@@ -512,9 +522,17 @@ export function createSensor(ports: SensorPorts): Sensor {
       watchSince = null
     }
     const serialized = JSON.stringify(watch)
-    if (serialized === lastWatch) return
-    lastWatch = serialized
-    ports.emit({ kind: "watched", watch, t: now })
+    if (serialized !== lastWatch) {
+      lastWatch = serialized
+      ports.emit({ kind: "watched", watch, t: now })
+    }
+    const el = readDescription(ports.doc)
+    const offered =
+      (el?.querySelector(`[${FACE_CONTROL_ATTRIBUTE}]`) ?? null) !== null
+    if (el !== lastDescription.el || offered !== lastDescription.offered) {
+      lastDescription = { el, offered }
+      ports.emit({ kind: "described", t: now })
+    }
   }
 
   // ── Mutation and navigation ────────────────────────────────────────────
@@ -646,6 +664,7 @@ export function createSensor(ports: SensorPorts): Sensor {
       // Core forgets the page's video on `stop`, not on `nav` (R8).
       lastWatch = NO_WATCH
       watchSince = null
+      lastDescription = { el: null, offered: false }
     },
 
     scan,

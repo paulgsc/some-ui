@@ -11,6 +11,8 @@
  * draws the fill, and drops its animation under `prefers-reduced-motion`.
  */
 
+import { FACE_CONTROL_ATTRIBUTE } from "@censor/lib/content/selectors"
+
 const FACE_HOLD_MS = 3_000
 
 const FACE_LABEL = "Hold to show the original thumbnail"
@@ -26,7 +28,7 @@ export function createFaceControl(
 ): FaceControl {
   const el = doc.createElement("button")
   el.type = "button"
-  el.dataset["boyoFaceHold"] = ""
+  el.setAttribute(FACE_CONTROL_ATTRIBUTE, "")
   const label = doc.createElement("span")
   label.textContent = FACE_LABEL
   el.append(label)

@@ -7,6 +7,7 @@
  *      shows the real poster and goes; an early release changes nothing.
  * F3 — A navigation forgets the face: the plate and the control are back.
  * F4 — Under `prefers-reduced-motion` the control's fill does not animate.
+ * F5 — When YouTube draws the description again, the control comes back.
  */
 
 import { expect, test } from "@censor/playwright/fixture"
@@ -95,4 +96,20 @@ test("F4: reduced motion drops the fill's animation", async ({ fixture }) => {
     .evaluate((el) => getComputedStyle(el, "::before").transitionDuration)
   await page.keyboard.up(" ")
   expect(duration).toBe("0s")
+})
+
+test("F5: the control comes back when the description is drawn again", async ({
+  fixture,
+}) => {
+  const page = await fixture.goto("yt-watch-page")
+  await plated(page)
+  await expect(page.locator(CONTROL)).toBeVisible()
+  await page.evaluate(() => {
+    const inner = document.querySelector("#description-inner")
+    const fresh = document.createElement("div")
+    fresh.id = "description-inner"
+    fresh.textContent = "A description."
+    inner?.replaceWith(fresh)
+  })
+  await expect(page.locator(`#description-inner ${CONTROL}`)).toBeVisible()
 })

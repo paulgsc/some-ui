@@ -35,8 +35,9 @@
  *        video read; and a date written before its video's id, which would
  *        hold the next video pending.) It is not a card: `nav` leaves it to the next reading, and
  *        `stop` forgets it, the Actuator's `dispose` lifting its hold. A
- *        `watch` action is emitted only when its view, its video, where it
- *        plays or its face changes.
+ *        `watch` action is emitted when its view, its video, where it plays
+ *        or its face changes, and again on `described`, when the page's
+ *        description was drawn again.
  *   R9 — The face is one view's (QD13). A `face` input for the plated page's
  *        video, outside the miniplayer, shows its real thumbnail; a new
  *        video, a view that is no longer plated, and `nav` take it away.
@@ -211,6 +212,11 @@ export function reduce(state: CoreState, event: CoreEvent): Step {
     case "watched": {
       if (state.phase !== "running") return none(state)
       return watched(state, event.watch, event.t)
+    }
+
+    case "described": {
+      if (state.phase !== "running" || state.watch === null) return none(state)
+      return { state, actions: [watchAction(state.watch)] }
     }
 
     case "unknown-shape": {
