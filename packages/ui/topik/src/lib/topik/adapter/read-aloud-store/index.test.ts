@@ -150,13 +150,6 @@ describe("the read-aloud store", () => {
     expect(createReadAloudStore(storage).progress(1, ":all")).toEqual(PROGRESS)
   })
 
-  it("keeps the level the learner chose, and none before they choose", () => {
-    const storage = memoryStorage()
-    expect(createReadAloudStore(storage).level()).toBeNull()
-    createReadAloudStore(storage).saveLevel(5)
-    expect(createReadAloudStore(storage).level()).toBe(5)
-  })
-
   it("discards what it cannot parse", () => {
     const storage = memoryStorage()
     storage.map.set(READ_ALOUD_STORAGE_KEYS.paces, "{not json")

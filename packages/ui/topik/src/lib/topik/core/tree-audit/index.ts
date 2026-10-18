@@ -41,7 +41,7 @@ import {
   diffUtterance,
   MIN_DIFF_SIMILARITY,
 } from "@topik/lib/topik/core/morph-diff"
-import { TOPIK_LEVELS } from "@topik/lib/topik/generation"
+import { topikLevelOf } from "@topik/lib/topik/generation"
 
 export type TreeFinding = {
   /** Shape (makjang's story audit) or items (this one). */
@@ -276,7 +276,7 @@ export function auditTeaching(lesson: Lesson<unknown>): TeachingAudit {
     rejected: false,
     probeIds: new Set(),
   }
-  if (!TOPIK_LEVELS.some((level) => level === lesson.level)) {
+  if (topikLevelOf(lesson.level) === null) {
     rejectTree(context, "level", `${lesson.level} is not a TOPIK level (1-6)`)
   }
   lesson.cast.forEach(({ figure }, index) => {

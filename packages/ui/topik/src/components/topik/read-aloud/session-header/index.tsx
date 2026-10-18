@@ -10,11 +10,35 @@ import type { ReadAloudLevel } from "@topik/lib/topik/read-aloud/content"
  */
 export type LevelReason = "held" | "highest" | "set"
 
-const REASON_LABEL: Record<LevelReason, string> = {
-  held: "",
-  highest: " (highest)",
-  set: " (this set's)",
+const REASON_LABEL: Record<LevelReason, string | null> = {
+  held: null,
+  highest: "highest",
+  set: "this set's",
 }
+
+/** A session's level as a chip, with why when it is not the level held. */
+export const LevelChip = ({
+  slot,
+  level,
+  reason = "held",
+  className,
+}: {
+  slot: string
+  level: number
+  reason?: LevelReason
+  className?: string
+}): JSX.Element => (
+  <span
+    data-slot={slot}
+    className={cn(
+      "bg-primary/15 shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold",
+      className
+    )}
+  >
+    TOPIK {level}
+    {REASON_LABEL[reason] && ` (${REASON_LABEL[reason]})`}
+  </span>
+)
 
 /**
  * The header read-aloud's two sessions share: the way out, the title, the
@@ -24,7 +48,7 @@ const REASON_LABEL: Record<LevelReason, string> = {
 export const SessionHeader = ({
   title,
   level,
-  levelReason = "held",
+  levelReason,
   short,
   exit,
   trailing,
@@ -56,13 +80,12 @@ export const SessionHeader = ({
       <h1 className="min-w-0 flex-1 truncate text-base font-semibold">
         {title}
       </h1>
-      <span
-        data-slot="read-aloud-level"
-        className="bg-primary/15 shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold last:mr-2"
-      >
-        TOPIK {level}
-        {REASON_LABEL[levelReason]}
-      </span>
+      <LevelChip
+        slot="read-aloud-level"
+        level={level}
+        reason={levelReason}
+        className="last:mr-2"
+      />
       {trailing}
     </div>
     {progress && progress.of > 0 && (

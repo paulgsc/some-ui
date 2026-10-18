@@ -32,7 +32,6 @@ export type LensSessionProps = UseLensSessionOptions & {
   recordFull?: () => boolean
   /** What leaving returns to: read-aloud's start screen, unless said. */
   exitLabel?: string
-  /** Why the header's level is not the one held, when it is not. */
   levelReason?: LevelReason
 }
 

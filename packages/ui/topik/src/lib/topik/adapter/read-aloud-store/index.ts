@@ -4,9 +4,6 @@
  * added from storage, and the level the learner chose on the material list
  * (adaptive-learning canon Cor. 4.6 (iii), Def. 6.6, Rem. 4.10, Rem. 7.5).
  *
- * The chosen level is a setting: losing it costs the choice, and the level
- * falls back to the last drama's.
- *
  * The added sets are content, kept so the learner need not pick them again;
  * losing them costs the picking. The other three sit outside the belief
  * envelope. The pace book is pacing and nothing more; the record is a count
@@ -20,7 +17,7 @@
 
 import { localStorageOrNull } from "@some-ui/core-utils"
 import type { StorageLike } from "@topik/lib/topik/adapter/storage"
-import { TOPIK_LEVELS } from "@topik/lib/topik/generation"
+import { topikLevelOf } from "@topik/lib/topik/generation"
 import type { TopikLevel } from "@topik/lib/topik/generation"
 import type { AddedSet } from "@topik/lib/topik/read-aloud/added-sets"
 import {
@@ -191,10 +188,8 @@ export function createReadAloudStore(
     saveSets: (sets): void => {
       write(READ_ALOUD_STORAGE_KEYS.sets, sets.map(storedSet))
     },
-    level: (): TopikLevel | null => {
-      const kept = read(READ_ALOUD_STORAGE_KEYS.level)
-      return TOPIK_LEVELS.find((level) => level === kept) ?? null
-    },
+    level: (): TopikLevel | null =>
+      topikLevelOf(read(READ_ALOUD_STORAGE_KEYS.level)),
     saveLevel: (level): void => {
       write(READ_ALOUD_STORAGE_KEYS.level, level)
     },

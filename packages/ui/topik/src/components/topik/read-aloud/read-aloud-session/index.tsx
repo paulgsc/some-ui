@@ -32,7 +32,6 @@ export type ReadAloudSessionProps = UseReadAloudOptions & {
   record?: { record: PracticeRecord; today: string }
   /** The grammar-lens session's start, offered beside read-aloud's when given. */
   lens?: { available: boolean; full?: boolean; onStart: () => void }
-  /** Why the header's level is not the one held, when it is not. */
   levelReason?: LevelReason
   onExit: () => void
 }

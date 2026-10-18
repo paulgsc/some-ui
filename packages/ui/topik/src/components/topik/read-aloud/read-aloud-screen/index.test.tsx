@@ -196,6 +196,22 @@ describe("ReadAloudScreen", () => {
     expect(record.textContent).toContain("In all1 read · 1 set · 2 min")
   })
 
+  it("says an opened set reads at its own level, even one the held level caps to", () => {
+    render(
+      <ReadAloudScreen
+        topikLevel={3}
+        ownSet
+        speech={fakeSpeech()}
+        deck={DECK}
+        store={createReadAloudStore(memoryStorage())}
+        onExit={() => undefined}
+      />
+    )
+    expect(
+      document.querySelector('[data-slot="read-aloud-level"]')?.textContent
+    ).toBe("TOPIK 3 (this set's)")
+  })
+
   it("picks an unfinished set up at its next rep in a later sitting", async () => {
     const storage = memoryStorage()
     const first = render(

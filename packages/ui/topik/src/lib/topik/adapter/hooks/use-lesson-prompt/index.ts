@@ -15,11 +15,15 @@ import type {
 } from "@topik/lib/topik/adapter/last-drama-store"
 import type { ReadAloudStore } from "@topik/lib/topik/adapter/read-aloud-store"
 import type { DramaRequest, TopikLevel } from "@topik/lib/topik/generation"
-import { buildTreePrompt, lastDramaText } from "@topik/lib/topik/generation"
+import {
+  buildTreePrompt,
+  lastDramaText,
+  topikLevelOf,
+} from "@topik/lib/topik/generation"
 
 export type LessonPrompt = {
   /** The level the learner holds: read-aloud's, and the prompt's default. */
-  level: number
+  level: TopikLevel
   /** The learner moving to another level; a review never does. */
   chooseLevel: (level: TopikLevel) => void
   /** The tree prompt for this request, with the last drama. */
@@ -80,7 +84,7 @@ export function useLessonPrompt(
   )
 
   return {
-    level: chosenLevel ?? last?.level ?? 1,
+    level: chosenLevel ?? topikLevelOf(last?.level) ?? 1,
     chooseLevel,
     prompt,
     handedOff,

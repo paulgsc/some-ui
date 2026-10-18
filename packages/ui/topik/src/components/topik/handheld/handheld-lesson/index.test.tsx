@@ -377,7 +377,6 @@ describe("HandheldLesson", () => {
         .getByRole("radio", { name: "TOPIK 2" })
         .getAttribute("aria-checked")
     ).toBe("true")
-    // Opened again, the choice still holds over the last drama's level.
     cleanup()
     renderLesson({ lastDrama: holding(), readAloudStore })
     await writeYourOwnButton()
