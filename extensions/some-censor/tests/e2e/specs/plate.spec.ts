@@ -2,22 +2,30 @@
  * BOYO — the plate (QD12, #1804)
  *
  * P1 — A plated card's thumbnail and channel photo leave zero visible pixels:
- *      the card's box renders the same with the image removed. The fill and
- *      the disc are the plate's own tones, and the disc carries the initial.
+ *      no vivid pixel is in the card's box, which renders the same with the
+ *      images removed, and off the same box shows them. The fill and the
+ *      disc are the plate's own tones, and the disc carries the initial.
  * P2 — The plate is pixel-identical across reloads.
  * P3 — One click on the title, channel name or duration opens its link;
  *      the plate takes no pointer.
  * P4 — The hover preview never shows.
  * P5 — On every fixture, an image or background image put under any plated
- *      card is not painted, whatever the card's shape.
+ *      card is not painted, whatever the card's shape: no vivid pixel is on
+ *      screen, and the same probes paint once a mutant undoes the plate.
  * P6 — No channel photo outside a card is visible while the extension is on,
  *      and off is plain YouTube.
- * P7 — The same for the page header's images and the player's overlays.
+ * P7 — The same for the page header's images and the player's overlays, read
+ *      off the screen, each painting once the extension is off.
  */
 
 import { SWITCHED_OFF_ATTRIBUTE } from "@censor/lib/content/selectors"
 import { expect, test } from "@censor/playwright/fixture"
+import { mutant, vividPixels } from "@censor/playwright/rendered"
 import type { Page } from "@playwright/test"
+
+/** The fixtures' vivid image: what a rendered oracle looks for. */
+const VIVID =
+  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='100%25' height='100%25' fill='%23f0f'/%3E%3C/svg%3E"
 
 const CARDS = {
   poly: {
@@ -72,6 +80,7 @@ test("P1: no pixel of a plated card's images is visible", async ({
 
   for (const [name, card] of Object.entries(CARDS)) {
     const box = page.locator(`#${name}`)
+    expect(await vividPixels(box), `${name} shows no image`).toBe(0)
     const before = await box.screenshot()
     await page.evaluate((n) => {
       for (const img of document.querySelectorAll(`#${n} img`)) img.remove()
@@ -87,6 +96,20 @@ test("P1: no pixel of a plated card's images is visible", async ({
       .locator(card.disc)
       .evaluate((el) => getComputedStyle(el, "::after").content)
     expect(letter, `${name}'s initial`).toBe(card.initial)
+  }
+
+  // The control: off, on a fresh page, the same boxes show their images.
+  await page.reload()
+  await plated(page)
+  await page.evaluate(
+    (attribute) => document.documentElement.setAttribute(attribute, ""),
+    SWITCHED_OFF_ATTRIBUTE
+  )
+  for (const name of Object.keys(CARDS)) {
+    expect(
+      await vividPixels(page.locator(`#${name}`)),
+      `${name} shows its images when off`
+    ).toBeGreaterThan(0)
   }
 })
 
@@ -157,23 +180,39 @@ test("P5: no image under any plated card paints, on every fixture", async ({
   for (const name of ["yt-home", "yt-watch", "yt-shelves", "yt-search"]) {
     const page = await fixture.goto(name)
     await page.waitForSelector('[data-boyo="plated"]')
-    const leaks = await page.evaluate(() => {
-      const found: Array<string> = []
+    // An image and a background image put under every plated card, in the
+    // fixtures' vivid colour, whatever the card's own shape.
+    await page.evaluate((vivid) => {
       for (const card of document.querySelectorAll('[data-boyo="plated"]')) {
         const img = document.createElement("img")
-        img.src =
-          "data:image/gif;base64,R0lGODlhAQABAIAAAP8A/wAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw=="
+        img.className = "probe"
+        img.src = vivid
+        img.style.cssText = "display:block;width:24px;height:24px"
         const painted = document.createElement("div")
-        painted.style.backgroundImage = `url("${img.src}")`
+        painted.className = "probe"
+        painted.style.cssText = `display:block;width:24px;height:24px;background-image:url("${vivid}")`
         card.append(img, painted)
-        if (getComputedStyle(img).visibility !== "hidden")
-          found.push(`${card.tagName} img`)
-        if (getComputedStyle(painted).backgroundImage !== "none")
-          found.push(`${card.tagName} background`)
       }
-      return found
-    })
-    expect(leaks, name).toEqual([])
+    }, VIVID)
+    const probes = await page.locator('[data-boyo="plated"] .probe').all()
+    let shown = 0
+    for (const probe of probes) {
+      expect(await vividPixels(probe), name).toBe(0)
+    }
+
+    // The control: undo the plate, and the same probes paint.
+    const restore = await mutant(
+      page,
+      `html body [data-boyo="plated"] img.probe { visibility: visible !important }
+       html body [data-boyo="plated"] div.probe { background-image: url("${VIVID}") !important }`
+    )
+    for (const probe of probes) {
+      if ((await vividPixels(probe)) > 0) shown += 1
+    }
+    await restore()
+    expect(shown, `${name}: every probe paints without the plate`).toBe(
+      probes.length
+    )
     await page.close()
   }
 })
@@ -197,25 +236,23 @@ test("P7: no header or player image paints, unless off", async ({
   fixture,
 }) => {
   const page = await fixture.goto("yt-headers")
-  const painting = async (): Promise<Array<string>> =>
-    page.evaluate(() =>
-      [...document.querySelectorAll<HTMLElement>("#images [data-name]")]
-        .filter((el) =>
-          el instanceof HTMLImageElement
-            ? getComputedStyle(el).visibility !== "hidden"
-            : getComputedStyle(el).backgroundImage !== "none"
-        )
-        .map((el) => el.dataset["name"] ?? "")
-    )
-  const all = await page
-    .locator("#images [data-name]")
-    .evaluateAll((els) => els.map((el) => el.getAttribute("data-name") ?? ""))
-  expect(all).toHaveLength(16)
-  expect(await painting()).toEqual([])
+  const images = await page.locator("#images [data-name]").all()
+  expect(images).toHaveLength(16)
+  for (const image of images) {
+    const name = await image.getAttribute("data-name")
+    expect(await vividPixels(image), `${name ?? ""} paints nothing`).toBe(0)
+  }
 
+  // The control: off, every one of them paints.
   await page.evaluate(
     (attribute) => document.documentElement.setAttribute(attribute, ""),
     SWITCHED_OFF_ATTRIBUTE
   )
-  expect(await painting()).toEqual(all)
+  for (const image of images) {
+    const name = await image.getAttribute("data-name")
+    expect(
+      await vividPixels(image),
+      `${name ?? ""} paints when off`
+    ).toBeGreaterThan(0)
+  }
 })

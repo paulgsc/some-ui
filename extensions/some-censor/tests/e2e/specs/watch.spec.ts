@@ -25,6 +25,7 @@
 
 import { SWITCHED_OFF_ATTRIBUTE } from "@censor/lib/content/selectors"
 import { expect, test } from "@censor/playwright/fixture"
+import { vividPixels } from "@censor/playwright/rendered"
 import type { Page } from "@playwright/test"
 
 test("W1: no comments render, unless off", async ({ fixture }) => {
@@ -284,10 +285,10 @@ test("W11: a music video's page is shown whole, at any age", async ({
   await expect(page.locator("#primary-inner")).toBeVisible()
   // The player's own poster, and no face control: nothing is plated.
   expect(
-    await page
-      .locator("#movie_player > .ytp-cued-thumbnail-overlay > div")
-      .evaluate((el) => getComputedStyle(el).backgroundImage.includes("url("))
-  ).toBe(true)
+    await vividPixels(
+      page.locator("#movie_player > .ytp-cued-thumbnail-overlay > div")
+    )
+  ).toBeGreaterThan(0)
   await expect(page.locator("[data-boyo-face-hold]")).toHaveCount(0)
   expect(await playsThrough(page)).toBe(true)
 })

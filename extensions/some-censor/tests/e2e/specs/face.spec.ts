@@ -1,8 +1,9 @@
 /**
  * BOYO — the poster and the face (#1805, QD12, QD13)
  *
- * F1 — A plated video's poster is the plate: the player's own vivid poster
- *      does not paint.
+ * F1 — A plated video's poster is the plate: no pixel of the player's own
+ *      vivid poster is on screen (F2's face is the control: the same region
+ *      shows it once held).
  * F2 — Held for three seconds, by the keyboard or the pointer, the control
  *      shows the real poster and goes; an early release changes nothing.
  * F3 — A navigation forgets the face: the plate and the control are back.
@@ -11,16 +12,18 @@
  */
 
 import { expect, test } from "@censor/playwright/fixture"
+import { vividPixels } from "@censor/playwright/rendered"
 import type { Page } from "@playwright/test"
 
 const CONTROL = "[data-boyo-face-hold]"
 const POSTER = "#movie_player > .ytp-cued-thumbnail-overlay > div"
 
-/** Whether the poster paints the player's image rather than the plate. */
+/**
+ * Whether the poster paints the player's own image, read off the screen:
+ * the fixture's poster is vivid, and the plate is not (QC7).
+ */
 async function showsFace(page: Page): Promise<boolean> {
-  return page
-    .locator(POSTER)
-    .evaluate((el) => getComputedStyle(el).backgroundImage.includes("url("))
+  return (await vividPixels(page.locator(POSTER))) > 0
 }
 
 async function plated(page: Page): Promise<void> {
