@@ -131,11 +131,51 @@ const TRACK_NOUNS: Readonly<Record<Track, string>> = {
   adjacent: "adjacent",
 }
 
+/** Archives `day`'s undecided picks unreviewed, once asked. */
+const ArchiveBatch = ({
+  day,
+  count,
+  label,
+}: {
+  day: string
+  count: number
+  label: string
+}): JSX.Element => {
+  const jobs = phoneJobs()
+  const { ask, sheet } = useConfirmSheet()
+  return (
+    <>
+      <Button
+        type="button"
+        size="sm"
+        variant="outline"
+        className="self-start"
+        onClick={() =>
+          ask({
+            title: `Archive ${counted(count, "pick")}?`,
+            description:
+              "They leave the queue unreviewed, which the morning run hears once you share your decisions. You can still open one and decide it.",
+            confirm: "Archive them",
+            keep: "Review them",
+            onConfirm: () => {
+              jobs.archive(day)
+            },
+          })
+        }
+      >
+        {label}
+      </Button>
+      {sheet}
+    </>
+  )
+}
+
 /**
  * How many picks each track holds open, and the first choice on a digest:
- * review its picks, or archive the undecided ones unreviewed. Either way a
- * pick holds its slot until its decision is shared, since the morning run
- * reads only Drive.
+ * review its picks, or archive the undecided ones unreviewed. Earlier
+ * digests' open picks are listed here, since the cards below are only this
+ * digest's. A pick holds its slot until its decision is shared, since the
+ * morning run reads only Drive.
  */
 const Queue = ({
   state,
@@ -144,10 +184,11 @@ const Queue = ({
   state: JobsState
   digest: Digest
 }): JSX.Element => {
-  const jobs = phoneJobs()
-  const { ask, sheet } = useConfirmSheet()
   const open = openOf(state)
   const undecided = undecidedOf(state, digest.day)
+  const earlier = [
+    ...new Set(open.filter((o) => o.day !== digest.day).map((o) => o.day)),
+  ]
   const held = digest.queue?.open ?? []
   const closed = new Set(
     held.filter((p) => p.closed).map((p) => `${p.day}/${p.pickId}`)
@@ -171,28 +212,43 @@ const Queue = ({
           ` This one found ${counted(held.length - closed.size, "pick")} from earlier days still open${full ? ", so it searched nothing" : ""}.`}
       </p>
       {undecided.length > 0 && (
-        <Button
-          type="button"
-          size="sm"
-          variant="outline"
-          className="self-start"
-          onClick={() =>
-            ask({
-              title: `Archive ${counted(undecided.length, "pick")}?`,
-              description:
-                "They leave the queue unreviewed, which the morning run hears once you share your decisions. You can still open one and decide it.",
-              confirm: "Archive them",
-              keep: "Review them",
-              onConfirm: () => {
-                jobs.archive(digest.day)
-              },
-            })
-          }
-        >
-          Archive {counted(undecided.length, "undecided pick")}
-        </Button>
+        <ArchiveBatch
+          day={digest.day}
+          count={undecided.length}
+          label={`Archive ${counted(undecided.length, "undecided pick")}`}
+        />
       )}
-      {sheet}
+      {earlier.map((day) => {
+        const left = undecidedOf(state, day).length
+        return (
+          <div key={day} className="flex flex-col gap-1.5 border-t pt-2">
+            <span className="text-xs font-semibold">{day}</span>
+            <ul className="flex flex-col gap-1">
+              {open
+                .filter((o) => o.day === day)
+                .map(({ pick }) => (
+                  <li key={pick.id}>
+                    <Link
+                      to="/jobs/pick/$day/$pickId"
+                      params={{ day, pickId: pick.id }}
+                      className="text-sm underline-offset-2 hover:underline"
+                    >
+                      {pick.posting.title} · {pick.posting.company} ·{" "}
+                      {STATE_LABEL(progressOf(state, day, pick.id))}
+                    </Link>
+                  </li>
+                ))}
+            </ul>
+            {left > 0 && (
+              <ArchiveBatch
+                day={day}
+                count={left}
+                label={`Archive ${day}’s ${counted(left, "undecided pick")}`}
+              />
+            )}
+          </div>
+        )
+      })}
     </section>
   )
 }
