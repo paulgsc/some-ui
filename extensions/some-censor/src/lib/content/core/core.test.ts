@@ -15,7 +15,13 @@ import type { SessionId } from "@some-extension/common"
 import { describe, expect, it } from "vitest"
 
 import type { Input } from "./events"
-import type { Action, CoreEvent, CoreState, Observation } from "./index"
+import type {
+  Action,
+  CoreEvent,
+  CoreState,
+  Observation,
+  WatchObservation,
+} from "./index"
 import { cardKey, initialState, reduce, snapshot } from "./index"
 
 // SessionId is a branded number minted by the shell; the reducer only ever
@@ -390,6 +396,100 @@ describe("the boundary (R7, #1807)", () => {
       seen(1, { uploadDate: TWO_YEARS }),
     ])
     expect(viewOf(restarted.state)).toBe("absent")
+  })
+})
+
+describe("the watch page (R8, #1805)", () => {
+  const OLD_PAGE: WatchObservation = {
+    videoId: asVideoId("vid_w"),
+    short: false,
+    hydrated: true,
+    dates: ["444M views", "21y ago"],
+  }
+  const watched = (
+    t: number,
+    watch: WatchObservation | null = OLD_PAGE
+  ): CoreEvent => ({ kind: "watched", watch, t })
+  const watchActions = (actions: ReadonlyArray<Action>): Array<unknown> =>
+    actions.flatMap((a) =>
+      a.kind === "watch" ? [{ view: a.view, videoId: a.videoId }] : []
+    )
+
+  it("does nothing while idle", () => {
+    expect(reduce(initialState(session(0)), watched(1)).actions).toEqual([])
+  })
+
+  it("decides the page's video by its evidence, and announces it once", () => {
+    const { state, actions } = fold([started, watched(1), watched(2)])
+    expect(state.watch?.view).toBe("plated")
+    expect(watchActions(actions)).toEqual([
+      { view: "plated", videoId: "vid_w" },
+    ])
+  })
+
+  it("is pending until the metadata names the video, absent with no date it can place", () => {
+    const pending = { ...OLD_PAGE, hydrated: false, dates: [] }
+    const undated = { ...OLD_PAGE, dates: ["444M views"] }
+    const recent = { ...OLD_PAGE, dates: ["3 hours ago"] }
+    const { actions } = fold([
+      started,
+      watched(1, pending),
+      watched(2, { ...undated, videoId: asVideoId("vid_x") }),
+      watched(3, { ...recent, videoId: asVideoId("vid_y") }),
+      watched(4, { videoId: null, short: true, hydrated: true, dates: [] }),
+    ])
+    expect(watchActions(actions)).toEqual([
+      { view: "pending", videoId: "vid_w" },
+      { view: "absent", videoId: "vid_x" },
+      { view: "absent", videoId: "vid_y" },
+      { view: "absent", videoId: null },
+    ])
+  })
+
+  it("keeps a video's evidence a later reading lost, and drops another video's", () => {
+    const lost = { ...OLD_PAGE, hydrated: false, dates: [] }
+    const { state } = fold([started, watched(1), watched(2, lost)])
+    expect(state.watch?.view).toBe("plated")
+    const next = reduce(
+      state,
+      watched(3, { ...lost, videoId: asVideoId("vid_x") })
+    )
+    expect(watchActions(next.actions)).toEqual([
+      { view: "pending", videoId: "vid_x" },
+    ])
+  })
+
+  it("strips the hold when no watch page is shown, on nav and on stop", () => {
+    const shown = fold([started, watched(1)]).state
+    const leaving: ReadonlyArray<CoreEvent> = [
+      watched(2, null),
+      nav(2, 2),
+      { kind: "stop", t: 2 },
+    ]
+    for (const event of leaving) {
+      const step = reduce(shown, event)
+      expect(step.state.watch).toBeNull()
+      expect(watchActions(step.actions)).toEqual([
+        { view: null, videoId: null },
+      ])
+    }
+    expect(watchActions(reduce(shown, watched(2)).actions)).toEqual([])
+    const blank = fold([started]).state
+    expect(watchActions(reduce(blank, nav(2, 2)).actions)).toEqual([])
+  })
+
+  it("is re-decided by the boundary", () => {
+    const { state } = fold([
+      started,
+      watched(1, { ...OLD_PAGE, dates: ["2 years ago"] }),
+    ])
+    const raised = reduce(state, { kind: "boundary", days: 3 * B, t: 5 })
+    expect(watchActions(raised.actions)).toEqual([
+      { view: "absent", videoId: "vid_w" },
+    ])
+    expect(reduce(state, { kind: "boundary", days: B, t: 5 }).actions).toEqual(
+      []
+    )
   })
 })
 

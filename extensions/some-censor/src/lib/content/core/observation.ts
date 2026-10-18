@@ -41,6 +41,42 @@ export type Observation = {
 }
 
 /**
+ * What the Sensor reads of the page's own video: the watch page's, or a
+ * Short's (#1805). Raw vendor text, as {@link Observation}'s date is.
+ */
+export type WatchObservation = {
+  /** The watch page's `video-id`; null on a Short, which needs none. */
+  readonly videoId: VideoId | null
+  /** A Short, held whatever its date (QD11). */
+  readonly short: boolean
+  /**
+   * The page's metadata names this video, so its dates are this video's and
+   * not the one an SPA navigation left behind.
+   */
+  readonly hydrated: boolean
+  /** Every run that may be the date: the info line's, and its tooltip's. */
+  readonly dates: ReadonlyArray<string>
+}
+
+/**
+ * The same video's evidence only accumulates, as a card's does; another
+ * video's replaces it.
+ */
+export function mergeWatch(
+  previous: WatchObservation,
+  next: WatchObservation
+): WatchObservation {
+  if (next.videoId !== previous.videoId || next.short !== previous.short) {
+    return next
+  }
+  return {
+    ...next,
+    hydrated: previous.hydrated || next.hydrated,
+    dates: next.dates.length > 0 ? next.dates : previous.dates,
+  }
+}
+
+/**
  * Fold a fresh observation over an older one: every field keeps the newest
  * non-null value, so evidence only ever accumulates (the monotonic tier order
  * of canon Theorem 5.1, at field granularity). A later observation that lost

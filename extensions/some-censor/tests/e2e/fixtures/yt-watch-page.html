@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Me at the zoo - YouTube</title>
+  </head>
+  <body>
+    <!--
+    BOYO fixture: the watch page itself (#1805), in the elements the
+    2026-10-18 capture of /watch?v=jNQXAC9IVRw holds: the page manager's
+    shown page, its player, the metadata naming its video, and the info
+    line and tooltip that state the date. The video is old, so it is
+    plated; a spec rewrites the date, the video or the page to reach
+    the other views.
+  -->
+    <ytd-app>
+      <ytd-page-manager>
+        <ytd-browse hidden page-subtype="home"></ytd-browse>
+        <ytd-watch-flexy video-id="jNQXAC9IVRw">
+          <div id="full-bleed-container"></div>
+          <div id="columns">
+            <div id="primary">
+              <div id="primary-inner">
+                <div id="player">
+                  <video
+                    class="html5-main-video"
+                    width="320"
+                    height="180"
+                  ></video>
+                </div>
+                <div id="below">
+                  <ytd-watch-metadata video-id="jNQXAC9IVRw">
+                    <div id="title">
+                      <h1>
+                        <yt-formatted-string>Me at the zoo</yt-formatted-string>
+                      </h1>
+                    </div>
+                    <ytd-watch-info-text>
+                      <yt-formatted-string id="info"
+                        ><span dir="auto">444M views</span
+                        ><span dir="auto"> </span
+                        ><span dir="auto">21y ago</span></yt-formatted-string
+                      >
+                      <tp-yt-paper-tooltip
+                        ><div id="tooltip">
+                          444,875,933 views • Apr 23, 2005 • SAN DIEGO ZOO
+                        </div></tp-yt-paper-tooltip
+                      >
+                    </ytd-watch-info-text>
+                  </ytd-watch-metadata>
+                </div>
+              </div>
+            </div>
+            <div id="secondary">Up next</div>
+          </div>
+        </ytd-watch-flexy>
+      </ytd-page-manager>
+    </ytd-app>
+  </body>
+</html>

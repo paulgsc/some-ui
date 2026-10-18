@@ -4,8 +4,8 @@
  * `realize(actions)` executes what Core named and decides nothing. It is
  * the one module that mutates VendorDOM (stamps and the plate's values);
  * every such write lives here or in a file this module owns (`switch.ts`
- * for the page-wide off switch). Nothing it does produces an input for
- * Core.
+ * for the page-wide off switch, `watch-hold.ts` for the watch page's hold).
+ * Nothing it does produces an input for Core.
  *
  * Design properties, pinned by `actuator.test.ts` (labels for citation, not
  * declared review invariants). The parenthesised D-numbers are the veil
@@ -19,7 +19,8 @@
  *        stamps and the plate's values, and touches nothing else.
  *   A4 — Full cleanup (D3, D4). `unmount` leaves every element it stamped
  *        as it was before (stamps and the plate's values) and drops the
- *        key's record; `dispose` does so for everything at once.
+ *        key's record; `dispose` does so for everything at once, and
+ *        lifts the watch page's hold (`watch-hold.ts`'s W2).
  *   A5 — Custody is accounted for here, once (D6). Which elements carry which
  *        key's stamp is one map in
  *        this module; a render diffs its targets against it and strips the
@@ -35,6 +36,7 @@ import type { Plate } from "@censor/lib/content/plate/plate"
 import type { VideoId } from "@censor/types/ids"
 
 import type { BoundAction, CustodyTarget } from "./bound"
+import { createWatchHold } from "./watch-hold"
 
 export type Actuator = {
   realize(actions: ReadonlyArray<BoundAction>): void
@@ -55,8 +57,9 @@ const PLATE_PROPERTIES: Readonly<Record<keyof Plate, string>> = {
   initial: "--boyo-initial",
 }
 
-export function createActuator(): Actuator {
+export function createActuator(doc: Document): Actuator {
   const realized = new Map<CardKey, Realized>()
+  const watchHold = createWatchHold(doc)
   const owner = new WeakMap<HTMLElement, CardKey>()
   /** Elements whose `style` attribute this module created, so A4 removes only those. */
   const styled = new WeakSet<HTMLElement>()
@@ -182,6 +185,10 @@ export function createActuator(): Actuator {
             unmount(action.key, targets)
             break
           }
+          case "watch": {
+            watchHold.realize(action.view, action.videoId)
+            break
+          }
           default: {
             kind satisfies never
             throw new Error("[BOYO] unknown action", { cause: action })
@@ -199,6 +206,7 @@ export function createActuator(): Actuator {
       if (disposed) return
       disposed = true
       for (const key of [...realized.keys()]) unmount(key, [])
+      watchHold.dispose()
     },
   }
 }

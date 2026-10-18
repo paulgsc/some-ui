@@ -20,6 +20,7 @@ import {
   extractMeta,
   extractTitle,
   extractUploadDate,
+  readWatch,
   tryExtract,
 } from "./index"
 
@@ -502,5 +503,61 @@ describe("extractIsShort", () => {
       )
     ).toBe(true)
     expect(extractIsShort(make("ytd-rich-item-renderer", POLYMER))).toBe(false)
+  })
+})
+
+describe("readWatch (#1805)", () => {
+  function page(html: string): Document {
+    const doc = document.implementation.createHTMLDocument("t")
+    doc.body.innerHTML = `<ytd-app><ytd-page-manager>${html}</ytd-page-manager></ytd-app>`
+    return doc
+  }
+  const metadata = (videoId: string): string => `
+    <ytd-watch-metadata video-id="${videoId}">
+      <ytd-watch-info-text>
+        <yt-formatted-string id="info"><span>444M views</span><span> </span><span>21y ago</span><span> </span><a>SAN DIEGO ZOO</a></yt-formatted-string>
+        <tp-yt-paper-tooltip><div id="tooltip"> 444,875,933 views • Apr 23, 2005 • SAN DIEGO ZOO </div></tp-yt-paper-tooltip>
+      </ytd-watch-info-text>
+    </ytd-watch-metadata>`
+
+  it("reads the shown watch page's video and every run that may be its date", () => {
+    const doc = page(
+      `<ytd-browse hidden></ytd-browse><ytd-watch-flexy video-id="jNQ">${metadata("jNQ")}</ytd-watch-flexy>`
+    )
+    expect(readWatch(doc)).toEqual({
+      videoId: "jNQ",
+      short: false,
+      hydrated: true,
+      dates: [
+        "444M views",
+        "21y ago",
+        "444,875,933 views",
+        "Apr 23, 2005",
+        "SAN DIEGO ZOO",
+      ],
+    })
+  })
+
+  it("reads no date while the metadata still names the previous video", () => {
+    const doc = page(
+      `<ytd-watch-flexy video-id="next">${metadata("jNQ")}</ytd-watch-flexy>`
+    )
+    expect(readWatch(doc)).toEqual({
+      videoId: "next",
+      short: false,
+      hydrated: false,
+      dates: [],
+    })
+  })
+
+  it("reads a Short as a Short, and a hidden page as no page", () => {
+    expect(readWatch(page("<ytd-shorts></ytd-shorts>"))?.short).toBe(true)
+    expect(
+      readWatch(
+        page(
+          `<ytd-watch-flexy hidden video-id="jNQ">${metadata("jNQ")}</ytd-watch-flexy><ytd-shorts hidden></ytd-shorts>`
+        )
+      )
+    ).toBeNull()
   })
 })

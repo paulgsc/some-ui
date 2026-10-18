@@ -26,6 +26,11 @@
  *        state's boundary: a re-observation that moves the estimate moves
  *        the view (#1803), and so does the owner's `boundary`, re-deciding
  *        every card in place in one step (#1807). No other input changes it.
+ *   R8 — The watch page is one more piece of evidence (#1805). Its view is
+ *        `decideWatch()` of the merged `watched` observations of the same
+ *        video, re-decided by `boundary` as a card is; `nav` and `stop`
+ *        forget it, as R3 forgets cards. A `watch` action is emitted only
+ *        when its view or its video changes.
  *
  * R4 correlated the answers to Core's async requests; none are left, so it
  * is retired. The parenthesised M- and C- labels are kept so their
@@ -33,16 +38,16 @@
  * are `controller.ts`'s.
  */
 
-import { decide, project } from "@censor/lib/content/fsm"
+import { decide, decideWatch, project } from "@censor/lib/content/fsm"
 import { assertNever } from "@some-extension/common"
 
 import type { Action, CoreFact } from "./actions"
 import type { CoreEvent } from "./events"
 import type { CardKey } from "./keys"
 import { keyVideoId } from "./keys"
-import type { Observation } from "./observation"
-import { mergeObservation } from "./observation"
-import type { CardState, CoreState } from "./state"
+import type { Observation, WatchObservation } from "./observation"
+import { mergeObservation, mergeWatch } from "./observation"
+import type { CardState, CoreState, WatchState } from "./state"
 import { EMPTY_UNKNOWN_SHAPES } from "./state"
 
 export type Step = {
@@ -109,6 +114,7 @@ export function reduce(state: CoreState, event: CoreEvent): Step {
           phase: "running",
           session: event.session,
           cards: new Map(),
+          watch: null,
           boundaryDays: event.boundaryDays,
           unknownShapes: EMPTY_UNKNOWN_SHAPES,
         },
@@ -120,10 +126,11 @@ export function reduce(state: CoreState, event: CoreEvent): Step {
       if (state.phase !== "running") return none(state)
       const cleared = clearCards(state)
       return {
-        state: { ...cleared.state, phase: "idle" },
+        state: { ...cleared.state, phase: "idle", watch: null },
         actions: [
           record({ kind: "session.reset", session: state.session }),
           ...cleared.actions,
+          ...unwatch(state),
         ],
       }
     }
@@ -135,12 +142,14 @@ export function reduce(state: CoreState, event: CoreEvent): Step {
         state: {
           ...cleared.state,
           session: event.session,
+          watch: null,
           unknownShapes: EMPTY_UNKNOWN_SHAPES,
         },
         actions: [
           record({ kind: "navigation" }),
           record({ kind: "session.reset", session: state.session }),
           ...cleared.actions,
+          ...unwatch(state),
           record({ kind: "session.start", session: event.session }),
         ],
       }
@@ -167,6 +176,11 @@ export function reduce(state: CoreState, event: CoreEvent): Step {
         state: deleteCard(state, event.key),
         actions: [{ kind: "unmount", key: event.key }],
       }
+    }
+
+    case "watched": {
+      if (state.phase !== "running") return none(state)
+      return watched(state, event.watch, event.t)
     }
 
     case "unknown-shape": {
@@ -280,10 +294,50 @@ function reobserve(
   return { state: setCard(state, next), actions }
 }
 
+function watchAction(watch: WatchState | null): Action {
+  return {
+    kind: "watch",
+    view: watch?.view ?? null,
+    videoId: watch?.observation.videoId ?? null,
+  }
+}
+
+/** Strip the watch page's hold, if one is up (R8). */
+function unwatch(state: CoreState): Array<Action> {
+  return state.watch === null ? [] : [watchAction(null)]
+}
+
+function watched(
+  state: CoreState,
+  observation: WatchObservation | null,
+  t: number
+): Step {
+  if (observation === null) {
+    return { state: { ...state, watch: null }, actions: unwatch(state) }
+  }
+  const previous = state.watch
+  const merged =
+    previous === null
+      ? observation
+      : mergeWatch(previous.observation, observation)
+  const next: WatchState = {
+    observation: merged,
+    view: decideWatch(merged, t, state.boundaryDays),
+    seenAt: t,
+  }
+  const moved =
+    previous?.view !== next.view ||
+    previous.observation.videoId !== merged.videoId
+  return {
+    state: { ...state, watch: next },
+    actions: moved ? [watchAction(next)] : [],
+  }
+}
+
 /**
- * Re-decide every card under a new boundary. Only a card whose view moved is
- * re-rendered, and each goes straight from one stamp to the other, so no
- * card passes through unstamped.
+ * Re-decide every card, and the watch page, under a new boundary. Only a
+ * card whose view moved is re-rendered, and each goes straight from one
+ * stamp to the other, so no card passes through unstamped.
  */
 function rebound(state: CoreState, boundaryDays: number): Step {
   const cards = new Map<CardKey, CardState>()
@@ -300,5 +354,13 @@ function rebound(state: CoreState, boundaryDays: number): Step {
     if (view.kind !== card.view.kind)
       actions.push(render(next), stateFact(next))
   }
-  return { state: { ...state, boundaryDays, cards }, actions }
+  let watch = state.watch
+  if (watch !== null) {
+    const view = decideWatch(watch.observation, watch.seenAt, boundaryDays)
+    if (view !== watch.view) {
+      watch = { ...watch, view }
+      actions.push(watchAction(watch))
+    }
+  }
+  return { state: { ...state, boundaryDays, cards, watch }, actions }
 }

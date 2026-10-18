@@ -28,10 +28,11 @@ export type CustodyTarget = {
 }
 
 /**
- * A `render` or `unmount`, with its targets: the only actions the Actuator
- * receives, since the runtime forwards `record` facts itself.
+ * A `render`, `unmount` or `watch`, with its targets: the only actions the
+ * Actuator receives, since the runtime forwards `record` facts itself. A
+ * `watch` names no card, so it has none.
  */
 export type BoundAction = {
-  readonly action: Extract<Action, { kind: "render" | "unmount" }>
+  readonly action: Extract<Action, { kind: "render" | "unmount" | "watch" }>
   readonly targets: ReadonlyArray<CustodyTarget>
 }

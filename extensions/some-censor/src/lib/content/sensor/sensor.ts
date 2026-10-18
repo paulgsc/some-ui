@@ -8,7 +8,7 @@
  * (`queue.ts`), and emits `Token`s. It never calls Core: tokens go onto
  * whatever `emit` it was given, and Core sees exactly two kinds of vendor
  * event through it — mutation-derived (`observed`, `gone`,
- * `unknown-shape`) and `nav` (B5).
+ * `unknown-shape`, `watched`) and `nav` (B5).
  *
  * Design properties (not declared review invariants; the behavioural ones
  * are pinned by `sensor.test.ts`):
@@ -43,6 +43,7 @@ import {
   extractMeta,
   extractTitle,
   extractUploadDate,
+  readWatch,
   tryExtract,
 } from "@censor/lib/content/extract/index"
 import type { UnknownShapeReason } from "@censor/lib/content/layout/lookup"
@@ -60,6 +61,7 @@ import {
   SEL,
 } from "@censor/lib/content/selectors"
 import type { OccluderEngine } from "@censor/lib/content/selectors"
+import type { VideoId } from "@censor/types/ids"
 import type { SessionId } from "@some-extension/common"
 
 import { classifyNode } from "./classify"
@@ -69,6 +71,8 @@ import type { RetryQueue } from "./queue"
 import { createRetryQueue, RESOLVE_BUDGET_MS, RETRY_INTERVAL_MS } from "./queue"
 
 export const NAV_DEBOUNCE_MS = 150
+
+const NO_WATCH = JSON.stringify(null)
 
 export type SensorPorts = {
   readonly doc: Document
@@ -151,6 +155,17 @@ export function createSensor(ports: SensorPorts): Sensor {
    * other's last token and re-announce on every tick.
    */
   const lastEmitted = new Map<HTMLElement, string>()
+  /**
+   * The page's own video as last announced, serialized. Core starts every
+   * session with none, so "none" needs no announcing.
+   */
+  let lastWatch = NO_WATCH
+  /**
+   * A watch page whose metadata has not named its video, or shows no date
+   * yet, since when: re-read by the retry loop under the same budget, since
+   * a date can arrive as a text node's data, which no mutation here shows.
+   */
+  let watchPending: { videoId: VideoId | null; since: number } | null = null
   let observer: MutationObserver | null = null
   let retryTimer: ReturnType<typeof setInterval> | null = null
   let navDebounce: ReturnType<typeof setTimeout> | null = null
@@ -455,17 +470,46 @@ export function createSensor(ports: SensorPorts): Sensor {
     }, RETRY_INTERVAL_MS)
   }
 
+  function watchWaiting(): boolean {
+    return (
+      watchPending !== null &&
+      ports.clock() - watchPending.since < RESOLVE_BUDGET_MS
+    )
+  }
+
   function maybeStopRetryLoop(): void {
     if (
       queue.size === 0 &&
       channelPending.size === 0 &&
       namePending.size === 0 &&
       datePending.size === 0 &&
+      !watchWaiting() &&
       retryTimer !== null
     ) {
       clearInterval(retryTimer)
       retryTimer = null
     }
+  }
+
+  // ── The page's own video (#1805) ───────────────────────────────────────
+
+  /** Announce the page's own video when what is read of it changes. */
+  function observeWatch(): void {
+    if (!running) return
+    const now = ports.clock()
+    const watch = readWatch(ports.doc)
+    if (watch !== null && (!watch.hydrated || watch.dates.length === 0)) {
+      if (watchPending?.videoId !== watch.videoId) {
+        watchPending = { videoId: watch.videoId, since: now }
+      }
+      if (watchWaiting()) ensureRetryLoop()
+    } else {
+      watchPending = null
+    }
+    const serialized = JSON.stringify(watch)
+    if (serialized === lastWatch) return
+    lastWatch = serialized
+    ports.emit({ kind: "watched", watch, t: now })
   }
 
   // ── Mutation and navigation ────────────────────────────────────────────
@@ -509,6 +553,7 @@ export function createSensor(ports: SensorPorts): Sensor {
     })
     retry()
     if (removed) prune()
+    observeWatch()
     ports.onFact({
       kind: "mutation.batch",
       candidates: candidates.size + enclosing.size,
@@ -553,6 +598,8 @@ export function createSensor(ports: SensorPorts): Sensor {
     dateAbandoned = new WeakSet()
     unknownReported = new WeakSet()
     lastEmitted.clear()
+    lastWatch = NO_WATCH
+    watchPending = null
     if (retryTimer !== null) {
       clearInterval(retryTimer)
       retryTimer = null
@@ -562,6 +609,7 @@ export function createSensor(ports: SensorPorts): Sensor {
   function scan(): void {
     if (!running) return
     ports.doc.querySelectorAll<HTMLElement>(SEL).forEach((el) => observe(el))
+    observeWatch()
   }
 
   return {
@@ -573,7 +621,9 @@ export function createSensor(ports: SensorPorts): Sensor {
         childList: true,
         subtree: true,
         attributes: true,
-        attributeFilter: ["data-video-id"],
+        // `video-id` and `hidden`: the watch page's video, and which page
+        // `ytd-page-manager` shows (#1805).
+        attributeFilter: ["data-video-id", "video-id", "hidden"],
       })
       ports.win.addEventListener("yt-navigate-finish", onNavigate)
     },

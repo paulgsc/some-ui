@@ -17,7 +17,7 @@ import type { BoyoSurface } from "@censor/lib/content/layout/surface"
 import type { SessionId } from "@some-extension/common"
 
 import type { CardKey } from "./keys"
-import type { Observation } from "./observation"
+import type { Observation, WatchObservation } from "./observation"
 
 // ── Tokens: what the Sensor derives from the vendor (B5) ─────────────────────
 
@@ -42,6 +42,15 @@ export type Token =
     }
   /** No element carries this key any more. */
   | { readonly kind: "gone"; readonly key: CardKey; readonly t: number }
+  /**
+   * The page's own video, as the watch page or a Short shows it, or null
+   * when neither is shown (#1805). Re-sent whenever the reading changes.
+   */
+  | {
+      readonly kind: "watched"
+      readonly watch: WatchObservation | null
+      readonly t: number
+    }
   /**
    * A catalogue element the layout table could not place and that carried no
    * extractable card either (B4). Nothing to adopt; counted so the table's

@@ -543,6 +543,73 @@ describe("navigation (B5)", () => {
   })
 })
 
+describe("the watch page (#1805)", () => {
+  function watchPage(videoId: string, date: string | null): HTMLElement {
+    const manager = document.createElement("ytd-page-manager")
+    manager.innerHTML = `<ytd-watch-flexy video-id="${videoId}"><ytd-watch-metadata video-id="${videoId}"><ytd-watch-info-text><yt-formatted-string id="info">${date === null ? "" : `<span>${date}</span>`}</yt-formatted-string></ytd-watch-info-text></ytd-watch-metadata></ytd-watch-flexy>`
+    document.body.appendChild(manager)
+    return manager
+  }
+  const watched = (): Array<unknown> =>
+    tokens.flatMap((t) => (t.kind === "watched" ? [t.watch] : []))
+
+  it("announces the page's video when what is read of it changes, and only then", async () => {
+    const manager = watchPage("w1", "21y ago")
+    await tick()
+    sensor.scan()
+    expect(watched()).toEqual([
+      { videoId: "w1", short: false, hydrated: true, dates: ["21y ago"] },
+    ])
+    // An SPA navigation: the page's video changes before its metadata does.
+    manager.querySelector("ytd-watch-flexy")?.setAttribute("video-id", "w2")
+    await vi.advanceTimersByTimeAsync(0)
+    expect(watched().at(-1)).toEqual({
+      videoId: "w2",
+      short: false,
+      hydrated: false,
+      dates: [],
+    })
+    manager.querySelector("ytd-watch-flexy")?.setAttribute("hidden", "")
+    await vi.advanceTimersByTimeAsync(0)
+    expect(watched().at(-1)).toBeNull()
+  })
+
+  it("re-reads a page with no date yet until one arrives", async () => {
+    const manager = watchPage("w1", null)
+    const run = document.createElement("span")
+    const text = run.appendChild(document.createTextNode(""))
+    manager.querySelector("#info")?.appendChild(run)
+    await tick()
+    tokens = []
+    // A date arriving as a text node's data: no mutation this observes.
+    text.data = "3 hours ago"
+    await tick()
+    expect(watched()).toEqual([
+      { videoId: "w1", short: false, hydrated: true, dates: ["3 hours ago"] },
+    ])
+    await tick()
+    expect(vi.getTimerCount()).toBe(0)
+  })
+
+  it("stops re-reading a page that shows no date once the budget is spent", async () => {
+    watchPage("w1", null)
+    await tick()
+    expect(vi.getTimerCount()).toBe(1)
+    now += RESOLVE_BUDGET_MS
+    await tick()
+    expect(vi.getTimerCount()).toBe(0)
+  })
+
+  it("announces the page again after a navigation", async () => {
+    watchPage("w1", "21y ago")
+    await tick()
+    tokens = []
+    window.dispatchEvent(new Event("yt-navigate-finish"))
+    await vi.advanceTimersByTimeAsync(NAV_DEBOUNCE_MS)
+    expect(tokens.map((t) => t.kind)).toEqual(["nav", "watched"])
+  })
+})
+
 describe("census", () => {
   it("counts an occluded element the Sensor gave up on as untracked", async () => {
     document.body.appendChild(cell("held"))
