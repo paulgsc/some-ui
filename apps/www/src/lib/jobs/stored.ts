@@ -9,6 +9,7 @@
  * - when even that is impossible (the storage throws), the record opens
  *   read-only and refuses every change.
  */
+import { openRecord, writeRecord } from "@some-ui/core-utils"
 import {
   DigestSchema,
   FRICTION,
@@ -138,28 +139,10 @@ function parse(raw: string): JobsState | null {
   }
 }
 
-function quarantine(storage: StorageAdapter, raw: string): boolean {
-  try {
-    let n = 1
-    while (storage.getItem(`${QUARANTINE_PREFIX}${n}`) !== null) n += 1
-    storage.setItem(`${QUARANTINE_PREFIX}${n}`, raw)
-    return true
-  } catch {
-    return false
-  }
-}
-
 export function openStored(storage: StorageAdapter): Opened {
-  let raw: string | null
-  try {
-    raw = storage.getItem(STORAGE_KEY)
-  } catch {
-    return { kind: "unreadable" }
-  }
-  if (raw === null) return { kind: "empty" }
-  const state = parse(raw)
-  if (state !== null) return { kind: "kept", state }
-  return quarantine(storage, raw) ? { kind: "empty" } : { kind: "unreadable" }
+  const opened = openRecord(storage, STORAGE_KEY, parse, QUARANTINE_PREFIX)
+  if (opened.kind === "kept") return { kind: "kept", state: opened.value }
+  return opened.kind === "moved" ? { kind: "empty" } : opened
 }
 
 /** Whether the phone kept `state`; false leaves the old value as it was. */
@@ -168,10 +151,8 @@ export function writeStored(
   state: JobsState
 ): boolean {
   try {
-    const value = JSON.stringify({ v: VERSION, ...state })
-    if (parse(value) === null) return false
-    storage.setItem(STORAGE_KEY, value)
-    return true
+    const text = JSON.stringify({ v: VERSION, ...state })
+    return writeRecord(storage, STORAGE_KEY, text, parse)
   } catch {
     return false
   }

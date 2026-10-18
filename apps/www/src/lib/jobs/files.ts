@@ -118,6 +118,7 @@ export function decisionsFile(
       )
       voice.push(...names.filter((n) => freshVoice.includes(n.id)))
       picks.push({
+        day: digest.day,
         pickId: pick.id,
         fingerprint: pick.fingerprint,
         decision: decision ?? "untouched",

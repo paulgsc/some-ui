@@ -70,7 +70,8 @@ export type JobsPorts = {
 
 type Shared =
   | { outcome: "shared"; shareId: string }
-  | { outcome: "cancelled" | "nothing" }
+  /** The sheet sent the files but the phone could not note it: they stay pending. */
+  | { outcome: "cancelled" | "nothing" | "unrecorded" }
 
 export type JobsRuntime = {
   getSnapshot: () => JobsSnapshot
@@ -257,7 +258,7 @@ export function createJobsRuntime(ports: JobsPorts): JobsRuntime {
         ])
         if (result !== "shared") return { outcome: "cancelled" }
         const shareStamp = stamp()
-        commit({
+        const noted = commit({
           type: "record",
           event: {
             type: "shared",
@@ -269,6 +270,7 @@ export function createJobsRuntime(ports: JobsPorts): JobsRuntime {
           },
           stamp: shareStamp,
         })
+        if (!noted) return { outcome: "unrecorded" }
         return { outcome: "shared", shareId: shareStamp.id }
       } finally {
         sharing.delete(kind)

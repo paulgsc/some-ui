@@ -304,6 +304,7 @@ describe("the files the phone shares back", () => {
         sharedAt: "2026-10-18T22:10:00Z",
         picks: [
           {
+            day: "2026-10-18",
             pickId: "blu-7f2a",
             fingerprint: "bluesight|data analyst|remote",
             decision: "taken",
@@ -320,6 +321,7 @@ describe("the files the phone shares back", () => {
             },
           },
           {
+            day: "2026-10-18",
             pickId: "avm-0b77",
             fingerprint: "avmet applications|software engineer|remote",
             decision: "passed",

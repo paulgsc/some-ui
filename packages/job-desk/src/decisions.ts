@@ -16,8 +16,10 @@ import {
  * passed and why, how applying went, and what happened afterwards. The
  * routine cannot reach home, so this file is its only view of the record.
  *
- * Append-only by convention: a later file adds outcomes for earlier picks
- * by fingerprint, and never restates or edits an earlier file.
+ * Append-only by convention: a later file never edits an earlier one. It
+ * adds outcomes for earlier picks by fingerprint, and it restates a pick only
+ * when I changed my mind about it; the newest file's entry for a fingerprint
+ * is the decision that stands.
  */
 
 export const PASS_REASONS = [
@@ -66,11 +68,13 @@ export const DecisionsSchema = z.object({
   schema: z.literal("some-ui.job-decisions/1"),
   /** The day it was shared: `decisions-<day>.json`. */
   day: z.iso.date(),
-  /** The digest whose picks it answers. */
+  /** The newest digest whose picks it answers; each pick names its own. */
   digestDay: z.iso.date(),
   sharedAt: z.iso.datetime(),
   picks: z.array(
     z.object({
+      /** The digest the pick came from: ids are unique only within one. */
+      day: z.iso.date(),
       pickId: IdSchema,
       fingerprint: FingerprintSchema,
       decision: z.enum(["taken", "passed", "untouched"]),

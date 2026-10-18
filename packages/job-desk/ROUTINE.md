@@ -78,6 +78,10 @@ new. For each new file:
      the odds each pick was given and say in the summary whether the rubric
      reads high or low. Don't change the rubric yourself.
 
+A pick is known by its fingerprint (each entry also names the digest day it
+came from). When a later decisions file restates a pick, I changed my mind:
+the newest entry is the decision that stands.
+
 A posting picked in any earlier digest, or named in any decisions file, is
 never picked again, unless a disagreement brought it back.
 

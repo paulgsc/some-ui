@@ -20,7 +20,12 @@
  * that carries all of it is written, and a phone holding both opens the home
  * one.
  */
-import { localStorageOrNull } from "@some-ui/core-utils"
+import type { KeyedStorage } from "@some-ui/core-utils"
+import {
+  localStorageOrNull,
+  openRecord,
+  writeRecord,
+} from "@some-ui/core-utils"
 import { z } from "zod"
 
 import type { HomeHeld, HomeRecord } from "./home"
@@ -29,7 +34,7 @@ import { violations } from "./model"
 import type { AphState } from "./store"
 
 /** The part of `Storage` this touches, so tests can pass a fake. */
-export type AphStorage = Pick<Storage, "getItem" | "setItem" | "removeItem">
+export type AphStorage = KeyedStorage
 
 export const STORAGE_KEY = "aph:state"
 /** Followed by 1, 2 …: an unreadable value, kept as it was found. */
@@ -111,22 +116,6 @@ function parse(raw: string): AphState | null {
   }
 }
 
-/** Moves `raw` to the first free quarantine key; false if it could not. */
-function quarantine(
-  storage: AphStorage,
-  raw: string,
-  prefix = QUARANTINE_PREFIX
-): boolean {
-  try {
-    let n = 1
-    while (storage.getItem(`${prefix}${n}`) !== null) n += 1
-    storage.setItem(`${prefix}${n}`, raw)
-    return true
-  } catch {
-    return false
-  }
-}
-
 /** Stands in for a `localStorage` the page has but cannot touch. */
 const BLOCKED: AphStorage = {
   getItem: () => {
@@ -152,16 +141,9 @@ export function deviceStorage(): AphStorage | null {
 }
 
 export function openStored(storage: AphStorage): Opened {
-  let raw: string | null
-  try {
-    raw = storage.getItem(STORAGE_KEY)
-  } catch {
-    return { kind: "unreadable" }
-  }
-  if (raw === null) return { kind: "empty" }
-  const state = parse(raw)
-  if (state !== null) return { kind: "kept", state }
-  return quarantine(storage, raw) ? { kind: "empty" } : { kind: "unreadable" }
+  const opened = openRecord(storage, STORAGE_KEY, parse, QUARANTINE_PREFIX)
+  if (opened.kind === "kept") return { kind: "kept", state: opened.value }
+  return opened.kind === "moved" ? { kind: "empty" } : opened
 }
 
 /**
@@ -171,13 +153,7 @@ export function openStored(storage: AphStorage): Opened {
  */
 export function writeStored(storage: AphStorage, state: AphState): boolean {
   const text = JSON.stringify({ v: VERSION, ...state })
-  if (parse(text) === null) return false
-  try {
-    storage.setItem(STORAGE_KEY, text)
-    return true
-  } catch {
-    return false
-  }
+  return writeRecord(storage, STORAGE_KEY, text, parse)
 }
 
 /**
@@ -205,30 +181,21 @@ function parseHome(raw: string): HomeRecord | null {
 }
 
 export function openHome(storage: AphStorage): OpenedHome {
-  let raw: string | null
-  try {
-    raw = storage.getItem(HOME_KEY)
-  } catch {
-    return { kind: "unreadable" }
-  }
-  if (raw === null) return { kind: "empty" }
-  const record = parseHome(raw)
-  if (record !== null) return { kind: "kept", record }
-  return quarantine(storage, raw, HOME_QUARANTINE_PREFIX)
-    ? { kind: "moved" }
-    : { kind: "unreadable" }
+  const opened = openRecord(
+    storage,
+    HOME_KEY,
+    parseHome,
+    HOME_QUARANTINE_PREFIX
+  )
+  return opened.kind === "kept"
+    ? { kind: "kept", record: opened.value }
+    : opened
 }
 
 /** Writes `record`; false when the storage refused it or could not read it back. */
 export function writeHome(storage: AphStorage, record: HomeRecord): boolean {
   const text = JSON.stringify({ v: HOME_VERSION, ...record })
-  if (parseHome(text) === null) return false
-  try {
-    storage.setItem(HOME_KEY, text)
-    return true
-  } catch {
-    return false
-  }
+  return writeRecord(storage, HOME_KEY, text, parseHome)
 }
 
 /**

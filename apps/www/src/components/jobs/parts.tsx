@@ -5,7 +5,7 @@
  */
 import type { ChangeEvent, JSX, ReactNode } from "react"
 import { useSyncExternalStore } from "react"
-import { cn } from "@some-ui/core-utils"
+import { cn, formatTimecode } from "@some-ui/core-utils"
 import type { ResumeRecommendation } from "@some-ui/job-desk"
 import { Button, useConfirmSheet } from "@some-ui/shared"
 import { FolderOpen, Mic, Square } from "lucide-react"
@@ -111,11 +111,6 @@ export const Chips = <T extends string>({
   )
 }
 
-const seconds = (ms: number): string => {
-  const s = Math.floor(ms / 1000)
-  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`
-}
-
 /**
  * A minute-long voice note for `owner`, and the notes it already has. A note
  * stays on the phone until the share it goes out in arrives.
@@ -154,7 +149,7 @@ export const VoiceNotes = ({
         <div className="flex min-w-0 flex-col">
           <span className="font-mono text-sm tabular-nums">
             {mine && take.kind === "recording"
-              ? `${seconds(take.elapsedMs)} / 1:00`
+              ? `${formatTimecode(take.elapsedMs)} / 1:00`
               : notes.length > 0
                 ? `${notes.length} voice note${notes.length > 1 ? "s" : ""}`
                 : hint}
@@ -177,7 +172,7 @@ export const VoiceNotes = ({
                 onClick={() => jobs.dropVoice([n.id])}
                 aria-label={`Let voice note ${i + 1} go`}
               >
-                {`Note ${i + 1} · ${seconds(n.durationMs)} ×`}
+                {`Note ${i + 1} · ${formatTimecode(n.durationMs)} ×`}
               </Button>
             </li>
           ))}
