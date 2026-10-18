@@ -60,7 +60,7 @@ export const LEVEL_ONE_SET: ReadAloudDeck = parsed("level-one.read-aloud")
 /** The starter's lines a learner can go wrong in. */
 export const STARTER_LENS_SET: ReadAloudDeck = parsed("starter.lens")
 
-/** Level one's lines a learner can go wrong in: the lens tests' material. */
+/** Level one's lines a learner can go wrong in. */
 export const LEVEL_ONE_LENS_SET: ReadAloudDeck = parsed("level-one.lens")
 
 /** All four added, starter first, as the owner's phone holds them. */

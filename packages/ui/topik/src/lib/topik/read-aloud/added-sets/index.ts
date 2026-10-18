@@ -116,17 +116,8 @@ export function resolveSets(added: ReadonlyArray<AddedSet>): ResolvedSets {
     lensLines.push(...kept.lines.filter((line) => line.lens !== undefined))
     sets.set(deck.id, kept)
   }
-  return {
-    all: { id: ALL_SETS_ID, title: "Every word set", words, lines },
-    lens: {
-      id: ALL_SETS_ID,
-      title: "Every word set",
-      practice: "lens",
-      words,
-      lines: lensLines,
-    },
-    sets,
-  }
+  const all = { id: ALL_SETS_ID, title: "Every word set", words, lines }
+  return { all, lens: { ...all, lines: lensLines }, sets }
 }
 
 /**

@@ -48,7 +48,6 @@ import { z } from "zod"
 
 // TYPES
 
-/** What a set is for: one practice, never both. */
 const SET_PRACTICES = ["read-aloud", "lens"] as const
 export type SetPractice = (typeof SET_PRACTICES)[number]
 
@@ -63,7 +62,7 @@ export const setGenreKo = (genre: string): string | undefined =>
   SET_GENRES.find((known) => known.genre === genre)?.ko
 
 /** Where a set's lines take place: a genre and a premise in a sentence. */
-export type SetContext = { genre: string; premise: string }
+type SetContext = { genre: string; premise: string }
 
 export const READ_ALOUD_LEVELS = [1, 2, 3] as const
 export type ReadAloudLevel = (typeof READ_ALOUD_LEVELS)[number]
@@ -331,7 +330,7 @@ const ContextSchema = z.object({
   genre: z
     .string()
     .refine(
-      (genre) => SET_GENRES.some((known) => known.genre === genre),
+      (genre) => setGenreKo(genre) !== undefined,
       `a genre is one of ${SET_GENRES.map(({ genre }) => genre).join(", ")}`
     ),
   premise: z.string().trim().min(1).max(200),

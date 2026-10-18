@@ -13,10 +13,9 @@ Cor. 4.8; the catalogue is `src/lib/topik/read-aloud/mistakes`).
 
 Every deck is one practice, read-aloud or the grammar lens (`practice`), and
 is set in a context: a genre, a K-drama's or everyday life's, and a premise
-(`context`). A lens deck's every line carries a lens; a read-aloud deck's
-none. On the phone a lens set opens on the grammar lens and a read-aloud set
-on read-aloud, and the card under "Ready for you" says which, with the genre
-and the premise.
+(`context`). On the phone a lens set opens on the grammar lens and a
+read-aloud set on read-aloud, and the card under "Ready for you" says which,
+with the genre and the premise.
 
 ## Using it
 

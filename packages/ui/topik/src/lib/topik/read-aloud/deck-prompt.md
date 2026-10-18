@@ -16,16 +16,12 @@ grammar lens asks the learner to find them after a missed question.
 
 A deck is written for one of two practices, and says which. A **read-aloud**
 deck is the drill above. A **lens** deck is for the app's grammar-lens
-session, and every one of its lines carries a **lens**: what that session
-needs to ask about the line. That session never reads aloud on a clock and
-never shows what a line means. It shows a cue line, then this line, and asks
-the learner to spot or choose the form a learner is known to get wrong there.
-It needs material only an author can write: the cue, the wrong forms and the
-situations. See **The lens**.
-
-Every deck is also set in a **context**: a genre, a K-drama's or everyday
-life's, and a premise in a sentence, so the learner knows where its lines take
-place before reading one. See **The context**.
+session, which never reads aloud on a clock and never shows what a line
+means. It shows a cue line, then a line, and asks the learner to spot or
+choose the form a learner is known to get wrong there. It needs material only
+an author can write: the cue, the wrong forms and the situations. Every deck
+is also set in a **context**: a genre and a premise. See **The rules** and
+**The lens**.
 
 ---
 
@@ -213,11 +209,11 @@ where form and meaning part (내일 만나요 is present in form).
 
 ## The lens
 
-Every line of a lens deck carries a lens, so write a lens deck's lines where a
-learner could plausibly go wrong in one written word: a place with 에 or 에서,
-a past-tense answer to a past question, an irregular verb, 좋다 or 있다 with a
-subject. Never force a misform onto a line where it would not be wrong. A lens
-needs at least one misform; the cue and the situations are optional.
+Write a lens deck's lines where a learner could plausibly go wrong in one
+written word: a place with 에 or 에서, a past-tense answer to a past question, an
+irregular verb, 좋다 or 있다 with a subject. Never force a misform onto a line
+where it would not be wrong. A lens needs at least one misform; the cue and
+the situations are optional.
 
 **`misforms` are mistakes learners actually make, written in.** A misform
 replaces one written word of the line with the form a learner is known to
@@ -299,9 +295,9 @@ Check each line against these, and fix it rather than explaining:
 
 The app checks these too, except whether a misform is wrong in its line and
 whether a cue spells a particle in another word, which only you can. A line,
-word or occurrence that fails is dropped,
-and a pronunciation, role, tense or lens part that does not line up is
-ignored, so an error costs material, not the deck.
+word or occurrence that fails is dropped, and a pronunciation, role, tense or
+lens part that does not line up is ignored, so an error costs material, not
+the deck.
 
 ## Output
 

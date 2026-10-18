@@ -42,14 +42,9 @@ describe.each([
     expect(deck.from).toBeUndefined()
   })
 
-  it("says its practice and its context, and keeps lenses only for the lens", () => {
+  it("says its practice and its context", () => {
     expect(deck.practice).toBe(name.endsWith(".lens") ? "lens" : "read-aloud")
     expect(deck.context?.genre).toBe("everyday")
-    expect(
-      deck.lines.every(
-        (line) => (line.lens !== undefined) === (deck.practice === "lens")
-      )
-    ).toBe(true)
   })
 })
 
@@ -112,9 +107,7 @@ describe("the repo's sets, both added", () => {
   })
 
   it("give the grammar lens enough lines for a full set at level one", () => {
-    const misformed = REPO_LENS.lines.filter(
-      (line) => line.level === 1 && line.lens !== undefined
-    )
+    const misformed = REPO_LENS.lines.filter((line) => line.level === 1)
     expect(misformed.length).toBeGreaterThanOrEqual(16)
   })
 

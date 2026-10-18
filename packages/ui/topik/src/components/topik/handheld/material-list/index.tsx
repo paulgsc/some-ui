@@ -10,7 +10,7 @@ import type { FeedCard, Seed } from "@topik/lib/topik/core/feed-card"
 import { cardOf, koreanGenre, seedOf } from "@topik/lib/topik/core/feed-card"
 import { TOPIK_LEVELS } from "@topik/lib/topik/generation"
 import type {
-  SetContext,
+  ReadAloudDeck,
   SetPractice,
 } from "@topik/lib/topik/read-aloud/content"
 import {
@@ -78,17 +78,12 @@ type MaterialListProps = {
 }
 
 /** An added word set, as its card shows it. */
-type ReadyCard = {
+type ReadyCard = Pick<ReadAloudDeck, "from" | "practice" | "context"> & {
   id: string
   title: string
   words: number
   lines: number
   level: number
-  /** What the set answers, in the learner's terms (`ReadAloudDeck.from`). */
-  from?: string
-  /** Absent on a set serving both. */
-  practice?: SetPractice
-  context?: SetContext
 }
 
 const PRACTICE_LABEL: Record<SetPractice, string> = {
