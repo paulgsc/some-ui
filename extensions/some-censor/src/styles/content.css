@@ -569,6 +569,33 @@ ytd-item-section-renderer:has(> #contents > ytd-shelf-renderer:only-child):has(
   visibility: hidden !important;
 }
 
+/* The page header's images: a channel's banner, and a playlist's
+   cover and the blurred backdrop drawn from it, which YouTube's
+   seamless header moves into a portal outside the header. */
+:root:not([data-boyo-off]) .ytPageHeaderViewModelHost img,
+:root:not([data-boyo-off]) .ytPageHeaderViewModelBackground img,
+:root:not([data-boyo-off]) yt-page-header-portal img,
+:root:not([data-boyo-off]) yt-image-banner-view-model img,
+:root:not([data-boyo-off]) ytd-playlist-header-renderer img {
+  visibility: hidden !important;
+}
+
+/* The player's overlays (#1805 owns the player itself) draw each
+   thumbnail as an inline background: the end-screen cards, the video
+   wall, the autoplay card, the pause and error suggestions, the "More
+   videos" button and the playlist menu. */
+:root:not([data-boyo-off]) .ytp-ce-covering-image,
+:root:not([data-boyo-off]) .ytp-ce-expanding-image,
+:root:not([data-boyo-off]) .ytp-videowall-still-image,
+:root:not([data-boyo-off]) .ytp-modern-videowall-still-image,
+:root:not([data-boyo-off]) .ytp-autonav-endscreen-upnext-thumbnail,
+:root:not([data-boyo-off]) .ytp-autonav-thumbnail-small,
+:root:not([data-boyo-off]) .ytp-suggestion-image,
+:root:not([data-boyo-off]) .ytp-more-videos-button-thumbnail,
+:root:not([data-boyo-off]) .ytp-video-menu-item-thumbnail {
+  background-image: none !important;
+}
+
 /* The hover preview is a moving thumbnail. YouTube plays it in one
    shared player at the app level, over whichever card is hovered; one
    started from elsewhere than a plated thumbnail never shows. */

@@ -376,7 +376,7 @@ huge type, an arrow, the week's news. The owner already chooses from words, so
 the thumbnail has no job left. The plate is the card's finished state, not a
 cover waiting to be lifted.
 
-_Status: holds on cards and channel photos, with gaps (#1804)._ Under a plated
+_Status: holds, with gaps (#1804)._ Under a plated
 card no image is painted, whatever its shape (`styles/content.css`, "THE
 PLATE"), so the card's own thumbnail and channel photo show nothing. The
 thumbnail's box is filled with the video's tone and the avatar's with the
@@ -388,7 +388,9 @@ is hidden, and so are the avatars it draws as a bare image: the watch page's
 owner, the guide, channel results and headers, comment authors, people
 mentioned in a description and the notifications menu. The other images drawn
 in those elements go with them: notification and chapter frames, community post
-images, promo art. The rest is in the gap table below.
+images, promo art. So do the page header's banner, cover and backdrop (its seamless
+portal too), and the thumbnails the player's end screens, video wall, autoplay
+card, suggestions, "More videos" button and playlist menu draw. The rest is in the gap table below.
 
 ---
 
@@ -614,7 +616,8 @@ section is a behavioural change; it is a statement of distance.
 | A shelf elsewhere keeps its header                               | a container `SHELF_SELECTORS` does not name                                 | QD11     |
 | A channel photo outside a card leaves an empty space, not a disc | no card's ids to hash there; the photo itself is hidden                     | QD12     |
 | Live chat shows its authors' photos                              | the chat is its own frame, and the manifest injects into the top frame only | QD12     |
-| Mosaics, banners and end screens show images                     | playlist header, channel banner, player (#1804)                             | QD12     |
+| The player's poster is the real thumbnail, not the plate         | the player is #1805's, with the face (QD13)                                 | QD12     |
+| A channel's seamless header can play its video trailer           | a video, not an image, so no image rule hides it (#1888)                    | QD12     |
 | #1806's whole cards would lose their channel photos              | the channel-photo rule hides them wherever they sit                         | QD15     |
 | A hover on the duration badge can still start a hidden preview   | the badge takes the pointer to open the card; the player is `display: none` | QD12     |
 | A trending rank is shown                                         | no capture holds one, so no crowd rule names it                             | QD14     |
