@@ -10,6 +10,7 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
 import { arrivals, shareReflections } from "@/lib/agent-export"
+import { reflections } from "@/lib/session-reflection"
 import { DeviceReflectionsArrival } from "@/components/reflection/device-reflections-arrival"
 
 const handedOff = vi.hoisted(() => vi.fn())
@@ -42,20 +43,20 @@ vi.mock("@some-ui/topik", () => ({
 
 afterEach(() => {
   cleanup()
+  reflections.letGo(reflections.getSnapshot().kept.map((r) => r.id))
   for (const batch of arrivals.getSnapshot()) arrivals.answer(batch, false)
   handedOff.mockReset()
 })
 
-async function shareOne(): Promise<void> {
-  const { reflections } = await import("@/lib/session-reflection")
+async function shareOne(id = "now"): Promise<void> {
   reflections.keep({
-    id: "now",
+    id,
     sessionId: "s1",
     createdAt: "2026-10-10T09:00:00.000Z",
     atMs: 252_000,
     body: { kind: "text", text: "particles" },
   })
-  await shareReflections({ sessionIds: ["s1"], only: ["now"] })
+  await shareReflections({ sessionIds: ["s1"], only: [id] })
 }
 
 describe("DeviceReflectionsArrival", () => {
@@ -80,6 +81,25 @@ describe("DeviceReflectionsArrival", () => {
     )
 
     expect(handedOff).not.toHaveBeenCalled()
+    expect(arrivals.getSnapshot()).toEqual([])
+  })
+
+  it("asks once about every share still waiting, so one tap answers only what it showed", async () => {
+    render(<DeviceReflectionsArrival />)
+    await shareOne("first")
+    await shareOne("second")
+
+    expect(
+      await screen.findByText(
+        "Once they have, 2 reflections can leave this phone."
+      )
+    ).toBeTruthy()
+    fireEvent.click(
+      screen.getByRole("button", { name: "They arrived: let them go" })
+    )
+
+    expect(handedOff).toHaveBeenCalledWith(["first"])
+    expect(handedOff).toHaveBeenCalledWith(["second"])
     expect(arrivals.getSnapshot()).toEqual([])
   })
 })

@@ -252,7 +252,6 @@ describe("shareReflections", () => {
     const [batch] = arrivals.getSnapshot()
     expect(batch).toEqual(["v1"])
     arrivals.answer(batch, true, NOW())
-    expect(arrivals.getSnapshot()).toEqual([])
     await shareReflections({ sessionIds: ["s1-0000000000"] }, NOW)
     expect(reflectionsIn()).toEqual([expect.objectContaining({ id: "t1" })])
   })

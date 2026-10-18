@@ -87,7 +87,6 @@ if (rootElement && !rootElement.innerHTML) {
     <StrictMode>
       <AppProviders>
         <RouterProvider router={router} />
-        {/* Beside the routes, so a share's question outlives its screen. */}
         {import.meta.env.VITE_DEVICE_BACKEND === "true" && (
           <DeviceReflectionsArrival />
         )}

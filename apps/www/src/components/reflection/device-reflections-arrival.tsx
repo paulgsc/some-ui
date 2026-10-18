@@ -1,8 +1,9 @@
 /**
  * "Did they arrive?" after a reflection share, asked once for the whole app
  * rather than by the button that shared, which may be gone by then
- * (`arrivals`, `lib/agent-export`). Device build only, like this module
- * (`build.paths.ts`).
+ * (`arrivals`, `lib/agent-export`). Shares still waiting are asked about
+ * together, so a quick second tap never answers a question it did not see.
+ * Device build only, like this module (`build.paths.ts`).
  */
 import type { JSX } from "react"
 import { useMemo, useSyncExternalStore } from "react"
@@ -14,27 +15,29 @@ import { arrivals } from "@/lib/agent-export"
 import { arrived } from "./copy"
 
 export const DeviceReflectionsArrival = (): JSX.Element => {
-  const batch = useSyncExternalStore(
-    arrivals.subscribe,
-    arrivals.getSnapshot
-  ).at(0)
+  const batches = useSyncExternalStore(arrivals.subscribe, arrivals.getSnapshot)
   const request = useMemo(
     () =>
-      batch
-        ? arrived(
-            counted(batch.length, "reflection"),
+      batches.length === 0
+        ? null
+        : arrived(
+            counted(
+              batches.reduce((n, batch) => n + batch.length, 0),
+              "reflection"
+            ),
             "Keep them to share again",
-            () => arrivals.answer(batch, true)
-          )
-        : null,
-    [batch]
+            () => {
+              for (const batch of batches) arrivals.answer(batch, true)
+            }
+          ),
+    [batches]
   )
   return (
     <ConfirmSheet
       request={request}
-      open={batch !== undefined}
+      open={batches.length > 0}
       onOpenChange={(open) => {
-        if (!open && batch) arrivals.answer(batch, false)
+        if (!open) for (const batch of batches) arrivals.answer(batch, false)
       }}
     />
   )
