@@ -3,8 +3,9 @@
  *
  * P1 — A plated card's thumbnail and channel photo leave zero visible pixels:
  *      no vivid pixel is in the card's box, which renders the same with the
- *      images removed, and off the same box shows them. The fill and the
- *      disc are the plate's own tones, and the disc carries the initial.
+ *      images removed, and the thumbnail and disc show their images once a
+ *      mutant lifts what hides them. The fill and the disc are the plate's
+ *      own tones, and the disc carries the initial.
  * P2 — The plate is pixel-identical across reloads.
  * P3 — One click on the title, channel name or duration opens its link;
  *      the plate takes no pointer.
@@ -98,18 +99,24 @@ test("P1: no pixel of a plated card's images is visible", async ({
     expect(letter, `${name}'s initial`).toBe(card.initial)
   }
 
-  // The control: off, on a fresh page, the same boxes show their images.
+  // The control, on a fresh page: lift every rule hiding a plated card's
+  // images (the plate's, and the channel photos' on the disc), and the
+  // thumbnail and the disc show theirs. (Off is no control here: the
+  // plate's rules hold on a stamped card, and the fixture's own images
+  // outside a card would paint the box from behind.)
   await page.reload()
   await plated(page)
-  await page.evaluate(
-    (attribute) => document.documentElement.setAttribute(attribute, ""),
-    SWITCHED_OFF_ATTRIBUTE
+  await mutant(
+    page,
+    `html:root body [data-boyo="plated"] img { visibility: visible !important }`
   )
-  for (const name of Object.keys(CARDS)) {
-    expect(
-      await vividPixels(page.locator(`#${name}`)),
-      `${name} shows its images when off`
-    ).toBeGreaterThan(0)
+  for (const [name, card] of Object.entries(CARDS)) {
+    for (const part of [card.thumb, card.disc]) {
+      expect(
+        await vividPixels(page.locator(part)),
+        `${name}: ${part} shows its image without the plate`
+      ).toBeGreaterThan(0)
+    }
   }
 })
 
@@ -182,17 +189,25 @@ test("P5: no image under any plated card paints, on every fixture", async ({
     await page.waitForSelector('[data-boyo="plated"]')
     // An image and a background image put under every plated card, in the
     // fixtures' vivid colour, whatever the card's own shape.
-    await page.evaluate((vivid) => {
+    // Each decoded before the first shot, so none reads 0 for not having
+    // loaded yet; `flex: none`, so no flex card squeezes one to nothing.
+    await page.evaluate(async (vivid) => {
+      const size = "display:block;flex:none;width:24px;height:24px"
+      const decoding: Array<Promise<void>> = []
       for (const card of document.querySelectorAll('[data-boyo="plated"]')) {
         const img = document.createElement("img")
         img.className = "probe"
         img.src = vivid
-        img.style.cssText = "display:block;width:24px;height:24px"
+        img.style.cssText = size
         const painted = document.createElement("div")
         painted.className = "probe"
-        painted.style.cssText = `display:block;width:24px;height:24px;background-image:url("${vivid}")`
+        painted.style.cssText = `${size};background-image:url("${vivid}")`
         card.append(img, painted)
+        decoding.push(img.decode())
       }
+      const background = new Image()
+      background.src = vivid
+      await Promise.all([...decoding, background.decode()])
     }, VIVID)
     const probes = await page.locator('[data-boyo="plated"] .probe').all()
     let shown = 0
