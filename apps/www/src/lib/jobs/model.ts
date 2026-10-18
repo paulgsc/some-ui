@@ -196,11 +196,12 @@ export function step(state: JobsState, action: JobsAction): JobsState {
       const digests = all.filter(
         (d) => recent.has(d.day) || referenced.has(d.day)
       )
+      // A digest opened again keeps the first time it was opened.
       const firstOpened = Object.fromEntries(
-        digests.map((d) => [
-          d.day,
-          state.firstOpened[d.day] ?? (d.day === digest.day ? action.at : ""),
-        ])
+        Object.entries({
+          [digest.day]: action.at,
+          ...state.firstOpened,
+        }).filter(([day]) => digests.some((d) => d.day === day))
       )
       return { ...state, digests, current: digest.day, firstOpened }
     }

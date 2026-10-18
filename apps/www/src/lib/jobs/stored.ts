@@ -104,7 +104,7 @@ const StoredSchema = z.object({
   v: z.literal(VERSION),
   digests: z.array(DigestSchema),
   current: z.string().nullable(),
-  firstOpened: z.record(z.string(), z.string()).default({}),
+  firstOpened: z.record(z.string(), z.string()),
   log: z.array(EventSchema),
   voice: z.array(
     z.object({

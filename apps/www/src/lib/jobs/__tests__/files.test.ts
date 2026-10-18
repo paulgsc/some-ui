@@ -145,9 +145,10 @@ describe("decisionsFile", () => {
     )
     expect(unconfirmed.name).toBe("decisions-2026-10-18-2.json")
     expect(JSON.parse(unconfirmed.json).picks).toHaveLength(2)
-    // The same `since` as the first: the routine reads only the newer.
-    expect(JSON.parse(file.json).since).toBeNull()
-    expect(JSON.parse(unconfirmed.json).since).toBeNull()
+    // Each entry keeps its event's id, so the routine counts a retry once.
+    expect(JSON.parse(unconfirmed.json).picks[0].debrief.id).toBe(
+      JSON.parse(file.json).picks[0].debrief.id
+    )
 
     const shareId = shared.log.at(-1)!.id
     shared = record(shared, { type: "arrived", shareId })
@@ -165,7 +166,9 @@ describe("decisionsFile", () => {
       decisionsFile(shared, "2026-10-18", "2026-10-18T23:00:00Z")
     )
     expect(again.name).toBe("decisions-2026-10-18-2.json")
-    expect(JSON.parse(again.json).since).toBe(file.name)
+    expect(JSON.parse(again.json).outcomes).toEqual([
+      expect.objectContaining({ id: shared.log.at(-1)!.id, event: "reply" }),
+    ])
     expect(JSON.parse(again.json).picks).toEqual([])
     expect(again.voice).toEqual([])
   })
@@ -227,6 +230,24 @@ describe("decisionsFile", () => {
       expect.objectContaining({ day: "2026-10-17", decision: "untouched" }),
       expect.objectContaining({ day: "2026-10-17", decision: "untouched" }),
     ])
+    late = record(
+      late,
+      {
+        type: "shared",
+        kind: "decisions",
+        day: "2026-10-19",
+        file: file.name,
+        through: file.through,
+        voice: [],
+      },
+      "2026-10-19T22:00:00Z"
+    )
+    late = record(
+      late,
+      { type: "arrived", shareId: late.log.at(-1)!.id },
+      "2026-10-19T22:01:00Z"
+    )
+    expect(decisionsFile(late, "2026-10-20", "2026-10-20T22:00:00Z")).toBeNull()
   })
 
   it("names what it can't share instead of throwing, for an event job-desk refuses", () => {

@@ -102,11 +102,11 @@ export function decisionsFile(
   const picks: Decisions["picks"] = []
   const voice: Array<{ id: string; name: string }> = []
   for (const digest of state.digests) {
+    const stale = digest.day < day && !untouchedReported(state, digest.day)
     for (const pick of digest.picks) {
       const key = `${digest.day}/${pick.id}`
       const decision = decisionOf(state, digest.day, pick.id)
-      const stale = digest.day < day && !untouchedReported(state, digest.day)
-      if (!touched.has(key) && !(decision === null && stale)) continue
+      if (!touched.has(key) && !(stale && decision === null)) continue
       const events = state.log.filter(
         (e) => "pickId" in e && e.day === digest.day && e.pickId === pick.id
       )
@@ -153,6 +153,7 @@ export function decisionsFile(
         debrief:
           decision === "taken" && debrief
             ? {
+                id: debrief.id,
                 minutes: debrief.minutes,
                 friction: debrief.friction,
                 frictionChips: [...debrief.chips],
@@ -165,11 +166,21 @@ export function decisionsFile(
     }
   }
   const disagreements = fresh.flatMap((e) =>
-    e.type === "disagree" ? [{ fingerprint: e.fingerprint, note: e.note }] : []
+    e.type === "disagree"
+      ? [{ id: e.id, fingerprint: e.fingerprint, note: e.note }]
+      : []
   )
   const outcomes = fresh.flatMap((e) =>
     e.type === "outcome"
-      ? [{ fingerprint: e.fingerprint, event: e.event, on: e.on, note: e.note }]
+      ? [
+          {
+            id: e.id,
+            fingerprint: e.fingerprint,
+            event: e.event,
+            on: e.on,
+            note: e.note,
+          },
+        ]
       : []
   )
   if (picks.length + disagreements.length + outcomes.length === 0) return null
@@ -178,7 +189,6 @@ export function decisionsFile(
     schema: "some-ui.job-decisions/1",
     day,
     digestDay: newestDay(picks) ?? state.digests.at(-1)?.day ?? day,
-    since: lastDelivered(state, "decisions")?.file ?? null,
     sharedAt: at,
     picks,
     disagreements,

@@ -22,9 +22,10 @@ import {
  * is the decision that stands. A second share on one day is
  * `decisions-<day>-2.json`, then `-3`, and so on (`decisionsFileName`).
  *
- * A share the phone was not told arrived is offered again whole, so two
- * files can carry the same entries. `since` says which: every file naming the
- * same `since` holds all that an earlier one does, and the newest is read.
+ * A share the phone was not told arrived is offered again, so a later file
+ * can repeat what an earlier one said. Each debrief, outcome and
+ * disagreement carries the `id` of the phone event that recorded it: one
+ * already taken in from any file is the same one, not another.
  */
 
 export const PASS_REASONS = [
@@ -73,7 +74,11 @@ export const DebriefMinutesSchema = z
 /** 1 smooth, 5 nearly gave up. */
 export const FrictionSchema = z.number().int().min(1).max(5)
 
+/** The phone's id for the event an entry came from. */
+const EventIdSchema = z.string().regex(/^[A-Za-z0-9_-]{1,64}$/)
+
 const DebriefSchema = z.object({
+  id: EventIdSchema,
   minutes: DebriefMinutesSchema,
   friction: FrictionSchema,
   frictionChips: z.array(z.enum(FRICTION)),
@@ -89,11 +94,6 @@ export const DecisionsSchema = z.object({
   /** The newest digest whose picks it answers; each pick names its own. */
   digestDay: z.iso.date(),
   sharedAt: z.iso.datetime(),
-  /**
-   * The last decisions file the phone was told arrived, or null for none:
-   * this file carries everything recorded since.
-   */
-  since: text.nullable(),
   picks: z.array(
     z.object({
       /** The digest the pick came from: ids are unique only within one. */
@@ -109,11 +109,12 @@ export const DecisionsSchema = z.object({
   ),
   /** Set-aside postings I'd have picked, and why. */
   disagreements: z.array(
-    z.object({ fingerprint: FingerprintSchema, note: text })
+    z.object({ id: EventIdSchema, fingerprint: FingerprintSchema, note: text })
   ),
   /** What happened later to any application, by its fingerprint. */
   outcomes: z.array(
     z.object({
+      id: EventIdSchema,
       fingerprint: FingerprintSchema,
       event: z.enum(OUTCOMES),
       on: z.iso.date(),

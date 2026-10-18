@@ -302,7 +302,6 @@ describe("the files the phone shares back", () => {
         day: "2026-10-18",
         digestDay: "2026-10-18",
         sharedAt: "2026-10-18T22:10:00Z",
-        since: null,
         picks: [
           {
             day: "2026-10-18",
@@ -313,6 +312,7 @@ describe("the files the phone shares back", () => {
             note: "",
             voice: [],
             debrief: {
+              id: "0b3c9a52-6f1e-4d2a-9a43-8a1f0c7e2b11",
               minutes: 23,
               friction: 3,
               frictionChips: ["company-ats"],
@@ -333,7 +333,15 @@ describe("the files the phone shares back", () => {
           },
         ],
         disagreements: [],
-        outcomes: [],
+        outcomes: [
+          {
+            id: "7d2e1f40-3b5a-4c8e-b1d9-2e6f8a0c4d53",
+            fingerprint: "bluesight|data analyst|remote",
+            event: "reply",
+            on: "2026-10-20",
+            note: "",
+          },
+        ],
       })
     )
     expect(parsed.ok).toBe(true)
