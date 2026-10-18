@@ -405,8 +405,8 @@ answer to the second forces most of the answers to the first.
   + $j$ is the *job*: one sentence saying what the learner is asked to do;
   + $s$ is the *situation*: a concrete failure or target told with its
     numbers, optionally with a panel of who holds what state;
-  + $O$ is a closed option set, each option one line, always including the
-    abstention of Def. 9.1;
+  + $O$ is a closed option set of at most five options (Thm. 10.1's
+    $k <= 5$), each one line, always including the abstention of Def. 9.1;
   + $B_t$ is a *time budget* (a latency or a rate, Ax. 3.2), $I$ an
     invariant, and at least one of them is present;
   + $kappa$ is the one register entry (§7, Rem. 7.4) that decides the round,
@@ -963,8 +963,10 @@ superseded and kept.
   `CW-P1`--`CW-P16` cannot state, so two registers are added under new
   prefixes, *Machine* and *Agreement*. No `CW-P` identifier moves. Def. 1.5's
   "register" now reads as any of the three; Def. 1.6's $mu$ still maps into
-  `CW-P` alone, and Def. 1.9's $kappa$ into `M` or `A`. Their identifiers are stable
-  as `CW-P` ones are (Rem. 7.2). Each rule is the one-line form a learner
+  `CW-P` alone, and Def. 1.9's $kappa$ into `M` or `A`. Their identifiers are never
+  reused, never renumbered and never removed, and a superseded entry is marked
+  and kept (Amendment protocol, second rule). Def. 1.5's "a general claim
+  about cost" reads "about cost or safety" for `A`. Each rule is the one-line form a learner
   reads, and each is covered by the seed reading list of the brief the v1.2
   log names.
 
@@ -1257,8 +1259,8 @@ superseded and kept.
 
 #definition("9.3", name: "One scrolling screen (v1.2)")[
   An incident round is played on *one scrolling screen* holding, top to
-  bottom, the job, the situation and the options. It relaxes Def. 9.2 for
-  incident rounds only: there is no artifact switching, and nothing pages. A
+  bottom, the job, the situation and the options, with the job pinned in view
+  while the rest scrolls. It relaxes Def. 9.2 for incident rounds only: there is no artifact switching, and nothing pages. A
   Def. 1.7 round is still governed by Def. 9.2 as filed.
 ]
 
@@ -1284,6 +1286,14 @@ superseded and kept.
   incorrect selection, never a fourth folded response.
 ]
 
+#definition("9.5", name: "Spoken answer (v1.2)")[
+  A *spoken answer* is a recording, of up to 60 seconds, made in reply to a
+  one-sentence prompt that names the incident it is about. Its *rubric* is
+  three or four points a good answer hits, shown only after the recording
+  (Axiom 9.2) and ticked by the learner. Where the learner cannot speak, a
+  typed answer is accepted and recorded as typed.
+]
+
 #proposition("9.4", name: "A struggle places a reading and parks the round (v1.2)")[
   On a struggle in an incident round the reveal is a *placement*: the question restated as what a
   reading answers, the exact place to read (source, section, page, minutes),
@@ -1300,9 +1310,10 @@ superseded and kept.
   - *(c) A correct selection may carry a pointer.* After a correct selection
     the reveal may offer one named passage, with the question it answers and
     its reading time, which the learner may open, save or pass.
-  - *(d) Nothing is locked.* A parked round's worked confirmation, and the
-    round itself, stay reachable on request by one action at every moment;
-    taking either is recorded (Rem. 9.5).
+  - *(d) Nothing is locked.* A parked round's worked confirmation, the round
+    itself and its return stay reachable on request by one action at every
+    moment, and taking any of them is recorded. Marking the reading read only
+    lets the sampler offer the return unasked (Rem. 9.5).
   Progression is untouched (Ax. 9.1): the thread moves on, and a parked round
   never gates the next one. Credit still needs an unassisted commitment
   (Ax. 9.2): a reading explains the rule and never states this round's
@@ -1328,20 +1339,22 @@ superseded and kept.
   Theorem 9.1 lets a response move only the distribution future rounds are
   drawn from. Prop. 9.4 replaces a struggled round's confirmation with a
   placement and waits on a reading before drawing the return; both stay
-  inside the two results only by clause (d). What the reading gates is the
-  sampler's draw, which is a distribution; the confirmation and the round are
-  reachable on request throughout. Taking either costs evidence, never
+  inside the two results only by clause (d). What the reading gates is only
+  whether the sampler offers the return unasked; the confirmation, the round
+  and the return are reachable on request throughout, so nothing a response
+  leads to is withheld. Taking either costs evidence, never
   access: by Axiom 9.2 that round earns no credit afterwards, while its
   return, being new numbers, is a fresh commitment. A surface that makes
-  either unreachable has turned a placement into a gate.
+  any of them unreachable has turned a placement into a gate.
 ]
 
 #remark("9.6", name: "Prop. 9.1's follow-ups over incident rounds")[
   Def. 9.4 keeps Prop. 9.1's three responses as three records. Prop. 9.1 also
   asks each for its own follow-up, and for an incident round the return
   carries it: after an incorrect selection, a variant in which the option
-  picked visibly fails; after the abstention, a cleaner instance; after a
-  correct selection no return, the thread's next round being the nearby
+  picked visibly fails; after the abstention, or a correct selection
+  slow enough to be a struggle, a cleaner instance; after a correct selection
+  that is not a struggle no return, the thread's next round being the nearby
   boundary case. A session file that authors one return for every struggle
   meets Def. 9.4 and not Prop. 9.1; checking that a file authors a variant
   per response kind is mechanical, not yet a rule.
@@ -1377,12 +1390,14 @@ superseded and kept.
 ]
 
 #proof[
-  Prop. 8.1 says a cycle ends only when the learner leaves, so leaving must be
-  available, legible and clean; a design in which the only way out is to
+  Prop. 8.1 says a cycle ends only when the learner leaves; read for a
+  session of incident rounds as for a cycle, leaving must be available,
+  legible and clean; a design in which the only way out is to
   abandon a round mid-screen has made leaving a failure. In the A/B four of
   five designs promised about ten minutes and lost the five-minute commuter
   mid-round with no way out. A declared length is a plan for the session's
-  time, not a terminal condition.
+  time, not a terminal condition, and the thread continues from wherever the
+  learner left.
 ]
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -1481,7 +1496,9 @@ superseded and kept.
   + every struggle path ends in a placed reading with a source;
   + no incorrect option's reason in $w$ names the correct option, so that a
     placement never smuggles the answer (Prop. 9.4, Ax. 9.2);
-  + every term is glossed on or before its first use (Prop. 9.5).
+  + every term is glossed on or before its first use (Prop. 9.5);
+  + every instantiable `M` or `A` entry is, on at least one round another
+    entry decides, the entry an option's fix applies (Prop. 10.1, Rem. 10.4).
   All but a citation's correctness are mechanical over a session file and
   belong in one lint with Rem. 7.1's citation check; they are lints rather
   than advice on Rem. 3.2's evidence. Whether a citation is *right* is
@@ -1491,6 +1508,8 @@ superseded and kept.
 
 #remark("10.4", name: "Def. 10.1 and Def. 10.2 over the new registers (v1.2)")[
   For an entry $kappa$ of `M` or `A`, read over incident rounds:
+  - *exposed*: a reveal has named $kappa$, which happens only after the
+    commitment (Rem. 9.4);
   - *recognized*: a correct commitment on an incident round $kappa$ decides;
   - *positive transfer*: correct commitments on at least three incident
     rounds $kappa$ decides whose incidents are structurally distinct. A return
@@ -1729,7 +1748,7 @@ superseded and kept.
     reviewed before it reaches the learner, by Rem. 10.3's lint and expert
     pass rather than a code review of a `.ts` file. Sync, and a small offline
     cache of the current thread, need `paulgsc/server` routes that do not
-    exist yet.
+    exist yet, and are a request for amendment there, as Rem. 11.4's were.
   - Session records keep the funnel Prop. 9.4 defines --- struggled, placed,
     opened, saved, marked read, returned, solved --- append-only, so that the
     ledger screen (Prop. 10.2) and any later report are computed from them.
@@ -1901,8 +1920,8 @@ Machine and Agreement registers `M1`--`M8` and `A1`--`A10`, as v0
 (Rem. 7.4); task legibility (Prop. 9.3); one scrolling screen for incident
 rounds (Def. 9.3, Rem. 9.4); struggle, placement, parking, returns and the
 correct-pick pointer (Def. 9.4, Prop. 9.4), with the condition that keeps
-them inside Axiom 9.1 and Theorem 9.1 (Rem. 9.5); Prop. 9.1's follow-ups over
-incident rounds (Rem. 9.6); the spoken answer under Prop. 9.2 (Rem. 9.7);
+them inside Axiom 9.1 and Theorem 9.1 (Rem. 9.5); the spoken answer (Def. 9.5);
+Prop. 9.1's follow-ups over incident rounds (Rem. 9.6); the spoken answer under Prop. 9.2 (Rem. 9.7);
 first-use gloss (Prop. 9.5); declared length and leaving (Prop. 9.6); the
 derived ledger screen (Prop. 10.2); the content obligations (Rem. 10.3);
 Def. 10.1 and Def. 10.2 read over the new registers (Rem. 10.4); the source
