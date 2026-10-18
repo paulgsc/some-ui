@@ -9,6 +9,7 @@ import type { KeepResult, Reflection } from "@/lib/session-reflection"
 import {
   answersOf,
   inOrder,
+  NO_ROOM,
   QUESTIONS,
   REFLECTION_LIMIT,
   reflections,
@@ -17,7 +18,6 @@ import {
 import { useReflections } from "@/lib/session-reflection/use-reflections"
 import { ToggleChips } from "@/components/player/toggle-chips"
 
-import { NO_ROOM } from "./copy"
 import { DeviceReflectionVoice } from "./device-reflection-voice"
 import { DeviceShareReflections } from "./device-share-reflections"
 import { HandOff } from "./hand-off"
