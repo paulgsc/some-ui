@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>BOYO Fixture — Channel Photos</title>
+    <style>
+      img {
+        display: block;
+        height: 40px;
+        width: 40px;
+      }
+    </style>
+  </head>
+  <body>
+    <!--
+    BOYO fixture: channel photos outside a card (#1804). Each is YouTube's
+    avatar element in the place it sits, with the photo replaced by a vivid
+    image; none may be visible while the extension is on.
+  -->
+    <ytd-app>
+      <div id="photos">
+        <ytd-guide-entry-renderer
+          ><a href="/@guide_sub"
+            ><yt-img-shadow
+              ><img
+                alt=""
+                src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='100%25' height='100%25' fill='%23f0f'/%3E%3C/svg%3E" /></yt-img-shadow></a
+        ></ytd-guide-entry-renderer>
+        <ytd-video-owner-renderer
+          ><a href="/@owner"
+            ><yt-img-shadow id="avatar"
+              ><img
+                id="img"
+                alt=""
+                src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='100%25' height='100%25' fill='%23f0f'/%3E%3C/svg%3E" /></yt-img-shadow></a
+        ></ytd-video-owner-renderer>
+        <ytd-channel-renderer
+          ><div id="avatar-section">
+            <a href="/@result"
+              ><yt-img-shadow
+                ><img
+                  alt=""
+                  src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='100%25' height='100%25' fill='%23f0f'/%3E%3C/svg%3E" /></yt-img-shadow
+            ></a></div
+        ></ytd-channel-renderer>
+        <yt-page-header-view-model
+          ><yt-decorated-avatar-view-model
+            ><yt-avatar-shape
+              ><div class="ytSpecAvatarShapeHost">
+                <img
+                  class="ytSpecAvatarShapeImage"
+                  alt=""
+                  src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='100%25' height='100%25' fill='%23f0f'/%3E%3C/svg%3E"
+                /></div></yt-avatar-shape></yt-decorated-avatar-view-model
+        ></yt-page-header-view-model>
+        <yt-avatar-stack-view-model
+          ><yt-avatar-shape
+            ><div class="ytSpecAvatarShapeHost">
+              <img
+                alt=""
+                src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='100%25' height='100%25' fill='%23f0f'/%3E%3C/svg%3E"
+              /></div></yt-avatar-shape
+        ></yt-avatar-stack-view-model>
+        <ytd-comment-view-model
+          ><div id="author-thumbnail">
+            <yt-img-shadow
+              ><img
+                alt=""
+                src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='100%25' height='100%25' fill='%23f0f'/%3E%3C/svg%3E"
+            /></yt-img-shadow></div
+        ></ytd-comment-view-model>
+        <ytd-video-description-infocards-section-renderer
+          ><yt-img-shadow id="thumbnail"
+            ><img
+              alt=""
+              src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='100%25' height='100%25' fill='%23f0f'/%3E%3C/svg%3E" /></yt-img-shadow
+        ></ytd-video-description-infocards-section-renderer>
+        <ytd-notification-renderer
+          ><yt-img-shadow
+            ><img
+              alt=""
+              src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='100%25' height='100%25' fill='%23f0f'/%3E%3C/svg%3E" /></yt-img-shadow
+        ></ytd-notification-renderer>
+      </div>
+    </ytd-app>
+  </body>
+</html>

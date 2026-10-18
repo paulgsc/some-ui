@@ -553,6 +553,22 @@ ytd-item-section-renderer:has(> #contents > ytd-shelf-renderer:only-child):has(
   position: absolute;
 }
 
+/* Channel photos outside a card: the watch page's owner, the guide's
+   subscriptions, channel results and headers, comment authors and the
+   notifications menu. Every image in YouTube's two avatar elements is
+   hidden, wherever it sits, which takes a chapter's frame (drawn in
+   the same element) with it. What is left is the vendor's empty disc:
+   with no card's ids to hash, it carries no tone or letter. */
+:root:not([data-boyo-off]) yt-img-shadow img,
+:root:not([data-boyo-off]) yt-avatar-shape img {
+  visibility: hidden !important;
+}
+
+:root:not([data-boyo-off]) yt-img-shadow,
+:root:not([data-boyo-off]) .ytSpecAvatarShapeHost {
+  background-color: rgb(127 127 127 / 25%);
+}
+
 /* The hover preview is a moving thumbnail. YouTube plays it in one
    shared player at the app level, over whichever card is hovered; one
    started from elsewhere than a plated thumbnail never shows. */

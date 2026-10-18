@@ -10,6 +10,8 @@
  * P4 — The hover preview never shows.
  * P5 — On every fixture, an image or background image put under any plated
  *      card is not painted, whatever the card's shape.
+ * P6 — No channel photo outside a card is visible while the extension is on,
+ *      and off is plain YouTube.
  */
 
 import { expect, test } from "@censor/playwright/fixture"
@@ -172,4 +174,16 @@ test("P5: no image under any plated card paints, on every fixture", async ({
     expect(leaks, name).toEqual([])
     await page.close()
   }
+})
+
+test("P6: no channel photo outside a card is visible", async ({ fixture }) => {
+  const page = await fixture.goto("yt-channel-photos")
+  const photos = page.locator("#photos img")
+  expect(await photos.count()).toBe(8)
+  for (const photo of await photos.all()) await expect(photo).toBeHidden()
+
+  await page.evaluate(() =>
+    document.documentElement.setAttribute("data-boyo-off", "")
+  )
+  for (const photo of await photos.all()) await expect(photo).toBeVisible()
 })
