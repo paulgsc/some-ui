@@ -150,6 +150,7 @@ describe("the event union", () => {
     obs.channelAbandoned("vid-e")
     obs.entryState("absent", "vid-a")
     obs.entryState("plated", "vid-a")
+    obs.entryState("whole", "vid-a")
     obs.uploadDate("3 days ago", "home", "ytd-rich-item-renderer")
     obs.uploadDate(null, "home", "ytm-shorts-lockup-view-model")
     obs.unknownShape("yt-lockup-view-model", "search", "tag-unseen")

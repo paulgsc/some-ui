@@ -14,6 +14,7 @@ import { mkSession } from "@some-extension/common"
 import { describe, expect, it } from "vitest"
 
 const session = mkSession()
+const NO_MUSIC = { title: null, channelName: null, artist: false }
 const NOW = Date.UTC(2026, 9, 16)
 
 function view(
@@ -21,7 +22,8 @@ function view(
   short = false,
   boundaryDays = DEFAULT_BOUNDARY_DAYS
 ): ViewState["kind"] {
-  return decide({ uploadDate, short }, NOW, boundaryDays, session).kind
+  return decide({ ...NO_MUSIC, uploadDate, short }, NOW, boundaryDays, session)
+    .kind
 }
 
 describe("decide", () => {
@@ -58,7 +60,7 @@ describe("decide", () => {
   it("keeps the session it is given (F1)", () => {
     expect(
       decide(
-        { uploadDate: null, short: false },
+        { ...NO_MUSIC, uploadDate: null, short: false },
         NOW,
         DEFAULT_BOUNDARY_DAYS,
         session
@@ -82,6 +84,7 @@ describe("decideWatch (#1805)", () => {
         hydrated: overrides.hydrated ?? true,
         dates,
         miniplayer: false,
+        ...NO_MUSIC,
       },
       NOW,
       DEFAULT_BOUNDARY_DAYS
@@ -101,6 +104,64 @@ describe("decideWatch (#1805)", () => {
   it("holds a page with no date it can place, and every Short", () => {
     expect(page(["444M views", "SAN DIEGO ZOO"])).toBe("absent")
     expect(page([], { short: true })).toBe("absent")
+  })
+})
+
+describe("the listening lane (QD15, #1806)", () => {
+  const OST = "[MV] 너의 계절 (Spring Letters OST Part.3)"
+  const card = (
+    uploadDate: string | null,
+    overrides: Partial<Parameters<typeof decide>[0]> = {}
+  ): ViewState["kind"] =>
+    decide(
+      { ...NO_MUSIC, title: OST, uploadDate, short: false, ...overrides },
+      NOW,
+      DEFAULT_BOUNDARY_DAYS,
+      session
+    ).kind
+
+  it("admits music whole at any age, once its date proves a past upload", () => {
+    expect(card("3 days ago")).toBe("whole")
+    expect(card("9 years ago")).toBe("whole")
+    expect(
+      card("2 hours ago", { title: "Untitled", channelName: "Ailee - Topic" })
+    ).toBe("whole")
+  })
+
+  it("never admits live, upcoming, undated or Short music", () => {
+    expect(card("1.2K watching")).toBe("absent")
+    expect(card("Premieres in 3 hours")).toBe("absent")
+    expect(card(null)).toBe("absent")
+    expect(card("3 days ago", { short: true })).toBe("absent")
+  })
+
+  it("holds what is not music by the maturity rule", () => {
+    expect(card("3 days ago", { title: "서울 브이로그" })).toBe("absent")
+    expect(card("9 years ago", { title: "서울 브이로그" })).toBe("plated")
+  })
+
+  it("puts a whole card's video on the page whole, and the watch page too", () => {
+    const inputs = {
+      videoId: asVideoId("vid_a"),
+      channelId: null,
+      channelName: null,
+    }
+    expect(project({ kind: "whole", session }, inputs)).toEqual({
+      dataBoyo: "whole",
+      plate: null,
+    })
+    const page = {
+      videoId: asVideoId("vid_w"),
+      short: false,
+      hydrated: true,
+      dates: ["3 days ago"],
+      miniplayer: false,
+      ...NO_MUSIC,
+    }
+    expect(
+      decideWatch({ ...page, title: OST }, NOW, DEFAULT_BOUNDARY_DAYS)
+    ).toBe("whole")
+    expect(decideWatch(page, NOW, DEFAULT_BOUNDARY_DAYS)).toBe("absent")
   })
 })
 

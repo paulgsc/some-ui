@@ -34,6 +34,8 @@ export type Observation = {
   readonly uploadDate: string | null
   /** The card is a Short, held whatever its date (QD11). */
   readonly short: boolean
+  /** The channel carries YouTube's official-artist badge (QD15). */
+  readonly artist: boolean
   readonly surface: BoyoSurface
   /** The anchor element's tag, lower-case. Diagnostics only. */
   readonly renderer: string
@@ -65,6 +67,10 @@ export type WatchObservation = {
    * plated, but nothing stands in for a page that is not shown.
    */
   readonly miniplayer: boolean
+  /** The page's title, its channel's name and badge: the lane's evidence. */
+  readonly title: string | null
+  readonly channelName: string | null
+  readonly artist: boolean
 }
 
 /**
@@ -82,6 +88,9 @@ export function mergeWatch(
     ...next,
     hydrated: previous.hydrated || next.hydrated,
     dates: next.dates.length > 0 ? next.dates : previous.dates,
+    title: next.title ?? previous.title,
+    channelName: next.channelName ?? previous.channelName,
+    artist: previous.artist || next.artist,
   }
 }
 
@@ -104,6 +113,7 @@ export function mergeObservation(
     uploadDate: next.uploadDate ?? previous.uploadDate,
     // Once seen as a Short, always held: the evidence only accumulates.
     short: previous.short || next.short,
+    artist: previous.artist || next.artist,
     surface: next.surface,
     renderer: next.renderer,
     // Once the table has named a shape it stays named; a later unknown reading

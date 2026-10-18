@@ -42,6 +42,7 @@ import { keyVideoId } from "@censor/lib/content/core/keys"
 import type { Observation } from "@censor/lib/content/core/observation"
 import {
   extractCarriesChannel,
+  extractIsArtist,
   extractIsShort,
   extractMeta,
   extractTitle,
@@ -220,6 +221,7 @@ export function createSensor(ports: SensorPorts): Sensor {
       duration: meta.duration,
       uploadDate: extractUploadDate(el),
       short: extractIsShort(el),
+      artist: extractIsArtist(el),
       surface,
       renderer: el.tagName.toLowerCase(),
       shape,

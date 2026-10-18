@@ -559,14 +559,23 @@ ytd-item-section-renderer:has(> #contents > ytd-shelf-renderer:only-child):has(
    page's owner, the guide, channel results and headers, comment
    authors, the notifications menu) go the other images YouTube draws in
    them: notification and chapter frames, community post images, promo
-   art. The rest are avatars YouTube draws as a bare image. #1806's
-   whole cards keep their thumbnails, so they will need an exemption. */
+   art. The rest are avatars YouTube draws as a bare image. A whole
+   card in the listening lane (QD15) keeps its images: the two rules
+   after this one. */
 :root:not([data-boyo-off]) yt-img-shadow img,
 :root:not([data-boyo-off]) yt-avatar-shape img,
 :root:not([data-boyo-off]) .ytVideoAttributeViewModelImageAvatar img,
 :root:not([data-boyo-off]) .ytdRichShelfRendererAvatar,
 :root:not([data-boyo-off]) .ytProfileIconImage {
   visibility: hidden !important;
+}
+
+:root:not([data-boyo-off]) [data-boyo="whole"] yt-img-shadow img {
+  visibility: visible !important;
+}
+
+:root:not([data-boyo-off]) [data-boyo="whole"] yt-avatar-shape img {
+  visibility: visible !important;
 }
 
 /* The page header's images: a channel's banner, and a playlist's
@@ -617,21 +626,34 @@ ytd-item-section-renderer:has(> #contents > ytd-shelf-renderer:only-child):has(
    the Shorts page is never rendered. A plated video's poster is the
    plate, and the face control in its description lifts it.
    ---------------------------------------------------------- */
-:root:not([data-boyo-off], [data-boyo-watch="plated"])
+:root:not(
+    [data-boyo-off],
+    [data-boyo-watch="plated"],
+    [data-boyo-watch="whole"]
+  )
   ytd-page-manager
   > ytd-watch-flexy:not([hidden])
   #full-bleed-container {
   display: none !important;
 }
 
-:root:not([data-boyo-off], [data-boyo-watch="plated"])
+:root:not(
+    [data-boyo-off],
+    [data-boyo-watch="plated"],
+    [data-boyo-watch="whole"]
+  )
   ytd-page-manager
   > ytd-watch-flexy:not([hidden])
   #primary-inner {
   display: none !important;
 }
 
-:root:not([data-boyo-off], [data-boyo-watch="plated"]) ytd-miniplayer {
+:root:not(
+    [data-boyo-off],
+    [data-boyo-watch="plated"],
+    [data-boyo-watch="whole"]
+  )
+  ytd-miniplayer {
   display: none !important;
 }
 

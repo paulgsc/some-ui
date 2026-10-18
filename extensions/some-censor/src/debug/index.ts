@@ -387,6 +387,7 @@ const COUNTER_ORDER = [
   "channels_abandoned",
   "entries_absent",
   "entries_plated",
+  "entries_whole",
   "dates_observed",
   "dates_absent",
   "invariant_violations",

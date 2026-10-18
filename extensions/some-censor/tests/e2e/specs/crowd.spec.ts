@@ -96,7 +96,8 @@ test("C2: no crowd rule hides what a card keeps, or a button", async ({
     (d) =>
       d.phase === "running" &&
       d.entries["vid_crowd01"]?.viewKind === "plated" &&
-      d.entries["vid_crowd02"]?.viewKind === "plated",
+      // Its channel carries the official-artist badge: in the lane (QD15).
+      d.entries["vid_crowd02"]?.viewKind === "whole",
     { timeout: 8000 }
   )
 
@@ -105,7 +106,7 @@ test("C2: no crowd rule hides what a card keeps, or a button", async ({
   for (const { label, hider } of kept) {
     expect(hider, label).toBe(IN_ABSENT_CARDS.has(label) ? "card" : "none")
   }
-  // And a plated card's are on screen, not merely spared.
+  // And a shown card's are on screen, not merely spared.
   await expect(page.locator('[data-keep="title"]').first()).toBeVisible()
   await expect(page.locator('[data-keep="duration"]')).toBeVisible()
 })

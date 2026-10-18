@@ -564,6 +564,9 @@ describe("the watch page (#1805)", () => {
     hydrated: true,
     dates,
     miniplayer: false,
+    title: null,
+    channelName: null,
+    artist: false,
   })
 
   it("announces the page's video when what is read of it changes, and only then", async () => {
@@ -614,7 +617,7 @@ describe("the watch page (#1805)", () => {
     app.setAttribute("miniplayer-is-active", "")
     await vi.advanceTimersByTimeAsync(0)
     expect(watched()).toEqual([
-      { ...reading("w1", ["21y ago"]), miniplayer: true },
+      { ...reading("w1", ["21y ago"]), miniplayer: true, title: "Title" },
     ])
   })
 

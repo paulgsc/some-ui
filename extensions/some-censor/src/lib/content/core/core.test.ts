@@ -41,6 +41,7 @@ function observation(
     duration: "1:23",
     uploadDate: "3 days ago",
     short: false,
+    artist: false,
     surface: "home",
     renderer: "ytd-rich-item-renderer",
     shape: "known",
@@ -407,6 +408,9 @@ describe("the watch page (R8, #1805)", () => {
     hydrated: true,
     dates: ["444M views", "21y ago"],
     miniplayer: false,
+    title: "Me at the zoo",
+    channelName: "jawed",
+    artist: false,
   }
   const watched = (
     t: number,
@@ -623,6 +627,13 @@ describe("what autoplay may go on into (#1805)", () => {
     expect(admits(state, asVideoId("old"))).toBe(true)
     expect(admits(state, asVideoId("recent"))).toBe(false)
     expect(admits(state, asVideoId("unseen"))).toBe(false)
+    const lane = fold([
+      started,
+      seen(1, { uploadDate: "3 hours ago", title: "Stay With Me MV" }, "song"),
+    ])
+    expect(admits(lane.state, asVideoId("song")), "whole, in the lane").toBe(
+      true
+    )
   })
 })
 

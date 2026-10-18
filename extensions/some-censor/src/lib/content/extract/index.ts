@@ -45,6 +45,7 @@ export { extractTitle } from "./title"
 export { readAutonav, readDescription, readWatch } from "./watch"
 export {
   extractCarriesChannel,
+  extractIsArtist,
   extractIsShort,
   extractMeta,
   extractUploadDate,

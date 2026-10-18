@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>BOYO Fixture — The Listening Lane</title>
+    <style>
+      img {
+        width: 160px;
+        height: 90px;
+        display: block;
+      }
+      .photo {
+        width: 24px;
+        height: 24px;
+      }
+    </style>
+  </head>
+  <body>
+    <!--
+    BOYO fixture: the listening lane (#1806, QD15). Music by each of its
+    signals (an MV or OST token in the title, a Topic channel, the
+    official-artist badge) at ages the boundary would hold, and what the
+    lane never admits: live music, a vlog with no music sign, and a Short.
+    Each card's thumbnail and channel photo are painted vivid.
+  -->
+    <ytd-app></ytd-app>
+    <ytd-video-renderer id="ost">
+      <ytd-thumbnail
+        ><a id="thumbnail" href="/watch?v=lane_ost01"
+          ><yt-image
+            ><img
+              class="thumb"
+              alt=""
+              src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='100%25' height='100%25' fill='%23f0f'/%3E%3C/svg%3E" /></yt-image></a
+      ></ytd-thumbnail>
+      <a id="channel-thumbnail" href="/@ost"
+        ><yt-img-shadow
+          ><img
+            class="photo"
+            alt=""
+            src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='100%25' height='100%25' fill='%23f0f'/%3E%3C/svg%3E" /></yt-img-shadow
+      ></a>
+      <a id="video-title" href="/watch?v=lane_ost01"
+        >[MV] Stay With Me (Goblin OST)</a
+      >
+      <ytd-channel-name
+        ><yt-formatted-string
+          ><a href="/@ost">STONE MUSIC</a></yt-formatted-string
+        ><ytd-badge-supported-renderer></ytd-badge-supported-renderer
+      ></ytd-channel-name>
+      <ytd-video-meta-block
+        ><div id="metadata-line">
+          <span class="inline-metadata-item" data-crowd="views"
+            >2.5M views</span
+          >
+          <span class="inline-metadata-item">3 days ago</span>
+        </div></ytd-video-meta-block
+      >
+    </ytd-video-renderer>
+    <ytd-video-renderer id="topic">
+      <ytd-thumbnail
+        ><a id="thumbnail" href="/watch?v=lane_top01"
+          ><yt-image
+            ><img
+              class="thumb"
+              alt=""
+              src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='100%25' height='100%25' fill='%23f0f'/%3E%3C/svg%3E" /></yt-image></a
+      ></ytd-thumbnail>
+      <a id="channel-thumbnail" href="/@topic"
+        ><yt-img-shadow
+          ><img
+            class="photo"
+            alt=""
+            src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='100%25' height='100%25' fill='%23f0f'/%3E%3C/svg%3E" /></yt-img-shadow
+      ></a>
+      <a id="video-title" href="/watch?v=lane_top01">Beautiful</a>
+      <ytd-channel-name
+        ><yt-formatted-string
+          ><a href="/@topic">Crush - Topic</a></yt-formatted-string
+        ><ytd-badge-supported-renderer></ytd-badge-supported-renderer
+      ></ytd-channel-name>
+      <ytd-video-meta-block
+        ><div id="metadata-line">
+          <span class="inline-metadata-item" data-crowd="views"
+            >2.5M views</span
+          >
+          <span class="inline-metadata-item">2 hours ago</span>
+        </div></ytd-video-meta-block
+      >
+    </ytd-video-renderer>
+    <ytd-video-renderer id="artist">
+      <ytd-thumbnail
+        ><a id="thumbnail" href="/watch?v=lane_art01"
+          ><yt-image
+            ><img
+              class="thumb"
+              alt=""
+              src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='100%25' height='100%25' fill='%23f0f'/%3E%3C/svg%3E" /></yt-image></a
+      ></ytd-thumbnail>
+      <a id="channel-thumbnail" href="/@artist"
+        ><yt-img-shadow
+          ><img
+            class="photo"
+            alt=""
+            src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='100%25' height='100%25' fill='%23f0f'/%3E%3C/svg%3E" /></yt-img-shadow
+      ></a>
+      <a id="video-title" href="/watch?v=lane_art01">First Snow</a>
+      <ytd-channel-name
+        ><yt-formatted-string><a href="/@artist">Ailee</a></yt-formatted-string
+        ><ytd-badge-supported-renderer
+          ><badge-shape
+            role="img"
+            aria-label="Official Artist Channel"
+          ></badge-shape></ytd-badge-supported-renderer
+      ></ytd-channel-name>
+      <ytd-video-meta-block
+        ><div id="metadata-line">
+          <span class="inline-metadata-item" data-crowd="views"
+            >2.5M views</span
+          >
+          <span class="inline-metadata-item">5 months ago</span>
+        </div></ytd-video-meta-block
+      >
+    </ytd-video-renderer>
+    <ytd-video-renderer id="live">
+      <ytd-thumbnail
+        ><a id="thumbnail" href="/watch?v=lane_liv01"
+          ><yt-image
+            ><img
+              class="thumb"
+              alt=""
+              src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='100%25' height='100%25' fill='%23f0f'/%3E%3C/svg%3E" /></yt-image></a
+      ></ytd-thumbnail>
+      <a id="channel-thumbnail" href="/@live"
+        ><yt-img-shadow
+          ><img
+            class="photo"
+            alt=""
+            src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='100%25' height='100%25' fill='%23f0f'/%3E%3C/svg%3E" /></yt-img-shadow
+      ></a>
+      <a id="video-title" href="/watch?v=lane_liv01">OST live session</a>
+      <ytd-channel-name
+        ><yt-formatted-string><a href="/@live">Radio</a></yt-formatted-string
+        ><ytd-badge-supported-renderer></ytd-badge-supported-renderer
+      ></ytd-channel-name>
+      <ytd-video-meta-block
+        ><div id="metadata-line">
+          <span class="inline-metadata-item" data-crowd="views"
+            >2.5M views</span
+          >
+          <span class="inline-metadata-item">1.2K watching</span>
+        </div></ytd-video-meta-block
+      >
+    </ytd-video-renderer>
+    <ytd-video-renderer id="vlog">
+      <ytd-thumbnail
+        ><a id="thumbnail" href="/watch?v=lane_vlg01"
+          ><yt-image
+            ><img
+              class="thumb"
+              alt=""
+              src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='100%25' height='100%25' fill='%23f0f'/%3E%3C/svg%3E" /></yt-image></a
+      ></ytd-thumbnail>
+      <a id="channel-thumbnail" href="/@vlog"
+        ><yt-img-shadow
+          ><img
+            class="photo"
+            alt=""
+            src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='100%25' height='100%25' fill='%23f0f'/%3E%3C/svg%3E" /></yt-img-shadow
+      ></a>
+      <a id="video-title" href="/watch?v=lane_vlg01"
+        >서울 브이로그 (Seoul vlog)</a
+      >
+      <ytd-channel-name
+        ><yt-formatted-string><a href="/@vlog">Daily</a></yt-formatted-string
+        ><ytd-badge-supported-renderer></ytd-badge-supported-renderer
+      ></ytd-channel-name>
+      <ytd-video-meta-block
+        ><div id="metadata-line">
+          <span class="inline-metadata-item" data-crowd="views"
+            >2.5M views</span
+          >
+          <span class="inline-metadata-item">3 days ago</span>
+        </div></ytd-video-meta-block
+      >
+    </ytd-video-renderer>
+    <ytd-video-renderer id="short">
+      <ytd-thumbnail
+        ><a id="thumbnail" href="/shorts/lane_sho01"
+          ><yt-image
+            ><img
+              class="thumb"
+              alt=""
+              src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='100%25' height='100%25' fill='%23f0f'/%3E%3C/svg%3E" /></yt-image></a
+      ></ytd-thumbnail>
+      <a id="channel-thumbnail" href="/@short"
+        ><yt-img-shadow
+          ><img
+            class="photo"
+            alt=""
+            src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='100%25' height='100%25' fill='%23f0f'/%3E%3C/svg%3E" /></yt-img-shadow
+      ></a>
+      <a id="video-title" href="/shorts/lane_sho01">OST in 30 seconds</a>
+      <ytd-channel-name
+        ><yt-formatted-string><a href="/@short">Clips</a></yt-formatted-string
+        ><ytd-badge-supported-renderer></ytd-badge-supported-renderer
+      ></ytd-channel-name>
+      <ytd-video-meta-block
+        ><div id="metadata-line">
+          <span class="inline-metadata-item" data-crowd="views"
+            >2.5M views</span
+          >
+          <span class="inline-metadata-item">3 days ago</span>
+        </div></ytd-video-meta-block
+      >
+    </ytd-video-renderer>
+  </body>
+</html>

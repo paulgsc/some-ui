@@ -9,6 +9,7 @@
  */
 
 import type { WatchObservation } from "@censor/lib/content/core/observation"
+import { ARTIST_BADGE } from "@censor/lib/content/extract/meta"
 import type { VideoId } from "@censor/types/ids"
 import { asVideoId } from "@censor/types/ids"
 
@@ -29,6 +30,13 @@ const MINIPLAYER = "ytd-app[miniplayer-is-active]"
 const MINIPLAYER_TITLE = "ytd-miniplayer .ytdMiniplayerInfoBarTitle"
 const PAGE_TITLE = "#title h1"
 
+/** The page's channel: its name and badge are the lane's evidence (QD15). */
+const OWNER = "ytd-video-owner-renderer"
+const OWNER_NAME = `${OWNER} ytd-channel-name yt-formatted-string`
+
+/** A reading that says nothing about the lane: nothing is read yet. */
+const NO_LANE = { title: null, channelName: null, artist: false } as const
+
 /**
  * Where the watch page states the date: the info line under the title, in
  * runs ("444M views", "21y ago"), and its tooltip, one run joined by "•"
@@ -45,6 +53,7 @@ export function readWatch(doc: Document): WatchObservation | null {
       hydrated: true,
       dates: [],
       miniplayer: false,
+      ...NO_LANE,
     }
   }
   const page = doc.querySelector(WATCH_PAGE)
@@ -56,7 +65,14 @@ export function readWatch(doc: Document): WatchObservation | null {
   const videoId = id === null || id === "" ? null : asVideoId(id)
   const metadata = page.querySelector("ytd-watch-metadata")
   if (videoId === null || metadata?.getAttribute("video-id") !== videoId) {
-    return { videoId, short: false, hydrated: false, dates: [], miniplayer }
+    return {
+      videoId,
+      short: false,
+      hydrated: false,
+      dates: [],
+      miniplayer,
+      ...NO_LANE,
+    }
   }
   if (miniplayer && playsAnother(doc, metadata)) {
     // Another video than the page's, which the page says nothing about.
@@ -66,6 +82,7 @@ export function readWatch(doc: Document): WatchObservation | null {
       hydrated: false,
       dates: [],
       miniplayer,
+      ...NO_LANE,
     }
   }
   const dates: Array<string> = []
@@ -78,7 +95,16 @@ export function readWatch(doc: Document): WatchObservation | null {
     const text = part.trim()
     if (text) dates.push(text)
   }
-  return { videoId, short: false, hydrated: true, dates, miniplayer }
+  return {
+    videoId,
+    short: false,
+    hydrated: true,
+    dates,
+    miniplayer,
+    title: metadata.querySelector(PAGE_TITLE)?.textContent.trim() || null,
+    channelName: metadata.querySelector(OWNER_NAME)?.textContent.trim() || null,
+    artist: metadata.querySelector(`${OWNER} ${ARTIST_BADGE}`) !== null,
+  }
 }
 
 /**

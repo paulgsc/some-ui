@@ -84,6 +84,7 @@ export const BOYO_EVENT_KINDS = [
   // Per-card FSM state, one kind per `ViewState["kind"]` (see ENTRY_EVENT).
   "entry.absent",
   "entry.plated",
+  "entry.whole",
   // Date extraction — the corpus QC2 (#1384) depends on.
   "date.observed",
   "date.absent",
@@ -114,6 +115,7 @@ type BoyoCounter =
   | "channels_abandoned"
   | "entries_absent"
   | "entries_plated"
+  | "entries_whole"
   /** Every sighting, including repeats of a form already in the corpus. */
   | "dates_observed"
   | "dates_absent"
@@ -147,11 +149,13 @@ type BoyoAggregate =
 const ENTRY_EVENT: Readonly<Record<ViewState["kind"], BoyoEventKind>> = {
   absent: "entry.absent",
   plated: "entry.plated",
+  whole: "entry.whole",
 }
 
 const ENTRY_COUNTER: Readonly<Record<ViewState["kind"], BoyoCounter>> = {
   absent: "entries_absent",
   plated: "entries_plated",
+  whole: "entries_whole",
 }
 
 // ── Surfaces ─────────────────────────────────────────────────────────────────
