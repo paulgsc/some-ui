@@ -29,9 +29,11 @@
  *   R8 — The watch page is one more piece of evidence (#1805). Its view is
  *        `decideWatch()` of the merged `watched` observations of the same
  *        video, re-decided by `boundary` as a card is. YouTube names the
- *        next video before it rewrites the date, so the dates shown when the
- *        video changed are the previous video's until they change, and read
- *        as none. It is not a card: `nav` leaves it to the next reading, and
+ *        next video before it rewrites the date, so a reading whose runs
+ *        are all runs the previous video showed is that video's, and reads
+ *        as none. (Not covered: a start mid-transition, with no previous
+ *        video read; and a date written before its video's id, which would
+ *        hold the next video pending.) It is not a card: `nav` leaves it to the next reading, and
  *        `stop` forgets it, the Actuator's `dispose` lifting its hold. A
  *        `watch` action is emitted only when its view, its video or where it
  *        plays changes.
@@ -305,10 +307,11 @@ function watchAction(watch: WatchState | null): Action {
   }
 }
 
-const sameDates = (
-  a: ReadonlyArray<string>,
-  b: ReadonlyArray<string>
-): boolean => a.length === b.length && a.every((d, i) => d === b[i])
+/** Every run of `dates` is one of `seen`: none of them is new. */
+const within = (
+  dates: ReadonlyArray<string>,
+  seen: ReadonlyArray<string>
+): boolean => dates.length > 0 && dates.every((d) => seen.includes(d))
 
 function watched(
   state: CoreState,
@@ -327,7 +330,7 @@ function watched(
   const stale =
     last !== null &&
     last.videoId !== observation.videoId &&
-    sameDates(observation.dates, last.dates)
+    within(observation.dates, last.dates)
   const own = stale ? { ...observation, dates: [] } : observation
   const merged = previous === null ? own : mergeWatch(previous.observation, own)
   const next: WatchState = {
@@ -335,10 +338,14 @@ function watched(
     view: decideWatch(merged, t, state.boundaryDays),
     seenAt: t,
   }
-  const watchDates =
-    own.dates.length > 0
-      ? { videoId: observation.videoId, dates: own.dates }
-      : last
+  let watchDates = last
+  if (own.dates.length > 0) {
+    const seen = last?.videoId === observation.videoId ? last.dates : []
+    watchDates = {
+      videoId: observation.videoId,
+      dates: [...seen, ...own.dates.filter((d) => !seen.includes(d))],
+    }
+  }
   const moved =
     previous?.view !== next.view ||
     previous.observation.videoId !== merged.videoId ||

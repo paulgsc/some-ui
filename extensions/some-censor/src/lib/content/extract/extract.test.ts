@@ -567,9 +567,9 @@ describe("readWatch (#1805)", () => {
     const doc = page(
       `<ytd-browse page-subtype="home"></ytd-browse><ytd-watch-flexy hidden video-id="jNQ">${metadata("jNQ")}</ytd-watch-flexy>`
     )
-    doc.body.append(doc.createElement("ytd-miniplayer"))
     expect(readWatch(doc)).toBeNull()
-    doc.querySelector("ytd-miniplayer")?.setAttribute("active", "")
+    // YouTube reflects the miniplayer on the app.
+    doc.querySelector("ytd-app")?.setAttribute("miniplayer-is-active", "")
     expect(readWatch(doc)).toMatchObject({ videoId: "jNQ", miniplayer: true })
   })
 })

@@ -367,9 +367,9 @@ A held video's watch page, reached by a link, is "Not here." and Back
 until Core plates the page's video, its view written on `<html>`; until then
 the Actuator's watch hold pauses every media play and keeps the tab title
 "YouTube"; and a Short's page is never rendered. YouTube names the next
-video before it rewrites the date, so Core reads the dates still on screen
-as the previous video's until they change. `watch.spec.ts` W2–W7 prove
-each, locally.
+video before it rewrites the date, so Core reads a page whose date runs are
+all runs the previous video showed as showing no date yet. `watch.spec.ts`
+W2–W8 prove each, locally.
 
 ---
 
@@ -629,7 +629,8 @@ section is a behavioural change; it is a statement of distance.
 | A page YouTube moves to another video could paint it unmasked    | the mask returns when `video-id` changes; nothing proves it changes first   | QD11     |
 | A watch page that never shows its video's date stays blank       | it is pending, which says nothing, and nothing ends pending                 | QD17     |
 | A held video's title shows in the tab on a direct load, briefly  | the server sends it, and the content script runs at `document_end`          | QD11     |
-| Two videos showing the same date runs read as one                | the second is pending until its runs differ, the view count included        | QD17     |
+| Two videos showing the same date runs read as one                | the second is pending until a run differs, the view count included          | QD17     |
+| A start mid-transition can admit the next video on the last date | Core has read no previous video, so nothing marks that date as another's    | QD11     |
 | A shelf elsewhere keeps its header                               | a container `SHELF_SELECTORS` does not name                                 | QD11     |
 | A channel photo outside a card leaves an empty space, not a disc | no card's ids to hash there; the photo itself is hidden                     | QD12     |
 | Live chat shows its authors' photos                              | the chat is its own frame, and the manifest injects into the top frame only | QD12     |

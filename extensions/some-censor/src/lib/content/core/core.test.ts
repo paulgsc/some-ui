@@ -478,6 +478,24 @@ describe("the watch page (R8, #1805)", () => {
     expect(back.state.watch?.view).toBe("pending")
   })
 
+  it("reads any part of another video's runs as none, in any form it showed", () => {
+    const next = asVideoId("vid_next")
+    const expanded = ["444,875,933 views", "Apr 23, 2005"]
+    const { state } = fold([
+      started,
+      watched(1),
+      // The description expanded: the same date in its long form.
+      watched(2, { ...OLD_PAGE, dates: expanded }),
+    ])
+    for (const dates of [["21y ago"], ["Apr 23, 2005"], OLD_PAGE.dates]) {
+      const step = reduce(
+        state,
+        watched(3, { ...OLD_PAGE, videoId: next, dates })
+      )
+      expect(step.state.watch?.view, dates.join()).toBe("pending")
+    }
+  })
+
   it("keeps a video's evidence a later reading lost", () => {
     const lost = { ...OLD_PAGE, hydrated: false, dates: [] }
     const { state } = fold([started, watched(1), watched(2, lost)])

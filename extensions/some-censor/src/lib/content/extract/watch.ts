@@ -13,8 +13,11 @@ import { asVideoId } from "@censor/types/ids"
 
 const SHORTS_PAGE = "ytd-page-manager > ytd-shorts:not([hidden])"
 const WATCH_PAGE = "ytd-page-manager > ytd-watch-flexy"
-/** The miniplayer plays the watch page's player, over another page. */
-const MINIPLAYER = "ytd-miniplayer[active]"
+/**
+ * The miniplayer plays the watch page's player over another page. YouTube
+ * reflects it on the app, not on `ytd-miniplayer`.
+ */
+const MINIPLAYER = "ytd-app[miniplayer-is-active]"
 
 /**
  * Where the watch page states the date: the info line under the title, in

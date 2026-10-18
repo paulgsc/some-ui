@@ -622,8 +622,9 @@ export function createSensor(ports: SensorPorts): Sensor {
         subtree: true,
         attributes: true,
         // `video-id`: the watch page's video changing (#1805), which can
-        // come before anything else on the page does.
-        attributeFilter: ["data-video-id", "video-id"],
+        // come before anything else on the page does; and the miniplayer
+        // opening or closing, which need not come with a navigation.
+        attributeFilter: ["data-video-id", "video-id", "miniplayer-is-active"],
       })
       ports.win.addEventListener("yt-navigate-finish", onNavigate)
     },

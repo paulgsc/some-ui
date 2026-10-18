@@ -14,6 +14,7 @@
  *      coming back on off is `runtime.test.ts`'s.)
  * W7 — A held video moved into the miniplayer stays hidden and paused, and
  *      "Not here." does not cover the page shown.
+ * W8 — An old video moved into the miniplayer plays on, shown.
  */
 
 import { SWITCHED_OFF_ATTRIBUTE } from "@censor/lib/content/selectors"
@@ -49,6 +50,23 @@ async function setAge(page: Page, age: string): Promise<void> {
     const run = runs[runs.length - 1]
     if (run) run.textContent = text
   }, age)
+}
+
+/**
+ * YouTube's "i": the home page shows, the player moves into the miniplayer,
+ * and the app reflects it as `miniplayer-is-active`.
+ */
+async function toMiniplayer(page: Page): Promise<void> {
+  await page.evaluate(() => {
+    document.querySelector("ytd-watch-flexy")?.setAttribute("hidden", "")
+    document.querySelector("ytd-browse")?.removeAttribute("hidden")
+    const mini = document.createElement("ytd-miniplayer")
+    const video = document.querySelector("video")
+    if (video) mini.append(video)
+    const app = document.querySelector("ytd-app")
+    app?.append(mini)
+    app?.setAttribute("miniplayer-is-active", "")
+  })
 }
 
 /** A play the page asks for, and whether it is still playing after a beat. */
@@ -144,18 +162,20 @@ test("W7: a held video moved into the miniplayer stays held, and says nothing", 
   await setAge(page, "3 hours ago")
   await watchView(page, "absent")
   await expect(page.locator(NOT_HERE)).toBeVisible()
-  // YouTube's "i": the home page shows, the player moves into the miniplayer.
-  await page.evaluate(() => {
-    document.querySelector("ytd-watch-flexy")?.setAttribute("hidden", "")
-    document.querySelector("ytd-browse")?.removeAttribute("hidden")
-    const mini = document.createElement("ytd-miniplayer")
-    mini.setAttribute("active", "")
-    const video = document.querySelector("video")
-    if (video) mini.append(video)
-    document.querySelector("ytd-app")?.append(mini)
-  })
+  await toMiniplayer(page)
   await expect(page.locator(NOT_HERE)).toHaveCount(0)
   await expect(page.locator("ytd-miniplayer")).toBeHidden()
   await expect(page).toHaveTitle("YouTube")
   expect(await playsThrough(page)).toBe(false)
+})
+
+test("W8: an old video moved into the miniplayer plays on, shown", async ({
+  fixture,
+}) => {
+  const page = await fixture.goto("yt-watch-page")
+  await watchView(page, "plated")
+  await toMiniplayer(page)
+  await expect(page.locator("ytd-miniplayer")).toBeVisible()
+  await watchView(page, "plated")
+  expect(await playsThrough(page)).toBe(true)
 })

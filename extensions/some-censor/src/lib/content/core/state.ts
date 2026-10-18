@@ -47,9 +47,9 @@ export type CoreState = {
   /** Null when no watch page or Short is shown. */
   readonly watch: WatchState | null
   /**
-   * The dates a watch page last showed as a video's own, and whose. The
-   * page keeps them when it hides, and shows them under the next video
-   * until it rewrites them (R8).
+   * Every date run a watch page has shown as a video's own, and whose. The
+   * page keeps them when it hides, and shows them, or some of them, under
+   * the next video until it rewrites them (R8).
    */
   readonly watchDates: WatchDates | null
   /** The owner's `B`, in days, as the shell last supplied it. */
