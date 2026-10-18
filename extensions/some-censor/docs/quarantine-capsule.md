@@ -617,6 +617,7 @@ section is a behavioural change; it is a statement of distance.
 | A channel photo outside a card leaves an empty space, not a disc | no card's ids to hash there; the photo itself is hidden                     | QD12     |
 | Live chat shows its authors' photos                              | the chat is its own frame, and the manifest injects into the top frame only | QD12     |
 | The player's poster is the real thumbnail, not the plate         | the player is #1805's, with the face (QD13)                                 | QD12     |
+| A channel's seamless header can play its video trailer           | a video, not an image, so no image rule hides it (#1888)                    | QD12     |
 | #1806's whole cards would lose their channel photos              | the channel-photo rule hides them wherever they sit                         | QD15     |
 | A hover on the duration badge can still start a hidden preview   | the badge takes the pointer to open the card; the player is `display: none` | QD12     |
 | A trending rank is shown                                         | no capture holds one, so no crowd rule names it                             | QD14     |

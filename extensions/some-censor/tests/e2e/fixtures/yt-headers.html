@@ -6,12 +6,12 @@
   </head>
   <body>
     <!--
-    BOYO fixture: images outside a card (#1804), in the shapes YouTube's
-    desktop bundle and player draw them: the page header's banner, cover
-    and backdrop (inline, and moved into the seamless header's portal), the
-    tabbed header's own banner, the Polymer playlist header, and the
-    player's overlays. Each image is set from the script below; none may
-    paint while the extension is on.
+    BOYO fixture: images outside a card (#1804). The page header's
+    banner, cover and backdrop (inline, and moved into the seamless header's
+    portal), the tabbed header's own banner and the Polymer playlist header
+    keep the nesting YouTube's desktop bundle draws; the player's overlays
+    are the bare elements that carry the image. Each image is set from the
+    script below; none may paint while the extension is on.
   -->
     <ytd-app>
       <div id="images">
