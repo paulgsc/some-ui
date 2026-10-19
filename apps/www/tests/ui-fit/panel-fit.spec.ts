@@ -50,12 +50,15 @@ import { expect, test, type Page } from "@playwright/test"
 import type { PanelKey } from "@/lib/playable"
 
 import {
+  ALLOWED_FIT_INTENTS,
+  findViolations,
   PANEL_PAGE_BUILD,
   PANEL_PAGE_PATH,
   panelPageBuilt,
   serve,
   VIEWPORTS,
   type StaticSite,
+  type Violation,
 } from "./harness"
 import type { PanelId } from "./panel-page/fixtures"
 
@@ -111,133 +114,11 @@ const PANEL_STAGES: ReadonlyArray<PanelId> = [
 const PLANTED_OVERFLOW: PanelId = "planted-overflow"
 
 /**
- * Deliberate escapes, matched against `data-fit-intent` on the element or any
- * ancestor. Same shape as the sweep's scroll intents, for the same reason: an
- * opt-out should be a greppable act in the component, not a class name that
- * happens to look intentional.
+ * Fixtures another sweep walks, screen by screen, at its own sizes: the
+ * phone's incident session (`./incident-fit.spec.ts`), a phone-only surface
+ * this sweep's desktop sizes would measure on the wrong device.
  */
-const ALLOWED_FIT_INTENTS = new Set([
-  // A marquee's whole mechanic is translating a track wider than its window.
-  "marquee",
-  // Decorative motion (particles, glows) that is clipped by design.
-  "ambient",
-])
-
-/**
- * One way a panel can break the contract, in the terms the fix is written in.
- *
- *   `escape` the element paints outside the granted rect. A panel asking for
- *           more than it was given - `min-h-screen` on a panel root, a row of
- *           chips that will not wrap.
- *   `leak`  a box with a definite size holds content it cannot contain and
- *           does not clip it, so the excess paints over whatever the layout
- *           put next to it. This is #899 exactly: the quiz summary's card was
- *           `h-full` around 950px of content, and the difference landed on the
- *           panel below. A box that sizes to its content cannot leak - its
- *           `scrollHeight` and `clientHeight` are equal - so this only ever
- *           fires where something really did assert a size.
- */
-type Violation = {
-  kind: "escape" | "leak"
-  tag: string
-  classes: string
-  overY: number
-  overX: number
-}
-
-/** Everything the panel does that its rect does not permit, worst first. */
-async function findViolations(
-  page: Page,
-  allowedIntents: ReadonlyArray<string>
-): Promise<{ mounted: boolean; violations: Array<Violation> }> {
-  return page.evaluate(
-    (allowed: Array<string>) => {
-      const intents = new Set(allowed)
-      const root = document.querySelector("[data-fit-slot]")
-      if (!root || root.childElementCount === 0) {
-        return { mounted: false, violations: [] }
-      }
-
-      const rect = root.getBoundingClientRect()
-      const violations: Array<Violation> = []
-      const isClipping = (style: CSSStyleDeclaration): boolean =>
-        style.overflowX !== "visible" || style.overflowY !== "visible"
-
-      for (const element of Array.from(
-        root.querySelectorAll<HTMLElement>("*")
-      )) {
-        // SVG internals are geometry, not layout - a path's bounding box says
-        // nothing about whether the chart drawn from it fits.
-        if (element.closest("svg")) continue
-
-        const style = getComputedStyle(element)
-        // The overlay plane (toasts, popovers, dialogs) is not part of the
-        // layout tree the viewport tiles - see docs/session-viewport.
-        if (style.position === "fixed") continue
-        // Nothing that paints nothing can overflow: a hover tooltip parked
-        // outside the panel at `opacity: 0` is not content spilling out.
-        if (
-          !element.checkVisibility({
-            opacityProperty: true,
-            visibilityProperty: true,
-            contentVisibilityAuto: true,
-          })
-        ) {
-          continue
-        }
-
-        const declared = element.closest("[data-fit-intent]")
-        const intent = declared?.getAttribute("data-fit-intent") ?? null
-        if (intent !== null && intents.has(intent)) continue
-
-        const tag = element.tagName.toLowerCase()
-        const classes = element.className.toString().slice(0, 120)
-        const box = element.getBoundingClientRect()
-
-        // A box that clips or scrolls has resolved its own overflow; what
-        // matters then is whether *it* fits, which is measured on its own turn.
-        if (!isClipping(style) && element.clientHeight > 0) {
-          const overY = element.scrollHeight - element.clientHeight
-          const overX = element.scrollWidth - element.clientWidth
-          if (overY > 2 || overX > 2) {
-            violations.push({ kind: "leak", tag, classes, overY, overX })
-            continue
-          }
-        }
-
-        if (box.width === 0 || box.height === 0) continue
-
-        // Content inside a clipping or scrolling ancestor cannot paint outside
-        // the rect however long it is - the ancestor is the one on the hook.
-        let clipped = false
-        for (
-          let ancestor = element.parentElement;
-          ancestor && ancestor !== root;
-          ancestor = ancestor.parentElement
-        ) {
-          if (isClipping(getComputedStyle(ancestor))) {
-            clipped = true
-            break
-          }
-        }
-        if (clipped) continue
-
-        const overY = Math.round(box.bottom - rect.bottom)
-        const overX = Math.round(box.right - rect.right)
-        // Sub-pixel rounding at fractional zoom is not an overflow.
-        if (overY <= 2 && overX <= 2) continue
-
-        violations.push({ kind: "escape", tag, classes, overY, overX })
-      }
-
-      violations.sort(
-        (a, b) => Math.max(b.overY, b.overX) - Math.max(a.overY, a.overX)
-      )
-      return { mounted: true, violations: violations.slice(0, 3) }
-    },
-    [...allowedIntents]
-  )
-}
+const SWEPT_ELSEWHERE: ReadonlyArray<PanelId> = ["leetype-incident"]
 
 type SweptPanel = { label: string; panel: PanelId; debt: string | null }
 
@@ -376,6 +257,7 @@ test.describe("every panel fits the rect the viewport grants it", () => {
     const swept = new Set<string>([
       ...SWEPT.map((panel) => panel.panel),
       PLANTED_OVERFLOW,
+      ...SWEPT_ELSEWHERE,
     ])
     const unswept = (
       await page.locator("[data-fit-panels] li").allTextContents()

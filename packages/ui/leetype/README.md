@@ -92,12 +92,16 @@ because each was crossed by the version this replaced:
 The rounds branch has a boundary of its own, and it is the one to check a
 change against first:
 
-5. **The rounds path imports nothing engine-shaped.** No `types/leetype`
-   vocabulary, no wasm loader, no typing hook: `lib/leetype/round-probe` and
-   `lib/leetype/round-cycle` are pure functions of authored round data, and
-   `DiffCard` takes a hunk and nothing else. That is what makes "a phone never
-   loads the engine" true by construction; `components/leetype/index.test.tsx`
-   pins it, with a negative control that asserts the wide branch does load it.
+5. **The rounds path and the incident path import nothing engine-shaped.** No
+   `types/leetype` vocabulary, no wasm loader, no typing hook: `lib/leetype/round-probe` and
+   `lib/leetype/round-cycle` are pure functions of authored round data,
+   `DiffCard` takes a hunk and nothing else, and a session file plays through
+   `lib/leetype/incident-play`, which knows screens, picks and the session log.
+   That is what makes "a phone never loads the engine" true by construction;
+   `components/leetype/index.test.tsx` pins it for both (rounds, and a session
+   file played to its end), with a negative control that asserts the wide
+   branch does load it, and `components/incident/incident-session/index.test.tsx`
+   walks every module the session surface reaches and finds no engine one.
 
 ## Where the engine ends and this package begins
 

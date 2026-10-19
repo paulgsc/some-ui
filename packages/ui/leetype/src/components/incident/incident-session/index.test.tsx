@@ -1,3 +1,6 @@
+import { existsSync, readFileSync } from "node:fs"
+import { dirname, join } from "node:path"
+import { fileURLToPath } from "node:url"
 import { IncidentSession } from "@leetype/components/incident/incident-session"
 import { AB_FIXTURES } from "@leetype/lib/leetype/session-file/__tests__/fixtures"
 import { createSessionLogStore } from "@leetype/lib/leetype/session-log"
@@ -495,5 +498,66 @@ describe("IncidentSession", () => {
     expect(
       screen.getByRole("button", { name: /Start with incident 1/ })
     ).toBeTruthy()
+  })
+})
+
+// Through a variable, as `session-file/__tests__/fixtures.ts` does: a literal
+// inside `new URL(...)` is rewritten by Vite's asset transform.
+const SRC_FROM_HERE = "../../../"
+const SRC = fileURLToPath(new URL(SRC_FROM_HERE, import.meta.url))
+
+/** The source file `specifier` names from `from`, if it is this package's. */
+function resolved(specifier: string, from: string): string | null {
+  const base = specifier.startsWith("@leetype/")
+    ? join(SRC, specifier.slice("@leetype/".length))
+    : specifier.startsWith(".")
+      ? join(dirname(from), specifier)
+      : null
+  if (base === null) return null
+  const found = [".ts", ".tsx", "/index.ts", "/index.tsx"]
+    .map((ending) => base + ending)
+    .find((path) => existsSync(path))
+  return found ?? null
+}
+
+/** Every module of this package, and every package, `entry` reaches. */
+function reach(entry: string): { files: Set<string>; packages: Set<string> } {
+  const files = new Set<string>()
+  const packages = new Set<string>()
+  const queue = [entry]
+  for (let file = queue.shift(); file !== undefined; file = queue.shift()) {
+    if (files.has(file)) continue
+    files.add(file)
+    const source = readFileSync(file, "utf8")
+    const specifiers = [
+      ...source.matchAll(/(?:from|import)\s*\(?\s*["']([^"']+)["']/g),
+    ].map((match) => match[1] ?? "")
+    for (const specifier of specifiers) {
+      const next = resolved(specifier, file)
+      if (next !== null) queue.push(next)
+      else if (!specifier.startsWith(".")) packages.add(specifier)
+    }
+  }
+  return { files, packages }
+}
+
+describe("the incident path", () => {
+  // Boundary 5 (README): what a phone plays from a session file reaches no
+  // engine module, types included, so a phone never loads the engine.
+  it("reaches nothing engine-shaped from the session surface", () => {
+    const { files, packages } = reach(
+      join(SRC, "components/incident/incident-session/index.tsx")
+    )
+    const local = [...files].map((file) => file.slice(SRC.length))
+    // It walked the play model, so an empty walk cannot pass.
+    expect(local).toContain("lib/leetype/incident-play/model.ts")
+    expect(
+      local.filter((file) =>
+        /^(types\/leetype|types\/wasm\/|hooks\/leetype\/|lib\/leetype\/leetype-wasm-loader)/.test(
+          file
+        )
+      )
+    ).toEqual([])
+    expect([...packages].filter((name) => name.includes("wasm"))).toEqual([])
   })
 })

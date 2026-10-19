@@ -229,6 +229,8 @@ describe("Leetype", () => {
     fireEvent.click(screen.getByRole("button", { name: "End here" }))
     fireEvent.click(screen.getByRole("button", { name: "Done" }))
     expect(onSessionComplete).toHaveBeenCalledOnce()
+    // Boundary 5: a session file plays without the engine.
+    expect(loadWasm).not.toHaveBeenCalled()
     expect(screen.getByText("Add a session from storage")).toBeTruthy()
   })
 

@@ -2,7 +2,10 @@ import type { FC } from "react"
 import { useState } from "react"
 import { Glosses } from "@leetype/components/incident/glosses"
 import { RubricPoints } from "@leetype/components/incident/rubric-points"
-import { ScreenHeading } from "@leetype/components/incident/screen-heading"
+import {
+  SCREEN_ARTICLE,
+  ScreenHeading,
+} from "@leetype/components/incident/screen-heading"
 import type { SpokenAnswer } from "@leetype/lib/leetype/incident-play"
 import type { SpokenTakeSnapshot } from "@leetype/lib/leetype/spoken-take"
 import type { SessionScreen } from "@leetype/types/session-file"
@@ -78,7 +81,7 @@ export const RecordScreenView: FC<RecordScreenProps> = ({
 
   if (spoken !== null) {
     return (
-      <article className="flex flex-col gap-4">
+      <article className={SCREEN_ARTICLE}>
         {heading}
         <p className="text-pretty text-sm text-muted-foreground">
           {answered(spoken)}
@@ -130,7 +133,7 @@ export const RecordScreenView: FC<RecordScreenProps> = ({
   }
 
   return (
-    <article className="flex flex-col gap-4">
+    <article className={SCREEN_ARTICLE}>
       {heading}
       {full && (
         <p role="status" className="text-pretty text-sm text-muted-foreground">

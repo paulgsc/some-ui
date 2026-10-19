@@ -1,7 +1,7 @@
 /**
- * Plumbing for the panel sweep (panel-fit): the viewport sizes it sweeps, and
- * the panel page (`./panel-page`) built with www's own config, served over
- * HTTP. Never `file://`: Chromium blocks cross-origin ES module loads from a
+ * Plumbing for the panel sweeps (panel-fit, incident-fit): the viewport sizes
+ * they sweep, the panel page (`./panel-page`) built with www's own config,
+ * served over HTTP, and the measure of what leaves a fixture's rect. Never `file://`: Chromium blocks cross-origin ES module loads from a
  * file origin, every panel then renders an empty root, and a sweep that does
  * not check for that passes having measured nothing.
  */
@@ -10,6 +10,7 @@ import { createReadStream, existsSync, statSync } from "node:fs"
 import { createServer, type Server } from "node:http"
 import { dirname, extname, join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
+import type { Page } from "@playwright/test"
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
@@ -121,4 +122,133 @@ export function serve(
       })
     })
   })
+}
+
+/**
+ * Deliberate escapes, matched against `data-fit-intent` on the element or any
+ * ancestor. Same shape as the sweep's scroll intents, for the same reason: an
+ * opt-out should be a greppable act in the component, not a class name that
+ * happens to look intentional.
+ */
+export const ALLOWED_FIT_INTENTS = new Set([
+  // A marquee's whole mechanic is translating a track wider than its window.
+  "marquee",
+  // Decorative motion (particles, glows) that is clipped by design.
+  "ambient",
+])
+
+/**
+ * One way a panel can break the contract, in the terms the fix is written in.
+ *
+ *   `escape` the element paints outside the granted rect. A panel asking for
+ *           more than it was given - `min-h-screen` on a panel root, a row of
+ *           chips that will not wrap.
+ *   `leak`  a box with a definite size holds content it cannot contain and
+ *           does not clip it, so the excess paints over whatever the layout
+ *           put next to it. This is #899 exactly: the quiz summary's card was
+ *           `h-full` around 950px of content, and the difference landed on the
+ *           panel below. A box that sizes to its content cannot leak - its
+ *           `scrollHeight` and `clientHeight` are equal - so this only ever
+ *           fires where something really did assert a size.
+ */
+export type Violation = {
+  kind: "escape" | "leak"
+  tag: string
+  classes: string
+  overY: number
+  overX: number
+}
+
+/** Everything the panel does that its rect does not permit, worst first. */
+export async function findViolations(
+  page: Page,
+  allowedIntents: ReadonlyArray<string>
+): Promise<{ mounted: boolean; violations: Array<Violation> }> {
+  return page.evaluate(
+    (allowed: Array<string>) => {
+      const intents = new Set(allowed)
+      const root = document.querySelector("[data-fit-slot]")
+      if (!root || root.childElementCount === 0) {
+        return { mounted: false, violations: [] }
+      }
+
+      const rect = root.getBoundingClientRect()
+      const violations: Array<Violation> = []
+      const isClipping = (style: CSSStyleDeclaration): boolean =>
+        style.overflowX !== "visible" || style.overflowY !== "visible"
+
+      for (const element of Array.from(
+        root.querySelectorAll<HTMLElement>("*")
+      )) {
+        // SVG internals are geometry, not layout - a path's bounding box says
+        // nothing about whether the chart drawn from it fits.
+        if (element.closest("svg")) continue
+
+        const style = getComputedStyle(element)
+        // The overlay plane (toasts, popovers, dialogs) is not part of the
+        // layout tree the viewport tiles - see docs/session-viewport.
+        if (style.position === "fixed") continue
+        // Nothing that paints nothing can overflow: a hover tooltip parked
+        // outside the panel at `opacity: 0` is not content spilling out.
+        if (
+          !element.checkVisibility({
+            opacityProperty: true,
+            visibilityProperty: true,
+            contentVisibilityAuto: true,
+          })
+        ) {
+          continue
+        }
+
+        const declared = element.closest("[data-fit-intent]")
+        const intent = declared?.getAttribute("data-fit-intent") ?? null
+        if (intent !== null && intents.has(intent)) continue
+
+        const tag = element.tagName.toLowerCase()
+        const classes = element.className.toString().slice(0, 120)
+        const box = element.getBoundingClientRect()
+
+        // A box that clips or scrolls has resolved its own overflow; what
+        // matters then is whether *it* fits, which is measured on its own turn.
+        if (!isClipping(style) && element.clientHeight > 0) {
+          const overY = element.scrollHeight - element.clientHeight
+          const overX = element.scrollWidth - element.clientWidth
+          if (overY > 2 || overX > 2) {
+            violations.push({ kind: "leak", tag, classes, overY, overX })
+            continue
+          }
+        }
+
+        if (box.width === 0 || box.height === 0) continue
+
+        // Content inside a clipping or scrolling ancestor cannot paint outside
+        // the rect however long it is - the ancestor is the one on the hook.
+        let clipped = false
+        for (
+          let ancestor = element.parentElement;
+          ancestor && ancestor !== root;
+          ancestor = ancestor.parentElement
+        ) {
+          if (isClipping(getComputedStyle(ancestor))) {
+            clipped = true
+            break
+          }
+        }
+        if (clipped) continue
+
+        const overY = Math.round(box.bottom - rect.bottom)
+        const overX = Math.round(box.right - rect.right)
+        // Sub-pixel rounding at fractional zoom is not an overflow.
+        if (overY <= 2 && overX <= 2) continue
+
+        violations.push({ kind: "escape", tag, classes, overY, overX })
+      }
+
+      violations.sort(
+        (a, b) => Math.max(b.overY, b.overX) - Math.max(a.overY, a.overX)
+      )
+      return { mounted: true, violations: violations.slice(0, 3) }
+    },
+    [...allowedIntents]
+  )
 }

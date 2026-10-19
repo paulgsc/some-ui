@@ -5,7 +5,10 @@ import { ParkedRounds } from "@leetype/components/incident/parked-rounds"
 import { ReadingScreenView } from "@leetype/components/incident/reading-screen"
 import { RecordScreenView } from "@leetype/components/incident/record-screen"
 import { RoundScreen } from "@leetype/components/incident/round-screen"
-import { ScreenHeading } from "@leetype/components/incident/screen-heading"
+import {
+  SCREEN_ARTICLE,
+  ScreenHeading,
+} from "@leetype/components/incident/screen-heading"
 import { SessionEnd } from "@leetype/components/incident/session-end"
 import { SessionStart } from "@leetype/components/incident/session-start"
 import type {
@@ -207,7 +210,7 @@ export const IncidentSession: FC<IncidentSessionProps> = ({
       case "info":
       case "end": {
         return (
-          <article className="flex flex-col gap-4">
+          <article className={SCREEN_ARTICLE}>
             <ScreenHeading screen={screen} />
             <Glosses
               terms={screen.glosses}
