@@ -2,6 +2,7 @@ import type { FC } from "react"
 import { useCallback, useEffect, useState } from "react"
 import type { ExercisePickerBadge } from "@leetype/components/exercise-picker"
 import { ExercisePicker } from "@leetype/components/exercise-picker"
+import { IncidentSession } from "@leetype/components/incident/incident-session"
 import { RoundSession } from "@leetype/components/round/round-session"
 import { SessionFilePicker } from "@leetype/components/session-file-picker"
 import { TypingSession } from "@leetype/components/typing-game/typing-session"
@@ -12,7 +13,11 @@ import {
 } from "@leetype/lib/leetype/exercises"
 import { lintAuthoredRounds } from "@leetype/lib/leetype/round-assembly"
 import type { RoundRunsLoader } from "@leetype/lib/leetype/round-runs"
-import type { SessionFileStore } from "@leetype/lib/leetype/session-file-pick"
+import type {
+  OpenedSessionFile,
+  SessionFileStore,
+} from "@leetype/lib/leetype/session-file-pick"
+import type { SpokenTakes } from "@leetype/lib/leetype/spoken-take"
 import type { Round } from "@leetype/types/authored-round"
 import { RoundSchema } from "@leetype/types/authored-round"
 import type { Exercise } from "@leetype/types/exercise"
@@ -92,6 +97,11 @@ type LeetypeProps = {
    * look for them (`lib/leetype/session-file-pick`). Phone surface only.
    */
   sessionFiles?: { store: SessionFileStore; hint?: string }
+  /**
+   * The microphone a session file's spoken answers are taken on
+   * (`lib/leetype/spoken-take`). Absent, an answer can only be typed.
+   */
+  takes?: SpokenTakes
 }
 
 /**
@@ -146,6 +156,7 @@ export const Leetype: FC<LeetypeProps> = ({
   shelf,
   loadRuns,
   sessionFiles,
+  takes,
 }) => {
   const isMobile = useIsMobile()
   const resolved =
@@ -220,6 +231,18 @@ export const Leetype: FC<LeetypeProps> = ({
   const activeDurationMs =
     exercise !== undefined ? sessionDurationMs : (picked?.remainingMs ?? 0)
 
+  // With what the term leaves at the pick: the session declares no more.
+  const [playing, setPlaying] = useState<
+    (OpenedSessionFile & { limitMinutes: number }) | null
+  >(null)
+  const handlePlay = useCallback(
+    (opened: OpenedSessionFile): void => {
+      const left = sessionDurationMs - (performance.now() - mountedAt)
+      setPlaying({ ...opened, limitMinutes: Math.max(0, left) / 60_000 })
+    },
+    [mountedAt, sessionDurationMs]
+  )
+
   // Only a picker-sourced choice returns to the picker on completion.
   const handleComplete = useCallback(
     (stats?: CompletedSessionStats): void => {
@@ -229,7 +252,27 @@ export const Leetype: FC<LeetypeProps> = ({
     [onSessionComplete, exercise]
   )
 
-  // On a phone the session is rounds (Def. 1.7).
+  // A session file the learner chose to play (Def. 1.9), kept through a
+  // turn of the phone that widens the window past the breakpoint.
+  if (playing !== null) {
+    return (
+      <div className={cn(appearanceClassName(appearance), "absolute inset-0")}>
+        <IncidentSession
+          key={playing.name}
+          fileName={playing.name}
+          file={playing.file}
+          limitMinutes={playing.limitMinutes}
+          {...(takes === undefined ? {} : { ports: { takes } })}
+          onEnd={(): void => {
+            setPlaying(null)
+            onSessionComplete?.()
+          }}
+          onBack={(): void => setPlaying(null)}
+        />
+      </div>
+    )
+  }
+
   if (playsRounds) {
     return (
       <div
@@ -241,6 +284,7 @@ export const Leetype: FC<LeetypeProps> = ({
         {sessionFiles !== undefined && (
           <SessionFilePicker
             store={sessionFiles.store}
+            onPlay={handlePlay}
             {...(sessionFiles.hint === undefined
               ? {}
               : { hint: sessionFiles.hint })}

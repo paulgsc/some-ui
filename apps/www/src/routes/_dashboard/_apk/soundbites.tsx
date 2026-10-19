@@ -77,6 +77,8 @@ const ShareWithAgent = ({ taking }: { taking: boolean }): JSX.Element => {
       soundbites: result.soundbites.length,
       lensAnswers: result.lens.length,
       lensTakes: result.takes.length,
+      leetypeAnswers: result.leetype.notes.length,
+      leetypeTakes: result.leetype.takes.length,
     })
     if (result.outcome !== "shared" || going === "") return
     ask(
@@ -88,10 +90,10 @@ const ShareWithAgent = ({ taking }: { taking: boolean }): JSX.Element => {
   return (
     <section className="space-y-2">
       <p className="text-muted-foreground text-sm">
-        Your sessions with their reflections, soundbites, stop reasons and
-        grammar-lens answers and takes, as files for an agent to read. You pick
-        where they go; once they arrive, all but the sessions and stop reasons
-        leave the phone.
+        Your sessions with their reflections, soundbites, stop reasons,
+        grammar-lens answers and takes, and LeetType answers and takes, as files
+        for an agent to read. You pick where they go; once they arrive, all but
+        the sessions and stop reasons leave the phone.
       </p>
       <IntentButton
         state={share.state}

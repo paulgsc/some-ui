@@ -38,7 +38,7 @@ const PLACEMENT_CORE_MINUTES = 3
 /** Dense technical prose on a phone, the brief's reading-time estimate. */
 const WORDS_PER_MINUTE = 150
 
-function isRound(screen: SessionScreen): screen is ChoiceScreen {
+export function isRound(screen: SessionScreen): screen is ChoiceScreen {
   return (
     screen.type === "choice" && screen.options.some((option) => option.correct)
   )

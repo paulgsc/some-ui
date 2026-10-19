@@ -32,3 +32,9 @@ export type {
   KeepOutcome,
   SessionFileStore,
 } from "./lib/leetype/session-file-pick"
+// A spoken answer's take (Def. 9.5): the microphone a host provides.
+export type {
+  SpokenTakeNote,
+  SpokenTakes,
+  SpokenTakeSnapshot,
+} from "./lib/leetype/spoken-take"

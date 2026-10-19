@@ -1,12 +1,13 @@
 /**
- * Topik's `LensTakes` port (adaptive-learning canon Rem. 4.16):
- * `@some-ui/voice-capture`'s voice note, each kept take's audio on a shelf
- * and its entry in a list, and the last one played back.
+ * A desk of takes answering prompts (topik's `LensTakes` port; LeetType's
+ * spoken answers through `lib/leetype-takes`): `@some-ui/voice-capture`'s
+ * voice note, each kept take's audio on a shelf and its entry in a list,
+ * and the last one played back.
  *
- * - **Bounded on its own, and never evicted.** At most forty, each at most
- *   thirty seconds. At forty a new take is refused and `full` says so; takes
- *   leave only by `letGo`, once the learner says an export carrying them
- *   arrived.
+ * - **Bounded on its own, and never evicted.** At most `limits.max` takes,
+ *   each at most `limits.maxMs`. At the most a new take is refused and
+ *   `full` says so; takes leave only by `letGo`, once the learner says an
+ *   export carrying them arrived.
  * - **The last take is the item's.** `reset` forgets it, so the next item
  *   starts with none; a take still being kept when that happens is kept, but
  *   is not the next item's last. `kept` names every take kept, for the
@@ -27,12 +28,15 @@ import {
   voiceNoteSaid,
 } from "@some-ui/voice-capture"
 
-import { LENS_TAKE_MAX_MS, LENS_TAKES_MAX } from "./budget"
+/** How many takes a desk keeps, and how long each runs at most. */
+export type TakeLimits = { readonly max: number; readonly maxMs: number }
 
-const LIMITS = { minMs: SOUNDBITE_MIN_MS, maxMs: LENS_TAKE_MAX_MS }
-
-/** One kept take: which line it reads, and when. */
-export type LensTake = {
+/**
+ * One kept take: what it answers, and when. `line` is a grammar-lens line's
+ * id or a LeetType prompt's `<file>#<screen>`; the name stays so takes
+ * already kept still read.
+ */
+export type Take = {
   id: string
   line: string
   takenAt: number
@@ -40,14 +44,14 @@ export type LensTake = {
   mimeType: string
 }
 
-export type LensTakesPorts = {
+export type TakesPorts = {
   startRecording: StartRecording
   audio: BlobShelf
   /** The kept takes, newest first. */
   takes: {
-    read: () => Array<LensTake>
+    read: () => Array<Take>
     /** Says whether the device stored it. */
-    add: (take: LensTake) => boolean
+    add: (take: Take) => boolean
     remove: (ids: ReadonlyArray<string>) => boolean
   }
   /** A take whose audio is being written, and when done. */
@@ -57,13 +61,13 @@ export type LensTakesPorts = {
   newId: () => string
 }
 
-/** The port, and the export's hand-off (`lensTakesForExport`'s `letGo`). */
-export type PhoneLensTakes = LensTakes & {
+/** The port, and the export's hand-off (`takesDesk`'s `letGo`). */
+export type PhoneTakes = LensTakes & {
   /** These went out in an export the learner says arrived: they leave. */
   letGo: (ids: ReadonlyArray<string>) => void
 }
 
-export function createLensTakes(ports: LensTakesPorts): PhoneLensTakes {
+export function createTakes(ports: TakesPorts, limits: TakeLimits): PhoneTakes {
   const listeners = new Set<() => void>()
   let last: LensTakeSnapshot["last"] = null
   let kept: LensTakeSnapshot["kept"] = null
@@ -77,7 +81,7 @@ export function createLensTakes(ports: LensTakesPorts): PhoneLensTakes {
   // Reset hushes the last take's outcome, which was about the item before.
   let quiet = false
 
-  const full = (): boolean => ports.takes.read().length >= LENS_TAKES_MAX
+  const full = (): boolean => ports.takes.read().length >= limits.max
 
   const note = voiceNoteRuntime(
     {
@@ -112,7 +116,7 @@ export function createLensTakes(ports: LensTakesPorts): PhoneLensTakes {
         )
       },
     },
-    LIMITS
+    { minMs: SOUNDBITE_MIN_MS, maxMs: limits.maxMs }
   )
 
   const snapshotOf = (): LensTakeSnapshot => {

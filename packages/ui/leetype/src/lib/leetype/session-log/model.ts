@@ -94,15 +94,23 @@ export const SessionEventSchema = z.discriminatedUnion("type", [
     ...Stamp,
     ...OnScreen,
     type: z.literal("spoken"),
-    /** Passed, or answered aloud or typed (a bus) with the rubric points ticked after. */
+    /**
+     * Passed, or answered aloud or typed (a bus) with the rubric points
+     * ticked after; `strong` when the ticks reach what the screen asks.
+     */
     answer: z.discriminatedUnion("as", [
       z.strictObject({ as: z.literal("passed") }),
       z.strictObject({
         as: z.literal("recorded"),
         seconds: z.number().positive(),
         ticks: z.array(z.string()),
+        strong: z.boolean(),
       }),
-      z.strictObject({ as: z.literal("typed"), ticks: z.array(z.string()) }),
+      z.strictObject({
+        as: z.literal("typed"),
+        ticks: z.array(z.string()),
+        strong: z.boolean(),
+      }),
     ]),
   }),
   z.strictObject({
@@ -126,8 +134,9 @@ type OnFile = z.infer<z.ZodObject<typeof OnScreen>>
  * What a session's ledger screen says (Prop. 10.2), computed from the log
  * up to the session's last event, so a past session's ledger never changes.
  * `parked` and `saved` are across every session until then: a round parked
- * earlier and not since returned and solved still waits on its reading, and
- * a reading saved earlier and not since read is still saved.
+ * earlier and not since returned and solved, or a take not since answered
+ * strongly, still waits on its reading, and a reading saved earlier and not
+ * since read is still saved.
  */
 export type SessionLedger = {
   readonly walked: ReadonlyArray<OnFile>
@@ -181,6 +190,12 @@ export function ledgerOf(log: SessionLog, session: string): SessionLedger {
       event.answer.response === "correct" &&
       // A slow correct return is still a struggle (Def. 9.4): it stays parked.
       !event.answer.slow
+    ) {
+      waiting.delete(keyOf(event.file, event.screen))
+    } else if (
+      event.type === "spoken" &&
+      event.answer.as !== "passed" &&
+      event.answer.strong
     ) {
       waiting.delete(keyOf(event.file, event.screen))
     } else if (event.type === "reading") {

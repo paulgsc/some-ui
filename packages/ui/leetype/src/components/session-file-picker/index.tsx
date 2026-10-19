@@ -1,6 +1,7 @@
 import type { ChangeEvent, FC } from "react"
 import { useEffect, useState, useSyncExternalStore } from "react"
 import type {
+  OpenedSessionFile,
   PickState,
   SessionFileStore,
 } from "@leetype/lib/leetype/session-file-pick"
@@ -14,6 +15,8 @@ type SessionFilePickerProps = {
   store: SessionFileStore
   /** Where the file waits, as the host words it ("In Drive, look in …"). */
   hint?: string
+  /** A held file the learner chose to play. */
+  onPlay: (opened: OpenedSessionFile) => void
   className?: string
 }
 
@@ -27,6 +30,9 @@ function statusOf(pick: PickState): string | null {
     }
     case "keeping": {
       return `Keeping ${pick.name}…`
+    }
+    case "opening": {
+      return `Opening ${pick.name}…`
     }
     case "refused": {
       return pick.reason
@@ -44,12 +50,14 @@ function statusOf(pick: PickState): string | null {
 
 /**
  * "Add a session from storage": the system picker, where Android lists
- * Drive beside the phone's own files, then what the phone holds. A refusal
- * says why; the content lint's findings fold under a kept file.
+ * Drive beside the phone's own files, then what the phone holds, each one
+ * a way to play it. A refusal says why; the content lint's findings fold
+ * under a kept file.
  */
 export const SessionFilePicker: FC<SessionFilePickerProps> = ({
   store,
   hint,
+  onPlay,
   className,
 }) => {
   const [runtime] = useState(() => new SessionFilePickRuntime(store))
@@ -127,21 +135,24 @@ export const SessionFilePicker: FC<SessionFilePickerProps> = ({
         </p>
       )}
       {held.kind === "ready" && held.files.length > 0 && (
-        <details className="text-sm">
-          <summary className="cursor-pointer text-muted-foreground">
-            On this phone ({held.files.length})
-          </summary>
-          <ul className="mt-1 space-y-1">
-            {held.files.map((file) => (
-              <li key={file.name}>
-                <span className="font-medium">{file.title}</span>
-                <span className="block text-xs text-muted-foreground">
-                  {file.name}: {file.oneLine}
+        <ul aria-label="On this phone" className="flex flex-col gap-1">
+          {held.files.map((file) => (
+            <li key={file.name}>
+              <Button
+                variant="ghost"
+                className="h-auto w-full flex-col items-start whitespace-normal py-2 text-left"
+                onClick={(): void => runtime.open(file.name, onPlay)}
+              >
+                <span className="text-pretty text-sm font-medium">
+                  Play {file.title}
                 </span>
-              </li>
-            ))}
-          </ul>
-        </details>
+                <span className="text-pretty text-xs font-normal text-muted-foreground">
+                  {file.oneLine}
+                </span>
+              </Button>
+            </li>
+          ))}
+        </ul>
       )}
     </section>
   )

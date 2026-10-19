@@ -146,8 +146,8 @@ past which Android stops backing the app up without saying so, and that
 backup is the only other copy of the phone's history (`device-backend/storage`).
 It is one budget, measured, never reserved: the database plus everything
 the WebView holds (`navigator.storage.estimate()`: soundbites, voice
-reflections, scene notes, journal takes, grammar-lens takes, and any audio
-store added later),
+reflections, scene notes, journal takes, grammar-lens takes, LeetType's
+spoken answers and its session log, and any audio store added later),
 each counted as it is. A database save that would take the total past the
 quota is refused (`budgeted`), and so is an audio write: every audio store
 writes inside `withRoom` (`@some-ui/voice-capture`, installed at boot by

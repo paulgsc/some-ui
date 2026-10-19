@@ -19,7 +19,8 @@ function pick(input: HTMLElement, name: string, text: string): void {
 }
 
 describe("SessionFilePicker", () => {
-  it("keeps a picked session file, says where to look, and lists what the phone holds", async () => {
+  it("keeps a picked session file, says where to look, and plays what the phone holds", async () => {
+    const onPlay = vi.fn()
     const keep = vi.fn<SessionFileStore["keep"]>(() => Promise.resolve("kept"))
     const list = vi
       .fn<SessionFileStore["list"]>()
@@ -34,8 +35,9 @@ describe("SessionFilePicker", () => {
       ])
     render(
       <SessionFilePicker
-        store={{ list, keep, read: () => Promise.resolve(null) }}
+        store={{ list, keep, read: () => Promise.resolve(VALID) }}
         hint="In Drive, look in LeetType › sessions"
+        onPlay={onPlay}
       />
     )
     expect(
@@ -51,7 +53,14 @@ describe("SessionFilePicker", () => {
     expect(
       await screen.findByText(`Kept ${RAW.title} on this phone.`)
     ).toBeTruthy()
-    expect(await screen.findByText("On this phone (1)")).toBeTruthy()
+    fireEvent.click(
+      await screen.findByRole("button", {
+        name: new RegExp(`Play ${RAW.title}`),
+      })
+    )
+    await vi.waitFor(() => {
+      expect(onPlay).toHaveBeenCalledWith({ name: "t1-01", file: RAW })
+    })
   })
 
   it("refuses a file that isn't a session file, saying why", async () => {
@@ -63,6 +72,7 @@ describe("SessionFilePicker", () => {
           keep,
           read: () => Promise.resolve(null),
         }}
+        onPlay={vi.fn()}
       />
     )
     pick(

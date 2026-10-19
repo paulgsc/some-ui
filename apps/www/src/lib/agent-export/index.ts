@@ -22,6 +22,8 @@ import type { Soundbite, SoundbiteStore } from "@some-ui/soundbites"
 import type { LensRecordExport, PracticeRecord } from "@some-ui/topik"
 
 import { foreignValue } from "@/lib/intent/foreign"
+import type { LeetypeTake, LeetypeTakeNote } from "@/lib/leetype-takes"
+import { leetypeTakesForExport, letGoLeetypeTakes } from "@/lib/leetype-takes"
 import type { LensTake } from "@/lib/lens-takes"
 import { lensTakesForExport, letGoLensTakes } from "@/lib/lens-takes"
 import {
@@ -61,6 +63,9 @@ const GRAMMAR_LENS = [
 const LENS_TAKES =
   "`lensTakes` are the learner's own recordings of a grammar-lens line read aloud, made after its reveal, newest first: which `line`, when (`takenAt`, ms since the epoch), how long, and the audio as the file named in `file` (null: the audio could not be read). Nothing graded them. At most 40 are kept on the phone, each at most 30 seconds; once the learner confirms this file arrived, the takes in it leave the phone, so this file is their only copy. Listen for how the line is read, beside its `grammarLens` entries. Null means the app could not read them."
 
+const LEETYPE_ANSWERS =
+  "`leetypeAnswers` are the learner's spoken answers in LeetType's phone sessions (Def. 9.5 of docs/canon/complexity-witness-canon.typ), newest first: for each, the session file and its record screen (`file`, `screen`), the one-sentence `prompt`, the `rubric` shown only after answering, the points the learner ticked (`ticks`: their own reading of it, never a grade), and either the take's audio as the file named in `audio` (null: no take, or its audio could not be read) or, where they could not speak, the `typed` answer. `leetypeTakes` lists every take kept, with or without an answer noted (the app closed before the ticks). At most 40 of each are kept on the phone, each take at most 60 seconds; once the learner confirms this file arrived, they leave the phone, so this file is their only copy. The weekly review reads them: what the learner can now explain, what they still cannot, and which readings to place. Null means the app could not read them."
+
 const STOPS =
   '`stops` are the times a session was stopped before its end, each with when (`stoppedAt`), how far in (`elapsedMs` of `plannedMs`, in `scene`), `via` a tap on "Got to go" or leaving (`left`: the app went to the background, or Android\'s back button or a link in the app closed the session\'s screen), the optional `reason` (`legend` reads it) and where it was given (`reasonFrom`), and `outcome` (open, resumed, done or lapsed, as of `settledAt`). Not every departure is a stop: one the learner was back from within a minute (a glance), and a tap taken back before leaving ("Oops, keep going"), are deleted, and `paths` counts them instead. Only the newest 20 stops are kept, so an older session can show none.'
 
@@ -79,6 +84,7 @@ const ABOUT = [
   READ_ALOUD_PRACTICE,
   GRAMMAR_LENS,
   LENS_TAKES,
+  LEETYPE_ANSWERS,
 ].join("\n")
 
 const ABOUT_REFLECTIONS = [
@@ -103,6 +109,12 @@ function soundbiteFile(bite: Soundbite): string {
 function lensTakeFile(take: LensTake): string {
   const line = take.line.slice(0, 48)
   return `lens-take-${line}-${take.id.slice(0, 8)}.${extensionOf(take.mimeType)}`
+}
+
+/** A LeetType take's file, named as a lens take's is: its prompt, cut short. */
+function leetypeTakeFile(take: LeetypeTake): string {
+  const about = take.line.replace(/[^\w.-]+/g, "-").slice(0, 48)
+  return `leetype-take-${about}-${take.id.slice(0, 8)}.${extensionOf(take.mimeType)}`
 }
 
 /** Without `scenes` and `layout`: playback wiring, not what was studied. */
@@ -242,6 +254,17 @@ async function lensTakes(): Promise<Array<{
   }
 }
 
+/** LeetType's answer notes and takes, with the takes' audio; null if unreadable. */
+async function leetypeTakes(): Promise<Awaited<
+  ReturnType<typeof leetypeTakesForExport>
+> | null> {
+  try {
+    return await leetypeTakesForExport()
+  } catch {
+    return null
+  }
+}
+
 /** The grammar lens's record, loaded as the practice record is; null if it can't be. */
 async function grammarLens(): Promise<LensRecordExport | null> {
   try {
@@ -269,16 +292,24 @@ export type ShareResult = {
 
 /**
  * What the whole export put in front of the share sheet: `soundbites` are
- * those that went out, `lens` the grammar-lens entries and `takes` the
- * grammar-lens takes, the only ones `handOffExport` may let go.
+ * those that went out, `lens` the grammar-lens entries, `takes` the
+ * grammar-lens takes and `leetype` LeetType's answer notes and takes, the
+ * only ones `handOffExport` may let go.
  */
 export type AgentExportResult = ShareResult & {
   soundbites: ReadonlyArray<string>
   lens: LensRecordExport["entries"]
   takes: ReadonlyArray<string>
+  leetype: {
+    notes: ReadonlyArray<string>
+    takes: ReadonlyArray<string>
+  }
 }
 
-type Sent = Pick<AgentExportResult, "sent" | "soundbites" | "lens" | "takes">
+type Sent = Pick<
+  AgentExportResult,
+  "sent" | "soundbites" | "lens" | "takes" | "leetype"
+>
 
 /**
  * The person says these arrived: they leave the phone, and their sessions
@@ -295,19 +326,21 @@ export function handOff(ids: ReadonlyArray<string>, at = new Date()): void {
 
 /**
  * The person says the whole export arrived: its reflections leave the phone
- * (`handOff`), and so do the soundbites, grammar-lens entries and takes that
- * went out; one recorded or changed since stays. Best effort: soundbites the store
+ * (`handOff`), and so do the soundbites, grammar-lens entries and takes,
+ * and LeetType's answers and takes, that went out; one recorded or changed
+ * since stays. Best effort: soundbites the store
  * would not let go stay on the list, where each one's delete still lets it
  * go, and entries stay in the record for the next export.
  */
 export function handOffExport(
   store: SoundbiteRemover,
-  { sent, soundbites, lens, takes }: Sent,
+  { sent, soundbites, lens, takes, leetype }: Sent,
   at = new Date()
 ): void {
   if (sent.length > 0) handOff(sent, at)
   if (soundbites.length > 0) store.remove(soundbites).catch(() => undefined)
   if (takes.length > 0) letGoLensTakes(takes)
+  letGoLeetypeTakes(leetype)
   if (lens.length > 0) {
     import("@some-ui/topik")
       .then(({ letGoLensRecord }) => letGoLensRecord(lens))
@@ -427,6 +460,12 @@ export async function shareAgentExport(
   // and the take would stay behind.
   const lens = await grammarLens()
   const takes = await lensTakes()
+  const leetype = await leetypeTakes()
+  const leetypeAudio = new Map(
+    (leetype?.takes ?? []).flatMap(({ take, audio: blob }) =>
+      blob ? [[take.id, leetypeTakeFile(take)] as const] : []
+    )
+  )
   const exportedAt = now().toISOString()
   const { bySession, files, sent } = await writeOut(
     reflections.getSnapshot().kept,
@@ -462,6 +501,17 @@ export async function shareAgentExport(
           ...take,
           file: blob ? lensTakeFile(take) : null,
         })) ?? null,
+      leetypeAnswers:
+        leetype?.notes.map((note: LeetypeTakeNote) => ({
+          ...note,
+          audio:
+            note.take === null ? null : (leetypeAudio.get(note.take) ?? null),
+        })) ?? null,
+      leetypeTakes:
+        leetype?.takes.map(({ take }) => ({
+          ...take,
+          audio: leetypeAudio.get(take.id) ?? null,
+        })) ?? null,
       // `file: null`: its audio could not be read (removed since listed).
       soundbites: bites.map((bite) => ({
         ...bite,
@@ -481,6 +531,9 @@ export async function shareAgentExport(
       ...(takes ?? []).flatMap(({ take, audio: blob }) =>
         blob ? [{ name: lensTakeFile(take), data: blob }] : []
       ),
+      ...(leetype?.takes ?? []).flatMap(({ take, audio: blob }) =>
+        blob ? [{ name: leetypeTakeFile(take), data: blob }] : []
+      ),
       ...files,
     ]),
   })
@@ -494,5 +547,11 @@ export async function shareAgentExport(
     // Likewise every take listed: its audio beside it, or none left to keep;
     // never one whose audio could not be read, which may still be there.
     takes: (takes ?? []).flatMap(({ take, read }) => (read ? [take.id] : [])),
+    leetype: {
+      notes: (leetype?.notes ?? []).map(({ id }) => id),
+      takes: (leetype?.takes ?? []).flatMap(({ take, read }) =>
+        read ? [take.id] : []
+      ),
+    },
   }
 }
