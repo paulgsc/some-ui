@@ -98,6 +98,42 @@ describe("step", () => {
     expect(undecidedOf(state, "2026-08-01")).toHaveLength(2)
   })
 
+  it("keeps a digest that redrafts an open pick, however many follow", () => {
+    const first = digest("2026-08-01")
+    const [pick] = first.picks
+    let state = step(EMPTY, { type: "opened", digest: first, at: OPENED_AT })
+    state = step(state, {
+      type: "opened",
+      digest: {
+        ...digest("2026-08-02"),
+        picks: [],
+        redrafts: [
+          {
+            day: first.day,
+            pickId: pick.id,
+            fit: ["e1"],
+            coverLetter: "Redrafted.",
+            questions: [],
+          },
+        ],
+      },
+      at: OPENED_AT,
+    })
+    for (let i = 1; i <= DIGESTS_KEPT + 2; i += 1) {
+      const day = `2026-09-${String(i).padStart(2, "0")}`
+      state = step(state, {
+        type: "opened",
+        digest: { ...digest(day), picks: [] },
+        at: OPENED_AT,
+      })
+    }
+    expect(state.digests.map((d) => d.day).slice(0, 2)).toEqual([
+      "2026-08-01",
+      "2026-08-02",
+    ])
+    expect(kitOf(state, first.day, pick).redraftedOn).toBe("2026-08-02")
+  })
+
   it("keeps an old digest with open picks as it is opened", () => {
     let state = EMPTY
     for (let i = 1; i <= DIGESTS_KEPT + 2; i += 1) {
@@ -286,7 +322,7 @@ describe("releasedVoice", () => {
 })
 
 describe("a fit note", () => {
-  it("is kept only on a pick I took, and only when it says something", () => {
+  it("is kept only on a pick I took and haven't debriefed, and only when it says something", () => {
     const fit = (note: string): Draft => ({
       type: "fit-note",
       ...ref(),
@@ -296,9 +332,21 @@ describe("a fit note", () => {
     expect(record(opened, fit("I built it."))).toBe(opened)
     const taken = record(opened, { type: "taken", ...ref() })
     expect(record(taken, fit("  "))).toBe(taken)
+    expect(record(taken, fit("\u0085"))).toBe(taken)
     expect(record(taken, fit("I built it.")).log.at(-1)).toEqual(
       expect.objectContaining({ type: "fit-note", note: "I built it." })
     )
+    const debriefed = record(taken, {
+      type: "debrief",
+      ...ref(),
+      minutes: 20,
+      friction: 2,
+      chips: [],
+      what: "",
+      voice: [],
+      result: "submitted",
+    })
+    expect(record(debriefed, fit("Too late."))).toBe(debriefed)
   })
 })
 
@@ -324,6 +372,22 @@ describe("kitOf", () => {
     const { kit, redraftedOn } = kitOf(state, DAY, SW)
     expect(redraftedOn).toBe("2026-10-20")
     expect(kit.coverLetter).toBe("Second redraft.")
+    // A draft the redraft leaves out keeps the pick's own.
+    const own = { ...SW, kit: { ...SW.kit, coverLetter: "Mine." } }
+    const blank = {
+      ...digest("2026-10-21"),
+      redrafts: [
+        {
+          day: DAY,
+          pickId: SW.id,
+          fit: ["e1"],
+          coverLetter: null,
+          questions: [],
+        },
+      ],
+    }
+    state = step(state, { type: "opened", digest: blank, at: OPENED_AT })
+    expect(kitOf(state, DAY, own).kit.coverLetter).toBe("Mine.")
     expect(kitOf(state, DAY, AD)).toEqual({ kit: AD.kit, redraftedOn: null })
   })
 })

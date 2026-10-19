@@ -463,7 +463,7 @@ const FitNote = ({
 }: {
   state: JobsState
   pickRef: PickRef
-}): JSX.Element => {
+}): JSX.Element | null => {
   const jobs = phoneJobs()
   const [note, setNote] = useState("")
   const owner = pickOwner(pickRef.day, pickRef.pickId, "fit")
@@ -471,17 +471,21 @@ const FitNote = ({
   const busy = useVoiceBusy(owner)
   const kept = fitNotesOf(state, pickRef.day, pickRef.pickId).length
   const empty = note.trim() === "" && voice.length === 0
+  // Debriefed, the pick is out of the queue, so no run would redraft it.
+  if (progressOf(state, pickRef.day, pickRef.pickId).kind !== "open")
+    return null
   return (
     <section className="flex flex-col gap-2">
       <Label htmlFor="fit-note" className={sectionHeading}>
         Why I fit it
       </Label>
-      <p className="text-muted-foreground text-xs">
+      <p id="fit-note-hint" className="text-muted-foreground text-xs">
         Say what the posting leaves out. It goes with today’s decisions, and the
         next run redrafts the cover letter and answers from it.
       </p>
       <Textarea
         id="fit-note"
+        aria-describedby="fit-note-hint"
         rows={3}
         maxLength={MAX_NOTE}
         value={note}
@@ -509,12 +513,11 @@ const FitNote = ({
       >
         Keep it for the next run
       </Button>
-      {kept > 0 && (
-        <p className="text-muted-foreground text-xs">
-          {kept === 1 ? "One fit note" : `${kept} fit notes`} kept for this
-          pick.
-        </p>
-      )}
+      <p role="status" className="text-muted-foreground text-xs">
+        {kept === 0
+          ? ""
+          : `${kept === 1 ? "One fit note" : `${kept} fit notes`} kept for this pick.`}
+      </p>
     </section>
   )
 }

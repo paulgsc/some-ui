@@ -217,10 +217,9 @@ function withinLimits(event: Draft): boolean {
       return event.what.length <= MAX_NOTE
     }
     case "fit-note": {
-      return (
-        event.note.length <= MAX_NOTE &&
-        (event.note.trim() !== "" || event.voice.length > 0)
-      )
+      // Home trims U+0085 too, and refuses a note left with nothing.
+      const said = event.note.replace(/\u0085/g, "").trim() !== ""
+      return event.note.length <= MAX_NOTE && (said || event.voice.length > 0)
     }
     case "scout": {
       const { scout } = event
@@ -267,7 +266,11 @@ function fits(state: JobsState, event: Draft): boolean {
   const pick = digest?.picks.find((p) => p.id === event.pickId)
   if (pick?.fingerprint !== event.fingerprint) return false
   if (DECIDED.has(event.type)) return true
-  return decisionOf(state, event.day, event.pickId) === "taken"
+  // A debriefed pick is out of the queue, so no run would redraft it.
+  const taken = decisionOf(state, event.day, event.pickId) === "taken"
+  if (event.type === "fit-note")
+    return taken && progressOf(state, event.day, event.pickId).kind === "open"
+  return taken
 }
 
 export function step(state: JobsState, action: JobsAction): JobsState {
@@ -281,11 +284,18 @@ export function step(state: JobsState, action: JobsAction): JobsState {
         state.log.flatMap((e) => ("pickId" in e ? [e.day] : []))
       )
       // Over `all`, so the digest being opened counts too.
-      const holding = new Set(
-        openOf({ ...state, digests: all }).map((o) => o.day)
-      )
+      const open = openOf({ ...state, digests: all })
+      const holding = new Set(open.map((o) => o.day))
+      const openKeys = new Set(open.map((o) => `${o.day}/${o.pick.id}`))
+      // A redraft of an open pick stands in for its drafts (`kitOf`).
+      const redrafting = (d: Digest): boolean =>
+        d.redrafts.some((r) => openKeys.has(`${r.day}/${r.pickId}`))
       const digests = all.filter(
-        (d) => recent.has(d.day) || referenced.has(d.day) || holding.has(d.day)
+        (d) =>
+          recent.has(d.day) ||
+          referenced.has(d.day) ||
+          holding.has(d.day) ||
+          redrafting(d)
       )
       // A digest opened again keeps the first time it was opened.
       const firstOpened = Object.fromEntries(
@@ -465,7 +475,8 @@ export function debriefOf(
 
 /**
  * A pick's kit with the newest redraft of its drafts (ROUTINE.md §2) in
- * place of its own, and the day of the digest that wrote it, or null.
+ * place of its own, draft by draft, and the day of the digest that wrote
+ * it, or null.
  */
 export function kitOf(
   state: JobsState,
@@ -477,15 +488,24 @@ export function kitOf(
     const redraft = digest.redrafts.find(
       (r) => r.day === day && r.pickId === pick.id
     )
-    if (redraft)
-      return {
-        kit: {
-          ...pick.kit,
-          coverLetter: redraft.coverLetter,
-          questions: redraft.questions,
-        },
-        redraftedOn: digest.day,
-      }
+    if (!redraft) continue
+    // A draft the redraft left out keeps the pick's own.
+    const asked = new Set(pick.kit.questions.map((q) => q.label))
+    const questions = [
+      ...pick.kit.questions.map(
+        (q) =>
+          redraft.questions.find((r) => r.label === q.label && r.draft) ?? q
+      ),
+      ...redraft.questions.filter((r) => !asked.has(r.label)),
+    ]
+    return {
+      kit: {
+        ...pick.kit,
+        coverLetter: redraft.coverLetter ?? pick.kit.coverLetter,
+        questions,
+      },
+      redraftedOn: digest.day,
+    }
   }
   return { kit: pick.kit, redraftedOn: null }
 }

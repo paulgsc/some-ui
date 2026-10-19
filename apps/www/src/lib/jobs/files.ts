@@ -130,8 +130,9 @@ export function decisionsFile(
         )
         .at(-1)
       const debrief = debriefOf(state, digest.day, pick.id)
-      const fit =
-        decision === "taken" ? fitNotesOf(state, digest.day, pick.id) : []
+      // Whatever the pick's decision now: a note goes out once, so its
+      // audio is never released unsent (`releasedVoice`).
+      const fit = fitNotesOf(state, digest.day, pick.id)
       const names = pickVoice(state, digest.day, pick.id)
       const nameOf = (id: string): string =>
         names.find((n) => n.id === id)?.name ?? id

@@ -90,17 +90,20 @@ For each new file:
    - **Disagreements:** a set-aside posting I would have picked. Look it up
      again as §3 looks up a scout; if it is still open and its track has a
      free slot (below), it may be a pick today.
-   - **Fit notes:** on a pick I took, why I fit it, in a pick entry's `fit`.
-     A note whose `id` no file a digest names in `read` carried is new. For
-     each pick with a new note that is still open (below), write it a
-     redraft in `redrafts` (§8): its cover letter and every question of its
-     kit drafted again from the pick's fits and what I said, every note of
-     its `fit` read together, newest last. What I said may add what the
-     evidence doesn't hold, since it is mine to claim; it still never names
-     one of `FORBIDDEN_TERMS`, a term of that pick's `dontClaim`, or a phone
-     number or address. Keep each question's `label` and `required` as the
-     pick's kit has them. A pick no longer open gets no redraft: say so in
-     the summary.
+   - **Fit notes:** why I fit a pick I took, in a pick entry's `fit`. A note
+     is new unless a decisions file some earlier digest lists in `read`
+     already carried its `id`. For each pick with a new note that is still
+     open in the queue (below; a `closed` entry is not), write it a redraft
+     in `redrafts` (§8), from the pick's fits and what I said, every note of
+     its `fit` read together, newest last: its cover letter, if its kit has
+     one or its form takes one, and each question of its kit, with the
+     `label` and `required` the kit gives it. A question the kit left to me
+     (`draft: null`) gets a draft only when what I said answers it; the
+     phone keeps the kit's own draft for any the redraft leaves `null`. What
+     I said may add what the evidence doesn't hold, since it is mine to
+     claim; it still never names one of `FORBIDDEN_TERMS`, a term of that
+     pick's `dontClaim`, or a phone number or address. A pick no longer open
+     gets no redraft: say so in the summary.
    - **Debriefs and outcomes:** how applying went and what came of it. Report
      them in the summary. Once there are 30 or more outcomes, compare them with
      the odds each pick was given and say in the summary whether the rubric
