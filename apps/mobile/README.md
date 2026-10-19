@@ -618,8 +618,13 @@ before the next request; nothing is retried.
   back from home (`confirmHeld`), and those home holds exactly as the phone
   does leave the phone: sending is archiving. Nothing on home is deleted.
 - **Kept items** go one PUT each, their bytes as kept; one with the same
-  name there is replaced. They stay on the phone: they are for studying
-  again. A full shelf there, or a refused item, is counted and said.
+  name there is replaced. Only those home doesn't hold as they are now go
+  (the phone remembers each one home answered for by its bytes' digest),
+  and the confirm counts only those; one home refused is offered again.
+  An item removed on home is not sent again until its bytes change on the
+  phone. They stay on the
+  phone: they are for studying again. A full shelf there, or a refused item,
+  is counted and said.
 
 Home no longer knowing the phone, or no answer, ends the send there.
 

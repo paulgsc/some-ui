@@ -315,8 +315,10 @@ declared (checked by reading every call site and by the tests named).
   finished session (`mayLeavePhone`: completed, not today's) and confirm it
   holds it exactly as the phone does (`confirmHeld`), and the phone then
   lets go of its own copy of those alone, each unchanged since it was read;
-  then one PUT per item kept on this phone's shelf, its bytes as kept,
-  nothing read back and the item kept on the phone. Nothing on home is
+  then one PUT per item kept on this phone's shelf that home does not hold
+  as it is now, by what home last answered for it under this pairing
+  (`./sent`), its bytes as kept, nothing read back and the item kept on the
+  phone. Nothing on home is
   deleted. Outside LA9 to LA11, nothing is sent when the app or Settings
   opens, on resume, on a timer or on a network change: making the runtime and
   `load` read only the phone's own record. There is no retry; a sync, a send,
@@ -347,7 +349,11 @@ declared (checked by reading every call site and by the tests named).
   request, or queues one for later, outside LA9 to LA11; one that lets the send start without
   its confirm, or drops a count or the host from that confirm; one that
   sends shelf items other than `everyKept`'s, or with a method other than
-  `PUT`; one that passes `copySessionsTo` anything but session records
+  `PUT`; one that passes `sendKept` kept items that did not come through
+  `keptToSend` (in `lib/home-link/send`), or that deletes, bypasses or
+  weakens its filter (`shelfToSend` in `./sent`: an item goes unless what
+  home last answered for it under this pairing holds its bytes as they are
+  now), so the send carries what home already holds; one that passes `copySessionsTo` anything but session records
   (a reflection, a stop or a soundbite: LA7), or lets `homeTransport` send a
   method other than `GET`, `POST` or `PATCH`, or hand a `401` to
   `requestJSON` (the app's own sign-out); one that sends a session's create

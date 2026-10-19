@@ -23,8 +23,8 @@ import {
   rememberSent,
   sessionsHeld,
   sessionsToSend,
-  shelfHeld,
   shelfKeyOf,
+  shelfToSend,
 } from "./sent"
 import { causedBy, copyHome, HomeForgotPhoneError } from "./sessions"
 import { emptyReport, sendKept } from "./shelf"
@@ -106,14 +106,7 @@ export async function sendStanding(
         Object.entries(sent.refused).filter(([key]) => keys.has(key))
       ),
     }
-    const digests = await shelfHeld(kept)
-    const changed = kept.filter((item) => {
-      const digest = digests[shelfKeyOf(item)]
-      return (
-        sent.shelf[shelfKeyOf(item)] !== digest &&
-        sent.refused[shelfKeyOf(item)] !== digest
-      )
-    })
+    const { changed, digests } = await shelfToSend(kept, sent)
     const report = emptyReport()
     const held: Record<string, string> = {}
     const refused: Record<string, string> = {}
@@ -123,7 +116,7 @@ export async function sendStanding(
         ;(answer === "held" ? held : refused)[key] = digests[key] ?? ""
       })
     } finally {
-      sent = rememberSent(ports.storage, sent, { shelf: held, refused })
+      rememberSent(ports.storage, sent, { shelf: held, refused })
     }
     if (report.forgotten) return { kind: "forgotten" }
     if (report.unreachable) throw new Error("home did not answer")
