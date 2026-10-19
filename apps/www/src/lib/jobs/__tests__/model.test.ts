@@ -97,6 +97,25 @@ describe("step", () => {
     expect(undecidedOf(state, "2026-08-01")).toHaveLength(2)
   })
 
+  it("keeps an old digest with open picks as it is opened", () => {
+    let state = EMPTY
+    for (let i = 1; i <= DIGESTS_KEPT + 2; i += 1) {
+      const day = `2026-09-${String(i).padStart(2, "0")}`
+      state = step(state, {
+        type: "opened",
+        digest: { ...digest(day), picks: [] },
+        at: OPENED_AT,
+      })
+    }
+    state = step(state, {
+      type: "opened",
+      digest: digest("2026-08-01"),
+      at: OPENED_AT,
+    })
+    expect(state.current).toBe("2026-08-01")
+    expect(undecidedOf(state, "2026-08-01")).toHaveLength(2)
+  })
+
   it("archives together or not at all", () => {
     const events = [AD, SW].map((p, i) => ({
       event: { type: "archived" as const, ...ref(p) },

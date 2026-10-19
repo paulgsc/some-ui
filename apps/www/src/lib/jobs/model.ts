@@ -267,7 +267,10 @@ export function step(state: JobsState, action: JobsAction): JobsState {
       const referenced = new Set(
         state.log.flatMap((e) => ("pickId" in e ? [e.day] : []))
       )
-      const holding = new Set(openOf(state).map((o) => o.day))
+      // Over `all`, so the digest being opened counts too.
+      const holding = new Set(
+        openOf({ ...state, digests: all }).map((o) => o.day)
+      )
       const digests = all.filter(
         (d) => recent.has(d.day) || referenced.has(d.day) || holding.has(d.day)
       )
