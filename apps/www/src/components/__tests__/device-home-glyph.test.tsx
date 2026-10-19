@@ -18,7 +18,15 @@ import {
   screen,
   waitFor,
 } from "@testing-library/react"
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import {
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest"
 
 import type { HomeRequest as NativeCall } from "@/lib/device-backend/native-http"
 import type { AphKeeping } from "@/lib/home-link/aph"
@@ -99,6 +107,14 @@ vi.mock(
     return withPlainLink(await importOriginal<typeof ReactRouterModule>())
   }
 )
+
+// The first import of the mark evaluates its whole module graph cold: about
+// 2s here, against about 100ms for each test after it. A loaded runner
+// stretched that past the default 5s of the first test, so it is paid here,
+// under a limit of its own, and each test keeps the default.
+beforeAll(async () => {
+  await import("@/components/device-home-glyph")
+}, 30_000)
 
 beforeEach(() => {
   Object.defineProperty(document, "visibilityState", {
