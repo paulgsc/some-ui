@@ -14,6 +14,11 @@
  * claim (what Thm. 6.1's proof calls "the authored statement of `μ(d)`").
  * It is read bracket-depth-aware (`bodyOfBracketBlock`), since typst content
  * may nest `[...]`.
+ *
+ * `parseRuleRegisters` reads Rem. 7.4's two tables, the Machine (`M`) and
+ * Agreement (`A`) registers incident rounds cite, the same way. A row whose
+ * rule ends ` (superseded)` is marked and kept (Rem. 7.4); like the
+ * retirement marker above, never yet exercised against a real row.
  */
 
 const SECTION_7_HEADING = "= The proposition register"
@@ -29,6 +34,12 @@ const NAME_SEPARATOR = " · "
 const RETIRED_SUFFIX = " (retired)"
 
 export type PropositionStatus = "active" | "retired"
+
+const RULE_REGISTERS_REMARK = /#remark\("7\.4", name: "[^"]*"\)\[/
+// The id cell of a register row; the rule and its one line follow as cells.
+const RULE_ROW = /\[`([MA])(\d+)`\],\s*\[/g
+const RULE_ID_CELL = /\[`[MA]\d+`\]/g
+const SUPERSEDED_SUFFIX = " (superseded)"
 
 export type PropositionRegisterEntry = {
   readonly id: string
@@ -449,4 +460,85 @@ export function propositionDeclarationLineNumbers(
     lines.add(upToMatch.split("\n").length)
   }
   return lines
+}
+
+export type RuleRegisterEntry = {
+  readonly id: string
+  /** The rule's short name, the table's middle column. */
+  readonly rule: string
+  /** "Its one line": what a learner reads. */
+  readonly line: string
+  readonly status: "active" | "superseded"
+}
+
+/** The register a rule id belongs to, as Rem. 7.4's tables name them. */
+export function ruleRegisterOf(id: string): "Machine" | "Agreement" {
+  return id.startsWith("M") ? "Machine" : "Agreement"
+}
+
+/**
+ * Parses Rem. 7.4's Machine and Agreement tables into rule entries, `M`
+ * rows then `A` rows, each in ascending order. Throws if the remark is
+ * missing, if a register is empty or not a contiguous `1..max` without
+ * duplicates, or if an id cell the row pattern did not match.
+ */
+export function parseRuleRegisters(
+  canonSource: string
+): ReadonlyArray<RuleRegisterEntry> {
+  const remark = RULE_REGISTERS_REMARK.exec(canonSource)
+  if (remark === null) {
+    throw new Error(
+      'parseRuleRegisters found no #remark("7.4", ...) — the Machine and Agreement registers may have moved.'
+    )
+  }
+  const { body } = bodyOfBracketBlock(
+    canonSource,
+    remark.index + remark[0].length - 1
+  )
+
+  const entries: Array<RuleRegisterEntry> = []
+  for (const match of body.matchAll(RULE_ROW)) {
+    const id = `${match[1] ?? ""}${match[2] ?? ""}`
+    const rule = bodyOfBracketBlock(body, match.index + match[0].length - 1)
+    const lineOpen = body.indexOf("[", rule.afterIndex)
+    const line = bodyOfBracketBlock(body, lineOpen)
+    const name = normalizeStatement(rule.body)
+    const superseded = name.endsWith(SUPERSEDED_SUFFIX)
+    entries.push({
+      id,
+      rule: superseded ? name.slice(0, -SUPERSEDED_SUFFIX.length) : name,
+      line: normalizeStatement(line.body),
+      status: superseded ? "superseded" : "active",
+    })
+  }
+
+  const cells = [...body.matchAll(RULE_ID_CELL)].length
+  if (cells !== entries.length) {
+    throw new Error(
+      `Rem. 7.4 has ${String(cells)} rule id cell(s) but this parser matched ${String(entries.length)} row(s); a row does not have the "[\`M1\`], [rule], [line]," shape.`
+    )
+  }
+  for (const prefix of ["M", "A"]) {
+    const numbers = entries
+      .filter((entry) => entry.id.startsWith(prefix))
+      .map((entry) => Number(entry.id.slice(1)))
+    if (numbers.length === 0) {
+      throw new Error(
+        `Rem. 7.4's ${ruleRegisterOf(prefix)} register has no rows.`
+      )
+    }
+    if (new Set(numbers).size !== numbers.length) {
+      throw new Error(`Rem. 7.4 lists a ${prefix} id more than once.`)
+    }
+    for (let n = 1; n <= numbers.length; n++) {
+      if (!numbers.includes(n)) {
+        throw new Error(
+          `Rem. 7.4's ${ruleRegisterOf(prefix)} register is missing "${prefix}${String(n)}": ids run ${prefix}1..${prefix}${String(numbers.length)} without gaps.`
+        )
+      }
+    }
+  }
+  const order = (id: string): number =>
+    (id.startsWith("M") ? 0 : 1000) + Number(id.slice(1))
+  return entries.sort((a, b) => order(a.id) - order(b.id))
 }

@@ -1,3 +1,6 @@
+import type { RuleId } from "@leetype/lib/leetype/proposition-register/generated"
+import { RULE_REGISTER } from "@leetype/lib/leetype/proposition-register/generated"
+import { ruleRegisterOf } from "@leetype/lib/leetype/proposition-register/parse-canon"
 import type {
   ChoiceScreen,
   SessionFile,
@@ -15,7 +18,12 @@ import { assertNever, mentionsWord } from "@some-ui/core-utils"
  * nowhere. `feedback-names-answer` matches the correct label as words, so a
  * paraphrase of the answer is for the review pass to catch. A reading is
  * placed when a struggle can reach it or it is tagged `placement`; its in-app
- * core is its passage, read at `WORDS_PER_MINUTE`.
+ * core is its passage, read at `WORDS_PER_MINUTE`. `unregistered-rule`
+ * resolves every `rule` and `applies` against Rem. 7.4's registers
+ * (Rem. 7.1's citation check over `M` and `A`).
+ *
+ * Rem. 10.3 (5) spans files, so it is not here: `negativeDiscriminationGaps`
+ * takes the whole set.
  */
 
 type SessionFileFindingCode =
@@ -27,6 +35,7 @@ type SessionFileFindingCode =
   | "long-placement"
   | "verbatim-return"
   | "authored-ledger"
+  | "unregistered-rule"
 
 export type SessionFileFinding = {
   readonly code: SessionFileFindingCode
@@ -37,6 +46,20 @@ export type SessionFileFinding = {
 const PLACEMENT_CORE_MINUTES = 3
 /** Dense technical prose on a phone, the brief's reading-time estimate. */
 const WORDS_PER_MINUTE = 150
+
+function isRuleId(id: string): id is RuleId {
+  return Object.hasOwn(RULE_REGISTER, id)
+}
+
+/** Why `id` does not resolve to a live Rem. 7.4 row, or null when it does. */
+function unregistered(id: string): string | null {
+  const table = `canon Rem. 7.4's ${ruleRegisterOf(id)} register`
+  if (!isRuleId(id)) return `"${id}" is in no row of ${table}`
+  if (RULE_REGISTER[id].status === "superseded") {
+    return `"${id}" is superseded in ${table}; cite the row that replaces it`
+  }
+  return null
+}
 
 export function isRound(screen: SessionScreen): screen is ChoiceScreen {
   return (
@@ -201,6 +224,17 @@ export function lintSessionFile(file: SessionFile): Array<SessionFileFinding> {
 
   const placed = new Set<string>()
   for (const [id, screen] of Object.entries(file.screens)) {
+    if (screen.type === "choice") {
+      const cited = [
+        screen.rule,
+        ...screen.options.map((option) => option.applies),
+      ]
+      for (const rule of new Set(cited)) {
+        const why = rule === undefined ? null : unregistered(rule)
+        if (why !== null) add("unregistered-rule", id, why)
+      }
+    }
+
     if (isRound(screen)) {
       const abstentions = screen.options.filter((option) => option.abstain)
       if (abstentions.length !== 1) {
@@ -300,4 +334,31 @@ export function lintSessionFile(file: SessionFile): Array<SessionFileFinding> {
   }
 
   return findings
+}
+
+/**
+ * Rem. 10.3 (5) over a set of session files: every live `M` or `A` entry
+ * that is no option's `applies` on any round another entry decides, so a
+ * learner who always picks it is never shown wrong (Prop. 10.1). The canon
+ * marks no entry uninstantiable, so every live row is owed one.
+ */
+export function negativeDiscriminationGaps(
+  files: ReadonlyArray<SessionFile>
+): Array<RuleId> {
+  const discriminated = new Set<string>()
+  for (const file of files) {
+    for (const screen of Object.values(file.screens)) {
+      if (!isRound(screen)) continue
+      for (const option of screen.options) {
+        if (option.applies !== undefined && option.applies !== screen.rule) {
+          discriminated.add(option.applies)
+        }
+      }
+    }
+  }
+  return Object.values(RULE_REGISTER)
+    .filter((entry) => entry.status === "active")
+    .map((entry) => entry.id)
+    .filter(isRuleId)
+    .filter((id) => !discriminated.has(id))
 }

@@ -2,12 +2,12 @@
 //
 // Produced by `pnpm --filter @some-ui/leetype run generate:proposition-register`
 // by parsing `docs/canon/complexity-witness-canon.typ` §7 (the proposition
-// register, Def. 1.5, Rem. 7.1) — a second, hand-maintained list of `CW-P`
-// ids is exactly the drift Rem. 7.2 warns against, so this file exists to
-// be the only one. `scripts/check-proposition-citations.ts` fails CI if
+// register, Def. 1.5, Rem. 7.1) and Rem. 7.4 (the Machine and Agreement
+// registers) — a second, hand-maintained list of ids is exactly the drift
+// Rem. 7.2 warns against, so this file exists to be the only one. `scripts/check-proposition-citations.ts` fails CI if
 // this file drifts from what the canon generates today.
 
-import type { PropositionRegisterEntry } from "./parse-canon"
+import type { PropositionRegisterEntry, RuleRegisterEntry } from "./parse-canon"
 
 export type PropositionId =
   | "CW-P1"
@@ -140,6 +140,137 @@ export const PROPOSITION_REGISTER: Readonly<
     title: "A cost independent of the bounds is not a constraint problem",
     statement:
       'A term of T that does not vary with any dimension C bounds — a fixed setup cost, an unbounded wait, work in a dimension C says nothing about — is unaffected by every assignment of those bounds. If such a term already exceeds B, no constraint diff makes the program admissible, and the failure is of a different kind from "too slow at this size."',
+    status: "active",
+  },
+}
+
+export type RuleId =
+  | "M1"
+  | "M2"
+  | "M3"
+  | "M4"
+  | "M5"
+  | "M6"
+  | "M7"
+  | "M8"
+  | "A1"
+  | "A2"
+  | "A3"
+  | "A4"
+  | "A5"
+  | "A6"
+  | "A7"
+  | "A8"
+  | "A9"
+  | "A10"
+
+export const RULE_REGISTER: Readonly<Record<RuleId, RuleRegisterEntry>> = {
+  M1: {
+    id: "M1",
+    rule: "The latency ladder",
+    line: "An L1 hit costs about 1 ns, DRAM about 100 ns, an NVMe read 10--100 µs, a durable write about 100 µs (fast SSD) to about 10 ms (spinning disk), a datacenter round trip about 5 µs (tuned) to 0.5 ms (typical), about 60--80 ms across a continent, and about 150 ms or more between continents. A round states which figure it assumes.",
+    status: "active",
+  },
+  M2: {
+    id: "M2",
+    rule: "Batch to amortize a fixed cost",
+    line: "A fixed cost F per operation becomes F / k when k operations share it: group commit, syscall batching.",
+    status: "active",
+  },
+  M3: {
+    id: "M3",
+    rule: "Pointer chasing costs a miss per hop",
+    line: "Each node of a linked structure is a likely DRAM miss; wide nodes, as in a B-tree, cut the hops.",
+    status: "active",
+  },
+  M4: {
+    id: "M4",
+    rule: "Little's law",
+    line: "Work in flight equals throughput times latency; at fixed latency, more throughput needs more in flight, which pipelining supplies.",
+    status: "active",
+  },
+  M5: {
+    id: "M5",
+    rule: "Shared writes serialize",
+    line: "Contended locks and cache lines moving between cores cap throughput; partitioning the state removes the cap.",
+    status: "active",
+  },
+  M6: {
+    id: "M6",
+    rule: "Queues explode near saturation",
+    line: "In an M/M/1 queue, waiting time grows like rho / (1 - rho) in utilization rho: at 90% busy it is nine times the service time.",
+    status: "active",
+  },
+  M7: {
+    id: "M7",
+    rule: "Fan-out amplifies the tail",
+    line: "A request waiting on n calls is as slow as the slowest of them: if each call is slow 1% of the time, 63% of requests that fan out to 100 calls meet a slow one.",
+    status: "active",
+  },
+  M8: {
+    id: "M8",
+    rule: "Durability has a price",
+    line: "An acknowledgement is only as durable as what was flushed before it was sent.",
+    status: "active",
+  },
+  A1: {
+    id: "A1",
+    rule: "The failure model decides",
+    line: "Crash-stop, crash-recover or Byzantine; synchronous, partially synchronous or not: change the model and the right protocol changes.",
+    status: "active",
+  },
+  A2: {
+    id: "A2",
+    rule: "Timeouts buy liveness, never safety",
+    line: "No deterministic protocol guarantees consensus in a fully asynchronous system in which one node may crash (Fischer, Lynch, Paterson).",
+    status: "active",
+  },
+  A3: {
+    id: "A3",
+    rule: "Majorities intersect",
+    line: "2 f + 1 nodes tolerate f crashes, because any two majorities share a node that remembers.",
+    status: "active",
+  },
+  A4: {
+    id: "A4",
+    rule: "Safety always, liveness when stable",
+    line: "Two different values are never chosen; progress may wait for a stable leader.",
+    status: "active",
+  },
+  A5: {
+    id: "A5",
+    rule: "A stable leader amortizes agreement",
+    line: "The prepare phase runs once per leader; each entry then costs one round trip to a majority.",
+    status: "active",
+  },
+  A6: {
+    id: "A6",
+    rule: "Higher terms fence stale leaders",
+    line: "Ballots or terms order leadership, and a node rejects anything carrying a lower one.",
+    status: "active",
+  },
+  A7: {
+    id: "A7",
+    rule: "Elect only complete leaders",
+    line: "Raft's vote rule means the winner already holds every committed entry, so repair flows from leader to followers only.",
+    status: "active",
+  },
+  A8: {
+    id: "A8",
+    rule: "Committed means a majority stored it",
+    line: "Until then an entry can vanish; Raft counts only current-term entries toward commit (its Figure 8).",
+    status: "active",
+  },
+  A9: {
+    id: "A9",
+    rule: "Replication is not consensus",
+    line: "Asynchronous primary--backup loses acknowledged writes on failover.",
+    status: "active",
+  },
+  A10: {
+    id: "A10",
+    rule: "Reads need agreement too",
+    line: "A leader must confirm it still leads before it answers a read: by a read index, or by a lease that trusts bounded clock drift.",
     status: "active",
   },
 }

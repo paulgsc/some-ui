@@ -4,7 +4,10 @@ import path from "node:path"
 import { formatGeneratedModule } from "@leetype/lib/leetype/proposition-register/format-generated-module"
 import type { PropositionId } from "@leetype/lib/leetype/proposition-register/generated"
 import { PROPOSITION_REGISTER } from "@leetype/lib/leetype/proposition-register/generated"
-import { parsePropositionRegister } from "@leetype/lib/leetype/proposition-register/parse-canon"
+import {
+  parsePropositionRegister,
+  parseRuleRegisters,
+} from "@leetype/lib/leetype/proposition-register/parse-canon"
 import { describe, expect, it } from "vitest"
 
 // Names `PropositionId` so knip's unused-export check sees it referenced.
@@ -22,9 +25,14 @@ describe("generated proposition register", () => {
       path.join(root, "docs/canon/complexity-witness-canon.typ"),
       "utf8"
     )
-    const fresh = formatGeneratedModule(parsePropositionRegister(canonSource))
+    const fresh = formatGeneratedModule(
+      parsePropositionRegister(canonSource),
+      parseRuleRegisters(canonSource)
+    )
 
     expect(fresh).toContain('"CW-P16"')
+    expect(fresh).toContain('"M8"')
+    expect(fresh).toContain('"A10"')
     expect(fresh).toContain(exampleId)
   })
 

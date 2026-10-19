@@ -2,7 +2,7 @@ import type { SessionFile } from "@leetype/types/session-file"
 import { SessionFileSchema } from "@leetype/types/session-file"
 import { describe, expect, it } from "vitest"
 
-import { lintSessionFile } from ".."
+import { lintSessionFile, negativeDiscriminationGaps } from ".."
 import { AB_FIXTURES } from "./fixtures"
 
 const source = {
@@ -253,6 +253,26 @@ describe("lintSessionFile", () => {
     expect(codes(file)).toEqual(["authored-ledger"])
   })
 
+  it("resolves rule and applies against Rem. 7.4, naming the register", () => {
+    const file = clean()
+    const round = file.screens.r1
+    if (round?.type !== "choice") throw new Error("r1 is a choice")
+    round.rule = "A99"
+    round.options[1] = { ...round.options[1]!, applies: "M42" }
+    expect(lintSessionFile(file)).toEqual([
+      {
+        code: "unregistered-rule",
+        screen: "r1",
+        message: `"A99" is in no row of canon Rem. 7.4's Agreement register`,
+      },
+      {
+        code: "unregistered-rule",
+        screen: "r1",
+        message: `"M42" is in no row of canon Rem. 7.4's Machine register`,
+      },
+    ])
+  })
+
   it.each(AB_FIXTURES)(
     "reads the A/B's variant $variant as the A/B found it: no round cites its passage, and the end is authored",
     ({ raw }) => {
@@ -261,4 +281,19 @@ describe("lintSessionFile", () => {
       expect(found).toContain("authored-ledger")
     }
   )
+})
+
+describe("negativeDiscriminationGaps", () => {
+  it("owes every live entry a round another entry decides, where an option applies it", () => {
+    const file = clean()
+    const round = file.screens.r1
+    if (round?.type !== "choice") throw new Error("r1 is a choice")
+    round.options[1] = { ...round.options[1]!, applies: "A9" }
+    round.options[0] = { ...round.options[0]!, applies: "A3" }
+    const gaps = negativeDiscriminationGaps([file])
+    expect(gaps).not.toContain("A9")
+    // A3 decides r1, so its own option there does not count.
+    expect(gaps).toContain("A3")
+    expect(gaps).toHaveLength(17)
+  })
 })
