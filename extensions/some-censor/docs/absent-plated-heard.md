@@ -56,7 +56,7 @@ present by definition, and a Short carries no date (`QD3`).
 - Held continuously for **3 seconds** (pointer, or Space/Enter held), it
   replaces the poster plate with the real thumbnail. Releasing early cancels.
 - Strict offers no control, and choosing Strict takes a shown thumbnail
-  away (§7).
+  away (§7, `QD13`).
 - It lasts for that view. Navigation forgets it, and nothing is persisted.
 - No progress colour, reward animation or memory of having done it. Anything
   more and it becomes the ladder again.

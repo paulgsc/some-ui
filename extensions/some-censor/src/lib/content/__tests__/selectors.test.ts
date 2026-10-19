@@ -19,7 +19,9 @@ import {
   classifyCard,
   detectOccluderEngine,
   isVideoCard,
+  LOADING_ATTRIBUTE,
   occludedElements,
+  POSTS_ATTRIBUTE,
   PREMASK_FALLBACK_SELECTORS,
   PREMASK_SELECTORS,
   SEL,
@@ -149,6 +151,24 @@ describe("the stylesheet and the catalogue agree", () => {
     const variable = "opacity: var(--boyo-premask-opacity, 0.5) !important"
     expect(CSS.split(variable).length - 1).toBe(premaskRulesIn(CSS).length)
     expect(CSS).not.toContain("opacity: 0.5 !important")
+    // The e2e suite that renders this (S3) runs locally only.
+    expect(normalize(CSS)).toContain(
+      normalize(`:root[${LOADING_ATTRIBUTE}="blank"] {
+        --boyo-premask-opacity: 0;
+      }`)
+    )
+  })
+
+  it("shows a post's own images under Open, unless plated (#1966)", () => {
+    // One rule, in exactly this form: P8 renders it, locally only.
+    const rules = premaskRulesIn(CSS, "visibility: visible !important").filter(
+      (r) => r.includes(POSTS_ATTRIBUTE)
+    )
+    expect(rules.map(normalize)).toEqual([
+      normalize(`${WHILE_ON}[${POSTS_ATTRIBUTE}="shown"]
+        ytd-backstage-image-renderer:not([data-boyo="plated"] *)
+        yt-img-shadow img`),
+    ])
   })
 
   it("keeps a :has()-free fallback for exactly the tags that declare one", () => {
