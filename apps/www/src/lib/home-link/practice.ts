@@ -5,14 +5,15 @@
  * and the shared watch (`./kept-watch`) for as long as Practice's header
  * mounts `usePracticeHome`.
  *
- * The record the watch sees moves with the choice and with the sessions the
- * app has read (React Query's `sessionsKey`), so a finished session asks for
- * a send; a newly kept shelf item goes with the next ask.
+ * The record the watch sees moves with the choice, with the sessions the app
+ * has read (React Query's `sessionsKey`) and with each shelf keep
+ * (`onKept`), so a finished session or a newly kept item asks for a send.
  */
 import { useEffect, useSyncExternalStore } from "react"
 import { queryClient } from "@/providers/tanstack-query"
 import { fnv1a, localStorageOrNull } from "@some-ui/core-utils"
 
+import { onKept } from "@/lib/shelf-client"
 import { sessionsKey } from "@/lib/tenant/queries"
 import type { SessionRecord } from "@/lib/tenant/types"
 
@@ -75,6 +76,11 @@ const SESSIONS_HASH = JSON.stringify(sessionsKey).slice(0, -1)
 const isSessionsQuery = (hash: string): boolean =>
   hash.startsWith(SESSIONS_HASH)
 
+let shelfKeeps = 0
+onKept(() => {
+  shelfKeeps += 1
+})
+
 /** Practice as the watch sees it (`./kept-watch`). */
 const record: KeptRecord = {
   kept: () => sharedWithPaired().size > 0,
@@ -82,16 +88,19 @@ const record: KeptRecord = {
     fnv1a(
       [
         phoneConsent().getSnapshot().length,
+        shelfKeeps,
         ...cachedSessions().map((s) => `${s.id}@${s.updatedAt}`),
       ].join("|")
     ),
   subscribe(listener): () => void {
     const unsubscribeConsent = phoneConsent().subscribe(listener)
+    const unsubscribeShelf = onKept(listener)
     const unsubscribeCache = queryClient.getQueryCache().subscribe((event) => {
       if (isSessionsQuery(event.query.queryHash)) listener()
     })
     return () => {
       unsubscribeConsent()
+      unsubscribeShelf()
       unsubscribeCache()
     }
   },

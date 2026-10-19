@@ -536,7 +536,8 @@ say is when a run is asked for:
   starts, for as long as Practice's mark (`components/device-home-glyph.tsx`,
   mounted only in the Android app's header while the Practice wing shows) is
   mounted, at the moments LA9 names, where the record's revision moves with
-  the consent log and the sessions the app has read; or from `askPractice`,
+  the consent log, the sessions the app has read and each shelf keep
+  (`onKept`); or from `askPractice`,
   which the mark's sheet calls only from its Send now button. Each asks only
   when the consent log keeps something on the paired home and the document
   is visible. A choice counts for the pairing it was made under alone (the
