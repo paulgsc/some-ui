@@ -13,8 +13,12 @@ import { unexpectedAnswer } from "@some-ui/core-utils"
 
 import type { Kept } from "@/lib/device-backend/handlers/shelf"
 import { SyncStoppedError } from "@/lib/device-backend/home-sync"
-import { FileHostResponseError } from "@/lib/file-host-config/client"
+import {
+  FileHostNotConfiguredError,
+  FileHostResponseError,
+} from "@/lib/file-host-config/client"
 import type { CopyResult } from "@/lib/tenant/sessions-copy"
+import { SessionNotFoundError } from "@/lib/tenant/sessions-repository"
 import type { SessionRecord } from "@/lib/tenant/types"
 
 import type { Scope } from "./consent-model"
@@ -57,17 +61,24 @@ const failed = (why: StandingWhy): HomeExchanged => ({ kind: "failed", why })
 function answeredCopy(error: unknown): HomeExchanged | null {
   if (causedBy(error, HomeForgotPhoneError)) return { kind: "forgotten" }
   if (causedBy(error, SyncStoppedError)) throw new SyncStoppedError()
-  return error instanceof FileHostResponseError
-    ? unexpectedAnswer("a session", error.status)
+  if (error instanceof FileHostResponseError) {
+    return unexpectedAnswer("a session", error.status)
+  }
+  // A 503 that is not home's busy, and a 404 for a copy gone since the plan.
+  if (error instanceof FileHostNotConfiguredError) {
+    return unexpectedAnswer("a session", 503)
+  }
+  return error instanceof SessionNotFoundError
+    ? unexpectedAnswer("a session", 404)
     : null
 }
 
 /**
  * Sends what changed. Throws `HomeUnansweredError` when home does not answer
- * the shelf, and what the sessions copy throws when it does not answer that
- * (`./runtime`'s `unanswered` reads both). Every request first asks the log
- * again (`gated`), so a stop pressed while a send runs ends it before its
- * next request.
+ * the shelf, what the sessions copy throws when it does not answer that
+ * (`./runtime`'s `unanswered` reads both), and any fault on this phone as
+ * it came. Every request first asks the log again (`gated`), so a stop
+ * pressed while a send runs ends it before its next request.
  */
 export async function sendStanding(
   send: HomeCall,

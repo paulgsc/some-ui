@@ -139,6 +139,7 @@ function valueImportsOf(
   return found
 }
 
+// The index alone: `native-http/no-answer` holds an error class, no request.
 const isNativeHttp = (module: string): boolean =>
   module === "lib/device-backend/native-http"
 const isHomeLink = (module: string): boolean =>

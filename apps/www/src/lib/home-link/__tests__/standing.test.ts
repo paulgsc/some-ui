@@ -18,6 +18,7 @@ import { HomeUnansweredError } from "@/lib/home-link/shelf"
 import type { StandingPorts } from "@/lib/home-link/standing"
 import { sendStanding } from "@/lib/home-link/standing"
 import type { CopyResult } from "@/lib/tenant/sessions-copy"
+import { SessionNotFoundError } from "@/lib/tenant/sessions-repository"
 import type { SessionRecord } from "@/lib/tenant/types"
 
 const PAIRING = "pairing-1"
@@ -271,6 +272,12 @@ describe("a standing send", () => {
     await expect(sendStanding(send, ports)).resolves.toEqual({
       kind: "failed",
       why: "a session: home answered 500",
+    })
+    ports.copy = (): Promise<CopyResult> =>
+      Promise.reject(new SessionNotFoundError("s1"))
+    await expect(sendStanding(send, ports)).resolves.toEqual({
+      kind: "failed",
+      why: "a session: home answered 404",
     })
     expect(ports.storage?.getItem(SENT_KEY) ?? null).toBeNull()
   })

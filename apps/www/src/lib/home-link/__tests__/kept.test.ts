@@ -123,7 +123,8 @@ describe("a record kept on home", () => {
     } finally {
       stop()
     }
-    expect(reported).toEqual(["home server (kept)", "home server (kept)"])
+    // The Keystore's own port reported its failure; this reports the rest.
+    expect(reported).toEqual(["home server (kept)"])
   })
 
   it("says why the link turned it away", async () => {

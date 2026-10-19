@@ -10,6 +10,7 @@ import type { HomeCall, HomeExchanged } from "@some-ui/core-utils"
 import { reportFailure, toIntentError } from "@some-ui/intent-kit"
 
 import { SyncStoppedError } from "@/lib/device-backend/home-sync"
+import { ForeignCallError } from "@/lib/intent/foreign"
 
 import type { Scope } from "./consent-model"
 import type { KeptEvent, KeptRun, KeptState } from "./kept-model"
@@ -65,14 +66,17 @@ export function createKept(ports: KeptPorts): Kept {
         return { kind: "unreachable", at: ports.now() }
       }
       // A fault on this phone, not home's silence: it goes to the native
-      // log, and the mark says something went wrong.
-      reportFailure({
-        port: "home server (kept)",
-        error: {
-          ...toIntentError(error),
-          summary: "Something on this phone went wrong.",
-        },
-      })
+      // log (once: a foreign call's own port has already reported its
+      // failure), and the mark says something went wrong.
+      if (!(error instanceof ForeignCallError)) {
+        reportFailure({
+          port: "home server (kept)",
+          error: {
+            ...toIntentError(error),
+            summary: "Something on this phone went wrong.",
+          },
+        })
+      }
       return { kind: "failed", why: FAULT }
     }
   }

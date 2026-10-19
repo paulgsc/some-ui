@@ -119,6 +119,9 @@ async function open(): Promise<void> {
 /** How long a step that digests kept items may take. */
 const SLOW = 5_000
 
+// A test waits on up to three such steps.
+vi.setConfig({ testTimeout: 4 * SLOW })
+
 async function press(name: RegExp): Promise<void> {
   // The confirm appears once the count, which digests each kept item, is
   // in, and a button is pressed once the run before it has ended.
