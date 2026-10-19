@@ -518,8 +518,9 @@ What no test can say is when a run is asked for:
 What a standing send carries, and that a choice only ever appends, is
 enforced by test: the fold over the consent log and that an unreadable log
 is never written over (`lib/home-link/__tests__/consent.test.ts`), that a
-run sends only what its person keeps sending and only what changed, reads
-nothing back and lets nothing go (`standing.test.ts`), that the send's box
+run sends only what its person keeps sending, only finished sessions and
+what changed since that home held it, reads nothing back, lets nothing go,
+and sends nothing more once stopped (`standing.test.ts`), that the send's box
 starts unticked every time and only a tick adds the choice
 (`components/settings/__tests__/device-section.test.tsx`), that the mark
 sends nothing before the choice and "Stop sending" appends a stop
@@ -537,10 +538,13 @@ say is when a run is asked for:
   mounted, at the moments LA9 names, where the record's revision moves with
   the consent log and the sessions the app has read; or from `askPractice`,
   which the mark's sheet calls only from its Send now button. Each asks only
-  when the consent log keeps something on home and the document is visible,
-  and a run sends only the scopes the log keeps as it starts. A kept choice
-  enters the log only from the send confirm's press with its box ticked, and
-  a stop only from the sheet's second press. Nothing asks on a timer.
+  when the consent log keeps something on the paired home and the document
+  is visible. A choice counts for the home it was made for alone, so a new
+  pairing starts with nothing kept; a run sends only finished sessions and
+  kept items, and every request it makes first finds its scope still kept,
+  so a stop ends a run before its next request. A kept choice enters the
+  log only from the send confirm's press with its box ticked, and a stop
+  only from the sheet's second press. Nothing asks on a timer.
 - _Falsified by:_ a hunk to `lib/home-link/kept-watch.ts` as LA9's says; a
   hunk to `lib/home-link/practice.ts` that calls `watchKept` from anywhere
   but `usePracticeHome`'s effect, passes it anything but `record` and
@@ -559,14 +563,17 @@ say is when a run is asked for:
   other than in the send's press with its box ticked, starts the box ticked,
   or keeps a tick across confirms (`ask` unticks it); a hunk to
   `lib/home-link/consent-model.ts` that lets `appended` edit, reorder or drop
-  an earlier event, or lets `sharedAt` count an event made after `t`; to
+  an earlier event, or lets `sharedAt` count an event made after `t` or for
+  another home; to
   `lib/home-link/consent-runtime.ts` that writes the log when it could not
-  read it; or to `lib/home-link/standing.ts` that sends a scope `shared`
-  does not hold, reads home back, lets a phone session go, or sends other
-  than through `copyHome` and `sendKept`. Each lets something reach home, or
+  read it; to `lib/home-link/sent.ts` that lets `sessionsToSend` pass a
+  session that is not completed, or `readSent` return one home's record for
+  another; or to `lib/home-link/standing.ts` that sends a request without
+  `gated`'s check that its scope is still kept, reads home back, lets a
+  phone session go, or sends other than through `copyHome` and `sendKept`. Each lets something reach home, or
   leave the phone, that its person did not choose.
 - _Scope:_ `apps/www/src/lib/home-link/consent-model.ts`,
-  `consent-runtime.ts`, `practice.ts`, `standing.ts`,
+  `consent-runtime.ts`, `practice.ts`, `sent.ts`, `standing.ts`,
   `apps/www/src/components/device-home-glyph.tsx`,
   `apps/www/src/components/settings/device-section.tsx`,
   `apps/www/src/routes/_dashboard.tsx`.

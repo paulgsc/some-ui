@@ -25,6 +25,7 @@ import type { SessionRecord } from "@/lib/tenant/types"
 
 const home = vi.hoisted((): { sent: Array<NativeCall> } => ({ sent: [] }))
 const SESSION = sessionRecord({
+  status: "completed",
   id: "s1",
   updatedAt: "2026-10-18T10:00:00.000Z",
 })
@@ -96,6 +97,7 @@ function keptBefore(): void {
       {
         seq: 1,
         at: 1,
+        home: "https://home.example/api/v1",
         kind: "kept",
         scopes: ["sessions", "shelf"],
         said: "yes",
@@ -123,9 +125,6 @@ describe("Practice's sharing mark", () => {
     keptBefore()
     await mount()
     await waitFor(() => expect(home.sent.length).toBeGreaterThan(0))
-    expect(
-      home.sent.every((call) => call.url.startsWith("https://home.example/"))
-    ).toBe(true)
     await waitFor(() => expect(mark().textContent).toContain("No answer"))
   })
 

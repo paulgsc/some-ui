@@ -122,8 +122,6 @@ describe("stepKept", () => {
     expect(
       stepKept(again, { type: "ran", run: { kind: "unreachable", at: 1 } })
     ).toMatchObject({ running: false, again: false })
-    // Asked again because the phone was found paired while the first run
-    // was turned away: the ask that matters is not dropped.
     for (const kind of ["unpaired", "busy"] as const) {
       expect(stepKept(again, { type: "ran", run: { kind } })).toEqual({
         running: true,

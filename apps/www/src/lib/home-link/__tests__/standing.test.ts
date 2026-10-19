@@ -1,11 +1,14 @@
 /**
- * A standing send (LA11): only what its person keeps sending, only what
- * changed since home last held it, nothing read back or let go, and home
- * being busy said as such.
+ * A standing send (LA11): only what its person keeps sending, only finished
+ * sessions and what changed since this home last held it, nothing read back
+ * or let go, a stop honoured before the next request, and home being busy
+ * said as such.
  */
 import { sessionRecord } from "@/test-support/session-record"
+import { memoryStorage } from "@some-ui/vite-config/vitest/memory-storage"
 import { describe, expect, it } from "vitest"
 
+import { SyncStoppedError } from "@/lib/device-backend/home-sync"
 import type { HomeAnswer } from "@/lib/device-backend/native-http"
 import type { Scope } from "@/lib/home-link/consent-model"
 import type { HomeSend } from "@/lib/home-link/runtime"
@@ -15,21 +18,18 @@ import { sendStanding } from "@/lib/home-link/standing"
 import type { CopyResult } from "@/lib/tenant/sessions-copy"
 import type { SessionRecord } from "@/lib/tenant/types"
 
-const session = (id: string, updatedAt: string): SessionRecord =>
-  sessionRecord({ id, updatedAt })
+const HOME = "https://home.example/api/v1"
+
+const session = (
+  id: string,
+  updatedAt: string,
+  status: SessionRecord["status"] = "completed"
+): SessionRecord => sessionRecord({ id, updatedAt, status })
 
 const KEPT = [
   { activity: "topik", key: "a", body: '{"a":1}' },
   { activity: "leetype", key: "b", body: "[]" },
 ]
-
-function memory(): Pick<Storage, "getItem" | "setItem"> {
-  const values = new Map<string, string>()
-  return {
-    getItem: (key) => values.get(key) ?? null,
-    setItem: (key, value) => void values.set(key, value),
-  }
-}
 
 const copied = (n: number): CopyResult => ({
   outcome: { kind: "copied", copied: n },
@@ -66,7 +66,8 @@ function setup(
         kept: KEPT,
       }),
     shared: () => new Set(over.scopes ?? ["sessions", "shelf"]),
-    storage: memory(),
+    home: HOME,
+    storage: memoryStorage(),
     copy:
       over.copy ??
       ((_, local): Promise<CopyResult> => {
@@ -122,9 +123,10 @@ describe("a standing send", () => {
       kind: "failed",
       why: "busy",
     })
-    expect(readSent(ports.storage).shelf).toEqual({})
+    expect(puts).toHaveLength(1)
+    expect(readSent(ports.storage, HOME).shelf).toEqual({})
     await sendStanding(send, ports)
-    expect(puts).toHaveLength(4)
+    expect(puts).toHaveLength(2)
   })
 
   it("keeps what home took when a later item is turned away", async () => {
@@ -139,7 +141,63 @@ describe("a standing send", () => {
       kind: "failed",
       why: "full",
     })
-    expect(Object.keys(readSent(ports.storage).shelf)).toEqual(["topik/a"])
+    expect(Object.keys(readSent(ports.storage, HOME).shelf)).toEqual([
+      "topik/a",
+    ])
+  })
+
+  it("sends finished sessions only", async () => {
+    const { ports, send, copies } = setup({
+      scopes: ["sessions"],
+      local: [session("s1", "t1"), session("s2", "t1", "active")],
+    })
+    await sendStanding(send, ports)
+    expect(copies).toEqual([["s1"]])
+  })
+
+  it("offers an item home refused again only once it changes", async () => {
+    const { ports, send, puts } = setup({
+      scopes: ["shelf"],
+      answers: [{ status: 422, body: "" }],
+    })
+    await expect(sendStanding(send, ports)).resolves.toEqual({
+      kind: "failed",
+      why: "refused",
+    })
+    await sendStanding(send, ports)
+    expect(puts).toEqual(["/shelf/topik/a", "/shelf/leetype/b"])
+    ports.read = (): ReturnType<StandingPorts["read"]> =>
+      Promise.resolve({
+        local: [],
+        kept: [{ ...KEPT[0], body: '{"a":2}' }, KEPT[1]],
+      })
+    await sendStanding(send, ports)
+    expect(puts.at(-1)).toBe("/shelf/topik/a")
+  })
+
+  it("sends nothing more once its person stops, before the next request", async () => {
+    let kept = true
+    const { ports, send, puts } = setup({ scopes: ["shelf"] })
+    ports.shared = (): ReadonlySet<Scope> => new Set(kept ? ["shelf"] : [])
+    const sendThenStop: HomeSend = async (method, path, body) => {
+      const answer = await send(method, path, body)
+      kept = false
+      return answer
+    }
+    await expect(sendStanding(sendThenStop, ports)).rejects.toBeInstanceOf(
+      SyncStoppedError
+    )
+    expect(puts).toEqual(["/shelf/topik/a"])
+  })
+
+  it("starts from nothing for another home", async () => {
+    const { ports, send, copies } = setup({ scopes: ["sessions"] })
+    await sendStanding(send, ports)
+    await sendStanding(send, { ...ports, home: "https://other.example/api/v1" })
+    expect(copies).toEqual([
+      ["s1", "s2"],
+      ["s1", "s2"],
+    ])
   })
 
   it("ends forgotten when home no longer knows this phone", async () => {

@@ -223,6 +223,7 @@ describe("DeviceSection's Home server block", () => {
     expect(log).toEqual([
       expect.objectContaining({
         kind: "kept",
+        home: "https://home.example/api/v1",
         scopes: ["sessions", "shelf"],
         said: expect.stringMatching(
           /^Keep sending these to home from now on\./

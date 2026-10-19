@@ -108,5 +108,11 @@ describe("describeSend", () => {
     expect(describeSend(outcome({ shelf, busy: true }), "home.example")).toBe(
       "Sent 1 kept item. Home is busy right now: send again in a minute to carry on."
     )
+    expect(
+      describeSend(
+        outcome({ copy: null, ended: new SyncStoppedError(), busy: true }),
+        "home.example"
+      )
+    ).toBe("Stopped: send again to carry on.")
   })
 })

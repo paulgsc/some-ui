@@ -255,9 +255,7 @@ const DashboardLayout = (): JSX.Element => {
             {(!MOBILE_APP || wing?.id === "studio") && <LocIndicator />}
             <SiteLauncher />
             {MOBILE_APP && <MobileSettingsLink pathname={pathname} />}
-            {/* Where Practice is kept, and its standing send while it shows
-                (LA11): the phone's alone (an inline device-build check, so
-                other builds drop it), and only Practice's records yet. */}
+            {/* Practice's sharing mark, which runs its standing send while shown (LA11). */}
             {import.meta.env.VITE_DEVICE_BACKEND === "true" &&
               wing?.id === "practice" && <DeviceHomeGlyph />}
           </header>

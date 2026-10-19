@@ -20,11 +20,11 @@ import type { Scope } from "./consent-model"
 import type { HomeSend } from "./runtime"
 import type { Sent } from "./sent"
 import {
-  digestOf,
   readSent,
   rememberSent,
   sessionsHeld,
   sessionsToSend,
+  shelfHeld,
   shelfKeyOf,
 } from "./sent"
 import { causedBy, copyHome, HomeForgotPhoneError } from "./sessions"
@@ -39,8 +39,10 @@ export type StandingPorts = {
     local: ReadonlyArray<SessionRecord>
     kept: ReadonlyArray<Kept>
   }>
-  /** What its person keeps sending, read as the send starts. */
+  /** What its person keeps sending to `home`, read before every request. */
   shared: () => ReadonlySet<Scope>
+  /** The paired home this send goes to (its base). */
+  home: string
   storage: Pick<Storage, "getItem" | "setItem"> | null
   /** The sessions copy (`./sessions`'s `copyHome`); a seam for tests. */
   copy?: (
@@ -51,31 +53,51 @@ export type StandingPorts = {
 
 const failed = (why: StandingWhy): HomeExchanged => ({ kind: "failed", why })
 
-/** Sends what changed; throws what `send` throws when home does not answer. */
+/** `send`, and whether home answered any of it as busy (`429`). */
+export function noticingBusy(send: HomeSend): {
+  send: HomeSend
+  seen: { busy: boolean }
+} {
+  const seen = { busy: false }
+  return {
+    seen,
+    send: async (method, path, body): ReturnType<HomeSend> => {
+      const answer = await send(method, path, body)
+      if (answer.status === 429) seen.busy = true
+      return answer
+    },
+  }
+}
+
+/**
+ * Sends what changed; throws what `send` throws when home does not answer.
+ * Every request first asks the log again (`gated`), so a stop pressed while
+ * a send runs ends it before its next request.
+ */
 export async function sendStanding(
   send: HomeSend,
   ports: StandingPorts
 ): Promise<HomeExchanged> {
-  const shared = ports.shared()
-  if (shared.size === 0) return { kind: "synced" }
-  // Set by the wrapper below, as answers arrive.
-  const seen = { busy: false }
-  const watched: HomeSend = async (method, path, body) => {
-    const answer = await send(method, path, body)
-    if (answer.status === 429) seen.busy = true
-    return answer
-  }
+  if (ports.shared().size === 0) return { kind: "synced" }
+  const { send: watched, seen } = noticingBusy(send)
+  const gated =
+    (scope: Scope): HomeSend =>
+    (method, path, body) =>
+      ports.shared().has(scope)
+        ? watched(method, path, body)
+        : Promise.reject(new SyncStoppedError())
   const { local, kept } = await ports.read()
-  let sent: Sent = readSent(ports.storage)
+  let sent: Sent = readSent(ports.storage, ports.home)
 
-  if (shared.has("sessions")) {
+  if (ports.shared().has("sessions")) {
     const changed = sessionsToSend(local, sent)
     if (changed.length > 0) {
       let copy: CopyResult
       try {
-        copy = await (ports.copy ?? copyHome)(watched, changed)
+        copy = await (ports.copy ?? copyHome)(gated("sessions"), changed)
       } catch (error) {
         if (causedBy(error, HomeForgotPhoneError)) return { kind: "forgotten" }
+        if (causedBy(error, SyncStoppedError)) throw new SyncStoppedError()
         if (seen.busy) return failed("busy")
         throw error
       }
@@ -96,27 +118,25 @@ export async function sendStanding(
     }
   }
 
-  if (shared.has("shelf")) {
-    const digests = new Map(
-      await Promise.all(
-        kept.map(
-          async (item) => [shelfKeyOf(item), await digestOf(item.body)] as const
-        )
+  if (ports.shared().has("shelf")) {
+    const digests = await shelfHeld(kept)
+    const changed = kept.filter((item) => {
+      const digest = digests[shelfKeyOf(item)]
+      return (
+        sent.shelf[shelfKeyOf(item)] !== digest &&
+        sent.refused[shelfKeyOf(item)] !== digest
       )
-    )
-    const changed = kept.filter(
-      (item) => sent.shelf[shelfKeyOf(item)] !== digests.get(shelfKeyOf(item))
-    )
+    })
     const report = emptyReport()
     const held: Record<string, string> = {}
+    const refused: Record<string, string> = {}
     try {
-      await sendKept(changed, watched, report, (item) => {
-        held[shelfKeyOf(item)] = digests.get(shelfKeyOf(item)) ?? ""
+      await sendKept(changed, gated("shelf"), report, (item, answer) => {
+        const key = shelfKeyOf(item)
+        ;(answer === "held" ? held : refused)[key] = digests[key] ?? ""
       })
     } finally {
-      if (Object.keys(held).length > 0) {
-        sent = rememberSent(ports.storage, sent, { shelf: held })
-      }
+      sent = rememberSent(ports.storage, sent, { shelf: held, refused })
     }
     if (report.forgotten) return { kind: "forgotten" }
     if (seen.busy) return failed("busy")

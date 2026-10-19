@@ -20,14 +20,13 @@ import {
 import { Link } from "@tanstack/react-router"
 
 import { useHomeLink } from "@/lib/home-link"
-import { sharedNow } from "@/lib/home-link/consent-model"
 import {
   askPractice,
   heldByHome,
   sessionsWaiting,
   stopPracticeOnHome,
-  usePracticeConsent,
   usePracticeHome,
+  usePracticeShared,
 } from "@/lib/home-link/practice"
 import type { Shape } from "@/lib/home-link/practice-words"
 import { practiceView, SHEET } from "@/lib/home-link/practice-words"
@@ -81,6 +80,8 @@ const ShapeMark = ({
   </svg>
 )
 
+const NOTHING_HELD = { sessions: 0, shelf: 0, refused: 0 } as const
+
 const TONE: Record<Shape, string> = {
   phone: "text-muted-foreground",
   partly: "text-muted-foreground",
@@ -91,19 +92,18 @@ const TONE: Record<Shape, string> = {
 
 export const DeviceHomeGlyph = (): JSX.Element => {
   const run = usePracticeHome()
-  const log = usePracticeConsent()
+  const shared = usePracticeShared()
   const link = useHomeLink()
   const { data: sessions } = useSessions()
   const [open, setOpen] = useState(false)
   const [stopping, setStopping] = useState(false)
 
-  const shared = sharedNow(log)
   const paired = link.link.kind === "paired"
-  const waiting = sessions === undefined ? 0 : sessionsWaiting(sessions)
+  const held = heldByHome(link)
+  const waiting = sessions === undefined ? 0 : sessionsWaiting(sessions, link)
   const view = practiceView({
     shared,
-    held: heldCounts(heldByHome()),
-    paired,
+    held: held === null ? NOTHING_HELD : heldCounts(held),
     waiting,
     run,
   })

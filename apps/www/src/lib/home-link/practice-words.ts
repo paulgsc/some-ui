@@ -39,6 +39,10 @@ export const SHEET = {
 export const KEPT_NOTE =
   "Practice's finished sessions and kept items go to home on their own while Practice is open. To stop, tap the mark at the top of Practice."
 
+/** The box was ticked, but this phone could not keep the choice. */
+export const KEEP_SENDING_REFUSED =
+  "This phone couldn't keep that choice, so this send is once only."
+
 /** What a person agreed to when they ticked the box, as stored with it. */
 export const KEEP_SENDING_SAID = `${KEEP_SENDING}. ${KEEP_SENDING_MORE}`
 
@@ -47,9 +51,12 @@ export type Shape = "phone" | "partly" | "kept" | "waiting" | "trouble"
 
 export type PracticeFacts = {
   shared: Shared
-  /** How many of each this phone knows home holds. */
-  held: { readonly sessions: number; readonly shelf: number }
-  paired: boolean
+  /** How many of each this phone knows home holds, and kept items it refused. */
+  held: {
+    readonly sessions: number
+    readonly shelf: number
+    readonly refused: number
+  }
   /** Sessions home does not hold as they are now. */
   waiting: number
   run: KeptState
@@ -95,7 +102,11 @@ export function practiceView(
       "session",
       day
     ),
-    shelf: rowOf(facts.shared.get("shelf"), facts.held.shelf, "kept item", day),
+    shelf:
+      rowOf(facts.shared.get("shelf"), facts.held.shelf, "kept item", day) +
+      (facts.held.refused > 0
+        ? ` · ${counted(facts.held.refused, "kept item")} home didn't take`
+        : ""),
   }
   const show = (shape: Shape, word: string, line: string): PracticeView => ({
     shape,
@@ -122,13 +133,6 @@ export function practiceView(
     facts.waiting > 0
       ? ` ${waits(facts.waiting)} on this phone and go next time.`
       : ""
-  if (!facts.paired) {
-    return show(
-      "trouble",
-      "Not paired",
-      `Kept on home, but this phone isn't paired with it.${later}`
-    )
-  }
   if (facts.run.running) return show("waiting", "Sending", "Sending to home.")
 
   const last = facts.run.last

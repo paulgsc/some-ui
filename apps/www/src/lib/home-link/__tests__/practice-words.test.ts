@@ -45,14 +45,11 @@ function every(): Array<PracticeFacts> {
   const facts: Array<PracticeFacts> = []
   for (const shared of [NONE, KEPT, ONLY_SESSIONS]) {
     for (const held of [
-      { sessions: 0, shelf: 0 },
-      { sessions: 3, shelf: 1 },
+      { sessions: 0, shelf: 0, refused: 0 },
+      { sessions: 3, shelf: 1, refused: 2 },
     ]) {
-      for (const paired of [true, false]) {
-        for (const waiting of [0, 1, 4]) {
-          for (const run of runs)
-            facts.push({ shared, held, paired, waiting, run })
-        }
+      for (const waiting of [0, 1, 4]) {
+        for (const run of runs) facts.push({ shared, held, waiting, run })
       }
     }
   }
@@ -80,7 +77,7 @@ describe("Practice's sharing words", () => {
     const named = [...said, ...fixed].filter((text) => MACHINERY.test(text))
     expect(fixed.length).toBeGreaterThan(3)
     expect(named).toEqual([])
-    // Still finds what it is meant to: today's Settings lines would fail it.
+    // The pattern is not vacuous: each of these must match.
     for (const old of [
       "Last sync: 10:42",
       "home answered 429",
@@ -94,8 +91,7 @@ describe("Practice's sharing words", () => {
     const view = practiceView(
       {
         shared: NONE,
-        held: { sessions: 0, shelf: 0 },
-        paired: true,
+        held: { sessions: 0, shelf: 0, refused: 0 },
         waiting: 2,
         run: INITIAL_KEPT,
       },
@@ -109,8 +105,7 @@ describe("Practice's sharing words", () => {
     const view = practiceView(
       {
         shared: NONE,
-        held: { sessions: 3, shelf: 0 },
-        paired: true,
+        held: { sessions: 3, shelf: 0, refused: 0 },
         waiting: 0,
         run: INITIAL_KEPT,
       },
@@ -126,8 +121,7 @@ describe("Practice's sharing words", () => {
     const view = practiceView(
       {
         shared: KEPT,
-        held: { sessions: 3, shelf: 1 },
-        paired: true,
+        held: { sessions: 3, shelf: 1, refused: 2 },
         waiting: 0,
         run: { ...INITIAL_KEPT, last: { kind: "synced", at: 1 } },
       },
@@ -137,14 +131,16 @@ describe("Practice's sharing words", () => {
     expect(view.rows.sessions).toBe(
       "Kept on home since 18 Oct · 3 sessions there"
     )
+    expect(view.rows.shelf).toBe(
+      "Kept on home since 18 Oct · 1 kept item there · 2 kept items home didn't take"
+    )
   })
 
   it("says home was busy, with what waits", () => {
     const view = practiceView(
       {
         shared: KEPT,
-        held: { sessions: 3, shelf: 1 },
-        paired: true,
+        held: { sessions: 3, shelf: 1, refused: 2 },
         waiting: 2,
         run: { ...INITIAL_KEPT, last: { kind: "failed", why: "busy" } },
       },

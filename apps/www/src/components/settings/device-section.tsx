@@ -23,14 +23,11 @@ import {
   typedCode,
   useHomeLink,
 } from "@/lib/home-link"
-import { sharedNow } from "@/lib/home-link/consent-model"
-import {
-  keepPracticeOnHome,
-  usePracticeConsent,
-} from "@/lib/home-link/practice"
+import { keepPracticeOnHome, usePracticeShared } from "@/lib/home-link/practice"
 import {
   KEEP_SENDING,
   KEEP_SENDING_MORE,
+  KEEP_SENDING_REFUSED,
   KEEP_SENDING_SAID,
   KEPT_NOTE,
 } from "@/lib/home-link/practice-words"
@@ -218,7 +215,7 @@ const SendHome = ({
   useIntentEffect(run, say)
   const asking = count.state.status === "succeeded" ? count.state.value : null
   const last = lastSend()
-  const kept = sharedNow(usePracticeConsent()).size > 0
+  const kept = usePracticeShared().size > 0
   const [keepSending, setKeepSending] = useState(false)
   const ask = (): void => {
     setKeepSending(false)
@@ -288,10 +285,11 @@ const SendHome = ({
               state={run.state}
               onPress={() => {
                 count.reset()
-                if (keepSending && !keepPracticeOnHome(KEEP_SENDING_SAID)) {
-                  toast.error(
-                    "This phone couldn't keep that choice, so this send is once only."
-                  )
+                if (
+                  keepSending &&
+                  !keepPracticeOnHome(base, KEEP_SENDING_SAID)
+                ) {
+                  toast.error(KEEP_SENDING_REFUSED)
                 }
                 run.start(undefined)
               }}
