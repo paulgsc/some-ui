@@ -174,7 +174,7 @@ export const NOTHING_TO_SEND = {
 
 /** Settings' send, once Practice is kept on home. */
 export const KEPT_NOTE =
-  "Practice's finished sessions and kept items go to home on their own while Practice is open. To stop, tap the mark at the top of Practice."
+  "Practice's finished sessions and kept items go to home on their own while Practice is open. To stop, tap the mark at the top of Practice, or Stop sending below."
 
 /** The box was ticked, but this phone could not keep the choice. */
 export const KEEP_SENDING_REFUSED =
@@ -186,7 +186,7 @@ export const KEEP_SENDING_SAID = `${KEEP_SENDING}. ${KEEP_SENDING_MORE}`
 /** Settings' ledger: what this phone shares with home, and every choice. */
 export const LEDGER = {
   title: "What this phone shares",
-  lead: "Sharing goes one way: what home has, it keeps. Stopping only means nothing new goes.",
+  lead: "What home has, it keeps: stopping never erases it there.",
   names: {
     practice: "Practice",
     aph: "aph",
@@ -198,17 +198,23 @@ export const LEDGER = {
   neverTitle: "Never shared",
   never: [
     {
-      label: "Lessons, dramas and rounds",
+      label: "Lessons, dramas and rounds home publishes",
       text: "Come from home when you ask for them. Nothing goes the other way.",
     },
     {
       label: "Reflections, voice takes and soundbites",
       text: "Never go to home. You can share them yourself, to Drive.",
     },
-    { label: "Settings and profile", text: "Stay on this phone." },
+    {
+      label: "This app's settings and your profile",
+      text: "Stay on this phone.",
+    },
   ],
   historyTitle: "Every choice",
-  noHistory: "No choice made yet: everything is only on this phone.",
+  noHistory: "No choice to keep sending made yet.",
+  /** A record whose choice an earlier pairing made, which only its own screens know. */
+  unsure: (name: string): string =>
+    `This phone was paired before it kept its choices. Open ${name} to see where it is kept.`,
 } as const
 
 const LANE_OF: Readonly<Record<Scope, LaneId>> = {
@@ -222,9 +228,16 @@ const LANE_OF: Readonly<Record<Scope, LaneId>> = {
 export type HistoryLine = {
   /** Its place in the log, and the lane: unique, and never reused. */
   readonly key: string
-  readonly day: string
   readonly text: string
 }
+
+/** A day the history may be read years after. */
+const fullDay = (t: number): string =>
+  new Date(t).toLocaleDateString(undefined, {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  })
 
 /**
  * Every choice in `log`, newest first: each lane it named, and whether
@@ -234,7 +247,7 @@ export type HistoryLine = {
 export function historyLines(
   log: ConsentLog,
   pairing: string | null,
-  day: (t: number) => string = shortDay
+  day: (t: number) => string = fullDay
 ): Array<HistoryLine> {
   return [...log].reverse().flatMap((event) => {
     const lanes = [...new Set(event.scopes.map((scope) => LANE_OF[scope]))]
@@ -250,8 +263,7 @@ export function historyLines(
             : `kept on home${elsewhere}.`
       return {
         key: `${event.seq}-${lane}`,
-        day: day(event.at),
-        text: `${name}: ${what}`,
+        text: `${day(event.at)} · ${name}: ${what}`,
       }
     })
   })

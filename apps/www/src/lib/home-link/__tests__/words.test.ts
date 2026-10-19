@@ -250,7 +250,7 @@ describe("the ledger's history", () => {
 
   it("says every choice, newest first, once per record, in the person's terms", () => {
     const lines = historyLines(log, "now", (t) => `day ${String(t)}`)
-    expect(lines.map((line) => `${line.day} · ${line.text}`)).toEqual([
+    expect(lines.map((line) => line.text)).toEqual([
       "day 3 · The Jobs record: stopped sending to home. Home keeps what it has.",
       "day 2 · Practice: kept on home.",
       "day 1 · aph: kept on home, under an earlier pairing, as chosen before this phone kept its choices.",

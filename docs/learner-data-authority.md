@@ -415,7 +415,7 @@ declared (checked by reading every call site and by the tests named).
   asked about stay) and
   `components/settings/__tests__/device-section.test.tsx` (opening Settings,
   paired or not, sends nothing; unpairing and the send each take a second
-  press). Held again when the marks of the records kept on home
+  press), with `device-sharing-ledger.test.tsx` for the ledger it mounts. Held again when the marks of the records kept on home
   (`components/device-home-glyph.tsx`, one wiring in
   `lib/home-link/lanes.ts`) joined the link's callers: the mark calls none
   of `pair`, `unpair`, `sync`, `send` or `stop`, and reaches home only
@@ -510,7 +510,8 @@ when a run is asked for:
   shows, or shows a lane under another wing's mark; a hunk to
   `components/settings/device-sharing-ledger.tsx` that calls `stopOnHome` other than
   from its second Stop press's `onClick`, calls it for aph's lane, or calls
-  `askLane`, `keepOnHome`, `bringLaneBack`, `useLaneHome` or `watchKept`; a
+  `askLane`, `askKept`, `keepOnHome`, `bringLaneBack`, `useLaneHome`,
+  `watchKept` or `phoneConsent().choose`; a
   hunk that mounts
   `DeviceHomeGlyph` anywhere but `routes/_dashboard.tsx`'s header in the
   device build, or `DeviceAphLane` anywhere but

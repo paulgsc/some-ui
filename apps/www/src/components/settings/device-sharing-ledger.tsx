@@ -10,10 +10,12 @@
  * instead of offering it here.
  */
 import type { JSX } from "react"
-import { useState, useSyncExternalStore } from "react"
+import { useEffect, useRef, useState, useSyncExternalStore } from "react"
 import { Button, Label } from "@some-ui/shared"
 
 import { useHomeLink } from "@/lib/home-link"
+import type { Scope } from "@/lib/home-link/consent-model"
+import { everChosen } from "@/lib/home-link/consent-model"
 import { phoneConsent } from "@/lib/home-link/consent-runtime"
 import { jobsLane } from "@/lib/home-link/jobs"
 import { INITIAL_KEPT } from "@/lib/home-link/kept-model"
@@ -44,15 +46,26 @@ const Row = ({
   id,
   counts,
   lane,
+  unsure,
 }: {
   id: LaneId
   counts: LaneCounts
   /** The lane to stop here, or `null` where it stops elsewhere (aph). */
   lane: Lane | null
+  /**
+   * Its choice may have been made before this phone kept its choices
+   * (`lanes.ts`'s `enterEarlier`), which only its own screens enter.
+   */
+  unsure: boolean
 }): JSX.Element => {
   const { shared, stopped } = useLaneChoices(lane ?? APH_SCOPES)
   const [confirming, setConfirming] = useState(false)
   const [refused, setRefused] = useState(false)
+  const question = useRef<HTMLParagraphElement>(null)
+  useEffect(() => {
+    // The pressed button is gone: the question takes its focus.
+    if (confirming) question.current?.focus()
+  }, [confirming])
   const words = WORDS[id]
   const view = laneView(words, {
     ...counts,
@@ -66,13 +79,19 @@ const Row = ({
   return (
     <li className="space-y-2 py-3">
       <p className="text-sm font-medium">{LEDGER.names[id]}</p>
-      <ul className="space-y-0.5">
-        {view.rows.map((row) => (
-          <li key={row.label} className="text-muted-foreground text-xs">
-            {row.label}: {row.text}
-          </li>
-        ))}
-      </ul>
+      {unsure ? (
+        <p className="text-muted-foreground text-xs">
+          {LEDGER.unsure(LEDGER.names[id])}
+        </p>
+      ) : (
+        <ul className="space-y-0.5">
+          {view.rows.map((row) => (
+            <li key={row.label} className="text-muted-foreground text-xs">
+              {row.label}: {row.text}
+            </li>
+          ))}
+        </ul>
+      )}
       {refused ? (
         <p className="text-destructive text-xs" role="status">
           {SHEET.stopRefused}
@@ -82,7 +101,9 @@ const Row = ({
         <p className="text-muted-foreground text-xs">{LEDGER.stopInAph}</p>
       ) : confirming ? (
         <div className="space-y-2 rounded-md border p-3">
-          <p className="text-sm">{words.stopQuestion}</p>
+          <p ref={question} tabIndex={-1} className="text-sm">
+            {words.stopQuestion}
+          </p>
           <p className="text-muted-foreground text-xs">{words.stopMore}</p>
           <div className="flex flex-wrap gap-2">
             <Button
@@ -124,18 +145,32 @@ const Row = ({
 }
 
 const PracticeRow = (): JSX.Element => (
-  <Row id="practice" counts={practiceLane.useCounts()} lane={practiceLane} />
+  <Row
+    id="practice"
+    counts={practiceLane.useCounts()}
+    lane={practiceLane}
+    unsure={false}
+  />
 )
 
-const JobsRow = (): JSX.Element => (
-  <Row id="jobs" counts={jobsLane.useCounts()} lane={jobsLane} />
+const JobsRow = ({ unsure }: { unsure: boolean }): JSX.Element => (
+  <Row
+    id="jobs"
+    counts={jobsLane.useCounts()}
+    lane={jobsLane}
+    unsure={unsure && jobsLane.keptBefore?.() === true}
+  />
 )
 
 export const SharingLedger = (): JSX.Element => {
   const consent = phoneConsent()
   const log = useSyncExternalStore(consent.subscribe, consent.getSnapshot)
-  const pairing = pairingOf(useHomeLink())
+  const link = useHomeLink()
+  const pairing = pairingOf(link)
   const history = historyLines(log, pairing)
+  /** Paired by an earlier build, and `scope` never in the log. */
+  const unlogged = (scope: Scope): boolean =>
+    link.link.kind === "paired" && link.link.earlier && !everChosen(log, scope)
   return (
     <section className="space-y-3" aria-labelledby="ledger-heading">
       <div className="space-y-1">
@@ -144,8 +179,8 @@ export const SharingLedger = (): JSX.Element => {
       </div>
       <ul className="divide-y rounded-md border px-3">
         <PracticeRow />
-        <Row id="aph" counts={NO_COUNTS} lane={null} />
-        <JobsRow />
+        <Row id="aph" counts={NO_COUNTS} lane={null} unsure={unlogged("aph")} />
+        <JobsRow unsure={unlogged("jobs")} />
       </ul>
       <div className="space-y-1">
         <p className="text-sm font-medium">{LEDGER.neverTitle}</p>
@@ -165,7 +200,7 @@ export const SharingLedger = (): JSX.Element => {
           <ol className="space-y-0.5">
             {history.map((line) => (
               <li key={line.key} className="text-muted-foreground text-xs">
-                {line.day} · {line.text}
+                {line.text}
               </li>
             ))}
           </ol>

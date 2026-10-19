@@ -14,7 +14,10 @@ import type { SessionRecord } from "@/lib/tenant/types"
 
 const PAIRING = "https://home.example/api/v1"
 
-const home = vi.hoisted((): { sent: Array<unknown> } => ({ sent: [] }))
+const home = vi.hoisted((): { sent: Array<unknown>; earlier: boolean } => ({
+  sent: [],
+  earlier: false,
+}))
 
 vi.mock("@/lib/device-backend/native-http", () => ({
   homeRequest: (call: unknown): Promise<never> => {
@@ -26,7 +29,11 @@ vi.mock("@/lib/home-link/credential", () => ({
   nativeCredential: {
     read: (): Promise<{ record: string; lost: boolean }> =>
       Promise.resolve({
-        record: JSON.stringify({ base: PAIRING, token: "t" }),
+        record: JSON.stringify({
+          base: PAIRING,
+          token: "t",
+          ...(home.earlier ? {} : { choicesLogged: true }),
+        }),
         lost: false,
       }),
   },
@@ -54,6 +61,7 @@ afterEach(() => {
   vi.resetModules()
   localStorage.clear()
   home.sent = []
+  home.earlier = false
 })
 
 function logged(
@@ -85,7 +93,7 @@ describe("the sharing ledger", () => {
   it("says everything is only on this phone, and sends nothing", async () => {
     await mount()
     expect(screen.getAllByText(/: Only on this phone$/)).toHaveLength(4)
-    expect(screen.getByText(/No choice made yet/)).toBeTruthy()
+    expect(screen.getByText(/No choice to keep sending made yet/)).toBeTruthy()
     expect(screen.queryByRole("button")).toBeNull()
     expect(home.sent).toEqual([])
   })
@@ -97,6 +105,10 @@ describe("the sharing ledger", () => {
       screen.getByText(/^Finished sessions: Kept on home since/)
     ).toBeTruthy()
     fireEvent.click(screen.getByRole("button", { name: "Stop sending..." }))
+    expect(JSON.parse(localStorage.getItem(CONSENT_KEY) ?? "[]")).toHaveLength(
+      1
+    )
+    expect(document.activeElement?.textContent).toMatch(/^Stop sending/)
     fireEvent.click(screen.getByRole("button", { name: "Stop sending" }))
     const log: unknown = JSON.parse(localStorage.getItem(CONSENT_KEY) ?? "[]")
     expect(log).toMatchObject([{ kind: "kept" }, { kind: "stopped" }])
@@ -108,6 +120,26 @@ describe("the sharing ledger", () => {
     ).toBeTruthy()
     expect(screen.getByText(/Practice: kept on home\.$/)).toBeTruthy()
     expect(home.sent).toEqual([])
+  })
+
+  it("keeps sending when the second press is not made", async () => {
+    logged({ kind: "kept", scopes: ["jobs"] })
+    await mount()
+    fireEvent.click(screen.getByRole("button", { name: "Stop sending..." }))
+    fireEvent.click(screen.getByRole("button", { name: "Keep sending" }))
+    expect(JSON.parse(localStorage.getItem(CONSENT_KEY) ?? "[]")).toHaveLength(
+      1
+    )
+    expect(screen.getByText(/^The record: Kept on home since/)).toBeTruthy()
+  })
+
+  it("claims nothing for aph under a pairing made before choices were kept", async () => {
+    home.earlier = true
+    await mount()
+    expect(
+      screen.getByText(/paired before it kept its choices\. Open aph/)
+    ).toBeTruthy()
+    expect(screen.getAllByText(/: Only on this phone$/)).toHaveLength(3)
   })
 
   it("sends aph's stop to aph's own mark", async () => {
