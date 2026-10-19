@@ -32,6 +32,7 @@ import { createInMemoryStorage } from "@/lib/tenant/storage"
 import type { SessionRecord } from "@/lib/tenant/types"
 
 const BASE = "https://home.example/api/v1"
+const PAIRED = { base: BASE, id: "pairing-1" }
 
 /**
  * What the copy from Settings reaches through module state: the link (its
@@ -247,7 +248,7 @@ describe("letting the phone's copies go once home holds them", () => {
     ]
     let refreshed = 0
     const result = await sendHome(
-      BASE,
+      PAIRED,
       (): void => {
         refreshed += 1
       },
@@ -271,14 +272,14 @@ describe("letting the phone's copies go once home holds them", () => {
   it("brings home's copy up to date when a session moved on, then lets it go", async () => {
     // Copied while it was only planned, and finished on the phone since.
     phone.sessions = [onPhone("a", "scheduled")]
-    await sendHome(BASE, () => undefined, NOW)
+    await sendHome(PAIRED, () => undefined, NOW)
     expect(phone.sessions.map((s) => s.id)).toEqual(["a"])
 
     phone.sessions = [
       { ...onPhone("a", "completed"), updatedAt: "2026-10-14T09:10:00.000Z" },
     ]
     sent = []
-    const result = await sendHome(BASE, () => undefined, NOW)
+    const result = await sendHome(PAIRED, () => undefined, NOW)
     expect(result.line).toBe("Copied 1 session. Cleared 1 from this phone.")
     expect(sent.filter((call) => call.startsWith("POST "))).toEqual([])
     expect(phone.sessions).toEqual([])
@@ -300,7 +301,7 @@ describe("letting the phone's copies go once home holds them", () => {
         updatedAt: "2026-10-14T12:00:00.000Z",
       },
     ]
-    await sendHome(BASE, () => undefined, NOW)
+    await sendHome(PAIRED, () => undefined, NOW)
     expect(phone.sessions).toEqual([])
     const there = await createHttpSessionsRepository(homeTransport(send)).list()
     expect(there.map((s) => s.name)).toEqual(["Renamed"])
@@ -312,7 +313,7 @@ describe("letting the phone's copies go once home holds them", () => {
       method === "GET" && path !== "/sessions"
         ? Promise.reject(new SyncStoppedError())
         : send(method, path, body)
-    const result = await sendHome(BASE, () => undefined, NOW)
+    const result = await sendHome(PAIRED, () => undefined, NOW)
     expect(result.ok).toBe(false)
     expect(phone.sessions.map((s) => s.id)).toEqual(["a"])
   })

@@ -16,30 +16,35 @@ import {
 import { CONSENT_KEY, createConsent } from "@/lib/home-link/consent-runtime"
 
 const SAID = "Keep sending these to home from now on."
-const HOME = "https://home.example/api/v1"
+const PAIRING = "pairing-1"
 
 describe("the consent log", () => {
   const kept = appended(
     [],
-    { kind: "kept", home: HOME, scopes: ["sessions", "shelf"], said: SAID },
+    {
+      kind: "kept",
+      pairing: PAIRING,
+      scopes: ["sessions", "shelf"],
+      said: SAID,
+    },
     100
   )
   const stopped = appended(
     kept,
-    { kind: "stopped", home: HOME, scopes: ["shelf"] },
+    { kind: "stopped", pairing: PAIRING, scopes: ["shelf"] },
     200
   )
 
   it("answers what was shared at any time from the same events", () => {
-    expect([...sharedAt(stopped, 50, HOME).keys()]).toEqual([])
-    expect([...sharedAt(stopped, 150, HOME).entries()]).toEqual([
+    expect([...sharedAt(stopped, 50, PAIRING).keys()]).toEqual([])
+    expect([...sharedAt(stopped, 150, PAIRING).entries()]).toEqual([
       ["sessions", { since: 100 }],
       ["shelf", { since: 100 }],
     ])
-    expect([...sharedAt(stopped, 250, HOME).entries()]).toEqual([
+    expect([...sharedAt(stopped, 250, PAIRING).entries()]).toEqual([
       ["sessions", { since: 100 }],
     ])
-    expect([...sharedNow(stopped, HOME).keys()]).toEqual(["sessions"])
+    expect([...sharedNow(stopped, PAIRING).keys()]).toEqual(["sessions"])
   })
 
   it("only appends, keeping every earlier event as it was", () => {
@@ -52,16 +57,25 @@ describe("the consent log", () => {
     expect(
       appended(
         kept,
-        { kind: "kept", home: HOME, scopes: ["sessions"], said: SAID },
+        { kind: "kept", pairing: PAIRING, scopes: ["sessions"], said: SAID },
         300
       )
     ).toBe(kept)
     expect(
-      appended([], { kind: "stopped", home: HOME, scopes: ["sessions"] }, 300)
+      appended(
+        [],
+        { kind: "stopped", pairing: PAIRING, scopes: ["sessions"] },
+        300
+      )
     ).toEqual([])
     const again = appended(
       stopped,
-      { kind: "kept", home: HOME, scopes: ["sessions", "shelf"], said: SAID },
+      {
+        kind: "kept",
+        pairing: PAIRING,
+        scopes: ["sessions", "shelf"],
+        said: SAID,
+      },
       300
     )
     expect(again.at(-1)).toMatchObject({ seq: 3, scopes: ["shelf"] })
@@ -70,14 +84,14 @@ describe("the consent log", () => {
   it("keeps a new since once a stopped scope is kept again", () => {
     const back = appended(
       stopped,
-      { kind: "kept", home: HOME, scopes: ["shelf"], said: SAID },
+      { kind: "kept", pairing: PAIRING, scopes: ["shelf"], said: SAID },
       400
     )
-    expect(sharedNow(back, HOME).get("shelf")).toEqual({ since: 400 })
+    expect(sharedNow(back, PAIRING).get("shelf")).toEqual({ since: 400 })
   })
 
-  it("counts a choice for the home it was made for alone", () => {
-    expect(sharedNow(stopped, "https://other.example/api/v1").size).toBe(0)
+  it("counts a choice for the pairing it was made under alone", () => {
+    expect(sharedNow(stopped, "pairing-2").size).toBe(0)
     expect(sharedNow(stopped, null).size).toBe(0)
   })
 
@@ -91,7 +105,7 @@ describe("the consent log", () => {
           {
             seq: 1,
             at: 1,
-            home: HOME,
+            pairing: PAIRING,
             kind: "kept",
             scopes: ["reflections"],
             said: "",
@@ -113,7 +127,7 @@ describe("the log on this phone", () => {
     expect(
       consent.choose({
         kind: "kept",
-        home: HOME,
+        pairing: PAIRING,
         scopes: ["sessions"],
         said: SAID,
       })
@@ -128,7 +142,7 @@ describe("the log on this phone", () => {
     expect(
       consent.choose({
         kind: "kept",
-        home: HOME,
+        pairing: PAIRING,
         scopes: ["sessions"],
         said: SAID,
       })
@@ -142,7 +156,7 @@ describe("the log on this phone", () => {
     expect(
       consent.choose({
         kind: "kept",
-        home: HOME,
+        pairing: PAIRING,
         scopes: ["sessions"],
         said: SAID,
       })

@@ -33,29 +33,29 @@ import { sendStanding } from "./standing"
 
 let home: Kept | null = null
 
-/** The base of the home this phone is paired with, or `null`. */
-function pairedBase(
+/** The id of the pairing this phone holds, or `null`. */
+function pairingOf(
   state: HomeLinkState = homeLink().getSnapshot()
 ): string | null {
-  return state.link.kind === "paired" ? state.link.base : null
+  return state.link.kind === "paired" ? state.link.id : null
 }
 
 /** What its person keeps sending to the paired home, as the log says now. */
 function sharedWithPaired(): Shared {
-  return sharedNow(phoneConsent().getSnapshot(), pairedBase())
+  return sharedNow(phoneConsent().getSnapshot(), pairingOf())
 }
 
 /** One runtime per page load. */
 function practiceHome(): Kept {
   home ??= createKept({
     exchange: (send) => {
-      const base = pairedBase()
-      if (base === null) return Promise.resolve({ kind: "synced" } as const)
+      const pairing = pairingOf()
+      if (pairing === null) return Promise.resolve({ kind: "synced" } as const)
       return sendStanding(send, {
         read: readPhone,
         shared: () =>
-          new Set(sharedNow(phoneConsent().getSnapshot(), base).keys()),
-        home: base,
+          new Set(sharedNow(phoneConsent().getSnapshot(), pairing).keys()),
+        pairing,
         storage: localStorageOrNull(),
       })
     },
@@ -108,13 +108,13 @@ export function usePracticeHome(): KeptState {
 export function usePracticeShared(): Shared {
   const consent = phoneConsent()
   const log = useSyncExternalStore(consent.subscribe, consent.getSnapshot)
-  return sharedNow(log, pairedBase(useHomeLink()))
+  return sharedNow(log, pairingOf(useHomeLink()))
 }
 
 /** What this phone knows the paired home holds; nothing when unpaired. */
 export function heldByHome(link: HomeLinkState): Sent | null {
-  const base = pairedBase(link)
-  return base === null ? null : readSent(localStorageOrNull(), base)
+  const pairing = pairingOf(link)
+  return pairing === null ? null : readSent(localStorageOrNull(), pairing)
 }
 
 /** Of `sessions`, how many finished ones the paired home does not hold as they are. */
@@ -127,19 +127,19 @@ export function sessionsWaiting(
 }
 
 /**
- * The send confirm's box, ticked and sent: Practice is kept on `home` from
+ * The send confirm's box, ticked and sent: Practice is kept on home under `pairing` from
  * now on, with `said` as the words agreed to. False when the phone would not
  * keep the choice.
  */
-export function keepPracticeOnHome(home: string, said: string): boolean {
-  return phoneConsent().choose({ kind: "kept", home, scopes: SCOPES, said })
+export function keepPracticeOnHome(pairing: string, said: string): boolean {
+  return phoneConsent().choose({ kind: "kept", pairing, scopes: SCOPES, said })
 }
 
 /** "Stop sending": nothing new goes to the paired home; it keeps what it has. */
 export function stopPracticeOnHome(): boolean {
-  const home = pairedBase()
-  if (home === null) return false
-  return phoneConsent().choose({ kind: "stopped", home, scopes: SCOPES })
+  const pairing = pairingOf()
+  if (pairing === null) return false
+  return phoneConsent().choose({ kind: "stopped", pairing, scopes: SCOPES })
 }
 
 /** "Send now": asks for a run, as any moment the watch names would. */

@@ -3,8 +3,8 @@
  * (`./standing`, LA11) carries only what changed since: each finished
  * session's `updatedAt` as it was copied, each kept shelf item's digest as
  * home answered for it, and the digests home refused, so an unchanged
- * refused item is not offered again. Kept for one home (`home`, the
- * pairing's base): another pairing starts from nothing. Bookkeeping, not
+ * refused item is not offered again. Kept for one pairing (`pairing`, the
+ * link's id for it): another pairing starts from nothing. Bookkeeping, not
  * the record: lost, it only means sending again, which home answers as
  * unchanged.
  */
@@ -15,7 +15,7 @@ import type { SessionRecord } from "@/lib/tenant/types"
 export const SENT_KEY = "some-ui.home.sent.v1"
 
 export type Sent = {
-  readonly home: string
+  readonly pairing: string
   readonly sessions: Readonly<Record<string, string>>
   readonly shelf: Readonly<Record<string, string>>
   readonly refused: Readonly<Record<string, string>>
@@ -23,8 +23,8 @@ export type Sent = {
 
 type Store = Pick<Storage, "getItem" | "setItem"> | null
 
-const emptyFor = (home: string): Sent => ({
-  home,
+const emptyFor = (pairing: string): Sent => ({
+  pairing,
   sessions: {},
   shelf: {},
   refused: {},
@@ -39,36 +39,52 @@ function stringsOf(value: unknown): Record<string, string> {
   )
 }
 
-/** What this phone knows `home` holds; nothing, for any other home. */
-export function readSent(storage: Store, home: string): Sent {
+/** What this phone knows home holds under `pairing`; nothing, for another. */
+export function readSent(storage: Store, pairing: string): Sent {
   try {
     const text = storage?.getItem(SENT_KEY) ?? null
-    if (text === null) return emptyFor(home)
+    if (text === null) return emptyFor(pairing)
     const parsed: unknown = JSON.parse(text)
-    if (!isRecord(parsed) || parsed.home !== home) return emptyFor(home)
+    if (!isRecord(parsed) || parsed.pairing !== pairing) {
+      return emptyFor(pairing)
+    }
     const { sessions, shelf, refused } = parsed
     return {
-      home,
+      pairing,
       sessions: stringsOf(sessions),
       shelf: stringsOf(shelf),
       refused: stringsOf(refused),
     }
   } catch {
-    return emptyFor(home)
+    return emptyFor(pairing)
   }
 }
 
-/** `sent` with what home now holds added; unwritten, the next send repeats it. */
+/** `record` without the keys `answered` holds. */
+function without(
+  record: Readonly<Record<string, string>>,
+  answered: Readonly<Record<string, string>> | undefined
+): Record<string, string> {
+  return Object.fromEntries(
+    Object.entries(record).filter(([key]) => answered?.[key] === undefined)
+  )
+}
+
+/**
+ * `sent` with what home now holds added; unwritten, the next send repeats
+ * it. A kept item is held or refused, never both: home's latest answer for
+ * it replaces the other.
+ */
 export function rememberSent(
   storage: Store,
   sent: Sent,
-  more: Partial<Omit<Sent, "home">>
+  more: Partial<Omit<Sent, "pairing">>
 ): Sent {
   const next: Sent = {
-    home: sent.home,
+    pairing: sent.pairing,
     sessions: { ...sent.sessions, ...more.sessions },
-    shelf: { ...sent.shelf, ...more.shelf },
-    refused: { ...sent.refused, ...more.refused },
+    shelf: { ...without(sent.shelf, more.refused), ...more.shelf },
+    refused: { ...without(sent.refused, more.shelf), ...more.refused },
   }
   try {
     storage?.setItem(SENT_KEY, JSON.stringify(next))

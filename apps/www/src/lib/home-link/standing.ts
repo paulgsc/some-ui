@@ -39,10 +39,10 @@ export type StandingPorts = {
     local: ReadonlyArray<SessionRecord>
     kept: ReadonlyArray<Kept>
   }>
-  /** What its person keeps sending to `home`, read before every request. */
+  /** What its person keeps sending under `pairing`, read before every request. */
   shared: () => ReadonlySet<Scope>
-  /** The paired home this send goes to (its base). */
-  home: string
+  /** The pairing this send goes under (the link's id for it). */
+  pairing: string
   storage: Pick<Storage, "getItem" | "setItem"> | null
   /** The sessions copy (`./sessions`'s `copyHome`); a seam for tests. */
   copy?: (
@@ -87,7 +87,7 @@ export async function sendStanding(
         ? watched(method, path, body)
         : Promise.reject(new SyncStoppedError())
   const { local, kept } = await ports.read()
-  let sent: Sent = readSent(ports.storage, ports.home)
+  let sent: Sent = readSent(ports.storage, ports.pairing)
 
   if (ports.shared().has("sessions")) {
     const changed = sessionsToSend(local, sent)

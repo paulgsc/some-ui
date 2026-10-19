@@ -38,6 +38,11 @@ type Link =
   | {
       readonly kind: "paired"
       readonly base: string
+      /**
+       * This pairing's own id, made when it was paired: what a choice to
+       * keep sending is for (LA11), so a new pairing starts from nothing.
+       */
+      readonly id: string
       /** The last Unpair could not forget the key on the phone. */
       readonly notForgotten: boolean
     }
@@ -69,10 +74,14 @@ export type HomeLinkState = {
 export type HomeLinkEvent =
   | {
       readonly type: "read"
-      readonly found: { readonly base: string } | "lost" | "unreadable" | null
+      readonly found:
+        | { readonly base: string; readonly id: string }
+        | "lost"
+        | "unreadable"
+        | null
     }
   | { readonly type: "pairPressed"; readonly base: string }
-  | { readonly type: "paired"; readonly base: string }
+  | { readonly type: "paired"; readonly base: string; readonly id: string }
   | { readonly type: "pairFailed"; readonly failure: PairFailure }
   | { readonly type: "unpairPressed" }
   | { readonly type: "unpaired"; readonly told: boolean }
@@ -119,7 +128,12 @@ export function step(
             ? { kind: "unpaired", note: null }
             : typeof found === "string"
               ? { kind: "unpaired", note: found }
-              : { kind: "paired", base: found.base, notForgotten: false },
+              : {
+                  kind: "paired",
+                  base: found.base,
+                  id: found.id,
+                  notForgotten: false,
+                },
       }
     }
     case "pairPressed": {
@@ -134,7 +148,12 @@ export function step(
       if (activity.kind !== "pairing" || activity.base !== event.base)
         return state
       return {
-        link: { kind: "paired", base: event.base, notForgotten: false },
+        link: {
+          kind: "paired",
+          base: event.base,
+          id: event.id,
+          notForgotten: false,
+        },
         activity: idle,
         pairFailure: null,
       }

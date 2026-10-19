@@ -123,19 +123,19 @@ export function describeSend(outcome: SendOutcome, host: string): string {
 }
 
 /**
- * What this send left `base` holding, for the standing send (`./standing`)
- * to skip: every session, once the copy ran to its end, and each kept item
- * home answered for, or refused.
+ * What this send left home holding under `pairing`, for the standing send
+ * (`./standing`) to skip: every session, once the copy ran to its end, and
+ * each kept item home answered for, or refused.
  */
 async function rememberHeld(
-  base: string,
+  pairing: string,
   copy: CopyResult | null,
   local: ReadonlyArray<SessionRecord>,
   heard: { held: ReadonlyArray<Kept>; refused: ReadonlyArray<Kept> }
 ): Promise<void> {
   const storage = localStorageOrNull()
   const sessions = copy?.outcome.kind === "copied" ? sessionsHeld(local) : {}
-  rememberSent(storage, readSent(storage, base), {
+  rememberSent(storage, readSent(storage, pairing), {
     sessions,
     shelf: await shelfHeld(heard.held),
     refused: await shelfHeld(heard.refused),
@@ -148,12 +148,12 @@ export function lastSend(): string {
 }
 
 /**
- * Sends this phone's sessions and kept items to the paired `base`, lets go
- * of the finished sessions home confirms it holds, and calls `refresh` once
- * any left. Never throws: a failure is a line.
+ * Sends this phone's sessions and kept items to the paired home at `base`,
+ * lets go of the finished sessions home confirms it holds, and calls
+ * `refresh` once any left. Never throws: a failure is a line.
  */
 export async function sendHome(
-  base: string,
+  { base, id }: { base: string; id: string },
   refresh: () => unknown = () => undefined,
   now = new Date()
 ): Promise<SyncResult> {
@@ -192,7 +192,7 @@ export async function sendHome(
     }
   })
   if (run === null) return { ok: false, line: "" }
-  await rememberHeld(base, ran.copy, local, heard).catch(() => undefined)
+  await rememberHeld(id, ran.copy, local, heard).catch(() => undefined)
 
   let freed = 0
   let freeing = ""

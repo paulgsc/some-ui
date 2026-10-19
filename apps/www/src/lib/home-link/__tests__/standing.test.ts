@@ -18,7 +18,7 @@ import { sendStanding } from "@/lib/home-link/standing"
 import type { CopyResult } from "@/lib/tenant/sessions-copy"
 import type { SessionRecord } from "@/lib/tenant/types"
 
-const HOME = "https://home.example/api/v1"
+const PAIRING = "pairing-1"
 
 const session = (
   id: string,
@@ -66,7 +66,7 @@ function setup(
         kept: KEPT,
       }),
     shared: () => new Set(over.scopes ?? ["sessions", "shelf"]),
-    home: HOME,
+    pairing: PAIRING,
     storage: memoryStorage(),
     copy:
       over.copy ??
@@ -124,7 +124,7 @@ describe("a standing send", () => {
       why: "busy",
     })
     expect(puts).toHaveLength(1)
-    expect(readSent(ports.storage, HOME).shelf).toEqual({})
+    expect(readSent(ports.storage, PAIRING).shelf).toEqual({})
     await sendStanding(send, ports)
     expect(puts).toHaveLength(2)
   })
@@ -141,7 +141,7 @@ describe("a standing send", () => {
       kind: "failed",
       why: "full",
     })
-    expect(Object.keys(readSent(ports.storage, HOME).shelf)).toEqual([
+    expect(Object.keys(readSent(ports.storage, PAIRING).shelf)).toEqual([
       "topik/a",
     ])
   })
@@ -175,6 +175,26 @@ describe("a standing send", () => {
     expect(puts.at(-1)).toBe("/shelf/topik/a")
   })
 
+  it("forgets a refusal once home takes the item", async () => {
+    const { ports, send } = setup({
+      scopes: ["shelf"],
+      answers: [{ status: 422, body: "" }],
+    })
+    await sendStanding(send, ports)
+    expect(Object.keys(readSent(ports.storage, PAIRING).refused)).toEqual([
+      "topik/a",
+    ])
+    ports.read = (): ReturnType<StandingPorts["read"]> =>
+      Promise.resolve({
+        local: [],
+        kept: [{ ...KEPT[0], body: '{"a":2}' }, KEPT[1]],
+      })
+    await sendStanding(send, ports)
+    const sent = readSent(ports.storage, PAIRING)
+    expect(sent.refused).toEqual({})
+    expect(Object.keys(sent.shelf).sort()).toEqual(["leetype/b", "topik/a"])
+  })
+
   it("sends nothing more once its person stops, before the next request", async () => {
     let kept = true
     const { ports, send, puts } = setup({ scopes: ["shelf"] })
@@ -190,10 +210,10 @@ describe("a standing send", () => {
     expect(puts).toEqual(["/shelf/topik/a"])
   })
 
-  it("starts from nothing for another home", async () => {
+  it("starts from nothing under another pairing", async () => {
     const { ports, send, copies } = setup({ scopes: ["sessions"] })
     await sendStanding(send, ports)
-    await sendStanding(send, { ...ports, home: "https://other.example/api/v1" })
+    await sendStanding(send, { ...ports, pairing: "pairing-2" })
     expect(copies).toEqual([
       ["s1", "s2"],
       ["s1", "s2"],

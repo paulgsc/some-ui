@@ -79,9 +79,11 @@ describe("the home link", () => {
       record: JSON.stringify({ base: HOME.base, token: "t" }),
     })
     await paired.link.load()
+    // A pairing kept before pairings had an id is known by its base.
     expect(paired.link.getSnapshot().link).toEqual({
       kind: "paired",
       base: HOME.base,
+      id: HOME.base,
       notForgotten: false,
     })
     expect(paired.sent).toEqual([])
@@ -121,11 +123,23 @@ describe("the home link", () => {
         body: { code: "K7QF2M9X" },
       },
     ])
+    const idOf = (): string | null => {
+      const { link } = home.link.getSnapshot()
+      return link.kind === "paired" ? link.id : null
+    }
+    const first = idOf()
+    expect(first).toEqual(expect.any(String))
     expect(JSON.parse(home.record() ?? "null")).toEqual({
       base: HOME.base,
       token: "phone-token",
+      id: first,
     })
-    expect(home.link.getSnapshot().link.kind).toBe("paired")
+
+    // Paired again to the same address, it is a new pairing.
+    await home.link.unpair()
+    await home.link.pair(HOME, "K7QF2M9X")
+    expect(idOf()).toEqual(expect.any(String))
+    expect(idOf()).not.toBe(first)
   })
 
   it("says why a pairing failed, once, and keeps nothing", async () => {

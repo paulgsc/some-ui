@@ -97,7 +97,7 @@ function keptBefore(): void {
       {
         seq: 1,
         at: 1,
-        home: "https://home.example/api/v1",
+        pairing: "https://home.example/api/v1",
         kind: "kept",
         scopes: ["sessions", "shelf"],
         said: "yes",

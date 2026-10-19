@@ -7,9 +7,9 @@
  * `./consent-runtime` keeps the log on this phone.
  *
  * Sharing is one way: home keeps what it received, so `stopped` means only
- * that nothing new goes. Each choice is for the home the phone was paired
- * with when it was made (`home`, the pairing's base), and counts for that
- * home alone: a new pairing starts with nothing kept.
+ * that nothing new goes. Each choice is for the pairing it was made under
+ * (`pairing`, the link's id for it), and counts for that pairing alone: a
+ * new pairing, even to the same address, starts with nothing kept.
  */
 import { isRecord } from "@/lib/device-backend/common"
 
@@ -17,12 +17,12 @@ import { isRecord } from "@/lib/device-backend/common"
 export const SCOPES = ["sessions", "shelf"] as const
 export type Scope = (typeof SCOPES)[number]
 
-/** One choice, as made: when (this phone's clock), for which home, and what it covered. */
+/** One choice, as made: when (this phone's clock), under which pairing, and what it covered. */
 type ConsentEvent =
   | {
       readonly seq: number
       readonly at: number
-      readonly home: string
+      readonly pairing: string
       readonly kind: "kept"
       readonly scopes: ReadonlyArray<Scope>
       /** The words the person agreed to, exactly as they were shown. */
@@ -31,7 +31,7 @@ type ConsentEvent =
   | {
       readonly seq: number
       readonly at: number
-      readonly home: string
+      readonly pairing: string
       readonly kind: "stopped"
       readonly scopes: ReadonlyArray<Scope>
     }
@@ -42,13 +42,13 @@ export type ConsentLog = ReadonlyArray<ConsentEvent>
 export type Choice =
   | {
       readonly kind: "kept"
-      readonly home: string
+      readonly pairing: string
       readonly scopes: ReadonlyArray<Scope>
       readonly said: string
     }
   | {
       readonly kind: "stopped"
-      readonly home: string
+      readonly pairing: string
       readonly scopes: ReadonlyArray<Scope>
     }
 
@@ -56,14 +56,14 @@ export type Choice =
 export type Shared = ReadonlyMap<Scope, { readonly since: number }>
 
 /**
- * What is kept on `home` at `t`: the log's events for it made by then, in
+ * What is kept under `pairing` at `t`: its events made by then, in
  * `seq` order. `at` is this phone's clock, so it says when, and `seq` says
  * in what order.
  */
-export function sharedAt(log: ConsentLog, t: number, home: string): Shared {
+export function sharedAt(log: ConsentLog, t: number, pairing: string): Shared {
   const shared = new Map<Scope, { since: number }>()
   for (const event of log) {
-    if (event.home !== home || event.at > t) continue
+    if (event.pairing !== pairing || event.at > t) continue
     for (const scope of event.scopes) {
       if (event.kind === "stopped") shared.delete(scope)
       else if (!shared.has(scope)) shared.set(scope, { since: event.at })
@@ -72,10 +72,10 @@ export function sharedAt(log: ConsentLog, t: number, home: string): Shared {
   return shared
 }
 
-/** What is kept on `home` now: its every event, whatever the clock says. */
-export function sharedNow(log: ConsentLog, home: string | null): Shared {
-  if (home === null) return new Map()
-  return sharedAt(log, Number.POSITIVE_INFINITY, home)
+/** What is kept under `pairing` now: its every event, whatever the clock says. */
+export function sharedNow(log: ConsentLog, pairing: string | null): Shared {
+  if (pairing === null) return new Map()
+  return sharedAt(log, Number.POSITIVE_INFINITY, pairing)
 }
 
 /**
@@ -87,7 +87,7 @@ export function appended(
   choice: Choice,
   at: number
 ): ConsentLog {
-  const now = sharedNow(log, choice.home)
+  const now = sharedNow(log, choice.pairing)
   const scopes = choice.scopes.filter((scope) =>
     choice.kind === "kept" ? !now.has(scope) : now.has(scope)
   )
@@ -95,8 +95,15 @@ export function appended(
   const seq = (log.at(-1)?.seq ?? 0) + 1
   const event: ConsentEvent =
     choice.kind === "kept"
-      ? { seq, at, home: choice.home, kind: "kept", scopes, said: choice.said }
-      : { seq, at, home: choice.home, kind: "stopped", scopes }
+      ? {
+          seq,
+          at,
+          pairing: choice.pairing,
+          kind: "kept",
+          scopes,
+          said: choice.said,
+        }
+      : { seq, at, pairing: choice.pairing, kind: "stopped", scopes }
   return [...log, event]
 }
 
@@ -106,14 +113,14 @@ function isScope(value: unknown): value is Scope {
 
 function eventOf(value: unknown): ConsentEvent | null {
   if (!isRecord(value)) return null
-  const { seq, at, home, kind, scopes, said } = value
+  const { seq, at, pairing, kind, scopes, said } = value
   if (typeof seq !== "number" || typeof at !== "number") return null
-  if (typeof home !== "string") return null
+  if (typeof pairing !== "string") return null
   if (!Array.isArray(scopes) || !scopes.every(isScope)) return null
   if (kind === "kept" && typeof said === "string") {
-    return { seq, at, home, kind, scopes, said }
+    return { seq, at, pairing, kind, scopes, said }
   }
-  if (kind === "stopped") return { seq, at, home, kind, scopes }
+  if (kind === "stopped") return { seq, at, pairing, kind, scopes }
   return null
 }
 

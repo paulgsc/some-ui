@@ -197,10 +197,13 @@ const StopButton = ({ stopping }: { stopping: boolean }): JSX.Element => (
  */
 const SendHome = ({
   base,
+  pairing,
   refresh,
   state,
 }: {
   base: string
+  /** The pairing a ticked box keeps Practice on home under (LA11). */
+  pairing: string
   refresh: () => unknown
   state: HomeLinkState
 }): JSX.Element => {
@@ -209,9 +212,12 @@ const SendHome = ({
   const count = useAsyncIntent((_: undefined) => onPhone(), {
     presentation: "interactive",
   })
-  const run = useAsyncIntent((_: undefined) => sendHome(base, refresh), {
-    presentation: "interactive",
-  })
+  const run = useAsyncIntent(
+    (_: undefined) => sendHome({ base, id: pairing }, refresh),
+    {
+      presentation: "interactive",
+    }
+  )
   useIntentEffect(run, say)
   const asking = count.state.status === "succeeded" ? count.state.value : null
   const last = lastSend()
@@ -287,7 +293,7 @@ const SendHome = ({
                 count.reset()
                 if (
                   keepSending &&
-                  !keepPracticeOnHome(base, KEEP_SENDING_SAID)
+                  !keepPracticeOnHome(pairing, KEEP_SENDING_SAID)
                 ) {
                   toast.error(KEEP_SENDING_REFUSED)
                 }
@@ -423,6 +429,7 @@ export const DeviceSection = (): JSX.Element => {
             {confirmingUnpair ? null : (
               <SendHome
                 base={paired.base}
+                pairing={paired.id}
                 refresh={() => queryClient.invalidateQueries()}
                 state={state}
               />

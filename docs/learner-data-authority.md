@@ -539,8 +539,10 @@ say is when a run is asked for:
   the consent log and the sessions the app has read; or from `askPractice`,
   which the mark's sheet calls only from its Send now button. Each asks only
   when the consent log keeps something on the paired home and the document
-  is visible. A choice counts for the home it was made for alone, so a new
-  pairing starts with nothing kept; a run sends only finished sessions and
+  is visible. A choice counts for the pairing it was made under alone (the
+  link's `id` for it, made new at each pairing and kept with its key), so a
+  new pairing, even to the same address, starts with nothing kept; a run
+  sends only finished sessions and
   kept items, and every request it makes first finds its scope still kept,
   so a stop ends a run before its next request. A kept choice enters the
   log only from the send confirm's press with its box ticked, and a stop
@@ -562,18 +564,21 @@ say is when a run is asked for:
   `components/settings/device-section.tsx` that calls `keepPracticeOnHome`
   other than in the send's press with its box ticked, starts the box ticked,
   or keeps a tick across confirms (`ask` unticks it); a hunk to
+  `lib/home-link/runtime.ts` that lets `pair` keep an earlier pairing's `id`,
+  or lets `load` report an `id` other than the one stored with the key; a
+  hunk to
   `lib/home-link/consent-model.ts` that lets `appended` edit, reorder or drop
-  an earlier event, or lets `sharedAt` count an event made after `t` or for
-  another home; to
+  an earlier event, or lets `sharedAt` count an event made after `t` or
+  under another pairing; to
   `lib/home-link/consent-runtime.ts` that writes the log when it could not
   read it; to `lib/home-link/sent.ts` that lets `sessionsToSend` pass a
-  session that is not completed, or `readSent` return one home's record for
+  session that is not completed, or `readSent` return one pairing's record for
   another; or to `lib/home-link/standing.ts` that sends a request without
   `gated`'s check that its scope is still kept, reads home back, lets a
   phone session go, or sends other than through `copyHome` and `sendKept`. Each lets something reach home, or
   leave the phone, that its person did not choose.
 - _Scope:_ `apps/www/src/lib/home-link/consent-model.ts`,
-  `consent-runtime.ts`, `practice.ts`, `sent.ts`, `standing.ts`,
+  `consent-runtime.ts`, `practice.ts`, `runtime.ts`, `sent.ts`, `standing.ts`,
   `apps/www/src/components/device-home-glyph.tsx`,
   `apps/www/src/components/settings/device-section.tsx`,
   `apps/www/src/routes/_dashboard.tsx`.
