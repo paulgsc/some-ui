@@ -120,13 +120,26 @@ never picked again, unless a disagreement brought it back.
 
 Voice notes are webm (or ogg, m4a) files beside the file that names them.
 Transcribe them in this run's own container, in a scratch directory outside
-the checkout, once per run:
+the checkout. Set it up once per run:
 
 ```sh
 python3 -m venv /tmp/whisper && /tmp/whisper/bin/pip install -q faster-whisper
 apt-get update -qq && apt-get install -y --no-install-recommends ffmpeg
-ffmpeg -loglevel error -y -i <note> -ar 16000 -ac 1 /tmp/whisper/note.wav
 ```
+
+Bring each note into the container with the Google Drive connector's
+`download_file_content`, by the note's file id. A note is too large for the
+conversation, so the tool saves its result to a file and names that file's
+path: JSON whose `content` is the audio in base64. Decode it from there, and
+never paste base64 into a command:
+
+```sh
+python3 -I -c 'import base64, json, sys; open(sys.argv[2], "wb").write(base64.b64decode(json.load(open(sys.argv[1]))["content"]))' <saved file> /tmp/whisper/note.webm
+ffmpeg -loglevel error -y -i /tmp/whisper/note.webm -ar 16000 -ac 1 /tmp/whisper/note.wav
+```
+
+A note small enough to come back inline is a few seconds long: write its
+`content` to a file with a heredoc and decode it the same way.
 
 Then transcribe the wav with this script, saved outside the checkout as
 `/tmp/whisper/transcribe.py` and run as
