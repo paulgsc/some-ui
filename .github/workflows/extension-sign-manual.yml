@@ -91,7 +91,6 @@ jobs:
       - uses: ./.github/actions/node-ci-setup
         with:
           build: none
-          resume-assets: "false"
 
       # `pnpm build` carries `--filter='!./crates/*'` (root package.json), so
       # this excludes both extensions and the wasm crates. Only packages/*/dist
