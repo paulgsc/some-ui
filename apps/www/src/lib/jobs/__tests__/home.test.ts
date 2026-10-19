@@ -84,7 +84,7 @@ const holding =
   }
 
 describe("exchangeJobs", () => {
-  it("sends each event home doesn't hold, once, then reads home's record", async () => {
+  it("sends each event home doesn't hold, once, and reads nothing back for a phone with a log", async () => {
     const k = keeping(withLog)
     const h = home(holding())
     expect(await exchangeJobs(k, h.send)).toEqual({ kind: "synced" })
@@ -92,15 +92,14 @@ describe("exchangeJobs", () => {
       "PUT /jobs/events/e1",
       "PUT /jobs/events/e2",
       "PUT /jobs/events/e3",
-      "GET /jobs",
     ])
     expect(JSON.parse(h.calls[0]?.body ?? "")).toEqual(withLog.log[0])
     expect(k.current.home.held).toEqual(["e1", "e2", "e3"])
     expect(homeOutbox(k.current)).toEqual([])
 
     const again = home(holding())
-    await exchangeJobs(k, again.send)
-    expect(again.calls.map((c) => c.method)).toEqual(["GET"])
+    expect(await exchangeJobs(k, again.send)).toEqual({ kind: "synced" })
+    expect(again.calls).toEqual([])
     expect(k.current.log).toEqual(withLog.log)
   })
 
@@ -172,8 +171,10 @@ describe("exchangeJobs", () => {
       stamp: { id: "mine", at: "2026-10-19T10:00:00.000Z" },
     })
     own.current = one
-    await exchangeJobs(own, home(holding(withLog.log)).send)
+    const asked = home(holding(withLog.log))
+    await exchangeJobs(own, asked.send)
     expect(own.current.log.map((e) => e.id)).toEqual(["mine"])
+    expect(asked.calls.some((c) => c.method === "GET")).toBe(false)
   })
 })
 

@@ -1,6 +1,7 @@
 /**
  * One exchange with home for the Jobs record kept on home: every event home
- * does not hold yet sent, then home's record read back. Over a `send` port
+ * does not hold yet sent, then, on a phone with no log, home's record read
+ * back. Over a `send` port
  * the app's home link hands in (`lib/home-link/jobs`), so this module makes
  * no request of its own. The routes are paulgsc/server's `routes/jobs.rs`.
  *
@@ -11,8 +12,9 @@
  *    the body). Home answers with the event it holds; a `409` (another event
  *    under that id) or a `422` (an event it won't take, with why) is a
  *    refusal, kept on the phone and not sent again;
- * 2. home's whole record (`GET /jobs`), taken in only by a phone whose own
- *    log is empty: a reinstalled phone gets its record back.
+ * 2. home's whole record (`GET /jobs`), asked for only by a phone whose own
+ *    log is empty, the one that takes it in: a reinstalled phone gets its
+ *    record back.
  *
  * What an exchange learned is handed over as it ends, however it ends: a
  * throw part way (a stop, no answer) keeps what home already confirmed.
@@ -70,14 +72,14 @@ async function exchange(
     learned.held.push(held)
   }
 
+  if (keeping.state().log.length > 0) return { kind: "synced" }
   const answer = await send("GET", "/jobs")
   if (answer.status === 401) return { kind: "forgotten" }
   const record = readAs(HeldSchema, answer.body)
   if (answer.status !== 200 || record === null) {
     return unexpectedAnswer("the record", answer.status)
   }
-  const empty = keeping.state().log.length === 0
-  if (empty && record.events.length > 0 && !keeping.restored(record.events)) {
+  if (record.events.length > 0 && !keeping.restored(record.events)) {
     return { kind: "failed", why: "this phone couldn't keep home's record" }
   }
   return { kind: "synced" }

@@ -125,6 +125,25 @@ export async function shelfHeld(
   return Object.fromEntries(held)
 }
 
+/**
+ * The kept items home does not hold as they are now, and wasn't refused as
+ * they are now, with every item's digest (`shelfHeld`), to remember home's
+ * answers by.
+ */
+export async function shelfToSend(
+  kept: ReadonlyArray<Kept>,
+  sent: Sent
+): Promise<{ changed: Array<Kept>; digests: Record<string, string> }> {
+  const digests = await shelfHeld(kept)
+  const changed = kept.filter((item) => {
+    const key = shelfKeyOf(item)
+    return (
+      sent.shelf[key] !== digests[key] && sent.refused[key] !== digests[key]
+    )
+  })
+  return { changed, digests }
+}
+
 /** How many sessions and kept items this phone knows home holds, or refused. */
 export function heldCounts(sent: Sent): {
   sessions: number

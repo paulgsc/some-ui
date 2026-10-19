@@ -210,7 +210,7 @@ const SendHome = ({
 }): JSX.Element => {
   const { activity } = state
   const host = hostOf(base)
-  const count = useAsyncIntent((_: undefined) => onPhone(), {
+  const count = useAsyncIntent((_: undefined) => onPhone(pairing), {
     presentation: "interactive",
   })
   const run = useAsyncIntent(
@@ -248,7 +248,9 @@ const SendHome = ({
         />
       ) : asking.total === 0 ? (
         <div className="flex flex-wrap items-center gap-2" role="status">
-          <p className="text-sm">Nothing on this phone to send.</p>
+          <p className="text-sm">
+            Nothing on this phone that {host} doesn&apos;t have.
+          </p>
           <Button
             type="button"
             variant="ghost"
