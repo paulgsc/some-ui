@@ -9,7 +9,7 @@ import type { KeptRun, KeptState } from "@/lib/home-link/kept-model"
 import { INITIAL_KEPT } from "@/lib/home-link/kept-model"
 import type { LaneFacts } from "@/lib/home-link/words"
 import * as words from "@/lib/home-link/words"
-import { laneView, WORDS } from "@/lib/home-link/words"
+import { historyLines, laneView, WORDS } from "@/lib/home-link/words"
 
 import { MACHINERY } from "./machinery"
 
@@ -224,5 +224,37 @@ describe("each lane's sharing words", () => {
       shape: "trouble",
       line: "Home didn't answer. Sending to home is off. Home holds aph; this phone holds only the 2 changes home hadn't confirmed.",
     })
+  })
+})
+
+describe("the ledger's history", () => {
+  const log = [
+    {
+      seq: 1,
+      at: 1,
+      pairing: "old",
+      kind: "kept",
+      scopes: ["aph"],
+      said: null,
+    },
+    {
+      seq: 2,
+      at: 2,
+      pairing: "now",
+      kind: "kept",
+      scopes: ["sessions", "shelf"],
+      said: "yes",
+    },
+    { seq: 3, at: 3, pairing: "now", kind: "stopped", scopes: ["jobs"] },
+  ] as const
+
+  it("says every choice, newest first, once per record, in the person's terms", () => {
+    const lines = historyLines(log, "now", (t) => `day ${String(t)}`)
+    expect(lines.map((line) => line.text)).toEqual([
+      "day 3 · The Jobs record: stopped sending to home. Home keeps what it has.",
+      "day 2 · Practice: kept on home.",
+      "day 1 · aph: kept on home, under an earlier pairing, as chosen before this phone kept its choices.",
+    ])
+    expect(lines.filter((line) => MACHINERY.test(line.text))).toEqual([])
   })
 })

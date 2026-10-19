@@ -86,6 +86,10 @@ vi.mock("@/lib/tenant/queries", () => ({
       ]),
   },
 }))
+// The ledger has its own test (`device-sharing-ledger.test.tsx`).
+vi.mock("@/components/settings/device-sharing-ledger", () => ({
+  SharingLedger: (): null => null,
+}))
 vi.mock("@/components/settings/device-storage", () => ({
   DeviceStorageSummary: (): null => null,
   DeviceArchive: (): null => null,
