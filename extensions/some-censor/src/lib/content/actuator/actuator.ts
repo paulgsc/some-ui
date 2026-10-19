@@ -191,16 +191,16 @@ export function createActuator(doc: Document, ports: ActuatorPorts): Actuator {
    */
   function play(targets: ReadonlyArray<CustodyTarget>): void {
     const card = targets[0]?.el
-    const link = card?.matches(WATCH_LINK)
+    if (card === undefined) return
+    const link = card.matches(WATCH_LINK)
       ? card
-      : card?.querySelector<HTMLElement>(WATCH_LINK)
-    if (link === undefined || link === null) return
-    const target = link
+      : card.querySelector<HTMLElement>(WATCH_LINK)
+    if (link === null) return
     if (pendingPlay !== null) clearTimeout(pendingPlay)
     // Lifetime: cleared by dispose(), and by the next play.
     pendingPlay = setTimeout(() => {
       pendingPlay = null
-      target.click()
+      link.click()
     }, 0)
   }
 

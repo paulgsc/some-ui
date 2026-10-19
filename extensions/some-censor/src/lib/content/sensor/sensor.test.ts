@@ -745,6 +745,16 @@ describe("autoplay (#1805)", () => {
     expect(tokens).toEqual([
       { kind: "held", upNext: ["first", "second"], t: now },
     ])
+    // A skip opens the Up next card itself, never a copy elsewhere.
+    const list = manager.querySelector(
+      "ytd-watch-next-secondary-results-renderer"
+    )
+    expect(sensor.upNextCard(cardKey(asVideoId("first")))).toBe(
+      list?.firstElementChild
+    )
+    for (const id of ["in-a-panel", "elsewhere"]) {
+      expect(sensor.upNextCard(cardKey(asVideoId(id))), id).toBeNull()
+    }
   })
 })
 

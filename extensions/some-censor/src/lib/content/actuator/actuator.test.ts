@@ -273,6 +273,14 @@ describe("skip (#1966)", () => {
     expect(clicks).toEqual(["thumbnail"])
   })
 
+  it("clicks nothing with no card, or a card with no watch link", () => {
+    const { clicks, card } = playing()
+    card.innerHTML = `<a id="channel" href="/@chan"></a>`
+    actuator.realize([play(card), { ...play(card), targets: [] }])
+    vi.advanceTimersByTime(0)
+    expect(clicks).toEqual([])
+  })
+
   it("clicks nothing once disposed", () => {
     const { clicks, card } = playing()
     actuator.realize([play(card)])
