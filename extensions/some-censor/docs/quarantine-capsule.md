@@ -423,17 +423,18 @@ This is friction in the opposite place from the old ladder. The ladder put work
 between the owner and the _video_, so every bad card cost effort. The hold puts
 work only between the owner and the _thumbnail_, which nothing needs.
 
-_Status: holds (#1805)._ A plated video's poster is the plate: its tone is
-the video's, and the player's own poster does not paint, before play or once
-it ends. In the description, "Hold to show the original thumbnail" reports a
-hold of three seconds without a break, by the pointer or by Space or Enter,
-when it is let go (`actuator/face-hold.ts`); a release before then, a lost
-pointer, Escape or focus leaving cancels it, no key or click on it reaches
-YouTube, and reduced motion drops its fill. Core keeps the face for that view only
-(R9): a navigation, another video or a view no longer plated takes it away,
-and nothing stores it. The control goes once used, with no message, and
-comes back when YouTube draws the description again. `face.spec.ts` F1–F5
-prove each, locally.
+_Status: holds (#1805, #1966)._ A plated video's poster is the plate: its
+tone is the video's, and the player's own poster does not paint, before play
+or once it ends. In the description, "Hold to show the original thumbnail"
+reports a hold of three seconds without a break, by the pointer or by Space or
+Enter, when it is let go (`actuator/face-hold.ts`); a release before then, a
+lost pointer, Escape or focus leaving cancels it, no key or click on it
+reaches YouTube, and nothing on it changes while it is held. Core keeps the
+face for that view only (R9): a navigation, another video or a view no longer
+plated takes it away, and nothing stores it. The control goes once used, with
+no message, and comes back when YouTube draws the description again. Strict
+offers no control at all, and choosing it takes a shown face away (#1966).
+`face.spec.ts` F1–F5 and `modes.spec.ts` M2 prove each, locally.
 
 ---
 
@@ -494,30 +495,44 @@ Sensor reads (`extract/meta.ts`); `fsm.ts` decides a card or the watch page
 whole when it is music and its date proves a past upload, before the boundary
 is asked. A whole card shows its own thumbnail and channel photo, and its
 crowd numbers still go; a whole watch page shows its player and its own
-poster, with no face control. Autoplay goes on into a whole video. There is no
-setting: the lane is always on (owner, 2026-10-18). `lane.test.ts` holds the
-table, and `lane.spec.ts` LN1–LN3 and `watch.spec.ts` W11 prove it, locally.
+poster, with no face control. Autoplay goes on into a whole video. The lane is
+on in every mode, with no switch of its own (owner, 2026-10-18). Strict reads
+the channel's two signs only, and from a whole video lets autoplay go on only
+into another whole one (owner, 2026-10-19, #1966). `lane.test.ts` holds the
+table, and `lane.spec.ts` LN1–LN3, `watch.spec.ts` W11 and `modes.spec.ts` M1
+and M3 prove it, locally.
 
 ---
 
 ### QD16 — Decide once
 
-The owner's judgement is exercised on one setting, the boundary `B`, and
-nowhere else, besides switching the extension on or off. (A second setting,
-the scripts they listen to but don't read, was dropped on 2026-10-17 with the
-lane's title-script rule, and the lane has no switch of its own; see `QD15`.) No card, channel or page offers a disclosure step, a
-trust decision or a verdict. The one exception is `QD13`'s face control, which
-shows only the thumbnail of a video already admitted and plated, and decides
-nothing about admission.
+The owner's judgement is exercised on three choices, besides switching the
+extension on or off: the boundary `B`, a mode, and what autoplay does when it
+reaches a held video. A mode is a fixed bundle, strictest first: Strict,
+Standard or Open (`settings/modes.ts`). The owner picks a mode, never a row of
+one, so there is no single switch to tune and no Custom state. Modes never
+move `B`. (A languages setting was dropped on 2026-10-17 with the lane's
+title-script rule; see `QD15`.) No card, channel or page offers a disclosure
+step, a trust decision or a verdict. The one exception is `QD13`'s face
+control, which shows only the thumbnail of a video already admitted and
+plated, and decides nothing about admission.
 
 `H3` already said judgement does not scale; the ladder contradicted it, and
 the owner confirmed it from use: deciding card by card was "a chore", and "not
 rewarding … if you don't like the card that you did all that work for".
-Amends `QD5`; supersedes `QD10`, `QA2`, `QA3`, §6's delayed subscription and
-the "airlock" in §7.
+The modes keep it that way. On 2026-10-19 the owner asked for each choice of
+taste to be made at runtime, but not as a wall of switches ("I don't want to
+feel like I'm developing it as well"), so they come bundled. Amends `QD5`;
+supersedes `QD10`, `QA2`, `QA3`, §6's delayed subscription and the "airlock"
+in §7.
 
-_Status: holds (#1803, #1807)._ No gesture changes a card. The popup holds
-the boundary and the switch, and Diagnostics logs every boundary change.
+_Status: holds (#1803, #1807); the modes in part (#1966)._ No gesture changes
+a card. The popup holds the boundary and the switch, and Diagnostics logs
+every boundary change. The settings record carries the mode and autoplay, every
+open tab follows them, and each change of either is appended to
+`choiceChanges`. The surfaces that set them, Open's face and autoplay's Skip
+are #1966's later slices; until they land, every install is Standard and
+stops.
 
 ---
 

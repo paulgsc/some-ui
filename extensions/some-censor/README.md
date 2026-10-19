@@ -35,7 +35,8 @@ observation to write:
    maturity estimate): absent, plated when it is old enough, or whole when it
    is music (`lane/lane.ts`, QD15). No gesture on
    a card is an input (#1803); the boundary, set in the popup, is (#1807),
-   and so is the face hold on a plated watch page (QD13, #1805).
+   and so are the owner's mode (`settings/modes.ts`, #1966) and the face
+   hold on a plated watch page (QD13, #1805).
 4. **Actuator** (`src/lib/content/actuator/`) — the only writer to the
    vendor DOM. It only executes the actions Core named: the `data-boyo`
    stamp (`absent` is `display: none` in `styles/content.css`), the plate's

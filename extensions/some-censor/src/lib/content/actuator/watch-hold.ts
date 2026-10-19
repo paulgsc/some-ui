@@ -8,8 +8,8 @@
  * - On `absent`, "Not here." and a Back button, built here, unless the video
  *   is in the miniplayer over another page.
  * - On `plated`, the plate's tone for the player's poster, as
- *   `--boyo-poster` on `<html>`, and the face control (`face-hold.ts`) in
- *   the description it is given; once the owner has held it, `data-boyo-face`
+ *   `--boyo-poster` on `<html>`, and, when the mode offers it, the face
+ *   control (`face-hold.ts`) in the description it is given; once the owner has held it, `data-boyo-face`
  *   on `<html>`, which lifts the poster's plate (QD13).
  * - Until `plated`, no media plays, and the tab title is not the video's.
  *
@@ -154,7 +154,7 @@ export function createWatchHold(
 
   /** The poster's plate, and the face control, for a plated view. */
   function showPoster(
-    { view, videoId, miniplayer, poster, face: faced }: WatchRender,
+    { view, videoId, miniplayer, poster, face: faced, offer }: WatchRender,
     description: HTMLElement | null
   ): void {
     const root = doc.documentElement
@@ -171,7 +171,7 @@ export function createWatchHold(
     root.toggleAttribute("data-boyo-face", faced)
 
     const offered =
-      view === "plated" && !faced && !miniplayer && videoId !== null
+      offer && view === "plated" && !faced && !miniplayer && videoId !== null
     if (!offered || description === null) {
       face?.dispose()
       face = null
@@ -240,6 +240,7 @@ export function createWatchHold(
           miniplayer: false,
           poster: null,
           face: false,
+          offer: false,
         },
         null
       )

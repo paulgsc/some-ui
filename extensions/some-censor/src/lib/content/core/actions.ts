@@ -43,6 +43,8 @@ export type Action =
       readonly poster: string | null
       /** The owner held for the real thumbnail, this view (QD13). */
       readonly face: boolean
+      /** The owner's mode offers the face control (#1966). */
+      readonly offer: boolean
     }
   /** A fact for the flight recorder; the runtime forwards it. */
   | { readonly kind: "record"; readonly fact: CoreFact }

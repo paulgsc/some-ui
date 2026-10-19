@@ -47,6 +47,32 @@ export async function vividPixels(target: Locator): Promise<number> {
 }
 
 /**
+ * How many pixels of the region the target's box covers differ from
+ * `ground`, the page's background, by more than a rounding error in any
+ * channel: whether anything at all is painted there. For a blurred and
+ * dimmed image, whose magenta can fall under {@link vividPixels}' margin.
+ */
+export async function paintedPixels(
+  target: Locator,
+  ground: readonly [number, number, number]
+): Promise<number> {
+  await target.evaluate((el) => {
+    el.scrollIntoView({ block: "center", inline: "center" })
+  })
+  const box = await target.boundingBox()
+  if (box === null || box.width < 1 || box.height < 1) return 0
+  const page = target.page()
+  const shot = await page.screenshot({ clip: box, animations: "disabled" })
+  let painted = 0
+  for (const { color, count } of await colorsIn(page, shot)) {
+    if (color.some((c, i) => Math.abs(c - (ground[i] ?? c)) > 4)) {
+      painted += count
+    }
+  }
+  return painted
+}
+
+/**
  * A mutant: a stylesheet that undoes one occlusion, for a negative control.
  * Its rules must outrank the extension's (`html body` and `!important`).
  * Returns the function that takes it away.

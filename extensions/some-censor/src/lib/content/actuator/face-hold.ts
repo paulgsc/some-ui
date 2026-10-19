@@ -12,8 +12,8 @@
  * description expands it).
  *
  * Grey, dashed, and plain on purpose (`absent-plated-heard.md` §4): no
- * progress colour, no reward, no memory of having been held. `content.css`
- * draws the fill, and drops its animation under `prefers-reduced-motion`.
+ * progress colour, no reward, no memory of having been held. Nothing on it
+ * changes while it is held (#1966).
  */
 
 import { FACE_CONTROL_ATTRIBUTE } from "@censor/lib/content/selectors"
@@ -45,7 +45,6 @@ export function createFaceControl(
 
   function start(): void {
     if (timer !== null || full) return
-    el.dataset["holding"] = ""
     timer = setTimeout(() => {
       timer = null
       full = true
@@ -56,7 +55,6 @@ export function createFaceControl(
     if (timer !== null) clearTimeout(timer)
     timer = null
     full = false
-    delete el.dataset["holding"]
   }
 
   function release(): void {

@@ -7,12 +7,13 @@
  * F2 — Held for three seconds, by the keyboard or the pointer, the control
  *      shows the real poster and goes; an early release changes nothing.
  * F3 — A navigation forgets the face: the plate and the control are back.
- * F4 — Under `prefers-reduced-motion` the control's fill does not animate.
+ * F4 — Nothing on the control changes while it is held (#1966): no fill, no
+ *      progress.
  * F5 — When YouTube draws the description again, the control comes back.
  */
 
 import { expect, test } from "@censor/playwright/fixture"
-import { vividPixels } from "@censor/playwright/rendered"
+import { mutant, vividPixels } from "@censor/playwright/rendered"
 import type { Page } from "@playwright/test"
 
 const CONTROL = "[data-boyo-face-hold]"
@@ -88,18 +89,30 @@ test("F3: a navigation forgets the face", async ({ fixture }) => {
   await expect(page.locator(CONTROL)).toBeVisible()
 })
 
-test("F4: reduced motion drops the fill's animation", async ({ fixture }) => {
+test("F4: the control looks the same while it is held", async ({ fixture }) => {
   const page = await fixture.goto("yt-watch-page")
-  await page.emulateMedia({ reducedMotion: "reduce" })
   await plated(page)
-  await page.locator(CONTROL).focus()
-  await page.keyboard.down(" ")
-  await expect(page.locator(CONTROL)).toHaveAttribute("data-holding", "")
-  const duration = await page
-    .locator(CONTROL)
-    .evaluate((el) => getComputedStyle(el, "::before").transitionDuration)
-  await page.keyboard.up(" ")
-  expect(duration).toBe("0s")
+  const control = page.locator(CONTROL)
+  // Shot after the pointer is on it, so a hover style is in both.
+  await control.hover()
+  const before = await control.screenshot({ animations: "disabled" })
+  const heldShot = async (): Promise<Buffer> => {
+    await page.mouse.down()
+    await page.waitForTimeout(1_500)
+    const shot = await control.screenshot({ animations: "disabled" })
+    await page.mouse.up()
+    return shot
+  }
+  expect((await heldShot()).equals(before)).toBe(true)
+
+  // Negative control: a style that changes while held is seen.
+  const undo = await mutant(
+    page,
+    "html body [data-boyo-face-hold]:active { background: rgb(255 0 255) !important; }"
+  )
+  await control.hover()
+  expect((await heldShot()).equals(before)).toBe(false)
+  await undo()
 })
 
 test("F5: the control comes back when the description is drawn again", async ({

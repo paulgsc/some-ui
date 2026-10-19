@@ -20,8 +20,11 @@
 import path from "path"
 import { fileURLToPath } from "url"
 import type { ViewState } from "@censor/lib/content/fsm"
+import type { Settings } from "@censor/lib/settings/settings"
 import {
   BOUNDARY_CHANGES_KEY,
+  CHOICE_CHANGES_KEY,
+  DEFAULT_SETTINGS,
   SETTINGS_KEY,
 } from "@censor/lib/settings/settings"
 import {
@@ -116,6 +119,11 @@ type BoyoFixtures = {
       method: string,
       ...args: Array<unknown>
     ): Promise<T>
+    /**
+     * Store the defaults with `overrides`, as the popup would: every open
+     * tab follows, and a page opened after reads them first.
+     */
+    settings(overrides: Partial<Settings>): Promise<void>
   }
 }
 
@@ -169,7 +177,7 @@ export const test = base.extend<BoyoFixtures & { page: Page }>({
       (keys) =>
         // eslint-disable-next-line no-restricted-globals -- Chromium's worker has no `browser`
         chrome.storage.local.remove(keys),
-      [SETTINGS_KEY, BOUNDARY_CHANGES_KEY]
+      [SETTINGS_KEY, BOUNDARY_CHANGES_KEY, CHOICE_CHANGES_KEY]
     )
 
     await use(context)
@@ -186,6 +194,7 @@ export const test = base.extend<BoyoFixtures & { page: Page }>({
   },
 
   fixture: async ({ context }, use) => {
+    const worker = await extensionWorker(context)
     await use({
       async goto(name = "yt-home") {
         const page = await context.newPage()
@@ -205,6 +214,14 @@ export const test = base.extend<BoyoFixtures & { page: Page }>({
           method,
           args,
         ] as const) as Promise<T>
+      },
+      async settings(overrides) {
+        await worker.evaluate(
+          ([key, value]) =>
+            // eslint-disable-next-line no-restricted-globals -- Chromium's worker has no `browser`
+            chrome.storage.local.set({ [key]: value }),
+          [SETTINGS_KEY, { v: 1, ...DEFAULT_SETTINGS, ...overrides }] as const
+        )
       },
     })
   },

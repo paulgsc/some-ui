@@ -4,7 +4,7 @@
  * What is left once the Sensor owns observation and navigation, Core owns
  * every decision and the Actuator owns every write: starting the recording,
  * waiting for `ytd-app`, and following the owner's settings (`lib/settings`,
- * #1807).
+ * #1807, #1966).
  *
  * Lifecycle properties, labelled here because they are cited elsewhere;
  * pinned by `runtime/runtime.test.ts`, not declared review invariants:
@@ -22,11 +22,12 @@
  *        `yt-navigate-finish` into one `nav` (`NAV_DEBOUNCE_MS`).
  */
 
+import { MODE_RULES } from "@censor/lib/settings/modes"
 import type { Settings } from "@censor/lib/settings/settings"
 import { boundaryDays, followSettings } from "@censor/lib/settings/settings"
 import { ext } from "@censor/platform/content"
 
-import { setSwitchedOff } from "./actuator/index"
+import { setPageRules, setSwitchedOff } from "./actuator/index"
 import { startObservability } from "./observability"
 import type { Runtime } from "./runtime/runtime"
 import { createRuntime } from "./runtime/runtime"
@@ -51,7 +52,10 @@ export class Controller {
 
   /** Off stops the runtime and lifts the pre-mask, in one task. */
   private _apply(settings: Settings): void {
+    const mode = MODE_RULES[settings.mode]
     this._runtime.setBoundary(boundaryDays(settings.boundary))
+    this._runtime.setRules(mode.core)
+    setPageRules(document, mode.page)
     if (settings.enabled) {
       setSwitchedOff(document, false)
       this._waitForApp()
