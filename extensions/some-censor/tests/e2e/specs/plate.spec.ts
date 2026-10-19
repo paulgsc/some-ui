@@ -292,6 +292,9 @@ test("P8: Open shows a post's image, never its author's photo", async ({
     el.dataset["boyo"] = "plated"
   })
   expect(await vividPixels(image)).toBe(0)
+  await page.locator("#posts").evaluate((el) => {
+    delete el.dataset["boyo"]
+  })
 
   // The author's photo paints once the extension is off.
   await page.evaluate(
