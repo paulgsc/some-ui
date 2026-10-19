@@ -127,7 +127,10 @@ export type HomeRefusal = { id: string; why: string }
  * its whole log, and the way back for a phone that lost it.
  */
 type JobsHome = {
-  /** Read once by the Jobs lane's `keptBefore`; never set (LA10). */
+  /**
+   * Read by the Jobs lane's `keptBefore`, to enter that choice once and for
+   * the ledger's wording; never set (LA10).
+   */
   kept: boolean
   /** The events home answered it holds, by id. */
   held: ReadonlyArray<string>

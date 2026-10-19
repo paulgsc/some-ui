@@ -511,7 +511,7 @@ when a run is asked for:
   `components/settings/device-sharing-ledger.tsx` that calls `stopOnHome` other than
   from its second Stop press's `onClick`, calls it for aph's lane, or calls
   `askLane`, `askKept`, `keepOnHome`, `bringLaneBack`, `useLaneHome`,
-  `watchKept` or `phoneConsent().choose`; a
+  `watchKept`, or `choose` on the consent runtime under any name; a
   hunk that mounts
   `DeviceHomeGlyph` anywhere but `routes/_dashboard.tsx`'s header in the
   device build, or `DeviceAphLane` anywhere but
@@ -581,17 +581,22 @@ when a run is asked for:
   event added on this phone or home's copy taken in by a phone whose log was
   empty, and its exchange is `exchangeJobs` over the record. The record's
   own switch from before the consent log (`home.kept`) is read only to
-  enter that choice once, and nothing sets it.
+  enter that choice once and, in Settings' ledger, to say the record's
+  choice is not entered yet; nothing sets it.
 - _Falsified by:_ a hunk LA9's falsifier names for the shared files; a hunk
   to `lib/home-link/jobs.ts` that makes the lane's `revision` anything but
   the log's length, its `keptBefore` anything but `home.kept`, or its
-  `exchange` anything but `exchangeJobs` over the runtime's `keeping`; or a
-  hunk to `lib/jobs` that sets `home.kept`.
+  `exchange` anything but `exchangeJobs` over the runtime's `keeping`; a
+  hunk to `components/settings/device-sharing-ledger.tsx` that reads
+  `keptBefore` for anything but its row's wording; or a hunk to `lib/jobs`
+  that sets `home.kept`.
 - _Scope:_ LA9's shared files, `apps/www/src/lib/home-link/jobs.ts`,
+  `apps/www/src/components/settings/device-sharing-ledger.tsx`,
   `apps/www/src/lib/jobs/model.ts`, `apps/www/src/lib/jobs/runtime.ts`.
 - _Why not enforced:_ as LA9's. Held when declared, by reading every call
-  as LA9 says, and `home.kept` read only by the lane's `keptBefore` and the
-  record's stored schema.
+  as LA9 says, and `home.kept` read only by the lane's `keptBefore` (whose
+  callers are `enterEarlier` and the ledger's Jobs row) and the record's
+  stored schema.
 
 ### LA11: Practice is sent home on its own only while its person keeps sending it
 

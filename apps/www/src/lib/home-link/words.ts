@@ -206,15 +206,23 @@ export const LEDGER = {
       text: "Never go to home. You can share them yourself, to Drive.",
     },
     {
-      label: "This app's settings and your profile",
+      label: "What you set in Settings, and your profile",
       text: "Stay on this phone.",
     },
   ],
   historyTitle: "Every choice",
   noHistory: "No choice to keep sending made yet.",
+  /** Under a pairing made before the log, a record's own switch may have chosen. */
+  noHistoryEarlier: "No choice recorded on this phone yet.",
+  /** What to open for each record: its wing's own name. */
+  opens: {
+    practice: "Practice",
+    aph: "aph",
+    jobs: "Jobs",
+  } satisfies Record<LaneId, string>,
   /** A record whose choice an earlier pairing made, which only its own screens know. */
-  unsure: (name: string): string =>
-    `This phone was paired before it kept its choices. Open ${name} to see where it is kept.`,
+  unsure: (opens: string): string =>
+    `This phone was paired before it kept its choices, so where it is kept shows on ${opens}'s own mark.`,
 } as const
 
 const LANE_OF: Readonly<Record<Scope, LaneId>> = {
@@ -231,8 +239,8 @@ export type HistoryLine = {
   readonly text: string
 }
 
-/** A day the history may be read years after. */
-const fullDay = (t: number): string =>
+/** A day the ledger may be read years after. */
+export const fullDay = (t: number): string =>
   new Date(t).toLocaleDateString(undefined, {
     day: "numeric",
     month: "short",

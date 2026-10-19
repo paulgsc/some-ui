@@ -23,6 +23,7 @@ import type { Lane, LaneCounts, LaneId } from "@/lib/home-link/lanes"
 import { pairingOf, stopOnHome, useLaneChoices } from "@/lib/home-link/lanes"
 import { practiceLane } from "@/lib/home-link/practice"
 import {
+  fullDay,
   historyLines,
   laneView,
   LEDGER,
@@ -62,26 +63,28 @@ const Row = ({
   const [confirming, setConfirming] = useState(false)
   const [refused, setRefused] = useState(false)
   const question = useRef<HTMLParagraphElement>(null)
+  const stop = useRef<HTMLButtonElement>(null)
+  const asked = useRef(false)
   useEffect(() => {
-    // The pressed button is gone: the question takes its focus.
+    // The pressed button is gone: the question takes its focus, and gives
+    // it back to Stop when the question closes with sending kept.
     if (confirming) question.current?.focus()
+    else if (asked.current) stop.current?.focus()
+    asked.current = confirming
   }, [confirming])
   const words = WORDS[id]
-  const view = laneView(words, {
-    ...counts,
-    known: true,
-    shared,
-    stopped,
-    run: INITIAL_KEPT,
-    away: null,
-  })
+  const view = laneView(
+    words,
+    { ...counts, known: true, shared, stopped, run: INITIAL_KEPT, away: null },
+    fullDay
+  )
   const kept = shared.size > 0
   return (
     <li className="space-y-2 py-3">
       <p className="text-sm font-medium">{LEDGER.names[id]}</p>
       {unsure ? (
         <p className="text-muted-foreground text-xs">
-          {LEDGER.unsure(LEDGER.names[id])}
+          {LEDGER.unsure(LEDGER.opens[id])}
         </p>
       ) : (
         <ul className="space-y-0.5">
@@ -129,6 +132,7 @@ const Row = ({
         </div>
       ) : (
         <Button
+          ref={stop}
           type="button"
           variant="outline"
           size="sm"
@@ -158,6 +162,8 @@ const JobsRow = ({ unsure }: { unsure: boolean }): JSX.Element => (
     id="jobs"
     counts={jobsLane.useCounts()}
     lane={jobsLane}
+    // Read in render: `useCounts` above subscribes to the same Jobs store,
+    // so a change to it renders this row again.
     unsure={unsure && jobsLane.keptBefore?.() === true}
   />
 )
@@ -195,7 +201,11 @@ export const SharingLedger = (): JSX.Element => {
       <div className="space-y-1">
         <p className="text-sm font-medium">{LEDGER.historyTitle}</p>
         {history.length === 0 ? (
-          <p className="text-muted-foreground text-xs">{LEDGER.noHistory}</p>
+          <p className="text-muted-foreground text-xs">
+            {link.link.kind === "paired" && link.link.earlier
+              ? LEDGER.noHistoryEarlier
+              : LEDGER.noHistory}
+          </p>
         ) : (
           <ol className="space-y-0.5">
             {history.map((line) => (

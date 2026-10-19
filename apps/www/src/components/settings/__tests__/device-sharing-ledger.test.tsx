@@ -10,14 +10,18 @@ import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
 import { CONSENT_KEY } from "@/lib/home-link/consent-runtime"
+import { LEDGER, WORDS } from "@/lib/home-link/words"
 import type { SessionRecord } from "@/lib/tenant/types"
 
 const PAIRING = "https://home.example/api/v1"
 
-const home = vi.hoisted((): { sent: Array<unknown>; earlier: boolean } => ({
-  sent: [],
-  earlier: false,
-}))
+const home = vi.hoisted(
+  (): { sent: Array<unknown>; earlier: boolean; jobsKept: boolean } => ({
+    sent: [],
+    earlier: false,
+    jobsKept: false,
+  })
+)
 
 vi.mock("@/lib/device-backend/native-http", () => ({
   homeRequest: (call: unknown): Promise<never> => {
@@ -42,12 +46,15 @@ vi.mock("@/lib/home-link/send", () => ({
   readPhone: (): Promise<unknown> => Promise.resolve({ local: [], kept: [] }),
 }))
 vi.mock("@/lib/jobs", async () => {
-  const { EMPTY: state } = await import("@/lib/jobs/model")
-  // One snapshot, as `useSyncExternalStore` needs.
-  const snapshot = { state }
+  const { EMPTY } = await import("@/lib/jobs/model")
+  const made = (kept: boolean): unknown => ({
+    state: { ...EMPTY, home: { ...EMPTY.home, kept } },
+  })
+  // One snapshot per test's `jobsKept`, as `useSyncExternalStore` needs.
+  const snapshots = new Map([true, false].map((kept) => [kept, made(kept)]))
   return {
     phoneJobs: (): unknown => ({
-      getSnapshot: () => snapshot,
+      getSnapshot: () => snapshots.get(home.jobsKept),
       subscribe: () => () => undefined,
     }),
   }
@@ -62,6 +69,7 @@ afterEach(() => {
   localStorage.clear()
   home.sent = []
   home.earlier = false
+  home.jobsKept = false
 })
 
 function logged(
@@ -108,7 +116,9 @@ describe("the sharing ledger", () => {
     expect(JSON.parse(localStorage.getItem(CONSENT_KEY) ?? "[]")).toHaveLength(
       1
     )
-    expect(document.activeElement?.textContent).toMatch(/^Stop sending/)
+    expect(document.activeElement?.textContent).toBe(
+      WORDS.practice.stopQuestion
+    )
     fireEvent.click(screen.getByRole("button", { name: "Stop sending" }))
     const log: unknown = JSON.parse(localStorage.getItem(CONSENT_KEY) ?? "[]")
     expect(log).toMatchObject([{ kind: "kept" }, { kind: "stopped" }])
@@ -131,15 +141,19 @@ describe("the sharing ledger", () => {
       1
     )
     expect(screen.getByText(/^The record: Kept on home since/)).toBeTruthy()
+    expect(document.activeElement).toBe(
+      screen.getByRole("button", { name: "Stop sending..." })
+    )
   })
 
-  it("claims nothing for aph under a pairing made before choices were kept", async () => {
+  it("claims nothing for aph, or Jobs its switch kept, under a pairing made before choices were kept", async () => {
     home.earlier = true
+    home.jobsKept = true
     await mount()
-    expect(
-      screen.getByText(/paired before it kept its choices\. Open aph/)
-    ).toBeTruthy()
-    expect(screen.getAllByText(/: Only on this phone$/)).toHaveLength(3)
+    expect(screen.getByText(/shows on aph's own mark\.$/)).toBeTruthy()
+    expect(screen.getByText(/shows on Jobs's own mark\.$/)).toBeTruthy()
+    expect(screen.getAllByText(/: Only on this phone$/)).toHaveLength(2)
+    expect(screen.getByText(LEDGER.noHistoryEarlier)).toBeTruthy()
   })
 
   it("sends aph's stop to aph's own mark", async () => {
