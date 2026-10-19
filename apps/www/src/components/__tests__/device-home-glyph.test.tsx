@@ -249,16 +249,21 @@ describe("the Jobs record's mark", () => {
   })
 })
 
-/** aph's store, kept on home with two changes waiting, until it leaves. */
-function aphStore(): AphStore & { left: number } {
-  let where: AphWhere = {
-    kind: "home",
-    pulled: false,
-    unsent: 2,
-    refused: [],
-    hidden: 0,
-    edits: 0,
-  }
+/**
+ * aph's store, kept on home with two changes waiting, until it leaves; or,
+ * `onPhone`, on this phone with `entries` entries.
+ */
+function aphStore(onPhone = false, entries = 0): AphStore & { left: number } {
+  let where: AphWhere = onPhone
+    ? { kind: "device" }
+    : {
+        kind: "home",
+        pulled: false,
+        unsent: 2,
+        refused: [],
+        hidden: 0,
+        edits: 0,
+      }
   const listeners = new Set<() => void>()
   const state = {
     settings: {
@@ -270,7 +275,18 @@ function aphStore(): AphStore & { left: number } {
       tolerance: 0,
       since: "2026-10-01",
     },
-    entries: [],
+    entries: Array.from({ length: entries }, (_, i) => ({
+      id: String(i),
+      day: "2026-10-16",
+      checkpoint: null,
+      time: null,
+      mine: { value: 4300, approx: true },
+      theirs: null,
+      goal: null,
+      labels: [],
+      note: null,
+      review: null,
+    })),
   }
   const store: AphStore & { left: number } = {
     left: 0,
@@ -334,6 +350,18 @@ async function stopAph(): Promise<void> {
 }
 
 describe("aph's mark", () => {
+  it("offers every entry and the settings, from the phone, before the second press", async () => {
+    await mountAph(aphStore(true, 2))
+    fireEvent.click(mark(/Where aph is kept/))
+    fireEvent.click(
+      screen.getByRole("button", { name: "Keep sending to home..." })
+    )
+    expect(
+      screen.getByText(/^Send 3 changes from this phone to home/)
+    ).toBeTruthy()
+    expect(logged()).toEqual([])
+  })
+
   it("brings aph back from home once its person stops", async () => {
     keptBefore(["aph"])
     const store = aphStore()
