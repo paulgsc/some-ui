@@ -154,6 +154,7 @@ describe("the read-aloud store", () => {
     const storage = memoryStorage()
     storage.map.set(READ_ALOUD_STORAGE_KEYS.paces, "{not json")
     storage.map.set(READ_ALOUD_STORAGE_KEYS.record, '{"version":9}')
+    storage.map.set(READ_ALOUD_STORAGE_KEYS.level, "7")
     storage.map.set(
       READ_ALOUD_STORAGE_KEYS.progress,
       JSON.stringify({
@@ -166,6 +167,7 @@ describe("the read-aloud store", () => {
     expect(store.paces()).toEqual({})
     expect(store.record()).toEqual(emptyRecord())
     expect(store.progress(2, ":all")).toBeNull()
+    expect(store.level()).toBeNull()
   })
 
   it("runs without storage, and survives storage that throws", () => {
@@ -174,7 +176,9 @@ describe("the read-aloud store", () => {
       store.savePace("juda", { factor: 1, seen: 1 })
       store.saveProgress(1, ":all", PROGRESS)
       store.saveSets([])
+      store.saveLevel(2)
       expect(store.paces()).toEqual({})
+      expect(store.level()).toBeNull()
       expect(store.progress(1, ":all")).toBeNull()
       expect(store.sets()).toEqual([])
       expect(store.count({ type: "set" }, "2026-09-28").totals.sets).toBe(1)

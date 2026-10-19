@@ -1,14 +1,15 @@
 /**
  * What the read-aloud drill keeps on the device between sittings: each
- * word's pace, the practice record, the set left unfinished, and the word
- * sets added from storage
+ * word's pace, the practice record, the set left unfinished, the word sets
+ * added from storage, and the level the learner chose on the material list
  * (adaptive-learning canon Cor. 4.6 (iii), Def. 6.6, Rem. 4.10, Rem. 7.5).
  *
  * The added sets are content, kept so the learner need not pick them again;
- * losing them costs the picking. The other three sit outside the belief
+ * losing them costs the picking. The other four sit outside the belief
  * envelope. The pace book is pacing and nothing more; the record is a count
  * shown to the learner; the unfinished set is a place in content, like the
- * handheld lesson's resume point. Losing
+ * handheld lesson's resume point; the level is a setting, which falls back
+ * to the last drama's. Losing
  * any of them costs exactly that and nothing else (Thm. 7.2), which is why
  * every failure below is silent: eviction, a full quota, a private window, a
  * document an older build wrote. Everything read is parsed, not trusted, and
@@ -17,6 +18,8 @@
 
 import { localStorageOrNull } from "@some-ui/core-utils"
 import type { StorageLike } from "@topik/lib/topik/adapter/storage"
+import { asTopikLevel } from "@topik/lib/topik/generation"
+import type { TopikLevel } from "@topik/lib/topik/generation"
 import type { AddedSet } from "@topik/lib/topik/read-aloud/added-sets"
 import {
   parseAddedSets,
@@ -43,6 +46,7 @@ export const READ_ALOUD_STORAGE_KEYS = {
   record: "topik:read-aloud-record",
   progress: "topik:read-aloud-progress",
   sets: "topik:read-aloud-sets",
+  level: "topik:read-aloud-level",
 } as const
 
 /** A counted rep or a finished set, as the drill reports it. */
@@ -69,6 +73,9 @@ export type ReadAloudStore = {
   /** The word sets added from storage, oldest first. */
   sets: () => Array<AddedSet>
   saveSets: (sets: ReadonlyArray<AddedSet>) => void
+  /** The TOPIK level the learner chose, or null before they chose one. */
+  level: () => TopikLevel | null
+  saveLevel: (level: TopikLevel) => void
 }
 
 const Id = z.string().min(1)
@@ -181,6 +188,11 @@ export function createReadAloudStore(
       parseAddedSets(read(READ_ALOUD_STORAGE_KEYS.sets)),
     saveSets: (sets): void => {
       write(READ_ALOUD_STORAGE_KEYS.sets, sets.map(storedSet))
+    },
+    level: (): TopikLevel | null =>
+      asTopikLevel(read(READ_ALOUD_STORAGE_KEYS.level)),
+    saveLevel: (level): void => {
+      write(READ_ALOUD_STORAGE_KEYS.level, level)
     },
   }
 }

@@ -9,6 +9,7 @@ import { useSyncExternalStore } from "react"
 import { StepLayout } from "@topik/components/topik/handheld/step-layout"
 import { LensCard } from "@topik/components/topik/read-aloud/lens-card"
 import { HeldNote } from "@topik/components/topik/read-aloud/rep-card"
+import type { LevelReason } from "@topik/components/topik/read-aloud/session-header"
 import { SessionHeader } from "@topik/components/topik/read-aloud/session-header"
 import { SetCard } from "@topik/components/topik/read-aloud/set-card"
 import type { UseLensSessionOptions } from "@topik/lib/topik/adapter/hooks/use-lens-session"
@@ -31,6 +32,7 @@ export type LensSessionProps = UseLensSessionOptions & {
   recordFull?: () => boolean
   /** What leaving returns to: read-aloud's start screen, unless said. */
   exitLabel?: string
+  levelReason?: LevelReason
 }
 
 /** The set's tally under its headline, by catalogue entry. */
@@ -84,6 +86,7 @@ export const LensSession = ({
   short = false,
   recordFull,
   exitLabel = "Back to read-aloud",
+  levelReason,
   ...options
 }: LensSessionProps): JSX.Element => {
   const vm = useLensSession(options)
@@ -102,6 +105,7 @@ export const LensSession = ({
     <SessionHeader
       title="Grammar lens"
       level={options.level}
+      levelReason={levelReason}
       short={short}
       exit={{
         label: exitLabel,

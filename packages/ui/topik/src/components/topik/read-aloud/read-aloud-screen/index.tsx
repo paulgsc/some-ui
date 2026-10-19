@@ -22,6 +22,7 @@ import { useState } from "react"
 import type { Speaker } from "@some-ui/speech"
 import { LensSession } from "@topik/components/topik/read-aloud/lens-session"
 import { ReadAloudSession } from "@topik/components/topik/read-aloud/read-aloud-session"
+import type { LevelReason } from "@topik/components/topik/read-aloud/session-header"
 import type { LensRecordStore } from "@topik/lib/topik/adapter/lens-record-store"
 import type { LensTakes } from "@topik/lib/topik/adapter/lens-takes"
 import type { ReadAloudStore } from "@topik/lib/topik/adapter/read-aloud-store"
@@ -33,8 +34,10 @@ import { dayKey } from "@topik/lib/topik/read-aloud/records"
 import { drawnFrom } from "@topik/lib/topik/read-aloud/set-builder"
 
 type ReadAloudScreenProps = {
-  /** The TOPIK level held on the material list, one to six. */
+  /** The TOPIK level to read at, one to six: the one held, or the set's own. */
   topikLevel: number
+  /** `topikLevel` is an opened set's own, not the level held. */
+  ownSet?: boolean
   speech: Speaker | null
   store?: ReadAloudStore
   /** Where the grammar lens's record is kept; absent, nothing is (Rem. 4.18). */
@@ -54,6 +57,7 @@ type ReadAloudScreenProps = {
 
 export const ReadAloudScreen = ({
   topikLevel,
+  ownSet = false,
   speech,
   store: given,
   lensRecord,
@@ -66,6 +70,11 @@ export const ReadAloudScreen = ({
   now = Date.now,
 }: ReadAloudScreenProps): JSX.Element => {
   const level = readAloudLevelFor(topikLevel)
+  const levelReason: LevelReason = ownSet
+    ? "set"
+    : level < topikLevel
+      ? "highest"
+      : "held"
   // Read once: the drill keeps its own copy of the pace book from the first
   // tap, and the unfinished set is only a starting point.
   const [loaded] = useState(() => {
@@ -95,6 +104,7 @@ export const ReadAloudScreen = ({
       <LensSession
         deck={lensDeck}
         level={level}
+        levelReason={levelReason}
         speech={speech}
         short={short}
         paused={paused}
@@ -113,6 +123,7 @@ export const ReadAloudScreen = ({
     <ReadAloudSession
       deck={deck}
       level={level}
+      levelReason={levelReason}
       speech={speech}
       paces={loaded.paces}
       resume={loaded.resume}

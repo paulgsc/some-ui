@@ -27,6 +27,10 @@ export { LESSON_PROMPT }
 export const TOPIK_LEVELS = [1, 2, 3, 4, 5, 6] as const
 export type TopikLevel = (typeof TOPIK_LEVELS)[number]
 
+/** `value` as a TOPIK level, or null when it is not one. */
+export const asTopikLevel = (value: unknown): TopikLevel | null =>
+  TOPIK_LEVELS.find((level) => level === value) ?? null
+
 /** Which prompt: a conversation lesson, or a scene tree (the drama). */
 export type LessonFormat = "conversations" | "tree"
 
