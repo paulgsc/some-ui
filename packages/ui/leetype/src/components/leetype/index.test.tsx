@@ -190,11 +190,14 @@ describe("Leetype", () => {
     expect(screen.queryByText("Add a session from storage")).toBeNull()
     unmount()
 
-    render(<Leetype sessionFiles={{ store }} />)
+    const onSessionComplete = vi.fn()
+    render(
+      <Leetype sessionFiles={{ store }} onSessionComplete={onSessionComplete} />
+    )
     expect(screen.getByText("Add a session from storage")).toBeTruthy()
   })
 
-  it("plays a held session file in place of the rounds, and comes back when it ends", async () => {
+  it("plays a held session file in place of the rounds, and completes when the learner is done", async () => {
     setViewport(true)
     const raw = SessionFileSchema.parse(AB_FIXTURES[1]?.raw)
     const store = {
@@ -211,14 +214,21 @@ describe("Leetype", () => {
       keep: vi.fn(),
       read: vi.fn(() => Promise.resolve(JSON.stringify(raw))),
     }
-    render(<Leetype sessionFiles={{ store }} />)
+    const onSessionComplete = vi.fn()
+    render(
+      <Leetype sessionFiles={{ store }} onSessionComplete={onSessionComplete} />
+    )
     fireEvent.click(
       await screen.findByRole("button", {
         name: new RegExp(`Play ${raw.title}`),
       })
     )
-    fireEvent.click(await screen.findByRole("button", { name: "End here" }))
+    fireEvent.click(
+      await screen.findByRole("button", { name: /the whole session/ })
+    )
+    fireEvent.click(screen.getByRole("button", { name: "End here" }))
     fireEvent.click(screen.getByRole("button", { name: "Done" }))
+    expect(onSessionComplete).toHaveBeenCalledOnce()
     expect(screen.getByText("Add a session from storage")).toBeTruthy()
   })
 

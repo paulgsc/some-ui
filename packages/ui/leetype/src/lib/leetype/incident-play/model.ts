@@ -30,7 +30,7 @@ import { assertNever } from "@some-ui/core-utils"
 export type PlayForm = "full" | "short"
 
 /** The short form: one incident and its take (Prop. 9.6). */
-const SHORT_FORM_MINUTES = 5
+export const SHORT_FORM_MINUTES = 5
 
 /** Selections needed before slowness can be judged (Def. 9.4). */
 const MEDIAN_AFTER = 5
@@ -109,19 +109,32 @@ function returnOf(play: Play, screen: SessionScreen): string | null {
     : null
 }
 
-/** The return a placement in view leads to, if the file authors one. */
-export function returnFrom(play: Play): string | null {
-  const screen = play.file.screens[play.screen]
-  if (screen?.type !== "reading" || play.placement?.as !== "placement") {
-    return null
-  }
+/** The return the reading placed for `round` leads to, if the file authors one. */
+export function returnScreenOf(
+  file: SessionFile,
+  round: string,
+  reading: string
+): string | null {
+  const screen = file.screens[reading]
+  if (screen?.type !== "reading") return null
   for (const action of screen.actions) {
-    const next = action.next ? play.file.screens[action.next] : undefined
-    if (next && returnOf(play, next) === play.placement.round) {
+    const next = action.next ? file.screens[action.next] : undefined
+    if (
+      next?.type === "choice" &&
+      (next.returnOf ??
+        (next.tags?.includes("parked-return") ? round : null)) === round
+    ) {
       return action.next ?? null
     }
   }
   return null
+}
+
+/** The return the placement in view leads to, if the file authors one. */
+export function returnFrom(play: Play): string | null {
+  return play.placement?.as === "placement"
+    ? returnScreenOf(play.file, play.placement.round, play.screen)
+    : null
 }
 
 /** Median of the learner's earlier selection times, never the abstentions. */
@@ -209,18 +222,24 @@ function enter(
   return { play: next, events: [] }
 }
 
-/** Starts a session on its file's first screen. */
+/**
+ * Starts a session on its file's first screen, or, `returning`, on the
+ * return of a round parked in an earlier session, offered because its
+ * reading has since been read (Prop. 9.4 (b)).
+ */
 export function startPlay(
   args: {
     readonly fileName: string
     readonly file: SessionFile
     readonly session: string
     readonly form: PlayForm
+    readonly returning?: { readonly round: string; readonly reading: string }
   },
   ctx: StepContext
 ): Stepped {
+  const { returning, ...rest } = args
   const play: Play = {
-    ...args,
+    ...rest,
     screen: args.file.start,
     shownAt: ctx.at,
     reveal: null,
@@ -238,7 +257,16 @@ export function startPlay(
         ? SHORT_FORM_MINUTES
         : args.file.session.budgetMinutes,
   }
-  const entered = enter(play, args.file.start, ctx)
+  const placement = returning
+    ? { round: returning.round, as: "placement" as const }
+    : null
+  const target = returning
+    ? returnScreenOf(args.file, returning.round, returning.reading)
+    : null
+  const entered =
+    target === null
+      ? enter(play, args.file.start, ctx)
+      : enter(play, target, ctx, { placement })
   return { play: entered.play, events: [started, ...entered.events] }
 }
 

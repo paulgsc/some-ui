@@ -4,7 +4,7 @@ import { createSessionLogStore } from "@leetype/lib/leetype/session-log"
 import type { ChoiceScreen } from "@leetype/types/session-file"
 import { SessionFileSchema } from "@leetype/types/session-file"
 import { memoryStorage } from "@some-ui/vite-config/vitest/memory-storage"
-import { fireEvent, render, screen } from "@testing-library/react"
+import { cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { describe, expect, it, vi } from "vitest"
 
 const FILE = SessionFileSchema.parse(AB_FIXTURES[1]?.raw)
@@ -15,8 +15,9 @@ function choice(id: string): ChoiceScreen {
   return found
 }
 
-function mount(): { log: ReturnType<typeof createSessionLogStore> } {
-  const log = createSessionLogStore(memoryStorage())
+function mount(log = createSessionLogStore(memoryStorage())): {
+  log: ReturnType<typeof createSessionLogStore>
+} {
   render(
     <IncidentSession
       fileName="t1-01"
@@ -24,6 +25,7 @@ function mount(): { log: ReturnType<typeof createSessionLogStore> } {
       ports={{ log, now: () => 0, newId: () => crypto.randomUUID() }}
     />
   )
+  fireEvent.click(screen.getByRole("button", { name: /the whole session/ }))
   return { log }
 }
 
@@ -97,9 +99,97 @@ describe("IncidentSession", () => {
         onEnd={onEnd}
       />
     )
+    fireEvent.click(screen.getByRole("button", { name: /one incident/ }))
     fireEvent.click(screen.getByRole("button", { name: "End here" }))
     expect(screen.getByText("This session has ended.")).toBeTruthy()
     fireEvent.click(screen.getByRole("button", { name: "Done" }))
     expect(onEnd).toHaveBeenCalledWith("left")
+  })
+
+  it("first declares the length and says where the learner is, from the log", () => {
+    render(
+      <IncidentSession
+        fileName="t1-01"
+        file={FILE}
+        ports={{ log: createSessionLogStore(memoryStorage()) }}
+      />
+    )
+    expect(screen.getByText(FILE.title)).toBeTruthy()
+    expect(
+      screen.getByText("You haven't played this session yet.")
+    ).toBeTruthy()
+    expect(
+      screen.getByRole("button", {
+        name: "About 10 minutes: the whole session",
+      })
+    ).toBeTruthy()
+    expect(
+      screen.getByRole("button", {
+        name: "About 5 minutes: one incident and the take",
+      })
+    ).toBeTruthy()
+  })
+
+  it("ends on a ledger made only of what the session recorded", () => {
+    mount()
+    fireEvent.click(
+      screen.getByRole("button", { name: /Start with incident 1/ })
+    )
+    fireEvent.click(screen.getByRole("button", { name: WRONG?.label }))
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }))
+    fireEvent.click(screen.getByRole("button", { name: "End here" }))
+
+    const ended = screen.getByRole("article")
+    const items = [...ended.querySelectorAll("li")].map((li) => li.textContent)
+    const round = ROUND.title ?? ROUND.pinned ?? "s02"
+    expect(items).toEqual([
+      round,
+      expect.stringMatching(new RegExp(`^${round} waits on `)),
+    ])
+    expect(screen.queryByText("Saved for a Read session")).toBeNull()
+    expect(screen.queryByText("Your take")).toBeNull()
+  })
+
+  it("offers a parked round back once its reading has been read", () => {
+    const log = createSessionLogStore(memoryStorage())
+    mount(log)
+    fireEvent.click(
+      screen.getByRole("button", { name: /Start with incident 1/ })
+    )
+    fireEvent.click(screen.getByRole("button", { name: WRONG?.label }))
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }))
+    fireEvent.click(screen.getByRole("button", { name: /Save it/ }))
+    fireEvent.click(screen.getByRole("button", { name: "End here" }))
+    cleanup()
+
+    // Saved, not read: nothing comes back yet.
+    render(<IncidentSession fileName="t1-01" file={FILE} ports={{ log }} />)
+    expect(screen.queryByText(/with new numbers/)).toBeNull()
+    fireEvent.click(screen.getByRole("button", { name: /the whole session/ }))
+    fireEvent.click(
+      screen.getByRole("button", { name: /Start with incident 1/ })
+    )
+    fireEvent.click(screen.getByRole("button", { name: WRONG?.label }))
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }))
+    fireEvent.click(screen.getByRole("button", { name: "Read now" }))
+    // At the return, the learner leaves before answering it.
+    fireEvent.click(screen.getByRole("button", { name: "End here" }))
+    cleanup()
+
+    render(<IncidentSession fileName="t1-01" file={FILE} ports={{ log }} />)
+    expect(screen.getByText(/Last time you ended at/)).toBeTruthy()
+    fireEvent.click(screen.getByRole("button", { name: /with new numbers/ }))
+    const back = choice("s04")
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: back.options.find((option) => option.correct)?.label,
+      })
+    )
+    expect(log.getSnapshot().log.at(-1)).toMatchObject({
+      type: "returned",
+      screen: "s02",
+      variant: "s04",
+      asked: false,
+    })
   })
 })

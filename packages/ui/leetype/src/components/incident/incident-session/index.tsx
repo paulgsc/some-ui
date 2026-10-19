@@ -2,15 +2,23 @@ import type { FC, JSX } from "react"
 import { useState, useSyncExternalStore } from "react"
 import { ReadingScreenView } from "@leetype/components/incident/reading-screen"
 import { RoundScreen } from "@leetype/components/incident/round-screen"
-import type {
-  IncidentPlayPorts,
-  PlayForm,
-} from "@leetype/lib/leetype/incident-play"
+import { SessionEnd } from "@leetype/components/incident/session-end"
+import { SessionStart } from "@leetype/components/incident/session-start"
+import type { IncidentPlayPorts } from "@leetype/lib/leetype/incident-play"
 import {
   IncidentPlayRuntime,
   returnFrom,
+  SHORT_FORM_MINUTES,
 } from "@leetype/lib/leetype/incident-play"
-import { createSessionLogStore } from "@leetype/lib/leetype/session-log"
+import {
+  endLines,
+  placeOf,
+  returnsReady,
+} from "@leetype/lib/leetype/incident-play/words"
+import {
+  createSessionLogStore,
+  ledgerOf,
+} from "@leetype/lib/leetype/session-log"
 import type { SessionFile } from "@leetype/types/session-file"
 import { assertNever, cn } from "@some-ui/core-utils"
 import { Button } from "@some-ui/shared"
@@ -19,7 +27,6 @@ type IncidentSessionProps = {
   /** The file's name, as the session log names it. */
   fileName: string
   file: SessionFile
-  form?: PlayForm
   /** Read once, at mount: the runtime is made once per session. */
   ports?: Partial<IncidentPlayPorts>
   /** The learner is done with an ended session: by its end screen, or by leaving. */
@@ -28,27 +35,30 @@ type IncidentSessionProps = {
 }
 
 /**
- * A phone session played from a session file (canon v1.2): one screen at a
- * time, each step recorded in the session log. It reads the runtime's
- * snapshot and dispatches; the clock, the ids and the log live in the
- * runtime (`lib/leetype/incident-play`).
+ * A phone session played from a session file (canon v1.2): its first screen
+ * with the declared length and the short form (Prop. 9.6), then one screen
+ * at a time, each step recorded in the session log, then the end screen
+ * computed from that log (Prop. 10.2). It reads the runtime's snapshot and
+ * dispatches; the clock, the ids and the log live in the runtime
+ * (`lib/leetype/incident-play`).
  */
 export const IncidentSession: FC<IncidentSessionProps> = ({
   fileName,
   file,
-  form = "full",
   ports,
   onEnd,
   className,
 }) => {
-  const [runtime] = useState(() => {
-    const made = new IncidentPlayRuntime({
-      log: ports?.log ?? createSessionLogStore(),
-      now: ports?.now ?? ((): number => Date.now()),
-      newId: ports?.newId ?? ((): string => crypto.randomUUID()),
-    })
-    made.start({ fileName, file, form })
-    return made
+  const [{ runtime, log }] = useState(() => {
+    const kept = ports?.log ?? createSessionLogStore()
+    return {
+      log: kept,
+      runtime: new IncidentPlayRuntime({
+        log: kept,
+        now: ports?.now ?? ((): number => Date.now()),
+        newId: ports?.newId ?? ((): string => crypto.randomUUID()),
+      }),
+    }
   })
   const { play, problem } = useSyncExternalStore(
     runtime.subscribe,
@@ -56,22 +66,49 @@ export const IncidentSession: FC<IncidentSessionProps> = ({
     runtime.getSnapshot
   )
   const ended = play?.ended ?? null
-
-  if (play === null) return null
-  const screen = play.file.screens[play.screen]
-  const dispatch = runtime.dispatch
   const page =
     // scroll-intent: reading-page: a round is one scrolling screen
     // (Def. 9.3); the page scrolls and the job stays pinned.
     "flex h-full flex-col overflow-y-auto px-4 pb-6"
 
+  if (play === null) {
+    const here = { fileName, file }
+    const kept = log.getSnapshot().log
+    return (
+      <div data-scroll-intent="reading-page" className={cn(page, className)}>
+        <SessionStart
+          title={file.title}
+          oneLine={file.oneLine}
+          place={placeOf(kept, here)}
+          fullMinutes={file.session.budgetMinutes}
+          shortMinutes={SHORT_FORM_MINUTES}
+          returns={returnsReady(kept, here)}
+          onStart={(form): void => runtime.start({ fileName, file, form })}
+          onReturn={({ round, reading }): void =>
+            runtime.start({
+              fileName,
+              file,
+              form: "full",
+              returning: { round, reading },
+            })
+          }
+        />
+      </div>
+    )
+  }
+  const screen = play.file.screens[play.screen]
+  const dispatch = runtime.dispatch
+
   const body = ((): JSX.Element | null => {
     if (ended !== null || screen === undefined) {
       return (
         <div className="flex flex-col gap-4">
-          <p role="status" className="text-sm text-muted-foreground">
-            This session has ended.
-          </p>
+          <SessionEnd
+            lines={endLines(ledgerOf(log.getSnapshot().log, play.session), {
+              fileName,
+              file,
+            })}
+          />
           {ended !== null && onEnd !== undefined && (
             <Button className="self-start" onClick={(): void => onEnd(ended)}>
               Done

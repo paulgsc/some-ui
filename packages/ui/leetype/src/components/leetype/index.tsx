@@ -244,7 +244,10 @@ export const Leetype: FC<LeetypeProps> = ({
           key={playing.name}
           fileName={playing.name}
           file={playing.file}
-          onEnd={(): void => setPlaying(null)}
+          onEnd={(): void => {
+            setPlaying(null)
+            onSessionComplete?.()
+          }}
         />
       </div>
     )

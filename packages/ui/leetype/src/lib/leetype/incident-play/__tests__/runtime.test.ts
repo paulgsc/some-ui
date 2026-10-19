@@ -16,8 +16,8 @@ function runtimeOver(storage: KeyedStorage | null): {
   let id = 0
   const runtime = new IncidentPlayRuntime({
     log: createSessionLogStore(storage),
-    now: () => now,
-    newId: () => `id${String(++id)}`,
+    now: (): number => now,
+    newId: (): string => `id${String(++id)}`,
   })
   return {
     runtime,

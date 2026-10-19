@@ -5,7 +5,7 @@ import type { Play, PlayForm, PlayInput, Stepped } from "./model"
 import { medianSelectionMs, startPlay, step } from "./model"
 
 export type { PlayForm, PlayInput, Reveal } from "./model"
-export { returnFrom } from "./model"
+export { returnFrom, SHORT_FORM_MINUTES } from "./model"
 
 export type IncidentPlaySnapshot = {
   readonly play: Play | null
@@ -43,6 +43,7 @@ export class IncidentPlayRuntime {
     readonly fileName: string
     readonly file: SessionFile
     readonly form: PlayForm
+    readonly returning?: { readonly round: string; readonly reading: string }
   }): void => {
     this.apply(
       startPlay({ ...args, session: this.ports.newId() }, this.context())
