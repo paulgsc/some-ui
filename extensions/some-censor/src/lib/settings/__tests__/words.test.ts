@@ -4,7 +4,6 @@
  * (CLAUDE.md, "State in the person's terms").
  */
 
-import { MODES } from "@censor/lib/settings/settings"
 import * as WORDS from "@censor/lib/settings/words"
 import { describe, expect, it } from "vitest"
 
@@ -23,14 +22,8 @@ describe("words", () => {
   it("says nothing of the machinery", () => {
     for (const text of all) {
       expect(text, text).not.toMatch(
-        /\b(rules?|lane|signs?|core|data-|stamp|boyo|storage|sync|true|false|null|undefined|held view|plate)\b/i
+        /\b(rules?|lane|signs?|core|data-|stamp|boyo|storage|sync|true|false|null|undefined|held view|plat(e|ed|ing))\b/i
       )
-    }
-  })
-
-  it("gives every mode one value per row", () => {
-    for (const mode of MODES) {
-      expect(WORDS.MODE_WORDS[mode].rows).toHaveLength(WORDS.MODE_ROWS.length)
     }
   })
 })

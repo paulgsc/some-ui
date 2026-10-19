@@ -1,8 +1,14 @@
 /**
  * The tab and toolbar-button menu (#1966), as data: which items it shows
  * for the stored settings, and what a click on one asks for. The background
- * builds it from {@link menuItems} on every change, so a check mark is
- * always what is stored, and hands each click to {@link menuCommand}.
+ * creates it from {@link menuItems} once, sets its marks from them again
+ * each time it opens, so a mark is always what is stored, and hands each
+ * click to {@link menuCommand}.
+ *
+ * Firefox shows at most six top-level items in the toolbar button's menu
+ * and folds the rest into a submenu, separators counted, so it has six.
+ * While the extension is off, its choices are greyed out, as on the popup
+ * and the settings page.
  *
  * The age is not here on purpose: lowering it is never one right-click
  * away (the doctrine's §9 falsifier).
@@ -27,6 +33,7 @@ export type MenuItem = {
   readonly title?: string
   readonly type?: "checkbox" | "radio" | "separator"
   readonly checked?: boolean
+  readonly enabled?: boolean
   readonly parentId?: string
 }
 
@@ -43,7 +50,7 @@ export function menuItems(
       checked: settings.enabled,
     },
     { id: `${ID.on}-separator`, type: "separator" },
-    { id: ID.mode, title: MENU_WORDS.mode },
+    { id: ID.mode, title: MENU_WORDS.mode, enabled: settings.enabled },
     ...MODES.map(
       (mode): MenuItem => ({
         id: modeId(mode),
@@ -58,8 +65,8 @@ export function menuItems(
       title: MENU_WORDS.autoplayStops,
       type: "checkbox",
       checked: settings.autoplay === "stop",
+      enabled: settings.enabled,
     },
-    { id: `${ID.autoplay}-separator`, type: "separator" },
     { id: ID.settings, title: MENU_WORDS.settings },
     diagnostics,
   ]

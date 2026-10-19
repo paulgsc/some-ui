@@ -73,7 +73,6 @@ body {
   align-items: center;
   color: var(--bc-muted);
   display: flex;
-  flex-direction: row-reverse;
   font-size: 13px;
   gap: 10px;
 }
@@ -85,7 +84,6 @@ body {
 
 .boyo-options-off .options__section {
   opacity: 0.4;
-  pointer-events: none;
 }
 
 .options__scale {

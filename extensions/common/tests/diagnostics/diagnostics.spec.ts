@@ -1,7 +1,7 @@
 /**
  * Diagnostics entry-point typestate tests.
  *
- * `diagnosticsMenuId`/`isDiagnosticsMenuClick`/`diagnosticsMenuItem` are pure
+ * `diagnosticsMenuId`/`diagnosticsMenuItem` are pure
  * string logic and run directly in the Playwright test-runner (Node.js)
  * process, same as the click-gate suite. `diagnosticsLink` builds real DOM
  * nodes, so — same as the keybindings suite — its source is injected into a
@@ -12,7 +12,6 @@ import {
   diagnosticsLink,
   diagnosticsMenuId,
   diagnosticsMenuItem,
-  isDiagnosticsMenuClick,
 } from "@common/lib/diagnostics"
 import { expect, test } from "@playwright/test"
 
@@ -24,26 +23,6 @@ test.describe("diagnosticsMenuId", () => {
   test("namespaces the id so workspaces can never collide", () => {
     expect(diagnosticsMenuId("sw")).toBe("sw-open-diagnostics")
     expect(diagnosticsMenuId("bc")).toBe("bc-open-diagnostics")
-  })
-})
-
-// ─────────────────────────────────────────────────────────────────────────────
-// isDiagnosticsMenuClick — click matcher
-// ─────────────────────────────────────────────────────────────────────────────
-
-test.describe("isDiagnosticsMenuClick", () => {
-  const id = diagnosticsMenuId("bc")
-
-  test("matches the exact id", () => {
-    expect(isDiagnosticsMenuClick(id, id)).toBe(true)
-  })
-
-  test("matches a numeric menuItemId coerced to the same string", () => {
-    expect(isDiagnosticsMenuClick("42", "42")).toBe(true)
-  })
-
-  test("does not match a different workspace's id", () => {
-    expect(isDiagnosticsMenuClick(diagnosticsMenuId("sw"), id)).toBe(false)
   })
 })
 

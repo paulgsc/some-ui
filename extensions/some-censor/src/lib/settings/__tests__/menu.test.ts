@@ -43,6 +43,20 @@ describe("menuItems", () => {
     expect(titles.join(" ")).not.toMatch(/older|month|year/i)
   })
 
+  it("fits Firefox's six top-level toolbar items, separators counted", () => {
+    const items = menuItems(DEFAULT_SETTINGS, DIAGNOSTICS)
+    expect(items.filter((i) => i.parentId === undefined)).toHaveLength(6)
+  })
+
+  it("greys out the choices while the extension is off", () => {
+    const greyed = (enabled: boolean): Array<string> =>
+      menuItems({ ...DEFAULT_SETTINGS, enabled }, DIAGNOSTICS)
+        .filter((i) => i.enabled === false)
+        .map((i) => i.id)
+    expect(greyed(true)).toEqual([])
+    expect(greyed(false)).toEqual(["bc-mode", "bc-autoplay-stops"])
+  })
+
   it("puts every mode under Mode, and Diagnostics last", () => {
     const items = menuItems(DEFAULT_SETTINGS, DIAGNOSTICS)
     expect(

@@ -21,7 +21,9 @@ import {
   AGE_QUESTION,
   AUTOPLAY_QUESTION,
   AUTOPLAY_WORDS,
+  MODE_QUESTION,
   MODE_WORDS,
+  PAGE_WORDS,
 } from "@censor/lib/settings/words"
 import { ext } from "@censor/platform/content"
 import { diagnosticsLink } from "@some-extension/common/lib/diagnostics"
@@ -50,10 +52,11 @@ function header(settings: Settings): HTMLElement {
 function choices(settings: Settings): HTMLElement {
   const el = document.createElement("div")
   el.className = "popup__choices"
+  el.inert = !settings.enabled
   el.append(
     segments({
       id: "mode",
-      question: "Mode",
+      question: MODE_QUESTION,
       values: MODES,
       label: (mode) => MODE_WORDS[mode].name,
       current: settings.mode,
@@ -87,7 +90,7 @@ function footer(): HTMLElement {
   const all = document.createElement("button")
   all.type = "button"
   all.className = "popup__link"
-  all.textContent = "All settings"
+  all.textContent = PAGE_WORDS.allSettings
   all.addEventListener("click", () => {
     void ext.runtime.openOptionsPage()
   })
@@ -95,6 +98,7 @@ function footer(): HTMLElement {
     all,
     diagnosticsLink({
       href: ext.runtime.getURL("debug.html"),
+      label: PAGE_WORDS.diagnostics,
       tooltip: "Card resolution health, metrics and the masking event timeline",
     })
   )

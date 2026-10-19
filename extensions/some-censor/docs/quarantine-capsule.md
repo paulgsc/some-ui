@@ -542,8 +542,9 @@ holds the switch, the mode, the boundary and the autoplay choice; the settings
 page (`options.html`) shows the three modes as cards, each listing the same
 rows, and then the boundary and the autoplay choice; the tab and toolbar
 menu holds the switch, the mode and the autoplay choice, never the boundary.
-All three write through one saver, every open tab follows, and Diagnostics
-shows every change of the boundary, the mode and the autoplay choice.
+Each writes through `createSaver`, whose queue keeps one page's writes in
+order; every open tab follows, and Diagnostics shows every change of the
+boundary, the mode and the autoplay choice.
 
 ---
 

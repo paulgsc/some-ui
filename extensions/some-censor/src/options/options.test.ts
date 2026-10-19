@@ -61,7 +61,7 @@ it("picks a mode whole by its card, and logs it", async () => {
   ])
 })
 
-it("sets autoplay on its own, in every mode", async () => {
+it("sets autoplay and leaves the mode as it is", async () => {
   const fake = await mount({ v: 1, mode: "strict" })
   await vi.waitFor(() => expect(cards()).toHaveLength(3))
   const skip = [...document.querySelectorAll("button")].find(

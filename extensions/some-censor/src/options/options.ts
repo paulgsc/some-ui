@@ -24,8 +24,10 @@ import {
   AUTOPLAY_QUESTION,
   AUTOPLAY_WORDS,
   EVERY_MODE,
+  MODE_QUESTION,
   MODE_ROWS,
   MODE_WORDS,
+  PAGE_WORDS,
 } from "@censor/lib/settings/words"
 import { ext } from "@censor/platform/content"
 
@@ -51,23 +53,21 @@ function header(settings: Settings): HTMLElement {
     el("span", "options__name", "BOYO"),
     el("h1", "options__h1", "Settings")
   )
-  const state = el(
-    "label",
-    "options__state",
-    settings.enabled ? "On" : "Off: plain YouTube"
-  )
-  state.prepend(
-    onSwitch(settings.enabled, () => {
-      save((stored) => ({ ...stored, enabled: !stored.enabled }))
-    })
-  )
+  const state = el("div", "options__state")
+  const said = el("span", "", settings.enabled ? PAGE_WORDS.on : PAGE_WORDS.off)
+  said.id = "on-state"
+  const toggle = onSwitch(settings.enabled, () => {
+    save((stored) => ({ ...stored, enabled: !stored.enabled }))
+  })
+  toggle.setAttribute("aria-describedby", said.id)
+  state.append(said, toggle)
   bar.append(title, state)
   return bar
 }
 
 function card(mode: Mode, current: Mode): HTMLElement {
   const words = MODE_WORDS[mode]
-  const standard = MODE_WORDS[DEFAULT_SETTINGS.mode]
+  const defaults = MODE_WORDS[DEFAULT_SETTINGS.mode]
   const chosen = mode === current
   const button = el("button", "mode-card")
   button.type = "button"
@@ -76,20 +76,28 @@ function card(mode: Mode, current: Mode): HTMLElement {
     save((stored) => ({ ...stored, mode }))
   })
 
+  const name = el("span", "mode-card__name", words.name)
+  name.id = `${mode}-name`
+  const tag = el("span", "mode-card__tag", words.tag)
+  tag.id = `${mode}-tag`
+  button.setAttribute("aria-labelledby", name.id)
+  button.setAttribute("aria-describedby", tag.id)
+
   const top = el("span", "mode-card__top")
-  top.append(el("span", "mode-card__name", words.name))
-  if (chosen) top.append(el("span", "mode-card__badge", "Current"))
+  top.append(name)
+  if (chosen) top.append(el("span", "mode-card__badge", PAGE_WORDS.current))
   else if (mode === DEFAULT_SETTINGS.mode) {
     top.append(
-      el("span", "mode-card__badge mode-card__badge--quiet", "Default")
+      el("span", "mode-card__badge mode-card__badge--quiet", PAGE_WORDS.default)
     )
   }
-  button.append(top, el("span", "mode-card__tag", words.tag))
+  button.append(top, tag)
 
-  MODE_ROWS.forEach((row, i) => {
+  for (const row of MODE_ROWS) {
     const line = el("span", "mode-card__row")
-    const value = words.rows[i] ?? ""
-    const differs = mode !== DEFAULT_SETTINGS.mode && value !== standard.rows[i]
+    const value = words.rows[row]
+    const differs =
+      mode !== DEFAULT_SETTINGS.mode && value !== defaults.rows[row]
     line.append(
       el("span", "mode-card__label", row),
       el(
@@ -101,23 +109,24 @@ function card(mode: Mode, current: Mode): HTMLElement {
       )
     )
     button.append(line)
-  })
+  }
   return button
 }
 
 function modes(settings: Settings): HTMLElement {
   const section = el("section", "options__section")
+  section.inert = !settings.enabled
   const head = el("div", "options__section-head")
-  const h2 = el("h2", "options__h2", "Mode")
+  const h2 = el("h2", "options__h2", MODE_QUESTION)
   h2.id = "mode-heading"
-  head.append(h2, el("span", "options__scale", "more held → more shown"))
+  head.append(h2, el("span", "options__scale", PAGE_WORDS.scale))
   const grid = el("div", "mode-cards")
   grid.setAttribute("role", "group")
   grid.setAttribute("aria-labelledby", h2.id)
   for (const mode of MODES) grid.append(card(mode, settings.mode))
 
   const every = el("p", "options__every")
-  every.append(el("strong", "", "In every mode"))
+  every.append(el("strong", "", PAGE_WORDS.everyMode))
   for (const line of EVERY_MODE) every.append(el("span", "", line))
 
   section.append(head, grid, every)
@@ -126,6 +135,7 @@ function modes(settings: Settings): HTMLElement {
 
 function standalone(settings: Settings): HTMLElement {
   const section = el("section", "options__section options__choices")
+  section.inert = !settings.enabled
   section.append(
     segments({
       id: "age",
@@ -134,7 +144,7 @@ function standalone(settings: Settings): HTMLElement {
       label: (boundary) => BOUNDARY_LABEL[boundary],
       current: settings.boundary,
       onPick: (boundary) => save((stored) => ({ ...stored, boundary })),
-      line: "Applies in every mode.",
+      line: PAGE_WORDS.ageNote,
     }),
     segments({
       id: "autoplay",
@@ -151,12 +161,9 @@ function standalone(settings: Settings): HTMLElement {
 
 function footer(): HTMLElement {
   const bar = el("footer", "options__footer")
-  const diagnostics = el("a", "options__link", "Diagnostics")
+  const diagnostics = el("a", "options__link", PAGE_WORDS.diagnostics)
   diagnostics.href = ext.runtime.getURL("debug.html")
-  bar.append(
-    el("span", "", "Every open YouTube tab follows as you choose."),
-    diagnostics
-  )
+  bar.append(el("span", "", PAGE_WORDS.follows), diagnostics)
   return bar
 }
 

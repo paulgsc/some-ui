@@ -3,14 +3,19 @@
  *
  * Its one job is the tab and toolbar-button menu (#1966): the switch, the
  * mode, what autoplay does at a held video, the settings page and
- * Diagnostics. The menu is rebuilt from what is stored on every change, so
- * its marks always match the popup and the settings page.
+ * Diagnostics. The menu is created once, at install, and its marks are set
+ * from what is stored each time it opens, so they always match the popup
+ * and the settings page. Nothing here listens to storage, so the
+ * background sleeps until the menu is opened or clicked.
  *
  * Runtime isolation: no imports from src/content/ or src/popup/ at runtime.
  */
 import { menuCommand, menuItems } from "@censor/lib/settings/menu"
-import type { Settings } from "@censor/lib/settings/settings"
-import { createSaver, followSettings } from "@censor/lib/settings/settings"
+import {
+  createSaver,
+  parseSettings,
+  SETTINGS_KEY,
+} from "@censor/lib/settings/settings"
 import { ext } from "@censor/platform/background"
 import { assertNever } from "@some-extension/common"
 import { diagnosticsMenuItem } from "@some-extension/common/lib/diagnostics"
@@ -25,21 +30,46 @@ const DIAGNOSTICS_MENU = diagnosticsMenuItem("bc")
 
 const save = createSaver(ext.storage.local)
 
-let building: Promise<void> = Promise.resolve()
+async function stored(): Promise<ReturnType<typeof parseSettings>> {
+  const record = await ext.storage.local.get(SETTINGS_KEY)
+  return parseSettings(record[SETTINGS_KEY])
+}
 
-/** Rebuild the menu for `settings`, one rebuild at a time. */
-function build(settings: Settings): void {
-  building = building
-    .then(async () => {
-      await ext.contextMenus.removeAll()
+ext.runtime.onInstalled.addListener((): void => {
+  void ext.contextMenus
+    .removeAll()
+    .then(stored)
+    .then((settings) => {
       for (const item of menuItems(settings, DIAGNOSTICS_MENU)) {
         ext.contextMenus.create({ ...item, contexts: CONTEXTS })
       }
     })
     .catch(() => undefined)
-}
+})
 
-followSettings(ext.storage, build)
+// Firefox only: Chrome has neither `onShown` nor `refresh`, nor these menus.
+const firefoxMenus: {
+  readonly onShown?: typeof ext.contextMenus.onShown
+  readonly refresh?: typeof ext.contextMenus.refresh
+} = ext.contextMenus
+
+firefoxMenus.onShown?.addListener((): void => {
+  void stored()
+    .then(async (settings) => {
+      for (const { id, checked, enabled } of menuItems(
+        settings,
+        DIAGNOSTICS_MENU
+      )) {
+        if (checked === undefined && enabled === undefined) continue
+        await ext.contextMenus.update(id, {
+          ...(checked === undefined ? {} : { checked }),
+          ...(enabled === undefined ? {} : { enabled }),
+        })
+      }
+      await firefoxMenus.refresh?.()
+    })
+    .catch(() => undefined)
+})
 
 ext.contextMenus.onClicked.addListener((info): void => {
   const command = menuCommand(

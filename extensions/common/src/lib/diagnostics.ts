@@ -16,7 +16,7 @@
  * per workspace (Chrome's `ContextType` has no "tab"), so hoisting the call
  * itself would just relocate a type fight rather than remove it. What
  * commons can own without depending on any `chrome`/`browser` types at all
- * is the id, the click-match, and the link's DOM — that's what is here.
+ * is the id and the link's DOM — that's what is here.
  *
  * Model lifted from some-filter's `src/popup/popup.ts` `diagnosticsLink()`
  * (verbatim-duplicated in suspender-ledger's `src/popup/index.ts`) and
@@ -29,15 +29,6 @@
  * prefix, so ids can never collide across workspaces sharing a profile. */
 export function diagnosticsMenuId(namespace: string): string {
   return `${namespace}-open-diagnostics`
-}
-
-/** True when a `contextMenus.onClicked` event fired the workspace's own
- * diagnostics entry, keyed by the id `diagnosticsMenuId` produced. */
-export function isDiagnosticsMenuClick(
-  menuItemId: string | number,
-  id: string
-): boolean {
-  return String(menuItemId) === id
 }
 
 export type DiagnosticsMenuItem = {

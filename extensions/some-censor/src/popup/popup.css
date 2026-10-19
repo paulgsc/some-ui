@@ -38,7 +38,6 @@
 
 .boyo-popup-off .popup__choices {
   opacity: 0.4;
-  pointer-events: none;
 }
 
 .popup__links {

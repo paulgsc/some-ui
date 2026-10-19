@@ -7,15 +7,7 @@
 
 import type { Autoplay, Mode } from "./settings"
 
-export type ModeWords = {
-  readonly name: string
-  /** One line: what the mode is for. */
-  readonly tag: string
-  /** One value per {@link MODE_ROWS} row, in order. */
-  readonly rows: ReadonlyArray<string>
-}
-
-/** The rows every mode card shows, in the order of `ModeWords.rows`. */
+/** The rows every mode card shows, in order. */
 export const MODE_ROWS = [
   "Music shown whole",
   "Autoplay from music",
@@ -24,46 +16,55 @@ export const MODE_ROWS = [
   "Cards still loading",
 ] as const
 
+type ModeRow = (typeof MODE_ROWS)[number]
+
+export type ModeWords = {
+  readonly name: string
+  /** One line: what the mode is for. */
+  readonly tag: string
+  readonly rows: Readonly<Record<ModeRow, string>>
+}
+
 export const MODE_WORDS: Readonly<Record<Mode, ModeWords>> = {
   strict: {
     name: "Strict",
     tag: "Only artist music gets through, and nothing opens on demand.",
-    rows: [
-      "From artist channels",
-      "Music only",
-      "Never shown",
-      "Hidden",
-      "Blank",
-    ],
+    rows: {
+      "Music shown whole": "From artist channels",
+      "Autoplay from music": "Music only",
+      "Original thumbnail": "Never shown",
+      "Channel post images": "Hidden",
+      "Cards still loading": "Blank",
+    },
   },
   standard: {
     name: "Standard",
     tag: "Music by title or channel. One way to see a thumbnail: hold.",
-    rows: [
-      "From artist channels, or OST and MV titles",
-      "Anything shown",
-      "After a 3-second hold",
-      "Hidden",
-      "Blurred",
-    ],
+    rows: {
+      "Music shown whole": "From artist channels, or OST and MV titles",
+      "Autoplay from music": "Anything shown",
+      "Original thumbnail": "After a 3-second hold",
+      "Channel post images": "Hidden",
+      "Cards still loading": "Blurred",
+    },
   },
   open: {
     name: "Open",
     tag: "As Standard, with post images and a quicker thumbnail.",
-    rows: [
-      "From artist channels, or OST and MV titles",
-      "Anything shown",
-      "At 3 seconds, and can be hidden again",
-      "Shown",
-      "Blurred",
-    ],
+    rows: {
+      "Music shown whole": "From artist channels, or OST and MV titles",
+      "Autoplay from music": "Anything shown",
+      "Original thumbnail": "At 3 seconds, and can be hidden again",
+      "Channel post images": "Shown",
+      "Cards still loading": "Blurred",
+    },
   },
 }
 
 /** What every mode keeps, said once under the cards. */
 export const EVERY_MODE = [
   "Recent videos are left off the page.",
-  "Older ones are plated.",
+  "Older ones show without their thumbnails.",
   "No views, likes, comments or ages.",
 ] as const
 
@@ -84,10 +85,26 @@ export const AUTOPLAY_WORDS: Readonly<
 
 export const AGE_QUESTION = "Show videos older than"
 
+export const MODE_QUESTION = "Mode"
+
+/** The popup's and the settings page's own words. */
+export const PAGE_WORDS = {
+  on: "On",
+  off: "Off: plain YouTube",
+  current: "Current",
+  default: "Default",
+  scale: "more held → more shown",
+  everyMode: "In every mode",
+  ageNote: "Applies in every mode.",
+  follows: "Every open YouTube tab follows as you choose.",
+  allSettings: "All settings",
+  diagnostics: "Diagnostics",
+} as const
+
 /** The tab and toolbar-button menu (`background.ts`). */
 export const MENU_WORDS = {
-  on: "On",
-  mode: "Mode",
+  on: PAGE_WORDS.on,
+  mode: MODE_QUESTION,
   autoplayStops: "Autoplay stops at held videos",
-  settings: "All settings…",
+  settings: `${PAGE_WORDS.allSettings}…`,
 } as const

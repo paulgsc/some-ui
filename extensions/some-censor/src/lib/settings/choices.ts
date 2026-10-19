@@ -5,6 +5,8 @@
  * state of its own. `choices.css` draws them.
  */
 
+import { PAGE_WORDS } from "./words"
+
 import "./choices.css"
 
 /** The extension's on/off switch. */
@@ -14,7 +16,7 @@ export function onSwitch(on: boolean, onToggle: () => void): HTMLElement {
   toggle.className = "choice-switch"
   toggle.setAttribute("role", "switch")
   toggle.setAttribute("aria-checked", String(on))
-  toggle.setAttribute("aria-label", "On")
+  toggle.setAttribute("aria-label", PAGE_WORDS.on)
   toggle.addEventListener("click", onToggle)
   return toggle
 }
