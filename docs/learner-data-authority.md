@@ -349,7 +349,11 @@ declared (checked by reading every call site and by the tests named).
   request, or queues one for later, outside LA9 to LA11; one that lets the send start without
   its confirm, or drops a count or the host from that confirm; one that
   sends shelf items other than `everyKept`'s, or with a method other than
-  `PUT`; one that passes `copySessionsTo` anything but session records
+  `PUT`; one that passes `sendKept` kept items that did not come through
+  `keptToSend` (in `lib/home-link/send`), or that deletes, bypasses or
+  weakens its filter (`shelfToSend` in `./sent`: an item goes unless what
+  home last answered for it under this pairing holds its bytes as they are
+  now), so the send carries what home already holds; one that passes `copySessionsTo` anything but session records
   (a reflection, a stop or a soundbite: LA7), or lets `homeTransport` send a
   method other than `GET`, `POST` or `PATCH`, or hand a `401` to
   `requestJSON` (the app's own sign-out); one that sends a session's create
