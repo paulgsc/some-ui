@@ -115,8 +115,6 @@ export type JobsRuntime = {
   arrived: (shareId: string) => void
   /** Audio no note lists (the app closed mid-save). Best effort. */
   sweep: () => void
-  /** Its person's second press: the record is kept on home from now on. */
-  keepOnHome: () => boolean
   /** The record one exchange with home reads and answers (`./home`). */
   keeping: JobsRecordPort
 }
@@ -249,7 +247,6 @@ export function createJobsRuntime(ports: JobsPorts): JobsRuntime {
   }
 
   return {
-    keepOnHome: () => commit({ type: "kept-on-home" }),
     keeping: {
       state: () => state,
       answered(held, refused): void {

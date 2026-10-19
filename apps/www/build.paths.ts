@@ -126,7 +126,6 @@ const DEVICE_MODULES = [
   "apps/www/src/lib/study-nudge/native.ts",
   "apps/www/src/lib/study-nudge/schedule.ts",
   "apps/www/src/components/device-home-glyph.tsx",
-  "apps/www/src/components/device-keep-on-home.tsx",
   "apps/www/src/components/aph/device-*.tsx",
   "apps/www/src/components/jobs/**",
   "apps/www/src/components/auth/device-*.tsx",

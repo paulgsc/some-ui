@@ -53,7 +53,7 @@ What follows from them:
   saving, what failed) says what is kept where, and since when, never the machinery behind
   it: no request, status code, address, state name or internal term such as "grant" or
   "sync" reaches the screen. A surface's words live in one pure table that tests for this,
-  as Practice's sharing words do (`apps/www/src/lib/home-link/practice-words.ts`).
+  as the sharing words of each record kept on home do (`apps/www/src/lib/home-link/words.ts`).
 - **Never lose the record.** Because A is real use, the data it leaves (study sessions,
   reflections, typing rounds, voice takes) is also the evidence of growth over time:
   struggling to read a sentence at the first beta, finishing sessions much later. That

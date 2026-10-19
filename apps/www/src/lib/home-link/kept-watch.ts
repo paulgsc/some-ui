@@ -4,8 +4,8 @@
  * with the app in the foreground, at the moments those invariants name.
  * Never on a timer.
  *
- * Each record's lane (`./aph`, `./jobs`) hands in its record and its runtime
- * (`./kept-runtime`); this module names neither record.
+ * The one wiring (`./lanes`) hands in each lane's record and its runtime
+ * (`./kept-runtime`); this module names no record.
  */
 import { homeLink } from "./index"
 import type { Kept } from "./kept-runtime"

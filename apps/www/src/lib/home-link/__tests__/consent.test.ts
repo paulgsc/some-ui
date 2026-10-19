@@ -9,9 +9,11 @@ import { describe, expect, it } from "vitest"
 import type { ConsentLog } from "@/lib/home-link/consent-model"
 import {
   appended,
+  everChosen,
   parseLog,
   sharedAt,
   sharedNow,
+  stoppedNow,
 } from "@/lib/home-link/consent-model"
 import { CONSENT_KEY, createConsent } from "@/lib/home-link/consent-runtime"
 
@@ -38,11 +40,14 @@ describe("the consent log", () => {
   it("answers what was shared at any time from the same events", () => {
     expect([...sharedAt(stopped, 50, PAIRING).keys()]).toEqual([])
     expect([...sharedAt(stopped, 150, PAIRING).entries()]).toEqual([
-      ["sessions", { since: 100 }],
-      ["shelf", { since: 100 }],
+      ["sessions", { since: 100, earlier: false }],
+      ["shelf", { since: 100, earlier: false }],
     ])
     expect([...sharedAt(stopped, 250, PAIRING).entries()]).toEqual([
-      ["sessions", { since: 100 }],
+      ["sessions", { since: 100, earlier: false }],
+    ])
+    expect([...stoppedNow(stopped, PAIRING).entries()]).toEqual([
+      ["shelf", 200],
     ])
     expect([...sharedNow(stopped, PAIRING).keys()]).toEqual(["sessions"])
   })
@@ -87,7 +92,26 @@ describe("the consent log", () => {
       { kind: "kept", pairing: PAIRING, scopes: ["shelf"], said: SAID },
       400
     )
-    expect(sharedNow(back, PAIRING).get("shelf")).toEqual({ since: 400 })
+    expect(sharedNow(back, PAIRING).get("shelf")).toEqual({
+      since: 400,
+      earlier: false,
+    })
+    expect(stoppedNow(back, PAIRING).size).toBe(0)
+  })
+
+  it("says a choice found in its record's own switch was made before it entered", () => {
+    const found = appended(
+      kept,
+      { kind: "kept", pairing: PAIRING, scopes: ["aph"], said: null },
+      300
+    )
+    expect(sharedNow(found, PAIRING).get("aph")).toEqual({
+      since: 300,
+      earlier: true,
+    })
+    expect(parseLog(JSON.stringify(found))).toEqual(found)
+    expect(everChosen(found, "aph")).toBe(true)
+    expect(everChosen(found, "jobs")).toBe(false)
   })
 
   it("counts a choice for the pairing it was made under alone", () => {

@@ -14,7 +14,6 @@ import type { Outcome } from "@/lib/jobs/model"
 import { applicationsOf, lastDelivered } from "@/lib/jobs/model"
 import { sectionHeading } from "@/components/job-reading"
 
-import { JobsKeepOnHome } from "./keep-on-home"
 import { Problem, ShareToDrive, useJobs } from "./parts"
 
 const OUTCOME_LABELS: Readonly<Record<Outcome, string>> = {
@@ -54,7 +53,6 @@ export const JobsRecord = (): JSX.Element => {
       <p className="text-muted-foreground text-xs">
         Nothing here is edited or deleted, only added to.
       </p>
-      <JobsKeepOnHome />
       <ShareToDrive kind="decisions" label="Share today’s decisions">
         <p className="text-muted-foreground text-xs">
           The morning run reads these and your voice notes.

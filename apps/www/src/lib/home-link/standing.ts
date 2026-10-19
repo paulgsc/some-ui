@@ -6,8 +6,7 @@
  * as it PUTs them (`./shelf`), and nothing of home's is taken in or lets a
  * phone session go: freeing the phone stays a tap in Settings (`./send`).
  *
- * Home being busy (`429`) is said as such, so the person can see it; it is
- * not retried here, and what did not go goes on the next ask.
+ * What did not go goes on the next ask.
  */
 import type { HomeExchanged } from "@some-ui/core-utils"
 
@@ -31,7 +30,7 @@ import { causedBy, copyHome, HomeForgotPhoneError } from "./sessions"
 import { emptyReport, sendKept } from "./shelf"
 
 /** Why a standing send ended short, as `failed`'s `why`. */
-type StandingWhy = "busy" | "full" | "refused"
+type StandingWhy = "full" | "refused"
 
 export type StandingPorts = {
   /** This phone's sessions and kept items. */
@@ -53,22 +52,6 @@ export type StandingPorts = {
 
 const failed = (why: StandingWhy): HomeExchanged => ({ kind: "failed", why })
 
-/** `send`, and whether home answered any of it as busy (`429`). */
-export function noticingBusy(send: HomeSend): {
-  send: HomeSend
-  seen: { busy: boolean }
-} {
-  const seen = { busy: false }
-  return {
-    seen,
-    send: async (method, path, body): ReturnType<HomeSend> => {
-      const answer = await send(method, path, body)
-      if (answer.status === 429) seen.busy = true
-      return answer
-    },
-  }
-}
-
 /**
  * Sends what changed; throws what `send` throws when home does not answer.
  * Every request first asks the log again (`gated`), so a stop pressed while
@@ -78,13 +61,11 @@ export async function sendStanding(
   send: HomeSend,
   ports: StandingPorts
 ): Promise<HomeExchanged> {
-  if (ports.shared().size === 0) return { kind: "synced" }
-  const { send: watched, seen } = noticingBusy(send)
   const gated =
     (scope: Scope): HomeSend =>
     (method, path, body) =>
       ports.shared().has(scope)
-        ? watched(method, path, body)
+        ? send(method, path, body)
         : Promise.reject(new SyncStoppedError())
   const { local, kept } = await ports.read()
   let sent: Sent = readSent(ports.storage, ports.pairing)
@@ -98,7 +79,6 @@ export async function sendStanding(
       } catch (error) {
         if (causedBy(error, HomeForgotPhoneError)) return { kind: "forgotten" }
         if (causedBy(error, SyncStoppedError)) throw new SyncStoppedError()
-        if (seen.busy) return failed("busy")
         throw error
       }
       const { outcome } = copy
@@ -109,7 +89,6 @@ export async function sendStanding(
         if (causedBy(outcome.error, SyncStoppedError)) {
           throw new SyncStoppedError()
         }
-        if (seen.busy) return failed("busy")
         throw outcome.error
       }
       sent = rememberSent(ports.storage, sent, {
@@ -147,11 +126,10 @@ export async function sendStanding(
       sent = rememberSent(ports.storage, sent, { shelf: held, refused })
     }
     if (report.forgotten) return { kind: "forgotten" }
-    if (seen.busy) return failed("busy")
     if (report.unreachable) throw new Error("home did not answer")
     if (report.full.size > 0) return failed("full")
     if (report.refused + report.other > 0) return failed("refused")
   }
 
-  return seen.busy ? failed("busy") : { kind: "synced" }
+  return { kind: "synced" }
 }

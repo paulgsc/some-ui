@@ -127,7 +127,7 @@ export type HomeRefusal = { id: string; why: string }
  * its whole log, and the way back for a phone that lost it.
  */
 type JobsHome = {
-  /** Its person chose to keep the record on home. */
+  /** Read once by the Jobs lane's `keptBefore`; never set (LA10). */
   kept: boolean
   /** The events home answered it holds, by id. */
   held: ReadonlyArray<string>
@@ -174,8 +174,6 @@ export type JobsAction =
       type: "record-all"
       events: ReadonlyArray<{ event: Draft; stamp: Stamp }>
     }
-  /** Its person's second press: the record is kept on home from now on. */
-  | { type: "kept-on-home" }
   /** What one exchange with home learned (`./home`). */
   | {
       type: "home-answered"
@@ -349,10 +347,6 @@ export function step(state: JobsState, action: JobsAction): JobsState {
         next = after
       }
       return next
-    }
-    case "kept-on-home": {
-      if (state.home.kept) return state
-      return { ...state, home: { ...state.home, kept: true } }
     }
     case "home-answered": {
       const inLog = new Set(state.log.map((e) => e.id))

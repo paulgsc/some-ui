@@ -255,9 +255,10 @@ const DashboardLayout = (): JSX.Element => {
             {(!MOBILE_APP || wing?.id === "studio") && <LocIndicator />}
             <SiteLauncher />
             {MOBILE_APP && <MobileSettingsLink pathname={pathname} />}
-            {/* Practice's sharing mark, which runs its standing send while shown (LA11). */}
-            {import.meta.env.VITE_DEVICE_BACKEND === "true" &&
-              wing?.id === "practice" && <DeviceHomeGlyph />}
+            {/* The wing's sharing mark, which runs its lane's send while shown (LA9 to LA11). */}
+            {import.meta.env.VITE_DEVICE_BACKEND === "true" && wing && (
+              <DeviceHomeGlyph wing={wing.id} />
+            )}
           </header>
         )}
         {!bareViewport && <AccountUnavailableBanner />}

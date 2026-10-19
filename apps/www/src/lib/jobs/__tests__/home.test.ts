@@ -178,12 +178,6 @@ describe("exchangeJobs", () => {
 })
 
 describe("step on home's answers", () => {
-  it("is kept on home only by its person's press, once", () => {
-    const kept = step(withLog, { type: "kept-on-home" })
-    expect(kept.home.kept).toBe(true)
-    expect(step(kept, { type: "kept-on-home" })).toBe(kept)
-  })
-
   it("takes only answers about events in its log, each once", () => {
     const answered = step(withLog, {
       type: "home-answered",
