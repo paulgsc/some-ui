@@ -86,8 +86,8 @@ jobs:
       rust: true
       node: true
   # ── Trunk health gate ───────────────────────────────────────────────────
-  # Single aggregation point, judged as CI Gate is (pr.yml). Nothing here is
-  # conditional, so every job must succeed.
+  # Single aggregation point. Nothing here is conditional, so every job must
+  # succeed.
   trunk-gate:
     name: Trunk Gate
     runs-on: ubuntu-latest

@@ -41,8 +41,8 @@ concurrency:
 jobs:
   # ── Path detection ──────────────────────────────────────────────────────
   # Coarse-grained: did Rust files change? Node files? CI config?
-  # Used only to decide whether to run the Rust job and for the ci-gate
-  # logic. Node filtering is handled by turbo, not by this step.
+  # Decides which of the Rust, Node and Deny jobs run. Node filtering within
+  # a run is handled by turbo, not by this step.
   changes:
     uses: ./.github/workflows/_detect-changes.yml
 
@@ -528,12 +528,10 @@ jobs:
         run: scripts/sync-toolchain.sh --check
 
   # ── CI Gate ────────────────────────────────────────────────────────────
-  # The single required check: branch protection requires `CI Gate` by name.
   # A job whose `needs` fails is skipped, not failed, so the gate judges each
-  # result itself (re-actors/alls-green). Every job votes; the ones whose
-  # `if:` skips them when their area is unchanged may also be skipped, and
-  # still fail the gate if they run and fail. `changes` may not be skipped or
-  # fail: when it fails, everything gated on it is skipped and nothing ran.
+  # result itself. `allowed-skips`: the jobs whose `if:` skips them for an
+  # unchanged area. `changes` must succeed: if it fails, everything gated on
+  # it skips.
   #
   # `always()`, not `!cancelled()`: a skipped required check counts as
   # passed, so a gate that skipped on a cancelled run would read green on the
