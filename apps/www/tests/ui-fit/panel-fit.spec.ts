@@ -50,15 +50,11 @@ import { expect, test, type Page } from "@playwright/test"
 import type { PanelKey } from "@/lib/playable"
 
 import {
-  ALLOWED_FIT_INTENTS,
+  describeViolation,
   findViolations,
   INCIDENT_FIXTURE,
-  PANEL_PAGE_BUILD,
-  PANEL_PAGE_PATH,
-  panelPageBuilt,
-  serve,
+  servePanelPage,
   VIEWPORTS,
-  type StaticSite,
   type Violation,
 } from "./harness"
 import type { PanelId } from "./panel-page/fixtures"
@@ -114,38 +110,13 @@ const PANEL_STAGES: ReadonlyArray<PanelId> = [
 
 const PLANTED_OVERFLOW: PanelId = "planted-overflow"
 
-/**
- * Fixtures another sweep walks: the phone's incident session, whose screens
- * are reached only by playing it, so measuring it as it loads would see its
- * first screen alone (`./incident-fit.spec.ts`).
- */
+/** Fixtures another sweep walks (`./incident-fit.spec.ts`). */
 const SWEPT_ELSEWHERE: ReadonlyArray<PanelId> = [INCIDENT_FIXTURE]
 
 type SweptPanel = { label: string; panel: PanelId; debt: string | null }
 
-/** One violation, said in the terms of the fix rather than the measurement. */
 function describe(panel: SweptPanel, violation: Violation): string {
-  const where = `${panel.label} (${panel.panel}): <${violation.tag}>`
-  const classes = `classes: ${violation.classes}`
-
-  if (violation.kind === "leak") {
-    return (
-      `${where} holds ${violation.overY}px more content than its own height ` +
-      `(and ${violation.overX}px more than its width) and does not clip it, ` +
-      `so the excess paints over whatever is laid out next to it. Fit the ` +
-      `content to the box — tabs, a measured page, a smaller surface ` +
-      `(docs/ui-fit) — or, if the scroll is the interaction, declare it with ` +
-      `data-scroll-intent. ${classes}`
-    )
-  }
-
-  return (
-    `${where} paints ${violation.overY}px below / ${violation.overX}px right ` +
-    `of the granted rect — the panel is asking for more room than the layout ` +
-    `gave it. Take the rect as given (no min-h-screen on a panel root; wrap ` +
-    `rows that cannot fit), or declare the escape with data-fit-intent. ` +
-    `${classes}`
-  )
+  return describeViolation(`${panel.label} (${panel.panel})`, violation)
 }
 
 const SWEPT: ReadonlyArray<SweptPanel> = [
@@ -164,9 +135,7 @@ const SWEPT: ReadonlyArray<SweptPanel> = [
   ...PANEL_STAGES.map((panel) => ({ label: panel, panel, debt: null })),
 ]
 
-const BUILT = panelPageBuilt()
-
-let site: StaticSite | null = null
+const PAGE = servePanelPage()
 
 /**
  * Mount one panel in its granted rect and measure what leaves it. `errors`
@@ -186,7 +155,7 @@ async function measure(
   }
   page.on("pageerror", onError)
   try {
-    await page.goto(`${site!.origin}${PANEL_PAGE_PATH}?panel=${panel}`, {
+    await page.goto(PAGE.url(panel), {
       waitUntil: "load",
     })
     // Wait for the mount rather than guessing at it: a lazy applet that needs
@@ -205,7 +174,7 @@ async function measure(
     // rect) need a few frames to settle.
     await page.waitForTimeout(400)
 
-    return { ...(await findViolations(page, [...ALLOWED_FIT_INTENTS])), errors }
+    return { ...(await findViolations(page)), errors }
   } finally {
     page.off("pageerror", onError)
   }
@@ -224,37 +193,19 @@ function renderedNothing(panel: SweptPanel, errors: Array<string>): string {
 // sized for the fixture specs next door, which load one page each.
 test.describe.configure({ timeout: 5 * 60 * 1000 })
 
-test.beforeAll(async () => {
-  if (BUILT) site = await serve(PANEL_PAGE_BUILD)
-})
-
-test.afterAll(async () => {
-  await site?.close()
-})
-
 test.describe("every panel fits the rect the viewport grants it", () => {
-  // Locally a missing build is a skip with directions. Under CI it is a
-  // failure (the first test below): a build step that broke must not turn
-  // this gate into a green run that measured nothing.
-  test.skip(
-    !BUILT && !process.env["CI"],
-    `No panel page at ${PANEL_PAGE_BUILD}. Build one first: ` +
-      `pnpm --filter www build:fit (or point WWW_FIT_HARNESS_DIST at one).`
-  )
+  PAGE.skipUnbuilt()
 
   test("the panel page is built, and every fixture on it is swept", async ({
     page,
   }) => {
-    expect(
-      BUILT,
-      `No panel page at ${PANEL_PAGE_BUILD}: run pnpm --filter www build:fit.`
-    ).toBe(true)
+    PAGE.expectBuilt()
 
     // `PanelId` typing catches a swept id with no fixture (and a missing one
     // renders nothing below). It cannot catch the reverse: a fixture added to
     // the page that neither PANELS nor PANEL_STAGES names, which would sit
     // there unmeasured.
-    await page.goto(`${site!.origin}${PANEL_PAGE_PATH}`)
+    await page.goto(PAGE.url())
     const swept = new Set<string>([
       ...SWEPT.map((panel) => panel.panel),
       PLANTED_OVERFLOW,

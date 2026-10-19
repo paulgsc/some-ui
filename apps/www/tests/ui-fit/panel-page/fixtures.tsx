@@ -309,8 +309,6 @@ export const PANEL_FIXTURES = {
     first: { c1: "d" },
   }),
 
-  // The phone's incident session holding one file: `../incident-fit.spec.ts`
-  // plays it through every screen kind.
   "leetype-incident": IncidentFixture,
 
   // Inline styles, not utilities: this directory is outside www's Tailwind

@@ -10,11 +10,7 @@
  * leaves the rect with the panel sweep's own measure (`findViolations`).
  *
  * The sizes are the phone's alone (`PHONE_VIEWPORTS`): the incident session
- * is a phone surface (`ON_PHONE` in www). The fixture forces LeetType's
- * rounds surface, so on the phone held sideways (780 wide, past the 768
- * breakpoint) the card holding the file shows as it would not on a real
- * phone, which opens the typing surface there; the session screens are true
- * to it, since LeetType keeps a session open through the turn.
+ * is a phone surface (`ON_PHONE` in www).
  *
  * Run against a built panel page:
  *
@@ -25,21 +21,13 @@
 import { expect, test, type Page } from "@playwright/test"
 
 import {
-  ALLOWED_FIT_INTENTS,
+  describeViolation,
   findViolations,
   INCIDENT_FIXTURE,
-  PANEL_PAGE_BUILD,
-  PANEL_PAGE_PATH,
-  panelPageBuilt,
   PHONE_VIEWPORTS,
-  serve,
-  type StaticSite,
+  servePanelPage,
 } from "./harness"
-import type { PanelId } from "./panel-page/fixtures"
 
-const FIXTURE: PanelId = INCIDENT_FIXTURE
-
-/** One stop on the walk: how to get there from the stop before, and its name. */
 type Stop = {
   readonly screen: string
   readonly go: (page: Page) => Promise<void>
@@ -48,14 +36,7 @@ type Stop = {
 const tap = (page: Page, name: string | RegExp): Promise<void> =>
   page.getByRole("button", { name }).first().click()
 
-/**
- * The walk, in the order a learner meets each kind of screen: the card
- * holding the file, the first screen, an info screen, a round before its
- * pick and after each reveal, the placement and the pointer, the rounds
- * waiting in play, the take's choice, the record screen with and without
- * the microphone and under its rubric, the end screen, and the first screen
- * again, now listing what waits with its worked answers open.
- */
+/** The walk, in the order a learner meets each kind of screen. */
 const WALK: ReadonlyArray<Stop> = [
   {
     screen: "the card holding the file",
@@ -128,50 +109,29 @@ const WALK: ReadonlyArray<Stop> = [
   },
 ]
 
-const BUILT = panelPageBuilt()
-
-let site: StaticSite | null = null
+const PAGE = servePanelPage()
 
 test.describe.configure({ timeout: 2 * 60 * 1000 })
 
-test.beforeAll(async () => {
-  if (BUILT) site = await serve(PANEL_PAGE_BUILD)
-})
-
-test.afterAll(async () => {
-  await site?.close()
-})
-
 test.describe("every screen of the incident session fits the phone", () => {
-  test.skip(
-    !BUILT && !process.env["CI"],
-    `No panel page at ${PANEL_PAGE_BUILD}. Build one first: ` +
-      `pnpm --filter www build:fit (or point WWW_FIT_HARNESS_DIST at one).`
-  )
+  PAGE.skipUnbuilt()
 
   for (const phone of PHONE_VIEWPORTS) {
     test(`fits at ${phone.name} (${phone.width}x${phone.height})`, async ({
       page,
     }) => {
-      expect(
-        BUILT,
-        `No panel page at ${PANEL_PAGE_BUILD}: run pnpm --filter www build:fit.`
-      ).toBe(true)
+      PAGE.expectBuilt()
       await page.setViewportSize({ width: phone.width, height: phone.height })
       const errors: Array<string> = []
       page.on("pageerror", (error) => errors.push(error.message))
-      await page.goto(`${site!.origin}${PANEL_PAGE_PATH}?panel=${FIXTURE}`, {
-        waitUntil: "load",
-      })
+      await page.goto(PAGE.url(INCIDENT_FIXTURE), { waitUntil: "load" })
 
       const failures: Array<string> = []
       for (const stop of WALK) {
         await stop.go(page)
         // The reveal scrolls itself into view; let it settle before measuring.
         await page.waitForTimeout(250)
-        const { mounted, violations } = await findViolations(page, [
-          ...ALLOWED_FIT_INTENTS,
-        ])
+        const { mounted, violations } = await findViolations(page)
         if (!mounted) {
           failures.push(
             `${stop.screen}: rendered nothing. ${errors.join(" | ")}`
@@ -179,11 +139,7 @@ test.describe("every screen of the incident session fits the phone", () => {
           continue
         }
         for (const violation of violations) {
-          failures.push(
-            `${stop.screen}: <${violation.tag}> ${violation.kind}s by ` +
-              `${violation.overY}px down, ${violation.overX}px across ` +
-              `(classes: ${violation.classes})`
-          )
+          failures.push(describeViolation(stop.screen, violation))
         }
       }
 

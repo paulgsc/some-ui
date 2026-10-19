@@ -11,7 +11,7 @@ import { createReadStream, existsSync, statSync } from "node:fs"
 import { createServer, type Server } from "node:http"
 import { dirname, extname, join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
-import type { Page } from "@playwright/test"
+import { expect, test, type Page } from "@playwright/test"
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
@@ -22,17 +22,64 @@ const REPO_ROOT = resolve(__dirname, "../../../..")
  * Where `pnpm --filter www build:fit` writes the panel page. `out/` because
  * it is ignored at any depth; the build is not part of `dist/`, which ships.
  */
-export const PANEL_PAGE_BUILD = resolve(
+const PANEL_PAGE_BUILD = resolve(
   REPO_ROOT,
   process.env["WWW_FIT_HARNESS_DIST"] ?? "apps/www/out/ui-fit"
 )
 
 /** The page's path inside that build: Vite keeps the source's layout. */
-export const PANEL_PAGE_PATH = "/tests/ui-fit/panel-page/index.html"
+const PANEL_PAGE_PATH = "/tests/ui-fit/panel-page/index.html"
 
-export function panelPageBuilt(): boolean {
+function panelPageBuilt(): boolean {
   return existsSync(join(PANEL_PAGE_BUILD, PANEL_PAGE_PATH))
 }
+
+export type PanelPage = {
+  /** The page's URL, at one fixture when given its id. */
+  readonly url: (panel?: string) => string
+  /** Skips the calling describe when no build is found, outside CI. */
+  readonly skipUnbuilt: () => void
+  /** Fails when no build is found: under CI a missing build is a failure. */
+  readonly expectBuilt: () => void
+}
+
+/**
+ * Serves the built panel page for the spec that calls this at its top level.
+ * Locally a missing build is a skip with directions; under CI it is a failure,
+ * so a build step that broke never turns a sweep into a green run that
+ * measured nothing.
+ */
+export function servePanelPage(): PanelPage {
+  const built = panelPageBuilt()
+  let site: StaticSite | null = null
+  test.beforeAll(async () => {
+    if (built) site = await serve(PANEL_PAGE_BUILD)
+  })
+  test.afterAll(async () => {
+    await site?.close()
+  })
+  return {
+    url: (panel) =>
+      `${site!.origin}${PANEL_PAGE_PATH}${panel === undefined ? "" : `?panel=${panel}`}`,
+    skipUnbuilt: () =>
+      test.skip(
+        !built && !process.env["CI"],
+        `No panel page at ${PANEL_PAGE_BUILD}. Build one first: ` +
+          `pnpm --filter www build:fit (or point WWW_FIT_HARNESS_DIST at one).`
+      ),
+    expectBuilt: () =>
+      expect(
+        built,
+        `No panel page at ${PANEL_PAGE_BUILD}: run pnpm --filter www build:fit.`
+      ).toBe(true),
+  }
+}
+
+const PHONE_LANDSCAPE = {
+  name: "phone-landscape",
+  width: 780,
+  height: 390,
+} as const
 
 /**
  * Sizes chosen for what they prove, not for device names: the shortest
@@ -63,12 +110,6 @@ export function panelPageBuilt(): boolean {
  * A surface that fits all four has been fitted. A surface that fits the first
  * three has been fitted for people holding their phone the usual way.
  */
-const PHONE_LANDSCAPE = {
-  name: "phone-landscape",
-  width: 780,
-  height: 390,
-} as const
-
 export const VIEWPORTS = [
   { name: "short-laptop", width: 1280, height: 560 },
   { name: "phone", width: 390, height: 720 },
@@ -87,7 +128,6 @@ export const PHONE_VIEWPORTS = [
   PHONE_LANDSCAPE,
 ] as const
 
-/** The fixture incident-fit plays, which panel-fit leaves to it. */
 export const INCIDENT_FIXTURE = "leetype-incident"
 
 const MIME: Record<string, string> = {
@@ -151,7 +191,7 @@ export function serve(
  * opt-out should be a greppable act in the component, not a class name that
  * happens to look intentional.
  */
-export const ALLOWED_FIT_INTENTS = new Set([
+const ALLOWED_FIT_INTENTS = new Set([
   // A marquee's whole mechanic is translating a track wider than its window.
   "marquee",
   // Decorative motion (particles, glows) that is clipped by design.
@@ -182,8 +222,7 @@ export type Violation = {
 
 /** Everything the panel does that its rect does not permit, worst first. */
 export async function findViolations(
-  page: Page,
-  allowedIntents: ReadonlyArray<string>
+  page: Page
 ): Promise<{ mounted: boolean; violations: Array<Violation> }> {
   return page.evaluate(
     (allowed: Array<string>) => {
@@ -270,6 +309,31 @@ export async function findViolations(
       )
       return { mounted: true, violations: violations.slice(0, 3) }
     },
-    [...allowedIntents]
+    [...ALLOWED_FIT_INTENTS]
+  )
+}
+
+/** One violation, said in the terms of the fix rather than the measurement. */
+export function describeViolation(where: string, violation: Violation): string {
+  const at = `${where}: <${violation.tag}>`
+  const classes = `classes: ${violation.classes}`
+
+  if (violation.kind === "leak") {
+    return (
+      `${at} holds ${violation.overY}px more content than its own height ` +
+      `(and ${violation.overX}px more than its width) and does not clip it, ` +
+      `so the excess paints over whatever is laid out next to it. Fit the ` +
+      `content to the box — tabs, a measured page, a smaller surface ` +
+      `(docs/ui-fit) — or, if the scroll is the interaction, declare it with ` +
+      `data-scroll-intent. ${classes}`
+    )
+  }
+
+  return (
+    `${at} paints ${violation.overY}px below / ${violation.overX}px right ` +
+    `of the granted rect — the panel is asking for more room than the layout ` +
+    `gave it. Take the rect as given (no min-h-screen on a panel root; wrap ` +
+    `rows that cannot fit), or declare the escape with data-fit-intent. ` +
+    `${classes}`
   )
 }

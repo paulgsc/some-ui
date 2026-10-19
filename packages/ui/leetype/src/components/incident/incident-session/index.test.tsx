@@ -509,8 +509,6 @@ describe("the incident path", () => {
   // Boundary 5 (README): what a phone plays from a session file reaches no
   // engine module, types included, so a phone never loads the engine.
   it("reaches nothing engine-shaped from the session surface", () => {
-    // Types too: the boundary is on the engine's vocabulary, not only on
-    // what a bundle carries.
     const { files, packages } = reachedFrom(
       { src: SRC, aliases: { "@leetype/": "" }, types: true },
       "components/incident/incident-session/index.tsx"

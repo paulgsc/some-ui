@@ -329,8 +329,6 @@ screens are reached only by playing one, so this spec plays the
 screen (`panel-page/incident-session.ts`), tapping as a learner would and
 measuring at each stop with the same `findViolations` (`harness.ts`). It runs
 at the phone sizes alone (`PHONE_VIEWPORTS`): the session is a phone surface.
-Its first run found the pinned job's bleed overflowing its article by 16px on
-every screen that pins one (#1922).
 
 ### 3. CI
 

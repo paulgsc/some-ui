@@ -43,9 +43,11 @@ const takes: SpokenTakes = {
 
 /**
  * LeetType on the phone holding one session file, through the card and its
- * Play button as the phone shows them; `../incident-fit.spec.ts` plays it
- * through every screen kind. `surface` is forced so the card shows at every
- * size the sweep takes, the phone on its side included.
+ * Play button; `../incident-fit.spec.ts` plays it. `surface` is forced so the
+ * card shows at every size the sweep takes: on the phone held sideways (780
+ * wide, past the 768 breakpoint) a real phone opens the typing surface
+ * instead. The session screens are true to it, since LeetType keeps a session
+ * open through the turn.
  */
 export const IncidentFixture = (): JSX.Element => (
   <Leetype surface="rounds" sessionFiles={{ store }} takes={takes} />
