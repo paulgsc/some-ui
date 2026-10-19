@@ -11,7 +11,9 @@
  * 1. each event in `homeOutbox`, once (`PUT /jobs/events/:id`, the event as
  *    the body). Home answers with the event it holds; a `409` (another event
  *    under that id) or a `422` (an event it won't take, with why) is a
- *    refusal, kept on the phone and not sent again;
+ *    refusal, kept on the phone and not sent again; a `409` saying this
+ *    phone stopped sending it (`stoppedOnHome`) refuses nothing and ends
+ *    the exchange;
  * 2. home's whole record (`GET /jobs`), asked for only by a phone whose own
  *    log is empty, the one that takes it in: a reinstalled phone gets its
  *    record back.
@@ -20,7 +22,12 @@
  * throw part way (a stop, no answer) keeps what home already confirmed.
  */
 import type { HomeCall, HomeExchanged } from "@some-ui/core-utils"
-import { readAs, refusalOf, unexpectedAnswer } from "@some-ui/core-utils"
+import {
+  readAs,
+  refusalOf,
+  stoppedOnHome,
+  unexpectedAnswer,
+} from "@some-ui/core-utils"
 import { z } from "zod"
 
 import type { HomeRefusal, JobEvent, JobsState } from "./model"
@@ -54,6 +61,10 @@ async function exchange(
       JSON.stringify(event)
     )
     if (answer.status === 401) return { kind: "forgotten" }
+    // Home heard a stop this phone's log no longer holds: nothing is refused.
+    if (stoppedOnHome(answer)) {
+      return unexpectedAnswer("an event", 409)
+    }
     if (answer.status === 409) {
       learned.refused.push({
         id: event.id,

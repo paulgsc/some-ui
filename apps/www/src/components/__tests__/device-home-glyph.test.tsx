@@ -196,10 +196,22 @@ describe("Practice's sharing mark", () => {
     expect(
       screen.getByText("Stop sending new sessions and kept items to home?")
     ).toBeTruthy()
+    home.sent = []
+    home.answer = (): Promise<{ status: number; body: string }> =>
+      Promise.resolve({ status: 200, body: "{}" })
     fireEvent.click(screen.getByRole("button", { name: "Stop sending" }))
     const log: unknown = JSON.parse(localStorage.getItem(CONSENT_KEY) ?? "[]")
     expect(log).toMatchObject([{ kind: "kept" }, { kind: "stopped" }])
     expect(screen.queryByRole("button", { name: "Stop sending..." })).toBeNull()
+    // Home is told the stop, though nothing of Practice goes now.
+    await waitFor(() =>
+      expect(home.sent.map((call) => call.body)).toContain('{"kept":false}')
+    )
+    expect(
+      home.sent.every((call) =>
+        new URL(call.url).pathname.includes("/sharing/")
+      )
+    ).toBe(true)
   })
 })
 
@@ -387,7 +399,20 @@ describe("aph's mark", () => {
     await stopAph()
     await waitFor(() => expect(store.left).toBe(1))
     expect(logged()).toMatchObject([{ kind: "kept" }, { kind: "stopped" }])
-    expect(home.sent.map((call) => call.method)).toEqual(["GET"])
+    // Home is told the choices it hasn't heard, the stop last, then asked
+    // for aph's record back.
+    expect(
+      home.sent.map((call) => `${call.method} ${new URL(call.url).pathname}`)
+    ).toEqual([
+      "PUT /api/v1/sharing/aph",
+      "PUT /api/v1/sharing/aph",
+      "GET /api/v1/aph",
+    ])
+    expect(home.sent.map((call) => call.body)).toMatchObject([
+      '{"kept":true}',
+      '{"kept":false}',
+      undefined,
+    ])
     expect(mark(/Where aph is kept/).textContent).toContain("Partly on home")
   })
 

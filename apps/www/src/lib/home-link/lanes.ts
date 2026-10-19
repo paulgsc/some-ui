@@ -9,7 +9,7 @@
  */
 import { useEffect, useSyncExternalStore } from "react"
 import type { HomeCall, HomeExchanged } from "@some-ui/core-utils"
-import { fnv1a } from "@some-ui/core-utils"
+import { fnv1a, localStorageOrNull } from "@some-ui/core-utils"
 
 import type { Scope, Shared } from "./consent-model"
 import { everChosen, sharedNow, stoppedNow } from "./consent-model"
@@ -17,11 +17,12 @@ import { phoneConsent } from "./consent-runtime"
 import { homeLink, useHomeLink } from "./index"
 import type { KeptState } from "./kept-model"
 import { INITIAL_KEPT } from "./kept-model"
-import type { Kept, KeptPorts } from "./kept-runtime"
-import { createKept, laneExchange, sayingBusy } from "./kept-runtime"
+import type { Kept, KeptPorts, Telling } from "./kept-runtime"
+import { createKept, laneExchange, sayingBusy, toldFirst } from "./kept-runtime"
 import type { KeptRecord } from "./kept-watch"
 import { askKept, watchKept } from "./kept-watch"
 import type { HomeLinkState } from "./model"
+import { forgetTold, tellHome } from "./told"
 
 export type LaneId = "practice" | "aph" | "jobs"
 
@@ -115,16 +116,18 @@ type Wired = {
 
 const wired = new Map<LaneId, Wired>()
 
+/** How every run here reaches home: through the link, one at a time. */
+const LINK_PORTS: Omit<KeptPorts, "exchange"> = {
+  keep: (run) => homeLink().keep(run),
+  paired: (): boolean => pairingOf() !== null,
+  now: Date.now,
+}
+
 /** One runtime per lane per page load, over the first `lane` handed in. */
 function wire(lane: Lane): Wired {
   const found = wired.get(lane.id)
   if (found) return found
   const shared = (): ReadonlySet<Scope> => new Set(sharedBy(lane).keys())
-  const ports: Omit<KeptPorts, "exchange"> = {
-    keep: (run) => homeLink().keep(run),
-    paired: (): boolean => pairingOf() !== null,
-    now: Date.now,
-  }
   const { bringBack } = lane
   const made: Wired = {
     record: {
@@ -141,19 +144,28 @@ function wire(lane: Lane): Wired {
       },
     },
     sending: createKept({
-      ...ports,
-      exchange: laneExchange(lane, () => pairingOf(), shared),
+      ...LINK_PORTS,
+      exchange: laneExchange(lane, () => pairingOf(), shared, TELLING),
     }),
     back:
       bringBack === undefined
         ? null
         : createKept({
-            ...ports,
+            ...LINK_PORTS,
             exchange: sayingBusy((send) => {
               const stopped = (): boolean => shared().size === 0
-              return stopped()
-                ? bringBack(send, stopped)
-                : Promise.resolve({ kind: "synced" })
+              const pairing = pairingOf()
+              if (!stopped() || pairing === null) {
+                return Promise.resolve({ kind: "synced" })
+              }
+              // The stop first, though the read goes on if home can't hear it:
+              // a way back only reads.
+              return toldFirst(
+                TELLING,
+                pairing,
+                (through) => bringBack(through, stopped),
+                "tried"
+              )(send)
             }),
           }),
   }
@@ -181,9 +193,41 @@ function enterEarlier(lane: Lane): void {
   })
 }
 
+/** Tells home every choice under `pairing` it has not heard (`./told`). */
+function tellChoices(send: HomeCall, pairing: string): Promise<HomeExchanged> {
+  return tellHome(
+    send,
+    pairing,
+    phoneConsent().getSnapshot(),
+    localStorageOrNull()
+  )
+}
+
+const TELLING: Telling = {
+  tell: tellChoices,
+  unheard: (pairing) => forgetTold(localStorageOrNull(), pairing),
+}
+
+let teller: Kept | null = null
+
+/** One run that only tells home the pairing's choices, for a stop. */
+function telling(): Kept {
+  teller ??= createKept({
+    ...LINK_PORTS,
+    exchange: sayingBusy((send) => {
+      const pairing = pairingOf()
+      return pairing === null
+        ? Promise.resolve({ kind: "synced" })
+        : tellChoices(send, pairing)
+    }),
+  })
+  return teller
+}
+
 /**
  * How sending `lane` home is going; while mounted, its watch, and its way
- * back asked for again once the link frees, when the link turned it away.
+ * back, and the telling of a stop, asked for again once the link frees,
+ * when the link turned it away.
  */
 export function useLaneHome(lane: Lane): KeptState {
   const { sending } = wire(lane)
@@ -193,8 +237,9 @@ export function useLaneHome(lane: Lane): KeptState {
       enterEarlier(lane)
       const idle = homeLink().getSnapshot().activity.kind === "idle"
       if (idle && back?.getSnapshot().last?.kind === "busy") back.want()
+      if (idle && teller?.getSnapshot().last?.kind === "busy") teller.want()
     }
-    enterEarlier(lane)
+    onLink()
     const unsubscribeLink = homeLink().subscribe(onLink)
     const unwatch = watchKept(record, sending)
     return (): void => {
@@ -270,7 +315,10 @@ export function stopOnHome(lane: Lane): boolean {
     pairing,
     scopes: lane.scopes,
   })
-  if (stopped) wire(lane).back?.want()
+  // Home is told the stop: by the way back where the lane has one, which
+  // tells it first, and otherwise on its own, since no run of a stopped
+  // lane will.
+  if (stopped) (wire(lane).back ?? telling()).want()
   return stopped
 }
 

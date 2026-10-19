@@ -16,8 +16,12 @@ import { FileHostUnreachableError } from "@/lib/file-host-config"
 import type { Scope } from "@/lib/home-link/consent-model"
 import type { KeptState } from "@/lib/home-link/kept-model"
 import { INITIAL_KEPT, stepKept } from "@/lib/home-link/kept-model"
-import type { Kept, KeptPorts } from "@/lib/home-link/kept-runtime"
-import { createKept, laneExchange } from "@/lib/home-link/kept-runtime"
+import type { Kept, KeptPorts, Telling } from "@/lib/home-link/kept-runtime"
+import {
+  createKept,
+  laneExchange,
+  toldFirst,
+} from "@/lib/home-link/kept-runtime"
 import type { Lane } from "@/lib/home-link/lanes"
 import { INITIAL, step } from "@/lib/home-link/model"
 import type { HomeLink } from "@/lib/home-link/runtime"
@@ -248,6 +252,92 @@ describe("a lane's run", () => {
     await expect(run(null, kept())).resolves.toEqual(SYNCED)
     await expect(run("p", new Set())).resolves.toEqual(SYNCED)
     expect(sent).toEqual([])
+  })
+
+  it("tells home its choices first, and sends the record only once home heard them", async () => {
+    const under: Array<string> = []
+    const tell = (ends: HomeExchanged): Telling => ({
+      tell: async (through, pairing): Promise<HomeExchanged> => {
+        under.push(pairing)
+        await through("PUT", "/sharing/jobs")
+        return ends
+      },
+      unheard: () => undefined,
+    })
+    const run = (
+      ends: HomeExchanged,
+      statuses: Array<number> = []
+    ): Promise<{ ended: HomeExchanged; sent: Array<string> }> => {
+      const { send, sent } = home(statuses)
+      return laneExchange(
+        lane(1, SYNCED),
+        () => "p",
+        kept,
+        tell(ends)
+      )(send).then((ended) => ({ ended, sent }))
+    }
+    await expect(run(SYNCED)).resolves.toEqual({
+      ended: SYNCED,
+      sent: ["/sharing/jobs", "/jobs/0"],
+    })
+    for (const ends of [
+      { kind: "forgotten" },
+      { kind: "failed", why: "a choice: home answered 500" },
+    ] satisfies Array<HomeExchanged>) {
+      await expect(run(ends)).resolves.toEqual({
+        ended: ends,
+        sent: ["/sharing/jobs"],
+      })
+    }
+    await expect(
+      run({ kind: "failed", why: "a choice: home answered 429" }, [429])
+    ).resolves.toEqual({
+      ended: { kind: "failed", why: "busy" },
+      sent: ["/sharing/jobs"],
+    })
+    expect(new Set(under)).toEqual(new Set(["p"]))
+  })
+
+  it("tells everything again when home says it heard a stop this phone ended", async () => {
+    const unheard: Array<string> = []
+    const stopped = {
+      status: 409,
+      body: JSON.stringify({ error: { code: "sharing_stopped" } }),
+    }
+    const send: HomeCall = (_, path) =>
+      Promise.resolve(
+        path.startsWith("/jobs/") ? stopped : { status: 200, body: "" }
+      )
+    const telling: Telling = {
+      tell: () => Promise.resolve(SYNCED),
+      unheard: (pairing) => unheard.push(pairing),
+    }
+    await laneExchange(lane(1, SYNCED), () => "p", kept, telling)(send)
+    expect(unheard).toEqual(["p"])
+  })
+
+  it("lets a run that only reads go on when home could not hear its choices", async () => {
+    const { send, sent } = home([500])
+    const telling: Telling = {
+      tell: async (through) => {
+        const { status } = await through("PUT", "/sharing/aph")
+        return { kind: "failed", why: `a choice: home answered ${status}` }
+      },
+      unheard: () => undefined,
+    }
+    const read: HomeCall = (method, path) => send(method, path)
+    const back = (heard: "needed" | "tried"): Promise<HomeExchanged> =>
+      toldFirst(
+        telling,
+        "p",
+        async (through) => {
+          await through("GET", "/aph")
+          return SYNCED
+        },
+        heard
+      )(read)
+    await expect(back("tried")).resolves.toEqual(SYNCED)
+    expect(sent).toEqual(["/sharing/aph", "/aph"])
   })
 
   it("sends nothing more once its person stops, before the next request", async () => {

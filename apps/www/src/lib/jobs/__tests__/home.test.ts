@@ -127,6 +127,21 @@ describe("exchangeJobs", () => {
     expect(homeOutbox(k.current)).toEqual([])
   })
 
+  it("refuses nothing when home says this phone stopped sending, and ends there", async () => {
+    const k = keeping(withLog)
+    const h = home(() => ({
+      status: 409,
+      body: { error: { code: "sharing_stopped", message: "stopped" } },
+    }))
+    expect(await exchangeJobs(k, h.send)).toEqual({
+      kind: "failed",
+      why: "an event: home answered 409",
+    })
+    expect(h.calls).toHaveLength(1)
+    expect(k.current.home.refused).toEqual([])
+    expect(homeOutbox(k.current)).toHaveLength(3)
+  })
+
   it("keeps what home confirmed when the exchange stops part way", async () => {
     const k = keeping(withLog)
     const send: HomeCall = (method, path, body) =>
