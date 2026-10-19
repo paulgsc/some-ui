@@ -79,14 +79,15 @@ describe("the home link", () => {
       record: JSON.stringify({ base: HOME.base, token: "t" }),
     })
     await paired.link.load()
-    // A pairing kept before pairings had an id is known by its base.
+    // A pairing kept before pairings had an id is known by its base, and
+    // one an earlier build made may hold a choice made before the log.
     expect(paired.link.getSnapshot().link).toEqual({
       kind: "paired",
       base: HOME.base,
       id: HOME.base,
+      earlier: true,
       notForgotten: false,
     })
-    expect(paired.link.getSnapshot().opened).toBe(HOME.base)
     expect(paired.sent).toEqual([])
 
     const lost = setup({ lost: true })
@@ -134,15 +135,15 @@ describe("the home link", () => {
       base: HOME.base,
       token: "phone-token",
       id: first,
+      choicesLogged: true,
     })
+    expect(home.link.getSnapshot().link).toMatchObject({ earlier: false })
 
     // Paired again to the same address, it is a new pairing.
     await home.link.unpair()
     await home.link.pair(HOME, "K7QF2M9X")
     expect(idOf()).toEqual(expect.any(String))
     expect(idOf()).not.toBe(first)
-    // Neither is the pairing the phone's record held when it was read.
-    expect(home.link.getSnapshot().opened).toBeNull()
   })
 
   it("says why a pairing failed, once, and keeps nothing", async () => {

@@ -7,12 +7,10 @@
  * Phone-only (`build.paths.ts`).
  */
 import { useSyncExternalStore } from "react"
-import { localStorageOrNull } from "@some-ui/core-utils"
 
 import { homeRequest } from "@/lib/device-backend/native-http"
 
 import { nativeCredential } from "./credential"
-import { noteFirstRead } from "./first-read"
 import type { HomeLinkState } from "./model"
 import type { HomeLink } from "./runtime"
 import { createHomeLink } from "./runtime"
@@ -30,19 +28,12 @@ let link: HomeLink | null = null
  */
 export function homeLink(): HomeLink {
   if (link === null) {
-    const made = createHomeLink({
+    link = createHomeLink({
       credential: nativeCredential,
       request: homeRequest,
       onHidden,
     })
-    const unsubscribe = made.subscribe(() => {
-      const read = made.getSnapshot()
-      if (read.link.kind === "reading") return
-      unsubscribe()
-      noteFirstRead(localStorageOrNull(), read.opened)
-    })
-    link = made
-    void made.load()
+    void link.load()
   }
   return link
 }

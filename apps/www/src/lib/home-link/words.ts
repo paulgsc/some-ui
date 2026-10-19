@@ -110,7 +110,7 @@ export const WORDS: Readonly<Record<LaneId, LaneWords>> = {
       "This phone asks home for aph's record and keeps it here again, with the changes still waiting; any that clash with home's record are kept aside on this phone. What home has stays there too.",
     startElsewhere: null,
     offer: (n) =>
-      `Send ${counted(n, "entry", "entries")} from this phone to home, and keep sending from now on? This phone then keeps only the settings and what home hasn't confirmed. Changes go while aph is open. Stop any time, and aph comes back to this phone.`,
+      `Send ${counted(n, "change")} from this phone to home, and keep sending from now on? This phone then keeps only the settings and what home hasn't confirmed. Changes go while aph is open. Stop any time, and aph comes back to this phone.`,
     away: (n) =>
       `Sending to home is off. Home holds aph; this phone holds only the ${counted(n, "change")} home hadn't confirmed.`,
     clash: (n) =>

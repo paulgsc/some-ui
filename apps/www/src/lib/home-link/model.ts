@@ -43,6 +43,12 @@ type Link =
        * keep sending is for (LA11), so a new pairing starts from nothing.
        */
       readonly id: string
+      /**
+       * Paired by a build before the consent log held every record's
+       * choice, so a choice a record's own switch made may belong to it
+       * (LA9). A pairing this build makes never is.
+       */
+      readonly earlier: boolean
       /** The last Unpair could not forget the key on the phone. */
       readonly notForgotten: boolean
     }
@@ -69,18 +75,17 @@ export type HomeLinkState = {
     readonly failure: PairFailure
     readonly base: string
   } | null
-  /**
-   * The id of the pairing the phone's own record held when this page load
-   * read it, or null (kept once as the app's first read, `./first-read`).
-   */
-  readonly opened: string | null
 }
 
 export type HomeLinkEvent =
   | {
       readonly type: "read"
       readonly found:
-        | { readonly base: string; readonly id: string }
+        | {
+            readonly base: string
+            readonly id: string
+            readonly earlier: boolean
+          }
         | "lost"
         | "unreadable"
         | null
@@ -102,7 +107,6 @@ export const INITIAL: HomeLinkState = {
   link: { kind: "reading" },
   activity: { kind: "idle" },
   pairFailure: null,
-  opened: null,
 }
 
 const idle = { kind: "idle" } as const
@@ -129,7 +133,6 @@ export function step(
       const { found } = event
       return {
         ...state,
-        opened: found !== null && typeof found !== "string" ? found.id : null,
         link:
           found === null
             ? { kind: "unpaired", note: null }
@@ -139,6 +142,7 @@ export function step(
                   kind: "paired",
                   base: found.base,
                   id: found.id,
+                  earlier: found.earlier,
                   notForgotten: false,
                 },
       }
@@ -160,6 +164,7 @@ export function step(
           kind: "paired",
           base: event.base,
           id: event.id,
+          earlier: false,
           notForgotten: false,
         },
         activity: idle,

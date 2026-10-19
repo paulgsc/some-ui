@@ -51,8 +51,12 @@ export type HomeLinkPorts = {
   onHidden: (listener: () => void) => () => void
 }
 
-/** A pairing kept before it had an id is known by its base. */
-type Pairing = { base: string; token: string; id: string }
+/**
+ * A pairing kept before it had an id is known by its base. One this build
+ * makes is kept with `choicesLogged`: the consent log holds every record's
+ * choice for it, so none made before the log is entered under it (LA9).
+ */
+type Pairing = { base: string; token: string; id: string; earlier: boolean }
 
 function parsePairing(record: string): Pairing | null {
   try {
@@ -64,6 +68,7 @@ function parsePairing(record: string): Pairing | null {
           base: parsed.base,
           token: parsed.token,
           id: typeof parsed.id === "string" ? parsed.id : parsed.base,
+          earlier: parsed.choicesLogged !== true,
         }
       : null
   } catch {
@@ -232,7 +237,9 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
     const token = stringFieldOf(answer.body, "token")
     if (token === null) return "other"
     try {
-      await ports.credential.write(JSON.stringify({ base, token, id }))
+      await ports.credential.write(
+        JSON.stringify({ base, token, id, choicesLogged: true })
+      )
     } catch {
       // Home made a session this phone cannot keep: end it, in the same
       // tap, rather than leave it to expire.
@@ -286,7 +293,7 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
           dispatch({
             type: "read",
             found: pairing
-              ? { base: pairing.base, id: pairing.id }
+              ? { base: pairing.base, id: pairing.id, earlier: pairing.earlier }
               : lost
                 ? "lost"
                 : null,

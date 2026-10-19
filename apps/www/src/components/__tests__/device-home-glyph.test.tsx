@@ -23,17 +23,18 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import type { HomeCall as NativeCall } from "@/lib/device-backend/native-http"
 import type { AphKeeping } from "@/lib/home-link/aph"
 import { CONSENT_KEY } from "@/lib/home-link/consent-runtime"
-import { FIRST_READ_KEY } from "@/lib/home-link/first-read"
 import type { JobsState } from "@/lib/jobs/model"
 import { EMPTY } from "@/lib/jobs/model"
 import type { SessionRecord } from "@/lib/tenant/types"
 
 const home = vi.hoisted(
   (): {
+    credential: Record<string, unknown>
     sent: Array<NativeCall>
     answer: (call: NativeCall) => Promise<{ status: number; body: string }>
     jobs: { snapshot: { state: JobsState } | null }
   } => ({
+    credential: { base: "https://home.example/api/v1", token: "t" },
     sent: [],
     answer: () => Promise.reject(new Error("no route to host")),
     jobs: { snapshot: null },
@@ -57,10 +58,7 @@ vi.mock("@/lib/home-link/credential", () => ({
   nativeCredential: {
     read: (): Promise<{ record: string | null; lost: boolean }> =>
       Promise.resolve({
-        record: JSON.stringify({
-          base: "https://home.example/api/v1",
-          token: "t",
-        }),
+        record: JSON.stringify(home.credential),
         lost: false,
       }),
     write: (): Promise<void> => Promise.resolve(),
@@ -108,6 +106,7 @@ afterEach(() => {
   home.answer = (): Promise<never> =>
     Promise.reject(new Error("no route to host"))
   home.jobs.snapshot = null
+  home.credential = { base: PAIRING, token: "t" }
 })
 
 /** The pairing's id, for a credential stored before ids: its base. */
@@ -206,14 +205,13 @@ describe("the Jobs record's mark", () => {
     ])
   })
 
-  it("enters no such choice under a pairing made after the app first read its pairing", async () => {
-    localStorage.setItem(FIRST_READ_KEY, JSON.stringify({ pairing: "earlier" }))
+  it("enters no such choice under a pairing this build made", async () => {
+    home.credential = { ...home.credential, id: "new", choicesLogged: true }
     jobsRecord(2, true)
     await mountJobs()
     await act(() => Promise.resolve())
     expect(logged()).toEqual([])
     expect(home.sent).toEqual([])
-    expect(localStorage.getItem(FIRST_READ_KEY)).toBe('{"pairing":"earlier"}')
   })
 
   it("keeps sending only on the second press, with the words it showed", async () => {

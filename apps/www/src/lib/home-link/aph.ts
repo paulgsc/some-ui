@@ -30,6 +30,15 @@ function editsOf(where: AphWhere): number {
   return where.kind === "home" ? where.edits : -1
 }
 
+/** Each waiting entry is a change, and the settings, when they go, one more. */
+function offeredOf(
+  outbox: ReturnType<AphStore["outbox"]>,
+  entries: number
+): number {
+  if (outbox === null) return entries + 1
+  return outbox.entries.length + (outbox.settings === null ? 0 : 1)
+}
+
 let lane: Lane | null = null
 
 /** aph's lane, over the first `aph` handed in. */
@@ -62,7 +71,8 @@ function declared({ store, ...aph }: AphKeeping): Lane {
         away: home?.unsent ?? null,
         hidden: home?.hidden ?? 0,
         pulled: home?.pulled ?? true,
-        offered: store.outbox()?.entries.length ?? entries.length,
+        // The entries and the settings that go: on the phone, all of them.
+        offered: offeredOf(store.outbox(), entries.length),
       }
     },
     keptBefore: () => store.where().kind === "home",

@@ -143,7 +143,11 @@ describe("the link's keep lane", () => {
   it("starts only when paired and idle", () => {
     const paired = step(INITIAL, {
       type: "read",
-      found: { base: "https://home.example/api/v1", id: "pairing-1" },
+      found: {
+        base: "https://home.example/api/v1",
+        id: "pairing-1",
+        earlier: false,
+      },
     })
     const keeping = step(paired, { type: "keepStarted" })
     expect(keeping.activity).toEqual({ kind: "keeping", stopping: false })

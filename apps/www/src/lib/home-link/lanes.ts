@@ -9,12 +9,11 @@
  */
 import { useEffect, useSyncExternalStore } from "react"
 import type { HomeExchanged } from "@some-ui/core-utils"
-import { fnv1a, localStorageOrNull } from "@some-ui/core-utils"
+import { fnv1a } from "@some-ui/core-utils"
 
 import type { Scope, Shared } from "./consent-model"
 import { everChosen, sharedNow, stoppedNow } from "./consent-model"
 import { phoneConsent } from "./consent-runtime"
-import { firstRead } from "./first-read"
 import { homeLink, useHomeLink } from "./index"
 import type { KeptState } from "./kept-model"
 import { INITIAL_KEPT } from "./kept-model"
@@ -165,14 +164,14 @@ function wire(lane: Lane): Wired {
 
 /**
  * A choice its record's own switch made before the consent log, entered
- * there once, as found (`said: null`), under the pairing the app's first
- * read of the phone's own record found (`./first-read`): never under a
- * pairing made since.
+ * there once, as found (`said: null`), under a pairing an earlier build made
+ * (`earlier`): never under one this build made.
  */
 function enterEarlier(lane: Lane): void {
-  const pairing = pairingOf()
-  if (pairing === null || lane.keptBefore?.() !== true) return
-  if (firstRead(localStorageOrNull())?.pairing !== pairing) return
+  const { link } = homeLink().getSnapshot()
+  if (link.kind !== "paired" || !link.earlier) return
+  if (lane.keptBefore?.() !== true) return
+  const pairing = link.id
   const log = phoneConsent().getSnapshot()
   if (lane.scopes.some((scope) => everChosen(log, scope))) return
   phoneConsent().choose({
