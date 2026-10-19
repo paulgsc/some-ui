@@ -43,9 +43,17 @@ env:
   DOCKERHUB_IMAGE: "pgathondu/www"
 permissions:
   contents: read
+# `queue: max`: every run waits its turn. Under the default, a newer push
+# replaces the one pending run, and a replaced run is lost either way: a
+# release commit's publish has nothing to re-trigger it but a publish_only
+# dispatch, and an ordinary push's run is the only one that compares that
+# push's range (`github.event.before`). Runs still go one at a time. GitHub
+# does not guarantee FIFO, so two queued runs can swap; an ordinary run that
+# starts after a newer release skips (www-detect/detect.sh).
 concurrency:
   group: www-docker-release-${{ github.ref }}
   cancel-in-progress: false
+  queue: max
 jobs:
   # ── Detect whether www's build graph actually changed ───────────────────
   # Patterned after wasm-release.yml's detect job (explicit outputs) rather

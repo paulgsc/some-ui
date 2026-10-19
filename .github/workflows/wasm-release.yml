@@ -17,9 +17,14 @@ env:
 permissions:
   contents: write
   pull-requests: write
+# `queue: max`, for www-docker-release.yml's reason: a replaced run loses a
+# publish or its push's range. Two queued runs can swap; an ordinary run that
+# starts after a newer release then proposes bumps from its older tree, and
+# `changeset publish` skips a version already on npm rather than overwrite it.
 concurrency:
   group: wasm-release-${{ github.ref }}
   cancel-in-progress: false
+  queue: max
 jobs:
   # ── Detect changed crates ────────────────────────────────────────────────
   # A wasm crate is any crates/*/ dir with both Cargo.toml (buildable) and
