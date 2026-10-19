@@ -15,9 +15,10 @@
  * duplicate(id)             -> POST   /sessions/:id/duplicate
  * ```
  *
- * Ids and `totalDurationOf(scenes)` are the server's: `create` sends the four
- * composed fields and takes the rest from the response (a stale zero duration
- * would offer a "~1 min" session). `duplicate` resets to `draft` and clears
+ * `totalDurationOf(scenes)` is the server's, and so is the id unless the
+ * caller names one: `create` sends the four composed fields (and `id`, when
+ * given) and takes the rest from the response (a stale zero duration would
+ * offer a "~1 min" session). `duplicate` resets to `draft` and clears
  * the stamps server-side, so a copy does not read as "studied today".
  *
  * Last write wins: one browser at a time is the assumption.
@@ -80,11 +81,12 @@ export class HttpSessionsRepository implements SessionsStore {
   }
 
   async create(input: CreateSessionInput): Promise<SessionRecord> {
-    // No `id`, `totalDurationMs` or timestamps: the server's. The full record
-    // comes back for the react-query cache.
+    // No `totalDurationMs` or timestamps: the server's. The full record comes
+    // back for the react-query cache.
     return this.request<SessionRecord>("/sessions", {
       method: "POST",
       body: JSON.stringify({
+        ...(input.id === undefined ? {} : { id: input.id }),
         name: input.name,
         activities: input.activities,
         scenes: input.scenes,

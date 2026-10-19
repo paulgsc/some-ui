@@ -130,8 +130,12 @@ declared (checked by reading every call site and by the tests named).
   (`lib/tenant/sessions-copy`, which the phone build may carry), called
   only from `lib/home-link/sessions` behind the Home server block's confirm
   (LA8), with the same plan and receipt, no lock (the phone's link runs one
-  thing at a time) and no authority (the pairing is the account).
-  There is no server idempotency key, so the one case this cannot tell apart is
+  thing at a time) and no authority (the pairing is the account). The phone's
+  copy also names each create's id, kept with its attempt until home answers:
+  a home that creates once per id (paulgsc/server#432) is asked for that id
+  first, and sent the same create again if it lacks it.
+  The browser's transfer names none, and a home that predates that mints its
+  own, so the one case these cannot tell apart is
   an identical session the account already held and nothing claims: it is adopted
   in place of a new copy, never added to. Across tabs, plan and run happen under
   one lock (`lib/tenant/transfer-lock`): Web Locks where the browser has them

@@ -1,0 +1,142 @@
+/**
+ * The phone's copy names each create's id (`copySessionsTo`), so a create
+ * whose answer was lost is found by that id, or sent again under it, and
+ * makes one session on a home that creates once per id
+ * (paulgsc/server#432); a home that mints its own still gets no duplicate,
+ * by the content match the browser's transfer uses.
+ */
+import { describe, expect, it } from "vitest"
+
+import { FileHostResponseError } from "@/lib/file-host-config/client"
+import { copySessionsTo } from "@/lib/tenant/sessions-copy"
+import type {
+  CreateSessionInput,
+  SessionsStore,
+  UpdateSessionInput,
+} from "@/lib/tenant/sessions-repository"
+import { createInMemoryStorage } from "@/lib/tenant/storage"
+import type { SessionRecord } from "@/lib/tenant/types"
+
+const SESSION = {
+  id: "local-1",
+  name: "Korean review",
+  status: "scheduled",
+  activities: [],
+  scenes: [],
+  layoutMode: "basic",
+  totalDurationMs: 600_000,
+  createdAt: "2026-10-14T09:00:00.000Z",
+  updatedAt: "2026-10-14T09:00:00.000Z",
+} satisfies SessionRecord
+
+type Home = SessionsStore & {
+  held: Map<string, SessionRecord>
+  creates: Array<string | undefined>
+  lists: number
+}
+
+/**
+ * Home's sessions. `named` takes the create's id as file_host does since
+ * #432 (once per id); otherwise home mints its own, as before it. `lose`
+ * answers nothing to the next `lose` creates, after making them.
+ */
+function home({ named, lose = 0 }: { named: boolean; lose?: number }): Home {
+  const held = new Map<string, SessionRecord>()
+  const creates: Array<string | undefined> = []
+  let minted = 0
+  let losing = lose
+  const store: Home = {
+    held,
+    creates,
+    lists: 0,
+    list: () => {
+      store.lists += 1
+      return Promise.resolve([...held.values()])
+    },
+    get: (id) => Promise.resolve(held.get(id) ?? null),
+    create: (input: CreateSessionInput) => {
+      creates.push(input.id)
+      const id = named && input.id !== undefined ? input.id : `home-${++minted}`
+      const record = held.get(id) ?? {
+        ...SESSION,
+        ...input,
+        id,
+        status: "draft" as const,
+      }
+      held.set(id, record)
+      if (losing > 0) {
+        losing -= 1
+        return Promise.reject(new TypeError("Failed to fetch"))
+      }
+      return Promise.resolve(record)
+    },
+    update: (id: string, patch: UpdateSessionInput) => {
+      const record = { ...(held.get(id) ?? SESSION), ...patch, id }
+      held.set(id, record)
+      return Promise.resolve(record)
+    },
+    remove: () => Promise.resolve(),
+    removeMany: () => Promise.resolve(),
+    updateStatusMany: () => Promise.resolve([]),
+    duplicate: () => Promise.reject(new Error("not in a copy")),
+  }
+  return store
+}
+
+describe("a phone's copy names each create's id", () => {
+  it("creates under an id it names", async () => {
+    const there = home({ named: true })
+    await copySessionsTo([SESSION], there, createInMemoryStorage())
+    expect(there.creates).toEqual([expect.stringMatching(/^session-/)])
+    expect([...there.held.keys()]).toEqual(there.creates)
+  })
+
+  it("finds a create whose answer was lost by its id, and makes one session", async () => {
+    const there = home({ named: true, lose: 1 })
+    const receipt = createInMemoryStorage()
+    const lost = await copySessionsTo([SESSION], there, receipt)
+    expect(lost.outcome.kind).toBe("partial")
+    const again = await copySessionsTo([SESSION], there, receipt)
+    expect(again.outcome).toEqual({ kind: "copied", copied: 1 })
+    expect(there.creates).toHaveLength(1)
+    expect(there.lists).toBe(0)
+    expect([...there.held.values()]).toMatchObject([{ status: "scheduled" }])
+  })
+
+  it("sends a lost create again under the same id", async () => {
+    const there = home({ named: true, lose: 1 })
+    const receipt = createInMemoryStorage()
+    await copySessionsTo([SESSION], there, receipt)
+    there.held.clear()
+    await copySessionsTo([SESSION], there, receipt)
+    expect(there.creates).toHaveLength(2)
+    expect(there.creates[1]).toBe(there.creates[0])
+    expect(there.held.size).toBe(1)
+  })
+
+  it("makes no duplicate on a home that mints its own ids", async () => {
+    const there = home({ named: false, lose: 1 })
+    const receipt = createInMemoryStorage()
+    await copySessionsTo([SESSION], there, receipt)
+    const again = await copySessionsTo([SESSION], there, receipt)
+    expect(again.outcome).toEqual({ kind: "copied", copied: 1 })
+    expect(there.creates).toHaveLength(1)
+    expect(there.held.size).toBe(1)
+  })
+
+  it("names a new id once home refuses one", async () => {
+    const there = home({ named: true })
+    const taken = there.create
+    there.create = (input): Promise<SessionRecord> => {
+      there.create = taken
+      there.creates.push(input.id)
+      return Promise.reject(new FileHostResponseError(409, "/sessions", null))
+    }
+    const receipt = createInMemoryStorage()
+    await copySessionsTo([SESSION], there, receipt)
+    await copySessionsTo([SESSION], there, receipt)
+    expect(there.creates).toHaveLength(2)
+    expect(there.creates[1]).not.toBe(there.creates[0])
+    expect(there.held.size).toBe(1)
+  })
+})

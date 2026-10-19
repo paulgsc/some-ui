@@ -19,6 +19,12 @@ import type {
 export const STORAGE_KEY = "some-ui.tenant.sessions.v1"
 
 export type CreateSessionInput = {
+  /**
+   * The id to create it under, where the store takes one: `file_host` does
+   * (paulgsc/server#432) and makes one session however often the same create
+   * is sent. This store names its own.
+   */
+  id?: string
   name: string
   // The stored shape, not the catalogue's: copying this device's sessions to
   // an account passes their activities through verbatim, retired ids and all.
