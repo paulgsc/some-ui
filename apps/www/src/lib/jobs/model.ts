@@ -205,6 +205,24 @@ function named(log: ReadonlyArray<JobEvent>): Set<string> {
   return ids
 }
 
+/**
+ * Whether a fit note says something, in words or aloud. Home trims U+0085
+ * too, and refuses a note left with nothing.
+ */
+export function fitNoteSays(
+  note: string,
+  voice: ReadonlyArray<unknown>
+): boolean {
+  return note.replace(/\u0085/g, "").trim() !== "" || voice.length > 0
+}
+
+/** A pick's event that names voice notes. */
+export function carriesPickVoice(
+  e: JobEvent
+): e is JobEvent & { type: "passed" | "fit-note" | "debrief" } {
+  return e.type === "passed" || e.type === "fit-note" || e.type === "debrief"
+}
+
 /** Whether `event`'s texts are within what home takes. */
 function withinLimits(event: Draft): boolean {
   switch (event.type) {
@@ -217,9 +235,9 @@ function withinLimits(event: Draft): boolean {
       return event.what.length <= MAX_NOTE
     }
     case "fit-note": {
-      // Home trims U+0085 too, and refuses a note left with nothing.
-      const said = event.note.replace(/\u0085/g, "").trim() !== ""
-      return event.note.length <= MAX_NOTE && (said || event.voice.length > 0)
+      return (
+        event.note.length <= MAX_NOTE && fitNoteSays(event.note, event.voice)
+      )
     }
     case "scout": {
       const { scout } = event
@@ -489,21 +507,21 @@ export function kitOf(
       (r) => r.day === day && r.pickId === pick.id
     )
     if (!redraft) continue
-    // A draft the redraft left out keeps the pick's own.
     const asked = new Set(pick.kit.questions.map((q) => q.label))
     const questions = [
-      ...pick.kit.questions.map(
-        (q) =>
-          redraft.questions.find((r) => r.label === q.label && r.draft) ?? q
-      ),
-      ...redraft.questions.filter((r) => !asked.has(r.label)),
+      ...pick.kit.questions.map((q) => {
+        const draft = redraft.questions.find((r) => r.label === q.label)?.draft
+        return draft ? { ...q, draft } : q
+      }),
+      ...redraft.questions.filter((r) => !asked.has(r.label) && r.draft),
     ]
+    const coverLetter = redraft.coverLetter ?? pick.kit.coverLetter
+    const changed =
+      coverLetter !== pick.kit.coverLetter ||
+      questions.some((q, i) => q !== pick.kit.questions[i])
+    if (!changed) break
     return {
-      kit: {
-        ...pick.kit,
-        coverLetter: redraft.coverLetter ?? pick.kit.coverLetter,
-        questions,
-      },
+      kit: { ...pick.kit, coverLetter, questions },
       redraftedOn: digest.day,
     }
   }
@@ -649,10 +667,7 @@ export function releasedVoice(state: JobsState): ReadonlySet<string> {
     const covered =
       e.type === "scout"
         ? i < through.scouts
-        : (e.type === "passed" ||
-            e.type === "fit-note" ||
-            e.type === "debrief") &&
-          i < through.decisions
+        : carriesPickVoice(e) && i < through.decisions
     if (covered && "voice" in e) for (const id of e.voice) ids.add(id)
   })
   return ids

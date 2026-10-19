@@ -147,8 +147,7 @@ segments, _ = model.transcribe(pcm.astype(np.float32) / 32768, vad_filter=True)
 print(" ".join(s.text.strip() for s in segments))
 ```
 
-An empty transcript is a note with nothing said: say so in the summary. List
-each note transcribed in the digest's `transcribed`, by its file name.
+An empty transcript is a note with nothing said: say so in the summary.
 
 ### The queue
 
@@ -524,8 +523,7 @@ shorter limit, first person, the gaps) is yours to hold.
    `pickId` from step 1.
 3. `read` names every Decisions and Scout file this run took in, and
    `transcribed` every voice note it transcribed. `redrafts` holds each
-   redraft §2 wrote: the pick's digest `day` and `pickId`, the `fit` note ids
-   it was written from, and its `coverLetter` and `questions`.
+   redraft §2 wrote.
 4. Save the digest as bare JSON to a scratch file and check it from the repo
    root (run `pnpm install` first if `node_modules` is missing):
 

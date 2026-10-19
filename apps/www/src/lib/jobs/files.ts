@@ -15,6 +15,7 @@ import {
 
 import type { JobEvent, JobsState, ShareKind, VoiceNote } from "./model"
 import {
+  carriesPickVoice,
   debriefOf,
   decisionOf,
   deliveredThrough,
@@ -70,11 +71,7 @@ function pickVoice(
   pickId: string
 ): Array<{ id: string; name: string }> {
   const ids = state.log.flatMap((e) =>
-    (e.type === "passed" || e.type === "fit-note" || e.type === "debrief") &&
-    e.day === day &&
-    e.pickId === pickId
-      ? e.voice
-      : []
+    carriesPickVoice(e) && e.day === day && e.pickId === pickId ? e.voice : []
   )
   return voiceNames(state.voice, ids, `${day}_${pickId}`, 1)
 }
@@ -137,11 +134,7 @@ export function decisionsFile(
       const nameOf = (id: string): string =>
         names.find((n) => n.id === id)?.name ?? id
       const freshVoice = fresh.flatMap((e) =>
-        (e.type === "passed" ||
-          e.type === "fit-note" ||
-          e.type === "debrief") &&
-        e.day === digest.day &&
-        e.pickId === pick.id
+        carriesPickVoice(e) && e.day === digest.day && e.pickId === pick.id
           ? e.voice
           : []
       )

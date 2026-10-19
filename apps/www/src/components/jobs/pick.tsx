@@ -30,6 +30,7 @@ import {
   decisionOf,
   digestOf,
   draftVoice,
+  fitNoteSays,
   fitNotesOf,
   kitOf,
   pickOwner,
@@ -452,11 +453,7 @@ const Apply = ({
   )
 }
 
-/**
- * Why I fit this pick, in words or aloud. It goes out with the next
- * decisions share, and the run after it redrafts the cover letter and the
- * answers from it (ROUTINE.md §2).
- */
+/** Why I fit this pick: the next run redrafts it (ROUTINE.md §2). */
 const FitNote = ({
   state,
   pickRef,
@@ -470,8 +467,7 @@ const FitNote = ({
   const voice = draftVoice(state, owner)
   const busy = useVoiceBusy(owner)
   const kept = fitNotesOf(state, pickRef.day, pickRef.pickId).length
-  const empty = note.trim() === "" && voice.length === 0
-  // Debriefed, the pick is out of the queue, so no run would redraft it.
+  const empty = !fitNoteSays(note, voice)
   if (progressOf(state, pickRef.day, pickRef.pickId).kind !== "open")
     return null
   return (

@@ -372,7 +372,7 @@ describe("kitOf", () => {
     const { kit, redraftedOn } = kitOf(state, DAY, SW)
     expect(redraftedOn).toBe("2026-10-20")
     expect(kit.coverLetter).toBe("Second redraft.")
-    // A draft the redraft leaves out keeps the pick's own.
+    // A redraft that changes nothing is no redraft.
     const own = { ...SW, kit: { ...SW.kit, coverLetter: "Mine." } }
     const blank = {
       ...digest("2026-10-21"),
@@ -387,7 +387,31 @@ describe("kitOf", () => {
       ],
     }
     state = step(state, { type: "opened", digest: blank, at: OPENED_AT })
-    expect(kitOf(state, DAY, own).kit.coverLetter).toBe("Mine.")
+    expect(kitOf(state, DAY, own)).toEqual({ kit: own.kit, redraftedOn: null })
+    // A redrafted answer keeps the question as the pick's form asks it.
+    const asked = {
+      ...SW,
+      kit: {
+        ...SW.kit,
+        questions: [{ label: "Why us?", required: true, draft: "Mine." }],
+      },
+    }
+    const answered = {
+      ...digest("2026-10-22"),
+      redrafts: [
+        {
+          day: DAY,
+          pickId: SW.id,
+          fit: ["e1"],
+          coverLetter: null,
+          questions: [{ label: "Why us?", required: false, draft: "Theirs." }],
+        },
+      ],
+    }
+    state = step(state, { type: "opened", digest: answered, at: OPENED_AT })
+    expect(kitOf(state, DAY, asked).kit.questions).toEqual([
+      { label: "Why us?", required: true, draft: "Theirs." },
+    ])
     expect(kitOf(state, DAY, AD)).toEqual({ kit: AD.kit, redraftedOn: null })
   })
 })
