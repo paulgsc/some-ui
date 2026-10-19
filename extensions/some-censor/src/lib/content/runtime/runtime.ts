@@ -23,7 +23,11 @@ import type { Action, CoreFact } from "@censor/lib/content/core/actions"
 import type { CoreEvent } from "@censor/lib/content/core/events"
 import { reduce } from "@censor/lib/content/core/reduce"
 import { admits, initialState } from "@censor/lib/content/core/state"
-import type { CoreState, Rules } from "@censor/lib/content/core/state"
+import type {
+  AutoplayRule,
+  CoreState,
+  Rules,
+} from "@censor/lib/content/core/state"
 import {
   notifyMutation,
   notifyNavigation,
@@ -62,6 +66,8 @@ export type Runtime = {
   setBoundary(days: number): void
   /** The owner's mode, applied now if running and at every later start. */
   setRules(rules: Rules): void
+  /** The owner's autoplay choice, likewise. */
+  setAutoplay(autoplay: AutoplayRule): void
   readonly state: CoreState
   readonly running: boolean
 }
@@ -75,6 +81,7 @@ export function createRuntime(ports: RuntimePorts): Runtime {
   let state: CoreState = initialState(mintSession())
   let boundaryDays = state.boundaryDays
   let rules = state.rules
+  let autoplay = state.autoplay
   let actuator: Actuator | null = null
   let health: Health | null = null
   let firstScan: number | null = null
@@ -176,6 +183,7 @@ export function createRuntime(ports: RuntimePorts): Runtime {
         session: mintSession(),
         boundaryDays,
         rules,
+        autoplay,
         t: clock(),
       })
       sensorInstance.start()
@@ -215,6 +223,11 @@ export function createRuntime(ports: RuntimePorts): Runtime {
     setRules(next: Rules): void {
       rules = next
       dispatch({ kind: "rules", rules: next, t: clock() })
+    },
+
+    setAutoplay(next: AutoplayRule): void {
+      autoplay = next
+      dispatch({ kind: "autoplay", autoplay: next, t: clock() })
     },
 
     get state(): CoreState {

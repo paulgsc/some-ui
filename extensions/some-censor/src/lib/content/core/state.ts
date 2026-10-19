@@ -69,6 +69,12 @@ export type Rules = {
   readonly face: "none" | FaceWhen
 }
 
+/**
+ * What autoplay does when it would go on into a video Core does not
+ * admit: stop there, or skip to the first video in Up next it admits.
+ */
+export type AutoplayRule = "stop" | "skip"
+
 /** Standard's rules, and every Core's until the shell supplies others. */
 export const STANDARD_RULES: Rules = {
   signs: "all",
@@ -92,6 +98,8 @@ export type CoreState = {
   readonly boundaryDays: number
   /** The owner's mode, as the shell last supplied it. */
   readonly rules: Rules
+  /** The owner's autoplay choice, as the shell last supplied it. */
+  readonly autoplay: AutoplayRule
   /** B4's staleness signal, per session: how often the table had no answer. */
   readonly unknownShapes: Readonly<Record<UnknownShapeReason, number>>
 }
@@ -113,6 +121,7 @@ export function initialState(session: SessionId): CoreState {
     watchDates: null,
     boundaryDays: DEFAULT_BOUNDARY_DAYS,
     rules: STANDARD_RULES,
+    autoplay: "stop",
     unknownShapes: EMPTY_UNKNOWN_SHAPES,
   }
 }
@@ -129,6 +138,7 @@ export type CoreSnapshot = {
   readonly watchDates: WatchDates | null
   readonly boundaryDays: number
   readonly rules: Rules
+  readonly autoplay: AutoplayRule
   readonly unknownShapes: CoreState["unknownShapes"]
 }
 
@@ -151,6 +161,23 @@ export function admits(state: CoreState, videoId: VideoId): boolean {
   return false
 }
 
+/**
+ * Where autoplay goes instead of a video Core does not admit, under Skip
+ * (#1966): the first of `upNext`, in page order, that Core admits and is
+ * not the page's own video. None in the miniplayer, which plays over
+ * another page, nor when there is no such video: autoplay stops.
+ */
+export function skipTo(
+  state: CoreState,
+  upNext: ReadonlyArray<VideoId>
+): VideoId | null {
+  const watch = state.watch
+  if (state.autoplay !== "skip" || watch === null) return null
+  if (watch.observation.miniplayer) return null
+  const own = watch.observation.videoId
+  return upNext.find((id) => id !== own && admits(state, id)) ?? null
+}
+
 export function snapshot(state: CoreState): CoreSnapshot {
   return {
     phase: state.phase,
@@ -160,6 +187,7 @@ export function snapshot(state: CoreState): CoreSnapshot {
     watchDates: state.watchDates,
     boundaryDays: state.boundaryDays,
     rules: state.rules,
+    autoplay: state.autoplay,
     unknownShapes: state.unknownShapes,
   }
 }

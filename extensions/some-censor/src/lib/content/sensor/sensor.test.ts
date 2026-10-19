@@ -725,6 +725,21 @@ describe("autoplay (#1805)", () => {
     sensor.stop()
     expect(navigate(autoplay("held"))).toBe(true)
   })
+
+  it("tells Core what Up next holds, in page order, when it holds (#1966)", async () => {
+    const page = document.createElement("ytd-watch-flexy")
+    const column = document.createElement("div")
+    column.id = "secondary"
+    column.append(cell("first"), cell("second"))
+    page.append(column)
+    document.body.append(cell("elsewhere"), page)
+    await tick()
+    tokens = []
+    navigate(autoplay("held"))
+    expect(tokens).toEqual([
+      { kind: "held", upNext: ["first", "second"], t: now },
+    ])
+  })
 })
 
 describe("census", () => {

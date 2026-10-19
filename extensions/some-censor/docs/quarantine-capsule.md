@@ -345,7 +345,8 @@ A held card is not on the page. It leaves layout and the accessibility tree;
 nothing stands in its place, and nothing counts, summarizes or mentions it. A
 card is held when it is `QM0`–`QM2`, live, a premiere or a Short, unless
 `QD15` admits it. Nothing navigates to a held video on the owner's behalf:
-autoplay stops before one. Supersedes `QD8`'s quiet statement, `QD9`, and the
+autoplay stops before one, or, under Skip, goes on to the first video in Up
+next that is not held (#1966). Supersedes `QD8`'s quiet statement, `QD9`, and the
 interior bullet in §3.
 
 The owner's test, after living with the extension: what made a session bad was
@@ -368,7 +369,11 @@ the Sensor holds one in the capture phase, before the app sees it, unless a
 card for that video is on the page and plated (Core's `admits`). A navigation
 the owner starts carries no `autonav` and is never held. A playlist's rows
 carry no date (sealed under `QD3`), so a playlist, Mix or queue stops after
-nearly every video. `watch.spec.ts` W10 proves the hold, locally.
+nearly every video. Under Skip (#1966), Core names the first video in Up
+next, in page order, that it admits and is not the page's own (`skipTo`,
+R10), and the Actuator opens it as a click would; with none, or in the
+miniplayer, autoplay stops. `watch.spec.ts` W10 and W13 prove both,
+locally.
 
 A held video's watch page, reached by a link, is "Not here." and Back
 (#1805): `styles/content.css` renders no player, miniplayer, title or date
@@ -533,10 +538,10 @@ in §7.
 
 _Status: holds (#1803, #1807); the modes in part (#1966)._ No gesture changes
 a card. The popup holds the boundary and the switch, and Diagnostics logs
-every boundary change. The settings record carries the mode, every open tab
-follows it, and each change of it is appended to `choiceChanges`. The surfaces
-that set it and the autoplay choice are #1966's later slices;
-until they land, every install is Standard and autoplay stops at a held video.
+every boundary change. The settings record carries the mode and the autoplay
+choice, every open tab follows both, and each change of either is appended to
+`choiceChanges`. The surfaces that set them are #1966's last slice; until it
+lands, every install is Standard and autoplay stops at a held video.
 
 ---
 

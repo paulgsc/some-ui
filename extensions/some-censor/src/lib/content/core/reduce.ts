@@ -46,6 +46,9 @@
  *        again, only where the mode lets it (`held`). A new video, a view
  *        that is no longer plated, a mode without the control, and `nav`
  *        take it away. Nothing keeps it.
+ *  R10 — Skip goes only where Core admits (#1966). A `held` token yields a
+ *        `play` for the first Up next video `skipTo` names, and nothing
+ *        when the owner's choice is to stop or no such video is shown.
  *
  * R4 correlated the answers to Core's async requests; none are left, so it
  * is retired. The parenthesised M- and C- labels are kept so their
@@ -60,11 +63,11 @@ import { assertNever } from "@some-extension/common"
 import type { Action, CoreFact } from "./actions"
 import type { CoreEvent } from "./events"
 import type { CardKey } from "./keys"
-import { keyVideoId } from "./keys"
+import { cardKey, keyVideoId } from "./keys"
 import type { Observation, WatchObservation } from "./observation"
 import { mergeObservation, mergeWatch } from "./observation"
 import type { CardState, CoreState, Rules, WatchState } from "./state"
-import { EMPTY_UNKNOWN_SHAPES } from "./state"
+import { EMPTY_UNKNOWN_SHAPES, skipTo } from "./state"
 
 export type Step = {
   readonly state: CoreState
@@ -134,6 +137,7 @@ export function reduce(state: CoreState, event: CoreEvent): Step {
           watchDates: null,
           boundaryDays: event.boundaryDays,
           rules: event.rules,
+          autoplay: event.autoplay,
           unknownShapes: EMPTY_UNKNOWN_SHAPES,
         },
         actions: [record({ kind: "session.start", session: event.session })],
@@ -206,6 +210,11 @@ export function reduce(state: CoreState, event: CoreEvent): Step {
       return redecide(state, state.boundaryDays, event.rules)
     }
 
+    case "autoplay": {
+      if (state.phase !== "running") return none(state)
+      return none({ ...state, autoplay: event.autoplay })
+    }
+
     // ── Tokens ─────────────────────────────────────────────────────────────
     case "observed": {
       if (state.phase !== "running") return none(state)
@@ -227,6 +236,15 @@ export function reduce(state: CoreState, event: CoreEvent): Step {
     case "watched": {
       if (state.phase !== "running") return none(state)
       return watched(state, event.watch, event.t)
+    }
+
+    case "held": {
+      if (state.phase !== "running") return none(state)
+      const to = skipTo(state, event.upNext)
+      return {
+        state,
+        actions: to === null ? [] : [{ kind: "play", key: cardKey(to) }],
+      }
     }
 
     case "described": {

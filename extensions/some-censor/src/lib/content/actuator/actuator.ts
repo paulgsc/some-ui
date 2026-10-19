@@ -59,6 +59,9 @@ const PLATE_PROPERTIES: Readonly<Record<keyof Plate, string>> = {
   initial: "--boyo-initial",
 }
 
+/** A card's link to its own watch page. */
+const WATCH_LINK = 'a[href*="/watch?v="]'
+
 export type ActuatorPorts = {
   /** The owner held the face control on `videoId`'s page (QD13). */
   readonly onFace: (videoId: VideoId, shown: boolean) => void
@@ -176,6 +179,32 @@ export function createActuator(doc: Document, ports: ActuatorPorts): Actuator {
     realized.delete(key)
   }
 
+  // ── Skip (#1966) ───────────────────────────────────────────────────────
+
+  let pendingPlay: ReturnType<typeof setTimeout> | null = null
+
+  /**
+   * Open the card as a click on its watch link would, a task after the
+   * held navigation that asked for it, so YouTube's own navigation starts
+   * from an event it handles whole. A click carries no autoplay mark, so
+   * the Sensor never holds it.
+   */
+  function play(targets: ReadonlyArray<CustodyTarget>): void {
+    let link: HTMLElement | null = null
+    for (const { el } of targets) {
+      link = el.matches(WATCH_LINK) ? el : el.querySelector(WATCH_LINK)
+      if (link !== null) break
+    }
+    if (link === null) return
+    const target = link
+    if (pendingPlay !== null) clearTimeout(pendingPlay)
+    // Lifetime: cleared by dispose(), and by the next play.
+    pendingPlay = setTimeout(() => {
+      pendingPlay = null
+      target.click()
+    }, 0)
+  }
+
   // ── Public ─────────────────────────────────────────────────────────────
 
   return {
@@ -190,6 +219,10 @@ export function createActuator(doc: Document, ports: ActuatorPorts): Actuator {
           }
           case "unmount": {
             unmount(action.key, targets)
+            break
+          }
+          case "play": {
+            play(targets)
             break
           }
           case "watch": {
@@ -214,6 +247,8 @@ export function createActuator(doc: Document, ports: ActuatorPorts): Actuator {
       disposed = true
       for (const key of [...realized.keys()]) unmount(key, [])
       watchHold.dispose()
+      if (pendingPlay !== null) clearTimeout(pendingPlay)
+      pendingPlay = null
     },
   }
 }

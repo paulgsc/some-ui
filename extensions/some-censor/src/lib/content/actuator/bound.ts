@@ -30,12 +30,15 @@ export type CustodyTarget = {
 }
 
 /**
- * A `render`, `unmount` or `watch`, with its targets: the only actions the
- * Actuator receives, since the runtime forwards `record` facts itself. A
- * `watch` names no card; its one target, when the Sensor has one, is the
- * shown watch page's description, where the face control goes.
+ * A `render`, `unmount`, `play` or `watch`, with its targets: the only
+ * actions the Actuator receives, since the runtime forwards `record` facts
+ * itself. A `watch` names no card; its one target, when the Sensor has
+ * one, is the shown watch page's description, where the face control goes.
  */
 export type BoundAction = {
-  readonly action: Extract<Action, { kind: "render" | "unmount" | "watch" }>
+  readonly action: Extract<
+    Action,
+    { kind: "render" | "unmount" | "play" | "watch" }
+  >
   readonly targets: ReadonlyArray<CustodyTarget>
 }

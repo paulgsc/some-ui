@@ -81,6 +81,9 @@ export const NAV_DEBOUNCE_MS = 150
 
 const NO_WATCH = JSON.stringify(null)
 
+/** The watch page's Up next column, where autoplay's next video comes from. */
+const UP_NEXT = "ytd-watch-flexy #secondary"
+
 export type SensorPorts = {
   readonly doc: Document
   readonly win: Window
@@ -620,11 +623,27 @@ export function createSensor(ports: SensorPorts): Sensor {
    * the app's own listener sees it, so stopping it here, in the capture
    * phase on the window, keeps the page where it is. The one vendor event
    * the Sensor holds, and only on Core's answer; a navigation the owner
-   * starts carries no `autonav`, and is never held.
+   * starts carries no `autonav`, and is never held. Core is told, with Up
+   * next's videos in page order, so it can skip to one (#1966).
    */
   function onYtNavigate(event: Event): void {
     const next = readAutonav(event)
-    if (next !== null && !ports.admits(next)) event.stopImmediatePropagation()
+    if (next === null || ports.admits(next)) return
+    event.stopImmediatePropagation()
+    ports.emit({ kind: "held", upNext: upNext(), t: ports.clock() })
+  }
+
+  /** The videos of the cards held in the watch page's Up next, in order. */
+  function upNext(): Array<VideoId> {
+    const ids: Array<VideoId> = []
+    const column = ports.doc.querySelector(UP_NEXT)
+    for (const el of column?.querySelectorAll<HTMLElement>(SEL) ?? []) {
+      const key = identity.keyOf(el)
+      if (key === null) continue
+      const id = keyVideoId(key)
+      if (!ids.includes(id)) ids.push(id)
+    }
+    return ids
   }
 
   function onNavigate(): void {

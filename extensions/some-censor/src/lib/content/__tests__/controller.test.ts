@@ -61,6 +61,7 @@ function recordingRuntime(): { runtime: Runtime; calls: Array<string> } {
     },
     scan: () => {},
     setBoundary: (days) => calls.push(`boundary:${String(days)}`),
+    setAutoplay: (autoplay) => calls.push(`autoplay:${autoplay}`),
     setRules: (rules) =>
       calls.push(
         `rules:${MODES.find((m) => MODE_RULES[m].core === rules) ?? "?"}`
@@ -90,7 +91,12 @@ it("applies the stored boundary before the first start", async () => {
   const { runtime, calls } = recordingRuntime()
   new Controller(runtime).init()
   await vi.waitFor(() =>
-    expect(calls).toEqual(["boundary:730", "rules:standard", "start"])
+    expect(calls).toEqual([
+      "boundary:730",
+      "rules:standard",
+      "autoplay:stop",
+      "start",
+    ])
   )
 })
 
@@ -99,7 +105,12 @@ it("starts on the defaults when the read fails", async () => {
   const { runtime, calls } = recordingRuntime()
   new Controller(runtime).init()
   await vi.waitFor(() =>
-    expect(calls).toEqual(["boundary:365", "rules:standard", "start"])
+    expect(calls).toEqual([
+      "boundary:365",
+      "rules:standard",
+      "autoplay:stop",
+      "start",
+    ])
   )
 })
 
@@ -111,7 +122,12 @@ it("drops a first read that a change overtook", async () => {
   change({ v: 1, boundary: "6mo", enabled: false })
   held[0]?.release()
   await new Promise((resolve) => setTimeout(resolve, 0))
-  expect(calls).toEqual(["boundary:182", "rules:standard", "stop"])
+  expect(calls).toEqual([
+    "boundary:182",
+    "rules:standard",
+    "autoplay:stop",
+    "stop",
+  ])
 })
 
 it("follows the switch and the boundary after start", async () => {
@@ -126,12 +142,14 @@ it("follows the switch and the boundary after start", async () => {
   expect(switchedOff()).toBe(true)
   change(undefined)
   expect(switchedOff()).toBe(false)
-  expect(calls.slice(3)).toEqual([
+  expect(calls.slice(4)).toEqual([
     "boundary:182",
     "rules:standard",
+    "autoplay:stop",
     "stop",
     "boundary:365",
     "rules:standard",
+    "autoplay:stop",
     "start",
   ])
 })
@@ -142,13 +160,18 @@ it("applies the stored mode to Core and to the page (#1966)", async () => {
   const { runtime, calls } = recordingRuntime()
   new Controller(runtime).init()
   await vi.waitFor(() =>
-    expect(calls).toEqual(["boundary:365", "rules:strict", "start"])
+    expect(calls).toEqual([
+      "boundary:365",
+      "rules:strict",
+      "autoplay:stop",
+      "start",
+    ])
   )
   const root = document.documentElement
   expect(root.getAttribute(LOADING_ATTRIBUTE)).toBe("blank")
   expect(root.getAttribute(POSTS_ATTRIBUTE)).toBe("hidden")
   change({ v: 1, boundary: "1y", mode: "open" })
-  expect(calls.at(-1)).toBe("rules:open")
+  expect(calls.at(-2)).toBe("rules:open")
   expect(root.getAttribute(LOADING_ATTRIBUTE)).toBe("blurred")
   expect(root.getAttribute(POSTS_ATTRIBUTE)).toBe("shown")
 })
