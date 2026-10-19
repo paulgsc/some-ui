@@ -31,9 +31,10 @@
 //
 // Families (same section, "Retention"): every upload step's artifact name and
 // every `actions/cache` key belongs to a family in retention.ts, the upload's
-// `retention-days` equals its family's TTL, retention.yml runs on every
-// workflow that uploads a declared artifact, and a `docker/build-push-action`
-// step turns off its build-record upload, which no family declares.
+// `retention-days` equals its family's TTL and its workflow is the family's,
+// retention.yml runs after every workflow that uploads a family kept across
+// runs, and a `docker/build-push-action` step turns off its build-record
+// upload, which no family declares.
 //
 // Deliberately lexical, like test-layout.ts: a YAML parser would need an
 // install for a check that otherwise runs on bare Node. So each rule accepts a
@@ -524,8 +525,8 @@ export function findBuildRecordViolations(
 
 // retention.yml runs after every workflow that uploads a family it keeps
 // copies of (`keep` ≥ 1), so a new generation prunes the old at once; a
-// family consumed in its run waits for Trunk or the daily sweep, within its
-// TTL. Every workflow a family names exists.
+// family consumed in its run waits for the hourly sweep, within its TTL.
+// Every workflow a family names exists.
 export function checkRetentionTriggers(
   text: string | null,
   workflowNames: ReadonlySet<string>
