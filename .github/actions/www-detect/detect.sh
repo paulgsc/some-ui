@@ -19,11 +19,17 @@ fi
 # than replace each other (www-docker-release.yml, `queue: max`), and two
 # queued runs can swap, so an ordinary run can start after a newer release;
 # without this it would reopen a release PR for what already shipped.
+# main's live tip is fetched here: actions/checkout points origin/main back
+# at this run's own commit, so it cannot show what landed since.
 shipped_since=false
 if [ "$EVENT_NAME" = "push" ]; then
-	while IFS= read -r subject; do
-		if [[ "$subject" == "$RELEASE_COMMIT_MESSAGE"* ]]; then shipped_since=true; fi
-	done < <(git log --format=%s "${HEAD_SHA}..origin/main")
+	if git fetch -q origin main; then
+		while IFS= read -r subject; do
+			if [[ "$subject" == "$RELEASE_COMMIT_MESSAGE"* ]]; then shipped_since=true; fi
+		done < <(git log --format=%s "${HEAD_SHA}..FETCH_HEAD")
+	else
+		echo "::warning::Could not fetch main; not checking for a newer release."
+	fi
 fi
 
 if [ "$is_release_commit" = "true" ]; then
