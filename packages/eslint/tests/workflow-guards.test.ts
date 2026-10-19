@@ -13,6 +13,7 @@ import {
   findArtifactFamilyViolations,
   findBuildRecordViolations,
   findCacheViolations,
+  findInlineInstallViolations,
   findRetentionViolations,
   findRs2Violations,
   isGuardedWorkflowPath,
@@ -432,6 +433,37 @@ describe("literalKeyPrefix", () => {
   })
 })
 
+describe("findInlineInstallViolations", () => {
+  it("reports an inline install, on its run line or inside a run block", () => {
+    const text = steps(
+      "      - run: pnpm install --frozen-lockfile",
+      "      - name: Install",
+      "        run: |",
+      "          nix develop .#ci --command pnpm --filter . install \\",
+      "            --no-lockfile"
+    )
+    expect(findInlineInstallViolations(F, text)).toEqual([
+      { kind: "inlineInstall", file: F, line: 4 },
+      { kind: "inlineInstall", file: F, line: 7 },
+    ])
+  })
+
+  it("accepts one with a Why not node-ci-setup line above its step, and skips actions", () => {
+    const text = steps(
+      "      # Why not node-ci-setup: it needs one package.",
+      "      - name: Install",
+      "        run: pnpm install --filter x"
+    )
+    expect(findInlineInstallViolations(F, text)).toEqual([])
+    expect(
+      findInlineInstallViolations(
+        ".github/actions/node-ci-setup/action.yml",
+        steps("      - run: pnpm install")
+      )
+    ).toEqual([])
+  })
+})
+
 describe("findBuildRecordViolations", () => {
   it("requires a build-push step to turn off its build record", () => {
     const off = steps(
@@ -552,6 +584,7 @@ describe("describeWorkflowViolation", () => {
         "workflow_run",
       ],
       [{ kind: "buildRecord", file: F, line: 2 }, "DOCKER_BUILD_RECORD_UPLOAD"],
+      [{ kind: "inlineInstall", file: F, line: 2 }, "Why not node-ci-setup:"],
       [
         {
           kind: "artifactProducer",

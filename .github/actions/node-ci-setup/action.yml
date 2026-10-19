@@ -1,12 +1,23 @@
 name: "Node CI setup"
-description: "Nix, the pnpm install and the affected-package build that every Node CI job in pr.yml starts from."
-# pr.yml runs Node CI as four parallel jobs (node-checks, node-lint,
-# node-test, node-e2e), and each needs the same tree: the dev shell, the
-# installed workspace and the affected packages built. This is that tree, in
-# one place, so the jobs cannot drift onto different installs or builds. The
-# caller checks out first, with `fetch-depth: 2`, because the build filter
-# below diffs against HEAD^1 and a local action is only on disk after
-# checkout.
+description: "Nix, the frozen pnpm install of the workspace, and optionally the affected-package build: what every Node job starts from."
+# The one place a workflow installs the workspace, so no two jobs drift onto
+# different flags (#1618). check:workflows fails an inline `pnpm install` in a
+# workflow without a `Why not node-ci-setup:` line above its step.
+#
+# pr.yml's four Node jobs (node-checks, node-lint, node-test, node-e2e) take
+# the default, which also builds the affected packages; they check out with
+# `fetch-depth: 2`, because that build diffs against HEAD^1. Every other
+# caller builds what it needs itself and passes `build: none`. The caller
+# checks out first: a local action is only on disk after checkout.
+inputs:
+  build:
+    description: "`affected` builds the packages changed since HEAD^1 and their dependents; `none` stops after the install."
+    required: false
+    default: affected
+  resume-assets:
+    description: "Restore @some-ui/resume's typst binary and fonts; only a job that builds the résumé needs them."
+    required: false
+    default: "true"
 runs:
   using: composite
   steps:
@@ -19,7 +30,8 @@ runs:
       env:
         HUSKY: 0
 
-    - uses: ./.github/actions/resume-assets-cache
+    - if: inputs.resume-assets == 'true'
+      uses: ./.github/actions/resume-assets-cache
 
     # Build only the packages that changed or whose dependents changed.
     # The ...[HEAD^1] syntax means: this package and everything that
@@ -36,6 +48,7 @@ runs:
     # crate, and wasm-release.yml is the only flow that has to turn a crate
     # diff into an actual artifact.
     - name: Build (affected packages)
+      if: inputs.build == 'affected'
       shell: bash
       run: |
         nix develop .#ci --command pnpm turbo run build \

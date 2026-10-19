@@ -59,22 +59,15 @@ jobs:
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v7
-      - uses: ./.github/actions/nix-setup
-      - uses: ./.github/actions/pnpm-cache
       - name: Cache workspace build outputs
         uses: actions/cache@v6
         with:
           path: packages/*/dist
           key: workspace-dist-${{ runner.os }}-${{ hashFiles('packages/**/src/**') }}
           restore-keys: workspace-dist-${{ runner.os }}-
-      - name: Install dependencies
-        run: |
-          nix develop .#ci --command pnpm install \
-            --frozen-lockfile \
-            --prefer-offline
-        env:
-          HUSKY: 0
-      - uses: ./.github/actions/resume-assets-cache
+      - uses: ./.github/actions/node-ci-setup
+        with:
+          build: none
 
       # The lines-of-code number in the dashboard header is a snapshot taken
       # here, as the app is built (apps/www/src/lib/loc-report). Best-effort:

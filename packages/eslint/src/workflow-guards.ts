@@ -22,6 +22,10 @@
 // attempt at it left an edit that changed the workflow without moving the pin
 // (#1604: trailing blanks under `|+`, trailing whitespace, `- |` items).
 //
+// Installs (#1618): a workflow installs the workspace through
+// `.github/actions/node-ci-setup`; an inline `pnpm … install` carries a
+// `Why not node-ci-setup:` line in the comment block directly above its step.
+//
 // RS2 (same section): no workflow or composite action other than
 // `server-route-snapshot.yml` names `bot/server-route-snapshot`.
 //
@@ -112,6 +116,11 @@ export type WorkflowViolation =
       readonly kind: "familyWorkflowUnknown"
       readonly file: string
       readonly workflow: string
+    }
+  | {
+      readonly kind: "inlineInstall"
+      readonly file: string
+      readonly line: number
     }
   | {
       readonly kind: "buildRecord"
@@ -457,6 +466,43 @@ export function findCacheViolations(
   return violations
 }
 
+const INSTALL = /\bpnpm\b[^#]*\binstall\b/
+const INSTALL_TAG = /^#+\s*Why not node-ci-setup:\s*\S/
+
+// Every inline install in a workflow says why it is not node-ci-setup's.
+export function findInlineInstallViolations(
+  file: string,
+  text: string
+): Array<WorkflowViolation> {
+  if (!file.startsWith(".github/workflows/")) return []
+  const lines = text.split(/\r?\n/)
+  const violations: Array<WorkflowViolation> = []
+  lines.forEach((line, index) => {
+    if (line.trim().startsWith("#") || !INSTALL.test(line)) return
+    // The step is the nearest `- ` item above that holds this line.
+    let start = index
+    while (start >= 0) {
+      const candidate = lines[start] ?? ""
+      if (
+        SEQUENCE_ITEM.test(candidate) &&
+        (start === index || indentOf(candidate) < indentOf(line))
+      ) {
+        break
+      }
+      start -= 1
+    }
+    let tagged = false
+    for (const above of lines.slice(0, Math.max(start, 0)).reverse()) {
+      if (!above.trim().startsWith("#")) break
+      if (INSTALL_TAG.test(above.trim())) tagged = true
+    }
+    if (!tagged) {
+      violations.push({ kind: "inlineInstall", file, line: index + 1 })
+    }
+  })
+  return violations
+}
+
 // A build-push step uploads a build record as an artifact unless told not to.
 export function findBuildRecordViolations(
   file: string,
@@ -595,6 +641,9 @@ export function describeWorkflowViolation(v: WorkflowViolation): string {
     }
     case "familyWorkflowUnknown": {
       return `packages/eslint/src/retention.ts: a family names the workflow "${v.workflow}", but no workflow has that \`name:\`. Rename it to match, or the sweep never runs after that workflow.`
+    }
+    case "inlineInstall": {
+      return `${v.file}:${v.line}: installs inline. Use \`./.github/actions/node-ci-setup\` (with \`build: none\` if the job builds its own), or put a \`# Why not node-ci-setup: <reason>\` line directly above the step.`
     }
     case "buildRecord": {
       return `${v.file}:${v.line}: docker/build-push-action uploads a build-record artifact (90-day default) unless its step sets \`env: DOCKER_BUILD_RECORD_UPLOAD: false\`.`
