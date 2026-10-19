@@ -18,7 +18,15 @@ import {
   screen,
   waitFor,
 } from "@testing-library/react"
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import {
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest"
 
 import type { HomeRequest as NativeCall } from "@/lib/device-backend/native-http"
 import type { AphKeeping } from "@/lib/home-link/aph"
@@ -99,6 +107,12 @@ vi.mock(
     return withPlainLink(await importOriginal<typeof ReactRouterModule>())
   }
 )
+
+// Evaluates the mark's module graph cold once, under its own limit; the
+// import each test makes after `vi.resetModules()` is then warm.
+beforeAll(async () => {
+  await import("@/components/device-home-glyph")
+}, 30_000)
 
 beforeEach(() => {
   Object.defineProperty(document, "visibilityState", {
