@@ -16,6 +16,7 @@ import { assertNever } from "@some-ui/core-utils"
 import type {
   AdjacentFamily,
   DEBRIEF_RESULTS,
+  DECISIONS,
   Digest,
   FRICTION,
   OUTCOMES,
@@ -68,7 +69,7 @@ export type PickRef = { day: string; pickId: string; fingerprint: string }
 /** One line of the record. `id` and `at` come from the runtime. */
 export type JobEvent = { id: string; at: string } & (
   | ({ type: "taken" } & PickRef)
-  /** Let go unreviewed, with the rest of its digest: its queue slot frees. */
+  /** `archived` in `@some-ui/job-desk`'s decisions. */
   | ({ type: "archived" } & PickRef)
   | ({
       type: "passed"
@@ -266,11 +267,9 @@ export function step(state: JobsState, action: JobsAction): JobsState {
       const referenced = new Set(
         state.log.flatMap((e) => ("pickId" in e ? [e.day] : []))
       )
+      const holding = new Set(openOf(state).map((o) => o.day))
       const digests = all.filter(
-        (d) =>
-          recent.has(d.day) ||
-          referenced.has(d.day) ||
-          d.picks.some((p) => progressOf(state, d.day, p.id).kind === "open")
+        (d) => recent.has(d.day) || referenced.has(d.day) || holding.has(d.day)
       )
       // A digest opened again keeps the first time it was opened.
       const firstOpened = Object.fromEntries(
@@ -358,7 +357,7 @@ export function digestOf(state: JobsState, day: string): Digest | null {
   return state.digests.find((d) => d.day === day) ?? null
 }
 
-export type Decision = "taken" | "passed" | "archived"
+export type Decision = Exclude<(typeof DECISIONS)[number], "untouched">
 
 /** The latest decision on a pick, or null while there is none. */
 export function decisionOf(

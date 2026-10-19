@@ -169,8 +169,7 @@ const ArchiveBatch = ({
  * How many picks each track holds open, and the first choice on a digest:
  * review its picks, or archive the undecided ones unreviewed. Earlier
  * digests' open picks are listed here, since the cards below are only this
- * digest's. A pick holds its slot until its decision is shared, since the
- * morning run reads only Drive.
+ * digest's.
  */
 const Queue = ({
   state,
@@ -185,10 +184,7 @@ const Queue = ({
     ...new Set(open.filter((o) => o.day !== digest.day).map((o) => o.day)),
   ]
   const held = digest.queue?.open ?? []
-  const closed = new Set(
-    held.filter((p) => p.closed).map((p) => `${p.day}/${p.pickId}`)
-  )
-  const room = freeSlots(held, closed)
+  const room = freeSlots(held)
   const full = digest.queue !== null && TRACKS.every((t) => room[t] === 0)
   return (
     <section className="flex flex-col gap-2 rounded-xl border p-3">
@@ -205,7 +201,7 @@ const Queue = ({
         and share your decisions. The morning run adds new picks only into free
         slots.
         {held.length > 0 &&
-          ` This one found ${counted(held.length - closed.size, "pick")} from earlier days still open${full ? ", so it searched nothing" : ""}.`}
+          ` This one found ${counted(held.filter((p) => !p.closed).length, "pick")} from earlier days still open${full ? ", so it searched nothing" : ""}.`}
       </p>
       {undecided.length > 0 && (
         <ArchiveBatch

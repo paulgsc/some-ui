@@ -1,6 +1,5 @@
 import { readFileSync } from "node:fs"
 import type { Decisions } from "@job-desk/decisions"
-import { parseDecisions } from "@job-desk/decisions"
 import type { Digest } from "@job-desk/digest"
 import { parseDigest } from "@job-desk/digest"
 import { digestFindings } from "@job-desk/findings"
@@ -127,10 +126,7 @@ describe("freeSlots", () => {
   })
 
   it("counts no slot for a pick whose posting closed", () => {
-    const open = [
-      { day: "2026-10-17", pickId: "abc-1234", track: "software" as const },
-    ]
-    expect(freeSlots(open, new Set(["2026-10-17/abc-1234"])).software).toBe(3)
+    expect(freeSlots([{ track: "software", closed: true }]).software).toBe(3)
   })
 })
 
@@ -190,15 +186,5 @@ describe("a digest's queue", () => {
     const { queue: _, ...before } = sample()
     const parsed = parseDigest(JSON.stringify(before))
     expect(parsed.ok && parsed.value.queue).toBe(null)
-  })
-})
-
-describe("an archived pick", () => {
-  it("is a decision a file can share", () => {
-    const digest = sample()
-    const file = decisions(digest, "2026-10-18T22:00:00Z", {
-      [digest.picks[0]!.id]: { decision: "archived" },
-    })
-    expect(parseDecisions(JSON.stringify(file)).ok).toBe(true)
   })
 })

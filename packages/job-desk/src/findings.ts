@@ -53,10 +53,7 @@ export function digestFindings(digest: Digest): ReadonlyArray<Finding> {
   }
   if (digest.queue !== null) {
     const { open } = digest.queue
-    const closed = new Set(
-      open.filter((p) => p.closed).map((p) => `${p.day}/${p.pickId}`)
-    )
-    const free = freeSlots(open, closed)
+    const free = freeSlots(open)
     const queued = new Set<string>()
     open.forEach((held, i) => {
       const key = `${held.day}/${held.pickId}`

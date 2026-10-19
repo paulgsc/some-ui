@@ -19,8 +19,7 @@ type Stands = Decisions["picks"][number]
 
 /**
  * Whether a pick's standing decision leaves it open: none yet, untouched, or
- * taken with no debrief. Passed, archived, or debriefed (`submitted`,
- * `gave-up`, `closed`) is done.
+ * taken with no debrief.
  */
 function isOpen(stands: Stands | undefined): boolean {
   if (stands === undefined) return true
@@ -77,16 +76,13 @@ export function openPicks(
 
 /**
  * How many new picks each track has room for while `open` holds its slots;
- * a pick in `closed` (by `day/pickId`) holds none.
+ * a pick whose posting `closed` holds none.
  */
 export function freeSlots(
-  open: ReadonlyArray<{ day: string; pickId: string; track: Track }>,
-  closed: ReadonlySet<string> = new Set()
+  open: ReadonlyArray<{ track: Track; closed?: boolean }>
 ): Record<Track, number> {
   const free = { ...MAX_OPEN_PICKS }
-  for (const pick of open) {
-    if (!closed.has(`${pick.day}/${pick.pickId}`)) free[pick.track] -= 1
-  }
+  for (const pick of open) if (pick.closed !== true) free[pick.track] -= 1
   for (const track of TRACKS) free[track] = Math.max(0, free[track])
   return free
 }
