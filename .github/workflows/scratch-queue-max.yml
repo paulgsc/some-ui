@@ -1,0 +1,16 @@
+name: Scratch queue max
+# SCRATCH (#1617): shows whether a pending run survives a newer push under
+# queue: max. Removed before merge.
+on:
+  pull_request:
+    branches: [main]
+permissions: {}
+concurrency:
+  group: scratch-queue-max
+  cancel-in-progress: false
+  queue: max
+jobs:
+  hold:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "head ${{ github.event.pull_request.head.sha }}"; sleep 75
