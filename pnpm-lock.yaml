@@ -439,6 +439,9 @@ importers:
       '@some-ui/job-desk':
         specifier: workspace:*
         version: link:../../packages/job-desk
+      '@some-ui/leetype':
+        specifier: workspace:*
+        version: link:../../packages/ui/leetype
       '@some-ui/lesson-crm':
         specifier: workspace:*
         version: link:../../packages/ui/lesson-crm
@@ -1205,6 +1208,9 @@ importers:
       '@some-ui/core-utils':
         specifier: workspace:*
         version: link:../../core-utils
+      '@some-ui/intent-kit':
+        specifier: workspace:*
+        version: link:../../intent-kit
       '@some-ui/leetype-wasm':
         specifier: ^0.0.14
         version: 0.0.14

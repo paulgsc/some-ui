@@ -29,3 +29,6 @@ export {
   ForeignDeadlineError,
   reportFailure,
 } from "./foreign"
+
+export type { PickedFileState } from "./picked-file"
+export { PICKED_FILE_MAX_BYTES, PickedFileRuntime } from "./picked-file"

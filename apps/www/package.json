@@ -46,6 +46,7 @@
     "@some-ui/honeycomb": "workspace:*",
     "@some-ui/intent-kit": "workspace:*",
     "@some-ui/job-desk": "workspace:*",
+    "@some-ui/leetype": "workspace:*",
     "@some-ui/lesson-crm": "workspace:*",
     "@some-ui/playoff-delta": "workspace:*",
     "@some-ui/react-hooks": "workspace:*",

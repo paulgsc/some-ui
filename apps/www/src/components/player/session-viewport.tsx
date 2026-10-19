@@ -8,6 +8,7 @@ import { LiveEditOverlay, OrchestratedYouTubeViewport } from "wireframes"
 import { useAuthority } from "@/lib/authority"
 import { AmbientIntentStatus } from "@/lib/intent/render"
 import { loadLeetypeRoundRuns, loadLeetypeRounds } from "@/lib/leetype-content"
+import { phoneSessionFiles } from "@/lib/leetype-files"
 import { phoneLensTakes } from "@/lib/lens-takes"
 import {
   setSessionKey,
@@ -41,6 +42,7 @@ const ON_PHONE =
 const PHONE_SHARE = ON_PHONE ? shareDramaPrompt : undefined
 const PHONE_SCENE_VOICE = ON_PHONE ? phoneSceneVoice() : undefined
 const PHONE_LENS_TAKES = ON_PHONE ? phoneLensTakes() : undefined
+const PHONE_SESSION_FILES = ON_PHONE ? phoneSessionFiles() : undefined
 
 /** What the player renders: the bound panels, and a note for a web one. */
 const PLAYER_PANELS = withWebOnlyNotes(PANELS, WEB_PANEL_KEYS)
@@ -144,6 +146,14 @@ export const SessionViewport = ({
           // Fetched in `server` mode, nothing in `static` (bundled).
           loadRuns: loadLeetypeRoundRuns,
           shelf: shelves?.leetype,
+          // Read at render, as topik's hints are.
+          sessionFiles:
+            PHONE_SESSION_FILES === undefined
+              ? undefined
+              : {
+                  store: PHONE_SESSION_FILES,
+                  hint: lookIn("leetype-session"),
+                },
         },
       }),
     [shelves, paused]

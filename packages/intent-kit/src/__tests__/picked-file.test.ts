@@ -1,6 +1,8 @@
+import {
+  PICKED_FILE_MAX_BYTES,
+  PickedFileRuntime,
+} from "@intent-kit/picked-file"
 import { describe, expect, it, vi } from "vitest"
-
-import { SCENE_FILE_MAX_BYTES, SceneFileRuntime } from "."
 
 /** A file whose read finishes, or fails, when the test says so. */
 function slow(text: string): {
@@ -28,9 +30,9 @@ function slow(text: string): {
 const settle = (): Promise<void> =>
   new Promise((resolve) => setTimeout(resolve, 0))
 
-describe("SceneFileRuntime", () => {
+describe("PickedFileRuntime", () => {
   it("lets only the latest pick through, however the reads finish", async () => {
-    const runtime = new SceneFileRuntime()
+    const runtime = new PickedFileRuntime()
     const first = slow("first")
     const second = slow("second")
     const read = vi.fn()
@@ -49,7 +51,7 @@ describe("SceneFileRuntime", () => {
   })
 
   it("drops a read the learner walked away from", async () => {
-    const runtime = new SceneFileRuntime()
+    const runtime = new PickedFileRuntime()
     const file = slow("late")
     const read = vi.fn()
     runtime.open(file.file, read)
@@ -61,7 +63,7 @@ describe("SceneFileRuntime", () => {
 
   it("says why a read failed, and refuses a file too large to open", async () => {
     vi.spyOn(globalThis.console, "error").mockImplementation(() => undefined)
-    const runtime = new SceneFileRuntime()
+    const runtime = new PickedFileRuntime()
     const file = slow("x")
     runtime.open(file.file, vi.fn())
     file.fail()
@@ -72,7 +74,7 @@ describe("SceneFileRuntime", () => {
       })
     )
     const text = vi.fn()
-    runtime.open({ size: SCENE_FILE_MAX_BYTES + 1, text }, vi.fn())
+    runtime.open({ size: PICKED_FILE_MAX_BYTES + 1, text }, vi.fn())
     expect(text).not.toHaveBeenCalled()
     expect(runtime.getSnapshot()).toMatchObject({ kind: "failed" })
   })

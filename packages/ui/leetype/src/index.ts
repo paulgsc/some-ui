@@ -26,3 +26,9 @@ export type {
   SessionLogSnapshot,
   SessionLogStore,
 } from "./lib/leetype/session-log"
+// Session files picked from storage (Rem. 11.7): the store a host provides.
+export type {
+  HeldSessionFile,
+  KeepOutcome,
+  SessionFileStore,
+} from "./lib/leetype/session-file-pick"

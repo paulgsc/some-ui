@@ -1,32 +1,23 @@
 /**
- * A file the learner picked from storage: a scene (docs/makjang/README.md,
- * "Pulling a scene back") or a word set (`read-aloud/added-sets`), as the
- * platform's picker handed it over, read as text.
+ * A file the person picked from storage, as the platform's picker handed it
+ * over, read as text: a topik scene or word set, a LeetType session file.
  * On Android the WebView answers `<input type="file">` with the system
- * picker, where the learner's drive is a document provider, so there is no
- * plugin and no permission here. What the text holds is for the tree intake
- * to judge, exactly as a paste, or for the set intake.
+ * picker, where the person's drive is a document provider, so there is no
+ * plugin and no permission here. What the text holds is for the caller's
+ * intake to judge.
  *
  * The read waits on a document provider, which answers when it likes, so it
  * runs inside `callForeign` (F1). The runtime holds the one read in flight:
- * a newer pick, or `cancel` when the learner leaves, lets it go, so a late
+ * a newer pick, or `cancel` when the person leaves, lets it go, so a late
  * result never lands over what the screen shows now. The lesson CRM reads
  * its uploads with the same `file.text()`, awaited on a desktop page.
  */
 
-import type {
-  ForeignCall,
-  ForeignPort,
-  ForeignVerdict,
-} from "@some-ui/intent-kit"
-import {
-  callForeign,
-  ForeignDeadlineError,
-  reportFailure,
-} from "@some-ui/intent-kit"
+import type { ForeignCall, ForeignPort, ForeignVerdict } from "./foreign"
+import { callForeign, ForeignDeadlineError, reportFailure } from "./foreign"
 
-/** Far above any scene tree or word set, far below a photo or a video. */
-export const SCENE_FILE_MAX_BYTES = 1_000_000
+/** Far above any scene tree, word set or session file, far below a photo or a video. */
+export const PICKED_FILE_MAX_BYTES = 1_000_000
 
 /** A drive file is fetched on read; a phone on a slow line takes a while. */
 const READ_DEADLINE_MS = 60_000
@@ -50,17 +41,17 @@ const PORT: ForeignPort = {
   report: reportFailure,
 }
 
-export type SceneFileState =
+export type PickedFileState =
   | { kind: "idle" }
   | { kind: "reading" }
   | { kind: "failed"; summary: string }
 
-export class SceneFileRuntime {
-  private state: SceneFileState = { kind: "idle" }
+export class PickedFileRuntime {
+  private state: PickedFileState = { kind: "idle" }
   private readonly listeners = new Set<() => void>()
   private call: ForeignCall<string> | null = null
 
-  getSnapshot = (): SceneFileState => this.state
+  getSnapshot = (): PickedFileState => this.state
 
   subscribe = (listener: () => void): (() => void) => {
     this.listeners.add(listener)
@@ -74,7 +65,7 @@ export class SceneFileRuntime {
   ): void => {
     this.call?.abandon()
     this.call = null
-    if (file.size > SCENE_FILE_MAX_BYTES) {
+    if (file.size > PICKED_FILE_MAX_BYTES) {
       this.set({
         kind: "failed",
         summary: "That file is too large to open.",
@@ -100,14 +91,14 @@ export class SceneFileRuntime {
     })
   }
 
-  /** The learner left: a read in flight changes nothing. */
+  /** The person left: a read in flight changes nothing. */
   cancel = (): void => {
     this.call?.abandon()
     this.call = null
     this.state = { kind: "idle" }
   }
 
-  private set(state: SceneFileState): void {
+  private set(state: PickedFileState): void {
     this.state = state
     for (const listener of this.listeners) listener()
   }
