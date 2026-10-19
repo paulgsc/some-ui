@@ -124,8 +124,8 @@ export function describeSend(outcome: SendOutcome, host: string): string {
 
 /**
  * What this send left home holding under `pairing`, for the standing send
- * (`./standing`) to skip: every session, once the copy ran to its end, and
- * each kept item home answered for, or refused.
+ * (`./standing`) to skip: every finished session, once the copy ran to its
+ * end, and each kept item home answered for, or refused.
  */
 async function rememberHeld(
   pairing: string,
@@ -134,7 +134,8 @@ async function rememberHeld(
   heard: { held: ReadonlyArray<Kept>; refused: ReadonlyArray<Kept> }
 ): Promise<void> {
   const storage = localStorageOrNull()
-  const sessions = copy?.outcome.kind === "copied" ? sessionsHeld(local) : {}
+  const finished = local.filter((s) => s.status === "completed")
+  const sessions = copy?.outcome.kind === "copied" ? sessionsHeld(finished) : {}
   rememberSent(storage, readSent(storage, pairing), {
     sessions,
     shelf: await shelfHeld(heard.held),

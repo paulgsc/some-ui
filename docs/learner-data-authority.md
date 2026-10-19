@@ -409,7 +409,12 @@ declared (checked by reading every call site and by the tests named).
   asked about stay) and
   `components/settings/__tests__/device-section.test.tsx` (opening Settings,
   paired or not, sends nothing; unpairing and the send each take a second
-  press).
+  press). Held again when Practice's mark (`components/device-home-glyph.tsx`)
+  joined the link's callers: it calls none of `pair`, `unpair`, `sync`,
+  `send` or `stop`, and reaches home only through Practice's `keep` lane,
+  by `askPractice` from its Send now button and the watch
+  `usePracticeHome` mounts, both LA11's; its Stop sending only adds to the
+  consent log.
 
 ### LA9: aph is sent home only while its person is using it
 

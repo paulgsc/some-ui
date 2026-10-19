@@ -8,7 +8,8 @@
  * `file_host` does.
  */
 import { openNodeSqlite } from "@/test-support/node-sqlite-driver"
-import { beforeEach, describe, expect, it, vi } from "vitest"
+import { memoryStorage } from "@some-ui/vite-config/vitest/memory-storage"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import { openDeviceBackend } from "@/lib/device-backend/backend"
 import type * as SessionHandlers from "@/lib/device-backend/handlers/sessions"
@@ -19,6 +20,7 @@ import { createDeviceFetch } from "@/lib/device-backend/interceptor"
 import type { HomeAnswer } from "@/lib/device-backend/native-http"
 import type { HomeSend } from "@/lib/home-link/runtime"
 import { sendHome } from "@/lib/home-link/send"
+import { readSent } from "@/lib/home-link/sent"
 import {
   causedBy,
   HomeForgotPhoneError,
@@ -234,6 +236,9 @@ describe("copying the phone's sessions home", () => {
 })
 
 describe("letting the phone's copies go once home holds them", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
   const NOW = new Date("2026-10-15T10:00:00Z")
   const today = (id: string): SessionRecord => ({
     ...onPhone(id, "completed"),
@@ -241,6 +246,8 @@ describe("letting the phone's copies go once home holds them", () => {
   })
 
   it("lets go of finished sessions home holds, and keeps unfinished and today's", async () => {
+    const storage = memoryStorage()
+    vi.stubGlobal("window", { localStorage: storage })
     phone.sessions = [
       onPhone("a", "completed"),
       onPhone("b", "scheduled"),
@@ -261,6 +268,12 @@ describe("letting the phone's copies go once home holds them", () => {
     })
     expect(phone.sessions.map((s) => s.id)).toEqual(["b", "c"])
     expect(refreshed).toBe(1)
+    // Home holds the finished ones, for the standing send to skip; the
+    // planned one is not counted among them.
+    expect(Object.keys(readSent(storage, PAIRED.id).sessions).sort()).toEqual([
+      "a",
+      "c",
+    ])
     // What left the phone is still on home, as it was.
     const there = await createHttpSessionsRepository(homeTransport(send)).list()
     expect(there.find((s) => s.name === "Session a")).toMatchObject({
