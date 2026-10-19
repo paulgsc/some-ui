@@ -188,10 +188,11 @@ function alwaysReachesReading(
 }
 
 /**
- * Screens reachable from `start` without passing through a screen that
- * glosses `term`, which are therefore reached with `term` still undefined.
+ * Screens reachable from `start`, a return counted as reachable from its
+ * round. With `term`, the walk stops at screens that gloss it, so what it
+ * reaches is reached with `term` still undefined.
  */
-function reachableUnglossed(file: SessionFile, term: string): Set<string> {
+function reachable(file: SessionFile, term?: string): Set<string> {
   const reached = new Set<string>()
   // A return is played after its round, in this session or a later one.
   const returnsOf = new Map<string, Array<string>>()
@@ -207,7 +208,7 @@ function reachableUnglossed(file: SessionFile, term: string): Set<string> {
   for (let id = queue.shift(); id !== undefined; id = queue.shift()) {
     const screen = file.screens[id]
     if (!screen || reached.has(id)) continue
-    if (screen.glosses?.includes(term)) continue
+    if (term !== undefined && screen.glosses?.includes(term)) continue
     reached.add(id)
     queue.push(...edgesOf(screen), ...(returnsOf.get(id) ?? []))
   }
@@ -342,7 +343,7 @@ export function lintSessionFile(file: SessionFile): Array<SessionFileFinding> {
   }
 
   for (const term of Object.keys(file.glossary ?? {})) {
-    for (const id of reachableUnglossed(file, term)) {
+    for (const id of reachable(file, term)) {
       const screen = file.screens[id]
       const text = screen ? textOf(screen) : ""
       if (formsOf(term).some((form) => mentionsWord(text, form))) {
@@ -360,7 +361,8 @@ export function lintSessionFile(file: SessionFile): Array<SessionFileFinding> {
 
 /**
  * Rem. 10.3 (5) over a set of session files: every live `M` or `A` entry
- * that is no wrong option's `applies` on any round another entry decides, so a
+ * that is no wrong option's `applies` on any playable round another entry
+ * decides, so a
  * learner who always picks it is never shown wrong (Prop. 10.1). The canon
  * marks no entry uninstantiable, so every live row is owed one.
  */
@@ -369,8 +371,9 @@ export function negativeDiscriminationGaps(
 ): Array<RuleId> {
   const discriminated = new Set<string>()
   for (const file of files) {
-    for (const screen of Object.values(file.screens)) {
-      if (!isRound(screen) || screen.rule === undefined) continue
+    for (const id of reachable(file)) {
+      const screen = file.screens[id]
+      if (!screen || !isRound(screen) || screen.rule === undefined) continue
       for (const option of screen.options) {
         if (
           !option.correct &&
