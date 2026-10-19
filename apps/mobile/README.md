@@ -632,13 +632,16 @@ Home no longer knowing the phone, or no answer, ends the send there.
 it, home is told which record and that sharing began or stopped, never
 the words I agreed to (`lib/home-link/told.ts`; paulgsc/server#433 keeps
 when it heard each one). Once home has heard a stop, it refuses aph and
-Jobs writes from this phone. A choice is told first in the record's next
-run, and a stop right after its second press; one home could not hear
-then (the link busy, or no answer) is told when the link frees with that
-wing open, or on the next run of a record still kept. Each session's
+Jobs writes from this phone, and a record goes to home only once home has
+heard its choices. A choice is told first in the record's next run, and a
+stop right after its second press; a stop the link was too busy for then
+is told when a wing's mark next finds the link free, and one home did not
+answer is told on the next run of a record still kept. aph's way back asks
+for its record even when home could not hear the stop. Each session's
 create also names its id, so a create whose answer was lost makes one
-session on a home from paulgsc/server#432 on. An older home is told
-nothing (it is asked once each time the app opens) and names its own ids.
+session on a home from paulgsc/server#432 on. An older home, once it has
+said twice that it keeps no choices, is told nothing more until the app
+starts again, and names its own ids.
 
 **Archive finished sessions**, in the This phone block, is the way to
 make room without a home server. It shares one file

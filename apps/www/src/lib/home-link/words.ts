@@ -81,7 +81,7 @@ export const WORDS: Readonly<Record<LaneId, LaneWords>> = {
     footnote: "Reflections never leave this phone.",
     stopQuestion: "Stop sending new sessions and kept items to home?",
     stopMore:
-      "Home is told you stopped. What it already has stays there. This phone keeps everything it has. You can choose to keep sending again from any send.",
+      "This phone tells home you stopped, when it can. What home already has stays there. This phone keeps everything it has. You can choose to keep sending again from any send.",
     startElsewhere: "Send from Settings, and choose there to keep sending.",
     offer: null,
     away: null,
@@ -107,7 +107,7 @@ export const WORDS: Readonly<Record<LaneId, LaneWords>> = {
     footnote: "Stopping brings aph back to this phone.",
     stopQuestion: "Stop sending aph to home?",
     stopMore:
-      "Home is told you stopped. This phone asks home for aph's record and keeps it here again, with the changes still waiting; any that clash with home's record are kept aside on this phone. What home has stays there too.",
+      "This phone tells home you stopped, when it can, and asks home for aph's record and keeps it here again, with the changes still waiting; any that clash with home's record are kept aside on this phone. What home has stays there too.",
     startElsewhere: null,
     offer: (n) =>
       `Send ${counted(n, "change")} from this phone to home, and keep sending from now on? This phone then keeps only the settings and what home hasn't confirmed. Changes go while aph is open. Stop any time, and aph comes back to this phone.`,
@@ -133,7 +133,7 @@ export const WORDS: Readonly<Record<LaneId, LaneWords>> = {
     footnote: "Voice notes stay on the phone and in Drive.",
     stopQuestion: "Stop sending the Jobs record to home?",
     stopMore:
-      "Home is told you stopped. What it already has stays there. This phone keeps its whole record.",
+      "This phone tells home you stopped, when it can. What home already has stays there. This phone keeps its whole record.",
     startElsewhere: null,
     offer: (n) =>
       `Send ${counted(n, "event")} to home, and keep sending from now on? This phone keeps its whole record too. New events go while Jobs is open. Stop any time; what's sent stays on home.`,

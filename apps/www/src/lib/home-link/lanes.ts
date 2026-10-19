@@ -17,12 +17,12 @@ import { phoneConsent } from "./consent-runtime"
 import { homeLink, useHomeLink } from "./index"
 import type { KeptState } from "./kept-model"
 import { INITIAL_KEPT } from "./kept-model"
-import type { Kept, KeptPorts } from "./kept-runtime"
+import type { Kept, KeptPorts, Telling } from "./kept-runtime"
 import { createKept, laneExchange, sayingBusy, toldFirst } from "./kept-runtime"
 import type { KeptRecord } from "./kept-watch"
 import { askKept, watchKept } from "./kept-watch"
 import type { HomeLinkState } from "./model"
-import { tellHome } from "./told"
+import { forgetTold, tellHome } from "./told"
 
 export type LaneId = "practice" | "aph" | "jobs"
 
@@ -116,7 +116,6 @@ type Wired = {
 
 const wired = new Map<LaneId, Wired>()
 
-/** One runtime per lane per page load, over the first `lane` handed in. */
 /** How every run here reaches home: through the link, one at a time. */
 const LINK_PORTS: Omit<KeptPorts, "exchange"> = {
   keep: (run) => homeLink().keep(run),
@@ -124,6 +123,7 @@ const LINK_PORTS: Omit<KeptPorts, "exchange"> = {
   now: Date.now,
 }
 
+/** One runtime per lane per page load, over the first `lane` handed in. */
 function wire(lane: Lane): Wired {
   const found = wired.get(lane.id)
   if (found) return found
@@ -145,7 +145,7 @@ function wire(lane: Lane): Wired {
     },
     sending: createKept({
       ...LINK_PORTS,
-      exchange: laneExchange(lane, () => pairingOf(), shared, tellChoices),
+      exchange: laneExchange(lane, () => pairingOf(), shared, TELLING),
     }),
     back:
       bringBack === undefined
@@ -158,9 +158,13 @@ function wire(lane: Lane): Wired {
               if (!stopped() || pairing === null) {
                 return Promise.resolve({ kind: "synced" })
               }
-              // The stop first: home refuses aph's writes from then on.
-              return toldFirst(tellChoices, pairing, (through) =>
-                bringBack(through, stopped)
+              // The stop first, though the read goes on if home can't hear it:
+              // a way back only reads.
+              return toldFirst(
+                TELLING,
+                pairing,
+                (through) => bringBack(through, stopped),
+                "tried"
               )(send)
             }),
           }),
@@ -199,6 +203,11 @@ function tellChoices(send: HomeCall, pairing: string): Promise<HomeExchanged> {
   )
 }
 
+const TELLING: Telling = {
+  tell: tellChoices,
+  unheard: (pairing) => forgetTold(localStorageOrNull(), pairing),
+}
+
 let teller: Kept | null = null
 
 /** One run that only tells home the pairing's choices, for a stop. */
@@ -230,7 +239,7 @@ export function useLaneHome(lane: Lane): KeptState {
       if (idle && back?.getSnapshot().last?.kind === "busy") back.want()
       if (idle && teller?.getSnapshot().last?.kind === "busy") teller.want()
     }
-    enterEarlier(lane)
+    onLink()
     const unsubscribeLink = homeLink().subscribe(onLink)
     const unwatch = watchKept(record, sending)
     return (): void => {

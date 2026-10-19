@@ -77,3 +77,26 @@ export function refusalOf(body: string): string {
 export function unexpectedAnswer(what: string, status: number): HomeExchanged {
   return { kind: "failed", why: `${what}: home answered ${status}` }
 }
+
+/**
+ * Home refused a write because this phone's person stopped sending it, as
+ * home heard (paulgsc/server#433's `409`, code `sharing_stopped`): not a
+ * refusal of what was sent.
+ */
+export function stoppedOnHome(answer: HomeAnswer): boolean {
+  if (answer.status !== 409) return false
+  try {
+    const parsed: unknown = JSON.parse(answer.body)
+    const error: unknown =
+      typeof parsed === "object" && parsed !== null
+        ? Reflect.get(parsed, "error")
+        : null
+    return (
+      typeof error === "object" &&
+      error !== null &&
+      Reflect.get(error, "code") === "sharing_stopped"
+    )
+  } catch {
+    return false
+  }
+}

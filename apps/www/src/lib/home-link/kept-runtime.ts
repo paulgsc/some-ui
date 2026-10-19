@@ -7,6 +7,7 @@
  * its snapshot; they hold no request of their own.
  */
 import type { HomeCall, HomeExchanged } from "@some-ui/core-utils"
+import { stoppedOnHome } from "@some-ui/core-utils"
 import { reportFailure, toIntentError } from "@some-ui/intent-kit"
 
 import { SyncStoppedError } from "@/lib/device-backend/home-sync"
@@ -124,28 +125,41 @@ export function sayingBusy(exchange: Exchange): Exchange {
   }
 }
 
-type Tell = (send: HomeCall, pairing: string) => Promise<HomeExchanged>
+/** Telling home a pairing's choices (`./told`), and forgetting it did. */
+export type Telling = {
+  tell: (send: HomeCall, pairing: string) => Promise<HomeExchanged>
+  /** Home says it heard a stop this phone did not end. */
+  unheard: (pairing: string) => void
+}
+
+const NOT_TOLD: Telling = {
+  tell: () => Promise.resolve({ kind: "synced" }),
+  unheard: () => undefined,
+}
 
 /**
- * `then`, once home has heard every choice under `pairing` (`tell`,
- * `./told`; a home that keeps none counts as having heard). Telling that
- * ends any other way ends the run there, so nothing of a record goes before
- * home knows whether it is kept.
+ * `then`, once home has heard every choice under `pairing` (`./told`; a home
+ * that keeps none counts as having heard). Telling that ends any other way
+ * ends the run there, so nothing of a record goes before home knows whether
+ * it is kept; with `heard: "tried"`, for a run that only reads (aph's way
+ * back), only home having forgotten the phone does.
  */
 export function toldFirst(
-  tell: Tell,
+  telling: Telling,
   pairing: string,
-  then: Exchange
+  then: Exchange,
+  heard: "needed" | "tried" = "needed"
 ): Exchange {
   return async (send) => {
-    const told = await tell(send, pairing)
-    return told.kind === "synced" ? then(send) : told
+    const told = await telling.tell(send, pairing)
+    if (told.kind === "forgotten") return told
+    return told.kind === "synced" || heard === "tried" ? then(send) : told
   }
 }
 
 /**
  * `lane`'s exchange as a run makes it: home first told the pairing's
- * choices it has not heard (`tell`, `./told`), then each of the record's
+ * choices it has not heard (`telling`, `./told`), then each of the record's
  * requests first finds a scope in `shared` still kept, and home being busy
  * is said (`sayingBusy`).
  */
@@ -153,7 +167,7 @@ export function laneExchange(
   lane: Lane,
   pairing: () => string | null,
   shared: () => ReadonlySet<Scope>,
-  tell: Tell = () => Promise.resolve({ kind: "synced" })
+  telling: Telling = NOT_TOLD
 ): Exchange {
   return (link) => {
     const under = pairing()
@@ -161,11 +175,14 @@ export function laneExchange(
       return Promise.resolve({ kind: "synced" })
     }
     return sayingBusy(
-      toldFirst(tell, under, (send) => {
-        const gated: HomeCall = (method, path, body) =>
-          shared().size > 0
-            ? send(method, path, body)
-            : Promise.reject(new SyncStoppedError())
+      toldFirst(telling, under, (send) => {
+        const gated: HomeCall = async (method, path, body) => {
+          if (shared().size === 0) throw new SyncStoppedError()
+          const answer = await send(method, path, body)
+          // Home's choices and this phone's differ: tell them all again.
+          if (stoppedOnHome(answer)) telling.unheard(under)
+          return answer
+        }
         return lane.exchange(gated, { pairing: under, shared })
       })
     )(link)

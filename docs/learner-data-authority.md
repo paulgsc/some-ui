@@ -125,7 +125,8 @@ declared (checked by reading every call site and by the tests named).
   server answered with, and the account is asked whether it still holds them. A create
   whose answer was lost is recorded before it is sent and, on the next press,
   looked for in the account (a session with the same name, layout, activities
-  and scenes that no receipt entry claims) and adopted rather than repeated.
+  and scenes that no receipt entry claims and no attempt named) and adopted
+  rather than repeated.
   On the Android app the copy to its paired home is `copySessionsTo`
   (`lib/tenant/sessions-copy`, which the phone build may carry), called
   only from `lib/home-link/sessions` behind the Home server block's confirm
@@ -431,7 +432,8 @@ declared (checked by reading every call site and by the tests named).
   record (`bringBack`) after its person's stop, and the telling of each
   choice (`lib/home-link/told.ts`: first in a run, and for a stop of a lane
   with no way back, from the stop's second press in the mark or Settings'
-  ledger): all LA9's; its choices add to the consent log, and home is told
+  ledger, and again when a mark's link listener finds that run turned away
+  busy): all LA9's; its choices add to the consent log, and home is told
   each, never its words.
 
 ### LA9: aph is sent home only while its person is using it
@@ -484,8 +486,14 @@ when a run is asked for:
   one `PUT /sharing/:scope` with `{ "kept": … }` per scope, the words never,
   once each, in the order made): first in every run of a lane and in aph's
   way back, and, for a stop of a lane with no way back, by one run of its own
-  (`telling`) asked only from `stopOnHome`, since no run of a stopped lane
-  follows. For
+  (the teller) asked from `stopOnHome`, since no run of a stopped lane
+  follows, and again from a lane mark's link listener once the link frees
+  after turning it away. A lane's run sends its record only once home has
+  heard every choice (a home that answered twice in a row that it keeps none
+  counts as having heard, until the app starts again); aph's way back, which
+  only reads, goes on either way. A `409` saying the phone stopped
+  (`stoppedOnHome`) refuses nothing and makes the next run tell every choice
+  again. For
   aph, the mark shows aph's lane only while aph's screens hand it in
   (`DeviceAphLane`, in aph's layout); opting in moves aph's record to home
   (`keepOnHome`), and stopping asks home once for its record back
@@ -518,8 +526,9 @@ when a run is asked for:
   `stopped` other than none of the lane's scopes being kept now, or outside
   `sayingBusy`, or asks it from anywhere but `stopOnHome`, `bringLaneBack` and
   the effect's link listener (once the link is idle after it was turned away
-  busy), or asks `telling()` from anywhere but `stopOnHome` and the effect's
-  link listener (once the link is idle after it was turned away busy),
+  busy), or asks the teller (`telling()` or `teller`) from anywhere but
+  `stopOnHome` and the effect's link listener (once the link is idle after
+  it was turned away busy),
   removes `telling().want()` from a stop of a lane with no way back, wires the
   teller outside `sayingBusy`, removes `tellChoices` from a lane's
   `laneExchange` or from `back`'s `toldFirst`, or makes `tellChoices` tell
@@ -527,10 +536,15 @@ when a run is asked for:
   hunk to `lib/home-link/told.ts` that sends anything but one
   `PUT /sharing/:scope` with `{ kept }` per untold change, tells a change made
   under another pairing or out of order, sends a choice's words, remembers a
-  choice told before home answered every one of its scopes with `200`, or
-  makes `readTold` answer for another pairing; a hunk to
+  choice told before home answered every one of its scopes with `200`,
+  makes `readTold` answer for another pairing, sets `keepsNone` on anything
+  but a second `404` in a row for that pairing, keys it on anything but the
+  pairing or keeps it past the page load, or lets `tellHome` answer
+  `synced` on anything but every change answered `200` or a `404`; a hunk to
   `lib/home-link/kept-runtime.ts` that lets `toldFirst` run what follows
-  before telling, or after telling ended any way but `synced`; a
+  before telling, or, unless its caller says `"tried"` (aph's way back
+  alone), after telling ended any way but `synced`, or that drops
+  `laneExchange`'s `unheard` on a `stoppedOnHome` answer; a
   hunk to `lib/home-link/kept-runtime.ts` that lets `laneExchange`
   send a record's request without its check that a scope is still kept, tells
   home under a pairing other than the run's, or makes a run
@@ -585,8 +599,8 @@ when a run is asked for:
   `offer` it shows, and in `device-section.tsx`'s send `onPress` behind the
   ticked box; `stopOnHome` only in the sheet's second Stop press and the
   ledger's, which offers none for aph;
-  `bringLaneBack` only in Bring it back's `onClick`; `telling()` only in
-  `stopOnHome`; `choose` only in
+  `bringLaneBack` only in Bring it back's `onClick`; the teller only in
+  `stopOnHome` and the link listener; `choose` only in
   `keepOnHome`, `stopOnHome` and `enterEarlier`; `DeviceHomeGlyph` only in
   `_dashboard.tsx`'s header under `VITE_DEVICE_BACKEND`; `DeviceAphLane` only
   in aph's layout; `earlier` true only from the `read` of a pairing record

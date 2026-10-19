@@ -9,7 +9,8 @@
  * under, and remembered by its place in the log (`seq`, kept per pairing
  * like `./sent`'s bookkeeping). Lost, it only means telling again, which
  * home answers as unchanged. A home that keeps no choices (one before #433
- * answers `404`) is told nothing more until the app is opened again.
+ * answers `404`) is told nothing more that run, and, once it has answered
+ * so twice in a row, nothing more until the app starts again.
  */
 import type { HomeCall, HomeExchanged } from "@some-ui/core-utils"
 import { unexpectedAnswer } from "@some-ui/core-utils"
@@ -61,14 +62,23 @@ export function untold(
   )
 }
 
+/** Home says it heard a stop this phone did not end: tell everything again. */
+export function forgetTold(storage: Store, pairing: string): void {
+  rememberTold(storage, pairing, 0)
+}
+
+/**
+ * The pairing whose home answered it keeps no choices, twice in a row, for
+ * this page load; and how many such answers each pairing has had in a row.
+ */
+let keepsNone: string | null = null
+const misses = new Map<string, number>()
+
 /**
  * Tells home, through `send`, every choice under `pairing` it has not
  * heard. Throws what `send` throws when home does not answer; what was
  * told before it stays told.
  */
-/** The pairing whose home answered it keeps no choices, for this page load. */
-let keepsNone: string | null = null
-
 export async function tellHome(
   send: HomeCall,
   pairing: string,
@@ -85,9 +95,13 @@ export async function tellHome(
     )
     if (status === 401) return { kind: "forgotten" }
     if (status === 404) {
-      keepsNone = pairing
+      // One 404 may be a proxy's moment; two in a row is a home before #433.
+      const missed = (misses.get(pairing) ?? 0) + 1
+      misses.set(pairing, missed)
+      if (missed >= 2) keepsNone = pairing
       return { kind: "synced" }
     }
+    misses.delete(pairing)
     if (status !== 200) return unexpectedAnswer("a choice", status)
     // An event's scopes go one request each: it is told once all of them are.
     if (changes[i + 1]?.seq !== seq) rememberTold(storage, pairing, seq)

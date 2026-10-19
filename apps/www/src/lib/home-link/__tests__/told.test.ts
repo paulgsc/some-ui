@@ -1,15 +1,15 @@
 /**
  * Telling home its person's choices (`./told`): each once, in the order
- * made, for the pairing it was made under; a home that keeps no choices is
- * told nothing more this time; what was told stays told when home stops
- * answering.
+ * made, for the pairing it was made under; a home that answers twice that
+ * it keeps no choices is told nothing more; what was told stays told when
+ * home stops answering, and is told again once home says it heard otherwise.
  */
 import type { HomeAnswer, HomeCall } from "@some-ui/core-utils"
 import { memoryStorage } from "@some-ui/vite-config/vitest/memory-storage"
 import { describe, expect, it } from "vitest"
 
 import type { ConsentLog } from "@/lib/home-link/consent-model"
-import { readTold, tellHome, untold } from "@/lib/home-link/told"
+import { forgetTold, readTold, tellHome, untold } from "@/lib/home-link/told"
 
 const LOG: ConsentLog = [
   {
@@ -88,18 +88,29 @@ describe("telling home its person's choices", () => {
     expect(readTold(storage, "p")).toBe(1)
   })
 
-  it("tells a home that keeps no choices nothing more until the app opens again", async () => {
+  it("tells a home that answers it keeps no choices twice nothing more until the app starts again", async () => {
     const storage = memoryStorage()
     const old: ConsentLog = [{ ...LOG[0], pairing: "old" }]
-    const first = home([{ status: 404, body: "" }])
-    await expect(tellHome(first.send, "old", old, storage)).resolves.toEqual({
-      kind: "synced",
-    })
-    expect(first.sent).toHaveLength(1)
+    for (let i = 0; i < 2; i += 1) {
+      const missed = home([{ status: 404, body: "" }])
+      await expect(tellHome(missed.send, "old", old, storage)).resolves.toEqual(
+        { kind: "synced" }
+      )
+      expect(missed.sent).toHaveLength(1)
+    }
     expect(readTold(storage, "old")).toBe(0)
     const again = home()
     await tellHome(again.send, "old", old, storage)
     expect(again.sent).toEqual([])
+  })
+
+  it("tells everything again once forgotten", async () => {
+    const storage = memoryStorage()
+    await tellHome(home().send, "p", LOG, storage)
+    forgetTold(storage, "p")
+    const again = home()
+    await tellHome(again.send, "p", LOG, storage)
+    expect(again.sent).toHaveLength(3)
   })
 
   it("says a 401 is home forgetting the phone, and any other answer as home's", async () => {
