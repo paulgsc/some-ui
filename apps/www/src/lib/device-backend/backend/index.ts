@@ -1,8 +1,8 @@
 /**
  * The device backend, assembled: the route table, and a database brought up
- * to date and seeded before the first request is answered.
+ * to date before the first request is answered.
  */
-import { seedBundledCorpus } from "@/lib/device-backend/bundled-corpus"
+import { removeSeededRounds } from "@/lib/device-backend/content-store"
 import { accountRoutes } from "@/lib/device-backend/handlers/account"
 import { contentRoutes } from "@/lib/device-backend/handlers/content"
 import { sessionRoutes } from "@/lib/device-backend/handlers/sessions"
@@ -29,6 +29,6 @@ export async function openDeviceBackend(
   budget: StorageBudget = ANDROID_BACKUP_BUDGET
 ): Promise<DeviceBackend> {
   await migrate(db)
-  await seedBundledCorpus(db, now())
+  await removeSeededRounds(db)
   return { router: createRouter(DEVICE_ROUTES), context: { db, now, budget } }
 }

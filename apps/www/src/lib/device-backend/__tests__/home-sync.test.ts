@@ -8,7 +8,7 @@ import { openNodeSqlite } from "@/test-support/node-sqlite-driver"
 import { beforeEach, describe, expect, it } from "vitest"
 
 import { openDeviceBackend } from "@/lib/device-backend/backend"
-import { isRecord, sha256Hex } from "@/lib/device-backend/common"
+import { sha256Hex } from "@/lib/device-backend/common"
 import {
   upsertLesson,
   upsertRound,
@@ -26,7 +26,7 @@ import { createDeviceFetch } from "@/lib/device-backend/interceptor"
 import type { SqlDriver } from "@/lib/device-backend/sql"
 import { DeviceStorageError } from "@/lib/device-backend/sql"
 import type { StorageBudget } from "@/lib/device-backend/storage"
-import { databaseBytes } from "@/lib/device-backend/storage"
+import { databaseBytes, readPruneNotice } from "@/lib/device-backend/storage"
 import { TREE_ACTIVITY } from "@/lib/topik-content"
 
 const HOME = "http://192.168.1.10:3000"
@@ -73,7 +73,7 @@ const LESSON = {
   tags: ["food"],
 }
 
-/** A round home has and the bundle does not, pretty-printed as authored. */
+/** A round home serves, pretty-printed as authored. */
 const HOME_ROUND = JSON.stringify(
   {
     id: "home-only-round",
@@ -90,7 +90,7 @@ beforeEach(async () => {
   homeDb = openNodeSqlite()
   home = await openDeviceBackend(homeDb, () => NOW)
   await upsertLesson(homeDb, LESSON, '{\n  "batches": []\n}', NOW)
-  await upsertRound(homeDb, HOME_ROUND, NOW, "bundled")
+  await upsertRound(homeDb, HOME_ROUND, NOW)
   await upsertRuns(
     homeDb,
     JSON.stringify({
@@ -341,36 +341,21 @@ describe("syncFromHome against a home it cannot read", () => {
   })
 })
 
-describe("the bundled seed after a sync", () => {
-  it("leaves a round home updated as home's, across a restart", async () => {
-    const id = "has-duplicate-sort-adjacent"
-    const bundled = await phoneJson(`/leetype/rounds/${id}`)
-    if (!isRecord(bundled)) throw new Error("the bundled round is not a record")
-    const newer = JSON.stringify({ ...bundled, homeEdit: true })
-    await upsertRound(homeDb, newer, NOW, "bundled")
-    // Home's run under the same (variant, bounds) key as a bundled one.
-    await upsertRuns(
-      homeDb,
-      JSON.stringify({
-        roundId: id,
-        contentHash: await sha256Hex(newer),
-        runs: [{ variant: "A", bounds: "before", sizes: { n: 99 } }],
-      }),
-      NOW
-    )
-    const report = await syncFromHome(phoneDb, HOME, verbatimGet, () => NOW)
-    expect(report.rounds.updated).toBe(1)
-
-    // The next start seeds the bundle again, rounds and runs.
+describe("a round an earlier build seeded with home's own bytes", () => {
+  it("goes at the next start, and the next sync brings it back, runs included", async () => {
+    // What an earlier build left: the round, never marked as home's.
+    await upsertRound(phoneDb, HOME_ROUND, NOW)
+    await phoneDb.run("DELETE FROM device_round_from_home")
     phone = await openDeviceBackend(phoneDb, () => NOW)
-    await expect(phoneJson(`/leetype/rounds/${id}`)).resolves.toMatchObject({
-      homeEdit: true,
-    })
+    await expect(readPruneNotice(phoneDb)).resolves.toEqual({ rounds: 1 })
+
+    const report = await syncFromHome(phoneDb, HOME, verbatimGet, () => NOW)
+    expect(report.rounds.added).toBe(1)
+    phone = await openDeviceBackend(phoneDb, () => NOW)
     await expect(
-      phoneJson(`/leetype/rounds/${id}/runs`)
-    ).resolves.toMatchObject({
-      runs: [{ variant: "A", bounds: "before", sizes: { n: 99 } }],
-    })
+      phoneJson("/leetype/rounds/home-only-round/runs")
+    ).resolves.toMatchObject({ runs: [{ variant: "A", bounds: "before" }] })
+    await expect(readPruneNotice(phoneDb)).resolves.toEqual({ rounds: 1 })
   })
 })
 

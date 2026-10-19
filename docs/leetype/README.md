@@ -389,10 +389,9 @@ proposed again by someone who has not read this section:
 > `exercise` and no host forced one. It was removed with `ClaimChoices`,
 > `ReadingFeedback`, `ReadingHeader`, the mobile `ExercisePicker` and the
 > claim derivation in `lib/leetype/reading-probe` (`claimOf`,
-> `readingProbeOf`, `claimPoolOf`). `DiffCard` and the module's row model
-> stay, because rounds draw their hunks with them. A narrow window now always
-> plays rounds; the record below is kept for why the phone probes
-> discrimination rather than production.
+> `readingProbeOf`, `claimPoolOf`). Rounds were retired in turn by incident
+> sessions (canon Rem. 11.7), and `DiffCard` with them. The record below is
+> kept for why the phone probes discrimination rather than production.
 
 Before this, LeetType had one surface. Below about 768px that surface was
 still rendered, still masked text, still measured WPM, and still gated on a
@@ -811,7 +810,10 @@ slow would break the loop's only rule.
 > mode or when the server is unreachable. The seam returns because a round is
 > a different object (Rem. 11.4), not because this argument was wrong about
 > `Exercise`; review still gates what reaches a player, through
-> `corpus/rounds/`, the importer and the round CRM's own checks.
+> `corpus/rounds/`, the importer and the round CRM's own checks. (Retired by
+> canon Rem. 11.7, #1924: the phone plays session files, `lib/leetype-content`
+> and the bundled corpus are gone, and the five rounds live on in Git history
+> and as the round CRM's prompt example.)
 
 **The corpus-fetch seam is gone, not re-typed.** `apps/www` no longer fetches
 anything for this activity, and the `public/leetype` plumbing, the

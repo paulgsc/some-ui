@@ -6,7 +6,7 @@
  * (vite.config.ts) silently drops an import that binds nothing, which once
  * shipped an APK with no backend.
  *
- * Everything heavy (the SQLite plugin, schema, handlers, bundled corpus) is
+ * Everything heavy (the SQLite plugin, schema, handlers) is
  * dynamically imported: other builds carry none of it, and the database opens
  * on the first `file_host` request, not before first paint.
  */

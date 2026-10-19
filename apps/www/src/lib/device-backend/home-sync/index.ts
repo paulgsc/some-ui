@@ -2,7 +2,7 @@
  * Copies what the home `file_host` publishes into the phone's database, for
  * offline study: TOPIK lessons and the served scene trees (which exist
  * nowhere else; each under its own curriculum activity, as home lists them)
- * and Leetype rounds newer than the bundled corpus.
+ * and the Leetype rounds home serves.
  *
  * One direction (home -> phone) and published content only: syncing the
  * learner's own history would need a merge rule. Every route read here is
@@ -264,8 +264,7 @@ export async function syncFromHome(
   if (roundsListed !== null) {
     report.rounds.removed = await removeRoundsExcept(
       db,
-      stringsAt(roundsListed, "id"),
-      "home"
+      stringsAt(roundsListed, "id")
     )
   }
   for (const listing of listings) {
@@ -280,7 +279,6 @@ export async function syncFromHome(
           store,
           body.body,
           now(),
-          "home",
           listing.contentHash
         )
         if (outcome === "inserted") report.rounds.added += 1

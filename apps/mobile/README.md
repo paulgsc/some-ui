@@ -127,13 +127,13 @@ request goes to the real network.
   where the server would still serve it. Nothing on the phone loads a lesson
   by a key it saved: a session stores a level.
 
-| Served on the device                                      | From                                                       |
-| --------------------------------------------------------- | ---------------------------------------------------------- |
-| `/sessions*`                                              | the `sessions` table                                       |
-| `/shelf/:activity[/:key]`                                 | `learner_shelf` (keep a pasted lesson or your own round)   |
-| `/curriculum/manifest[.json]`, `/curriculum/:key`         | `curriculum`, filled by a sync from home                   |
-| `/leetype/rounds`, `/:id`, `/:id/runs`                    | `leetype_round*`, seeded from `packages/ui/leetype/corpus` |
-| `/auth/session`, `/signals`, `/presence/lease`, `/push/*` | see above                                                  |
+| Served on the device                                      | From                                                     |
+| --------------------------------------------------------- | -------------------------------------------------------- |
+| `/sessions*`                                              | the `sessions` table                                     |
+| `/shelf/:activity[/:key]`                                 | `learner_shelf` (keep a pasted lesson or your own round) |
+| `/curriculum/manifest[.json]`, `/curriculum/:key`         | `curriculum`, filled by a sync from home                 |
+| `/leetype/rounds`, `/:id`, `/:id/runs`                    | `leetype_round*`, filled by a sync from home             |
+| `/auth/session`, `/signals`, `/presence/lease`, `/push/*` | see above                                                |
 
 Anything else answers `file_host`'s plain-text `404`, which is what a server
 too old to have that route would answer.
@@ -200,11 +200,10 @@ storage failure (`launch/launch-test.sh`).
   made during a session and shared soon after, while the session is still
   on the phone.
 - **Published content follows its source.** A sync deletes the lessons and
-  rounds home stopped listing, records a retired bundled round so the next
-  start does not restore it, and skips what would not fit. The seed deletes
-  bundled rounds the app no longer ships. All of it is reported. If home's
-  corpus is older than the app's, a sync also drops the newer bundled rounds
-  home does not list, until home lists them.
+  rounds home stopped listing, and skips what would not fit. Each start
+  deletes the Leetype rounds an earlier build seeded from its own bundle and
+  keeps those home sent; one home also serves comes back at the next sync.
+  All of it is reported.
 - **Presence leases** are trimmed to the server's own 16.
 
 The database runs with `auto_vacuum = FULL`, so deleted rows leave the file
@@ -212,9 +211,9 @@ Android backs up.
 
 ### What content is on the phone
 
-- **Leetype:** the bundled corpus (`packages/ui/leetype/corpus`), seeded on
-  every start, together with its recorded runs. The raw files hash to the same
-  content hashes their runs were recorded against, so the runs show offline.
+- **Leetype:** the session files picked from storage, kept in the content
+  store, and any rounds a sync from home brings, which the phone keeps but
+  does not play. The app bundles no rounds.
 - **TOPIK:** lessons are not in either repository. They exist only in the home
   server's database, so the phone gets them by a **sync from home** (below).
   Before the first sync, TOPIK offers any lesson you paste and keep on the

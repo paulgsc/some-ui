@@ -3,8 +3,8 @@
  * `/leetype/rounds*`, as `file_host` serves them (paulgsc/server
  * `handlers/db/{curriculum,leetype}.rs`).
  *
- * The tables are filled differently (bundled seed plus home sync,
- * `device-backend/content-store`), but answers match: manifests list
+ * The tables are filled by the home sync (`device-backend/content-store`),
+ * and answers match: manifests list
  * unretired rows by key (the curriculum one, one activity's: topik's unless
  * `?activity=` names another), `version` is the SHA-256 of the compact JSON in the
  * server's field order, and a body is verbatim with its hash as the ETag.

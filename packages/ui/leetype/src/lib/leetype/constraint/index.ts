@@ -84,11 +84,10 @@ export function checkConstraintDimensions(
 }
 
 /**
- * One row of a `ConstraintDiff`'s rendered comparison — the same
+ * One row of a constraint diff's rendered comparison: the same
  * `"context" | "del" | "add"` vocabulary `renderedDiffLineKinds`
  * (`types/exercise.ts`) already established for a code diff's rendered
- * lines, reused here rather than reinvented (R3's own acceptance criterion:
- * "reusing `DiffCard`'s row model rather than inventing a second one").
+ * lines, reused here rather than reinvented.
  */
 export type ConstraintDiffRow = {
   index: number

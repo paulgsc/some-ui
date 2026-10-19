@@ -238,9 +238,7 @@ function isExemptSentence(
 /**
  * Cor. 4.1's two forbidden inferences ("it timed out, therefore it is
  * Θ(n²)"; "it ran in 4ms, therefore it is Θ(n)"), as a **heuristic** over
- * authored prose (LTY-EXEC X4). The type-level half is `RunResult`
- * (`lib/leetype/run-result`), which no cost/class/proposition/ledger
- * function accepts; this catches the same inference made in words.
+ * authored prose (LTY-EXEC X4).
  *
  * A sentence with both a measurement term and a class term is only worth a
  * human's attention, not proven guilty. `exemptions` (default

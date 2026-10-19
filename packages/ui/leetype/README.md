@@ -5,7 +5,7 @@ A competency probe whose input modality is whatever the device can carry.
 On a keyboard, the player reads one sentence, types the smallest code that
 proves it, and repeats; everything else — how much of the code is visible,
 whether they may move on — is inferred from how they type. On a phone they
-read the change and say what it does instead. There is no challenge picker, no
+play a session of incident rounds instead. There is no challenge picker, no
 session configuration, no clock that ends anything, and no XP on either.
 
 ```tsx
@@ -18,12 +18,13 @@ That is the only way in. `Leetype` mounts with no required props. On a wide
 window the learner picks an exercise from the shim (`lib/leetype/exercises`)
 and types it; a host that wants a specific one passes `exercise`.
 
-**Below 768px it plays rounds** (canon Def. 1.7). A phone has no keyboard to
-produce code with, so a round asks the player to pick the change that does
-something and name what it keeps, rather than to type it. Rounds come from the
-host's `loadRounds`, falling back to the bundled `AUTHORED_ROUNDS`. No engine
-at all: `@some-ui/leetype-wasm` is never fetched on a phone. The host does
-nothing to opt in.
+**Below 768px it plays session files** (canon Def. 1.9, Rem. 11.7). A phone
+has no keyboard to produce code with, so it plays incident rounds from a
+session file the learner adds from storage: pick what happened before
+anything is shown, read the placed reading, say one incident aloud. The host
+gives the store (`sessionFiles`); without one the phone surface says where
+its sessions come from. No engine at all: `@some-ui/leetype-wasm` is never
+fetched on a phone.
 
 > [!IMPORTANT] > **Canon-governed workspace — read the canon before editing this package.**
 >
@@ -67,11 +68,9 @@ Leetype                        picks a modality, and nothing else
 │       └── TypingViewport     the one scroll container in the card
 │           └── CodeDisplay    a pure glyph renderer
 │
-└── RoundSession    < 768px    rounds (Def. 1.7), one artifact at a time
-    ├── ArtifactSwitcher       pages between the round's artifacts
-    ├── DiffSetChoices         the candidate rewrites, each a DiffCard
-    ├── RoundChoices           commit-and-reveal rows
-    └── RoundFeedback          the authored reason, no verdict of its own
+└── < 768px                    the phone: incident rounds (Def. 1.9)
+    ├── SessionFilePicker      the session files held, each to play
+    └── IncidentSession        one file played (lib/leetype/incident-play)
 ```
 
 Four boundaries hold the typing branch together, and each is worth stating
@@ -92,16 +91,15 @@ because each was crossed by the version this replaced:
 The rounds branch has a boundary of its own, and it is the one to check a
 change against first:
 
-5. **The rounds path and the incident path import nothing engine-shaped.** No
-   `types/leetype` vocabulary, no wasm loader, no typing hook: `lib/leetype/round-probe` and
-   `lib/leetype/round-cycle` are pure functions of authored round data,
-   `DiffCard` takes a hunk and nothing else, and a session file plays through
+5. **The phone path imports nothing engine-shaped.** No `types/leetype`
+   vocabulary, no wasm loader, no typing hook: a session file plays through
    `lib/leetype/incident-play`, which knows screens, picks and the session log.
    That is what makes "a phone never loads the engine" true by construction;
-   `components/leetype/index.test.tsx` pins it for both (rounds, and a session
-   file started and ended), with a negative control that asserts the wide
-   branch does load it, and `components/incident/incident-session/index.test.tsx`
-   walks every module the session surface reaches and finds no engine one.
+   `components/leetype/index.test.tsx` pins it (the phone surface, and a
+   session file started and ended), with a negative control that asserts the
+   wide branch does load it, and
+   `components/incident/incident-session/index.test.tsx` walks every module
+   the session surface reaches and finds no engine one.
 
 ## Where the engine ends and this package begins
 

@@ -194,12 +194,11 @@ declared (checked by reading every call site and by the tests named).
 - _Falsified by:_ a hunk that adds a `createDataSource` in `apps/www/src/lib/*-content`
   or `hangul-vocab` without `fetchOptions: PUBLIC_READ` (or spreading it), or that
   changes `PUBLIC_READ.credentials`.
-- _Scope:_ `apps/www/src/lib/{topik-content,leetype-content,hangul-vocab}`.
-- _Why not enforced:_ a test observes the wire for leetype
-  (`leetype-content/index.test.ts`, "reads the corpus with no credentials"), and
-  `lib/serving-privacy/__tests__/egress-choke-points.test.ts` parses `apps/www/src`
-  and fails on a `createDataSource` call without `PUBLIC_READ`, and on a data source
-  outside the three named directories being unlisted. What it cannot see is a
+- _Scope:_ `apps/www/src/lib/{topik-content,hangul-vocab}`.
+- _Why not enforced:_ `lib/serving-privacy/__tests__/egress-choke-points.test.ts`
+  parses `apps/www/src` and fails on a `createDataSource` call without
+  `PUBLIC_READ`, and on a data source outside the named directories being
+  unlisted. What it cannot see is a
   corpus read made another way (a package's own `fetch`), which is LA1's scope note.
 
 ### LA5: the Pages build cannot reach another origin
