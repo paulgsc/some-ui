@@ -1,0 +1,45 @@
+name: Environment Approval
+# The human "yes" in front of a deploy or build: one job that waits on an
+# Environment's required reviewer and does nothing else. Callers put it
+# before they build, so a push nobody approves costs nothing (epic #1615,
+# Decision 1).
+#
+# A newer call for the same environment cancels one still waiting here, so
+# the run that can be approved is always the newest. Once approved, the job
+# finishes in seconds and the caller's later jobs are outside this group, so
+# a newer push never cancels an approved build.
+#
+# The approval is a repo setting, not code. If the environment loses its
+# required reviewer, or is deleted and the reference below re-creates it
+# unprotected, GitHub runs this job at once and nothing else fails: every
+# push would ship unapproved. So the job checks the setting itself and fails
+# without one. The caller grants `actions: read` for that read.
+on:
+  workflow_call:
+    inputs:
+      environment:
+        description: The Environment whose required reviewer approves this run
+        required: true
+        type: string
+
+jobs:
+  approve:
+    name: Approve
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    concurrency:
+      group: ${{ inputs.environment }}-approve
+      cancel-in-progress: true
+    steps:
+      - name: Check the environment still requires a reviewer
+        env:
+          ENVIRONMENT: ${{ inputs.environment }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          reviewers=$(gh api "repos/$GITHUB_REPOSITORY/environments/$ENVIRONMENT" \
+            --jq '[.protection_rules[] | select(.type == "required_reviewers")] | length')
+          if [ "$reviewers" -lt 1 ]; then
+            echo "::error::$ENVIRONMENT has no required reviewer, so nobody approved this run. Add one under Settings > Environments, then re-run."
+            exit 1
+          fi
+          echo "Approved: $ENVIRONMENT, ${GITHUB_SHA}."
