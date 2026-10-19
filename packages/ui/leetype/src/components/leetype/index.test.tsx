@@ -121,7 +121,6 @@ describe("Leetype", () => {
     }
     const { unmount } = render(<Leetype />)
     expect(screen.queryByText("Add a session from storage")).toBeNull()
-    expect(screen.getByText(PHONE)).toBeInTheDocument()
     unmount()
 
     const onSessionComplete = vi.fn()

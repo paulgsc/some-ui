@@ -56,10 +56,8 @@ const upsert = (
  * `file_host`'s round operator routes. A round comes in one of two ways,
  * both ending in the same check:
  *
- * - **Write one with a model.** `GenerateRound`, with the corpus audience:
- *   the same prompt and the same in-browser check a learner's "make your
- *   own round" uses, so an operator's round and a learner's are held to one
- *   standard.
+ * - **Write one with a model.** `GenerateRound`: a prompt for the
+ *   operator's own model, and the in-browser check on what comes back.
  * - **Paste or edit the JSON.** A stored round opens with its body as the
  *   server holds it.
  *
@@ -268,10 +266,7 @@ export const RoundCrm = ({ client, reporting }: RoundCrmProps): JSX.Element => {
       >
         {generating ? (
           <GenerateRound
-            buildPrompt={(request) =>
-              buildRoundPrompt({ ...request, audience: "corpus" })
-            }
-            startLabel="Use this round"
+            buildPrompt={buildRoundPrompt}
             onStart={(round) => {
               setText(serializeRound(round))
               setGenerating(false)

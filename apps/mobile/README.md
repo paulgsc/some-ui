@@ -200,10 +200,10 @@ storage failure (`launch/launch-test.sh`).
   made during a session and shared soon after, while the session is still
   on the phone.
 - **Published content follows its source.** A sync deletes the lessons and
-  rounds home stopped listing, records a retired bundled round so the next
-  start does not restore it, and skips what would not fit. Each start deletes
-  the Leetype rounds an earlier build bundled (the bundle is retired, canon
-  Rem. 11.7), keeping those home sent. All of it is reported.
+  rounds home stopped listing, and skips what would not fit. Each start
+  deletes the Leetype rounds an earlier build seeded from its own bundle and
+  keeps those home sent; one home also serves comes back at the next sync.
+  All of it is reported.
 - **Presence leases** are trimmed to the server's own 16.
 
 The database runs with `auto_vacuum = FULL`, so deleted rows leave the file

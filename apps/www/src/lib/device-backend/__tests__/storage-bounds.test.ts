@@ -274,8 +274,11 @@ describe("presence leases", () => {
 
 describe("the retired bundle", () => {
   it("removes every round an earlier build seeded, says so, and keeps home's", async () => {
-    await upsertRound(db, JSON.stringify({ id: "dropped" }), NOW, "bundled")
-    await upsertRound(db, JSON.stringify({ id: "home-round" }), NOW, "home")
+    await upsertRound(db, JSON.stringify({ id: "dropped" }), NOW)
+    await db.run(
+      "DELETE FROM device_round_from_home WHERE round_id = 'dropped'"
+    )
+    await upsertRound(db, JSON.stringify({ id: "home-round" }), NOW)
 
     backend = await openDeviceBackend(db, () => NOW, budget)
 

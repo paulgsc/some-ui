@@ -24,8 +24,7 @@ session file the learner adds from storage: pick what happened before
 anything is shown, read the placed reading, say one incident aloud. The host
 gives the store (`sessionFiles`); without one the phone surface says where
 its sessions come from. No engine at all: `@some-ui/leetype-wasm` is never
-fetched on a phone. The bundled Def. 1.7 rounds it played before are retired;
-Git history keeps them.
+fetched on a phone.
 
 > [!IMPORTANT] > **Canon-governed workspace — read the canon before editing this package.**
 >

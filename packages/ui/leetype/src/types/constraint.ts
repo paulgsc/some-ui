@@ -46,7 +46,7 @@ export type ConstraintSet = z.infer<typeof ConstraintSetSchema>
  * human-scale annotation only; admissibility reads `operations` alone.
  *
  * Axiom 3.1: `operations` models no constant factor, cache, allocator or
- * language, and a surface presenting `B` must say so (`BudgetDisplay`).
+ * language, and a surface presenting `B` must say so.
  */
 export const BudgetSchema = z.object({
   operations: z.number().positive(),

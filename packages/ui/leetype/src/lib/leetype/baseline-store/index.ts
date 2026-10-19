@@ -22,10 +22,8 @@ import { z } from "zod"
  *
  * Test for a new key: would losing it change what anyone is scored, gated
  * or credited on? Then it is a competence claim, and `localStorage` is never
- * its fallback (Cor. 4.3). The one competence record, the round ledger
- * (`lib/leetype/ledger/store`, `leetype:ledger`), is governed by its own
- * canon (§10, Rem. 10.1): versioned, bounded, validated on read, and correct
- * when evicted.
+ * its fallback (Cor. 4.3). A competence record is governed by its own
+ * canon (§10, Rem. 10.1).
  */
 
 /** One player's sampled typing speed. */

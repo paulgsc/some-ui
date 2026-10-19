@@ -4,10 +4,10 @@
  * included), so a row here is one `file_host` could take verbatim. Each table
  * names its source migration and anything left out.
  *
- * Four tables are the device's own: `device_round_from_home` (migration 2),
- * so the bundled seed never replaces synced rounds with older bytes;
- * `device_round_retired` (3), so it never restores one home retired;
- * `device_storage_notice` (3), removals not yet shown (`device-backend/storage`);
+ * Three tables are the device's own: `device_round_from_home` (migration 2),
+ * the rounds home wrote, so the start that removes rounds an earlier build
+ * seeded keeps them; `device_storage_notice` (3), removals not yet shown
+ * (`device-backend/storage`);
  * and `device_leetype_session_file` (4), the LeetType session files picked
  * from storage, which no server serves (`content-store`).
  *
@@ -120,8 +120,9 @@ const MIGRATIONS: ReadonlyArray<string> = [
       round_id TEXT PRIMARY KEY REFERENCES leetype_round(id) ON DELETE CASCADE
   );
   `,
-  // 3 - device only. Both stay small: the seed trims the first to ids the
-  // bundle still ships; the second is one row.
+  // 3 - device only. `device_round_retired` kept the bundled seed from
+  // restoring a round home retired; 5 drops it with the seed. The notice is
+  // one row.
   `
   CREATE TABLE device_round_retired (
       round_id TEXT PRIMARY KEY
@@ -142,6 +143,11 @@ const MIGRATIONS: ReadonlyArray<string> = [
       body         TEXT NOT NULL,
       picked_at    TEXT NOT NULL
   );
+  `,
+  // 5 - device only: the bundled seed is retired (canon Rem. 11.7), and
+  // with it the only reader of `device_round_retired`.
+  `
+  DROP TABLE device_round_retired;
   `,
 ]
 

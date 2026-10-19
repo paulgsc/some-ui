@@ -1,13 +1,13 @@
 /**
  * LeetType's rounds: the public read routes (paulgsc/server,
  * `routes::db::leetype`) and the operator routes beside them
- * (`routes::db::leetype_operator`). `@some-ui/lesson-crm`'s `RoundCrm`,
- * through `apps/www/src/lib/round-crm-client`, calls them; the phone no
- * longer plays these rounds (canon Rem. 11.7), so nothing else does.
+ * (`routes::db::leetype_operator`). `@some-ui/lesson-crm`'s `RoundCrm`
+ * calls them, through `apps/www/src/lib/round-crm-client`.
  *
  * Hand-written, like every contract here: `RoundManifestSchema` is the
- * manifest's shape, widened to the fields the CRM's `OperatorRound` reads, and checked by hand against the server's
- * `RoundManifest`/`OperatorRound` in `handlers/db/leetype*.rs`. A round's
+ * manifest's shape, widened to the fields the CRM's `OperatorRound` reads,
+ * and checked by hand against the server's `RoundManifest`/`OperatorRound`
+ * in `handlers/db/leetype*.rs`. A round's
  * body is not pinned here: the server stores it verbatim and never parses
  * more than its id, language and μ, and `@some-ui/leetype`'s own
  * `RoundSchema` is what holds it on the way in.
@@ -36,8 +36,8 @@ const RoundEntrySchema = z.object({
 })
 
 /**
- * `RunResult` (X1, `@some-ui/leetype`'s `lib/leetype/run-result`), as the
- * runs route carries it: checked by hand against the server's
+ * A recorded run's result (X1), as the runs route carries it: checked by
+ * hand against the server's
  * `leetype_round_repo::RunResult` (`crates/db/leetype_round/src/runs.rs`).
  */
 const RunResultSchema = z.discriminatedUnion("kind", [

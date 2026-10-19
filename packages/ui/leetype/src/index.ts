@@ -5,8 +5,7 @@ export * from "./types/leetype"
 export { nextExercise } from "./lib/leetype/exercises"
 export type { SelectionState } from "./lib/leetype/exercises"
 // Rounds (Def. 1.7): what the round CRM (`@some-ui/lesson-crm`) needs to
-// check and publish a round with the same prompt and checks the learner's
-// "make your own round" uses.
+// write, check and publish one.
 export { GenerateRound } from "./components/round/generate-round"
 export { buildRoundPrompt } from "./lib/leetype/generation"
 export type { RoundRequest } from "./lib/leetype/generation"

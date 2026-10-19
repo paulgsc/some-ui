@@ -389,10 +389,9 @@ proposed again by someone who has not read this section:
 > `exercise` and no host forced one. It was removed with `ClaimChoices`,
 > `ReadingFeedback`, `ReadingHeader`, the mobile `ExercisePicker` and the
 > claim derivation in `lib/leetype/reading-probe` (`claimOf`,
-> `readingProbeOf`, `claimPoolOf`). `DiffCard` and the module's row model
-> stay, because rounds draw their hunks with them. A narrow window now always
-> plays rounds; the record below is kept for why the phone probes
-> discrimination rather than production.
+> `readingProbeOf`, `claimPoolOf`). Rounds were retired in turn by incident
+> sessions (canon Rem. 11.7), and `DiffCard` with them. The record below is
+> kept for why the phone probes discrimination rather than production.
 
 Before this, LeetType had one surface. Below about 768px that surface was
 still rendered, still masked text, still measured WPM, and still gated on a

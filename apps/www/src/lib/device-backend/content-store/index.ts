@@ -2,10 +2,9 @@
  * Writes into the device's content tables: the one place TOPIK lessons,
  * Leetype rounds and LeetType session files get *into* the phone's database.
  *
- * Three callers: the bundled Leetype corpus, seeded on every start (an
- * unchanged body, or a round home wrote, is a no-op); the sync from the
- * home `file_host` (`device-backend/home-sync`), the only way TOPIK lessons
- * arrive; and a session file the person picks from storage
+ * Two callers: the sync from the home `file_host`
+ * (`device-backend/home-sync`), the only way TOPIK lessons and Leetype
+ * rounds arrive; and a session file the person picks from storage
  * (`lib/leetype-files`).
  *
  * Bodies are stored and hashed as received, so a round's recorded runs (keyed
@@ -17,12 +16,6 @@ import { num, one, text } from "@/lib/device-backend/sql"
 import { notePruned } from "@/lib/device-backend/storage"
 
 export type UpsertOutcome = "inserted" | "updated" | "unchanged"
-
-/**
- * Where a round's bytes came from. Home's copy wins, or the bundled seed
- * would put the APK's older bytes back on every start.
- */
-export type RoundOrigin = "bundled" | "home"
 
 type Witness = { propositionId: string; admissible: boolean }
 
@@ -47,14 +40,12 @@ function witnessesOf(round: unknown): Array<Witness> {
  * `body`: Capacitor's native HTTP parses `application/json`, so a synced body
  * is a re-serialisation, and runs are keyed on the server's hash.
  *
- * A `"bundled"` write leaves a round the home sync wrote, or home retired,
- * alone (`"unchanged"`); a `"home"` write marks the round as home's.
+ * Marks the round as home's, so `removeSeededRounds` keeps it.
  */
 export async function upsertRound(
   db: SqlDriver,
   body: string,
   nowMs: number,
-  origin: RoundOrigin,
   attestedHash?: string
 ): Promise<UpsertOutcome> {
   const round: unknown = JSON.parse(body)
@@ -64,17 +55,6 @@ export async function upsertRound(
   const id = round.id
   const contentHash = attestedHash ?? (await sha256Hex(body))
   return db.transaction(async () => {
-    if (
-      origin === "bundled" &&
-      (await one(
-        db,
-        `SELECT 1 FROM device_round_from_home WHERE round_id = ?
-         UNION ALL SELECT 1 FROM device_round_retired WHERE round_id = ?`,
-        [id, id]
-      )) !== null
-    ) {
-      return "unchanged"
-    }
     const stored = await one(
       db,
       "SELECT content_hash, version, retired_at FROM leetype_round WHERE id = ?",
@@ -105,13 +85,10 @@ export async function upsertRound(
       )
       index += 1
     }
-    if (origin === "home") {
-      await db.run(
-        "INSERT OR IGNORE INTO device_round_from_home (round_id) VALUES (?)",
-        [id]
-      )
-      await db.run("DELETE FROM device_round_retired WHERE round_id = ?", [id])
-    }
+    await db.run(
+      "INSERT OR IGNORE INTO device_round_from_home (round_id) VALUES (?)",
+      [id]
+    )
     return stored === null ? "inserted" : "updated"
   })
 }
@@ -120,7 +97,7 @@ export async function upsertRound(
  * A round's recorded runs (`RoundRuns`), stored against the hash they name,
  * so the runs route drops them once the round's bytes change. Ignored for a
  * round the device does not hold, and for runs recorded against other bytes
- * (they would replace runs that match, e.g. the bundled seed's older runs).
+ * (they would replace runs that match).
  */
 export async function upsertRuns(
   db: SqlDriver,
@@ -322,41 +299,34 @@ async function deleteCounted(
 }
 
 /**
- * Deletes every round whose id is not in `keep`, its witnesses and runs
- * with it (`ON DELETE CASCADE`).
- *
- * `"home"`: home's listing is the word on every round, so one home stopped
- * listing goes whatever its origin, and is recorded as retired so the next
- * start's seed does not put a bundled copy back. `"bundled"`: the seed
- * dropping what this build no longer ships, never a round home wrote,
- * noting it for the person, and forgetting retirements of rounds the bundle
- * no longer has.
+ * Deletes every round home's listing no longer names (`keep`), its
+ * witnesses and runs with it (`ON DELETE CASCADE`).
  */
 export async function removeRoundsExcept(
   db: SqlDriver,
-  keep: ReadonlyArray<string>,
-  origin: RoundOrigin
+  keep: ReadonlyArray<string>
 ): Promise<number> {
-  const kept = [JSON.stringify(keep)]
-  const unlisted = "id NOT IN (SELECT value FROM json_each(?))"
+  return deleteCounted(
+    db,
+    "leetype_round",
+    "id NOT IN (SELECT value FROM json_each(?))",
+    [JSON.stringify(keep)]
+  )
+}
+
+/**
+ * Deletes every round home never wrote: those an earlier build seeded from
+ * its bundled corpus (canon Rem. 11.7), noting them for the person. One home
+ * also serves comes back at the next sync. Once they are gone it deletes
+ * nothing.
+ */
+export async function removeSeededRounds(db: SqlDriver): Promise<number> {
   return db.transaction(async () => {
-    if (origin === "home") {
-      await db.run(
-        `INSERT OR IGNORE INTO device_round_retired (round_id)
-         SELECT id FROM leetype_round WHERE ${unlisted}`,
-        kept
-      )
-      return deleteCounted(db, "leetype_round", unlisted, kept)
-    }
-    await db.run(
-      "DELETE FROM device_round_retired WHERE round_id NOT IN (SELECT value FROM json_each(?))",
-      kept
-    )
     const removed = await deleteCounted(
       db,
       "leetype_round",
-      `${unlisted} AND id NOT IN (SELECT round_id FROM device_round_from_home)`,
-      kept
+      "id NOT IN (SELECT round_id FROM device_round_from_home)",
+      []
     )
     await notePruned(db, removed)
     return removed

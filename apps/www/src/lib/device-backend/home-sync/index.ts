@@ -264,8 +264,7 @@ export async function syncFromHome(
   if (roundsListed !== null) {
     report.rounds.removed = await removeRoundsExcept(
       db,
-      stringsAt(roundsListed, "id"),
-      "home"
+      stringsAt(roundsListed, "id")
     )
   }
   for (const listing of listings) {
@@ -280,7 +279,6 @@ export async function syncFromHome(
           store,
           body.body,
           now(),
-          "home",
           listing.contentHash
         )
         if (outcome === "inserted") report.rounds.added += 1

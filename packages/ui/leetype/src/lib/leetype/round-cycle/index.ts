@@ -216,8 +216,8 @@ function invalidRescueCandidateReason(
  * Neither `response.commitment` (carried, unread, into `pinnedCommitment`)
  * nor `response.diff.member.admissible` (the author's claim) picks a branch.
  * Def. 8.1 branches purely on the derived `T_{A+d}(C) <= B`; branching on
- * the guess or the claim is Rem. 8.0's mistake one level up. Scoring the
- * guess is `RoundFeedback`'s job; this decides which *question* comes next.
+ * the guess or the claim is Rem. 8.0's mistake one level up. This decides
+ * which *question* comes next, never how the guess scored.
  *
  * `response.diff` must be one of `round.diffOptions`' own objects, checked
  * by reference identity: the transition is over a selection *from the
@@ -236,7 +236,7 @@ function invalidRescueCandidateReason(
  * `Seq(Loop(dim("n", 2), W(1)), Loop(logDim("n", 2), W(1)))` and
  * `Seq(W(2), Loop(logDim("n"), W(2)))` each refuted one. Whether the corpus
  * authored a rescuing candidate for every diff that has one is a disclosed
- * limitation, like `round-probe`'s gap on Prop. 6.1.
+ * limitation.
  *
  * The return type excludes `RoundCyclePosingDiffSelection`: Thm. 8.1's "no
  * learner response returns the cycle to a state already visited," checked
@@ -352,7 +352,7 @@ export function checkUnrescuableExplanationsResolve(
       )
     } else if (entry.status !== "active") {
       violations.push(
-        `diff option ${index}: explanationPropositionId "${option.explanationPropositionId}" (${entry.title}) is retired — Def. 8.2's second question needs a live proposition, the same restriction lib/leetype/round-probe's roundProbeOf already applies to a card's answer.`
+        `diff option ${index}: explanationPropositionId "${option.explanationPropositionId}" (${entry.title}) is retired — Def. 8.2's second question needs a live proposition.`
       )
     }
   })

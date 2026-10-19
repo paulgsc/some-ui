@@ -26,7 +26,7 @@ import { createDeviceFetch } from "@/lib/device-backend/interceptor"
 import type { SqlDriver } from "@/lib/device-backend/sql"
 import { DeviceStorageError } from "@/lib/device-backend/sql"
 import type { StorageBudget } from "@/lib/device-backend/storage"
-import { databaseBytes } from "@/lib/device-backend/storage"
+import { databaseBytes, readPruneNotice } from "@/lib/device-backend/storage"
 import { TREE_ACTIVITY } from "@/lib/topik-content"
 
 const HOME = "http://192.168.1.10:3000"
@@ -73,7 +73,7 @@ const LESSON = {
   tags: ["food"],
 }
 
-/** A round home has and the bundle does not, pretty-printed as authored. */
+/** A round home serves, pretty-printed as authored. */
 const HOME_ROUND = JSON.stringify(
   {
     id: "home-only-round",
@@ -90,7 +90,7 @@ beforeEach(async () => {
   homeDb = openNodeSqlite()
   home = await openDeviceBackend(homeDb, () => NOW)
   await upsertLesson(homeDb, LESSON, '{\n  "batches": []\n}', NOW)
-  await upsertRound(homeDb, HOME_ROUND, NOW, "bundled")
+  await upsertRound(homeDb, HOME_ROUND, NOW)
   await upsertRuns(
     homeDb,
     JSON.stringify({
@@ -341,16 +341,21 @@ describe("syncFromHome against a home it cannot read", () => {
   })
 })
 
-describe("a round home sent, across a restart", () => {
-  it("stays, runs included: the bundle's retirement takes only bundled rounds", async () => {
-    await syncFromHome(phoneDb, HOME, verbatimGet, () => NOW)
+describe("a round an earlier build seeded with home's own bytes", () => {
+  it("goes at the next start, and the next sync brings it back, runs included", async () => {
+    // What an earlier build left: the round, never marked as home's.
+    await upsertRound(phoneDb, HOME_ROUND, NOW)
+    await phoneDb.run("DELETE FROM device_round_from_home")
     phone = await openDeviceBackend(phoneDb, () => NOW)
-    await expect(
-      phoneJson("/leetype/rounds/home-only-round")
-    ).resolves.toMatchObject({ id: "home-only-round" })
+    await expect(readPruneNotice(phoneDb)).resolves.toEqual({ rounds: 1 })
+
+    const report = await syncFromHome(phoneDb, HOME, verbatimGet, () => NOW)
+    expect(report.rounds.added).toBe(1)
+    phone = await openDeviceBackend(phoneDb, () => NOW)
     await expect(
       phoneJson("/leetype/rounds/home-only-round/runs")
     ).resolves.toMatchObject({ runs: [{ variant: "A", bounds: "before" }] })
+    await expect(readPruneNotice(phoneDb)).resolves.toEqual({ rounds: 1 })
   })
 })
 
