@@ -91,7 +91,7 @@ export function pairingOf(
 
 /** Of a map by scope, `lane`'s scopes alone. */
 function ofLane<T>(
-  lane: Lane,
+  lane: Pick<Lane, "scopes">,
   byScope: ReadonlyMap<Scope, T>
 ): ReadonlyMap<Scope, T> {
   return new Map([...byScope].filter(([scope]) => lane.scopes.includes(scope)))
@@ -99,7 +99,7 @@ function ofLane<T>(
 
 /** What `lane`'s person keeps sending to the paired home, as the log says. */
 function sharedBy(
-  lane: Lane,
+  lane: Pick<Lane, "scopes">,
   log = phoneConsent().getSnapshot(),
   pairing = pairingOf()
 ): Shared {
@@ -217,8 +217,12 @@ export function useLaneBack(lane: Lane): KeptState {
   return useSyncExternalStore(back.subscribe, back.getSnapshot)
 }
 
-/** What `lane`'s person keeps sending, and what they stopped, now. */
-export function useLaneChoices(lane: Lane): {
+/**
+ * What `lane`'s person keeps sending, and what they stopped, now. Its
+ * scopes are all it reads, so a screen that cannot hold a lane (aph's, in
+ * Settings) passes those alone.
+ */
+export function useLaneChoices(lane: Pick<Lane, "scopes">): {
   shared: Shared
   stopped: ReadonlyMap<Scope, number>
 } {

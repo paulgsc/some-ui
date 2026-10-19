@@ -30,22 +30,22 @@ Which authority a build starts in depends on what it can reach (`Backend`):
 
 ## What leaves the device
 
-|                                     | Learning on the device                       | On the account, reporting off                                                                                                                                                                | On the account, reporting on               |
-| ----------------------------------- | -------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------ |
-| Sessions, settings, profile         | `localStorage`, never sent                   | sessions go to `file_host`                                                                                                                                                                   | the same                                   |
-| Session probe (`GET /auth/session`) | never made                                   | at boot, only because the account was chosen                                                                                                                                                 | the same                                   |
-| Passkey ceremonies                  | only when the person starts one              | the same                                                                                                                                                                                     | the same                                   |
-| Lesson, round and vocab reads       | made, **without credentials**                | made, without credentials                                                                                                                                                                    | the same                                   |
-| This device's sessions              | stay here                                    | copied only by "Copy to my account", per account, after a confirmation; the phone's, to its paired home, by "Send to home", which then frees the finished ones home confirms it holds (LA8)  | the same                                   |
-| `/signals`, `/presence/lease`       | never                                        | never                                                                                                                                                                                        | sent                                       |
-| Push subscription                   | never                                        | never                                                                                                                                                                                        | the account's, on the person's own taps    |
-| Reflections                         | on the device (at most 20), never sent       | never sent (LA7)                                                                                                                                                                             | never sent (LA7)                           |
-| Shelf                               | never                                        | the account's, on the person's own taps                                                                                                                                                      | the same                                   |
-| aph (the phone's)                   | on the phone, never sent                     | once its person keeps it on home, on the paired home, synced while aph is open; the phone keeps only what home has not confirmed; stopped from aph's mark, which brings it back (LA9)        | the same                                   |
-| Jobs record (the phone's)           | on the phone, never sent                     | once its person keeps it on home, a copy on the paired home, synced while the Jobs wing is open; the phone keeps its whole log; stopped from the wing's mark (LA10)                          | the same                                   |
-| Practice (the phone's)              | on the phone, never sent                     | once its person ticks "Keep sending" in the send's confirm, its finished sessions and kept items sent while Practice is open; nothing let go on its own; stopped from Practice's mark (LA11) | the same                                   |
-| Speech                              | the browser's own voice                      | the server's speech service                                                                                                                                                                  | the same                                   |
-| Reminders                           | the client's own policy, while a tab is open | the client's own policy, while a tab is open                                                                                                                                                 | the server's push, with the browser closed |
+|                                     | Learning on the device                       | On the account, reporting off                                                                                                                                                                     | On the account, reporting on               |
+| ----------------------------------- | -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------ |
+| Sessions, settings, profile         | `localStorage`, never sent                   | sessions go to `file_host`                                                                                                                                                                        | the same                                   |
+| Session probe (`GET /auth/session`) | never made                                   | at boot, only because the account was chosen                                                                                                                                                      | the same                                   |
+| Passkey ceremonies                  | only when the person starts one              | the same                                                                                                                                                                                          | the same                                   |
+| Lesson, round and vocab reads       | made, **without credentials**                | made, without credentials                                                                                                                                                                         | the same                                   |
+| This device's sessions              | stay here                                    | copied only by "Copy to my account", per account, after a confirmation; the phone's, to its paired home, by "Send to home", which then frees the finished ones home confirms it holds (LA8)       | the same                                   |
+| `/signals`, `/presence/lease`       | never                                        | never                                                                                                                                                                                             | sent                                       |
+| Push subscription                   | never                                        | never                                                                                                                                                                                             | the account's, on the person's own taps    |
+| Reflections                         | on the device (at most 20), never sent       | never sent (LA7)                                                                                                                                                                                  | never sent (LA7)                           |
+| Shelf                               | never                                        | the account's, on the person's own taps                                                                                                                                                           | the same                                   |
+| aph (the phone's)                   | on the phone, never sent                     | once its person keeps it on home, on the paired home, synced while aph is open; the phone keeps only what home has not confirmed; stopped from aph's mark, which brings it back (LA9)             | the same                                   |
+| Jobs record (the phone's)           | on the phone, never sent                     | once its person keeps it on home, a copy on the paired home, synced while the Jobs wing is open; the phone keeps its whole log; stopped from the wing's mark or Settings (LA10)                   | the same                                   |
+| Practice (the phone's)              | on the phone, never sent                     | once its person ticks "Keep sending" in the send's confirm, its finished sessions and kept items sent while Practice is open; nothing let go on its own; stopped from its mark or Settings (LA11) | the same                                   |
+| Speech                              | the browser's own voice                      | the server's speech service                                                                                                                                                                       | the same                                   |
+| Reminders                           | the client's own policy, while a tab is open | the client's own policy, while a tab is open                                                                                                                                                      | the server's push, with the browser closed |
 
 A returning account user whose server cannot be reached at boot (a timeout, a
 5xx, a refused connection) stays on the account, and its calls fail where they
@@ -401,8 +401,8 @@ declared (checked by reading every call site and by the tests named).
   `CapacitorHttp` named only in `native-http`, whose index only
   `lib/home-link/index.ts` imports as a value (its `no-answer` sibling holds
   an error class and no request), and `lib/home-link` imported
-  only by the Home server block, the marks of the records kept on home and
-  what hands aph's lane to its mark). What a test cannot say is that a call
+  only by the Home server block and its ledger of what is shared, the marks
+  of the records kept on home and what hands aph's lane to its mark). What a test cannot say is that a call
   site in that block is a tap: a lint rule cannot
   tell a press handler from an effect that reaches it through a helper.
   Held when declared, by reading every caller (`device-section.tsx` alone
@@ -465,7 +465,9 @@ when a run is asked for:
   the log and whose scopes no choice ever named, under a pairing an earlier
   build made (the link's `earlier`: its record's `choicesLogged` is not
   `true`, which every pairing this build makes is kept with), never one this
-  build made; a stop only from the mark's second press of Stop sending. For
+  build made; a stop only from the second press of Stop sending, in the
+  mark's sheet or in Settings' ledger (`device-sharing-ledger.tsx`, for Practice and
+  the Jobs record; aph's row there sends its person to aph's mark). For
   aph, the mark shows aph's lane only while aph's screens hand it in
   (`DeviceAphLane`, in aph's layout); opting in moves aph's record to home
   (`keepOnHome`), and stopping asks home once for its record back
@@ -505,7 +507,11 @@ when a run is asked for:
   that calls `askLane`, `keepOnHome`, `stopOnHome` or `bringLaneBack` other
   than from a button's `onClick`, lets the first press of the opt-in or of
   Stop sending do it, passes `keepOnHome` words other than the `offer` it
-  shows, or shows a lane under another wing's mark; a hunk that mounts
+  shows, or shows a lane under another wing's mark; a hunk to
+  `components/settings/device-sharing-ledger.tsx` that calls `stopOnHome` other than
+  from its second Stop press's `onClick`, calls it for aph's lane, or calls
+  `askLane`, `keepOnHome`, `bringLaneBack`, `useLaneHome` or `watchKept`; a
+  hunk that mounts
   `DeviceHomeGlyph` anywhere but `routes/_dashboard.tsx`'s header in the
   device build, or `DeviceAphLane` anywhere but
   `routes/_dashboard/_apk/aph.tsx`; a hunk to `lib/home-link/aph.ts` that
@@ -531,6 +537,7 @@ when a run is asked for:
 - _Scope:_ `apps/www/src/lib/home-link/kept-watch.ts`, `lanes.ts`,
   `kept-runtime.ts`, `aph.ts`, `model.ts`, `runtime.ts`, `credential.ts`,
   `apps/www/src/components/device-home-glyph.tsx`,
+  `apps/www/src/components/settings/device-sharing-ledger.tsx`,
   `apps/www/src/components/aph/device-aph-lane.tsx`,
   `apps/www/src/routes/_dashboard.tsx`,
   `apps/www/src/routes/_dashboard/_apk/aph.tsx`,
@@ -543,7 +550,8 @@ when a run is asked for:
   first ask, and in `askLane`; `askLane` only in the sheet's Send now
   `onClick`; `keepOnHome` only in the sheet's second opt-in press, with the
   `offer` it shows, and in `device-section.tsx`'s send `onPress` behind the
-  ticked box; `stopOnHome` only in the sheet's second Stop press;
+  ticked box; `stopOnHome` only in the sheet's second Stop press and the
+  ledger's, which offers none for aph;
   `bringLaneBack` only in Bring it back's `onClick`; `choose` only in
   `keepOnHome`, `stopOnHome` and `enterEarlier`; `DeviceHomeGlyph` only in
   `_dashboard.tsx`'s header under `VITE_DEVICE_BACKEND`; `DeviceAphLane` only

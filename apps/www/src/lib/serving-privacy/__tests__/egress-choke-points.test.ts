@@ -45,6 +45,9 @@ const NATIVE_HTTP = "lib/device-backend/native-http/index.ts"
 const NATIVE_HTTP_CALLERS = new Set(["lib/home-link/index.ts"])
 const HOME_LINK_CALLERS = new Set([
   "components/settings/device-section.tsx",
+  // Settings' ledger of what is shared: it reads the choices, and stops
+  // Practice and the Jobs record on a second press (LA9).
+  "components/settings/device-sharing-ledger.tsx",
   // LA9 to LA11: the mark of a record kept on home, in the header, which
   // mounts its lane's watch, and what hands aph's lane to it.
   "components/device-home-glyph.tsx",

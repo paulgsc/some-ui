@@ -35,9 +35,11 @@ import {
   KEEP_SENDING_REFUSED,
   KEEP_SENDING_SAID,
   KEPT_NOTE,
+  NOTHING_TO_SEND,
 } from "@/lib/home-link/words"
 import { useAsyncIntent, useIntentEffect } from "@/lib/intent"
 import { IntentButton } from "@/lib/intent/render"
+import { SharingLedger } from "@/components/settings/device-sharing-ledger"
 import {
   DeviceArchive,
   DeviceStorageSummary,
@@ -250,8 +252,8 @@ const SendHome = ({
         <div className="flex flex-wrap items-center gap-2" role="status">
           <p className="text-sm">
             {asking.taken > 0
-              ? `Nothing new to send: ${host} took every kept item as it is now.`
-              : "Nothing on this phone to send."}
+              ? NOTHING_TO_SEND.taken(host)
+              : NOTHING_TO_SEND.none}
           </p>
           <Button
             type="button"
@@ -439,6 +441,7 @@ export const DeviceSection = (): JSX.Element => {
                 state={state}
               />
             )}
+            <SharingLedger />
           </>
         ) : (
           <>

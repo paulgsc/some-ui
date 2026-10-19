@@ -7,7 +7,7 @@
  */
 import { counted } from "@some-ui/core-utils"
 
-import type { Scope, Shared } from "./consent-model"
+import type { ConsentLog, Scope, Shared } from "./consent-model"
 import type { KeptState } from "./kept-model"
 import type { LaneCounts, LaneId } from "./lanes"
 
@@ -165,6 +165,13 @@ export const KEEP_SENDING = "Keep sending these to home from now on"
 export const KEEP_SENDING_MORE =
   "New finished sessions and kept items go to home while Practice is open, and the mark at the top shows each send. Stop any time; what's sent stays on home."
 
+/** Settings' send with nothing to carry: some left out as home took them, or none at all. */
+export const NOTHING_TO_SEND = {
+  taken: (host: string): string =>
+    `Nothing new to send: ${host} took every kept item as it is now.`,
+  none: "Nothing on this phone to send.",
+} as const
+
 /** Settings' send, once Practice is kept on home. */
 export const KEPT_NOTE =
   "Practice's finished sessions and kept items go to home on their own while Practice is open. To stop, tap the mark at the top of Practice."
@@ -175,6 +182,80 @@ export const KEEP_SENDING_REFUSED =
 
 /** What a person agreed to when they ticked the box, as stored with it. */
 export const KEEP_SENDING_SAID = `${KEEP_SENDING}. ${KEEP_SENDING_MORE}`
+
+/** Settings' ledger: what this phone shares with home, and every choice. */
+export const LEDGER = {
+  title: "What this phone shares",
+  lead: "Sharing goes one way: what home has, it keeps. Stopping only means nothing new goes.",
+  names: {
+    practice: "Practice",
+    aph: "aph",
+    jobs: "The Jobs record",
+  } satisfies Record<LaneId, string>,
+  /** aph comes back to this phone as it stops, which its own screens do. */
+  stopInAph:
+    "To stop, tap the mark at the top of aph: aph comes back to this phone as it stops.",
+  neverTitle: "Never shared",
+  never: [
+    {
+      label: "Lessons, dramas and rounds",
+      text: "Come from home when you ask for them. Nothing goes the other way.",
+    },
+    {
+      label: "Reflections, voice takes and soundbites",
+      text: "Never go to home. You can share them yourself, to Drive.",
+    },
+    { label: "Settings and profile", text: "Stay on this phone." },
+  ],
+  historyTitle: "Every choice",
+  noHistory: "No choice made yet: everything is only on this phone.",
+} as const
+
+const LANE_OF: Readonly<Record<Scope, LaneId>> = {
+  sessions: "practice",
+  shelf: "practice",
+  aph: "aph",
+  jobs: "jobs",
+}
+
+/** One choice, as the ledger's history says it. */
+export type HistoryLine = {
+  /** Its place in the log, and the lane: unique, and never reused. */
+  readonly key: string
+  readonly day: string
+  readonly text: string
+}
+
+/**
+ * Every choice in `log`, newest first: each lane it named, and whether
+ * sending there began or stopped. A choice made under another pairing than
+ * `pairing` says so.
+ */
+export function historyLines(
+  log: ConsentLog,
+  pairing: string | null,
+  day: (t: number) => string = shortDay
+): Array<HistoryLine> {
+  return [...log].reverse().flatMap((event) => {
+    const lanes = [...new Set(event.scopes.map((scope) => LANE_OF[scope]))]
+    const elsewhere =
+      event.pairing === pairing ? "" : ", under an earlier pairing"
+    return lanes.map((lane) => {
+      const name = LEDGER.names[lane]
+      const what =
+        event.kind === "stopped"
+          ? `stopped sending to home${elsewhere}. Home keeps what it has.`
+          : event.said === null
+            ? `kept on home${elsewhere}, as chosen before this phone kept its choices.`
+            : `kept on home${elsewhere}.`
+      return {
+        key: `${event.seq}-${lane}`,
+        day: day(event.at),
+        text: `${name}: ${what}`,
+      }
+    })
+  })
+}
 
 /** The header mark's shape: where a record is kept, at a glance. */
 export type Shape = "phone" | "partly" | "kept" | "waiting" | "trouble"
