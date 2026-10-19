@@ -398,8 +398,9 @@ declared (checked by reading every call site and by the tests named).
   manifest, or renames `HomeCredentialPlugin.PREFS` without them.
 - _Scope:_ `apps/www/src` (the phone build), `apps/mobile/android`.
 - _Why not enforced:_ who may reach home is, by test (`egress-choke-points`:
-  `CapacitorHttp` named only in `native-http`, which only
-  `lib/home-link/index.ts` imports as a value, and `lib/home-link` imported
+  `CapacitorHttp` named only in `native-http`, whose index only
+  `lib/home-link/index.ts` imports as a value (its `no-answer` sibling holds
+  an error class and no request), and `lib/home-link` imported
   only by the Home server block, the marks of the records kept on home and
   what hands aph's lane to its mark). What a test cannot say is that a call
   site in that block is a tap: a lint rule cannot

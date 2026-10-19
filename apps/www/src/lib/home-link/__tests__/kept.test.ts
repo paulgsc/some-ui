@@ -6,10 +6,13 @@
  * (`@some-ui/aph`'s `lib/__tests__/sync.test.ts`, www's
  * `lib/jobs/__tests__/home.test.ts`, `standing.test.ts`).
  */
-import type { HomeExchanged } from "@some-ui/core-utils"
+import { noAnswer } from "@/test-support/no-answer"
+import type { HomeCall, HomeExchanged } from "@some-ui/core-utils"
+import { addFailureSink } from "@some-ui/intent-kit"
 import { describe, expect, it } from "vitest"
 
 import { SyncStoppedError } from "@/lib/device-backend/home-sync"
+import { FileHostUnreachableError } from "@/lib/file-host-config"
 import type { Scope } from "@/lib/home-link/consent-model"
 import type { KeptState } from "@/lib/home-link/kept-model"
 import { INITIAL_KEPT, stepKept } from "@/lib/home-link/kept-model"
@@ -17,9 +20,11 @@ import type { Kept, KeptPorts } from "@/lib/home-link/kept-runtime"
 import { createKept, laneExchange } from "@/lib/home-link/kept-runtime"
 import type { Lane } from "@/lib/home-link/lanes"
 import { INITIAL, step } from "@/lib/home-link/model"
-import type { HomeLink, HomeSend } from "@/lib/home-link/runtime"
+import type { HomeLink } from "@/lib/home-link/runtime"
+import { HomeUnansweredError } from "@/lib/home-link/shelf"
+import { ForeignCallError } from "@/lib/intent/foreign"
 
-const send: HomeSend = () => Promise.resolve({ status: 200, body: "" })
+const send: HomeCall = () => Promise.resolve({ status: 200, body: "" })
 
 /** The link's `keep`: runs `run` at once, or turns it away. */
 function keep(busy = false): HomeLink["keep"] {
@@ -79,14 +84,47 @@ describe("a record kept on home", () => {
   })
 
   it("says home was unreachable, or the run stopped, when the exchange throws", async () => {
-    expect(
-      await lastOf({ exchange: () => Promise.reject(new Error("no route")) })
-    ).toEqual({ kind: "unreachable", at: 7 })
+    const timedOut = new FileHostUnreachableError(
+      "/sessions",
+      new DOMException("", "TimeoutError")
+    )
+    for (const silence of [
+      noAnswer(),
+      new FileHostUnreachableError("/sessions", noAnswer()),
+      timedOut,
+      new HomeUnansweredError(),
+    ]) {
+      expect(await lastOf({ exchange: () => Promise.reject(silence) })).toEqual(
+        { kind: "unreachable", at: 7 }
+      )
+    }
     expect(
       await lastOf({
         exchange: () => Promise.reject(new SyncStoppedError()),
       })
     ).toEqual({ kind: "stopped" })
+  })
+
+  it("says a fault on this phone as one, and reports it, not as home's silence", async () => {
+    const reported: Array<string> = []
+    const stop = addFailureSink((failure) => reported.push(failure.port))
+    const keystore = new ForeignCallError({
+      kind: "unknown",
+      retryable: false,
+      summary: "The phone couldn't read or keep its pairing.",
+      cause: null,
+    })
+    try {
+      for (const fault of [new TypeError("x.y"), keystore]) {
+        expect(await lastOf({ exchange: () => Promise.reject(fault) })).toEqual(
+          { kind: "failed", why: "fault" }
+        )
+      }
+    } finally {
+      stop()
+    }
+    // The Keystore's own port reported its failure; this reports the rest.
+    expect(reported).toEqual(["home server (kept)"])
   })
 
   it("says why the link turned it away", async () => {
@@ -178,11 +216,11 @@ function lane(requests: number, ends: HomeExchanged): Lane {
 
 /** Home answering each request with the next of `statuses`, then 200. */
 function home(statuses: Array<number> = []): {
-  send: HomeSend
+  send: HomeCall
   sent: Array<string>
 } {
   const sent: Array<string> = []
-  const send: HomeSend = (_, path) => {
+  const send: HomeCall = (_, path) => {
     sent.push(path)
     return Promise.resolve({ status: statuses.shift() ?? 200, body: "" })
   }
@@ -220,7 +258,7 @@ describe("a lane's run", () => {
       () => "p",
       () => (stopped ? new Set() : kept())
     )
-    const gated: HomeSend = async (method, path, body) => {
+    const gated: HomeCall = async (method, path, body) => {
       const answer = await send(method, path, body)
       stopped = true
       return answer

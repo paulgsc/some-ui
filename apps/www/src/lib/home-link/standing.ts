@@ -8,15 +8,20 @@
  *
  * What did not go goes on the next ask.
  */
-import type { HomeExchanged } from "@some-ui/core-utils"
+import type { HomeCall, HomeExchanged } from "@some-ui/core-utils"
+import { unexpectedAnswer } from "@some-ui/core-utils"
 
 import type { Kept } from "@/lib/device-backend/handlers/shelf"
 import { SyncStoppedError } from "@/lib/device-backend/home-sync"
+import {
+  FileHostNotConfiguredError,
+  FileHostResponseError,
+} from "@/lib/file-host-config/client"
 import type { CopyResult } from "@/lib/tenant/sessions-copy"
+import { SessionNotFoundError } from "@/lib/tenant/sessions-repository"
 import type { SessionRecord } from "@/lib/tenant/types"
 
 import type { Scope } from "./consent-model"
-import type { HomeSend } from "./runtime"
 import type { Sent } from "./sent"
 import {
   readSent,
@@ -27,7 +32,7 @@ import {
   shelfToSend,
 } from "./sent"
 import { causedBy, copyHome, HomeForgotPhoneError } from "./sessions"
-import { emptyReport, sendKept } from "./shelf"
+import { emptyReport, HomeUnansweredError, sendKept } from "./shelf"
 
 /** Why a standing send ended short, as `failed`'s `why`. */
 type StandingWhy = "full" | "refused"
@@ -45,24 +50,42 @@ export type StandingPorts = {
   storage: Pick<Storage, "getItem" | "setItem"> | null
   /** The sessions copy (`./sessions`'s `copyHome`); a seam for tests. */
   copy?: (
-    send: HomeSend,
+    send: HomeCall,
     local: ReadonlyArray<SessionRecord>
   ) => Promise<CopyResult>
 }
 
 const failed = (why: StandingWhy): HomeExchanged => ({ kind: "failed", why })
 
+/** How the sessions copy ended at `error`, when home answered it: said, not thrown. */
+function answeredCopy(error: unknown): HomeExchanged | null {
+  if (causedBy(error, HomeForgotPhoneError)) return { kind: "forgotten" }
+  if (causedBy(error, SyncStoppedError)) throw new SyncStoppedError()
+  if (error instanceof FileHostResponseError) {
+    return unexpectedAnswer("a session", error.status)
+  }
+  // A 503 that is not home's busy, and a 404 for a copy gone since the plan.
+  if (error instanceof FileHostNotConfiguredError) {
+    return unexpectedAnswer("a session", 503)
+  }
+  return error instanceof SessionNotFoundError
+    ? unexpectedAnswer("a session", 404)
+    : null
+}
+
 /**
- * Sends what changed; throws what `send` throws when home does not answer.
- * Every request first asks the log again (`gated`), so a stop pressed while
- * a send runs ends it before its next request.
+ * Sends what changed. Throws `HomeUnansweredError` when home does not answer
+ * the shelf, what the sessions copy throws when it does not answer that
+ * (`./runtime`'s `unanswered` reads both), and any fault on this phone as
+ * it came. Every request first asks the log again (`gated`), so a stop
+ * pressed while a send runs ends it before its next request.
  */
 export async function sendStanding(
-  send: HomeSend,
+  send: HomeCall,
   ports: StandingPorts
 ): Promise<HomeExchanged> {
   const gated =
-    (scope: Scope): HomeSend =>
+    (scope: Scope): HomeCall =>
     (method, path, body) =>
       ports.shared().has(scope)
         ? send(method, path, body)
@@ -77,19 +100,15 @@ export async function sendStanding(
       try {
         copy = await (ports.copy ?? copyHome)(gated("sessions"), changed)
       } catch (error) {
-        if (causedBy(error, HomeForgotPhoneError)) return { kind: "forgotten" }
-        if (causedBy(error, SyncStoppedError)) throw new SyncStoppedError()
-        throw error
+        const ended = answeredCopy(error)
+        if (ended === null) throw error
+        return ended
       }
       const { outcome } = copy
       if (outcome.kind === "partial") {
-        if (causedBy(outcome.error, HomeForgotPhoneError)) {
-          return { kind: "forgotten" }
-        }
-        if (causedBy(outcome.error, SyncStoppedError)) {
-          throw new SyncStoppedError()
-        }
-        throw outcome.error
+        const ended = answeredCopy(outcome.error)
+        if (ended === null) throw outcome.error
+        return ended
       }
       sent = rememberSent(ports.storage, sent, {
         sessions: sessionsHeld(changed),
@@ -119,7 +138,7 @@ export async function sendStanding(
       rememberSent(ports.storage, sent, { shelf: held, refused })
     }
     if (report.forgotten) return { kind: "forgotten" }
-    if (report.unreachable) throw new Error("home did not answer")
+    if (report.unreachable) throw new HomeUnansweredError()
     if (report.full.size > 0) return failed("full")
     if (report.refused + report.other > 0) return failed("refused")
   }

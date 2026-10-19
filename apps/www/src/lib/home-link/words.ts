@@ -337,6 +337,13 @@ export function laneView(
         "Home didn't take some kept items."
       )
     }
+    if (last.why === "fault") {
+      return show(
+        "trouble",
+        "Didn't go",
+        `Something on this phone went wrong.${later}`
+      )
+    }
     return show(
       "trouble",
       "Didn't go",

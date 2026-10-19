@@ -25,10 +25,14 @@
  *   send's `send` takes a path, and the base is the one stored with the
  *   token.
  */
+import type { HomeAnswer, HomeCall } from "@some-ui/core-utils"
+
 import { isRecord, stringFieldOf } from "@/lib/device-backend/common"
 import type { HomeGet } from "@/lib/device-backend/home-sync"
 import { SyncStoppedError } from "@/lib/device-backend/home-sync"
-import type { HomeAnswer, HomeCall } from "@/lib/device-backend/native-http"
+import type { HomeRequest } from "@/lib/device-backend/native-http"
+import { HomeNoAnswerError } from "@/lib/device-backend/native-http/no-answer"
+import { isFileHostTimeout } from "@/lib/file-host-config/client"
 
 import type { HomeAddress } from "./address"
 import type { HomeLinkEvent, HomeLinkState, PairFailure } from "./model"
@@ -43,7 +47,7 @@ export type CredentialPort = {
 
 export type HomeLinkPorts = {
   credential: CredentialPort
-  request: (call: HomeCall) => Promise<HomeAnswer>
+  request: (call: HomeRequest) => Promise<HomeAnswer>
   /**
    * Calls `listener` when the app goes to the background, and at once if it
    * already is; returns an unsubscribe.
@@ -97,24 +101,30 @@ function thrownFailureOf(error: unknown): PairFailure {
 }
 
 /**
- * A credentialed request to `path` under the paired base, with `body` sent
- * as these bytes. Refuses before sending once stopped.
+ * `error` is a request finding no answer from home, or a wrapping of that:
+ * `native-http`'s connection failing or timing out (`HomeNoAnswerError`),
+ * or `requestJSON`'s own deadline passing first (`isFileHostTimeout`). Any
+ * other failure, a Keystore read or a plugin missing from the build among
+ * them, is a fault on this phone.
  */
-export type HomeSend = (
-  method: "GET" | "POST" | "PUT" | "PATCH",
-  path: string,
-  body?: string
-) => Promise<HomeAnswer>
+export function unanswered(error: unknown): boolean {
+  for (let cause = error; cause instanceof Error; cause = cause.cause) {
+    if (cause instanceof HomeNoAnswerError || isFileHostTimeout(cause)) {
+      return true
+    }
+  }
+  return false
+}
 
 /** `send`, and whether home answered any of it as busy (`429`). */
-export function noticingBusy(send: HomeSend): {
-  send: HomeSend
+export function noticingBusy(send: HomeCall): {
+  send: HomeCall
   seen: { busy: boolean }
 } {
   const seen = { busy: false }
   return {
     seen,
-    send: async (method, path, body): ReturnType<HomeSend> => {
+    send: async (method, path, body): ReturnType<HomeCall> => {
       const answer = await send(method, path, body)
       if (answer.status === 429) seen.busy = true
       return answer
@@ -144,11 +154,11 @@ export type HomeLink = {
    * busy.
    */
   send: <T>(
-    run: (send: HomeSend) => Promise<T>
+    run: (send: HomeCall) => Promise<T>
   ) => Promise<SyncOutcome<T> | null>
   /** As `send`, for aph kept on home (LA9). */
   keep: <T>(
-    run: (send: HomeSend) => Promise<T>
+    run: (send: HomeCall) => Promise<T>
   ) => Promise<SyncOutcome<T> | null>
   stop: () => void
 }
@@ -254,12 +264,12 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
   /** A run with a `send` to the paired home, after `pressed` starts it. */
   const credentialed = <T>(
     pressed: HomeLinkEvent,
-    run: (send: HomeSend) => Promise<T>
+    run: (send: HomeCall) => Promise<T>
   ): Promise<SyncOutcome<T> | null> =>
     work(pressed, async () => {
       const pairing = await readPairing()
       if (pairing === null) throw new Error("this phone's pairing is gone")
-      const send: HomeSend = (method, path, body) => {
+      const send: HomeCall = (method, path, body) => {
         if (stopped()) return Promise.reject(new SyncStoppedError())
         if (!path.startsWith("/")) {
           return Promise.reject(new Error(`not a path: ${path}`))
@@ -363,13 +373,13 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
     },
 
     send<T>(
-      run: (send: HomeSend) => Promise<T>
+      run: (send: HomeCall) => Promise<T>
     ): Promise<SyncOutcome<T> | null> {
       return credentialed({ type: "sendPressed" }, run)
     },
 
     keep<T>(
-      run: (send: HomeSend) => Promise<T>
+      run: (send: HomeCall) => Promise<T>
     ): Promise<SyncOutcome<T> | null> {
       return credentialed({ type: "keepStarted" }, run)
     },

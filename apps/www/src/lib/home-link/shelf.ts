@@ -11,11 +11,23 @@
  * there. Stop, or the app
  * going to the background, ends it before the next item.
  */
+import type { HomeCall } from "@some-ui/core-utils"
+
 import { stringFieldOf } from "@/lib/device-backend/common"
 import type { Kept } from "@/lib/device-backend/handlers/shelf"
-import { SyncStoppedError } from "@/lib/device-backend/home-sync"
 
-import type { HomeSend } from "./runtime"
+import { unanswered } from "./runtime"
+
+/**
+ * A shelf send found no answer from home, or home busy (`unreachable`).
+ * Not `home-sync`'s `HomeUnreachableError`, which is the lessons sync's.
+ */
+export class HomeUnansweredError extends Error {
+  constructor() {
+    super("home did not answer the shelf send")
+    this.name = "HomeUnansweredError"
+  }
+}
 
 /** How a send went, item by item; filled as it goes, so a stop keeps it. */
 export type SendReport = {
@@ -53,7 +65,7 @@ export function emptyReport(): SendReport {
  */
 export async function sendKept(
   items: ReadonlyArray<Kept>,
-  send: HomeSend,
+  send: HomeCall,
   report: SendReport,
   heard: (item: Kept, answer: "held" | "refused") => void = () => undefined
 ): Promise<void> {
@@ -67,7 +79,7 @@ export async function sendKept(
         item.body
       ))
     } catch (error) {
-      if (error instanceof SyncStoppedError) throw error
+      if (!unanswered(error)) throw error
       report.unreachable = true
       return
     }
