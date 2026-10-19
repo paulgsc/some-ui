@@ -117,7 +117,7 @@ export function sessionsHeld(
 export const shelfKeyOf = (item: Kept): string => `${item.activity}/${item.key}`
 
 /** A shelf-held entry for each of `items`: its bytes' digest, to tell an edit. */
-export async function shelfHeld(
+async function shelfHeld(
   items: ReadonlyArray<Kept>
 ): Promise<Record<string, string>> {
   const held: Array<[string, string]> = await Promise.all(
