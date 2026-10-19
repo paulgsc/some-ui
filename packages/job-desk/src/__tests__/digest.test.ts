@@ -156,6 +156,7 @@ describe("digestFindings", () => {
 
   it("finds the same role picked from two places", () => {
     const digest = sample()
+    digest.queue = null // room for a third software pick
     const remote = digest.picks[1]!
     const posting = { ...remote.posting, location: "Oakland, CA" }
     digest.picks.push({

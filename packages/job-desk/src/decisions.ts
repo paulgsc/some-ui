@@ -22,6 +22,10 @@ import {
  * is the decision that stands. A second share on one day is
  * `decisions-<day>-2.json`, then `-3`, and so on (`decisionsFileName`).
  *
+ * A pick I archived (`archived`) is one I let go with the rest of its
+ * digest, unreviewed: it says nothing about the posting, only that its slot
+ * in the queue (`openPicks`) is free.
+ *
  * A share the phone was not told arrived is offered again, so a later file
  * can repeat what an earlier one said. Each pick's decision, debrief,
  * outcome and disagreement carries the `id` of the phone event that recorded
@@ -58,6 +62,9 @@ export const OUTCOMES = [
   "rejected",
   "no-reply-30d",
 ] as const
+
+/** What a decisions file can say of a pick. */
+export const DECISIONS = ["taken", "passed", "archived", "untouched"] as const
 
 export const DEBRIEF_RESULTS = ["submitted", "gave-up", "closed"] as const
 
@@ -102,7 +109,7 @@ export const DecisionsSchema = z.object({
       fingerprint: FingerprintSchema,
       /** The event that decided it; null while untouched. */
       id: EventIdSchema.nullable(),
-      decision: z.enum(["taken", "passed", "untouched"]),
+      decision: z.enum(DECISIONS),
       reasons: z.array(z.enum(PASS_REASONS)),
       note: z.string(),
       voice: z.array(VoiceFileSchema),

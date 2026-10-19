@@ -9,12 +9,14 @@
  * appends to it, and a later event says what changed (a pick passed, then
  * taken, is taken). Nothing here removes an event. Digests are copies of
  * files kept in Drive's `some-ui jobs/Brief`: the phone keeps every digest
- * the log names, and of the rest only the newest `DIGESTS_KEPT`.
+ * the log names or that has a pick still open (it holds a queue slot), and
+ * of the rest only the newest `DIGESTS_KEPT`.
  */
 import { assertNever } from "@some-ui/core-utils"
 import type {
   AdjacentFamily,
   DEBRIEF_RESULTS,
+  DECISIONS,
   Digest,
   FRICTION,
   OUTCOMES,
@@ -67,6 +69,8 @@ export type PickRef = { day: string; pickId: string; fingerprint: string }
 /** One line of the record. `id` and `at` come from the runtime. */
 export type JobEvent = { id: string; at: string } & (
   | ({ type: "taken" } & PickRef)
+  /** `archived` in `@some-ui/job-desk`'s decisions. */
+  | ({ type: "archived" } & PickRef)
   | ({
       type: "passed"
       reasons: ReadonlyArray<PassReason>
@@ -158,6 +162,11 @@ export type JobsAction =
   | { type: "voice-kept"; note: VoiceNote }
   | { type: "voice-dropped"; ids: ReadonlyArray<string> }
   | { type: "record"; event: Draft; stamp: Stamp }
+  /** Several events kept together, or none if any doesn't fit. */
+  | {
+      type: "record-all"
+      events: ReadonlyArray<{ event: Draft; stamp: Stamp }>
+    }
   /** Its person's second press: the record is kept on home from now on. */
   | { type: "kept-on-home" }
   /** What one exchange with home learned (`./home`). */
@@ -169,7 +178,7 @@ export type JobsAction =
   /** Home's copy, taken in by a phone whose own log is empty. */
   | { type: "restored"; events: ReadonlyArray<JobEvent> }
 
-const DECIDED = new Set(["taken", "passed"])
+const DECIDED = new Set(["taken", "passed", "archived"])
 
 function pickEvents(
   log: ReadonlyArray<JobEvent>,
@@ -211,6 +220,7 @@ function withinLimits(event: Draft): boolean {
       )
     }
     case "taken":
+    case "archived":
     case "resume-ready":
     case "apply-opened":
     case "shared":
@@ -257,8 +267,12 @@ export function step(state: JobsState, action: JobsAction): JobsState {
       const referenced = new Set(
         state.log.flatMap((e) => ("pickId" in e ? [e.day] : []))
       )
+      // Over `all`, so the digest being opened counts too.
+      const holding = new Set(
+        openOf({ ...state, digests: all }).map((o) => o.day)
+      )
       const digests = all.filter(
-        (d) => recent.has(d.day) || referenced.has(d.day)
+        (d) => recent.has(d.day) || referenced.has(d.day) || holding.has(d.day)
       )
       // A digest opened again keeps the first time it was opened.
       const firstOpened = Object.fromEntries(
@@ -285,6 +299,15 @@ export function step(state: JobsState, action: JobsAction): JobsState {
       if (!fits(state, action.event)) return state
       const event: JobEvent = { ...action.event, ...action.stamp }
       return { ...state, log: [...state.log, event] }
+    }
+    case "record-all": {
+      let next = state
+      for (const { event, stamp } of action.events) {
+        const after = step(next, { type: "record", event, stamp })
+        if (after === next) return state
+        next = after
+      }
+      return next
     }
     case "kept-on-home": {
       if (state.home.kept) return state
@@ -337,23 +360,54 @@ export function digestOf(state: JobsState, day: string): Digest | null {
   return state.digests.find((d) => d.day === day) ?? null
 }
 
+export type Decision = Exclude<(typeof DECISIONS)[number], "untouched">
+
 /** The latest decision on a pick, or null while there is none. */
 export function decisionOf(
   state: JobsState,
   day: string,
   pickId: string
-): "taken" | "passed" | null {
+): Decision | null {
   const decided = pickEvents(state.log, day, pickId).filter((e) =>
     DECIDED.has(e.type)
   )
   const last = decided.at(-1)
-  return last?.type === "taken" || last?.type === "passed" ? last.type : null
+  return last?.type === "taken" ||
+    last?.type === "passed" ||
+    last?.type === "archived"
+    ? last.type
+    : null
+}
+
+/** `day`'s picks with no decision yet: what archiving its digest lets go. */
+export function undecidedOf(
+  state: JobsState,
+  day: string
+): ReadonlyArray<Pick> {
+  const picks = digestOf(state, day)?.picks ?? []
+  return picks.filter((p) => decisionOf(state, day, p.id) === null)
+}
+
+/**
+ * The picks of every kept digest still open on the phone: no decision, or
+ * taken with no debrief. The morning run counts the same rule over what was
+ * shared (`openPicks`), so until a share arrives it may count more.
+ */
+export function openOf(
+  state: JobsState
+): ReadonlyArray<{ day: string; pick: Pick }> {
+  return state.digests.flatMap((d) =>
+    d.picks
+      .filter((p) => progressOf(state, d.day, p.id).kind === "open")
+      .map((pick) => ({ day: d.day, pick }))
+  )
 }
 
 /** The five steps: Review, Decide, Résumé, Apply, Debrief. */
 export type Progress =
   | { kind: "open"; step: 0 | 1 | 2 | 3 | 4 }
   | { kind: "passed" }
+  | { kind: "archived" }
   | { kind: "done"; result: DebriefResult }
 
 export function progressOf(
@@ -364,6 +418,7 @@ export function progressOf(
   const events = pickEvents(state.log, day, pickId)
   const decision = decisionOf(state, day, pickId)
   if (decision === "passed") return { kind: "passed" }
+  if (decision === "archived") return { kind: "archived" }
   if (decision === null) return { kind: "open", step: 0 }
   const after = sinceTaken(events)
   const debrief = debriefOf(state, day, pickId)
@@ -445,7 +500,8 @@ export function applicationsOf(state: JobsState): ReadonlyArray<Application> {
     seen.add(key)
     const pick = digestOf(state, e.day)?.picks.find((p) => p.id === e.pickId)
     const progress = progressOf(state, e.day, e.pickId)
-    if (!pick || progress.kind === "passed") continue
+    if (!pick || progress.kind === "passed" || progress.kind === "archived")
+      continue
     const outcomes = state.log.flatMap((o) =>
       o.type === "outcome" && o.fingerprint === e.fingerprint
         ? [{ event: o.event, on: o.on }]

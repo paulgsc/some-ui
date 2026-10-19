@@ -1,6 +1,6 @@
 /**
- * Jobs › Today: the digest opened last, its picks by track, and what the
- * routine set aside.
+ * Jobs › Today: the digest opened last, the queue its picks wait in, its
+ * picks by track, and what the routine set aside.
  */
 import type { JSX } from "react"
 import { useState } from "react"
@@ -8,17 +8,25 @@ import { assertNever, counted } from "@some-ui/core-utils"
 import type { Digest, Pick, Track } from "@some-ui/job-desk"
 import {
   digestFindings,
+  freeSlots,
   MAX_NOTE,
+  MAX_OPEN_PICKS,
   PICKS_PER_DAY,
   TRACKS,
 } from "@some-ui/job-desk"
-import { Badge, Button, Textarea } from "@some-ui/shared"
+import { Badge, Button, Textarea, useConfirmSheet } from "@some-ui/shared"
 import { Link } from "@tanstack/react-router"
 
 import { hasAudience } from "@/lib/build-profile"
 import { phoneJobs } from "@/lib/jobs"
 import type { JobsState, Progress } from "@/lib/jobs/model"
-import { currentDigest, disagreed, progressOf } from "@/lib/jobs/model"
+import {
+  currentDigest,
+  disagreed,
+  openOf,
+  progressOf,
+  undecidedOf,
+} from "@/lib/jobs/model"
 import { Meter, resumeLabel, sectionHeading } from "@/components/job-reading"
 
 import { OpenDigest, Problem, useJobs } from "./parts"
@@ -32,6 +40,9 @@ const STATE_LABEL = (progress: Progress): string => {
   switch (progress.kind) {
     case "passed": {
       return "Passed"
+    }
+    case "archived": {
+      return "Archived"
     }
     case "done": {
       return progress.result === "submitted" ? "Applied" : "Done"
@@ -112,6 +123,125 @@ const PickCard = ({
     </Link>
   ) : (
     <div className={card}>{body}</div>
+  )
+}
+
+/** Archives `day`'s undecided picks unreviewed, once asked. */
+const ArchiveBatch = ({
+  day,
+  count,
+  label,
+}: {
+  day: string
+  count: number
+  label: string
+}): JSX.Element => {
+  const jobs = phoneJobs()
+  const { ask, sheet } = useConfirmSheet()
+  return (
+    <>
+      <Button
+        type="button"
+        size="sm"
+        variant="outline"
+        className="self-start"
+        onClick={() =>
+          ask({
+            title: `Archive ${counted(count, "pick")}?`,
+            description:
+              "They leave the queue unreviewed, which the morning run hears once you share your decisions. You can still open one and decide it.",
+            confirm: "Archive them",
+            keep: "Review them",
+            onConfirm: () => {
+              jobs.archive(day)
+            },
+          })
+        }
+      >
+        {label}
+      </Button>
+      {sheet}
+    </>
+  )
+}
+
+/**
+ * How many picks each track holds open, and the first choice on a digest:
+ * review its picks, or archive the undecided ones unreviewed. Earlier
+ * digests' open picks are listed here, since the cards below are only this
+ * digest's.
+ */
+const Queue = ({
+  state,
+  digest,
+}: {
+  state: JobsState
+  digest: Digest
+}): JSX.Element => {
+  const open = openOf(state)
+  const undecided = undecidedOf(state, digest.day)
+  const earlier = [
+    ...new Set(open.filter((o) => o.day !== digest.day).map((o) => o.day)),
+  ]
+  const held = digest.queue?.open ?? []
+  const room = freeSlots(held)
+  const full = digest.queue !== null && TRACKS.every((t) => room[t] === 0)
+  return (
+    <section className="flex flex-col gap-2 rounded-xl border p-3">
+      <h2 className={sectionHeading}>Queue</h2>
+      <p className="text-sm tabular-nums">
+        Open on this phone:{" "}
+        {TRACKS.map(
+          (t) =>
+            `${open.filter((o) => o.pick.track === t).length} of ${MAX_OPEN_PICKS[t]} ${t}`
+        ).join(" · ")}
+      </p>
+      <p className="text-muted-foreground text-xs">
+        A pick stays open until you pass it, archive it, or take it and debrief,
+        and share your decisions. The morning run adds new picks only into free
+        slots.
+        {held.length > 0 &&
+          ` This one found ${counted(held.filter((p) => !p.closed).length, "pick")} from earlier days still open${full ? ", so it searched nothing" : ""}.`}
+      </p>
+      {undecided.length > 0 && (
+        <ArchiveBatch
+          day={digest.day}
+          count={undecided.length}
+          label={`Archive ${counted(undecided.length, "undecided pick")}`}
+        />
+      )}
+      {earlier.map((day) => {
+        const left = undecidedOf(state, day).length
+        return (
+          <div key={day} className="flex flex-col gap-1.5 border-t pt-2">
+            <span className="text-xs font-semibold">{day}</span>
+            <ul className="flex flex-col gap-1">
+              {open
+                .filter((o) => o.day === day)
+                .map(({ pick }) => (
+                  <li key={pick.id}>
+                    <Link
+                      to="/jobs/pick/$day/$pickId"
+                      params={{ day, pickId: pick.id }}
+                      className="text-sm underline-offset-2 hover:underline"
+                    >
+                      {pick.posting.title} · {pick.posting.company} ·{" "}
+                      {STATE_LABEL(progressOf(state, day, pick.id))}
+                    </Link>
+                  </li>
+                ))}
+            </ul>
+            {left > 0 && (
+              <ArchiveBatch
+                day={day}
+                count={left}
+                label={`Archive ${day}’s ${counted(left, "undecided pick")}`}
+              />
+            )}
+          </div>
+        )
+      })}
+    </section>
   )
 }
 
@@ -224,6 +354,7 @@ export const JobsToday = (): JSX.Element => {
         <OpenDigest prominent={false} />
       </section>
       <Problem />
+      <Queue state={state} digest={digest} />
       {tracks.map(([track, heading]) => {
         const picks = digest.picks.filter((p) => p.track === track)
         if (picks.length === 0) return null

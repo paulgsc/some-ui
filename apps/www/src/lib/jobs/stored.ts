@@ -38,6 +38,7 @@ const Ids = z.array(z.string())
 
 export const EventSchema: z.ZodType<JobEvent> = z.discriminatedUnion("type", [
   z.object({ ...Stamp, ...PickRef, type: z.literal("taken") }),
+  z.object({ ...Stamp, ...PickRef, type: z.literal("archived") }),
   z.object({
     ...Stamp,
     ...PickRef,

@@ -2,6 +2,7 @@ export type { Decisions } from "./decisions"
 export {
   DEBRIEF_RESULTS,
   DebriefMinutesSchema,
+  DECISIONS,
   DecisionsSchema,
   decisionsFileName,
   FRICTION,
@@ -27,12 +28,15 @@ export {
   ADJACENT_FAMILIES,
   EXCLUDED_TITLE,
   LOCATIONS,
+  MAX_OPEN_PICKS,
   MAX_POSTING_AGE_DAYS,
   MAX_SET_ASIDE,
   PICKS_PER_DAY,
   QUERIES,
   TRACKS,
 } from "./policy"
+export type { OpenPick } from "./queue"
+export { freeSlots, openPicks } from "./queue"
 export type { Scouts } from "./scouts"
 export {
   MAX_POSTING_TEXT,
