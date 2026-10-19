@@ -127,19 +127,22 @@ python3 -m venv /tmp/whisper && /tmp/whisper/bin/pip install -q faster-whisper
 apt-get update -qq && apt-get install -y --no-install-recommends ffmpeg
 ```
 
-Bring each note into the container with the Google Drive connector's
-`download_file_content`, by the note's file id. A note is too large for the
-conversation, so the tool saves its result to a file and names that file's
-path: JSON whose `content` is the audio in base64. Decode it from there, and
-never paste base64 into a command:
+Take one note at a time: bring it in, decode it, convert it and transcribe
+it, keeping its transcript, before the next. Bring it into the container with
+the Google Drive connector's `download_file_content`, by the note's file id. A
+note is too large for the conversation, so the tool saves its result to a file
+and names that file's path: JSON whose `content` is the audio in base64.
+Decode it from there, and never paste base64 into a command. The audio may be
+webm, ogg or m4a; ffmpeg reads the format from the file itself:
 
 ```sh
-python3 -I -c 'import base64, json, sys; open(sys.argv[2], "wb").write(base64.b64decode(json.load(open(sys.argv[1]))["content"]))' <saved file> /tmp/whisper/note.webm
-ffmpeg -loglevel error -y -i /tmp/whisper/note.webm -ar 16000 -ac 1 /tmp/whisper/note.wav
+python3 -I -c 'import base64, json, sys; open(sys.argv[2], "wb").write(base64.b64decode(json.load(open(sys.argv[1]))["content"]))' <saved file> /tmp/whisper/note.audio
+ffmpeg -loglevel error -y -i /tmp/whisper/note.audio -ar 16000 -ac 1 /tmp/whisper/note.wav
 ```
 
-A note small enough to come back inline is a few seconds long: write its
-`content` to a file with a heredoc and decode it the same way.
+A note small enough to come back inline is a few seconds long: write the
+whole JSON result to a file with a quoted heredoc (`<<'EOF'`) and run the same
+one-liner on that file.
 
 Then transcribe the wav with this script, saved outside the checkout as
 `/tmp/whisper/transcribe.py` and run as
