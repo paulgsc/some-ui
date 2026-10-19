@@ -17,8 +17,11 @@ export type SyncEnd =
   | { readonly kind: "unreachable" }
   /** The phone's own storage, in its words. */
   | { readonly kind: "storage"; readonly summary: string }
-  /** Home answered, but not with lessons this phone could read. */
-  | { readonly kind: "unread" }
+  /**
+   * Anything else: an answer from home this phone couldn't read, or a fault
+   * on the phone, which goes to the native log.
+   */
+  | { readonly kind: "other" }
 
 function describe(report: SyncReport): string {
   const { lessons, trees, rounds, failed } = report
@@ -53,8 +56,8 @@ export function syncLine(end: SyncEnd): string {
     case "storage": {
       return `${end.summary} What came before that stays on this phone.`
     }
-    case "unread": {
-      return "Home didn't hand over its lessons this time. Nothing here was removed."
+    case "other": {
+      return "Couldn't copy the lessons from home this time."
     }
     default: {
       return assertNever(end)

@@ -151,12 +151,14 @@ const MIGRATIONS: ReadonlyArray<string> = [
   `
   DROP TABLE device_round_retired;
   `,
-  // 6 - device only: the sync's `ETag` per address, with the body it named,
-  // or NULL where that body is kept in its own table (a lesson's).
+  // 6 - device only: the sync's `ETag` per address, and the digest of the
+  // body it named, with that body, or NULL where the body is kept in its own
+  // table (a lesson's, in `curriculum`).
   `
   CREATE TABLE device_home_answer (
       url  TEXT PRIMARY KEY,
       etag TEXT NOT NULL,
+      hash TEXT NOT NULL,
       body TEXT
   );
   `,

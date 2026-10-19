@@ -580,11 +580,15 @@ moves, and only home → phone, with no credential. **Stop** ends a running sync
 after the request in flight, and so does the app going to the background;
 what was copied stays. Sessions and the shelf stay where they were made.
 
-Each read carries the `ETag` the phone kept from the last one
-(`device_home_answer`), so what home has not changed comes back without a
-body; the number of requests is the same. Home answering **429** (it allows
-60 requests a minute per client) ends the sync there, said as "Home is busy
-right now", with what came before it kept and nothing retried.
+Each lesson and each round's runs are asked for with the `ETag` the phone
+kept from the last read (`device_home_answer`), while the phone still holds
+the bytes that tag named, so what home has not changed comes back without a
+body; the three listings are read whole, and the number of requests is the
+same. Home answering **429** (it allows 60 requests a minute per client)
+ends the sync there, said as "Home is busy right now", with what came before
+it kept and nothing retried. Each tap starts from the listings again, so a
+catalogue of more than about 55 lessons and rounds ends busy at the same
+place every time, and what is listed after it does not arrive.
 
 **Pairing** lets the phone act for the person's account on the home server,
 which it cannot do with a passkey (its page is `https://localhost`, another

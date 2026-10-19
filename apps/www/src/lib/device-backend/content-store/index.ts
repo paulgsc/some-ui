@@ -166,13 +166,19 @@ export type LessonEntry = {
 
 const LEVELS = ["beginner", "intermediate", "advanced"]
 
-/** The body the device holds for lesson `key`, or `null`. */
-export async function storedLessonBody(
+/** The body the device holds for lesson `key`, and its hash, or `null`. */
+export async function storedLesson(
   db: SqlDriver,
   key: string
-): Promise<string | null> {
-  const row = await one(db, "SELECT body FROM curriculum WHERE key = ?", [key])
-  return row === null ? null : text(row, "body")
+): Promise<{ body: string; hash: string } | null> {
+  const row = await one(
+    db,
+    "SELECT body, content_hash FROM curriculum WHERE key = ?",
+    [key]
+  )
+  return row === null
+    ? null
+    : { body: text(row, "body"), hash: text(row, "content_hash") }
 }
 
 /** The content hash the device holds for round `id`, or `null`. */

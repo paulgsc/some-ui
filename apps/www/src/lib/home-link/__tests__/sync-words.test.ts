@@ -24,7 +24,7 @@ const ENDS: ReadonlyArray<SyncEnd> = [
   { kind: "busy" },
   { kind: "unreachable" },
   { kind: "storage", summary: "This phone's storage didn't answer." },
-  { kind: "unread" },
+  { kind: "other" },
 ]
 
 describe("syncLine", () => {

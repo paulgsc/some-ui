@@ -3,6 +3,8 @@
  * link's stoppable `get`, with what happened said in a line. Published
  * lessons and rounds only, read with no credential (LA8).
  */
+import { reportFailure, toIntentError } from "@some-ui/intent-kit"
+
 import { deviceBackend } from "@/lib/device-backend/boot"
 import {
   HomeBusyError,
@@ -40,8 +42,10 @@ export async function syncLessonsFrom(
   refresh: () => unknown
 ): Promise<SyncResult> {
   const host = hostOf(base)
+  let started = false
   try {
     const { context } = await deviceBackend()
+    started = true
     const outcome = await homeLink().sync((get) =>
       syncFromHome(context.db, base, get)
     )
@@ -58,7 +62,21 @@ export async function syncLessonsFrom(
     )
     return { ok: true, line }
   } catch (error) {
-    return { ok: false, line: syncLine(endOf(error)) }
+    // Ended part way, it may have copied some: the app shows what it did.
+    if (started) {
+      void deviceStorage.refresh()
+      refresh()
+    }
+    const end = endOf(error)
+    const line = syncLine(end)
+    if (end.kind === "other") {
+      reportFailure({
+        port: "home server (sync)",
+        error: { ...toIntentError(error), summary: line },
+      })
+    }
+    // Busy is not a failure: like a stop, it ends the sync where it was.
+    return { ok: end.kind === "busy", line }
   }
 }
 
@@ -72,5 +90,5 @@ function endOf(error: unknown): SyncEnd {
   if (error instanceof DeviceStorageError) {
     return { kind: "storage", summary: error.error.summary }
   }
-  return { kind: "unread" }
+  return { kind: "other" }
 }

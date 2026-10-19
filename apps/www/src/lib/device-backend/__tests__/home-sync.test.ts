@@ -372,13 +372,18 @@ describe("syncFromHome revalidating what it holds", () => {
     const home = revalidatingHome()
     await syncFromHome(phoneDb, HOME, home.get, () => NOW)
     expect(home.tags).toEqual([])
-    const first = home.bodies.length
 
     home.bodies.length = 0
     const again = await syncFromHome(phoneDb, HOME, home.get, () => NOW)
-    // Every read but the round's body, skipped by its listed hash.
-    expect(home.tags).toHaveLength(first - 1)
-    expect(home.bodies).toEqual([])
+    // The lesson and the round's runs; the listings are read whole, and the
+    // round's body is skipped by its listed hash.
+    expect(home.tags).toEqual([
+      `${HOME}/api/v1/curriculum/k2-cafe`,
+      `${HOME}/api/v1/leetype/rounds/home-only-round/runs`,
+    ])
+    expect(home.bodies.filter((url) => !url.includes("manifest"))).toEqual([
+      `${HOME}/api/v1/leetype/rounds`,
+    ])
     expect(again.failed).toEqual([])
     expect(again.lessons).toMatchObject({ listed: 1, added: 0, updated: 0 })
     expect(again.rounds.runs).toBe(1)
@@ -414,6 +419,31 @@ describe("syncFromHome revalidating what it holds", () => {
     await expect(
       phoneJson("/leetype/rounds/home-only-round/runs")
     ).resolves.toMatchObject({ runs: [{ variant: "A" }] })
+  })
+
+  it("sends no tag for a lesson whose bytes another home wrote since", async () => {
+    const home = revalidatingHome()
+    await syncFromHome(phoneDb, HOME, home.get, () => NOW)
+    // As if another address served the same key with other bytes.
+    await upsertLesson(phoneDb, LESSON, '{"batches":["elsewhere"]}', NOW)
+    home.tags.length = 0
+    await syncFromHome(phoneDb, HOME, home.get, () => NOW)
+    expect(home.tags.some((url) => url.endsWith("/k2-cafe"))).toBe(false)
+    await expect(phoneJson("/curriculum/k2-cafe")).resolves.toEqual({
+      batches: [],
+    })
+  })
+
+  it("forgets every tag another address served, once a sync reads all", async () => {
+    const home = revalidatingHome()
+    await syncFromHome(phoneDb, HOME, home.get, () => NOW)
+    const elsewhere: HomeGet = (url, etag) =>
+      home.get(url.replace("https://files.home", HOME), etag)
+    await syncFromHome(phoneDb, "https://files.home", elsewhere, () => NOW)
+    const urls = await phoneDb.all("SELECT url FROM device_home_answer")
+    expect(urls.every((row) => String(row.url).startsWith("https://"))).toBe(
+      true
+    )
   })
 
   it("keeps no tag for a lesson that did not fit", async () => {
