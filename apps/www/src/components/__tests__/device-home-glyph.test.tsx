@@ -108,10 +108,8 @@ vi.mock(
   }
 )
 
-// The first import of the mark evaluates its whole module graph cold: about
-// 2s here, against about 100ms for each test after it. A loaded runner
-// stretched that past the default 5s of the first test, so it is paid here,
-// under a limit of its own, and each test keeps the default.
+// Evaluates the mark's module graph cold once, under its own limit; the
+// import each test makes after `vi.resetModules()` is then warm.
 beforeAll(async () => {
   await import("@/components/device-home-glyph")
 }, 30_000)
