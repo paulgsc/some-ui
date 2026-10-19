@@ -418,8 +418,29 @@ describe("the poster and the face control (#1805, QD13)", () => {
     expect(root.style.getPropertyValue("--boyo-poster")).toBe("hsl(1 2% 3%)")
     expect(control()?.parentElement).toBe(desc)
     expect(control()?.textContent).toBe("Hold to show the original thumbnail")
+    const writes: Array<MutationRecord> = []
+    const watcher = new MutationObserver((records) => writes.push(...records))
+    watcher.observe(desc, {
+      subtree: true,
+      childList: true,
+      characterData: true,
+    })
     actuator.realize([plated(desc)])
+    writes.push(...watcher.takeRecords())
+    watcher.disconnect()
+    expect(writes, "WH1: the same view again writes nothing").toEqual([])
     expect(document.querySelectorAll("[data-boyo-face-hold]")).toHaveLength(1)
+  })
+
+  it("rebuilds the control when the mode changes when it reports (#1966)", () => {
+    const desc = description()
+    actuator.realize([plated(desc)])
+    const standard = control()
+    actuator.realize([plated(desc, false, VIDEO, "held")])
+    expect(control()).not.toBe(standard)
+    key("keydown")
+    vi.advanceTimersByTime(3_000)
+    expect(faced, "Open's reports still held").toEqual(["vid_w"])
   })
 
   it("offers no control under a mode without one, and takes one back (#1966)", () => {

@@ -57,7 +57,7 @@ present by definition, and a Short carries no date (`QD3`).
   replaces the poster plate with the real thumbnail. Releasing early cancels.
 - Strict offers no control, and choosing Strict takes a shown thumbnail
   away (§7, `QD13`). Open shows it at three seconds, still held, and the
-  control then reads "Hide original", which puts the plate back.
+  control then reads "Hide original"; a press and release puts the plate back.
 - It lasts for that view. Navigation forgets it, and nothing is persisted.
 - No progress colour, reward animation or memory of having done it. Anything
   more and it becomes the ladder again.
@@ -129,8 +129,8 @@ tab follows without a reload. Unreadable storage yields the defaults. Off is
 plain YouTube: the content script stops and lifts the pre-mask, and a content
 script that never runs leaves it on. The popup sets the boundary and the
 switch; the mode is followed but not yet offered anywhere, and the autoplay
-choice is not built yet (#1966's later slices). Mode changes are logged, and Diagnostics shows only boundary changes
-so far. Until the content script has read the mode, which the stylesheet
+choice is not built yet (#1966's later slices). Mode changes are logged, and
+Diagnostics shows only boundary changes so far. Until the content script has read the mode, which the stylesheet
 cannot do itself, an unread card is blurred under Strict too.
 
 ## 8. Never on youtube.com

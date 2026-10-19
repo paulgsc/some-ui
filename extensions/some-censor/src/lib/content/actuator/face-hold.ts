@@ -56,15 +56,6 @@ export function createFaceControl(
   let full = false
   let report: ReturnType<typeof setTimeout> | null = null
 
-  /** Report a task after the event that decided it. */
-  function later(shown: boolean): void {
-    if (report !== null) return
-    report = setTimeout(() => {
-      report = null
-      onFace(shown)
-    }, 0)
-  }
-
   function start(): void {
     if (press !== "none") return
     if (showing) {
@@ -74,8 +65,8 @@ export function createFaceControl(
     press = "hold"
     timer = setTimeout(() => {
       timer = null
-      full = true
       if (when === "held") onFace(true)
+      else full = true
     }, FACE_HOLD_MS)
   }
 
@@ -88,10 +79,16 @@ export function createFaceControl(
 
   function release(): void {
     const was = press
-    const reported = full && when === "release"
+    const reported = full
     cancel()
-    if (was === "hide") later(false)
-    else if (reported) later(true)
+    // The control stays when it hides, so the report can come at once.
+    if (was === "hide") onFace(false)
+    else if (reported && report === null) {
+      report = setTimeout(() => {
+        report = null
+        onFace(true)
+      }, 0)
+    }
   }
 
   const held = (event: KeyboardEvent): boolean =>
@@ -132,6 +129,7 @@ export function createFaceControl(
   return {
     el,
     shown(on: boolean): void {
+      if (on === showing) return
       showing = on
       label.textContent = on ? HIDE_LABEL : FACE_LABEL
     },
