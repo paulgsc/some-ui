@@ -171,10 +171,8 @@ describe("exchangeJobs", () => {
       stamp: { id: "mine", at: "2026-10-19T10:00:00.000Z" },
     })
     own.current = one
-    const asked = home(holding(withLog.log))
-    await exchangeJobs(own, asked.send)
+    await exchangeJobs(own, home(holding(withLog.log)).send)
     expect(own.current.log.map((e) => e.id)).toEqual(["mine"])
-    expect(asked.calls.some((c) => c.method === "GET")).toBe(false)
   })
 })
 

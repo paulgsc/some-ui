@@ -217,7 +217,37 @@ describe("DeviceSection's Home server block", () => {
     })
   })
 
-  it("counts and sends only the kept items home doesn't hold as they are", async () => {
+  it("counts and sends only the kept items home didn't take as they are", async () => {
+    home.record = JSON.stringify({
+      base: "https://home.example/api/v1",
+      token: "t",
+    })
+    localStorage.setItem(
+      SENT_KEY,
+      JSON.stringify({
+        pairing: "https://home.example/api/v1",
+        sessions: {},
+        shelf: {
+          "topik/a": await sha256Hex('{"a":1}'),
+          "leetype/b": await sha256Hex("{}"),
+        },
+        refused: {},
+      })
+    )
+    await open()
+    await press(/send to home.example/i)
+    expect(
+      await screen.findByText(/^send 1 session to home.example\?/i)
+    ).toBeTruthy()
+    await press(/^send 1$/i)
+    // Once the send has run to its end, as its last line says.
+    expect(await screen.findByText(/^Last send:/)).toBeTruthy()
+    expect(
+      home.sent.filter((call) => JSON.stringify(call).includes("/shelf/"))
+    ).toEqual([])
+  })
+
+  it("offers again a kept item home refused, since a tap is the way to retry", async () => {
     home.record = JSON.stringify({
       base: "https://home.example/api/v1",
       token: "t",
@@ -234,15 +264,10 @@ describe("DeviceSection's Home server block", () => {
     await open()
     await press(/send to home.example/i)
     expect(
-      await screen.findByText(/^send 1 session to home.example\?/i)
+      await screen.findByText(
+        /^send 1 session and 1 kept item to home.example\?/i
+      )
     ).toBeTruthy()
-    await press(/^send 1$/i)
-    await waitFor(() => {
-      expect(home.sent.length).toBeGreaterThan(0)
-    })
-    expect(
-      home.sent.filter((call) => JSON.stringify(call).includes("/shelf/"))
-    ).toEqual([])
   })
 
   it("keeps sending Practice only when its box is ticked, and asks every time until then", async () => {

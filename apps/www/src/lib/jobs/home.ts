@@ -1,9 +1,8 @@
 /**
  * One exchange with home for the Jobs record kept on home: every event home
  * does not hold yet sent, then, on a phone with no log, home's record read
- * back. Over a `send` port
- * the app's home link hands in (`lib/home-link/jobs`), so this module makes
- * no request of its own. The routes are paulgsc/server's `routes/jobs.rs`.
+ * back. Over a `send` port the app's home link hands in
+ * (`lib/home-link/jobs`), so this module makes no request of its own. The routes are paulgsc/server's `routes/jobs.rs`.
  *
  * Home's copy is a copy: the phone keeps its whole log either way, since its
  * shares count events by their place in it. In order:

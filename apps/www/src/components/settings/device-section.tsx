@@ -190,8 +190,8 @@ const StopButton = ({ stopping }: { stopping: boolean }): JSX.Element => (
 )
 
 /**
- * "Send to home" in three taps' worth of steps (LA8): count what is here, a
- * confirm naming that count and the host, then the one button that sends,
+ * "Send to home" in three taps' worth of steps (LA8): count what would go
+ * (what home lacks, by `./sent`), a confirm naming that count and the host, then the one button that sends,
  * with Stop while it runs. The confirm offers, unticked every time, to keep
  * sending Practice from now on (LA11); ticked, the send adds that choice to
  * the consent log before it starts.
@@ -249,7 +249,9 @@ const SendHome = ({
       ) : asking.total === 0 ? (
         <div className="flex flex-wrap items-center gap-2" role="status">
           <p className="text-sm">
-            Nothing on this phone that {host} doesn&apos;t have.
+            {asking.taken > 0
+              ? `Nothing new to send: ${host} took every kept item as it is now.`
+              : "Nothing on this phone to send."}
           </p>
           <Button
             type="button"

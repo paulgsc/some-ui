@@ -1,6 +1,7 @@
 /**
  * What this phone knows its paired home holds, so a standing send
- * (`./standing`, LA11) carries only what changed since: each finished
+ * (`./standing`, LA11) and Settings' send (`./send`) carry only what changed
+ * since: each finished
  * session's `updatedAt` as it was copied, each kept shelf item's digest as
  * home answered for it, and the digests home refused, so an unchanged
  * refused item is not offered again. Kept for one pairing (`pairing`, the
@@ -126,19 +127,22 @@ export async function shelfHeld(
 }
 
 /**
- * The kept items home does not hold as they are now, and wasn't refused as
- * they are now, with every item's digest (`shelfHeld`), to remember home's
- * answers by.
+ * The kept items home does not hold as they are now, with every item's
+ * digest (`shelfHeld`), to remember home's answers by. An item home refused
+ * as it is now is left out too, unless `refused` says to offer it again: a
+ * person's tap does, a standing send does not.
  */
 export async function shelfToSend(
   kept: ReadonlyArray<Kept>,
-  sent: Sent
+  sent: Sent,
+  refused: "skip" | "again" = "skip"
 ): Promise<{ changed: Array<Kept>; digests: Record<string, string> }> {
   const digests = await shelfHeld(kept)
   const changed = kept.filter((item) => {
     const key = shelfKeyOf(item)
     return (
-      sent.shelf[key] !== digests[key] && sent.refused[key] !== digests[key]
+      sent.shelf[key] !== digests[key] &&
+      (refused === "again" || sent.refused[key] !== digests[key])
     )
   })
   return { changed, digests }

@@ -315,8 +315,10 @@ declared (checked by reading every call site and by the tests named).
   finished session (`mayLeavePhone`: completed, not today's) and confirm it
   holds it exactly as the phone does (`confirmHeld`), and the phone then
   lets go of its own copy of those alone, each unchanged since it was read;
-  then one PUT per item kept on this phone's shelf, its bytes as kept,
-  nothing read back and the item kept on the phone. Nothing on home is
+  then one PUT per item kept on this phone's shelf that home does not hold
+  as it is now, by what home last answered for it under this pairing
+  (`./sent`), its bytes as kept, nothing read back and the item kept on the
+  phone. Nothing on home is
   deleted. Outside LA9 to LA11, nothing is sent when the app or Settings
   opens, on resume, on a timer or on a network change: making the runtime and
   `load` read only the phone's own record. There is no retry; a sync, a send,
