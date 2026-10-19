@@ -4,12 +4,14 @@
  * included), so a row here is one `file_host` could take verbatim. Each table
  * names its source migration and anything left out.
  *
- * Three tables are the device's own: `device_round_from_home` (migration 2),
+ * Four tables are the device's own: `device_round_from_home` (migration 2),
  * the rounds home wrote, so the start that removes rounds an earlier build
  * seeded keeps them; `device_storage_notice` (3), removals not yet shown
  * (`device-backend/storage`);
- * and `device_leetype_session_file` (4), the LeetType session files picked
- * from storage, which no server serves (`content-store`).
+ * `device_leetype_session_file` (4), the LeetType session files picked
+ * from storage, which no server serves (`content-store`); and
+ * `device_home_answer` (6), the `ETag` the sync from home last read at each
+ * address (`home-sync`).
  *
  * Migrations are append-only, numbered by `PRAGMA user_version`. Never edit a
  * shipped entry: a phone that ran it will not run it again.
@@ -148,6 +150,18 @@ const MIGRATIONS: ReadonlyArray<string> = [
   // with it the only reader of `device_round_retired`.
   `
   DROP TABLE device_round_retired;
+  `,
+  // 6 - device only: the sync's `ETag` per address, with the body it named;
+  // or, where that body is kept in its own table (a lesson's, in
+  // `curriculum`), the body's digest instead.
+  `
+  CREATE TABLE device_home_answer (
+      url  TEXT PRIMARY KEY,
+      etag TEXT NOT NULL,
+      hash TEXT,
+      body TEXT,
+      CHECK ((hash IS NULL) <> (body IS NULL))
+  );
   `,
 ]
 

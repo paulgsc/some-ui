@@ -275,14 +275,14 @@ describe("the home link", () => {
     })
   })
 
-  it("stops a sync before its next request, on Stop or in the background, and sends no credential", async () => {
+  it("stops a sync before its next request, on Stop or in the background, and sends no credential, only the tag it is given", async () => {
     for (const stop of ["tap", "background"] as const) {
       const home = setup({
         record: JSON.stringify({ base: HOME.base, token: "t" }),
       })
       await home.link.load()
       const outcome = await home.link.sync(async (get) => {
-        await get(`${HOME.base}/curriculum/manifest.json`)
+        await get(`${HOME.base}/curriculum/manifest.json`, '"v1"')
         if (stop === "tap") home.link.stop()
         else home.hide()
         await get(`${HOME.base}/curriculum/a`)
@@ -290,7 +290,11 @@ describe("the home link", () => {
       })
       expect(outcome, stop).toEqual({ kind: "stopped" })
       expect(home.sent, stop).toEqual([
-        { method: "GET", url: `${HOME.base}/curriculum/manifest.json` },
+        {
+          method: "GET",
+          url: `${HOME.base}/curriculum/manifest.json`,
+          ifNoneMatch: '"v1"',
+        },
       ])
       expect(home.link.getSnapshot().activity.kind).toBe("idle")
     }

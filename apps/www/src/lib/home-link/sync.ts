@@ -3,9 +3,11 @@
  * link's stoppable `get`, with what happened said in a line. Published
  * lessons and rounds only, read with no credential (LA8).
  */
+import { reportFailure, toIntentError } from "@some-ui/intent-kit"
+
 import { deviceBackend } from "@/lib/device-backend/boot"
-import type { SyncReport } from "@/lib/device-backend/home-sync"
 import {
+  HomeBusyError,
   HomeUnreachableError,
   syncFromHome,
 } from "@/lib/device-backend/home-sync"
@@ -15,26 +17,13 @@ import { deviceStorage } from "@/lib/device-backend/storage-view"
 import { hostOf } from "./address"
 import { homeLink } from "./index"
 import { remember, remembered } from "./remembered"
+import type { SyncEnd } from "./sync-words"
+import { syncLine } from "./sync-words"
 
 const LAST_SYNC_KEY = "some-ui.device.last-sync.v1"
 
 export function lastSync(): string {
   return remembered(LAST_SYNC_KEY)
-}
-
-function describe(report: SyncReport): string {
-  const { lessons, trees, rounds, failed } = report
-  const parts = [
-    `${lessons.listed} TOPIK lesson${lessons.listed === 1 ? "" : "s"} (${lessons.added} new, ${lessons.updated} updated)`,
-    `${trees.listed} drama${trees.listed === 1 ? "" : "s"} (${trees.added} new, ${trees.updated} updated)`,
-    `${rounds.added + rounds.updated} Leetype round${rounds.added + rounds.updated === 1 ? "" : "s"} refreshed`,
-  ]
-  const removed = lessons.removed + trees.removed + rounds.removed
-  if (removed > 0) parts.push(`${removed} home no longer lists removed`)
-  const skipped = lessons.skipped + trees.skipped + rounds.skipped
-  if (skipped > 0) parts.push(`${skipped} not added: this phone is full`)
-  if (failed.length > 0) parts.push(`${failed.length} could not be fetched`)
-  return parts.join(" · ")
 }
 
 /** A sync's end, in the words the block shows. */
@@ -53,37 +42,52 @@ export async function syncLessonsFrom(
   refresh: () => unknown
 ): Promise<SyncResult> {
   const host = hostOf(base)
+  const ran = { yes: false }
   try {
     const { context } = await deviceBackend()
-    const outcome = await homeLink().sync((get) =>
-      syncFromHome(context.db, base, get)
-    )
-    void deviceStorage.refresh()
+    const outcome = await homeLink().sync((get) => {
+      ran.yes = true
+      return syncFromHome(context.db, base, get)
+    })
     if (outcome === null) return { ok: false, line: "" }
-    refresh()
     if (outcome.kind === "stopped") {
-      return {
-        ok: true,
-        line: `Stopped. What came from ${host} before that stays on this phone.`,
-      }
+      return { ok: true, line: syncLine({ kind: "stopped" }) }
     }
-    const line = describe(outcome.value)
+    const line = syncLine({ kind: "done", report: outcome.value })
     remember(
       LAST_SYNC_KEY,
       `${new Date().toLocaleString()} · ${host} · ${line}`
     )
     return { ok: true, line }
   } catch (error) {
-    // The phone's own storage says so in its words (reported, with the
-    // plugin's, to the native log); anything else names the error.
-    return {
-      ok: false,
-      line:
-        error instanceof HomeUnreachableError
-          ? `Couldn't reach ${host}. Are you on the home network?`
-          : error instanceof DeviceStorageError
-            ? `Sync failed: ${error.error.summary}`
-            : `Sync failed: ${String(error)}`,
+    const end = endOf(error)
+    const line = syncLine(end)
+    if (end.kind === "other") {
+      reportFailure({
+        port: "home server (sync)",
+        error: { ...toIntentError(error), summary: line },
+      })
+    }
+    // Busy is not a failure: like a stop, it ends the sync where it was.
+    return { ok: end.kind === "busy", line }
+  } finally {
+    // However it ended, even part way, the app shows what it copied.
+    if (ran.yes) {
+      void deviceStorage.refresh()
+      refresh()
     }
   }
+}
+
+/**
+ * How a sync that threw ended. The phone's own storage says so in its words
+ * (reported, with the plugin's, to the native log).
+ */
+function endOf(error: unknown): SyncEnd {
+  if (error instanceof HomeBusyError) return { kind: "busy" }
+  if (error instanceof HomeUnreachableError) return { kind: "unreachable" }
+  if (error instanceof DeviceStorageError) {
+    return { kind: "storage", summary: error.error.summary }
+  }
+  return { kind: "other" }
 }

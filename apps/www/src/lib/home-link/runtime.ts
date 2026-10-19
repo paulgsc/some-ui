@@ -349,9 +349,15 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
     },
 
     sync<T>(run: (get: HomeGet) => Promise<T>): Promise<SyncOutcome<T> | null> {
-      const get: HomeGet = (url) => {
+      const get: HomeGet = (url, etag) => {
         if (stopped()) return Promise.reject(new SyncStoppedError())
-        return track(ports.request({ method: "GET", url }))
+        return track(
+          ports.request({
+            method: "GET",
+            url,
+            ...(etag === undefined ? {} : { ifNoneMatch: etag }),
+          })
+        )
       }
       return work({ type: "syncPressed" }, () => run(get))
     },
