@@ -29,7 +29,7 @@ export const jobsLane: Lane = {
       away: null,
       hidden: 0,
       pulled: true,
-      offered: state.log.length,
+      offered: homeOutbox(state).length,
     }
   },
   keptBefore: () => phoneJobs().getSnapshot().state.home.kept,

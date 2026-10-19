@@ -124,18 +124,20 @@ export async function exchangeWithHome(
 }
 
 /**
- * Once its person stops sending: home's record read once (`GET /aph`), and
- * aph kept on this phone from it, with what still waited here laid over it
- * (`leaveHome`). Nothing is sent. Throws what `send` throws, leaving aph
- * where it was.
+ * Once its person stops sending: home's record read once (`GET /aph`), and,
+ * while `stopped` still holds once read, aph kept on this phone from it,
+ * with what still waited here laid over it (`leaveHome`). Nothing is sent.
+ * Throws what `send` throws, leaving aph where it was.
  */
 export async function bringBack(
   store: AphStore,
-  send: HomeCall
+  send: HomeCall,
+  stopped: () => boolean
 ): Promise<HomeExchanged> {
   if (store.where().kind === "device") return { kind: "synced" }
   const record = await readHome(send)
   if ("kind" in record) return record
+  if (!stopped()) return { kind: "synced" }
   return store.leaveHome(record)
     ? { kind: "synced" }
     : { kind: "failed", why: "this phone couldn't keep home's record" }

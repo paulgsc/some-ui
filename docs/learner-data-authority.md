@@ -455,15 +455,19 @@ when a run is asked for:
   log only from the mark's second press, with the words its first press
   showed (`offer`), from Settings' send with its box ticked (Practice, LA11),
   or once, as found (`said: null`), for a lane whose record's own switch
-  kept it on home before the log and whose scopes no choice ever named; a
+  kept it on home before the log and whose scopes no choice ever named,
+  under the pairing the phone's own record held when the page loaded
+  (the link's `opened`), never one paired since; a
   stop only from the mark's second press of Stop sending. For aph, the mark
   shows aph's lane only while aph's screens hand it in (`DeviceAphLane`, in
   aph's layout); opting in moves aph's record to home (`keepOnHome`), and
   stopping asks home once for its record back (`bringBack`: `GET /aph`,
   nothing sent), from the stop's second press, from the Bring it back
   button, or once the link frees after turning that read away, only while
-  nothing of aph is kept; when home can't be reached, aph stays as it was,
-  and the mark says this phone holds only what home hadn't confirmed.
+  nothing of aph is kept, found so before the read and again before its
+  answer is kept; home being busy is said as busy; when home can't be
+  reached, aph stays as it was, and the mark says this phone holds only
+  what home hadn't confirmed.
 - _Falsified by:_ a hunk to `lib/home-link/kept-watch.ts` that reaches
   `askKept` from anything but `watchKept`'s record subscription, its link
   subscription, its `visibilitychange` and `online` listeners and its first
@@ -482,8 +486,9 @@ when a run is asked for:
   both, calls `phoneConsent().choose` from anywhere but `keepOnHome`,
   `stopOnHome` and `enterEarlier`, lets `enterEarlier` choose for a lane
   whose `keptBefore` is not true or one of whose scopes `everChosen` finds,
-  or with `said` other than `null`, lets `back` run `bringBack` while a scope
-  is kept, or asks it from anywhere but `stopOnHome`, `bringLaneBack` and the
+  under a pairing other than the link's `opened`, or with `said` other
+  than `null`, lets `back` run `bringBack` while a scope is kept or without
+  its `stopped` check, or outside `sayingBusy`, or asks it from anywhere but `stopOnHome`, `bringLaneBack` and the
   effect's link listener (once the link is idle after it was turned away
   busy); a hunk to `lib/home-link/kept-runtime.ts` that lets `laneExchange`
   send a request without its check that a scope is still kept, or makes a
@@ -501,12 +506,14 @@ when a run is asked for:
   `edits` while on home and -1 on the phone, its `keptBefore` anything but
   the store being on home, or its `bringBack` anything but aph's; or a hunk
   to `packages/ui/aph/src/lib/sync.ts` that makes `bringBack` send anything
-  but one `GET /aph`, or to `store.ts` that lets `leaveHome` drop a waiting
+  but one `GET /aph` or keep home's answer once `stopped` fails; a hunk to
+  `lib/home-link/model.ts` that sets `opened` other than from the `read` of
+  the phone's own record; or a hunk to `store.ts` that lets `leaveHome` drop a waiting
   change `shown` hides without `forgetHomeRecord`'s copy under
   `LEFT_PREFIX`, or remove the home record before the device record is
   written.
 - _Scope:_ `apps/www/src/lib/home-link/kept-watch.ts`, `lanes.ts`,
-  `kept-runtime.ts`, `aph.ts`, `apps/www/src/components/device-home-glyph.tsx`,
+  `kept-runtime.ts`, `aph.ts`, `model.ts`, `apps/www/src/components/device-home-glyph.tsx`,
   `apps/www/src/components/aph/device-aph-lane.tsx`,
   `apps/www/src/routes/_dashboard.tsx`,
   `apps/www/src/routes/_dashboard/_apk/aph.tsx`,

@@ -86,6 +86,7 @@ describe("the home link", () => {
       id: HOME.base,
       notForgotten: false,
     })
+    expect(paired.link.getSnapshot().opened).toBe(HOME.base)
     expect(paired.sent).toEqual([])
 
     const lost = setup({ lost: true })
@@ -140,6 +141,8 @@ describe("the home link", () => {
     await home.link.pair(HOME, "K7QF2M9X")
     expect(idOf()).toEqual(expect.any(String))
     expect(idOf()).not.toBe(first)
+    // Neither is the pairing the phone's record held when it was read.
+    expect(home.link.getSnapshot().opened).toBeNull()
   })
 
   it("says why a pairing failed, once, and keeps nothing", async () => {

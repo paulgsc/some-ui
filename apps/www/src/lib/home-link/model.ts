@@ -69,6 +69,12 @@ export type HomeLinkState = {
     readonly failure: PairFailure
     readonly base: string
   } | null
+  /**
+   * The id of the pairing the phone's own record held when this page load
+   * read it, or null: a choice made before the consent log enters it only
+   * under this pairing (LA9).
+   */
+  readonly opened: string | null
 }
 
 export type HomeLinkEvent =
@@ -97,6 +103,7 @@ export const INITIAL: HomeLinkState = {
   link: { kind: "reading" },
   activity: { kind: "idle" },
   pairFailure: null,
+  opened: null,
 }
 
 const idle = { kind: "idle" } as const
@@ -123,6 +130,7 @@ export function step(
       const { found } = event
       return {
         ...state,
+        opened: found !== null && typeof found !== "string" ? found.id : null,
         link:
           found === null
             ? { kind: "unpaired", note: null }
@@ -148,6 +156,7 @@ export function step(
       if (activity.kind !== "pairing" || activity.base !== event.base)
         return state
       return {
+        ...state,
         link: {
           kind: "paired",
           base: event.base,
@@ -173,6 +182,7 @@ export function step(
     case "unpaired": {
       if (activity.kind !== "unpairing") return state
       return {
+        ...state,
         link: {
           kind: "unpaired",
           note: event.told ? "unpaired" : "unpaired-offline",

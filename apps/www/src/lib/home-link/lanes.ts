@@ -18,7 +18,7 @@ import { homeLink, useHomeLink } from "./index"
 import type { KeptState } from "./kept-model"
 import { INITIAL_KEPT } from "./kept-model"
 import type { Kept, KeptPorts } from "./kept-runtime"
-import { createKept, laneExchange } from "./kept-runtime"
+import { createKept, laneExchange, sayingBusy } from "./kept-runtime"
 import type { KeptRecord } from "./kept-watch"
 import { askKept, watchKept } from "./kept-watch"
 import type { HomeLinkState } from "./model"
@@ -73,10 +73,14 @@ export type Lane = {
    */
   readonly switchOn?: () => boolean
   /**
-   * Once stopped, one read of home that keeps its record on this phone again
-   * (aph). Throws what `send` throws.
+   * Once stopped, one read of home that keeps its record on this phone
+   * again (aph), if `stopped` still holds once read. Throws what `send`
+   * throws.
    */
-  readonly bringBack?: (send: HomeSend) => Promise<HomeExchanged>
+  readonly bringBack?: (
+    send: HomeSend,
+    stopped: () => boolean
+  ) => Promise<HomeExchanged>
 }
 
 /** The id of the pairing this phone holds, or `null`. */
@@ -146,10 +150,12 @@ function wire(lane: Lane): Wired {
         ? null
         : createKept({
             ...ports,
-            exchange: (send) =>
-              shared().size > 0
-                ? Promise.resolve({ kind: "synced" })
-                : bringBack(send),
+            exchange: sayingBusy((send) => {
+              const stopped = (): boolean => shared().size === 0
+              return stopped()
+                ? bringBack(send, stopped)
+                : Promise.resolve({ kind: "synced" })
+            }),
           }),
   }
   wired.set(lane.id, made)
@@ -158,11 +164,14 @@ function wire(lane: Lane): Wired {
 
 /**
  * A choice its record's own switch made before the consent log, entered
- * there once, under the paired home, as found (`said: null`).
+ * there once, as found (`said: null`), under the pairing the phone's own
+ * record held when this page load read it: never under a pairing made since.
  */
 function enterEarlier(lane: Lane): void {
-  const pairing = pairingOf()
-  if (pairing === null || lane.keptBefore?.() !== true) return
+  const link = homeLink().getSnapshot()
+  const pairing = pairingOf(link)
+  if (pairing === null || pairing !== link.opened) return
+  if (lane.keptBefore?.() !== true) return
   const log = phoneConsent().getSnapshot()
   if (lane.scopes.some((scope) => everChosen(log, scope))) return
   phoneConsent().choose({

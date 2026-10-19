@@ -212,7 +212,7 @@ describe("the Jobs record's mark", () => {
     fireEvent.click(
       screen.getByRole("button", { name: "Keep sending to home..." })
     )
-    const offer = screen.getByText(/^Send 2 events to home/).textContent
+    const offer = screen.getByText(/^Send 2 events home/).textContent
     await act(() => Promise.resolve())
     expect(home.sent).toEqual([])
     expect(logged()).toEqual([])
@@ -299,9 +299,10 @@ async function mountAph(store: AphStore): Promise<void> {
       await send("PUT", "/aph/entries/1", "{}")
       return { kind: "synced" }
     },
-    bringBack: async (kept, send) => {
-      await send("GET", "/aph")
-      kept.leaveHome({ settings: null, entries: [] })
+    bringBack: async (kept, send, stopped) => {
+      const answer = await send("GET", "/aph")
+      if (answer.status !== 200) return { kind: "failed", why: "unanswered" }
+      if (stopped()) kept.leaveHome({ settings: null, entries: [] })
       return { kind: "synced" }
     },
   }
@@ -363,6 +364,42 @@ describe("aph's mark", () => {
     fireEvent.click(mark(/Where aph is kept/))
     expect(
       screen.getByRole("button", { name: "Bring it back to this phone" })
+    ).toBeTruthy()
+  })
+
+  it("says home was busy, not a failure, when bringing aph back finds it busy", async () => {
+    keptBefore(["aph"])
+    const store = aphStore()
+    await mountAph(store)
+    await waitFor(() =>
+      expect(mark(/Where aph is kept/).textContent).toContain("No answer")
+    )
+    home.answer = (): Promise<{ status: number; body: string }> =>
+      Promise.resolve({ status: 429, body: "" })
+    await stopAph()
+    await waitFor(() =>
+      expect(mark(/Where aph is kept/).getAttribute("aria-label")).toContain(
+        "Home is busy right now."
+      )
+    )
+    expect(store.left).toBe(0)
+  })
+
+  it("says so when the phone couldn't keep the stop, which sends on", async () => {
+    keptBefore(["aph"])
+    await mountAph(aphStore())
+    const setItem = vi
+      .spyOn(Storage.prototype, "setItem")
+      .mockImplementation(() => {
+        throw new Error("full")
+      })
+    await stopAph()
+    setItem.mockRestore()
+    expect(logged()).toMatchObject([{ kind: "kept" }])
+    expect(
+      screen.getByText(
+        "This phone couldn't keep that choice, so sending goes on."
+      )
     ).toBeTruthy()
   })
 })

@@ -107,10 +107,10 @@ export const WORDS: Readonly<Record<LaneId, LaneWords>> = {
     footnote: "Stopping brings aph back to this phone.",
     stopQuestion: "Stop sending aph to home?",
     stopMore:
-      "This phone asks home for aph's record and keeps it here again, with every change still waiting. What home has stays there too.",
+      "This phone asks home for aph's record and keeps it here again, with the changes still waiting; any that clash with home's record are kept aside on this phone. What home has stays there too.",
     startElsewhere: null,
     offer: (n) =>
-      `Send ${counted(n, "entry", "entries")} and the settings to home, and keep sending from now on? This phone then keeps only the settings and what home hasn't confirmed. Changes go while aph is open. Stop any time, and aph comes back to this phone.`,
+      `Send ${counted(n, "change")} home doesn't have yet, and keep sending from now on? This phone then keeps only the settings and what home hasn't confirmed. Changes go while aph is open. Stop any time, and aph comes back to this phone.`,
     away: (n) =>
       `Sending to home is off. Home holds aph; this phone holds only the ${counted(n, "change")} home hadn't confirmed.`,
     clash: (n) =>
@@ -136,7 +136,7 @@ export const WORDS: Readonly<Record<LaneId, LaneWords>> = {
       "What home already has stays there. This phone keeps its whole record.",
     startElsewhere: null,
     offer: (n) =>
-      `Send ${counted(n, "event")} to home, and keep sending from now on? This phone keeps its whole record too. New events go while Jobs is open. Stop any time; what's sent stays on home.`,
+      `Send ${counted(n, "event")} home doesn't have yet, and keep sending from now on? This phone keeps its whole record too. New events go while Jobs is open. Stop any time; what's sent stays on home.`,
     away: null,
     clash: null,
     unread: null,
@@ -154,6 +154,7 @@ export const SHEET = {
   keepYes: "Keep sending",
   keepNo: "Cancel",
   keepRefused: "This phone couldn't keep that choice. Nothing changed.",
+  stopRefused: "This phone couldn't keep that choice, so sending goes on.",
   pairFirst: "Pair this phone with home in Settings to send it there.",
   bringBack: "Bring it back to this phone",
   settings: "Send, free space and pairing: Settings",
@@ -179,6 +180,8 @@ export const KEEP_SENDING_SAID = `${KEEP_SENDING}. ${KEEP_SENDING_MORE}`
 export type Shape = "phone" | "partly" | "kept" | "waiting" | "trouble"
 
 export type LaneFacts = Omit<LaneCounts, "away" | "offered"> & {
+  /** The link has read the phone's own record of its pairing. */
+  known: boolean
   shared: Shared
   /** What was kept and is stopped now, and since when. */
   stopped: ReadonlyMap<Scope, number>
@@ -260,6 +263,9 @@ export function laneView(
     notes,
   })
 
+  if (!facts.known) {
+    return show("partly", "Checking", "Checking where this is kept.")
+  }
   if (!kept) {
     if (facts.away !== null && words.away !== null) {
       const { back } = facts.away
@@ -307,7 +313,7 @@ export function laneView(
     return show(
       "trouble",
       "Pair again",
-      "Home no longer knows this phone. Pair it again in Settings."
+      "Home no longer knows this phone. Pair it again in Settings, then choose to keep sending again."
     )
   }
   if (last?.kind === "unreachable") {

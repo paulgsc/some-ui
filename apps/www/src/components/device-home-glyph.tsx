@@ -106,12 +106,14 @@ const LaneMark = ({ lane }: { lane: Lane }): JSX.Element => {
   const link = useHomeLink()
   const [open, setOpen] = useState(false)
   const [pane, setPane] = useState<Pane>("kept")
-  const [refused, setRefused] = useState(false)
+  /** The choice this phone couldn't keep, said until the sheet opens again. */
+  const [refused, setRefused] = useState<"keep" | "stop" | null>(null)
 
   const words = WORDS[lane.id]
   const pairing = pairingOf(link)
   const view = laneView(words, {
     ...counts,
+    known: link.link.kind !== "reading",
     shared,
     stopped,
     run,
@@ -133,7 +135,7 @@ const LaneMark = ({ lane }: { lane: Lane }): JSX.Element => {
         aria-label={`${words.markLabel}: ${view.line}`}
         onClick={() => {
           setPane("kept")
-          setRefused(false)
+          setRefused(null)
           setOpen(true)
         }}
         className={cn(
@@ -177,7 +179,7 @@ const LaneMark = ({ lane }: { lane: Lane }): JSX.Element => {
                 size="lg"
                 className={BIG}
                 onClick={() => {
-                  stopOnHome(lane)
+                  setRefused(stopOnHome(lane) ? null : "stop")
                   close()
                 }}
               >
@@ -198,7 +200,7 @@ const LaneMark = ({ lane }: { lane: Lane }): JSX.Element => {
                 size="lg"
                 className={BIG}
                 onClick={() => {
-                  setRefused(!keepOnHome(lane, pairing, offer))
+                  setRefused(keepOnHome(lane, pairing, offer) ? null : "keep")
                   close()
                 }}
               >
@@ -228,9 +230,9 @@ const LaneMark = ({ lane }: { lane: Lane }): JSX.Element => {
                   {note}
                 </p>
               ))}
-              {refused ? (
+              {refused !== null ? (
                 <p className="text-destructive text-sm" role="status">
-                  {SHEET.keepRefused}
+                  {refused === "keep" ? SHEET.keepRefused : SHEET.stopRefused}
                 </p>
               ) : null}
               {kept &&
@@ -276,7 +278,7 @@ const LaneMark = ({ lane }: { lane: Lane }): JSX.Element => {
                   size="lg"
                   className={BIG}
                   onClick={() => {
-                    setRefused(false)
+                    setRefused(null)
                     setPane("keep")
                   }}
                 >

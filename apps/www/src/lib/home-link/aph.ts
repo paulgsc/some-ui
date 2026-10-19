@@ -19,7 +19,11 @@ import type { Lane, LaneCounts } from "./lanes"
 export type AphKeeping = {
   store: AphStore
   exchange: (store: AphStore, send: HomeCall) => Promise<HomeExchanged>
-  bringBack: (store: AphStore, send: HomeCall) => Promise<HomeExchanged>
+  bringBack: (
+    store: AphStore,
+    send: HomeCall,
+    stopped: () => boolean
+  ) => Promise<HomeExchanged>
 }
 
 function editsOf(where: AphWhere): number {
@@ -58,11 +62,12 @@ function declared({ store, ...aph }: AphKeeping): Lane {
         away: home?.unsent ?? null,
         hidden: home?.hidden ?? 0,
         pulled: home?.pulled ?? true,
-        offered: entries.length,
+        // On the phone, every entry and the settings go.
+        offered: home?.unsent ?? entries.length + 1,
       }
     },
     keptBefore: () => store.where().kind === "home",
     switchOn: store.keepOnHome,
-    bringBack: (send) => aph.bringBack(store, send),
+    bringBack: (send, stopped) => aph.bringBack(store, send, stopped),
   }
 }

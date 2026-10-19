@@ -237,7 +237,9 @@ describe("bringing aph back from home", () => {
 
   it("keeps home's record on the phone again, with what waited here over it, sending nothing", async () => {
     const { store, storage, home } = await withWaiting()
-    expect(await bringBack(store, home.send)).toEqual({ kind: "synced" })
+    expect(await bringBack(store, home.send, () => true)).toEqual({
+      kind: "synced",
+    })
     expect(home.requests).toEqual(["GET /aph"])
     expect(store.where()).toEqual({ kind: "device" })
     expect(store.get().entries).toEqual(ENTRIES)
@@ -261,7 +263,9 @@ describe("bringing aph back from home", () => {
     const home = fakeHome()
     // Home holds another plain morning figure on `a`'s day.
     home.held.set("other", entry("other", "2026-10-14"))
-    expect(await bringBack(store, home.send)).toEqual({ kind: "synced" })
+    expect(await bringBack(store, home.send, () => true)).toEqual({
+      kind: "synced",
+    })
     expect(store.get().entries.map((e) => e.id)).not.toContain("a")
     const aside = storage.map.get(`${LEFT_PREFIX}1`) ?? ""
     expect(JSON.parse(aside)).toMatchObject({ pending: ENTRIES })
@@ -270,13 +274,24 @@ describe("bringing aph back from home", () => {
   it("leaves aph where it was when home does not answer, or forgot the phone", async () => {
     const { store, storage } = await withWaiting()
     const failing = fakeHome({ fail: () => new Error("no route to host") })
-    await expect(bringBack(store, failing.send)).rejects.toThrow(
+    await expect(bringBack(store, failing.send, () => true)).rejects.toThrow(
       "no route to host"
     )
     const forgot: HomeCall = () => Promise.resolve({ status: 401, body: "" })
-    expect(await bringBack(store, forgot)).toEqual({ kind: "forgotten" })
+    expect(await bringBack(store, forgot, () => true)).toEqual({
+      kind: "forgotten",
+    })
     expect(store.where()).toMatchObject({ kind: "home", unsent: 1 })
     expect(storage.map.has(STORAGE_KEY)).toBe(false)
+  })
+
+  it("leaves aph on home when its person chose to keep sending while home was read", async () => {
+    const { store, home } = await withWaiting()
+    expect(await bringBack(store, home.send, () => false)).toEqual({
+      kind: "synced",
+    })
+    expect(home.requests).toEqual(["GET /aph"])
+    expect(store.where()).toMatchObject({ kind: "home" })
   })
 
   it("sends nothing for a record kept on this phone", async () => {
@@ -285,7 +300,9 @@ describe("bringing aph back from home", () => {
       memoryStorage()
     )
     const home = fakeHome()
-    expect(await bringBack(store, home.send)).toEqual({ kind: "synced" })
+    expect(await bringBack(store, home.send, () => true)).toEqual({
+      kind: "synced",
+    })
     expect(home.requests).toEqual([])
   })
 })

@@ -84,30 +84,45 @@ export function createKept(ports: KeptPorts): Kept {
 
 const BUSY: HomeExchanged = { kind: "failed", why: "busy" }
 
+type Exchange = (send: HomeSend) => Promise<HomeExchanged>
+
 /**
- * `lane`'s exchange as a run makes it: each request first finds a scope in
- * `shared` still kept, and home answering busy (`429`) anywhere ends the run
- * as busy, whatever else it found.
+ * `exchange` ending as busy once home answered any of its requests `429`,
+ * whatever else it found, unless home forgot the phone or it was stopped.
  */
-export function laneExchange(
-  lane: Lane,
-  pairing: () => string | null,
-  shared: () => ReadonlySet<Scope>
-): (send: HomeSend) => Promise<HomeExchanged> {
+export function sayingBusy(exchange: Exchange): Exchange {
   return async (link) => {
-    const under = pairing()
-    if (under === null || shared().size === 0) return { kind: "synced" }
-    const { send: watched, seen } = noticingBusy(link)
-    const gated: HomeSend = (method, path, body) =>
-      shared().size > 0
-        ? watched(method, path, body)
-        : Promise.reject(new SyncStoppedError())
+    const { send, seen } = noticingBusy(link)
     try {
-      const ended = await lane.exchange(gated, { pairing: under, shared })
+      const ended = await exchange(send)
       return seen.busy && ended.kind !== "forgotten" ? BUSY : ended
     } catch (error) {
       if (seen.busy && !(error instanceof SyncStoppedError)) return BUSY
       throw error
     }
+  }
+}
+
+/**
+ * `lane`'s exchange as a run makes it: each request first finds a scope in
+ * `shared` still kept, and home being busy is said (`sayingBusy`).
+ */
+export function laneExchange(
+  lane: Lane,
+  pairing: () => string | null,
+  shared: () => ReadonlySet<Scope>
+): Exchange {
+  return (link) => {
+    const under = pairing()
+    if (under === null || shared().size === 0) {
+      return Promise.resolve({ kind: "synced" })
+    }
+    const gated: HomeSend = (method, path, body) =>
+      shared().size > 0
+        ? link(method, path, body)
+        : Promise.reject(new SyncStoppedError())
+    return sayingBusy((send) =>
+      lane.exchange(send, { pairing: under, shared })
+    )(gated)
   }
 }

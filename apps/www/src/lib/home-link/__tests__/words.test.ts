@@ -45,6 +45,7 @@ const runs: Array<KeptState> = [
 ]
 
 const facts = (over: Partial<LaneFacts> = {}): LaneFacts => ({
+  known: true,
   shared: NONE,
   stopped: new Map(),
   held: {},
@@ -66,6 +67,7 @@ function every(): Array<LaneFacts> {
           for (const run of runs) {
             all.push(
               facts({
+                known: run !== INITIAL_KEPT,
                 shared,
                 stopped,
                 held,
