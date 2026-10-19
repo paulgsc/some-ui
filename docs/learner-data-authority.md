@@ -524,8 +524,10 @@ What a standing send carries, and that a choice only ever appends, is
 enforced by test: the fold over the consent log and that an unreadable log
 is never written over (`lib/home-link/__tests__/consent.test.ts`), that a
 run sends only what its person keeps sending, only finished sessions and
-what changed since that home held it, reads nothing back, lets nothing go,
-and sends nothing more once stopped (`standing.test.ts`), that the send's box
+what changed since that home held it, takes nothing of home's in and lets
+nothing go, and sends nothing more once stopped (`standing.test.ts`; home is
+read only as the send's copy reads it, to plan: `planTransfer`'s look at
+the copies it made before, `sessions.test.ts`), that the send's box
 starts unticked every time and only a tick adds the choice
 (`components/settings/__tests__/device-section.test.tsx`), that the mark
 sends nothing before the choice and "Stop sending" appends a stop
@@ -580,8 +582,10 @@ say is when a run is asked for:
   read it; to `lib/home-link/sent.ts` that lets `sessionsToSend` pass a
   session that is not completed, or `readSent` return one pairing's record for
   another; or to `lib/home-link/standing.ts` that sends a request without
-  `gated`'s check that its scope is still kept, reads home back, lets a
-  phone session go, or sends other than through `copyHome` and `sendKept`. Each lets something reach home, or
+  `gated`'s check that its scope is still kept, reads home other than
+  through `copyHome`'s plan, takes home's copy in, lets a phone session go,
+  or confirms what home holds (`confirmHeld`), or sends other than through
+  `copyHome` and `sendKept`. Each lets something reach home, or
   leave the phone, that its person did not choose.
 - _Scope:_ `apps/www/src/lib/home-link/consent-model.ts`,
   `consent-runtime.ts`, `practice.ts`, `runtime.ts`, `sent.ts`, `standing.ts`,

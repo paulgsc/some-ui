@@ -2,9 +2,9 @@
  * One standing send for Practice (LA11, docs/learner-data-authority.md):
  * what changed on this phone since home last held it, for what its person
  * keeps sending. Sessions are copied as "Send to home" copies them
- * (`./sessions`), kept shelf items PUT as it PUTs them (`./shelf`), and
- * nothing is read back or let go: freeing the phone stays a tap in Settings
- * (`./send`).
+ * (`./sessions`), reading home only to plan the copy, kept shelf items PUT
+ * as it PUTs them (`./shelf`), and nothing of home's is taken in or lets a
+ * phone session go: freeing the phone stays a tap in Settings (`./send`).
  *
  * Home being busy (`429`) is said as such, so the person can see it; it is
  * not retried here, and what did not go goes on the next ask.

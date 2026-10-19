@@ -55,8 +55,9 @@ export function causedBy(
 }
 
 /**
- * Copies `local` home through `send` and reads nothing back: the standing
- * send's half (`./standing`, LA11), which never lets a phone session go.
+ * Copies `local` home through `send`, reading home only to plan the copy,
+ * and confirms nothing: the standing send's half (`./standing`, LA11),
+ * which never lets a phone session go.
  */
 export function copyHome(
   send: HomeSend,

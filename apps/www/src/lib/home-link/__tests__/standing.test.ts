@@ -1,8 +1,8 @@
 /**
  * A standing send (LA11): only what its person keeps sending, only finished
- * sessions and what changed since this home last held it, nothing read back
- * or let go, a stop honoured before the next request, and home being busy
- * said as such.
+ * sessions and what changed since this home last held it, nothing of home's
+ * taken in or let go, a stop honoured before the next request, and home
+ * being busy said as such.
  */
 import { sessionRecord } from "@/test-support/session-record"
 import { memoryStorage } from "@some-ui/vite-config/vitest/memory-storage"
