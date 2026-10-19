@@ -1,12 +1,13 @@
 name: Retention
 # The retention state machine (packages/eslint/src/retention.ts; CLAUDE.md,
-# "Workflow storage") over every artifact and Actions cache. It runs after
-# each workflow that uploads a family kept across runs, so a new copy prunes
-# the old at once, and hourly for the rest: consumed artifacts and caches,
-# among them a merged PR's, whose ref is then no longer live. Each sweep plans
-# from the whole current state, so one cancelled or skipped loses nothing.
-# Hourly, not after every push: a sweep reads about 70 pages of the API, and
-# the token's 1,000 requests an hour are the whole repo's.
+# "Workflow storage") over every artifact and Actions cache. It runs after a
+# successful run of each workflow that uploads a family kept across runs, so
+# a new copy prunes the old at once (a cancelled or failed run made nothing
+# new to keep), and hourly for the rest: consumed artifacts and caches, among
+# them a merged PR's, whose ref is then no longer live. Each sweep plans from
+# the whole current state, so one cancelled or skipped loses nothing. Not
+# after every push: a sweep reads about 70 pages of the API, from a token
+# budget the whole repo shares.
 #
 # It deletes, at most 300 items a sweep, and stops below the rate floor
 # (scripts/retention.ts); the next sweep continues. On a pull request that
@@ -37,6 +38,7 @@ concurrency:
 jobs:
   sweep:
     name: Sweep artifacts and caches
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
