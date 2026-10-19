@@ -166,6 +166,9 @@ export class IncidentPlayRuntime {
   record = (): void => {
     const play = this.snapshot.play
     if (play?.file.screens[play.screen]?.type !== "record") return
+    // A take already there landed late, for an earlier visit: it is never
+    // this one's answer.
+    this.answeredTake = this.ports.takes?.getSnapshot().last?.id ?? null
     this.takingFor = play.screen
     this.ports.takes?.start({ file: play.fileName, screen: play.screen })
   }

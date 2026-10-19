@@ -165,6 +165,16 @@ describe("a spoken answer", () => {
     takes.land("late", 5_000)
     expect(runtime.getSnapshot().play?.spoken).toBeNull()
     expect(takes.note).not.toHaveBeenCalled()
+
+    // Recording again: the late take is still the port's last, and is not
+    // taken for this answer; the new one is.
+    runtime.record()
+    expect(runtime.getSnapshot().play?.spoken).toBeNull()
+    takes.land("fresh", 7_000)
+    expect(runtime.getSnapshot().play?.spoken).toMatchObject({
+      as: "recorded",
+      take: "fresh",
+    })
   })
 
   it("still answers the record screen after the surface mounts twice", () => {
