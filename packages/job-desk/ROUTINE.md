@@ -427,8 +427,9 @@ the posting:
   `<div class="application-label">` ones outside the cards; "Additional
   information" (`name="comments"`) is the cover letter. Its own questions are
   in each hidden input named `cards[<id>][baseTemplate]`, whose `value` is
-  entity-escaped JSON: each of its `fields` has a `text`, a `type` (free text
-  is `textarea` or `text`) and `required`. Read the questions there only, not
+  entity-escaped JSON: each of its `fields` has a `text`, a `type` and
+  `required`; one is free text when it is a `textarea`, or a `text` that asks
+  for prose (not a preferred name or a pronunciation). Read the questions there only, not
   their labels in the page as well.
 - **A Hacker News post** has no form: leave the questions, the cover letter
   and the pay expectation out.
@@ -449,7 +450,8 @@ A form that can't be read leaves them out too; say so in the summary. Then:
   answer it, else `draft: null`. A draft is at most `MAX_ANSWER_WORDS` (150),
   or the form's own limit when it states a shorter one ("in 2–3 sentences").
 - **Cover letter:** a `coverLetter` draft of at most `MAX_COVER_LETTER_WORDS`
-  (250), only when the form takes one.
+  (250), only when the form takes one, as text or only as a file: I save the
+  draft as one.
 - **Compensation:** only when the form asks my pay expectation, which then
   goes here and not in `questions`, as the cover letter goes only in
   `coverLetter`. `ask` is a
@@ -460,8 +462,8 @@ A form that can't be read leaves them out too; say so in the summary. Then:
 Every draft is first person and built from the pick's `fits`, restating what
 they say. It never claims a gap, a term in the pick's `dontClaim`, or one of
 `FORBIDDEN_TERMS`, and never carries a phone number or address. The checker
-holds each draft to its cap, every required question to a draft, and every
-draft and row to the terms and contact details above; the rest (a form's
+holds each draft to its cap, every required question to a draft, every draft
+to the terms above, and every draft and row to the contact details; the rest (a form's
 shorter limit, first person, the gaps) is yours to hold.
 
 ## 8. Write it

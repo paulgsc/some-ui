@@ -32,15 +32,31 @@ function daysBetween(from: string, to: string): number {
  * not one: a posting's id in a link is as long.
  */
 const PHONE =
-  /(?<!\d)(?:\+?1[\s.-]?)?(?:\(\d{3}\)\s?|\d{3}[\s.-])\d{3}[\s.-]\d{4}(?!\d)/
+  /(?<!\d)(?:\+?1[\s.-]?)?(?:\(\d{3}\)[\s.-]?|\d{3}[\s.-])\d{3}[\s.-]\d{4}(?!\d)/
 
 /** A street address: a house number, a name, and a street word. */
 const STREET =
   /\b\d{1,6}\s+(?:[A-Z][\w'-]*\s+){1,3}(?:St|Street|Ave|Avenue|Rd|Road|Blvd|Boulevard|Way|Dr|Drive|Ln|Lane|Ct|Court|Pl|Place|Ter|Terrace)\b/
 
-/** A kit row labelled for a detail I type myself, as the whole label. */
+/** A detail I type myself, as a form labels the row for it. */
 const TYPED_BY_ME =
-  /^\s*(?:(?:mobile|cell|home|work|contact)\s+)?(?:(?:tele)?phone(?:\s+number)?|number)\s*$|^\s*(?:(?:street|mailing|home|postal)\s+)?address\s*$/i
+  /^(?:(?:mobile|cell|home|work|contact)\s+)?(?:(?:tele)?phone(?:\s+number)?|number)$|^(?:mobile|cell)$|^(?:(?:street|mailing|home|postal|current|residential)\s+)?address(?:\s+line\s*\d)?$/
+
+/**
+ * Whether a kit row's label asks for a phone number or address. A form
+ * dresses a label ("What is your phone number?", "Phone ✱", "Address
+ * (optional)"), so that is taken off before the label is matched whole: a
+ * question that only mentions one ("Built mobile apps?") is not a row for it.
+ */
+function typedByMe(label: string): boolean {
+  const bare = label
+    .toLowerCase()
+    .replace(/\(optional\)/g, "")
+    .replace(/[\s*✱:?]+$/u, "")
+    .replace(/^\s*(?:what(?: is|'s) )?(?:your\s+)?/, "")
+    .trim()
+  return TYPED_BY_ME.test(bare)
+}
 
 /** `text` claiming a term the evidence or the pick rules out, if it does. */
 function claimFinding(
@@ -113,7 +129,7 @@ function kitFindings(pick: Pick, at: string): ReadonlyArray<Finding> {
   for (const [kind, list] of Object.entries(rows)) {
     list.forEach((row, i) => {
       texts.push([`${kind}.${i}`, row.value])
-      if (TYPED_BY_ME.test(row.label))
+      if (typedByMe(row.label))
         found.push({
           path: `${at}.kit.${kind}.${i}.label`,
           message: `"${row.label}" is mine to type`,
@@ -133,7 +149,7 @@ function kitFindings(pick: Pick, at: string): ReadonlyArray<Finding> {
 /**
  * What the schema cannot say about a digest: the policy's limits, the
  * queue's room, one fingerprint per posting, no fit that claims what the
- * same pick says not to claim, and each kit's drafts (`kitFindings`). An
+ * evidence or the same pick rules out, and each kit's drafts (`kitFindings`). An
  * empty list is what a run uploads.
  */
 export function digestFindings(digest: Digest): ReadonlyArray<Finding> {

@@ -475,13 +475,26 @@ describe("digestFindings", () => {
   it("leaves my phone number and address to me", () => {
     const digest = sample()
     const { kit } = digest.picks[0]!
-    kit.coverLetter = "Call me at (510)555-0134."
+    kit.coverLetter = "Call me at (510)-555-0134."
     kit.compensation = { ask: "$110,000", why: "I live at 12 Oak Street." }
     kit.fields.push({ label: "Telephone", value: "on request" })
     kit.answers.push({ label: "Street address", value: "Berkeley" })
+    for (const label of [
+      "Phone ✱",
+      "What is your phone number?",
+      "Mobile",
+      "Address line 1",
+      "Address (optional)",
+    ])
+      kit.answers.push({ label, value: "Mine" })
     expect(messages(digest)).toEqual([
       'picks.0.kit.fields.4.label: "Telephone" is mine to type',
       'picks.0.kit.answers.2.label: "Street address" is mine to type',
+      'picks.0.kit.answers.3.label: "Phone ✱" is mine to type',
+      'picks.0.kit.answers.4.label: "What is your phone number?" is mine to type',
+      'picks.0.kit.answers.5.label: "Mobile" is mine to type',
+      'picks.0.kit.answers.6.label: "Address line 1" is mine to type',
+      'picks.0.kit.answers.7.label: "Address (optional)" is mine to type',
       "picks.0.kit.coverLetter: a phone number or street address is mine to type",
       "picks.0.kit.compensation.why: a phone number or street address is mine to type",
     ])
