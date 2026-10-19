@@ -1,7 +1,5 @@
 import { classify, estimate } from "@censor/lib/content/maturity/maturity"
-import { describe, expect, it } from "vitest"
-
-import type { Settings } from "./settings"
+import type { Settings } from "@censor/lib/settings/settings"
 import {
   BOUNDARIES,
   BOUNDARY_CHANGES_KEY,
@@ -13,7 +11,8 @@ import {
   parseSettings,
   SETTINGS_KEY,
   settingsWrite,
-} from "./settings"
+} from "@censor/lib/settings/settings"
+import { describe, expect, it } from "vitest"
 
 const settings = (overrides: Partial<Settings>): Settings => ({
   ...DEFAULT_SETTINGS,

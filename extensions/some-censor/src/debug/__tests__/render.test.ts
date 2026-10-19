@@ -15,7 +15,10 @@ import {
   sessionStorageKey,
   type IndexEntry,
 } from "@censor/lib/content/observability"
-import { BOUNDARY_CHANGES_KEY } from "@censor/lib/settings/settings"
+import {
+  BOUNDARY_CHANGES_KEY,
+  CHOICE_CHANGES_KEY,
+} from "@censor/lib/settings/settings"
 import { ext } from "@censor/platform/content"
 import {
   fakeStorage,
@@ -184,6 +187,28 @@ describe("boundary changes", () => {
     await vi.waitFor(() => {
       expect(document.body.textContent).toContain("2 years")
     })
+  })
+})
+
+describe("mode and autoplay changes (#1966)", () => {
+  it("lists every logged change, newest first, in the settings' own words", async () => {
+    const { store } = installFakeStorage()
+    store.set(CHOICE_CHANGES_KEY, [
+      { at: NOW, choice: "mode", from: "standard", to: "strict" },
+      { at: NOW + 1000, choice: "autoplay", from: "stop", to: "skip" },
+    ])
+    await mountPage()
+    await vi.waitFor(() => {
+      expect(document.body.textContent).toContain("Mode and autoplay changes")
+      expect(
+        document.querySelectorAll("table.bc-events tbody tr")
+      ).toHaveLength(2)
+    })
+    const rows = [...document.querySelectorAll("table.bc-events tbody tr")]
+    expect(rows.map((r) => r.textContent)).toEqual([
+      expect.stringMatching(/autoplayStopSkip it$/),
+      expect.stringMatching(/modeStandardStrict$/),
+    ])
   })
 })
 

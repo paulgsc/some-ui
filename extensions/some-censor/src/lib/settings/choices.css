@@ -1,0 +1,82 @@
+/* The switch and segments the popup and the settings page share
+   (choices.ts). Each page defines the colour properties. */
+
+.choice-switch {
+  background: var(--bc-accent);
+  border: 0;
+  border-radius: 10px;
+  cursor: pointer;
+  flex: none;
+  height: 20px;
+  position: relative;
+  width: 34px;
+}
+
+.choice-switch::after {
+  background: var(--bc-bg);
+  border-radius: 50%;
+  content: "";
+  height: 14px;
+  position: absolute;
+  right: 3px;
+  top: 3px;
+  width: 14px;
+}
+
+.choice-switch[aria-checked="false"] {
+  background: var(--bc-border);
+}
+
+.choice-switch[aria-checked="false"]::after {
+  right: 17px;
+}
+
+.choice {
+  display: grid;
+  gap: 8px;
+}
+
+.choice__question {
+  font-size: 13.5px;
+  font-weight: 500;
+  line-height: 1.3;
+}
+
+.choice__segments {
+  border: 1px solid var(--bc-border);
+  border-radius: 3px;
+  display: grid;
+  grid-auto-columns: minmax(0, 1fr);
+  grid-auto-flow: column;
+  overflow: hidden;
+}
+
+.choice__segments button {
+  background: transparent;
+  border: 0;
+  color: var(--bc-muted);
+  cursor: pointer;
+  font: 500 12px var(--bc-mono);
+  padding: 8px 4px;
+}
+
+.choice__segments button + button {
+  border-left: 1px solid var(--bc-border);
+}
+
+.choice__segments button[aria-pressed="true"] {
+  background: var(--bc-accent);
+  color: var(--bc-bg);
+}
+
+.choice__line {
+  color: var(--bc-muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.choice-switch:focus-visible,
+.choice__segments button:focus-visible {
+  outline: 2px solid var(--bc-accent);
+  outline-offset: 2px;
+}

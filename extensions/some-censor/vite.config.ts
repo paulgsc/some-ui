@@ -18,6 +18,7 @@ const entries = [
   { name: "background", input: "src/background/background.ts" },
   { name: "debug", input: "debug.html", classic: false },
   { name: "popup", input: "popup.html", classic: false },
+  { name: "options", input: "options.html", classic: false },
 ]
 
 // The content stylesheet is a standalone file the manifest references

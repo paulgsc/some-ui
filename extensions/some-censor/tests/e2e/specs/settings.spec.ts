@@ -8,6 +8,9 @@
  *      the pre-mask.
  * S3 — Under Strict a card the content script has not read is not painted;
  *      Standard blurs it (#1966).
+ * S4 — A mode picked in the popup re-decides an open tab (#1966).
+ * S5 — The settings page and the popup show the same stored choice: a mode
+ *      picked on the page is the popup's pressed one (#1966).
  */
 
 import { expect, test } from "@censor/playwright/fixture"
@@ -167,4 +170,45 @@ test("S3: Strict paints no unread card, and Standard blurs it", async ({
   )
   expect(await paintedPixels(card, ground), "Strict: not painted").toBe(0)
   await expect(card).not.toHaveAttribute("data-boyo")
+})
+
+test("S4: a mode picked in the popup reaches an open tab", async ({
+  context,
+  extensionId,
+  fixture,
+}) => {
+  const page = await fixture.goto("yt-lane")
+  await expect(page.locator("#ost")).toHaveAttribute("data-boyo", "whole")
+
+  const popup = await context.newPage()
+  await popup.goto(`chrome-extension://${extensionId}/popup.html`)
+  await popup.getByRole("button", { name: "Strict" }).click()
+  await expect(popup.getByRole("button", { name: "Strict" })).toHaveAttribute(
+    "aria-pressed",
+    "true"
+  )
+  await expect(page.locator("#ost")).toHaveAttribute("data-boyo", "absent")
+})
+
+test("S5: the settings page and the popup show the same choice", async ({
+  context,
+  extensionId,
+}) => {
+  const options = await context.newPage()
+  await options.goto(`chrome-extension://${extensionId}/options.html`)
+  // A card's name is all it says, and it says its mode's name first.
+  const open = options.getByRole("button", { name: /^Open/ })
+  await open.click()
+  await expect(open).toHaveAttribute("aria-pressed", "true")
+
+  const popup = await context.newPage()
+  await popup.goto(`chrome-extension://${extensionId}/popup.html`)
+  await expect(popup.getByRole("button", { name: "Open" })).toHaveAttribute(
+    "aria-pressed",
+    "true"
+  )
+  await popup.getByRole("button", { name: "Skip it" }).click()
+  await expect(
+    options.getByRole("button", { name: "Skip it" })
+  ).toHaveAttribute("aria-pressed", "true")
 })

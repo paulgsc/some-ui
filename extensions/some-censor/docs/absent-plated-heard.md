@@ -123,16 +123,16 @@ no single switch inside a mode (#1966). Changing the boundary, the mode or
 autoplay is recorded quietly for Diagnostics (the doctrine's §9 falsifier
 needs it) and never prompted about.
 
-_Status: holds in part (#1807, #1966)._ The settings are one `storage.local`
+_Status: holds (#1807, #1966)._ The settings are one `storage.local`
 record, read by the content script at start and on every change, so an open
 tab follows without a reload. Unreadable storage yields the defaults. Off is
 plain YouTube: the content script stops and lifts the pre-mask, and a content
-script that never runs leaves it on. The popup sets the boundary and the
-switch; the mode and the autoplay choice are followed but not yet offered
-anywhere (#1966's last slice). Their changes are logged, and Diagnostics
-shows only boundary changes so far. Until the content script has read the
-mode, which the stylesheet cannot do itself, an unread card is blurred under
-Strict too.
+script that never runs leaves it on. The popup holds every choice; the
+settings page shows the modes as cards and then the age and autoplay; the tab
+and toolbar menu holds the switch, the mode and autoplay, never the age.
+Diagnostics shows every change. Until the content script has read the mode,
+which the stylesheet cannot do itself, an unread card is blurred under Strict
+too.
 
 ## 8. Never on youtube.com
 

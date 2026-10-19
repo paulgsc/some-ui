@@ -31,12 +31,18 @@ import {
   sessionStorageKey,
   type IndexEntry,
 } from "@censor/lib/content/observability"
-import type { BoundaryChange } from "@censor/lib/settings/settings"
+import type {
+  BoundaryChange,
+  ChoiceChange,
+} from "@censor/lib/settings/settings"
 import {
   BOUNDARY_CHANGES_KEY,
   BOUNDARY_LABEL,
+  CHOICE_CHANGES_KEY,
   parseBoundaryChanges,
+  parseChoiceChanges,
 } from "@censor/lib/settings/settings"
+import { AUTOPLAY_WORDS, MODE_WORDS } from "@censor/lib/settings/words"
 import { ext } from "@censor/platform/content"
 import {
   createSessionLoader,
@@ -535,43 +541,51 @@ function timelineSection(b: Bundle, rerender: () => void): HTMLElement {
   return section
 }
 
+/** One logged change, as a row: when, what changed (if the log mixes), from, to. */
+type ChangeRow = {
+  readonly at: number
+  readonly cells: ReadonlyArray<string>
+}
+
 /**
- * Every boundary change the popup logged, newest first. It spans every
- * session, so it does not follow the picker.
+ * A log of the owner's changes, newest first. Each spans every session, so
+ * it does not follow the picker.
  */
-function boundarySection(
-  changes: ReadonlyArray<BoundaryChange> | null | undefined
+function changesSection(
+  title: string,
+  unchanged: string,
+  columns: ReadonlyArray<string>,
+  rows: ReadonlyArray<ChangeRow> | null | undefined
 ): HTMLElement {
   const section = el("section")
-  section.append(el("h2", { text: "Boundary changes" }))
-  if (changes == null || changes.length === 0) {
+  section.append(el("h2", { text: title }))
+  if (rows == null || rows.length === 0) {
     section.append(
       el("div", {
-        class: changes === null ? "bc-empty bad" : "bc-empty",
+        class: rows === null ? "bc-empty bad" : "bc-empty",
         text:
-          changes === undefined
+          rows === undefined
             ? "Loading…"
-            : changes === null
+            : rows === null
               ? "The change log could not be read."
-              : "The boundary has not changed.",
+              : unchanged,
       })
     )
     return section
   }
   const table = el("table", { class: "bc-events" })
   const head = el("tr")
-  for (const label of ["when", "from", "to"]) {
+  for (const label of ["when", ...columns]) {
     head.appendChild(el("th", { text: label }))
   }
   table.appendChild(el("thead", {}, [head]))
   const body = el("tbody")
-  for (const change of [...changes].reverse()) {
+  for (const { at, cells } of [...rows].reverse()) {
     const row = el("tr")
     row.append(
-      el("td", { class: "muted", text: new Date(change.at).toLocaleString() }),
-      el("td", { text: BOUNDARY_LABEL[change.from] }),
-      el("td", { text: BOUNDARY_LABEL[change.to] })
+      el("td", { class: "muted", text: new Date(at).toLocaleString() })
     )
+    for (const cell of cells) row.append(el("td", { text: cell }))
     body.appendChild(row)
   }
   table.appendChild(body)
@@ -579,15 +593,50 @@ function boundarySection(
   return section
 }
 
-/** `undefined` until read, `null` when the read failed. */
-let boundaryChanges: ReadonlyArray<BoundaryChange> | null | undefined
+const boundaryRows = (
+  changes: ReadonlyArray<BoundaryChange>
+): ReadonlyArray<ChangeRow> =>
+  changes.map((c) => ({
+    at: c.at,
+    cells: [BOUNDARY_LABEL[c.from], BOUNDARY_LABEL[c.to]],
+  }))
 
-async function loadBoundaryChanges(): Promise<void> {
+const choiceRows = (
+  changes: ReadonlyArray<ChoiceChange>
+): ReadonlyArray<ChangeRow> =>
+  changes.map((c) =>
+    c.choice === "mode"
+      ? {
+          at: c.at,
+          cells: ["mode", MODE_WORDS[c.from].name, MODE_WORDS[c.to].name],
+        }
+      : {
+          at: c.at,
+          cells: [
+            "autoplay",
+            AUTOPLAY_WORDS[c.from].label,
+            AUTOPLAY_WORDS[c.to].label,
+          ],
+        }
+  )
+
+/** `undefined` until read, `null` when the read failed. */
+let boundaryChanges: ReadonlyArray<ChangeRow> | null | undefined
+let choiceChanges: ReadonlyArray<ChangeRow> | null | undefined
+
+async function loadChanges(): Promise<void> {
   try {
-    const stored = await ext.storage.local.get(BOUNDARY_CHANGES_KEY)
-    boundaryChanges = parseBoundaryChanges(stored[BOUNDARY_CHANGES_KEY])
+    const stored = await ext.storage.local.get([
+      BOUNDARY_CHANGES_KEY,
+      CHOICE_CHANGES_KEY,
+    ])
+    boundaryChanges = boundaryRows(
+      parseBoundaryChanges(stored[BOUNDARY_CHANGES_KEY])
+    )
+    choiceChanges = choiceRows(parseChoiceChanges(stored[CHOICE_CHANGES_KEY]))
   } catch {
     boundaryChanges = null
+    choiceChanges = null
   }
   render()
 }
@@ -642,7 +691,7 @@ function header(b: Bundle | undefined): HTMLElement {
   const refresh = el("button", { text: "Refresh" })
   refresh.addEventListener("click", () => {
     void loader.load()
-    void loadBoundaryChanges()
+    void loadChanges()
   })
   const actions = el("div", { class: "bc-actions" }, [refresh])
 
@@ -662,7 +711,22 @@ function render(): void {
 
   const { bundle, loadError } = loader
   root.appendChild(header(bundle))
-  root.appendChild(boundarySection(boundaryChanges))
+  root.appendChild(
+    changesSection(
+      "Boundary changes",
+      "The boundary has not changed.",
+      ["from", "to"],
+      boundaryChanges
+    )
+  )
+  root.appendChild(
+    changesSection(
+      "Mode and autoplay changes",
+      "Neither has changed.",
+      ["what", "from", "to"],
+      choiceChanges
+    )
+  )
   root.appendChild(pickerSection())
 
   if (loadError !== undefined) {
@@ -712,4 +776,4 @@ const loader = createSessionLoader<IndexEntry, Bundle>({
 })
 
 void loader.load()
-void loadBoundaryChanges()
+void loadChanges()
