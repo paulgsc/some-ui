@@ -1,0 +1,43 @@
+name: Scratch cache usage
+# SCRATCH (#1950): measures the Actions cache, which the agent's proxy cannot
+# read. Removed before merge.
+on:
+  pull_request:
+    branches: [main]
+permissions:
+  actions: read
+jobs:
+  measure:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Measure
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api "repos/$GITHUB_REPOSITORY/actions/cache/usage"
+          gh api --paginate "repos/$GITHUB_REPOSITORY/actions/caches?per_page=100" \
+            --jq '.actions_caches[] | [.key, .ref, .size_in_bytes, .created_at, .last_accessed_at] | @tsv' > caches.tsv
+          python3 - <<'EOF'
+          import re, collections
+          rows = [l.rstrip("\n").split("\t") for l in open("caches.tsv")]
+          print("entries", len(rows), "bytes", sum(int(r[2]) for r in rows))
+          def prefix(k):
+              parts = k.split("-")
+              keep = []
+              for p in parts:
+                  if re.fullmatch(r"[0-9a-f]{16,}", p) or re.fullmatch(r"[0-9]{6,}", p):
+                      break
+                  keep.append(p)
+              return "-".join(keep[:4])
+          g = collections.defaultdict(lambda: [0, 0, set(), "9999", "0000"])
+          for k, ref, size, created, accessed in rows:
+              scope = "main" if ref == "refs/heads/main" else ("pr" if ref.startswith("refs/pull/") else ref)
+              v = g[(prefix(k), scope)]
+              v[0] += 1; v[1] += int(size); v[2].add(ref); v[3] = min(v[3], created[:10]); v[4] = max(v[4], accessed[:10])
+          print(f"{'prefix':45} {'scope':6} {'n':>4} {'MB':>8} {'refs':>4} oldest     last-used")
+          for (p, s), v in sorted(g.items(), key=lambda kv: -kv[1][1]):
+              print(f"{p:45} {s:6} {v[0]:4} {v[1]/1e6:8.1f} {len(v[2]):4} {v[3]} {v[4]}")
+          print("--- 25 largest entries")
+          for k, ref, size, created, accessed in sorted(rows, key=lambda r: -int(r[2]))[:25]:
+              print(f"{int(size)/1e6:8.1f}MB {ref:28} {created[:10]} {accessed[:10]} {k[:90]}")
+          EOF
