@@ -1,10 +1,10 @@
 /**
  * What this phone knows its paired home holds, so a standing send
  * (`./standing`, LA11) and Settings' send (`./send`) carry only what changed
- * since: each finished
- * session's `updatedAt` as it was copied, each kept shelf item's digest as
- * home answered for it, and the digests home refused, so an unchanged
- * refused item is not offered again. Kept for one pairing (`pairing`, the
+ * since: each finished session's `updatedAt` as it was copied, each kept
+ * shelf item's digest as home answered for it, and the digests home
+ * refused, so the standing send does not offer an unchanged refused item
+ * again (a tap in Settings does). Kept for one pairing (`pairing`, the
  * link's id for it): another pairing starts from nothing. Bookkeeping, not
  * the record: lost, it only means sending again, which home answers as
  * unchanged.

@@ -191,8 +191,8 @@ const StopButton = ({ stopping }: { stopping: boolean }): JSX.Element => (
 
 /**
  * "Send to home" in three taps' worth of steps (LA8): count what would go
- * (what home lacks, by `./sent`), a confirm naming that count and the host, then the one button that sends,
- * with Stop while it runs. The confirm offers, unticked every time, to keep
+ * (what home lacks, by `./sent`), a confirm naming that count and the host,
+ * then the one button that sends, with Stop while it runs. The confirm offers, unticked every time, to keep
  * sending Practice from now on (LA11); ticked, the send adds that choice to
  * the consent log before it starts.
  */

@@ -268,6 +268,16 @@ describe("DeviceSection's Home server block", () => {
         /^send 1 session and 1 kept item to home.example\?/i
       )
     ).toBeTruthy()
+    await press(/^send 2$/i)
+    expect(await screen.findByText(/^Last send:/)).toBeTruthy()
+    expect(
+      home.sent.filter((call) => JSON.stringify(call).includes("/shelf/"))
+    ).toEqual([
+      expect.objectContaining({
+        method: "PUT",
+        url: "https://home.example/api/v1/shelf/leetype/b",
+      }),
+    ])
   })
 
   it("keeps sending Practice only when its box is ticked, and asks every time until then", async () => {

@@ -152,8 +152,8 @@ export function describeSend(outcome: SendOutcome, host: string): string {
 }
 
 /**
- * What this send left home holding under `pairing`, for the standing send
- * (`./standing`) to skip: every finished session, once the copy ran to its
+ * What this send left home holding under `pairing`, for the next send to
+ * skip (this one's, or the standing send's, `./standing`): every finished session, once the copy ran to its
  * end, and each kept item home answered for, or refused.
  */
 function rememberHeld(
