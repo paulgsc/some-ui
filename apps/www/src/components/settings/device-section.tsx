@@ -23,18 +23,19 @@ import {
   typedCode,
   useHomeLink,
 } from "@/lib/home-link"
-import { keepPracticeOnHome, usePracticeShared } from "@/lib/home-link/practice"
+import { keepOnHome, useLaneChoices } from "@/lib/home-link/lanes"
+import { practiceLane } from "@/lib/home-link/practice"
+import { remember, remembered } from "@/lib/home-link/remembered"
+import { lastSend, onPhone, sendHome } from "@/lib/home-link/send"
+import type { SyncResult } from "@/lib/home-link/sync"
+import { lastSync, syncLessonsFrom } from "@/lib/home-link/sync"
 import {
   KEEP_SENDING,
   KEEP_SENDING_MORE,
   KEEP_SENDING_REFUSED,
   KEEP_SENDING_SAID,
   KEPT_NOTE,
-} from "@/lib/home-link/practice-words"
-import { remember, remembered } from "@/lib/home-link/remembered"
-import { lastSend, onPhone, sendHome } from "@/lib/home-link/send"
-import type { SyncResult } from "@/lib/home-link/sync"
-import { lastSync, syncLessonsFrom } from "@/lib/home-link/sync"
+} from "@/lib/home-link/words"
 import { useAsyncIntent, useIntentEffect } from "@/lib/intent"
 import { IntentButton } from "@/lib/intent/render"
 import {
@@ -221,7 +222,7 @@ const SendHome = ({
   useIntentEffect(run, say)
   const asking = count.state.status === "succeeded" ? count.state.value : null
   const last = lastSend()
-  const kept = usePracticeShared().size > 0
+  const kept = useLaneChoices(practiceLane).shared.size > 0
   const [keepSending, setKeepSending] = useState(false)
   const ask = (): void => {
     setKeepSending(false)
@@ -293,7 +294,7 @@ const SendHome = ({
                 count.reset()
                 if (
                   keepSending &&
-                  !keepPracticeOnHome(pairing, KEEP_SENDING_SAID)
+                  !keepOnHome(practiceLane, pairing, KEEP_SENDING_SAID)
                 ) {
                   toast.error(KEEP_SENDING_REFUSED)
                 }

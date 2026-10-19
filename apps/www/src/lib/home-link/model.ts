@@ -56,8 +56,8 @@ type Activity =
   /** Sending what this phone holds to the paired home, with its key. */
   | { readonly kind: "sending"; readonly stopping: boolean }
   /**
-   * Keeping aph on home: its outbox sent and home's record read, started by
-   * `lib/home-link/aph` rather than a tap (LA9).
+   * Keeping a record on home: what it has to send sent, started by
+   * `lib/home-link/lanes` rather than a tap (LA9 to LA11).
    */
   | { readonly kind: "keeping"; readonly stopping: boolean }
 

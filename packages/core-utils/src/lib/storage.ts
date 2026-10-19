@@ -28,7 +28,7 @@ export type OpenedRecord<T> =
  * holds it (a launch that could not write over it finds it again); false if
  * it could not.
  */
-function quarantine(
+export function quarantine(
   storage: KeyedStorage,
   raw: string,
   prefix: string

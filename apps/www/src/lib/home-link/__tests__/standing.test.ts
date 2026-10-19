@@ -1,8 +1,7 @@
 /**
  * A standing send (LA11): only what its person keeps sending, only finished
  * sessions and what changed since this home last held it, nothing of home's
- * taken in or let go, a stop honoured before the next request, and home
- * being busy said as such.
+ * taken in or let go, and a stop honoured before the next request.
  */
 import { sessionRecord } from "@/test-support/session-record"
 import { memoryStorage } from "@some-ui/vite-config/vitest/memory-storage"
@@ -113,19 +112,16 @@ describe("a standing send", () => {
     expect(puts).toHaveLength(2)
   })
 
-  it("says home was busy, and sends the busy items again next time", async () => {
+  it("sends an item home was too busy for again next time", async () => {
     const busy = { status: 429, body: "" }
     const { ports, send, puts } = setup({
       scopes: ["shelf"],
       answers: [busy, busy],
     })
-    await expect(sendStanding(send, ports)).resolves.toEqual({
-      kind: "failed",
-      why: "busy",
-    })
+    await expect(sendStanding(send, ports)).rejects.toThrow()
     expect(puts).toHaveLength(1)
     expect(readSent(ports.storage, PAIRING).shelf).toEqual({})
-    await sendStanding(send, ports)
+    await expect(sendStanding(send, ports)).rejects.toThrow()
     expect(puts).toHaveLength(2)
   })
 

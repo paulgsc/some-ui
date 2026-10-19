@@ -7,12 +7,13 @@
  * LA8 (docs/learner-data-authority.md), as this module holds it:
  *
  * - **Nothing is sent but by a method a tap called,** or by `keep`, which
- *   only `lib/home-link/aph` calls, for aph once its person opted in to
- *   keeping it on home (LA9). Creating the runtime and `load` read only the
+ *   only `lib/home-link/lanes` calls, for a record its person keeps on home
+ *   (LA9 to LA11). Creating the runtime and `load` read only the
  *   phone's own record; being paired sends nothing on a timer, on resume or
  *   on a network change.
  * - **No retry.** A failed request is said once and left; the next tap is
- *   the next try. (aph's outbox is sent again when aph next asks: LA9.)
+ *   the next try. (A kept record's changes go again when it next asks: LA9
+ *   to LA11.)
  * - **Stop, and the background, end a sync, a send or a keep** after the request
  *   in flight: the `get` or `send` it is handed refuses to send once
  *   stopped. A run is over only once every request it started has settled.
@@ -99,6 +100,22 @@ export type HomeSend = (
   path: string,
   body?: string
 ) => Promise<HomeAnswer>
+
+/** `send`, and whether home answered any of it as busy (`429`). */
+export function noticingBusy(send: HomeSend): {
+  send: HomeSend
+  seen: { busy: boolean }
+} {
+  const seen = { busy: false }
+  return {
+    seen,
+    send: async (method, path, body): ReturnType<HomeSend> => {
+      const answer = await send(method, path, body)
+      if (answer.status === 429) seen.busy = true
+      return answer
+    },
+  }
+}
 
 type SyncOutcome<T> =
   | { readonly kind: "done"; readonly value: T }

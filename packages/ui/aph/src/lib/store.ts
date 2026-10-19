@@ -8,7 +8,9 @@
  * server: the phone then keeps only the settings and what home has not
  * confirmed (the outbox), shows home's record once the app's home link has
  * read it (`pulled`), and lets go of each change home answers with as it is
- * (`sent`). The store does no I/O for that; it is told.
+ * (`sent`). The store does no I/O for that; it is told. Once its person
+ * stops sending, aph comes back to this phone (`leaveHome`) from home's
+ * record as read, with what still waited here laid over it.
  *
  * Every write is checked against `violations` (the state it leaves) and
  * `breaches` (the step it takes), both in model.ts, and refused, the state
@@ -40,6 +42,7 @@ import type { AphStorage } from "./stored"
 import {
   deviceStorage,
   forgetDeviceRecord,
+  forgetHomeRecord,
   openHome,
   openStored,
   writeHome,
@@ -78,6 +81,13 @@ export type AphStore = {
    * changing nothing, when the phone would not keep it.
    */
   keepOnHome: () => boolean
+  /**
+   * Keeps the record on this phone again, from home's record as read with
+   * every change still waiting here laid over it; a waiting change that
+   * clashes with home's record is kept aside, never dropped. True when aph
+   * is on this phone; false, changing nothing, when it can't be.
+   */
+  leaveHome: (home: HomeHeld) => boolean
   /** What waits to be sent to home; null when kept on this phone. */
   outbox: () => Outbox | null
   /** What a send to home learned (`afterSend`). */
@@ -190,6 +200,21 @@ export function createAphStore(
       forgetDeviceRecord(storage)
       record = next
       edits += 1
+      changed()
+      return true
+    },
+    leaveHome: (held): boolean => {
+      if (record === null) return true
+      if (storage === null || !writable) return false
+      const view = shown(record, held)
+      if (view === null) return false
+      const next = { settings: view.settings, entries: view.entries }
+      if (!writeStored(storage, next)) return false
+      if (!forgetHomeRecord(storage, record, view.hidden > 0)) return false
+      record = null
+      state = next
+      pulled = false
+      hidden = 0
       changed()
       return true
     },

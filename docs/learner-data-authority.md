@@ -41,8 +41,8 @@ Which authority a build starts in depends on what it can reach (`Backend`):
 | Push subscription                   | never                                        | never                                                                                                                                                                                        | the account's, on the person's own taps    |
 | Reflections                         | on the device (at most 20), never sent       | never sent (LA7)                                                                                                                                                                             | never sent (LA7)                           |
 | Shelf                               | never                                        | the account's, on the person's own taps                                                                                                                                                      | the same                                   |
-| aph (the phone's)                   | on the phone, never sent                     | once its person keeps it on home, on the paired home, synced while aph is open; the phone keeps only what home has not confirmed (LA9)                                                       | the same                                   |
-| Jobs record (the phone's)           | on the phone, never sent                     | once its person keeps it on home, a copy on the paired home, synced while the Jobs wing is open; the phone keeps its whole log (LA10)                                                        | the same                                   |
+| aph (the phone's)                   | on the phone, never sent                     | once its person keeps it on home, on the paired home, synced while aph is open; the phone keeps only what home has not confirmed; stopped from aph's mark, which brings it back (LA9)        | the same                                   |
+| Jobs record (the phone's)           | on the phone, never sent                     | once its person keeps it on home, a copy on the paired home, synced while the Jobs wing is open; the phone keeps its whole log; stopped from the wing's mark (LA10)                          | the same                                   |
 | Practice (the phone's)              | on the phone, never sent                     | once its person ticks "Keep sending" in the send's confirm, its finished sessions and kept items sent while Practice is open; nothing let go on its own; stopped from Practice's mark (LA11) | the same                                   |
 | Speech                              | the browser's own voice                      | the server's speech service                                                                                                                                                                  | the same                                   |
 | Reminders                           | the client's own policy, while a tab is open | the client's own policy, while a tab is open                                                                                                                                                 | the server's push, with the browser closed |
@@ -339,8 +339,8 @@ declared (checked by reading every call site and by the tests named).
   `CapacitorHttp`, call `native-http`, call `lib/home-link`); one that calls
   a `homeLink()` method that sends (`pair`, `unpair`, `sync`, `send`) from anywhere but
   a press handler in the Home server block or a module that block calls; one
-  that calls its `keep` from anywhere but `lib/home-link/aph.ts` (LA9),
-  `lib/home-link/jobs.ts` (LA10) or `lib/home-link/practice.ts` (LA11); one
+  that calls its `keep` from anywhere but `lib/home-link/lanes.ts` (LA9 to
+  LA11); one
   that sends from `createHomeLink`,
   `load`, or, outside those two, a `useEffect`, a timer, a
   `visibilitychange` or `online` listener; one that retries a failed home
@@ -394,8 +394,8 @@ declared (checked by reading every call site and by the tests named).
 - _Why not enforced:_ who may reach home is, by test (`egress-choke-points`:
   `CapacitorHttp` named only in `native-http`, which only
   `lib/home-link/index.ts` imports as a value, and `lib/home-link` imported
-  only by the Home server block, the kept-on-home strips and Practice's
-  mark). What a test cannot say is that a call
+  only by the Home server block, the marks of the records kept on home and
+  what hands aph's lane to its mark). What a test cannot say is that a call
   site in that block is a tap: a lint rule cannot
   tell a press handler from an effect that reaches it through a helper.
   Held when declared, by reading every caller (`device-section.tsx` alone
@@ -408,33 +408,62 @@ declared (checked by reading every call site and by the tests named).
   asked about stay) and
   `components/settings/__tests__/device-section.test.tsx` (opening Settings,
   paired or not, sends nothing; unpairing and the send each take a second
-  press). Held again when Practice's mark (`components/device-home-glyph.tsx`)
-  joined the link's callers: it calls none of `pair`, `unpair`, `sync`,
-  `send` or `stop`, and reaches home only through Practice's `keep` lane,
-  by `askPractice` from its Send now button and the watch
-  `usePracticeHome` mounts, both LA11's; its Stop sending only adds to the
-  consent log.
+  press). Held again when the marks of the records kept on home
+  (`components/device-home-glyph.tsx`, one wiring in
+  `lib/home-link/lanes.ts`) joined the link's callers: the mark calls none
+  of `pair`, `unpair`, `sync`, `send` or `stop`, and reaches home only
+  through `lanes.ts`, the one caller of `keep`, by `askLane` from its Send
+  now button, the watch `useLaneHome` mounts, and, for aph, one read of
+  home's record (`bringBack`) after its person's stop: all LA9's; its choices
+  only add to the consent log.
 
 ### LA9: aph is sent home only while its person is using it
+
+aph, the Jobs record and Practice are kept on home through one wiring
+(`lib/home-link/lanes.ts`): each declares its lane (its scopes, its exchange,
+how its record moves, its sheet's counts; `aph.ts`, `jobs.ts`,
+`practice.ts`), and every lane shares the consent log, the runtime, the watch
+and the mark (`components/device-home-glyph.tsx`). This invariant states the
+wiring's claim for every lane, and aph's own; LA10 and LA11 add the Jobs
+record's and Practice's.
 
 What aph may send home, and what the phone may let go of, is enforced by
 test: who reaches the link and its `keep` lane (`egress-choke-points`), the
 requests an exchange makes and that an entry leaves the phone only once home
 answers with it unchanged (`packages/ui/aph/src/lib/__tests__/sync.test.ts`,
-`home.test.ts`), one run at a time and the opt-in's two presses
-(`lib/home-link/__tests__/kept.test.ts`,
-`components/aph/device-keep-on-home.test.tsx`). What no test can say is when
-a run is asked for:
+`home.test.ts`), that bringing aph back sends nothing, keeps what waited here
+and sets aside a change that clashes with home's record (`sync.test.ts`), one
+run at a time (`lib/home-link/__tests__/kept.test.ts`), that every request a
+run makes finds a scope still kept and that home being busy is said as such
+(`lanes.test.ts`), and the mark's two presses, its stop and its way back
+(`components/__tests__/device-home-glyph.test.tsx`). What no test can say is
+when a run is asked for:
 
-- _Claim:_ `askKept` (`lib/home-link/kept-watch.ts`) asks for a run of aph
-  only at a moment its person is using aph: from `watchKept`, which for aph
-  only `useAphHome` starts, for as long as aph's strip is mounted, on the
-  strip mounting, a move of aph's revision (an edit on this phone, or the
-  switch to home, the opt-in's second press), the app coming back to the
-  foreground, the network coming back, the phone being paired, or the link
-  freeing up after turning a run away; or from `askAph`, which aph's strip
-  passes only as the shared strip's `ask`. Each asks only when aph is kept on
-  home and the document is visible. Nothing asks on a timer.
+- _Claim:_ `askKept` (`lib/home-link/kept-watch.ts`) asks for a run of a
+  lane only at a moment its person is using that lane's wing: from
+  `watchKept`, which only `useLaneHome` starts, for as long as the lane's
+  mark (`LaneMark`, which `DeviceHomeGlyph` mounts only in the Android app's
+  header, for the wing that shows) is mounted, on the mark mounting, a move
+  of the lane's revision (its record changed on this phone, or the consent
+  log grew), the app coming back to the foreground, the network coming back,
+  the phone being paired, or the link freeing up after turning a run away; or
+  from `askLane`, which the mark's sheet calls only from its Send now button.
+  Each asks only when the consent log keeps one of the lane's scopes under
+  the paired home's id and the document is visible, and every request a run
+  makes first finds one still kept (`laneExchange`), so a stop ends a run
+  before its next request. Nothing asks on a timer. A kept choice enters the
+  log only from the mark's second press, with the words its first press
+  showed (`offer`), from Settings' send with its box ticked (Practice, LA11),
+  or once, as found (`said: null`), for a lane whose record's own switch
+  kept it on home before the log and whose scopes no choice ever named; a
+  stop only from the mark's second press of Stop sending. For aph, the mark
+  shows aph's lane only while aph's screens hand it in (`DeviceAphLane`, in
+  aph's layout); opting in moves aph's record to home (`keepOnHome`), and
+  stopping asks home once for its record back (`bringBack`: `GET /aph`,
+  nothing sent), from the stop's second press, from the Bring it back
+  button, or once the link frees after turning that read away, only while
+  nothing of aph is kept; when home can't be reached, aph stays as it was,
+  and the mark says this phone holds only what home hadn't confirmed.
 - _Falsified by:_ a hunk to `lib/home-link/kept-watch.ts` that reaches
   `askKept` from anything but `watchKept`'s record subscription, its link
   subscription, its `visibilitychange` and `online` listeners and its first
@@ -443,30 +472,58 @@ a run is asked for:
   pairing or for the link freeing up after a run it turned away), removes or
   changes anything the cleanup `watchKept` returns undoes, or removes
   `askKept`'s check that the record is kept on home or that the document is
-  visible; a hunk to `lib/home-link/aph.ts` that calls `watchKept` from
-  anywhere but `useAphHome`'s effect, passes it anything but `recordOf(aph)`
-  and `aphHome(aph)`, keeps that effect from returning the cleanup
-  `watchKept` returns, calls
-  `askKept` from anywhere but `askAph`, changes `recordOf`'s `kept`,
-  `revision` or `subscribe` to anything but aph's store's, or makes
-  `keepAphOnHome` do more than switch the store; a hunk to
-  `components/aph/device-keep-on-home.tsx` that calls `keepAphOnHome` or
-  `askAph` other than as the shared strip's `keep` and `ask`; or a hunk to
-  `components/device-keep-on-home.tsx` that calls `keep` or `ask` other
-  than from a button's `onClick`, or lets the first press of the opt-in call
-  `keep`.
-- _Scope:_ `apps/www/src/lib/home-link/kept-watch.ts`,
-  `apps/www/src/lib/home-link/aph.ts`,
-  `apps/www/src/components/aph/device-keep-on-home.tsx`,
-  `apps/www/src/components/device-keep-on-home.tsx`.
-- _Why not enforced:_ whether a moment is one where the person is using aph
-  is a reading of intent: a test sees a listener, not why it is there, and a
-  lint rule cannot tell a press handler from an effect that reaches it
-  through a helper. Held when declared, by reading every call: `askKept` is
-  called in `watchKept`'s three listeners and its first ask, and in
-  `askAph`, `askJobs` and `askPractice` (LA11); `askAph` and `keepAphOnHome` are passed only as
-  the shared strip's `ask` and `keep`, which it calls only from its
-  buttons' `onClick`s.
+  visible; a hunk to `lib/home-link/lanes.ts` that calls `watchKept` from
+  anywhere but `useLaneHome`'s effect, passes it anything but `wire(lane)`'s
+  `record` and `sending`, keeps that effect from returning a cleanup that
+  calls the one `watchKept` returns, calls `askKept` from anywhere but
+  `askLane`, makes the record's `kept` anything but the lane's scopes in
+  `sharedNow` of the log under `pairingOf`, keeps its `revision` from moving
+  with the lane's and the log's length, or its `subscribe` from hearing
+  both, calls `phoneConsent().choose` from anywhere but `keepOnHome`,
+  `stopOnHome` and `enterEarlier`, lets `enterEarlier` choose for a lane
+  whose `keptBefore` is not true or one of whose scopes `everChosen` finds,
+  or with `said` other than `null`, lets `back` run `bringBack` while a scope
+  is kept, or asks it from anywhere but `stopOnHome`, `bringLaneBack` and the
+  effect's link listener (once the link is idle after it was turned away
+  busy); a hunk to `lib/home-link/kept-runtime.ts` that lets `laneExchange`
+  send a request without its check that a scope is still kept, or makes a
+  run say anything but busy once home answered one of its requests `429`
+  (unless it was forgotten or stopped); a hunk to
+  `components/device-home-glyph.tsx` that calls `askLane`, `keepOnHome`,
+  `stopOnHome` or `bringLaneBack` other than from a button's `onClick`, lets
+  the first press of the opt-in or of Stop sending do it, passes `keepOnHome`
+  words other than the `offer` it shows, or shows a lane under another
+  wing's mark; a hunk that mounts `DeviceHomeGlyph` anywhere but
+  `routes/_dashboard.tsx`'s header in the device build, or `DeviceAphLane`
+  anywhere but `routes/_dashboard/_apk/aph.tsx`; a hunk to
+  `lib/home-link/aph.ts` that makes the lane's `exchange` do more than make
+  the switch and run aph's exchange, its `revision` anything but the store's
+  `edits` while on home and -1 on the phone, its `keptBefore` anything but
+  the store being on home, or its `bringBack` anything but aph's; or a hunk
+  to `packages/ui/aph/src/lib/sync.ts` that makes `bringBack` send anything
+  but one `GET /aph`, or to `store.ts` that lets `leaveHome` drop a waiting
+  change `shown` hides without `forgetHomeRecord`'s copy under
+  `LEFT_PREFIX`, or remove the home record before the device record is
+  written.
+- _Scope:_ `apps/www/src/lib/home-link/kept-watch.ts`, `lanes.ts`,
+  `kept-runtime.ts`, `aph.ts`, `apps/www/src/components/device-home-glyph.tsx`,
+  `apps/www/src/components/aph/device-aph-lane.tsx`,
+  `apps/www/src/routes/_dashboard.tsx`,
+  `apps/www/src/routes/_dashboard/_apk/aph.tsx`,
+  `packages/ui/aph/src/lib/sync.ts`, `packages/ui/aph/src/lib/store.ts`.
+- _Why not enforced:_ whether a moment is one where the person is using a
+  wing is a reading of intent: a test sees a listener, not why it is there,
+  and a lint rule cannot tell a press handler from an effect that reaches it
+  through a helper. Held when declared, by reading every call: `watchKept`
+  only in `useLaneHome`'s effect; `askKept` in `watchKept`'s three listeners
+  and its first ask, and in `askLane`; `askLane` only in the sheet's Send now
+  `onClick`; `keepOnHome` only in the sheet's second opt-in press, with the
+  `offer` it shows, and in `device-section.tsx`'s send `onPress` behind the
+  ticked box; `stopOnHome` only in the sheet's second Stop press;
+  `bringLaneBack` only in Bring it back's `onClick`; `choose` only in
+  `keepOnHome`, `stopOnHome` and `enterEarlier`; `DeviceHomeGlyph` only in
+  `_dashboard.tsx`'s header under `VITE_DEVICE_BACKEND`; `DeviceAphLane` only
+  in aph's layout.
 
 ### LA10: the Jobs record is sent home only while its person is using the wing
 
@@ -475,47 +532,31 @@ its own, is enforced by test: who reaches the link and its `keep` lane
 (`egress-choke-points`), the requests an exchange makes, that a refused
 event stays on the phone and is not sent again, and that home's copy is
 taken in only by a phone whose log is empty (`lib/jobs/__tests__/home.test.ts`),
-one run at a time (`lib/home-link/__tests__/kept.test.ts`), and the opt-in's
-two presses (`components/jobs/__tests__/keep-on-home.test.tsx`). Unlike aph, the phone
-keeps its whole log once home holds it: its shares count events by their
-place in the log, and home's copy is the way back for a phone that lost it.
-What no test can say is when a run is asked for:
+one run at a time (`lib/home-link/__tests__/kept.test.ts`), and the mark's
+two presses, its stop and the choice its old switch made entering the log
+once, as found (`components/__tests__/device-home-glyph.test.tsx`). Unlike
+aph, the phone keeps its whole log once home holds it: its shares count
+events by their place in the log, and home's copy is the way back for a
+phone that lost it, so stopping is the choice alone. What no test can say is
+when a run is asked for:
 
-- _Claim:_ `askKept` asks for a run of the Jobs record only at a moment its
-  person is using the Jobs wing: from `watchKept`, which for the record only
-  `useJobsHome` starts, for as long as the wing's layout
-  (`routes/_dashboard/_apk/jobs.tsx`, through `JobsHomeWatch`) is mounted, on
-  it mounting, a move of the record's revision (an event added on this
-  phone, the switch to home, the opt-in's second press, or home's copy
-  taken in by a phone whose log was empty), the app coming
-  back to the foreground, the network coming back, the phone being paired,
-  or the link freeing up after turning a run away; or from `askJobs`, which
-  the Record view's strip passes only as the shared strip's `ask`. Each asks
-  only when the record is kept on home and the document is visible. Nothing
-  asks on a timer.
-- _Falsified by:_ a hunk to `lib/home-link/kept-watch.ts` as LA9's says; a
-  hunk to `lib/home-link/jobs.ts` that calls `watchKept` from anywhere but
-  `useJobsHome`'s effect, passes it anything but `jobs` and `jobsHome(jobs)`,
-  keeps that effect from returning the cleanup `watchKept` returns, calls
-  `askKept` from anywhere but `askJobs`, or
-  makes `keepJobsOnHome` do more than call the record's `keepOnHome`; a
-  hunk that mounts `JobsHomeWatch` anywhere but the Jobs layout; or a hunk to
-  `components/jobs/keep-on-home.tsx` that changes `jobsKeeping`'s `kept`,
-  `revision` or `subscribe` to anything but the record's own (its kept flag,
-  its log's length while kept and -1 before, the runtime's `subscribe`), or
-  that calls `keepJobsOnHome` or `askJobs` other than as the shared strip's
-  `keep` and `ask` (`components/device-keep-on-home.tsx` calls those only
-  from a button's `onClick`, LA9).
-- _Scope:_ `apps/www/src/lib/home-link/kept-watch.ts`,
-  `apps/www/src/lib/home-link/jobs.ts`,
-  `apps/www/src/components/jobs/keep-on-home.tsx`,
-  `apps/www/src/routes/_dashboard/_apk/jobs.tsx`.
-- _Why not enforced:_ as LA9's: whether a moment is one where the person is
-  using the wing is a reading of intent, which a test sees only as a
-  listener. Held when declared, by reading every call: `askKept` is called
-  as LA9 says; `askJobs` and `keepJobsOnHome` are passed only as the shared
-  strip's `ask` and `keep`; `JobsHomeWatch` is mounted only by the Jobs
-  layout.
+- _Claim:_ LA9's claim holds for the Jobs record's lane
+  (`lib/home-link/jobs.ts`): its mark shows in the header while the Jobs
+  wing shows (Today, Scout and Record alike), its revision moves with each
+  event added on this phone or home's copy taken in by a phone whose log was
+  empty, and its exchange is `exchangeJobs` over the record. The record's
+  own switch from before the consent log (`home.kept`) is read only to
+  enter that choice once, and nothing sets it.
+- _Falsified by:_ a hunk LA9's falsifier names for the shared files; a hunk
+  to `lib/home-link/jobs.ts` that makes the lane's `revision` anything but
+  the log's length, its `keptBefore` anything but `home.kept`, or its
+  `exchange` anything but `exchangeJobs` over the runtime's `keeping`; or a
+  hunk to `lib/jobs` that sets `home.kept`.
+- _Scope:_ LA9's shared files, `apps/www/src/lib/home-link/jobs.ts`,
+  `apps/www/src/lib/jobs/model.ts`, `apps/www/src/lib/jobs/runtime.ts`.
+- _Why not enforced:_ as LA9's. Held when declared, by reading every call
+  as LA9 says, and `home.kept` read only by the lane's `keptBefore` and the
+  record's stored schema.
 
 ### LA11: Practice is sent home on its own only while its person keeps sending it
 
@@ -531,76 +572,50 @@ starts unticked every time and only a tick adds the choice
 (`components/settings/__tests__/device-section.test.tsx`), that the mark
 sends nothing before the choice and "Stop sending" appends a stop
 (`components/__tests__/device-home-glyph.test.tsx`), and that the words
-name no machinery (`practice-words.test.ts`). Who reaches the link and its
-`keep` lane is `egress-choke-points`'s. Sharing is one way: home keeps what
-it received, and a stop means only that nothing new goes. What no test can
-say is when a run is asked for:
+name no machinery (`words.test.ts`). Who reaches the link and its `keep`
+lane is `egress-choke-points`'s. Sharing is one way: home keeps what it
+received, and a stop means only that nothing new goes. What no test can say
+is when a run is asked for:
 
-- _Claim:_ `askKept` asks for a run of Practice's standing send
-  (`lib/home-link/standing.ts`) only at a moment its person is using
-  Practice: from `watchKept`, which for Practice only `usePracticeHome`
-  starts, for as long as Practice's mark (`components/device-home-glyph.tsx`,
-  mounted only in the Android app's header while the Practice wing shows) is
-  mounted, at the moments LA9 names, where the record's revision moves with
-  the consent log, the sessions the app has read and each shelf keep
-  (`onKept`); or from `askPractice`,
-  which the mark's sheet calls only from its Send now button. Each asks only
-  when the consent log keeps something on the paired home and the document
-  is visible. A choice counts for the pairing it was made under alone (the
-  link's `id` for it, made new at each pairing and kept with its key), so a
-  new pairing, even to the same address, starts with nothing kept; a run
-  sends only finished sessions and
-  kept items, and every request it makes first finds its scope still kept,
-  so a stop ends a run before its next request. A kept choice enters the
-  log only from the send confirm's press with its box ticked, and a stop
-  only from the sheet's second press. Nothing asks on a timer.
-- _Falsified by:_ a hunk to `lib/home-link/kept-watch.ts` as LA9's says; a
-  hunk to `lib/home-link/practice.ts` that calls `watchKept` from anywhere
-  but `usePracticeHome`'s effect, passes it anything but `record` and
-  `practiceHome()`, keeps that effect from returning the cleanup `watchKept`
-  returns, calls `askKept` from anywhere but `askPractice`, changes
-  `record.kept` or the standing send's `shared` to anything but
-  `sharedNow` of the consent log, or calls `phoneConsent().choose` from
-  anywhere but `keepPracticeOnHome` and `stopPracticeOnHome`; a hunk that
-  calls `phoneConsent().choose` outside `lib/home-link/practice.ts`, or that
-  mounts `DeviceHomeGlyph` anywhere but `routes/_dashboard.tsx`'s header
-  in the device build and the Practice wing; a hunk to
-  `components/device-home-glyph.tsx` that calls `askPractice` or
-  `stopPracticeOnHome` other than from a button's `onClick`, or lets the
-  first press of Stop sending stop; a hunk to
-  `components/settings/device-section.tsx` that calls `keepPracticeOnHome`
-  other than in the send's press with its box ticked, starts the box ticked,
-  or keeps a tick across confirms (`ask` unticks it); a hunk to
-  `lib/home-link/runtime.ts` that lets `pair` keep an earlier pairing's `id`,
-  or lets `load` report an `id` other than the one stored with the key; a
-  hunk to
-  `lib/home-link/consent-model.ts` that lets `appended` edit, reorder or drop
-  an earlier event, or lets `sharedAt` count an event made after `t` or
-  under another pairing; to
+- _Claim:_ LA9's claim holds for Practice's lane
+  (`lib/home-link/practice.ts`, its standing send `lib/home-link/standing.ts`):
+  its mark shows in the header while the Practice wing shows, and its
+  revision moves with the sessions the app has read and each shelf keep
+  (`onKept`). Its sheet offers no opt-in of its own: a kept choice enters
+  the log only from the send confirm's press with its box ticked. A choice
+  counts for the pairing it was made under alone (the link's `id` for it,
+  made new at each pairing and kept with its key), so a new pairing, even to
+  the same address, starts with nothing kept; a run sends only finished
+  sessions and kept items, and every request it makes first finds its own
+  scope still kept.
+- _Falsified by:_ a hunk LA9's falsifier names for the shared files; a hunk
+  to `lib/home-link/practice.ts` that makes the lane's `revision` or
+  `subscribe` follow anything but the sessions cache and `onKept`, or its
+  `exchange` anything but `sendStanding` with the run's `shared` and
+  `pairing`; a hunk to `components/settings/device-section.tsx` that calls
+  `keepOnHome` other than in the send's press with its box ticked, starts
+  the box ticked, or keeps a tick across confirms (`ask` unticks it); a
+  hunk to `lib/home-link/runtime.ts` that lets `pair` keep an earlier
+  pairing's `id`, or lets `load` report an `id` other than the one stored
+  with the key; a hunk to `lib/home-link/consent-model.ts` that lets
+  `appended` edit, reorder or drop an earlier event, or lets `sharedAt`
+  count an event made after `t` or under another pairing; to
   `lib/home-link/consent-runtime.ts` that writes the log when it could not
   read it; to `lib/home-link/sent.ts` that lets `sessionsToSend` pass a
-  session that is not completed, or `readSent` return one pairing's record for
-  another; or to `lib/home-link/standing.ts` that sends a request without
-  `gated`'s check that its scope is still kept, reads home other than
-  through `copyHome`'s plan, takes home's copy in, lets a phone session go,
-  or confirms what home holds (`confirmHeld`), or sends other than through
-  `copyHome` and `sendKept`. Each lets something reach home, or
+  session that is not completed, or `readSent` return one pairing's record
+  for another; or to `lib/home-link/standing.ts` that sends a request
+  without `gated`'s check that its scope is still kept, reads home other
+  than through `copyHome`'s plan, takes home's copy in, lets a phone session
+  go, or confirms what home holds (`confirmHeld`), or sends other than
+  through `copyHome` and `sendKept`. Each lets something reach home, or
   leave the phone, that its person did not choose.
-- _Scope:_ `apps/www/src/lib/home-link/consent-model.ts`,
+- _Scope:_ LA9's shared files, `apps/www/src/lib/home-link/consent-model.ts`,
   `consent-runtime.ts`, `practice.ts`, `runtime.ts`, `sent.ts`, `standing.ts`,
-  `apps/www/src/components/device-home-glyph.tsx`,
-  `apps/www/src/components/settings/device-section.tsx`,
-  `apps/www/src/routes/_dashboard.tsx`.
-- _Why not enforced:_ as LA9's: whether a moment is one where the person is
-  using Practice is a reading of intent, which a test sees only as a
-  listener, and whether a call site is a press handler is not something a
-  lint rule can tell through a helper. Held when declared, by reading every
-  call: `watchKept` for Practice only in `usePracticeHome`; `askPractice` only
-  in the sheet's Send now `onClick`; `keepPracticeOnHome` only in
-  `device-section.tsx`'s send `onPress`, behind the ticked box;
-  `stopPracticeOnHome` only in the sheet's second Stop press; `choose` only
-  in those two; `DeviceHomeGlyph` mounted only in `_dashboard.tsx`'s header
-  under `VITE_DEVICE_BACKEND` and `wing?.id === "practice"`.
+  `apps/www/src/components/settings/device-section.tsx`.
+- _Why not enforced:_ as LA9's. Held when declared, by reading every call
+  as LA9 says: Practice's `keepOnHome` only in `device-section.tsx`'s send
+  `onPress`, behind the ticked box, and its sheet showing no opt-in
+  (`startElsewhere`).
 
 ## Not covered, on purpose
 
