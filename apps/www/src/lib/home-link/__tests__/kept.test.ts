@@ -250,26 +250,44 @@ describe("a lane's run", () => {
     expect(sent).toEqual([])
   })
 
-  it("tells home its choices first, and ends there when home forgot the phone", async () => {
-    const { send, sent } = home()
-    const told: Array<string> = []
+  it("tells home its choices first, and sends the record only once home heard them", async () => {
     const tell =
       (ends: HomeExchanged) =>
-      async (through: HomeCall, pairing: string): Promise<HomeExchanged> => {
-        told.push(pairing)
+      async (through: HomeCall): Promise<HomeExchanged> => {
         await through("PUT", "/sharing/jobs")
         return ends
       }
-    const run = (ends: HomeExchanged): Promise<HomeExchanged> =>
-      laneExchange(lane(1, SYNCED), () => "p", kept, tell(ends))(send)
-    await expect(run({ kind: "failed", why: "x" })).resolves.toEqual(SYNCED)
-    expect(sent).toEqual(["/sharing/jobs", "/jobs/0"])
-    sent.length = 0
-    await expect(run({ kind: "forgotten" })).resolves.toEqual({
-      kind: "forgotten",
+    const run = (
+      ends: HomeExchanged,
+      statuses: Array<number> = []
+    ): Promise<{ ended: HomeExchanged; sent: Array<string> }> => {
+      const { send, sent } = home(statuses)
+      return laneExchange(
+        lane(1, SYNCED),
+        () => "p",
+        kept,
+        tell(ends)
+      )(send).then((ended) => ({ ended, sent }))
+    }
+    await expect(run(SYNCED)).resolves.toEqual({
+      ended: SYNCED,
+      sent: ["/sharing/jobs", "/jobs/0"],
     })
-    expect(sent).toEqual(["/sharing/jobs"])
-    expect(told).toEqual(["p", "p"])
+    for (const ends of [
+      { kind: "forgotten" },
+      { kind: "failed", why: "a choice: home answered 500" },
+    ] satisfies Array<HomeExchanged>) {
+      await expect(run(ends)).resolves.toEqual({
+        ended: ends,
+        sent: ["/sharing/jobs"],
+      })
+    }
+    await expect(
+      run({ kind: "failed", why: "a choice: home answered 429" }, [429])
+    ).resolves.toEqual({
+      ended: { kind: "failed", why: "busy" },
+      sent: ["/sharing/jobs"],
+    })
   })
 
   it("sends nothing more once its person stops, before the next request", async () => {

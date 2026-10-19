@@ -122,7 +122,7 @@ declared (checked by reading every call site and by the tests named).
   `useCopyDeviceSessions` and `copyDeviceSessionsAndRefresh`. That button says
   what will be sent and to which account, takes a second press, and copies each
   session to the account in use at most once: the receipt records the ids the
-  server minted, and the account is asked whether it still holds them. A create
+  server answered with, and the account is asked whether it still holds them. A create
   whose answer was lost is recorded before it is sent and, on the next press,
   looked for in the account (a session with the same name, layout, activities
   and scenes that no receipt entry claims) and adopted rather than repeated.
@@ -152,7 +152,10 @@ declared (checked by reading every call site and by the tests named).
   `copyDeviceSessionsAndRefresh`, `useCopyDeviceSessions`, `planTransfer` or
   `runTransfer` from anywhere but the files that own that step (the plan and
   the run are `lib/tenant/sessions-copy`'s, called by the browser's transfer
-  and the phone's copy alone); one that lets
+  and the phone's copy alone); one that drops `planTransfer`'s look for an
+  attempt's named id before its content match, lets the content match take an
+  id an attempt named, or stops `copySessionsTo` passing `runTransfer` its
+  `mint`, so the phone's copy falls back to content alone; one that lets
   the button act on its first press; one that removes the `withTransferLock` call
   in `copyDeviceSessions`, or moves `planTransfer` or `runTransfer` out of the
   function it runs, so that either happens outside the lock; one that makes the
@@ -424,9 +427,12 @@ declared (checked by reading every call site and by the tests named).
   `lib/home-link/lanes.ts`) joined the link's callers: the mark calls none
   of `pair`, `unpair`, `sync`, `send` or `stop`, and reaches home only
   through `lanes.ts`, the one caller of `keep`, by `askLane` from its Send
-  now button, the watch `useLaneHome` mounts, and, for aph, one read of
-  home's record (`bringBack`) after its person's stop: all LA9's; its choices
-  only add to the consent log.
+  now button, the watch `useLaneHome` mounts, for aph, one read of home's
+  record (`bringBack`) after its person's stop, and the telling of each
+  choice (`lib/home-link/told.ts`: first in a run, and for a stop of a lane
+  with no way back, from the stop's second press in the mark or Settings'
+  ledger): all LA9's; its choices add to the consent log, and home is told
+  each, never its words.
 
 ### LA9: aph is sent home only while its person is using it
 
@@ -461,9 +467,10 @@ when a run is asked for:
   paired, or the link freeing up after turning a run away; or from `askLane`,
   which the mark's sheet calls only from its Send now button. Each asks only
   when the consent log keeps one of the lane's scopes under the paired home's
-  id and the document is visible, and every request a run makes first finds
-  one still kept (`laneExchange`), so a stop ends a run before its next
-  request. Nothing asks on a timer. A kept choice enters the log only from the
+  id and the document is visible, and every request of the record's that a
+  run makes first finds one still kept (`laneExchange`), so a stop ends a run
+  before its next such request; telling home a choice is not gated, since a
+  stop is one. Nothing asks on a timer. A kept choice enters the log only from the
   mark's second press, with the words its first press showed (`offer`), from
   Settings' send with its box ticked (Practice, LA11), or once, as found
   (`said: null`), for a lane whose record's own switch kept it on home before
@@ -511,12 +518,19 @@ when a run is asked for:
   `stopped` other than none of the lane's scopes being kept now, or outside
   `sayingBusy`, or asks it from anywhere but `stopOnHome`, `bringLaneBack` and
   the effect's link listener (once the link is idle after it was turned away
-  busy), or asks `telling()` from anywhere but `stopOnHome`, or makes
-  `tellChoices` tell anything but `tellHome` over the consent log under the
-  run's pairing; a hunk to `lib/home-link/told.ts` that sends anything but
-  one `PUT /sharing/:scope` with `{ kept }` per untold change, tells a change
-  made under another pairing or out of order, sends a choice's words, or
-  remembers a choice told before home answered every one of its scopes; a
+  busy), or asks `telling()` from anywhere but `stopOnHome` and the effect's
+  link listener (once the link is idle after it was turned away busy),
+  removes `telling().want()` from a stop of a lane with no way back, wires the
+  teller outside `sayingBusy`, removes `tellChoices` from a lane's
+  `laneExchange` or from `back`'s `toldFirst`, or makes `tellChoices` tell
+  anything but `tellHome` over the consent log under the run's pairing; a
+  hunk to `lib/home-link/told.ts` that sends anything but one
+  `PUT /sharing/:scope` with `{ kept }` per untold change, tells a change made
+  under another pairing or out of order, sends a choice's words, remembers a
+  choice told before home answered every one of its scopes with `200`, or
+  makes `readTold` answer for another pairing; a hunk to
+  `lib/home-link/kept-runtime.ts` that lets `toldFirst` run what follows
+  before telling, or after telling ended any way but `synced`; a
   hunk to `lib/home-link/kept-runtime.ts` that lets `laneExchange`
   send a record's request without its check that a scope is still kept, tells
   home under a pairing other than the run's, or makes a run

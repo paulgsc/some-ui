@@ -117,15 +117,17 @@ type Wired = {
 const wired = new Map<LaneId, Wired>()
 
 /** One runtime per lane per page load, over the first `lane` handed in. */
+/** How every run here reaches home: through the link, one at a time. */
+const LINK_PORTS: Omit<KeptPorts, "exchange"> = {
+  keep: (run) => homeLink().keep(run),
+  paired: (): boolean => pairingOf() !== null,
+  now: Date.now,
+}
+
 function wire(lane: Lane): Wired {
   const found = wired.get(lane.id)
   if (found) return found
   const shared = (): ReadonlySet<Scope> => new Set(sharedBy(lane).keys())
-  const ports: Omit<KeptPorts, "exchange"> = {
-    keep: (run) => homeLink().keep(run),
-    paired: (): boolean => pairingOf() !== null,
-    now: Date.now,
-  }
   const { bringBack } = lane
   const made: Wired = {
     record: {
@@ -142,14 +144,14 @@ function wire(lane: Lane): Wired {
       },
     },
     sending: createKept({
-      ...ports,
+      ...LINK_PORTS,
       exchange: laneExchange(lane, () => pairingOf(), shared, tellChoices),
     }),
     back:
       bringBack === undefined
         ? null
         : createKept({
-            ...ports,
+            ...LINK_PORTS,
             exchange: sayingBusy((send) => {
               const stopped = (): boolean => shared().size === 0
               const pairing = pairingOf()
@@ -202,9 +204,7 @@ let teller: Kept | null = null
 /** One run that only tells home the pairing's choices, for a stop. */
 function telling(): Kept {
   teller ??= createKept({
-    keep: (run) => homeLink().keep(run),
-    paired: (): boolean => pairingOf() !== null,
-    now: Date.now,
+    ...LINK_PORTS,
     exchange: sayingBusy((send) => {
       const pairing = pairingOf()
       return pairing === null
@@ -217,7 +217,8 @@ function telling(): Kept {
 
 /**
  * How sending `lane` home is going; while mounted, its watch, and its way
- * back asked for again once the link frees, when the link turned it away.
+ * back, and the telling of a stop, asked for again once the link frees,
+ * when the link turned it away.
  */
 export function useLaneHome(lane: Lane): KeptState {
   const { sending } = wire(lane)
@@ -227,6 +228,7 @@ export function useLaneHome(lane: Lane): KeptState {
       enterEarlier(lane)
       const idle = homeLink().getSnapshot().activity.kind === "idle"
       if (idle && back?.getSnapshot().last?.kind === "busy") back.want()
+      if (idle && teller?.getSnapshot().last?.kind === "busy") teller.want()
     }
     enterEarlier(lane)
     const unsubscribeLink = homeLink().subscribe(onLink)

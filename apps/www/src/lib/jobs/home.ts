@@ -40,6 +40,12 @@ export type JobsRecordPort = {
 
 const EventAnswer = z.object({ event: z.object({ id: z.string() }) })
 const HeldSchema = z.object({ events: z.array(EventSchema) })
+const Stopped = z.object({
+  error: z.object({ code: z.literal("sharing_stopped") }),
+})
+
+/** Home refused the event as stopped (paulgsc/server#433), not as held. */
+const stoppedOnHome = (body: string): boolean => readAs(Stopped, body) !== null
 type Learned = { held: Array<string>; refused: Array<HomeRefusal> }
 
 async function exchange(
@@ -54,6 +60,10 @@ async function exchange(
       JSON.stringify(event)
     )
     if (answer.status === 401) return { kind: "forgotten" }
+    // Home heard a stop this phone's log no longer holds: nothing is refused.
+    if (answer.status === 409 && stoppedOnHome(answer.body)) {
+      return unexpectedAnswer("an event", 409)
+    }
     if (answer.status === 409) {
       learned.refused.push({
         id: event.id,

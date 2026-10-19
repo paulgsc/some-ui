@@ -38,13 +38,23 @@ type Home = SessionsStore & {
 /**
  * Home's sessions. `named` takes the create's id as file_host does since
  * #432 (once per id); otherwise home mints its own, as before it. `lose`
- * answers nothing to the next `lose` creates, after making them.
+ * answers nothing to the next `lose` creates, after making them; `drop`
+ * answers nothing to the next `drop`, and makes none.
  */
-function home({ named, lose = 0 }: { named: boolean; lose?: number }): Home {
+function home({
+  named,
+  lose = 0,
+  drop = 0,
+}: {
+  named: boolean
+  lose?: number
+  drop?: number
+}): Home {
   const held = new Map<string, SessionRecord>()
   const creates: Array<string | undefined> = []
   let minted = 0
   let losing = lose
+  let dropping = drop
   const store: Home = {
     held,
     creates,
@@ -56,6 +66,10 @@ function home({ named, lose = 0 }: { named: boolean; lose?: number }): Home {
     get: (id) => Promise.resolve(held.get(id) ?? null),
     create: (input: CreateSessionInput) => {
       creates.push(input.id)
+      if (dropping > 0) {
+        dropping -= 1
+        return Promise.reject(new TypeError("Failed to fetch"))
+      }
       const id = named && input.id !== undefined ? input.id : `home-${++minted}`
       const record = held.get(id) ?? {
         ...SESSION,
@@ -122,6 +136,21 @@ describe("a phone's copy names each create's id", () => {
     expect(again.outcome).toEqual({ kind: "copied", copied: 1 })
     expect(there.creates).toHaveLength(1)
     expect(there.held.size).toBe(1)
+  })
+
+  it("never takes another session's named id for its own by content", async () => {
+    const there = home({ named: true, lose: 1 })
+    const receipt = createInMemoryStorage()
+    const twin = { ...SESSION, id: "local-2" }
+    await copySessionsTo([SESSION], there, receipt)
+    // The twin's create never landed: home holds only the first's, by its id.
+    const dropping = home({ named: true, drop: 1 })
+    await copySessionsTo([twin], { ...there, create: dropping.create }, receipt)
+    expect(there.held.size).toBe(1)
+    await copySessionsTo([twin, SESSION], there, receipt)
+    // The twin made its own, under the id it named; the first kept its own.
+    expect(there.held.size).toBe(2)
+    expect(there.lists).toBe(1)
   })
 
   it("names a new id once home refuses one", async () => {

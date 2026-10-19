@@ -127,9 +127,10 @@ export function sayingBusy(exchange: Exchange): Exchange {
 type Tell = (send: HomeCall, pairing: string) => Promise<HomeExchanged>
 
 /**
- * `then`, once home is told the choices under `pairing` it has not heard
- * (`tell`, `./told`). Any other end of telling is told again next run, so
- * `then` goes on; home having forgotten the phone ends it there.
+ * `then`, once home has heard every choice under `pairing` (`tell`,
+ * `./told`; a home that keeps none counts as having heard). Telling that
+ * ends any other way ends the run there, so nothing of a record goes before
+ * home knows whether it is kept.
  */
 export function toldFirst(
   tell: Tell,
@@ -138,7 +139,7 @@ export function toldFirst(
 ): Exchange {
   return async (send) => {
     const told = await tell(send, pairing)
-    return told.kind === "forgotten" ? told : then(send)
+    return told.kind === "synced" ? then(send) : told
   }
 }
 

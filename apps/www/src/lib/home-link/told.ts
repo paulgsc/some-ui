@@ -9,7 +9,7 @@
  * under, and remembered by its place in the log (`seq`, kept per pairing
  * like `./sent`'s bookkeeping). Lost, it only means telling again, which
  * home answers as unchanged. A home that keeps no choices (one before #433
- * answers `404`) is told nothing more this time and asked again next time.
+ * answers `404`) is told nothing more until the app is opened again.
  */
 import type { HomeCall, HomeExchanged } from "@some-ui/core-utils"
 import { unexpectedAnswer } from "@some-ui/core-utils"
@@ -66,12 +66,16 @@ export function untold(
  * heard. Throws what `send` throws when home does not answer; what was
  * told before it stays told.
  */
+/** The pairing whose home answered it keeps no choices, for this page load. */
+let keepsNone: string | null = null
+
 export async function tellHome(
   send: HomeCall,
   pairing: string,
   log: ConsentLog,
   storage: Store
 ): Promise<HomeExchanged> {
+  if (keepsNone === pairing) return { kind: "synced" }
   const changes = untold(log, pairing, readTold(storage, pairing))
   for (const [i, { seq, scope, kept }] of changes.entries()) {
     const { status } = await send(
@@ -80,7 +84,10 @@ export async function tellHome(
       JSON.stringify({ kept })
     )
     if (status === 401) return { kind: "forgotten" }
-    if (status === 404) return { kind: "synced" }
+    if (status === 404) {
+      keepsNone = pairing
+      return { kind: "synced" }
+    }
     if (status !== 200) return unexpectedAnswer("a choice", status)
     // An event's scopes go one request each: it is told once all of them are.
     if (changes[i + 1]?.seq !== seq) rememberTold(storage, pairing, seq)

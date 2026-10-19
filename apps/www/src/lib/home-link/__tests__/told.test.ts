@@ -77,14 +77,29 @@ describe("telling home its person's choices", () => {
     expect(readTold(storage, "p")).toBe(0)
   })
 
-  it("tells a home that keeps no choices nothing more, and asks again next time", async () => {
+  it("keeps what was told before home stopped answering", async () => {
     const storage = memoryStorage()
-    const { send, sent } = home([{ status: 404, body: "" }])
-    await expect(tellHome(send, "p", LOG, storage)).resolves.toEqual({
+    const { send } = home([
+      { status: 200, body: "{}" },
+      { status: 200, body: "{}" },
+      new Error("no answer"),
+    ])
+    await expect(tellHome(send, "p", LOG, storage)).rejects.toThrow("no answer")
+    expect(readTold(storage, "p")).toBe(1)
+  })
+
+  it("tells a home that keeps no choices nothing more until the app opens again", async () => {
+    const storage = memoryStorage()
+    const old: ConsentLog = [{ ...LOG[0], pairing: "old" }]
+    const first = home([{ status: 404, body: "" }])
+    await expect(tellHome(first.send, "old", old, storage)).resolves.toEqual({
       kind: "synced",
     })
-    expect(sent).toHaveLength(1)
-    expect(readTold(storage, "p")).toBe(0)
+    expect(first.sent).toHaveLength(1)
+    expect(readTold(storage, "old")).toBe(0)
+    const again = home()
+    await tellHome(again.send, "old", old, storage)
+    expect(again.sent).toEqual([])
   })
 
   it("says a 401 is home forgetting the phone, and any other answer as home's", async () => {

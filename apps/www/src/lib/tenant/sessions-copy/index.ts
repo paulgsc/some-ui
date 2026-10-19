@@ -154,18 +154,24 @@ export async function planTransfer(
       copies.flatMap((copy) => (copy.remoteId === null ? [] : [copy.remoteId]))
     )
   )
+  /** Ids attempts named: each is its own session's to find, never matched. */
+  const named = new Set(
+    Object.values(receipt).flatMap((copies) =>
+      copies.flatMap((copy) => (copy.named === undefined ? [] : [copy.named]))
+    )
+  )
   let inAccount: Array<SessionRecord> | null = null
 
   for (const session of local) {
     let unfinished: string | null = null
     let complete = false
     let unconfirmed = false
-    let named: string | undefined
+    let own: string | undefined
     for (const copy of receipt[session.id] ?? []) {
       if (!isCurrent()) throw new StaleAuthorityError("a transfer")
       if (copy.remoteId === null) {
         unconfirmed = true
-        named ??= copy.named
+        own ??= copy.named
         continue
       }
       const there = await remote.get(copy.remoteId)
@@ -177,11 +183,11 @@ export async function planTransfer(
       }
       unfinished ??= copy.remoteId
     }
-    if (!complete && unfinished === null && named !== undefined) {
+    if (!complete && unfinished === null && own !== undefined) {
       // A create named its id and nobody heard back: home holds it, or not.
-      if (!claimed.has(named) && (await remote.get(named)) !== null) {
-        claimed.add(named)
-        unfinished = named
+      if (!claimed.has(own) && (await remote.get(own)) !== null) {
+        claimed.add(own)
+        unfinished = own
       }
     }
     if (!complete && unfinished === null && unconfirmed) {
@@ -190,7 +196,9 @@ export async function planTransfer(
       inAccount = held
       const found = held.find(
         (candidate) =>
-          !claimed.has(candidate.id) && sameContent(session, candidate)
+          !claimed.has(candidate.id) &&
+          !named.has(candidate.id) &&
+          sameContent(session, candidate)
       )
       if (found !== undefined) {
         claimed.add(found.id)

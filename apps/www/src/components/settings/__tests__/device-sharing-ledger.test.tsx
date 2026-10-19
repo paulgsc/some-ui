@@ -2,11 +2,18 @@
  * @vitest-environment jsdom
  *
  * Settings' ledger of what this phone shares with home: it reads the
- * phone's own choices and sends nothing, says each record's state in its
- * own words, stops Practice and the Jobs record on a second press, and
- * sends aph's stop to aph's own mark.
+ * phone's own choices and sends nothing on its own, says each record's
+ * state in its own words, stops Practice and the Jobs record on a second
+ * press, which tells home only that, and sends aph's stop to aph's own mark.
  */
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
 import { CONSENT_KEY } from "@/lib/home-link/consent-runtime"
@@ -16,7 +23,11 @@ import type { SessionRecord } from "@/lib/tenant/types"
 const PAIRING = "https://home.example/api/v1"
 
 const home = vi.hoisted(
-  (): { sent: Array<unknown>; earlier: boolean; jobsKept: boolean } => ({
+  (): {
+    sent: Array<{ method: string; url: string; body?: unknown }>
+    earlier: boolean
+    jobsKept: boolean
+  } => ({
     sent: [],
     earlier: false,
     jobsKept: false,
@@ -24,9 +35,13 @@ const home = vi.hoisted(
 )
 
 vi.mock("@/lib/device-backend/native-http", () => ({
-  homeRequest: (call: unknown): Promise<never> => {
+  homeRequest: (call: {
+    method: string
+    url: string
+    body?: unknown
+  }): Promise<{ status: number; body: string }> => {
     home.sent.push(call)
-    return Promise.reject(new Error("nothing should be sent"))
+    return Promise.resolve({ status: 200, body: "{}" })
   },
 }))
 vi.mock("@/lib/home-link/credential", () => ({
@@ -129,7 +144,18 @@ describe("the sharing ledger", () => {
       screen.getByText(/Practice: stopped sending to home\. Home keeps/)
     ).toBeTruthy()
     expect(screen.getByText(/Practice: kept on home\.$/)).toBeTruthy()
-    expect(home.sent).toEqual([])
+    // Home is told the choices it hasn't heard, the stop last, and only that.
+    await waitFor(() => expect(home.sent).toHaveLength(4))
+    expect(
+      home.sent.map(
+        (call) => `${new URL(call.url).pathname} ${String(call.body)}`
+      )
+    ).toEqual([
+      '/api/v1/sharing/sessions {"kept":true}',
+      '/api/v1/sharing/shelf {"kept":true}',
+      '/api/v1/sharing/sessions {"kept":false}',
+      '/api/v1/sharing/shelf {"kept":false}',
+    ])
   })
 
   it("keeps sending when the second press is not made", async () => {
