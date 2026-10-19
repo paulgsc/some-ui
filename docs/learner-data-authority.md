@@ -433,9 +433,9 @@ requests an exchange makes and that an entry leaves the phone only once home
 answers with it unchanged (`packages/ui/aph/src/lib/__tests__/sync.test.ts`,
 `home.test.ts`), that bringing aph back sends nothing, keeps what waited here
 and sets aside a change that clashes with home's record (`sync.test.ts`), one
-run at a time (`lib/home-link/__tests__/kept.test.ts`), that every request a
-run makes finds a scope still kept and that home being busy is said as such
-(`lanes.test.ts`), and the mark's two presses, its stop and its way back
+run at a time, that every request a run makes finds a scope still kept and
+that home being busy is said as such (`lib/home-link/__tests__/kept.test.ts`),
+and the mark's two presses, its stop and its way back
 (`components/__tests__/device-home-glyph.test.tsx`). What no test can say is
 when a run is asked for:
 

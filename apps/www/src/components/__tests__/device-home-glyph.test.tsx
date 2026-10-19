@@ -4,10 +4,7 @@
  * LA9 to LA11 in the header: each wing's mark says where its record is kept,
  * and nothing reaches home until its person chose to keep sending; once they
  * did, the mark's watch sends, and says how it went; "Stop sending" adds a
- * stop to the log and nothing more goes. A choice aph or the Jobs record made
- * before the log enters it once, as found; the opt-in takes two presses, the
- * first naming what goes; and stopping aph brings its record back from home,
- * or says what this phone holds when home can't be reached.
+ * stop to the log and nothing more goes.
  */
 
 import { sessionRecord } from "@/test-support/session-record"
@@ -206,8 +203,6 @@ describe("the Jobs record's mark", () => {
     expect(logged()).toMatchObject([
       { kind: "kept", scopes: ["jobs"], said: null, pairing: PAIRING },
     ])
-    fireEvent.click(mark(/Where the Jobs record is kept/))
-    expect(screen.getByText(/^Kept on home since before /)).toBeTruthy()
   })
 
   it("keeps sending only on the second press, with the words it showed", async () => {

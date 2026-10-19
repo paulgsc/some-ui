@@ -111,15 +111,11 @@ const LaneMark = ({ lane }: { lane: Lane }): JSX.Element => {
   const words = WORDS[lane.id]
   const pairing = pairingOf(link)
   const view = laneView(words, {
+    ...counts,
     shared,
     stopped,
-    held: counts.held,
-    refused: counts.refused,
-    waiting: counts.waiting,
     run,
     away: counts.away === null ? null : { waiting: counts.away, back },
-    hidden: counts.hidden,
-    pulled: counts.pulled,
   })
   const kept = shared.size > 0
   const offer = words.offer?.(counts.offered) ?? null

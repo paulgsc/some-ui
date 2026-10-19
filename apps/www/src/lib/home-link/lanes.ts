@@ -6,10 +6,6 @@
  * (`./consent-runtime`), one runtime per lane per page load over the link's
  * `keep` (`./kept-runtime`), and the watch (`./kept-watch`) for as long as
  * the lane's mark mounts `useLaneHome`.
- *
- * Every request a run makes first finds one of the lane's scopes still kept,
- * so a stop ends a run before its next request; home being busy is said as
- * such and never retried (`laneExchange`, `./kept-runtime`).
  */
 import { useEffect, useSyncExternalStore } from "react"
 import type { HomeExchanged } from "@some-ui/core-utils"
@@ -69,7 +65,7 @@ export type Lane = {
   readonly subscribe: (listener: () => void) => () => void
   /** A hook: the sheet's counts, read while the lane's mark shows. */
   readonly useCounts: () => LaneCounts
-  /** Its record's own switch, from before the consent log, said kept on home. */
+  /** Its record's own switch says kept on home (`enterEarlier`). */
   readonly keptBefore?: () => boolean
   /**
    * The record's own part of the opt-in (aph moves its record). Best effort:
@@ -90,17 +86,21 @@ export function pairingOf(
   return state.link.kind === "paired" ? state.link.id : null
 }
 
+/** Of a map by scope, `lane`'s scopes alone. */
+function ofLane<T>(
+  lane: Lane,
+  byScope: ReadonlyMap<Scope, T>
+): ReadonlyMap<Scope, T> {
+  return new Map([...byScope].filter(([scope]) => lane.scopes.includes(scope)))
+}
+
 /** What `lane`'s person keeps sending to the paired home, as the log says. */
 function sharedBy(
   lane: Lane,
   log = phoneConsent().getSnapshot(),
   pairing = pairingOf()
 ): Shared {
-  return new Map(
-    [...sharedNow(log, pairing)].filter(([scope]) =>
-      lane.scopes.includes(scope)
-    )
-  )
+  return ofLane(lane, sharedNow(log, pairing))
 }
 
 type Wired = {
@@ -219,11 +219,7 @@ export function useLaneChoices(lane: Lane): {
   const pairing = pairingOf(useHomeLink())
   return {
     shared: sharedBy(lane, log, pairing),
-    stopped: new Map(
-      [...stoppedNow(log, pairing)].filter(([scope]) =>
-        lane.scopes.includes(scope)
-      )
-    ),
+    stopped: ofLane(lane, stoppedNow(log, pairing)),
   }
 }
 
@@ -277,10 +273,7 @@ const handedChanged = (): void => {
   for (const listener of handedListeners) listener()
 }
 
-/**
- * Hands `lane` to the header's mark while mounted, for a lane whose record
- * only its own screens may import (aph's, AUDIENCES.md).
- */
+/** Hands `lane` to the header's mark while mounted (aph's, `./aph`). */
 export function useHandLane(lane: Lane): void {
   useEffect(() => {
     handed.set(lane.id, lane)

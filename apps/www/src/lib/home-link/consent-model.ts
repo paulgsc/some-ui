@@ -10,11 +10,6 @@
  * that nothing new goes. Each choice is for the pairing it was made under
  * (`pairing`, the link's id for it), and counts for that pairing alone: a
  * new pairing, even to the same address, starts with nothing kept.
- *
- * aph and the Jobs record were kept on home by a switch in their own record
- * before this log existed. Such a choice enters the log once, as found
- * (`said: null`), and says so: its words were never kept, and it was made
- * some time before it entered.
  */
 import { isRecord } from "@/lib/device-backend/common"
 
@@ -32,7 +27,9 @@ type ConsentEvent =
       readonly scopes: ReadonlyArray<Scope>
       /**
        * The words the person agreed to, exactly as they were shown; null for
-       * a choice found in its record's own switch, made before this log.
+       * a choice found in its record's own switch (aph's, the Jobs
+       * record's), made some time before it entered the log and with words
+       * never kept.
        */
       readonly said: string | null
     }

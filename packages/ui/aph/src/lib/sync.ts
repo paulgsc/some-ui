@@ -24,7 +24,7 @@ import type { HomeCall, HomeExchanged } from "@some-ui/core-utils"
 import { readAs, refusalOf, unexpectedAnswer } from "@some-ui/core-utils"
 import { z } from "zod"
 
-import type { Receipt } from "./home"
+import type { HomeHeld, Receipt } from "./home"
 import type { AphStore } from "./store"
 import { EntrySchema, HeldSchema, SettingsSchema } from "./stored"
 
@@ -35,6 +35,17 @@ type Mutable<T> = { -readonly [K in keyof T]: T[K] }
 /** A `Receipt`, filled in as an exchange goes. */
 type Learned = {
   -readonly [K in keyof Receipt]: Mutable<Receipt[K]>
+}
+
+/** Home's whole record (`GET /aph`), or how reading it ended. */
+async function readHome(send: HomeCall): Promise<HomeHeld | HomeExchanged> {
+  const answer = await send("GET", "/aph")
+  if (answer.status === 401) return { kind: "forgotten" }
+  const record = readAs(HeldSchema, answer.body)
+  if (answer.status !== 200 || record === null) {
+    return unexpectedAnswer("the record", answer.status)
+  }
+  return record
 }
 
 async function exchange(
@@ -83,12 +94,8 @@ async function exchange(
     learned.held.push(held)
   }
 
-  const answer = await send("GET", "/aph")
-  if (answer.status === 401) return { kind: "forgotten" }
-  const record = readAs(HeldSchema, answer.body)
-  if (answer.status !== 200 || record === null) {
-    return unexpectedAnswer("the record", answer.status)
-  }
+  const record = await readHome(send)
+  if ("kind" in record) return record
   // First, so what home just took is no longer laid over its record.
   store.sent(learned)
   learned.held = []
@@ -127,12 +134,8 @@ export async function bringBack(
   send: HomeCall
 ): Promise<HomeExchanged> {
   if (store.where().kind === "device") return { kind: "synced" }
-  const answer = await send("GET", "/aph")
-  if (answer.status === 401) return { kind: "forgotten" }
-  const record = readAs(HeldSchema, answer.body)
-  if (answer.status !== 200 || record === null) {
-    return unexpectedAnswer("the record", answer.status)
-  }
+  const record = await readHome(send)
+  if ("kind" in record) return record
   return store.leaveHome(record)
     ? { kind: "synced" }
     : { kind: "failed", why: "this phone couldn't keep home's record" }

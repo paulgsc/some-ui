@@ -120,11 +120,7 @@ export type HomeRefusal = { id: string; why: string }
  * its whole log, and the way back for a phone that lost it.
  */
 type JobsHome = {
-  /**
-   * Its person chose to keep the record on home, in a build before the
-   * consent log (`lib/home-link/consent-model`): read once, to enter that
-   * choice there (LA10), and never set again.
-   */
+  /** Read once by the Jobs lane's `keptBefore`; never set (LA10). */
   kept: boolean
   /** The events home answered it holds, by id. */
   held: ReadonlyArray<string>

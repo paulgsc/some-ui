@@ -9,14 +9,15 @@ import { counted } from "@some-ui/core-utils"
 
 import type { Scope, Shared } from "./consent-model"
 import type { KeptState } from "./kept-model"
-import type { LaneId } from "./lanes"
+import type { LaneCounts, LaneId } from "./lanes"
 
 /** One row of a lane's sheet: what one scope is called, and one of it. */
 type Row = {
   readonly scope: Scope
   readonly label: string
   readonly one: string
-  readonly many: string
+  /** When it is not `one` and an s. */
+  readonly many?: string
 }
 
 /** One lane's own words; `SHEET` holds the ones every lane shares. */
@@ -43,10 +44,7 @@ export type LaneWords = {
    * words kept with the choice. Null where the choice is made elsewhere.
    */
   readonly offer: ((n: number) => string) | null
-  /**
-   * Stopped while home holds the record this phone let go of (aph), given
-   * the changes this phone still holds.
-   */
+  /** `LaneCounts`' `away`, given the changes this phone holds (aph). */
   readonly away: ((n: number) => string) | null
   /** Waiting changes that clash with home's record, so not shown (aph). */
   readonly clash: ((n: number) => string) | null
@@ -54,8 +52,10 @@ export type LaneWords = {
   readonly unread: string | null
 }
 
-const changesWait = (n: number): string =>
-  n === 1 ? "1 change waits" : `${n} changes wait`
+const waits =
+  (noun: string) =>
+  (n: number): string =>
+    `${counted(n, noun)} wait${n === 1 ? "s" : ""}`
 
 export const WORDS: Readonly<Record<LaneId, LaneWords>> = {
   practice: {
@@ -66,16 +66,14 @@ export const WORDS: Readonly<Record<LaneId, LaneWords>> = {
         scope: "sessions",
         label: "Finished sessions",
         one: "session",
-        many: "sessions",
       },
       {
         scope: "shelf",
         label: "Kept shelf items",
         one: "kept item",
-        many: "kept items",
       },
     ],
-    waits: (n) => (n === 1 ? "1 session waits" : `${n} sessions wait`),
+    waits: waits("session"),
     whileOpen: "while Practice is open",
     phoneOnly: "Practice is only on this phone. Losing the phone loses it.",
     partly:
@@ -101,7 +99,7 @@ export const WORDS: Readonly<Record<LaneId, LaneWords>> = {
         many: "entries",
       },
     ],
-    waits: changesWait,
+    waits: waits("change"),
     whileOpen: "while aph is open",
     phoneOnly: "aph is only on this phone. Losing the phone loses it.",
     partly:
@@ -126,7 +124,7 @@ export const WORDS: Readonly<Record<LaneId, LaneWords>> = {
     rows: [
       { scope: "jobs", label: "The record", one: "event", many: "events" },
     ],
-    waits: (n) => (n === 1 ? "1 event waits" : `${n} events wait`),
+    waits: waits("event"),
     whileOpen: "while Jobs is open",
     phoneOnly:
       "The Jobs record is only on this phone. Losing the phone loses it.",
@@ -180,26 +178,13 @@ export const KEEP_SENDING_SAID = `${KEEP_SENDING}. ${KEEP_SENDING_MORE}`
 /** The header mark's shape: where a record is kept, at a glance. */
 export type Shape = "phone" | "partly" | "kept" | "waiting" | "trouble"
 
-export type LaneFacts = {
+export type LaneFacts = Omit<LaneCounts, "away" | "offered"> & {
   shared: Shared
   /** What was kept and is stopped now, and since when. */
   stopped: ReadonlyMap<Scope, number>
-  /** How many of each row this phone knows home holds; absent where it can't know. */
-  held: Readonly<Partial<Record<Scope, number>>>
-  /** Of each row, the items home didn't take, kept on this phone. */
-  refused: Readonly<Partial<Record<Scope, number>>>
-  /** What home does not hold as it is now. */
-  waiting: number
   run: KeptState
-  /**
-   * Stopped while home holds the record this phone let go of: the changes
-   * this phone holds, and how bringing it back went. Null otherwise.
-   */
+  /** `LaneCounts`' `away`, and how bringing the record back went. */
   away: { readonly waiting: number; readonly back: KeptState } | null
-  /** Waiting changes that clash with home's record, so not shown. */
-  hidden: number
-  /** Home's record has been read since the app opened. */
-  pulled: boolean
 }
 
 export type LaneView = {

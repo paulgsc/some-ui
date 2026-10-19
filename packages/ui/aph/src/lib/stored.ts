@@ -209,8 +209,12 @@ export function writeHome(storage: AphStorage, record: HomeRecord): boolean {
  * False when the storage would not; the home record still wins on opening.
  */
 export function forgetDeviceRecord(storage: AphStorage): boolean {
+  return forget(storage, STORAGE_KEY)
+}
+
+function forget(storage: AphStorage, key: string): boolean {
   try {
-    storage.removeItem(STORAGE_KEY)
+    storage.removeItem(key)
     return true
   } catch {
     return false
@@ -219,23 +223,24 @@ export function forgetDeviceRecord(storage: AphStorage): boolean {
 
 /**
  * Removes the home record, once a device record carrying what it held is
- * kept, and a copy of it under `LEFT_PREFIX` first when `clashed` (some of
- * its waiting changes are in no other record). False when the storage would
- * not; the home record then still wins on opening.
+ * kept, and a copy of it as stored under `LEFT_PREFIX` first when `clashed`
+ * (some of its waiting changes are in no other record). False when the
+ * storage would not; the home record then still wins on opening.
  */
 export function forgetHomeRecord(
   storage: AphStorage,
-  record: HomeRecord,
   clashed: boolean
 ): boolean {
-  const text = JSON.stringify({ v: HOME_VERSION, ...record })
-  if (clashed && !quarantine(storage, text, LEFT_PREFIX)) return false
-  try {
-    storage.removeItem(HOME_KEY)
-    return true
-  } catch {
-    return false
+  if (clashed) {
+    let text: string | null
+    try {
+      text = storage.getItem(HOME_KEY)
+    } catch {
+      return false
+    }
+    if (text !== null && !quarantine(storage, text, LEFT_PREFIX)) return false
   }
+  return forget(storage, HOME_KEY)
 }
 
 /** Home's `GET /aph` answer. */

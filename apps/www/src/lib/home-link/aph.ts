@@ -38,7 +38,6 @@ function declared({ store, ...aph }: AphKeeping): Lane {
   return {
     id: "aph",
     scopes: ["aph"],
-    // A switch the opt-in could not make is made here, before anything goes.
     exchange: (send) =>
       store.where().kind === "home" || store.keepOnHome()
         ? aph.exchange(store, send)

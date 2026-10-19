@@ -210,7 +210,7 @@ export function createAphStore(
       if (view === null) return false
       const next = { settings: view.settings, entries: view.entries }
       if (!writeStored(storage, next)) return false
-      if (!forgetHomeRecord(storage, record, view.hidden > 0)) return false
+      if (!forgetHomeRecord(storage, view.hidden > 0)) return false
       record = null
       state = next
       pulled = false

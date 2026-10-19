@@ -6,8 +6,7 @@
  * as it PUTs them (`./shelf`), and nothing of home's is taken in or lets a
  * phone session go: freeing the phone stays a tap in Settings (`./send`).
  *
- * What did not go goes on the next ask; home being busy is said by the lane
- * that runs this (`./lanes`).
+ * What did not go goes on the next ask.
  */
 import type { HomeExchanged } from "@some-ui/core-utils"
 
@@ -62,7 +61,6 @@ export async function sendStanding(
   send: HomeSend,
   ports: StandingPorts
 ): Promise<HomeExchanged> {
-  if (ports.shared().size === 0) return { kind: "synced" }
   const gated =
     (scope: Scope): HomeSend =>
     (method, path, body) =>
