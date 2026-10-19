@@ -130,8 +130,9 @@ plain YouTube: the content script stops and lifts the pre-mask, and a content
 script that never runs leaves it on. The popup sets the boundary and the
 switch; the mode is followed but not yet offered anywhere, and the autoplay
 choice is not built yet (#1966's later slices). Mode changes are logged, and
-Diagnostics shows only boundary changes so far. Until the content script has read the mode, which the stylesheet
-cannot do itself, an unread card is blurred under Strict too.
+Diagnostics shows only boundary changes so far. Until the content script has
+read the mode, which the stylesheet cannot do itself, an unread card is
+blurred under Strict too.
 
 ## 8. Never on youtube.com
 

@@ -505,8 +505,7 @@ describe("the poster and the face control (#1805, QD13)", () => {
 
     key("keydown")
     key("keyup")
-    vi.advanceTimersByTime(0)
-    expect(faced).toEqual(["vid_w", "-vid_w"])
+    expect(faced, "the hide reports at once").toEqual(["vid_w", "-vid_w"])
     actuator.realize([plated(desc, false, VIDEO, "held")])
     expect(control()?.textContent).toBe("Hold to show the original thumbnail")
   })

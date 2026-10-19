@@ -808,6 +808,11 @@ describe("the mode (R7, R9, #1966)", () => {
     const hidden = reduce(open.state, hide)
     expect(hidden.state.watch?.face).toBe(false)
     expect(offers(hidden.actions)).toEqual(["held"])
+
+    // Back to Standard with the face shown: it stays, offered no control.
+    const back = reduce(open.state, standard())
+    expect(back.state.watch?.face).toBe(true)
+    expect(offers(back.actions)).toEqual(["release"])
   })
 
   it("keeps autoplay from a whole video in the lane under Strict", () => {
