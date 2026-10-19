@@ -23,6 +23,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import type { HomeCall as NativeCall } from "@/lib/device-backend/native-http"
 import type { AphKeeping } from "@/lib/home-link/aph"
 import { CONSENT_KEY } from "@/lib/home-link/consent-runtime"
+import { FIRST_READ_KEY } from "@/lib/home-link/first-read"
 import type { JobsState } from "@/lib/jobs/model"
 import { EMPTY } from "@/lib/jobs/model"
 import type { SessionRecord } from "@/lib/tenant/types"
@@ -205,6 +206,16 @@ describe("the Jobs record's mark", () => {
     ])
   })
 
+  it("enters no such choice under a pairing made after the app first read its pairing", async () => {
+    localStorage.setItem(FIRST_READ_KEY, JSON.stringify({ pairing: "earlier" }))
+    jobsRecord(2, true)
+    await mountJobs()
+    await act(() => Promise.resolve())
+    expect(logged()).toEqual([])
+    expect(home.sent).toEqual([])
+    expect(localStorage.getItem(FIRST_READ_KEY)).toBe('{"pairing":"earlier"}')
+  })
+
   it("keeps sending only on the second press, with the words it showed", async () => {
     jobsRecord(2, false)
     await mountJobs()
@@ -212,7 +223,7 @@ describe("the Jobs record's mark", () => {
     fireEvent.click(
       screen.getByRole("button", { name: "Keep sending to home..." })
     )
-    const offer = screen.getByText(/^Send 2 events home/).textContent
+    const offer = screen.getByText(/^Send 2 events to home/).textContent
     await act(() => Promise.resolve())
     expect(home.sent).toEqual([])
     expect(logged()).toEqual([])

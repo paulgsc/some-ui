@@ -71,8 +71,7 @@ export type HomeLinkState = {
   } | null
   /**
    * The id of the pairing the phone's own record held when this page load
-   * read it, or null: a choice made before the consent log enters it only
-   * under this pairing (LA9).
+   * read it, or null (kept once as the app's first read, `./first-read`).
    */
   readonly opened: string | null
 }

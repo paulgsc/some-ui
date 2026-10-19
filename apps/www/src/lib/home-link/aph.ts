@@ -62,8 +62,7 @@ function declared({ store, ...aph }: AphKeeping): Lane {
         away: home?.unsent ?? null,
         hidden: home?.hidden ?? 0,
         pulled: home?.pulled ?? true,
-        // On the phone, every entry and the settings go.
-        offered: home?.unsent ?? entries.length + 1,
+        offered: store.outbox()?.entries.length ?? entries.length,
       }
     },
     keptBefore: () => store.where().kind === "home",
