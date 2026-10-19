@@ -485,6 +485,8 @@ describe("digestFindings", () => {
       "Mobile",
       "Address line 1",
       "Address (optional)",
+      "What’s your phone number?",
+      "Phone # (with country code)",
     ])
       kit.answers.push({ label, value: "Mine" })
     expect(messages(digest)).toEqual([
@@ -495,6 +497,8 @@ describe("digestFindings", () => {
       'picks.0.kit.answers.5.label: "Mobile" is mine to type',
       'picks.0.kit.answers.6.label: "Address line 1" is mine to type',
       'picks.0.kit.answers.7.label: "Address (optional)" is mine to type',
+      'picks.0.kit.answers.8.label: "What’s your phone number?" is mine to type',
+      'picks.0.kit.answers.9.label: "Phone # (with country code)" is mine to type',
       "picks.0.kit.coverLetter: a phone number or street address is mine to type",
       "picks.0.kit.compensation.why: a phone number or street address is mine to type",
     ])

@@ -40,20 +40,20 @@ const STREET =
 
 /** A detail I type myself, as a form labels the row for it. */
 const TYPED_BY_ME =
-  /^(?:(?:mobile|cell|home|work|contact)\s+)?(?:(?:tele)?phone(?:\s+number)?|number)$|^(?:mobile|cell)$|^(?:(?:street|mailing|home|postal|current|residential)\s+)?address(?:\s+line\s*\d)?$/
+  /^(?:(?:mobile|cell|home|work|contact|preferred|primary)\s+)?(?:(?:tele)?phone(?:\s+(?:number|no|#))?|number)$|^(?:mobile|cell)$|^(?:(?:street|mailing|home|postal|current|residential)\s+)?address\s*(?:line\s*)?\d?$/
 
 /**
  * Whether a kit row's label asks for a phone number or address. A form
- * dresses a label ("What is your phone number?", "Phone ✱", "Address
+ * dresses a label ("What’s your phone number?", "Phone ✱", "Address
  * (optional)"), so that is taken off before the label is matched whole: a
  * question that only mentions one ("Built mobile apps?") is not a row for it.
  */
 function typedByMe(label: string): boolean {
   const bare = label
     .toLowerCase()
-    .replace(/\(optional\)/g, "")
-    .replace(/[\s*✱:?]+$/u, "")
-    .replace(/^\s*(?:what(?: is|'s) )?(?:your\s+)?/, "")
+    .replace(/\([^)]*\)/g, "")
+    .replace(/[\s*✱:?.]+$/u, "")
+    .replace(/^\s*(?:what(?: is|['’]s) )?(?:your\s+)?/u, "")
     .trim()
   return TYPED_BY_ME.test(bare)
 }
