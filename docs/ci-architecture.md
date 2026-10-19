@@ -60,14 +60,14 @@ and `wasm-release`'s root-only install.
 The publish legs are the leaves: they share nothing and change only on
 purpose. What gates each one:
 
-| Track | Gate | Notes |
-| --- | --- | --- |
-| Pages | Environment approval (`pages-release`) | Decision 1, #1859. A newer push cancels a run still waiting. |
-| Mobile APK | Environment approval (`mobile-release`) | Decision 1, #1859. |
-| Docker (`www`) | Release PR (`changeset-release/www-docker`) | `queue: max`; an ordinary run that starts after a newer release skips (#1958). Whether its version carries anything is #1951. |
-| Extensions | Release PR per extension | Notes chosen per version (#1750), so the version carries information. |
-| wasm crates | changesets/action PR | `queue: max` (#1958). Earlier runs' changesets are dropped per run: #1959. |
-| npm (`release.yml`) | Manual dispatch, changesets/action | Decides from `main`'s state, so the default queue is right. |
+| Track               | Gate                                        | Notes                                                                                                                         |
+| ------------------- | ------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| Pages               | Environment approval (`pages-release`)      | Decision 1, #1859. A newer push cancels a run still waiting.                                                                  |
+| Mobile APK          | Environment approval (`mobile-release`)     | Decision 1, #1859.                                                                                                            |
+| Docker (`www`)      | Release PR (`changeset-release/www-docker`) | `queue: max`; an ordinary run that starts after a newer release skips (#1958). Whether its version carries anything is #1951. |
+| Extensions          | Release PR per extension                    | Notes chosen per version (#1750), so the version carries information.                                                         |
+| wasm crates         | changesets/action PR                        | `queue: max` (#1958). Earlier runs' changesets are dropped per run: #1959.                                                    |
+| npm (`release.yml`) | Manual dispatch, changesets/action          | Decides from `main`'s state, so the default queue is right.                                                                   |
 
 `_environment-approval.yml` holds the approval job for Pages and the APK, and
 fails if its environment has lost its required reviewer: an environment a
