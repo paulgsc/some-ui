@@ -32,9 +32,6 @@ jobs:
       ci: ${{ steps.filter.outputs.ci }}
     steps:
       - uses: actions/checkout@v7
-      # SCRATCH (#1616): stands in for a paths-filter failure. Reverted before merge.
-      - name: Simulate a detection failure
-        run: exit 1
       - name: Filter paths
         id: filter
         uses: dorny/paths-filter@v4
