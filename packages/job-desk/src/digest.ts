@@ -115,10 +115,7 @@ const KitSchema = z
     questions: z.array(QuestionSchema).default([]),
     /** What to answer when the form asks my pay expectation, and why. */
     compensation: z.object({ ask: text, why: text }).nullable().default(null),
-    /**
-     * Digests before the form was read carried one free-text answer here.
-     * It is read as an optional question, so nothing reads `why`.
-     */
+    /** Digests before the form was read carried one free-text answer here. */
     why: z.object({ prompt: text, draft: text }).nullable().optional(),
   })
   .transform(({ why, ...kit }) =>

@@ -320,7 +320,7 @@ const Resume = ({
 /**
  * What the run drafted from the posting's own form (ROUTINE.md §7): the
  * cover letter, each free-text question as the form words it, and the pay
- * expectation, each copied into the form one at a time.
+ * expectation.
  */
 export const KitDrafts = ({ kit }: { kit: Kit }): JSX.Element | null => {
   const { coverLetter, questions, compensation } = kit
@@ -341,16 +341,11 @@ export const KitDrafts = ({ kit }: { kit: Kit }): JSX.Element | null => {
         />
       ))}
       {compensation !== null && (
-        <div className="flex flex-col gap-2 rounded-xl border p-3">
-          <span className="text-muted-foreground text-xs">Pay expectation</span>
-          <span className="flex items-center gap-3">
-            <span className="min-w-0 flex-1 font-medium break-words select-all">
-              {compensation.ask}
-            </span>
-            <CopyButton text={compensation.ask} what="the pay expectation" />
-          </span>
-          <p className="text-muted-foreground text-xs">{compensation.why}</p>
-        </div>
+        <Draft
+          label="Pay expectation"
+          draft={compensation.ask}
+          note={compensation.why}
+        />
       )}
     </section>
   )
@@ -360,10 +355,13 @@ const Draft = ({
   label,
   draft,
   required = false,
+  note,
 }: {
   label: string
   draft: string | null
   required?: boolean
+  /** Why the run drafted it so, under the draft. */
+  note?: string
 }): JSX.Element => (
   <div className="flex flex-col gap-2 rounded-xl border p-3">
     <span className="flex items-center gap-2">
@@ -381,6 +379,9 @@ const Draft = ({
         <p className="text-sm leading-relaxed whitespace-pre-line select-all">
           {draft}
         </p>
+        {note !== undefined && (
+          <p className="text-muted-foreground text-xs">{note}</p>
+        )}
         <CopyButton text={draft} what={label} />
       </>
     )}

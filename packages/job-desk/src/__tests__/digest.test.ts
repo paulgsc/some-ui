@@ -341,11 +341,15 @@ describe("digestFindings", () => {
     ])
   })
 
-  it("finds a fit that claims what the pick rules out", () => {
+  it("finds a fit that claims what the evidence or the pick rules out", () => {
     const digest = sample()
-    digest.picks[0]!.fits[0]!.detail = "Ran it on Kubernetes."
+    digest.picks[0]!.fits[0]!.detail = "Years of managed cloud tenure."
     expect(messages(digest)).toEqual([
-      'picks.0.fits.0: claims "Kubernetes", which dontClaim rules out',
+      'picks.0.fits.0: claims "Managed cloud tenure", which dontClaim rules out',
+    ])
+    digest.picks[0]!.fits[0]!.detail = "Ran it on Terraform."
+    expect(messages(digest)).toEqual([
+      'picks.0.fits.0: claims "Terraform", which the evidence doesn\'t support',
     ])
   })
 

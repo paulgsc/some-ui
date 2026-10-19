@@ -42,6 +42,22 @@ const STREET =
 const TYPED_BY_ME =
   /^\s*(?:(?:mobile|cell|home|work|contact)\s+)?(?:(?:tele)?phone(?:\s+number)?|number)\s*$|^\s*(?:(?:street|mailing|home|postal)\s+)?address\s*$/i
 
+/** `text` claiming a term the evidence or the pick rules out, if it does. */
+function claimFinding(
+  path: string,
+  text: string,
+  dontClaim: ReadonlyArray<string>
+): Finding | null {
+  const term = [...FORBIDDEN_TERMS, ...dontClaim].find((t) =>
+    mentionsWord(text, t)
+  )
+  if (!term) return null
+  const why = FORBIDDEN_TERMS.includes(term)
+    ? "the evidence doesn't support"
+    : "dontClaim rules out"
+  return { path, message: `claims "${term}", which ${why}` }
+}
+
 function wordCount(draft: string): number {
   return draft.split(/\s+/).filter(Boolean).length
 }
@@ -77,7 +93,6 @@ function kitFindings(pick: Pick, at: string): ReadonlyArray<Finding> {
   if (kit.compensation !== null)
     drafts.push(["compensation.why", kit.compensation.why, MAX_ANSWER_WORDS])
 
-  const banned = [...FORBIDDEN_TERMS, ...pick.dontClaim]
   for (const [path, draft, cap] of drafts) {
     const words = wordCount(draft)
     if (words > cap)
@@ -85,12 +100,8 @@ function kitFindings(pick: Pick, at: string): ReadonlyArray<Finding> {
         path: `${at}.kit.${path}`,
         message: `${words} words; the most is ${cap}`,
       })
-    const term = banned.find((t) => mentionsWord(draft, t))
-    if (term)
-      found.push({
-        path: `${at}.kit.${path}`,
-        message: `claims "${term}", which ${FORBIDDEN_TERMS.includes(term) ? "the evidence doesn't support" : "dontClaim rules out"}`,
-      })
+    const claim = claimFinding(`${at}.kit.${path}`, draft, pick.dontClaim)
+    if (claim) found.push(claim)
   }
 
   const rows = { fields: kit.fields, answers: kit.answers }
@@ -301,14 +312,12 @@ export function digestFindings(digest: Digest): ReadonlyArray<Finding> {
     }
     found.push(...kitFindings(pick, at))
     pick.fits.forEach((fit, j) => {
-      const claim = `${fit.title} ${fit.detail}`
-      const term = pick.dontClaim.find((t) => mentionsWord(claim, t))
-      if (term) {
-        found.push({
-          path: `${at}.fits.${j}`,
-          message: `claims "${term}", which dontClaim rules out`,
-        })
-      }
+      const claim = claimFinding(
+        `${at}.fits.${j}`,
+        `${fit.title} ${fit.detail}`,
+        pick.dontClaim
+      )
+      if (claim) found.push(claim)
     })
   })
 

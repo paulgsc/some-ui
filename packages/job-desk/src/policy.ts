@@ -56,8 +56,7 @@ export const PATCH_PRS_PER_RUN = 1
 export const MAX_SET_ASIDE = 40
 
 /**
- * The longest drafts a kit carries, in words (ROUTINE.md §7). A form that
- * sets a shorter limit of its own holds the draft to that.
+ * The longest drafts a kit carries, in words (ROUTINE.md §7).
  */
 export const MAX_COVER_LETTER_WORDS = 250
 export const MAX_ANSWER_WORDS = 150

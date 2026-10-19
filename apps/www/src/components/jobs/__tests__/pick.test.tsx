@@ -33,9 +33,10 @@ describe("the kit's drafts", () => {
     expect(screen.getAllByText("Required")).toHaveLength(1)
     expect(screen.getByText("No draft: this one is mine.")).toBeTruthy()
     expect(screen.getByText("$110,000")).toBeTruthy()
+    expect(screen.getByText("Inside the posted range.")).toBeTruthy()
     expect(screen.getByTitle("Copy Cover letter")).toBeTruthy()
     expect(screen.getByTitle("Copy Why us?")).toBeTruthy()
-    expect(screen.getByTitle("Copy the pay expectation")).toBeTruthy()
+    expect(screen.getByTitle("Copy Pay expectation")).toBeTruthy()
     expect(screen.queryByTitle("Copy Anything else?")).toBeNull()
   })
 
