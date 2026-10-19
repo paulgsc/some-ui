@@ -3,6 +3,7 @@ import { z } from "zod"
 import { ADJACENT_FAMILIES, MAX_SET_ASIDE, TRACKS } from "./policy"
 import {
   CommitSchema,
+  EventIdSchema,
   FingerprintSchema,
   HttpsUrlSchema,
   IdSchema,
@@ -229,6 +230,23 @@ export const DigestSchema = z.object({
     })
     .nullable()
     .default(null),
+  /**
+   * Earlier picks' drafts rewritten from my fit notes (ROUTINE.md §2), each
+   * a pick still open in `queue`. The phone shows the newest in place of the
+   * pick's own. Digests before them had none.
+   */
+  redrafts: z
+    .array(
+      z.object({
+        day: z.iso.date(),
+        pickId: IdSchema,
+        /** The fit notes it was written from, by their event ids. */
+        fit: z.array(EventIdSchema).min(1),
+        coverLetter: text.nullable(),
+        questions: z.array(QuestionSchema),
+      })
+    )
+    .default([]),
   /** The Drive files this run read: decisions and scouts, by name. */
   read: z.array(text),
   /** The voice notes this run transcribed, by file name. */

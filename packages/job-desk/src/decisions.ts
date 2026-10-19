@@ -1,6 +1,7 @@
 import { z } from "zod"
 
 import {
+  EventIdSchema,
   FingerprintSchema,
   IdSchema,
   parseWith,
@@ -81,9 +82,6 @@ export const DebriefMinutesSchema = z
 /** 1 smooth, 5 nearly gave up. */
 export const FrictionSchema = z.number().int().min(1).max(5)
 
-/** The phone's id for the event an entry came from. */
-const EventIdSchema = z.string().regex(/^[A-Za-z0-9_-]{1,64}$/)
-
 const DebriefSchema = z.object({
   id: EventIdSchema,
   minutes: DebriefMinutesSchema,
@@ -114,6 +112,20 @@ export const DecisionsSchema = z.object({
       note: z.string(),
       voice: z.array(VoiceFileSchema),
       debrief: DebriefSchema.nullable(),
+      /**
+       * Why I fit a pick I took, each note as I recorded it, for the run to
+       * redraft its application from (ROUTINE.md §2). Files before it had
+       * none.
+       */
+      fit: z
+        .array(
+          z.object({
+            id: EventIdSchema,
+            note: z.string(),
+            voice: z.array(VoiceFileSchema),
+          })
+        )
+        .default([]),
     })
   ),
   /** Set-aside postings I'd have picked, and why. */

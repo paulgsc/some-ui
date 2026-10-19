@@ -10,6 +10,9 @@ export const IdSchema = z.string().regex(/^[a-z0-9][a-z0-9-]{2,40}$/)
 /** `fingerprint()`'s output. */
 export const FingerprintSchema = z.string().regex(/^[^|]+\|[^|]+\|[^|]+$/)
 
+/** The phone's id for the event an entry came from. */
+export const EventIdSchema = z.string().regex(/^[A-Za-z0-9_-]{1,64}$/)
+
 export const CommitSchema = z.string().regex(/^[0-9a-f]{7,40}$/)
 
 /** A track, and on the adjacent track its family. */

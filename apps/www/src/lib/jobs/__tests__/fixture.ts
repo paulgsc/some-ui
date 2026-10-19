@@ -59,6 +59,7 @@ export function digest(day: string): Digest {
       pick("tid-7f2a", "Tidewater Analytics", true),
     ],
     queue: null,
+    redrafts: [],
     setAside: [
       {
         fingerprint: "juniper row|software engineer ii|remote",

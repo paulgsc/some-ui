@@ -15,9 +15,11 @@ import {
 
 import type { JobEvent, JobsState, ShareKind, VoiceNote } from "./model"
 import {
+  carriesPickVoice,
   debriefOf,
   decisionOf,
   deliveredThrough,
+  fitNotesOf,
   sharesOn,
   untouchedReported,
 } from "./model"
@@ -69,11 +71,7 @@ function pickVoice(
   pickId: string
 ): Array<{ id: string; name: string }> {
   const ids = state.log.flatMap((e) =>
-    (e.type === "passed" || e.type === "debrief") &&
-    e.day === day &&
-    e.pickId === pickId
-      ? e.voice
-      : []
+    carriesPickVoice(e) && e.day === day && e.pickId === pickId ? e.voice : []
   )
   return voiceNames(state.voice, ids, `${day}_${pickId}`, 1)
 }
@@ -129,13 +127,14 @@ export function decisionsFile(
         )
         .at(-1)
       const debrief = debriefOf(state, digest.day, pick.id)
+      // Whatever the pick's decision now: a note goes out once, so its
+      // audio is never released unsent (`releasedVoice`).
+      const fit = fitNotesOf(state, digest.day, pick.id)
       const names = pickVoice(state, digest.day, pick.id)
       const nameOf = (id: string): string =>
         names.find((n) => n.id === id)?.name ?? id
       const freshVoice = fresh.flatMap((e) =>
-        (e.type === "passed" || e.type === "debrief") &&
-        e.day === digest.day &&
-        e.pickId === pick.id
+        carriesPickVoice(e) && e.day === digest.day && e.pickId === pick.id
           ? e.voice
           : []
       )
@@ -146,6 +145,7 @@ export function decisionsFile(
           ? passed.voice
           : []),
         ...(decision === "taken" && debrief ? debrief.voice : []),
+        ...fit.flatMap((e) => e.voice),
       ]
       voice.push(
         ...names.filter(
@@ -181,6 +181,11 @@ export function decisionsFile(
                 result: debrief.result,
               }
             : null,
+        fit: fit.map((e) => ({
+          id: e.id,
+          note: e.note,
+          voice: e.voice.map(nameOf),
+        })),
       })
     }
   }

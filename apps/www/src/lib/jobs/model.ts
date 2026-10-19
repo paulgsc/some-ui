@@ -19,6 +19,7 @@ import type {
   DECISIONS,
   Digest,
   FRICTION,
+  Kit,
   OUTCOMES,
   PASS_REASONS,
   Pick,
@@ -74,6 +75,12 @@ export type JobEvent = { id: string; at: string } & (
   | ({
       type: "passed"
       reasons: ReadonlyArray<PassReason>
+      note: string
+      voice: ReadonlyArray<string>
+    } & PickRef)
+  /** Why I fit a pick I took: the next run redrafts its application from it. */
+  | ({
+      type: "fit-note"
       note: string
       voice: ReadonlyArray<string>
     } & PickRef)
@@ -198,6 +205,24 @@ function named(log: ReadonlyArray<JobEvent>): Set<string> {
   return ids
 }
 
+/**
+ * Whether a fit note says something, in words or aloud. Home trims U+0085
+ * too, and refuses a note left with nothing.
+ */
+export function fitNoteSays(
+  note: string,
+  voice: ReadonlyArray<unknown>
+): boolean {
+  return note.replace(/\u0085/g, "").trim() !== "" || voice.length > 0
+}
+
+/** A pick's event that names voice notes. */
+export function carriesPickVoice(
+  e: JobEvent
+): e is JobEvent & { type: "passed" | "fit-note" | "debrief" } {
+  return e.type === "passed" || e.type === "fit-note" || e.type === "debrief"
+}
+
 /** Whether `event`'s texts are within what home takes. */
 function withinLimits(event: Draft): boolean {
   switch (event.type) {
@@ -208,6 +233,11 @@ function withinLimits(event: Draft): boolean {
     }
     case "debrief": {
       return event.what.length <= MAX_NOTE
+    }
+    case "fit-note": {
+      return (
+        event.note.length <= MAX_NOTE && fitNoteSays(event.note, event.voice)
+      )
     }
     case "scout": {
       const { scout } = event
@@ -254,7 +284,11 @@ function fits(state: JobsState, event: Draft): boolean {
   const pick = digest?.picks.find((p) => p.id === event.pickId)
   if (pick?.fingerprint !== event.fingerprint) return false
   if (DECIDED.has(event.type)) return true
-  return decisionOf(state, event.day, event.pickId) === "taken"
+  // A debriefed pick is out of the queue, so no run would redraft it.
+  const taken = decisionOf(state, event.day, event.pickId) === "taken"
+  if (event.type === "fit-note")
+    return taken && progressOf(state, event.day, event.pickId).kind === "open"
+  return taken
 }
 
 export function step(state: JobsState, action: JobsAction): JobsState {
@@ -268,11 +302,18 @@ export function step(state: JobsState, action: JobsAction): JobsState {
         state.log.flatMap((e) => ("pickId" in e ? [e.day] : []))
       )
       // Over `all`, so the digest being opened counts too.
-      const holding = new Set(
-        openOf({ ...state, digests: all }).map((o) => o.day)
-      )
+      const open = openOf({ ...state, digests: all })
+      const holding = new Set(open.map((o) => o.day))
+      const openKeys = new Set(open.map((o) => `${o.day}/${o.pick.id}`))
+      // A redraft of an open pick stands in for its drafts (`kitOf`).
+      const redrafting = (d: Digest): boolean =>
+        d.redrafts.some((r) => openKeys.has(`${r.day}/${r.pickId}`))
       const digests = all.filter(
-        (d) => recent.has(d.day) || referenced.has(d.day) || holding.has(d.day)
+        (d) =>
+          recent.has(d.day) ||
+          referenced.has(d.day) ||
+          holding.has(d.day) ||
+          redrafting(d)
       )
       // A digest opened again keeps the first time it was opened.
       const firstOpened = Object.fromEntries(
@@ -450,6 +491,56 @@ export function debriefOf(
   return debrief?.type === "debrief" ? debrief : null
 }
 
+/**
+ * A pick's kit with the newest redraft of its drafts (ROUTINE.md §2) in
+ * place of its own, draft by draft, and the day of the digest that wrote
+ * it, or null.
+ */
+export function kitOf(
+  state: JobsState,
+  day: string,
+  pick: Pick
+): { kit: Kit; redraftedOn: string | null } {
+  for (const digest of [...state.digests].reverse()) {
+    if (digest.day <= day) break
+    const redraft = digest.redrafts.find(
+      (r) => r.day === day && r.pickId === pick.id
+    )
+    if (!redraft) continue
+    const asked = new Set(pick.kit.questions.map((q) => q.label))
+    const questions = [
+      ...pick.kit.questions.map((q) => {
+        const draft = redraft.questions.find(
+          (r) => r.label === q.label && r.draft
+        )?.draft
+        return draft && draft !== q.draft ? { ...q, draft } : q
+      }),
+      ...redraft.questions.filter((r) => !asked.has(r.label) && r.draft),
+    ]
+    const coverLetter = redraft.coverLetter ?? pick.kit.coverLetter
+    const changed =
+      coverLetter !== pick.kit.coverLetter ||
+      questions.some((q, i) => q !== pick.kit.questions[i])
+    if (!changed) break
+    return {
+      kit: { ...pick.kit, coverLetter, questions },
+      redraftedOn: digest.day,
+    }
+  }
+  return { kit: pick.kit, redraftedOn: null }
+}
+
+/** The fit notes recorded on a pick, oldest first. */
+export function fitNotesOf(
+  state: JobsState,
+  day: string,
+  pickId: string
+): ReadonlyArray<JobEvent & { type: "fit-note" }> {
+  return state.log.flatMap((e) =>
+    e.type === "fit-note" && e.day === day && e.pickId === pickId ? [e] : []
+  )
+}
+
 /** When the posting was last opened for this pick, to time the debrief. */
 export function applyOpenedAt(
   state: JobsState,
@@ -471,11 +562,11 @@ export function draftVoice(
   return state.voice.filter((n) => n.owner === owner && !keep.has(n.id))
 }
 
-/** The owner a pick's pass or debrief records its voice notes under. */
+/** The owner a pick's pass, fit note or debrief records its voice notes under. */
 export function pickOwner(
   day: string,
   pickId: string,
-  form: "pass" | "debrief"
+  form: "pass" | "fit" | "debrief"
 ): string {
   return `${day}/${pickId}/${form}`
 }
@@ -565,8 +656,8 @@ export function sharesOn(
 /**
  * Voice ids whose audio can leave the phone: each one an event names before
  * the last share of its kind that arrived. Such a note either went out in a
- * share that arrived, or belongs to a pass or debrief a later decision
- * replaced, which no share will send.
+ * share that arrived, or belongs to a pass, fit note or debrief a later
+ * decision replaced, which no share will send.
  */
 export function releasedVoice(state: JobsState): ReadonlySet<string> {
   const through = {
@@ -578,7 +669,7 @@ export function releasedVoice(state: JobsState): ReadonlySet<string> {
     const covered =
       e.type === "scout"
         ? i < through.scouts
-        : (e.type === "passed" || e.type === "debrief") && i < through.decisions
+        : carriesPickVoice(e) && i < through.decisions
     if (covered && "voice" in e) for (const id of e.voice) ids.add(id)
   })
   return ids

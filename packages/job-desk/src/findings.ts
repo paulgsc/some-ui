@@ -1,6 +1,6 @@
 import { mentionsWord } from "@some-ui/core-utils"
 
-import type { Digest, Pick } from "./digest"
+import type { Digest, Kit, Pick } from "./digest"
 import { RESUME_VARIANTS, SOFTWARE_VARIANTS } from "./digest"
 import { fingerprint, role as roleOf } from "./fingerprint"
 import {
@@ -78,79 +78,130 @@ function wordCount(draft: string): number {
   return draft.split(/\s+/).filter(Boolean).length
 }
 
+/** What a run drafts for a form: a pick's kit, or an earlier pick's redraft. */
+type Drafts = {
+  coverLetter: string | null
+  questions: Kit["questions"]
+  compensation?: Kit["compensation"]
+}
+
 /**
- * A kit's drafts: within their caps, every required question answered, and
- * nothing in them or the kit's rows that I never let a run write: a term the
- * evidence doesn't support, one this pick says not to claim, or a contact
- * detail beyond the email and links (ROUTINE.md §7).
+ * Drafts within their caps, each question once, every required one answered,
+ * and nothing I never let a run write: a term the evidence doesn't support,
+ * one the pick says not to claim, or a phone number or street address
+ * (ROUTINE.md §7). `at` is the drafts' own path.
  */
-function kitFindings(pick: Pick, at: string): ReadonlyArray<Finding> {
+function draftFindings(
+  drafts: Drafts,
+  dontClaim: ReadonlyArray<string>,
+  at: string
+): Array<Finding> {
   const found: Array<Finding> = []
-  const { kit } = pick
-  const drafts: Array<[path: string, draft: string, cap: number]> = []
-  if (kit.coverLetter !== null)
-    drafts.push(["coverLetter", kit.coverLetter, MAX_COVER_LETTER_WORDS])
+  const texts: Array<[path: string, draft: string, cap: number]> = []
+  if (drafts.coverLetter !== null)
+    texts.push(["coverLetter", drafts.coverLetter, MAX_COVER_LETTER_WORDS])
   const asked = new Set<string>()
-  kit.questions.forEach((question, i) => {
+  drafts.questions.forEach((question, i) => {
     if (asked.has(question.label))
       found.push({
-        path: `${at}.kit.questions.${i}.label`,
+        path: `${at}.questions.${i}.label`,
         message: `"${question.label}" is asked twice`,
       })
     asked.add(question.label)
     if (question.draft !== null)
-      drafts.push([`questions.${i}.draft`, question.draft, MAX_ANSWER_WORDS])
+      texts.push([`questions.${i}.draft`, question.draft, MAX_ANSWER_WORDS])
     else if (question.required)
       found.push({
-        path: `${at}.kit.questions.${i}.draft`,
+        path: `${at}.questions.${i}.draft`,
         message: "a required question has no draft",
       })
   })
-  if (kit.compensation !== null)
-    drafts.push(["compensation.why", kit.compensation.why, MAX_ANSWER_WORDS])
+  if (drafts.compensation)
+    texts.push(["compensation.why", drafts.compensation.why, MAX_ANSWER_WORDS])
 
-  for (const [path, draft, cap] of drafts) {
+  for (const [path, draft, cap] of texts) {
     const words = wordCount(draft)
     if (words > cap)
       found.push({
-        path: `${at}.kit.${path}`,
+        path: `${at}.${path}`,
         message: `${words} words; the most is ${cap}`,
       })
-    const claim = claimFinding(`${at}.kit.${path}`, draft, pick.dontClaim)
+    const claim = claimFinding(`${at}.${path}`, draft, dontClaim)
     if (claim) found.push(claim)
+    const contact = contactFinding(`${at}.${path}`, draft)
+    if (contact) found.push(contact)
   }
+  if (drafts.compensation) {
+    const contact = contactFinding(
+      `${at}.compensation.ask`,
+      drafts.compensation.ask
+    )
+    if (contact) found.push(contact)
+  }
+  return found
+}
 
-  const rows = { fields: kit.fields, answers: kit.answers }
-  const texts: Array<[path: string, text: string]> = drafts.map(
-    ([path, draft]) => [path, draft]
-  )
-  if (kit.compensation !== null)
-    texts.push(["compensation.ask", kit.compensation.ask])
-  for (const [kind, list] of Object.entries(rows)) {
-    list.forEach((row, i) => {
-      texts.push([`${kind}.${i}`, row.value])
+function contactFinding(path: string, text: string): Finding | null {
+  return PHONE.test(text) || STREET.test(text)
+    ? { path, message: "a phone number or street address is mine to type" }
+    : null
+}
+
+/** A pick's kit: its drafts, and no row for a detail I type myself. */
+function kitFindings(pick: Pick, at: string): ReadonlyArray<Finding> {
+  const { kit } = pick
+  const found = draftFindings(kit, pick.dontClaim, `${at}.kit`)
+  for (const [kind, rows] of Object.entries({
+    fields: kit.fields,
+    answers: kit.answers,
+  })) {
+    rows.forEach((row, i) => {
       if (typedByMe(row.label))
         found.push({
           path: `${at}.kit.${kind}.${i}.label`,
           message: `"${row.label}" is mine to type`,
         })
+      const contact = contactFinding(`${at}.kit.${kind}.${i}`, row.value)
+      if (contact) found.push(contact)
     })
   }
-  for (const [path, value] of texts) {
-    if (PHONE.test(value) || STREET.test(value))
+  return found
+}
+
+/**
+ * Each redraft rewrites a pick still open in the queue, from an earlier
+ * digest, at most once, held to the same rules as a kit's drafts. The
+ * pick's own `dontClaim` is in its digest, which the run reads (§2).
+ */
+function redraftFindings(digest: Digest): ReadonlyArray<Finding> {
+  const found: Array<Finding> = []
+  const open = new Set(
+    (digest.queue?.open ?? [])
+      .filter((held) => !held.closed)
+      .map((held) => `${held.day}/${held.pickId}`)
+  )
+  const seen = new Set<string>()
+  digest.redrafts.forEach((redraft, i) => {
+    const at = `redrafts.${i}`
+    const key = `${redraft.day}/${redraft.pickId}`
+    if (!open.has(key))
       found.push({
-        path: `${at}.kit.${path}`,
-        message: "a phone number or street address is mine to type",
+        path: at,
+        message: `${key} is not an open pick in this digest's queue`,
       })
-  }
+    if (seen.has(key))
+      found.push({ path: at, message: `${key} is redrafted twice` })
+    seen.add(key)
+    found.push(...draftFindings(redraft, [], at))
+  })
   return found
 }
 
 /**
  * What the schema cannot say about a digest: the policy's limits, the
  * queue's room, one fingerprint per posting, no fit that claims what the
- * evidence or the same pick rules out, and each kit's drafts (`kitFindings`). An
- * empty list is what a run uploads.
+ * evidence or the same pick rules out, each kit's drafts (`kitFindings`) and
+ * each redraft (`redraftFindings`). An empty list is what a run uploads.
  */
 export function digestFindings(digest: Digest): ReadonlyArray<Finding> {
   const found: Array<Finding> = []
@@ -418,5 +469,6 @@ export function digestFindings(digest: Digest): ReadonlyArray<Finding> {
     }
   })
 
+  found.push(...redraftFindings(digest))
   return found
 }
