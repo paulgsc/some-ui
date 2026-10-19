@@ -92,6 +92,46 @@ const GapSchema = z.object({
   text,
 })
 
+/**
+ * A free-text question on the posting's own application form (ROUTINE.md
+ * §7), as the form words it, with the run's draft from the pick's fits.
+ */
+const QuestionSchema = z.object({
+  label: text,
+  required: z.boolean(),
+  /** Null only for an optional question the run left to me. */
+  draft: text.nullable(),
+})
+
+const KitSchema = z
+  .object({
+    /** Copied into the form one at a time: email, links, location. */
+    fields: z.array(LabelledSchema),
+    /** The form's standard questions, already answered. */
+    answers: z.array(LabelledSchema),
+    /** A draft, when the form takes a cover letter. Digests before it had none. */
+    coverLetter: text.nullable().default(null),
+    /** Every free-text question the form asks. Digests before it had none. */
+    questions: z.array(QuestionSchema).default([]),
+    /** What to answer when the form asks my pay expectation, and why. */
+    compensation: z.object({ ask: text, why: text }).nullable().default(null),
+    /** Digests before the form was read carried one free-text answer here. */
+    why: z.object({ prompt: text, draft: text }).nullable().optional(),
+  })
+  .transform(({ why, ...kit }) =>
+    why
+      ? {
+          ...kit,
+          questions: [
+            { label: why.prompt, required: false, draft: why.draft },
+            ...kit.questions,
+          ],
+        }
+      : kit
+  )
+
+export type Kit = z.infer<typeof KitSchema>
+
 const PickSchema = z
   .object({
     id: IdSchema,
@@ -113,13 +153,7 @@ const PickSchema = z
     gaps: z.array(GapSchema),
     dontClaim: z.array(text),
     resume: ResumeSchema,
-    kit: z.object({
-      /** Copied into the form one at a time: email, links, location. */
-      fields: z.array(LabelledSchema),
-      /** The form's standard questions, already answered. */
-      answers: z.array(LabelledSchema),
-      why: z.object({ prompt: text, draft: text }).nullable(),
-    }),
+    kit: KitSchema,
   })
   .and(TrackedSchema)
 

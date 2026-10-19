@@ -6,7 +6,7 @@
 import type { JSX } from "react"
 import { useState } from "react"
 import { cn } from "@some-ui/core-utils"
-import type { Pick } from "@some-ui/job-desk"
+import type { Kit, Pick } from "@some-ui/job-desk"
 import {
   FRICTION,
   MAX_DEBRIEF_MINUTES,
@@ -317,6 +317,77 @@ const Resume = ({
   )
 }
 
+/**
+ * What the run drafted from the posting's own form (ROUTINE.md §7): the
+ * cover letter, each free-text question as the form words it, and the pay
+ * expectation.
+ */
+export const KitDrafts = ({ kit }: { kit: Kit }): JSX.Element | null => {
+  const { coverLetter, questions, compensation } = kit
+  if (coverLetter === null && questions.length === 0 && compensation === null)
+    return null
+  return (
+    <section className="flex flex-col gap-3">
+      <h3 className={sectionHeading}>Drafts for the form</h3>
+      {coverLetter !== null && (
+        <Draft label="Cover letter" draft={coverLetter} />
+      )}
+      {questions.map((question) => (
+        <Draft
+          key={question.label}
+          label={question.label}
+          draft={question.draft}
+          required={question.required}
+        />
+      ))}
+      {compensation !== null && (
+        <Draft
+          label="Pay expectation"
+          draft={compensation.ask}
+          note={compensation.why}
+        />
+      )}
+    </section>
+  )
+}
+
+const Draft = ({
+  label,
+  draft,
+  required = false,
+  note,
+}: {
+  label: string
+  draft: string | null
+  required?: boolean
+  /** Why the run drafted it so, under the draft. */
+  note?: string
+}): JSX.Element => (
+  <div className="flex flex-col gap-2 rounded-xl border p-3">
+    <span className="flex items-center gap-2">
+      <span className="text-muted-foreground min-w-0 flex-1 text-xs">
+        {label}
+      </span>
+      {required && <Badge variant="outline">Required</Badge>}
+    </span>
+    {draft === null ? (
+      <p className="text-muted-foreground text-sm">
+        No draft: this one is mine.
+      </p>
+    ) : (
+      <>
+        <p className="text-sm leading-relaxed whitespace-pre-line select-all">
+          {draft}
+        </p>
+        {note !== undefined && (
+          <p className="text-muted-foreground text-xs">{note}</p>
+        )}
+        <CopyButton text={draft} what={label} />
+      </>
+    )}
+  </div>
+)
+
 const Apply = ({
   pick,
   pickRef,
@@ -360,15 +431,7 @@ const Apply = ({
           </ul>
         </section>
       )}
-      {kit.why && (
-        <section className="flex flex-col gap-2">
-          <h3 className={sectionHeading}>{kit.why.prompt} (draft)</h3>
-          <p className="rounded-xl border p-3 text-sm leading-relaxed select-all">
-            {kit.why.draft}
-          </p>
-          <CopyButton text={kit.why.draft} what="the draft" />
-        </section>
-      )}
+      <KitDrafts kit={kit} />
     </div>
   )
 }

@@ -55,6 +55,32 @@ export const PATCH_PRS_PER_RUN = 1
 /** The most set-aside postings a digest lists, those closest to a pick first. */
 export const MAX_SET_ASIDE = 40
 
+/**
+ * The longest drafts a kit carries, in words (ROUTINE.md §7).
+ */
+export const MAX_COVER_LETTER_WORDS = 250
+export const MAX_ANSWER_WORDS = 150
+
+/**
+ * Terms no draft may use: `FORBIDDEN_TERMS` in `@some-ui/resume`'s
+ * `scripts/check-claims.mjs`, which neither repository's evidence supports.
+ * A test holds this copy to that list.
+ */
+export const FORBIDDEN_TERMS: ReadonlyArray<string> = [
+  "Entity Framework",
+  "Kubernetes",
+  "Spring Boot",
+  "MongoDB",
+  "Terraform",
+  ".NET",
+  "Azure",
+  "SLA",
+  "SLO",
+  "on-call",
+  "uptime",
+  "high-volume",
+]
+
 /** A posting older than this, on the digest's day, is set aside as stale. */
 export const MAX_POSTING_AGE_DAYS = 30
 

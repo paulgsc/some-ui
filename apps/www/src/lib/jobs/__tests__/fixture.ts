@@ -34,7 +34,13 @@ function pick(id: string, company: string, adjacent: boolean): Pick {
           change: "A data composition.",
         }
       : { kind: "build", variant: "backend", template: "safe", ref: "cb503cb" },
-    kit: { fields: [], answers: [], why: null },
+    kit: {
+      fields: [],
+      answers: [],
+      coverLetter: null,
+      questions: [],
+      compensation: null,
+    },
   }
 }
 

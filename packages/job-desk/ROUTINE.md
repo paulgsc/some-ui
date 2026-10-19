@@ -49,7 +49,7 @@ shallow, read-only clone):
 - `packages/ui/resume/src/data/personal.typ`: location, work authorization and
   education.
 - `packages/ui/resume/scripts/check-claims.mjs`: `FORBIDDEN_TERMS`, which never
-  appear in a fit.
+  appear in a fit or a draft.
 
 Every fit cites one of these. Its `source` names the repo and path
 (`server · scripts/check_metric_contract.py`) or the job
@@ -388,13 +388,83 @@ a time. Its PRs carry the label `jobs-patch`, and only theirs do.
 
 ## 7. The kit
 
+The kit is what I paste into the posting's own application form, so read that
+form first. A form mixes its own questions with standard rows (name, email,
+phone, résumé, links, location). A **question** here is only one of the
+form's own that wants prose in my words; the standard rows are fields or
+mine to type, and a choice or a short fact ("How did you hear about us?") is
+an answer when the evidence settles it. Each board serves its form apart from
+the posting:
+
+- **Greenhouse:**
+  `https://boards-api.greenhouse.io/v1/boards/<board>/jobs/<id>?questions=true`.
+  Each entry of `questions` has a `label`, `required` and `fields[]`. Its own
+  questions are those whose field `name` starts `question_`; one is free text
+  when that field is a `textarea`, or an `input_text` that asks for prose
+  rather than a link or a fact. The `cover_letter` entry is the cover letter.
+  Skip `location_questions`, `compliance` and `demographic_questions`.
+- **Ashby:** `POST https://jobs.ashbyhq.com/api/non-user-graphql?op=ApiJobPosting`
+  with `content-type: application/json` and this body, the posting's board
+  name and id filled in:
+
+  ```json
+  {
+    "operationName": "ApiJobPosting",
+    "variables": {
+      "organizationHostedJobsPageName": "<org>",
+      "jobPostingId": "<id>"
+    },
+    "query": "query ApiJobPosting($organizationHostedJobsPageName: String!, $jobPostingId: String!) { jobPosting(organizationHostedJobsPageName: $organizationHostedJobsPageName, jobPostingId: $jobPostingId) { applicationForm { sections { fieldEntries { ... on FormFieldEntry { isRequired field } } } } } }"
+  }
+  ```
+
+  Each entry's `field` has a `title`, a `type` and a `path`. Its own
+  questions are those whose `path` is neither a `_systemfield_` nor `phone`;
+  one is free text when it is a `String` or `LongText` that asks for prose
+  (not a link such as "LinkedIn Profile"). `cover_letter` is the cover letter.
+
+- **Lever:** the posting's `applyUrl` page (HTML). Its standard rows are the
+  `<div class="application-label">` ones outside the cards; "Additional
+  information" (`name="comments"`) is the cover letter. Its own questions are
+  in each hidden input named `cards[<id>][baseTemplate]`, whose `value` is
+  entity-escaped JSON: each of its `fields` has a `text`, a `type` and
+  `required`; one is free text when it is a `textarea`, or a `text` that asks
+  for prose (not a preferred name or a pronunciation). Read the questions there only, not
+  their labels in the page as well.
+- **A Hacker News post** has no form: leave the questions, the cover letter
+  and the pay expectation out.
+
+A form that can't be read leaves them out too; say so in the summary. Then:
+
 - **Fields:** email, GitHub and portfolio from the identity block of
   `packages/ui/resume/src/data/resume.typ`, and location from `personal.typ`.
-  Never a phone number or street address: I type those myself.
+  Never a phone number or street address: I type those myself, so no row is
+  labelled for them.
 - **Answers:** work authorization ("Yes, for any employer") and sponsorship
-  ("Not needed") when the form asks. Add nothing the evidence doesn't say.
-- **Why:** a draft of at most 120 words, only when the form asks for one,
-  built from the pick's fits.
+  ("Not needed") when the form asks, and any other choice the form offers
+  that the evidence settles. Add nothing the evidence doesn't say. Never
+  answer pronouns, demographics or an EEO question.
+- **Questions:** every free-text question the form asks, in `questions`, with
+  its `label` as the form words it and `required` as the form marks it. Each
+  required one gets a `draft`; an optional one gets one when the pick's fits
+  answer it, else `draft: null`. A draft is at most `MAX_ANSWER_WORDS` (150),
+  or the form's own limit when it states a shorter one ("in 2–3 sentences").
+- **Cover letter:** a `coverLetter` draft of at most `MAX_COVER_LETTER_WORDS`
+  (250), only when the form takes one, as text or only as a file: I save the
+  draft as one.
+- **Compensation:** only when the form asks my pay expectation, which then
+  goes here and not in `questions`, as the cover letter goes only in
+  `coverLetter`. `ask` is a
+  figure inside the posting's range, toward its top for a strong fit, or, when
+  it states none, "Open to the range for this role". `why` says how, in a
+  sentence.
+
+Every draft is first person and built from the pick's `fits`, restating what
+they say. It never claims a gap, a term in the pick's `dontClaim`, or one of
+`FORBIDDEN_TERMS`, and never carries a phone number or address. The checker
+holds each draft to its cap, every required question to a draft, every draft
+to the terms above, and every draft and row to the contact details; the rest (a form's
+shorter limit, first person, the gaps) is yours to hold.
 
 ## 8. Write it
 
