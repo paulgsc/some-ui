@@ -174,6 +174,20 @@ describe("exchangeJobs", () => {
     await exchangeJobs(own, home(holding(withLog.log)).send)
     expect(own.current.log.map((e) => e.id)).toEqual(["mine"])
   })
+
+  it("says nothing failed when the phone's first event lands while home's record is read", async () => {
+    const k = keeping(EMPTY)
+    const send: HomeCall = (method, path, body) => {
+      k.current = step(opened, {
+        type: "record",
+        event: { type: "taken", ...ref() },
+        stamp: { id: "mine", at: "2026-10-19T10:00:00.000Z" },
+      })
+      return home(holding(withLog.log)).send(method, path, body)
+    }
+    expect(await exchangeJobs(k, send)).toEqual({ kind: "synced" })
+    expect(k.current.log.map((e) => e.id)).toEqual(["mine"])
+  })
 })
 
 describe("step on home's answers", () => {

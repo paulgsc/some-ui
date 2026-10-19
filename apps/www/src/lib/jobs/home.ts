@@ -79,7 +79,10 @@ async function exchange(
   if (answer.status !== 200 || record === null) {
     return unexpectedAnswer("the record", answer.status)
   }
-  if (record.events.length > 0 && !keeping.restored(record.events)) {
+  // The log can gain its first event while the read is out: then home's
+  // copy is not taken in, and nothing failed.
+  const empty = keeping.state().log.length === 0
+  if (empty && record.events.length > 0 && !keeping.restored(record.events)) {
     return { kind: "failed", why: "this phone couldn't keep home's record" }
   }
   return { kind: "synced" }
