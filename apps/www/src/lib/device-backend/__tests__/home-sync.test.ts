@@ -423,6 +423,7 @@ describe("syncFromHome revalidating what it holds", () => {
       home.get(url.replace("https://files.home", HOME), etag)
     await syncFromHome(phoneDb, "https://files.home", elsewhere, () => NOW)
     const urls = await phoneDb.all("SELECT url FROM device_home_answer")
+    expect(urls.length).toBeGreaterThan(0)
     expect(urls.every((row) => String(row.url).startsWith("https://"))).toBe(
       true
     )

@@ -25,10 +25,14 @@ vi.mock("@/lib/device-backend/storage-view", () => ({
     },
   },
 }))
+vi.mock("@/lib/device-backend/home-sync", async (actual) => ({
+  ...(await actual<object>()),
+  syncFromHome: (): Promise<never> => Promise.reject(fake.ends),
+}))
 vi.mock("@/lib/home-link/index", () => ({
-  homeLink: (): { sync: () => Promise<never> } => ({
-    sync: (): Promise<never> => Promise.reject(fake.ends),
-  }),
+  homeLink: (): {
+    sync: (run: (get: unknown) => Promise<unknown>) => Promise<unknown>
+  } => ({ sync: (run) => run(() => undefined) }),
 }))
 
 afterEach(() => {

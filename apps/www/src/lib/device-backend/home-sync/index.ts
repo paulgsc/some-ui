@@ -165,9 +165,9 @@ const done = (): Promise<void> => Promise.resolve()
 
 /**
  * `url`, revalidated (`device_home_answer`): sent with the `ETag` this phone
- * kept for it only while what it holds there is, by digest, the body that
- * tag was kept with: for a lesson its row (`held`), else the body kept with
- * the tag. A `304` then answers with that body, as a `200`. The tag is kept
+ * kept for it only while it holds the bytes that tag names: for a lesson its
+ * row (`held`), by digest, else the body kept with the tag. A `304` then
+ * answers with those bytes, as a `200`. The tag is kept
  * only by `keep`, once the caller has stored what the answer carried, and
  * within the phone's budget.
  */
@@ -183,21 +183,23 @@ async function revalidated(
     "SELECT etag, hash, body FROM device_home_answer WHERE url = ?",
     [url]
   )
-  let holding: HeldBody | null = null
+  // What the phone holds that the kept tag names: a lesson's row while its
+  // digest is the one kept with the tag, or the body written with the tag.
+  let holding: { body: string; etag: string } | null = null
   if (kept !== null) {
+    const etag = text(kept, "etag")
     const body = textOrNull(kept, "body")
-    holding = held
-      ? await held()
-      : body === null
-        ? null
-        : { body, hash: text(kept, "hash") }
+    if (held) {
+      const lesson = await held()
+      if (lesson !== null && lesson.hash === textOrNull(kept, "hash")) {
+        holding = { body: lesson.body, etag }
+      }
+    } else if (body !== null) {
+      holding = { body, etag }
+    }
   }
-  const tag =
-    kept !== null && holding?.hash === text(kept, "hash")
-      ? text(kept, "etag")
-      : undefined
-  const answer = await get(url, tag)
-  if (answer.status === 304 && tag !== undefined && holding !== null) {
+  const answer = await get(url, holding?.etag)
+  if (answer.status === 304 && holding !== null) {
     return { status: 200, body: holding.body, keep: done }
   }
   if (answer.status !== 200) return { ...answer, keep: done }
@@ -207,7 +209,7 @@ async function revalidated(
       await db.run("DELETE FROM device_home_answer WHERE url = ?", [url])
       return
     }
-    const hash = await sha256Hex(answer.body)
+    const hash = held ? await sha256Hex(answer.body) : null
     try {
       await store.transaction(() =>
         store.run(

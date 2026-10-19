@@ -42,16 +42,14 @@ export async function syncLessonsFrom(
   refresh: () => unknown
 ): Promise<SyncResult> {
   const host = hostOf(base)
-  let started = false
+  const ran = { yes: false }
   try {
     const { context } = await deviceBackend()
-    started = true
-    const outcome = await homeLink().sync((get) =>
-      syncFromHome(context.db, base, get)
-    )
-    void deviceStorage.refresh()
+    const outcome = await homeLink().sync((get) => {
+      ran.yes = true
+      return syncFromHome(context.db, base, get)
+    })
     if (outcome === null) return { ok: false, line: "" }
-    refresh()
     if (outcome.kind === "stopped") {
       return { ok: true, line: syncLine({ kind: "stopped" }) }
     }
@@ -62,11 +60,6 @@ export async function syncLessonsFrom(
     )
     return { ok: true, line }
   } catch (error) {
-    // Ended part way, it may have copied some: the app shows what it did.
-    if (started) {
-      void deviceStorage.refresh()
-      refresh()
-    }
     const end = endOf(error)
     const line = syncLine(end)
     if (end.kind === "other") {
@@ -77,6 +70,12 @@ export async function syncLessonsFrom(
     }
     // Busy is not a failure: like a stop, it ends the sync where it was.
     return { ok: end.kind === "busy", line }
+  } finally {
+    // However it ended, even part way, the app shows what it copied.
+    if (ran.yes) {
+      void deviceStorage.refresh()
+      refresh()
+    }
   }
 }
 
